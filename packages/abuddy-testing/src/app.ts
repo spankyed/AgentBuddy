@@ -50,7 +50,7 @@ export interface FlowRun {
 export interface TestApp {
   /** Sends CLIENT_CONNECTED, as a client connecting does; systems send their startup data */
   connect(): Promise<void>;
-  /** Sends a system an event, as a client's `trpc.bus.send` does */
+  /** Sends a system an event, as a client's `sendToSystem` does (the pack's own systems by feature id) */
   send(systemId: string, event: { type: string; [key: string]: unknown }): Promise<void>;
   /** Events sent to frontend plugins (by `emit` or `sendToPlugin`), in order; optionally one plugin's. Readable after `stop` */
   emitted(pluginId?: string): OutgoingSystemEvents[];
@@ -142,10 +142,14 @@ function shutDownPacks(): void {
   if (failures.length > 0) throw new Error(`A pack's boot.onShutdown failed when the test app stopped:\n  ${failures.join('\n  ')}`);
 }
 
+/**
+ * The registered system an id names: the pack's own system with that feature id (`<packId>.<id>`) first, as
+ * `sendToSystem` maps it, then a system running under the id itself (a built-in pack's, or a full bus id).
+ */
 function resolveSystemId(id: string, registered: ReadonlyMap<string, AnyStateMachine>): string {
-  if (registered.has(id)) return id;
   const prefixed = packId && `${packId}.${id}`;
   if (prefixed && registered.has(prefixed)) return prefixed;
+  if (registered.has(id)) return id;
   throw new Error(`No registered system "${id}"${prefixed ? ` or "${prefixed}"` : ''}. Registered: ${[...registered.keys()].join(', ') || 'none'} (pass the pack's registration to setupPackTests)`);
 }
 

@@ -41,7 +41,7 @@ describe('reportError', () => {
   const tNodeId = 'TNode-1' as EARS.EntityId;
 
   it("with step context logs the error, sends it to the brain plugin and records it on the step's TNode", () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const printed = vi.spyOn(console, 'error').mockImplementation(() => {});
     let returned: ReturnType<typeof reportError> | undefined;
     const { logs, outgoing } = capture(() => {
       returned = reportError({
@@ -56,8 +56,12 @@ describe('reportError', () => {
       level: 'error',
       source: 'step-runtime',
       message: 'model failed',
-      meta: expect.objectContaining({ source: 'brain-llm', phase: 'llm.execute', errorId: returned!.errorId }),
+      stack: returned!.stack,
+      meta: expect.objectContaining({ source: 'brain-llm', phase: 'llm.execute', errorId: returned!.errorId, error: expect.any(Object) }),
     })]);
+    expect(returned!.stack).toContain('model failed');
+    // Only logged, not printed
+    expect(printed).not.toHaveBeenCalled();
     expect(outgoing).toEqual([{ type: 'BRAIN_RUNTIME_ERROR', pluginId: 'brain', error: returned }]);
     expect(tNodeResults).toEqual([{
       id: tNodeId,
@@ -68,11 +72,12 @@ describe('reportError', () => {
   });
 
   it('redacts key-shaped strings a provider error quotes', () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    const { outgoing } = capture(() => {
+    const { logs, outgoing } = capture(() => {
       reportError({ error: new Error('Incorrect API key provided: sk-proj-abcdef123456'), source: 'brain-llm', step: { phase: 'llm.execute' } });
     });
     expect(JSON.stringify(outgoing)).not.toContain('sk-proj-abcdef123456');
+    expect(logs).toHaveLength(1);
+    expect(JSON.stringify(logs)).not.toContain('sk-proj-abcdef123456');
   });
 
   it('without step context reports a system error for the app to show', () => {

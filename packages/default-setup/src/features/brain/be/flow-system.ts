@@ -15,7 +15,7 @@ import { brainLogger } from './utils/brain-inspect';
 import { isBrainPaused } from './utils/brain-pause';
 import { sendToBrainSystem } from '@abuddy/sdk/events';
 import { isPersistentTriggerFlow, shouldCompleteFlow } from './flow-completion';
-import { reportError } from '@abuddy/sdk/logger';
+import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { dedupeTriggerNodes, type FlowTriggerNode, type TriggerDedupeWarning } from './trigger-dedupe';
 
 /**
@@ -323,7 +323,7 @@ export function createFlowNodeSystem(
             const allSteps = repository.brainQueries.eventAllSteps(eventNode.id as EARS.EntityId);
 
             if (allSteps.length === 0) {
-              brainLogger.debug(`No steps found for event ${eventType} on node ${eventNode.id}, skipping`);
+              createLogger('brain').debug(`No steps found for event ${eventType} on node ${eventNode.id}, skipping`);
               continue; // Skip this event node but process others
             }
 

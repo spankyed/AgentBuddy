@@ -81,7 +81,7 @@ const APP_PACK = {
     "import { setup } from 'xstate';",
     "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",
     "export type OutgoingMemosEvents = { type: 'MEMO_ADDED'; text: string };",
-    "export const memosSpec = defineSystem('memos')<{ type: 'ADD_MEMO'; text: string } | { type: 'CLEAR_MEMOS' }, OutgoingMemosEvents>();",
+    "export const memosSpec = defineSystem('memos')<{ type: 'ADD_MEMO'; text: string } | { type: 'CLEAR_MEMOS' } | { type: 'PIN_MEMO' | 'UNPIN_MEMO'; id: string }, OutgoingMemosEvents>();",
     'export const memos = memosSpec.id;',
     'const entry = { spec: memosSpec, machine: setup({ types: memosSpec.types }).createMachine({ id: memosSpec.id }) } satisfies SystemEntry;',
     'export default entry;',
@@ -136,6 +136,18 @@ sendToSystem('nope', { type: 'CLEAR_MEMOS' });
 sendToSystem('memos', { type: 'ADD_TAG', name: 'x' });
 // @ts-expect-error ADD_MEMO needs its text
 sendToSystem('memos', { type: 'ADD_MEMO' });
+// An event declared for several types is sent with any of them
+sendToSystem('memos', { type: 'UNPIN_MEMO', id: 'm1' });
+// @ts-expect-error PIN_MEMO needs its id
+sendToSystem('memos', { type: 'PIN_MEMO' });
+// A type typed as a union needs the fields of every event it names
+declare const memoEventType: 'ADD_MEMO' | 'PIN_MEMO';
+sendToSystem('memos', { type: memoEventType, text: 'x', id: 'm1' });
+// @ts-expect-error as a PIN_MEMO it would have no id
+sendToSystem('memos', { type: memoEventType, text: 'x' });
+declare const systemId: 'memos' | 'base-pack.threads';
+// @ts-expect-error a union of system ids would accept either system's events
+sendToSystem(systemId, { type: 'ADD_TAG', name: 'x' });
 
 // Actions get services.emitter, which sends to every system by the id it runs under
 services.emitter.sendToSystem('app-pack.memos', { type: 'ADD_MEMO', text: 'x' });
@@ -401,7 +413,7 @@ describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ publish
     const app = path.join(parent, 'app-pack');
     const { at } = completionsIn(app, writeTsconfig(app, moduleResolution, published));
     expect(at.systemId, 'system-id completions').toEqual(expect.arrayContaining(['memos', 'base-pack.threads']));
-    expect(at.eventType, 'event-type completions').toEqual(expect.arrayContaining(['ADD_MEMO', 'CLEAR_MEMOS']));
+    expect(at.eventType, 'event-type completions').toEqual(expect.arrayContaining(['ADD_MEMO', 'CLEAR_MEMOS', 'PIN_MEMO', 'UNPIN_MEMO']));
     expect(at.eventType, 'only the chosen system\'s events').not.toContain('ADD_TAG');
   }, 120_000);
 

@@ -122,7 +122,7 @@ Actions receive a `services` object: default-setup's feature services (each is t
 | `services.inference` | Model calls (`generateText`, `streamText`, `createAgent`, `embed`/`embedMany`, `generateImage`, `generateSpeech`, `transcribe`, `rerank`) with the user's provider keys; see [Inference](services-and-data.md#inference) |
 | `services.repository` | The pack's declared repositories (queries and commands); actions read and write data through them |
 | `services.logger` | Structured logging, named `action:<label>` |
-| `services.emitter` | Typed sends to plugins and systems (`sendToPlugin`, `sendToSystem` by the id a system runs under, `sendToBrainSystem`) |
+| `services.emitter` | Typed sends to plugins and systems (`sendToPlugin`, `sendToSystem` by the id a system runs under, written as a string such as `'my-pack.bookmarks'`, `sendToBrainSystem`) |
 | `services.appData` | Reset, back up and restore the app's data |
 | `services.traceStore` | Read flow execution records |
 | `services.secrets` | The user's API keys as metadata (`list`, `select`, `rename`, `delete`, `status`); never values |

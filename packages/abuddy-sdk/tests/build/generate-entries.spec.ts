@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import { createRequire } from 'node:module';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { transformSync } from 'esbuild';
@@ -76,8 +77,8 @@ describe('generated system sends', () => {
     );
     const events = files['src/__generated__/events.ts'];
     expect(events).toContain("import { busId } from './bus-ids.js';");
-    expect(events).toContain("import type * as __specs from './system-specs.js';");
-    expect(events).toContain("'memos': IncomingEventsOf<typeof __specs.memos>;");
+    expect(events).toContain("import type { specs as __specs } from './system-specs.js';");
+    expect(events).toContain("'memos': IncomingEventsOf<(typeof __specs)['memos']>;");
     expect(events).toContain('export type PackSystemEvents = { [K in keyof OwnSystemEvents as (typeof busId)[K]]: OwnSystemEvents[K] };');
     expect(events).toContain("import type { PackSystemEvents as __dep_base_pack_PackSystemEvents } from './deps/base-pack.js';");
     expect(events).toContain('export type SendableSystemEvents = OwnSystemEvents & Omit<__dep_base_pack_PackSystemEvents, keyof OwnSystemEvents>;');
@@ -88,8 +89,8 @@ describe('generated system sends', () => {
   it("reads each system's events from a spec module that carries nothing else", () => {
     const specs = generate({ features: [system('memos')] })['src/__generated__/system-specs.ts'];
     expect(specs).toContain("import { incomingEvents } from '@abuddy/sdk/events';");
-    expect(specs).toContain("import memosEntry from '../features/memos/be/system.js';");
-    expect(specs).toContain('export const memos = incomingEvents(memosEntry.spec);');
+    expect(specs).toContain("import __system_memos from '../features/memos/be/system.js';");
+    expect(specs).toContain("export const specs = {\n  'memos': incomingEvents(__system_memos.spec),\n};");
   });
 
   it('gives a pack without systems no sendToSystem, bus ids or spec module', () => {
@@ -104,6 +105,115 @@ describe('generated system sends', () => {
   });
 });
 
+/** Type-checks the generated files at `names` with `root` linked to this SDK's source, and returns the diagnostics */
+function typecheck(files: Record<string, string>, names: string[]): string[] {
+  for (const [file, content] of Object.entries(files)) if (content) write(file, content);
+  write('package.json', JSON.stringify({ type: 'module' }));
+  const sdk = path.resolve(import.meta.dirname, '../..');
+  const links = { '@abuddy/sdk': sdk, zod: path.dirname(createRequire(path.join(sdk, 'package.json')).resolve('zod/package.json')) };
+  for (const [name, target] of Object.entries(links)) {
+    const link = path.join(root, 'node_modules', name);
+    fs.mkdirSync(path.dirname(link), { recursive: true });
+    fs.symlinkSync(target, link, 'dir');
+  }
+  const program = ts.createProgram(names.map((name) => path.join(root, name)), {
+    target: ts.ScriptTarget.ES2022,
+    module: ts.ModuleKind.NodeNext,
+    moduleResolution: ts.ModuleResolutionKind.NodeNext,
+    customConditions: ['@abuddy/source'],
+    allowImportingTsExtensions: true,
+    verbatimModuleSyntax: true,
+    strict: true,
+    skipLibCheck: true,
+    noEmit: true,
+    types: [],
+  });
+  return ts.getPreEmitDiagnostics(program)
+    .filter((d) => d.file?.fileName.startsWith(root))
+    .map((d) => `${path.relative(root, d.file!.fileName)}: ${ts.flattenDiagnosticMessageText(d.messageText, ' ')}`);
+}
+
+describe('generated bindings', () => {
+  /** A system entry as packs write one; a feature id that is a reserved word is exported by name */
+  function writeSystem(id: string): void {
+    const pascal = id.charAt(0).toUpperCase() + id.slice(1);
+    const idExport = id === 'default' ? '' : ['export', 'delete'].includes(id) ? `const id = spec.id;\nexport { id as ${id} };` : `export const ${id} = spec.id;`;
+    write(`src/features/${id}/be/system.ts`, [
+      "import type { SystemEntry } from '@abuddy/sdk/framework';",
+      "import { defineSystem } from '@abuddy/sdk/framework';",
+      `export type Outgoing${pascal}Events = { type: '${id.toUpperCase()}_DONE' };`,
+      `const spec = defineSystem('${id}')<{ type: '${id.toUpperCase()}_RUN'; n: number }, Outgoing${pascal}Events>();`,
+      idExport,
+      "const entry = { spec, machine: undefined as unknown as SystemEntry['machine'] } satisfies SystemEntry;",
+      'export default entry;',
+    ].join('\n'));
+  }
+
+  it('compiles for feature ids that are reserved words or match generated names', () => {
+    const ids = ['default', 'export', 'incomingEvents', 'foo', 'fooEntry', 'specs', 'registration'];
+    for (const id of ids) writeSystem(id);
+    const files = generatePackFiles(manifest({ features: ids.map((id) => ({ ...system(id), designation: id === 'foo' ? 'foo' : undefined })) }), {
+      packRoot: root,
+      depSnapshots: new Map([['base-pack', dependency(
+        { features: [system('delete'), system('foo'), system('busId')] },
+        { [PACK_TYPES_DEF]: [
+          'export type PackEntityShapes = {};',
+          'export type PackEvents = {};',
+          "export type PackSystemEvents = { 'base-pack.delete': { type: 'DELETE_RUN' }; 'base-pack.foo': { type: 'BASE_FOO_RUN' } };",
+          'export type Services = {};',
+          'export type Repositories = {};',
+        ].join('\n') },
+      )]]),
+    });
+    expect(files['src/__generated__/system-ids.ts']).toContain("const __id_delete = 'base-pack.delete';\nexport { __id_delete as delete };");
+    // Own ids and the busId re-export come first
+    expect(files['src/__generated__/system-ids.ts']).not.toContain('__id_foo');
+    expect(files['src/__generated__/system-ids.ts']).not.toContain('__id_busId');
+
+    const probe = [
+      "import { sendToSystem } from './__generated__/events.js';",
+      "import systemIds, { export as exportId, delete as deleteId, incomingEvents as incomingEventsId } from './__generated__/system-ids.js';",
+      "import { busId } from './__generated__/bus-ids.js';",
+      "export const ids: string[] = [systemIds, exportId, deleteId, incomingEventsId, busId.default, busId.export];",
+      "sendToSystem('default', { type: 'DEFAULT_RUN', n: 1 });",
+      "sendToSystem('export', { type: 'EXPORT_RUN', n: 1 });",
+      "sendToSystem('incomingEvents', { type: 'INCOMINGEVENTS_RUN', n: 1 });",
+      "sendToSystem('fooEntry', { type: 'FOOENTRY_RUN', n: 1 });",
+      "sendToSystem('specs', { type: 'SPECS_RUN', n: 1 });",
+      "sendToSystem('base-pack.delete', { type: 'DELETE_RUN' });",
+      '// @ts-expect-error the foo system receives FOO_RUN',
+      "sendToSystem('foo', { type: 'FOOENTRY_RUN', n: 1 });",
+    ].join('\n');
+    write('src/probe.ts', probe);
+    expect(typecheck(files, ['src/probe.ts', 'src/__generated__/system-specs.ts', 'src/__generated__/pack-entry.ts'])).toEqual([]);
+
+    // The frontend entry imports the host's frontend modules: check its syntax only
+    const fe = generatePackFiles(manifest({ features: ids.map((id) => ({ id, plugin: { entry: `src/features/${id}/fe/plugin` } })) }), { packRoot: root })['src/__generated__/pack-entry-fe.ts'];
+    const { diagnostics } = ts.transpileModule(fe, { reportDiagnostics: true, compilerOptions: { module: ts.ModuleKind.ESNext } });
+    expect(diagnostics?.map((d) => ts.flattenDiagnosticMessageText(d.messageText, '\n'))).toEqual([]);
+    expect(fe).toContain('plugins: [__plugin_default, __plugin_export, __plugin_incomingEvents, __plugin_foo, __plugin_fooEntry, __plugin_specs, __plugin_registration],');
+  });
+});
+
+describe('system ids a dependency runs', () => {
+  it('rejects a system feature named busId, which #generated/system-ids exports as the bus-id map', () => {
+    expect(() => generate({ features: [system('busId')] })).toThrow('Feature "busId" has a system');
+  });
+
+  it("rejects an own system whose feature id is a built-in dependency's system id", () => {
+    const builtIn = dependency({ id: 'default-setup', builtIn: true, features: [system('settings')] });
+    expect(() => generate({ features: [system('settings')] }, { 'default-setup': builtIn }))
+      .toThrow(`Feature "settings" has a system, and "default-setup", which this pack depends on, runs a system as "settings"`);
+    // A plugin-only feature sends nothing to the bus
+    expect(() => generate({ features: [{ id: 'settings', plugin: { entry: 'x' } }] }, { 'default-setup': builtIn })).not.toThrow();
+  });
+
+  it("accepts a feature id an external dependency uses, whose system runs as <packId>.<featureId>", () => {
+    const files = generate({ features: [system('memos')] }, { 'base-pack': dependency({ features: [system('memos'), system('threads')] }) });
+    expect(files['src/__generated__/system-ids.ts']).toContain("const __id_threads = 'base-pack.threads';");
+  });
+});
+
 describe('generated frontend entry', () => {
   it("sets each plugin's designation from the manifest, replacing one the plugin module sets", () => {
     const files = generate({ features: [
@@ -111,8 +221,8 @@ describe('generated frontend entry', () => {
       { id: 'notes', plugin: { entry: 'src/notes/plugin' } },
     ] });
     const fe = files['src/__generated__/pack-entry-fe.ts'];
-    expect(fe).toContain("const Settings = { ..._Settings, designation: 'settings' }");
-    expect(fe).toContain('const Notes = { ..._Notes, designation: undefined }');
+    expect(fe).toContain("const __plugin_settings = { ...__plugin_settings_module, designation: 'settings' }");
+    expect(fe).toContain('const __plugin_notes = { ...__plugin_notes_module, designation: undefined }');
   });
 });
 

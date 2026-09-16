@@ -51,7 +51,18 @@ export interface DatabaseContext {
   };
   // Backup fields
   backupInfo: { timestamp: number; databases: string[]; size: number; hasMedia?: boolean } | null;
+  backup: {
+    exporting: boolean;
+    importing: boolean;
+    /** The last export or import to finish, a new object each time */
+    result: BackupResult | null;
+  };
 }
+
+export type BackupDatabase = 'lmdb' | 'volatileLmdb'
+export type BackupResult =
+  | { operation: 'export' | 'import'; ok: true; message?: string }
+  | { operation: 'export' | 'import'; ok: false; error: string }
 
 type SystemEvent = OutgoingDatabaseEvents |
   { type: 'DATABASE_REFRESH'; data: DatabaseStartupData } |
@@ -85,6 +96,8 @@ type UIEvent =
   | { type: 'ENTITY.DELETE'; entityId: string }
   | { type: 'VIEW_BACKUP' }
   | { type: 'BACK_TO_EXPLORER' }
+  | { type: 'BACKUP.EXPORT'; path: string; name?: string; databases: BackupDatabase[] }
+  | { type: 'BACKUP.IMPORT'; path: string }
   | TrailClickEvent
 
 export type DatabaseEvents = UIEvent | SystemEvent
@@ -441,6 +454,32 @@ const databaseState = setup({
       };
     }),
 
+    exportBackup: enqueueActions(({ event, enqueue }) => {
+      const ev = typeOf('BACKUP.EXPORT', event);
+      sendToSystem(id, { type: 'EXPORT_DATABASE', path: ev.path, name: ev.name, databases: ev.databases });
+      enqueue.assign(({ context }) => ({ backup: { ...context.backup, exporting: true } }));
+    }),
+
+    importBackup: enqueueActions(({ event, enqueue }) => {
+      const ev = typeOf('BACKUP.IMPORT', event);
+      sendToSystem(id, { type: 'IMPORT_DATABASE', path: ev.path });
+      enqueue.assign(({ context }) => ({ backup: { ...context.backup, importing: true } }));
+    }),
+
+    setExportResult: assign(({ context, event }) => {
+      const result: BackupResult = event.type === 'EXPORT_DATABASE_SUCCESS'
+        ? { operation: 'export', ok: true, message: event.path }
+        : { operation: 'export', ok: false, error: typeOf('EXPORT_DATABASE_ERROR', event).error };
+      return { backup: { ...context.backup, exporting: false, result } };
+    }),
+
+    setImportResult: assign(({ context, event }) => {
+      const result: BackupResult = event.type === 'IMPORT_DATABASE_SUCCESS'
+        ? { operation: 'import', ok: true, message: event.message }
+        : { operation: 'import', ok: false, error: typeOf('IMPORT_DATABASE_ERROR', event).error };
+      return { backup: { ...context.backup, importing: false, result } };
+    }),
+
     /* ── reset database actions ─────────────────────────── */
     resetDatabase: () => {
       sendToSystem(id, {
@@ -493,6 +532,11 @@ const databaseState = setup({
     },
     // Backup fields
     backupInfo: null,
+    backup: {
+      exporting: false,
+      importing: false,
+      result: null,
+    },
   },
   on: {
     ...TRAIL_CLICK([
@@ -512,6 +556,10 @@ AI_QUERY_LOADING: { actions: 'setAiQueryLoading' },
     NODE_DETAILS_RESULT: { actions: 'setNodeDetails' },
     // Backup events
     BACKUP_INFO_RESULT: { actions: 'setBackupInfo' },
+    EXPORT_DATABASE_SUCCESS: { actions: 'setExportResult' },
+    EXPORT_DATABASE_ERROR: { actions: 'setExportResult' },
+    IMPORT_DATABASE_SUCCESS: { actions: 'setImportResult' },
+    IMPORT_DATABASE_ERROR: { actions: 'setImportResult' },
     // Reset database events
     RESET_DATABASE_SUCCESS: { actions: 'handleResetSuccess' },
     RESET_DATABASE_ERROR: { actions: 'handleResetError' },
@@ -579,6 +627,14 @@ AI_QUERY_LOADING: { actions: 'setAiQueryLoading' },
       on: {
         'BACK_TO_EXPLORER': {
           target: 'explorer',
+        },
+        'BACKUP.EXPORT': {
+          guard: ({ context }) => !context.backup.exporting,
+          actions: 'exportBackup',
+        },
+        'BACKUP.IMPORT': {
+          guard: ({ context }) => !context.backup.importing,
+          actions: 'importBackup',
         },
       },
     },

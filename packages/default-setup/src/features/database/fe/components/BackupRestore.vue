@@ -307,7 +307,7 @@ import {
   HardDrive,
   Image as ImageIcon
 } from 'lucide-vue-next';
-import { id, type DatabaseState } from '../state';
+import { id, type BackupDatabase, type DatabaseState } from '../state';
 import { sendToSystem } from '@/__generated__/events';
 import ToastNotification from '@abuddy/ui/design/ToastNotification';
 
@@ -317,6 +317,9 @@ const actor: DatabaseState = actorSystem.get(id);
 
 // Get backup info from state
 const storedBackupInfo = useSelector(actor, (state) => state.context.backupInfo);
+const isExporting = useSelector(actor, (state) => state.context.backup.exporting);
+const isImporting = useSelector(actor, (state) => state.context.backup.importing);
+const backupResult = useSelector(actor, (state) => state.context.backup.result);
 
 // Tab state
 const activeTab = ref<'export' | 'import'>('export');
@@ -329,13 +332,11 @@ const selectedDatabases = ref({
   // searchIndices: true, // [SEARCH_INDEX_FF]
   volatileLmdb: false,
 });
-const isExporting = ref(false);
 const toast = ref<InstanceType<typeof ToastNotification>>();
 
 // Import state
 const importPath = ref('');
 const backupInfo = ref<any>(null);
-const isImporting = ref(false);
 
 // Computed
 const canExport = computed(() => {
@@ -375,6 +376,23 @@ watch(storedBackupInfo, (newInfo) => {
   }
 });
 
+// Report each finished export or import; a successful import reloads the window to reload client state
+watch(backupResult, (result) => {
+  if (!result) return;
+  if (!result.ok) {
+    toast.value?.error(result.operation === 'export' ? 'Export failed' : 'Import failed', result.error);
+    return;
+  }
+  if (result.operation === 'export') {
+    toast.value?.success('Backup exported successfully!');
+    return;
+  }
+  toast.value?.success('Backup imported successfully!', 'Page will refresh in 2 seconds...');
+  setTimeout(() => {
+    window.location.reload();
+  }, 1500);
+});
+
 // Load saved paths from localStorage on mount
 onMounted(() => {
   const savedExportPath = localStorage.getItem('database-backup-export-path');
@@ -398,30 +416,19 @@ async function selectExportDirectory() {
   }
 }
 
-async function handleExport() {
+function handleExport() {
   if (!canExport.value) return;
 
-  isExporting.value = true;
+  const databases = Object.entries(selectedDatabases.value)
+    .filter(([_, selected]) => selected)
+    .map(([key]) => key) as BackupDatabase[]; // 'searchIndices' removed [SEARCH_INDEX_FF]
 
-  try {
-    const databases = Object.entries(selectedDatabases.value)
-      .filter(([_, selected]) => selected)
-      .map(([key]) => key) as Array<'lmdb' | 'volatileLmdb'>; // 'searchIndices' removed [SEARCH_INDEX_FF]
-
-    sendToSystem(id, {
-      type: 'EXPORT_DATABASE',
-      path: exportPath.value,
-      name: backupName.value || undefined,
-      databases,
-    });
-
-    toast.value?.success('Backup exported successfully!');
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    toast.value?.error('Export failed', errorMessage);
-  } finally {
-    isExporting.value = false;
-  }
+  actor.send({
+    type: 'BACKUP.EXPORT',
+    path: exportPath.value,
+    name: backupName.value || undefined,
+    databases,
+  });
 }
 
 // Import functions
@@ -439,32 +446,13 @@ async function selectImportDirectory() {
   }
 }
 
-async function handleImport() {
+function handleImport() {
   if (!canImport.value) return;
 
   const confirmed = confirm('Are you sure you want to import this backup? This will stop the assistant\'s brain and replace all of your current data with the imported data.');
   if (!confirmed) return;
 
-  isImporting.value = true;
-
-  try {
-    sendToSystem(id, {
-      type: 'IMPORT_DATABASE',
-      path: importPath.value,
-    });
-
-    toast.value?.success('Backup imported successfully!', 'Page will refresh in 2 seconds...');
-
-    // Refresh the page after a short delay to reload client state
-    setTimeout(() => {
-      window.location.reload();
-    }, 1500);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    toast.value?.error('Import failed', errorMessage);
-  } finally {
-    isImporting.value = false;
-  }
+  actor.send({ type: 'BACKUP.IMPORT', path: importPath.value });
 }
 
 // Utility functions

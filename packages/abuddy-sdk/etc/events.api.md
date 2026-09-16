@@ -112,7 +112,7 @@ export type SystemEventMap = {
 };
 
 // @public
-export type TypedEmit<M extends PluginEvents> = <P extends keyof M & string>(pluginId: P, event: M[P]) => {
+export type TypedEmit<M extends PluginEvents> = <P extends keyof M & string>(pluginId: P, event: PluginEvent<M, P>) => {
     type: 'OUTGOING';
     event: M[P] & {
         pluginId: P;
@@ -128,14 +128,14 @@ export interface TypedEvents<P extends PluginEvents> {
 }
 
 // @public
-export type TypedSendToPlugin<M extends PluginEvents> = <P extends keyof M & string>(pluginId: P, event: M[P]) => void;
+export type TypedSendToPlugin<M extends PluginEvents> = <P extends keyof M & string>(pluginId: P, event: PluginEvent<M, P>) => void;
 
 // @public
-export type TypedSendToSystem<S extends SystemEventMap> = <Id extends keyof S & string, Type extends S[Id]['type']>(systemId: Id, event: {
+export type TypedSendToSystem<S extends SystemEventMap> = <Id extends keyof S & string, Type extends S[Id]['type']>(systemId: Id, event: IsUnion<Id> extends true ? OneTarget<'send to one system id, not a union of them', Type> : IsUnion<Type> extends true ? [FieldsOfEachType<S[Id], Type>] extends [never] ? OneTarget<'events of these types have conflicting fields: send one event type', Type> : {
     type: Type;
-} & DistributiveOmit<Extract<S[Id], {
+} & FieldsOfEachType<S[Id], Type> : {
     type: Type;
-}>, 'type'>) => void;
+} & WithoutType<EventsOfType<S[Id], Type>>) => void;
 
 // @public (undocumented)
 export interface TypedSystemEvents<P extends PluginEvents, S extends SystemEventMap> extends TypedEvents<P> {

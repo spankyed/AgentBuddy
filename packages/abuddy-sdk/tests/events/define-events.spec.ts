@@ -36,6 +36,14 @@ describe('defineEvents', () => {
       .toEqual([{ type: 'GET_SETTINGS', systemId: 'settings' }]);
   });
 
+  it("sends to a system named like an Object.prototype member as named, not the bus-id map's prototype", () => {
+    const withProtoIds = defineEvents<Plugins, SystemEventMap & { toString: { type: 'PING' }; constructor: { type: 'PING' } }>({ memos: 'memo-pack.memos' });
+    expect(incoming(() => {
+      withProtoIds.sendToSystem('toString', { type: 'PING' });
+      withProtoIds.sendToSystem('constructor', { type: 'PING' });
+    })).toEqual([{ type: 'PING', systemId: 'toString' }, { type: 'PING', systemId: 'constructor' }]);
+  });
+
   it('sends to a plugin', () => {
     const outgoing: unknown[] = [];
     const stop = testRootEvents.onOutgoing((event) => outgoing.push(event));

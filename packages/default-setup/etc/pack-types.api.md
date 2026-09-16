@@ -2915,18 +2915,18 @@ type OwnRepositories = {
 
 /** Feature id → the events this pack's system for that feature receives. */
 type OwnSystemEvents = {
-    'threads': IncomingEventsOf<typeof threads>;
-    'code': IncomingEventsOf<typeof code>;
-    'notes': IncomingEventsOf<typeof notes>;
-    'browser': IncomingEventsOf<typeof browser>;
-    'library': IncomingEventsOf<typeof library>;
-    'flows': IncomingEventsOf<typeof flows>;
-    'actions': IncomingEventsOf<typeof actions>;
-    'prompts': IncomingEventsOf<typeof prompts>;
-    'brain': IncomingEventsOf<typeof brain>;
-    'database': IncomingEventsOf<typeof database>;
-    'logs': IncomingEventsOf<typeof logs>;
-    'settings': IncomingEventsOf<typeof settings>;
+    'threads': IncomingEventsOf<(typeof specs)['threads']>;
+    'code': IncomingEventsOf<(typeof specs)['code']>;
+    'notes': IncomingEventsOf<(typeof specs)['notes']>;
+    'browser': IncomingEventsOf<(typeof specs)['browser']>;
+    'library': IncomingEventsOf<(typeof specs)['library']>;
+    'flows': IncomingEventsOf<(typeof specs)['flows']>;
+    'actions': IncomingEventsOf<(typeof specs)['actions']>;
+    'prompts': IncomingEventsOf<(typeof specs)['prompts']>;
+    'brain': IncomingEventsOf<(typeof specs)['brain']>;
+    'database': IncomingEventsOf<(typeof specs)['database']>;
+    'logs': IncomingEventsOf<(typeof specs)['logs']>;
+    'settings': IncomingEventsOf<(typeof specs)['settings']>;
 };
 
 /**
@@ -4068,48 +4068,6 @@ declare const actionQueries: {
     };
 };
 
-declare const actions: {
-    _incoming: ({
-        type: "ACTION_SELECT";
-        actionId: string;
-    } | {
-        type: "CREATE_ACTION";
-        label: string;
-        input: Record<string, any>;
-        actionFn: string;
-        output?: any;
-        description?: string;
-        category?: string;
-    } | {
-        type: "UPDATE_ACTION";
-        actionId: string;
-        label?: string;
-        input?: Record<string, any>;
-        actionFn?: string;
-        output?: any;
-        description?: string;
-        category?: string;
-    } | {
-        type: "DELETE_ACTION";
-        actionId: string;
-    } | {
-        type: "FETCH_ACTIONS_PAGE";
-        page?: number;
-    } | {
-        type: "FETCH_ALL_ACTIONS";
-    } | {
-        type: "IMPORT_ACTIONS";
-        actions: any;
-    } | {
-        type: "EXPORT_ACTIONS";
-        directory: string;
-    }) | {
-        type: "ACTIONS_SETTINGS_UPDATED";
-        settings: any;
-        changes?: any;
-    };
-};
-
 /**
  * Add multiple messages to a thread without emitting per-message frontend events.
  * Caller is responsible for refreshing the frontend afterwards (e.g. via LOAD_CHAT_THREAD).
@@ -4123,44 +4081,6 @@ declare function addMessagesToThread(params: {
         context?: Record<string, unknown>;
     }>;
 }): void;
-
-declare const brain: {
-    _incoming: ({
-        type: "OPEN_TNODE";
-        tNodeId: string;
-    } | {
-        type: "GO_BACK_TNODE";
-        currentFlowTNodeId?: string;
-    } | {
-        type: "REQUEST_PLUGIN_DATA";
-        flowTNodeId?: string;
-    } | {
-        type: "GET_TNODE_DETAILS";
-        tNodeId: string;
-    } | {
-        type: "TOGGLE_INSPECT";
-    } | {
-        type: "START_BRAIN";
-    } | {
-        type: "KILL_BRAIN";
-    } | {
-        type: "RESTART_BRAIN";
-    } | {
-        type: "PAUSE_BRAIN";
-    } | {
-        type: "RESUME_BRAIN";
-    } | {
-        type: "HANDLE_BRAIN_EVENT";
-        eventType: string;
-        payload?: any;
-        targetFlowId?: string;
-    } | {
-        type: "TRIGGER_BRAIN_EVENT";
-        eventType: string;
-        payload?: any;
-        targetFlowId?: string;
-    }) | BrainInternalEvents;
-};
 
 declare const brainCommands: {
     readonly createEventTNode: (eventNode: {
@@ -4214,18 +4134,6 @@ declare const brainQueries: {
     }>;
     readonly extendedTNodeData: (tNodeId: EARS.EntityId<"TNode">) => FlowTNodeData;
     readonly rootData: () => FlowTNodeData;
-};
-
-declare const browser: {
-    _incoming: ({
-        type: "SYNC_TABS";
-        tabs: SavedTab[];
-    } | {
-        type: "SYNC_BOOKMARKS";
-        bookmarks: SavedBookmark[];
-    }) | {
-        type: "CLIENT_CONNECTED";
-    };
 };
 
 declare const browserCommands: {
@@ -4385,17 +4293,6 @@ declare function clearAllSchedules(): void;
 
 declare function clearHandle(key: string): void;
 
-declare const code: {
-    _incoming: (IncomingExplorerEvents | IncomingSearchEvents | IncomingCommitEvents | IncomingPullRequestEvents | IncomingTerminalEvents | IncomingActionsEvents | IncomingPromptsEvents | {
-        type: "SET_BASE_DIRECTORY";
-        path: string;
-        fromUserNavigation?: boolean;
-    }) | {
-        type: "CODE_SETTINGS_UPDATED";
-        settings: CodeSettings;
-    };
-};
-
 /**
  * Create a new artifact and notify the frontend (with side effects)
  *
@@ -4452,47 +4349,6 @@ declare function createThreadAndNotify(options: ThreadCreateData): {
     shortCode: string;
     timestamp: number;
     status: string;
-};
-
-declare const database: {
-    _incoming: ({
-        type: "EXECUTE_QUERY";
-        code: string;
-    } | {
-        type: "EXECUTE_TRANSACTION";
-        code: string;
-    } | {
-        type: "GENERATE_AI_QUERY";
-        prompt: string;
-        mode?: "query" | "transaction";
-    } | {
-        type: "REFRESH_SCHEMA";
-    } | {
-        type: "GET_TRACE_FLOWS";
-    } | {
-        type: "GET_FLOW_EVENTS";
-        flowId: string;
-        offset?: number;
-        limit?: number;
-    } | {
-        type: "GET_NODE_DETAILS";
-        nodeId: string;
-    } | {
-        type: "EXPORT_DATABASE";
-        path: string;
-        name?: string;
-        databases: ("lmdb" | "volatileLmdb")[];
-    } | {
-        type: "IMPORT_DATABASE";
-        path: string;
-    } | {
-        type: "GET_BACKUP_INFO";
-        path: string;
-    } | {
-        type: "RESET_DATABASE";
-    }) | {
-        type: "CLIENT_CONNECTED";
-    };
 };
 
 declare const featureServices: {
@@ -4620,73 +4476,6 @@ declare function findOrCreateByType(threadId: EARS.EntityId, artifactType: Artif
     created: boolean;
 };
 
-declare const flows: {
-    _incoming: ({
-        type: "FLOW_SELECT";
-        flowId: string;
-    } | {
-        type: "CREATE_FLOW";
-    } | {
-        type: "DELETE_FLOW";
-        flowId: string;
-    } | {
-        type: "UPDATE_FLOW_LABEL";
-        flowId: string;
-        label: string;
-    } | {
-        type: "CREATE_NODE";
-        flowId: string;
-        tempId: string;
-        nodeData: any;
-    } | {
-        type: "UPDATE_NODE";
-        flowId: string;
-        nodeId: string;
-        nodeData: any;
-    } | {
-        type: "DELETE_NODE";
-        flowId: string;
-        nodeId: string;
-    } | {
-        type: "CREATE_EDGE";
-        flowId: string;
-        sourceId: string;
-        targetId: string;
-        sourceHandle?: string;
-        targetHandle?: string;
-    } | {
-        type: "DELETE_EDGE";
-        flowId: string;
-        edgeId: string;
-    } | {
-        type: "UPDATE_EDGE";
-        flowId: string;
-        edgeId: string;
-        oldSource: string;
-        oldTarget: string;
-        newSource: string;
-        newTarget: string;
-    } | {
-        type: "IMPORT_DSL";
-        dsl: any;
-    } | {
-        type: "EXPORT_DSL";
-        directory: string;
-        flowId?: string;
-    } | {
-        type: "REINDEX_HANDLES";
-        flowId: string;
-        nodeId: string;
-        prefix: string;
-        index: number;
-        direction: -1 | 1;
-    }) | {
-        type: "FLOWS_SETTINGS_UPDATED";
-        settings: any;
-        changes?: any;
-    };
-};
-
 declare const flowsCommands: {
     readonly createFlow: (flow?: Partial<FlowEntity>) => FlowEntity;
     readonly createFlowWithEntryNode: (flow?: Partial<FlowEntity>) => {
@@ -4732,86 +4521,6 @@ declare const flowsQueries: {
 };
 
 declare function getHandle(key: string): CodexTurnHandle | undefined;
-
-declare const library: {
-    _incoming: ({
-        type: "CREATE_DOCUMENT";
-        name: string;
-        content: ContentSection[];
-        tags: string[];
-        collectionId?: string;
-    } | {
-        type: "UPDATE_DOCUMENT";
-        id: string;
-        name: string;
-        content: ContentSection[];
-        tags: string[];
-        collectionId?: string;
-    } | {
-        type: "DELETE_DOCUMENT";
-        id: string;
-    } | {
-        type: "GET_DOCUMENT";
-        id: string;
-    } | {
-        type: "GET_LIBRARY_INDEX";
-    } | {
-        type: "CREATE_COLLECTION";
-        name: string;
-        description?: string;
-        parentId?: string;
-    } | {
-        type: "UPDATE_COLLECTION";
-        id: string;
-        name: string;
-        description?: string;
-    } | {
-        type: "DELETE_COLLECTION";
-        id: string;
-    } | {
-        type: "MOVE_DOCUMENT";
-        documentId: string;
-        collectionId?: string;
-    } | {
-        type: "GET_FOLDER_CONTENTS";
-        folderId: string | null;
-    } | {
-        type: "NAVIGATE_TO_FOLDER";
-        folderId: string | null;
-    } | {
-        type: "RENAME_ITEM";
-        id: string;
-        name: string;
-        itemType: "document" | "folder";
-    } | {
-        type: "DELETE_ITEMS";
-        ids: string[];
-    } | {
-        type: "MOVE_ITEMS";
-        ids: string[];
-        targetFolderId: string | null;
-    } | {
-        type: "CREATE_SYMLINK_COLLECTION";
-        name: string;
-        symlinkPath: string;
-        parentId?: string;
-    } | {
-        type: "UPDATE_SYMLINK_PATH";
-        collectionId: string;
-        newPath: string;
-    } | {
-        type: "IMPORT_LIBRARY";
-        directory: string;
-    } | {
-        type: "EXPORT_LIBRARY";
-        directory: string;
-        format: "json" | "markdown";
-    }) | {
-        type: "LIBRARY_SETTINGS_UPDATED";
-        settings: any;
-        changes?: any;
-    };
-};
 
 declare const libraryCommands: {
     readonly createDocument: (name: string, content: ContentSection[], tags: string[], collectionId?: EARS.EntityId, id?: string, sourceHash?: string) => DocumentDTO;
@@ -4863,23 +4572,6 @@ declare function listAll(opts?: {
  */
 declare function listen(eventType: string, callback: BrainEventCallback, options?: ListenOptions): () => void;
 
-declare const logs: {
-    _incoming: ({
-        type: "CLEAR_LOGS";
-    } | {
-        type: "REQUEST_LOGS_UPDATE";
-    }) | ({
-        type: "REQUEST_LOGS_UPDATE";
-    } | {
-        type: "ADD_LOG";
-        log: Omit<LogEntry, "id" | "timestamp">;
-    } | {
-        type: "LOGS_SETTINGS_UPDATED";
-        settings: LogsSettings;
-        changes?: any;
-    });
-};
-
 declare const noteCommands: {
     readonly create: (input: {
         title: string;
@@ -4927,67 +4619,6 @@ declare const noteQueries: {
     readonly expiredSoftDeleted: (maxAgeDays: number) => NoteEntity[];
     readonly connectedData: () => {
         notes: NoteDTO[];
-    };
-};
-
-declare const notes: {
-    _incoming: {
-        type: "CREATE_NOTE";
-        title: string;
-        content?: string;
-        icon?: string | null;
-        parentId?: string;
-        skipContentSync?: boolean;
-        noteType?: "document" | "task" | "tasklist";
-        completed?: boolean;
-        displayOrder?: number;
-    } | {
-        type: "UPDATE_NOTE";
-        id: string;
-        title?: string;
-        content?: string;
-        icon?: string | null;
-        completed?: boolean;
-        hideCompletedChildren?: boolean;
-        favorite?: boolean;
-    } | {
-        type: "DELETE_NOTE";
-        id: string;
-    } | {
-        type: "SOFT_DELETE_NOTE";
-        id: string;
-    } | {
-        type: "RESTORE_NOTE";
-        id: string;
-    } | {
-        type: "MOVE_NOTE";
-        ids: string[];
-        newParentId: string | null;
-    } | {
-        type: "REORDER_NOTE";
-        id: string;
-        newParentId: string | null;
-        newIndex: number;
-    } | {
-        type: "VIEW_NOTE";
-        id: string;
-    } | {
-        type: "SEARCH_NOTES";
-        query: string;
-    } | {
-        type: "GET_TRASHED_NOTES";
-    } | {
-        type: "PERMANENTLY_DELETE_NOTE";
-        id: string;
-    } | {
-        type: "EMPTY_TRASH";
-    } | {
-        type: "IMPORT_NOTES";
-        directory: string;
-    } | {
-        type: "EXPORT_NOTES";
-        directory: string;
-        format: "json" | "markdown";
     };
 };
 
@@ -5049,48 +4680,6 @@ declare const promptQueries: {
         page: number;
         totalPages: number;
         totalCount: number;
-    };
-};
-
-declare const prompts: {
-    _incoming: ({
-        type: "PROMPT_SELECT";
-        promptId: string;
-    } | {
-        type: "CREATE_PROMPT";
-        label: string;
-        inputs: Record<string, any>;
-        templateFn: string;
-        outputSchema?: any;
-        description?: string;
-        category?: string;
-    } | {
-        type: "UPDATE_PROMPT";
-        promptId: string;
-        label?: string;
-        inputs?: Record<string, any>;
-        templateFn?: string;
-        outputSchema?: any;
-        description?: string;
-        category?: string;
-    } | {
-        type: "DELETE_PROMPT";
-        promptId: string;
-    } | {
-        type: "FETCH_PROMPTS_PAGE";
-        page?: number;
-    } | {
-        type: "FETCH_ALL_PROMPTS";
-    } | {
-        type: "IMPORT_PROMPTS";
-        prompts: any;
-    } | {
-        type: "EXPORT_PROMPTS";
-        directory: string;
-    }) | {
-        type: "PROMPTS_SETTINGS_UPDATED";
-        settings: any;
-        changes?: any;
     };
 };
 
@@ -5192,41 +4781,6 @@ declare function sendSystemMessage(options: {
     messageId: EARS.EntityId;
 };
 
-declare const settings: {
-    _incoming: ({
-        type: "GET_SETTINGS";
-    } | {
-        type: "UPDATE_SETTINGS";
-        entityType: "general" | "internal" | "plugin";
-        label: string;
-        path: string[];
-        value: any;
-    } | {
-        type: "RESET_SETTINGS";
-    } | {
-        type: "TEST_CLI_PROVIDER";
-        provider: string;
-    } | {
-        type: "PREVIEW_PACK_SEEDS";
-        directory: string;
-    } | {
-        type: "IMPORT_PACK_SEEDS";
-        directory: string;
-        include?: Record<string, string[] | null>;
-        mode?: "keep-existing" | "replace-on-collision" | "wipe-and-replace";
-        restartBrain?: boolean;
-    } | {
-        type: "REPLACE_SETTINGS";
-        data: SettingsData;
-    } | {
-        type: "RESET_APP";
-    }) | ({
-        type: "PACK_SETTINGS_CHANGED";
-    } | {
-        type: "SECRETS_CHANGED";
-    });
-};
-
 declare const settingsCommands: {
     updateSettings(type: string, label: string | null, path: string[], value: any): void;
     replaceSettings(data: SettingsData): void;
@@ -5239,6 +4793,592 @@ declare const settingsQueries: {
     getInternalSettings: () => InternalSettings;
     getAssistantSettings: () => AssistantSettings;
     getPluginSettings: (pluginId: string) => any;
+};
+
+declare const specs: {
+    threads: {
+        _incoming: ({
+            type: "CREATE_THREAD";
+            topic: string;
+            tags?: string[];
+            instructions: string;
+            linkedThreads?: {
+                id: string;
+                relation: "blocked_by" | "blocks" | "duplicates" | "parent_of";
+            }[];
+            parentThreadId?: string;
+        } | {
+            type: "VIEW_THREAD";
+            threadId: string;
+        } | {
+            type: "UPDATE_THREAD_STATUS";
+            threadId: string;
+            status: string;
+        } | {
+            type: "UPDATE_THREAD_FIELD";
+            threadId: string;
+            key: string;
+            value: any;
+        } | {
+            type: "DELETE_THREAD";
+            threadId: string;
+        } | {
+            type: "SET_THREAD_PARENT";
+            childIds: string[];
+            parentId: string;
+        } | {
+            type: "EXPORT_THREADS";
+            directory: string;
+        } | {
+            type: "IMPORT_THREADS";
+            directory: string;
+        } | {
+            type: "USER_MSG";
+            text: string;
+            mode?: string;
+            phase?: string;
+            threadId?: string;
+            references?: {
+                images?: {
+                    url: string;
+                    name: string;
+                }[];
+                files?: {
+                    name: string;
+                    path: string;
+                    typeLabel: string;
+                    isImage: boolean;
+                }[];
+                context?: {
+                    refType: "document" | "folder" | "note" | "task" | "tasklist" | "thread";
+                    refId: string;
+                    shortCode: string;
+                    label: string;
+                }[];
+            };
+            cwdOverride?: string;
+            forceDirectoryPicker?: boolean;
+        } | {
+            type: "OPEN_THREAD_CHAT";
+            threadId: string;
+            restore?: boolean;
+        } | {
+            type: "OPEN_THREAD_TAB";
+            threadId: string;
+            label: string;
+            pinned?: boolean;
+        } | {
+            type: "PAUSE_TURN";
+            threadId: string;
+        } | {
+            type: "APPROVE_TODO_LIST";
+            artifactId: string;
+            tasks: any[];
+        } | {
+            type: "REJECT_TODO_LIST";
+            artifactId: string;
+        } | {
+            type: "INTERACTIVE_MSG_RESPONSE";
+            messageId: string;
+            threadId: string;
+            response: any;
+        } | {
+            type: "FORK_THREAD";
+            messageId: string;
+            threadId?: string;
+            threadTopic?: string;
+        } | {
+            type: "REVERT_THREAD";
+            messageId: string;
+            threadId: string;
+            restoreFiles?: boolean;
+            userCliUuid?: string;
+        } | {
+            type: "SUMMARIZE_THREAD";
+            messageId: string;
+            threadId: string;
+        } | {
+            type: "USER_COMMAND";
+            command: string;
+            text: string;
+            mode?: string;
+            phase?: string;
+            threadId?: string;
+            references?: {
+                images?: {
+                    url: string;
+                    name: string;
+                }[];
+                files?: {
+                    name: string;
+                    path: string;
+                    typeLabel: string;
+                    isImage: boolean;
+                }[];
+                context?: {
+                    refType: "document" | "folder" | "note" | "task" | "tasklist" | "thread";
+                    refId: string;
+                    shortCode: string;
+                    label: string;
+                }[];
+            };
+            cwdOverride?: string;
+        } | {
+            type: "TOGGLE_COMPACTED";
+            markerId: string;
+            compacted: boolean;
+        } | {
+            type: "DELETE_MESSAGE";
+            messageId: string;
+        } | {
+            type: "FORWARD_BRAIN_EVENT";
+            eventType: string;
+            payload?: any;
+        } | {
+            type: "GET_ARCHIVED_THREADS";
+        } | {
+            type: "REFRESH_THREADS";
+        } | {
+            type: "LOAD_MORE_MESSAGES";
+            threadId: string;
+            cursor: string;
+        }) | ThreadsInternalEvents;
+    };
+    code: {
+        _incoming: (IncomingExplorerEvents | IncomingSearchEvents | IncomingCommitEvents | IncomingPullRequestEvents | IncomingTerminalEvents | IncomingActionsEvents | IncomingPromptsEvents | {
+            type: "SET_BASE_DIRECTORY";
+            path: string;
+            fromUserNavigation?: boolean;
+        }) | {
+            type: "CODE_SETTINGS_UPDATED";
+            settings: CodeSettings;
+        };
+    };
+    notes: {
+        _incoming: {
+            type: "CREATE_NOTE";
+            title: string;
+            content?: string;
+            icon?: string | null;
+            parentId?: string;
+            skipContentSync?: boolean;
+            noteType?: "document" | "task" | "tasklist";
+            completed?: boolean;
+            displayOrder?: number;
+        } | {
+            type: "UPDATE_NOTE";
+            id: string;
+            title?: string;
+            content?: string;
+            icon?: string | null;
+            completed?: boolean;
+            hideCompletedChildren?: boolean;
+            favorite?: boolean;
+        } | {
+            type: "DELETE_NOTE";
+            id: string;
+        } | {
+            type: "SOFT_DELETE_NOTE";
+            id: string;
+        } | {
+            type: "RESTORE_NOTE";
+            id: string;
+        } | {
+            type: "MOVE_NOTE";
+            ids: string[];
+            newParentId: string | null;
+        } | {
+            type: "REORDER_NOTE";
+            id: string;
+            newParentId: string | null;
+            newIndex: number;
+        } | {
+            type: "VIEW_NOTE";
+            id: string;
+        } | {
+            type: "SEARCH_NOTES";
+            query: string;
+        } | {
+            type: "GET_TRASHED_NOTES";
+        } | {
+            type: "PERMANENTLY_DELETE_NOTE";
+            id: string;
+        } | {
+            type: "EMPTY_TRASH";
+        } | {
+            type: "IMPORT_NOTES";
+            directory: string;
+        } | {
+            type: "EXPORT_NOTES";
+            directory: string;
+            format: "json" | "markdown";
+        };
+    };
+    browser: {
+        _incoming: ({
+            type: "SYNC_TABS";
+            tabs: SavedTab[];
+        } | {
+            type: "SYNC_BOOKMARKS";
+            bookmarks: SavedBookmark[];
+        }) | {
+            type: "CLIENT_CONNECTED";
+        };
+    };
+    library: {
+        _incoming: ({
+            type: "CREATE_DOCUMENT";
+            name: string;
+            content: ContentSection[];
+            tags: string[];
+            collectionId?: string;
+        } | {
+            type: "UPDATE_DOCUMENT";
+            id: string;
+            name: string;
+            content: ContentSection[];
+            tags: string[];
+            collectionId?: string;
+        } | {
+            type: "DELETE_DOCUMENT";
+            id: string;
+        } | {
+            type: "GET_DOCUMENT";
+            id: string;
+        } | {
+            type: "GET_LIBRARY_INDEX";
+        } | {
+            type: "CREATE_COLLECTION";
+            name: string;
+            description?: string;
+            parentId?: string;
+        } | {
+            type: "UPDATE_COLLECTION";
+            id: string;
+            name: string;
+            description?: string;
+        } | {
+            type: "DELETE_COLLECTION";
+            id: string;
+        } | {
+            type: "MOVE_DOCUMENT";
+            documentId: string;
+            collectionId?: string;
+        } | {
+            type: "GET_FOLDER_CONTENTS";
+            folderId: string | null;
+        } | {
+            type: "NAVIGATE_TO_FOLDER";
+            folderId: string | null;
+        } | {
+            type: "RENAME_ITEM";
+            id: string;
+            name: string;
+            itemType: "document" | "folder";
+        } | {
+            type: "DELETE_ITEMS";
+            ids: string[];
+        } | {
+            type: "MOVE_ITEMS";
+            ids: string[];
+            targetFolderId: string | null;
+        } | {
+            type: "CREATE_SYMLINK_COLLECTION";
+            name: string;
+            symlinkPath: string;
+            parentId?: string;
+        } | {
+            type: "UPDATE_SYMLINK_PATH";
+            collectionId: string;
+            newPath: string;
+        } | {
+            type: "IMPORT_LIBRARY";
+            directory: string;
+        } | {
+            type: "EXPORT_LIBRARY";
+            directory: string;
+            format: "json" | "markdown";
+        }) | {
+            type: "LIBRARY_SETTINGS_UPDATED";
+            settings: any;
+            changes?: any;
+        };
+    };
+    flows: {
+        _incoming: ({
+            type: "FLOW_SELECT";
+            flowId: string;
+        } | {
+            type: "CREATE_FLOW";
+        } | {
+            type: "DELETE_FLOW";
+            flowId: string;
+        } | {
+            type: "UPDATE_FLOW_LABEL";
+            flowId: string;
+            label: string;
+        } | {
+            type: "CREATE_NODE";
+            flowId: string;
+            tempId: string;
+            nodeData: any;
+        } | {
+            type: "UPDATE_NODE";
+            flowId: string;
+            nodeId: string;
+            nodeData: any;
+        } | {
+            type: "DELETE_NODE";
+            flowId: string;
+            nodeId: string;
+        } | {
+            type: "CREATE_EDGE";
+            flowId: string;
+            sourceId: string;
+            targetId: string;
+            sourceHandle?: string;
+            targetHandle?: string;
+        } | {
+            type: "DELETE_EDGE";
+            flowId: string;
+            edgeId: string;
+        } | {
+            type: "UPDATE_EDGE";
+            flowId: string;
+            edgeId: string;
+            oldSource: string;
+            oldTarget: string;
+            newSource: string;
+            newTarget: string;
+        } | {
+            type: "IMPORT_DSL";
+            dsl: any;
+        } | {
+            type: "EXPORT_DSL";
+            directory: string;
+            flowId?: string;
+        } | {
+            type: "REINDEX_HANDLES";
+            flowId: string;
+            nodeId: string;
+            prefix: string;
+            index: number;
+            direction: -1 | 1;
+        }) | {
+            type: "FLOWS_SETTINGS_UPDATED";
+            settings: any;
+            changes?: any;
+        };
+    };
+    actions: {
+        _incoming: ({
+            type: "ACTION_SELECT";
+            actionId: string;
+        } | {
+            type: "CREATE_ACTION";
+            label: string;
+            input: Record<string, any>;
+            actionFn: string;
+            output?: any;
+            description?: string;
+            category?: string;
+        } | {
+            type: "UPDATE_ACTION";
+            actionId: string;
+            label?: string;
+            input?: Record<string, any>;
+            actionFn?: string;
+            output?: any;
+            description?: string;
+            category?: string;
+        } | {
+            type: "DELETE_ACTION";
+            actionId: string;
+        } | {
+            type: "FETCH_ACTIONS_PAGE";
+            page?: number;
+        } | {
+            type: "FETCH_ALL_ACTIONS";
+        } | {
+            type: "IMPORT_ACTIONS";
+            actions: any;
+        } | {
+            type: "EXPORT_ACTIONS";
+            directory: string;
+        }) | {
+            type: "ACTIONS_SETTINGS_UPDATED";
+            settings: any;
+            changes?: any;
+        };
+    };
+    prompts: {
+        _incoming: ({
+            type: "PROMPT_SELECT";
+            promptId: string;
+        } | {
+            type: "CREATE_PROMPT";
+            label: string;
+            inputs: Record<string, any>;
+            templateFn: string;
+            outputSchema?: any;
+            description?: string;
+            category?: string;
+        } | {
+            type: "UPDATE_PROMPT";
+            promptId: string;
+            label?: string;
+            inputs?: Record<string, any>;
+            templateFn?: string;
+            outputSchema?: any;
+            description?: string;
+            category?: string;
+        } | {
+            type: "DELETE_PROMPT";
+            promptId: string;
+        } | {
+            type: "FETCH_PROMPTS_PAGE";
+            page?: number;
+        } | {
+            type: "FETCH_ALL_PROMPTS";
+        } | {
+            type: "IMPORT_PROMPTS";
+            prompts: any;
+        } | {
+            type: "EXPORT_PROMPTS";
+            directory: string;
+        }) | {
+            type: "PROMPTS_SETTINGS_UPDATED";
+            settings: any;
+            changes?: any;
+        };
+    };
+    brain: {
+        _incoming: ({
+            type: "OPEN_TNODE";
+            tNodeId: string;
+        } | {
+            type: "GO_BACK_TNODE";
+            currentFlowTNodeId?: string;
+        } | {
+            type: "REQUEST_PLUGIN_DATA";
+            flowTNodeId?: string;
+        } | {
+            type: "GET_TNODE_DETAILS";
+            tNodeId: string;
+        } | {
+            type: "TOGGLE_INSPECT";
+        } | {
+            type: "START_BRAIN";
+        } | {
+            type: "KILL_BRAIN";
+        } | {
+            type: "RESTART_BRAIN";
+        } | {
+            type: "PAUSE_BRAIN";
+        } | {
+            type: "RESUME_BRAIN";
+        } | {
+            type: "HANDLE_BRAIN_EVENT";
+            eventType: string;
+            payload?: any;
+            targetFlowId?: string;
+        } | {
+            type: "TRIGGER_BRAIN_EVENT";
+            eventType: string;
+            payload?: any;
+            targetFlowId?: string;
+        }) | BrainInternalEvents;
+    };
+    database: {
+        _incoming: ({
+            type: "EXECUTE_QUERY";
+            code: string;
+        } | {
+            type: "EXECUTE_TRANSACTION";
+            code: string;
+        } | {
+            type: "GENERATE_AI_QUERY";
+            prompt: string;
+            mode?: "query" | "transaction";
+        } | {
+            type: "REFRESH_SCHEMA";
+        } | {
+            type: "GET_TRACE_FLOWS";
+        } | {
+            type: "GET_FLOW_EVENTS";
+            flowId: string;
+            offset?: number;
+            limit?: number;
+        } | {
+            type: "GET_NODE_DETAILS";
+            nodeId: string;
+        } | {
+            type: "EXPORT_DATABASE";
+            path: string;
+            name?: string;
+            databases: ("lmdb" | "volatileLmdb")[];
+        } | {
+            type: "IMPORT_DATABASE";
+            path: string;
+        } | {
+            type: "GET_BACKUP_INFO";
+            path: string;
+        } | {
+            type: "RESET_DATABASE";
+        }) | {
+            type: "CLIENT_CONNECTED";
+        };
+    };
+    logs: {
+        _incoming: ({
+            type: "CLEAR_LOGS";
+        } | {
+            type: "REQUEST_LOGS_UPDATE";
+        }) | ({
+            type: "REQUEST_LOGS_UPDATE";
+        } | {
+            type: "ADD_LOG";
+            log: Omit<LogEntry, "id" | "timestamp">;
+        } | {
+            type: "LOGS_SETTINGS_UPDATED";
+            settings: LogsSettings;
+            changes?: any;
+        });
+    };
+    settings: {
+        _incoming: ({
+            type: "GET_SETTINGS";
+        } | {
+            type: "UPDATE_SETTINGS";
+            entityType: "general" | "internal" | "plugin";
+            label: string;
+            path: string[];
+            value: any;
+        } | {
+            type: "RESET_SETTINGS";
+        } | {
+            type: "TEST_CLI_PROVIDER";
+            provider: string;
+        } | {
+            type: "PREVIEW_PACK_SEEDS";
+            directory: string;
+        } | {
+            type: "IMPORT_PACK_SEEDS";
+            directory: string;
+            include?: Record<string, string[] | null>;
+            mode?: "keep-existing" | "replace-on-collision" | "wipe-and-replace";
+            restartBrain?: boolean;
+        } | {
+            type: "REPLACE_SETTINGS";
+            data: SettingsData;
+        } | {
+            type: "RESET_APP";
+        }) | ({
+            type: "PACK_SETTINGS_CHANGED";
+        } | {
+            type: "SECRETS_CHANGED";
+        });
+    };
 };
 
 declare function storeHandle(key: string, handle: CodexTurnHandle): void;
@@ -5328,155 +5468,6 @@ declare const threadQueries: {
      * helpers moved under chatCommands.
      */
     readonly findArtifactByType: typeof findArtifactByThreadAndType;
-};
-
-declare const threads: {
-    _incoming: ({
-        type: "CREATE_THREAD";
-        topic: string;
-        tags?: string[];
-        instructions: string;
-        linkedThreads?: {
-            id: string;
-            relation: "blocked_by" | "blocks" | "duplicates" | "parent_of";
-        }[];
-        parentThreadId?: string;
-    } | {
-        type: "VIEW_THREAD";
-        threadId: string;
-    } | {
-        type: "UPDATE_THREAD_STATUS";
-        threadId: string;
-        status: string;
-    } | {
-        type: "UPDATE_THREAD_FIELD";
-        threadId: string;
-        key: string;
-        value: any;
-    } | {
-        type: "DELETE_THREAD";
-        threadId: string;
-    } | {
-        type: "SET_THREAD_PARENT";
-        childIds: string[];
-        parentId: string;
-    } | {
-        type: "EXPORT_THREADS";
-        directory: string;
-    } | {
-        type: "IMPORT_THREADS";
-        directory: string;
-    } | {
-        type: "USER_MSG";
-        text: string;
-        mode?: string;
-        phase?: string;
-        threadId?: string;
-        references?: {
-            images?: {
-                url: string;
-                name: string;
-            }[];
-            files?: {
-                name: string;
-                path: string;
-                typeLabel: string;
-                isImage: boolean;
-            }[];
-            context?: {
-                refType: "document" | "folder" | "note" | "task" | "tasklist" | "thread";
-                refId: string;
-                shortCode: string;
-                label: string;
-            }[];
-        };
-        cwdOverride?: string;
-        forceDirectoryPicker?: boolean;
-    } | {
-        type: "OPEN_THREAD_CHAT";
-        threadId: string;
-        restore?: boolean;
-    } | {
-        type: "OPEN_THREAD_TAB";
-        threadId: string;
-        label: string;
-        pinned?: boolean;
-    } | {
-        type: "PAUSE_TURN";
-        threadId: string;
-    } | {
-        type: "APPROVE_TODO_LIST";
-        artifactId: string;
-        tasks: any[];
-    } | {
-        type: "REJECT_TODO_LIST";
-        artifactId: string;
-    } | {
-        type: "INTERACTIVE_MSG_RESPONSE";
-        messageId: string;
-        threadId: string;
-        response: any;
-    } | {
-        type: "FORK_THREAD";
-        messageId: string;
-        threadId?: string;
-        threadTopic?: string;
-    } | {
-        type: "REVERT_THREAD";
-        messageId: string;
-        threadId: string;
-        restoreFiles?: boolean;
-        userCliUuid?: string;
-    } | {
-        type: "SUMMARIZE_THREAD";
-        messageId: string;
-        threadId: string;
-    } | {
-        type: "USER_COMMAND";
-        command: string;
-        text: string;
-        mode?: string;
-        phase?: string;
-        threadId?: string;
-        references?: {
-            images?: {
-                url: string;
-                name: string;
-            }[];
-            files?: {
-                name: string;
-                path: string;
-                typeLabel: string;
-                isImage: boolean;
-            }[];
-            context?: {
-                refType: "document" | "folder" | "note" | "task" | "tasklist" | "thread";
-                refId: string;
-                shortCode: string;
-                label: string;
-            }[];
-        };
-        cwdOverride?: string;
-    } | {
-        type: "TOGGLE_COMPACTED";
-        markerId: string;
-        compacted: boolean;
-    } | {
-        type: "DELETE_MESSAGE";
-        messageId: string;
-    } | {
-        type: "FORWARD_BRAIN_EVENT";
-        eventType: string;
-        payload?: any;
-    } | {
-        type: "GET_ARCHIVED_THREADS";
-    } | {
-        type: "REFRESH_THREADS";
-    } | {
-        type: "LOAD_MORE_MESSAGES";
-        threadId: string;
-        cursor: string;
-    }) | ThreadsInternalEvents;
 };
 
 /**

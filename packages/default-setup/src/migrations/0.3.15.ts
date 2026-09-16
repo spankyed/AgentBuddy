@@ -3,13 +3,16 @@ import { markSeededRowUnedited } from '@abuddy/sdk/seed';
 import { EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
 import type { PackMigration } from '@abuddy/sdk/framework';
+import { createLogger } from '@abuddy/sdk/logger';
+
+const logger = createLogger('migrations');
 
 /** This pack's id, which its boot seed is now recorded under */
 const PACK_ID = 'default-setup';
 
 export const migration: PackMigration = {
   target: '0.3.15',
-  description: "Record the boot seed per pack, and mark rows seeded before the seeder tracked what it wrote as unedited",
+  description: "Record the boot seed per pack, mark rows seeded before the seeder tracked what it wrote as unedited, and keep action logs hidden for whoever hid log-service",
   up: () => {
     const internal = repository.settingsQueries.getInternalSettings() as Record<string, any>;
 
@@ -37,6 +40,13 @@ export const migration: PackMigration = {
         marked++;
       }
     }
-    if (marked > 0) console.log(`[migration 0.3.15] marked ${marked} seeded row(s) as unedited`);
+    if (marked > 0) logger.info(`[migration 0.3.15] marked ${marked} seeded row(s) as unedited`);
+
+    // ── Action logs moved from the shared `log-service` source to `action:<label>` ──
+    // Whoever hid `log-service` hid action logs: keep hiding them.
+    const excludedSources = (repository.settingsQueries.getSettings().plugins as any)?.logs?.excludedSources;
+    if (Array.isArray(excludedSources) && excludedSources.includes('log-service') && !excludedSources.includes('action:*')) {
+      repository.settingsCommands.updateSettings('plugin', 'logs', ['excludedSources'], [...excludedSources, 'action:*']);
+    }
   },
 };

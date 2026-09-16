@@ -1,5 +1,6 @@
 // 0.3.15 moves the boot seed's record under the pack that ran it, and marks rows seeded before the seeder
-// recorded what it wrote as unedited — without that every row an older version seeded stays frozen.
+// recorded what it wrote as unedited — without that every row an older version seeded stays frozen. Action
+// logs moved from `log-service` to `action:<label>`, so whoever hid `log-service` gets `action:*` hidden too.
 import { describe, expect, it } from 'vitest'
 import { tx, untypedQx } from '@abuddy/sdk/ears'
 import { dropAttribute } from '@abuddy/sdk/testing'
@@ -73,5 +74,27 @@ describe('the 0.3.15 migration', () => {
     migration.up()
 
     expect(attrs(row.id).seededFields).toEqual({ fields: ['title'], hash: 'kept' })
+  })
+
+  const excludedSources = () => (repository.settingsQueries.getSettings().plugins as any).logs.excludedSources
+  const setExcludedSources = (value: string[]) => repository.settingsCommands.updateSettings('plugin', 'logs', ['excludedSources'], value)
+
+  it('hides action logs for a user who hid log-service', () => {
+    createDefaultSettings()
+    setExcludedSources(['brain', 'log-service'])
+
+    migration.up()
+    migration.up()
+
+    expect(excludedSources()).toEqual(['brain', 'log-service', 'action:*'])
+  })
+
+  it("leaves the logs exclusions alone when log-service isn't hidden", () => {
+    createDefaultSettings()
+    setExcludedSources(['brain'])
+
+    migration.up()
+
+    expect(excludedSources()).toEqual(['brain'])
   })
 })

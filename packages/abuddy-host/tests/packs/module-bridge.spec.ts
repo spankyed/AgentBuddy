@@ -93,6 +93,25 @@ describe('withModuleBridge', () => {
     expect(() => (loaded as unknown as () => void)()).toThrow(`"${missing}" isn't installed (called)`);
   });
 
+  it('refuses a module of a bridged package that is not bridged, naming it', () => {
+    const lib = name('lib');
+    installPackage(lib, `module.exports = { value: 'real copy' };`);
+    const runtime = writeRuntime(`require('${lib}/gone');`);
+
+    let thrown: unknown;
+    try {
+      withModuleBridge({ modules: {}, resolveFrom, bridgedPackages: [lib] }, () => createRequire(runtime)(runtime));
+    } catch (err) {
+      thrown = err;
+    }
+
+    expect(thrown).toMatchObject({ code: 'ERR_UNBRIDGED_MODULE', specifier: `${lib}/gone`, message: `${lib}/gone isn't provided by this host` });
+    // Other packages resolve as before
+    const other = path.join(runtimeDir, 'other.cjs');
+    fs.writeFileSync(other, `module.exports = require('${lib}');`);
+    expect(withModuleBridge({ modules: {}, resolveFrom, hostPackages: [lib], bridgedPackages: [`${lib}-other`] }, () => createRequire(other)(other))).toEqual({ value: 'real copy' });
+  });
+
   it("still throws for a missing package without stubMissing, and for a missing relative file", () => {
     const missing = name('not-installed');
     const bare = writeRuntime(`module.exports = require('${missing}');`);

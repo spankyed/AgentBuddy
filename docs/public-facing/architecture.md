@@ -194,7 +194,7 @@ export default __m;
 
 #### Shared SDK modules
 
-`@abuddy/sdk/fe`, `@abuddy/sdk/runtime`, `@abuddy/sdk/steps`, `@abuddy/sdk/artifacts`, `@abuddy/sdk/blocks`, `@abuddy/sdk/designations`, `@abuddy/sdk/helpers`, and every `@abuddy/ui` export
+`@abuddy/sdk/fe`, `@abuddy/sdk/runtime`, `@abuddy/sdk/steps`, `@abuddy/sdk/artifacts`, `@abuddy/sdk/blocks`, `@abuddy/sdk/designations`, `@abuddy/sdk/events` (`sdkEvents`), `@abuddy/sdk/helpers`, and every `@abuddy/ui` export
 
 #### Deep subpath imports
 
@@ -222,7 +222,7 @@ The pack test harness uses the same bridge with the pack's own SDK instance.
 
 ## Host services
 
-Some services packs reach through `services` are implemented by the host: `appData` (reset, backup export/import), `traceStore` (the volatile trace store), `inference` (model calls) and `secrets` (API key metadata). Their contracts and delegates live in `@abuddy/sdk/services`; the implementations live in `@abuddy/host/services`. `packages/api/src/setup/sdk-host-init.ts`, imported first by `backend.ts`, calls `registerHostServices()`, which registers each implementation as a host module under its service key, where the SDK delegate reads it. The same file registers the API's internal host modules (attribute storage, LMDB query, logger, tRPC, bus emitter, migrations, pack registry) and initializes the EARS runtime.
+Some services packs reach through `services` are implemented by the host: `appData` (reset, backup export/import), `traceStore` (the volatile trace store), `inference` (model calls) and `secrets` (API key metadata). Their contracts and delegates live in `@abuddy/sdk/services`; the implementations live in `@abuddy/host/services`. `packages/api/src/setup/sdk-host-init.ts`, imported first by `backend.ts`, calls `registerHostServices()`, which registers each implementation as a host module under its service key, where the SDK delegate reads it. The same file registers the API's internal host modules (attribute storage, LMDB query, sharded hydration, logger, tRPC, bus emitter, router events, system errors, event transport, version, migrations, pack registry). `event-transport` is how `@abuddy/sdk/events` sends: pack code's `emit`, `sendToPlugin` and `sendToSystem` go through it and initializes the EARS runtime.
 
 A pack can't register a service under a host service's name.
 
@@ -256,18 +256,19 @@ The policy is the union of the SDK's excluded types and each registered pack's `
 
 ## Generated files
 
-`generate-entries` reads `abuddy.json` and produces up to 17 files in `src/__generated__/`, plus files per dependency. These are regenerated on every build — never edit them.
+`generate-entries` reads `abuddy.json` and produces up to 18 files in `src/__generated__/`, plus files per dependency. These are regenerated on every build — never edit them.
 
 | File | Contents |
 |---|---|
 | `pack-entry.ts` | BE registration: systems, services, steps, artifacts, blocks, EARS, boot hooks, migrations, seed hooks, features |
 | `pack-entry-fe.ts` | FE registration: plugins, step/artifact/block FE, tiptap, app extensions |
 | `ears.ts` | Typed EARS namespace (Entity, RelKind constants + types), `PackShapes`, and the typed `qx`/`find*`/`createEntity` facade |
-| `system-ids.ts` | Re-exports system ID constants from each feature |
+| `system-ids.ts` | The id each of this pack's systems has (from its spec), and each dependency system's running id |
 | `bus-ids.ts` | `busId` map of bus-routable system IDs (pack-prefixed for external packs). Import-free, so frontend code imports it from here rather than `system-ids.ts` |
-| `events.ts` | `PackEvents` (plugin ID -> the events it receives from this pack's systems, its dependencies' and the host's plugins) and the typed `emit`/`sendToPlugin` facade |
+| `system-specs.ts` | Type-only: `specs`, each system's incoming events keyed by feature id, read from its entry's spec. `events.ts` imports it; only packs with systems get it |
+| `events.ts` | `PackEvents` (plugin ID -> the events it receives from this pack's systems, its dependencies' and the host's plugins), `PackSystemEvents` (this pack's systems by the ID they run under -> the events each receives), `SendableSystemEvents` (own systems by feature ID, plus dependencies') and `RunningSystemEvents` (all by running ID, for `services.emitter`), and the typed `emit`/`sendToPlugin` facade, plus `sendToSystem` in packs with systems |
 | `types.ts` | Type barrel: outgoing events + per-feature types |
-| `services.ts` | Service aggregation: imports each service object its manifest entry names (`"path#exportName"`), exports `Services`/`Z`/`EntityId` and the typed `services` proxy (with dependencies' services) |
+| `services.ts` | Service aggregation: imports each service object its manifest entry names (`"path#exportName"`), exports `Services`/`Z`/`EntityId` and the typed `services` proxy (with dependencies' services). `Services` types `services.emitter` as `PackEmitter`, with this pack's plugin and system events |
 | `repository.ts` | `repository`, typed with the repositories declared in `features[].repositories` and dependencies' |
 | `repositories.ts` | Registers this pack's repositories; `pack-entry.ts` imports it first |
 | `pack-types.ts` | The facade types `abuddy build` bundles into `dist/types/pack-types.d.ts` for dependents |

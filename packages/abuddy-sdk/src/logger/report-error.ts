@@ -1,4 +1,5 @@
 import { getHostModule } from '../runtime/host.ts';
+import { rootEvents } from '../runtime/rpc.ts';
 import { sendToPlugin } from '../events/index.ts';
 // Import directly — not from '../utils' barrel which pulls in Node-only modules (fs, child_process)
 import { randomId } from '../utils/random-id.ts';
@@ -67,7 +68,14 @@ function reportStepError(input: ReportSystemErrorInput, step: StepErrorContext):
     timestamp: Date.now(),
   };
 
-  logger.error(runtimeError.message, { ...runtimeError, error: redactSecrets(input.error) });
+  // Recorded in the log only; the flow shows it
+  rootEvents.emitLog({
+    level: 'error',
+    source: 'step-runtime',
+    message: runtimeError.message,
+    stack: runtimeError.stack,
+    meta: { ...runtimeError, error: redactSecrets(input.error) },
+  });
 
   if (runtimeError.tNodeId) {
     try {

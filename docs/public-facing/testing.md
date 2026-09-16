@@ -83,7 +83,7 @@ it('stores a memo a client adds and sends it back', async () => {
   await app.connect();                                             // CLIENT_CONNECTED, as a client connecting
   expect(await app.nextEmit('memos', 'MEMOS_CONNECTED')).toMatchObject({ memos: [] });
 
-  await app.send('memos', { type: 'ADD_MEMO', text: 'hello' });   // as trpc.bus.send
+  await app.send('memos', { type: 'ADD_MEMO', text: 'hello' });   // as a client's sendToSystem does
   expect(await app.nextEmit('memos', 'MEMO_ADDED')).toMatchObject({ memo: { text: 'hello' } });
   expect(repository.memoQueries.all()).toHaveLength(1);
 });

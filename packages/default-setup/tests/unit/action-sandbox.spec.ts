@@ -57,4 +57,39 @@ describe('the action sandbox', () => {
     expect(result).toEqual(reached);
     expect(logs).toContainEqual({ level: 'info', message: 'ran', source: 'action:Say Hi', meta: reached });
   });
+
+  it('runs code that declares its own z and flowId through both runners', async () => {
+    const shadowing = "const z = 1; const flowId = 'x'; return { z, flowId };";
+    const sent: Array<{ type: string; result?: unknown }> = [];
+    const tNode = { id: 'TNode-action', nodeAttributes: {} } as unknown as TNodeEntity;
+    const ctx = { flowTNodeId: 'TNode-flow', event: { type: 'go' }, runtime: { getAppServices: () => services } } as unknown as ExecutionContext;
+
+    await handler(tNode, { id: 'Node-1', label: 'Shadow', nodeType: 'action', mode: 'code', actionFn: shadowing }, ctx, { send: (event: { type: string }) => sent.push(event) });
+    expect(sent).toEqual([{ type: 'COMPLETE', result: { z: 1, flowId: 'x' } }]);
+
+    vi.spyOn(repository.actionQueries, 'all').mockReturnValue([{ label: 'Shadow', actionFn: shadowing } as ActionEntity]);
+    expect(await actionService.getAndExecute('Shadow', {})).toEqual({ z: 1, flowId: 'x' });
+  });
+
+  it("shows the action's logger to spreads, entries, descriptors and `in`", async () => {
+    const code = `
+      const spread = { ...services };
+      const entry = Object.entries(services).find(([key]) => key === 'logger');
+      return {
+        spread: spread.logger === services.logger,
+        entries: entry?.[1] === services.logger,
+        descriptor: Object.getOwnPropertyDescriptor(services, 'logger')?.value === services.logger,
+        has: 'logger' in services,
+        repository: typeof spread.repository.actionQueries.all,
+      };
+    `;
+    vi.spyOn(repository.actionQueries, 'all').mockReturnValue([{ label: 'Spread', actionFn: code } as ActionEntity]);
+
+    expect(await actionService.getAndExecute('Spread', {})).toEqual({ spread: true, entries: true, descriptor: true, has: true, repository: 'function' });
+
+    const logged = `const { logger } = { ...services }; logger.info('spread'); Object.fromEntries(Object.entries(services)).logger.info('entries');`;
+    vi.spyOn(repository.actionQueries, 'all').mockReturnValue([{ label: 'Spread', actionFn: logged } as ActionEntity]);
+    await actionService.getAndExecute('Spread', {});
+    expect(logs.filter((e) => e.source === 'action:Spread').map((e) => e.message)).toEqual(['spread', 'entries']);
+  });
 });

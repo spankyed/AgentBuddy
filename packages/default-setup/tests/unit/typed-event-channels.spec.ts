@@ -73,6 +73,21 @@ describe('sendToSystem', () => {
       sendToSystem('notes', { type: 'DELETE_NOTE' });
     }).toBeFunction();
   });
+
+  it('accepts a type typed as a union when the event has every named event\'s fields', () => {
+    expectTypeOf((brainIsDead: boolean) => {
+      sendToSystem('brain', { type: brainIsDead ? 'START_BRAIN' : 'RESTART_BRAIN' });
+      // @ts-expect-error as a DELETE_NOTE it would have no id
+      sendToSystem('notes', { type: brainIsDead ? 'DELETE_NOTE' : 'CREATE_NOTE' });
+    }).toBeFunction();
+  });
+
+  it('rejects a system id typed as a union', () => {
+    expectTypeOf((systemId: 'notes' | 'settings') => {
+      // @ts-expect-error the notes system doesn't receive GET_SETTINGS
+      sendToSystem(systemId, { type: 'GET_SETTINGS' });
+    }).toBeFunction();
+  });
 });
 
 describe('services.emitter in actions', () => {

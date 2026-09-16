@@ -261,7 +261,7 @@ export function updateMessageState(
       updates
     });
   } catch (err) {
-    logger.error(`updateMessageState failed for ${messageId}`, { error: err });
+    logger.error(`updateMessageState failed for ${messageId}`, { error: err instanceof Error ? err.message : String(err) });
     return;
   }
 
