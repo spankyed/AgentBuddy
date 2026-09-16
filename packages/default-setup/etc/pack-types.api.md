@@ -299,13 +299,9 @@ type BlockMessageOptions = BlockMessageBase & AutoHideOptions;
  * shape (see claude-code-approval-response.spec.ts and
  * onboarding-step-response.spec.ts for the pattern).
  *
- * Legacy data: messages persisted before this type was introduced may
- * carry the stale `{ value: 'yes' }` shape, but no frontend has ever
- * emitted it — the `?? response` fallback in the old handler was dead
- * code. Still, `blockResponse?: unknown` at the storage boundary is
- * more defensive than assuming the union is exhaustive; however the
- * EVENT-level and FIELD-level types use the union because every
- * non-legacy emit matches one of its arms.
+ * `blockResponse?: unknown` at the storage boundary is more defensive than
+ * assuming the union is exhaustive; the event-level and field-level types use
+ * the union, because every emit matches one of its arms.
  */
 type BlockResponse = 
 /** Approval buttons: InteractionContainer `handleApprove`/`handleDeny`. */
@@ -1350,7 +1346,10 @@ interface InternalSettings {
     hasOnboarded: boolean;
     lastInteractionTimestamp: number | null;
     version: string;
-    seedHash: string | null;
+    /** Each built-in pack's boot seed, by pack id: the hash of the compiled data last seeded, and the
+     *  file mtimes/sizes it was computed from (the fast path that skips re-hashing unchanged files) */
+    seedHashes?: Record<string, string>;
+    seedStatFingerprints?: Record<string, string>;
     packSeedHashes?: Record<string, string>;
     packVersions?: Record<string, string>;
 }
@@ -1389,6 +1388,23 @@ interface LLMNode extends NodeBase {
     temperature?: number;
     maxTokens?: number;
     systemPrompt?: string;
+}
+
+/**
+ * Every document and folder in the library, by name: what the reference picker offers and the
+ * panel counts. The file browser reads one folder at a time through `FolderContents` instead.
+ */
+interface LibraryIndex {
+    documents: Array<{
+        id: EARS.EntityId;
+        name: string;
+        shortCode: DocumentShortCode;
+        tags: string[];
+    }>;
+    folders: Array<{
+        id: EARS.EntityId;
+        name: string;
+    }>;
 }
 
 type LibraryItem = FolderItem | DocumentItem;
@@ -2021,14 +2037,8 @@ type OutgoingFlowsEvents = {
 type OutgoingLibraryEvents = {
     type: 'LIBRARY_CONNECTED';
     data: {
-        documents: DocumentDTO[];
-        collections: CollectionDTO[];
+        index: LibraryIndex;
         settings: any;
-    };
-} | {
-    type: 'DOCUMENTS_LOADED';
-    data: {
-        documents: DocumentDTO[];
     };
 } | {
     type: 'DOCUMENT_CREATED';
@@ -2051,11 +2061,6 @@ type OutgoingLibraryEvents = {
         document: DocumentDTO;
     };
 } | {
-    type: 'COLLECTIONS_LOADED';
-    data: {
-        collections: CollectionDTO[];
-    };
-} | {
     type: 'COLLECTION_CREATED';
     data: {
         collection: CollectionDTO;
@@ -2069,6 +2074,11 @@ type OutgoingLibraryEvents = {
     type: 'COLLECTION_DELETED';
     data: {
         collectionId: string;
+    };
+} | {
+    type: 'LIBRARY_INDEX_LOADED';
+    data: {
+        index: LibraryIndex;
     };
 } | {
     type: 'LIBRARY_ERROR';
@@ -2755,7 +2765,7 @@ declare const PermissionModeSchema: z.ZodEnum<["default", "acceptEdits", "plan",
 interface PersonalInfo {
     name?: string;
     phoneNumber?: string;
-    address?: string | Address;
+    address?: Address;
 }
 
 interface PluginSettings {
@@ -4264,6 +4274,8 @@ declare const libraryQueries: {
     readonly getDocuments: (collectionId?: string) => DocumentDTO[];
     readonly getDocument: (id: EARS.EntityId) => DocumentDTO | null;
     readonly getDocumentByShortCode: (shortCode: DocumentShortCode) => DocumentDTO | null;
+    /** Every document and folder by name, for the reference picker and the panel's stats */
+    readonly getIndex: () => LibraryIndex;
     readonly getCollections: () => CollectionDTO[];
     readonly getFolderContents: (folderId: EARS.EntityId | null) => Promise<FolderContents>;
     readonly getFolderPath: (folderId: EARS.EntityId | null) => BreadcrumbItem[];

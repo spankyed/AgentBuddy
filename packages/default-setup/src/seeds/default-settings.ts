@@ -22,7 +22,6 @@ const settings: SettingsData = {
     hasOnboarded: false,
     lastInteractionTimestamp: null,
     version: '',
-    seedHash: null,
   },
   assistant: {
     name: '',
