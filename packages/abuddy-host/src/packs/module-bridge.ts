@@ -15,6 +15,8 @@ export interface ModuleBridgeOptions {
    * dependency's runtime keeps its npm packages external, and a pack's tests needn't install them all.
    */
   stubMissing?: boolean;
+  /** Packages only the bridge provides: a module of one that `modules` lacks throws, rather than loading another copy */
+  bridgedPackages?: readonly string[];
 }
 
 type ModuleInternals = typeof Module & {
@@ -69,6 +71,9 @@ export function withModuleBridge<T>(options: ModuleBridgeOptions, fn: () => T): 
 
   moduleInternals._resolveFilename = function resolve(this: unknown, request: string, parent: unknown, ...rest: unknown[]) {
     if (request in options.modules) return `${BRIDGE_PREFIX}${request}`;
+    if (options.bridgedPackages?.some(pkg => request === pkg || request.startsWith(`${pkg}/`))) {
+      throw new Error(`${request} isn't provided by this AgentBuddy: rebuild the pack with the current @abuddy/cli`);
+    }
     const host = hostResolutions.get(request);
     if (host) return host;
     try {

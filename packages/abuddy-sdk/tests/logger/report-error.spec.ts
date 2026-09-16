@@ -41,6 +41,7 @@ describe('reportError', () => {
   const tNodeId = 'TNode-1' as EARS.EntityId;
 
   it("with step context logs the error, sends it to the brain plugin and records it on the step's TNode", () => {
+    const printed = vi.spyOn(console, 'error').mockImplementation(() => {});
     let returned: ReturnType<typeof reportError>;
     const { logs, outgoing } = capture(() => {
       returned = reportError({
@@ -53,6 +54,8 @@ describe('reportError', () => {
     const { errorId, stack } = returned!;
     expect(returned!).toMatchObject({ source: 'brain-llm', phase: 'llm.execute', tNodeId, message: 'model failed' });
     expect(logs).toEqual([expect.objectContaining({ level: 'error', source: 'step-runtime', message: 'model failed', stack })]);
+    // Recorded in the log only: the flow shows it, so nothing is printed
+    expect(printed).not.toHaveBeenCalled();
     expect(outgoing).toEqual([{ type: 'BRAIN_RUNTIME_ERROR', pluginId: 'brain', error: returned! }]);
     expect(tNodeResults).toEqual([{
       id: tNodeId,

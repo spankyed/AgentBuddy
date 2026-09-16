@@ -10,10 +10,12 @@ const backendOnly = (name: string) => () => {
 /** How `@abuddy/sdk/events` sends in the renderer: events for systems go over the API client */
 export const eventTransport: EventTransport = {
   sendIncoming: (event) => {
-    // Caught, since an unhandled rejection shows the error page; the report leaves out the payload
+    // Caught, since an unhandled rejection shows the error page. The report leaves out the payload, and goes to
+    // the app's log (and so diagnostics) as well as the console
     trpc.bus.send.mutate(event).catch((error: unknown) => {
-      const message = `Couldn't send ${event.type} to ${event.systemId}`;
-      console.error(`[event-transport] ${message}:`, error);
+      const message = `Couldn't send ${event.type} to ${event.systemId}: ${error instanceof Error ? error.message : String(error)}`;
+      console.error(`[event-transport] ${message}`);
+      window.electronAPI?.rendererLog?.write({ level: 'error', source: 'event-transport', message }).catch(() => {});
       globalToast.error(message);
     });
   },

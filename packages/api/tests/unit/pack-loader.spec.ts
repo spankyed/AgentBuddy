@@ -293,6 +293,21 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     }
   });
 
+  it('refuses a runtime built against an @abuddy/sdk module this app no longer provides, saying to rebuild it', async () => {
+    const { onLog } = await import('@/core/shared/debug/logger');
+    const errors: string[] = [];
+    const stop = onLog((entry) => { if (entry.level === 'error') errors.push(entry.message); });
+    try {
+      makeBundledPack('stale-pack', `require('@abuddy/sdk/rpc');\n${registration('stale-pack')}`);
+      makeBundledPack('current-pack', registration('current-pack'));
+
+      expect(loadExternalPacks().map(p => p.manifest.id)).toEqual(['current-pack']);
+      expect(errors).toEqual([expect.stringContaining("@abuddy/sdk/rpc isn't provided by this AgentBuddy: rebuild the pack with the current @abuddy/cli")]);
+    } finally {
+      stop();
+    }
+  });
+
   it('refuses a runtime whose registration id does not match the manifest', () => {
     makeBundledPack('real-id', registration('other-id'));
     expect(loadExternalPacks()).toEqual([]);

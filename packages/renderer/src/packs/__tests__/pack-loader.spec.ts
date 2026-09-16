@@ -51,9 +51,11 @@ describe('loadPackFEEntry', () => {
 // A pack with frontend code is reported to the application actor once its load finished, whatever it added:
 // the bus holds back its systems' startup data until then
 describe('loadPackFrontend', () => {
-  it('returns no plugins when the FE entry fails to load', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    await expect(loadPackFrontend({ id: 'broken', feEntry: 'runtime/fe.js' })).resolves.toEqual([]);
+  it('throws, saying to rebuild the pack, when the FE entry fails to import', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
+    await expect(loadPackFrontend({ id: 'broken', feEntry: 'runtime/fe.js' }))
+      .rejects.toThrow(/\. If the pack was built for another AgentBuddy version, rebuild it with the current @abuddy\/cli$/);
+    expect(logged).toHaveBeenCalledWith(expect.stringContaining('[pack-loader] Failed to load FE entry pack://broken/runtime/fe.js'), expect.anything());
   });
 
   it('returns null for a pack without frontend code', async () => {

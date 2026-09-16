@@ -93,6 +93,14 @@ describe('withModuleBridge', () => {
     expect(() => (loaded as unknown as () => void)()).toThrow(`"${missing}" isn't installed (called)`);
   });
 
+  it('throws for a module of a bridged package that the bridge lacks, saying to rebuild', () => {
+    const lib = name('lib');
+    installPackage(lib, `module.exports = { value: 'real copy' };`);
+    const runtime = writeRuntime(`module.exports = require('${lib}/gone');`);
+    expect(() => withModuleBridge({ modules: {}, resolveFrom, bridgedPackages: [lib] }, () => createRequire(runtime)(runtime)))
+      .toThrow(`${lib}/gone isn't provided by this AgentBuddy: rebuild the pack with the current @abuddy/cli`);
+  });
+
   it("still throws for a missing package without stubMissing, and for a missing relative file", () => {
     const missing = name('not-installed');
     const bare = writeRuntime(`module.exports = require('${missing}');`);

@@ -73,8 +73,8 @@ The application actor owns loading; `src/packs/pack-loader.ts` does the work. Th
 4. **`loadPackFrontend`** (`pack-loader.ts`):
    - `loadPackStyles` adds a `<link data-pack-id>` for `pack://<id>/<feStyles>`, once per href.
    - It then `import()`s `pack://<id>/<feEntry>` and calls `registerPackFE(registration, packId)`.
-   - It returns the plugins, `[]` when the entry failed to import or register (logged, not reported to the user), or `null` when the pack has no `feEntry`. Only a failure loading its styles throws, and the loader lists the pack in `failedPacks`.
-   - `loadPackFEEntry` warns when the module has no default export or declares none of `plugins/steps/artifacts/blocks/tiptapPlugins/appExtensions`. On an import failure it logs `[pack-loader] Failed to load FE entry pack://…:` with the error (the E2E fixture matches the prefix) and returns `null`.
+   - It returns the plugins, or `null` when the pack has no `feEntry`. It throws when the entry fails to import or register, so the loader lists the pack in `failedPacks` (a toast).
+   - `loadPackFEEntry` warns when the module has no default export or declares none of `plugins/steps/artifacts/blocks/tiptapPlugins/appExtensions`. On an import failure it logs `[pack-loader] Failed to load FE entry pack://…:` with the error (the E2E fixture matches the prefix) and throws the reason, adding that a pack built for another AgentBuddy version needs rebuilding.
 5. **`mergePackPlugins`:**
    - `null` records the pack as loaded and asks nothing, because the connection's `CLIENT_CONNECTED` already reached its systems.
    - Otherwise it skips plugin ids already present, inserts the new plugins before `packs`, spawns their actors, records them in `packPluginIds`, and, if `busSubscribed`, calls `packClientReady` so the pack's systems send their startup data.

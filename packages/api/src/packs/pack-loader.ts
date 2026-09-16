@@ -263,7 +263,13 @@ export interface LoadedPack {
 
 /** Runs `fn` (a require of pack runtime code) with @abuddy/sdk bridged to the API's instances and host-provided packages resolved from the API */
 export function withHostResolution<T>(fn: () => T): T {
-  return withModuleBridge({ modules: SDK_BRIDGE, hostPackages: HOST_PROVIDED_PACKAGES, resolveFrom: import.meta.url }, fn);
+  return withModuleBridge({
+    modules: SDK_BRIDGE,
+    hostPackages: HOST_PROVIDED_PACKAGES,
+    resolveFrom: import.meta.url,
+    // A runtime built against an SDK module this app no longer has fails, saying to rebuild it
+    bridgedPackages: ['@abuddy/sdk'],
+  }, fn);
 }
 
 export function loadSingleExternalPack(
@@ -347,7 +353,7 @@ function loadBundledRuntime(
       return mod.registration;
     });
   } catch (err) {
-    logger.error(`Failed to load ${manifest.id} runtime (${BUNDLE_PATHS.runtimeEntry}):`, err as Error);
+    logger.error(`Failed to load ${manifest.id} runtime (${BUNDLE_PATHS.runtimeEntry}): ${(err as Error).message}`, err as Error);
     return null;
   }
   if (!registration) {
