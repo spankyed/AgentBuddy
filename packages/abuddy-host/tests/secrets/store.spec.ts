@@ -6,6 +6,13 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createSecretsStore, KeyVaultUnavailableError, memoryKeyVault, fileKeyVault, type KeyVault } from '../../src/secrets/index.ts';
 
+// Every value the store handles is handed to redaction, which keeps only its digest and length
+const registered = vi.hoisted(() => [] as string[]);
+vi.mock('@abuddy/sdk/utils/internals', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@abuddy/sdk/utils/internals')>();
+  return { ...actual, registerSecretValue: (value: string) => { registered.push(value); } };
+});
+
 // Writes fail while `failWrites.value` is true (a full disk, a file another process holds)
 const failWrites = vi.hoisted(() => ({ value: false }));
 vi.mock('../../src/secrets/private-file.ts', async (importOriginal) => {
@@ -21,6 +28,7 @@ vi.mock('../../src/secrets/private-file.ts', async (importOriginal) => {
 const dirs: string[] = [];
 afterEach(() => {
   failWrites.value = false;
+  registered.length = 0;
   vi.restoreAllMocks();
   for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
 });
@@ -340,6 +348,18 @@ describe('secrets store', () => {
     file.secrets[0].value.tag = Buffer.from(file.secrets[0].value.tag, 'base64').subarray(0, 12).toString('base64');
     fs.writeFileSync(filePath, JSON.stringify(file));
     expect(() => store.keyFor('openai')).toThrow("can't be read on this machine");
+  });
+
+  it('hands redaction every value it encrypts or decrypts, so logs can mask it', () => {
+    const { store, dir, osVault } = setup();
+    const added = 'not-a-real-key-with-no-prefix-01';
+    const replaced = 'not-a-real-key-with-no-prefix-02';
+    const work = store.add('mistral', 'Work', added);
+    store.replaceValue(work.id, replaced);
+    // A store that reads the file as a later run does registers what it decrypts, having encrypted nothing
+    expect(setup({ dir, osVault }).store.keyFor('mistral')).toBe(replaced);
+
+    expect(registered).toEqual([added, replaced, replaced]);
   });
 
   it('rejects a file in a format it does not know', () => {

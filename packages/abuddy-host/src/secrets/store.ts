@@ -1,10 +1,12 @@
 // The user's API keys: metadata in plain text and each value encrypted (AES-256-GCM) in one file, with the data key in
 // a KeyVault. Listing, selecting, renaming and deleting never need the data key; the data key is read the first time a
 // value is encrypted or decrypted, and kept in memory after that. Values are decrypted on each use. The first status
-// checks the OS vault can be reached, reading an account that holds no item.
+// checks the OS vault can be reached, reading an account that holds no item. Every value it encrypts or decrypts is
+// also recorded as a digest, so logs can mask it (`rememberForRedaction`); no plaintext is kept.
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import { secretRules, secretProviderLabel, toSecretInfo, type ProviderName, type SecretInfo, type SecretProvider, type SecretsStatus } from '@abuddy/sdk/services';
+import { registerSecretValue } from '@abuddy/sdk/utils/internals';
 import { writePrivateFile } from './private-file.ts';
 import { KeyVaultUnavailableError, type KeyVault } from './vault.ts';
 
@@ -48,6 +50,14 @@ export interface SecretsStore {
    */
   onChange(listener: () => void): () => void;
 }
+
+const sha256 = (text: string) => crypto.createHash('sha256').update(text).digest('hex');
+
+/**
+ * Lets redaction mask this value wherever it's printed, without keeping it: only its digest and length are recorded,
+ * and only for values this process handled. It's how keys with no recognizable prefix (Mistral, Cohere) stay out of logs.
+ */
+const rememberForRedaction = (value: string) => { registerSecretValue(value); };
 
 const newKeyId = () => `k_${crypto.randomBytes(12).toString('base64url')}`;
 const account = (keyId: string) => `secrets:${keyId}`;
@@ -154,6 +164,7 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
   const aad = (id: string, provider: SecretProvider) => Buffer.from(`${id}:${provider}`);
 
   const encrypt = (file: SecretsFile, id: string, provider: SecretProvider, value: string): EncryptedValue => {
+    rememberForRedaction(value);
     const key = encryptionKey(file);
     const iv = crypto.randomBytes(12);
     const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
@@ -172,7 +183,9 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
       const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(secret.value.iv, 'base64'), { authTagLength: AUTH_TAG_BYTES });
       decipher.setAAD(aad(secret.id, secret.provider));
       decipher.setAuthTag(tag);
-      return Buffer.concat([decipher.update(Buffer.from(secret.value.data, 'base64')), decipher.final()]).toString('utf8');
+      const value = Buffer.concat([decipher.update(Buffer.from(secret.value.data, 'base64')), decipher.final()]).toString('utf8');
+      rememberForRedaction(value);
+      return value;
     } catch {
       throw unreadable;
     }

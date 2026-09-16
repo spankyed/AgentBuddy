@@ -1,6 +1,7 @@
-// Keeping API keys out of logs: key-shaped strings in text, and the values of credential fields
+// Keeping API keys out of logs: key-shaped strings in text, the values of credential fields, and values the app has used
 import { describe, expect, it } from 'vitest';
 import { REDACTED, redactSecrets, redactSecretText } from '../../src/utils/redact.ts';
+import { registerSecretValue } from '../../src/utils/internals.ts';
 
 describe('redactSecretText', () => {
   it.each([
@@ -63,5 +64,38 @@ describe('redactSecrets', () => {
     const redacted = redactSecrets({ error, at }) as unknown as { error: Record<string, unknown>; at: Date };
     expect(redacted.error).toMatchObject({ name: 'Error', message: `401 for ${REDACTED}`, code: 'E_AUTH', status: 401, cause: { name: 'Error', message: 'socket closed' } });
     expect(redacted.at).toEqual(at);
+  });
+});
+
+// How a key with no recognizable shape (Mistral, Cohere) is caught in text once the app has used it
+describe('a key value the app has used', () => {
+  /** A prefix-less key, and another token of the same shape the app never used */
+  const KEY = 'not-a-real-key-with-no-prefix-01';
+  const OTHER = 'not-a-real-token-no-prefix-0003';
+
+  it('leaves token-like runs alone while nothing is registered', () => {
+    expect(redactSecretText(`key ${KEY} job ${OTHER}`)).toBe(`key ${KEY} job ${OTHER}`);
+  });
+
+  it('masks a registered value in text and in nested data, and nothing else', () => {
+    registerSecretValue(KEY);
+    expect(redactSecretText(`key ${KEY} job ${OTHER}`)).toBe(`key ${REDACTED} job ${OTHER}`);
+    expect(redactSecretText(`{"note":"used ${KEY}"}`)).toBe(`{"note":"used ${REDACTED}"}`);
+    expect(redactSecrets({ note: `used ${KEY}`, job: OTHER })).toEqual({ note: `used ${REDACTED}`, job: OTHER });
+  });
+
+  it('masks a value printed against punctuation, in a longer run or between separators', () => {
+    registerSecretValue(KEY);
+    expect(redactSecretText(`Incorrect API key provided: ${KEY}.`)).toBe(`Incorrect API key provided: ${REDACTED}.`);
+    expect(redactSecretText(`MISTRAL_KEY_${KEY}`)).toBe(`MISTRAL_KEY_${REDACTED}`);
+    expect(redactSecretText(`${KEY}-old`)).toBe(`${REDACTED}-old`);
+    expect(redactSecretText(`a.${KEY}.b`)).toBe(`a.${REDACTED}.b`);
+    expect(redactSecretText(`Bearer ${KEY}, retrying`)).toBe(`Bearer ${REDACTED}, retrying`);
+  });
+
+  it('leaves a token that only contains part of a value', () => {
+    registerSecretValue(KEY);
+    expect(redactSecretText(`key ${KEY.slice(0, -1)}`)).toBe(`key ${KEY.slice(0, -1)}`);
+    expect(redactSecretText(`key ${OTHER}`)).toBe(`key ${OTHER}`);
   });
 });
