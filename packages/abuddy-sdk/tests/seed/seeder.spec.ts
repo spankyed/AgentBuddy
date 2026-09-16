@@ -5,7 +5,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { dropAttribute, resetTestData, startTestRuntime } from '../../src/testing/index.ts';
-import { createSeeder } from '../../src/seed/seeder.ts';
+import { createSeeder, markSeededRowUnedited } from '../../src/seed/seeder.ts';
 import { seedHookRegistry } from '../../src/seed/hooks.ts';
 import { findWhere } from '../../src/ears/query-helpers.ts';
 import { getMediaPath } from '../../src/utils/index.ts';
@@ -51,6 +51,33 @@ describe('a row whose seeded values were not recorded', () => {
     dropAttribute(memo('Intro').id, 'seededFields');
     expect(seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]))).toEqual({ created: 0, updated: 0, skipped: 1 });
     expect(memo('Intro').body).toBe('Hello');
+  });
+
+  // Every row an older version seeded is in that state, so without this they would all stay frozen
+  it('takes its record again once a migration marks it unedited, and tracks edits from then on', () => {
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
+    dropAttribute(memo('Intro').id, 'seededFields');
+
+    markSeededRowUnedited(memo('Intro').id);
+
+    expect(seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]))).toEqual({ created: 0, updated: 1, skipped: 0 });
+    expect(memo('Intro').body).toBe('Hello again');
+
+    // The update re-stamped the row with its real fields, so a later edit is honoured as usual
+    edit('Intro', { body: 'mine' });
+    expect(seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello a third time', version: 'v3' }]))).toEqual({ created: 0, updated: 0, skipped: 1 });
+    expect(memo('Intro').body).toBe('mine');
+  });
+
+  it('keeps the fields no seed set: marking it unedited clears nothing', () => {
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]));
+    edit('Intro', { pinned: true });
+    dropAttribute(memo('Intro').id, 'seededFields');
+
+    markSeededRowUnedited(memo('Intro').id);
+    seed(compiled('pack-a', [{ name: 'Intro', body: 'Hello again', version: 'v2' }]));
+
+    expect(memo('Intro')).toMatchObject({ body: 'Hello again', pinned: true });
   });
 });
 

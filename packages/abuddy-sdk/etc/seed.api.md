@@ -29,6 +29,9 @@ export function createSeeder(options: SeederOptions): Seeder;
 export function createSettingsSeeder(): Seeder;
 
 // @public
+export function markSeededRowUnedited(id: EARS.EntityId): void;
+
+// @public
 export interface PackSeedPreviewItem {
     childCount?: number;
     // (undocumented)

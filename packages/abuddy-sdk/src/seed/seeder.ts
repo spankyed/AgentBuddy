@@ -87,6 +87,21 @@ function holdsSeededValues(id: EARS.EntityId, seeded: SeededFields): boolean {
 }
 
 /**
+ * Marks a row seeded before the seeder recorded what it wrote as unedited, so the next seed of changed
+ * data updates it once more instead of skipping it as edited. A migration calls this for rows that still
+ * carry a `sourceHash`; without it every row seeded by an older version stays frozen for good.
+ *
+ * It records an empty field list, which reads back as unedited whatever the row now holds: the values
+ * the old seeder wrote weren't recorded, so there is nothing to compare against. That makes the next
+ * update overwrite an edit the user made before this ran — and it clears no fields, since none are
+ * recorded as seeded. The update re-stamps the row with its real fields, and edits are honoured from
+ * then on.
+ */
+export function markSeededRowUnedited(id: EARS.EntityId): void {
+  updateAttr(id, SEEDED_FIELDS, { fields: [], hash: hashValues([]) } satisfies SeededFields);
+}
+
+/**
  * Seeds `<key>.seed.json` records: finds each record's existing row, creates, updates or skips it,
  * and walks children under their parent row.
  * - `keep-existing` skips an existing row and its subtree.
