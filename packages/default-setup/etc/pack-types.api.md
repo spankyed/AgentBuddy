@@ -220,7 +220,7 @@ declare const AssistantStreamLineSchema: z.ZodObject<{
 }, z.ZodTypeAny, "passthrough">>;
 
 /**
- * `claude auth` — login and status.
+ * `claude auth` — login, logout, status.
  *
  * `login` is interactive by nature (opens a browser for Claude.ai, prompts
  * for SSO, etc.); we expose it anyway for completeness but callers should
