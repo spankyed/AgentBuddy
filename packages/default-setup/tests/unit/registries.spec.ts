@@ -52,8 +52,8 @@ describe('registries/services — feature services assembly', () => {
     const { featureServices } = await import('../../src/__generated__/services');
 
     const expectedKeys = [
-      'database', 'prompt', 'action', 'library', 'browser',
-      'settings', 'textStream', 'chat', 'artifact', 'brain',
+      'database', 'prompt', 'action', 'library',
+      'settings', 'chat', 'artifact', 'brain',
       'cli', 'filesystem', 'threads', 'codex',
     ];
 
