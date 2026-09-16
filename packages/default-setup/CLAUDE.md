@@ -95,10 +95,10 @@ Seed sources compiled to JSON by `abuddy build`, as `abuddy.json` `seedFormats` 
 
 - `actions/`, `prompts/`, `flows/`, `default-settings.ts` — compiled by the SDK's own compilers (the manifest names only their paths)
 - `notes/` — welcome note, compiled with the `notes` format (`markdown-tree` for `Note`: frontmatter fields, `index.md` directories)
-- `library/` — internal docs (`internal/commands/*.md`, the slash commands `services.library.commands()` reads), compiled with the `library` format: `_compilers/library.ts` turns it into Collection and Document records, with sections parsed from the markdown
+- `library/` — internal docs (`internal/commands/*.md`, the editable half of the slash commands `services.library.commands()` lists, the rest declared in `abuddy.json` `commands`), compiled with the `library` format: `_compilers/library.ts` turns it into Collection and Document records, with sections parsed from the markdown
 - `faqs/` — markdown FAQ files, compiled with the `faqs` format (`_compilers/faqs.ts`), not seeded; `settings/be/faqs.ts` reads `faqs.seed.json`
 - `_compilers/` — the formats' compiler modules, bundled into `dist/build/seed-compilers.mjs` so dependents can use the formats
-- `hooks/` — seed hooks for Note (`notes.ts`) and Document/Collection (`library.ts`), registered through `seedHooks` in `abuddy.json`
+- `hooks/` — seed hooks for Note (`notes.ts`) and Document/Collection (`library.ts`), registered through `seedHooks` in `abuddy.json`. Collection is a `container`, so a dependent pack's documents nest in this pack's folders instead of forking them, and both `find`s match a name within its parent folder
 
 Rows go through those hooks, which call `noteCommands`/`libraryCommands`, whatever pack seeds them. A pack depending on default-setup seeds with its formats by naming them (`{ "path": "src/seeds/notes", "format": "default-setup:notes" }`) and gets the same rows. `tests/unit/seed-parity` compares seeded rows against goldens recorded from the previous pipeline.
 

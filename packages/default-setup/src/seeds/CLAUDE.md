@@ -55,7 +55,7 @@ Markdown under `faqs/`, compiled with the `faqs` format (`_compilers/faqs.ts`) f
 
 ## Seed hooks
 
-`hooks/notes.ts` (`noteSeedHooks`) and `hooks/library.ts` (`documentSeedHooks`, `collectionSeedHooks`) are `SeedHooks` from `@abuddy/sdk/seed`, registered per entity through `abuddy.json` `seedHooks` (`"Note": "src/seeds/hooks/notes.ts#noteSeedHooks"`). An entity type's hooks can be registered by one pack only. Every member is optional; without one the generic seeder does it directly:
+`hooks/notes.ts` (`noteSeedHooks`) and `hooks/library.ts` (`documentSeedHooks`, `collectionSeedHooks`) are `SeedHooks` from `@abuddy/sdk/seed`, registered per entity through `abuddy.json` `seedHooks` (`"Note": "src/seeds/hooks/notes.ts#noteSeedHooks"`). An entity type's hooks can be registered by one pack only. Collection sets `container: true`, so a folder this pack seeded is seeded into by other packs, not copied; both library `find`s match a name within `parentId`. Every member is optional; without one the generic seeder does it directly:
 
 - `find(record, ctx)` — the existing row for a record (`{ id, sourceHash }`), replacing the entry's `identity` match. The seeder first looks up the row by its seed key and only falls back to `find` for rows no seed has claimed
 - `create(record, ctx)` — creates the row, returns its id (call the feature's repository commands, so seeded rows match app-created ones)
@@ -70,8 +70,8 @@ Seeded rows keep their record's `sourceHash` and `seededFields` (a hash of the v
 
 ## Commands
 
-Slash commands (`/name` in chat) are listed by the documents in `library/internal/commands/` (`general.md`, `claude-code.md`, `codex.md`: a `<!-- section:field -->` block of `**name**: placeholder` lines); the chat reads every document in that library folder (`services.library.commands()`). To add one:
+Slash commands (`/name` in chat) come from two places, merged by `services.library.commands()`: `abuddy.json` `commands` (this pack declares `pr2md` and `instructions`; every registered pack's are listed first, in registration order) and the documents in `library/internal/commands/` (`claude-code.md`, `codex.md`: a `<!-- section:field -->` block of `**name**: placeholder` lines), which users can edit from the Library. A document repeating a declared name is ignored. To add one:
 
 1. Create the action (its `category` only groups it in the Actions UI)
 2. Add an `on("user.command", ...)` branch in a flow (`command-listener-flow.ts` for standalone, the Claude Code and Codex flows for `cc-*`/`cdx-*`)
-3. List it in the matching document under `library/internal/commands/`
+3. List it in `abuddy.json` `commands`, or in the matching document under `library/internal/commands/` when users should be able to change it
