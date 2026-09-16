@@ -49,7 +49,8 @@ export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_RESET'; data: SettingsData }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: SettingsData['general']['application']['hotkeys'] }
   | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string }
-  | { type: 'PACK_SEEDS_IMPORTED'; result: Record<string, SeedCounts> }
+  /** `errors` lists the records that couldn't be seeded (`<key>: <error>`); the rest were imported */
+  | { type: 'PACK_SEEDS_IMPORTED'; result: Record<string, SeedCounts>; errors: string[] }
   | { type: 'PACK_SEEDS_IMPORT_FAILED'; error: string }
   | { type: 'PACK_SEEDS_PREVIEW'; preview: PackSeedsPreview }
   | { type: 'PACK_SEEDS_PREVIEW_FAILED'; error: string }
@@ -274,7 +275,9 @@ export const settingsSystem = setup({
         // Read first: a directory that can't name its pack fails before anything is imported
         const { packId } = previewPackSeeds(ev.directory);
         const result = seedData({ compiledDir: ev.directory, include, mode: ev.mode, verbose: true });
-        system.get(bus).send(emit(settings, { type: 'PACK_SEEDS_IMPORTED', result }));
+        // Seeders report records they couldn't seed in their counts rather than throwing
+        const errors = Object.entries(result).flatMap(([key, counts]) => (counts.errors ?? []).map((error) => `${key}: ${error}`));
+        system.get(bus).send(emit(settings, { type: 'PACK_SEEDS_IMPORTED', result, errors }));
         // The running systems read what the seeds changed (the chat's slash commands, the library's documents)
         system.get(bus).send({ type: 'PACK_CHANGED', packId });
         if (ev.restartBrain) {

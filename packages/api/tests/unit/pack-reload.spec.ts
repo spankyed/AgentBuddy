@@ -1,5 +1,6 @@
 // Reloading a pack loads and registers its rebuilt runtime before the running one shuts down: a rebuild that
 // fails to load, or whose registration is refused, leaves the running pack as it was.
+import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -20,7 +21,7 @@ registerHostModule('logger', { createLogger: () => ({ debug: noop, info: noop, w
 
 const { registerPack, unregisterPack, getPackRegistration, publishHostPackArtifacts } = await import('@abuddy/host/packs');
 const { registerRepository } = await import('@abuddy/sdk/ears');
-const { registerSeeder } = await import('@abuddy/sdk/utils');
+const { registerSeeders, unregisterSeeders } = await import('@abuddy/sdk/utils');
 const { registerShutdownHook, removeShutdownHooksForKey } = await import('@abuddy/sdk/utils');
 const { reloadExternalPack, reloadBuiltInPack } = await import('@/packs/pack-reload');
 const { loadBuiltInPacks, getBuiltInPackInfos } = await import('@/packs/pack-loader');
@@ -81,6 +82,7 @@ afterEach(() => {
     try { unregisterPack(id); } catch { /* not registered */ }
   }
   removeShutdownHooksForKey(PACK_ID);
+  unregisterSeeders('built-in-pack');
   for (const [key, value] of [['ABUDDY_ENV', origEnv.env], ['ABUDDY_USER_DATA_DIR', origEnv.userDataDir]] as const) {
     if (value === undefined) delete process.env[key];
     else process.env[key] = value;
@@ -106,6 +108,10 @@ describe('reloading a built-in pack', () => {
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: BUILT_IN_ID, name: BUILT_IN_ID, version: '1.0.0', builtIn: true, ...manifest }));
     fs.writeFileSync(path.join(packDir, 'dist', 'snapshot.json'), '{"types":{}}');
     writeSeeds('[{ "label": "first" }]');
+    // The index naming the pack, and the runtime built beside it
+    const seedsIndex = JSON.stringify({ version: 1, packId: BUILT_IN_ID, seeds: [] });
+    fs.writeFileSync(path.join(packDir, 'dist', 'seeds.json'), seedsIndex);
+    fs.writeFileSync(path.join(packDir, 'dist', 'runtime', 'seeds-index.sha256'), createHash('sha256').update(seedsIndex).digest('hex'));
     fs.writeFileSync(path.join(packDir, 'dist', 'runtime', 'index.cjs'), `
       let compiledDir = '';
       module.exports = {
@@ -148,14 +154,14 @@ describe('reloading a built-in pack', () => {
     // The reason lives in meta: the logger redacts an Error into { name, message, stack }
     stopLogging = rootEvents.onLog((event) => { if (event.level === 'error') loggedErrors.push(`${event.message} ${JSON.stringify(event.meta ?? {})}`); });
     internalSettings = {};
-    registerSeeder({
+    registerSeeders(BUILT_IN_ID, [{
       key: 'actions',
       // A seeder reports the records it couldn't seed in its counts; it doesn't throw
       seed: ({ compiledDir }) => {
         seeded.push(compiledDir);
         return { created: 1, updated: 0, skipped: recordsThatFail.length, ...(recordsThatFail.length > 0 && { errors: recordsThatFail }) };
       },
-    });
+    }]);
     registerRepository('settingsQueries', {
       getInternalSettings: () => {
         if (seedFailure) throw seedFailure;

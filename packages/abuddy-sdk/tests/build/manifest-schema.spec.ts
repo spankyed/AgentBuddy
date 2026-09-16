@@ -124,6 +124,13 @@ describe('seedFormats and boot.seed entries', () => {
     expect(errorsFor({ actions: { path: 'src/seeds/actions', format: 'memos' } })).toEqual([expect.stringMatching(/"actions" is compiled by the SDK/)]);
   });
 
+  it('rejects seed keys that aren\'t plain names: they become file paths and identifiers', () => {
+    for (const key of ['../x', 'x/y', 'a_b', 'Memos', '']) {
+      expect(errorsFor({ [key]: { path: 'p', format: 'memos' } }), key).toEqual([expect.stringMatching(/Must be a lowercase letter, then lowercase letters, digits and hyphens/)]);
+    }
+    expect(errorsFor({ 'quick-memos': { path: 'p', format: 'memos' } })).toEqual([]);
+  });
+
   it("rejects a format name that isn't in seedFormats, or a dependency prefix that isn't a dependency", () => {
     expect(errorsFor({ memos: { path: 'p', format: 'notes' } })).toEqual([expect.stringMatching(/"boot\.seed\.memos\.format": Seed "memos": no format "notes" in seedFormats/)]);
     expect(errorsFor({ memos: { path: 'p', format: 'other-pack:notes' } })).toEqual([expect.stringMatching(/format "other-pack:notes" names "other-pack", which isn't a dependency/)]);

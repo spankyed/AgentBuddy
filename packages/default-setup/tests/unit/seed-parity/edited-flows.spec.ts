@@ -6,7 +6,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { SEED_INDEX_FILE, seedFile } from '@abuddy/sdk/build';
-import { seedData } from '@abuddy/sdk/utils';
+import { createFlowSeeder, createSeeder } from '@abuddy/sdk/seed';
+import { registerSeeders, seedData, unregisterSeeders } from '@abuddy/sdk/utils';
 import { findWhere } from '@/__generated__/ears';
 import { dropAttribute } from '@abuddy/sdk/testing';
 import { findRelations, tx } from '@abuddy/sdk/ears';
@@ -18,7 +19,10 @@ const flow = (label: string) => findWhere('Flow' as never, 'label', label) as Fl
 const nodesOf = (label: string) => repository.flowsQueries.flowNodes(flow(label)[0].id);
 
 const dirs: string[] = [];
+// Another installed pack seeding flows: its own seeders read the seeds it compiled
+registerSeeders('other-pack', [createSeeder({ key: 'actions', identity: ['label'] }), createSeeder({ key: 'prompts', identity: ['label'] }), createFlowSeeder()]);
 afterAll(() => {
+  unregisterSeeders('other-pack');
   for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true });
 });
 

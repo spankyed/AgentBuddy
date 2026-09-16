@@ -215,16 +215,24 @@ describe('activating and tearing down a pack at runtime', () => {
     expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
   });
 
-  it('drops its commands when torn down, and tells the systems still running after stopping its own', async () => {
+  it('drops its commands and seeders when torn down, and tells the systems still running after stopping its own', async () => {
     await install();
     const { activatePack, teardownPack } = await import('@/packs/pack-lifecycle');
     const { getPackCommands } = await import('@abuddy/sdk/framework');
+    const { registerSeeders, seedData } = await import('@abuddy/sdk/utils');
     activatePack(PACK_ID, bus as never);
+    // What the pack's generated seeders module registers when its runtime loads
+    registerSeeders(PACK_ID, [{ key: 'memos', seed: () => ({ created: 1, updated: 0, skipped: 0 }) }]);
+    const compiledDir = path.join(tmpDir, 'compiled-seeds');
+    fs.mkdirSync(compiledDir);
+    fs.writeFileSync(path.join(compiledDir, 'seeds.json'), JSON.stringify({ version: 1, packId: PACK_ID, seeds: [] }));
+    expect(Object.keys(seedData({ compiledDir }))).toEqual(['memos']);
     bus.send.mockReset();
 
     teardownPack(PACK_ID, bus as never);
 
     expect(getPackCommands()).toEqual([]);
+    expect(seedData({ compiledDir })).toEqual({});
     expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['TEARDOWN_PACK', 'PACK_CHANGED']);
     expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
   });

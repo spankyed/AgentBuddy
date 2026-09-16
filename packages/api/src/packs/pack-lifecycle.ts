@@ -4,7 +4,7 @@ import { createLogger } from '@/core/shared/debug/logger';
 import { unregisterPack, getPackContributions } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import type { PackManifest } from '@abuddy/host/packs';
-import { registerShutdownHook, runShutdownHooksForKey, seedData } from '@abuddy/sdk/utils';
+import { registerShutdownHook, runShutdownHooksForKey, seedData, unregisterSeeders } from '@abuddy/sdk/utils';
 import { invalidateEventValidationMap } from '@/systems';
 import { invalidatePartitionPolicy } from '@/core/ears/attribute-storage';
 import { loadSingleExternalPack, clearPackRequireCache, registerExternalPacks } from './pack-loader';
@@ -35,6 +35,8 @@ export function teardownPack(
   } catch {
     logger.info(`Pack ${packId} was not previously registered`);
   }
+  // Not part of unregisterPack: a reload loads the fresh module, which registers its seeders, before unregistering
+  unregisterSeeders(packId);
 
   invalidateEventValidationMap();
   invalidatePartitionPolicy();

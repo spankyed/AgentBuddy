@@ -1,8 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { SEED_INDEX_FILE, type SeedIndex } from '../build/seed-compiler.ts';
+import type { SeedIndex } from '../build/seed-compiler.ts';
 import type { PackSeedsPreview } from '../build/preview.ts';
-import { indexPackId } from './seeder.ts';
+import { indexPackId, SEED_INDEX_FILE } from '../utils/seed.ts';
 
 export type { PackSeedsPreview, PackSeedPreviewItem } from '../build/preview.ts';
 

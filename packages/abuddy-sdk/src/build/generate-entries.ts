@@ -522,7 +522,7 @@ import { featureServices } from './services.js';
 import { EARS } from './ears.js';
 ${hooksImport}
 import './seeders.js';
-${hookEntries.map(([entity, path, exportName]) => `import { ${exportName} as __seedHooks_${entity} } from '${path}';`).join('\n')}
+${hookEntries.map(([, path, exportName], i) => `import { ${exportName} as __seedHooks_${i} } from '${path}';`).join('\n')}
 ${settingsImports}
 ${manifest.migrations ? `import { migrations } from '${toImportPath(root, manifest.migrations)}';` : ''}
 ${stepsRegister ? `import { steps } from '${toImportPath(root, stepsRegister)}';` : ''}
@@ -538,7 +538,7 @@ export const registration: PackRegistration = {
 ${stepsRegister ? '  steps,' : ''}
 ${manifest.artifacts ? '  artifacts,' : ''}
 ${manifest.blocks ? '  blocks,' : ''}
-${hookEntries.length > 0 ? `  seedHooks: { ${hookEntries.map(([entity]) => `${entity}: __seedHooks_${entity}`).join(', ')} },` : ''}
+${hookEntries.length > 0 ? `  seedHooks: { ${hookEntries.map(([entity], i) => `${JSON.stringify(entity)}: __seedHooks_${i}`).join(', ')} },` : ''}
 ${commands.length ? `  commands: ${JSON.stringify(commands)},` : ''}
   ears: {
     // Only this pack's own: EARS also names its dependencies' and the SDK's, which they register
@@ -962,14 +962,14 @@ ${entries.map(([name]) => `registerRepository('${name}', __repo_${name});`).join
     return `${HEADER}
 import type { SeedRuntime } from '@abuddy/sdk/testing';
 ${repositories.map(([name, path, exportName]) => `import { ${exportName} as __repo_${name} } from '${path}';`).join('\n')}
-${hooks.map(([entity, path, exportName]) => `import { ${exportName} as __seedHooks_${entity} } from '${path}';`).join('\n')}
+${hooks.map(([, path, exportName], i) => `import { ${exportName} as __seedHooks_${i} } from '${path}';`).join('\n')}
 
 export const seedRuntime: SeedRuntime = {
   id: ${JSON.stringify(manifest.id)},
   entities: ${JSON.stringify(manifest.entities ?? {})},
   relKinds: ${JSON.stringify(manifest.relKinds ?? {})},
   repositories: { ${repositories.map(([name]) => `${name}: __repo_${name}`).join(', ')} },
-  seedHooks: { ${hooks.map(([entity]) => `${entity}: __seedHooks_${entity}`).join(', ')} },
+  seedHooks: { ${hooks.map(([entity], i) => `${JSON.stringify(entity)}: __seedHooks_${i}`).join(', ')} },
 };
 `;
   }
@@ -1046,14 +1046,14 @@ export type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } fr
       if (seed.kind === 'seeder') {
         const importName = `__seeder_${toIdentifier(key)}`;
         packImports.push(`import { seed as ${importName} } from '${toImportPath(root, seed.seeder)}';`);
-        registrations.push(`registerSeeder({ key: ${JSON.stringify(key)}, seed: ${importName} });`);
+        registrations.push(`{ key: ${JSON.stringify(key)}, seed: ${importName} }`);
         continue;
       }
 
       if (seed.kind === 'specialty') {
         const specialty = SPECIALTY_SEEDERS[key];
         seedImports.add(specialty.factory);
-        registrations.push(`registerSeeder(${specialty.factory}(${specialty.args}));`);
+        registrations.push(`${specialty.factory}(${specialty.args})`);
         continue;
       }
 
@@ -1073,18 +1073,20 @@ export type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } fr
         ...(format.tree?.relKind && { relKind: format.tree.relKind }),
         ...(format.media && { media: true }),
       };
-      registrations.push(`registerSeeder(createSeeder(${JSON.stringify(options)}));`);
+      registrations.push(`createSeeder(${JSON.stringify(options)})`);
     }
 
     if (registrations.length === 0) return `${HEADER}\n${COMPILED_DIR_ACCESSORS}`;
 
     return `${HEADER}
 ${seedImports.size > 0 ? `import { ${Array.from(seedImports).join(', ')} } from '@abuddy/sdk/seed';` : ''}
-import { registerSeeder, seedData, type SeedCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
+import { registerSeeders, seedData, type SeedCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
 ${packImports.join('\n')}
 
 ${COMPILED_DIR_ACCESSORS}
-${registrations.join('\n')}
+registerSeeders(${JSON.stringify(manifest.id)}, [
+${registrations.map((registration) => `  ${registration},`).join('\n')}
+]);
 
 export { seedData };
 export type { SeedCounts, SeedIncludeSet };

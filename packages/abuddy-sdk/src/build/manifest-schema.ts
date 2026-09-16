@@ -78,7 +78,8 @@ export const SeedEntryConfigSchema = z.object({
   seeder: z.string().describe('A pack module exporting seed(ctx), used instead of a format and the generic seeder.').optional(),
 }).strict();
 
-const SeedSectionSchema = z.record(z.string(), z.union([z.string(), SeedEntryConfigSchema])).superRefine((seed, ctx) => {
+// Seed keys name files and folders in the compiled output (<key>.seed.json, media/<key>) and generated identifiers
+const SeedSectionSchema = z.record(z.string().regex(SEED_FORMAT_NAME, 'Must be a lowercase letter, then lowercase letters, digits and hyphens'), z.union([z.string(), SeedEntryConfigSchema])).superRefine((seed, ctx) => {
   for (const [key, entry] of Object.entries(seed)) {
     if (SPECIALTY_SEED_KEYS.includes(key)) {
       if (typeof entry === 'object' && (!entry.path || Object.keys(entry).some((field) => field !== 'path'))) {

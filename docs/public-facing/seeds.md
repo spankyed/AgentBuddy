@@ -477,7 +477,7 @@ An entry can't set or change any format settings; a pack that needs different se
 ### Markdown
 
 - Each `.md` file is a record. Frontmatter is YAML 1.2, so `title: 2024` reads as a number; `"type": "string"` coerces it back.
-- `fields` maps record fields to a source: `body` (the markdown after the frontmatter), `filename` (the file or directory name with dashes as spaces), `path` (relative to the entry's `path`) or `frontmatter.<name>`. `default` applies when the source is absent; `"filename"` as a default means the display name. A field with no value and no `default` is left out of the record. Seeds track the fields a record sets (see [Change tracking](#change-tracking)), so leave defaults a user may change, like flags, to the entity's defaults or a `create` hook.
+- `fields` maps record fields to a source: `body` (the markdown after the frontmatter), `filename` (the file or directory name with dashes as spaces), `path` (relative to the entry's `path`) or `frontmatter.<name>`. `default` applies when the source is absent, `null` or an empty string (`title:` or `title: ""`); `"filename"` as a default means the display name. A field with no value and no `default` is left out of the record. Seeds track the fields a record sets (see [Change tracking](#change-tracking)), so leave defaults a user may change, like flags, to the entity's defaults or a `create` hook.
 - With `tree`, each subdirectory is a parent record (its `branch` file gives its frontmatter and body, `branchEntity` its type) and its files are children, linked with `relKind`. Without `tree`, only the top-level files are read.
 - `media` is a directory under the entry's `path`, copied with the seeds; `![alt](media/pic.png)` links are rewritten to the row's `media://<id>/pic.png`.
 

@@ -387,16 +387,20 @@ describe('seedPackData: failures', () => {
   });
 
   it("never runs the host-owned settings seeder for a pack (it resets the user's settings)", async () => {
-    const { registerSeeder, seedData } = await import('@abuddy/sdk/utils');
+    const { registerSeeders, unregisterSeeders, seedData } = await import('@abuddy/sdk/utils');
     const pack = installedPack('with-settings');
     writeRegistry(['with-settings']);
     fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'settings.seed.json'), '{"plugins": {}}');
     const settingsSeed = vi.fn(() => ({ created: 0, updated: 1, skipped: 0 }));
     const actionsSeed = vi.fn(() => ({ created: 1, updated: 0, skipped: 0 }));
-    registerSeeder({ key: 'settings', seed: settingsSeed });
-    registerSeeder({ key: 'actions', seed: actionsSeed });
+    fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'seeds.json'), JSON.stringify({ version: 1, packId: 'with-settings', seeds: [] }));
+    registerSeeders('with-settings', [{ key: 'settings', seed: settingsSeed }, { key: 'actions', seed: actionsSeed }]);
 
-    seedPackData([pack], seedData, () => ({}), () => {});
+    try {
+      seedPackData([pack], seedData, () => ({}), () => {});
+    } finally {
+      unregisterSeeders('with-settings');
+    }
 
     expect(actionsSeed).toHaveBeenCalledOnce();
     expect(settingsSeed).not.toHaveBeenCalled();

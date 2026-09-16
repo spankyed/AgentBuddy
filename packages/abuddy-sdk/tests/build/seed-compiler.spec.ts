@@ -64,6 +64,14 @@ describe('compilePack', () => {
     expect(result.seeds).toEqual({ memos: 3 });
   });
 
+  it('gives empty frontmatter values the default', async () => {
+    write('seeds/memos/blank.md', '---\ntitle:\npinned:\n---\nBlank\n');
+    write('seeds/memos/empty-string.md', '---\ntitle: ""\n---\nEmpty\n');
+    await compile({ memos: memosFormat }, { memos: { path: 'seeds/memos', format: 'memos' } });
+    const { records } = read('memos.seed.json');
+    expect(records.map((r: { title: string; pinned: boolean }) => [r.title, r.pinned])).toEqual([['blank', false], ['empty string', false]]);
+  });
+
   it("replaces its earlier output: a dropped key or media doesn't linger, other files in the dir stay", async () => {
     write('seeds/memos/first.md', 'Hello\n');
     write('seeds/memos/media/pic.png', 'PNG');

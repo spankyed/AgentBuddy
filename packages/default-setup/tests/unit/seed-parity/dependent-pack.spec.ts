@@ -49,8 +49,8 @@ describe('a pack depending on default-setup seeds with its formats', () => {
       expect(Object.keys(entry as object).sort()).toEqual(['format', 'path']);
     }
     const files = generatePackFiles(manifest, { packRoot: FIXTURE, depSnapshots: new Map([['default-setup', depSnapshot]]) });
-    expect(files['src/__generated__/seeders.ts']).toContain('registerSeeder(createSeeder({"key":"team-notes","identity":["title","parent"],"relKind":"contains"}));');
-    expect(files['src/__generated__/seeders.ts']).toContain('registerSeeder(createSeeder({"key":"team-docs","identity":["name"],"media":true}));');
+    expect(files['src/__generated__/seeders.ts']).toContain('  createSeeder({"key":"team-notes","identity":["title","parent"],"relKind":"contains"}),');
+    expect(files['src/__generated__/seeders.ts']).toContain('  createSeeder({"key":"team-docs","identity":["name"],"media":true}),');
     expect(files['src/__generated__/pack-entry.ts']).not.toContain('seedHooks');
     // Without the dependency, its formats can't be resolved
     expect(() => generatePackFiles({ ...manifest, dependencies: {} }, { packRoot: FIXTURE })).toThrow(`format "default-setup:notes" names "default-setup", which isn't a resolved dependency`);

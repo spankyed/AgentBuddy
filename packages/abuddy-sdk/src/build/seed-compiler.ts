@@ -6,6 +6,7 @@ import type { PackSeedPreviewItem } from './preview.ts';
 import { SPECIALTY_COMPILERS } from './compilers/standard.ts';
 import { buildPackConfigFromManifest, resolveFeatureSettingsFromManifest } from './manifest-bridge.ts';
 import { seedFile } from './manifest.ts';
+import { SEED_INDEX_FILE } from '../utils/seed.ts';
 import {
   checkRecordEntities, compileBuiltinFormat, formatEntities, recordLabel, withSourceHashes,
   type SeedCompileContext, type SeedCompilerModule, type SeedRecord,
@@ -72,7 +73,7 @@ export interface SeedIndexEntry {
   items: PackSeedPreviewItem[];
 }
 
-export const SEED_INDEX_FILE = 'seeds.json';
+export { SEED_INDEX_FILE };
 
 // ============================================================================
 // Orchestrator

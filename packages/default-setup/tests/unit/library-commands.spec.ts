@@ -6,7 +6,8 @@ import * as os from 'node:os'
 import * as path from 'node:path'
 import { afterAll, afterEach, describe, expect, it } from 'vitest'
 import { startApp, type TestApp } from '@abuddy/testing/harness'
-import { seedData } from '@abuddy/sdk/utils'
+import { registerSeeders, seedData, unregisterSeeders } from '@abuddy/sdk/utils'
+import { createSeeder } from '@abuddy/sdk/seed'
 // The registry the host's pack registration writes: here it stands in for another pack registering
 import { packCommandsRegistry } from '@abuddy/sdk/framework'
 import { repository } from '@/__generated__/repository'
@@ -26,7 +27,13 @@ const documentNamed = (name: string) => repository.libraryQueries.getDocuments()
 afterEach(() => packCommandsRegistry.unregister('team-notes'))
 
 const dependentDirs: string[] = []
+// The dependent pack's seeders, as its generated seeders module registers them for default-setup's formats
+registerSeeders('team-notes', [
+  createSeeder({ key: 'library', identity: ['name'], media: true }),
+  createSeeder({ key: 'notes', identity: ['title', 'parent'], relKind: 'contains' }),
+])
 afterAll(() => {
+  unregisterSeeders('team-notes')
   for (const dir of dependentDirs) fs.rmSync(dir, { recursive: true, force: true })
 })
 
@@ -117,6 +124,23 @@ describe('slash commands from the library commands folder', () => {
 
     expect(failed.error).toContain("doesn't name the pack that compiled these seeds")
     expect(app.emitted('settings').map((event) => event.type)).not.toContain('PACK_SEEDS_IMPORTED')
+  })
+
+  it("reports the records an import from Settings couldn't seed, with the counts of the rest", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'failing-seeds-'))
+    dependentDirs.push(dir)
+    fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, packId: manifest.id, seeds: [] }))
+    const note = (title: string) => ({ entity: 'Note', title, noteType: 'document', content: 'x', sourceHash: `hash-${title}` })
+    fs.writeFileSync(path.join(dir, 'notes.seed.json'), JSON.stringify({ records: [note(''), note('kept')] }))
+    const app = await startApp({ systems: ['library', 'threads', 'brain', 'settings'] })
+    await app.connect()
+
+    await app.send('settings', { type: 'IMPORT_PACK_SEEDS', directory: dir, include: { notes: null }, mode: 'replace-on-collision', restartBrain: false })
+    const imported = await app.nextEmit('settings', 'PACK_SEEDS_IMPORTED') as unknown as { result: Record<string, { created: number }>; errors: string[] }
+
+    expect(imported.result.notes.created).toBe(1)
+    expect(imported.errors).toHaveLength(1)
+    expect(imported.errors[0]).toMatch(/^notes: .*Title is required/)
   })
 
   it('sends the chat the commands pack seeds imported from Settings bring', async () => {

@@ -10,7 +10,7 @@ import { createEntityWithDefaults, updateEntity } from '../ears/transaction-help
 import { findAll, findByIdRaw, findWhere } from '../ears/query-helpers.ts';
 import { getMediaPath, loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.ts';
 import { seedPath } from '../build/manifest.ts';
-import { SEED_INDEX_FILE, type SeedIndex } from '../build/seed-compiler.ts';
+import { seedingPackId } from '../utils/seed.ts';
 import { RECORD_KEYS, recordLabel, type CompiledSeedFile, type SeedRecord } from '../build/seeds/records.ts';
 import { seedHookRegistry, type SeedHookContext, type SeedHookMatch, type SeedHooks } from './hooks.ts';
 
@@ -52,23 +52,6 @@ function hashValues(values: unknown[]): string {
 
 function hashStoredFields(id: EARS.EntityId, fields: string[]): string {
   return hashValues(fields.map((field) => getAttr(id, field as EARS.AttrKind) ?? null));
-}
-
-/**
- * The pack that compiled a seeds directory, from its seeds.json. Seed keys start with it, so two
- * packs' records with the same entry key and identity seed a row each.
- */
-export function seedingPackId(compiledDir: string): string {
-  const indexFile = path.join(compiledDir, SEED_INDEX_FILE);
-  return indexPackId(loadJSON<Partial<SeedIndex>>(indexFile), indexFile);
-}
-
-/** The pack a parsed seeds index names; an index from before packs were recorded names none */
-export function indexPackId(index: Partial<SeedIndex> | null, indexFile: string): string {
-  if (!index?.packId) {
-    throw new Error(`${indexFile} doesn't name the pack that compiled these seeds: rebuild the pack with abuddy build`);
-  }
-  return index.packId;
 }
 
 /** A record's place in its entry: the entry key, then each ancestor's and its own entity and identity */

@@ -11,7 +11,8 @@ import { isFlowConfig, type FlowDSL } from '../build/compilers/flow-types.ts';
 import { EARS } from '../types/entities.ts';
 import type { ActionEntity, FlowEntity } from '../types/sdk-entities.ts';
 import type { CompiledRows } from '../build/compilers/flow-compiler.ts';
-import { childSeedKey, SEED_KEY, seedingPackId, seedKeyPrefix } from './seeder.ts';
+import { childSeedKey, SEED_KEY, seedKeyPrefix } from './seeder.ts';
+import { seedingPackId } from '../utils/seed.ts';
 
 /** What the seeder wrote for a flow: its row's fields, each node's fields, the relation kinds between them, and a hash of their stored state */
 interface SeededGraph {

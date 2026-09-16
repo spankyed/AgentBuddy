@@ -61,7 +61,10 @@ function fieldValue(item: MarkdownItem, spec: SeedFieldSpec): unknown {
   else if (from === 'filename') value = item.displayName;
   else if (from === 'path') value = item.path;
   else value = item.frontmatter[from.slice('frontmatter.'.length)];
-  if (value === undefined) value = spec.default === 'filename' ? item.displayName : spec.default;
+  // An empty frontmatter value (`title:` or `title: ""`) takes the default too
+  if ((value === undefined || value === null || value === '') && spec.default !== undefined) {
+    value = spec.default === 'filename' ? item.displayName : spec.default;
+  }
   if (spec.type === 'string' && value !== undefined && value !== null) value = String(value);
   return value;
 }

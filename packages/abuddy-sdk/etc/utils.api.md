@@ -193,8 +193,8 @@ export function redactSecrets<T>(value: T): T;
 // @public
 export function redactSecretText(text: string): string;
 
-// @public (undocumented)
-export function registerSeeder(seeder: Seeder): void;
+// @public
+export function registerSeeders(packId: string, seeders: Seeder[]): void;
 
 // @public (undocumented)
 export function registerShutdownHook(hook: () => void, key?: string): void;
@@ -303,7 +303,7 @@ export interface SeedCounts {
     updated: number;
 }
 
-// @public (undocumented)
+// @public
 export function seedData(options: {
     compiledDir: string;
     include?: Record<string, SeedIncludeSet | undefined>;
@@ -366,6 +366,9 @@ export function toSlug(name: string): string;
 
 // @public (undocumented)
 export function uniqueFilename(name: string, existingNames: Set<string>): string;
+
+// @internal
+export function unregisterSeeders(packId: string): void;
 
 // @public (undocumented)
 export function writeExportFile(dir: string, filename: string, content: string): string;

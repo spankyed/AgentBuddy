@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { transformSync } from 'esbuild';
 import ts from 'typescript';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { depTypesFile, depTypesVersion, entitiesWithoutShapes, generatePackFiles, PACK_TYPES_DEF } from '../../src/build/generate-entries.ts';
@@ -361,9 +362,9 @@ describe('generated seeders', () => {
       } },
     });
     const seeders = files['src/__generated__/seeders.ts'];
-    expect(seeders).toContain("registerSeeder(createSeeder({ key: 'actions', identity: ['label'] }));");
-    expect(seeders).toContain('registerSeeder(createFlowSeeder());');
-    expect(seeders).toContain('registerSeeder(createSeeder({"key":"memos","identity":["title","parent"],"relKind":"has_memo","media":true}));');
+    expect(seeders).toContain(`registerSeeders("demo-pack", [\n  createSeeder({ key: 'actions', identity: ['label'] }),`);
+    expect(seeders).toContain('  createFlowSeeder(),');
+    expect(seeders).toContain('  createSeeder({"key":"memos","identity":["title","parent"],"relKind":"has_memo","media":true}),');
     expect(seeders).not.toContain('faqs');
     expect(files['src/__generated__/pack-entry.ts']).toContain('artifacts: ["actions", "flows", "memos"],');
   });
@@ -371,7 +372,7 @@ describe('generated seeders', () => {
   it("uses a dependency's format settings for an entry naming it", () => {
     const deps = { 'base-pack': { ...dependency({ seedFormats: { notes: { format: 'markdown-tree', entity: 'Note', identity: ['title'], tree: { branch: 'index.md' } } } }), types: { entities: { Note: 'Note' }, relKinds: {} } } };
     const seeders = generate({ dependencies: { 'base-pack': '*' }, boot: { seed: { team: { path: 'src/seeds/team', format: 'base-pack:notes' } } } }, deps)['src/__generated__/seeders.ts'];
-    expect(seeders).toContain('registerSeeder(createSeeder({"key":"team","identity":["title"]}));');
+    expect(seeders).toContain('  createSeeder({"key":"team","identity":["title"]}),');
     expect(() => generate({ dependencies: { 'base-pack': '*' }, boot: { seed: { team: { path: 'p', format: 'base-pack:missing' } } } }, deps))
       .toThrow('Seed "team": dependency "base-pack" has no format "missing"');
   });
@@ -379,7 +380,7 @@ describe('generated seeders', () => {
   it("registers a pack seeder module under a seed key that isn't an identifier", () => {
     const seeders = generate({ boot: { seed: { 'my-memos': { seeder: 'src/seeds/memos.ts' } } } })['src/__generated__/seeders.ts'];
     expect(seeders).toContain("import { seed as __seeder_my_memos } from '../seeds/memos.js';");
-    expect(seeders).toContain('registerSeeder({ key: "my-memos", seed: __seeder_my_memos });');
+    expect(seeders).toContain('  { key: "my-memos", seed: __seeder_my_memos },');
   });
 
   it('accepts format entities from the SDK and dependencies, and rejects one nobody declares', () => {
@@ -398,10 +399,22 @@ describe('generated seeders', () => {
   it("registers the pack's seed hooks by entity type", () => {
     write('src/memo-hooks.ts', 'export const memoSeedHooks = {};');
     const entry = generate({ entities: { Memo: 'Memo' }, seedHooks: { Memo: 'src/memo-hooks.ts#memoSeedHooks' } })['src/__generated__/pack-entry.ts'];
-    expect(entry).toContain("import { memoSeedHooks as __seedHooks_Memo } from '../memo-hooks.js';");
-    expect(entry).toContain('seedHooks: { Memo: __seedHooks_Memo },');
+    expect(entry).toContain("import { memoSeedHooks as __seedHooks_0 } from '../memo-hooks.js';");
+    expect(entry).toContain('seedHooks: { "Memo": __seedHooks_0 },');
     expect(() => generate({ entities: { Memo: 'Memo' }, seedHooks: { Memo: 'src/memo-hooks.ts#missing' } }))
       .toThrow(`Seed hooks for "Memo": src/memo-hooks.ts doesn't export "missing"`);
+  });
+
+  it('names seed hook imports validly whatever the entity is called', () => {
+    write('src/hooks.ts', 'export const docHooks = {};\nexport const noteHooks = {};');
+    const files = generate({
+      entities: { 'team-doc': 'team-doc', 'team.note': 'team.note' },
+      seedHooks: { 'team-doc': 'src/hooks.ts#docHooks', 'team.note': 'src/hooks.ts#noteHooks' },
+    });
+    for (const file of ['src/__generated__/pack-entry.ts', 'src/__generated__/seed-runtime.ts']) {
+      expect(() => transformSync(files[file], { loader: 'ts' }), file).not.toThrow();
+      expect(files[file]).toContain('seedHooks: { "team-doc": __seedHooks_0, "team.note": __seedHooks_1 },');
+    }
   });
 });
 

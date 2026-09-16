@@ -34,7 +34,9 @@ export interface PackSeedsImport {
   expanded: Record<string, boolean>;
   importMode: ImportMode;
   restartBrain: boolean;
-  result: any | null;
+  result: Record<string, { created: number; updated: number; skipped: number }> | null;
+  /** Records the import couldn't seed, when it finished */
+  errors: string[];
   error: string | null;
 }
 
@@ -49,6 +51,7 @@ function freshPackSeeds(): PackSeedsImport {
     importMode: 'replace-on-collision',
     restartBrain: false,
     result: null,
+    errors: [],
     error: null,
   };
 }
@@ -89,7 +92,7 @@ type UIEvent =
   | { type: 'APP.RESET' }
 
 export type SettingsEvents = UIEvent | OutgoingSettingsEvents | TrailClickEvent
-  | { type: 'PACK_SEEDS_IMPORTED'; result: any }
+  | { type: 'PACK_SEEDS_IMPORTED'; result: Record<string, { created: number; updated: number; skipped: number }>; errors: string[] }
   | { type: 'PACK_SEEDS_IMPORT_FAILED'; error: string }
   | { type: 'PACK_SEEDS_PREVIEW'; preview: PackSeedsPreview }
   | { type: 'PACK_SEEDS_PREVIEW_FAILED'; error: string }
@@ -242,6 +245,7 @@ const settingsState = setup({
           selection: {},
           expanded: {},
           result: null,
+          errors: [],
           error: null,
         },
       };
@@ -258,6 +262,7 @@ const settingsState = setup({
           selection,
           expanded: {},
           result: null,
+          errors: [],
           error: null,
         },
       };
@@ -271,6 +276,7 @@ const settingsState = setup({
           status: 'error' as const,
           preview: null,
           result: null,
+          errors: [],
           error: ev.error,
         },
       };
@@ -351,6 +357,7 @@ const settingsState = setup({
           ...context.packSeedsImport,
           status: 'importing' as const,
           result: null,
+          errors: [],
           error: null,
         },
       };
@@ -361,12 +368,13 @@ const settingsState = setup({
     })),
 
     setPackSeedsImported: assign(({ context, event }) => {
-      const ev = event as { type: 'PACK_SEEDS_IMPORTED'; result: any };
+      const ev = event as Extract<SettingsEvents, { type: 'PACK_SEEDS_IMPORTED' }>;
       return {
         packSeedsImport: {
           ...context.packSeedsImport,
           status: 'success' as const,
           result: ev.result,
+          errors: ev.errors,
           error: null,
         },
       };
@@ -379,6 +387,7 @@ const settingsState = setup({
           ...context.packSeedsImport,
           status: 'error' as const,
           result: null,
+          errors: [],
           error: ev.error,
         },
       };

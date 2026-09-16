@@ -247,8 +247,8 @@ describe('Tier 6 — Utility delegates', () => {
   });
 
   it('seed helpers are callable', async () => {
-    const { registerSeeder, seedData, loadJSON } = await import('@abuddy/sdk/utils');
-    expect(typeof registerSeeder).toBe('function');
+    const { registerSeeders, seedData, loadJSON } = await import('@abuddy/sdk/utils');
+    expect(typeof registerSeeders).toBe('function');
     expect(typeof seedData).toBe('function');
     expect(typeof loadJSON).toBe('function');
   });

@@ -37,7 +37,7 @@ export type { CliName } from './resolve-cli.ts';
 
 // --- Seed (direct) ---
 export {
-  registerSeeder, seedData, seedCollection,
+  registerSeeders, unregisterSeeders, seedData, seedCollection,
   loadJSON, shouldSeedAll, filterByInclude,
 } from './seed.ts';
 export type { SeedCounts, SeedIncludeSet, ImportMode, SeederContext, Seeder } from './seed.ts';

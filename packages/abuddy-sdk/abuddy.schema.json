@@ -299,6 +299,9 @@
               }
             ]
           },
+          "propertyNames": {
+            "pattern": "^[a-z][a-z0-9-]*$"
+          },
           "description": "Seed data sources. Keys are seed names; the specialty keys (actions, prompts, flows, settings) take a path, other keys an entry object."
         },
         "seedPolicy": {

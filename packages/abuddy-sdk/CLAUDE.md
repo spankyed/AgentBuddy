@@ -44,7 +44,7 @@ Each directory is one `package.json` export (`./<dir>` → `src/<dir>/index.ts`)
   - Pack entries and ids: `pack-entry.ts` (the `PackRegistration`; systems whose feature has designation `settings` come first), `pack-entry-fe.ts`, `system-ids.ts`, and `bus-ids.ts` (import-free so FE code can use it; ids are `<packId>.<featureId>` unless `builtIn`).
   - Typed facades: `ears.ts`, `events.ts` (`sendsTo` targets are checked against own features, dependency plugins and `HOST_PLUGIN_IDS`), `services.ts`, `repository.ts` and `repositories.ts`.
   - `pack-types.ts`: the facade dependents import, which `abuddy build` bundles into `dist/types/pack-types.d.ts`.
-  - Seeding: `seeders.ts` (one `registerSeeder` per seeded key, plus `setCompiledDir`/`getCompiledDir`) and `seed-runtime.ts`.
+  - Seeding: `seeders.ts` (one `registerSeeders(<packId>, [...])` call with a seeder per seeded key, plus `setCompiledDir`/`getCompiledDir`) and `seed-runtime.ts`.
   - Flows and steps: `flow-helpers.ts` (a helper per step `dsl`, trigger track builders read from the step's `trackField`, and dependencies' helpers) and `step-types.ts`.
   - Other: `types.ts`, `contributions.ts` and `dsl-register-fe.ts`.
   - Per typed dependency, it also writes `deps/<id>.d.ts` and `deps/<id>.flow-helpers.{js,d.ts}` from the dependency's snapshot. `depTypesVersion` reads the version header that the CLI's stale-deps warning uses.
@@ -80,7 +80,7 @@ Each directory is one `package.json` export (`./<dir>` → `src/<dir>/index.ts`)
 
 The user-facing rules (change tracking, import modes, seed hooks) are in `docs/public-facing/seeds.md`. The code:
 
-- **Registry and driver** (`utils/seed.ts`): `registerSeeder` replaces a seeder with the same key. `seedData({ compiledDir, include, mode, verbose })` runs every registered seeder; a key with an empty include set is skipped. `ImportMode` is `keep-existing` | `replace-on-collision` | `wipe-and-replace`. The generated `seeders.ts` registers the pack's seeders when the pack entry imports it. `seedCollection` is an older generic helper that nothing in `src/` uses.
+- **Registry and driver** (`utils/seed.ts`): seeders are kept per pack. `registerSeeders(packId, seeders)` replaces that pack's set (a reloaded runtime registers again), and the API's `teardownPack` calls `unregisterSeeders` (not `unregisterPack`: a reload loads the fresh module before unregistering the old one). `seedData({ compiledDir, include, mode, verbose })` reads the pack id from the directory's `seeds.json` (`seedingPackId`, which throws when it names none) and runs only that pack's seeders; a key with an empty include set is skipped. `ImportMode` is `keep-existing` | `replace-on-collision` | `wipe-and-replace`. The generated `seeders.ts` registers the pack's seeders when the pack entry imports it. `seedCollection` is an older generic helper that nothing in `src/` uses.
 - **`createSeeder(options)`** (`seeder.ts`) is the generic record seeder, used for `actions`/`prompts` (identity `label`) and every format entry.
   - Rows carry `sourceHash`, `seededFields` (the field names plus a hash of their stored values) and `seedKey`. `seedKey` is `<packId>:<key>/…`, built by `childSeedKey` per tree level, with `packId` read from `seeds.json` (`seedingPackId`, which throws if it is missing).
   - `find` tries `seedKey` first, then the `find` hook or `identity` (with `parent` matched through `relKind`). An identity match that carries a `seedKey` is ignored.

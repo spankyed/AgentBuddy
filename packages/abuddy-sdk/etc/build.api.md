@@ -1447,7 +1447,7 @@ export function resolveTracks(entry: Track[] | FlowConfig): Track[];
 // @public
 export const SEED_COMPILERS_FILE = "seed-compilers.mjs";
 
-// @public (undocumented)
+// @public
 export const SEED_INDEX_FILE = "seeds.json";
 
 // @public
