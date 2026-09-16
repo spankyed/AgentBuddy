@@ -213,7 +213,7 @@ ${params.text}`;
 
 `PromptMeta` (`@abuddy/sdk/build`): `label` (unique; a duplicate fails the build), `description?`, `category?`, `inputs: Record<string, TemplateInput>`, `outputSchema?`.
 
-`TemplateInput`: `name`, `type` (`'string' \| 'number' \| 'boolean' \| 'object' \| 'array' \| 'any'`), `description?`, `required?`, `defaultValue?`, `commonSources?: string[]` (where a value usually comes from, such as `$.event.data.payload.text`), `example?`. Like an action's parameters, these describe the inputs; the template applies its own defaults.
+`TemplateInput`: `name`, `type` (`'string' \| 'number' \| 'boolean' \| 'object' \| 'array' \| 'any'`), `description?`, `required?`, `defaultValue?`, `example?`. Like an action's parameters, these describe the inputs; the template applies its own defaults.
 
 ### Rules
 

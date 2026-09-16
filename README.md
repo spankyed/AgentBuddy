@@ -29,7 +29,7 @@ AgentBuddy is an Electron desktop app for building and running AI agent workflow
 
 ```
 packages/
-├── api/                  # Backend: Fastify + tRPC server that loads packs and runs their systems
+├── api/                  # Backend: node:http + ws + tRPC server that loads packs and runs their systems
 │   └── src/
 │       ├── core/         # EARS and persistence wiring, tRPC routers, shared helpers
 │       ├── packs/        # Pack loading, activation, reload and seeding

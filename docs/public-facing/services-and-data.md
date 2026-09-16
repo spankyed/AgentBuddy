@@ -134,7 +134,7 @@ Each call takes models from the providers that give that kind (`providerCapabili
 | `ProviderName`, `ModelId`, `ModelKind`, `ModelIdOf<K>` (and the per-kind ids above) | `provider:model` id types |
 | `providerCapabilities` | The table above: provider → the model kinds it serves |
 | `providerLabels` | Display names (`openai` → `OpenAI`) |
-| `availableModels` | The language model catalog, `ModelCatalogEntry[]`: `id`, `name`, optional `description`, `contextWindow`, `maxOutput`, `costPer1kInput`, `costPer1kOutput`, `capabilities` |
+| `availableModels` | The language model catalog, `ModelCatalogEntry[]`: `id`, `name`, optional `description`, `contextWindow`, `costPer1kInput`, `costPer1kOutput`, `capabilities` |
 | `parseModelId(id)` | `{ provider, model }`, or `undefined` when the id doesn't name a known provider and a model |
 | `isModelId(id)` | Type guard for the same check |
 
