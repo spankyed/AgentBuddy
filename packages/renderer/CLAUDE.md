@@ -4,7 +4,7 @@ The Vue 3 app every AgentBuddy window runs. It hosts plugins; it doesn't impleme
 
 ## Boot (`src/main.ts`)
 
-Its static imports are evaluated first: `virtual:built-in-packs` loads every built-in pack's FE entry, and `virtual:host-deps` assigns `window.__abuddy`, so both are in place before pack code runs. The body then runs with a top-level `await`, in this order:
+Its static imports are evaluated first: `@/core/event-transport` (imported first) registers the `event-transport` host module `@abuddy/sdk/events` sends through (events for systems go over the API client; plugin sends and subscriptions throw, being backend-only) and the API client as the `trpc` host module (`secretsClient`), `virtual:built-in-packs` loads every built-in pack's FE entry, and `virtual:host-deps` assigns `window.__abuddy`, so both are in place before pack code runs. The body then runs with a top-level `await`, in this order:
 
 1. Installs `window.error` / `unhandledrejection` reporters (`electronAPI.rendererLog.write`, `fatal: true`). Reads `?popout=plugin&pluginId=…` (set by main's `plugin:popout`).
 2. Sets `window.appVersion` (`__APP_VERSION__`, the root `package.json` version) and runs `runFrontendMigrations()` (`src/setup/migrations/index.ts`: localStorage migrations run before the actor reads its keys; the list is empty now; the version is stored under `agentbuddy-fe-version`).
@@ -27,11 +27,11 @@ Its static imports are evaluated first: `virtual:built-in-packs` loads every bui
   - `@/…` resolves into the importer's own pack `src/`, or into `renderer/src/` for renderer files. So `@/` inside default-setup means default-setup's `src`.
 - **`hostDepsPlugin`** generates `virtual:host-deps`: `window.__abuddy = { … }`, holding namespace imports of:
   - `getSharedFeDeps()` (vue, xstate, `@xstate/vue`, tiptap, reka-ui, lucide, vue-flow, every `@tiptap/pm/*` and `@tiptap/vue-3/*` subpath, `prosemirror-*` aliases);
-  - `getSdkFeModules()` (`sdkFe`, `sdkRpc`, `sdkRuntime`, …);
+  - `getSdkFeModules()` (`sdkFe`, `sdkEvents`, `sdkRuntime`, …);
   - every `@abuddy/ui` export, keyed by specifier.
 
   All three lists live in `@abuddy/host/build/shared-deps`. The pack FE bundler proxies the same specifiers to these globals, so packs share the host's Vue, XState and SDK registries.
-- **Aliases:** `@abuddy/sdk/rpc` → `src/core/trpc.ts`, so the renderer, and packs through `window.__abuddy.sdkRpc`, get the real client rather than the SDK's host-module proxy. `@abuddy/api` → `../api/src`. Resolve conditions include `@abuddy/source`.
+- **Aliases:** `@abuddy/api` → `../api/src`. Resolve conditions include `@abuddy/source`.
 - `base: './'` (loaded from `file://` in builds), `modulePreload: false`, and a long `optimizeDeps.include` list (Monaco, xterm, tiptap, vidstack, …) for the dev server.
 - `tsconfig.app.json` includes `../abuddy-sdk/src/fe/**/*` (the `Window.electronAPI` declaration, see `packages/preload/CLAUDE.md`) and maps `@/*` → `src/*`.
 

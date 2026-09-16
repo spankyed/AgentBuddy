@@ -57,7 +57,7 @@ The settings FE plugin sends `PREVIEW_SETUP_PACK` / `IMPORT_SETUP_PACK` / `RESET
 
 ### Phase 2 — Reroute the FE
 
-5. **Update settings FE state machine.** Change `trpc.bus.send.mutate({ systemId: settings, type: 'PREVIEW_SETUP_PACK', ... })` to `systemId: 'packs'`. Same for `IMPORT_SETUP_PACK` and `RESET_APP`.
+5. **Update settings FE state machine.** Change the settings system sends of `PREVIEW_SETUP_PACK` (now `sendToSystem('settings', { type: 'PREVIEW_SETUP_PACK', ... })`) to target the `packs` system. Same for `IMPORT_SETUP_PACK` and `RESET_APP`.
 
 6. **Update settings FE incoming events.** The response events (`SETUP_PACK_PREVIEW`, `SETUP_PACK_IMPORTED`, etc.) now come from the packs plugin, not settings. Either:
    - The packs system emits to the settings plugin (knows the plugin ID), or

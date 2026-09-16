@@ -60,13 +60,16 @@ Five packages share responsibilities that should each have one home, and the cod
   |---|---|---|---|
   | `attribute-storage`, `hydrate-sharded` | api `setup/sdk-host-init.ts` | `host/src/ears/lmdb.ts` (through `any` Proxies) | `api/src/core/ears`, `api/src/core/persistence` |
   | `lmdb-query` | api | `host/src/services/trace-store.ts` | `api/src/core/persistence/lmdb/query.ts` |
-  | `trpc`, `bus-emitter`, `router-events` | api | `sdk/src/rpc/index.ts` | `api/src/core/router` |
-  | `event-emitter` | api | `sdk/src/services/index.ts` | `api/src/core/router/event-emitter.ts` |
-  | `logger` | api | `sdk/src/logger/index.ts` | `api/src/core/shared/debug/logger.ts` (imports `bus-emitter`) |
-  | `system-errors`, `version`, `migrations` | api | `sdk/src/utils/index.ts` | `api/src/core/shared/system-errors.ts`, `api/src/version.ts`, `api/src/setup/migrations` |
+  | `trpc`, `bus-emitter` | api (and the renderer registers its API client as `trpc`) | `sdk/src/runtime/rpc.ts` (`@internal`) | `api/src/core/router`, `renderer/src/core/trpc.ts` |
+  | `router-events` | api | nothing | `api/src/core/router/events.ts` |
+  | `event-transport` | api, renderer, test host | `sdk/src/events/index.ts` | `api/src/core/router/event-transport.ts`, `renderer/src/core/event-transport.ts` |
+  | `logger` | api | `sdk/src/logger/logger.ts` (`createLogger`, `onLog`) | `api/src/core/shared/debug/logger.ts` (imports `bus-emitter`) |
+  | `system-errors` | api | `sdk/src/logger/report-error.ts` | `api/src/core/shared/system-errors.ts` |
+  | `version` | api | `sdk/src/env/index.ts` (`getAppVersion`) | `api/src/version.ts` |
+  | `migrations` | api | `sdk/src/utils/index.ts` | `api/src/setup/migrations` |
   | `pack-registry` | api, and the test harness | `sdk/src/services/index.ts` | `@abuddy/host/packs` |
   | `app-data`, `trace-store`, `inference` | api (`registerHostServices`) | `sdk/src/services/*` | `@abuddy/host/services` |
-  | `application` | renderer `src/main.ts` | `sdk/src/fe/delegates.ts` | the renderer's application actor |
+  | `application` | renderer `src/main.ts` | `sdk/src/fe/navigation.ts` | the renderer's application actor |
 
   - Every read is lazy (on first call), so nothing depends on import order.
 - **What packs reach the app through, today.** File counts are pack source in default-setup and the fixture pack; "action uses" are occurrences in default-setup's seed actions, which get only `params`, `services`, `z` and `flowId`.
@@ -74,16 +77,15 @@ Five packages share responsibilities that should each have one home, and the cod
   | Pack-facing export | Usage | Reaches the app through |
   |---|---|---|
   | `services.repository` | 30 files, 81 action uses | the SDK's repository registry (no host module) |
-  | `services.logger`, `createLogger`, `createInspectLogger` | 27, 26 and 4 files, 34 action uses | registry key `logger` |
-  | `services.emitter`, `sendToPlugin`, `sendToBrainSystem`, `sendToSystem`, `onIncoming`, `onOutgoing` | 19, 20, 7, 1, 2 and 0 files, 64 action uses | registry key `event-emitter` |
-  | `rootEvents` (`@abuddy/sdk/rpc`) | 11 backend files in the code, browser and logs systems: `emitOutgoing` ×122, `onConnected`, `onIncoming`, `onLog` | registry key `bus-emitter`, read by `initRpc()` |
-  | `trpc` (`@abuddy/sdk/rpc`) | 29 frontend files | In the renderer, a Vite alias (`packages/renderer/vite.config.ts:116`) swaps `@abuddy/sdk/rpc` for the renderer's own `src/core/trpc.ts`. The backend key `trpc` holds the api's tRPC server builders (`core/router/trpc.ts`), not a client, and no backend pack code reads it. |
+  | `services.logger`, `createLogger` (with `{ debug }`), `onLog` (`@abuddy/sdk/logger`) | action uses name the logger `action:<label>` (`runActionCode`) | registry key `logger` |
+  | `services.emitter`, `emit`, `sendToPlugin`, `sendToSystem` (typed, from `#generated/events`), `sendToBrainSystem`, `onConnected`, `onIncoming` (`@abuddy/sdk/events`) | every pack send; `rootEvents` and `trpc.bus` are rejected in pack sources (`check:specifiers`) | registry key `event-transport` |
+  | `secretsClient` (`@abuddy/sdk/fe`) | the settings plugin's Secrets page | registry key `trpc` (the renderer's API client) |
   | `navigateToPlugin` | 21 frontend files | registry key `application` (renderer) |
   | `useActorSystem` | 82 frontend files | Vue `inject` (no registry) |
   | `services.appData`, `services.traceStore`, `services.inference` | 2, 1 and 2 files | registry keys `app-data`, `trace-store`, `inference` |
-  | `reportSystemError`, `getAppVersion`, `runMigrations` | 1 file each | registry keys `system-errors`, `version`, `migrations` |
+  | `reportError` (`@abuddy/sdk/logger`), `getAppVersion` (`@abuddy/sdk/env`), `runMigrations` | step runtimes and systems; 1 file each for the other two | registry keys `system-errors` (without `step`), `version`, `migrations` |
 
-  `services` holds six host services (`HostServices`: `logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`) plus each pack's own. The Monaco action editor's `services` type is the generated `Services` (`default-setup/src/defs/action.ts`), so it follows `HostServices`.
+  `services` holds seven host services (`HostServices`: `logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`) plus each pack's own. The Monaco action editor's `services` type is the generated `Services` (`default-setup/src/defs/action.ts`), which types `emitter` with the pack's events.
   - The registry dates from the SDK's extraction from api/renderer (`a96073e04`, 2026-08-30: "lazy-loaded proxy wrappers"). The private host package (`2e29d2f91`, 2026-09-13, `goal-sdk-types-architecture.md` Decision 2) made it permanent.
 - **EARS is spread over three packages.**
   - The engine is in `sdk/src/ears` (18 files, about 2,000 lines), with its write side in `internals.ts`, exported only under `@abuddy/source`.
@@ -92,7 +94,7 @@ Five packages share responsibilities that should each have one home, and the cod
   - Persistence reaches back and forth between the three: the api imports host's policy; host reaches the api's LMDB through the registry.
 - **The api implements app runtime, not just transport.** Besides `server.ts`, `setup/websocket.ts` and `core/router/{trpc,context,bus-router,index}.ts`, it holds:
   - LMDB persistence;
-  - event routing (`core/router/event-emitter.ts`, `bus-emitter.ts`);
+  - event routing (`core/router/event-transport.ts`, `bus-emitter.ts`);
   - system errors, and the logger core with its log capture;
   - the migrations runner;
   - the pack lifecycle (`api/src/packs`: loader, lifecycle, reload, seed, packs system, about 1,470 lines), next to host's registry, installer and updater;
@@ -205,8 +207,8 @@ Final.
    ```
    - An unbound use throws, naming `bindHost` (or `bindFeHost` in the frontend).
    - **What reads the binding:**
-     - `rootEvents` (`@abuddy/sdk/rpc`) is `transport.rootEvents`. It stays pack-facing for the systems that use it directly, and `initRpc()` is deleted.
-     - `trpc` (`@abuddy/sdk/rpc`) is the frontend port's `rpc`. The renderer's Vite alias for `@abuddy/sdk/rpc` is removed, and the backend `trpc` registry key is deleted with nothing replacing it.
+     - The SDK's `@internal` `rootEvents` (`@abuddy/sdk/runtime`) is `transport.rootEvents`; packs never use it directly (they send through `@abuddy/sdk/events`), and `initRpc()` is deleted.
+     - The SDK's `@internal` `trpc` (`@abuddy/sdk/runtime`, used by `secretsClient`) is the frontend port's `rpc`. The renderer's `trpc` host module registration is removed, and the backend `trpc` registry key is deleted with nothing replacing it.
      - `navigateToPlugin` reads the frontend port's `application`.
      - `services` reads `packs` for pack services and `services` for the app-implemented three. The SDK builds `logger`, `emitter` and `repository` itself (Decision 6).
      - From Phase 7, the SDK's lookups of what packs registered (designations, steps, artifacts, blocks, seed hooks and seeders, feature settings defaults, pack commands, and in the frontend plugins, tiptap plugins, app extensions and DSL types) read `packs`.
@@ -216,13 +218,13 @@ Final.
      - the harness supplies `packs` (with `mockService` overlays) when it binds.
    - `runtime/host.ts` and its registry are deleted.
 6. **Plumbing moves into the SDK; the app implements only three services.** The rule: **bind resources, derive behaviour.** A resource has identity per running app (the event bus, the engine and its data, the pack registry, services doing I/O with user data or keys) and is a `HostRuntime` member. Behaviour is a function over a resource, written once in the SDK for every app, test and tool.
-   - **Event sends, logging and error reports are SDK code over `transport`**, not host implementations. They're a few lines each over the event bus today (`api/src/core/router/event-emitter.ts`, `core/shared/debug/logger.ts`, `core/shared/system-errors.ts`) and move next to the functions the SDK already exports:
-     - `sendToPlugin`, `sendToSystem`, `sendToBrainSystem`, `onOutgoing`, `onIncoming` → `@abuddy/sdk/services`. They stay on `services.emitter`, which sandboxed actions use;
-     - `createLogger` → `@abuddy/sdk/logger`. Bound, it formats and emits log events on `transport`; the api's log capture writes them to the console and streams them to the client, so nothing is logged twice. **Unbound, it writes to the console**: tooling runs SDK and host code without binding a runtime. For example, the CLI installs packs through `@abuddy/host/packs`, whose registry, discovery and updater log.
-     - `reportSystemError` → `@abuddy/sdk/utils`.
+   - **Event sends, logging and error reports are SDK code over `transport`**, not host implementations. They're a few lines each over the event bus today (`api/src/core/router/event-transport.ts`, `core/shared/debug/logger.ts`, `core/shared/system-errors.ts`) and move next to the functions the SDK already exports:
+     - `sendToPlugin`, `sendToSystem`, `sendToBrainSystem`, `onConnected`, `onIncoming` → `@abuddy/sdk/events`. The sends stay on `services.emitter`, which sandboxed actions use;
+     - `createLogger`, `onLog` → `@abuddy/sdk/logger`. Bound, it formats and emits log events on `transport`; the api's log capture writes them to the console and streams them to the client, so nothing is logged twice. **Unbound, it writes to the console**: tooling runs SDK and host code without binding a runtime. For example, the CLI installs packs through `@abuddy/host/packs`, whose registry, discovery and updater log.
+     - `reportError` → `@abuddy/sdk/logger` (its system-error half, which calls the `system-errors` module today).
 
-     Their registry keys (`event-emitter`, `logger`, `system-errors`) go away with no replacement. `bus-emitter` stays in the api as the `transport` it supplies, including its app event log file (`AGENTBUDDY_LOG_DIR`).
-   - **Only transport-bound functions throw unbound.** `sendToPlugin`, `sendToSystem`, `sendToBrainSystem`, `onIncoming`, `onOutgoing`, `rootEvents`, `reportSystemError` and the three app services throw, naming `bindHost`. `createLogger` falls back to the console. `getAppVersion()` throws.
+     Their registry keys (`event-transport`, `logger`, `system-errors`) go away with no replacement. `bus-emitter` stays in the api as the `transport` it supplies, including its app event log file (`AGENTBUDDY_LOG_DIR`).
+   - **Only transport-bound functions throw unbound.** `sendToPlugin`, `sendToSystem`, `sendToBrainSystem`, `onConnected`, `onIncoming`, `onLog`, `reportError` and the three app services throw, naming `bindHost`. `createLogger` falls back to the console. `getAppVersion()` throws.
    - **The app version** is `HostRuntime.appVersion`; `getAppVersion()` reads it.
    - **Migrations leave the SDK.** `runMigrations` is removed from `@abuddy/sdk/utils`. The only pack caller is default-setup's reset actor (`settings/be/system.ts`), which today runs the app's reset itself: `appData.reset()`, `createDefaultSettings()`, `seedData(...)`, `runMigrations()`. `services.appData.reset()` does all of it in host (wipe stores, run every pack's boot hooks and boot seed, run app migrations), and the actor only calls `reset()`.
    - **`services` keeps its six host services, of two kinds:**
@@ -321,7 +323,7 @@ Phase 4's pack slice (Decision 6). It may land before Phase 1: it reads what onl
 
   Inside host, modules import each other by relative `.ts` path. `SDK_BRIDGE` keeps its `@abuddy/host/*` keys as the specifiers pack code requires.
 - **The bus composition:** `@abuddy/host/bus` gains `createAppBus()`. It is today's `backendSystem`:
-  - `createBusMachine` wired to `rootEvents` (`@abuddy/sdk/rpc`);
+  - `createBusMachine` wired to the api's `rootEvents` (`core/router/bus-emitter.ts`);
   - `clientLoadedPacks` from `loaded-packs.ts`;
   - the `CLIENT_CONNECTED` application event from `@abuddy/host/settings`, whose type moves next to it.
 
@@ -398,23 +400,23 @@ Phase 4's pack slice (Decision 6). It may land before Phase 1: it reads what onl
 - **The one behaviour change in this goal:** `sendToPlugin` and `services.emitter.sendToPlugin` send `OUTGOING` through the bus actor, so every backend-to-frontend send is dropped until a client connects, as `emit` inside systems already is. E2E covers the code and browser systems' early sends (terminal output, file watchers), and a harness spec shows a send before `connect()` doesn't reach the client.
 - Add `HostRuntime`, `bindHost` and `bindFeHost` (Decision 5).
 - Move event sends, logging and error reports into the SDK over `transport` (Decision 6), with their specs. `getAppVersion()` reads `appVersion`.
-- Convert the remaining SDK readers to the bound runtime: `rootEvents` and `trpc` (`rpc`), `services`, and `navigateToPlugin` (`fe/delegates`). Delete `initRpc()`, the renderer's Vite alias for `@abuddy/sdk/rpc` and the backend `trpc` key.
+- Convert the remaining SDK readers to the bound runtime: `rootEvents` and `trpc` (`runtime/rpc.ts`), `services`, and `navigateToPlugin` (`fe/navigation.ts`). Delete `initRpc()`, the renderer's `trpc` host module registration and the backend `trpc` key.
 - The api binds `createHostRuntime`, and the renderer binds the frontend port with its `application` actor and tRPC client.
 - `startTestRuntime` binds the in-memory runtime (its test bus as `transport`), and the harness binds with its `packs`.
   - The test host prints log events from its bus to the console, as its console logger does today.
-  - It records `SYSTEM_ERROR` events from its bus for `takeSystemErrors()`, which now returns those events (`message`, `source`, `stack`, …) instead of `reportSystemError`'s input. The harness's unexpected-error failure message and every in-repo caller follow.
+  - It records `SYSTEM_ERROR` events from its bus for `takeSystemErrors()`, which now returns those events (`message`, `source`, `stack`, …) instead of `reportError`'s input. The harness's unexpected-error failure message and every in-repo caller follow.
 - The renderer binds the frontend port where it registers `application` today (`main.ts:122`), before it loads pack frontends (`main.ts:163`).
-- Delete `runtime/host.ts` (`registerHostModule`, `getHostModule`, `hostFn`, `hostValue`), `HOST_SERVICE_MODULES`/`registerHostServices`, and `api/src/core/router/event-emitter.ts`, `core/shared/system-errors.ts` and `core/shared/debug/logger.ts`. Run `api:update`.
+- Delete `runtime/host.ts` (`registerHostModule`, `getHostModule`, `hostFn`, `hostValue`), `HOST_SERVICE_MODULES`/`registerHostServices`, and `api/src/core/router/event-transport.ts` (and the renderer's), `core/shared/system-errors.ts` and `core/shared/debug/logger.ts`. Run `api:update`.
 
 **Done when:**
 - No `registerHostModule`/`getHostModule` exists anywhere, and a guard test fails if one is added.
 - `bindHost` twice throws.
 - An unbound `services.inference` call throws naming `bindHost`.
 - `HostRuntime` compiles only when complete.
-- An SDK spec shows `sendToPlugin`, `sendToBrainSystem`, `onIncoming`, `reportSystemError` and `createLogger` reaching a bound test bus, and the api's log capture logging each log event once.
+- An SDK spec shows `sendToPlugin`, `sendToBrainSystem`, `onIncoming`, `reportError` and `createLogger` reaching a bound test bus, and the api's log capture logging each log event once.
 - A default-setup spec runs a seed action that uses `services.emitter`, `services.logger` and `services.repository` on the action step, and checks the event it emitted, the log event and the row it wrote.
-- The logs system receives log events through `rootEvents.onLog` (default-setup spec on the harness).
-- Pack frontend `trpc` works with the alias gone: the database and settings plugins' E2E, and a renderer spec that `trpc` from `@abuddy/sdk/rpc` is the bound client.
+- The logs system receives log events through `onLog` on the bound runtime (`logs-system.spec.ts`).
+- The SDK's frontend client works with the host module gone: the settings plugin's Secrets E2E, and a renderer spec that `secretsClient` reaches the bound client.
 - All unit suites, E2E, `test:external-pack` and `test:packaged-authoring` pass.
 - A spec shows `createLogger` writing to the console with nothing bound, and a CLI command that logs through `@abuddy/host/packs` runs.
 - A harness spec shows a system error reported by a system fails the test unless taken, with the error's message in the failure.

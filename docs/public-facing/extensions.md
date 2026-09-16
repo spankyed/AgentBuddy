@@ -91,7 +91,7 @@ export const myStepStep: StepDefinition = {
 
 | Member | Description |
 |---|---|
-| `handler(tNode, node, executionContext, actor)` | Runs the step. `tNode` is its trace node, `node` the compiled entity, `executionContext` has `flowTNodeId`, `event`, `steps` (earlier runs), `lastStep` and `runtime` (`getFlowActor`, `getAppServices`). Finish with `actor.send({ type: 'COMPLETE', result })`, or `actor.send({ type: 'ERROR', error })` with an error from `reportStepRuntimeError`. A type without a handler completes with `{ executed: true }` |
+| `handler(tNode, node, executionContext, actor)` | Runs the step. `tNode` is its trace node, `node` the compiled entity, `executionContext` has `flowTNodeId`, `event`, `steps` (earlier runs), `lastStep` and `runtime` (`getFlowActor`, `getAppServices`). Finish with `actor.send({ type: 'COMPLETE', result })`, or `actor.send({ type: 'ERROR', error })` with the error `reportError({ error, source, step: { phase, tNodeId, … } })` (`@abuddy/sdk/logger`) returns. A type without a handler completes with `{ executed: true }` |
 | `isAsync` | The handler returns a promise; a rejection is reported and sent as `ERROR` |
 | `spawnsSubflow` | The brain spawns a sub-flow machine for the node instead of a step machine (the `subflow` step) |
 | `waits` | The step never completes on its own (keep-alive). `runFlow` in `@abuddy/testing` treats such a step as settled |

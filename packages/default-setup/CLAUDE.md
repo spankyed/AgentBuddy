@@ -14,7 +14,8 @@ src/
     ears.ts                # EARS entity/relation registry, generated from abuddy.json
     system-ids.ts          # System ID re-exports from each system
     bus-ids.ts             # busId map (bus-routable system IDs); import-free, safe for FE code
-    events.ts              # PackEvents + typed emit/sendToPlugin facade
+    events.ts              # PackEvents/PackSystemEvents + typed emit/sendToPlugin/sendToSystem facade
+    system-specs.ts        # Type-only: each system's incoming events, read by events.ts
     types.ts               # Type barrel (outgoing events + per-feature types)
     services.ts            # Service aggregation (featureServices object) and the typed services proxy
     repository.ts          # repository, typed with the repositories declared in abuddy.json
@@ -85,9 +86,13 @@ Import `EARS` from `@/__generated__/ears` by default. The SDK's `EARS` (`@abuddy
 
 Typed facades (no module augmentation):
 - `__generated__/ears.ts` — `PackShapes` (entity type → attribute interface), `EntityName`, and the typed `qx`/`tx`/`find*`/`createEntity`/`createEntityWithDefaults`/`updateEntity`/`getAttr` helpers built with `defineEars`. Feature code imports `tx` from here; migrations and the database console's transaction executor keep the unchecked `tx` from `@abuddy/sdk/ears`
-- `__generated__/events.ts` — `PackEvents` (receiving plugin ID → the events it gets: its own system's plus every system whose `system.sendsTo` names it, e.g. actions → flows, settings → the host's `application`) and typed `emit`/`sendToPlugin` built with `defineEvents`. Don't import `emit`/`sendToPlugin` from `@abuddy/sdk/helpers`; declare the send in `abuddy.json` instead
-- `__generated__/services.ts` — the `services` proxy typed as `Services` (with `services.repository` typed as `Repositories`)
+- `__generated__/events.ts` — `PackEvents` (receiving plugin ID → the events it gets: its own system's plus every system whose `system.sendsTo` names it, e.g. actions → flows, settings → the host's `application`), `PackSystemEvents` (system → the events it receives), and typed `emit`/`sendToPlugin`/`sendToSystem` built with `defineEvents`. Frontend state machines send to systems with `sendToSystem`; backend code sends to plugins with `emit` (in a system's actions) or `sendToPlugin`. Don't import these from `@abuddy/sdk/events`; declare a cross-plugin send in `abuddy.json` `sendsTo` instead. Subscriptions (`onConnected`, `onIncoming`) come from `@abuddy/sdk/events`, `onLog` from `@abuddy/sdk/logger`
+- `__generated__/services.ts` — the `services` proxy typed as `Services` (with `services.repository` typed as `Repositories`, and `services.emitter`'s sends typed with the pack's events, systems by the id they run under)
 - `__generated__/repository.ts` — `repository`, typed with every repository in `features[].repositories`
+
+Logging and actions:
+- Log with `createLogger(source)` from `@abuddy/sdk/logger`. The brain and step runtimes use `createLogger('brain', { debug: true })`, whose debug messages follow the brain plugin's inspect switch (`setDebugEnabled('brain', …)`). Errors go through `reportError`, with `step` context in step runtimes. Backend code has no `console.*` (`check:specifiers`)
+- Action code runs through `runActionCode` (`extensions/steps/action/sandbox.ts`), for the action step and `services.action` alike: `params`, `services` (its `logger` named `action:<label>`), `z` and `flowId`
 
 ## Seeds
 

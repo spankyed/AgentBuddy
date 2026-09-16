@@ -14,7 +14,7 @@ The backend process: a `node:http` + `ws` server exposing a tRPC router over Web
 | `core/system-ids.ts` | `bus`, the bus actor's `systemId` |
 | `core/router/` | tRPC and the root event emitter (below) |
 | `core/shared/debug/` | `logger.ts`, `log-capture.ts` (below) |
-| `core/shared/system-errors.ts` | `reportSystemError()` (emits a `SYSTEM_ERROR` to the `application` plugin and a log event, with a user-safe message for `RepositoryError` NOT_FOUND), `logErrors(actor)` (an actor error observer that also writes a `__fatal` line), `ApplicationOutgoingEvents` |
+| `core/shared/system-errors.ts` | `reportSystemError()`, the `system-errors` host module behind `@abuddy/sdk/logger`'s `reportError` without `step` (emits a `SYSTEM_ERROR` to the `application` plugin and a log event, with a user-safe message for `RepositoryError` NOT_FOUND), `logErrors(actor)` (an actor error observer that also writes a `__fatal` line), `ApplicationOutgoingEvents` |
 | `core/ears/attribute-storage.ts` | Opens the primary and volatile LMDB envs (`getLmdbPath()`/`getVolatileLmdbPath()`), builds the sharded persistence with a lazily resolved partition policy (`getRegisteredEARSPolicy()`), and injects it with `setPersistence()` on import. Exports `envs`, `policy`, `persistence`, `invalidatePartitionPolicy`, `closePersistence`, `reinitializeLmdb`, `resetLmdbFiles` (also clears `secretsStore`) |
 | `core/persistence/lmdb/` | `envs.ts` (open/close envs with `entities`, `attrs`, `relations` DBs), `adapter.ts` (`makeLmdbAdapter`, the `PersistenceSink` with write coalescing; `\x1F` key separator), `query.ts` (direct LMDB reads, registered as the `lmdb-query` host module) |
 | `core/persistence/partitioning/hydrate-sharded.ts` | `hydrateSharded()`: loads partitions into the in-memory EARS store at boot |
@@ -39,7 +39,7 @@ The backend process: a `node:http` + `ws` server exposing a tRPC router over Web
 - `event-transport.ts` — the `event-transport` host module `@abuddy/sdk/events` sends through: `sendIncoming`, `sendOutgoing`, `onConnected` and `onIncoming` over `rootEvents`.
 - `events.ts` — re-exports `IncomingSystemEvents`/`OutgoingSystemEvents` from `@/systems`.
 
-Packs reach these modules only through host modules (`@abuddy/sdk/rpc` reads `bus-emitter`), not by import.
+Packs reach these modules only through host modules (`@abuddy/sdk/events` sends through `event-transport`, `@abuddy/sdk/logger`'s `onLog` through `logger`), not by import.
 
 ## Host module registration (`setup/sdk-host-init.ts`)
 
@@ -69,9 +69,9 @@ Builds: `npm start` (root) runs `build:be:dev` → this package's `build:dev` (t
 
 ## Logging and redaction (`src/core/shared/debug/`)
 
-- `logger.ts` — `Logger` (`logger` with source `backend`, `createLogger(source)`, `log.*`). `log()` redacts the message with `redactSecretText` and meta with `redactSecrets` (`@abuddy/sdk/utils/pure`) before any sink, emits a `LogEvent` through `rootEvents.emitLog` (meta passed through a circular-safe stringify; `error` level gets a stack from `meta.error` or the call site), then prints to the original console.
+- `logger.ts` — `Logger` (`logger` with source `backend`, `createLogger(source)`, `onLog(callback)`, `log.*`); the `logger` host module. `log()` redacts the message with `redactSecretText` and meta with `redactSecrets` (`@abuddy/sdk/utils/pure`) before any sink, emits a `LogEvent` through `rootEvents.emitLog` (meta passed through a circular-safe stringify; `error` level gets a stack from `meta.error` or the call site), then prints to the original console.
 - `log-capture.ts` — `initializeLogCapture()` replaces `console.log/debug/info/warn/error`: args are formatted with `util.formatWithOptions` (no colors), redacted, printed, and emitted as log events (`log` maps to `info`). `restoreConsole()` undoes it; `originalConsole` holds the originals.
-- `system-errors.ts` redacts error messages and stacks too. The logs system (default-setup's `features/logs/be/system.ts`) subscribes with `rootEvents.onLog`, which is why `systems.ts` doesn't route incoming events addressed to it.
+- `system-errors.ts` redacts error messages and stacks too. The logs system (default-setup's `features/logs/be/system.ts`) subscribes with `onLog` (`@abuddy/sdk/logger`), which is why `systems.ts` doesn't route incoming events addressed to it.
 
 ## Path alias
 
