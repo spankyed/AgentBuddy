@@ -2,6 +2,9 @@ import * as path from 'path'
 import * as chokidar from 'chokidar'
 import * as fs from 'fs/promises'
 import { GitRepository } from './git'
+import { createLogger } from '@abuddy/sdk/logger'
+
+const logger = createLogger('git-watcher')
 
 export interface FileChangeInfo {
   path: string
@@ -65,7 +68,7 @@ export class GitWatcherService {
     try {
       await fs.access(gitDir)
     } catch {
-      console.log('No .git found, skipping git watch')
+      logger.info('No .git found, skipping git watch')
       return
     }
 
@@ -119,10 +122,10 @@ export class GitWatcherService {
         this.handleFileChange('unlink', filePath)
       })
       .on('error', (error) => {
-        console.error('Git watcher error:', error)
+        logger.error('Git watcher error', { error })
       })
       .on('ready', () => {
-        console.log('Git watcher ready')
+        logger.info('Git watcher ready')
         this.isWatching = true
       })
 
@@ -176,10 +179,10 @@ export class GitWatcherService {
         this.handleFileChange('unlink', filePath)
       })
       .on('error', (error) => {
-        console.error('Working directory watcher error:', error)
+        logger.error('Working directory watcher error', { error })
       })
       .on('ready', () => {
-        console.log('Working directory watcher ready')
+        logger.info('Working directory watcher ready')
       })
   }
 

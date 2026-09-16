@@ -1,6 +1,5 @@
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
-import { reportStepRuntimeError } from '@abuddy/sdk/steps';
-import { createInspectLogger } from '@abuddy/sdk/logger';
+import { reportError, createLogger } from '@abuddy/sdk/logger';
 import { isModelId } from '@abuddy/sdk/models';
 import { services } from '@/__generated__/services';
 import { executeQuery } from '@/features/database/be/execute/query';
@@ -8,7 +7,7 @@ import { DEFAULT_MODEL } from '../llm/model';
 import { DEFAULT_RESULT_KEY } from './result-key';
 import type { QueryNode } from './types';
 
-const { inspect: brainInspect } = createInspectLogger('brain');
+const brainLogger = createLogger('brain', { debug: true });
 
 /** The prompt (seeds/prompts/db-query-system.ts) that describes the database and the query API to the model */
 const QUERY_SYSTEM_PROMPT = 'DB Query System';
@@ -46,7 +45,7 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
       throw new Error(`Query step "${n.label}" needs the "${QUERY_SYSTEM_PROMPT}" prompt, which isn't in the database`);
     }
 
-    brainInspect(`Generating query for node: ${n.label}`, { model, prompt: n.prompt });
+    brainLogger.debug(`Generating query for node: ${n.label}`, { model, prompt: n.prompt });
 
     let reply: string;
     try {
@@ -72,20 +71,22 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
       throw new Error(`Query step "${n.label}" generated a query that failed: ${message}. Query:\n${query}`);
     }
 
-    brainInspect(`Query completed for node: ${n.label}`, { query });
+    brainLogger.debug(`Query completed for node: ${n.label}`, { query });
 
     a.send({ type: 'COMPLETE', result: { query, [n.resultKey || DEFAULT_RESULT_KEY]: rows } });
   } catch (error) {
-    const runtimeError = reportStepRuntimeError({
+    const runtimeError = reportError({
       error,
       source: 'brain-query',
-      phase: 'query.execute',
-      flowTNodeId: ctx.flowTNodeId,
-      tNodeId: t.id,
-      nodeId: n.id,
-      nodeLabel: n.label,
-      nodeType: n.nodeType,
-      eventType: ctx.event?.type,
+      step: {
+        phase: 'query.execute',
+        flowTNodeId: ctx.flowTNodeId,
+        tNodeId: t.id,
+        nodeId: n.id,
+        nodeLabel: n.label,
+        nodeType: n.nodeType,
+        eventType: ctx.event?.type,
+      },
     });
     a.send({ type: 'ERROR', error: runtimeError });
   }

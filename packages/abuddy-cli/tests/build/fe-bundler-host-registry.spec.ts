@@ -58,7 +58,7 @@ describe.each(LAYOUTS)('bundlePackFE host registry guard ($name)', (layout) => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('SDK host module');
-    expect(result.error).toContain(`Import chain: src/entry.ts → @abuddy/sdk/logger/index.${ext} → @abuddy/sdk/runtime/host.${ext}`);
+    expect(result.error).toContain(`Import chain: src/entry.ts → @abuddy/sdk/logger/index.${ext} → @abuddy/sdk/logger/logger.${ext} → @abuddy/sdk/runtime/host.${ext}`);
   }, 60_000);
 
   it('uses the host\'s @abuddy/ui instead of bundling it', async () => {

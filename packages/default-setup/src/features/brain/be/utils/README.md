@@ -22,7 +22,7 @@ be/
 │   └── scheduler.ts        # services.scheduler: cron jobs for schedule triggers
 ├── types.ts
 └── utils/
-    ├── brain-inspect.ts    # brainInspect/brainLogger, toggled by the brain system
+    ├── brain-inspect.ts    # brainLogger; its debug messages follow the `brain` debug toggle the brain system sets
     ├── brain-pause.ts      # The paused flag (setBrainPausedState, isBrainPaused)
     └── result-truncator.ts # truncateResult: caps stored step results (10 KB strings, 50 KB objects, 100 array items, depth 10)
 ```
@@ -34,7 +34,7 @@ be/
 1. The brain system runs the flow with the root role (`repository.flowsQueries.rootFlow()`). With flows but no root flow it stays stopped and reports why.
 2. `createFlowNodeSystem()` creates the flow's TNode and a machine that listens for the event types of the flow's trigger nodes. Running flow actors are kept by flow TNode id (`getFlowActor`, `clearFlowActorRegistry`, which the pack's `onShutdown` calls).
 3. An event spawns a track: `createStepNodeSystem()` for each step, and a nested flow machine for a subflow. The brain sends `TNODE_SPAWNED` and `TNODE_UPDATED` to the brain plugin as TNodes start and change status.
-4. A step machine calls `executeNode()`, which looks up `stepRegistry.get(node.nodeType).runtime.handler`. Trigger nodes and types without a handler complete with no work. An async handler's rejection is reported with `reportStepRuntimeError` and fails the step.
+4. A step machine calls `executeNode()`, which looks up `stepRegistry.get(node.nodeType).runtime.handler`. Trigger nodes and types without a handler complete with no work. An async handler's rejection is reported with `reportError` (with `step` context) and fails the step.
 5. Step results and TNode attributes pass through `truncateResult` before they're stored (`updateTNodeResult`, `updateTNodeAttributes`).
 
 ## Adding a node type

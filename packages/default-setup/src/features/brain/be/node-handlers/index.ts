@@ -1,8 +1,7 @@
 import type { NodeEntity } from '@/__generated__/types';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { stepRegistry } from '@abuddy/sdk/steps';
-import { createLogger } from '@abuddy/sdk/logger';
-import { reportStepRuntimeError } from '@abuddy/sdk/steps';
+import { createLogger, reportError } from '@abuddy/sdk/logger';
 
 const logger = createLogger('node-executor');
 
@@ -37,16 +36,18 @@ export function executeNode(
   if (isAsync) {
     const promise = handler(tNode, node, executionContext, actor) as Promise<void>;
     promise.catch((err) => {
-      const runtimeError = reportStepRuntimeError({
+      const runtimeError = reportError({
         error: err,
         source: `brain-${node.nodeType}`,
-        phase: `${node.nodeType}.handler`,
-        flowTNodeId: executionContext.flowTNodeId,
-        tNodeId: tNode.id,
-        nodeId: node.id,
-        nodeLabel: node.label,
-        nodeType: node.nodeType,
-        eventType: executionContext.event?.type,
+        step: {
+          phase: `${node.nodeType}.handler`,
+          flowTNodeId: executionContext.flowTNodeId,
+          tNodeId: tNode.id,
+          nodeId: node.id,
+          nodeLabel: node.label,
+          nodeType: node.nodeType,
+          eventType: executionContext.event?.type,
+        },
       });
       try { actor.send({ type: 'ERROR', error: runtimeError }); } catch { /* actor gone */ }
     });

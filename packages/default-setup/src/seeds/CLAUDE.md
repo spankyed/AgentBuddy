@@ -4,7 +4,7 @@ Seed sources `abuddy build` compiles to JSON, as `abuddy.json` `seedFormats` and
 
 ## Actions
 
-- Export `meta: ActionMeta` and `async function action(params, services, z, flowId)`. The flow action step passes all four (`extensions/steps/action/runtime.ts`); `services.action` runs an action with only `params` and `services`
+- Export `meta: ActionMeta` and `async function action(params, services, z, flowId)`. Both the flow action step and `services.action` run it with `runActionCode` (`extensions/steps/action/sandbox.ts`), which passes all four (`flowId` only from a flow step) and gives `services.logger` the name `action:<label>`
 - Import types: `import type { ActionMeta } from '@abuddy/sdk/build'` and `import type { Services, Z } from '@/__generated__/services'`
 - Bare package imports fail the build, except `@abuddy/sdk/actions`, an allowlisted sandbox-safe module whose source is inlined into the compiled body (`INLINABLE_PACKAGE_IMPORTS` in `abuddy-sdk/src/build/compile-utils.ts`). Type-only imports (`import type`) are erased before bundling and are always fine. References to Node-only globals in the bundle are reported as warnings, not errors
 - Relative imports (`./_helpers/...`) are bundled in. A `.ts` file without `export const meta` is a helper, not an action, whatever its name; `.example.ts` files are skipped

@@ -8,7 +8,7 @@ export interface DSLTransformNode extends DSLNodeBase {
   type: 'transform';
   /**
    * An async function body run as an action runs (`services.action.executeAction`): it receives `params`
-   * (`params.input` is the previous step's result, then the mapped fields) and `services`, and returns the output
+   * (`params.input` is the previous step's result, then the mapped fields), `services` and `z`, and returns the output
    */
   script: string;
   /** `json` (default): the returned value, which must be JSON-serializable; `text`: `String(value)`; `custom`: the value as returned */

@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { findAppImportsInPackTests, findHostImports, findJsSpecifiers, findRawPackHelpers, findRawTransport } from '../../../../scripts/check-import-specifiers.ts';
+import { findAppImportsInPackTests, findHostImports, findJsSpecifiers, findPackBackendConsole, findRawPackHelpers, findRawTransport } from '../../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '../helpers/published-packages';
 
 /** scripts/check-import-specifiers.ts: relative imports in sdk, host and ui name TypeScript sources */
@@ -135,6 +135,28 @@ describe('findRawTransport', () => {
   it('checks generated files', () => {
     write('pack/__generated__/events.ts', "import { rootEvents } from '@abuddy/sdk/runtime';\n");
     expect(findRawTransport(['src/pack'], root)).toEqual(['src/pack/__generated__/events.ts:1: rootEvents']);
+  });
+});
+
+describe('findPackBackendConsole', () => {
+  it.each([
+    ['features/notes/be/system.ts', "console.log('saved');"],
+    ['features/code/be/services/git.ts', 'console . error(err);'],
+    ['extensions/services/filesystem.ts', "console.warn('missing');"],
+    ['extensions/steps/llm/runtime.ts', "console.debug('prompt');"],
+  ])('flags a console call in %s', (file, code) => {
+    write(`pack/${file}`, code);
+    const method = code.match(/console\s*\.\s*(\w+)/)![1];
+    expect(findPackBackendConsole(['src/pack'], root)).toEqual([`src/pack/${file}:1: console.${method}`]);
+  });
+
+  it('skips frontend code, commented-out lines and other files', () => {
+    write('pack/features/notes/fe/state.ts', "console.log('frontend');");
+    write('pack/extensions/steps/llm/fe.ts', "console.log('frontend');");
+    write('pack/extensions/tiptap/index.ts', "console.log('frontend');");
+    write('pack/extensions/blocks/input/Picker.vue', "<script setup lang=\"ts\">console.log('frontend')</script>");
+    write('pack/features/notes/be/system.ts', "// console.log('off')\n * console.log(ev.type)\nlogger.info('saved');");
+    expect(findPackBackendConsole(['src/pack'], root)).toEqual([]);
   });
 });
 

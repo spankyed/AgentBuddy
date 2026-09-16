@@ -209,26 +209,6 @@ export type Rename = {
 };
 
 // @public
-export function reportSystemError(input: ReportSystemErrorInput): void;
-
-// @public (undocumented)
-export interface ReportSystemErrorInput {
-    // (undocumented)
-    entityId?: string;
-    // (undocumented)
-    error: unknown;
-    // (undocumented)
-    operation?: string;
-    // (undocumented)
-    severity?: 'error' | 'fatal';
-    // (undocumented)
-    source?: string;
-    // (undocumented)
-    title?: string;
-    userMessage?: string;
-}
-
-// @public
 export function resolveCliPath(cli: CliName, preferredPath?: string): Promise<string>;
 
 // @public (undocumented)

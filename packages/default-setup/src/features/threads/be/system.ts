@@ -17,8 +17,7 @@ import { exportThreads } from './export-threads';
 import { importThreads } from './import-threads';
 import { runThreadTeardown } from '@abuddy/sdk/services';
 import { generateAsideText } from './services/chat';
-import { createLogger } from '@abuddy/sdk/logger';
-import { reportSystemError } from '@abuddy/sdk/utils';
+import { createLogger, reportError } from '@abuddy/sdk/logger';
 
 const logger = createLogger('threads');
 let birthFlowStarted = false;
@@ -116,7 +115,7 @@ function reportThreadOperationError(
     parent: 'move',
   };
 
-  reportSystemError({
+  reportError({
     error,
     title: `Could not ${operationLabels[operation]} thread`,
     source: 'threads',
@@ -776,7 +775,7 @@ export const threadsSystem = setup({
           },
         });
       } catch (err) {
-        console.error('[threads] forkThread failed:', err);
+        logger.error('forkThread failed', { error: err });
         // Clear forkPending if it was set, so the thread doesn't permanently reject messages.
         if (result && Object.keys(forkContext).length > 0) {
           const clearContext = Object.fromEntries(

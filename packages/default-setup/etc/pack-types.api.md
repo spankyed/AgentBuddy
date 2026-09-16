@@ -31,7 +31,10 @@ interface ActionNode extends NodeBase {
 
 declare class ActionService {
     getByLabel(label: string): ActionEntity | undefined;
-    executeAction(actionFn: string, params?: Record<string, any>): Promise<any>;
+    /** Runs action code; `label` names its logger (`action:<label>`) */
+    executeAction(actionFn: string, params?: Record<string, any>, { label }?: {
+        label?: string;
+    }): Promise<any>;
     getAndExecute(label: string, params?: Record<string, any>): Promise<any | undefined>;
 }
 

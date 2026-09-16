@@ -1,6 +1,7 @@
 import { repository } from '@/__generated__/repository';
 import type { ActionEntity } from '@abuddy/sdk';
 import { services as appServices } from '@abuddy/sdk/services';
+import { runActionCode } from '@/extensions/steps/action/sandbox';
 
 export class ActionService {
   getByLabel(label: string) {
@@ -8,12 +9,10 @@ export class ActionService {
     return allActions.find((action: ActionEntity) => action.label === label);
   }
 
-  async executeAction(actionFn: string, params: Record<string, any> = {}): Promise<any> {
+  /** Runs action code; `label` names its logger (`action:<label>`) */
+  async executeAction(actionFn: string, params: Record<string, any> = {}, { label = 'inline' }: { label?: string } = {}): Promise<any> {
     try {
-      const AsyncFunction = Object.getPrototypeOf(async function(){}).constructor;
-      const fn = new AsyncFunction('params', 'services', actionFn);
-      const services = appServices;
-      return await fn(params, services);
+      return await runActionCode(actionFn, { label, params, services: appServices });
     } catch (error) {
       throw new Error(`Failed to execute action: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
     }
@@ -24,7 +23,7 @@ export class ActionService {
     if (!action) {
       return undefined;
     }
-    return this.executeAction(action.actionFn, params);
+    return this.executeAction(action.actionFn, params, { label: action.label });
   }
 }
 

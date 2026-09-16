@@ -180,6 +180,32 @@ export function findRawTransport(dirs = PACK_SOURCE_DIRS, root = repoRoot): stri
   return problems;
 }
 
+/** Pack backend code: feature systems and services, extension services and step runtimes */
+const PACK_BACKEND_PATH = /(?:^|\/)(?:features\/[^/]+\/be\/|extensions\/services\/|extensions\/steps\/[^/]+\/runtime\.ts$)/;
+
+/**
+ * `file:line: console.<method>` for each console call in pack backend code, which logs with
+ * `createLogger` from `@abuddy/sdk/logger` so its entries reach the app's log. Commented-out lines are
+ * skipped; frontend code and tests aren't checked.
+ */
+export function findPackBackendConsole(dirs = PACK_SOURCE_DIRS, root = repoRoot): string[] {
+  const problems: string[] = [];
+  const files = dirs.flatMap((dir) => {
+    const full = path.join(root, dir);
+    if (!fs.existsSync(full) || fs.statSync(full).isFile()) return [];
+    return [...sourceFiles(full)].filter((file) => PACK_BACKEND_PATH.test(path.relative(full, file).split(path.sep).join('/')));
+  });
+  for (const file of files) {
+    fs.readFileSync(file, 'utf-8').split('\n').forEach((text, index) => {
+      if (/^\s*(\/\/|\/?\*)/.test(text)) return;
+      for (const match of text.matchAll(/\bconsole\s*\.\s*(\w+)/g)) {
+        problems.push(`${path.relative(root, file)}:${index + 1}: console.${match[1]}`);
+      }
+    });
+  }
+  return problems;
+}
+
 /** Pack unit tests, which run on @abuddy/testing's harness: the pack's code and the SDK, not the app */
 export const PACK_TEST_DIRS = ['packages/default-setup/tests', 'tests/fixtures/external-pack/tests'];
 
@@ -224,6 +250,11 @@ if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])
   const rawTransport = findRawTransport();
   if (rawTransport.length > 0) {
     console.error(`Pack code sends with sendToPlugin and sendToSystem from #generated/events, and subscribes with onConnected and onIncoming from @abuddy/sdk/events:\n  ${rawTransport.join('\n  ')}`);
+    process.exit(1);
+  }
+  const backendConsole = findPackBackendConsole();
+  if (backendConsole.length > 0) {
+    console.error(`Pack backend code logs with createLogger from @abuddy/sdk/logger:\n  ${backendConsole.join('\n  ')}`);
     process.exit(1);
   }
   const hostImports = findHostImports();

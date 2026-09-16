@@ -8,8 +8,7 @@ import { getAllEntities, getAttr } from '../ears/attribute-storage.ts';
 import { findRelations } from '../ears/relations.ts';
 import type { EARS } from '../types/entities.ts';
 import type { Logger } from '../ears/runtime.ts';
-import type { LogEvent } from '../logger/index.ts';
-import type { ReportSystemErrorInput } from '../utils/index.ts';
+import type { LogEvent, LogLevel, ReportSystemErrorInput } from '../logger/index.ts';
 import type { AppDataService } from '../services/app-data.ts';
 import type { TraceStore } from '../services/trace-store.ts';
 import type { InferenceService } from '../services/inference.ts';
@@ -72,19 +71,25 @@ const memorySecrets: SecretsService = {
   delete: (id) => { testSecrets = secretRules.remove(testSecrets, id); },
 };
 
-/** Errors systems and steps reported with `reportSystemError` since the last call; clears them */
+/** Errors systems reported with `reportError` (without `step`) since the last call; clears them */
 export function takeSystemErrors(): ReportSystemErrorInput[] {
   return systemErrors.splice(0);
 }
 
+/** Prints each entry and records it as a log event, as the app's logger does */
 function consoleLogger(source?: string): Logger {
   const prefix = source ? `[${source}]` : '[test]';
-  return {
-    debug: (...args: unknown[]) => console.debug(prefix, ...args),
-    info: (...args: unknown[]) => console.info(prefix, ...args),
-    warn: (...args: unknown[]) => console.warn(prefix, ...args),
-    error: (...args: unknown[]) => console.error(prefix, ...args),
+  const log = (level: LogLevel) => (message: unknown, ...rest: unknown[]) => {
+    console[level](prefix, message, ...rest);
+    const meta = rest[0];
+    testRootEvents.emitLog({
+      level,
+      message: String(message),
+      source,
+      ...(meta !== null && typeof meta === 'object' && { meta: meta as Record<string, unknown> }),
+    });
   };
+  return { debug: log('debug'), info: log('info'), warn: log('warn'), error: log('error') };
 }
 
 const unmockedInference = () => Promise.reject(new Error(

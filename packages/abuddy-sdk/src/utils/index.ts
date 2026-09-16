@@ -45,24 +45,6 @@ export type { SeedCounts, SeedIncludeSet, ImportMode, SeederContext, Seeder } fr
 // --- Lifecycle (direct) ---
 export { registerShutdownHook, runShutdownHooks, runShutdownHooksForKey, removeShutdownHooksForKey } from './lifecycle.ts';
 
-// --- System Errors (host-injected) ---
-let _systemErrorsMod: any;
-function systemErrorsMod() { if (!_systemErrorsMod) _systemErrorsMod = getHostModule('system-errors'); return _systemErrorsMod; }
-
-export interface ReportSystemErrorInput {
-  error: unknown;
-  title?: string;
-  source?: string;
-  operation?: string;
-  entityId?: string;
-  severity?: 'error' | 'fatal';
-  /** Shown to the user instead of the error's own message */
-  userMessage?: string;
-}
-
-/** Reports an error to the user as a SYSTEM_ERROR event */
-export function reportSystemError(input: ReportSystemErrorInput): void { systemErrorsMod().reportSystemError(input); }
-
 // --- Version (host-injected) ---
 let _versionMod: any;
 function versionMod() { if (!_versionMod) _versionMod = getHostModule('version'); return _versionMod; }

@@ -4,6 +4,9 @@ import { setup, assign, fromPromise } from 'xstate'
 import { terminalService } from '../services/terminal'
 import type { TerminalInfo, CodeSettings } from '../types'
 import { repository } from '@/__generated__/repository';
+import { createLogger } from '@abuddy/sdk/logger';
+
+const logger = createLogger('terminal');
 
 const pluginId = 'code' as const
 
@@ -79,7 +82,7 @@ const setupTerminalHandlers = (terminalInfo: TerminalInfo) => {
           emitToFrontend({ type: 'terminal.CWD_CHANGED', data: { terminalId: terminalInfo.id, cwd: result.cwd, title: result.title } })
         }
       } catch (error) {
-        console.error('Failed to parse CWD from OSC sequence:', error)
+        logger.error('Failed to parse CWD from OSC sequence', { error })
       }
     }
 
@@ -90,7 +93,7 @@ const setupTerminalHandlers = (terminalInfo: TerminalInfo) => {
     try {
       emitToFrontend({ type: 'terminal.CLOSED', data: { terminalId: terminalInfo.id } })
     } catch (error) {
-      console.error(`[Terminal] Error emitting CLOSED for ${terminalInfo.id}:`, error)
+      logger.error(`Error emitting CLOSED for ${terminalInfo.id}`, { error })
     }
   })
 }
@@ -105,13 +108,13 @@ export const terminalSystem = setup({
     restoreTerminalsActor: fromPromise(async () => {
       const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings
       if (codeSettings?.restoreTerminals === false) {
-        console.log('[Terminal] Terminal restoration disabled by settings')
+        logger.info('Terminal restoration disabled by settings')
         return
       }
       await terminalService.restoreAll((terminalInfo) => {
         setupTerminalHandlers(terminalInfo)
       })
-      console.log('Terminal restoration complete')
+      logger.info('Terminal restoration complete')
     })
   },
   actions: {

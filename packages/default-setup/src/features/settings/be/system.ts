@@ -19,6 +19,9 @@ import { runMigrations } from '@abuddy/sdk/utils';
 import type { FAQItem } from '@/features/settings/be/types';
 import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services';
 import { REQUIRED_PROVIDERS } from '../constants';
+import { createLogger } from '@abuddy/sdk/logger';
+
+const logger = createLogger('settings');
 
 /**
  * Convert the JSON-safe include shape from the frontend
@@ -254,7 +257,7 @@ export const settingsSystem = setup({
           const data = settingsQueries.getSettings();
           system.get(bus).send(emit(settings, { type: 'SETTINGS_UPDATED', data }));
         } else {
-          console.error(`[settings] CLI test failed for "${provider}":`, result.error);
+          logger.error(`CLI test failed for "${provider}"`, { error: result.error });
         }
 
         system.get(bus).send(emit(settings, {
@@ -306,7 +309,7 @@ export const settingsSystem = setup({
     onResetFailed: ({ system, event }) => {
       const err = (event as unknown as ErrorActorEvent).error;
       const message = err instanceof Error ? err.message : String(err);
-      console.error('[settings] Reset app failed:', err);
+      logger.error('Reset app failed', { error: err });
       system.get(bus).send(emit(settings, { type: 'APP_RESET_FAILED', error: message }));
     },
 

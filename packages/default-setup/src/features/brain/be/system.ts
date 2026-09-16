@@ -8,10 +8,8 @@ import { getActor } from '@abuddy/sdk/helpers';
 import { EARS } from '@/__generated__/ears';
 import type { FlowTNodeData, TNodeUpdate } from './types';
 import { repository } from '@/__generated__/repository';
-import { createLogger } from '@abuddy/sdk/logger';
-import { reportSystemError } from '@abuddy/sdk/utils';
+import { createLogger, reportError, setDebugEnabled, isDebugEnabled } from '@abuddy/sdk/logger';
 import { createFlowNodeSystem, getFlowActor, getAllFlowActors, getAllFlowActorIds, clearFlowActorRegistry } from './flow-system';
-import { setBrainInspectEnabled, isBrainInspectEnabled } from './utils/brain-inspect';
 import { setBrainPausedState } from './utils/brain-pause';
 import { notify as notifyAdHocListeners, removeAllListeners as removeAllAdHocListeners } from './services/brain';
 import { services } from '@/__generated__/services';
@@ -97,7 +95,7 @@ function noRootFlowError(): Error | undefined {
 }
 
 function reportStartError(error: Error) {
-  reportSystemError({ error, title: 'Could not start the brain', source: 'brain', operation: 'start' });
+  reportError({ error, title: 'Could not start the brain', source: 'brain', operation: 'start' });
 }
 
 type BrainActorSystem = Parameters<typeof getActor>[0];
@@ -131,7 +129,7 @@ export const brainSystem = setup({
   types: brainSpec.types,
   actions: {
     logError: ({ event }) => {
-      console.error('Brain system error:', (event as any).error);
+      logger.error('Brain system error', { error: (event as any).error });
     },
     startBrain: enqueueActions(({ context, enqueue, system }) => {
       // Defensive: clear stale flow actor references before starting new brain.
@@ -369,7 +367,7 @@ export const brainSystem = setup({
       // persisted setting wins once the user has toggled it.
       const brainSettings = repository.settingsQueries.getPluginSettings('brain');
       const inspectEnabled = brainSettings?.inspectEnabled ?? (process.env.NODE_ENV !== 'production');
-      setBrainInspectEnabled(inspectEnabled);
+      setDebugEnabled('brain', inspectEnabled);
       system.get(bus).send(emit(brain, { type: 'INSPECT_TOGGLED', enabled: inspectEnabled }));
     },
     openTNode: ({ system, event, context }) => {
@@ -420,9 +418,9 @@ export const brainSystem = setup({
       }));
     },
     toggleInspect: ({ system }) => {
-      const currentState = isBrainInspectEnabled();
+      const currentState = isDebugEnabled('brain');
       const newState = !currentState;
-      setBrainInspectEnabled(newState);
+      setDebugEnabled('brain', newState);
 
       // Persist to settings DB
       repository.settingsCommands.updateSettings('plugin', 'brain', ['inspectEnabled'], newState);

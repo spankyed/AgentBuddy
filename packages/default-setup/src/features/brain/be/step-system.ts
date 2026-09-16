@@ -4,7 +4,7 @@ import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import type { NodeEntity } from '@/__generated__/types';
 import { executeNode } from './node-handlers';
 import { repository } from '@/__generated__/repository';
-import { brainInspect } from './utils/brain-inspect';
+import { brainLogger } from './utils/brain-inspect';
 import { brain } from './system';
 
 type StepMachineContext = {
@@ -45,7 +45,7 @@ export function createStepNodeSystem(
       actions: {
         executeStep: ({ context, self }) => {
           try {
-            // brainInspect(
+            // brainLogger.debug(
             //   `Executing step: ${context.step.label} (${context.step.nodeType})`,
             // );
 

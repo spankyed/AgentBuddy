@@ -1,6 +1,6 @@
 import type { NodeEntity } from '@/__generated__/types';
 import type { FieldMapping, SourceResolver } from '../types';
-import { brainInspect, brainLogger } from '../utils/brain-inspect';
+import { brainLogger } from '../utils/brain-inspect';
 import { truncateResult, isTruncated } from '../utils/result-truncator';
 import type { ExecutionContext } from '@abuddy/sdk/steps';
 
@@ -64,7 +64,7 @@ function mapTemplateFields(
 ): Record<string, any> {
   const result: Record<string, any> = {};
 
-  brainInspect('Applying field mappings:', {
+  brainLogger.debug('Applying field mappings:', {
     eventType: context.event.type,
     eventDataKeys: Object.keys(context.event.data),
     eventData: context.event.data,
@@ -80,7 +80,7 @@ function mapTemplateFields(
 
       result[mapping.target] = value;
 
-      brainInspect(`Mapped ${mapping.target}:`, {
+      brainLogger.debug(`Mapped ${mapping.target}:`, {
         source: typeof mapping.source === 'function' ? '[Function]' : mapping.source,
         value
       });
@@ -138,7 +138,7 @@ function applyFieldMappingsIfSupported(
   const mappings = Array.isArray(fm) ? fm : [fm];
   if (mappings.length === 0) return undefined;
 
-  brainInspect(`Applying field mappings for ${node.nodeType} node: ${node.label}`, {
+  brainLogger.debug(`Applying field mappings for ${node.nodeType} node: ${node.label}`, {
     mappingsCount: mappings.length,
     isArray: Array.isArray(fm)
   });
