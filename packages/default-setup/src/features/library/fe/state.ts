@@ -1022,10 +1022,11 @@ export const librarySystem = setup({
       }),
     },
     DOCUMENT_CREATED: {
-      actions: ['requestFolderContents', 'invalidateTreeCache', 'refetchExpandedFolders'],
+      actions: ['requestFolderContents', 'requestIndex', 'invalidateTreeCache', 'refetchExpandedFolders'],
     },
     DOCUMENT_UPDATED: {
-      actions: ['requestFolderContents', 'updateEditingDocument'],
+      // A save can change the document's name and tags, both of which the index carries
+      actions: ['requestFolderContents', 'requestIndex', 'updateEditingDocument'],
     },
     COLLECTION_CREATED: {
       actions: [
@@ -1047,7 +1048,7 @@ export const librarySystem = setup({
       ],
     },
     ITEM_RENAMED: {
-      actions: ['requestFolderContents', 'invalidateTreeCache', 'refetchExpandedFolders'],
+      actions: ['requestFolderContents', 'requestIndex', 'invalidateTreeCache', 'refetchExpandedFolders'],
     },
     ITEMS_DELETED: {
       actions: ['requestFolderContents', 'requestIndex', 'invalidateTreeCache', 'refetchExpandedFolders'],
