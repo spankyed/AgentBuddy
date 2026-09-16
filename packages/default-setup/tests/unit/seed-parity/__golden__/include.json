@@ -3,9 +3,9 @@
     "rows": {
       "Action:Set Instructions": {
         "label": "Set Instructions",
-        "description": "Create a new thread with instructions, using the first part as the title",
-        "sourceHash": "e8dca476346c2df1",
-        "rowSha256": "d5f3f6379f367a4bdc6fbebc5833a07a9df4a69e4288eb7a770c36d83cb51ee9"
+        "description": "Create a thread from instructions",
+        "sourceHash": "ed3d21bb8aed3524",
+        "rowSha256": "c12b953dcdc9f3e0902a509e199deeec55f302799fd03e061bff4ff7e899e7e1"
       },
       "Collection:advanced": {
         "displayOrder": 1000,

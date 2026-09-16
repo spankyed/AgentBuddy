@@ -1,11 +1,13 @@
 // Parity gate for seeding: the rows default-setup's library, notes, actions and prompts seeds produce,
-// compared against golden snapshots recorded from the pre-generic pipeline. Record them again only
-// deliberately: UPDATE_SEED_GOLDEN=1 npx vitest run tests/unit/seed-parity
+// compared against golden snapshots first recorded from the pre-generic pipeline. The v1/v2 scenarios
+// seed fixture sources (tests/fixtures/seed-parity), so only a change in seeding moves their goldens;
+// default-setup.json follows the pack's own sources. Record them again only deliberately:
+// UPDATE_SEED_GOLDEN=1 npx vitest run tests/unit/seed-parity
 //
 // Notes are the one intended difference (goal-generic-seed-compiler Decision 10): they now carry a
 // sourceHash and follow the same change-tracking rules as every other entry. Their sourceHash field
-// and seed counts are left out of the goldens, and the steps where the old pipeline overwrote notes
-// are compared by the Decision 10 rules in notes-change-tracking.spec.ts instead.
+// and seed counts are left out of the goldens, and so are their rows in the steps where the old
+// pipeline overwrote notes: notes-change-tracking.spec.ts checks those steps by the Decision 10 rules.
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -33,18 +35,7 @@ type Step = { name: string; snapshot: Snapshot; counts: Record<string, SeedCount
 const compiled = new Map<string, string>();
 async function compiledDir(sources: 'v1' | 'v2' | 'default-setup'): Promise<string> {
   if (!compiled.has(sources)) {
-    const dir = await compileSeeds(sources);
-    if (sources === 'v2') {
-      // Actions and prompts come from the pack's own sources; change one of each so re-seeds see an edit
-      for (const key of ['actions', 'prompts']) {
-        const file = path.join(dir, `${key}.seed.json`);
-        const data = JSON.parse(fs.readFileSync(file, 'utf-8')) as { records: Array<Record<string, unknown>> };
-        const [first] = data.records;
-        data.records[0] = { ...first, description: `${first.description} (v2)`, sourceHash: `${first.sourceHash}-v2` };
-        fs.writeFileSync(file, JSON.stringify(data, null, 2));
-      }
-    }
-    compiled.set(sources, dir);
+    compiled.set(sources, await compileSeeds(sources));
   }
   return compiled.get(sources)!;
 }
@@ -93,12 +84,6 @@ function checkGolden(scenario: string, steps: Step[]) {
   }
   expect(fs.existsSync(file), `missing golden ${path.relative(process.cwd(), file)}`).toBe(true);
   const golden = JSON.parse(fs.readFileSync(file, 'utf-8')) as Record<string, ReturnType<typeof forGolden>>;
-  // The goldens hold the old pipeline's notes for every step; leave them out where the rules differ
-  for (const [name, step] of Object.entries(golden)) {
-    if (!NOTES_INTENDED_DIFFERENCES.has(`${scenario}/${name}`)) continue;
-    step.rows = Object.fromEntries(Object.entries(step.rows).filter(([alias]) => !alias.startsWith('Note:')));
-    step.relations = step.relations.filter((relation) => !relation.includes('Note:'));
-  }
   expect(actual).toEqual(golden);
 }
 
@@ -141,7 +126,7 @@ function resolveId(alias: string): string {
 
 const MODES: Array<ImportMode | undefined> = [undefined, 'replace-on-collision', 'keep-existing', 'wipe-and-replace'];
 
-describe('seed parity (golden snapshots from the pre-generic pipeline)', () => {
+describe('seed parity (golden snapshots)', () => {
   it.each(MODES.map((mode) => [mode ?? 'default']))('fresh, unchanged and changed re-seeds in mode %s', async (label) => {
     const mode = label === 'default' ? undefined : label as ImportMode;
     // The old notes seeder throws when it wipes nested notes (deleting a parent already deleted its
@@ -164,7 +149,7 @@ describe('seed parity (golden snapshots from the pre-generic pipeline)', () => {
         mode: 'replace-on-collision',
         before: () => {
           untrack('Document:Getting Started')();
-          untrack('Action:')();
+          untrack('Action:Set Instructions')();
         },
       },
     ]);

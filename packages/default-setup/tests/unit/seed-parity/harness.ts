@@ -19,7 +19,7 @@ const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'abuddy.json'), 
 
 type SeedEntry = string | { path?: string; [key: string]: unknown };
 
-/** The sources a scenario seeds: fixture versions for library and notes, the pack's own actions and prompts */
+/** The sources a scenario seeds: a fixture version of every parity key, or the pack's own sources */
 export type SourceSet = 'v1' | 'v2' | 'default-setup';
 
 function withPath(entry: SeedEntry, sourcePath: string): SeedEntry {
@@ -32,10 +32,8 @@ export async function compileSeeds(sources: SourceSet): Promise<string> {
   for (const key of PARITY_KEYS) {
     const entry = manifest.boot.seed[key] as SeedEntry;
     const own = typeof entry === 'string' ? entry : entry.path!;
-    const fixture = sources === 'default-setup' || key === 'actions' || key === 'prompts'
-      ? own
-      : path.relative(PACK_DIR, path.join(FIXTURES, sources, key));
-    seed[key] = withPath(entry, fixture);
+    const sourcePath = sources === 'default-setup' ? own : path.relative(PACK_DIR, path.join(FIXTURES, sources, key));
+    seed[key] = withPath(entry, sourcePath);
   }
   const pack = { ...manifest, steps: undefined, artifacts: undefined, blocks: undefined, boot: { seed } };
   const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), 'seed-parity-'));

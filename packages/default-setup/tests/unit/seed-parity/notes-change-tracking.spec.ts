@@ -1,6 +1,6 @@
 // Notes through the generic seed pipeline: markdown compiled into records, seeded by the SDK's
 // generic seeder through default-setup's Note seed hooks.
-// - Fresh seeds must produce the same notes rows as the pre-generic pipeline (the goldens).
+// - Fresh seeds must produce the same notes rows as the goldens (first recorded from the pre-generic pipeline).
 // - Re-seeds follow goal-generic-seed-compiler Decision 10: notes carry a sourceHash, an unchanged or
 //   missing stored hash leaves the row alone, keep-existing skips, wipe-and-replace works on nested notes.
 import * as fs from 'node:fs';
@@ -132,19 +132,19 @@ describe('notes seeding (generic pipeline)', () => {
     ['replace-on-collision', 'replace-on-collision'],
     ['keep-existing', 'keep-existing'],
     ['wipe-and-replace', 'wipe-and-replace'],
-  ] as const)('fresh seed in mode %s matches the pre-generic rows', (scenario, mode) => {
+  ] as const)('fresh seed in mode %s matches the golden notes', (scenario, mode) => {
     resetDatabase();
     seedNotes('v1', { mode });
     expect(notesOf(snapshot())).toEqual(notesOf(golden(scenario).fresh));
   });
 
-  it('seeds only the included notes, as before', () => {
+  it('seeds only the included notes', () => {
     resetDatabase();
     seedNotes('v1', { include: new Set(['Projects']) });
     expect(notesOf(snapshot())).toEqual(notesOf(golden('include').fresh));
   });
 
-  it("seeds default-setup's own notes, as before", () => {
+  it("seeds default-setup's own notes", () => {
     resetDatabase();
     seedNotes('default-setup');
     expect(notesOf(snapshot())).toEqual(notesOf(golden('default-setup').fresh));
