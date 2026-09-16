@@ -147,7 +147,7 @@ Examples:
   db-cli --exec "qx().ofType(EARS.Entity.Document).count()"
 
   # Execute with output to file
-  db-cli -e "qx(EARS.Entity.Agent).pickAll()" -o json -f agents.json
+  db-cli -e "qx(EARS.Entity.Note).pickAll()" -o json -f notes.json
 
   # Execute a script
   db-cli -s ./scripts/cleanup.js

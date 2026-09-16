@@ -210,36 +210,12 @@ npm run db:script scripts/db/export-data.ts -- --entities Settings,Thread --form
 
 Flags: `-o, --output <dir>` (default `./exports`), `-e, --entities <a,b>` (default every registered type), `-f, --format json|csv`, `-v, --verbose`.
 
-### scripts/db/cleanup-corrupt-data.ts
-
-Deletes relations whose `src` or `tgt` is missing, `"undefined"`, `"null"`, `""`, `"NaN"`, or has no `-`, straight from LMDB in the primary and volatile backup partitions. It also reports (without changing) suspect ids and types among the first 100 entities of each partition. There's no dry run or confirmation. Restart the app afterwards.
-
-```bash
-npm run db:script scripts/db/cleanup-corrupt-data.ts
-```
-
-### scripts/db/migrate-tnodes.ts
-
-Moves `TNode` entities, their attributes and the relations that involve them from the primary LMDB database to the volatile backup database, for data written before TNodes moved there. It does nothing when the primary database has no TNodes. There's no dry run or confirmation.
-
-```bash
-npm run db:script scripts/db/migrate-tnodes.ts
-```
-
 ### cli/cleanup-tombstoned.ts
 
 Behind the REPL's `.cleanup-tombstoned` command (there's no script entry for it). Deletes every entity record marked `deletedAt` (tombstoned), with its attributes, straight from LMDB in the primary and volatile backup partitions. It doesn't touch the REPL's in-memory data, so restart the CLI to see the result.
 
 ```
 db> .cleanup-tombstoned
-```
-
-### scripts/db/cleanup-export-subdoclinks.ts
-
-Works on an exported notes directory, not the database: removes `document://` links from the Markdown of notes whose frontmatter `type` is `task` or `tasklist`. It doesn't need the environment variables.
-
-```bash
-npx tsx packages/api/scripts/db/cleanup-export-subdoclinks.ts <export-dir>
 ```
 
 ## Troubleshooting
