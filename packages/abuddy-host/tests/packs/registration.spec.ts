@@ -98,7 +98,8 @@ describe('runRegisteredBootSeeds', () => {
     runRegisteredBootSeeds(orchestrate);
 
     expect(orchestrate).toHaveBeenCalledTimes(1);
-    expect(orchestrate).toHaveBeenCalledWith(seedManifest);
+    // With the pack it belongs to, so each pack's boot seed is tracked under its own id
+    expect(orchestrate).toHaveBeenCalledWith(seedManifest, 'built-in-pack');
     expect(smuggled).not.toHaveBeenCalled();
     expect(getPackContributions('built-in-pack')?.bootHooks).toEqual(['seedManifest']);
     expect(getPackContributions('hooks-pack')?.bootHooks).toEqual(['onInit']);

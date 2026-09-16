@@ -183,7 +183,7 @@ describe('reloading a built-in pack', () => {
     await loadBuiltInPacks(packagesDir, { runtimeEntry: 'only' });
     // Boot's own seeding, which the reload picks up from
     const { seedManifest } = getPackBootHooks(BUILT_IN_ID)!;
-    orchestrateDeclarativeSeed(seedManifest!);
+    orchestrateDeclarativeSeed(seedManifest!, BUILT_IN_ID);
     expect(seeded).toEqual([path.join(packagesDir, BUILT_IN_ID, 'dist')]);
 
     // A reload after a code-only rebuild leaves the data alone
@@ -197,29 +197,48 @@ describe('reloading a built-in pack', () => {
     expect(seeded).toEqual([path.join(packagesDir, BUILT_IN_ID, 'dist')]);
   });
 
+  it("records what it seeded per pack, so a second built-in pack's boot seed doesn't re-run this one", async () => {
+    const packagesDir = writeBuiltIn();
+    await loadBuiltInPacks(packagesDir, { runtimeEntry: 'only' });
+    const { seedManifest } = getPackBootHooks(BUILT_IN_ID)!;
+
+    orchestrateDeclarativeSeed(seedManifest!, BUILT_IN_ID);
+    expect(seeded).toEqual([path.join(packagesDir, BUILT_IN_ID, 'dist')]);
+
+    // Another built-in pack seeds its own data from the same settings row
+    seeded.length = 0;
+    orchestrateDeclarativeSeed(seedManifest!, 'other-pack');
+    expect(Object.keys(internalSettings.seedHashes as Record<string, string>).sort()).toEqual([BUILT_IN_ID, 'other-pack']);
+
+    // ...and this pack's own seed is still recorded, so it isn't seeded again
+    seeded.length = 0;
+    orchestrateDeclarativeSeed(seedManifest!, BUILT_IN_ID);
+    expect(seeded).toEqual([]);
+  });
+
   it('reports the records a seeder could not seed, and still records the hash so they are retried on the next change', async () => {
     const packagesDir = writeBuiltIn();
     await loadBuiltInPacks(packagesDir, { runtimeEntry: 'only' });
     const { seedManifest } = getPackBootHooks(BUILT_IN_ID)!;
 
     recordsThatFail = ['Flow "Broken": step 2 names no action'];
-    orchestrateDeclarativeSeed(seedManifest!);
+    orchestrateDeclarativeSeed(seedManifest!, BUILT_IN_ID);
 
     // The failure is reported, not swallowed behind "Boot seed completed"
     expect(loggedErrors.join('\n')).toContain('Flow "Broken": step 2 names no action');
     // The hash is stored anyway, as seedPackData does: the same failing data isn't re-imported every boot
-    expect(internalSettings.seedHash).toBeTruthy();
+    expect((internalSettings.seedHashes as Record<string, string>)[BUILT_IN_ID]).toBeTruthy();
 
     // ...and the next seed of unchanged data doesn't retry it
     seeded.length = 0;
-    orchestrateDeclarativeSeed(seedManifest!);
+    orchestrateDeclarativeSeed(seedManifest!, BUILT_IN_ID);
     expect(seeded).toEqual([]);
 
     // ...while recompiled seeds do
     writeSeeds('[{ "label": "second" }]');
     recordsThatFail = [];
     loggedErrors.length = 0;
-    orchestrateDeclarativeSeed(seedManifest!);
+    orchestrateDeclarativeSeed(seedManifest!, BUILT_IN_ID);
     expect(seeded).toEqual([path.join(packagesDir, BUILT_IN_ID, 'dist')]);
     expect(loggedErrors).toEqual([]);
   });

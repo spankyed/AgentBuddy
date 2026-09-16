@@ -6,6 +6,9 @@ import type { ModuleContext } from '../../ModuleContext.js';
 import { getAppContext } from '../../app-context.js';
 import { devServerUrl } from '@abuddy/host/packs/dev-server';
 
+/** A pack id, as the manifest schema defines it (`abuddy-sdk/src/build/manifest-schema.ts`) */
+const PACK_ID = /^[a-z][a-z0-9-]*$/;
+
 const MIME_TYPES: Record<string, string> = {
   '.js': 'application/javascript',
   '.mjs': 'application/javascript',
@@ -35,6 +38,13 @@ class PackProtocol implements AppModule {
         const url = new URL(request.url);
         const packId = url.hostname;
         const filePath = decodeURIComponent(url.pathname);
+
+        // `pack://../x` parses to the host "..", which would resolve the pack dir to its parent — the data
+        // dir — and pass the prefix check below, serving any file sitting directly in it. A pack id is a
+        // single plain path segment, so anything else is refused before it reaches the filesystem.
+        if (!PACK_ID.test(packId)) {
+          return new Response('Forbidden', { status: 403 });
+        }
 
         const {packsDir, userDataDir} = getAppContext();
 

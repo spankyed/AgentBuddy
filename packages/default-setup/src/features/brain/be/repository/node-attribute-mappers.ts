@@ -168,9 +168,13 @@ function truncateAll(obj: Record<string, any>): Record<string, any> {
  *─────────────────────────────────────────────────────────────*/
 
 export interface PreparedAttributes {
-  /** All attributes (config + user data) for UI display. */
+  /** All attributes (config + user data) for UI display, truncated to bound the trace's size. */
   nodeAttributes: Record<string, any>;
-  /** Only user-provided params (direct + mapped) for action/template execution. */
+  /**
+   * Only user-provided params (direct + mapped), whole: this is what the step runs on and writes, so it
+   * is never truncated. A create or update step writing it would otherwise persist a cut-off string, or a
+   * `{ value, _truncated }` wrapper in place of a long array or object.
+   */
   resolvedParams: Record<string, any>;
 }
 
@@ -196,6 +200,6 @@ export function prepareNodeAttributes(
 
   return {
     nodeAttributes: truncateAll(resolvedAttributes),
-    resolvedParams: truncateAll(resolvedParams),
+    resolvedParams,
   };
 }

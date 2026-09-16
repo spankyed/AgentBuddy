@@ -246,3 +246,51 @@ describe('a bus given a subset of the registered systems', () => {
     expect(subsetBus.system.get('second-pack.outside')).toBeUndefined();
   });
 });
+
+// A pack can be installed, uninstalled or rebuilt before a client ever connects: `abuddy dev` against a
+// running backend, or a headless boot. The bus has to act on those either way.
+describe('pack lifecycle before a client connects', () => {
+  const systemIds = ['second-pack.feature'];
+  const isRunning = (systemId: string) => bus.system.get(systemId) !== undefined;
+
+  it('starts an activated pack’s systems, and sends their startup data once a client connects', async () => {
+    registerPack(pack('second-pack'));
+
+    bus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds });
+    await flush();
+    expect(isRunning('second-pack.feature'), 'the activated pack’s system is running').toBe(true);
+    // No client yet, so nothing has been told to send startup data
+    expect(received).toEqual([]);
+
+    rootEvents.emitConnected();
+    await flush();
+    expect(received).toEqual(['first-pack', 'second-pack']);
+  });
+
+  it('stops a torn-down pack’s systems', async () => {
+    // first-pack's system is spawned when the bus starts, so it is genuinely running to begin with
+    expect(isRunning('first-pack.feature')).toBe(true);
+
+    bus.send({ type: 'TEARDOWN_PACK', systemIds: ['first-pack.feature'] });
+    await flush();
+    expect(isRunning('first-pack.feature')).toBe(false);
+  });
+
+  it('restarts a reloaded pack’s systems', async () => {
+    const before = bus.system.get('first-pack.feature');
+    expect(before).toBeDefined();
+
+    bus.send({ type: 'RELOAD_PACK', packId: 'first-pack', systemIds: ['first-pack.feature'] });
+    await flush();
+    // A fresh actor under the same id, not the one that was already running
+    const after = bus.system.get('first-pack.feature');
+    expect(after, 'the reloaded pack’s system is running again').toBeDefined();
+    expect(after, 'it is a fresh actor, so the pack really was restarted').not.toBe(before);
+    // Still no client: the fresh systems get their startup data from the first connection
+    expect(received).toEqual([]);
+
+    rootEvents.emitConnected();
+    await flush();
+    expect(received).toEqual(['first-pack']);
+  });
+});

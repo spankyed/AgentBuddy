@@ -266,9 +266,9 @@ export function getPackBootHooks(packId: string): PackBootHooks | null {
  * Seeds each registered pack's declarative boot seed (`boot.seedManifest`, built-in packs only: the
  * loader strips it from external packs, which seed through `seedPackData`)
  */
-export function runRegisteredBootSeeds(orchestrateSeed: (manifest: PackSeedManifest) => void): void {
+export function runRegisteredBootSeeds(orchestrateSeed: (manifest: PackSeedManifest, packId: string) => void): void {
   for (const reg of registrations.values()) {
-    if (reg.boot?.seedManifest) orchestrateSeed(reg.boot.seedManifest);
+    if (reg.boot?.seedManifest) orchestrateSeed(reg.boot.seedManifest, reg.id);
   }
 }
 

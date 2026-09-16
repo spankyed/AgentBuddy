@@ -186,6 +186,10 @@ export interface InternalSettings {
   lastInteractionTimestamp: number | null;
   version: string;
   seedHash: string | null;
+  /** Each built-in pack's boot seed, by pack id: the hash of the compiled data last seeded, and the
+   *  file mtimes/sizes it was computed from (the fast path that skips re-hashing unchanged files) */
+  seedHashes?: Record<string, string>;
+  seedStatFingerprints?: Record<string, string>;
   packSeedHashes?: Record<string, string>;
   packVersions?: Record<string, string>;
 }

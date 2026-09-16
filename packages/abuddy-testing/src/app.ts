@@ -251,6 +251,8 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
 
   let activity = 0;
   let stopped = false;
+  /** Whether the packs are up, so a start that failed before they were doesn't shut them down twice */
+  let packsUp = false;
   const bus: Actor<ReturnType<typeof createBusMachine>> = createActor(createBusMachine({
     systems: () => systems,
     onOutgoing: (event) => testRootEvents.emitOutgoing(event),
@@ -430,13 +432,23 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       for (const pending of calls) pending.catch(() => {});
       for (const wait of waits) wait.end(stoppedError());
       // Pack modules keep state outside the stopped actors (schedules, listeners): process-wide, so once no app runs
-      if (running.size === 0) shutDownPacks();
+      if (running.size === 0 && packsUp) shutDownPacks();
     },
   };
 
-  if (running.size === 0) startPacks();
+  // The app is registered before anything that can throw, so a failed start is still stopped: otherwise its
+  // recorders stay subscribed to testRootEvents for the rest of the file, waking waits for a dead app.
   running.add(app);
-  bus.start();
-  await settle();
+  try {
+    // `running` already holds this app, so a size of 1 means it's the first
+    if (running.size === 1) startPacks();
+    // Not before: startPacks shuts the packs down again itself when it fails, and stop() must not repeat it
+    packsUp = true;
+    bus.start();
+    await settle();
+  } catch (error) {
+    app.stop();
+    throw error;
+  }
   return app;
 }

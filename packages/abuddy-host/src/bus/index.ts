@@ -166,10 +166,21 @@ export function createBusMachine(options: BusOptions) {
     id: bus,
     initial: 'disconnected',
     entry: ['spawnActors', 'listen'],
+    // A pack can be installed, uninstalled or rebuilt before any client connects (`abuddy dev` against a
+    // running backend, a headless boot), so these apply in both states: handled only while connected, the
+    // pack's systems would be left as they were with nothing reported.
+    on: {
+      RELOAD_PACK: { actions: 'reloadPack' },
+      TEARDOWN_PACK: { actions: 'teardownPack' },
+      ACTIVATE_PACK: { actions: 'activatePack' },
+      PACK_CLIENT_CONNECTED: { actions: 'sendPackConnected' },
+    },
     states: {
       disconnected: {
         on: {
           CLIENT_CONNECTED: { target: 'connected' },
+          // SYSTEMS_SPAWNED is deliberately not handled here: with no client to send startup data to,
+          // the systems just spawned get their CLIENT_CONNECTED from `sendConnected` when one arrives
         },
       },
       connected: {
@@ -178,11 +189,7 @@ export function createBusMachine(options: BusOptions) {
           CLIENT_CONNECTED: { actions: 'sendConnected' },
           INCOMING: { actions: 'routeIncoming' },
           OUTGOING: { actions: 'notify' },
-          RELOAD_PACK: { actions: 'reloadPack' },
-          TEARDOWN_PACK: { actions: 'teardownPack' },
-          ACTIVATE_PACK: { actions: 'activatePack' },
           SYSTEMS_SPAWNED: { actions: 'sendSpawnedConnected' },
-          PACK_CLIENT_CONNECTED: { actions: 'sendPackConnected' },
         },
       },
     },

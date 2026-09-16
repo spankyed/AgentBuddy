@@ -162,25 +162,36 @@ function evaluateSeedPolicy(policy?: PackSeedManifest['seedPolicy']): Record<str
   return include;
 }
 
-export function orchestrateDeclarativeSeed(manifest: PackSeedManifest): void {
+/**
+ * Seeds a built-in pack's declared boot seed, skipping it when its compiled data hasn't changed since
+ * the last run. What was last seeded is recorded per pack: every built-in pack with a `boot.seed` runs
+ * through here, so one shared hash would have each pack overwriting the others' and re-seeding forever.
+ */
+export function orchestrateDeclarativeSeed(manifest: PackSeedManifest, packId: string): void {
   const { artifacts, compiledDir, seedPolicy } = manifest;
   const repo = repository as any;
   const internal = repo.settingsQueries.getInternalSettings();
-  const storedHash = internal.seedHash;
+  const storedHash = internal.seedHashes?.[packId];
 
   // Fast path: if file mtimes/sizes haven't changed, the hash is the same
   const seedFiles = artifacts.map(name => ({ path: seedPath(compiledDir, name) }));
   const fp = statFingerprint(seedFiles);
-  const storedFp = internal.seedStatFingerprint;
+  const storedFp = internal.seedStatFingerprints?.[packId];
   if (storedHash && storedFp === fp) {
-    logger.info('Boot seed skipped: files unchanged (mtime)');
+    logger.info(`Boot seed skipped for ${packId}: files unchanged (mtime)`);
     return;
   }
 
+  /** Writes one pack's entry without disturbing the others' */
+  const record = (key: 'seedHashes' | 'seedStatFingerprints', value: string) => {
+    const current = repo.settingsQueries.getInternalSettings()[key] ?? {};
+    repo.settingsCommands.updateSettings('internal', null, [key], { ...current, [packId]: value });
+  };
+
   const currentHash = computeManifestSeedHash(compiledDir, artifacts);
   if (storedHash === currentHash) {
-    repo.settingsCommands.updateSettings('internal', null, ['seedStatFingerprint'], fp);
-    logger.info('Boot seed skipped: data unchanged');
+    record('seedStatFingerprints', fp);
+    logger.info(`Boot seed skipped for ${packId}: data unchanged`);
     return;
   }
 
@@ -191,12 +202,12 @@ export function orchestrateDeclarativeSeed(manifest: PackSeedManifest): void {
 
   // Stored even when records failed, as seedPackData does: the same failing data isn't re-imported on
   // every boot, and it's retried as soon as the compiled seeds change
-  repo.settingsCommands.updateSettings('internal', null, ['seedHash'], currentHash);
-  repo.settingsCommands.updateSettings('internal', null, ['seedStatFingerprint'], fp);
+  record('seedHashes', currentHash);
+  record('seedStatFingerprints', fp);
 
   if (errors.length > 0) {
-    logger.error(`Boot seed finished with errors; those records were not seeded and won't be retried until the compiled seeds change:\n  ${errors.join('\n  ')}`);
+    logger.error(`Boot seed for ${packId} finished with errors; those records were not seeded and won't be retried until the compiled seeds change:\n  ${errors.join('\n  ')}`);
     return;
   }
-  logger.info(`Boot seed completed: ${JSON.stringify(counts)}`);
+  logger.info(`Boot seed completed for ${packId}: ${JSON.stringify(counts)}`);
 }

@@ -167,7 +167,7 @@ export async function reloadBuiltInPack(
         // A rebuild running again mid-reload can take those files out from under it, so it doesn't stop the rest.
         const seedManifest = getPackBootHooks(packId)?.seedManifest;
         try {
-          if (seedManifest) orchestrateDeclarativeSeed(seedManifest);
+          if (seedManifest) orchestrateDeclarativeSeed(seedManifest, packId);
         } catch (err) {
           logger.error(`Could not seed ${packId}'s compiled data on reload: ${describe(err)}`);
         }
