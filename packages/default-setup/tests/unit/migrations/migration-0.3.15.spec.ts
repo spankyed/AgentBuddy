@@ -3,7 +3,7 @@
 import { describe, expect, it } from 'vitest'
 import { tx, untypedQx } from '@abuddy/sdk/ears'
 import { dropAttribute } from '@abuddy/sdk/testing'
-import { migrations } from '../../src/migrations/index'
+import { migrations } from '../../../src/migrations/index'
 import { repository } from '@/__generated__/repository'
 import { createDefaultSettings } from '@/features/settings/be/repository'
 import { EARS, createEntityWithDefaults } from '@/__generated__/ears'

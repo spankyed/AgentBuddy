@@ -5,21 +5,6 @@
 ```ts
 
 // @public (undocumented)
-export interface BootSeedConfig {
-    // (undocumented)
-    artifacts: string[];
-    // (undocumented)
-    compiledDir: string;
-    // (undocumented)
-    getIncludeOverrides?: () => Record<string, SeedIncludeSet>;
-}
-
-// @public (undocumented)
-export function createBootSeed(config: BootSeedConfig): (options?: {
-    verbose?: boolean;
-}) => Record<string, SeedCounts> | null;
-
-// @public (undocumented)
 export function createFlowSeeder(): Seeder;
 
 // @public

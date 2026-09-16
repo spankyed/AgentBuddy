@@ -17,7 +17,6 @@ export interface BuiltinRepositories {
     getInternalSettings(): {
       hasOnboarded: boolean;
       version: string;
-      seedHash?: string | null;
       packSeedHashes?: Record<string, string>;
       packVersions?: Record<string, string>;
     };

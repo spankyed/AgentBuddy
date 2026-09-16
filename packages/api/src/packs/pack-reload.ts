@@ -30,8 +30,6 @@ import type { PackManifest } from '@abuddy/host/packs';
 
 const logger = createLogger('pack-reload');
 
-const describe = (err: unknown) => err instanceof Error ? err.message : String(err);
-
 /** A pack's freshly loaded runtime, not yet registered */
 interface FreshPack {
   newSystemIds: string[];
@@ -86,8 +84,7 @@ async function reloadPack(
   try {
     fresh.afterRegister?.();
   } catch (err) {
-    // In the message, not as meta: the logger serializes an Error to {} and its own message is lost
-    logger.error(`Pack ${packId} reloaded, but the work after registering it failed: ${describe(err)}`);
+    logger.error(`Pack ${packId} reloaded, but the work after registering it failed:`, err as Error);
   }
 
   // The bus stops each of these and starts those still registered: a feature the pack dropped only stops
@@ -169,7 +166,7 @@ export async function reloadBuiltInPack(
         try {
           if (seedManifest) orchestrateDeclarativeSeed(seedManifest, packId);
         } catch (err) {
-          logger.error(`Could not seed ${packId}'s compiled data on reload: ${describe(err)}`);
+          logger.error(`Could not seed ${packId}'s compiled data on reload:`, err as Error);
         }
         // Pack authors resolve this pack's types, build code and seeds from the app's copy
         const { hostPacksDir } = resolveAppContext();

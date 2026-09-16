@@ -145,7 +145,8 @@ describe('reloading a built-in pack', () => {
     loggedErrors.length = 0;
     recordsThatFail = [];
     seedFailure = undefined;
-    stopLogging = rootEvents.onLog((event) => { if (event.level === 'error') loggedErrors.push(event.message); });
+    // The reason lives in meta: the logger redacts an Error into { name, message, stack }
+    stopLogging = rootEvents.onLog((event) => { if (event.level === 'error') loggedErrors.push(`${event.message} ${JSON.stringify(event.meta ?? {})}`); });
     internalSettings = {};
     registerSeeder({
       key: 'actions',
