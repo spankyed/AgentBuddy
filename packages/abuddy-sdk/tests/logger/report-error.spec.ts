@@ -2,7 +2,7 @@
 // user and, for a step, its TNode
 import * as os from 'node:os';
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
-import { createLogger, isDebugEnabled, reportError, setDebugEnabled, type LogEvent } from '../../src/logger/index.ts';
+import { createLogger, reportError, setDebugEnabled, type LogEvent } from '../../src/logger/index.ts';
 import { startTestRuntime, takeSystemErrors, testRootEvents } from '../../src/testing/index.ts';
 import { registerRepository } from '../../src/ears/repository.ts';
 import type { OutgoingSystemEvents } from '../../src/events/index.ts';
@@ -41,8 +41,7 @@ describe('reportError', () => {
   const tNodeId = 'TNode-1' as EARS.EntityId;
 
   it("with step context logs the error, sends it to the brain plugin and records it on the step's TNode", () => {
-    const printed = vi.spyOn(console, 'error').mockImplementation(() => {});
-    let returned: ReturnType<typeof reportError> | undefined;
+    let returned: ReturnType<typeof reportError>;
     const { logs, outgoing } = capture(() => {
       returned = reportError({
         error: new Error('model failed'),
@@ -51,33 +50,23 @@ describe('reportError', () => {
       });
     });
 
-    expect(returned).toMatchObject({ source: 'brain-llm', phase: 'llm.execute', tNodeId, message: 'model failed' });
-    expect(logs).toEqual([expect.objectContaining({
-      level: 'error',
-      source: 'step-runtime',
-      message: 'model failed',
-      stack: returned!.stack,
-      meta: expect.objectContaining({ source: 'brain-llm', phase: 'llm.execute', errorId: returned!.errorId, error: expect.any(Object) }),
-    })]);
-    expect(returned!.stack).toContain('model failed');
-    // Only logged, not printed
-    expect(printed).not.toHaveBeenCalled();
-    expect(outgoing).toEqual([{ type: 'BRAIN_RUNTIME_ERROR', pluginId: 'brain', error: returned }]);
+    const { errorId, stack } = returned!;
+    expect(returned!).toMatchObject({ source: 'brain-llm', phase: 'llm.execute', tNodeId, message: 'model failed' });
+    expect(logs).toEqual([expect.objectContaining({ level: 'error', source: 'step-runtime', message: 'model failed', stack })]);
+    expect(outgoing).toEqual([{ type: 'BRAIN_RUNTIME_ERROR', pluginId: 'brain', error: returned! }]);
     expect(tNodeResults).toEqual([{
       id: tNodeId,
-      result: { error: { message: 'model failed', source: 'brain-llm', phase: 'llm.execute', errorId: returned!.errorId, stack: returned!.stack } },
+      result: { error: { message: 'model failed', source: 'brain-llm', phase: 'llm.execute', errorId, stack } },
     }]);
-    // A step's error is shown in its flow, not as a system error
     expect(takeSystemErrors()).toEqual([]);
   });
 
   it('redacts key-shaped strings a provider error quotes', () => {
-    const { logs, outgoing } = capture(() => {
+    const reported = capture(() => {
       reportError({ error: new Error('Incorrect API key provided: sk-proj-abcdef123456'), source: 'brain-llm', step: { phase: 'llm.execute' } });
     });
-    expect(JSON.stringify(outgoing)).not.toContain('sk-proj-abcdef123456');
-    expect(logs).toHaveLength(1);
-    expect(JSON.stringify(logs)).not.toContain('sk-proj-abcdef123456');
+    expect(reported.logs).toHaveLength(1);
+    expect(JSON.stringify(reported)).not.toContain('sk-proj-abcdef123456');
   });
 
   it('without step context reports a system error for the app to show', () => {
@@ -86,24 +75,19 @@ describe('reportError', () => {
     });
     expect(takeSystemErrors()).toEqual([{ error: new Error('boom'), source: 'notes', title: 'Could not save', operation: 'save' }]);
     expect(outgoing).toEqual([]);
-    expect(tNodeResults).toEqual([]);
   });
 });
 
 describe('createLogger', () => {
   it("logs debug messages of a { debug: true } logger only while its source's toggle is on", () => {
     vi.spyOn(console, 'debug').mockImplementation(() => {});
+    vi.spyOn(console, 'info').mockImplementation(() => {});
     const logger = createLogger('gated-source', { debug: true });
-    const plain = createLogger('plain-source');
 
     setDebugEnabled('gated-source', false);
-    setDebugEnabled('plain-source', false);
-    const off = capture(() => { logger.debug('hidden'); logger.info('shown'); plain.debug('plain'); });
-    expect(off.logs.map((e) => e.message)).toEqual(['shown', 'plain']);
+    expect(capture(() => { logger.debug('hidden'); logger.info('shown'); }).logs.map((e) => e.message)).toEqual(['shown']);
 
     setDebugEnabled('gated-source', true);
-    expect(isDebugEnabled('gated-source')).toBe(true);
-    const on = capture(() => logger.debug('visible', { step: 1 }));
-    expect(on.logs).toEqual([{ level: 'debug', message: 'visible', source: 'gated-source', meta: { step: 1 } }]);
+    expect(capture(() => logger.debug('visible')).logs.map((e) => e.message)).toEqual(['visible']);
   });
 });

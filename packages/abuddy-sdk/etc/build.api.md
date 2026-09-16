@@ -324,7 +324,7 @@ export const FEATURE_ID_PATTERN: RegExp;
 
 // @public (undocumented)
 export const FeatureEntrySchema: z.ZodObject<{
-    id: z.ZodString;
+    id: z.ZodEffects<z.ZodString, string, string>;
     designation: z.ZodOptional<z.ZodString>;
     settings: z.ZodOptional<z.ZodString>;
     typesEntry: z.ZodOptional<z.ZodString>;
@@ -488,7 +488,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         source: string;
     }>>>;
     features: z.ZodOptional<z.ZodArray<z.ZodObject<{
-        id: z.ZodString;
+        id: z.ZodEffects<z.ZodString, string, string>;
         designation: z.ZodOptional<z.ZodString>;
         settings: z.ZodOptional<z.ZodString>;
         typesEntry: z.ZodOptional<z.ZodString>;

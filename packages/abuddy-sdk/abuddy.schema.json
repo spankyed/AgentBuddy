@@ -120,7 +120,7 @@
           "id": {
             "type": "string",
             "pattern": "^[a-z][a-zA-Z0-9]*$",
-            "description": "Unique feature identifier. A lowercase-first identifier (letters and digits), used as a name in generated code."
+            "description": "Unique feature identifier. A lowercase-first identifier (letters and digits), used as a name in generated code; not a reserved word or \"busId\"."
           },
           "designation": {
             "type": "string",
@@ -422,7 +422,10 @@
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Named app extensions. Keys are extension names, values are paths to Vue components."
+          "propertyNames": {
+            "pattern": "^[A-Za-z_$][\\w$]*$"
+          },
+          "description": "Named app extensions. Keys are extension names (identifiers), values are paths to Vue components."
         },
         "bundleUi": {
           "type": "boolean",

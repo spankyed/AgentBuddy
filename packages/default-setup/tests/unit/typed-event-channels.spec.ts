@@ -59,33 +59,21 @@ describe('sendToSystem', () => {
     expectTypeOf(() => {
       sendToSystem('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'notes', path: ['sort'], value: 'title' });
       sendToSystem('notes', { type: 'DELETE_NOTE', id: 'Note-1' });
-      sendToSystem('settings', { type: 'GET_SETTINGS' });
     }).toBeFunction();
   });
 
-  it('rejects an unknown system, an unknown event type and a missing field', () => {
-    expectTypeOf(() => {
+  it('rejects an unknown system, an unknown event type, a missing field and a union system or type', () => {
+    expectTypeOf((systemId: 'notes' | 'settings', brainIsDead: boolean) => {
       // @ts-expect-error not a system of this pack or its dependencies
       sendToSystem('unknown-system', { type: 'GET_SETTINGS' });
       // @ts-expect-error the settings system doesn't receive this event
       sendToSystem('settings', { type: 'DELETE_NOTE', id: 'Note-1' });
       // @ts-expect-error DELETE_NOTE needs an id
       sendToSystem('notes', { type: 'DELETE_NOTE' });
-    }).toBeFunction();
-  });
-
-  it('accepts a type typed as a union when the event has every named event\'s fields', () => {
-    expectTypeOf((brainIsDead: boolean) => {
-      sendToSystem('brain', { type: brainIsDead ? 'START_BRAIN' : 'RESTART_BRAIN' });
-      // @ts-expect-error as a DELETE_NOTE it would have no id
-      sendToSystem('notes', { type: brainIsDead ? 'DELETE_NOTE' : 'CREATE_NOTE' });
-    }).toBeFunction();
-  });
-
-  it('rejects a system id typed as a union', () => {
-    expectTypeOf((systemId: 'notes' | 'settings') => {
-      // @ts-expect-error the notes system doesn't receive GET_SETTINGS
+      // @ts-expect-error one system per send
       sendToSystem(systemId, { type: 'GET_SETTINGS' });
+      // @ts-expect-error one event type per send
+      sendToSystem('brain', { type: brainIsDead ? 'START_BRAIN' : 'RESTART_BRAIN' });
     }).toBeFunction();
   });
 });

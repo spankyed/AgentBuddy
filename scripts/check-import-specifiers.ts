@@ -46,42 +46,6 @@ function codeBlocks(file: string): { content: string; lineOffset: number }[] {
     .map((b) => ({ content: b.content, lineOffset: b.loc.start.line - 1 }));
 }
 
-/**
- * `code` with each comment's characters replaced by spaces (line breaks kept), so line numbers and
- * the contents of strings and template literals survive. The parser tells comments from comment-like
- * text in strings, templates and regular expressions: every comment is trivia around some token.
- */
-export function blankComments(code: string, fileName: string): string {
-  const source = parse(code, fileName);
-  const chars = code.split('');
-  const seen = new Set<number>();
-  const visit = (node: ts.Node): void => {
-    // JSDoc nodes lie inside the trivia the next token's comment ranges already cover
-    if (node.kind >= ts.SyntaxKind.FirstJSDocNode && node.kind <= ts.SyntaxKind.LastJSDocNode) return;
-    const children = node.getChildren(source);
-    if (children.length > 0) return children.forEach(visit);
-    if (node.kind === ts.SyntaxKind.JsxText || node.kind === ts.SyntaxKind.JsxTextAllWhiteSpaces || seen.has(node.pos)) return;
-    seen.add(node.pos);
-    // Comments after a token on its line are its trailing trivia; the rest lead the next token
-    const ranges = [...ts.getLeadingCommentRanges(code, node.pos) ?? [], ...ts.getTrailingCommentRanges(code, node.end) ?? []];
-    for (const range of ranges) {
-      for (let i = range.pos; i < range.end; i++) if (chars[i] !== '\n' && chars[i] !== '\r') chars[i] = ' ';
-    }
-  };
-  visit(source);
-  return chars.join('');
-}
-
-/** A file's comment-free code blocks (see codeBlocks) */
-function uncommentedBlocks(file: string): { content: string; lineOffset: number }[] {
-  return codeBlocks(file).map(({ content, lineOffset }) => ({ content: blankComments(content, file), lineOffset }));
-}
-
-/** 1-based line of `index` in `text` */
-function lineAt(text: string, index: number): number {
-  return text.slice(0, index).split('\n').length;
-}
-
 /** Relative specifiers in a module: every static and dynamic form that names a module path. */
 function specifiers(code: string, fileName: string): { text: string; line: number }[] {
   const source = parse(code, fileName);
@@ -141,62 +105,87 @@ function packFiles(dirs: string[], root: string): string[] {
   });
 }
 
+/** What a rule reports for a syntax node, if anything */
+type Rule = (node: ts.Node) => string[] | undefined;
+
+/** The module a static import or export, or a dynamic import(), names */
+function moduleOf(node: ts.Node): string | undefined {
+  const literal = ts.isImportDeclaration(node) || ts.isExportDeclaration(node) ? node.moduleSpecifier
+    : ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword ? node.arguments[0] : undefined;
+  return literal && ts.isStringLiteralLike(literal) ? literal.text : undefined;
+}
+
+/**
+ * A template literal's text as code, `${…}` blanked to `_` (line breaks kept) and `\``, `\$`, `\\`
+ * unescaped in place, so positions stay put
+ */
+function templateCode(node: ts.TemplateLiteral, source: ts.SourceFile): string {
+  const start = node.getStart(source);
+  const chars = source.text.slice(start + 1, node.end - 1).split('');
+  if (ts.isTemplateExpression(node)) {
+    for (const span of node.templateSpans) {
+      // From the `${` that opens the span to its closing `}`
+      for (let i = span.pos - 2; i <= span.literal.getStart(source); i++) {
+        if (chars[i - start - 1] !== '\n') chars[i - start - 1] = '_';
+      }
+    }
+  }
+  return chars.join('').replace(/\\([`$\\])/g, ' $1');
+}
+
+/**
+ * `file:line: what` for each finding of `rule` in `files`. The syntax tree leaves out comments and
+ * string text; .vue files are read in their <script> blocks. In the CLI's template sources, template
+ * literals are pack code and are scanned as such.
+ */
+function findInFiles(files: string[], root: string, rule: Rule): string[] {
+  return files.flatMap((file) => {
+    const relative = path.relative(root, file).split(path.sep).join('/');
+    const isTemplateSource = CLI_TEMPLATE_SOURCES.some((dir) => relative === dir || relative.startsWith(`${dir}/`));
+    const found: { line: number; what: string }[] = [];
+    const scan = (code: string, lineOffset: number, templates: boolean): void => {
+      const source = parse(code, file);
+      const lineOf = (node: ts.Node) => source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1 + lineOffset;
+      const visit = (node: ts.Node): void => {
+        for (const what of rule(node) ?? []) found.push({ line: lineOf(node), what });
+        if (templates && (ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateExpression(node))) {
+          scan(templateCode(node, source), lineOf(node) - 1, false);
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(source);
+    };
+    for (const { content, lineOffset } of codeBlocks(file)) scan(content, lineOffset, isTemplateSource);
+    return found.sort((a, b) => a.line - b.line).map(({ line, what }) => `${relative}:${line}: ${what}`);
+  });
+}
+
 /** Sends packs get typed from #generated/events, whichever SDK module exports them untyped */
 const EVENT_SENDS = ['emit', 'sendToPlugin', 'sendToSystem'];
 
-/** The helpers `module` must not provide to pack code: they come typed from #generated/events and #generated/repository */
-function rawHelpersFrom(module: string): string[] {
-  if (!module.startsWith('@abuddy/')) return [];
-  return module === '@abuddy/sdk/ears' ? [...EVENT_SENDS, 'registerRepository'] : EVENT_SENDS;
-}
-
-const MODULE = String.raw`['"\`]([^'"\`]+)['"\`]`;
-/** Named imports and re-exports (`import X, { a }`, `import type { a }`, `export { a } from`): names in group 1, module in group 2 */
-const NAMED_IMPORT = new RegExp(String.raw`\b(?:import\s*(?:type\b\s*)?(?:[\w$]+\s*,\s*)?|export\s*(?:type\b\s*)?)\{([^}]*)\}\s*from\s*${MODULE}`, 'g');
-/** Destructured dynamic imports and requires (`const { a } = await import(...)`): names in group 1, module in group 2 */
-const DESTRUCTURED_LOAD = new RegExp(String.raw`\b(?:const|let|var)\s*\{([^}]*)\}\s*=\s*\(?\s*(?:await\s+)?(?:import|require)\s*\(\s*${MODULE}\s*\)`, 'g');
-/** A member of a loaded module (`(await import(...)).a`, `require(...).a`): module in group 1, name in group 2 */
-const LOADED_MEMBER = new RegExp(String.raw`\b(?:import|require)\s*\(\s*${MODULE}\s*\)\s*\)?\s*(?:\?\.|\.)\s*([\w$]+)`, 'g');
-/**
- * The whole untyped events module (`import * as ev`, `export * from`, `const ev = await import(...)`):
- * pack code imports the names it uses (onConnected, onIncoming, sendToBrainSystem)
- */
-const EVENTS_NAMESPACE = /\b(?:import\s*(?:type\b\s*)?(?:[\w$]+\s*,\s*)?\*\s*as\s+[\w$]+\s+from|export\s*(?:type\b\s*)?\*(?:\s*as\s+[\w$]+)?\s*from)\s*['"`]@abuddy\/sdk\/events['"`]|\b(?:const|let|var)\s+[\w$]+\s*=\s*\(?\s*(?:await\s+)?(?:import|require)\s*\(\s*['"`]@abuddy\/sdk\/events['"`]\s*\)(?!\s*\)?\s*(?:\?\.|\.|\[))/g;
-
-/** The imported names in an import, export or destructuring list (`a as b`, `a: b`, `a = x`, `type a`) */
-function listedNames(list: string): string[] {
-  return list.split(',').map((item) => item.trim().replace(/^type\s+/, '').split(/\s+as\s+|\s*[:=]/)[0].trim());
-}
+/** Imports and re-exports of the untyped sends (and registerRepository), or all of @abuddy/sdk/events */
+const rawPackHelper: Rule = (node) => {
+  if (!ts.isImportDeclaration(node) && !ts.isExportDeclaration(node)) return;
+  const module = moduleOf(node);
+  if (!module?.startsWith('@abuddy/')) return;
+  const bindings = ts.isImportDeclaration(node) ? node.importClause?.namedBindings : node.exportClause;
+  if (!bindings || ts.isNamespaceImport(bindings) || ts.isNamespaceExport(bindings)) {
+    // `import * as x from`, `export * from`, `export * as x from` (a default import has no bindings)
+    const namespace = bindings !== undefined || ts.isExportDeclaration(node);
+    return namespace && module === '@abuddy/sdk/events' ? ['* from @abuddy/sdk/events (import the names)'] : undefined;
+  }
+  const raw = module === '@abuddy/sdk/ears' ? [...EVENT_SENDS, 'registerRepository'] : EVENT_SENDS;
+  return bindings.elements.map((el) => (el.propertyName ?? el.name).text).filter((name) => raw.includes(name))
+    .map((name) => `${name} from ${module}`);
+};
 
 /**
  * `file:line: name from module` for each untyped send or repository registration a pack source
- * imports from an `@abuddy/*` module: named imports (also next to a default import), re-exports,
- * destructured or member-accessed dynamic imports and requires, and whole-module imports of
- * `@abuddy/sdk/events`. Template strings are scanned too (the CLI writes them as pack source);
- * comments aren't, and .vue files only in their <script> blocks. Generated files are exempt.
+ * imports or re-exports from an `@abuddy/*` module. Generated files are exempt.
  */
 export function findRawPackHelpers(dirs = PACK_SOURCE_DIRS, root = repoRoot): string[] {
-  const problems: string[] = [];
   const files = packFiles(dirs, root).filter((file) => !file.split(path.sep).includes('__generated__'));
-  for (const file of files) {
-    const found: { line: number; what: string }[] = [];
-    for (const { content, lineOffset } of uncommentedBlocks(file)) {
-      const add = (index: number, what: string) => found.push({ line: lineAt(content, index) + lineOffset, what });
-      for (const pattern of [NAMED_IMPORT, DESTRUCTURED_LOAD]) {
-        for (const match of content.matchAll(pattern)) {
-          const names = rawHelpersFrom(match[2]);
-          for (const name of listedNames(match[1]).filter((n) => names.includes(n))) add(match.index, `${name} from ${match[2]}`);
-        }
-      }
-      for (const match of content.matchAll(LOADED_MEMBER)) {
-        if (rawHelpersFrom(match[1]).includes(match[2])) add(match.index, `${match[2]} from ${match[1]}`);
-      }
-      for (const match of content.matchAll(EVENTS_NAMESPACE)) add(match.index, '* from @abuddy/sdk/events (import the names)');
-    }
-    found.sort((x, y) => x.line - y.line);
-    for (const { line, what } of found) problems.push(`${path.relative(root, file)}:${line}: ${what}`);
-  }
-  return problems;
+  return findInFiles(files, root, rawPackHelper);
 }
 
 /**
@@ -224,110 +213,52 @@ export function findHostImports(dirs = PACK_SOURCE_DIRS, root = repoRoot): strin
   return problems;
 }
 
-/** The host's raw event paths, which the typed sends in #generated/events replace */
-const RAW_TRANSPORT: [RegExp, string | null][] = [
-  // null: report the specifier itself
-  [/['"`](@abuddy\/sdk\/rpc(?:\/[^'"`]*)?)['"`]/g, null],
-  [/\brootEvents\b/g, 'rootEvents'],
-  // trpc.bus, trpc?.bus, trpc!.bus
-  [/\btrpc\s*!?\s*\??\.\s*bus\b/g, 'trpc.bus'],
-  // trpc['bus'], trpc?.["bus"]
-  [/\btrpc\s*!?\s*(?:\?\.\s*)?\[\s*['"`]bus['"`]\s*\]/g, 'trpc.bus'],
-  // const { bus } = trpc, const { bus: b, x } = trpc
-  [/\{(?:[^{}]*,)?\s*bus\s*(?:[:,=][^{}]*)?\}\s*=\s*trpc\b/g, 'trpc.bus'],
-];
+/** The host's raw event paths: `@abuddy/sdk/rpc` modules, `rootEvents` and `trpc.bus` */
+const rawTransport: Rule = (node) => {
+  const module = moduleOf(node);
+  if (module && /^@abuddy\/sdk\/rpc(\/|$)/.test(module)) return [module];
+  if (ts.isIdentifier(node) && node.text === 'rootEvents') return ['rootEvents'];
+  if (ts.isPropertyAccessExpression(node) && node.name.text === 'bus' && ts.isIdentifier(node.expression) && node.expression.text === 'trpc') {
+    return ['trpc.bus'];
+  }
+  return undefined;
+};
 
 /**
- * `file:line: what` for each raw event path a pack source uses: an `@abuddy/sdk/rpc` module
- * (or a subpath), `rootEvents` or the `bus` router of `trpc` (member access, element access or
- * destructuring). Template strings are scanned too (the CLI writes them as pack source); comments
- * aren't, and .vue files only in their <script> blocks. Generated files are checked too.
+ * `file:line: what` for each raw event path a pack source uses, which the typed sends in
+ * #generated/events replace. Generated files are checked too.
  */
 export function findRawTransport(dirs = PACK_SOURCE_DIRS, root = repoRoot): string[] {
-  const problems: string[] = [];
-  for (const file of packFiles(dirs, root)) {
-    const found: { line: number; order: number; index: number; what: string }[] = [];
-    for (const { content, lineOffset } of uncommentedBlocks(file)) {
-      RAW_TRANSPORT.forEach(([pattern, what], order) => {
-        for (const match of content.matchAll(pattern)) {
-          found.push({ line: lineAt(content, match.index) + lineOffset, order, index: match.index, what: what ?? match[1] });
-        }
-      });
-    }
-    found.sort((x, y) => x.line - y.line || x.order - y.order || x.index - y.index);
-    for (const { line, what } of found) problems.push(`${path.relative(root, file)}:${line}: ${what}`);
+  return findInFiles(packFiles(dirs, root), root, rawTransport);
+}
+
+/** Pack backend code by path from the pack's `src` root, and the frontend code and tests among it */
+const PACK_BACKEND_PATH = /^(features\/[^/]+\/be\/|features\/hooks\.ts$|migrations\/|extensions\/)/;
+const PACK_FRONTEND_OR_TEST_PATH = /\.vue$|(^|\/)(fe|register-fe)\.ts$|^extensions\/(tiptap|artifacts\/viewers|blocks\/[^/]+)\/|(^|\/)__tests__\/|\.(spec|test)\.ts$/;
+
+/** `console.x` and `console?.x` */
+const consoleUse: Rule = (node) => {
+  if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'console') {
+    return [`console.${node.name.text}`];
   }
-  return problems;
-}
+  return undefined;
+};
 
 /**
- * Pack backend code, by path from the pack's `src` root: feature backends and the feature-level
- * hooks module, migrations, and everything in `extensions/` but its frontend code (components,
- * `fe.ts` and `register-fe.ts` modules, the tiptap extensions, artifact viewers and block component
- * directories). Tests aren't checked.
- */
-const PACK_BACKEND_PATH = /^(?:features\/[^/]+\/be\/|features\/hooks\.ts$|migrations\/|extensions\/)/;
-const PACK_FRONTEND_PATH = /\.vue$|(?:^|\/)(?:fe|register-fe)\.ts$|^extensions\/(?:tiptap|artifacts\/viewers|blocks\/[^/]+)\/|(?:^|\/)__tests__\/|\.(?:spec|test)\.ts$/;
-
-function isConsole(node: ts.Expression): boolean {
-  while (ts.isParenthesizedExpression(node)) node = node.expression;
-  if (ts.isIdentifier(node)) return node.text === 'console';
-  // globalThis.console, global.console
-  return ts.isPropertyAccessExpression(node) && node.name.text === 'console'
-    && ts.isIdentifier(node.expression) && ['globalThis', 'global'].includes(node.expression.text);
-}
-
-/**
- * Console members code uses: `console.log`, `console?.log`, `console['log']`, `const { log } = console`.
- * It reads the syntax tree, so comments and the text of strings and template literals never match
- * (a URL like `https://console.anthropic.com`, or a prompt that mentions console.log, isn't a call),
- * while code inside `${…}` still does. The CLI's template strings, whose text is pack code, aren't
- * backend paths (see findPackBackendConsole).
- */
-function consoleUses(code: string, fileName: string): { line: number; what: string }[] {
-  const source = parse(code, fileName);
-  const found: { line: number; what: string }[] = [];
-  const add = (node: ts.Node, member: string) => found.push({ line: source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1, what: `console.${member}` });
-  const visit = (node: ts.Node): void => {
-    if (ts.isPropertyAccessExpression(node) && isConsole(node.expression)) add(node, node.name.text);
-    else if (ts.isElementAccessExpression(node) && isConsole(node.expression)) {
-      add(node, ts.isStringLiteralLike(node.argumentExpression) ? node.argumentExpression.text : '[…]');
-    } else if (ts.isVariableDeclaration(node) && ts.isObjectBindingPattern(node.name) && node.initializer && isConsole(node.initializer)) {
-      for (const element of node.name.elements) {
-        const key = element.propertyName ?? element.name;
-        add(element, ts.isIdentifier(key) || ts.isStringLiteralLike(key) ? key.text : '[…]');
-      }
-    }
-    ts.forEachChild(node, visit);
-  };
-  visit(source);
-  return found;
-}
-
-/**
- * `file:line: console.<method>` for each console use in pack backend code (PACK_BACKEND_PATH),
- * which logs with `createLogger` from `@abuddy/sdk/logger` so its entries reach the app's log.
- * Frontend code and tests aren't checked, and neither are the CLI's own sources
- * (CLI_TEMPLATE_SOURCES): their console output is the CLI's, and the pack code in their templates is
- * text.
+ * `file:line: console.<method>` for each console use in pack backend code, which logs with
+ * `createLogger` from `@abuddy/sdk/logger`. Only pack `src` directories are checked: not the
+ * CLI's template sources (their console output is the CLI's) or single files.
  */
 export function findPackBackendConsole(dirs = PACK_SOURCE_DIRS, root = repoRoot): string[] {
-  const problems: string[] = [];
   const files = dirs.filter((dir) => !CLI_TEMPLATE_SOURCES.includes(dir)).flatMap((dir) => {
     const full = path.join(root, dir);
-    if (!fs.existsSync(full)) return [];
-    if (fs.statSync(full).isFile()) throw new Error(`${dir}: backend console checks need a pack's src directory`);
+    if (!fs.existsSync(full) || !fs.statSync(full).isDirectory()) return [];
     return [...sourceFiles(full)].filter((file) => {
       const relative = path.relative(full, file).split(path.sep).join('/');
-      return PACK_BACKEND_PATH.test(relative) && !PACK_FRONTEND_PATH.test(relative);
+      return PACK_BACKEND_PATH.test(relative) && !PACK_FRONTEND_OR_TEST_PATH.test(relative);
     });
   });
-  for (const file of files) {
-    for (const { content, lineOffset } of codeBlocks(file)) {
-      for (const { line, what } of consoleUses(content, file)) problems.push(`${path.relative(root, file)}:${line + lineOffset}: ${what}`);
-    }
-  }
-  return problems;
+  return findInFiles(files, root, consoleUse);
 }
 
 /** Pack unit tests, which run on @abuddy/testing's harness: the pack's code and the SDK, not the app */

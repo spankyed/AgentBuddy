@@ -298,23 +298,6 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     expect(loadExternalPacks()).toEqual([]);
   });
 
-  it('refuses a runtime built against an @abuddy/sdk module this app no longer provides, saying to rebuild it', async () => {
-    const { onLog } = await import('@/core/shared/debug/logger');
-    const errors: string[] = [];
-    const stop = onLog((entry) => { if (entry.level === 'error') errors.push(entry.message); });
-    try {
-      makeBundledPack('stale-pack', `require('@abuddy/sdk/rpc');\n${registration('stale-pack')}`);
-      makeBundledPack('current-pack', registration('current-pack'));
-
-      expect(loadExternalPacks().map(p => p.manifest.id)).toEqual(['current-pack']);
-      expect(errors).toEqual([
-        `Pack "stale-pack" requires @abuddy/sdk/rpc, which this app doesn't provide: rebuild the pack with the current @abuddy/cli`,
-      ]);
-    } finally {
-      stop();
-    }
-  });
-
   it('refuses a bundle format this host does not support', () => {
     const dir = makeBundledPack('future-format', registration('future-format'));
     fs.writeFileSync(path.join(dir, 'bundle.json'), JSON.stringify({ formatVersion: 2, id: 'future-format', version: '1.0.0', files: {} }));

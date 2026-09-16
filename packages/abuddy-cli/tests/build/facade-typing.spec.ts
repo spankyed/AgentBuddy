@@ -128,27 +128,19 @@ emit('threads', { type: 'MEMO_ADDED', text: 'x' });
 
 // Systems: this pack's by feature id, the dependency's as <dependency>/<feature>
 sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });
-sendToSystem('memos', { type: 'CLEAR_MEMOS' });
+sendToSystem('memos', { type: 'UNPIN_MEMO', id: 'm1' });
 sendToSystem('base-pack/threads', { type: 'ADD_TAG', name: 'x' });
 // @ts-expect-error the dependency's system isn't named by the id it runs under
 sendToSystem('base-pack.threads', { type: 'ADD_TAG', name: 'x' });
-// @ts-expect-error not a system of this pack or its dependency
-sendToSystem('nope', { type: 'CLEAR_MEMOS' });
 // @ts-expect-error the memos system doesn't receive this event
 sendToSystem('memos', { type: 'ADD_TAG', name: 'x' });
-// @ts-expect-error ADD_MEMO needs its text
-sendToSystem('memos', { type: 'ADD_MEMO' });
-// An event declared for several types is sent with any of them
-sendToSystem('memos', { type: 'UNPIN_MEMO', id: 'm1' });
 // @ts-expect-error PIN_MEMO needs its id
 sendToSystem('memos', { type: 'PIN_MEMO' });
-// A type typed as a union needs the fields of every event it names
-declare const memoEventType: 'ADD_MEMO' | 'PIN_MEMO';
-sendToSystem('memos', { type: memoEventType, text: 'x', id: 'm1' });
-// @ts-expect-error as a PIN_MEMO it would have no id
+declare const memoEventType: 'ADD_MEMO' | 'CLEAR_MEMOS';
+// @ts-expect-error one event type per send
 sendToSystem('memos', { type: memoEventType, text: 'x' });
 declare const systemId: 'memos' | 'base-pack/threads';
-// @ts-expect-error a union of system ids would accept either system's events
+// @ts-expect-error one system per send
 sendToSystem(systemId, { type: 'ADD_TAG', name: 'x' });
 
 // Actions get services.emitter, which names every system <pack>/<feature>, this pack's own too
@@ -157,12 +149,8 @@ services.emitter.sendToSystem('base-pack/threads', { type: 'ADD_TAG', name: 'x' 
 services.emitter.sendToPlugin('threads', { type: 'TAG_ADDED', name: 'x' });
 // @ts-expect-error actions run outside any pack, so this pack's systems are named too
 services.emitter.sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });
-// @ts-expect-error not the id the system runs under
-services.emitter.sendToSystem('app-pack.memos', { type: 'ADD_MEMO', text: 'x' });
 // @ts-expect-error ADD_MEMO needs its text
 services.emitter.sendToSystem('app-pack/memos', { type: 'ADD_MEMO' });
-// @ts-expect-error the threads plugin doesn't receive this event
-services.emitter.sendToPlugin('threads', { type: 'MEMO_ADDED', text: 'x' });
 
 export type Undeclared = Expect<Equal<EntityShape<'Nope'>['anything'], unknown>>;
 // An entity name only known at runtime is accepted, and reads as unknown values

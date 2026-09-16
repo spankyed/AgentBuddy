@@ -39,6 +39,7 @@ Each directory is one `package.json` export (`./<dir>` → `src/<dir>/index.ts`)
     - A `boot.seed` format must name a `seedFormats` entry or `<dependency>:<name>`.
     - `seedHooks` may name only the pack's own `entities`.
     - `entities`/`relKinds` may not redeclare names the SDK owns.
+  - A feature id may not be a JavaScript reserved word or `busId` (`RESERVED_FEATURE_IDS`), and `fe.appExtensions` keys must be identifiers: both become names in generated code.
   - `SPECIALTY_SEED_KEYS` (`actions`, `prompts`, `flows`, `settings`) take a path. Every other seed key takes `{ path, format }` or `{ seeder }`.
   - `abuddy.schema.json` is generated from the schema by `scripts/generate-schema.ts` (`zod-to-json-schema`). Run `generate:schema` after changing the schema; CI runs `schema:check`.
 - **Validation** (`validate.ts`): `parseManifest`/`validateManifest` run the schema. `validateFeatures` checks that each feature's `settings`, `system.entry` and `plugin.entry` files exist and that `designation === id`.

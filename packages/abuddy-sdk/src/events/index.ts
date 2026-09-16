@@ -17,27 +17,17 @@ export type PluginEvents = { [pluginId: string]: { type: string } };
 /** System id → the events that system receives. Each pack's `#generated/events` defines its `PackSystemEvents`. */
 export type SystemEventMap = { [systemId: string]: { type: string } };
 
-/** Whether `T` is a union of more than one type */
-type IsUnion<T, U = T> = [T] extends [never] ? false : T extends unknown ? ([U] extends [T] ? false : true) : never;
+/** Whether `T` is a union of several types */
+type IsUnion<T, U = T> = T extends unknown ? ([U] extends [T] ? false : true) : false;
 
-/** The members of `E` whose `type` accepts `Type`: a literal, a union of literals or a template literal */
+/** `Event` for one target and one event type; otherwise nothing is sendable, but `type` stays for completions */
+type OneSend<Unions extends boolean, Type, Event> = true extends Unions ? { type: Type; 'send one event type to one target': never } : Event;
+
+/** The members of `E` whose `type` (a literal, a union or a template literal) accepts `Type` */
 type EventsOfType<E, Type> = E extends { type: infer T } ? (Type extends T ? E : never) : never;
 
-/** Each member of `E` without its `type`, keeping named fields beside an index signature (which `Omit` drops) */
+/** Each member of `E` without `type`, keeping named fields beside an index signature (which `Omit` drops) */
 type WithoutType<E> = E extends unknown ? { [K in keyof E as K extends 'type' ? never : K]: E[K] } : never;
-
-/**
- * The fields an event must have for every event type in `Type`, a union: each type's fields, intersected. Checking
- * against one of them would let a send miss the fields of another.
- */
-type FieldsOfEachType<E, Type> =
-  (Type extends unknown ? (fields: WithoutType<EventsOfType<E, Type>>) => void : never) extends (fields: infer F) => void ? F : never;
-
-/**
- * What a typed send accepts where no event can be checked: nothing. The required key names the mistake; `type`
- * stays so editors still complete the event type.
- */
-type OneTarget<Why extends string, Type = unknown> = { type: Type; [field: string]: unknown } & { [K in Why]: never };
 
 /**
  * The events a system receives, from its spec (`defineSystem`) or its entry (a system module's default
@@ -122,60 +112,41 @@ export function onIncoming(callback: (event: IncomingSystemEvents) => void): () 
   return transport().onIncoming(callback);
 }
 
-/** The event a typed plugin send accepts: one of the plugin's events, for a single plugin id */
-type PluginEvent<M extends PluginEvents, P extends keyof M> =
-  IsUnion<P> extends true ? OneTarget<'send to one plugin id, not a union of them'> : M[P];
-
-/** `emit` typed against a plugin event map. `pluginId` is one plugin, not a union of them. */
+/** `emit` typed against a plugin event map */
 export type TypedEmit<M extends PluginEvents> = <P extends keyof M & string>(
   pluginId: P,
-  event: PluginEvent<M, P>,
+  event: OneSend<IsUnion<P>, M[P]['type'], M[P]>,
 ) => { type: 'OUTGOING'; event: M[P] & { pluginId: P } };
 
-/** `sendToPlugin` typed against a plugin event map. `pluginId` is one plugin, not a union of them. */
-export type TypedSendToPlugin<M extends PluginEvents> = <P extends keyof M & string>(pluginId: P, event: PluginEvent<M, P>) => void;
-
-/**
- * `sendToSystem` typed against a system event map. The event is checked against the event its `type`
- * names, so a missing field is reported against that event. A `type` typed as a union needs the fields of
- * every event it names. `systemId` is one system, not a union: the event would be checked against one only.
- */
-export type TypedSendToSystem<S extends SystemEventMap> = <
-  Id extends keyof S & string,
-  Type extends S[Id]['type'],
->(
-  systemId: Id,
-  event: IsUnion<Id> extends true
-    ? OneTarget<'send to one system id, not a union of them', Type>
-    : IsUnion<Type> extends true
-      ? [FieldsOfEachType<S[Id], Type>] extends [never]
-        ? OneTarget<'events of these types have conflicting fields: send one event type', Type>
-        : { type: Type } & FieldsOfEachType<S[Id], Type>
-      : { type: Type } & WithoutType<EventsOfType<S[Id], Type>>,
+/** `sendToPlugin` typed against a plugin event map */
+export type TypedSendToPlugin<M extends PluginEvents> = <P extends keyof M & string>(
+  pluginId: P,
+  event: OneSend<IsUnion<P>, M[P]['type'], M[P]>,
 ) => void;
 
-export interface TypedEvents<P extends PluginEvents> {
+/** `sendToSystem` typed against a system event map; `type` picks the event, so a missing field names it */
+export type TypedSendToSystem<S extends SystemEventMap> = <Id extends keyof S & string, Type extends S[Id]['type']>(
+  systemId: Id,
+  event: OneSend<IsUnion<Id> | IsUnion<Type>, Type, { type: Type } & WithoutType<EventsOfType<S[Id], Type>>>,
+) => void;
+
+/** A pack's typed sends */
+export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
   emit: TypedEmit<P>;
   sendToPlugin: TypedSendToPlugin<P>;
-}
-
-export interface TypedSystemEvents<P extends PluginEvents, S extends SystemEventMap> extends TypedEvents<P> {
   sendToSystem: TypedSendToSystem<S>;
 }
 
 /**
- * The sends of a pack, typed against its plugin and system event maps. `abuddy generate-entries` writes
- * `#generated/events` with it; the functions are the SDK's. `systemIds` maps each system name the pack sends
- * to (its own feature ids, and `<dependency>/<feature>`) to the id that system runs under (an external
- * pack's are `<packId>.<featureId>`).
+ * The sends `#generated/events` builds. `systemIds` maps each name the pack sends to (its own feature ids and
+ * `<dependency>/<feature>`) to the id that system runs under.
  */
-export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(systemIds: Readonly<Record<string, string>>): TypedSystemEvents<P, S> {
-  const events = { emit, sendToPlugin } as unknown as TypedEvents<P>;
+export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(systemIds: Readonly<Record<string, string>>): TypedEvents<P, S> {
   const send = (name: string, event: { type: string }) => {
     if (!Object.prototype.hasOwnProperty.call(systemIds, name)) {
       throw new Error(`No system is named "${name}": send to one of this pack's features, or a dependency's as "<dependency>/<feature>"`);
     }
     sendToSystem(systemIds[name], event);
   };
-  return { ...events, sendToSystem: send as unknown as TypedSendToSystem<S> };
+  return { emit, sendToPlugin, sendToSystem: send } as unknown as TypedEvents<P, S>;
 }

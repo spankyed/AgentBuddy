@@ -1,5 +1,4 @@
-// A pack's typed sends go through the event transport the process registered: its own systems under the
-// ids they run under, any other system as named.
+// A pack's typed sends go through the registered event transport, each system under the id it runs under.
 import * as os from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { defineEvents, emit, type PluginEvents, type SystemEventMap } from '../../src/events/index.ts';
@@ -43,7 +42,7 @@ describe('defineEvents', () => {
     }
   });
 
-  it('sends to a plugin', () => {
+  it('sends to a plugin, and wraps an event for the bus with emit', () => {
     const outgoing: unknown[] = [];
     const stop = testRootEvents.onOutgoing((event) => outgoing.push(event));
     try {
@@ -52,15 +51,6 @@ describe('defineEvents', () => {
       stop();
     }
     expect(outgoing).toEqual([{ type: 'MEMO_ADDED', pluginId: 'memos' }]);
-  });
-
-  it('wraps an event for the bus with emit', () => {
     expect(events.emit('memos', { type: 'MEMO_ADDED' })).toEqual(emit('memos', { type: 'MEMO_ADDED' }));
-  });
-
-  it("sends to a dependency's system from a pack without systems", () => {
-    const withoutSystems = defineEvents<Plugins, SystemEventMap & { 'default-setup/settings': { type: 'GET_SETTINGS' } }>({ 'default-setup/settings': 'settings' });
-    expect(incoming(() => withoutSystems.sendToSystem('default-setup/settings', { type: 'GET_SETTINGS' })))
-      .toEqual([{ type: 'GET_SETTINGS', systemId: 'settings' }]);
   });
 });

@@ -41,35 +41,6 @@ describe('loadPackFEEntry', () => {
     expect(warnings).toEqual([]);
   });
 
-  // A pack built against host modules this app no longer provides fails in its generated proxy: newer
-  // builds name the module, older ones read a property of undefined. Either way the report says to rebuild.
-  it('says to rebuild a pack whose proxy finds a host module missing', async () => {
-    const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const failed = load('fe.mjs', `
-      const __m = globalThis.__abuddy?.["sdkRpc"];
-      if (!__m) throw new Error("@abuddy/sdk/rpc isn't provided by this AgentBuddy; update AgentBuddy or check the pack's hostVersion");
-      export default { plugins: [] };
-    `);
-
-    const message = "It imports @abuddy/sdk/rpc, which this app doesn't provide: rebuild the pack with the current @abuddy/cli";
-    await expect(failed).rejects.toThrow(message);
-    expect(error).toHaveBeenCalledWith(expect.stringMatching(/^\[pack-loader\] Failed to load FE entry file:.*\/fe\.mjs: /), expect.any(Error));
-    expect(error.mock.calls[0][0]).toContain(message);
-  });
-
-  it('adds the rebuild hint to any other import failure', async () => {
-    vi.spyOn(console, 'error').mockImplementation(() => {});
-    const failed = load('fe.mjs', `
-      const __m = globalThis.__abuddy?.["sdkRpc"];
-      export const trpc = __m.trpc;
-      export default { plugins: [] };
-    `);
-
-    await expect(failed).rejects.toThrow(
-      /reading 'trpc'.*\. If the pack was built for another AgentBuddy version, rebuild it with the current @abuddy\/cli$/,
-    );
-  });
-
   it('accepts a registration that contributes plugins without warning', async () => {
     const { registration, warnings } = await load('fe.mjs', 'export default { plugins: [{ id: "x" }] };');
     expect((registration as any).plugins).toHaveLength(1);
@@ -80,9 +51,9 @@ describe('loadPackFEEntry', () => {
 // A pack with frontend code is reported to the application actor once its load finished, whatever it added:
 // the bus holds back its systems' startup data until then
 describe('loadPackFrontend', () => {
-  it('throws when the FE entry fails to load, for the application actor to report', async () => {
+  it('returns no plugins when the FE entry fails to load', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
-    await expect(loadPackFrontend({ id: 'broken', feEntry: 'runtime/fe.js' })).rejects.toThrow(/rebuild it with the current @abuddy\/cli/);
+    await expect(loadPackFrontend({ id: 'broken', feEntry: 'runtime/fe.js' })).resolves.toEqual([]);
   });
 
   it('returns null for a pack without frontend code', async () => {

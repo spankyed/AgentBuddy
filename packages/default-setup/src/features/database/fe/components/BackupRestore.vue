@@ -307,7 +307,7 @@ import {
   HardDrive,
   Image as ImageIcon
 } from 'lucide-vue-next';
-import { id, type BackupDatabase, type DatabaseState } from '../state';
+import { id, type DatabaseState } from '../state';
 import { sendToSystem } from '@/__generated__/events';
 import ToastNotification from '@abuddy/ui/design/ToastNotification';
 
@@ -317,9 +317,9 @@ const actor: DatabaseState = actorSystem.get(id);
 
 // Get backup info from state
 const storedBackupInfo = useSelector(actor, (state) => state.context.backupInfo);
-const isExporting = useSelector(actor, (state) => state.context.backup.exporting);
-const isImporting = useSelector(actor, (state) => state.context.backup.importing);
-const backupResult = useSelector(actor, (state) => state.context.backup.result);
+const isExporting = useSelector(actor, (state) => state.context.exporting);
+const isImporting = useSelector(actor, (state) => state.context.importing);
+const backupResult = useSelector(actor, (state) => state.context.backupResult);
 
 // Tab state
 const activeTab = ref<'export' | 'import'>('export');
@@ -379,18 +379,15 @@ watch(storedBackupInfo, (newInfo) => {
 // Report each finished export or import; a successful import reloads the window to reload client state
 watch(backupResult, (result) => {
   if (!result) return;
-  if (!result.ok) {
-    toast.value?.error(result.operation === 'export' ? 'Export failed' : 'Import failed', result.error);
-    return;
-  }
-  if (result.operation === 'export') {
+  const operation = result.operation === 'export' ? 'Export' : 'Import';
+  if (result.error) {
+    toast.value?.error(`${operation} failed`, result.error);
+  } else if (result.operation === 'export') {
     toast.value?.success('Backup exported successfully!');
-    return;
+  } else {
+    toast.value?.success('Backup imported successfully!', 'Page will refresh in 2 seconds...');
+    setTimeout(() => window.location.reload(), 1500);
   }
-  toast.value?.success('Backup imported successfully!', 'Page will refresh in 2 seconds...');
-  setTimeout(() => {
-    window.location.reload();
-  }, 1500);
 });
 
 // Load saved paths from localStorage on mount
@@ -421,7 +418,7 @@ function handleExport() {
 
   const databases = Object.entries(selectedDatabases.value)
     .filter(([_, selected]) => selected)
-    .map(([key]) => key) as BackupDatabase[]; // 'searchIndices' removed [SEARCH_INDEX_FF]
+    .map(([key]) => key) as Array<'lmdb' | 'volatileLmdb'>; // 'searchIndices' removed [SEARCH_INDEX_FF]
 
   actor.send({
     type: 'BACKUP.EXPORT',

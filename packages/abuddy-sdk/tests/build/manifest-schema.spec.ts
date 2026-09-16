@@ -59,6 +59,20 @@ describe('parseManifest', () => {
     expect(result.errors.length).toBeGreaterThan(0);
     expect(result.errors[0]).toContain('id');
   });
+
+  it('rejects feature ids generated code reserves: reserved words and busId', () => {
+    const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
+    for (const id of ['default', 'export', 'busId']) {
+      expect(parseManifest({ ...pack, features: [{ id }] }).errors).toEqual([expect.stringContaining(`"${id}" is reserved in generated code`)]);
+    }
+    expect(parseManifest({ ...pack, features: [{ id: 'defaults' }, { id: 'specs' }] }).errors).toEqual([]);
+  });
+
+  it('rejects an app extension name that is not an identifier', () => {
+    const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
+    expect(parseManifest({ ...pack, fe: { appExtensions: { 'my-ext': 'x.vue' } } }).errors).toEqual([expect.stringContaining('Must be an identifier')]);
+    expect(parseManifest({ ...pack, fe: { appExtensions: { welcome: 'x.vue' } } }).errors).toEqual([]);
+  });
 });
 
 describe('seedFormats and boot.seed entries', () => {

@@ -15,24 +15,6 @@ export interface ModuleBridgeOptions {
    * dependency's runtime keeps its npm packages external, and a pack's tests needn't install them all.
    */
   stubMissing?: boolean;
-  /**
-   * Packages the bridge alone provides: requiring one of their modules that isn't in `modules` throws
-   * an error with `code` `ERR_UNBRIDGED_MODULE` and the `specifier`, instead of resolving another copy.
-   */
-  bridgedPackages?: readonly string[];
-}
-
-/** Thrown when loaded code requires a module of a `bridgedPackages` package that isn't bridged */
-interface UnbridgedModuleError extends Error {
-  code: 'ERR_UNBRIDGED_MODULE';
-  specifier: string;
-}
-
-function unbridgedModule(specifier: string): UnbridgedModuleError {
-  return Object.assign(new Error(`${specifier} isn't provided by this host`), {
-    code: 'ERR_UNBRIDGED_MODULE' as const,
-    specifier,
-  });
 }
 
 type ModuleInternals = typeof Module & {
@@ -87,9 +69,6 @@ export function withModuleBridge<T>(options: ModuleBridgeOptions, fn: () => T): 
 
   moduleInternals._resolveFilename = function resolve(this: unknown, request: string, parent: unknown, ...rest: unknown[]) {
     if (request in options.modules) return `${BRIDGE_PREFIX}${request}`;
-    if (options.bridgedPackages?.some(pkg => request === pkg || request.startsWith(`${pkg}/`))) {
-      throw unbridgedModule(request);
-    }
     const host = hostResolutions.get(request);
     if (host) return host;
     try {

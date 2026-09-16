@@ -261,25 +261,9 @@ export interface LoadedPack {
   features?: import('@abuddy/sdk/framework').PackFeatureDef[];
 }
 
-/**
- * Runs `fn` (a require of pack runtime code) with @abuddy/sdk bridged to the API's instances and host-provided
- * packages resolved from the API. An @abuddy/sdk module the bridge lacks throws `ERR_UNBRIDGED_MODULE`.
- */
+/** Runs `fn` (a require of pack runtime code) with @abuddy/sdk bridged to the API's instances and host-provided packages resolved from the API */
 export function withHostResolution<T>(fn: () => T): T {
-  return withModuleBridge({
-    modules: SDK_BRIDGE,
-    hostPackages: HOST_PROVIDED_PACKAGES,
-    resolveFrom: import.meta.url,
-    bridgedPackages: ['@abuddy/sdk'],
-  }, fn);
-}
-
-/** The @abuddy/sdk module a runtime required that this app doesn't provide, if that's why its load failed */
-function unbridgedSpecifier(err: unknown): string | undefined {
-  if (err instanceof Error && (err as { code?: unknown }).code === 'ERR_UNBRIDGED_MODULE') {
-    return String((err as { specifier?: unknown }).specifier);
-  }
-  return undefined;
+  return withModuleBridge({ modules: SDK_BRIDGE, hostPackages: HOST_PROVIDED_PACKAGES, resolveFrom: import.meta.url }, fn);
 }
 
 export function loadSingleExternalPack(
@@ -363,12 +347,7 @@ function loadBundledRuntime(
       return mod.registration;
     });
   } catch (err) {
-    const specifier = unbridgedSpecifier(err);
-    if (specifier) {
-      logger.error(`Pack "${manifest.id}" requires ${specifier}, which this app doesn't provide: rebuild the pack with the current @abuddy/cli`);
-    } else {
-      logger.error(`Failed to load ${manifest.id} runtime (${BUNDLE_PATHS.runtimeEntry}):`, err as Error);
-    }
+    logger.error(`Failed to load ${manifest.id} runtime (${BUNDLE_PATHS.runtimeEntry}):`, err as Error);
     return null;
   }
   if (!registration) {

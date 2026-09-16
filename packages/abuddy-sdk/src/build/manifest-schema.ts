@@ -130,6 +130,15 @@ const PluginSchema = z.object({
  */
 export const FEATURE_ID_PATTERN = /^[a-z][a-zA-Z0-9]*$/;
 
+/** Names a feature id can't take: reserved words, and `busId`, which `#generated/system-ids` exports */
+const RESERVED_FEATURE_IDS = new Set([
+  'await', 'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger', 'default', 'delete', 'do', 'else',
+  'enum', 'export', 'extends', 'false', 'finally', 'for', 'function', 'if', 'implements', 'import', 'in',
+  'instanceof', 'interface', 'let', 'new', 'null', 'package', 'private', 'protected', 'public', 'return', 'static',
+  'super', 'switch', 'this', 'throw', 'true', 'try', 'typeof', 'var', 'void', 'while', 'with', 'yield',
+  'arguments', 'eval', 'busId',
+]);
+
 const IdentifierSchema = z.string().regex(/^[A-Za-z_$][\w$]*$/, 'Must be an identifier');
 
 /** A named export of a pack source file */
@@ -146,7 +155,8 @@ export const CommandEntrySchema = z.object({
 
 export const FeatureEntrySchema = z.object({
   id: z.string().regex(FEATURE_ID_PATTERN, 'Must start with a lowercase letter and contain only letters and digits (e.g. "notes", "calendarEvents")')
-    .describe('Unique feature identifier. A lowercase-first identifier (letters and digits), used as a name in generated code.'),
+    .refine((id) => !RESERVED_FEATURE_IDS.has(id), (id) => ({ message: `"${id}" is reserved in generated code: pick another feature id` }))
+    .describe('Unique feature identifier. A lowercase-first identifier (letters and digits), used as a name in generated code; not a reserved word or "busId".'),
   designation: z.string().describe('Links the system to an EARS designation.').optional(),
   settings: z.string().describe('Path to default settings file.').optional(),
   typesEntry: z.string().describe('Additional types to include in the generated type barrel.').optional(),
@@ -173,7 +183,7 @@ const EntityShapeSchema = z.object({
 
 const FEConfigSchema = z.object({
   tiptapPlugins: z.string().describe('Path to tiptap plugin registration module.').optional(),
-  appExtensions: z.record(z.string(), z.string()).describe('Named app extensions. Keys are extension names, values are paths to Vue components.').optional(),
+  appExtensions: z.record(IdentifierSchema, z.string()).describe('Named app extensions. Keys are extension names (identifiers), values are paths to Vue components.').optional(),
   bundleUi: z.boolean().describe('Bundle a copy of @abuddy/ui into the pack instead of using the host app\'s. All of @abuddy/ui is bundled, so the pack never mixes the two.').optional(),
 }).strict().describe('Frontend-specific pack configuration.');
 

@@ -2913,22 +2913,6 @@ type OwnRepositories = {
     settingsCommands: typeof settingsCommands;
 };
 
-/** Feature id → the events this pack's system for that feature receives. */
-type OwnSystemEvents = {
-    'threads': IncomingEventsOf<(typeof specs)['threads']>;
-    'code': IncomingEventsOf<(typeof specs)['code']>;
-    'notes': IncomingEventsOf<(typeof specs)['notes']>;
-    'browser': IncomingEventsOf<(typeof specs)['browser']>;
-    'library': IncomingEventsOf<(typeof specs)['library']>;
-    'flows': IncomingEventsOf<(typeof specs)['flows']>;
-    'actions': IncomingEventsOf<(typeof specs)['actions']>;
-    'prompts': IncomingEventsOf<(typeof specs)['prompts']>;
-    'brain': IncomingEventsOf<(typeof specs)['brain']>;
-    'database': IncomingEventsOf<(typeof specs)['database']>;
-    'logs': IncomingEventsOf<(typeof specs)['logs']>;
-    'settings': IncomingEventsOf<(typeof specs)['settings']>;
-};
-
 /**
  * `services.emitter`, typed with this pack's events. Actions run outside any pack, so a system is
  * named `<pack>/<feature>`, this pack's own too.
@@ -2955,8 +2939,21 @@ type PackShapes = Omit<SdkEntityShapes & OwnEntityShapes, 'Node'> & {
     Node: [PackNodes] extends [never] ? SdkEntityShapes['Node'] : PackNodes;
 };
 
-/** This pack's systems by feature id, and the events each receives: what dependents send to as `default-setup/<feature>`. */
-type PackSystemEvents = OwnSystemEvents;
+/** Feature id → the events this pack's system for that feature receives (dependents name it `default-setup/<feature>`). */
+type PackSystemEvents = {
+    'threads': IncomingEventsOf<(typeof specs)['threads']>;
+    'code': IncomingEventsOf<(typeof specs)['code']>;
+    'notes': IncomingEventsOf<(typeof specs)['notes']>;
+    'browser': IncomingEventsOf<(typeof specs)['browser']>;
+    'library': IncomingEventsOf<(typeof specs)['library']>;
+    'flows': IncomingEventsOf<(typeof specs)['flows']>;
+    'actions': IncomingEventsOf<(typeof specs)['actions']>;
+    'prompts': IncomingEventsOf<(typeof specs)['prompts']>;
+    'brain': IncomingEventsOf<(typeof specs)['brain']>;
+    'database': IncomingEventsOf<(typeof specs)['database']>;
+    'logs': IncomingEventsOf<(typeof specs)['logs']>;
+    'settings': IncomingEventsOf<(typeof specs)['settings']>;
+};
 
 /**
  * Every line type we explicitly recognise. Each variant has a literal
@@ -3094,9 +3091,9 @@ interface PromptsConnectedData {
     categories?: Category[];
 }
 
-/** Every system this pack's actions can send to, named `<pack>/<feature>`: how `services.emitter.sendToSystem` addresses them. */
+/** The systems actions send to (`services.emitter`), all named `<pack>/<feature>`. */
 type QualifiedSystemEvents = {
-    [K in keyof OwnSystemEvents & string as `default-setup/${K}`]: OwnSystemEvents[K];
+    [K in keyof PackSystemEvents & string as `default-setup/${K}`]: PackSystemEvents[K];
 };
 
 /**

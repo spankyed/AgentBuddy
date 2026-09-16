@@ -333,9 +333,8 @@ const brainState = setup({
       });
     },
     restartBrain: ({ context }) => {
-      sendToSystem(id, {
-        type: context.brainIsDead ? 'START_BRAIN' : 'RESTART_BRAIN',
-      });
+      if (context.brainIsDead) sendToSystem(id, { type: 'START_BRAIN' });
+      else sendToSystem(id, { type: 'RESTART_BRAIN' });
     },
     killBrain: () => {
       sendToSystem(id, {
