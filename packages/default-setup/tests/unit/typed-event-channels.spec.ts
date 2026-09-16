@@ -4,6 +4,7 @@ import { describe, expectTypeOf, it } from 'vitest';
 import type { HostPluginEvents } from '@abuddy/sdk/events';
 import type { ApplicationHotkeys } from '@abuddy/sdk/types';
 import type { EARS } from '@/__generated__/ears';
+import type { Services } from '@/__generated__/services';
 import { emit, sendToPlugin, sendToSystem, type PackEvents } from '@/__generated__/events';
 import type { OutgoingActionEvents } from '@/features/actions/be/system';
 import type { OutgoingFlowsEvents } from '@/features/flows/be/system';
@@ -11,6 +12,8 @@ import type { OutgoingThreadsEvents } from '@/features/threads/be/system';
 
 declare const actionEvent: OutgoingActionEvents;
 declare const hotkeys: ApplicationHotkeys;
+// What a seed action receives
+declare const services: Services;
 
 describe('PackEvents', () => {
   it('maps each plugin to exactly the events it receives', () => {
@@ -68,6 +71,28 @@ describe('sendToSystem', () => {
       sendToSystem('settings', { type: 'DELETE_NOTE', id: 'Note-1' });
       // @ts-expect-error DELETE_NOTE needs an id
       sendToSystem('notes', { type: 'DELETE_NOTE' });
+    }).toBeFunction();
+  });
+});
+
+describe('services.emitter in actions', () => {
+  // Wrapped in functions that never run: only their types are checked
+  it('accepts an event the plugin or system receives', () => {
+    expectTypeOf(() => {
+      services.emitter.sendToPlugin('database', { type: 'AI_QUERY_LOADING' });
+      services.emitter.sendToSystem('notes', { type: 'DELETE_NOTE', id: 'Note-1' });
+      services.emitter.sendToBrainSystem({ eventType: 'user.message' });
+    }).toBeFunction();
+  });
+
+  it('rejects an event the plugin or system does not receive', () => {
+    expectTypeOf(() => {
+      // @ts-expect-error the database plugin doesn't receive this event
+      services.emitter.sendToPlugin('database', { type: 'SET_PHASE', phase: 'Edit' });
+      // @ts-expect-error unknown plugin
+      services.emitter.sendToPlugin('unknown-plugin', { type: 'ANYTHING' });
+      // @ts-expect-error DELETE_NOTE needs an id
+      services.emitter.sendToSystem('notes', { type: 'DELETE_NOTE' });
     }).toBeFunction();
   });
 });

@@ -1,7 +1,6 @@
 import { setup, assign, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
-import { trpc } from '@abuddy/sdk/rpc';
-import { busId } from '#generated/bus-ids';
+import { sendToSystem } from '#generated/events';
 import type { OutgoingMemosEvents } from '../be/system';
 import type { MemoDTO } from '../be/types';
 
@@ -28,7 +27,7 @@ const memosState = setup({
       },
     }),
     sendAdd: ({ event }) => {
-      trpc.bus.send.mutate({ systemId: busId.memos, type: 'ADD_MEMO', text: typeOf('MEMOS.ADD', event).text });
+      sendToSystem('memos', { type: 'ADD_MEMO', text: typeOf('MEMOS.ADD', event).text });
     },
   },
 }).createMachine({

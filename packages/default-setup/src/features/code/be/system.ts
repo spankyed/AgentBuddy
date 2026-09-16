@@ -14,10 +14,9 @@
  * Priority on startup:
  *   baseDirectory > defaultBaseDirectory > first workspace project > null
  */
-import { emit } from '@/__generated__/events';
+import { sendToPlugin } from '@/__generated__/events';
 import { setup, enqueueActions, assign } from 'xstate'
 
-import { rootEvents } from '@abuddy/sdk/rpc'
 import './repository' // side-effect: registers terminalQueries/terminalCommands
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
 import { GitRepository } from './services/git'
@@ -52,6 +51,7 @@ export type OutgoingCodeEvents =
   | OutgoingPullRequestEvents
   | OutgoingTerminalEvents
   | OutgoingActionsEvents
+  | OutgoingPromptsEvents
   // Broadcast events (sent to all child systems)
   | { type: 'CODE_CONNECTED'; data: CodeConnectedData }
   | { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
@@ -253,11 +253,10 @@ export const systemMachine = setup({
       }
 
       // Forward settings to frontend
-      const wrapped = emit(id, {
+      sendToPlugin(id, {
         type: 'CODE_SETTINGS_UPDATED',
         settings: ev.settings
       })
-      rootEvents.emitOutgoing(wrapped.event)
     },
     
     broadcastConnected: ({ system, context }) => {
@@ -276,11 +275,10 @@ export const systemMachine = setup({
         settings: codeSettings
       };
 
-      const wrapped = emit(id, {
+      sendToPlugin(id, {
         type: 'CODE_CONNECTED',
         data: connectedData
       })
-      rootEvents.emitOutgoing(wrapped.event)
     },
     
     setupGitWatcher: async ({ context, system }) => {

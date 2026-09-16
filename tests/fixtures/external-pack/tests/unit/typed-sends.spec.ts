@@ -3,6 +3,7 @@
 import { describe, expect, it } from 'vitest';
 import { startApp } from '@abuddy/testing/harness';
 import { sendToSystem } from '#generated/events';
+import { busId } from '#generated/bus-ids';
 
 describe('typed sends to systems', () => {
   it("reaches default-setup's settings system", async () => {
@@ -31,6 +32,8 @@ describe('typed sends to systems', () => {
       sendToSystem('settings', { type: 'ADD_MEMO', text: 'x' });
       // @ts-expect-error ADD_MEMO needs its text
       sendToSystem('memos', { type: 'ADD_MEMO' });
+      // @ts-expect-error own systems are addressed by feature id; sendToSystem maps it to the bus id
+      sendToSystem(busId.memos, { type: 'ADD_MEMO', text: 'x' });
     };
     expect(wrongSends).toBeTypeOf('function');
   });

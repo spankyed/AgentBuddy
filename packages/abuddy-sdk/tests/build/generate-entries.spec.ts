@@ -310,7 +310,15 @@ describe('generated services', () => {
 
   it("intersects dependencies' services and types repository with the pack's repositories", () => {
     const services = generate({}, { 'base-pack': dependency({}) })['src/__generated__/services.ts'];
-    expect(services).toContain("Omit<HostServices, 'repository'> & { repository: Repositories } & Omit<__dep_base_pack_Services, 'repository'>");
+    expect(services).toContain("Omit<HostServices, 'repository' | 'emitter'> & { repository: Repositories; emitter: PackEmitter } & Omit<__dep_base_pack_Services, 'repository' | 'emitter'>");
+  });
+
+  it("types the emitter with the pack's events, addressing systems by the id they run under", () => {
+    const files = generate({ features: [system('memos')] }, { 'base-pack': dependency({ features: [system('threads')] }, { [PACK_TYPES_DEF]: 'export type PackEvents = {};\nexport type PackSystemEvents = {};' }) });
+    expect(files['src/__generated__/events.ts']).toContain('export type RunningSystemEvents = PackSystemEvents & Omit<__dep_base_pack_PackSystemEvents, keyof PackSystemEvents>;');
+    const services = files['src/__generated__/services.ts'];
+    expect(services).toContain("import type { PackEvents, RunningSystemEvents } from './events.js';");
+    expect(services).toContain('  sendToPlugin: TypedSendToPlugin<PackEvents>;\n  sendToSystem: TypedSendToSystem<RunningSystemEvents>;');
   });
 });
 

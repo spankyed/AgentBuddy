@@ -88,17 +88,19 @@ export const PACK_SOURCE_DIRS = [
   'packages/abuddy-cli/src/commands/add', 'packages/abuddy-cli/src/commands/init.ts',
 ];
 
-/** Helpers packs get typed from #generated/events and #generated/repository instead */
-const RAW_PACK_HELPERS: Record<string, string[]> = {
-  '@abuddy/sdk/helpers': ['emit', 'sendToPlugin'],
-  '@abuddy/sdk/services': ['emit', 'sendToPlugin'],
-  '@abuddy/sdk/ears': ['registerRepository'],
-};
+/** Sends packs get typed from #generated/events, whichever SDK module exports them untyped */
+const EVENT_SENDS = ['emit', 'sendToPlugin', 'sendToSystem'];
+
+/** The helpers `module` must not provide to pack code: they come typed from #generated/events and #generated/repository */
+function rawHelpersFrom(module: string): string[] {
+  if (!module.startsWith('@abuddy/')) return [];
+  return module === '@abuddy/sdk/ears' ? [...EVENT_SENDS, 'registerRepository'] : EVENT_SENDS;
+}
 
 /**
- * `file:line: name from module` for each untyped event helper or repository registration a pack
- * source imports (also inside template strings, which the CLI writes as pack source). Generated
- * files are exempt.
+ * `file:line: name from module` for each untyped send or repository registration a pack source
+ * imports from an `@abuddy/*` module (also inside template strings, which the CLI writes as pack
+ * source). Generated files are exempt.
  */
 export function findRawPackHelpers(dirs = PACK_SOURCE_DIRS, root = repoRoot): string[] {
   const problems: string[] = [];
@@ -111,8 +113,8 @@ export function findRawPackHelpers(dirs = PACK_SOURCE_DIRS, root = repoRoot): st
   for (const file of files) {
     const code = fs.readFileSync(file, 'utf-8');
     for (const match of code.matchAll(importPattern)) {
-      const names = RAW_PACK_HELPERS[match[2]];
-      if (!names) continue;
+      const names = rawHelpersFrom(match[2]);
+      if (!names.length) continue;
       const imported = match[1].split(',').map((item) => item.trim().replace(/^type\s+/, '').split(/\s+as\s+/)[0]);
       for (const name of imported.filter((n) => names.includes(n))) {
         const line = code.slice(0, match.index).split('\n').length;
@@ -144,6 +146,36 @@ export function findHostImports(dirs = PACK_SOURCE_DIRS, root = repoRoot): strin
       const line = code.slice(0, match.index).split('\n').length;
       problems.push(`${path.relative(root, file)}:${line}: ${match[1]}`);
     }
+  }
+  return problems;
+}
+
+/** The host's raw event paths, which the typed sends in #generated/events replace */
+const RAW_TRANSPORT: [RegExp, string][] = [
+  [/['"]@abuddy\/sdk\/rpc['"]/g, '@abuddy/sdk/rpc'],
+  [/\brootEvents\b/g, 'rootEvents'],
+  [/\btrpc\s*\.\s*bus\b/g, 'trpc.bus'],
+];
+
+/**
+ * `file:line: what` for each raw event path a pack source uses: an `@abuddy/sdk/rpc` import,
+ * `rootEvents` or `trpc.bus` (also inside template strings the CLI writes as pack source). Commented-out
+ * lines are skipped; generated files are checked too.
+ */
+export function findRawTransport(dirs = PACK_SOURCE_DIRS, root = repoRoot): string[] {
+  const problems: string[] = [];
+  const files = dirs.flatMap((dir) => {
+    const full = path.join(root, dir);
+    if (!fs.existsSync(full)) return [];
+    return fs.statSync(full).isFile() ? [full] : [...sourceFiles(full)];
+  });
+  for (const file of files) {
+    fs.readFileSync(file, 'utf-8').split('\n').forEach((text, index) => {
+      if (/^\s*(\/\/|\/?\*)/.test(text)) return;
+      for (const [pattern, what] of RAW_TRANSPORT) {
+        for (const _ of text.matchAll(pattern)) problems.push(`${path.relative(root, file)}:${index + 1}: ${what}`);
+      }
+    });
   }
   return problems;
 }
@@ -186,7 +218,12 @@ if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])
   }
   const rawHelpers = findRawPackHelpers();
   if (rawHelpers.length > 0) {
-    console.error(`Pack code uses the typed facades: emit and sendToPlugin from #generated/events, repositories declared in abuddy.json:\n  ${rawHelpers.join('\n  ')}`);
+    console.error(`Pack code uses the typed facades: emit, sendToPlugin and sendToSystem from #generated/events, repositories declared in abuddy.json:\n  ${rawHelpers.join('\n  ')}`);
+    process.exit(1);
+  }
+  const rawTransport = findRawTransport();
+  if (rawTransport.length > 0) {
+    console.error(`Pack code sends with sendToPlugin and sendToSystem from #generated/events, and subscribes with onConnected and onIncoming from @abuddy/sdk/events:\n  ${rawTransport.join('\n  ')}`);
     process.exit(1);
   }
   const hostImports = findHostImports();

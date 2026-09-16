@@ -131,7 +131,7 @@ export function finishOnboarding(
     services.emitter.sendToPlugin('threads', {
       type: 'AGENT_SETTINGS_UPDATED',
       settings: chatSettings,
-    } as any);
+    });
   }
   services.emitter.sendToPlugin('threads', {
     type: 'SET_MODE',

@@ -460,7 +460,6 @@ import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import DirectorySelect from '@abuddy/ui/design/DirectorySelect'
 import { X, Plus } from 'lucide-vue-next'
 import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe'
-import { trpc } from '@abuddy/sdk/rpc'
 import type { CodeSettings, TerminalScript } from '@/__generated__/types'
 
 const actorSystem = useActorSystem()

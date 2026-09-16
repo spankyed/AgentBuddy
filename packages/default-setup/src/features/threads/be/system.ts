@@ -568,7 +568,7 @@ export const threadsSystem = setup({
             topic: fullThreadData?.topic,
             instructions: fullThreadData?.instructions,
             status: fullThreadData?.status
-          } as any));
+          }));
 
           system.get(bus).send(emit(threads, {
             type: 'LOAD_CHAT_THREAD',
@@ -614,7 +614,7 @@ export const threadsSystem = setup({
         logger.error('forwardUserMessage failed', { error: err });
         system.get(bus).send(emit(threads, {
           type: 'THREAD_CHAT_ERROR',
-          threadId: (event as any).threadId ?? '',
+          threadId: 'threadId' in event && typeof event.threadId === 'string' ? event.threadId : '',
           error: err instanceof Error ? err.message : String(err),
         }));
       }
@@ -672,7 +672,7 @@ export const threadsSystem = setup({
           topic: fullThreadData?.topic,
           instructions: fullThreadData?.instructions,
           status: fullThreadData?.status
-        } as any));
+        }));
 
         system.get(bus).send(emit(threads, {
           type: 'LOAD_CHAT_THREAD',

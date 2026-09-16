@@ -331,6 +331,25 @@ export { safeEvents }
 // @public (undocumented)
 export function saveTabGroups(key: string, groups: TabGroup[]): void;
 
+// @public
+export const secretsClient: {
+    list: () => Promise<SecretsSnapshot>;
+    add: (provider: SecretProvider, label: string, value: string) => Promise<SecretsSnapshot>;
+    replaceValue: (id: string, value: string) => Promise<SecretsSnapshot>;
+    select: (id: string) => Promise<SecretsSnapshot>;
+    rename: (id: string, label: string) => Promise<SecretsSnapshot>;
+    delete: (id: string) => Promise<SecretsSnapshot>;
+    allowUnprotected: () => Promise<SecretsSnapshot>;
+};
+
+// @public
+export interface SecretsSnapshot {
+    // (undocumented)
+    secrets: SecretInfo[];
+    // (undocumented)
+    status: SecretsStatus;
+}
+
 // @public (undocumented)
 export function staticBreadcrumbList(crumbs: Array<{
     label: string;

@@ -308,7 +308,7 @@ import {
   Image as ImageIcon
 } from 'lucide-vue-next';
 import { id, type DatabaseState } from '../state';
-import { trpc } from '@abuddy/sdk/rpc';
+import { sendToSystem } from '@/__generated__/events';
 import ToastNotification from '@abuddy/ui/design/ToastNotification';
 
 const actorSystem = useActorSystem()
@@ -408,8 +408,7 @@ async function handleExport() {
       .filter(([_, selected]) => selected)
       .map(([key]) => key) as Array<'lmdb' | 'volatileLmdb'>; // 'searchIndices' removed [SEARCH_INDEX_FF]
 
-    await trpc.bus.send.mutate({
-      systemId: id,
+    sendToSystem(id, {
       type: 'EXPORT_DATABASE',
       path: exportPath.value,
       name: backupName.value || undefined,
@@ -433,8 +432,7 @@ async function selectImportDirectory() {
     // Save to localStorage for future use
     localStorage.setItem('database-backup-import-path', directoryPath);
     // Get backup info for the selected directory
-    trpc.bus.send.mutate({
-      systemId: id,
+    sendToSystem(id, {
       type: 'GET_BACKUP_INFO',
       path: directoryPath,
     });
@@ -450,8 +448,7 @@ async function handleImport() {
   isImporting.value = true;
 
   try {
-    await trpc.bus.send.mutate({
-      systemId: id,
+    sendToSystem(id, {
       type: 'IMPORT_DATABASE',
       path: importPath.value,
     });

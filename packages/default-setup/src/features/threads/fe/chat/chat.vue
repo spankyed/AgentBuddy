@@ -187,7 +187,7 @@ import { useActorSystem, useApplicationActor, navigateToPlugin } from '@abuddy/s
 import { useSelector } from '@xstate/vue'
 import { id, threadsFromStore, type ThreadsState } from '@/features/threads/fe/state';
 import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, QuickPrompt, AgentSettings } from '@/__generated__/types'
-import { trpc } from '@abuddy/sdk/rpc'
+import { sendToSystem } from '@/__generated__/events'
 
 const actorSystem = useActorSystem()
 const appActor = useApplicationActor()
@@ -357,8 +357,7 @@ function onScroll() {
 }
 
 function updateThreadsSetting(path: string[], value: unknown) {
-  trpc.bus.send.mutate({
-    systemId: 'settings',
+  sendToSystem('settings', {
     type: 'UPDATE_SETTINGS',
     entityType: 'plugin',
     label: 'threads',
@@ -487,8 +486,7 @@ function confirmRevert() {
     else doRevert(pendingRevertMessageId.value)
   }
   if (dontAskAgain.value) {
-    trpc.bus.send.mutate({
-      systemId: 'settings',
+    sendToSystem('settings', {
       type: 'UPDATE_SETTINGS',
       entityType: 'plugin',
       label: 'threads',
@@ -546,8 +544,7 @@ function doSummarize(messageId: string) {
 }
 
 function handleToggleCompacted(markerId: string, compacted: boolean) {
-  trpc.bus.send.mutate({
-    systemId: 'threads',
+  sendToSystem('threads', {
     type: 'TOGGLE_COMPACTED',
     markerId,
     compacted,

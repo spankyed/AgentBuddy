@@ -1,7 +1,6 @@
-import { emit } from '@/__generated__/events';
+import { sendToPlugin } from '@/__generated__/events';
 import { setup, assign, fromPromise } from 'xstate'
 
-import { rootEvents } from '@abuddy/sdk/rpc'
 import { terminalService } from '../services/terminal'
 import type { TerminalInfo, CodeSettings } from '../types'
 import { repository } from '@/__generated__/repository';
@@ -53,7 +52,7 @@ export type Event =
 
 /** Emit an event to the frontend code plugin */
 const emitToFrontend = (event: OutgoingTerminalEvents) => {
-  rootEvents.emitOutgoing(emit(pluginId, event).event)
+  sendToPlugin(pluginId, event)
 }
 
 // Pre-compiled regex patterns for OSC sequence detection (hot path — runs on every terminal data event)
@@ -154,18 +153,16 @@ export const terminalSystem = setup({
         const terminalName = terminal ? terminal.info.title : 'Terminal'
         const success = terminalService.kill(ev.terminalId)
         if (!success) {
-          const wrapped = emit(pluginId, {
+          sendToPlugin(pluginId, {
             type: 'terminal.ERROR',
             data: { message: `${terminalName} not found`, terminalId: ev.terminalId }
           })
-          rootEvents.emitOutgoing(wrapped.event)
         }
       } catch (error: any) {
-        const wrapped = emit(pluginId, {
+        sendToPlugin(pluginId, {
           type: 'terminal.ERROR',
           data: { message: error.message, terminalId: ev.terminalId }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }
     },
 
@@ -176,18 +173,16 @@ export const terminalSystem = setup({
         const terminalName = terminal ? terminal.info.title : 'Terminal'
         const success = terminalService.write(ev.terminalId, ev.data)
         if (!success) {
-          const wrapped = emit(pluginId, {
+          sendToPlugin(pluginId, {
             type: 'terminal.ERROR',
             data: { message: `${terminalName} not found`, terminalId: ev.terminalId }
           })
-          rootEvents.emitOutgoing(wrapped.event)
         }
       } catch (error: any) {
-        const wrapped = emit(pluginId, {
+        sendToPlugin(pluginId, {
           type: 'terminal.ERROR',
           data: { message: error.message, terminalId: ev.terminalId }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }
     },
 
@@ -198,18 +193,16 @@ export const terminalSystem = setup({
         const terminalName = terminal ? terminal.info.title : 'Terminal'
         const success = terminalService.resize(ev.terminalId, ev.cols, ev.rows)
         if (!success) {
-          const wrapped = emit(pluginId, {
+          sendToPlugin(pluginId, {
             type: 'terminal.ERROR',
             data: { message: `${terminalName} not found`, terminalId: ev.terminalId }
           })
-          rootEvents.emitOutgoing(wrapped.event)
         }
       } catch (error: any) {
-        const wrapped = emit(pluginId, {
+        sendToPlugin(pluginId, {
           type: 'terminal.ERROR',
           data: { message: error.message, terminalId: ev.terminalId }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }
     },
 
@@ -220,42 +213,37 @@ export const terminalSystem = setup({
         const terminalName = terminal ? terminal.info.title : 'Terminal'
         const success = terminalService.rename(ev.terminalId, ev.customTitle)
         if (!success) {
-          const wrapped = emit(pluginId, {
+          sendToPlugin(pluginId, {
             type: 'terminal.ERROR',
             data: { message: `${terminalName} not found`, terminalId: ev.terminalId }
           })
-          rootEvents.emitOutgoing(wrapped.event)
         } else {
           // Emit success event
-          const wrapped = emit(pluginId, {
+          sendToPlugin(pluginId, {
             type: 'terminal.RENAMED',
             data: { terminalId: ev.terminalId, customTitle: ev.customTitle }
           })
-          rootEvents.emitOutgoing(wrapped.event)
         }
       } catch (error: any) {
-        const wrapped = emit(pluginId, {
+        sendToPlugin(pluginId, {
           type: 'terminal.ERROR',
           data: { message: error.message, terminalId: ev.terminalId }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }
     },
 
     listTerminals: () => {
       try {
         const terminals = terminalService.list()
-        const wrapped = emit(pluginId, {
+        sendToPlugin(pluginId, {
           type: 'terminal.TERMINALS_LISTED',
           data: terminals
         })
-        rootEvents.emitOutgoing(wrapped.event)
       } catch (error: any) {
-        const wrapped = emit(pluginId, {
+        sendToPlugin(pluginId, {
           type: 'terminal.ERROR',
           data: { message: error.message }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }
     },
 
@@ -266,27 +254,24 @@ export const terminalSystem = setup({
         const terminal = terminals.find(t => t.id === ev.terminalId)
         
         if (terminal) {
-          const wrapped = emit(pluginId, {
+          sendToPlugin(pluginId, {
             type: 'terminal.TERMINAL_TAB_OPENED',
             data: terminal
           })
-          rootEvents.emitOutgoing(wrapped.event)
         } else {
-          const wrapped = emit(pluginId, {
+          sendToPlugin(pluginId, {
             type: 'terminal.ERROR',
             data: { 
               message: `Terminal not found`, 
               terminalId: ev.terminalId 
             }
           })
-          rootEvents.emitOutgoing(wrapped.event)
         }
       } catch (error: any) {
-        const wrapped = emit(pluginId, {
+        sendToPlugin(pluginId, {
           type: 'terminal.ERROR',
           data: { message: error.message, terminalId: ev.terminalId }
         })
-        rootEvents.emitOutgoing(wrapped.event)
       }
     },
 

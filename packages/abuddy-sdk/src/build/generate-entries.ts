@@ -824,6 +824,9 @@ export type PackSystemEvents = ${packSystemEvents};
 /** Every system this pack's code can send to: its own by feature id, and its dependencies'. */
 export type SendableSystemEvents = OwnSystemEvents${depSystems.aliases.map(a => ` & Omit<${a}, keyof OwnSystemEvents>`).join('')};
 
+/** Every system this pack's code can send to, by the id it runs under: how actions address systems through \`services.emitter\`. */
+export type RunningSystemEvents = PackSystemEvents${depSystems.aliases.map(a => ` & Omit<${a}, keyof PackSystemEvents>`).join('')};
+
 ${sends}
 `;
   }
@@ -920,7 +923,9 @@ ${nodeEntity}`;
 import type { z } from 'zod';
 import type { EARS } from '@abuddy/sdk';
 import { services as sdkServices, type HostServices } from '@abuddy/sdk/services';
+import type { TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
 import type { Repositories } from './repository.js';
+import type { PackEvents, RunningSystemEvents } from './events.js';
 ${imports.join('\n')}
 ${deps.imports.join('\n')}
 
@@ -929,11 +934,20 @@ ${entries.join('\n')}
 };
 
 /**
+ * \`services.emitter\`, typed with this pack's events. Actions run outside any pack, so a system is
+ * addressed by the id it runs under (\`busId\` for this pack's own).
+ */
+export type PackEmitter = Omit<HostServices['emitter'], 'sendToPlugin' | 'sendToSystem'> & {
+  sendToPlugin: TypedSendToPlugin<PackEvents>;
+  sendToSystem: TypedSendToSystem<RunningSystemEvents>;
+};
+
+/**
  * What an action actually receives: this pack's feature services, its dependencies' services
  * and the ambient ones the host injects (logger, emitter, repository).
  * The featureServices value itself stays feature-only.
  */
-export type Services = typeof featureServices & Omit<HostServices, 'repository'> & { repository: Repositories }${deps.aliases.map(a => ` & Omit<${a}, 'repository'>`).join('')};
+export type Services = typeof featureServices & Omit<HostServices, 'repository' | 'emitter'> & { repository: Repositories; emitter: PackEmitter }${deps.aliases.map(a => ` & Omit<${a}, 'repository' | 'emitter'>`).join('')};
 
 /** The host's services proxy, typed with this pack's feature services. */
 export const services = sdkServices as unknown as Services;

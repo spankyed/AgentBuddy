@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { findAppImportsInPackTests, findHostImports, findJsSpecifiers, findRawPackHelpers } from '../../../../scripts/check-import-specifiers.ts';
+import { findAppImportsInPackTests, findHostImports, findJsSpecifiers, findRawPackHelpers, findRawTransport } from '../../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '../helpers/published-packages';
 
 /** scripts/check-import-specifiers.ts: relative imports in sdk, host and ui name TypeScript sources */
@@ -79,8 +79,9 @@ describe('findJsSpecifiers', () => {
 
 describe('findRawPackHelpers', () => {
   it.each([
-    ["import { emit } from '@abuddy/sdk/helpers';", 'emit from @abuddy/sdk/helpers'],
-    ["import { emit as emitToPlugin } from '@abuddy/sdk/helpers';", 'emit from @abuddy/sdk/helpers'],
+    ["import { emit } from '@abuddy/sdk/events';", 'emit from @abuddy/sdk/events'],
+    ["import { emit as emitToPlugin } from '@abuddy/sdk/events';", 'emit from @abuddy/sdk/events'],
+    ["import { sendToSystem, onIncoming } from '@abuddy/sdk/events';", 'sendToSystem from @abuddy/sdk/events'],
     ["import { sendToPlugin, services } from '@abuddy/sdk/services';", 'sendToPlugin from @abuddy/sdk/services'],
     ["import { registerRepository, tx } from '@abuddy/sdk/ears';", 'registerRepository from @abuddy/sdk/ears'],
     // A CLI template writes this as pack source
@@ -91,9 +92,49 @@ describe('findRawPackHelpers', () => {
   });
 
   it('allows the generated facades, other helpers and generated files', () => {
-    write('pack/feature.ts', "import { emit } from '#generated/events';\nimport { getActor } from '@abuddy/sdk/helpers';\nimport { tx } from '@abuddy/sdk/ears';\n");
+    write('pack/feature.ts', [
+      "import { emit, sendToSystem } from '#generated/events';",
+      "import { sendToPlugin } from '@/__generated__/events';",
+      "import { sendToBrainSystem, onIncoming } from '@abuddy/sdk/events';",
+      "import { emit as emitEvent } from 'xstate';",
+      "import { getActor } from '@abuddy/sdk/helpers';",
+      "import { tx } from '@abuddy/sdk/ears';",
+    ].join('\n'));
     write('pack/__generated__/repositories.ts', "import { registerRepository } from '@abuddy/sdk/ears';\n");
     expect(findRawPackHelpers(['src/pack'], root)).toEqual([]);
+  });
+});
+
+describe('findRawTransport', () => {
+  it.each([
+    ["import { trpc } from '@abuddy/sdk/rpc';", '@abuddy/sdk/rpc'],
+    ["import type { RootEvents } from '@abuddy/sdk/rpc';", '@abuddy/sdk/rpc'],
+    ["const rpc = await import('@abuddy/sdk/rpc');", '@abuddy/sdk/rpc'],
+    ['rootEvents.emitOutgoing(wrapped.event);', 'rootEvents'],
+    ["trpc.bus.send.mutate({ systemId: 'notes', type: 'GET_NOTES' });", 'trpc.bus'],
+    ['await trpc .bus.send.mutate(event);', 'trpc.bus'],
+    // A CLI template writes this as pack source
+    ["const STATE = `import { rootEvents } from '@abuddy/sdk/x';`;", 'rootEvents'],
+  ])('flags %s', (code, problem) => {
+    write('pack/feature.ts', code);
+    expect(findRawTransport(['src/pack'], root)).toEqual([`src/pack/feature.ts:1: ${problem}`]);
+  });
+
+  it('skips commented-out lines and allows the typed sends', () => {
+    write('pack/feature.ts', [
+      '// trpc.bus.send.mutate({ systemId: id })',
+      '/* rootEvents.onLog(handler) */',
+      ' * rootEvents is gone',
+      "import { sendToSystem } from '#generated/events';",
+      "import { onConnected } from '@abuddy/sdk/events';",
+      "sendToSystem('notes', { type: 'GET_NOTES' });",
+    ].join('\n'));
+    expect(findRawTransport(['src/pack'], root)).toEqual([]);
+  });
+
+  it('checks generated files', () => {
+    write('pack/__generated__/events.ts', "import { rootEvents } from '@abuddy/sdk/runtime';\n");
+    expect(findRawTransport(['src/pack'], root)).toEqual(['src/pack/__generated__/events.ts:1: rootEvents']);
   });
 });
 

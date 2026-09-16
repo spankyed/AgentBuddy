@@ -59,6 +59,15 @@ export type OutgoingSettingsEvents =
   /** The stored API keys, without values, and how they're protected */
   | { type: 'SECRETS_UPDATED'; secrets: SecretInfo[]; status: SecretsStatus }
 
+/** What the plugin whose settings changed receives: `<PLUGIN ID>_SETTINGS_UPDATED` (`NOTES_SETTINGS_UPDATED`) */
+export type PluginSettingsUpdatedEvent = { type: `${string}_SETTINGS_UPDATED`; settings: unknown };
+
+/**
+ * Sends a plugin its updated settings. Any pack's plugin can have settings, so the receiver isn't one
+ * this pack's event maps name.
+ */
+const emitPluginSettings = emit as (pluginId: string, event: PluginSettingsUpdatedEvent) => ReturnType<typeof emit>;
+
 export const settingsSpec = defineSystem('settings')<IncomingSettingsEvents | SettingsInternalEvents, OutgoingSettingsEvents>();
 export const settings = settingsSpec.id;
 
@@ -175,11 +184,10 @@ export const settingsSystem = setup({
           }
           
           // Send settings update event to the frontend plugin
-          const eventType = `${ev.label.toUpperCase()}_SETTINGS_UPDATED`;
-          system.get(bus).send(emit(ev.label as any, {
-            type: eventType,
+          system.get(bus).send(emitPluginSettings(ev.label, {
+            type: `${ev.label.toUpperCase()}_SETTINGS_UPDATED`,
             settings: pluginSettings
-          } as any));
+          }));
         }
       }
     },

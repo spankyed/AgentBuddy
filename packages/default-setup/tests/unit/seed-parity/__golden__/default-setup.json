@@ -136,8 +136,8 @@
       "Action:CC: Session Ops": {
         "label": "CC: Session Ops",
         "description": "Dispatcher for session-heavy cc- commands (resume, import)",
-        "sourceHash": "85f6549c76f3854f",
-        "rowSha256": "0b4c7d3716c451cff94445b13be45f9757e1665a8129a8e72cc8713ea3e2d051"
+        "sourceHash": "fbc8c9ce41628c88",
+        "rowSha256": "a33e869bf1a517aa462e39d28ed93eb6410aeecf8cc2d5806aea964ab643e476"
       },
       "Action:CC: Stream Paused": {
         "label": "CC: Stream Paused",
@@ -286,8 +286,8 @@
       "Action:CDX: Session Ops": {
         "label": "CDX: Session Ops",
         "description": "Dispatcher for session-heavy cdx- commands.",
-        "sourceHash": "70be6a68b0e96d78",
-        "rowSha256": "303c31667a6de4d9ba7c10c68e34c59e86198b3706cb583bb568d487df84c9ee"
+        "sourceHash": "2bb9b39b3661ab0f",
+        "rowSha256": "616fe33081c24f2fe61a5b8a08f79b0918f2c85382b16f0f02c69851c28cab5d"
       },
       "Action:CDX: Start Server": {
         "label": "CDX: Start Server",

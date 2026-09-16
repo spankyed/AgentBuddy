@@ -55,9 +55,9 @@
           :key="secret.id"
           :secret="secret"
           :selectable="true"
-          :rename="(label) => run(() => trpc.secrets.rename.mutate({ id: secret.id, label }))"
-          :replace="(value) => run(() => trpc.secrets.replaceValue.mutate({ id: secret.id, value }))"
-          :select="() => run(() => trpc.secrets.select.mutate({ id: secret.id }))"
+          :rename="(label) => run(() => secretsClient.rename(secret.id, label))"
+          :replace="(value) => run(() => secretsClient.replaceValue(secret.id, value))"
+          :select="() => run(() => secretsClient.select(secret.id))"
           @delete="confirmDelete(secret)"
         />
 
@@ -88,8 +88,8 @@
         :key="secret.id"
         :secret="secret"
         :selectable="false"
-        :rename="(label) => run(() => trpc.secrets.rename.mutate({ id: secret.id, label }))"
-        :replace="(value) => run(() => trpc.secrets.replaceValue.mutate({ id: secret.id, value }))"
+        :rename="(label) => run(() => secretsClient.rename(secret.id, label))"
+        :replace="(value) => run(() => secretsClient.replaceValue(secret.id, value))"
         @delete="confirmDelete(secret)"
       />
       <NewSecretRow
@@ -107,8 +107,7 @@
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { ExternalLink, ShieldAlert, ShieldCheck } from 'lucide-vue-next'
-import { openInAppBrowser, useActorSystem } from '@abuddy/sdk/fe'
-import { trpc } from '@abuddy/sdk/rpc'
+import { openInAppBrowser, secretsClient, useActorSystem } from '@abuddy/sdk/fe'
 import { providerLabels } from '@abuddy/sdk/models'
 import type { SecretInfo, SecretProvider, SecretsStatus } from '@abuddy/sdk/services'
 import { API_KEY_URLS, REQUIRED_PROVIDERS } from '../../../../constants'
@@ -157,11 +156,11 @@ async function run(call: () => Promise<unknown>): Promise<boolean> {
 }
 
 const add = (provider: SecretProvider, label: string, value: string) =>
-  run(() => trpc.secrets.add.mutate({ provider, label, value }))
+  run(() => secretsClient.add(provider, label, value))
 
-const allowUnprotected = () => run(() => trpc.secrets.allowUnprotected.mutate())
+const allowUnprotected = () => run(() => secretsClient.allowUnprotected())
 
 function confirmDelete(secret: SecretInfo) {
-  if (confirm(`Delete the key "${secret.label}"?`)) run(() => trpc.secrets.delete.mutate({ id: secret.id }))
+  if (confirm(`Delete the key "${secret.label}"?`)) run(() => secretsClient.delete(secret.id))
 }
 </script>

@@ -8,7 +8,7 @@ import {
 } from '@abuddy/sdk/fe'
 import type { OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, PluginSettings } from '@/__generated__/types'
 import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services'
-import { trpc } from '@abuddy/sdk/rpc'
+import { sendToSystem } from '@/__generated__/events'
 import type { ApplicationHotkeys } from '@abuddy/sdk/types'
 import type { EARS } from '@abuddy/sdk'
 import type { PackSeedsPreview } from '@abuddy/sdk/build'
@@ -109,8 +109,7 @@ const settingsState = setup({
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
     loadSettings: () => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'GET_SETTINGS',
       });
     },
@@ -177,8 +176,7 @@ const settingsState = setup({
     /* ── settings updates ────────────────────────────── */
     updateSettings: ({ event }) => {
       const ev = typeOf('SETTINGS.UPDATE', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_SETTINGS',
         entityType: ev.entityType,
         label: ev.label,
@@ -189,24 +187,21 @@ const settingsState = setup({
 
     replaceSettings: ({ event }) => {
       const ev = typeOf('SETTINGS.REPLACE', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'REPLACE_SETTINGS',
         data: ev.data,
       });
     },
 
     resetSettings: () => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'RESET_SETTINGS',
       });
     },
 
     testCliProvider: assign(({ context, event }) => {
       const ev = typeOf('CLI.TEST', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'TEST_CLI_PROVIDER',
         provider: ev.provider,
       });
@@ -231,11 +226,10 @@ const settingsState = setup({
 
     previewPackSeeds: assign(({ context, event }) => {
       const ev = event as { type: 'PACK_SEEDS.PREVIEW'; directory: string };
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'PREVIEW_PACK_SEEDS',
         directory: ev.directory,
-      } as any);
+      });
       return {
         packSeedsImport: {
           ...context.packSeedsImport,
@@ -343,14 +337,13 @@ const settingsState = setup({
         return selected.length === total ? null : selected;
       };
 
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'IMPORT_PACK_SEEDS',
         directory,
         include: Object.fromEntries(Object.keys(preview.seeds).map((key) => [key, toIncludeField(key)])),
         mode: importMode,
         restartBrain,
-      } as any);
+      });
 
       return {
         packSeedsImport: {
@@ -516,7 +509,7 @@ const settingsState = setup({
           actions: [
             assign({ resetting: true }),
             () => {
-              trpc.bus.send.mutate({ systemId: id, type: 'RESET_APP' } as any);
+              sendToSystem(id, { type: 'RESET_APP' });
             },
           ],
         },

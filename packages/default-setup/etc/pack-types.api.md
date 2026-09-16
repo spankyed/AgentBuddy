@@ -7,7 +7,7 @@ import * as _abuddy_sdk from '@abuddy/sdk';
 import { ActionEntity, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes } from '@abuddy/sdk';
 import { ArtifactItem } from '@abuddy/sdk/artifacts';
 import { CompiledRows } from '@abuddy/sdk/build';
-import { HostPluginEvents, IncomingEventsOf } from '@abuddy/sdk/events';
+import { HostPluginEvents, IncomingEventsOf, TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
 import { ModelCatalogEntry, ModelId } from '@abuddy/sdk/models';
 import { PackSeedsPreview } from '@abuddy/sdk/seed';
 import { HostServices, SecretInfo, SecretsStatus } from '@abuddy/sdk/services';
@@ -1920,7 +1920,7 @@ type OutgoingBrowserEvents = {
     savedBookmarks: SavedBookmark[];
 };
 
-type OutgoingCodeEvents = OutgoingExplorerEvents | OutgoingSearchEvents | OutgoingCommitEvents | OutgoingPullRequestEvents | OutgoingTerminalEvents | OutgoingActionsEvents | {
+type OutgoingCodeEvents = OutgoingExplorerEvents | OutgoingSearchEvents | OutgoingCommitEvents | OutgoingPullRequestEvents | OutgoingTerminalEvents | OutgoingActionsEvents | OutgoingPromptsEvents | {
     type: 'CODE_CONNECTED';
     data: CodeConnectedData;
 } | {
@@ -2453,6 +2453,23 @@ type OutgoingPromptEvents = {
     errors: string[];
 };
 
+type OutgoingPromptsEvents = {
+    type: 'codePrompts.PROMPT_SELECTED';
+    promptId: string;
+    data: PromptEntity & {
+        templateFnContent?: string;
+    };
+} | {
+    type: 'codePrompts.PROMPT_UPDATED';
+    prompt: PromptEntity;
+    promptId: string;
+} | {
+    type: 'codePrompts.CODE_ERROR';
+    data: {
+        message: string;
+    };
+};
+
 type OutgoingPullRequestEvents = {
     type: 'pr.BASE_BRANCH_RECEIVED';
     data: {
@@ -2910,6 +2927,15 @@ type OwnSystemEvents = {
 };
 
 /**
+ * `services.emitter`, typed with this pack's events. Actions run outside any pack, so a system is
+ * addressed by the id it runs under (`busId` for this pack's own).
+ */
+type PackEmitter = Omit<HostServices['emitter'], 'sendToPlugin' | 'sendToSystem'> & {
+    sendToPlugin: TypedSendToPlugin<PackEvents>;
+    sendToSystem: TypedSendToSystem<RunningSystemEvents>;
+};
+
+/**
  * Every plugin this pack's systems can send to: its own, its dependencies' and the host's. A plugin
  * id this pack also uses types as its own plugin.
  */
@@ -3324,6 +3350,9 @@ declare const ResultLineSchema: z.ZodObject<{
     errors: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
 }, z.ZodTypeAny, "passthrough">>;
 
+/** Every system this pack's code can send to, by the id it runs under: how actions address systems through `services.emitter`. */
+type RunningSystemEvents = PackSystemEvents;
+
 interface SavedBookmark {
     url: string;
     title: string;
@@ -3382,8 +3411,9 @@ type ServerStatus = 'error' | 'ready' | 'starting' | 'stopped';
  * and the ambient ones the host injects (logger, emitter, repository).
  * The featureServices value itself stays feature-only.
  */
-type Services = typeof featureServices & Omit<HostServices, 'repository'> & {
+type Services = typeof featureServices & Omit<HostServices, 'emitter' | 'repository'> & {
     repository: Repositories;
+    emitter: PackEmitter;
 };
 
 interface SessionInfo {

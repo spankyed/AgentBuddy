@@ -129,7 +129,7 @@ function registered(key: string): boolean {
  */
 export function registerTestHostModules(resetData: () => void): void {
   const modules: Record<string, unknown> = {
-    'logger': { createLogger: consoleLogger },
+    'logger': { createLogger: consoleLogger, onLog: (callback: (event: LogEvent) => void) => testRootEvents.onLog(callback) },
     'bus-emitter': { rootEvents: testRootEvents },
     'event-transport': {
       sendIncoming: (event) => testRootEvents.emitIncoming(event),

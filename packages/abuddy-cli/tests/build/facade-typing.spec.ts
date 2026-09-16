@@ -137,6 +137,17 @@ sendToSystem('memos', { type: 'ADD_TAG', name: 'x' });
 // @ts-expect-error ADD_MEMO needs its text
 sendToSystem('memos', { type: 'ADD_MEMO' });
 
+// Actions get services.emitter, which sends to every system by the id it runs under
+services.emitter.sendToSystem('app-pack.memos', { type: 'ADD_MEMO', text: 'x' });
+services.emitter.sendToSystem('base-pack.threads', { type: 'ADD_TAG', name: 'x' });
+services.emitter.sendToPlugin('threads', { type: 'TAG_ADDED', name: 'x' });
+// @ts-expect-error the emitter doesn't map feature ids: this pack's systems run as app-pack.<feature>
+services.emitter.sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });
+// @ts-expect-error ADD_MEMO needs its text
+services.emitter.sendToSystem('app-pack.memos', { type: 'ADD_MEMO' });
+// @ts-expect-error the threads plugin doesn't receive this event
+services.emitter.sendToPlugin('threads', { type: 'MEMO_ADDED', text: 'x' });
+
 export type Undeclared = Expect<Equal<EntityShape<'Nope'>['anything'], unknown>>;
 // An entity name only known at runtime is accepted, and reads as unknown values
 declare const runtimeName: string;

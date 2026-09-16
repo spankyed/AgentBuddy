@@ -46,6 +46,9 @@ export interface Logger {
 // @public (undocumented)
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
+// @public
+export function onLog(callback: (event: LogEvent) => void): () => void;
+
 // (No @packageDocumentation comment for this package)
 
 ```

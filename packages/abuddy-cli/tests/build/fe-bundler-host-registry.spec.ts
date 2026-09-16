@@ -170,13 +170,17 @@ describe.each(LAYOUTS)('bundlePackFE host registry guard ($name)', (layout) => {
   it('builds when SDK imports go through host-shared proxies', async () => {
     const { packDir, entry } = makePack(layout,
       `import { trpc } from '@abuddy/sdk/rpc';\nimport { compareVersions } from '@abuddy/sdk/utils/pure';\n` +
-      `export const x = [trpc, compareVersions];\n`,
+      // What #generated/events imports: a pack's frontend sends through the host's transport
+      `import { defineEvents } from '@abuddy/sdk/events';\n` +
+      `export const x = [trpc, compareVersions, defineEvents({})];\n`,
     );
 
     const result = await bundlePackFE({ packDir, outputDir: path.join(packDir, 'dist'), entryPoint: entry });
 
     expect(result.error).toBeUndefined();
     expect(result.success).toBe(true);
-    expect(fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8')).toContain('window.__abuddy?.["sdkRpc"]');
+    const output = fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8');
+    expect(output).toContain('window.__abuddy?.["sdkRpc"]');
+    expect(output).toContain('window.__abuddy?.["sdkEvents"]');
   }, 60_000);
 });

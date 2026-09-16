@@ -1,9 +1,15 @@
 import { getHostModule } from '../runtime/host.ts';
 import type { Logger } from '../ears/runtime.ts';
 
-let _mod: { createLogger(source?: string): Logger } | undefined;
+/** The `logger` host module */
+interface LoggerHost {
+  createLogger(source?: string): Logger;
+  onLog(callback: (event: LogEvent) => void): () => void;
+}
+
+let _mod: LoggerHost | undefined;
 function mod() {
-  return _mod ??= getHostModule<{ createLogger(source?: string): Logger }>('logger');
+  return _mod ??= getHostModule<LoggerHost>('logger');
 }
 
 export type { Logger };
@@ -53,3 +59,7 @@ export type LogEvent = {
   stack?: string;
 }
 
+/** Calls `callback` with every log entry the app records; returns the unsubscribe (backend only) */
+export function onLog(callback: (event: LogEvent) => void): () => void {
+  return mod().onLog(callback);
+}

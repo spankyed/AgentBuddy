@@ -9,7 +9,7 @@ import type {
   OutgoingDatabaseEvents,
   DatabaseSettings,
 } from '@/__generated__/types'
-import { trpc } from '@abuddy/sdk/rpc'
+import { sendToSystem } from '@/__generated__/events'
 import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate, transactionExampleQuery } from './constants'
 import { History, HardDriveDownload } from 'lucide-vue-next'
 import type { TNodeEntity } from '@abuddy/sdk/steps'
@@ -127,8 +127,7 @@ const databaseState = setup({
     /* ── query interactions ────────────────────────────── */
     executeQuery: ({ event, context }) => {
       const ev = typeOf('QUERY.EXECUTE', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'EXECUTE_QUERY',
         code: ev.code,
       });
@@ -136,8 +135,7 @@ const databaseState = setup({
 
     executeTransaction: ({ event, context }) => {
       const ev = typeOf('TRANSACTION.EXECUTE', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'EXECUTE_TRANSACTION',
         code: ev.code,
       });
@@ -147,8 +145,7 @@ const databaseState = setup({
       const ev = typeOf('ENTITY.DELETE', event);
       // Use tx() to delete the entity
       const deleteCode = `tx('${ev.entityId}').destroy(); return { deleted: '${ev.entityId}' };`;
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'EXECUTE_TRANSACTION',
         code: deleteCode,
       });
@@ -157,8 +154,7 @@ const databaseState = setup({
     refreshAfterDelete: ({ context }) => {
       // Re-run the current query after successful deletion
       if (context.currentQuery) {
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'EXECUTE_QUERY',
           code: context.currentQuery,
         });
@@ -241,8 +237,7 @@ const databaseState = setup({
         console.error('Invalid prompt provided for AI query generation');
         return;
       }
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'GENERATE_AI_QUERY',
         prompt: ev.prompt.trim(),
         mode: ev.mode,
@@ -277,8 +272,7 @@ const databaseState = setup({
     }),
 
     refreshSchema: () => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'REFRESH_SCHEMA',
       });
     },
@@ -296,8 +290,7 @@ const databaseState = setup({
       const newMode = context.viewMode === 'database' ? 'trace' : 'database';
       if (newMode === 'trace' && context.traceFlows.length === 0) {
         // Request trace flows when switching to trace mode for the first time
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'GET_TRACE_FLOWS',
         });
       }
@@ -308,8 +301,7 @@ const databaseState = setup({
     }),
 
     requestTraceFlows: () => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'GET_TRACE_FLOWS',
       });
     },
@@ -334,8 +326,7 @@ const databaseState = setup({
       // Auto-select first flow if we have flows and no current selection
       if (sortedFlows.length > 0) {
         const firstFlow = sortedFlows[0];
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'GET_FLOW_EVENTS',
           flowId: firstFlow.id,
           offset: 0,
@@ -357,8 +348,7 @@ const databaseState = setup({
 
     selectFlow: assign(({ event }) => {
       const ev = typeOf('TRACE.SELECT_FLOW', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'GET_FLOW_EVENTS',
         flowId: ev.flowId,
         offset: 0,
@@ -394,8 +384,7 @@ const databaseState = setup({
       if (!context.currentFlowId || !context.tracePagination.hasMore) return;
 
       const newOffset = context.tracePagination.offset + context.tracePagination.limit;
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'GET_FLOW_EVENTS',
         flowId: context.currentFlowId,
         offset: newOffset,
@@ -420,8 +409,7 @@ const databaseState = setup({
         newExpanded.add(ev.nodeId);
         // Request node details if not already loaded
         if (!context.nodeDetails.has(ev.nodeId)) {
-          trpc.bus.send.mutate({
-            systemId: id,
+          sendToSystem(id, {
             type: 'GET_NODE_DETAILS',
             nodeId: ev.nodeId,
           });
@@ -455,8 +443,7 @@ const databaseState = setup({
 
     /* ── reset database actions ─────────────────────────── */
     resetDatabase: () => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'RESET_DATABASE',
       });
     },
