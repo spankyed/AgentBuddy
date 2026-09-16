@@ -1,8 +1,10 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { transformSync } from 'esbuild';
+import ts from 'typescript';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { entitiesWithoutShapes, generatePackFiles, PACK_TYPES_DEF } from '../../src/build/generate-entries.ts';
+import { depTypesFile, depTypesVersion, entitiesWithoutShapes, generatePackFiles, PACK_TYPES_DEF } from '../../src/build/generate-entries.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../../src/types/sdk-entities.ts';
 import type { PackManifest, PackSnapshot } from '../../src/build/manifest.ts';
 
@@ -43,24 +45,73 @@ describe('generated events', () => {
   });
 
   it('includes a plugin-only feature something sends to', () => {
-    const files = generate({ features: [system('notes', { sendsTo: ['sidebar'] }), { id: 'sidebar', plugin: { entry: 'x', label: 'S', icon: 'X' } }] });
+    const files = generate({ features: [system('notes', { sendsTo: ['sidebar'] }), { id: 'sidebar', plugin: { entry: 'x' } }] });
     expect(files['src/__generated__/events.ts']).toContain("'sidebar': __events_notes;");
   });
 
   it("intersects each dependency's plugin events and accepts its plugins as targets", () => {
     const files = generate(
       { features: [system('memos', { sendsTo: ['threads'] })] },
-      { 'base-pack': dependency({ features: [{ id: 'threads', plugin: { entry: 'x', label: 'T', icon: 'X' } }] }) },
+      { 'base-pack': dependency({ features: [{ id: 'threads', plugin: { entry: 'x' } }] }) },
     );
     const events = files['src/__generated__/events.ts'];
     expect(events).toContain("import type { PackEvents as __dep_base_pack_PackEvents } from './deps/base-pack.js';");
     expect(events).toContain('export type PackEvents = OwnPackEvents & Omit<__dep_base_pack_PackEvents, keyof OwnPackEvents> & Omit<HostPluginEvents, keyof OwnPackEvents>;');
     expect(files['src/__generated__/deps/base-pack.d.ts']).toContain('export type PackEvents = {};');
+    expect(files['src/__generated__/deps/base-pack.d.ts']).toContain('// base-pack@1.0.0 facade types\n');
+    expect(depTypesVersion(files[depTypesFile('base-pack')], 'base-pack')).toBe('1.0.0');
   });
 
   it('rejects a sendsTo target no pack or host provides', () => {
     expect(() => generate({ features: [system('memos', { sendsTo: ['nowhere'] })] }))
       .toThrow('Feature "memos": system.sendsTo names "nowhere"');
+  });
+});
+
+describe('generated frontend entry', () => {
+  it("sets each plugin's designation from the manifest, replacing one the plugin module sets", () => {
+    const files = generate({ features: [
+      { id: 'settings', designation: 'settings', plugin: { entry: 'src/settings/plugin' } },
+      { id: 'notes', plugin: { entry: 'src/notes/plugin' } },
+    ] });
+    const fe = files['src/__generated__/pack-entry-fe.ts'];
+    expect(fe).toContain("const Settings = { ..._Settings, designation: 'settings' }");
+    expect(fe).toContain('const Notes = { ..._Notes, designation: undefined }');
+  });
+});
+
+describe('generated backend entry', () => {
+  it('records which features have a plugin, and takes the plugin\'s name and icon from its module', () => {
+    const files = generate({ features: [
+      { id: 'notes', plugin: { entry: 'src/notes/plugin' } },
+      system('brain'),
+    ] });
+    const entry = files['src/__generated__/pack-entry.ts'];
+    expect(entry).toContain("id: 'notes',\n    hasSystem: false,\n    hasPlugin: true,");
+    expect(entry).toContain("id: 'brain',\n    hasSystem: true,\n    hasPlugin: false,");
+    expect(entry).not.toMatch(/label|icon|isPinned/);
+  });
+
+  it("carries the pack's declared slash commands, so registering it registers them", () => {
+    const withCommands = generate({ commands: [{ name: 'note', placeholder: 'Text' }], features: [system('brain')] });
+    expect(withCommands['src/__generated__/pack-entry.ts']).toContain('commands: [{"name":"note","placeholder":"Text"}],');
+
+    // A pack that declares none says nothing
+    expect(generate({ features: [system('brain')] })['src/__generated__/pack-entry.ts']).not.toContain('commands:');
+  });
+
+  it('fails for a command a dependency declares, which the app would refuse to register', () => {
+    const base = { 'base-pack': dependency({ commands: [{ name: 'instructions', placeholder: 'Theirs' }] }) };
+    expect(() => generate({ commands: [{ name: 'instructions', placeholder: 'Mine' }], features: [system('brain')] }, base))
+      .toThrow('Command "instructions" is declared by "base-pack", which this pack depends on');
+    expect(generate({ commands: [{ name: 'memo', placeholder: 'Mine' }], features: [system('brain')] }, base)['src/__generated__/pack-entry.ts'])
+      .toContain('commands: [{"name":"memo","placeholder":"Mine"}],');
+  });
+
+  it("fails for a command a dependency's own dependency declares, from the snapshot's dependencyCommands", () => {
+    const mid = { 'mid-pack': { ...dependency({ id: 'mid-pack' }), dependencyCommands: [{ name: 'pr2md', packId: 'default-setup' }] } };
+    expect(() => generate({ commands: [{ name: 'pr2md', placeholder: 'Mine' }], features: [system('brain')] }, mid))
+      .toThrow('Command "pr2md" is declared by "default-setup", which this pack depends on');
   });
 });
 
@@ -121,6 +172,24 @@ describe('generated entity shapes', () => {
   });
 });
 
+describe('generated feature settings', () => {
+  it("passes each feature's settings module to its registration, which registers them as defaults", () => {
+    write('src/features/memos/settings.ts', 'export default { plugins: { memos: {} } };\n');
+    const entry = generate({ features: [{ ...system('memos'), settings: 'src/features/memos/settings.ts' }, system('todos')] })['src/__generated__/pack-entry.ts'];
+    expect(entry).toContain("import __settings_Memos from '../features/memos/settings.js';");
+    expect(entry).toMatch(/id: 'memos',[^}]*services: \[\],\n {4}settings: __settings_Memos,\n {2}\}/);
+    expect(entry).toMatch(/id: 'todos',[^}]*services: \[\],\n {2}\}/);
+  });
+
+  it('fails on a settings module that is missing or has no default export', () => {
+    expect(() => generate({ features: [{ ...system('memos'), settings: 'src/settings.ts' }] }))
+      .toThrow('Feature "memos": no settings file found at src/settings.ts');
+    write('src/settings.ts', 'export const settings = {};\n');
+    expect(() => generate({ features: [{ ...system('memos'), settings: 'src/settings.ts' }] }))
+      .toThrow('Feature "memos": settings src/settings.ts has no default export');
+  });
+});
+
 describe('generated repositories', () => {
   it('types repositories from their declarations and registers them from the backend entry', () => {
     write('src/features/memos/be/repository.ts', 'export const memoQueries = {};\n');
@@ -129,6 +198,13 @@ describe('generated repositories', () => {
     expect(files['src/__generated__/repository.ts']).toContain('memoQueries: typeof __repo_memoQueries;');
     expect(files['src/__generated__/repositories.ts']).toContain("registerRepository('memoQueries', __repo_memoQueries);");
     expect(files['src/__generated__/pack-entry.ts']).toContain("import './repositories.js';");
+  });
+
+  it('accepts a repository exported through a barrel', () => {
+    write('src/memos/queries.ts', 'export const memoQueries = {};\n');
+    write('src/memos/index.ts', "export * from './queries';\n");
+    expect(generate({ features: [{ ...system('memos'), repositories: { memoQueries: 'src/memos#memoQueries' } }] })['src/__generated__/repositories.ts'])
+      .toContain("import { memoQueries as __repo_memoQueries } from '../memos/index.js';");
   });
 
   it('fails on a repository export that does not exist', () => {
@@ -145,12 +221,55 @@ describe('generated repositories', () => {
 });
 
 describe('generated services', () => {
-  it('aliases service imports, so a service named "services" does not shadow the export', () => {
-    write('src/services.ts', 'export const value = 1;\n');
-    const services = generate({ features: [{ id: 'memos', services: { services: 'src/services.ts' } }] })['src/__generated__/services.ts'];
-    expect(services).toContain("import * as __service_services from '../services.js';");
+  const service = (target: string, key = 'memo') => generate({ features: [{ id: 'memos', services: { [key]: target } }] })['src/__generated__/services.ts'];
+
+  it('imports the named service object under an alias, so a service named "services" does not shadow the export', () => {
+    write('src/services.ts', 'export const servicesService = { value: 1 };\n');
+    const services = service('src/services.ts#servicesService', 'services');
+    expect(services).toContain("import { servicesService as __service_services } from '../services.js';");
     expect(services).toContain('  services: __service_services,');
     expect(services).toContain('export const services = sdkServices');
+  });
+
+  it('imports pack-level services the same way', () => {
+    write('src/cache/index.ts', 'export const cacheService = { get: (key: string) => key };\n');
+    const services = generate({ packServices: { cache: 'src/cache#cacheService' } })['src/__generated__/services.ts'];
+    expect(services).toContain("import { cacheService as __service_cache } from '../cache/index.js';");
+    expect(services).toContain('  cache: __service_cache,');
+  });
+
+  it('accepts a service object re-exported from another module, a barrel or a multi-line export list', () => {
+    write('src/impl.ts', 'class MemoStore { list(): string[] { return []; } }\n/* export const memoService = 1 */\nconst memoService = new MemoStore();\nexport {\n  MemoStore,\n  memoService,\n};\n');
+    write('src/reexport.ts', "export { memoService } from './impl';\n");
+    write('src/barrel.ts', "export * from './reexport';\n");
+    write('src/renamed.ts', "import { memoService as impl } from './impl';\nexport { impl as memoService };\n");
+    for (const source of ['src/impl.ts', 'src/reexport.ts', 'src/barrel.ts', 'src/renamed.ts']) {
+      expect(service(`${source}#memoService`)).toContain('  memo: __service_memo,');
+    }
+  });
+
+  it("fails on a target without an export, a missing file or export, and an export that isn't a service object", () => {
+    write('src/memo.ts', [
+      'export type MemoType = { list(): string[] };',
+      'export interface MemoInterface { list(): string[] }',
+      'export function createMemoService() { return {}; }',
+      'export const memoFactory = () => ({});',
+      'export class MemoService {}',
+      'const typeOnly = {};',
+      'export type { typeOnly };',
+      '// export const commented = {};',
+    ].join('\n'));
+    expect(() => service('src/memo.ts')).toThrow('Service "memo": "src/memo.ts" must name its export, as "path#exportName"');
+    expect(() => service('src/missing.ts#memoService')).toThrow('Service "memo": no file found at src/missing.ts');
+    expect(() => service('src/memo.ts#memoService')).toThrow('Service "memo": src/memo.ts doesn\'t export "memoService"');
+    expect(() => service('src/memo.ts#commented')).toThrow('Service "memo": src/memo.ts doesn\'t export "commented"');
+    for (const name of ['MemoType', 'MemoInterface', 'typeOnly']) {
+      expect(() => service(`src/memo.ts#${name}`)).toThrow(`Service "memo": src/memo.ts exports "${name}" only as a type, not a value`);
+    }
+    for (const name of ['createMemoService', 'memoFactory']) {
+      expect(() => service(`src/memo.ts#${name}`)).toThrow(`Service "memo": "${name}" in src/memo.ts is a function; export the service object itself`);
+    }
+    expect(() => service('src/memo.ts#MemoService')).toThrow('Service "memo": "MemoService" in src/memo.ts is a class; export an instance of it');
   });
 
   it("intersects dependencies' services and types repository with the pack's repositories", () => {
@@ -224,5 +343,130 @@ describe('entitiesWithoutShapes', () => {
       entityShapes: { Memo: { source: 'src/memo.ts', type: 'MemoEntity' } },
     })).toEqual(['Tag']);
     expect(entitiesWithoutShapes({})).toEqual([]);
+  });
+});
+
+describe('generated seeders', () => {
+  it('registers the generic seeder with its format settings, and SDK seeders for specialty keys', () => {
+    const files = generate({
+      entities: { Memo: 'Memo' },
+      seedFormats: {
+        memos: { format: 'markdown-tree', entity: 'Memo', identity: ['title', 'parent'], tree: { relKind: 'has_memo' }, media: 'media' },
+        faqs: { compiler: 'src/seeds/compilers/faqs.ts' },
+      },
+      boot: { seed: {
+        actions: 'src/seeds/actions',
+        flows: { path: 'src/seeds/flows' },
+        memos: { path: 'src/seeds/memos', format: 'memos' },
+        faqs: { path: 'src/seeds/faqs', format: 'faqs' },
+      } },
+    });
+    const seeders = files['src/__generated__/seeders.ts'];
+    expect(seeders).toContain(`registerSeeders("demo-pack", [\n  createSeeder({ key: 'actions', entities: ['Action'], identity: ['label'] }),`);
+    expect(seeders).toContain('  createFlowSeeder(),');
+    expect(seeders).toContain('  createSeeder({"key":"memos","entities":["Memo"],"identity":["title","parent"],"relKind":"has_memo","media":true}),');
+    expect(seeders).not.toContain('faqs');
+    expect(files['src/__generated__/pack-entry.ts']).toContain('artifacts: ["actions", "flows", "memos"],');
+  });
+
+  it("uses a dependency's format settings for an entry naming it", () => {
+    const deps = { 'base-pack': { ...dependency({ seedFormats: { notes: { format: 'markdown-tree', entity: 'Note', identity: ['title'], tree: { branch: 'index.md' } } } }), types: { entities: { Note: 'Note' }, relKinds: {} } } };
+    const seeders = generate({ dependencies: { 'base-pack': '*' }, boot: { seed: { team: { path: 'src/seeds/team', format: 'base-pack:notes' } } } }, deps)['src/__generated__/seeders.ts'];
+    expect(seeders).toContain('  createSeeder({"key":"team","entities":["Note"],"identity":["title"]}),');
+    expect(() => generate({ dependencies: { 'base-pack': '*' }, boot: { seed: { team: { path: 'p', format: 'base-pack:missing' } } } }, deps))
+      .toThrow('Seed "team": dependency "base-pack" has no format "missing"');
+  });
+
+  it("registers a pack seeder module under a seed key that isn't an identifier", () => {
+    const seeders = generate({ boot: { seed: { 'my-memos': { seeder: 'src/seeds/memos.ts' } } } })['src/__generated__/seeders.ts'];
+    expect(seeders).toContain("import { seed as __seeder_my_memos } from '../seeds/memos.js';");
+    expect(seeders).toContain('  { key: "my-memos", seed: __seeder_my_memos },');
+  });
+
+  it('accepts format entities from the SDK and dependencies, and rejects one nobody declares', () => {
+    const deps = { 'base-pack': { ...dependency({}), types: { entities: { Note: 'Note' }, relKinds: {} } } };
+    expect(() => generate({ dependencies: { 'base-pack': '*' }, seedFormats: {
+      notes: { format: 'markdown-tree', entity: 'Note' },
+      actions2: { format: 'json', entity: 'Action', identity: ['label'] },
+    } }, deps)).not.toThrow();
+    // Unused formats are checked too: dependents may use them
+    expect(() => generate({ seedFormats: { memos: { format: 'json', entity: 'Memo' } } }))
+      .toThrow(`Seed format "memos": entity "Memo" isn't declared by this pack, its dependencies or the SDK`);
+    expect(() => generate({ seedFormats: { memos: { format: 'markdown-tree', entity: 'Action', tree: { branchEntity: 'Folder' } } } }))
+      .toThrow(`entity "Folder" isn't declared`);
+  });
+
+  it("registers the pack's seed hooks by entity type", () => {
+    write('src/memo-hooks.ts', 'export const memoSeedHooks = {};');
+    const entry = generate({ entities: { Memo: 'Memo' }, seedHooks: { Memo: 'src/memo-hooks.ts#memoSeedHooks' } })['src/__generated__/pack-entry.ts'];
+    expect(entry).toContain("import { memoSeedHooks as __seedHooks_0 } from '../memo-hooks.js';");
+    expect(entry).toContain('seedHooks: { "Memo": __seedHooks_0 },');
+    expect(() => generate({ entities: { Memo: 'Memo' }, seedHooks: { Memo: 'src/memo-hooks.ts#missing' } }))
+      .toThrow(`Seed hooks for "Memo": src/memo-hooks.ts doesn't export "missing"`);
+  });
+
+  it('names seed hook imports validly whatever the entity is called', () => {
+    write('src/hooks.ts', 'export const docHooks = {};\nexport const noteHooks = {};');
+    const files = generate({
+      entities: { 'team-doc': 'team-doc', 'team.note': 'team.note' },
+      seedHooks: { 'team-doc': 'src/hooks.ts#docHooks', 'team.note': 'src/hooks.ts#noteHooks' },
+    });
+    for (const file of ['src/__generated__/pack-entry.ts', 'src/__generated__/seed-runtime.ts']) {
+      expect(() => transformSync(files[file], { loader: 'ts' }), file).not.toThrow();
+      expect(files[file]).toContain('seedHooks: { "team-doc": __seedHooks_0, "team.note": __seedHooks_1 },');
+    }
+  });
+});
+
+describe('generated flow helpers', () => {
+  const helpers = (exports: string[], name: string) => ({ exports, module: `// ${name} module`, types: `// ${name} types` });
+
+  it("types a step helper's options with the step's DSL node fields", () => {
+    write('src/steps/pour/types.ts', "export interface DSLPourNode { type: 'pour'; cup: string; size?: 'small' | 'large'; [key: string]: unknown }\n");
+    const files = generate({ steps: { register: 'src/steps/register.ts', definitions: [{ type: 'pour', path: 'src/steps/pour', dsl: { primaryField: 'cup' } }] } });
+
+    expect(files['src/__generated__/flow-helpers.ts']).toContain(
+      "export function pour(cup: string, opts?: { [K in keyof DSLPourNode as K extends 'type' | 'cup' ? never : K]: DSLPourNode[K] }): DSLStepNode {",
+    );
+  });
+
+  it('names helpers in camelCase, splitting step types and track fields on - and _', () => {
+    write('src/steps/pour-cup/types.ts', "export interface DSLPourCupNode { type: 'pour-cup'; cup: string; [key: string]: unknown }\n");
+    write('src/steps/every-day/build.ts', "export const everyDay = { trigger: { trackField: 'every_day' } };\n");
+    const files = generate({ steps: { register: 'src/steps/register.ts', definitions: [
+      { type: 'pour-cup', path: 'src/steps/pour-cup', dsl: { primaryField: 'cup' } },
+      { type: 'keep_alive', path: 'src/steps/keep-alive', dsl: {} },
+      { type: 'stop-now', path: 'src/steps/stop-now', dsl: { defaultLabel: 'Stop' } },
+      { type: 'every-day', path: 'src/steps/every-day', kind: 'trigger' },
+    ] } });
+    const flowHelpers = files['src/__generated__/flow-helpers.ts'];
+
+    expect(flowHelpers).toContain('export function pourCup(cup: string, opts?:');
+    expect(flowHelpers).toContain("return { type: 'pour-cup', cup, ...opts };");
+    expect(flowHelpers).toContain('export function keepAlive(label?: string): DSLStepNode {');
+    expect(flowHelpers).toContain("export function stopNow(label: string = 'Stop'): DSLStepNode {");
+    expect(flowHelpers).toContain('export function everyDay(every_day: string, exits: DSLStepNode[][], label?: string): Track {');
+    const { diagnostics } = ts.transpileModule(flowHelpers, { reportDiagnostics: true, compilerOptions: { module: ts.ModuleKind.ESNext } });
+    expect(diagnostics?.map(d => ts.flattenDiagnosticMessageText(d.messageText, '\n'))).toEqual([]);
+  });
+
+  it("re-exports each dependency's flow helpers from the module its snapshot carries, except names already exported", () => {
+    write('src/steps/pour/types.ts', "export interface DSLPourNode { type: 'pour'; cup: string }\n");
+    const files = generate(
+      { steps: { register: 'src/steps/register.ts', definitions: [{ type: 'pour', path: 'src/steps/pour', dsl: { primaryField: 'cup' } }] } },
+      {
+        'base-pack': { ...dependency({}), flowHelpers: helpers(['branch', 'entry', 'on', 'pour', 'schedule'], 'base-pack') },
+        'other-pack': { ...dependency({ id: 'other-pack' }), flowHelpers: helpers(['branch', 'every'], 'other-pack') },
+        'untyped-pack': dependency({ id: 'untyped-pack' }),
+      },
+    );
+    const flowHelpers = files['src/__generated__/flow-helpers.ts'];
+
+    expect(flowHelpers).toContain("export { branch, schedule } from './deps/base-pack.flow-helpers.js';");
+    expect(flowHelpers).toContain("export { every } from './deps/other-pack.flow-helpers.js';");
+    expect(flowHelpers).not.toContain('untyped-pack');
+    expect(flowHelpers).not.toContain('Record<string, unknown>');
+    expect(files['src/__generated__/deps/base-pack.flow-helpers.js']).toContain('// base-pack module');
+    expect(files['src/__generated__/deps/base-pack.flow-helpers.d.ts']).toContain('// base-pack types');
   });
 });

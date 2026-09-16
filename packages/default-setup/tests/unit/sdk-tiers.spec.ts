@@ -8,10 +8,10 @@ import {
   RepositoryError, RepositoryErrorCode,
 } from '@abuddy/sdk/ears';
 import {
-  clearMemory, edgeStore, relationIndex,
   qx, createEntity, findById, findByIdRaw, findAll, findWhere,
   createEntityWithDefaults, updateEntity, getAttr,
-} from '@abuddy/host/ears';
+} from '../../src/__generated__/ears';
+import { resetTestData } from '@abuddy/sdk/testing';
 import { EARS } from '../../src/__generated__/ears';
 
 describe('SDK runtime — host module registry', () => {
@@ -27,7 +27,7 @@ describe('SDK runtime — host module registry', () => {
 });
 
 describe('Tier 1 — EARS delegates', () => {
-  beforeEach(() => clearMemory());
+  beforeEach(() => resetTestData());
 
   it('qx and tx are callable functions', () => {
     expect(typeof qx).toBe('function');
@@ -122,24 +122,17 @@ describe('Tier 1 — EARS delegates', () => {
     expect(color).toBe('blue');
   });
 
-  it('clearMemory resets all state', () => {
+  it('resetTestData resets all state', () => {
     createEntityWithDefaults(
       EARS.Entity.Action as any,
       { label: 'Temp', actionFn: 'fn()' } as any,
       'ACT',
     );
     expect(findAll(EARS.Entity.Action as any).length).toBe(1);
-    clearMemory();
+    resetTestData();
     expect(findAll(EARS.Entity.Action as any).length).toBe(0);
   });
 
-  it('edgeStore is accessible', () => {
-    expect(edgeStore).toBeDefined();
-  });
-
-  it('relationIndex is accessible', () => {
-    expect(relationIndex).toBeDefined();
-  });
 });
 
 describe('Tier 2 — EARS types', () => {
@@ -254,8 +247,8 @@ describe('Tier 6 — Utility delegates', () => {
   });
 
   it('seed helpers are callable', async () => {
-    const { registerSeeder, seedData, loadJSON } = await import('@abuddy/sdk/utils');
-    expect(typeof registerSeeder).toBe('function');
+    const { registerSeeders, seedData, loadJSON } = await import('@abuddy/sdk/utils');
+    expect(typeof registerSeeders).toBe('function');
     expect(typeof seedData).toBe('function');
     expect(typeof loadJSON).toBe('function');
   });
@@ -279,7 +272,8 @@ describe('Import isolation — no remaining @/core/* imports in .ts', () => {
   it('default-setup .ts files do not import from @/core/* (excluding FE components, migrations, type imports)', async () => {
     const { execSync } = await import('child_process');
     const result = execSync(
-      `grep -rn "from '@/core/" ../../src/ --include='*.ts' 2>/dev/null | grep -v "@abuddy" | grep -v "@/core/components" | grep -v "migrations/" | grep -v "import type" || true`,
+      // The alias is spelled in two parts so the pack-test import guard doesn't read this command as an import
+      `grep -rn "from '@/${'core'}/" ../../src/ --include='*.ts' 2>/dev/null | grep -v "@abuddy" | grep -v "@/core/components" | grep -v "migrations/" | grep -v "import type" || true`,
       { encoding: 'utf-8', cwd: __dirname }
     ).trim();
     expect(result).toBe('');

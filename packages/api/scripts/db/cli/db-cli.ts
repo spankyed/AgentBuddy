@@ -13,6 +13,8 @@ export interface CliOptions {
   mode?: 'interactive' | 'exec' | 'script';
   command?: string;
   scriptPath?: string;
+  /** The script's own arguments: a module script sees them as process.argv.slice(2) */
+  scriptArgs?: string[];
   output?: 'json' | 'csv' | 'pretty';
   outputFile?: string;
   confirm?: boolean;
@@ -375,8 +377,11 @@ export class DatabaseCLI {
 
       console.log(`Executing script: ${scriptPath}`);
       if (/\.(ts|mts|js|mjs)$/.test(scriptPath)) {
-        // A module (scripts/db/*.ts): imported with the database already open; tsx compiles it
-        await import(pathToFileURL(path.resolve(scriptPath)).href);
+        // A module (scripts/db/*.ts): imported with the database already open; tsx compiles it.
+        // It sees process.argv as if run directly: [node, <script>, ...its arguments]
+        const modulePath = path.resolve(scriptPath);
+        process.argv = [process.argv[0], modulePath, ...(this.options.scriptArgs ?? [])];
+        await import(pathToFileURL(modulePath).href);
       } else {
         await this.executeCommand(scriptContent);
       }

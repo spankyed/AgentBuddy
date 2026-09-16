@@ -1,5 +1,5 @@
 import { setup, assign, type ActorRefFrom } from 'xstate'
-import type { DocumentDTO, CollectionDTO, OutgoingLibraryEvents, LibraryItem, DocumentItem, FolderContents, BreadcrumbItem, SearchIndex } from '@/__generated__/types'
+import type { DocumentDTO, CollectionDTO, LibraryIndex, OutgoingLibraryEvents, LibraryItem, DocumentItem, FolderContents, BreadcrumbItem, SearchIndex } from '@/__generated__/types'
 import type { SearchIndexFormData } from './types/search-index'
 import { trpc } from '@abuddy/sdk/rpc'
 import { Trash2 } from 'lucide-vue-next'
@@ -50,7 +50,7 @@ function findItemById(context: LibraryContext, id: string): LibraryItem | undefi
 
 export const id = 'library' as const
 import type { SnapshotFrom } from 'xstate'
-import type { ContentSection } from '@abuddy/sdk';
+import type { ContentSection } from '@/features/library/be/types';
 
 export type LibraryState = SnapshotFrom<typeof librarySystem>
 
@@ -77,10 +77,8 @@ export interface LibraryContext {
   expandedFolderChildren: Record<string, LibraryItem[]>
   loadingFolderIds: string[]
 
-  // Legacy fields (used by CreateView/EditView for compatibility)
-  documents: DocumentDTO[]
-  collections: CollectionDTO[]
-  selectedCollectionId?: string
+  // Every document and folder by name: the panel's stats and the reference picker read it
+  index: LibraryIndex
 
   // Search index fields
   searchIndices: SearchIndex[]
@@ -116,7 +114,7 @@ export type LibraryEvents =
   | { type: 'TRAIL_CLICK'; trail: string[] }
   | { type: 'VIEW_BROWSER' }
 
-  // Legacy document events
+  // Document events
   | { type: 'CREATE_DOCUMENT' }
   | { type: 'EDIT_DOCUMENT'; documentId: string }
   | { type: 'DELETE_DOCUMENT'; documentId: string }
@@ -139,7 +137,7 @@ export type LibraryEvents =
   | { type: 'EXECUTE_TEST_SEARCH' }
   | { type: 'CANCEL_TEST_SEARCH' }
 
-  // Legacy collection events (kept for CreateView/EditView compatibility)
+  // Collection events
   | { type: 'CREATE_COLLECTION'; name: string; description?: string; parentId?: string }
 
   // Tree view events
@@ -444,10 +442,10 @@ export const librarySystem = setup({
       selectedDocument: null,
     }),
 
-    requestCollections: () => {
+    requestIndex: () => {
       trpc.bus.send.mutate({
         systemId: id,
-        type: 'LIST_COLLECTIONS',
+        type: 'GET_LIBRARY_INDEX',
       })
     },
     updateDocument: ({ context, event }) => {
@@ -477,16 +475,10 @@ export const librarySystem = setup({
     setEditingDocument: assign({
       editingDocument: ({ context, event }) => {
         if (event.type === 'EDIT_DOCUMENT') {
-          // First try to find in legacy documents array
-          const legacyDoc = context.documents.find((doc) => doc.id === event.documentId)
-          if (legacyDoc) {
-            return legacyDoc
-          }
-
-          // Otherwise, look in the new items array and convert to DocumentDTO format
+          // The open folder's items carry the document's content; `requestEditingDocument`
+          // fetches it from the backend when the document is somewhere else in the library
           const item = findItemById(context, event.documentId)
           if (item && item.type === 'document') {
-            // Convert DocumentItem to DocumentDTO format for compatibility with EditView
             return {
               id: item.id,
               name: item.name,
@@ -502,6 +494,17 @@ export const librarySystem = setup({
         return undefined
       },
     }),
+    /** Fetches the document the edit view needs when the open folder doesn't hold it; DOCUMENT_LOADED fills it in */
+    requestEditingDocument: ({ context, event }) => {
+      if (event.type !== 'EDIT_DOCUMENT') return
+      const item = findItemById(context, event.documentId)
+      if (item?.type === 'document') return
+      trpc.bus.send.mutate({
+        systemId: id,
+        type: 'GET_DOCUMENT',
+        id: event.documentId,
+      })
+    },
     clearEditingDocument: assign({
       editingDocument: undefined,
     }),
@@ -519,25 +522,6 @@ export const librarySystem = setup({
           return event.data.document
         }
         return context.editingDocument
-      },
-    }),
-    setDocuments: assign({
-      documents: ({ event }) => {
-        if (event.type === 'DOCUMENTS_LOADED') {
-          const documents = event.data.documents
-          // Sync tags to localStorage
-          tagStorage.updateTagsFromDocuments(documents)
-          return documents
-        }
-        return []
-      },
-    }),
-    setCollections: assign({
-      collections: ({ event }) => {
-        if (event.type === 'COLLECTIONS_LOADED') {
-          return event.data.collections
-        }
-        return []
       },
     }),
 
@@ -811,22 +795,23 @@ export const librarySystem = setup({
       libraryExport: { status: 'idle' as const, errors: [] as string[], filePath: '', itemCount: 0 },
     }),
 
-    // ? think we're sending duplicate documents data on startup
-    setConnectedData: assign({
-      documents: ({ event }) => {
-        if (event.type === 'LIBRARY_CONNECTED') {
-          const documents = event.data.documents
-          // Sync tags to localStorage for backward compatibility
-          tagStorage.updateTagsFromDocuments(documents)
-          return documents
+    setIndex: assign({
+      index: ({ context, event }) => {
+        if (event.type === 'LIBRARY_INDEX_LOADED') {
+          tagStorage.updateTagsFromDocuments(event.data.index.documents)
+          return event.data.index
         }
-        return []
+        return context.index
       },
-      collections: ({ event }) => {
+    }),
+
+    setConnectedData: assign({
+      index: ({ context, event }) => {
         if (event.type === 'LIBRARY_CONNECTED') {
-          return event.data.collections
+          tagStorage.updateTagsFromDocuments(event.data.index.documents)
+          return event.data.index
         }
-        return []
+        return context.index
       },
       settings: ({ event }) => {
         if (event.type === 'LIBRARY_CONNECTED') {
@@ -865,10 +850,7 @@ export const librarySystem = setup({
     expandedFolderChildren: {},
     loadingFolderIds: [],
 
-    // Legacy fields (for CreateView/EditView compatibility)
-    documents: [],
-    collections: [],
-    selectedCollectionId: undefined,
+    index: { documents: [], folders: [] },
 
     // Search index fields
     searchIndices: [],
@@ -899,7 +881,7 @@ export const librarySystem = setup({
   },
   on: {
     PLUGIN_ACTIVATED: {
-      actions: ['requestFolderContents', 'requestCollections'],
+      actions: ['requestFolderContents', 'requestIndex'],
     },
     LIBRARY_CONNECTED: {
       actions: ['setConnectedData'],
@@ -1002,7 +984,7 @@ export const librarySystem = setup({
       actions: ['removeBrokenSymlink', assign({ isBroken: false, lastKnownPath: null })],
     },
     SYMLINK_UPDATED: {
-      actions: ['requestFolderContents', 'requestCollections'],
+      actions: ['requestFolderContents', 'requestIndex'],
     },
 
     // Import/Export events
@@ -1013,7 +995,7 @@ export const librarySystem = setup({
       actions: 'resetImportLibraryStatus',
     },
     LIBRARY_IMPORTED: {
-      actions: ['handleLibraryImported', 'requestFolderContents', 'requestCollections'],
+      actions: ['handleLibraryImported', 'requestFolderContents', 'requestIndex'],
     },
     LIBRARY_IMPORT_FAILED: {
       actions: 'handleLibraryImportFailed',
@@ -1040,15 +1022,16 @@ export const librarySystem = setup({
       }),
     },
     DOCUMENT_CREATED: {
-      actions: ['requestFolderContents', 'invalidateTreeCache', 'refetchExpandedFolders'],
+      actions: ['requestFolderContents', 'requestIndex', 'invalidateTreeCache', 'refetchExpandedFolders'],
     },
     DOCUMENT_UPDATED: {
-      actions: ['requestFolderContents', 'updateEditingDocument'],
+      // A save can change the document's name and tags, both of which the index carries
+      actions: ['requestFolderContents', 'requestIndex', 'updateEditingDocument'],
     },
     COLLECTION_CREATED: {
       actions: [
         'requestFolderContents',
-        'requestCollections',
+        'requestIndex',
         'invalidateTreeCache',
         'refetchExpandedFolders',
         assign({
@@ -1065,20 +1048,16 @@ export const librarySystem = setup({
       ],
     },
     ITEM_RENAMED: {
-      actions: ['requestFolderContents', 'invalidateTreeCache', 'refetchExpandedFolders'],
+      actions: ['requestFolderContents', 'requestIndex', 'invalidateTreeCache', 'refetchExpandedFolders'],
     },
     ITEMS_DELETED: {
-      actions: ['requestFolderContents', 'requestCollections', 'invalidateTreeCache', 'refetchExpandedFolders'],
+      actions: ['requestFolderContents', 'requestIndex', 'invalidateTreeCache', 'refetchExpandedFolders'],
     },
     ITEMS_MOVED: {
-      actions: ['requestFolderContents', 'requestCollections', 'invalidateTreeCache', 'refetchExpandedFolders'],
+      actions: ['requestFolderContents', 'requestIndex', 'invalidateTreeCache', 'refetchExpandedFolders'],
     },
-    // Legacy events for backward compatibility
-    DOCUMENTS_LOADED: {
-      actions: 'setDocuments',
-    },
-    COLLECTIONS_LOADED: {
-      actions: 'setCollections',
+    LIBRARY_INDEX_LOADED: {
+      actions: 'setIndex',
     },
 
     // [SEARCH_INDEX_FF] Search index events — commented out
@@ -1122,7 +1101,7 @@ export const librarySystem = setup({
         ],
         EDIT_DOCUMENT: {
           target: 'edit',
-          actions: ['setEditingDocument', 'clearSelection'],
+          actions: ['setEditingDocument', 'requestEditingDocument', 'clearSelection'],
         },
         // [SEARCH_INDEX_FF] Search index transitions — commented out
         // CREATE_SEARCH_INDEX: 'createIndex',

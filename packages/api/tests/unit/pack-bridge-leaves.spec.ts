@@ -25,6 +25,7 @@ afterEach(() => {
 describe('external pack runtime', () => {
   it('requires @abuddy/sdk/cron and @abuddy/sdk/utils/compare-versions through the bridge', async () => {
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: 'bridge-pack', name: 'Bridge', version: '1.0.0' }));
+    fs.writeFileSync(path.join(packDir, 'bundle.json'), JSON.stringify({ formatVersion: 1, id: 'bridge-pack', version: '1.0.0', files: {} }));
     fs.mkdirSync(path.join(packDir, 'runtime'));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `
       const { cronToHuman } = require('@abuddy/sdk/cron');

@@ -5,90 +5,103 @@
 ```ts
 
 // @public (undocumented)
-export interface BootSeedConfig {
-    // (undocumented)
-    artifacts: string[];
-    // (undocumented)
-    compiledDir: string;
-    // (undocumented)
-    getIncludeOverrides?: () => Record<string, SeedIncludeSet>;
-}
-
-// @public (undocumented)
-export function createBootSeed(config: BootSeedConfig): (options?: {
-    verbose?: boolean;
-}) => Record<string, SeedCounts> | null;
-
-// @public (undocumented)
-export function createCollectionSeeder(config: {
-    key: string;
-    entityType: EARS.Entity;
-    lookupField: string;
-}): Seeder;
-
-// @public (undocumented)
 export function createFlowSeeder(): Seeder;
 
-// @public (undocumented)
-export function createLibrarySeeder(): Seeder;
-
-// @public (undocumented)
-export function createNotesSeeder(): Seeder;
+// @public
+export function createSeeder(options: SeederOptions): Seeder;
 
 // @public (undocumented)
 export function createSettingsSeeder(): Seeder;
 
-// @public (undocumented)
-export function importNotesFromData(data: ExportedNotes): NotesImportResult;
+// @public
+export function markSeededRowUnedited(id: EARS.EntityId): void;
 
-// @public (undocumented)
-export interface NotesImportResult {
-    // (undocumented)
-    created: number;
-    // (undocumented)
-    errors: string[];
-    // (undocumented)
-    skipped: number;
-    // (undocumented)
-    updated: number;
-}
-
-// @public (undocumented)
-export type PackSeedItemKind = 'collection' | 'document' | 'tasklist' | 'task';
-
-// @public (undocumented)
+// @public
 export interface PackSeedPreviewItem {
-    // (undocumented)
     childCount?: number;
     // (undocumented)
     description?: string;
-    // (undocumented)
     key: string;
-    // (undocumented)
-    kind?: PackSeedItemKind;
 }
 
-// @public (undocumented)
+// @public
 export interface PackSeedsPreview {
     // (undocumented)
     directory: string;
-    // (undocumented)
-    missing: string[];
-    // (undocumented)
+    packId: string;
     seeds: Record<string, PackSeedPreviewItem[]>;
+    unavailable: string[];
 }
 
-// @public (undocumented)
-export type PackSeedType = 'actions' | 'prompts' | 'flows' | 'library' | 'notes' | 'settings';
-
-// @public (undocumented)
-export function previewPackSeeds(directory: string, seedKeys?: string[]): PackSeedsPreview;
+// @public
+export function previewPackSeeds(directory: string): PackSeedsPreview;
 
 // @public
-export const STANDARD_SEED_DEFAULTS: Record<string, {
-    entityType: string;
-    lookupField: string;
-}>;
+export function recordLabel(record: SeedRecord, identity?: readonly string[]): string;
+
+// @public (undocumented)
+export interface SeederOptions {
+    entities: string[];
+    identity?: string[];
+    // (undocumented)
+    key: string;
+    media?: boolean;
+    relKind?: string;
+}
+
+// @public
+export interface SeedHookContext {
+    clearedFields: string[];
+    // (undocumented)
+    index: number;
+    // (undocumented)
+    parentId?: EARS.EntityId;
+}
+
+// @public
+export interface SeedHookMatch {
+    // (undocumented)
+    id: EARS.EntityId;
+    // (undocumented)
+    sourceHash?: unknown;
+}
+
+// @public
+export interface SeedHookRegistry {
+    // (undocumented)
+    get(entity: string): SeedHooks | undefined;
+    // (undocumented)
+    register(entity: string, hooks: SeedHooks, packId: string): void;
+    // (undocumented)
+    unregisterAll(packId: string): void;
+}
+
+// @internal
+export const seedHookRegistry: SeedHookRegistry;
+
+// @public
+export interface SeedHooks<R extends SeedRecord = SeedRecord> {
+    container?: boolean;
+    // (undocumented)
+    create?(record: R, context: SeedHookContext): EARS.EntityId;
+    find?(record: R, context: SeedHookContext): SeedHookMatch | undefined;
+    // (undocumented)
+    remove?(id: EARS.EntityId): void;
+    // (undocumented)
+    update?(id: EARS.EntityId, record: R, context: SeedHookContext): void;
+}
+
+// @public
+export interface SeedRecord {
+    // (undocumented)
+    [field: string]: unknown;
+    // (undocumented)
+    children?: SeedRecord[];
+    // (undocumented)
+    entity?: string;
+    // (undocumented)
+    sourceHash?: string;
+}
 
 // (No @packageDocumentation comment for this package)
 

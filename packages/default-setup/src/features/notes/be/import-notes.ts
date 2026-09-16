@@ -7,8 +7,8 @@ import { hasIdCollision } from '@abuddy/sdk/ears';
 
 import { restoreJsonMediaRefs, restoreMarkdownMediaRefs } from '@abuddy/sdk/utils'
 import { toDisplayName } from '@abuddy/sdk/utils'
-import type { ExportedNote, ExportedNotes } from '@abuddy/sdk/build';
-import type { NoteEntity } from '@abuddy/sdk';
+import type { ExportedNote } from '@/features/notes/be/export-types';
+import type { NoteEntity } from '@/features/notes/be/types';
 
 interface ImportResult {
   created: number
@@ -61,17 +61,6 @@ export function importNotes(importDir: string): ImportResult {
 }
 
 // ── JSON Import ──────────────────────────────────────────
-
-/** Import notes from an in-memory ExportedNotes object (no media restoration). */
-export function importNotesFromData(data: ExportedNotes): ImportResult {
-  const result: ImportResult = { created: 0, updated: 0, skipped: 0, mediaRestored: 0, errors: [] }
-  if (!data?.notes || !Array.isArray(data.notes)) {
-    result.errors.push('Invalid import data: expected object with "notes" array')
-    return result
-  }
-  importNoteNodes(data.notes, undefined, result, '', false)
-  return result
-}
 
 function importNotesJson(jsonPath: string): ImportResult {
   const result: ImportResult = { created: 0, updated: 0, skipped: 0, mediaRestored: 0, errors: [] }

@@ -19,7 +19,6 @@ function effectiveExcludedSources(settings: LogsSettings | undefined): string[] 
 }
 
 type IncomingLogEvents =
-  | { type: 'EMPTY'; empty: string }
   | { type: 'CLEAR_LOGS' }
   | { type: 'REQUEST_LOGS_UPDATE' };
 

@@ -10,7 +10,7 @@
           </svg>
         </div>
         <p class="text-sm font-medium text-neutral-400">Brain Stopped</p>
-        <p class="mt-1 text-xs text-neutral-500 mb-4">The brain is currently inactive</p>
+        <p class="mt-1 text-xs text-neutral-500 mb-4">{{ startError ?? 'The brain is currently inactive' }}</p>
         <button
           @click="startBrain"
           class="px-3 py-1.5 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium"
@@ -93,6 +93,7 @@ const actorSystem = useActorSystem()
 const brainActor: BrainState = actorSystem.get(brainId);
 const normalizedTree = useSelector(brainActor, (state) => state.context.normalizedTree);
 const brainIsDead = useSelector(brainActor, (state) => state.context.brainIsDead);
+const startError = useSelector(brainActor, (state) => state.context.startError);
 const flowTNodeId = useSelector(brainActor, (state) => state.context.flowTNodeId);
 
 // Infinite scroll: show 50 items at a time

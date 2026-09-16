@@ -1,21 +1,20 @@
 #!/usr/bin/env tsx
 /**
- * Example script: Inspect entity relationships
- * 
+ * Inspect entity relationships
+ *
  * Usage:
  *   npm run db:script scripts/db/inspect-relations.ts
- *   npm run db:script scripts/db/inspect-relations.ts -- --entity Thread-123
+ *   npm run db:script scripts/db/inspect-relations.ts -- --entity Thread-123 --incoming
  */
 
+import { realpathSync } from 'node:fs';
+import { pathToFileURL } from 'node:url';
 import { qx } from '@abuddy/host/ears';
 import { edgeStore } from '@abuddy/sdk/ears/internals';
 import { getRegisteredEntityTypes } from '@abuddy/host/packs';
 import type { EARS } from '@abuddy/sdk';
 
-const getRelations = (id: string) => edgeStore.find({ sourceEntity: id as EARS.EntityId });
-const getIncomingRelations = (id: string) => edgeStore.find({ targetEntity: id as EARS.EntityId });
-
-interface InspectOptions {
+export interface InspectOptions {
   entityId?: string;
   entityType?: EARS.Entity;
   depth: number;
@@ -23,13 +22,11 @@ interface InspectOptions {
   showOutgoing: boolean;
 }
 
-function parseArgs(): InspectOptions {
-  const args = process.argv.slice(2);
-  const options: InspectOptions = {
-    depth: 1,
-    showIncoming: true,
-    showOutgoing: true
-  };
+/** `--incoming` and `--outgoing` pick the directions shown; with neither (or both), both are. */
+export function parseInspectArgs(args: string[]): InspectOptions {
+  const options: InspectOptions = { depth: 1, showIncoming: true, showOutgoing: true };
+  let incoming = false;
+  let outgoing = false;
 
   for (let i = 0; i < args.length; i++) {
     switch (args[i]) {
@@ -46,186 +43,155 @@ function parseArgs(): InspectOptions {
         options.depth = parseInt(args[++i] || '1', 10);
         break;
       case '--incoming':
-        options.showIncoming = true;
-        options.showOutgoing = false;
+        incoming = true;
         break;
       case '--outgoing':
-        options.showIncoming = false;
-        options.showOutgoing = true;
+        outgoing = true;
         break;
     }
   }
 
+  if (incoming || outgoing) {
+    options.showIncoming = incoming;
+    options.showOutgoing = outgoing;
+  }
   return options;
 }
 
-function visualizeGraph(entityId: string, depth: number, visited = new Set<string>()): void {
+type Direction = 'outgoing' | 'incoming';
+type Log = (line: string) => void;
+
+/** The entities an entity's relations in one direction point at, grouped by relation kind */
+function relatedByKind(entityId: string, direction: Direction): { total: number; byKind: Map<EARS.RelKind, string[]> } {
+  const relations = direction === 'outgoing'
+    ? edgeStore.find({ sourceEntity: entityId as EARS.EntityId })
+    : edgeStore.find({ targetEntity: entityId as EARS.EntityId });
+  const byKind = new Map<EARS.RelKind, string[]>();
+  for (const rel of relations ?? []) {
+    const other = direction === 'outgoing' ? rel.targetEntity : rel.sourceEntity;
+    const list = byKind.get(rel.relationType) ?? [];
+    list.push(other);
+    byKind.set(rel.relationType, list);
+  }
+  return { total: relations?.length ?? 0, byKind };
+}
+
+/**
+ * Prints an entity and its relations in the directions `options` selects, following them
+ * `depth` levels (a related entity is listed at the last level).
+ */
+export function visualizeGraph(
+  entityId: string,
+  depth: number,
+  options: Pick<InspectOptions, 'showIncoming' | 'showOutgoing'>,
+  log: Log = console.log,
+  visited = new Set<string>(),
+): void {
   if (visited.has(entityId) || depth <= 0) return;
   visited.add(entityId);
 
   const indent = '  '.repeat(Math.max(0, 2 - depth));
-  
-  // Get entity details
+
   const entity = qx(entityId as EARS.EntityId).pickAll()[0];
   if (!entity) {
-    console.log(`${indent}❌ Entity not found: ${entityId}`);
+    log(`${indent}❌ Entity not found: ${entityId}`);
     return;
   }
 
   const type = entityId.split('-')[0];
   const name = String(entity.name || entity.title || entity.content || '');
   const preview = name ? ` "${name.substring(0, 30)}${name.length > 30 ? '...' : ''}"` : '';
-  
-  console.log(`${indent}📦 [${type}] ${entityId}${preview}`);
+  log(`${indent}📦 [${type}] ${entityId}${preview}`);
 
-  // Get outgoing relations
-  const relations = getRelations(entityId);
-  
-  if (relations && relations.length > 0) {
-    console.log(`${indent}  └─ Outgoing (${relations.length}):`);
-    
-    // Group by relation type
-    const grouped = new Map<EARS.RelKind, string[]>();
-    relations.forEach(rel => {
-      if (!grouped.has(rel.relationType)) {
-        grouped.set(rel.relationType, []);
-      }
-      grouped.get(rel.relationType)!.push(rel.targetEntity);
-    });
+  const directions: Direction[] = [
+    ...(options.showOutgoing ? ['outgoing' as const] : []),
+    ...(options.showIncoming ? ['incoming' as const] : []),
+  ];
 
-    grouped.forEach((targets, relType) => {
-      console.log(`${indent}      ${relType} → ${targets.length} target(s)`);
-      
-      if (depth > 1) {
-        targets.slice(0, 3).forEach(targetId => {
-          visualizeGraph(targetId, depth - 1, visited);
-        });
-        
-        if (targets.length > 3) {
-          console.log(`${indent}        ... and ${targets.length - 3} more`);
-        }
-      } else {
-        targets.slice(0, 5).forEach(targetId => {
-          const targetType = targetId.split('-')[0];
-          console.log(`${indent}        - [${targetType}] ${targetId}`);
-        });
-        
-        if (targets.length > 5) {
-          console.log(`${indent}        ... and ${targets.length - 5} more`);
-        }
-      }
-    });
-  }
+  for (const direction of directions) {
+    const { total, byKind } = relatedByKind(entityId, direction);
+    if (total === 0) continue;
 
-  // Get incoming relations
-  const incoming = getIncomingRelations(entityId);
-  
-  if (incoming && incoming.length > 0) {
-    console.log(`${indent}  └─ Incoming (${incoming.length}):`);
-    
-    // Group by relation type
-    const grouped = new Map<EARS.RelKind, string[]>();
-    incoming.forEach(rel => {
-      if (!grouped.has(rel.relationType)) {
-        grouped.set(rel.relationType, []);
-      }
-      grouped.get(rel.relationType)!.push(rel.sourceEntity);
-    });
+    const [label, arrow, noun] = direction === 'outgoing' ? ['Outgoing', '→', 'target'] : ['Incoming', '←', 'source'];
+    log(`${indent}  └─ ${label} (${total}):`);
 
-    grouped.forEach((sources, relType) => {
-      console.log(`${indent}      ${relType} ← ${sources.length} source(s)`);
-      
-      sources.slice(0, 5).forEach(sourceId => {
-        const sourceType = sourceId.split('-')[0];
-        console.log(`${indent}        - [${sourceType}] ${sourceId}`);
+    byKind.forEach((related, relType) => {
+      log(`${indent}      ${relType} ${arrow} ${related.length} ${noun}(s)`);
+      const shown = depth > 1 ? 3 : 5;
+      related.slice(0, shown).forEach((relatedId) => {
+        if (depth > 1) visualizeGraph(relatedId, depth - 1, options, log, visited);
+        else log(`${indent}        - [${relatedId.split('-')[0]}] ${relatedId}`);
       });
-      
-      if (sources.length > 5) {
-        console.log(`${indent}        ... and ${sources.length - 5} more`);
+      if (related.length > shown) {
+        log(`${indent}        ... and ${related.length - shown} more`);
       }
     });
   }
 }
 
-async function inspectRelations() {
-  const options = parseArgs();
-  
-  console.log('🔍 Inspecting Entity Relations\n');
-  console.log('─'.repeat(50));
+function inspectRelations(options: InspectOptions, log: Log = console.log) {
+  log('🔍 Inspecting Entity Relations\n');
+  log('─'.repeat(50));
 
   if (options.entityId) {
-    // Inspect specific entity
-    console.log(`Entity: ${options.entityId}`);
-    console.log(`Depth: ${options.depth}`);
-    console.log();
-    
-    visualizeGraph(options.entityId, options.depth);
+    log(`Entity: ${options.entityId}`);
+    log(`Depth: ${options.depth}`);
+    log('');
+    visualizeGraph(options.entityId, options.depth, options, log);
   } else if (options.entityType) {
-    // Inspect all entities of a type
     const entities = qx(options.entityType).ids();
-    console.log(`Entity Type: ${options.entityType}`);
-    console.log(`Found: ${entities.length} entities`);
-    console.log();
+    log(`Entity Type: ${options.entityType}`);
+    log(`Found: ${entities.length} entities`);
+    log('');
 
     if (entities.length === 0) {
-      console.log('No entities found');
+      log('No entities found');
       return;
     }
 
-    // Show first few entities
     const limit = 5;
-    entities.slice(0, limit).forEach(id => {
-      visualizeGraph(id, options.depth);
-      console.log();
+    entities.slice(0, limit).forEach((id) => {
+      visualizeGraph(id, options.depth, options, log);
+      log('');
     });
 
     if (entities.length > limit) {
-      console.log(`... and ${entities.length - limit} more entities`);
+      log(`... and ${entities.length - limit} more entities`);
     }
   } else {
-    // Show overall statistics
-    console.log('📊 Relationship Statistics:\n');
-    
+    log('📊 Relationship Statistics:\n');
+
     const stats: Record<string, { entities: number; relations: number }> = {};
-    
+
     for (const entityType of getRegisteredEntityTypes() as ReadonlySet<EARS.Entity>) {
       const entities = qx(entityType).ids();
       if (entities.length === 0) continue;
 
       let totalRelations = 0;
-      entities.forEach(id => {
-        const rels = getRelations(id);
-        if (rels) totalRelations += rels.length;
+      entities.forEach((id) => {
+        totalRelations += edgeStore.find({ sourceEntity: id as EARS.EntityId })?.length ?? 0;
       });
-
-      if (entities.length > 0 || totalRelations > 0) {
-        stats[entityType] = {
-          entities: entities.length,
-          relations: totalRelations
-        };
-      }
+      stats[entityType] = { entities: entities.length, relations: totalRelations };
     }
 
-    // Display stats in a table format
-    console.log('Entity Type          | Entities | Relations | Avg Rels/Entity');
-    console.log('─'.repeat(65));
-    
+    log('Entity Type          | Entities | Relations | Avg Rels/Entity');
+    log('─'.repeat(65));
+
     Object.entries(stats).forEach(([type, data]) => {
       const avg = data.entities > 0 ? (data.relations / data.entities).toFixed(1) : '0';
-      const typePadded = type.padEnd(20);
-      const entitiesPadded = String(data.entities).padStart(8);
-      const relationsPadded = String(data.relations).padStart(9);
-      const avgPadded = avg.padStart(15);
-      
-      console.log(`${typePadded} | ${entitiesPadded} | ${relationsPadded} | ${avgPadded}`);
+      log(`${type.padEnd(20)} | ${String(data.entities).padStart(8)} | ${String(data.relations).padStart(9)} | ${avg.padStart(15)}`);
     });
 
-    console.log('\nTip: Use --entity <id> or --type <type> to inspect specific entities');
+    log('\nTip: Use --entity <id> or --type <type> to inspect specific entities');
   }
 }
 
-// Run the inspection
-inspectRelations().catch(error => {
-  console.error('❌ Inspection failed:', error);
-  process.exit(1);
-});
+// Run as a script: db:script sets process.argv to this file and its arguments (the spec imports the functions)
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
+  try {
+    inspectRelations(parseInspectArgs(process.argv.slice(2)));
+  } catch (error) {
+    console.error('❌ Inspection failed:', error);
+    process.exit(1);
+  }
+}

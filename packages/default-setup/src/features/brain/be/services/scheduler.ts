@@ -31,7 +31,7 @@ export function registerSchedule(key: string, cronExpression: string, callback: 
 /**
  * Stop and remove a single cron job by key.
  */
-export function unregisterSchedule(key: string): void {
+function unregisterSchedule(key: string): void {
   const job = activeJobs.get(key);
   if (job) {
     job.stop();
@@ -57,9 +57,17 @@ export function unregisterByPrefix(prefix: string): void {
  * Stop and remove all cron jobs. Called on brain kill/restart.
  */
 export function clearAllSchedules(): void {
+  if (activeJobs.size === 0) return;
   for (const job of activeJobs.values()) {
     job.stop();
   }
   activeJobs.clear();
   logger.info('Cleared all schedules');
 }
+
+/** `services.scheduler`: cron jobs for the schedule step and the brain systems */
+export const schedulerService = {
+  registerSchedule,
+  unregisterByPrefix,
+  clearAllSchedules,
+};

@@ -31,3 +31,8 @@ export function updateChatState(
     chatState,
   });
 }
+
+/** `services.threads`: thread-level state writes with frontend notification */
+export const threadsService = {
+  updateChatState,
+};

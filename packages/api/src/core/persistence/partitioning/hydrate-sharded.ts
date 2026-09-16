@@ -25,9 +25,6 @@ export async function hydrateSharded(params: {
   if (policy.hydrate.has('primary')) {
     partitionsToHydrate.push('primary');
   }
-  if (policy.hydrate.has('secrets')) {
-    partitionsToHydrate.push('secrets');
-  }
   if (includeVolatile || policy.hydrate.has('volatileBackup')) {
     partitionsToHydrate.push('volatileBackup');
   }

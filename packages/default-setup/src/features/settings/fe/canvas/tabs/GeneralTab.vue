@@ -86,7 +86,6 @@ const currentSettings = computed(() => {
 
   const settingsMap = {
     personal: settings.value.general.personal,
-    secrets: settings.value.general.secrets,
     projects: settings.value.general.projects,
     application: settings.value.general.application
   }
@@ -123,7 +122,6 @@ const handleUpdateSetting = (event: { path: string[], value: any }) => {
   // Map the current nav item to the appropriate label
   const labelMap = {
     personal: 'personal',
-    secrets: 'secrets',
     projects: 'projects',
     application: 'application'
   } as const

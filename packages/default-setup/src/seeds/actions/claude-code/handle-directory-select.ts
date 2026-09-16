@@ -14,7 +14,7 @@ export const meta: ActionMeta = {
   category: 'claude-code',
   input: {
     threadId: { type: 'string', description: 'Thread ID', required: true },
-    response: { type: 'any', description: 'File-picker response (string | string[] | { path, toggles })', required: true },
+    response: { type: 'any', description: 'File-picker response ({ path, toggles })', required: true },
     pendingDirectorySelect: { type: 'object', description: 'Stored original message params', required: true },
   },
 };
@@ -40,18 +40,11 @@ export async function action(
     };
   };
 
-  // Parse response — supports string (legacy) or { path, toggles } (with toggles)
-  let selectedDir: string | undefined;
-  let useWorktree = false;
-
-  if (typeof response === 'string') {
-    selectedDir = response;
-  } else if (response?.path) {
-    selectedDir = typeof response.path === 'string' ? response.path : response.path?.[0];
-    useWorktree = response.toggles?.worktree ?? false;
-  } else if (Array.isArray(response)) {
-    selectedDir = response[0];
-  }
+  // The picker message always carries a toggles block, so the chat wraps the
+  // picked path as `{ path, toggles }` (`InteractionContainer.handleSubmitFrom`).
+  const selectedDir: string | undefined =
+    typeof response?.path === 'string' ? response.path : response?.path?.[0];
+  const useWorktree: boolean = response?.toggles?.worktree ?? false;
 
   if (!selectedDir) {
     return { success: false, error: 'No directory selected' };

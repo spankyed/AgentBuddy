@@ -301,7 +301,6 @@ interface SessionContent {
   totalCostUsd: number
   chatState: 'idle' | 'working' | 'paused' | 'error'
   toolCallCount: number
-  lastTool?: { name: string; summary: string; at: number }
   recentTools?: Array<{ name: string; summary: string; at: number }>
   permissionMode?: PermissionMode
   useWorktree?: boolean
@@ -328,16 +327,12 @@ const currentThread = useSelector(
 )
 const currentThreadId = computed(() => currentThread.value?.id as string | undefined)
 
-// Read session data from thread context (source of truth).
-// Falls back to artifact content for backward compat during migration.
+// The thread context is the source of truth for session data.
 const content = computed<SessionContent>(() =>
   currentThread.value?.context?.claudeCode ?? ({} as SessionContent)
 )
 
-// Backward compat: fall back to legacy lastTool if recentTools isn't populated yet.
-const recentTools = computed(() =>
-  content.value?.recentTools ?? (content.value?.lastTool ? [content.value.lastTool] : [])
-)
+const recentTools = computed(() => content.value?.recentTools ?? [])
 
 // Context usage — prefer full contextUsage data from CLI /context query
 const ctx = computed(() => content.value?.contextUsage ?? null)

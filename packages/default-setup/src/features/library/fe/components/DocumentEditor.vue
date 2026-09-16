@@ -97,13 +97,12 @@ import NameSaveHeader from '@abuddy/ui/design/NameSaveHeader'
 import ContentSectionEditor from './content-sections/ContentSectionEditor.vue'
 import TagInput from '@abuddy/ui/design/tag-input'
 import { useSelector } from '@xstate/vue'
-import type { DocumentDTO, CollectionDTO } from '@/__generated__/types'
-import type { ContentSection } from '@abuddy/sdk'
+import type { DocumentDTO } from '@/__generated__/types'
+import type { ContentSection } from '@/features/library/be/types'
 
 const actorSystem = useActorSystem()
 
 const props = defineProps<{
-  collections: CollectionDTO[]
   selectedCollectionId?: string
   document?: DocumentDTO
 }>()

@@ -26,17 +26,54 @@ export interface Seeder {
   seed(ctx: SeederContext): SeedCounts;
 }
 
-const seeders: Seeder[] = [];
+/** Each pack's seeders: two packs may declare the same seed key with different seeders */
+const packSeeders = new Map<string, Seeder[]>();
 
-export function registerSeeder(seeder: Seeder): void {
-  const idx = seeders.findIndex(s => s.key === seeder.key);
-  if (idx !== -1) {
-    seeders[idx] = seeder;
-    return;
+/** Registers a pack's seeders, replacing the ones it registered before (a reloaded pack's module registers again) */
+export function registerSeeders(packId: string, seeders: Seeder[]): void {
+  const keys = new Set<string>();
+  for (const { key } of seeders) {
+    if (keys.has(key)) throw new Error(`Pack "${packId}" registers two seeders for seed key "${key}"`);
+    keys.add(key);
   }
-  seeders.push(seeder);
+  packSeeders.set(packId, seeders);
 }
 
+/**
+ * Drops a pack's seeders when it's torn down
+ *
+ * @internal Host-only: pack teardown.
+ */
+export function unregisterSeeders(packId: string): void {
+  packSeeders.delete(packId);
+}
+
+/** The seed keys a pack registered seeders for: the only keys an import of its seeds can seed */
+export function registeredSeedKeys(packId: string): string[] {
+  return (packSeeders.get(packId) ?? []).map((seeder) => seeder.key);
+}
+
+/** The index compilePack writes next to a pack's compiled seeds */
+export const SEED_INDEX_FILE = 'seeds.json';
+
+/**
+ * The pack that compiled a seeds directory, from its seeds.json. Seed keys start with it, so two
+ * packs' records with the same entry key and identity seed a row each.
+ */
+export function seedingPackId(compiledDir: string): string {
+  const indexFile = path.join(compiledDir, SEED_INDEX_FILE);
+  return indexPackId(loadJSON<{ packId?: string }>(indexFile), indexFile);
+}
+
+/** The pack a parsed seeds index names; an index from before packs were recorded names none */
+export function indexPackId(index: { packId?: string } | null, indexFile: string): string {
+  if (!index?.packId) {
+    throw new Error(`${indexFile} doesn't name the pack that compiled these seeds: rebuild the pack with abuddy build`);
+  }
+  return index.packId;
+}
+
+/** Seeds a pack's compiled seeds directory with the seeders of the pack its seeds.json names */
 export function seedData(options: {
   compiledDir: string;
   include?: Record<string, SeedIncludeSet | undefined>;
@@ -45,8 +82,9 @@ export function seedData(options: {
 }): Record<string, SeedCounts> {
   const log = options.verbose ? console.log.bind(console) : () => {};
   const result: Record<string, SeedCounts> = {};
+  const packId = seedingPackId(options.compiledDir);
 
-  for (const seeder of seeders) {
+  for (const seeder of packSeeders.get(packId) ?? []) {
     const inc = options.include?.[seeder.key];
     if (inc instanceof Set && inc.size === 0) {
       log(`  ${seeder.key} section skipped by include filter`);

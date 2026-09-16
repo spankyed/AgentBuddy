@@ -1,6 +1,6 @@
 import { tx, qx, findById } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
-import { edgeStore, qx as untypedQx } from '@abuddy/host/ears';
+import { findRelations, untypedQx } from '@abuddy/sdk/ears';
 import type {
   FlowTNodeData,
   EventListenerEntity,
@@ -105,18 +105,6 @@ export const brainQueries = {
     return qx(id).pickOne(TNODE_COLUMNS);
   },
 
-  eventFirstStep: (eventNodeId: EARS.EntityId): NodeEntity | undefined => {
-    const transitionLinks = qx(eventNodeId)
-      .links(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node]);
-
-    if (transitionLinks.length > 0) {
-      return qx(transitionLinks[0].id)
-        .pickAll()[0] as unknown as NodeEntity | undefined;
-    }
-
-    return undefined;
-  },
-
   eventAllSteps: (eventNodeId: EARS.EntityId): NodeEntity[] => {
     const nodes = qx(eventNodeId)
       .links(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node])
@@ -140,7 +128,7 @@ export const brainQueries = {
   // Get next node for a specific branch (used by switch nodes)
   nextNodeForBranch: (nodeId: EARS.EntityId, sourceHandle?: string): NodeEntity | undefined => {
     // Get all TRANSITIONS_TO edges from this node
-    const edges = edgeStore.find({
+    const edges = findRelations({
       sourceEntity: nodeId,
       relationType: EARS.RelKind.TRANSITIONS_TO,
     });
@@ -149,7 +137,7 @@ export const brainQueries = {
     type EdgeInfo = { sourceHandle?: string; targetHandle?: string };
     let edge;
     if (sourceHandle) {
-      edge = edges.find((e: any) => (e.info as EdgeInfo)?.sourceHandle === sourceHandle);
+      edge = edges.find((e) => (e.info as EdgeInfo | undefined)?.sourceHandle === sourceHandle);
     } else {
       brainLogger.warn(`nextNodeForBranch called without sourceHandle for node ${nodeId}, falling back to first edge`);
       edge = edges[0];

@@ -1,7 +1,7 @@
 ---
-
-## category: database order: 1
-
+category: database
+order: 1
+---
 # Where can I view old brain traces?
 
 Brain traces are persisted directly in LMDB and can be browsed from the Database Explorer plugin.

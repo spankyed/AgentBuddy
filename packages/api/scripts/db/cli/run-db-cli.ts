@@ -1,47 +1,39 @@
 #!/usr/bin/env node
-import { parseArgs } from 'node:util';
+import { realpathSync } from 'node:fs';
+import { parseArgs, type ParseArgsConfig } from 'node:util';
+import { pathToFileURL } from 'node:url';
 import { openDatabase, closeDatabase } from '../database';
 import { DatabaseCLI, type CliOptions } from './db-cli';
 
+const cliOptions = {
+  exec: { type: 'string', short: 'e' },
+  script: { type: 'string', short: 's' },
+  output: { type: 'string', short: 'o', default: 'pretty' },
+  'output-file': { type: 'string', short: 'f' },
+  'no-confirm': { type: 'boolean', default: false },
+  verbose: { type: 'boolean', short: 'v', default: false },
+  help: { type: 'boolean', short: 'h', default: false },
+} satisfies ParseArgsConfig['options'];
+
+/**
+ * Splits the CLI's arguments at the script path: options up to and including `-s, --script <path>`
+ * are the CLI's, everything after it belongs to the script (one leading `--` dropped), so a
+ * script's own flags (`-e`, `-o`, ...) never reach the CLI's parser.
+ */
+export function splitDbCliArgs(argv: string[]): { cliArgs: string[]; scriptArgs: string[] } {
+  const { tokens } = parseArgs({ args: argv, options: cliOptions, strict: false, allowPositionals: true, tokens: true });
+  const script = tokens.find((token) => token.kind === 'option' && token.name === 'script');
+  if (!script || script.kind !== 'option') return { cliArgs: argv, scriptArgs: [] };
+  const cut = script.index + (script.inlineValue ? 1 : 2);
+  const scriptArgs = argv.slice(cut);
+  return { cliArgs: argv.slice(0, cut), scriptArgs: scriptArgs[0] === '--' ? scriptArgs.slice(1) : scriptArgs };
+}
+
 async function main() {
-  // Parse command line arguments
+  const { cliArgs, scriptArgs } = splitDbCliArgs(process.argv.slice(2));
   const { values, positionals } = parseArgs({
-    options: {
-      exec: {
-        type: 'string',
-        short: 'e',
-        default: undefined
-      },
-      script: {
-        type: 'string',
-        short: 's',
-        default: undefined
-      },
-      output: {
-        type: 'string',
-        short: 'o',
-        default: 'pretty'
-      },
-      'output-file': {
-        type: 'string',
-        short: 'f',
-        default: undefined
-      },
-      'no-confirm': {
-        type: 'boolean',
-        default: false
-      },
-      verbose: {
-        type: 'boolean',
-        short: 'v',
-        default: false
-      },
-      help: {
-        type: 'boolean',
-        short: 'h',
-        default: false
-      }
-    },
+    args: cliArgs,
+    options: cliOptions,
     strict: false,
     allowPositionals: true
   });
@@ -73,6 +65,7 @@ async function main() {
     } else if (values.script) {
       options.mode = 'script';
       options.scriptPath = values.script as string;
+      options.scriptArgs = scriptArgs;
     } else if (positionals.length > 0) {
       // If positional argument provided, treat as command
       options.mode = 'exec';
@@ -137,7 +130,8 @@ Usage:
 
 Options:
   -e, --exec <command>      Execute a command and exit
-  -s, --script <path>       Execute a script file
+  -s, --script <path> [args...]
+                            Execute a script file; arguments after the path go to the script
   -o, --output <format>     Output format: json, csv, pretty (default: pretty)
   -f, --output-file <path>  Save output to file
   --no-confirm              Skip confirmation for destructive operations
@@ -153,10 +147,11 @@ Examples:
   db-cli --exec "qx().ofType(EARS.Entity.Document).count()"
 
   # Execute with output to file
-  db-cli -e "qx(EARS.Entity.Agent).pickAll()" -o json -f agents.json
+  db-cli -e "qx(EARS.Entity.Note).pickAll()" -o json -f notes.json
 
   # Execute a script
   db-cli -s ./scripts/cleanup.js
+  db-cli -s scripts/db/export-data.ts -e Settings --format csv
 
   # One-liner without quotes
   db-cli qx\\(EARS.Entity.Settings\\).count\\(\\)
@@ -179,11 +174,12 @@ Interactive Commands:
   `);
 }
 
-// Run if executed directly
-// tsx handles ES modules properly, so we just run main directly
-main().catch(error => {
-  console.error('Unhandled error:', error);
-  process.exit(1);
-});
+// Run as a script (the spec imports splitDbCliArgs)
+if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.argv[1])).href) {
+  main().catch(error => {
+    console.error('Unhandled error:', error);
+    process.exit(1);
+  });
+}
 
 export { initializeDatabase, cleanup };

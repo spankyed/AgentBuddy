@@ -12,7 +12,7 @@
                 Brain Stopped
               </h4>
               <p class="text-sm text-neutral-500">
-                The brain system is currently inactive. Start it to begin dialog execution.
+                {{ startError ?? 'The brain system is currently inactive. Start it to begin dialog execution.' }}
               </p>
             </div>
           </div>
@@ -164,6 +164,7 @@ const props = withDefaults(defineProps<Props>(), {
 // Get brain state from brain state machine
 const brainActor: BrainState = actorSystem.get(brainId);
 const brainIsDead = useSelector(brainActor, (state) => state.context.brainIsDead)
+const startError = useSelector(brainActor, (state) => state.context.startError)
 
 // Compute if restart is needed by comparing root flow IDs
 const needsRestart = computed(() => {

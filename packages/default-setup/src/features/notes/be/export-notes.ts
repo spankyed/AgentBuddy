@@ -8,8 +8,8 @@ import { ensureDirectoryExists, createExportDir } from '@abuddy/sdk/utils'
 import { extractMediaRefs, rewriteMediaUrls, copyMediaByRef, copyFlatMedia } from '@abuddy/sdk/utils'
 import { toSlug, uniqueFilename, writeExportJson, writeExportFile } from '@abuddy/sdk/utils'
 import type { NotesExportFormat } from './export-types'
-import type { ExportedNote } from '@abuddy/sdk/build';
-import type { NoteEntity } from '@abuddy/sdk';
+import type { ExportedNote } from '@/features/notes/be/export-types';
+import type { NoteEntity } from '@/features/notes/be/types';
 
 function buildNoteTree(): { notes: ExportedNote[]; itemCount: number } {
   const allNotes = repository.noteQueries.all()

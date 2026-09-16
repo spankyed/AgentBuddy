@@ -265,7 +265,6 @@ interface Plugin_2 {
     canvas?: Component | RouteComponents;
     // (undocumented)
     chat?: Component;
-    // (undocumented)
     designation?: string;
     // (undocumented)
     hotkeys?: PluginHotkeyDefinition[];
@@ -315,9 +314,6 @@ export function processHotkeys<const T extends Record<string, string>, H = unkno
 
 // @public (undocumented)
 export function pushNavHistory<T>(history: NavHistory<T>, entry: T): NavHistory<T>;
-
-// @internal
-export function registerDesignations(designations: Designations): void;
 
 // @public (undocumented)
 export function registerDslType(name: string, config: DslTypeConfig): void;

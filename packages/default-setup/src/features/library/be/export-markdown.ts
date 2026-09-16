@@ -16,7 +16,7 @@ function escapeQuotes(str: string): string {
   return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
 }
 import { writeExportFile } from '@abuddy/sdk/utils'
-import type { ExportedItem } from '@abuddy/sdk/build';
+import type { ExportedItem } from '@/features/library/be/export-types';
 
 export function exportLibraryMarkdown(outputDir: string): { filePath: string; itemCount: number; mediaCopied: number } {
   outputDir = createExportDir(outputDir, 'library')

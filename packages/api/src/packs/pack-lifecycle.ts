@@ -4,19 +4,24 @@ import { createLogger } from '@/core/shared/debug/logger';
 import { unregisterPack, getPackContributions } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import type { PackManifest } from '@abuddy/host/packs';
-import { registerShutdownHook, runShutdownHooksForKey, seedData } from '@abuddy/sdk/utils';
+import { registerShutdownHook, runShutdownHooksForKey, seedData, unregisterSeeders } from '@abuddy/sdk/utils';
 import { invalidateEventValidationMap } from '@/systems';
 import { invalidatePartitionPolicy } from '@/core/ears/attribute-storage';
 import { loadSingleExternalPack, clearPackRequireCache, registerExternalPacks } from './pack-loader';
 import { seedPackData } from './pack-seed';
 import { updateLoadedPack, removeLoadedPack } from './pack-api';
-import { settingsRepository } from '@/core/settings-repository';
+import { settingsRepository } from '@abuddy/host/settings';
 
 const logger = createLogger('pack-lifecycle');
 
+/**
+ * Stops and unregisters a pack. `replacing` means an activation of the same pack follows (an update):
+ * the caller sends PACK_CHANGED once that completes, so running systems never see the pack missing.
+ */
 export function teardownPack(
   packId: string,
   busActor: import('xstate').AnyActorRef,
+  { replacing = false }: { replacing?: boolean } = {},
 ): void {
   const contributions = getPackContributions(packId);
   const systemIds = contributions?.systems ?? [];
@@ -30,6 +35,8 @@ export function teardownPack(
   } catch {
     logger.info(`Pack ${packId} was not previously registered`);
   }
+  // Not part of unregisterPack: a reload loads the fresh module, which registers its seeders, before unregistering
+  unregisterSeeders(packId);
 
   invalidateEventValidationMap();
   invalidatePartitionPolicy();
@@ -44,6 +51,8 @@ export function teardownPack(
   if (systemIds.length > 0) {
     busActor.send({ type: 'TEARDOWN_PACK', systemIds });
   }
+  // The systems still running read what the pack registered (its slash commands, say)
+  if (!replacing) busActor.send({ type: 'PACK_CHANGED', packId });
 
   logger.info(`Pack torn down: ${packId} (${systemIds.length} systems stopped)`);
 }
@@ -102,10 +111,13 @@ export function activatePack(
   }
 
   updateLoadedPack(pack);
+  // The running systems read what the pack registered and seeded (the chat's slash commands, say). Sent
+  // before its own systems start: they send their startup data when they do
+  busActor.send({ type: 'PACK_CHANGED', packId });
 
   const systemIds = Array.from(pack.systems.keys()).map(featureId => `${packId}.${featureId}`);
   if (systemIds.length > 0) {
-    busActor.send({ type: 'ACTIVATE_PACK', systemIds });
+    busActor.send({ type: 'ACTIVATE_PACK', packId, systemIds });
   }
 
   logger.info(`Pack activated: ${packId} (${systemIds.length} systems started)`);

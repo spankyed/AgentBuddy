@@ -6,6 +6,7 @@ export const keepAliveStep: StepDefinition = {
   ...keepAliveStepBuild,
   runtime: {
     handler() {},
+    waits: true,
   },
   fe: keepAliveStepFE.fe,
 };

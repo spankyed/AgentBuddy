@@ -10,6 +10,7 @@ import {
   installPack as runInstall, uninstallPack as runUninstall,
   installPackFromGitHub,
   getPackContributions, type PackContributions,
+  packFrontendFiles,
   checkForUpdates,
 } from '@abuddy/host/packs';
 import { teardownPack, activatePack } from './pack-lifecycle';
@@ -59,16 +60,6 @@ function readManifest(dir: string): Record<string, any> | null {
   return null;
 }
 
-function extractPluginNames(manifest: Record<string, any> | null): string[] {
-  if (!manifest) return [];
-  if (manifest.features) {
-    return manifest.features
-      .filter((f: any) => f.plugin)
-      .map((f: any) => f.plugin.label ?? f.id);
-  }
-  return [];
-}
-
 function mergeContributions(base: Omit<PackInfo, keyof PackContributions>, contrib: PackContributions | null): PackInfo {
   return {
     ...base,
@@ -96,11 +87,10 @@ function toExternalPackInfoList(entries: PackRegistryEntry[]): PackInfo[] {
       enabled: e.enabled,
       builtIn: false,
       entityCount: Object.keys(entities).length,
-      hasFeEntry: !!manifest?.fe?.entry || extractPluginNames(manifest).length > 0 || (contrib?.systems ?? []).length > 0,
+      hasFrontend: !!packFrontendFiles(e.dir).entry,
       hostVersion: manifest?.hostVersion,
       description: manifest?.description,
       entities,
-      plugins: extractPluginNames(manifest),
       permissions: manifest?.permissions ?? [],
       dir: e.dir,
       registeredAt: e.registeredAt,
@@ -123,10 +113,9 @@ function toBuiltInPackInfoList(): PackInfo[] {
       enabled: true,
       builtIn: true,
       entityCount: Object.keys(entities).length,
-      hasFeEntry: !!manifest?.fe?.entry || extractPluginNames(manifest).length > 0 || (contrib?.systems ?? []).length > 0,
+      hasFrontend: (contrib?.features ?? []).some(f => f.hasPlugin),
       description: manifest?.description,
       entities,
-      plugins: extractPluginNames(manifest),
       permissions: manifest?.permissions ?? [],
     }, contrib);
   });
@@ -255,8 +244,10 @@ export const packsSystem = setup({
       const target = entry.availableTag ? `${sourceSlug}@${entry.availableTag}` : sourceSlug;
       console.log(`[packs] Update requested: ${packId} from ${target}`);
 
-      teardownPack(packId, system.get(bus));
+      // Silent teardown: activation announces the change, or the finally below does when nothing activates
+      teardownPack(packId, system.get(bus), { replacing: true });
       system.get(bus).send(emit(packs, { type: 'PACK_DEACTIVATED' as const, packId }));
+      let activated = false;
 
       installPackFromGitHub(target, undefined, { hostVersion: APP_VERSION }).then(result => {
         modifyRegistry(reg =>
@@ -269,7 +260,8 @@ export const packsSystem = setup({
           } : e),
         );
 
-        const problem = activationProblem(packId, activatePack(packId, system.get(bus), { seed: true }));
+        activated = activatePack(packId, system.get(bus), { seed: true });
+        const problem = activationProblem(packId, activated);
         if (problem) {
           system.get(bus).send(emit(packs, {
             type: 'PACK_UPDATE_FAILED' as const,
@@ -290,7 +282,8 @@ export const packsSystem = setup({
       }).catch(err => {
         const message = err instanceof Error ? err.message : String(err);
         console.error(`[packs] Update failed for ${packId}:`, message);
-        if (activatePack(packId, system.get(bus))) {
+        activated = activatePack(packId, system.get(bus));
+        if (activated) {
           system.get(bus).send(emit(packs, { type: 'PACK_ACTIVATED' as const, packId }));
         }
         system.get(bus).send(emit(packs, {
@@ -300,6 +293,8 @@ export const packsSystem = setup({
         }));
         emitPacksList(system);
       }).finally(() => {
+        // Activation sends PACK_CHANGED itself; without it the pack is gone, which running systems must hear
+        if (!activated) system.get(bus).send({ type: 'PACK_CHANGED', packId });
         _inFlightOps.delete(packId);
       });
     },

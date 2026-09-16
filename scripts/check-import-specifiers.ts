@@ -123,6 +123,60 @@ export function findRawPackHelpers(dirs = PACK_SOURCE_DIRS, root = repoRoot): st
   return problems;
 }
 
+/**
+ * `file:line: specifier` for each `@abuddy/host` module a pack source loads: static and type
+ * imports, re-exports, dynamic imports and requires, also inside template strings the CLI writes as
+ * pack source. The host package is private to the app; packs use @abuddy/sdk (including
+ * `services.appData` and `services.traceStore` for host-implemented data operations). Generated files
+ * are checked too.
+ */
+export function findHostImports(dirs = PACK_SOURCE_DIRS, root = repoRoot): string[] {
+  const problems: string[] = [];
+  const files = dirs.flatMap((dir) => {
+    const full = path.join(root, dir);
+    if (!fs.existsSync(full)) return [];
+    return fs.statSync(full).isFile() ? [full] : [...sourceFiles(full)];
+  });
+  const hostPattern = /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s+)['"](@abuddy\/host(?:\/[^'"]*)?)['"]/g;
+  for (const file of files) {
+    const code = fs.readFileSync(file, 'utf-8');
+    for (const match of code.matchAll(hostPattern)) {
+      const line = code.slice(0, match.index).split('\n').length;
+      problems.push(`${path.relative(root, file)}:${line}: ${match[1]}`);
+    }
+  }
+  return problems;
+}
+
+/** Pack unit tests, which run on @abuddy/testing's harness: the pack's code and the SDK, not the app */
+export const PACK_TEST_DIRS = ['packages/default-setup/tests', 'tests/fixtures/external-pack/tests'];
+
+/** API modules (its `@/` alias) and host, API or CLI sources by relative path */
+const APP_SPECIFIER = /^(?:@abuddy\/host(?:\/|$)|@\/(?:core|setup|packs|systems)(?:\/|$)|(?:\.\.?\/)+(?:[\w.-]+\/)*(?:api|abuddy-host|abuddy-cli)\/src(?:\/|$))/;
+
+/**
+ * `file:line: specifier` for each app module a pack's unit tests load: `@abuddy/host`, the API's
+ * modules (its `@/core`, `@/setup`, `@/packs` alias) or host, API and CLI sources by relative path.
+ * Tests of app code belong to that package; pack tests use @abuddy/sdk and @abuddy/testing.
+ */
+export function findAppImportsInPackTests(dirs = PACK_TEST_DIRS, root = repoRoot): string[] {
+  const problems: string[] = [];
+  const files = dirs.flatMap((dir) => {
+    const full = path.join(root, dir);
+    return fs.existsSync(full) ? [...sourceFiles(full)] : [];
+  });
+  const specifierPattern = /(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s+)['"]([^'"]+)['"]/g;
+  for (const file of files) {
+    const code = fs.readFileSync(file, 'utf-8');
+    for (const match of code.matchAll(specifierPattern)) {
+      if (!APP_SPECIFIER.test(match[1])) continue;
+      const line = code.slice(0, match.index).split('\n').length;
+      problems.push(`${path.relative(root, file)}:${line}: ${match[1]}`);
+    }
+  }
+  return problems;
+}
+
 // Run as a script, also through a symlinked path (tests import findJsSpecifiers)
 if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])) {
   const problems = findJsSpecifiers();
@@ -133,6 +187,16 @@ if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])
   const rawHelpers = findRawPackHelpers();
   if (rawHelpers.length > 0) {
     console.error(`Pack code uses the typed facades: emit and sendToPlugin from #generated/events, repositories declared in abuddy.json:\n  ${rawHelpers.join('\n  ')}`);
+    process.exit(1);
+  }
+  const hostImports = findHostImports();
+  if (hostImports.length > 0) {
+    console.error(`Pack code doesn't import the host's private @abuddy/host package; use @abuddy/sdk:\n  ${hostImports.join('\n  ')}`);
+    process.exit(1);
+  }
+  const appImports = findAppImportsInPackTests();
+  if (appImports.length > 0) {
+    console.error(`Pack unit tests run on the harness (@abuddy/testing) without the app; test host, API and CLI code in its own package:\n  ${appImports.join('\n  ')}`);
     process.exit(1);
   }
   console.log('Relative import specifiers name .ts sources');

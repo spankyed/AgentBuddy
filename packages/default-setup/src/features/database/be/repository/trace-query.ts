@@ -1,4 +1,5 @@
-import { LmdbQuery, envs } from '@abuddy/host/ears';
+import type { TraceStore } from '@abuddy/sdk/services';
+import { services } from '@/__generated__/services';
 import { EARS } from '@/__generated__/ears';
 import type { TNodeEntity, TrackTree } from '@abuddy/sdk/steps';
 import { createLogger } from '@abuddy/sdk/logger';
@@ -10,7 +11,7 @@ const logger = createLogger('database:trace');
  * Similar to core/ears/helpers/graph.ts descendants but for LMDB
  */
 function getDescendants(
-  query: typeof LmdbQuery,
+  query: TraceStore,
   startId: string,
   relKind: EARS.RelKind
 ): string[] {
@@ -21,7 +22,7 @@ function getDescendants(
     const nodeId = stack.pop()!;
     const relations = [...query.relations({
       kind: relKind,
-      src: nodeId,
+      src: nodeId as EARS.EntityId,
       skipDeleted: true
     })];
     
@@ -41,7 +42,7 @@ function getDescendants(
  * Build a TNode entity from LMDB data with optional children
  */
 function buildTNodeEntity(
-  query: typeof LmdbQuery,
+  query: TraceStore,
   nodeId: string,
   meta: any,
   includeChildren = false
@@ -52,23 +53,23 @@ function buildTNodeEntity(
     id: nodeId as EARS.EntityId,
     entityType: EARS.Entity.TNode,
     createdAt: meta.createdAt,
-    tNodeType: query.getAttr('tNodeType', nodeId) as any || 'step',
-    label: query.getAttr('label', nodeId) as string || 'Node',
-    status: query.getAttr('status', nodeId) as any || 'completed',
-    startedAt: query.getAttr('startedAt', nodeId) as number || meta.createdAt,
+    tNodeType: query.getAttr('tNodeType', nodeId as EARS.EntityId) as any || 'step',
+    label: query.getAttr('label', nodeId as EARS.EntityId) as string || 'Node',
+    status: query.getAttr('status', nodeId as EARS.EntityId) as any || 'completed',
+    startedAt: query.getAttr('startedAt', nodeId as EARS.EntityId) as number || meta.createdAt,
   };
   
   // Get optional attributes
-  const completedAt = query.getAttr('completedAt', nodeId) as number;
+  const completedAt = query.getAttr('completedAt', nodeId as EARS.EntityId) as number;
   if (completedAt) tNode.completedAt = completedAt;
   
-  const eventType = query.getAttr('eventType', nodeId) as string;
+  const eventType = query.getAttr('eventType', nodeId as EARS.EntityId) as string;
   if (eventType) tNode.eventType = eventType;
   
-  const stepNodeType = query.getAttr('stepNodeType', nodeId) as string;
+  const stepNodeType = query.getAttr('stepNodeType', nodeId as EARS.EntityId) as string;
   if (stepNodeType) tNode.stepNodeType = stepNodeType;
   
-  const final = query.getAttr('final', nodeId) as boolean;
+  const final = query.getAttr('final', nodeId as EARS.EntityId) as boolean;
   if (final) tNode.final = final;
   
   // If includeChildren is true, recursively build children
@@ -77,7 +78,7 @@ function buildTNodeEntity(
     const children: TrackTree[] = [];
     
     for (const childId of childIds) {
-      const childMeta = query.getEntityMeta(childId);
+      const childMeta = query.getEntityMeta(childId as EARS.EntityId);
       const child = buildTNodeEntity(query, childId, childMeta, true) as TrackTree;
       if (child) {
         children.push(child);
@@ -102,16 +103,16 @@ function buildTNodeEntity(
  */
 export function getTraceFlows(limit = 100): TNodeEntity[] {
   try {
-    const query = new LmdbQuery(envs.volatileBackup);
+    const query = services.traceStore;
     const flows: TNodeEntity[] = [];
     
     // Get all TNode entities
-    for (const { key: entityId, value: meta } of envs.volatileBackup.entities.getRange()) {
+    for (const { id: entityId, meta } of query.entities()) {
       if (meta.type === 'TNode' && !meta.deletedAt) {
         const id = String(entityId) as EARS.EntityId;
         
         // Get tNodeType attribute to check if it's a flow
-        const tNodeType = query.getAttr('tNodeType', id) as string;
+        const tNodeType = query.getAttr('tNodeType', id as EARS.EntityId) as string;
         if (tNodeType === 'flow') {
           // Build the full TNode entity
           const flow: TNodeEntity = {
@@ -119,16 +120,16 @@ export function getTraceFlows(limit = 100): TNodeEntity[] {
             entityType: EARS.Entity.TNode,
             createdAt: meta.createdAt,
             tNodeType: 'flow',
-            label: query.getAttr('label', id) as string || 'Unnamed Flow',
-            status: query.getAttr('status', id) as any || 'completed',
-            startedAt: query.getAttr('startedAt', id) as number || meta.createdAt,
+            label: query.getAttr('label', id as EARS.EntityId) as string || 'Unnamed Flow',
+            status: query.getAttr('status', id as EARS.EntityId) as any || 'completed',
+            startedAt: query.getAttr('startedAt', id as EARS.EntityId) as number || meta.createdAt,
           };
           
           // Get optional attributes
-          const completedAt = query.getAttr('completedAt', id) as number;
+          const completedAt = query.getAttr('completedAt', id as EARS.EntityId) as number;
           if (completedAt) flow.completedAt = completedAt;
           
-          const blueprint = query.getAttr('blueprint', id);
+          const blueprint = query.getAttr('blueprint', id as EARS.EntityId);
           if (blueprint && typeof blueprint === 'object') {
             flow.blueprint = blueprint as TNodeEntity['blueprint'];
           }
@@ -170,13 +171,13 @@ export function getFlowEvents(
   limit = 50
 ): { events: TrackTree[]; hasMore: boolean } {
   try {
-    const query = new LmdbQuery(envs.volatileBackup);
+    const query = services.traceStore;
     const eventTracks: TrackTree[] = [];
     
     // Find all TRACKED relations from this flow (flow TNode -> event TNodes)
     const relations = [...query.relations({ 
       kind: EARS.RelKind.TRACKED,
-      src: flowId,
+      src: flowId as EARS.EntityId,
       skipDeleted: true
     })];
     
@@ -211,8 +212,8 @@ export function getFlowEvents(
  */
 export function getNodeDetails(nodeId: string): TNodeEntity | null {
   try {
-    const query = new LmdbQuery(envs.volatileBackup);
-    const meta = query.getEntityMeta(nodeId);
+    const query = services.traceStore;
+    const meta = query.getEntityMeta(nodeId as EARS.EntityId);
     
     if (!meta || meta.deletedAt) {
       return null;
@@ -222,32 +223,32 @@ export function getNodeDetails(nodeId: string): TNodeEntity | null {
       id: nodeId as EARS.EntityId,
       entityType: EARS.Entity.TNode,
       createdAt: meta.createdAt,
-      tNodeType: query.getAttr('tNodeType', nodeId) as any || 'step',
-      label: query.getAttr('label', nodeId) as string || 'Node',
-      status: query.getAttr('status', nodeId) as any || 'completed',
-      startedAt: query.getAttr('startedAt', nodeId) as number || meta.createdAt,
+      tNodeType: query.getAttr('tNodeType', nodeId as EARS.EntityId) as any || 'step',
+      label: query.getAttr('label', nodeId as EARS.EntityId) as string || 'Node',
+      status: query.getAttr('status', nodeId as EARS.EntityId) as any || 'completed',
+      startedAt: query.getAttr('startedAt', nodeId as EARS.EntityId) as number || meta.createdAt,
     };
     
     // Get all optional attributes
-    const completedAt = query.getAttr('completedAt', nodeId) as number;
+    const completedAt = query.getAttr('completedAt', nodeId as EARS.EntityId) as number;
     if (completedAt) node.completedAt = completedAt;
     
-    const eventType = query.getAttr('eventType', nodeId) as string;
+    const eventType = query.getAttr('eventType', nodeId as EARS.EntityId) as string;
     if (eventType) node.eventType = eventType;
     
-    const stepNodeType = query.getAttr('stepNodeType', nodeId) as string;
+    const stepNodeType = query.getAttr('stepNodeType', nodeId as EARS.EntityId) as string;
     if (stepNodeType) node.stepNodeType = stepNodeType;
     
-    const final = query.getAttr('final', nodeId) as boolean;
+    const final = query.getAttr('final', nodeId as EARS.EntityId) as boolean;
     if (final) node.final = final;
     
-    const blueprint = query.getAttr('blueprint', nodeId);
+    const blueprint = query.getAttr('blueprint', nodeId as EARS.EntityId);
     if (blueprint && typeof blueprint === 'object') {
       node.blueprint = blueprint as TNodeEntity['blueprint'];
     }
     
     // Get the full nodeAttributes (this is what we lazy load)
-    const nodeAttributes = query.getAttr('nodeAttributes', nodeId);
+    const nodeAttributes = query.getAttr('nodeAttributes', nodeId as EARS.EntityId);
     if (nodeAttributes && typeof nodeAttributes === 'object') {
       node.nodeAttributes = nodeAttributes as Record<string, unknown>;
     }
@@ -256,30 +257,5 @@ export function getNodeDetails(nodeId: string): TNodeEntity | null {
   } catch (error) {
     logger.error('Failed to get node details:', { error: String(error) });
     return null;
-  }
-}
-
-/**
- * Get child TNodes for a given parent
- * Used for building the tree structure
- */
-export function getChildTNodes(parentId: string): string[] {
-  try {
-    const query = new LmdbQuery(envs.volatileBackup);
-    const children: string[] = [];
-    
-    // Find SPAWNED relations where this node is the source (event/step TNode -> child TNodes)
-    for (const { rel } of query.relations({ 
-      kind: EARS.RelKind.SPAWNED,
-      src: parentId,
-      skipDeleted: true
-    })) {
-      children.push(rel.tgt);
-    }
-    
-    return children;
-  } catch (error) {
-    logger.error('Failed to get child TNodes:', { error: String(error) });
-    return [];
   }
 }

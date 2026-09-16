@@ -1,11 +1,26 @@
 import * as esbuild from 'esbuild';
+import * as crypto from 'crypto';
 import * as path from 'path';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const srcDir = path.resolve(__dirname, 'src');
 const entryPoint = path.resolve(srcDir, '__generated__/pack-entry.ts');
-const outfile = path.resolve(__dirname, 'dist/dev-entry.cjs');
+// The pack's backend runtime, in the bundle layout (runtime/index.cjs): the API loads it in development,
+// and the app publishes it with the snapshot and build/ for packs depending on default-setup
+const outfile = path.resolve(__dirname, 'dist/runtime/index.cjs');
+// The compiled seeds index (abuddy build) this runtime is built beside, by its sha256: the app publishes
+// the runtime with the compiled seeds only when it matches, so a stale runtime never ships with newer seeds
+const seedsIndex = path.resolve(__dirname, 'dist/seeds.json');
+const seedsIndexHash = path.resolve(__dirname, 'dist/runtime/seeds-index.sha256');
+
+function recordSeedsIndex() {
+  if (fs.existsSync(seedsIndex)) {
+    fs.writeFileSync(seedsIndexHash, crypto.createHash('sha256').update(fs.readFileSync(seedsIndex)).digest('hex'));
+  } else {
+    fs.rmSync(seedsIndexHash, { force: true });
+  }
+}
 
 import * as os from 'os';
 const watchMode = process.argv.includes('--watch');
@@ -25,7 +40,6 @@ const aliasPlugin = {
   setup(build) {
     const aliases = {
       '@/__generated__/': path.join(srcDir, '__generated__/'),
-      '@/registries/': path.join(srcDir, 'registries/'),
       '@/features/': path.join(srcDir, 'features/'),
       '@/extensions/': path.join(srcDir, 'extensions/'),
     };
@@ -122,6 +136,7 @@ if (watchMode) {
         setup(build) {
           build.onEnd((result) => {
             if (result.errors.length === 0) {
+              recordSeedsIndex();
               if (isFirstBuild) {
                 isFirstBuild = false;
                 process.send?.({ type: 'ready' });
@@ -140,5 +155,6 @@ if (watchMode) {
   console.log('[dev-build] Watching for changes...');
 } else {
   await esbuild.build(buildOptions);
+  recordSeedsIndex();
   console.log('[dev-build] Build complete');
 }

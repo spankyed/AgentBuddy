@@ -97,12 +97,13 @@ export interface StreamHandle {
 /**
  * Build the environment for a spawned Claude CLI child process.
  *
- * The API server auto-loads `packages/api/.env` via `dotenv/config`, which
- * populates `ANTHROPIC_API_KEY` for the server's own LLM client
- * (`services/llm.ts`). The Claude CLI treats env-var API keys as an
+ * The API server auto-loads `packages/api/.env` via `dotenv/config`, so a
+ * developer's `ANTHROPIC_API_KEY` can be in its environment (the app's own
+ * model calls don't read it: `services.inference` uses the key selected in
+ * Settings → Secrets). The Claude CLI treats env-var API keys as an
  * "external" credential and prefers them over the user's stored
  * `claude auth login` session — so without this scrub, every CLI
- * subprocess we spawn would try to authenticate with the llm.ts key and
+ * subprocess we spawn would try to authenticate with that key and
  * fail with "Invalid API key · Fix external API key".
  *
  * If the caller explicitly passes an `env` override, we assume they know

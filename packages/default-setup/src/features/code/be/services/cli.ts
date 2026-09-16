@@ -129,7 +129,7 @@ function createCliService(): CliServiceType {
       if (!isCliName(provider)) {
         return Promise.resolve({ success: false as const, error: `Unknown CLI provider: ${provider}` });
       }
-      const storedPath = repository.settingsQueries.getSettings().general.secrets.cliPaths?.[provider];
+      const storedPath = (repository.settingsQueries.getPluginSettings('code') as { cliPaths?: Record<string, string> } | null)?.cliPaths?.[provider];
       return testCli(provider, storedPath);
     },
     git: {

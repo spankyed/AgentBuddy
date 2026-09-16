@@ -5,7 +5,7 @@
       <div class="space-y-2 text-sm">
         <div class="flex items-center justify-between">
           <span class="text-neutral-400">Documents:</span>
-          <span class="font-medium text-neutral-200">{{ documents.length }}</span>
+          <span class="font-medium text-neutral-200">{{ index.documents.length }}</span>
         </div>
         <div class="flex items-center justify-between">
           <span class="text-neutral-400">Folders:</span>
@@ -247,8 +247,8 @@ import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, librarySystem, type LibraryContext, type LibraryEvents } from './state'
 import type { ActorRefFrom } from 'xstate'
-import type { ContentSection, FieldContent, ListContent, MarkdownContent, TextContent } from '@abuddy/sdk'
-// [SEARCH_INDEX_FF] import { getModelConfig } from './config/embedding-models'
+import type { ContentSection, FieldContent, ListContent, MarkdownContent, TextContent } from '@/features/library/be/types'
+// [SEARCH_INDEX_FF] import { getModelConfig } from '../embedding-models'
 
 const actorSystem = useActorSystem()
 
@@ -256,8 +256,7 @@ type LibraryActor = ActorRefFrom<typeof librarySystem>
 const actor = actorSystem.get(id) as LibraryActor
 
 // Individual selectors for each context property
-const documents = useSelector(actor, (state) => state.context.documents)
-const collections = useSelector(actor, (state) => state.context.collections)
+const index = useSelector(actor, (state) => state.context.index)
 const selectedDocument = useSelector(actor, (state) => state.context.selectedDocument)
 // [SEARCH_INDEX_FF] const searchIndices = useSelector(actor, (state) => state.context.searchIndices)
 const currentFolderId = useSelector(actor, (state) => state.context.currentFolderId)
@@ -298,7 +297,7 @@ const totalCollections = computed(() => {
 
 const allTags = computed(() => {
   const tags = new Set<string>()
-  documents.value.forEach(doc => {
+  index.value.documents.forEach(doc => {
     doc.tags?.forEach(tag => tags.add(tag))
   })
   return Array.from(tags).sort()
@@ -306,7 +305,7 @@ const allTags = computed(() => {
 
 const tagCounts = computed(() => {
   const counts: Record<string, number> = {}
-  documents.value.forEach(doc => {
+  index.value.documents.forEach(doc => {
     doc.tags.forEach(tag => {
       counts[tag] = (counts[tag] || 0) + 1
     })

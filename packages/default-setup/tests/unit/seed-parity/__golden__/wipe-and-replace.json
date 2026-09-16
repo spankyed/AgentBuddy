@@ -1,0 +1,678 @@
+{
+  "fresh": {
+    "rows": {
+      "Action:Echo": {
+        "label": "Echo",
+        "description": "Return the input text",
+        "sourceHash": "61afe6a6da8056ff",
+        "rowSha256": "43aad91396dac0e20993e320b7c4fc0e6778072749aa7390d35ce695263e3114"
+      },
+      "Action:Set Instructions": {
+        "label": "Set Instructions",
+        "description": "Create a thread from instructions",
+        "sourceHash": "ed3d21bb8aed3524",
+        "rowSha256": "d29462ccdd376db9ceaec34dd12b409136c8d3834d280da960e0a41e1ad2ef8c"
+      },
+      "Collection:advanced": {
+        "displayOrder": 1000,
+        "name": "advanced",
+        "sourceHash": "08f76a29861feea7"
+      },
+      "Collection:Guides": {
+        "description": "How-to guides",
+        "displayOrder": 1000,
+        "name": "Guides",
+        "sourceHash": "36c6bfb727430718"
+      },
+      "Document:2024": {
+        "content": [
+          {
+            "type": "text",
+            "text": "A document whose quoted name looks like a number."
+          }
+        ],
+        "displayOrder": 2000,
+        "name": "2024",
+        "shortCode": "DOC-3",
+        "sourceHash": "950a0c99b4ad4a53",
+        "tags": [
+          "year"
+        ]
+      },
+      "Document:deep dive": {
+        "content": [
+          {
+            "type": "markdown",
+            "text": "Plain body with no frontmatter.\n"
+          }
+        ],
+        "displayOrder": 1000,
+        "name": "deep dive",
+        "shortCode": "DOC-1",
+        "sourceHash": "ab5447ee2e9df227",
+        "tags": [
+          "default"
+        ]
+      },
+      "Document:Getting Started": {
+        "content": [
+          {
+            "type": "markdown",
+            "text": "Welcome. ![diagram](media://Document:Getting Started/pic.png)"
+          },
+          {
+            "type": "field",
+            "fields": [
+              {
+                "key": "Owner",
+                "value": "docs team"
+              },
+              {
+                "key": "Status",
+                "value": "draft"
+              }
+            ]
+          },
+          {
+            "type": "list",
+            "items": [
+              "first",
+              "second"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "ts",
+            "text": "const x = 1;"
+          }
+        ],
+        "displayOrder": 2000,
+        "name": "Getting Started",
+        "shortCode": "DOC-2",
+        "sourceHash": "ef063cc892ae028c",
+        "tags": [
+          "intro",
+          "docs"
+        ]
+      },
+      "Note:Projects": {
+        "completed": false,
+        "content": "Project list.\n",
+        "displayOrder": 0,
+        "entityType": "Note",
+        "hideCompletedChildren": true,
+        "icon": null,
+        "label": "New Note 1",
+        "lastSeen": 0,
+        "noteType": "tasklist",
+        "shortCode": "NOTE-1",
+        "title": "Projects"
+      },
+      "Note:Projects/2024": {
+        "completed": false,
+        "content": "A title YAML reads as a number.\n",
+        "displayOrder": 3,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 6",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-6",
+        "title": "2024"
+      },
+      "Note:Projects/Archive": {
+        "completed": false,
+        "content": "Old work.\n",
+        "displayOrder": 0,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 2",
+        "lastSeen": 0,
+        "noteType": "tasklist",
+        "shortCode": "NOTE-2",
+        "title": "Archive"
+      },
+      "Note:Projects/Archive/Old Task": {
+        "completed": false,
+        "content": "Archived task.\n",
+        "displayOrder": 0,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 3",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-3",
+        "title": "Old Task"
+      },
+      "Note:Projects/task one": {
+        "completed": true,
+        "content": "Done task.\n",
+        "displayOrder": 1,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 4",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-4",
+        "title": "task one"
+      },
+      "Note:Projects/Task Two": {
+        "completed": false,
+        "content": "Open task.\n",
+        "displayOrder": 2,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 5",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-5",
+        "title": "Task Two"
+      },
+      "Note:Welcome": {
+        "completed": false,
+        "content": "# Hello\n\nSee [the plan](note://Note-external-plan) for details.\n",
+        "displayOrder": 1,
+        "entityType": "Note",
+        "favorite": true,
+        "icon": "👋",
+        "label": "New Note 7",
+        "lastSeen": 0,
+        "noteType": "document",
+        "shortCode": "NOTE-7",
+        "title": "Welcome"
+      },
+      "Prompt:Greeting": {
+        "label": "Greeting",
+        "description": "Greet someone by name",
+        "sourceHash": "eb00734c31d0a8ef",
+        "rowSha256": "f4e104b7919f4a3abf358d24ca803cca2078d81418005d3b5615543ef0934927"
+      },
+      "Prompt:Summary": {
+        "label": "Summary",
+        "description": "Summarize a text",
+        "sourceHash": "c9b61d7496fcd0a1",
+        "rowSha256": "e68fb193c930d11ccc3323f6c789d157be2c37375dae7638ff0ae5cffa148e90"
+      }
+    },
+    "relations": [
+      "Collection:Guides --parent_of--> Collection:advanced",
+      "Collection:advanced --contains--> Document:deep dive",
+      "Collection:Guides --contains--> Document:Getting Started",
+      "Note:Projects --contains--> Note:Projects/Archive",
+      "Note:Projects/Archive --contains--> Note:Projects/Archive/Old Task",
+      "Note:Projects --contains--> Note:Projects/task one",
+      "Note:Projects --contains--> Note:Projects/Task Two",
+      "Note:Projects --contains--> Note:Projects/2024",
+      "Note:Welcome --references--> Note-external-plan"
+    ],
+    "media": [
+      "Document:Getting Started/pic.png=PNGDATA"
+    ],
+    "counts": {
+      "actions": {
+        "created": 2,
+        "updated": 0,
+        "skipped": 0
+      },
+      "prompts": {
+        "created": 2,
+        "updated": 0,
+        "skipped": 0
+      },
+      "library": {
+        "created": 5,
+        "updated": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "unchanged": {
+    "rows": {
+      "Action:Echo": {
+        "label": "Echo",
+        "description": "Return the input text",
+        "sourceHash": "61afe6a6da8056ff",
+        "rowSha256": "43aad91396dac0e20993e320b7c4fc0e6778072749aa7390d35ce695263e3114"
+      },
+      "Action:Set Instructions": {
+        "label": "Set Instructions",
+        "description": "Create a thread from instructions",
+        "sourceHash": "ed3d21bb8aed3524",
+        "rowSha256": "d29462ccdd376db9ceaec34dd12b409136c8d3834d280da960e0a41e1ad2ef8c"
+      },
+      "Collection:advanced": {
+        "displayOrder": 1000,
+        "name": "advanced",
+        "sourceHash": "08f76a29861feea7"
+      },
+      "Collection:Guides": {
+        "description": "How-to guides",
+        "displayOrder": 1000,
+        "name": "Guides",
+        "sourceHash": "36c6bfb727430718"
+      },
+      "Document:2024": {
+        "content": [
+          {
+            "type": "text",
+            "text": "A document whose quoted name looks like a number."
+          }
+        ],
+        "displayOrder": 2000,
+        "name": "2024",
+        "shortCode": "DOC-3",
+        "sourceHash": "950a0c99b4ad4a53",
+        "tags": [
+          "year"
+        ]
+      },
+      "Document:deep dive": {
+        "content": [
+          {
+            "type": "markdown",
+            "text": "Plain body with no frontmatter.\n"
+          }
+        ],
+        "displayOrder": 1000,
+        "name": "deep dive",
+        "shortCode": "DOC-1",
+        "sourceHash": "ab5447ee2e9df227",
+        "tags": [
+          "default"
+        ]
+      },
+      "Document:Getting Started": {
+        "content": [
+          {
+            "type": "markdown",
+            "text": "Welcome. ![diagram](media://Document:Getting Started/pic.png)"
+          },
+          {
+            "type": "field",
+            "fields": [
+              {
+                "key": "Owner",
+                "value": "docs team"
+              },
+              {
+                "key": "Status",
+                "value": "draft"
+              }
+            ]
+          },
+          {
+            "type": "list",
+            "items": [
+              "first",
+              "second"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "ts",
+            "text": "const x = 1;"
+          }
+        ],
+        "displayOrder": 2000,
+        "name": "Getting Started",
+        "shortCode": "DOC-2",
+        "sourceHash": "ef063cc892ae028c",
+        "tags": [
+          "intro",
+          "docs"
+        ]
+      },
+      "Note:Projects": {
+        "completed": false,
+        "content": "Project list.\n",
+        "displayOrder": 0,
+        "entityType": "Note",
+        "hideCompletedChildren": true,
+        "icon": null,
+        "label": "New Note 1",
+        "lastSeen": 0,
+        "noteType": "tasklist",
+        "shortCode": "NOTE-1",
+        "title": "Projects"
+      },
+      "Note:Projects/2024": {
+        "completed": false,
+        "content": "A title YAML reads as a number.\n",
+        "displayOrder": 3,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 6",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-6",
+        "title": "2024"
+      },
+      "Note:Projects/Archive": {
+        "completed": false,
+        "content": "Old work.\n",
+        "displayOrder": 0,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 2",
+        "lastSeen": 0,
+        "noteType": "tasklist",
+        "shortCode": "NOTE-2",
+        "title": "Archive"
+      },
+      "Note:Projects/Archive/Old Task": {
+        "completed": false,
+        "content": "Archived task.\n",
+        "displayOrder": 0,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 3",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-3",
+        "title": "Old Task"
+      },
+      "Note:Projects/task one": {
+        "completed": true,
+        "content": "Done task.\n",
+        "displayOrder": 1,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 4",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-4",
+        "title": "task one"
+      },
+      "Note:Projects/Task Two": {
+        "completed": false,
+        "content": "Open task.\n",
+        "displayOrder": 2,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 5",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-5",
+        "title": "Task Two"
+      },
+      "Note:Welcome": {
+        "completed": false,
+        "content": "# Hello\n\nSee [the plan](note://Note-external-plan) for details.\n",
+        "displayOrder": 1,
+        "entityType": "Note",
+        "favorite": true,
+        "icon": "👋",
+        "label": "New Note 7",
+        "lastSeen": 0,
+        "noteType": "document",
+        "shortCode": "NOTE-7",
+        "title": "Welcome"
+      },
+      "Prompt:Greeting": {
+        "label": "Greeting",
+        "description": "Greet someone by name",
+        "sourceHash": "eb00734c31d0a8ef",
+        "rowSha256": "f4e104b7919f4a3abf358d24ca803cca2078d81418005d3b5615543ef0934927"
+      },
+      "Prompt:Summary": {
+        "label": "Summary",
+        "description": "Summarize a text",
+        "sourceHash": "c9b61d7496fcd0a1",
+        "rowSha256": "e68fb193c930d11ccc3323f6c789d157be2c37375dae7638ff0ae5cffa148e90"
+      }
+    },
+    "relations": [
+      "Note:Projects --contains--> Note:Projects/Archive",
+      "Note:Projects/Archive --contains--> Note:Projects/Archive/Old Task",
+      "Note:Projects --contains--> Note:Projects/task one",
+      "Note:Projects --contains--> Note:Projects/Task Two",
+      "Note:Projects --contains--> Note:Projects/2024",
+      "Note:Welcome --references--> Note-external-plan",
+      "Collection:Guides --parent_of--> Collection:advanced",
+      "Collection:advanced --contains--> Document:deep dive",
+      "Collection:Guides --contains--> Document:Getting Started"
+    ],
+    "media": [
+      "Document:(deleted)/pic.png=PNGDATA",
+      "Document:Getting Started/pic.png=PNGDATA"
+    ],
+    "counts": {
+      "actions": {
+        "created": 2,
+        "updated": 0,
+        "skipped": 0
+      },
+      "prompts": {
+        "created": 2,
+        "updated": 0,
+        "skipped": 0
+      },
+      "library": {
+        "created": 5,
+        "updated": 0,
+        "skipped": 0
+      }
+    }
+  },
+  "changed": {
+    "rows": {
+      "Action:Echo": {
+        "label": "Echo",
+        "description": "Return the input text",
+        "sourceHash": "61afe6a6da8056ff",
+        "rowSha256": "43aad91396dac0e20993e320b7c4fc0e6778072749aa7390d35ce695263e3114"
+      },
+      "Action:Set Instructions": {
+        "label": "Set Instructions",
+        "description": "Create a thread from instructions, titled by their first line",
+        "sourceHash": "1d1b5575ebc3e9c1",
+        "rowSha256": "6696c56d535c2946c56016b12ee1f41aacbdeb14c166c1b6838bed0db38f580b"
+      },
+      "Collection:advanced": {
+        "displayOrder": 1000,
+        "name": "advanced",
+        "sourceHash": "62a5dc465126ce53"
+      },
+      "Collection:Guides": {
+        "description": "How-to guides",
+        "displayOrder": 1000,
+        "name": "Guides",
+        "sourceHash": "08da17cea563b63b"
+      },
+      "Document:2024": {
+        "content": [
+          {
+            "type": "text",
+            "text": "A document whose quoted name looks like a number."
+          }
+        ],
+        "displayOrder": 2000,
+        "name": "2024",
+        "shortCode": "DOC-4",
+        "sourceHash": "950a0c99b4ad4a53",
+        "tags": [
+          "year"
+        ]
+      },
+      "Document:deep dive": {
+        "content": [
+          {
+            "type": "markdown",
+            "text": "Plain body with no frontmatter, revised.\n"
+          }
+        ],
+        "displayOrder": 1000,
+        "name": "deep dive",
+        "shortCode": "DOC-1",
+        "sourceHash": "1180aa1e38e2be8a",
+        "tags": [
+          "default"
+        ]
+      },
+      "Document:Getting Started": {
+        "content": [
+          {
+            "type": "markdown",
+            "text": "Welcome, revised. ![diagram](media://Document:Getting Started/pic.png)"
+          }
+        ],
+        "displayOrder": 2000,
+        "name": "Getting Started",
+        "shortCode": "DOC-2",
+        "sourceHash": "4c10c7f6d5d0f9ce",
+        "tags": [
+          "intro",
+          "docs",
+          "updated"
+        ]
+      },
+      "Document:New Doc": {
+        "content": [
+          {
+            "type": "markdown",
+            "text": "Added in v2.\n"
+          }
+        ],
+        "displayOrder": 3000,
+        "name": "New Doc",
+        "shortCode": "DOC-3",
+        "sourceHash": "2fe501d1e4d0a0fe",
+        "tags": [
+          "default"
+        ]
+      },
+      "Note:Projects": {
+        "completed": false,
+        "content": "Project list.\n",
+        "displayOrder": 0,
+        "entityType": "Note",
+        "hideCompletedChildren": true,
+        "icon": null,
+        "label": "New Note 1",
+        "lastSeen": 0,
+        "noteType": "tasklist",
+        "shortCode": "NOTE-1",
+        "title": "Projects"
+      },
+      "Note:Projects/2024": {
+        "completed": false,
+        "content": "A title YAML reads as a number.\n",
+        "displayOrder": 3,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 6",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-6",
+        "title": "2024"
+      },
+      "Note:Projects/Archive": {
+        "completed": false,
+        "content": "Old work.\n",
+        "displayOrder": 0,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 2",
+        "lastSeen": 0,
+        "noteType": "tasklist",
+        "shortCode": "NOTE-2",
+        "title": "Archive"
+      },
+      "Note:Projects/Archive/Old Task": {
+        "completed": false,
+        "content": "Archived task.\n",
+        "displayOrder": 0,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 3",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-3",
+        "title": "Old Task"
+      },
+      "Note:Projects/task one": {
+        "completed": true,
+        "content": "Done task.\n",
+        "displayOrder": 1,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 4",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-4",
+        "title": "task one"
+      },
+      "Note:Projects/Task Two": {
+        "completed": false,
+        "content": "Open task.\n",
+        "displayOrder": 2,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 5",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-5",
+        "title": "Task Two"
+      },
+      "Note:Welcome": {
+        "completed": false,
+        "content": "# Hello\n\nSee [the plan](note://Note-external-plan) for details.\n",
+        "displayOrder": 1,
+        "entityType": "Note",
+        "favorite": true,
+        "icon": "👋",
+        "label": "New Note 7",
+        "lastSeen": 0,
+        "noteType": "document",
+        "shortCode": "NOTE-7",
+        "title": "Welcome"
+      },
+      "Prompt:Greeting": {
+        "label": "Greeting",
+        "description": "Greet someone by name, warmly",
+        "sourceHash": "535a495bb024e169",
+        "rowSha256": "e905b1ed8bc313a383be6d91a5dd39410dcecfe27d7865945f87ab2cb9fcd067"
+      },
+      "Prompt:Summary": {
+        "label": "Summary",
+        "description": "Summarize a text",
+        "sourceHash": "c9b61d7496fcd0a1",
+        "rowSha256": "e68fb193c930d11ccc3323f6c789d157be2c37375dae7638ff0ae5cffa148e90"
+      }
+    },
+    "relations": [
+      "Note:Projects --contains--> Note:Projects/Archive",
+      "Note:Projects/Archive --contains--> Note:Projects/Archive/Old Task",
+      "Note:Projects --contains--> Note:Projects/task one",
+      "Note:Projects --contains--> Note:Projects/Task Two",
+      "Note:Projects --contains--> Note:Projects/2024",
+      "Note:Welcome --references--> Note-external-plan",
+      "Collection:Guides --parent_of--> Collection:advanced",
+      "Collection:advanced --contains--> Document:deep dive",
+      "Collection:Guides --contains--> Document:Getting Started",
+      "Collection:Guides --contains--> Document:New Doc"
+    ],
+    "media": [
+      "Document:(deleted)/pic.png=PNGDATA",
+      "Document:(deleted)/pic.png=PNGDATA",
+      "Document:Getting Started/pic.png=PNGDATA"
+    ],
+    "counts": {
+      "actions": {
+        "created": 2,
+        "updated": 0,
+        "skipped": 0
+      },
+      "prompts": {
+        "created": 2,
+        "updated": 0,
+        "skipped": 0
+      },
+      "library": {
+        "created": 6,
+        "updated": 0,
+        "skipped": 0
+      }
+    }
+  }
+}

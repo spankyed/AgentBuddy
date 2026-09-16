@@ -63,7 +63,7 @@ echo ""
 # Step 2: Install dependencies
 echo -e "${BLUE}[2/7]${NC} Installing dependencies..."
 # Force development mode so devDependencies (typescript, @types/*, etc.) are installed
-# even if NODE_ENV=production leaked from a previous session (see docs/issues/node-env-build-failure.md)
+# even if NODE_ENV=production leaked from a previous session (see docs/reference/node-env-build-failure.md)
 NODE_ENV=development npm install --loglevel warn
 unset NODE_ENV
 
@@ -76,17 +76,11 @@ npm run generate:entries -w @app/default-setup
 # Step 3: Compile default-setup
 if [ -z "$SKIP_COMPILE" ]; then
   echo -e "${BLUE}[3/7]${NC} Compiling default-setup..."
-  npm run compile:prod
+  npm run compile
   echo -e "${GREEN}✓${NC} Default-setup compiled"
 else
   echo -e "${BLUE}[3/7]${NC} Skipping default-setup compilation (SKIP_COMPILE set)"
 fi
-echo ""
-
-# Step 3.5: Generate DSL defs (needed by renderer before build)
-echo -e "${BLUE}[3.5/7]${NC} Generating DSL type definitions..."
-npm run generate:defs -w @app/default-setup
-echo -e "${GREEN}✓${NC} DSL defs generated"
 echo ""
 
 # Step 4: Build TypeScript/Vite packages

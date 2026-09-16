@@ -1,8 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { ManifestSchema } from './manifest-schema.ts';
-import type { FeatureConfig } from './types.ts';
+import type { PackManifest } from './manifest.ts';
 
 export interface ManifestValidation {
   errors: string[];
@@ -35,52 +34,27 @@ export function validateManifest(manifestPath: string): ManifestValidation {
   return parseManifest(raw);
 }
 
-export async function validateFeatures(featuresDir: string): Promise<ManifestValidation> {
+/**
+ * Checks a manifest's `features[]` against the pack on disk: each feature's `settings`, `system.entry` and
+ * `plugin.entry` file exists, and a `designation` equals its feature id (the designation registry routes a
+ * role to the feature of the same id).
+ */
+export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 'features'>): ManifestValidation {
   const errors: string[] = [];
-  const warnings: string[] = [];
-
-  if (!fs.existsSync(featuresDir)) {
-    warnings.push('No src/features/ directory found');
-    return { errors, warnings };
-  }
-
-  const entries = fs.readdirSync(featuresDir, { withFileTypes: true });
-  let featureCount = 0;
-
-  for (const entry of entries) {
-    if (!entry.isDirectory()) continue;
-    const featureDir = path.join(featuresDir, entry.name);
-    const configPath = path.join(featureDir, 'feature.config.ts');
-
-    if (!fs.existsSync(configPath)) {
-      warnings.push(`Feature "${entry.name}": missing feature.config.ts`);
-      continue;
+  for (const feature of manifest.features ?? []) {
+    const files: [string, string | undefined][] = [
+      ['settings', feature.settings],
+      ['system.entry', feature.system?.entry],
+      ['plugin.entry', feature.plugin?.entry],
+    ];
+    for (const [field, file] of files) {
+      if (file !== undefined && !fs.existsSync(path.resolve(packRoot, file))) {
+        errors.push(`Feature "${feature.id}": ${field} file "${file}" not found`);
+      }
     }
-
-    try {
-      const mod = await import(pathToFileURL(configPath).href);
-      const config = (mod.default ?? mod) as FeatureConfig;
-
-      if (!config.name) {
-        errors.push(`Feature "${entry.name}": feature.config.ts missing "name"`);
-      }
-
-      if (config.settings) {
-        const settingsFile = path.resolve(featureDir, config.settings);
-        if (!fs.existsSync(settingsFile)) {
-          errors.push(`Feature "${entry.name}": settings file "${config.settings}" not found`);
-        }
-      }
-
-      featureCount++;
-    } catch (err) {
-      errors.push(`Feature "${entry.name}": failed to load feature.config.ts: ${err}`);
+    if (feature.designation !== undefined && feature.designation !== feature.id) {
+      errors.push(`Feature "${feature.id}": designation "${feature.designation}" must equal the feature id`);
     }
   }
-
-  if (featureCount === 0) {
-    warnings.push('No features with feature.config.ts found');
-  }
-
-  return { errors, warnings };
+  return { errors, warnings: [] };
 }

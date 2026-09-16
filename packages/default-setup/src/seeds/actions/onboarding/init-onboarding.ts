@@ -15,13 +15,13 @@ export async function action(
   z: Z,
   flowId: string,
 ) {
-  const ASSISTANT_BIRTH_ROLE = services.database.EARS.RoleKind.Custom('assistant_birth');
+  const ASSISTANT_BIRTH_ROLE = 'assistant_birth';
 
   // Check if birth thread already exists and has valid data
-  const existingBirthThreadId = services.database.qx().withRole(ASSISTANT_BIRTH_ROLE).first();
+  const existingBirthThreadId = services.repository.threadQueries.idByRole(ASSISTANT_BIRTH_ROLE);
 
   if (existingBirthThreadId) {
-    const threadData = services.database.qx(existingBirthThreadId).pickAll()[0];
+    const threadData = services.repository.threadQueries.byId(existingBirthThreadId);
     if (threadData && Object.keys(threadData).length > 1) {
       await services.logger.info('Birth thread already exists, skipping onboarding init', {
         threadId: existingBirthThreadId,
@@ -32,7 +32,7 @@ export async function action(
     await services.logger.info('Stale birth thread reference found, cleaning up', {
       threadId: existingBirthThreadId,
     });
-    services.database.tx(existingBirthThreadId).destroy();
+    services.repository.threadCommands.destroyStale(existingBirthThreadId);
   }
 
   // Create the birth thread (birthdate is set by startBirthFlow in threads system)

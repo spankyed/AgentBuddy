@@ -30,17 +30,15 @@ export function openEnvAt(basePath: string): LmdbDbs {
   };
 }
 
-export function openShardedEnvs(paths: { primary: string; volatileBackup: string; secrets: string }) {
+export function openShardedEnvs(paths: { primary: string; volatileBackup: string }) {
   const primary = openEnvAt(paths.primary);
   const volatileBackup = openEnvAt(paths.volatileBackup);
-  const secrets = openEnvAt(paths.secrets);
-  return { primary, volatileBackup, secrets };
+  return { primary, volatileBackup };
 }
 
-export function closeShardedEnvs(envs: { primary: LmdbDbs; volatileBackup: LmdbDbs; secrets: LmdbDbs }) {
+export function closeShardedEnvs(envs: { primary: LmdbDbs; volatileBackup: LmdbDbs }) {
   closeEnv(envs.primary);
   closeEnv(envs.volatileBackup);
-  closeEnv(envs.secrets);
 }
 
 export function closeEnv(dbs: LmdbDbs): void {
@@ -65,9 +63,8 @@ export function closeEnv(dbs: LmdbDbs): void {
 export function deleteLmdbDirectories(paths: {
   primary: string;
   volatileBackup: string;
-  secrets: string;
 }): void {
-  for (const dbPath of [paths.primary, paths.volatileBackup, paths.secrets]) {
+  for (const dbPath of [paths.primary, paths.volatileBackup]) {
     if (fs.existsSync(dbPath)) {
       fs.rmSync(dbPath, { recursive: true, force: true });
     }

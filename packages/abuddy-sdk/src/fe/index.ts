@@ -18,7 +18,7 @@ export { createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoFo
 export { createHotkeyProcessor, matchesHotkey, processHotkeys, type HotkeyEvent, type HotkeysMap, type KeyboardShortcut, type PluginHotkeyDefinition } from './hotkeys.ts'
 export { saveTabGroups, loadTabGroups, clearTabGroups, getNextAvailableColor, ALL_COLORS, type TabGroup, type TabGroupColor } from './tab-groups.ts'
 export { targetIs, TRAIL_CLICK, type TrailClickEvent } from './route-trailer.ts'
-export { registerDesignations, getDesignated, hasDesignation } from '../designations/index.ts'
+export { getDesignated, hasDesignation } from '../designations/index.ts'
 
 export { useSettingsSaveStatus } from './settings-save-status.ts'
 

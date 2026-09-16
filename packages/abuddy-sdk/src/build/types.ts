@@ -1,32 +1,12 @@
-/**
- * Pack seed declaration.
- * A pack declares what seed types it provides.
- * Paths are relative to the compile.config.ts file location.
- */
+import type { ResolvedSeed } from './seeds/resolve.ts';
+
+/** A pack's seed sources, as `compilePack` compiles them (built from abuddy.json by buildPackConfigFromManifest) */
 export interface PackConfig {
   name: string;
-  actions?: string;     // directory path, e.g. './actions'
-  prompts?: string;     // directory path
-  flows?: string;       // directory path
-  library?: string;     // directory path
-  notes?: string;       // directory path
-  faqs?: string;        // directory path
-  settings?: string;    // file path, e.g. './settings.ts' — base settings for the pack
-  features?: string;    // directory path, e.g. './src/features' — scanned for per-feature settings
-  compilers?: Array<{ type: string; compiler: import('./seed-compiler.ts').SeedCompiler }>;
-  steps?: import('../steps/types.ts').StepDefinition[];
+  /** `boot.seed`, each entry resolved to its path, seeder, or format settings */
+  seeds: Record<string, ResolvedSeed>;
+  /** Registers what compiling needs first, such as the step types flows validate against */
   setup?: () => void | Promise<void>;
-  [key: string]: unknown;
-}
-
-/**
- * Feature configuration within a pack.
- * Each feature can declare its own settings slice.
- */
-export interface FeatureConfig {
-  name: string;
-  designation?: string;
-  settings?: string;    // file path, e.g. './settings.ts'
 }
 
 export interface CompilePackOptions {
@@ -34,9 +14,14 @@ export interface CompilePackOptions {
   outputDir: string;
   packConfig?: PackConfig;
   featureSettingsPaths?: Array<{ name: string; settingsPath: string }>;
+  /** Loads a compiler module (the pack's own source, or a dependency's seed-compilers.mjs); the CLI loads TypeScript modules with tsx. Defaults to import(). */
+  importModule?: (file: string) => Promise<Record<string, unknown>>;
+  /** Progress lines (the pack and each key's item count); defaults to console.log */
+  log?: (message: string) => void;
 }
 
 export interface CompilePackResult {
+  /** Items compiled per seed key */
   seeds: Record<string, number>;
   warnings: string[];
 }

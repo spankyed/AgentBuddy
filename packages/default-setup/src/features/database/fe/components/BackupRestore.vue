@@ -197,29 +197,6 @@
                 </div>
               </label>
 
-              <!-- Secrets Database Card -->
-              <label class="relative cursor-pointer group">
-                <input
-                  type="checkbox"
-                  v-model="selectedDatabases.secretsLmdb"
-                  class="peer sr-only"
-                />
-                <div class="p-4 bg-neutral-800/50 border border-neutral-700 rounded-lg transition-all duration-200 peer-checked:border-blue-500/50 peer-checked:bg-blue-500/5 hover:bg-neutral-800/70">
-                  <div class="flex items-start gap-3">
-                    <div class="relative mt-0.5">
-                      <div class="w-5 h-5 rounded border-2 border-neutral-600 bg-neutral-900 transition-all peer-checked:border-blue-500 peer-checked:bg-blue-500"></div>
-                      <Check v-if="selectedDatabases.secretsLmdb" class="absolute inset-0 w-5 h-5 text-white p-0.5" />
-                    </div>
-                    <div class="flex-1">
-                      <div class="flex items-center gap-2">
-                        <Lock class="w-4 h-4 text-amber-400" />
-                        <span class="text-sm font-medium text-white">Secrets Database</span>
-                      </div>
-                      <p class="text-xs text-neutral-500 mt-1">API keys and credentials</p>
-                    </div>
-                  </div>
-                </div>
-              </label>
             </div>
           </div>
 
@@ -323,7 +300,6 @@ import {
   Database,
   // Search, // [SEARCH_INDEX_FF]
   Activity,
-  Lock,
   Check,
   CheckCircle,
   AlertCircle,
@@ -352,7 +328,6 @@ const selectedDatabases = ref({
   lmdb: true,
   // searchIndices: true, // [SEARCH_INDEX_FF]
   volatileLmdb: false,
-  secretsLmdb: false,
 });
 const isExporting = ref(false);
 const toast = ref<InstanceType<typeof ToastNotification>>();
@@ -431,7 +406,7 @@ async function handleExport() {
   try {
     const databases = Object.entries(selectedDatabases.value)
       .filter(([_, selected]) => selected)
-      .map(([key]) => key) as Array<'lmdb' | 'volatileLmdb' | 'secretsLmdb'>; // 'searchIndices' removed [SEARCH_INDEX_FF]
+      .map(([key]) => key) as Array<'lmdb' | 'volatileLmdb'>; // 'searchIndices' removed [SEARCH_INDEX_FF]
 
     await trpc.bus.send.mutate({
       systemId: id,

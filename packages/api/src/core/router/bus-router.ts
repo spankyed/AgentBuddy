@@ -46,6 +46,18 @@ export const systemBusRouter = router({
       logger.info(`→ Incoming: "${input.type}"`, { event: summarizeEventForLog(input) });
       rootEvents.emitIncoming(input);
     }),
+  /**
+   * The client finished loading a pack's frontend (at boot, on activation), whatever it added, or its
+   * subscription reconnected: the pack's systems get CLIENT_CONNECTED, which the connection's broadcast and
+   * the activation skip for external packs with frontend code. Their replies reach every client, not only
+   * this one: outgoing events carry no client address.
+   */
+  packClientReady: procedure
+    .input(z.object({ packId: z.string().min(1) }))
+    .mutation(({ input }) => {
+      logger.info(`→ Pack client ready: "${input.packId}"`, { packId: input.packId });
+      rootEvents.emitPackClientConnected(input.packId);
+    }),
   sub: procedure
     .subscription(() =>
       observable<OutgoingSystemEvents>((emit) => {
@@ -61,30 +73,4 @@ export const systemBusRouter = router({
         };
       }),
     ),
-    // .subscription(async function* ({ ctx }) {
-    //   const queue: OutgoingSystemEvents[] = [];
-
-    //   const handler = (event: { event: OutgoingSystemEvents }) => {
-    //     console.log('Notification received!', event);
-    //     // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    //     queue.push(event as any);
-    //   };
-
-    //   ctx.actor.on('OUTGOING', handler);
-
-    //   try {
-    //     while (true) {
-    //       // Wait until there's an item in the queue
-    //       while (queue.length > 0) {
-    //         // biome-ignore lint/style/noNonNullAssertion: <explanation>
-    //         yield queue.shift()!;
-    //       }
-    //       await new Promise(resolve => setTimeout(resolve, 100)); // crude polling
-    //     }
-    //   } finally {
-    //     // ctx.actor.off('OUTGOING', handler);
-    //   }
-    // }),
 });
-
-export type SystemBusRouter = typeof systemBusRouter;

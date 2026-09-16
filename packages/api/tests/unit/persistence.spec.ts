@@ -3,13 +3,12 @@ import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
-import { EARS } from '@/core/types';
+import { EARS } from '@abuddy/sdk';
 import { openEnvAt, type LmdbDbs } from '@/core/persistence/lmdb/envs';
 
 const Entity = {
   Document: 'Document' as EARS.Entity,
   TNode: 'TNode' as EARS.Entity,
-  Secret: 'Secret' as EARS.Entity,
 };
 import { makeLmdbAdapter } from '@/core/persistence/lmdb/adapter';
 import { LmdbQuery, decodeAttr } from '@/core/persistence/lmdb/query';
@@ -135,7 +134,7 @@ describe('LMDB Adapter', () => {
 // B. Sharded Router
 // ---------------------------------------------------------------------------
 describe('Sharded Router', () => {
-  let dirs: { primary: string; volatileBackup: string; secrets: string };
+  let dirs: { primary: string; volatileBackup: string };
   let envs: Record<Partition, LmdbDbs>;
   let sinks: Record<Partition, PersistenceSink>;
   let policy: ReturnType<typeof makePolicy>;
@@ -145,21 +144,17 @@ describe('Sharded Router', () => {
     dirs = {
       primary: tmpDir('shard-primary'),
       volatileBackup: tmpDir('shard-volatile'),
-      secrets: tmpDir('shard-secrets'),
     };
     envs = {
       primary: openEnvAt(dirs.primary),
       volatileBackup: openEnvAt(dirs.volatileBackup),
-      secrets: openEnvAt(dirs.secrets),
     };
     policy = makePolicy({
       excludedEntityTypes: new Set([Entity.TNode]),
-      secretEntityTypes: new Set([Entity.Secret]),
     });
     sinks = {
       primary: makeLmdbAdapter(envs.primary),
       volatileBackup: makeLmdbAdapter(envs.volatileBackup),
-      secrets: makeLmdbAdapter(envs.secrets),
     };
     sharded = makeShardedPersistence(policy, sinks);
   });
@@ -269,7 +264,7 @@ describe('Sharded Router', () => {
 // C. Relation Updates
 // ---------------------------------------------------------------------------
 describe('Relation Updates', () => {
-  let dirs: { primary: string; volatileBackup: string; secrets: string };
+  let dirs: { primary: string; volatileBackup: string };
   let envs: Record<Partition, LmdbDbs>;
   let sinks: Record<Partition, PersistenceSink>;
   let policy: ReturnType<typeof makePolicy>;
@@ -279,21 +274,17 @@ describe('Relation Updates', () => {
     dirs = {
       primary: tmpDir('relupd-primary'),
       volatileBackup: tmpDir('relupd-volatile'),
-      secrets: tmpDir('relupd-secrets'),
     };
     envs = {
       primary: openEnvAt(dirs.primary),
       volatileBackup: openEnvAt(dirs.volatileBackup),
-      secrets: openEnvAt(dirs.secrets),
     };
     policy = makePolicy({
       excludedEntityTypes: new Set([Entity.TNode]),
-      secretEntityTypes: new Set([Entity.Secret]),
     });
     sinks = {
       primary: makeLmdbAdapter(envs.primary),
       volatileBackup: makeLmdbAdapter(envs.volatileBackup),
-      secrets: makeLmdbAdapter(envs.secrets),
     };
     sharded = makeShardedPersistence(policy, sinks);
 
@@ -482,13 +473,12 @@ describe('Query Layer', () => {
 describe('Partition Routing', () => {
   const policy = makePolicy({
     excludedEntityTypes: new Set([Entity.TNode]),
-    secretEntityTypes: new Set([Entity.Secret]),
   });
 
-  it('routes Document -> primary, TNode -> volatileBackup, Secret -> secrets', () => {
+  it('routes Document -> primary, TNode -> volatileBackup, and nothing to a secrets partition', () => {
     expect(policy.routeEntity('Document-1')).toBe('primary');
     expect(policy.routeEntity('TNode-1')).toBe('volatileBackup');
-    expect(policy.routeEntity('Secret-1')).toBe('secrets');
+    expect(policy.routeEntity('Secret-1')).toBe('primary');
   });
 
   it('routes relations based on endpoint types', () => {
@@ -509,10 +499,5 @@ describe('Partition Routing', () => {
       tgtType: Entity.Document,
     })).toBe('volatileBackup');
 
-    // Secret involved -> secrets
-    expect(policy.routeRelation({
-      srcType: Entity.Secret,
-      tgtType: Entity.Document,
-    })).toBe('secrets');
   });
 });

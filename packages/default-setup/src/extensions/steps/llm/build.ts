@@ -2,6 +2,7 @@ import type { StepDefinition } from '@abuddy/sdk/steps';
 import type { StepCompileResult, StepCompileContext, StepValidationError, StepValidationContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
 import { expandRecord, collapseRecord } from '@abuddy/sdk/steps';
+import { isModelId } from '@abuddy/sdk/models';
 
 export function compile(
   node: Record<string, unknown>,
@@ -45,6 +46,9 @@ export function validate(
       path: `${path}.prompt`,
       message: `Prompt "${s.prompt}" not found. Available: ${Array.from(ctx.prompts).join(', ') || '(none)'}`,
     });
+  }
+  if (s.model !== undefined && (typeof s.model !== 'string' || !isModelId(s.model))) {
+    errors.push({ path: `${path}.model`, message: `"model" must be a provider:model id (e.g. "anthropic:claude-opus-5"), got ${JSON.stringify(s.model)}` });
   }
   if (s.map !== undefined && (typeof s.map !== 'object' || s.map === null || Array.isArray(s.map))) {
     errors.push({ path: `${path}.map`, message: '"map" must be an object { target: source }' });

@@ -4,6 +4,18 @@ import type { EARS } from '../types/entities.ts';
 import { emit, type PluginEvents, type TypedEmit } from '../helpers/actor-helpers.ts';
 import type { Logger } from '../ears/runtime.ts';
 import type { ApplicationHotkeys } from '../types/index.ts';
+import { appData, type AppDataService } from './app-data.ts';
+import { traceStore, type TraceStore } from './trace-store.ts';
+import { inference, type InferenceService } from './inference.ts';
+import { secrets, type SecretsService } from './secrets.ts';
+
+export type { AppDataService, BackupDatabase, BackupInfo } from './app-data.ts';
+export type { TraceStore, TraceEntityMeta, TraceRelation } from './trace-store.ts';
+export { createInferenceService, type InferenceModels, type InferenceService, type OutputSchema, type OutputSpec, type ResolveModel } from './inference.ts';
+export type { HostImplementedServices } from './host-services.ts';
+export type { SecretInfo, SecretProvider, SecretsProtection, SecretsService, SecretsStatus } from './secrets.ts';
+export { secretRules, secretProviderLabel, toSecretInfo } from './secrets-rules.ts';
+export type { ModelId, ProviderName } from './models.ts';
 
 function lazyHost(name: string) {
   let m: any;
@@ -87,6 +99,14 @@ export interface HostServices {
     onIncoming: typeof onIncoming;
   };
   repository: typeof repository;
+  /** Reset, back up and restore the app's stored data */
+  appData: AppDataService;
+  /** Read the volatile trace store (flow execution records) */
+  traceStore: TraceStore;
+  /** Model calls (text, agents, embeddings, images, speech, transcription, reranking) with the user's provider keys */
+  inference: InferenceService;
+  /** The user's API keys, without their values: list, select, rename, delete */
+  secrets: SecretsService;
 }
 
 function resolveServices(): HostServices & Record<string, unknown> {
@@ -94,6 +114,10 @@ function resolveServices(): HostServices & Record<string, unknown> {
     logger: logger(),
     emitter: { sendToPlugin, sendToBrainSystem, sendToSystem, onOutgoing, onIncoming },
     repository,
+    appData,
+    traceStore,
+    inference,
+    secrets,
     ...packRegistry().getRegisteredServices(),
   };
 }

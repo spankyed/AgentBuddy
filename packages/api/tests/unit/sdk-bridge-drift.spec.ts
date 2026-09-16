@@ -22,7 +22,7 @@ const PACKAGE_DIRS: Record<string, string> = {
   '@abuddy/sdk': path.join(REPO_ROOT, 'packages', 'abuddy-sdk'),
   '@abuddy/host': path.join(REPO_ROOT, 'packages', 'abuddy-host'),
 };
-const DEV_ENTRY = path.join(REPO_ROOT, 'packages', 'default-setup', 'dist', 'dev-entry.cjs');
+const RUNTIME_ENTRY = path.join(REPO_ROOT, 'packages', 'default-setup', 'dist', 'runtime', 'index.cjs');
 
 /**
  * Subpaths that can't fail when an unbridged copy loads under plain Node:
@@ -36,20 +36,34 @@ const UNBRIDGED_LEAVES = new Map<string, string>([
 /**
  * Subpaths unbridged by policy: pack runtime code never requires them. These
  * CAN fail under plain Node (relative imports), so their safety rests on the policy
- * holding — the dev-entry test checks the built pack never requires them.
+ * holding — the built-runtime test checks the built pack never requires them.
  */
 const UNBRIDGED_BY_POLICY = new Map<string, string>([
   // Seed DSL. Inlined into action function-body strings by esbuild at compile
   // time (see INLINABLE_PACKAGE_IMPORTS in sdk build/compile-utils.ts); the
   // sandbox that runs those strings has no module loader at all.
   ['@abuddy/sdk/actions', 'compile-time only — inlined into seed strings'],
+  // Test tooling: a pack's unit tests (through @abuddy/testing) load it, never a pack's runtime in the app
+  ['@abuddy/sdk/testing', 'unit-test runtime only'],
   // The engine's host hook; built-in packs reach it through @abuddy/host/ears, which is bridged.
   ['@abuddy/sdk/ears/internals', 're-exported by the bridged @abuddy/host/ears'],
+  // Redaction's host side: only the secrets store registers the values logs must mask, and a pack must not
+  ['@abuddy/sdk/utils/internals', 'host-only — a pack could otherwise replace what redaction treats as a secret'],
   // Build-time only: consumed by vite configs and the abuddy CLI, never by a
   // loaded pack's runtime code.
   ['@abuddy/host/build/shared-deps', 'build-time only'],
   ['@abuddy/host/build/discover', 'build-time only'],
   ['@abuddy/host/build/source-resolution', 'host tooling only (CLI, fixture, API boot)'],
+  // The user's API keys with their values: only the API and host services use it, packs get services.secrets (no values)
+  ['@abuddy/host/secrets', 'host store of API key values, never handed to packs'],
+  // Registered by the API as host modules; packs reach them through services (appData, traceStore, inference, secrets)
+  ['@abuddy/host/services', 'host implementations of SDK services, registered at API boot'],
+  // The host's typed view of default-setup's settings: the API and host services read it, packs use their repository
+  ['@abuddy/host/settings', 'host view of settings, read by the API and host services'],
+  // The bus core: the API composes its bus from it, and the pack test harness runs it; packs don't require it
+  ['@abuddy/host/bus', 'host bus core, composed by the API and the test harness'],
+  // The abuddy dev server marker: the CLI writes it and Electron main's pack:// handler reads it; packs never require it
+  ['@abuddy/host/packs/dev-server', 'dev server marker for the CLI and the pack:// handler'],
   // Metadata: tooling reads them, code never requires them.
   ['@abuddy/sdk/package.json', 'package metadata, not code'],
   ['@abuddy/sdk/abuddy.schema.json', 'manifest JSON schema, not code'],
@@ -122,16 +136,16 @@ describe('SDK bridge drift', () => {
   });
 
   // dist/ is gitignored, so this only runs after default-setup has been built. CI builds it
-  // and sets REQUIRE_DEV_ENTRY, since the policy-only entries above rely on this check.
-  it('bridges every SDK and host specifier the built dev entry actually imports', () => {
-    if (!fs.existsSync(DEV_ENTRY)) {
-      if (process.env.REQUIRE_DEV_ENTRY) throw new Error(`${DEV_ENTRY} is required (REQUIRE_DEV_ENTRY) but not built`);
+  // and sets REQUIRE_RUNTIME_ENTRY, since the policy-only entries above rely on this check.
+  it('bridges every SDK and host specifier the built runtime actually imports', () => {
+    if (!fs.existsSync(RUNTIME_ENTRY)) {
+      if (process.env.REQUIRE_RUNTIME_ENTRY) throw new Error(`${RUNTIME_ENTRY} is required (REQUIRE_RUNTIME_ENTRY) but not built`);
       // eslint-disable-next-line no-console
-      console.warn(`[sdk-bridge-drift] skipped: ${DEV_ENTRY} not built`);
+      console.warn(`[sdk-bridge-drift] skipped: ${RUNTIME_ENTRY} not built`);
       return;
     }
 
-    const source = fs.readFileSync(DEV_ENTRY, 'utf8');
+    const source = fs.readFileSync(RUNTIME_ENTRY, 'utf8');
     const required = [...source.matchAll(/['"](@abuddy\/(?:sdk|host)(?:\/[a-zA-Z0-9._/-]+)?)['"]/g)]
       .map((m) => m[1]);
     expect(required.length, 'found no @abuddy/sdk specifiers — regex or bundle shape changed')
@@ -142,7 +156,7 @@ describe('SDK bridge drift', () => {
       .filter((s) => !isFeSpecifier(s) && !bridged.has(s) && !UNBRIDGED_LEAVES.has(s))
       .sort();
 
-    expect(missing, 'dev-entry.cjs requires subpaths that are not bridged').toEqual([]);
+    expect(missing, 'the built runtime requires subpaths that are not bridged').toEqual([]);
   });
 
   it('has no unbridged-by-design entry for a specifier the packages no longer export', () => {

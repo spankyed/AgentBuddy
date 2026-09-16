@@ -70,6 +70,9 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     expect(build.code, build.output).toBe(0);
     expect(fs.existsSync(path.join(pack, 'dist', 'runtime', 'index.cjs'))).toBe(true);
     expect(fs.existsSync(path.join(pack, 'dist', 'runtime', 'fe.js'))).toBe(true);
+    // The scaffold's example entry seeds the pack's own entity type from markdown
+    const examples = JSON.parse(fs.readFileSync(path.join(pack, 'dist', 'runtime', 'seeds', 'examples.seed.json'), 'utf-8'));
+    expect(examples.records).toEqual([expect.objectContaining({ entity: 'DemoPack', title: 'Hello', content: expect.stringContaining('hello.md') })]);
 
     const tsc = run(TSC, TSC_ARGS, pack);
     expect(tsc.code, tsc.output).toBe(0);
@@ -84,6 +87,8 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
   it('adds a step (registered, shipped in build/steps.build.mjs) and a service that build', async () => {
     expect(run('node', [CLI, 'add', 'step', 'ping'], pack).code).toBe(0);
     expect(run('node', [CLI, 'add', 'service', 'cache'], pack).code).toBe(0);
+    expect(JSON.parse(fs.readFileSync(path.join(pack, 'abuddy.json'), 'utf-8')).packServices).toEqual({ cache: 'src/extensions/services/cache.ts#cacheService' });
+    expect(fs.readFileSync(path.join(pack, 'src', '__generated__', 'services.ts'), 'utf-8')).toContain("import { cacheService as __service_cache } from '../extensions/services/cache.js';");
     const stepsDir = path.join(pack, 'src', 'extensions', 'steps');
     expect(fs.readFileSync(path.join(stepsDir, 'register.ts'), 'utf-8')).toMatch(/import \{ pingStep \} from '\.\/ping';[\s\S]*\[[\s\S]*pingStep,/);
     expect(fs.readFileSync(path.join(stepsDir, 'build.ts'), 'utf-8')).toMatch(/import \{ pingStepBuild \} from '\.\/ping\/build';[\s\S]*\[[\s\S]*pingStepBuild,/);
@@ -114,6 +119,9 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     const unit = run(path.join(REPO_ROOT, 'node_modules', '.bin', 'vitest'), ['run'], pack);
     expect(unit.code, unit.output).toBe(0);
     expect(unit.output).toMatch(/tests\/unit\/demo-pack\.spec\.ts/);
+    // The scaffold's seed test and the added feature's system test run through the harness
+    expect(unit.output).toMatch(/tests\/unit\/notes-system\.spec\.ts/);
+    expect(unit.output.replace(/\x1b\[[0-9;]*m/g, '')).toMatch(/Tests\s+3 passed/);
   }, 120_000);
 
   it('refuses to build or pack a manifest the installer would reject', () => {

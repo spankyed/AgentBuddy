@@ -4,7 +4,7 @@ import { app, ipcMain, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { randomUUID } from 'crypto';
-import getPort from 'get-port';
+import getPort, { clearLockedPorts } from 'get-port';
 import { AppModule } from '../../AppModule.js';
 import { ModuleContext } from '../../ModuleContext.js';
 import { 
@@ -26,6 +26,8 @@ export class ApiServer implements AppModule {
   private serverReadyResolve?: () => void;
   private serverReadyReject?: (error: Error) => void;
   private actualPort?: number;
+  /** The port the last successful launch used, reused on restart so the renderer's URL stays valid */
+  private preferredPort: number = API_CONFIG.DEFAULT_PORT;
   private lastError?: { message: string; stack?: string };
   private readonly startupId = randomUUID();
 
@@ -182,8 +184,12 @@ export class ApiServer implements AppModule {
     }
     logInfo('[MAIN] Server file found, proceeding with launch...');
 
-    // Get available port
-    const port = await getPort({ port: API_CONFIG.DEFAULT_PORT });
+    // Prefer the port the renderer already knows. get-port locks a port it hands out for 15-30s,
+    // so asking for the same one again inside RESTART_DELAY falls back to a random port and leaves
+    // the renderer's WebSocket pointed at the old one. clearLockedPorts releases our own lock; if
+    // the port is genuinely taken, get-port still moves on.
+    clearLockedPorts();
+    const port = await getPort({ port: this.preferredPort });
     logInfo(`[MAIN] Selected port ${port} for API server`);
 
     // Spawn process
@@ -212,6 +218,7 @@ export class ApiServer implements AppModule {
 
   private handleServerReady(port: number): void {
     this.actualPort = port;
+    this.preferredPort = port;
     this.lastError = undefined;
     logInfo(`[MAIN] API server is running on port ${port}`);
     broadcastEvent(API_EVENTS.STARTED, { port, startupId: this.startupId });

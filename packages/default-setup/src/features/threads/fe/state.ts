@@ -59,15 +59,7 @@ function loadTabsFromStorage(): StoredTabData | null {
   try {
     const raw = localStorage.getItem(THREADS_TABS_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    // Backward compat: old format stored tabIds as string[]
-    if (parsed.tabIds && !parsed.tabs) {
-      return {
-        tabs: parsed.tabIds.map((id: string) => ({ id, label: '' })),
-        activeTabId: parsed.activeTabId || '',
-      };
-    }
-    return parsed;
+    return JSON.parse(raw);
   } catch { return null; }
 }
 
@@ -208,12 +200,10 @@ type UIEvent =
   | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; responseTimestamp?: number; blockResponse?: BlockResponse; asideText?: string; context?: Record<string, unknown>; compacted?: boolean }
   | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
   | { type: 'HOTKEY_PRESSED'; } & HotkeyEvent
-  | { type: 'TEXT_TO_SPEECH' }
   | { type: 'OPEN_QUICK_PROMPTS' }
   | { type: 'CLOSE_QUICK_PROMPTS' }
   | { type: 'TOGGLE_QUICK_PROMPTS' }
   | { type: 'NAVIGATE_TO_SECRETS' }
-  | { type: 'API_KEYS_STATUS'; hasRequiredApiKeys: boolean }
   | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
   | { type: 'FORK_THREAD'; messageId: string; threadId?: string; threadTopic?: string }
   | { type: 'REVERT_THREAD'; messageId: string; threadId: string; restoreFiles?: boolean; userCliUuid?: string }
@@ -300,7 +290,6 @@ interface ThreadsContext {
   modes: AgentModeConfig[];
   hotkeys: HotkeysMap;
   chatSettings: AgentSettings;
-  hasRequiredApiKeys: boolean;
   commands: CommandItem[];
   quickPromptCursor: { x: number; y: number } | null;
   pendingThreadCwd?: string;
@@ -831,9 +820,6 @@ const threadsState = setup({
         { type: 'GENERAL_NAV.SELECT', item: 'secrets' }
       ]);
     },
-    updateApiKeyStatus: assign(({ event }) => ({
-      hasRequiredApiKeys: typeOf('API_KEYS_STATUS', event).hasRequiredApiKeys
-    })),
     sendMessage: enqueueActions(({ enqueue, context, event }) => {
       const { text, references } = typeOf('SEND_MESSAGE', event);
       trpc.bus.send.mutate({
@@ -1086,7 +1072,6 @@ const threadsState = setup({
         activeTabId,
         tabGroups: restoredTabGroups,
         ...extracted,
-        hasRequiredApiKeys: typedEvent.data.hasRequiredApiKeys ?? true,
         commands: typedEvent.data.commands || [],
         ...modeUpdate,
         ...(currentThread?.id ? { chatStates: { ...context.chatStates, [currentThread.id as string]: startupChatState } } : {}),
@@ -1601,7 +1586,6 @@ const threadsState = setup({
     modes: [],
     hotkeys: {},
     chatSettings: { modes: [], hotkeys: {} },
-    hasRequiredApiKeys: true,
     commands: [],
     quickPromptCursor: null,
     navHistory: createNavHistory(getInitialView()),
@@ -1858,7 +1842,6 @@ const threadsState = setup({
     AGENT_CONNECTED: { actions: 'setStartupData' },
     AGENT_SETTINGS_UPDATED: { actions: 'handleChatSettingsUpdate' },
     NAVIGATE_TO_SECRETS: { actions: 'navigateToSecrets' },
-    API_KEYS_STATUS: { actions: 'updateApiKeyStatus' },
     COMMANDS_UPDATED: {
       actions: assign(({ event }) => ({
         commands: typeOf('COMMANDS_UPDATED', event).commands
@@ -1883,6 +1866,8 @@ const threadsState = setup({
       actions: [
         'flashChatState',
         spawnChild('clearExpiredOverride', {
+          // Per thread: without an id two flashes at once share a key and the first is left untracked
+          id: ({ event }: any) => `clear-expired-override-${event.threadId}`,
           input: ({ event }: any) => ({
             threadId: event.threadId,
             durationMs: event.durationMs ?? 3000,

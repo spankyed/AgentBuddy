@@ -2,8 +2,10 @@ import * as path from 'path'
 import { repository } from '@/__generated__/repository';
 import type { DocumentDTO, CollectionDTO, LibraryItem } from '@/features/library/be/types';
 import { EARS } from '@/__generated__/ears';
+import { getPackCommands } from '@abuddy/sdk/framework';
 import * as symlink from '@/features/library/be/repository/symlink';
-import type { ContentSection, DocumentShortCode } from '@abuddy/sdk';
+import type { ContentSection, DocumentShortCode } from '@/features/library/be/types';
+import type { CommandItem } from '@/features/settings/be/types';
 
 
 // ---------------------------------------------------------------------------
@@ -57,6 +59,12 @@ function makeSymlinkCollectionDTO(id: string, name: string): CollectionDTO {
   } as CollectionDTO
 }
 
+/** The library folder whose documents list the chat's slash commands, one `**name**: placeholder` field per command */
+const COMMANDS_FOLDER = ['internal', 'commands'] as const
+
+const inCommandsFolder = (doc: DocumentDTO): boolean =>
+  (doc.collectionPath ?? []).join('/') === COMMANDS_FOLDER.join('/')
+
 // ---------------------------------------------------------------------------
 // LibraryService
 // ---------------------------------------------------------------------------
@@ -98,6 +106,30 @@ export class LibraryService {
       if (docPath.length !== collectionPath.length) return false;
       return collectionPath.every((seg, i) => docPath[i] === seg);
     });
+  }
+
+  /**
+   * The chat's slash commands: the ones registered packs declare (abuddy.json `commands`, in
+   * registration order), then the field sections of every document in the commands folder, in document
+   * order (then name). A command defined twice keeps the first, so a document can't shadow a declared one.
+   */
+  commands(): CommandItem[] {
+    const documents = repository.libraryQueries.getDocuments()
+      .filter(inCommandsFolder)
+      .sort((a: DocumentDTO, b: DocumentDTO) => a.displayOrder - b.displayOrder || a.name.localeCompare(b.name))
+    const commands = new Map<string, CommandItem>()
+    for (const command of getPackCommands()) {
+      if (!commands.has(command.name)) commands.set(command.name, { name: command.name, placeholder: command.placeholder })
+    }
+    for (const document of documents) {
+      for (const section of document.content) {
+        if (section.type !== 'field') continue
+        for (const field of section.fields) {
+          if (!commands.has(field.key)) commands.set(field.key, { name: field.key, placeholder: field.value })
+        }
+      }
+    }
+    return [...commands.values()]
   }
 
   async getText(id: EARS.EntityId): Promise<string | undefined> {

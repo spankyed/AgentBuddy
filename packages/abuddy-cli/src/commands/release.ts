@@ -57,7 +57,7 @@ export async function preflight(root: string, options: { local: boolean; run: Ru
   const warnings: string[] = [];
   const git = (...args: string[]) => options.run('git', args, root);
 
-  const raw = JSON.parse(fs.readFileSync(path.join(root, 'abuddy.json'), 'utf-8'));
+  const raw = readManifest(root);
   const { errors: manifestErrors } = parseManifest(raw);
   errors.push(...manifestErrors.map(e => `abuddy.json: ${e}`));
   if (!raw.hostVersion) errors.push('abuddy.json: hostVersion is required for releases (e.g. ">=0.3.0")');
@@ -137,9 +137,7 @@ function hasScript(root: string, name: string): boolean {
 
 async function verify(root: string, options: { skipTests: boolean; skipE2e: boolean; run: Runner }): Promise<void> {
   console.log('\nBuilding (release)...');
-  process.exitCode = 0;
   await build(['--release']);
-  if (process.exitCode) throw new Error('Release build failed');
 
   if (fs.existsSync(path.join(root, 'tsconfig.json'))) {
     console.log('Typechecking...');
@@ -152,6 +150,7 @@ async function verify(root: string, options: { skipTests: boolean; skipE2e: bool
   if (!options.skipE2e && fs.existsSync(path.join(root, 'playwright.config.ts'))) {
     console.log('Running E2E tests...');
     const { test } = await import('./test');
+    process.exitCode = 0;
     await test([]);
     if (process.exitCode) throw new Error('E2E tests failed');
   }

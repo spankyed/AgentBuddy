@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { createLogger } from '@/core/shared/debug/logger';
 import type { LoadedPack } from './pack-loader';
-import { resolvePackSeedsDir, modifyRegistry } from '@abuddy/host/packs';
+import { BUNDLE_PATHS, modifyRegistry } from '@abuddy/host/packs';
 import type { PackSeedManifest } from '@abuddy/sdk/framework';
 import { seedPath } from '@abuddy/sdk/build';
 import { repository } from '@abuddy/sdk/ears';
@@ -60,9 +60,9 @@ function recordSeedOutcome(outcomes: Map<string, string | undefined>): void {
 }
 
 /**
- * Seed sections the host owns. The settings seeder resets the whole settings entity to the
- * host's defaults (it never reads a pack's settings file), so running it for a pack would
- * wipe the user's settings.
+ * The settings seeder resets the user's settings to the app's defaults. External packs have no
+ * settings seed (their manifest can't declare one; feature settings register as defaults with the
+ * pack), and a settings.seed.json that got into a pack's directory anyway is never seeded.
  */
 const HOST_OWNED_SEED_SECTIONS: Record<string, SeedIncludeSet> = { settings: new Set() };
 
@@ -86,7 +86,7 @@ export function seedPackData(
   let anySeeded = false;
 
   for (const pack of packs) {
-    const distDir = resolvePackSeedsDir(pack.dir);
+    const distDir = path.join(pack.dir, BUNDLE_PATHS.seedsDir);
     const currentHash = fs.existsSync(distDir) ? computePackSeedHash(distDir) : '';
     if (!currentHash) {
       // Nothing to seed: an error from an earlier version's seed no longer applies
@@ -162,31 +162,52 @@ function evaluateSeedPolicy(policy?: PackSeedManifest['seedPolicy']): Record<str
   return include;
 }
 
-export function orchestrateDeclarativeSeed(manifest: PackSeedManifest): void {
+/**
+ * Seeds a built-in pack's declared boot seed, skipping it when its compiled data hasn't changed since
+ * the last run. What was last seeded is recorded per pack: every built-in pack with a `boot.seed` runs
+ * through here, so one shared hash would have each pack overwriting the others' and re-seeding forever.
+ */
+export function orchestrateDeclarativeSeed(manifest: PackSeedManifest, packId: string): void {
   const { artifacts, compiledDir, seedPolicy } = manifest;
   const repo = repository as any;
   const internal = repo.settingsQueries.getInternalSettings();
-  const storedHash = internal.seedHash;
+  const storedHash = internal.seedHashes?.[packId];
 
   // Fast path: if file mtimes/sizes haven't changed, the hash is the same
   const seedFiles = artifacts.map(name => ({ path: seedPath(compiledDir, name) }));
   const fp = statFingerprint(seedFiles);
-  const storedFp = internal.seedStatFingerprint;
+  const storedFp = internal.seedStatFingerprints?.[packId];
   if (storedHash && storedFp === fp) {
-    logger.info('Boot seed skipped: files unchanged (mtime)');
+    logger.info(`Boot seed skipped for ${packId}: files unchanged (mtime)`);
     return;
   }
 
+  /** Writes one pack's entry without disturbing the others' */
+  const record = (key: 'seedHashes' | 'seedStatFingerprints', value: string) => {
+    const current = repo.settingsQueries.getInternalSettings()[key] ?? {};
+    repo.settingsCommands.updateSettings('internal', null, [key], { ...current, [packId]: value });
+  };
+
   const currentHash = computeManifestSeedHash(compiledDir, artifacts);
   if (storedHash === currentHash) {
-    repo.settingsCommands.updateSettings('internal', null, ['seedStatFingerprint'], fp);
-    logger.info('Boot seed skipped: data unchanged');
+    record('seedStatFingerprints', fp);
+    logger.info(`Boot seed skipped for ${packId}: data unchanged`);
     return;
   }
 
   const include = evaluateSeedPolicy(seedPolicy);
-  seedData({ compiledDir, include });
-  repo.settingsCommands.updateSettings('internal', null, ['seedHash'], currentHash);
-  repo.settingsCommands.updateSettings('internal', null, ['seedStatFingerprint'], fp);
-  logger.info('Boot seed completed');
+  const counts = seedData({ compiledDir, include });
+  // Seeders report a record they couldn't seed (an invalid flow, say) in its counts rather than throwing
+  const errors = seedErrors(counts);
+
+  // Stored even when records failed, as seedPackData does: the same failing data isn't re-imported on
+  // every boot, and it's retried as soon as the compiled seeds change
+  record('seedHashes', currentHash);
+  record('seedStatFingerprints', fp);
+
+  if (errors.length > 0) {
+    logger.error(`Boot seed for ${packId} finished with errors; those records were not seeded and won't be retried until the compiled seeds change:\n  ${errors.join('\n  ')}`);
+    return;
+  }
+  logger.info(`Boot seed completed for ${packId}: ${JSON.stringify(counts)}`);
 }

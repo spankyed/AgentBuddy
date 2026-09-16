@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { repository } from '@/__generated__/repository';
-import { clearMemory } from '@abuddy/host/ears';
+import { resetTestData } from '@abuddy/sdk/testing';
 import '@/features/actions/be/repository';
 import { exportActions } from '@/features/actions/be/repository/export-actions';
 import { actionFixtures } from './helpers/action-fixtures';
@@ -14,7 +14,7 @@ import { actionFixtures } from './helpers/action-fixtures';
 let tmpDir: string;
 
 beforeEach(() => {
-  clearMemory();
+  resetTestData();
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'actions-export-'));
 });
 
@@ -102,7 +102,7 @@ describe('export → re-import round-trip', () => {
     const { filePath } = exportActions(tmpDir);
 
     // Clear and re-import
-    clearMemory();
+    resetTestData();
     const portable = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
     for (const item of portable) {
       repository.actionCommands.create(item);

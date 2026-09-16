@@ -1,9 +1,9 @@
-import type { EmbeddingModelId } from '@/__generated__/types'
+import type { SearchEmbeddingModelId } from '../../embedding-models'
 import type { EARS } from '@abuddy/sdk'
 
 type ContentType = 'field' | 'list' | 'markdown' | 'text'
 
-export type EmbeddingModel = EmbeddingModelId
+export type EmbeddingModel = SearchEmbeddingModelId
 export type IndexMetric = 'cosine' | 'dot_product'
 
 export interface SegmentRule {

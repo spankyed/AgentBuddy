@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { findPackRoot } from '../utils';
+import { findPackRoot, readManifest } from '../utils';
 
 type Status = 'pass' | 'warn' | 'fail';
 
@@ -25,16 +25,15 @@ function check(label: string, fn: () => Status | string): void {
 
 export async function doctor(_args: string[]) {
   const root = findPackRoot(process.cwd());
-  const manifestPath = path.join(root, 'abuddy.json');
 
   console.log('\n  Pack health check\n');
 
   check('Manifest exists and parses', () => {
-    JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+    readManifest(root);
     return 'pass';
   });
 
-  const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+  const manifest = readManifest(root);
 
   check('Manifest has required fields', () => {
     if (!manifest.id) return 'missing "id"';

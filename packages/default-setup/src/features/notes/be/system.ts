@@ -13,7 +13,7 @@ import { syncReferences } from './repository/link-utils';
 import { exportNotes } from './export-notes';
 import { importNotes } from './import-notes';
 import { createLogger } from '@abuddy/sdk/logger';
-import type { NoteEntity } from '@abuddy/sdk';
+import type { NoteEntity } from '@/features/notes/be/types';
 
 const logger = createLogger('notes');
 
@@ -640,6 +640,10 @@ export const notesSystem = setup({
       entry: ['bootstrapReferences', 'cleanupExpiredNotes'],
       on: {
         CLIENT_CONNECTED: {
+          actions: 'sendNotesConnectedData',
+        },
+        // A pack's seeds can add or change notes
+        PACK_CHANGED: {
           actions: 'sendNotesConnectedData',
         },
       },

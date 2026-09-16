@@ -1,6 +1,6 @@
 import '@/setup/sdk-host-init';
 import { createActor } from 'xstate';
-import { logErrors } from '@/core/shared/actor-helpers';
+import { logErrors } from '@/core/shared/system-errors';
 import { getBootHooks, getPackBootHooks, runRegisteredBootSeeds, registerHostSystem, publishHostPackArtifacts, prepareHostDataDirs } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import * as path from 'path';
@@ -8,20 +8,21 @@ import { registerShutdownHook } from '@abuddy/sdk/utils';
 import { packsSystem, packsEvents, setBuiltInPacks } from '@/packs/packs-system';
 import {
   loadBuiltInPacks, getBuiltInPackInfos,
-  loadExternalPacks, registerExternalPacks, seedPackData,
+  loadExternalPacks, registerExternalPacks,
 } from '@/packs/pack-loader';
-import { orchestrateDeclarativeSeed } from '@/packs/pack-seed';
+import { orchestrateDeclarativeSeed, seedPackData } from '@/packs/pack-seed';
 import { backendSystem } from '@/systems';
 import { bus } from '@/core/system-ids';
 import { initializeLogCapture } from '@/core/shared/debug/log-capture';
 import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
 import { envs, policy, persistence } from '@/core/ears/attribute-storage';
 import { seedData } from '@abuddy/sdk/utils';
-import { settingsRepository } from '@/core/settings-repository';
+import { settingsRepository } from '@abuddy/host/settings';
 import { runMigrations, runPackMigrations } from '@/setup/migrations';
 import { APP_VERSION } from '@/version';
 import { setLoadedPacks, setBuiltInPacksForRegistry } from '@/packs/pack-api';
 import { assertSourceResolution } from '@abuddy/host/build/source-resolution';
+import { forwardSecretsChanges } from '@/core/router/secrets-router';
 import { createRequire } from 'module';
 
 // Exported for graceful shutdown (SIGTERM handler stops the actor system)
@@ -44,6 +45,9 @@ export async function setupBackend(): Promise<void> {
   // and abuddy install learns which AgentBuddy uses this data dir
   const appContext = resolveAppContext();
   prepareHostDataDirs({ userDataDir: appContext.userDataDir, packsDirs: [appContext.packsDir, appContext.hostPacksDir], version: APP_VERSION });
+
+  // API keys: the settings system hears of every change to them
+  forwardSecretsChanges();
 
   // ── Load packs (built-in async + external sync overlap) ────────────
   const builtInDir = process.env.BUILT_IN_PACKS_DIR;

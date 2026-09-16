@@ -39,6 +39,8 @@ export interface CompiledRows {
 interface CompileOptions {
   actions?: Map<string, string>;
   prompts?: Map<string, string>;
+  /** Flows already in the database, by label, for steps naming a flow the DSL doesn't define (a subflow) */
+  flows?: Map<string, string>;
 }
 
 /*─────────────────────────────────────────────────────────────────
@@ -218,7 +220,7 @@ export function compile(dsl: FlowDSL, options: CompileOptions = {}): CompiledRow
   const ctx: CompilerContext = {
     actions: options.actions || new Map(),
     prompts: options.prompts || new Map(),
-    flows: new Map(),
+    flows: new Map(options.flows),
   };
 
   for (const flowName of Object.keys(dsl)) {

@@ -30,14 +30,6 @@ class ArtifactRegistry {
   all(): ArtifactDefinition[] {
     return [...this.artifacts.values()];
   }
-
-  initComponents(): void {
-    for (const def of this.artifacts.values()) {
-      if (def.fe?.loadComponent && !def.fe.component) {
-        def.fe.component = def.fe.loadComponent();
-      }
-    }
-  }
 }
 
 export const artifactRegistry = new ArtifactRegistry();

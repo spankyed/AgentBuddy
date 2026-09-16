@@ -1,145 +1,42 @@
-# Brain Runner System
+# Brain backend
 
-The brain runner system orchestrates the execution of flows and nodes in the application. It has been refactored into a modular architecture for better maintainability and extensibility.
+How the brain runs flows. Files are relative to `features/brain/be/`.
 
-## Architecture Overview
+## Layout
 
 ```
-brain/
-├── runner.ts           # Main entry point
-├── types.ts           # Shared type definitions
-├── machines/          # XState state machines
-│   ├── flow-machine.ts    # Flow execution machine
-│   ├── step-machine.ts    # Step execution machine
-│   └── spawners.ts        # Machine spawning utilities
-├── nodes/             # Node type handlers
-│   ├── node-executor.ts   # Central node execution dispatcher
-│   ├── fire-node.ts       # Fire event node handler
-│   ├── keep-alive-node.ts # Keep-alive node handler
-│   └── llm-node.ts        # LLM node handler
-└── utils/             # Utility functions
-    ├── tnode-manager.ts   # TNode creation and management
-    ├── flow-data.ts       # Flow and node data queries
-    └── spawn-child.ts     # Child machine spawning
+be/
+├── system.ts               # The brain system: starts/stops the root flow, routes TRIGGER_BRAIN_EVENT, pause and inspect toggles
+├── flow-system.ts          # createFlowNodeSystem(): one XState machine per running flow (root or subflow), and the flow actor registry
+├── step-system.ts          # createStepNodeSystem(): one machine per step run, which calls executeNode and stores the result
+├── flow-completion.ts      # When a flow completes (isPersistentTriggerFlow, shouldCompleteFlow)
+├── trigger-dedupe.ts       # Keeps one trigger node per track key when a flow machine is created, warning about the rest
+├── node-handlers/
+│   ├── index.ts            # executeNode(): dispatches a step to its registered runtime handler
+│   └── transform.ts        # Unused: exports nothing, and nothing imports it
+├── repository/
+│   ├── index.ts            # brainQueries/brainCommands: root flow and step TNodes, results
+│   └── node-attribute-mappers.ts  # Resolves a step's params from the event and earlier steps
+├── services/
+│   ├── brain.ts            # services.brain: ad-hoc event listeners (listen/unlisten); notify, removeAllListeners for the pack
+│   └── scheduler.ts        # services.scheduler: cron jobs for schedule triggers
+├── types.ts
+└── utils/
+    ├── brain-inspect.ts    # brainInspect/brainLogger, toggled by the brain system
+    ├── brain-pause.ts      # The paused flag (setBrainPausedState, isBrainPaused)
+    └── result-truncator.ts # truncateResult: caps stored step results (10 KB strings, 50 KB objects, 100 array items, depth 10)
 ```
 
-## Key Components
+`utils/prompt-context-example.md` is a separate note on prompts that call other prompts.
 
-### Main Runner (`runner.ts`)
-The entry point that:
-- Initializes the root flow
-- Creates the root TNode
-- Starts the root flow machine
-- Triggers the entry event
+## How a flow runs
 
-### State Machines (`machines/`)
+1. The brain system runs the flow with the root role (`repository.flowsQueries.rootFlow()`). With flows but no root flow it stays stopped and reports why.
+2. `createFlowNodeSystem()` creates the flow's TNode and a machine that listens for the event types of the flow's trigger nodes. Running flow actors are kept by flow TNode id (`getFlowActor`, `clearFlowActorRegistry`, which the pack's `onShutdown` calls).
+3. An event spawns a track: `createStepNodeSystem()` for each step, and a nested flow machine for a subflow. The brain sends `TNODE_SPAWNED` and `TNODE_UPDATED` to the brain plugin as TNodes start and change status.
+4. A step machine calls `executeNode()`, which looks up `stepRegistry.get(node.nodeType).runtime.handler`. Trigger nodes and types without a handler complete with no work. An async handler's rejection is reported with `reportStepRuntimeError` and fails the step.
+5. Step results and TNode attributes pass through `truncateResult` before they're stored (`updateTNodeResult`, `updateTNodeAttributes`).
 
-#### Flow Machine
-- Listens for events dynamically based on event nodes
-- Handles child completion
-- Spawns execution chains for first steps after events
+## Adding a node type
 
-#### Step Machine
-- Creates TNodes for step execution
-- Executes node-specific logic
-- Reports completion to parent
-- Handles error states
-
-### Node Handlers (`nodes/`)
-Each node type has its own handler:
-- **Fire Node**: Emits events to specified scopes
-- **Keep-Alive Node**: Maintains flow active state
-- **LLM Node**: Handles LLM API calls
-
-Blueprint nodes can be marked as `final: true` in the flow definition to trigger parent flow completion when they complete.
-
-### Utilities (`utils/`)
-
-#### TNode Manager
-- Creates and persists TNodes
-- Updates TNode status
-- Emits TNode events
-
-#### Flow Data
-- Queries flow and node relationships
-- Gets event nodes, first steps, and transitions
-
-#### Child Spawning
-- Spawns appropriate machines (flow or step)
-- Handles spawn errors
-
-## Adding New Node Types
-
-1. Create a new handler in `nodes/[node-name]-node.ts`:
-```typescript
-export function myNodeHandler(
-  node: NodeEntity,
-  executionContext: ExecutionContext,
-  actor: any
-) {
-  // Implementation
-  actor.send({ 
-    type: 'COMPLETE', 
-    result: {
-      // Your result data
-    }
-  });
-}
-```
-
-2. Add the handler to `node-executor.ts`:
-```typescript
-case 'my_node':
-  myNodeHandler(node, executionContext, actor);
-  break;
-```
-
-3. Define any specific node interface in `types.ts` if needed
-
-4. To make a node trigger flow completion, set `final: true` in the blueprint node definition:
-```typescript
-const exitNode: NodeEntity = {
-  nodeType: 'fire',
-  label: 'Exit Flow',
-  final: true,  // This node will trigger parent flow completion
-  // ... other properties
-};
-```
-
-## Execution Flow
-
-1. **Root Flow Start**: The runner creates a root flow machine
-2. **Event Trigger**: Entry event is sent to the root flow
-3. **Event Handling**: Flow machine finds matching event node
-4. **First Step Chain**: Creates event TNode and spawns first step execution
-5. **Step Execution**: Each step creates its TNode and executes
-6. **Completion**: Steps notify parents, which spawn next steps
-7. **Flow Persistence**: Flows with keep-alive nodes remain active
-8. **Flow Completion**: Flows complete when:
-   - Any child completes with no next nodes and no other active children
-   - Any child completes that has `final: true` in its blueprint definition
-
-### Flow Completion Logic
-
-Flows complete in two ways:
-
-1. **Natural completion**: When a step completes with no next nodes and no other children are active
-2. **Explicit completion**: When a step marked with `final: true` completes
-
-This simple mechanism allows flows to end naturally or be explicitly terminated at any point.
-
-## TNode Hierarchy
-
-TNodes form a trace tree:
-- Root flow TNode (id: "TNode-1")
-  - Event TNode (TRACKED relationship)
-    - Step/Flow TNodes (SPAWNED relationships)
-    - More Step TNodes...
-
-## Future Enhancements
-
-- Implement actual event scoping (local/global/parent)
-- Add more node types (webhook, database, etc.)
-- Implement error recovery strategies
-- Add execution context persistence
-- Handle flow completion for nested flows
+Node types are steps, not brain code. Add one under `src/extensions/steps/<name>/` (`build.ts`, `index.ts` with a `runtime.handler`, `fe.ts`, `types.ts`) and register it in `src/extensions/steps/register.ts` and `build.ts`. See the "Flow steps" section of `packages/default-setup/CLAUDE.md`.

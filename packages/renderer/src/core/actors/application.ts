@@ -3,11 +3,19 @@ import type { Plugin } from '@/core/types';
 import type { HotkeyEvent, ContextMenuItem } from '@abuddy/sdk/fe';
 import { processHotkeys, safeEvents } from '@abuddy/sdk/fe';
 import type { ApplicationHotkeys } from '@abuddy/sdk/types';
-import { trpc } from '@/core/trpc';
+import { trpc, reconnectApiClient } from '@/core/trpc';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
 import { globalToast } from '@/core/toast';
 import { getDesignated } from '@abuddy/sdk/fe';
 import { stepRegistry } from '@abuddy/sdk/steps';
+import { loadPackFrontend, unloadPackFrontend } from '@/packs/pack-loader';
+
+declare global {
+  interface Window {
+    /** Shows the error page index.html defines */
+    __showErrorPage?: (title: string, detail: string) => void;
+  }
+}
 
 interface BreadcrumbItem {
   label: string;
@@ -45,6 +53,26 @@ export interface ApplicationContext {
   hotkeysDisabled: boolean;
   hotkeys: ApplicationHotkeys;
   restoreLastActivePlugin: boolean;
+  /**
+   * Each external pack whose frontend load finished, by pack id, with the plugins it added: not those
+   * skipped because a plugin had the id already, and none when its frontend exported none or failed to load
+   */
+  packPluginIds: Record<string, string[]>;
+  /** Whether this window's bus subscription is established; it reconnects after the connection drops */
+  busSubscribed: boolean;
+  /** Whether the pack frontend loader is running: one run at a time, so a pack is never loaded twice */
+  packLoadRunning: boolean;
+  /** A load was asked for while one was running — the registry it read may predate the request — so it runs again */
+  packLoadQueued: boolean;
+  /**
+   * Every pack the loader has finished with, whatever its frontend added — plugins, styles alone, or
+   * nothing — so it's never loaded twice. A pack unloaded drops out and loads again when it comes back.
+   */
+  packFrontendsLoaded: string[];
+  /** Packs unloaded while the loader was running: a result that arrives for one of them is dropped */
+  packsUnloadedWhileLoading: string[];
+  /** Whether the pack registry was ever read: until it is, a failed read is worth telling the user about */
+  packRegistryRead: boolean;
 }
 
 export const application = 'application' as const;
@@ -82,11 +110,54 @@ export type ApplicationEvent =
   | { type: 'RESET_CHAT_HEIGHT' }
   | { type: 'SYSTEM_ERROR'; errorId?: string; title?: string; message: string; source?: string; operation?: string; entityId?: string; severity?: 'error' | 'fatal'; stack?: string; timestamp?: number }
   | { type: 'BACKEND_ERROR'; error: string | { message: string; stack?: string } }
-  | { type: 'PACK_PLUGINS_LOADED'; plugins: Plugin[] }
-  | { type: 'PACK_PLUGINS_UNLOADED'; pluginIds: string[] }
+  | { type: 'BUS_SUBSCRIBED' }
+  | { type: 'BUS_CONNECTION_LOST' }
+  /** Load the frontends of the external packs this window hasn't loaded: on connecting, and when a pack activates */
+  | { type: 'LOAD_PACK_FRONTENDS' }
+  /**
+   * The loader finished: `registryError` is why the registry couldn't be read, when it couldn't, and
+   * `failedPacks` the packs that threw while loading, which the registry read reached
+   */
+  | { type: 'PACK_FRONTENDS_SETTLED'; registryError?: string; failedPacks?: { packId: string; error: string }[] }
+  /**
+   * A pack's frontend load finished, with the plugins it exports: none when it failed to load, and null
+   * for a pack without frontend code, which is recorded as loaded and asked for nothing
+   */
+  | { type: 'PACK_FRONTEND_LOADED'; packId: string; plugins: Plugin[] | null }
+  | { type: 'PACK_PLUGINS_UNLOADED'; packId: string }
   | { type: 'NOOP' }
 
 const typeOf = safeEvents<ApplicationEvent>();
+
+/**
+ * Spawns a plugin's state machine under its own id as well as its system id. The id is the key this actor
+ * tracks the child by: without one every plugin shares a key, this actor holds only the last one spawned,
+ * and stopping it stops that one alone while the rest keep running with their system ids taken.
+ *
+ * XState types `id` from the declared children, and plugins are registered at runtime (built-in and from
+ * packs), so the id goes through this one cast rather than at each call site.
+ */
+function spawnPluginActor(enqueue: unknown, plugin: Plugin): void {
+  const spawner = enqueue as { spawnChild(state: Plugin['state'], options: { id: string; systemId: string }): void };
+  spawner.spawnChild(plugin.state, { id: plugin.id, systemId: plugin.id });
+}
+
+/**
+ * Asks a pack's systems for their startup data. A connection's CLIENT_CONNECTED skips the systems of
+ * external packs with frontend code, which loads after it; each is asked for once its load finished,
+ * whether it added plugins or not, so its systems without plugins get it too.
+ */
+function announcePackClientReady(packId: string) {
+  trpc.bus.packClientReady.mutate({ packId }).catch((err: unknown) => {
+    console.warn(`[pack-loader] Couldn't request startup data for pack ${packId}:`, err);
+  });
+}
+
+const packFrontendLoaderId = 'packFrontendLoader';
+
+function messageOf(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
 
 export const createApplicationState = () => setup({
   types: {
@@ -207,6 +278,42 @@ export const createApplicationState = () => setup({
       };
     }),
 
+    /**
+     * Reads the pack registry and loads the frontend of every external pack in it this window hasn't
+     * loaded yet, reporting each one to the parent as it finishes. A failed registry query leaves the
+     * packs unloaded: the parent runs the loader again whenever the bus subscription is established, so
+     * the next connection picks them up. One pack that throws doesn't stop the others; it's reported as
+     * its own failure, since the registry was read and only that pack is missing.
+     */
+    packFrontendLoader: fromCallback<{ type: string }, { loadedPackIds: string[] }>(({ sendBack, input }) => {
+      let stopped = false;
+      const failedPacks: { packId: string; error: string }[] = [];
+
+      trpc.packs.registry.query().then(async (registry) => {
+        for (const pack of registry) {
+          if (stopped) return;
+          if (pack.builtIn || input.loadedPackIds.includes(pack.id)) continue;
+          try {
+            // null: the pack has no frontend code, so there's nothing to merge or ask startup data for
+            const plugins = await loadPackFrontend(pack);
+            if (stopped) return;
+            sendBack({ type: 'PACK_FRONTEND_LOADED', packId: pack.id, plugins });
+          } catch (err: unknown) {
+            if (stopped) return;
+            failedPacks.push({ packId: pack.id, error: messageOf(err) });
+            // Reported as loaded with nothing, like a frontend that failed to import: its systems are
+            // asked for their startup data and the loader doesn't come back to it
+            sendBack({ type: 'PACK_FRONTEND_LOADED', packId: pack.id, plugins: [] });
+          }
+        }
+        if (!stopped) sendBack({ type: 'PACK_FRONTENDS_SETTLED', failedPacks });
+      }).catch((err: unknown) => {
+        if (!stopped) sendBack({ type: 'PACK_FRONTENDS_SETTLED', registryError: messageOf(err), failedPacks });
+      });
+
+      return () => { stopped = true; };
+    }),
+
     mouseListener: fromCallback(({ system }) => {
       const handleMouseDown = (e: MouseEvent) => {
         const appActor = system.get(application);
@@ -256,9 +363,16 @@ export const createApplicationState = () => setup({
         }
       });
 
-      const subscription = trpc.bus.sub.subscribe(
+      const subscribeToBus = () => trpc.bus.sub.subscribe(
         undefined,
         {
+          // Each time this window's subscription is established: the server has sent this connection's
+          // CLIENT_CONNECTED. Another window connecting broadcasts CLIENT_CONNECTED too, but not this.
+          onStarted: () => sendBack({ type: 'BUS_SUBSCRIBED' }),
+          // The socket dropped: the subscription is established again when it reconnects
+          onConnectionStateChange: ({ state }) => {
+            if (state === 'connecting') sendBack({ type: 'BUS_CONNECTION_LOST' });
+          },
           onError: (error: any) => {
             console.error('Error in subscription:', error);
             sendBack({ type: 'BACKEND_ERROR', error: String(error) });
@@ -280,9 +394,19 @@ export const createApplicationState = () => setup({
         }
       );
 
+      let subscription = subscribeToBus();
+
       // Listen for Electron IPC crash notifications (instant detection)
       const cleanupApiStatus = window.electronAPI?.apiStatus?.onEvent((event) => {
         if (event.type === 'api:stopped' && (event as any).restarting) return; // Restart in progress
+        if (event.type === 'api:started') {
+          // A restart can land on a different port; the old subscription died with the old socket
+          if (event.port && reconnectApiClient(event.port)) {
+            subscription.unsubscribe();
+            subscription = subscribeToBus();
+          }
+          return;
+        }
         if (event.type === 'api:fatal') {
           const { message, stack, source } = event as any;
           sendBack({
@@ -313,39 +437,135 @@ export const createApplicationState = () => setup({
     }),
 
     mergePackPlugins: enqueueActions(({ event, context, enqueue }) => {
-      const { plugins: packPlugins } = typeOf('PACK_PLUGINS_LOADED', event);
+      const { packId, plugins: packPlugins } = typeOf('PACK_FRONTEND_LOADED', event);
+
+      // The pack was unloaded while its frontend was loading: keep its plugins out, since nothing would
+      // ever take them out again, and undo what the load registered
+      if (context.packsUnloadedWhileLoading.includes(packId)) {
+        enqueue.assign({ packsUnloadedWhileLoading: context.packsUnloadedWhileLoading.filter(id => id !== packId) });
+        enqueue(() => unloadPackFrontend(packId));
+        return;
+      }
+
+      const packFrontendsLoaded = context.packFrontendsLoaded.includes(packId)
+        ? context.packFrontendsLoaded
+        : [...context.packFrontendsLoaded, packId];
+
+      // A pack without frontend code contributes nothing and needs no startup data: the connection's
+      // CLIENT_CONNECTED reached its systems already
+      if (packPlugins === null) {
+        enqueue.assign({ packFrontendsLoaded });
+        return;
+      }
+
       const existingIds = new Set(context.plugins.map(p => p.id));
       const skipped = packPlugins.filter(p => existingIds.has(p.id));
       if (skipped.length > 0) {
         console.warn(`[pack-loader] Skipping plugins with duplicate IDs: ${skipped.map(p => p.id).join(', ')}`);
       }
       const newPlugins = packPlugins.filter(p => !existingIds.has(p.id));
-      if (newPlugins.length === 0) return;
-      stepRegistry.initComponents();
-      const packsIdx = context.plugins.findIndex(p => p.id === 'packs');
-      const allPlugins = packsIdx >= 0
-        ? [...context.plugins.slice(0, packsIdx), ...newPlugins, ...context.plugins.slice(packsIdx)]
-        : [...context.plugins, ...newPlugins];
-      const pluginVisibility = { ...context.pluginVisibility };
-      for (const p of newPlugins) pluginVisibility[p.id] = true;
-      enqueue.assign({
-        plugins: allPlugins,
-        visiblePlugins: allPlugins.filter(p => pluginVisibility[p.id] !== false),
-        pluginVisibility,
+      const packPluginIds = {
+        ...context.packPluginIds,
+        [packId]: [...(context.packPluginIds[packId] ?? []), ...newPlugins.map(p => p.id)],
+      };
+      if (newPlugins.length === 0) {
+        enqueue.assign({ packPluginIds, packFrontendsLoaded });
+      } else {
+        stepRegistry.initComponents();
+        const packsIdx = context.plugins.findIndex(p => p.id === 'packs');
+        const allPlugins = packsIdx >= 0
+          ? [...context.plugins.slice(0, packsIdx), ...newPlugins, ...context.plugins.slice(packsIdx)]
+          : [...context.plugins, ...newPlugins];
+        // Visibility comes from settings (the user's choice, else the feature's default); unset shows the plugin
+        enqueue.assign({
+          plugins: allPlugins,
+          visiblePlugins: allPlugins.filter(p => context.pluginVisibility[p.id] !== false),
+          packPluginIds,
+          packFrontendsLoaded,
+        });
+        for (const plugin of newPlugins) {
+          spawnPluginActor(enqueue, plugin);
+        }
+      }
+      // The pack's plugin actors, if any, now exist: its systems send their startup data. Before this
+      // window's subscription is established, announceLoadedPacks asks for it once it is.
+      if (context.busSubscribed) enqueue(() => announcePackClientReady(packId));
+    }),
+
+    // This window's subscription (re)connected: its CLIENT_CONNECTED skipped the packs whose frontends load after it
+    announceLoadedPacks: ({ context }) => {
+      for (const packId of Object.keys(context.packPluginIds)) announcePackClientReady(packId);
+    },
+
+    /** Runs the pack frontend loader, or queues a run when one is under way */
+    loadPackFrontends: enqueueActions(({ context, enqueue }) => {
+      if (context.packLoadRunning) {
+        enqueue.assign({ packLoadQueued: true });
+        return;
+      }
+      enqueue.assign({ packLoadRunning: true, packLoadQueued: false });
+      enqueue.spawnChild('packFrontendLoader', {
+        id: packFrontendLoaderId,
+        input: { loadedPackIds: context.packFrontendsLoaded },
       });
-      for (const plugin of newPlugins) {
-        enqueue.spawnChild(plugin.state, { systemId: plugin.id });
+    }),
+
+    /** The loader finished: run it again when a load was asked for meanwhile, and report what failed */
+    onPackFrontendsSettled: enqueueActions(({ context, event, enqueue }) => {
+      const { registryError, failedPacks } = typeOf('PACK_FRONTENDS_SETTLED', event);
+      enqueue.stopChild(packFrontendLoaderId);
+
+      // Every result of the run that finished has arrived, so nothing is left to drop
+      if (context.packsUnloadedWhileLoading.length > 0) enqueue.assign({ packsUnloadedWhileLoading: [] });
+
+      if (context.packLoadQueued) {
+        enqueue.assign({ packLoadQueued: false });
+        enqueue.spawnChild('packFrontendLoader', {
+          id: packFrontendLoaderId,
+          // The packs this run loaded are in context already: the loader sends its results before settling
+          input: { loadedPackIds: context.packFrontendsLoaded },
+        });
+      } else {
+        enqueue.assign({ packLoadRunning: false });
+      }
+
+      if (registryError) {
+        // The next connection runs the loader again, so a read that fails while the API restarts repairs
+        // itself; the user hears about it only while no pack has ever loaded
+        const firstRead = !context.packRegistryRead;
+        enqueue(() => {
+          console.warn('[pack-loader] Failed to read the pack registry:', registryError);
+          if (firstRead) globalToast.error("Add-on packs couldn't be loaded", registryError);
+        });
+      } else if (!context.packRegistryRead) {
+        enqueue.assign({ packRegistryRead: true });
+      }
+
+      if (failedPacks?.length) {
+        // The registry was read: these packs alone are missing, and the loader won't come back to them
+        const names = failedPacks.map(p => p.packId).join(', ');
+        const details = failedPacks.map(p => `${p.packId}: ${p.error}`).join('\n');
+        enqueue(() => {
+          console.warn(`[pack-loader] Failed to load the frontend of ${names}:\n${details}`);
+          globalToast.error(`Couldn't load ${names}`, failedPacks.map(p => p.error).join('\n'));
+        });
       }
     }),
 
-    removePackPlugins: enqueueActions(({ event, context, enqueue }) => {
-      const { pluginIds } = typeOf('PACK_PLUGINS_UNLOADED', event);
-      const removeSet = new Set(pluginIds);
-      if (removeSet.size === 0) return;
+    removePackPlugins: enqueueActions(({ event, context, system, enqueue }) => {
+      const { packId } = typeOf('PACK_PLUGINS_UNLOADED', event);
+      const pluginIds = context.packPluginIds[packId];
 
-      for (const id of pluginIds) {
-        (enqueue as any).stopChild(id);
+      // The pack loads again when it comes back
+      if (context.packFrontendsLoaded.includes(packId)) {
+        enqueue.assign({ packFrontendsLoaded: context.packFrontendsLoaded.filter(id => id !== packId) });
+      } else if (context.packLoadRunning && !context.packsUnloadedWhileLoading.includes(packId)) {
+        // It's being loaded right now: its result is dropped instead of adding plugins nothing removes
+        enqueue.assign({ packsUnloadedWhileLoading: [...context.packsUnloadedWhileLoading, packId] });
       }
+
+      if (!pluginIds) return;
+      const removeSet = new Set(pluginIds);
 
       const remaining = context.plugins.filter(p => !removeSet.has(p.id));
       const pluginVisibility = { ...context.pluginVisibility };
@@ -354,11 +574,20 @@ export const createApplicationState = () => setup({
       const needsNavigate = removeSet.has(context.activePlugin.id);
       const activePlugin = needsNavigate ? (remaining[0] ?? context.defaultPlugin) : context.activePlugin;
 
+      // Plugin children are spawned by system id only, so stop them by reference
+      for (const id of pluginIds) {
+        const plugin = system.get(id);
+        if (plugin) enqueue.stopChild(plugin);
+      }
+
+      const packPluginIds = { ...context.packPluginIds };
+      delete packPluginIds[packId];
       enqueue.assign({
         plugins: remaining,
         visiblePlugins: remaining.filter(p => pluginVisibility[p.id] !== false),
         pluginVisibility,
         activePlugin,
+        packPluginIds,
       });
 
       if (needsNavigate) {
@@ -580,7 +809,7 @@ export const createApplicationState = () => setup({
       // enqueue.spawnChild(context.defaultPlugin.state, { systemId: context.defaultPlugin.id });
 
       for (const plugin of context.plugins) {
-        enqueue.spawnChild(plugin.state, { systemId: plugin.id });
+        spawnPluginActor(enqueue, plugin);
       }
     }),
     resizePanel: assign(({ context, event }) => {
@@ -715,6 +944,13 @@ export const createApplicationState = () => setup({
       hotkeysDisabled: false,
       hotkeys: {}, // Start with empty hotkeys until loaded from backend
       restoreLastActivePlugin: input.restoreLastActivePlugin ?? true,
+      packPluginIds: {},
+      busSubscribed: false,
+      packLoadRunning: false,
+      packLoadQueued: false,
+      packFrontendsLoaded: [],
+      packsUnloadedWhileLoading: [],
+      packRegistryRead: false,
     };
   },
   initial: 'running',
@@ -727,7 +963,7 @@ export const createApplicationState = () => setup({
     'trailActivePlugin',
     spawnChild('hotkeyListener', { id: 'hotkeyListener' }),
     spawnChild('mouseListener', { id: 'mouseListener' }),
-    spawnChild('backendListener'),
+    spawnChild('backendListener', { id: 'backendListener' }),
   ],
   states: {
     'onboarding': {
@@ -823,7 +1059,22 @@ export const createApplicationState = () => setup({
     APPLICATION_HOTKEYS: {
       actions: 'updateHotkeys'
     },
-    PACK_PLUGINS_LOADED: {
+    // In every state: onboarding and the error page keep pack systems' startup data flowing too.
+    // The loader runs on every establishment of the subscription, so packs a failed registry query left
+    // unloaded are picked up by the next one.
+    BUS_SUBSCRIBED: {
+      actions: [assign({ busSubscribed: true }), 'announceLoadedPacks', 'loadPackFrontends'],
+    },
+    BUS_CONNECTION_LOST: {
+      actions: assign({ busSubscribed: false }),
+    },
+    LOAD_PACK_FRONTENDS: {
+      actions: 'loadPackFrontends'
+    },
+    PACK_FRONTENDS_SETTLED: {
+      actions: 'onPackFrontendsSettled'
+    },
+    PACK_FRONTEND_LOADED: {
       actions: 'mergePackPlugins'
     },
     PACK_PLUGINS_UNLOADED: {

@@ -103,16 +103,23 @@
           @cancel="onCancel"
         />
 
-        <!-- Success result -->
-        <div v-if="status === 'success' && importResult" class="mt-4 p-3 bg-green-900/20 border border-green-800/50 rounded-lg">
-          <p class="text-sm text-green-400 font-medium mb-2">Import complete</p>
+        <!-- Result: every record imported, or some couldn't be -->
+        <div
+          v-if="status === 'success' && importResult"
+          class="mt-4 p-3 rounded-lg border"
+          :class="importErrors.length ? 'bg-amber-900/20 border-amber-800/50' : 'bg-green-900/20 border-green-800/50'"
+        >
+          <p class="text-sm font-medium mb-2" :class="importErrors.length ? 'text-amber-400' : 'text-green-400'">
+            {{ importErrors.length ? `Import finished with ${importErrors.length} error${importErrors.length === 1 ? '' : 's'}` : 'Import complete' }}
+          </p>
           <div class="text-xs text-green-500/80 space-y-0.5">
-            <p>Actions — {{ importResult.actions.created }} created, {{ importResult.actions.updated }} updated</p>
-            <p>Prompts — {{ importResult.prompts.created }} created, {{ importResult.prompts.updated }} updated</p>
-            <p>Flows — {{ importResult.flows.created }} created, {{ importResult.flows.skipped }} skipped</p>
-            <p>Library — {{ importResult.library.created }} created, {{ importResult.library.updated }} updated</p>
-            <p>Notes — {{ importResult.notes.created }} created, {{ importResult.notes.updated }} updated</p>
+            <p v-for="(counts, key) in importResult" :key="key">
+              <span class="capitalize">{{ key }}</span> — {{ counts.created }} created, {{ counts.updated }} updated, {{ counts.skipped }} skipped
+            </p>
           </div>
+          <ul v-if="importErrors.length" class="mt-2 text-xs text-amber-400/90 space-y-0.5 list-disc pl-4">
+            <li v-for="(error, index) in importErrors" :key="index" class="break-words">{{ error }}</li>
+          </ul>
           <button
             @click="onReset"
             class="mt-3 text-xs text-green-500/80 hover:text-green-400 underline"
@@ -175,7 +182,6 @@ import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { HardDrive, PackageOpen, RotateCcw, Trash2 } from 'lucide-vue-next'
-import type { PackSeedType } from '@abuddy/sdk/build'
 import ImportPackSeedsPicker from './ImportPackSeedsPicker.vue'
 import Hotkeys from './Hotkeys.vue'
 
@@ -212,6 +218,7 @@ const expanded = computed(() => packSeedsImport.value?.expanded)
 const importMode = computed(() => packSeedsImport.value?.importMode ?? 'replace-on-collision')
 const restartBrainFlag = computed(() => packSeedsImport.value?.restartBrain ?? false)
 const importResult = computed(() => packSeedsImport.value?.result)
+const importErrors = computed<string[]>(() => packSeedsImport.value?.errors ?? [])
 const importError = computed(() => packSeedsImport.value?.error)
 
 const confirmingClearAppCache = ref(false)
@@ -237,15 +244,15 @@ async function selectDirectory() {
   actor.send({ type: 'PACK_SEEDS.PREVIEW', directory: result })
 }
 
-function onToggleExpand(key: PackSeedType) {
+function onToggleExpand(key: string) {
   actor.send({ type: 'PACK_SEEDS.TOGGLE_EXPAND', key })
 }
 
-function onToggleTypeAll(key: PackSeedType) {
+function onToggleTypeAll(key: string) {
   actor.send({ type: 'PACK_SEEDS.TOGGLE_TYPE_ALL', key })
 }
 
-function onToggleItem(payload: { key: PackSeedType; item: string }) {
+function onToggleItem(payload: { key: string; item: string }) {
   actor.send({ type: 'PACK_SEEDS.TOGGLE_ITEM', key: payload.key, item: payload.item })
 }
 

@@ -7,8 +7,9 @@ import {
   queryEntitiesByRelationTo,
   queryEntitiesByAttribute,
   queryEntitiesInRelationTo,
-  relationIndex,
-} from '@abuddy/host/ears';
+  findRelations,
+  getRelationStats,
+} from '@abuddy/sdk/ears';
 import { getSchemaStats } from '../repository/schema';
 
 /**
@@ -42,7 +43,8 @@ export async function executeQuery(code: string): Promise<any> {
       'getEntitiesOfType',
       'queryEntitiesByAttribute',
       'queryEntitiesInRelationTo',
-      'relationIndex',
+      'findRelations',
+      'getRelationStats',
       'getSchemaStats',
       functionBody
     );
@@ -59,7 +61,8 @@ export async function executeQuery(code: string): Promise<any> {
       getEntitiesOfType,
       queryEntitiesByAttribute,
       queryEntitiesInRelationTo,
-      relationIndex,
+      findRelations,
+      getRelationStats,
       getSchemaStats
     );
     
