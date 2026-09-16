@@ -57,7 +57,7 @@ export async function preflight(root: string, options: { local: boolean; run: Ru
   const warnings: string[] = [];
   const git = (...args: string[]) => options.run('git', args, root);
 
-  const raw = JSON.parse(fs.readFileSync(path.join(root, 'abuddy.json'), 'utf-8'));
+  const raw = readManifest(root);
   const { errors: manifestErrors } = parseManifest(raw);
   errors.push(...manifestErrors.map(e => `abuddy.json: ${e}`));
   if (!raw.hostVersion) errors.push('abuddy.json: hostVersion is required for releases (e.g. ">=0.3.0")');

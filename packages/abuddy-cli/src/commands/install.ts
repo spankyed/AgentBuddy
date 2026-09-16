@@ -4,6 +4,7 @@ import { installPack, installPackFromLocal, readHostVersion } from '@abuddy/host
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { parseTargetEnv, envLabel, TARGET_ENV_USAGE } from '../utils';
 
+/** `registry` is a bare pack name, resolvable only through abuddy.com; `undefined` is a GitHub slug. */
 function detectSource(input: string): 'local' | 'url' | 'registry' | undefined {
   if (input.startsWith('http://') || input.startsWith('https://')) return 'url';
   if (input.startsWith('.') || input.startsWith('/') || input.startsWith('~')) return 'local';

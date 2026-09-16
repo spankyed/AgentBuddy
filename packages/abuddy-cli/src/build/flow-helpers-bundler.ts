@@ -5,7 +5,7 @@ import { bundleDeclarations } from './types-bundler';
 import { facadeProblems } from './facade-gate';
 
 /** The declarations of a pack's flow helpers in its types dir */
-export const FLOW_HELPERS_TYPES_FILE = 'flow-helpers.d.ts';
+const FLOW_HELPERS_TYPES_FILE = 'flow-helpers.d.ts';
 
 /**
  * Bundles a pack's generated flow helpers (src/__generated__/flow-helpers.ts) for its snapshot: the

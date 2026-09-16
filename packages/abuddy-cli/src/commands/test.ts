@@ -4,7 +4,7 @@ import { spawnSync } from 'node:child_process';
 import { parseTestAppFlags, resolveTestApp, type AppTarget } from '../app/app-target';
 import { resolvePlaywrightCli, testingFromSource } from '../app/playwright';
 import { withSourceCondition, withoutSourceCondition } from '@abuddy/host/build/source-resolution';
-import { cliBin } from '../utils';
+import { cliBin, readManifest } from '../utils';
 
 export const TEST_USAGE = `Usage: abuddy test [--app-root <path> | --app beta] [playwright args...]
 
@@ -45,8 +45,7 @@ export async function test(args: string[]): Promise<void> {
     process.exit(1);
   }
 
-  const manifestPath = path.join(cwd, 'abuddy.json');
-  const manifest = fs.existsSync(manifestPath) ? JSON.parse(fs.readFileSync(manifestPath, 'utf-8')) : undefined;
+  const manifest = fs.existsSync(path.join(cwd, 'abuddy.json')) ? readManifest(cwd) : undefined;
 
   let app: AppTarget;
   let playwrightCli: string;
