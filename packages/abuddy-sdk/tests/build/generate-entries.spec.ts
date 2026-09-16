@@ -68,6 +68,42 @@ describe('generated events', () => {
   });
 });
 
+describe('generated system sends', () => {
+  it("types sendToSystem with the pack's own systems by feature id and its dependencies' by system id", () => {
+    const files = generate(
+      { features: [system('memos')] },
+      { 'base-pack': dependency({ features: [system('threads')] }, { [PACK_TYPES_DEF]: 'export type PackEvents = {};\nexport type PackSystemEvents = {};' }) },
+    );
+    const events = files['src/__generated__/events.ts'];
+    expect(events).toContain("import { busId } from './bus-ids.js';");
+    expect(events).toContain("import type * as __specs from './system-specs.js';");
+    expect(events).toContain("'memos': IncomingEventsOf<typeof __specs.memos>;");
+    expect(events).toContain('export type PackSystemEvents = { [K in keyof OwnSystemEvents as (typeof busId)[K]]: OwnSystemEvents[K] };');
+    expect(events).toContain("import type { PackSystemEvents as __dep_base_pack_PackSystemEvents } from './deps/base-pack.js';");
+    expect(events).toContain('export type SendableSystemEvents = OwnSystemEvents & Omit<__dep_base_pack_PackSystemEvents, keyof OwnSystemEvents>;');
+    expect(events).toContain('export const { emit, sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<PackEvents, SendableSystemEvents>(busId);');
+    expect(files['src/__generated__/pack-types.ts']).toContain("export type { PackEvents, PackSystemEvents } from './events.js';");
+  });
+
+  it("reads each system's events from a spec module that carries nothing else", () => {
+    const specs = generate({ features: [system('memos')] })['src/__generated__/system-specs.ts'];
+    expect(specs).toContain("import { incomingEvents } from '@abuddy/sdk/events';");
+    expect(specs).toContain("import memosEntry from '../features/memos/be/system.js';");
+    expect(specs).toContain('export const memos = incomingEvents(memosEntry.spec);');
+  });
+
+  it('gives a pack without systems no sendToSystem, bus ids or spec module', () => {
+    const files = generate({ features: [{ id: 'sidebar', plugin: { entry: 'x' } }] });
+    const events = files['src/__generated__/events.ts'];
+    expect(events).not.toContain('bus-ids');
+    expect(events).not.toContain('sendToSystem');
+    expect(events).toContain('export type PackSystemEvents = {};');
+    expect(events).toContain('export const { emit, sendToPlugin } = /*#__PURE__*/ defineEvents<PackEvents>();');
+    expect(files['src/__generated__/system-specs.ts']).toBeUndefined();
+    expect(files['src/__generated__/bus-ids.ts']).toBeUndefined();
+  });
+});
+
 describe('generated frontend entry', () => {
   it("sets each plugin's designation from the manifest, replacing one the plugin module sets", () => {
     const files = generate({ features: [

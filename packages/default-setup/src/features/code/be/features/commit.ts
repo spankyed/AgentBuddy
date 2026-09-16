@@ -6,7 +6,7 @@ import { GitRepository, StashConflictError } from '../services/git'
 import { GitWatcherService } from '../services/gitwatcher'
 import type { GitStatusFile, GitDiff, StashEntry, WorktreeEntry, CommitLogEntry } from '../types'
 import { requireGitRepository } from '../utils/git-helpers'
-import { sendToBrainSystem } from '@abuddy/sdk/services'
+import { sendToBrainSystem } from '@abuddy/sdk/events'
 import { repository } from '@/__generated__/repository';
 
 const pluginId = 'code' as const

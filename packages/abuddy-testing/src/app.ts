@@ -2,7 +2,7 @@
 import { createActor, type Actor, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { createBusMachine } from '@abuddy/host/bus';
 import { getBootHooks, getRegisteredSystems } from '@abuddy/host/packs';
-import type { OutgoingSystemEvents } from '@abuddy/sdk/rpc';
+import type { OutgoingSystemEvents } from '@abuddy/sdk/events';
 import { testRootEvents } from '@abuddy/sdk/testing';
 import { untypedQx } from '@abuddy/sdk/ears';
 import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';

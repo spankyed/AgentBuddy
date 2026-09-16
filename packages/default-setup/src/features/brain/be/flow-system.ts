@@ -13,7 +13,7 @@ import { safeEvents } from '@abuddy/sdk/helpers';
 import { brain, brainRuntime } from './system';
 import { brainInspect, brainLogger } from './utils/brain-inspect';
 import { isBrainPaused } from './utils/brain-pause';
-import { sendToBrainSystem } from '@abuddy/sdk/services';
+import { sendToBrainSystem } from '@abuddy/sdk/events';
 import { isPersistentTriggerFlow, shouldCompleteFlow } from './flow-completion';
 import { reportStepRuntimeError } from '@abuddy/sdk/steps';
 import { dedupeTriggerNodes, type FlowTriggerNode, type TriggerDedupeWarning } from './trigger-dedupe';

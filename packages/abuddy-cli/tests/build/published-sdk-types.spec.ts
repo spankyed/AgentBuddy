@@ -27,7 +27,7 @@ function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler') {
     "export const popout = window.electronAPI?.plugins.popout;",
     // Typed data access and events come only from the factories a pack's facade uses
     "import { defineEars } from '@abuddy/sdk/ears';",
-    "import { defineEvents } from '@abuddy/sdk/services';",
+    "import { defineEvents } from '@abuddy/sdk/events';",
     "import type { EARS } from '@abuddy/sdk';",
     "type IsAny<T> = 0 extends 1 & T ? true : false;",
     "interface MemoEntity { entityType: 'Memo'; text: string }",

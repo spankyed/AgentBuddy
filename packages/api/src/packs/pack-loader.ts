@@ -45,6 +45,7 @@ import * as _sdkBlocks from '@abuddy/sdk/blocks';
 import * as _sdkBuild from '@abuddy/sdk/build';
 import * as _sdkTypes from '@abuddy/sdk/types';
 import * as _sdkDesignations from '@abuddy/sdk/designations';
+import * as _sdkEvents from '@abuddy/sdk/events';
 import * as _sdkEnv from '@abuddy/sdk/env';
 import * as _sdkModels from '@abuddy/sdk/models';
 import * as _sdkTemplates from '@abuddy/sdk/runtime';
@@ -74,6 +75,7 @@ const SDK_BRIDGE: Record<string, any> = {
   '@abuddy/sdk/build': _sdkBuild,
   '@abuddy/sdk/types': _sdkTypes,
   '@abuddy/sdk/designations': _sdkDesignations,
+  '@abuddy/sdk/events': _sdkEvents,
   '@abuddy/sdk/env': _sdkEnv,
   '@abuddy/sdk/models': _sdkModels,
   '@abuddy/sdk/runtime': _sdkTemplates,

@@ -202,7 +202,7 @@ export interface SystemSpec<Id extends string, TEvents extends {
 }, TContext = {}> {
     // (undocumented)
     id: Id;
-    _incoming: WithSystemId<Id, TEvents>;
+    _incoming: TEvents;
     _outgoing: WithPlugin<Id, TOutgoing>;
     // (undocumented)
     typeOf: ReturnType<typeof safeEvents<TEvents | SystemEvents>>;

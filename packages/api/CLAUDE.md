@@ -36,14 +36,14 @@ The backend process: a `node:http` + `ws` server exposing a tRPC router over Web
 - `secrets-router.ts` (`secrets.*`) — `list` (query), `add`, `replaceValue`, `select`, `rename`, `delete`, `allowUnprotected`. Each calls `secretsStore` (`@abuddy/host/secrets`) directly, never the bus, and returns a `SecretsSnapshot` (metadata and status, no values). `provider` is validated against `providerLabels` plus `custom`. `forwardSecretsChanges()` (called at boot) sends the `settings` designation `SECRETS_CHANGED` on every store change, once that system is registered.
 - `packs.*` — `packs.registry` is defined in `src/packs/pack-api.ts`.
 - `bus-emitter.ts` — `rootEvents`, the single `RootEventEmitter`: `emitLog`/`onLog`, `emitConnected`/`onConnected`, `emitPackClientConnected`/`onPackClientConnected`, `emitIncoming`/`onIncoming`, `emitOutgoing`/`onOutgoing`. `emitLog` also appends the event to `$AGENTBUDDY_LOG_DIR/app-events.log` (skipped when unset; write errors are swallowed).
-- `event-emitter.ts` — `sendToPlugin`, `sendToSystem`, `sendToBrainSystem` (a `TRIGGER_BRAIN_EVENT` to the `brain` designation), `onOutgoing`, `onIncoming` over `rootEvents`.
+- `event-transport.ts` — the `event-transport` host module `@abuddy/sdk/events` sends through: `sendIncoming`, `sendOutgoing`, `onConnected` and `onIncoming` over `rootEvents`.
 - `events.ts` — re-exports `IncomingSystemEvents`/`OutgoingSystemEvents` from `@/systems`.
 
 Packs reach these modules only through host modules (`@abuddy/sdk/rpc` reads `bus-emitter`), not by import.
 
 ## Host module registration (`setup/sdk-host-init.ts`)
 
-Runs `initEARSRuntime({ isEntityType })` against the pack registry's entity types, then `registerHostModule()` for `attribute-storage`, `lmdb-query`, `hydrate-sharded`, `logger`, `trpc`, `bus-emitter`, `router-events`, `system-errors`, `event-emitter`, `version`, `migrations` and `pack-registry` (`@abuddy/host/packs`), calls `initRpc()`, and `registerHostServices()` (`@abuddy/host/services`). Importing it opens LMDB (through `attribute-storage`), so `ABUDDY_ENV` and `ABUDDY_USER_DATA_DIR` must already be set.
+Runs `initEARSRuntime({ isEntityType })` against the pack registry's entity types, then `registerHostModule()` for `attribute-storage`, `lmdb-query`, `hydrate-sharded`, `logger`, `trpc`, `bus-emitter`, `router-events`, `system-errors`, `event-transport`, `version`, `migrations` and `pack-registry` (`@abuddy/host/packs`), calls `initRpc()`, and `registerHostServices()` (`@abuddy/host/services`). Importing it opens LMDB (through `attribute-storage`), so `ABUDDY_ENV` and `ABUDDY_USER_DATA_DIR` must already be set.
 
 ## Boot (`setup/backend.ts`)
 

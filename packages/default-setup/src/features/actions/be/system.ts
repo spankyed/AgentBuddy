@@ -331,6 +331,6 @@ export const actionsSystem = setup({
   }
 );
 
-const actionsEntry: SystemEntry = { spec: actionsSpec, machine: actionsSystem };
+const actionsEntry = { spec: actionsSpec, machine: actionsSystem } satisfies SystemEntry;
 
 export default actionsEntry;

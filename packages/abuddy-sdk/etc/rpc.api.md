@@ -4,22 +4,8 @@
 
 ```ts
 
-// @public
-export type IncomingSystemEvents = {
-    type: string;
-    systemId: string;
-    [key: string]: unknown;
-};
-
 // @internal
 export function initRpc(): void;
-
-// @public
-export type OutgoingSystemEvents = {
-    type: string;
-    pluginId: string;
-    [key: string]: unknown;
-};
 
 // @public
 export interface RootEvents {

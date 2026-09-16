@@ -2,7 +2,7 @@
 import * as os from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { entityIds, dropAttribute, resetTestData, startTestRuntime, takeSystemErrors, testRootEvents } from '../../src/testing/index.ts';
-import { sendToPlugin, sendToSystem, sendToBrainSystem } from '../../src/services/index.ts';
+import { sendToPlugin, sendToSystem, sendToBrainSystem } from '../../src/events/index.ts';
 import { appData } from '../../src/services/app-data.ts';
 import { traceStore } from '../../src/services/trace-store.ts';
 import { registerDesignations, unregisterDesignations } from '../../src/designations/index.ts';

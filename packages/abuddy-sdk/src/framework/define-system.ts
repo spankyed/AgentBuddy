@@ -10,10 +10,6 @@ export type SystemEvents =
    */
   | { type: 'PACK_CHANGED'; packId: string }
 
-/** Add `systemId` literal to every member of an incoming event union. */
-type WithSystemId<Id extends string, E extends { type: string }> =
-  E extends any ? Simplify<E & { systemId: Id }> : never;
-
 /** Add `pluginId` literal to every member of an outgoing event union. */
 type WithPlugin<Id extends string, E extends { type: string }> =
   E extends any ? Simplify<E & { pluginId: Id }> : never;
@@ -28,8 +24,8 @@ export interface SystemSpec<
   id: Id;
   types: { context: TContext; events: TEvents | SystemEvents };
   typeOf: ReturnType<typeof safeEvents<TEvents | SystemEvents>>;
-  /** Phantom — incoming events with `systemId` attached (wire format). */
-  _incoming: WithSystemId<Id, TEvents>;
+  /** Phantom: the events the system receives, as a sender writes them (the bus adds `systemId`). */
+  _incoming: TEvents;
   /** Phantom — outgoing events with `pluginId` attached. */
   _outgoing: WithPlugin<Id, TOutgoing>;
 }

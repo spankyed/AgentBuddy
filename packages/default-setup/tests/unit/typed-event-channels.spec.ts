@@ -1,10 +1,10 @@
 // Compile-time checks, run by `tsc` (npm run typecheck:pack). Exact type equality and expected
 // errors fail if the generated events regress to `any` or accept a wrong event.
 import { describe, expectTypeOf, it } from 'vitest';
-import type { HostPluginEvents } from '@abuddy/sdk/services';
+import type { HostPluginEvents } from '@abuddy/sdk/events';
 import type { ApplicationHotkeys } from '@abuddy/sdk/types';
 import type { EARS } from '@/__generated__/ears';
-import { emit, sendToPlugin, type PackEvents } from '@/__generated__/events';
+import { emit, sendToPlugin, sendToSystem, type PackEvents } from '@/__generated__/events';
 import type { OutgoingActionEvents } from '@/features/actions/be/system';
 import type { OutgoingFlowsEvents } from '@/features/flows/be/system';
 import type { OutgoingThreadsEvents } from '@/features/threads/be/system';
@@ -46,6 +46,28 @@ describe('emit and sendToPlugin', () => {
       emit('application', { type: 'SETTINGS_LOADED' });
       // @ts-expect-error unknown plugin
       sendToPlugin('unknown-plugin', { type: 'ANYTHING' });
+    }).toBeFunction();
+  });
+});
+
+describe('sendToSystem', () => {
+  // Wrapped in functions that never run: only their types are checked
+  it('accepts an event the system receives', () => {
+    expectTypeOf(() => {
+      sendToSystem('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'notes', path: ['sort'], value: 'title' });
+      sendToSystem('notes', { type: 'DELETE_NOTE', id: 'Note-1' });
+      sendToSystem('settings', { type: 'GET_SETTINGS' });
+    }).toBeFunction();
+  });
+
+  it('rejects an unknown system, an unknown event type and a missing field', () => {
+    expectTypeOf(() => {
+      // @ts-expect-error not a system of this pack or its dependencies
+      sendToSystem('unknown-system', { type: 'GET_SETTINGS' });
+      // @ts-expect-error the settings system doesn't receive this event
+      sendToSystem('settings', { type: 'DELETE_NOTE', id: 'Note-1' });
+      // @ts-expect-error DELETE_NOTE needs an id
+      sendToSystem('notes', { type: 'DELETE_NOTE' });
     }).toBeFunction();
   });
 });

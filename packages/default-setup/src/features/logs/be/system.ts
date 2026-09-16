@@ -7,7 +7,7 @@ import type { LogsState, LogEntry } from './types';
 import { randomId } from '@abuddy/sdk/utils';
 import { rootEvents } from '@abuddy/sdk/rpc';
 import type { LogEvent } from '@abuddy/sdk/logger';
-import type { IncomingSystemEvents } from '@abuddy/sdk/rpc';
+import type { IncomingSystemEvents } from '@abuddy/sdk/events';
 import { repository } from '@/__generated__/repository';
 import type { LogsSettings } from '@/__generated__/types';
 import { isSourceExcluded, filterLogsByExcludedSources } from './utils';
@@ -200,6 +200,6 @@ export const logsSystem = setup({
   },
 });
 
-const logsEntry: SystemEntry = { spec: logsSpec, machine: logsSystem };
+const logsEntry = { spec: logsSpec, machine: logsSystem } satisfies SystemEntry;
 
 export default logsEntry;

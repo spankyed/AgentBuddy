@@ -2,8 +2,8 @@
 // boot (api/src/setup/sdk-host-init.ts), minus persistence, clients and the filesystem.
 import { EventEmitter } from 'node:events';
 import { registerHostModule, getHostModule } from '../runtime/host.ts';
-import { initRpc, type IncomingSystemEvents, type OutgoingSystemEvents, type RootEvents } from '../rpc/index.ts';
-import { getDesignated } from '../designations/index.ts';
+import { initRpc, type RootEvents } from '../rpc/index.ts';
+import type { EventTransport, IncomingSystemEvents, OutgoingSystemEvents } from '../events/index.ts';
 import { getAllEntities, getAttr } from '../ears/attribute-storage.ts';
 import { findRelations } from '../ears/relations.ts';
 import type { EARS } from '../types/entities.ts';
@@ -131,14 +131,12 @@ export function registerTestHostModules(resetData: () => void): void {
   const modules: Record<string, unknown> = {
     'logger': { createLogger: consoleLogger },
     'bus-emitter': { rootEvents: testRootEvents },
-    'event-emitter': {
-      sendToPlugin: (pluginId: string, event: { type: string }) => testRootEvents.emitOutgoing({ ...event, pluginId }),
-      sendToSystem: (systemId: string, event: { type: string }) => testRootEvents.emitIncoming({ ...event, systemId }),
-      sendToBrainSystem: (event: { eventType: string; payload?: unknown; targetFlowId?: EARS.EntityId }) =>
-        testRootEvents.emitIncoming({ ...event, type: 'TRIGGER_BRAIN_EVENT', systemId: getDesignated('brain') }),
-      onOutgoing: (callback: (event: OutgoingSystemEvents) => void) => testRootEvents.onOutgoing(callback),
-      onIncoming: (callback: (event: IncomingSystemEvents) => void) => testRootEvents.onIncoming(callback),
-    },
+    'event-transport': {
+      sendIncoming: (event) => testRootEvents.emitIncoming(event),
+      sendOutgoing: (event) => testRootEvents.emitOutgoing(event),
+      onConnected: (callback) => testRootEvents.onConnected(callback),
+      onIncoming: (callback) => testRootEvents.onIncoming(callback),
+    } satisfies EventTransport,
     'system-errors': { reportSystemError: (input: ReportSystemErrorInput) => { systemErrors.push(input); } },
     'version': { APP_VERSION: '0.0.0-test' },
     'migrations': { runMigrations: () => {} },

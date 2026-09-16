@@ -498,6 +498,6 @@ export const flowsSystem = setup({
   }
 });
 
-const flowsEntry: SystemEntry = { spec: flowsSpec, machine: flowsSystem };
+const flowsEntry = { spec: flowsSpec, machine: flowsSystem } satisfies SystemEntry;
 
 export default flowsEntry;

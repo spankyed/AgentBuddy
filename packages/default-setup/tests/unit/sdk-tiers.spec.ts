@@ -158,13 +158,14 @@ describe('Tier 3 — System Framework delegates', () => {
   });
 
   it('emit and safeEvents are callable', async () => {
-    const { emit, safeEvents } = await import('@abuddy/sdk/helpers');
+    const { emit } = await import('@abuddy/sdk/events');
+    const { safeEvents } = await import('@abuddy/sdk/helpers');
     expect(typeof emit).toBe('function');
     expect(typeof safeEvents).toBe('function');
   });
 
   it('emit wraps event for bus with OUTGOING type', async () => {
-    const { emit } = await import('@abuddy/sdk/helpers');
+    const { emit } = await import('@abuddy/sdk/events');
     const wrapped = emit('test-plugin', { type: 'HELLO' });
     expect(wrapped.type).toBe('OUTGOING');
     expect(wrapped.event.pluginId).toBe('test-plugin');
@@ -260,9 +261,9 @@ describe('Tier 6 — Utility delegates', () => {
   });
 });
 
-describe('Tier 7 — Service delegates', () => {
+describe('Tier 7 — Event delegates', () => {
   it('sendToPlugin and sendToBrainSystem are callable', async () => {
-    const { sendToPlugin, sendToBrainSystem } = await import('@abuddy/sdk/services');
+    const { sendToPlugin, sendToBrainSystem } = await import('@abuddy/sdk/events');
     expect(typeof sendToPlugin).toBe('function');
     expect(typeof sendToBrainSystem).toBe('function');
   });

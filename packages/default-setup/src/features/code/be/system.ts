@@ -381,6 +381,6 @@ export const systemMachine = setup({
   }
 })
 
-const codeEntry: SystemEntry = { spec: codeSpec, machine: systemMachine };
+const codeEntry = { spec: codeSpec, machine: systemMachine } satisfies SystemEntry;
 
 export default codeEntry;

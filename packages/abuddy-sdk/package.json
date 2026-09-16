@@ -40,6 +40,11 @@
       "types": "./dist/designations/index.d.ts",
       "default": "./dist/designations/index.js"
     },
+    "./events": {
+      "@abuddy/source": "./src/events/index.ts",
+      "types": "./dist/events/index.d.ts",
+      "default": "./dist/events/index.js"
+    },
     "./env": {
       "@abuddy/source": "./src/env/index.ts",
       "types": "./dist/env/index.d.ts",

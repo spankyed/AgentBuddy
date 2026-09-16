@@ -1060,6 +1060,6 @@ export const threadsSystem = setup({
   }
 );
 
-const threadsEntry: SystemEntry = { spec: threadsSpec, machine: threadsSystem };
+const threadsEntry = { spec: threadsSpec, machine: threadsSystem } satisfies SystemEntry;
 
 export default threadsEntry;

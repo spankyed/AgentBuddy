@@ -67,6 +67,7 @@ export const SDK_FE_MODULES: Record<string, SdkFeModule> = {
   '@abuddy/sdk/artifacts':    { globalKey: 'sdkArtifacts' },
   '@abuddy/sdk/blocks':       { globalKey: 'sdkBlocks' },
   '@abuddy/sdk/designations': { globalKey: 'sdkDesignations' },
+  '@abuddy/sdk/events':       { globalKey: 'sdkEvents' },
   '@abuddy/sdk/helpers':      { globalKey: 'sdkHelpers' },
 };
 

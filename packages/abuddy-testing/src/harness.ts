@@ -210,6 +210,15 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
   });
 }
 
+/**
+ * A pack's registration with its systems under the ids the app runs them under: an external pack's are
+ * `<packId>.<featureId>` (the API's registerExternalPacks), which its `#generated/bus-ids` names.
+ */
+function asRunByApp(registration: PackRegistration, manifest: PackManifest): PackRegistration {
+  if (manifest.builtIn) return registration;
+  return { ...registration, systems: registration.systems.map((system) => ({ ...system, id: `${manifest.id}.${system.id}` })) };
+}
+
 /** Registers the pack's runtime and its dependencies' (loaded from their cached runtime/index.cjs), as the app does */
 async function registerRuntimes(packDir: string, manifest: PackManifest, dependencies: ReadonlyMap<string, CachedDependency>, registration: PackRegistration): Promise<void> {
   for (const [depId, dependency] of dependencies) {
@@ -220,10 +229,10 @@ async function registerRuntimes(packDir: string, manifest: PackManifest, depende
     const seedsDir = path.join(dependency.dir, 'runtime', 'seeds');
     const runtime = await loadDependencyRuntime(packDir, depId, runtimeEntry, fs.existsSync(seedsDir) ? seedsDir : undefined);
     startTestRuntime({ entityTypes: Object.values(runtime.registration.ears?.entities ?? {}) });
-    if (!hostPacks.getPackContributions(depId)) hostPacks.registerPack(runtime.registration);
+    if (!hostPacks.getPackContributions(depId)) hostPacks.registerPack(asRunByApp(runtime.registration, dependency.manifest));
   }
   startTestRuntime({ entityTypes: Object.values(registration.ears?.entities ?? {}) });
-  if (!hostPacks.getPackContributions(registration.id)) hostPacks.registerPack(registration);
+  if (!hostPacks.getPackContributions(registration.id)) hostPacks.registerPack(asRunByApp(registration, manifest));
   setAppPackId(manifest.id);
 }
 

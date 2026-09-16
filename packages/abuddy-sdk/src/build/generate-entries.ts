@@ -784,12 +784,23 @@ ${busIdEntries},
       .map(f => `import type { ${outgoingEventsType(f)} as __events_${f.id} } from '${toImportPath(root, f.system!.entry)}';`)
       .join('\n');
     const entries = [...receivers].map(([pluginId, senders]) => `  '${pluginId}': ${senders.join(' | ')};`).join('\n');
+    const systemEntries = systemFeatures.map(f => `  '${f.id}': IncomingEventsOf<typeof __specs.${f.id}>;`).join('\n');
     const deps = depTypeImports('PackEvents');
+    const depSystems = depTypeImports('PackSystemEvents');
+    const hasSystems = systemFeatures.length > 0;
+
+    // A pack's own systems are sent to by feature id; dependents address them by the id they run under
+    const packSystemEvents = hasSystems
+      ? `{ [K in keyof OwnSystemEvents as (typeof busId)[K]]: OwnSystemEvents[K] }`
+      : `{}`;
+    const sends = hasSystems
+      ? `export const { emit, sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<PackEvents, SendableSystemEvents>(busId);`
+      : `export const { emit, sendToPlugin } = /*#__PURE__*/ defineEvents<PackEvents>();`;
 
     return `${HEADER}
-import { defineEvents, type HostPluginEvents } from '@abuddy/sdk/services';
-${imports}
-${deps.imports.join('\n')}
+import { defineEvents, type HostPluginEvents, type IncomingEventsOf } from '@abuddy/sdk/events';
+${hasSystems ? `import { busId } from './bus-ids.js';\nimport type * as __specs from './system-specs.js';\n` : ''}${imports}
+${[...deps.imports, ...depSystems.imports].join('\n')}
 
 /** Plugin id → the events this pack's systems send to that plugin (their own, and each \`sendsTo\`). */
 export type OwnPackEvents = {
@@ -802,7 +813,37 @@ ${entries}
  */
 export type PackEvents = OwnPackEvents${deps.aliases.map(a => ` & Omit<${a}, keyof OwnPackEvents>`).join('')} & Omit<HostPluginEvents, keyof OwnPackEvents>;
 
-export const { emit, sendToPlugin } = /*#__PURE__*/ defineEvents<PackEvents>();
+/** Feature id → the events this pack's system for that feature receives. */
+export type OwnSystemEvents = {
+${systemEntries}
+};
+
+/** This pack's systems by the id they run under, and the events each receives: what dependents send to. */
+export type PackSystemEvents = ${packSystemEvents};
+
+/** Every system this pack's code can send to: its own by feature id, and its dependencies'. */
+export type SendableSystemEvents = OwnSystemEvents${depSystems.aliases.map(a => ` & Omit<${a}, keyof OwnSystemEvents>`).join('')};
+
+${sends}
+`;
+  }
+
+  /**
+   * The events each system receives, read from its entry's spec (\`defineSystem\`). Only types import this
+   * module, and its declared types hold nothing but those events, so the facade types built from them carry
+   * no machines or contexts.
+   */
+  function generateSystemSpecs(): string {
+    const systemFeatures = (manifest.features ?? []).filter(f => f.system);
+    if (!systemFeatures.length) return '';
+    const imports = systemFeatures.map(f => `import ${systemBinding(f.id)} from '${toImportPath(root, f.system!.entry)}';`).join('\n');
+    const specs = systemFeatures.map(f => `export const ${f.id} = incomingEvents(${systemBinding(f.id)}.spec);`).join('\n');
+    return `${HEADER}
+// Type-only: #generated/events reads each system's incoming events from these
+import { incomingEvents } from '@abuddy/sdk/events';
+${imports}
+
+${specs}
 `;
   }
 
@@ -978,7 +1019,7 @@ export const seedRuntime: SeedRuntime = {
   function generatePackTypes(): string {
     return `${HEADER}
 export type { PackShapes as PackEntityShapes } from './ears.js';
-export type { PackEvents } from './events.js';
+export type { PackEvents, PackSystemEvents } from './events.js';
 export type { Services } from './services.js';
 export type { Repositories } from './repository.js';
 `;
@@ -1301,6 +1342,7 @@ ${registrations.join('\n\n')}
     ['src/__generated__/ears.ts', generateEars()],
     ['src/__generated__/system-ids.ts', generateSystemIds()],
     ['src/__generated__/bus-ids.ts', generateBusIds()],
+    ['src/__generated__/system-specs.ts', generateSystemSpecs()],
     ['src/__generated__/events.ts', generateEvents()],
     ['src/__generated__/types.ts', generateTypes()],
     ['src/__generated__/services.ts', generateServices()],

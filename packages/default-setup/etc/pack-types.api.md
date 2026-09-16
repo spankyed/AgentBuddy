@@ -7,9 +7,10 @@ import * as _abuddy_sdk from '@abuddy/sdk';
 import { ActionEntity, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes } from '@abuddy/sdk';
 import { ArtifactItem } from '@abuddy/sdk/artifacts';
 import { CompiledRows } from '@abuddy/sdk/build';
+import { HostPluginEvents, IncomingEventsOf } from '@abuddy/sdk/events';
 import { ModelCatalogEntry, ModelId } from '@abuddy/sdk/models';
 import { PackSeedsPreview } from '@abuddy/sdk/seed';
-import { HostPluginEvents, HostServices, SecretInfo, SecretsStatus } from '@abuddy/sdk/services';
+import { HostServices, SecretInfo, SecretsStatus } from '@abuddy/sdk/services';
 import { ExecutionContext, StepRuntimeError, TNodeEntity, TrackTree } from '@abuddy/sdk/steps';
 import { ApplicationHotkeys, KeyboardShortcut } from '@abuddy/sdk/types';
 import { BinaryOperator, SeedCounts } from '@abuddy/sdk/utils';
@@ -323,6 +324,35 @@ interface BrainEventPayload {
     payload?: any;
     targetFlowId?: string;
 }
+
+type BrainInternalEvents = {
+    type: 'TNODE_SPAWNED';
+    tNode: TNodeEntity;
+    parentId?: EARS.EntityId;
+    eventTNodeId?: EARS.EntityId;
+    flowTNodeId: EARS.EntityId;
+} | {
+    type: 'TNODE_UPDATED';
+    data: TNodeUpdate;
+} | {
+    type: 'BRAIN_SETTINGS_UPDATED';
+    settings: any;
+    changes?: any;
+} | {
+    type: 'HANDLE_BRAIN_EVENT';
+    eventType: string;
+    payload?: any;
+    targetFlowId?: string;
+} | {
+    type: 'CHILD_COMPLETED';
+    stepId?: EARS.EntityId;
+    tNodeId?: EARS.EntityId;
+    stepLabel?: string;
+    result?: any;
+    final?: boolean;
+    eventTNodeId?: EARS.EntityId;
+    isFlow?: boolean;
+};
 
 interface BreadcrumbItem {
     id: EARS.EntityId | null;
@@ -1253,6 +1283,283 @@ interface ImageReference {
     url: string;
     name: string;
 }
+
+type IncomingActionsEvents = {
+    type: 'codeActions.OPEN_ACTION';
+    actionId: string;
+} | {
+    type: 'codeActions.SAVE_ACTION';
+    actionId: string;
+    actionFn: string;
+};
+
+type IncomingCommitEvents = {
+    type: 'commit.GET_GIT_STATUS';
+} | {
+    type: 'commit.GET_GIT_DIFF';
+    path?: string;
+    staged?: boolean;
+} | {
+    type: 'commit.STAGE_FILES';
+    paths: string[];
+} | {
+    type: 'commit.UNSTAGE_FILES';
+    paths: string[];
+} | {
+    type: 'commit.COMMIT';
+    message: string;
+} | {
+    type: 'commit.GET_CURRENT_BRANCH';
+} | {
+    type: 'commit.REVERT_FILE';
+    path: string;
+} | {
+    type: 'commit.REVERT_FILES';
+    paths: string[];
+} | {
+    type: 'commit.GET_ALL_BRANCHES';
+} | {
+    type: 'commit.CHECKOUT_BRANCH';
+    branchName: string;
+} | {
+    type: 'commit.PUBLISH_BRANCH';
+} | {
+    type: 'commit.PULL_BRANCH';
+} | {
+    type: 'commit.GENERATE_MESSAGE';
+} | {
+    type: 'commit.STASH_PUSH';
+    message?: string;
+    stagedOnly?: boolean;
+} | {
+    type: 'commit.STASH_LIST';
+} | {
+    type: 'commit.STASH_APPLY';
+    index: number;
+} | {
+    type: 'commit.STASH_POP';
+    index: number;
+} | {
+    type: 'commit.STASH_DROP';
+    index: number;
+} | {
+    type: 'commit.STASH_CLEAR';
+} | {
+    type: 'commit.WORKTREE_LIST';
+} | {
+    type: 'commit.WORKTREE_ADD';
+    path: string;
+    branch?: string;
+    createBranch?: boolean;
+} | {
+    type: 'commit.WORKTREE_REMOVE';
+    path: string;
+    force?: boolean;
+} | {
+    type: 'commit.WORKTREE_SWITCH';
+    path: string;
+} | {
+    type: 'commit.RESOLVE_CONFLICT';
+    path: string;
+    strategy: 'ours' | 'theirs';
+} | {
+    type: 'commit.MARK_RESOLVED';
+    path: string;
+} | {
+    type: 'commit.RESOLVE_ALL_CONFLICTS';
+    strategy: 'ours' | 'theirs';
+} | {
+    type: 'commit.LOG_LIST';
+} | {
+    type: 'commit.REVERT_COMMIT';
+    hash: string;
+} | {
+    type: 'commit.RESET_TO_COMMIT';
+    hash: string;
+};
+
+type IncomingExplorerEvents = {
+    type: 'explorer.LIST_FILES';
+    path: string;
+} | {
+    type: 'explorer.READ_FILE';
+    path: string;
+} | {
+    type: 'explorer.WRITE_FILE';
+    path: string;
+    content: string;
+} | {
+    type: 'explorer.CREATE_FILE';
+    path: string;
+    content?: string;
+} | {
+    type: 'explorer.DELETE_FILE';
+    path: string;
+} | {
+    type: 'explorer.RENAME_FILE';
+    oldPath: string;
+    newPath: string;
+} | {
+    type: 'explorer.CREATE_DIRECTORY';
+    path: string;
+} | {
+    type: 'explorer.GET_FILE_INFO';
+    path: string;
+} | {
+    type: 'explorer.CLOSE_FILE';
+    path: string;
+} | {
+    type: 'explorer.QUICK_OPEN_SEARCH';
+    baseDirectory: string;
+} | {
+    type: 'explorer.MOVE_FILES';
+    sourcePaths: string[];
+    targetDir: string;
+} | {
+    type: 'explorer.COPY_FILES';
+    sourcePaths: string[];
+    targetDir: string;
+};
+
+type IncomingPromptsEvents = {
+    type: 'codePrompts.OPEN_PROMPT';
+    promptId: string;
+} | {
+    type: 'codePrompts.SAVE_PROMPT';
+    promptId: string;
+    templateFn: string;
+};
+
+type IncomingPullRequestEvents = {
+    type: 'pr.GET_BASE_BRANCH';
+} | {
+    type: 'pr.GET_BRANCH_DIFF';
+    baseBranch?: string;
+    headBranch?: string;
+} | {
+    type: 'pr.GET_BRANCH_FILE_DIFF';
+    path: string;
+    baseBranch: string;
+    headBranch?: string;
+} | {
+    type: 'pr.LIST_OPEN_PRS';
+} | {
+    type: 'pr.SELECT_PR';
+    number: number;
+} | {
+    type: 'pr.CREATE_PR';
+    title: string;
+    body: string;
+    base?: string;
+    draft?: boolean;
+} | {
+    type: 'pr.MERGE_PR';
+    number: number;
+    method?: 'merge' | 'rebase' | 'squash';
+} | {
+    type: 'pr.CLOSE_PR';
+    number: number;
+} | {
+    type: 'pr.TOGGLE_DRAFT';
+    number: number;
+    isDraft: boolean;
+} | {
+    type: 'pr.CHECK_BRANCH_PR';
+} | {
+    type: 'pr.CHECK_GH_AUTH';
+} | {
+    type: 'pr.GET_PR_AUTOFILL';
+} | {
+    type: 'pr.GET_SMART_BASE_BRANCH';
+} | {
+    type: 'pr.DELETE_BRANCH';
+    branch: string;
+} | {
+    type: 'pr.UPDATE_PR';
+    number: number;
+    title?: string;
+    body?: string;
+    base?: string;
+} | {
+    type: 'pr.CREATE_COMMENT';
+    number: number;
+    body: string;
+} | {
+    type: 'pr.EDIT_COMMENT';
+    commentId: number;
+    body: string;
+} | {
+    type: 'pr.DELETE_COMMENT';
+    commentId: number;
+} | {
+    type: 'pr.GET_COMMENTS';
+    number: number;
+} | {
+    type: 'pr.GET_REVIEW_THREADS';
+    number: number;
+} | {
+    type: 'pr.REPLY_TO_THREAD';
+    prNumber: number;
+    commentId: number;
+    body: string;
+} | {
+    type: 'pr.RESOLVE_THREAD';
+    threadId: string;
+} | {
+    type: 'pr.UNRESOLVE_THREAD';
+    threadId: string;
+} | {
+    type: 'pr.EDIT_REVIEW_COMMENT';
+    commentId: number;
+    body: string;
+} | {
+    type: 'pr.DELETE_REVIEW_COMMENT';
+    commentId: number;
+};
+
+type IncomingSearchEvents = {
+    type: 'search.SEARCH_FILES';
+    query: string;
+    path: string;
+    includePattern?: string;
+    excludePattern?: string;
+    caseSensitive?: boolean;
+    wholeWord?: boolean;
+    useRegex?: boolean;
+    maxResults?: number;
+} | {
+    type: 'search.CANCEL_SEARCH';
+};
+
+type IncomingTerminalEvents = {
+    type: 'terminal.CREATE_TERMINAL';
+    title?: string;
+    cwd?: string;
+    shell?: string;
+    cols?: number;
+    rows?: number;
+} | {
+    type: 'terminal.CLOSE_TERMINAL';
+    terminalId: string;
+} | {
+    type: 'terminal.TERMINAL_INPUT';
+    terminalId: string;
+    data: string;
+} | {
+    type: 'terminal.RESIZE_TERMINAL';
+    terminalId: string;
+    cols: number;
+    rows: number;
+} | {
+    type: 'terminal.RENAME_TERMINAL';
+    terminalId: string;
+    customTitle: string;
+} | {
+    type: 'terminal.REFRESH_LIST';
+} | {
+    type: 'terminal.OPEN_TERMINAL_TAB';
+    terminalId: string;
+};
 
 interface InternalSettings {
     hasOnboarded: boolean;
@@ -2337,9 +2644,12 @@ type OutgoingSettingsEvents = {
     success: boolean;
     error?: string;
     resolvedPath?: string;
-} | {
+}
+/** `errors` lists the records that couldn't be seeded (`<key>: <error>`); the rest were imported */
+ | {
     type: 'PACK_SEEDS_IMPORTED';
     result: Record<string, SeedCounts>;
+    errors: string[];
 } | {
     type: 'PACK_SEEDS_IMPORT_FAILED';
     error: string;
@@ -2583,6 +2893,22 @@ type OwnRepositories = {
     settingsCommands: typeof settingsCommands;
 };
 
+/** Feature id → the events this pack's system for that feature receives. */
+type OwnSystemEvents = {
+    'threads': IncomingEventsOf<typeof threads>;
+    'code': IncomingEventsOf<typeof code>;
+    'notes': IncomingEventsOf<typeof notes>;
+    'browser': IncomingEventsOf<typeof browser>;
+    'library': IncomingEventsOf<typeof library>;
+    'flows': IncomingEventsOf<typeof flows>;
+    'actions': IncomingEventsOf<typeof actions>;
+    'prompts': IncomingEventsOf<typeof prompts>;
+    'brain': IncomingEventsOf<typeof brain>;
+    'database': IncomingEventsOf<typeof database>;
+    'logs': IncomingEventsOf<typeof logs>;
+    'settings': IncomingEventsOf<typeof settings>;
+};
+
 /**
  * Every plugin this pack's systems can send to: its own, its dependencies' and the host's. A plugin
  * id this pack also uses types as its own plugin.
@@ -2598,6 +2924,11 @@ type PackNodes = NodeEntity;
  */
 type PackShapes = Omit<SdkEntityShapes & OwnEntityShapes, 'Node'> & {
     Node: [PackNodes] extends [never] ? SdkEntityShapes['Node'] : PackNodes;
+};
+
+/** This pack's systems by the id they run under, and the events each receives: what dependents send to. */
+type PackSystemEvents = {
+    [K in keyof OwnSystemEvents as (typeof busId)[K]]: OwnSystemEvents[K];
 };
 
 /**
@@ -3422,6 +3753,23 @@ interface ThreadTagOption {
     color?: string;
 }
 
+type ThreadsInternalEvents = {
+    type: 'CLIENT_CONNECTED';
+} | {
+    type: 'THREADS_SETTINGS_UPDATED';
+    settings: any;
+    changes?: any;
+} | {
+    type: 'BIRTH_FLOW_START';
+} | {
+    type: 'THREAD_DELETED';
+    threadId: string;
+}
+/** The library's commands folder changed (sent by the library system) */
+ | {
+    type: 'COMMANDS_CHANGED';
+};
+
 interface ThreadsSettings {
     statuses: ThreadStatusOption[];
     tags: ThreadTagOption[];
@@ -3687,6 +4035,48 @@ declare const actionQueries: {
     };
 };
 
+declare const actions: {
+    _incoming: ({
+        type: "ACTION_SELECT";
+        actionId: string;
+    } | {
+        type: "CREATE_ACTION";
+        label: string;
+        input: Record<string, any>;
+        actionFn: string;
+        output?: any;
+        description?: string;
+        category?: string;
+    } | {
+        type: "UPDATE_ACTION";
+        actionId: string;
+        label?: string;
+        input?: Record<string, any>;
+        actionFn?: string;
+        output?: any;
+        description?: string;
+        category?: string;
+    } | {
+        type: "DELETE_ACTION";
+        actionId: string;
+    } | {
+        type: "FETCH_ACTIONS_PAGE";
+        page?: number;
+    } | {
+        type: "FETCH_ALL_ACTIONS";
+    } | {
+        type: "IMPORT_ACTIONS";
+        actions: any;
+    } | {
+        type: "EXPORT_ACTIONS";
+        directory: string;
+    }) | {
+        type: "ACTIONS_SETTINGS_UPDATED";
+        settings: any;
+        changes?: any;
+    };
+};
+
 /**
  * Add multiple messages to a thread without emitting per-message frontend events.
  * Caller is responsible for refreshing the frontend afterwards (e.g. via LOAD_CHAT_THREAD).
@@ -3700,6 +4090,44 @@ declare function addMessagesToThread(params: {
         context?: Record<string, unknown>;
     }>;
 }): void;
+
+declare const brain: {
+    _incoming: ({
+        type: "OPEN_TNODE";
+        tNodeId: string;
+    } | {
+        type: "GO_BACK_TNODE";
+        currentFlowTNodeId?: string;
+    } | {
+        type: "REQUEST_PLUGIN_DATA";
+        flowTNodeId?: string;
+    } | {
+        type: "GET_TNODE_DETAILS";
+        tNodeId: string;
+    } | {
+        type: "TOGGLE_INSPECT";
+    } | {
+        type: "START_BRAIN";
+    } | {
+        type: "KILL_BRAIN";
+    } | {
+        type: "RESTART_BRAIN";
+    } | {
+        type: "PAUSE_BRAIN";
+    } | {
+        type: "RESUME_BRAIN";
+    } | {
+        type: "HANDLE_BRAIN_EVENT";
+        eventType: string;
+        payload?: any;
+        targetFlowId?: string;
+    } | {
+        type: "TRIGGER_BRAIN_EVENT";
+        eventType: string;
+        payload?: any;
+        targetFlowId?: string;
+    }) | BrainInternalEvents;
+};
 
 declare const brainCommands: {
     readonly createEventTNode: (eventNode: {
@@ -3755,6 +4183,18 @@ declare const brainQueries: {
     readonly rootData: () => FlowTNodeData;
 };
 
+declare const browser: {
+    _incoming: ({
+        type: "SYNC_TABS";
+        tabs: SavedTab[];
+    } | {
+        type: "SYNC_BOOKMARKS";
+        bookmarks: SavedBookmark[];
+    }) | {
+        type: "CLIENT_CONNECTED";
+    };
+};
+
 declare const browserCommands: {
     readonly syncTabs: (tabs: SavedTab[]) => void;
     readonly syncBookmarks: (bookmarks: SavedBookmark[]) => void;
@@ -3779,6 +4219,21 @@ declare const browserQueries: {
 declare function buildQueryContext(): {
     schema: string;
     topology: string;
+};
+
+declare const busId: {
+    readonly threads: "threads";
+    readonly code: "code";
+    readonly notes: "notes";
+    readonly browser: "browser";
+    readonly library: "library";
+    readonly flows: "flows";
+    readonly actions: "actions";
+    readonly prompts: "prompts";
+    readonly brain: "brain";
+    readonly database: "database";
+    readonly logs: "logs";
+    readonly settings: "settings";
 };
 
 declare const chatCommands: {
@@ -3897,6 +4352,17 @@ declare function clearAllSchedules(): void;
 
 declare function clearHandle(key: string): void;
 
+declare const code: {
+    _incoming: (IncomingExplorerEvents | IncomingSearchEvents | IncomingCommitEvents | IncomingPullRequestEvents | IncomingTerminalEvents | IncomingActionsEvents | IncomingPromptsEvents | {
+        type: "SET_BASE_DIRECTORY";
+        path: string;
+        fromUserNavigation?: boolean;
+    }) | {
+        type: "CODE_SETTINGS_UPDATED";
+        settings: CodeSettings;
+    };
+};
+
 /**
  * Create a new artifact and notify the frontend (with side effects)
  *
@@ -3953,6 +4419,47 @@ declare function createThreadAndNotify(options: ThreadCreateData): {
     shortCode: string;
     timestamp: number;
     status: string;
+};
+
+declare const database: {
+    _incoming: ({
+        type: "EXECUTE_QUERY";
+        code: string;
+    } | {
+        type: "EXECUTE_TRANSACTION";
+        code: string;
+    } | {
+        type: "GENERATE_AI_QUERY";
+        prompt: string;
+        mode?: "query" | "transaction";
+    } | {
+        type: "REFRESH_SCHEMA";
+    } | {
+        type: "GET_TRACE_FLOWS";
+    } | {
+        type: "GET_FLOW_EVENTS";
+        flowId: string;
+        offset?: number;
+        limit?: number;
+    } | {
+        type: "GET_NODE_DETAILS";
+        nodeId: string;
+    } | {
+        type: "EXPORT_DATABASE";
+        path: string;
+        name?: string;
+        databases: ("lmdb" | "volatileLmdb")[];
+    } | {
+        type: "IMPORT_DATABASE";
+        path: string;
+    } | {
+        type: "GET_BACKUP_INFO";
+        path: string;
+    } | {
+        type: "RESET_DATABASE";
+    }) | {
+        type: "CLIENT_CONNECTED";
+    };
 };
 
 declare const featureServices: {
@@ -4080,6 +4587,73 @@ declare function findOrCreateByType(threadId: EARS.EntityId, artifactType: Artif
     created: boolean;
 };
 
+declare const flows: {
+    _incoming: ({
+        type: "FLOW_SELECT";
+        flowId: string;
+    } | {
+        type: "CREATE_FLOW";
+    } | {
+        type: "DELETE_FLOW";
+        flowId: string;
+    } | {
+        type: "UPDATE_FLOW_LABEL";
+        flowId: string;
+        label: string;
+    } | {
+        type: "CREATE_NODE";
+        flowId: string;
+        tempId: string;
+        nodeData: any;
+    } | {
+        type: "UPDATE_NODE";
+        flowId: string;
+        nodeId: string;
+        nodeData: any;
+    } | {
+        type: "DELETE_NODE";
+        flowId: string;
+        nodeId: string;
+    } | {
+        type: "CREATE_EDGE";
+        flowId: string;
+        sourceId: string;
+        targetId: string;
+        sourceHandle?: string;
+        targetHandle?: string;
+    } | {
+        type: "DELETE_EDGE";
+        flowId: string;
+        edgeId: string;
+    } | {
+        type: "UPDATE_EDGE";
+        flowId: string;
+        edgeId: string;
+        oldSource: string;
+        oldTarget: string;
+        newSource: string;
+        newTarget: string;
+    } | {
+        type: "IMPORT_DSL";
+        dsl: any;
+    } | {
+        type: "EXPORT_DSL";
+        directory: string;
+        flowId?: string;
+    } | {
+        type: "REINDEX_HANDLES";
+        flowId: string;
+        nodeId: string;
+        prefix: string;
+        index: number;
+        direction: -1 | 1;
+    }) | {
+        type: "FLOWS_SETTINGS_UPDATED";
+        settings: any;
+        changes?: any;
+    };
+};
+
 declare const flowsCommands: {
     readonly createFlow: (flow?: Partial<FlowEntity>) => FlowEntity;
     readonly createFlowWithEntryNode: (flow?: Partial<FlowEntity>) => {
@@ -4125,6 +4699,86 @@ declare const flowsQueries: {
 };
 
 declare function getHandle(key: string): CodexTurnHandle | undefined;
+
+declare const library: {
+    _incoming: ({
+        type: "CREATE_DOCUMENT";
+        name: string;
+        content: ContentSection[];
+        tags: string[];
+        collectionId?: string;
+    } | {
+        type: "UPDATE_DOCUMENT";
+        id: string;
+        name: string;
+        content: ContentSection[];
+        tags: string[];
+        collectionId?: string;
+    } | {
+        type: "DELETE_DOCUMENT";
+        id: string;
+    } | {
+        type: "GET_DOCUMENT";
+        id: string;
+    } | {
+        type: "GET_LIBRARY_INDEX";
+    } | {
+        type: "CREATE_COLLECTION";
+        name: string;
+        description?: string;
+        parentId?: string;
+    } | {
+        type: "UPDATE_COLLECTION";
+        id: string;
+        name: string;
+        description?: string;
+    } | {
+        type: "DELETE_COLLECTION";
+        id: string;
+    } | {
+        type: "MOVE_DOCUMENT";
+        documentId: string;
+        collectionId?: string;
+    } | {
+        type: "GET_FOLDER_CONTENTS";
+        folderId: string | null;
+    } | {
+        type: "NAVIGATE_TO_FOLDER";
+        folderId: string | null;
+    } | {
+        type: "RENAME_ITEM";
+        id: string;
+        name: string;
+        itemType: "document" | "folder";
+    } | {
+        type: "DELETE_ITEMS";
+        ids: string[];
+    } | {
+        type: "MOVE_ITEMS";
+        ids: string[];
+        targetFolderId: string | null;
+    } | {
+        type: "CREATE_SYMLINK_COLLECTION";
+        name: string;
+        symlinkPath: string;
+        parentId?: string;
+    } | {
+        type: "UPDATE_SYMLINK_PATH";
+        collectionId: string;
+        newPath: string;
+    } | {
+        type: "IMPORT_LIBRARY";
+        directory: string;
+    } | {
+        type: "EXPORT_LIBRARY";
+        directory: string;
+        format: "json" | "markdown";
+    }) | {
+        type: "LIBRARY_SETTINGS_UPDATED";
+        settings: any;
+        changes?: any;
+    };
+};
 
 declare const libraryCommands: {
     readonly createDocument: (name: string, content: ContentSection[], tags: string[], collectionId?: EARS.EntityId, id?: string, sourceHash?: string) => DocumentDTO;
@@ -4176,6 +4830,23 @@ declare function listAll(opts?: {
  */
 declare function listen(eventType: string, callback: BrainEventCallback, options?: ListenOptions): () => void;
 
+declare const logs: {
+    _incoming: ({
+        type: "CLEAR_LOGS";
+    } | {
+        type: "REQUEST_LOGS_UPDATE";
+    }) | ({
+        type: "REQUEST_LOGS_UPDATE";
+    } | {
+        type: "ADD_LOG";
+        log: Omit<LogEntry, "id" | "timestamp">;
+    } | {
+        type: "LOGS_SETTINGS_UPDATED";
+        settings: LogsSettings;
+        changes?: any;
+    });
+};
+
 declare const noteCommands: {
     readonly create: (input: {
         title: string;
@@ -4223,6 +4894,67 @@ declare const noteQueries: {
     readonly expiredSoftDeleted: (maxAgeDays: number) => NoteEntity[];
     readonly connectedData: () => {
         notes: NoteDTO[];
+    };
+};
+
+declare const notes: {
+    _incoming: {
+        type: "CREATE_NOTE";
+        title: string;
+        content?: string;
+        icon?: string | null;
+        parentId?: string;
+        skipContentSync?: boolean;
+        noteType?: "document" | "task" | "tasklist";
+        completed?: boolean;
+        displayOrder?: number;
+    } | {
+        type: "UPDATE_NOTE";
+        id: string;
+        title?: string;
+        content?: string;
+        icon?: string | null;
+        completed?: boolean;
+        hideCompletedChildren?: boolean;
+        favorite?: boolean;
+    } | {
+        type: "DELETE_NOTE";
+        id: string;
+    } | {
+        type: "SOFT_DELETE_NOTE";
+        id: string;
+    } | {
+        type: "RESTORE_NOTE";
+        id: string;
+    } | {
+        type: "MOVE_NOTE";
+        ids: string[];
+        newParentId: string | null;
+    } | {
+        type: "REORDER_NOTE";
+        id: string;
+        newParentId: string | null;
+        newIndex: number;
+    } | {
+        type: "VIEW_NOTE";
+        id: string;
+    } | {
+        type: "SEARCH_NOTES";
+        query: string;
+    } | {
+        type: "GET_TRASHED_NOTES";
+    } | {
+        type: "PERMANENTLY_DELETE_NOTE";
+        id: string;
+    } | {
+        type: "EMPTY_TRASH";
+    } | {
+        type: "IMPORT_NOTES";
+        directory: string;
+    } | {
+        type: "EXPORT_NOTES";
+        directory: string;
+        format: "json" | "markdown";
     };
 };
 
@@ -4284,6 +5016,48 @@ declare const promptQueries: {
         page: number;
         totalPages: number;
         totalCount: number;
+    };
+};
+
+declare const prompts: {
+    _incoming: ({
+        type: "PROMPT_SELECT";
+        promptId: string;
+    } | {
+        type: "CREATE_PROMPT";
+        label: string;
+        inputs: Record<string, any>;
+        templateFn: string;
+        outputSchema?: any;
+        description?: string;
+        category?: string;
+    } | {
+        type: "UPDATE_PROMPT";
+        promptId: string;
+        label?: string;
+        inputs?: Record<string, any>;
+        templateFn?: string;
+        outputSchema?: any;
+        description?: string;
+        category?: string;
+    } | {
+        type: "DELETE_PROMPT";
+        promptId: string;
+    } | {
+        type: "FETCH_PROMPTS_PAGE";
+        page?: number;
+    } | {
+        type: "FETCH_ALL_PROMPTS";
+    } | {
+        type: "IMPORT_PROMPTS";
+        prompts: any;
+    } | {
+        type: "EXPORT_PROMPTS";
+        directory: string;
+    }) | {
+        type: "PROMPTS_SETTINGS_UPDATED";
+        settings: any;
+        changes?: any;
     };
 };
 
@@ -4383,6 +5157,41 @@ declare function sendSystemMessage(options: {
     text: string;
 }): {
     messageId: EARS.EntityId;
+};
+
+declare const settings: {
+    _incoming: ({
+        type: "GET_SETTINGS";
+    } | {
+        type: "UPDATE_SETTINGS";
+        entityType: "general" | "internal" | "plugin";
+        label: string;
+        path: string[];
+        value: any;
+    } | {
+        type: "RESET_SETTINGS";
+    } | {
+        type: "TEST_CLI_PROVIDER";
+        provider: string;
+    } | {
+        type: "PREVIEW_PACK_SEEDS";
+        directory: string;
+    } | {
+        type: "IMPORT_PACK_SEEDS";
+        directory: string;
+        include?: Record<string, string[] | null>;
+        mode?: "keep-existing" | "replace-on-collision" | "wipe-and-replace";
+        restartBrain?: boolean;
+    } | {
+        type: "REPLACE_SETTINGS";
+        data: SettingsData;
+    } | {
+        type: "RESET_APP";
+    }) | ({
+        type: "PACK_SETTINGS_CHANGED";
+    } | {
+        type: "SECRETS_CHANGED";
+    });
 };
 
 declare const settingsCommands: {
@@ -4488,6 +5297,155 @@ declare const threadQueries: {
     readonly findArtifactByType: typeof findArtifactByThreadAndType;
 };
 
+declare const threads: {
+    _incoming: ({
+        type: "CREATE_THREAD";
+        topic: string;
+        tags?: string[];
+        instructions: string;
+        linkedThreads?: {
+            id: string;
+            relation: "blocked_by" | "blocks" | "duplicates" | "parent_of";
+        }[];
+        parentThreadId?: string;
+    } | {
+        type: "VIEW_THREAD";
+        threadId: string;
+    } | {
+        type: "UPDATE_THREAD_STATUS";
+        threadId: string;
+        status: string;
+    } | {
+        type: "UPDATE_THREAD_FIELD";
+        threadId: string;
+        key: string;
+        value: any;
+    } | {
+        type: "DELETE_THREAD";
+        threadId: string;
+    } | {
+        type: "SET_THREAD_PARENT";
+        childIds: string[];
+        parentId: string;
+    } | {
+        type: "EXPORT_THREADS";
+        directory: string;
+    } | {
+        type: "IMPORT_THREADS";
+        directory: string;
+    } | {
+        type: "USER_MSG";
+        text: string;
+        mode?: string;
+        phase?: string;
+        threadId?: string;
+        references?: {
+            images?: {
+                url: string;
+                name: string;
+            }[];
+            files?: {
+                name: string;
+                path: string;
+                typeLabel: string;
+                isImage: boolean;
+            }[];
+            context?: {
+                refType: "document" | "folder" | "note" | "task" | "tasklist" | "thread";
+                refId: string;
+                shortCode: string;
+                label: string;
+            }[];
+        };
+        cwdOverride?: string;
+        forceDirectoryPicker?: boolean;
+    } | {
+        type: "OPEN_THREAD_CHAT";
+        threadId: string;
+        restore?: boolean;
+    } | {
+        type: "OPEN_THREAD_TAB";
+        threadId: string;
+        label: string;
+        pinned?: boolean;
+    } | {
+        type: "PAUSE_TURN";
+        threadId: string;
+    } | {
+        type: "APPROVE_TODO_LIST";
+        artifactId: string;
+        tasks: any[];
+    } | {
+        type: "REJECT_TODO_LIST";
+        artifactId: string;
+    } | {
+        type: "INTERACTIVE_MSG_RESPONSE";
+        messageId: string;
+        threadId: string;
+        response: any;
+    } | {
+        type: "FORK_THREAD";
+        messageId: string;
+        threadId?: string;
+        threadTopic?: string;
+    } | {
+        type: "REVERT_THREAD";
+        messageId: string;
+        threadId: string;
+        restoreFiles?: boolean;
+        userCliUuid?: string;
+    } | {
+        type: "SUMMARIZE_THREAD";
+        messageId: string;
+        threadId: string;
+    } | {
+        type: "USER_COMMAND";
+        command: string;
+        text: string;
+        mode?: string;
+        phase?: string;
+        threadId?: string;
+        references?: {
+            images?: {
+                url: string;
+                name: string;
+            }[];
+            files?: {
+                name: string;
+                path: string;
+                typeLabel: string;
+                isImage: boolean;
+            }[];
+            context?: {
+                refType: "document" | "folder" | "note" | "task" | "tasklist" | "thread";
+                refId: string;
+                shortCode: string;
+                label: string;
+            }[];
+        };
+        cwdOverride?: string;
+    } | {
+        type: "TOGGLE_COMPACTED";
+        markerId: string;
+        compacted: boolean;
+    } | {
+        type: "DELETE_MESSAGE";
+        messageId: string;
+    } | {
+        type: "FORWARD_BRAIN_EVENT";
+        eventType: string;
+        payload?: any;
+    } | {
+        type: "GET_ARCHIVED_THREADS";
+    } | {
+        type: "REFRESH_THREADS";
+    } | {
+        type: "LOAD_MORE_MESSAGES";
+        threadId: string;
+        cursor: string;
+    }) | ThreadsInternalEvents;
+};
+
 /**
  * Remove a named listener by its ID.
  * No-op if the ID doesn't exist.
@@ -4552,5 +5510,5 @@ declare function viewByFile(filePath: string, opts?: {
     offset?: number;
 }): Promise<any[]>;
 
-export type { PackShapes as PackEntityShapes, PackEvents, Repositories, Services };
+export type { PackShapes as PackEntityShapes, PackEvents, PackSystemEvents, Repositories, Services };
 ```

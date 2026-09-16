@@ -2,11 +2,7 @@ import { getHostModule } from '../runtime/host.ts';
 import type { LogEvent } from '../logger/index.ts';
 import type { SecretInfo, SecretProvider, SecretsStatus } from '../services/secrets.ts';
 
-/** An event for a backend system, as the bus receives it */
-export type IncomingSystemEvents = { type: string; systemId: string; [key: string]: unknown };
-
-/** An event for a frontend plugin, as the bus sends it */
-export type OutgoingSystemEvents = { type: string; pluginId: string; [key: string]: unknown };
+import type { IncomingSystemEvents, OutgoingSystemEvents } from '../events/index.ts';
 
 /** The user's stored keys (without values) and how they're protected */
 export interface SecretsSnapshot {
