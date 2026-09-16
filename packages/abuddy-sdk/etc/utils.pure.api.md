@@ -66,7 +66,7 @@ export const entries: <T extends Record<string, unknown>>(obj: T) => Array<[keyo
 // @public (undocumented)
 export function extractValueByPath(source: unknown, path: string): unknown;
 
-// @public (undocumented)
+// @public
 export const isPlainObject: (val: unknown) => val is Record<string, unknown>;
 
 // @public (undocumented)

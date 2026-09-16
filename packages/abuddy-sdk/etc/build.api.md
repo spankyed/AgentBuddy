@@ -1686,8 +1686,8 @@ export const StepEntrySchema: z.ZodObject<{
     } | undefined;
 }>;
 
-// @public
-export function toDisplayName(filename: string): string;
+// @public (undocumented)
+export function toDisplayName(str: string): string;
 
 // @public (undocumented)
 export interface Track {

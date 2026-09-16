@@ -314,8 +314,6 @@ export interface SystemSpec<Id extends string, TEvents extends {
 // @public (undocumented)
 export interface TemplateInput {
     // (undocumented)
-    commonSources?: string[];
-    // (undocumented)
     defaultValue?: unknown;
     // (undocumented)
     description?: string;

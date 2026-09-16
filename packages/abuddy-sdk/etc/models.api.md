@@ -30,8 +30,6 @@ export interface ModelCatalogEntry {
     description?: string;
     id: ModelId;
     // (undocumented)
-    maxOutput?: number;
-    // (undocumented)
     name: string;
 }
 
