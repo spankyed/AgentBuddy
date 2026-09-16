@@ -1,5 +1,6 @@
 // The app's services.inference: `provider:model` ids resolve to that provider's AI SDK model, built with
-// the key the user selected for the provider in Settings → Secrets. Local HTTP servers stand in for the providers.
+// the key the user selected for the provider in Settings → Secrets, at the provider's own URL. Local HTTP servers
+// stand in for the providers, injected through `createModelResolver`'s host-internal `baseUrls`.
 import * as fs from 'node:fs';
 import * as http from 'node:http';
 import type { AddressInfo } from 'node:net';
@@ -7,7 +8,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JSONSchema7 } from 'ai';
-import { availableModels, parseModelId, providerCapabilities, providerLabels, type ModelKind, type ProviderName } from '@abuddy/sdk/models';
+import { availableModels, parseModelId, providerCapabilities, providerLabels, PROVIDER_BASE_URLS, type ModelKind, type ProviderName } from '@abuddy/sdk/models';
+import { createInferenceService, type InferenceService } from '@abuddy/sdk/services';
 
 // The app's store, on a temporary file with keys in memory
 const secretsDir = vi.hoisted(() => ({ path: '' }));
@@ -20,7 +22,7 @@ vi.mock('../../src/secrets/index.ts', async (importOriginal) => {
 });
 
 const { secretsStore } = await import('../../src/secrets/index.ts');
-const { inference, model: resolveModel } = await import('../../src/services/inference.ts');
+const { createModelResolver, model: resolveModel } = await import('../../src/services/inference.ts');
 const languageModel = (id: string) => resolveModel('language', id as never);
 
 const PROVIDERS = Object.keys(providerLabels) as ProviderName[];
@@ -34,7 +36,7 @@ const secrets = {
   },
 };
 
-let server: http.Server | undefined;
+const servers: http.Server[] = [];
 afterAll(() => {
   fs.rmSync(secretsDir.path, { recursive: true, force: true });
 });
@@ -43,7 +45,7 @@ beforeEach(() => {
 });
 afterEach(() => {
   vi.unstubAllEnvs();
-  server?.close();
+  for (const open of servers.splice(0)) open.close();
 });
 
 /** An OpenAI Responses API reply with `text` as the model's output */
@@ -53,12 +55,15 @@ const openaiReply = (text: string) => ({
   usage: { input_tokens: 1, output_tokens: 1, total_tokens: 2, input_tokens_details: { cached_tokens: 0 }, output_tokens_details: { reasoning_tokens: 0 } },
 });
 
-/** A local server answering every request with `body` (JSON, or bytes as they are), recording each request's headers and body (JSON, or text) */
-async function provider(body: object): Promise<{ baseURL: string; requests: http.IncomingHttpHeaders[]; bodies: Array<Record<string, unknown>>; paths: string[] }> {
+/**
+ * A local server answering every request with `body` (JSON, or bytes as they are), recording each request's headers
+ * and body (JSON, or text), and an inference service — built as the host builds the app's — calling it for every provider
+ */
+async function provider(body: object = {}): Promise<{ baseURL: string; inference: InferenceService; requests: http.IncomingHttpHeaders[]; bodies: Array<Record<string, unknown>>; paths: string[] }> {
   const requests: http.IncomingHttpHeaders[] = [];
   const bodies: Array<Record<string, unknown>> = [];
   const paths: string[] = [];
-  server = http.createServer((req, res) => {
+  const server = http.createServer((req, res) => {
     let received = '';
     req.on('data', (chunk) => { received += chunk; });
     req.on('end', () => {
@@ -74,8 +79,11 @@ async function provider(body: object): Promise<{ baseURL: string; requests: http
       }
     });
   });
-  await new Promise<void>((resolve) => server!.listen(0, '127.0.0.1', resolve));
-  return { baseURL: `http://127.0.0.1:${(server.address() as AddressInfo).port}/v1`, requests, bodies, paths };
+  servers.push(server);
+  await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const baseURL = `http://127.0.0.1:${(server.address() as AddressInfo).port}/v1`;
+  const baseUrls = Object.fromEntries(PROVIDERS.map((name) => [name, baseURL])) as Record<ProviderName, string>;
+  return { baseURL, inference: createInferenceService(createModelResolver({ baseUrls })), requests, bodies, paths };
 }
 
 describe("the app's inference service", () => {
@@ -140,12 +148,11 @@ describe("the app's inference service", () => {
   });
 
   it('calls Anthropic with the key stored for it', async () => {
-    const { baseURL, requests } = await provider({
+    const { inference, requests } = await provider({
       id: 'msg_1', type: 'message', role: 'assistant', model: 'claude-sonnet-4-5',
       content: [{ type: 'text', text: 'Hello from Anthropic' }], stop_reason: 'end_turn', stop_sequence: null,
       usage: { input_tokens: 1, output_tokens: 1 },
     });
-    vi.stubEnv('ANTHROPIC_BASE_URL', baseURL);
     secrets.set('anthropic', 'stored-anthropic-key');
 
     const result = await inference.generateText({ model: 'anthropic:claude-sonnet-4-5', prompt: 'hi' });
@@ -155,8 +162,7 @@ describe("the app's inference service", () => {
   });
 
   it("calls OpenAI with the selected key, switching on the next call when another is selected", async () => {
-    const { baseURL, requests } = await provider(openaiReply('Hello from OpenAI'));
-    vi.stubEnv('OPENAI_BASE_URL', baseURL);
+    const { inference, requests } = await provider(openaiReply('Hello from OpenAI'));
     vi.stubEnv('OPENAI_API_KEY', 'env-openai-key');
     secretsStore.add('openai', 'Work', 'sk-work-1234567890');
     const personal = secretsStore.add('openai', 'Personal', 'sk-personal-0987654321');
@@ -170,12 +176,11 @@ describe("the app's inference service", () => {
   });
 
   it('embeds through OpenAI with the key stored for it', async () => {
-    const { baseURL, requests, bodies } = await provider({
+    const { inference, requests, bodies } = await provider({
       object: 'list', model: 'text-embedding-3-small',
       data: [{ object: 'embedding', index: 0, embedding: [0.25, 0.5] }],
       usage: { prompt_tokens: 1, total_tokens: 1 },
     });
-    vi.stubEnv('OPENAI_BASE_URL', baseURL);
     secrets.set('openai', 'stored-openai-key');
 
     const { embedding } = await inference.embed({ model: 'openai:text-embedding-3-small', value: 'milk' });
@@ -187,8 +192,7 @@ describe("the app's inference service", () => {
 
   it('generates images through OpenAI', async () => {
     const png = Buffer.from('fake-png').toString('base64');
-    const { baseURL, requests, bodies, paths } = await provider({ created: 0, data: [{ b64_json: png }] });
-    vi.stubEnv('OPENAI_BASE_URL', baseURL);
+    const { inference, requests, bodies, paths } = await provider({ created: 0, data: [{ b64_json: png }] });
     secrets.set('openai', 'stored-openai-key');
 
     const { image } = await inference.generateImage({ model: 'openai:gpt-image-1', prompt: 'A carton of milk' });
@@ -201,8 +205,7 @@ describe("the app's inference service", () => {
 
   it('generates speech through OpenAI', async () => {
     const audio = Uint8Array.from([0xff, 0xfb, 0x90, 0x64, 0, 0]);
-    const { baseURL, bodies, paths } = await provider(audio);
-    vi.stubEnv('OPENAI_BASE_URL', baseURL);
+    const { inference, bodies, paths } = await provider(audio);
     secrets.set('openai', 'stored-openai-key');
 
     const result = await inference.generateSpeech({ model: 'openai:tts-1', text: 'Buy milk', voice: 'alloy' });
@@ -213,8 +216,7 @@ describe("the app's inference service", () => {
   });
 
   it('transcribes through OpenAI', async () => {
-    const { baseURL, requests, bodies, paths } = await provider({ text: 'Buy milk' });
-    vi.stubEnv('OPENAI_BASE_URL', baseURL);
+    const { inference, requests, bodies, paths } = await provider({ text: 'Buy milk' });
     secrets.set('openai', 'stored-openai-key');
 
     const { text } = await inference.transcribe({ model: 'openai:whisper-1', audio: Uint8Array.from([0xff, 0xfb, 0x90, 0x64]) });
@@ -226,8 +228,7 @@ describe("the app's inference service", () => {
   });
 
   it("runs an agent with the key stored when it's called, not when it was created", async () => {
-    const { baseURL, requests } = await provider(openaiReply('Hello from the agent'));
-    vi.stubEnv('OPENAI_BASE_URL', baseURL);
+    const { inference, requests } = await provider(openaiReply('Hello from the agent'));
     const agent = await inference.createAgent({ model: 'openai:gpt-5', instructions: 'Be brief' });
     secrets.set('openai', 'key-stored-later');
 
@@ -238,8 +239,7 @@ describe("the app's inference service", () => {
   });
 
   it('runs a step on the model prepareStep names by id, with its key', async () => {
-    const { baseURL, bodies } = await provider(openaiReply('Hello'));
-    vi.stubEnv('OPENAI_BASE_URL', baseURL);
+    const { inference, bodies } = await provider(openaiReply('Hello'));
     secrets.set('openai', 'stored-openai-key');
 
     await inference.generateText({ model: 'openai:gpt-5', prompt: 'hi', prepareStep: () => ({ model: 'openai:gpt-5-mini' }) });
@@ -248,8 +248,7 @@ describe("the app's inference service", () => {
   });
 
   it('asks the provider for the structured output a spec describes, and parses the reply', async () => {
-    const { baseURL, bodies } = await provider(openaiReply('{"result":"bug"}'));
-    vi.stubEnv('OPENAI_BASE_URL', baseURL);
+    const { inference, bodies } = await provider(openaiReply('{"result":"bug"}'));
     secrets.set('openai', 'stored-key');
 
     const result = await inference.generateText({ model: 'openai:gpt-5', prompt: 'Label this issue', output: { type: 'choice', options: ['bug', 'feature'], name: 'label' } });
@@ -259,8 +258,7 @@ describe("the app's inference service", () => {
   });
 
   it('asks the provider for the plain JSON Schema a stored object spec holds', async () => {
-    const { baseURL, bodies } = await provider(openaiReply('{"city":"Paris"}'));
-    vi.stubEnv('OPENAI_BASE_URL', baseURL);
+    const { inference, bodies } = await provider(openaiReply('{"city":"Paris"}'));
     secrets.set('openai', 'stored-key');
     const schema: JSONSchema7 = { type: 'object', properties: { city: { type: 'string' } }, required: ['city'], additionalProperties: false };
 
