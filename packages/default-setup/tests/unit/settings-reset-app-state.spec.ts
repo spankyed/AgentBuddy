@@ -1,6 +1,6 @@
 // Resetting settings resets the user's settings, not the app's own state (onboarding, pack versions,
 // seed hashes). Today that state is stored inside the Settings row and resetSettings() erases it.
-// Skipped until docs/issues/goal-package-boundaries.md Phase 5 moves it to the AppState entity; that
+// Skipped until docs/goals/goal-package-boundaries.md Phase 5 moves it to the AppState entity; that
 // phase unskips this test and rewrites its reads and writes against AppState.
 import { describe, expect, it } from 'vitest';
 import { repository } from '@/__generated__/repository';

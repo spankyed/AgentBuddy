@@ -4,7 +4,7 @@
 Make AgentBuddy packs buildable, releasable, installable and testable by outside
 authors who do NOT have the monorepo checked out.
 
-The spec is docs/issues/goal-external-pack-authoring.md (sections Background,
+The spec is docs/archive/goals/goal-external-pack-authoring.md (sections Background,
 Decisions D1–D7, Phases 0–6, End state, Constraints). Read it first and follow it.
 All decisions are final: implement them, don't reopen them or stop to ask. Where
 a detail isn't specified, pick the conventional option, note it in the final
@@ -36,7 +36,7 @@ Never, regardless of the spec:
 
 ## Background
 
-- `docs/issues/postmortem-external-pack-calendar-extraction.md` — status of every item, N1–N4, the secondary review table.
+- `docs/archive/issues/postmortem-external-pack-calendar-extraction.md` — status of every item, N1–N4, the secondary review table.
 - `~/.claude/plans/fix-4-ticklish-crown.md` — secondary findings F4–F11.
 - `CLAUDE.md` "App environment": environment identity and data paths come from `@abuddy/sdk/env` (`resolveAppContext`). Never read `NODE_ENV`/`PLAYWRIGHT_TEST` or platform paths to pick a data dir; `packages/abuddy-sdk/tests/env/identity-guard.spec.ts` enforces this.
 - In-repo external pack: `tests/fixtures/external-pack`, run with `npm run test:external-pack` (`tests/scripts/test-external-pack.sh`).
@@ -70,7 +70,7 @@ Installer: verify checksum, check hostVersion + dependencies, place the bundle. 
 - Downloads pick the newest beta satisfying the pack's hostVersion, verify checksums, cache by version.
 - `build/release/release.sh` enforces: a production release must have a beta tag for the same version, or it also publishes that build as the current beta.
 
-**D5 — Packages published to npm.** (Updated by `docs/issues/goal-sdk-types-architecture.md`.)
+**D5 — Packages published to npm.** (Updated by `docs/archive/goals/goal-sdk-types-architecture.md`.)
 - `@abuddy/sdk`: pack-facing platform API and types (no bin). ESM, per-file `.d.ts` and declaration maps emitted by `tsc` from sources with explicit `.js` specifiers. Host-only modules (pack registry, installer, persistence, backups, FE registration, build-time discovery) live in the private workspace package `@abuddy/host`, which the app, CLI and testing bundles inline; the published SDK neither ships nor exports them.
 - Pack typing comes from facades each pack generates (`#generated/ears`, `#generated/events`, `#generated/services`, `#generated/types`), typed against the pack's and its dependencies' entity shapes, events and services. There is no module augmentation of `@abuddy/sdk`.
 - `@abuddy/ui`: the Vue component library (design components, tiptap and Monaco editors, UI composables) with vue-tsc declarations (`X.d.vue.ts`) and an explicit exports map. Its editor libraries are its own dependencies, so backend-only packs don't install them.

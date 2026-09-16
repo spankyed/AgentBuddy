@@ -3,7 +3,7 @@
 **Date of incident:** 2026-09-11 → 2026-09-12
 **Status re-verified:** 2026-09-12 against `master@898134763`, by running the checks listed under each item — including the pack's E2E suite from the pack directory.
 **Actionable items worked:** 2026-09-12 on `master@394b55317` (uncommitted); see *Status of the actionable items*.
-**Remaining items closed:** 2026-09-12 on branch `AS/external-pack-authoring` (`1dee2929d`…`225e081cf`), per `docs/issues/goal-external-pack-authoring.md`; see *Closed by the external pack authoring goal*.
+**Remaining items closed:** 2026-09-12 on branch `AS/external-pack-authoring` (`1dee2929d`…`225e081cf`), per `docs/archive/goals/goal-external-pack-authoring.md`; see *Closed by the external pack authoring goal*.
 **Severity:** Medium (developer friction, plus one live functional bug) — no end-user impact.
 **Affected:** Anyone developing or testing an external pack.
 **Source:** Claude Code session `568f96d9-ddc3-4530-a4d7-f2a101fcf177` (resumed from `2220b4bc-f1e4-460e-855b-e8fe59eee08e`), compacted 12 times. This report was reconstructed from its compaction summaries, with every error message and quote re-checked against the raw transcript.
@@ -236,7 +236,7 @@ Stale fixture-lifecycle text there was also corrected (packs dir, always-rebuild
 
 ### Closed by the external pack authoring goal
 
-Branch `AS/external-pack-authoring`. The spec is `docs/issues/goal-external-pack-authoring.md`.
+Branch `AS/external-pack-authoring`. The spec is `docs/archive/goals/goal-external-pack-authoring.md`.
 
 | Phase | Commits |
 |---|---|
@@ -327,8 +327,8 @@ T1 was also upgraded from "unverified" to a confirmed live bug (item 1).
 
 ## Related
 
-- `docs/issues/postmortem-default-setup-compile-stale.md` — earlier stale-artifact incident
-- `docs/external-pack-fe-deps.md`, `docs/pack-install-flow.md` — external pack FE deps and install design
+- `docs/archive/issues/postmortem-default-setup-compile-stale.md` — earlier stale-artifact incident
+- `docs/archive/plans/external-pack-fe-deps.md`, `docs/archive/plans/pack-install-flow.md` — external pack FE deps and install design
 - `packages/abuddy-testing/CLAUDE.md` — pack E2E fixture (items 3, 4; moved from `packages/abuddy-sdk/src/testing/`)
 - `packages/api/tests/unit/sdk-bridge-drift.spec.ts` — backend drift guard to mirror (item 5)
 - Commits: `e63fd0f1c` (extraction), `a1a86d498` (loader diagnostic)

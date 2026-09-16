@@ -1,7 +1,7 @@
 ```
 # Goal: spike `.ts` import specifiers, then switch if it passes
 
-Implement docs/issues/goal-ts-import-specifiers.md on branch AS/pack-type-facades.
+Implement docs/archive/goals/goal-ts-import-specifiers.md on branch AS/pack-type-facades.
 Decisions are final. Where a detail isn't specified, pick the conventional option,
 note it in the final summary, and keep going.
 

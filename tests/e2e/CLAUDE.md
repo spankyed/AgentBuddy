@@ -17,7 +17,7 @@ Screenshots saved to `tests/screenshots/{name}.png` (gitignored).
 
 - **Never kill processes by broad pattern** (`pkill -f Electron`, `pkill -f node`, `killall Electron`, …). The user runs dev and prod AgentBuddy alongside tests, and a broad kill takes those down. If a test run hangs, stop only the process you started (its PID).
 - **E2E runs alongside dev and prod apps.** Tests use the `abuddy-test` app name and a fresh temp data dir per worker (`$TMPDIR/abuddy-e2e-*`, via `ABUDDY_USER_DATA_DIR`), so no running app needs to be closed first. Don't claim otherwise — just run the tests.
-- **Investigate a failing assertion before changing it.** Find out why it fails (`DEBUG_E2E=1`, `app.getContext()`, probing actor state with `appPage.evaluate`) and fix the cause. Loosening one to go green once removed the only backend check and hid the real cause (docs/issues/postmortem-external-pack-calendar-extraction.md, item 1).
+- **Investigate a failing assertion before changing it.** Find out why it fails (`DEBUG_E2E=1`, `app.getContext()`, probing actor state with `appPage.evaluate`) and fix the cause. Loosening one to go green once removed the only backend check and hid the real cause (docs/archive/issues/postmortem-external-pack-calendar-extraction.md, item 1).
 - **Each worker starts from an empty data dir, but tests in a worker share it.** Anything a test creates is visible to later tests in the same run; assert on unique values and clean up what you create. `E2E_KEEP_DATA=1` keeps the dir for inspection.
 
 ## How the fixture works

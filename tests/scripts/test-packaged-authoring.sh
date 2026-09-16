@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# End state for outside pack authors (docs/issues/goal-external-pack-authoring.md): in a temp
+# End state for outside pack authors (docs/archive/goals/goal-external-pack-authoring.md): in a temp
 # dir outside the monorepo, using only the packed @abuddy/* tarballs,
 #   1. install @abuddy/cli + @abuddy/sdk from tarballs (a backend-only pack installs no editor libraries)
 #   2. abuddy init → add feature → a flow using keepAlive from default-setup → seeds from a format

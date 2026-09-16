@@ -63,7 +63,7 @@ echo ""
 # Step 2: Install dependencies
 echo -e "${BLUE}[2/7]${NC} Installing dependencies..."
 # Force development mode so devDependencies (typescript, @types/*, etc.) are installed
-# even if NODE_ENV=production leaked from a previous session (see docs/issues/node-env-build-failure.md)
+# even if NODE_ENV=production leaked from a previous session (see docs/reference/node-env-build-failure.md)
 NODE_ENV=development npm install --loglevel warn
 unset NODE_ENV
 

@@ -1,7 +1,7 @@
 ```
 # Goal: manifest-driven seeding, with no SDK code per seeded entity type
 
-Implement docs/issues/goal-generic-seed-compiler.md on the branch it names when
+Implement docs/archive/goals/goal-generic-seed-compiler.md on the branch it names when
 started: Background, Decisions, Phases, Constraints. Read it first. It builds
 on 706dc987e (Document/Collection/Note/Settings/Secret as SDK-internal entity
 types) and reverses its library and notes parts. Decisions are final: implement

@@ -1,7 +1,7 @@
 ```
 # Goal: typed facades, @abuddy/ui and one-manifest packaging for the SDK
 
-Implement docs/issues/goal-sdk-types-architecture.md on branch
+Implement docs/archive/goals/goal-sdk-types-architecture.md on branch
 AS/external-pack-authoring: Background, Decisions, Phases, Deferred items,
 Constraints. Read it first. Decisions are final: implement them, don't reopen
 them or stop to ask. Where a detail isn't specified, pick the conventional
@@ -176,7 +176,7 @@ Final. Breaking changes are acceptable: nothing is published yet, so choose the 
   - `@abuddy/ui` component props;
   - every public export resolves.
 - api-extractor reports for all public `@abuddy/sdk` and `@abuddy/ui` entries (not only `ears` and `types`), with `@internal` tags for exported-but-internal symbols; `api:check` covers them.
-- Update D5 in `docs/issues/goal-external-pack-authoring.md`:
+- Update D5 in `docs/archive/goals/goal-external-pack-authoring.md`:
   - per-file declarations emitted by `tsc` / vue-tsc;
   - typed facades generated per pack instead of registry augmentation;
   - `@abuddy/ui` for components;

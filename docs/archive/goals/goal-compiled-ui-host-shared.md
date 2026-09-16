@@ -1,7 +1,7 @@
 ```
 # Goal: compile @abuddy/ui, share it from the host, then switch to `.ts` specifiers
 
-Implement docs/issues/goal-compiled-ui-host-shared.md on branch AS/pack-type-facades:
+Implement docs/archive/goals/goal-compiled-ui-host-shared.md on branch AS/pack-type-facades:
 Background, Decisions, Phases, Constraints. Read it first. Decisions are final:
 implement them, don't reopen them or stop to ask. Where a detail isn't specified,
 pick the conventional option, note it in the final summary, and keep going.
@@ -35,7 +35,7 @@ Never:
   - Every pack that uses `TiptapEditor` or the Monaco editors ships its own copy of them and of lowlight.
   - Stateful UI modules (e.g. `components/monaco-config.ts`) get a separate instance per pack. The DSL type registry already had to move into `@abuddy/sdk/fe` for this reason.
   - Packs depend on their Vite and `@vitejs/plugin-vue` setup matching how our SFCs are written.
-- The `.ts` specifier spike (`docs/issues/goal-ts-import-specifiers.md`) failed only because of the shipped SFC source: `tsc` rewrote the SDK's and host's JS correctly, but copied `.vue` files kept `./x.ts` imports that don't exist in `dist/`.
+- The `.ts` specifier spike (`docs/archive/goals/goal-ts-import-specifiers.md`) failed only because of the shipped SFC source: `tsc` rewrote the SDK's and host's JS correctly, but copied `.vue` files kept `./x.ts` imports that don't exist in `dist/`.
 - What other libraries do (published tarballs and build configs checked 2026-09-13):
   - 19 of 20 Vue component libraries publish compiled JS as the runtime: Reka UI (tsdown, `dts: { vue: true }`), Ark UI (Vite `preserveModules` + vite-plugin-dts), Element Plus (Rollup + plugin-vue, `preserveModules`), PrimeVue (Rollup), Vuetify, Naive UI, Ant Design Vue, Quasar, Headless UI, Vue Flow, Tiptap Vue 3. Nuxt UI ships `.vue` source, and only works with its own Nuxt/Vite plugin in the consumer's build.
   - Plugin hosts provide the UI kit at runtime. Grafana's plugin build marks `@grafana/ui`, `@grafana/runtime` and `@grafana/data` external by default (`bundleGrafanaUI: false` opts into bundling); `@grafana/ui` is compiled and uses a source export condition like ours. Directus shares `vue`, `vue-router`, `vue-i18n`, `pinia` and its SDK with extensions and registers its app components globally.

@@ -1,9 +1,9 @@
 ```
 # Goal: organize the pack-facing API — one typed way to send, log and run actions
 
-Implement docs/issues/goal-pack-api-organization.md on a branch cut from the current integration
+Implement docs/goals/goal-pack-api-organization.md on a branch cut from the current integration
 branch (c187956e5 or later): Background, Spike results, Decisions, Phases, Constraints. Read it
-first. It runs before docs/issues/goal-package-boundaries.md. Decisions are final: implement them,
+first. It runs before docs/goals/goal-package-boundaries.md. Decisions are final: implement them,
 don't reopen them or stop to ask. Where a detail isn't specified, pick the conventional option,
 note it in the final summary, and keep going. No backward compatibility: change signatures,
 migrate every in-repo caller, test, fixture, template and doc in the same change, and fix forward.

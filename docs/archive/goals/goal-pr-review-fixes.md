@@ -1,7 +1,7 @@
 ```
 # Goal: fix the external-pack-authoring PR review findings
 
-Fix the findings in docs/issues/goal-pr-review-fixes.md on branch
+Fix the findings in docs/archive/goals/goal-pr-review-fixes.md on branch
 AS/external-pack-authoring. Work High → Medium → Low. Items are verified;
 don't re-review the PR. Where a fix needs a design choice, pick the
 conventional option, note it in the final summary, and keep going.
@@ -28,7 +28,7 @@ Never:
 
 ## Findings
 
-Context: `docs/issues/goal-external-pack-authoring.md` (decisions D1–D7).
+Context: `docs/archive/goals/goal-external-pack-authoring.md` (decisions D1–D7).
 
 ### High
 

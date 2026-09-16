@@ -1,7 +1,7 @@
 ```
 # Goal: fix the review findings for typed facades, @abuddy/ui, @abuddy/host and packaging
 
-Implement docs/issues/goal-review-fixes.md on branch AS/pack-type-facades: Background,
+Implement docs/archive/goals/goal-review-fixes.md on branch AS/pack-type-facades: Background,
 Decisions, Phases, Constraints. Read it first. Decisions are final: implement them, don't
 reopen them or stop to ask. Where a detail isn't specified, pick the conventional option,
 note it in the final summary, and keep going. The EARS engine instance refactor is out of scope.

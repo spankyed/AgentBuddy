@@ -3,7 +3,7 @@
 
 > **Superseded in part** by `goal-inference-ai-sdk-7.md`: model calls go through `services.inference` on AI SDK 7, tests mock it with `mockInference` (`fakeInference`), and the TypeScript floor is 5.7. The `@abuddy/sdk/inference` module, the `model-provider` host module, `fakeModel` and the TypeScript 5.3 floor this doc describes were removed.
 
-Implement docs/issues/goal-harness-systems-flows.md on branch AS/external-test-harness
+Implement docs/archive/goals/goal-harness-systems-flows.md on branch AS/external-test-harness
 (or a branch cut from it): Background, Decisions, Phases, Constraints. Read it first.
 It builds on goal-pack-test-harness.md (the data-tier harness) and takes up its
 Deferred list. Decisions are final: implement them, don't reopen them or stop to ask.

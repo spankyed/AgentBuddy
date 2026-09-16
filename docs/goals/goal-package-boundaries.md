@@ -1,8 +1,8 @@
 ```
 # Goal: clean package boundaries — @abuddy/ears, a typed host port, and one owner per concern
 
-Implement docs/issues/goal-package-boundaries.md on a branch cut after
-docs/issues/goal-pack-api-organization.md is done (it runs first): Background, Spike results, Decisions, Phases, Constraints. Read it first.
+Implement docs/goals/goal-package-boundaries.md on a branch cut after
+docs/goals/goal-pack-api-organization.md is done (it runs first): Background, Spike results, Decisions, Phases, Constraints. Read it first.
 Decisions are final: implement them, don't reopen them or stop to ask. Where a detail isn't
 specified, pick the conventional option, note it in the final summary, and keep going. No
 backward compatibility in code: change signatures, move modules, migrate every in-repo caller,

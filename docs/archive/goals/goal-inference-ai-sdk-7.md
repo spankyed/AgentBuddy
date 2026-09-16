@@ -1,7 +1,7 @@
 ```
 # Goal: services.inference on AI SDK 7, with a TypeScript 5.7 floor
 
-Implement docs/issues/goal-inference-ai-sdk-7.md on a branch cut from
+Implement docs/archive/goals/goal-inference-ai-sdk-7.md on a branch cut from
 AS/test-harness-system-deps: Background, Decisions, Phases, Constraints. Read it first.
 Decisions are final: implement them, don't reopen them or stop to ask. Where a detail
 isn't specified, pick the conventional option, note it in the final summary, and keep
