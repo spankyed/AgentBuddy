@@ -4,8 +4,8 @@
 
 ```ts
 
-// @public (undocumented)
-export type Designations = readonly string[] | Record<string, string>;
+// @public
+export type Designations = Record<string, string>;
 
 // @public (undocumented)
 export function getDesignated(role: string): string;

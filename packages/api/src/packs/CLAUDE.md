@@ -112,7 +112,7 @@ export const registration: PackRegistration = {
 };
 ```
 
-Designations come from the manifest's `features[].designation`: generate-entries sets them on the pack's system and plugin definitions, and `registerPack()` registers them via `registerDesignations()`. A designation must equal its feature id (`abuddy validate` checks it).
+Designations come from the manifest's `features[].designation`: generate-entries sets them on the pack's system and plugin definitions, and `registerPack()` maps each role to the id of the system that plays it (`<packId>.<featureId>` for an external pack; the feature id when no registered system does, as for the early logs system). A designation must equal its feature id (`abuddy validate` checks it).
 
 ## Collision detection
 
@@ -123,13 +123,14 @@ Designations come from the manifest's `features[].designation`: generate-entries
 | Pack id | Registered packs | Throws |
 | EARS entity type values | All registered packs' entity values (SDK-owned names are dropped from the pack's first) | Throws (blocks registration) |
 | EARS relation kind values | All registered packs' relation values (same) | Throws (blocks registration) |
+| Designation roles | All registered packs' roles | Throws (blocks registration) |
 | Service keys | Host service names (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`) and all registered packs' keys | Throws (blocks registration) |
 | Step types | SDK `stepRegistry` | Throws — **with rollback** of what this call registered |
 | Artifact types | SDK `artifactRegistry` | Same rollback behavior |
 | Block types | SDK `blockRegistry` | Same rollback behavior |
 | Seed hooks, feature settings | `seedHookRegistry`, `packSettingsRegistry` | Same rollback behavior |
 
-EARS and service collisions throw before anything is stored, so no cleanup is needed. The rest register sequentially and roll back on failure — if the third step type collides, the first two are unregistered.
+EARS, designation and service collisions throw before anything is stored, so no cleanup is needed. The rest register sequentially and roll back on failure — if the third step type collides, the first two are unregistered.
 
 ## Host resolution for pack runtime code
 

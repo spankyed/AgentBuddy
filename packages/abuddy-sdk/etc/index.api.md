@@ -70,9 +70,6 @@ export function defineSystem<Id extends string>(id: Id): <TEvents extends {
 }, TContext = {}>() => SystemSpec<Id, TEvents, TOutgoing, TContext>;
 
 // @public (undocumented)
-export type Designations = readonly string[] | Record<string, string>;
-
-// @public (undocumented)
 export namespace EARS {
     const // (undocumented)
     Entity: {
@@ -242,9 +239,6 @@ export interface PromptEntity extends BaseEntity {
     // (undocumented)
     updatedAt: number;
 }
-
-// @internal
-export function registerDesignations(designations: Designations): void;
 
 // @public (undocumented)
 export interface RelationEntity extends BaseEntity {

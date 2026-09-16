@@ -114,7 +114,7 @@ The registries are module-level singletons, so a process must load exactly one S
 - `seedHookRegistry` (`seed/hooks.ts`): per entity type, owned by one pack; `unregisterAll(packId)`.
 - Seeders (`utils/seed.ts`): keyed by seed key; `seedData` iterates them.
 - `packSettingsRegistry` (`framework/pack-settings.ts`): validates each feature's settings (`checkFeatureSettings`: a feature may set only `plugins.<id>` and `plugins._meta.visibility.<id>`) and merges them into `getPackSettingsDefaults()`, bumping `revision` and notifying `onPackSettingsDefaultsChanged` listeners.
-- Designations (`designations/index.ts`): `registerDesignations`/`unregisterDesignations` (host-only). `getDesignated` throws for an unknown role.
+- Designations (`designations/index.ts`): role → id of the system or plugin that plays it. Packs read them with `getDesignated` (throws for an unknown role) and `hasDesignation`; `registerDesignations`/`unregisterDesignations` are host-only, exported only from `@abuddy/sdk/designations`.
 - Repositories (`ears/repository.ts`): `registerRepository(name, value)`. The `repository` proxy throws for an unregistered name.
 - Host modules (`runtime/host.ts`): `registerHostModule(key, mod)`. The `services` proxy (`services/index.ts`) resolves on every property read: host services plus `pack-registry`'s `getRegisteredServices()`.
 - FE: `tiptapPluginRegistry` (`fe/tiptap-plugins.ts`, `unregisterAll(packId)`) and `registerDslType`/`getDslTypes` (`fe/dsl-types.ts`).

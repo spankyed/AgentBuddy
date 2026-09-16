@@ -1,6 +1,6 @@
 import type { Plugin, PackFERegistration } from '@abuddy/sdk/fe';
 import { tiptapPluginRegistry } from '@abuddy/sdk/fe';
-import { registerDesignations, unregisterDesignations } from '@abuddy/sdk/designations';
+import { hasDesignation, registerDesignations, unregisterDesignations } from '@abuddy/sdk/designations';
 import { artifactRegistry } from '@abuddy/sdk/artifacts';
 import { blockRegistry } from '@abuddy/sdk/blocks';
 import { stepRegistry } from '@abuddy/sdk/steps';
@@ -14,7 +14,8 @@ interface PackFEContributions {
   appExtensionSlots: string[];
   artifactTypes: string[];
   blockTypes: string[];
-  designations: string[];
+  /** Role → id of the plugin that plays it */
+  designations: Record<string, string>;
 }
 
 const allPlugins: Plugin[] = [];
@@ -22,11 +23,12 @@ let defaultPlugin: Plugin | undefined;
 const packContributions = new Map<string, PackFEContributions>();
 
 export function registerPackFE(registration: PackFERegistration, packId?: string): void {
+  const fromPack = packId ? ` from pack ${packId}` : '';
   const registeredIds = new Set(allPlugins.map(p => p.id));
   const plugins: Plugin[] = [];
   for (const plugin of registration.plugins ?? []) {
     if (registeredIds.has(plugin.id)) {
-      console.warn(`[pack-store] Plugin "${plugin.id}"${packId ? ` from pack ${packId}` : ''} ignored — a plugin with that id is already registered`);
+      console.warn(`[pack-store] Plugin "${plugin.id}"${fromPack} ignored — a plugin with that id is already registered`);
       continue;
     }
     registeredIds.add(plugin.id);
@@ -40,10 +42,16 @@ export function registerPackFE(registration: PackFERegistration, packId?: string
     console.warn(`[pack-store] defaultPlugin from pack ignored — already set`);
   }
 
-  const designations = plugins.filter(p => p.designation).map(p => p.designation!);
-  if (designations.length) {
-    registerDesignations(designations);
+  const designations: Record<string, string> = {};
+  for (const { id, designation } of plugins) {
+    if (!designation) continue;
+    if (hasDesignation(designation) || designation in designations) {
+      console.warn(`[pack-store] Designation "${designation}" of plugin "${id}"${fromPack} ignored — another plugin plays that role`);
+    } else {
+      designations[designation] = id;
+    }
   }
+  registerDesignations(designations);
 
   if (registration.tiptapPlugins) {
     for (const plugin of registration.tiptapPlugins) {
@@ -113,9 +121,7 @@ export function unregisterPackFE(packId: string): Plugin[] {
     tiptapPluginRegistry.unregisterAll(packId);
   }
 
-  if (contrib.designations.length) {
-    unregisterDesignations(contrib.designations);
-  }
+  unregisterDesignations(contrib.designations);
 
   packContributions.delete(packId);
   return removedPlugins;

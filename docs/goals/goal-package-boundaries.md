@@ -322,6 +322,7 @@ Phase 4's pack slice (Decision 6). It may land before Phase 1: it reads what onl
   - the `CLIENT_CONNECTED` application event from `@abuddy/host/settings`, whose type moves next to it.
 
   `@abuddy/host/bus` never imports `packs/runtime/loader`. `setup/backend.ts` calls `createAppBus()`; `systems.ts` is deleted, and its type exports move to `core/router/events.ts`.
+- **Shutdown hooks move with it:** `registerShutdownHook`, `runShutdownHooks`, `runShutdownHooksForKey` and `removeShutdownHooksForKey` leave `@abuddy/sdk/utils` for `@abuddy/host/packs/runtime`. Only the app calls them; packs declare `boot.onShutdown`.
 - **Callers:** `setup/backend.ts`, `setup/websocket.ts`, `setup/migrations/index.ts`, `core/router/index.ts`, `core/router/bus-router.ts`, `core/router/events.ts`, `scripts/db/database.ts` and `scripts/db/seed.ts` import from host. `scripts/check-import-specifiers.ts` drops `@/packs` from its api alias comment.
 - **Specs:**
   - These move to `packages/abuddy-host/tests/packs/runtime/`, without their `virtual:built-in-pack-loaders` and `@/core/ears/attribute-storage` mocks (register a fake `attribute-storage` host module where the partition policy needs stubbing):
