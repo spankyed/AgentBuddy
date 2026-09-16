@@ -5,28 +5,28 @@ import {
   registerPack,
   unregisterPack,
   getPackRegistration,
+  getPackBootHooks,
+  publishHostPackArtifacts,
 } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import type { PackSystemDef } from '@abuddy/sdk/framework';
 import { registerShutdownHook, runShutdownHooksForKey } from '@abuddy/sdk/utils';
 import { invalidateEventValidationMap } from '@/systems';
 import { invalidatePartitionPolicy } from '@/core/ears/attribute-storage';
-import Module from 'module';
 import {
   loadSingleExternalPack,
   clearPackRequireCache,
   registerExternalPacks,
   getBuiltInPackInfos,
   builtInRuntimeEntry,
-  withHostResolution,
+  loadBuiltInRuntime,
+  refreshBuiltInPackInfo,
 } from './pack-loader';
-import { seedPackData } from './pack-seed';
+import { orchestrateDeclarativeSeed, seedPackData } from './pack-seed';
 import { updateLoadedPack } from './pack-api';
 import { seedData } from '@abuddy/sdk/utils';
 import { settingsRepository } from '@abuddy/host/settings';
 import type { PackManifest } from '@abuddy/host/packs';
-
-const esmRequire = Module.createRequire(import.meta.url);
 
 const logger = createLogger('pack-reload');
 
@@ -142,14 +142,27 @@ export async function reloadBuiltInPack(
   }
 
   await reloadPack(packId, backendActor, () => {
-    const mod = withHostResolution(() => esmRequire(runtimeEntry));
-    if (!mod.registration) throw new Error(`Built runtime for ${packId} has no registration export`);
+    const registration = loadBuiltInRuntime(packInfo.dir);
+    if (!registration) throw new Error(`Built runtime for ${packId} has no registration export`);
 
     return {
-      register: () => registerPack(mod.registration),
-      newSystemIds: (mod.registration.systems as PackSystemDef[]).map(s => s.id),
-      onShutdown: mod.registration.boot?.onShutdown,
-      onInit: mod.registration.boot?.onInit,
+      register: () => registerPack(registration),
+      newSystemIds: (registration.systems as PackSystemDef[]).map(s => s.id),
+      onShutdown: registration.boot?.onShutdown,
+      onInit: registration.boot?.onInit,
+      afterRegister: () => {
+        refreshBuiltInPackInfo(packId);
+        // A rebuild can carry new compiled seeds; the boot seed is hash-checked, so unchanged data isn't re-imported
+        const seedManifest = getPackBootHooks(packId)?.seedManifest;
+        if (seedManifest) orchestrateDeclarativeSeed(seedManifest);
+        // Pack authors resolve this pack's types, build code and seeds from the app's copy
+        const { hostPacksDir } = resolveAppContext();
+        try {
+          publishHostPackArtifacts(packInfo.dir, path.join(hostPacksDir, packId));
+        } catch (err) {
+          logger.warn(`Could not publish build artifacts for ${packId}:`, err as Error);
+        }
+      },
     };
   }, path.join(packInfo.dir, 'dist'));
 }

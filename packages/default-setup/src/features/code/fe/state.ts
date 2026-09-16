@@ -345,13 +345,13 @@ const codeState = setup({
   actions: {
     spawnFeatureActors: enqueueActions(({ enqueue, context }) => {
       // Only spawn if not already
-        enqueue.spawnChild('explorerState', { systemId: 'explorer' });
-        enqueue.spawnChild('terminalState', { systemId: 'terminal' });
-        enqueue.spawnChild('searchState', { systemId: 'search' });
-        enqueue.spawnChild('commitState', { systemId: 'commit' });
-        enqueue.spawnChild('pullRequestState', { systemId: 'pr' });
-        enqueue.spawnChild('actionsState', { systemId: 'codeActions' });
-        enqueue.spawnChild('promptsState', { systemId: 'codePrompts' });
+        enqueue.spawnChild('explorerState', { id: 'explorer', systemId: 'explorer' });
+        enqueue.spawnChild('terminalState', { id: 'terminal', systemId: 'terminal' });
+        enqueue.spawnChild('searchState', { id: 'search', systemId: 'search' });
+        enqueue.spawnChild('commitState', { id: 'commit', systemId: 'commit' });
+        enqueue.spawnChild('pullRequestState', { id: 'pr', systemId: 'pr' });
+        enqueue.spawnChild('actionsState', { id: 'codeActions', systemId: 'codeActions' });
+        enqueue.spawnChild('promptsState', { id: 'codePrompts', systemId: 'codePrompts' });
     }),
 
     notifyDirectoryChange: ({ event, context, system }) => {

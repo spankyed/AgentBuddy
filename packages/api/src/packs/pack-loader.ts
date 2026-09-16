@@ -134,8 +134,43 @@ export function builtInRuntimeEntry(packDir: string): string {
   return path.join(packDir, 'dist', BUNDLE_PATHS.runtimeEntry);
 }
 
+/** A built-in pack's runtime module, as its built entry exports it */
+interface BuiltInRuntime {
+  registration?: import('@abuddy/sdk/framework').PackRegistration;
+  setCompiledDir?: (dir: string) => void;
+}
+
+/**
+ * The registration of a built-in pack's module, with the module pointed at the compiled seed data in
+ * its dist/ first: its seeders, settings defaults and FAQs read from there. Callers get the
+ * registration and never the module, so no load can skip this — a reload requires the entry afresh,
+ * and the new module starts without the directory.
+ */
+function packRegistration(mod: BuiltInRuntime, packDir: string): import('@abuddy/sdk/framework').PackRegistration | undefined {
+  mod.setCompiledDir?.(path.join(packDir, 'dist'));
+  return mod.registration;
+}
+
+/** Loads a built-in pack's built runtime (dist/runtime/index.cjs) from disk and returns its registration */
+export function loadBuiltInRuntime(packDir: string): import('@abuddy/sdk/framework').PackRegistration | undefined {
+  return packRegistration(withHostResolution(() => esmRequire(builtInRuntimeEntry(packDir))), packDir);
+}
+
 let _builtInPackInfos: BuiltInPackInfo[] = [];
 export function getBuiltInPackInfos(): BuiltInPackInfo[] { return _builtInPackInfos; }
+
+/** Re-reads a loaded built-in pack's manifest, so a name or version a rebuild changed is the one listed */
+export function refreshBuiltInPackInfo(packId: string): void {
+  const info = _builtInPackInfos.find(p => p.id === packId);
+  if (!info) return;
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(info.dir, BUNDLE_PATHS.manifest), 'utf-8')) as { name?: string; version?: string };
+    if (manifest.name) info.name = manifest.name;
+    if (manifest.version) info.version = manifest.version;
+  } catch (err) {
+    logger.warn(`Built-in pack ${packId}: could not re-read its manifest`, err as Error);
+  }
+}
 
 export interface LoadBuiltInPacksOptions {
   /**
@@ -165,10 +200,9 @@ export async function loadBuiltInPacks(
       }
       if (fs.existsSync(runtimeEntryPath)) {
         try {
-          const mod = withHostResolution(() => esmRequire(runtimeEntryPath));
-          if (mod.registration) {
-            mod.setCompiledDir?.(path.join(pack.dir, 'dist'));
-            registerPack(mod.registration);
+          const registration = loadBuiltInRuntime(pack.dir);
+          if (registration) {
+            registerPack(registration);
             loaded.push(pack);
             logger.info(`Loaded built-in pack (dev): ${pack.id}`);
             continue;
@@ -187,13 +221,12 @@ export async function loadBuiltInPacks(
       continue;
     }
     try {
-      const mod = await loader();
-      if (!mod.registration) {
+      const registration = packRegistration(await loader(), pack.dir);
+      if (!registration) {
         logger.warn(`Built-in pack ${pack.id}: no 'registration' export, skipping`);
         continue;
       }
-      mod.setCompiledDir?.(path.join(pack.dir, 'dist'));
-      registerPack(mod.registration);
+      registerPack(registration);
       loaded.push(pack);
       logger.info(`Loaded built-in pack: ${pack.id}`);
     } catch (err) {

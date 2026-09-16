@@ -112,8 +112,10 @@ export const systemMachine = setup({
   },
   actions: {
     spawnFeatureActors: enqueueActions(({ enqueue, context }) => {
-      // Spawn all child systems with input and shared services
+      // Each child is spawned under its own id as well as its system id: the parent tracks its children by
+      // id, so without one they share a key, and stopping this system leaves the others' system ids taken
       enqueue.spawnChild('explorerSystem', {
+        id: 'explorer',
         systemId: 'explorer',
         input: {
           baseDirectory: context.baseDirectory,
@@ -121,12 +123,14 @@ export const systemMachine = setup({
         }
       });
       enqueue.spawnChild('searchSystem', {
+        id: 'search',
         systemId: 'search',
         input: {
           baseDirectory: context.baseDirectory
         }
       });
       enqueue.spawnChild('commitSystem', {
+        id: 'commit',
         systemId: 'commit',
         input: {
           baseDirectory: context.baseDirectory,
@@ -135,6 +139,7 @@ export const systemMachine = setup({
         }
       });
       enqueue.spawnChild('pullRequestSystem', {
+        id: 'pr',
         systemId: 'pr',
         input: {
           baseDirectory: context.baseDirectory,
@@ -142,13 +147,14 @@ export const systemMachine = setup({
         }
       });
       enqueue.spawnChild('terminalSystem', {
+        id: 'terminal',
         systemId: 'terminal',
         input: {
           baseDirectory: context.baseDirectory
         }
       });
-      enqueue.spawnChild('actionsSystem', { systemId: 'codeActions' });
-      enqueue.spawnChild('promptsSystem', { systemId: 'codePrompts' });
+      enqueue.spawnChild('actionsSystem', { id: 'codeActions', systemId: 'codeActions' });
+      enqueue.spawnChild('promptsSystem', { id: 'codePrompts', systemId: 'codePrompts' });
     }),
 
     routeEvent: ({ event, system }) => {

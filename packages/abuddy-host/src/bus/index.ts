@@ -132,6 +132,7 @@ export function createBusMachine(options: BusOptions) {
       }),
       reloadPack: enqueueActions(({ enqueue, event, system }) => {
         if (event.type !== 'RELOAD_PACK') return;
+        // Stopping releases each system's id and its children's, so the fresh copies claim them here
         stopSystems(enqueue, system, event.systemIds);
         // A client already has the pack's frontend, so the restarted systems send their startup data.
         // Spawned children join the actor system only after this action runs.

@@ -185,8 +185,8 @@ export function orchestrateDeclarativeSeed(manifest: PackSeedManifest): void {
   }
 
   const include = evaluateSeedPolicy(seedPolicy);
-  seedData({ compiledDir, include });
+  const counts = seedData({ compiledDir, include });
   repo.settingsCommands.updateSettings('internal', null, ['seedHash'], currentHash);
   repo.settingsCommands.updateSettings('internal', null, ['seedStatFingerprint'], fp);
-  logger.info('Boot seed completed');
+  logger.info(`Boot seed completed: ${JSON.stringify(counts)}`);
 }
