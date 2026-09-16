@@ -43,7 +43,7 @@ export function formatJsonValue(value: any): string {
   if (isJsonObject(value) || isJsonArray(value)) {
     return JSON.stringify(value, null, 2);
   }
-  
+
   return String(value);
 }
 
@@ -52,17 +52,17 @@ export function getJsonPreview(value: any, maxLength: number = 50): string {
   if (formatted.length <= maxLength) {
     return formatted;
   }
-  
+
   // For single line, just truncate
   if (!formatted.includes('\n')) {
     return formatted.substring(0, maxLength) + '...';
   }
-  
+
   // For multi-line JSON, try to show first few properties
   const lines = formatted.split('\n');
   let preview = '';
   let currentLength = 0;
-  
+
   for (const line of lines) {
     if (currentLength + line.length > maxLength && preview) {
       preview += '\n  ...';
@@ -71,6 +71,6 @@ export function getJsonPreview(value: any, maxLength: number = 50): string {
     preview += (preview ? '\n' : '') + line;
     currentLength += line.length;
   }
-  
+
   return preview;
 }
