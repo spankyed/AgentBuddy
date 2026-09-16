@@ -59,15 +59,7 @@ function loadTabsFromStorage(): StoredTabData | null {
   try {
     const raw = localStorage.getItem(THREADS_TABS_KEY);
     if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    // Backward compat: old format stored tabIds as string[]
-    if (parsed.tabIds && !parsed.tabs) {
-      return {
-        tabs: parsed.tabIds.map((id: string) => ({ id, label: '' })),
-        activeTabId: parsed.activeTabId || '',
-      };
-    }
-    return parsed;
+    return JSON.parse(raw);
   } catch { return null; }
 }
 
@@ -208,7 +200,6 @@ type UIEvent =
   | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; responseTimestamp?: number; blockResponse?: BlockResponse; asideText?: string; context?: Record<string, unknown>; compacted?: boolean }
   | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
   | { type: 'HOTKEY_PRESSED'; } & HotkeyEvent
-  | { type: 'TEXT_TO_SPEECH' }
   | { type: 'OPEN_QUICK_PROMPTS' }
   | { type: 'CLOSE_QUICK_PROMPTS' }
   | { type: 'TOGGLE_QUICK_PROMPTS' }
