@@ -129,6 +129,15 @@ export interface FolderContents {
   lastKnownPath?: string
 }
 
+/**
+ * Every document and folder in the library, by name: what the reference picker offers and the
+ * panel counts. The file browser reads one folder at a time through `FolderContents` instead.
+ */
+export interface LibraryIndex {
+  documents: Array<{ id: EARS.EntityId; name: string; shortCode: DocumentShortCode; tags: string[] }>
+  folders: Array<{ id: EARS.EntityId; name: string }>
+}
+
 export interface BreadcrumbItem {
   id: EARS.EntityId | null
   name: string

@@ -40,7 +40,6 @@ const currentComponent = computed(() => {
 
 const currentProps = computed(() => {
   const base = {
-    collections: context.value.collections,
     selectedCollectionId: context.value.currentFolderId ?? undefined,
   }
   

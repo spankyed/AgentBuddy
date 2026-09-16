@@ -2,7 +2,7 @@
 import { setup } from 'xstate'
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
 import type { EARS } from '@/__generated__/ears'
-import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryItem, FolderContents } from './types'
+import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryIndex, LibraryItem, FolderContents } from './types'
 // [SEARCH_INDEX_FF] import type { SearchIndex } from './search-index/types/search-index'
 import { bus } from '@abuddy/sdk/ids'
 import { repository } from '@/__generated__/repository';
@@ -21,12 +21,11 @@ import type { CommandItem } from '@/features/settings/be/types';
 import { threads } from '@/__generated__/system-ids';
 
 type IncomingLibraryEvents =
-  | { type: 'LIST_DOCUMENTS'; collectionId?: string }
   | { type: 'CREATE_DOCUMENT'; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }
   | { type: 'UPDATE_DOCUMENT'; id: string; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }
   | { type: 'DELETE_DOCUMENT'; id: string }
   | { type: 'GET_DOCUMENT'; id: string }
-  | { type: 'LIST_COLLECTIONS' }
+  | { type: 'GET_LIBRARY_INDEX' }
   | { type: 'CREATE_COLLECTION'; name: string; description?: string; parentId?: string }
   | { type: 'UPDATE_COLLECTION'; id: string; name: string; description?: string }
   | { type: 'DELETE_COLLECTION'; id: string }
@@ -46,16 +45,15 @@ type IncomingLibraryEvents =
   | { type: 'EXPORT_LIBRARY'; directory: string; format: 'markdown' | 'json' }
 
 export type OutgoingLibraryEvents =
-  | { type: 'LIBRARY_CONNECTED'; data: { documents: DocumentDTO[]; collections: CollectionDTO[]; settings: any } }
-  | { type: 'DOCUMENTS_LOADED'; data: { documents: DocumentDTO[] } }
+  | { type: 'LIBRARY_CONNECTED'; data: { index: LibraryIndex; settings: any } }
   | { type: 'DOCUMENT_CREATED'; data: { document: DocumentDTO } }
   | { type: 'DOCUMENT_UPDATED'; data: { document: DocumentDTO } }
   | { type: 'DOCUMENT_DELETED'; data: { documentId: string } }
   | { type: 'DOCUMENT_LOADED'; data: { document: DocumentDTO } }
-  | { type: 'COLLECTIONS_LOADED'; data: { collections: CollectionDTO[] } }
   | { type: 'COLLECTION_CREATED'; data: { collection: CollectionDTO } }
   | { type: 'COLLECTION_UPDATED'; data: { collection: CollectionDTO } }
   | { type: 'COLLECTION_DELETED'; data: { collectionId: string } }
+  | { type: 'LIBRARY_INDEX_LOADED'; data: { index: LibraryIndex } }
   | { type: 'LIBRARY_ERROR'; data: { error: string } }
   // Symlink events
   | { type: 'SYMLINK_UPDATED'; data: { collection: CollectionDTO } }
@@ -104,18 +102,6 @@ function notifyIfCommandsChanged(system: { get(id: string): { send(event: unknow
 export const librarySystem = setup({
   types: librarySpec.types,
   actions: {
-    loadDocuments: async ({ system, event }) => {
-      const ev = event as { type: 'LIST_DOCUMENTS'; collectionId?: string }
-      const documents = repository.libraryQueries.getDocuments(ev.collectionId)
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
-          type: 'DOCUMENTS_LOADED' as const,
-          pluginId: 'library',
-          data: { documents },
-        },
-      })
-    },
     createDocument: async ({ system, event }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'CREATE_DOCUMENT'; name: string; content: any[]; tags: string[]; collectionId?: string }
@@ -185,14 +171,13 @@ export const librarySystem = setup({
         })
       }
     },
-    loadCollections: async ({ system }) => {
-      const collections = repository.libraryQueries.getCollections()
+    sendIndex: ({ system }) => {
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {
-          type: 'COLLECTIONS_LOADED' as const,
+          type: 'LIBRARY_INDEX_LOADED' as const,
           pluginId: 'library',
-          data: { collections },
+          data: { index: repository.libraryQueries.getIndex() },
         },
       })
     },
@@ -275,8 +260,6 @@ export const librarySystem = setup({
       repository.libraryCommands.migrateDocumentShortCodes()
       repository.libraryCommands.migrateDisplayOrders()
 
-      const documents = repository.libraryQueries.getDocuments()
-      const collections = repository.libraryQueries.getCollections()
       const librarySettings = repository.settingsQueries.getPluginSettings('library')
 
       system.get(bus).send({
@@ -285,8 +268,7 @@ export const librarySystem = setup({
           type: 'LIBRARY_CONNECTED' as const,
           pluginId: 'library',
           data: {
-            documents,
-            collections,
+            index: repository.libraryQueries.getIndex(),
             settings: librarySettings || null
           },
         },
@@ -544,8 +526,6 @@ export const librarySystem = setup({
         })
 
         // Refresh library data
-        const documents = repository.libraryQueries.getDocuments()
-        const collections = repository.libraryQueries.getCollections()
         const librarySettings = repository.settingsQueries.getPluginSettings('library')
 
         system.get(bus).send({
@@ -554,8 +534,7 @@ export const librarySystem = setup({
             type: 'LIBRARY_CONNECTED' as const,
             pluginId,
             data: {
-              documents,
-              collections,
+              index: repository.libraryQueries.getIndex(),
               settings: librarySettings || null,
             },
           },
@@ -659,9 +638,6 @@ export const librarySystem = setup({
   states: {
     idle: {
       on: {
-        LIST_DOCUMENTS: {
-          actions: ['loadDocuments'],
-        },
         CREATE_DOCUMENT: {
           actions: ['createDocument'],
         },
@@ -674,8 +650,8 @@ export const librarySystem = setup({
         GET_DOCUMENT: {
           actions: ['getDocument'],
         },
-        LIST_COLLECTIONS: {
-          actions: ['loadCollections'],
+        GET_LIBRARY_INDEX: {
+          actions: ['sendIndex'],
         },
         CREATE_COLLECTION: {
           actions: ['createCollection'],

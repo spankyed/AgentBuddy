@@ -2,7 +2,7 @@ import { qx } from '@/__generated__/ears';
 import * as fs from 'fs/promises'
 
 import { EARS } from '@/__generated__/ears'
-import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem } from '../types'
+import type { DocumentDTO, CollectionDTO, LibraryIndex, LibraryItem, FolderItem, DocumentItem, FolderContents, BreadcrumbItem } from '../types'
 import {
   findParentCollection,
   isRootCollection,
@@ -104,6 +104,22 @@ export const libraryQueries = {
     }
     
     return this.getDocument(documents[0].id as EARS.EntityId)
+  },
+
+  /** Every document and folder by name, for the reference picker and the panel's stats */
+  getIndex(): LibraryIndex {
+    return {
+      documents: qx(EARS.Entity.Document).pick(['name', 'shortCode', 'tags']).map((doc) => ({
+        id: doc.id,
+        name: doc.name as string,
+        shortCode: doc.shortCode as DocumentShortCode,
+        tags: (doc.tags as string[] | undefined) ?? [],
+      })),
+      folders: qx(EARS.Entity.Collection).pick(['name']).map((col) => ({
+        id: col.id,
+        name: col.name as string,
+      })),
+    }
   },
 
   getCollections(): CollectionDTO[] {
