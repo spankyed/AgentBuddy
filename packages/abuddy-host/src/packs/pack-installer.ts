@@ -114,7 +114,7 @@ function findPackRoot(dir: string): string {
 }
 
 /** The app data dir's published built-in packs (`<userData>/host-packs`, written at app boot). */
-export function hostPacksDirFor(packsDir: string): string {
+function hostPacksDirFor(packsDir: string): string {
   return path.join(path.dirname(packsDir), 'host-packs');
 }
 

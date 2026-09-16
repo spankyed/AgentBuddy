@@ -1,8 +1,8 @@
 // Registration
 export {
   registerPack, unregisterPack, registerHostSystem,
-  getRegisteredSystems, getRegisteredPackSystemIds, buildRegisteredEventValidationMap,
-  getRegisteredEntityTypes, getRegisteredEARS, getRegisteredEARSPolicy,
+  getRegisteredSystems, buildRegisteredEventValidationMap,
+  getRegisteredEntityTypes, getRegisteredEARSPolicy,
   getRegisteredServices, getRegisteredMigrations,
   getBootHooks, getPackBootHooks, getPackRegistration, runRegisteredBootSeeds,
   getPackContributions,
@@ -10,7 +10,7 @@ export {
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackContributions, PackInfo } from './pack-registration.ts';
 
 // Loading pack runtime code on the loader's own @abuddy/sdk
-export { withModuleBridge, type ModuleBridgeOptions } from './module-bridge.ts';
+export { withModuleBridge } from './module-bridge.ts';
 
 // Discovery
 export {
@@ -20,19 +20,18 @@ export type { BuiltInPackInfo, PackManifest } from './pack-discovery.ts';
 
 // Registry (JSON file CRUD)
 export {
-  readPackRegistry, writePackRegistry, modifyRegistry,
+  readPackRegistry, modifyRegistry,
   addToRegistry, removeFromRegistry,
 } from './pack-registry.ts';
 export type { PackRegistryEntry } from './pack-registry.ts';
 
 // Installer
 export {
-  installPack, installPackFromLocal, installPackFromUrl, installPackFromGitHub,
-  uninstallPack, checkDependencies, isHostCompatible,
+  installPack, installPackFromLocal, installPackFromGitHub,
+  uninstallPack, isHostCompatible,
 } from './pack-installer.ts';
-export type { InstallResult } from './pack-installer.ts';
 export { recordHostVersion, readHostVersion } from './host-info.ts';
-export { recoverStagingDirs, prepareHostDataDirs, stagingDirName, type StagingRecovery } from './staging.ts';
+export { prepareHostDataDirs } from './staging.ts';
 
 // Updater
 export { checkForUpdates, getAvailableUpdates } from './pack-updater.ts';
@@ -40,12 +39,9 @@ export { checkForUpdates, getAvailableUpdates } from './pack-updater.ts';
 // Bundle (build output, release archive and installed layout)
 export {
   BUNDLE_FORMAT_VERSION, BUNDLE_PATHS,
-  stageBundle, verifyBundle, readBundleInfo, isBundleDir, hasBuiltBundleSections,
+  stageBundle, verifyBundle, readBundleInfo, isBundleDir,
   packFrontendFiles,
-  createBundleArchive, extractBundleArchive, bundleArchiveName, sha256File,
+  createBundleArchive, extractBundleArchive, bundleArchiveName,
   publishHostPackArtifacts,
 } from './bundle.ts';
 export type { BundleInfo } from './bundle.ts';
-export { findLatestRelease } from './pack-updater.ts';
-export { GitHubRequestError, githubFetch, githubToken } from './github.ts';
-export type { UpdateCheckResult, ReleaseCandidate } from './pack-updater.ts';

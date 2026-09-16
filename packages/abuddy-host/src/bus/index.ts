@@ -41,7 +41,7 @@ export interface BusOptions {
   /** Delivers an event a system sent to a frontend plugin */
   onOutgoing(event: OutgoingSystemEvents): void;
   /** Feeds the bus client events (INCOMING, CLIENT_CONNECTED, PACK_CLIENT_CONNECTED); returns the unsubscribe */
-  listen?(send: (event: BusSourceEvent) => void): () => void;
+  listen(send: (event: BusSourceEvent) => void): () => void;
   /**
    * Packs whose frontend code a client loads after connecting. A connection's CLIENT_CONNECTED, and a
    * pack's activation, skip their systems: the client sends PACK_CLIENT_CONNECTED for each once it has
@@ -104,7 +104,7 @@ export function createBusMachine(options: BusOptions) {
       events: {} as BackendEvents,
     },
     actors: {
-      listen: fromCallback<BackendEvents>(({ sendBack }) => options.listen?.(sendBack) ?? (() => {})),
+      listen: fromCallback<BackendEvents>(({ sendBack }) => options.listen(sendBack)),
     },
     actions: {
       // Its own id, so it doesn't share a key with the systems spawned beside it
