@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { findAppImportsInPackTests, findHostImports, findJsSpecifiers, findRawPackHelpers } from '../../../../scripts/check-import-specifiers.ts';
+import { findAppImportsInPackTests, findHostImports, findJsSpecifiers, findPackBackendConsole, findRawPackHelpers, findRawTransport } from '../../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '../helpers/published-packages';
 
 /** scripts/check-import-specifiers.ts: relative imports in sdk, host and ui name TypeScript sources */
@@ -74,26 +74,126 @@ describe('findJsSpecifiers', () => {
     fs.symlinkSync(path.join(REPO_ROOT, 'scripts', 'check-import-specifiers.ts'), link);
     const output = execFileSync(path.join(REPO_ROOT, 'node_modules', '.bin', 'tsx'), [link], { cwd: REPO_ROOT, stdio: 'pipe' }).toString();
     expect(output).toMatch(/Relative import specifiers name \.ts sources/);
-  });
+    // It checks the whole repo, parsing every file
+  }, 60_000);
 });
+
+/** Pack code a CLI template writes, in a file under one of CLI_TEMPLATE_SOURCES */
+function writeTemplateSource(content: string): string {
+  const dir = 'packages/abuddy-cli/src/commands/add';
+  fs.mkdirSync(path.join(root, dir), { recursive: true });
+  fs.writeFileSync(path.join(root, dir, 'feature.ts'), content);
+  return dir;
+}
+
+/** Code none of the pack rules flag: comments, string text and the allowed imports */
+const ALLOWED = [
+  "// import { emit } from '@abuddy/sdk/events'; rootEvents; trpc.bus; console.log('x')",
+  "/* import * as events from '@abuddy/sdk/events'; console.log('x') */",
+  "const url = 'https://console.anthropic.com/settings/keys';",
+  "const prompt = `rootEvents.emitOutgoing(event); console.log(ev.type)`;",
+  "import { emit, sendToSystem } from '#generated/events';",
+  "import { sendToPlugin } from '@/__generated__/events';",
+  "import { sendToBrainSystem, onIncoming } from '@abuddy/sdk/events';",
+  "import { emit as emitEvent } from 'xstate';",
+  "import * as ears from '@abuddy/sdk/ears';",
+  "import { x } from '@abuddy/sdk/rpcx';",
+  'const { busId } = trpc; trpc.buses.list();',
+  "logger.info('saved');",
+].join('\n');
 
 describe('findRawPackHelpers', () => {
   it.each([
-    ["import { emit } from '@abuddy/sdk/helpers';", 'emit from @abuddy/sdk/helpers'],
-    ["import { emit as emitToPlugin } from '@abuddy/sdk/helpers';", 'emit from @abuddy/sdk/helpers'],
+    ["import { emit as emitToPlugin } from '@abuddy/sdk/events';", 'emit from @abuddy/sdk/events'],
+    ["import onConnected, { sendToSystem } from '@abuddy/sdk/events';", 'sendToSystem from @abuddy/sdk/events'],
     ["import { sendToPlugin, services } from '@abuddy/sdk/services';", 'sendToPlugin from @abuddy/sdk/services'],
     ["import { registerRepository, tx } from '@abuddy/sdk/ears';", 'registerRepository from @abuddy/sdk/ears'],
-    // A CLI template writes this as pack source
-    ["const SYSTEM = `import { emit } from '@abuddy/sdk/helpers';`;", 'emit from @abuddy/sdk/helpers'],
+    ["export type { emit } from '@abuddy/sdk/events';", 'emit from @abuddy/sdk/events'],
+    ["import * as events from '@abuddy/sdk/events';", '* from @abuddy/sdk/events (import the names)'],
+    ["export * from '@abuddy/sdk/events';", '* from @abuddy/sdk/events (import the names)'],
   ])('flags %s', (code, problem) => {
     write('pack/feature.ts', code);
     expect(findRawPackHelpers(['src/pack'], root)).toEqual([`src/pack/feature.ts:1: ${problem}`]);
   });
 
-  it('allows the generated facades, other helpers and generated files', () => {
-    write('pack/feature.ts', "import { emit } from '#generated/events';\nimport { getActor } from '@abuddy/sdk/helpers';\nimport { tx } from '@abuddy/sdk/ears';\n");
+  it('allows comments, strings and the generated facades, and exempts generated files', () => {
+    write('pack/feature.ts', ALLOWED);
     write('pack/__generated__/repositories.ts', "import { registerRepository } from '@abuddy/sdk/ears';\n");
     expect(findRawPackHelpers(['src/pack'], root)).toEqual([]);
+  });
+
+  it('checks .vue script blocks with their line numbers', () => {
+    write('pack/Widget.vue', "<template><pre>import { emit } from '@abuddy/sdk/events'</pre></template>\n<script setup lang=\"ts\">\n\nimport { emit } from '@abuddy/sdk/events';\n</script>\n");
+    expect(findRawPackHelpers(['src/pack'], root)).toEqual(['src/pack/Widget.vue:4: emit from @abuddy/sdk/events']);
+  });
+
+  it("checks the pack code in the CLI's templates, with its line", () => {
+    const dir = writeTemplateSource("const name = 'x';\nexport const SYSTEM = `// ${name}\nconst label = \\`${name}\\`;\nimport { ${name}, emit } from '@abuddy/sdk/events';\n`;\n");
+    expect(findRawPackHelpers([dir], root)).toEqual([`${dir}/feature.ts:4: emit from @abuddy/sdk/events`]);
+  });
+});
+
+describe('findRawTransport', () => {
+  it.each([
+    ["import { trpc } from '@abuddy/sdk/rpc';", '@abuddy/sdk/rpc'],
+    ["const rpc = await import('@abuddy/sdk/rpc/client');", '@abuddy/sdk/rpc/client'],
+    ['rootEvents.emitOutgoing(event);', 'rootEvents'],
+    ["trpc.bus.send.mutate({ systemId: 'notes', type: 'GET_NOTES' });", 'trpc.bus'],
+    ['trpc?.bus.send.mutate(event);', 'trpc.bus'],
+  ])('flags %s', (code, problem) => {
+    write('pack/feature.ts', code);
+    expect(findRawTransport(['src/pack'], root)).toEqual([`src/pack/feature.ts:1: ${problem}`]);
+  });
+
+  it('allows comments, strings and the typed sends, and checks generated files', () => {
+    write('pack/feature.ts', ALLOWED);
+    write('pack/__generated__/events.ts', "\nimport { rootEvents } from '@abuddy/sdk/runtime';\n");
+    expect(findRawTransport(['src/pack'], root)).toEqual(['src/pack/__generated__/events.ts:2: rootEvents']);
+  });
+
+  it("checks the pack code in the CLI's templates, with its line", () => {
+    const dir = writeTemplateSource('export const STATE = `\ntrpc.bus.send.mutate(event);\n`;\n');
+    expect(findRawTransport([dir], root)).toEqual([`${dir}/feature.ts:2: trpc.bus`]);
+  });
+});
+
+describe('findPackBackendConsole', () => {
+  it.each([
+    ['features/notes/be/system.ts', "console.log('saved');", 'console.log'],
+    ['features/hooks.ts', "console?.warn('init');", 'console.warn'],
+    ['migrations/0.4.0.ts', "const x = `${console.info('x')}`;", 'console.info'],
+    ['extensions/steps/llm/runtime.ts', "console.debug('prompt');", 'console.debug'],
+  ])('flags a console use in %s', (file, code, problem) => {
+    write(`pack/${file}`, code);
+    expect(findPackBackendConsole(['src/pack'], root)).toEqual([`src/pack/${file}:1: ${problem}`]);
+  });
+
+  it('allows comments and string text', () => {
+    write('pack/features/notes/be/system.ts', ALLOWED);
+    expect(findPackBackendConsole(['src/pack'], root)).toEqual([]);
+  });
+
+  it('checks backend paths from the pack src root only', () => {
+    for (const file of [
+      'features/notes/fe/state.ts',
+      'extensions/steps/llm/fe.ts',
+      'extensions/register-fe.ts',
+      'extensions/tiptap/index.ts',
+      'extensions/artifacts/viewers/format.ts',
+      'extensions/blocks/display/label.ts',
+      'extensions/Welcome.vue',
+      'features/notes/be/system.spec.ts',
+      'features/notes/be/__tests__/helpers.ts',
+      'lib/features/notes/be/system.ts',
+      'seeds/actions/run.ts',
+    ]) write(`pack/${file}`, "console.log('x');");
+    expect(findPackBackendConsole(['src/pack'], root)).toEqual([]);
+  });
+
+  it("skips the CLI's template sources and single files", () => {
+    const dir = writeTemplateSource("console.log('Created pack');");
+    write('pack/features/hooks.ts', "console.log('x');");
+    expect(findPackBackendConsole([dir, 'src/pack/features/hooks.ts'], root)).toEqual([]);
   });
 });
 

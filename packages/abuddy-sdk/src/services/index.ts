@@ -1,9 +1,7 @@
 import { getHostModule } from '../runtime/host.ts';
 import { repository } from '../ears/index.ts';
-import type { EARS } from '../types/entities.ts';
-import { emit, type PluginEvents, type TypedEmit } from '../helpers/actor-helpers.ts';
+import { sendToPlugin, sendToSystem, sendToBrainSystem } from '../events/index.ts';
 import type { Logger } from '../ears/runtime.ts';
-import type { ApplicationHotkeys } from '../types/index.ts';
 import { appData, type AppDataService } from './app-data.ts';
 import { traceStore, type TraceStore } from './trace-store.ts';
 import { inference, type InferenceService } from './inference.ts';
@@ -13,7 +11,7 @@ export type { AppDataService, BackupDatabase, BackupInfo } from './app-data.ts';
 export type { TraceStore, TraceEntityMeta, TraceRelation } from './trace-store.ts';
 export { createInferenceService, type InferenceModels, type InferenceService, type OutputSchema, type OutputSpec, type ResolveModel } from './inference.ts';
 export type { HostImplementedServices } from './host-services.ts';
-export type { SecretInfo, SecretProvider, SecretsProtection, SecretsService, SecretsStatus } from './secrets.ts';
+export type { SecretInfo, SecretProvider, SecretsProtection, SecretsService, SecretsSnapshot, SecretsStatus } from './secrets.ts';
 export { secretRules, secretProviderLabel, toSecretInfo } from './secrets-rules.ts';
 export type { ModelId, ProviderName } from './models.ts';
 
@@ -22,62 +20,8 @@ function lazyHost(name: string) {
   return () => m ??= getHostModule(name);
 }
 
-// --- Event emitter (host-injected) ---
-const emitter = lazyHost('event-emitter');
 /** The host's pack registry, which holds the services each registered pack contributes. */
 const packRegistry = lazyHost('pack-registry');
-
-/** `sendToPlugin` typed against a plugin event map (see `#generated/events`). */
-export type TypedSendToPlugin<M extends PluginEvents> = <P extends keyof M & string>(pluginId: P, event: M[P]) => void;
-
-/** Any plugin, any event with a `type`. Packs use the typed one from `defineEvents` (their `#generated/events`). */
-export function sendToPlugin(pluginId: string, event: { type: string; [key: string]: unknown }): void {
-  emitter().sendToPlugin(pluginId, event);
-}
-
-export interface TypedEvents<M extends PluginEvents> {
-  emit: TypedEmit<M>;
-  sendToPlugin: TypedSendToPlugin<M>;
-}
-
-/**
- * `emit` and `sendToPlugin` typed against a pack's plugin event map. `abuddy generate-entries`
- * writes `#generated/events` with `defineEvents<PackEvents>()`; the functions are the SDK's.
- */
-export function defineEvents<M extends PluginEvents>(): TypedEvents<M> {
-  return { emit, sendToPlugin } as unknown as TypedEvents<M>;
-}
-
-/**
- * Events the host app's own plugins receive from pack systems. A pack system declares a send
- * to one with `features[].system.sendsTo` in abuddy.json; `#generated/events` includes this map.
- */
-export type HostPluginEvents = {
-  application:
-    | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationHotkeys }
-    | { type: 'APPLICATION_RESTORE_LAST_PLUGIN'; lastActivePluginId: string }
-    | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> };
-};
-
-export function sendToBrainSystem(event: {
-  eventType: string;
-  payload?: unknown;
-  targetFlowId?: EARS.EntityId;
-}): void {
-  emitter().sendToBrainSystem(event);
-}
-
-export function sendToSystem(systemId: string, event: { type: string; [key: string]: unknown }): void {
-  emitter().sendToSystem(systemId, event);
-}
-
-export function onOutgoing(callback: (event: { type: string; [key: string]: unknown }) => void): () => void {
-  return emitter().onOutgoing(callback);
-}
-
-export function onIncoming(callback: (event: { type: string; [key: string]: unknown }) => void): () => void {
-  return emitter().onIncoming(callback);
-}
 
 // --- Services aggregator ---
 let _logger: Logger | undefined;
@@ -91,12 +35,14 @@ function logger() { return _logger ??= getHostModule<{ createLogger(source: stri
  */
 export interface HostServices {
   logger: Logger;
+  /**
+   * Sends to plugins, systems and running flows. Actions run outside any pack, so `sendToSystem` names a
+   * system `<packId>/<featureId>`. A pack's `Services` types it with its own and its dependencies' events.
+   */
   emitter: {
     sendToPlugin: typeof sendToPlugin;
-    sendToBrainSystem: typeof sendToBrainSystem;
     sendToSystem: typeof sendToSystem;
-    onOutgoing: typeof onOutgoing;
-    onIncoming: typeof onIncoming;
+    sendToBrainSystem: typeof sendToBrainSystem;
   };
   repository: typeof repository;
   /** Reset, back up and restore the app's stored data */
@@ -109,10 +55,21 @@ export interface HostServices {
   secrets: SecretsService;
 }
 
+/** Sends to the system a `<packId>/<featureId>` name addresses, whatever id it runs under */
+function sendToAddressedSystem(address: string, event: { type: string; [key: string]: unknown }): void {
+  const systemId = packRegistry().resolveSystemAddress(address) as string | undefined;
+  if (!systemId) {
+    throw new Error(`No running system is named "${address}": services.emitter.sendToSystem takes "<packId>/<featureId>"`);
+  }
+  sendToSystem(systemId, event);
+}
+
+const emitter: HostServices['emitter'] = { sendToPlugin, sendToSystem: sendToAddressedSystem, sendToBrainSystem };
+
 function resolveServices(): HostServices & Record<string, unknown> {
   return {
     logger: logger(),
-    emitter: { sendToPlugin, sendToBrainSystem, sendToSystem, onOutgoing, onIncoming },
+    emitter,
     repository,
     appData,
     traceStore,

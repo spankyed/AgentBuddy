@@ -21,10 +21,11 @@ export { targetIs, TRAIL_CLICK, type TrailClickEvent } from './route-trailer.ts'
 export { getDesignated, hasDesignation } from '../designations/index.ts'
 
 export { useSettingsSaveStatus } from './settings-save-status.ts'
+export { secretsClient, type SecretsClient, type SecretsSnapshot } from './secrets-client.ts'
 
 export {
   navigateToPlugin,
   openInAppBrowser,
   useState,
   type PluginEvent,
-} from './delegates.ts'
+} from './navigation.ts'

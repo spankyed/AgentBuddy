@@ -82,6 +82,15 @@ export async function action(
 }
 ```
 
+### How an action runs
+
+The compiled body of `action` runs in one sandbox, whether a flow's action step runs it or another action calls it through `services.action` (`executeAction`, `getAndExecute`). It receives:
+
+- `params`: the step's resolved input (or the params the caller passed)
+- `services`: the object below, with `services.logger` named `action:<label>`, so the Logs view shows which action logged
+- `z`: zod, for schemas
+- `flowId`: the running flow's trace node id when a flow step runs it; `undefined` otherwise
+
 ### Available services
 
 Actions receive a `services` object: default-setup's feature services (each is the object its `abuddy.json` entry names, `path#<key>Service`), the host's services, and the pack's repositories. A pack depending on default-setup gets the same object, typed by `Services` from its generated facade.
@@ -112,8 +121,8 @@ Actions receive a `services` object: default-setup's feature services (each is t
 |---|---|
 | `services.inference` | Model calls (`generateText`, `streamText`, `createAgent`, `embed`/`embedMany`, `generateImage`, `generateSpeech`, `transcribe`, `rerank`) with the user's provider keys; see [Inference](services-and-data.md#inference) |
 | `services.repository` | The pack's declared repositories (queries and commands); actions read and write data through them |
-| `services.logger` | Structured logging |
-| `services.emitter` | Event emission to plugins and systems (`sendToPlugin`, `sendToSystem`, `sendToBrainSystem`, `onIncoming`, `onOutgoing`) |
+| `services.logger` | Structured logging, named `action:<label>` |
+| `services.emitter` | Typed sends to plugins and systems (`sendToPlugin`, `sendToSystem` naming a system `<pack>/<feature>`, such as `'my-pack/bookmarks'`, `sendToBrainSystem`) |
 | `services.appData` | Reset, back up and restore the app's data |
 | `services.traceStore` | Read flow execution records |
 | `services.secrets` | The user's API keys as metadata (`list`, `select`, `rename`, `delete`, `status`); never values |

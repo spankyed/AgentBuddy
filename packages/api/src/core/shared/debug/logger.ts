@@ -110,6 +110,11 @@ export function createLogger(source?: string) {
   return new Logger(source);
 }
 
+/** Calls `callback` with every log entry; returns the unsubscribe */
+export function onLog(callback: (event: LogEvent) => void): () => void {
+  return rootEvents.onLog(callback);
+}
+
 
 // Convenience methods for quick logging
 export const log = {

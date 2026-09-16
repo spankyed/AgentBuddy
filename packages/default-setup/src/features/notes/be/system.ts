@@ -651,6 +651,6 @@ export const notesSystem = setup({
   },
 });
 
-const notesEntry: SystemEntry = { spec: notesSpec, machine: notesSystem };
+const notesEntry = { spec: notesSpec, machine: notesSystem } satisfies SystemEntry;
 
 export default notesEntry;

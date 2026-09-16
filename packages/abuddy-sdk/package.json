@@ -40,6 +40,11 @@
       "types": "./dist/designations/index.d.ts",
       "default": "./dist/designations/index.js"
     },
+    "./events": {
+      "@abuddy/source": "./src/events/index.ts",
+      "types": "./dist/events/index.d.ts",
+      "default": "./dist/events/index.js"
+    },
     "./env": {
       "@abuddy/source": "./src/env/index.ts",
       "types": "./dist/env/index.d.ts",
@@ -115,10 +120,10 @@
       "types": "./dist/logger/index.d.ts",
       "default": "./dist/logger/index.js"
     },
-    "./rpc": {
-      "@abuddy/source": "./src/rpc/index.ts",
-      "types": "./dist/rpc/index.d.ts",
-      "default": "./dist/rpc/index.js"
+    "./templates": {
+      "@abuddy/source": "./src/templates/index.ts",
+      "types": "./dist/templates/index.d.ts",
+      "default": "./dist/templates/index.js"
     },
     "./utils": {
       "@abuddy/source": "./src/utils/index.ts",

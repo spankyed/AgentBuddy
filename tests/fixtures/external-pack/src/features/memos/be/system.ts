@@ -42,6 +42,6 @@ export const memosSystem = setup({
   },
 });
 
-const memosEntry: SystemEntry = { spec: memosSpec, machine: memosSystem };
+const memosEntry = { spec: memosSpec, machine: memosSystem } satisfies SystemEntry;
 
 export default memosEntry;

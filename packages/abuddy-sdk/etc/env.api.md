@@ -28,6 +28,9 @@ export interface AppContext {
 // @public (undocumented)
 export type AppEnv = 'production' | 'beta' | 'development' | 'test';
 
+// @public
+export function getAppVersion(): string;
+
 // @internal
 export function inferElectronAppEnv(input: {
     playwrightTest: boolean;

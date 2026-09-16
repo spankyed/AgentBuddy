@@ -1,11 +1,10 @@
 import type { SwitchNode, Condition, Predicate } from '@/extensions/steps/switch/types';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { BinaryOperator, BinaryOperator as Op } from '@abuddy/sdk/utils';
-import { createInspectLogger } from '@abuddy/sdk/logger';
+import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { extractValueByPath } from '@abuddy/sdk/utils';
-import { reportStepRuntimeError } from '@abuddy/sdk/steps';
 
-const { inspect: brainInspect, logger: brainLogger } = createInspectLogger('brain');
+const brainLogger = createLogger('brain', { debug: true });
 
 function resolveValue(key: string, context: ExecutionContext): any {
   if (!key) return undefined;
@@ -104,7 +103,7 @@ function evaluatePredicate(predicate: Predicate | undefined, context: ExecutionC
     ? extractValueByPath(context, value)
     : value;
 
-  brainInspect(`Evaluating predicate:`, {
+  brainLogger.debug(`Evaluating predicate:`, {
     key,
     operator,
     expectedValue: value,
@@ -137,7 +136,7 @@ function evaluateCodePredicate(condition: Condition, context: ExecutionContext):
     const fn = new Function('params', condition.code);
     const result = Boolean(fn(params));
 
-    brainInspect(`Code predicate evaluated:`, {
+    brainLogger.debug(`Code predicate evaluated:`, {
       label: condition.label,
       hasKey: !!predObj?.key,
       result,
@@ -157,7 +156,7 @@ function evaluateConditions(conditions: Condition[], context: ExecutionContext):
       ? evaluateCodePredicate(condition, context)
       : evaluatePredicate(condition.predicate, context);
 
-    brainInspect(`Condition ${i} (${condition.label || 'unlabeled'}): ${matches ? 'MATCHED' : 'no match'}`);
+    brainLogger.debug(`Condition ${i} (${condition.label || 'unlabeled'}): ${matches ? 'MATCHED' : 'no match'}`);
 
     if (matches) {
       return i;
@@ -174,7 +173,7 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
   try {
     const conditions = n.conditions || [];
 
-    brainInspect(`Executing switch node: ${n.label}`, {
+    brainLogger.debug(`Executing switch node: ${n.label}`, {
       conditionsCount: conditions.length,
       conditions: Array.isArray(conditions) ? conditions.map((c, i) => ({
         index: i,
@@ -184,16 +183,18 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
     });
 
     if (conditions.length === 0) {
-      const runtimeError = reportStepRuntimeError({
+      const runtimeError = reportError({
         error: new Error('Switch node has no conditions to evaluate'),
         source: 'brain-switch',
-        phase: 'switch.validate',
-        flowTNodeId: ctx.flowTNodeId,
-        tNodeId: t.id,
-        nodeId: n.id,
-        nodeLabel: n.label,
-        nodeType: n.nodeType,
-        eventType: ctx.event?.type,
+        step: {
+          phase: 'switch.validate',
+          flowTNodeId: ctx.flowTNodeId,
+          tNodeId: t.id,
+          nodeId: n.id,
+          nodeLabel: n.label,
+          nodeType: n.nodeType,
+          eventType: ctx.event?.type,
+        },
       });
       a.send({ type: 'ERROR', error: runtimeError });
       return;
@@ -202,7 +203,7 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
     const branchIndex = evaluateConditions(conditions, ctx);
 
     if (branchIndex === -1) {
-      brainInspect(`Switch node '${n.label}': no condition matched, ending chain`);
+      brainLogger.debug(`Switch node '${n.label}': no condition matched, ending chain`);
       a.send({
         type: 'COMPLETE',
         result: {
@@ -217,7 +218,7 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
 
     const matchedCondition = conditions[branchIndex];
 
-    brainInspect(`Switch node resolved to branch ${branchIndex}`, {
+    brainLogger.debug(`Switch node resolved to branch ${branchIndex}`, {
       branchLabel: matchedCondition?.label,
       sourceHandle: `branch-${branchIndex}`,
     });
@@ -232,16 +233,18 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
       },
     });
   } catch (error) {
-    const runtimeError = reportStepRuntimeError({
+    const runtimeError = reportError({
       error,
       source: 'brain-switch',
-      phase: 'switch.evaluate',
-      flowTNodeId: ctx.flowTNodeId,
-      tNodeId: t.id,
-      nodeId: n.id,
-      nodeLabel: n.label,
-      nodeType: n.nodeType,
-      eventType: ctx.event?.type,
+      step: {
+        phase: 'switch.evaluate',
+        flowTNodeId: ctx.flowTNodeId,
+        tNodeId: t.id,
+        nodeId: n.id,
+        nodeLabel: n.label,
+        nodeType: n.nodeType,
+        eventType: ctx.event?.type,
+      },
     });
 
     a.send({ type: 'ERROR', error: runtimeError });

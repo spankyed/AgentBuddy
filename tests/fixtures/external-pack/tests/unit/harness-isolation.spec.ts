@@ -3,8 +3,8 @@
 import { describe, expect, it } from 'vitest';
 import { mockInference, mockService, startApp } from '@abuddy/testing/harness';
 import { services } from '#generated/services';
-import { memos } from '#generated/system-ids';
-import { sendToSystem } from '@abuddy/sdk/services';
+import { busId } from '#generated/bus-ids';
+import { sendToSystem } from '#generated/events';
 
 const scripted = { debug: () => {}, info: () => {}, warn: () => {}, error: () => {} };
 
@@ -55,9 +55,9 @@ describe('a stopped test app', () => {
 describe('events sent before a client connects', () => {
   it('are dropped by the bus, and a wait that times out names them', async () => {
     const app = await startApp({ systems: ['memos'] });
-    sendToSystem(memos, { type: 'ADD_MEMO', text: 'too early' });
+    sendToSystem('memos', { type: 'ADD_MEMO', text: 'too early' });
 
-    await expect(app.nextEmit('memos', 'MEMO_ADDED', { timeoutMs: 100 })).rejects.toThrow(`The bus dropped 1 event(s) sent before the app connected: ADD_MEMO to ${memos}`);
+    await expect(app.nextEmit('memos', 'MEMO_ADDED', { timeoutMs: 100 })).rejects.toThrow(`The bus dropped 1 event(s) sent before the app connected: ADD_MEMO to ${busId.memos}`);
   });
 
   it("are an app's own: events a connected app's systems get aren't dropped by another app", async () => {
@@ -65,7 +65,7 @@ describe('events sent before a client connects', () => {
     await memosApp.connect();
     const settingsApp = await startApp({ systems: ['settings'] });
 
-    sendToSystem(memos, { type: 'ADD_MEMO', text: 'for the connected app' });
+    sendToSystem('memos', { type: 'ADD_MEMO', text: 'for the connected app' });
 
     expect(await memosApp.nextEmit('memos', 'MEMO_ADDED')).toMatchObject({ memo: { text: 'for the connected app' } });
     const waited = await settingsApp.nextEmit('settings', 'NEVER_SENT', { timeoutMs: 100 }).catch((error: Error) => error);

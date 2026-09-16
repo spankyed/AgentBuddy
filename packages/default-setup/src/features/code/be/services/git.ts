@@ -3,6 +3,9 @@ import { promisify } from 'util'
 import * as path from 'path'
 import * as fs from 'fs/promises'
 import type { GitStatusFile, StashEntry, CommitLogEntry } from '../types'
+import { createLogger } from '@abuddy/sdk/logger'
+
+const logger = createLogger('git')
 
 const execFileAsync = promisify(execFile)
 
@@ -930,7 +933,7 @@ export class GitRepository {
           return upstream
         }
       } catch (error) {
-        console.warn('Failed to get upstream branch:', error)
+        logger.warn('Failed to get upstream branch', { error })
       }
     }
 
@@ -1271,7 +1274,7 @@ export class GitRepository {
       return { ahead, behind }
     } catch (error) {
       // Log the error for debugging
-      console.error('getCommitsAheadBehind error:', error)
+      logger.error('getCommitsAheadBehind failed', { error })
       // If there's an error, return zeros
       return { ahead: 0, behind: 0 }
     }

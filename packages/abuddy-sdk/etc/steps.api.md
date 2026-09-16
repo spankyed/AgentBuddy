@@ -43,9 +43,6 @@ export interface ExecutionEvent {
 export function expandRecord(map: Record<string, string> | undefined, keyField?: string, valueField?: string): Array<Record<string, string>> | undefined;
 
 // @public (undocumented)
-export function reportStepRuntimeError(input: RuntimeErrorInput): StepRuntimeError;
-
-// @public (undocumented)
 export interface RuntimeServices {
     // (undocumented)
     getAppServices: () => unknown;
@@ -338,9 +335,6 @@ export interface TNodeEntity extends BaseEntity {
 
 // @public (undocumented)
 export type TNodeKind = 'flow' | 'event' | 'step';
-
-// @public (undocumented)
-export function toStepRuntimeError(input: RuntimeErrorInput): StepRuntimeError;
 
 // @public
 export interface TrackTree extends TNodeEntity {

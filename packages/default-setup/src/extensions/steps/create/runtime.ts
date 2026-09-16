@@ -1,11 +1,10 @@
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
-import { reportStepRuntimeError } from '@abuddy/sdk/steps';
-import { createInspectLogger } from '@abuddy/sdk/logger';
+import { reportError, createLogger } from '@abuddy/sdk/logger';
 import { isEntityType } from '@abuddy/sdk/ears';
 import { EARS, createEntityWithDefaults } from '@/__generated__/ears';
 import type { CreateNode } from './types';
 
-const { inspect: brainInspect } = createInspectLogger('brain');
+const brainLogger = createLogger('brain', { debug: true });
 
 type StepActor = { send: (event: { type: 'COMPLETE'; result: unknown } | { type: 'ERROR'; error: unknown }) => void };
 
@@ -34,17 +33,20 @@ export function createEntityRow(entityType: string, fields: Record<string, unkno
   return createEntityWithDefaults(entityType, data);
 }
 
-export function reportError(error: unknown, t: TNodeEntity, n: CreateNode | { id: string; label: string; nodeType: string }, ctx: ExecutionContext) {
-  return reportStepRuntimeError({
+/** Reports a create or update step's error against its TNode */
+export function reportStepError(error: unknown, t: TNodeEntity, n: CreateNode | { id: string; label: string; nodeType: string }, ctx: ExecutionContext) {
+  return reportError({
     error,
     source: `brain-${n.nodeType}`,
-    phase: `${n.nodeType}.execute`,
-    flowTNodeId: ctx.flowTNodeId,
-    tNodeId: t.id,
-    nodeId: n.id as EARS.EntityId,
-    nodeLabel: n.label,
-    nodeType: n.nodeType,
-    eventType: ctx.event?.type,
+    step: {
+      phase: `${n.nodeType}.execute`,
+      flowTNodeId: ctx.flowTNodeId,
+      tNodeId: t.id,
+      nodeId: n.id as EARS.EntityId,
+      nodeLabel: n.label,
+      nodeType: n.nodeType,
+      eventType: ctx.event?.type,
+    },
   });
 }
 
@@ -54,9 +56,9 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
   try {
     assertEntityType(n.entityTypeTarget, n.label);
     const row = createEntityRow(n.entityTypeTarget, stepFields(t), n.inferLabel);
-    brainInspect(`Created ${n.entityTypeTarget} ${row.id} in node: ${n.label}`, { row });
+    brainLogger.debug(`Created ${n.entityTypeTarget} ${row.id} in node: ${n.label}`, { row });
     a.send({ type: 'COMPLETE', result: row });
   } catch (error) {
-    a.send({ type: 'ERROR', error: reportError(error, t, n, ctx) });
+    a.send({ type: 'ERROR', error: reportStepError(error, t, n, ctx) });
   }
 }

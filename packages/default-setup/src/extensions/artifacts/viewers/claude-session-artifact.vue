@@ -263,7 +263,7 @@ import { useSelector } from '@xstate/vue'
 import { Wrench, Copy, Check, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
 import { useActorSystem, navigateToPlugin, getDesignated } from '@abuddy/sdk/fe'
-import { trpc } from '@abuddy/sdk/rpc'
+import { sendToSystem } from '@/__generated__/events'
 
 const actorSystem = useActorSystem()
 
@@ -467,8 +467,7 @@ function selectPermissionMode(mode: PermissionMode) {
     console.warn('[claude-session-artifact] no current thread; cannot update permission mode')
     return
   }
-  trpc.bus.send.mutate({
-    systemId: 'threads',
+  sendToSystem('threads', {
     type: 'FORWARD_BRAIN_EVENT',
     eventType: 'user.update.permissionMode',
     payload: { threadId, mode },
@@ -478,8 +477,7 @@ function selectPermissionMode(mode: PermissionMode) {
 function clearGoal() {
   const threadId = currentThreadId.value
   if (!threadId) return
-  trpc.bus.send.mutate({
-    systemId: 'threads',
+  sendToSystem('threads', {
     type: 'FORWARD_BRAIN_EVENT',
     eventType: 'user.goal.clear',
     payload: { threadId },
@@ -492,8 +490,7 @@ function selectWorktree(value: boolean) {
   if (value === useWorktree.value) return
   const threadId = currentThreadId.value
   if (!threadId) return
-  trpc.bus.send.mutate({
-    systemId: 'threads',
+  sendToSystem('threads', {
     type: 'FORWARD_BRAIN_EVENT',
     eventType: 'user.update.worktree',
     payload: { threadId, useWorktree: value },

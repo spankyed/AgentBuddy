@@ -1,3 +1,5 @@
+import '@/core/event-transport';
+import '@/core/secrets-client';
 import { createApp } from 'vue'
 import { createActor } from 'xstate';
 // import { createBrowserInspector } from '@statelyai/inspect';

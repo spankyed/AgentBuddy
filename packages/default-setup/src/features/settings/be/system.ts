@@ -19,6 +19,9 @@ import { runMigrations } from '@abuddy/sdk/utils';
 import type { FAQItem } from '@/features/settings/be/types';
 import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services';
 import { REQUIRED_PROVIDERS } from '../constants';
+import { createLogger } from '@abuddy/sdk/logger';
+
+const logger = createLogger('settings');
 
 /**
  * Convert the JSON-safe include shape from the frontend
@@ -58,6 +61,15 @@ export type OutgoingSettingsEvents =
   | { type: 'APP_RESET_FAILED'; error: string }
   /** The stored API keys, without values, and how they're protected */
   | { type: 'SECRETS_UPDATED'; secrets: SecretInfo[]; status: SecretsStatus }
+
+/** What the plugin whose settings changed receives: `<PLUGIN ID>_SETTINGS_UPDATED` (`NOTES_SETTINGS_UPDATED`) */
+export type PluginSettingsUpdatedEvent = { type: `${string}_SETTINGS_UPDATED`; settings: unknown };
+
+/**
+ * Sends a plugin its updated settings. Any pack's plugin can have settings, so the receiver isn't one
+ * this pack's event maps name.
+ */
+const emitPluginSettings = emit as (pluginId: string, event: PluginSettingsUpdatedEvent) => ReturnType<typeof emit>;
 
 export const settingsSpec = defineSystem('settings')<IncomingSettingsEvents | SettingsInternalEvents, OutgoingSettingsEvents>();
 export const settings = settingsSpec.id;
@@ -175,11 +187,10 @@ export const settingsSystem = setup({
           }
           
           // Send settings update event to the frontend plugin
-          const eventType = `${ev.label.toUpperCase()}_SETTINGS_UPDATED`;
-          system.get(bus).send(emit(ev.label as any, {
-            type: eventType,
+          system.get(bus).send(emitPluginSettings(ev.label, {
+            type: `${ev.label.toUpperCase()}_SETTINGS_UPDATED`,
             settings: pluginSettings
-          } as any));
+          }));
         }
       }
     },
@@ -246,7 +257,7 @@ export const settingsSystem = setup({
           const data = settingsQueries.getSettings();
           system.get(bus).send(emit(settings, { type: 'SETTINGS_UPDATED', data }));
         } else {
-          console.error(`[settings] CLI test failed for "${provider}":`, result.error);
+          logger.error(`CLI test failed for "${provider}"`, { error: result.error });
         }
 
         system.get(bus).send(emit(settings, {
@@ -298,7 +309,7 @@ export const settingsSystem = setup({
     onResetFailed: ({ system, event }) => {
       const err = (event as unknown as ErrorActorEvent).error;
       const message = err instanceof Error ? err.message : String(err);
-      console.error('[settings] Reset app failed:', err);
+      logger.error('Reset app failed', { error: err });
       system.get(bus).send(emit(settings, { type: 'APP_RESET_FAILED', error: message }));
     },
 
@@ -363,6 +374,6 @@ export const settingsSystem = setup({
   },
 });
 
-const settingsEntry: SystemEntry = { spec: settingsSpec, machine: settingsSystem };
+const settingsEntry = { spec: settingsSpec, machine: settingsSystem } satisfies SystemEntry;
 
 export default settingsEntry;

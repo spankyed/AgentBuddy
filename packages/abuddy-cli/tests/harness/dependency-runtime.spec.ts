@@ -88,13 +88,13 @@ it('connects to default-setup settings', async () => {
   it("fails a test when a system reports an error the test didn't take", () => {
     const root = dependentPack(`
 import { expect, it } from 'vitest';
-import { reportSystemError } from '@abuddy/sdk/utils';
+import { reportError } from '@abuddy/sdk/logger';
 import { takeSystemErrors } from '@abuddy/testing/harness';
 it('reports without taking', () => {
-  reportSystemError({ error: new Error('lost memo'), source: 'memos' });
+  reportError({ error: new Error('lost memo'), source: 'memos' });
 });
 it('reports and takes', () => {
-  reportSystemError({ error: new Error('expected'), source: 'memos' });
+  reportError({ error: new Error('expected'), source: 'memos' });
   expect(takeSystemErrors()).toHaveLength(1);
 });`);
     const output = (({ stdout, stderr }) => stdout + stderr)(vitest(root));

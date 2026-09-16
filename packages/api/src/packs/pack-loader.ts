@@ -34,7 +34,6 @@ import * as _sdkFramework from '@abuddy/sdk/framework';
 import * as _sdkHelpers from '@abuddy/sdk/helpers';
 import * as _sdkUtils from '@abuddy/sdk/utils';
 import * as _sdkUtilsPure from '@abuddy/sdk/utils/pure';
-import * as _sdkRpc from '@abuddy/sdk/rpc';
 import * as _sdkIds from '@abuddy/sdk/ids';
 import * as _sdkLogger from '@abuddy/sdk/logger';
 import * as _sdkServices from '@abuddy/sdk/services';
@@ -45,9 +44,11 @@ import * as _sdkBlocks from '@abuddy/sdk/blocks';
 import * as _sdkBuild from '@abuddy/sdk/build';
 import * as _sdkTypes from '@abuddy/sdk/types';
 import * as _sdkDesignations from '@abuddy/sdk/designations';
+import * as _sdkEvents from '@abuddy/sdk/events';
 import * as _sdkEnv from '@abuddy/sdk/env';
 import * as _sdkModels from '@abuddy/sdk/models';
-import * as _sdkTemplates from '@abuddy/sdk/runtime';
+import * as _sdkRuntime from '@abuddy/sdk/runtime';
+import * as _sdkTemplates from '@abuddy/sdk/templates';
 import * as _sdkCron from '@abuddy/sdk/cron';
 import * as _sdkCompareVersions from '@abuddy/sdk/utils/compare-versions';
 // Built-in packs also use host-only modules
@@ -63,7 +64,6 @@ const SDK_BRIDGE: Record<string, any> = {
   '@abuddy/sdk/helpers': _sdkHelpers,
   '@abuddy/sdk/utils': _sdkUtils,
   '@abuddy/sdk/utils/pure': _sdkUtilsPure,
-  '@abuddy/sdk/rpc': _sdkRpc,
   '@abuddy/sdk/ids': _sdkIds,
   '@abuddy/sdk/logger': _sdkLogger,
   '@abuddy/sdk/services': _sdkServices,
@@ -74,9 +74,11 @@ const SDK_BRIDGE: Record<string, any> = {
   '@abuddy/sdk/build': _sdkBuild,
   '@abuddy/sdk/types': _sdkTypes,
   '@abuddy/sdk/designations': _sdkDesignations,
+  '@abuddy/sdk/events': _sdkEvents,
   '@abuddy/sdk/env': _sdkEnv,
   '@abuddy/sdk/models': _sdkModels,
-  '@abuddy/sdk/runtime': _sdkTemplates,
+  '@abuddy/sdk/runtime': _sdkRuntime,
+  '@abuddy/sdk/templates': _sdkTemplates,
   // Leaf modules too: an installed pack has no node_modules to resolve them from
   '@abuddy/sdk/cron': _sdkCron,
   '@abuddy/sdk/utils/compare-versions': _sdkCompareVersions,
@@ -261,7 +263,13 @@ export interface LoadedPack {
 
 /** Runs `fn` (a require of pack runtime code) with @abuddy/sdk bridged to the API's instances and host-provided packages resolved from the API */
 export function withHostResolution<T>(fn: () => T): T {
-  return withModuleBridge({ modules: SDK_BRIDGE, hostPackages: HOST_PROVIDED_PACKAGES, resolveFrom: import.meta.url }, fn);
+  return withModuleBridge({
+    modules: SDK_BRIDGE,
+    hostPackages: HOST_PROVIDED_PACKAGES,
+    resolveFrom: import.meta.url,
+    // A runtime built against an SDK module this app no longer has fails, saying to rebuild it
+    bridgedPackages: ['@abuddy/sdk'],
+  }, fn);
 }
 
 export function loadSingleExternalPack(
@@ -345,7 +353,7 @@ function loadBundledRuntime(
       return mod.registration;
     });
   } catch (err) {
-    logger.error(`Failed to load ${manifest.id} runtime (${BUNDLE_PATHS.runtimeEntry}):`, err as Error);
+    logger.error(`Failed to load ${manifest.id} runtime (${BUNDLE_PATHS.runtimeEntry}): ${(err as Error).message}`, err as Error);
     return null;
   }
   if (!registration) {

@@ -2,7 +2,7 @@
 export { defineSystem, type SystemSpec, type SystemEvents } from './framework/index.ts';
 
 // Helpers
-export { safeEvents, emit } from './helpers/index.ts';
+export { safeEvents } from './helpers/index.ts';
 export type { Simplify } from './helpers/index.ts';
 
 // Types

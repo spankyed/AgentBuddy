@@ -5,7 +5,7 @@ export {
   getRegisteredEntityTypes, getRegisteredEARSPolicy,
   getRegisteredServices, getRegisteredMigrations,
   getBootHooks, getPackBootHooks, getPackRegistration, runRegisteredBootSeeds,
-  getPackContributions,
+  getPackContributions, resolveSystemAddress,
 } from './pack-registration.ts';
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackContributions, PackInfo } from './pack-registration.ts';
 

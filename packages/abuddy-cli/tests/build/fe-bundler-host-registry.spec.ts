@@ -58,7 +58,7 @@ describe.each(LAYOUTS)('bundlePackFE host registry guard ($name)', (layout) => {
 
     expect(result.success).toBe(false);
     expect(result.error).toContain('SDK host module');
-    expect(result.error).toContain(`Import chain: src/entry.ts → @abuddy/sdk/logger/index.${ext} → @abuddy/sdk/runtime/host.${ext}`);
+    expect(result.error).toContain(`Import chain: src/entry.ts → @abuddy/sdk/logger/index.${ext} → @abuddy/sdk/logger/logger.${ext} → @abuddy/sdk/runtime/host.${ext}`);
   }, 60_000);
 
   it('uses the host\'s @abuddy/ui instead of bundling it', async () => {
@@ -169,14 +169,18 @@ describe.each(LAYOUTS)('bundlePackFE host registry guard ($name)', (layout) => {
 
   it('builds when SDK imports go through host-shared proxies', async () => {
     const { packDir, entry } = makePack(layout,
-      `import { trpc } from '@abuddy/sdk/rpc';\nimport { compareVersions } from '@abuddy/sdk/utils/pure';\n` +
-      `export const x = [trpc, compareVersions];\n`,
+      `import { getHostModule } from '@abuddy/sdk/runtime';\nimport { compareVersions } from '@abuddy/sdk/utils/pure';\n` +
+      // What #generated/events imports: a pack's frontend sends through the host's transport
+      `import { defineEvents } from '@abuddy/sdk/events';\n` +
+      `export const x = [getHostModule, compareVersions, defineEvents({})];\n`,
     );
 
     const result = await bundlePackFE({ packDir, outputDir: path.join(packDir, 'dist'), entryPoint: entry });
 
     expect(result.error).toBeUndefined();
     expect(result.success).toBe(true);
-    expect(fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8')).toContain('window.__abuddy?.["sdkRpc"]');
+    const output = fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8');
+    expect(output).toContain('window.__abuddy?.["sdkRuntime"]');
+    expect(output).toContain('window.__abuddy?.["sdkEvents"]');
   }, 60_000);
 });

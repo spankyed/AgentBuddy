@@ -1,10 +1,9 @@
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
-import { reportStepRuntimeError } from '@abuddy/sdk/steps';
-import { createInspectLogger } from '@abuddy/sdk/logger';
+import { reportError, createLogger } from '@abuddy/sdk/logger';
 import { services } from '@/__generated__/services';
 import type { TransformNode, TransformOutputType } from './types';
 
-const { inspect: brainInspect } = createInspectLogger('brain');
+const brainLogger = createLogger('brain', { debug: true });
 
 /** The script's return value as the step's result, per the node's `outputType` */
 function toOutput(value: unknown, outputType: TransformOutputType): unknown {
@@ -42,11 +41,11 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
       ...(t.resolvedParams ?? {}),
     };
 
-    brainInspect(`Executing transform node: ${n.label}`, { outputType, paramKeys: Object.keys(params) });
+    brainLogger.debug(`Executing transform node: ${n.label}`, { outputType, paramKeys: Object.keys(params) });
 
     let value: unknown;
     try {
-      value = await services.action.executeAction(n.script, params);
+      value = await services.action.executeAction(n.script, params, { label: n.label });
     } catch (error) {
       // The script's own error, not the action service's wrapper around it
       const cause = error instanceof Error && error.cause !== undefined ? error.cause : error;
@@ -62,16 +61,18 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
 
     a.send({ type: 'COMPLETE', result: output });
   } catch (error) {
-    const runtimeError = reportStepRuntimeError({
+    const runtimeError = reportError({
       error,
       source: 'brain-transform',
-      phase: 'transform.execute',
-      flowTNodeId: ctx.flowTNodeId,
-      tNodeId: t.id,
-      nodeId: n.id,
-      nodeLabel: n.label,
-      nodeType: n.nodeType,
-      eventType: ctx.event?.type,
+      step: {
+        phase: 'transform.execute',
+        flowTNodeId: ctx.flowTNodeId,
+        tNodeId: t.id,
+        nodeId: n.id,
+        nodeLabel: n.label,
+        nodeType: n.nodeType,
+        eventType: ctx.event?.type,
+      },
     });
     a.send({ type: 'ERROR', error: runtimeError });
   }

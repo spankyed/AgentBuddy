@@ -32,10 +32,23 @@ function* sourceFiles(dir: string): Generator<string> {
   }
 }
 
+function parse(code: string, fileName: string): ts.SourceFile {
+  const kind = fileName.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
+  return ts.createSourceFile(fileName, code, ts.ScriptTarget.Latest, true, kind);
+}
+
+/** A file's code: the whole file, or a .vue file's <script> blocks with the line each starts on (less one) */
+function codeBlocks(file: string): { content: string; lineOffset: number }[] {
+  const code = fs.readFileSync(file, 'utf-8');
+  if (!file.endsWith('.vue')) return [{ content: code, lineOffset: 0 }];
+  const { descriptor } = parseSfc(code, { filename: file });
+  return [descriptor.script, descriptor.scriptSetup].filter((b) => b !== null)
+    .map((b) => ({ content: b.content, lineOffset: b.loc.start.line - 1 }));
+}
+
 /** Relative specifiers in a module: every static and dynamic form that names a module path. */
 function specifiers(code: string, fileName: string): { text: string; line: number }[] {
-  const kind = fileName.endsWith('.tsx') ? ts.ScriptKind.TSX : ts.ScriptKind.TS;
-  const source = ts.createSourceFile(fileName, code, ts.ScriptTarget.Latest, true, kind);
+  const source = parse(code, fileName);
   const found: { text: string; line: number }[] = [];
   const visit = (node: ts.Node) => {
     let literal: ts.StringLiteralLike | undefined;
@@ -60,15 +73,7 @@ export function findJsSpecifiers(dirs = CHECKED_DIRS, root = repoRoot): string[]
   const problems: string[] = [];
   for (const dir of dirs) {
     for (const file of sourceFiles(path.join(root, dir))) {
-      const code = fs.readFileSync(file, 'utf-8');
-      const blocks = file.endsWith('.vue')
-        ? (() => {
-          const { descriptor } = parseSfc(code, { filename: file });
-          return [descriptor.script, descriptor.scriptSetup].filter((b) => b !== null)
-            .map((b) => ({ content: b.content, lineOffset: b.loc.start.line - 1 }));
-        })()
-        : [{ content: code, lineOffset: 0 }];
-      for (const { content, lineOffset } of blocks) {
+      for (const { content, lineOffset } of codeBlocks(file)) {
         for (const { text, line } of specifiers(content, file)) {
           const emitted = path.extname(text);
           const base = path.resolve(path.dirname(file), text.slice(0, -emitted.length));
@@ -82,45 +87,105 @@ export function findJsSpecifiers(dirs = CHECKED_DIRS, root = repoRoot): string[]
   return problems;
 }
 
-/** Pack sources and the pack templates the CLI writes, which use the generated facades */
+/** CLI sources whose template strings are the pack source `abuddy init` and `abuddy add` write */
+export const CLI_TEMPLATE_SOURCES = ['packages/abuddy-cli/src/commands/add', 'packages/abuddy-cli/src/commands/init.ts'];
+
+/** Pack sources (each a pack's `src` root) and the pack templates the CLI writes, which use the generated facades */
 export const PACK_SOURCE_DIRS = [
   'packages/default-setup/src', 'tests/fixtures/external-pack/src', 'tests/fixtures/bundled-ui-pack/src',
-  'packages/abuddy-cli/src/commands/add', 'packages/abuddy-cli/src/commands/init.ts',
+  ...CLI_TEMPLATE_SOURCES,
 ];
 
-/** Helpers packs get typed from #generated/events and #generated/repository instead */
-const RAW_PACK_HELPERS: Record<string, string[]> = {
-  '@abuddy/sdk/helpers': ['emit', 'sendToPlugin'],
-  '@abuddy/sdk/services': ['emit', 'sendToPlugin'],
-  '@abuddy/sdk/ears': ['registerRepository'],
-};
-
-/**
- * `file:line: name from module` for each untyped event helper or repository registration a pack
- * source imports (also inside template strings, which the CLI writes as pack source). Generated
- * files are exempt.
- */
-export function findRawPackHelpers(dirs = PACK_SOURCE_DIRS, root = repoRoot): string[] {
-  const problems: string[] = [];
-  const files = dirs.flatMap((dir) => {
+/** The source files under each of `dirs` (a directory or a single file) */
+function packFiles(dirs: string[], root: string): string[] {
+  return dirs.flatMap((dir) => {
     const full = path.join(root, dir);
     if (!fs.existsSync(full)) return [];
     return fs.statSync(full).isFile() ? [full] : [...sourceFiles(full)];
-  }).filter((file) => !file.split(path.sep).includes('__generated__'));
-  const importPattern = /import\s*(?:type\s*)?\{([^}]*)\}\s*from\s*['"]([^'"]+)['"]/g;
-  for (const file of files) {
-    const code = fs.readFileSync(file, 'utf-8');
-    for (const match of code.matchAll(importPattern)) {
-      const names = RAW_PACK_HELPERS[match[2]];
-      if (!names) continue;
-      const imported = match[1].split(',').map((item) => item.trim().replace(/^type\s+/, '').split(/\s+as\s+/)[0]);
-      for (const name of imported.filter((n) => names.includes(n))) {
-        const line = code.slice(0, match.index).split('\n').length;
-        problems.push(`${path.relative(root, file)}:${line}: ${name} from ${match[2]}`);
+  });
+}
+
+/** What a rule reports for a syntax node, if anything */
+type Rule = (node: ts.Node) => string[] | undefined;
+
+/** The module a static import or export, or a dynamic import(), names */
+function moduleOf(node: ts.Node): string | undefined {
+  const literal = ts.isImportDeclaration(node) || ts.isExportDeclaration(node) ? node.moduleSpecifier
+    : ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword ? node.arguments[0] : undefined;
+  return literal && ts.isStringLiteralLike(literal) ? literal.text : undefined;
+}
+
+/**
+ * A template literal's text as code, `${…}` blanked to `_` (line breaks kept) and `\``, `\$`, `\\`
+ * unescaped in place, so positions stay put
+ */
+function templateCode(node: ts.TemplateLiteral, source: ts.SourceFile): string {
+  const start = node.getStart(source);
+  const chars = source.text.slice(start + 1, node.end - 1).split('');
+  if (ts.isTemplateExpression(node)) {
+    for (const span of node.templateSpans) {
+      // From the `${` that opens the span to its closing `}`
+      for (let i = span.pos - 2; i <= span.literal.getStart(source); i++) {
+        if (chars[i - start - 1] !== '\n') chars[i - start - 1] = '_';
       }
     }
   }
-  return problems;
+  return chars.join('').replace(/\\([`$\\])/g, ' $1');
+}
+
+/**
+ * `file:line: what` for each finding of `rule` in `files`. The syntax tree leaves out comments and
+ * string text; .vue files are read in their <script> blocks. In the CLI's template sources, template
+ * literals are pack code and are scanned as such.
+ */
+function findInFiles(files: string[], root: string, rule: Rule): string[] {
+  return files.flatMap((file) => {
+    const relative = path.relative(root, file).split(path.sep).join('/');
+    const isTemplateSource = CLI_TEMPLATE_SOURCES.some((dir) => relative === dir || relative.startsWith(`${dir}/`));
+    const found: { line: number; what: string }[] = [];
+    const scan = (code: string, lineOffset: number, templates: boolean): void => {
+      const source = parse(code, file);
+      const lineOf = (node: ts.Node) => source.getLineAndCharacterOfPosition(node.getStart(source)).line + 1 + lineOffset;
+      const visit = (node: ts.Node): void => {
+        for (const what of rule(node) ?? []) found.push({ line: lineOf(node), what });
+        if (templates && (ts.isNoSubstitutionTemplateLiteral(node) || ts.isTemplateExpression(node))) {
+          scan(templateCode(node, source), lineOf(node) - 1, false);
+        }
+        ts.forEachChild(node, visit);
+      };
+      visit(source);
+    };
+    for (const { content, lineOffset } of codeBlocks(file)) scan(content, lineOffset, isTemplateSource);
+    return found.sort((a, b) => a.line - b.line).map(({ line, what }) => `${relative}:${line}: ${what}`);
+  });
+}
+
+/** Sends packs get typed from #generated/events, whichever SDK module exports them untyped */
+const EVENT_SENDS = ['emit', 'sendToPlugin', 'sendToSystem'];
+
+/** Imports and re-exports of the untyped sends (and registerRepository), or all of @abuddy/sdk/events */
+const rawPackHelper: Rule = (node) => {
+  if (!ts.isImportDeclaration(node) && !ts.isExportDeclaration(node)) return;
+  const module = moduleOf(node);
+  if (!module?.startsWith('@abuddy/')) return;
+  const bindings = ts.isImportDeclaration(node) ? node.importClause?.namedBindings : node.exportClause;
+  if (!bindings || ts.isNamespaceImport(bindings) || ts.isNamespaceExport(bindings)) {
+    // `import * as x from`, `export * from`, `export * as x from` (a default import has no bindings)
+    const namespace = bindings !== undefined || ts.isExportDeclaration(node);
+    return namespace && module === '@abuddy/sdk/events' ? ['* from @abuddy/sdk/events (import the names)'] : undefined;
+  }
+  const raw = module === '@abuddy/sdk/ears' ? [...EVENT_SENDS, 'registerRepository'] : EVENT_SENDS;
+  return bindings.elements.map((el) => (el.propertyName ?? el.name).text).filter((name) => raw.includes(name))
+    .map((name) => `${name} from ${module}`);
+};
+
+/**
+ * `file:line: name from module` for each untyped send or repository registration a pack source
+ * imports or re-exports from an `@abuddy/*` module. Generated files are exempt.
+ */
+export function findRawPackHelpers(dirs = PACK_SOURCE_DIRS, root = repoRoot): string[] {
+  const files = packFiles(dirs, root).filter((file) => !file.split(path.sep).includes('__generated__'));
+  return findInFiles(files, root, rawPackHelper);
 }
 
 /**
@@ -146,6 +211,54 @@ export function findHostImports(dirs = PACK_SOURCE_DIRS, root = repoRoot): strin
     }
   }
   return problems;
+}
+
+/** The host's raw event paths: `@abuddy/sdk/rpc` modules, `rootEvents` and `trpc.bus` */
+const rawTransport: Rule = (node) => {
+  const module = moduleOf(node);
+  if (module && /^@abuddy\/sdk\/rpc(\/|$)/.test(module)) return [module];
+  if (ts.isIdentifier(node) && node.text === 'rootEvents') return ['rootEvents'];
+  if (ts.isPropertyAccessExpression(node) && node.name.text === 'bus' && ts.isIdentifier(node.expression) && node.expression.text === 'trpc') {
+    return ['trpc.bus'];
+  }
+  return undefined;
+};
+
+/**
+ * `file:line: what` for each raw event path a pack source uses, which the typed sends in
+ * #generated/events replace. Generated files are checked too.
+ */
+export function findRawTransport(dirs = PACK_SOURCE_DIRS, root = repoRoot): string[] {
+  return findInFiles(packFiles(dirs, root), root, rawTransport);
+}
+
+/** Pack backend code by path from the pack's `src` root, and the frontend code and tests among it */
+const PACK_BACKEND_PATH = /^(features\/[^/]+\/be\/|features\/hooks\.ts$|migrations\/|extensions\/)/;
+const PACK_FRONTEND_OR_TEST_PATH = /\.vue$|(^|\/)(fe|register-fe)\.ts$|^extensions\/(tiptap|artifacts\/viewers|blocks\/[^/]+)\/|(^|\/)__tests__\/|\.(spec|test)\.ts$/;
+
+/** `console.x` and `console?.x` */
+const consoleUse: Rule = (node) => {
+  if (ts.isPropertyAccessExpression(node) && ts.isIdentifier(node.expression) && node.expression.text === 'console') {
+    return [`console.${node.name.text}`];
+  }
+  return undefined;
+};
+
+/**
+ * `file:line: console.<method>` for each console use in pack backend code, which logs with
+ * `createLogger` from `@abuddy/sdk/logger`. Only pack `src` directories are checked: not the
+ * CLI's template sources (their console output is the CLI's) or single files.
+ */
+export function findPackBackendConsole(dirs = PACK_SOURCE_DIRS, root = repoRoot): string[] {
+  const files = dirs.filter((dir) => !CLI_TEMPLATE_SOURCES.includes(dir)).flatMap((dir) => {
+    const full = path.join(root, dir);
+    if (!fs.existsSync(full) || !fs.statSync(full).isDirectory()) return [];
+    return [...sourceFiles(full)].filter((file) => {
+      const relative = path.relative(full, file).split(path.sep).join('/');
+      return PACK_BACKEND_PATH.test(relative) && !PACK_FRONTEND_OR_TEST_PATH.test(relative);
+    });
+  });
+  return findInFiles(files, root, consoleUse);
 }
 
 /** Pack unit tests, which run on @abuddy/testing's harness: the pack's code and the SDK, not the app */
@@ -186,7 +299,17 @@ if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])
   }
   const rawHelpers = findRawPackHelpers();
   if (rawHelpers.length > 0) {
-    console.error(`Pack code uses the typed facades: emit and sendToPlugin from #generated/events, repositories declared in abuddy.json:\n  ${rawHelpers.join('\n  ')}`);
+    console.error(`Pack code uses the typed facades: emit, sendToPlugin and sendToSystem from #generated/events, repositories declared in abuddy.json:\n  ${rawHelpers.join('\n  ')}`);
+    process.exit(1);
+  }
+  const rawTransport = findRawTransport();
+  if (rawTransport.length > 0) {
+    console.error(`Pack code sends with sendToPlugin and sendToSystem from #generated/events, and subscribes with onConnected and onIncoming from @abuddy/sdk/events:\n  ${rawTransport.join('\n  ')}`);
+    process.exit(1);
+  }
+  const backendConsole = findPackBackendConsole();
+  if (backendConsole.length > 0) {
+    console.error(`Pack backend code logs with createLogger from @abuddy/sdk/logger:\n  ${backendConsole.join('\n  ')}`);
     process.exit(1);
   }
   const hostImports = findHostImports();

@@ -17,8 +17,7 @@ import { exportThreads } from './export-threads';
 import { importThreads } from './import-threads';
 import { runThreadTeardown } from '@abuddy/sdk/services';
 import { generateAsideText } from './services/chat';
-import { createLogger } from '@abuddy/sdk/logger';
-import { reportSystemError } from '@abuddy/sdk/utils';
+import { createLogger, reportError } from '@abuddy/sdk/logger';
 
 const logger = createLogger('threads');
 let birthFlowStarted = false;
@@ -116,7 +115,7 @@ function reportThreadOperationError(
     parent: 'move',
   };
 
-  reportSystemError({
+  reportError({
     error,
     title: `Could not ${operationLabels[operation]} thread`,
     source: 'threads',
@@ -568,7 +567,7 @@ export const threadsSystem = setup({
             topic: fullThreadData?.topic,
             instructions: fullThreadData?.instructions,
             status: fullThreadData?.status
-          } as any));
+          }));
 
           system.get(bus).send(emit(threads, {
             type: 'LOAD_CHAT_THREAD',
@@ -614,7 +613,7 @@ export const threadsSystem = setup({
         logger.error('forwardUserMessage failed', { error: err });
         system.get(bus).send(emit(threads, {
           type: 'THREAD_CHAT_ERROR',
-          threadId: (event as any).threadId ?? '',
+          threadId: 'threadId' in event && typeof event.threadId === 'string' ? event.threadId : '',
           error: err instanceof Error ? err.message : String(err),
         }));
       }
@@ -672,7 +671,7 @@ export const threadsSystem = setup({
           topic: fullThreadData?.topic,
           instructions: fullThreadData?.instructions,
           status: fullThreadData?.status
-        } as any));
+        }));
 
         system.get(bus).send(emit(threads, {
           type: 'LOAD_CHAT_THREAD',
@@ -776,7 +775,7 @@ export const threadsSystem = setup({
           },
         });
       } catch (err) {
-        console.error('[threads] forkThread failed:', err);
+        logger.error('forkThread failed', { error: err });
         // Clear forkPending if it was set, so the thread doesn't permanently reject messages.
         if (result && Object.keys(forkContext).length > 0) {
           const clearContext = Object.fromEntries(
@@ -1060,6 +1059,6 @@ export const threadsSystem = setup({
   }
 );
 
-const threadsEntry: SystemEntry = { spec: threadsSpec, machine: threadsSystem };
+const threadsEntry = { spec: threadsSpec, machine: threadsSystem } satisfies SystemEntry;
 
 export default threadsEntry;

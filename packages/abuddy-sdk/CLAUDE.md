@@ -9,17 +9,19 @@ The root `CLAUDE.md` covers the subpath split (`/ears`, `/fe`, `/utils` vs `/uti
 Each directory is one `package.json` export (`./<dir>` → `src/<dir>/index.ts`) unless noted.
 
 - `actions/`: pure helpers seed actions may inline (`formatProviderError`, `buildTranscript`). It's the only bare import `compileSourceDir` allows in action and prompt sources.
-- `artifacts/`, `blocks/`, `steps/`: definition types and their registries (see Registries). `steps/` also has `runtime-errors.ts` and `utils.ts`.
+- `artifacts/`, `blocks/`, `steps/`: definition types and their registries (see Registries). `steps/` also has `utils.ts`.
 - `build/`: manifest schema, codegen, seed compilers and the flow DSL compiler (see Build pipeline).
 - `designations/`: the role → feature id registry (`getDesignated`, `hasDesignation`).
 - `ears/`: the EARS engine (`query.ts`, `transaction.ts`, `attribute-storage.ts`, `edge-store.ts`, `relation-index.ts`), typed helpers (`typed.ts`), and the repository registry (`repository.ts`). `internals.ts` is the host's hook into the engine. It is exported only under `@abuddy/source` and left out of `dist/` (`tsconfig.package.json`) and the API reports (`tsconfig.api-extractor.json`).
-- `env/`: `resolveAppContext()`, the single resolver for environment and data paths.
+- `env/`: `resolveAppContext()`, the single resolver for environment and data paths, and `getAppVersion()` (the `version` host module).
+- `events/`: messaging (`emit`, `sendToPlugin`, `sendToSystem`, `sendToBrainSystem`, `onConnected`, `onIncoming`), `defineEvents` (the typed sends `#generated/events` builds) and the event map types. Frontend-safe: it sends through the `event-transport` host module.
 - `fe/`: plugin contracts and the frontend state packs share with the host (`actor-system.ts`, `menu-state.ts`, `tiptap-plugins.ts`, `dsl-types.ts`, `pack-fe-registration.ts`). `./fe/contributions` maps to `fe/contribution-types.ts`.
 - `framework/`: `defineSystem`, `toPackSystemDefs`, the `PackRegistration` contract (`pack-registration.ts`) and feature settings (`pack-settings.ts`).
-- `helpers/`: `safeEvents`, `emit`, `Simplify`.
+- `helpers/`: actor helpers (`safeEvents`, `sendParentSafe`, `getActor`, `getBus`) and `Simplify`.
 - `ids/`: the `bus` system id.
-- `logger/`, `rpc/`: delegates that call host modules. `rpc` also defines `IncomingSystemEvents`/`OutgoingSystemEvents`.
-- `runtime/`: `host.ts` is the host module table (`registerHostModule`, `getHostModule`, `hostFn`, `hostValue`) that every SDK delegate reads. `templates.ts` runs prompt function bodies (`executeTemplate`).
+- `logger/`: `createLogger` (with the per-source debug toggle) and `onLog` over the `logger` host module (`logger.ts`), and `reportError` (`report-error.ts`): the `system-errors` host module without `step`, or a step error logged, recorded on its TNode and sent as `BRAIN_RUNTIME_ERROR`.
+- `runtime/`: `host.ts` is the host module table (`registerHostModule`, `getHostModule`, `hostFn`, `hostValue`) that every SDK delegate reads. `root-events.ts` holds the `@internal` `rootEvents` (`initRpc()` reads the `bus-emitter` host module). `fe/secrets-client.ts` delegates `secretsClient` to the `secrets-client` host module the renderer registers (the `SecretsClient` contract); the SDK holds no general API client.
+- `templates/`: runs prompt function bodies (`executeTemplate`, `createTemplateResolver`).
 - `seed/`: the seed engine (see Seed engine).
 - `services/`: the `services` proxy and `HostServices` (`index.ts`), plus the contracts for `appData`, `traceStore`, `inference` and `secrets`. `host-services.ts` resolves each of these from the host module of the same name. `./models` maps to `services/models.ts`.
 - `testing/`: the in-memory runtime behind `@abuddy/testing/harness` (see Testing entry).
@@ -37,6 +39,7 @@ Each directory is one `package.json` export (`./<dir>` → `src/<dir>/index.ts`)
     - A `boot.seed` format must name a `seedFormats` entry or `<dependency>:<name>`.
     - `seedHooks` may name only the pack's own `entities`.
     - `entities`/`relKinds` may not redeclare names the SDK owns.
+  - A feature id may not be a JavaScript reserved word or `busId` (`RESERVED_FEATURE_IDS`), and `fe.appExtensions` keys must be identifiers: both become names in generated code.
   - `SPECIALTY_SEED_KEYS` (`actions`, `prompts`, `flows`, `settings`) take a path. Every other seed key takes `{ path, format }` or `{ seeder }`.
   - `abuddy.schema.json` is generated from the schema by `scripts/generate-schema.ts` (`zod-to-json-schema`). Run `generate:schema` after changing the schema; CI runs `schema:check`.
 - **Validation** (`validate.ts`): `parseManifest`/`validateManifest` run the schema. `validateFeatures` checks that each feature's `settings`, `system.entry` and `plugin.entry` files exist and that `designation === id`.
@@ -123,7 +126,7 @@ The registries are module-level singletons, so a process must load exactly one S
 
 This is the in-memory runtime that `@abuddy/testing/harness` drives (see `packages/abuddy-testing/CLAUDE.md`). It lives in the SDK so tests share the pack's registries.
 
-- `startTestRuntime({ entityTypes })` initializes EARS with the SDK's entity types plus the given ones; calling it again adds types. It then calls `registerTestHostModules` (`host.ts`), which registers in-memory host modules (logger, `testRootEvents`, system errors, `appData`, trace store, `secrets`, and an `inference` that fails until mocked), each only if the host hasn't registered its own.
+- `startTestRuntime({ entityTypes })` initializes EARS with the SDK's entity types plus the given ones; calling it again adds types. It then calls `registerTestHostModules` (`host.ts`), which registers in-memory host modules (a console logger that also records log events, `testRootEvents` and the `event-transport` over it, system errors, `appData`, trace store, `secrets`, and an `inference` that fails until mocked), each only if the host hasn't registered its own.
 - `SeedRuntime` and `registerSeedRuntime(runtime)`: registers a pack's entity types, repositories and seed hooks. The generated `seed-runtime.ts` exports it; `abuddy build` bundles it to `dist/build/seed-runtime.mjs`.
 - `resetTestData`, `entityIds`, `dropAttribute`, `takeSystemErrors`, `addTestSecret`, and `fakeInference` (`fake-inference.ts`).
 

@@ -2,14 +2,13 @@
 // boot (api/src/setup/sdk-host-init.ts), minus persistence, clients and the filesystem.
 import { EventEmitter } from 'node:events';
 import { registerHostModule, getHostModule } from '../runtime/host.ts';
-import { initRpc, type IncomingSystemEvents, type OutgoingSystemEvents, type RootEvents } from '../rpc/index.ts';
-import { getDesignated } from '../designations/index.ts';
+import { initRpc, type RootEvents } from '../runtime/root-events.ts';
+import type { EventTransport, IncomingSystemEvents, OutgoingSystemEvents } from '../events/index.ts';
 import { getAllEntities, getAttr } from '../ears/attribute-storage.ts';
 import { findRelations } from '../ears/relations.ts';
 import type { EARS } from '../types/entities.ts';
 import type { Logger } from '../ears/runtime.ts';
-import type { LogEvent } from '../logger/index.ts';
-import type { ReportSystemErrorInput } from '../utils/index.ts';
+import type { LogEvent, LogLevel, ReportSystemErrorInput } from '../logger/index.ts';
 import type { AppDataService } from '../services/app-data.ts';
 import type { TraceStore } from '../services/trace-store.ts';
 import type { InferenceService } from '../services/inference.ts';
@@ -43,7 +42,7 @@ class TestEventBus extends EventEmitter implements TestRootEvents {
   onOutgoing(callback: (event: OutgoingSystemEvents) => void): () => void { return this.subscribe('outgoing', callback); }
 }
 
-/** The root event bus the test host registers (`@abuddy/sdk/rpc`'s `rootEvents` once started) */
+/** The root event bus the test host registers (the SDK's internal `rootEvents` once started) */
 export const testRootEvents: TestRootEvents = new TestEventBus();
 
 const systemErrors: ReportSystemErrorInput[] = [];
@@ -72,19 +71,25 @@ const memorySecrets: SecretsService = {
   delete: (id) => { testSecrets = secretRules.remove(testSecrets, id); },
 };
 
-/** Errors systems and steps reported with `reportSystemError` since the last call; clears them */
+/** Errors systems reported with `reportError` (without `step`) since the last call; clears them */
 export function takeSystemErrors(): ReportSystemErrorInput[] {
   return systemErrors.splice(0);
 }
 
+/** Prints each entry and records it as a log event, as the app's logger does */
 function consoleLogger(source?: string): Logger {
   const prefix = source ? `[${source}]` : '[test]';
-  return {
-    debug: (...args: unknown[]) => console.debug(prefix, ...args),
-    info: (...args: unknown[]) => console.info(prefix, ...args),
-    warn: (...args: unknown[]) => console.warn(prefix, ...args),
-    error: (...args: unknown[]) => console.error(prefix, ...args),
+  const log = (level: LogLevel) => (message: unknown, ...rest: unknown[]) => {
+    console[level](prefix, message, ...rest);
+    const meta = rest[0];
+    testRootEvents.emitLog({
+      level,
+      message: String(message),
+      source,
+      ...(meta !== null && typeof meta === 'object' && { meta: meta as Record<string, unknown> }),
+    });
   };
+  return { debug: log('debug'), info: log('info'), warn: log('warn'), error: log('error') };
 }
 
 const unmockedInference = () => Promise.reject(new Error(
@@ -129,16 +134,14 @@ function registered(key: string): boolean {
  */
 export function registerTestHostModules(resetData: () => void): void {
   const modules: Record<string, unknown> = {
-    'logger': { createLogger: consoleLogger },
+    'logger': { createLogger: consoleLogger, onLog: (callback: (event: LogEvent) => void) => testRootEvents.onLog(callback) },
     'bus-emitter': { rootEvents: testRootEvents },
-    'event-emitter': {
-      sendToPlugin: (pluginId: string, event: { type: string }) => testRootEvents.emitOutgoing({ ...event, pluginId }),
-      sendToSystem: (systemId: string, event: { type: string }) => testRootEvents.emitIncoming({ ...event, systemId }),
-      sendToBrainSystem: (event: { eventType: string; payload?: unknown; targetFlowId?: EARS.EntityId }) =>
-        testRootEvents.emitIncoming({ ...event, type: 'TRIGGER_BRAIN_EVENT', systemId: getDesignated('brain') }),
-      onOutgoing: (callback: (event: OutgoingSystemEvents) => void) => testRootEvents.onOutgoing(callback),
-      onIncoming: (callback: (event: IncomingSystemEvents) => void) => testRootEvents.onIncoming(callback),
-    },
+    'event-transport': {
+      sendIncoming: (event) => testRootEvents.emitIncoming(event),
+      sendOutgoing: (event) => testRootEvents.emitOutgoing(event),
+      onConnected: (callback) => testRootEvents.onConnected(callback),
+      onIncoming: (callback) => testRootEvents.onIncoming(callback),
+    } satisfies EventTransport,
     'system-errors': { reportSystemError: (input: ReportSystemErrorInput) => { systemErrors.push(input); } },
     'version': { APP_VERSION: '0.0.0-test' },
     'migrations': { runMigrations: () => {} },

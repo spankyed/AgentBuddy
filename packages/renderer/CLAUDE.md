@@ -4,7 +4,7 @@ The Vue 3 app every AgentBuddy window runs. It hosts plugins; it doesn't impleme
 
 ## Boot (`src/main.ts`)
 
-Its static imports are evaluated first: `virtual:built-in-packs` loads every built-in pack's FE entry, and `virtual:host-deps` assigns `window.__abuddy`, so both are in place before pack code runs. The body then runs with a top-level `await`, in this order:
+Its static imports are evaluated first: `@/core/event-transport` (imported first) registers the `event-transport` host module `@abuddy/sdk/events` sends through (events for systems go over the API client; plugin sends and subscriptions throw, being backend-only) `@/core/secrets-client` registers the `secrets-client` host module behind `@abuddy/sdk/fe`'s `secretsClient` (the API's secrets procedures, the only ones pack frontends call directly), `virtual:built-in-packs` loads every built-in pack's FE entry, and `virtual:host-deps` assigns `window.__abuddy`, so both are in place before pack code runs. The body then runs with a top-level `await`, in this order:
 
 1. Installs `window.error` / `unhandledrejection` reporters (`electronAPI.rendererLog.write`, `fatal: true`). Reads `?popout=plugin&pluginId=…` (set by main's `plugin:popout`).
 2. Sets `window.appVersion` (`__APP_VERSION__`, the root `package.json` version) and runs `runFrontendMigrations()` (`src/setup/migrations/index.ts`: localStorage migrations run before the actor reads its keys; the list is empty now; the version is stored under `agentbuddy-fe-version`).
@@ -27,11 +27,11 @@ Its static imports are evaluated first: `virtual:built-in-packs` loads every bui
   - `@/…` resolves into the importer's own pack `src/`, or into `renderer/src/` for renderer files. So `@/` inside default-setup means default-setup's `src`.
 - **`hostDepsPlugin`** generates `virtual:host-deps`: `window.__abuddy = { … }`, holding namespace imports of:
   - `getSharedFeDeps()` (vue, xstate, `@xstate/vue`, tiptap, reka-ui, lucide, vue-flow, every `@tiptap/pm/*` and `@tiptap/vue-3/*` subpath, `prosemirror-*` aliases);
-  - `getSdkFeModules()` (`sdkFe`, `sdkRpc`, `sdkRuntime`, …);
+  - `getSdkFeModules()` (`sdkFe`, `sdkEvents`, `sdkRuntime`, …);
   - every `@abuddy/ui` export, keyed by specifier.
 
   All three lists live in `@abuddy/host/build/shared-deps`. The pack FE bundler proxies the same specifiers to these globals, so packs share the host's Vue, XState and SDK registries.
-- **Aliases:** `@abuddy/sdk/rpc` → `src/core/trpc.ts`, so the renderer, and packs through `window.__abuddy.sdkRpc`, get the real client rather than the SDK's host-module proxy. `@abuddy/api` → `../api/src`. Resolve conditions include `@abuddy/source`.
+- **Aliases:** `@abuddy/api` → `../api/src`. Resolve conditions include `@abuddy/source`.
 - `base: './'` (loaded from `file://` in builds), `modulePreload: false`, and a long `optimizeDeps.include` list (Monaco, xterm, tiptap, vidstack, …) for the dev server.
 - `tsconfig.app.json` includes `../abuddy-sdk/src/fe/**/*` (the `Window.electronAPI` declaration, see `packages/preload/CLAUDE.md`) and maps `@/*` → `src/*`.
 
@@ -73,8 +73,8 @@ The application actor owns loading; `src/packs/pack-loader.ts` does the work. Th
 4. **`loadPackFrontend`** (`pack-loader.ts`):
    - `loadPackStyles` adds a `<link data-pack-id>` for `pack://<id>/<feStyles>`, once per href.
    - It then `import()`s `pack://<id>/<feEntry>` and calls `registerPackFE(registration, packId)`.
-   - It returns the plugins, `[]` on failure, or `null` when the pack has no `feEntry`.
-   - `loadPackFEEntry` warns when the module has no default export or declares none of `plugins/steps/artifacts/blocks/tiptapPlugins/appExtensions`. On an import failure it logs `[pack-loader] Failed to load FE entry pack://…`, which the E2E fixture matches.
+   - It returns the plugins, or `null` when the pack has no `feEntry`. It throws when the entry fails to import or register, so the loader lists the pack in `failedPacks` (a toast).
+   - `loadPackFEEntry` warns when the module has no default export or declares none of `plugins/steps/artifacts/blocks/tiptapPlugins/appExtensions`. On an import failure it logs `[pack-loader] Failed to load FE entry pack://…:` with the error (the E2E fixture matches the prefix) and throws the reason, adding that a pack built for another AgentBuddy version needs rebuilding.
 5. **`mergePackPlugins`:**
    - `null` records the pack as loaded and asks nothing, because the connection's `CLIENT_CONNECTED` already reached its systems.
    - Otherwise it skips plugin ids already present, inserts the new plugins before `packs`, spawns their actors, records them in `packPluginIds`, and, if `busSubscribed`, calls `packClientReady` so the pack's systems send their startup data.

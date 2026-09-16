@@ -1,6 +1,5 @@
 import { setup, type ActorRefFrom, assign, enqueueActions } from 'xstate';
 import breadcrumb from '@abuddy/sdk/fe';
-import { trpc } from '@abuddy/sdk/rpc';
 import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@abuddy/sdk/fe';
 import { saveOpenTabs, loadPersistedTabs, sortTabsByPinned } from './utils/persisted-tabs';
 import { loadRecentFiles, addRecentFile } from './utils/recent-files';

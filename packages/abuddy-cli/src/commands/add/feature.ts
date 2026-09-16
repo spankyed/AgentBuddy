@@ -51,7 +51,7 @@ export const ${camel}System = setup({
   },
 });
 
-const ${camel}Entry: SystemEntry = { spec: ${camel}Spec, machine: ${camel}System };
+const ${camel}Entry = { spec: ${camel}Spec, machine: ${camel}System } satisfies SystemEntry;
 
 export default ${camel}Entry;
 `;

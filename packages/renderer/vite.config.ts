@@ -113,7 +113,6 @@ export default defineConfig({
     // Workspace @abuddy/* packages resolve to source (see their package.json exports)
     conditions: ['@abuddy/source', ...defaultClientConditions],
     alias: [
-      { find: '@abuddy/sdk/rpc', replacement: fileURLToPath(new URL('./src/core/trpc.ts', import.meta.url)) },
       { find: '@abuddy/api', replacement: fileURLToPath(new URL('../api/src', import.meta.url)) },
     ],
   },

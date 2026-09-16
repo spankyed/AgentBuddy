@@ -217,6 +217,18 @@ export function getRegisteredPackSystemIds(packId: string): string[] {
   return (registrations.get(packId)?.systems ?? []).map((sys) => sys.id);
 }
 
+/**
+ * The bus id of the system a `<packId>/<featureId>` name addresses, or undefined when no registered pack
+ * runs that system. How `services.emitter.sendToSystem` addresses systems, since actions run outside any pack.
+ */
+export function resolveSystemAddress(address: string): string | undefined {
+  const slash = address.indexOf('/');
+  if (slash <= 0) return undefined;
+  const packId = address.slice(0, slash);
+  const featureId = address.slice(slash + 1);
+  return getRegisteredPackSystemIds(packId).find((id) => id === featureId || id === `${packId}.${featureId}`);
+}
+
 export function buildRegisteredEventValidationMap(): Map<string, Set<string>> {
   const map = new Map<string, Set<string>>();
   for (const [id, entry] of hostSystems) {

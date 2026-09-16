@@ -23,35 +23,38 @@ export function loadPackStyles(packId: string, stylesPath: string, packBaseUrl: 
 
 const REGISTRATION_KEYS = ['plugins', 'steps', 'artifacts', 'blocks', 'tiptapPlugins', 'appExtensions'] as const;
 
+/** Imports a pack's FE entry: its registration, or null when it exports none. Throws when the import fails. */
 export async function loadPackFEEntry(
   entry: string,
   packBaseUrl: string,
 ): Promise<PackFERegistration | null> {
   const url = `${packBaseUrl}/${entry}`;
+  let mod: { default?: unknown };
   try {
-    const mod = await import(/* @vite-ignore */ url);
-    const registration = mod.default || mod;
-    if (!registration || typeof registration !== 'object') {
-      console.warn(`[pack-loader] FE entry at ${entry} did not export a valid registration`);
-      return null;
-    }
-    // A module without a default export falls back to its namespace object, which registers
-    // nothing; say so instead of loading a pack whose plugins silently never appear. A default
-    // export that declares registration fields, even empty ones, is deliberate: the generated
-    // entry of a pack without FE contributions is { plugins: [], defaultPlugin: undefined }.
-    const declaresRegistration = REGISTRATION_KEYS.some(key => key in registration);
-    if (!mod.default || !declaresRegistration) {
-      console.warn(
-        `[pack-loader] FE entry ${url} registers nothing (no ${REGISTRATION_KEYS.join('/')}). ` +
-        (mod.default ? 'Its default export declares none of them.' : 'It has no default export — export the registration as default.'),
-      );
-    }
-    return registration as PackFERegistration;
+    mod = await import(/* @vite-ignore */ url);
   } catch (err) {
     // The pack:// URL names the pack; the E2E fixture matches on it
     console.error(`[pack-loader] Failed to load FE entry ${url}:`, err);
+    const reason = err instanceof Error ? err.message : String(err);
+    throw new Error(`${reason}. If the pack was built for another AgentBuddy version, rebuild it with the current @abuddy/cli`);
+  }
+  const registration = mod.default || mod;
+  if (!registration || typeof registration !== 'object') {
+    console.warn(`[pack-loader] FE entry at ${entry} did not export a valid registration`);
     return null;
   }
+  // A module without a default export falls back to its namespace object, which registers
+  // nothing; say so instead of loading a pack whose plugins silently never appear. A default
+  // export that declares registration fields, even empty ones, is deliberate: the generated
+  // entry of a pack without FE contributions is { plugins: [], defaultPlugin: undefined }.
+  const declaresRegistration = REGISTRATION_KEYS.some(key => key in registration);
+  if (!mod.default || !declaresRegistration) {
+    console.warn(
+      `[pack-loader] FE entry ${url} registers nothing (no ${REGISTRATION_KEYS.join('/')}). ` +
+      (mod.default ? 'Its default export declares none of them.' : 'It has no default export — export the registration as default.'),
+    );
+  }
+  return registration as PackFERegistration;
 }
 
 /**
@@ -72,21 +75,17 @@ export interface PackFrontend {
 
 /**
  * Loads an external pack's frontend: its styles, then its FE entry, registering what it contributes.
- * Returns the plugins it exports (none when it failed to load), or null for a pack without frontend
- * code: the bus sent its systems the connection's CLIENT_CONNECTED already.
+ * Returns the plugins it exports, or null for a pack without frontend code: the bus sent its systems the
+ * connection's CLIENT_CONNECTED already. Throws when the entry fails to import or register; the application
+ * actor reports the pack as failed.
  */
 export async function loadPackFrontend(pack: PackFrontend): Promise<Plugin[] | null> {
   const packBaseUrl = `pack://${pack.id}`;
   if (pack.feStyles) await loadPackStyles(pack.id, pack.feStyles, packBaseUrl);
   if (!pack.feEntry) return null;
 
-  try {
-    const registration = await loadPackFEEntry(pack.feEntry, packBaseUrl);
-    if (!registration) return [];
-    registerPackFE(registration, pack.id);
-    return registration.plugins ?? [];
-  } catch (err) {
-    console.error(`[pack-loader] Failed to load the frontend of pack ${pack.id}:`, err);
-    return [];
-  }
+  const registration = await loadPackFEEntry(pack.feEntry, packBaseUrl);
+  if (!registration) return [];
+  registerPackFE(registration, pack.id);
+  return registration.plugins ?? [];
 }

@@ -145,7 +145,7 @@ import { ref, computed } from 'vue'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { RefreshCw, AlertTriangle, Power, CheckCircle, PlayCircle } from 'lucide-vue-next'
 import type { BrainSettings } from '@/__generated__/types'
-import { trpc } from '@abuddy/sdk/rpc'
+import { sendToSystem } from '@/__generated__/events'
 import { useSelector } from '@xstate/vue'
 import { id as brainId, type BrainState } from '@/features/brain/fe/state'
 
@@ -185,32 +185,28 @@ const inspectEnabled = ref<boolean>(false)
 const handleRestart = () => {
   // If brain is dead, send START_BRAIN, otherwise RESTART_BRAIN
   if (brainIsDead.value) {
-    trpc.bus.send.mutate({
-      systemId: 'brain',
-      type: 'START_BRAIN'
+    sendToSystem('brain', {
+      type: 'START_BRAIN',
     })
   } else {
-    trpc.bus.send.mutate({
-      systemId: 'brain',
-      type: 'RESTART_BRAIN'
+    sendToSystem('brain', {
+      type: 'RESTART_BRAIN',
     })
   }
 }
 
 const handleKill = () => {
   // Send kill event to backend brain system
-  trpc.bus.send.mutate({
-    systemId: 'brain',
-    type: 'KILL_BRAIN'
+  sendToSystem('brain', {
+    type: 'KILL_BRAIN',
   })
 }
 
 const toggleInspect = () => {
   inspectEnabled.value = !inspectEnabled.value
   // Send toggle inspect event to backend
-  trpc.bus.send.mutate({
-    systemId: 'brain',
-    type: 'TOGGLE_INSPECT'
+  sendToSystem('brain', {
+    type: 'TOGGLE_INSPECT',
   })
 }
 </script>

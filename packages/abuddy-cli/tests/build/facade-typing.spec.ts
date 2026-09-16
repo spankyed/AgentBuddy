@@ -52,9 +52,9 @@ const BASE_PACK = {
     "import { setup } from 'xstate';",
     "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",
     "export type OutgoingThreadsEvents = { type: 'TAG_ADDED'; name: string };",
-    "export const threadsSpec = defineSystem('threads')<{ type: 'ADD_TAG' }, OutgoingThreadsEvents>();",
+    "export const threadsSpec = defineSystem('threads')<{ type: 'ADD_TAG'; name: string }, OutgoingThreadsEvents>();",
     'export const threads = threadsSpec.id;',
-    'const entry: SystemEntry = { spec: threadsSpec, machine: setup({ types: threadsSpec.types }).createMachine({ id: threadsSpec.id }) };',
+    'const entry = { spec: threadsSpec, machine: setup({ types: threadsSpec.types }).createMachine({ id: threadsSpec.id }) } satisfies SystemEntry;',
     'export default entry;',
   ].join('\n'),
   'src/plugin.ts': "import type { Plugin } from '@abuddy/sdk/fe';\nexport default { id: 'threads' } as unknown as Plugin;\n",
@@ -81,16 +81,16 @@ const APP_PACK = {
     "import { setup } from 'xstate';",
     "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",
     "export type OutgoingMemosEvents = { type: 'MEMO_ADDED'; text: string };",
-    "export const memosSpec = defineSystem('memos')<{ type: 'ADD_MEMO' }, OutgoingMemosEvents>();",
+    "export const memosSpec = defineSystem('memos')<{ type: 'ADD_MEMO'; text: string } | { type: 'CLEAR_MEMOS' } | { type: 'PIN_MEMO' | 'UNPIN_MEMO'; id: string }, OutgoingMemosEvents>();",
     'export const memos = memosSpec.id;',
-    'const entry: SystemEntry = { spec: memosSpec, machine: setup({ types: memosSpec.types }).createMachine({ id: memosSpec.id }) };',
+    'const entry = { spec: memosSpec, machine: setup({ types: memosSpec.types }).createMachine({ id: memosSpec.id }) } satisfies SystemEntry;',
     'export default entry;',
   ].join('\n'),
 };
 
 const CONSUMER = `
 import { EARS as PackEARS, qx, tx, findById, findAll, createEntity, type EntityShape, type EntityName } from '#generated/ears.js';
-import { emit, sendToPlugin } from '#generated/events.js';
+import { emit, sendToPlugin, sendToSystem } from '#generated/events.js';
 import { services } from '#generated/services.js';
 import { repository } from '#generated/repository.js';
 import type { EARS } from '@abuddy/sdk';
@@ -125,6 +125,32 @@ emit('memos', { type: 'MEMO_ADDED', text: 'x' });
 sendToPlugin('application', { type: 'APPLICATION_RESTORE_LAST_PLUGIN', lastActivePluginId: 'memos' });
 // @ts-expect-error the threads plugin doesn't receive this event
 emit('threads', { type: 'MEMO_ADDED', text: 'x' });
+
+// Systems: this pack's by feature id, the dependency's as <dependency>/<feature>
+sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });
+sendToSystem('memos', { type: 'UNPIN_MEMO', id: 'm1' });
+sendToSystem('base-pack/threads', { type: 'ADD_TAG', name: 'x' });
+// @ts-expect-error the dependency's system isn't named by the id it runs under
+sendToSystem('base-pack.threads', { type: 'ADD_TAG', name: 'x' });
+// @ts-expect-error the memos system doesn't receive this event
+sendToSystem('memos', { type: 'ADD_TAG', name: 'x' });
+// @ts-expect-error PIN_MEMO needs its id
+sendToSystem('memos', { type: 'PIN_MEMO' });
+declare const memoEventType: 'ADD_MEMO' | 'CLEAR_MEMOS';
+// @ts-expect-error one event type per send
+sendToSystem('memos', { type: memoEventType, text: 'x' });
+declare const systemId: 'memos' | 'base-pack/threads';
+// @ts-expect-error one system per send
+sendToSystem(systemId, { type: 'ADD_TAG', name: 'x' });
+
+// Actions get services.emitter, which names every system <pack>/<feature>, this pack's own too
+services.emitter.sendToSystem('app-pack/memos', { type: 'ADD_MEMO', text: 'x' });
+services.emitter.sendToSystem('base-pack/threads', { type: 'ADD_TAG', name: 'x' });
+services.emitter.sendToPlugin('threads', { type: 'TAG_ADDED', name: 'x' });
+// @ts-expect-error actions run outside any pack, so this pack's systems are named too
+services.emitter.sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });
+// @ts-expect-error ADD_MEMO needs its text
+services.emitter.sendToSystem('app-pack/memos', { type: 'ADD_MEMO' });
 
 export type Undeclared = Expect<Equal<EntityShape<'Nope'>['anything'], unknown>>;
 // An entity name only known at runtime is accepted, and reads as unknown values
@@ -243,7 +269,10 @@ function buildPacks(published: boolean): string {
  */
 const COMPLETIONS = `
 import { EARS, qx, getAttr, getAttrs, findAll, findWithFields, findByIdWithFields, createEntity } from '#generated/ears.js';
+import { sendToSystem } from '#generated/events.js';
 declare const memoId: EARS.EntityId<'Memo'>;
+sendToSystem('|systemId|', { type: 'CLEAR_MEMOS' });
+sendToSystem('memos', { type: '|eventType|' });
 qx('Memo').pick(['|pick|']);
 qx('Memo').pickOne(['|pickOne|']);
 qx(memoId).linksPick('related', ['|linksPick|'], 'Memo');
@@ -345,6 +374,13 @@ describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ publish
     expect(snapshot.defs['pack-types']).toMatch(/export type \{[^}]*PackEntityShapes[^}]*\}/);
   });
 
+  it("gives dependents the dependency's system events without its machines", () => {
+    const snapshot = JSON.parse(fs.readFileSync(path.join(parent, 'base-pack', 'dist', 'types', 'snapshot.json'), 'utf-8'));
+    expect(snapshot.defs['pack-types']).toMatch(/export type \{[^}]*PackSystemEvents[^}]*\}/);
+    expect(snapshot.defs['pack-types']).toMatch(/type: ["']ADD_TAG["']/);
+    expect(snapshot.defs['pack-types']).not.toContain('StateMachine');
+  });
+
   it.each(['bundler', 'node16'] as const)('typechecks own and dependency types under moduleResolution %s', (moduleResolution) => {
     const app = path.join(parent, 'app-pack');
     const tsconfig = writeTsconfig(app, moduleResolution, published);
@@ -363,6 +399,14 @@ describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ publish
     expect(missing(NAME_POSITIONS, ['Memo', 'Tag', 'Relation', 'Settings']), 'positions without entity-name completions').toEqual([]);
     // A typo's error lists the fields it could have been
     expect(diagnostics.find((message) => message.includes('"txet"'))).toMatch(/"text"/);
+  }, 120_000);
+
+  it.each(['bundler', 'node16'] as const)('offers system-id and event-type completions for sendToSystem under moduleResolution %s', (moduleResolution) => {
+    const app = path.join(parent, 'app-pack');
+    const { at } = completionsIn(app, writeTsconfig(app, moduleResolution, published));
+    expect(at.systemId, 'system-id completions').toEqual(expect.arrayContaining(['memos', 'base-pack/threads']));
+    expect(at.eventType, 'event-type completions').toEqual(expect.arrayContaining(['ADD_MEMO', 'CLEAR_MEMOS', 'PIN_MEMO', 'UNPIN_MEMO']));
+    expect(at.eventType, 'only the chosen system\'s events').not.toContain('ADD_TAG');
   }, 120_000);
 
   // qx's name overloads come before its id overloads; in the other order a name seed gets no suggestions

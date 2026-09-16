@@ -17,28 +17,11 @@ export interface ActorLookup {
     get(id: string): AnyActorRef | undefined;
 }
 
-// @public
-export function emit<P extends string, E extends {
-    type: string;
-}>(pluginId: P, event: E): {
-    type: 'OUTGOING';
-    event: E & {
-        pluginId: P;
-    };
-};
-
 // @public (undocumented)
 export function getActor(system: ActorLookup, id: string): AnyActorRef;
 
 // @public (undocumented)
 export function getBus(system: ActorLookup): AnyActorRef;
-
-// @public
-export type PluginEvents = {
-    [pluginId: string]: {
-        type: string;
-    };
-};
 
 // @public
 export function safeEvents<TEvent extends {
@@ -56,14 +39,6 @@ export function sendParentSafe<TEvent extends {
 export type Simplify<T> = {
     [K in keyof T]: T[K];
 } & {};
-
-// @public
-export type TypedEmit<M extends PluginEvents> = <P extends keyof M & string>(pluginId: P, event: M[P]) => {
-    type: 'OUTGOING';
-    event: M[P] & {
-        pluginId: P;
-    };
-};
 
 // (No @packageDocumentation comment for this package)
 

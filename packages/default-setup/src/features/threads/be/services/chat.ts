@@ -6,6 +6,9 @@ import type { BlockConfig, BlockResponse, MessageEntity, ThreadCreateData, Messa
 import { readMediaBuffer } from '@abuddy/sdk/utils';
 import * as threadsService from './threads';
 import { blockRegistry } from '@abuddy/sdk/blocks';
+import { createLogger } from '@abuddy/sdk/logger';
+
+const logger = createLogger('chat');
 
 /**
  * Block-based interaction helpers for creating composable messages
@@ -258,7 +261,7 @@ export function updateMessageState(
       updates
     });
   } catch (err) {
-    console.error(`[chat] updateMessageState failed for ${messageId}:`, (err as Error)?.message);
+    logger.error(`updateMessageState failed for ${messageId}`, { error: err instanceof Error ? err.message : String(err) });
     return;
   }
 

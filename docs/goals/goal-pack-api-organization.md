@@ -119,7 +119,8 @@ Final.
      - `emit`, `sendToPlugin` and `sendToSystem` from `defineEvents<PackEvents, PackSystemEvents>(busId)`
    - Systems declare entries with `satisfies SystemEntry`, and the `abuddy add feature` template and docs follow.
    - `sendToSystem(systemId, event)` narrows the event by its `type` before checking its fields, so a missing field names the chosen event's type.
-   - The block is generated only for packs with systems.
+   - Systems are named by pack and feature (revised after review): the pack's own by feature id, a dependency's as `<dependency>/<feature>`, and in actions, which run outside any pack, every system as `<pack>/<feature>`, resolved by the host. The generated `sendToSystem` maps each name to the id the system runs under, so an own feature may share a dependency system's name.
+   - Every pack gets `sendToSystem`; one without systems sends to its dependencies' (revised after review, which found frontend-only packs had no typed way to reach a dependency).
    - `pack-types.ts` includes `PackSystemEvents`, so dependents compose it.
 3. **One way per direction in pack code.**
    - `sendToPlugin` everywhere, or `emit` inside a system's actions.
@@ -149,8 +150,8 @@ Final.
    - `fe/delegates.ts` becomes `fe/navigation.ts` (`navigateToPlugin`, `openInAppBrowser`, `useState`).
 8. **Entry points say what they hold.**
    - `@abuddy/sdk/templates` holds `executeTemplate`, `createTemplateResolver` and `TemplateResolver`. `@abuddy/sdk/runtime` keeps only the host registry, for the host, until goal-package-boundaries.md replaces it.
-   - `@abuddy/sdk/rpc` is removed: event types go to `events`, and `rootEvents`/`trpc` move under `@abuddy/sdk/runtime` marked `@internal`.
-   - The renderer's Vite alias maps the renderer client for the SDK's internal use only.
+   - `@abuddy/sdk/rpc` is removed: event types go to `events`, and `rootEvents` moves under `@abuddy/sdk/runtime` marked `@internal`.
+   - (Revised after review) The SDK holds no API client and the renderer's Vite alias is removed: `secretsClient`, the one frontend use, calls a narrow `secrets-client` host module the renderer registers. The `trpc` host module keys (the renderer's client, the api's server builders) are deleted.
    - `@abuddy/sdk/utils` loses `reportSystemError` (Decision 5) and `getAppVersion` (Decision 7). `runMigrations` stays until goal-package-boundaries.md Phase 4.
    - `api/src/core/shared/actor-helpers.ts` is deleted in favour of the SDK's helpers.
 9. **Scope.**
@@ -168,7 +169,7 @@ Final.
 - Add the `event-transport` host module in the api, renderer and test host (Decision 4).
 - Generator (Decision 2):
   - `PackSystemEvents` with dependencies, and type-first event narrowing;
-  - generated only for packs with systems;
+  - generated for every pack (a pack without systems sends to its dependencies');
   - included in `pack-types.ts` and the snapshot.
 - Switch every system entry to `satisfies SystemEntry`, including the fixture pack, the example pack's source (edit files only, no `npm install`) and the `abuddy add feature` template.
 

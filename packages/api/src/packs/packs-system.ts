@@ -3,7 +3,7 @@ import * as path from 'path';
 import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
-import { emit } from '@abuddy/sdk/helpers';
+import { emit } from '@abuddy/sdk/events';
 import {
   readPackRegistry, modifyRegistry, addToRegistry, removeFromRegistry,
   type PackRegistryEntry, type PackInfo, type BuiltInPackInfo,

@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import { createRequire } from 'node:module';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { transformSync } from 'esbuild';
@@ -68,6 +69,121 @@ describe('generated events', () => {
   });
 });
 
+describe('generated system sends', () => {
+  const baseTypes = { [PACK_TYPES_DEF]: 'export type PackEvents = {};\nexport type PackSystemEvents = {};' };
+
+  it("names the pack's own systems by feature id and its dependencies' as <dependency>/<feature>", () => {
+    const files = generate({ features: [system('memos')] }, {
+      'base-pack': dependency({ features: [system('threads')] }, baseTypes),
+      'default-setup': dependency({ id: 'default-setup', builtIn: true, features: [system('memos')] }),
+    });
+    const events = files['src/__generated__/events.ts'];
+    expect(events).toContain("export type PackSystemEvents = {\n  'memos': IncomingEventsOf<(typeof __specs)['memos']>;\n};");
+    expect(events).toContain('export type SendableSystemEvents = PackSystemEvents & { [K in keyof __dep_base_pack_PackSystemEvents & string as `base-pack/${K}`]: __dep_base_pack_PackSystemEvents[K] } & ');
+    // Each name maps to the id its system runs under: an external dependency's is prefixed, a built-in's isn't
+    expect(events).toContain("const systemIds = {\n  ...busId,\n  'base-pack/threads': 'base-pack.threads',\n  'default-setup/memos': 'memos',\n};");
+    expect(events).toContain('defineEvents<PackEvents, SendableSystemEvents>(systemIds);');
+    expect(files['src/__generated__/system-specs.ts']).toContain("export const specs = {\n  'memos': incomingEvents(__system_memos.spec),\n};");
+    expect(files['src/__generated__/system-ids.ts']).toContain("export const threads = 'base-pack.threads';");
+    expect(files['src/__generated__/pack-types.ts']).toContain("export type { PackEvents, PackSystemEvents } from './events.js';");
+  });
+
+  it("gives a pack without systems a sendToSystem for its dependencies' systems", () => {
+    const files = generate({ features: [{ id: 'sidebar', plugin: { entry: 'x' } }] }, { 'base-pack': dependency({ features: [system('threads')] }, baseTypes) });
+    const events = files['src/__generated__/events.ts'];
+    expect(events).not.toContain('bus-ids');
+    expect(events).not.toContain('system-specs');
+    expect(events).toContain("const systemIds = {\n  'base-pack/threads': 'base-pack.threads',\n};");
+    expect(files['src/__generated__/system-specs.ts']).toBeUndefined();
+    expect(files['src/__generated__/bus-ids.ts']).toBeUndefined();
+  });
+});
+
+/** Type-checks the generated files at `names` with `root` linked to this SDK's source, and returns the diagnostics */
+function typecheck(files: Record<string, string>, names: string[]): string[] {
+  for (const [file, content] of Object.entries(files)) if (content) write(file, content);
+  write('package.json', JSON.stringify({ type: 'module' }));
+  const sdk = path.resolve(import.meta.dirname, '../..');
+  const links = { '@abuddy/sdk': sdk, zod: path.dirname(createRequire(path.join(sdk, 'package.json')).resolve('zod/package.json')) };
+  for (const [name, target] of Object.entries(links)) {
+    const link = path.join(root, 'node_modules', name);
+    fs.mkdirSync(path.dirname(link), { recursive: true });
+    fs.symlinkSync(target, link, 'dir');
+  }
+  const program = ts.createProgram(names.map((name) => path.join(root, name)), {
+    target: ts.ScriptTarget.ES2022,
+    module: ts.ModuleKind.NodeNext,
+    moduleResolution: ts.ModuleResolutionKind.NodeNext,
+    customConditions: ['@abuddy/source'],
+    allowImportingTsExtensions: true,
+    verbatimModuleSyntax: true,
+    strict: true,
+    skipLibCheck: true,
+    noEmit: true,
+    types: [],
+  });
+  return ts.getPreEmitDiagnostics(program)
+    .filter((d) => d.file?.fileName.startsWith(root))
+    .map((d) => `${path.relative(root, d.file!.fileName)}: ${ts.flattenDiagnosticMessageText(d.messageText, ' ')}`);
+}
+
+/** A dependency whose facade declares `systems` (feature id → incoming event type) */
+function typedDependency(systems: Record<string, string>): PackSnapshot {
+  const events = Object.entries(systems).map(([id, type]) => `'${id}': { type: '${type}'; n: number }`).join('; ');
+  return dependency({ features: Object.keys(systems).map((id) => system(id)) }, { [PACK_TYPES_DEF]: [
+    'export type PackEntityShapes = {};',
+    'export type PackEvents = {};',
+    `export type PackSystemEvents = { ${events} };`,
+    'export type Services = {};',
+    'export type Repositories = {};',
+  ].join('\n') });
+}
+
+describe('generated sends compile', () => {
+  it('for feature ids that match generated names, beside a dependency with the same feature ids', () => {
+    const ids = ['foo', 'fooEntry', 'specs', 'incomingEvents', 'systemIds', 'registration', 'steps'];
+    for (const id of ids) {
+      write(`src/features/${id}/be/system.ts`, [
+        "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",
+        `export type Outgoing${id.charAt(0).toUpperCase() + id.slice(1)}Events = { type: 'DONE' };`,
+        `const spec = defineSystem('${id}')<{ type: '${id.toUpperCase()}_RUN'; n: number }, { type: 'DONE' }>();`,
+        `export const ${id} = spec.id;`,
+        "export default { spec, machine: undefined as unknown as SystemEntry['machine'] } satisfies SystemEntry;",
+      ].join('\n'));
+    }
+    const files = generatePackFiles(manifest({ features: ids.map((id) => ({ ...system(id), designation: id === 'foo' ? 'foo' : undefined })) }), {
+      packRoot: root,
+      depSnapshots: new Map([['base-pack', typedDependency({ foo: 'BASE_FOO_RUN', threads: 'THREADS_RUN' })]]),
+    });
+    write('src/probe.ts', [
+      "import { sendToSystem } from './__generated__/events.js';",
+      "import { specs, systemIds, threads } from './__generated__/system-ids.js';",
+      'export const ids: string[] = [specs, systemIds, threads];',
+      ...ids.map((id) => `sendToSystem('${id}', { type: '${id.toUpperCase()}_RUN', n: 1 });`),
+      "sendToSystem('base-pack/foo', { type: 'BASE_FOO_RUN', n: 1 });",
+      '// @ts-expect-error the own foo system receives FOO_RUN',
+      "sendToSystem('foo', { type: 'BASE_FOO_RUN', n: 1 });",
+    ].join('\n'));
+    expect(typecheck(files, ['src/probe.ts', 'src/__generated__/pack-entry.ts'])).toEqual([]);
+  });
+
+  it("for a pack without systems, sending to its dependencies'", () => {
+    const files = generatePackFiles(manifest({ features: [{ id: 'sidebar', plugin: { entry: 'x' } }] }), {
+      packRoot: root,
+      depSnapshots: new Map([['base-pack', typedDependency({ threads: 'THREADS_RUN' })]]),
+    });
+    write('src/probe.ts', [
+      "import { sendToSystem } from './__generated__/events.js';",
+      "sendToSystem('base-pack/threads', { type: 'THREADS_RUN', n: 1 });",
+      '// @ts-expect-error THREADS_RUN needs its n',
+      "sendToSystem('base-pack/threads', { type: 'THREADS_RUN' });",
+      '// @ts-expect-error the pack has no system of its own',
+      "sendToSystem('sidebar', { type: 'THREADS_RUN', n: 1 });",
+    ].join('\n'));
+    expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
+  });
+});
+
 describe('generated frontend entry', () => {
   it("sets each plugin's designation from the manifest, replacing one the plugin module sets", () => {
     const files = generate({ features: [
@@ -75,8 +191,8 @@ describe('generated frontend entry', () => {
       { id: 'notes', plugin: { entry: 'src/notes/plugin' } },
     ] });
     const fe = files['src/__generated__/pack-entry-fe.ts'];
-    expect(fe).toContain("const Settings = { ..._Settings, designation: 'settings' }");
-    expect(fe).toContain('const Notes = { ..._Notes, designation: undefined }');
+    expect(fe).toContain("const __plugin_settings = { ...__plugin_settings_module, designation: 'settings' }");
+    expect(fe).toContain('const __plugin_notes = { ...__plugin_notes_module, designation: undefined }');
   });
 });
 
@@ -274,7 +390,15 @@ describe('generated services', () => {
 
   it("intersects dependencies' services and types repository with the pack's repositories", () => {
     const services = generate({}, { 'base-pack': dependency({}) })['src/__generated__/services.ts'];
-    expect(services).toContain("Omit<HostServices, 'repository'> & { repository: Repositories } & Omit<__dep_base_pack_Services, 'repository'>");
+    expect(services).toContain("Omit<HostServices, 'repository' | 'emitter'> & { repository: Repositories; emitter: PackEmitter } & Omit<__dep_base_pack_Services, 'repository' | 'emitter'>");
+  });
+
+  it("types the emitter with the pack's events, naming every system <pack>/<feature>", () => {
+    const files = generate({ features: [system('memos')] }, { 'base-pack': dependency({ features: [system('threads')] }, { [PACK_TYPES_DEF]: 'export type PackEvents = {};\nexport type PackSystemEvents = {};' }) });
+    expect(files['src/__generated__/events.ts']).toContain('export type QualifiedSystemEvents = { [K in keyof PackSystemEvents & string as `demo-pack/${K}`]: PackSystemEvents[K] } & { [K in keyof __dep_base_pack_PackSystemEvents & string as `base-pack/${K}`]: __dep_base_pack_PackSystemEvents[K] };');
+    const services = files['src/__generated__/services.ts'];
+    expect(services).toContain("import type { PackEvents, QualifiedSystemEvents } from './events.js';");
+    expect(services).toContain('  sendToPlugin: TypedSendToPlugin<PackEvents>;\n  sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;');
   });
 });
 

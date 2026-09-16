@@ -317,18 +317,15 @@ function toPascalCase(id: string): string {
   return id.replace(/(^|-)(\w)/g, (_, _sep, c) => c.toUpperCase());
 }
 
-/**
- * Local binding for a feature's default-exported system entry. Systems are
- * imported the same way plugins are — by default export — so the manifest does
- * not carry an export name.
- */
-function settingsBinding(id: string): string {
-  return `__settings_${toPascalCase(id)}`;
-}
+// Local bindings for a feature's default exports start with `__`, which a feature id can't, so they don't
+// collide with generated names (`specs`, `busId`, `<feature>Entry`).
+const settingsBinding = (id: string) => `__settings_${toPascalCase(id)}`;
+const systemBinding = (id: string) => `__system_${id}`;
+const pluginBinding = (id: string) => `__plugin_${id}`;
 
-function systemBinding(id: string): string {
-  const pascal = toPascalCase(id);
-  return `${pascal.charAt(0).toLowerCase()}${pascal.slice(1)}Entry`;
+/** The id a dependency's system runs under: its feature id for a built-in pack, else `<packId>.<featureId>` */
+function runningSystemId(depId: string, snap: PackSnapshot, featureId: string): string {
+  return snap.manifest.builtIn ? featureId : `${depId}.${featureId}`;
 }
 
 export interface GenerateEntriesOptions {
@@ -473,11 +470,9 @@ export function generatePackFiles(
       .join(', ');
 
     const designatedFeatures = orderedSystemFeatures.filter(f => f.designation);
-    const designationMapLiteral = designatedFeatures.length
-      ? `{ ${designatedFeatures.map(f => `${f.id}: '${f.designation}'`).join(', ')} }`
-      : '';
+    const designations = designatedFeatures.map(f => `['${f.id}', '${f.designation}']`).join(', ');
     const systemsExpr = designatedFeatures.length
-      ? `toPackSystemDefs([${systemEntries}]).map(s => {\n    const d: Record<string, string> = ${designationMapLiteral};\n    return d[s.id] ? { ...s, designation: d[s.id] } : s;\n  })`
+      ? `toPackSystemDefs([${systemEntries}]).map(s => {\n    const d = new Map([${designations}]);\n    return d.has(s.id) ? { ...s, designation: d.get(s.id) } : s;\n  })`
       : `toPackSystemDefs([${systemEntries}])`;
 
     const earlyImport = earlyFeature?.system
@@ -570,17 +565,17 @@ ${manifest.migrations ? '  migrations,' : ''}
 
     const pluginImports = pluginFeatures
       .map(f => {
-        const name = toPascalCase(f.id);
+        const name = pluginBinding(f.id);
         // The manifest is the only source of a designation: one the plugin module sets itself is replaced
         const designation = f.designation ? `'${f.designation}'` : 'undefined';
-        return `import _${name} from '${toImportPath(root, f.plugin!.entry)}';\nconst ${name} = { ..._${name}, designation: ${designation} } as typeof _${name};`;
+        return `import ${name}_module from '${toImportPath(root, f.plugin!.entry)}';\nconst ${name} = { ...${name}_module, designation: ${designation} } as typeof ${name}_module;`;
       })
       .join('\n');
 
-    const pluginList = pluginFeatures.map(f => toPascalCase(f.id)).join(', ');
+    const pluginList = pluginFeatures.map(f => pluginBinding(f.id)).join(', ');
     const defaultId = manifest.defaultPlugin;
     const defaultFeature = defaultId ? pluginFeatures.find(f => f.id === defaultId) : pluginFeatures[0];
-    const defaultPluginId = defaultFeature ? toPascalCase(defaultFeature.id) : 'undefined';
+    const defaultPluginId = defaultFeature ? pluginBinding(defaultFeature.id) : 'undefined';
 
     const fe = manifest.fe ?? {};
 
@@ -605,14 +600,14 @@ ${manifest.migrations ? '  migrations,' : ''}
     }
     const appExt = Object.entries(fe.appExtensions ?? {});
     for (const [key, extPath] of appExt) {
-      extraImports.push(`import ${toPascalCase(key)} from '${toImportPath(root, extPath)}';`);
+      extraImports.push(`import __appExtension_${key} from '${toImportPath(root, extPath)}';`);
     }
 
     const regProps: string[] = [];
     if (feExts.steps) regProps.push(`  steps: stepsFE,`);
     if (fe.tiptapPlugins) regProps.push(`  tiptapPlugins,`);
     if (appExt.length) {
-      const extObj = appExt.map(([key]) => `${key}: ${toPascalCase(key)}`).join(', ');
+      const extObj = appExt.map(([key]) => `${key}: __appExtension_${key}`).join(', ');
       regProps.push(`  appExtensions: { ${extObj} },`);
     }
     if (feExts.artifacts) regProps.push(`  artifacts: artifactsFE,`);
@@ -717,7 +712,7 @@ export const {
       const depFeatures = (snap.manifest.features ?? []).filter(f => f.system);
       const lines = depFeatures
         .filter(f => !seenIds.has(f.id))
-        .map(f => { seenIds.add(f.id); return `export const ${f.id} = '${f.id}';`; });
+        .map(f => { seenIds.add(f.id); return `export const ${f.id} = '${runningSystemId(depId, snap, f.id)}';`; });
       if (lines.length) {
         depExports.push(`// ${depId}`, ...lines);
       }
@@ -784,12 +779,27 @@ ${busIdEntries},
       .map(f => `import type { ${outgoingEventsType(f)} as __events_${f.id} } from '${toImportPath(root, f.system!.entry)}';`)
       .join('\n');
     const entries = [...receivers].map(([pluginId, senders]) => `  '${pluginId}': ${senders.join(' | ')};`).join('\n');
+    const systemEntries = systemFeatures.map(f => `  '${f.id}': IncomingEventsOf<(typeof __specs)['${f.id}']>;`).join('\n');
     const deps = depTypeImports('PackEvents');
+    const depSystems = depTypeImports('PackSystemEvents');
+    const hasSystems = systemFeatures.length > 0;
+
+    // A system map keyed `<packId>/<feature>`
+    const qualified = (packId: string, events: string) =>
+      `{ [K in keyof ${events} & string as \`${packId}/\${K}\`]: ${events}[K] }`;
+    const depQualified = typedDeps.map((depId) => qualified(depId, depAlias(depId, 'PackSystemEvents')));
+    // Every pack gets sendToSystem: its own systems (busId), and each dependency's
+    const systemIds = [
+      ...(hasSystems ? ['  ...busId,'] : []),
+      ...[...depSnapshots].flatMap(([depId, snap]) => (snap.manifest.features ?? [])
+        .filter((f) => f.system)
+        .map((f) => `  '${depId}/${f.id}': '${runningSystemId(depId, snap, f.id)}',`)),
+    ];
 
     return `${HEADER}
-import { defineEvents, type HostPluginEvents } from '@abuddy/sdk/services';
-${imports}
-${deps.imports.join('\n')}
+import { defineEvents, type HostPluginEvents, type IncomingEventsOf } from '@abuddy/sdk/events';
+${hasSystems ? `import { busId } from './bus-ids.js';\nimport type { specs as __specs } from './system-specs.js';\n` : ''}${imports}
+${[...deps.imports, ...depSystems.imports].join('\n')}
 
 /** Plugin id → the events this pack's systems send to that plugin (their own, and each \`sendsTo\`). */
 export type OwnPackEvents = {
@@ -802,7 +812,38 @@ ${entries}
  */
 export type PackEvents = OwnPackEvents${deps.aliases.map(a => ` & Omit<${a}, keyof OwnPackEvents>`).join('')} & Omit<HostPluginEvents, keyof OwnPackEvents>;
 
-export const { emit, sendToPlugin } = /*#__PURE__*/ defineEvents<PackEvents>();
+/** Feature id → the events this pack's system for that feature receives (dependents name it \`${manifest.id}/<feature>\`). */
+export type PackSystemEvents = {
+${systemEntries}
+};
+
+/** The systems this pack's code sends to: its own by feature id, each dependency's as \`<dependency>/<feature>\`. */
+export type SendableSystemEvents = PackSystemEvents${depQualified.map(q => ` & ${q}`).join('')};
+
+/** The systems actions send to (\`services.emitter\`), all named \`<pack>/<feature>\`. */
+export type QualifiedSystemEvents = ${[qualified(manifest.id, 'PackSystemEvents'), ...depQualified].join(' & ')};
+
+/** Each system name \`sendToSystem\` takes → the id that system runs under */
+const systemIds = {${systemIds.length ? `\n${systemIds.join('\n')}\n` : ''}};
+
+export const { emit, sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<PackEvents, SendableSystemEvents>(systemIds);
+`;
+  }
+
+  /** Each system's incoming events, from its spec; type-only, so facades carry no machines or contexts */
+  function generateSystemSpecs(): string {
+    const systemFeatures = (manifest.features ?? []).filter(f => f.system);
+    if (!systemFeatures.length) return '';
+    const imports = systemFeatures.map(f => `import ${systemBinding(f.id)} from '${toImportPath(root, f.system!.entry)}';`).join('\n');
+    const specs = systemFeatures.map(f => `  '${f.id}': incomingEvents(${systemBinding(f.id)}.spec),`).join('\n');
+    return `${HEADER}
+// Type-only: #generated/events reads each system's incoming events from these, by feature id
+import { incomingEvents } from '@abuddy/sdk/events';
+${imports}
+
+export const specs = {
+${specs}
+};
 `;
   }
 
@@ -879,7 +920,9 @@ ${nodeEntity}`;
 import type { z } from 'zod';
 import type { EARS } from '@abuddy/sdk';
 import { services as sdkServices, type HostServices } from '@abuddy/sdk/services';
+import type { TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
 import type { Repositories } from './repository.js';
+import type { PackEvents, QualifiedSystemEvents } from './events.js';
 ${imports.join('\n')}
 ${deps.imports.join('\n')}
 
@@ -888,11 +931,20 @@ ${entries.join('\n')}
 };
 
 /**
+ * \`services.emitter\`, typed with this pack's events. Actions run outside any pack, so a system is
+ * named \`<pack>/<feature>\`, this pack's own too.
+ */
+export type PackEmitter = Omit<HostServices['emitter'], 'sendToPlugin' | 'sendToSystem'> & {
+  sendToPlugin: TypedSendToPlugin<PackEvents>;
+  sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;
+};
+
+/**
  * What an action actually receives: this pack's feature services, its dependencies' services
  * and the ambient ones the host injects (logger, emitter, repository).
  * The featureServices value itself stays feature-only.
  */
-export type Services = typeof featureServices & Omit<HostServices, 'repository'> & { repository: Repositories }${deps.aliases.map(a => ` & Omit<${a}, 'repository'>`).join('')};
+export type Services = typeof featureServices & Omit<HostServices, 'repository' | 'emitter'> & { repository: Repositories; emitter: PackEmitter }${deps.aliases.map(a => ` & Omit<${a}, 'repository' | 'emitter'>`).join('')};
 
 /** The host's services proxy, typed with this pack's feature services. */
 export const services = sdkServices as unknown as Services;
@@ -978,7 +1030,7 @@ export const seedRuntime: SeedRuntime = {
   function generatePackTypes(): string {
     return `${HEADER}
 export type { PackShapes as PackEntityShapes } from './ears.js';
-export type { PackEvents } from './events.js';
+export type { PackEvents, PackSystemEvents } from './events.js';
 export type { Services } from './services.js';
 export type { Repositories } from './repository.js';
 `;
@@ -1301,6 +1353,7 @@ ${registrations.join('\n\n')}
     ['src/__generated__/ears.ts', generateEars()],
     ['src/__generated__/system-ids.ts', generateSystemIds()],
     ['src/__generated__/bus-ids.ts', generateBusIds()],
+    ['src/__generated__/system-specs.ts', generateSystemSpecs()],
     ['src/__generated__/events.ts', generateEvents()],
     ['src/__generated__/types.ts', generateTypes()],
     ['src/__generated__/services.ts', generateServices()],

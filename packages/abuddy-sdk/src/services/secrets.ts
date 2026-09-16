@@ -55,3 +55,9 @@ export const secrets: SecretsService = {
   rename: (id, label) => hostService('secrets').rename(id, label),
   delete: (id) => hostService('secrets').delete(id),
 };
+
+/** The user's stored keys (without values) and how they're protected */
+export interface SecretsSnapshot {
+  secrets: SecretInfo[];
+  status: SecretsStatus;
+}

@@ -84,9 +84,10 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
 - `githubFetch` sends `GITHUB_TOKEN`/`GH_TOKEN` when set, which covers private repos and the higher rate limit, with a 10 s timeout. It throws `GitHubRequestError` with a `reason` of `rate-limited`, `not-found`, `unauthorized` or `failed`.
 
 **Module bridge** (`packs/module-bridge.ts`)
-- `withModuleBridge({ modules, hostPackages, resolveFrom, stubMissing }, fn)` patches `Module._resolveFilename` while `fn` runs. Bridged specifiers map to cache entries under `__module_bridge__/<specifier>`, and each specifier's real resolved path also points at the same entry. `hostPackages` resolve from `resolveFrom`.
+- `withModuleBridge({ modules, hostPackages, resolveFrom, stubMissing, bridgedPackages }, fn)` patches `Module._resolveFilename` while `fn` runs. Bridged specifiers map to cache entries under `__module_bridge__/<specifier>`, and each specifier's real resolved path also points at the same entry. `hostPackages` resolve from `resolveFrom`.
 - The patch is restored in `finally`, but the cache entries stay, so lazy requires still get the bridged modules.
 - `stubMissing`, used by the harness, turns unresolvable bare specifiers into proxies that throw when used.
+- `bridgedPackages` (the API passes `['@abuddy/sdk']`): a module of those packages that `modules` lacks throws "<specifier> isn't provided by this AgentBuddy: rebuild the pack…" instead of loading another copy, so a pack built against an SDK entry the app no longer has fails with that message.
 - The API wraps this in `withHostResolution` (see the API doc). `@abuddy/testing` uses it for dependency runtimes.
 
 **Dev server** (`packs/dev-server.ts`)

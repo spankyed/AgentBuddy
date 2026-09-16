@@ -1,6 +1,6 @@
 import { setup, assign, fromCallback, type ActorRefFrom } from 'xstate';
 import { autocomplete, recordVisit, updateHistoryMeta, displayUrl, type AutocompleteSuggestion } from './history.ts';
-import { trpc } from '@abuddy/sdk/rpc';
+import { sendToSystem } from '@/__generated__/events';
 import { getNextAvailableColor, saveTabGroups, loadTabGroups, type TabGroup, type TabGroupColor } from '@abuddy/sdk/fe';
 
 export type { TabGroup, TabGroupColor };
@@ -131,7 +131,7 @@ function syncTabsToBackend(tabs: BrowserTab[], options?: { immediate?: boolean }
         isMuted: t.isMuted,
         groupId: t.groupId,
       }));
-    trpc.bus.send.mutate({ systemId: id, type: 'SYNC_TABS', tabs: persistable });
+    sendToSystem(id, { type: 'SYNC_TABS', tabs: persistable });
   };
 
   if (options?.immediate) {
@@ -196,7 +196,7 @@ function syncBookmarksToBackend(bookmarks: Bookmark[]) {
       favicon: bm.favicon,
       displayOrder: i,
     }));
-    trpc.bus.send.mutate({ systemId: id, type: 'SYNC_BOOKMARKS', bookmarks: persistable });
+    sendToSystem(id, { type: 'SYNC_BOOKMARKS', bookmarks: persistable });
   }, 2000);
 }
 

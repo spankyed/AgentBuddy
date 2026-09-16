@@ -55,36 +55,16 @@ export interface BackupInfo {
 // @internal
 export function createInferenceService(resolveModel: ResolveModel): InferenceService;
 
-// @public
-export function defineEvents<M extends PluginEvents>(): TypedEvents<M>;
-
 // @internal
 export type HostImplementedServices = Pick<HostServices, 'appData' | 'traceStore' | 'inference' | 'secrets'>;
 
 // @public
-export type HostPluginEvents = {
-    application: {
-        type: 'APPLICATION_HOTKEYS';
-        hotkeys: ApplicationHotkeys;
-    } | {
-        type: 'APPLICATION_RESTORE_LAST_PLUGIN';
-        lastActivePluginId: string;
-    } | {
-        type: 'PLUGIN_VISIBILITY_UPDATED';
-        pluginVisibility: Record<string, boolean>;
-    };
-};
-
-// @public
 export interface HostServices {
     appData: AppDataService;
-    // (undocumented)
     emitter: {
         sendToPlugin: typeof sendToPlugin;
-        sendToBrainSystem: typeof sendToBrainSystem;
         sendToSystem: typeof sendToSystem;
-        onOutgoing: typeof onOutgoing;
-        onIncoming: typeof onIncoming;
+        sendToBrainSystem: typeof sendToBrainSystem;
     };
     inference: InferenceService;
     // (undocumented)
@@ -126,18 +106,6 @@ export interface InferenceService {
 
 // @public
 export type ModelId = `${ProviderName}:${string}`;
-
-// @public (undocumented)
-export function onIncoming(callback: (event: {
-    type: string;
-    [key: string]: unknown;
-}) => void): () => void;
-
-// @public (undocumented)
-export function onOutgoing(callback: (event: {
-    type: string;
-    [key: string]: unknown;
-}) => void): () => void;
 
 // @public
 export type OutputSchema = FlexibleSchema<unknown> | JSONSchema7;
@@ -217,31 +185,20 @@ export interface SecretsService {
     status(): SecretsStatus;
 }
 
+// @public
+export interface SecretsSnapshot {
+    // (undocumented)
+    secrets: SecretInfo[];
+    // (undocumented)
+    status: SecretsStatus;
+}
+
 // @public (undocumented)
 export interface SecretsStatus {
     backend: string;
     // (undocumented)
     protection: SecretsProtection;
 }
-
-// @public (undocumented)
-export function sendToBrainSystem(event: {
-    eventType: string;
-    payload?: unknown;
-    targetFlowId?: EARS.EntityId;
-}): void;
-
-// @public
-export function sendToPlugin(pluginId: string, event: {
-    type: string;
-    [key: string]: unknown;
-}): void;
-
-// @public (undocumented)
-export function sendToSystem(systemId: string, event: {
-    type: string;
-    [key: string]: unknown;
-}): void;
 
 // @public
 export const services: HostServices & Record<string, unknown>;
@@ -293,17 +250,6 @@ export interface TraceStore {
         rel: TraceRelation;
     }>;
 }
-
-// @public (undocumented)
-export interface TypedEvents<M extends PluginEvents> {
-    // (undocumented)
-    emit: TypedEmit<M>;
-    // (undocumented)
-    sendToPlugin: TypedSendToPlugin<M>;
-}
-
-// @public
-export type TypedSendToPlugin<M extends PluginEvents> = <P extends keyof M & string>(pluginId: P, event: M[P]) => void;
 
 // (No @packageDocumentation comment for this package)
 

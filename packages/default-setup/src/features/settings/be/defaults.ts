@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import type { SettingsData } from './types';
-import { getAppVersion } from '@abuddy/sdk/utils';
+import { getAppVersion } from '@abuddy/sdk/env';
 import { seedFile, seedPath } from '@abuddy/sdk/build';
 import { getCompiledDir } from '@/__generated__/seeders';
 import { getPackSettingsDefaults, type PackSettingsDefaults } from '@abuddy/sdk/framework';

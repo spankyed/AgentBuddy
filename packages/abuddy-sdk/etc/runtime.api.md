@@ -4,14 +4,6 @@
 
 ```ts
 
-// @public
-export function createTemplateResolver(executeFn: (fnBody: string, params: Record<string, unknown>, resolver?: TemplateResolver) => string, lookup: (name: string) => {
-    templateFn: string;
-} | undefined, maxDepth?: number, currentDepth?: number): TemplateResolver;
-
-// @public
-export function executeTemplate(fnBody: string, params: Record<string, unknown>, resolver?: TemplateResolver): string;
-
 // @internal
 export function getHostModule<T = unknown>(key: string): T;
 
@@ -22,13 +14,29 @@ export function hostFn<TArgs extends unknown[] = unknown[], TResult = unknown>(m
 export function hostValue<T = unknown>(moduleKey: string, name: string): T;
 
 // @internal
+export function initRpc(): void;
+
+// @internal
 export function registerHostModule(key: string, mod: unknown): void;
 
-// @public
-export interface TemplateResolver {
+// @internal
+export interface RootEvents {
     // (undocumented)
-    resolve(name: string, params: Record<string, unknown>): string | undefined;
+    emitLog(event: LogEvent): void;
+    // (undocumented)
+    emitOutgoing(event: OutgoingSystemEvents): void;
+    // (undocumented)
+    onConnected(callback: () => void): () => void;
+    // (undocumented)
+    onIncoming(callback: (event: IncomingSystemEvents) => void): () => void;
+    // (undocumented)
+    onLog(callback: (event: LogEvent) => void): () => void;
+    // (undocumented)
+    onOutgoing(callback: (event: OutgoingSystemEvents) => void): () => void;
 }
+
+// @internal (undocumented)
+export let rootEvents: RootEvents;
 
 // (No @packageDocumentation comment for this package)
 

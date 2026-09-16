@@ -356,6 +356,6 @@ GENERATE_AI_QUERY: {
   },
 });
 
-const databaseEntry: SystemEntry = { spec: databaseSpec, machine: databaseSystem };
+const databaseEntry = { spec: databaseSpec, machine: databaseSystem } satisfies SystemEntry;
 
 export default databaseEntry;

@@ -5,6 +5,9 @@ import { EARS } from '@/__generated__/ears'
 import { exists } from '@abuddy/sdk/ears';
 import { createEntityWithDefaults, updateEntity } from '@/__generated__/ears';
 import type { TerminalInfo } from '../types'
+import { createLogger } from '@abuddy/sdk/logger'
+
+const logger = createLogger('code')
 
 // Define Terminal entity type with required attributes
 export interface TerminalEntity {
@@ -62,7 +65,7 @@ export const terminalCommands = {
   
   resize: (id: EARS.EntityId, cols: number, rows: number): void => {
     if (!exists(id)) {
-      console.error(`Terminal ${id} not found`)
+      logger.error(`Terminal ${id} not found`)
       return
     }
 
@@ -75,7 +78,7 @@ export const terminalCommands = {
 
   rename: (id: EARS.EntityId, customTitle: string): void => {
     if (!exists(id)) {
-      console.error(`Terminal ${id} not found`)
+      logger.error(`Terminal ${id} not found`)
       return
     }
 
@@ -87,7 +90,7 @@ export const terminalCommands = {
 
   updateCwd: (id: EARS.EntityId, cwd: string, title?: string): void => {
     if (!exists(id)) {
-      console.error(`Terminal ${id} not found`)
+      logger.error(`Terminal ${id} not found`)
       return
     }
 
@@ -106,7 +109,7 @@ export const terminalCommands = {
   
   updatePid: (id: EARS.EntityId, pid: number): void => {
     if (!exists(id)) {
-      console.error(`Terminal ${id} not found`)
+      logger.error(`Terminal ${id} not found`)
       return
     }
     
@@ -118,7 +121,7 @@ export const terminalCommands = {
   
   markClosed: (id: EARS.EntityId): void => {
     if (!exists(id)) {
-      console.error(`Terminal ${id} not found`)
+      logger.error(`Terminal ${id} not found`)
       return
     }
     
@@ -132,7 +135,7 @@ export const terminalCommands = {
   
   delete: (id: EARS.EntityId): void => {
     if (!exists(id)) {
-      console.error(`Terminal ${id} not found`)
+      logger.error(`Terminal ${id} not found`)
       return
     }
 

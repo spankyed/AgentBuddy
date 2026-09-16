@@ -14,7 +14,7 @@ import type {
   EdgeEntity,
   OutgoingBrainEvents,
 } from '@/__generated__/types'
-import { trpc } from '@abuddy/sdk/rpc'
+import { sendToSystem } from '@/__generated__/events'
 import { getNodeConfig, isTriggerNode } from '@abuddy/ui/components/node-styles'
 import { stepRegistry } from '@abuddy/sdk/steps'
 import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG, layoutComponentAroundSource, type LayoutPositions } from './canvas/layout-utils'
@@ -247,8 +247,7 @@ const flowsState = setup({
         return
       }
       // Send event to backend to get flow data
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'FLOW_SELECT',
         flowId: ev.flowId,
       });
@@ -264,8 +263,7 @@ const flowsState = setup({
         return;
       }
       // Send event to backend to get root flow data
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'FLOW_SELECT',
         flowId: rootFlowId,
       });
@@ -299,13 +297,12 @@ const flowsState = setup({
 
     sendCreateFlow: ({ event }) => {
       const ev = typeOf('FLOW.CREATE', event);
-      trpc.bus.send.mutate({ systemId: id, type: 'CREATE_FLOW' });
+      sendToSystem(id, { type: 'CREATE_FLOW' });
     },
 
     sendUpdateLabel: ({ event }) => {
       const ev = typeOf('FLOW.UPDATE_LABEL', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_FLOW_LABEL',
         flowId: ev.flowId,
         label: ev.label,
@@ -349,10 +346,9 @@ const flowsState = setup({
       const ev = event as { type: 'FLOW.DELETE'; flowId: EARS.EntityId };
       if (ev.type !== 'FLOW.DELETE') return;
 
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'DELETE_FLOW',
-        flowId: ev.flowId as string
+        flowId: ev.flowId as string,
       });
     },
 
@@ -454,8 +450,7 @@ const flowsState = setup({
 
       // Only send if both IDs are permanent (not temporary)
       if (!ev.src.startsWith('temp-') && !ev.tgt.startsWith('temp-')) {
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'CREATE_EDGE',
           flowId: context.selectedFlowId,
           sourceId: ev.src,
@@ -483,8 +478,7 @@ const flowsState = setup({
       const ev = typeOf('EDGE.DISCONNECT', event);
       if (!context.selectedFlowId) return;
       
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'DELETE_EDGE',
         flowId: context.selectedFlowId,
         edgeId: ev.edgeId,
@@ -519,8 +513,7 @@ const flowsState = setup({
       if (!context.selectedFlowId) return;
       
       // Send update edge event to backend
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_EDGE',
         flowId: context.selectedFlowId,
         edgeId: ev.edgeId,
@@ -567,8 +560,7 @@ const flowsState = setup({
         : ev.nodeId
       if (nodeId.startsWith('temp-')) return
 
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'REINDEX_HANDLES',
         flowId: context.selectedFlowId,
         nodeId,
@@ -616,8 +608,7 @@ const flowsState = setup({
       if (context.selectedFlowId &&
           !handle.nodeId.startsWith('temp-') &&
           !ev.nodeId.startsWith('temp-')) {
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'CREATE_EDGE',
           flowId: context.selectedFlowId,
           sourceId: handle.nodeId,
@@ -666,8 +657,7 @@ const flowsState = setup({
       const ev = typeOf('NODE.DELETE', event);
       if (!context.selectedFlowId) return;
       
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'DELETE_NODE',
         flowId: context.selectedFlowId,
         nodeId: ev.nodeId,
@@ -682,8 +672,7 @@ const flowsState = setup({
       const nodeConfig = getNodeConfig(ev.nodeType)
       const label = nodeConfig?.defaultLabel || nodeConfig?.label || `New ${ev.nodeType}`
 
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'CREATE_NODE',
         flowId: context.selectedFlowId,
         tempId,
@@ -861,8 +850,7 @@ const flowsState = setup({
       } as EdgeEntity
 
       // Send create to backend
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'CREATE_NODE',
         flowId: context.selectedFlowId,
         tempId: tempId,
@@ -929,8 +917,7 @@ const flowsState = setup({
       if (!node) return;
 
       // Send update to backend
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_NODE',
         flowId: context.selectedFlowId,
         nodeId: nodeId,
@@ -1005,8 +992,7 @@ const flowsState = setup({
             || (edge.target === permanentId && context.graph.edges.find(e => e.id === edge.id)?.target === tempId);
           
           if (wasUpdated && !edge.source.startsWith('temp-') && !edge.target.startsWith('temp-')) {
-            trpc.bus.send.mutate({
-              systemId: id,
+            sendToSystem(id, {
               type: 'CREATE_EDGE',
               flowId: context.selectedFlowId!,
               sourceId: edge.source,
@@ -1109,11 +1095,10 @@ const flowsState = setup({
 
     sendImportDSL: ({ event }) => {
       const ev = typeOf('DSL.IMPORT', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'IMPORT_DSL',
         dsl: ev.dsl,
-      } as any);
+      });
     },
 
     handleDSLImported: assign(({ context, event }) => {
@@ -1162,12 +1147,11 @@ const flowsState = setup({
 
     sendExportDSL: ({ event }) => {
       const ev = typeOf('DSL.EXPORT', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'EXPORT_DSL',
         directory: ev.directory,
         ...(ev.flowId && { flowId: ev.flowId }),
-      } as any);
+      });
     },
 
     handleDSLExported: assign(({ event }) => {
@@ -1352,7 +1336,7 @@ const flowsState = setup({
         target: '.view',
         actions: assign(({ context }) => {
           const result = goBack(context.navHistory)!;
-          trpc.bus.send.mutate({ systemId: id, type: 'FLOW_SELECT', flowId: result.entry as string });
+          sendToSystem(id, { type: 'FLOW_SELECT', flowId: result.entry as string });
           return { navHistory: result.history };
         }),
       },
@@ -1378,7 +1362,7 @@ const flowsState = setup({
         target: '.view',
         actions: assign(({ context }) => {
           const result = goForward(context.navHistory)!;
-          trpc.bus.send.mutate({ systemId: id, type: 'FLOW_SELECT', flowId: result.entry as string });
+          sendToSystem(id, { type: 'FLOW_SELECT', flowId: result.entry as string });
           return { navHistory: result.history };
         }),
       },

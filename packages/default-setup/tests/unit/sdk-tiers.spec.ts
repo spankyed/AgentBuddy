@@ -158,13 +158,14 @@ describe('Tier 3 — System Framework delegates', () => {
   });
 
   it('emit and safeEvents are callable', async () => {
-    const { emit, safeEvents } = await import('@abuddy/sdk/helpers');
+    const { emit } = await import('@abuddy/sdk/events');
+    const { safeEvents } = await import('@abuddy/sdk/helpers');
     expect(typeof emit).toBe('function');
     expect(typeof safeEvents).toBe('function');
   });
 
   it('emit wraps event for bus with OUTGOING type', async () => {
-    const { emit } = await import('@abuddy/sdk/helpers');
+    const { emit } = await import('@abuddy/sdk/events');
     const wrapped = emit('test-plugin', { type: 'HELLO' });
     expect(wrapped.type).toBe('OUTGOING');
     expect(wrapped.event.pluginId).toBe('test-plugin');
@@ -195,15 +196,15 @@ describe('Tier 4 — Logger delegate', () => {
   });
 });
 
-describe('Tier 5 — RPC delegates', () => {
-  it('rootEvents is accessible', async () => {
-    const { rootEvents } = await import('@abuddy/sdk/rpc');
-    expect(rootEvents).toBeDefined();
+describe('Tier 5 — Templates and app info', () => {
+  it('executeTemplate runs a prompt function body with its params', async () => {
+    const { executeTemplate } = await import('@abuddy/sdk/templates');
+    expect(executeTemplate('return `Hi ${params.name}`', { name: 'Ada' })).toBe('Hi Ada');
   });
 
-  it('trpc proxy is accessible', async () => {
-    const { trpc } = await import('@abuddy/sdk/rpc');
-    expect(trpc).toBeDefined();
+  it('getAppVersion reads the host version', async () => {
+    const { getAppVersion } = await import('@abuddy/sdk/env');
+    expect(getAppVersion()).toBe('0.0.0-test');
   });
 });
 
@@ -260,9 +261,9 @@ describe('Tier 6 — Utility delegates', () => {
   });
 });
 
-describe('Tier 7 — Service delegates', () => {
+describe('Tier 7 — Event delegates', () => {
   it('sendToPlugin and sendToBrainSystem are callable', async () => {
-    const { sendToPlugin, sendToBrainSystem } = await import('@abuddy/sdk/services');
+    const { sendToPlugin, sendToBrainSystem } = await import('@abuddy/sdk/events');
     expect(typeof sendToPlugin).toBe('function');
     expect(typeof sendToBrainSystem).toBe('function');
   });

@@ -11,11 +11,11 @@ import { EARS } from '@/__generated__/ears';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { safeEvents } from '@abuddy/sdk/helpers';
 import { brain, brainRuntime } from './system';
-import { brainInspect, brainLogger } from './utils/brain-inspect';
+import { brainLogger } from './utils/brain-inspect';
 import { isBrainPaused } from './utils/brain-pause';
-import { sendToBrainSystem } from '@abuddy/sdk/services';
+import { sendToBrainSystem } from '@abuddy/sdk/events';
 import { isPersistentTriggerFlow, shouldCompleteFlow } from './flow-completion';
-import { reportStepRuntimeError } from '@abuddy/sdk/steps';
+import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { dedupeTriggerNodes, type FlowTriggerNode, type TriggerDedupeWarning } from './trigger-dedupe';
 
 /**
@@ -284,7 +284,7 @@ export function createFlowNodeSystem(
         registerFlowActor: ({ self }) => {
           // Register this flow actor in the registry for event routing
           flowActorRegistry.set(flowTNodeId, self);
-          brainInspect(`Registered flow actor: ${flowTNodeId} (registry size: ${flowActorRegistry.size})`);
+          brainLogger.debug(`Registered flow actor: ${flowTNodeId} (registry size: ${flowActorRegistry.size})`);
 
           // Register runtime hooks for registered trigger types (skip nodes with no downstream steps)
           for (const sn of allTriggerNodes) {
@@ -300,7 +300,7 @@ export function createFlowNodeSystem(
           flowActorRegistry.delete(flowTNodeId);
           // Clean up all cron jobs for this flow actor
           appServices.scheduler.unregisterByPrefix(flowTNodeId);
-          brainInspect(`Unregistered flow actor: ${flowTNodeId}`);
+          brainLogger.debug(`Unregistered flow actor: ${flowTNodeId}`);
         },
         handleTrackEvent: enqueueActions(({ context, event, enqueue, system }) => {
           const typedEv = event as { type: string; [key: string]: any };
@@ -311,7 +311,7 @@ export function createFlowNodeSystem(
             enqueue.assign({
               pendingEvents: ({ context }) => [...context.pendingEvents, { ...typedEv }],
             });
-            brainInspect(`Flow ${flowTNodeId} deferring event "${eventType}" (brain paused)`);
+            brainLogger.debug(`Flow ${flowTNodeId} deferring event "${eventType}" (brain paused)`);
             return;
           }
 
@@ -323,7 +323,7 @@ export function createFlowNodeSystem(
             const allSteps = repository.brainQueries.eventAllSteps(eventNode.id as EARS.EntityId);
 
             if (allSteps.length === 0) {
-              brainLogger.debug(`No steps found for event ${eventType} on node ${eventNode.id}, skipping`);
+              createLogger('brain').debug(`No steps found for event ${eventType} on node ${eventNode.id}, skipping`);
               continue; // Skip this event node but process others
             }
 
@@ -386,16 +386,18 @@ export function createFlowNodeSystem(
 
                 spawnedCount++;
               } catch (err) {
-                reportStepRuntimeError({
+                reportError({
                   error: err,
                   source: 'brain-flow',
-                  phase: 'child.spawn',
-                  flowTNodeId,
-                  eventTNodeId: eventTNode.id,
-                  nodeId: step.id,
-                  nodeLabel: step.label,
-                  nodeType: step.nodeType,
-                  eventType,
+                  step: {
+                    phase: 'child.spawn',
+                    flowTNodeId,
+                    eventTNodeId: eventTNode.id,
+                    nodeId: step.id,
+                    nodeLabel: step.label,
+                    nodeType: step.nodeType,
+                    eventType,
+                  },
                 });
               }
             }
@@ -415,11 +417,11 @@ export function createFlowNodeSystem(
           }
         }),
         handleChildCompletion: enqueueActions(({ context, event, enqueue, system }) => {
-          brainInspect(`Child completed in flow - ${context.flowLabel}:`, { completion: event });
+          brainLogger.debug(`Child completed in flow - ${context.flowLabel}:`, { completion: event });
           const typedEv = typeOf('CHILD_COMPLETED', event as any);
 
           if (typedEv.final) {
-            brainInspect(`Flow ${flowTNodeId} received child completion with final=true from ${typedEv.stepId || typedEv.tNodeId}`);
+            brainLogger.debug(`Flow ${flowTNodeId} received child completion with final=true from ${typedEv.stepId || typedEv.tNodeId}`);
           }
           const childFailed = typedEv.failed === true || typedEv.result?.error !== undefined;
 
@@ -508,7 +510,7 @@ export function createFlowNodeSystem(
             enqueue.raise({ type: 'FLOW_COMPLETE' });
           } else if (nextNode && isBrainPaused()) {
             // Brain is paused — defer spawning the next step
-            brainInspect(`Flow ${flowTNodeId} deferring next step (brain paused)`, { nextNodeId: nextNode.id });
+            brainLogger.debug(`Flow ${flowTNodeId} deferring next step (brain paused)`, { nextNodeId: nextNode.id });
             enqueue.assign({
               pendingNextSteps: ({ context }) => [
                 ...context.pendingNextSteps,
@@ -542,23 +544,25 @@ export function createFlowNodeSystem(
                 flowTNodeId: flowTNodeId
               });
             } catch (err) {
-              reportStepRuntimeError({
+              reportError({
                 error: err,
                 source: 'brain-flow',
-                phase: 'child.spawn-next',
-                flowTNodeId,
-                eventTNodeId: typedEv.eventTNodeId,
-                tNodeId: typedEv.tNodeId,
-                nodeId: nextNode.id,
-                nodeLabel: nextNode.label,
-                nodeType: nextNode.nodeType,
-                eventType: trackExecutionContext.event?.type,
+                step: {
+                  phase: 'child.spawn-next',
+                  flowTNodeId,
+                  eventTNodeId: typedEv.eventTNodeId,
+                  tNodeId: typedEv.tNodeId,
+                  nodeId: nextNode.id,
+                  nodeLabel: nextNode.label,
+                  nodeType: nextNode.nodeType,
+                  eventType: trackExecutionContext.event?.type,
+                },
               });
             }
           }
         }),
         markFlowCompleted: ({ system, context }) => {
-          brainInspect(`Flow ${flowTNodeId} completed (isFinalStep: ${context.isFinalStep})`);
+          brainLogger.debug(`Flow ${flowTNodeId} completed (isFinalStep: ${context.isFinalStep})`);
           repository.brainCommands.updateTNodeStatus(flowTNodeId, 'completed');
           
           // Save the flow's result to nodeAttributes so it appears in the details panel
@@ -592,7 +596,7 @@ export function createFlowNodeSystem(
         })),
         forwardTNodeUpdate: sendParent(({ event }) => event),
         resumeFlowSteps: enqueueActions(({ context, enqueue, system }) => {
-          brainInspect(`Flow ${flowTNodeId} resuming ${context.pendingNextSteps.length} deferred steps, ${context.pendingEvents.length} deferred events`);
+          brainLogger.debug(`Flow ${flowTNodeId} resuming ${context.pendingNextSteps.length} deferred steps, ${context.pendingEvents.length} deferred events`);
 
           // Resume deferred next-steps
           for (const pending of context.pendingNextSteps) {
@@ -614,17 +618,19 @@ export function createFlowNodeSystem(
                 flowTNodeId: flowTNodeId
               });
             } catch (err) {
-              reportStepRuntimeError({
+              reportError({
                 error: err,
                 source: 'brain-flow',
-                phase: 'child.resume',
-                flowTNodeId,
-                eventTNodeId: pending.eventTNodeId,
-                tNodeId: pending.parentTNodeId,
-                nodeId: pending.nextNode.id,
-                nodeLabel: pending.nextNode.label,
-                nodeType: pending.nextNode.nodeType,
-                eventType: pending.executionContext.event?.type,
+                step: {
+                  phase: 'child.resume',
+                  flowTNodeId,
+                  eventTNodeId: pending.eventTNodeId,
+                  tNodeId: pending.parentTNodeId,
+                  nodeId: pending.nextNode.id,
+                  nodeLabel: pending.nextNode.label,
+                  nodeType: pending.nextNode.nodeType,
+                  eventType: pending.executionContext.event?.type,
+                },
               });
             }
           }

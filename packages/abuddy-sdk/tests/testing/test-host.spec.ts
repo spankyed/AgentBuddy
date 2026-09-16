@@ -2,12 +2,14 @@
 import * as os from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { entityIds, dropAttribute, resetTestData, startTestRuntime, takeSystemErrors, testRootEvents } from '../../src/testing/index.ts';
-import { sendToPlugin, sendToSystem, sendToBrainSystem } from '../../src/services/index.ts';
+import { sendToPlugin, sendToSystem, sendToBrainSystem } from '../../src/events/index.ts';
 import { appData } from '../../src/services/app-data.ts';
 import { traceStore } from '../../src/services/trace-store.ts';
 import { registerDesignations, unregisterDesignations } from '../../src/designations/index.ts';
-import { reportSystemError, getAppVersion, runMigrations } from '../../src/utils/index.ts';
-import * as rpc from '../../src/rpc/index.ts';
+import { runMigrations } from '../../src/utils/index.ts';
+import { getAppVersion } from '../../src/env/index.ts';
+import { reportError } from '../../src/logger/index.ts';
+import * as rpc from '../../src/runtime/root-events.ts';
 import { tx } from '../../src/ears/transaction.ts';
 import { getAttr } from '../../src/ears/attribute-storage.ts';
 
@@ -38,7 +40,7 @@ describe('the test host', () => {
   });
 
   it('records reported system errors until taken', () => {
-    reportSystemError({ error: new Error('boom'), source: 'memos' });
+    reportError({ error: new Error('boom'), source: 'memos' });
     expect(takeSystemErrors()).toEqual([expect.objectContaining({ source: 'memos' })]);
     expect(takeSystemErrors()).toEqual([]);
   });

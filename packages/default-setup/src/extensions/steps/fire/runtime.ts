@@ -1,5 +1,5 @@
 import type { TNodeEntity, ExecutionContext } from '@abuddy/sdk/steps';
-import { sendToBrainSystem } from '@abuddy/sdk/services';
+import { sendToBrainSystem } from '@abuddy/sdk/events';
 import { extractValueByPath } from '@abuddy/sdk/utils';
 import type { FireNode } from './types';
 

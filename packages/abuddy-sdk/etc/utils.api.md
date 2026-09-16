@@ -96,9 +96,6 @@ export function extractValueByPath(source: unknown, path: string): unknown;
 // @public (undocumented)
 export function filterByInclude<T>(items: T[], getKey: (item: T) => string, inc: SeedIncludeSet | undefined): T[];
 
-// @public (undocumented)
-export function getAppVersion(): string;
-
 // @public
 export function getDataDirPath(name: string): string;
 
@@ -207,26 +204,6 @@ export type Rename = {
     from: string;
     to: string;
 };
-
-// @public
-export function reportSystemError(input: ReportSystemErrorInput): void;
-
-// @public (undocumented)
-export interface ReportSystemErrorInput {
-    // (undocumented)
-    entityId?: string;
-    // (undocumented)
-    error: unknown;
-    // (undocumented)
-    operation?: string;
-    // (undocumented)
-    severity?: 'error' | 'fatal';
-    // (undocumented)
-    source?: string;
-    // (undocumented)
-    title?: string;
-    userMessage?: string;
-}
 
 // @public
 export function resolveCliPath(cli: CliName, preferredPath?: string): Promise<string>;

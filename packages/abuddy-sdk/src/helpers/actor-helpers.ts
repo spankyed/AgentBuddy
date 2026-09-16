@@ -41,35 +41,6 @@ export function safeEvents<TEvent extends { type: string }>() {
   };
 }
 
-/**
- * Plugin id → the events that plugin receives. Each pack's `#generated/events` defines its
- * `PackEvents` and exports `emit` / `sendToPlugin` typed against it.
- */
-export type PluginEvents = { [pluginId: string]: { type: string } };
-
-/** `emit` typed against a plugin event map (see `#generated/events`). */
-export type TypedEmit<M extends PluginEvents> = <P extends keyof M & string>(
-  pluginId: P,
-  event: M[P],
-) => { type: 'OUTGOING'; event: M[P] & { pluginId: P } };
-
-/**
- * Wraps an event with pluginId for the bus. Untyped: packs use the `emit` from their
- * `#generated/events`, which constrains the event to what the plugin receives.
- * The global OutgoingSystemEvents union is assembled in api/src/systems/index.ts.
- */
-export function emit<P extends string, E extends { type: string }>(
-  pluginId: P,
-  event: E
-): { type: 'OUTGOING'; event: E & { pluginId: P } };
-
-export function emit(pluginId: string, event: { type: string }) {
-  return {
-    type: 'OUTGOING' as const,
-    event: { ...event, pluginId },
-  };
-}
-
 export function sendParentSafe<TEvent extends { type: string }>() {
   return <Type extends TEvent['type']>(
     payload: Extract<TEvent, { type: Type }>
