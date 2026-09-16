@@ -40,9 +40,8 @@ const currentComponent = computed(() => {
 
 const currentProps = computed(() => {
   const base = {
-    documents: context.value.documents,
     collections: context.value.collections,
-    selectedCollectionId: context.value.currentFolderId || context.value.selectedCollectionId,
+    selectedCollectionId: context.value.currentFolderId ?? undefined,
   }
   
   switch (context.value.currentView) {
@@ -101,7 +100,6 @@ const currentEvents = computed(() => {
     // DELETE_SEARCH_INDEX: (payload: { indexId: string }) => send({ type: 'DELETE_SEARCH_INDEX', ...payload }),
     // CANCEL_EDIT_INDEX: () => send({ type: 'CANCEL_EDIT_INDEX' }),
 
-    // Legacy collection support (for CreateView)
     CREATE_COLLECTION: (payload: { name: string; description?: string; parentId?: string }) =>
       send({ type: 'CREATE_COLLECTION', ...payload }),
     

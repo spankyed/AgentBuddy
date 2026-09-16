@@ -133,13 +133,9 @@ export interface MessageReferences {
  * shape (see claude-code-approval-response.spec.ts and
  * onboarding-step-response.spec.ts for the pattern).
  *
- * Legacy data: messages persisted before this type was introduced may
- * carry the stale `{ value: 'yes' }` shape, but no frontend has ever
- * emitted it — the `?? response` fallback in the old handler was dead
- * code. Still, `blockResponse?: unknown` at the storage boundary is
- * more defensive than assuming the union is exhaustive; however the
- * EVENT-level and FIELD-level types use the union because every
- * non-legacy emit matches one of its arms.
+ * `blockResponse?: unknown` at the storage boundary is more defensive than
+ * assuming the union is exhaustive; the event-level and field-level types use
+ * the union, because every emit matches one of its arms.
  */
 export type BlockResponse =
   /** Approval buttons: InteractionContainer `handleApprove`/`handleDeny`. */
@@ -378,8 +374,6 @@ export interface ClaudeSessionArtifactContent {
   chatState: 'idle' | 'working' | 'paused';
   /** Total tool calls across all turns in this session. */
   toolCallCount: number;
-  /** The most recent tool the agent used (for the sidebar summary line). */
-  lastTool?: { name: string; summary: string; at: number };
   /** Last 3 tools executed (rolling window, most recent last). */
   recentTools?: Array<{ name: string; summary: string; at: number }>;
   /**

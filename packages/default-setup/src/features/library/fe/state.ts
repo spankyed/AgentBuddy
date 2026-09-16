@@ -77,10 +77,10 @@ export interface LibraryContext {
   expandedFolderChildren: Record<string, LibraryItem[]>
   loadingFolderIds: string[]
 
-  // Legacy fields (used by CreateView/EditView for compatibility)
+  // The whole library, as the backend lists it: the panel's counts and tags, the
+  // tiptap reference provider and the document editor's folder picker read these
   documents: DocumentDTO[]
   collections: CollectionDTO[]
-  selectedCollectionId?: string
 
   // Search index fields
   searchIndices: SearchIndex[]
@@ -116,7 +116,7 @@ export type LibraryEvents =
   | { type: 'TRAIL_CLICK'; trail: string[] }
   | { type: 'VIEW_BROWSER' }
 
-  // Legacy document events
+  // Document events
   | { type: 'CREATE_DOCUMENT' }
   | { type: 'EDIT_DOCUMENT'; documentId: string }
   | { type: 'DELETE_DOCUMENT'; documentId: string }
@@ -139,7 +139,7 @@ export type LibraryEvents =
   | { type: 'EXECUTE_TEST_SEARCH' }
   | { type: 'CANCEL_TEST_SEARCH' }
 
-  // Legacy collection events (kept for CreateView/EditView compatibility)
+  // Collection events
   | { type: 'CREATE_COLLECTION'; name: string; description?: string; parentId?: string }
 
   // Tree view events
@@ -477,16 +477,15 @@ export const librarySystem = setup({
     setEditingDocument: assign({
       editingDocument: ({ context, event }) => {
         if (event.type === 'EDIT_DOCUMENT') {
-          // First try to find in legacy documents array
-          const legacyDoc = context.documents.find((doc) => doc.id === event.documentId)
-          if (legacyDoc) {
-            return legacyDoc
+          // The library-wide list holds the document unless the user opened a folder the list predates
+          const listed = context.documents.find((doc) => doc.id === event.documentId)
+          if (listed) {
+            return listed
           }
 
-          // Otherwise, look in the new items array and convert to DocumentDTO format
+          // Otherwise take it from the current folder's items, as the editor's DocumentDTO
           const item = findItemById(context, event.documentId)
           if (item && item.type === 'document') {
-            // Convert DocumentItem to DocumentDTO format for compatibility with EditView
             return {
               id: item.id,
               name: item.name,
@@ -865,10 +864,8 @@ export const librarySystem = setup({
     expandedFolderChildren: {},
     loadingFolderIds: [],
 
-    // Legacy fields (for CreateView/EditView compatibility)
     documents: [],
     collections: [],
-    selectedCollectionId: undefined,
 
     // Search index fields
     searchIndices: [],

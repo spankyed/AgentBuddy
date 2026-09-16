@@ -532,7 +532,7 @@ const codeState = setup({
 
       // Seed activeFilePath from persistence so addTab's "preserve context.activeFilePath
       // during restore" branch keeps the previously-active tab focused. If the persisted
-      // active path no longer matches a tab (corrupt/stale storage, legacy shape),
+      // active path no longer matches a tab (corrupt or stale storage),
       // fall back to the first persisted tab so the editor isn't blank on load.
       const persistedPaths = new Set(persistedTabs.map(t => t.path))
       const seededActive = persistedActive && persistedPaths.has(persistedActive)
