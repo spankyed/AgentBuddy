@@ -95,7 +95,7 @@ const apiStatus = {
   relaunch: () => ipcRenderer.invoke('app:relaunch'),
   reload: () => ipcRenderer.invoke('app:reload'),
   openLogFile: () => ipcRenderer.invoke('api:open-log-file'),
-  onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number }) => void) => {
+  onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number; port?: number }) => void) => {
     const channels = ['api:stopped', 'api:error', 'api:restarting', 'api:started', 'api:fatal'];
     const handlers = channels.map(channel => {
       const handler = (_: Electron.IpcRendererEvent, data?: any) => {

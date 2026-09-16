@@ -3,7 +3,7 @@ import type { Plugin } from '@/core/types';
 import type { HotkeyEvent, ContextMenuItem } from '@abuddy/sdk/fe';
 import { processHotkeys, safeEvents } from '@abuddy/sdk/fe';
 import type { ApplicationHotkeys } from '@abuddy/sdk/types';
-import { trpc } from '@/core/trpc';
+import { trpc, reconnectApiClient } from '@/core/trpc';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
 import { globalToast } from '@/core/toast';
 import { getDesignated } from '@abuddy/sdk/fe';
@@ -297,7 +297,7 @@ export const createApplicationState = () => setup({
         }
       });
 
-      const subscription = trpc.bus.sub.subscribe(
+      const subscribeToBus = () => trpc.bus.sub.subscribe(
         undefined,
         {
           // Each time this window's subscription is established: the server has sent this connection's
@@ -328,9 +328,19 @@ export const createApplicationState = () => setup({
         }
       );
 
+      let subscription = subscribeToBus();
+
       // Listen for Electron IPC crash notifications (instant detection)
       const cleanupApiStatus = window.electronAPI?.apiStatus?.onEvent((event) => {
         if (event.type === 'api:stopped' && (event as any).restarting) return; // Restart in progress
+        if (event.type === 'api:started') {
+          // A restart can land on a different port; the old subscription died with the old socket
+          if (event.port && reconnectApiClient(event.port)) {
+            subscription.unsubscribe();
+            subscription = subscribeToBus();
+          }
+          return;
+        }
         if (event.type === 'api:fatal') {
           const { message, stack, source } = event as any;
           sendBack({
