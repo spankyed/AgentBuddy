@@ -27,12 +27,23 @@
  *
  * What it does:
  * 1. Deletes ears-secrets and ears-secrets-backup, the old API key database, which held keys unencrypted.
- *    Keys are entered again in Settings → Secrets.
+ *    Deleting them can't be undone, so it first reads each one (read-only, without changing it) and lists the
+ *    keys it holds by provider and label — never their values — in the output and in the summary. Check you
+ *    can get every one of them again before --apply; the step 2 backup keeps a copy either way. Keys are
+ *    entered again in Settings → Secrets.
  * 2. Moves the CLI path overrides from general.secrets.cliPaths to plugins.code.cliPaths, and removes
  *    general.secrets.
  * 3. Deletes the seeded library document internal/commands: slash commands now come from the documents of an
  *    internal/commands folder, which the next launch seeds.
- * 4. Gives default-setup's seeded rows (actions, prompts, library, notes and flows) their seed key and a
+ * 4. Removes temperature from llm flow nodes whose stored value is exactly 0.7: the llm step's form saved that
+ *    default on every node and never offered the field, so a stored 0.7 is the old default and not a choice.
+ *    Those nodes take the model's own temperature again. Seeded flows are replaced by the next launch anyway
+ *    (see 5), so this mainly affects flows you created or edited. It runs before 5, so a flow is recorded with
+ *    its nodes as this step leaves them. If the new build was already launched once, the seeder has recorded
+ *    those flows itself and 5 skips them; for such a flow this step also updates its recorded graph, so the
+ *    removal doesn't read as an edit of yours and stop later seed updates. A flow already recorded as edited
+ *    (its stored graph doesn't match its record) keeps that record: the edit is yours and stays kept.
+ * 5. Gives default-setup's seeded rows (actions, prompts, library, notes and flows) their seed key and a
  *    record of their seeded values, which the seeders now need to find a row and to tell whether it was edited:
  *    - a row whose record hasn't changed since it was seeded is recorded against the record's values, so a row
  *      that still holds them takes later seed changes, and a row that doesn't (edited) is left alone by them;
@@ -51,12 +62,15 @@
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { open, type RootDatabase } from 'lmdb';
 import { resolveAppContext } from '@abuddy/sdk/env';
+import { secretProviderLabel, type SecretProvider } from '@abuddy/sdk/services';
 import { findRelations, tx } from '@abuddy/sdk/ears';
-import { findAll, findWhere, getAttr, qx, updateAttr } from '@abuddy/host/ears';
+import { dropAttr, findAll, findWhere, getAttr, qx, updateAttr } from '@abuddy/host/ears';
 import { recordLabel, seedHookRegistry, type SeedHookContext, type SeedRecord } from '@abuddy/sdk/seed';
 import { compileFlowDSL, type CompiledRows } from '@abuddy/sdk/build';
 import type { EARS } from '@abuddy/sdk';
+import { LmdbQuery } from '@/core/persistence/lmdb/query';
 import { closeDatabase, flushDatabase, openDatabase, packagesDir, persistenceErrorCount } from './database';
 
 const apply = process.argv.includes('--apply');
@@ -82,6 +96,10 @@ const count = (what: string) => { counts[what] = (counts[what] ?? 0) + 1; };
 /** Rows the next launch replaces or updates (edits to them are overwritten), and rows recorded as edited */
 const replacedNextLaunch: string[] = [];
 const recordedAsEdited: string[] = [];
+/** llm nodes whose temperature was the old form default */
+const temperatureRemoved: string[] = [];
+/** The keys in the old database, which deleting it destroys */
+const oldKeysFound: string[] = [];
 
 /** A planned change: printed (labelled in a dry run), and made only with --apply */
 function write(description: string, change: () => void): void {
@@ -131,6 +149,37 @@ function assertBuildCurrent(): void {
 
 // ── 1. The old API key database ─────────────────────────────────────────────
 
+/**
+ * The keys an old store holds, as "<provider>: <label>". Read with the database open read-only, so listing it
+ * leaves it exactly as it is; `encryptedValue` (the key itself) is never read. Secret rows are what the old
+ * store held: entity type Secret, with provider and the user's customName (see the removed legacy-secrets.ts).
+ */
+function readOldKeys(dir: string): string[] {
+  const data = path.join(dir, 'data.mdb');
+  // Opening something that isn't an LMDB database aborts the process instead of throwing: check before opening
+  if (!fs.existsSync(data) || fs.statSync(data).size < 8192) throw new Error(`${data} is missing or too small to be an LMDB database`);
+  let root: RootDatabase | undefined;
+  try {
+    root = open({ path: dir, maxDbs: 8, compression: true, readOnly: true });
+    const query = new LmdbQuery({
+      entities: root.openDB({ name: 'entities', encoding: 'json' }),
+      attrs: root.openDB({ name: 'attrs', encoding: 'json' }),
+      relations: root.openDB({ name: 'relations', encoding: 'json' }),
+      root,
+    });
+    const keys: string[] = [];
+    for (const id of query.entitiesOfType('Secret')) {
+      const provider = query.getFirstAttr('provider', id) as string | null;
+      if (!provider) continue;
+      const label = query.getFirstAttr('customName', id) as string | null;
+      keys.push(`${secretProviderLabel(provider as SecretProvider) || provider}: ${label || '(no label)'}`);
+    }
+    return keys.sort();
+  } finally {
+    root?.close();
+  }
+}
+
 function removeOldKeyDatabase(userDataDir: string): void {
   console.log('\n1. Old API key database');
   for (const name of ['ears-secrets', 'ears-secrets-backup']) {
@@ -139,7 +188,20 @@ function removeOldKeyDatabase(userDataDir: string): void {
       console.log(`  ${name}: not there`);
       continue;
     }
-    write(`delete ${name}`, () => fs.rmSync(dir, { recursive: true, force: true }));
+    // Deleting is irreversible: say what goes with it, by provider and label, before doing it
+    try {
+      const keys = readOldKeys(dir);
+      console.log(`  ${name}: holds ${keys.length} key(s)`);
+      for (const key of keys) {
+        console.log(`    - ${key}`);
+        oldKeysFound.push(`${name} — ${key}`);
+      }
+    } catch (err) {
+      console.log(`  ${name}: can't be listed (${(err as Error).message})`);
+      console.log(`    WARNING: ${dir} holds your API keys and nothing else does. Copy the folder, or make sure you can get every key again, before running with --apply.`);
+      oldKeysFound.push(`${name} — couldn't be listed: its keys are only in ${dir} and in the backup`);
+    }
+    write(`delete ${name} (the keys in it go with it; the step 2 backup of the data dir keeps a copy)`, () => fs.rmSync(dir, { recursive: true, force: true }));
   }
 }
 
@@ -186,7 +248,70 @@ function removeOldCommandsDocument(): void {
   write('delete the document internal/commands (its commands now come from the internal/commands folder)', () => remove(old.id));
 }
 
-// ── 4. Seeded rows ──────────────────────────────────────────────────────────
+// ── 4. The llm temperature default ──────────────────────────────────────────
+
+/** The llm step's old form default (steps/llm/fe.ts until eaeea5d58); the form never offered the field */
+const OLD_TEMPERATURE = 0.7;
+
+/** The flow that contains the node (flows hold their nodes with `contains`) */
+function containingFlow(nodeId: EARS.EntityId): EARS.EntityId | undefined {
+  return findRelations({ targetEntity: nodeId, relationType: 'contains' as EARS.RelKind })
+    .map((r) => r.sourceEntity as EARS.EntityId)
+    .find((id) => id.startsWith('Flow-'));
+}
+
+/** What a flow's seededGraph records: the fields and relation kinds the seeder tracks, and their hash */
+type SeededGraph = { flowFields: string[]; nodeFields: Record<string, string[]>; relKinds: string[]; hash: string };
+
+/**
+ * A stored temperature of exactly 0.7 came from the llm form's default, not from the user: the form never had a
+ * temperature field. Drop the attribute, so the node uses the model's own default.
+ *
+ * Runs before section 5, so a flow that section stamps is recorded with its nodes as this step leaves them. A
+ * flow that already carries a seededGraph was recorded by a launch of the new build, and section 5 skips it: its
+ * record is updated here instead, but only when the stored graph still matches it. When it doesn't, the flow is
+ * already recorded as edited by the user, and re-recording it would hand later seeds the right to overwrite that
+ * edit, so its record is left as it is.
+ */
+function removeLlmTemperatureDefault(): void {
+  console.log('\n4. The llm temperature default');
+  const nodes = findWhere<{ id: EARS.EntityId; label?: string }>('Node' as EARS.Entity, 'nodeType', 'llm')
+    .filter((node) => getAttr(node.id, attr('temperature')) === OLD_TEMPERATURE);
+  if (nodes.length === 0) {
+    console.log(`  no llm node has temperature ${OLD_TEMPERATURE}`);
+    return;
+  }
+  const byFlow = new Map<EARS.EntityId | undefined, typeof nodes>();
+  for (const node of nodes) {
+    const flowId = containingFlow(node.id);
+    byFlow.set(flowId, [...(byFlow.get(flowId) ?? []), node]);
+  }
+
+  for (const [flowId, flowNodes] of byFlow) {
+    const flowName = (flowId && (getAttr(flowId, attr('label')) as string | null)) || 'no flow';
+    const recorded = flowId ? (getAttr(flowId, attr('seededGraph')) as SeededGraph | null) : null;
+    const restampable = recorded !== null && hashGraph(flowId!, recorded) === recorded.hash;
+    if (recorded && !restampable) {
+      console.log(`  ${flowName}: already recorded as edited by the new build; its record is left alone`);
+      count('flow already recorded as edited');
+    }
+    for (const node of flowNodes) {
+      const named = `${flowName} / ${node.label ?? node.id}`;
+      count('llm temperature removed');
+      temperatureRemoved.push(named);
+      write(`${named}: temperature ${OLD_TEMPERATURE}, the old form default: removed (the model's own applies)`,
+        () => dropAttr(node.id, attr('temperature')));
+    }
+    if (restampable) {
+      count('flow graph re-recorded');
+      // Runs after the drops above, so the new hash is of the graph without the temperatures
+      write(`${flowName}: recorded by the new build already: its recorded graph is updated for the removal, so the flow still counts as unedited`,
+        () => updateAttr(flowId!, attr('seededGraph'), { ...recorded, hash: hashGraph(flowId!, recorded) }));
+    }
+  }
+}
+
+// ── 5. Seeded rows ──────────────────────────────────────────────────────────
 
 /** The seed key the generic seeder gives a record (seeder.ts childSeedKey), under its parent's */
 function childSeedKey(parentKey: string, record: SeedRecord, identity: readonly string[]): string {
@@ -211,7 +336,7 @@ function withRowMedia(value: unknown, id: EARS.EntityId, mediaDir: string): unkn
 
 function stampGenericRows(): void {
   for (const entry of ENTRIES) {
-    console.log(`\n4. Seeded ${entry.key}`);
+    console.log(`\n5. Seeded ${entry.key}`);
     const file = path.join(COMPILED_DIR, `${entry.key}.seed.json`);
     const { records } = readJSON<{ records: SeedRecord[] }>(file);
     const mediaDir = path.join(COMPILED_DIR, 'media', entry.key);
@@ -308,7 +433,7 @@ function hashGraph(flowId: EARS.EntityId, seeded: { flowFields: string[]; nodeFi
 }
 
 function stampFlows(): void {
-  console.log('\n4. Seeded flows');
+  console.log('\n5. Seeded flows');
   const flowsDSL = readJSON<Record<string, unknown>>(path.join(COMPILED_DIR, 'flows.seed.json'));
   const labelMap = (entity: string) => new Map<string, string>(findAll<{ id: string; label: string }>(entity as EARS.Entity).map((row) => [row.label, row.id]));
   const maps = { actions: labelMap('Action'), prompts: labelMap('Prompt'), flows: labelMap('Flow') };
@@ -359,6 +484,8 @@ function printSummary(): void {
   };
   list('Replaced or updated by the next launch (edits to these are overwritten: export them first)', replacedNextLaunch);
   list('Recorded as edited (kept; later seed changes skip them)', recordedAsEdited);
+  list(`llm nodes whose temperature was removed (it was ${OLD_TEMPERATURE}, the old form default)`, temperatureRemoved);
+  list('API keys the old database holds (deleting it destroys them: enter each again in Settings → Secrets)', oldKeysFound);
 }
 
 async function run(): Promise<void> {
@@ -374,6 +501,7 @@ async function run(): Promise<void> {
   try {
     moveCliPaths();
     removeOldCommandsDocument();
+    removeLlmTemperatureDefault();
     stampGenericRows();
     stampFlows();
     // The adapter logs a failed flush instead of throwing: flush now and check, so closing has nothing left to write
