@@ -35,7 +35,7 @@ export function loadRecentFiles(): string[] {
 /**
  * Save recently opened files to localStorage
  */
-export function saveRecentFiles(recentFiles: string[]): void {
+function saveRecentFiles(recentFiles: string[]): void {
   try {
     const timestampedFiles: RecentFile[] = recentFiles.map((path, index) => ({
       path,
@@ -63,29 +63,6 @@ export function addRecentFile(recentFiles: string[], filePath: string): string[]
   saveRecentFiles(updated)
   
   return updated
-}
-
-/**
- * Remove a file from the recent files list
- */
-export function removeRecentFile(recentFiles: string[], filePath: string): string[] {
-  const filtered = recentFiles.filter(path => path !== filePath)
-  
-  // Save to localStorage
-  saveRecentFiles(filtered)
-  
-  return filtered
-}
-
-/**
- * Clear all recent files
- */
-export function clearRecentFiles(): void {
-  try {
-    localStorage.removeItem(STORAGE_KEY)
-  } catch (error) {
-    console.error('Failed to clear recent files:', error)
-  }
 }
 
 /**

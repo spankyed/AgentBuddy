@@ -11,7 +11,7 @@ import type { QueryNode } from './types';
 const { inspect: brainInspect } = createInspectLogger('brain');
 
 /** The prompt (seeds/prompts/db-query-system.ts) that describes the database and the query API to the model */
-export const QUERY_SYSTEM_PROMPT = 'DB Query System';
+const QUERY_SYSTEM_PROMPT = 'DB Query System';
 
 /**
  * The database console's write helpers (`execute/transaction.ts`). The query executor doesn't provide them, so

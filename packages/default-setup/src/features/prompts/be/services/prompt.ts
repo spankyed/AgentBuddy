@@ -12,7 +12,7 @@ export class PromptService {
    * @param templateFn - The template function body
    * @param templateParams - Parameters to pass to the template
    */
-  executeTemplate(
+  private executeTemplate(
     templateFn: string, 
     templateParams: Record<string, any>
   ): string {

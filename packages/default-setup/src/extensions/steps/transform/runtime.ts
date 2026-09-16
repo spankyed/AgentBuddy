@@ -7,7 +7,7 @@ import type { TransformNode, TransformOutputType } from './types';
 const { inspect: brainInspect } = createInspectLogger('brain');
 
 /** The script's return value as the step's result, per the node's `outputType` */
-export function toOutput(value: unknown, outputType: TransformOutputType): unknown {
+function toOutput(value: unknown, outputType: TransformOutputType): unknown {
   switch (outputType) {
     case 'text':
       return String(value);

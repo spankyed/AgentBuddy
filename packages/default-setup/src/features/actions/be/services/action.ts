@@ -1,20 +1,11 @@
 import { repository } from '@/__generated__/repository';
 import type { ActionEntity } from '@abuddy/sdk';
-import { EARS } from '@/__generated__/ears';
 import { services as appServices } from '@abuddy/sdk/services';
 
 export class ActionService {
-  getById(id: EARS.EntityId) {
-    return repository.actionQueries.byId(id);
-  }
-
   getByLabel(label: string) {
     const allActions = repository.actionQueries.all();
     return allActions.find((action: ActionEntity) => action.label === label);
-  }
-
-  getByCategory(category: string) {
-    return repository.actionQueries.byCategory(category);
   }
 
   async executeAction(actionFn: string, params: Record<string, any> = {}): Promise<any> {

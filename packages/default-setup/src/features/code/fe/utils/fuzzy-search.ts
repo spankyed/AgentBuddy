@@ -56,7 +56,7 @@ function isWordBoundary(str: string, index: number): boolean {
 /**
  * Fuzzy match a pattern against a target string
  */
-export function fuzzyMatch(pattern: string, target: string, filename?: string): FuzzyMatch | null {
+function fuzzyMatch(pattern: string, target: string, filename?: string): FuzzyMatch | null {
   if (!pattern || !target) return null
   
   const patternLower = pattern.toLowerCase()

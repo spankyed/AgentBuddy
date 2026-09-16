@@ -105,18 +105,6 @@ export const brainQueries = {
     return qx(id).pickOne(TNODE_COLUMNS);
   },
 
-  eventFirstStep: (eventNodeId: EARS.EntityId): NodeEntity | undefined => {
-    const transitionLinks = qx(eventNodeId)
-      .links(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node]);
-
-    if (transitionLinks.length > 0) {
-      return qx(transitionLinks[0].id)
-        .pickAll()[0] as unknown as NodeEntity | undefined;
-    }
-
-    return undefined;
-  },
-
   eventAllSteps: (eventNodeId: EARS.EntityId): NodeEntity[] => {
     const nodes = qx(eventNodeId)
       .links(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node])

@@ -20,7 +20,7 @@ export function configDir(): string {
   return process.env.CODEX_HOME || path.join(os.homedir(), '.codex')
 }
 
-export function sessionsDir(): string {
+function sessionsDir(): string {
   return path.join(configDir(), 'sessions')
 }
 

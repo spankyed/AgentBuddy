@@ -47,7 +47,7 @@ function edgeInfoMatches(
  */
 
 // Constants
-export const FLOW_EDGE_KINDS = [
+const FLOW_EDGE_KINDS = [
   EARS.RelKind.TRANSITIONS_TO,
 ] as const;
 
@@ -56,13 +56,13 @@ export const FLOW_ROLES = {
   ENTRY_EVENT: "entry_event",
 } as const;
 
-export const NODE_DEFAULTS = {
+const NODE_DEFAULTS = {
   TYPE: 'action' as const,
   LABEL: 'New Node',
   DESCRIPTION: '',
 } as const;
 
-export const FLOW_ENTRY_NODE = {
+const FLOW_ENTRY_NODE = {
   TYPE: 'listener' as const,
   LABEL: 'Flow Entry',
   COLOR: '#1E88E5',
@@ -70,12 +70,12 @@ export const FLOW_ENTRY_NODE = {
   EVENT_TYPE: 'flow.entry',
 } as const;
 
-export const FLOW_DEFAULTS = {
+const FLOW_DEFAULTS = {
   TYPE: 'workflow' as const,
   DESCRIPTION: '',
 } as const;
 
-export const FLOW_QUERY_FIELDS = {
+const FLOW_QUERY_FIELDS = {
   LIST: ["id", "label", "flowType", "createdAt"] as const,
   DETAIL: ["id", "label", "description", "flowType", "createdAt", "updatedAt"] as const,
 } as const;

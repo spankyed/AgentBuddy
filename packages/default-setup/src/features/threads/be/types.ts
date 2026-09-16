@@ -58,25 +58,6 @@ export interface ThinkingBlockProps {
   defaultOpen?: boolean;
 }
 
-// Link block types
-export interface LinkEvent {
-  target: 'application' | 'external' | string; // 'application', 'external', or plugin name
-  data: any;
-}
-
-export type LinkIcon =
-  | 'external-link'
-  | 'file-text'
-  | 'message-square'
-  | 'settings'
-  | 'link';
-
-export interface LinkConfig {
-  label: string;
-  event: LinkEvent;
-  icon?: LinkIcon; // Optional lucide icon name
-}
-
 // Button-group block types — canonical definitions live in the SDK
 
 export interface FileReference {

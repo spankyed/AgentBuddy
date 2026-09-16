@@ -4,18 +4,10 @@
  */
 
 // Configuration constants
-export const MAX_STRING_LENGTH = 10240;  // 10KB for string values
-export const MAX_OBJECT_SIZE = 51200;    // 50KB for serialized objects
-export const MAX_ARRAY_ITEMS = 100;      // Maximum array items to preserve
-export const MAX_DEPTH = 10;             // Maximum object nesting depth
-
-interface TruncatedResult {
-  value: any;
-  _truncated: boolean;
-  _originalSize?: number;
-  _originalLength?: number;
-  _type: string;
-}
+const MAX_STRING_LENGTH = 10240;  // 10KB for string values
+const MAX_OBJECT_SIZE = 51200;    // 50KB for serialized objects
+const MAX_ARRAY_ITEMS = 100;      // Maximum array items to preserve
+const MAX_DEPTH = 10;             // Maximum object nesting depth
 
 /**
  * Truncates a result value to prevent memory overflow
@@ -123,14 +115,4 @@ export function truncateResult(result: any, depth: number = 0): any {
  */
 export function isTruncated(result: any): boolean {
   return result && typeof result === 'object' && result._truncated === true;
-}
-
-/**
- * Gets the display value from a potentially truncated result
- */
-export function getDisplayValue(result: any): any {
-  if (isTruncated(result)) {
-    return result.value;
-  }
-  return result;
 }

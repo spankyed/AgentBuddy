@@ -7,7 +7,6 @@
 
 import { repository } from '@/__generated__/repository';
 import type { SettingsData } from '@/features/settings/be/types';
-import type { SettingsScope } from '@abuddy/sdk';
 
 export class SettingsService {
   /**
@@ -50,54 +49,12 @@ export class SettingsService {
   }
 
   /**
-   * Update a general setting
-   * @param category - The general settings category (e.g., 'hotkeys', 'secrets')
-   * @param path - Path to the setting property
-   * @param value - The new value
-   */
-  updateGeneralSetting(category: string, path: string[], value: any): void {
-    repository.settingsCommands.updateSettings('general', category, path, value);
-  }
-
-  /**
    * Update an internal setting
    * @param path - Path to the setting property
    * @param value - The new value
    */
   updateInternalSetting(path: string[], value: any): void {
     repository.settingsCommands.updateSettings('internal', null, path, value);
-  }
-
-  /**
-   * Reset all settings to their defaults
-   */
-  resetToDefaults(): void {
-    repository.settingsCommands.resetSettings();
-  }
-
-  /**
-   * Check if a specific plugin has settings
-   * @param pluginId - The plugin identifier
-   */
-  hasPluginSettings(pluginId: string): boolean {
-    const settings = this.getAll();
-    return pluginId in settings.plugins;
-  }
-
-  /**
-   * Get a specific setting value by path
-   * @param type - The setting type ('general', 'plugin', 'internal')
-   * @param label - The setting label/category
-   * @param path - Path to the specific value
-   */
-  getSettingValue(type: SettingsScope, label: string, path: string[]): any {
-    const settings = type === 'general' 
-      ? this.getGeneralSettings()[label as keyof SettingsData['general']]
-      : type === 'plugin'
-      ? this.getPluginSettings(label)
-      : this.getInternalSettings();
-    
-    return path.reduce((obj, key) => obj?.[key], settings);
   }
 }
 

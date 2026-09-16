@@ -22,7 +22,3 @@ export async function update(opts?: SubcommandOptions): Promise<string> {
   return run(['update'], opts)
 }
 
-/** Set up a long-lived auth token (interactive). Returns raw stdout. */
-export async function setupToken(opts?: SubcommandOptions): Promise<string> {
-  return run(['setup-token'], opts)
-}

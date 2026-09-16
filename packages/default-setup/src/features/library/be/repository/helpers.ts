@@ -21,7 +21,7 @@ export const getDisplayOrder = (item: any): number => {
   return Array.isArray(d) ? d[0] || 0 : (d as number) || 0
 }
 
-export const getItemsForReordering = (folderId: EARS.EntityId | null) => {
+const getItemsForReordering = (folderId: EARS.EntityId | null) => {
   if (folderId === null) {
     return [
       ...qx(EARS.Entity.Collection).pickAll()
