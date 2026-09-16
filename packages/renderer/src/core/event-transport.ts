@@ -34,7 +34,5 @@ export const eventTransport: EventTransport = {
   onIncoming: backendOnly('onIncoming'),
 };
 
-// Registered as this module loads, before any plugin or pack frontend can send. The API client is
-// registered too, for the SDK's own calls (`secretsClient` in `@abuddy/sdk/fe`).
+// Registered as this module loads, before any plugin or pack frontend can send
 registerHostModule('event-transport', eventTransport);
-registerHostModule('trpc', { trpc });

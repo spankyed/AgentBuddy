@@ -9,7 +9,7 @@ import { registerDesignations, unregisterDesignations } from '../../src/designat
 import { runMigrations } from '../../src/utils/index.ts';
 import { getAppVersion } from '../../src/env/index.ts';
 import { reportError } from '../../src/logger/index.ts';
-import * as rpc from '../../src/runtime/rpc.ts';
+import * as rpc from '../../src/runtime/root-events.ts';
 import { tx } from '../../src/ears/transaction.ts';
 import { getAttr } from '../../src/ears/attribute-storage.ts';
 

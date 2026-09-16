@@ -38,50 +38,6 @@ export interface RootEvents {
 // @internal (undocumented)
 export let rootEvents: RootEvents;
 
-// @internal
-export interface RpcClient {
-    secrets: {
-        list: {
-            query(): Promise<SecretsSnapshot>;
-        };
-        add: {
-            mutate(input: {
-                provider: SecretProvider;
-                label: string;
-                value: string;
-            }): Promise<SecretsSnapshot>;
-        };
-        replaceValue: {
-            mutate(input: {
-                id: string;
-                value: string;
-            }): Promise<SecretsSnapshot>;
-        };
-        select: {
-            mutate(input: {
-                id: string;
-            }): Promise<SecretsSnapshot>;
-        };
-        rename: {
-            mutate(input: {
-                id: string;
-                label: string;
-            }): Promise<SecretsSnapshot>;
-        };
-        delete: {
-            mutate(input: {
-                id: string;
-            }): Promise<SecretsSnapshot>;
-        };
-        allowUnprotected: {
-            mutate(): Promise<SecretsSnapshot>;
-        };
-    };
-}
-
-// @internal (undocumented)
-export const trpc: RpcClient;
-
 // (No @packageDocumentation comment for this package)
 
 ```

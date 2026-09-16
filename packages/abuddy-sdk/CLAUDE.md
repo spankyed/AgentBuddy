@@ -20,7 +20,7 @@ Each directory is one `package.json` export (`./<dir>` → `src/<dir>/index.ts`)
 - `helpers/`: actor helpers (`safeEvents`, `sendParentSafe`, `getActor`, `getBus`) and `Simplify`.
 - `ids/`: the `bus` system id.
 - `logger/`: `createLogger` (with the per-source debug toggle) and `onLog` over the `logger` host module (`logger.ts`), and `reportError` (`report-error.ts`): the `system-errors` host module without `step`, or a step error logged, recorded on its TNode and sent as `BRAIN_RUNTIME_ERROR`.
-- `runtime/`: `host.ts` is the host module table (`registerHostModule`, `getHostModule`, `hostFn`, `hostValue`) that every SDK delegate reads. `rpc.ts` holds the `@internal` `trpc` (the API client the host registers as `trpc`, used by `secretsClient`) and `rootEvents` (`initRpc()` reads the `bus-emitter` host module).
+- `runtime/`: `host.ts` is the host module table (`registerHostModule`, `getHostModule`, `hostFn`, `hostValue`) that every SDK delegate reads. `root-events.ts` holds the `@internal` `rootEvents` (`initRpc()` reads the `bus-emitter` host module). `fe/secrets-client.ts` delegates `secretsClient` to the `secrets-client` host module the renderer registers (the `SecretsClient` contract); the SDK holds no general API client.
 - `templates/`: runs prompt function bodies (`executeTemplate`, `createTemplateResolver`).
 - `seed/`: the seed engine (see Seed engine).
 - `services/`: the `services` proxy and `HostServices` (`index.ts`), plus the contracts for `appData`, `traceStore`, `inference` and `secrets`. `host-services.ts` resolves each of these from the host module of the same name. `./models` maps to `services/models.ts`.

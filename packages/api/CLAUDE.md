@@ -43,7 +43,7 @@ Packs reach these modules only through host modules (`@abuddy/sdk/events` sends 
 
 ## Host module registration (`setup/sdk-host-init.ts`)
 
-Runs `initEARSRuntime({ isEntityType })` against the pack registry's entity types, then `registerHostModule()` for `attribute-storage`, `lmdb-query`, `hydrate-sharded`, `logger`, `trpc`, `bus-emitter`, `router-events`, `system-errors`, `event-transport`, `version`, `migrations` and `pack-registry` (`@abuddy/host/packs`), calls `initRpc()`, and `registerHostServices()` (`@abuddy/host/services`). Importing it opens LMDB (through `attribute-storage`), so `ABUDDY_ENV` and `ABUDDY_USER_DATA_DIR` must already be set.
+Runs `initEARSRuntime({ isEntityType })` against the pack registry's entity types, then `registerHostModule()` for `attribute-storage`, `lmdb-query`, `hydrate-sharded`, `logger`, `bus-emitter`, `router-events`, `system-errors`, `event-transport`, `version`, `migrations` and `pack-registry` (`@abuddy/host/packs`), calls `initRpc()`, and `registerHostServices()` (`@abuddy/host/services`). Importing it opens LMDB (through `attribute-storage`), so `ABUDDY_ENV` and `ABUDDY_USER_DATA_DIR` must already be set.
 
 ## Boot (`setup/backend.ts`)
 

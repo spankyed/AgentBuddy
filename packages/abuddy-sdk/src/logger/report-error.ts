@@ -1,5 +1,5 @@
 import { getHostModule } from '../runtime/host.ts';
-import { rootEvents } from '../runtime/rpc.ts';
+import { rootEvents } from '../runtime/root-events.ts';
 import { sendToPlugin } from '../events/index.ts';
 // Import directly — not from '../utils' barrel which pulls in Node-only modules (fs, child_process)
 import { randomId } from '../utils/random-id.ts';

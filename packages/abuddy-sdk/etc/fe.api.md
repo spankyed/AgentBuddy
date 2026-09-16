@@ -332,15 +332,24 @@ export { safeEvents }
 export function saveTabGroups(key: string, groups: TabGroup[]): void;
 
 // @public
-export const secretsClient: {
-    list: () => Promise<SecretsSnapshot>;
-    add: (provider: SecretProvider, label: string, value: string) => Promise<SecretsSnapshot>;
-    replaceValue: (id: string, value: string) => Promise<SecretsSnapshot>;
-    select: (id: string) => Promise<SecretsSnapshot>;
-    rename: (id: string, label: string) => Promise<SecretsSnapshot>;
-    delete: (id: string) => Promise<SecretsSnapshot>;
-    allowUnprotected: () => Promise<SecretsSnapshot>;
-};
+export interface SecretsClient {
+    // (undocumented)
+    add(provider: SecretProvider, label: string, value: string): Promise<SecretsSnapshot>;
+    allowUnprotected(): Promise<SecretsSnapshot>;
+    // (undocumented)
+    delete(id: string): Promise<SecretsSnapshot>;
+    // (undocumented)
+    list(): Promise<SecretsSnapshot>;
+    // (undocumented)
+    rename(id: string, label: string): Promise<SecretsSnapshot>;
+    // (undocumented)
+    replaceValue(id: string, value: string): Promise<SecretsSnapshot>;
+    // (undocumented)
+    select(id: string): Promise<SecretsSnapshot>;
+}
+
+// @public (undocumented)
+export const secretsClient: SecretsClient;
 
 // @public
 export interface SecretsSnapshot {

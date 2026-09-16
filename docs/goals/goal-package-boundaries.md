@@ -60,7 +60,8 @@ Five packages share responsibilities that should each have one home, and the cod
   |---|---|---|---|
   | `attribute-storage`, `hydrate-sharded` | api `setup/sdk-host-init.ts` | `host/src/ears/lmdb.ts` (through `any` Proxies) | `api/src/core/ears`, `api/src/core/persistence` |
   | `lmdb-query` | api | `host/src/services/trace-store.ts` | `api/src/core/persistence/lmdb/query.ts` |
-  | `trpc`, `bus-emitter` | api (and the renderer registers its API client as `trpc`) | `sdk/src/runtime/rpc.ts` (`@internal`) | `api/src/core/router`, `renderer/src/core/trpc.ts` |
+  | `bus-emitter` | api | `sdk/src/runtime/root-events.ts` (`@internal`) | `api/src/core/router/bus-emitter.ts` |
+  | `secrets-client` | renderer | `sdk/src/fe/secrets-client.ts` (`secretsClient`) | `renderer/src/core/secrets-client.ts` |
   | `router-events` | api | nothing | `api/src/core/router/events.ts` |
   | `event-transport` | api, renderer, test host | `sdk/src/events/index.ts` | `api/src/core/router/event-transport.ts`, `renderer/src/core/event-transport.ts` |
   | `logger` | api | `sdk/src/logger/logger.ts` (`createLogger`, `onLog`) | `api/src/core/shared/debug/logger.ts` (imports `bus-emitter`) |
@@ -203,12 +204,12 @@ Final.
      };
    }
    export function bindHost(runtime: HostRuntime): void;       // once per process; rebinding throws unless reset for tests
-   export function bindFeHost(runtime: { application: AnyActorRef; rpc: RpcClient; packs: FePackRegistryView }): void;  // renderer (was application, and the Vite alias for trpc); `packs` from Phase 7
+   export function bindFeHost(runtime: { application: AnyActorRef; secrets: SecretsClient; packs: FePackRegistryView }): void;  // renderer (was application and secrets-client); `packs` from Phase 7
    ```
    - An unbound use throws, naming `bindHost` (or `bindFeHost` in the frontend).
    - **What reads the binding:**
      - The SDK's `@internal` `rootEvents` (`@abuddy/sdk/runtime`) is `transport.rootEvents`; packs never use it directly (they send through `@abuddy/sdk/events`), and `initRpc()` is deleted.
-     - The SDK's `@internal` `trpc` (`@abuddy/sdk/runtime`, used by `secretsClient`) is the frontend port's `rpc`. The renderer's `trpc` host module registration is removed, and the backend `trpc` registry key is deleted with nothing replacing it.
+     - `secretsClient` reads the frontend port's `secrets` (today the `secrets-client` host module).
      - `navigateToPlugin` reads the frontend port's `application`.
      - `services` reads `packs` for pack services and `services` for the app-implemented three. The SDK builds `logger`, `emitter` and `repository` itself (Decision 6).
      - From Phase 7, the SDK's lookups of what packs registered (designations, steps, artifacts, blocks, seed hooks and seeders, feature settings defaults, pack commands, and in the frontend plugins, tiptap plugins, app extensions and DSL types) read `packs`.
@@ -400,7 +401,7 @@ Phase 4's pack slice (Decision 6). It may land before Phase 1: it reads what onl
 - **The one behaviour change in this goal:** `sendToPlugin` and `services.emitter.sendToPlugin` send `OUTGOING` through the bus actor, so every backend-to-frontend send is dropped until a client connects, as `emit` inside systems already is. E2E covers the code and browser systems' early sends (terminal output, file watchers), and a harness spec shows a send before `connect()` doesn't reach the client.
 - Add `HostRuntime`, `bindHost` and `bindFeHost` (Decision 5).
 - Move event sends, logging and error reports into the SDK over `transport` (Decision 6), with their specs. `getAppVersion()` reads `appVersion`.
-- Convert the remaining SDK readers to the bound runtime: `rootEvents` and `trpc` (`runtime/rpc.ts`), `services`, and `navigateToPlugin` (`fe/navigation.ts`). Delete `initRpc()`, the renderer's `trpc` host module registration and the backend `trpc` key.
+- Convert the remaining SDK readers to the bound runtime: `rootEvents` (`runtime/root-events.ts`), `secretsClient` (`fe/secrets-client.ts`), `services`, and `navigateToPlugin` (`fe/navigation.ts`). Delete `initRpc()` and the renderer's `secrets-client` host module registration.
 - The api binds `createHostRuntime`, and the renderer binds the frontend port with its `application` actor and tRPC client.
 - `startTestRuntime` binds the in-memory runtime (its test bus as `transport`), and the harness binds with its `packs`.
   - The test host prints log events from its bus to the console, as its console logger does today.

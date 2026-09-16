@@ -150,8 +150,8 @@ Final.
    - `fe/delegates.ts` becomes `fe/navigation.ts` (`navigateToPlugin`, `openInAppBrowser`, `useState`).
 8. **Entry points say what they hold.**
    - `@abuddy/sdk/templates` holds `executeTemplate`, `createTemplateResolver` and `TemplateResolver`. `@abuddy/sdk/runtime` keeps only the host registry, for the host, until goal-package-boundaries.md replaces it.
-   - `@abuddy/sdk/rpc` is removed: event types go to `events`, and `rootEvents`/`trpc` move under `@abuddy/sdk/runtime` marked `@internal`.
-   - The renderer's Vite alias maps the renderer client for the SDK's internal use only.
+   - `@abuddy/sdk/rpc` is removed: event types go to `events`, and `rootEvents` moves under `@abuddy/sdk/runtime` marked `@internal`.
+   - (Revised after review) The SDK holds no API client and the renderer's Vite alias is removed: `secretsClient`, the one frontend use, calls a narrow `secrets-client` host module the renderer registers. The `trpc` host module keys (the renderer's client, the api's server builders) are deleted.
    - `@abuddy/sdk/utils` loses `reportSystemError` (Decision 5) and `getAppVersion` (Decision 7). `runMigrations` stays until goal-package-boundaries.md Phase 4.
    - `api/src/core/shared/actor-helpers.ts` is deleted in favour of the SDK's helpers.
 9. **Scope.**

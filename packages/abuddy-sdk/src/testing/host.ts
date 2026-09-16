@@ -2,7 +2,7 @@
 // boot (api/src/setup/sdk-host-init.ts), minus persistence, clients and the filesystem.
 import { EventEmitter } from 'node:events';
 import { registerHostModule, getHostModule } from '../runtime/host.ts';
-import { initRpc, type RootEvents } from '../runtime/rpc.ts';
+import { initRpc, type RootEvents } from '../runtime/root-events.ts';
 import type { EventTransport, IncomingSystemEvents, OutgoingSystemEvents } from '../events/index.ts';
 import { getAllEntities, getAttr } from '../ears/attribute-storage.ts';
 import { findRelations } from '../ears/relations.ts';
