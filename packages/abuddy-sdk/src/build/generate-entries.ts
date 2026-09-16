@@ -158,7 +158,7 @@ export type AllEntities = EARS.Entity;
 // Names the generated facades provide: re-exporting a dependency's would shadow them
 const EARS_PROVIDED = new Set(['EARS', 'BaseEntity', 'AllEntities', 'PackEntityShapes', 'PackEvents', 'Repositories']);
 
-export function parseExportedTypeNames(content: string): string[] {
+function parseExportedTypeNames(content: string): string[] {
   const names: string[] = [];
   // `export type { Local as Exported }` exports the name after `as`
   for (const m of content.matchAll(/^export\s+type\s+\{([^}]+)\}/gm))
@@ -288,7 +288,7 @@ function depFlowHelpersFile(depId: string, extension: '.js' | '.d.ts'): string {
 }
 
 /** The line naming the dependency version a facade types file was generated from */
-export function depTypesHeader(depId: string, version: string): string {
+function depTypesHeader(depId: string, version: string): string {
   return `// ${depId}@${version} facade types\n`;
 }
 

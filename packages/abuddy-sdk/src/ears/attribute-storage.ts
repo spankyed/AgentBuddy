@@ -2,10 +2,8 @@ import { relationIndex, addToIndex, removeFromIndex, updateIndex, clearRelationI
 import { EARS } from '../types/entities.ts';
 // Import directly — not from '../utils' barrel which pulls in Node-only modules (fs, child_process)
 import { randomId } from '../utils/random-id.ts';
+import { isPlainObject } from '../utils/shared.ts';
 import { getPersistence } from './runtime.ts';
-
-const isPlainObject = (val: unknown): val is Record<string, unknown> =>
-  typeof val === 'object' && val !== null && !Array.isArray(val);
 
 /**
  * Creates an id for a new entity of type `t`. A pack's `#generated/ears` exports this

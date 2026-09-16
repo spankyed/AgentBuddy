@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { parse as parseYaml } from 'yaml';
+import { toDisplayName } from '../../utils/shared.ts';
 
 /** A markdown file or directory, as `compileMarkdownTree` reads it */
 export interface MarkdownItem {
@@ -33,9 +34,7 @@ export const MEDIA_DIR = 'media';
 const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n\n?/;
 
 /** `-` becomes a space: `getting-started` reads as `getting started` */
-export function toDisplayName(filename: string): string {
-  return filename.replace(/-/g, ' ');
-}
+export { toDisplayName };
 
 /** Splits a markdown file into YAML frontmatter (YAML 1.2) and body */
 export function parseMarkdownFile(text: string, file = '<markdown>'): { frontmatter: Record<string, unknown>; body: string } {

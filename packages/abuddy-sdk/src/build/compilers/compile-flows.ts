@@ -6,13 +6,6 @@ import type { ValidationResult } from '../seed-compiler.ts';
 import { isFlowConfig, type FlowConfig, type FlowDSL } from './flow-types.ts';
 import { validate } from './flow-dsl-validator.ts';
 
-export interface FlowCompileResult {
-  merged: Record<string, object>;
-  rootFlowName: string | null;
-  loaded: number;
-  validation: ValidationResult;
-}
-
 export async function loadFlowsFromDir(flowsDir: string): Promise<{
   merged: FlowDSL;
   rootFlowName: string | null;
