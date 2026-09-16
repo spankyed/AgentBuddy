@@ -4,6 +4,12 @@
  * directory, which holds exactly the verified bundle files and is replaced on every install.
  *
  *   <userDataDir>/pack-dev-servers/<packId>.json   { port, pid }
+ *
+ * A marker means a dev server is running, never that anything on disk is current, so nothing may read
+ * it to skip a build or a sync. `abuddy dev` writes only to the development data dir, so a test run
+ * reads its own and never sees one. (N4 in
+ * `docs/issues/postmortem-external-pack-calendar-extraction.md`: a run that skipped both and tested a
+ * stale copy.)
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
