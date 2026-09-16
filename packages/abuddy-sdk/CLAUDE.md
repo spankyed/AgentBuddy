@@ -31,7 +31,7 @@ Each directory is one `package.json` export (`./<dir>` → `src/<dir>/index.ts`)
 `abuddy build` (`packages/abuddy-cli/src/commands/build.ts`) runs these pieces in order: `parseManifest`, then codegen (`generatePackFiles`), then `buildPackConfigFromManifest` and `compilePack`. It writes the snapshot and bundles itself; the FE bundler is `abuddy-cli/src/build/fe-bundler.ts`, not an SDK module.
 
 - **Manifest schema** (`manifest-schema.ts`): the Zod `ManifestSchema` is the single source for `abuddy.json`.
-  - `manifest.ts` derives `PackManifest` and the other types with `z.infer`. It also defines `PackSnapshot`, `PackFlowHelpers`, `seedFile`/`seedPath` and `SEED_COMPILERS_FILE`.
+  - `manifest.ts` derives `PackManifest` and the other types with `z.infer`. It also defines `PackSnapshot` (with `dependencyCommands`, the commands declared across the pack's dependency tree), `PackFlowHelpers`, `dependencyCommands()`, `seedFile`/`seedPath` and `SEED_COMPILERS_FILE`.
   - The cross-field rules live in `superRefine`:
     - Only built-in packs may have a `settings` seed or an `earlySystem`.
     - A `boot.seed` format must name a `seedFormats` entry or `<dependency>:<name>`.

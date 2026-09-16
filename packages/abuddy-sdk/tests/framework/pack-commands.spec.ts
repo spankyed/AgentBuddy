@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { getPackCommands, packCommandsRegistry } from '../../src/framework/pack-commands.ts';
 
 afterEach(() => {
-  for (const id of ['memo-pack', 'todo-pack', 'clashing-pack']) packCommandsRegistry.unregister(id);
+  for (const id of ['memo-pack', 'todo-pack', 'clashing-pack', 'first-pack', 'second-pack']) packCommandsRegistry.unregister(id);
 });
 
 describe('packCommandsRegistry', () => {
@@ -45,6 +45,16 @@ describe('packCommandsRegistry', () => {
 
     packCommandsRegistry.register('memo-pack', []);
     expect(getPackCommands().map((command) => command.name)).toEqual(['todo']);
+  });
+
+  it('puts a pack that unregisters and registers again (a reload or update) back in its first place', () => {
+    packCommandsRegistry.register('first-pack', [{ name: 'first', placeholder: 'A' }]);
+    packCommandsRegistry.register('second-pack', [{ name: 'second', placeholder: 'B' }]);
+
+    packCommandsRegistry.unregister('first-pack');
+    packCommandsRegistry.register('first-pack', [{ name: 'first', placeholder: 'A, rebuilt' }]);
+
+    expect(getPackCommands().map((command) => command.name)).toEqual(['first', 'second']);
   });
 
   it("hands out copies: changing a listed command or the declared array doesn't change the registry", () => {

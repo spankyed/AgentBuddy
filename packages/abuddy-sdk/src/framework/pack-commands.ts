@@ -12,10 +12,17 @@ export interface PackCommand {
 }
 
 const registered = new Map<string, PackCommand[]>();
+/**
+ * Each pack's place in the list, from its first registration. Kept when the pack unregisters, so a
+ * reload or update re-registers it where it was rather than after every other pack.
+ */
+const rank = new Map<string, number>();
 
-/** Every registered pack's declared commands, in registration order */
+/** Every registered pack's declared commands, in the order the packs were first registered */
 export function getPackCommands(): PackCommand[] {
-  return [...registered.values()].flat().map((command) => ({ ...command }));
+  return [...registered]
+    .sort(([a], [b]) => rank.get(a)! - rank.get(b)!)
+    .flatMap(([, commands]) => commands.map((command) => ({ ...command })));
 }
 
 /** @internal Host-only: the pack registry registers each pack's declared commands */
@@ -34,6 +41,7 @@ export const packCommandsRegistry = {
       registered.delete(packId);
       return;
     }
+    if (!rank.has(packId)) rank.set(packId, rank.size);
     registered.set(packId, commands.map((command) => ({ ...command })));
   },
 

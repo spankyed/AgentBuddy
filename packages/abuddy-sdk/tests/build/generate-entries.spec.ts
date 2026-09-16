@@ -102,9 +102,15 @@ describe('generated backend entry', () => {
   it('fails for a command a dependency declares, which the app would refuse to register', () => {
     const base = { 'base-pack': dependency({ commands: [{ name: 'instructions', placeholder: 'Theirs' }] }) };
     expect(() => generate({ commands: [{ name: 'instructions', placeholder: 'Mine' }], features: [system('brain')] }, base))
-      .toThrow('Command "instructions" is declared by dependency "base-pack" too');
+      .toThrow('Command "instructions" is declared by "base-pack", which this pack depends on');
     expect(generate({ commands: [{ name: 'memo', placeholder: 'Mine' }], features: [system('brain')] }, base)['src/__generated__/pack-entry.ts'])
       .toContain('commands: [{"name":"memo","placeholder":"Mine"}],');
+  });
+
+  it("fails for a command a dependency's own dependency declares, from the snapshot's dependencyCommands", () => {
+    const mid = { 'mid-pack': { ...dependency({ id: 'mid-pack' }), dependencyCommands: [{ name: 'pr2md', packId: 'default-setup' }] } };
+    expect(() => generate({ commands: [{ name: 'pr2md', placeholder: 'Mine' }], features: [system('brain')] }, mid))
+      .toThrow('Command "pr2md" is declared by "default-setup", which this pack depends on');
   });
 });
 

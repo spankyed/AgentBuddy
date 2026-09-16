@@ -218,6 +218,29 @@ export function deepMerge(target: Record<string, unknown>, source: Record<string
 // @public
 export function defaultSourceHash(record: SeedRecord): string;
 
+// @public
+export interface DependencyCommand {
+    // (undocumented)
+    name: string;
+    // (undocumented)
+    packId: string;
+}
+
+// @internal
+export function dependencyCommands(snapshots: ReadonlyArray<readonly [string, DependencyCommandSource]>): DependencyCommand[];
+
+// @public
+export interface DependencyCommandSource {
+    // (undocumented)
+    dependencyCommands?: ReadonlyArray<DependencyCommand>;
+    // (undocumented)
+    manifest: {
+        commands?: ReadonlyArray<{
+            name: string;
+        }>;
+    };
+}
+
 // @internal
 export function depTypesFile(depId: string): string;
 
@@ -1341,6 +1364,7 @@ export interface PackSeedsPreview {
 export interface PackSnapshot {
     // (undocumented)
     defs: Record<string, string>;
+    dependencyCommands?: DependencyCommand[];
     flowHelpers?: PackFlowHelpers;
     // (undocumented)
     manifest: PackManifest;

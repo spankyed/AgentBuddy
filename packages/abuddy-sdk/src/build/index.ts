@@ -39,12 +39,12 @@ export { buildPackConfigFromManifest, resolveFeatureSettingsFromManifest } from 
 
 // Pack manifest types
 export type {
-  PackManifest, PackTypeManifest, PackSnapshot, PackFlowHelpers, PackPermission,
+  PackManifest, PackTypeManifest, PackSnapshot, PackFlowHelpers, PackPermission, DependencyCommand, DependencyCommandSource,
   PackSystemEntry, PackPluginEntry,
   PackFeatureEntry, PackBootConfig, SeedEntryConfig, SeedFormatConfig,
   StepEntry, StepDSLMeta,
 } from './manifest.ts';
-export { seedFile, seedPath, SEED_COMPILERS_FILE } from './manifest.ts';
+export { seedFile, seedPath, SEED_COMPILERS_FILE, dependencyCommands } from './manifest.ts';
 
 // Flow DSL helpers (track builders)
 export { entry, on } from './flow-helpers.ts';

@@ -14,9 +14,14 @@ import { settingsRepository } from '@abuddy/host/settings';
 
 const logger = createLogger('pack-lifecycle');
 
+/**
+ * Stops and unregisters a pack. `replacing` means an activation of the same pack follows (an update):
+ * the caller sends PACK_CHANGED once that completes, so running systems never see the pack missing.
+ */
 export function teardownPack(
   packId: string,
   busActor: import('xstate').AnyActorRef,
+  { replacing = false }: { replacing?: boolean } = {},
 ): void {
   const contributions = getPackContributions(packId);
   const systemIds = contributions?.systems ?? [];
@@ -45,7 +50,7 @@ export function teardownPack(
     busActor.send({ type: 'TEARDOWN_PACK', systemIds });
   }
   // The systems still running read what the pack registered (its slash commands, say)
-  busActor.send({ type: 'PACK_CHANGED', packId });
+  if (!replacing) busActor.send({ type: 'PACK_CHANGED', packId });
 
   logger.info(`Pack torn down: ${packId} (${systemIds.length} systems stopped)`);
 }

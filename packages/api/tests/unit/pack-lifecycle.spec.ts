@@ -228,6 +228,20 @@ describe('activating and tearing down a pack at runtime', () => {
     expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['TEARDOWN_PACK', 'PACK_CHANGED']);
     expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
   });
+
+  it("says nothing when torn down to be replaced, so the systems never see the updating pack missing", async () => {
+    await install();
+    const { activatePack, teardownPack } = await import('@/packs/pack-lifecycle');
+    activatePack(PACK_ID, bus as never);
+    bus.send.mockReset();
+
+    teardownPack(PACK_ID, bus as never, { replacing: true });
+    expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['TEARDOWN_PACK']);
+
+    // The activation that replaces it announces the change once
+    activatePack(PACK_ID, bus as never);
+    expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['TEARDOWN_PACK', 'PACK_CHANGED', 'ACTIVATE_PACK']);
+  });
 });
 
 describe('registry source and update tracking', () => {

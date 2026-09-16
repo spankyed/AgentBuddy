@@ -11,6 +11,7 @@ import { seedData } from '@abuddy/sdk/utils'
 import { packCommandsRegistry } from '@abuddy/sdk/framework'
 import { repository } from '@/__generated__/repository'
 import { services } from '@/__generated__/services'
+import manifest from '../../abuddy.json'
 
 const DIST = path.resolve(import.meta.dirname, '../../dist')
 
@@ -100,6 +101,22 @@ describe('slash commands from the library commands folder', () => {
     const app = await seededApp()
     await app.send('library', { type: 'RENAME_ITEM', id: commandsFolderId(), name: 'old-commands', itemType: 'folder' })
     expect(commandNames(await app.nextEmit('threads', 'COMMANDS_UPDATED'))).toEqual(['pr2md', 'instructions'])
+  })
+
+  it("reports only a failure for seeds that don't name their pack, even when no section is selected", async () => {
+    // With every section deselected no seeder runs, so nothing else reads the missing pack id
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'unnamed-seeds-'))
+    dependentDirs.push(dir)
+    fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, seeds: [] }))
+    const nothing = Object.fromEntries(Object.keys(manifest.boot.seed).map((key) => [key, []]))
+    const app = await startApp({ systems: ['library', 'threads', 'brain', 'settings'] })
+    await app.connect()
+
+    await app.send('settings', { type: 'IMPORT_PACK_SEEDS', directory: dir, include: nothing, mode: 'replace-on-collision', restartBrain: false })
+    const failed = await app.nextEmit('settings', 'PACK_SEEDS_IMPORT_FAILED') as unknown as { error: string }
+
+    expect(failed.error).toContain("doesn't name the pack that compiled these seeds")
+    expect(app.emitted('settings').map((event) => event.type)).not.toContain('PACK_SEEDS_IMPORTED')
   })
 
   it('sends the chat the commands pack seeds imported from Settings bring', async () => {

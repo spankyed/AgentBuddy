@@ -59,9 +59,14 @@ function hashStoredFields(id: EARS.EntityId, fields: string[]): string {
  * packs' records with the same entry key and identity seed a row each.
  */
 export function seedingPackId(compiledDir: string): string {
-  const index = loadJSON<Partial<SeedIndex>>(path.join(compiledDir, SEED_INDEX_FILE));
+  const indexFile = path.join(compiledDir, SEED_INDEX_FILE);
+  return indexPackId(loadJSON<Partial<SeedIndex>>(indexFile), indexFile);
+}
+
+/** The pack a parsed seeds index names; an index from before packs were recorded names none */
+export function indexPackId(index: Partial<SeedIndex> | null, indexFile: string): string {
   if (!index?.packId) {
-    throw new Error(`${path.join(compiledDir, SEED_INDEX_FILE)} doesn't name the pack that compiled these seeds: rebuild the pack with abuddy build`);
+    throw new Error(`${indexFile} doesn't name the pack that compiled these seeds: rebuild the pack with abuddy build`);
   }
   return index.packId;
 }

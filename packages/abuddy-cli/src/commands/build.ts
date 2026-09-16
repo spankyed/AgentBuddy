@@ -9,6 +9,7 @@ import {
   PACK_TYPES_DEF,
   entitiesWithoutShapes,
   SEED_COMPILERS_FILE,
+  dependencyCommands,
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type SeedDependency,
 } from '@abuddy/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
@@ -100,12 +101,14 @@ export async function build(args: string[]) {
   // and their manifests and build dirs, so entries naming their seed formats compile with them
   const dependencyStepModules: string[] = [];
   const dependencies = new Map<string, SeedDependency>();
+  const depSnapshots = new Map<string, PackSnapshot>();
   for (const [depId, depValue] of Object.entries(manifest.dependencies ?? {})) {
     const artifacts = await resolveDepArtifacts(root, depId, depValue);
     if (!artifacts) throw new Error(`Dependency "${depId}" could not be resolved`);
     const stepsModule = artifacts.buildDir && path.join(artifacts.buildDir, 'steps.build.mjs');
     if (stepsModule && fs.existsSync(stepsModule)) dependencyStepModules.push(stepsModule);
     dependencies.set(depId, { manifest: artifacts.snapshot.manifest, ...(artifacts.buildDir && { buildDir: artifacts.buildDir }) });
+    depSnapshots.set(depId, artifacts.snapshot);
   }
   warnStaleDepTypes(root, new Map([...dependencies].map(([depId, dep]) => [depId, dep.manifest.version])));
 
@@ -163,9 +166,12 @@ export async function build(args: string[]) {
     console.error(`\nFlow helpers bundle failed: ${flowHelpers.error}`);
     process.exitCode = 1;
   }
+  // Dependents check their commands against this pack's whole dependency tree through it
+  const depCommands = dependencyCommands([...depSnapshots]);
   const snapshot: PackSnapshot = {
     types, defs, manifest, sdkVersion: sdkVersion(),
     ...(flowHelpers.success && { flowHelpers: flowHelpers.flowHelpers }),
+    ...(depCommands.length > 0 && { dependencyCommands: depCommands }),
   };
   fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
   fs.writeFileSync(snapshotPath, JSON.stringify(snapshot, null, 2));

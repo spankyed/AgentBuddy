@@ -21,7 +21,7 @@ The `abuddy.json` file at the root of your pack is the single source of truth. I
 | `blocks` | `string` | no | Path to block registration file |
 | `migrations` | `string` | no | Path to migrations index file |
 | `packServices` | `Record<string, string>` | no | Pack-level services, in the same form as [`features[].services`](#packfeatureentry-fields) |
-| `commands` | `{ name, placeholder }[]` | no | Slash commands the pack adds to the chat: `name` as typed after the `/` (`^[a-z][a-z0-9-]*$`, unique across the app), `placeholder` what the composer shows after it. Sending one fires a `user.command` event your flows handle; see [Slash commands](seeds.md#slash-commands) |
+| `commands` | `{ name, placeholder }[]` | no | Slash commands the pack adds to the chat: `name` as typed after the `/` (`^[a-z][a-z0-9-]*$`, unique across the app: `abuddy build` fails when a dependency, or anything it depends on, declares it), `placeholder` what the composer shows after it. Sending one fires a `user.command` event your flows handle; see [Slash commands](seeds.md#slash-commands) |
 | `defaultPlugin` | `string` | no | Feature ID of the default sidebar plugin |
 | `entities` | `Record<string, string>` | no | EARS entity type declarations; see [Entities and relations](#entities-and-relations) |
 | `relKinds` | `Record<string, string>` | no | EARS relation kind declarations; see [Entities and relations](#entities-and-relations) |

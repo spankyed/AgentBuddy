@@ -1,6 +1,6 @@
 import { readFileSync, existsSync, statSync } from 'fs';
 import { extname, join } from 'path';
-import type { PackManifest, PackFeatureEntry, PackTypeManifest, PackSnapshot, StepEntry } from './manifest.ts';
+import { dependencyCommands, type PackManifest, type PackFeatureEntry, type PackTypeManifest, type PackSnapshot, type StepEntry } from './manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
 import { formatEntities } from './seeds/records.ts';
 import { resolveSeeds, type ResolvedSeed } from './seeds/resolve.ts';
@@ -359,15 +359,16 @@ export function generatePackFiles(
    */
   function declaredCommands(): NonNullable<PackManifest['commands']> {
     const commands = manifest.commands ?? [];
+    const taken = dependencyCommands([...depSnapshots]);
     for (const { name } of commands) {
-      for (const [depId, snap] of depSnapshots) {
-        if (snap.manifest.commands?.some((command) => command.name === name)) {
-          throw new Error(`Command "${name}" is declared by dependency "${depId}" too: the app refuses a pack whose command another pack declares, so rename it in abuddy.json \`commands\``);
-        }
+      const owner = taken.find((command) => command.name === name)?.packId;
+      if (owner) {
+        throw new Error(`Command "${name}" is declared by "${owner}", which this pack depends on: the app refuses a pack whose command another pack declares, so rename it in abuddy.json \`commands\``);
       }
     }
     return commands;
   }
+  const commands = declaredCommands();
 
   // ── Manifest export targets ────────────────────────────────────
 
@@ -538,7 +539,7 @@ ${stepsRegister ? '  steps,' : ''}
 ${manifest.artifacts ? '  artifacts,' : ''}
 ${manifest.blocks ? '  blocks,' : ''}
 ${hookEntries.length > 0 ? `  seedHooks: { ${hookEntries.map(([entity]) => `${entity}: __seedHooks_${entity}`).join(', ')} },` : ''}
-${declaredCommands().length ? `  commands: ${JSON.stringify(declaredCommands())},` : ''}
+${commands.length ? `  commands: ${JSON.stringify(commands)},` : ''}
   ears: {
     // Only this pack's own: EARS also names its dependencies' and the SDK's, which they register
     entities: ${JSON.stringify(manifest.entities ?? {})},
