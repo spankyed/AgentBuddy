@@ -46,13 +46,13 @@ A command module exports `async (args: string[]) => void`; `src/index.ts` maps t
 1. `parseManifest`; `clearBuildOutput` (external: all of `dist/`; built-in: only this build's outputs, since the runtime build also writes there).
 2. Unless `--skip-generate`: `resolveDeps` → `generate` → `generateEntries`.
 3. `featureSettingsProblems` (each `features[].settings` through `checkFeatureSettings`).
-4. Dependencies' `steps.build.mjs` and manifests feed `buildPackConfigFromManifest`; `compilePack` compiles `boot.seed` (pack TypeScript loaded with tsx's `tsImport`).
-5. Facade types: `bundlePackTypes` (`build/types-bundler.ts`, rollup-plugin-dts) → `dist/types/pack-types.d.ts`, then the facade gate (below). Then `bundlePackFlowHelpers` (`build/flow-helpers-bundler.ts`) and the snapshot.
-6. `bundlePackStepBuild` (manifest `steps.build`), `bundlePackSeedRuntime` + `checkSeedRuntimeLoads`, `bundleDslDefs` (`build/dsl-defs.ts`, manifest `dsl`), `bundlePackSeedCompilers` (`seedFormats[].compiler`).
+4. Dependencies' `steps.build.mjs` and manifests feed `buildPackConfigFromManifest`; `compilePack` compiles `boot.seed` (pack TypeScript loaded with tsx's `tsImport`), then `bundlePackSeedCompilers` (`seedFormats[].compiler`).
+5. Facade types: `bundlePackTypes` (`build/types-bundler.ts`, rollup-plugin-dts) → `dist/types/pack-types.d.ts`, then the facade gate (below). Then `bundlePackFlowHelpers` (`build/flow-helpers-bundler.ts`); the snapshot is written last, once every step succeeded.
+6. `bundlePackStepBuild` (manifest `steps.build`), `bundlePackSeedRuntime` + `checkSeedRuntimeLoads`, `bundleDslDefs` (`build/dsl-defs.ts`, manifest `dsl`).
 7. Built-in packs stop here: their FE goes into the renderer (`virtual:built-in-packs`) and their backend into the API bundle.
 8. External packs: `bundlePackRuntime` → `dist/runtime/index.cjs`, then `bundlePackFE` (`build/fe-bundler.ts`, Vite library build) for `findFEEntry()` unless `--skip-fe`.
 
-A failing bundle or gate sets `process.exitCode = 1` and the build continues, so every failure gets reported. `BUNDLE_PATHS` (`@abuddy/host/packs`) names every output path.
+A failing bundle or gate is reported and the build continues, so every failure shows; the build then throws before writing the snapshot (built-in packs after step 6, external packs after step 8), so a failed build never leaves a snapshot advertising its output. The seed-compiler bundle fails the build immediately. `BUNDLE_PATHS` (`@abuddy/host/packs`) names every output path.
 
 - **`build/be-bundler.ts`**: `buildPackBundle` is the shared esbuild setup (pack tsconfig, path aliases, `package.json` `imports`, `rejectHostImportsPlugin`, `stubFrontendAssetsPlugin`). `HOST_EXTERNALS` = `SHARED_DEPS` + `@abuddy/sdk/*`. The seed runtime keeps only `@abuddy/sdk` external.
 - **`build/seed-runtime-check.ts`**: loads `dist/build/seed-runtime.mjs` in a fresh Node process with the SDK's optional peers blocked by a resolve hook, as a dependent's harness would load it.

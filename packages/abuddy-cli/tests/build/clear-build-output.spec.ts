@@ -84,3 +84,23 @@ describe('a pack whose seed compiler modules fail to bundle', () => {
     expect(list(dir)).not.toContain('snapshot.json');
   });
 });
+
+describe('a pack whose runtime fails to bundle', () => {
+  it('reports it and fails the build without writing the snapshot', async () => {
+    dist = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-clear-output-')), 'dist');
+    const root = path.dirname(dist);
+    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'broken-runtime', type: 'module' }));
+    fs.mkdirSync(path.join(root, 'src', '__generated__'), { recursive: true });
+    // The generated backend entry the runtime bundles doesn't parse
+    fs.writeFileSync(path.join(root, 'src', '__generated__', 'pack-entry.ts'), 'export default {;\n');
+    fs.writeFileSync(path.join(root, 'abuddy.json'), JSON.stringify({ id: 'broken-runtime', name: 'Broken', version: '1.0.0' }));
+    const cwd = process.cwd();
+    process.chdir(root);
+    try {
+      await expect(build(['--skip-generate', '--skip-fe'])).rejects.toThrow(/Build failed, so no snapshot was written:\n[\s\S]*Runtime bundle failed/);
+    } finally {
+      process.chdir(cwd);
+    }
+    expect(list(dist)).not.toContain('types/snapshot.json');
+  });
+});

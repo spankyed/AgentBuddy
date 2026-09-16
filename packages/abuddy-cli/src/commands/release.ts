@@ -137,9 +137,7 @@ function hasScript(root: string, name: string): boolean {
 
 async function verify(root: string, options: { skipTests: boolean; skipE2e: boolean; run: Runner }): Promise<void> {
   console.log('\nBuilding (release)...');
-  process.exitCode = 0;
   await build(['--release']);
-  if (process.exitCode) throw new Error('Release build failed');
 
   if (fs.existsSync(path.join(root, 'tsconfig.json'))) {
     console.log('Typechecking...');
@@ -152,6 +150,7 @@ async function verify(root: string, options: { skipTests: boolean; skipE2e: bool
   if (!options.skipE2e && fs.existsSync(path.join(root, 'playwright.config.ts'))) {
     console.log('Running E2E tests...');
     const { test } = await import('./test');
+    process.exitCode = 0;
     await test([]);
     if (process.exitCode) throw new Error('E2E tests failed');
   }

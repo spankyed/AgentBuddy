@@ -151,6 +151,14 @@ export async function build(args: string[]) {
     if (!bundled.success) throw new Error(`Seed compiler bundle failed: ${bundled.error}`);
   }
 
+  // Every failed bundle or gate is reported, then fails the build before the snapshot is written:
+  // a snapshot advertises output dependents and installs rely on
+  const failures: string[] = [];
+  const fail = (message: string) => {
+    console.error(`\n${message}`);
+    failures.push(message.split('\n')[0]);
+  };
+
   const types: PackTypeManifest = {
     entities: manifest.entities ?? {},
     relKinds: manifest.relKinds ?? {},
@@ -165,18 +173,13 @@ export async function build(args: string[]) {
     defs[PACK_TYPES_DEF] = packTypes.content;
   } else if (packTypes.success) {
     // Dependents would read these types as `any` or fail to compile against them
-    console.error(`\nPack types aren't usable by packs that depend on this one. The types of what abuddy.json exposes (entity shapes, events, services, repositories) must check on their own and import only packages dependents have:\n${packTypesProblems.map((p) => `  - ${p}`).join('\n')}`);
-    process.exitCode = 1;
+    fail(`Pack types aren't usable by packs that depend on this one. The types of what abuddy.json exposes (entity shapes, events, services, repositories) must check on their own and import only packages dependents have:\n${packTypesProblems.map((p) => `  - ${p}`).join('\n')}`);
   } else {
-    console.error(`\nPack types bundle failed: ${packTypes.error}`);
-    process.exitCode = 1;
+    fail(`Pack types bundle failed: ${packTypes.error}`);
   }
   // Flow helpers for dependents: their generated flow helpers re-export this pack's
   const flowHelpers = await bundlePackFlowHelpers(root, path.join(outputDir, BUNDLE_PATHS.typesDir), { release });
-  if (!flowHelpers.success) {
-    console.error(`\nFlow helpers bundle failed: ${flowHelpers.error}`);
-    process.exitCode = 1;
-  }
+  if (!flowHelpers.success) fail(`Flow helpers bundle failed: ${flowHelpers.error}`);
   // Dependents check their commands against this pack's whole dependency tree through it
   const depCommands = dependencyCommands([...depSnapshots]);
   const snapshot: PackSnapshot = {
@@ -184,8 +187,14 @@ export async function build(args: string[]) {
     ...(flowHelpers.success && { flowHelpers: flowHelpers.flowHelpers }),
     ...(depCommands.length > 0 && { dependencyCommands: depCommands }),
   };
-  fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
-  fs.writeFileSync(snapshotPath, JSON.stringify(snapshot, null, 2));
+  const finish = () => {
+    if (failures.length > 0) {
+      throw new Error(`Build failed, so no snapshot was written:\n${failures.map((f) => `  - ${f}`).join('\n')}`);
+    }
+    fs.mkdirSync(path.dirname(snapshotPath), { recursive: true });
+    fs.writeFileSync(snapshotPath, JSON.stringify(snapshot, null, 2));
+    console.log(`\nOutput: ${path.relative(process.cwd(), outputDir)}/`);
+  };
 
   console.log(`\nBuild complete:`);
   if (result) {
@@ -213,8 +222,7 @@ export async function build(args: string[]) {
     if (stepBuild.success) {
       console.log(`  step build: dist/${BUNDLE_PATHS.stepsBuild}`);
     } else {
-      console.error(`\nStep build bundle failed: ${stepBuild.error}`);
-      process.exitCode = 1;
+      fail(`Step build bundle failed: ${stepBuild.error}`);
     }
   }
 
@@ -223,8 +231,7 @@ export async function build(args: string[]) {
   if (seedRuntime.success) {
     console.log(`  seed runtime: dist/${BUNDLE_PATHS.buildDir}/${SEED_RUNTIME_FILE}`);
   } else {
-    console.error(`\nSeed runtime bundle failed: ${seedRuntime.error}`);
-    process.exitCode = 1;
+    fail(`Seed runtime bundle failed: ${seedRuntime.error}`);
   }
 
   if (seedCompilersBundled) console.log(`  seed compilers: dist/${BUNDLE_PATHS.buildDir}/${SEED_COMPILERS_FILE}`);
@@ -235,15 +242,14 @@ export async function build(args: string[]) {
     if (defs.success) {
       for (const file of defs.files) console.log(`  dsl defs: ${file}`);
     } else {
-      console.error(`\nDSL definitions bundle failed: ${defs.error}`);
-      process.exitCode = 1;
+      fail(`DSL definitions bundle failed: ${defs.error}`);
     }
   }
 
   if (!external) {
     // Built-in packs' FE is compiled into the renderer (virtual:built-in-packs) and their
     // backend into the API bundle, never loaded from dist/
-    console.log(`\nOutput: ${path.relative(process.cwd(), outputDir)}/`);
+    finish();
     return;
   }
 
@@ -252,8 +258,7 @@ export async function build(args: string[]) {
   if (runtimeResult.success) {
     console.log(`  runtime: dist/${BUNDLE_PATHS.runtimeEntry}`);
   } else {
-    console.error(`\nRuntime bundle failed: ${runtimeResult.error}`);
-    process.exitCode = 1;
+    fail(`Runtime bundle failed: ${runtimeResult.error}`);
   }
 
   // ── FE bundling ──────────────────────────────────────────────────────
@@ -267,10 +272,9 @@ export async function build(args: string[]) {
         console.log(`  fe styles: dist/${BUNDLE_PATHS.feStyles}`);
       }
     } else {
-      console.error(`\nFE bundle failed: ${feResult.error}`);
-      process.exitCode = 1;
+      fail(`FE bundle failed: ${feResult.error}`);
     }
   }
 
-  console.log(`\nOutput: ${path.relative(process.cwd(), outputDir)}/`);
+  finish();
 }
