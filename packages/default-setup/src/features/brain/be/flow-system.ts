@@ -1,7 +1,7 @@
 import { qx } from '@/__generated__/ears';
 import { untypedQx } from '@abuddy/sdk/ears';
 import { services as appServices } from '@/__generated__/services';
-import { setup, sendParent, enqueueActions, raise } from 'xstate';
+import { setup, sendParent, enqueueActions, raise, type AnyStateMachine } from 'xstate';
 import type { NodeEntity } from '@/__generated__/types';
 import { repository } from '@/__generated__/repository';
 
@@ -150,6 +150,23 @@ function createChildNode(
   const systemId = `${spawnsSubflow ? 'flow' : 'step'}-tnode-${tNodeId}`;
 
   return [machine, systemId, tNode] as const;
+}
+
+/**
+ * Spawns a flow's child (a step or a subflow) under its own id as well as its system id. The id is the
+ * key the parent tracks the child by: without one every child shares a key, so stopping this flow stops
+ * only the last one spawned and the rest keep running with their system ids still taken.
+ *
+ * XState types `id` from a machine's declared children, and a flow's are dynamic — one per trace node —
+ * so the id is passed through this one cast rather than at each call site.
+ */
+function spawnFlowChild(
+  enqueue: unknown,
+  machine: AnyStateMachine,
+  systemId: string,
+): void {
+  const spawner = enqueue as { spawnChild(logic: AnyStateMachine, options: { id: string; systemId: string; input: object }): void };
+  spawner.spawnChild(machine, { id: systemId, systemId, input: {} });
 }
 
 /**
@@ -356,10 +373,7 @@ export function createFlowNodeSystem(
                 );
 
                 // Spawn child (both flows and steps)
-                enqueue.spawnChild(machine, {
-                  systemId,
-                  input: {} // Add empty input to satisfy TypeScript
-                });
+                spawnFlowChild(enqueue, machine, systemId);
 
                 // Emit TNODE_SPAWNED event for the UI to display child node
                 system.get(brain).send({
@@ -517,10 +531,7 @@ export function createFlowNodeSystem(
               );
 
               // Spawn next child (both flows and steps)
-              enqueue.spawnChild(nextMachine, {
-                systemId: nextSystemId,
-                input: {} // Add empty input to satisfy TypeScript
-              });
+              spawnFlowChild(enqueue, nextMachine, nextSystemId);
 
               // Emit TNODE_SPAWNED event for the next node
               system.get(brain).send({
@@ -593,10 +604,7 @@ export function createFlowNodeSystem(
                 pending.parentTNodeId
               );
 
-              enqueue.spawnChild(machine, {
-                systemId,
-                input: {}
-              });
+              spawnFlowChild(enqueue, machine, systemId);
 
               system.get(brain).send({
                 type: 'TNODE_SPAWNED',

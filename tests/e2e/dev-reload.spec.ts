@@ -32,6 +32,17 @@ function renameSeededDocument(records: LibraryRecord[], from: string, to: string
   return false;
 }
 
+/**
+ * The test edits a compiled seed file in the checkout, so the restore can't live in the test body: a
+ * Playwright timeout rejects the test without unwinding it, and a `finally` left unrun would leave the
+ * renamed document on disk, failing every later run on its first assertion. A hook runs either way.
+ */
+let originalSeedFile: Buffer | undefined;
+test.afterEach(() => {
+  if (originalSeedFile) fs.writeFileSync(SEED_FILE, originalSeedFile);
+  originalSeedFile = undefined;
+});
+
 test('a rebuilt built-in pack reloads with the seed data the rebuild changed', async ({ app, appPage }) => {
   const apiPort = await appPage.evaluate(() => (window as { electronAPI?: { apiPort?: number } }).electronAPI?.apiPort);
   expect(apiPort, 'the renderer knows the API port').toBeTruthy();
@@ -39,22 +50,18 @@ test('a rebuilt built-in pack reloads with the seed data the rebuild changed', a
   await app.navigate('library');
   await expect.poll(() => libraryDocuments(appPage)).toContain(SEEDED_DOCUMENT);
 
-  const original = fs.readFileSync(SEED_FILE);
-  try {
-    const seeds = JSON.parse(original.toString()) as { records: LibraryRecord[] };
-    expect(renameSeededDocument(seeds.records, SEEDED_DOCUMENT, REBUILT_DOCUMENT), `${SEED_FILE} holds "${SEEDED_DOCUMENT}"`).toBe(true);
-    fs.writeFileSync(SEED_FILE, JSON.stringify(seeds, null, 2));
+  originalSeedFile = fs.readFileSync(SEED_FILE);
+  const seeds = JSON.parse(originalSeedFile.toString()) as { records: LibraryRecord[] };
+  expect(renameSeededDocument(seeds.records, SEEDED_DOCUMENT, REBUILT_DOCUMENT), `${SEED_FILE} holds "${SEEDED_DOCUMENT}"`).toBe(true);
+  fs.writeFileSync(SEED_FILE, JSON.stringify(seeds, null, 2));
 
-    const response = await fetch(`http://localhost:${apiPort}/dev/reload`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ packId: 'default-setup', builtIn: true }),
-    });
-    expect(response.status, await response.text()).toBe(200);
+  const response = await fetch(`http://localhost:${apiPort}/dev/reload`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ packId: 'default-setup', builtIn: true }),
+  });
+  expect(response.status, await response.text()).toBe(200);
 
-    // The reload re-seeds, its systems get CLIENT_CONNECTED again, and the plugin's index carries the change
-    await expect.poll(() => libraryDocuments(appPage), { timeout: 15_000 }).toContain(REBUILT_DOCUMENT);
-  } finally {
-    fs.writeFileSync(SEED_FILE, original);
-  }
+  // The reload re-seeds, its systems get CLIENT_CONNECTED again, and the plugin's index carries the change
+  await expect.poll(() => libraryDocuments(appPage), { timeout: 15_000 }).toContain(REBUILT_DOCUMENT);
 });

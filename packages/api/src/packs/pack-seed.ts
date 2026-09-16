@@ -186,7 +186,17 @@ export function orchestrateDeclarativeSeed(manifest: PackSeedManifest): void {
 
   const include = evaluateSeedPolicy(seedPolicy);
   const counts = seedData({ compiledDir, include });
+  // Seeders report a record they couldn't seed (an invalid flow, say) in its counts rather than throwing
+  const errors = seedErrors(counts);
+
+  // Stored even when records failed, as seedPackData does: the same failing data isn't re-imported on
+  // every boot, and it's retried as soon as the compiled seeds change
   repo.settingsCommands.updateSettings('internal', null, ['seedHash'], currentHash);
   repo.settingsCommands.updateSettings('internal', null, ['seedStatFingerprint'], fp);
+
+  if (errors.length > 0) {
+    logger.error(`Boot seed finished with errors; those records were not seeded and won't be retried until the compiled seeds change:\n  ${errors.join('\n  ')}`);
+    return;
+  }
   logger.info(`Boot seed completed: ${JSON.stringify(counts)}`);
 }

@@ -27,6 +27,8 @@ const { loadBuiltInPacks, getBuiltInPackInfos } = await import('@/packs/pack-loa
 const { orchestrateDeclarativeSeed } = await import('@/packs/pack-seed');
 const { getPackBootHooks } = await import('@abuddy/host/packs');
 const { resolveAppContext } = await import('@abuddy/sdk/env');
+// The API's logger reports through rootEvents, so a test can read what the code under test logged
+const { rootEvents } = await import('@/core/router/bus-emitter');
 
 const PACK_ID = 'reload-pack';
 
@@ -130,10 +132,26 @@ describe('reloading a built-in pack', () => {
     fs.writeFileSync(path.join(tmpDir, 'packages', BUILT_IN_ID, 'dist', 'actions.seed.json'), content);
   }
 
+  /** Records a seeder reports for the next seed instead of importing them (an invalid flow, say) */
+  let recordsThatFail: string[] = [];
+  /** What the code under test logged at error level */
+  const loggedErrors: string[] = [];
+  let stopLogging: (() => void) | undefined;
+
   beforeEach(() => {
     seeded.length = 0;
+    loggedErrors.length = 0;
+    recordsThatFail = [];
+    stopLogging = rootEvents.onLog((event) => { if (event.level === 'error') loggedErrors.push(event.message); });
     internalSettings = {};
-    registerSeeder({ key: 'actions', seed: ({ compiledDir }) => { seeded.push(compiledDir); return { created: 1, updated: 0, skipped: 0 }; } });
+    registerSeeder({
+      key: 'actions',
+      // A seeder reports the records it couldn't seed in its counts; it doesn't throw
+      seed: ({ compiledDir }) => {
+        seeded.push(compiledDir);
+        return { created: 1, updated: 0, skipped: recordsThatFail.length, ...(recordsThatFail.length > 0 && { errors: recordsThatFail }) };
+      },
+    });
     registerRepository('settingsQueries', { getInternalSettings: () => internalSettings });
     registerRepository('settingsCommands', {
       updateSettings: (_scope: string, _label: string | null, path: string[], value: unknown) => { internalSettings[path[0]] = value; },
@@ -171,6 +189,33 @@ describe('reloading a built-in pack', () => {
     expect(seeded).toEqual([path.join(packagesDir, BUILT_IN_ID, 'dist')]);
   });
 
+  it('reports the records a seeder could not seed, and still records the hash so they are retried on the next change', async () => {
+    const packagesDir = writeBuiltIn();
+    await loadBuiltInPacks(packagesDir, { runtimeEntry: 'only' });
+    const { seedManifest } = getPackBootHooks(BUILT_IN_ID)!;
+
+    recordsThatFail = ['Flow "Broken": step 2 names no action'];
+    orchestrateDeclarativeSeed(seedManifest!);
+
+    // The failure is reported, not swallowed behind "Boot seed completed"
+    expect(loggedErrors.join('\n')).toContain('Flow "Broken": step 2 names no action');
+    // The hash is stored anyway, as seedPackData does: the same failing data isn't re-imported every boot
+    expect(internalSettings.seedHash).toBeTruthy();
+
+    // ...and the next seed of unchanged data doesn't retry it
+    seeded.length = 0;
+    orchestrateDeclarativeSeed(seedManifest!);
+    expect(seeded).toEqual([]);
+
+    // ...while recompiled seeds do
+    writeSeeds('[{ "label": "second" }]');
+    recordsThatFail = [];
+    loggedErrors.length = 0;
+    orchestrateDeclarativeSeed(seedManifest!);
+    expect(seeded).toEqual([path.join(packagesDir, BUILT_IN_ID, 'dist')]);
+    expect(loggedErrors).toEqual([]);
+  });
+
   it("republishes the pack's build artifacts and re-reads its manifest", async () => {
     const packagesDir = writeBuiltIn();
     await loadBuiltInPacks(packagesDir, { runtimeEntry: 'only' });
@@ -188,6 +233,8 @@ describe('reloading a built-in pack', () => {
   });
 
   afterEach(() => {
+    stopLogging?.();
+    stopLogging = undefined;
     try { unregisterPack(BUILT_IN_ID); } catch { /* not registered */ }
   });
 });
