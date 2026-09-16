@@ -354,9 +354,15 @@ const codeState = setup({
         enqueue.spawnChild('promptsState', { id: 'codePrompts', systemId: 'codePrompts' });
     }),
 
-    notifyDirectoryChange: ({ event, context, system }) => {
+    notifyDirectoryChange: ({ event, context, system, self }) => {
       const ev = event as { type: 'UPDATE_STATE'; updates: Partial<Context> }
       if (ev.updates.baseDirectory && ev.updates.baseDirectory !== context.baseDirectory) {
+        // Swap in the new project's recent files, so Quick Open ranks its files and not
+        // the previous project's. Sent as its own event: this action runs before
+        // updateState, so assigning here would be overwritten by the same UPDATE_STATE.
+        const recentlyOpenedFiles = loadRecentFiles(ev.updates.baseDirectory)
+        self.send({ type: 'UPDATE_STATE', updates: { recentlyOpenedFiles } })
+
         // Don't send commit.REFRESH_STATUS or pr.REFRESH_STATUS here.
         // The backend handles refresh via notifyChildSystemsOfBaseChange after
         // SET_BASE_DIRECTORY is processed, avoiding a race condition where these
@@ -712,7 +718,7 @@ const codeState = setup({
       const ev = event as { type: 'OPEN_QUICK_OPEN_RESULT'; path: string };
 
       // Track the file as recently opened
-      const updatedRecentFiles = addRecentFile(context.recentlyOpenedFiles, ev.path);
+      const updatedRecentFiles = addRecentFile(context.recentlyOpenedFiles, ev.path, context.baseDirectory);
       self.send({
         type: 'UPDATE_STATE',
         updates: { recentlyOpenedFiles: updatedRecentFiles }
@@ -747,9 +753,12 @@ const codeState = setup({
 
       // Update directory state from backend
       // Explorer child will receive CODE_CONNECTED via broadcastToAllFeatures and initialize itself
+      const baseDirectory = ev.data.baseDirectory || ''
+
       return {
         ...context,
-        baseDirectory: ev.data.baseDirectory || '',
+        baseDirectory,
+        recentlyOpenedFiles: loadRecentFiles(baseDirectory),
         settings: ev.data.settings,
         hotkeys: Object.keys(hotkeys).length > 0 ? hotkeys : context.hotkeys
       }
@@ -1312,7 +1321,7 @@ const codeState = setup({
     quickOpenResults: [],
     quickOpenSelectedIndex: 0,
     quickOpenLoading: false,
-    recentlyOpenedFiles: loadRecentFiles(),
+    recentlyOpenedFiles: [], // loaded per project once the backend reports baseDirectory
     tabViewHistory: [],
     // Default hotkeys for code plugin (will be overridden by settings)
     hotkeys: {},

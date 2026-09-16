@@ -142,7 +142,7 @@ export const explorerState = setup({
 
       // Track the file as recently opened
       const recentlyOpenedFiles = parentContext?.recentlyOpenedFiles || []
-      const updatedRecentFiles = addRecentFile(recentlyOpenedFiles, ev.data.path)
+      const updatedRecentFiles = addRecentFile(recentlyOpenedFiles, ev.data.path, parentContext?.baseDirectory || '')
 
       // Build tab data — parent decides preview state via ADD_TAB
       const isImageFile = !existingFile && imageExtensions.includes(ext)
