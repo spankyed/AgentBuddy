@@ -153,13 +153,23 @@ describe("the app's inference service", () => {
     await expect(languageModel('openai:gpt-5')).rejects.toThrow('No OpenAI key selected (Personal): choose one in Settings → Secrets');
   });
 
+  // The URLs the provider packages call by default: written out, so a wrong constant fails here instead of in the app
   it("builds every provider's model at the provider's own URL, whatever base URL the environment holds", async () => {
     vi.stubEnv('ANTHROPIC_BASE_URL', 'http://127.0.0.1:1/redirected');
     vi.stubEnv('OPENAI_BASE_URL', 'http://127.0.0.1:1/redirected');
     for (const name of PROVIDERS) secrets.set(name, 'stored-key');
 
+    const expected: Record<ProviderName, string> = {
+      anthropic: 'https://api.anthropic.com/v1',
+      openai: 'https://api.openai.com/v1',
+      google: 'https://generativelanguage.googleapis.com/v1beta',
+      groq: 'https://api.groq.com/openai/v1',
+      mistral: 'https://api.mistral.ai/v1',
+      cohere: 'https://api.cohere.com/v2',
+    };
+    expect(PROVIDER_BASE_URLS).toEqual(expected);
     for (const name of PROVIDERS) {
-      expect(modelBaseURL(await languageModel(`${name}:some-model`)), name).toBe(PROVIDER_BASE_URLS[name]);
+      expect(modelBaseURL(await languageModel(`${name}:some-model`)), name).toBe(expected[name]);
     }
   });
 
