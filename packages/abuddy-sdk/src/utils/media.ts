@@ -87,6 +87,24 @@ export function extractAndResolveImages(markdown: string): ResolvedMedia[] {
     .filter((img): img is ResolvedMedia => img !== null)
 }
 
+/** An image loaded into memory, shaped as a model message's image content part. */
+export interface ImagePart {
+  type: 'image'
+  image: Buffer
+  mimeType: string
+}
+
+/**
+ * Extract media refs from markdown and read each image into memory, filtering out missing
+ * files. Prefer `extractAndResolveImages` when file paths will do: this loads every image.
+ */
+export function extractImageParts(markdown: string): ImagePart[] {
+  return extractMediaRefs(markdown)
+    .map(ref => readMediaBuffer(ref))
+    .filter((img): img is NonNullable<typeof img> => img !== null)
+    .map(img => ({ type: 'image' as const, image: img.data, mimeType: img.mimeType }))
+}
+
 /** Rewrite media:// URLs to flat relative paths using a filename map. */
 export function rewriteMediaUrls(
   markdown: string,
