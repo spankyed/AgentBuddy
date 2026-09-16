@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { getDesignated, hasDesignation } from '@abuddy/sdk';
 import { providerLabels } from '@abuddy/sdk/models';
-import type { SecretsSnapshot } from '@abuddy/sdk/rpc';
+import type { SecretsSnapshot } from '@abuddy/sdk/services';
 import { getRegisteredSystems } from '@abuddy/host/packs';
 import { secretsStore } from '@abuddy/host/secrets';
 import { rootEvents } from '@/core/router/bus-emitter';

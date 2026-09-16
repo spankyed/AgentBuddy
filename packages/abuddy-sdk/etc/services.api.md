@@ -185,6 +185,14 @@ export interface SecretsService {
     status(): SecretsStatus;
 }
 
+// @public
+export interface SecretsSnapshot {
+    // (undocumented)
+    secrets: SecretInfo[];
+    // (undocumented)
+    status: SecretsStatus;
+}
+
 // @public (undocumented)
 export interface SecretsStatus {
     backend: string;

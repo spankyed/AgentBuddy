@@ -9,6 +9,7 @@
  */
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { getHostModule } from '../runtime/host.ts';
 
 export type AppEnv = 'production' | 'beta' | 'development' | 'test';
 
@@ -108,4 +109,9 @@ export function inferElectronAppEnv(input: {
   }
 
   return parseAppEnv(input.envVar) ?? 'development';
+}
+
+/** The running app's version (the test host's is `0.0.0-test`) */
+export function getAppVersion(): string {
+  return getHostModule<{ APP_VERSION: string }>('version').APP_VERSION;
 }

@@ -96,9 +96,6 @@ export function extractValueByPath(source: unknown, path: string): unknown;
 // @public (undocumented)
 export function filterByInclude<T>(items: T[], getKey: (item: T) => string, inc: SeedIncludeSet | undefined): T[];
 
-// @public (undocumented)
-export function getAppVersion(): string;
-
 // @public
 export function getDataDirPath(name: string): string;
 

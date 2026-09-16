@@ -28,4 +28,4 @@ export {
   openInAppBrowser,
   useState,
   type PluginEvent,
-} from './delegates.ts'
+} from './navigation.ts'

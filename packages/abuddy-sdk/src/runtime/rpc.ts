@@ -1,20 +1,14 @@
-import { getHostModule } from '../runtime/host.ts';
+import { getHostModule } from './host.ts';
 import type { LogEvent } from '../logger/index.ts';
-import type { SecretInfo, SecretProvider, SecretsStatus } from '../services/secrets.ts';
+import type { SecretProvider, SecretsSnapshot } from '../services/secrets.ts';
 
 import type { IncomingSystemEvents, OutgoingSystemEvents } from '../events/index.ts';
 
-/** The user's stored keys (without values) and how they're protected */
-export interface SecretsSnapshot {
-  secrets: SecretInfo[];
-  status: SecretsStatus;
-}
-
-/** The tRPC procedures a pack's frontend calls */
+/**
+ * The API client's procedures the SDK calls (`secretsClient`). The renderer registers its client as the `trpc` host module.
+ * @internal
+ */
 export interface RpcClient {
-  bus: {
-    send: { mutate(event: IncomingSystemEvents): Promise<void> };
-  };
   /**
    * The user's API keys. Values go in through `add` and `replaceValue` only, off the event bus, so they reach no
    * log, event or listener; no procedure returns one.
@@ -31,7 +25,10 @@ export interface RpcClient {
   };
 }
 
-/** The backend's root event bus */
+/**
+ * The backend's root event bus
+ * @internal
+ */
 export interface RootEvents {
   emitLog(event: LogEvent): void;
   onLog(callback: (event: LogEvent) => void): () => void;
@@ -46,6 +43,7 @@ function trpcMod() {
   return _trpcMod ??= getHostModule<{ trpc: RpcClient }>('trpc');
 }
 
+/** @internal */
 export const trpc: RpcClient = new Proxy({} as RpcClient, {
   get(_, prop: string) { return trpcMod().trpc[prop as keyof RpcClient]; },
 });
@@ -55,6 +53,7 @@ export const trpc: RpcClient = new Proxy({} as RpcClient, {
 // proxy target instead of the real instance, causing all listeners to be
 // wiped on unsubscribe). ESM live bindings ensure importers see the real
 // instance after init.
+/** @internal */
 export let rootEvents: RootEvents;
 
 /** @internal Host-only: the host wires the RPC client at boot. */

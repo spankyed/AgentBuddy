@@ -196,15 +196,15 @@ describe('Tier 4 — Logger delegate', () => {
   });
 });
 
-describe('Tier 5 — RPC delegates', () => {
-  it('rootEvents is accessible', async () => {
-    const { rootEvents } = await import('@abuddy/sdk/rpc');
-    expect(rootEvents).toBeDefined();
+describe('Tier 5 — Templates and app info', () => {
+  it('executeTemplate runs a prompt function body with its params', async () => {
+    const { executeTemplate } = await import('@abuddy/sdk/templates');
+    expect(executeTemplate('return `Hi ${params.name}`', { name: 'Ada' })).toBe('Hi Ada');
   });
 
-  it('trpc proxy is accessible', async () => {
-    const { trpc } = await import('@abuddy/sdk/rpc');
-    expect(trpc).toBeDefined();
+  it('getAppVersion reads the host version', async () => {
+    const { getAppVersion } = await import('@abuddy/sdk/env');
+    expect(getAppVersion()).toBe('0.0.0-test');
   });
 });
 

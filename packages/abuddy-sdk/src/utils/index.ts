@@ -45,12 +45,6 @@ export type { SeedCounts, SeedIncludeSet, ImportMode, SeederContext, Seeder } fr
 // --- Lifecycle (direct) ---
 export { registerShutdownHook, runShutdownHooks, runShutdownHooksForKey, removeShutdownHooksForKey } from './lifecycle.ts';
 
-// --- Version (host-injected) ---
-let _versionMod: any;
-function versionMod() { if (!_versionMod) _versionMod = getHostModule('version'); return _versionMod; }
-
-export function getAppVersion(): string { return versionMod().APP_VERSION; }
-
 // --- Migrations (host-injected) ---
 let _migrationsMod: any;
 function migrationsMod() { if (!_migrationsMod) _migrationsMod = getHostModule('migrations'); return _migrationsMod; }

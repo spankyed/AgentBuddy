@@ -1,5 +1,4 @@
-import { registerHostModule } from '@abuddy/sdk/runtime';
-import { initRpc } from '@abuddy/sdk/rpc';
+import { registerHostModule, initRpc } from '@abuddy/sdk/runtime';
 import { initEARSRuntime } from '@abuddy/host/ears';
 import * as attributeStorage from '@/core/ears/attribute-storage';
 import * as lmdbQuery from '@/core/persistence/lmdb/query';

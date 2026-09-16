@@ -1,5 +1,5 @@
-import { trpc, type SecretsSnapshot } from '../rpc/index.ts';
-import type { SecretProvider } from '../services/secrets.ts';
+import { trpc } from '../runtime/rpc.ts';
+import type { SecretProvider, SecretsSnapshot } from '../services/secrets.ts';
 
 export type { SecretsSnapshot };
 

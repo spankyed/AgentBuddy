@@ -2,7 +2,7 @@
 // boot (api/src/setup/sdk-host-init.ts), minus persistence, clients and the filesystem.
 import { EventEmitter } from 'node:events';
 import { registerHostModule, getHostModule } from '../runtime/host.ts';
-import { initRpc, type RootEvents } from '../rpc/index.ts';
+import { initRpc, type RootEvents } from '../runtime/rpc.ts';
 import type { EventTransport, IncomingSystemEvents, OutgoingSystemEvents } from '../events/index.ts';
 import { getAllEntities, getAttr } from '../ears/attribute-storage.ts';
 import { findRelations } from '../ears/relations.ts';
@@ -42,7 +42,7 @@ class TestEventBus extends EventEmitter implements TestRootEvents {
   onOutgoing(callback: (event: OutgoingSystemEvents) => void): () => void { return this.subscribe('outgoing', callback); }
 }
 
-/** The root event bus the test host registers (`@abuddy/sdk/rpc`'s `rootEvents` once started) */
+/** The root event bus the test host registers (the SDK's internal `rootEvents` once started) */
 export const testRootEvents: TestRootEvents = new TestEventBus();
 
 const systemErrors: ReportSystemErrorInput[] = [];

@@ -38,7 +38,9 @@ describe.skipIf(!PACKAGES_BUILT)('published package exports', () => {
     // export without declarations lands in this list and fails here
     expect(nonCodeExports('sdk')).toEqual(['./package.json', './abuddy.schema.json', './ears/internals', './utils/internals']);
     expect(nonCodeExports('ui')).toEqual(['./package.json']);
-    expect(specifiers).toEqual(expect.arrayContaining(['@abuddy/sdk/ears', '@abuddy/ui/components/tiptap/TiptapEditor']));
+    expect(specifiers).toEqual(expect.arrayContaining(['@abuddy/sdk/ears', '@abuddy/sdk/events', '@abuddy/sdk/templates', '@abuddy/ui/components/tiptap/TiptapEditor']));
+    // Packs send with @abuddy/sdk/events; the host's transport and API client aren't an entry
+    expect(specifiers).not.toContain('@abuddy/sdk/rpc');
     fs.writeFileSync(path.join(consumer!, 'package.json'), JSON.stringify({ name: 'consumer', type: 'module' }));
     fs.writeFileSync(path.join(consumer!, 'tsconfig.json'), JSON.stringify({
       compilerOptions: {

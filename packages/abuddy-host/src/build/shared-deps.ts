@@ -61,7 +61,6 @@ export interface SdkFeModule {
 
 export const SDK_FE_MODULES: Record<string, SdkFeModule> = {
   '@abuddy/sdk/fe':           { globalKey: 'sdkFe' },
-  '@abuddy/sdk/rpc':          { globalKey: 'sdkRpc' },
   '@abuddy/sdk/runtime':      { globalKey: 'sdkRuntime' },
   '@abuddy/sdk/steps':        { globalKey: 'sdkSteps' },
   '@abuddy/sdk/artifacts':    { globalKey: 'sdkArtifacts' },
