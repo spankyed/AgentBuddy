@@ -103,18 +103,18 @@ function resolveFromLocal(root: string, depId: string): DepArtifacts | null {
 
 // ── Workspace resolution ──
 
+/**
+ * A dependency in a directory the pack sits under: a workspace package (`<ancestor>/packages/<depId>`)
+ * or a sibling checkout (`<ancestor>/<depId>`). The nearest ancestor wins, so a pack at any depth
+ * inside an AgentBuddy checkout (a test fixture, say) builds against that checkout's packages rather
+ * than an installed app's older copy.
+ */
 function resolveFromWorkspace(root: string, depId: string): DepArtifacts | null {
-  const candidates = [
-    path.resolve(root, '..', depId),
-    path.resolve(root, '..', '..', 'packages', depId),
-    path.resolve(root, '..', '..', depId),
-  ];
-
-  for (const candidate of candidates) {
-    const result = findDepArtifacts(candidate);
+  for (let dir = path.dirname(path.resolve(root)); ; dir = path.dirname(dir)) {
+    const result = findDepArtifacts(path.join(dir, 'packages', depId)) ?? findDepArtifacts(path.join(dir, depId));
     if (result) return result;
+    if (path.dirname(dir) === dir) return null;
   }
-  return null;
 }
 
 // ── Installed app resolution ──

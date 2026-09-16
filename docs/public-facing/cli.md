@@ -75,7 +75,7 @@ Read `abuddy.json` and generate all files in `src/__generated__/`. Uses input ha
 Resolve every dependency and cache its snapshot, build code and backend runtime in `.abuddy/deps/<id>/`. Resolution order:
 
 1. `file:` path: read directly, never cached, no fallback
-2. The workspace: `../<id>`, `../../packages/<id>`, `../../<id>`
+2. The workspace: in each directory above the pack, nearest first, `packages/<id>` then `<id>`. A pack anywhere inside an AgentBuddy checkout builds against that checkout's packages
 3. The app configured for `abuddy test` (`ABUDDY_APP=beta`, `ABUDDY_ROOT`, or the saved choice)
 4. Installed AgentBuddy apps' built-in packs (production, beta, development, test data dirs)
 5. GitHub releases, for `github:owner/repo` values (the `<id>-<version>.tgz` asset and its `.sha256`)
