@@ -15,10 +15,6 @@ export function generateLabelWithCount(baseLabel: string, entityType: EARS.Entit
   return `${baseLabel} ${count}`;
 }
 
-export function isValidEntityId(id: string): id is EARS.EntityId {
-  return /^(Agent|Brain|Message|Thread|Tag|Relation|Artifact|Flow|Node|TNode|Prompt|Action|Document|Collection|Terminal)-/.test(id);
-}
-
 export function getEntityTypeFromId(id: EARS.EntityId): EARS.Entity | null {
   const match = id.match(/^([^-]+)-/);
   if (!match) return null;

@@ -29,8 +29,6 @@ export interface BlockDefinition {
 export interface BlockFEFacet {
     // (undocumented)
     component?: unknown;
-    // (undocumented)
-    loadComponent?: () => unknown;
 }
 
 // @public (undocumented)

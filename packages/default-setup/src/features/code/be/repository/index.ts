@@ -5,7 +5,6 @@ import { EARS } from '@/__generated__/ears'
 import { exists } from '@abuddy/sdk/ears';
 import { createEntityWithDefaults, updateEntity } from '@/__generated__/ears';
 import type { TerminalInfo } from '../types'
-import { terminalService } from '../services/terminal'
 
 // Define Terminal entity type with required attributes
 export interface TerminalEntity {
@@ -24,10 +23,6 @@ export interface TerminalEntity {
   closedAt?: number
 }
 
-export interface StartupData {
-  terminals: TerminalInfo[]
-}
-
 export const terminalQueries = {
   byId: (id: EARS.EntityId): TerminalEntity | undefined => {
     return findById<TerminalEntity>(id)
@@ -42,16 +37,6 @@ export const terminalQueries = {
     const all = findAll<TerminalEntity>(EARS.Entity.Terminal)
     return all.filter(t => t.active === true)
   },
-  
-
-  getStartupData: (): StartupData => {
-    // Get all terminals from the service (only in-memory terminals)
-    const terminals = terminalService.list()
-    
-    return {
-      terminals
-    }
-  }
 }
 
 export const terminalCommands = {

@@ -10,7 +10,8 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { compileBuiltinFormat, type SeedFormatConfig, type SeedRecord } from '@abuddy/sdk/build';
 import { createSeeder } from '@abuddy/sdk/seed';
 import type { ImportMode, SeedCounts, SeedIncludeSet } from '@abuddy/sdk/utils';
-import { dropAttr, getAllEntities, qx } from '@abuddy/host/ears';
+import { untypedQx as qx } from '@abuddy/sdk/ears';
+import { dropAttribute, entityIds } from '@abuddy/sdk/testing';
 import { FIXTURES, PACK_DIR, resetDatabase, snapshot, type Snapshot } from './harness';
 
 const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'abuddy.json'), 'utf-8'));
@@ -30,6 +31,7 @@ function compile(sources: 'v1' | 'v2' | 'default-setup') {
     const records = compileBuiltinFormat('notes', NOTES_FORMAT, source);
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'notes-seed-'));
     dirs.push(dir);
+    fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, packId: 'default-setup', seeds: [] }));
     fs.writeFileSync(path.join(dir, 'notes.seed.json'), JSON.stringify({ records }));
     compiled.set(sources, { dir, records });
   }
@@ -69,8 +71,9 @@ function flatten(records: SeedRecord[], parent = ''): Array<{ alias: string; rec
   });
 }
 
-/** A row holds the record's seeded values */
+/** A row holds the record's seeded values, and noteCommands' defaults for the fields the record doesn't set */
 function expectSeededValues(row: Record<string, unknown>, record: SeedRecord) {
+  const defaults = { noteType: 'document', icon: null, completed: false, favorite: false, hideCompletedChildren: false };
   expect({
     title: row.title,
     content: row.content,
@@ -81,13 +84,10 @@ function expectSeededValues(row: Record<string, unknown>, record: SeedRecord) {
     hideCompletedChildren: row.hideCompletedChildren ?? false,
     sourceHash: row.sourceHash,
   }).toEqual({
+    ...defaults,
+    ...Object.fromEntries(Object.keys(defaults).filter((field) => record[field] !== undefined).map((field) => [field, record[field]])),
     title: record.title,
     content: record.content,
-    noteType: record.noteType,
-    icon: record.icon,
-    completed: record.completed,
-    favorite: record.favorite,
-    hideCompletedChildren: record.hideCompletedChildren,
     sourceHash: record.sourceHash,
   });
 }
@@ -179,9 +179,9 @@ describe('notes seeding (generic pipeline)', () => {
   it('leaves a note without a stored sourceHash alone (user-owned)', () => {
     resetDatabase();
     seedNotes('v1');
-    const welcome = (getAllEntities() as string[]).find((id) =>
+    const welcome = (entityIds() as string[]).find((id) =>
       id.startsWith('Note-') && (qx(id as never).pickAll() as Array<Record<string, unknown>>)[0]?.title === 'Welcome');
-    dropAttr(welcome as never, 'sourceHash' as never);
+    dropAttribute(welcome as never, 'sourceHash');
     const before = snapshot();
     seedNotes('v2', { mode: 'replace-on-collision' });
     const after = snapshot();

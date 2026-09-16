@@ -1,10 +1,10 @@
 import { repository } from './repository.ts';
 import type { EARS } from '../types/entities.ts';
-import type { PromptEntity, SecretEntity } from '../types/sdk-entities.ts';
+import type { PromptEntity } from '../types/sdk-entities.ts';
 import type { CompiledRows } from '../build/compilers/flow-compiler.ts';
 
 /**
- * The built-in repositories SDK code calls: services (provider API keys, CLI paths, runtime errors on
+ * The built-in repositories SDK code calls: services (CLI paths, runtime errors on
  * turn nodes) and the standard seeders and boot seed. default-setup registers them; only the members
  * the SDK uses are typed here, and default-setup's `builtin-repositories.spec.ts` checks its
  * repositories satisfy this contract.
@@ -12,16 +12,18 @@ import type { CompiledRows } from '../build/compilers/flow-compiler.ts';
  */
 export interface BuiltinRepositories {
   settingsQueries: {
-    getGeneralSettings(): { secrets?: Record<string, unknown> };
-    getSettings(): { general: { secrets: { cliPaths?: Record<string, string | undefined> } } };
-    getInternalSettings(): { seedHash?: string | null };
+    /** The code plugin's settings hold the CLI path overrides */
+    getPluginSettings(pluginId: string): { cliPaths?: Record<string, string | undefined> } | null | undefined;
+    getInternalSettings(): {
+      hasOnboarded: boolean;
+      version: string;
+      packSeedHashes?: Record<string, string>;
+      packVersions?: Record<string, string>;
+    };
   };
   settingsCommands: {
     updateSettings(type: string, label: string | null, path: string[], value: unknown): void;
     resetSettings(): void;
-  };
-  secretsQueries: {
-    getSecret(id: EARS.EntityId): SecretEntity | null;
   };
   brainCommands: {
     updateTNodeResult(id: EARS.EntityId, result: { error: Record<string, unknown> }): void;

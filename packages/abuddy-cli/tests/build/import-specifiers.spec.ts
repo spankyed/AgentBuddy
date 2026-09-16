@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { findHostImports, findJsSpecifiers, findRawPackHelpers } from '../../../../scripts/check-import-specifiers.ts';
+import { findAppImportsInPackTests, findHostImports, findJsSpecifiers, findRawPackHelpers } from '../../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '../helpers/published-packages';
 
 /** scripts/check-import-specifiers.ts: relative imports in sdk, host and ui name TypeScript sources */
@@ -116,5 +116,28 @@ describe('findHostImports', () => {
     write('pack/feature.ts', "import { findRelations, untypedQx } from '@abuddy/sdk/ears';\nimport { services } from '#generated/services';\n");
     write('pack/__generated__/ears.ts', "import { qx } from '@abuddy/host/ears';\n");
     expect(findHostImports(['src/pack'], root)).toEqual(['src/pack/__generated__/ears.ts:1: @abuddy/host/ears']);
+  });
+});
+
+describe('findAppImportsInPackTests', () => {
+  it.each([
+    ["import { clearMemory } from '@abuddy/host/ears';", '@abuddy/host/ears'],
+    ["import '@/setup/sdk-host-init';", '@/setup/sdk-host-init'],
+    ["import { rootEvents } from '@/core/router/bus-emitter';", '@/core/router/bus-emitter'],
+    ["const { init } = await import('../../../abuddy-cli/src/commands/init');", '../../../abuddy-cli/src/commands/init'],
+    ["import { installPackFromLocal } from '../../../abuddy-host/src/packs/pack-installer';", '../../../abuddy-host/src/packs/pack-installer'],
+  ])('flags %s', (code, specifier) => {
+    write('pack-tests/unit/feature.spec.ts', code);
+    expect(findAppImportsInPackTests(['src/pack-tests'], root)).toEqual([`src/pack-tests/unit/feature.spec.ts:1: ${specifier}`]);
+  });
+
+  it('allows the SDK, the harness and the pack itself', () => {
+    write('pack-tests/unit/feature.spec.ts', [
+      "import { untypedQx } from '@abuddy/sdk/ears';",
+      "import { startApp } from '@abuddy/testing/harness';",
+      "import { repository } from '@/__generated__/repository';",
+      "import { handler } from '../../src/extensions/steps/llm/runtime';",
+    ].join('\n'));
+    expect(findAppImportsInPackTests(['src/pack-tests'], root)).toEqual([]);
   });
 });

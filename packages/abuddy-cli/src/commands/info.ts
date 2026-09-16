@@ -1,10 +1,10 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { findPackRoot } from '../utils';
+import { findPackRoot, readManifest } from '../utils';
 
 export async function info(_args: string[]) {
   const root = findPackRoot(process.cwd());
-  const manifest = JSON.parse(fs.readFileSync(path.join(root, 'abuddy.json'), 'utf-8'));
+  const manifest = readManifest(root);
 
   const features = manifest.features?.length ?? 0;
   const steps = Array.isArray(manifest.steps?.definitions) ? manifest.steps.definitions.length : 0;

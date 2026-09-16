@@ -20,8 +20,6 @@ export const SDK_ENTITIES = {
   Action: 'Action',
   Prompt: 'Prompt',
   Settings: 'Settings',
-  /** A provider API key, kept in the secrets store */
-  Secret: 'Secret',
 } as const;
 
 export const SDK_REL_KINDS = {
@@ -40,9 +38,6 @@ export const ROOT_FLOW_ROLE = 'root_flow';
 /** Entity types kept out of persistence */
 export const SDK_EXCLUDED_ENTITY_TYPES: readonly string[] = [SDK_ENTITIES.TNode];
 
-/** Entity types routed to the secrets store */
-export const SDK_SECRET_ENTITY_TYPES: readonly string[] = [SDK_ENTITIES.Secret];
-
 export interface ActionParameter {
   type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
   description?: string;
@@ -57,7 +52,6 @@ export interface TemplateInput {
   description?: string;
   required?: boolean;
   defaultValue?: unknown;
-  commonSources?: string[];
   example?: unknown;
 }
 
@@ -134,26 +128,10 @@ export type SettingsScope = 'general' | 'plugin' | 'internal';
 
 export interface SettingsEntity extends BaseEntity {
   entityType: typeof SDK_ENTITIES.Settings;
-  /** e.g. 'internal', 'general.secrets', 'plugin.flows' */
+  /** e.g. 'internal', 'general.application', 'plugin.flows' */
   name: string;
   /** The settings stored under this name; their structure belongs to the pack that owns them */
   data: unknown;
-  /** Optional for backward compatibility */
-  type?: SettingsScope;
-  /** Optional for backward compatibility */
-  label?: string;
-}
-
-export type SecretProvider = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral' | 'cohere' | 'custom';
-
-export interface SecretEntity extends BaseEntity {
-  entityType: typeof SDK_ENTITIES.Secret;
-  provider: SecretProvider;
-  /** Plain text for now; encryption is still to be added */
-  encryptedValue: string;
-  customName?: string;
-  createdAt: number;
-  updatedAt?: number;
 }
 
 /**
@@ -168,13 +146,12 @@ export type SdkEntityShapes = {
   Action: ActionEntity;
   Prompt: PromptEntity;
   Settings: SettingsEntity;
-  Secret: SecretEntity;
 };
 
 /** The keys of SdkEntityShapes, at runtime */
 export const SDK_SHAPED_ENTITIES = [
   SDK_ENTITIES.Relation, SDK_ENTITIES.Flow, SDK_ENTITIES.Node, SDK_ENTITIES.TNode, SDK_ENTITIES.Action, SDK_ENTITIES.Prompt,
-  SDK_ENTITIES.Settings, SDK_ENTITIES.Secret,
+  SDK_ENTITIES.Settings,
 ] as const;
 
 // Fails to compile when SDK_SHAPED_ENTITIES and SdkEntityShapes list different entities

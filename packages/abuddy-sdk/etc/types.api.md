@@ -87,7 +87,6 @@ export namespace EARS {
         readonly Action: "Action";
         readonly Prompt: "Prompt";
         readonly Settings: "Settings";
-        readonly Secret: "Secret";
     };
     // (undocumented)
     export interface AttributePayloads {
@@ -257,7 +256,6 @@ export const SDK_ENTITIES: {
     readonly Action: "Action";
     readonly Prompt: "Prompt";
     readonly Settings: "Settings";
-    readonly Secret: "Secret";
 };
 
 // @public
@@ -273,9 +271,6 @@ export const SDK_REL_KINDS: {
 };
 
 // @public
-export const SDK_SECRET_ENTITY_TYPES: readonly string[];
-
-// @public
 export type SdkEntityShapes = {
     Relation: RelationEntity;
     Flow: FlowEntity;
@@ -284,35 +279,14 @@ export type SdkEntityShapes = {
     Action: ActionEntity;
     Prompt: PromptEntity;
     Settings: SettingsEntity;
-    Secret: SecretEntity;
 };
-
-// @public (undocumented)
-export interface SecretEntity extends BaseEntity {
-    // (undocumented)
-    createdAt: number;
-    // (undocumented)
-    customName?: string;
-    encryptedValue: string;
-    // (undocumented)
-    entityType: typeof SDK_ENTITIES.Secret;
-    // (undocumented)
-    provider: SecretProvider;
-    // (undocumented)
-    updatedAt?: number;
-}
-
-// @public (undocumented)
-export type SecretProvider = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral' | 'cohere' | 'custom';
 
 // @public (undocumented)
 export interface SettingsEntity extends BaseEntity {
     data: unknown;
     // (undocumented)
     entityType: typeof SDK_ENTITIES.Settings;
-    label?: string;
     name: string;
-    type?: SettingsScope;
 }
 
 // @public (undocumented)
@@ -327,8 +301,6 @@ E
 
 // @public (undocumented)
 export interface TemplateInput {
-    // (undocumented)
-    commonSources?: string[];
     // (undocumented)
     defaultValue?: unknown;
     // (undocumented)

@@ -282,6 +282,8 @@ export interface CodeSettings {
   showStashes?: boolean;
   showCommits?: boolean;
   showWorktrees?: boolean;
+  /** Paths to the CLIs the app runs; blank or missing means auto-detect */
+  cliPaths?: Partial<Record<'copilot' | 'claude-code' | 'codex' | 'gh', string>>;
 }
 
 export type CodeConnectedData = {

@@ -129,6 +129,15 @@ export interface FolderContents {
   lastKnownPath?: string
 }
 
+/**
+ * Every document and folder in the library, by name: what the reference picker offers and the
+ * panel counts. The file browser reads one folder at a time through `FolderContents` instead.
+ */
+export interface LibraryIndex {
+  documents: Array<{ id: EARS.EntityId; name: string; shortCode: DocumentShortCode; tags: string[] }>
+  folders: Array<{ id: EARS.EntityId; name: string }>
+}
+
 export interface BreadcrumbItem {
   id: EARS.EntityId | null
   name: string
@@ -147,7 +156,7 @@ export interface LibrarySystemContext {
 }
 
 // Library-internal re-exports from search-index subsystem
-export type { ModelProvider, EmbeddingModelId, EmbeddingModelConfig } from './search-index/types/embedding-models'
+export type { SearchEmbeddingModel, SearchEmbeddingModelId, LocalEmbeddingModel, InferenceEmbeddingModel } from '../embedding-models'
 export type {
   EmbeddingModel,
   IndexMetric,

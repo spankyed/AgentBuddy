@@ -8,16 +8,12 @@
   "hostVersion": ">=0.3.0",
   "license": "MIT",
   "entities": {
-    "Agent": "Agent",
     "Thread": "Thread",
     "Message": "Message",
     "Artifact": "Artifact",
-    "Brain": "Brain",
     "SearchIndex": "SearchIndex",
     "IndexedDoc": "IndexedDoc",
     "Terminal": "Terminal",
-    "Directory": "Directory",
-    "FAQ": "FAQ",
     "BrowserTab": "BrowserTab",
     "BrowserBookmark": "BrowserBookmark",
     "Document": "Document",
@@ -26,17 +22,11 @@
   },
   "relKinds": {
     "PARENT_OF": "parent_of",
-    "REPLIED_TO": "replied_to",
     "HAS": "has",
-    "BLOCKS": "blocks",
-    "DEPENDS_ON": "depends_on",
-    "RELATES_TO": "relates_to",
-    "DUPLICATES": "duplicates",
-    "EMITS": "emits"
+    "RELATES_TO": "relates_to"
   },
   "partitionPolicy": {
-    "excludedEntityTypes": [],
-    "secretEntityTypes": []
+    "excludedEntityTypes": []
   },
   "features": [
     {
@@ -47,15 +37,13 @@
         "entry": "src/features/threads/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/threads/fe/plugin.ts",
-        "label": "Threads",
-        "icon": "BotMessageSquare"
+        "entry": "src/features/threads/fe/plugin.ts"
       },
       "contributions": "src/features/threads/fe/contributions",
       "services": {
-        "chat": "src/features/threads/be/services/chat",
-        "artifact": "src/features/threads/be/services/artifact",
-        "threads": "src/features/threads/be/services/threads"
+        "chat": "src/features/threads/be/services/chat.ts#chatService",
+        "artifact": "src/features/threads/be/services/artifact.ts#artifactService",
+        "threads": "src/features/threads/be/services/threads.ts#threadsService"
       },
       "repositories": {
         "threadQueries": "src/features/threads/be/repository/index.ts#threadQueries",
@@ -71,13 +59,11 @@
         "entry": "src/features/code/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/code/fe/plugin.ts",
-        "label": "Code",
-        "icon": "Code2"
+        "entry": "src/features/code/fe/plugin.ts"
       },
       "services": {
-        "cli": "src/features/code/be/services/cli",
-        "codex": "src/features/code/be/services/codex"
+        "cli": "src/features/code/be/services/cli.ts#cliService",
+        "codex": "src/features/code/be/services/codex/index.ts#codexService"
       },
       "repositories": {
         "terminalQueries": "src/features/code/be/repository/index.ts#terminalQueries",
@@ -91,9 +77,7 @@
         "entry": "src/features/notes/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/notes/fe/plugin.ts",
-        "label": "Notes",
-        "icon": "NotebookText"
+        "entry": "src/features/notes/fe/plugin.ts"
       },
       "contributions": "src/features/notes/fe/contributions",
       "services": {},
@@ -110,12 +94,7 @@
         "entry": "src/features/browser/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/browser/fe/plugin.ts",
-        "label": "Browser",
-        "icon": "Globe"
-      },
-      "services": {
-        "browser": "src/features/browser/be/services/browser"
+        "entry": "src/features/browser/fe/plugin.ts"
       },
       "repositories": {
         "browserQueries": "src/features/browser/be/repository/index.ts#browserQueries",
@@ -129,14 +108,11 @@
         "entry": "src/features/library/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/library/fe/plugin.ts",
-        "label": "Library",
-        "icon": "Library",
-        "isPinned": true
+        "entry": "src/features/library/fe/plugin.ts"
       },
       "contributions": "src/features/library/fe/contributions",
       "services": {
-        "library": "src/features/library/be/services/library"
+        "library": "src/features/library/be/services/library.ts#libraryService"
       },
       "repositories": {
         "libraryQueries": "src/features/library/be/repository/index.ts#libraryQueries",
@@ -151,10 +127,7 @@
         "entry": "src/features/flows/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/flows/fe/plugin.ts",
-        "label": "Flows",
-        "icon": "Network",
-        "isPinned": true
+        "entry": "src/features/flows/fe/plugin.ts"
       },
       "services": {},
       "repositories": {
@@ -173,13 +146,10 @@
         ]
       },
       "plugin": {
-        "entry": "src/features/actions/fe/plugin.ts",
-        "label": "Actions",
-        "icon": "Play",
-        "isPinned": true
+        "entry": "src/features/actions/fe/plugin.ts"
       },
       "services": {
-        "action": "src/features/actions/be/services/action"
+        "action": "src/features/actions/be/services/action.ts#actionService"
       },
       "repositories": {
         "actionQueries": "src/features/actions/be/repository/index.ts#actionQueries",
@@ -194,13 +164,10 @@
         "outgoingEventsType": "OutgoingPromptEvents"
       },
       "plugin": {
-        "entry": "src/features/prompts/fe/plugin.ts",
-        "label": "Prompts",
-        "icon": "Sparkle",
-        "isPinned": true
+        "entry": "src/features/prompts/fe/plugin.ts"
       },
       "services": {
-        "prompt": "src/features/prompts/be/services/prompt"
+        "prompt": "src/features/prompts/be/services/prompt.ts#promptService"
       },
       "repositories": {
         "promptQueries": "src/features/prompts/be/repository/index.ts#promptQueries",
@@ -215,14 +182,11 @@
         "entry": "src/features/brain/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/brain/fe/plugin.ts",
-        "label": "Brain",
-        "icon": "Brain",
-        "isPinned": true
+        "entry": "src/features/brain/fe/plugin.ts"
       },
       "services": {
-        "llm": "src/features/brain/be/services/llm",
-        "brain": "src/features/brain/be/services/brain"
+        "brain": "src/features/brain/be/services/brain.ts#brainService",
+        "scheduler": "src/features/brain/be/services/scheduler.ts#schedulerService"
       },
       "repositories": {
         "brainQueries": "src/features/brain/be/repository/index.ts#brainQueries",
@@ -236,13 +200,10 @@
         "entry": "src/features/database/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/database/fe/plugin.ts",
-        "label": "Database",
-        "icon": "Database",
-        "isPinned": true
+        "entry": "src/features/database/fe/plugin.ts"
       },
       "services": {
-        "database": "src/features/database/be/services/database"
+        "database": "src/features/database/be/services/database.ts#databaseService"
       }
     },
     {
@@ -253,10 +214,7 @@
         "entry": "src/features/logs/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/logs/fe/plugin.ts",
-        "label": "Logs",
-        "icon": "ScrollText",
-        "isPinned": true
+        "entry": "src/features/logs/fe/plugin.ts"
       },
       "services": {},
       "earlySystem": true
@@ -272,30 +230,26 @@
         ]
       },
       "plugin": {
-        "entry": "src/features/settings/fe/plugin.ts",
-        "label": "Settings",
-        "icon": "Settings"
+        "entry": "src/features/settings/fe/plugin.ts"
       },
       "services": {
-        "settings": "src/features/settings/be/services/settings"
+        "settings": "src/features/settings/be/services/settings.ts#settingsService"
       },
       "repositories": {
         "settingsQueries": "src/features/settings/be/repository/index.ts#settingsQueries",
-        "settingsCommands": "src/features/settings/be/repository/index.ts#settingsCommands",
-        "secretsQueries": "src/features/settings/be/secrets/repository.ts#secretsQueries",
-        "secretsCommands": "src/features/settings/be/secrets/repository.ts#secretsCommands"
+        "settingsCommands": "src/features/settings/be/repository/index.ts#settingsCommands"
       }
     }
   ],
   "packServices": {
-    "textStream": "src/extensions/services/text-stream",
-    "filesystem": "src/extensions/services/filesystem",
-    "modelClient": "src/extensions/services/model-client",
-    "openaiAuth": "src/extensions/services/openai-auth"
+    "filesystem": "src/extensions/services/filesystem.ts#filesystemService"
   },
+  "commands": [
+    { "name": "pr2md", "placeholder": "PR number or GitHub URL (optional)" },
+    { "name": "instructions", "placeholder": "Thread instructions text" }
+  ],
   "defaultPlugin": "threads",
   "boot": {
-    "earlySystem": "src/features/logs/be/system.ts",
     "hooks": "src/features/hooks.ts",
     "seed": {
       "actions": "src/seeds/actions",
@@ -381,25 +335,20 @@
           "type": "string"
         },
         "noteType": {
-          "from": "frontmatter.type",
-          "default": "document"
+          "from": "frontmatter.type"
         },
         "icon": {
           "from": "frontmatter.icon",
-          "default": null,
           "type": "string"
         },
         "favorite": {
-          "from": "frontmatter.favorite",
-          "default": false
+          "from": "frontmatter.favorite"
         },
         "hideCompletedChildren": {
-          "from": "frontmatter.hideCompletedChildren",
-          "default": false
+          "from": "frontmatter.hideCompletedChildren"
         },
         "completed": {
-          "from": "frontmatter.completed",
-          "default": false
+          "from": "frontmatter.completed"
         },
         "content": {
           "from": "body"
@@ -533,6 +482,13 @@
         "monaco"
       ],
       "prefix": "action:",
+      "inline": [
+        "ai",
+        "@ai-sdk/provider",
+        "@ai-sdk/provider-utils",
+        "@ai-sdk/gateway",
+        "@standard-schema/spec"
+      ],
       "globals": {
         "services": "typeof _dsl.services",
         "z": "typeof _dsl.z",

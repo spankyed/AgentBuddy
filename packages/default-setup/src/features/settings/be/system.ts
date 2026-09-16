@@ -1,6 +1,6 @@
 import { emit } from '@/__generated__/events';
-import { createMachine, setup, sendTo, enqueueActions, fromPromise, type ErrorActorEvent } from 'xstate';
-import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
+import { createMachine, setup, sendTo, enqueueActions, fromCallback, fromPromise, type ErrorActorEvent } from 'xstate';
+import { defineSystem, onPackSettingsDefaultsChanged, type SystemEntry } from '@abuddy/sdk/framework';
 
 import { bus } from '@abuddy/sdk/ids';
 import { threads } from '@/__generated__/system-ids';
@@ -8,8 +8,6 @@ import { threads } from '@/__generated__/system-ids';
 import type { SettingsData } from './types';
 import { loadFaqs } from './faqs';
 import { settingsQueries, settingsCommands } from './repository';
-import { secretsActor } from './secrets/system';
-import type { SecretsOutputEvents } from './secrets/system';
 import { detectAllArrayChanges } from '@abuddy/sdk/utils/pure';
 // TODO: move seedData orchestration out of settings — belongs in core API (packs system)
 import { getCompiledDir, seedData, type SeedCounts, type SeedIncludeSet } from '@/__generated__/seeders';
@@ -18,8 +16,9 @@ import { testCli, isCliName, clearCliPathCache } from '@abuddy/sdk/utils';
 import { services } from '@/__generated__/services';
 import { createDefaultSettings } from './repository';
 import { runMigrations } from '@abuddy/sdk/utils';
-import { mergeSecretReferences } from './secrets/merge-secret-settings';
 import type { FAQItem } from '@/features/settings/be/types';
+import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services';
+import { REQUIRED_PROVIDERS } from '../constants';
 
 /**
  * Convert the JSON-safe include shape from the frontend
@@ -34,10 +33,6 @@ type IncomingSettingsEvents =
   | { type: 'GET_SETTINGS' }
   | { type: 'UPDATE_SETTINGS'; entityType: 'general' | 'plugin' | 'internal'; label: string; path: string[]; value: any }
   | { type: 'RESET_SETTINGS' }
-  | { type: 'SECRETS.CMD.CREATE_API_KEY'; provider: string; value: string; customName?: string }
-  | { type: 'SECRETS.CMD.UPDATE_API_KEY'; id: string; value: string }
-  | { type: 'SECRETS.CMD.DELETE_API_KEY'; id: string }
-  | { type: 'SECRETS.CMD.GET_API_KEYS' }
   | { type: 'TEST_CLI_PROVIDER'; provider: string }
   | { type: 'PREVIEW_PACK_SEEDS'; directory: string }
   | { type: 'IMPORT_PACK_SEEDS'; directory: string; include?: Record<string, string[] | null>; mode?: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'; restartBrain?: boolean }
@@ -45,7 +40,8 @@ type IncomingSettingsEvents =
   | { type: 'RESET_APP' }
 
 type SettingsInternalEvents =
-  | SecretsOutputEvents // Events from child secrets actor
+  | { type: 'PACK_SETTINGS_CHANGED' } // A pack's feature settings (defaults) registered or unregistered
+  | { type: 'SECRETS_CHANGED' } // The host's stored keys or their protection changed (no values)
 
 export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_LOADED'; data: SettingsData; faqs: FAQItem[] }
@@ -59,29 +55,31 @@ export type OutgoingSettingsEvents =
   | { type: 'PACK_SEEDS_PREVIEW_FAILED'; error: string }
   | { type: 'APP_RESET_COMPLETE' }
   | { type: 'APP_RESET_FAILED'; error: string }
-  | SecretsOutputEvents // Forward secrets events to frontend
+  /** The stored API keys, without values, and how they're protected */
+  | { type: 'SECRETS_UPDATED'; secrets: SecretInfo[]; status: SecretsStatus }
 
 export const settingsSpec = defineSystem('settings')<IncomingSettingsEvents | SettingsInternalEvents, OutgoingSettingsEvents>();
 export const settings = settingsSpec.id;
 
+/** CLI path overrides, in the code plugin's settings */
+const cliPaths = (): Record<string, string | undefined> =>
+  (settingsQueries.getPluginSettings('code') as { cliPaths?: Record<string, string | undefined> } | null)?.cliPaths ?? {};
+
+/** Sends the settings plugin the stored API keys (no values) and how they're protected */
+function sendSecrets(system: { get(id: string): { send(event: unknown): void } | undefined }): void {
+  system.get(bus)?.send(emit(settings, { type: 'SECRETS_UPDATED', secrets: services.secrets.list(), status: services.secrets.status() }));
+}
+
 export const settingsSystem = setup({
   types: settingsSpec.types,
   actors: {
-    secretsActor,
+    packSettingsListener: fromCallback(({ sendBack }) => onPackSettingsDefaultsChanged(() => sendBack({ type: 'PACK_SETTINGS_CHANGED' }))),
     resetAppActor: fromPromise(async () => {
       await services.appData.reset();
       createDefaultSettings();
       seedData({ compiledDir: getCompiledDir(), verbose: true });
       runMigrations();
     }),
-  },
-  guards: {
-    isSecretsOperation: ({ event }) => {
-      const ev = event as any;
-      return ev.entityType === 'general' && 
-             ev.label === 'secrets' && 
-             ev.path?.[0] === 'secrets_operation';
-    }
   },
   actions: {
     sendSettingsStartupData: ({ system }) => {
@@ -101,6 +99,8 @@ export const settingsSystem = setup({
         hotkeys: data.general.application.hotkeys
       }));
       
+      sendSecrets(system);
+
       // Send last active plugin to application for restoration
       if (data.plugins?._meta?.lastActivePlugin) {
         system.get(bus).send(emit('application', {
@@ -110,6 +110,11 @@ export const settingsSystem = setup({
       }
     },
     
+    // A pack enabled, disabled or reloaded while the app runs changes the defaults (a plugin's visibility)
+    sendPackSettingsUpdate: ({ system }) => {
+      system.get(bus).send(emit(settings, { type: 'SETTINGS_UPDATED', data: settingsQueries.getSettings() }));
+    },
+
     getSettings: ({ system, event }) => {
       const data = settingsQueries.getSettings();
       const faqs = loadFaqs();
@@ -118,32 +123,6 @@ export const settingsSystem = setup({
         data,
         faqs
       }));
-    },
-    
-    handleSecretsOperation: ({ system, event }) => {
-      const ev = settingsSpec.typeOf('UPDATE_SETTINGS', event);
-      const operation = ev.value;
-      
-      // Forward secrets operations to the secrets system
-      if (operation.type === 'CREATE_API_KEY') {
-        system.get('secrets')?.send({
-          type: 'SECRETS.CMD.CREATE_API_KEY',
-          provider: operation.provider,
-          value: operation.value,
-          customName: operation.customName
-        });
-      } else if (operation.type === 'UPDATE_API_KEY') {
-        system.get('secrets')?.send({
-          type: 'SECRETS.CMD.UPDATE_API_KEY',
-          id: operation.editingSecretId,
-          value: operation.value
-        });
-      } else if (operation.type === 'DELETE_API_KEY') {
-        system.get('secrets')?.send({
-          type: 'SECRETS.CMD.DELETE_API_KEY',
-          id: operation.id
-        });
-      }
     },
     
     updateSettings: ({ system, event }) => {
@@ -156,7 +135,7 @@ export const settingsSystem = setup({
       
       settingsCommands.updateSettings(ev.entityType, ev.label, ev.path, ev.value);
 
-      if (ev.entityType === 'general' && ev.label === 'secrets' && ev.path[0] === 'cliPaths') {
+      if (ev.entityType === 'plugin' && ev.label === 'code' && ev.path[0] === 'cliPaths') {
         clearCliPathCache();
       }
 
@@ -232,63 +211,17 @@ export const settingsSystem = setup({
       }));
     },
     
-    // Forward API key events to secrets actor
-    forwardToSecrets: ({ event, system }) => {
-      system.get('secrets')?.send(event);
-    },
-    
-    // Handle events from secrets actor - sync to settings and forward to frontend
-    handleSecretsEvent: ({ system, event }) => {
-      // Sync secrets to secrets settings when we get loaded data
-      if (event.type === 'SECRETS.EVENT.LOADED') {
-        const secretsData = (event as any).data || [];
-        const currentSecrets = settingsQueries.getGeneralSettings().secrets;
-        const newSecrets = mergeSecretReferences(currentSecrets, secretsData);
-        
-        // Update settings
-        settingsCommands.updateSettings('general', 'secrets', [], newSecrets);
-
-        // Send updated settings to frontend
-        const updatedSettings = settingsQueries.getSettings();
-        system.get(bus).send(emit(settings, {
-          type: 'SETTINGS_UPDATED',
-          data: updatedSettings
-        }));
-
-        // Check if we should trigger birth flow
-        const assistantSettings = settingsQueries.getAssistantSettings();
-
-        // Check if we have required API keys now
-        const hasRequiredKeys = (secretsData: any[]): boolean => {
-          const requiredProviders = updatedSettings.general.secrets.required || ['openai', 'anthropic'];
-          return requiredProviders.some((provider: string) =>
-            secretsData.some((secret: any) => secret.provider === provider)
-          );
-        };
-
-        // Notify threads system about API key changes
-        const threadsActor = system.get(threads);
-        if (threadsActor) {
-          threadsActor.send({ type: 'API_KEYS_CHANGED' });
-
-          // If we now have required API keys and no birth has occurred, trigger birth flow
-          if (!assistantSettings.birthdate && hasRequiredKeys(secretsData)) {
-            threadsActor.send({ type: 'BIRTH_FLOW_START' });
-          }
-        }
+    // The stored keys changed: refresh the plugin, and start the birth flow once a required provider has a key
+    secretsChanged: ({ system }) => {
+      sendSecrets(system);
+      const threadsActor = system.get(threads);
+      if (!threadsActor) return;
+      const hasRequiredKey = services.secrets.list().some((secret) => secret.selected && (REQUIRED_PROVIDERS as readonly string[]).includes(secret.provider));
+      if (hasRequiredKey && !settingsQueries.getAssistantSettings().birthdate) {
+        threadsActor.send({ type: 'BIRTH_FLOW_START' });
       }
-
-      // Forward to frontend
-      system.get(bus).send(emit(settings, event as SecretsOutputEvents));
     },
 
-    spawnSecretsActor: enqueueActions(({ enqueue }) => {
-      // Spawn the secrets child actor
-      enqueue.spawnChild('secretsActor', {
-        systemId: 'secrets',
-        input: { parentRef: settings }
-      });
-    }),
     testCliProvider: ({ system, event }) => {
       const ev = settingsSpec.typeOf('TEST_CLI_PROVIDER', event);
       const provider = ev.provider;
@@ -303,12 +236,11 @@ export const settingsSystem = setup({
         return;
       }
 
-      const storedPath = settingsQueries.getSettings().general.secrets.cliPaths?.[provider];
+      const storedPath = cliPaths()[provider];
 
       testCli(provider, storedPath).then((result: any) => {
         if (result.success) {
-          const currentPaths = settingsQueries.getSettings().general.secrets.cliPaths;
-          settingsCommands.updateSettings('general', 'secrets', ['cliPaths'], { ...currentPaths, [provider]: result.resolvedPath });
+          settingsCommands.updateSettings('plugin', 'code', ['cliPaths'], { ...cliPaths(), [provider]: result.resolvedPath });
 
           const data = settingsQueries.getSettings();
           system.get(bus).send(emit(settings, { type: 'SETTINGS_UPDATED', data }));
@@ -339,8 +271,12 @@ export const settingsSystem = setup({
       const ev = settingsSpec.typeOf('IMPORT_PACK_SEEDS', event);
       try {
         const include = ev.include ? toSeedInclude(ev.include) : undefined;
+        // Read first: a directory that can't name its pack fails before anything is imported
+        const { packId } = previewPackSeeds(ev.directory);
         const result = seedData({ compiledDir: ev.directory, include, mode: ev.mode, verbose: true });
         system.get(bus).send(emit(settings, { type: 'PACK_SEEDS_IMPORTED', result }));
+        // The running systems read what the seeds changed (the chat's slash commands, the library's documents)
+        system.get(bus).send({ type: 'PACK_CHANGED', packId });
         if (ev.restartBrain) {
           system.get('brain').send({ type: 'RESTART_BRAIN' });
         }
@@ -352,6 +288,7 @@ export const settingsSystem = setup({
 
     onResetComplete: ({ system }) => {
       system.get('brain').send({ type: 'RESTART_BRAIN' });
+      system.get(threads)?.send({ type: 'COMMANDS_CHANGED' });
       system.get(bus).send(emit(settings, { type: 'APP_RESET_COMPLETE' }));
     },
 
@@ -367,7 +304,11 @@ export const settingsSystem = setup({
   id: settings,
   initial: 'idle',
   context: {},
-  entry: ['spawnSecretsActor'],
+  invoke: { src: 'packSettingsListener' },
+  on: {
+    PACK_SETTINGS_CHANGED: { actions: 'sendPackSettingsUpdate' },
+    SECRETS_CHANGED: { actions: 'secretsChanged' },
+  },
   states: {
     idle: {
       on: {
@@ -377,15 +318,9 @@ export const settingsSystem = setup({
         GET_SETTINGS: {
           actions: 'getSettings',
         },
-        UPDATE_SETTINGS: [
-          {
-            guard: 'isSecretsOperation',
-            actions: 'handleSecretsOperation',
-          },
-          {
-            actions: 'updateSettings',
-          }
-        ],
+        UPDATE_SETTINGS: {
+          actions: 'updateSettings',
+        },
         REPLACE_SETTINGS: {
           actions: 'replaceSettings',
         },
@@ -403,14 +338,6 @@ export const settingsSystem = setup({
         },
         RESET_APP: {
           target: 'resetting',
-        },
-        // Forward incoming SECRETS.CMD.* events to secrets actor
-        'SECRETS.CMD.*': {
-          actions: 'forwardToSecrets',
-        },
-        // Handle outgoing SECRETS.EVENT.* events from secrets actor
-        'SECRETS.EVENT.*': {
-          actions: 'handleSecretsEvent',
         },
       },
     },

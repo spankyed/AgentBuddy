@@ -43,15 +43,27 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   // time (see INLINABLE_PACKAGE_IMPORTS in sdk build/compile-utils.ts); the
   // sandbox that runs those strings has no module loader at all.
   ['@abuddy/sdk/actions', 'compile-time only — inlined into seed strings'],
+  // Test tooling: a pack's unit tests (through @abuddy/testing) load it, never a pack's runtime in the app
+  ['@abuddy/sdk/testing', 'unit-test runtime only'],
   // The engine's host hook; built-in packs reach it through @abuddy/host/ears, which is bridged.
   ['@abuddy/sdk/ears/internals', 're-exported by the bridged @abuddy/host/ears'],
+  // Redaction's host side: only the secrets store registers the values logs must mask, and a pack must not
+  ['@abuddy/sdk/utils/internals', 'host-only — a pack could otherwise replace what redaction treats as a secret'],
   // Build-time only: consumed by vite configs and the abuddy CLI, never by a
   // loaded pack's runtime code.
   ['@abuddy/host/build/shared-deps', 'build-time only'],
   ['@abuddy/host/build/discover', 'build-time only'],
   ['@abuddy/host/build/source-resolution', 'host tooling only (CLI, fixture, API boot)'],
-  // Registered by the API as host modules; packs reach it through services.appData and services.traceStore
-  ['@abuddy/host/data', 'host implementation of SDK services, registered at API boot'],
+  // The user's API keys with their values: only the API and host services use it, packs get services.secrets (no values)
+  ['@abuddy/host/secrets', 'host store of API key values, never handed to packs'],
+  // Registered by the API as host modules; packs reach them through services (appData, traceStore, inference, secrets)
+  ['@abuddy/host/services', 'host implementations of SDK services, registered at API boot'],
+  // The host's typed view of default-setup's settings: the API and host services read it, packs use their repository
+  ['@abuddy/host/settings', 'host view of settings, read by the API and host services'],
+  // The bus core: the API composes its bus from it, and the pack test harness runs it; packs don't require it
+  ['@abuddy/host/bus', 'host bus core, composed by the API and the test harness'],
+  // The abuddy dev server marker: the CLI writes it and Electron main's pack:// handler reads it; packs never require it
+  ['@abuddy/host/packs/dev-server', 'dev server marker for the CLI and the pack:// handler'],
   // Metadata: tooling reads them, code never requires them.
   ['@abuddy/sdk/package.json', 'package metadata, not code'],
   ['@abuddy/sdk/abuddy.schema.json', 'manifest JSON schema, not code'],

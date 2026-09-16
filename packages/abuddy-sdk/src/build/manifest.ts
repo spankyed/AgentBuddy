@@ -33,6 +33,53 @@ export interface PackSnapshot {
   defs: Record<string, string>;
   manifest: PackManifest;
   sdkVersion?: string;
+  /** The pack's flow helpers, which dependents' generated flow helpers re-export */
+  flowHelpers?: PackFlowHelpers;
+  /**
+   * The commands the pack's dependencies declare, their own dependencies' included, with the pack
+   * declaring each: a dependent reads the whole tree from its direct dependencies' snapshots.
+   */
+  dependencyCommands?: DependencyCommand[];
+}
+
+/** A command declared somewhere in a pack's dependency tree, and the pack declaring it */
+export interface DependencyCommand {
+  name: string;
+  packId: string;
+}
+
+/** What `dependencyCommands` reads from a dependency's snapshot */
+export interface DependencyCommandSource {
+  manifest: { commands?: ReadonlyArray<{ name: string }> };
+  dependencyCommands?: ReadonlyArray<DependencyCommand>;
+}
+
+/**
+ * @internal Host-only: abuddy CLI build tooling.
+ *
+ * The commands declared across these dependencies and everything they depend on, once each, with the
+ * declaring pack. The app refuses a pack whose command another registered pack declares.
+ */
+export function dependencyCommands(snapshots: ReadonlyArray<readonly [string, DependencyCommandSource]>): DependencyCommand[] {
+  const owners = new Map<string, string>();
+  for (const [depId, snapshot] of snapshots) {
+    for (const { name, packId } of snapshot.dependencyCommands ?? []) owners.set(name, packId);
+    for (const { name } of snapshot.manifest.commands ?? []) owners.set(name, depId);
+  }
+  return [...owners].map(([name, packId]) => ({ name, packId }));
+}
+
+/**
+ * A pack's generated flow helpers (src/__generated__/flow-helpers.ts: a helper per step, custom
+ * step helpers and trigger track builders, its dependencies' included), bundled by `abuddy build`.
+ */
+export interface PackFlowHelpers {
+  /** The names the module exports */
+  exports: string[];
+  /** The ES module; only packages stay imports */
+  module: string;
+  /** Its declarations; only packages stay imports */
+  types: string;
 }
 
 /** The bundle of a pack's seed compiler modules, in its build dir: dependents compile its formats with it */

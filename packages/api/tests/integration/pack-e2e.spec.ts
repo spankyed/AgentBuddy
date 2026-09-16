@@ -25,14 +25,14 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { loadExternalPacks, type LoadedPack } from '@/packs/pack-loader';
-import { setLoadedPacks } from '@/packs/pack-api';
+import { setLoadedPacks, getPacksWithClientLoadedFrontends } from '@/packs/pack-api';
 
 const USER_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'pack-e2e-'));
 const TEST_PACK_ID = 'e2e-test-pack';
 const TEST_PACK_DIR = path.join(USER_DATA_DIR, 'packs', TEST_PACK_ID);
 
 function installTestPack() {
-  fs.mkdirSync(path.join(TEST_PACK_DIR, 'dist'), { recursive: true });
+  fs.mkdirSync(path.join(TEST_PACK_DIR, 'runtime'), { recursive: true });
 
   fs.writeFileSync(path.join(TEST_PACK_DIR, 'abuddy.json'), JSON.stringify({
     id: TEST_PACK_ID,
@@ -42,32 +42,28 @@ function installTestPack() {
       {
         id: 'hello',
         system: {
-          entry: 'dist/system.cjs',
-          events: {
-            incoming: ['HELLO_PING'],
-            outgoing: ['HELLO_PONG'],
-          },
+          entry: 'src/features/hello/be/system.ts',
+          events: { incoming: ['HELLO_PING'] },
         },
-        plugin: {
-          entry: 'dist/plugin.js',
-          label: 'Hello World',
-          icon: 'Sparkles',
-        },
+        plugin: { entry: 'src/features/hello/fe/plugin.ts' },
       },
       {
-        id: 'data-only',
+        id: 'dataOnly',
         // No system — plugin only
-        plugin: {
-          entry: 'dist/data-plugin.js',
-          label: 'Data View',
-          icon: 'Database',
-        },
+        plugin: { entry: 'src/features/dataOnly/fe/plugin.ts' },
       },
     ],
   }, null, 2));
 
-  // Write a real CJS system that requires xstate from the host
-  fs.writeFileSync(path.join(TEST_PACK_DIR, 'dist', 'system.cjs'), `
+  fs.writeFileSync(path.join(TEST_PACK_DIR, 'bundle.json'), JSON.stringify({
+    formatVersion: 1, id: TEST_PACK_ID, version: '1.0.0', files: {},
+  }));
+
+  // The pack's frontend, which the renderer loads from the bundle
+  fs.writeFileSync(path.join(TEST_PACK_DIR, 'runtime', 'fe.js'), 'export default { plugins: [] };');
+
+  // A real runtime registration whose system machine requires xstate from the host
+  fs.writeFileSync(path.join(TEST_PACK_DIR, 'runtime', 'index.cjs'), `
     'use strict';
     const { setup } = require('xstate');
 
@@ -92,7 +88,13 @@ function installTestPack() {
       },
     });
 
-    module.exports = { default: helloMachine };
+    module.exports = {
+      registration: {
+        id: '${TEST_PACK_ID}',
+        systems: [{ id: 'hello', machine: helloMachine, events: new Set(['CLIENT_CONNECTED']) }],
+        features: [{ id: 'hello', hasSystem: true, hasPlugin: true, services: [] }, { id: 'dataOnly', hasSystem: false, hasPlugin: true, services: [] }],
+      },
+    };
   `);
 }
 
@@ -132,7 +134,7 @@ describe('E2E: pack loading pipeline', () => {
     expect(testPack!.dir).toBe(TEST_PACK_DIR);
   });
 
-  it('loads the CJS system via Module._resolveFilename override', () => {
+  it('loads the runtime registration via Module._resolveFilename override', () => {
     const testPack = packs.find(p => p.manifest.id === TEST_PACK_ID)!;
     expect(testPack.systems.has('hello')).toBe(true);
 
@@ -148,22 +150,18 @@ describe('E2E: pack loading pipeline', () => {
     expect(system.events.has('HELLO_PING')).toBe(true);
   });
 
-  it('skips features without a system entry (plugin-only)', () => {
+  it('registers no system for a feature that has only a plugin', () => {
     const testPack = packs.find(p => p.manifest.id === TEST_PACK_ID)!;
-    expect(testPack.systems.has('data-only')).toBe(false);
+    expect(testPack.systems.has('dataOnly')).toBe(false);
   });
 
-  it('setLoadedPacks populates registry data for FE consumption', () => {
+  it('setLoadedPacks lists the pack as one whose frontend a client loads', () => {
     const testPack = packs.find(p => p.manifest.id === TEST_PACK_ID)!;
 
     // This populates the internal state that packsRouter.registry reads from
     setLoadedPacks([testPack]);
 
-    // Verify the manifest has plugin entries that would appear in the FE registry
-    const pluginDefs = (testPack.manifest.features ?? []).filter(f => f.plugin);
-    expect(pluginDefs).toHaveLength(2);
-    expect(pluginDefs[0].plugin!.label).toBe('Hello World');
-    expect(pluginDefs[1].plugin!.label).toBe('Data View');
+    expect(getPacksWithClientLoadedFrontends()).toEqual([TEST_PACK_ID]);
   });
 
   it('xstate machine from pack is functional (can create states)', () => {

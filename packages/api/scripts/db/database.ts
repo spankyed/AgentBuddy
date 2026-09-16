@@ -11,10 +11,27 @@ import { loadBuiltInPacks } from '@/packs/pack-loader';
 
 export const packagesDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 
-/** Registers the built-in packs; `hydrate: false` leaves LMDB untouched (e.g. before a reset). */
-export async function openDatabase({ hydrate = true } = {}): Promise<void> {
+/**
+ * Registers the built-in packs; `hydrate: false` leaves LMDB untouched (e.g. before a reset).
+ * `skipTombstoneScan: true` hydrates tombstoned entities' rows too, as the app's boot does (setup/backend.ts).
+ */
+export async function openDatabase({ hydrate = true, skipTombstoneScan = false } = {}): Promise<void> {
   await loadBuiltInPacks(packagesDir, { runtimeEntry: 'only' });
-  if (hydrate) await hydrateSharded({ envs, policy, shardedPersistence: persistence });
+  if (hydrate) await hydrateSharded({ envs, policy, shardedPersistence: persistence, skipTombstoneScan });
+}
+
+/** How many LMDB writes have failed in this process so far (the adapter logs a failed flush and carries on) */
+export function persistenceErrorCount(): number {
+  return persistence.getErrorStats?.().errorCount ?? 0;
+}
+
+/**
+ * Waits for the writes buffered so far to be flushed to LMDB (the adapter flushes in a microtask) and
+ * returns the failed-write count after it, so a script can check it before closeDatabase.
+ */
+export async function flushDatabase(): Promise<number> {
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  return persistenceErrorCount();
 }
 
 export function closeDatabase(): void {

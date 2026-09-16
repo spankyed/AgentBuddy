@@ -7,6 +7,7 @@ import type {ApiServer} from '../api-server/ApiServer.ts';
 import type {SplashScreen} from '../splash-screen/SplashScreen.ts';
 import {join} from 'node:path';
 import {WINDOW_CONFIG} from './constants.js';
+import {getWindowIcon} from './helpers.js';
 import fs from 'node:fs/promises';
 import crypto from 'node:crypto';
 import os from 'node:os';
@@ -39,8 +40,7 @@ class WindowManager implements AppModule {
     
     // Set dock icon for macOS in development (production uses bundled icon from Info.plist)
     if (!app.isPackaged && process.platform === 'darwin' && app.dock) {
-      const iconPath = join(process.cwd(), 'build', 'resources', 'icon-dev.png');
-      app.dock.setIcon(iconPath);
+      app.dock.setIcon(getWindowIcon('png'));
     }
     
     // Set up window control handlers
@@ -440,10 +440,7 @@ class WindowManager implements AppModule {
 
   async createWindow(): Promise<BrowserWindow> {
     // Determine icon path based on platform (use dev icon in development)
-    const iconSuffix = app.isPackaged ? '' : '-dev';
-    const iconName = process.platform === 'win32' ? `icon${iconSuffix}.ico` :
-                     process.platform === 'darwin' ? `icon${iconSuffix}.icns` : `icon${iconSuffix}.png`;
-    const iconPath = join(process.cwd(), 'build', 'resources', iconName);
+    const iconPath = getWindowIcon();
 
     // Get the API port before creating the window
     const apiPort = this.#apiServer?.getStatus().port || 3001;
@@ -517,10 +514,7 @@ class WindowManager implements AppModule {
   }
 
   async createPopoutWindow(pluginId: string, pluginTitle?: string): Promise<BrowserWindow> {
-    const iconSuffix = app.isPackaged ? '' : '-dev';
-    const iconName = process.platform === 'win32' ? `icon${iconSuffix}.ico` :
-                     process.platform === 'darwin' ? `icon${iconSuffix}.icns` : `icon${iconSuffix}.png`;
-    const iconPath = join(process.cwd(), 'build', 'resources', iconName);
+    const iconPath = getWindowIcon();
     const apiPort = this.#apiServer?.getStatus().port || 3001;
     const startupId = this.#apiServer?.getStatus().startupId;
     const title = `${WINDOW_CONFIG.POPOUT_TITLE_PREFIX}-${pluginId}`;

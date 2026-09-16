@@ -119,7 +119,7 @@ interface Address {
 }
 
 interface Props {
-  modelValue: Address | string
+  modelValue: Address
 }
 
 const props = defineProps<Props>()
@@ -182,20 +182,8 @@ const usStates = [
   { value: 'DC', label: 'DC' }
 ]
 
-// Parse incoming address (handle both string and object formats)
-const parseAddress = (value: Address | string): Address => {
-  if (typeof value === 'string') {
-    // Try to parse legacy string format
-    const lines = value.split('\n').filter(line => line.trim())
-    return {
-      street: lines[0] || '',
-      street2: lines.length > 3 ? lines[1] : '',
-      city: '',
-      state: '',
-      postalCode: '',
-      country: 'US'
-    }
-  }
+/** The address with every field filled in, so each input is bound to a string */
+const parseAddress = (value: Address): Address => {
   return {
     street: value.street || '',
     street2: value.street2 || '',

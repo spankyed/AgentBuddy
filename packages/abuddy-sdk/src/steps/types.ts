@@ -183,6 +183,8 @@ export interface StepRuntimeFacet {
   isAsync?: boolean;
   /** When true, the brain spawns a sub-flow machine instead of a step machine. */
   spawnsSubflow?: boolean;
+  /** The step never completes on its own (keep-alive): its track stays open while the flow runs */
+  waits?: boolean;
 }
 
 /*─────────────────────────────────────────────────────────────────
@@ -197,7 +199,6 @@ export interface StepNodeConfig {
   bgColor: string;
   hoverBgColor: string;
   connectionRules: { inputs: number; outputs: number };
-  component?: string;
   category: 'trigger' | 'action' | 'logic' | 'data' | 'ai';
   isImplemented?: boolean;
   isDisabled?: boolean;
@@ -222,8 +223,6 @@ export interface StepFEFacet {
   layout?: StepLayoutDescriptor;
   /** Handle prefix for multi-output steps (e.g. 'branch' → 'branch-0', 'branch-1'). */
   handlePrefix?: string;
-  /** Keys from FormResources this step's form needs (e.g. ['actions', 'prompts']). */
-  resourceKeys?: string[];
 }
 
 /*─────────────────────────────────────────────────────────────────

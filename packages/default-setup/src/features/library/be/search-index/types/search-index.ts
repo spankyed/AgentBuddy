@@ -1,8 +1,8 @@
 import type { EARS } from '@/__generated__/ears'
-import type { EmbeddingModelId } from './embedding-models'
+import type { SearchEmbeddingModelId } from '../../../embedding-models'
 import type { ContentSection } from '@/features/library/be/types';
 
-export type EmbeddingModel = EmbeddingModelId
+export type EmbeddingModel = SearchEmbeddingModelId
 export type IndexMetric = 'cosine' | 'dot_product'
 
 export type Occurrence =

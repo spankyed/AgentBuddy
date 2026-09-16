@@ -76,8 +76,8 @@
       "Action:CC: Handle Directory Select": {
         "label": "CC: Handle Directory Select",
         "description": "Saves the user-selected project directory and retries the blocked chat query.",
-        "sourceHash": "30e44a32f3c7606e",
-        "rowSha256": "9dffb57a8b78e775a6294429618b522c36bb913b3dcb847206d3d6e8d945a4ff"
+        "sourceHash": "adab67066920c314",
+        "rowSha256": "1235e09a7f65b5a3fc68e8eaf11670526b5c894206ae294061f891600e16902f"
       },
       "Action:CC: Handle Fork": {
         "label": "CC: Handle Fork",
@@ -400,8 +400,8 @@
       "Action:Init Onboarding": {
         "label": "Init Onboarding",
         "description": "Creates the birth thread and sends the welcome artifact for onboarding",
-        "sourceHash": "e1787325a6231b6a",
-        "rowSha256": "a75648f72ab250efb87c2550aab35261ef093cc3a15a265e3fb6ce003293f07d"
+        "sourceHash": "26ecca61db3b7823",
+        "rowSha256": "9a32630012350d42c66c25cf0b42a2f1c179023e9b79f105ad32a8743e5dee34"
       },
       "Action:PR to Markdown": {
         "label": "PR to Markdown",
@@ -415,20 +415,21 @@
         "sourceHash": "e8dca476346c2df1",
         "rowSha256": "dc4f31ee6fc2754914c6561d9a7d35e714e37a913cc949f0f5c5b674c5ee108f"
       },
+      "Collection:commands": {
+        "displayOrder": 1000,
+        "name": "commands",
+        "sourceHash": "ae90c6c91270080d"
+      },
       "Collection:internal": {
         "displayOrder": 1000,
         "name": "internal",
-        "sourceHash": "23b155b0e148e9ec"
+        "sourceHash": "d3f36b087ed6c5e1"
       },
-      "Document:commands": {
+      "Document:Claude Code commands": {
         "content": [
           {
             "type": "field",
             "fields": [
-              {
-                "key": "pr2md",
-                "value": "PR number or GitHub URL (optional)"
-              },
               {
                 "key": "cc-sessions",
                 "value": "Session ID (optional, lists all if omitted)"
@@ -512,7 +513,23 @@
               {
                 "key": "cc-goal",
                 "value": "<condition> | clear | (no args for status)"
-              },
+              }
+            ]
+          }
+        ],
+        "displayOrder": 1000,
+        "name": "Claude Code commands",
+        "shortCode": "DOC-1",
+        "sourceHash": "3fc83fb798ad55f1",
+        "tags": [
+          "default"
+        ]
+      },
+      "Document:Codex commands": {
+        "content": [
+          {
+            "type": "field",
+            "fields": [
               {
                 "key": "cdx-sessions",
                 "value": "Limit (optional, lists recent sessions)"
@@ -568,18 +585,14 @@
               {
                 "key": "cdx-goal",
                 "value": "set|show|edit|pause|resume|clear <objective>"
-              },
-              {
-                "key": "instructions",
-                "value": "Thread instructions text"
               }
             ]
           }
         ],
-        "displayOrder": 1000,
-        "name": "commands",
-        "shortCode": "DOC-1",
-        "sourceHash": "76fe465717331420",
+        "displayOrder": 2000,
+        "name": "Codex commands",
+        "shortCode": "DOC-2",
+        "sourceHash": "be84d534decc5f7d",
         "tags": [
           "default"
         ]
@@ -611,8 +624,8 @@
       "Prompt:DB Transaction System": {
         "label": "DB Transaction System",
         "description": "Generate an EARS database transaction from a natural language request",
-        "sourceHash": "1ea5d3d6d4e7d656",
-        "rowSha256": "70f88cfd922cd1a98043f6584049fd85a905ed83cde84e5efcee65935cc46eb9"
+        "sourceHash": "63474e735068eddd",
+        "rowSha256": "2ab85efaafa1bdc0b69c6c696bfb767a1c110476f97dec02260cea9b4be1c36e"
       },
       "Prompt:Edit Phase Tips System": {
         "label": "Edit Phase Tips System",
@@ -634,7 +647,9 @@
       }
     },
     "relations": [
-      "Collection:internal --contains--> Document:commands"
+      "Collection:internal --parent_of--> Collection:commands",
+      "Collection:commands --contains--> Document:Claude Code commands",
+      "Collection:commands --contains--> Document:Codex commands"
     ],
     "media": [],
     "counts": {
@@ -649,7 +664,7 @@
         "skipped": 0
       },
       "library": {
-        "created": 2,
+        "created": 4,
         "updated": 0,
         "skipped": 0
       }

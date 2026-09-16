@@ -116,7 +116,7 @@
                     <span class="text-neutral-700">&middot;</span>
                     <span class="text-xs text-neutral-500">{{ pack.entityCount }} {{ pack.entityCount === 1 ? 'entity' : 'entities' }}</span>
                   </template>
-                  <template v-if="pack.hasFeEntry">
+                  <template v-if="pack.hasFrontend">
                     <span class="text-neutral-700">&middot;</span>
                     <span class="text-xs text-neutral-500">UI</span>
                   </template>
@@ -172,7 +172,7 @@
                   <span class="text-neutral-700">&middot;</span>
                   <span class="text-xs text-neutral-500">{{ pack.entityCount }} {{ pack.entityCount === 1 ? 'entity' : 'entities' }}</span>
                 </template>
-                <template v-if="pack.hasFeEntry">
+                <template v-if="pack.hasFrontend">
                   <span class="text-neutral-700">&middot;</span>
                   <span class="text-xs text-neutral-500">UI</span>
                 </template>

@@ -1,5 +1,6 @@
 import { rootEvents } from '../../router/bus-emitter';
 import { originalConsole } from './log-capture';
+import { redactSecrets, redactSecretText } from '@abuddy/sdk/utils/pure';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -40,7 +41,10 @@ class Logger {
     this.source = source;
   }
 
-  public log(level: LogLevel, message: string, meta?: Record<string, any>) {
+  public log(level: LogLevel, rawMessage: string, rawMeta?: Record<string, any>) {
+    // Every sink below (log events, app-events.log, the console and what captures it) gets the redacted copy
+    const message = redactSecretText(rawMessage);
+    const meta = rawMeta === undefined ? undefined : redactSecrets(rawMeta);
     // Get stack trace for errors
     let stack: string | undefined;
     if (level === 'error') {
@@ -69,7 +73,7 @@ class Logger {
       message,
       source: this.source,
       meta: meta ? safeStringify(meta) : undefined,
-      stack,
+      stack: stack && redactSecretText(stack),
     });
 
     // Still log to console for debugging

@@ -9,9 +9,7 @@ import { getRegisteredPlugins, getRegisteredDefaultPlugin, registerPackFE } from
 import { packsPlugin } from '@/packs/plugin';
 import { application, createApplicationState } from '@/core/actors/application';
 import { runFrontendMigrations } from '@/setup/migrations';
-import { trpc } from '@/core/trpc';
 import { handleProtocolInstall, requestPackInstall } from '@/packs/pack-install';
-import { loadPackPlugins, loadPackFEEntry, loadPackStyles } from '@/packs/pack-loader';
 import 'virtual:host-deps';
 import { registerHostModule } from '@abuddy/sdk/runtime';
 
@@ -20,7 +18,6 @@ declare const __APP_VERSION__: string;
 declare global {
   interface Window {
     applicationState: Actor<ReturnType<typeof createApplicationState>>;
-    __showErrorPage?: (title: string, detail: string) => void;
     __disableOnboardingUI?: () => void;
     appVersion: string;
   }
@@ -159,39 +156,5 @@ app.mount('#app');
 
 window.electronAPI?.rendererReady?.();
 
-// Load external pack FE contributions after boot
-trpc.packs.registry.query().then(async (registry) => {
-  const externalPacks = registry.filter(p => !p.builtIn);
-  if (!externalPacks.length) return;
-  for (const pack of externalPacks) {
-    const packBaseUrl = `pack://${pack.id}`;
-
-    if (pack.feStyles) {
-      await loadPackStyles(pack.id, pack.feStyles, packBaseUrl);
-    }
-
-    if (pack.feEntry) {
-      const registration = await loadPackFEEntry(pack.feEntry, packBaseUrl);
-      if (registration) {
-        registerPackFE(registration);
-        const plugins = registration.plugins ?? [];
-        if (plugins.length > 0) {
-          applicationState.send({ type: 'PACK_PLUGINS_LOADED', plugins });
-        }
-      }
-      continue;
-    }
-
-    if (!pack.plugins.length) continue;
-    const plugins = await loadPackPlugins(
-      pack.plugins.map(p => ({ id: p.id, entry: p.entry, label: p.label, icon: p.icon, designation: p.designation })),
-      packBaseUrl,
-    );
-    if (plugins.length > 0) {
-      registerPackFE({ plugins });
-      applicationState.send({ type: 'PACK_PLUGINS_LOADED', plugins });
-    }
-  }
-}).catch(err => {
-  console.warn('[pack-loader] Failed to load pack registry:', err);
-});
+// External pack FE contributions load from the application actor, each time this window's bus
+// subscription is established: a failed registry query is retried on the next connection.

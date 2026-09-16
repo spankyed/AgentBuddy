@@ -59,10 +59,3 @@ export function getSchemaStats() {
   
   return stats;
 }
-
-/**
- * Get relation counts for a specific relation kind
- */
-export function getRelationCount(kind: string): number {
-  return getRelationStats(kind).total;
-}

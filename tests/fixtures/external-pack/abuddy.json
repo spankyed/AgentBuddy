@@ -14,10 +14,6 @@
     }
   },
   "relKinds": {},
-  "fe": {
-    "entry": "dist/fe.js",
-    "styles": "dist/fe.css"
-  },
   "features": [
     {
       "id": "memos",
@@ -26,9 +22,7 @@
         "entry": "src/features/memos/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/memos/fe/plugin.ts",
-        "label": "Memos",
-        "icon": "StickyNote"
+        "entry": "src/features/memos/fe/plugin.ts"
       },
       "services": {},
       "repositories": {
@@ -37,7 +31,15 @@
       }
     }
   ],
-  "dependencies": {},
+  "commands": [
+    {
+      "name": "memo-note",
+      "placeholder": "Memo text"
+    }
+  ],
+  "dependencies": {
+    "default-setup": "*"
+  },
   "permissions": [],
   "seedFormats": {
     "memos": {
@@ -66,7 +68,10 @@
     }
   },
   "boot": {
+    "hooks": "src/features/hooks.ts",
     "seed": {
+      "actions": "src/seeds/actions",
+      "flows": "src/seeds/flows",
       "memos": {
         "path": "src/seeds/memos",
         "format": "memos"
@@ -74,6 +79,10 @@
       "quick-memos": {
         "path": "src/seeds/quick-memos.txt",
         "format": "quick-memos"
+      },
+      "library": {
+        "path": "src/seeds/library",
+        "format": "default-setup:library"
       }
     }
   }

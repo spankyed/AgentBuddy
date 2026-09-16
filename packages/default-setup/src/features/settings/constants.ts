@@ -9,3 +9,6 @@ export const API_KEY_URLS = {
   mistral: 'https://console.mistral.ai/api-keys',
   cohere: 'https://dashboard.cohere.com/api-keys',
 } as const
+
+/** Providers the assistant needs a key for, at least one of them, before chatting and its birth flow */
+export const REQUIRED_PROVIDERS = ['openai', 'anthropic'] as const

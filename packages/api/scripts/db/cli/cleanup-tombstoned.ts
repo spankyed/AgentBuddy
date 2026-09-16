@@ -3,7 +3,7 @@ import { envs } from '@/core/ears/attribute-storage';
 export function cleanupTombstoned() {
   let totalDeleted = 0;
 
-  for (const partition of ['primary', 'secrets', 'volatileBackup'] as const) {
+  for (const partition of ['primary', 'volatileBackup'] as const) {
     const env = envs[partition];
     const toDelete: string[] = [];
 

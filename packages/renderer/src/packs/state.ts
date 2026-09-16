@@ -1,10 +1,9 @@
 import { assign, setup, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
-import { registerPackFE, unregisterPackFE } from '@abuddy/host/fe';
 import { trpc } from '@/core/trpc';
 import type { PackInfo } from '@abuddy/host/packs';
 import { application } from '@/core/actors/application';
-import { loadPackFEEntry, loadPackPlugins, loadPackStyles } from './pack-loader';
+import { unloadPackFrontend } from './pack-loader';
 
 export type { PackInfo };
 
@@ -86,58 +85,14 @@ const packsState = setup({
 
     onPackDeactivated: ({ system, event }) => {
       const ev = typeOf('PACK_DEACTIVATED', event);
-      const removedPlugins = unregisterPackFE(ev.packId);
-
-      // Remove pack stylesheets
-      document.querySelectorAll(`link[data-pack-id="${ev.packId}"]`).forEach(el => el.remove());
-
-      if (removedPlugins.length > 0) {
-        system.get(application).send({
-          type: 'PACK_PLUGINS_UNLOADED',
-          pluginIds: removedPlugins.map(p => p.id),
-        });
-      }
+      unloadPackFrontend(ev.packId);
+      system.get(application).send({ type: 'PACK_PLUGINS_UNLOADED', packId: ev.packId });
     },
 
-    onPackActivated: ({ system, event }) => {
-      const ev = typeOf('PACK_ACTIVATED', event);
-      const appActor = system.get(application);
-
-      trpc.packs.registry.query().then(async (registry: any[]) => {
-        const pack = registry.find((p: any) => p.id === ev.packId);
-        if (!pack) return;
-
-        const packBaseUrl = `pack://${pack.id}`;
-
-        if (pack.feStyles) {
-          await loadPackStyles(pack.id, pack.feStyles, packBaseUrl);
-        }
-
-        if (pack.feEntry) {
-          const registration = await loadPackFEEntry(pack.feEntry, packBaseUrl);
-          if (registration) {
-            registerPackFE(registration, ev.packId);
-            const plugins = registration.plugins ?? [];
-            if (plugins.length > 0) {
-              appActor.send({ type: 'PACK_PLUGINS_LOADED', plugins });
-            }
-          }
-          return;
-        }
-
-        if (pack.plugins.length > 0) {
-          const plugins = await loadPackPlugins(
-            pack.plugins.map((p: any) => ({ id: p.id, entry: p.entry, label: p.label, icon: p.icon, designation: p.designation })),
-            packBaseUrl,
-          );
-          if (plugins.length > 0) {
-            registerPackFE({ plugins }, ev.packId);
-            appActor.send({ type: 'PACK_PLUGINS_LOADED', plugins });
-          }
-        }
-      }).catch((err: unknown) => {
-        console.error(`[packs] Failed to load FE for pack ${ev.packId}:`, err);
-      });
+    // The application actor owns pack frontend loading — it loads the packs it hasn't yet, this one
+    // included, and reports a failure the same way wherever the load was asked for
+    onPackActivated: ({ system }) => {
+      system.get(application).send({ type: 'LOAD_PACK_FRONTENDS' });
     },
 
     sendInstall: ({ event }) => {

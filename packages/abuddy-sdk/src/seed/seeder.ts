@@ -1,3 +1,4 @@
+import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { EARS } from '../types/entities.ts';
@@ -9,6 +10,7 @@ import { createEntityWithDefaults, updateEntity } from '../ears/transaction-help
 import { findAll, findByIdRaw, findWhere } from '../ears/query-helpers.ts';
 import { getMediaPath, loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.ts';
 import { seedPath } from '../build/manifest.ts';
+import { SEED_INDEX_FILE, type SeedIndex } from '../build/seed-compiler.ts';
 import { RECORD_KEYS, recordLabel, type CompiledSeedFile, type SeedRecord } from '../build/seeds/records.ts';
 import { seedHookRegistry, type SeedHookContext, type SeedHookMatch, type SeedHooks } from './hooks.ts';
 
@@ -23,19 +25,99 @@ export interface SeederOptions {
 }
 
 const DEFAULT_REL_KIND = 'contains';
+/** What the seeder last wrote to a row: the record's field names and a hash of their stored values */
+const SEEDED_FIELDS = 'seededFields' as EARS.AttrKind;
+/** Which record a seeded row came from, independent of fields a user can change (a renamed row keeps it) */
+export const SEED_KEY = 'seedKey' as EARS.AttrKind;
+const SOURCE_HASH = 'sourceHash' as EARS.AttrKind;
 const MEDIA_LINK_RE = /!\[([^\]]*)\]\((media\/([^)]+))\)/g;
+
+interface SeededFields {
+  fields: string[];
+  hash: string;
+}
 
 function fieldsOf(record: SeedRecord): Record<string, unknown> {
   return Object.fromEntries(Object.entries(record).filter(([key]) => !RECORD_KEYS.has(key)));
+}
+
+/** The fields the seeder tracks for a record: every field it sets but its sourceHash */
+function seededFieldNames(record: SeedRecord): string[] {
+  return Object.keys(fieldsOf(record)).filter((field) => field !== 'sourceHash').sort();
+}
+
+function hashValues(values: unknown[]): string {
+  return crypto.createHash('sha256').update(JSON.stringify(values)).digest('hex').slice(0, 16);
+}
+
+function hashStoredFields(id: EARS.EntityId, fields: string[]): string {
+  return hashValues(fields.map((field) => getAttr(id, field as EARS.AttrKind) ?? null));
+}
+
+/**
+ * The pack that compiled a seeds directory, from its seeds.json. Seed keys start with it, so two
+ * packs' records with the same entry key and identity seed a row each.
+ */
+export function seedingPackId(compiledDir: string): string {
+  const indexFile = path.join(compiledDir, SEED_INDEX_FILE);
+  return indexPackId(loadJSON<Partial<SeedIndex>>(indexFile), indexFile);
+}
+
+/** The pack a parsed seeds index names; an index from before packs were recorded names none */
+export function indexPackId(index: Partial<SeedIndex> | null, indexFile: string): string {
+  if (!index?.packId) {
+    throw new Error(`${indexFile} doesn't name the pack that compiled these seeds: rebuild the pack with abuddy build`);
+  }
+  return index.packId;
+}
+
+/** A record's place in its entry: the entry key, then each ancestor's and its own entity and identity */
+export function childSeedKey(parentKey: string, record: SeedRecord, identity: readonly string[]): string {
+  const fields = identity.filter((name) => name !== 'parent');
+  const values = fields.length > 0 ? fields.map((name) => record[name] ?? null) : [recordLabel(record, identity)];
+  return `${parentKey}/${encodeURIComponent(JSON.stringify([record.entity ?? null, ...values]))}`;
+}
+
+/** A seed key names the seeding pack before the entry key */
+export const seedKeyPrefix = (packId: string) => `${packId}:`;
+
+/** Records the row's values for the seeded fields, so a later seed can tell whether anything else changed them */
+function stampSeededFields(id: EARS.EntityId, fields: string[]): void {
+  updateAttr(id, SEEDED_FIELDS, { fields, hash: hashStoredFields(id, fields) } satisfies SeededFields);
+}
+
+/** The row's seeded fields still hold what the seeder wrote */
+function holdsSeededValues(id: EARS.EntityId, seeded: SeededFields): boolean {
+  return hashStoredFields(id, seeded.fields) === seeded.hash;
+}
+
+/**
+ * Marks a row seeded before the seeder recorded what it wrote as unedited, so the next seed of changed
+ * data updates it once more instead of skipping it as edited. A migration calls this for rows that still
+ * carry a `sourceHash`; without it every row seeded by an older version stays frozen for good.
+ *
+ * It records an empty field list, which reads back as unedited whatever the row now holds: the values
+ * the old seeder wrote weren't recorded, so there is nothing to compare against. That makes the next
+ * update overwrite an edit the user made before this ran — and it clears no fields, since none are
+ * recorded as seeded. The update re-stamps the row with its real fields, and edits are honoured from
+ * then on.
+ */
+export function markSeededRowUnedited(id: EARS.EntityId): void {
+  updateAttr(id, SEEDED_FIELDS, { fields: [], hash: hashValues([]) } satisfies SeededFields);
 }
 
 /**
  * Seeds `<key>.seed.json` records: finds each record's existing row, creates, updates or skips it,
  * and walks children under their parent row.
  * - `keep-existing` skips an existing row and its subtree.
- * - Otherwise an existing row is updated only when its stored `sourceHash` differs from the record's;
- *   a row with no stored hash is user-owned and skipped. Children are still visited.
+ * - Otherwise a row with no stored hash is user-owned and left alone. A row whose stored hash matches
+ *   the record's is left alone. A row whose hash differs is updated when its seeded fields still hold
+ *   what the seeder wrote, and left alone when they don't, or weren't recorded (edited). Children are
+ *   still visited.
  * - `wipe-and-replace` removes every row of the entry's entity types first.
+ * - A row another record's seed claimed (another pack's, or another entry's of this pack) isn't this
+ *   record's, unless the entity's hooks set `container`: then it's reused as the record's parent, counted
+ *   as skipped and left as its seed wrote it, in every mode but `wipe-and-replace`.
  */
 export function createSeeder(options: SeederOptions): Seeder {
   const { key, identity = [], relKind = DEFAULT_REL_KIND } = options;
@@ -49,6 +131,7 @@ export function createSeeder(options: SeederOptions): Seeder {
         ctx.log(`  ${key} file not found, skipping`);
         return counts;
       }
+      const packId = seedingPackId(ctx.compiledDir);
       const records = shouldSeedAll(ctx.include)
         ? file.records
         : file.records.filter((record) => (ctx.include as ReadonlySet<string>).has(recordLabel(record, identity)));
@@ -62,7 +145,26 @@ export function createSeeder(options: SeederOptions): Seeder {
       const mediaDir = options.media ? path.join(ctx.compiledDir, 'media', key) : undefined;
       const errors: string[] = [];
 
-      const find = (record: SeedRecord, context: SeedHookContext, hooks?: SeedHooks): SeedHookMatch | undefined => {
+      /**
+       * The row seeded from this record, however it's been renamed since; otherwise a row without a seed
+       * key that matches by identity (a user's row with its name), so a seed never adds a copy beside it.
+       * A container another record seeded (another pack's, or another entry's) is reused as a parent
+       * (`reused`): its children are seeded under it and the row itself is left alone.
+       */
+      const find = (record: SeedRecord, seedKey: string, context: SeedHookContext, hooks?: SeedHooks): { match?: SeedHookMatch; reused?: boolean } => {
+        const keyed = record.entity ? findWhere<{ id: EARS.EntityId; sourceHash?: string }>(record.entity as EARS.Entity, SEED_KEY as string, seedKey)[0] : undefined;
+        if (keyed) return { match: { id: keyed.id, sourceHash: keyed.sourceHash } };
+        const match = findByIdentity(record, context, hooks);
+        if (!match) return {};
+        const owner = getAttr(match.id, SEED_KEY) as string | null;
+        if (owner === null) return { match };
+        // The keyed lookup missed, so the row is another record's: a container holds this record's children too
+        if (hooks?.container) return { match, reused: true };
+        // A row carrying another record's seed key (or another pack's) isn't this record's, whatever its name
+        return {};
+      };
+
+      const findByIdentity = (record: SeedRecord, context: SeedHookContext, hooks?: SeedHooks): SeedHookMatch | undefined => {
         if (hooks?.find) return hooks.find(record, context);
         const fields = identity.filter((name) => name !== 'parent');
         if (fields.length === 0) throw new Error(`Seed "${key}": entity "${record.entity}" has no find hook, so the entry needs "identity"`);
@@ -82,50 +184,103 @@ export function createSeeder(options: SeederOptions): Seeder {
         return row.id;
       };
 
+      /** Without a hook, fields the record no longer sets are dropped */
       const update = (id: EARS.EntityId, record: SeedRecord, context: SeedHookContext, hooks?: SeedHooks) => {
         if (hooks?.update) hooks.update(id, record, context);
-        else updateEntity(id, fieldsOf(record));
+        else updateEntity(id, { ...fieldsOf(record), ...Object.fromEntries(context.clearedFields.map((field) => [field, null])) });
       };
 
-      /** Hooks' repository commands may not store sourceHash; change tracking needs it */
-      const stampHash = (id: EARS.EntityId, record: SeedRecord) => {
-        if (record.sourceHash && getAttr(id, 'sourceHash' as EARS.AttrKind) !== record.sourceHash) {
-          updateAttr(id, 'sourceHash' as EARS.AttrKind, record.sourceHash);
+      /** Hooks' repository commands may not store sourceHash; change tracking needs it, the seeded values and the seed key */
+      const stamp = (id: EARS.EntityId, record: SeedRecord, seedKey: string) => {
+        if (record.sourceHash && getAttr(id, SOURCE_HASH) !== record.sourceHash) updateAttr(id, SOURCE_HASH, record.sourceHash);
+        stampSeededFields(id, seededFieldNames(record));
+        updateAttr(id, SEED_KEY, seedKey);
+      };
+
+      /**
+       * Updates a row to the record, resetting the fields its previous seed set that the record no
+       * longer sets. EARS writes can't be rolled back, so when the update throws part way, the row keeps
+       * its previous sourceHash and seeded fields, stamped with what they hold now: it isn't taken for
+       * edited, the next seed updates it again, and a field the record newly sets isn't recorded as
+       * seeded while it holds a user's value.
+       */
+      const updateTracked = (existing: SeedHookMatch, seeded: SeededFields, record: SeedRecord, context: SeedHookContext, seedKey: string, hooks?: SeedHooks) => {
+        const recordFields = new Set(seededFieldNames(record));
+        const clearedFields = seeded.fields.filter((field) => !recordFields.has(field));
+        try {
+          update(existing.id, restoreMedia(record, existing.id, mediaDir, ctx.log).record, { ...context, clearedFields }, hooks);
+        } catch (err) {
+          updateAttr(existing.id, SOURCE_HASH, existing.sourceHash);
+          stampSeededFields(existing.id, seeded.fields);
+          throw err;
         }
+        stamp(existing.id, record, seedKey);
       };
 
-      const visit = (items: SeedRecord[], parentId: EARS.EntityId | undefined) => {
+      /**
+       * Creates a row for the record and stamps it. A row left unstamped would be taken for a user's
+       * (untracked) forever, so when copying its media or stamping it throws, the row is removed and the
+       * next seed creates it again.
+       */
+      const createTracked = (record: SeedRecord, context: SeedHookContext, seedKey: string, hooks?: SeedHooks): EARS.EntityId => {
+        const id = create(record, context, hooks);
+        try {
+          const restored = restoreMedia(record, id, mediaDir, ctx.log);
+          if (restored.count > 0) update(id, restored.record, context, hooks);
+          stamp(id, record, seedKey);
+        } catch (err) {
+          if (hooks?.remove) hooks.remove(id);
+          else destroyEntity(id);
+          if (mediaDir) fs.rmSync(path.join(getMediaPath(), id), { recursive: true, force: true });
+          throw err;
+        }
+        return id;
+      };
+
+      const visit = (items: SeedRecord[], parentId: EARS.EntityId | undefined, parentKey: string) => {
         items.forEach((record, index) => {
-          const context: SeedHookContext = { parentId, index };
+          const context: SeedHookContext = { parentId, index, clearedFields: [] };
           const hooks = record.entity ? seedHookRegistry.get(record.entity) : undefined;
           const label = recordLabel(record, identity);
+          const seedKey = childSeedKey(parentKey, record, identity);
           try {
-            const existing = find(record, context, hooks);
+            const { match: existing, reused } = find(record, seedKey, context, hooks);
             if (existing) {
+              // A container another record seeded stays that record's: it isn't updated, stamped or re-keyed,
+              // and its children are seeded in every mode (keep-existing skips only the ones that exist)
+              if (reused) {
+                counts.skipped++;
+                ctx.log(`  ${key} skipped (another seed's container): ${label}`);
+                if (record.children) visit(record.children, existing.id, seedKey);
+                return;
+              }
               if (ctx.mode === 'keep-existing') {
                 counts.skipped++;
                 ctx.log(`  ${key} skipped (existing): ${label}`);
                 return;
               }
-              if (!existing.sourceHash || existing.sourceHash === record.sourceHash) {
+              const seeded = getAttr(existing.id, SEEDED_FIELDS) as SeededFields | null;
+              if (!existing.sourceHash) {
                 counts.skipped++;
-                ctx.log(`  ${key} skipped${existing.sourceHash ? '' : ' (untracked)'}: ${label}`);
+                ctx.log(`  ${key} skipped (untracked): ${label}`);
+              } else if (existing.sourceHash === record.sourceHash) {
+                counts.skipped++;
+                ctx.log(`  ${key} skipped: ${label}`);
+              } else if (!seeded || !holdsSeededValues(existing.id, seeded)) {
+                counts.skipped++;
+                ctx.log(`  ${key} skipped (edited): ${label}`);
               } else {
-                update(existing.id, restoreMedia(record, existing.id, mediaDir, ctx.log).record, context, hooks);
-                stampHash(existing.id, record);
+                updateTracked(existing, seeded, record, context, seedKey, hooks);
                 counts.updated++;
                 ctx.log(`  ${key} updated: ${label}`);
               }
-              if (record.children) visit(record.children, existing.id);
+              if (record.children) visit(record.children, existing.id, seedKey);
               return;
             }
-            const id = create(record, context, hooks);
-            const restored = restoreMedia(record, id, mediaDir, ctx.log);
-            if (restored.count > 0) update(id, restored.record, context, hooks);
-            stampHash(id, record);
+            const id = createTracked(record, context, seedKey, hooks);
             counts.created++;
             ctx.log(`  ${key} created: ${label}`);
-            if (record.children) visit(record.children, id);
+            if (record.children) visit(record.children, id, seedKey);
           } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             errors.push(`${record.entity ?? key} "${label}": ${message}`);
@@ -134,7 +289,7 @@ export function createSeeder(options: SeederOptions): Seeder {
         });
       };
 
-      visit(records, undefined);
+      visit(records, undefined, `${seedKeyPrefix(packId)}${key}`);
       if (errors.length > 0) counts.errors = errors;
       return counts;
     },
@@ -182,9 +337,9 @@ function restoreMedia(
         const destination = path.join(getMediaPath(), id);
         fs.mkdirSync(destination, { recursive: true });
         fs.copyFileSync(source, path.join(destination, filename));
+        log(`    media copied: ${filename}`);
         text = text.split(`media/${filename}`).join(`media://${id}/${filename}`);
         count++;
-        log(`    media copied: ${filename}`);
       }
       return text;
     }

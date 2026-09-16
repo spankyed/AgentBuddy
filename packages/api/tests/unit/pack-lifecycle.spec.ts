@@ -4,6 +4,12 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 
 vi.mock('virtual:built-in-pack-loaders', () => ({ default: {} }));
+vi.mock('@abuddy/host/settings', () => ({
+  settingsRepository: {
+    settingsQueries: { getInternalSettings: () => ({ packSeedHashes: {} }) },
+    settingsCommands: { updateSettings: () => {} },
+  },
+}));
 
 import { registerHostModule } from '../../../abuddy-sdk/src/runtime/host';
 
@@ -40,6 +46,22 @@ function restoreEnv(key: string, value: string | undefined) {
 
 const packsDir = () => path.join(tmpDir, 'packs');
 
+/** Writes what `abuddy build` leaves in a pack's dist/: a runtime registering `systemsSource`, and a snapshot */
+function writeBuild(packDir: string, id: string, systemsSource = '[]', extraFiles: Record<string, string> = {}) {
+  const write = (rel: string, content: string) => {
+    fs.mkdirSync(path.dirname(path.join(packDir, 'dist', rel)), { recursive: true });
+    fs.writeFileSync(path.join(packDir, 'dist', rel), content);
+  };
+  write('runtime/index.cjs', `module.exports = { registration: { id: ${JSON.stringify(id)}, systems: ${systemsSource} } };`);
+  write('types/snapshot.json', '{}');
+  for (const [rel, content] of Object.entries(extraFiles)) write(rel, content);
+}
+
+function writeManifest(dir: string, manifest: Record<string, unknown>) {
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify(manifest));
+}
+
 describe('pack full lifecycle: init → install → discover', () => {
   it('scaffolded pack can be installed and discovered by pack-loader', async () => {
     const { init } = await import('../../../abuddy-cli/src/commands/init');
@@ -52,42 +74,24 @@ describe('pack full lifecycle: init → install → discover', () => {
     const packDir = path.join(tmpDir, 'my-test-pack');
     expect(fs.existsSync(path.join(packDir, 'abuddy.json'))).toBe(true);
 
-    // Step 2: Manually create a dist/ with a simple system (build requires esbuild + SDK deps)
-    fs.mkdirSync(path.join(packDir, 'dist'), { recursive: true });
-    fs.writeFileSync(path.join(packDir, 'dist', 'system.cjs'), `
-      module.exports = {
-        default: {
-          id: 'my-test-pack-system',
-          initial: 'idle',
-          states: { idle: {} },
-        },
-      };
-    `);
-
-    // Update manifest to declare a feature with the system
+    // Step 2: A built runtime with a simple system, standing in for abuddy build (which needs esbuild + SDK deps)
     const manifest = JSON.parse(fs.readFileSync(path.join(packDir, 'abuddy.json'), 'utf-8'));
     delete manifest.hostVersion;
     manifest.features = [{
       id: 'main',
-      system: {
-        entry: 'dist/system.cjs',
-        events: { incoming: ['TEST_EVENT'] },
-      },
-      plugin: {
-        entry: 'dist/plugin.js',
-        label: 'My Test',
-        icon: 'Zap',
-      },
+      system: { entry: 'src/features/main/be/system.ts', events: { incoming: ['TEST_EVENT'] } },
+      plugin: { entry: 'src/features/main/fe/plugin.ts' },
     }];
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify(manifest, null, 2));
+    writeBuild(packDir, manifest.id, "[{ id: 'main', machine: { id: 'my-test-pack-system' }, events: [] }]");
 
     // Step 3: Install to test packs dir
     await installPackFromLocal(packDir, packsDir());
 
     const installedDir = path.join(packsDir(), 'my-test-pack');
-    expect(fs.existsSync(installedDir)).toBe(true);
     expect(fs.existsSync(path.join(installedDir, 'abuddy.json'))).toBe(true);
-    expect(fs.existsSync(path.join(installedDir, 'dist', 'system.cjs'))).toBe(true);
+    expect(fs.existsSync(path.join(installedDir, 'bundle.json'))).toBe(true);
+    expect(fs.existsSync(path.join(installedDir, 'runtime', 'index.cjs'))).toBe(true);
 
     // Step 4: Discover via pack-loader (uses ABUDDY_USER_DATA_DIR → tmpDir)
     const { loadExternalPacks } = await import('@/packs/pack-loader');
@@ -104,35 +108,26 @@ describe('pack full lifecycle: init → install → discover', () => {
     const { installPackFromLocal } = await import('../../../abuddy-host/src/packs/pack-installer');
 
     const sourceDir = path.join(tmpDir, 'update-pack');
-    fs.mkdirSync(path.join(sourceDir, 'dist'), { recursive: true });
 
     // v1
-    fs.writeFileSync(path.join(sourceDir, 'abuddy.json'), JSON.stringify({
-      id: 'update-pack',
-      name: 'Update Pack',
-      version: '1.0.0',
-    }));
-    fs.writeFileSync(path.join(sourceDir, 'dist', 'v1.txt'), 'version 1');
+    writeManifest(sourceDir, { id: 'update-pack', name: 'Update Pack', version: '1.0.0' });
+    writeBuild(sourceDir, 'update-pack', '[]', { 'runtime/seeds/v1.seed.json': '[]' });
 
     await installPackFromLocal(sourceDir, packsDir());
 
     const installedDir = path.join(packsDir(), 'update-pack');
-    expect(fs.existsSync(path.join(installedDir, 'dist', 'v1.txt'))).toBe(true);
+    expect(fs.existsSync(path.join(installedDir, 'runtime', 'seeds', 'v1.seed.json'))).toBe(true);
 
-    // v2 — new file, remove old one
-    fs.writeFileSync(path.join(sourceDir, 'abuddy.json'), JSON.stringify({
-      id: 'update-pack',
-      name: 'Update Pack',
-      version: '2.0.0',
-    }));
-    fs.unlinkSync(path.join(sourceDir, 'dist', 'v1.txt'));
-    fs.writeFileSync(path.join(sourceDir, 'dist', 'v2.txt'), 'version 2');
+    // v2: new file, old one removed
+    writeManifest(sourceDir, { id: 'update-pack', name: 'Update Pack', version: '2.0.0' });
+    fs.rmSync(path.join(sourceDir, 'dist'), { recursive: true });
+    writeBuild(sourceDir, 'update-pack', '[]', { 'runtime/seeds/v2.seed.json': '[]' });
 
     await installPackFromLocal(sourceDir, packsDir());
 
-    // v1 file should be gone (rmSync + fresh copy)
-    expect(fs.existsSync(path.join(installedDir, 'dist', 'v1.txt'))).toBe(false);
-    expect(fs.existsSync(path.join(installedDir, 'dist', 'v2.txt'))).toBe(true);
+    // v1 file should be gone (fresh copy)
+    expect(fs.existsSync(path.join(installedDir, 'runtime', 'seeds', 'v1.seed.json'))).toBe(false);
+    expect(fs.existsSync(path.join(installedDir, 'runtime', 'seeds', 'v2.seed.json'))).toBe(true);
 
     const manifest = JSON.parse(fs.readFileSync(path.join(installedDir, 'abuddy.json'), 'utf-8'));
     expect(manifest.version).toBe('2.0.0');
@@ -142,14 +137,8 @@ describe('pack full lifecycle: init → install → discover', () => {
     const { installPackFromLocal } = await import('../../../abuddy-host/src/packs/pack-installer');
 
     const sourceDir = path.join(tmpDir, 'future-pack');
-    fs.mkdirSync(path.join(sourceDir, 'dist'), { recursive: true });
-    fs.writeFileSync(path.join(sourceDir, 'abuddy.json'), JSON.stringify({
-      id: 'future-pack',
-      name: 'Future Pack',
-      version: '1.0.0',
-      hostVersion: '>=99.0.0',
-    }));
-    fs.writeFileSync(path.join(sourceDir, 'dist', 'placeholder'), '');
+    writeManifest(sourceDir, { id: 'future-pack', name: 'Future Pack', version: '1.0.0', hostVersion: '>=99.0.0' });
+    writeBuild(sourceDir, 'future-pack');
 
     await installPackFromLocal(sourceDir, packsDir());
 
@@ -165,13 +154,8 @@ describe('pack full lifecycle: init → install → discover', () => {
 
     for (const id of ['pack-alpha', 'pack-beta', 'pack-gamma']) {
       const dir = path.join(tmpDir, id);
-      fs.mkdirSync(path.join(dir, 'dist'), { recursive: true });
-      fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify({
-        id,
-        name: id.replace('-', ' '),
-        version: '1.0.0',
-      }));
-      fs.writeFileSync(path.join(dir, 'dist', 'placeholder'), '');
+      writeManifest(dir, { id, name: id.replace('-', ' '), version: '1.0.0' });
+      writeBuild(dir, id);
       await installPackFromLocal(dir, packsDir());
     }
 
@@ -179,6 +163,84 @@ describe('pack full lifecycle: init → install → discover', () => {
     const packs = loadExternalPacks();
     const ids = packs.map(p => p.manifest.id).sort();
     expect(ids).toEqual(['pack-alpha', 'pack-beta', 'pack-gamma']);
+  });
+});
+
+// A pack installed, enabled, disabled or uninstalled while the app runs changes what the running systems
+// read (the chat's slash commands, say), so they have to be told
+describe('activating and tearing down a pack at runtime', () => {
+  const PACK_ID = 'activate-pack';
+  const bus = { send: vi.fn() };
+
+  /** Installs a pack with one system that declares a slash command in its manifest */
+  async function install() {
+    const { installPackFromLocal } = await import('../../../abuddy-host/src/packs/pack-installer');
+    const sourceDir = path.join(tmpDir, PACK_ID);
+    writeManifest(sourceDir, {
+      id: PACK_ID,
+      name: 'Activate Pack',
+      version: '1.0.0',
+      features: [{ id: 'main', system: { entry: 'src/features/main/be/system.ts' } }],
+      commands: [{ name: 'activate-memo', placeholder: 'Text' }],
+    });
+    // The runtime carries what generate-entries writes from the manifest, commands included
+    writeBuild(sourceDir, PACK_ID, "[{ id: 'main', machine: { id: 'activate-pack-system' }, events: [] }], commands: [{ name: 'activate-memo', placeholder: 'Text' }]");
+    await installPackFromLocal(sourceDir, packsDir());
+  }
+
+  afterEach(async () => {
+    const { unregisterPack, getPackContributions } = await import('../../../abuddy-host/src/packs/pack-registration');
+    if (getPackContributions(PACK_ID)) unregisterPack(PACK_ID);
+    bus.send.mockReset();
+  });
+
+  it('registers the commands its manifest declares, and tells the running systems before starting its own', async () => {
+    await install();
+    const { activatePack } = await import('@/packs/pack-lifecycle');
+    const { getPackCommands } = await import('@abuddy/sdk/framework');
+
+    expect(activatePack(PACK_ID, bus as never, { seed: true })).toBe(true);
+
+    expect(getPackCommands()).toEqual([{ name: 'activate-memo', placeholder: 'Text' }]);
+    expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['PACK_CHANGED', 'ACTIVATE_PACK']);
+    expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
+  });
+
+  it('tells the running systems when enabling an installed pack, which seeds nothing', async () => {
+    await install();
+    const { activatePack } = await import('@/packs/pack-lifecycle');
+
+    expect(activatePack(PACK_ID, bus as never)).toBe(true);
+
+    expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
+  });
+
+  it('drops its commands when torn down, and tells the systems still running after stopping its own', async () => {
+    await install();
+    const { activatePack, teardownPack } = await import('@/packs/pack-lifecycle');
+    const { getPackCommands } = await import('@abuddy/sdk/framework');
+    activatePack(PACK_ID, bus as never);
+    bus.send.mockReset();
+
+    teardownPack(PACK_ID, bus as never);
+
+    expect(getPackCommands()).toEqual([]);
+    expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['TEARDOWN_PACK', 'PACK_CHANGED']);
+    expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
+  });
+
+  it("says nothing when torn down to be replaced, so the systems never see the updating pack missing", async () => {
+    await install();
+    const { activatePack, teardownPack } = await import('@/packs/pack-lifecycle');
+    activatePack(PACK_ID, bus as never);
+    bus.send.mockReset();
+
+    teardownPack(PACK_ID, bus as never, { replacing: true });
+    expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['TEARDOWN_PACK']);
+
+    // The activation that replaces it announces the change once
+    activatePack(PACK_ID, bus as never);
+    expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['TEARDOWN_PACK', 'PACK_CHANGED', 'ACTIVATE_PACK']);
   });
 });
 
@@ -282,6 +344,25 @@ describe('FE pack deregistration', () => {
     // Calling again should return empty
     const removedAgain = unregisterPackFE('test-pack');
     expect(removedAgain).toHaveLength(0);
+  });
+
+  it("unregisterPackFE leaves a plugin another registration owns when the pack declared the same id", async () => {
+    const { registerPackFE, unregisterPackFE, getRegisteredPlugins } = await import('../../../abuddy-host/src/fe/pack-store');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const builtIn = { id: 'shared-id', label: 'Built-in', icon: 'Zap', state: {} as any, canvas: {} as any };
+    const packCopy = { id: 'shared-id', label: 'Pack', icon: 'Zap', state: {} as any, canvas: {} as any };
+    const packOwn = { id: 'pack-own', label: 'Own', icon: 'Zap', state: {} as any, canvas: {} as any };
+    registerPackFE({ plugins: [builtIn] });
+    registerPackFE({ plugins: [packCopy, packOwn] }, 'duplicate-pack');
+
+    expect(getRegisteredPlugins().filter(p => p.id === 'shared-id')).toEqual([builtIn]);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('"shared-id" from pack duplicate-pack ignored'));
+    warn.mockRestore();
+
+    expect(unregisterPackFE('duplicate-pack')).toEqual([packOwn]);
+    expect(getRegisteredPlugins()).toContain(builtIn);
+    expect(getRegisteredPlugins()).not.toContain(packOwn);
   });
 
   it('unregisterPackFE handles pack with no contributions gracefully', async () => {

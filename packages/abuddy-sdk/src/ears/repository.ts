@@ -26,11 +26,6 @@ export const repository: Record<string, unknown> = /*#__PURE__*/ new Proxy({} as
 
 export type Repository = typeof repository;
 
-export function _flushEarlyRegistrations(): void {
-  // No-op — kept for backward compat. Early registrations are no longer
-  // needed since the registry now lives directly in the SDK.
-}
-
 // --- Real implementations (moved from API shared-repository) ---
 
 export {

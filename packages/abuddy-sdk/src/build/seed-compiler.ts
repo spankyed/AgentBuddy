@@ -56,6 +56,8 @@ export interface SpecialtyCompiler<T = unknown> {
 /** `seeds.json` in the compiled directory: what each seed key holds */
 export interface SeedIndex {
   version: 1;
+  /** The pack that compiled the seeds: seeded rows' seed keys name it, so two packs' records never share a row */
+  packId: string;
   seeds: SeedIndexEntry[];
 }
 
@@ -95,18 +97,32 @@ async function loadPackConfig(options: CompilePackOptions): Promise<{ packConfig
   };
 }
 
+/** @internal Removes what compilePack writes, so a key or media dropped from the sources doesn't linger (abuddy build clears it up front) */
+export function clearCompiledSeeds(outputDir: string): void {
+  if (!fs.existsSync(outputDir)) return;
+  for (const entry of fs.readdirSync(outputDir, { withFileTypes: true })) {
+    if (entry.isFile() && (entry.name.endsWith(seedFile('')) || entry.name === SEED_INDEX_FILE)) {
+      fs.rmSync(path.join(outputDir, entry.name));
+    }
+  }
+  fs.rmSync(path.join(outputDir, 'media'), { recursive: true, force: true });
+}
+
 /**
  * Compiles a pack's `boot.seed` entries into `outputDir`: `<key>.seed.json` for each entry,
- * `media/<key>/` for entries whose format has media, and `seeds.json` indexing them.
+ * `media/<key>/` for entries whose format has media, and `seeds.json` indexing them. Earlier
+ * output there is removed first, including when compiling fails.
  */
 export async function compilePack(options: CompilePackOptions): Promise<CompilePackResult> {
   const { packDir, outputDir } = options;
+  clearCompiledSeeds(outputDir);
   const importModule = options.importModule ?? importFileModule;
+  const log = options.log ?? console.log;
   const { packConfig, featureSettingsPaths } = await loadPackConfig(options);
 
   if (packConfig.setup) await packConfig.setup();
 
-  console.log(`Compiling pack: ${packConfig.name}`);
+  log(`Compiling pack: ${packConfig.name}`);
   fs.mkdirSync(outputDir, { recursive: true });
 
   const specialtyData = new Map<string, unknown>();
@@ -191,9 +207,9 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
   for (const { key, media, output, index } of compiled) {
     fs.writeFileSync(path.join(outputDir, seedFile(key)), `${JSON.stringify(output, null, 2)}\n`);
     if (media && fs.existsSync(media)) fs.cpSync(media, path.join(mediaRoot, key), { recursive: true });
-    console.log(`  ${key}: ${index.count}`);
+    log(`  ${key}: ${index.count}`);
   }
-  const seedIndex: SeedIndex = { version: 1, seeds: compiled.map(({ index }) => index) };
+  const seedIndex: SeedIndex = { version: 1, packId: packConfig.name, seeds: compiled.map(({ index }) => index) };
   fs.writeFileSync(path.join(outputDir, SEED_INDEX_FILE), `${JSON.stringify(seedIndex, null, 2)}\n`);
 
   return { seeds: Object.fromEntries(compiled.map(({ key, index }) => [key, index.count])), warnings: [] };

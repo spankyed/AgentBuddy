@@ -1,39 +1,11 @@
 /**
  * Database Service
- * 
- * Centralized service that provides access to all database operations
- * including EARS transaction and query utilities.
+ *
+ * `services.database`: live-data context for AI query generation. Actions read and write
+ * entities through `services.repository`; pack code imports `qx`/`tx` from `@/__generated__/ears`.
  */
 
-// Export transaction helpers for common operations
-export { createEntityWithDefaults, updateEntity } from '@/__generated__/ears';
-export {
-  prepareEntity,
-  createRelation,
-  removeRelation,
-  removeRelationById,
-  grantRole,
-  revokeRole,
-} from '@abuddy/sdk/ears';
-
-// Export EARS transaction builder
-export { tx } from '@abuddy/sdk/ears';
-export type { SafeLinkOptions } from '@abuddy/sdk/ears';
-
-// Export EARS query builder
-export { qx } from '@/__generated__/ears';
-
-// Export type-safe query helpers
-export { findById, findAll, findWhere, findFirst } from '@/__generated__/ears';
-export { findWithFields, findByIdWithFields, findWithRole, findFirstWithRole } from '@/__generated__/ears';
-export { countEntities, exists } from '@abuddy/sdk/ears';
-
-// Re-export EARS types for convenience
-export { EARS } from '@/__generated__/ears';
-
-// ─── Query context for AI prompt generation ─────────────────────────────
-
-import { EARS as EARSTypes } from '@/__generated__/ears';
+import { EARS } from '@/__generated__/ears';
 import { getEntitiesOfType, getAllEntityTypes, getAll } from '@abuddy/sdk/ears';
 import { findRelations } from '@abuddy/sdk/ears';
 
@@ -46,7 +18,7 @@ export function buildQueryContext(): { schema: string; topology: string } {
   // Sample entities
   const schemaLines: string[] = [];
   for (const type of getAllEntityTypes()) {
-    const ids = getEntitiesOfType(type as EARSTypes.Entity);
+    const ids = getEntitiesOfType(type as EARS.Entity);
     if (ids.length === 0) continue;
 
     const raw = getAll(ids[0]);
@@ -87,3 +59,7 @@ export function buildQueryContext(): { schema: string; topology: string } {
     topology: topologyLines.join('\n'),
   };
 }
+
+export const databaseService = {
+  buildQueryContext,
+};

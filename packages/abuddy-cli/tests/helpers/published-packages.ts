@@ -1,7 +1,10 @@
-import { execFileSync } from 'node:child_process';
+import { execFile, execFileSync } from 'node:child_process';
+import { promisify } from 'node:util';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+
+const execFileAsync = promisify(execFile);
 
 export const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const PACKAGE_DIRS: Record<string, string> = {
@@ -12,7 +15,7 @@ const PACKAGE_DIRS: Record<string, string> = {
 /** Compilers consumers may use: the workspace TypeScript and the oldest the packages support (their typescript peer) */
 export const TSC_VERSIONS = {
   current: path.join(REPO_ROOT, 'node_modules', 'typescript', 'bin', 'tsc'),
-  '5.3': path.join(REPO_ROOT, 'packages', 'typescript-floor', 'node_modules', 'typescript', 'bin', 'tsc'),
+  '5.7': path.join(REPO_ROOT, 'packages', 'typescript-floor', 'node_modules', 'typescript', 'bin', 'tsc'),
 } as const;
 export type TscVersion = keyof typeof TSC_VERSIONS;
 /** Every TypeScript version × moduleResolution a consumer may use */
@@ -61,4 +64,33 @@ export function installPublishedPackages(): string {
     execFileSync('tar', ['-xzf', path.join(root, filename), '-C', target, '--strip-components', '1']);
   }
   return root;
+}
+
+/**
+ * Compiles `files` (name → lines) as a consumer package in `dir`, with the chosen compiler and module
+ * resolution: tsc's exit code and output.
+ */
+export async function compileConsumer(
+  dir: string,
+  tsc: TscVersion,
+  moduleResolution: 'node16' | 'bundler',
+  files: Record<string, string[]>,
+  { skipLibCheck = true, types = [] as string[] } = {},
+): Promise<{ code: number; output: string }> {
+  fs.mkdirSync(dir, { recursive: true });
+  fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: 'consumer', type: 'module' }));
+  fs.writeFileSync(path.join(dir, 'tsconfig.json'), JSON.stringify({
+    compilerOptions: {
+      target: 'ES2022', module: moduleResolution === 'node16' ? 'node16' : 'esnext', moduleResolution,
+      strict: true, skipLibCheck, noEmit: true, types, lib: ['ES2022', 'DOM'],
+    },
+    include: Object.keys(files),
+  }));
+  for (const [name, lines] of Object.entries(files)) fs.writeFileSync(path.join(dir, name), lines.join('\n'));
+  try {
+    const { stdout } = await execFileAsync(process.execPath, [TSC_VERSIONS[tsc], '-p', dir]);
+    return { code: 0, output: stdout };
+  } catch (err: any) {
+    return { code: err.code ?? 1, output: `${err.stdout ?? ''}${err.stderr ?? ''}` };
+  }
 }

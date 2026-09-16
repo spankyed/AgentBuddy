@@ -30,7 +30,6 @@ export interface PackBootHooks {
   earlySystem?: AnyStateMachine;
   onInit?: () => void;
   onShutdown?: () => void;
-  seed?: () => void;
   seedManifest?: PackSeedManifest;
 }
 
@@ -39,7 +38,6 @@ export interface PackEARS {
   relKinds: Record<string, string>;
   partitionPolicy?: {
     excludedEntityTypes?: string[];
-    secretEntityTypes?: string[];
   };
 }
 
@@ -47,8 +45,10 @@ export interface PackFeatureDef {
   id: string;
   designation?: string;
   hasSystem: boolean;
-  plugin?: { label: string; icon: string; isPinned?: boolean };
+  hasPlugin: boolean;
   services: string[];
+  /** The feature's default settings (abuddy.json `features[].settings`) */
+  settings?: import('./pack-settings.ts').FeatureSettings;
 }
 
 export interface PackRegistration {
@@ -63,5 +63,7 @@ export interface PackRegistration {
   blocks?: import('../blocks/types.ts').BlockDefinition[];
   /** Seed hooks for the entity types this pack owns (abuddy.json `seedHooks`) */
   seedHooks?: Record<string, import('../seed/hooks.ts').SeedHooks>;
+  /** The slash commands this pack adds to the chat (abuddy.json `commands`) */
+  commands?: import('./pack-commands.ts').PackCommand[];
   features?: PackFeatureDef[];
 }

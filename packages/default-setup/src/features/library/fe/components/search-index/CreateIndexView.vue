@@ -84,7 +84,7 @@ import ScopeSection from './ScopeSection.vue'
 import SectionsConfig from './SectionsConfig.vue'
 import type { SearchIndexFormData } from '../../types/search-index'
 import type { SearchIndex } from '@/__generated__/types'
-import { EMBEDDING_MODELS } from '../../config/embedding-models'
+import { DEFAULT_EMBEDDING_MODEL } from '../../../embedding-models'
 
 const props = defineProps<{
   editMode?: boolean
@@ -110,7 +110,7 @@ const formData = reactive<SearchIndexFormData>({
   // Details
   name: '',
   description: '',
-  embeddingModel: EMBEDDING_MODELS.BGE_SMALL_EN_V15, // Default to BGE Small v1.5
+  embeddingModel: DEFAULT_EMBEDDING_MODEL,
   indexMetric: 'cosine',
   connectors: 16,
   

@@ -22,16 +22,16 @@ src/
     pack-types.ts          # Facade types abuddy build bundles into dist/types/pack-types.d.ts
     contributions.ts       # Contribution types, categories, item providers (tiptap references)
     seeders.ts             # Seed registration for all seed types
+    seed-runtime.ts        # seedRuntime: entity types, relation kinds, repositories, seed hooks (unit tests; bundled to dist/build/seed-runtime.mjs)
     step-types.ts          # Step type augmentation
-    flow-helpers.ts        # Flow helper utilities
-    dsl-register-fe.ts     # FE-side DSL registrations
-    defs.config.mjs        # Rollup config for DSL def compilation
+    flow-helpers.ts        # Typed flow DSL helpers (entry, on, one per step with a dsl node)
+    dsl-register-fe.ts     # FE-side DSL registrations, importing dist/defs/monaco/<name>-defs.d.ts
   defs/                    # DSL type definitions (action.ts, prompt.ts, database.ts)
   features/                # 12 features (each has be/ and fe/ dirs)
   extensions/              # Cross-cutting concerns
     artifacts/             # Artifact viewer definitions + Vue components
     blocks/                # Message block definitions (display + input)
-    services/              # Pack-level services (text-stream, filesystem, model-client, openai-auth)
+    services/              # Pack-level services (filesystem), declared in abuddy.json packServices
     steps/                 # Flow step definitions (action, llm, switch, fire, etc.)
     tiptap/                # Tiptap plugins (reference node, command suggestion, viewer decoration)
     Welcome.vue            # Welcome screen app extension
@@ -45,13 +45,12 @@ Each feature lives in `src/features/<name>/` with this layout:
 
 - `be/system.ts` — XState backend system machine + event types
 - `be/repository/` — EARS read/write layer: `xQueries`/`xCommands` objects declared in `abuddy.json` `features[].repositories` and registered by the generated pack entry; use them through `repository` from `@/__generated__/repository`
-- `be/services/` — Stateless service modules exposed to other systems and actions
+- `be/services/` — Service modules, each exporting the `<key>Service` object exposed to systems and actions (see Services)
 - `be/types.ts` — Shared types
 - `fe/plugin.ts` — Frontend plugin definition (id, label, icon, state machine, canvas/panel components)
 - `fe/state.ts` — XState frontend state machine
 - `fe/canvas/` — Main view components
 - `fe/contributions.ts` — Tiptap contribution type definitions (if applicable)
-- `feature.config.ts` — Build-time config (name, designation, settings path)
 - `settings.ts` — Per-feature default settings
 
 The 12 features: **threads**, **code**, **notes**, **browser**, **library**, **flows**, **actions**, **prompts**, **brain**, **database**, **logs**, **settings**.
@@ -60,21 +59,27 @@ Default plugin is Threads.
 
 ## Systems
 
-Backend systems wired via `__generated__/pack-entry.ts` using `toPackSystemDefs()` from the SDK. Each system file default-exports a `SystemEntry` (the manifest names only the path, not an export name). The logs system is special — it runs as `earlyBootSystem` before EARS hydration (for log capture during boot).
+Backend systems wired via `__generated__/pack-entry.ts` using `toPackSystemDefs()` from the SDK. Each system file default-exports a `SystemEntry` (the manifest names only the path, not an export name). The logs system is special: `features[].earlySystem: true` makes it the registration's `boot.earlySystem`, which the API starts before EARS hydration (for log capture during boot).
 
-System IDs re-exported from `__generated__/system-ids.ts`. System specs (identity + types) defined via `defineSystem()` in each system file; designated features pass `{ designation: config.designation }` from their `feature.config.ts`.
+System IDs re-exported from `__generated__/system-ids.ts`. System specs (identity + types) defined via `defineSystem()` in each system file. A feature's designation comes only from `abuddy.json` `features[].designation`, which must equal the feature id.
 
 ## Services
 
-Service aggregation generated in `__generated__/services.ts`. Service implementations live in `src/features/<name>/be/services/` (feature services) and `src/extensions/services/` (pack-level services). These are stateless modules that systems and actions can call:
+Service aggregation generated in `__generated__/services.ts`. Feature services are declared in `abuddy.json` `features[].services` and live in `src/features/<name>/be/services/`; pack-level services are declared in top-level `packServices` and live in `src/extensions/services/`. Systems and actions call them through `services.<key>`:
 
-`chat`, `artifact`, `threads`, `cli`, `codex`, `browser`, `library`, `action`, `prompt`, `llm`, `brain`, `database`, `settings`, `textStream`, `filesystem`, `modelClient`, `openaiAuth`
+`chat`, `artifact`, `threads`, `cli`, `codex`, `library`, `action`, `prompt`, `brain`, `scheduler`, `database`, `settings`, `filesystem`
 
-The model client (`extensions/services/model-client/`) handles LLM streaming, tool calling, conversation management, and context compaction.
+Each service entry names one value export, `"<key>": "<path>.ts#<key>Service"`, and the module exports it as `export const <key>Service = { ... }` (or a class instance). No factories and no whole-module services. `Services` is `typeof featureServices`, so that object is the contract dependent packs build against:
+
+- List only what callers use through `services.<key>` (actions, steps, systems, tests). Helpers used inside the pack stay plain exports and are imported directly (`hooks.ts` imports `clearAllSchedules`/`removeAllListeners`; the brain system imports `notify`)
+- Don't re-export `qx`/`tx`/`EARS` or other SDK modules: pack code imports those itself. Actions can import nothing but `@abuddy/sdk/actions`, so they read and write entities through `services.repository`
+- No third-party types in the contract: the published facade may import only `@abuddy/*` and the SDK's peers. Give the export an explicit type when inference would name one, so the third-party types stay inside the service module and raw handles surface as `unknown` or an opaque branded type
+
+Model calls go through the host's `services.inference` (AI SDK 7, `provider:model` ids): the `llm` step calls it with the node's `model`, and the pack has no model code or `ai` dependency of its own.
 
 ## EARS (Entity types + Relations)
 
-Entity types and relation kinds come from `__generated__/ears.ts`, generated standalone from `abuddy.json` by `abuddy generate-entries`. The pack-entry registers the entity types and relation kinds `abuddy.json` declares. `ears.ts` also names the SDK's own: Relation, the flow model (Flow, Node, TNode, Action, Prompt; contains, transitions_to, instance_of, spawned, tracked), and the settings and secrets data the SDK's seeders and services use (Settings, Secret). The SDK defines their shapes: import `ActionEntity`, `PromptEntity`, `FlowEntity`, `NodeBase`, `TNodeEntity`, `SettingsEntity`, `SecretEntity` from `@abuddy/sdk`. Document, Collection and Note are default-setup's, declared in `abuddy.json` with their shapes (`DocumentEntity`, `CollectionEntity`, `ContentSection` in `features/library/be/types.ts`; `NoteEntity` in `features/notes/be/types.ts`). The SDK's seeders and services call default-setup's repositories through `BuiltinRepositories` (`@abuddy/sdk/ears/internals`); `tests/unit/builtin-repositories.spec.ts` fails when a repository stops satisfying it. `PackShapes['Node']` is the pack's step node union (`NodeEntity`, each step's `XNode extends NodeBase`). The host keeps TNode out of persistence and routes Secret to the secrets store.
+Entity types and relation kinds come from `__generated__/ears.ts`, generated standalone from `abuddy.json` by `abuddy generate-entries`. The pack-entry registers the entity types and relation kinds `abuddy.json` declares. `ears.ts` also names the SDK's own: Relation, the flow model (Flow, Node, TNode, Action, Prompt; contains, transitions_to, instance_of, spawned, tracked), and the settings data the SDK's seeders and services use (Settings). The SDK defines their shapes: import `ActionEntity`, `PromptEntity`, `FlowEntity`, `NodeBase`, `TNodeEntity`, `SettingsEntity` from `@abuddy/sdk`. Document, Collection and Note are default-setup's, declared in `abuddy.json` with their shapes (`DocumentEntity`, `CollectionEntity`, `ContentSection` in `features/library/be/types.ts`; `NoteEntity` in `features/notes/be/types.ts`). The SDK's seeders and services call default-setup's repositories through `BuiltinRepositories` (`@abuddy/sdk/ears/internals`); `tests/unit/builtin-repositories.spec.ts` fails when a repository stops satisfying it. `PackShapes['Node']` is the pack's step node union (`NodeEntity`, each step's `XNode extends NodeBase`). The host keeps TNode out of persistence. API keys aren't entities: Settings → Secrets manages them through the host's `secrets` procedures and `services.secrets`, and CLI path overrides live in the code plugin's settings (`plugins.code.cliPaths`).
 
 Import `EARS` from `@/__generated__/ears` by default. The SDK's `EARS` (`@abuddy/sdk`) is fine for `EntityId`, SDK-owned constants and shared EARS types (build facets use it), but its `EARS.Entity` type is open: annotate with it only when any entity name is intended, as the create step's `entityTypeTarget` does (see `packages/abuddy-sdk/TYPED-EARS.md`).
 
@@ -90,10 +95,10 @@ Seed sources compiled to JSON by `abuddy build`, as `abuddy.json` `seedFormats` 
 
 - `actions/`, `prompts/`, `flows/`, `default-settings.ts` — compiled by the SDK's own compilers (the manifest names only their paths)
 - `notes/` — welcome note, compiled with the `notes` format (`markdown-tree` for `Note`: frontmatter fields, `index.md` directories)
-- `library/` — internal docs (commands reference), compiled with the `library` format: `_compilers/library.ts` turns it into Collection and Document records, with sections parsed from the markdown
+- `library/` — internal docs (`internal/commands/*.md`, the editable half of the slash commands `services.library.commands()` lists, the rest declared in `abuddy.json` `commands`), compiled with the `library` format: `_compilers/library.ts` turns it into Collection and Document records, with sections parsed from the markdown
 - `faqs/` — markdown FAQ files, compiled with the `faqs` format (`_compilers/faqs.ts`), not seeded; `settings/be/faqs.ts` reads `faqs.seed.json`
 - `_compilers/` — the formats' compiler modules, bundled into `dist/build/seed-compilers.mjs` so dependents can use the formats
-- `hooks/` — seed hooks for Note (`notes.ts`) and Document/Collection (`library.ts`), registered through `seedHooks` in `abuddy.json`
+- `hooks/` — seed hooks for Note (`notes.ts`) and Document/Collection (`library.ts`), registered through `seedHooks` in `abuddy.json`. Collection is a `container`, so a dependent pack's documents nest in this pack's folders instead of forking them, and both `find`s match a name within its parent folder
 
 Rows go through those hooks, which call `noteCommands`/`libraryCommands`, whatever pack seeds them. A pack depending on default-setup seeds with its formats by naming them (`{ "path": "src/seeds/notes", "format": "default-setup:notes" }`) and gets the same rows. `tests/unit/seed-parity` compares seeded rows against goldens recorded from the previous pipeline.
 
@@ -105,20 +110,20 @@ See `src/seeds/CLAUDE.md` for authoring details.
 
 Step definitions in `src/extensions/steps/`. Each step directory contains:
 
-- `build.ts` — build facet: `export const <name>StepBuild` (or `<name>TriggerBuild`) with compile/validate/decompile/getLabel and trigger facets, and no FE or runtime imports
+- `build.ts` — build facet: `export const <name>StepBuild` (or `<name>TriggerBuild` for schedule and listener) with `build: { compile, validate, getLabel, decompile }` or a trigger facet, and no FE or runtime imports
 - `index.ts` — `StepDefinition` spreading the build facet and adding runtime and FE config
 - `fe.ts` — frontend config (icon, colors, node config, lazy-loaded form component)
-- `types.ts` — step-specific types
+- `types.ts` — step-specific types (the `DSL…Node` interface a flow helper is generated from)
 - `form.vue` — optional editor form component
-- `runtime.ts` — optional runtime handler
+- `runtime.ts` — optional runtime handler (action, create, fire, llm, query, schedule, switch, transform, update)
 
-A new step goes in both barrels: `src/extensions/steps/register.ts` (the full definition) and `src/extensions/steps/build.ts` (the build facet). `abuddy.json` `steps.build` points at the latter; it's bundled to `dist/build/steps.build.mjs`, which packs depending on default-setup use to validate their flows. `tests/unit/step-build-barrel.spec.ts` fails when the barrels diverge.
+A new step goes in both barrels: `src/extensions/steps/register.ts` (the full definition) and `src/extensions/steps/build.ts` (the build facet); `register-fe.ts` registers the FE configs. `abuddy.json` `steps.build` points at the latter; it's bundled to `dist/build/steps.build.mjs`, which packs depending on default-setup use to validate their flows. `tests/unit/step-build-barrel.spec.ts` fails when the barrels diverge.
 
-13 steps: **action**, **llm**, **switch**, **fire**, **transform**, **query**, **subflow**, **create**, **update**, **keep-alive**, **kill**, **schedule** (trigger), **listener** (trigger).
+13 steps: **action**, **llm**, **switch**, **fire**, **transform**, **query**, **subflow**, **create**, **update**, **keep_alive** (in `keep-alive/`), **kill**, **schedule** (trigger), **listener** (trigger).
 
 ## Artifacts
 
-Artifact type definitions in `src/extensions/artifacts/register.ts`. 16 types registered, 14 with viewer components in `src/extensions/artifacts/viewers/` (graph and table are registered without a `loadComponent`):
+Artifact type definitions in `src/extensions/artifacts/register.ts`. 16 types registered, each with a viewer component in `src/extensions/artifacts/viewers/`:
 
 text, code, review, image, slack, todo, project, json, graph, table, markdown, claude-session, codex-session, diff, plan, note
 
@@ -142,21 +147,23 @@ FE registration: `src/extensions/blocks/register-fe.ts`.
 
 ## Migrations
 
-Version-targeted migrations in `src/migrations/`. Registered in `src/migrations/index.ts` as `PackMigration[]`. Run during boot when the stored pack version is below the target.
+Version-targeted migrations in `src/migrations/`, one file per target version. Registered in `src/migrations/index.ts` as `PackMigration[]` (`abuddy.json` `migrations`). As a built-in pack's, they are host migrations: `runMigrations()` (`packages/api/src/setup/migrations/index.ts`) runs each when `stored app version < target <= APP_VERSION`. Add to the latest unreleased target (see `packages/api/src/setup/migrations/CLAUDE.md`).
 
 ## Boot sequence contributions
 
 The pack registers boot hooks via `__generated__/pack-entry.ts`:
-- `earlySystem` — logs system (starts before hydration)
-- `createDefaultSettings` — ensures Settings entity exists
-- `seed` — runs `runBootSeed` (hash-checked seeding)
-- Shutdown hook — kills all terminal processes
+- `earlySystem` — the logs system, from `features[].earlySystem` (starts before hydration)
+- `onInit` — from `boot.hooks` (`src/features/hooks.ts`): `createDefaultSettings()` ensures the Settings entity exists
+- `onShutdown` — from `boot.hooks`: kills terminal processes, clears brain schedules, removes ad-hoc listeners and clears the flow actor registry
+- `seedManifest` — from `boot.seed` and `boot.seedPolicy`: the compiled seed artifacts the host seeds (hash-checked)
 
 ## Build
 
-- `rollup-defs.config.mjs` — Rollup config for DSL definition compilation
-- `npm run compile` from repo root compiles all DSLs
+- `abuddy build` writes the Monaco DSL definitions the renderer imports, one `dist/defs/monaco/<name>-defs.d.ts` per `abuddy.json` `dsl` entry with a `monaco` target
+- `npm run compile` from the repo root runs this package's `npm run build`
+- `npm run build:dev` runs `abuddy build --skip-fe`
 - `tsconfig.json` — uses `@/` path alias pointing to `src/`; `npm run typecheck` runs `vue-tsc` over the `.ts`, `.vue` and `src/defs/` files
-- Vitest config at `vitest.config.ts`, test tsconfig at `tsconfig.test.json`
+- Vitest config at `vitest.config.ts`, test tsconfig at `tsconfig.test.json`. Unit tests run on `@abuddy/testing/harness` (`tests/setup.ts`: `setupPackTests({ seedRuntime, registration })`), in memory, with no `@abuddy/host` or API imports (`check:specifiers` rejects them). Systems run with `startApp`, flows with `importFlows` (a root flow, `root: true`, or default-setup's own through `tests/unit/helpers/flows.ts`) and `runFlow`, as the app runs them, and services the code under test reaches outside the process (CLIs, Codex, `inference`) are mocked with `mockService` (`inference` with `mockInference`)
 - `prepare` script runs `abuddy generate-entries` after `npm install`
-- `npm run build` runs `abuddy build`, generates the Monaco DSL defs the renderer imports (`generate:defs`) and rebuilds `dist/runtime/index.cjs`: the pack's backend runtime, which the API loads in development and the app publishes, with the snapshot and `build/`, for packs depending on default-setup
+- `abuddy build` gates the facade types it bundles into `dist/types/pack-types.d.ts` (`packages/abuddy-cli/src/build/facade-gate.ts`): the bundle must type-check on its own and import only `@abuddy/*` modules the published packages export, `@abuddy/sdk`'s peers and Node built-ins. `etc/pack-types.api.md` is the reviewed report of that bundle: after a build that changes it, run `npm run facade:update` and commit the report; CI runs `npm run facade:check` after `abuddy build`
+- `npm run build` runs `abuddy build` and then `node dev-build.mjs`, which rebuilds `dist/runtime/index.cjs`: the pack's backend runtime, which the API loads in development and the app publishes, with the snapshot and `build/`, for packs depending on default-setup

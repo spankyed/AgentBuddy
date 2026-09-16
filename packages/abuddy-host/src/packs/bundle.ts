@@ -2,7 +2,7 @@
  * Pack bundle: the one layout an external pack has everywhere — build output
  * (dist/), the release archive, and the installed pack directory.
  *
- *   <id>/abuddy.json            resolved manifest (fe paths point into runtime/)
+ *   <id>/abuddy.json            the pack's manifest
  *   <id>/bundle.json            format version, versions, source, sha256 per file
  *   <id>/runtime/index.cjs      backend: exports `registration` + `setCompiledDir`
  *   <id>/runtime/fe.js, fe.css  frontend
@@ -11,7 +11,7 @@
  *   <id>/types/snapshot.json    types + manifest for dependents' codegen
  *
  * `abuddy build` writes runtime/, build/ and types/ into dist/. Staging adds the
- * resolved manifest and bundle.json. The installer copies a verified stage into
+ * manifest and bundle.json. The installer copies a verified stage into
  * the packs directory unchanged, and the host loader reads it as-is.
  */
 import * as crypto from 'node:crypto';
@@ -66,13 +66,6 @@ function listFiles(dir: string, base = dir): string[] {
   return out.sort();
 }
 
-/** Directory holding an installed pack's compiled seed data (legacy layout: dist/). */
-export function resolvePackSeedsDir(packDir: string): string {
-  return fs.existsSync(path.join(packDir, BUNDLE_PATHS.runtimeEntry))
-    ? path.join(packDir, BUNDLE_PATHS.seedsDir)
-    : path.join(packDir, 'dist');
-}
-
 export function isBundleDir(dir: string): boolean {
   return fs.existsSync(path.join(dir, BUNDLE_PATHS.info));
 }
@@ -83,19 +76,13 @@ export function hasBuiltBundleSections(packRoot: string): boolean {
   return fs.existsSync(path.join(dist, BUNDLE_PATHS.runtimeEntry)) && fs.existsSync(path.join(dist, BUNDLE_PATHS.snapshot));
 }
 
-/** The manifest as installed: frontend paths point at the bundle's runtime files. */
-export function resolveBundleManifest(source: PackManifest, bundleRoot: string): PackManifest {
-  const manifest: PackManifest = JSON.parse(JSON.stringify(source));
-  const hasFe = fs.existsSync(path.join(bundleRoot, BUNDLE_PATHS.feEntry));
-  const hasStyles = fs.existsSync(path.join(bundleRoot, BUNDLE_PATHS.feStyles));
-  if (hasFe) {
-    manifest.fe = { ...(manifest.fe ?? {}), entry: BUNDLE_PATHS.feEntry } as PackManifest['fe'];
-    if (hasStyles) (manifest.fe as { styles?: string }).styles = BUNDLE_PATHS.feStyles;
-    else delete (manifest.fe as { styles?: string }).styles;
-  } else {
-    delete manifest.fe;
-  }
-  return manifest;
+/** A bundle's frontend files, bundle-relative: its FE entry and stylesheet when `abuddy build` wrote them */
+export function packFrontendFiles(bundleDir: string): { entry?: string; styles?: string } {
+  const has = (file: string) => fs.existsSync(path.join(bundleDir, file));
+  return {
+    entry: has(BUNDLE_PATHS.feEntry) ? BUNDLE_PATHS.feEntry : undefined,
+    styles: has(BUNDLE_PATHS.feStyles) ? BUNDLE_PATHS.feStyles : undefined,
+  };
 }
 
 /**
@@ -124,7 +111,7 @@ export function stageBundle(
     });
   }
 
-  const manifest = resolveBundleManifest(options.version ? { ...source, version: options.version } : source, stageDir);
+  const manifest: PackManifest = options.version ? { ...source, version: options.version } : source;
   fs.writeFileSync(path.join(stageDir, BUNDLE_PATHS.manifest), JSON.stringify(manifest, null, 2) + '\n');
 
   const files: Record<string, string> = {};
@@ -203,22 +190,52 @@ export async function extractBundleArchive(archive: string, destDir: string, exp
   return path.join(destDir, dirs[0].name);
 }
 
+/** A built-in pack's compiled seed files in its dist/ (`*.seed.json`, `seeds.json`, `media/`), relative to it */
+function builtInSeedFiles(distDir: string): string[] {
+  if (!fs.existsSync(distDir)) return [];
+  const top = fs.readdirSync(distDir, { withFileTypes: true })
+    .filter((entry) => entry.isFile() && (entry.name.endsWith('.seed.json') || entry.name === 'seeds.json'))
+    .map((entry) => entry.name);
+  const mediaDir = path.join(distDir, 'media');
+  const media = fs.existsSync(mediaDir) ? listFiles(mediaDir).map((file) => `media/${file}`) : [];
+  return [...top, ...media].sort();
+}
+
+/**
+ * In a built-in pack's dist/, the sha256 of the compiled seeds index (seeds.json) its runtime was built
+ * beside. The pack's runtime build writes it with runtime/index.cjs; `abuddy build` writes the seeds.
+ */
+const BUILT_IN_RUNTIME_SEEDS_HASH = 'runtime/seeds-index.sha256';
+
 /**
  * Publish a built-in pack's artifacts in the bundle layout (dist/snapshot.json → types/snapshot.json,
- * dist/build/ → build/, dist/runtime/index.cjs → runtime/index.cjs) so pack authors resolve it as a
- * dependency from the installed app: builds use its types and build code, tests its runtime.
- * Returns false when the destination was already current.
+ * dist/build/ → build/, dist/runtime/index.cjs → runtime/index.cjs, compiled seeds → runtime/seeds/) so
+ * pack authors resolve it as a dependency from the installed app: builds use its types and build
+ * code, tests its runtime with the seed data it reads (settings defaults). Returns false when the
+ * destination was already current. Throws, publishing nothing, when the runtime wasn't built beside
+ * the compiled seeds (seeds compiled again without rebuilding the runtime).
  */
 export function publishHostPackArtifacts(builtInPackDir: string, destDir: string): boolean {
-  const snapshot = path.join(builtInPackDir, 'dist', 'snapshot.json');
+  const distDir = path.join(builtInPackDir, 'dist');
+  const snapshot = path.join(distDir, 'snapshot.json');
   if (!fs.existsSync(snapshot)) return false;
-  const buildDir = path.join(builtInPackDir, 'dist', 'build');
-  const runtimeEntry = path.join(builtInPackDir, 'dist', BUNDLE_PATHS.runtimeEntry);
+  const buildDir = path.join(distDir, 'build');
+  const runtimeEntry = path.join(distDir, BUNDLE_PATHS.runtimeEntry);
+  const seedsIndex = path.join(distDir, 'seeds.json');
+  if (fs.existsSync(runtimeEntry) && fs.existsSync(seedsIndex)) {
+    const hashFile = path.join(distDir, BUILT_IN_RUNTIME_SEEDS_HASH);
+    const builtBeside = fs.existsSync(hashFile) ? fs.readFileSync(hashFile, 'utf-8').trim() : undefined;
+    if (builtBeside !== sha256File(seedsIndex)) {
+      throw new Error(`${runtimeEntry} wasn't built beside the compiled seeds in ${distDir} (${BUILT_IN_RUNTIME_SEEDS_HASH} doesn't match seeds.json), so it isn't published with them: rebuild the pack's runtime (npm run build in the pack)`);
+    }
+  }
+  const seedFiles = fs.existsSync(runtimeEntry) ? builtInSeedFiles(distDir) : [];
 
   const sources = [
     snapshot,
     ...(fs.existsSync(buildDir) ? listFiles(buildDir).map(f => path.join(buildDir, f)) : []),
     ...(fs.existsSync(runtimeEntry) ? [runtimeEntry] : []),
+    ...seedFiles.map((file) => path.join(distDir, file)),
   ];
   const fingerprint = sources.map(f => `${path.relative(builtInPackDir, f)}:${sha256File(f)}`).join('\n');
   const fingerprintFile = path.join(destDir, '.fingerprint');
@@ -233,6 +250,11 @@ export function publishHostPackArtifacts(builtInPackDir: string, destDir: string
   if (fs.existsSync(runtimeEntry)) {
     fs.mkdirSync(path.join(staging, BUNDLE_PATHS.runtimeDir), { recursive: true });
     fs.copyFileSync(runtimeEntry, path.join(staging, BUNDLE_PATHS.runtimeEntry));
+    for (const file of seedFiles) {
+      const target = path.join(staging, BUNDLE_PATHS.seedsDir, file);
+      fs.mkdirSync(path.dirname(target), { recursive: true });
+      fs.copyFileSync(path.join(distDir, file), target);
+    }
   }
   fs.writeFileSync(path.join(staging, '.fingerprint'), fingerprint);
   fs.rmSync(destDir, { recursive: true, force: true });

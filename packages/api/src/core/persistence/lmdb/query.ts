@@ -30,14 +30,6 @@ export function decodeAttr(rec?: AttrRecord | null) {
 }
 
 /**
- * Return the raw attribute record {t, v} without decoding.
- * Useful for building indexes or advanced scenarios that need the original structure.
- */
-export function decodeAttrRaw(rec?: AttrRecord | null): AttrRecord | null {
-  return rec ?? null;
-}
-
-/**
  * Parse numeric index from key suffix, with guards against corrupt data.
  * Returns null if index is not a valid finite number >= 0.
  */
@@ -78,11 +70,6 @@ function attrKey(kind: string, entityId: string, idx: number) {
 function attrPrefix(kind: string, entityId: string) {
   const p = `${kind}${US}${entityId}${US}`;
   return { start: p, end: p + '\xFF', prefix: p };
-}
-
-function scanPrefix<T = any>(db: any, p: string) {
-  // returns an iterable over { key, value }
-  return db.getRange({ start: p, end: p + '\xFF' }) as Iterable<{ key: string | Buffer; value: T }>;
 }
 
 
@@ -414,35 +401,3 @@ export class LmdbQuery {
     return db.getRange(opts);
   }
 }
-
-/* Example usage
-import { openEnvAt } from '@/core/persistence/lmdb/envs';
-import { LmdbQuery } from './lmdb-query';
-
-const dbs = openEnvAt('/path/to/ears.lmdb');
-const q = new LmdbQuery(dbs);
-
-// 1) Single attr
-const title = q.getAttr('Name', 'Document-9f8e2c');  // "How to reset an iPhone 13?"
-
-// 2) Whole attr array
-const tags = q.getAttrArray('Tag', 'Document-9f8e2c'); // ["ios", "reset"]
-
-// 3) Entities of a type
-const documents = [...q.entitiesOfType('Document')];
-
-// 4) Find docs with an exact tag
-const docsWithIosTag = q.findEntitiesByAttr('Tag', { equals: 'ios', entityType: 'Document' });
-
-// 5) Custom predicate: documents updated after a date
-const recentDocs = q.findEntitiesByAttr('UpdatedAt', {
-  predicate: (v) => v instanceof Date && v.getTime() >= Date.parse('2025-08-01'),
-  entityType: 'Document',
-});
-
-// 6) Outgoing neighbors by relation kind
-const containedDocs = q.neighbors('Collection-12ab34', { kind: 'CONTAINS', direction: 'out' });
-
-// 7) BFS two hops via LINKS
-const reach = q.bfs('Document-9f8e2c', { maxDepth: 2, kind: 'LINKS', direction: 'both' });
-*/

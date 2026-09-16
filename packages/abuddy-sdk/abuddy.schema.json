@@ -67,7 +67,7 @@
       "additionalProperties": {
         "type": "string"
       },
-      "description": "EARS entity types this pack registers. Keys are enum names, values are string identifiers. The SDK defines Relation, Flow, Node, TNode, Action, Prompt, Settings, Secret."
+      "description": "EARS entity types this pack registers. Keys are enum names, values are string identifiers. The SDK defines Relation, Flow, Node, TNode, Action, Prompt, Settings."
     },
     "relKinds": {
       "type": "object",
@@ -85,13 +85,6 @@
             "type": "string"
           },
           "description": "Entity types excluded from persistence (in-memory only)."
-        },
-        "secretEntityTypes": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          },
-          "description": "Entity types routed to the secrets store."
         }
       },
       "additionalProperties": false,
@@ -143,7 +136,7 @@
           },
           "earlySystem": {
             "type": "boolean",
-            "description": "Built-in packs only. Ignored for external packs."
+            "description": "Start this feature's system before EARS hydration. Built-in packs only."
           },
           "system": {
             "type": "object",
@@ -172,13 +165,6 @@
                       "type": "string"
                     },
                     "description": "Event types this system listens for."
-                  },
-                  "outgoing": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    },
-                    "description": "Event types this system emits."
                   }
                 },
                 "additionalProperties": false,
@@ -196,25 +182,11 @@
             "properties": {
               "entry": {
                 "type": "string",
-                "description": "Path to the frontend plugin module."
-              },
-              "label": {
-                "type": "string",
-                "description": "Display name shown in the sidebar."
-              },
-              "icon": {
-                "type": "string",
-                "description": "Icon name from the icon library."
-              },
-              "isPinned": {
-                "type": "boolean",
-                "description": "Whether this plugin is pinned in the sidebar by default."
+                "description": "Path to the frontend plugin module, which default-exports the Plugin (its id, label, icon and isPinned)."
               }
             },
             "required": [
-              "entry",
-              "label",
-              "icon"
+              "entry"
             ],
             "additionalProperties": false,
             "description": "Frontend plugin definition."
@@ -222,9 +194,13 @@
           "services": {
             "type": "object",
             "additionalProperties": {
-              "type": "string"
+              "type": "string",
+              "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
             },
-            "description": "Service modules. Keys are service names, values are source file paths."
+            "propertyNames": {
+              "pattern": "^[A-Za-z_$][\\w$]*$"
+            },
+            "description": "Services. Keys are service names on `services`, values are \"path#exportName\" of the service object (an object literal or a class instance, not a factory) in a source file."
           },
           "repositories": {
             "type": "object",
@@ -256,24 +232,44 @@
     "packServices": {
       "type": "object",
       "additionalProperties": {
-        "type": "string"
+        "type": "string",
+        "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$"
       },
-      "description": "Pack-level services not tied to a specific feature. Keys are service names, values are source file paths."
+      "propertyNames": {
+        "pattern": "^[A-Za-z_$][\\w$]*$"
+      },
+      "description": "Pack-level services not tied to a specific feature. Keys are service names on `services`, values are \"path#exportName\" of the service object (an object literal or a class instance, not a factory) in a source file."
+    },
+    "commands": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9-]*$",
+            "description": "The command as typed after the \"/\", without it."
+          },
+          "placeholder": {
+            "type": "string",
+            "minLength": 1,
+            "description": "What the chat shows after the command: the argument it takes, or what it does."
+          }
+        },
+        "required": [
+          "name",
+          "placeholder"
+        ],
+        "additionalProperties": false
+      },
+      "description": "Slash commands this pack adds to the chat. Sending one fires a `user.command` event the pack's flows handle; a name must be unique across the app."
     },
     "boot": {
       "type": "object",
       "properties": {
-        "earlySystem": {
-          "type": "string",
-          "description": "Built-in packs only. Ignored for external packs."
-        },
-        "createDefaultSettings": {
-          "type": "string",
-          "description": "Module that ensures default settings exist."
-        },
         "hooks": {
           "type": "string",
-          "description": "Module providing lifecycle hooks (e.g. shutdown)."
+          "description": "Module exporting lifecycle hooks: onInit (after EARS hydration, before migrations and seeds) and onShutdown (when the pack's backend stops)."
         },
         "seed": {
           "type": "object",
@@ -414,10 +410,6 @@
     "fe": {
       "type": "object",
       "properties": {
-        "entry": {
-          "type": "string",
-          "description": "Path to the frontend entry module."
-        },
         "tiptapPlugins": {
           "type": "string",
           "description": "Path to tiptap plugin registration module."
@@ -428,10 +420,6 @@
             "type": "string"
           },
           "description": "Named app extensions. Keys are extension names, values are paths to Vue components."
-        },
-        "styles": {
-          "type": "string",
-          "description": "Path to a CSS file to include in the frontend bundle."
         },
         "bundleUi": {
           "type": "boolean",
@@ -470,6 +458,13 @@
               "type": "string"
             },
             "description": "Global type mappings injected into the DSL scope."
+          },
+          "inline": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Packages whose declarations are bundled into the editor definitions, besides @abuddy/* and the pack's own modules. The editor loads no node_modules, so a type it needs from another package belongs here."
           }
         },
         "required": [

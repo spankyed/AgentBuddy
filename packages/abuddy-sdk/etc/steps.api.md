@@ -62,7 +62,6 @@ export type SdkEntityShapes = {
     Action: ActionEntity;
     Prompt: PromptEntity;
     Settings: SettingsEntity;
-    Secret: SecretEntity;
 };
 
 // @public (undocumented)
@@ -157,7 +156,6 @@ export interface StepFEFacet {
     };
     // (undocumented)
     nodeConfig: StepNodeConfig;
-    resourceKeys?: string[];
 }
 
 // @public (undocumented)
@@ -187,8 +185,6 @@ export interface StepNodeConfig {
     category: 'trigger' | 'action' | 'logic' | 'data' | 'ai';
     // (undocumented)
     color: string;
-    // (undocumented)
-    component?: string;
     // (undocumented)
     connectionRules: {
         inputs: number;
@@ -275,6 +271,7 @@ export interface StepRuntimeFacet {
     // (undocumented)
     isAsync?: boolean;
     spawnsSubflow?: boolean;
+    waits?: boolean;
 }
 
 // @public (undocumented)

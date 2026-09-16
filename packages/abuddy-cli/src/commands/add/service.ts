@@ -3,10 +3,15 @@ import { generateEntries } from '../generate-entries';
 import { validateName, toCamelCase, writeIfNotExists, logCreated, parseFlag, hasFlag } from './templates';
 import { readManifest, writeManifest, addPackService, addFeatureService } from './manifest';
 
-const SERVICE_TEMPLATE = (camel: string) => `export function create${camel[0].toUpperCase() + camel.slice(1)}Service() {
-  return {};
-}
+// abuddy.json names this object ("path#exportName"): `services.<camel>` is the object itself
+const SERVICE_TEMPLATE = (camel: string) => `export const ${serviceExport(camel)} = {
+  // Methods systems and actions call as services.${camel}.<method>()
+};
 `;
+
+function serviceExport(camel: string): string {
+  return `${camel}Service`;
+}
 
 const HELP = `
 Usage: abuddy add service <name> [options]
@@ -38,20 +43,20 @@ export async function addService(args: string[], root: string) {
     if (writeIfNotExists(filePath, SERVICE_TEMPLATE(camel))) created.push(filePath);
 
     const manifest = readManifest(root);
-    addFeatureService(manifest, feature, name, `src/features/${feature}/be/services/${name}.ts`);
+    addFeatureService(manifest, feature, camel, `src/features/${feature}/be/services/${name}.ts#${serviceExport(camel)}`);
     writeManifest(root, manifest);
   } else {
     const filePath = path.join(root, 'src', 'extensions', 'services', `${name}.ts`);
     if (writeIfNotExists(filePath, SERVICE_TEMPLATE(camel))) created.push(filePath);
 
     const manifest = readManifest(root);
-    addPackService(manifest, name, `src/extensions/services/${name}.ts`);
+    addPackService(manifest, camel, `src/extensions/services/${name}.ts#${serviceExport(camel)}`);
     writeManifest(root, manifest);
   }
 
   await generateEntries([], root);
 
-  console.log(`\nCreated service "${name}"${feature ? ` for feature "${feature}"` : ''}:`);
+  console.log(`\nCreated service "${camel}"${feature ? ` for feature "${feature}"` : ''} (services.${camel}):`);
   logCreated(root, created);
   console.log(`\n  manifest updated + __generated__/ regenerated`);
 }

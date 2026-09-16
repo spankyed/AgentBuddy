@@ -1,11 +1,11 @@
 import { RepositoryErrorCode } from '@abuddy/sdk/ears';
-import { clearMemory } from '@abuddy/host/ears';
+import { resetTestData } from '@abuddy/sdk/testing';
 import { repository } from '@/__generated__/repository';
 import '@/features/flows/be/repository';
 
 describe('flows repository', () => {
   beforeEach(() => {
-    clearMemory();
+    resetTestData();
   });
 
   describe('schedule node validation', () => {

@@ -25,29 +25,22 @@ defineEmits<{
 }>();
 
 const placeholder = `// Example action function
-const { param1, param2 } = params;
+const { threadId, question } = params;
 
 // Use available services
-await services.logger.info('Starting action', { param1, param2 });
+await services.logger.info('Starting action', { threadId });
 
 try {
-  // Your action logic here
-  const result = await services.database.query(
-    'SELECT * FROM users WHERE id = ?',
-    [param1]
-  );
-  
-  // Send email notification
-  await services.email.send(
-    param2,
-    'Action completed',
-    'Your action has been processed successfully.'
-  );
-  
-  return {
-    success: true,
-    data: result.rows
-  };
+  // Ask a model, with the user's key for its provider
+  const { text } = await services.inference.generateText({
+    model: 'anthropic:claude-opus-5',
+    prompt: question,
+  });
+
+  // Post the answer to the thread
+  services.chat.sendSystemMessage({ threadId, text });
+
+  return { success: true, data: text };
 } catch (error) {
   await services.logger.error('Action failed', error);
   throw error;

@@ -9,13 +9,12 @@ export type { Simplify } from './helpers/index.ts';
 export {
   EARS, type BaseEntity, type SdkEntityShapes, type RelationEntity, type FlowEntity, type NodeBase, type TNodeEntity, type TNodeKind,
   type ActionEntity, type ActionParameter, type PromptEntity, type TemplateInput,
-  type SettingsEntity, type SettingsScope, type SecretEntity, type SecretProvider,
+  type SettingsEntity, type SettingsScope,
 } from './types/index.ts';
 export { ROOT_FLOW_ROLE } from './types/index.ts';
 
 // Designations
-export { registerDesignations, getDesignated, hasDesignation } from './designations/index.ts';
-export type { Designations } from './designations/index.ts';
+export { getDesignated, hasDesignation } from './designations/index.ts';
 
 // System IDs
 export { bus } from './ids/index.ts';

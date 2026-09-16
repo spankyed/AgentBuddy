@@ -3,7 +3,7 @@ import * as path from 'path'
 import { EARS } from '@/__generated__/ears'
 import { createLogger } from '@abuddy/sdk/logger'
 import type { DocumentDTO, CollectionDTO, LibraryItem, FolderItem } from '../types'
-// TODO: [SEARCH_INDEX_FF] import * as searchIndexRepo from '../search-index/repository'
+// [SEARCH_INDEX_FF] import * as searchIndexRepo from '../search-index/repository' (dormant: ../search-index/README.md)
 import { libraryQueries } from './queries'
 import {
   findParentCollection,

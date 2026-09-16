@@ -1,5 +1,6 @@
+/** A non-null object that isn't an array */
 export const isPlainObject = (val: unknown): val is Record<string, unknown> =>
-  typeof val === 'object' && val !== null;
+  typeof val === 'object' && val !== null && !Array.isArray(val);
 
 export type MaybeArr<T> = T | readonly T[];
 export function asArr<T>(v: MaybeArr<T>): readonly T[] {

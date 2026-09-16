@@ -48,8 +48,8 @@
                   No models found.
                 </div>
               <div v-for="(group, provider) in groupedModels" :key="provider">
-                <div v-if="group.length > 0" class="sticky top-0 z-10 px-3 py-2 text-xs font-semibold border-b text-neutral-400 bg-neutral-800 border-neutral-700">
-                  {{ provider }}
+                <div v-if="group?.length" class="sticky top-0 z-10 px-3 py-2 text-xs font-semibold border-b text-neutral-400 bg-neutral-800 border-neutral-700">
+                  {{ providerLabels[provider] }}
                 </div>
                 <ComboboxGroup>
                   <ComboboxItem
@@ -223,7 +223,7 @@ import BaseForm from '@abuddy/ui/components/BaseForm'
 import TipSection from '@abuddy/ui/components/TipSection'
 import type { NodeEntity } from '@/__generated__/types'
 import type { FormResources } from '@/features/flows/fe/types/form-props'
-import type { ModelCatalogEntry } from '@abuddy/sdk/inference'
+import { parseModelId, providerLabels, type ModelCatalogEntry, type ModelId, type ProviderName } from '@abuddy/sdk/models'
 import type { PromptEntity } from '@abuddy/sdk'
 
 const props = defineProps<{
@@ -249,9 +249,12 @@ const isModelDropdownOpen = ref(false)
 const { startsWith } = useFilter({ sensitivity: 'base' })
 
 // Get selected model and prompt
-const selectedModel = computed(() => {
-  if (!nodeData.value.model || !props.resources?.models) return null
-  return props.resources.models.find((m: ModelCatalogEntry) => m.id === nodeData.value.model) || null
+const selectedModel = computed((): ModelCatalogEntry | null => {
+  const id = nodeData.value.model
+  if (!id) return null
+  const parts = parseModelId(id)
+  // A valid id the catalog doesn't list (set in a flow's source) still shows, by its model name
+  return props.resources?.models?.find((m: ModelCatalogEntry) => m.id === id) ?? (parts ? { id: id as ModelId, name: `${parts.model} (${providerLabels[parts.provider]})` } : null)
 })
 
 const selectedPrompt = computed(() => {
@@ -282,18 +285,15 @@ const filteredModels = computed(() => {
   if (modelQuery.value === '') return props.resources.models
   return props.resources.models.filter((model: ModelCatalogEntry) =>
     startsWith(model.name, modelQuery.value) ||
-    startsWith(model.provider, modelQuery.value)
+    startsWith(providerLabels[parseModelId(model.id)!.provider], modelQuery.value)
   )
 })
 
 // Group models by provider
 const groupedModels = computed(() => {
-  const groups: Record<string, ModelCatalogEntry[]> = {}
+  const groups: Partial<Record<ProviderName, ModelCatalogEntry[]>> = {}
   filteredModels.value.forEach((model: ModelCatalogEntry) => {
-    if (!groups[model.provider]) {
-      groups[model.provider] = []
-    }
-    groups[model.provider].push(model)
+    (groups[parseModelId(model.id)!.provider] ??= []).push(model)
   })
   return groups
 })

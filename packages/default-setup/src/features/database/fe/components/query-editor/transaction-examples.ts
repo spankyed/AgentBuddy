@@ -41,27 +41,27 @@ return { threadId, before, after };`
   {
     title: 'Grant and Revoke Roles',
     description: 'Manage entity roles',
-    query: `const agentId = tx(EARS.Entity.Agent)
-  .put('name', 'Role Test Agent')
+    query: `const noteId = tx(EARS.Entity.Note)
+  .put('title', 'Role Test Note')
   .grant('assistant')
   .grant('analyzer')
   .id();
 
 // Check initial roles
-const initialRoles = getRoles(agentId);
+const initialRoles = getRoles(noteId);
 
 // Revoke one role and grant another
-tx(agentId)
+tx(noteId)
   .revoke('assistant')
   .grant('supervisor');
 
-// Ensure only this agent has the 'primary' role
-tx(agentId).ensure('primary');
+// Ensure only this note has the 'primary' role
+tx(noteId).ensure('primary');
 
-const finalRoles = getRoles(agentId);
+const finalRoles = getRoles(noteId);
 
 return {
-  agentId,
+  noteId,
   initialRoles,
   finalRoles
 };`
@@ -106,21 +106,21 @@ return qx(flowId).pickAll();`
     title: 'Use Repository Helpers',
     description: 'Create entities with auto-generated fields',
     query: `// Create entity with defaults (auto-generates shortCode, label, etc.)
-const agent = createEntityWithDefaults(EARS.Entity.Agent, {
-  name: 'Smart Assistant',
-  description: 'AI-powered helper'
+const note = createEntityWithDefaults(EARS.Entity.Note, {
+  title: 'Smart Note',
+  content: 'AI-powered helper'
 });
 
 // Update with automatic timestamp
-updateEntity(agent.id, {
-  status: 'active',
-  lastPing: Date.now()
+updateEntity(note.id, {
+  noteType: 'document',
+  lastSeen: Date.now()
 });
 
 // Create relation with helper
-createRelation(agent.id, EARS.RelKind.spawned, 'Thread-1');
+createRelation(note.id, EARS.RelKind.spawned, 'Thread-1');
 
-return qx(agent.id).pickAll();`
+return qx(note.id).pickAll();`
   },
 
   // Safe Operations

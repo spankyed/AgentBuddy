@@ -5,6 +5,7 @@ import { findPackRoot, readManifest } from '../utils';
 import { findFEEntry, packExternalsPlugin } from '../build/fe-bundler';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { installPackFromLocal, readHostVersion } from '@abuddy/host/packs';
+import { removeDevServerMarker, writeDevServerMarker } from '@abuddy/host/packs/dev-server';
 
 function getDevApiUrl(): string | null {
   try {
@@ -19,18 +20,6 @@ export function installToDev(root: string) {
   return installPackFromLocal(root, packsDir, { hostVersion: readHostVersion(userDataDir) });
 }
 
-function writeSignalFile(packsDir: string, packId: string, port: number): string {
-  const packDir = path.join(packsDir, packId);
-  fs.mkdirSync(packDir, { recursive: true });
-  const signalPath = path.join(packDir, '.dev');
-  fs.writeFileSync(signalPath, JSON.stringify({ port, pid: process.pid }));
-  return signalPath;
-}
-
-function removeSignalFile(signalPath: string) {
-  try { fs.unlinkSync(signalPath); } catch {}
-}
-
 export async function dev(_args: string[]) {
   const root = findPackRoot(process.cwd());
   const srcDir = path.join(root, 'src');
@@ -41,7 +30,7 @@ export async function dev(_args: string[]) {
 
   const manifest = readManifest(root);
   const feEntry = findFEEntry(root);
-  const { packsDir } = resolveAppContext({ env: 'development' });
+  const { packsDir, userDataDir } = resolveAppContext({ env: 'development' });
 
   console.log('Running initial build...\n');
   await build([]);
@@ -102,10 +91,11 @@ export async function dev(_args: string[]) {
     throw new Error('Vite dev server failed to bind a port');
   }
 
-  const signalPath = writeSignalFile(packsDir, manifest.id, port);
+  // Outside the installed pack: its directory is the verified bundle, replaced by every install below
+  writeDevServerMarker(userDataDir, manifest.id, { port, pid: process.pid });
 
   function cleanup() {
-    removeSignalFile(signalPath);
+    removeDevServerMarker(userDataDir, manifest.id);
     server.close();
   }
 

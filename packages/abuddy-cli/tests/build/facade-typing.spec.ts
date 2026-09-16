@@ -42,8 +42,8 @@ const BASE_PACK = {
     features: [{
       id: 'threads',
       system: { entry: 'src/system.ts' },
-      plugin: { entry: 'src/plugin.ts', label: 'Threads', icon: 'Box' },
-      services: { search: 'src/search.ts' },
+      plugin: { entry: 'src/plugin.ts' },
+      services: { search: 'src/search.ts#searchService' },
       repositories: { tagQueries: 'src/repository.ts#tagQueries' },
     }],
   }),
@@ -193,11 +193,12 @@ export type RelationShape = Expect<Equal<typeof relation.relationDetails.sourceE
 // So is the flow model, without depending on default-setup
 const action = findAll('Action')[0]!;
 export type ActionShape = Expect<Equal<typeof action.actionFn, string>>;
-// And the settings and secrets the SDK's services use
+// And the settings the SDK's services use
 const settings = findAll('Settings')[0]!;
 export type SettingsShape = Expect<Equal<typeof settings.data, unknown>>;
-const secret = findAll('Secret')[0]!;
-export type SecretShape = Expect<Equal<typeof secret.encryptedValue, string>>;
+// API keys aren't graph data: the host keeps them, packs see services.secrets
+// @ts-expect-error Secret isn't an entity
+findAll('Secret');
 // Library and notes entities belong to default-setup, not the SDK
 // @ts-expect-error Note isn't declared by either pack or the SDK
 findAll('Note');
@@ -316,6 +317,19 @@ function writeTsconfig(app: string, moduleResolution: 'bundler' | 'node16', publ
   return name;
 }
 
+/**
+ * Diagnostics in the pack's own declaration files (its dependencies' facade bundles), checked with
+ * skipLibCheck off for them only: installed packages' declarations stay unchecked.
+ */
+function packDeclarationDiagnostics(app: string, tsconfig: string): string[] {
+  const config = ts.getParsedCommandLineOfConfigFile(path.join(app, tsconfig), {}, { ...ts.sys, onUnRecoverableConfigFileDiagnostic: () => {} })!;
+  const declarations = config.fileNames.filter((file) => file.endsWith('.d.ts'));
+  expect(declarations, 'dependency facade declarations').toContainEqual(expect.stringContaining(path.join('src', '__generated__', 'deps', 'base-pack.d.ts')));
+  const program = ts.createProgram({ rootNames: config.fileNames, options: { ...config.options, skipLibCheck: false } });
+  return declarations.flatMap((file) => program.getSemanticDiagnostics(program.getSourceFile(file)))
+    .map((d) => `${path.relative(app, d.file?.fileName ?? '')}: TS${d.code} ${ts.flattenDiagnosticMessageText(d.messageText, ' ')}`);
+}
+
 const LAYOUTS = [
   { name: 'workspace source', published: false },
   ...(PACKAGES_BUILT ? [{ name: 'published package', published: true }] : []),
@@ -333,8 +347,11 @@ describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ publish
 
   it.each(['bundler', 'node16'] as const)('typechecks own and dependency types under moduleResolution %s', (moduleResolution) => {
     const app = path.join(parent, 'app-pack');
-    const result = run(TSC, ['-p', writeTsconfig(app, moduleResolution, published)], app);
+    const tsconfig = writeTsconfig(app, moduleResolution, published);
+    const result = run(TSC, ['-p', tsconfig], app);
     expect(result.code, result.output).toBe(0);
+    // skipLibCheck skips the dependency's bundled facade (src/__generated__/deps/*.d.ts), where an invalid declaration reads as any
+    expect(packDeclarationDiagnostics(app, tsconfig)).toEqual([]);
   }, 120_000);
 
   it.each(['bundler', 'node16'] as const)('offers field and entity-name completions under moduleResolution %s', (moduleResolution) => {

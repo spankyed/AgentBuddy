@@ -60,8 +60,26 @@ describe('compilePack', () => {
     expect(records[0]).toMatchObject({ entity: 'Memo', title: '2024', pinned: true, body: 'Hello ![pic](media/pic.png)\n', sourceHash: expect.stringMatching(/^[0-9a-f]{16}$/) });
     expect(records[1].children).toEqual([expect.objectContaining({ entity: 'Memo', title: 'child memo', pinned: false })]);
     expect(fs.readFileSync(path.join(out, 'media/memos/pic.png'), 'utf-8')).toBe('PNG');
-    expect(read(SEED_INDEX_FILE)).toEqual({ version: 1, seeds: [{ key: 'memos', seeded: true, identity: ['title', 'parent'], count: 3, items: [{ key: '2024' }, { key: 'Group', childCount: 1 }] }] });
+    expect(read(SEED_INDEX_FILE)).toEqual({ version: 1, packId: 'demo', seeds: [{ key: 'memos', seeded: true, identity: ['title', 'parent'], count: 3, items: [{ key: '2024' }, { key: 'Group', childCount: 1 }] }] });
     expect(result.seeds).toEqual({ memos: 3 });
+  });
+
+  it("replaces its earlier output: a dropped key or media doesn't linger, other files in the dir stay", async () => {
+    write('seeds/memos/first.md', 'Hello\n');
+    write('seeds/memos/media/pic.png', 'PNG');
+    await compile({ memos: memosFormat }, { memos: { path: 'seeds/memos', format: 'memos' } });
+    fs.mkdirSync(path.join(out, 'runtime'));
+    fs.writeFileSync(path.join(out, 'runtime/index.cjs'), '');
+    fs.writeFileSync(path.join(out, 'notes.json'), '{}');
+
+    fs.rmSync(path.join(root, 'seeds/memos/media'), { recursive: true });
+    await compile({ memos: memosFormat }, { notes: { path: 'seeds/memos', format: 'memos' } });
+    expect(fs.readdirSync(out).sort()).toEqual(['notes.json', 'notes.seed.json', 'runtime', SEED_INDEX_FILE]);
+
+    // A failed compile leaves no seeds from the previous one
+    write('seeds/items.json', JSON.stringify([{ entity: 'Other', name: 'x' }]));
+    await expect(compile({ items: { format: 'json', entity: 'Item' } }, { items: { path: 'seeds/items.json', format: 'items' } })).rejects.toThrow(/isn't one of Item/);
+    expect(fs.readdirSync(out).sort()).toEqual(['notes.json', 'runtime']);
   });
 
   it("compiles with the pack's own compiler module, which may leave sourceHash to the default", async () => {

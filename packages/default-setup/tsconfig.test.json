@@ -3,11 +3,8 @@
   "compilerOptions": {
     "paths": {
       "@/__generated__/*": ["./src/__generated__/*"],
-      "@/registries/*": ["./src/registries/*"],
       "@/features/*": ["./src/features/*"],
-      "@/extensions/*": ["./src/extensions/*"],
-      "@/core/*": ["../api/src/core/*"],
-      "@/setup/*": ["../api/src/setup/*"]
+      "@/extensions/*": ["./src/extensions/*"]
     }
   },
   "include": ["src/**/*.ts", "tests/**/*.ts"]

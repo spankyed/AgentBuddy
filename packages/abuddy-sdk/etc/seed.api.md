@@ -5,21 +5,6 @@
 ```ts
 
 // @public (undocumented)
-export interface BootSeedConfig {
-    // (undocumented)
-    artifacts: string[];
-    // (undocumented)
-    compiledDir: string;
-    // (undocumented)
-    getIncludeOverrides?: () => Record<string, SeedIncludeSet>;
-}
-
-// @public (undocumented)
-export function createBootSeed(config: BootSeedConfig): (options?: {
-    verbose?: boolean;
-}) => Record<string, SeedCounts> | null;
-
-// @public (undocumented)
 export function createFlowSeeder(): Seeder;
 
 // @public
@@ -27,6 +12,9 @@ export function createSeeder(options: SeederOptions): Seeder;
 
 // @public (undocumented)
 export function createSettingsSeeder(): Seeder;
+
+// @public
+export function markSeededRowUnedited(id: EARS.EntityId): void;
 
 // @public
 export interface PackSeedPreviewItem {
@@ -40,6 +28,7 @@ export interface PackSeedPreviewItem {
 export interface PackSeedsPreview {
     // (undocumented)
     directory: string;
+    packId: string;
     // (undocumented)
     seeds: Record<string, PackSeedPreviewItem[]>;
 }
@@ -61,6 +50,7 @@ export interface SeederOptions {
 
 // @public
 export interface SeedHookContext {
+    clearedFields: string[];
     // (undocumented)
     index: number;
     // (undocumented)
@@ -90,6 +80,7 @@ export const seedHookRegistry: SeedHookRegistry;
 
 // @public
 export interface SeedHooks<R extends SeedRecord = SeedRecord> {
+    container?: boolean;
     // (undocumented)
     create?(record: R, context: SeedHookContext): EARS.EntityId;
     find?(record: R, context: SeedHookContext): SeedHookMatch | undefined;

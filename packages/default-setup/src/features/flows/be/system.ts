@@ -447,6 +447,10 @@ export const flowsSystem = setup({
         CLIENT_CONNECTED: {
           actions: 'handleClientConnection',
         },
+        // A pack's seeds can add or change flows
+        PACK_CHANGED: {
+          actions: 'handleClientConnection',
+        },
         FLOW_SELECT: {
           actions: 'selectFlow',
         },

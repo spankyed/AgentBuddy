@@ -13,8 +13,8 @@ import {
   BUNDLE_FORMAT_VERSION,
   isBundleDir,
   readBundleInfo,
-  resolvePackSeedsDir,
   isHostCompatible,
+  withModuleBridge,
 } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import type { PackSnapshot } from '@abuddy/sdk/build';
@@ -46,7 +46,7 @@ import * as _sdkBuild from '@abuddy/sdk/build';
 import * as _sdkTypes from '@abuddy/sdk/types';
 import * as _sdkDesignations from '@abuddy/sdk/designations';
 import * as _sdkEnv from '@abuddy/sdk/env';
-import * as _sdkInference from '@abuddy/sdk/inference';
+import * as _sdkModels from '@abuddy/sdk/models';
 import * as _sdkTemplates from '@abuddy/sdk/runtime';
 import * as _sdkCron from '@abuddy/sdk/cron';
 import * as _sdkCompareVersions from '@abuddy/sdk/utils/compare-versions';
@@ -75,7 +75,7 @@ const SDK_BRIDGE: Record<string, any> = {
   '@abuddy/sdk/types': _sdkTypes,
   '@abuddy/sdk/designations': _sdkDesignations,
   '@abuddy/sdk/env': _sdkEnv,
-  '@abuddy/sdk/inference': _sdkInference,
+  '@abuddy/sdk/models': _sdkModels,
   '@abuddy/sdk/runtime': _sdkTemplates,
   // Leaf modules too: an installed pack has no node_modules to resolve them from
   '@abuddy/sdk/cron': _sdkCron,
@@ -115,11 +115,6 @@ function getHostSdkVersion(): string | undefined {
   return _hostSdkVersion || undefined;
 }
 
-// Re-export discovery types and seed helpers for backward-compatible imports
-export type { BuiltInPackInfo, PackManifest } from '@abuddy/host/packs';
-export { discoverBuiltInPacks } from '@abuddy/host/packs';
-export { computePackSeedHash, seedPackData } from './pack-seed';
-
 // ── Built-in pack loading ────────────────────────────────────────────
 // The loader map is provided by a virtual module generated at build time
 // by the 'built-in-pack-loaders' esbuild plugin in tsup.config.ts. It
@@ -139,8 +134,43 @@ export function builtInRuntimeEntry(packDir: string): string {
   return path.join(packDir, 'dist', BUNDLE_PATHS.runtimeEntry);
 }
 
+/** A built-in pack's runtime module, as its built entry exports it */
+interface BuiltInRuntime {
+  registration?: import('@abuddy/sdk/framework').PackRegistration;
+  setCompiledDir?: (dir: string) => void;
+}
+
+/**
+ * The registration of a built-in pack's module, with the module pointed at the compiled seed data in
+ * its dist/ first: its seeders, settings defaults and FAQs read from there. Callers get the
+ * registration and never the module, so no load can skip this — a reload requires the entry afresh,
+ * and the new module starts without the directory.
+ */
+function packRegistration(mod: BuiltInRuntime, packDir: string): import('@abuddy/sdk/framework').PackRegistration | undefined {
+  mod.setCompiledDir?.(path.join(packDir, 'dist'));
+  return mod.registration;
+}
+
+/** Loads a built-in pack's built runtime (dist/runtime/index.cjs) from disk and returns its registration */
+export function loadBuiltInRuntime(packDir: string): import('@abuddy/sdk/framework').PackRegistration | undefined {
+  return packRegistration(withHostResolution(() => esmRequire(builtInRuntimeEntry(packDir))), packDir);
+}
+
 let _builtInPackInfos: BuiltInPackInfo[] = [];
 export function getBuiltInPackInfos(): BuiltInPackInfo[] { return _builtInPackInfos; }
+
+/** Re-reads a loaded built-in pack's manifest, so a name or version a rebuild changed is the one listed */
+export function refreshBuiltInPackInfo(packId: string): void {
+  const info = _builtInPackInfos.find(p => p.id === packId);
+  if (!info) return;
+  try {
+    const manifest = JSON.parse(fs.readFileSync(path.join(info.dir, BUNDLE_PATHS.manifest), 'utf-8')) as { name?: string; version?: string };
+    if (manifest.name) info.name = manifest.name;
+    if (manifest.version) info.version = manifest.version;
+  } catch (err) {
+    logger.warn(`Built-in pack ${packId}: could not re-read its manifest`, err as Error);
+  }
+}
 
 export interface LoadBuiltInPacksOptions {
   /**
@@ -170,10 +200,9 @@ export async function loadBuiltInPacks(
       }
       if (fs.existsSync(runtimeEntryPath)) {
         try {
-          const mod = withHostResolution(() => esmRequire(runtimeEntryPath));
-          if (mod.registration) {
-            mod.setCompiledDir?.(path.join(pack.dir, 'dist'));
-            registerPack(mod.registration);
+          const registration = loadBuiltInRuntime(pack.dir);
+          if (registration) {
+            registerPack(registration);
             loaded.push(pack);
             logger.info(`Loaded built-in pack (dev): ${pack.id}`);
             continue;
@@ -192,13 +221,12 @@ export async function loadBuiltInPacks(
       continue;
     }
     try {
-      const mod = await loader();
-      if (!mod.registration) {
+      const registration = packRegistration(await loader(), pack.dir);
+      if (!registration) {
         logger.warn(`Built-in pack ${pack.id}: no 'registration' export, skipping`);
         continue;
       }
-      mod.setCompiledDir?.(path.join(pack.dir, 'dist'));
-      registerPack(mod.registration);
+      registerPack(registration);
       loaded.push(pack);
       logger.info(`Loaded built-in pack: ${pack.id}`);
     } catch (err) {
@@ -224,97 +252,16 @@ export interface LoadedPack {
   ears?: import('@abuddy/sdk/framework').PackEARS;
   boot?: import('@abuddy/sdk/framework').PackBootHooks;
   migrations?: import('@abuddy/sdk/framework').PackMigration[];
+  seedHooks?: import('@abuddy/sdk/framework').PackRegistration['seedHooks'];
+  /** The slash commands the pack declares (abuddy.json `commands`) */
+  commands?: import('@abuddy/sdk/framework').PackRegistration['commands'];
+  /** Feature definitions, with each feature's default settings */
+  features?: import('@abuddy/sdk/framework').PackFeatureDef[];
 }
 
+/** Runs `fn` (a require of pack runtime code) with @abuddy/sdk bridged to the API's instances and host-provided packages resolved from the API */
 export function withHostResolution<T>(fn: () => T): T {
-  const originalResolve = (Module as any)._resolveFilename;
-
-  const hostResolutions = new Map<string, string>();
-  for (const pkg of HOST_PROVIDED_PACKAGES) {
-    try { hostResolutions.set(pkg, esmRequire.resolve(pkg)); } catch {}
-  }
-
-  // Pre-populate esmRequire.cache so SDK requires get the bundled singletons.
-  // These persist — lazy requires inside pack callbacks need them too.
-  // Cache entries are injected at both the bridge key (used while the
-  // _resolveFilename patch is active) and the real resolved path (used by
-  // lazy __esm() initializers that run after withHostResolution returns).
-  for (const [specifier, exports] of Object.entries(SDK_BRIDGE)) {
-    const cacheKey = `__sdk_bridge__/${specifier}`;
-    if (!esmRequire.cache[cacheKey]) {
-      const entry = { id: cacheKey, filename: cacheKey, loaded: true, exports, children: [], paths: [] } as any;
-      esmRequire.cache[cacheKey] = entry;
-      try {
-        const realPath = esmRequire.resolve(specifier);
-        if (!esmRequire.cache[realPath]) {
-          esmRequire.cache[realPath] = entry;
-        }
-      } catch {}
-    }
-  }
-
-  try {
-    (Module as any)._resolveFilename = function (request: string, ...args: any[]) {
-      if (SDK_BRIDGE[request]) {
-        return `__sdk_bridge__/${request}`;
-      }
-      if (hostResolutions.has(request)) {
-        return hostResolutions.get(request)!;
-      }
-      return originalResolve.call(this, request, ...args);
-    };
-
-    return fn();
-  } finally {
-    (Module as any)._resolveFilename = originalResolve;
-  }
-}
-
-function loadSystemFromCJS(
-  entry: string,
-  packDir: string,
-  featureId: string,
-): { machine: import('xstate').AnyStateMachine; events: Set<string> } | null {
-  const compiledPath = path.resolve(packDir, 'dist', 'systems', `${featureId}.cjs`);
-  const fullPath = fs.existsSync(compiledPath)
-    ? compiledPath
-    : path.resolve(packDir, entry);
-
-  if (!fullPath.startsWith(packDir + path.sep)) {
-    logger.warn(`System entry escapes pack directory: ${entry}`);
-    return null;
-  }
-  if (!fs.existsSync(fullPath)) {
-    logger.warn(`System entry not found: ${fullPath}`);
-    return null;
-  }
-
-  try {
-    return withHostResolution(() => {
-      const mod = esmRequire(fullPath);
-      const raw = mod.default || mod.system || mod.machine;
-      if (!raw) {
-        // Name the file actually loaded — that is the compiled
-        // dist/systems/<id>.cjs when present, NOT the `entry` .ts path — and
-        // list what it did export. A named-only export (`export const fooEntry`
-        // with no `export default`) is the usual cause, and reporting `entry`
-        // alone makes it look like a missing build artifact instead.
-        const found = Object.keys(mod).filter((k) => k !== '__esModule');
-        logger.warn(
-          `No machine export found in ${path.relative(packDir, fullPath)}: ` +
-          `expected a default export (or \`system\`/\`machine\`), found ` +
-          `${found.length ? found.join(', ') : 'no exports'}`,
-        );
-        return null;
-      }
-      // Unwrap SystemEntry pattern ({ spec, machine }) if present
-      const machine = raw.machine ?? raw;
-      return { machine, events: new Set<string>(machine.events || []) };
-    });
-  } catch (err) {
-    logger.error(`Failed to load system from ${entry}:`, err as Error);
-    return null;
-  }
+  return withModuleBridge({ modules: SDK_BRIDGE, hostPackages: HOST_PROVIDED_PACKAGES, resolveFrom: import.meta.url }, fn);
 }
 
 export function loadSingleExternalPack(
@@ -327,21 +274,24 @@ export function loadSingleExternalPack(
     return null;
   }
 
-  if (isBundleDir(dir)) {
-    try {
-      const info = readBundleInfo(dir);
-      if (Math.floor(info.formatVersion) !== BUNDLE_FORMAT_VERSION) {
-        logger.warn(`Skipping ${manifest.id}: bundle format ${info.formatVersion} is not supported (host supports ${BUNDLE_FORMAT_VERSION})`);
-        return null;
-      }
-    } catch (err) {
-      logger.warn(`Skipping ${manifest.id}: unreadable ${BUNDLE_PATHS.info}`, err as Error);
+  const runtimeEntry = path.join(dir, BUNDLE_PATHS.runtimeEntry);
+  if (!isBundleDir(dir) || !fs.existsSync(runtimeEntry)) {
+    logger.warn(`Skipping ${manifest.id}: ${dir} isn't an installed pack bundle (no ${BUNDLE_PATHS.info} or ${BUNDLE_PATHS.runtimeEntry}). Install it with abuddy install or abuddy dev`);
+    return null;
+  }
+  try {
+    const info = readBundleInfo(dir);
+    if (Math.floor(info.formatVersion) !== BUNDLE_FORMAT_VERSION) {
+      logger.warn(`Skipping ${manifest.id}: bundle format ${info.formatVersion} is not supported (host supports ${BUNDLE_FORMAT_VERSION})`);
       return null;
     }
+  } catch (err) {
+    logger.warn(`Skipping ${manifest.id}: unreadable ${BUNDLE_PATHS.info}`, err as Error);
+    return null;
   }
 
-  const snapshotPath = [path.join(dir, BUNDLE_PATHS.snapshot), path.join(dir, 'dist', 'snapshot.json')].find(p => fs.existsSync(p));
-  if (snapshotPath) {
+  const snapshotPath = path.join(dir, BUNDLE_PATHS.snapshot);
+  if (fs.existsSync(snapshotPath)) {
     try {
       const snapshot: PackSnapshot = JSON.parse(fs.readFileSync(snapshotPath, 'utf-8'));
       const hostSdk = getHostSdkVersion();
@@ -357,10 +307,7 @@ export function loadSingleExternalPack(
     } catch {}
   }
 
-  const runtimeEntry = path.join(dir, BUNDLE_PATHS.runtimeEntry);
-  const pack = fs.existsSync(runtimeEntry)
-    ? loadBundledRuntime(manifest, dir, runtimeEntry)
-    : loadLegacyLayout(manifest, dir);
+  const pack = loadBundledRuntime(manifest, dir, runtimeEntry);
   if (!pack) return null;
 
   if (!pack.ears && (manifest.entities || manifest.relKinds)) {
@@ -376,7 +323,7 @@ export function loadSingleExternalPack(
   if (pack.boot?.seedManifest) delete pack.boot.seedManifest;
   const policy = pack.ears?.partitionPolicy;
   if (policy) {
-    if ((policy.excludedEntityTypes?.length ?? 0) > 0 || (policy.secretEntityTypes?.length ?? 0) > 0) {
+    if ((policy.excludedEntityTypes?.length ?? 0) > 0) {
       logger.warn(`Pack ${manifest.id}: partitionPolicy ignored for external packs (v1)`);
     }
     delete pack.ears!.partitionPolicy;
@@ -394,7 +341,7 @@ function loadBundledRuntime(
   try {
     registration = withHostResolution(() => {
       const mod = esmRequire(runtimeEntry);
-      mod.setCompiledDir?.(resolvePackSeedsDir(dir));
+      mod.setCompiledDir?.(path.join(dir, BUNDLE_PATHS.seedsDir));
       return mod.registration;
     });
   } catch (err) {
@@ -430,60 +377,10 @@ function loadBundledRuntime(
     ears: registration.ears,
     boot: registration.boot ? { ...registration.boot } : undefined,
     migrations: registration.migrations,
+    seedHooks: registration.seedHooks,
+    commands: registration.commands,
+    features: registration.features,
   };
-}
-
-/**
- * Packs built before the bundle layout (dist/systems/*.cjs + optional dist/index.js).
- * Kept so already-installed packs keep loading; rebuilding with a current abuddy CLI
- * switches them to runtime/index.cjs.
- */
-function loadLegacyLayout(
-  manifest: import('@abuddy/host/packs').PackManifest,
-  dir: string,
-): LoadedPack | null {
-  logger.warn(`Pack ${manifest.id} uses the pre-bundle layout (no ${BUNDLE_PATHS.runtimeEntry}); rebuild it with a current abuddy CLI`);
-  const systems = new Map<string, { machine: import('xstate').AnyStateMachine; events: Set<string> }>();
-
-  const pluginEntries = manifest.features;
-  if (pluginEntries) {
-    for (const plugin of pluginEntries) {
-      if (!plugin.system?.entry) continue;
-
-      const system = loadSystemFromCJS(plugin.system.entry, dir, plugin.id);
-      if (system) {
-        if (plugin.system.events?.incoming) {
-          for (const evt of plugin.system.events.incoming) {
-            system.events.add(evt);
-          }
-        }
-        systems.set(plugin.id, system);
-        logger.info(`Loaded system: ${manifest.id}/${plugin.id}`);
-      }
-    }
-  }
-
-  const pack: LoadedPack = { manifest, dir, systems };
-
-  const mainEntry = path.join(dir, 'dist', 'index.js');
-  if (fs.existsSync(mainEntry)) {
-    try {
-      withHostResolution(() => {
-        const mod = esmRequire(mainEntry);
-        if (mod.services) pack.services = mod.services;
-        if (mod.steps) pack.steps = mod.steps;
-        if (mod.artifacts) pack.artifacts = mod.artifacts;
-        if (mod.blocks) pack.blocks = mod.blocks;
-        if (mod.ears) pack.ears = mod.ears;
-        if (mod.boot) pack.boot = mod.boot;
-        if (mod.migrations) pack.migrations = mod.migrations;
-      });
-    } catch (err) {
-      logger.warn(`Failed to load pack entry for ${manifest.id}:`, err as Error);
-    }
-  }
-
-  return pack;
 }
 
 export function clearPackRequireCache(packDir: string): void {
@@ -537,6 +434,9 @@ export function registerExternalPacks(packs: LoadedPack[]): LoadedPack[] {
         ears: pack.ears,
         boot: pack.boot,
         migrations: pack.migrations,
+        seedHooks: pack.seedHooks,
+        commands: pack.commands,
+        features: pack.features,
       });
       registered.push(pack);
       logger.info(`Registered pack: ${pack.manifest.id} (${systems.length} systems)`);

@@ -7,17 +7,18 @@
 
 import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeatureDef, PackSeedManifest } from '@abuddy/sdk/framework';
 import type { HostServices } from '@abuddy/sdk/services';
-import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS, SDK_SECRET_ENTITY_TYPES } from '@abuddy/sdk/types';
+import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS } from '@abuddy/sdk/types';
 import { registerDesignations, unregisterDesignations } from '@abuddy/sdk/designations';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { artifactRegistry } from '@abuddy/sdk/artifacts';
 import { blockRegistry } from '@abuddy/sdk/blocks';
 import { seedHookRegistry } from '@abuddy/sdk/seed';
+import { packCommandsRegistry, packSettingsRegistry } from '@abuddy/sdk/framework';
 
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration };
 
 /** Services the host supplies itself; a pack service with one of these names would replace it */
-const HOST_SERVICE_NAMES = ['logger', 'emitter', 'repository', 'appData', 'traceStore'] as const satisfies readonly (keyof HostServices)[];
+const HOST_SERVICE_NAMES = ['logger', 'emitter', 'repository', 'appData', 'traceStore', 'inference', 'secrets'] as const satisfies readonly (keyof HostServices)[];
 // Fails to compile when HostServices gains a service this list doesn't name
 const _allHostServicesNamed: Exclude<keyof HostServices, (typeof HOST_SERVICE_NAMES)[number]> extends never ? true : never = true;
 void _allHostServicesNamed;
@@ -50,6 +51,19 @@ function ownEARS(ears: PackEARS): PackEARS {
   return { ...ears, entities: own(ears.entities, sdkEntityTypes), relKinds: own(ears.relKinds, sdkRelKinds) };
 }
 
+/**
+ * Role → id of the system that plays it (`<packId>.<featureId>` for an external pack). A designated
+ * feature with no registered system (the early system) resolves to its feature id.
+ */
+function designationsOf({ id, systems, features = [] }: PackRegistration): Record<string, string> {
+  const systemId = (featureId: string) =>
+    systems.find((s) => s.id === featureId || s.id === `${id}.${featureId}`)?.id ?? featureId;
+  return Object.fromEntries([
+    ...systems.filter((s) => s.designation).map((s) => [s.designation!, s.id]),
+    ...features.filter((f) => f.designation).map((f) => [f.designation!, systemId(f.id)]),
+  ]);
+}
+
 export function registerPack(pack: PackRegistration): void {
   const registration = pack.ears ? { ...pack, ears: ownEARS(pack.ears) } : pack;
   if (registrations.has(registration.id)) {
@@ -72,6 +86,13 @@ export function registerPack(pack: PackRegistration): void {
         }
       }
     }
+  }
+
+  const designations = designationsOf(registration);
+  for (const [existingId, existing] of registrations) {
+    const held = designationsOf(existing);
+    const role = Object.keys(designations).find((r) => r in held);
+    if (role) throw new Error(`Designation collision: role "${role}" — pack "${registration.id}" vs "${existingId}"`);
   }
 
   if (registration.services) {
@@ -119,7 +140,12 @@ export function registerPack(pack: PackRegistration): void {
     for (const [entity, hooks] of Object.entries(registration.seedHooks ?? {})) {
       seedHookRegistry.register(entity, hooks, registration.id);
     }
+
+    packCommandsRegistry.register(registration.id, registration.commands ?? []);
+    packSettingsRegistry.register(registration.id, registration.features ?? []);
   } catch (err) {
+    packCommandsRegistry.unregister(registration.id);
+    packSettingsRegistry.unregister(registration.id);
     seedHookRegistry.unregisterAll(registration.id);
     for (const type of registeredSteps) stepRegistry.unregister(type);
     for (const type of registeredArtifacts) artifactRegistry.unregister(type);
@@ -127,12 +153,7 @@ export function registerPack(pack: PackRegistration): void {
     throw err;
   }
 
-  const systemDesignations = registration.systems.filter(s => s.designation).map(s => s.designation!);
-  const featureDesignations = (registration.features ?? []).filter(f => f.designation).map(f => f.designation!);
-  const allDesignations = [...new Set([...systemDesignations, ...featureDesignations])];
-  if (allDesignations.length) {
-    registerDesignations(allDesignations);
-  }
+  registerDesignations(designations);
 
   registrations.set(registration.id, registration);
 
@@ -154,13 +175,10 @@ export function unregisterPack(packId: string): void {
     for (const block of reg.blocks) blockRegistry.unregister(block.type);
   }
   seedHookRegistry.unregisterAll(packId);
+  packSettingsRegistry.unregister(packId);
+  packCommandsRegistry.unregister(packId);
 
-  const systemDesignations = reg.systems.filter(s => s.designation).map(s => s.designation!);
-  const featureDesignations = (reg.features ?? []).filter(f => f.designation).map(f => f.designation!);
-  const allDesignations = [...new Set([...systemDesignations, ...featureDesignations])];
-  if (allDesignations.length) {
-    unregisterDesignations(allDesignations);
-  }
+  unregisterDesignations(designationsOf(reg));
 
   registrations.delete(packId);
   _entityTypeCache = null;
@@ -192,6 +210,11 @@ export function getRegisteredSystems(): Map<string, import('xstate').AnyStateMac
     }
   }
   return systems;
+}
+
+/** The bus ids of a registered pack's systems (external packs' are `<packId>.<featureId>`) */
+export function getRegisteredPackSystemIds(packId: string): string[] {
+  return (registrations.get(packId)?.systems ?? []).map((sys) => sys.id);
 }
 
 export function buildRegisteredEventValidationMap(): Map<string, Set<string>> {
@@ -243,40 +266,43 @@ export function getBootHooks(): PackBootHooks[] {
   return hooks;
 }
 
+/** A registered pack's registration, as it was registered */
+export function getPackRegistration(packId: string): PackRegistration | null {
+  return registrations.get(packId) ?? null;
+}
+
 export function getPackBootHooks(packId: string): PackBootHooks | null {
   return registrations.get(packId)?.boot ?? null;
 }
 
-export function runRegisteredBootSeeds(
-  orchestrateSeed?: (manifest: PackSeedManifest) => void,
-): void {
+/**
+ * Seeds each registered pack's declarative boot seed (`boot.seedManifest`, built-in packs only: the
+ * loader strips it from external packs, which seed through `seedPackData`)
+ */
+export function runRegisteredBootSeeds(orchestrateSeed: (manifest: PackSeedManifest, packId: string) => void): void {
   for (const reg of registrations.values()) {
-    if (reg.boot?.seedManifest && orchestrateSeed) {
-      orchestrateSeed(reg.boot.seedManifest);
-    } else {
-      reg.boot?.seed?.();
-    }
+    if (reg.boot?.seedManifest) orchestrateSeed(reg.boot.seedManifest, reg.id);
   }
 }
 
-export function getRegisteredEARSPolicy(): { excludedEntityTypes: string[]; secretEntityTypes: string[] } {
+export function getRegisteredEARSPolicy(): { excludedEntityTypes: string[] } {
   const excluded: string[] = [...SDK_EXCLUDED_ENTITY_TYPES];
-  const secret: string[] = [...SDK_SECRET_ENTITY_TYPES];
   for (const reg of registrations.values()) {
-    if (reg.ears?.partitionPolicy) {
-      if (reg.ears.partitionPolicy.excludedEntityTypes)
-        excluded.push(...reg.ears.partitionPolicy.excludedEntityTypes);
-      if (reg.ears.partitionPolicy.secretEntityTypes)
-        secret.push(...reg.ears.partitionPolicy.secretEntityTypes);
-    }
+    if (reg.ears?.partitionPolicy?.excludedEntityTypes) excluded.push(...reg.ears.partitionPolicy.excludedEntityTypes);
   }
-  return { excludedEntityTypes: excluded, secretEntityTypes: secret };
+  return { excludedEntityTypes: excluded };
 }
 
-export function getRegisteredMigrations(): PackMigration[] {
+/**
+ * The migrations of the named registered packs. The host runner asks for the built-in packs',
+ * checked against the app version; an external pack's migrations are checked against its own
+ * pack version by `runPackMigrations`, so asking for every registered pack would run them twice.
+ */
+export function getRegisteredMigrations(packIds: Iterable<string>): PackMigration[] {
   const migrations: PackMigration[] = [];
-  for (const reg of registrations.values()) {
-    if (reg.migrations) migrations.push(...reg.migrations);
+  for (const id of packIds) {
+    const reg = registrations.get(id);
+    if (reg?.migrations) migrations.push(...reg.migrations);
   }
   return migrations;
 }
@@ -300,12 +326,12 @@ export interface PackInfo {
   enabled: boolean;
   builtIn: boolean;
   entityCount: number;
-  hasFeEntry: boolean;
+  /** Whether the pack has frontend code: an external pack's runtime/fe.js, a built-in pack's plugins */
+  hasFrontend: boolean;
   hostVersion?: string;
   description?: string;
   entities: Record<string, string>;
   relKinds: Record<string, string>;
-  plugins: string[];
   permissions: string[];
   systems: string[];
   services: string[];
@@ -331,7 +357,6 @@ export function getPackContributions(packId: string): PackContributions | null {
   if (reg.boot?.earlySystem) bootHooks.push('earlySystem');
   if (reg.boot?.onInit) bootHooks.push('onInit');
   if (reg.boot?.seedManifest) bootHooks.push('seedManifest');
-  else if (reg.boot?.seed) bootHooks.push('seed');
   if (reg.boot?.onShutdown) bootHooks.push('onShutdown');
 
   return {

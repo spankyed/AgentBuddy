@@ -30,6 +30,7 @@ export const DslEntrySchema = z.object({
   targets: z.array(z.enum(['monaco'])).describe('Editor targets for intellisense integration.'),
   prefix: z.string().describe('Namespace prefix for DSL symbols.').optional(),
   globals: z.record(z.string(), z.string()).describe('Global type mappings injected into the DSL scope.').optional(),
+  inline: z.array(z.string()).describe('Packages whose declarations are bundled into the editor definitions, besides @abuddy/* and the pack\'s own modules. The editor loads no node_modules, so a type it needs from another package belongs here.').optional(),
 }).strict();
 
 /** Seed keys compiled and seeded by the SDK's own compilers; they take a path, as a string or `{ path }` */
@@ -92,9 +93,7 @@ const SeedSectionSchema = z.record(z.string(), z.union([z.string(), SeedEntryCon
 });
 
 export const BootConfigSchema = z.object({
-  earlySystem: z.string().describe('Built-in packs only. Ignored for external packs.').optional(),
-  createDefaultSettings: z.string().describe('Module that ensures default settings exist.').optional(),
-  hooks: z.string().describe('Module providing lifecycle hooks (e.g. shutdown).').optional(),
+  hooks: z.string().describe('Module exporting lifecycle hooks: onInit (after EARS hydration, before migrations and seeds) and onShutdown (when the pack\'s backend stops).').optional(),
   seed: SeedSectionSchema
     .describe('Seed data sources. Keys are seed names; the specialty keys (actions, prompts, flows, settings) take a path, other keys an entry object.').optional(),
   seedPolicy: z.object({
@@ -109,15 +108,11 @@ const SystemSchema = z.object({
   sendsTo: z.array(z.string()).describe('Plugins this system sends events to besides its own feature\'s: other features of this pack, plugins of its dependencies, or host plugins ("application"). Each receiving plugin\'s generated event type includes this system\'s outgoing events.').optional(),
   events: z.object({
     incoming: z.array(z.string()).describe('Event types this system listens for.').optional(),
-    outgoing: z.array(z.string()).describe('Event types this system emits.').optional(),
   }).strict().describe('Event routing declarations.').optional(),
 }).strict();
 
 const PluginSchema = z.object({
-  entry: z.string().describe('Path to the frontend plugin module.'),
-  label: z.string().describe('Display name shown in the sidebar.'),
-  icon: z.string().describe('Icon name from the icon library.'),
-  isPinned: z.boolean().describe('Whether this plugin is pinned in the sidebar by default.').optional(),
+  entry: z.string().describe('Path to the frontend plugin module, which default-exports the Plugin (its id, label, icon and isPinned).'),
 }).strict();
 
 /**
@@ -127,17 +122,32 @@ const PluginSchema = z.object({
  */
 export const FEATURE_ID_PATTERN = /^[a-z][a-zA-Z0-9]*$/;
 
+const IdentifierSchema = z.string().regex(/^[A-Za-z_$][\w$]*$/, 'Must be an identifier');
+
+/** A named export of a pack source file */
+const ExportTargetSchema = z.string().regex(/^[^#]+#[A-Za-z_$][\w$]*$/, 'Must be "path#exportName"');
+
+const ServicesSchema = z.record(IdentifierSchema, ExportTargetSchema);
+
+/** A slash command a pack declares: the chat lists it, and a `user.command` event carries its name */
+export const CommandEntrySchema = z.object({
+  name: z.string().regex(/^[a-z][a-z0-9-]*$/, 'Must be a lowercase letter, then lowercase letters, digits and hyphens')
+    .describe('The command as typed after the "/", without it.'),
+  placeholder: z.string().min(1).describe('What the chat shows after the command: the argument it takes, or what it does.'),
+}).strict();
+
 export const FeatureEntrySchema = z.object({
   id: z.string().regex(FEATURE_ID_PATTERN, 'Must start with a lowercase letter and contain only letters and digits (e.g. "notes", "calendarEvents")')
     .describe('Unique feature identifier. A lowercase-first identifier (letters and digits), used as a name in generated code.'),
   designation: z.string().describe('Links the system to an EARS designation.').optional(),
   settings: z.string().describe('Path to default settings file.').optional(),
   typesEntry: z.string().describe('Additional types to include in the generated type barrel.').optional(),
-  earlySystem: z.boolean().describe('Built-in packs only. Ignored for external packs.').optional(),
+  earlySystem: z.boolean().describe('Start this feature\'s system before EARS hydration. Built-in packs only.').optional(),
   system: SystemSchema.describe('Backend system module.').optional(),
   plugin: PluginSchema.describe('Frontend plugin definition.').optional(),
-  services: z.record(z.string(), z.string()).describe('Service modules. Keys are service names, values are source file paths.').optional(),
-  repositories: z.record(z.string().regex(/^[A-Za-z_$][\w$]*$/, 'Must be an identifier'), z.string().regex(/^[^#]+#[A-Za-z_$][\w$]*$/, 'Must be "path#exportName"'))
+  services: ServicesSchema
+    .describe('Services. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file.').optional(),
+  repositories: z.record(IdentifierSchema, ExportTargetSchema)
     .describe('Repository objects. Keys are repository names on `repository` (from #generated/repository), values are "path#exportName" of the object in a source file.').optional(),
   contributions: z.string().describe('Built-in packs only. Ignored for external packs.').optional(),
 }).strict();
@@ -146,7 +156,6 @@ export const PackPermissionSchema = z.enum(['ears', 'llm', 'filesystem', 'networ
 
 const PartitionPolicySchema = z.object({
   excludedEntityTypes: z.array(z.string()).describe('Entity types excluded from persistence (in-memory only).').optional(),
-  secretEntityTypes: z.array(z.string()).describe('Entity types routed to the secrets store.').optional(),
 }).strict().describe('Built-in packs only. Ignored for external packs.');
 
 const EntityShapeSchema = z.object({
@@ -155,10 +164,8 @@ const EntityShapeSchema = z.object({
 }).strict();
 
 const FEConfigSchema = z.object({
-  entry: z.string().describe('Path to the frontend entry module.').optional(),
   tiptapPlugins: z.string().describe('Path to tiptap plugin registration module.').optional(),
   appExtensions: z.record(z.string(), z.string()).describe('Named app extensions. Keys are extension names, values are paths to Vue components.').optional(),
-  styles: z.string().describe('Path to a CSS file to include in the frontend bundle.').optional(),
   bundleUi: z.boolean().describe('Bundle a copy of @abuddy/ui into the pack instead of using the host app\'s. All of @abuddy/ui is bundled, so the pack never mixes the two.').optional(),
 }).strict().describe('Frontend-specific pack configuration.');
 
@@ -198,8 +205,10 @@ export const ManifestSchema = z.object({
   features: z.array(FeatureEntrySchema)
     .describe('Feature definitions. Each feature bundles a backend system, frontend plugin, services, and settings.').optional(),
   defaultPlugin: z.string().describe('ID of the feature to show by default when the app starts.').optional(),
-  packServices: z.record(z.string(), z.string())
-    .describe('Pack-level services not tied to a specific feature. Keys are service names, values are source file paths.').optional(),
+  packServices: ServicesSchema
+    .describe('Pack-level services not tied to a specific feature. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file.').optional(),
+  commands: z.array(CommandEntrySchema)
+    .describe('Slash commands this pack adds to the chat. Sending one fires a `user.command` event the pack\'s flows handle; a name must be unique across the app.').optional(),
   boot: BootConfigSchema.optional(),
   steps: StepsSchema.describe('Flow step definitions.').optional(),
   artifacts: z.string().describe('Path to artifact type registration module.').optional(),
@@ -209,9 +218,17 @@ export const ManifestSchema = z.object({
   dsl: z.record(z.string(), DslEntrySchema).describe('DSL type definitions for Monaco editor intellisense.').optional(),
   seedFormats: z.record(z.string().regex(SEED_FORMAT_NAME, 'Must be lowercase alphanumeric with hyphens'), SeedFormatSchema)
     .describe('Named seed formats: how a source becomes records. boot.seed entries name one; dependents name them as "<pack id>:<name>".').optional(),
-  seedHooks: z.record(z.string(), z.string().regex(/^[^#]+#[A-Za-z_$][\w$]*$/, 'Must be "path#exportName"'))
+  seedHooks: z.record(z.string(), ExportTargetSchema)
     .describe('Seed hooks for entity types this pack declares: entity type → "path#exportName" of a SeedHooks object. Any pack seeding the type uses them.').optional(),
 }).strict().superRefine((manifest, ctx) => {
+  if (!manifest.builtIn && manifest.boot?.seed?.settings !== undefined) {
+    ctx.addIssue({ code: 'custom', path: ['boot', 'seed', 'settings'], message: 'The "settings" seed holds the app\'s own defaults, so only built-in packs have one; declare a feature\'s default settings with features[].settings' });
+  }
+  if (!manifest.builtIn) {
+    manifest.features?.forEach((feature, index) => {
+      if (feature.earlySystem) ctx.addIssue({ code: 'custom', path: ['features', index, 'earlySystem'], message: 'An early system starts before EARS hydration, before external packs load, so only built-in packs allowed to have one' });
+    });
+  }
   for (const [key, entry] of Object.entries(manifest.boot?.seed ?? {})) {
     if (typeof entry !== 'object' || !entry.format) continue;
     const [, pack, name] = SEED_FORMAT_REF.exec(entry.format) ?? [];
@@ -222,6 +239,15 @@ export const ManifestSchema = z.object({
       ctx.addIssue({ code: 'custom', path: ['boot', 'seed', key, 'format'], message: `Seed "${key}": format "${entry.format}" names "${pack}", which isn't a dependency` });
     }
   }
+  // The chat lists each name once, so a pack declares it once
+  const commandNames = new Set<string>();
+  manifest.commands?.forEach((command, index) => {
+    if (commandNames.has(command.name)) {
+      ctx.addIssue({ code: 'custom', path: ['commands', index, 'name'], message: `Command "${command.name}" is declared twice` });
+      return;
+    }
+    commandNames.add(command.name);
+  });
   const declared = new Set(Object.values(manifest.entities ?? {}));
   for (const entity of Object.keys(manifest.seedHooks ?? {})) {
     if (!declared.has(entity)) {

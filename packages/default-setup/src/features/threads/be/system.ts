@@ -19,7 +19,6 @@ import { runThreadTeardown } from '@abuddy/sdk/services';
 import { generateAsideText } from './services/chat';
 import { createLogger } from '@abuddy/sdk/logger';
 import { reportSystemError } from '@abuddy/sdk/utils';
-import type { FieldContent } from '@/features/library/be/types';
 
 const logger = createLogger('threads');
 let birthFlowStarted = false;
@@ -56,9 +55,10 @@ type IncomingThreadsEvents =
 export type ThreadsInternalEvents =
   | { type: 'CLIENT_CONNECTED' }
   | { type: 'THREADS_SETTINGS_UPDATED'; settings: any; changes?: any }
-  | { type: 'API_KEYS_CHANGED' }
   | { type: 'BIRTH_FLOW_START' }
   | { type: 'THREAD_DELETED'; threadId: string }
+  /** The library's commands folder changed (sent by the library system) */
+  | { type: 'COMMANDS_CHANGED' }
 
 export type OutgoingThreadsEvents =
   // Thread management events
@@ -80,7 +80,6 @@ export type OutgoingThreadsEvents =
   | { type: 'ARTIFACT_UPDATED'; tabId: string; artifact: any }
   | { type: 'THREAD_TAB_REQUESTED'; threadId: string; topic: string; artifacts: any[]; pinned?: boolean }
   | { type: 'AGENT_SETTINGS_UPDATED'; settings: AgentSettings }
-  | { type: 'API_KEYS_STATUS'; hasRequiredApiKeys: boolean }
   | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; text?: string; blocks?: BlockConfig[]; responseTimestamp?: number; blockResponse?: BlockResponse; forkable?: boolean; status?: 'queued' | 'cancelled' | null; context?: Record<string, unknown>; asideText?: string; asideContext?: string; compacted?: boolean }
   | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
   | { type: 'UPDATE_TODO_TASK'; artifactId: string; taskId: string; completed: boolean }
@@ -92,7 +91,10 @@ export type OutgoingThreadsEvents =
   | { type: 'THREAD_CHAT_ERROR'; threadId: string; error: string }
   | { type: 'OLDER_MESSAGES_LOADED'; threadId: string; messages: Partial<MessageEntity>[]; hasMore: boolean; nextCursor: string | null }
 
-export interface ThreadsContext {}
+export interface ThreadsContext {
+  /** The slash commands the chat was last sent, serialized, so an unchanged list isn't sent again */
+  sentCommands?: string
+}
 
 export const threadsSpec = defineSystem('threads')<IncomingThreadsEvents | ThreadsInternalEvents, OutgoingThreadsEvents, ThreadsContext>();
 export const threads = threadsSpec.id;
@@ -466,34 +468,22 @@ export const threadsSystem = setup({
         payload: {},
       });
     },
-    sendChatConnectedData: async ({ system }) => {
+    // Sends the chat the commands when they differ from what it was last sent
+    sendCommands: assign(({ context, system }) => {
+      const commands = services.library.commands();
+      const sent = JSON.stringify(commands);
+      if (sent === context.sentCommands) return {};
+      system.get(bus).send(emit(threads, { type: 'COMMANDS_UPDATED', commands }));
+      return { sentCommands: sent };
+    }),
+    sendChatConnectedData: ({ system }) => {
       const data = repository.chatQueries.connectedData();
-
-      let commands: CommandItem[] = [];
-      try {
-        const doc = await services.library.getByPath(['internal'], 'commands');
-        if (doc) {
-          const fieldSection = doc.content.find((s: any): s is FieldContent => s.type === 'field');
-          if (fieldSection) {
-            commands = fieldSection.fields.map((f: any) => ({ name: f.key, placeholder: f.value }));
-          }
-        }
-      } catch {
-        // Gracefully return empty commands if document doesn't exist
-      }
-
       system.get(bus).send(emit(threads, {
         type: 'AGENT_CONNECTED',
-        data: { ...data, commands },
+        data: { ...data, commands: services.library.commands() },
       }));
     },
-    sendApiKeyStatus: ({ system }) => {
-      const hasRequiredApiKeys = repository.chatQueries.hasRequiredApiKeys();
-      system.get(bus).send(emit(threads, {
-        type: 'API_KEYS_STATUS',
-        hasRequiredApiKeys
-      }));
-    },
+    rememberSentCommands: assign({ sentCommands: () => JSON.stringify(services.library.commands()) }),
     sendThreadChatData: ({ system, event }) => {
       const { threadId, restore } = threadsSpec.typeOf('OPEN_THREAD_CHAT', event);
       try {
@@ -971,7 +961,7 @@ export const threadsSystem = setup({
     context: ({ input }) => ({}),
     on: {
       CLIENT_CONNECTED: {
-        actions: ['sendThreadsConnectedData', 'sendChatConnectedData', 'checkOnboarding'],
+        actions: ['sendThreadsConnectedData', 'sendChatConnectedData', 'rememberSentCommands', 'checkOnboarding'],
       },
       THREADS_SETTINGS_UPDATED: {
         actions: 'handleSettingsUpdate',
@@ -986,11 +976,14 @@ export const threadsSystem = setup({
       OPEN_THREAD_TAB: {
         actions: 'sendThreadTabData',
       },
-      API_KEYS_CHANGED: {
-        actions: 'sendApiKeyStatus',
-      },
       BIRTH_FLOW_START: {
         actions: 'startBirthFlow',
+      },
+      COMMANDS_CHANGED: {
+        actions: 'sendCommands',
+      },
+      PACK_CHANGED: {
+        actions: 'sendCommands',
       },
       THREAD_DELETED: {
         // Internal notification (e.g., refresh chat if active thread deleted)

@@ -1,7 +1,7 @@
 const TAGS_KEY = 'library-tags'
 const TAG_USAGE_KEY = 'library-tag-usage'
 
-export class TagStorageService {
+class TagStorageService {
   private static instance: TagStorageService
 
   private constructor() {}

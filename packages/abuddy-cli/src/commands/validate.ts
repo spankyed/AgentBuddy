@@ -1,33 +1,30 @@
-import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { validateManifest, validateFeatures, type ManifestValidation } from '@abuddy/sdk/build';
+import { validateManifest, validateFeatures } from '@abuddy/sdk/build';
 import { resolveDep } from './fetch-deps';
-import { findPackRoot } from '../utils';
+import { findPackRoot, readManifest } from '../utils';
 
-async function validateDeps(root: string, manifestPath: string): Promise<ManifestValidation> {
-  const errors: string[] = [];
-  const warnings: string[] = [];
-
-  if (!fs.existsSync(manifestPath)) return { errors, warnings };
-
-  let manifest: Record<string, unknown>;
+/**
+ * Warnings only: an unresolved dependency is fixable with "abuddy fetch-deps", and `abuddy build`
+ * is what refuses to build without it.
+ */
+async function validateDeps(root: string): Promise<string[]> {
+  let deps: Record<string, string> | undefined;
   try {
-    manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
+    // A missing or unparsable manifest is already reported by validateManifest
+    deps = readManifest(root).dependencies;
   } catch {
-    return { errors, warnings };
+    return [];
   }
+  if (!deps) return [];
 
-  const deps = manifest.dependencies as Record<string, string> | undefined;
-  if (!deps || Object.keys(deps).length === 0) return { errors, warnings };
-
+  const warnings: string[] = [];
   for (const [depId, depValue] of Object.entries(deps)) {
     const resolved = await resolveDep(root, depId, depValue);
     if (!resolved) {
       warnings.push(`Dependency "${depId}" could not be resolved — run "abuddy fetch-deps"`);
     }
   }
-
-  return { errors, warnings };
+  return warnings;
 }
 
 export async function validate(_args: string[]) {
@@ -36,11 +33,14 @@ export async function validate(_args: string[]) {
 
   const manifestPath = path.join(root, 'abuddy.json');
   const manifestResult = validateManifest(manifestPath);
-  const featureResult = await validateFeatures(path.join(root, 'src', 'features'));
-  const depResult = await validateDeps(root, manifestPath);
+  // Checked against the pack only when the manifest parses: its features[] is what's on disk to check
+  const featureResult = manifestResult.errors.length === 0
+    ? validateFeatures(root, readManifest(root))
+    : { errors: [], warnings: [] };
+  const depWarnings = await validateDeps(root);
 
-  const errors = [...manifestResult.errors, ...featureResult.errors, ...depResult.errors];
-  const warnings = [...manifestResult.warnings, ...featureResult.warnings, ...depResult.warnings];
+  const errors = [...manifestResult.errors, ...featureResult.errors];
+  const warnings = [...manifestResult.warnings, ...featureResult.warnings, ...depWarnings];
 
   if (warnings.length > 0) {
     console.log('\nWarnings:');

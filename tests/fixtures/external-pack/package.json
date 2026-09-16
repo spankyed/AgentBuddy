@@ -10,6 +10,7 @@
     "build": "abuddy build",
     "validate": "abuddy validate",
     "typecheck": "tsc --noEmit",
-    "test:e2e": "abuddy test"
+    "test:e2e": "abuddy test",
+    "test": "vitest run"
   }
 }

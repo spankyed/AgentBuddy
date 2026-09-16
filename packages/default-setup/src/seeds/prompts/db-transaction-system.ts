@@ -122,7 +122,7 @@ ids.forEach(id => tx(id).destroy());
 return { deleted: ids.length };
 
 // Grant/revoke roles
-const agentId = qx(EARS.Entity.Agent).first();
-tx(agentId).grant('primary').revoke('inactive');
-return { agentId, roles: getRoles(agentId) };`;
+const noteId = qx(EARS.Entity.Note).first();
+tx(noteId).grant('primary').revoke('inactive');
+return { noteId, roles: getRoles(noteId) };`;
 }

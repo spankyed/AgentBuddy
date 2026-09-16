@@ -63,16 +63,11 @@ export const bus: "bus";
 export function defineEars<S extends EntityShapes, N extends string = string>(): TypedEars<S, N>;
 
 // @public
-export function defineSystem<Id extends string>(id: Id, opts?: {
-    designation?: string;
-}): <TEvents extends {
+export function defineSystem<Id extends string>(id: Id): <TEvents extends {
     type: string;
 }, TOutgoing extends {
     type: string;
 }, TContext = {}>() => SystemSpec<Id, TEvents, TOutgoing, TContext>;
-
-// @public (undocumented)
-export type Designations = readonly string[] | Record<string, string>;
 
 // @public (undocumented)
 export namespace EARS {
@@ -85,7 +80,6 @@ export namespace EARS {
         readonly Action: "Action";
         readonly Prompt: "Prompt";
         readonly Settings: "Settings";
-        readonly Secret: "Secret";
     };
     // (undocumented)
     export interface AttributePayloads {
@@ -246,9 +240,6 @@ export interface PromptEntity extends BaseEntity {
     updatedAt: number;
 }
 
-// @internal
-export function registerDesignations(designations: Designations): void;
-
 // @public (undocumented)
 export interface RelationEntity extends BaseEntity {
     // (undocumented)
@@ -272,35 +263,14 @@ export type SdkEntityShapes = {
     Action: ActionEntity;
     Prompt: PromptEntity;
     Settings: SettingsEntity;
-    Secret: SecretEntity;
 };
-
-// @public (undocumented)
-export interface SecretEntity extends BaseEntity {
-    // (undocumented)
-    createdAt: number;
-    // (undocumented)
-    customName?: string;
-    encryptedValue: string;
-    // (undocumented)
-    entityType: typeof SDK_ENTITIES.Secret;
-    // (undocumented)
-    provider: SecretProvider;
-    // (undocumented)
-    updatedAt?: number;
-}
-
-// @public (undocumented)
-export type SecretProvider = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral' | 'cohere' | 'custom';
 
 // @public (undocumented)
 export interface SettingsEntity extends BaseEntity {
     data: unknown;
     // (undocumented)
     entityType: typeof SDK_ENTITIES.Settings;
-    label?: string;
     name: string;
-    type?: SettingsScope;
 }
 
 // @public (undocumented)
@@ -314,6 +284,14 @@ export type Simplify<T> = {
 // @public
 export type SystemEvents = {
     type: 'CLIENT_CONNECTED';
+}
+/**
+* A pack was activated, reloaded or torn down while the app runs, or its seeds were imported: what it
+* registers (its slash commands) and the data it seeded may differ. Sent once the change is complete.
+*/
+| {
+    type: 'PACK_CHANGED';
+    packId: string;
 };
 
 // @public
@@ -322,8 +300,6 @@ export interface SystemSpec<Id extends string, TEvents extends {
 }, TOutgoing extends {
     type: string;
 }, TContext = {}> {
-    // (undocumented)
-    designation?: string;
     // (undocumented)
     id: Id;
     _incoming: WithSystemId<Id, TEvents>;
@@ -339,8 +315,6 @@ export interface SystemSpec<Id extends string, TEvents extends {
 
 // @public (undocumented)
 export interface TemplateInput {
-    // (undocumented)
-    commonSources?: string[];
     // (undocumented)
     defaultValue?: unknown;
     // (undocumented)

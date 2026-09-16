@@ -79,9 +79,6 @@ export interface SetupFileOptions {
     language?: string;
 }
 
-// @public
-export function setupFunctionBodyMode(monaco: Monaco, language: "typescript" | "javascript" | undefined, dslType: DslType): void;
-
 // @public (undocumented)
 export function setupMonacoForFile(monaco: Monaco, options: SetupFileOptions): void;
 

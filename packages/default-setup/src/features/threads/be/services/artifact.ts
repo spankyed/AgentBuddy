@@ -126,3 +126,10 @@ export function findOrCreateByType(
   });
   return { artifactId, created: true };
 }
+
+/** `services.artifact`: artifact writes with frontend notification */
+export const artifactService = {
+  createAndNotify,
+  updateAndNotify,
+  findOrCreateByType,
+};

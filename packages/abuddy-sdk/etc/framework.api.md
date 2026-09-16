@@ -9,13 +9,29 @@ import type { AnyStateMachine } from 'xstate';
 import { z } from 'zod';
 
 // @public
-export function defineSystem<Id extends string>(id: Id, opts?: {
-    designation?: string;
-}): <TEvents extends {
+export function checkFeatureSettings(featureId: string, settings: unknown): string[];
+
+// @public
+export function defineSystem<Id extends string>(id: Id): <TEvents extends {
     type: string;
 }, TOutgoing extends {
     type: string;
 }, TContext = {}>() => SystemSpec<Id, TEvents, TOutgoing, TContext>;
+
+// @public
+export interface FeatureSettings {
+    // (undocumented)
+    plugins?: Record<string, unknown>;
+}
+
+// @public
+export function getPackCommands(): PackCommand[];
+
+// @public
+export function getPackSettingsDefaults(): PackSettingsDefaults;
+
+// @public
+export function onPackSettingsDefaultsChanged(listener: () => void): () => void;
 
 // @public (undocumented)
 export interface PackBootHooks {
@@ -26,10 +42,22 @@ export interface PackBootHooks {
     // (undocumented)
     onShutdown?: () => void;
     // (undocumented)
-    seed?: () => void;
-    // (undocumented)
     seedManifest?: PackSeedManifest;
 }
+
+// @public
+export interface PackCommand {
+    // (undocumented)
+    name: string;
+    // (undocumented)
+    placeholder: string;
+}
+
+// @internal
+export const packCommandsRegistry: {
+    register(packId: string, commands: readonly PackCommand[]): void;
+    unregister(packId: string): void;
+};
 
 // @public (undocumented)
 export interface PackEARS {
@@ -38,7 +66,6 @@ export interface PackEARS {
     // (undocumented)
     partitionPolicy?: {
         excludedEntityTypes?: string[];
-        secretEntityTypes?: string[];
     };
     // (undocumented)
     relKinds: Record<string, string>;
@@ -49,17 +76,14 @@ export interface PackFeatureDef {
     // (undocumented)
     designation?: string;
     // (undocumented)
+    hasPlugin: boolean;
+    // (undocumented)
     hasSystem: boolean;
     // (undocumented)
     id: string;
     // (undocumented)
-    plugin?: {
-        label: string;
-        icon: string;
-        isPinned?: boolean;
-    };
-    // (undocumented)
     services: string[];
+    settings?: FeatureSettings;
 }
 
 // @public (undocumented)
@@ -80,6 +104,7 @@ export interface PackRegistration {
     blocks?: BlockDefinition[];
     // (undocumented)
     boot?: PackBootHooks;
+    commands?: PackCommand[];
     // (undocumented)
     ears?: PackEARS;
     // (undocumented)
@@ -110,6 +135,29 @@ export interface PackSeedManifest {
     };
 }
 
+// @public
+export interface PackSettingsDefaults {
+    // (undocumented)
+    revision: number;
+    // (undocumented)
+    settings: {
+        plugins: Record<string, unknown> & {
+            _meta?: {
+                visibility: Record<string, boolean>;
+            };
+        };
+    };
+}
+
+// @internal
+export const packSettingsRegistry: {
+    register(packId: string, features: ReadonlyArray<{
+        id: string;
+        settings?: FeatureSettings;
+    }>): void;
+    unregister(packId: string): void;
+};
+
 // @public (undocumented)
 export interface PackSystemDef {
     // (undocumented)
@@ -130,12 +178,20 @@ export interface SystemEntry {
         type: string;
     }, {
         type: string;
-    }>, 'id' | 'designation'>;
+    }>, 'id'>;
 }
 
 // @public
 export type SystemEvents = {
     type: 'CLIENT_CONNECTED';
+}
+/**
+* A pack was activated, reloaded or torn down while the app runs, or its seeds were imported: what it
+* registers (its slash commands) and the data it seeded may differ. Sent once the change is complete.
+*/
+| {
+    type: 'PACK_CHANGED';
+    packId: string;
 };
 
 // @public
@@ -144,8 +200,6 @@ export interface SystemSpec<Id extends string, TEvents extends {
 }, TOutgoing extends {
     type: string;
 }, TContext = {}> {
-    // (undocumented)
-    designation?: string;
     // (undocumented)
     id: Id;
     _incoming: WithSystemId<Id, TEvents>;

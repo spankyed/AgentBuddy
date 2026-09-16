@@ -7,8 +7,6 @@
   "entities": {},
   "relKinds": {},
   "fe": {
-    "entry": "dist/fe.js",
-    "styles": "dist/fe.css",
     "bundleUi": true
   },
   "features": [
@@ -16,9 +14,7 @@
       "id": "scribbles",
       "settings": "src/features/scribbles/settings.ts",
       "plugin": {
-        "entry": "src/features/scribbles/fe/plugin.ts",
-        "label": "Scribbles",
-        "icon": "NotebookPen"
+        "entry": "src/features/scribbles/fe/plugin.ts"
       },
       "services": {}
     }

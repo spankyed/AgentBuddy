@@ -84,7 +84,7 @@ export const entries: <T extends Record<string, unknown>>(obj: T) => Array<[keyo
 // @public
 export function extractAndResolveImages(markdown: string): ResolvedMedia[];
 
-// @public (undocumented)
+// @public
 export function extractImageParts(markdown: string): ImagePart[];
 
 // @public
@@ -99,17 +99,8 @@ export function filterByInclude<T>(items: T[], getKey: (item: T) => string, inc:
 // @public (undocumented)
 export function getAppVersion(): string;
 
-// @public (undocumented)
-export const getIndexFilePath: (indexId: string) => string;
-
-// @public (undocumented)
-export const getIndexMappingsPath: (indexId: string) => string;
-
-// @public (undocumented)
-export const getIndexMetadataPath: (indexId: string) => string;
-
-// @public (undocumented)
-export const getIndexPath: (indexId: string) => string;
+// @public
+export function getDataDirPath(name: string): string;
 
 // @internal
 export const getLmdbPath: () => string;
@@ -117,14 +108,8 @@ export const getLmdbPath: () => string;
 // @internal
 export const getMediaPath: () => string;
 
-// @public (undocumented)
-export const getModelsCachePath: () => string;
-
-// @public (undocumented)
-export const getSearchIndicesPath: () => string;
-
 // @internal
-export const getSecretsLmdbPath: () => string;
+export const getSecretsFilePath: () => string;
 
 // @public (undocumented)
 export const getUserDataPath: () => string;
@@ -132,7 +117,7 @@ export const getUserDataPath: () => string;
 // @internal
 export const getVolatileLmdbPath: () => string;
 
-// @public (undocumented)
+// @public
 export interface ImagePart {
     // (undocumented)
     image: Buffer;
@@ -148,7 +133,7 @@ export type ImportMode = 'keep-existing' | 'replace-on-collision' | 'wipe-and-re
 // @public (undocumented)
 export function isCliName(value: string): value is CliName;
 
-// @public (undocumented)
+// @public
 export const isPlainObject: (val: unknown) => val is Record<string, unknown>;
 
 // @public (undocumented)
@@ -198,6 +183,15 @@ export function readMediaBuffer(ref: MediaRef): {
     data: Buffer;
     mimeType: string;
 } | null;
+
+// @public (undocumented)
+export const REDACTED = "[redacted]";
+
+// @public
+export function redactSecrets<T>(value: T): T;
+
+// @public
+export function redactSecretText(text: string): string;
 
 // @public (undocumented)
 export function registerSeeder(seeder: Seeder): void;

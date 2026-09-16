@@ -1,6 +1,7 @@
 export type {
   EARSRuntimeDeps, QueryBuilder, TransactionBuilder, SafeLinkOptions, FieldValue, FieldValues,
 } from './runtime.ts';
+export { isEntityType } from './runtime.ts';
 export { b64Encode, b64Decode, type QxSeed } from './query.ts';
 export { tx } from './transaction.ts';
 export {

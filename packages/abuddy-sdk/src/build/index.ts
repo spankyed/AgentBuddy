@@ -1,8 +1,8 @@
 // Types
-export type { PackConfig, FeatureConfig, CompilePackOptions, CompilePackResult } from './types.ts';
+export type { PackConfig, CompilePackOptions, CompilePackResult } from './types.ts';
 
 // Seed compiler framework
-export { compilePack, SEED_INDEX_FILE } from './seed-compiler.ts';
+export { clearCompiledSeeds, compilePack, SEED_INDEX_FILE } from './seed-compiler.ts';
 export { compileMarkdownTree, parseMarkdownFile, toDisplayName, MEDIA_DIR, type MarkdownItem, type MarkdownTreeOptions } from './seeds/markdown-tree.ts';
 export {
   compileBuiltinFormat, checkRecordEntities, recordLabel, formatEntities, withSourceHashes, defaultSourceHash, RECORD_KEYS,
@@ -39,12 +39,12 @@ export { buildPackConfigFromManifest, resolveFeatureSettingsFromManifest } from 
 
 // Pack manifest types
 export type {
-  PackManifest, PackTypeManifest, PackSnapshot, PackPermission,
+  PackManifest, PackTypeManifest, PackSnapshot, PackFlowHelpers, PackPermission, DependencyCommand, DependencyCommandSource,
   PackSystemEntry, PackPluginEntry,
   PackFeatureEntry, PackBootConfig, SeedEntryConfig, SeedFormatConfig,
   StepEntry, StepDSLMeta,
 } from './manifest.ts';
-export { seedFile, seedPath, SEED_COMPILERS_FILE } from './manifest.ts';
+export { seedFile, seedPath, SEED_COMPILERS_FILE, dependencyCommands } from './manifest.ts';
 
 // Flow DSL helpers (track builders)
 export { entry, on } from './flow-helpers.ts';
@@ -53,7 +53,10 @@ export { entry, on } from './flow-helpers.ts';
 export type { ActionMeta, PromptMeta } from './seed-types.ts';
 
 // Entry codegen
-export { generatePackFiles, emitEARS, mergeRegistries, emitDepTypes, entitiesWithoutShapes, PACK_TYPES_DEF } from './generate-entries.ts';
+export {
+  generatePackFiles, emitEARS, mergeRegistries, emitDepTypes, entitiesWithoutShapes, PACK_TYPES_DEF,
+  depTypesFile, depTypesVersion,
+} from './generate-entries.ts';
 export type { GenerateEntriesOptions } from './generate-entries.ts';
 
 // Resolve conditions for building pack code against a linked checkout

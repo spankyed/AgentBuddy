@@ -14,8 +14,8 @@ describe('parseManifest', () => {
 
   it("rejects declaring the SDK's entities or relation kinds, by name or value", () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-    for (const entities of [{ Relation: 'Relation' }, { Link: 'Relation' }, { Action: 'Action' }, { Run: 'TNode' }, { Key: 'Secret' }]) {
-      expect(parseManifest({ ...pack, entities }).errors).toEqual([expect.stringMatching(/"entities": Relation, Flow, Node, TNode, Action, Prompt, Settings, Secret are defined by the SDK/)]);
+    for (const entities of [{ Relation: 'Relation' }, { Link: 'Relation' }, { Action: 'Action' }, { Run: 'TNode' }, { Options: 'Settings' }]) {
+      expect(parseManifest({ ...pack, entities }).errors).toEqual([expect.stringMatching(/"entities": Relation, Flow, Node, TNode, Action, Prompt, Settings are defined by the SDK/)]);
     }
     for (const relKinds of [{ CONTAINS: 'contains' }, { NEXT: 'transitions_to' }]) {
       expect(parseManifest({ ...pack, relKinds }).errors).toEqual([expect.stringMatching(/"relKinds": CONTAINS, TRANSITIONS_TO, INSTANCE_OF, SPAWNED, TRACKED are defined by the SDK/)]);
@@ -104,6 +104,22 @@ describe('seedFormats and boot.seed entries', () => {
     expect(errorsFor({ memos: { path: 'p', format: 'memos', entity: 'Memo' } })).toEqual([expect.stringMatching(/Unrecognized key.*entity/)]);
   });
 
+  it('accepts a settings seed only in a built-in pack: it holds the app\'s defaults', () => {
+    expect(errorsFor({ settings: 'src/seeds/default-settings.ts' })).toEqual([expect.stringMatching(/"boot\.seed\.settings": The "settings" seed holds the app's own defaults, so only built-in packs have one/)]);
+    expect(parseManifest({ ...pack, builtIn: true, boot: { seed: { settings: 'src/seeds/default-settings.ts' } } }).errors).toEqual([]);
+  });
+
+  it('rejects the removed boot.earlySystem and boot.createDefaultSettings', () => {
+    expect(parseManifest({ ...pack, builtIn: true, boot: { earlySystem: 'src/system.ts' } }).errors).toEqual([expect.stringMatching(/"boot".*Unrecognized key.*earlySystem/)]);
+    expect(parseManifest({ ...pack, builtIn: true, boot: { createDefaultSettings: 'src/settings.ts' } }).errors).toEqual([expect.stringMatching(/"boot".*Unrecognized key.*createDefaultSettings/)]);
+  });
+
+  it('accepts features[].earlySystem only in a built-in pack: early systems start before external packs load', () => {
+    const features = [{ id: 'logs', earlySystem: true, system: { entry: 'src/logs/system.ts' } }];
+    expect(parseManifest({ ...pack, features }).errors).toEqual([expect.stringMatching(/"features\.0\.earlySystem": An early system starts before EARS hydration/)]);
+    expect(parseManifest({ ...pack, builtIn: true, features }).errors).toEqual([]);
+  });
+
   it('rejects anything but a path on a specialty key', () => {
     expect(errorsFor({ actions: { path: 'src/seeds/actions', format: 'memos' } })).toEqual([expect.stringMatching(/"actions" is compiled by the SDK/)]);
   });
@@ -140,5 +156,51 @@ describe('seedHooks', () => {
 
   it('rejects a target without an export name', () => {
     expect(parseManifest({ ...pack, seedHooks: { Memo: 'src/memo-hooks.ts' } }).errors).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
+  });
+});
+
+describe('services', () => {
+  const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
+  const feature = (services: Record<string, string>) => ({ ...pack, features: [{ id: 'memos', services }] });
+
+  it('accepts feature and pack-level services naming their export', () => {
+    expect(parseManifest({ ...feature({ memo: 'src/features/memos/be/services/memo.ts#memoService' }), packServices: { cache: 'src/cache#cacheService' } }).errors).toEqual([]);
+  });
+
+  it('rejects a service path without an export name', () => {
+    expect(parseManifest(feature({ memo: 'src/features/memos/be/services/memo.ts' })).errors).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
+    expect(parseManifest({ ...pack, packServices: { cache: 'src/cache' } }).errors).toEqual([expect.stringMatching(/Must be "path#exportName"/)]);
+  });
+
+  it('rejects a service name that is not an identifier', () => {
+    expect(parseManifest({ ...pack, packServices: { 'my-cache': 'src/cache.ts#cacheService' } }).errors).toEqual([expect.stringMatching(/Must be an identifier/)]);
+  });
+});
+
+describe('commands', () => {
+  const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
+  const withCommands = (commands: Array<Record<string, unknown>>) => ({ ...pack, commands });
+
+  it('accepts lowercase names with hyphens, each with its placeholder', () => {
+    expect(parseManifest(withCommands([{ name: 'standup', placeholder: 'Topic' }, { name: 'team-digest', placeholder: 'Week (optional)' }])).errors).toEqual([]);
+  });
+
+  it('rejects a name that is not a command: uppercase, a leading slash, digit or hyphen, a space', () => {
+    for (const name of ['Standup', '/standup', '2do', '-standup', 'team digest', 'team_digest']) {
+      expect(parseManifest(withCommands([{ name, placeholder: 'x' }])).errors)
+        .toEqual([expect.stringMatching(/Must be a lowercase letter, then lowercase letters, digits and hyphens/)]);
+    }
+  });
+
+  it('rejects a command without a placeholder or with an empty one, and unknown keys on one', () => {
+    expect(parseManifest(withCommands([{ name: 'standup' }])).errors.length).toBeGreaterThan(0);
+    expect(parseManifest(withCommands([{ name: 'standup', placeholder: '' }])).errors[0]).toContain('placeholder');
+    expect(parseManifest(withCommands([{ name: 'standup', placeholder: 'x', action: 'Standup' }])).errors[0]).toContain('action');
+  });
+
+  it("rejects a name the pack declares twice, and one on a feature: they're the pack's", () => {
+    expect(parseManifest(withCommands([{ name: 'standup', placeholder: 'a' }, { name: 'standup', placeholder: 'b' }])).errors)
+      .toEqual([expect.stringContaining('Command "standup" is declared twice')]);
+    expect(parseManifest({ ...pack, features: [{ id: 'memos', commands: [{ name: 'standup', placeholder: 'a' }] }] }).errors[0]).toContain('commands');
   });
 });

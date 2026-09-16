@@ -6,7 +6,8 @@ import {
   TRAIL_CLICK,
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
-import type { OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, Secrets, PluginSettings } from '@/__generated__/types'
+import type { OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, PluginSettings } from '@/__generated__/types'
+import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services'
 import { trpc } from '@abuddy/sdk/rpc'
 import type { ApplicationHotkeys } from '@abuddy/sdk/types'
 import type { EARS } from '@abuddy/sdk'
@@ -55,7 +56,9 @@ function freshPackSeeds(): PackSeedsImport {
 export interface SettingsContext {
   settings: SettingsData | null;
   faqs: FAQItem[];
-  secretsData: any[];
+  /** The stored API keys, without values */
+  secrets: SecretInfo[];
+  secretsStatus: SecretsStatus | null;
   cliTestResults: Record<string, { status: 'idle' | 'testing' | 'success' | 'error'; resolvedPath?: string; error?: string }>;
   packSeedsImport: PackSeedsImport;
   activeTab: 'general' | 'plugins' | 'help';
@@ -92,11 +95,6 @@ export type SettingsEvents = UIEvent | OutgoingSettingsEvents | TrailClickEvent
   | { type: 'PACK_SEEDS_PREVIEW_FAILED'; error: string }
   | { type: 'APP_RESET_COMPLETE' }
   | { type: 'APP_RESET_FAILED'; error: string }
-  | { type: 'SECRETS.EVENT.LOADED'; data: any[] }
-  | { type: 'SECRETS.EVENT.CREATED'; id: string; provider: string; customName?: string }
-  | { type: 'SECRETS.EVENT.UPDATED'; id: string }
-  | { type: 'SECRETS.EVENT.DELETED'; id: string }
-  | { type: 'SECRETS.EVENT.ERROR'; message: string }
   | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string }
 const typeOf = safeEvents<SettingsEvents>()
 
@@ -139,11 +137,9 @@ const settingsState = setup({
       }
     },
 
-    setSecretsData: assign(({ event }) => {
-      const ev = event as { type: 'SECRETS.EVENT.LOADED'; data: any[] };
-      return {
-        secretsData: ev.data
-      };
+    setSecrets: assign(({ event }) => {
+      const ev = typeOf('SECRETS_UPDATED', event);
+      return { secrets: ev.secrets, secretsStatus: ev.status };
     }),
 
     updateSettingsData: assign(({ event }) => {
@@ -398,7 +394,8 @@ const settingsState = setup({
   context: () => ({
     settings: null,
     faqs: [],
-    secretsData: [],
+    secrets: [],
+    secretsStatus: null,
     cliTestResults: {},
     packSeedsImport: freshPackSeeds(),
     activeTab: 'general',
@@ -447,13 +444,9 @@ const settingsState = setup({
         SETTINGS_RESET: {
           actions: ['updateSettingsData', 'notifyPluginVisibility'],
         },
-        'SECRETS.EVENT.LOADED': {
-          actions: 'setSecretsData',
+        SECRETS_UPDATED: {
+          actions: 'setSecrets',
         },
-        'SECRETS.EVENT.CREATED': {},
-        'SECRETS.EVENT.UPDATED': {},
-        'SECRETS.EVENT.DELETED': {},
-        'SECRETS.EVENT.ERROR': {},
         'CLI.TEST': {
           actions: 'testCliProvider',
         },
