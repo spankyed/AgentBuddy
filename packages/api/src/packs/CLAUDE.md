@@ -51,7 +51,7 @@ In this folder:
 | `pack-reload.ts` | `reloadExternalPack()` / `reloadBuiltInPack()` for `POST /dev/reload` (`setup/websocket.ts`) |
 | `packs-system.ts` | The host `packs` XState system: `INSTALL_PACK`, `UNINSTALL_PACK`, `TOGGLE_PACK_ENABLED`, `UPDATE_PACK`, `CHECK_FOR_UPDATES`, `GET_INSTALLED_PACKS`; emits `PACKS_LIST`, `PACK_ACTIVATED`/`PACK_DEACTIVATED` and install/update/uninstall results |
 | `activation-outcome.ts` | `activationProblem()`: why a just-installed or updated pack isn't working (failed to load, or the seed error recorded on its registry entry) |
-| `pack-seed.ts` | `computePackSeedHash`, `seedPackData` (hash-checked external seeds; failures recorded as the registry entry's `lastError`), `orchestrateDeclarativeSeed` (built-in `boot.seed`) |
+| `pack-seed.ts` | `computePackSeedHash`, `seedPackData` (hash-checked external seeds; failures recorded as the registry entry's `lastError`), `orchestrateDeclarativeSeed` (built-in `boot.seed`, hash-checked per pack; the hash covers every seeded key's compiled file, `settings.seed.json` included, so changing default settings re-runs the boot seed even though `seedPolicy.skipAtBoot` keeps settings from being reset) |
 | `pack-api.ts` | The loaded external packs list, `getPacksWithClientLoadedFrontends()`, and the `packs.registry` tRPC query the renderer loads frontends from: `{ id, name, version, builtIn?, feEntry?, feStyles? }` per pack (built-in entries have `builtIn: true`) |
 
 In `packages/abuddy-host/src/packs/` (`@abuddy/host/packs`):
@@ -144,7 +144,7 @@ The resolver patch is restored in a `finally`; the bridged cache entries stay, s
 
 - **`earlySystem`** — Starts before hydration, and before external packs register. The manifest schema rejects `features[].earlySystem` in a pack without `builtIn`, and the loader strips it with a warning log.
 - **`partitionPolicy`** (`excludedEntityTypes`) — Controls which entities go to the volatile store vs primary LMDB. Letting external packs route data to alternative stores without sandboxing could corrupt persistence. Stripped (with a warning when it lists types); all external pack data routes to the primary partition.
-- **`seedManifest`** — The declarative boot seed tracks a single global hash; external packs seed through `seedPackData()`, hash-checked per pack.
+- **`seedManifest`** — The declarative boot seed is only for built-in packs (hashes recorded per pack in internal settings `seedHashes`); external packs seed through `seedPackData()`, hash-checked per pack.
 
 ## Runtime lifecycle
 

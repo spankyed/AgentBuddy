@@ -29,8 +29,8 @@ afterEach(() => packCommandsRegistry.unregister('team-notes'))
 const dependentDirs: string[] = []
 // The dependent pack's seeders, as its generated seeders module registers them for default-setup's formats
 registerSeeders('team-notes', [
-  createSeeder({ key: 'library', identity: ['name'], media: true }),
-  createSeeder({ key: 'notes', identity: ['title', 'parent'], relKind: 'contains' }),
+  createSeeder({ key: 'library', entities: ['Collection', 'Document'], identity: ['name'], media: true }),
+  createSeeder({ key: 'notes', entities: ['Note'], identity: ['title', 'parent'], relKind: 'contains' }),
 ])
 afterAll(() => {
   unregisterSeeders('team-notes')

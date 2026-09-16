@@ -1292,11 +1292,9 @@ export interface MarkdownItem {
 // @public (undocumented)
 export interface MarkdownTreeOptions {
     branch?: string;
+    media?: string;
     recursive?: boolean;
 }
-
-// @public
-export const MEDIA_DIR = "media";
 
 // @public (undocumented)
 export function mergeRegistries(ownId: string, manifest: PackManifest, depManifests: Map<string, PackTypeManifest>): {
@@ -1356,8 +1354,8 @@ export interface PackSeedsPreview {
     // (undocumented)
     directory: string;
     packId: string;
-    // (undocumented)
     seeds: Record<string, PackSeedPreviewItem[]>;
+    unavailable: string[];
 }
 
 // @public (undocumented)

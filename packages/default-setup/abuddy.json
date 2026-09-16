@@ -339,6 +339,7 @@
         },
         "icon": {
           "from": "frontmatter.icon",
+          "default": null,
           "type": "string"
         },
         "favorite": {

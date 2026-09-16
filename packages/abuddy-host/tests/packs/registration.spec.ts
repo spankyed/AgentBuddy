@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { getPackCommands, getPackSettingsDefaults, type PackRegistration, type PackSystemDef } from '@abuddy/sdk/framework';
+import { artifactRegistry } from '@abuddy/sdk/artifacts';
 import { seedHookRegistry } from '@abuddy/sdk/seed';
 import { SDK_ENTITIES } from '@abuddy/sdk/types';
 import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
@@ -117,6 +118,43 @@ describe('registerPack feature settings', () => {
     expect(getPackContributions('bad-pack')).toBeNull();
     expect(seedHookRegistry.get('Memo')).toBeUndefined();
     expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
+  });
+});
+
+describe('registerPack seed hooks', () => {
+  const memoHooks = { find: () => undefined };
+
+  it('rejects hooks for an entity another pack owns, rolling back what the pack registered', () => {
+    registerPack({ id: 'memo-pack', systems: [], ears: { entities: { Memo: 'Memo' }, relKinds: {} }, seedHooks: { Memo: memoHooks } } as unknown as PackRegistration);
+    registered.push('memo-pack');
+
+    const other = {
+      id: 'other-pack',
+      systems: [],
+      ears: { entities: { Card: 'Card' }, relKinds: {} },
+      artifacts: [{ type: 'card-view' }],
+      commands: [{ name: 'card', placeholder: 'Title' }],
+      seedHooks: { Card: {}, Memo: {} },
+    };
+    expect(() => registerPack(other as unknown as PackRegistration))
+      .toThrow('Seed hooks for "Memo" are already registered by pack "memo-pack"');
+
+    expect(getPackContributions('other-pack')).toBeNull();
+    expect(seedHookRegistry.get('Memo')).toBe(memoHooks);
+    expect(seedHookRegistry.get('Card')).toBeUndefined();
+    expect(artifactRegistry.has('card-view')).toBe(false);
+    expect(getPackCommands()).toEqual([]);
+  });
+
+  it("drops a pack's hooks when it unregisters, freeing the entity for another pack", () => {
+    registerPack({ id: 'memo-pack', systems: [], ears: { entities: { Memo: 'Memo' }, relKinds: {} }, seedHooks: { Memo: memoHooks } } as unknown as PackRegistration);
+    unregisterPack('memo-pack');
+    expect(seedHookRegistry.get('Memo')).toBeUndefined();
+
+    const theirs = {};
+    registerPack({ id: 'other-pack', systems: [], seedHooks: { Memo: theirs } } as unknown as PackRegistration);
+    registered.push('other-pack');
+    expect(seedHookRegistry.get('Memo')).toBe(theirs);
   });
 });
 

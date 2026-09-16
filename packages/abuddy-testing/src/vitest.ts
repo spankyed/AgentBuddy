@@ -41,9 +41,43 @@ function sibling(name: string): string {
   return path.join(path.dirname(self), `${name}${path.extname(self)}`);
 }
 
+function isRunning(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return (error as NodeJS.ErrnoException).code === 'EPERM';
+  }
+}
+
+/**
+ * Removes data dirs with this prefix left by runs that crashed before their teardown. A run's dir
+ * is named after its process, so only dirs of processes that are gone are removed.
+ */
+function removeStaleDirs(prefix: string): void {
+  const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const pattern = new RegExp(`^${escaped}(\\d+)-[A-Za-z0-9]{6}$`);
+  let names: string[];
+  try {
+    names = fs.readdirSync(os.tmpdir());
+  } catch {
+    return;
+  }
+  for (const name of names) {
+    const pid = pattern.exec(name)?.[1];
+    if (!pid || isRunning(Number(pid))) continue;
+    try {
+      fs.rmSync(path.join(os.tmpdir(), name), { recursive: true, force: true });
+    } catch {
+      // Another run's leftovers: not this run's concern
+    }
+  }
+}
+
 /** Creates the run's data dir and the vitest settings that isolate and clean it up */
 export function isolatedDataDir(prefix = 'abuddy-tests-'): IsolatedDataDir {
-  const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  removeStaleDirs(prefix);
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), `${prefix}${process.pid}-`));
   return {
     dir,
     env: { ABUDDY_ENV: 'test', ABUDDY_USER_DATA_DIR: dir },

@@ -66,7 +66,7 @@ describe('re-seeding edited rows', () => {
     // The Welcome record sets favorite, not hideCompletedChildren or completed, so the seed doesn't own those
     repository.noteCommands.update(note('Welcome').id, { hideCompletedChildren: true, completed: true });
     seed(v2, { mode: 'replace-on-collision' });
-    expect(snapshot().rows['Note:Welcome']).toMatchObject({ hideCompletedChildren: true, completed: true, content: expect.stringContaining('Revised content.') });
+    expect(snapshot().rows['Note:Welcome']).toMatchObject({ hideCompletedChildren: true, completed: true, content: expect.stringContaining('Hello again') });
   });
 
   it('applies every field a changed record sets, including false flags and the type', () => {
@@ -147,7 +147,8 @@ describe('re-seeding edited rows', () => {
     expect(after.rows['Document:My guide']).toEqual(before.rows['Document:My guide']);
     // The renamed parent's children are still found under it, and v2's new child is created there
     expect(Object.keys(after.rows).filter((alias) => alias.startsWith('Note:')).sort()).toEqual([
-      'Note:My projects', 'Note:My projects/Task Three', 'Note:My projects/Task Two', 'Note:My projects/task one', 'Note:My welcome',
+      'Note:My projects', 'Note:My projects/2024', 'Note:My projects/Archive', 'Note:My projects/Archive/Old Task',
+      'Note:My projects/Task Three', 'Note:My projects/Task Two', 'Note:My projects/task one', 'Note:My welcome',
     ]);
   });
 

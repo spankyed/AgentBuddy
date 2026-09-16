@@ -59,3 +59,28 @@ describe('a built-in pack build that fails', () => {
     expect(list(dir)).toEqual(['runtime/index.cjs']);
   });
 });
+
+describe('a pack whose seed compiler modules fail to bundle', () => {
+  it('fails the build before it writes the snapshot', async () => {
+    const dir = previousBuild(['snapshot.json']);
+    const root = path.dirname(dir);
+    fs.writeFileSync(path.join(root, 'package.json'), JSON.stringify({ name: 'built-in-pack', type: 'module' }));
+    fs.mkdirSync(path.join(root, 'src'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'src', 'tags.ts'), 'export default () => [;\n');
+    fs.writeFileSync(path.join(root, 'abuddy.json'), JSON.stringify({
+      id: 'built-in-pack', name: 'Built-in', version: '1.0.0', builtIn: true,
+      // Not used by an entry here, so only the bundle for dependents compiles it
+      seedFormats: { tags: { compiler: 'src/tags.ts', entity: 'Relation' } },
+    }));
+    const cwd = process.cwd();
+    const exitCode = process.exitCode;
+    process.chdir(root);
+    try {
+      await expect(build(['--skip-generate'])).rejects.toThrow(/Seed compiler bundle failed/);
+    } finally {
+      process.chdir(cwd);
+      process.exitCode = exitCode;
+    }
+    expect(list(dir)).not.toContain('snapshot.json');
+  });
+});

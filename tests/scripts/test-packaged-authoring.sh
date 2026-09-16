@@ -3,10 +3,11 @@
 # dir outside the monorepo, using only the packed @abuddy/* tarballs,
 #   1. install @abuddy/cli + @abuddy/sdk from tarballs (a backend-only pack installs no editor libraries)
 #   2. abuddy init → add feature → a flow using keepAlive from default-setup → seeds from a format
-#      with a .ts compiler module, and default-setup's notes format → an llm flow and a service
+#      with a .ts compiler module, default-setup's notes format, and default-setup's library format
+#      (its compiler module, loaded from the dependency's bundled seed-compilers.mjs) → an llm flow and a service
 #      calling services.inference
 #   3. abuddy build
-#   4. unit tests on the harness: seeds with default-setup's hooks, the feature's system, the service
+#   4. unit tests on the harness: seeds with default-setup's formats and hooks, the feature's system, the service
 #      and the llm flow on default-setup's brain, with inference mocked by mockInference
 #   5. @abuddy/testing's published declarations type-check on their own (skipLibCheck off)
 #   6. abuddy release --local --dry-run produces a verified bundle
@@ -111,7 +112,7 @@ export default {
 };
 EOF
 
-step "2. Seeds from abuddy.json: a format with a .ts compiler module, and default-setup's notes format"
+step "2. Seeds from abuddy.json: a format with a .ts compiler module, and default-setup's notes and library formats"
 mkdir -p src/seeds/glossary src/seeds/notes
 printf -- '---\nterm: Pack\n---\nA bundle of features.\n' > src/seeds/glossary/pack.md
 mkdir -p src/seeds/compilers
@@ -123,13 +124,18 @@ export default function compileGlossary({ path }: SeedCompileContext): SeedRecor
 }
 TS
 printf -- '---\ntitle: Demo notes\n---\nSeeded by demo-pack.\n' > src/seeds/notes/demo.md
-# demo-notes uses default-setup's notes format, compiled from this pack's markdown through the built dependency
+mkdir -p src/seeds/library/guides
+printf -- '---\nname: Demo guides\n---\n' > src/seeds/library/guides/_meta.md
+printf -- '---\nname: Getting started\ntags: [demo]\n---\n<!-- section:text -->\nInstall demo-pack.\n' > src/seeds/library/guides/start.md
+# demo-notes and demo-library use default-setup's formats, compiled from this pack's markdown through the built
+# dependency; the library format's compiler module comes from default-setup's dist/build/seed-compilers.mjs
 node -e '
   const fs = require("fs");
   const m = JSON.parse(fs.readFileSync("abuddy.json", "utf8"));
   m.seedFormats = { ...m.seedFormats, glossary: { compiler: "src/seeds/compilers/glossary.ts", entity: "DemoPack", identity: ["term"] } };
   m.boot.seed.glossary = { path: "src/seeds/glossary", format: "glossary" };
   m.boot.seed["demo-notes"] = { path: "src/seeds/notes", format: "default-setup:notes" };
+  m.boot.seed["demo-library"] = { path: "src/seeds/library", format: "default-setup:library" };
   fs.writeFileSync("abuddy.json", JSON.stringify(m, null, 2) + "\n");
 '
 
@@ -199,13 +205,19 @@ node -e '
   const [note] = read("demo-notes");
   // A record carries only what its source sets: defaults are applied when the row is created, so they are not tracked as seeded
   if (note?.entity !== "Note" || note.title !== "Demo notes" || "noteType" in note || "favorite" in note || !note.sourceHash) throw new Error("demo-notes: " + JSON.stringify(note));
-' || fail "the compiler module and markdown seeds were not compiled"
+  // Sections and the _meta.md name come from the library compiler module of default-setup, not the generic walker
+  const [guides] = read("demo-library");
+  const [doc] = guides?.children ?? [];
+  if (guides?.entity !== "Collection" || guides.name !== "Demo guides" || doc?.entity !== "Document"
+    || JSON.stringify(doc.content) !== JSON.stringify([{ type: "text", text: "Install demo-pack." }])) throw new Error("demo-library: " + JSON.stringify(guides));
+' || fail "the compiler modules and markdown seeds were not compiled"
 
 step "4. Unit tests through the harness, with default-setup's runtime"
 cat > tests/unit/demo-notes.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
 import { seedPack } from '@abuddy/testing/harness';
 import { findAll } from '#generated/ears';
+import { findRelations } from '@abuddy/sdk/ears';
 
 describe('demo notes', () => {
   it("seeds notes with default-setup's format and hooks", async () => {
@@ -213,6 +225,15 @@ describe('demo notes', () => {
     const [note] = findAll('Note');
     expect(note).toMatchObject({ title: 'Demo notes', noteType: 'document', lastSeen: 0 });
     expect(note.shortCode).toMatch(/^NOTE-\d+$/);
+  });
+
+  it("seeds a library with default-setup's bundled compiler module and hooks", async () => {
+    expect(await seedPack({ keys: ['demo-library'] })).toEqual({ 'demo-library': { created: 2, updated: 0, skipped: 0 } });
+    const [guides] = findAll('Collection');
+    const [doc] = findAll('Document');
+    expect(guides).toMatchObject({ name: 'Demo guides' });
+    expect(doc).toMatchObject({ name: 'Getting started', tags: ['demo'], content: [{ type: 'text', text: 'Install demo-pack.' }] });
+    expect(findRelations({ sourceEntity: guides.id, targetEntity: doc.id }).length).toBeGreaterThan(0);
   });
 });
 TS
@@ -251,8 +272,8 @@ describe('notes summary flow', () => {
 });
 TS
 node_modules/.bin/vitest run 2>&1 | tee "$WORK/unit.log"
-# The scaffold's seed test (2), the feature's system test, default-setup notes, the service and the flow
-grep -qE "Tests +6 passed" "$WORK/unit.log" || fail "unit tests through the harness failed"
+# The scaffold's seed test (2), the feature's system test, default-setup notes and library, the service and the flow
+grep -qE "Tests +7 passed" "$WORK/unit.log" || fail "unit tests through the harness failed"
 # The build prints a seed-file count even with no flows; check the compiled flow itself
 node -e '
   const flows = JSON.parse(require("fs").readFileSync("dist/runtime/seeds/flows.seed.json", "utf8"));

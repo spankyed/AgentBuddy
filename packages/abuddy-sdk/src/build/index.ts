@@ -3,7 +3,7 @@ export type { PackConfig, CompilePackOptions, CompilePackResult } from './types.
 
 // Seed compiler framework
 export { clearCompiledSeeds, compilePack, SEED_INDEX_FILE } from './seed-compiler.ts';
-export { compileMarkdownTree, parseMarkdownFile, toDisplayName, MEDIA_DIR, type MarkdownItem, type MarkdownTreeOptions } from './seeds/markdown-tree.ts';
+export { compileMarkdownTree, parseMarkdownFile, toDisplayName, type MarkdownItem, type MarkdownTreeOptions } from './seeds/markdown-tree.ts';
 export {
   compileBuiltinFormat, checkRecordEntities, recordLabel, formatEntities, withSourceHashes, defaultSourceHash, RECORD_KEYS,
   type SeedRecord, type CompiledSeedFile, type SeedFieldSource, type SeedFieldSpec, type SeedTreeSpec,

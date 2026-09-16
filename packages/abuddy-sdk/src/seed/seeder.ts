@@ -16,6 +16,8 @@ import { seedHookRegistry, type SeedHookContext, type SeedHookMatch, type SeedHo
 
 export interface SeederOptions {
   key: string;
+  /** The entity types the entry seeds (the format's `entity`): what `wipe-and-replace` removes */
+  entities: string[];
   /** Fields matched to find an existing row (`parent` = the tree parent); entity types with a `find` hook ignore it */
   identity?: string[];
   /** The relation from a parent row to each child row */
@@ -97,13 +99,14 @@ export function markSeededRowUnedited(id: EARS.EntityId): void {
  *   the record's is left alone. A row whose hash differs is updated when its seeded fields still hold
  *   what the seeder wrote, and left alone when they don't, or weren't recorded (edited). Children are
  *   still visited.
- * - `wipe-and-replace` removes every row of the entry's entity types first.
+ * - `wipe-and-replace` first removes every row of the entry's entity types, whoever created it (other
+ *   packs' rows and the user's too), even when the file has no records of a type.
  * - A row another record's seed claimed (another pack's, or another entry's of this pack) isn't this
  *   record's, unless the entity's hooks set `container`: then it's reused as the record's parent, counted
  *   as skipped and left as its seed wrote it, in every mode but `wipe-and-replace`.
  */
 export function createSeeder(options: SeederOptions): Seeder {
-  const { key, identity = [], relKind = DEFAULT_REL_KIND } = options;
+  const { key, entities, identity = [], relKind = DEFAULT_REL_KIND } = options;
 
   return {
     key,
@@ -121,7 +124,7 @@ export function createSeeder(options: SeederOptions): Seeder {
       if (records.length === 0 && !shouldSeedAll(ctx.include)) return counts;
 
       if (ctx.mode === 'wipe-and-replace') {
-        wipe(file.records);
+        wipe(entities, file.records);
         ctx.log(`  ${key} wiped`);
       }
 
@@ -279,8 +282,12 @@ export function createSeeder(options: SeederOptions): Seeder {
   };
 }
 
-/** Removes every row of the records' entity types, deepest types first (children before parents) */
-function wipe(records: SeedRecord[]): void {
+/**
+ * Removes every row of the entity types. Types the records nest deeper go first (children before
+ * parents); a type the records don't hold goes after the others unless its hooks make it a container,
+ * which goes last.
+ */
+function wipe(entities: string[], records: SeedRecord[]): void {
   const depth = new Map<string, number>();
   const measure = (items: SeedRecord[], level: number) => {
     for (const record of items) {
@@ -289,7 +296,8 @@ function wipe(records: SeedRecord[]): void {
     }
   };
   measure(records, 0);
-  const types = [...depth.entries()].sort((a, b) => b[1] - a[1]).map(([entity]) => entity);
+  const rank = (entity: string) => depth.get(entity) ?? (seedHookRegistry.get(entity)?.container ? -2 : -1);
+  const types = [...entities].sort((a, b) => rank(b) - rank(a));
   for (const entity of types) {
     const hooks = seedHookRegistry.get(entity);
     for (const row of findAll<{ id: EARS.EntityId }>(entity as EARS.Entity)) {

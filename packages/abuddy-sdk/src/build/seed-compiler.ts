@@ -109,6 +109,24 @@ export function clearCompiledSeeds(outputDir: string): void {
   fs.rmSync(path.join(outputDir, 'media'), { recursive: true, force: true });
 }
 
+/** Why a compiler module's output isn't an array of records (`{ entity?, sourceHash?, children?, ...fields }`) */
+function recordShapeProblems(value: unknown, at: string): string[] {
+  const kind = (v: unknown) => (v === null ? 'null' : Array.isArray(v) ? 'an array' : typeof v);
+  if (!Array.isArray(value)) return [`${at} is ${kind(value)}, not an array of records`];
+  return value.flatMap((record, i): string[] => {
+    const where = `${at}[${i}]`;
+    if (typeof record !== 'object' || record === null || Array.isArray(record)) {
+      return [`${where} is ${kind(record)}, not a record object`];
+    }
+    const { entity, sourceHash, children } = record as SeedRecord;
+    return [
+      ...(entity !== undefined && typeof entity !== 'string' ? [`${where}.entity isn't a string`] : []),
+      ...(sourceHash !== undefined && typeof sourceHash !== 'string' ? [`${where}.sourceHash isn't a string`] : []),
+      ...(children !== undefined ? recordShapeProblems(children, `${where}.children`) : []),
+    ];
+  });
+}
+
 /**
  * Compiles a pack's `boot.seed` entries into `outputDir`: `<key>.seed.json` for each entry,
  * `media/<key>/` for entries whose format has media, and `seeds.json` indexing them. Earlier
@@ -160,13 +178,25 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
       if (!seed.compiler.module) {
         throw new Error(`Seed "${key}": format "${seed.formatRef}" compiles with a module, but its pack's build dir wasn't resolved (build the dependency first)`);
       }
+      if (!fs.existsSync(seed.compiler.module)) {
+        const dependency = seed.formatRef.includes(':') ? seed.formatRef.split(':')[0] : undefined;
+        throw new Error(dependency
+          ? `Seed "${key}": format "${seed.formatRef}" compiles with ${dependency}'s seed compilers, but ${seed.compiler.module} doesn't exist: build ${dependency} first (abuddy build)`
+          : `Seed "${key}": compiler module ${seed.compiler.module} doesn't exist`);
+      }
       const mod = await importModule(seed.compiler.module);
       const compile = mod[seed.compiler.exportName];
       if (typeof compile !== 'function') {
         throw new Error(`Seed "${key}": format "${seed.formatRef}" has no compiler export "${seed.compiler.exportName}" in ${seed.compiler.module}`);
       }
       const context: SeedCompileContext = { key, path: sourcePath, packDir, format };
-      records = withSourceHashes(await (compile as SeedCompilerModule)(context));
+      const output: unknown = await (compile as SeedCompilerModule)(context);
+      const problems = recordShapeProblems(output, 'output');
+      if (problems.length > 0) {
+        errors.push(...problems.map((problem) => `${key}: compiler "${seed.formatRef}" (${seed.compiler!.module}) returned bad records: ${problem}`));
+        continue;
+      }
+      records = withSourceHashes(output as SeedRecord[]);
     } else {
       records = compileBuiltinFormat(key, format, sourcePath);
     }

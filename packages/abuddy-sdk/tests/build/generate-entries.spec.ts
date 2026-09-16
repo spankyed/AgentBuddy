@@ -362,9 +362,9 @@ describe('generated seeders', () => {
       } },
     });
     const seeders = files['src/__generated__/seeders.ts'];
-    expect(seeders).toContain(`registerSeeders("demo-pack", [\n  createSeeder({ key: 'actions', identity: ['label'] }),`);
+    expect(seeders).toContain(`registerSeeders("demo-pack", [\n  createSeeder({ key: 'actions', entities: ['Action'], identity: ['label'] }),`);
     expect(seeders).toContain('  createFlowSeeder(),');
-    expect(seeders).toContain('  createSeeder({"key":"memos","identity":["title","parent"],"relKind":"has_memo","media":true}),');
+    expect(seeders).toContain('  createSeeder({"key":"memos","entities":["Memo"],"identity":["title","parent"],"relKind":"has_memo","media":true}),');
     expect(seeders).not.toContain('faqs');
     expect(files['src/__generated__/pack-entry.ts']).toContain('artifacts: ["actions", "flows", "memos"],');
   });
@@ -372,7 +372,7 @@ describe('generated seeders', () => {
   it("uses a dependency's format settings for an entry naming it", () => {
     const deps = { 'base-pack': { ...dependency({ seedFormats: { notes: { format: 'markdown-tree', entity: 'Note', identity: ['title'], tree: { branch: 'index.md' } } } }), types: { entities: { Note: 'Note' }, relKinds: {} } } };
     const seeders = generate({ dependencies: { 'base-pack': '*' }, boot: { seed: { team: { path: 'src/seeds/team', format: 'base-pack:notes' } } } }, deps)['src/__generated__/seeders.ts'];
-    expect(seeders).toContain('  createSeeder({"key":"team","identity":["title"]}),');
+    expect(seeders).toContain('  createSeeder({"key":"team","entities":["Note"],"identity":["title"]}),');
     expect(() => generate({ dependencies: { 'base-pack': '*' }, boot: { seed: { team: { path: 'p', format: 'base-pack:missing' } } } }, deps))
       .toThrow('Seed "team": dependency "base-pack" has no format "missing"');
   });

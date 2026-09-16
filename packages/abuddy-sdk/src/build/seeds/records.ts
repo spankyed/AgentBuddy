@@ -107,7 +107,7 @@ function markdownRecords(items: MarkdownItem[], format: SeedFormatConfig, entity
 export function compileBuiltinFormat(key: string, format: SeedFormatConfig, sourcePath: string): SeedRecord[] {
   const entity = typeof format.entity === 'string' ? format.entity : undefined;
   if (format.format === 'markdown-tree') {
-    const items = compileMarkdownTree(sourcePath, { branch: format.tree?.branch, recursive: format.tree !== undefined });
+    const items = compileMarkdownTree(sourcePath, { branch: format.tree?.branch, recursive: format.tree !== undefined, media: format.media });
     return withSourceHashes(markdownRecords(items, format, entity));
   }
   if (format.format === 'json') {

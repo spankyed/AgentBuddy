@@ -108,28 +108,64 @@
         "shortCode": "NOTE-1",
         "title": "Projects"
       },
-      "Note:Projects/task one": {
-        "completed": true,
-        "content": "Done task.\n",
+      "Note:Projects/2024": {
+        "completed": false,
+        "content": "A title YAML reads as a number.\n",
+        "displayOrder": 3,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 6",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-6",
+        "title": "2024"
+      },
+      "Note:Projects/Archive": {
+        "completed": false,
+        "content": "Old work.\n",
         "displayOrder": 0,
         "entityType": "Note",
         "icon": null,
         "label": "New Note 2",
         "lastSeen": 0,
-        "noteType": "task",
+        "noteType": "tasklist",
         "shortCode": "NOTE-2",
-        "title": "task one"
+        "title": "Archive"
       },
-      "Note:Projects/Task Two": {
+      "Note:Projects/Archive/Old Task": {
         "completed": false,
-        "content": "Open task.\n",
-        "displayOrder": 1,
+        "content": "Archived task.\n",
+        "displayOrder": 0,
         "entityType": "Note",
         "icon": null,
         "label": "New Note 3",
         "lastSeen": 0,
         "noteType": "task",
         "shortCode": "NOTE-3",
+        "title": "Old Task"
+      },
+      "Note:Projects/task one": {
+        "completed": true,
+        "content": "Done task.\n",
+        "displayOrder": 1,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 4",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-4",
+        "title": "task one"
+      },
+      "Note:Projects/Task Two": {
+        "completed": false,
+        "content": "Open task.\n",
+        "displayOrder": 2,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 5",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-5",
         "title": "Task Two"
       },
       "Note:Welcome": {
@@ -139,10 +175,10 @@
         "entityType": "Note",
         "favorite": true,
         "icon": "👋",
-        "label": "New Note 4",
+        "label": "New Note 7",
         "lastSeen": 0,
         "noteType": "document",
-        "shortCode": "NOTE-4",
+        "shortCode": "NOTE-7",
         "title": "Welcome"
       },
       "Prompt:Greeting": {
@@ -162,8 +198,11 @@
       "Collection:Guides --parent_of--> Collection:advanced",
       "Collection:advanced --contains--> Document:deep dive",
       "Collection:Guides --contains--> Document:Getting Started",
+      "Note:Projects --contains--> Note:Projects/Archive",
+      "Note:Projects/Archive --contains--> Note:Projects/Archive/Old Task",
       "Note:Projects --contains--> Note:Projects/task one",
       "Note:Projects --contains--> Note:Projects/Task Two",
+      "Note:Projects --contains--> Note:Projects/2024",
       "Note:Welcome --references--> Note-external-plan"
     ],
     "media": [
@@ -203,13 +242,13 @@
       "Collection:advanced": {
         "displayOrder": 1000,
         "name": "advanced",
-        "sourceHash": "08f76a29861feea7"
+        "sourceHash": "62a5dc465126ce53"
       },
       "Collection:Guides": {
         "description": "How-to guides",
         "displayOrder": 1000,
         "name": "Guides",
-        "sourceHash": "9e77cd769e730ea3"
+        "sourceHash": "08da17cea563b63b"
       },
       "Document:2024": {
         "content": [
@@ -230,13 +269,13 @@
         "content": [
           {
             "type": "markdown",
-            "text": "Plain body with no frontmatter.\n"
+            "text": "Plain body with no frontmatter, revised.\n"
           }
         ],
         "displayOrder": 1000,
         "name": "deep dive",
         "shortCode": "DOC-1",
-        "sourceHash": "ab5447ee2e9df227",
+        "sourceHash": "1180aa1e38e2be8a",
         "tags": [
           "default"
         ]
@@ -331,8 +370,8 @@
       },
       "library": {
         "created": 1,
-        "updated": 1,
-        "skipped": 4
+        "updated": 3,
+        "skipped": 2
       }
     }
   }

@@ -408,7 +408,7 @@ Point your manifest at the seed directories:
 }
 ```
 
-A specialty key takes its path as a string or `{ "path": … }`; any other key is a [seed entry](#seeding-entities). `abuddy build` compiles each key into `<key>.seed.json` (media into `media/<key>/`) and writes `seeds.json`, which names the pack and indexes the keys and their items for Settings → Import Pack Seeds. Seeding runs at boot and when a pack is installed or reloaded, in `replace-on-collision` mode, and is skipped when the compiled output's hash hasn't changed. A seed that reports errors fails: an external pack's error is recorded on its registry entry, and the same output isn't retried until it changes.
+A specialty key takes its path as a string or `{ "path": … }`; any other key is a [seed entry](#seeding-entities). `abuddy build` compiles each key into `<key>.seed.json` (media into `media/<key>/`) and writes `seeds.json`, which names the pack and indexes the keys and their items for Settings → Import Pack Seeds. Seeding runs at boot and when a pack is installed or reloaded, in `replace-on-collision` mode, and is skipped when the compiled output's hash hasn't changed. The hash covers every seeded key's compiled file, including a built-in pack's `settings`: changing default settings re-runs the boot seed (its other rows are still skipped by their own hashes), while `seedPolicy.skipAtBoot` keeps boot seeding from resetting settings. A seed that reports errors fails: an external pack's error is recorded on its registry entry, and the same output isn't retried until it changes.
 
 ### Seed policy
 
@@ -472,14 +472,14 @@ An entry can't set or change any format settings; a pack that needs different se
 | `tree.branchEntity` | The entity type directories seed; defaults to `entity` |
 | `tree.relKind` | The relation from a parent row to each child row; defaults to `contains` |
 | `fields` | `markdown-tree` only (the manifest rejects it elsewhere): record field → `{ from, default?, type? }` |
-| `media` | A directory under an entry's `path`, copied with the seeds |
+| `media` | A relative directory under an entry's `path` (no `.` or `..` segments), copied with the seeds |
 
 ### Markdown
 
-- Each `.md` file is a record. Frontmatter is YAML 1.2, so `title: 2024` reads as a number; `"type": "string"` coerces it back.
+- Each `.md` file is a record, and `entity` is a single type (`tree.branchEntity` gives directories theirs). Frontmatter is YAML 1.2 (CRLF line endings and a byte order mark are fine), so `title: 2024` reads as a number; `"type": "string"` coerces it back.
 - `fields` maps record fields to a source: `body` (the markdown after the frontmatter), `filename` (the file or directory name with dashes as spaces), `path` (relative to the entry's `path`) or `frontmatter.<name>`. `default` applies when the source is absent, `null` or an empty string (`title:` or `title: ""`); `"filename"` as a default means the display name. A field with no value and no `default` is left out of the record. Seeds track the fields a record sets (see [Change tracking](#change-tracking)), so leave defaults a user may change, like flags, to the entity's defaults or a `create` hook.
 - With `tree`, each subdirectory is a parent record (its `branch` file gives its frontmatter and body, `branchEntity` its type) and its files are children, linked with `relKind`. Without `tree`, only the top-level files are read.
-- `media` is a directory under the entry's `path`, copied with the seeds; `![alt](media/pic.png)` links are rewritten to the row's `media://<id>/pic.png`.
+- `media` is a directory under the entry's `path`, copied with the seeds and not read as records (no other directory is skipped); `![alt](media/pic.png)` links in any of a record's text fields (nested values included) are rewritten to the row's `media://<id>/pic.png`.
 
 ### JSON
 
@@ -498,8 +498,9 @@ When a source needs parsing that field sources can't express, give the format a 
 // src/seeds/compilers/glossary.ts
 import { compileMarkdownTree, type SeedCompileContext, type SeedRecord } from '@abuddy/sdk/build';
 
-export default function compileGlossary({ path }: SeedCompileContext): SeedRecord[] {
-  return compileMarkdownTree(path).map((item) => ({
+export default function compileGlossary({ path, format }: SeedCompileContext): SeedRecord[] {
+  // Skip the format's media directory, if it has one
+  return compileMarkdownTree(path, { media: format.media }).map((item) => ({
     entity: 'Term',
     term: String(item.frontmatter.term ?? item.displayName),
     definition: item.body.trim(),
@@ -626,7 +627,7 @@ Re-seeding follows the same rules for every entry:
 |---|---|
 | `replace-on-collision` (and boot seeding) | Updated only when the stored hash differs and the row isn't edited. A row with no stored hash is treated as user-created, and an edited row is left as it is. Children are still visited. |
 | `keep-existing` | Left alone, with its children. |
-| `wipe-and-replace` | Every row of the entry's entity types is removed first, then all records are created. |
+| `wipe-and-replace` | Every row of the entry's entity types (its format's `entity`) is removed first, whoever created it: the user's rows and other packs' rows of those types too, even when the entry has no records of a type. Then all records are created. |
 
 Rows without a stored `sourceHash` (rows users created) stay user-owned. A seeded row without `seededFields` (flows: `seededGraph`) can't be checked for edits, so it's left alone like an edited one.
 

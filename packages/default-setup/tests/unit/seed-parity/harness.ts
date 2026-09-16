@@ -80,7 +80,10 @@ export function snapshot(): Snapshot {
   }
 
   // Stable aliases: type plus identity (a note's is its parent chain)
-  const parentOf = new Map(relations.filter((r) => rows.has(r.target) && rows.has(r.source)).map((r) => [r.target, r.source]));
+  // Nesting relations only: a note's REFERENCES link to another note doesn't make it that note's parent
+  const parentOf = new Map(relations
+    .filter((r) => r.kind !== 'references' && rows.has(r.target) && rows.has(r.source))
+    .map((r) => [r.target, r.source]));
   const identity = (id: string): string => {
     const row = rows.get(id)!;
     const own = String(row.name ?? row.title ?? row.label);

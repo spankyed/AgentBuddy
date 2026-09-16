@@ -1,6 +1,7 @@
 import * as path from 'node:path';
-import { validateManifest, validateFeatures } from '@abuddy/sdk/build';
+import { generatePackFiles, validateManifest, validateFeatures } from '@abuddy/sdk/build';
 import { resolveDep } from './fetch-deps';
+import { resolveDeps } from './generate';
 import { findPackRoot, readManifest } from '../utils';
 
 /**
@@ -27,6 +28,27 @@ async function validateDeps(root: string): Promise<string[]> {
   return warnings;
 }
 
+/**
+ * The checks code generation makes (seed formats' entities, dependency formats, seed hook and service
+ * exports, …), run in memory without writing. Skipped while a dependency is unresolved: validateDeps
+ * reports that, and these checks need the dependency's manifest.
+ */
+async function validateCodegen(root: string): Promise<string[]> {
+  const manifest = readManifest(root);
+  let resolved: Awaited<ReturnType<typeof resolveDeps>>;
+  try {
+    resolved = await resolveDeps(root, manifest.dependencies);
+  } catch {
+    return [];
+  }
+  try {
+    generatePackFiles(manifest, { packRoot: root, ...resolved });
+    return [];
+  } catch (err) {
+    return [err instanceof Error ? err.message : String(err)];
+  }
+}
+
 export async function validate(_args: string[]) {
   const root = findPackRoot(process.cwd());
   console.log(`Validating pack at: ${root}`);
@@ -38,8 +60,10 @@ export async function validate(_args: string[]) {
     ? validateFeatures(root, readManifest(root))
     : { errors: [], warnings: [] };
   const depWarnings = await validateDeps(root);
+  // Codegen stops at its first problem, so it runs only once the manifest and features check out
+  const codegenErrors = manifestResult.errors.length === 0 && featureResult.errors.length === 0 ? await validateCodegen(root) : [];
 
-  const errors = [...manifestResult.errors, ...featureResult.errors];
+  const errors = [...manifestResult.errors, ...featureResult.errors, ...codegenErrors];
   const warnings = [...manifestResult.warnings, ...featureResult.warnings, ...depWarnings];
 
   if (warnings.length > 0) {

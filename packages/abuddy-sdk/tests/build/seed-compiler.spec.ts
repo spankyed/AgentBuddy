@@ -72,6 +72,30 @@ describe('compilePack', () => {
     expect(records.map((r: { title: string; pinned: boolean }) => [r.title, r.pinned])).toEqual([['blank', false], ['empty string', false]]);
   });
 
+  it("skips only the format's media directory: a notes folder named media is seeded", async () => {
+    write('seeds/memos/media/index.md', '---\ntitle: Media notes\n---\n');
+    write('seeds/memos/media/clip.md', 'Clip\n');
+    write('seeds/memos/assets/pic.png', 'PNG');
+    write('seeds/memos/assets/stray.md', 'Not a memo\n');
+    await compile({ memos: { ...memosFormat, media: 'assets' } }, { memos: { path: 'seeds/memos', format: 'memos' } });
+    const { records } = read('memos.seed.json');
+    expect(records.map((r: { title: string; children?: Array<{ title: string }> }) => [r.title, r.children?.map((c) => c.title)]))
+      .toEqual([['Media notes', ['clip']]]);
+    expect(fs.readdirSync(path.join(out, 'media/memos'))).toEqual(['pic.png', 'stray.md']);
+
+    // Without a media directory, nothing is skipped
+    await compile({ memos: { ...memosFormat, media: undefined } }, { memos: { path: 'seeds/memos', format: 'memos' } });
+    expect(read('memos.seed.json').records.map((r: { title: string }) => r.title)).toEqual(['assets', 'Media notes']);
+  });
+
+  it('reads frontmatter with CRLF line endings or a byte order mark', async () => {
+    write('seeds/memos/crlf.md', '---\r\ntitle: Windows\r\npinned: true\r\n---\r\nBody\r\n');
+    write('seeds/memos/bom.md', '\uFEFF---\ntitle: Marked\n---\nBody\n');
+    await compile({ memos: memosFormat }, { memos: { path: 'seeds/memos', format: 'memos' } });
+    expect(read('memos.seed.json').records.map((r: { title: string; pinned: boolean; body: string }) => [r.title, r.pinned, r.body]))
+      .toEqual([['Marked', false, 'Body\n'], ['Windows', true, 'Body\r\n']]);
+  });
+
   it("replaces its earlier output: a dropped key or media doesn't linger, other files in the dir stay", async () => {
     write('seeds/memos/first.md', 'Hello\n');
     write('seeds/memos/media/pic.png', 'PNG');
@@ -131,6 +155,25 @@ export const tags = ({ path }) => fs.readFileSync(path, 'utf-8').trim().split('\
       .rejects.toThrow(/format "base-pack:tags" has no compiler export "tags"/);
     await expect(compile({}, seed, { manifest, dependencies: new Map([['base-pack', { manifest: base }]]) }))
       .rejects.toThrow(/format "base-pack:tags" compiles with a module, but its pack's build dir wasn't resolved/);
+    // Built before it bundled its seed compilers (or the bundle failed)
+    await expect(compile({}, seed, { manifest, dependencies: new Map([['base-pack', { manifest: base, buildDir: path.join(root, 'deps/unbuilt/build') }]]) }))
+      .rejects.toThrow(/format "base-pack:tags" compiles with base-pack's seed compilers, but .*deps\/unbuilt\/build\/seed-compilers\.mjs doesn't exist: build base-pack first/);
+  });
+
+  it("fails, naming the record, when a compiler module's output isn't an array of records", async () => {
+    write('seeds/tags.txt', 'red\n');
+    const tags = (body: string) => {
+      write('compile-tags.mjs', `export default () => (${body});`);
+      return compile({ tags: { compiler: 'compile-tags.mjs', entity: 'Tag' } }, { tags: { path: 'seeds/tags.txt', format: 'tags' } }, {
+        // A fresh module each time: the import cache would return the first
+        importModule: (file: string) => import(`${file}?v=${Math.random()}`),
+      });
+    };
+    await expect(tags(`{ records: [] }`)).rejects.toThrow(/tags: compiler "tags" \(.*compile-tags\.mjs\) returned bad records: output is object, not an array of records/);
+    await expect(tags(`[{ entity: 'Tag', name: 'a' }, 'b', null]`)).rejects.toThrow(/output\[1\] is string, not a record object[\s\S]*output\[2\] is null, not a record object/);
+    await expect(tags(`[{ entity: 1, sourceHash: 2, children: [{ entity: 'Tag' }, 3] }]`))
+      .rejects.toThrow(/output\[0\]\.entity isn't a string[\s\S]*output\[0\]\.sourceHash isn't a string[\s\S]*output\[0\]\.children\[1\] is number, not a record object/);
+    await expect(tags(`[{ entity: 'Tag', name: 'a', children: [] }]`)).resolves.toBeDefined();
   });
 
   it("fails when a compiled record's entity isn't one the format declares", async () => {

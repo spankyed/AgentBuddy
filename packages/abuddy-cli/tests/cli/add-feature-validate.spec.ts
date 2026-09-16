@@ -81,4 +81,54 @@ describe('abuddy validate', () => {
     expect(output).toContain('Feature "notes": settings file "src/features/notes/settings.ts" not found');
     expect(output).toContain('Feature "notes": designation "memos" must equal the feature id');
   }, 60_000);
+
+  describe('seed entries (the checks code generation makes)', () => {
+    const DEFAULT_SETUP = path.resolve(import.meta.dirname, '../../../default-setup');
+    function editManifest(edit: (manifest: any) => void) {
+      const manifest = readManifest();
+      edit(manifest);
+      fs.writeFileSync(path.join(pack, 'abuddy.json'), JSON.stringify(manifest, null, 2));
+    }
+
+    it('reports a format entity no pack declares', async () => {
+      editManifest((manifest) => {
+        manifest.seedFormats = { ...manifest.seedFormats, memos: { format: 'markdown-tree', entity: 'Memo', identity: ['title'] } };
+      });
+
+      const { exitCode, output } = await runValidate();
+
+      expect(exitCode).toBe(1);
+      expect(output).toContain(`Seed format "memos": entity "Memo" isn't declared by this pack, its dependencies or the SDK`);
+    }, 60_000);
+
+    it("reports a format a dependency doesn't have", async () => {
+      editManifest((manifest) => {
+        manifest.dependencies = { 'default-setup': `file:${DEFAULT_SETUP}` };
+        manifest.boot = { ...manifest.boot, seed: { ...manifest.boot?.seed, memos: { path: 'src/seeds/memos', format: 'default-setup:nope' } } };
+      });
+
+      const { exitCode, output } = await runValidate();
+
+      expect(exitCode).toBe(1);
+      expect(output).toContain('Seed "memos": dependency "default-setup" has no format "nope"');
+    }, 60_000);
+
+    it('reports a seed hooks module without the named export', async () => {
+      fs.mkdirSync(path.join(pack, 'src', 'seeds'), { recursive: true });
+      fs.writeFileSync(path.join(pack, 'src', 'seeds', 'hooks.ts'), 'export const otherHooks = {};\n');
+      editManifest((manifest) => {
+        manifest.entities = { ...manifest.entities, Memo: 'Memo' };
+        manifest.seedHooks = { Memo: 'src/seeds/hooks.ts#memoHooks' };
+      });
+
+      const { exitCode, output } = await runValidate();
+
+      expect(exitCode).toBe(1);
+      expect(output).toContain(`Seed hooks for "Memo": src/seeds/hooks.ts doesn't export "memoHooks"`);
+    }, 60_000);
+
+    it('passes a pack whose seed entries check out', async () => {
+      expect((await runValidate()).exitCode).toBeUndefined();
+    }, 60_000);
+  });
 });

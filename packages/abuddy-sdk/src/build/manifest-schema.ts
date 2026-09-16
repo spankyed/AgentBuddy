@@ -51,6 +51,9 @@ const SeedTreeSpecSchema = z.object({
 
 const SEED_FORMAT_NAME = /^[a-z][a-z0-9-]*$/;
 
+/** A relative directory: `/`-separated names, none of them `.` or `..` */
+const MEDIA_PATH = /^(?!\.{1,2}(?:\/|$))(?!.*\/\.{1,2}(?:\/|$))[^/\\:]+(?:\/[^/\\:]+)*$/;
+
 /** A format name in the pack's own `seedFormats`, or `<dependency id>:<name>` */
 const SEED_FORMAT_REF = /^(?:([a-z][a-z0-9-]*):)?([a-z][a-z0-9-]*)$/;
 
@@ -64,10 +67,14 @@ export const SeedFormatSchema = z.object({
     .describe('Fields matched to find an existing row ("parent" = the tree parent). Ignored for entity types whose owning pack registers a find seed hook.').optional(),
   tree: SeedTreeSpecSchema.describe('Walk subdirectories as parent rows.').optional(),
   fields: z.record(z.string(), SeedFieldSpecSchema).describe('Record fields for markdown-tree: field name → where its value comes from.').optional(),
-  media: z.string().describe('A directory under an entry\'s path copied with the seeds; media/<file> links become media://<id>/<file>.').optional(),
+  media: z.string().regex(MEDIA_PATH, 'Must be a relative directory under the entry\'s path, without "." or ".." segments')
+    .describe('A directory under an entry\'s path copied with the seeds; media/<file> links become media://<id>/<file>.').optional(),
 }).strict().superRefine((format, ctx) => {
   if (!format.format === !format.compiler) ctx.addIssue({ code: 'custom', message: 'A seed format needs "format" or "compiler", not both' });
   if (format.fields && format.format !== 'markdown-tree') ctx.addIssue({ code: 'custom', path: ['fields'], message: '"fields" applies only to format "markdown-tree"' });
+  if (format.format === 'markdown-tree' && Array.isArray(format.entity)) {
+    ctx.addIssue({ code: 'custom', path: ['entity'], message: 'Format "markdown-tree" seeds one entity type: set "entity" to a string, and "tree.branchEntity" for directories' });
+  }
 });
 
 /** A `boot.seed` entry: a source and the format that compiles it, or a pack seeder module */

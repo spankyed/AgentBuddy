@@ -43,7 +43,7 @@ function compiled(packId: string, records: Array<{ name: string; body: string; v
   return dir;
 }
 
-const seeder = createSeeder({ key: 'memos', identity: ['name'] });
+const seeder = createSeeder({ key: 'memos', entities: ['Memo', 'Folder'], identity: ['name'] });
 const seed = (dir: string) => seeder.seed({ compiledDir: dir, mode: 'replace-on-collision', log: () => {} });
 
 describe('a row whose seeded values were not recorded', () => {
@@ -158,7 +158,7 @@ describe("a folder another pack seeded", () => {
 
   it("is shared by two entries of the pack that seeded it, like another pack's", () => {
     seedHookRegistry.register('Folder', { container: true }, 'memo-hooks');
-    const docs = createSeeder({ key: 'docs', identity: ['name'] });
+    const docs = createSeeder({ key: 'docs', entities: ['Memo', 'Folder'], identity: ['name'] });
     seed(tree('pack-a', ['welcome.md']));
 
     expect(docs.seed({ compiledDir: tree('pack-a', ['guide.md'], 'docs'), mode: 'replace-on-collision', log: () => {} }))
@@ -192,6 +192,40 @@ describe("a folder another pack seeded", () => {
     expect(seed(dir)).toMatchObject({ updated: 1 });
     expect(folders()).toHaveLength(1);
     expect(folders()[0].label).toBe('renamed');
+  });
+});
+
+describe('wipe-and-replace', () => {
+  const wipeSeed = (dir: string) => seeder.seed({ compiledDir: dir, mode: 'wipe-and-replace', log: () => {} });
+  const folderNames = () => qx('Folder' as EARS.Entity).pick(['name']).map((row) => row.name as string).sort();
+
+  it("removes rows of every entity type the entry seeds, even types its records don't hold", () => {
+    createEntityWithDefaults('Folder' as EARS.Entity, { name: 'old folder' });
+    createEntityWithDefaults('Memo' as EARS.Entity, { name: 'old memo', body: 'mine' });
+
+    // Only top-level memos: no Folder record, yet the entry seeds folders too
+    expect(wipeSeed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]))).toEqual({ created: 1, updated: 0, skipped: 0 });
+
+    expect(folderNames()).toEqual([]);
+    expect(memos('old memo')).toEqual([]);
+    expect(memo('Intro')).toBeDefined();
+  });
+
+  it('wipes when the entry has no records', () => {
+    createEntityWithDefaults('Memo' as EARS.Entity, { name: 'old memo', body: 'mine' });
+
+    expect(wipeSeed(compiled('pack-a', []))).toEqual({ created: 0, updated: 0, skipped: 0 });
+
+    expect(memos('old memo')).toEqual([]);
+  });
+
+  it("leaves entity types the entry doesn't seed", () => {
+    const memosOnly = createSeeder({ key: 'memos', entities: ['Memo'], identity: ['name'] });
+    createEntityWithDefaults('Folder' as EARS.Entity, { name: 'kept folder' });
+
+    memosOnly.seed({ compiledDir: compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), mode: 'wipe-and-replace', log: () => {} });
+
+    expect(folderNames()).toEqual(['kept folder']);
   });
 });
 
@@ -274,7 +308,7 @@ describe('a created row that fails before it is tracked', () => {
         updateEntity(id, { body: record.body });
       },
     }, 'memo-hooks');
-    const mediaSeeder = createSeeder({ key: 'memos', identity: ['name'], media: true });
+    const mediaSeeder = createSeeder({ key: 'memos', entities: ['Memo', 'Folder'], identity: ['name'], media: true });
     const dir = compiled('demo', [{ name: 'Intro', body: 'See ![pic](media/pic.png)' }]);
     fs.mkdirSync(path.join(dir, 'media', 'memos'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'media', 'memos', 'pic.png'), 'PNG');
@@ -294,7 +328,7 @@ describe('a created row that fails before it is tracked', () => {
 
 describe('media links that point outside the media folders', () => {
   it('are left as written, copying nothing in or out', () => {
-    const mediaSeeder = createSeeder({ key: 'memos', identity: ['name'], media: true });
+    const mediaSeeder = createSeeder({ key: 'memos', entities: ['Memo', 'Folder'], identity: ['name'], media: true });
     // `media/../memos/pic.png` reads a file inside the compiled media but would write beside the row's folder
     const dir = compiled('demo', [{ name: 'Escape', body: 'A ![up](media/../../secret.txt) B ![link](media/linked.png) C ![side](media/../memos/pic.png) D ![ok](media/pic.png)' }]);
     const mediaDir = path.join(dir, 'media', 'memos');

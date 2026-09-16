@@ -565,6 +565,7 @@
           },
           "media": {
             "type": "string",
+            "pattern": "^(?!\\.{1,2}(?:\\/|$))(?!.*\\/\\.{1,2}(?:\\/|$))[^/\\\\:]+(?:\\/[^/\\\\:]+)*$",
             "description": "A directory under an entry's path copied with the seeds; media/<file> links become media://<id>/<file>."
           }
         },

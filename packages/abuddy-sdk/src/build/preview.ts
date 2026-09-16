@@ -7,10 +7,13 @@ export interface PackSeedPreviewItem {
   childCount?: number;
 }
 
-/** The seeded keys of a compiled seeds directory and their items, from its seeds.json */
+/** What importing a compiled seeds directory would seed: its seeded keys and their items, from its seeds.json */
 export interface PackSeedsPreview {
   directory: string;
   /** The pack that compiled the seeds */
   packId: string;
+  /** The keys the pack's registered seeders import */
   seeds: Record<string, PackSeedPreviewItem[]>;
+  /** Seeded keys the pack registered no seeder for: an import leaves them out */
+  unavailable: string[];
 }

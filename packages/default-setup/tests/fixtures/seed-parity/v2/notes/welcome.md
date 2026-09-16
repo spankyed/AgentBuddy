@@ -7,4 +7,4 @@ favorite: true
 
 # Hello again
 
-Revised content.
+Now see [the roadmap](note://Note-external-roadmap) instead.

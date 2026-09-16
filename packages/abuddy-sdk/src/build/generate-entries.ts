@@ -170,8 +170,8 @@ function parseExportedTypeNames(content: string): string[] {
 
 /** The SDK seeders of the specialty seed keys */
 const SPECIALTY_SEEDERS: Record<string, { factory: string; args: string }> = {
-  actions: { factory: 'createSeeder', args: `{ key: 'actions', identity: ['label'] }` },
-  prompts: { factory: 'createSeeder', args: `{ key: 'prompts', identity: ['label'] }` },
+  actions: { factory: 'createSeeder', args: `{ key: 'actions', entities: ['Action'], identity: ['label'] }` },
+  prompts: { factory: 'createSeeder', args: `{ key: 'prompts', entities: ['Prompt'], identity: ['label'] }` },
   flows: { factory: 'createFlowSeeder', args: '' },
   settings: { factory: 'createSettingsSeeder', args: '' },
 };
@@ -1069,6 +1069,7 @@ export type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } fr
       seedImports.add('createSeeder');
       const options = {
         key,
+        entities: formatEntities(format),
         ...(format.identity && { identity: format.identity }),
         ...(format.tree?.relKind && { relKind: format.tree.relKind }),
         ...(format.media && { media: true }),

@@ -5,6 +5,14 @@
       {{ preview.directory }}
     </p>
 
+    <!-- Seeded keys no installed seeder imports -->
+    <p v-if="preview.unavailable.length" class="text-xs text-amber-400/80">
+      Not importable ({{ preview.unavailable.map(labelOf).join(', ') }}): pack "{{ preview.packId }}" registers no seeder for {{ preview.unavailable.length === 1 ? 'it' : 'them' }}.
+    </p>
+    <p v-if="rows.length === 0" class="text-sm text-neutral-500">
+      Nothing in this directory can be imported.
+    </p>
+
     <!-- Type rows -->
     <div class="rounded-lg border border-neutral-800 divide-y divide-neutral-800">
       <div v-for="row in rows" :key="row.key">

@@ -65,7 +65,7 @@ Each directory is one `package.json` export (`./<dir>` → `src/<dir>/index.ts`)
   - Compile errors (`collectErrors`, `checkRecordEntities`) are collected and thrown together, before the cross-seed `validate` step (flows against compiled action and prompt labels and `stepRegistry.all()`).
   - Output: `<key>.seed.json` per key, `media/<key>/` per key, and `seeds.json` (`SeedIndex`: `packId`, and per key `seeded`, `identity`, `count`, preview `items`).
   - `seeds/resolve.ts` resolves format refs. A dependency's compiler is `<buildDir>/seed-compilers.mjs#<name>`.
-  - `seeds/markdown-tree.ts` walks markdown (YAML frontmatter; `media/` is skipped). Records get a default `sourceHash` (`withSourceHashes`).
+  - `seeds/markdown-tree.ts` walks markdown (YAML frontmatter, CRLF and BOM tolerated; only the `media` directory it's given is skipped). Records get a default `sourceHash` (`withSourceHashes`).
 - **Action/prompt compilation** (`compile-utils.ts`): `compileSourceDir` scans for `.ts` files with `export const meta` and bundles each with esbuild (`bundleFile`, platform `neutral`).
   - Bare package imports are an error; `@abuddy/sdk/actions` is the only one allowed, and it is inlined.
   - Node globals (`require`, `process`, `Buffer`, …) in the bundle are warnings, found by walking the AST.
@@ -92,7 +92,7 @@ The user-facing rules (change tracking, import modes, seed hooks) are in `docs/p
     - Otherwise the row is updated, and `clearedFields` resets fields the record no longer sets.
   - Creation is transactional by hand. `createTracked` removes the row if media copy or stamping throws. `updateTracked` restores the previous `sourceHash`/`seededFields` if the update throws.
   - Per-record errors land in `counts.errors` instead of throwing.
-  - `wipe-and-replace` removes all rows of the entry's entity types, deepest first.
+  - `wipe-and-replace` removes all rows of the entity types in `options.entities` (the format's `entity`; codegen passes it), whoever created them, deepest first.
   - With `media`, `media/<file>` links are copied to the row's media dir and rewritten to `media://<id>/<file>`.
   - `markSeededRowUnedited` exists for migrations of rows seeded before `seededFields` existed.
 - **`createFlowSeeder()`** (`flow-seeder.ts`) validates each DSL entry and applies the same skip rules, using `seededGraph` in place of `seededFields`.

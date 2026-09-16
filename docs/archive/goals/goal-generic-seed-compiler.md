@@ -230,6 +230,53 @@ Investigation (2026-09-14) at `155c17ff9`, updated after `706dc987e` landed. Re-
 
 **Done when:** no in-repo entry carries format settings; default-setup's seed hooks and compiler modules live under `src/seeds/`; the dependent-pack fixture and `test:packaged-authoring` seed default-setup's notes and library through `"default-setup:<name>"` with no field maps or compiler modules of their own; the parity gate, dependent-pack spec, external-pack test, import-pack-seeds E2E and example pack pass; and resolution, the bundled compiler loading and each validation error are mutation-checked.
 
+## Outcome
+
+Recorded after the PR #175 review (the stack collapse onto `AS/generic-seed-compiler`), from the code at the branch head and the checks run then. Items the review left open, and the fixes made on the collapsed branch, are listed as such; nothing below claims a check that wasn't run.
+
+### Final summary ("Finished when" item 8)
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — Spike and parity gate | Done, with fixture gaps | `default-setup/tests/unit/seed-parity/` (goldens first recorded in `7ea8bb8cf`). The review found the v1/v2 fixtures don't cover a change two folder levels deep or a meaningful `REFERENCES` case; `title: 2024` is covered by the SDK's `seed-compiler.spec.ts`. The v1/v2 scenarios now seed pinned action and prompt fixtures (`tests/fixtures/seed-parity/{v1,v2}/{actions,prompts}`), so the goldens move only when seeding changes; `default-setup.json` still follows the pack's own sources. |
+| 2 — Object entries end to end | Done, with gaps | `de7a41228`, `477f34ca3`. The review found `abuddy validate` doesn't report three errors that only `build`/`generate-entries` catch: a format entity no pack declares, a missing dependency format, a missing `seedHooks` export. Seed keys are now validated with the `seedFormats` name pattern. |
+| 3 — Migrate notes, then library | Done | Parity gate and `dependent-pack.spec.ts` pass. |
+| 4 — Delete the SDK specifics | Done | `no-pack-seed-specifics.spec.ts` passes (and flagged a stray library module name in a comment during the review fixes). A deliberate mutation check of it isn't recorded. |
+| 5 — FAQs and docs | Done, FAQ compiler untested | `docs/public-facing/seeds.md`; the YAML-based FAQ compiler had no tests at review time. |
+| 6 — Named formats | Done, with a gap | `5e78ab687`, `51e675d68`, `17488865a`. The review found `test:packaged-authoring` uses only `default-setup:notes` (never loads a dependency's bundled `seed-compilers.mjs`) and doesn't assert seeded rows. |
+
+Spike answer (Phase 1): notes are expressible with `markdown-tree` plus seed hooks; library needs a default-setup compiler module (sections, Collection vs Document) plus hooks, with Collection as a container.
+
+Conventional choices visible in the code:
+- Frontmatter is parsed with the `yaml` package.
+- A field's `default` applies when the value is missing, `null` or `""` (as the old `title || filename`); `0` and `false` are kept.
+- The markdown walker skips a folder named `media` whatever the format's `media` setting says (a review finding).
+- `wipe-and-replace` removes every row of the entry's entity types present in its records, including other packs' and users' rows (a review finding).
+- Seeders are registered per pack (`registerSeeders(packId, …)`); `seedData` runs only the seeders of the pack the directory's `seeds.json` names, and `teardownPack` unregisters them.
+- Seed-hook imports in generated code are named by position.
+- The boot seed hash covers every seeded key's compiled file, `settings` included; `seedPolicy.skipAtBoot` keeps boot seeding from resetting settings.
+- Seeding errors are collected per record in `counts.errors`; boot seeding reports them, and Settings → Import pack seeds shows them.
+
+Checks run at the collapsed branch head (after the review fixes): `npm run typecheck`, `api:check`, `schema:check`, the sdk, default-setup, api, host and cli unit suites, and `npm run test:external-pack` pass. Not run then: the renderer unit suite, the smoke and import-pack-seeds E2E, `test:packaged-authoring`, and the example pack's `abuddy test --app-root`.
+
+### Mutation checks
+
+Run during the review fixes; each check failed the named test and was restored:
+
+| Guard | Mutation | Failing test |
+|---|---|---|
+| Media links stay in the media folders | Remove the lexical containment check, or the realpath check | `seeder.spec.ts` "media links that point outside the media folders" |
+| Parity pinning | Edit a live default-setup action | Only the `default-setup` parity scenario |
+| Notes/record hash skip | Drop the seeder's "stored hash matches" skip | Parity scenarios default, replace-on-collision, untracked |
+| Seed key pattern | Remove the key check | `manifest-schema.spec.ts` |
+| Positional seed-hook names | Revert to entity-name identifiers | Both seed-hook specs in `generate-entries.spec.ts` |
+| Empty frontmatter defaults | Apply defaults only to `undefined` | `seed-compiler.spec.ts` "gives empty frontmatter values the default" |
+| Per-pack seeders | Run every pack's seeders; append instead of replace; drop `unregisterSeeders` from teardown | `seed-registry.spec.ts` (2, then 1), `pack-lifecycle.spec.ts` |
+| Import errors reach the dialog | Stub the reported errors to `[]` | `library-commands.spec.ts` import-errors test |
+| Stale `isolatedDataDir` cleanup | Skip the cleanup | `abuddy-cli/tests/harness/isolated-data-dir.spec.ts` |
+
+Not recorded: the Constraints' parity-gate mutations for a broken field mapping, manifest-key routing and the seed-hook lookup; the Phase 4 guard; and Phase 6's resolution, bundled-compiler loading and per-validation-error mutations. Run them before treating those guards as verified.
+
 ## Deferred
 
 - Settings/Secrets as an SDK-internal entity category, not in any facade. Planned separately.

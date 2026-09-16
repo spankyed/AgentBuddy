@@ -13,7 +13,7 @@ const RUN = Date.now().toString(36);
 
 type PackSeedsImport = {
   status: string;
-  preview: { seeds: Record<string, Array<{ key: string; childCount?: number }>> } | null;
+  preview: { seeds: Record<string, Array<{ key: string; childCount?: number }>>; unavailable: string[] } | null;
   selection: Record<string, string[]>;
   result: Record<string, { created: number; updated: number; skipped: number; errors?: string[] }> | null;
   error: string | null;
@@ -70,6 +70,7 @@ test('previews a compiled seeds directory by its seeds.json and imports the sele
       library: [{ key: `E2E Guide ${RUN}` }],
       notes: [{ key: `E2E Plan ${RUN}`, childCount: 1 }, { key: `E2E Skipped ${RUN}` }],
     });
+    expect(previewed.preview!.unavailable).toEqual([]);
     expect(previewed.selection).toEqual({ library: [`E2E Guide ${RUN}`], notes: [`E2E Plan ${RUN}`, `E2E Skipped ${RUN}`] });
 
     await send({ type: 'PACK_SEEDS.TOGGLE_ITEM', key: 'notes', item: `E2E Skipped ${RUN}` });

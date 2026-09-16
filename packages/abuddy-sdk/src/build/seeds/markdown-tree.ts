@@ -26,12 +26,11 @@ export interface MarkdownTreeOptions {
   branch?: string;
   /** Walk subdirectories. Default true; false reads only the directory's markdown files. */
   recursive?: boolean;
+  /** A subdirectory (relative, `/` separators) copied as media rather than read as seeds: the format's `media` */
+  media?: string;
 }
 
-/** The directory copied as media rather than read as seeds */
-export const MEDIA_DIR = 'media';
-
-const FRONTMATTER_RE = /^---\n([\s\S]*?)\n---\n\n?/;
+const FRONTMATTER_RE = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)(?:\r?\n)?/;
 
 /** `-` becomes a space: `getting-started` reads as `getting started` */
 export { toDisplayName };
@@ -55,21 +54,21 @@ export function parseMarkdownFile(text: string, file = '<markdown>'): { frontmat
 /**
  * Reads a directory of markdown into a tree: each `.md` file is a leaf, each subdirectory a branch
  * (its `options.branch` file supplying the branch's frontmatter and body). Entries are sorted by
- * name; the `media` directory is skipped. A missing directory reads as empty.
+ * name; the `options.media` directory is skipped. A missing directory reads as empty.
  */
 export function compileMarkdownTree(dir: string, options: MarkdownTreeOptions = {}): MarkdownItem[] {
   if (!fs.existsSync(dir)) return [];
-  return walk(dir, '', { branch: options.branch, recursive: options.recursive ?? true });
+  return walk(dir, '', { branch: options.branch, recursive: options.recursive ?? true, media: options.media });
 }
 
-function walk(root: string, relative: string, options: { branch?: string; recursive: boolean }): MarkdownItem[] {
+function walk(root: string, relative: string, options: { branch?: string; recursive: boolean; media?: string }): MarkdownItem[] {
   const dir = path.join(root, relative);
   const entries = fs.readdirSync(dir, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name));
   const items: MarkdownItem[] = [];
   for (const entry of entries) {
     const itemPath = relative ? `${relative}/${entry.name}` : entry.name;
     if (entry.isDirectory()) {
-      if (entry.name === MEDIA_DIR || !options.recursive) continue;
+      if (itemPath === options.media || !options.recursive) continue;
       const branchFile = options.branch ? path.join(dir, entry.name, options.branch) : undefined;
       const text = branchFile && fs.existsSync(branchFile) ? fs.readFileSync(branchFile, 'utf-8') : '';
       const { frontmatter, body } = text ? parseMarkdownFile(text, branchFile) : { frontmatter: {}, body: '' };

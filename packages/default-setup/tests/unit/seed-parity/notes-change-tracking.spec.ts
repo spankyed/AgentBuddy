@@ -12,6 +12,7 @@ import { createSeeder } from '@abuddy/sdk/seed';
 import type { ImportMode, SeedCounts, SeedIncludeSet } from '@abuddy/sdk/utils';
 import { untypedQx as qx } from '@abuddy/sdk/ears';
 import { dropAttribute, entityIds } from '@abuddy/sdk/testing';
+import { createEntityWithDefaults, type EARS } from '@/__generated__/ears';
 import { FIXTURES, PACK_DIR, resetDatabase, snapshot, type Snapshot } from './harness';
 
 const manifest = JSON.parse(fs.readFileSync(path.join(PACK_DIR, 'abuddy.json'), 'utf-8'));
@@ -42,7 +43,7 @@ afterAll(() => {
   for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true });
 });
 
-const seeder = createSeeder({ key: 'notes', identity: NOTES_FORMAT.identity, relKind: NOTES_FORMAT.tree?.relKind });
+const seeder = createSeeder({ key: 'notes', entities: ['Note'], identity: NOTES_FORMAT.identity, relKind: NOTES_FORMAT.tree?.relKind });
 function seedNotes(sources: 'v1' | 'v2' | 'default-setup', options: { mode?: ImportMode; include?: SeedIncludeSet } = {}): SeedCounts {
   return seeder.seed({ compiledDir: compile(sources).dir, mode: options.mode, include: options.include, log: () => {} });
 }
@@ -92,10 +93,22 @@ function expectSeededValues(row: Record<string, unknown>, record: SeedRecord) {
   });
 }
 
+/** The notes the fixtures' Welcome links to, as a user's notes (titled by their ids): links to missing notes are never unlinked */
+const LINK_TARGETS = ['Note-external-plan', 'Note-external-roadmap'];
+function addLinkTargets() {
+  for (const id of LINK_TARGETS) createEntityWithDefaults('Note', { title: id }, undefined, id as EARS.EntityId);
+}
+
+/** A row's REFERENCES targets in a snapshot */
+const referencesOf = (snap: Snapshot, alias: string) =>
+  snap.relations.filter((relation) => relation.startsWith(`${alias} --references--> `)).map((relation) => relation.split(' --references--> ')[1]).sort();
+/** The note ids a record's content links to */
+const linksOf = (record: SeedRecord) => [...String(record.content ?? '').matchAll(/\]\(note:\/\/([^)]+)\)/g)].map((match) => `Note:${match[1]}`).sort();
+
 /**
  * The Decision 10 rules for a re-seed: an existing row is left as it was when its stored hash matches
  * the record's or is missing (or in keep-existing, with its subtree); otherwise it holds the record's
- * values. New records under a visited parent are created. A row left alone may still have its
+ * values and references the notes its content links to. New records under a visited parent are created. A row left alone may still have its
  * displayOrder shifted: noteCommands.create moves siblings at or after a new note's position.
  */
 function expectReseed(before: Snapshot, after: Snapshot, records: SeedRecord[], mode: ImportMode | undefined) {
@@ -108,20 +121,26 @@ function expectReseed(before: Snapshot, after: Snapshot, records: SeedRecord[], 
   for (const { alias, record } of flatten(records)) {
     const previous = before.rows[alias];
     const row = after.rows[alias];
+    const unchanged = () => expect(referencesOf(after, alias), `${alias} references`).toEqual(referencesOf(before, alias));
     if (skippedSubtrees.some((root) => alias.startsWith(`${root}/`))) {
       expect(unmoved(row), `${alias} under a skipped subtree`).toEqual(unmoved(previous));
+      unchanged();
       continue;
     }
     if (!previous) {
       expect(row, `${alias} created`).toBeDefined();
       expectSeededValues(row, record);
+      expect(referencesOf(after, alias), `${alias} references`).toEqual(linksOf(record));
     } else if (mode === 'keep-existing') {
       expect(unmoved(row), `${alias} kept`).toEqual(unmoved(previous));
+      unchanged();
       skippedSubtrees.push(alias);
     } else if (!previous.sourceHash || previous.sourceHash === record.sourceHash) {
       expect(unmoved(row), `${alias} left alone`).toEqual(unmoved(previous));
+      unchanged();
     } else {
       expectSeededValues(row, record);
+      expect(referencesOf(after, alias), `${alias} references`).toEqual(linksOf(record));
     }
   }
 }
@@ -164,20 +183,28 @@ describe('notes seeding (generic pipeline)', () => {
     const before = snapshot();
     const counts = seedNotes('v1', { mode });
     expect(snapshot()).toEqual(before);
-    // Four notes; keep-existing skips the two top-level notes with their subtrees
-    expect(counts).toEqual({ created: 0, updated: 0, skipped: mode === 'keep-existing' ? 2 : 4 });
+    // Seven notes; keep-existing skips the two top-level notes with their subtrees
+    expect(counts).toEqual({ created: 0, updated: 0, skipped: mode === 'keep-existing' ? 2 : 7 });
   });
 
   it.each([undefined, 'replace-on-collision', 'keep-existing'] as const)('re-seeding changed sources in mode %s follows the change-tracking rules', (mode) => {
     resetDatabase();
+    addLinkTargets();
     seedNotes('v1', { mode });
     const before = snapshot();
     seedNotes('v2', { mode });
-    expectReseed(before, snapshot(), compile('v2').records, mode);
+    const after = snapshot();
+    expectReseed(before, after, compile('v2').records, mode);
+    // Welcome's v2 content links to another note: the update moves its REFERENCES link
+    expect(referencesOf(before, 'Note:Welcome')).toEqual(['Note:Note-external-plan']);
+    expect(referencesOf(after, 'Note:Welcome')).toEqual([mode === 'keep-existing' ? 'Note:Note-external-plan' : 'Note:Note-external-roadmap']);
+    // A change two folders down is seeded too
+    expect(after.rows['Note:Projects/Archive/Old Task'].completed).toBe(mode !== 'keep-existing');
   });
 
   it('leaves a note without a stored sourceHash alone (user-owned)', () => {
     resetDatabase();
+    addLinkTargets();
     seedNotes('v1');
     const welcome = (entityIds() as string[]).find((id) =>
       id.startsWith('Note-') && (qx(id as never).pickAll() as Array<Record<string, unknown>>)[0]?.title === 'Welcome');

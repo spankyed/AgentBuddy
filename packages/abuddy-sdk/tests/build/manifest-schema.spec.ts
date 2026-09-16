@@ -147,6 +147,21 @@ describe('seedFormats and boot.seed entries', () => {
     expect(errorsFor(seed, { memos: { format: 'json', fields: { title: { from: 'body' } } } })).toEqual([expect.stringMatching(/"fields" applies only to format "markdown-tree"/)]);
     expect(errorsFor({}, { Memos: { format: 'json' } })).toEqual([expect.stringMatching(/Must be lowercase alphanumeric with hyphens/)]);
   });
+
+  it('rejects a markdown-tree format with a list of entities: it seeds one entity type', () => {
+    const seed = { memos: { path: 'p', format: 'memos' } };
+    expect(errorsFor(seed, { memos: { ...memos, entity: ['Memo'] } }))
+      .toEqual([expect.stringMatching(/"seedFormats\.memos\.entity": Format "markdown-tree" seeds one entity type/)]);
+  });
+
+  it('rejects a media directory outside the entry\'s path', () => {
+    const seed = { memos: { path: 'p', format: 'memos' } };
+    for (const media of ['..', '../shared', 'media/../..', '/abs', 'C:/x', 'a\\b', './media', 'media/', '']) {
+      expect(errorsFor(seed, { memos: { ...memos, media } }), media)
+        .toEqual([expect.stringMatching(/"seedFormats\.memos\.media": Must be a relative directory under the entry's path/)]);
+    }
+    expect(errorsFor(seed, { memos: { ...memos, media: 'assets/images' } })).toEqual([]);
+  });
 });
 
 describe('seedHooks', () => {

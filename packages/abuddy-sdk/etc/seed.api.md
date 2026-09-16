@@ -29,8 +29,8 @@ export interface PackSeedsPreview {
     // (undocumented)
     directory: string;
     packId: string;
-    // (undocumented)
     seeds: Record<string, PackSeedPreviewItem[]>;
+    unavailable: string[];
 }
 
 // @public
@@ -41,6 +41,7 @@ export function recordLabel(record: SeedRecord, identity?: readonly string[]): s
 
 // @public (undocumented)
 export interface SeederOptions {
+    entities: string[];
     identity?: string[];
     // (undocumented)
     key: string;

@@ -27,6 +27,6 @@ function toRecords(items: MarkdownItem[]): SeedRecord[] {
   });
 }
 
-export default function compileLibrary({ path }: SeedCompileContext): SeedRecord[] {
-  return toRecords(compileMarkdownTree(path, { branch: '_meta.md' }));
+export default function compileLibrary({ path, format }: SeedCompileContext): SeedRecord[] {
+  return toRecords(compileMarkdownTree(path, { branch: '_meta.md', media: format.media }));
 }

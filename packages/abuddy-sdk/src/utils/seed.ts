@@ -48,6 +48,11 @@ export function unregisterSeeders(packId: string): void {
   packSeeders.delete(packId);
 }
 
+/** The seed keys a pack registered seeders for: the only keys an import of its seeds can seed */
+export function registeredSeedKeys(packId: string): string[] {
+  return (packSeeders.get(packId) ?? []).map((seeder) => seeder.key);
+}
+
 /** The index compilePack writes next to a pack's compiled seeds */
 export const SEED_INDEX_FILE = 'seeds.json';
 

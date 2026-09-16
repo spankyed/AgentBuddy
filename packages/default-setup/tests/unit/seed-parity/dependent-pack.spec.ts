@@ -9,7 +9,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import {
-  buildPackConfigFromManifest, compilePack, generatePackFiles, parseManifest, resolveSeeds,
+  buildPackConfigFromManifest, compilePack, formatEntities, generatePackFiles, parseManifest, resolveSeeds,
   type PackManifest, type PackSnapshot, type SeedDependency,
 } from '@abuddy/sdk/build';
 import { createSeeder } from '@abuddy/sdk/seed';
@@ -38,7 +38,7 @@ function seedAll(compiledDir: string, pack: PackManifest, packDir: string, deps?
   return Object.fromEntries(Object.entries(resolveSeeds(pack, packDir, deps)).flatMap(([key, seed]) => {
     if (seed.kind !== 'format') return [];
     const { identity, tree, media } = seed.format;
-    return [[key, createSeeder({ key, identity, relKind: tree?.relKind, media: !!media }).seed({ compiledDir, log: () => {} })]];
+    return [[key, createSeeder({ key, entities: formatEntities(seed.format), identity, relKind: tree?.relKind, media: !!media }).seed({ compiledDir, log: () => {} })]];
   }));
 }
 
@@ -49,8 +49,8 @@ describe('a pack depending on default-setup seeds with its formats', () => {
       expect(Object.keys(entry as object).sort()).toEqual(['format', 'path']);
     }
     const files = generatePackFiles(manifest, { packRoot: FIXTURE, depSnapshots: new Map([['default-setup', depSnapshot]]) });
-    expect(files['src/__generated__/seeders.ts']).toContain('  createSeeder({"key":"team-notes","identity":["title","parent"],"relKind":"contains"}),');
-    expect(files['src/__generated__/seeders.ts']).toContain('  createSeeder({"key":"team-docs","identity":["name"],"media":true}),');
+    expect(files['src/__generated__/seeders.ts']).toContain('  createSeeder({"key":"team-notes","entities":["Note"],"identity":["title","parent"],"relKind":"contains"}),');
+    expect(files['src/__generated__/seeders.ts']).toContain('  createSeeder({"key":"team-docs","entities":["Collection","Document"],"identity":["name"],"media":true}),');
     expect(files['src/__generated__/pack-entry.ts']).not.toContain('seedHooks');
     // Without the dependency, its formats can't be resolved
     expect(() => generatePackFiles({ ...manifest, dependencies: {} }, { packRoot: FIXTURE })).toThrow(`format "default-setup:notes" names "default-setup", which isn't a resolved dependency`);

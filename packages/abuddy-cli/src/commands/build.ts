@@ -140,6 +140,17 @@ export async function build(args: string[]) {
     fs.mkdirSync(seedsOutputDir, { recursive: true });
   }
 
+  // Seed compiler modules, for dependents' entries naming this pack's formats. A pack whose formats
+  // dependents can't compile with isn't built: fail before the snapshot that advertises them
+  const seedCompilers = Object.fromEntries(
+    Object.entries(manifest.seedFormats ?? {}).flatMap(([name, format]) => (format.compiler ? [[name, format.compiler]] : [])),
+  );
+  const seedCompilersBundled = Object.keys(seedCompilers).length > 0;
+  if (seedCompilersBundled) {
+    const bundled = await bundlePackSeedCompilers(root, outputDir, seedCompilers, { release });
+    if (!bundled.success) throw new Error(`Seed compiler bundle failed: ${bundled.error}`);
+  }
+
   const types: PackTypeManifest = {
     entities: manifest.entities ?? {},
     relKinds: manifest.relKinds ?? {},
@@ -216,6 +227,8 @@ export async function build(args: string[]) {
     process.exitCode = 1;
   }
 
+  if (seedCompilersBundled) console.log(`  seed compilers: dist/${BUNDLE_PATHS.buildDir}/${SEED_COMPILERS_FILE}`);
+
   // ── DSL editor definitions ───────────────────────────────────────────
   if (manifest.dsl) {
     const defs = await bundleDslDefs(root, manifest);
@@ -223,20 +236,6 @@ export async function build(args: string[]) {
       for (const file of defs.files) console.log(`  dsl defs: ${file}`);
     } else {
       console.error(`\nDSL definitions bundle failed: ${defs.error}`);
-      process.exitCode = 1;
-    }
-  }
-
-  // ── Seed compiler modules (for dependents' entries naming this pack's formats) ──
-  const seedCompilers = Object.fromEntries(
-    Object.entries(manifest.seedFormats ?? {}).flatMap(([name, format]) => (format.compiler ? [[name, format.compiler]] : [])),
-  );
-  if (Object.keys(seedCompilers).length > 0) {
-    const bundled = await bundlePackSeedCompilers(root, outputDir, seedCompilers, { release });
-    if (bundled.success) {
-      console.log(`  seed compilers: dist/${BUNDLE_PATHS.buildDir}/${SEED_COMPILERS_FILE}`);
-    } else {
-      console.error(`\nSeed compiler bundle failed: ${bundled.error}`);
       process.exitCode = 1;
     }
   }
