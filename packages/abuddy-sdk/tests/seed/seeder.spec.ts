@@ -291,3 +291,26 @@ describe('a created row that fails before it is tracked', () => {
     expect(seedMedia()).toEqual({ created: 0, updated: 0, skipped: 1 });
   });
 });
+
+describe('media links that point outside the media folders', () => {
+  it('are left as written, copying nothing in or out', () => {
+    const mediaSeeder = createSeeder({ key: 'memos', identity: ['name'], media: true });
+    // `media/../memos/pic.png` reads a file inside the compiled media but would write beside the row's folder
+    const dir = compiled('demo', [{ name: 'Escape', body: 'A ![up](media/../../secret.txt) B ![link](media/linked.png) C ![side](media/../memos/pic.png) D ![ok](media/pic.png)' }]);
+    const mediaDir = path.join(dir, 'media', 'memos');
+    fs.mkdirSync(mediaDir, { recursive: true });
+    fs.writeFileSync(path.join(mediaDir, 'pic.png'), 'PNG');
+    // Beside the compiled media, where `..` reaches, and a symlink out of it
+    fs.writeFileSync(path.join(dir, 'secret.txt'), 'SECRET');
+    fs.symlinkSync(path.join(dir, 'secret.txt'), path.join(mediaDir, 'linked.png'));
+
+    expect(mediaSeeder.seed({ compiledDir: dir, mode: 'replace-on-collision', log: () => {} })).toEqual({ created: 1, updated: 0, skipped: 0 });
+
+    const { id, body } = memo('Escape');
+    expect(body).toBe(`A ![up](media/../../secret.txt) B ![link](media/linked.png) C ![side](media/../memos/pic.png) D ![ok](media://${id}/pic.png)`);
+    expect(fs.readdirSync(path.join(getMediaPath(), id))).toEqual(['pic.png']);
+    // Where the `..` links would have been written
+    expect(fs.existsSync(path.join(getMediaPath(), 'memos'))).toBe(false);
+    expect(fs.existsSync(path.join(getMediaPath(), '..', 'secret.txt'))).toBe(false);
+  });
+});

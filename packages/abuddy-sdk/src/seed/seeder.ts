@@ -318,7 +318,17 @@ function wipe(records: SeedRecord[]): void {
   }
 }
 
-/** Copies media a record links to into the row's media folder and rewrites the links */
+/** `file` lies under `root`, both already resolved: a `..` step or another root puts it outside */
+function isInside(root: string, file: string): boolean {
+  const relative = path.relative(root, file);
+  return relative !== '' && relative.split(path.sep)[0] !== '..' && !path.isAbsolute(relative);
+}
+
+/**
+ * Copies media a record links to into the row's media folder and rewrites the links. A link whose file
+ * would resolve outside the compiled media folder, or be written outside the row's, is left as it is:
+ * a compiled seeds directory can come from anywhere (Settings → Import pack seeds).
+ */
 function restoreMedia(
   record: SeedRecord,
   id: EARS.EntityId,
@@ -332,11 +342,21 @@ function restoreMedia(
       let text = value;
       for (const match of value.matchAll(MEDIA_LINK_RE)) {
         const filename = match[3];
-        const source = path.join(mediaDir, filename);
-        if (!fs.existsSync(source)) continue;
+        const source = path.resolve(mediaDir, filename);
         const destination = path.join(getMediaPath(), id);
+        const target = path.resolve(destination, filename);
+        if (!isInside(path.resolve(mediaDir), source) || !isInside(path.resolve(destination), target)) {
+          log(`    media skipped (outside the media folder): ${filename}`);
+          continue;
+        }
+        if (!fs.existsSync(source)) continue;
+        // A symbolic link in the compiled media can still point elsewhere
+        if (!isInside(fs.realpathSync(mediaDir), fs.realpathSync(source))) {
+          log(`    media skipped (links outside the media folder): ${filename}`);
+          continue;
+        }
         fs.mkdirSync(destination, { recursive: true });
-        fs.copyFileSync(source, path.join(destination, filename));
+        fs.copyFileSync(source, target);
         log(`    media copied: ${filename}`);
         text = text.split(`media/${filename}`).join(`media://${id}/${filename}`);
         count++;
