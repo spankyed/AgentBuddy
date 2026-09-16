@@ -828,15 +828,12 @@ ${busIdEntries},
     const depSystemIds = [...depSnapshots].flatMap(([depId, snap]) => (snap.manifest.features ?? [])
       .filter((f) => f.system)
       .map((f) => `  ${JSON.stringify(`${depId}/${f.id}`)}: ${JSON.stringify(runningSystemId(depId, snap, f.id))},`));
-    const sends = hasSystems
-      ? `/** Each system name \`sendToSystem\` takes → the id that system runs under */
-const systemIds = {
-  ...busId,
-${depSystemIds.join('\n')}
-};
+    // Every pack gets sendToSystem: one without systems sends to its dependencies'
+    const systemIdEntries = [...(hasSystems ? ['  ...busId,'] : []), ...depSystemIds];
+    const sends = `/** Each system name \`sendToSystem\` takes → the id that system runs under */
+const systemIds = ${systemIdEntries.length ? `{\n${systemIdEntries.join('\n')}\n}` : '{}'};
 
-export const { emit, sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<PackEvents, SendableSystemEvents>(systemIds);`
-      : `export const { emit, sendToPlugin } = /*#__PURE__*/ defineEvents<PackEvents>();`;
+export const { emit, sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<PackEvents, SendableSystemEvents>(systemIds);`;
 
     return `${HEADER}
 import { defineEvents, type HostPluginEvents, type IncomingEventsOf } from '@abuddy/sdk/events';

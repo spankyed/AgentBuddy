@@ -58,7 +58,9 @@ describe('defineEvents', () => {
     expect(events.emit('memos', { type: 'MEMO_ADDED' })).toEqual(emit('memos', { type: 'MEMO_ADDED' }));
   });
 
-  it('has no sendToSystem for a pack without systems', () => {
-    expect(defineEvents<Plugins>()).not.toHaveProperty('sendToSystem');
+  it("sends to a dependency's system from a pack without systems", () => {
+    const withoutSystems = defineEvents<Plugins, SystemEventMap & { 'default-setup/settings': { type: 'GET_SETTINGS' } }>({ 'default-setup/settings': 'settings' });
+    expect(incoming(() => withoutSystems.sendToSystem('default-setup/settings', { type: 'GET_SETTINGS' })))
+      .toEqual([{ type: 'GET_SETTINGS', systemId: 'settings' }]);
   });
 });

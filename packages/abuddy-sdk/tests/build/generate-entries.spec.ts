@@ -95,14 +95,18 @@ describe('generated system sends', () => {
     expect(specs).toContain("export const specs = {\n  'memos': incomingEvents(__system_memos.spec),\n};");
   });
 
-  it('gives a pack without systems no sendToSystem, bus ids or spec module', () => {
-    const files = generate({ features: [{ id: 'sidebar', plugin: { entry: 'x' } }] });
+  it("gives a pack without systems a sendToSystem for its dependencies' systems, and no bus ids or spec module", () => {
+    const files = generate(
+      { features: [{ id: 'sidebar', plugin: { entry: 'x' } }] },
+      { 'base-pack': dependency({ features: [system('threads')] }, { [PACK_TYPES_DEF]: 'export type PackEvents = {};\nexport type PackSystemEvents = {};' }) },
+    );
     const events = files['src/__generated__/events.ts'];
     expect(events).not.toContain('bus-ids');
-    expect(events).not.toMatch(/export const \{[^}]*sendToSystem/);
-    expect(events).not.toContain('systemIds');
+    expect(events).not.toContain('system-specs');
     expect(events).toContain('export type PackSystemEvents = OwnSystemEvents;');
-    expect(events).toContain('export const { emit, sendToPlugin } = /*#__PURE__*/ defineEvents<PackEvents>();');
+    expect(events).toContain('export type SendableSystemEvents = OwnSystemEvents & { [K in keyof __dep_base_pack_PackSystemEvents & string as `base-pack/${K}`]: __dep_base_pack_PackSystemEvents[K] };');
+    expect(events).toContain('const systemIds = {\n  "base-pack/threads": "base-pack.threads",\n};');
+    expect(events).toContain('export const { emit, sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<PackEvents, SendableSystemEvents>(systemIds);');
     expect(files['src/__generated__/system-specs.ts']).toBeUndefined();
     expect(files['src/__generated__/bus-ids.ts']).toBeUndefined();
   });
@@ -196,6 +200,31 @@ describe('generated bindings', () => {
     const { diagnostics } = ts.transpileModule(fe, { reportDiagnostics: true, compilerOptions: { module: ts.ModuleKind.ESNext } });
     expect(diagnostics?.map((d) => ts.flattenDiagnosticMessageText(d.messageText, '\n'))).toEqual([]);
     expect(fe).toContain('plugins: [__plugin_default, __plugin_export, __plugin_incomingEvents, __plugin_foo, __plugin_fooEntry, __plugin_specs, __plugin_registration],');
+  });
+
+  it("types a systemless pack's sendToSystem with its dependencies' systems", () => {
+    const files = generatePackFiles(manifest({ features: [{ id: 'sidebar', plugin: { entry: 'x' } }] }), {
+      packRoot: root,
+      depSnapshots: new Map([['base-pack', dependency(
+        { features: [system('threads')] },
+        { [PACK_TYPES_DEF]: [
+          'export type PackEntityShapes = {};',
+          'export type PackEvents = {};',
+          "export type PackSystemEvents = { 'threads': { type: 'ADD_TAG'; name: string } };",
+          'export type Services = {};',
+          'export type Repositories = {};',
+        ].join('\n') },
+      )]]),
+    });
+    write('src/probe.ts', [
+      "import { sendToSystem } from './__generated__/events.js';",
+      "sendToSystem('base-pack/threads', { type: 'ADD_TAG', name: 'x' });",
+      '// @ts-expect-error ADD_TAG needs its name',
+      "sendToSystem('base-pack/threads', { type: 'ADD_TAG' });",
+      '// @ts-expect-error the pack has no system of its own',
+      "sendToSystem('sidebar', { type: 'ADD_TAG', name: 'x' });",
+    ].join('\n'));
+    expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
   });
 });
 

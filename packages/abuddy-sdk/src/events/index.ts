@@ -169,16 +169,13 @@ export interface TypedSystemEvents<P extends PluginEvents, S extends SystemEvent
  * to (its own feature ids, and `<dependency>/<feature>`) to the id that system runs under (an external
  * pack's are `<packId>.<featureId>`).
  */
-export function defineEvents<P extends PluginEvents>(): TypedEvents<P>;
-export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(systemIds: Readonly<Record<string, string>>): TypedSystemEvents<P, S>;
-export function defineEvents(systemIds?: Readonly<Record<string, string>>): TypedEvents<PluginEvents> | TypedSystemEvents<PluginEvents, SystemEventMap> {
-  const events = { emit, sendToPlugin } as unknown as TypedEvents<PluginEvents>;
-  if (!systemIds) return events;
+export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(systemIds: Readonly<Record<string, string>>): TypedSystemEvents<P, S> {
+  const events = { emit, sendToPlugin } as unknown as TypedEvents<P>;
   const send = (name: string, event: { type: string }) => {
     if (!Object.prototype.hasOwnProperty.call(systemIds, name)) {
       throw new Error(`No system is named "${name}": send to one of this pack's features, or a dependency's as "<dependency>/<feature>"`);
     }
     sendToSystem(systemIds[name], event);
   };
-  return { ...events, sendToSystem: send as unknown as TypedSendToSystem<SystemEventMap> };
+  return { ...events, sendToSystem: send as unknown as TypedSendToSystem<S> };
 }

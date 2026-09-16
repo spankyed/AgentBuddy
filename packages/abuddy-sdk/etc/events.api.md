@@ -5,9 +5,6 @@
 ```ts
 
 // @public
-export function defineEvents<P extends PluginEvents>(): TypedEvents<P>;
-
-// @public (undocumented)
 export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(systemIds: Readonly<Record<string, string>>): TypedSystemEvents<P, S>;
 
 // @public
