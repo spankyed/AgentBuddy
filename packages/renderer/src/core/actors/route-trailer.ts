@@ -1,5 +1,4 @@
-import type { AnyActor, AnyMachineSnapshot, EventObject, MachineContext, MetaObject, ParameterizedObject, ProvidedActor, TransitionConfigOrTarget } from "xstate";
-import { safeEvents } from "@abuddy/sdk/fe";
+import type { AnyActor, AnyMachineSnapshot } from "xstate";
 const capitalizeFirstLetter = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 import type { ContextMenuItem, ContextMenuMeta } from '@abuddy/sdk/fe';
 
@@ -111,21 +110,4 @@ export default function trailActor(actor: AnyActor, onStateChange: (data: Update
     onStateChange(computeCrumbs(snapshot));
     prevSnapshot = snapshot;
   }).unsubscribe;
-}
-
-// Helpers
-export type TrailClickEvent = { type: 'TRAIL_CLICK'; target: string; info?: any };
-const typeOf = safeEvents<TrailClickEvent>();
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-export const targetIs = ({ event }: any, params: { view: string }) => typeOf('TRAIL_CLICK', event).target === params.view
-
-type RouteTuple = [string, string];
-type TransitionConfig = TransitionConfigOrTarget<MachineContext, EventObject, EventObject, ProvidedActor, ParameterizedObject, ParameterizedObject, string, EventObject, MetaObject>
-export function TRAIL_CLICK<T extends TransitionConfig>(routes: RouteTuple[]) {
-  return {
-    ['TRAIL_CLICK' as keyof T]: routes.map(([target, view]) => ({
-      guard: { type: 'targetIs', params: { view } },
-      target,
-    }))
-  }
 }
