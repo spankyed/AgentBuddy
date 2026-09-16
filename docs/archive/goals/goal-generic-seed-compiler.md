@@ -285,9 +285,12 @@ Run during the review fixes; each check failed the named test and was restored:
 | Stale references removed on re-seed | Stop `syncReferences` removing links | `notes-change-tracking.spec.ts` |
 | Seed-hook ownership and rollback | Remove the ownership check, the hook rollback, the artifact rollback | `abuddy-host/tests/packs/registration.spec.ts` |
 | FAQ ordering, heading skip, category string | Remove each | `faqs-compiler.spec.ts` |
+| Phase 4 guard | Add `Collection` to a file under `abuddy-sdk/src/seed/` | `no-pack-seed-specifics.spec.ts` |
+| Parity gate: field mapping | Map the notes format's `title` from `frontmatter.heading` | 6 of 7 `seed-parity.spec.ts` scenarios (all but `default-setup`) |
+| Seed-hook lookup | Skip the entity's `find` hook | `library-commands.spec.ts` (2 tests). The parity gate doesn't catch it: seeded rows are found by `seedKey` first, so the hook matters only for rows another pack or the user owns |
 | Bundled compiler loading (Phase 6) | Move `seed-compilers.mjs` aside | `test:packaged-authoring` build fails with "build default-setup first" |
 
-Not recorded: the Constraints' parity-gate mutations for a broken field mapping, manifest-key routing and the seed-hook lookup; the Phase 4 guard; and Phase 6's format resolution and per-validation-error mutations. Run them before treating those guards as verified.
+Not recorded: the Constraints' parity-gate mutation for manifest-key routing, and Phase 6's format resolution and per-validation-error mutations. Run them before treating those guards as verified.
 
 ## Deferred
 
