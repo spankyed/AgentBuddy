@@ -1,11 +1,5 @@
-import {sha256sum} from './nodeCrypto.js';
-import {versions} from './versions.js';
 import {ipcRenderer, contextBridge, webFrame, webUtils} from 'electron';
 import type {SpeechEvent} from '../../../types/speech.js';
-
-function send(channel: string, message: string) {
-  return ipcRenderer.invoke(channel, message);
-}
 
 // Parse API port from command line arguments
 function getApiPort(): number {
@@ -233,6 +227,3 @@ contextBridge.exposeInMainWorld('electronAPI', {
   protocolAction,
   rendererReady: () => ipcRenderer.send('renderer:ready'),
 });
-
-// Export the tRPC client and connection status
-export {sha256sum, versions, send };
