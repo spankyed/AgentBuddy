@@ -18,6 +18,20 @@ export const providerCapabilities = {
   cohere: ['language', 'embedding', 'reranking'],
 } as const satisfies Record<ProviderName, readonly ModelKind[]>;
 
+/**
+ * The URL each provider is called at: its own package's default, written out so the app always calls the provider
+ * itself. `@ai-sdk/anthropic` and `@ai-sdk/openai` otherwise take `ANTHROPIC_BASE_URL`/`OPENAI_BASE_URL` from the
+ * environment, which would send the user's key somewhere else.
+ */
+export const PROVIDER_BASE_URLS = {
+  anthropic: 'https://api.anthropic.com/v1',
+  openai: 'https://api.openai.com/v1',
+  google: 'https://generativelanguage.googleapis.com/v1beta',
+  groq: 'https://api.groq.com/openai/v1',
+  mistral: 'https://api.mistral.ai/v1',
+  cohere: 'https://api.cohere.com/v2',
+} as const satisfies Record<ProviderName, string>;
+
 type ProvidersOf<K extends ModelKind> = { [P in ProviderName]: K extends (typeof providerCapabilities)[P][number] ? P : never }[ProviderName];
 
 /** A model of a kind, as `provider:model`, from a provider that gives that kind */
