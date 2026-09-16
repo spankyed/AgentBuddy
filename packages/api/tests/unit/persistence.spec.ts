@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as os from 'os';
 import * as fs from 'fs';
 import * as crypto from 'crypto';
-import { EARS } from '@/core/types';
+import { EARS } from '@abuddy/sdk';
 import { openEnvAt, type LmdbDbs } from '@/core/persistence/lmdb/envs';
 
 const Entity = {
