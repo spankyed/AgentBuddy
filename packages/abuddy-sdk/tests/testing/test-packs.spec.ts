@@ -38,7 +38,7 @@ describe('testPacksView', () => {
     testPacks.commands.set('test-pack', [{ name: 'digest', placeholder: 'Week' }]);
 
     const view = testPacksView(registered);
-    expect(view.step('note')).toBe(ownNote);
+    expect(view.step('note')).toEqual(ownNote);
     expect(view.steps()).toEqual([ownNote, ownTick]);
     expect(view.designation('brain')).toBe('test-brain');
     expect(view.getRegisteredServices()).toEqual({ memos: 'mocked' });
@@ -47,6 +47,17 @@ describe('testPacksView', () => {
 
     testPacks.clear();
     expect(view.step('note')).toBe(registeredNote);
+  });
+
+  it('merges a step the test defines with the registered one of its type, facet by facet, as the registry does', () => {
+    const runtime = { execute: () => ({}) };
+    const build = { relation: { field: 'noteId' } };
+    const view = testPacksView({ ...registered, step: () => ({ ...registeredNote, runtime }) as unknown as StepDefinition, steps: () => [{ ...registeredNote, runtime } as unknown as StepDefinition] });
+    testPacks.steps.set('note', { type: 'note', build } as unknown as StepDefinition);
+
+    const merged = { type: 'note', fe: registeredNote.fe, runtime, build };
+    expect(view.step('note')).toEqual(merged);
+    expect(view.steps()).toEqual([merged]);
   });
 
   it('is empty without a registry', () => {

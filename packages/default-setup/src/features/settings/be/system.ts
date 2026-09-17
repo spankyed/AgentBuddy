@@ -208,6 +208,8 @@ export const settingsSystem = setup({
 
     resetSettings: ({ system, event }) => {
       settingsCommands.resetSettings();
+      // The defaults have no root flow; the setting follows the flow that keeps the root role
+      repository.flowsCommands.syncRootFlowSetting();
       
       // After reset, get the new settings to send to frontend
       const data = settingsQueries.getSettings();

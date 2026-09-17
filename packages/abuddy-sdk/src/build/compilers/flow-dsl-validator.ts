@@ -158,7 +158,10 @@ function validateTrack(
 
   const triggerDefs = resolved.triggers;
   if (triggerDefs.length === 0) {
-    throw new Error('No trigger types provided. Pass step definitions via options.steps, or register a pack that defines them.');
+    throw new Error(options.steps !== undefined
+      ? 'No trigger step among the step definitions given, so no track can be validated. A pack build compiles flows against '
+        + "its pack config's step definitions (loadDefinitions) or compilePack's options.definitions: give it the definitions of a pack whose steps include triggers (default-setup's)."
+      : 'No trigger types provided. Pass step definitions via options.steps, or register a pack that defines them.');
   }
   const knownTrackFields = triggerDefs.map(d => d.trigger!.trackField);
   const presentFields = knownTrackFields.filter(f => typeof t[f] === 'string' && (t[f] as string).length > 0);

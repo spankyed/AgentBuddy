@@ -88,6 +88,28 @@ describe('openLmdbStore', () => {
     expect(getAttr(id('Note-1'), 'title')).toBe('gone');
   });
 
+  it('writes what the engine wrote while a reset had the store closed to the new files', async () => {
+    const store = openStore();
+    tx(id('Note-1'), true).put('title', 'gone');
+    await flushed();
+
+    const resetting = store.reset();
+    // A system still running writes while the files are being replaced
+    expect(store.isOpen()).toBe(false);
+    tx(id('Note-2'), true).put('title', 'written during the reset');
+    await resetting;
+    await flushed();
+
+    expect(store.query('primary').getEntityMeta('Note-1')).toBeNull();
+    expect(store.query('primary').getFirstAttr('title', 'Note-2')).toBe('written during the reset');
+    // A store closed any other way still drops writes
+    store.close();
+    tx(id('Note-3'), true).put('title', 'dropped');
+    store.reopen();
+    await flushed();
+    expect(store.query('primary').getEntityMeta('Note-3')).toBeNull();
+  });
+
   it("keeps a run's history link when the entity it ran is destroyed, and removes it with the run or an unlink", async () => {
     const store = openStore();
     tx(id('Note-1'), true).put('title', 'ran');

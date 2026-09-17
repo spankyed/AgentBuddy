@@ -4,6 +4,7 @@ import { pathToFileURL } from 'url';
 import type { PackBuildDefinitions, PackConfig } from './types.ts';
 import type { PackManifest } from './manifest.ts';
 import type { StepDefinition } from '../steps/types.ts';
+import { mergeStepDefinitions } from '../steps/merge.ts';
 import { resolveSeeds, type SeedDependency } from './seeds/resolve.ts';
 
 function findExportedArray(mod: Record<string, unknown>): unknown[] | null {
@@ -38,15 +39,7 @@ export async function buildPackConfigFromManifest(
 /** Merges a step definition into the one of its type, facet by facet (a build facet and a runtime one combine) */
 function mergeStep(steps: Map<string, StepDefinition>, def: StepDefinition): void {
   const existing = steps.get(def.type);
-  steps.set(def.type, existing ? {
-    ...existing,
-    ...def,
-    build: def.build ?? existing.build,
-    runtime: def.runtime ?? existing.runtime,
-    fe: def.fe ?? existing.fe,
-    trigger: def.trigger ?? existing.trigger,
-    kind: def.kind ?? existing.kind,
-  } : def);
+  steps.set(def.type, existing ? mergeStepDefinitions(existing, def) : def);
 }
 
 /**

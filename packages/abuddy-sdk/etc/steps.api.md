@@ -47,6 +47,9 @@ export function expandRecord(map: Record<string, string> | undefined, keyField?:
 // @public
 export function isTruncated(result: unknown): result is TruncatedResult;
 
+// @internal
+export function mergeStepDefinitions(existing: StepDefinition, def: StepDefinition): StepDefinition;
+
 // @public (undocumented)
 export interface RuntimeServices {
     // (undocumented)

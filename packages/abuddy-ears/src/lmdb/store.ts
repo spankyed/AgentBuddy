@@ -29,7 +29,11 @@ export interface LmdbStore {
   close(): void;
   /** Opens the environments again (after their files were replaced, say), closing them first if open */
   reopen(): void;
-  /** Closes the store, deletes its files and opens it empty. Doesn't touch the engine's memory */
+  /**
+   * Closes the store, deletes its files and opens it empty. Doesn't touch the engine's memory. Writes made
+   * while it's closed for the reset (the engine's own, from systems still running) are kept and written once
+   * it's open again, so a reset loses nothing written after it started.
+   */
   reset(): Promise<void>;
 }
 
@@ -58,6 +62,8 @@ export function openLmdbStore({ paths, policy, engine }: LmdbStoreOptions): Lmdb
     engine().getAttr(relId, EARS.AttrKind.RelationDetails) as EARS.RelationDetail | null;
   let envs: Record<Partition, LmdbDbs> | null = null;
   let current: ShardedPersistence | null = null;
+  /** Writes made while a reset has the store closed, written when it opens again */
+  let heldForReset: Array<(sink: ShardedPersistence) => void> | null = null;
 
   function open() {
     envs = openShardedEnvs(paths);
@@ -94,8 +100,12 @@ export function openLmdbStore({ paths, policy, engine }: LmdbStoreOptions): Lmdb
     return envs;
   }
 
-  // Forwards to the current environments' sinks, so the engine keeps one sink across reopens
-  const write = (fn: (sink: ShardedPersistence) => void) => { if (current) fn(current); };
+  // Forwards to the current environments' sinks, so the engine keeps one sink across reopens. A closed store
+  // drops writes, except during a reset, which holds them for the new files.
+  const write = (fn: (sink: ShardedPersistence) => void) => {
+    if (current) fn(current);
+    else heldForReset?.push(fn);
+  };
   const sink: ShardedPersistence = {
     onCreateEntity: (...args) => write((s) => s.onCreateEntity(...args)),
     onDestroyEntity: (...args) => write((s) => s.onDestroyEntity(...args)),
@@ -126,11 +136,18 @@ export function openLmdbStore({ paths, policy, engine }: LmdbStoreOptions): Lmdb
       open();
     },
     async reset() {
-      close();
-      // Let LMDB release the files before deleting them
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      deleteLmdbDirectories(paths);
-      open();
+      heldForReset = [];
+      try {
+        close();
+        // Let LMDB release the files before deleting them
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        deleteLmdbDirectories(paths);
+        open();
+      } finally {
+        const held = heldForReset;
+        heldForReset = null;
+        if (current) for (const fn of held) fn(current);
+      }
     },
   };
 }
