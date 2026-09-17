@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import getReleasePlan from '@changesets/get-release-plan';
+import { satisfies } from 'semver';
 import { afterEach, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '../helpers/published-packages';
 
@@ -31,6 +32,26 @@ async function releasePlan(changeset: string): Promise<Record<string, string>> {
 }
 
 describe('release plan', () => {
+  it("keeps every peer range on a sibling wide enough for the group's next version", () => {
+    // Changesets gives a peer dependent a *major* bump when the version its peer moves to falls
+    // outside the declared range (onlyUpdatePeerDependentsWhenOutOfRange), and the fixed group
+    // then carries that major to all five packages — before 1.0 that is a jump straight to 1.0.0.
+    // So a range like "~0.1.0" or "^0.1.0" on a sibling, however right it looks for a 0.x package,
+    // turns the group's next minor into a major release. It has to admit that version.
+    for (const [dir, name] of Object.entries(PUBLISHED)) {
+      const pkg = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', dir, 'package.json'), 'utf-8'));
+      const [major, minor] = (pkg.version as string).split('.').map(Number);
+      for (const [peer, range] of Object.entries(pkg.peerDependencies ?? {} as Record<string, string>)) {
+        if (!Object.values(PUBLISHED).includes(peer)) continue;
+        const next = major > 0 ? `${major}.${minor + 1}.0` : `0.${minor + 1}.0`;
+        expect(
+          satisfies(next, range as string),
+          `${name}'s peer range on ${peer} ("${range}") excludes ${next}, the version the fixed group moves to next, so a minor change would release all five as ${major + 1}.0.0`,
+        ).toBe(true);
+      }
+    }
+  });
+
   it('a minor SDK change moves the fixed group one minor, not to 1.0.0', async () => {
     const current = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages', 'abuddy-sdk', 'package.json'), 'utf-8')).version as string;
     const [major, minor] = current.split('.').map(Number);
