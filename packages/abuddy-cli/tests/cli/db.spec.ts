@@ -397,12 +397,40 @@ describe('abuddy db script', () => {
 
     // In this process vitest compiles the script; the CLI has to do it itself, so drive the binary
     const cli = path.resolve(import.meta.dirname, '..', '..', 'bin', 'abuddy.mjs');
+    const compiledDirs = () => fs.readdirSync(os.tmpdir()).filter((name) => name.startsWith('abuddy-db-script-'));
+    const before = compiledDirs();
     const run = spawnSync(process.execPath, [cli, 'db', 'script', file, '--data-dir', dir, '-o', 'json', '--', 'Note-a'], { encoding: 'utf-8' });
     expect(run.stderr).toContain(`Database: ${dir} (offline)`);
     expect(run.status, run.stderr).toBe(0);
     expect(JSON.parse(run.stdout)).toEqual({ title: 'Alpha', notes: 2 });
-    // Nothing compiled is left beside the script
+    // Nothing is left behind: not beside the script, not in the temp dir it compiled to
     expect(fs.readdirSync(dir).filter((name) => name.endsWith('.mjs'))).toEqual([]);
+    expect(compiledDirs()).toEqual(before);
+  });
+
+  it("runs a script in a directory it can't write, importing a package from beside it", async () => {
+    const dir = await appDataDir();
+    const scripts = path.join(dir, 'read-only-scripts');
+    fs.mkdirSync(path.join(scripts, 'node_modules', 'greet'), { recursive: true });
+    fs.writeFileSync(path.join(scripts, 'node_modules', 'greet', 'package.json'), JSON.stringify({ name: 'greet', version: '1.0.0', type: 'module', main: 'index.js' }));
+    fs.writeFileSync(path.join(scripts, 'node_modules', 'greet', 'index.js'), 'export const greet = (name) => `hello ${name}`;');
+    const file = path.join(scripts, 'report.ts');
+    fs.writeFileSync(file, [
+      "import { greet } from 'greet';",
+      "import * as path from 'node:path';",
+      'export default ({ db }: any) => ({ greeting: greet(db.query.getAttr("Note-a", "title")), here: path.basename(import.meta.dirname) });',
+    ].join('\n'));
+    fs.chmodSync(scripts, 0o555);
+
+    try {
+      const cli = path.resolve(import.meta.dirname, '..', '..', 'bin', 'abuddy.mjs');
+      const run = spawnSync(process.execPath, [cli, 'db', 'script', file, '--data-dir', dir, '-o', 'json'], { encoding: 'utf-8' });
+      expect(run.status, run.stderr).toBe(0);
+      // The package next to the script loaded, and import.meta still points at the script's own directory
+      expect(JSON.parse(run.stdout)).toEqual({ greeting: 'hello Alpha', here: 'read-only-scripts' });
+    } finally {
+      fs.chmodSync(scripts, 0o755);
+    }
   });
 
   it('refuses a file that is missing, or exports no function, changing nothing', async () => {

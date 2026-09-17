@@ -2,7 +2,9 @@
 // imports what it likes, and keeps its own helpers). The database is handed to it, rather than left for it to open:
 // the published CLI carries its own copy of the engine, so a script importing @abuddy/ears would get a second one.
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
+import { builtinModules, createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import type { AppDatabase } from '@abuddy/host/database';
 import { consoleScope, openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
@@ -51,35 +53,54 @@ export interface DbScriptContext {
 const JAVASCRIPT = /\.(mjs|cjs|js)$/;
 
 /**
- * The script as a module. TypeScript is compiled beside the file first, with its own relative imports compiled in
- * and its packages left to resolve from where it lives: this process runs through tsx, whose importer only
- * transforms files inside the project, so a script anywhere else would reach Node as TypeScript it can't read.
+ * The script as a module. TypeScript is compiled first, into a temp file rather than the script's own directory,
+ * which may be one this user can't write: this process runs through tsx, whose importer only transforms files inside
+ * the project, so a script anywhere else would reach Node as TypeScript it can't read. Its relative imports are
+ * compiled in and its packages are resolved, from where the script lives, to the paths they have there, so the
+ * compiled copy loads the same modules wherever it sits.
  */
 async function importScript(scriptFile: string): Promise<{ default?: unknown }> {
   if (JAVASCRIPT.test(scriptFile)) return import(pathToFileURL(scriptFile).href) as Promise<{ default?: unknown }>;
 
   const { build } = await import('esbuild');
+  const resolveFromScript = createRequire(scriptFile);
   const { outputFiles } = await build({
     entryPoints: [scriptFile],
     bundle: true,
-    // Its packages resolve from the script's own directory at run time, not from this bundle
-    packages: 'external',
     platform: 'node',
     format: 'esm',
     target: 'node22',
     write: false,
     absWorkingDir: path.dirname(scriptFile),
+    // The script's own file, not the compiled copy, is what `import.meta` points at
+    define: {
+      'import.meta.url': JSON.stringify(pathToFileURL(scriptFile).href),
+      'import.meta.filename': JSON.stringify(scriptFile),
+      'import.meta.dirname': JSON.stringify(path.dirname(scriptFile)),
+    },
+    plugins: [{
+      name: 'packages-from-the-script',
+      setup(bundler) {
+        bundler.onResolve({ filter: /^[^.\/]/ }, ({ path: specifier }) => {
+          if (specifier.startsWith('node:') || builtinModules.includes(specifier)) return { path: specifier, external: true };
+          try {
+            // Kept out of the bundle, at the path it has next to the script, so the compiled copy finds it too
+            return { path: resolveFromScript.resolve(specifier), external: true };
+          } catch {
+            // Not installed there: left as it is, so Node reports it against the name the script used
+            return { path: specifier, external: true };
+          }
+        });
+      },
+    }],
   });
-  const compiled = `${scriptFile}.${process.pid}.mjs`;
+
+  const compiled = path.join(fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-db-script-')), `${path.basename(scriptFile)}.mjs`);
   try {
     fs.writeFileSync(compiled, outputFiles[0].text);
-  } catch (error) {
-    throw new Error(`${scriptFile} is TypeScript, which is compiled next to it, and that failed: ${(error as Error).message}`);
-  }
-  try {
     return await import(pathToFileURL(compiled).href) as { default?: unknown };
   } finally {
-    fs.rmSync(compiled, { force: true });
+    fs.rmSync(path.dirname(compiled), { recursive: true, force: true });
   }
 }
 

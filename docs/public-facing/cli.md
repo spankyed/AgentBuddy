@@ -272,7 +272,7 @@ Run console code a line at a time and print each result: query code, or with `--
 
 #### `abuddy db script <file> [--read-only] [-o pretty|json|csv] [--out <file>] [-- <script arguments>]` (names its data dir)
 
-Run a script file against the database, for work a one-liner can't do: it imports what it likes and brings its own helpers. JavaScript (`.mjs`, `.js`, `.cjs`) runs as it is; TypeScript is compiled beside the file first, with its own relative imports compiled in and its packages resolved from where the script lives. The file default-exports a function, which is called with the open database and whose result is printed like a query's.
+Run a script file against the database, for work a one-liner can't do: it imports what it likes and brings its own helpers. JavaScript (`.mjs`, `.js`, `.cjs`) runs as it is; TypeScript is compiled first, to a temp file rather than your own directory, with its relative imports compiled in and its packages resolved from where the script lives, so `import.meta` and every import still point where you'd expect. The file default-exports a function, which is called with the open database and whose result is printed like a query's.
 
 ```ts
 // notes-report.ts
