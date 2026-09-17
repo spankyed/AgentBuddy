@@ -48,7 +48,7 @@ Each directory is one `package.json` export (`./<dir>` → `src/<dir>/index.ts`)
     - Only built-in packs may have an `earlySystem`.
     - A `boot.seed` format must name a `seedFormats` entry or `<dependency>:<name>`.
     - `seedHooks` may name only the pack's own `entities`.
-    - `entities`/`relKinds` may not redeclare names the SDK owns.
+    - `entities`/`relKinds` may not use a name the SDK owns, as a key or a value (`reservedEntries`, `types/reserved-names.ts`, the rule the generator and the host's registry apply too), and an entity's key must equal its value.
   - A feature id may not be a JavaScript reserved word or `busId` (`RESERVED_FEATURE_IDS`), and `fe.appExtensions` keys must be identifiers: both become names in generated code.
   - `SPECIALTY_SEED_KEYS` (`actions`, `prompts`, `flows`) take a path. Every other seed key takes `{ path, format }` (optionally with `seeder`: the pack module seeds the compiled records instead of the generic seeder, as default-setup's `settings` entry does) or `{ seeder }` alone.
   - `abuddy.schema.json` is generated from the schema by `scripts/generate-schema.ts` (`zod-to-json-schema`). Run `generate:schema` after changing the schema; CI runs `schema:check`.
@@ -61,7 +61,7 @@ Each directory is one `package.json` export (`./<dir>` → `src/<dir>/index.ts`)
   - Flows and steps: `flow-helpers.ts` (a helper per step `dsl`, trigger track builders read from the step's `trackField`, and dependencies' helpers) and `step-types.ts`.
   - Other: `types.ts`, `contributions.ts` and `dsl-types-fe.ts` (`dslTypes`, which `pack-entry-fe.ts` puts in `PackFERegistration.dslTypes`). No generated module registers anything when imported (`tests/build/generate-entries.spec.ts`).
   - Per typed dependency, it also writes `deps/<id>.d.ts` and `deps/<id>.flow-helpers.{js,d.ts}` from the dependency's snapshot. `depTypesVersion` reads the version header that the CLI's stale-deps warning uses.
-  - `mergeRegistries` merges own, dependency and SDK entities/relKinds, and throws when two packs declare the same name. `emitEARS` writes the `EARS` namespace. `emitDepTypes` is used by the CLI's `generate` command.
+  - `mergeRegistries` merges own, dependency and SDK entities/relKinds. It throws when the pack or a dependency uses an SDK name (a dependency built by an older CLI must be rebuilt), and when two sources share a key or a value. `EntityName` lists the entity values; `PackStepNodes`, which `pack-types.ts` exports, is the pack's and its dependencies' step node types, so a dependent's `Node` rows are their union. `emitEARS` writes the `EARS` namespace. `emitDepTypes` is used by the CLI's `generate` command.
 - **`module-exports.ts`**: `createModuleExports(packRoot, files)` builds one TypeScript program over every file a manifest `"path#export"` names: services, repositories, `packServices`, `seedHooks`, `entityShapes` sources and feature settings. The program uses the pack's `tsconfig.json`, `sourceConditions(packRoot)` and `types: []`. `exportOf(file, name)` follows alias chains and returns `{ value?: 'object' | 'function' | 'class', type }`.
   - Codegen uses it to reject a missing export, a type-only export, or a service exported as a function or class (export the object or an instance).
   - It checks entity shapes (the export must be a type) and requires feature settings to have a default export.
