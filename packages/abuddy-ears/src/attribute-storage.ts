@@ -174,7 +174,11 @@ export function createAttributeStorage({ relations, persistence }: { relations: 
     persistence.onUpdateRelation(relId, patch);
   }
 
-  const removeRelationById = (relId: EARS.EntityId) => {
+  /**
+   * Removes a relation from memory and tells the sink. `destroyed` is the entity being deleted when that's why
+   * the relation goes (destroyEntity); it's passed on so the sink can tell a deletion from an unlink.
+   */
+  const removeRelation = (relId: EARS.EntityId, destroyed?: EARS.EntityId) => {
     const d = getAttr(
       relId,
       EARS.AttrKind.RelationDetails,
@@ -182,8 +186,10 @@ export function createAttributeStorage({ relations, persistence }: { relations: 
     if (d)
       relations.removeFromIndex(d.relationType, d.sourceEntity, d.targetEntity, relId);
     drop(relId, EARS.AttrKind.RelationDetails);
-    persistence.onRemoveRelation(relId);
+    if (destroyed) persistence.onRemoveRelation(relId, destroyed);
+    else persistence.onRemoveRelation(relId);
   };
+  const removeRelationById = (relId: EARS.EntityId) => removeRelation(relId);
 
   const getAttr  = (id: EARS.EntityId, k: EARS.AttrKind, i = 0) =>
     bucket(k).get(id)?.[i] ?? null;
@@ -276,7 +282,8 @@ export function createAttributeStorage({ relations, persistence }: { relations: 
     for (const k of Object.keys(relationIndex)) {
       const { bySource, byTarget } = relationIndex[k];
       const relIds = [...(bySource[id] ?? []), ...(byTarget[id] ?? [])];
-      relIds.forEach(removeRelationById);
+      // Every link to or from the entity goes from memory; the sink is told it's because `id` is being deleted
+      for (const relId of relIds) removeRelation(relId, id);
       delete bySource[id];
       delete byTarget[id];
     }

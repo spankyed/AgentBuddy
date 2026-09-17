@@ -88,6 +88,46 @@ describe('openLmdbStore', () => {
     expect(getAttr(id('Note-1'), 'title')).toBe('gone');
   });
 
+  it("keeps a run's history link when the entity it ran is destroyed, and removes it with the run or an unlink", async () => {
+    const store = openStore();
+    tx(id('Note-1'), true).put('title', 'ran');
+    tx(id('Note-2'), true).put('title', 'ran too');
+    tx(id('Trace-1'), true).put('step', 'run');
+    tx(id('Trace-2'), true).put('step', 'run');
+    tx(id('Trace-3'), true).put('step', 'run');
+    const kept = engine.admin.addRelation(id('Trace-1'), 'instance_of', id('Note-1'));
+    const withRun = engine.admin.addRelation(id('Trace-2'), 'instance_of', id('Note-2'));
+    const unlinked = engine.admin.addRelation(id('Trace-3'), 'instance_of', id('Note-2'));
+    const between = engine.admin.addRelation(id('Note-1'), 'mentions', id('Note-2'));
+    await flushed();
+    const stored = (rel: EARS.EntityId) => store.envs.volatileBackup.relations.get(rel) ?? store.envs.primary.relations.get(rel);
+
+    tx(id('Note-1')).destroy();
+    tx(id('Trace-2')).destroy();
+    engine.query.removeRelationById(unlinked);
+    await flushed();
+
+    // The run's record still says which node it ran; the node and its own relations are gone
+    expect(stored(kept)).toMatchObject({ kind: 'instance_of', src: 'Trace-1', tgt: 'Note-1' });
+    expect(stored(between)).toBeUndefined();
+    expect(store.query('primary').getEntityMeta('Note-1')).toBeNull();
+    expect(stored(withRun)).toBeUndefined();
+    expect(stored(unlinked)).toBeUndefined();
+    // Memory drops it with the node
+    expect(engine.query.findRelations({ sourceEntity: id('Trace-1') })).toEqual([]);
+  });
+
+  it("keeps a history link it didn't see written when the other end is destroyed", async () => {
+    const store = openStore();
+    tx(id('Note-1'), true).put('title', 'ran');
+    const rel = engine.admin.addRelation(id('Trace-1'), 'instance_of', id('Note-1'));
+    await flushed();
+    store.reopen();
+    tx(id('Note-1')).destroy();
+    await flushed();
+    expect(store.envs.volatileBackup.relations.get(rel)).toMatchObject({ src: 'Trace-1', tgt: 'Note-1' });
+  });
+
   it("removes a relation it didn't see written, wherever it is", async () => {
     const store = openStore();
     tx(id('Note-1'), true).put('title', 'a');

@@ -170,15 +170,24 @@ export function makeShardedPersistence(
       relMeta.set(relId, next);
     },
 
-    onRemoveRelation(relId: string) {
+    onRemoveRelation(relId: string, destroyed?: string) {
       const p = relationPartitions.get(relId) ?? computePartitionFor(relId);
 
       if (p) {
-        sinks[p].onRemoveRelation(relId);
+        // Keep the stored link when an entity is being deleted and the link is saved in a different partition
+        // from that entity: the link then belongs to its other entity. Example: a run record (TNode, in the trace
+        // partition) has a link to the node it ran (in the main partition). Deleting the node must not erase the
+        // run's history, so the link stays in the trace partition. Deleting the run, or unlinking, still removes it.
+        const keepAsHistory = destroyed !== undefined && pickEntity(destroyed) !== p;
+        if (!keepAsHistory) sinks[p].onRemoveRelation(relId);
         relationPartitions.delete(relId);
         relMeta.delete(relId);
+      } else if (destroyed !== undefined) {
+        // Partition unknown (the router didn't see this link written, e.g. after a store reopen): remove it only
+        // from the deleted entity's partition, so a history link saved in the other partition stays (as above)
+        sinks[pickEntity(destroyed)].onRemoveRelation(relId);
       } else {
-        // Unknown partition - remove from all
+        // Partition unknown and the link itself was removed: remove it from every partition
         for (const sink of Object.values(sinks)) {
           sink.onRemoveRelation(relId);
         }

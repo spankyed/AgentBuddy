@@ -19,7 +19,13 @@ export interface PersistenceSink {
   onPutAttrArray(kind: string, entityId: string, values: unknown[]): void;
   onAddRelation(relId: string, kind: string, src: string, tgt: string, info: unknown): void;
   onUpdateRelation(relId: string, patch: { src?: string; tgt?: string; info?: unknown }): void;
-  onRemoveRelation(relId: string): void;
+  /**
+   * A relation (a link between two entities) was removed.
+   * - `destroyed` is set when the link was removed only because one of its two entities is being deleted:
+   *   it's the id of that entity. The sink may then keep the stored link (see makeShardedPersistence).
+   * - `destroyed` is undefined when the link itself was removed (an unlink): the sink deletes it.
+   */
+  onRemoveRelation(relId: string, destroyed?: string): void;
   close?(): void;
   getErrorStats?(): { errorCount: number; lastError: unknown };
 }

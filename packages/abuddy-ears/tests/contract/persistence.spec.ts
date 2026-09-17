@@ -10,7 +10,7 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe('persistence sink', () => {
-  it('receives each write, in order, with its payload, a created entity with its type', () => {
+  it('receives each write, in order, with its payload: a created entity with its type, a relation a destroy removes with the destroyed end', () => {
     const { sink, calls } = recordingSink();
     const e = engine(sink);
     const a = e.query.tx('Task').put('title', 'A').add('tag', 'x').add('tag', 'y').id();
@@ -48,7 +48,7 @@ describe('persistence sink', () => {
       ['onPutAttrArray', 'updatedAt', '#1', [1000]],
       ['onPutAttrArray', 'title', '#1', ['B']],
       ['onDropAttr', 'relationDetails', '#4', 0, []],
-      ['onRemoveRelation', '#4'],
+      ['onRemoveRelation', '#4', '#1'],
       ['onDestroyEntity', '#1'],
     ]);
   });

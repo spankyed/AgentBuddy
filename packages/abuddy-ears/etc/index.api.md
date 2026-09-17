@@ -493,8 +493,7 @@ export interface PersistenceSink {
     // (undocumented)
     onDropAttr(kind: string, entityId: string, idx: number, entireArray?: unknown[]): void;
     onPutAttrArray(kind: string, entityId: string, values: unknown[]): void;
-    // (undocumented)
-    onRemoveRelation(relId: string): void;
+    onRemoveRelation(relId: string, destroyed?: string): void;
     // (undocumented)
     onUpdateRelation(relId: string, patch: {
         src?: string;
