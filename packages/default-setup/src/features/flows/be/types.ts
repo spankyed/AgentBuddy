@@ -1,6 +1,7 @@
 import { type NodeEntity } from '@/__generated__/types';
 import { EARS } from '@/__generated__/ears';
 import type { ModelCatalogEntry } from '@abuddy/sdk/models';
+import type { FlowEdge } from '@abuddy/sdk/repositories';
 
 /*─────────────────────────────────────────────────────────────────
  * Flow & Edge entities
@@ -8,15 +9,8 @@ import type { ModelCatalogEntry } from '@abuddy/sdk/models';
 
 import type { FlowEntity, ActionEntity, PromptEntity } from '@abuddy/sdk';
 
-export type EdgeEntity = {
-  id: EARS.EntityId;
-  kind: EARS.RelKind;
-  source: EARS.EntityId;
-  target: EARS.EntityId;
-  sourceHandle?: string;
-  targetHandle?: string;
-  info?: { [key: string]: any; }
-};
+/** A transition between two nodes, as the SDK's flow repository returns it */
+export type EdgeEntity = FlowEdge;
 
 /*─────────────────────────────────────────────────────────────────
  * Node entity: generated union of the step node interfaces in each step's types.ts

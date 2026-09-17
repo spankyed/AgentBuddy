@@ -1,19 +1,15 @@
-import type { EARS } from '@/__generated__/ears';
-import { promptRepository, type PromptInput } from '@abuddy/sdk/repositories';
-import type { PromptEntity } from '@abuddy/sdk';
+import { promptRepository } from '@abuddy/sdk/repositories';
 
 /**
- * Prompts Repository: the prompts plugin's views over the SDK's prompt repository (`promptRepository`),
- * which owns their reads and writes
+ * Prompts Repository: the SDK's prompt repository (`promptRepository`), which owns their reads and writes, as the
+ * prompts plugin uses it, and the plugin's views. The SDK's methods are taken as they are, not wrapped.
  */
 
 // Queries
 export const promptQueries = {
-  byId: (id: EARS.EntityId): PromptEntity | undefined => promptRepository.byId(id),
-
-  all: (): PromptEntity[] => promptRepository.all(),
-
-  byLabel: (label: string): PromptEntity | undefined => promptRepository.byLabel(label),
+  byId: promptRepository.byId,
+  all: promptRepository.all,
+  byLabel: promptRepository.byLabel,
 
   connectedData: (page = 1, pageSize = 20) => {
     const all = promptQueries.all();
@@ -31,24 +27,8 @@ export const promptQueries = {
 
 // Commands
 export const promptCommands = {
-  create: (input: {
-    label: string;
-    description?: string;
-    templateFn: string;
-    inputs?: Record<string, any>;
-    category?: string;
-    sourceHash?: string;
-  }): PromptEntity => promptRepository.create(input as PromptInput),
-
-  update: (id: EARS.EntityId, updates: {
-    label?: string;
-    description?: string;
-    templateFn?: string;
-    inputs?: Record<string, any>;
-    category?: string;
-    sourceHash?: string;
-  }): void => promptRepository.update(id, updates as Partial<PromptInput>),
-
+  create: promptRepository.create,
+  update: promptRepository.update,
   /** Marks the prompt deleted */
-  delete: (id: EARS.EntityId): void => promptRepository.delete(id),
+  delete: promptRepository.delete,
 };

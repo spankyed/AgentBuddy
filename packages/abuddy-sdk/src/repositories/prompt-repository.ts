@@ -10,6 +10,8 @@ export interface PromptInput {
   description?: string;
   templateFn: string;
   inputs?: Record<string, TemplateInput>;
+  /** A JSON schema for structured output */
+  outputSchema?: unknown;
   category?: string;
   sourceHash?: string;
 }

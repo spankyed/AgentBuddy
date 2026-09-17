@@ -542,10 +542,7 @@ export const brainCommands = {
   },
   
   /** Records a step's result on its TNode, truncated (the SDK's TNode repository) */
-  updateTNodeResult: (
-    tNodeId: EARS.EntityId,
-    result: any
-  ): void => tnodeRepository.updateTNodeResult(tNodeId, result),
+  updateTNodeResult: tnodeRepository.updateTNodeResult,
   
   updateTNodeAttributes: (
     tNodeId: EARS.EntityId,

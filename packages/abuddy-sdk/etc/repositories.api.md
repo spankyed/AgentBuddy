@@ -99,6 +99,7 @@ export interface PromptInput {
     inputs?: Record<string, TemplateInput>;
     // (undocumented)
     label: string;
+    outputSchema?: unknown;
     // (undocumented)
     sourceHash?: string;
     // (undocumented)

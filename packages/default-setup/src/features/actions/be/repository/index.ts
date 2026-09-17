@@ -1,19 +1,17 @@
 import { EARS, findWhere } from '@/__generated__/ears';
-import { actionRepository, type ActionInput } from '@abuddy/sdk/repositories';
+import { actionRepository } from '@abuddy/sdk/repositories';
 import type { ActionEntity } from '@abuddy/sdk';
 
 /**
- * Action Repository: the actions plugin's views over the SDK's action repository (`actionRepository`),
- * which owns their reads and writes
+ * Action Repository: the SDK's action repository (`actionRepository`), which owns their reads and writes, as the
+ * actions plugin uses it, and the plugin's views. The SDK's methods are taken as they are, not wrapped.
  */
 
 // Queries
 export const actionQueries = {
-  byId: (id: EARS.EntityId): ActionEntity | undefined => actionRepository.byId(id),
-
-  all: (): ActionEntity[] => actionRepository.all(),
-
-  byLabel: (label: string): ActionEntity | undefined => actionRepository.byLabel(label),
+  byId: actionRepository.byId,
+  all: actionRepository.all,
+  byLabel: actionRepository.byLabel,
 
   byCategory: (category: string) =>
     findWhere<ActionEntity>(EARS.Entity.Action, 'category', category),
@@ -44,26 +42,8 @@ export const actionQueries = {
 
 // Commands
 export const actionCommands = {
-  create: (data: {
-    label: string;
-    description?: string;
-    category?: string;
-    input?: Record<string, any>;
-    actionFn: string;
-    output?: any;
-    sourceHash?: string;
-  }): ActionEntity => actionRepository.create(data as ActionInput),
-
-  update: (id: EARS.EntityId, updates: {
-    label?: string;
-    description?: string;
-    category?: string;
-    input?: Record<string, any>;
-    actionFn?: string;
-    output?: any;
-    sourceHash?: string;
-  }): void => actionRepository.update(id, updates as Partial<ActionInput>),
-
+  create: actionRepository.create,
+  update: actionRepository.update,
   /** Marks the action deleted */
-  delete: (id: EARS.EntityId): void => actionRepository.delete(id),
+  delete: actionRepository.delete,
 } as const;

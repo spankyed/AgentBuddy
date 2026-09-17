@@ -4,11 +4,14 @@
 
 ```ts
 import * as _abuddy_ears from '@abuddy/ears';
+import * as _abuddy_sdk from '@abuddy/sdk';
 import { ActionEntity, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes } from '@abuddy/sdk';
 import { ArtifactItem } from '@abuddy/sdk/artifacts';
 import { CompiledRows } from '@abuddy/sdk/build';
 import { HostPluginEvents, IncomingEventsOf, TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
 import { ModelCatalogEntry, ModelId } from '@abuddy/sdk/models';
+import * as _abuddy_sdk_repositories from '@abuddy/sdk/repositories';
+import { FlowEdge } from '@abuddy/sdk/repositories';
 import { PackSeedsPreview } from '@abuddy/sdk/seed';
 import { HostServices, SecretInfo, SecretsStatus } from '@abuddy/sdk/services';
 import { ExecutionContext, StepRuntimeError, TNodeEntity, TrackTree } from '@abuddy/sdk/steps';
@@ -969,17 +972,8 @@ declare namespace EARS {
     type AttributeStore = _abuddy_ears.EARS.AttributeStore;
 }
 
-type EdgeEntity = {
-    id: EARS.EntityId;
-    kind: EARS.RelKind;
-    source: EARS.EntityId;
-    target: EARS.EntityId;
-    sourceHandle?: string;
-    targetHandle?: string;
-    info?: {
-        [key: string]: any;
-    };
-};
+/** A transition between two nodes, as the SDK's flow repository returns it */
+type EdgeEntity = FlowEdge;
 
 type Effort = z.infer<typeof EffortSchema>;
 
@@ -4008,34 +4002,18 @@ interface WorktreeEntry {
 }
 
 declare const actionCommands: {
-    readonly create: (data: {
-        label: string;
-        description?: string;
-        category?: string;
-        input?: Record<string, any>;
-        actionFn: string;
-        output?: any;
-        sourceHash?: string;
-    }) => ActionEntity;
-    readonly update: (id: EARS.EntityId, updates: {
-        label?: string;
-        description?: string;
-        category?: string;
-        input?: Record<string, any>;
-        actionFn?: string;
-        output?: any;
-        sourceHash?: string;
-    }) => void;
+    readonly create: (data: _abuddy_sdk_repositories.ActionInput) => ActionEntity;
+    readonly update: (id: _abuddy_sdk.EARS.EntityId, updates: Partial<_abuddy_sdk_repositories.ActionInput>) => void;
     /** Marks the action deleted */
-    readonly delete: (id: EARS.EntityId) => void;
+    readonly delete: (id: _abuddy_sdk.EARS.EntityId) => void;
 };
 
 /**
- * Action Repository: the actions plugin's views over the SDK's action repository (`actionRepository`),
- * which owns their reads and writes
+ * Action Repository: the SDK's action repository (`actionRepository`), which owns their reads and writes, as the
+ * actions plugin uses it, and the plugin's views. The SDK's methods are taken as they are, not wrapped.
  */
 declare const actionQueries: {
-    readonly byId: (id: EARS.EntityId) => ActionEntity | undefined;
+    readonly byId: (id: _abuddy_sdk.EARS.EntityId) => ActionEntity | undefined;
     readonly all: () => ActionEntity[];
     readonly byLabel: (label: string) => ActionEntity | undefined;
     readonly byCategory: (category: string) => ActionEntity[];
@@ -4090,7 +4068,7 @@ declare const brainCommands: {
     };
     readonly updateTNodeStatus: (tNodeId: EARS.EntityId, status: TNodeEntity["status"]) => void;
     /** Records a step's result on its TNode, truncated (the SDK's TNode repository) */
-    readonly updateTNodeResult: (tNodeId: EARS.EntityId, result: any) => void;
+    readonly updateTNodeResult: (tNodeId: _abuddy_sdk.EARS.EntityId, result: unknown) => void;
     readonly updateTNodeAttributes: (tNodeId: EARS.EntityId, attributes: any) => void;
     readonly clearVolatileData: () => void;
 };
@@ -4450,31 +4428,31 @@ declare function findOrCreateByType(threadId: EARS.EntityId, artifactType: Artif
 
 declare const flowsCommands: {
     readonly createFlow: (flow?: Partial<FlowEntity>) => FlowEntity;
+    readonly createEdge: (sourceId: _abuddy_sdk.EARS.EntityId, targetId: _abuddy_sdk.EARS.EntityId, options?: {
+        sourceHandle?: string;
+        targetHandle?: string;
+    }) => {
+        relId: _abuddy_sdk.EARS.EntityId;
+    };
+    readonly updateFlowLabel: (flowId: _abuddy_sdk.EARS.EntityId, label: string) => void;
+    readonly updateNode: (nodeId: _abuddy_sdk.EARS.EntityId, updates: _abuddy_sdk_repositories.FlowNodeInput) => void;
+    readonly deleteNode: (nodeId: _abuddy_sdk.EARS.EntityId) => void;
+    readonly deleteEdge: (edgeId: _abuddy_sdk.EARS.EntityId) => void;
+    readonly updateEdge: (edgeId: _abuddy_sdk.EARS.EntityId, _oldSource: _abuddy_sdk.EARS.EntityId, _oldTarget: _abuddy_sdk.EARS.EntityId, newSource: _abuddy_sdk.EARS.EntityId, newTarget: _abuddy_sdk.EARS.EntityId) => {
+        newRelId: _abuddy_sdk.EARS.EntityId;
+    };
+    readonly revokeRootFlowRole: (flowId: _abuddy_sdk.EARS.EntityId) => void;
+    readonly deleteFlow: (flowId: _abuddy_sdk.EARS.EntityId, options?: {
+        allowRoot?: boolean;
+    }) => void;
+    readonly reindexHandles: (nodeId: _abuddy_sdk.EARS.EntityId, prefix: string, pivotIndex: number, direction: -1 | 1) => void;
     readonly createFlowWithEntryNode: (flow?: Partial<FlowEntity>) => {
         flow: FlowEntity;
         entryNode: NodeEntity;
     };
     readonly createNode: (flowId: EARS.EntityId, nodeData: NodeCreateInput) => NodeEntity;
-    readonly createEdge: (sourceId: EARS.EntityId, targetId: EARS.EntityId, options?: {
-        sourceHandle?: string;
-        targetHandle?: string;
-    }) => {
-        relId: EARS.EntityId;
-    };
-    readonly updateFlowLabel: (flowId: EARS.EntityId, label: string) => void;
-    readonly updateNode: (nodeId: EARS.EntityId, updates: NodeCreateInput) => void;
-    readonly deleteNode: (nodeId: EARS.EntityId) => void;
-    readonly deleteEdge: (edgeId: EARS.EntityId) => void;
-    readonly updateEdge: (edgeId: EARS.EntityId, oldSource: EARS.EntityId, oldTarget: EARS.EntityId, newSource: EARS.EntityId, newTarget: EARS.EntityId) => {
-        newRelId: EARS.EntityId;
-    };
     /** Makes a flow the root flow, and records it in the flows plugin's settings */
     readonly grantRootFlowRole: (flowId: EARS.EntityId) => void;
-    readonly revokeRootFlowRole: (flowId: EARS.EntityId) => void;
-    readonly deleteFlow: (flowId: EARS.EntityId, options?: {
-        allowRoot?: boolean;
-    }) => void;
-    readonly reindexHandles: (nodeId: EARS.EntityId, prefix: string, pivotIndex: number, direction: -1 | 1) => void;
     /** Imports compiled flow DSL; a root flow among it is recorded in the flows plugin's settings too */
     readonly importFromDSL: (compiled: CompiledRows) => {
         flowIds: EARS.EntityId[];
@@ -4484,11 +4462,11 @@ declare const flowsCommands: {
 };
 
 declare const flowsQueries: {
-    readonly rootFlow: () => EARS.EntityId | undefined;
-    readonly getNodeActionId: (nodeId: EARS.EntityId) => EARS.EntityId | undefined;
+    readonly rootFlow: () => _abuddy_sdk.EARS.EntityId | undefined;
+    readonly getNodeActionId: (nodeId: _abuddy_sdk.EARS.EntityId) => _abuddy_sdk.EARS.EntityId | undefined;
+    readonly flowEdges: (flowId: _abuddy_sdk.EARS.EntityId) => _abuddy_sdk_repositories.FlowEdge[];
     readonly node: (nodeId: EARS.EntityId) => NodeEntity | undefined;
     readonly flowNodes: (flowId: EARS.EntityId) => NodeEntity[];
-    readonly flowEdges: (flowId: EARS.EntityId) => EdgeEntity[];
     readonly extendedData: (flowId: EARS.EntityId, include?: keyof FlowExtendedData | (keyof FlowExtendedData)[]) => FlowExtendedData;
     readonly connectedData: () => FlowsConnectedData;
 };
@@ -4622,36 +4600,22 @@ declare function paginatedMessages(threadId: EARS.EntityId, cursor?: string | nu
 };
 
 declare const promptCommands: {
-    create: (input: {
-        label: string;
-        description?: string;
-        templateFn: string;
-        inputs?: Record<string, any>;
-        category?: string;
-        sourceHash?: string;
-    }) => PromptEntity;
-    update: (id: EARS.EntityId, updates: {
-        label?: string;
-        description?: string;
-        templateFn?: string;
-        inputs?: Record<string, any>;
-        category?: string;
-        sourceHash?: string;
-    }) => void;
+    create: (data: _abuddy_sdk_repositories.PromptInput) => _abuddy_sdk.PromptEntity;
+    update: (id: _abuddy_sdk.EARS.EntityId, updates: Partial<_abuddy_sdk_repositories.PromptInput>) => void;
     /** Marks the prompt deleted */
-    delete: (id: EARS.EntityId) => void;
+    delete: (id: _abuddy_sdk.EARS.EntityId) => void;
 };
 
 /**
- * Prompts Repository: the prompts plugin's views over the SDK's prompt repository (`promptRepository`),
- * which owns their reads and writes
+ * Prompts Repository: the SDK's prompt repository (`promptRepository`), which owns their reads and writes, as the
+ * prompts plugin uses it, and the plugin's views. The SDK's methods are taken as they are, not wrapped.
  */
 declare const promptQueries: {
-    byId: (id: EARS.EntityId) => PromptEntity | undefined;
-    all: () => PromptEntity[];
-    byLabel: (label: string) => PromptEntity | undefined;
+    byId: (id: _abuddy_sdk.EARS.EntityId) => _abuddy_sdk.PromptEntity | undefined;
+    all: () => _abuddy_sdk.PromptEntity[];
+    byLabel: (label: string) => _abuddy_sdk.PromptEntity | undefined;
     connectedData: (page?: number, pageSize?: number) => {
-        prompts: PromptEntity[];
+        prompts: _abuddy_sdk.PromptEntity[];
         page: number;
         totalPages: number;
         totalCount: number;

@@ -3,7 +3,6 @@ import { EARS } from '@/__generated__/ears';
 import { flowRepository } from '@abuddy/sdk/repositories';
 import type {
   NodeEntity,
-  EdgeEntity,
   FlowExtendedData,
   NodeCreateInput,
   FlowsConnectedData
@@ -15,9 +14,10 @@ import { ROOT_FLOW_ROLE } from '@abuddy/sdk';
 import type { FlowEntity } from '@abuddy/sdk';
 
 /**
- * Flow Repository: the flows plugin's views of flows, nodes and edges, over the SDK's flow repository
- * (`flowRepository`), which owns their reads and writes. Adds the connected data the plugin shows, a
- * flow created with its entry node, and the flows plugin's `rootFlowId` setting kept with the root role.
+ * Flow Repository: the SDK's flow repository (`flowRepository`), which owns the reads and writes of flows, nodes
+ * and edges, as the flows plugin uses it. Its methods are taken as they are, not wrapped; this adds nodes typed as
+ * this pack's step nodes, the connected data the plugin shows, a flow created with its entry node, and the flows
+ * plugin's `rootFlowId` setting kept with the root role.
  */
 
 export const FLOW_ROLES = {
@@ -39,16 +39,14 @@ const FLOW_QUERY_FIELDS = {
 
 // Queries
 export const flowsQueries = {
-  rootFlow: (): EARS.EntityId | undefined => flowRepository.rootFlow(),
+  rootFlow: flowRepository.rootFlow,
+  getNodeActionId: flowRepository.getNodeActionId,
+  flowEdges: flowRepository.flowEdges,
 
-  getNodeActionId: (nodeId: EARS.EntityId): EARS.EntityId | undefined => flowRepository.getNodeActionId(nodeId),
-
-  // Rows as stored: the pack's step node types
+  // The SDK's rows, typed as this pack's step nodes
   node: (nodeId: EARS.EntityId): NodeEntity | undefined => flowRepository.node(nodeId) as NodeEntity | undefined,
 
   flowNodes: (flowId: EARS.EntityId): NodeEntity[] => flowRepository.flowNodes(flowId) as NodeEntity[],
-
-  flowEdges: (flowId: EARS.EntityId): EdgeEntity[] => flowRepository.flowEdges(flowId) as EdgeEntity[],
 
   extendedData: (
     flowId: EARS.EntityId,
@@ -101,7 +99,16 @@ export const flowsQueries = {
 
 // Commands
 export const flowsCommands = {
-  createFlow: (flow?: Partial<FlowEntity>): FlowEntity => flowRepository.createFlow(flow),
+  createFlow: flowRepository.createFlow,
+  createEdge: flowRepository.createEdge,
+  updateFlowLabel: flowRepository.updateFlowLabel,
+  updateNode: flowRepository.updateNode,
+  deleteNode: flowRepository.deleteNode,
+  deleteEdge: flowRepository.deleteEdge,
+  updateEdge: flowRepository.updateEdge,
+  revokeRootFlowRole: flowRepository.revokeRootFlowRole,
+  deleteFlow: flowRepository.deleteFlow,
+  reindexHandles: flowRepository.reindexHandles,
 
   createFlowWithEntryNode: (flow?: Partial<FlowEntity>): { flow: FlowEntity; entryNode: NodeEntity } => {
     const newFlow = flowsCommands.createFlow(flow);
@@ -116,43 +123,15 @@ export const flowsCommands = {
     return { flow: newFlow, entryNode };
   },
 
+  // The SDK's row, typed as this pack's step nodes
   createNode: (flowId: EARS.EntityId, nodeData: NodeCreateInput): NodeEntity =>
     flowRepository.createNode(flowId, nodeData) as NodeEntity,
-
-  createEdge: (
-    sourceId: EARS.EntityId,
-    targetId: EARS.EntityId,
-    options?: { sourceHandle?: string; targetHandle?: string }
-  ): { relId: EARS.EntityId } => flowRepository.createEdge(sourceId, targetId, options),
-
-  updateFlowLabel: (flowId: EARS.EntityId, label: string): void => flowRepository.updateFlowLabel(flowId, label),
-
-  updateNode: (nodeId: EARS.EntityId, updates: NodeCreateInput): void => flowRepository.updateNode(nodeId, updates),
-
-  deleteNode: (nodeId: EARS.EntityId): void => flowRepository.deleteNode(nodeId),
-
-  deleteEdge: (edgeId: EARS.EntityId): void => flowRepository.deleteEdge(edgeId),
-
-  updateEdge: (
-    edgeId: EARS.EntityId,
-    oldSource: EARS.EntityId,
-    oldTarget: EARS.EntityId,
-    newSource: EARS.EntityId,
-    newTarget: EARS.EntityId
-  ): { newRelId: EARS.EntityId } => flowRepository.updateEdge(edgeId, oldSource, oldTarget, newSource, newTarget),
 
   /** Makes a flow the root flow, and records it in the flows plugin's settings */
   grantRootFlowRole: (flowId: EARS.EntityId): void => {
     flowRepository.grantRootFlowRole(flowId);
     repository.settingsCommands.updateSettings('plugin', 'flows', ['rootFlowId'], flowId);
   },
-
-  revokeRootFlowRole: (flowId: EARS.EntityId): void => flowRepository.revokeRootFlowRole(flowId),
-
-  deleteFlow: (flowId: EARS.EntityId, options?: { allowRoot?: boolean }): void => flowRepository.deleteFlow(flowId, options),
-
-  reindexHandles: (nodeId: EARS.EntityId, prefix: string, pivotIndex: number, direction: 1 | -1): void =>
-    flowRepository.reindexHandles(nodeId, prefix, pivotIndex, direction),
 
   /** Imports compiled flow DSL; a root flow among it is recorded in the flows plugin's settings too */
   importFromDSL: (compiled: CompiledRows): { flowIds: EARS.EntityId[] } => {
