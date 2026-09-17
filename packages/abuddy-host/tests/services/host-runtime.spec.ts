@@ -76,7 +76,7 @@ describe('createHostRuntime', () => {
     const external = { manifest: { id: 'reset-pack', name: 'Reset', version: '1.0.0' }, dir: '/nowhere', systems: new Map(), boot } as unknown as LoadedPack;
     packs.registerPack({ id: 'reset-pack', systems: [], boot });
     // A built-in pack with a boot seed
-    packs.registerPack({ id: 'seeded-pack', systems: [], boot: { seedManifest: { artifacts: ['notes'], compiledDir: '/nowhere' } } });
+    packs.registerPack({ id: 'seeded-pack', systems: [], boot: { seedManifest: { seedKeys: ['notes'], compiledDir: '/nowhere' } } });
     packs.registerShutdownHook(boot.onShutdown, 'reset-pack');
     setLoadedPacks([external]);
     try {
@@ -99,7 +99,7 @@ describe('startPacks', () => {
     order.length = 0;
     appMigrations.succeed = false;
     const packs = createPackRegistry();
-    packs.registerPack({ id: 'late-seeded-pack', systems: [], boot: { seedManifest: { artifacts: ['notes'], compiledDir: '/nowhere' } } });
+    packs.registerPack({ id: 'late-seeded-pack', systems: [], boot: { seedManifest: { seedKeys: ['notes'], compiledDir: '/nowhere' } } });
     const external = { manifest: { id: 'late-pack', name: 'Late', version: '1.0.0' }, dir: '/nowhere', systems: new Map() } as unknown as LoadedPack;
     try {
       startPacks(packs, [external]);

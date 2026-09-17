@@ -123,9 +123,8 @@ export interface PackRegistration {
 // @public (undocumented)
 export interface PackSeedManifest {
     // (undocumented)
-    artifacts: string[];
-    // (undocumented)
     compiledDir: string;
+    seedKeys: string[];
     // (undocumented)
     seedPolicy?: {
         skipAtBoot?: string[];

@@ -111,7 +111,7 @@ describe('reloading a built-in pack', () => {
           systems: [{ id: 'widget', machine: { id: 'widget', config: {} }, events: new Set(['PING']) }],
           boot: {
             onInit() { module.exports.compiledDirAtInit = module.exports.getCompiledDir(); },
-            seedManifest: { artifacts: ['actions'], get compiledDir() { return module.exports.getCompiledDir(); } },
+            seedManifest: { seedKeys: ['actions'], get compiledDir() { return module.exports.getCompiledDir(); } },
           },
         },
       };

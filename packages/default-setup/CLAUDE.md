@@ -162,7 +162,7 @@ The pack registers boot hooks via `__generated__/pack-entry.ts`:
 - `earlySystem` — the logs system, from `features[].earlySystem` (starts before hydration)
 - `onInit` — from `boot.hooks` (`src/features/hooks.ts`): `createDefaultSettings()` ensures the Settings entity exists (it stores only the user's changes to the defaults)
 - `onShutdown` — from `boot.hooks`: kills terminal processes, clears brain schedules, removes ad-hoc listeners and clears the flow actor registry
-- `seedManifest` — from `boot.seed` and `boot.seedPolicy`: the compiled seed artifacts the host seeds (hash-checked)
+- `seedManifest` — from `boot.seed` and `boot.seedPolicy`: its `seedKeys` are the compiled seeds the host seeds (hash-checked)
 
 ## Build
 
