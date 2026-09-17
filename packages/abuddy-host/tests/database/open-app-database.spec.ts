@@ -62,6 +62,24 @@ describe('findAppDataPaths', () => {
     expect(findAppDataPaths(packaged)).toEqual(appDataPaths(packaged, { packaged: true }));
   });
 
+  it('refuses a data dir holding only one of the two partitions, whether it reads or writes', async () => {
+    const dir = dataDirWithPacks();
+    await writeData(dir, () => {});
+    const paths = appDataPaths(dir, { packaged: false });
+    fs.rmSync(paths.volatileLmdb, { recursive: true });
+    const missingHistory = new RegExp(`missing the run history \\(${paths.volatileLmdb}\\): copy the whole data dir`);
+    expect(() => findAppDataPaths(dir)).toThrow(missingHistory);
+    await expect(openAppDatabase({ env: 'test', userDataDir: dir, readOnly: true, ...quiet })).rejects.toThrow(missingHistory);
+    // A write doesn't quietly make the missing partition either
+    await expect(openAppDatabase({ env: 'test', userDataDir: dir, ...quiet })).rejects.toThrow(missingHistory);
+    expect(fs.existsSync(paths.volatileLmdb)).toBe(false);
+
+    const onlyHistory = dataDirWithPacks();
+    await writeData(onlyHistory, () => {});
+    fs.rmSync(appDataPaths(onlyHistory, { packaged: false }).lmdb, { recursive: true });
+    expect(() => findAppDataPaths(onlyHistory)).toThrow(/missing the data \(/);
+  });
+
   it('refuses a data dir with no database, or one in each layout', async () => {
     const dir = dataDirWithPacks();
     expect(() => findAppDataPaths(dir)).toThrow(`No AgentBuddy database in ${dir}`);
