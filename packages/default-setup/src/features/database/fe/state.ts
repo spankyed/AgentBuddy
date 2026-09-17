@@ -54,7 +54,12 @@ export interface DatabaseContext {
   exporting: boolean;
   importing: boolean;
   /** The last export or import to finish, a new object each time */
-  backupResult: { operation: 'export' | 'import'; error?: string } | null;
+  backupResult: {
+    operation: 'export' | 'import';
+    error?: string;
+    /** The backup holds these stores, which this AgentBuddy doesn't have: importing it leaves them out */
+    unknownDatabases?: string[];
+  } | null;
 }
 
 type SystemEvent = OutgoingDatabaseEvents |
@@ -67,7 +72,7 @@ type SystemEvent = OutgoingDatabaseEvents |
   { type: 'EXPORT_DATABASE_SUCCESS'; path: string } |
   { type: 'EXPORT_DATABASE_ERROR'; error: string } |
   { type: 'IMPORT_DATABASE_SUCCESS'; message?: string } |
-  { type: 'IMPORT_DATABASE_ERROR'; error: string } |
+  { type: 'IMPORT_DATABASE_ERROR'; error: string; unknownDatabases?: string[] } |
   { type: 'BACKUP_INFO_RESULT'; info: { timestamp: number; databases: string[]; size: number; hasMedia?: boolean } | null } |
   { type: 'RESET_DATABASE_SUCCESS'; message: string } |
   { type: 'RESET_DATABASE_ERROR'; error: string }
@@ -90,7 +95,7 @@ type UIEvent =
   | { type: 'VIEW_BACKUP' }
   | { type: 'BACK_TO_EXPLORER' }
   | { type: 'BACKUP.EXPORT'; path: string; name?: string; databases: Array<'lmdb' | 'volatileLmdb'> }
-  | { type: 'BACKUP.IMPORT'; path: string }
+  | { type: 'BACKUP.IMPORT'; path: string; skipUnknownDatabases?: boolean }
   | TrailClickEvent
 
 export type DatabaseEvents = UIEvent | SystemEvent
@@ -453,7 +458,8 @@ const databaseState = setup({
     },
 
     importBackup: ({ event }) => {
-      sendToSystem(id, { type: 'IMPORT_DATABASE', path: typeOf('BACKUP.IMPORT', event).path });
+      const { path, skipUnknownDatabases } = typeOf('BACKUP.IMPORT', event);
+      sendToSystem(id, { type: 'IMPORT_DATABASE', path, skipUnknownDatabases });
     },
 
     exportFinished: assign(({ event }) => ({
@@ -463,7 +469,11 @@ const databaseState = setup({
 
     importFinished: assign(({ event }) => ({
       importing: false,
-      backupResult: { operation: 'import' as const, error: event.type === 'IMPORT_DATABASE_ERROR' ? event.error : undefined },
+      backupResult: {
+        operation: 'import' as const,
+        error: event.type === 'IMPORT_DATABASE_ERROR' ? event.error : undefined,
+        ...(event.type === 'IMPORT_DATABASE_ERROR' && event.unknownDatabases ? { unknownDatabases: event.unknownDatabases } : {}),
+      },
     })),
 
     /* ── reset database actions ─────────────────────────── */

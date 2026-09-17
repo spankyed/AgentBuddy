@@ -9,6 +9,7 @@ import type { SecretsService } from './secrets.ts';
 import type { FilesystemService } from './filesystem.ts';
 
 export type { AppDataService, BackupDatabase, BackupInfo } from './app-data.ts';
+export { UnknownBackupDatabasesError } from './app-data.ts';
 export type { TraceStore, TraceEntityMeta, TraceRelation } from './trace-store.ts';
 export { createInferenceService, type InferenceModels, type InferenceService, type OutputSchema, type OutputSpec, type ResolveModel } from './inference.ts';
 export type { FileEntry, FileStat, FilesystemService } from './filesystem.ts';
@@ -67,7 +68,7 @@ const appData: AppDataService = {
   hasOnboarded: () => app('appData').hasOnboarded(),
   completeOnboarding: () => app('appData').completeOnboarding(),
   exportBackup: (targetPath, name, databases) => app('appData').exportBackup(targetPath, name, databases),
-  importBackup: (backupPath) => app('appData').importBackup(backupPath),
+  importBackup: (backupPath, options) => app('appData').importBackup(backupPath, options),
   backupInfo: (backupPath) => app('appData').backupInfo(backupPath),
 };
 

@@ -4,6 +4,7 @@ import { performance } from 'node:perf_hooks';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { getActor } from '@abuddy/sdk/helpers';
 import { bus } from '@abuddy/sdk/ids';
+import { UnknownBackupDatabasesError } from '@abuddy/sdk/services';
 import { brain } from '@/__generated__/system-ids';
 import type { DatabaseStartupData } from './types';
 import { executeQuery } from './execute/query';
@@ -26,7 +27,7 @@ type IncomingDatabaseEvents =
   | { type: 'GET_FLOW_EVENTS'; flowId: string; offset?: number; limit?: number }
   | { type: 'GET_NODE_DETAILS'; nodeId: string }
   | { type: 'EXPORT_DATABASE'; path: string; name?: string; databases: ('lmdb' | 'volatileLmdb')[] }
-  | { type: 'IMPORT_DATABASE'; path: string }
+  | { type: 'IMPORT_DATABASE'; path: string; skipUnknownDatabases?: boolean }
   | { type: 'GET_BACKUP_INFO'; path: string }
   | { type: 'RESET_DATABASE' };
 
@@ -47,7 +48,7 @@ export type OutgoingDatabaseEvents =
   | { type: 'EXPORT_DATABASE_SUCCESS'; path: string }
   | { type: 'EXPORT_DATABASE_ERROR'; error: string }
   | { type: 'IMPORT_DATABASE_SUCCESS'; message?: string }
-  | { type: 'IMPORT_DATABASE_ERROR'; error: string }
+  | { type: 'IMPORT_DATABASE_ERROR'; error: string; unknownDatabases?: string[] }
   | { type: 'BACKUP_INFO_RESULT'; info: { timestamp: number; databases: string[]; size: number; hasMedia?: boolean } | null }
   | { type: 'RESET_DATABASE_SUCCESS'; message: string }
   | { type: 'RESET_DATABASE_ERROR'; error: string };
@@ -222,10 +223,10 @@ export const databaseSystem = setup({
       );
     },
     importDatabase: ({ system, event }) => {
-      const { path } = databaseSpec.typeOf('IMPORT_DATABASE', event);
-      
+      const { path, skipUnknownDatabases } = databaseSpec.typeOf('IMPORT_DATABASE', event);
+
       // Replaces stored data and reloads memory from it; on failure the previous data is restored and reloaded
-      services.appData.importBackup(path).then(
+      services.appData.importBackup(path, { skipUnknownDatabases }).then(
         () => {
           // Stop brain and notify success
           getActor(system, brain).send({ type: 'KILL_BRAIN' });
@@ -241,9 +242,11 @@ export const databaseSystem = setup({
         (error: unknown) => {
           const errorMessage = error instanceof Error ? error.message : String(error);
           logger.error('Failed to import database:', { error: errorMessage });
-          system.get(bus).send(emit(database, { 
+          system.get(bus).send(emit(database, {
             type: 'IMPORT_DATABASE_ERROR',
-            error: errorMessage
+            error: errorMessage,
+            // The user decides whether to import a newer AgentBuddy's backup without what this one can't hold
+            ...(error instanceof UnknownBackupDatabasesError && { unknownDatabases: error.databases }),
           }));
         }
       );

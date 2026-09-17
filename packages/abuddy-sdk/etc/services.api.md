@@ -36,7 +36,9 @@ export interface AppDataService {
     completeOnboarding(): void;
     exportBackup(targetPath: string, name?: string, databases?: BackupDatabase[]): Promise<string>;
     hasOnboarded(): boolean;
-    importBackup(backupPath: string): Promise<{
+    importBackup(backupPath: string, options?: {
+        skipUnknownDatabases?: boolean;
+    }): Promise<{
         databases: BackupDatabase[];
     }>;
     reset(): Promise<void>;
@@ -271,6 +273,13 @@ export interface TraceStore {
         id: string;
         rel: TraceRelation;
     }>;
+}
+
+// @public
+export class UnknownBackupDatabasesError extends Error {
+    constructor(databases: string[]);
+    // (undocumented)
+    readonly databases: string[];
 }
 
 // (No @packageDocumentation comment for this package)

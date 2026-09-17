@@ -29,8 +29,24 @@ export interface AppDataService {
   /**
    * Replaces stored data with a backup and reloads the in-memory database from it. On failure the
    * previous data is restored and reloaded, and the error is rethrown.
+   *
+   * A backup holding stores this AgentBuddy doesn't have (one a newer version made) is refused with
+   * `UnknownBackupDatabasesError`, since restoring it would replace the user's data with an incomplete copy.
+   * `skipUnknownDatabases` imports it anyway, without those stores, once the user has said so.
    */
-  importBackup(backupPath: string): Promise<{ databases: BackupDatabase[] }>;
+  importBackup(backupPath: string, options?: { skipUnknownDatabases?: boolean }): Promise<{ databases: BackupDatabase[] }>;
   /** A backup's metadata, or null when `backupPath` isn't a backup */
   backupInfo(backupPath: string): Promise<BackupInfo | null>;
+}
+
+/**
+ * A backup holds stores this AgentBuddy doesn't have, so restoring it would replace the user's data with an
+ * incomplete copy of it. The app asks the user before importing it without them; `abuddy db import` takes
+ * `--skip-unknown`.
+ */
+export class UnknownBackupDatabasesError extends Error {
+  constructor(readonly databases: string[]) {
+    super(`The backup holds data this AgentBuddy doesn't have: ${databases.join(', ')}. It was made by a newer AgentBuddy, and importing it would replace your data with an incomplete copy.`);
+    this.name = 'UnknownBackupDatabasesError';
+  }
 }

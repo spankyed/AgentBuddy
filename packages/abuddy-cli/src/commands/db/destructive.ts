@@ -9,6 +9,7 @@ import { createSecretsStore } from '@abuddy/host/secrets';
 import { openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
 
 const FORCE = { force: { type: 'boolean', default: false } } as const;
+const IMPORT_OPTIONS = { ...FORCE, 'skip-unknown': { type: 'boolean', default: false } } as const;
 const FORCE_USAGE = '  --force                Make the change (without it, the command only lists it)';
 
 const DRY_RUN = 'Dry run: nothing was changed. Run again with --force to make the change.';
@@ -135,15 +136,17 @@ export const IMPORT_USAGE = [
   'Usage: abuddy db import <backup-dir> [--force] [options]',
   '',
   'Replaces the database (and media) with a backup made in the Database settings\' Backup & Restore, after checking',
-  'the backup opens.',
+  'the backup opens. A backup from a newer AgentBuddy, holding stores this one doesn\'t have, is refused unless you',
+  'say to leave those out.',
   '',
   'Options:',
   FORCE_USAGE,
+  '  --skip-unknown         Import a newer AgentBuddy\'s backup without the stores this one doesn\'t have',
   TARGET_USAGE,
 ].join('\n');
 
 export async function dbImport(args: string[], io: DbIo): Promise<void> {
-  const { values, positionals, target } = parseDbArgs(args, FORCE, IMPORT_USAGE);
+  const { values, positionals, target } = parseDbArgs(args, IMPORT_OPTIONS, IMPORT_USAGE);
   if (positionals.length !== 1) throw new Error(`Name one backup directory\n\n${IMPORT_USAGE}`);
   const backupDir = path.resolve(positionals[0]);
   const force = values.force as boolean;
@@ -153,9 +156,17 @@ export async function dbImport(args: string[], io: DbIo): Promise<void> {
   const done = await withDatabase(db, async () => {
     // The backup is checked before anything changes
     const backup = readBackup(backupDir, db.schema.getRegisteredEntityTypes());
+    const skipUnknown = values['skip-unknown'] as boolean;
+    if (backup.unknownDatabases.length > 0 && !skipUnknown) {
+      throw new Error(
+        `The backup also holds ${backup.unknownDatabases.join(', ')}, which this AgentBuddy doesn't have: it was made by a newer ` +
+        'one, and importing it would replace your data with an incomplete copy. Run again with --skip-unknown to import it without those.',
+      );
+    }
     io.out(`Backup: ${backupDir}`);
     if (backup.timestamp) io.out(`  made ${new Date(backup.timestamp).toISOString()}`);
     io.out(`  databases: ${backup.databases.join(', ')}${backup.hasMedia ? ', with media' : ''}`);
+    if (backup.unknownDatabases.length > 0) io.out(`  leaving out ${backup.unknownDatabases.join(', ')}, which this AgentBuddy doesn't have`);
     countLines(backup.counts).forEach((line) => io.out(line));
     io.out(`${force ? 'Replacing' : 'Would replace'} the current database, which holds:`);
     countLines(entityCounts(db)).forEach((line) => io.out(line));
@@ -165,7 +176,7 @@ export async function dbImport(args: string[], io: DbIo): Promise<void> {
       return null;
     }
     db.admin.clear();
-    await importDatabase(db.store, backupDir, db.paths.media);
+    await importDatabase(db.store, backupDir, db.paths.media, { skipUnknownDatabases: skipUnknown });
     return '\nImported.';
   });
   if (done) io.out(done);

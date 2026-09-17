@@ -2,6 +2,7 @@ import fs from 'fs-extra';
 import path from 'node:path';
 import { createLogger } from '@abuddy/sdk/logger';
 import { closeEnv, openEnvAt, type LmdbStore } from '@abuddy/ears/lmdb';
+import { UnknownBackupDatabasesError } from '@abuddy/sdk/services';
 
 const logger = createLogger('database:backup');
 
@@ -63,9 +64,16 @@ export async function exportDatabase(
  * Replaces `store`'s files (and the media folder `mediaPath`) with the backup's, closing the store meanwhile; puts the
  * old files back if that fails
  */
-export async function importDatabase(store: LmdbStore, backupPath: string, mediaPath: string) {
+export async function importDatabase(
+  store: LmdbStore,
+  backupPath: string,
+  mediaPath: string,
+  { skipUnknownDatabases = false }: { skipUnknownDatabases?: boolean } = {},
+) {
   // Checked before anything is replaced: a backup this app can't restore must not cost the user their data first
-  const { databases } = readBackup(backupPath);
+  const { databases, unknownDatabases } = readBackup(backupPath);
+  if (unknownDatabases.length > 0 && !skipUnknownDatabases) throw new UnknownBackupDatabasesError(unknownDatabases);
+  if (unknownDatabases.length > 0) logger.warn('Importing without the stores this AgentBuddy does not have', { unknownDatabases });
   const tempBackupPath = path.join(path.dirname(store.paths.primary), 'temp-backup-' + Date.now());
 
   await fs.ensureDir(tempBackupPath);
@@ -171,13 +179,16 @@ export interface BackupContents {
   hasMedia: boolean;
   /** Entities per type in its primary database, for the given types that have some */
   counts: Array<[string, number]>;
+  /** Stores the backup holds that this AgentBuddy doesn't have: importing leaves them out */
+  unknownDatabases: string[];
 }
 
 /**
- * Checks the backup at `dir` restores into this app and reads what it holds: its metadata lists only databases the
- * app has, the primary database (`lmdb`) among them and present, and that one opens (so a backup in another storage
- * format is refused here, not half-way through an import). A listed database whose folder is missing was empty and is
- * left out, as the import leaves it out. Throws naming what's wrong. `entityTypes` are the types to count.
+ * Checks the backup at `dir` restores into this app and reads what it holds: its metadata lists the primary database
+ * (`lmdb`), which is there and opens (so a backup in another storage format is refused here, not half-way through an
+ * import). A listed database whose folder is missing was empty and is left out, as the import leaves it out, and one
+ * this AgentBuddy doesn't have is reported as `unknownDatabases` for the caller to decide about. Throws naming what's
+ * wrong. `entityTypes` are the types to count.
  */
 export function readBackup(dir: string, entityTypes: Iterable<string> = []): BackupContents {
   const metadataFile = path.join(dir, 'metadata.json');
@@ -189,9 +200,8 @@ export function readBackup(dir: string, entityTypes: Iterable<string> = []): Bac
     throw new Error(`${metadataFile} can't be read: ${(error as Error).message}`);
   }
   if (!Array.isArray(metadata.databases)) throw new Error(`${metadataFile} lists no databases`);
-  const unknown = metadata.databases.filter((name) => !isKnownDatabase(String(name)));
-  if (unknown.length > 0) throw new Error(`The backup has databases this AgentBuddy doesn't: ${unknown.join(', ')}`);
-  const listed = metadata.databases as DatabaseName[];
+  const unknownDatabases = metadata.databases.filter((name) => !isKnownDatabase(String(name))).map(String);
+  const listed = metadata.databases.filter((name) => isKnownDatabase(String(name))) as DatabaseName[];
   if (!listed.includes('lmdb')) throw new Error("The backup doesn't include the database (lmdb)");
   // A listed database whose folder isn't there was empty when the backup was made, and the import skips it too
   const databases = listed.filter((name) => fs.existsSync(path.join(dir, name, 'data.mdb')));
@@ -208,6 +218,7 @@ export function readBackup(dir: string, entityTypes: Iterable<string> = []): Bac
     return {
       ...(typeof metadata.timestamp === 'number' && { timestamp: metadata.timestamp }),
       databases,
+      unknownDatabases,
       hasMedia: fs.existsSync(path.join(dir, 'media')),
       counts,
     };

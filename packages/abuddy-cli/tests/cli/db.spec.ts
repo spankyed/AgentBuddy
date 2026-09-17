@@ -603,15 +603,33 @@ describe('abuddy db import', () => {
     const notBackup = tempDir('not-backup-');
     expect((await run(['import', notBackup, '--force', '--data-dir', dir])).error?.message).toMatch(/isn't a backup: it has no metadata\.json/);
 
-    const unknown = await backupWith('x');
-    fs.writeFileSync(path.join(unknown, 'metadata.json'), JSON.stringify({ databases: ['lmdb', 'other'] }));
-    expect((await run(['import', unknown, '--force', '--data-dir', dir])).error?.message).toMatch(/databases this AgentBuddy doesn't: other/);
 
     const missing = await backupWith('x');
     fs.rmSync(path.join(missing, 'lmdb'), { recursive: true });
     expect((await run(['import', missing, '--force', '--data-dir', dir])).error?.message).toMatch(/lmdb folder is missing/);
 
     expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('Alpha');
+  });
+
+  it("refuses a backup from a newer AgentBuddy, saying how to import it without what this one can't hold", async () => {
+    const dir = await appDataDir();
+    const backup = await backupWith('From the backup');
+    const metadata = JSON.parse(fs.readFileSync(path.join(backup, 'metadata.json'), 'utf-8'));
+    fs.writeFileSync(path.join(backup, 'metadata.json'), JSON.stringify({ ...metadata, databases: [...metadata.databases, 'searchIndex'] }));
+
+    const refused = await run(['import', backup, '--force', '--data-dir', dir]);
+    expect(refused.error?.message).toBe(
+      "The backup also holds searchIndex, which this AgentBuddy doesn't have: it was made by a newer one, and importing it " +
+      'would replace your data with an incomplete copy. Run again with --skip-unknown to import it without those.',
+    );
+    expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('Alpha');
+
+    // The dry run says what it would leave out
+    expect((await ok(['import', backup, '--skip-unknown', '--data-dir', dir])).out)
+      .toContain("leaving out searchIndex, which this AgentBuddy doesn't have");
+
+    await ok(['import', backup, '--force', '--skip-unknown', '--data-dir', dir]);
+    expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('From the backup');
   });
 
   it('refuses while an app runs on the data dir', async () => {

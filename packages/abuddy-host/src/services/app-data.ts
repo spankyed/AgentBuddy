@@ -31,9 +31,9 @@ export function createAppData(store: LmdbStore, engine: EarsAdmin, registry: Pac
     hasOnboarded: () => appState.get().hasOnboarded,
     completeOnboarding: () => appState.update({ hasOnboarded: true }),
     exportBackup: (targetPath, name, databases) => exportDatabase(store, targetPath, { name, databases, mediaPath: getMediaPath() }),
-    async importBackup(backupPath) {
+    async importBackup(backupPath, options) {
       try {
-        const result = await importDatabase(store, backupPath, getMediaPath());
+        const result = await importDatabase(store, backupPath, getMediaPath(), options);
         const databases = result.databases as BackupDatabase[];
         await reloadMemory(databases.includes('volatileLmdb'));
         // A backup from an earlier version is migrated now, not at the next boot (one from before AppState keeps
