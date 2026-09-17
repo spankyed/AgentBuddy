@@ -1,7 +1,7 @@
 // What every `abuddy db` command shares: the data dir it targets, and opening its database offline
 import * as path from 'node:path';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
-import { resolveAppContext, type AppContext, type AppEnv } from '@abuddy/sdk/env';
+import { appDataDirFor, resolveAppContext, type AppContext, type AppEnv } from '@abuddy/sdk/env';
 import { findRunningApp, holdDatabaseWriteLock, openAppDatabase, type AppDatabase } from '@abuddy/host/database';
 import { consoleEars, type ConsoleScope } from '@abuddy/sdk/database-console';
 
@@ -57,7 +57,13 @@ export function parseDbArgs<O extends NonNullable<ParseArgsConfig['options']>>(a
   const named = [dev && '-d', beta && '-b', production && '--production', dataDir !== undefined && '--data-dir'].filter(Boolean) as string[];
   if (named.length > 1) throw new Error(`Name one data dir, not ${named.length}: ${named.join(', ')}\n\n${usage}`);
   const env: AppEnv = beta ? 'beta' : dev ? 'development' : 'production';
-  const context = resolveAppContext({ env, ...(dataDir !== undefined && { userDataDir: path.resolve(dataDir) }) });
+  // A named app is that app's data dir, not the one ABUDDY_USER_DATA_DIR points at: the flag says which app, and a
+  // command that changes data must name one. With no flag the variable still applies, which is how the repo's
+  // db:* scripts and tests read a temp data dir
+  const userDataDir = dataDir !== undefined ? path.resolve(dataDir)
+    : (dev || beta || production) ? appDataDirFor(env)
+    : undefined;
+  const context = resolveAppContext({ env, ...(userDataDir !== undefined && { userDataDir }) });
   const target: DbTarget = { env, userDataDir: context.userDataDir, apiPortFile: context.apiPortFile, named: named.length === 1, volatile };
   return { values: parsed.values as typeof parsed.values & Record<keyof O, unknown>, positionals: parsed.positionals, target };
 }

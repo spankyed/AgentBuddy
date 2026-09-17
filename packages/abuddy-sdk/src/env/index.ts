@@ -94,6 +94,14 @@ function platformDataDir(appName: string): string {
  * Resolve environment and data paths. Explicit input wins, then ABUDDY_ENV /
  * ABUDDY_USER_DATA_DIR. Throws when the environment can't be determined.
  */
+/**
+ * Where an environment's app keeps its data on this machine, whatever `ABUDDY_USER_DATA_DIR` says: the dir a tool
+ * means when it names an app (`abuddy db -d`), rather than the one a shell happens to point at.
+ */
+export function appDataDirFor(env: AppEnv): string {
+  return platformDataDir(APP_NAMES[env]);
+}
+
 export function resolveAppContext(input: { env?: AppEnv; userDataDir?: string } = {}): AppContext {
   const env = input.env ?? parseAppEnv(process.env.ABUDDY_ENV);
   if (!env) {

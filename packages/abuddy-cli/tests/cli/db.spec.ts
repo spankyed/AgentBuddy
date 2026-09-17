@@ -12,7 +12,7 @@ import { exportDatabase } from '@abuddy/host/backup';
 import { closeEnv, openEnvAt } from '@abuddy/ears/lmdb';
 import { createSecretsStore, memoryKeyVault } from '@abuddy/host/secrets';
 import { appDataPaths } from '@abuddy/sdk/utils';
-import { resolveAppContext } from '@abuddy/sdk/env';
+import { appDataDirFor, resolveAppContext } from '@abuddy/sdk/env';
 import { db } from '../../src/commands/db';
 import { parseDbArgs } from '../../src/commands/db/target';
 import { dbRepl } from '../../src/commands/db/repl';
@@ -234,11 +234,19 @@ describe('naming the data dir', () => {
     }
   });
 
-  it('takes --data-dir over ABUDDY_USER_DATA_DIR in the environment', () => {
+  // The variable is how the repo's db:* scripts and these tests point at a temp data dir, so it still applies when
+  // nothing names an app; a flag that does name one means that app's data, not whatever the shell points at
+  it('takes a named data dir over ABUDDY_USER_DATA_DIR, and takes the variable when nothing is named', () => {
     const dir = tempDir('abuddy-db-env-');
-    process.env.ABUDDY_USER_DATA_DIR = path.join(os.tmpdir(), 'abuddy-db-from-env');
+    const fromEnv = path.join(os.tmpdir(), 'abuddy-db-from-env');
+    process.env.ABUDDY_USER_DATA_DIR = fromEnv;
     try {
       expect(parseDbArgs(['--data-dir', dir], {}, 'usage').target.userDataDir).toBe(dir);
+      // The app's own data dir, which is what resolveAppContext gives when the variable isn't set
+      for (const [args, env] of [[['-d'], 'development'], [['-b'], 'beta'], [['--production'], 'production']] as const) {
+        expect(parseDbArgs([...args], {}, 'usage').target.userDataDir, args.join(' ')).toBe(appDataDirFor(env));
+      }
+      expect(parseDbArgs([], {}, 'usage').target.userDataDir).toBe(fromEnv);
     } finally {
       delete process.env.ABUDDY_USER_DATA_DIR;
     }
@@ -274,14 +282,17 @@ describe('naming the data dir', () => {
     }
   });
 
-  it('takes --production as naming the production data dir', async () => {
+  // --production names the real production app's data, which no test may open, so the write goes to a named dir
+  it('names a data dir for a change, and writes what the code returns to it', async () => {
     const dir = await appDataDir();
     process.env.ABUDDY_USER_DATA_DIR = dir;
     try {
-      const { out, err } = await ok(['exec', "tx('Note-a').put('title', 'Named')", '--production']);
+      expect(parseDbArgs(['--production'], {}, 'usage').target.userDataDir).toBe(appDataDirFor('production'));
+
+      const { out, err } = await ok(['exec', "tx('Note-a').put('title', 'Named')", '--data-dir', dir]);
       expect(err).toContain(`Database: ${dir} (offline)`);
       expect(out).toBe('undefined');
-      expect((await ok(['query', "return getAttr('Note-a', 'title')", '--production'])).out).toBe('Named');
+      expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('Named');
     } finally {
       delete process.env.ABUDDY_USER_DATA_DIR;
     }

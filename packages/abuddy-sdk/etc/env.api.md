@@ -32,6 +32,9 @@ export interface AppContext {
     userDataDir: string;
 }
 
+// @public
+export function appDataDirFor(env: AppEnv): string;
+
 // @public (undocumented)
 export type AppEnv = 'production' | 'beta' | 'development' | 'test';
 
@@ -55,7 +58,7 @@ export function readApiEndpoint(apiPortFile: string): ApiEndpoint | null;
 // @public
 export type ReleaseChannel = Extract<AppEnv, 'production' | 'beta'>;
 
-// @public
+// @public (undocumented)
 export function resolveAppContext(input?: {
     env?: AppEnv;
     userDataDir?: string;
