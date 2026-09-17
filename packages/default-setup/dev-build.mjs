@@ -3,6 +3,8 @@ import * as crypto from 'crypto';
 import * as path from 'path';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
+// SDK source, so run with --import tsx --conditions=@abuddy/source (the build script and dev-mode.js do)
+import { API_TOKEN_HEADER, resolveAppContext } from '@abuddy/sdk/env';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const srcDir = path.resolve(__dirname, 'src');
 const entryPoint = path.resolve(srcDir, '__generated__/pack-entry.ts');
@@ -22,21 +24,10 @@ function recordSeedsIndex() {
   }
 }
 
-import * as os from 'os';
 const watchMode = process.argv.includes('--watch');
 
-function resolveAppDataDir(appName) {
-  const home = os.homedir();
-  switch (process.platform) {
-    case 'darwin': return path.join(home, 'Library', 'Application Support', appName);
-    case 'win32': return path.join(process.env.APPDATA || path.join(home, 'AppData', 'Roaming'), appName);
-    default: return path.join(process.env.XDG_DATA_HOME || path.join(home, '.local', 'share'), appName);
-  }
-}
-const PORT_FILE = path.join(resolveAppDataDir('abuddy-dev'), 'api-port');
-// The token the development app's API requires, sent in API_TOKEN_HEADER (@abuddy/sdk/env)
-const TOKEN_FILE = path.join(resolveAppDataDir('abuddy-dev'), 'api-token');
-const API_TOKEN_HEADER = 'x-abuddy-api-token';
+// Where the development app's API writes its port and the token /dev/reload requires
+const { apiPortFile, apiTokenFile } = resolveAppContext({ env: 'development' });
 
 const aliasPlugin = {
   name: 'resolve-aliases',
@@ -102,8 +93,8 @@ function readDevFile(file) {
 }
 
 async function notifyReload() {
-  const port = readDevFile(PORT_FILE);
-  const token = readDevFile(TOKEN_FILE);
+  const port = readDevFile(apiPortFile);
+  const token = readDevFile(apiTokenFile);
   if (!port || !token) return;
   try {
     const res = await fetch(`http://127.0.0.1:${port}/dev/reload`, {

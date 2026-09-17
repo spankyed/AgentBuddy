@@ -17,7 +17,6 @@ const ALLOWED: Record<string, string> = {
   'electron-builder.mjs': 'build time: picks the beta appId/productName',
   'build/build.sh': 'build time: exports the release channel',
   'build/prod/clean.sh': 'manual cleanup script that deliberately removes a packaged app\'s data dir',
-  'packages/default-setup/dev-build.mjs': 'dev tooling that explicitly targets abuddy-dev',
   'packages/abuddy-sdk/tests/env/identity-guard.spec.ts': 'this guard',
   'packages/abuddy-sdk/tests/env/app-context.spec.ts': 'resolver tests',
 };

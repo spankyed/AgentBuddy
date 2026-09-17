@@ -111,14 +111,16 @@ export function createWebSocketServer() {
     console.log(message);
 
     // Local tools (`abuddy dev`, the built-in pack's watcher) find a development app's API through these files, and
-    // an API started by hand tells its clients its own token the same way. The token's is readable only by the user.
+    // an API started by hand tells its clients its own token the same way. The token file is readable only by the user.
     if (process.env.NODE_ENV === 'development' || apiTokenIsOwn()) {
       const { apiPortFile, apiTokenFile } = resolveAppContext();
       try {
         fs.mkdirSync(path.dirname(apiPortFile), { recursive: true });
         fs.writeFileSync(apiPortFile, String(port));
-        fs.writeFileSync(apiTokenFile, token, { mode: 0o600 });
-        fs.chmodSync(apiTokenFile, 0o600);
+        // A new file created private, then moved over the old one: an existing file's permissions never apply to the token
+        const tempFile = `${apiTokenFile}.${process.pid}.tmp`;
+        fs.writeFileSync(tempFile, token, { mode: 0o600, flag: 'wx' });
+        fs.renameSync(tempFile, apiTokenFile);
         if (apiTokenIsOwn()) logger.info(`No ABUDDY_API_TOKEN given: clients send the token in ${apiTokenFile}`);
       } catch {}
     }
