@@ -456,10 +456,6 @@ const handleMouseMove = () => {
 }
 
 const highlightedName = (result: any) => {
-  if (result.matchRanges.length === 0) {
-    return result.item.name
-  }
-  
   // Adjust match ranges to be relative to the filename, not the full path
   const pathPrefixLength = result.item.relativePath.length - result.item.name.length
   const adjustedRanges = result.matchRanges

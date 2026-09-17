@@ -82,9 +82,8 @@ Database operations live in `packages/api/scripts/db` and run through `npm run d
    - `--ignore-version` exists only for read commands.
    - The CLI copy bundled inside the app always matches.
 5. **Local endpoints are authenticated (if Decision 2 is B).**
-   - The API binds loopback only, and writes a random token next to `apiPortFile` (`api-token`, mode 0600, removed on shutdown).
-   - Every db endpoint requires it.
-   - The existing `/dev/reload` adopts the same token.
+   - Done already: the API binds loopback only, requires the token Electron main creates per app run (`ABUDDY_API_TOKEN`), and in development writes it to `apiTokenFile` (`api-token`, mode 0600, removed on shutdown). `/dev/reload` requires it in `API_TOKEN_HEADER`, and `abuddy dev` sends it.
+   - Every db endpoint requires it too.
 6. **Destructive commands are dry runs by default.**
    - `reset`, `import` and `clear-settings` list what they would change and need `--force` to act, as `db:clearSettings` does today.
    - `import` validates the backup first.
@@ -124,7 +123,7 @@ Database operations live in `packages/api/scripts/db` and run through `npm run d
   - a write through the endpoint is visible to the running systems;
   - a reset through the endpoint matches Settings → Reset app.
 
-**Done when:** each endpoint is covered, including rejection without the token. `/dev/reload` requires the token, and `abuddy dev` sends it.
+**Done when:** each endpoint is covered, including rejection without the token.
 
 ### Phase 3 — `abuddy db` commands
 - **Commands** in `packages/abuddy-cli/src/commands/db/`:

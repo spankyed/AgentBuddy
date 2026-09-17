@@ -40,8 +40,9 @@ const fileUtils = {
   getPathForFile: (file: File) => webUtils.getPathForFile(file),
 };
 
-// Get the API port
+// Get the API port, and the token the API requires (from main, never on the command line)
 const apiPort = getApiPort();
+const apiToken = ipcRenderer.sendSync('api:token') as string;
 const startupId = getStartupId();
 
 // Shell utilities
@@ -222,6 +223,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   apiStatus,
   rendererLog,
   apiPort,
+  apiToken,
   startupId,
   browser,
   protocolAction,

@@ -19,6 +19,7 @@ The preload script every AgentBuddy window loads (`packages/main`'s `WindowManag
 ## Values read at load
 
 - `apiPort` — from the `--api-port=<n>` argument main appends when it creates the window (default `3001`). It is fixed for the window's life; the renderer follows later port changes through `apiStatus.onEvent` (`api:started`).
+- `apiToken` — the token the API requires for this app run, read from main with `ipcRenderer.sendSync('api:token')` as the preload loads (never on the command line, where other processes could read it). The renderer's tRPC client sends it when connecting. The SDK's `Window.electronAPI` type leaves it out on purpose, so pack authors aren't pointed at it; the renderer reads it through its own type (`core/trpc.ts`). Leaving it out of the type only stops advertising it: external pack frontends run in the app window (loaded with `import()` from `pack://`), so they can still read `electronAPI.apiToken`, and the rest of `electronAPI`, at runtime. Closing that means isolating pack frontends from the app window, for example in a sandboxed iframe or a `WebContentsView` per pack with only an SDK message bridge and no preload. That isn't built yet; the plan is [`docs/goals/goal-pack-frontend-isolation.md`](../../docs/goals/goal-pack-frontend-isolation.md).
 - `startupId` — from `--startup-id=<id>`: the id main generates per launch and also passes to the API as `AGENTBUDDY_STARTUP_ID`.
 
 ## IPC surface
@@ -60,4 +61,4 @@ The renderer and packs don't import this package's types. `Window.electronAPI` i
 
 The declaration marks `electronAPI` optional, because it is missing outside Electron (vitest/jsdom). Callers use `window.electronAPI?.…`.
 
-Not every member is declared: the SDK type lacks `fileUtils.getPathForFile`, `shell.openImageExternal`, `apiStatus.reload` and `apiStatus.openLogFile`. default-setup reaches `getPathForFile` through `(window as any)`. The renderer's error page, plain script in `packages/renderer/index.html`, calls `reload`, `relaunch` and `openLogFile`. Nothing calls `openImageExternal`.
+Not every member is declared: the SDK type lacks `apiToken` (on purpose, above), `fileUtils.getPathForFile`, `shell.openImageExternal`, `apiStatus.reload` and `apiStatus.openLogFile`. default-setup reaches `getPathForFile` through `(window as any)`. The renderer's error page, plain script in `packages/renderer/index.html`, calls `reload`, `relaunch` and `openLogFile`. Nothing calls `openImageExternal`.

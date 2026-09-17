@@ -50,12 +50,13 @@ The allowlists are populated only when `renderer` is a URL (dev server); from a 
 
 ## API server (`src/modules/api-server/`)
 
-- `ApiServer.enable` registers IPC (`api:get-status`, `api:open-log-file`, `app:reload`, `app:relaunch`) and starts the server on `app.whenReady()`.
+- `ApiServer` creates the API token for this app run (`apiToken`, 32 random bytes). The API process gets it as `ABUDDY_API_TOKEN` (`getEnvironment`), the app's windows through the synchronous `api:token` IPC their preload sends. The in-app browser's tabs have no preload, so web pages never see it.
+- `ApiServer.enable` registers IPC (`api:token`, `api:get-status`, `api:open-log-file`, `app:reload`, `app:relaunch`) and starts the server on `app.whenReady()`.
 - `startApiServer` SIGKILLs orphaned API processes (`ps`, macOS/Linux: same `dist/server.js` path, `AgentBuddy` in the command, parent pid 1), then spawns it:
   - `getApiPaths()`: `<appPath>/packages/api` from source, `<resources>/app/packages/api` packaged (no ASAR).
   - `getNodeExecutable()`: `node` from source; packaged, Electron itself with `ELECTRON_RUN_AS_NODE=1`.
   - `getExecutionArgs()`: from source `--conditions=@abuddy/source dist/server.js`, so packs' `@abuddy/*` imports resolve to workspace source.
-  - `getEnvironment()`: `API_PORT`, `NODE_ENV`, `BUILT_IN_PACKS_DIR` (`packages/`), `AGENTBUDDY_STARTUP_ID`, `AGENTBUDDY_LOG_DIR`, `ABUDDY_ENV`, `ABUDDY_USER_DATA_DIR`; packaged builds append Homebrew, `/usr/local/bin` and nvm dirs to `PATH`.
+  - `getEnvironment()`: `API_PORT`, `ABUDDY_API_TOKEN` (the run's API token), `NODE_ENV`, `BUILT_IN_PACKS_DIR` (`packages/`), `AGENTBUDDY_STARTUP_ID`, `AGENTBUDDY_LOG_DIR`, `ABUDDY_ENV`, `ABUDDY_USER_DATA_DIR`; packaged builds append Homebrew, `/usr/local/bin` and nvm dirs to `PATH`.
   - Port: `getPort({ port: preferredPort })` (3001 first, then the last port that worked) after `clearLockedPorts()`, so a restart keeps the renderer's URL when it can.
 - `ProcessManager` (`process-manager.ts`) pipes stdout/stderr to the log. The server counts as ready at the first stdout line containing `WebSocket Server listening` with `ws://localhost:<port>`. Stderr lines starting with `{"__fatal":` are collected and broadcast as `api:fatal`.
 - On exit it broadcasts `api:stopped` (`{ error, restarting }`) and restarts after 2 s, up to 3 attempts (`API_CONFIG` in `config.ts`); the count resets once a launch has run for 5 s. After the last attempt it broadcasts `api:error` and rejects `waitForReady()`.

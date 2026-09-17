@@ -4,6 +4,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { Page } from '@playwright/test';
+import { API_TOKEN_HEADER } from '@abuddy/sdk/env';
 import { test, expect } from './fixtures/app';
 
 const SEED_FILE = path.resolve(import.meta.dirname, '../../packages/default-setup/dist/library.seed.json');
@@ -44,8 +45,12 @@ test.afterEach(() => {
 });
 
 test('a rebuilt built-in pack reloads with the seed data the rebuild changed', async ({ app, appPage }) => {
-  const apiPort = await appPage.evaluate(() => (window as { electronAPI?: { apiPort?: number } }).electronAPI?.apiPort);
+  const { apiPort, apiToken } = await appPage.evaluate(() => {
+    const api = (window as { electronAPI?: { apiPort?: number; apiToken?: string } }).electronAPI;
+    return { apiPort: api?.apiPort, apiToken: api?.apiToken ?? '' };
+  });
   expect(apiPort, 'the renderer knows the API port').toBeTruthy();
+  expect(apiToken, 'the renderer knows the API token').toBeTruthy();
 
   await app.navigate('library');
   await expect.poll(() => libraryDocuments(appPage)).toContain(SEEDED_DOCUMENT);
@@ -57,7 +62,7 @@ test('a rebuilt built-in pack reloads with the seed data the rebuild changed', a
 
   const response = await fetch(`http://127.0.0.1:${apiPort}/dev/reload`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', [API_TOKEN_HEADER]: apiToken },
     body: JSON.stringify({ packId: 'default-setup', builtIn: true }),
   });
   expect(response.status, await response.text()).toBe(200);

@@ -4,6 +4,9 @@
 
 ```ts
 
+// @public
+export const API_TOKEN_HEADER = "x-abuddy-api-token";
+
 // @public (undocumented)
 export const APP_ENVS: readonly AppEnv[];
 
@@ -11,6 +14,7 @@ export const APP_ENVS: readonly AppEnv[];
 export interface AppContext {
     // (undocumented)
     apiPortFile: string;
+    apiTokenFile: string;
     appName: string;
     // (undocumented)
     env: AppEnv;

@@ -45,7 +45,7 @@ export const getApiPaths = () => {
 };
 
 // Environment Configuration
-export const getEnvironment = (port: number, options?: { startupId?: string; logDir?: string }) => {
+export const getEnvironment = (port: number, options: { apiToken: string; startupId?: string; logDir?: string }) => {
   const env = { ...process.env };
 
   // Production Electron inherits a minimal PATH missing common binary locations.
@@ -96,8 +96,10 @@ export const getEnvironment = (port: number, options?: { startupId?: string; log
     ...env,
     NODE_ENV: app.isPackaged ? 'production' : 'development',
     API_PORT: port.toString(),
-    AGENTBUDDY_STARTUP_ID: options?.startupId,
-    AGENTBUDDY_LOG_DIR: options?.logDir,
+    // Clients must present it: the API refuses connections and requests without it
+    ABUDDY_API_TOKEN: options.apiToken,
+    AGENTBUDDY_STARTUP_ID: options.startupId,
+    AGENTBUDDY_LOG_DIR: options.logDir,
     BUILT_IN_PACKS_DIR: app.isPackaged
       ? path.join(process.resourcesPath, 'app', 'packages')
       : path.join(app.getAppPath(), 'packages'),
