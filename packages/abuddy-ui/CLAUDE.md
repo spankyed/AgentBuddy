@@ -53,7 +53,8 @@ npm run api:update -w @abuddy/ui       # regenerate etc/ reports, commit them
 
 - `etc/<entry>.api.md` for each export (API Extractor), with `/` in the subpath written as `.` (`design.button.api.md`).
 - `etc/<entry>.component.md` for each component entry (a `.ts` whose source matches `export { default } from '*.vue'`). It records props, emits, slots and `exposed` members as the TypeScript checker resolves them through `vue-component-type-helpers`. Changing a component's props, emits, slots or `defineExpose` changes this report, so run `api:update`.
-- Stale reports are deleted on update. CI runs `api:check` for `@abuddy/ears`, the SDK and UI.
+- Stale reports are deleted on update. CI runs `api:check` for `@abuddy/ears`, the SDK and UI, after `packages:build`: `tsconfig.api-extractor.json` resolves `@abuddy/*` dependencies to their built declarations, since API Extractor analyses `.d.ts` and follows a dependency read as source into it instead of reporting it as an import.
+- The reports carry API Extractor's messages (`scripts/api-reports.ts` sets them explicitly, because `ExtractorConfig.prepare()` applies none of its defaults and reports nothing without them). `ae-forgotten-export` — a type a public export names without exporting it — is recorded in the report, so a new one shows up as a report diff. On a component entry one of those names `__VLS_export`: that is vue-tsc's own symbol for the SFC's default export, not something to export.
 
 The published surface supports TypeScript 5.7+ (`typescript` peer `>=5.7`). `abuddy-cli/tests/build/published-ui-types.spec.ts` compiles consumers against the packed package with both compilers (`packages/typescript-floor`).
 

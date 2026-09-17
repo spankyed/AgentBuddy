@@ -44,10 +44,30 @@ for (const [key, declaration] of entries()) {
       docModel: { enabled: false },
       dtsRollup: { enabled: false },
       tsdocMetadata: { enabled: false },
+      // Only ExtractorConfig.loadFile() applies API Extractor's own api-extractor-defaults.json;
+      // prepare() takes this object as given, and MessageRouter's built-in fallback is "none" for
+      // every category. Without these, nothing is ever reported: not a TypeScript error, not a type
+      // a public export names but doesn't export, not a bad release tag. They mirror the defaults,
+      // apart from the two turned off on purpose below.
       messages: {
+        compilerMessageReporting: { default: { logLevel: ExtractorLogLevel.Warning } },
         extractorMessageReporting: {
+          default: { logLevel: ExtractorLogLevel.Warning },
+          // A type a public entry names without exporting it. Off: most are exported from another
+          // entry of the same package, so a consumer can still name them, and recording all of them
+          // buries the messages below in the reports
+          'ae-forgotten-export': { logLevel: ExtractorLogLevel.None },
+          'ae-incompatible-release-tags': { logLevel: ExtractorLogLevel.Warning, addToApiReportFile: true },
+          'ae-internal-missing-underscore': { logLevel: ExtractorLogLevel.Warning, addToApiReportFile: true },
+          'ae-internal-mixed-release-tag': { logLevel: ExtractorLogLevel.Warning, addToApiReportFile: true },
+          'ae-undocumented': { logLevel: ExtractorLogLevel.None },
+          'ae-unresolved-inheritdoc-reference': { logLevel: ExtractorLogLevel.Warning, addToApiReportFile: true },
+          'ae-unresolved-inheritdoc-base': { logLevel: ExtractorLogLevel.Warning, addToApiReportFile: true },
+          'ae-wrong-input-file-type': { logLevel: ExtractorLogLevel.Error },
+          // Every export in these packages is public API; a tag is only how `@internal` is marked
           'ae-missing-release-tag': { logLevel: ExtractorLogLevel.None },
         },
+        // TSDoc syntax isn't part of the contract these reports protect
         tsdocMessageReporting: { default: { logLevel: ExtractorLogLevel.None } },
       },
     },

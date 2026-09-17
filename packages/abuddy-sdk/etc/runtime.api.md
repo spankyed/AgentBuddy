@@ -37,6 +37,8 @@ export function bindFeHost(runtime: FeHostRuntime): void;
 // @public
 export function bindHost(runtime: HostRuntime): void;
 
+// Warning: (ae-internal-missing-underscore) The name "boundPackContributions" should be prefixed with an underscore because the declaration is marked as @internal
+//
 // @internal
 export function boundPackContributions(): PackContributionsView;
 
@@ -85,9 +87,13 @@ export interface HostRuntimeServices {
     traceStore: TraceStore;
 }
 
+// Warning: (ae-internal-missing-underscore) The name "isFeHostBound" should be prefixed with an underscore because the declaration is marked as @internal
+//
 // @internal
 export function isFeHostBound(): boolean;
 
+// Warning: (ae-internal-missing-underscore) The name "isHostBound" should be prefixed with an underscore because the declaration is marked as @internal
+//
 // @internal
 export function isHostBound(): boolean;
 
@@ -119,6 +125,8 @@ export interface PackRegistryView extends PackContributionsView {
     settingsDefaults(): PackSettingsDefaults;
 }
 
+// Warning: (ae-internal-missing-underscore) The name "RootEvents" should be prefixed with an underscore because the declaration is marked as @internal
+//
 // @internal
 export interface RootEvents {
     emitIncoming(event: IncomingSystemEvents): void;
@@ -139,8 +147,14 @@ export interface RootEvents {
     onPluginSend(callback: (event: OutgoingSystemEvents) => void): () => void;
 }
 
+// Warning: (ae-internal-missing-underscore) The name "rootEvents" should be prefixed with an underscore because the declaration is marked as @internal
+//
 // @internal
 export const rootEvents: RootEvents;
+
+// Warnings were encountered during analysis:
+//
+// .temp/api-types/runtime/host-runtime.d.ts:28:9 - (ae-incompatible-release-tags) The symbol "rootEvents" is marked as @public, but its signature references "RootEvents" which is marked as @internal
 
 // (No @packageDocumentation comment for this package)
 

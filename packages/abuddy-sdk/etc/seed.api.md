@@ -71,6 +71,8 @@ export interface SeedHookRegistry {
     get(entity: string): SeedHooks | undefined;
 }
 
+// Warning: (ae-internal-missing-underscore) The name "seedHookRegistry" should be prefixed with an underscore because the declaration is marked as @internal
+//
 // @internal
 export const seedHookRegistry: SeedHookRegistry;
 

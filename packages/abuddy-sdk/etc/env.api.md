@@ -41,6 +41,8 @@ export type AppEnv = 'production' | 'beta' | 'development' | 'test';
 // @public
 export function getAppVersion(): string;
 
+// Warning: (ae-internal-missing-underscore) The name "inferElectronAppEnv" should be prefixed with an underscore because the declaration is marked as @internal
+//
 // @internal
 export function inferElectronAppEnv(input: {
     playwrightTest: boolean;

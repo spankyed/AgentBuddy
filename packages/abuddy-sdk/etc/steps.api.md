@@ -47,6 +47,8 @@ export function expandRecord(map: Record<string, string> | undefined, keyField?:
 // @public
 export function isTruncated(result: unknown): result is TruncatedResult;
 
+// Warning: (ae-internal-missing-underscore) The name "mergeStepDefinitions" should be prefixed with an underscore because the declaration is marked as @internal
+//
 // @internal
 export function mergeStepDefinitions(existing: StepDefinition, def: StepDefinition): StepDefinition;
 

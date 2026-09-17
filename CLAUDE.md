@@ -55,6 +55,7 @@ npm run db:query -- "<code>"   # abuddy db query on the dev app's data (also db:
 # Published API surface (run from packages/abuddy-ears, packages/abuddy-sdk or packages/abuddy-ui)
 npm run api:check        # CI: fails if a public entry's API changed without updating reports
 npm run api:update       # Dev: regenerate etc/<entry>.api.md (and etc/<entry>.component.md for UI components)
+                         # Both read an @abuddy dependency's built declarations: npm run packages:build first
 
 # Built-in pack facade types (after `abuddy build`; from packages/default-setup or with -w @app/default-setup)
 npm run facade:check     # CI: fails if dist/types/pack-types.d.ts changed without updating etc/pack-types.api.md

@@ -94,6 +94,8 @@ export function bundleFile(filePath: string): Promise<BundleResult>;
 // @public
 export function checkRecordEntities(key: string, format: SeedFormatConfig, records: SeedRecord[]): string[];
 
+// Warning: (ae-internal-missing-underscore) The name "clearCompiledSeeds" should be prefixed with an underscore because the declaration is marked as @internal
+//
 // @internal
 export function clearCompiledSeeds(outputDir: string): void;
 
@@ -223,6 +225,8 @@ export interface DependencyCommand {
     packId: string;
 }
 
+// Warning: (ae-internal-missing-underscore) The name "dependencyCommands" should be prefixed with an underscore because the declaration is marked as @internal
+//
 // @internal
 export function dependencyCommands(snapshots: ReadonlyArray<readonly [string, DependencyCommandSource]>): DependencyCommand[];
 
@@ -238,9 +242,13 @@ export interface DependencyCommandSource {
     };
 }
 
+// Warning: (ae-internal-missing-underscore) The name "depTypesFile" should be prefixed with an underscore because the declaration is marked as @internal
+//
 // @internal
 export function depTypesFile(depId: string): string;
 
+// Warning: (ae-internal-missing-underscore) The name "depTypesVersion" should be prefixed with an underscore because the declaration is marked as @internal
+//
 // @internal
 export function depTypesVersion(content: string, depId: string): string | undefined;
 
@@ -834,10 +842,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }>>>;
     seedHooks: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
 }, "strict", z.ZodTypeAny, {
-    id: string;
     name: string;
+    id: string;
     version: string;
-    description?: string | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -848,6 +855,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
+    description?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -941,10 +949,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     seedHooks?: Record<string, string> | undefined;
 }, {
-    id: string;
     name: string;
+    id: string;
     version: string;
-    description?: string | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -955,6 +962,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
+    description?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -1048,10 +1056,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     seedHooks?: Record<string, string> | undefined;
 }>, {
-    id: string;
     name: string;
+    id: string;
     version: string;
-    description?: string | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -1062,6 +1069,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
+    description?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -1155,10 +1163,9 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     seedHooks?: Record<string, string> | undefined;
 }, {
-    id: string;
     name: string;
+    id: string;
     version: string;
-    description?: string | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -1169,6 +1176,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
+    description?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -1643,6 +1651,8 @@ export interface SeedRecord {
 // @public (undocumented)
 export type SeedTreeSpec = NonNullable<SeedFormatConfig['tree']>;
 
+// Warning: (ae-internal-missing-underscore) The name "sourceConditions" should be prefixed with an underscore because the declaration is marked as @internal
+//
 // @internal
 export function sourceConditions(dir: string): string[];
 

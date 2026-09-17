@@ -61,6 +61,8 @@ export interface BackupInfo {
     timestamp: number;
 }
 
+// Warning: (ae-internal-missing-underscore) The name "createInferenceService" should be prefixed with an underscore because the declaration is marked as @internal
+//
 // @internal
 export function createInferenceService(resolveModel: ResolveModel): InferenceService;
 
@@ -111,6 +113,8 @@ export interface HostServices {
     traceStore: TraceStore;
 }
 
+// Warning: (ae-internal-missing-underscore) The name "InferenceModels" should be prefixed with an underscore because the declaration is marked as @internal
+//
 // @internal
 export interface InferenceModels {
     // (undocumented)
@@ -167,6 +171,8 @@ export type OutputSpec = {
 // @public
 export type ProviderName = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral' | 'cohere';
 
+// Warning: (ae-internal-missing-underscore) The name "ResolveModel" should be prefixed with an underscore because the declaration is marked as @internal
+//
 // @internal
 export type ResolveModel = <K extends ModelKind>(kind: K, id: ModelIdOf<K>) => InferenceModels[K] | Promise<InferenceModels[K]>;
 
@@ -187,9 +193,13 @@ export interface SecretInfo {
 // @public
 export type SecretProvider = ProviderName | 'custom';
 
+// Warning: (ae-internal-missing-underscore) The name "secretProviderLabel" should be prefixed with an underscore because the declaration is marked as @internal
+//
 // @internal
 export const secretProviderLabel: (provider: SecretProvider) => string;
 
+// Warning: (ae-internal-missing-underscore) The name "secretRules" should be prefixed with an underscore because the declaration is marked as @internal
+//
 // @internal (undocumented)
 export const secretRules: {
     add<T extends SecretInfo>(secrets: readonly T[], secret: Omit<T, "selected" | "label"> & {
@@ -233,6 +243,8 @@ export interface SecretsStatus {
 // @public
 export const services: HostServices & Record<string, unknown>;
 
+// Warning: (ae-internal-missing-underscore) The name "toSecretInfo" should be prefixed with an underscore because the declaration is marked as @internal
+//
 // @internal
 export const toSecretInfo: (input: SecretInfo) => SecretInfo;
 

@@ -202,6 +202,8 @@ export interface RelationEntity extends BaseEntity {
     relationDetails: EARS.RelationDetail;
 }
 
+// Warning: (ae-internal-missing-underscore) The name "reservedEntries" should be prefixed with an underscore because the declaration is marked as @internal
+//
 // @internal
 export function reservedEntries(declared: Record<string, string>, reserved: Record<string, string>): string[];
 
