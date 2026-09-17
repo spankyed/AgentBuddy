@@ -4,6 +4,7 @@ import type { EarsAdmin } from '@abuddy/ears';
 import type { LmdbStore } from '@abuddy/ears/lmdb';
 import { exportDatabase, getBackupInfo, importDatabase } from '../backup/index.ts';
 import { secretsStore } from '../secrets/index.ts';
+import { getMediaPath } from '@abuddy/sdk/utils';
 import type { PackRegistry } from '../packs/pack-registration.ts';
 import { getLoadedPacks } from '../packs/runtime/loaded-packs.ts';
 import { startPacks } from '../packs/runtime/start.ts';
@@ -29,10 +30,10 @@ export function createAppData(store: LmdbStore, engine: EarsAdmin, registry: Pac
     },
     hasOnboarded: () => appState.get().hasOnboarded,
     completeOnboarding: () => appState.update({ hasOnboarded: true }),
-    exportBackup: (targetPath, name, databases) => exportDatabase(targetPath, name, databases),
+    exportBackup: (targetPath, name, databases) => exportDatabase(store, targetPath, { name, databases, mediaPath: getMediaPath() }),
     async importBackup(backupPath) {
       try {
-        const result = await importDatabase(store, backupPath);
+        const result = await importDatabase(store, backupPath, getMediaPath());
         const databases = result.databases as BackupDatabase[];
         await reloadMemory(databases.includes('volatileLmdb'));
         // A backup from an earlier version is migrated now, not at the next boot (one from before AppState keeps

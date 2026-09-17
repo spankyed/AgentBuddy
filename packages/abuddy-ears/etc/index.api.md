@@ -475,15 +475,20 @@ export interface PartitionPolicy {
     }): Partition;
 }
 
+// @public
+export interface PersistenceErrorStats {
+    // (undocumented)
+    errorCount: number;
+    // (undocumented)
+    lastError: unknown;
+}
+
 // @public (undocumented)
 export interface PersistenceSink {
     // (undocumented)
     close?(): void;
     // (undocumented)
-    getErrorStats?(): {
-        errorCount: number;
-        lastError: unknown;
-    };
+    getErrorStats?(): PersistenceErrorStats;
     // (undocumented)
     onAddRelation(relId: string, kind: string, src: string, tgt: string, info: unknown): void;
     // (undocumented)

@@ -1,24 +1,28 @@
 import fs from 'fs-extra';
 import path from 'node:path';
 import { createLogger } from '@abuddy/sdk/logger';
-import { getLmdbPath, getVolatileLmdbPath, getMediaPath } from '@abuddy/sdk/utils';
-import type { LmdbStore } from '@abuddy/ears/lmdb';
+import { closeEnv, LmdbQuery, openEnvAt, type LmdbStore } from '@abuddy/ears/lmdb';
+import { APP_STATE_ENTITY } from '../app-state/index.ts';
 
 const logger = createLogger('database:backup');
 
-// Resolved per call: paths depend on the app environment, which isn't known at import time
-const DATABASE_PATHS = {
-  lmdb: getLmdbPath,
-  volatileLmdb: getVolatileLmdbPath,
+/** A backup's database folders, by the partition of the store they hold */
+const DATABASE_PARTITIONS = {
+  lmdb: 'primary',
+  volatileLmdb: 'volatileBackup',
 } as const;
 
-type DatabaseName = keyof typeof DATABASE_PATHS;
-const isKnownDatabase = (name: string): name is DatabaseName => Object.hasOwn(DATABASE_PATHS, name);
+export type DatabaseName = keyof typeof DATABASE_PARTITIONS;
+export const isKnownDatabase = (name: string): name is DatabaseName => Object.hasOwn(DATABASE_PARTITIONS, name);
 
+/** Where a backup's database folder comes from and goes to: the store's partition */
+const databasePath = (store: Pick<LmdbStore, 'paths'>, name: DatabaseName) => store.paths[DATABASE_PARTITIONS[name]];
+
+/** Copies `store`'s databases (and the media folder `mediaPath`, with the primary database) into a new backup folder */
 export async function exportDatabase(
+  store: Pick<LmdbStore, 'paths'>,
   targetPath: string,
-  name?: string,
-  databases: DatabaseName[] = ['lmdb']
+  { name, databases = ['lmdb'], mediaPath }: { name?: string; databases?: DatabaseName[]; mediaPath: string },
 ): Promise<string> {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const fullBackupPath = path.join(targetPath, name || `agentbuddy-backup-${timestamp}`);
@@ -27,7 +31,6 @@ export async function exportDatabase(
 
   let includesMedia = false;
   if (databases.includes('lmdb')) {
-    const mediaPath = getMediaPath();
     if (await fs.pathExists(mediaPath)) {
       includesMedia = true;
     }
@@ -41,7 +44,7 @@ export async function exportDatabase(
   });
 
   for (const dbName of databases) {
-    const sourcePath = DATABASE_PATHS[dbName]();
+    const sourcePath = databasePath(store, dbName);
     if (await fs.pathExists(sourcePath)) {
       await fs.copy(sourcePath, path.join(fullBackupPath, dbName));
       logger.info(`Backed up ${dbName}`);
@@ -49,7 +52,7 @@ export async function exportDatabase(
   }
 
   if (includesMedia) {
-    await fs.copy(getMediaPath(), path.join(fullBackupPath, 'media'));
+    await fs.copy(mediaPath, path.join(fullBackupPath, 'media'));
     logger.info('Backed up media assets');
   }
 
@@ -57,8 +60,11 @@ export async function exportDatabase(
   return fullBackupPath;
 }
 
-/** Replaces `store`'s files (and media) with the backup's, closing the store meanwhile; puts the old files back if that fails */
-export async function importDatabase(store: LmdbStore, backupPath: string) {
+/**
+ * Replaces `store`'s files (and the media folder `mediaPath`) with the backup's, closing the store meanwhile; puts the
+ * old files back if that fails
+ */
+export async function importDatabase(store: LmdbStore, backupPath: string, mediaPath: string) {
   if (!await fs.pathExists(path.join(backupPath, 'metadata.json'))) {
     throw new Error('Invalid backup: metadata.json not found');
   }
@@ -69,17 +75,16 @@ export async function importDatabase(store: LmdbStore, backupPath: string) {
   const databases = listed.filter(isKnownDatabase);
   const skipped = listed.filter((name) => !isKnownDatabase(name));
   if (skipped.length > 0) logger.warn('Skipping databases the app does not have', { skipped });
-  const tempBackupPath = path.join(path.dirname(getLmdbPath()), 'temp-backup-' + Date.now());
+  const tempBackupPath = path.join(path.dirname(store.paths.primary), 'temp-backup-' + Date.now());
 
   await fs.ensureDir(tempBackupPath);
   for (const dbName of databases) {
-    const sourcePath = DATABASE_PATHS[dbName]();
+    const sourcePath = databasePath(store, dbName);
     if (await fs.pathExists(sourcePath)) {
       await fs.copy(sourcePath, path.join(tempBackupPath, dbName));
     }
   }
 
-  const mediaPath = getMediaPath();
   const backupMediaPath = path.join(backupPath, 'media');
   const hasMediaInBackup = await fs.pathExists(backupMediaPath);
 
@@ -92,7 +97,7 @@ export async function importDatabase(store: LmdbStore, backupPath: string) {
 
     for (const dbName of databases) {
       const backupDbPath = path.join(backupPath, dbName);
-      const targetPath = DATABASE_PATHS[dbName]();
+      const targetPath = databasePath(store, dbName);
 
       if (await fs.pathExists(backupDbPath)) {
         await fs.remove(targetPath);
@@ -117,7 +122,7 @@ export async function importDatabase(store: LmdbStore, backupPath: string) {
 
     for (const dbName of databases) {
       const tempDbPath = path.join(tempBackupPath, dbName);
-      const targetPath = DATABASE_PATHS[dbName]();
+      const targetPath = databasePath(store, dbName);
       if (await fs.pathExists(tempDbPath)) {
         await fs.remove(targetPath);
         await fs.copy(tempDbPath, targetPath);
@@ -164,5 +169,61 @@ export async function getBackupInfo(backupPath: string) {
     };
   } catch {
     return null;
+  }
+}
+
+/** What a backup holds, read without changing it */
+export interface BackupContents {
+  timestamp?: number;
+  /** The databases it restores */
+  databases: DatabaseName[];
+  hasMedia: boolean;
+  /** The app version its data was migrated to (`AppState.version`), if it records one */
+  dataVersion?: string;
+  /** Entities per type in its primary database, for the given types that have some */
+  counts: Array<[string, number]>;
+}
+
+/**
+ * Checks the backup at `dir` restores into this app and reads what it holds: its metadata lists only databases the
+ * app has, the primary database (`lmdb`) among them, each listed database is there, and the primary one opens. Throws
+ * naming what's wrong.
+ */
+export function readBackup(dir: string, entityTypes: Iterable<string>): BackupContents {
+  const metadataFile = path.join(dir, 'metadata.json');
+  if (!fs.existsSync(metadataFile)) throw new Error(`${dir} isn't a backup: it has no metadata.json`);
+  let metadata: { timestamp?: unknown; databases?: unknown };
+  try {
+    metadata = fs.readJsonSync(metadataFile);
+  } catch (error) {
+    throw new Error(`${metadataFile} can't be read: ${(error as Error).message}`);
+  }
+  if (!Array.isArray(metadata.databases)) throw new Error(`${metadataFile} lists no databases`);
+  const unknown = metadata.databases.filter((name) => !isKnownDatabase(String(name)));
+  if (unknown.length > 0) throw new Error(`The backup has databases this AgentBuddy doesn't: ${unknown.join(', ')}`);
+  const databases = metadata.databases as DatabaseName[];
+  if (!databases.includes('lmdb')) throw new Error("The backup doesn't include the database (lmdb)");
+  const missing = databases.filter((name) => !fs.existsSync(path.join(dir, name, 'data.mdb')));
+  if (missing.length > 0) throw new Error(`The backup's ${missing.join(', ')} folder is missing or has no data.mdb`);
+
+  const env = openEnvAt(path.join(dir, 'lmdb'), { readOnly: true });
+  try {
+    const query = new LmdbQuery(env);
+    const version = query.getFirstAttr('version', `${APP_STATE_ENTITY}-app`);
+    const perType = new Map<string, number>();
+    for (const { value } of env.entities.getRange() as Iterable<{ value: { type?: string } }>) {
+      if (value.type) perType.set(value.type, (perType.get(value.type) ?? 0) + 1);
+    }
+    const counts = [...entityTypes].sort()
+      .flatMap((type) => (perType.has(type) ? [[type, perType.get(type)!] as [string, number]] : []));
+    return {
+      ...(typeof metadata.timestamp === 'number' && { timestamp: metadata.timestamp }),
+      databases,
+      hasMedia: fs.existsSync(path.join(dir, 'media')),
+      ...(typeof version === 'string' && { dataVersion: version }),
+      counts,
+    };
+  } finally {
+    closeEnv(env, () => {});
   }
 }

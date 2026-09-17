@@ -27,7 +27,13 @@ export interface PersistenceSink {
    */
   onRemoveRelation(relId: string, destroyed?: string): void;
   close?(): void;
-  getErrorStats?(): { errorCount: number; lastError: unknown };
+  getErrorStats?(): PersistenceErrorStats;
+}
+
+/** The writes a sink failed to store so far, and the last failure */
+export interface PersistenceErrorStats {
+  errorCount: number;
+  lastError: unknown;
 }
 
 /** A sink that drops every write: an engine's persistence unless it's given one */

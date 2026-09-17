@@ -23,6 +23,7 @@ Commands:
   init-tests            Scaffold Playwright E2E test setup
   test [args...]        Run E2E tests in AgentBuddy (--app-root <path> | --app beta)
   open [-b]           Open the installed AgentBuddy app
+  db <command>        Query, export, import or reset the app's database (AgentBuddy closed)
   info                Show pack summary
   doctor              Run health checks
   clean               Remove build artifacts
@@ -49,6 +50,7 @@ const COMMANDS: Record<string, () => Promise<(args: string[]) => Promise<void>>>
   'init-tests': async () => (await import('./commands/init-tests')).initTests,
   'test':       async () => (await import('./commands/test')).test,
   'open':       async () => (await import('./commands/open')).open,
+  'db':         async () => (await import('./commands/db')).db,
   'info':       async () => (await import('./commands/info')).info,
   'doctor':     async () => (await import('./commands/doctor')).doctor,
   'clean':      async () => (await import('./commands/clean')).clean,

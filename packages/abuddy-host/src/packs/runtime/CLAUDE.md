@@ -155,7 +155,7 @@ EARS, designation, service and repository collisions throw before anything is st
 
 `withHostResolution(fn)` in `bridge.ts` calls `withModuleBridge()` (`../module-bridge.ts`) with:
 - `SDK_BRIDGE` — the loader's own instances (in the app, the API bundle's, which inlines `@abuddy/sdk`, `@abuddy/ears` and `@abuddy/host`) of the shared-instance packages' subpaths (`shared-modules.ts`, built from each package's exports map minus `APP_UNBRIDGED` and the app-only `@abuddy/ears/lmdb`). They go into the require cache (under a bridge key and the real resolved path) and `Module._resolveFilename` resolves those specifiers to them, so pack code shares the bundle's bound app (its registered packs and hydrated EARS engine) instead of loading a separate SDK copy. Pack code never requires `@abuddy/host`, so no host module is bridged.
-- `getSharedBeDeps()` (`xstate`, `zod`) — resolved from `import.meta.url` (the API's `dist/server.js` in the app), since an installed pack has no `node_modules`.
+- `getSharedBeDeps()` (`xstate`, `zod`, and every subpath they export: a bundled dependency may require `zod/v4`) — resolved from `import.meta.url` (the API's `dist/server.js` in the app), since an installed pack has no `node_modules`.
 - `bridgedPackages: SHARED_INSTANCE_PACKAGES` — a pack requiring a shared-instance module the map lacks fails with "isn't provided by this AgentBuddy: rebuild the pack".
 - `appOnly: APP_ONLY_EXPORTS` — a pack requiring `@abuddy/ears/lmdb` fails saying only the app loads it (`abuddy build` already rejects the import).
 

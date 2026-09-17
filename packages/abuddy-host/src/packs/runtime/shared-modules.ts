@@ -6,6 +6,7 @@ import * as _abuddy_sdk_artifacts from '@abuddy/sdk/artifacts';
 import * as _abuddy_sdk_blocks from '@abuddy/sdk/blocks';
 import * as _abuddy_sdk_build from '@abuddy/sdk/build';
 import * as _abuddy_sdk_cron from '@abuddy/sdk/cron';
+import * as _abuddy_sdk_database_console from '@abuddy/sdk/database-console';
 import * as _abuddy_sdk_designations from '@abuddy/sdk/designations';
 import * as _abuddy_sdk_env from '@abuddy/sdk/env';
 import * as _abuddy_sdk_events from '@abuddy/sdk/events';
@@ -33,6 +34,7 @@ export const SHARED_INSTANCE_MODULES: Readonly<Record<string, unknown>> = {
   '@abuddy/sdk/blocks': _abuddy_sdk_blocks,
   '@abuddy/sdk/build': _abuddy_sdk_build,
   '@abuddy/sdk/cron': _abuddy_sdk_cron,
+  '@abuddy/sdk/database-console': _abuddy_sdk_database_console,
   '@abuddy/sdk/designations': _abuddy_sdk_designations,
   '@abuddy/sdk/env': _abuddy_sdk_env,
   '@abuddy/sdk/events': _abuddy_sdk_events,

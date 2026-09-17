@@ -1,6 +1,6 @@
 # CLI Reference
 
-The `abuddy` CLI manages the full pack lifecycle: scaffolding, code generation, building, validation, testing, releasing and installation.
+The `abuddy` CLI manages the full pack lifecycle: scaffolding, code generation, building, validation, testing, releasing and installation. It also reads and repairs the app's database (`abuddy db`).
 
 ## Installing
 
@@ -224,6 +224,69 @@ Show installed packs.
 #### `abuddy open [-b]`
 
 Open the installed AgentBuddy app, or bring it to the front if it's running. Pass `-b` for AgentBuddy Beta. macOS only.
+
+### Database
+
+`abuddy db` reads and changes the app's database (EARS on LMDB) from the command line: to look at data, repair it when the app can't start, or move it between machines.
+
+```bash
+abuddy db query "return qx(EARS.Entity.Note).count()"
+abuddy db inspect Flow-123 --depth 2
+abuddy db export --out ./export
+abuddy db import ./agentbuddy-backup-2026-09-17 --force
+abuddy db reset          # lists what it would delete
+```
+
+**Which data.** Every command targets the production app's data dir by default; `-d` targets the development app's, `-b` AgentBuddy Beta's, and `--data-dir <path>` any data dir, such as a copy of the user's. Each command prints the data dir it opens (on stderr, so results on stdout stay clean).
+
+**While the app runs.** The commands open the database files themselves (offline); the app keeps the whole database in memory and is its only writer. So a command that changes data (`exec`, `repl --write`, `import`, `reset`, `clear-settings`) refuses while an AgentBuddy app runs on the data dir: its instance lock is held by a live process, or its API answers on the port it published. Quit the app first. Reading commands work, with a warning that they miss what the app hasn't written yet.
+
+**Versions.** The CLI reads and writes the data of the AgentBuddy version it was built with: data another major or minor version migrated (`0.3.x` data and a `0.4` CLI, say) is refused, naming both versions. Reading commands take `--ignore-version` to read it anyway. The `abuddy` the app installs always matches the app.
+
+**Installed packs.** Entity types, relation kinds and where each type is stored come from the packs installed in the data dir (the built-in packs the app published to `host-packs/`, and the enabled packs in `packs/`); no pack code runs. A data dir the app has never started on has none, and is refused.
+
+#### `abuddy db query <code> | --file <path> [-o pretty|json|csv] [--out <file>] [--ignore-version]`
+
+Run query code with the Database console's read helpers: `qx`, `EARS`, `getAttr`, `getAttrs`, `getAll`, `getRoles`, `getAllEntities`, `getEntitiesOfType`, `findRelations`, `getRelationStats`, `getSchemaStats`, `queryEntitiesByAttribute`, `queryEntitiesByRelationTo`, `queryEntitiesInRelationTo`. The code is a function body, as in the console: `return` the result. `EARS.Entity` holds the installed packs' entity types.
+
+```bash
+abuddy db query "return qx(EARS.Entity.Settings).pickAll()" -o json --out settings.json
+abuddy db query --file ./report.js -o csv
+```
+
+#### `abuddy db exec <code> | --file <path> [-o pretty|json|csv] [--out <file>]`
+
+Run transaction code with the console's read and write helpers (`tx`, `destroyEntity`, `prepareEntity`, `createEntityWithDefaults`, `updateEntity`, `createRelation`, `removeRelation`, `removeRelationById`, `grantRole`, `revokeRole`). The changes are written when the code returns; a write that fails to reach the files fails the command.
+
+```bash
+abuddy db exec "tx('Note-123').put('title', 'Renamed')"
+```
+
+#### `abuddy db repl [--write] [--ignore-version]`
+
+Run console code a line at a time and print each result: query code, or with `--write` transaction code, whose changes are written on exit. `.exit` or Ctrl+D quits.
+
+#### `abuddy db inspect [<entity-id> | --type <Entity>] [--depth <n>] [--incoming] [--outgoing] [--ignore-version]`
+
+Print an entity, its roles and its relations grouped by kind, following them `--depth` levels (default 1); `--incoming` or `--outgoing` shows one direction. `--type` prints the first five entities of a type. With neither, it prints entities and relations per entity type.
+
+#### `abuddy db export --out <dir> [--type <Entity>...] [--format json|csv] [--ignore-version]`
+
+Write each entity type's entities, with every attribute, to `<dir>/<Entity>.json` (or `.csv`), and a summary (data dir, data version, counts) to `<dir>/export.json`. Without `--type`, every type with entities. Roles are in each entity's `role` attribute, and relations are the `Relation` entities (their `relationDetails`).
+
+#### `abuddy db import <backup-dir> [--force]`
+
+Replace the database, and the media folder when the backup has one, with a backup made in the Database settings' Backup & Restore. The backup is checked first: it has `metadata.json`, lists only databases the app has (the primary one among them), each is there and opens, and its data is this AgentBuddy version's. Without `--force` it lists the backup, its contents and what it would replace, and changes nothing. The app migrates the data on its next start if the backup is from an earlier patch version.
+
+#### `abuddy db reset [--force]`
+
+Delete all of the app's data, as Reset Database in the Database settings does: both database partitions (the data and the run history) and the stored API keys. The app creates its default data (settings, seeded flows, the packs' seeds) on its next start and shows onboarding. Without `--force` it lists the entities per type and the number of stored keys it would delete.
+
+#### `abuddy db clear-settings [--force]`
+
+Destroy every Settings row (the user's changes to the default settings); the app recreates the defaults on its next start. Without `--force` it lists each row and the settings it stores.
+
+In the AgentBuddy repo, `npm run db:query`, `db:exec`, `db:repl`, `db:inspect`, `db:export`, `db:import`, `db:reset` and `db:clear-settings` run these commands on the development app's data (`-d`): `npm run db:query -- "return qx().count()"`.
 
 ### Cleanup
 

@@ -205,5 +205,6 @@ The renderer exposes on `window`:
 | `plugin-sends.spec.ts` | Backend sends to plugins through the bus: the code system's file watcher and terminal output, and the browser system's startup data after a pack reload, reach their plugins (recorded with `applicationState.system.inspect`) |
 | `api-access.spec.ts` | The API refuses WebSocket connections and `POST /dev/reload` without the run's token (the socket offers it as a subprotocol, not in the URL), takes them with it, and survives a malformed upgrade request |
 | `dev-reload.spec.ts` | `POST /dev/reload` of the built-in pack re-seeds changed seed data and resends startup data |
+| `db-cli.spec.ts` | `abuddy db` on the running app's data dir (`electronApp`'s `userData`): a query reads it with a stale-data warning, `exec` and `reset` are refused |
 | `scratch.spec.ts` | Ad-hoc test file (gitignored — create as needed) |
 | `packages/abuddy-testing/src/index.ts` | The actual fixture source (shared between monorepo and external packs) |

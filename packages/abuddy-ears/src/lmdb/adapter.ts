@@ -190,16 +190,23 @@ export function makeLmdbAdapter(dbs: LmdbDbs): PersistenceSink {
     }
   }
 
+  const buffered = () =>
+    ensureBuf.size + entityUpdates.size + entityRemovals.size + arrayRewrites.size + relDeletes.size + relUpserts.size > 0;
+
   function close() {
     if (closed) return;
     closed = true;
-    
-    // Always flush whatever is in the buffers, regardless of scheduled state
+    // Nothing to write (a read-only environment can't open a write transaction)
+    if (!buffered()) return;
+
+    // Flush whatever is in the buffers, regardless of scheduled state
     try {
       entities.transactionSync(() => {
         flushBody();
       });
     } catch (error) {
+      errorCount++;
+      lastError = { op: 'final flush', error };
       console.error('[LMDB] Final flush failed:', error);
     } finally {
       // Clear all buffers

@@ -60,7 +60,7 @@ Database operations live in `packages/api/scripts/db` and run through `npm run d
    - **Commands:** `abuddy db query|exec|inspect|export|import|reset|clear-settings`.
    - **Target:** production by default, `-d`/`-b` for development/beta, as `install` does, plus `--data-dir <path>` for a copy of user data.
    - **Output:** every command prints the data dir it targets before acting.
-2. **While the app is running on the target data dir** (OPEN, decide before starting). The API holds the whole database in memory and is its only writer, so a second process writing the files while the app runs loses its writes or overwrites the app's. Choose one:
+2. **While the app is running on the target data dir** (decided 2026-09-17: **A, offline only**; Phase 2 is skipped). The API holds the whole database in memory and is its only writer, so a second process writing the files while the app runs loses its writes or overwrites the app's. Choose one:
    - **A. Offline only.**
      - The CLI always opens the files itself.
      - Writing commands (`exec`, `import`, `reset`, `clear-settings`) refuse while the app runs on that data dir.

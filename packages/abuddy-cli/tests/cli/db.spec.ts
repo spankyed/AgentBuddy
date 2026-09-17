@@ -1,0 +1,405 @@
+// abuddy db, offline, against temp data dirs: each command's output and changes, the refusals while an app runs on the
+// data dir or its data is another AgentBuddy version's, and the dry runs of the commands that replace or delete data
+import * as fs from 'node:fs';
+import * as net from 'node:net';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { Readable } from 'node:stream';
+import { afterEach, describe, expect, it } from 'vitest';
+import { installEngine, installedEngine, tx, type EARS } from '@abuddy/ears';
+import { openDatabaseStore, readInstalledSchema } from '@abuddy/host/database';
+import { exportDatabase } from '@abuddy/host/backup';
+import { createSecretsStore, memoryKeyVault } from '@abuddy/host/secrets';
+import { API_HOST } from '@abuddy/sdk/env';
+import { appDataPaths } from '@abuddy/sdk/utils';
+import { db } from '../../src/commands/db';
+import { dbRepl } from '../../src/commands/db/repl';
+import { supportedAppVersion } from '../../src/app-version';
+
+const DEFAULT_SETUP_SNAPSHOT = path.resolve(import.meta.dirname, '..', '..', '..', 'default-setup', 'dist', 'snapshot.json');
+const APP_VERSION = supportedAppVersion();
+
+const dirs: string[] = [];
+const servers: net.Server[] = [];
+afterEach(async () => {
+  await Promise.all(servers.splice(0).map((server) => new Promise((resolve) => server.close(resolve))));
+  for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
+});
+
+const id = (name: string) => name as EARS.EntityId;
+
+function tempDir(prefix: string): string {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+  dirs.push(dir);
+  return dir;
+}
+
+function schemaContext(userDataDir: string) {
+  return {
+    userDataDir,
+    packsDir: path.join(userDataDir, 'packs'),
+    hostPacksDir: path.join(userDataDir, 'host-packs'),
+    registryFile: path.join(userDataDir, 'pack-registry.json'),
+  };
+}
+
+/** Writes to the data dir's database as the app does (default-setup published, source layout) */
+async function write(userDataDir: string, change: () => void): Promise<void> {
+  const paths = appDataPaths(userDataDir, { packaged: false });
+  const { store, engine } = openDatabaseStore({
+    paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
+    schema: readInstalledSchema(schemaContext(userDataDir)),
+    log: () => {},
+  });
+  installEngine(engine.query);
+  try {
+    await store.hydrate();
+    change();
+  } finally {
+    installEngine(undefined);
+    store.close();
+  }
+}
+
+/** A data dir the app ran on: default-setup published, settings, notes with a relation and a role, at `version` */
+async function appDataDir({ version = APP_VERSION as string | null } = {}): Promise<string> {
+  const dir = tempDir('abuddy-db-');
+  const snapshot = path.join(dir, 'host-packs', 'default-setup', 'types', 'snapshot.json');
+  fs.mkdirSync(path.dirname(snapshot), { recursive: true });
+  fs.copyFileSync(DEFAULT_SETUP_SNAPSHOT, snapshot);
+  await write(dir, () => {
+    if (version) tx(id('AppState-app'), true).put('entityType', 'AppState').put('version', version);
+    tx(id('Settings-app'), true).put('entityType', 'Settings').put('label', 'App').put('data', { general: { theme: 'dark' } });
+    tx(id('Note-a'), true).put('entityType', 'Note').put('title', 'Alpha').grant('pinned').link('parent_of', id('Note-b'));
+    tx(id('Note-b'), true).put('entityType', 'Note').put('title', 'Beta, "quoted"');
+  });
+  return dir;
+}
+
+/** Runs `abuddy db <args>` and returns its stdout and stderr lines, and its error */
+async function run(args: string[]): Promise<{ out: string; err: string; error?: Error }> {
+  const out: string[] = [];
+  const err: string[] = [];
+  let error: Error | undefined;
+  try {
+    await db(args, { out: (line) => out.push(line), err: (line) => err.push(line) });
+  } catch (caught) {
+    error = caught as Error;
+  }
+  return { out: out.join('\n'), err: err.join('\n'), error };
+}
+
+async function ok(args: string[]) {
+  const result = await run(args);
+  if (result.error) throw result.error;
+  return result;
+}
+
+const holdLock = (dir: string) => fs.symlinkSync(`${os.hostname()}-${process.pid}`, path.join(dir, 'SingletonLock'));
+
+async function publishPort(dir: string): Promise<void> {
+  const server = net.createServer();
+  servers.push(server);
+  await new Promise<void>((resolve) => server.listen(0, API_HOST, resolve));
+  fs.writeFileSync(path.join(dir, 'api-port'), String((server.address() as net.AddressInfo).port));
+}
+
+describe('abuddy db query', () => {
+  it('prints the result, after the data dir it targets', async () => {
+    const dir = await appDataDir();
+    const { out, err } = await ok(['query', "return qx(EARS.Entity.Note).pickAll(['title']).map((n) => n.title).sort()", '--data-dir', dir, '-o', 'json']);
+    expect(JSON.parse(out)).toEqual(['Alpha', 'Beta, "quoted"']);
+    expect(err).toContain(`Database: ${dir} (offline)`);
+    // The engine is closed and uninstalled
+    expect(() => installedEngine()).toThrow();
+  });
+
+  it('reads code from a file, and writes CSV to a file', async () => {
+    const dir = await appDataDir();
+    const code = path.join(dir, 'query.js');
+    fs.writeFileSync(code, "return qx(EARS.Entity.Note).pickAll().map(({ id, title }) => ({ id, title })).sort((a, b) => a.id.localeCompare(b.id))");
+    const csv = path.join(dir, 'out', 'notes.csv');
+    const { out, err } = await ok(['query', '--file', code, '--data-dir', dir, '--output', 'csv', '--out', csv]);
+    expect(out).toBe('');
+    expect(err).toContain(`Wrote ${csv}`);
+    expect(fs.readFileSync(csv, 'utf-8')).toBe('id,title\nNote-a,Alpha\nNote-b,"Beta, ""quoted"""\n');
+  });
+
+  it("can't write, and changes nothing", async () => {
+    const dir = await appDataDir();
+    const { error } = await run(['query', "tx('Note-a').put('title', 'changed')", '--data-dir', dir]);
+    expect(error?.message).toBe('tx is not defined');
+    const { out } = await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir]);
+    expect(out).toBe('Alpha');
+  });
+
+  it('reads data whose files it may not write', async () => {
+    const dir = await appDataDir();
+    const { lmdb, volatileLmdb } = appDataPaths(dir, { packaged: false });
+    const files = [lmdb, volatileLmdb].flatMap((db) => fs.readdirSync(db).map((file) => path.join(db, file)));
+    for (const file of files) fs.chmodSync(file, 0o444);
+    try {
+      const { out } = await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir]);
+      expect(out).toBe('Alpha');
+    } finally {
+      for (const file of files) fs.chmodSync(file, 0o644);
+    }
+  });
+
+  it('warns while an app runs on the data dir, and still reads', async () => {
+    const dir = await appDataDir();
+    holdLock(dir);
+    const { out, err } = await ok(['query', 'return getSchemaStats().entities.Note', '--data-dir', dir]);
+    expect(out).toBe('2');
+    expect(err).toMatch(/Warning: AgentBuddy is running on it \(process \d+ holds/);
+  });
+
+  it("refuses data another minor version migrated, unless told to ignore it", async () => {
+    const dir = await appDataDir({ version: '0.0.1' });
+    const refused = await run(['query', 'return 1', '--data-dir', dir]);
+    expect(refused.error?.message).toMatch(new RegExp(`AgentBuddy 0\\.0\\.1.*supports AgentBuddy ${APP_VERSION.replace(/\./g, '\\.')}`));
+    const { out } = await ok(['query', 'return 1', '--data-dir', dir, '--ignore-version']);
+    expect(out).toBe('1');
+  });
+
+  it('refuses bad arguments with its usage', async () => {
+    const dir = await appDataDir();
+    expect((await run(['query', '--data-dir', dir])).error?.message).toMatch(/^No code to run\n\nUsage: abuddy db query/);
+    expect((await run(['query', 'return 1', '--nope'])).error?.message).toMatch(/Unknown option '--nope'[\s\S]*Usage: abuddy db query/);
+    expect((await run(['query', 'return 1', '-o', 'xml', '--data-dir', dir])).error?.message).toBe('--output must be one of pretty, json, csv');
+    expect((await run(['query', 'return 1', '-d', '-b'])).error?.message).toMatch(/^Choose one of -d and -b/);
+    expect((await run(['query', 'return 1', '--data-dir', tempDir('empty-')])).error?.message).toMatch(/^No AgentBuddy database in /);
+  });
+});
+
+describe('abuddy db exec', () => {
+  it('writes with the transaction helpers', async () => {
+    const dir = await appDataDir();
+    const { out } = await ok(['exec', "tx('Note-a').put('title', 'Changed'); return tx(EARS.Entity.Note).put('title', 'New').id()", '--data-dir', dir]);
+    expect(out).toMatch(/^Note-/);
+    const titles = await ok(['query', "return qx(EARS.Entity.Note).pickAll(['title']).map((n) => n.title).sort()", '--data-dir', dir, '-o', 'json']);
+    expect(JSON.parse(titles.out)).toEqual(['Beta, "quoted"', 'Changed', 'New']);
+  });
+
+  it('refuses while an app holds the data dir or its API answers, changing nothing', async () => {
+    const locked = await appDataDir();
+    holdLock(locked);
+    const byLock = await run(['exec', "tx('Note-a').put('title', 'Changed')", '--data-dir', locked]);
+    expect(byLock.error?.message).toMatch(/^AgentBuddy is running on .* \(process \d+ holds .*\): quit it first/);
+
+    const served = await appDataDir();
+    await publishPort(served);
+    const byPort = await run(['exec', "tx('Note-a').put('title', 'Changed')", '--data-dir', served]);
+    expect(byPort.error?.message).toMatch(/its API answers on port \d+/);
+    const { out } = await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', served]);
+    expect(out).toBe('Alpha');
+  });
+
+  it('refuses --ignore-version, and data of another version', async () => {
+    const dir = await appDataDir({ version: '0.0.1' });
+    expect((await run(['exec', 'return 1', '--data-dir', dir, '--ignore-version'])).error?.message).toBe('--ignore-version is only for commands that read');
+    expect((await run(['exec', 'return 1', '--data-dir', dir])).error?.message).toMatch(/AgentBuddy 0\.0\.1/);
+  });
+
+  it('fails when a write never reaches the files', async () => {
+    const dir = await appDataDir();
+    const { error } = await run(['exec', "tx('Note-a').put('count', 1n)", '--data-dir', dir]);
+    expect(error?.message).toMatch(/1 write\(s\) didn't reach the database/);
+  });
+});
+
+describe('abuddy db repl', () => {
+  it('runs each line, reporting errors without stopping', async () => {
+    const dir = await appDataDir();
+    const out: string[] = [];
+    const err: string[] = [];
+    const input = Readable.from(["return getAttr('Note-a', 'title')\n", "tx('Note-a')\n", '\n', 'return 2\n', '.exit\n', 'return 3\n']);
+    await dbRepl(['--data-dir', dir], { out: (l) => out.push(l), err: (l) => err.push(l) }, input);
+    expect(out).toEqual(['Alpha', '2']);
+    expect(err).toContain('Error: tx is not defined');
+  });
+
+  it('saves the writes of a --write session', async () => {
+    const dir = await appDataDir();
+    const io = { out: () => {}, err: () => {} };
+    await dbRepl(['--data-dir', dir, '--write'], io, Readable.from(["tx('Note-a').put('title', 'From the repl')\n"]));
+    const { out } = await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir]);
+    expect(out).toBe('From the repl');
+  });
+});
+
+describe('abuddy db inspect', () => {
+  it("shows an entity's roles and relations, in the directions asked", async () => {
+    const dir = await appDataDir();
+    const both = await ok(['inspect', 'Note-b', '--data-dir', dir, '--depth', '2']);
+    expect(both.out.split('\n')).toEqual([
+      '[Note] Note-b "Beta, "quoted""',
+      '  <- parent_of (1)',
+      '    [Note] Note-a "Alpha"',
+      '      roles: pinned',
+      '      -> parent_of (1)',
+      '          [Note] Note-b',
+    ]);
+    const deeper = await ok(['inspect', 'Note-b', '--data-dir', dir, '--depth', '3']);
+    expect(deeper.out.split('\n').at(-1)).toBe('        [Note] Note-b (shown above)');
+    const outgoing = await ok(['inspect', 'Note-b', '--data-dir', dir, '--outgoing']);
+    expect(outgoing.out).toBe('[Note] Note-b "Beta, "quoted""');
+    expect((await ok(['inspect', 'Note-x', '--data-dir', dir])).out).toBe('Not found: Note-x');
+  });
+
+  it('counts relations per entity type, or shows the first entities of one', async () => {
+    const dir = await appDataDir();
+    const stats = await ok(['inspect', '--data-dir', dir]);
+    expect(stats.out.split('\n')).toContainEqual(expect.stringMatching(/^Note\s+2\s+1\s+0\.5$/));
+    const byType = await ok(['inspect', '--type', 'Settings', '--data-dir', dir]);
+    expect(byType.out.split('\n').slice(0, 2)).toEqual(['1 Settings entities', '[Settings] Settings-app "App"']);
+    expect((await run(['inspect', 'Note-a', '--type', 'Note', '--data-dir', dir])).error?.message).toMatch(/not both/);
+    expect((await run(['inspect', '--depth', '0', '--data-dir', dir])).error?.message).toMatch(/--depth/);
+  });
+});
+
+describe('abuddy db export', () => {
+  it('writes a file per entity type with entities, and a summary', async () => {
+    const dir = await appDataDir();
+    const out = path.join(dir, 'export');
+    await ok(['export', '--out', out, '--data-dir', dir]);
+    const notes = JSON.parse(fs.readFileSync(path.join(out, 'Note.json'), 'utf-8'));
+    expect(notes.map((n: { id: string }) => n.id).sort()).toEqual(['Note-a', 'Note-b']);
+    expect(notes.find((n: { id: string }) => n.id === 'Note-a')).toMatchObject({ title: 'Alpha', role: 'pinned' });
+    expect(fs.existsSync(path.join(out, 'Relation.json'))).toBe(true);
+    expect(fs.existsSync(path.join(out, 'Flow.json'))).toBe(false);
+    const summary = JSON.parse(fs.readFileSync(path.join(out, 'export.json'), 'utf-8'));
+    expect(summary).toMatchObject({ userDataDir: dir, dataVersion: APP_VERSION, format: 'json', counts: { Note: 2, Settings: 1, AppState: 1, Relation: 1 } });
+  });
+
+  it('exports the types asked, as CSV, and refuses a type no pack declares', async () => {
+    const dir = await appDataDir();
+    const out = path.join(dir, 'export');
+    await ok(['export', '--out', out, '--type', 'Settings', '-t', 'Flow', '--format', 'csv', '--data-dir', dir]);
+    expect(fs.readdirSync(out).sort()).toEqual(['Flow.csv', 'Settings.csv', 'export.json']);
+    const [header, row] = fs.readFileSync(path.join(out, 'Settings.csv'), 'utf-8').split('\n');
+    expect(header.split(',')).toEqual(expect.arrayContaining(['id', 'entityType', 'label', 'data']));
+    expect(row).toContain('"{""general"":{""theme"":""dark""}}"');
+    expect((await run(['export', '--out', out, '--type', 'Nope', '--data-dir', dir])).error?.message).toBe('Not an entity type of the installed packs: Nope');
+    expect((await run(['export', '--data-dir', dir])).error?.message).toMatch(/^--out is required/);
+  });
+});
+
+describe('abuddy db clear-settings', () => {
+  it('lists the Settings rows, and destroys them only with --force', async () => {
+    const dir = await appDataDir();
+    const dry = await ok(['clear-settings', '--data-dir', dir]);
+    expect(dry.out).toContain('Would destroy 1 Settings row(s):\n  Settings-app  label: App  stored keys: general');
+    expect(dry.out).toContain('Dry run: nothing was changed');
+    expect((await ok(['query', 'return getEntitiesOfType("Settings")', '--data-dir', dir, '-o', 'json'])).out).toContain('Settings-app');
+
+    const forced = await ok(['clear-settings', '--force', '--data-dir', dir]);
+    expect(forced.out).toContain('Destroyed 1 Settings row(s)');
+    expect(JSON.parse((await ok(['query', 'return getEntitiesOfType("Settings")', '--data-dir', dir, '-o', 'json'])).out)).toEqual([]);
+    expect((await ok(['clear-settings', '--force', '--data-dir', dir])).out).toBe('No Settings rows: nothing to destroy.');
+  });
+
+  it('refuses while an app runs on the data dir', async () => {
+    const dir = await appDataDir();
+    holdLock(dir);
+    expect((await run(['clear-settings', '--force', '--data-dir', dir])).error?.message).toMatch(/quit it first/);
+  });
+});
+
+describe('abuddy db reset', () => {
+  async function withKey(dir: string): Promise<string> {
+    const file = appDataPaths(dir, { packaged: false }).secretsFile;
+    const vault = memoryKeyVault('unprotected');
+    createSecretsStore({ filePath: file, osVault: () => vault, fileVault: () => vault, useFileVault: true }).add('anthropic', 'Work', 'sk-ant-api03-test');
+    return file;
+  }
+
+  it('lists what it would delete, and deletes the data and stored keys only with --force', async () => {
+    const dir = await appDataDir();
+    const secretsFile = await withKey(dir);
+    const dry = await ok(['reset', '--data-dir', dir]);
+    expect(dry.out).toContain('Would delete the database');
+    expect(dry.out).toContain('  Note: 2');
+    expect(dry.out).toContain('Would delete 1 stored API key(s)');
+    expect(dry.out).toContain('Dry run: nothing was changed');
+    expect(JSON.parse(fs.readFileSync(secretsFile, 'utf-8')).secrets).toHaveLength(1);
+
+    const forced = await ok(['reset', '--force', '--data-dir', dir]);
+    expect(forced.out).toContain('Reset. AgentBuddy creates its default data on its next start.');
+    expect(JSON.parse(fs.readFileSync(secretsFile, 'utf-8')).secrets).toEqual([]);
+    const after = await ok(['query', 'return getAllEntities()', '--data-dir', dir, '-o', 'json']);
+    expect(JSON.parse(after.out)).toEqual([]);
+    // Empty data records no version: any AgentBuddy opens it
+    expect((await ok(['reset', '--data-dir', dir])).out).toContain('Would delete 0 stored API key(s)');
+  });
+
+  it('refuses while an app runs on the data dir', async () => {
+    const dir = await appDataDir();
+    await publishPort(dir);
+    expect((await run(['reset', '--force', '--data-dir', dir])).error?.message).toMatch(/quit it first/);
+    expect((await ok(['query', 'return getEntitiesOfType("Note").length', '--data-dir', dir])).out).toBe('2');
+  });
+});
+
+describe('abuddy db import', () => {
+  /** A backup of a data dir whose one note is titled `title`, as the app exports it */
+  async function backupWith(title: string, version = APP_VERSION): Promise<string> {
+    const source = await appDataDir({ version });
+    await write(source, () => { tx(id('Note-a')).put('title', title); tx(id('Note-b')).destroy(); });
+    const paths = appDataPaths(source, { packaged: false });
+    fs.mkdirSync(paths.media, { recursive: true });
+    fs.writeFileSync(path.join(paths.media, 'image.png'), 'png');
+    return exportDatabase({ paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb } }, tempDir('backup-'), { name: 'backup', mediaPath: paths.media });
+  }
+
+  it('lists the backup and what it replaces, and replaces the database and media only with --force', async () => {
+    const dir = await appDataDir();
+    const backup = await backupWith('From the backup');
+    const dry = await ok(['import', backup, '--data-dir', dir]);
+    expect(dry.out).toContain(`Backup: ${backup}`);
+    expect(dry.out).toContain(`  AgentBuddy version: ${APP_VERSION}`);
+    expect(dry.out).toContain('  databases: lmdb, with media');
+    expect(dry.out).toMatch(/Would replace the current database, which holds:\n(.*\n)*  Note: 2/);
+    expect(dry.out).toContain('Dry run: nothing was changed');
+    expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('Alpha');
+
+    await ok(['import', backup, '--force', '--data-dir', dir]);
+    expect((await ok(['query', "return [getAttr('Note-a', 'title'), getEntitiesOfType('Note').length]", '--data-dir', dir, '-o', 'json'])).out)
+      .toBe(JSON.stringify(['From the backup', 1], null, 2));
+    expect(fs.readFileSync(path.join(appDataPaths(dir, { packaged: false }).media, 'image.png'), 'utf-8')).toBe('png');
+  });
+
+  it('refuses a backup that is not one, lacks a database, or holds another version, changing nothing', async () => {
+    const dir = await appDataDir();
+    const notBackup = tempDir('not-backup-');
+    expect((await run(['import', notBackup, '--force', '--data-dir', dir])).error?.message).toMatch(/isn't a backup: it has no metadata\.json/);
+
+    const unknown = await backupWith('x');
+    fs.writeFileSync(path.join(unknown, 'metadata.json'), JSON.stringify({ databases: ['lmdb', 'other'] }));
+    expect((await run(['import', unknown, '--force', '--data-dir', dir])).error?.message).toMatch(/databases this AgentBuddy doesn't: other/);
+
+    const missing = await backupWith('x');
+    fs.rmSync(path.join(missing, 'lmdb'), { recursive: true });
+    expect((await run(['import', missing, '--force', '--data-dir', dir])).error?.message).toMatch(/lmdb folder is missing/);
+
+    const older = await backupWith('x', '0.0.1');
+    expect((await run(['import', older, '--force', '--data-dir', dir])).error?.message).toMatch(/AgentBuddy 0\.0\.1/);
+
+    expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('Alpha');
+  });
+
+  it('refuses while an app runs on the data dir', async () => {
+    const dir = await appDataDir();
+    const backup = await backupWith('x');
+    holdLock(dir);
+    expect((await run(['import', backup, '--force', '--data-dir', dir])).error?.message).toMatch(/quit it first/);
+  });
+});
+
+describe('abuddy db', () => {
+  it('prints its usage, and each command its own', async () => {
+    expect((await ok([])).out).toMatch(/^Usage: abuddy db <command>/);
+    expect((await ok(['reset', '--help'])).out).toMatch(/^Usage: abuddy db reset \[--force\]/);
+    expect((await run(['nope'])).error?.message).toMatch(/^Unknown db command: nope/);
+  });
+});

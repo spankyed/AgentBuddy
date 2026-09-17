@@ -13,6 +13,7 @@
 #   6. abuddy release --local --dry-run produces a verified bundle
 #   7. install that bundle into an isolated test data dir
 #   8. abuddy test passes against the configured app (this checkout, chosen at the first-run prompt)
+#   9. the packed CLI's abuddy db reads and exports the data that app seeded, and refuses another version's
 # No ABUDDY_ROOT, no symlinks, no PATH edits. Requires a built checkout (npm run build).
 # KEEP_WORK=1 keeps the temp dir.
 set -euo pipefail
@@ -339,7 +340,46 @@ node -e '
 [ -f "$(dirname "$INSTALLED")/runtime/index.cjs" ] || fail "installed bundle has no runtime"
 
 step "8. abuddy test (the saved app)"
-"$ABUDDY" test
+# The app's data dir is kept for step 9: the app seeded the installed demo pack into it
+E2E_KEEP_DATA=1 "$ABUDDY" test 2>&1 | tee "$WORK/e2e.log"
+[ "${PIPESTATUS[0]}" -eq 0 ] || fail "abuddy test failed"
+APP_DATA="$(sed -n 's/.*\[e2e\] kept test data dir: //p' "$WORK/e2e.log" | head -n 1)"
+[ -d "$APP_DATA" ] || fail "abuddy test didn't report the data dir it kept"
+if [ -z "${KEEP_WORK:-}" ]; then trap 'rm -rf "$WORK" "$APP_DATA"' EXIT; fi
+
+step "9. abuddy db on the data the app seeded (the packed CLI, offline)"
+# The demo pack's entity type comes from its installed manifest
+"$ABUDDY" db query "return qx(EARS.Entity.DemoPack).pickAll().map((row) => row.term)" --data-dir "$APP_DATA" -o json > "$WORK/db-query.json" 2> "$WORK/db-query.err" \
+  || { cat "$WORK/db-query.err"; fail "abuddy db query failed"; }
+grep -q "Database: $APP_DATA (offline)" "$WORK/db-query.err" || fail "abuddy db query didn't print its data dir"
+node -e '
+  const terms = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
+  // The glossary term, beside the example row the scaffold seeds (which has none)
+  if (!terms.includes("Pack")) throw new Error("the seeded glossary: " + JSON.stringify(terms));
+' "$WORK/db-query.json" || fail "abuddy db query didn't read the seeded demo pack"
+"$ABUDDY" db export --data-dir "$APP_DATA" --out "$WORK/db-export" --type DemoPack --type Note
+node -e '
+  const fs = require("fs");
+  const dir = process.argv[1];
+  const rows = JSON.parse(fs.readFileSync(`${dir}/DemoPack.json`, "utf8"));
+  const term = rows.find((row) => row.term === "Pack");
+  if (term?.definition !== "A bundle of features.") throw new Error("DemoPack.json: " + JSON.stringify(rows));
+  const notes = JSON.parse(fs.readFileSync(`${dir}/Note.json`, "utf8"));
+  if (!notes.some((note) => note.title === "Demo notes")) throw new Error("Note.json has no demo note");
+  const summary = JSON.parse(fs.readFileSync(`${dir}/export.json`, "utf8"));
+  if (summary.counts.DemoPack !== rows.length || !summary.dataVersion) throw new Error("export.json: " + JSON.stringify(summary));
+' "$WORK/db-export" || fail "abuddy db export didn't write the seeded data"
+
+# Data another AgentBuddy version migrated is refused, and read with --ignore-version
+OTHER="$WORK/other-version-data"
+cp -R "$APP_DATA" "$OTHER"
+"$ABUDDY" db exec "tx('AppState-app').put('version', '0.0.1')" --data-dir "$OTHER" >/dev/null
+if "$ABUDDY" db query "return 1" --data-dir "$OTHER" > "$WORK/db-refused.log" 2>&1; then
+  fail "abuddy db query read data another AgentBuddy version migrated"
+fi
+grep -q "AgentBuddy 0.0.1" "$WORK/db-refused.log" || { cat "$WORK/db-refused.log"; fail "the version refusal didn't name the data's version"; }
+[ "$("$ABUDDY" db query "return getAttr('AppState-app', 'version')" --data-dir "$OTHER" --ignore-version 2>/dev/null)" = "0.0.1" ] \
+  || fail "abuddy db query --ignore-version didn't read the data"
 
 step "No symlinks into the monorepo"
 if find "$PACK/node_modules" "$WORK/tools/node_modules" -maxdepth 2 -type l -lname "$ROOT*" | grep -q .; then

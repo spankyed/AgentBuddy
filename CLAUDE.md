@@ -47,8 +47,8 @@ npm run test:external-pack       # Build the fixture packs in tests/fixtures wit
 npm run test:packaged-authoring  # Author, build, test and install a pack outside the monorepo from the packed @abuddy/* tarballs (needs npm run build)
 npm run compile          # Build packages/default-setup (abuddy build: compiled seeds, snapshot, types; DSL defs; dist/runtime/index.cjs)
 
-npm run db:cli           # Database CLI
-npm run db:reset         # Reset database
+npm run db:query -- "<code>"   # abuddy db query on the dev app's data (also db:exec, db:repl, db:inspect,
+                               # db:export, db:import, db:reset, db:clear-settings; the app closed for changes)
 
 # Published API surface (run from packages/abuddy-ears, packages/abuddy-sdk or packages/abuddy-ui)
 npm run api:check        # CI: fails if a public entry's API changed without updating reports
@@ -107,7 +107,7 @@ Layers, each importing only the ones above it (`check:specifiers`, `findUpwardIm
 |---|---|
 | `@abuddy/ears` | the engine, the EARS types, the persistence port (`/lmdb`: the LMDB store) |
 | `@abuddy/sdk` | the pack contract and pack runtime: lookups of what packs registered, the services' contracts, event sends, logging and error reports over the bound bus, the SDK entities and their repositories, the `HostRuntime` port |
-| `@abuddy/host` | the app runtime: the five app services (`/services`), app state (`/app-state`), and what the app runs (`/packs` and `/packs/runtime`, `/bus`, `/migrations`, `/secrets`) |
+| `@abuddy/host` | the app runtime: the five app services (`/services`), app state (`/app-state`), what the app runs (`/packs` and `/packs/runtime`, `/bus`, `/migrations`, `/secrets`), and its database opened outside it (`/database`) |
 | `packages/api` | transport (`node:http`, `ws`, the tRPC routers, the log stream), process boot and composition (`setup/backend.ts`) |
 | `packages/renderer` | the frontend composition: binds the frontend port |
 

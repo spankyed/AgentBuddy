@@ -147,6 +147,18 @@ describe('pack-loader', () => {
       expect(result).toHaveLength(1);
     });
 
+    it("loads a runtime requiring a subpath of a package the host provides (the AI SDK's zod/v4)", () => {
+      const packDir = makePack(path.join(tmpDir, 'packs'), 'zod-pack', { id: 'zod-pack', name: 'Zod', version: '1.0.0' });
+      // An installed bundle has no node_modules: the host's copy is the only one there is
+      fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), [
+        "const { z } = require('zod/v4');",
+        "const { createMachine } = require('xstate');",
+        "module.exports = { registration: { id: 'zod-pack', systems: [] }, parsed: z.string().parse('ok'), machine: typeof createMachine };",
+      ].join('\n'));
+      const [pack] = loadExternalPacks();
+      expect(pack?.manifest.id).toBe('zod-pack');
+    });
+
     it('handles packs with no features array', () => {
       makePack(path.join(tmpDir, 'packs'), 'data-pack', {
         id: 'data-pack',

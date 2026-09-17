@@ -5,7 +5,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createEarsEngine, installEngine, makePolicy, tx, getEntitiesOfType, type EARS, type EarsEngine } from '../../src/index.ts';
-import { openLmdbStore, type LmdbStore } from '../../src/lmdb/index.ts';
+import { openLmdbStore, type LmdbStore, type LmdbStoreOptions } from '../../src/lmdb/index.ts';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ears-lmdb-store-'));
 const policy = makePolicy({ excludedEntityTypes: new Set(['Trace']) });
@@ -14,8 +14,8 @@ const open: LmdbStore[] = [];
 let engine: EarsEngine;
 
 /** A store and a new engine persisting to it, installed, as an app's composition opens them */
-function openStore(): LmdbStore {
-  const store = openLmdbStore({ paths, policy, engine: () => engine.admin });
+function openStore(options: Pick<LmdbStoreOptions, 'readOnly' | 'log'> = {}): LmdbStore {
+  const store = openLmdbStore({ paths, policy, engine: () => engine.admin, ...options });
   engine = createEarsEngine({ persistence: store.sink, isEntityType: () => false });
   installEngine(engine.query);
   open.push(store);
@@ -218,5 +218,49 @@ describe('openLmdbStore', () => {
     expect(engine.query.getAll(id('Note-2'))).toEqual({});
     expect(getEntitiesOfType('Note')).toEqual(['Note-1']);
     expect(getEntitiesOfType('Relation')).toEqual([]);
+  });
+
+  it('opens existing files read-only: it hydrates them, and refuses writes and a reset', async () => {
+    const first = openStore();
+    tx(id('Note-1'), true).put('title', 'kept').link('mentions', id('Note-2'));
+    await flushed();
+    first.close();
+
+    const lines: string[] = [];
+    const readOnly = openStore({ readOnly: true, log: (line) => lines.push(line) });
+    expect(readOnly.readOnly).toBe(true);
+    expect(readOnly.paths).toEqual(paths);
+    await readOnly.hydrate();
+    expect(getAttr(id('Note-1'), 'title')).toBe('kept');
+    expect(getEntitiesOfType('Relation')).toHaveLength(1);
+    expect(lines).toContain('[LMDB] Hydrating partitions: primary');
+    expect(() => tx(id('Note-1')).put('title', 'changed')).toThrow('is open read-only');
+    await expect(readOnly.reset()).rejects.toThrow('is open read-only');
+    expect(readOnly.close()).toEqual({ errorCount: 0, lastError: null });
+    expect(lines).toContain('[LMDB] Environment closed successfully');
+
+    const reopened = openStore();
+    expect(reopened.query('primary').getFirstAttr('title', 'Note-1')).toBe('kept');
+  });
+
+  it('opens no database where none exists when read-only', () => {
+    expect(() => openStore({ readOnly: true })).toThrow();
+    expect(fs.existsSync(paths.primary)).toBe(false);
+  });
+
+  it('reports a failed final flush from close, and nothing for a clean or repeated close', async () => {
+    const store = openStore();
+    tx(id('Note-1'), true).put('title', 'fine');
+    await flushed();
+    // JSON can't encode a BigInt: the write fails when close flushes it
+    tx(id('Note-1')).put('count', 1n);
+    const stats = store.close();
+    expect(stats.errorCount).toBe(1);
+    expect(stats.lastError).toMatchObject({ op: 'final flush' });
+    expect(store.close()).toEqual({ errorCount: 0, lastError: null });
+
+    const clean = openStore();
+    tx(id('Note-2'), true).put('title', 'fine');
+    expect(clean.close()).toEqual({ errorCount: 0, lastError: null });
   });
 });

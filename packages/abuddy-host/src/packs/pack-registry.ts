@@ -43,8 +43,8 @@ function getRegistryPath(): string {
   return resolveAppContext().registryFile;
 }
 
-export function readPackRegistry(): PackRegistryEntry[] {
-  const registryPath = getRegistryPath();
+/** The installed external packs' entries (in `registryPath`, the app's registry file by default) */
+export function readPackRegistry(registryPath = getRegistryPath()): PackRegistryEntry[] {
   if (!fs.existsSync(registryPath)) return [];
 
   try {

@@ -9,13 +9,10 @@ import { createLogger } from '@abuddy/sdk/logger';
 import { SERVER_CONFIG, apiToken, apiTokenIsOwn, isApiToken } from '@/setup/config';
 import { appPacks, backendActor } from '@/setup/backend';
 import { reloadBuiltInPack, reloadExternalPack } from '@abuddy/host/packs/runtime';
-import { API_TOKEN_HEADER, resolveAppContext } from '@abuddy/sdk/env';
+import { API_HOST, API_TOKEN_HEADER, resolveAppContext } from '@abuddy/sdk/env';
 
 const logger = createLogger('backend');
 const reloadingPacks = new Set<string>();
-
-/** The only interface the server listens on: the app's own processes and local tools reach it, nothing on the network does */
-export const API_HOST = '127.0.0.1';
 
 /**
  * The WebSocket subprotocol the app's windows speak, the one the server answers with. They send the API token as a

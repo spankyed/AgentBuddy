@@ -27,13 +27,19 @@ interface BundleConfig {
   declarations?: boolean;
   /** Fields replacing the workspace ones in the published package.json */
   manifest: Record<string, unknown>;
+  /** Constants esbuild replaces in the bundle */
+  define?: Record<string, string>;
 }
+
+const repoVersion: string = JSON.parse(fs.readFileSync(path.resolve(import.meta.dirname, '..', 'package.json'), 'utf-8')).version;
 
 const CONFIGS: Record<string, BundleConfig> = {
   '@abuddy/cli': {
     entries: { cli: 'src/index.ts' },
     copy: ['bin/abuddy.mjs'],
     manifest: { bin: { abuddy: 'bin/abuddy.mjs' } },
+    // The AgentBuddy version whose data `abuddy db` reads and writes (src/app-version.ts)
+    define: { __ABUDDY_APP_VERSION__: JSON.stringify(repoVersion) },
   },
   '@abuddy/testing': {
     // vitest-worker and vitest-teardown are loaded by path from dist/vitest.js's isolatedDataDir()
@@ -128,6 +134,7 @@ const result = await build({
   // Bundled CommonJS dependencies may call require(); give ESM chunks one
   banner: { js: "import { createRequire as __abuddyCreateRequire } from 'node:module'; const require = __abuddyCreateRequire(import.meta.url);" },
   plugins: [externalizeAllButInlined],
+  define: config.define,
 });
 
 const imported = new Set<string>();

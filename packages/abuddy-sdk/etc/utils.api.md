@@ -6,6 +6,20 @@
 
 import { EARS as EARS_2 } from '@abuddy/ears';
 
+// @internal
+export interface AppDataPaths {
+    lmdb: string;
+    // (undocumented)
+    media: string;
+    secretsFile: string;
+    volatileLmdb: string;
+}
+
+// @internal
+export function appDataPaths(userDataDir: string, input: {
+    packaged: boolean;
+}): AppDataPaths;
+
 // @public (undocumented)
 export function asArr<T>(v: MaybeArr<T>): readonly T[];
 

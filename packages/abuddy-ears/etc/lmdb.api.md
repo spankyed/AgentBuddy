@@ -14,10 +14,10 @@ export type AttrRecord = {
 };
 
 // @public (undocumented)
-export function closeEnv(dbs: LmdbDbs): void;
+export function closeEnv(dbs: LmdbDbs, log?: (message: string) => void): void;
 
 // @public (undocumented)
-export function closeShardedEnvs(envs: Record<Partition, LmdbDbs>): void;
+export function closeShardedEnvs(envs: Record<Partition, LmdbDbs>, log?: (message: string) => void): void;
 
 // @public
 export function decodeAttr(rec?: AttrRecord | null): unknown;
@@ -47,6 +47,7 @@ export function hydrateSharded(params: {
     policy: PartitionPolicy;
     includeVolatile?: boolean;
     shardedPersistence?: ShardedPersistence;
+    log?: (message: string) => void;
 }): Promise<void>;
 
 // @public
@@ -114,14 +115,16 @@ export class LmdbQuery {
 
 // @public
 export interface LmdbStore {
-    close(): void;
+    close(): PersistenceErrorStats;
     readonly envs: Readonly<Record<Partition, LmdbDbs>>;
     hydrate(options?: {
         includeVolatile?: boolean;
     }): Promise<void>;
     isOpen(): boolean;
+    readonly paths: Readonly<LmdbPaths>;
     readonly policy: PartitionPolicy;
     query(partition: Partition): LmdbQuery;
+    readonly readOnly: boolean;
     reopen(): void;
     reset(): Promise<void>;
     readonly sink: ShardedPersistence;
@@ -130,8 +133,10 @@ export interface LmdbStore {
 // @public
 export interface LmdbStoreOptions {
     engine: () => EarsAdmin;
+    log?: (message: string) => void;
     paths: LmdbPaths;
     policy: PartitionPolicy;
+    readOnly?: boolean;
 }
 
 // @public (undocumented)
@@ -145,8 +150,10 @@ export function openEnvAt(basePath: string, input?: {
 // @public
 export function openLmdbStore(input: LmdbStoreOptions): LmdbStore;
 
-// @public (undocumented)
-export function openShardedEnvs(paths: LmdbPaths): Record<Partition, LmdbDbs>;
+// @public
+export function openShardedEnvs(paths: LmdbPaths, input?: {
+    readOnly?: boolean;
+}): Record<Partition, LmdbDbs>;
 
 // @public (undocumented)
 export type RelationRecord = {

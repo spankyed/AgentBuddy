@@ -70,6 +70,11 @@
       "types": "./dist/ids/index.d.ts",
       "default": "./dist/ids/index.js"
     },
+    "./database-console": {
+      "@abuddy/source": "./src/database-console/index.ts",
+      "types": "./dist/database-console/index.d.ts",
+      "default": "./dist/database-console/index.js"
+    },
     "./repositories": {
       "@abuddy/source": "./src/repositories/index.ts",
       "types": "./dist/repositories/index.d.ts",

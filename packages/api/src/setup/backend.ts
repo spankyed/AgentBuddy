@@ -3,8 +3,9 @@ import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { bindHost } from '@abuddy/sdk/runtime';
 import { bus } from '@abuddy/sdk/ids';
 import { getLmdbPath, getVolatileLmdbPath } from '@abuddy/sdk/utils';
-import { createEarsEngine, type EarsEngine } from '@abuddy/ears';
-import { openLmdbStore, type LmdbStore } from '@abuddy/ears/lmdb';
+import type { EarsEngine } from '@abuddy/ears';
+import type { LmdbStore } from '@abuddy/ears/lmdb';
+import { openDatabaseStore } from '@abuddy/host/database';
 import { createPackRegistry, publishHostPackArtifacts, prepareHostDataDirs, type PackRegistry } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import * as path from 'path';
@@ -52,21 +53,18 @@ export let appPacks: PackRegistry;
 
 /**
  * Opens the app's data and binds the app: the registered packs (`createPackRegistry()`, empty until the caller
- * registers them), the LMDB store (`@abuddy/ears/lmdb`) with their partition policy, the app's engine created with
- * the store's sink as its persistence and checking entity types against the registered packs', and
+ * registers them), the LMDB store and the app's engine persisting to it (`openDatabaseStore`, `@abuddy/host/database`,
+ * which `abuddy db` opens a data dir with too) with their partition policy and entity types, and
  * `bindHost(createHostRuntime(...))` with the root event bus, whose log events are printed, the app version, the
  * registry (the SDK's lookups read it), the engine (packs get its query face, installed by the bind) and the host
  * services over the store and the engine's admin face. The caller hydrates the store once the packs are registered.
- * The db scripts call it too.
  */
 export function openAppStore(): AppStore {
   const packs = createPackRegistry();
-  const store = openLmdbStore({
+  const { store, engine } = openDatabaseStore({
     paths: { primary: getLmdbPath(), volatileBackup: getVolatileLmdbPath() },
-    policy: packs.partitionPolicy,
-    engine: () => engine.admin,
+    schema: packs,
   });
-  const engine = createEarsEngine({ persistence: store.sink, isEntityType: (v: string) => packs.getRegisteredEntityTypes().has(v) });
   bindHost(createHostRuntime({ store, engine, transport: { rootEvents }, appVersion: APP_VERSION, packs }));
   printLogEvents();
   appPacks = packs;

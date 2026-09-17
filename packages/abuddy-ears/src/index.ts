@@ -30,7 +30,7 @@ export { getAllEntities, queryEntitiesByAttribute, queryEntitiesByRelationTo, qu
 export { qx as untypedQx } from './query.ts';
 // Types that appear in the signatures above, so pack authors can name them.
 export type { CreatedEntityFields } from './transaction-helpers.ts';
-export type { PersistenceSink } from './runtime.ts';
+export type { PersistenceSink, PersistenceErrorStats } from './runtime.ts';
 // The persistence port: partitions, their policy, and the sink routing writes to each partition's sink
 export { makePolicy, type Partition, type PartitionPolicy } from './persistence/policy.ts';
 export { makeShardedPersistence, type ShardedPersistence, type RelationDetailsReader } from './persistence/sharded-router.ts';
