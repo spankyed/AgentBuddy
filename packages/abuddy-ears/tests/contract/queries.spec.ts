@@ -30,6 +30,9 @@ describe('seeds', () => {
     expect(e.query.qx(t.b).ids()).toEqual([t.b]);
     expect(e.query.qx([t.c, 'Task-none' as Id, t.a]).ids()).toEqual([t.c, t.a]);
     expect(e.query.qx('Task-none' as Id).ids()).toEqual([]);
+    // Deliberate: a name the engine doesn't know as a type is read as an id, so it finds nothing rather than
+    // throwing. A seed can't be told apart from a typo or a type whose pack isn't installed — the engine has no
+    // way to know which was meant — and the case below pins the other side of it, an id with no type prefix.
     expect(e.query.qx('Memo').ids()).toEqual([]);
     expect(e.query.qx(undefined).count()).toBe(8);
   });
