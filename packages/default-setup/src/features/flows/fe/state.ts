@@ -523,7 +523,7 @@ const flowsState = setup({
     deselectHandle: assign({ selectedHandle: undefined }),
     clearCanvasError: assign({ canvasError: undefined }),
     surfaceEdgeError: assign(({ event }) => {
-      const ev = event as Extract<typeof event, { type: 'EDGE_CREATE_FAILED' | 'EDGE_UPDATE_FAILED' }>
+      const ev = typeOf(['EDGE_CREATE_FAILED', 'EDGE_UPDATE_FAILED'], event)
       return { canvasError: ev.error }
     }),
 
