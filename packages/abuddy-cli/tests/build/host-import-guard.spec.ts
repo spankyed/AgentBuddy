@@ -50,7 +50,7 @@ describe('abuddy build rejects @abuddy/host imports', () => {
   }, 60_000);
 
   it('still bundles pack code that imports @abuddy/sdk', async () => {
-    const dir = pack({ 'src/__generated__/pack-entry.ts': "import { findRelations } from '@abuddy/sdk/ears';\nexport const registration = { findRelations };\n" });
+    const dir = pack({ 'src/__generated__/pack-entry.ts': "import { findRelations } from '@abuddy/ears';\nexport const registration = { findRelations };\n" });
     expect(await bundlePackRuntime(dir, path.join(dir, 'dist'))).toEqual({ success: true });
   });
 });

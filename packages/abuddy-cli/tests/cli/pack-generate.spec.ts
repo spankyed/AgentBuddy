@@ -86,10 +86,10 @@ describe('abuddy generate-entries', () => {
     await generateEntries(['--force'], tmpDir);
 
     const output = readGenerated();
-    expect(output).toContain("export type EntityId<E extends string = string> = import('@abuddy/sdk').EARS.EntityId<E>");
-    expect(output).toContain("export type Blueprint = import('@abuddy/sdk').EARS.Blueprint");
-    expect(output).toContain("export type RoleKind = import('@abuddy/sdk').EARS.RoleKind");
-    expect(output).toContain("export type AttrKind = import('@abuddy/sdk').EARS.AttrKind");
+    expect(output).toContain("export type EntityId<E extends string = string> = import('@abuddy/ears').EARS.EntityId<E>");
+    expect(output).toContain("export type Blueprint = import('@abuddy/ears').EARS.Blueprint");
+    expect(output).toContain("export type RoleKind = import('@abuddy/ears').EARS.RoleKind");
+    expect(output).toContain("export type AttrKind = import('@abuddy/ears').EARS.AttrKind");
   });
 
   it('emits BaseEntity re-export and AllEntities compat export', async () => {
@@ -107,7 +107,7 @@ describe('abuddy generate-entries', () => {
     // BaseEntity is re-exported from the SDK rather than redeclared per pack,
     // so the shape stays in one place.
     expect(output).toContain('export type BaseEntity');
-    expect(output).toContain("import('@abuddy/sdk').BaseEntity");
+    expect(output).toContain("import('@abuddy/ears').BaseEntity");
     expect(output).toContain('export const AllEntities = EARS.Entity');
     expect(output).toContain('export type AllEntities = EARS.Entity');
   });

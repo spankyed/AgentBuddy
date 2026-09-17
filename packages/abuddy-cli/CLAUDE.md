@@ -46,7 +46,7 @@ A command module exports `async (args: string[]) => void`; `src/index.ts` maps t
 1. `parseManifest`; `clearBuildOutput` (external: all of `dist/`; built-in: only this build's outputs, since the runtime build also writes there).
 2. Unless `--skip-generate`: `resolveDeps` → `generate` → `generateEntries`.
 3. `featureSettingsProblems` (each `features[].settings` through `checkFeatureSettings`).
-4. Dependencies' `steps.build.mjs` and manifests feed `buildPackConfigFromManifest`; `compilePack` compiles `boot.seed` (pack TypeScript loaded with tsx's `tsImport`), then `bundlePackSeedCompilers` (`seedFormats[].compiler`).
+4. Dependencies' `steps.build.mjs` and manifests feed `buildPackConfigFromManifest`; its `loadDefinitions()` go into a registry of this build's own (`createPackRegistry()`, so a registry the process has bound is never touched: `tests/build/build-registry.spec.ts`), whose steps, artifacts and blocks `compilePack` compiles `boot.seed` with (pack TypeScript loaded with tsx's `tsImport`), then `bundlePackSeedCompilers` (`seedFormats[].compiler`).
 5. Facade types: `bundlePackTypes` (`build/types-bundler.ts`, rollup-plugin-dts) → `dist/types/pack-types.d.ts`, then the facade gate (below). Then `bundlePackFlowHelpers` (`build/flow-helpers-bundler.ts`); the snapshot is written last, once every step succeeded.
 6. `bundlePackStepBuild` (manifest `steps.build`), `bundlePackSeedRuntime` + `checkSeedRuntimeLoads`, `bundleDslDefs` (`build/dsl-defs.ts`, manifest `dsl`).
 7. Built-in packs stop here: their FE goes into the renderer (`virtual:built-in-packs`) and their backend into the API bundle.
@@ -54,9 +54,9 @@ A command module exports `async (args: string[]) => void`; `src/index.ts` maps t
 
 A failing bundle or gate is reported and the build continues, so every failure shows; the build then throws before writing the snapshot (built-in packs after step 6, external packs after step 8), so a failed build never leaves a snapshot advertising its output. The seed-compiler bundle fails the build immediately. `BUNDLE_PATHS` (`@abuddy/host/packs`) names every output path.
 
-- **`build/be-bundler.ts`**: `buildPackBundle` is the shared esbuild setup (pack tsconfig, path aliases, `package.json` `imports`, `rejectHostImportsPlugin`, `stubFrontendAssetsPlugin`). `HOST_EXTERNALS` = `SHARED_DEPS` + `@abuddy/sdk/*`. The seed runtime keeps only `@abuddy/sdk` external.
+- **`build/be-bundler.ts`**: `buildPackBundle` is the shared esbuild setup (pack tsconfig, path aliases, `package.json` `imports`, `rejectHostImportsPlugin`, `stubFrontendAssetsPlugin`). `HOST_EXTERNALS` = `SHARED_DEPS` + the `SHARED_INSTANCE_PACKAGES` (`@abuddy/sdk`, `@abuddy/ears`) and their subpaths (`sharedInstanceExternals()`). The seed runtime keeps only the shared-instance packages external.
 - **`build/seed-runtime-check.ts`**: loads `dist/build/seed-runtime.mjs` in a fresh Node process with the SDK's optional peers blocked by a resolve hook, as a dependent's harness would load it.
-- **`build/fe-bundler.ts`**: `packExternalsPlugin` rewrites host-shared imports (`getSharedFeDeps`, `getSdkFeModules`, and every `@abuddy/ui` export from `getUiFeModules` unless `fe.bundleUi`) into `generateGlobalProxy` modules that read `window.__abuddy[globalKey]`. It fails the build when an inlined SDK module reaches the host-module registry (`host.ts`) and rejects `@abuddy/host`. Tailwind: the pack's `tailwind.config.{ts,js}` or a generated one over `src/**`, plus `@abuddy/ui`'s files with `fe.bundleUi`; `tailwindInjectPlugin` prepends `@tailwind utilities` to the entry.
+- **`build/fe-bundler.ts`**: `packExternalsPlugin` rewrites host-shared imports (`getSharedFeDeps`, `getSdkFeModules`, and every `@abuddy/ui` export from `getUiFeModules` unless `fe.bundleUi`) into `generateGlobalProxy` modules that read `window.__abuddy[globalKey]`. It fails the build when an inlined SDK module reaches the SDK's host bindings (`runtime/host-runtime`, `runtime/fe-host`: an inlined copy has no app bound) and rejects `@abuddy/host`. Tailwind: the pack's `tailwind.config.{ts,js}` or a generated one over `src/**`, plus `@abuddy/ui`'s files with `fe.bundleUi`; `tailwindInjectPlugin` prepends `@tailwind utilities` to the entry.
 
 ## Facade gate
 
@@ -85,8 +85,8 @@ The hooks apply only to this process. Child processes that load workspace source
 
 `npm run build:package -w @abuddy/cli` (part of `npm run packages:build`) writes `dist/package/`:
 
-- esbuild bundles the `cli` entry (`src/index.ts`, ESM, node22, code splitting) with `@abuddy/sdk` and the private `@abuddy/host` **inlined from source**. Every other package stays external and becomes a dependency at the workspace range. A `require` banner lets bundled CommonJS work.
-- `bin/abuddy.mjs` is copied. The generated `package.json` pins `@abuddy/sdk` to the workspace SDK version and drops `@abuddy/host`.
+- esbuild bundles the `cli` entry (`src/index.ts`, ESM, node22, code splitting) with the shared-instance packages (`@abuddy/sdk`, `@abuddy/ears`) and the private `@abuddy/host` **inlined from source**; `@abuddy/testing/harness` keeps them external as peers. Every other package stays external and becomes a dependency at the workspace range. A `require` banner lets bundled CommonJS work.
+- `bin/abuddy.mjs` is copied. The generated `package.json` pins the shared-instance packages it depends on (`@abuddy/sdk`, `@abuddy/ears`) to their workspace versions (a peer at `^version` for entries that stay external) and drops `@abuddy/host`.
 - No declarations (`attw` skips the CLI in `packages:check`; `publint` checks `dist/package`). `scripts/publish-packages.ts` publishes from `dist/package`.
 
 Because host code is inlined, `@abuddy/host` imports are fine in `src/`. The CLI's scaffold templates (`src/commands/add`, `src/commands/init.ts`) are pack code and must not use it: `npm run check:specifiers` enforces that.
@@ -95,11 +95,11 @@ Because host code is inlined, `@abuddy/host` imports are fine in `src/`. The CLI
 
 `npm test -w @abuddy/cli` (vitest, `tests/**/*.spec.ts`). It is not part of the root `test:unit`; CI runs it after `packages:build` (`.github/workflows/ci.yml`).
 
-- `tests/build/`: bundlers and gates (`facade-*`, `seed-runtime-*`, `dsl-defs`, `fe-bundler-*`, `host-import-guard`, `clear-build-output`, `feature-settings`, `step-collisions`) and published-package checks (`published-*`, `ui-exports`, `ui-import-side-effects`, `import-specifiers`, `with-source`, `verify-node-modules`, `testing-source-entry`).
-- `tests/cli/`: commands run end to end or through their exports: scaffold, `add`, pack, release, install `hostVersion`, dev install, hand-off, source hooks, app launcher.
+- `tests/build/`: bundlers and gates (`facade-*`, `seed-runtime-*`, `dsl-defs`, `fe-bundler-*`, `host-import-guard`, `clear-build-output`, `feature-settings`, `step-collisions`, `build-registry`) and published-package checks (`published-*`, `ui-exports`, `ui-import-side-effects`, `import-specifiers`, `with-source`, `verify-node-modules`, `testing-source-entry`).
+- `tests/cli/`: commands run end to end or through their exports: scaffold, `add`, pack, release, install `hostVersion`, a scaffolded pack installed and loaded by the host pack loader (`init-install-load`), dev install, hand-off, source hooks, app launcher.
 - `tests/app/`: app target resolution, beta download (`ensureBetaApp`: macOS arm64 only), Playwright resolution, app version.
 - `tests/harness/`: `@abuddy/testing/harness` from a scaffolded pack (`harness-setup`) and a dependent pack running default-setup's runtime (`dependency-runtime`, skipped until default-setup is built).
 - `tests/packs/host-artifacts.spec.ts`: `publishHostPackArtifacts` and dependency resolution from an installed app.
-- `tests/helpers/published-packages.ts`: `PACKAGES_BUILT`, `installPublishedPackages()` (npm-packs the SDK and UI into a temp `node_modules`), `compileConsumer()` over `CONSUMER_MATRIX` (current TypeScript and the 5.7 floor from `packages/typescript-floor`, × `node16`/`bundler`). The `published-*` specs skip without `dist/`, but throw in CI or when `dist` is older than `src`: run `npm run packages:build`.
+- `tests/helpers/published-packages.ts`: `PACKAGES_BUILT`, `installPublishedPackages()` (npm-packs `@abuddy/ears`, the SDK and UI into a temp `node_modules`), `compileConsumer()` over `CONSUMER_MATRIX` (current TypeScript and the 5.7 floor from `packages/typescript-floor`, × `node16`/`bundler`). The `published-*` specs skip without `dist/`, but throw in CI or when `dist` is older than `src`: run `npm run packages:build`.
 
 End-to-end coverage outside this package: `npm run test:external-pack` (`tests/fixtures`) and `npm run test:packaged-authoring` (packed tarballs, outside the monorepo).

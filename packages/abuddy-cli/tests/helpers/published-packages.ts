@@ -8,6 +8,7 @@ const execFileAsync = promisify(execFile);
 
 export const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const PACKAGE_DIRS: Record<string, string> = {
+  ears: path.join(REPO_ROOT, 'packages', 'abuddy-ears'),
   sdk: path.join(REPO_ROOT, 'packages', 'abuddy-sdk'),
   ui: path.join(REPO_ROOT, 'packages', 'abuddy-ui'),
 };
@@ -46,7 +47,7 @@ for (const dir of PACKAGES_BUILT ? Object.values(PACKAGE_DIRS) : []) {
 }
 
 /**
- * A directory whose node_modules has the npm-packed @abuddy/sdk and @abuddy/ui installed, as a
+ * A directory whose node_modules has the npm-packed @abuddy/ears, @abuddy/sdk and @abuddy/ui installed, as a
  * pack gets them from the registry, and links to the monorepo's copies of everything else.
  */
 export function installPublishedPackages(): string {

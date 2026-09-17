@@ -3,7 +3,10 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { findAppImportsInPackTests, findHostImports, findJsSpecifiers, findPackBackendConsole, findRawPackHelpers, findRawTransport } from '../../../../scripts/check-import-specifiers.ts';
+import {
+  findAppImportsInPackTests, findHostImports, findJsSpecifiers, findPackBackendConsole, findRawPackHelpers, findRawTransport,
+  findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs, SHARED_LIST_CONSUMERS,
+} from '../../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '../helpers/published-packages';
 
 /** scripts/check-import-specifiers.ts: relative imports in sdk, host and ui name TypeScript sources */
@@ -96,7 +99,7 @@ const ALLOWED = [
   "import { sendToPlugin } from '@/__generated__/events';",
   "import { sendToBrainSystem, onIncoming } from '@abuddy/sdk/events';",
   "import { emit as emitEvent } from 'xstate';",
-  "import * as ears from '@abuddy/sdk/ears';",
+  "import * as ears from '@abuddy/ears';",
   "import { x } from '@abuddy/sdk/rpcx';",
   'const { busId } = trpc; trpc.buses.list();',
   "logger.info('saved');",
@@ -107,7 +110,7 @@ describe('findRawPackHelpers', () => {
     ["import { emit as emitToPlugin } from '@abuddy/sdk/events';", 'emit from @abuddy/sdk/events'],
     ["import onConnected, { sendToSystem } from '@abuddy/sdk/events';", 'sendToSystem from @abuddy/sdk/events'],
     ["import { sendToPlugin, services } from '@abuddy/sdk/services';", 'sendToPlugin from @abuddy/sdk/services'],
-    ["import { registerRepository, tx } from '@abuddy/sdk/ears';", 'registerRepository from @abuddy/sdk/ears'],
+    ["import { registerRepository, tx } from '@abuddy/ears';", 'registerRepository from @abuddy/ears'],
     ["export type { emit } from '@abuddy/sdk/events';", 'emit from @abuddy/sdk/events'],
     ["import * as events from '@abuddy/sdk/events';", '* from @abuddy/sdk/events (import the names)'],
     ["export * from '@abuddy/sdk/events';", '* from @abuddy/sdk/events (import the names)'],
@@ -118,7 +121,7 @@ describe('findRawPackHelpers', () => {
 
   it('allows comments, strings and the generated facades, and exempts generated files', () => {
     write('pack/feature.ts', ALLOWED);
-    write('pack/__generated__/repositories.ts', "import { registerRepository } from '@abuddy/sdk/ears';\n");
+    write('pack/__generated__/repositories.ts', "import { registerRepository } from '@abuddy/ears';\n");
     expect(findRawPackHelpers(['src/pack'], root)).toEqual([]);
   });
 
@@ -201,7 +204,7 @@ describe('findHostImports', () => {
   it.each([
     ["import { edgeStore } from '@abuddy/host/ears';", '@abuddy/host/ears'],
     ["import type { PackRegistration } from '@abuddy/host/packs';", '@abuddy/host/packs'],
-    ["export { clearMemory } from '@abuddy/host/ears';", '@abuddy/host/ears'],
+    ["export { hydrate } from '@abuddy/host/ears';", '@abuddy/host/ears'],
     ["const backup = await import('@abuddy/host/backup');", '@abuddy/host/backup'],
     ["const { envs } = require('@abuddy/host/ears');", '@abuddy/host/ears'],
     ["import '@abuddy/host';", '@abuddy/host'],
@@ -213,7 +216,7 @@ describe('findHostImports', () => {
   });
 
   it('checks generated files and allows the SDK', () => {
-    write('pack/feature.ts', "import { findRelations, untypedQx } from '@abuddy/sdk/ears';\nimport { services } from '#generated/services';\n");
+    write('pack/feature.ts', "import { findRelations, untypedQx } from '@abuddy/ears';\nimport { services } from '#generated/services';\n");
     write('pack/__generated__/ears.ts', "import { qx } from '@abuddy/host/ears';\n");
     expect(findHostImports(['src/pack'], root)).toEqual(['src/pack/__generated__/ears.ts:1: @abuddy/host/ears']);
   });
@@ -221,8 +224,8 @@ describe('findHostImports', () => {
 
 describe('findAppImportsInPackTests', () => {
   it.each([
-    ["import { clearMemory } from '@abuddy/host/ears';", '@abuddy/host/ears'],
-    ["import '@/setup/sdk-host-init';", '@/setup/sdk-host-init'],
+    ["import { hydrate } from '@abuddy/host/ears';", '@abuddy/host/ears'],
+    ["import { openAppStore } from '@/setup/backend';", '@/setup/backend'],
     ["import { rootEvents } from '@/core/router/bus-emitter';", '@/core/router/bus-emitter'],
     ["const { init } = await import('../../../abuddy-cli/src/commands/init');", '../../../abuddy-cli/src/commands/init'],
     ["import { installPackFromLocal } from '../../../abuddy-host/src/packs/pack-installer';", '../../../abuddy-host/src/packs/pack-installer'],
@@ -233,11 +236,179 @@ describe('findAppImportsInPackTests', () => {
 
   it('allows the SDK, the harness and the pack itself', () => {
     write('pack-tests/unit/feature.spec.ts', [
-      "import { untypedQx } from '@abuddy/sdk/ears';",
+      "import { untypedQx } from '@abuddy/ears';",
       "import { startApp } from '@abuddy/testing/harness';",
       "import { repository } from '@/__generated__/repository';",
       "import { handler } from '../../src/extensions/steps/llm/runtime';",
     ].join('\n'));
     expect(findAppImportsInPackTests(['src/pack-tests'], root)).toEqual([]);
+  });
+});
+
+/** A layered package in `root`: its package.json and source files */
+function layer(dir: string, manifest: Record<string, unknown>, files: Record<string, string>): void {
+  fs.mkdirSync(path.join(root, dir), { recursive: true });
+  fs.writeFileSync(path.join(root, dir, 'package.json'), JSON.stringify({ name: 'x', ...manifest }));
+  for (const [file, content] of Object.entries(files)) {
+    fs.mkdirSync(path.dirname(path.join(root, dir, file)), { recursive: true });
+    fs.writeFileSync(path.join(root, dir, file), content);
+  }
+}
+
+describe('findUpwardImports', () => {
+  const layers = LAYERS.map((l) => ({ ...l, dir: `layers/${l.name.slice('@abuddy/'.length)}` }));
+  const allowed = () => {
+    layer('layers/ears', {}, { 'src/index.ts': "import { x } from './x.ts';\nimport ts from 'typescript';\n" });
+    layer('layers/sdk', { dependencies: { '@abuddy/ears': '^0.1.0', yaml: '*' } }, {
+      'src/index.ts': "import { tx } from '@abuddy/ears';\nexport type { Q } from '@abuddy/ears/lmdb';\nexport * from '@abuddy/sdk/events';\n",
+    });
+    layer('layers/host', { dependencies: { '@abuddy/ears': '*', '@abuddy/sdk': '*' } }, {
+      'src/index.ts': "import { services } from '@abuddy/sdk/services';\nimport { untypedQx } from '@abuddy/ears';\nimport { x } from '../x.ts';\n",
+      'tests/a.spec.ts': "vi.mock('@abuddy/ears');\n",
+    });
+  };
+
+  it('allows imports down the layers', () => {
+    allowed();
+    expect(findUpwardImports(layers, root)).toEqual([]);
+  });
+
+  it.each([
+    ['ears', 'src/query.ts', "import { EARS } from '@abuddy/sdk';", 'layers/ears/src/query.ts:1: @abuddy/sdk'],
+    ['ears', 'tests/query.spec.ts', "const { tx } = await import('@abuddy/sdk/testing');", 'layers/ears/tests/query.spec.ts:1: @abuddy/sdk/testing'],
+    ['sdk', 'src/services/app.ts', "import { createHostRuntime } from '@abuddy/host/services';", 'layers/sdk/src/services/app.ts:1: @abuddy/host/services'],
+    ['sdk', 'src/fe/ui.ts', "export type { Button } from '@abuddy/ui/design/button';", 'layers/sdk/src/fe/ui.ts:1: @abuddy/ui/design/button'],
+    ['host', 'src/bus/app.ts', "import { rootEvents } from '@app/api/core/router/bus-emitter';", 'layers/host/src/bus/app.ts:1: @app/api/core/router/bus-emitter'],
+    ['host', 'src/bus/app.ts', "import { rootEvents } from '../../../api/src/core/router/bus-emitter.ts';", 'layers/host/src/bus/app.ts:1: ../../../api/src/core/router/bus-emitter.ts'],
+    ['host', 'src/bus/app.ts', "import { logger } from '@/core/shared/debug/logger';", 'layers/host/src/bus/app.ts:1: @/core/shared/debug/logger'],
+    ['host', 'scripts/x.ts', "import { cli } from '@abuddy/cli';", 'layers/host/scripts/x.ts:1: @abuddy/cli'],
+  ])('flags an upward import in %s: %s', (pkg, file, code, problem) => {
+    allowed();
+    fs.mkdirSync(path.dirname(path.join(root, 'layers', pkg, file)), { recursive: true });
+    fs.writeFileSync(path.join(root, 'layers', pkg, file), code);
+    expect(findUpwardImports(layers, root)).toEqual([problem]);
+  });
+
+  it.each([
+    ['ears', { peerDependencies: { '@abuddy/sdk': '*' } }, 'layers/ears/package.json: peerDependencies: @abuddy/sdk'],
+    ['sdk', { dependencies: { '@abuddy/ears': '*', '@abuddy/host': '*' } }, 'layers/sdk/package.json: dependencies: @abuddy/host'],
+    ['host', { devDependencies: { '@abuddy/cli': '*' } }, 'layers/host/package.json: devDependencies: @abuddy/cli'],
+  ])("flags an @abuddy package %s's manifest may not declare", (pkg, manifest, problem) => {
+    allowed();
+    fs.writeFileSync(path.join(root, 'layers', pkg, 'package.json'), JSON.stringify({ name: 'x', ...manifest }));
+    expect(findUpwardImports(layers, root)).toEqual([problem]);
+  });
+
+  it('holds for the repo', () => {
+    expect(findUpwardImports()).toEqual([]);
+  });
+});
+
+describe('findLmdbImports', () => {
+  // The rules with their directories under the temp root's src/
+  const rules = LMDB_RULES.map((rule) => ({
+    ...rule,
+    dirs: rule.dirs.map((dir) => `src/${dir}`),
+    except: rule.except && `src/${rule.except}`,
+  }));
+  const allowed = () => {
+    write('packages/abuddy-ears/src/lmdb/envs.ts', "import { open } from 'lmdb';\nimport type { Partition } from '../persistence/policy.ts';\n");
+    write('packages/abuddy-ears/src/index.ts', "export { tx } from './transaction.ts';\n");
+    write('packages/abuddy-host/src/services/app-data.ts', "import type { LmdbStore } from '@abuddy/ears/lmdb';\n");
+    write('packages/api/src/setup/backend.ts', "import { openLmdbStore } from '@abuddy/ears/lmdb';\n");
+    write('packages/default-setup/src/features/notes/be/system.ts', "import { tx } from '@abuddy/ears';\n");
+  };
+
+  it('allows the LMDB store to load lmdb, and the host and the API to open it', () => {
+    allowed();
+    expect(findLmdbImports(rules, root)).toEqual([]);
+  });
+
+  it.each([
+    ['packages/abuddy-host/src/services/trace-store.ts', "import { open } from 'lmdb';"],
+    ['packages/abuddy-host/tests/store.spec.ts', "const lmdb = await import('lmdb');"],
+    ['packages/api/src/setup/backend.ts', "import type { Database } from 'lmdb';"],
+    ['packages/api/scripts/db/fix.ts', "const { open } = require('lmdb/dist/index.cjs');"],
+    ['packages/abuddy-ears/src/index.ts', "export { openLmdbStore } from './lmdb/index.ts';"],
+    ['packages/abuddy-ears/src/persistence/policy.ts', "import type { LmdbDbs } from '../lmdb/envs.ts';"],
+    ['packages/abuddy-ears/src/query.ts', "import { open } from 'lmdb';"],
+    ['packages/default-setup/src/features/notes/be/system.ts', "import { openLmdbStore } from '@abuddy/ears/lmdb';"],
+    ['tests/fixtures/external-pack/tests/unit/memos.spec.ts', "vi.mock('lmdb');"],
+  ])('flags %s', (file, code) => {
+    allowed();
+    write(file, code);
+    expect(findLmdbImports(rules, root)).toEqual([expect.stringMatching(new RegExp(`^src/${file}:1: `))]);
+  });
+
+  it('holds for the repo', () => {
+    expect(findLmdbImports()).toEqual([]);
+  });
+});
+
+describe('findSharedPackageLists', () => {
+  it.each([
+    ["const EXTERNALS = ['@abuddy/sdk', '@abuddy/sdk/*'];", ['"@abuddy/sdk"', '"@abuddy/sdk/*"']],
+    ["if (source.startsWith('@abuddy/ears/')) return;", ['"@abuddy/ears/"']],
+    ["bridge({ bridgedPackages: [`@abuddy/ears`] });", ['"@abuddy/ears"']],
+  ])('flags a shared package named outside an import: %s', (code, found) => {
+    write('consumer.ts', code);
+    expect(findSharedPackageLists(['src/consumer.ts'], root)).toEqual(found.map((what) => `src/consumer.ts:1: ${what}`));
+  });
+
+  it('allows imports of the packages and their specific modules', () => {
+    write('consumer.ts', [
+      "import { tx } from '@abuddy/ears';",
+      "export * from '@abuddy/sdk';",
+      "const sdk = await import('@abuddy/sdk');",
+      "const runtime = resolve('@abuddy/sdk/runtime');",
+      "// '@abuddy/sdk' in a comment",
+      "const message = 'packs import @abuddy/sdk instead';",
+    ].join('\n'));
+    expect(findSharedPackageLists(['src/consumer.ts'], root)).toEqual([]);
+  });
+
+  it('holds for every consumer of SHARED_INSTANCE_PACKAGES', () => {
+    for (const file of SHARED_LIST_CONSUMERS) expect(fs.existsSync(path.join(REPO_ROOT, file)), file).toBe(true);
+    expect(findSharedPackageLists()).toEqual([]);
+  });
+});
+
+describe('findRepositoryCasts', () => {
+  it.each([
+    ['packages/abuddy-sdk/src/seed/seeder.ts', "import { repository } from '@abuddy/ears';\nexport const flows = repository as unknown as { flowsCommands: object };"],
+    ['packages/abuddy-host/src/settings/index.ts', 'export const settings = (repository as unknown) as Settings;'],
+    ['packages/default-setup/src/features/notes/be/system.ts', 'const notes = (services.repository as unknown as Record<string, unknown>).noteQueries;'],
+    ['packages/renderer/src/view.vue', '<script setup lang="ts">\nconst r = repository as unknown as Repos;\n</script>'],
+  ])('flags %s', (file, code) => {
+    write(file, code);
+    const line = file.endsWith('.vue') || file.includes('seeder') ? 2 : 1;
+    expect(findRepositoryCasts([`src/${file}`], root)).toEqual([expect.stringMatching(new RegExp(`^src/${file}:${line}: .*repository as unknown`))]);
+  });
+
+  it('allows typed repositories, other casts and mentions in comments', () => {
+    write('packages/default-setup/src/features/notes/be/system.ts', [
+      "import { repository } from '@/__generated__/repository';",
+      '// never `repository as unknown as X`',
+      'const notes = repository.noteQueries;',
+      'const value = data as unknown as Record<string, unknown>;',
+      'const repo = repository as Repositories;',
+    ].join('\n'));
+    expect(findRepositoryCasts(['src/packages/default-setup/src'], root)).toEqual([]);
+  });
+
+  it("checks every package's src/", () => {
+    expect(packageSourceDirs()).toEqual(expect.arrayContaining([
+      'packages/abuddy-ears/src', 'packages/abuddy-sdk/src', 'packages/abuddy-host/src', 'packages/abuddy-testing/src',
+      'packages/api/src', 'packages/default-setup/src', 'packages/renderer/src',
+    ]));
+    fs.mkdirSync(path.join(root, 'packages', 'new-package', 'src'), { recursive: true });
+    fs.writeFileSync(path.join(root, 'packages', 'new-package', 'src', 'index.ts'), 'export const x = (repository as unknown as Repos).x;');
+    fs.mkdirSync(path.join(root, 'packages', 'no-sources'), { recursive: true });
+    expect(packageSourceDirs(root)).toEqual(['packages/new-package/src']);
+    expect(findRepositoryCasts(packageSourceDirs(root), root)).toEqual(['packages/new-package/src/index.ts:1: repository as unknown as Repos']);
+  });
+
+  it('holds for the repo', () => {
+    expect(findRepositoryCasts()).toEqual([]);
   });
 });

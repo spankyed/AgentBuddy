@@ -28,6 +28,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@abuddy/ears": "*",
     "@abuddy/host": "*",
     "@abuddy/sdk": "*",
     "tsx": "^4.19.4"

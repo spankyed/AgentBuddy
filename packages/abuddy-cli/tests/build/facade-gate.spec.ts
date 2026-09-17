@@ -74,14 +74,14 @@ describe('facade gate', () => {
   it('fails a facade that imports an @abuddy/* module only a checkout resolves', async () => {
     const { problems } = await gate('source-only-export', {
       'src/internals.ts': [
-        "import type { BuiltinRepositories } from '@abuddy/sdk/ears/internals';",
+        "import type { registerSecretValue } from '@abuddy/sdk/utils/internals';",
         "import type { PackInfo } from '@abuddy/host/packs';",
-        'export const internalsService = { repositories: (): BuiltinRepositories | null => null, pack: (): PackInfo | null => null };',
+        'export const internalsService = { redaction: (): typeof registerSecretValue | null => null, pack: (): PackInfo | null => null };',
       ].join('\n'),
       'src/__generated__/pack-types.ts': "import type { internalsService } from '../internals.js';\nexport type Services = { internals: typeof internalsService };\n",
     });
     expect(problems).toEqual([
-      expect.stringMatching(/imports "@abuddy\/sdk\/ears\/internals", which @abuddy\/sdk exports only to a linked checkout \(the @abuddy\/source condition\), not to installed dependents \(reached from: Services\)$/),
+      expect.stringMatching(/imports "@abuddy\/sdk\/utils\/internals", which @abuddy\/sdk exports only to a linked checkout \(the @abuddy\/source condition\), not to installed dependents \(reached from: Services\)$/),
       expect.stringMatching(/imports "@abuddy\/host\/packs", a private package dependents can't install \(reached from: Services\)$/),
     ]);
   }, 60_000);

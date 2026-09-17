@@ -60,7 +60,7 @@ function publishedTarget(target: unknown): boolean {
 
 /**
  * Why an @abuddy/* import isn't part of the published package, or null. A linked checkout resolves
- * source-only exports (`@abuddy/sdk/ears/internals`) and private packages (`@abuddy/host`); a
+ * source-only exports (`@abuddy/sdk/utils/internals`) and private packages (`@abuddy/host`); a
  * dependent installing from the registry resolves neither.
  */
 function unpublishedReason(packDir: string, name: string, specifier: string): string | null {

@@ -26,7 +26,7 @@ function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler') {
     "import '@abuddy/sdk/fe';",
     "export const popout = window.electronAPI?.plugins.popout;",
     // Typed data access and events come only from the factories a pack's facade uses
-    "import { defineEars } from '@abuddy/sdk/ears';",
+    "import { defineEars } from '@abuddy/ears';",
     "import { defineEvents } from '@abuddy/sdk/events';",
     "import type { EARS } from '@abuddy/sdk';",
     "type IsAny<T> = 0 extends 1 & T ? true : false;",
@@ -44,8 +44,17 @@ function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler') {
     "// @ts-expect-error the memos plugin doesn't receive this event",
     "emit('memos', { type: 'MEMO_REMOVED' });",
     "// @ts-expect-error untyped query helpers aren't pack-facing",
-    "export { findAll } from '@abuddy/sdk/ears';",
-    // Host-only modules live in the private @abuddy/host; the engine's host hook is source-only
+    "export { findAll } from '@abuddy/ears';",
+    "// @ts-expect-error the SDK's EARS module holds only what the SDK adds",
+    "export { findRelations } from '@abuddy/sdk/ears';",
+    // An engine is an instance a test or tool creates; its admin face comes only with it
+    "import { createEarsEngine, installEngine } from '@abuddy/ears';",
+    "const engine = createEarsEngine({ isEntityType: (name) => name === 'Memo' });",
+    "installEngine(engine.query);",
+    "engine.admin.clear();",
+    "// @ts-expect-error the engine's state has no entry of its own",
+    "export { clearMemory } from '@abuddy/ears/internals';",
+    // Host-only modules live in the private @abuddy/host
     "// @ts-expect-error not published",
     "export * as internals from '@abuddy/sdk/ears/internals';",
     "// @ts-expect-error not published",
@@ -139,6 +148,9 @@ describe.skipIf(!PACKAGES_BUILT)('published @abuddy/sdk', () => {
     expect(() => resolveFromConsumer('@abuddy/sdk/ears/internals')).toThrow(/ERR_PACKAGE_PATH_NOT_EXPORTED/);
     expect(() => resolveFromConsumer('@abuddy/sdk/packs')).toThrow(/ERR_PACKAGE_PATH_NOT_EXPORTED/);
     expect(resolveFromConsumer('@abuddy/sdk/ears')).toBe(pathToFileURL(fs.realpathSync(path.join(sdk, 'dist', 'ears', 'index.js'))).href);
+    const ears = path.join(consumer!, 'node_modules', '@abuddy', 'ears');
+    expect(() => resolveFromConsumer('@abuddy/ears/internals')).toThrow(/ERR_PACKAGE_PATH_NOT_EXPORTED/);
+    expect(resolveFromConsumer('@abuddy/ears')).toBe(pathToFileURL(fs.realpathSync(path.join(ears, 'dist', 'index.js'))).href);
     const shipped = fs.readdirSync(path.join(sdk, 'dist'), { recursive: true }).map(String);
     expect(shipped.filter((f) => /^(packs|persistence|backup)\/|^ears\/internals\.|^fe\/(host|pack-store|app-extensions)\.|^build\/(discover|shared-deps)\./.test(f))).toEqual([]);
     expect(fs.readdirSync(sdk).sort()).toEqual(['abuddy.schema.json', 'dist', 'package.json']);
@@ -146,7 +158,19 @@ describe.skipIf(!PACKAGES_BUILT)('published @abuddy/sdk', () => {
     expect(shipped.filter((f) => f.endsWith('.map'))).toEqual([]);
   });
 
-  it.each(['sdk', 'ui'])('publishes the workspace package.json of @abuddy/%s as is', (name) => {
+  it('loads the SDK on the installed @abuddy/ears', () => {
+    // The SDK's EARS module imports the engine's core namespace: a plain Node process resolves it from the consumer
+    const output = execFileSync(
+      process.execPath,
+      ['--input-type=module', '-e', "const { EARS } = await import('@abuddy/sdk/ears'); process.stdout.write(EARS.Entity.Flow + ' ' + typeof EARS.RelKind.Custom)"],
+      { cwd: consumer!, env: { PATH: process.env.PATH }, stdio: 'pipe' },
+    ).toString();
+    expect(output).toBe('Flow function');
+    const ears = fs.readdirSync(path.join(consumer!, 'node_modules', '@abuddy', 'ears')).sort();
+    expect(ears).toEqual(['dist', 'package.json']);
+  });
+
+  it.each(['ears', 'sdk', 'ui'])('publishes the workspace package.json of @abuddy/%s as is', (name) => {
     const published = fs.readFileSync(path.join(consumer!, 'node_modules', '@abuddy', name, 'package.json'));
     const workspace = fs.readFileSync(path.join(REPO_ROOT, 'packages', `abuddy-${name}`, 'package.json'));
     expect(published.equals(workspace)).toBe(true);

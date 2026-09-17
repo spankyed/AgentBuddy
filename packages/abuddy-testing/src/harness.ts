@@ -6,7 +6,6 @@
 //   runtimes, run under the app's bus core with `startApp`.
 //
 //   // tests/setup.ts (vitest setupFiles, after isolatedDataDir's)
-//   import '#generated/seeders';
 //   import { seedRuntime } from '#generated/seed-runtime';
 //   import { registration } from '#generated/pack-entry';
 //   import { setupPackTests } from '@abuddy/testing/harness';
@@ -16,16 +15,18 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, inject, type RunnerTask, type RunnerTestCase } from 'vitest';
-import { registerSeedRuntime, resetTestData, startTestRuntime, takeSystemErrors, addTestSecret, type SeedRuntime, fakeInference, type FakeInference } from '@abuddy/sdk/testing';
-import { registerHostModule, getHostModule } from '@abuddy/sdk/runtime';
+import { resetTestData, startTestRuntime, takeSystemErrors, addTestSecret, type SeedRuntime, fakeInference, type FakeInference } from '@abuddy/sdk/testing';
+import type { PackRegistryView } from '@abuddy/sdk/runtime';
 import type { PackRegistration } from '@abuddy/sdk/framework';
-import * as hostPacks from '@abuddy/host/packs';
+import { createPackRegistry } from '@abuddy/host/packs';
+import { appState, HOST_ENTITY_TYPES } from '@abuddy/host/app-state';
 import { loadDependencyRuntime } from './dependency-runtime.ts';
-import { setAppPackId, stopRunningApps } from './app.ts';
+import { setAppPacks, stopRunningApps } from './app.ts';
 import { PROJECT_ROOT_KEY } from './vitest-teardown.ts';
 import { compileFlowDSL, compilePack, resolveSeeds, SEED_INDEX_FILE, type FlowDSL, type PackManifest, type PackSnapshot, type SeedDependency, type SeedIndex } from '@abuddy/sdk/build';
-import { repository, untypedQx } from '@abuddy/sdk/ears';
-import { getMediaPath, seedData, type ImportMode, type SeedCounts } from '@abuddy/sdk/utils';
+import { actionRepository, flowRepository, promptRepository } from '@abuddy/sdk/ears';
+import { untypedQx } from '@abuddy/ears';
+import { getMediaPath, seedData, type ImportMode, type SeedCounts, type Seeder } from '@abuddy/sdk/utils';
 
 export { resetTestData, takeSystemErrors, addTestSecret, type SeedRuntime };
 export { startApp, type StartAppOptions, type TestApp, type OutgoingSystemEvents, type FlowRun, type FlowStepTrace, type RunFlowOptions } from './app.ts';
@@ -37,11 +38,28 @@ const serviceMocks = new Map<string, unknown>();
  */
 let inTest = false;
 
-/** The pack registry `services` reads, with the current test's mocked services over the registered ones */
-const packRegistryWithMocks = {
-  ...hostPacks,
-  getRegisteredServices: () => ({ ...hostPacks.getRegisteredServices(), ...Object.fromEntries(serviceMocks) }),
+/** The test file's registered packs: the pack under test and its dependencies, and any other pack a test registers */
+const registry = createPackRegistry();
+setAppPacks(registry);
+
+/** The registered packs the harness binds, with the current test's mocked services over the registered ones */
+const packsWithMocks: PackRegistryView = {
+  ...registry,
+  getRegisteredServices: () => ({ ...registry.getRegisteredServices(), ...Object.fromEntries(serviceMocks) }),
 };
+
+/**
+ * Registers another pack in the test file's registry, as the app registers an installed one: its commands, feature
+ * settings, seeders, services and the rest are what the pack under test then reads. Unregister it when the test is done.
+ */
+export function registerPack(registration: PackRegistration): void {
+  registry.registerPack(registration);
+}
+
+/** Unregisters a pack `registerPack` registered */
+export function unregisterPack(packId: string): void {
+  registry.unregisterPack(packId);
+}
 
 /**
  * Replaces a service in `services` for the current test, restored after it: call it in the test or a
@@ -79,6 +97,11 @@ export interface PackTestOptions {
    * of its seed runtime, for `startApp`.
    */
   registration?: PackRegistration;
+  /**
+   * Without `registration`, the pack's seeders, `import { seeders } from '#generated/seeders'`, which `seedPack` runs
+   * (a registration carries its own)
+   */
+  seeders?: Seeder[];
   /**
    * The pack root (with abuddy.json); defaults to the nearest one at or above the vitest project's root (`--root`,
    * `test.root`, a workspace project's dir), given by isolatedDataDir's globalSetup, else the working directory
@@ -149,10 +172,22 @@ function readDependencies(packDir: string, manifest: PackManifest): Map<string, 
   return dependencies;
 }
 
+/** A seed runtime as a registration: its entity types, repositories and seed hooks, and the pack's seeders */
+function seedRuntimeRegistration(runtime: SeedRuntime, seeders?: Seeder[]): PackRegistration {
+  return {
+    id: runtime.id,
+    systems: [],
+    ears: { entities: runtime.entities, relKinds: runtime.relKinds },
+    repositories: runtime.repositories,
+    seedHooks: runtime.seedHooks,
+    seeders,
+  };
+}
+
 /**
  * Starts the in-memory runtime for the pack's tests: entity types of the SDK, the pack and its
  * dependencies; each dependency's seed runtime (its repositories and seed hooks) and the pack's own
- * registered; the database emptied before each test. Call it once, from a vitest setup file.
+ * registered in the test file's registry; the database emptied before each test. Call it once, from a vitest setup file.
  */
 export async function setupPackTests(options: PackTestOptions): Promise<void> {
   if (!process.env.ABUDDY_USER_DATA_DIR) {
@@ -162,12 +197,15 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
   const manifest = JSON.parse(fs.readFileSync(path.join(packDir, 'abuddy.json'), 'utf-8')) as PackManifest;
   const dependencies = readDependencies(packDir, manifest);
 
-  startTestRuntime({ entityTypes: [...dependencies.values()].flatMap(({ snapshot }) => Object.values(snapshot.types.entities)) });
-  try {
-    getHostModule('pack-registry');
-  } catch {
-    registerHostModule('pack-registry', packRegistryWithMocks);
-  }
+  startTestRuntime({
+    // The host's entity types (AppState) too: the app's state lives in the database, as in the app
+    entityTypes: [...HOST_ENTITY_TYPES, ...[...dependencies.values()].flatMap(({ snapshot }) => Object.values(snapshot.types.entities))],
+    packs: packsWithMocks,
+    onboarding: {
+      hasOnboarded: () => appState.get().hasOnboarded,
+      completeOnboarding: () => appState.update({ hasOnboarded: true }),
+    },
+  });
   if (options.registration) {
     await registerRuntimes(packDir, manifest, dependencies, options.registration);
   } else {
@@ -177,10 +215,13 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
         throw new Error(`Dependency "${depId}" has no ${SEED_RUNTIME_FILE}; rebuild it, or update AgentBuddy for built-in packs, then run \`abuddy build\` again`);
       }
       const { seedRuntime } = await import(pathToFileURL(file).href) as { seedRuntime: SeedRuntime };
-      registerSeedRuntime(seedRuntime);
+      startTestRuntime({ entityTypes: Object.values(seedRuntime.entities) });
+      registry.registerPack(seedRuntimeRegistration(seedRuntime));
     }
+    startTestRuntime({ entityTypes: Object.values(options.seedRuntime.entities) });
+    registry.registerPack(seedRuntimeRegistration(options.seedRuntime, options.seeders));
+    setAppPacks(registry, manifest.id);
   }
-  registerSeedRuntime(options.seedRuntime);
 
   context = { packDir, manifest, dependencies };
   beforeEach(({ task }) => {
@@ -203,7 +244,7 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
     serviceMocks.clear();
     const errors = takeSystemErrors();
     if (errors.length > 0) {
-      const described = errors.map((e) => `${e.source ?? 'unknown'}: ${e.error instanceof Error ? e.error.message : String(e.error)}`);
+      const described = errors.map((e) => `${e.source ?? 'unknown'}: ${e.message}`);
       failures.push(new Error(`Systems reported errors the test didn't take (takeSystemErrors()):\n  ${described.join('\n  ')}`));
     }
     if (failures.length > 0) throw failures.length === 1 ? failures[0] : new AggregateError(failures, 'Cleaning up after the test failed');
@@ -229,15 +270,15 @@ async function registerRuntimes(packDir: string, manifest: PackManifest, depende
     const seedsDir = path.join(dependency.dir, 'runtime', 'seeds');
     const runtime = await loadDependencyRuntime(packDir, depId, runtimeEntry, fs.existsSync(seedsDir) ? seedsDir : undefined);
     startTestRuntime({ entityTypes: Object.values(runtime.registration.ears?.entities ?? {}) });
-    if (!hostPacks.getPackContributions(depId)) hostPacks.registerPack(asRunByApp(runtime.registration, dependency.manifest));
+    registry.registerPack(asRunByApp(runtime.registration, dependency.manifest));
   }
   startTestRuntime({ entityTypes: Object.values(registration.ears?.entities ?? {}) });
-  if (!hostPacks.getPackContributions(registration.id)) hostPacks.registerPack(asRunByApp(registration, manifest));
-  setAppPackId(manifest.id);
+  registry.registerPack(asRunByApp(registration, manifest));
+  setAppPacks(registry, manifest.id);
 }
 
 export interface SeedPackOptions {
-  /** Seed entries to seed; defaults to every entry naming a format (actions, flows and settings need the app) */
+  /** Seed entries to seed; defaults to every entry naming a format without a pack seeder (actions and flows need the app) */
   keys?: string[];
   mode?: ImportMode;
 }
@@ -250,7 +291,7 @@ export async function seedPack(options: SeedPackOptions = {}): Promise<Record<st
   if (!context) throw new Error('Call setupPackTests() from a vitest setup file before seedPack()');
   const { packDir, manifest, dependencies } = context;
   const resolved = resolveSeeds(manifest, packDir, dependencies);
-  const keys = options.keys ?? Object.entries(resolved).filter(([, seed]) => seed.kind === 'format').map(([key]) => key);
+  const keys = options.keys ?? Object.entries(resolved).filter(([, seed]) => seed.kind === 'format' && !seed.seeder).map(([key]) => key);
   const unknown = keys.filter((key) => !(key in resolved));
   if (unknown.length > 0) throw new Error(`No seed entries ${unknown.join(', ')} in abuddy.json`);
 
@@ -263,6 +304,8 @@ export async function seedPack(options: SeedPackOptions = {}): Promise<Record<st
       packDir,
       outputDir,
       packConfig: { name: manifest.id, seeds: Object.fromEntries(keys.map((key) => [key, resolved[key]])) },
+      // Flows validate against the registered steps (the pack's and its dependencies' runtimes)
+      definitions: { steps: registry.steps(), artifacts: registry.artifacts(), blocks: registry.blocks() },
       importModule: (file) => tsImport(file, import.meta.url) as Promise<Record<string, unknown>>,
       log: () => {},
     });
@@ -277,23 +320,15 @@ export async function seedPack(options: SeedPackOptions = {}): Promise<Record<st
   }
 }
 
-interface FlowRepositories {
-  flowsCommands?: { importFromDSL(compiled: ReturnType<typeof compileFlowDSL>): void };
-  actionQueries?: { all(): Array<{ id: string; label: string }> };
-  promptQueries?: { all(): Array<{ id: string; label: string }> };
-}
-
 /**
- * Compiles flow DSL and imports it as the flow seeder does (default-setup's flows repository): steps name actions and
+ * Compiles flow DSL and imports it as the flow seeder does (the SDK's flow repository): steps name actions and
  * prompts and flows already in the database, and a flow marked `root: true` is the root flow the brain runs when the app starts.
  * Import before `startApp`. In the app, other flows run as subflows the root flow spawns:
  *
  *   importFlows({ 'Root Flow': { root: true, tracks: [entry([subflow('Memo Flow')], [keepAlive()])] } });
  */
 export function importFlows(dsl: FlowDSL): void {
-  const { flowsCommands, actionQueries, promptQueries } = repository as unknown as FlowRepositories;
-  if (!flowsCommands) throw new Error('importFlows needs the flows repository: run the tests with default-setup (a dependency, or the pack)');
-  const byLabel = (rows: Array<{ id: string; label?: string }> = []) => new Map(rows.map((row) => [String(row.label), row.id]));
+  const byLabel = (rows: Array<{ id: string; label?: string }>) => new Map(rows.map((row) => [String(row.label), row.id]));
   const flows = byLabel(untypedQx('Flow' as never).pickAll() as Array<{ id: string; label?: string }>);
-  flowsCommands.importFromDSL(compileFlowDSL(dsl, { actions: byLabel(actionQueries?.all()), prompts: byLabel(promptQueries?.all()), flows }));
+  flowRepository.importFromDSL(compileFlowDSL(dsl, { actions: byLabel(actionRepository.all()), prompts: byLabel(promptRepository.all()), flows }));
 }

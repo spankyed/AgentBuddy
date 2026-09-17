@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '../helpers/published-packages';
 
 /** The versions Changesets assigns the published packages, from the repo's manifests and config. */
-const PUBLISHED = { 'abuddy-sdk': '@abuddy/sdk', 'abuddy-ui': '@abuddy/ui', 'abuddy-cli': '@abuddy/cli', 'abuddy-testing': '@abuddy/testing' };
+const PUBLISHED = { 'abuddy-ears': '@abuddy/ears', 'abuddy-sdk': '@abuddy/sdk', 'abuddy-ui': '@abuddy/ui', 'abuddy-cli': '@abuddy/cli', 'abuddy-testing': '@abuddy/testing' };
 
 let scratch: string | undefined;
 afterEach(() => {
