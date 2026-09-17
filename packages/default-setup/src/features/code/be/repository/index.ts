@@ -2,7 +2,7 @@ import { tx, qx, findById, findAll } from '@/__generated__/ears';
 
 import { EARS } from '@/__generated__/ears'
 
-import { exists } from '@abuddy/sdk/ears';
+import { exists } from '@abuddy/ears';
 import { createEntityWithDefaults, updateEntity } from '@/__generated__/ears';
 import type { TerminalInfo } from '../types'
 import { createLogger } from '@abuddy/sdk/logger'

@@ -1,6 +1,6 @@
 import { tx, qx, findById } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
-import { findRelations, untypedQx } from '@abuddy/sdk/ears';
+import { findRelations, untypedQx } from '@abuddy/ears';
 import type {
   FlowTNodeData,
   EventListenerEntity,
@@ -10,7 +10,8 @@ import type { NodeEntity } from '@/__generated__/types';
 import type { FlowNode } from '@/extensions/steps/subflow/types';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { prepareNodeAttributes, type PreparedAttributes } from './node-attribute-mappers';
-import { truncateResult } from '../utils/result-truncator';
+import { truncateResult } from '@abuddy/sdk/steps';
+import { tnodeRepository } from '@abuddy/sdk/ears';
 import { brainLogger } from '../utils/brain-inspect';
 import type { TNodeEntity, TrackTree, ExecutionContext } from '@abuddy/sdk/steps';
 import type { FlowEntity } from '@abuddy/sdk';
@@ -540,26 +541,11 @@ export const brainCommands = {
     }
   },
   
+  /** Records a step's result on its TNode, truncated (the SDK's TNode repository) */
   updateTNodeResult: (
     tNodeId: EARS.EntityId,
     result: any
-  ): void => {
-    // Truncate the result to prevent memory overflow
-    const truncatedResult = truncateResult(result);
-    
-    // Get current nodeAttributes
-    const tNode = qx(tNodeId).pickOne(['nodeAttributes']);
-    
-    if (tNode) {
-      // Merge truncated result into existing nodeAttributes
-      const updatedAttributes = {
-        ...(tNode.nodeAttributes || {}),
-        result: truncatedResult
-      };
-      
-      tx(tNodeId).update('nodeAttributes', updatedAttributes);
-    }
-  },
+  ): void => tnodeRepository.updateTNodeResult(tNodeId, result),
   
   updateTNodeAttributes: (
     tNodeId: EARS.EntityId,

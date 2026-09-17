@@ -4,7 +4,6 @@ import { EARS } from '@/__generated__/ears';
 
 import type { SettingsData } from '../types';
 import { getDefaultSettings } from '../defaults';
-import type { SettingsEntity } from '@abuddy/sdk';
 
 // Deep merge: defaults fill missing keys, stored values win. Arrays are not merged.
 function deepMerge(defaults: any, stored: any): any {
@@ -71,8 +70,6 @@ export const settingsQueries = {
     return general;
   },
 
-  getInternalSettings: () => getSettingsEntity().data.internal,
-
   getAssistantSettings: () => getSettingsEntity().data.assistant,
 
   getPluginSettings: (pluginId: string) => {
@@ -87,7 +84,7 @@ export const settingsCommands = {
     const stored = getStoredSettings();
 
     // General & plugin settings are grouped by label (e.g., general.application, plugin.flows)
-    // Internal & assistant settings don't use labels
+    // Assistant settings don't use labels
     const needsLabel = type === 'general' || type === 'plugin';
     if (needsLabel && !label) {
       throw new Error(`Setting type '${type}' requires a label`);
@@ -110,6 +107,19 @@ export const settingsCommands = {
     const entity = getSettingsEntity();
     tx(entity.id)
       .put('data', data)
+      .put('updatedAt', Date.now());
+  },
+
+  /** Removes a stored value (its path in the stored data), so its default applies again */
+  removeStored(path: string[]): void {
+    const stored = getStoredSettings();
+    const parent = path.slice(0, -1).reduce<any>((node, key) => node?.[key], stored);
+    const key = path[path.length - 1];
+    if (!parent || typeof parent !== 'object' || !(key in parent)) return;
+    const newData = JSON.parse(JSON.stringify(stored));
+    delete path.slice(0, -1).reduce<any>((node, part) => node[part], newData)[key];
+    tx(SETTINGS_ID)
+      .put('data', newData)
       .put('updatedAt', Date.now());
   },
 

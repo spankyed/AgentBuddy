@@ -1,5 +1,5 @@
 import { qx } from '@/__generated__/ears';
-import { untypedQx } from '@abuddy/sdk/ears';
+import { untypedQx } from '@abuddy/ears';
 import { services as appServices } from '@/__generated__/services';
 import { setup, sendParent, enqueueActions, raise, type AnyStateMachine } from 'xstate';
 import type { NodeEntity } from '@/__generated__/types';

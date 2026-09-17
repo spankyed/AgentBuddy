@@ -1,6 +1,6 @@
 import { qx } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
-import { getEntitiesOfType, getAll, getRoles } from '@abuddy/sdk/ears';
+import { getEntitiesOfType, getAll, getRoles } from '@abuddy/ears';
 import { getAttr, getAttrs } from '@/__generated__/ears';
 import {
   getAllEntities,
@@ -9,7 +9,7 @@ import {
   queryEntitiesInRelationTo,
   findRelations,
   getRelationStats,
-} from '@abuddy/sdk/ears';
+} from '@abuddy/ears';
 import { getSchemaStats } from '../repository/schema';
 
 /**

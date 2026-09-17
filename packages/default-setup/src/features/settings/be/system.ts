@@ -8,14 +8,13 @@ import { threads } from '@/__generated__/system-ids';
 import type { SettingsData } from './types';
 import { loadFaqs } from './faqs';
 import { settingsQueries, settingsCommands } from './repository';
+import { repository } from '@/__generated__/repository';
 import { detectAllArrayChanges } from '@abuddy/sdk/utils/pure';
-// TODO: move seedData orchestration out of settings — belongs in core API (packs system)
-import { getCompiledDir, seedData, type SeedCounts, type SeedIncludeSet } from '@/__generated__/seeders';
+// TODO: move seedData orchestration out of settings — belongs in the host (its packs system)
+import { seedData, type SeedCounts, type SeedIncludeSet } from '@/__generated__/seeders';
 import { previewPackSeeds, type PackSeedsPreview } from '@abuddy/sdk/seed';
-import { testCli, isCliName, clearCliPathCache } from '@abuddy/sdk/utils';
+import { testCli, isCliName, clearCliPathCache } from '@/features/code/be/utils/resolve-cli';
 import { services } from '@/__generated__/services';
-import { createDefaultSettings } from './repository';
-import { runMigrations } from '@abuddy/sdk/utils';
 import type { FAQItem } from '@/features/settings/be/types';
 import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services';
 import { REQUIRED_PROVIDERS } from '../constants';
@@ -34,7 +33,7 @@ function toSeedInclude(include: Record<string, string[] | null>): Record<string,
 
 type IncomingSettingsEvents =
   | { type: 'GET_SETTINGS' }
-  | { type: 'UPDATE_SETTINGS'; entityType: 'general' | 'plugin' | 'internal'; label: string; path: string[]; value: any }
+  | { type: 'UPDATE_SETTINGS'; entityType: 'general' | 'plugin'; label: string; path: string[]; value: any }
   | { type: 'RESET_SETTINGS' }
   | { type: 'TEST_CLI_PROVIDER'; provider: string }
   | { type: 'PREVIEW_PACK_SEEDS'; directory: string }
@@ -87,12 +86,8 @@ export const settingsSystem = setup({
   types: settingsSpec.types,
   actors: {
     packSettingsListener: fromCallback(({ sendBack }) => onPackSettingsDefaultsChanged(() => sendBack({ type: 'PACK_SETTINGS_CHANGED' }))),
-    resetAppActor: fromPromise(async () => {
-      await services.appData.reset();
-      createDefaultSettings();
-      seedData({ compiledDir: getCompiledDir(), verbose: true });
-      runMigrations();
-    }),
+    // The host resets the whole app: stores, each pack's onInit and boot seed, migrations
+    resetAppActor: fromPromise(() => services.appData.reset()),
   },
   actions: {
     sendSettingsStartupData: ({ system }) => {
@@ -286,6 +281,8 @@ export const settingsSystem = setup({
         // Read first: a directory that can't name its pack fails before anything is imported
         const { packId } = previewPackSeeds(ev.directory);
         const result = seedData({ compiledDir: ev.directory, include, mode: ev.mode, verbose: true });
+        // The flow seeder grants the root role; the flows plugin's setting follows it
+        repository.flowsCommands.syncRootFlowSetting();
         // Seeders report records they couldn't seed in their counts rather than throwing
         const errors = Object.entries(result).flatMap(([key, counts]) => (counts.errors ?? []).map((error) => `${key}: ${error}`));
         system.get(bus).send(emit(settings, { type: 'PACK_SEEDS_IMPORTED', result, errors }));

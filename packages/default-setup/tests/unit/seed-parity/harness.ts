@@ -5,7 +5,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { buildPackConfigFromManifest, compilePack } from '@abuddy/sdk/build';
 import { getMediaPath, seedData, type ImportMode, type SeedCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
-import { untypedQx as qx } from '@abuddy/sdk/ears';
+import { untypedQx as qx } from '@abuddy/ears';
 import { entityIds, resetTestData } from '@abuddy/sdk/testing';
 
 export const PACK_DIR = path.resolve(import.meta.dirname, '../../..');

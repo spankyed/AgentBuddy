@@ -1,4 +1,4 @@
-import { untypedQx } from '@abuddy/sdk/ears';
+import { untypedQx } from '@abuddy/ears';
 import { markSeededRowUnedited } from '@abuddy/sdk/seed';
 import { EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
@@ -7,23 +7,13 @@ import { createLogger } from '@abuddy/sdk/logger';
 
 const logger = createLogger('migrations');
 
-/** This pack's id, which its boot seed is now recorded under */
-const PACK_ID = 'default-setup';
-
 export const migration: PackMigration = {
   target: '0.3.15',
-  description: "Record the boot seed per pack, mark rows seeded before the seeder tracked what it wrote as unedited, and keep action logs hidden for whoever hid log-service",
+  description: "Drop the app's state from the settings, mark rows seeded before the seeder tracked what it wrote as unedited, and keep action logs hidden for whoever hid log-service",
   up: () => {
-    const internal = repository.settingsQueries.getInternalSettings() as Record<string, any>;
-
-    // ── The boot seed is recorded per pack, so several built-in packs don't overwrite each other ──
-    // Without this the app forgets it ever seeded and re-imports the whole boot seed on the next boot.
-    if (internal.seedHash && !internal.seedHashes?.[PACK_ID]) {
-      repository.settingsCommands.updateSettings('internal', null, ['seedHashes'], { ...internal.seedHashes, [PACK_ID]: internal.seedHash });
-    }
-    if (internal.seedStatFingerprint && !internal.seedStatFingerprints?.[PACK_ID]) {
-      repository.settingsCommands.updateSettings('internal', null, ['seedStatFingerprints'], { ...internal.seedStatFingerprints, [PACK_ID]: internal.seedStatFingerprint });
-    }
+    // ── The app's state (onboarding, versions, seed hashes) is the host's AppState now ──
+    // The host's own 0.3.15 migration, which runs before this one, moved it out of `internal`.
+    repository.settingsCommands.removeStored(['internal']);
 
     // ── Rows seeded before the seeder recorded the values it wrote ──
     // The seeder updates a row whose source changed only while its seeded fields still hold what it

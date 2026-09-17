@@ -13,7 +13,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { ImportMode, SeedCounts, SeedIncludeSet } from '@abuddy/sdk/utils';
-import { untypedQx } from '@abuddy/sdk/ears';
+import { untypedQx } from '@abuddy/ears';
 import { dropAttribute, entityIds } from '@abuddy/sdk/testing';
 import { compileSeeds, resetDatabase, seed, snapshot, type Snapshot } from './harness';
 

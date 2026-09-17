@@ -270,20 +270,13 @@ export const databaseSystem = setup({
       try {
         logger.info('Starting database reset...');
 
-        // Delete and recreate all LMDB files
+        // The host resets the whole app: fresh stores, then each pack's onInit and boot seed (the seeded root flow), then migrations
         await services.appData.reset();
-
-        // Create new root flow
-        const { flow, entryNode } = repository.flowsCommands.createFlowWithEntryNode({
-          label: 'Root Flow',
-          description: 'The root flow of the application',
-        });
-        repository.flowsCommands.grantRootFlowRole(flow.id);
 
         // Restart the brain with the new root flow
         getActor(system, brain).send({ type: 'RESTART_BRAIN' });
 
-        logger.info('Database reset completed', { flowId: flow.id, entryNodeId: entryNode.id });
+        logger.info('Database reset completed', { flowId: repository.flowsQueries.rootFlow() });
 
         // Send success response and refresh
         system.get(bus).send(emit(database, {

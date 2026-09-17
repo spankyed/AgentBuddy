@@ -17,6 +17,7 @@
     "facade:update": "tsx ../../scripts/facade-report.ts . --local"
   },
   "dependencies": {
+    "@abuddy/ears": "*",
     "@abuddy/sdk": "*",
     "@abuddy/ui": "*",
     "@antv/g6": "^5.0.48",

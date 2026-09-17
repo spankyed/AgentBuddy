@@ -1,21 +1,19 @@
-import { findById, findByIdRaw, findAll, findWhere } from '@/__generated__/ears';
-
-import { EARS } from '@/__generated__/ears';
-import { RepositoryError, RepositoryErrorCode } from '@abuddy/sdk/ears';
-import { createEntityWithDefaults, updateEntity } from '@/__generated__/ears';
+import { EARS, findWhere } from '@/__generated__/ears';
+import { actionRepository, type ActionInput } from '@abuddy/sdk/ears';
 import type { ActionEntity } from '@abuddy/sdk';
 
 /**
- * Action Repository - Dead simple CRUD operations
+ * Action Repository: the actions plugin's views over the SDK's action repository (`actionRepository`),
+ * which owns their reads and writes
  */
 
 // Queries
 export const actionQueries = {
-  byId: (id: EARS.EntityId) =>
-    findById<ActionEntity>(id),
+  byId: (id: EARS.EntityId): ActionEntity | undefined => actionRepository.byId(id),
 
-  all: () =>
-    findAll<ActionEntity>(EARS.Entity.Action),
+  all: (): ActionEntity[] => actionRepository.all(),
+
+  byLabel: (label: string): ActionEntity | undefined => actionRepository.byLabel(label),
 
   byCategory: (category: string) =>
     findWhere<ActionEntity>(EARS.Entity.Action, 'category', category),
@@ -54,26 +52,8 @@ export const actionCommands = {
     actionFn: string;
     output?: any;
     sourceHash?: string;
-  }): ActionEntity => {
-    if (!data.label?.trim()) {
-      throw new RepositoryError('Label is required', RepositoryErrorCode.VALIDATION_ERROR);
-    }
-    if (!data.actionFn?.trim()) {
-      throw new RepositoryError('Action function is required', RepositoryErrorCode.VALIDATION_ERROR);
-    }
-    
-    const action = createEntityWithDefaults(
-      EARS.Entity.Action,
-      {
-        ...data,
-        input: data.input || {},
-      } as any,
-      'ACT'
-    );
-    
-    return action;
-  },
-  
+  }): ActionEntity => actionRepository.create(data as ActionInput),
+
   update: (id: EARS.EntityId, updates: {
     label?: string;
     description?: string;
@@ -82,22 +62,8 @@ export const actionCommands = {
     actionFn?: string;
     output?: any;
     sourceHash?: string;
-  }): void => {
-    if (!actionQueries.byId(id)) {
-      throw new RepositoryError(`Action ${id} not found`, RepositoryErrorCode.NOT_FOUND);
-    }
+  }): void => actionRepository.update(id, updates as Partial<ActionInput>),
 
-    updateEntity(id, updates);
-  },
-  
-  delete: (id: EARS.EntityId): void => {
-    // Use findByIdRaw to check existence (including already deleted entities)
-    const existing = findByIdRaw<ActionEntity>(id);
-    if (!existing) {
-      throw new RepositoryError(`Action ${id} not found`, RepositoryErrorCode.NOT_FOUND);
-    }
-
-    updateEntity(id, { deleted: true, deletedAt: Date.now() });
-  },
+  /** Marks the action deleted */
+  delete: (id: EARS.EntityId): void => actionRepository.delete(id),
 } as const;
-

@@ -358,14 +358,14 @@
       "Action:Handle Choose Mode Step": {
         "label": "Handle Choose Mode Step",
         "description": "Sets the default mode based on user choice and finishes onboarding",
-        "sourceHash": "377a49cc9ab6ff55",
-        "rowSha256": "b54b8aa6f039cb6a69579acddfe8d5ec8f552d8c16fef8310b571b5649943111"
+        "sourceHash": "3341cb15e439a29b",
+        "rowSha256": "0080031fc24d373af899de319275f8e1e211a098ffe49915a9e4a8f3b219858a"
       },
       "Action:Handle Import Threads Step": {
         "label": "Handle Import Threads Step",
         "description": "Imports sessions from Claude Code and Codex as threads",
-        "sourceHash": "761fe6ff64567128",
-        "rowSha256": "f45238db81176ad21cca886f29237237634a0e51deba6be4502ef77e576b18c7"
+        "sourceHash": "596a807bd182b1c9",
+        "rowSha256": "56f6a4582d72f39c39e21b2ffac88268d7cd6fac37f0f5066e14a7db9965570c"
       },
       "Action:Handle Onboarding Response": {
         "label": "Handle Onboarding Response",
@@ -376,14 +376,14 @@
       "Action:Handle Pick Thread Step": {
         "label": "Handle Pick Thread Step",
         "description": "Opens a selected thread, then advances to mode chooser or finishes",
-        "sourceHash": "9f1f8f625320a3fb",
-        "rowSha256": "313e402fb6fa2ca41eef7e776646fa6f35edfcf824c1f9b0385c8704209b1527"
+        "sourceHash": "373f660f9955f0e1",
+        "rowSha256": "255102282de55d2652ad358e30d4dd9d59ff0c094142fa5d3a335aac38733391"
       },
       "Action:Handle Projects Step": {
         "label": "Handle Projects Step",
         "description": "Saves selected project directories and offers per-provider import",
-        "sourceHash": "465b559f9e8b7596",
-        "rowSha256": "779eb06f87a5c7f94e903b3ccff6e00c94cfafbd10606f5be477534e1114a58e"
+        "sourceHash": "c875bbd61847ac58",
+        "rowSha256": "2ae0c0e7f19f1cf645ff7ab14d0fb0ff631212d24dbf97bee13d440642ac2776"
       },
       "Action:Handle Welcome Step": {
         "label": "Handle Welcome Step",
@@ -394,8 +394,8 @@
       "Action:Ignore Onboarding Message": {
         "label": "Ignore Onboarding Message",
         "description": "Marks a user message as cancelled when sent during onboarding",
-        "sourceHash": "3af5a047732c1d2d",
-        "rowSha256": "bc293fd85ed01bee1a0db0f8393d532c9dee41253d7c1dbb566e77b1496a4043"
+        "sourceHash": "d3e34f1cbd9c29dd",
+        "rowSha256": "7a966f127400e7bb2c598a809a41fe0f01a33df6aa456e4210300eda0175a41a"
       },
       "Action:Init Onboarding": {
         "label": "Init Onboarding",

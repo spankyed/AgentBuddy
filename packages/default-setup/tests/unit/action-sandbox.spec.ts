@@ -55,7 +55,8 @@ describe('the action sandbox', () => {
 
     const reached = { z: true, flowId: undefined, repository: 'function', param: 'direct' };
     expect(result).toEqual(reached);
-    expect(logs).toContainEqual({ level: 'info', message: 'ran', source: 'action:Say Hi', meta: reached });
+    // A log event's meta is JSON: an undefined field shows as a marker
+    expect(logs).toContainEqual({ level: 'info', message: 'ran', source: 'action:Say Hi', meta: { ...reached, flowId: '[Undefined]' } });
   });
 
   it('runs code that declares its own z and flowId', async () => {

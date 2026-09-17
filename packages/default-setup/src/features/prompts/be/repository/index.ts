@@ -1,29 +1,19 @@
-import { findById, findByIdRaw, findAll, findWhere } from '@/__generated__/ears';
-
-import { EARS } from '@/__generated__/ears';
-import { RepositoryError, RepositoryErrorCode } from '@abuddy/sdk/ears';
-import { createEntityWithDefaults, updateEntity } from '@/__generated__/ears';
+import type { EARS } from '@/__generated__/ears';
+import { promptRepository, type PromptInput } from '@abuddy/sdk/ears';
 import type { PromptEntity } from '@abuddy/sdk';
 
 /**
- * Prompts Repository
+ * Prompts Repository: the prompts plugin's views over the SDK's prompt repository (`promptRepository`),
+ * which owns their reads and writes
  */
 
 // Queries
 export const promptQueries = {
-  byId: (id: EARS.EntityId) =>
-    findById<PromptEntity>(id),
+  byId: (id: EARS.EntityId): PromptEntity | undefined => promptRepository.byId(id),
 
-  all: () =>
-    findAll<PromptEntity>(EARS.Entity.Prompt),
+  all: (): PromptEntity[] => promptRepository.all(),
 
-  byLabel: (label: string): PromptEntity | undefined => {
-    return findWhere<PromptEntity>(
-      EARS.Entity.Prompt,
-      'label',
-      label
-    )[0];
-  },
+  byLabel: (label: string): PromptEntity | undefined => promptRepository.byLabel(label),
 
   connectedData: (page = 1, pageSize = 20) => {
     const all = promptQueries.all();
@@ -48,22 +38,7 @@ export const promptCommands = {
     inputs?: Record<string, any>;
     category?: string;
     sourceHash?: string;
-  }): PromptEntity => {
-    if (!input.label?.trim()) {
-      throw new RepositoryError('Label is required', RepositoryErrorCode.VALIDATION_ERROR);
-    }
-    if (!input.templateFn?.trim()) {
-      throw new RepositoryError('Template is required', RepositoryErrorCode.VALIDATION_ERROR);
-    }
-
-    const prompt = createEntityWithDefaults(
-      EARS.Entity.Prompt,
-      input as any,
-      'PROMPT'
-    );
-
-    return prompt;
-  },
+  }): PromptEntity => promptRepository.create(input as PromptInput),
 
   update: (id: EARS.EntityId, updates: {
     label?: string;
@@ -72,22 +47,8 @@ export const promptCommands = {
     inputs?: Record<string, any>;
     category?: string;
     sourceHash?: string;
-  }): void => {
-    if (!promptQueries.byId(id)) {
-      throw new RepositoryError(`Prompt ${id} not found`, RepositoryErrorCode.NOT_FOUND);
-    }
+  }): void => promptRepository.update(id, updates as Partial<PromptInput>),
 
-    updateEntity(id, updates);
-  },
-  
-  delete: (id: EARS.EntityId): void => {
-    // Use findByIdRaw to check existence (including already deleted entities)
-    const existing = findByIdRaw<PromptEntity>(id);
-    if (!existing) {
-      throw new RepositoryError(`Prompt ${id} not found`, RepositoryErrorCode.NOT_FOUND);
-    }
-
-    updateEntity(id, { deleted: true, deletedAt: Date.now() });
-  },
+  /** Marks the prompt deleted */
+  delete: (id: EARS.EntityId): void => promptRepository.delete(id),
 };
-

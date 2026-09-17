@@ -5,11 +5,10 @@ import * as fs from 'node:fs'
 import * as os from 'node:os'
 import * as path from 'node:path'
 import { afterAll, afterEach, describe, expect, it } from 'vitest'
-import { startApp, type TestApp } from '@abuddy/testing/harness'
-import { registerSeeders, seedData, unregisterSeeders } from '@abuddy/sdk/utils'
+import { registerPack, startApp, unregisterPack, type TestApp } from '@abuddy/testing/harness'
+import { seedData } from '@abuddy/sdk/utils'
 import { createSeeder } from '@abuddy/sdk/seed'
-// The registry the host's pack registration writes: here it stands in for another pack registering
-import { packCommandsRegistry } from '@abuddy/sdk/framework'
+import type { PackCommand } from '@abuddy/sdk/framework'
 import { repository } from '@/__generated__/repository'
 import { services } from '@/__generated__/services'
 import manifest from '../../abuddy.json'
@@ -23,17 +22,33 @@ const internalFolderId = () => repository.libraryQueries.getCollections().find((
 const field = (key: string, value: string) => [{ type: 'field' as const, fields: [{ key, value }] }]
 const documentNamed = (name: string) => repository.libraryQueries.getDocuments().find((document) => document.name === name)!
 
+/**
+ * The dependent pack, registered as the app registers an installed pack: its seeders for default-setup's formats,
+ * as its registration carries them, and the commands it declares
+ */
+function registerTeamNotes(commands: PackCommand[] = []): void {
+  registerPack({
+    id: 'team-notes',
+    systems: [],
+    seeders: [
+      createSeeder({ key: 'library', entities: ['Collection', 'Document'], identity: ['name'], media: true }),
+      createSeeder({ key: 'notes', entities: ['Note'], identity: ['title', 'parent'], relKind: 'contains' }),
+    ],
+    commands,
+  })
+}
+registerTeamNotes()
+/** Registers the dependent pack again, with `commands` */
+function reregisterTeamNotes(commands: PackCommand[] = []): void {
+  unregisterPack('team-notes')
+  registerTeamNotes(commands)
+}
 // A pack another test registered would still be declaring its commands in the next one
-afterEach(() => packCommandsRegistry.unregister('team-notes'))
+afterEach(() => reregisterTeamNotes())
 
 const dependentDirs: string[] = []
-// The dependent pack's seeders, as its generated seeders module registers them for default-setup's formats
-registerSeeders('team-notes', [
-  createSeeder({ key: 'library', entities: ['Collection', 'Document'], identity: ['name'], media: true }),
-  createSeeder({ key: 'notes', entities: ['Note'], identity: ['title', 'parent'], relKind: 'contains' }),
-])
 afterAll(() => {
-  unregisterSeeders('team-notes')
+  unregisterPack('team-notes')
   for (const dir of dependentDirs) fs.rmSync(dir, { recursive: true, force: true })
 })
 
@@ -184,11 +199,11 @@ describe('slash commands from the library commands folder', () => {
   it("sends the chat a pack's declared commands when it registers, and drops them when it goes", async () => {
     const app = await seededApp()
 
-    packCommandsRegistry.register('team-notes', [{ name: 'team-standup', placeholder: 'Topic' }])
+    reregisterTeamNotes([{ name: 'team-standup', placeholder: 'Topic' }])
     await app.send('threads', { type: 'PACK_CHANGED', packId: 'team-notes' })
     expect(commandNames(await app.nextEmit('threads', 'COMMANDS_UPDATED'))).toContain('team-standup')
 
-    packCommandsRegistry.unregister('team-notes')
+    reregisterTeamNotes()
     await app.send('threads', { type: 'PACK_CHANGED', packId: 'team-notes' })
     const afterUnregister = commandNames(await app.nextEmit('threads', 'COMMANDS_UPDATED'))
     expect(afterUnregister).not.toContain('team-standup')

@@ -7,16 +7,16 @@
  * tests will fail at typecheck time (not just at runtime).
  *
  * Runtime assertions verify that generics flow through the delegate chain
- * correctly when backed by real host modules.
+ * correctly on the harness's in-memory engine.
  */
 import { expectTypeOf, describe, it, expect, beforeEach } from 'vitest';
-import { tx, type QueryBuilder, type TransactionBuilder } from '@abuddy/sdk/ears';
+import { tx, type QueryBuilder, type TransactionBuilder } from '@abuddy/ears';
 import {
   qx, createEntity, findById, findAll, findWhere, findFirst, createEntityWithDefaults, updateEntity, getAttr, findWithFields,
   type EntityShape, type PackShapes,
 } from '@/__generated__/ears';
 import { repository, type Repositories } from '@/__generated__/repository';
-import { filterSystemFields } from '@abuddy/sdk/ears';
+import { filterSystemFields } from '@abuddy/ears';
 import { resetTestData } from '@abuddy/sdk/testing';
 import { createLogger, type Logger } from '@abuddy/sdk/logger';
 import {
@@ -164,7 +164,7 @@ describe('Generated services', () => {
     expectTypeOf(services.inference.generateText).not.toBeAny();
     expectTypeOf(services.prompt.usePrompt).not.toBeAny();
     expectTypeOf(services.logger).toEqualTypeOf<Logger>();
-    expectTypeOf(services.repository.settingsQueries.getInternalSettings).not.toBeAny();
+    expectTypeOf(services.repository.settingsQueries.getPluginSettings).not.toBeAny();
     expectTypeOf<Services['repository']>().toEqualTypeOf<Repositories>();
   });
 

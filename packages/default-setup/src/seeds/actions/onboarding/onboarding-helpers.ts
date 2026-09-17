@@ -83,7 +83,7 @@ export function finishOnboarding(
 ) {
   state.step = 'complete';
 
-  services.settings.updateInternalSetting(['hasOnboarded'], true);
+  services.appData.completeOnboarding();
 
   services.repository.threadCommands.update(threadId, {
     topic: 'General',

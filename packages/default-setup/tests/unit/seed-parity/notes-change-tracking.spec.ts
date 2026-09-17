@@ -10,7 +10,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { compileBuiltinFormat, type SeedFormatConfig, type SeedRecord } from '@abuddy/sdk/build';
 import { createSeeder } from '@abuddy/sdk/seed';
 import type { ImportMode, SeedCounts, SeedIncludeSet } from '@abuddy/sdk/utils';
-import { untypedQx as qx } from '@abuddy/sdk/ears';
+import { untypedQx as qx } from '@abuddy/ears';
 import { dropAttribute, entityIds } from '@abuddy/sdk/testing';
 import { createEntityWithDefaults, type EARS } from '@/__generated__/ears';
 import { FIXTURES, PACK_DIR, resetDatabase, snapshot, type Snapshot } from './harness';

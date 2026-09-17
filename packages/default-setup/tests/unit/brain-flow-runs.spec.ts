@@ -156,13 +156,13 @@ describe('brain start', () => {
     expect(takeSystemErrors()).toEqual([])
     await app.connect()
 
-    expect(takeSystemErrors()).toEqual([expect.objectContaining({ source: 'brain', title: 'Could not start the brain', error: expect.objectContaining({ message: expect.stringContaining('No flow has the root role (1 flows exist)') }) })])
+    expect(takeSystemErrors()).toEqual([expect.objectContaining({ source: 'brain', title: 'Could not start the brain', message: expect.stringContaining('No flow has the root role (1 flows exist)') })])
     expect(repository.flowsQueries.rootFlow()).toBeUndefined()
     expect(brainState(app)).toEqual({ running: false, hasActor: false })
   })
 
   it("reports why it could not start once, and sends it in each client's startup data while it stays stopped, until a root flow exists", async () => {
-    const couldNotStart = [expect.objectContaining({ source: 'brain', title: 'Could not start the brain', error: expect.objectContaining({ message: expect.stringContaining('No flow has the root role') }) })]
+    const couldNotStart = [expect.objectContaining({ source: 'brain', title: 'Could not start the brain', message: expect.stringContaining('No flow has the root role') })]
     const startErrors = () => app.emitted('brain').flatMap((e) => (e.type === 'BRAIN_KILLED' ? [e.startError] : []))
     importFlows({ 'Root Flow': { tracks: staysRunning } })
     const app = await startBrain()

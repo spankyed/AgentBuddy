@@ -15,7 +15,7 @@ be/
 │   ├── index.ts            # executeNode(): dispatches a step to its registered runtime handler
 │   └── transform.ts        # Unused: exports nothing, and nothing imports it
 ├── repository/
-│   ├── index.ts            # brainQueries/brainCommands: root flow and step TNodes, results
+│   ├── index.ts            # brainQueries/brainCommands: root flow and step TNodes, results (stored through the SDK's `tnodeRepository`, capped by `truncateResult` from `@abuddy/sdk/steps`)
 │   └── node-attribute-mappers.ts  # Resolves a step's params from the event and earlier steps
 ├── services/
 │   ├── brain.ts            # services.brain: ad-hoc event listeners (listen/unlisten); notify, removeAllListeners for the pack
@@ -23,8 +23,7 @@ be/
 ├── types.ts
 └── utils/
     ├── brain-inspect.ts    # brainLogger; its debug messages follow the `brain` debug toggle the brain system sets
-    ├── brain-pause.ts      # The paused flag (setBrainPausedState, isBrainPaused)
-    └── result-truncator.ts # truncateResult: caps stored step results (10 KB strings, 50 KB objects, 100 array items, depth 10)
+    └── brain-pause.ts      # The paused flag (setBrainPausedState, isBrainPaused)
 ```
 
 `utils/prompt-context-example.md` is a separate note on prompts that call other prompts.

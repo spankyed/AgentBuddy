@@ -33,8 +33,15 @@ export interface CommandItem {
 export interface SettingsData {
   general: GeneralSettings;
   plugins: PluginSettings;
-  internal: InternalSettings;
   assistant: AssistantSettings;
+}
+
+/** The one Settings row: the user's changes to the default settings (`SettingsData`), and nothing else */
+export interface SettingsEntity extends BaseEntity {
+  entityType: typeof EARS.Entity.Settings;
+  /** Only what differs from the defaults */
+  data: Partial<SettingsData>;
+  updatedAt?: number;
 }
 
 /** A Help tab FAQ: the first `# heading` of a src/seeds/faqs file, and the rest as its answer */
@@ -179,18 +186,6 @@ export interface PluginSettings {
     lastActivePlugin?: string;
   };
   [pluginId: string]: any; // Plugin-specific settings
-}
-
-export interface InternalSettings {
-  hasOnboarded: boolean;
-  lastInteractionTimestamp: number | null;
-  version: string;
-  /** Each built-in pack's boot seed, by pack id: the hash of the compiled data last seeded, and the
-   *  file mtimes/sizes it was computed from (the fast path that skips re-hashing unchanged files) */
-  seedHashes?: Record<string, string>;
-  seedStatFingerprints?: Record<string, string>;
-  packSeedHashes?: Record<string, string>;
-  packVersions?: Record<string, string>;
 }
 
 export interface AssistantSettings {

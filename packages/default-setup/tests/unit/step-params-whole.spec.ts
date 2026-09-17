@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest'
 import { importFlows, startApp } from '@abuddy/testing/harness'
 import { action, entry, keepAlive, on } from '@/__generated__/flow-helpers'
 import { repository } from '@/__generated__/repository'
-import { untypedQx } from '@abuddy/sdk/ears'
+import { untypedQx } from '@abuddy/ears'
 
 /** Past MAX_STRING_LENGTH (10 KB) and MAX_ARRAY_ITEMS (100) in the trace truncator */
 const LONG_TEXT_LENGTH = 20_000

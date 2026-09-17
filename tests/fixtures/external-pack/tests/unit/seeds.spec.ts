@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { seedPack } from '@abuddy/testing/harness';
 import { getPackCommands } from '@abuddy/sdk/framework';
-import { untypedQx } from '@abuddy/sdk/ears';
+import { untypedQx } from '@abuddy/ears';
 import { repository } from '#generated/repository';
 
 describe('memo seeds', () => {

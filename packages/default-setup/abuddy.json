@@ -18,7 +18,8 @@
     "BrowserBookmark": "BrowserBookmark",
     "Document": "Document",
     "Collection": "Collection",
-    "Note": "Note"
+    "Note": "Note",
+    "Settings": "Settings"
   },
   "relKinds": {
     "PARENT_OF": "parent_of",
@@ -267,7 +268,11 @@
         "path": "src/seeds/faqs",
         "format": "faqs"
       },
-      "settings": "src/seeds/default-settings.ts"
+      "settings": {
+        "path": "src/seeds/default-settings.ts",
+        "format": "settings",
+        "seeder": "src/seeds/settings/seeder.ts"
+      }
     },
     "seedPolicy": {
       "skipAtBoot": [
@@ -314,6 +319,10 @@
     "Note": {
       "source": "src/features/notes/be/types.ts",
       "type": "NoteEntity"
+    },
+    "Settings": {
+      "source": "src/features/settings/be/types.ts",
+      "type": "SettingsEntity"
     }
   },
   "seedFormats": {
@@ -369,6 +378,9 @@
     },
     "faqs": {
       "compiler": "src/seeds/_compilers/faqs.ts"
+    },
+    "settings": {
+      "compiler": "src/seeds/_compilers/settings.ts"
     }
   },
   "seedHooks": {
