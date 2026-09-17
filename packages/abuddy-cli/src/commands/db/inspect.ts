@@ -40,7 +40,11 @@ function relatedByKind(query: EarsQuery, entityId: EARS.EntityId, direction: Dir
   const byKind = new Map<string, string[]>();
   for (const relation of relations) {
     const other = direction === 'outgoing' ? relation.targetEntity : relation.sourceEntity;
-    byKind.set(relation.relationType, [...(byKind.get(relation.relationType) ?? []), other]);
+    // Pushed onto the kind's own array: an entity with thousands of relations of one kind is common (a thread's
+    // messages), and rebuilding the array for each of them is quadratic
+    const kind = byKind.get(relation.relationType);
+    if (kind) kind.push(other);
+    else byKind.set(relation.relationType, [other]);
   }
   return byKind;
 }
