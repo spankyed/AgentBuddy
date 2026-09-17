@@ -1,5 +1,5 @@
 import { EARS, findWhere } from '@/__generated__/ears';
-import { actionRepository, type ActionInput } from '@abuddy/sdk/ears';
+import { actionRepository, type ActionInput } from '@abuddy/sdk/repositories';
 import type { ActionEntity } from '@abuddy/sdk';
 
 /**

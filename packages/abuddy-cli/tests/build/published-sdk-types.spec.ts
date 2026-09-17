@@ -45,8 +45,10 @@ function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler') {
     "emit('memos', { type: 'MEMO_REMOVED' });",
     "// @ts-expect-error untyped query helpers aren't pack-facing",
     "export { findAll } from '@abuddy/ears';",
-    "// @ts-expect-error the SDK's EARS module holds only what the SDK adds",
-    "export { findRelations } from '@abuddy/sdk/ears';",
+    "// @ts-expect-error the SDK's repositories module holds only its repositories",
+    "export { findRelations } from '@abuddy/sdk/repositories';",
+    "// @ts-expect-error the SDK's EARS module moved to @abuddy/sdk/types and @abuddy/sdk/repositories",
+    "export * as sdkEars from '@abuddy/sdk/ears';",
     // An engine is an instance a test or tool creates; its admin face comes only with it
     "import { createEarsEngine, installEngine } from '@abuddy/ears';",
     "const engine = createEarsEngine({ isEntityType: (name) => name === 'Memo' });",
@@ -147,25 +149,26 @@ describe.skipIf(!PACKAGES_BUILT)('published @abuddy/sdk', () => {
     ).toString();
     expect(() => resolveFromConsumer('@abuddy/sdk/ears/internals')).toThrow(/ERR_PACKAGE_PATH_NOT_EXPORTED/);
     expect(() => resolveFromConsumer('@abuddy/sdk/packs')).toThrow(/ERR_PACKAGE_PATH_NOT_EXPORTED/);
-    expect(resolveFromConsumer('@abuddy/sdk/ears')).toBe(pathToFileURL(fs.realpathSync(path.join(sdk, 'dist', 'ears', 'index.js'))).href);
+    expect(resolveFromConsumer('@abuddy/sdk/repositories')).toBe(pathToFileURL(fs.realpathSync(path.join(sdk, 'dist', 'repositories', 'index.js'))).href);
+    expect(() => resolveFromConsumer('@abuddy/sdk/ears')).toThrow(/ERR_PACKAGE_PATH_NOT_EXPORTED/);
     const ears = path.join(consumer!, 'node_modules', '@abuddy', 'ears');
     expect(() => resolveFromConsumer('@abuddy/ears/internals')).toThrow(/ERR_PACKAGE_PATH_NOT_EXPORTED/);
     expect(resolveFromConsumer('@abuddy/ears')).toBe(pathToFileURL(fs.realpathSync(path.join(ears, 'dist', 'index.js'))).href);
     const shipped = fs.readdirSync(path.join(sdk, 'dist'), { recursive: true }).map(String);
-    expect(shipped.filter((f) => /^(packs|persistence|backup)\/|^ears\/internals\.|^fe\/(host|pack-store|app-extensions)\.|^build\/(discover|shared-deps)\./.test(f))).toEqual([]);
+    expect(shipped.filter((f) => /^(packs|persistence|backup)\/|^ears\/|^fe\/(host|pack-store|app-extensions)\.|^build\/(discover|shared-deps)\./.test(f))).toEqual([]);
     expect(fs.readdirSync(sdk).sort()).toEqual(['abuddy.schema.json', 'dist', 'package.json']);
     // Source maps would point at src, which isn't published
     expect(shipped.filter((f) => f.endsWith('.map'))).toEqual([]);
   });
 
   it('loads the SDK on the installed @abuddy/ears', () => {
-    // The SDK's EARS module imports the engine's core namespace: a plain Node process resolves it from the consumer
+    // The SDK's EARS namespace and its repositories import the engine: a plain Node process resolves it from the consumer
     const output = execFileSync(
       process.execPath,
-      ['--input-type=module', '-e', "const { EARS } = await import('@abuddy/sdk/ears'); process.stdout.write(EARS.Entity.Flow + ' ' + typeof EARS.RelKind.Custom)"],
+      ['--input-type=module', '-e', "const { EARS } = await import('@abuddy/sdk/types'); const { flowRepository } = await import('@abuddy/sdk/repositories'); process.stdout.write(EARS.Entity.Flow + ' ' + typeof EARS.RelKind.Custom + ' ' + typeof flowRepository)"],
       { cwd: consumer!, env: { PATH: process.env.PATH }, stdio: 'pipe' },
     ).toString();
-    expect(output).toBe('Flow function');
+    expect(output).toBe('Flow function object');
     const ears = fs.readdirSync(path.join(consumer!, 'node_modules', '@abuddy', 'ears')).sort();
     expect(ears).toEqual(['dist', 'package.json']);
   });

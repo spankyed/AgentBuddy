@@ -4,7 +4,7 @@ import { sendToPlugin } from '../events/index.ts';
 import { randomId } from '../utils/random-id.ts';
 import { RepositoryError, RepositoryErrorCode } from '@abuddy/ears';
 import { redactSecrets, redactSecretText } from '../utils/redact.ts';
-import { tnodeRepository } from '../ears/tnode-repository.ts';
+import { tnodeRepository } from '../repositories/tnode-repository.ts';
 import type { EARS } from '../types/entities.ts';
 import type { StepRuntimeError } from '../steps/types.ts';
 import { createLogger } from './logger.ts';

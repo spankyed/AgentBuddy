@@ -1,6 +1,6 @@
 # @abuddy/ears
 
-EARS, the entity-attribute-relation graph store behind AgentBuddy's data: the engine, the core `EARS` types, the typed facades, the persistence port, and the LMDB store (`@abuddy/ears/lmdb`). It's the bottom layer: it imports no `@abuddy/*` package and knows no packs and no SDK entity names (those are `@abuddy/sdk/ears`'s). The SDK, host, api, packs and tests import it. The root `CLAUDE.md` ("SDK packages", "Data layer") has the one-paragraph view; this file covers how the package works.
+EARS, the entity-attribute-relation graph store behind AgentBuddy's data: the engine, the core `EARS` types, the typed facades, the persistence port, and the LMDB store (`@abuddy/ears/lmdb`). It's the bottom layer: it imports no `@abuddy/*` package and knows no packs and no SDK entity names (those are the SDK's, in `@abuddy/sdk/types`). The SDK, host, api, packs and tests import it. The root `CLAUDE.md` ("SDK packages", "Data layer") has the one-paragraph view; this file covers how the package works.
 
 ## Package basics
 

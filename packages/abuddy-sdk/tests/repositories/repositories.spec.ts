@@ -3,7 +3,7 @@
 import * as os from 'node:os';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { findRelations, tx, untypedQx } from '@abuddy/ears';
-import { actionRepository, flowRepository, promptRepository, tnodeRepository } from '../../src/ears/index.ts';
+import { actionRepository, flowRepository, promptRepository, tnodeRepository } from '../../src/repositories/index.ts';
 import { compile as compileFlowDSL } from '../../src/build/compilers/flow-compiler.ts';
 import { resetTestData, startTestRuntime, testPacks } from '../../src/testing/index.ts';
 import { EARS } from '../../src/types/entities.ts';

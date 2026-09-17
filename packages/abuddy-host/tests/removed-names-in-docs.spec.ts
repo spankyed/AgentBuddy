@@ -1,5 +1,5 @@
 // Docs, CLI templates and pack sources name nothing the package-boundaries goal removed: the host module registry,
-// the SDK's migrations runner, the engine's module-state entry points, the API's persistence dir, the cast repository
+// the SDK's migrations runner, the SDK's EARS module (now `@abuddy/sdk/types` and `/repositories`), the engine's module-state entry points, the API's persistence dir, the cast repository
 // types, the app state kept in settings, and the registries packs used to write to (docs/goals/goal-package-boundaries.md, Phase 8)
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
@@ -12,7 +12,7 @@ const REMOVED = [
   'registerHostModule', 'getHostModule', 'hostFn', 'hostValue', 'runMigrations', 'clearMemory', 'initEARSRuntime',
   'BuiltinRepositories', 'registerDesignations', 'registerSeeder', 'registerDslType',
 ].map((name) => new RegExp(`\\b${name}\\b`));
-const REMOVED_PATHS = [/ears\/internals\b/, /api\/src\/core\/persistence\b/, /\bsettings\.internal\b/];
+const REMOVED_PATHS = [/@abuddy\/sdk\/ears\b/, /ears\/internals\b/, /api\/src\/core\/persistence\b/, /\bsettings\.internal\b/];
 
 /** Files that may name one of them, with the name and why */
 const ALLOWED: Record<string, { name: RegExp; reason: string }[]> = {
@@ -54,7 +54,9 @@ describe('names the package-boundaries goal removed', () => {
 
   it('finds each of them, and not the names that replaced them', () => {
     expect(removedNames('bound with `registerHostModule(key, value)`')).toEqual(['registerHostModule']);
-    expect(removedNames('import { tx } from "@abuddy/sdk/ears/internals"')).toEqual(['ears/internals']);
+    expect(removedNames('import { tx } from "@abuddy/ears/internals"')).toEqual(['ears/internals']);
+    expect(removedNames('import { flowRepository } from "@abuddy/sdk/ears"')).toEqual(['@abuddy/sdk/ears']);
+    expect(removedNames('import { flowRepository } from "@abuddy/sdk/repositories"; import { tx } from "@abuddy/ears"')).toEqual([]);
     expect(removedNames('stored in `settings.internal.version`')).toEqual(['settings.internal']);
     expect(removedNames('see packages/api/src/core/persistence/lmdb')).toEqual(['api/src/core/persistence']);
     expect(removedNames('generated seeders call registerSeeder()')).toEqual(['registerSeeder']);

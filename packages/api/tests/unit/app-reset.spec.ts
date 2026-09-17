@@ -18,7 +18,7 @@ const { runAppMigrations } = await import('@abuddy/host/migrations');
 const { appState } = await import('@abuddy/host/app-state');
 const { getAppVersion } = await import('@abuddy/sdk/env');
 const { services } = await import('@abuddy/sdk/services');
-const { flowRepository } = await import('@abuddy/sdk/ears');
+const { flowRepository } = await import('@abuddy/sdk/repositories');
 const { untypedQx, repository } = await import('@abuddy/ears');
 
 const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');

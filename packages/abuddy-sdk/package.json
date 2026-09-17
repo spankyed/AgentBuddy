@@ -70,10 +70,10 @@
       "types": "./dist/ids/index.d.ts",
       "default": "./dist/ids/index.js"
     },
-    "./ears": {
-      "@abuddy/source": "./src/ears/index.ts",
-      "types": "./dist/ears/index.d.ts",
-      "default": "./dist/ears/index.js"
+    "./repositories": {
+      "@abuddy/source": "./src/repositories/index.ts",
+      "types": "./dist/repositories/index.d.ts",
+      "default": "./dist/repositories/index.js"
     },
     "./fe": {
       "@abuddy/source": "./src/fe/index.ts",

@@ -1,5 +1,5 @@
 import type { EARS } from '@/__generated__/ears';
-import { promptRepository, type PromptInput } from '@abuddy/sdk/ears';
+import { promptRepository, type PromptInput } from '@abuddy/sdk/repositories';
 import type { PromptEntity } from '@abuddy/sdk';
 
 /**

@@ -11,7 +11,7 @@ import { createRequire } from 'node:module';
  */
 export const SHARED_INSTANCE_PACKAGES = ['@abuddy/sdk', '@abuddy/ears'] as const;
 
-/** The shared-instance package a specifier belongs to (`@abuddy/sdk/ears` → `@abuddy/sdk`), if any */
+/** The shared-instance package a specifier belongs to (`@abuddy/sdk/repositories` → `@abuddy/sdk`), if any */
 export function sharedInstancePackage(specifier: string): string | undefined {
   return SHARED_INSTANCE_PACKAGES.find((pkg) => specifier === pkg || specifier.startsWith(`${pkg}/`));
 }

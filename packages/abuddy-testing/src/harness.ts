@@ -24,7 +24,7 @@ import { loadDependencyRuntime } from './dependency-runtime.ts';
 import { setAppPacks, stopRunningApps } from './app.ts';
 import { PROJECT_ROOT_KEY } from './vitest-teardown.ts';
 import { compileFlowDSL, compilePack, resolveSeeds, SEED_INDEX_FILE, type FlowDSL, type PackManifest, type PackSnapshot, type SeedDependency, type SeedIndex } from '@abuddy/sdk/build';
-import { actionRepository, flowRepository, promptRepository } from '@abuddy/sdk/ears';
+import { actionRepository, flowRepository, promptRepository } from '@abuddy/sdk/repositories';
 import { untypedQx } from '@abuddy/ears';
 import { getMediaPath, seedData, type ImportMode, type SeedCounts, type Seeder } from '@abuddy/sdk/utils';
 

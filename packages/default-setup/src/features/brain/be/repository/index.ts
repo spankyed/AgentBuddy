@@ -11,7 +11,7 @@ import type { FlowNode } from '@/extensions/steps/subflow/types';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { prepareNodeAttributes, type PreparedAttributes } from './node-attribute-mappers';
 import { truncateResult } from '@abuddy/sdk/steps';
-import { tnodeRepository } from '@abuddy/sdk/ears';
+import { tnodeRepository } from '@abuddy/sdk/repositories';
 import { brainLogger } from '../utils/brain-inspect';
 import type { TNodeEntity, TrackTree, ExecutionContext } from '@abuddy/sdk/steps';
 import type { FlowEntity } from '@abuddy/sdk';

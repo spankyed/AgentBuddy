@@ -1,6 +1,6 @@
 import { tx, qx } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
-import { flowRepository } from '@abuddy/sdk/ears';
+import { flowRepository } from '@abuddy/sdk/repositories';
 import type {
   NodeEntity,
   EdgeEntity,

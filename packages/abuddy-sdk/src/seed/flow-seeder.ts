@@ -1,6 +1,6 @@
 import * as crypto from 'node:crypto';
-import { flowRepository } from '../ears/flow-repository.ts';
-import { promptRepository } from '../ears/prompt-repository.ts';
+import { flowRepository } from '../repositories/flow-repository.ts';
+import { promptRepository } from '../repositories/prompt-repository.ts';
 import { findRelations, installedEngine as ears, tx } from '@abuddy/ears';
 import { loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.ts';
 import { seedPath } from '../build/manifest.ts';

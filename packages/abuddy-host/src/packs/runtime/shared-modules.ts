@@ -7,7 +7,6 @@ import * as _abuddy_sdk_blocks from '@abuddy/sdk/blocks';
 import * as _abuddy_sdk_build from '@abuddy/sdk/build';
 import * as _abuddy_sdk_cron from '@abuddy/sdk/cron';
 import * as _abuddy_sdk_designations from '@abuddy/sdk/designations';
-import * as _abuddy_sdk_ears from '@abuddy/sdk/ears';
 import * as _abuddy_sdk_env from '@abuddy/sdk/env';
 import * as _abuddy_sdk_events from '@abuddy/sdk/events';
 import * as _abuddy_sdk_framework from '@abuddy/sdk/framework';
@@ -15,6 +14,7 @@ import * as _abuddy_sdk_helpers from '@abuddy/sdk/helpers';
 import * as _abuddy_sdk_ids from '@abuddy/sdk/ids';
 import * as _abuddy_sdk_logger from '@abuddy/sdk/logger';
 import * as _abuddy_sdk_models from '@abuddy/sdk/models';
+import * as _abuddy_sdk_repositories from '@abuddy/sdk/repositories';
 import * as _abuddy_sdk_runtime from '@abuddy/sdk/runtime';
 import * as _abuddy_sdk_seed from '@abuddy/sdk/seed';
 import * as _abuddy_sdk_services from '@abuddy/sdk/services';
@@ -34,7 +34,6 @@ export const SHARED_INSTANCE_MODULES: Readonly<Record<string, unknown>> = {
   '@abuddy/sdk/build': _abuddy_sdk_build,
   '@abuddy/sdk/cron': _abuddy_sdk_cron,
   '@abuddy/sdk/designations': _abuddy_sdk_designations,
-  '@abuddy/sdk/ears': _abuddy_sdk_ears,
   '@abuddy/sdk/env': _abuddy_sdk_env,
   '@abuddy/sdk/events': _abuddy_sdk_events,
   '@abuddy/sdk/framework': _abuddy_sdk_framework,
@@ -42,6 +41,7 @@ export const SHARED_INSTANCE_MODULES: Readonly<Record<string, unknown>> = {
   '@abuddy/sdk/ids': _abuddy_sdk_ids,
   '@abuddy/sdk/logger': _abuddy_sdk_logger,
   '@abuddy/sdk/models': _abuddy_sdk_models,
+  '@abuddy/sdk/repositories': _abuddy_sdk_repositories,
   '@abuddy/sdk/runtime': _abuddy_sdk_runtime,
   '@abuddy/sdk/seed': _abuddy_sdk_seed,
   '@abuddy/sdk/services': _abuddy_sdk_services,

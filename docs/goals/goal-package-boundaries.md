@@ -606,7 +606,7 @@ Every new guard, helper and spec was mutation-checked in its phase (each phase's
 - **Phase 5:** SDK repositories are plain exports of `@abuddy/sdk/ears`, not engine-registry entries; onboarding reaches packs as `appData.hasOnboarded()`/`completeOnboarding()`; settings are a default-setup seed format (`boot.seed` entries may be `{ path, format, seeder }`); `AppState` keeps boot-seed hashes and stat fingerprints per built-in pack, and the old single hash is filed under each; `lastInteractionTimestamp` was dropped; data with no version runs the host migrations, then counts as new.
 - **Phase 6:** repositories arrive in `PackRegistration.repositories` and `registerPack` registers them with the installed engine (no import-time registration); the LMDB store takes an engine getter; `EarsAdmin` includes `getAttr` and `repositories()`; `installEngine(undefined)` uninstalls and returns the previous engine; the ears, sdk and default-setup suites run with file parallelism. The contract suite pins three existing quirks (a removed relation's id stays in the type index; `leaves()` without a type counts relation rows; granting a role twice).
 - **Phase 7:** shared lookups read the frontend binding when bound, else the backend's; the view's method names are `designation`, `step(s)`, `artifact(s)`, `block(s)`, `seedHooks`, `seeders`, `settingsDefaults`, `onSettingsDefaultsChanged`, `commands` (plus `plugins`, `defaultPlugin`, `tiptapPlugins`, `appExtension`, `dslTypes` in the frontend); `testPacks` is the SDK stand-in; the harness exports `registerPack`/`unregisterPack`; the CLI registers a build's loaded definitions as one registration in a private registry; step, artifact and block type collisions still merge or replace; thread teardown moved into default-setup; module state that isn't a registration (the loader's built-in list, `loaded-packs.ts`, the packs system's built-in list) stays; the api exports its registry as the live binding `appPacks`.
-- **Phase 8:** the host's app migrations runner is named `runAppMigrations` (was `runMigrations`), so no doc names the SDK export this goal removed; finished and superseded goal docs moved to `docs/archive/goals/`; the removed-names guard lives in the host suite (it runs in `npm run test:unit` with no build step) and allows `packages/main/CLAUDE.md` to name the api path that Electron main still uses for media when run from source (see Open items).
+- **Phase 8:** the host's app migrations runner is named `runAppMigrations` (was `runMigrations`), so no doc names the SDK export this goal removed; finished and superseded goal docs moved to `docs/archive/goals/`; the removed-names guard lives in the host suite (it runs in `npm run test:unit` with no build step).
 
 ### Corrections to the Decisions
 
@@ -620,7 +620,6 @@ These edits in the Decisions above fix statements that didn't match what was bui
 ### Open items
 
 - Resolved after the goal: Electron main serves and stores media in the folder the API's `getMediaPath()` uses; `abuddy add migration` scaffolds a `PackMigration`; the loader's bridge no longer maps `@abuddy/host/packs` and `/backup`.
-- The example pack needs `npm install` to link `@abuddy/ears` (its `package.json` declares the `file:` dependency).
 
 ### Final verification
 
@@ -640,6 +639,8 @@ Run sequentially on 2026-09-16 after Phase 8:
   | `tx` 1,000 creates | 3.40 ms | 3.41 ms | +0% |
 
 - Example pack: `abuddy build` fails with `ERR_MODULE_NOT_FOUND: @abuddy/ears` from its seed runtime bundle. Its `node_modules` has no `@abuddy/ears` link, and `npm install` there is the user's to run (its `package.json` declares the `file:` dependency). Its `tsc`, unit tests and `abuddy test` weren't reached; they passed through Phase 0 (8/8), before `@abuddy/ears` existed.
+
+**After the goal:** `@abuddy/sdk/ears` was renamed `@abuddy/sdk/repositories` and holds only the SDK entities' repositories; the SDK's `EARS` and entity shapes, which it re-exported, come from `@abuddy/sdk/types` and the root. `@abuddy/sdk/ears` in the text above names the module before that change.
 
 ## Deferred
 

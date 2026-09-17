@@ -3,7 +3,7 @@
 import * as path from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { compileFlowDSL } from '@abuddy/sdk/build'
-import { flowRepository } from '@abuddy/sdk/ears'
+import { flowRepository } from '@abuddy/sdk/repositories'
 import { startApp } from '@abuddy/testing/harness'
 import { repository } from '@/__generated__/repository'
 

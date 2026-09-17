@@ -72,7 +72,7 @@ The engine's types moved to `@abuddy/ears` (`packages/abuddy-ears`); the SDK kee
    - Entity-name positions should list entity names: `qx('|')`, `findAll('|')`, `createEntity('|')`, `.linksTo(kind, '|')`, `.ofType('|')`.
    - A typo (`where('titel')`) should produce an error that lists the valid fields.
    - Compare against the previous version with the TypeScript language service (`getCompletionsAtPosition`), not just by compiling.
-5. **Update the API reports** (`npm run api:update` in `packages/abuddy-ears` and `packages/abuddy-sdk`) and review the `abuddy-ears/etc/index.api.md` and `abuddy-sdk/etc/ears.api.md` diffs as part of the change.
+5. **Update the API reports** (`npm run api:update` in `packages/abuddy-ears` and `packages/abuddy-sdk`) and review the `abuddy-ears/etc/index.api.md` and `abuddy-sdk/etc/types.api.md` diffs as part of the change.
 
 ## Incidents
 
