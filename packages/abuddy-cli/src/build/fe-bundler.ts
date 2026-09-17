@@ -8,6 +8,10 @@ import { getSharedFeDeps, getSdkFeModules, getUiFeModules, sharedInstancePackage
 
 const EXTERNAL_PREFIX = '\0pack-external:';
 
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err);
+}
+
 /**
  * A module that re-exports a host global. The host may be older than the pack's @abuddy/* packages:
  * a missing module fails with a message naming the fix, and a missing @abuddy/* export warns once.
@@ -33,22 +37,36 @@ function generateGlobalProxy(specifier: string, globalKey: string, namedExports:
   return lines.join('\n');
 }
 
-/** Whether the pack's abuddy.json opts into bundling its own copy of @abuddy/ui (`fe.bundleUi`). */
+/**
+ * Whether the pack's abuddy.json opts into bundling its own copy of @abuddy/ui (`fe.bundleUi`).
+ * No manifest is fine — `bundleUi` is opt-in, and only a pack directory has one. A manifest that is
+ * there but unreadable is not: it may be the one that opts in, and reading it as "no" would quietly
+ * proxy @abuddy/ui to the host and skip its Tailwind classes.
+ */
 function bundlesUi(packDir: string): boolean {
+  const manifestPath = path.join(packDir, 'abuddy.json');
+  if (!fs.existsSync(manifestPath)) return false;
   try {
-    return JSON.parse(fs.readFileSync(path.join(packDir, 'abuddy.json'), 'utf-8')).fe?.bundleUi === true;
-  } catch {
-    return false;
+    return JSON.parse(fs.readFileSync(manifestPath, 'utf-8')).fe?.bundleUi === true;
+  } catch (err) {
+    throw new Error(`Couldn't read ${manifestPath}, so the FE build can't tell whether this pack bundles @abuddy/ui (fe.bundleUi): ${errorMessage(err)}`);
   }
 }
 
-/** Tailwind content globs for the @abuddy/ui a pack bundles: its source when linked to a checkout, else its build */
+/**
+ * Tailwind content globs for the @abuddy/ui a pack bundles: its source when linked to a checkout,
+ * else its build. Only reached for a pack that set `fe.bundleUi`, so an @abuddy/ui it can't resolve
+ * is a build failure: its components are nothing but Tailwind classes, and returning no globs would
+ * bundle every one of them unstyled.
+ */
 function uiTailwindContent(packDir: string): string[] {
   let uiDir: string;
   try {
     uiDir = path.dirname(fs.realpathSync(createRequire(path.join(packDir, 'package.json')).resolve('@abuddy/ui/package.json')));
-  } catch {
-    return [];
+  } catch (err) {
+    throw new Error(
+      `This pack sets fe.bundleUi, but @abuddy/ui can't be resolved from ${packDir}, so Tailwind would generate none of its components' classes: ${errorMessage(err)}`,
+    );
   }
   return sourceConditions(packDir).length > 0 && fs.existsSync(path.join(uiDir, 'src'))
     ? [path.join(uiDir, 'src/**/*.{vue,ts}')]
@@ -69,7 +87,11 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
         return Object.keys(mod).filter(
           k => k !== 'default' && k !== '__esModule' && /^[a-zA-Z_$]/.test(k),
         );
-      } catch {}
+      } catch {
+        // Absent is fine: the host shares more FE deps than any one pack installs, and the next
+        // base may have it. Coming up empty is fine too — the proxy still re-exports `default`, and
+        // a named import the pack actually uses fails the build at that import, naming the module.
+      }
     }
     return [];
   }
@@ -241,7 +263,7 @@ export function findFEEntry(packDir: string): string | null {
 }
 
 function readTsconfigAliases(packDir: string): Record<string, string> {
-  const aliases: Record<string, string> = {};
+  let aliases: Record<string, string> = {};
   const tsconfigPath = path.join(packDir, 'tsconfig.json');
   if (!fs.existsSync(tsconfigPath)) return aliases;
   try {
@@ -254,8 +276,82 @@ function readTsconfigAliases(packDir: string): Record<string, string> {
       const target = targets[0].slice(0, -2);
       aliases[alias] = path.resolve(packDir, target);
     }
-  } catch {}
+  } catch (err) {
+    // The file is there, so this is a real problem: every `compilerOptions.paths` alias is lost and
+    // the imports using one fail later as "can't resolve", pointing nowhere near the cause. Not a
+    // hard failure — a pack with no aliases still builds — but never silent.
+    aliases = {};
+    console.warn(`! FE bundle: couldn't read ${tsconfigPath}, so its compilerOptions.paths aliases are ignored: ${errorMessage(err)}`);
+  }
   return aliases;
+}
+
+/**
+ * PostCSS plugins for the pack's CSS: Tailwind over the pack's own config if it has one, otherwise
+ * over a generated one covering `src/`. A pack that bundles @abuddy/ui also generates the classes
+ * its components use.
+ *
+ * Nothing here fails quietly. The bundle it produces either has the pack's styles or it doesn't, and
+ * an unstyled bundle with no message is the worst outcome — it looks like a successful build and the
+ * cause is invisible at runtime. So:
+ *
+ * - **Hard failure** when the pack demonstrably relies on Tailwind: it ships a `tailwind.config`, or
+ *   it sets `fe.bundleUi` (every @abuddy/ui component is Tailwind classes, so without Tailwind that
+ *   bundle is *guaranteed* unstyled). A broken or unexpected config is always a hard failure — the
+ *   pack wrote it, and reverting to the generated default would silently drop its theme.
+ * - **Warning** when the pack gives no such signal and Tailwind can't load: it may use no Tailwind
+ *   classes at all, and a toolchain problem shouldn't stop it building. The reason is still printed,
+ *   together with what the bundle is missing.
+ */
+async function tailwindPostcssPlugins(packDir: string): Promise<any[]> {
+  const packTwConfig = [path.join(packDir, 'tailwind.config.ts'), path.join(packDir, 'tailwind.config.js')]
+    .find((f) => fs.existsSync(f));
+  const bundleUi = bundlesUi(packDir);
+  // Why a failure to load Tailwind can't be shrugged off for this pack, if it can't
+  const needsTailwind = packTwConfig
+    ? `This pack has ${path.basename(packTwConfig)}`
+    : bundleUi
+      ? 'This pack sets fe.bundleUi, so it bundles @abuddy/ui, whose components are Tailwind classes'
+      : undefined;
+
+  let tailwindcss: (config: unknown) => unknown;
+  let autoprefixer: () => unknown;
+  try {
+    tailwindcss = (await import('tailwindcss')).default as unknown as (config: unknown) => unknown;
+    autoprefixer = (await import('autoprefixer')).default as unknown as () => unknown;
+  } catch (err) {
+    const reason = `Tailwind CSS couldn't be loaded: ${errorMessage(err)}`;
+    if (needsTailwind) {
+      throw new Error(`${reason}\n  ${needsTailwind}, so the bundle would have no styles at all. Install tailwindcss and autoprefixer.`);
+    }
+    console.warn(`! FE bundle: ${reason}\n  The bundle is built without Tailwind, so any Tailwind classes in this pack's templates get no styles.`);
+    return [];
+  }
+
+  const uiContent = bundleUi ? uiTailwindContent(packDir) : [];
+  let twConfig: unknown = { content: [path.join(packDir, 'src/**/*.{vue,js,ts,jsx,tsx}'), ...uiContent] };
+  if (packTwConfig) {
+    // Tailwind loads a config path itself; only a pack that also needs @abuddy/ui's globs merged in
+    // has to be loaded here
+    twConfig = packTwConfig;
+    if (uiContent.length > 0) {
+      const loadConfig = (await import('tailwindcss/loadConfig.js')).default;
+      let config: { content?: unknown };
+      try {
+        config = loadConfig(packTwConfig) as { content?: unknown };
+      } catch (err) {
+        throw new Error(`${path.basename(packTwConfig)} couldn't be loaded, and fe.bundleUi needs @abuddy/ui's files added to its \`content\`: ${errorMessage(err)}`);
+      }
+      const content = Array.isArray(config.content) ? { files: config.content } : config.content as { files?: unknown } | undefined;
+      if (!content || !Array.isArray(content.files)) {
+        throw new Error(
+          `${path.basename(packTwConfig)} must set \`content\` to an array of globs or to { files: [...] }, so that fe.bundleUi can add @abuddy/ui's files to it; got ${JSON.stringify(config.content)}`,
+        );
+      }
+      twConfig = { ...config, content: { ...content, files: [...content.files, ...uiContent] } };
+    }
+  }
+  return [tailwindcss(twConfig), autoprefixer()];
 }
 
 export async function bundlePackFE(options: BundleFEOptions): Promise<{ success: boolean; error?: string }> {
@@ -267,26 +363,12 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
   const tsconfigAliases = readTsconfigAliases(packDir);
   const aliasEntries = Object.entries(tsconfigAliases).map(([find, replacement]) => ({ find, replacement }));
 
-  // Tailwind CSS: use pack's own config if present, otherwise generate one. A pack that bundles
-  // @abuddy/ui also generates the classes its components use.
-  let postcssPlugins: any[] = [];
+  let postcssPlugins: any[];
   try {
-    const tailwindcss = (await import('tailwindcss')).default;
-    const autoprefixer = (await import('autoprefixer')).default;
-    const uiContent = bundlesUi(packDir) ? uiTailwindContent(packDir) : [];
-    const packTwConfig = [path.join(packDir, 'tailwind.config.ts'), path.join(packDir, 'tailwind.config.js')].find((f) => fs.existsSync(f));
-    let twConfig: any = { content: [path.join(packDir, 'src/**/*.{vue,js,ts,jsx,tsx}'), ...uiContent] };
-    if (packTwConfig) {
-      twConfig = packTwConfig;
-      if (uiContent.length > 0) {
-        const loadConfig = (await import('tailwindcss/loadConfig.js')).default;
-        const config = loadConfig(packTwConfig);
-        const content = Array.isArray(config.content) ? { files: config.content } : config.content;
-        twConfig = { ...config, content: { ...content, files: [...content.files, ...uiContent] } };
-      }
-    }
-    postcssPlugins = [tailwindcss(twConfig), autoprefixer()];
-  } catch {}
+    postcssPlugins = await tailwindPostcssPlugins(packDir);
+  } catch (err) {
+    return { success: false, error: errorMessage(err) };
+  }
 
   // Inject @tailwind utilities so Tailwind generates classes found in templates. Vite's module ids
   // are real paths (a pack under a symlinked dir, like macOS's /var, has others)
