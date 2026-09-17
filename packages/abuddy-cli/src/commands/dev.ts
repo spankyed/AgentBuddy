@@ -10,7 +10,7 @@ import { removeDevServerMarker, writeDevServerMarker } from '@abuddy/host/packs/
 function getDevApiUrl(): string | null {
   try {
     const port = fs.readFileSync(resolveAppContext({ env: 'development' }).apiPortFile, 'utf-8').trim();
-    return port ? `http://localhost:${port}` : null;
+    return port ? `http://127.0.0.1:${port}` : null;
   } catch { return null; }
 }
 

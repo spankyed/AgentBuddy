@@ -97,7 +97,7 @@ test("a restarted pack's browser system sends its startup data to the browser pl
   try {
     // The reload restarts the pack's systems, and the bus sends them CLIENT_CONNECTED: the client is connected
     await expect.poll(async () => {
-      const response = await fetch(`http://localhost:${apiPort}/dev/reload`, {
+      const response = await fetch(`http://127.0.0.1:${apiPort}/dev/reload`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ packId: 'default-setup', builtIn: true }),

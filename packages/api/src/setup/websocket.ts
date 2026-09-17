@@ -14,8 +14,28 @@ import { resolveAppContext } from '@abuddy/sdk/env';
 const logger = createLogger('backend');
 const reloadingPacks = new Set<string>();
 
+/** The only interface the server listens on: the app's own processes and local tools reach it, nothing on the network does */
+export const API_HOST = '127.0.0.1';
+
+/**
+ * Why a pack reload request is refused, or null to take it. Only a development or test app reloads packs, and only
+ * for a local tool (`abuddy dev`, the built-in pack's watcher, the E2E tests): a browser page, the in-app browser's
+ * included, always sends an `Origin` header with a cross-site POST, and those tools send none.
+ */
+export function devReloadRefusal(headers: http.IncomingHttpHeaders, env = resolveAppContext().env): string | null {
+  if (env !== 'development' && env !== 'test') return `pack reloads are for development builds (this one is ${env})`;
+  if (headers.origin !== undefined) return 'pack reloads are for local tools, not web pages';
+  return null;
+}
+
 function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse) {
   if (req.method === 'POST' && req.url === '/dev/reload') {
+    const refusal = devReloadRefusal(req.headers);
+    if (refusal) {
+      res.writeHead(403, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: refusal }));
+      return;
+    }
     let body = '';
     req.on('data', (chunk) => { body += chunk; });
     req.on('end', async () => {
@@ -66,7 +86,7 @@ export function createWebSocketServer() {
     verifyClient: WS_CONFIG.verifyClient
   });
 
-  httpServer.listen(port, () => {
+  httpServer.listen(port, API_HOST, () => {
     // ! Log server startup (both to logger and console for main process) do not remove or modify
     const message = `✅ WebSocket Server listening on ws://localhost:${port} (tRPC endpoint: ws://localhost:${port}/trpc)`;
     console.log(message);

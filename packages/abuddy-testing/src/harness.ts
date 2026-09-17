@@ -191,6 +191,13 @@ function seedRuntimeRegistration(runtime: SeedRuntime, seeders?: Seeder[]): Pack
  * registered in the test file's registry; the database emptied before each test. Call it once, from a vitest setup file.
  */
 export async function setupPackTests(options: PackTestOptions): Promise<void> {
+  if (context) {
+    throw new Error(
+      'setupPackTests() already ran in this process. Call it once, from a vitest setup file, and keep vitest\'s ' +
+      '`isolate` on (the default): the harness keeps one registry, database and set of mocks per test file, ' +
+      'so test files sharing a module instance (`isolate: false`) would register the same packs twice',
+    );
+  }
   if (!process.env.ABUDDY_USER_DATA_DIR) {
     throw new Error('ABUDDY_USER_DATA_DIR is unset: use isolatedDataDir() from @abuddy/testing/vitest in vitest.config.ts');
   }

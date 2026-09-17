@@ -102,7 +102,7 @@ async function notifyReload() {
   const port = getApiPort();
   if (!port) return;
   try {
-    const res = await fetch(`http://localhost:${port}/dev/reload`, {
+    const res = await fetch(`http://127.0.0.1:${port}/dev/reload`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ packId: 'default-setup', builtIn: true }),
