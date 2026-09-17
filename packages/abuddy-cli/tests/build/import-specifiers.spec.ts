@@ -257,7 +257,7 @@ function layer(dir: string, manifest: Record<string, unknown>, files: Record<str
 }
 
 describe('findUpwardImports', () => {
-  const layers = LAYERS.map((l) => ({ ...l, dir: `layers/${l.name.slice('@abuddy/'.length)}` }));
+  const layers = LAYERS.map((l) => ({ ...l, dir: `layers/${path.basename(l.dir).replace(/^abuddy-/, '')}` }));
   const allowed = () => {
     layer('layers/ears', {}, { 'src/index.ts': "import { x } from './x.ts';\nimport ts from 'typescript';\n" });
     layer('layers/sdk', { dependencies: { '@abuddy/ears': '^0.1.0', yaml: '*' } }, {
@@ -266,6 +266,13 @@ describe('findUpwardImports', () => {
     layer('layers/host', { dependencies: { '@abuddy/ears': '*', '@abuddy/sdk': '*' } }, {
       'src/index.ts': "import { services } from '@abuddy/sdk/services';\nimport { untypedQx } from '@abuddy/ears';\nimport { x } from '../x.ts';\n",
       'tests/a.spec.ts': "vi.mock('@abuddy/ears');\n",
+    });
+    layer('layers/api', { devDependencies: { '@abuddy/ears': '*', '@abuddy/host': '*', '@abuddy/sdk': '*' } }, {
+      'src/setup/backend.ts': "import { openLmdbStore } from '@abuddy/ears/lmdb';\nimport { createHostRuntime } from '@abuddy/host/services';\nimport { bindHost } from '@abuddy/sdk/runtime';\n",
+    });
+    layer('layers/renderer', { dependencies: { '@abuddy/host': '*', '@abuddy/sdk': '*', '@abuddy/ui': '*' } }, {
+      'src/main.ts': "import { createFePackRegistry } from '@abuddy/host/fe';\nimport { bindFeHost } from '@abuddy/sdk/runtime';\n",
+      'src/App.vue': "<script setup lang=\"ts\">\nimport Button from '@abuddy/ui/design/button';\n</script>\n",
     });
   };
 
@@ -283,6 +290,8 @@ describe('findUpwardImports', () => {
     ['host', 'src/bus/app.ts', "import { rootEvents } from '../../../api/src/core/router/bus-emitter.ts';", 'layers/host/src/bus/app.ts:1: ../../../api/src/core/router/bus-emitter.ts'],
     ['host', 'src/bus/app.ts', "import { logger } from '@/core/shared/debug/logger';", 'layers/host/src/bus/app.ts:1: @/core/shared/debug/logger'],
     ['host', 'scripts/x.ts', "import { cli } from '@abuddy/cli';", 'layers/host/scripts/x.ts:1: @abuddy/cli'],
+    ['api', 'src/router.ts', "import Button from '@abuddy/ui/design/button';", 'layers/api/src/router.ts:1: @abuddy/ui/design/button'],
+    ['renderer', 'src/store.ts', "import { openLmdbStore } from '@abuddy/ears/lmdb';", 'layers/renderer/src/store.ts:1: @abuddy/ears/lmdb'],
   ])('flags an upward import in %s: %s', (pkg, file, code, problem) => {
     allowed();
     fs.mkdirSync(path.dirname(path.join(root, 'layers', pkg, file)), { recursive: true });
@@ -293,8 +302,18 @@ describe('findUpwardImports', () => {
   it.each([
     ['ears', { peerDependencies: { '@abuddy/sdk': '*' } }, 'layers/ears/package.json: peerDependencies: @abuddy/sdk'],
     ['sdk', { dependencies: { '@abuddy/ears': '*', '@abuddy/host': '*' } }, 'layers/sdk/package.json: dependencies: @abuddy/host'],
-    ['host', { devDependencies: { '@abuddy/cli': '*' } }, 'layers/host/package.json: devDependencies: @abuddy/cli'],
+    ['host', { dependencies: { '@abuddy/ears': '*', '@abuddy/sdk': '*' }, devDependencies: { '@abuddy/cli': '*' } }, 'layers/host/package.json: devDependencies: @abuddy/cli'],
   ])("flags an @abuddy package %s's manifest may not declare", (pkg, manifest, problem) => {
+    allowed();
+    fs.writeFileSync(path.join(root, 'layers', pkg, 'package.json'), JSON.stringify({ name: 'x', ...manifest }));
+    expect(findUpwardImports(layers, root)).toEqual([problem]);
+  });
+
+  it.each([
+    ['api', { devDependencies: { '@abuddy/ears': '*', '@abuddy/sdk': '*' } }, 'layers/api/package.json: undeclared: @abuddy/host'],
+    ['renderer', { dependencies: { '@abuddy/host': '*', '@abuddy/sdk': '*' } }, 'layers/renderer/package.json: undeclared: @abuddy/ui'],
+    ['host', { dependencies: { '@abuddy/sdk': '*' } }, 'layers/host/package.json: undeclared: @abuddy/ears'],
+  ])("flags an @abuddy package %s imports without declaring it", (pkg, manifest, problem) => {
     allowed();
     fs.writeFileSync(path.join(root, 'layers', pkg, 'package.json'), JSON.stringify({ name: 'x', ...manifest }));
     expect(findUpwardImports(layers, root)).toEqual([problem]);

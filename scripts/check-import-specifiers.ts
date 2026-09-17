@@ -7,7 +7,7 @@
 // Extensionless imports already fail the packages' nodenext typecheck.
 //
 // Also checks the pack rules below (typed facades, no host imports in packs, …), that the layered
-// packages import only downward (findUpwardImports), that only @abuddy/ears/lmdb loads lmdb
+// packages import only downward and declare the @abuddy packages they import (findUpwardImports), that only @abuddy/ears/lmdb loads lmdb
 // (findLmdbImports), that the shared-instance package list has one source (findSharedPackageLists), and that no
 // package reads repositories through a cast (findRepositoryCasts).
 //
@@ -303,7 +303,8 @@ export function findAppImportsInPackTests(dirs = PACK_TEST_DIRS, root = repoRoot
 
 /**
  * The layered packages, lowest first (docs/goals/goal-package-boundaries.md, Decision 1): the
- * `@abuddy/*` packages each may import, and path patterns it must never load.
+ * `@abuddy/*` packages each may import, and path patterns it must never load. The API and the renderer
+ * compose the app from the packages below them.
  */
 export const LAYERS: { name: string; dir: string; allowed: string[]; forbidden?: RegExp }[] = [
   { name: '@abuddy/ears', dir: 'packages/abuddy-ears', allowed: [] },
@@ -315,30 +316,41 @@ export const LAYERS: { name: string; dir: string; allowed: string[]; forbidden?:
     // The API: its package, its `@/` alias, or its sources by relative path
     forbidden: /^(?:@app\/api(?:\/|$)|@\/|(?:\.\.?\/)+(?:[\w.-]+\/)*api\/(?:src|scripts)(?:\/|$))/,
   },
+  { name: '@app/api', dir: 'packages/api', allowed: ['@abuddy/ears', '@abuddy/sdk', '@abuddy/host'] },
+  { name: '@app/renderer', dir: 'packages/renderer', allowed: ['@abuddy/sdk', '@abuddy/host', '@abuddy/ui'] },
 ];
 
 const abuddyPackage = (specifier: string) => specifier.match(/^@abuddy\/[^/]+/)?.[0];
 
+const MANIFEST_FIELDS = ['dependencies', 'peerDependencies', 'optionalDependencies', 'devDependencies'];
+
 /**
  * `file:line: specifier` for each import a layered package makes upward: an `@abuddy/*` package it
  * may not use, or a module its layer forbids. Also `package.json: <field>: name` for each `@abuddy/*`
- * package a manifest declares beyond the allowed ones. Sources, tests and scripts are checked.
+ * package a manifest declares beyond the allowed ones, and `package.json: undeclared: name` for each
+ * allowed one the package imports without declaring it. Sources, tests and scripts are checked.
  */
 export function findUpwardImports(layers = LAYERS, root = repoRoot): string[] {
   const problems: string[] = [];
   for (const { name, dir, allowed, forbidden } of layers) {
     const permitted = new Set([name, ...allowed]);
+    const imported = new Set<string>();
     const files = packFiles(['src', 'tests', 'scripts'].map((sub) => path.join(dir, sub)), root);
     problems.push(...findSpecifiers(files, root, (text) => {
       const pkg = abuddyPackage(text);
+      if (pkg !== undefined && pkg !== name) imported.add(pkg);
       return (pkg !== undefined && !permitted.has(pkg)) || (forbidden?.test(text) ?? false);
     }));
     const manifestFile = path.join(root, dir, 'package.json');
     const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf-8')) as Record<string, Record<string, string> | undefined>;
-    for (const field of ['dependencies', 'peerDependencies', 'optionalDependencies', 'devDependencies']) {
+    const declared = new Set(MANIFEST_FIELDS.flatMap((field) => Object.keys(manifest[field] ?? {})));
+    for (const field of MANIFEST_FIELDS) {
       for (const dep of Object.keys(manifest[field] ?? {})) {
         if (dep.startsWith('@abuddy/') && !permitted.has(dep)) problems.push(`${path.relative(root, manifestFile)}: ${field}: ${dep}`);
       }
+    }
+    for (const pkg of [...imported].sort()) {
+      if (permitted.has(pkg) && !declared.has(pkg)) problems.push(`${path.relative(root, manifestFile)}: undeclared: ${pkg}`);
     }
   }
   return problems;
@@ -439,7 +451,7 @@ if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])
     [findPackBackendConsole, 'Pack backend code logs with createLogger from @abuddy/sdk/logger'],
     [findHostImports, "Pack code doesn't import the host's private @abuddy/host package; use @abuddy/sdk"],
     [findAppImportsInPackTests, 'Pack unit tests run on the harness (@abuddy/testing) without the app; test host, API and CLI code in its own package'],
-    [findUpwardImports, 'Packages import only downward: @abuddy/ears imports no @abuddy package, @abuddy/sdk only @abuddy/ears, @abuddy/host only those two and never the API'],
+    [findUpwardImports, "Packages import only downward (@abuddy/ears imports no @abuddy package, @abuddy/sdk only @abuddy/ears, @abuddy/host only those two and never the API, the API and the renderer only the packages below them), and list each @abuddy package they import in their package.json"],
     [findLmdbImports, "Only @abuddy/ears/lmdb loads lmdb: the host and the API open the store through it, the engine's root and packs never load it"],
     [findSharedPackageLists, 'Derive shared-instance packages from SHARED_INSTANCE_PACKAGES (@abuddy/host/build/shared-deps) instead of naming them'],
     [findRepositoryCasts, "Call a package's repositories through its exports, not a cast of the repository registry"],

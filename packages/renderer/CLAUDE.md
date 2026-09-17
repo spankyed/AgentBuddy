@@ -34,7 +34,7 @@ Its static imports are evaluated first: `virtual:built-in-packs` loads every bui
   - every `@abuddy/ui` export, keyed by specifier.
 
   All three lists live in `@abuddy/host/build/shared-deps`. The pack FE bundler proxies the same specifiers to these globals, so packs share the host's Vue, XState and SDK instance (with the frontend host it binds).
-- **Aliases:** `@abuddy/api` → `../api/src`. Resolve conditions include `@abuddy/source`.
+- **Resolution:** conditions include `@abuddy/source`. The API's router type comes from `@app/api` (a type-only import, a dev dependency).
 - `base: './'` (loaded from `file://` in builds), `modulePreload: false`, and a long `optimizeDeps.include` list (Monaco, xterm, tiptap, vidstack, …) for the dev server.
 - `tsconfig.app.json` includes `../abuddy-sdk/src/fe/**/*` (the `Window.electronAPI` declaration, see `packages/preload/CLAUDE.md`) and maps `@/*` → `src/*`.
 

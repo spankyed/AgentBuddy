@@ -112,9 +112,6 @@ export default defineConfig({
   resolve: {
     // Workspace @abuddy/* packages resolve to source (see their package.json exports)
     conditions: ['@abuddy/source', ...defaultClientConditions],
-    alias: [
-      { find: '@abuddy/api', replacement: fileURLToPath(new URL('../api/src', import.meta.url)) },
-    ],
   },
   ssr: { resolve: { conditions: ['@abuddy/source', ...defaultServerConditions] } },
   optimizeDeps: {
