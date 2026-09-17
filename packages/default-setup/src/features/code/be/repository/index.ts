@@ -140,8 +140,8 @@ export const terminalCommands = {
       return
     }
 
-    // To the trash, inactive, rather than deleted
-    tx(id).updateBatch({ active: false, updatedAt: Date.now() })
+    // To the trash, inactive, rather than deleted (trash.move stamps updatedAt)
+    tx(id).put('active', false)
     trash.move([id])
   }
 }
