@@ -14,9 +14,9 @@ import { installedEngine } from './installed.ts';
 export interface PersistenceSink {
   onCreateEntity(entityId: string, entityType?: string): void;
   onDestroyEntity(entityId: string): void;
-  onPutAttr(kind: string, entityId: string, idx: number, value: unknown, entireArray?: unknown[]): void;
   onDropAttr(kind: string, entityId: string, idx: number, entireArray?: unknown[]): void;
-  onPutAttrArray?(kind: string, entityId: string, values: unknown[]): void;
+  /** An attribute's values after a write, whole: the sink stores them in place of what it had */
+  onPutAttrArray(kind: string, entityId: string, values: unknown[]): void;
   onAddRelation(relId: string, kind: string, src: string, tgt: string, info: unknown): void;
   onUpdateRelation(relId: string, patch: { src?: string; tgt?: string; info?: unknown }): void;
   onRemoveRelation(relId: string): void;
@@ -28,8 +28,8 @@ export interface PersistenceSink {
 export const noopSink: PersistenceSink = {
   onCreateEntity() {},
   onDestroyEntity() {},
-  onPutAttr() {},
   onDropAttr() {},
+  onPutAttrArray() {},
   onAddRelation() {},
   onUpdateRelation() {},
   onRemoveRelation() {},

@@ -67,19 +67,19 @@ export function createAttributeStorage({ relations, persistence }: { relations: 
   const add = (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown) => {
     const list = valuesOf(id, kind);
     list.push(val as EARS.AttributeValue);
-    persistence.onPutAttrArray?.(kind, id, list);
+    persistence.onPutAttrArray(kind, id, list);
   };
 
   const put = (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown) => {
     bucket(kind).set(id, [val as EARS.AttributeValue]);
     indexEntity(id);
-    persistence.onPutAttrArray?.(kind, id, [val]);
+    persistence.onPutAttrArray(kind, id, [val]);
   };
 
   const merge = (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown, idx = 0) => {
     const list = valuesOf(id, kind);
     mergeAt(list, val, idx);
-    persistence.onPutAttrArray?.(kind, id, list);
+    persistence.onPutAttrArray(kind, id, list);
   };
 
   const drop = (id: EARS.EntityId, kind: EARS.AttrKind, idx = 0) => {
@@ -90,7 +90,7 @@ export function createAttributeStorage({ relations, persistence }: { relations: 
       bucket(kind).delete(id);
       persistence.onDropAttr(kind, id, idx, []);
     } else {
-      persistence.onPutAttrArray?.(kind, id, list);
+      persistence.onPutAttrArray(kind, id, list);
     }
   };
 
@@ -306,6 +306,9 @@ export function createAttributeStorage({ relations, persistence }: { relations: 
     return { entityCount: b.size, totalValues };
   };
 
+  /** Tells the sink an entity was created, with its type when the creator knows it */
+  const entityCreated = (id: EARS.EntityId, entityType?: EARS.Entity) => persistence.onCreateEntity(id, entityType);
+
   function getSchemaStats() {
     return {
       entities: getAllEntityTypes().reduce((acc: Record<string, number>, type: string) => {
@@ -324,7 +327,7 @@ export function createAttributeStorage({ relations, persistence }: { relations: 
   return {
     clear, bulkLoadAttr,
     putAttr: put, addAttr: add, mergeAttr: merge, dropAttr: drop, dropIf, updateAttr: put,
-    grantRole, revokeRole, addRelation, updateRelation, removeRelationById,
+    entityCreated, grantRole, revokeRole, addRelation, updateRelation, removeRelationById,
     getAttr, getAttrs, getRoles, getAll, getAllEntities, getEntitiesOfType, hasEntity, removals: () => removals,
     queryEntitiesByRole, queryEntitiesByAttribute, queryEntitiesInRelationTo, queryEntitiesByRelationTo,
     destroyEntity, getAllAttributeKinds, getAllRelationKinds, getAllEntityTypes, getAttributeStats, getSchemaStats,

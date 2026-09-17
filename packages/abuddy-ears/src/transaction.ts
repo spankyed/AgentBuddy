@@ -16,7 +16,7 @@ export function createTx({ storage, edgeStore, qx, graph, isEntityType: isEntity
   isEntityType: (name: string) => boolean;
 }): typeof tx {
   const {
-    destroyEntity,
+    destroyEntity, entityCreated,
     putAttr, addAttr, mergeAttr, dropAttr, dropIf, updateAttr,
     grantRole, revokeRole,
     addRelation, updateRelation, removeRelationById,
@@ -31,7 +31,9 @@ export function createTx({ storage, edgeStore, qx, graph, isEntityType: isEntity
       ? createEntity(typeOrId as EARS.Entity)
       : (typeOrId as EARS.EntityId);
 
+    // A new entity: `tx(type)` creates one, `tx(id, true)` treats the id as new
     if (isEntityType || useProvidedId) {
+      entityCreated(id, isEntityType ? typeOrId as EARS.Entity : undefined);
       putAttr(id, EARS.AttrKind.Custom('createdAt'), Date.now());
     }
 

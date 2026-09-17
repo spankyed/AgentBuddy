@@ -208,8 +208,8 @@ export function makeLmdbAdapter(dbs: LmdbDbs, options: LmdbAdapterOptions = {}):
     onCreateEntity(entityId: string, type?: string) {
       if (closed) return;
       ensureBuf.add(entityId);
-      // If type is explicitly provided, store it for update
-      if (type) {
+      // The row takes its type from the id's prefix; only a type that differs is written over it
+      if (type && type !== entTypeOf(entityId)) {
         entityUpdates.set(entityId, { type });
       }
       scheduleFlush();
@@ -252,15 +252,6 @@ export function makeLmdbAdapter(dbs: LmdbDbs, options: LmdbAdapterOptions = {}):
         entityUpdates.set(entityId, { deletedAt: ts });
         scheduleFlush();
       }
-    },
-
-    onPutAttr(kind: string, entityId: string, idx: number, value: unknown, entireArray?: unknown[]) {
-      if (closed) return;
-      // Strict mode: require entireArray to prevent data loss and index drift
-      if (!entireArray) {
-        throw new Error('[LMDB] onPutAttr requires entireArray parameter to avoid index drift and data loss');
-      }
-      bufferArrayRewrite(kind, entityId, entireArray);
     },
 
     onPutAttrArray(kind: string, entityId: string, values: unknown[]) {

@@ -104,9 +104,8 @@ export function openLmdbStore({ paths, policy, engine }: LmdbStoreOptions): Lmdb
   const sink: ShardedPersistence = {
     onCreateEntity: (...args) => write((s) => s.onCreateEntity(...args)),
     onDestroyEntity: (...args) => write((s) => s.onDestroyEntity(...args)),
-    onPutAttr: (...args) => write((s) => s.onPutAttr(...args)),
     onDropAttr: (...args) => write((s) => s.onDropAttr(...args)),
-    onPutAttrArray: (...args) => write((s) => s.onPutAttrArray?.(...args)),
+    onPutAttrArray: (...args) => write((s) => s.onPutAttrArray(...args)),
     onAddRelation: (...args) => write((s) => s.onAddRelation(...args)),
     onUpdateRelation: (...args) => write((s) => s.onUpdateRelation(...args)),
     onRemoveRelation: (...args) => write((s) => s.onRemoveRelation(...args)),

@@ -34,7 +34,6 @@ export function recordingSink(): { sink: PersistenceSink; calls: SinkCall[] } {
   const sink: PersistenceSink = {
     onCreateEntity: record('onCreateEntity'),
     onDestroyEntity: record('onDestroyEntity'),
-    onPutAttr: record('onPutAttr'),
     onDropAttr: record('onDropAttr'),
     onPutAttrArray: record('onPutAttrArray'),
     onAddRelation: record('onAddRelation'),

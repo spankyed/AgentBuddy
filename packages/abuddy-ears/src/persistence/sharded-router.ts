@@ -99,19 +99,8 @@ export function makeShardedPersistence(
       }
     },
 
-    onPutAttr(kind: string, entityId: string, idx: number, value: unknown, entireArray?: unknown[]) {
-      const p = pickEntity(entityId);
-      sinks[p].onPutAttr(kind, entityId, idx, value, entireArray);
-    },
-
     onPutAttrArray(kind: string, entityId: string, values: unknown[]) {
-      const p = pickEntity(entityId);
-      if (sinks[p].onPutAttrArray) {
-        sinks[p].onPutAttrArray!(kind, entityId, values);
-      } else {
-        // Fallback: use onPutAttr with entire array
-        sinks[p].onPutAttr(kind, entityId, 0, values[0], values);
-      }
+      sinks[pickEntity(entityId)].onPutAttrArray(kind, entityId, values);
     },
 
     onDropAttr(kind: string, entityId: string, idx: number, entireArray?: unknown[]) {

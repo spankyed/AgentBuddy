@@ -33,24 +33,10 @@ describe('LMDB Adapter', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   });
 
-  it('onPutAttr throws without entireArray parameter', () => {
-    const adapter = makeLmdbAdapter(dbs);
-    expect(() => adapter.onPutAttr('kind', 'Entity-1', 0, 'val'))
-      .toThrow('onPutAttr requires entireArray');
-    adapter.close?.();
-  });
-
-  it('onPutAttr succeeds with entireArray', () => {
-    const adapter = makeLmdbAdapter(dbs);
-    expect(() => adapter.onPutAttr('kind', 'Entity-1', 0, 'val', ['val']))
-      .not.toThrow();
-    adapter.close?.();
-  });
-
   it('close() flushes pending writes synchronously', () => {
     const adapter = makeLmdbAdapter(dbs);
     adapter.onCreateEntity('Entity-flush', 'TestType');
-    adapter.onPutAttrArray?.('attr1', 'Entity-flush', ['v1', 'v2']);
+    adapter.onPutAttrArray('attr1', 'Entity-flush', ['v1', 'v2']);
     adapter.close?.();
 
     // Data should be readable after close
@@ -59,9 +45,19 @@ describe('LMDB Adapter', () => {
     expect(rec.type).toBe('TestType');
   });
 
+  it("types an entity's row by its id's prefix, unless it's created with another type", () => {
+    const adapter = makeLmdbAdapter(dbs);
+    adapter.onCreateEntity('Task-typed', 'Task');
+    adapter.onCreateEntity('Task-special', 'Special');
+    adapter.close?.();
+
+    expect(dbs.entities.get('Task-typed').type).toBe('Task');
+    expect(dbs.entities.get('Task-special').type).toBe('Special');
+  });
+
   it('rejects forbidden \\x1F separator in keys', () => {
     const adapter = makeLmdbAdapter(dbs);
-    expect(() => adapter.onPutAttr('bad\x1Fkey', 'Entity-1', 0, 'v', ['v']))
+    expect(() => adapter.onPutAttrArray('bad\x1Fkey', 'Entity-1', ['v']))
       .toThrow('forbidden separator');
     adapter.close?.();
   });
@@ -354,16 +350,16 @@ describe('Query Layer', () => {
     dbs.entities.transactionSync(() => {
       dbs.attrs.put(`TestKind\x1FEntity-123\x1FnotANumber`, { t: 'string', v: 'corrupt' });
     });
-    adapter.onPutAttrArray?.('TestKind', 'Entity-123', ['valid1', 'valid2', 'valid3']);
+    adapter.onPutAttrArray('TestKind', 'Entity-123', ['valid1', 'valid2', 'valid3']);
 
     // Date attr
     const now = new Date('2025-06-01T00:00:00.000Z');
     adapter.onCreateEntity('Entity-456', 'TestEntity');
-    adapter.onPutAttrArray?.('CreatedAt', 'Entity-456', [now]);
+    adapter.onPutAttrArray('CreatedAt', 'Entity-456', [now]);
 
     // Complex object attr
     adapter.onCreateEntity('Entity-789', 'TestEntity');
-    adapter.onPutAttrArray?.('Config', 'Entity-789', [{ nested: { value: 42 }, arr: [1, 2, 3] }]);
+    adapter.onPutAttrArray('Config', 'Entity-789', [{ nested: { value: 42 }, arr: [1, 2, 3] }]);
 
     // Entities + relations for neighbor/tombstone tests
     adapter.onCreateEntity('Doc-1', 'Document');
@@ -376,12 +372,12 @@ describe('Query Layer', () => {
     // Pagination entities
     for (let i = 0; i < 10; i++) {
       adapter.onCreateEntity(`Page-${i}`, 'Page');
-      adapter.onPutAttrArray?.('Index', `Page-${i}`, [i]);
+      adapter.onPutAttrArray('Index', `Page-${i}`, [i]);
     }
 
     // Helper test
     adapter.onCreateEntity('Helper-1', 'Helper');
-    adapter.onPutAttrArray?.('Values', 'Helper-1', [1, 2, 3, 4, 5]);
+    adapter.onPutAttrArray('Values', 'Helper-1', [1, 2, 3, 4, 5]);
 
     adapter.close?.(); // flush
     query = new LmdbQuery(dbs);
