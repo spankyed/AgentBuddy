@@ -33,6 +33,15 @@ describe('seeds', () => {
     expect(e.query.qx('Memo').ids()).toEqual([]);
     expect(e.query.qx(undefined).count()).toBe(8);
   });
+
+  it('an id or ids seed finds only entities still in the engine', () => {
+    e.query.tx(t.b).destroy();
+    expect(e.query.qx(t.b).ids()).toEqual([]);
+    expect(e.query.qx([t.a, t.b, t.c]).ids()).toEqual([t.a, t.c]);
+    // An id without a type prefix, and a type's id that was never created
+    expect(e.query.qx('nodash' as Id).ids()).toEqual([]);
+    expect(e.query.qx(['Project-none' as Id, p]).ids()).toEqual([p]);
+  });
 });
 
 describe('filters', () => {
@@ -42,6 +51,12 @@ describe('filters', () => {
     expect(e.query.qx('Task').where('status', 'open').ids()).toEqual([t.a, t.c, t.d]);
     expect(e.query.qx('Task').where('rank').ids()).toEqual([t.a, t.b, t.d]);
     expect(e.query.qx('Task').where('rank', 10).ids()).toEqual([t.b]);
+    // A value among several of the attribute's, within what the query already holds
+    e.query.tx(t.c).add('tag', 'x').add('tag', 'y');
+    e.query.tx(t.d).add('tag', 'y');
+    expect(e.query.qx('Task').where('tag', 'y').ids()).toEqual([t.c, t.d]);
+    expect(e.query.qx([t.d, t.c]).where('tag', 'y').ids()).toEqual([t.d, t.c]);
+    expect(e.query.qx('Project').where('tag', 'y').ids()).toEqual([]);
     expect(e.query.qx().withRole('focus').ids()).toEqual([t.a]);
     expect(e.query.qx('Task').related('contains', p, true).ids()).toEqual([t.a, t.b]);
     expect(e.query.qx('Project').related('contains', t.a).ids()).toEqual([p]);
@@ -57,6 +72,10 @@ describe('filters', () => {
       { relation: 'owns', id: t.c }, { relation: 'contains', id: t.a }, { relation: 'contains', id: t.b },
     ]);
     expect(e.query.qx(p).links('contains', 'Project')).toEqual([]);
+    // A link to an id that isn't in the engine is followed by links, not by linksTo
+    e.query.tx(p).link('refers', 'Task-ghost' as Id).link('refers', t.d);
+    expect(e.query.qx(p).links('refers')).toEqual([{ relation: 'refers', id: 'Task-ghost' }, { relation: 'refers', id: t.d }]);
+    expect(e.query.qx(p).linksTo('refers').ids()).toEqual([t.d]);
     expect(e.query.qx(p).linksPick('contains', ['title'])).toEqual([{ id: t.a, title: 'banana' }, { id: t.b, title: 'apple' }]);
     expect(e.query.qx(p).linksPick(['contains', 'owns'], ['rank'], 'Task')).toEqual([
       { relation: 'contains', id: t.a, rank: 2 }, { relation: 'contains', id: t.b, rank: 10 }, { relation: 'owns', id: t.c, rank: null },

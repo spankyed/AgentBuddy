@@ -60,6 +60,14 @@ describe('queries', () => {
     query.qx('Task').where('status', 'blocked').pickAll();
   }, { iterations: 20, time: 0 });
 
+  bench('1,000 qx(id) lookups', () => {
+    for (let i = 0; i < 1000; i++) query.qx(task(i)).count();
+  }, { iterations: 20, time: 0 });
+
+  bench('qx by type with 3 chained steps', () => {
+    query.qx('Task').ofType('Task').orderBy('rank').limit(10).ids();
+  }, { iterations: 20, time: 0 });
+
   bench('relation traversal (a project: its tasks, then their assignees)', () => {
     query.qx(project(1)).linksTo('contains', 'Task').linksTo('assigned').count();
   }, { iterations: 30, time: 0 });

@@ -475,6 +475,17 @@ Phase 4's pack slice (Decision 6). It may land before Phase 1: it reads what onl
     | `tx` batch of 1,000 creates | 3.40 ms | 3.33 ms | −2% |
 
     The "after" column is the same benchmark on `createEarsEngine`'s faces (same machine, 3 runs), within the +10% tolerance.
+
+    **Query fixes** (2026-09-16, after the goal): an id seed checks the entity-by-type index instead of scanning every entity, a chained step's ids skip that check, and `where(k, v)` filters only the query's ids. Two cases were added for the paths the benchmark missed. Means from one run on the same machine; these are the baseline from here on:
+
+    | Case | Before | After |
+    |---|---|---|
+    | bulk load 50k entities, 200k attributes, 100k relations | 237 ms | 213 ms (unchanged code; run-to-run noise) |
+    | `qx('Task').where('status', …).pickAll()` | 47.3 ms | 16.3 ms |
+    | 1,000 `qx(id)` lookups | 1,021 ms | 0.20 ms |
+    | `qx('Task')` with 3 chained steps (`ofType`, `orderBy`, `limit`) | 66.0 ms | 24.0 ms |
+    | relation traversal (a project's tasks, then their assignees) | 22.2 ms | 0.0025 ms |
+    | `tx` batch of 1,000 creates | 3.58 ms | 3.72 ms (unchanged code) |
 - **Factory underneath, same behaviour:** convert each engine module to a factory closing over its state and compose `createEarsEngine` from them, keeping a temporary installed default so no caller changes. Pass cross-module dependencies (persistence, entity-type checker, relation index) through the factory.
 - **The app owns the instance:** the api's composition root creates the engine with the LMDB sinks and policy, keeps `admin` for hydration and `createHostRuntime`, and binds `query` as `HostRuntime.ears`. `appData`, `traceStore` and `@abuddy/ears/lmdb` take `admin`. The api's `scripts/db/*` and default-setup's database feature and tests move off imported write functions onto `admin`.
 - **Tooling and tests go explicit:** the CLI flow compiler and decompiler use a private engine per compile. SDK and ears tests and default-setup tests stop calling `clearMemory`/`initEARSRuntime` and get fresh engines. Run the default-setup, SDK and ears suites with file parallelism enabled, and keep it where it holds.

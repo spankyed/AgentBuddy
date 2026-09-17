@@ -32,8 +32,8 @@ export type QxSeed =
 /** An engine's untyped query entry point, over its storage and relation index */
 export function createQx({ storage, relations, isEntityType }: { storage: AttributeStorage; relations: RelationIndexStore; isEntityType: (name: string) => boolean }): typeof qx {
   const {
-    getAllEntities, getEntitiesOfType, getAttr, getAttrs, getRoles,
-    queryEntitiesByAttribute, queryEntitiesInRelationTo, queryEntitiesByRelationTo, getAll,
+    getAllEntities, getEntitiesOfType, hasEntity, getAttr, getAttrs, getRoles,
+    queryEntitiesInRelationTo, queryEntitiesByRelationTo, getAll,
   } = storage;
   const relationIndex = relations.index;
 
@@ -50,26 +50,26 @@ export function createQx({ storage, relations, isEntityType }: { storage: Attrib
     return fn;
   };
 
-  const qxImpl = (seed?: QxSeed) => {
+  // A seed from the caller is checked against the engine; `known` ids (a chained step's result, already the
+  // engine's) are taken as they are
+  const qxImpl = (seed?: QxSeed, known?: EARS.EntityId[]) => {
     const resolveSeed = (): EARS.EntityId[] => {
       if (seed === undefined) return [...getAllEntities()];
       if (Array.isArray(seed)) {
         if ((seed as readonly unknown[]).every(isEntity)) {
           return (seed as readonly EARS.Entity[]).flatMap(t => getEntitiesOfType(t));
         }
-        const allEntities = new Set(getAllEntities());
-        return (seed as readonly EARS.EntityId[]).filter(id => allEntities.has(id));
+        return (seed as readonly EARS.EntityId[]).filter(hasEntity);
       }
       if (typeof seed !== 'string') return [];
       if (isEntity(seed)) return [...getEntitiesOfType(seed)];
       const id = seed as EARS.EntityId;
-      const allEntities = getAllEntities();
-      return allEntities.includes(id) ? [id] : [];
+      return hasEntity(id) ? [id] : [];
     };
 
-    let ids: EARS.EntityId[] = resolveSeed();
+    const ids: EARS.EntityId[] = known ?? resolveSeed();
 
-    const setIds = (next: EARS.EntityId[]) => qxImpl(next);
+    const setIds = (next: EARS.EntityId[]) => qxImpl(undefined, next);
 
     const self = {
       ofType: (t: EARS.Entity) => setIds(ids.filter(hasPrefix(t))),
@@ -85,8 +85,7 @@ export function createQx({ storage, relations, isEntityType }: { storage: Attrib
           const next = ids.filter(i => getAttrs(i, kind).length);
           return setIds(next);
         }
-        const matchingEntities = new Set(queryEntitiesByAttribute(kind, v));
-        const next = ids.filter(i => matchingEntities.has(i));
+        const next = ids.filter(i => getAttrs(i, kind).some(attr => attr === v));
         return setIds(next);
       },
 
@@ -117,7 +116,8 @@ export function createQx({ storage, relations, isEntityType }: { storage: Attrib
               if (i !== src) out.add(i);
             });
         }
-        return qxImpl([...out]);
+        // A relation's target may be gone from the engine
+        return setIds([...out].filter(hasEntity));
       },
 
       links: <K extends string>(
@@ -251,7 +251,7 @@ export function createQx({ storage, relations, isEntityType }: { storage: Attrib
           }
         });
         const result = new Map<unknown, QueryBuilder<string>>();
-        groups.forEach((ids, key) => result.set(key, qxImpl(ids) as unknown as QueryBuilder<string>));
+        groups.forEach((ids, key) => result.set(key, setIds(ids) as unknown as QueryBuilder<string>));
         return result;
       },
 

@@ -221,6 +221,10 @@ export function createAttributeStorage({ relations, persistence }: { relations: 
   const getEntitiesOfType = (t: EARS.Entity) =>
     [...(entityIndex.get(t) ?? [])];
 
+  /** Whether the entity is in the engine, from its type's index rather than a scan of every entity */
+  const hasEntity = (id: EARS.EntityId) =>
+    entityIndex.get(entType(id))?.has(id) ?? false;
+
   const queryEntitiesByRole = (role: string) =>
     getAllEntities().filter(id => getRoles(id).includes(role));
 
@@ -330,7 +334,7 @@ export function createAttributeStorage({ relations, persistence }: { relations: 
     clear, bulkLoadAttr,
     putAttr: put, addAttr: add, mergeAttr: merge, dropAttr: drop, dropIf, updateAttr: put,
     grantRole, revokeRole, addRelation, updateRelation, removeRelationById,
-    getAttr, getAttrs, getRoles, getAll, getAllEntities, getEntitiesOfType,
+    getAttr, getAttrs, getRoles, getAll, getAllEntities, getEntitiesOfType, hasEntity,
     queryEntitiesByRole, queryEntitiesByAttribute, queryEntitiesInRelationTo, queryEntitiesByRelationTo,
     destroyEntity, getAllAttributeKinds, getAllRelationKinds, getAllEntityTypes, getAttributeStats, getSchemaStats,
   };
