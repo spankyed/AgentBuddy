@@ -5,12 +5,13 @@ import { WebSocketServer } from 'ws';
 import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { appRouter } from '@/core/router';
 import { createContext } from '@/core/router/context';
-import { logger } from '@/core/shared/debug/logger';
+import { createLogger } from '@abuddy/sdk/logger';
 import { SERVER_CONFIG, WS_CONFIG } from '@/setup/config';
-import { backendActor } from '@/setup/backend';
-import { runShutdownHooks } from '@abuddy/sdk/utils';
+import { appPacks, backendActor } from '@/setup/backend';
+import { reloadBuiltInPack, reloadExternalPack } from '@abuddy/host/packs/runtime';
 import { resolveAppContext } from '@abuddy/sdk/env';
 
+const logger = createLogger('backend');
 const reloadingPacks = new Set<string>();
 
 function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse) {
@@ -33,11 +34,9 @@ function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse) 
         reloadingPacks.add(packId);
         try {
           if (builtIn) {
-            const { reloadBuiltInPack } = await import('@/packs/pack-reload');
-            await reloadBuiltInPack(packId, backendActor);
+            await reloadBuiltInPack(appPacks, packId, backendActor);
           } else {
-            const { reloadExternalPack } = await import('@/packs/pack-reload');
-            await reloadExternalPack(packId, backendActor);
+            await reloadExternalPack(appPacks, packId, backendActor);
           }
         } finally {
           reloadingPacks.delete(packId);
@@ -90,7 +89,7 @@ export function createWebSocketServer() {
 
   // Safety net: always kill terminal processes before the API process exits
   process.on('exit', () => {
-    runShutdownHooks();
+    appPacks?.runShutdownHooks();
     try { fs.unlinkSync(resolveAppContext().apiPortFile); } catch {}
   });
 

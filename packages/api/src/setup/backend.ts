@@ -1,35 +1,89 @@
-import '@/setup/sdk-host-init';
 import { createActor } from 'xstate';
-import { logErrors } from '@/core/shared/system-errors';
-import { getBootHooks, getPackBootHooks, runRegisteredBootSeeds, registerHostSystem, publishHostPackArtifacts, prepareHostDataDirs } from '@abuddy/host/packs';
+import { createLogger, reportError } from '@abuddy/sdk/logger';
+import { bindHost } from '@abuddy/sdk/runtime';
+import { bus } from '@abuddy/sdk/ids';
+import { getLmdbPath, getVolatileLmdbPath, seedData } from '@abuddy/sdk/utils';
+import { createEarsEngine, type EarsEngine } from '@abuddy/ears';
+import { openLmdbStore, type LmdbStore } from '@abuddy/ears/lmdb';
+import { createPackRegistry, publishHostPackArtifacts, prepareHostDataDirs, type PackRegistry } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import * as path from 'path';
-import { registerShutdownHook } from '@abuddy/sdk/utils';
-import { packsSystem, packsEvents, setBuiltInPacks } from '@/packs/packs-system';
 import {
+  createPacksSystem, packsEvents, setBuiltInPacks,
   loadBuiltInPacks, getBuiltInPackInfos,
   loadExternalPacks, registerExternalPacks,
-} from '@/packs/pack-loader';
-import { orchestrateDeclarativeSeed, seedPackData } from '@/packs/pack-seed';
-import { backendSystem } from '@/systems';
-import { bus } from '@/core/system-ids';
-import { initializeLogCapture } from '@/core/shared/debug/log-capture';
-import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
-import { envs, policy, persistence } from '@/core/ears/attribute-storage';
-import { seedData } from '@abuddy/sdk/utils';
-import { settingsRepository } from '@abuddy/host/settings';
-import { runMigrations, runPackMigrations } from '@/setup/migrations';
-import { APP_VERSION } from '@/version';
-import { setLoadedPacks, setBuiltInPacksForRegistry } from '@/packs/pack-api';
+  orchestrateDeclarativeSeed, seedPackData,
+  setLoadedPacks, setBuiltInPacksForRegistry,
+} from '@abuddy/host/packs/runtime';
+import { createAppBus } from '@abuddy/host/bus';
+import { createHostRuntime } from '@abuddy/host/services';
+import { runAppMigrations, runPackMigrations } from '@abuddy/host/migrations';
+import { forwardSecretsChanges } from '@abuddy/host/secrets';
+import { appState } from '@abuddy/host/app-state';
 import { assertSourceResolution } from '@abuddy/host/build/source-resolution';
-import { forwardSecretsChanges } from '@/core/router/secrets-router';
+import { rootEvents } from '@/core/router/bus-emitter';
+import { initializeLogCapture, printLogEvents } from '@/core/shared/debug/log-capture';
 import { createRequire } from 'module';
+import pkg from '../../../../package.json';
+
+/** The app's version: the root package.json's */
+const APP_VERSION: string = pkg.version;
+
+const logger = createLogger('backend');
+
+/** An actor observer that reports the actor's error as fatal, and tells Electron main (a `__fatal` JSON line on stderr) */
+function logErrors(actor: string) {
+  return {
+    error: (error: unknown) => {
+      logger.error(`${actor} State Error:`, { error });
+      reportError({ error, title: 'Something went wrong', source: actor, severity: 'fatal' });
+      const err = error instanceof Error ? error : new Error(String(error));
+      process.stderr.write(JSON.stringify({ __fatal: true, message: err.message, stack: err.stack, source: actor }) + '\n');
+    },
+  };
+}
+
+/** The app's data: its LMDB store, the engine that persists to it (both faces: the composition keeps `admin`), and its registered packs */
+export interface AppStore {
+  store: LmdbStore;
+  engine: EarsEngine;
+  packs: PackRegistry;
+}
+
+/** The app's registered packs, which openAppStore creates: the transport's procedures and dev reload work on them */
+export let appPacks: PackRegistry;
+
+/**
+ * Opens the app's data and binds the app: the registered packs (`createPackRegistry()`, empty until the caller
+ * registers them), the LMDB store (`@abuddy/ears/lmdb`) with their partition policy, the app's engine created with
+ * the store's sink as its persistence and checking entity types against the registered packs', and
+ * `bindHost(createHostRuntime(...))` with the root event bus, whose log events are printed, the app version, the
+ * registry (the SDK's lookups read it), the engine (packs get its query face, installed by the bind) and the host
+ * services over the store and the engine's admin face. The caller hydrates the store once the packs are registered.
+ * The db scripts call it too.
+ */
+export function openAppStore(): AppStore {
+  const packs = createPackRegistry();
+  const store = openLmdbStore({
+    paths: { primary: getLmdbPath(), volatileBackup: getVolatileLmdbPath() },
+    policy: packs.partitionPolicy,
+    engine: () => engine.admin,
+  });
+  const engine = createEarsEngine({ persistence: store.sink, isEntityType: (v: string) => packs.getRegisteredEntityTypes().has(v) });
+  bindHost(createHostRuntime({ store, engine, transport: { rootEvents }, appVersion: APP_VERSION, packs }));
+  printLogEvents();
+  appPacks = packs;
+  return { store, engine, packs };
+}
 
 // Exported for graceful shutdown (SIGTERM handler stops the actor system)
-export let backendActor: ReturnType<typeof createActor<typeof backendSystem>>;
+export let backendActor: ReturnType<typeof createActor<ReturnType<typeof createAppBus>>>;
 
 export async function setupBackend(): Promise<void> {
   initializeLogCapture();
+
+  // The app's data: the engine persists to it from here on, and it's hydrated once the packs are registered
+  const { store, packs } = openAppStore();
 
   // Packs require workspace @abuddy/* packages at runtime: from a checkout they must get source,
   // not a stale dist (main starts the API with the condition; manual boots must pass it). The
@@ -39,7 +93,7 @@ export async function setupBackend(): Promise<void> {
   }
 
   // ── Register host-level systems (before any pack loading) ──────────
-  registerHostSystem('packs', packsSystem, packsEvents);
+  packs.registerHostSystem('packs', createPacksSystem(packs), packsEvents);
 
   // Before discovery: a pack an interrupted install left only as its moved-aside copy is restored,
   // and abuddy install learns which AgentBuddy uses this data dir
@@ -47,16 +101,18 @@ export async function setupBackend(): Promise<void> {
   prepareHostDataDirs({ userDataDir: appContext.userDataDir, packsDirs: [appContext.packsDir, appContext.hostPacksDir], version: APP_VERSION });
 
   // API keys: the settings system hears of every change to them
-  forwardSecretsChanges();
+  forwardSecretsChanges(packs);
 
   // ── Load packs (built-in async + external sync overlap) ────────────
   const builtInDir = process.env.BUILT_IN_PACKS_DIR;
-  const builtInPromise = builtInDir ? loadBuiltInPacks(builtInDir) : null;
+  const builtInPromise = builtInDir
+    ? loadBuiltInPacks(packs, builtInDir, { bundledLoaders: () => import('virtual:built-in-pack-loaders').then(m => m.default) })
+    : null;
 
   // External pack work is sync — runs while built-in loading is in flight
   let externalPacks = loadExternalPacks();
   if (externalPacks.length > 0) {
-    externalPacks = registerExternalPacks(externalPacks);
+    externalPacks = registerExternalPacks(packs, externalPacks);
   }
 
   if (builtInPromise) {
@@ -78,7 +134,7 @@ export async function setupBackend(): Promise<void> {
   }
 
   // Run early boot hooks (logs system must start before anything else)
-  for (const hooks of getBootHooks()) {
+  for (const hooks of packs.getBootHooks()) {
     if (hooks.earlySystem) {
       const logsActor = createActor(hooks.earlySystem).start();
       logsActor.subscribe(logErrors('Logs'));
@@ -89,27 +145,27 @@ export async function setupBackend(): Promise<void> {
 
   // ── Wire shutdown hooks (keyed by pack ID for scoped reload teardown) ──
   for (const info of getBuiltInPackInfos()) {
-    const hooks = getPackBootHooks(info.id);
+    const hooks = packs.getPackBootHooks(info.id);
     if (hooks?.onShutdown) {
-      registerShutdownHook(hooks.onShutdown, info.id);
+      packs.registerShutdownHook(hooks.onShutdown, info.id);
     }
   }
   for (const pack of externalPacks) {
     if (pack.boot?.onShutdown) {
-      registerShutdownHook(pack.boot.onShutdown, pack.manifest.id);
+      packs.registerShutdownHook(pack.boot.onShutdown, pack.manifest.id);
     }
   }
 
   // ── Hydrate (policy now sees all entity types from all packs)
-  await hydrateSharded({ envs, policy, shardedPersistence: persistence, skipTombstoneScan: true });
+  await store.hydrate({ skipTombstoneScan: true });
 
   // ── Initialize ALL packs (built-in + external)
-  for (const hooks of getBootHooks()) {
+  for (const hooks of packs.getBootHooks()) {
     hooks.onInit?.();
   }
 
-  // ── Host migrations ─────────────────────────────────────────────────
-  runMigrations();
+  // ── App migrations (the host's, then the built-in packs') ───────────
+  runAppMigrations(packs);
 
   // ── Per-pack migrations ─────────────────────────────────────────────
   if (externalPacks.length > 0) {
@@ -117,21 +173,21 @@ export async function setupBackend(): Promise<void> {
   }
 
   // ── Seeds ───────────────────────────────────────────────────────────
-  runRegisteredBootSeeds(orchestrateDeclarativeSeed);
+  packs.runRegisteredBootSeeds(orchestrateDeclarativeSeed);
 
   if (externalPacks.length > 0) {
     seedPackData(
       externalPacks,
       seedData,
-      () => settingsRepository.settingsQueries.getInternalSettings().packSeedHashes ?? {},
-      (hashes) => settingsRepository.settingsCommands.updateSettings('internal', null, ['packSeedHashes'], hashes),
+      appState.getPackSeedHashes,
+      appState.setPackSeedHashes,
       { cleanupStaleHashes: true },
     );
     setLoadedPacks(externalPacks);
   }
 
   // ── Start backend actor ──────────────────────────────────────────────
-  backendActor = createActor(backendSystem, {
+  backendActor = createActor(createAppBus(packs), {
     systemId: bus,
   }).start();
 

@@ -131,7 +131,7 @@ Unknown flags are rejected.
 
 ### db:reset (reset.ts)
 
-Wipes all LMDB data in the data dir, then recreates the built-in packs' default data (settings, root flow). Use it when the app can't start. There's no confirmation.
+Runs the app's reset (`services.appData.reset()`, as Settings → Reset does): wipes all LMDB data and stored keys in the data dir, runs the built-in packs' init hooks and boot seed (default settings, seeded flows with the root flow), then the app migrations. Use it when the app can't start. There's no confirmation.
 
 ```bash
 npm run db:reset

@@ -10,7 +10,8 @@ const apiSrc = path.resolve(__dirname, 'src');
 
 const builtInPacks = discoverBuiltInPacksForBuild(packagesRoot);
 const builtInPackSrcDirs = builtInPacks.map(p => p.srcDir);
-const packLoaderDir = path.resolve(__dirname, 'src', 'packs');
+// The generated module's imports resolve from the module that imports it (setup/backend.ts)
+const packLoaderDir = path.resolve(__dirname, 'src', 'setup');
 
 function tryResolve(base: string, subpath: string): string | null {
   const candidates = [
@@ -54,8 +55,8 @@ export default defineConfig((options) => {
     {
       // Generates a virtual module that exports a loader map for built-in packs.
       // Each entry is a dynamic import() with a string-literal path so esbuild
-      // traces the dependency and bundles it. pack-loader.ts imports this module
-      // and calls the loaders at runtime — new built-in packs are picked up
+      // traces the dependency and bundles it. setup/backend.ts imports this module
+      // and passes the loaders to loadBuiltInPacks — new built-in packs are picked up
       // automatically via the build-time scan (no manual registration needed).
       name: 'built-in-pack-loaders',
       setup(build) {

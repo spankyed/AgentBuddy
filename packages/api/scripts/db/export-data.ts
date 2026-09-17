@@ -9,9 +9,9 @@
 
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { qx, getAllEntities } from '@abuddy/host/ears';
-import { getRegisteredEntityTypes } from '@abuddy/host/packs';
+import { getAllEntities, untypedQx as qx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
+import { packs } from './database';
 
 interface ExportOptions {
   outputDir: string;
@@ -68,7 +68,7 @@ async function exportData() {
   }
 
   // Get entity types to export
-  const entityTypes = options.entities || [...getRegisteredEntityTypes()] as EARS.Entity[];
+  const entityTypes = options.entities || [...packs.getRegisteredEntityTypes()] as EARS.Entity[];
   console.log(`  Entity types: ${entityTypes.length}\n`);
 
   const summary: Record<string, number> = {};

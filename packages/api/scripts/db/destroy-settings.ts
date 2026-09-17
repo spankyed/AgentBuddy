@@ -10,7 +10,7 @@
 import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
-import { getAll, getEntitiesOfType, tx } from '@abuddy/sdk/ears';
+import { getAll, getEntitiesOfType, tx } from '@abuddy/ears';
 import { openDatabase, closeDatabase, flushDatabase, entity, persistenceErrorCount } from './database';
 
 export interface SettingsRow {

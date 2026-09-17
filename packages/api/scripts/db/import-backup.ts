@@ -10,11 +10,8 @@
 import * as fs from 'fs-extra';
 import * as path from 'node:path';
 import { importDatabase, getBackupInfo } from '@abuddy/host/backup';
-import { clearMemory } from '@abuddy/host/ears';
 import { createLogger } from '@abuddy/sdk/logger';
-import { policy, persistence } from '@/core/ears/attribute-storage';
-import { hydrateSharded } from '@/core/persistence/partitioning/hydrate-sharded';
-import { openDatabase, closeDatabase, envs } from './database';
+import { openDatabase, closeDatabase, store, engine } from './database';
 import readline from 'readline';
 
 const logger = createLogger('import-backup');
@@ -162,7 +159,7 @@ async function runImport() {
     await openDatabase({ hydrate: false });
 
     // Perform the import
-    const result = await importDatabase(options.path);
+    const result = await importDatabase(store, options.path);
 
     if (options.verbose) {
       console.log('✅ Database files imported successfully');
@@ -171,13 +168,8 @@ async function runImport() {
 
     // Clear and rehydrate memory
     console.log('🔄 Rehydrating memory from imported databases...');
-    clearMemory();
-    await hydrateSharded({
-      envs,
-      policy,
-      includeVolatile: result.databases.includes('volatileLmdb'),
-      shardedPersistence: persistence
-    });
+    engine.admin.clear();
+    await store.hydrate({ includeVolatile: result.databases.includes('volatileLmdb') });
 
     closeDatabase();
     console.log('─'.repeat(50));

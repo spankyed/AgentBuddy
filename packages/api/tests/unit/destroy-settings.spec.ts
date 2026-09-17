@@ -9,8 +9,8 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-destroy-settings-'));
 process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
 const { clearSettings } = await import('../../scripts/db/destroy-settings');
-const { tx, getEntitiesOfType } = await import('@abuddy/sdk/ears');
-const { clearMemory } = await import('@abuddy/host/ears');
+const { tx, getEntitiesOfType } = await import('@abuddy/ears');
+const { engine } = await import('../../scripts/db/database');
 
 afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
 
@@ -18,7 +18,7 @@ const settingsIds = () => getEntitiesOfType('Settings').sort();
 
 describe('clearSettings', () => {
   beforeEach(() => {
-    clearMemory();
+    engine.admin.clear();
     tx('Settings-app' as never, true).put('entityType', 'Settings').put('data', { general: {}, plugins: {} });
     tx('Settings-other' as never, true).put('label', 'secrets').put('data', {});
     tx('Note-keep' as never, true).put('title', 'not a setting');
@@ -53,7 +53,7 @@ describe('clearSettings', () => {
   });
 
   it('reports when there is nothing to destroy', () => {
-    clearMemory();
+    engine.admin.clear();
     const lines: string[] = [];
     expect(clearSettings({ force: true }, (line) => lines.push(line))).toEqual({ rows: [], destroyed: false });
     expect(lines.join('\n')).toContain('No Settings rows found');

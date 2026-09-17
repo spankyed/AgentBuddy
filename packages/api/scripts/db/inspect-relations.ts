@@ -9,10 +9,9 @@
 
 import { realpathSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
-import { qx } from '@abuddy/host/ears';
-import { edgeStore } from '@abuddy/sdk/ears/internals';
-import { getRegisteredEntityTypes } from '@abuddy/host/packs';
+import { findRelations, untypedQx as qx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
+import { packs } from './database';
 
 export interface InspectOptions {
   entityId?: string;
@@ -64,8 +63,8 @@ type Log = (line: string) => void;
 /** The entities an entity's relations in one direction point at, grouped by relation kind */
 function relatedByKind(entityId: string, direction: Direction): { total: number; byKind: Map<EARS.RelKind, string[]> } {
   const relations = direction === 'outgoing'
-    ? edgeStore.find({ sourceEntity: entityId as EARS.EntityId })
-    : edgeStore.find({ targetEntity: entityId as EARS.EntityId });
+    ? findRelations({ sourceEntity: entityId as EARS.EntityId })
+    : findRelations({ targetEntity: entityId as EARS.EntityId });
   const byKind = new Map<EARS.RelKind, string[]>();
   for (const rel of relations ?? []) {
     const other = direction === 'outgoing' ? rel.targetEntity : rel.sourceEntity;
@@ -163,13 +162,13 @@ function inspectRelations(options: InspectOptions, log: Log = console.log) {
 
     const stats: Record<string, { entities: number; relations: number }> = {};
 
-    for (const entityType of getRegisteredEntityTypes() as ReadonlySet<EARS.Entity>) {
+    for (const entityType of packs.getRegisteredEntityTypes() as ReadonlySet<EARS.Entity>) {
       const entities = qx(entityType).ids();
       if (entities.length === 0) continue;
 
       let totalRelations = 0;
       entities.forEach((id) => {
-        totalRelations += edgeStore.find({ sourceEntity: id as EARS.EntityId })?.length ?? 0;
+        totalRelations += findRelations({ sourceEntity: id as EARS.EntityId })?.length ?? 0;
       });
       stats[entityType] = { entities: entities.length, relations: totalRelations };
     }

@@ -4,14 +4,12 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 
-// The script imports the host's stores: point them at a throwaway data dir
+// The script imports the host's packs: point any data path at a throwaway data dir
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-inspect-relations-'));
 process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
-await import('@/setup/sdk-host-init');
 const { parseInspectArgs, visualizeGraph } = await import('../../scripts/db/inspect-relations');
-const { tx } = await import('@abuddy/sdk/ears');
-const { clearMemory } = await import('@abuddy/host/ears');
+const { createEarsEngine, installEngine, tx } = await import('@abuddy/ears');
 
 afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
 
@@ -29,7 +27,7 @@ describe('parseInspectArgs', () => {
 
 describe('visualizeGraph', () => {
   beforeEach(() => {
-    clearMemory();
+    installEngine(createEarsEngine({ isEntityType: () => false }).query);
     tx('Note-a' as never, true).put('title', 'A');
     tx('Note-b' as never, true).put('title', 'B');
     tx('Note-c' as never, true).put('title', 'C');

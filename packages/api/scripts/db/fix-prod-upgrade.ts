@@ -64,16 +64,17 @@
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { open, type RootDatabase } from 'lmdb';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { secretProviderLabel, type SecretProvider } from '@abuddy/sdk/services';
-import { findRelations, tx } from '@abuddy/sdk/ears';
-import { dropAttr, findAll, findWhere, getAttr, qx, updateAttr } from '@abuddy/host/ears';
+import { findRelations, tx } from '@abuddy/ears';
+import { LmdbQuery, closeEnv, openEnvAt, type LmdbDbs } from '@abuddy/ears/lmdb';
 import { recordLabel, seedHookRegistry, type SeedHookContext, type SeedRecord } from '@abuddy/sdk/seed';
 import { compileFlowDSL, type CompiledRows } from '@abuddy/sdk/build';
 import type { EARS } from '@abuddy/sdk';
-import { LmdbQuery } from '@/core/persistence/lmdb/query';
-import { closeDatabase, flushDatabase, openDatabase, packagesDir, persistenceErrorCount } from './database';
+import { closeDatabase, engine, flushDatabase, openDatabase, packagesDir, persistenceErrorCount } from './database';
+
+const { dropAttr, updateAttr } = engine.admin;
+const { findAll, findWhere, getAttr, qx } = engine.query;
 
 const apply = process.argv.includes('--apply');
 const PACK_ID = 'default-setup';
@@ -160,15 +161,10 @@ function readOldKeys(dir: string): string[] {
   const data = path.join(dir, 'data.mdb');
   // Opening something that isn't an LMDB database aborts the process instead of throwing: check before opening
   if (!fs.existsSync(data) || fs.statSync(data).size < 8192) throw new Error(`${data} is missing or too small to be an LMDB database`);
-  let root: RootDatabase | undefined;
+  let dbs: LmdbDbs | undefined;
   try {
-    root = open({ path: dir, maxDbs: 8, compression: true, readOnly: true });
-    const query = new LmdbQuery({
-      entities: root.openDB({ name: 'entities', encoding: 'json' }),
-      attrs: root.openDB({ name: 'attrs', encoding: 'json' }),
-      relations: root.openDB({ name: 'relations', encoding: 'json' }),
-      root,
-    });
+    dbs = openEnvAt(dir, { readOnly: true });
+    const query = new LmdbQuery(dbs);
     const keys: string[] = [];
     for (const id of query.entitiesOfType('Secret')) {
       const provider = query.getFirstAttr('provider', id) as string | null;
@@ -178,7 +174,7 @@ function readOldKeys(dir: string): string[] {
     }
     return keys.sort();
   } finally {
-    root?.close();
+    if (dbs) closeEnv(dbs);
   }
 }
 

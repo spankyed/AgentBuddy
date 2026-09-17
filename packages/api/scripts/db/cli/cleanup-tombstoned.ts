@@ -1,10 +1,10 @@
-import { envs } from '@/core/ears/attribute-storage';
+import { store } from '../database';
 
 export function cleanupTombstoned() {
   let totalDeleted = 0;
 
   for (const partition of ['primary', 'volatileBackup'] as const) {
-    const env = envs[partition];
+    const env = store.envs[partition];
     const toDelete: string[] = [];
 
     // Find all tombstoned entities
