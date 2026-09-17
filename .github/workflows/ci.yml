@@ -54,8 +54,6 @@ jobs:
 
       - name: Unit tests (api)
         run: npm test --workspace @app/api -- --reporter=verbose
-        env:
-          REQUIRE_RUNTIME_ENTRY: '1'
 
       - name: Unit tests (default-setup)
         run: npm test --workspace @app/default-setup -- --reporter=verbose
@@ -65,11 +63,16 @@ jobs:
         env:
           REQUIRE_SEED_RUNTIME: '1'
 
+      - name: Unit tests (ears)
+        run: npm test --workspace @abuddy/ears -- --reporter=verbose
+
       - name: Unit tests (host)
         run: npm test --workspace @abuddy/host -- --reporter=verbose
+        env:
+          REQUIRE_RUNTIME_ENTRY: '1'
 
       - name: API reports
-        run: npm run api:check --workspace @abuddy/sdk --workspace @abuddy/ui
+        run: npm run api:check --workspace @abuddy/ears --workspace @abuddy/sdk --workspace @abuddy/ui
 
       - name: Build publishable packages
         run: npm run packages:build
