@@ -190,15 +190,19 @@ describe('brain start', () => {
     importFlows({ 'Root Flow': { root: true, tracks: staysRunning } })
     const app = await startBrain()
     const rootFlowId = repository.flowsQueries.rootFlow()!
-    expect(repository.settingsQueries.getPluginSettings('brain')?.runningRootFlowId).toBe(rootFlowId)
+    const runningRootFlow = () => (app.system('brain').getSnapshot().context as { runningRootFlowId?: string }).runningRootFlowId
+    expect(runningRootFlow()).toBe(rootFlowId)
 
     await app.connect()
+    // The plugin learns which root flow the brain runs from the brain, not from the settings
+    expect(await app.nextEmit('brain', 'BRAIN_STARTED')).toMatchObject({ rootFlowId })
+    expect(repository.settingsQueries.getPluginSettings('brain')).not.toHaveProperty('runningRootFlowId')
     repository.flowsCommands.revokeRootFlowRole(rootFlowId)
     await app.send('brain', { type: 'RESTART_BRAIN' })
 
     expect(takeSystemErrors()).toEqual([expect.objectContaining({ source: 'brain', title: 'Could not start the brain' })])
     expect(brainState(app)).toEqual({ running: false, hasActor: false })
-    expect(repository.settingsQueries.getPluginSettings('brain')?.runningRootFlowId).toBeUndefined()
+    expect(runningRootFlow()).toBeUndefined()
   })
 
   it("doesn't carry a pause into a later start", async () => {

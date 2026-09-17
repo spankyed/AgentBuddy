@@ -7,7 +7,7 @@ import * as _abuddy_ears from '@abuddy/ears';
 import * as _abuddy_sdk from '@abuddy/sdk';
 import { ActionEntity, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes } from '@abuddy/sdk';
 import { ArtifactItem } from '@abuddy/sdk/artifacts';
-import { CompiledRows } from '@abuddy/sdk/build';
+import * as _abuddy_sdk_build from '@abuddy/sdk/build';
 import { HostPluginEvents, IncomingEventsOf, TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
 import { ModelCatalogEntry, ModelId } from '@abuddy/sdk/models';
 import * as _abuddy_sdk_repositories from '@abuddy/sdk/repositories';
@@ -1891,8 +1891,11 @@ type OutgoingBrainEvents = {
  | {
     type: 'BRAIN_KILLED';
     startError?: string;
-} | {
+}
+/** The brain is running `rootFlowId`, the root flow it started with (a root flow changed since takes a restart) */
+ | {
     type: 'BRAIN_STARTED';
+    rootFlowId: EARS.EntityId;
 } | {
     type: 'BRAIN_PAUSED';
 } | {
@@ -4450,7 +4453,11 @@ declare const flowsCommands: {
         sourceHandle?: string;
         targetHandle?: string;
     }) => void;
+    readonly grantRootFlowRole: (flowId: _abuddy_sdk.EARS.EntityId) => void;
     readonly revokeRootFlowRole: (flowId: _abuddy_sdk.EARS.EntityId) => void;
+    readonly importFromDSL: (compiled: _abuddy_sdk_build.CompiledRows) => {
+        flowIds: _abuddy_sdk.EARS.EntityId[];
+    };
     readonly deleteFlow: (flowId: _abuddy_sdk.EARS.EntityId, options?: {
         allowRoot?: boolean;
     }) => void;
@@ -4460,14 +4467,6 @@ declare const flowsCommands: {
         entryNode: NodeEntity;
     };
     readonly createNode: (flowId: EARS.EntityId, nodeData: NodeCreateInput) => NodeEntity;
-    /** Makes a flow the root flow, and records it in the flows plugin's settings */
-    readonly grantRootFlowRole: (flowId: EARS.EntityId) => void;
-    /** Imports compiled flow DSL; a root flow among it is recorded in the flows plugin's settings too */
-    readonly importFromDSL: (compiled: CompiledRows) => {
-        flowIds: EARS.EntityId[];
-    };
-    /** Points the flows plugin's `rootFlowId` setting at the flow with the root role (the SDK's flow seeder grants it) */
-    readonly syncRootFlowSetting: () => EARS.EntityId | undefined;
 };
 
 declare const flowsQueries: {
@@ -5056,7 +5055,7 @@ declare const specs: {
         };
     };
     flows: {
-        _incoming: ({
+        _incoming: {
             type: "FLOW_SELECT";
             flowId: string;
         } | {
@@ -5115,10 +5114,9 @@ declare const specs: {
             prefix: string;
             index: number;
             direction: -1 | 1;
-        }) | {
-            type: "FLOWS_SETTINGS_UPDATED";
-            settings: any;
-            changes?: any;
+        } | {
+            type: "SET_ROOT_FLOW";
+            flowId: string | null;
         };
     };
     actions: {

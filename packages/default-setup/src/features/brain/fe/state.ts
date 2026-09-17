@@ -35,6 +35,8 @@ export interface BrainContext {
   brainIsDead: boolean;
   /** Why the brain couldn't start, while it stays stopped for that reason */
   startError?: string;
+  /** The root flow the running brain started with; the flows plugin's root flow differing from it takes a restart */
+  runningRootFlowId?: string;
   brainIsPaused: boolean;
   latestRuntimeError?: StepRuntimeError;
   runtimeErrors: StepRuntimeError[];
@@ -46,7 +48,6 @@ type SystemEvent = OutgoingBrainEvents
   | { type: 'TNODE_DETAILS'; tNodeId: string; details: TNodeEntity | null }
   | { type: 'INSPECT_TOGGLED'; enabled: boolean }
   | { type: 'BRAIN_SETTINGS_UPDATED'; settings: any }
-  | { type: 'BRAIN_STARTED' }
   | { type: 'BRAIN_PAUSED' }
   | { type: 'BRAIN_RESUMED' }
   | { type: 'BRAIN_RUNTIME_ERROR'; error: StepRuntimeError }
@@ -295,6 +296,7 @@ const brainState = setup({
     setBrainKilled: assign({
       brainIsDead: true,
       startError: ({ event }) => typeOf('BRAIN_KILLED', event).startError,
+      runningRootFlowId: undefined,
       brainIsPaused: false,
       possibleEvents: [],
       flowHierarchy: [],
@@ -303,6 +305,7 @@ const brainState = setup({
     setBrainStarted: assign({
       brainIsDead: false,
       startError: undefined,
+      runningRootFlowId: ({ event }) => typeOf('BRAIN_STARTED', event).rootFlowId,
       brainIsPaused: false,
     }),
     setBrainPaused: assign({

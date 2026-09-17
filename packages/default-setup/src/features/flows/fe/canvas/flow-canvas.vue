@@ -142,14 +142,14 @@ const edges   = useSelector(actor, (s) => s.context.graph.edges)
 const settings = useSelector(actor, (s) => s.context.settings)
 const allFlows = useSelector(actor, (s) => s.context.flows)
 const flows   = useSelector(actor, (s) => {
-  const rootId = s.context.settings?.rootFlowId
+  const rootId = s.context.rootFlowId
   const all = s.context.flows
   if (!rootId) return all
   const root = all.find(f => f.id === rootId)
   const rest = all.filter(f => f.id !== rootId)
   return root ? [root, ...rest] : rest
 })
-const rootFlowId = useSelector(actor, (s) => s.context.settings?.rootFlowId)
+const rootFlowId = useSelector(actor, (s) => s.context.rootFlowId)
 const positions = useSelector(actor, (s) => s.context.graph.positions)
 const selectedFlowId = useSelector(actor, (s) => s.context.selectedFlowId)
 const selectedNodeId = useSelector(actor, (s) => s.context.selectedNodeId)

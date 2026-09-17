@@ -148,6 +148,7 @@ import type { BrainSettings } from '@/__generated__/types'
 import { sendToSystem } from '@/__generated__/events'
 import { useSelector } from '@xstate/vue'
 import { id as brainId, type BrainState } from '@/features/brain/fe/state'
+import { id as flowsId, type FlowsState } from '@/features/flows/fe/state'
 
 const actorSystem = useActorSystem()
 
@@ -165,11 +166,15 @@ const props = withDefaults(defineProps<Props>(), {
 const brainActor: BrainState = actorSystem.get(brainId);
 const brainIsDead = useSelector(brainActor, (state) => state.context.brainIsDead)
 const startError = useSelector(brainActor, (state) => state.context.startError)
+const runningRootFlowId = useSelector(brainActor, (state) => state.context.runningRootFlowId)
+// The root flow is the flows plugin's (the flow with the root role)
+const flowsActor: FlowsState = actorSystem.get(flowsId)
+const rootFlowId = useSelector(flowsActor, (state) => state.context.rootFlowId)
 
 // Compute if restart is needed by comparing root flow IDs
 const needsRestart = computed(() => {
-  const flowsRootId = props.allSettings?.plugins?.flows?.rootFlowId
-  const brainRunningId = props.allSettings?.plugins?.brain?.runningRootFlowId
+  const flowsRootId = rootFlowId.value
+  const brainRunningId = runningRootFlowId.value
   
   // Need restart if:
   // 1. Brain is running (not dead) AND

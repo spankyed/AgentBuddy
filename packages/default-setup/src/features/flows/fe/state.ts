@@ -114,6 +114,8 @@ export interface FlowsContext {
   actions: ActionEntity[];
   // Track temporary IDs during async creation
   tempIdMap: Record<string, string>; // tempId -> permanentId
+  /** The root flow the brain runs (the flow with the root role), as the flows system last sent it */
+  rootFlowId?: string;
   // Settings
   settings?: any; // FlowsSettings
   // Dialog bridge flags (set by context menu, consumed by watchers in flow-canvas.vue)
@@ -167,6 +169,8 @@ type UIEvent =
   | { type: 'FLOW.PREVIEW'; flowId: EARS.EntityId }
   | { type: 'FLOW.SELECT'; flowId: EARS.EntityId }
   | { type: 'SELECT_ROOT_FLOW' }
+  /** Makes a flow the root flow, or, with null, leaves no flow the root */
+  | { type: 'ROOT_FLOW.SET'; flowId: string | null }
   | { type: 'SELECT_AND_EDIT_FIRST_NODE' }
   | { type: 'FLOW.CREATE'; }
   | { type: 'FLOW.DELETE'; flowId: EARS.EntityId }
@@ -227,6 +231,7 @@ const flowsState = setup({
           edges: graphEdges,
           positions: needsLayout ? {} : existingPositions,
         },
+        rootFlowId: ev.data.rootFlow?.id,
         settings: ev.data.settings || {},
       }
     }),
@@ -254,7 +259,7 @@ const flowsState = setup({
     },
 
     selectRootFlow: ({ context }) => {
-      const rootFlowId = context.settings?.rootFlowId;
+      const rootFlowId = context.rootFlowId;
       if (!rootFlowId) {
         console.warn('No root flow configured');
         return;
@@ -1191,6 +1196,9 @@ const flowsState = setup({
     FLOWS_SETTINGS_UPDATED: {
       actions: 'handleSettingsUpdate'
     },
+    'ROOT_FLOW.SET': {
+      actions: ({ event }) => sendToSystem(id, { type: 'SET_ROOT_FLOW', flowId: typeOf('ROOT_FLOW.SET', event).flowId }),
+    },
     FLOW_SELECTED: { actions: 'loadFlowData' },
     LAYOUT_COMPUTED: {
       actions: assign(({ context, event }) => {
@@ -1381,8 +1389,8 @@ const flowsState = setup({
             // Find in flows array
             const flow = ctx.flows.find(f => f.id === ctx.selectedFlowId);
 
-            // Check if it's the root flow (based on settings)
-            if (flow && ctx.settings?.rootFlowId === flow.id) {
+            // Check if it's the root flow
+            if (flow && ctx.rootFlowId === flow.id) {
               return `${flow.label || 'Flow'} (Root)`;
             }
 
@@ -1390,7 +1398,7 @@ const flowsState = setup({
           }
         }),
         ...contextMenuFn<FlowsContext>((ctx) => {
-          const isRoot = ctx.selectedFlowId === ctx.settings?.rootFlowId;
+          const isRoot = ctx.selectedFlowId === ctx.rootFlowId;
           return [
             { label: 'Edit Label', icon: Edit, event: { type: 'FLOW.REQUEST_EDIT_LABEL' }, iconColor: 'text-primary-400' },
             ...(!isRoot ? [{

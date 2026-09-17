@@ -9,15 +9,14 @@ import type {
 } from '../types';
 import { availableModels } from '@abuddy/sdk/models';
 import { repository } from '@/__generated__/repository';
-import type { CompiledRows } from '@abuddy/sdk/build';
 import { ROOT_FLOW_ROLE } from '@abuddy/sdk';
 import type { FlowEntity } from '@abuddy/sdk';
 
 /**
  * Flow Repository: the SDK's flow repository (`flowRepository`), which owns the reads and writes of flows, nodes
  * and edges, as the flows plugin uses it. Its methods are taken as they are, not wrapped; this adds nodes typed as
- * this pack's step nodes, the connected data the plugin shows, a flow created with its entry node, and the flows
- * plugin's `rootFlowId` setting kept with the root role.
+ * this pack's step nodes, the connected data the plugin shows (the root flow included: the flow with the root role,
+ * which is the only record of it), and a flow created with its entry node.
  */
 
 export const FLOW_ROLES = {
@@ -100,7 +99,9 @@ export const flowsCommands = {
   deleteNode: flowRepository.deleteNode,
   deleteEdge: flowRepository.deleteEdge,
   updateEdge: flowRepository.updateEdge,
+  grantRootFlowRole: flowRepository.grantRootFlowRole,
   revokeRootFlowRole: flowRepository.revokeRootFlowRole,
+  importFromDSL: flowRepository.importFromDSL,
   deleteFlow: flowRepository.deleteFlow,
   reindexHandles: flowRepository.reindexHandles,
 
@@ -120,26 +121,4 @@ export const flowsCommands = {
   // The SDK's row, typed as this pack's step nodes
   createNode: (flowId: EARS.EntityId, nodeData: NodeCreateInput): NodeEntity =>
     flowRepository.createNode(flowId, nodeData) as NodeEntity,
-
-  /** Makes a flow the root flow, and records it in the flows plugin's settings */
-  grantRootFlowRole: (flowId: EARS.EntityId): void => {
-    flowRepository.grantRootFlowRole(flowId);
-    repository.settingsCommands.updateSettings('plugin', 'flows', ['rootFlowId'], flowId);
-  },
-
-  /** Imports compiled flow DSL; a root flow among it is recorded in the flows plugin's settings too */
-  importFromDSL: (compiled: CompiledRows): { flowIds: EARS.EntityId[] } => {
-    const result = flowRepository.importFromDSL(compiled);
-    flowsCommands.syncRootFlowSetting();
-    return result;
-  },
-
-  /** Points the flows plugin's `rootFlowId` setting at the flow with the root role (the SDK's flow seeder grants it) */
-  syncRootFlowSetting: (): EARS.EntityId | undefined => {
-    const rootFlowId = flowRepository.rootFlow();
-    if (rootFlowId && repository.settingsQueries.getPluginSettings('flows')?.rootFlowId !== rootFlowId) {
-      repository.settingsCommands.updateSettings('plugin', 'flows', ['rootFlowId'], rootFlowId);
-    }
-    return rootFlowId;
-  },
 } as const;

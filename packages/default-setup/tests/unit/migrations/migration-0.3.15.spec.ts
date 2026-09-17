@@ -1,6 +1,7 @@
 // 0.3.15 drops the app's state from the settings (the host moved it to AppState first), and marks rows seeded before
 // the seeder recorded what it wrote as unedited — without that every row an older version seeded stays frozen. Action
-// logs moved from `log-service` to `action:<label>`, so whoever hid `log-service` gets `action:*` hidden too.
+// logs moved from `log-service` to `action:<label>`, so whoever hid `log-service` gets `action:*` hidden too. The
+// settings' copies of the root flow and of the flow the brain runs are dropped: the role and the brain own them.
 import { describe, expect, it } from 'vitest'
 import { tx, untypedQx } from '@abuddy/ears'
 import type { EARS as SdkEARS } from '@abuddy/sdk'
@@ -40,6 +41,23 @@ describe('the 0.3.15 migration', () => {
     // Running again changes nothing
     migration.up()
     expect(stored()).toEqual({ general: { application: { openLinksInApp: false } } })
+  })
+
+  it("drops the settings' root flow copies, keeping the plugins' other settings", () => {
+    createDefaultSettings()
+    // As 0.3.14 stored them
+    tx('Settings-app' as SdkEARS.EntityId).update('data', {
+      plugins: {
+        flows: { rootFlowId: 'Flow-1', enableFlowPreview: false },
+        brain: { runningRootFlowId: 'Flow-1', inspectEnabled: true },
+      },
+    })
+
+    migration.up()
+    expect(stored()).toEqual({ plugins: { flows: { enableFlowPreview: false }, brain: { inspectEnabled: true } } })
+
+    migration.up()
+    expect(stored()).toEqual({ plugins: { flows: { enableFlowPreview: false }, brain: { inspectEnabled: true } } })
   })
 
   it('marks a row seeded before the seeder tracked its values as unedited', () => {

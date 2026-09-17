@@ -152,13 +152,11 @@ export interface ActionsSettings {
 
 // Flows plugin settings
 export interface FlowsSettings {
-  rootFlowId?: string; // ID of the flow with the root_flow role
   enableFlowPreview?: boolean; // Enable flow preview on single click
 }
 
 // Brain plugin settings
 export interface BrainSettings {
-  runningRootFlowId?: string; // The ID of the root flow currently running in the brain
   inspectEnabled?: boolean; // Whether the brain inspection panel is enabled
 }
 

@@ -72,9 +72,8 @@ type IncomingFlowsEvents =
   | { type: 'IMPORT_DSL'; dsl: any }
   | { type: 'EXPORT_DSL'; directory: string; flowId?: string }
   | { type: 'REINDEX_HANDLES'; flowId: string; nodeId: string; prefix: string; index: number; direction: 1 | -1 }
-
-type FlowsInternalEvents =
-  | { type: 'FLOWS_SETTINGS_UPDATED'; settings: any; changes?: any }
+  /** Makes a flow the root flow the brain runs (its root role), or, with null, leaves no flow the root */
+  | { type: 'SET_ROOT_FLOW'; flowId: string | null }
 
 export type OutgoingFlowsEvents =
   | { type: 'FLOWS_CONNECTED'; data: FlowsConnectedData }
@@ -97,26 +96,27 @@ export type OutgoingFlowsEvents =
   | { type: 'DSL_EXPORTED'; filePath: string; flowCount: number }
   | { type: 'DSL_EXPORT_FAILED'; errors: string[] }
 
-export const flowsSpec = defineSystem('flows')<IncomingFlowsEvents | FlowsInternalEvents, OutgoingFlowsEvents>();
+export const flowsSpec = defineSystem('flows')<IncomingFlowsEvents, OutgoingFlowsEvents>();
 export const flows = flowsSpec.id;
+
+/** Sends the plugin its flows, the root flow among them (the flow with the root role), and its settings */
+function sendConnectedData(system: Parameters<typeof getActor>[0]): void {
+  getActor(system, bus).send(emit(flows, {
+    type: 'FLOWS_CONNECTED',
+    data: {
+      ...repository.flowsQueries.connectedData(),
+      settings: repository.settingsQueries.getPluginSettings('flows') || {},
+    },
+  }));
+}
 
 export const flowsSystem = setup({
   types: flowsSpec.types,
   actors: {},
   actions: {
     handleClientConnection: ({ system }) => {
-      const pluginId = flows;
-      const data = repository.flowsQueries.connectedData();
-      const flowsSettings = repository.settingsQueries.getPluginSettings('flows');
-      logger.info('Sending flows connected data to client', { flows: data.flows.length });
-
-      system.get(bus).send(emit(pluginId, {
-        type: 'FLOWS_CONNECTED',
-        data: {
-          ...data,
-          settings: flowsSettings || {}
-        },
-      }));
+      logger.info('Sending flows connected data to client');
+      sendConnectedData(system);
     },
 
     selectFlow: ({ system, event }) => {
@@ -311,44 +311,14 @@ export const flowsSystem = setup({
       }
     },
     
-    handleSettingsUpdate: ({ system, event }) => {
-      const { settings, changes } = flowsSpec.typeOf('FLOWS_SETTINGS_UPDATED', event);
-      const pluginId = flows;
-
-      // Get the current root flow (the one with the root_flow role)
-      const currentRootFlowId = repository.flowsQueries.rootFlow();
-
-      // Check if rootFlowId changed by comparing with current
-      const newRootFlowId = settings.rootFlowId;
-
-      if (currentRootFlowId !== newRootFlowId) {
-        logger.info('Updating root flow', {
-          previousRootFlowId: currentRootFlowId,
-          newRootFlowId
-        });
-
-        // Revoke root_flow role from previous flow if it exists
-        if (currentRootFlowId) {
-          repository.flowsCommands.revokeRootFlowRole(currentRootFlowId);
-        }
-
-        // Grant root_flow role to new flow if specified
-        if (newRootFlowId) {
-          repository.flowsCommands.grantRootFlowRole(newRootFlowId as EARS.EntityId);
-        }
-
-        // Send updated connected data to reflect the change
-        const data = repository.flowsQueries.connectedData();
-        const flowsSettings = repository.settingsQueries.getPluginSettings('flows');
-
-        system.get(bus).send(emit(pluginId, {
-          type: 'FLOWS_CONNECTED',
-          data: {
-            ...data,
-            settings: flowsSettings || {}
-          },
-        }));
-      }
+    setRootFlow: ({ system, event }) => {
+      const { flowId } = flowsSpec.typeOf('SET_ROOT_FLOW', event);
+      const previous = repository.flowsQueries.rootFlow();
+      if ((flowId ?? undefined) === previous) return;
+      logger.info('Changing the root flow', { previousRootFlowId: previous, rootFlowId: flowId });
+      if (flowId) repository.flowsCommands.grantRootFlowRole(flowId as EARS.EntityId);
+      else if (previous) repository.flowsCommands.revokeRootFlowRole(previous);
+      sendConnectedData(system);
     },
 
     importDSL: ({ system, event }) => {
@@ -394,23 +364,12 @@ export const flowsSystem = setup({
       // Import into EARS
       const { flowIds } = repository.flowsCommands.importFromDSL(compiled);
 
-      // Send success response with updated flows data
-      const data = repository.flowsQueries.connectedData();
-      const flowsSettings = repository.settingsQueries.getPluginSettings('flows');
-
       system.get(bus).send(emit(pluginId, {
         type: 'DSL_IMPORTED',
         flowIds,
       }));
-
-      // Also send updated connected data
-      system.get(bus).send(emit(pluginId, {
-        type: 'FLOWS_CONNECTED',
-        data: {
-          ...data,
-          settings: flowsSettings || {}
-        },
-      }));
+      // The flows, and the root flow if the import brought one
+      sendConnectedData(system);
 
       logger.info('DSL import complete', { flowIds });
     },
@@ -499,8 +458,8 @@ export const flowsSystem = setup({
         REINDEX_HANDLES: {
           actions: 'reindexHandles',
         },
-        FLOWS_SETTINGS_UPDATED: {
-          actions: 'handleSettingsUpdate',
+        SET_ROOT_FLOW: {
+          actions: 'setRootFlow',
         },
         IMPORT_DSL: {
           actions: 'importDSL',

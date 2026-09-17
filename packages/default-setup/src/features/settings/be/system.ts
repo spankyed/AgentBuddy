@@ -208,8 +208,6 @@ export const settingsSystem = setup({
 
     resetSettings: ({ system, event }) => {
       settingsCommands.resetSettings();
-      // The defaults have no root flow; the setting follows the flow that keeps the root role
-      repository.flowsCommands.syncRootFlowSetting();
       
       // After reset, get the new settings to send to frontend
       const data = settingsQueries.getSettings();
@@ -282,8 +280,6 @@ export const settingsSystem = setup({
         // Read first: a directory that can't name its pack fails before anything is imported
         const { packId } = previewPackSeeds(ev.directory);
         const result = seedData({ compiledDir: ev.directory, include, mode: ev.mode, verbose: true });
-        // The flow seeder grants the root role; the flows plugin's setting follows it
-        repository.flowsCommands.syncRootFlowSetting();
         // Seeders report records they couldn't seed in their counts rather than throwing
         const errors = Object.entries(result).flatMap(([key, counts]) => (counts.errors ?? []).map((error) => `${key}: ${error}`));
         system.get(bus).send(emit(settings, { type: 'PACK_SEEDS_IMPORTED', result, errors }));

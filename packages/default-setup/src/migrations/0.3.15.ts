@@ -9,7 +9,7 @@ const logger = createLogger('migrations');
 
 export const migration: PackMigration = {
   target: '0.3.15',
-  description: "Drop the app's state from the settings, mark rows seeded before the seeder tracked what it wrote as unedited, and keep action logs hidden for whoever hid log-service",
+  description: "Drop the app's state and the root flow copies from the settings, mark rows seeded before the seeder tracked what it wrote as unedited, and keep action logs hidden for whoever hid log-service",
   up: () => {
     // ── The app's state (onboarding, versions, seed hashes) is the host's AppState now ──
     // The host's own 0.3.15 migration, which runs first, moved it out of `internal` (no pack migration runs when it fails).
@@ -38,5 +38,10 @@ export const migration: PackMigration = {
     if (Array.isArray(excludedSources) && excludedSources.includes('log-service') && !excludedSources.includes('action:*')) {
       repository.settingsCommands.updateSettings('plugin', 'logs', ['excludedSources'], [...excludedSources, 'action:*']);
     }
+
+    // ── The root flow is the flow with the root role, and the brain says which one it runs ──
+    // Copies of both kept in the settings are no longer read or written.
+    repository.settingsCommands.removeStored(['plugins', 'flows', 'rootFlowId']);
+    repository.settingsCommands.removeStored(['plugins', 'brain', 'runningRootFlowId']);
   },
 };
