@@ -4,10 +4,9 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { EARS } from '@abuddy/ears';
 import { importDatabase, readBackup } from '@abuddy/host/backup';
-import { checkDataVersion, type AppDatabase } from '@abuddy/host/database';
+import type { AppDatabase } from '@abuddy/host/database';
 import { createSecretsStore } from '@abuddy/host/secrets';
 import { openTarget, parseDbArgs, TARGET_USAGE, type DbIo } from './target';
-import { supportedAppVersion } from '../../app-version';
 
 const FORCE = { force: { type: 'boolean', default: false } } as const;
 const FORCE_USAGE = '  --force                Make the change (without it, the command only lists it)';
@@ -142,7 +141,7 @@ export const IMPORT_USAGE = [
   'Usage: abuddy db import <backup-dir> [--force] [options]',
   '',
   'Replaces the database (and media) with a backup made in the Database settings\' Backup & Restore, after checking',
-  'the backup opens and holds data of this AgentBuddy version.',
+  'the backup opens.',
   '',
   'Options:',
   FORCE_USAGE,
@@ -158,12 +157,10 @@ export async function dbImport(args: string[], io: DbIo): Promise<void> {
   const db = await openTarget(target, { write: true }, io);
   let closed = false;
   try {
-    // The backup is checked before anything changes: it must open, and hold data of this AgentBuddy version
+    // The backup is checked before anything changes
     const backup = readBackup(backupDir, db.schema.getRegisteredEntityTypes());
-    checkDataVersion(backup.dataVersion, supportedAppVersion());
     io.out(`Backup: ${backupDir}`);
     if (backup.timestamp) io.out(`  made ${new Date(backup.timestamp).toISOString()}`);
-    io.out(`  AgentBuddy version: ${backup.dataVersion ?? 'not recorded'}`);
     io.out(`  databases: ${backup.databases.join(', ')}${backup.hasMedia ? ', with media' : ''}`);
     countLines(backup.counts).forEach((line) => io.out(line));
     io.out(`${force ? 'Replacing' : 'Would replace'} the current database, which holds:`);

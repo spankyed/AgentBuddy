@@ -1,5 +1,5 @@
 // abuddy db, offline, against temp data dirs: each command's output and changes, the refusals while an app runs on the
-// data dir or its data is another AgentBuddy version's, and the dry runs of the commands that replace or delete data
+// data dir, and the dry runs of the commands that replace or delete data
 import * as fs from 'node:fs';
 import * as net from 'node:net';
 import * as os from 'node:os';
@@ -14,10 +14,8 @@ import { API_HOST } from '@abuddy/sdk/env';
 import { appDataPaths } from '@abuddy/sdk/utils';
 import { db } from '../../src/commands/db';
 import { dbRepl } from '../../src/commands/db/repl';
-import { supportedAppVersion } from '../../src/app-version';
 
 const DEFAULT_SETUP_SNAPSHOT = path.resolve(import.meta.dirname, '..', '..', '..', 'default-setup', 'dist', 'snapshot.json');
-const APP_VERSION = supportedAppVersion();
 
 const dirs: string[] = [];
 const servers: net.Server[] = [];
@@ -61,14 +59,14 @@ async function write(userDataDir: string, change: () => void): Promise<void> {
   }
 }
 
-/** A data dir the app ran on: default-setup published, settings, notes with a relation and a role, at `version` */
-async function appDataDir({ version = APP_VERSION as string | null } = {}): Promise<string> {
+/** A data dir the app ran on: default-setup published, its state, settings, and notes with a relation and a role */
+async function appDataDir(): Promise<string> {
   const dir = tempDir('abuddy-db-');
   const snapshot = path.join(dir, 'host-packs', 'default-setup', 'types', 'snapshot.json');
   fs.mkdirSync(path.dirname(snapshot), { recursive: true });
   fs.copyFileSync(DEFAULT_SETUP_SNAPSHOT, snapshot);
   await write(dir, () => {
-    if (version) tx(id('AppState-app'), true).put('entityType', 'AppState').put('version', version);
+    tx(id('AppState-app'), true).put('entityType', 'AppState').put('hasOnboarded', true);
     tx(id('Settings-app'), true).put('entityType', 'Settings').put('label', 'App').put('data', { general: { theme: 'dark' } });
     tx(id('Note-a'), true).put('entityType', 'Note').put('title', 'Alpha').grant('pinned').link('parent_of', id('Note-b'));
     tx(id('Note-b'), true).put('entityType', 'Note').put('title', 'Beta, "quoted"');
@@ -154,14 +152,6 @@ describe('abuddy db query', () => {
     expect(err).toMatch(/Warning: AgentBuddy is running on it \(process \d+ holds/);
   });
 
-  it("refuses data another minor version migrated, unless told to ignore it", async () => {
-    const dir = await appDataDir({ version: '0.0.1' });
-    const refused = await run(['query', 'return 1', '--data-dir', dir]);
-    expect(refused.error?.message).toMatch(new RegExp(`AgentBuddy 0\\.0\\.1.*supports AgentBuddy ${APP_VERSION.replace(/\./g, '\\.')}`));
-    const { out } = await ok(['query', 'return 1', '--data-dir', dir, '--ignore-version']);
-    expect(out).toBe('1');
-  });
-
   it('refuses bad arguments with its usage', async () => {
     const dir = await appDataDir();
     expect((await run(['query', '--data-dir', dir])).error?.message).toMatch(/^No code to run\n\nUsage: abuddy db query/);
@@ -193,12 +183,6 @@ describe('abuddy db exec', () => {
     expect(byPort.error?.message).toMatch(/its API answers on port \d+/);
     const { out } = await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', served]);
     expect(out).toBe('Alpha');
-  });
-
-  it('refuses --ignore-version, and data of another version', async () => {
-    const dir = await appDataDir({ version: '0.0.1' });
-    expect((await run(['exec', 'return 1', '--data-dir', dir, '--ignore-version'])).error?.message).toBe('--ignore-version is only for commands that read');
-    expect((await run(['exec', 'return 1', '--data-dir', dir])).error?.message).toMatch(/AgentBuddy 0\.0\.1/);
   });
 
   it('fails when a write never reaches the files', async () => {
@@ -269,7 +253,7 @@ describe('abuddy db export', () => {
     expect(fs.existsSync(path.join(out, 'Relation.json'))).toBe(true);
     expect(fs.existsSync(path.join(out, 'Flow.json'))).toBe(false);
     const summary = JSON.parse(fs.readFileSync(path.join(out, 'export.json'), 'utf-8'));
-    expect(summary).toMatchObject({ userDataDir: dir, dataVersion: APP_VERSION, format: 'json', counts: { Note: 2, Settings: 1, AppState: 1, Relation: 1 } });
+    expect(summary).toMatchObject({ userDataDir: dir, format: 'json', counts: { Note: 2, Settings: 1, AppState: 1, Relation: 1 } });
   });
 
   it('exports the types asked, as CSV, and refuses a type no pack declares', async () => {
@@ -329,7 +313,6 @@ describe('abuddy db reset', () => {
     expect(JSON.parse(fs.readFileSync(secretsFile, 'utf-8')).secrets).toEqual([]);
     const after = await ok(['query', 'return getAllEntities()', '--data-dir', dir, '-o', 'json']);
     expect(JSON.parse(after.out)).toEqual([]);
-    // Empty data records no version: any AgentBuddy opens it
     expect((await ok(['reset', '--data-dir', dir])).out).toContain('Would delete 0 stored API key(s)');
   });
 
@@ -343,8 +326,8 @@ describe('abuddy db reset', () => {
 
 describe('abuddy db import', () => {
   /** A backup of a data dir whose one note is titled `title`, as the app exports it */
-  async function backupWith(title: string, version = APP_VERSION): Promise<string> {
-    const source = await appDataDir({ version });
+  async function backupWith(title: string): Promise<string> {
+    const source = await appDataDir();
     await write(source, () => { tx(id('Note-a')).put('title', title); tx(id('Note-b')).destroy(); });
     const paths = appDataPaths(source, { packaged: false });
     fs.mkdirSync(paths.media, { recursive: true });
@@ -357,7 +340,6 @@ describe('abuddy db import', () => {
     const backup = await backupWith('From the backup');
     const dry = await ok(['import', backup, '--data-dir', dir]);
     expect(dry.out).toContain(`Backup: ${backup}`);
-    expect(dry.out).toContain(`  AgentBuddy version: ${APP_VERSION}`);
     expect(dry.out).toContain('  databases: lmdb, with media');
     expect(dry.out).toMatch(/Would replace the current database, which holds:\n(.*\n)*  Note: 2/);
     expect(dry.out).toContain('Dry run: nothing was changed');
@@ -369,7 +351,7 @@ describe('abuddy db import', () => {
     expect(fs.readFileSync(path.join(appDataPaths(dir, { packaged: false }).media, 'image.png'), 'utf-8')).toBe('png');
   });
 
-  it('refuses a backup that is not one, lacks a database, or holds another version, changing nothing', async () => {
+  it('refuses a backup that is not one or lacks a database, changing nothing', async () => {
     const dir = await appDataDir();
     const notBackup = tempDir('not-backup-');
     expect((await run(['import', notBackup, '--force', '--data-dir', dir])).error?.message).toMatch(/isn't a backup: it has no metadata\.json/);
@@ -381,9 +363,6 @@ describe('abuddy db import', () => {
     const missing = await backupWith('x');
     fs.rmSync(path.join(missing, 'lmdb'), { recursive: true });
     expect((await run(['import', missing, '--force', '--data-dir', dir])).error?.message).toMatch(/lmdb folder is missing/);
-
-    const older = await backupWith('x', '0.0.1');
-    expect((await run(['import', older, '--force', '--data-dir', dir])).error?.message).toMatch(/AgentBuddy 0\.0\.1/);
 
     expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('Alpha');
   });

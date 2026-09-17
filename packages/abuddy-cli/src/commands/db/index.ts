@@ -21,8 +21,7 @@ export const DB_USAGE = `
 Usage: abuddy db <command> [options]
 
 The app's database, read and changed while AgentBuddy is closed. Commands that change it refuse while AgentBuddy runs
-on the data dir; reads warn that they may miss what it hasn't written yet. Data another AgentBuddy version (major.minor)
-migrated is refused.
+on the data dir; reads warn that they may miss what it hasn't written yet.
 
 Commands:
   query <code>          Run read-only query code (the Database console's)

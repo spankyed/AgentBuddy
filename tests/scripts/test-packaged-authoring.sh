@@ -13,7 +13,7 @@
 #   6. abuddy release --local --dry-run produces a verified bundle
 #   7. install that bundle into an isolated test data dir
 #   8. abuddy test passes against the configured app (this checkout, chosen at the first-run prompt)
-#   9. the packed CLI's abuddy db reads and exports the data that app seeded, and refuses another version's
+#   9. the packed CLI's abuddy db reads and exports the data that app seeded
 # No ABUDDY_ROOT, no symlinks, no PATH edits. Requires a built checkout (npm run build).
 # KEEP_WORK=1 keeps the temp dir.
 set -euo pipefail
@@ -367,19 +367,9 @@ node -e '
   const notes = JSON.parse(fs.readFileSync(`${dir}/Note.json`, "utf8"));
   if (!notes.some((note) => note.title === "Demo notes")) throw new Error("Note.json has no demo note");
   const summary = JSON.parse(fs.readFileSync(`${dir}/export.json`, "utf8"));
-  if (summary.counts.DemoPack !== rows.length || !summary.dataVersion) throw new Error("export.json: " + JSON.stringify(summary));
+  if (summary.counts.DemoPack !== rows.length) throw new Error("export.json: " + JSON.stringify(summary));
 ' "$WORK/db-export" || fail "abuddy db export didn't write the seeded data"
 
-# Data another AgentBuddy version migrated is refused, and read with --ignore-version
-OTHER="$WORK/other-version-data"
-cp -R "$APP_DATA" "$OTHER"
-"$ABUDDY" db exec "tx('AppState-app').put('version', '0.0.1')" --data-dir "$OTHER" >/dev/null
-if "$ABUDDY" db query "return 1" --data-dir "$OTHER" > "$WORK/db-refused.log" 2>&1; then
-  fail "abuddy db query read data another AgentBuddy version migrated"
-fi
-grep -q "AgentBuddy 0.0.1" "$WORK/db-refused.log" || { cat "$WORK/db-refused.log"; fail "the version refusal didn't name the data's version"; }
-[ "$("$ABUDDY" db query "return getAttr('AppState-app', 'version')" --data-dir "$OTHER" --ignore-version 2>/dev/null)" = "0.0.1" ] \
-  || fail "abuddy db query --ignore-version didn't read the data"
 
 step "No symlinks into the monorepo"
 if find "$PACK/node_modules" "$WORK/tools/node_modules" -maxdepth 2 -type l -lname "$ROOT*" | grep -q .; then

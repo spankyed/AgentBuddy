@@ -1,5 +1,5 @@
 // openAppDatabase: a data dir's database opened outside the app, from the installed packs' manifests, in the layout
-// it was written in, checked against the version the tool supports
+// it was written in
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -8,8 +8,6 @@ import { appDataPaths } from '@abuddy/sdk/utils';
 import { openAppDatabase } from '../../src/database/open.ts';
 import { findAppDataPaths } from '../../src/database/layout.ts';
 import { readInstalledSchema } from '../../src/database/schema.ts';
-import { DataVersionMismatchError, checkDataVersion } from '../../src/database/version.ts';
-import { recordHostVersion } from '../../src/packs/host-info.ts';
 import { dataDirWithPacks, removeTempDirs, schemaContext, tempDir, tx, writeData } from './fixtures.ts';
 
 afterEach(removeTempDirs);
@@ -123,56 +121,9 @@ describe('openAppDatabase', () => {
     expect(() => installedEngine()).toThrow();
   });
 
-  it("records the data's version: AppState's, else the app's that last ran on it", async () => {
-    const dir = dataDirWithPacks();
-    await writeData(dir, () => {});
-    const unversioned = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
-    expect(unversioned.dataVersion).toBeUndefined();
-    unversioned.close();
-
-    recordHostVersion(dir, '0.3.16');
-    const fromHost = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
-    expect(fromHost.dataVersion).toBe('0.3.16');
-    fromHost.close();
-
-    await writeData(dir, () => { tx(id('AppState-app'), true).put('version', '0.3.15'); });
-    const fromData = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
-    expect(fromData.dataVersion).toBe('0.3.15');
-    fromData.close();
-  });
-
-  it('refuses data of another minor version, naming both, and closes what it opened', async () => {
-    const dir = dataDirWithPacks();
-    await writeData(dir, () => { tx(id('AppState-app'), true).put('version', '0.2.9'); });
-    const opening = openAppDatabase({ env: 'test', userDataDir: dir, supportedVersion: '0.3.14', ...quiet });
-    await expect(opening).rejects.toThrow(DataVersionMismatchError);
-    await expect(opening).rejects.toThrow(/AgentBuddy 0\.2\.9.*supports AgentBuddy 0\.3\.14/);
-    expect(() => installedEngine()).toThrow();
-
-    // The files were closed: they open again
-    const same = await openAppDatabase({ env: 'test', userDataDir: dir, supportedVersion: '0.2.1', ...quiet });
-    same.close();
-  });
-
   it('opens nothing where the data dir has no database', async () => {
     const dir = dataDirWithPacks();
     await expect(openAppDatabase({ env: 'test', userDataDir: dir, readOnly: true, ...quiet })).rejects.toThrow('No AgentBuddy database');
     expect(fs.existsSync(path.join(dir, '.data'))).toBe(false);
-  });
-});
-
-describe('checkDataVersion', () => {
-  it('accepts the same major and minor version, a prerelease counting as its release', () => {
-    expect(() => checkDataVersion('0.3.1', '0.3.14')).not.toThrow();
-    expect(() => checkDataVersion('0.3.15-beta.2', '0.3.14')).not.toThrow();
-    expect(() => checkDataVersion('0.3.14', '0.3.15-beta.1')).not.toThrow();
-    expect(() => checkDataVersion(undefined, '0.3.14')).not.toThrow();
-  });
-
-  it('refuses another major or minor version, or a version it cannot read', () => {
-    expect(() => checkDataVersion('0.4.0', '0.3.14')).toThrow(DataVersionMismatchError);
-    expect(() => checkDataVersion('1.3.0', '0.3.14')).toThrow(DataVersionMismatchError);
-    expect(() => checkDataVersion('0.2.14', '0.3.14')).toThrow(DataVersionMismatchError);
-    expect(() => checkDataVersion('not a version', '0.3.14')).toThrow(DataVersionMismatchError);
   });
 });

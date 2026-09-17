@@ -1,12 +1,11 @@
 // abuddy db repl: console code line by line, on the data dir's database
 import * as readline from 'node:readline/promises';
 import { runQueryCode, runTransactionCode } from '@abuddy/sdk/database-console';
-import { consoleScope, openTarget, parseDbArgs, READ_USAGE, TARGET_USAGE, type DbIo } from './target';
+import { consoleScope, openTarget, parseDbArgs, TARGET_USAGE, type DbIo } from './target';
 import { toPretty } from './output';
 
 const OPTIONS = {
   write: { type: 'boolean', default: false },
-  'ignore-version': { type: 'boolean', default: false },
 } as const;
 
 export const REPL_USAGE = [
@@ -17,7 +16,6 @@ export const REPL_USAGE = [
   '',
   'Options:',
   '  --write                Transaction code: the write helpers too, and the changes are saved on exit',
-  READ_USAGE,
   TARGET_USAGE,
 ].join('\n');
 
@@ -25,7 +23,7 @@ export async function dbRepl(args: string[], io: DbIo, input: NodeJS.ReadableStr
   const { values, positionals, target } = parseDbArgs(args, OPTIONS, REPL_USAGE);
   if (positionals.length > 0) throw new Error(`Unexpected argument ${positionals[0]}\n\n${REPL_USAGE}`);
   const write = values.write as boolean;
-  const db = await openTarget(target, { write, ignoreVersion: values['ignore-version'] as boolean }, io);
+  const db = await openTarget(target, { write }, io);
   const scope = consoleScope(db);
   const run = write ? runTransactionCode : runQueryCode;
   const lines = readline.createInterface({ input, terminal: false });

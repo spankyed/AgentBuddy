@@ -1,8 +1,7 @@
 import fs from 'fs-extra';
 import path from 'node:path';
 import { createLogger } from '@abuddy/sdk/logger';
-import { closeEnv, LmdbQuery, openEnvAt, type LmdbStore } from '@abuddy/ears/lmdb';
-import { APP_STATE_ENTITY } from '../app-state/index.ts';
+import { closeEnv, openEnvAt, type LmdbStore } from '@abuddy/ears/lmdb';
 
 const logger = createLogger('database:backup');
 
@@ -178,8 +177,6 @@ export interface BackupContents {
   /** The databases it restores */
   databases: DatabaseName[];
   hasMedia: boolean;
-  /** The app version its data was migrated to (`AppState.version`), if it records one */
-  dataVersion?: string;
   /** Entities per type in its primary database, for the given types that have some */
   counts: Array<[string, number]>;
 }
@@ -208,8 +205,6 @@ export function readBackup(dir: string, entityTypes: Iterable<string>): BackupCo
 
   const env = openEnvAt(path.join(dir, 'lmdb'), { readOnly: true });
   try {
-    const query = new LmdbQuery(env);
-    const version = query.getFirstAttr('version', `${APP_STATE_ENTITY}-app`);
     const perType = new Map<string, number>();
     for (const { value } of env.entities.getRange() as Iterable<{ value: { type?: string } }>) {
       if (value.type) perType.set(value.type, (perType.get(value.type) ?? 0) + 1);
@@ -220,7 +215,6 @@ export function readBackup(dir: string, entityTypes: Iterable<string>): BackupCo
       ...(typeof metadata.timestamp === 'number' && { timestamp: metadata.timestamp }),
       databases,
       hasMedia: fs.existsSync(path.join(dir, 'media')),
-      ...(typeof version === 'string' && { dataVersion: version }),
       counts,
     };
   } finally {

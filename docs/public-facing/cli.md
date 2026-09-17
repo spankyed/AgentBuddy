@@ -241,11 +241,9 @@ abuddy db reset          # lists what it would delete
 
 **While the app runs.** The commands open the database files themselves (offline); the app keeps the whole database in memory and is its only writer. So a command that changes data (`exec`, `repl --write`, `import`, `reset`, `clear-settings`) refuses while an AgentBuddy app runs on the data dir: its instance lock is held by a live process, or its API answers on the port it published. Quit the app first. Reading commands work, with a warning that they miss what the app hasn't written yet.
 
-**Versions.** The CLI reads and writes the data of the AgentBuddy version it was built with: data another major or minor version migrated (`0.3.x` data and a `0.4` CLI, say) is refused, naming both versions. Reading commands take `--ignore-version` to read it anyway. The `abuddy` the app installs always matches the app.
-
 **Installed packs.** Entity types, relation kinds and where each type is stored come from the packs installed in the data dir (the built-in packs the app published to `host-packs/`, and the enabled packs in `packs/`); no pack code runs. A data dir the app has never started on has none, and is refused.
 
-#### `abuddy db query <code> | --file <path> [-o pretty|json|csv] [--out <file>] [--ignore-version]`
+#### `abuddy db query <code> | --file <path> [-o pretty|json|csv] [--out <file>]`
 
 Run query code with the Database console's read helpers: `qx`, `EARS`, `getAttr`, `getAttrs`, `getAll`, `getRoles`, `getAllEntities`, `getEntitiesOfType`, `findRelations`, `getRelationStats`, `getSchemaStats`, `queryEntitiesByAttribute`, `queryEntitiesByRelationTo`, `queryEntitiesInRelationTo`. The code is a function body, as in the console: `return` the result. `EARS.Entity` holds the installed packs' entity types.
 
@@ -262,21 +260,21 @@ Run transaction code with the console's read and write helpers (`tx`, `destroyEn
 abuddy db exec "tx('Note-123').put('title', 'Renamed')"
 ```
 
-#### `abuddy db repl [--write] [--ignore-version]`
+#### `abuddy db repl [--write]`
 
 Run console code a line at a time and print each result: query code, or with `--write` transaction code, whose changes are written on exit. `.exit` or Ctrl+D quits.
 
-#### `abuddy db inspect [<entity-id> | --type <Entity>] [--depth <n>] [--incoming] [--outgoing] [--ignore-version]`
+#### `abuddy db inspect [<entity-id> | --type <Entity>] [--depth <n>] [--incoming] [--outgoing]`
 
 Print an entity, its roles and its relations grouped by kind, following them `--depth` levels (default 1); `--incoming` or `--outgoing` shows one direction. `--type` prints the first five entities of a type. With neither, it prints entities and relations per entity type.
 
-#### `abuddy db export --out <dir> [--type <Entity>...] [--format json|csv] [--ignore-version]`
+#### `abuddy db export --out <dir> [--type <Entity>...] [--format json|csv]`
 
 Write each entity type's entities, with every attribute, to `<dir>/<Entity>.json` (or `.csv`), and a summary (data dir, data version, counts) to `<dir>/export.json`. Without `--type`, every type with entities. Roles are in each entity's `role` attribute, and relations are the `Relation` entities (their `relationDetails`).
 
 #### `abuddy db import <backup-dir> [--force]`
 
-Replace the database, and the media folder when the backup has one, with a backup made in the Database settings' Backup & Restore. The backup is checked first: it has `metadata.json`, lists only databases the app has (the primary one among them), each is there and opens, and its data is this AgentBuddy version's. Without `--force` it lists the backup, its contents and what it would replace, and changes nothing. The app migrates the data on its next start if the backup is from an earlier patch version.
+Replace the database, and the media folder when the backup has one, with a backup made in the Database settings' Backup & Restore. The backup is checked first: it has `metadata.json`, lists only databases the app has (the primary one among them), each is there, and the database opens. Without `--force` it lists the backup, its contents and what it would replace, and changes nothing. The app migrates the data on its next start if the backup is from an earlier version.
 
 #### `abuddy db reset [--force]`
 

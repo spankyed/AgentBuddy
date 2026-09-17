@@ -2,14 +2,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { EARS } from '@abuddy/ears';
-import { openTarget, parseDbArgs, READ_USAGE, TARGET_USAGE, type DbIo } from './target';
+import { openTarget, parseDbArgs, TARGET_USAGE, type DbIo } from './target';
 import { toCSV, toJSON } from './output';
 
 const OPTIONS = {
   type: { type: 'string', short: 't', multiple: true },
   out: { type: 'string' },
   format: { type: 'string', default: 'json' },
-  'ignore-version': { type: 'boolean', default: false },
 } as const;
 
 export const EXPORT_USAGE = [
@@ -23,7 +22,6 @@ export const EXPORT_USAGE = [
   '  --out <dir>            Where the files go (required)',
   '  -t, --type <Entity>    An entity type to export; repeat for more (default: every type with entities)',
   '  --format <format>      json (default) or csv',
-  READ_USAGE,
   TARGET_USAGE,
 ].join('\n');
 
@@ -34,7 +32,7 @@ export async function dbExport(args: string[], io: DbIo): Promise<void> {
   const format = values.format as string;
   if (format !== 'json' && format !== 'csv') throw new Error('--format must be json or csv');
 
-  const db = await openTarget(target, { write: false, ignoreVersion: values['ignore-version'] as boolean }, io);
+  const db = await openTarget(target, { write: false }, io);
   try {
     const known = db.schema.getRegisteredEntityTypes();
     const requested = values.type as string[] | undefined;
@@ -56,7 +54,6 @@ export async function dbExport(args: string[], io: DbIo): Promise<void> {
     const summary = {
       exportedAt: new Date().toISOString(),
       userDataDir: db.userDataDir,
-      dataVersion: db.dataVersion ?? null,
       format,
       counts,
     };

@@ -77,7 +77,7 @@ Database operations live in `packages/api/scripts/db` and run through `npm run d
      - hydrates exactly as the API boots;
      - returns `{ query, admin, close }`, where `close` flushes and reports a failed flush as an error, not a log line.
    - **The API and the CLI both use it,** so there is one hydration path.
-4. **Version check.**
+4. **Version check.** (dropped 2026-09-17: `abuddy db` runs queries against the files and reads each data dir's schema from its installed packs, so it checks no app version)
    - Opening a data dir compares the app version the data records with the version range the CLI supports (the CLI's own version, with its major.minor). A mismatch refuses, naming both versions.
    - `--ignore-version` exists only for read commands.
    - The CLI copy bundled inside the app always matches.

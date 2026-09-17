@@ -1,13 +1,12 @@
 // abuddy db inspect: an entity's relations, followed a few levels, or relation counts per entity type
 import type { EarsQuery, EARS } from '@abuddy/ears';
-import { openTarget, parseDbArgs, READ_USAGE, TARGET_USAGE, type DbIo } from './target';
+import { openTarget, parseDbArgs, TARGET_USAGE, type DbIo } from './target';
 
 const OPTIONS = {
   type: { type: 'string', short: 't' },
   depth: { type: 'string', default: '1' },
   incoming: { type: 'boolean', default: false },
   outgoing: { type: 'boolean', default: false },
-  'ignore-version': { type: 'boolean', default: false },
 } as const;
 
 export const INSPECT_USAGE = [
@@ -21,7 +20,6 @@ export const INSPECT_USAGE = [
   '  --depth <n>            Levels of relations to follow (default 1)',
   '  --incoming             Only relations pointing at the entity',
   '  --outgoing             Only relations from the entity (with neither, or both: both)',
-  READ_USAGE,
   TARGET_USAGE,
 ].join('\n');
 
@@ -103,7 +101,7 @@ export async function dbInspect(args: string[], io: DbIo): Promise<void> {
   const [incoming, outgoing] = [values.incoming as boolean, values.outgoing as boolean];
   const directions: Direction[] = incoming === outgoing ? ['outgoing', 'incoming'] : incoming ? ['incoming'] : ['outgoing'];
 
-  const db = await openTarget(target, { write: false, ignoreVersion: values['ignore-version'] as boolean }, io);
+  const db = await openTarget(target, { write: false }, io);
   try {
     if (entityId) {
       graphLines(db.query, entityId, { depth, directions }).forEach((line) => io.out(line));

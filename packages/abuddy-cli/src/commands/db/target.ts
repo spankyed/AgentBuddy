@@ -5,7 +5,6 @@ import { resolveAppContext, type AppContext, type AppEnv } from '@abuddy/sdk/env
 import { findRunningApp, openAppDatabase, type AppDatabase } from '@abuddy/host/database';
 import { EARS } from '@abuddy/sdk/types';
 import type { ConsoleScope } from '@abuddy/sdk/database-console';
-import { supportedAppVersion } from '../../app-version';
 
 /** Where a command's lines go: results on stdout, what it targets and warnings on stderr */
 export interface DbIo {
@@ -29,8 +28,6 @@ export const TARGET_USAGE = [
   '  -b, --beta             The beta app\'s data',
   '  --data-dir <path>      A data dir, a copy of the user\'s say (default: the production app\'s data)',
 ].join('\n');
-
-export const READ_USAGE = '  --ignore-version       Read data another AgentBuddy version wrote';
 
 export type DbTarget = Pick<AppContext, 'env' | 'userDataDir' | 'apiPortFile'>;
 
@@ -56,18 +53,14 @@ export function parseDbArgs<O extends NonNullable<ParseArgsConfig['options']>>(a
 export interface OpenOptions {
   /** The command changes the database: refused while an app runs on the data dir */
   write: boolean;
-  /** Skips the version check (reads only) */
-  ignoreVersion?: boolean;
 }
 
 /**
  * Opens the target's database offline, after printing which data dir it is. A command that writes is refused while
  * an app runs on the data dir, which holds the database in memory and would overwrite the change or lose it; a read
- * warns that it may miss what the app hasn't written yet. Data another AgentBuddy version (major.minor) migrated is
- * refused, reads with `ignoreVersion` excepted.
+ * warns that it may miss what the app hasn't written yet.
  */
-export async function openTarget(target: DbTarget, { write, ignoreVersion = false }: OpenOptions, io: DbIo): Promise<AppDatabase> {
-  if (write && ignoreVersion) throw new Error('--ignore-version is only for commands that read');
+export async function openTarget(target: DbTarget, { write }: OpenOptions, io: DbIo): Promise<AppDatabase> {
   io.err(`Database: ${target.userDataDir} (offline)`);
   const running = await findRunningApp(target);
   if (running && write) {
@@ -78,7 +71,6 @@ export async function openTarget(target: DbTarget, { write, ignoreVersion = fals
     env: target.env,
     userDataDir: target.userDataDir,
     readOnly: !write,
-    ...(!ignoreVersion && { supportedVersion: supportedAppVersion() }),
     log: () => {},
   });
 }

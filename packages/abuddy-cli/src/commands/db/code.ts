@@ -1,14 +1,13 @@
 // abuddy db query | exec: console code (the Database plugin's) run on the data dir's database
 import * as fs from 'node:fs';
 import { runQueryCode, runTransactionCode } from '@abuddy/sdk/database-console';
-import { consoleScope, openTarget, parseDbArgs, READ_USAGE, TARGET_USAGE, type DbIo } from './target';
+import { consoleScope, openTarget, parseDbArgs, TARGET_USAGE, type DbIo } from './target';
 import { outputFormat, writeResult } from './output';
 
 const OPTIONS = {
   file: { type: 'string', short: 'f' },
   output: { type: 'string', short: 'o' },
   out: { type: 'string' },
-  'ignore-version': { type: 'boolean', default: false },
 } as const;
 
 const usage = (command: 'query' | 'exec') => [
@@ -23,7 +22,6 @@ const usage = (command: 'query' | 'exec') => [
   '  -f, --file <path>      Read the code from a file',
   '  -o, --output <format>  pretty (default), json or csv',
   '  --out <file>           Write the result to a file',
-  ...(command === 'query' ? [READ_USAGE] : []),
   TARGET_USAGE,
 ].join('\n');
 
@@ -35,7 +33,7 @@ async function runCode(command: 'query' | 'exec', args: string[], io: DbIo): Pro
   if (!code.trim()) throw new Error(`No code to run\n\n${usage(command)}`);
 
   const write = command === 'exec';
-  const db = await openTarget(target, { write, ignoreVersion: values['ignore-version'] as boolean }, io);
+  const db = await openTarget(target, { write }, io);
   let result: unknown;
   try {
     result = write ? await runTransactionCode(code, consoleScope(db)) : await runQueryCode(code, consoleScope(db));
