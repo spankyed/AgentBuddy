@@ -58,6 +58,39 @@ describe('registerPack repositories', () => {
     expect(repository.noteQueries).toBe(noteQueries);
     expect(engine.admin.repositories()).toEqual({ noteQueries });
   });
+
+  it('removes them when the pack is unregistered', () => {
+    const engine = createEarsEngine({ isEntityType: () => false });
+    installEngine(engine.query);
+    registerPack({ id: 'repo-pack', systems: [], repositories: { noteQueries: {} } });
+
+    unregisterPack('repo-pack');
+
+    expect(engine.admin.repositories()).toEqual({});
+  });
+
+  it('rejects a repository name another pack registered, keeping that pack\'s', () => {
+    const engine = createEarsEngine({ isEntityType: () => false });
+    installEngine(engine.query);
+    const theirs = { name: 'theirs' };
+    registerPack({ id: 'first-pack', systems: [], repositories: { settingsQueries: theirs } });
+    registered.push('first-pack');
+
+    expect(() => registerPack({ id: 'second-pack', systems: [], repositories: { memoQueries: {}, settingsQueries: {} } }))
+      .toThrow('Repository collision: "settingsQueries" — pack "second-pack" vs "first-pack"');
+    expect(engine.admin.repositories()).toEqual({ settingsQueries: theirs });
+  });
+
+  it("removes a pack's repositories when a later part of its registration is refused", () => {
+    const engine = createEarsEngine({ isEntityType: () => false });
+    installEngine(engine.query);
+    registerPack({ id: 'first-pack', systems: [], commands: [{ name: 'standup', placeholder: 'Topic' }] } as unknown as PackRegistration);
+    registered.push('first-pack');
+
+    expect(() => registerPack({ id: 'second-pack', systems: [], repositories: { memoQueries: {} }, commands: [{ name: 'standup', placeholder: 'Theirs' }] } as unknown as PackRegistration))
+      .toThrow('Command collision');
+    expect(engine.admin.repositories()).toEqual({});
+  });
 });
 
 describe('registerPack designations', () => {

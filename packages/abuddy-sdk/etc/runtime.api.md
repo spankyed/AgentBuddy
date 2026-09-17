@@ -38,12 +38,6 @@ export function bindFeHost(runtime: FeHostRuntime): void;
 export function bindHost(runtime: HostRuntime): void;
 
 // @internal
-export function boundFeHost(): FeHostRuntime;
-
-// @internal
-export function boundHost(): HostRuntime;
-
-// @internal
 export function boundPackContributions(): PackContributionsView;
 
 export { EarsQuery }
@@ -145,12 +139,6 @@ export interface RootEvents {
 
 // @internal
 export const rootEvents: RootEvents;
-
-// @internal
-export function unbindFeHost(): void;
-
-// @internal
-export function unbindHost(): void;
 
 // (No @packageDocumentation comment for this package)
 

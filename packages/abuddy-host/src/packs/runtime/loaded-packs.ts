@@ -33,6 +33,11 @@ export interface LoadedPack {
 let _loadedPacks: LoadedPack[] = [];
 let _builtInPacks: BuiltInPackInfo[] = [];
 
+/** The loaded external packs */
+export function getLoadedPacks(): LoadedPack[] {
+  return _loadedPacks;
+}
+
 export function setLoadedPacks(packs: LoadedPack[]) {
   _loadedPacks = packs;
 }

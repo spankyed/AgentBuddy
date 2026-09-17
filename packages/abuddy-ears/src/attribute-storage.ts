@@ -23,8 +23,11 @@ export function createAttributeStorage({ relations, persistence }: { relations: 
   const store       = new Map<EARS.AttrKind, Map<EARS.EntityId, EARS.AttributeValue[]>>();
   const entityIndex = new Map<EARS.Entity, Set<EARS.EntityId>>();
   const relationIndex = relations.index;
+  // Counts the writes that take entities out of the engine, so a query kept across them knows to check its ids
+  let removals = 0;
 
   function clear() {
+    removals++;
     store.clear();
     entityIndex.clear();
     relations.clear();
@@ -280,6 +283,7 @@ export function createAttributeStorage({ relations, persistence }: { relations: 
   };
 
   function destroyEntity(id: EARS.EntityId, skipPersistence = false) {
+    removals++;
     for (const k of Object.keys(relationIndex)) {
       const { bySource, byTarget } = relationIndex[k];
       const relIds = [...(bySource[id] ?? []), ...(byTarget[id] ?? [])];
@@ -334,7 +338,7 @@ export function createAttributeStorage({ relations, persistence }: { relations: 
     clear, bulkLoadAttr,
     putAttr: put, addAttr: add, mergeAttr: merge, dropAttr: drop, dropIf, updateAttr: put,
     grantRole, revokeRole, addRelation, updateRelation, removeRelationById,
-    getAttr, getAttrs, getRoles, getAll, getAllEntities, getEntitiesOfType, hasEntity,
+    getAttr, getAttrs, getRoles, getAll, getAllEntities, getEntitiesOfType, hasEntity, removals: () => removals,
     queryEntitiesByRole, queryEntitiesByAttribute, queryEntitiesInRelationTo, queryEntitiesByRelationTo,
     destroyEntity, getAllAttributeKinds, getAllRelationKinds, getAllEntityTypes, getAttributeStats, getSchemaStats,
   };
@@ -397,6 +401,7 @@ export function getSchemaStats() {
   return installedEngine().getSchemaStats();
 }
 
+/** Whether `value` names an entity type the installed engine knows (`isEntityType`) */
 export function isEntity(value: unknown): value is EARS.Entity {
-  return (Object.values(EARS.Entity) as string[]).includes(value as string);
+  return typeof value === 'string' && installedEngine().isEntityType(value);
 }

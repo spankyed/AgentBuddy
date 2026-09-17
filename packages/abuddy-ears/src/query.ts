@@ -32,7 +32,7 @@ export type QxSeed =
 /** An engine's untyped query entry point, over its storage and relation index */
 export function createQx({ storage, relations, isEntityType }: { storage: AttributeStorage; relations: RelationIndexStore; isEntityType: (name: string) => boolean }): typeof qx {
   const {
-    getAllEntities, getEntitiesOfType, hasEntity, getAttr, getAttrs, getRoles,
+    getAllEntities, getEntitiesOfType, hasEntity, removals, getAttr, getAttrs, getRoles,
     queryEntitiesInRelationTo, queryEntitiesByRelationTo, getAll,
   } = storage;
   const relationIndex = relations.index;
@@ -50,9 +50,10 @@ export function createQx({ storage, relations, isEntityType }: { storage: Attrib
     return fn;
   };
 
-  // A seed from the caller is checked against the engine; `known` ids (a chained step's result, already the
-  // engine's) are taken as they are
+  // A seed from the caller is resolved against the engine; `known` ids (a chained step's result) were
+  // checked against it when the step ran
   const qxImpl = (seed?: QxSeed, known?: EARS.EntityId[]) => {
+    const resolvedAt = removals();
     const resolveSeed = (): EARS.EntityId[] => {
       if (seed === undefined) return [...getAllEntities()];
       if (Array.isArray(seed)) {
@@ -69,7 +70,9 @@ export function createQx({ storage, relations, isEntityType }: { storage: Attrib
 
     const ids: EARS.EntityId[] = known ?? resolveSeed();
 
-    const setIds = (next: EARS.EntityId[]) => qxImpl(undefined, next);
+    // A builder may be kept across writes: a step after an entity left the engine drops the ids no longer in it
+    const setIds = (next: EARS.EntityId[]) =>
+      qxImpl(undefined, removals() === resolvedAt ? next : next.filter(hasEntity));
 
     const self = {
       ofType: (t: EARS.Entity) => setIds(ids.filter(hasPrefix(t))),
@@ -116,8 +119,8 @@ export function createQx({ storage, relations, isEntityType }: { storage: Attrib
               if (i !== src) out.add(i);
             });
         }
-        // A relation's target may be gone from the engine
-        return setIds([...out].filter(hasEntity));
+        // A relation's target may not be in the engine
+        return qxImpl(undefined, [...out].filter(hasEntity));
       },
 
       links: <K extends string>(

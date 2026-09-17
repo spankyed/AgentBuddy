@@ -10,7 +10,7 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-host-data-services-')
 process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/setup/backend');
-const { store, engine } = openAppStore();
+const { store, engine, packs } = openAppStore();
 const { defineEars, findRelations, getRelationStats, installedEngine, untypedQx, tx } = await import('@abuddy/ears');
 const { services } = await import('@abuddy/sdk/services');
 const { createEntity } = defineEars();
@@ -117,6 +117,29 @@ describe('services.appData', () => {
 
     expect(await services.appData.backupInfo(backup)).toMatchObject({ databases: ['volatileLmdb'] });
     expect(await services.appData.importBackup(backup)).toEqual({ databases: ['volatileLmdb'] });
+  });
+
+  it("moves the app's state out of the settings of a backup from before AppState", async () => {
+    const { appState } = await import('@abuddy/host/app-state');
+    const { getAppVersion } = await import('@abuddy/sdk/env');
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-old-backup-'));
+    dirs.push(dir);
+    // The built-in pack's settings, as 0.3.14 stored them: the app's state in `internal`, and no AppState
+    packs.registerPack({ id: 'settings-pack', systems: [], ears: { entities: { Settings: 'Settings' }, relKinds: {} } });
+    engine.admin.clear();
+    tx('Settings-app' as never, true).put('entityType', 'Settings').put('data', { internal: { hasOnboarded: true, version: '0.3.14' } });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const backup = await services.appData.exportBackup(dir, 'old', ['lmdb']);
+    expect(appState.exists()).toBe(false);
+
+    try {
+      await services.appData.importBackup(backup);
+
+      expect(services.appData.hasOnboarded()).toBe(true);
+      expect(appState.get().version).toBe(getAppVersion());
+    } finally {
+      packs.unregisterPack('settings-pack');
+    }
   });
 
   it('rejects an import of a directory that is not a backup', async () => {

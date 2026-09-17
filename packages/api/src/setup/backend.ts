@@ -2,7 +2,7 @@ import { createActor } from 'xstate';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { bindHost } from '@abuddy/sdk/runtime';
 import { bus } from '@abuddy/sdk/ids';
-import { getLmdbPath, getVolatileLmdbPath, seedData } from '@abuddy/sdk/utils';
+import { getLmdbPath, getVolatileLmdbPath } from '@abuddy/sdk/utils';
 import { createEarsEngine, type EarsEngine } from '@abuddy/ears';
 import { openLmdbStore, type LmdbStore } from '@abuddy/ears/lmdb';
 import { createPackRegistry, publishHostPackArtifacts, prepareHostDataDirs, type PackRegistry } from '@abuddy/host/packs';
@@ -12,14 +12,11 @@ import {
   createPacksSystem, packsEvents, setBuiltInPacks,
   loadBuiltInPacks, getBuiltInPackInfos,
   loadExternalPacks, registerExternalPacks,
-  orchestrateDeclarativeSeed, seedPackData,
-  setLoadedPacks, setBuiltInPacksForRegistry,
+  startPacks, setLoadedPacks, setBuiltInPacksForRegistry,
 } from '@abuddy/host/packs/runtime';
 import { createAppBus } from '@abuddy/host/bus';
 import { createHostRuntime } from '@abuddy/host/services';
-import { runAppMigrations, runPackMigrations } from '@abuddy/host/migrations';
 import { forwardSecretsChanges } from '@abuddy/host/secrets';
-import { appState } from '@abuddy/host/app-state';
 import { assertSourceResolution } from '@abuddy/host/build/source-resolution';
 import { rootEvents } from '@/core/router/bus-emitter';
 import { initializeLogCapture, printLogEvents } from '@/core/shared/debug/log-capture';
@@ -159,32 +156,9 @@ export async function setupBackend(): Promise<void> {
   // ── Hydrate (policy now sees all entity types from all packs)
   await store.hydrate({ skipTombstoneScan: true });
 
-  // ── Initialize ALL packs (built-in + external)
-  for (const hooks of packs.getBootHooks()) {
-    hooks.onInit?.();
-  }
-
-  // ── App migrations (the host's, then the built-in packs') ───────────
-  runAppMigrations(packs);
-
-  // ── Per-pack migrations ─────────────────────────────────────────────
-  if (externalPacks.length > 0) {
-    runPackMigrations(externalPacks);
-  }
-
-  // ── Seeds ───────────────────────────────────────────────────────────
-  packs.runRegisteredBootSeeds(orchestrateDeclarativeSeed);
-
-  if (externalPacks.length > 0) {
-    seedPackData(
-      externalPacks,
-      seedData,
-      appState.getPackSeedHashes,
-      appState.setPackSeedHashes,
-      { cleanupStaleHashes: true },
-    );
-    setLoadedPacks(externalPacks);
-  }
+  // ── Start the packs: each one's onInit, the migrations (the app's, then external packs'), the seeds
+  startPacks(packs, externalPacks);
+  if (externalPacks.length > 0) setLoadedPacks(externalPacks);
 
   // ── Start backend actor ──────────────────────────────────────────────
   backendActor = createActor(createAppBus(packs), {

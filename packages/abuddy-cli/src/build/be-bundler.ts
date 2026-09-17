@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { SHARED_DEPS, sharedInstanceExternals } from '@abuddy/host/build/shared-deps';
+import { APP_ONLY_EXPORTS, SHARED_DEPS, sharedInstanceExternals } from '@abuddy/host/build/shared-deps';
 import { SEED_COMPILERS_FILE } from '@abuddy/sdk/build';
 import { checkSeedRuntimeLoads } from './seed-runtime-check';
 
@@ -205,16 +205,24 @@ export async function bundlePackSeedRuntime(
   return checkSeedRuntimeLoads(packDir, outfile);
 }
 
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+
 /**
- * Fails the bundle when pack code imports @abuddy/host, the app's private package: installed
- * AgentBuddy doesn't provide it to packs, so it would only fail later, at load. Packs use @abuddy/sdk.
+ * Fails the bundle when pack code imports @abuddy/host, the app's private package, or an export only the
+ * app loads (`APP_ONLY_EXPORTS`, the LMDB store): installed AgentBuddy doesn't provide them to packs, so
+ * they would only fail later, at load. Packs use @abuddy/sdk.
  */
 export function rejectHostImportsPlugin(): import('esbuild').Plugin {
+  const appOnly = new RegExp(`^(?:${Object.keys(APP_ONLY_EXPORTS).map(escapeRegExp).join('|')})$`);
   return {
     name: 'reject-host-imports',
     setup(build) {
+      const importedFrom = (importer: string) => path.relative(process.cwd(), importer) || importer;
       build.onResolve({ filter: /^@abuddy\/host(?:\/|$)/ }, (args) => ({
-        errors: [{ text: `${args.path} is the app's private host package; packs import @abuddy/sdk instead (imported from ${path.relative(process.cwd(), args.importer) || args.importer})` }],
+        errors: [{ text: `${args.path} is the app's private host package; packs import @abuddy/sdk instead (imported from ${importedFrom(args.importer)})` }],
+      }));
+      build.onResolve({ filter: appOnly }, (args) => ({
+        errors: [{ text: `${args.path} is only for the app (${APP_ONLY_EXPORTS[args.path]}); packs can't import it (imported from ${importedFrom(args.importer)})` }],
       }));
     },
   };

@@ -3,7 +3,7 @@
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
 import {
-  SHARED_INSTANCE_PACKAGES, getSharedBeDeps, sharedInstanceExports, sharedInstanceSpecifiers,
+  APP_ONLY_EXPORTS, SHARED_INSTANCE_PACKAGES, getSharedBeDeps, sharedInstanceExports, sharedInstanceSpecifiers,
 } from '@abuddy/host/build/shared-deps';
 import { withModuleBridge } from '@abuddy/host/packs';
 import type { PackRegistration } from '@abuddy/sdk/framework';
@@ -49,7 +49,7 @@ export async function loadDependencyRuntime(packDir: string, depId: string, runt
   shared ??= sharedModules(packDir);
   const modules = await shared;
   const require = createRequire(runtimeEntry);
-  const mod = withModuleBridge({ modules, stubMissing: true, resolveFrom: runtimeEntry },() => require(runtimeEntry)) as {
+  const mod = withModuleBridge({ modules, stubMissing: true, resolveFrom: runtimeEntry, appOnly: APP_ONLY_EXPORTS }, () => require(runtimeEntry)) as {
     registration?: PackRegistration;
     setCompiledDir?(dir: string): void;
   };

@@ -17,6 +17,8 @@ export interface ModuleBridgeOptions {
   stubMissing?: boolean;
   /** Packages only the bridge provides: a module of one that `modules` lacks throws, rather than loading another copy */
   bridgedPackages?: readonly string[];
+  /** Specifiers only the app loads, with what each is: requiring one throws */
+  appOnly?: Readonly<Record<string, string>>;
 }
 
 type ModuleInternals = typeof Module & {
@@ -71,6 +73,9 @@ export function withModuleBridge<T>(options: ModuleBridgeOptions, fn: () => T): 
 
   moduleInternals._resolveFilename = function resolve(this: unknown, request: string, parent: unknown, ...rest: unknown[]) {
     if (request in options.modules) return `${BRIDGE_PREFIX}${request}`;
+    if (options.appOnly && Object.prototype.hasOwnProperty.call(options.appOnly, request)) {
+      throw new Error(`${request} is only for the app (${options.appOnly[request]}); pack code can't import it`);
+    }
     if (options.bridgedPackages?.some(pkg => request === pkg || request.startsWith(`${pkg}/`))) {
       throw new Error(`${request} isn't provided by this AgentBuddy: rebuild the pack with the current @abuddy/cli`);
     }

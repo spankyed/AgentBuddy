@@ -216,7 +216,7 @@ export interface StepFEFacet {
   nodeConfig: StepNodeConfig;
   colorKey?: string;
   defaults?: Record<string, unknown>;
-  /** Vue component refs — populated by initComponents() from loadComponents factory. */
+  /** Vue component refs: the renderer's pack store (`@abuddy/host/fe`) fills them from `loadComponents` when the pack registers. */
   components?: { node?: unknown; form?: unknown };
   /** Lazy factory that returns Vue components. Runs in FE context only. */
   loadComponents?: () => { node?: unknown; form?: unknown };

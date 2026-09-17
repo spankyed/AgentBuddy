@@ -12,6 +12,10 @@ export function createRepositoryRegistry() {
     entries[name] = value;
   }
 
+  function unregisterRepository(name: string): void {
+    delete entries[name];
+  }
+
   const repository: Record<string, unknown> = new Proxy({} as Record<string, unknown>, {
     get(_, prop) {
       if (typeof prop === 'symbol') return undefined;
@@ -21,12 +25,17 @@ export function createRepositoryRegistry() {
     },
   });
 
-  return { repository, registerRepository, entries: () => ({ ...entries }) };
+  return { repository, registerRepository, unregisterRepository, entries: () => ({ ...entries }) };
 }
 
 /** Registers a repository under a name. Packs declare theirs in abuddy.json (`features[].repositories`). */
 export function registerRepository(name: string, value: unknown): void {
   installedEngine().registerRepository(name, value);
+}
+
+/** Removes a registered repository (its pack stopped) */
+export function unregisterRepository(name: string): void {
+  installedEngine().unregisterRepository(name);
 }
 
 /**

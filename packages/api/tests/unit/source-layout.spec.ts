@@ -29,7 +29,7 @@ const ALLOWED = [
   'core/shared/debug/log-capture.ts',
 ];
 
-/** Code and docs: from source, Electron main keeps media files under src/core/persistence/data (gitignored) */
+/** Code and docs; anything else under src is left alone */
 const SOURCE_FILE = /\.(ts|tsx|mts|cts|js|mjs|cjs|vue|json|md)$/;
 
 function sourceFiles(dir: string): string[] {

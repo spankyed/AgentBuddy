@@ -16,7 +16,7 @@ export {
   getRoles, grantRole, revokeRole,
 } from './attribute-storage.ts';
 export {
-  repository, registerRepository, type Repository,
+  repository, registerRepository, unregisterRepository, type Repository,
   hasIdCollision,
   exists,
   repoCreateRelation as createRelation,

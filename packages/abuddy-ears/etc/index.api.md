@@ -325,6 +325,8 @@ export interface EarsQuery {
     topoSort(roots: EARS.EntityId[], kind: EARS.RelKind, filterType?: EARS.Entity): EARS.EntityId[];
     tx: typeof tx;
     // (undocumented)
+    unregisterRepository(name: string): void;
+    // (undocumented)
     updateEntity(id: EARS.EntityId, updates: Record<string, unknown>, skipTimestamp?: boolean): void;
     // (undocumented)
     wouldCreateCycle(src: EARS.EntityId, tgt: EARS.EntityId, kinds: readonly EARS.RelKind[]): boolean;
@@ -439,7 +441,7 @@ export function installedEngine(): EarsQuery;
 // @public
 export function installEngine(engine: EarsQuery | undefined): EarsQuery | undefined;
 
-// @public (undocumented)
+// @public
 export function isEntity(value: unknown): value is EARS.Entity;
 
 // @public
@@ -920,6 +922,9 @@ export interface TypedUpdateEntity<S extends EntityShapes> {
         [K in keyof ShapeOf<S, E>]?: ShapeOf<S, E>[K] | null;
     }, skipTimestamp?: boolean): void;
 }
+
+// @public
+export function unregisterRepository(name: string): void;
 
 // @public
 export function untypedQx(): QueryBuilder<string>;

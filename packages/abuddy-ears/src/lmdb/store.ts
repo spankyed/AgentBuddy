@@ -77,11 +77,20 @@ export function openLmdbStore({ paths, policy, engine }: LmdbStoreOptions): Lmdb
     envs = null;
     current = null;
     if (!closingEnvs) return;
+    const warn = (error: unknown) => {
+      if (!ignoresClosed(error)) console.warn('[Persistence] Non-critical close error:', (error as Error).message);
+    };
+    // The environments close even if the final flush throws
     try {
       closingSink?.close?.();
-      closeShardedEnvs(closingEnvs);
     } catch (error) {
-      if (!ignoresClosed(error)) console.warn('[Persistence] Non-critical close error:', (error as Error).message);
+      warn(error);
+    } finally {
+      try {
+        closeShardedEnvs(closingEnvs);
+      } catch (error) {
+        warn(error);
+      }
     }
   }
 

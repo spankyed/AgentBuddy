@@ -13,7 +13,7 @@ import type { HostServices } from '@abuddy/sdk/services';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS } from '@abuddy/sdk/types';
-import { makePolicy, registerRepository, type PartitionPolicy } from '@abuddy/ears';
+import { makePolicy, registerRepository, unregisterRepository, type PartitionPolicy } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { createDefinitionStore, createDesignationStore, createStepStore } from './contributions.ts';
 import { createCommandStore, createSeedHookStore, createSeederStore, createSettingsDefaultsStore, createShutdownHooks } from './backend-contributions.ts';
@@ -218,13 +218,22 @@ export function createPackRegistry(): PackRegistry {
       }
     }
 
+    for (const [existingId, existing] of registrations) {
+      const name = Object.keys(registration.repositories ?? {}).find((n) => n in (existing.repositories ?? {}));
+      if (name) throw new Error(`Repository collision: "${name}" — pack "${registration.id}" vs "${existingId}"`);
+    }
+
+    const registeredRepositories: string[] = [];
     const registeredSteps: string[] = [];
     const registeredArtifacts: string[] = [];
     const registeredBlocks: string[] = [];
 
     try {
       // Into the installed engine (the app's), before anything that may use them
-      for (const [name, repo] of Object.entries(registration.repositories ?? {})) registerRepository(name, repo);
+      for (const [name, repo] of Object.entries(registration.repositories ?? {})) {
+        registerRepository(name, repo);
+        registeredRepositories.push(name);
+      }
 
       for (const step of registration.steps ?? []) {
         steps.register(step);
@@ -252,6 +261,7 @@ export function createPackRegistry(): PackRegistry {
       for (const type of registeredSteps) steps.unregister(type);
       for (const type of registeredArtifacts) artifacts.unregister(type);
       for (const type of registeredBlocks) blocks.unregister(type);
+      for (const name of registeredRepositories) unregisterRepository(name);
       throw err;
     }
 
@@ -267,6 +277,7 @@ export function createPackRegistry(): PackRegistry {
     for (const step of reg.steps ?? []) steps.unregister(step.type);
     for (const art of reg.artifacts ?? []) artifacts.unregister(art.type);
     for (const block of reg.blocks ?? []) blocks.unregister(block.type);
+    for (const name of Object.keys(reg.repositories ?? {})) unregisterRepository(name);
     seedHooks.unregisterAll(packId);
     seeders.unregister(packId);
     settingsDefaults.unregister(packId);

@@ -44,6 +44,21 @@ describe('flowRepository', () => {
     expect(flowRepository.flowEdges(flowId)).toEqual([expect.objectContaining({ kind: EARS.RelKind.TRANSITIONS_TO, target: actionNode.id })]);
   });
 
+  it('changes a node\'s related action only when the update names it', () => {
+    const action = actionRepository.create({ label: 'Greet', actionFn: 'return 1' });
+    const other = actionRepository.create({ label: 'Wave', actionFn: 'return 2' });
+    const actionNode = flowRepository.flowNodes(importRootFlow(action.id)).find((node) => node.nodeType === 'action')!;
+
+    flowRepository.updateNode(actionNode.id, { label: 'Renamed' });
+    expect(flowRepository.getNodeActionId(actionNode.id)).toBe(action.id);
+
+    flowRepository.updateNode(actionNode.id, { actionId: other.id });
+    expect(flowRepository.getNodeActionId(actionNode.id)).toBe(other.id);
+
+    flowRepository.updateNode(actionNode.id, { actionId: undefined });
+    expect(flowRepository.getNodeActionId(actionNode.id)).toBeUndefined();
+  });
+
   it('keeps the root flow unless deleting it is allowed, then removes its nodes and relations', () => {
     const flowId = importRootFlow(actionRepository.create({ label: 'Greet', actionFn: 'return 1' }).id);
     const nodeIds = flowRepository.flowNodes(flowId).map((node) => node.id);

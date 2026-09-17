@@ -134,15 +134,28 @@ export function makeShardedPersistence(
     },
 
     onUpdateRelation(relId: string, patch: { src?: string; tgt?: string; info?: unknown }) {
-      // Get current metadata
-      const prev = relMeta.get(relId) ?? getRelationMeta(relId);
+      const prev = relMeta.get(relId);
 
       if (!prev) {
-        console.warn('[Sharded] onUpdateRelation called with unknown relId:', relId);
-        // Best effort: try all partitions
-        for (const sink of Object.values(sinks)) {
-          sink.onUpdateRelation(relId, patch);
+        // Not seen by this sink (a reopened store's, say). The engine has already applied the update, so its
+        // details are the relation's new ends, and the partition it was in is unknown: write it to its new
+        // partition and remove it from the others
+        const current = getRelationMeta(relId);
+        if (!current) {
+          console.warn('[Sharded] onUpdateRelation called with unknown relId:', relId);
+          // Best effort: try all partitions
+          for (const sink of Object.values(sinks)) {
+            sink.onUpdateRelation(relId, patch);
+          }
+          return;
         }
+        const p = computePartitionFor(relId, current)!;
+        for (const [partition, sink] of Object.entries(sinks)) {
+          if (partition !== p) sink.onRemoveRelation(relId);
+        }
+        sinks[p].onAddRelation(relId, current.kind, current.src, current.tgt, relationDetails(relId as EARS.EntityId)?.info);
+        relMeta.set(relId, current);
+        relationPartitions.set(relId, p);
         return;
       }
 

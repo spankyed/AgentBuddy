@@ -5,8 +5,9 @@ import type { LmdbStore } from '@abuddy/ears/lmdb';
 import { exportDatabase, getBackupInfo, importDatabase } from '../backup/index.ts';
 import { secretsStore } from '../secrets/index.ts';
 import type { PackRegistry } from '../packs/pack-registration.ts';
-import { orchestrateDeclarativeSeed } from '../packs/runtime/seed.ts';
-import { runAppMigrations } from '../migrations/index.ts';
+import { getLoadedPacks } from '../packs/runtime/loaded-packs.ts';
+import { startPacks } from '../packs/runtime/start.ts';
+import { runAppMigrations, runPackMigrations } from '../migrations/index.ts';
 import { appState } from '../app-state/index.ts';
 
 export function createAppData(store: LmdbStore, engine: EarsAdmin, registry: PackRegistry): AppDataService {
@@ -16,15 +17,15 @@ export function createAppData(store: LmdbStore, engine: EarsAdmin, registry: Pac
   }
 
   return {
-    // The app as a fresh boot leaves it: empty stores, then each pack's onInit and boot seed, then the migrations
+    // The app as a fresh boot leaves it: the packs stop as when the app exits, the stores empty, then the packs
+    // start as a boot starts them (onInit, migrations, seeds). Their systems keep running.
     async reset() {
+      registry.runShutdownHooks();
       engine.clear();
       await store.reset();
       // Stored API keys go too, with their data keys; after the database reopens, since the settings system hears of it
       secretsStore.clearAll();
-      for (const hooks of registry.getBootHooks()) hooks.onInit?.();
-      registry.runRegisteredBootSeeds(orchestrateDeclarativeSeed);
-      runAppMigrations(registry);
+      startPacks(registry, getLoadedPacks());
     },
     hasOnboarded: () => appState.get().hasOnboarded,
     completeOnboarding: () => appState.update({ hasOnboarded: true }),
@@ -34,6 +35,10 @@ export function createAppData(store: LmdbStore, engine: EarsAdmin, registry: Pac
         const result = await importDatabase(store, backupPath);
         const databases = result.databases as BackupDatabase[];
         await reloadMemory(databases.includes('volatileLmdb'));
+        // A backup from an earlier version is migrated now, not at the next boot (one from before AppState keeps
+        // the app's state in its settings)
+        runAppMigrations(registry);
+        runPackMigrations(registry, getLoadedPacks());
         return { databases };
       } catch (error) {
         // importDatabase has put the previous files back; reload them

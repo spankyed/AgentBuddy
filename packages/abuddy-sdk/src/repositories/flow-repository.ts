@@ -57,10 +57,10 @@ function validateNode(node: FlowNode): void {
 /** The field a step names its related entity by (`actionId`), from its build facet */
 const relationField = (nodeType: string): string | undefined => stepRegistry.getBuild(nodeType)?.relation?.field;
 
-/** A node's input split into its related entity's id and its own fields */
+/** A node's input split into its related entity's id (when the input names one) and its own fields */
 function splitRelation(nodeType: string, input: FlowNodeInput): { related: Record<string, unknown>; fields: FlowNodeInput } {
   const field = relationField(nodeType);
-  if (!field) return { related: {}, fields: input };
+  if (!field || !(field in input)) return { related: {}, fields: input };
   const { [field]: relatedId, ...fields } = input;
   return { related: { [field]: relatedId }, fields };
 }

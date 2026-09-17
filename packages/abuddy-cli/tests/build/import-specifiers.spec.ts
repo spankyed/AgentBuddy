@@ -111,6 +111,7 @@ describe('findRawPackHelpers', () => {
     ["import onConnected, { sendToSystem } from '@abuddy/sdk/events';", 'sendToSystem from @abuddy/sdk/events'],
     ["import { sendToPlugin, services } from '@abuddy/sdk/services';", 'sendToPlugin from @abuddy/sdk/services'],
     ["import { registerRepository, tx } from '@abuddy/ears';", 'registerRepository from @abuddy/ears'],
+    ["import { unregisterRepository } from '@abuddy/ears';", 'unregisterRepository from @abuddy/ears'],
     ["export type { emit } from '@abuddy/sdk/events';", 'emit from @abuddy/sdk/events'],
     ["import * as events from '@abuddy/sdk/events';", '* from @abuddy/sdk/events (import the names)'],
     ["export * from '@abuddy/sdk/events';", '* from @abuddy/sdk/events (import the names)'],

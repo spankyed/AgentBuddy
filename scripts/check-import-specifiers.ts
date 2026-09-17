@@ -170,7 +170,7 @@ function findInFiles(files: string[], root: string, rule: Rule): string[] {
 /** Sends packs get typed from #generated/events, whichever SDK module exports them untyped */
 const EVENT_SENDS = ['emit', 'sendToPlugin', 'sendToSystem'];
 
-/** Imports and re-exports of the untyped sends (and the engine's registerRepository), or all of @abuddy/sdk/events */
+/** Imports and re-exports of the untyped sends (and the engine's registerRepository and unregisterRepository), or all of @abuddy/sdk/events */
 const rawPackHelper: Rule = (node) => {
   if (!ts.isImportDeclaration(node) && !ts.isExportDeclaration(node)) return;
   const module = moduleOf(node);
@@ -181,7 +181,7 @@ const rawPackHelper: Rule = (node) => {
     const namespace = bindings !== undefined || ts.isExportDeclaration(node);
     return namespace && module === '@abuddy/sdk/events' ? ['* from @abuddy/sdk/events (import the names)'] : undefined;
   }
-  const raw = module === '@abuddy/ears' ? [...EVENT_SENDS, 'registerRepository'] : EVENT_SENDS;
+  const raw = module === '@abuddy/ears' ? [...EVENT_SENDS, 'registerRepository', 'unregisterRepository'] : EVENT_SENDS;
   return bindings.elements.map((el) => (el.propertyName ?? el.name).text).filter((name) => raw.includes(name))
     .map((name) => `${name} from ${module}`);
 };

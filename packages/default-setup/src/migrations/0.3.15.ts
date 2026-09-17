@@ -12,7 +12,7 @@ export const migration: PackMigration = {
   description: "Drop the app's state from the settings, mark rows seeded before the seeder tracked what it wrote as unedited, and keep action logs hidden for whoever hid log-service",
   up: () => {
     // ── The app's state (onboarding, versions, seed hashes) is the host's AppState now ──
-    // The host's own 0.3.15 migration, which runs before this one, moved it out of `internal`.
+    // The host moved it out of `internal` before any migration ran (it runs none when that fails).
     repository.settingsCommands.removeStored(['internal']);
 
     // ── Rows seeded before the seeder recorded the values it wrote ──

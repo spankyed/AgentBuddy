@@ -15,7 +15,7 @@ const { bindRendererHost, fePacks } = await import('@/core/fe-host');
 const { secretsClient, navigateToPlugin, getDslTypes, getDesignated, tiptapPluginRegistry } = await import('@abuddy/sdk/fe');
 const { stepRegistry } = await import('@abuddy/sdk/steps');
 const { sendToSystem } = await import('@abuddy/sdk/events');
-const { unbindFeHost } = await import('@abuddy/sdk/runtime');
+const { unbindFeHost } = await import('@abuddy/sdk/runtime/internals');
 
 const application = {
   getSnapshot: () => ({ context: { activePlugin: { id: 'notes' }, defaultToggles: { canvas: false } } }),
@@ -50,7 +50,7 @@ it("gives the SDK's frontend lookups the window's registered pack frontends, and
     dslTypes: { memo: memoDsl },
   }, 'fe-host-pack');
   try {
-    bindRendererHost(application as never);
+    bindRendererHost(() => application as never);
     expect(getDslTypes().get('memo')).toBe(memoDsl);
     expect(tiptapPluginRegistry.getAll()).toEqual([mentions]);
     expect(stepRegistry.get('note')).toBe(note);
@@ -61,8 +61,17 @@ it("gives the SDK's frontend lookups the window's registered pack frontends, and
   expect(getDslTypes().has('memo')).toBe(false);
 });
 
+it('binds before the application actor exists, naming it when SDK code reaches the actor too early', () => {
+  let created: typeof application | undefined;
+  bindRendererHost(() => created as never);
+  expect(() => navigateToPlugin('settings')).toThrow("The application actor isn't created yet");
+  created = application;
+  navigateToPlugin('settings');
+  expect(application.send).toHaveBeenCalledWith({ type: 'SELECT_PLUGIN', pluginId: 'settings' });
+});
+
 it('gives secretsClient the API client and navigateToPlugin the application actor', async () => {
-  bindRendererHost(application as never);
+  bindRendererHost(() => application as never);
   await expect(secretsClient.list()).resolves.toMatchObject({ secrets: [] });
   expect(secretsList).toHaveBeenCalledTimes(1);
   navigateToPlugin('settings');
@@ -70,7 +79,7 @@ it('gives secretsClient the API client and navigateToPlugin the application acto
 });
 
 it("sends to systems over the API client, reporting a rejected send to the console, the app's log and a toast, without an unhandled rejection or the payload", async () => {
-  bindRendererHost(application as never);
+  bindRendererHost(() => application as never);
   process.on('unhandledRejection', unhandled);
   const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {});
   mutate.mockRejectedValue(new Error('socket closed'));

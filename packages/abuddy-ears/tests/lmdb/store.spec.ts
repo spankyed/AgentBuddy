@@ -88,16 +88,73 @@ describe('openLmdbStore', () => {
     expect(getAttr(id('Note-1'), 'title')).toBe('gone');
   });
 
-  it("routes a relation it didn't see written by the engine's details", async () => {
+  it("removes a relation it didn't see written, wherever it is", async () => {
     const store = openStore();
     tx(id('Note-1'), true).put('title', 'a');
     const rel = engine.admin.addRelation(id('Note-1'), 'mentions', id('Trace-1'));
     await flushed();
     expect(store.envs.volatileBackup.relations.get(rel)).toMatchObject({ kind: 'mentions', src: 'Note-1', tgt: 'Trace-1' });
-    // A reopened store's sink has no relation cache: removing the relation reads its ends from the engine
+    // A reopened store's sink has no relation cache
     store.reopen();
     engine.query.removeRelationById(rel);
     await flushed();
     expect(store.envs.volatileBackup.relations.get(rel)).toBeUndefined();
+  });
+
+  it("moves a relation it didn't see written to its new ends' partition, by the engine's details", async () => {
+    const store = openStore();
+    tx(id('Note-1'), true).put('title', 'a');
+    tx(id('Note-2'), true).put('title', 'b');
+    tx(id('Trace-1'), true).put('step', 's');
+    const rel = engine.admin.addRelation(id('Note-1'), 'mentions', id('Note-2'), { why: 'x' });
+    await flushed();
+    expect(store.envs.primary.relations.get(rel)).toMatchObject({ src: 'Note-1', tgt: 'Note-2' });
+
+    store.reopen();
+    engine.admin.updateRelation(rel, undefined, id('Trace-1'));
+    await flushed();
+    expect(store.envs.primary.relations.get(rel)).toBeUndefined();
+    expect(store.envs.volatileBackup.relations.get(rel)).toMatchObject({ kind: 'mentions', src: 'Note-1', tgt: 'Trace-1', info: { why: 'x' } });
+  });
+
+  it("updates a relation it didn't see written in place when its partition doesn't change", async () => {
+    const store = openStore();
+    tx(id('Note-1'), true).put('title', 'a');
+    tx(id('Note-2'), true).put('title', 'b');
+    tx(id('Note-3'), true).put('title', 'c');
+    const rel = engine.admin.addRelation(id('Note-1'), 'mentions', id('Note-2'));
+    await flushed();
+    const { createdAt } = store.envs.primary.relations.get(rel);
+
+    store.reopen();
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    engine.admin.updateRelation(rel, undefined, id('Note-3'), 'why');
+    await flushed();
+    expect(store.envs.primary.relations.get(rel)).toEqual({ kind: 'mentions', src: 'Note-1', tgt: 'Note-3', info: 'why', createdAt });
+    expect(store.envs.volatileBackup.relations.get(rel)).toBeUndefined();
+  });
+
+  it('keeps an entity destroyed right after its writes, and a removed relation, out of the files', async () => {
+    const first = openStore();
+    tx(id('Note-1'), true).put('title', 'kept');
+    tx(id('Note-2'), true).put('title', 'ghost');
+    const rel = engine.admin.addRelation(id('Note-1'), 'mentions', id('Note-1'));
+    await flushed();
+    expect(first.query('primary').getEntityMeta(rel)).not.toBeNull();
+    // In the same synchronous block as its writes, before they're flushed
+    tx(id('Note-2')).put('title', 'ghost again');
+    tx(id('Note-2')).destroy();
+    engine.query.removeRelationById(rel);
+    await flushed();
+    expect(first.query('primary').getEntityMeta('Note-2')).toBeNull();
+    expect(first.query('primary').getEntityMeta(rel)).toBeNull();
+    first.close();
+
+    const second = openStore();
+    await second.hydrate();
+    expect(getAttr(id('Note-1'), 'title')).toBe('kept');
+    expect(engine.query.getAll(id('Note-2'))).toEqual({});
+    expect(getEntitiesOfType('Note')).toEqual(['Note-1']);
+    expect(getEntitiesOfType('Relation')).toEqual([]);
   });
 });

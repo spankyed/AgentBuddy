@@ -182,13 +182,14 @@ describe('abuddy add migration', () => {
   it('scaffolds PackMigrations listed in the migrations index, which the pack entry registers and tsc accepts', async () => {
     await addMigration(['0.2.0'], pack);
     await addMigration(['--version', '0.10.1'], pack);
+    await addMigration(['0.11.0-beta.1'], pack);
 
     const migration = read('src/migrations/0.2.0.ts');
     expect(migration).toContain("import type { PackMigration } from '@abuddy/sdk/framework';");
     expect(migration).toMatch(/export const migration: PackMigration = \{\n {2}target: '0\.2\.0',\n {2}description: '[^']+',\n {2}up: \(\) => \{/);
     const index = read('src/migrations/index.ts');
-    expect(index).toContain("import { migration as v0_2_0 } from './0.2.0';\nimport { migration as v0_10_1 } from './0.10.1';");
-    expect(index).toContain('export const migrations: PackMigration[] = [\n  v0_2_0,\n  v0_10_1,\n];');
+    expect(index).toContain("import { migration as v0_2_0 } from './0.2.0';\nimport { migration as v0_10_1 } from './0.10.1';\nimport { migration as v0_11_0_beta_1 } from './0.11.0-beta.1';");
+    expect(index).toContain('export const migrations: PackMigration[] = [\n  v0_2_0,\n  v0_10_1,\n  v0_11_0_beta_1,\n];');
     expect(readManifest().migrations).toBe('src/migrations/index.ts');
 
     await generateEntries([], pack);
@@ -196,4 +197,19 @@ describe('abuddy add migration', () => {
     const tsc = run(path.join(BIN, 'tsc'), ['--noEmit']);
     expect(tsc.code, tsc.output).toBe(0);
   }, 180_000);
+
+  it('adds the import after an index whose only import is its first line', async () => {
+    write('src/migrations/index.ts', "import type { PackMigration } from '@abuddy/sdk/framework';\n\nexport const migrations: PackMigration[] = [\n];\n");
+    await addMigration(['0.12.0'], pack);
+
+    expect(read('src/migrations/index.ts')).toBe([
+      "import type { PackMigration } from '@abuddy/sdk/framework';",
+      "import { migration as v0_12_0 } from './0.12.0';",
+      '',
+      'export const migrations: PackMigration[] = [',
+      '  v0_12_0,',
+      '];',
+      '',
+    ].join('\n'));
+  });
 });

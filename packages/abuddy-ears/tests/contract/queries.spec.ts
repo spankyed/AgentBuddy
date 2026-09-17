@@ -42,6 +42,14 @@ describe('seeds', () => {
     expect(e.query.qx('nodash' as Id).ids()).toEqual([]);
     expect(e.query.qx(['Project-none' as Id, p]).ids()).toEqual([p]);
   });
+
+  it('a builder kept across writes drops, at its next step, the ids destroyed since', () => {
+    const tasks = e.query.qx('Task');
+    e.query.tx(t.b).destroy();
+    expect(tasks.limit(10).ids()).toEqual([t.a, t.c, t.d]);
+    expect(tasks.ofType('Task').count()).toBe(3);
+    expect(tasks.orderBy('title').ids()).toEqual([t.d, t.a, t.c]);
+  });
 });
 
 describe('filters', () => {

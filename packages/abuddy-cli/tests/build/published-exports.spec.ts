@@ -37,7 +37,7 @@ describe.skipIf(!PACKAGES_BUILT)('published package exports', () => {
     // Every export is code but these: the manifests, the schema and the SDK's source-only host hooks. A new
     // export without declarations lands in this list and fails here
     expect(nonCodeExports('ears')).toEqual(['./package.json']);
-    expect(nonCodeExports('sdk')).toEqual(['./package.json', './abuddy.schema.json', './utils/internals']);
+    expect(nonCodeExports('sdk')).toEqual(['./package.json', './abuddy.schema.json', './utils/internals', './runtime/internals']);
     expect(nonCodeExports('ui')).toEqual(['./package.json']);
     expect(specifiers).toEqual(expect.arrayContaining(['@abuddy/ears', '@abuddy/ears/lmdb', '@abuddy/sdk/repositories', '@abuddy/sdk/events', '@abuddy/sdk/templates', '@abuddy/ui/components/tiptap/TiptapEditor']));
     // Packs send with @abuddy/sdk/events; the host's transport and API client aren't an entry

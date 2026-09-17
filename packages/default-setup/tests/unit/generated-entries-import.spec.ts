@@ -1,7 +1,8 @@
 // Everything default-setup contributes arrives in its registrations: importing its generated entries registers
 // nothing. Its seeders are the backend registration's `seeders`, its DSL types the frontend registration's `dslTypes`.
 import { afterAll, describe, expect, it, vi } from 'vitest';
-import { bindFeHost, boundHost, unbindFeHost, type FePackRegistryView } from '@abuddy/sdk/runtime';
+import { bindFeHost, type FePackRegistryView } from '@abuddy/sdk/runtime';
+import { boundHost, unbindFeHost } from '@abuddy/sdk/runtime/internals';
 import { getDslTypes } from '@abuddy/sdk/fe';
 import { registration } from '../../src/__generated__/pack-entry';
 

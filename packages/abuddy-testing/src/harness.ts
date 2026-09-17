@@ -21,6 +21,7 @@ import type { PackRegistration } from '@abuddy/sdk/framework';
 import { createPackRegistry } from '@abuddy/host/packs';
 import { appState, HOST_ENTITY_TYPES } from '@abuddy/host/app-state';
 import { loadDependencyRuntime } from './dependency-runtime.ts';
+import { assertSharedEars } from './shared-ears.ts';
 import { setAppPacks, stopRunningApps } from './app.ts';
 import { PROJECT_ROOT_KEY } from './vitest-teardown.ts';
 import { compileFlowDSL, compilePack, resolveSeeds, SEED_INDEX_FILE, type FlowDSL, type PackManifest, type PackSnapshot, type SeedDependency, type SeedIndex } from '@abuddy/sdk/build';
@@ -194,6 +195,7 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
     throw new Error('ABUDDY_USER_DATA_DIR is unset: use isolatedDataDir() from @abuddy/testing/vitest in vitest.config.ts');
   }
   const packDir = options.packDir ?? findPackDir(projectRoot() ?? process.cwd());
+  assertSharedEars(packDir);
   const manifest = JSON.parse(fs.readFileSync(path.join(packDir, 'abuddy.json'), 'utf-8')) as PackManifest;
   const dependencies = readDependencies(packDir, manifest);
 

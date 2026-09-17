@@ -94,9 +94,9 @@ it('connects to default-setup settings', async () => {
   // settings, and the repositories default-setup's runtime registered are the test's, through
   // @abuddy/ears and services.repository alike
   expect((loaded.data as { plugins: Record<string, unknown> }).plugins.widgets).toEqual({ size: 3 });
-  const settingsQueries = (repository as unknown as Record<string, unknown>).settingsQueries;
+  const settingsQueries = Reflect.get(repository, 'settingsQueries');
   expect(settingsQueries).toBeDefined();
-  expect((services.repository as unknown as Record<string, unknown>).settingsQueries).toBe(settingsQueries);
+  expect(Reflect.get(services.repository, 'settingsQueries')).toBe(settingsQueries);
 });`);
     const result = vitest(root);
     expect(result.stdout + result.stderr, 'the dependent pack test run').toMatch(/Tests\s+1 passed/);

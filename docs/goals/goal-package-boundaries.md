@@ -476,16 +476,18 @@ Phase 4's pack slice (Decision 6). It may land before Phase 1: it reads what onl
 
     The "after" column is the same benchmark on `createEarsEngine`'s faces (same machine, 3 runs), within the +10% tolerance.
 
-    **Query fixes** (2026-09-16, after the goal): an id seed checks the entity-by-type index instead of scanning every entity, a chained step's ids skip that check, and `where(k, v)` filters only the query's ids. Two cases were added for the paths the benchmark missed. Means from one run on the same machine; these are the baseline from here on:
+    **Query fixes** (2026-09-16, after the goal): an id seed checks the entity-by-type index instead of scanning every entity, a chained step skips that check unless an entity left the engine since the query was built, and `where(k, v)` filters only the query's ids. Two cases were added for the paths the benchmark missed. "Before" is one run of the old code; "After" is the median of the per-run means over 3 runs (the review fixes included), and is the baseline from here on, with the same +10% tolerance:
 
-    | Case | Before | After |
+    | Case | Before (1 run) | After (median of 3) |
     |---|---|---|
-    | bulk load 50k entities, 200k attributes, 100k relations | 237 ms | 213 ms (unchanged code; run-to-run noise) |
-    | `qx('Task').where('status', …).pickAll()` | 47.3 ms | 16.3 ms |
-    | 1,000 `qx(id)` lookups | 1,021 ms | 0.20 ms |
-    | `qx('Task')` with 3 chained steps (`ofType`, `orderBy`, `limit`) | 66.0 ms | 24.0 ms |
-    | relation traversal (a project's tasks, then their assignees) | 22.2 ms | 0.0025 ms |
-    | `tx` batch of 1,000 creates | 3.58 ms | 3.72 ms (unchanged code) |
+    | bulk load 50k entities, 200k attributes, 100k relations | 237 ms | 196.6 ms (unchanged code) |
+    | `qx('Task').where('status', …).pickAll()` | 47.3 ms | 19.5 ms |
+    | 1,000 `qx(id)` lookups | 1,021 ms | 0.22 ms |
+    | `qx('Task')` with 3 chained steps (`ofType`, `orderBy`, `limit`) | 66.0 ms | 26.6 ms |
+    | relation traversal (a project's tasks, then their assignees) | 22.2 ms | 0.0026 ms |
+    | `tx` batch of 1,000 creates | 3.58 ms | 3.70 ms (unchanged code) |
+
+    The chained-steps case measured 24.0 ms in a single run of the fix; 3 runs of the fix before the stale-id check was added also give a median of 26.6 ms, so the check costs nothing when nothing was destroyed.
 - **Factory underneath, same behaviour:** convert each engine module to a factory closing over its state and compose `createEarsEngine` from them, keeping a temporary installed default so no caller changes. Pass cross-module dependencies (persistence, entity-type checker, relation index) through the factory.
 - **The app owns the instance:** the api's composition root creates the engine with the LMDB sinks and policy, keeps `admin` for hydration and `createHostRuntime`, and binds `query` as `HostRuntime.ears`. `appData`, `traceStore` and `@abuddy/ears/lmdb` take `admin`. The api's `scripts/db/*` and default-setup's database feature and tests move off imported write functions onto `admin`.
 - **Tooling and tests go explicit:** the CLI flow compiler and decompiler use a private engine per compile. SDK and ears tests and default-setup tests stop calling `clearMemory`/`initEARSRuntime` and get fresh engines. Run the default-setup, SDK and ears suites with file parallelism enabled, and keep it where it holds.
@@ -589,7 +591,7 @@ All nine phases are implemented on `AS/package-boundaries`. Each phase ran the f
 | 2 — `@abuddy/ears/lmdb` | done | `openLmdbStore`; host/api EARS and persistence dirs deleted; `findLmdbImports`; `restart-persistence.spec.ts` (mutation: skipping the sink fails it); packaged `electron-builder --dir` smoke persisted a note across a restart |
 | 3 — `HostRuntime` | done | `runtime/host.ts` deleted, `no-host-modules.spec.ts`; `bindHost`/`bindFeHost`; sends, logging and error reports over `transport`; `sendToPlugin` through the bus (E2E `plugin-sends.spec.ts`, harness spec); `takeSystemErrors` returns `SYSTEM_ERROR` events |
 | 4 — app runtime out of the api | done | `@abuddy/host/migrations` (with its CLAUDE.md, `runner.spec.ts`); `createHostRuntime`; `receiveClientEvent`, `secretsSnapshot`, `forwardSecretsChanges`; `source-layout.spec.ts` lists the api's files; `boundaries.spec.ts` compares `src/services` to `HostRuntime['services']`; `app-reset.spec.ts` |
-| 5 — data ownership | done | SDK `flowRepository`, `tnodeRepository`, `actionRepository`, `promptRepository`; `builtin-repositories.ts` deleted; `@abuddy/host/app-state` and the host 0.3.15 app migration (`app-state-0.3.15.spec.ts`, run twice); Settings, its seed format and seeder in default-setup; `resolve-cli` in the code feature; `findRepositoryCasts`; `settings-reset-app-state.spec.ts` unskipped; the built api booted onboarded on old-shaped data in a temp dir |
+| 5 — data ownership | done | SDK `flowRepository`, `tnodeRepository`, `actionRepository`, `promptRepository`; `builtin-repositories.ts` deleted; `@abuddy/host/app-state` and the move of the app's state out of the settings (`legacy-app-state.spec.ts`, run twice; after the review it runs at boot whatever the app version, below the target and on prereleases too); Settings, its seed format and seeder in default-setup; `resolve-cli` in the code feature; `findRepositoryCasts`; `settings-reset-app-state.spec.ts` unskipped; the built api booted onboarded on old-shaped data in a temp dir |
 | 6 — engine instance | done | `createEarsEngine` (query/admin faces), `installEngine`; contract suite (32 + 4 persistence specs) passed before and after; `no-module-state.spec.ts`, `no-engine-state-access.spec.ts`, `installed-engine.spec.ts` (unbound errors, two engines); benchmark within tolerance (table above) |
 | 7 — registered packs instance | done | `createPackRegistry()`, `createFePackRegistry()`; SDK lookups read the bound `PackRegistryView`/`FePackRegistryView`; seeders and `dslTypes` in the registrations; `registered-lookups` (16), `fe-registered-lookups`, `registry-state`, `two-registries`, harness-registry, build-registry and generated-entries-import specs |
 | 8 — docs | done | root, ears (new), sdk, host, cli, testing, default-setup, api, ui CLAUDE.md files, `TYPED-EARS.md`, `docs/public-facing`, `README.md`; the engine-instance and pack-api goals moved to `docs/archive/goals/` with a note at the top; `abuddy-host/tests/removed-names-in-docs.spec.ts` |
@@ -620,6 +622,7 @@ These edits in the Decisions above fix statements that didn't match what was bui
 ### Open items
 
 - Resolved after the goal: Electron main serves and stores media in the folder the API's `getMediaPath()` uses; `abuddy add migration` scaffolds a `PackMigration`; the loader's bridge no longer maps `@abuddy/host/packs` and `/backup`.
+- Review fixes after the goal: the app-state move no longer waits for a 0.3.15 build, and a failed move stops the migrations so nothing deletes the old state; pack repositories are collision-checked and removed with their pack; reset shuts packs down and starts them the way boot does (`startPacks`); backup import runs the migrations; `flowRepository.updateNode` keeps a node's link on a partial update; the LMDB store no longer writes back an entity destroyed in the same tick, and moves a relation it didn't see written; kept query builders drop destroyed ids; `abuddy build` and the bridges refuse `@abuddy/ears/lmdb` in packs; pack tests fail when the pack's `@abuddy/ears` isn't the SDK's copy; `unbindHost`/`boundHost` moved to the source-only `@abuddy/sdk/runtime/internals`; the renderer binds its host before creating the application actor.
 
 ### Final verification
 

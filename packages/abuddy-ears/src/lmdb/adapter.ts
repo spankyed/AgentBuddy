@@ -1,5 +1,6 @@
 import type { LmdbDbs } from './envs.ts';
 import type { PersistenceSink } from '../runtime.ts';
+import { EARS } from '../entities.ts';
 
 export interface LmdbAdapterOptions {
   hardDelete?: boolean; // If true, permanently delete instead of tombstoning
@@ -56,7 +57,9 @@ export function makeLmdbAdapter(dbs: LmdbDbs, options: LmdbAdapterOptions = {}):
   const ensureBuf = new Set<string>();
   const relUpserts = new Map<string, any>();
   const relDeletes = new Set<string>();
-  const entityUpdates = new Map<string, any>();
+const entityUpdates = new Map<string, any>();
+  // Rows of relations whose details were dropped: a relation's id has an entity row while it exists
+  const entityRemovals = new Set<string>();
   
   let scheduled = false;
   let closed = false;
@@ -84,6 +87,11 @@ export function makeLmdbAdapter(dbs: LmdbDbs, options: LmdbAdapterOptions = {}):
       }
     }
     entityUpdates.clear();
+
+    for (const id of entityRemovals) {
+      entities.remove(id);
+    }
+    entityRemovals.clear();
 
     // Array rewrites - atomic replacement of entire arrays
     for (const [key, arr] of arrayRewrites) {
@@ -137,6 +145,7 @@ export function makeLmdbAdapter(dbs: LmdbDbs, options: LmdbAdapterOptions = {}):
         // Clear buffers even on error to prevent infinite retries
         ensureBuf.clear();
         entityUpdates.clear();
+        entityRemovals.clear();
         arrayRewrites.clear();
         relDeletes.clear();
         relUpserts.clear();
@@ -152,8 +161,25 @@ export function makeLmdbAdapter(dbs: LmdbDbs, options: LmdbAdapterOptions = {}):
     const key = arrayRewriteKey(kind, entityId);
     // Store only the final state of the array
     arrayRewrites.set(key, [...array]); // Clone to avoid mutations
-    ensureBuf.add(entityId);
+    if (array.length) {
+      ensureBuf.add(entityId);
+      entityRemovals.delete(entityId);
+    } else if (kind === EARS.AttrKind.RelationDetails) {
+      // The relation is gone, and with it its id's row
+      ensureBuf.delete(entityId);
+      entityUpdates.delete(entityId);
+      entityRemovals.add(entityId);
+    }
     scheduleFlush();
+  }
+
+  /** Drops the writes buffered for an entity, so a flush after its hard delete doesn't write it back */
+  function discardBuffered(entityId: string) {
+    ensureBuf.delete(entityId);
+    entityUpdates.delete(entityId);
+    for (const key of arrayRewrites.keys()) {
+      if (key.slice(key.indexOf(SEP) + 1) === entityId) arrayRewrites.delete(key);
+    }
   }
 
   function close() {
@@ -171,6 +197,7 @@ export function makeLmdbAdapter(dbs: LmdbDbs, options: LmdbAdapterOptions = {}):
       // Clear all buffers
       ensureBuf.clear();
       entityUpdates.clear();
+      entityRemovals.clear();
       arrayRewrites.clear();
       relDeletes.clear();
       relUpserts.clear();
@@ -192,6 +219,7 @@ export function makeLmdbAdapter(dbs: LmdbDbs, options: LmdbAdapterOptions = {}):
       if (closed) return;
 
       if (hardDelete) {
+        discardBuffered(entityId);
         // Immediate hard delete - remove entity and all its attributes
         try {
           entities.transactionSync(() => {
@@ -275,8 +303,10 @@ export function makeLmdbAdapter(dbs: LmdbDbs, options: LmdbAdapterOptions = {}):
       
       ensureBuf.add(src);
       ensureBuf.add(tgt);
+      // A relation written again (routed here after a reopen) keeps when it was created
+      const createdAt = relDeletes.has(relId) ? undefined : (relUpserts.get(relId) ?? relations.get(relId))?.createdAt;
       relDeletes.delete(relId); // Cancel any pending delete
-      relUpserts.set(relId, { kind, src, tgt, info: info ?? null, createdAt: Date.now() });
+      relUpserts.set(relId, { kind, src, tgt, info: info ?? null, createdAt: createdAt ?? Date.now() });
       scheduleFlush();
     },
 

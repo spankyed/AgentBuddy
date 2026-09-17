@@ -11,7 +11,7 @@ process.env.ABUDDY_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/setup/backend');
 const { tx, getEntitiesOfType } = await import('@abuddy/ears');
 const { getLmdbPath } = await import('@abuddy/sdk/utils');
-const { unbindHost } = await import('@abuddy/sdk/runtime');
+const { unbindHost } = await import('@abuddy/sdk/runtime/internals');
 
 afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
 

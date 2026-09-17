@@ -12,10 +12,19 @@ import { inference } from '../../src/services/inference.ts';
 import { secrets } from '../../src/services/secrets.ts';
 import { createPackRegistry } from '../../src/packs/pack-registration.ts';
 import { secretsStore } from '../../src/secrets/index.ts';
+import { setLoadedPacks, type LoadedPack } from '../../src/packs/runtime/loaded-packs.ts';
 
-// What a reset does, in order; the host's migrations runner records itself here
+// What a reset does, in order; the host's migrations runners and external packs' seeding record themselves here
 const order = vi.hoisted((): string[] => []);
-vi.mock('../../src/migrations/index.ts', () => ({ runAppMigrations: () => { order.push('migrations'); } }));
+vi.mock('../../src/migrations/index.ts', () => ({
+  runAppMigrations: () => { order.push('migrations'); },
+  runPackMigrations: (_registry: unknown, packs: Array<{ manifest: { id: string } }>) => { order.push(`pack migrations (${packs.map((p) => p.manifest.id)})`); },
+}));
+vi.mock('../../src/packs/runtime/seed.ts', async (importOriginal) => ({
+  ...await importOriginal<typeof import('../../src/packs/runtime/seed.ts')>(),
+  orchestrateDeclarativeSeed: (_manifest: unknown, packId: string) => { order.push(`boot seed (${packId})`); },
+  seedPackData: (packs: Array<{ manifest: { id: string } }>) => { order.push(`pack seeds (${packs.map((p) => p.manifest.id)})`); return []; },
+}));
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'host-runtime-'));
 process.env.ABUDDY_ENV = 'test';
@@ -49,7 +58,7 @@ describe('createHostRuntime', () => {
     }
   });
 
-  it("empties the engine, resets the stores and keys, then runs each pack's onInit, then the host's migrations", async () => {
+  it("stops the packs, empties the engine, stores and keys, then starts the packs as a boot does", async () => {
     const store = { reset: async () => { order.push('store reset'); } } as unknown as LmdbStore;
     const engine = newEngine();
     const id = engine.query.tx('Memo-1' as never).put('title', 'kept?').id();
@@ -58,13 +67,25 @@ describe('createHostRuntime', () => {
     const packs = createPackRegistry();
     const runtime = createHostRuntime({ store, engine, transport: { rootEvents: testRootEvents }, appVersion: '1.2.3', packs });
     secretsStore.add('openai', 'Work', 'sk-proj-resetspec1234567890');
-    packs.registerPack({ id: 'reset-pack', systems: [], boot: { onInit: () => order.push(`onInit (${secretsStore.list().length} keys)`) } });
+    // An external pack the app loaded, holding something open between its onInit and onShutdown
+    const boot = { onInit: () => order.push(`onInit (${secretsStore.list().length} keys)`), onShutdown: () => order.push('onShutdown') };
+    const external = { manifest: { id: 'reset-pack', name: 'Reset', version: '1.0.0' }, dir: '/nowhere', systems: new Map(), boot } as unknown as LoadedPack;
+    packs.registerPack({ id: 'reset-pack', systems: [], boot });
+    // A built-in pack with a boot seed
+    packs.registerPack({ id: 'seeded-pack', systems: [], boot: { seedManifest: { artifacts: ['notes'], compiledDir: '/nowhere' } } });
+    packs.registerShutdownHook(boot.onShutdown, 'reset-pack');
+    setLoadedPacks([external]);
     try {
       await runtime.services.appData.reset();
     } finally {
       packs.unregisterPack('reset-pack');
+      packs.unregisterPack('seeded-pack');
+      setLoadedPacks([]);
     }
-    expect(order).toEqual(['engine cleared', 'store reset', 'onInit (0 keys)', 'migrations']);
+    expect(order).toEqual([
+      'onShutdown', 'engine cleared', 'store reset', 'onInit (0 keys)',
+      'migrations', 'pack migrations (reset-pack)', 'boot seed (seeded-pack)', 'pack seeds (reset-pack)',
+    ]);
     expect(engine.query.getAttr(id, 'title')).toBeNull();
   });
 });

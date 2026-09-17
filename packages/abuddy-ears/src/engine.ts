@@ -76,6 +76,7 @@ export interface EarsQuery {
   /** The registered repositories; reading an unregistered name throws */
   repository: Record<string, unknown>;
   registerRepository(name: string, value: unknown): void;
+  unregisterRepository(name: string): void;
 }
 
 /** An engine's data lifecycle and direct writes: for the code that created it (the app's composition root, tests, tooling) */
@@ -160,6 +161,7 @@ export function createEarsEngine({ persistence = noopSink, isEntityType }: EARSR
     removeRelationById: storage.removeRelationById,
     repository: repositories.repository,
     registerRepository: repositories.registerRepository,
+    unregisterRepository: repositories.unregisterRepository,
   };
 
   const admin: EarsAdmin = {

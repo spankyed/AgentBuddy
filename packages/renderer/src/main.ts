@@ -97,6 +97,12 @@ for (const mod of loadedMods) {
 const plugins = [...fePacks.getRegisteredPlugins(), packsPlugin];
 const defaultPlugin = fePacks.getRegisteredDefaultPlugin();
 
+// The SDK's frontend code (lookups, navigation, sends, the secrets client) reaches this window's app from here on:
+// bound before the application actor is created, since creating it builds its plugins' state, and before any
+// external pack frontend loads
+let createdApplication: typeof applicationState | undefined;
+bindRendererHost(() => createdApplication);
+
 export const applicationState = createActor(createApplicationState(), {
   systemId: application,
   // inspect,
@@ -108,9 +114,7 @@ export const applicationState = createActor(createApplicationState(), {
   }
 });
 
-// The SDK's frontend code (navigation, sends, the secrets client) reaches this window's app from here on:
-// bound before the application actor starts its plugins, and before any external pack frontend loads
-bindRendererHost(applicationState);
+createdApplication = applicationState;
 applicationState.start();
 
 window.applicationState = applicationState;

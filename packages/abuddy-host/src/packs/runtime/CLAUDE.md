@@ -95,12 +95,14 @@ The API's `core/router/packs-router.ts` serves `packs.registry` from `getPackBun
 6. earlySystem                     — logs system starts
 7. registry.registerShutdownHook() — each pack's onShutdown, keyed by pack id
 8. store.hydrate()                 — EARS policy now sees all entity types
-9. onInit hooks                    — all packs (built-in + external)
-10. runAppMigrations()             — the host's app migrations, then built-in packs', against the app version (@abuddy/host/migrations)
-11. runPackMigrations()            — external packs' migrations, each against its pack version
-12. runRegisteredBootSeeds()       — built-in packs' boot.seedManifest (orchestrateDeclarativeSeed)
-13. seedPackData()                 — external pack compiled seeds (hash-checked); setLoadedPacks()
-14. start the bus actor            — createAppBus() (@abuddy/host/bus) with systemId `bus`
+9. startPacks(registry, external)  — start.ts; services.appData.reset() runs it too, after the shutdown hooks:
+   onInit hooks                    — all packs (built-in + external)
+   runAppMigrations()              — moves the app's state from before AppState, then built-in packs' migrations against the app version (@abuddy/host/migrations)
+   runPackMigrations()             — external packs' migrations, each against its pack version
+   runRegisteredBootSeeds()        — built-in packs' boot.seedManifest (orchestrateDeclarativeSeed)
+   seedPackData()                  — external pack compiled seeds (hash-checked)
+10. setLoadedPacks()               — the external packs, which a reset starts again (getLoadedPacks())
+11. start the bus actor            — createAppBus() (@abuddy/host/bus) with systemId `bus`
 ```
 
 Every pack registers before hydration, so its entity types are visible to the partition policy resolver.
@@ -141,12 +143,13 @@ Designations come from the manifest's `features[].designation`: generate-entries
 | EARS relation kind values | All registered packs' relation values (same) | Throws (blocks registration) |
 | Designation roles | All registered packs' roles | Throws (blocks registration) |
 | Service keys | Host service names (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`) and all registered packs' keys | Throws (blocks registration) |
-| Seed hooks | Another pack's hooks for the entity type | Throws — **with rollback** of what this call registered (steps, artifacts, blocks, seed hooks, seeders, commands, feature settings) |
+| Repository names | All registered packs' repository names | Throws (blocks registration) |
+| Seed hooks | Another pack's hooks for the entity type | Throws — **with rollback** of what this call registered (repositories, steps, artifacts, blocks, seed hooks, seeders, commands, feature settings) |
 | Seeders | Two seeders for one seed key in the pack | Same rollback behavior |
 | Commands | Other packs' command names | Same rollback behavior |
 | Feature settings | `checkFeatureSettings` (a feature sets only its own plugin's settings) | Same rollback behavior |
 
-EARS, designation and service collisions throw before anything is stored, so no cleanup is needed. The rest register sequentially and roll back on failure. Step, artifact and block types aren't collisions: a later registration of a type merges into it (steps, facet by facet) or replaces it (`../contributions.ts`). The specs are `tests/packs/registration.spec.ts` and `tests/packs/registered-lookups.spec.ts`.
+EARS, designation, service and repository collisions throw before anything is stored, so no cleanup is needed. The rest register sequentially and roll back on failure; `unregisterPack()` removes all of it, the repositories from the installed engine included (`unregisterRepository`). Step, artifact and block types aren't collisions: a later registration of a type merges into it (steps, facet by facet) or replaces it (`../contributions.ts`). The specs are `tests/packs/registration.spec.ts` and `tests/packs/registered-lookups.spec.ts`.
 
 ## Host resolution for pack runtime code
 
@@ -154,6 +157,7 @@ EARS, designation and service collisions throw before anything is stored, so no 
 - `SDK_BRIDGE` — the loader's own instances (in the app, the API bundle's, which inlines `@abuddy/sdk`, `@abuddy/ears` and `@abuddy/host`) of the shared-instance packages' subpaths (`shared-modules.ts`, built from each package's exports map minus `APP_UNBRIDGED` and the app-only `@abuddy/ears/lmdb`). They go into the require cache (under a bridge key and the real resolved path) and `Module._resolveFilename` resolves those specifiers to them, so pack code shares the bundle's bound app (its registered packs and hydrated EARS engine) instead of loading a separate SDK copy. Pack code never requires `@abuddy/host`, so no host module is bridged.
 - `getSharedBeDeps()` (`xstate`, `zod`) — resolved from `import.meta.url` (the API's `dist/server.js` in the app), since an installed pack has no `node_modules`.
 - `bridgedPackages: SHARED_INSTANCE_PACKAGES` — a pack requiring a shared-instance module the map lacks fails with "isn't provided by this AgentBuddy: rebuild the pack".
+- `appOnly: APP_ONLY_EXPORTS` — a pack requiring `@abuddy/ears/lmdb` fails saying only the app loads it (`abuddy build` already rejects the import).
 
 The resolver patch is restored in a `finally`; the bridged cache entries stay, so lazy requires get them too. A built-in pack whose built runtime fails to load falls back to the bundled loader; `tests/packs/runtime/sdk-bridge-drift.spec.ts` guards the list via `getBridgedSdkSpecifiers()` and fails when `shared-modules.ts` is stale. The pack test harness calls `withModuleBridge()` with the pack's own SDK.
 

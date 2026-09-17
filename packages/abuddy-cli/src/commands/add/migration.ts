@@ -34,8 +34,9 @@ Example:
   abuddy add migration --version 0.2.0
 `.trim();
 
+/** An identifier for the version's migration: `0.2.0-beta.1` → `v0_2_0_beta_1` */
 function toImportName(version: string): string {
-  return 'v' + version.replace(/\./g, '_');
+  return 'v' + version.replace(/[^A-Za-z0-9_$]/g, '_');
 }
 
 export async function addMigration(args: string[], root: string) {
@@ -62,9 +63,10 @@ export async function addMigration(args: string[], root: string) {
   } else {
     let content = fs.readFileSync(indexPath, 'utf-8');
     if (!content.includes(`'./${version}'`)) {
-      const lastImportIdx = content.lastIndexOf('\nimport ');
-      if (lastImportIdx !== -1) {
-        const endOfLastImport = content.indexOf('\n', lastImportIdx + 1);
+      // Where the last import line starts (it may be the file's first line)
+      const lastImportStart = `\n${content}`.lastIndexOf('\nimport ');
+      if (lastImportStart !== -1) {
+        const endOfLastImport = content.indexOf('\n', lastImportStart);
         content = content.slice(0, endOfLastImport + 1)
           + `import { migration as ${importName} } from './${version}';\n`
           + content.slice(endOfLastImport + 1);

@@ -58,7 +58,7 @@ describe('boot migrations', () => {
 
     // The boot's order (the API's setup/backend.ts)
     runAppMigrations(registry);
-    runPackMigrations(externalPacks);
+    runPackMigrations(registry, externalPacks);
 
     expect(runs.builtIn).toBe(1);
     expect(runs.external).toBe(1);
@@ -66,7 +66,7 @@ describe('boot migrations', () => {
 
     // Recorded: a second run changes nothing
     runAppMigrations(registry);
-    runPackMigrations(externalPacks);
+    runPackMigrations(registry, externalPacks);
     expect(runs).toEqual({ builtIn: 1, external: 1 });
   });
 });

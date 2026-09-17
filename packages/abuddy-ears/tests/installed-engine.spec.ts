@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   createEarsEngine, defineEars, findRelations, getAllEntities, installEngine, installedEngine, isEntityType,
-  registerRepository, repository, spawn, tx, untypedQx, bp, type EARS, type PersistenceSink,
+  registerRepository, unregisterRepository, repository, spawn, tx, untypedQx, bp, type EARS, type PersistenceSink,
 } from '../src/index.ts';
 import { recordingSink } from './contract/helpers.ts';
 
@@ -22,6 +22,7 @@ describe('with no engine installed', () => {
       ['typed findAll', () => typed.findAll('Note')],
       ['repository', () => repository.noteQueries],
       ['registerRepository', () => registerRepository('noteQueries', {})],
+      ['unregisterRepository', () => unregisterRepository('noteQueries')],
       ['findRelations', () => findRelations()],
       ['getAllEntities', () => getAllEntities()],
       ['isEntityType', () => isEntityType('Note')],
@@ -88,5 +89,20 @@ describe('two engines in one process', () => {
     expect(two.query.getAllEntities()).toHaveLength(2);
     expect(one.query.repository.noteQueries).toEqual({ name: 'one' });
     expect(one.admin.repositories()).toEqual({ noteQueries: { name: 'one' } });
+  });
+});
+
+describe('the repository registry', () => {
+  it('reads a registered repository until it is unregistered', () => {
+    const engine = newEngine();
+    installEngine(engine.query);
+    const noteQueries = { name: 'notes' };
+    registerRepository('noteQueries', noteQueries);
+    expect(repository.noteQueries).toBe(noteQueries);
+
+    unregisterRepository('noteQueries');
+
+    expect(() => repository.noteQueries).toThrow('"noteQueries" is not registered');
+    expect(engine.admin.repositories()).toEqual({});
   });
 });
