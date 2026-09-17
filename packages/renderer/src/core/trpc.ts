@@ -5,8 +5,11 @@ type ApiClient = TRPCClient<AppRouter>;
 
 /** The port this window launched with. The API can move after a restart — see reconnectApiClient. */
 const initialPort = (typeof window !== 'undefined' && window.electronAPI?.apiPort) || 3001;
-/** The token the API requires, which main gives the app's windows */
-const apiToken = (typeof window !== 'undefined' && window.electronAPI?.apiToken) || '';
+/**
+ * The token the API requires, which main gives the app's windows. The preload exposes it as `electronAPI.apiToken`,
+ * which only this client reads: it's deliberately left out of the SDK's `Window.electronAPI` type packs see.
+ */
+const apiToken = (typeof window !== 'undefined' && (window.electronAPI as { apiToken?: string } | undefined)?.apiToken) || '';
 
 /**
  * A socket offering the API's subprotocol and the token as a second one (the API's `acceptsConnection`). The token
