@@ -5,7 +5,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createEarsEngine, installEngine, makePolicy, tx, getEntitiesOfType, type EARS, type EarsEngine } from '../../src/index.ts';
-import { openLmdbStore, type LmdbStore, type LmdbStoreOptions } from '../../src/lmdb/index.ts';
+import { open as openEnv } from 'lmdb';
+import { LMDB_FORMAT_VERSION, openLmdbStore, type LmdbStore, type LmdbStoreOptions } from '../../src/lmdb/index.ts';
 
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ears-lmdb-store-'));
 const policy = makePolicy({ excludedEntityTypes: new Set(['Trace']) });
@@ -262,5 +263,79 @@ describe('openLmdbStore', () => {
     const clean = openStore();
     tx(id('Note-2'), true).put('title', 'fine');
     expect(clean.close()).toEqual({ errorCount: 0, lastError: null });
+  });
+});
+
+describe('the storage format', () => {
+  /** The environment's own records, opened without the format check */
+  function meta(basePath: string) {
+    const root = openEnv({ path: basePath, maxDbs: 8, compression: true });
+    return { db: root.openDB({ name: 'meta', encoding: 'json' }), close: () => root.close() };
+  }
+
+  function storedFormat(basePath: string): unknown {
+    const { db, close } = meta(basePath);
+    try {
+      return db.get('format');
+    } finally {
+      close();
+    }
+  }
+
+  /** Records `format`, or, without one, the files of a version that recorded none */
+  function writeFormat(basePath: string, format?: unknown): void {
+    const { db, close } = meta(basePath);
+    try {
+      if (format === undefined) db.removeSync('format');
+      else db.putSync('format', format);
+    } finally {
+      close();
+    }
+  }
+
+  it('is recorded in a database this version writes', async () => {
+    const store = openStore();
+    tx(id('Note-1'), true).put('title', 'kept');
+    await flushed();
+    store.close();
+    expect(storedFormat(paths.primary)).toBe(LMDB_FORMAT_VERSION);
+    expect(storedFormat(paths.volatileBackup)).toBe(LMDB_FORMAT_VERSION);
+  });
+
+  it('is recorded in files that predate it, once a version that records it writes them', async () => {
+    const store = openStore();
+    tx(id('Note-1'), true).put('title', 'kept');
+    await flushed();
+    store.close();
+    // Files from before the format was recorded
+    writeFormat(paths.primary);
+    expect(storedFormat(paths.primary)).toBeUndefined();
+
+    // Reading them records nothing
+    openStore({ readOnly: true, log: () => {} }).close();
+    expect(storedFormat(paths.primary)).toBeUndefined();
+
+    openStore().close();
+    expect(storedFormat(paths.primary)).toBe(LMDB_FORMAT_VERSION);
+  });
+
+  it('refuses another format, saying which, and leaves the files closed', async () => {
+    openStore().close();
+    writeFormat(paths.primary, LMDB_FORMAT_VERSION + 1);
+
+    const newer = new RegExp(`storage format ${LMDB_FORMAT_VERSION + 1}, but this version reads format ${LMDB_FORMAT_VERSION}: it was written by a newer AgentBuddy`);
+    expect(() => openStore()).toThrow(newer);
+    expect(() => openStore({ readOnly: true })).toThrow(newer);
+
+    writeFormat(paths.primary, 'nonsense');
+    expect(() => openStore()).toThrow(/storage format "nonsense", but this version reads format 1$/);
+
+    // The environment it opened is closed, so the files can be replaced and opened again
+    fs.rmSync(paths.primary, { recursive: true, force: true });
+    const store = openStore();
+    tx(id('Note-1'), true).put('title', 'after');
+    await flushed();
+    expect(store.query('primary').getFirstAttr('title', 'Note-1')).toBe('after');
+    expect(storedFormat(paths.primary)).toBe(LMDB_FORMAT_VERSION);
   });
 });

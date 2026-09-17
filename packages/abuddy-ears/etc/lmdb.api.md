@@ -51,6 +51,9 @@ export function hydrateSharded(params: {
 }): Promise<void>;
 
 // @public
+export const LMDB_FORMAT_VERSION = 1;
+
+// @public
 export type LmdbDbs = {
     entities: Database<any>;
     attrs: Database<any>;

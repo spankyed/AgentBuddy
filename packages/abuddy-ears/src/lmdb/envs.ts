@@ -12,7 +12,42 @@ export type LmdbDbs = {
   root: RootDatabase;
 };
 
-/** Opens (creating it if needed) the LMDB environment at `basePath`; `readOnly` opens an existing one without writing */
+/**
+ * How this version of `@abuddy/ears` encodes rows in LMDB (keys, attribute and relation records). An environment
+ * records the format it was written in; one in another format is refused rather than misread. Change the encoding,
+ * and this number goes up with code that upgrades the older format.
+ */
+export const LMDB_FORMAT_VERSION = 1;
+
+/** The environment's own records, beside its data: its storage format */
+const META_DB = 'meta';
+const FORMAT_KEY = 'format';
+
+/**
+ * Checks the environment's storage format, and records it in one that has none (written before formats were
+ * recorded, which is format 1) unless it's read-only. Throws for any other format.
+ */
+function checkFormat(root: RootDatabase, basePath: string, readOnly: boolean): void {
+  // A read-only environment has no database the writer never created
+  const meta = root.openDB({ name: META_DB, encoding: 'json' }) as Database<unknown> | undefined;
+  const format = meta?.get(FORMAT_KEY);
+  if (format === undefined) {
+    if (!readOnly) meta!.putSync(FORMAT_KEY, LMDB_FORMAT_VERSION);
+    return;
+  }
+  if (format !== LMDB_FORMAT_VERSION) {
+    const newer = typeof format === 'number' && format > LMDB_FORMAT_VERSION;
+    throw new Error(
+      `The database at ${basePath} is in storage format ${JSON.stringify(format)}, but this version reads format ${LMDB_FORMAT_VERSION}` +
+      (newer ? ': it was written by a newer AgentBuddy, so update this one' : ''),
+    );
+  }
+}
+
+/**
+ * Opens (creating it if needed) the LMDB environment at `basePath`; `readOnly` opens an existing one without writing.
+ * Throws when the environment is in another storage format (`LMDB_FORMAT_VERSION`).
+ */
 export function openEnvAt(basePath: string, { readOnly = false }: { readOnly?: boolean } = {}): LmdbDbs {
   // LMDB would create the directory before failing
   if (readOnly && !fs.existsSync(basePath)) throw new Error(`No LMDB database at ${basePath}`);
@@ -28,6 +63,12 @@ export function openEnvAt(basePath: string, { readOnly = false }: { readOnly?: b
     compression: true,
     readOnly,
   });
+  try {
+    checkFormat(root, basePath, readOnly);
+  } catch (error) {
+    root.close();
+    throw error;
+  }
 
   return {
     entities: root.openDB({ name: 'entities', encoding: 'json' }),
@@ -43,8 +84,13 @@ export type LmdbPaths = Record<Partition, string>;
 /** Opens each partition's environment; `readOnly` opens existing ones without writing */
 export function openShardedEnvs(paths: LmdbPaths, { readOnly = false }: { readOnly?: boolean } = {}): Record<Partition, LmdbDbs> {
   const primary = openEnvAt(paths.primary, { readOnly });
-  const volatileBackup = openEnvAt(paths.volatileBackup, { readOnly });
-  return { primary, volatileBackup };
+  try {
+    return { primary, volatileBackup: openEnvAt(paths.volatileBackup, { readOnly }) };
+  } catch (error) {
+    // Neither partition stays open when one of them can't be
+    closeEnv(primary, () => {});
+    throw error;
+  }
 }
 
 export function closeShardedEnvs(envs: Record<Partition, LmdbDbs>, log: (message: string) => void = console.log) {
