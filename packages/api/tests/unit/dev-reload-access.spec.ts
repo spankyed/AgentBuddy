@@ -11,10 +11,10 @@ process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
 process.env.ABUDDY_API_TOKEN = 'the-run-token';
 const { API_PROTOCOL, acceptsConnection, devReloadRefusal, publishApiFiles } = await import('@/setup/websocket');
-const { API_HOST } = await import('@abuddy/sdk/env');
+const { API_HOST } = await import('@abuddy/sdk/utils/pure');
 const { apiToken, apiTokenIsOwn, isApiToken } = await import('@/setup/config');
 const { readApiEndpoint, resolveAppContext } = await import('@abuddy/sdk/env');
-const { API_TOKEN_HEADER } = await import('@abuddy/sdk/env');
+const { API_TOKEN_HEADER } = await import('@abuddy/sdk/utils/pure');
 afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
 
 const TOKEN = 'the-run-token';

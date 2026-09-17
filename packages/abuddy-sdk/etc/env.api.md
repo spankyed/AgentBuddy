@@ -5,12 +5,6 @@
 ```ts
 
 // @public
-export const API_HOST = "127.0.0.1";
-
-// @public
-export const API_TOKEN_HEADER = "x-abuddy-api-token";
-
-// @public
 export interface ApiEndpoint {
     pid: number;
     // (undocumented)

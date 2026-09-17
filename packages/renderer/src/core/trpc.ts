@@ -1,4 +1,5 @@
 import { createWSClient, wsLink, createTRPCClient, type TRPCClient } from '@trpc/client';
+import { API_HOST } from '@abuddy/sdk/utils/pure';
 import type { AppRouter } from '@app/api';   // ← BE import Type‑only!
 
 type ApiClient = TRPCClient<AppRouter>;
@@ -22,7 +23,7 @@ class ApiSocket extends WebSocket {
 }
 
 function connect(port: number) {
-  const ws = createWSClient({ url: `ws://127.0.0.1:${port}`, WebSocket: ApiSocket });
+  const ws = createWSClient({ url: `ws://${API_HOST}:${port}`, WebSocket: ApiSocket });
   return { port, ws, client: createTRPCClient<AppRouter>({ links: [wsLink({ client: ws })] }) };
 }
 

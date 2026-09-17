@@ -14,9 +14,6 @@ import { boundHost } from '../runtime/host-runtime.ts';
 
 export type AppEnv = 'production' | 'beta' | 'development' | 'test';
 
-/** The only interface the app's API listens on: the app's own processes and local tools reach it, nothing on the network does */
-export const API_HOST = '127.0.0.1';
-
 /** What a running API publishes about itself in `AppContext.apiPortFile`, so local tools find it */
 export interface ApiEndpoint {
   port: number;
@@ -46,9 +43,6 @@ export function readApiEndpoint(apiPortFile: string): ApiEndpoint | null {
   }
   return { port: port as number, pid: pid as number };
 }
-
-/** The header a call to the app's API HTTP endpoints carries its token in (`AppContext.apiTokenFile`) */
-export const API_TOKEN_HEADER = 'x-abuddy-api-token';
 
 export const APP_ENVS: readonly AppEnv[] = ['production', 'beta', 'development', 'test'];
 

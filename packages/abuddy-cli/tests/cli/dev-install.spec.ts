@@ -66,7 +66,7 @@ describe('abuddy dev reloads', () => {
   }
 
   it("send the pack id with the token from the dev app's token file", async () => {
-    const { API_TOKEN_HEADER } = await import('@abuddy/sdk/env');
+    const { API_TOKEN_HEADER } = await import('@abuddy/sdk/utils/pure');
     expect(API_TOKEN_HEADER).toBe('x-abuddy-api-token');
     const api = await fakeApi(200);
     try {

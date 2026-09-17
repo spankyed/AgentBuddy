@@ -4,7 +4,8 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
 // SDK source, so run with --import tsx --conditions=@abuddy/source (the build script and dev-mode.js do)
-import { API_HOST, API_TOKEN_HEADER, readApiEndpoint, resolveAppContext } from '@abuddy/sdk/env';
+import { readApiEndpoint, resolveAppContext } from '@abuddy/sdk/env';
+import { API_HOST, API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const srcDir = path.resolve(__dirname, 'src');
 const entryPoint = path.resolve(srcDir, '__generated__/pack-entry.ts');

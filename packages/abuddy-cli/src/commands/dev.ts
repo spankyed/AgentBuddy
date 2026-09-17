@@ -3,7 +3,8 @@ import * as path from 'node:path';
 import { build } from './build';
 import { findPackRoot, readManifest } from '../utils';
 import { findFEEntry, packExternalsPlugin } from '../build/fe-bundler';
-import { API_HOST, API_TOKEN_HEADER, readApiEndpoint, resolveAppContext } from '@abuddy/sdk/env';
+import { readApiEndpoint, resolveAppContext } from '@abuddy/sdk/env';
+import { API_HOST, API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
 import { installPackFromLocal, readHostVersion } from '@abuddy/host/packs';
 import { removeDevServerMarker, writeDevServerMarker } from '@abuddy/host/packs/dev-server';
 
