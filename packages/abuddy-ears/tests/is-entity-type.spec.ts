@@ -1,7 +1,7 @@
 // isEntityType answers from the installed engine's registered entity types (the running app's), so a pack's step or
 // action can check any registered pack's types, not only the ones its own generated facade knows
 import { afterAll, describe, expect, it } from 'vitest';
-import { createEarsEngine, installEngine, isEntity, isEntityType } from '../src/index.ts';
+import { createEarsEngine, installEngine, isEntityType } from '../src/index.ts';
 
 afterAll(() => { installEngine(undefined); });
 
@@ -15,12 +15,5 @@ describe('isEntityType', () => {
     expect(isEntityType('Memo')).toBe(false);
     installEngine(createEarsEngine({ isEntityType: () => true }).query);
     expect(isEntityType('Nope')).toBe(true);
-  });
-
-  it('isEntity answers the same, for any value', () => {
-    installEngine(createEarsEngine({ isEntityType: (name) => name === 'Flow' }).query);
-    expect(isEntity('Flow')).toBe(true);
-    expect(isEntity('Relation')).toBe(false);
-    expect(isEntity(42)).toBe(false);
   });
 });

@@ -4,17 +4,7 @@ import { EARS } from '@/__generated__/ears';
 
 import type { SettingsData } from '../types';
 import { getDefaultSettings } from '../defaults';
-
-// Deep merge: defaults fill missing keys, stored values win. Arrays are not merged.
-function deepMerge(defaults: any, stored: any): any {
-  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return stored ?? defaults;
-  if (!defaults || typeof defaults !== 'object' || Array.isArray(defaults)) return stored;
-  const result = { ...defaults };
-  for (const key of Object.keys(stored)) {
-    result[key] = deepMerge(defaults[key], stored[key]);
-  }
-  return result;
-}
+import { mergeSettings } from '../../merge-settings';
 
 // Use a fixed ID without hyphen to avoid LMDB persistence issues
 // The ID "Settings-app" has a bug where updates don't persist
@@ -34,7 +24,7 @@ const getStoredSettings = (): Partial<SettingsData> => {
 // The settings in effect: the defaults with the stored changes over them
 const getSettingsEntity = (): { id: EARS.EntityId; data: SettingsData } => ({
   id: SETTINGS_ID,
-  data: deepMerge(getDefaultSettings(), getStoredSettings()),
+  data: mergeSettings(getDefaultSettings(), getStoredSettings()),
 });
 
 // Helper to update nested values

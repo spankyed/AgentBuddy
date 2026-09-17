@@ -442,9 +442,6 @@ export function installedEngine(): EarsQuery;
 export function installEngine(engine: EarsQuery | undefined): EarsQuery | undefined;
 
 // @public
-export function isEntity(value: unknown): value is EARS.Entity;
-
-// @public
 export function isEntityType(name: string): boolean;
 
 // @public (undocumented)

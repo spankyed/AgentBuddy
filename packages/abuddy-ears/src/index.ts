@@ -12,7 +12,7 @@ export { b64Encode, b64Decode, type QxSeed } from './query.ts';
 export { tx } from './transaction.ts';
 export {
   getEntitiesOfType, getAllEntityTypes, destroyEntity, removeRelationById,
-  getAll, getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getSchemaStats, isEntity,
+  getAll, getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getSchemaStats,
   getRoles, grantRole, revokeRole,
 } from './attribute-storage.ts';
 export { repository, registerRepository, unregisterRepository, type Repository } from './repository.ts';

@@ -387,8 +387,3 @@ export const getAttributeStats = (kind: EARS.AttrKind) =>
 export function getSchemaStats() {
   return installedEngine().getSchemaStats();
 }
-
-/** Whether `value` names an entity type the installed engine knows (`isEntityType`) */
-export function isEntity(value: unknown): value is EARS.Entity {
-  return typeof value === 'string' && installedEngine().isEntityType(value);
-}

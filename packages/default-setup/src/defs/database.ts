@@ -15,7 +15,7 @@ export {
   createRelation, removeRelation, removeRelationById, destroyEntity, prepareEntity,
   getAllAttributeKinds, getAttributeStats, getAllRelationKinds,
   getRoles, grantRole, revokeRole,
-  getSchemaStats, isEntity,
+  getSchemaStats, isEntityType,
   descendants, ancestors, rootParent, linkSymmetric,
   topoSort, shortestPath, leaves, lowestCommonAncestor,
   getAllEntities,

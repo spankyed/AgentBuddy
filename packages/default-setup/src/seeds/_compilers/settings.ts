@@ -6,6 +6,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { SeedCompileContext, SeedRecord } from '@abuddy/sdk/build';
+import { mergeSettings } from '../../features/settings/merge-settings';
 
 /** The record the settings seed holds */
 export interface SettingsSeedRecord extends SeedRecord {
@@ -15,16 +16,6 @@ export interface SettingsSeedRecord extends SeedRecord {
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
-
-/** `source` over `target`: objects merge key by key, anything else replaces */
-function deepMerge(target: Record<string, unknown>, source: Record<string, unknown>): Record<string, unknown> {
-  const result = { ...target };
-  for (const [key, incoming] of Object.entries(source)) {
-    const current = result[key];
-    result[key] = isRecord(current) && isRecord(incoming) ? deepMerge(current, incoming) : incoming;
-  }
-  return result;
-}
 
 async function defaultExport(file: string): Promise<Record<string, unknown>> {
   const mod = await import(pathToFileURL(file).href) as { default?: unknown };
@@ -37,7 +28,7 @@ export default async function compileSettings({ path: sourcePath, packDir }: See
   let settings = await defaultExport(sourcePath);
   for (const feature of manifest.features ?? []) {
     const file = feature.settings && path.resolve(packDir, feature.settings);
-    if (file && fs.existsSync(file)) settings = deepMerge(settings, await defaultExport(file));
+    if (file && fs.existsSync(file)) settings = mergeSettings(settings, await defaultExport(file));
   }
   return [{ name: 'default-settings', description: 'Application defaults', settings }];
 }
