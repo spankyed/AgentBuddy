@@ -79,9 +79,15 @@ export function openLmdbStore({ paths, policy, engine, readOnly = false, log = c
   let carried: PersistenceErrorStats = { errorCount: 0, lastError: null };
   /** Writes made while a reset has the store closed, written when it opens again */
   let heldForReset: Array<(sink: ShardedPersistence) => void> | null = null;
+  /**
+   * Why opening the environments again failed, while it has: the store keeps no files to write to, so a write
+   * can't be kept and throws instead of being dropped
+   */
+  let openFailure: Error | null = null;
 
   function open() {
     envs = openShardedEnvs(paths, { readOnly });
+    openFailure = null;
     current = makeShardedPersistence(policy, {
       primary: makeLmdbAdapter(envs.primary),
       volatileBackup: makeLmdbAdapter(envs.volatileBackup),
@@ -123,6 +129,19 @@ export function openLmdbStore({ paths, policy, engine, readOnly = false, log = c
     return reported;
   }
 
+  /**
+   * Opens the environments again, after `closeEnvs`. A failure leaves the store with nowhere to write, which every
+   * later write reports (`write`), and is thrown to the caller that asked for the reopen.
+   */
+  function openAgain(): void {
+    try {
+      open();
+    } catch (error) {
+      openFailure = error instanceof Error ? error : new Error(String(error));
+      throw error;
+    }
+  }
+
   /** Keeps the failed writes of an environment closed on the way to opening another, for the next report */
   function carry(stats: PersistenceErrorStats): void {
     carried = { errorCount: carried.errorCount + stats.errorCount, lastError: stats.lastError ?? carried.lastError };
@@ -134,13 +153,21 @@ export function openLmdbStore({ paths, policy, engine, readOnly = false, log = c
   }
 
   // Forwards to the current environments' sinks, so the engine keeps one sink across reopens. A closed store
-  // drops writes, except during a reset, which holds them for the new files.
+  // drops writes, except during a reset, which holds them for the new files, and one whose files failed to open
+  // again, where a write throws (`write`) rather than vanishing.
   const forward = (fn: (sink: ShardedPersistence) => void) => {
     if (current) fn(current);
     else heldForReset?.push(fn);
   };
   const write = (fn: (sink: ShardedPersistence) => void) => {
     if (readOnly) throw new Error(`The LMDB store at ${paths.primary} is open read-only`);
+    if (openFailure) {
+      throw new Error(
+        `The LMDB store at ${paths.primary} is closed: opening it again failed (${openFailure.message}). `
+        + 'Nothing can be saved until the app is started again.',
+        { cause: openFailure },
+      );
+    }
     forward(fn);
   };
   const sink: ShardedPersistence = {
@@ -173,7 +200,7 @@ export function openLmdbStore({ paths, policy, engine, readOnly = false, log = c
     close,
     reopen() {
       carry(closeEnvs());
-      open();
+      openAgain();
     },
     async reset() {
       if (readOnly) throw new Error(`The LMDB store at ${paths.primary} is open read-only`);
@@ -183,7 +210,7 @@ export function openLmdbStore({ paths, policy, engine, readOnly = false, log = c
         // Let LMDB release the files before deleting them
         await new Promise((resolve) => setTimeout(resolve, 100));
         deleteLmdbDirectories(paths);
-        open();
+        openAgain();
       } finally {
         const held = heldForReset;
         heldForReset = null;

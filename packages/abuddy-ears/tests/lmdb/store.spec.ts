@@ -310,6 +310,31 @@ describe('the storage format', () => {
     }
   }
 
+  // A store that can't open its files again has nowhere to keep a write: dropping writes silently would leave the
+  // app running and losing everything the user does
+  it('fails a write after opening the files again failed, and takes them once it works', async () => {
+    const store = openStore();
+    tx(id('Note-1'), true).put('title', 'kept');
+    await flushed();
+
+    // The files the reopen finds are in a format this version doesn't read
+    writeFormat(paths.volatileBackup, LMDB_FORMAT_VERSION + 1);
+    expect(() => store.reopen()).toThrow(String(LMDB_FORMAT_VERSION + 1));
+
+    expect(() => tx(id('Note-2'), true).put('title', 'lost')).toThrow(/opening it again failed/);
+
+    writeFormat(paths.volatileBackup, LMDB_FORMAT_VERSION);
+    store.reopen();
+    tx(id('Note-3'), true).put('title', 'taken');
+    await flushed();
+    store.close();
+
+    const reopened = openStore();
+    await reopened.hydrate();
+    expect(getAttr(id('Note-3'), 'title')).toBe('taken');
+    expect(getAttr(id('Note-2'), 'title')).toBeNull();
+  });
+
   it('is recorded in a database this version writes', async () => {
     const store = openStore();
     tx(id('Note-1'), true).put('title', 'kept');
