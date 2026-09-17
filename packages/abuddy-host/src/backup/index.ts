@@ -257,13 +257,18 @@ export function readBackup(dir: string, entityTypes: Iterable<string> = []): Bac
 
   // Whether a backup can be restored is the files' answer, not the metadata's: a backup whose databases open is
   // restorable whatever metadata.json claims. What it recorded about its origin goes into the message, no more.
-  let env;
-  try {
-    env = openEnvAt(path.join(dir, 'lmdb'), { readOnly: true });
-  } catch (error) {
-    const made = appVersion ? ` (backup made by AgentBuddy ${appVersion})` : '';
-    throw new Error(`${(error as Error).message}${made}`, { cause: error });
-  }
+  const open = (name: DatabaseName) => {
+    try {
+      return openEnvAt(path.join(dir, name), { readOnly: true });
+    } catch (error) {
+      const made = appVersion ? ` (backup made by AgentBuddy ${appVersion})` : '';
+      throw new Error(`${(error as Error).message}${made}`, { cause: error });
+    }
+  };
+  // Every database the import would put in place, so one this version can't read is found before anything is
+  // replaced, not when the store opens the new files again
+  for (const name of databases.filter((name) => name !== 'lmdb')) closeEnv(open(name), () => {});
+  const env = open('lmdb');
   try {
     const perType = new Map<string, number>();
     for (const { value } of env.entities.getRange() as Iterable<{ value: { type?: string } }>) {

@@ -77,7 +77,7 @@ async function appDataDir(): Promise<string> {
 }
 
 /** A backup of a data dir, as the app exports it */
-async function backupOf(userDataDir: string, { withMedia = false } = {}): Promise<string> {
+async function backupOf(userDataDir: string, { withMedia = false, databases }: { withMedia?: boolean; databases?: Array<'lmdb' | 'volatileLmdb'> } = {}): Promise<string> {
   const paths = appDataPaths(userDataDir, { packaged: false });
   if (withMedia) {
     fs.mkdirSync(paths.media, { recursive: true });
@@ -93,7 +93,7 @@ async function backupOf(userDataDir: string, { withMedia = false } = {}): Promis
     log: () => {},
   });
   try {
-    return await exportDatabase(store, tempDir('backup-'), { name: 'backup', mediaPath: paths.media, appVersion: '0.3.14', log });
+    return await exportDatabase(store, tempDir('backup-'), { name: 'backup', mediaPath: paths.media, appVersion: '0.3.14', log, ...(databases && { databases }) });
   } finally {
     store.close();
   }
@@ -755,10 +755,10 @@ describe('abuddy db reset', () => {
 });
 
 describe('abuddy db import', () => {
-  const backupWith = async (title: string) => {
+  const backupWith = async (title: string, options: { databases?: Array<'lmdb' | 'volatileLmdb'> } = {}) => {
     const source = await appDataDir();
     await write(source, () => { tx(id('Note-a')).put('title', title); tx(id('Note-b')).destroy(); });
-    return backupOf(source, { withMedia: true });
+    return backupOf(source, { withMedia: true, ...options });
   };
 
   it('lists the backup and what it replaces, and replaces the database and media only with --force', async () => {
@@ -792,6 +792,23 @@ describe('abuddy db import', () => {
     const refused = await run(['import', backup, '--force', '--data-dir', dir]);
     expect(refused.error?.message).toMatch(/is in storage format 99, but this version reads format 1/);
     expect(refused.error?.message).toContain('(backup made by AgentBuddy 0.3.14)');
+    expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('Alpha');
+  });
+
+  // Every database the import would put in place, not only the main one: finding it afterwards would leave the
+  // rollback to put the user's data back
+  it('refuses a backup whose run history is in a storage format this version cannot read, before replacing anything', async () => {
+    const dir = await appDataDir();
+    const backup = await backupWith('From the backup', { databases: ['lmdb', 'volatileLmdb'] });
+    expect(fs.existsSync(path.join(backup, 'volatileLmdb'))).toBe(true);
+    writeStorageFormat(path.join(backup, 'volatileLmdb'), 99);
+
+    const refused = await run(['import', backup, '--force', '--data-dir', dir]);
+
+    expect(refused.error?.message).toMatch(/is in storage format 99, but this version reads format 1/);
+    // Nothing was put in place: the import says so for each database it replaces, and the rollback would have had to
+    // put the user's data back
+    expect(refused.err).not.toContain('Imported ');
     expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('Alpha');
   });
 
