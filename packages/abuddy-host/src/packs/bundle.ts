@@ -144,6 +144,21 @@ export function stageBundle(
   return info;
 }
 
+/**
+ * Removes the published artifacts of built-in packs this app no longer has (a pack dropped in a new release), so a
+ * tool reading the data dir doesn't keep taking their entity types for the app's. Returns the ids it removed.
+ * Hidden staging dirs are left to `recoverStagingDirs`.
+ */
+export function pruneHostPackArtifacts(hostPacksDir: string, keep: Iterable<string>): string[] {
+  if (!fs.existsSync(hostPacksDir)) return [];
+  const kept = new Set(keep);
+  const stale = fs.readdirSync(hostPacksDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.') && !kept.has(entry.name))
+    .map((entry) => entry.name);
+  for (const id of stale) fs.rmSync(path.join(hostPacksDir, id), { recursive: true, force: true });
+  return stale;
+}
+
 export function readBundleInfo(dir: string): BundleInfo {
   const infoPath = path.join(dir, BUNDLE_PATHS.info);
   if (!fs.existsSync(infoPath)) throw new Error(`Not a pack bundle: no ${BUNDLE_PATHS.info} in ${dir}`);

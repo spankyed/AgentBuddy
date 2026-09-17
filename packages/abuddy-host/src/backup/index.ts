@@ -64,16 +64,8 @@ export async function exportDatabase(
  * old files back if that fails
  */
 export async function importDatabase(store: LmdbStore, backupPath: string, mediaPath: string) {
-  if (!await fs.pathExists(path.join(backupPath, 'metadata.json'))) {
-    throw new Error('Invalid backup: metadata.json not found');
-  }
-
-  const metadata = await fs.readJson(path.join(backupPath, 'metadata.json'));
-  // Only the databases the app has are restored; any other a backup's metadata lists is left out
-  const listed = metadata.databases as string[];
-  const databases = listed.filter(isKnownDatabase);
-  const skipped = listed.filter((name) => !isKnownDatabase(name));
-  if (skipped.length > 0) logger.warn('Skipping databases the app does not have', { skipped });
+  // Checked before anything is replaced: a backup this app can't restore must not cost the user their data first
+  const { databases } = readBackup(backupPath);
   const tempBackupPath = path.join(path.dirname(store.paths.primary), 'temp-backup-' + Date.now());
 
   await fs.ensureDir(tempBackupPath);
@@ -115,7 +107,7 @@ export async function importDatabase(store: LmdbStore, backupPath: string, media
 
     await fs.remove(tempBackupPath);
     logger.info('Import completed');
-    return { databases, skipped };
+    return { databases };
   } catch (error) {
     store.close();
 
@@ -183,10 +175,11 @@ export interface BackupContents {
 
 /**
  * Checks the backup at `dir` restores into this app and reads what it holds: its metadata lists only databases the
- * app has, the primary database (`lmdb`) among them, each listed database is there, and the primary one opens. Throws
- * naming what's wrong.
+ * app has, the primary database (`lmdb`) among them and present, and that one opens (so a backup in another storage
+ * format is refused here, not half-way through an import). A listed database whose folder is missing was empty and is
+ * left out, as the import leaves it out. Throws naming what's wrong. `entityTypes` are the types to count.
  */
-export function readBackup(dir: string, entityTypes: Iterable<string>): BackupContents {
+export function readBackup(dir: string, entityTypes: Iterable<string> = []): BackupContents {
   const metadataFile = path.join(dir, 'metadata.json');
   if (!fs.existsSync(metadataFile)) throw new Error(`${dir} isn't a backup: it has no metadata.json`);
   let metadata: { timestamp?: unknown; databases?: unknown };
@@ -198,10 +191,11 @@ export function readBackup(dir: string, entityTypes: Iterable<string>): BackupCo
   if (!Array.isArray(metadata.databases)) throw new Error(`${metadataFile} lists no databases`);
   const unknown = metadata.databases.filter((name) => !isKnownDatabase(String(name)));
   if (unknown.length > 0) throw new Error(`The backup has databases this AgentBuddy doesn't: ${unknown.join(', ')}`);
-  const databases = metadata.databases as DatabaseName[];
-  if (!databases.includes('lmdb')) throw new Error("The backup doesn't include the database (lmdb)");
-  const missing = databases.filter((name) => !fs.existsSync(path.join(dir, name, 'data.mdb')));
-  if (missing.length > 0) throw new Error(`The backup's ${missing.join(', ')} folder is missing or has no data.mdb`);
+  const listed = metadata.databases as DatabaseName[];
+  if (!listed.includes('lmdb')) throw new Error("The backup doesn't include the database (lmdb)");
+  // A listed database whose folder isn't there was empty when the backup was made, and the import skips it too
+  const databases = listed.filter((name) => fs.existsSync(path.join(dir, name, 'data.mdb')));
+  if (!databases.includes('lmdb')) throw new Error(`The backup's lmdb folder is missing or has no data.mdb`);
 
   const env = openEnvAt(path.join(dir, 'lmdb'), { readOnly: true });
   try {

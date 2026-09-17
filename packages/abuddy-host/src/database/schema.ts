@@ -10,7 +10,6 @@ import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { BUNDLE_PATHS } from '../packs/bundle.ts';
 import { discoverPacks } from '../packs/pack-discovery.ts';
 import { appPartitionPolicy } from '../packs/pack-registration.ts';
-import { readPackRegistry } from '../packs/pack-registry.ts';
 
 /** What opening a database needs from the packs: which names are entity types, and where each type is stored */
 export interface DatabaseSchema {
@@ -32,8 +31,26 @@ export interface InstalledSchema extends DatabaseSchema {
 /** The directories and files of a data dir the schema is read from */
 export type SchemaContext = Pick<AppContext, 'userDataDir' | 'packsDir' | 'hostPacksDir' | 'registryFile'>;
 
-function readJSON<T>(file: string): T {
-  return JSON.parse(fs.readFileSync(file, 'utf-8')) as T;
+function readJSON<T>(file: string, what: string): T {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(fs.readFileSync(file, 'utf-8'));
+  } catch (error) {
+    throw new Error(`${file} isn't readable ${what}: ${(error as Error).message}`);
+  }
+  if (!parsed || typeof parsed !== 'object') throw new Error(`${file} isn't ${what}`);
+  return parsed as T;
+}
+
+/** A manifest's entity types and relation kinds, whatever else it holds */
+function packEARS(manifest: PackManifest | undefined, file: string): PackManifest {
+  if (!manifest || typeof manifest !== 'object') throw new Error(`${file} holds no pack manifest`);
+  for (const [field, names] of [['entities', manifest.entities], ['relKinds', manifest.relKinds]] as const) {
+    if (names !== undefined && (typeof names !== 'object' || Array.isArray(names))) {
+      throw new Error(`${file}: the manifest's ${field} isn't a set of names`);
+    }
+  }
+  return manifest;
 }
 
 /** The built-in packs the app published to the data dir (`hostPacksDir/<id>/types/snapshot.json`) */
@@ -43,7 +60,18 @@ function builtInManifests(hostPacksDir: string): PackManifest[] {
     .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
     .map((entry) => path.join(hostPacksDir, entry.name, BUNDLE_PATHS.snapshot))
     .filter((file) => fs.existsSync(file))
-    .map((file) => readJSON<PackSnapshot>(file).manifest);
+    .map((file) => packEARS(readJSON<PackSnapshot>(file, "a built-in pack's snapshot").manifest, file));
+}
+
+/**
+ * The packs the registry file lists as disabled. A file it can't read is refused rather than read as "nothing is
+ * disabled", which would take in packs the app leaves out.
+ */
+function disabledPacks(registryFile: string): Set<string> {
+  if (!fs.existsSync(registryFile)) return new Set();
+  const { packs } = readJSON<{ packs?: unknown }>(registryFile, 'the installed packs');
+  if (!Array.isArray(packs)) throw new Error(`${registryFile} lists no installed packs`);
+  return new Set(packs.filter((pack) => (pack as { enabled?: unknown }).enabled === false).map((pack) => String((pack as { id?: unknown }).id)));
 }
 
 /**
@@ -51,8 +79,26 @@ function builtInManifests(hostPacksDir: string): PackManifest[] {
  * pack it hasn't listed yet as enabled)
  */
 function externalManifests({ packsDir, registryFile }: SchemaContext): PackManifest[] {
-  const disabled = new Set(readPackRegistry(registryFile).filter((entry) => !entry.enabled).map((entry) => entry.id));
-  return discoverPacks(packsDir).map(({ manifest }) => manifest).filter((manifest) => !disabled.has(manifest.id));
+  const disabled = disabledPacks(registryFile);
+  return discoverPacks(packsDir)
+    .map(({ manifest, dir }) => packEARS(manifest, path.join(dir, 'abuddy.json')))
+    .filter((manifest) => !disabled.has(manifest.id));
+}
+
+/**
+ * Adds a pack's names to `names`, refusing one another pack or the app already declares: the app's registry refuses
+ * the same collision when it registers packs, so a tool that took the last one would read the database by a schema
+ * the app can't even start with.
+ */
+function addNames(names: Record<string, string>, owners: Map<string, string>, pack: string, declared: Record<string, string> | undefined, what: string): void {
+  for (const [name, value] of Object.entries(declared ?? {})) {
+    for (const key of [name, value]) {
+      const owner = owners.get(key);
+      if (owner !== undefined && owner !== pack) throw new Error(`Two packs declare the ${what} ${key}: "${owner}" and "${pack}"`);
+      owners.set(key, pack);
+    }
+    names[name] = value;
+  }
 }
 
 /**
@@ -72,9 +118,11 @@ export function readInstalledSchema(context: SchemaContext): InstalledSchema {
     ...Object.fromEntries(HOST_ENTITY_TYPES.map((type) => [type, type])),
   };
   const relKinds: Record<string, string> = { ...SDK_REL_KINDS };
+  const entityOwners = new Map<string, string>([...Object.keys(entities)].map((name) => [name, 'AgentBuddy']));
+  const relKindOwners = new Map<string, string>([...Object.entries(relKinds)].flatMap(([name, value]) => [[name, 'AgentBuddy'], [value, 'AgentBuddy']] as Array<[string, string]>));
   for (const manifest of [...builtIn, ...external]) {
-    Object.assign(entities, manifest.entities);
-    Object.assign(relKinds, manifest.relKinds);
+    addNames(entities, entityOwners, manifest.id, manifest.entities, 'entity type');
+    addNames(relKinds, relKindOwners, manifest.id, manifest.relKinds, 'relation kind');
   }
   const excluded = builtIn.flatMap((manifest) => manifest.partitionPolicy?.excludedEntityTypes ?? []);
   const entityTypes = new Set(Object.values(entities));

@@ -116,17 +116,29 @@ describe('services.appData', () => {
     expect(await services.appData.backupInfo(backup)).toEqual({ timestamp: expect.any(Number), databases: ['volatileLmdb'], size: expect.any(Number), hasMedia: false });
   });
 
-  it("restores only the databases the app has, leaving out any other a backup lists", async () => {
+  it("refuses a backup holding a database this app doesn't have, before it replaces anything", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-unknown-db-backup-'));
     dirs.push(dir);
-    const backup = await services.appData.exportBackup(dir, 'unknown', ['volatileLmdb']);
+    const backup = await services.appData.exportBackup(dir, 'unknown', ['lmdb']);
     const metadataPath = path.join(backup, 'metadata.json');
     const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
-    fs.writeFileSync(metadataPath, JSON.stringify({ ...metadata, databases: ['volatileLmdb', 'unknownLmdb'] }));
+    fs.writeFileSync(metadataPath, JSON.stringify({ ...metadata, databases: ['lmdb', 'unknownLmdb'] }));
     fs.mkdirSync(path.join(backup, 'unknownLmdb'));
+    tx('Note-kept' as never, true).put('title', 'still here');
 
-    expect(await services.appData.backupInfo(backup)).toMatchObject({ databases: ['volatileLmdb'] });
-    expect(await services.appData.importBackup(backup)).toEqual({ databases: ['volatileLmdb'] });
+    // A partial restore of a backup a newer AgentBuddy made would cost the user their data to learn that
+    await expect(services.appData.importBackup(backup)).rejects.toThrow("The backup has databases this AgentBuddy doesn't: unknownLmdb");
+    expect(untypedQx('Note-kept' as never).pickOne(['title'])).toMatchObject({ title: 'still here' });
+  });
+
+  it('restores a backup whose listed database was empty when it was made', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-empty-db-backup-'));
+    dirs.push(dir);
+    // exportBackup lists volatileLmdb but copies no folder when there is nothing in it
+    const backup = await services.appData.exportBackup(dir, 'sparse', ['lmdb', 'volatileLmdb']);
+    fs.rmSync(path.join(backup, 'volatileLmdb'), { recursive: true, force: true });
+
+    expect(await services.appData.importBackup(backup)).toEqual({ databases: ['lmdb'] });
   });
 
   it("moves the app's state out of the settings of a backup from before AppState", async () => {
@@ -157,6 +169,6 @@ describe('services.appData', () => {
   it('rejects an import of a directory that is not a backup', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-not-backup-'));
     dirs.push(dir);
-    await expect(services.appData.importBackup(dir)).rejects.toThrow('Invalid backup: metadata.json not found');
+    await expect(services.appData.importBackup(dir)).rejects.toThrow(`${dir} isn't a backup: it has no metadata.json`);
   });
 });

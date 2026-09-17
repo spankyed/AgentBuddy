@@ -36,5 +36,6 @@ export {
   packFrontendFiles,
   createBundleArchive, extractBundleArchive, bundleArchiveName,
   publishHostPackArtifacts,
+  pruneHostPackArtifacts,
 } from './bundle.ts';
 export type { BundleInfo, PackBundleEntry } from './bundle.ts';

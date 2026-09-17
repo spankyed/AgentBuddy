@@ -6,7 +6,7 @@ import { getLmdbPath, getVolatileLmdbPath } from '@abuddy/sdk/utils';
 import type { EarsEngine } from '@abuddy/ears';
 import type { LmdbStore } from '@abuddy/ears/lmdb';
 import { assertNoDatabaseWriter, openDatabaseStore } from '@abuddy/host/database';
-import { createPackRegistry, publishHostPackArtifacts, prepareHostDataDirs, type PackRegistry } from '@abuddy/host/packs';
+import { createPackRegistry, publishHostPackArtifacts, pruneHostPackArtifacts, prepareHostDataDirs, type PackRegistry } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import * as path from 'path';
 import {
@@ -116,7 +116,8 @@ export async function setupBackend(): Promise<void> {
 
   if (builtInPromise) {
     // Pack authors resolve built-in dependencies (types, step build code) from the installed app
-    for (const info of await builtInPromise) {
+    const builtInInfos = await builtInPromise;
+    for (const info of builtInInfos) {
       try {
         if (publishHostPackArtifacts(info.dir, path.join(appContext.hostPacksDir, info.id))) {
           console.log(`[packs] Published build artifacts for built-in pack ${info.id}`);
@@ -125,6 +126,9 @@ export async function setupBackend(): Promise<void> {
         console.warn(`[packs] Could not publish build artifacts for ${info.id}:`, err);
       }
     }
+    // A pack this release no longer has leaves its artifacts behind, which tools would still read as the app's
+    const stale = pruneHostPackArtifacts(appContext.hostPacksDir, builtInInfos.map((info) => info.id));
+    if (stale.length > 0) console.log(`[packs] Removed build artifacts of built-in pack(s) this app no longer has: ${stale.join(', ')}`);
   }
 
   // Run early boot hooks (logs system must start before anything else)
