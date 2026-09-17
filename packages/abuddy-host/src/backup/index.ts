@@ -71,9 +71,11 @@ export async function importDatabase(
   { skipUnknownDatabases = false }: { skipUnknownDatabases?: boolean } = {},
 ) {
   // Checked before anything is replaced: a backup this app can't restore must not cost the user their data first
-  const { databases, unknownDatabases } = readBackup(backupPath);
+  const { databases, unknownDatabases, missingDatabases } = readBackup(backupPath);
   if (unknownDatabases.length > 0 && !skipUnknownDatabases) throw new UnknownBackupDatabasesError(unknownDatabases);
   if (unknownDatabases.length > 0) logger.warn('Importing without the stores this AgentBuddy does not have', { unknownDatabases });
+  // Said rather than silently done: the folder may have been lost since, not just never written
+  if (missingDatabases.length > 0) logger.warn('The backup lists stores it has no folder for; they are restored as empty', { missingDatabases });
   const tempBackupPath = path.join(path.dirname(store.paths.primary), 'temp-backup-' + Date.now());
 
   await fs.ensureDir(tempBackupPath);
@@ -115,7 +117,7 @@ export async function importDatabase(
 
     await fs.remove(tempBackupPath);
     logger.info('Import completed');
-    return { databases };
+    return { databases, missingDatabases };
   } catch (error) {
     store.close();
 
@@ -181,6 +183,8 @@ export interface BackupContents {
   counts: Array<[string, number]>;
   /** Stores the backup holds that this AgentBuddy doesn't have: importing leaves them out */
   unknownDatabases: string[];
+  /** Stores its metadata lists with no folder to restore: empty when the backup was made, or lost since */
+  missingDatabases: DatabaseName[];
 }
 
 /**
@@ -202,9 +206,10 @@ export function readBackup(dir: string, entityTypes: Iterable<string> = []): Bac
   if (!Array.isArray(metadata.databases)) throw new Error(`${metadataFile} lists no databases`);
   const unknownDatabases = metadata.databases.filter((name) => !isKnownDatabase(String(name))).map(String);
   const listed = metadata.databases.filter((name) => isKnownDatabase(String(name))) as DatabaseName[];
+  const missingDatabases = listed.filter((name) => !fs.existsSync(path.join(dir, name, 'data.mdb')));
   if (!listed.includes('lmdb')) throw new Error("The backup doesn't include the database (lmdb)");
   // A listed database whose folder isn't there was empty when the backup was made, and the import skips it too
-  const databases = listed.filter((name) => fs.existsSync(path.join(dir, name, 'data.mdb')));
+  const databases = listed.filter((name) => !missingDatabases.includes(name));
   if (!databases.includes('lmdb')) throw new Error(`The backup's lmdb folder is missing or has no data.mdb`);
 
   const env = openEnvAt(path.join(dir, 'lmdb'), { readOnly: true });
@@ -219,6 +224,7 @@ export function readBackup(dir: string, entityTypes: Iterable<string> = []): Bac
       ...(typeof metadata.timestamp === 'number' && { timestamp: metadata.timestamp }),
       databases,
       unknownDatabases,
+      missingDatabases,
       hasMedia: fs.existsSync(path.join(dir, 'media')),
       counts,
     };

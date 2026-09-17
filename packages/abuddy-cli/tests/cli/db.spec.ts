@@ -611,6 +611,20 @@ describe('abuddy db import', () => {
     expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('Alpha');
   });
 
+  it('says when the backup lists a store it holds nothing for, rather than dropping it quietly', async () => {
+    const dir = await appDataDir();
+    const backup = await backupWith('From the backup');
+    const metadata = JSON.parse(fs.readFileSync(path.join(backup, 'metadata.json'), 'utf-8'));
+    // Listed, but the folder isn't there: empty when the backup was made, or lost since
+    fs.writeFileSync(path.join(backup, 'metadata.json'), JSON.stringify({ ...metadata, databases: ['lmdb', 'volatileLmdb'] }));
+
+    const listed = await ok(['import', backup, '--data-dir', dir]);
+    expect(listed.out).toContain('lists volatileLmdb but holds nothing for it, so it comes back empty');
+
+    await ok(['import', backup, '--force', '--data-dir', dir]);
+    expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('From the backup');
+  });
+
   it("refuses a backup from a newer AgentBuddy, saying how to import it without what this one can't hold", async () => {
     const dir = await appDataDir();
     const backup = await backupWith('From the backup');

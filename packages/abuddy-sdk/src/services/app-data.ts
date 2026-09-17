@@ -34,7 +34,11 @@ export interface AppDataService {
    * `UnknownBackupDatabasesError`, since restoring it would replace the user's data with an incomplete copy.
    * `skipUnknownDatabases` imports it anyway, without those stores, once the user has said so.
    */
-  importBackup(backupPath: string, options?: { skipUnknownDatabases?: boolean }): Promise<{ databases: BackupDatabase[] }>;
+  importBackup(backupPath: string, options?: { skipUnknownDatabases?: boolean }): Promise<{
+    databases: BackupDatabase[];
+    /** Stores the backup listed with no folder to restore: nothing came back for them */
+    missingDatabases: BackupDatabase[];
+  }>;
   /** A backup's metadata, or null when `backupPath` isn't a backup */
   backupInfo(backupPath: string): Promise<BackupInfo | null>;
 }

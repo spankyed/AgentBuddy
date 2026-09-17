@@ -227,12 +227,16 @@ export const databaseSystem = setup({
 
       // Replaces stored data and reloads memory from it; on failure the previous data is restored and reloaded
       services.appData.importBackup(path, { skipUnknownDatabases }).then(
-        () => {
+        ({ missingDatabases }) => {
           // Stop brain and notify success
           getActor(system, brain).send({ type: 'KILL_BRAIN' });
-          system.get(bus).send(emit(database, { 
+          // A store the backup listed but didn't hold came back empty: said, not silently dropped
+          const nothingToRestore = missingDatabases.length > 0
+            ? ` The backup listed ${missingDatabases.join(', ')} but held nothing for it, so it is now empty.`
+            : '';
+          system.get(bus).send(emit(database, {
             type: 'IMPORT_DATABASE_SUCCESS',
-            message: 'Import successful. Please restart the brain manually.'
+            message: `Import successful.${nothingToRestore} Please restart the brain manually.`
           }));
           system.get(bus).send(emit(database, { 
             type: 'DATABASE_REFRESH',

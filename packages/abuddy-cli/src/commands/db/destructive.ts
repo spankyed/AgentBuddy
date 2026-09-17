@@ -167,6 +167,7 @@ export async function dbImport(args: string[], io: DbIo): Promise<void> {
     if (backup.timestamp) io.out(`  made ${new Date(backup.timestamp).toISOString()}`);
     io.out(`  databases: ${backup.databases.join(', ')}${backup.hasMedia ? ', with media' : ''}`);
     if (backup.unknownDatabases.length > 0) io.out(`  leaving out ${backup.unknownDatabases.join(', ')}, which this AgentBuddy doesn't have`);
+    if (backup.missingDatabases.length > 0) io.out(`  lists ${backup.missingDatabases.join(', ')} but holds nothing for it, so it comes back empty`);
     countLines(backup.counts).forEach((line) => io.out(line));
     io.out(`${force ? 'Replacing' : 'Would replace'} the current database, which holds:`);
     countLines(entityCounts(db)).forEach((line) => io.out(line));

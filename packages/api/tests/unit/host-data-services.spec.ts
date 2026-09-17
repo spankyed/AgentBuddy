@@ -133,18 +133,19 @@ describe('services.appData', () => {
     expect(untypedQx('Note-kept' as never).pickOne(['title'])).toMatchObject({ title: 'still here' });
 
     // The app asks the user first, and imports it without that store when they say to
-    expect(await services.appData.importBackup(backup, { skipUnknownDatabases: true })).toEqual({ databases: ['lmdb'] });
+    expect(await services.appData.importBackup(backup, { skipUnknownDatabases: true })).toEqual({ databases: ['lmdb'], missingDatabases: [] });
     expect(untypedQx('Note-kept' as never).pickOne(['title'])).toBeNull();
   });
 
-  it('restores a backup whose listed database was empty when it was made', async () => {
+  it('restores a backup whose listed store it holds nothing for, and says which', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-empty-db-backup-'));
     dirs.push(dir);
     // exportBackup lists volatileLmdb but copies no folder when there is nothing in it
     const backup = await services.appData.exportBackup(dir, 'sparse', ['lmdb', 'volatileLmdb']);
     fs.rmSync(path.join(backup, 'volatileLmdb'), { recursive: true, force: true });
 
-    expect(await services.appData.importBackup(backup)).toEqual({ databases: ['lmdb'] });
+    // Reported, so the app can tell the user that store came back empty rather than dropping it silently
+    expect(await services.appData.importBackup(backup)).toEqual({ databases: ['lmdb'], missingDatabases: ['volatileLmdb'] });
   });
 
   it("moves the app's state out of the settings of a backup from before AppState", async () => {

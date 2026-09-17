@@ -40,6 +40,7 @@ export interface AppDataService {
         skipUnknownDatabases?: boolean;
     }): Promise<{
         databases: BackupDatabase[];
+        missingDatabases: BackupDatabase[];
     }>;
     reset(): Promise<void>;
 }
