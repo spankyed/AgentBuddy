@@ -125,6 +125,28 @@ export const tnodeRepository: {
     updateTNodeResult: (tNodeId: EARS.EntityId, result: unknown) => void;
 };
 
+// @public
+export const trash: {
+    move(ids: readonly EARS.EntityId[], at?: number): EARS.EntityId[];
+    restore(ids: readonly EARS.EntityId[]): EARS.EntityId[];
+    isTrashed: (id: EARS.EntityId) => boolean;
+    list<T extends object = object>(entityType: string): Trashed<T>[];
+    olderThan<T extends object = object>(entityType: string, maxAgeMs: number, now?: number): Trashed<T>[];
+};
+
+// @public
+export type Trashed<T extends object = object> = T & TrashFields & {
+    id: EARS.EntityId;
+};
+
+// @public
+export interface TrashFields {
+    // (undocumented)
+    deleted?: boolean;
+    // (undocumented)
+    deletedAt?: number;
+}
+
 // (No @packageDocumentation comment for this package)
 
 ```

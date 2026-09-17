@@ -4555,7 +4555,9 @@ declare const noteCommands: {
         favorite?: boolean;
         noteType?: "document" | "task" | "tasklist";
     }, skipTimestamp?: boolean) => void;
+    /** Moves a note and its sub-notes to the trash; returns the ids moved */
     readonly softDelete: (id: EARS.EntityId) => string[];
+    /** Takes a note and its trashed sub-notes out of the trash; returns the ids restored */
     readonly restore: (id: EARS.EntityId) => string[];
     readonly move: (id: EARS.EntityId, newParentId: EARS.EntityId | null) => {
         oldParentId: string | null;

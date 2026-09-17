@@ -2,6 +2,7 @@
 // seeders resolve prompts by label
 import { RepositoryError, RepositoryErrorCode, installedEngine as ears } from '@abuddy/ears';
 import { EARS } from '../types/entities.ts';
+import { trash } from './trash.ts';
 import type { PromptEntity, TemplateInput } from '../types/sdk-entities.ts';
 
 /** A prompt's fields, as it's created */
@@ -38,9 +39,9 @@ export const promptRepository = {
     ears().updateEntity(id, { ...updates });
   },
 
-  /** Marks a prompt deleted; it stays stored */
+  /** Moves a prompt to the trash; it stays stored */
   delete: (id: EARS.EntityId): void => {
     if (!ears().findByIdRaw<PromptEntity>(id)) throw new RepositoryError(`Prompt ${id} not found`, RepositoryErrorCode.NOT_FOUND);
-    ears().updateEntity(id, { deleted: true, deletedAt: Date.now() });
+    trash.move([id]);
   },
 };

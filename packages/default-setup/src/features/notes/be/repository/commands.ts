@@ -2,6 +2,7 @@ import { tx, findById, findByIdRaw, qx } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
 import { createRelation, removeRelation, RepositoryError, RepositoryErrorCode } from '@abuddy/ears';
 import { createEntityWithDefaults, updateEntity } from '@/__generated__/ears';
+import { trash } from '@abuddy/sdk/repositories';
 
 import { REFERENCES } from '../types';
 import { syncReferences } from './link-utils';
@@ -171,31 +172,22 @@ export const noteCommands = {
     }
   },
 
+  /** Moves a note and its sub-notes to the trash; returns the ids moved */
   softDelete: (id: EARS.EntityId): string[] => {
-    const existing = findById<NoteEntity>(id);
-    if (!existing) return [];
-    const now = Date.now();
-    const deletedIds: string[] = [id];
-    updateEntity(id, { deleted: true, deletedAt: now });
-    const childIds = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
-    for (const childId of childIds) {
-      deletedIds.push(...noteCommands.softDelete(childId));
-    }
-    return deletedIds;
+    if (!findById<NoteEntity>(id)) return [];
+    const subtree = (noteId: EARS.EntityId): EARS.EntityId[] =>
+      [noteId, ...qx(noteId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids().flatMap(subtree)];
+    return trash.move(subtree(id));
   },
 
+  /** Takes a note and its trashed sub-notes out of the trash; returns the ids restored */
   restore: (id: EARS.EntityId): string[] => {
-    const existing = findByIdRaw<NoteEntity>(id);
-    if (!existing || !existing.deleted) return [];
+    if (trash.restore([id]).length === 0) return [];
     const restoredIds: string[] = [id];
-    updateEntity(id, { deleted: false, deletedAt: 0 });
     // If parent is still deleted, detach so note restores at root
     const parentIds = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
-    if (parentIds.length > 0) {
-      const parent = findByIdRaw<NoteEntity>(parentIds[0]);
-      if (parent?.deleted) {
-        removeRelation(parentIds[0], EARS.RelKind.CONTAINS, id);
-      }
+    if (parentIds.length > 0 && trash.isTrashed(parentIds[0])) {
+      removeRelation(parentIds[0], EARS.RelKind.CONTAINS, id);
     }
     const childIds = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
     for (const childId of childIds) {

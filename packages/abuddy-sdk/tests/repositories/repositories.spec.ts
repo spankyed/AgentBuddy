@@ -2,8 +2,8 @@
 // nodes and edges, step results on TNodes, and actions and prompts
 import * as os from 'node:os';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { findRelations, tx, untypedQx } from '@abuddy/ears';
-import { actionRepository, flowRepository, promptRepository, tnodeRepository } from '../../src/repositories/index.ts';
+import { findRelations, installedEngine, tx, untypedQx } from '@abuddy/ears';
+import { actionRepository, flowRepository, promptRepository, tnodeRepository, trash } from '../../src/repositories/index.ts';
 import { compile as compileFlowDSL } from '../../src/build/compilers/flow-compiler.ts';
 import { resetTestData, startTestRuntime, testPacks } from '../../src/testing/index.ts';
 import { EARS } from '../../src/types/entities.ts';
@@ -168,5 +168,40 @@ describe('actionRepository and promptRepository', () => {
     expect(() => promptRepository.create({ label: 'P', templateFn: '' })).toThrow('Template is required');
     expect(() => actionRepository.update('Action-missing' as EARS.EntityId, {})).toThrow('Action Action-missing not found');
     expect(() => promptRepository.delete('Prompt-missing' as EARS.EntityId)).toThrow('Prompt Prompt-missing not found');
+  });
+});
+
+describe('trash', () => {
+  // Any entity type: prompts here
+  const note = (title: string) => tx(`Prompt-${title}` as EARS.EntityId, true).put('entityType', 'Prompt').put('title', title).id();
+  const findById = (id: EARS.EntityId) => installedEngine().findById<Record<string, unknown>>(id);
+  const findByIdRaw = (id: EARS.EntityId) => installedEngine().findByIdRaw(id);
+
+  it('moves entities to the trash, where finders skip them, and restores them unmarked', () => {
+    const [a, b] = [note('a'), note('b')];
+
+    expect(trash.move([a, b, 'Prompt-missing' as EARS.EntityId], 1000)).toEqual([a, b]);
+    expect(trash.move([a], 2000)).toEqual([]);
+    expect(findById(a)).toBeUndefined();
+    expect(installedEngine().findAll('Prompt')).toEqual([]);
+    expect(findByIdRaw(a)).toMatchObject({ deleted: true, deletedAt: 1000 });
+    expect(trash.isTrashed(a)).toBe(true);
+    expect(trash.list('Prompt').map((n) => n.id).sort()).toEqual([a, b].sort());
+
+    expect(trash.restore([a, 'Prompt-missing' as EARS.EntityId])).toEqual([a]);
+    expect(trash.restore([a])).toEqual([]);
+    const restored = findById(a);
+    expect(restored).toMatchObject({ title: 'a' });
+    expect(restored).not.toHaveProperty('deleted');
+    expect(restored).not.toHaveProperty('deletedAt');
+    expect(trash.isTrashed(a)).toBe(false);
+    expect(trash.list('Prompt').map((n) => n.id)).toEqual([b]);
+  });
+
+  it('lists the entities trashed longer ago than an age', () => {
+    const [old, recent] = [note('old'), note('recent')];
+    trash.move([old], 1_000);
+    trash.move([recent], 9_000);
+    expect(trash.olderThan('Prompt', 5_000, 10_000).map((n) => n.id)).toEqual([old]);
   });
 });

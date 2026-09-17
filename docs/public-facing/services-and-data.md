@@ -385,6 +385,22 @@ import { repository } from '#generated/repository';
 repository.bookmarkCommands.create({ url, title });
 ```
 
+### Trash (soft delete)
+
+`trash` from `@abuddy/sdk/repositories` moves entities of any type to a trash instead of deleting them. A trashed entity stays stored, marked `deleted: true` with the time it was trashed (`deletedAt`); the `find*` helpers leave it out, and `findByIdRaw` still reads it.
+
+```typescript
+import { trash } from '@abuddy/sdk/repositories';
+
+trash.move([bookmarkId]);                        // the ids it moved (not missing or already trashed ones)
+trash.list<Bookmark>('Bookmark');                // the trashed bookmarks
+trash.olderThan<Bookmark>('Bookmark', 7 * 24 * 60 * 60 * 1000);  // trashed more than 7 days ago
+trash.restore([bookmarkId]);                     // removes both marks
+trash.isTrashed(bookmarkId);
+```
+
+What trashing means beyond the marks stays with your feature: trashing an entity's children with it, or emptying the trash by deleting the entities (`tx(id).destroy()`).
+
 ### Engine instances
 
 Each app has one EARS engine, which the app creates at startup. Everything above (`qx`, `tx`, `repository`, the helpers from `#generated/ears` and `@abuddy/ears`) acts on the engine that's *installed*; a pack never creates or replaces it in the app.

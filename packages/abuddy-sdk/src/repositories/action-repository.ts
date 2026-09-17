@@ -2,6 +2,7 @@
 // seeders resolve actions by label
 import { RepositoryError, RepositoryErrorCode, installedEngine as ears } from '@abuddy/ears';
 import { EARS } from '../types/entities.ts';
+import { trash } from './trash.ts';
 import type { ActionEntity, ActionParameter } from '../types/sdk-entities.ts';
 
 /** An action's fields, as it's created */
@@ -37,9 +38,9 @@ export const actionRepository = {
     ears().updateEntity(id, { ...updates });
   },
 
-  /** Marks an action deleted; it stays stored */
+  /** Moves an action to the trash; it stays stored */
   delete: (id: EARS.EntityId): void => {
     if (!ears().findByIdRaw<ActionEntity>(id)) throw new RepositoryError(`Action ${id} not found`, RepositoryErrorCode.NOT_FOUND);
-    ears().updateEntity(id, { deleted: true, deletedAt: Date.now() });
+    trash.move([id]);
   },
 };
