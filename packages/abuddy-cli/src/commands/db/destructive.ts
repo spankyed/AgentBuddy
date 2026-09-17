@@ -50,7 +50,7 @@ export async function dbReset(args: string[], io: DbIo): Promise<void> {
   if (positionals.length > 0) throw new Error(`Unexpected argument ${positionals[0]}\n\n${RESET_USAGE}`);
   const force = values.force as boolean;
 
-  const db = await openTarget(target, { write: true }, io);
+  const db = await openTarget(target, { write: true, command: 'reset' }, io);
   let closed = false;
   try {
     const secrets = secretsStoreAt(db);
@@ -110,7 +110,7 @@ export async function dbClearSettings(args: string[], io: DbIo): Promise<void> {
   if (positionals.length > 0) throw new Error(`Unexpected argument ${positionals[0]}\n\n${CLEAR_SETTINGS_USAGE}`);
   const force = values.force as boolean;
 
-  const db = await openTarget(target, { write: true }, io);
+  const db = await openTarget(target, { write: true, command: 'clear-settings' }, io);
   let closed = false;
   try {
     const rows = db.query.getEntitiesOfType(SETTINGS_ENTITY as EARS.Entity).map((id) => describeSettingsRow(db, id));
@@ -154,7 +154,7 @@ export async function dbImport(args: string[], io: DbIo): Promise<void> {
   const backupDir = path.resolve(positionals[0]);
   const force = values.force as boolean;
 
-  const db = await openTarget(target, { write: true }, io);
+  const db = await openTarget(target, { write: true, command: 'import' }, io);
   let closed = false;
   try {
     // The backup is checked before anything changes

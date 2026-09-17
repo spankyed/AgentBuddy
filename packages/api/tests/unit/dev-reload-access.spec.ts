@@ -10,9 +10,10 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-dev-reload-'));
 process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
 process.env.ABUDDY_API_TOKEN = 'the-run-token';
-const { API_PROTOCOL, acceptsConnection, devReloadRefusal } = await import('@/setup/websocket');
+const { API_PROTOCOL, acceptsConnection, devReloadRefusal, publishApiFiles } = await import('@/setup/websocket');
 const { API_HOST } = await import('@abuddy/sdk/env');
 const { apiToken, apiTokenIsOwn, isApiToken } = await import('@/setup/config');
+const { resolveAppContext } = await import('@abuddy/sdk/env');
 const { API_TOKEN_HEADER } = await import('@abuddy/sdk/env');
 afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
 
@@ -86,4 +87,45 @@ describe('POST /dev/reload', () => {
 
 it('listens on loopback only', () => {
   expect(API_HOST).toBe('127.0.0.1');
+});
+
+describe('the files the API publishes', () => {
+  const { apiPortFile, apiTokenFile } = resolveAppContext();
+  const clear = () => { for (const file of [apiPortFile, apiTokenFile]) fs.rmSync(file, { force: true }); };
+
+  it("publishes its port for every run, so a local tool can tell an app is running on the data dir", () => {
+    clear();
+    // A file from an earlier run, readable by anyone
+    fs.mkdirSync(path.dirname(apiPortFile), { recursive: true });
+    fs.writeFileSync(apiPortFile, '1111', { mode: 0o644 });
+    // A packaged app: not development, and main gave it the run's token
+    delete process.env.NODE_ENV;
+    process.env.ABUDDY_API_TOKEN = TOKEN;
+    publishApiFiles(4321, TOKEN);
+
+    expect(fs.readFileSync(apiPortFile, 'utf-8')).toBe('4321');
+    // Only the user reads it, whatever the data dir's own permissions are
+    expect(fs.statSync(apiPortFile).mode & 0o777).toBe(0o600);
+    // The token stays out of the data dir: no local tool needs it there
+    expect(fs.existsSync(apiTokenFile)).toBe(false);
+  });
+
+  it('publishes the token too for a development app, and for one that made up its own', () => {
+    clear();
+    process.env.NODE_ENV = 'development';
+    publishApiFiles(4322, TOKEN);
+    expect(fs.readFileSync(apiTokenFile, 'utf-8')).toBe(TOKEN);
+    expect(fs.statSync(apiTokenFile).mode & 0o777).toBe(0o600);
+
+    clear();
+    delete process.env.NODE_ENV;
+    delete process.env.ABUDDY_API_TOKEN;
+    try {
+      const own = apiToken();
+      publishApiFiles(4323, own);
+      expect(fs.readFileSync(apiTokenFile, 'utf-8')).toBe(own);
+    } finally {
+      process.env.ABUDDY_API_TOKEN = TOKEN;
+    }
+  });
 });

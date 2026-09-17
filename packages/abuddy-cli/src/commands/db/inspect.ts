@@ -101,7 +101,7 @@ export async function dbInspect(args: string[], io: DbIo): Promise<void> {
   const [incoming, outgoing] = [values.incoming as boolean, values.outgoing as boolean];
   const directions: Direction[] = incoming === outgoing ? ['outgoing', 'incoming'] : incoming ? ['incoming'] : ['outgoing'];
 
-  const db = await openTarget(target, { write: false }, io);
+  const db = await openTarget(target, { write: false, command: 'inspect' }, io);
   try {
     if (entityId) {
       graphLines(db.query, entityId, { depth, directions }).forEach((line) => io.out(line));

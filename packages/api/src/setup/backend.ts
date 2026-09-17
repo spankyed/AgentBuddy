@@ -5,7 +5,7 @@ import { bus } from '@abuddy/sdk/ids';
 import { getLmdbPath, getVolatileLmdbPath } from '@abuddy/sdk/utils';
 import type { EarsEngine } from '@abuddy/ears';
 import type { LmdbStore } from '@abuddy/ears/lmdb';
-import { openDatabaseStore } from '@abuddy/host/database';
+import { assertNoDatabaseWriter, openDatabaseStore } from '@abuddy/host/database';
 import { createPackRegistry, publishHostPackArtifacts, prepareHostDataDirs, type PackRegistry } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import * as path from 'path';
@@ -77,6 +77,11 @@ export let backendActor: ReturnType<typeof createActor<ReturnType<typeof createA
 export async function setupBackend(): Promise<void> {
   initializeLogCapture();
 
+  // Before anything opens the database: a tool changing it (`abuddy db`) holds a lock until it's done, and opening
+  // now would overwrite its change from this process's memory
+  const appContext = resolveAppContext();
+  assertNoDatabaseWriter(appContext.userDataDir);
+
   // The app's data: the engine persists to it from here on, and it's hydrated once the packs are registered
   const { store, packs } = openAppStore();
 
@@ -92,7 +97,6 @@ export async function setupBackend(): Promise<void> {
 
   // Before discovery: a pack an interrupted install left only as its moved-aside copy is restored,
   // and abuddy install learns which AgentBuddy uses this data dir
-  const appContext = resolveAppContext();
   prepareHostDataDirs({ userDataDir: appContext.userDataDir, packsDirs: [appContext.packsDir, appContext.hostPacksDir], version: APP_VERSION });
 
   // API keys: the settings system hears of every change to them

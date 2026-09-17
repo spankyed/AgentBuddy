@@ -2,7 +2,7 @@
 import * as path from 'node:path';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
 import { resolveAppContext, type AppContext, type AppEnv } from '@abuddy/sdk/env';
-import { findRunningApp, openAppDatabase, type AppDatabase } from '@abuddy/host/database';
+import { findRunningApp, holdDatabaseWriteLock, openAppDatabase, type AppDatabase } from '@abuddy/host/database';
 import { EARS } from '@abuddy/sdk/types';
 import type { ConsoleScope } from '@abuddy/sdk/database-console';
 
@@ -62,6 +62,8 @@ export function parseDbArgs<O extends NonNullable<ParseArgsConfig['options']>>(a
 export interface OpenOptions {
   /** The command changes the database: refused while an app runs on the data dir */
   write: boolean;
+  /** The command's name, for the lock a change holds */
+  command: string;
 }
 
 /**
@@ -70,22 +72,30 @@ export interface OpenOptions {
  * an app runs on that data dir, which holds the database in memory and would overwrite the change or lose it; a read
  * warns that it may miss what the app hasn't written yet.
  */
-export async function openTarget(target: DbTarget, { write }: OpenOptions, io: DbIo): Promise<AppDatabase> {
+export async function openTarget(target: DbTarget, { write, command }: OpenOptions, io: DbIo): Promise<AppDatabase> {
   if (write && !target.named) {
     throw new Error('Name the data dir to change: --production, -d, -b, or --data-dir <path>');
   }
   io.err(`Database: ${target.userDataDir} (offline)`);
-  const running = await findRunningApp(target);
-  if (running && write) {
-    throw new Error(`AgentBuddy is running on ${target.userDataDir} (${running}): quit it first, this command changes its database`);
+  // Taken before the check, so an app that starts from here on finds it and refuses to open the database
+  const lock = write ? holdDatabaseWriteLock(target.userDataDir, `abuddy db ${command}`) : null;
+  try {
+    const running = await findRunningApp(target);
+    if (running && write) {
+      throw new Error(`AgentBuddy is running on ${target.userDataDir} (${running}): quit it first, this command changes its database`);
+    }
+    if (running) io.err(`Warning: AgentBuddy is running on it (${running}); what it hasn't written yet isn't here`);
+    const db = await openAppDatabase({
+      env: target.env,
+      userDataDir: target.userDataDir,
+      readOnly: !write,
+      log: () => {},
+    });
+    return lock ? { ...db, close: () => { try { db.close(); } finally { lock.release(); } } } : db;
+  } catch (error) {
+    lock?.release();
+    throw error;
   }
-  if (running) io.err(`Warning: AgentBuddy is running on it (${running}); what it hasn't written yet isn't here`);
-  return openAppDatabase({
-    env: target.env,
-    userDataDir: target.userDataDir,
-    readOnly: !write,
-    log: () => {},
-  });
 }
 
 /** `EARS` for console code: the SDK's, with the installed packs' entity types and relation kinds */

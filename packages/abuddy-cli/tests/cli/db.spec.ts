@@ -7,7 +7,7 @@ import * as path from 'node:path';
 import { Readable } from 'node:stream';
 import { afterEach, describe, expect, it } from 'vitest';
 import { installEngine, installedEngine, tx, type EARS } from '@abuddy/ears';
-import { openDatabaseStore, readInstalledSchema } from '@abuddy/host/database';
+import { findDatabaseWriter, holdDatabaseWriteLock, openDatabaseStore, readInstalledSchema } from '@abuddy/host/database';
 import { exportDatabase } from '@abuddy/host/backup';
 import { createSecretsStore, memoryKeyVault } from '@abuddy/host/secrets';
 import { API_HOST } from '@abuddy/sdk/env';
@@ -206,6 +206,48 @@ describe('naming the data dir', () => {
     } finally {
       delete process.env.ABUDDY_USER_DATA_DIR;
     }
+  });
+});
+
+describe('the lock a change holds', () => {
+  /** What holds the data dir's database while `command` runs, and what holds it after */
+  async function writerDuring(args: string[], dir: string) {
+    const running = ok(args);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    const during = findDatabaseWriter(dir);
+    await running;
+    return { during, after: findDatabaseWriter(dir) };
+  }
+
+  const slowCode = 'return new Promise((resolve) => setTimeout(() => resolve(1), 60))';
+
+  it('is held while a change runs and released after, so an app that starts meanwhile refuses to open the database', async () => {
+    const dir = await appDataDir();
+    expect(await writerDuring(['exec', slowCode, '--data-dir', dir], dir))
+      .toEqual({ during: `abuddy db exec (pid ${process.pid})`, after: null });
+  });
+
+  it('is not taken by a command that only reads', async () => {
+    const dir = await appDataDir();
+    expect(await writerDuring(['query', slowCode, '--data-dir', dir], dir)).toEqual({ during: null, after: null });
+  });
+
+  it('refuses a second command, and is released when one fails', async () => {
+    const dir = await appDataDir();
+    const held = holdDatabaseWriteLock(dir, 'abuddy db import');
+    try {
+      const { error } = await run(['reset', '--force', '--data-dir', dir]);
+      expect(error?.message).toBe(`Another tool is changing the database in ${dir}: abuddy db import (pid ${process.pid})`);
+    } finally {
+      held.release();
+    }
+    // A command whose code throws still releases it
+    expect((await run(['exec', 'throw new Error("boom")', '--data-dir', dir])).error?.message).toMatch(/boom/);
+    expect(findDatabaseWriter(dir)).toBeNull();
+    // So does one refused because an app is running
+    holdLock(dir);
+    expect((await run(['exec', 'return 1', '--data-dir', dir])).error?.message).toMatch(/quit it first/);
+    expect(findDatabaseWriter(dir)).toBeNull();
   });
 });
 

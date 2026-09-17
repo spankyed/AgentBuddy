@@ -32,7 +32,7 @@ export async function dbExport(args: string[], io: DbIo): Promise<void> {
   const format = values.format as string;
   if (format !== 'json' && format !== 'csv') throw new Error('--format must be json or csv');
 
-  const db = await openTarget(target, { write: false }, io);
+  const db = await openTarget(target, { write: false, command: 'export' }, io);
   try {
     const known = db.schema.getRegisteredEntityTypes();
     const requested = values.type as string[] | undefined;

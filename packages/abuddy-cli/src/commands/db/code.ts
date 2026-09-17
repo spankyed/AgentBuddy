@@ -33,7 +33,7 @@ async function runCode(command: 'query' | 'exec', args: string[], io: DbIo): Pro
   if (!code.trim()) throw new Error(`No code to run\n\n${usage(command)}`);
 
   const write = command === 'exec';
-  const db = await openTarget(target, { write }, io);
+  const db = await openTarget(target, { write, command }, io);
   let result: unknown;
   try {
     result = write ? await runTransactionCode(code, consoleScope(db)) : await runQueryCode(code, consoleScope(db));
