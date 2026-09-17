@@ -9,10 +9,10 @@ import { createPackRegistry, publishHostPackArtifacts, prepareHostDataDirs, type
 import { resolveAppContext } from '@abuddy/sdk/env';
 import * as path from 'path';
 import {
-  createPacksSystem, packsEvents, setBuiltInPacks,
+  createPacksSystem, packsEvents,
   loadBuiltInPacks, getBuiltInPackInfos,
   loadExternalPacks, registerExternalPacks,
-  startPacks, setLoadedPacks, setBuiltInPacksForRegistry,
+  startPacks, setLoadedPacks,
 } from '@abuddy/host/packs/runtime';
 import { createAppBus } from '@abuddy/host/bus';
 import { createHostRuntime } from '@abuddy/host/services';
@@ -113,15 +113,10 @@ export async function setupBackend(): Promise<void> {
   }
 
   if (builtInPromise) {
-    const builtInPackInfos = await builtInPromise;
-    setBuiltInPacks(builtInPackInfos);
-    setBuiltInPacksForRegistry(builtInPackInfos);
-
     // Pack authors resolve built-in dependencies (types, step build code) from the installed app
-    const { hostPacksDir } = resolveAppContext();
-    for (const info of builtInPackInfos) {
+    for (const info of await builtInPromise) {
       try {
-        if (publishHostPackArtifacts(info.dir, path.join(hostPacksDir, info.id))) {
+        if (publishHostPackArtifacts(info.dir, path.join(appContext.hostPacksDir, info.id))) {
           console.log(`[packs] Published build artifacts for built-in pack ${info.id}`);
         }
       } catch (err) {
@@ -157,8 +152,8 @@ export async function setupBackend(): Promise<void> {
   await store.hydrate({ skipTombstoneScan: true });
 
   // ── Start the packs: each one's onInit, the migrations (the app's, then external packs'), the seeds
+  setLoadedPacks(externalPacks);
   startPacks(packs, externalPacks);
-  if (externalPacks.length > 0) setLoadedPacks(externalPacks);
 
   // ── Start backend actor ──────────────────────────────────────────────
   backendActor = createActor(createAppBus(packs), {

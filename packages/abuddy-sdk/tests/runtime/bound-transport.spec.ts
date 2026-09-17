@@ -2,7 +2,8 @@
 import * as os from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { startTestRuntime, takeSystemErrors, testRootEvents } from '../../src/testing/index.ts';
-import { onIncoming, sendToBrainSystem, sendToPlugin } from '../../src/events/index.ts';
+import { onIncoming, sendToBrainSystem, sendToPlugin, sendToSystem } from '../../src/events/index.ts';
+import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts';
 import { createLogger, onLog, reportError, type LogEvent } from '../../src/logger/index.ts';
 import { services } from '../../src/services/index.ts';
 import { testPacks } from '../../src/testing/packs.ts';
@@ -101,5 +102,30 @@ describe('on the bound bus', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const { logs } = onBus(() => createLogger('memos').error('no error given'));
     expect(logs[0].stack).toContain('bound-transport.spec.ts');
+  });
+});
+
+describe('with a frontend bound too', () => {
+  it('sends to systems through the frontend, whose packs the lookups read', () => {
+    const sentByFrontend: IncomingSystemEvents[] = [];
+    bindFeHost({
+      application: {} as never,
+      secrets: {} as never,
+      transport: { sendIncoming: (event) => sentByFrontend.push(event) },
+      packs: { designation: (role: string) => (role === 'brain' ? 'brain-plugin' : undefined) } as never,
+    });
+    try {
+      const sent = onBus(() => {
+        sendToSystem('memos', { type: 'ADD_MEMO' });
+        sendToBrainSystem({ eventType: 'user.message' });
+      });
+      expect(sent.incoming).toEqual([]);
+      expect(sentByFrontend).toEqual([
+        { type: 'ADD_MEMO', systemId: 'memos' },
+        { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message', systemId: 'brain-plugin' },
+      ]);
+    } finally {
+      unbindFeHost();
+    }
   });
 });

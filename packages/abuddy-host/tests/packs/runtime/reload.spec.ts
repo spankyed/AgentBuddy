@@ -10,7 +10,8 @@ import { registry } from './test-host.ts';
 const { publishHostPackArtifacts } = await import('../../../src/packs/index.ts');
 const { registerPack, unregisterPack, getPackRegistration, getPackBootHooks, registerShutdownHook, removeShutdownHooksForKey } = registry;
 const { reloadExternalPack, reloadBuiltInPack } = await import('../../../src/packs/runtime/reload.ts');
-const { loadBuiltInPacks, getBuiltInPackInfos } = await import('../../../src/packs/runtime/loader.ts');
+const { loadBuiltInPacks } = await import('../../../src/packs/runtime/loader.ts');
+const { getBuiltInPackInfos } = await import('../../../src/packs/runtime/loaded-packs.ts');
 const { orchestrateDeclarativeSeed } = await import('../../../src/packs/runtime/seed.ts');
 const { resolveAppContext } = await import('@abuddy/sdk/env');
 // The test host's logger reports through its root event bus, so a test can read what the code under test logged
@@ -310,6 +311,19 @@ describe('reloading a pack', () => {
     expect(getPackRegistration(PACK_ID)?.systems).not.toBe(running.systems);
     expect(shutdown).toHaveBeenCalledTimes(1);
     expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: PACK_ID, systemIds: [`${PACK_ID}.widget`] });
+  });
+
+  it("runs the rebuilt pack's new migrations against the version it recorded", async () => {
+    resetTestData();
+    appState.update({ packVersions: { [PACK_ID]: '1.0.0' } });
+    const ran: string[] = [];
+    Object.assign(globalThis, { reloadPackRuns: ran });
+    writeRebuild(runtime(`migrations: ['1.0.0', '1.0.1'].map((target) => ({ target, description: target, up: () => globalThis.reloadPackRuns.push(target) })),`));
+
+    await reloadExternalPack(registry, PACK_ID, bus as never);
+
+    expect(ran).toEqual(['1.0.1']);
+    expect(appState.get().packVersions).toEqual({ [PACK_ID]: '1.0.1' });
   });
 
   // Other packs' systems read what the pack registers and seeds (the chat's slash commands, say). A system

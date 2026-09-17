@@ -99,11 +99,7 @@ export function createTransactionHelpers({ tx, counters }: { tx: typeof Tx; coun
     relationType: EARS.RelKind,
     targetId?: EARS.EntityId
   ): void {
-    if (targetId) {
-      tx(sourceId).unlinkIf(relationType, targetId);
-    } else {
-      tx(sourceId).unlinkIf(relationType);
-    }
+    tx(sourceId).unlinkIf(relationType, targetId);
   }
 
   return { createEntityWithDefaults, updateEntity, createRelation, removeRelation };

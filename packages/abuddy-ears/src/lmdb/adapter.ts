@@ -57,7 +57,7 @@ export function makeLmdbAdapter(dbs: LmdbDbs, options: LmdbAdapterOptions = {}):
   const ensureBuf = new Set<string>();
   const relUpserts = new Map<string, any>();
   const relDeletes = new Set<string>();
-const entityUpdates = new Map<string, any>();
+  const entityUpdates = new Map<string, any>();
   // Rows of relations whose details were dropped: a relation's id has an entity row while it exists
   const entityRemovals = new Set<string>();
   

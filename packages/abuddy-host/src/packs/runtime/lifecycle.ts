@@ -2,11 +2,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createLogger } from '@abuddy/sdk/logger';
 import { resolveAppContext } from '@abuddy/sdk/env';
-import { seedData } from '@abuddy/sdk/utils';
 import type { PackRegistry } from '../pack-registration.ts';
 import type { PackManifest } from '../pack-discovery.ts';
-import { appState } from '../../app-state/index.ts';
 import { loadSingleExternalPack, clearPackRequireCache, registerExternalPacks } from './loader.ts';
+import { runPackMigrations } from '../../migrations/index.ts';
 import { seedPackData } from './seed.ts';
 import { updateLoadedPack, removeLoadedPack } from './loaded-packs.ts';
 
@@ -51,11 +50,14 @@ export function teardownPack(
   logger.info(`Pack torn down: ${packId} (${systemIds.length} systems stopped)`);
 }
 
+/**
+ * Loads, registers and starts an installed pack as a boot starts it: its onInit, its migrations, then its seeds
+ * (hash-checked, so unchanged data isn't imported again). Returns false when it can't be read, loaded or registered.
+ */
 export function activatePack(
   registry: PackRegistry,
   packId: string,
   busActor: import('xstate').AnyActorRef,
-  options?: { seed?: boolean },
 ): boolean {
   const { packsDir } = resolveAppContext();
   const packDir = path.join(packsDir, packId);
@@ -95,15 +97,8 @@ export function activatePack(
     registry.registerShutdownHook(pack.boot.onShutdown, packId);
   }
   pack.boot?.onInit?.();
-
-  if (options?.seed) {
-    seedPackData(
-      [pack],
-      seedData,
-      appState.getPackSeedHashes,
-      appState.setPackSeedHashes,
-    );
-  }
+  runPackMigrations([pack]);
+  seedPackData([pack]);
 
   updateLoadedPack(pack);
   // The running systems read what the pack registered and seeded (the chat's slash commands, say). Sent

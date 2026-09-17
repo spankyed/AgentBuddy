@@ -59,9 +59,6 @@ export interface BackupInfo {
 // @internal
 export function createInferenceService(resolveModel: ResolveModel): InferenceService;
 
-// @internal
-export type HostImplementedServices = HostRuntimeServices;
-
 // @public
 export interface HostServices {
     appData: AppDataService;

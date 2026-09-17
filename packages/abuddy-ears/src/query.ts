@@ -84,12 +84,10 @@ export function createQx({ storage, relations, isEntityType }: { storage: Attrib
 
       where: (k: EARS.AttrKind | string, v?: unknown) => {
         const kind = typeof k === "string" ? EARS.AttrKind.Custom(k) : k;
-        if (v === undefined) {
-          const next = ids.filter(i => getAttrs(i, kind).length);
-          return setIds(next);
-        }
-        const next = ids.filter(i => getAttrs(i, kind).some(attr => attr === v));
-        return setIds(next);
+        const matches = v === undefined
+          ? (i: EARS.EntityId) => getAttrs(i, kind).length > 0
+          : (i: EARS.EntityId) => getAttrs(i, kind).some(attr => attr === v);
+        return setIds(ids.filter(matches));
       },
 
       withRole: (r: string) => setIds(ids.filter(i => getRoles(i).includes(r))),
@@ -99,8 +97,10 @@ export function createQx({ storage, relations, isEntityType }: { storage: Attrib
         return setIds(ids.filter(i => related.has(i)));
       },
 
-      related: (kind: string, other: EARS.EntityId, asSrc = false) =>
-        setIds(ids.filter(i => queryEntitiesByRelationTo(kind, other, asSrc).includes(i))),
+      related: (kind: string, other: EARS.EntityId, asSrc = false) => {
+        const related = new Set(queryEntitiesByRelationTo(kind, other, asSrc));
+        return setIds(ids.filter(i => related.has(i)));
+      },
 
       linksTo: (
         relKinds: MaybeArr<string>,

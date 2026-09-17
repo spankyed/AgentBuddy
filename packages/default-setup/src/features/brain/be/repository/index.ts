@@ -14,7 +14,7 @@ import { truncateResult } from '@abuddy/sdk/steps';
 import { tnodeRepository } from '@abuddy/sdk/repositories';
 import { brainLogger } from '../utils/brain-inspect';
 import type { TNodeEntity, TrackTree, ExecutionContext } from '@abuddy/sdk/steps';
-import type { FlowEntity } from '@abuddy/sdk';
+import { ROOT_FLOW_ROLE, type FlowEntity } from '@abuddy/sdk';
 // Brain Repository - Manages execution traces and TNode trees
 
 // Helper function to prepare node attributes with optional execution context
@@ -36,7 +36,7 @@ function resolveNodeAttributes(
  */
 const ROOT_TNODE_ID = 'TNode-Root' as EARS.EntityId<'TNode'>;
 const ROOT_TRACE_NODE_ROLE = EARS.RoleKind.Custom("root_trace_node");
-const ROOT_FLOW_ROLE = EARS.RoleKind.Custom("root_flow");
+const ROOT_FLOW = EARS.RoleKind.Custom(ROOT_FLOW_ROLE);
 // Common column selections for TNode queries
 const TNODE_COLUMNS = [
   "id", 
@@ -483,7 +483,7 @@ export const brainCommands = {
     const rootId = ROOT_TNODE_ID;
 
     const rootFlow = qx(EARS.Entity.Flow)
-      .withRole(ROOT_FLOW_ROLE)
+      .withRole(ROOT_FLOW)
       .pickOne(["id", "label", "flowType", "createdAt"]);
 
     if (!rootFlow) {

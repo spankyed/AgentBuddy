@@ -49,15 +49,15 @@ In this folder (all exported from `index.ts`):
 
 | File | Purpose |
 |------|---------|
-| `loader.ts` | Built-in and external loading, `registerExternalPacks`, `clearPackRequireCache`, the built-in pack list |
+| `loader.ts` | Built-in and external loading, `registerExternalPacks`, `clearPackRequireCache` |
 | `bridge.ts` | The SDK bridge map (`SDK_BRIDGE`: `shared-modules.ts`), `withHostResolution()`, `getBridgedSdkSpecifiers()` |
 | `shared-modules.ts` | Generated (`npm run shared-modules:update -w @abuddy/host`, from `../../build/shared-modules.ts`): a static import of every export of the `SHARED_INSTANCE_PACKAGES` (`@abuddy/sdk`, `@abuddy/ears`) pack runtime code can require, so the app bundle carries them |
-| `loaded-packs.ts` | `LoadedPack`, the loaded external packs list (`setLoadedPacks`, `updateLoadedPack`, `removeLoadedPack`), `getPacksWithClientLoadedFrontends()`, and the `packs.registry` entries (`getPackBundleEntries()`: a `PackBundleEntry`, `{ id, name, version, builtIn?, feEntry?, feStyles? }`, per pack; built-in entries have `builtIn: true`. The type lives in `../bundle.ts`, so the API's router declarations import it from `@abuddy/host/packs`). Imports nothing else from this folder |
+| `loaded-packs.ts` | `LoadedPack`, the loaded external packs list (`getLoadedPacks`, `setLoadedPacks`, `updateLoadedPack`, `removeLoadedPack`), the loaded built-in packs (`getBuiltInPackInfos`, `setBuiltInPackInfos`, which `loadBuiltInPacks` records), `getPacksWithClientLoadedFrontends()`, and the `packs.registry` entries (`getPackBundleEntries()`: a `PackBundleEntry`, `{ id, name, version, builtIn?, feEntry?, feStyles? }`, per pack; built-in entries have `builtIn: true`. The type lives in `../bundle.ts`, so the API's router declarations import it from `@abuddy/host/packs`). Imports nothing else from this folder |
 | `lifecycle.ts` | `activatePack()` and `teardownPack()` for install, uninstall, enable/disable and update at runtime |
 | `reload.ts` | `reloadExternalPack()` / `reloadBuiltInPack()` for the API's `POST /dev/reload` (`setup/websocket.ts`) |
 | `packs-system.ts` | The host `packs` XState system: `INSTALL_PACK`, `UNINSTALL_PACK`, `TOGGLE_PACK_ENABLED`, `UPDATE_PACK`, `CHECK_FOR_UPDATES`, `GET_INSTALLED_PACKS`; emits `PACKS_LIST`, `PACK_ACTIVATED`/`PACK_DEACTIVATED` and install/update/uninstall results |
 | `activation-outcome.ts` | `activationProblem()`: why a just-installed or updated pack isn't working (failed to load, or the seed error recorded on its registry entry) |
-| `seed.ts` | `computePackSeedHash`, `seedPackData` (hash-checked external seeds, the hashes kept in `AppState.packSeedHashes` by its callers; every seeder the pack registered runs; failures recorded as the registry entry's `lastError`), `orchestrateDeclarativeSeed` (built-in `boot.seed`, hash-checked per pack in `AppState`, `seedPolicy.skipAfterOnboarding` read from `AppState.hasOnboarded`; the hash covers every seeded key's compiled file, `settings.seed.json` included, so changing default settings re-runs the boot seed even though `seedPolicy.skipAtBoot` keeps settings from being reset) |
+| `seed.ts` | `computePackSeedHash`, `seedPackData` (hash-checked external seeds, the hashes kept in `AppState.packSeedHashes`, which keeps a pack's hash while it's disabled; every seeder the pack registered runs; failures recorded as the registry entry's `lastError`), `orchestrateDeclarativeSeed` (built-in `boot.seed`, hash-checked per pack in `AppState`, `seedPolicy.skipAfterOnboarding` read from `AppState.hasOnboarded`; the hash covers every seeded key's compiled file, `settings.seed.json` included, so changing default settings re-runs the boot seed even though `seedPolicy.skipAtBoot` keeps settings from being reset) |
 
 In `packages/abuddy-host/src/packs/` (`@abuddy/host/packs`):
 
@@ -90,7 +90,7 @@ The API's `core/router/packs-router.ts` serves `packs.registry` from `getPackBun
 4. loadBuiltInPacks() (async)      — with the bundled loaders; started, runs while:
    loadExternalPacks()             — discover + reconcile registry + load enabled
    registerExternalPacks()         — registerPack() each
-   await built-in                  — setBuiltInPacks() (packs system), setBuiltInPacksForRegistry() (packs.registry)
+   await built-in                  — the loader recorded them (setBuiltInPackInfos(), loaded-packs.ts)
 5. publishHostPackArtifacts()      — each built-in pack into host-packs/<id>
 6. earlySystem                     — logs system starts
 7. registry.registerShutdownHook() — each pack's onShutdown, keyed by pack id
@@ -139,8 +139,8 @@ Designations come from the manifest's `features[].designation`: generate-entries
 | What | Checked against | On collision |
 |------|----------------|--------------|
 | Pack id | Registered packs | Throws |
-| EARS entity type values | All registered packs' entity values (SDK-owned names are dropped from the pack's first) | Throws (blocks registration) |
-| EARS relation kind values | All registered packs' relation values (same) | Throws (blocks registration) |
+| EARS entity type values | The SDK's and the host's, and all registered packs' entity values | Throws (blocks registration) |
+| EARS relation kind values | The SDK's, and all registered packs' relation values | Throws (blocks registration) |
 | Designation roles | All registered packs' roles | Throws (blocks registration) |
 | Service keys | Host service names (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`) and all registered packs' keys | Throws (blocks registration) |
 | Repository names | All registered packs' repository names | Throws (blocks registration) |
@@ -171,7 +171,7 @@ The resolver patch is restored in a `finally`; the bridged cache entries stay, s
 
 ### Activate and teardown (`lifecycle.ts`)
 
-`activatePack(registry, packId, bus, { seed? })` — reads `packs/<id>/abuddy.json`, `loadSingleExternalPack()`, `registerExternalPacks()`, registers `onShutdown`, runs `onInit`, seeds when `seed` is set (install and update), `updateLoadedPack()`, sends the bus `PACK_CHANGED`, then `ACTIVATE_PACK` with the `<packId>.<featureId>` system ids. Returns `false` when the pack can't be read, loaded or registered. The packs system then emits `PACK_ACTIVATED`, or, after install/update, `PACK_INSTALL_FAILED`/`PACK_UPDATE_FAILED` when `activationProblem()` reports one.
+`activatePack(registry, packId, bus)` — reads `packs/<id>/abuddy.json`, `loadSingleExternalPack()`, `registerExternalPacks()`, registers `onShutdown`, then starts it as a boot does: `onInit`, `runPackMigrations()`, `seedPackData()` (hash-checked, so enabling a pack whose seeds didn't change imports nothing), then `updateLoadedPack()`, sends the bus `PACK_CHANGED`, then `ACTIVATE_PACK` with the `<packId>.<featureId>` system ids. Returns `false` when the pack can't be read, loaded or registered. The packs system then emits `PACK_ACTIVATED`, or, after install/update, `PACK_INSTALL_FAILED`/`PACK_UPDATE_FAILED` when `activationProblem()` reports one.
 
 `teardownPack(registry, packId, bus, { replacing? })` — runs the pack's shutdown hooks, `unregisterPack()` (which drops everything the pack registered, its seeders included, and the cached event validation map and partition policy), clears the pack's require cache, `removeLoadedPack()`, sends the bus `TEARDOWN_PACK` to stop its systems, then `PACK_CHANGED` unless `replacing` is set. The packs system emits `PACK_DEACTIVATED`.
 
@@ -182,13 +182,13 @@ Update tears down with `replacing`, installs the release the update check found,
 `POST /dev/reload { packId, builtIn? }` (from `abuddy dev` and default-setup's `dev-build.mjs`; one reload per pack at a time) calls `reloadBuiltInPack(registry, …)` (requires `dist/runtime/index.cjs`) or `reloadExternalPack(registry, …)` on the app's registry. Both:
 1. clear the pack's require cache and load the fresh runtime (a load failure throws; the running pack is untouched)
 2. unregister the running registration and register the fresh one; if that throws, re-register the previous one and rethrow (registering and unregistering drop the cached event validation map and partition policy)
-3. run the old shutdown hooks, register the new `onShutdown`, run `onInit`; external packs re-seed and `updateLoadedPack()`
+3. run the old shutdown hooks, register the new `onShutdown`, run `onInit`; external packs run their migrations (`runPackMigrations()`), re-seed and `updateLoadedPack()`
 4. send the bus `RELOAD_PACK` with old and new system ids: it stops each running one, starts those still registered, and sends them `CLIENT_CONNECTED`
 5. send the bus `PACK_CHANGED`
 
 `PACK_CHANGED { packId }` goes to every running system once a change is complete, so systems that read what a pack registers or seeds (the chat's slash commands, the library's documents) send their data again. It's never sent between unregistering a pack and registering it again: a system reading another pack's services then would find them gone. Settings → Import pack seeds sends it too.
 
-Migrations don't run on activation or reload.
+The app's migrations run only at boot (and in an app reset). An external pack's run whenever it starts: at boot, on activation (install, update, enable) and on reload, each against its own recorded version.
 
 ## Client startup data for packs with frontends
 

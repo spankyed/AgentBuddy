@@ -59,10 +59,13 @@ export type HostPluginEvents = {
     | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> };
 };
 
-/** Delivers an event to a backend system: onto the bound app's bus, or in the renderer over its API client */
+/**
+ * Delivers an event to a backend system: in the renderer over its API client, elsewhere onto the bound app's bus.
+ * A bound frontend wins, as it does for the registered packs' lookups (`boundPackContributions`).
+ */
 function sendIncoming(event: IncomingSystemEvents): void {
-  if (isHostBound()) boundHost().transport.rootEvents.emitIncoming(event);
-  else if (isFeHostBound()) boundFeHost().transport.sendIncoming(event);
+  if (isFeHostBound()) boundFeHost().transport.sendIncoming(event);
+  else if (isHostBound()) boundHost().transport.rootEvents.emitIncoming(event);
   else throw new Error('No host is bound to send events through: call bindHost(runtime) (backend) or bindFeHost(runtime) (frontend) from @abuddy/sdk/runtime first');
 }
 

@@ -1,7 +1,7 @@
 import { installedEngine } from './installed.ts';
 
 const notRegistered = (name: string) => new Error(
-  `[repository] "${name}" is not registered. Ensure the owning system's repository module is imported before access.`
+  `[repository] "${name}" is not registered: a pack declares its repositories in abuddy.json (features[].repositories)`
 );
 
 /** An engine's repository registry */
@@ -50,14 +50,3 @@ export const repository: Record<string, unknown> = /*#__PURE__*/ new Proxy({} as
 });
 
 export type Repository = typeof repository;
-
-export {
-  countEntities, exists, hasIdCollision,
-} from './query-helpers.ts';
-
-export {
-  prepareEntity,
-  createRelation as repoCreateRelation, removeRelation as repoRemoveRelation,
-} from './transaction-helpers.ts';
-
-export { RepositoryError, RepositoryErrorCode } from './repository-errors.ts';

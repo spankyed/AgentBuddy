@@ -15,19 +15,11 @@ export {
   getAll, getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getSchemaStats, isEntity,
   getRoles, grantRole, revokeRole,
 } from './attribute-storage.ts';
-export {
-  repository, registerRepository, unregisterRepository, type Repository,
-  hasIdCollision,
-  exists,
-  repoCreateRelation as createRelation,
-  repoRemoveRelation as removeRelation,
-  countEntities,
-  RepositoryError, RepositoryErrorCode,
-  prepareEntity,
-} from './repository.ts';
-export {
-  wouldCreateCycle, getTimestamp, generateShortCode, generateLabelWithCount, filterSystemFields,
-} from './helpers.ts';
+export { repository, registerRepository, unregisterRepository, type Repository } from './repository.ts';
+export { hasIdCollision, exists, countEntities } from './query-helpers.ts';
+export { createRelation, removeRelation, prepareEntity } from './transaction-helpers.ts';
+export { RepositoryError, RepositoryErrorCode } from './repository-errors.ts';
+export { getTimestamp, generateShortCode, generateLabelWithCount, filterSystemFields } from './entity-utils.ts';
 export { findRelations, getRelationStats, type RelationMatch, type RelationRow, type RelationStats } from './relations.ts';
 export { getAllEntities, queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo } from './attribute-storage.ts';
 /**
@@ -52,6 +44,6 @@ export {
 } from './typed.ts';
 export { bp, spawn, type Blueprint, type BlueprintBuilder } from './blueprint.ts';
 export {
-  descendants, ancestors, rootParent, linkSymmetric,
+  descendants, ancestors, rootParent, linkSymmetric, wouldCreateCycle,
   topoSort, shortestPath, leaves, lowestCommonAncestor,
 } from './graph.ts';

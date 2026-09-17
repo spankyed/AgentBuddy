@@ -5,7 +5,7 @@ import type { EARS } from '@abuddy/sdk';
 import type { PackMigration } from '@abuddy/sdk/framework';
 import { appState, type AppState } from '../../app-state/index.ts';
 import type { PackRegistry } from '../../packs/pack-registration.ts';
-import { getBuiltInPackInfos } from '../../packs/runtime/loader.ts';
+import { getBuiltInPackInfos } from '../../packs/runtime/loaded-packs.ts';
 
 /** The row the settings were stored in before 0.3.15 */
 const LEGACY_SETTINGS_ID = 'Settings-app' as EARS.EntityId;

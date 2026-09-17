@@ -83,9 +83,10 @@ export const flowRepository: {
         relId: EARS.EntityId;
     };
     deleteEdge: (edgeId: EARS.EntityId) => void;
-    updateEdge: (edgeId: EARS.EntityId, _oldSource: EARS.EntityId, _oldTarget: EARS.EntityId, newSource: EARS.EntityId, newTarget: EARS.EntityId) => {
-        newRelId: EARS.EntityId;
-    };
+    updateEdge: (edgeId: EARS.EntityId, next: {
+        source: EARS.EntityId;
+        target: EARS.EntityId;
+    } & Handles) => void;
     reindexHandles: (nodeId: EARS.EntityId, prefix: string, pivotIndex: number, direction: 1 | -1) => void;
 };
 

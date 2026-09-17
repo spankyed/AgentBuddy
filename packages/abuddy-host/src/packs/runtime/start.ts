@@ -1,6 +1,4 @@
 // The packs' start over hydrated data, as a boot and an app reset (services.appData.reset()) run it
-import { seedData } from '@abuddy/sdk/utils';
-import { appState } from '../../app-state/index.ts';
 import { runAppMigrations, runPackMigrations } from '../../migrations/index.ts';
 import type { PackRegistry } from '../pack-registration.ts';
 import type { LoadedPack } from './loaded-packs.ts';
@@ -17,6 +15,6 @@ export function startPacks(registry: PackRegistry, externalPacks: LoadedPack[]):
 
   registry.runRegisteredBootSeeds(orchestrateDeclarativeSeed);
   if (externalPacks.length > 0) {
-    seedPackData(externalPacks, seedData, appState.getPackSeedHashes, appState.setPackSeedHashes, { cleanupStaleHashes: true });
+    seedPackData(externalPacks);
   }
 }

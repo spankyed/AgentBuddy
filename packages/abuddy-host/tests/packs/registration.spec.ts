@@ -164,20 +164,22 @@ describe('registerPack entities', () => {
     expect(() => registerEntities('second-pack', {}, { PINNED: 'pinned' })).toThrow('EARS collision: relation kind "pinned" — pack "second-pack" vs "first-pack"');
   });
 
-  it("has the SDK's and the host's entities and relation kinds with no pack registered, and doesn't count the SDK's as collisions", () => {
-    const sdkEntities = [...Object.values(SDK_ENTITIES), ...HOST_ENTITY_TYPES];
-    expect([...getRegisteredEntityTypes()].sort()).toEqual([...sdkEntities].sort());
+  it("has the SDK's and the host's entities and relation kinds with no pack registered, and a pack's added", () => {
+    const appEntities = [...Object.values(SDK_ENTITIES), ...HOST_ENTITY_TYPES];
+    expect([...getRegisteredEntityTypes()].sort()).toEqual([...appEntities].sort());
     expect(getRegisteredEARS().relKinds).toMatchObject({ CONTAINS: 'contains', TRANSITIONS_TO: 'transitions_to' });
-    // Packs built with an older SDK list them
-    registerEntities('first-pack', { Relation: 'Relation', Flow: 'Flow', Memo: 'Memo' }, { CONTAINS: 'contains' });
-    expect(() => registerEntities('second-pack', { Relation: 'Relation', Flow: 'Flow', Tag: 'Tag' }, { CONTAINS: 'contains' })).not.toThrow();
-    expect([...getRegisteredEntityTypes()].sort()).toEqual([...sdkEntities, 'Memo', 'Tag'].sort());
-    // The registration keeps only the pack's own names
-    expect(getPackContributions('first-pack')?.relKinds).toEqual({});
+    registerEntities('first-pack', { Memo: 'Memo' }, { PINNED: 'pinned' });
+    expect([...getRegisteredEntityTypes()].sort()).toEqual([...appEntities, 'Memo'].sort());
+    expect(getPackContributions('first-pack')?.relKinds).toEqual({ PINNED: 'pinned' });
   });
 
-  it("rejects an entity type the host declares", () => {
-    expect(() => registerEntities('first-pack', { AppState: 'AppState' })).toThrow('EARS collision: entity type "AppState" — pack "first-pack" vs the host\'s own "AppState"');
+  it.each([
+    [{ AppState: 'AppState' }, {}, 'entity type "AppState"'],
+    [{ Flow: 'Flow' }, {}, 'entity type "Flow"'],
+    [{}, { CONTAINS: 'contains' }, 'relation kind "contains"'],
+  ])('rejects %o %o, which the app declares', (entities, relKinds, name) => {
+    expect(() => registerEntities('first-pack', entities, relKinds)).toThrow(`EARS collision: ${name} — pack "first-pack" vs the app's own`);
+    expect(getPackContributions('first-pack')).toBeNull();
   });
 
   it('keeps TNode out of persistence and routes Secret to the secrets store without any pack asking', () => {

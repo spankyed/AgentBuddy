@@ -28,10 +28,10 @@ export function makeShardedPersistence(
   sinks: Record<Partition, PersistenceSink>,
   relationDetails: RelationDetailsReader = () => null,
 ): ShardedPersistence {
-  // Relation metadata cache to track kind, src, tgt for proper routing
+  // Each relation's kind and ends as last written, which decide its partition
   const relMeta = new Map<string, { kind: string; src: string; tgt: string }>();
 
-  // Fallback: read from the engine if the cache doesn't have it
+  // A relation the router didn't see written (after a reopen): the engine's details, already updated
   function getRelationMeta(relId: string) {
     const d = relationDetails(relId as EARS.EntityId);
     return d ? {

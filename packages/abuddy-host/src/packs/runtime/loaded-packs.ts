@@ -1,4 +1,4 @@
-// The external packs the app loaded, and the built-in packs, as the renderer's pack registry lists them.
+// The external and built-in packs the app loaded, and the pack registry entries the renderer loads frontends from.
 // Imports nothing else from packs/runtime: the app bus reads it (clientLoadedPacks).
 import type { AnyStateMachine } from 'xstate';
 import type { PackBootHooks, PackEARS, PackFeatureDef, PackMigration, PackRegistration } from '@abuddy/sdk/framework';
@@ -63,7 +63,12 @@ export function getPacksWithClientLoadedFrontends(): string[] {
   return _loadedPacks.filter(p => packFrontendFiles(p.dir).entry).map(p => p.manifest.id);
 }
 
-export function setBuiltInPacksForRegistry(packs: BuiltInPackInfo[]) {
+/** The built-in packs the app loaded */
+export function getBuiltInPackInfos(): BuiltInPackInfo[] {
+  return _builtInPacks;
+}
+
+export function setBuiltInPackInfos(packs: BuiltInPackInfo[]) {
   _builtInPacks = packs;
 }
 

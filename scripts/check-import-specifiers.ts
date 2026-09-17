@@ -75,23 +75,27 @@ function specifiers(code: string, fileName: string, all = false): { text: string
   return found;
 }
 
-/** `file:line: specifier` for each relative emitted-extension specifier that names a TypeScript module. */
-export function findJsSpecifiers(dirs = CHECKED_DIRS, root = repoRoot): string[] {
+/** `file:line: specifier` for each specifier in `files` that `matches` (relative ones only unless `all`) */
+function findSpecifiers(files: string[], root: string, matches: (text: string, file: string) => boolean, all = true): string[] {
   const problems: string[] = [];
-  for (const dir of dirs) {
-    for (const file of sourceFiles(path.join(root, dir))) {
-      for (const { content, lineOffset } of codeBlocks(file)) {
-        for (const { text, line } of specifiers(content, file)) {
-          const emitted = path.extname(text);
-          const base = path.resolve(path.dirname(file), text.slice(0, -emitted.length));
-          if ((SOURCE_EXTENSIONS[emitted] ?? []).some((ext) => fs.existsSync(`${base}${ext}`))) {
-            problems.push(`${path.relative(root, file)}:${line + lineOffset}: ${text}`);
-          }
-        }
+  for (const file of files) {
+    for (const { content, lineOffset } of codeBlocks(file)) {
+      for (const { text, line } of specifiers(content, file, all)) {
+        if (matches(text, file)) problems.push(`${path.relative(root, file)}:${line + lineOffset}: ${text}`);
       }
     }
   }
   return problems;
+}
+
+/** `file:line: specifier` for each relative emitted-extension specifier that names a TypeScript module. */
+export function findJsSpecifiers(dirs = CHECKED_DIRS, root = repoRoot): string[] {
+  const files = dirs.flatMap((dir) => [...sourceFiles(path.join(root, dir))]);
+  return findSpecifiers(files, root, (text, file) => {
+    const emitted = path.extname(text);
+    const base = path.resolve(path.dirname(file), text.slice(0, -emitted.length));
+    return (SOURCE_EXTENSIONS[emitted] ?? []).some((ext) => fs.existsSync(`${base}${ext}`));
+  }, false);
 }
 
 /** CLI sources whose template strings are the pack source `abuddy init` and `abuddy add` write */
@@ -324,20 +328,11 @@ export function findUpwardImports(layers = LAYERS, root = repoRoot): string[] {
   const problems: string[] = [];
   for (const { name, dir, allowed, forbidden } of layers) {
     const permitted = new Set([name, ...allowed]);
-    for (const sub of ['src', 'tests', 'scripts']) {
-      const full = path.join(root, dir, sub);
-      if (!fs.existsSync(full)) continue;
-      for (const file of sourceFiles(full)) {
-        for (const { content, lineOffset } of codeBlocks(file)) {
-          for (const { text, line } of specifiers(content, file, true)) {
-            const pkg = abuddyPackage(text);
-            if ((pkg && !permitted.has(pkg)) || forbidden?.test(text)) {
-              problems.push(`${path.relative(root, file)}:${line + lineOffset}: ${text}`);
-            }
-          }
-        }
-      }
-    }
+    const files = packFiles(['src', 'tests', 'scripts'].map((sub) => path.join(dir, sub)), root);
+    problems.push(...findSpecifiers(files, root, (text) => {
+      const pkg = abuddyPackage(text);
+      return (pkg !== undefined && !permitted.has(pkg)) || (forbidden?.test(text) ?? false);
+    }));
     const manifestFile = path.join(root, dir, 'package.json');
     const manifest = JSON.parse(fs.readFileSync(manifestFile, 'utf-8')) as Record<string, Record<string, string> | undefined>;
     for (const field of ['dependencies', 'peerDependencies', 'optionalDependencies', 'devDependencies']) {
@@ -367,19 +362,11 @@ export const LMDB_RULES: { dirs: string[]; except?: string; forbidden: RegExp }[
 
 /** `file:line: specifier` for each import of LMDB or the LMDB store where `rules` forbid it */
 export function findLmdbImports(rules = LMDB_RULES, root = repoRoot): string[] {
-  const problems: string[] = [];
-  for (const { dirs, except, forbidden } of rules) {
+  return rules.flatMap(({ dirs, except, forbidden }) => {
     const allowed = except && path.join(root, except) + path.sep;
-    for (const file of packFiles(dirs, root)) {
-      if (allowed && file.startsWith(allowed)) continue;
-      for (const { content, lineOffset } of codeBlocks(file)) {
-        for (const { text, line } of specifiers(content, file, true)) {
-          if (forbidden.test(text)) problems.push(`${path.relative(root, file)}:${line + lineOffset}: ${text}`);
-        }
-      }
-    }
-  }
-  return problems;
+    const files = packFiles(dirs, root).filter((file) => !allowed || !file.startsWith(allowed));
+    return findSpecifiers(files, root, (text) => forbidden.test(text));
+  });
 }
 
 /** The consumers of SHARED_INSTANCE_PACKAGES (@abuddy/host/build/shared-deps), which must not list the packages themselves */
@@ -445,55 +432,24 @@ export function findRepositoryCasts(dirs = packageSourceDirs(), root = repoRoot)
 
 // Run as a script, also through a symlinked path (tests import findJsSpecifiers)
 if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])) {
-  const problems = findJsSpecifiers();
-  if (problems.length > 0) {
-    console.error(`Relative imports must name the TypeScript source (tsc and tsdown emit .js):\n  ${problems.join('\n  ')}`);
-    process.exit(1);
+  const checks: [find: () => string[], rule: string][] = [
+    [findJsSpecifiers, 'Relative imports must name the TypeScript source (tsc and tsdown emit .js)'],
+    [findRawPackHelpers, 'Pack code uses the typed facades: emit, sendToPlugin and sendToSystem from #generated/events, repositories declared in abuddy.json'],
+    [findRawTransport, 'Pack code sends with sendToPlugin and sendToSystem from #generated/events, and subscribes with onConnected and onIncoming from @abuddy/sdk/events'],
+    [findPackBackendConsole, 'Pack backend code logs with createLogger from @abuddy/sdk/logger'],
+    [findHostImports, "Pack code doesn't import the host's private @abuddy/host package; use @abuddy/sdk"],
+    [findAppImportsInPackTests, 'Pack unit tests run on the harness (@abuddy/testing) without the app; test host, API and CLI code in its own package'],
+    [findUpwardImports, 'Packages import only downward: @abuddy/ears imports no @abuddy package, @abuddy/sdk only @abuddy/ears, @abuddy/host only those two and never the API'],
+    [findLmdbImports, "Only @abuddy/ears/lmdb loads lmdb: the host and the API open the store through it, the engine's root and packs never load it"],
+    [findSharedPackageLists, 'Derive shared-instance packages from SHARED_INSTANCE_PACKAGES (@abuddy/host/build/shared-deps) instead of naming them'],
+    [findRepositoryCasts, "Call a package's repositories through its exports, not a cast of the repository registry"],
+  ];
+  for (const [find, rule] of checks) {
+    const problems = find();
+    if (problems.length > 0) {
+      console.error(`${rule}:\n  ${problems.join('\n  ')}`);
+      process.exit(1);
+    }
   }
-  const rawHelpers = findRawPackHelpers();
-  if (rawHelpers.length > 0) {
-    console.error(`Pack code uses the typed facades: emit, sendToPlugin and sendToSystem from #generated/events, repositories declared in abuddy.json:\n  ${rawHelpers.join('\n  ')}`);
-    process.exit(1);
-  }
-  const rawTransport = findRawTransport();
-  if (rawTransport.length > 0) {
-    console.error(`Pack code sends with sendToPlugin and sendToSystem from #generated/events, and subscribes with onConnected and onIncoming from @abuddy/sdk/events:\n  ${rawTransport.join('\n  ')}`);
-    process.exit(1);
-  }
-  const backendConsole = findPackBackendConsole();
-  if (backendConsole.length > 0) {
-    console.error(`Pack backend code logs with createLogger from @abuddy/sdk/logger:\n  ${backendConsole.join('\n  ')}`);
-    process.exit(1);
-  }
-  const hostImports = findHostImports();
-  if (hostImports.length > 0) {
-    console.error(`Pack code doesn't import the host's private @abuddy/host package; use @abuddy/sdk:\n  ${hostImports.join('\n  ')}`);
-    process.exit(1);
-  }
-  const appImports = findAppImportsInPackTests();
-  if (appImports.length > 0) {
-    console.error(`Pack unit tests run on the harness (@abuddy/testing) without the app; test host, API and CLI code in its own package:\n  ${appImports.join('\n  ')}`);
-    process.exit(1);
-  }
-  const upward = findUpwardImports();
-  if (upward.length > 0) {
-    console.error(`Packages import only downward: @abuddy/ears imports no @abuddy package, @abuddy/sdk only @abuddy/ears, @abuddy/host only those two and never the API:\n  ${upward.join('\n  ')}`);
-    process.exit(1);
-  }
-  const lmdbImports = findLmdbImports();
-  if (lmdbImports.length > 0) {
-    console.error(`Only @abuddy/ears/lmdb loads lmdb: the host and the API open the store through it, the engine's root and packs never load it:\n  ${lmdbImports.join('\n  ')}`);
-    process.exit(1);
-  }
-  const sharedLists = findSharedPackageLists();
-  if (sharedLists.length > 0) {
-    console.error(`Derive shared-instance packages from SHARED_INSTANCE_PACKAGES (@abuddy/host/build/shared-deps) instead of naming them:\n  ${sharedLists.join('\n  ')}`);
-    process.exit(1);
-  }
-  const repositoryCasts = findRepositoryCasts();
-  if (repositoryCasts.length > 0) {
-    console.error(`Call a package's repositories through its exports, not a cast of the repository registry:\n  ${repositoryCasts.join('\n  ')}`);
-    process.exit(1);
-  }
-  console.log('Relative import specifiers name .ts sources');
+  console.log('Import specifiers and pack rules pass');
 }

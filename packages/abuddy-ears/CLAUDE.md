@@ -20,7 +20,7 @@ EARS, the entity-attribute-relation graph store behind AgentBuddy's data: the en
 | `relation-index.ts`, `edge-store.ts`, `relations.ts` | The relation index by kind, relation writes over it (`createEdgeStore`), and relation reads (`findRelations`, `getRelationStats`) |
 | `query.ts` | `createQx`: the query builder (`qx`, exported untyped as `untypedQx`), `b64Encode`/`b64Decode` |
 | `transaction.ts`, `transaction-helpers.ts` | `createTx`: the transaction builder (`tx`); `createEntityWithDefaults`, `updateEntity`, `createRelation` |
-| `query-helpers.ts`, `entity-utils.ts`, `helpers.ts` | The finders (`findById`, `findWhere`, …), counters and label helpers, and the helpers barrel |
+| `query-helpers.ts`, `entity-utils.ts` | The finders (`findById`, `findWhere`, …), counters and label helpers |
 | `graph.ts`, `blueprint.ts` | Graph walks (`descendants`, `topoSort`, `wouldCreateCycle`, `linkSymmetric`, …) and blueprints (`bp`, `spawn`) |
 | `repository.ts`, `repository-errors.ts` | The repository registry (`repository`, `registerRepository`), `RepositoryError`/`RepositoryErrorCode` |
 | `entities.ts`, `runtime.ts`, `typed.ts` | The typed contract (change-controlled, see below): the core `EARS` namespace (`Entity = { Relation }`, `RelKind = { Custom }`), `BaseEntity`/`EntityShapes`/`ShapeOf`/`EntityNameArg`; `PersistenceSink`, `noopSink`, `EARSRuntimeDeps`, `QueryBuilder`/`TransactionBuilder`, `isEntityType`; `defineEars` and the `Typed*` facade types |
@@ -59,7 +59,7 @@ EARS, the entity-attribute-relation graph store behind AgentBuddy's data: the en
 
 ## Tests (`tests/`)
 
-- `contract/`: black-box specs of the public API, written before the engine became an instance and unchanged since: `transactions` (`tx` create, update, delete, the ids and fields returned), `relations` (link, unlink, `linksTo`, `relatedTo`, `linkSymmetric`, cycle detection, roles), `queries` (query builder terminals and ordering, blueprints and `spawn`, repository registration) and `persistence` (the exact order and payload of sink calls, hydration through bulk load). They reach the engine only through `engine-under-test.ts` (`freshEngine`); `helpers.ts` has `recordingSink()`. A few specs pin existing quirks; they say so.
+- `contract/`: black-box specs of the public API, written before the engine became an instance (changed since only where a pinned result was a bug: `getSchemaStats` counts each kind's relations): `transactions` (`tx` create, update, delete, the ids and fields returned), `relations` (link, unlink, `linksTo`, `relatedTo`, `linkSymmetric`, cycle detection, roles), `queries` (query builder terminals and ordering, blueprints and `spawn`, repository registration) and `persistence` (the exact order and payload of sink calls, hydration through bulk load). They reach the engine only through `engine-under-test.ts` (`freshEngine`); `helpers.ts` has `recordingSink()`. A few specs pin existing quirks; they say so.
 - `installed-engine.spec.ts`: the free functions throw with no engine installed; two engines in one process share nothing.
 - `is-entity-type.spec.ts`: `isEntityType` follows the installed engine's checker.
 - `lmdb/`: `persistence` (the LMDB adapter, the sharded router, `LmdbQuery`) and `store` (`openLmdbStore`: writes reach LMDB through `store.sink`, and a store opened again hydrates them).

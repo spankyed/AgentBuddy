@@ -2208,10 +2208,15 @@ type OutgoingFlowsEvents = {
     edgeId: string;
 } | {
     type: 'EDGE_UPDATED';
-    oldEdgeId: EARS.EntityId;
-    newEdgeId: EARS.EntityId;
-    newSource: EARS.EntityId;
-    newTarget: EARS.EntityId;
+    edgeId: EARS.EntityId;
+    source: EARS.EntityId;
+    target: EARS.EntityId;
+    sourceHandle?: string;
+    targetHandle?: string;
+} | {
+    type: 'EDGE_UPDATE_FAILED';
+    edgeId: string;
+    error: string;
 } | {
     type: 'ACTION_CREATED';
     action: ActionEntity;
@@ -4438,9 +4443,13 @@ declare const flowsCommands: {
     readonly updateNode: (nodeId: _abuddy_sdk.EARS.EntityId, updates: _abuddy_sdk_repositories.FlowNodeInput) => void;
     readonly deleteNode: (nodeId: _abuddy_sdk.EARS.EntityId) => void;
     readonly deleteEdge: (edgeId: _abuddy_sdk.EARS.EntityId) => void;
-    readonly updateEdge: (edgeId: _abuddy_sdk.EARS.EntityId, _oldSource: _abuddy_sdk.EARS.EntityId, _oldTarget: _abuddy_sdk.EARS.EntityId, newSource: _abuddy_sdk.EARS.EntityId, newTarget: _abuddy_sdk.EARS.EntityId) => {
-        newRelId: _abuddy_sdk.EARS.EntityId;
-    };
+    readonly updateEdge: (edgeId: _abuddy_sdk.EARS.EntityId, next: {
+        source: _abuddy_sdk.EARS.EntityId;
+        target: _abuddy_sdk.EARS.EntityId;
+    } & {
+        sourceHandle?: string;
+        targetHandle?: string;
+    }) => void;
     readonly revokeRootFlowRole: (flowId: _abuddy_sdk.EARS.EntityId) => void;
     readonly deleteFlow: (flowId: _abuddy_sdk.EARS.EntityId, options?: {
         allowRoot?: boolean;
@@ -5086,10 +5095,10 @@ declare const specs: {
             type: "UPDATE_EDGE";
             flowId: string;
             edgeId: string;
-            oldSource: string;
-            oldTarget: string;
-            newSource: string;
-            newTarget: string;
+            source: string;
+            target: string;
+            sourceHandle?: string;
+            targetHandle?: string;
         } | {
             type: "IMPORT_DSL";
             dsl: any;

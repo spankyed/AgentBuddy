@@ -11,6 +11,9 @@ import { resetTestData } from '@abuddy/sdk/testing';
 import type { EARS } from '@abuddy/sdk';
 import { registry, TEST_APP_VERSION } from '../packs/runtime/test-host.ts';
 
+// The migrations runner reads the app environment; a test build runs release rules
+process.env.ABUDDY_ENV = 'test';
+
 /** The app version the runners read; the test host's unless a test sets one */
 const version = vi.hoisted(() => ({ current: undefined as string | undefined }));
 vi.mock('@abuddy/sdk/env', async (importOriginal) => {
@@ -74,7 +77,6 @@ function migrate(): void {
 }
 
 let builtInDir: string;
-const env = process.env.ABUDDY_ENV;
 
 beforeAll(async () => {
   builtInDir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-state-migration-'));
@@ -108,8 +110,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.restoreAllMocks();
-  if (env === undefined) delete process.env.ABUDDY_ENV;
-  else process.env.ABUDDY_ENV = env;
+  process.env.ABUDDY_ENV = 'test';
 });
 
 describe('the 0.3.15 app migration', () => {

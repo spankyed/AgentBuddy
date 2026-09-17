@@ -46,6 +46,14 @@ export const testRootEvents: TestRootEvents = new TestEventBus();
 
 const systemErrors: SystemErrorEvent[] = [];
 
+// The bus prints its log events, as the app's log capture does, and records its SYSTEM_ERROR events
+testRootEvents.onLog((event) => {
+  console[event.level](event.source ? `[${event.source}]` : '[test]', event.message, ...(event.meta === undefined ? [] : [event.meta]));
+});
+testRootEvents.onOutgoing((event) => {
+  if (event.type === 'SYSTEM_ERROR') systemErrors.push(event as unknown as SystemErrorEvent);
+});
+
 let testSecrets: SecretInfo[] = [];
 let testSecretCount = 0;
 
@@ -115,11 +123,6 @@ function memoryTraceStore(engine: () => EarsEngine): TraceStore {
   };
 }
 
-/** Prints a log event as the app's log capture does: `[source] message meta` */
-function printLogEvent(event: LogEvent): void {
-  console[event.level](event.source ? `[${event.source}]` : '[test]', event.message, ...(event.meta === undefined ? [] : [event.meta]));
-}
-
 export interface TestRuntimeOptions {
   /** The in-memory engine, which a reset replaces */
   engine: () => EarsEngine;
@@ -134,8 +137,8 @@ export interface TestRuntimeOptions {
 }
 
 /**
- * The in-memory app: `testRootEvents` as its bus (whose log events it prints, and whose SYSTEM_ERROR events it
- * records for `takeSystemErrors`), the in-memory engine, `testPacks` over `packs`, and the app's services in memory.
+ * Binds the in-memory app: `testRootEvents` as its bus, the in-memory engine, `testPacks` over `packs`, and the app's
+ * services in memory.
  */
 export function bindTestRuntime({ engine, resetData, packs, appVersion = '0.0.0-test', onboarding = memoryOnboarding }: TestRuntimeOptions): HostRuntime {
   const runtime: HostRuntime = {
@@ -164,9 +167,5 @@ export function bindTestRuntime({ engine, resetData, packs, appVersion = '0.0.0-
     },
   };
   bindHost(runtime);
-  testRootEvents.onLog(printLogEvent);
-  testRootEvents.onOutgoing((event) => {
-    if (event.type === 'SYSTEM_ERROR') systemErrors.push(event as unknown as SystemErrorEvent);
-  });
   return runtime;
 }

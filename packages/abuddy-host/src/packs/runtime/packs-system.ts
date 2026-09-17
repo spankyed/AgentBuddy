@@ -6,21 +6,15 @@ import { bus } from '@abuddy/sdk/ids';
 import { emit } from '@abuddy/sdk/events';
 import { getAppVersion } from '@abuddy/sdk/env';
 import { readPackRegistry, modifyRegistry, addToRegistry, removeFromRegistry, type PackRegistryEntry } from '../pack-registry.ts';
-import type { BuiltInPackInfo } from '../pack-discovery.ts';
 import { installPack as runInstall, uninstallPack as runUninstall, installPackFromGitHub } from '../pack-installer.ts';
 import type { PackContributions, PackInfo, PackRegistry } from '../pack-registration.ts';
 import { packFrontendFiles } from '../bundle.ts';
 import { checkForUpdates } from '../pack-updater.ts';
 import { teardownPack, activatePack } from './lifecycle.ts';
 import { activationProblem } from './activation-outcome.ts';
+import { getBuiltInPackInfos } from './loaded-packs.ts';
 
 export type { PackInfo };
-
-let _builtInPacks: BuiltInPackInfo[] = [];
-
-export function setBuiltInPacks(packs: BuiltInPackInfo[] | undefined): void {
-  _builtInPacks = packs ?? [];
-}
 
 type IncomingPacksEvents =
   | { type: 'INSTALL_PACK'; packSlug: string; source?: string }
@@ -98,7 +92,7 @@ function toExternalPackInfoList(registry: PackRegistry, entries: PackRegistryEnt
 }
 
 function toBuiltInPackInfoList(registry: PackRegistry): PackInfo[] {
-  return _builtInPacks.map(p => {
+  return getBuiltInPackInfos().map(p => {
     const manifest = readManifest(p.dir);
     const entities = manifest?.entities ?? {};
     const contrib = registry.getPackContributions(p.id);
@@ -152,7 +146,7 @@ export function createPacksSystem(registry: PackRegistry) {
             source: isGitHub ? packSlug : undefined,
           }));
 
-          const problem = activationProblem(result.id, activatePack(registry, result.id, system.get(bus), { seed: true }));
+          const problem = activationProblem(result.id, activatePack(registry, result.id, system.get(bus)));
           if (problem) {
             system.get(bus).send(emit(packs, {
               type: 'PACK_INSTALL_FAILED' as const,
@@ -259,7 +253,7 @@ export function createPacksSystem(registry: PackRegistry) {
             } : e),
           );
 
-          activated = activatePack(registry, packId, system.get(bus), { seed: true });
+          activated = activatePack(registry, packId, system.get(bus));
           const problem = activationProblem(packId, activated);
           if (problem) {
             system.get(bus).send(emit(packs, {

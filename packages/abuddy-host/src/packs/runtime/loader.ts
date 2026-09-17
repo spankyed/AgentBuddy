@@ -11,7 +11,7 @@ import { BUNDLE_PATHS, BUNDLE_FORMAT_VERSION, isBundleDir, readBundleInfo } from
 import { isHostCompatible } from '../pack-installer.ts';
 import { findSdkVersion } from '../../build/shared-deps.ts';
 import { withHostResolution } from './bridge.ts';
-import type { LoadedPack } from './loaded-packs.ts';
+import { getBuiltInPackInfos, setBuiltInPackInfos, type LoadedPack } from './loaded-packs.ts';
 
 // Always use createRequire — esbuild's require shim is a Proxy without .cache
 const esmRequire = Module.createRequire(import.meta.url);
@@ -59,12 +59,10 @@ export function loadBuiltInRuntime(packDir: string): PackRegistration | undefine
   return packRegistration(withHostResolution(() => esmRequire(builtInRuntimeEntry(packDir))), packDir);
 }
 
-let _builtInPackInfos: BuiltInPackInfo[] = [];
-export function getBuiltInPackInfos(): BuiltInPackInfo[] { return _builtInPackInfos; }
 
 /** Re-reads a loaded built-in pack's manifest, so a name or version a rebuild changed is the one listed */
 export function refreshBuiltInPackInfo(packId: string): void {
-  const info = _builtInPackInfos.find(p => p.id === packId);
+  const info = getBuiltInPackInfos().find(p => p.id === packId);
   if (!info) return;
   try {
     const manifest = JSON.parse(fs.readFileSync(path.join(info.dir, BUNDLE_PATHS.manifest), 'utf-8')) as { name?: string; version?: string };
@@ -124,7 +122,7 @@ export async function loadBuiltInPacks(
       }
     }
 
-    // Production / fallback: the app bundle's loader
+    // The app bundle's loader: always when packaged, or when a built runtime is missing or failed
     if (!bundledLoaders) throw missingLoaders();
     loaders ??= await bundledLoaders();
     const loader = loaders[pack.id];
@@ -145,7 +143,7 @@ export async function loadBuiltInPacks(
       logger.error(`Failed to load built-in pack ${pack.id}:`, err as Error);
     }
   }
-  _builtInPackInfos = loaded;
+  setBuiltInPackInfos(loaded);
   return loaded;
 }
 

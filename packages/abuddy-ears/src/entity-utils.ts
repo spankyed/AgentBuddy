@@ -1,4 +1,4 @@
-import { EARS } from './entities.ts';
+import type { EARS } from './entities.ts';
 import type { qx as Qx } from './query.ts';
 import { installedEngine } from './installed.ts';
 
@@ -27,13 +27,6 @@ export function generateShortCode(entityType: EARS.Entity, prefix: string): stri
 
 export function generateLabelWithCount(baseLabel: string, entityType: EARS.Entity): string {
   return installedEngine().generateLabelWithCount(baseLabel, entityType);
-}
-
-export function getEntityTypeFromId(id: EARS.EntityId): EARS.Entity | null {
-  const match = id.match(/^([^-]+)-/);
-  if (!match) return null;
-  const typeString = match[1];
-  return Object.values(EARS.Entity).find(e => e === typeString) || null;
 }
 
 export function filterSystemFields<T extends Record<string, any>>(

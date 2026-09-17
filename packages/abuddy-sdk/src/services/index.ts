@@ -14,9 +14,6 @@ export type { SecretInfo, SecretProvider, SecretsProtection, SecretsService, Sec
 export { secretRules, secretProviderLabel, toSecretInfo } from './secrets-rules.ts';
 export type { ModelId, ProviderName } from './models.ts';
 
-/** @internal The services the app implements, which it binds as `HostRuntime.services` */
-export type HostImplementedServices = HostRuntimeServices;
-
 const logger = createLogger('log-service');
 
 /**

@@ -26,12 +26,9 @@ const HOST_SERVICE_NAMES = ['logger', 'emitter', 'repository', 'appData', 'trace
 const _allHostServicesNamed: Exclude<keyof HostServices, (typeof HOST_SERVICE_NAMES)[number]> extends never ? true : never = true;
 void _allHostServicesNamed;
 
-/** A pack's own EARS names. A pack built with an older SDK may still list the SDK's among them. */
-function ownEARS(ears: PackEARS): PackEARS {
-  const own = (names: Record<string, string>, sdkOwned: Record<string, string>) =>
-    Object.fromEntries(Object.entries(names).filter(([, value]) => !Object.values(sdkOwned).includes(value)));
-  return { ...ears, entities: own(ears.entities, SDK_ENTITIES), relKinds: own(ears.relKinds, SDK_REL_KINDS) };
-}
+/** Entity types and relation kinds no pack may declare: the SDK's and the host's */
+const RESERVED_ENTITIES: readonly string[] = [...Object.values(SDK_ENTITIES), ...HOST_ENTITY_TYPES] as const;
+const RESERVED_REL_KINDS: readonly string[] = [...Object.values(SDK_REL_KINDS)] as const;
 
 /**
  * Role → id of the system that plays it (`<packId>.<featureId>` for an external pack). A designated
@@ -167,33 +164,30 @@ export function createPackRegistry(): PackRegistry {
     policyCache = null;
   }
 
-  function registerPack(pack: PackRegistration): void {
-    const registration = pack.ears ? { ...pack, ears: ownEARS(pack.ears) } : pack;
+  /** Throws when one of a pack's EARS names is reserved or another registered pack's */
+  function checkEARS(registration: PackRegistration): void {
+    if (!registration.ears) return;
+    const kinds = [
+      ['entity type', Object.values(registration.ears.entities), RESERVED_ENTITIES, (ears: PackEARS) => ears.entities],
+      ['relation kind', Object.values(registration.ears.relKinds), RESERVED_REL_KINDS, (ears: PackEARS) => ears.relKinds],
+    ] as const;
+    for (const [kind, values, reserved, namesOf] of kinds) {
+      const taken = values.find((val) => reserved.includes(val));
+      if (taken) throw new Error(`EARS collision: ${kind} "${taken}" — pack "${registration.id}" vs the app's own "${taken}"`);
+      for (const [existingId, existing] of registrations) {
+        const existingValues = existing.ears ? Object.values(namesOf(existing.ears)) : [];
+        const val = values.find((v) => existingValues.includes(v));
+        if (val) throw new Error(`EARS collision: ${kind} "${val}" — pack "${registration.id}" vs "${existingId}"`);
+      }
+    }
+  }
+
+  function registerPack(registration: PackRegistration): void {
     if (registrations.has(registration.id)) {
       throw new Error(`Pack "${registration.id}" is already registered`);
     }
 
-    if (registration.ears) {
-      const hostOwned = Object.values(registration.ears.entities).find((val) => HOST_ENTITY_TYPES.includes(val));
-      if (hostOwned) {
-        throw new Error(`EARS collision: entity type "${hostOwned}" — pack "${registration.id}" vs the host's own "${hostOwned}"`);
-      }
-      for (const [existingId, existing] of registrations) {
-        if (!existing.ears) continue;
-        const existingEntValues = Object.values(existing.ears.entities);
-        for (const val of Object.values(registration.ears.entities)) {
-          if (existingEntValues.includes(val)) {
-            throw new Error(`EARS collision: entity type "${val}" — pack "${registration.id}" vs "${existingId}"`);
-          }
-        }
-        const existingRelValues = Object.values(existing.ears.relKinds);
-        for (const val of Object.values(registration.ears.relKinds)) {
-          if (existingRelValues.includes(val)) {
-            throw new Error(`EARS collision: relation kind "${val}" — pack "${registration.id}" vs "${existingId}"`);
-          }
-        }
-      }
-    }
+    checkEARS(registration);
 
     const roles = designationsOf(registration);
     for (const [existingId, existing] of registrations) {
@@ -355,7 +349,7 @@ export function createPackRegistry(): PackRegistry {
 
     getRegisteredEntityTypes() {
       if (!entityTypeCache) {
-        entityTypeCache = new Set<string>([...Object.values<string>(SDK_ENTITIES), ...HOST_ENTITY_TYPES]);
+        entityTypeCache = new Set<string>(RESERVED_ENTITIES);
         for (const reg of registrations.values()) {
           for (const val of Object.values(reg.ears?.entities ?? {})) entityTypeCache.add(val);
         }

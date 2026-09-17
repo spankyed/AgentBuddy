@@ -57,6 +57,8 @@ describe('flowRepository', () => {
 
     flowRepository.updateNode(actionNode.id, { actionId: undefined });
     expect(flowRepository.getNodeActionId(actionNode.id)).toBeUndefined();
+    // The node no longer names the action it was linked to
+    expect(flowRepository.node(actionNode.id)?.actionId).toBeUndefined();
   });
 
   it('keeps the root flow unless deleting it is allowed, then removes its nodes and relations', () => {
@@ -97,6 +99,30 @@ describe('flowRepository', () => {
     flowRepository.deleteNode(other.id);
     expect(flowRepository.flowEdges(flow.id)).toEqual([]);
     expect(flowRepository.flowNodes(flow.id).map((node) => node.id).sort()).toEqual([entry.id, step.id].sort());
+  });
+
+  it('moves an edge in place with its handles, and refuses a move that isn\'t allowed, leaving the edge as it was', () => {
+    const flow = flowRepository.createFlow();
+    const entry = flowRepository.createNode(flow.id, { nodeType: 'listener', label: 'Entry' });
+    const a = flowRepository.createNode(flow.id, { nodeType: 'action' });
+    const b = flowRepository.createNode(flow.id, { nodeType: 'action' });
+    const c = flowRepository.createNode(flow.id, { nodeType: 'action' });
+    const { relId } = flowRepository.createEdge(a.id, b.id, { sourceHandle: 'case-0' });
+    flowRepository.createEdge(a.id, c.id, { sourceHandle: 'case-1' });
+    const edges = () => findRelations({ sourceEntity: a.id, relationType: EARS.RelKind.TRANSITIONS_TO })
+      .map((rel) => ({ id: rel.id, target: rel.targetEntity, sourceHandle: (rel.info as { sourceHandle?: string }).sourceHandle }));
+
+    // Onto another handle and target: the same edge, its own handle not counted as busy
+    flowRepository.updateEdge(relId, { source: a.id, target: c.id, sourceHandle: 'case-2' });
+    expect(edges()).toContainEqual({ id: relId, target: c.id, sourceHandle: 'case-2' });
+    flowRepository.updateEdge(relId, { source: a.id, target: c.id, sourceHandle: 'case-2' });
+
+    const before = edges();
+    expect(() => flowRepository.updateEdge(relId, { source: a.id, target: entry.id, sourceHandle: 'case-2' }))
+      .toThrow('Trigger nodes cannot receive incoming connections');
+    expect(() => flowRepository.updateEdge(relId, { source: a.id, target: b.id, sourceHandle: 'case-1' }))
+      .toThrow('Source handle already has an outgoing connection');
+    expect(edges()).toEqual(before);
   });
 });
 

@@ -166,7 +166,7 @@ describe('finders', () => {
     expect(e.query.getSchemaStats()).toEqual({
       entities: { Task: 1, Project: 1, Relation: 1 },
       attributes: { createdAt: 2, title: 1, tag: 2, relationDetails: 1 },
-      relations: { contains: 0 },
+      relations: { contains: 1 },
     });
     expect(e.query.queryEntitiesByAttribute('tag')).toEqual([a]);
     expect(e.query.queryEntitiesByAttribute('title', 'A')).toEqual([a]);

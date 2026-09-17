@@ -4,7 +4,7 @@ Data migrations that run on app startup when a stored version is behind the vers
 
 ## Who runs what
 
-There are two runners, both in this folder's `index.ts` (`packages/abuddy-host/src/migrations/index.ts`). The API's boot and `services.appData.reset()` call them in this order through `startPacks()` (`../packs/runtime/start.ts`), after each pack's `onInit`:
+There are two runners, both in this folder's `index.ts` (`packages/abuddy-host/src/migrations/index.ts`). The API's boot and `services.appData.reset()` call them in this order through `startPacks()` (`../packs/runtime/start.ts`), after each pack's `onInit`; activating (install, update, enable) and reloading an external pack run `runPackMigrations` for it too:
 
 | Runner | Runs | Runs a migration when | Records |
 | --- | --- | --- | --- |
@@ -18,7 +18,7 @@ Which app migrations run, besides `stored < target`:
 
 Data with no recorded version runs the host's migrations (the 0.3.15 one moves the version stored before `AppState` existed); if there's still none, it's new data at the app version, and no pack migration runs.
 
-A migration that throws is logged (`[migration] FAILED ...`) and stops the rest: `runAppMigrations` records no version and returns `false`, and `startPacks()` then runs no external pack migration and no seed, since the versions and seed hashes they read may not be in place yet (the host's 0.3.15 moves them, and default-setup's 0.3.15 drops their old copy). The next boot retries from the failed migration. `runPackMigrations` stops a pack's migrations at a failure and doesn't record its version, so they run again at the next boot.
+A migration that throws is logged (`[migration] FAILED ...`) and stops the rest: `runAppMigrations` records no version and returns `false`, and `startPacks()` then runs no external pack migration and no seed, since the versions and seed hashes they read may not be in place yet (the host's 0.3.15 moves them, and default-setup's 0.3.15 drops their old copy). The next boot retries from the failed migration. `runPackMigrations` stops a pack's migrations at a failure and doesn't record its version, so they run again the next time the pack starts. A pack that isn't loaded (disabled) keeps its recorded version.
 
 An external pack's registration still carries its migrations (the Packs view counts them), but `getRegisteredMigrations` returns only the packs it's asked for, and `runAppMigrations` asks for the built-in ones, so a migration never runs in both.
 

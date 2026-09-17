@@ -6,6 +6,9 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { PackMigration } from '@abuddy/sdk/framework';
+
+// The migrations runner reads the app environment; a test build runs release rules
+process.env.ABUDDY_ENV = 'test';
 import { registry, TEST_APP_VERSION } from '../packs/runtime/test-host.ts';
 
 const runs = vi.hoisted(() => ({ builtIn: 0, external: 0 }));
@@ -78,14 +81,43 @@ describe('boot migrations', () => {
     runPackMigrations(externalPacks);
     expect(runs).toEqual({ builtIn: 1, external: 1 });
   });
+
+  it("stops an external pack's migrations at a failure and records its version once they all ran, keeping other packs'", () => {
+    resetTestData();
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    // A disabled pack, not loaded this boot
+    appState.update({ packVersions: { 'disabled-pack': '3.0.0' } });
+    const ran: string[] = [];
+    let failing: string | undefined = '1.1.0';
+    const pack = {
+      manifest: { id: 'failing-pack', name: 'Failing', version: '1.2.0' } as LoadedPack['manifest'],
+      dir: builtInDir,
+      systems: new Map(),
+      migrations: ['1.1.0', '1.2.0'].map((target) => ({
+        target,
+        description: target,
+        up: () => { if (target === failing) throw new Error('failed'); ran.push(target); },
+      })),
+    } satisfies LoadedPack;
+
+    runPackMigrations([pack]);
+    expect(ran).toEqual([]);
+    expect(appState.get().packVersions).toEqual({ 'disabled-pack': '3.0.0' });
+
+    failing = undefined;
+    runPackMigrations([pack]);
+    expect(ran).toEqual(['1.1.0', '1.2.0']);
+    expect(appState.get().packVersions).toEqual({ 'disabled-pack': '3.0.0', 'failing-pack': '1.2.0' });
+    vi.restoreAllMocks();
+  });
 });
 
 describe('which migrations run', () => {
   /** The gate pack's migrations that ran, and the one that fails when set */
   const ran: string[] = [];
   let failing: string | undefined;
-  const env = process.env.ABUDDY_ENV;
-
+  
   beforeAll(async () => {
     const packDir = path.join(builtInDir, 'migrations-gate');
     fs.mkdirSync(packDir);
@@ -119,8 +151,7 @@ describe('which migrations run', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
-    if (env === undefined) delete process.env.ABUDDY_ENV;
-    else process.env.ABUDDY_ENV = env;
+    process.env.ABUDDY_ENV = 'test';
   });
 
   it("runs a beta's release migrations, not later ones, and again only when the beta's version changes", () => {

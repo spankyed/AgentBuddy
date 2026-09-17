@@ -38,42 +38,47 @@ export function createAttributeStorage({ relations, persistence }: { relations: 
     return store.get(k)!;
   };
 
-  const add = (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown) => {
-    const b = bucket(kind);
-    (b.get(id) ?? b.set(id, []).get(id)!).push(val as EARS.AttributeValue);
-    (entityIndex.get(entType(id)) ?? (entityIndex.set(entType(id), new Set()), entityIndex.get(entType(id)))!)
-      .add(id);
-    const list = b.get(id)!;
-    persistence.onPutAttrArray?.(kind, id, list);
+  const indexEntity = (id: EARS.EntityId) => {
+    const type = entType(id);
+    const ids = entityIndex.get(type);
+    if (ids) ids.add(id);
+    else entityIndex.set(type, new Set([id]));
   };
 
-  const put = (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown) => {
-    const b = bucket(kind);
-    b.set(id, [val as EARS.AttributeValue]);
-    (entityIndex.get(entType(id)) ?? (entityIndex.set(entType(id), new Set()), entityIndex.get(entType(id)))!)
-      .add(id);
-    persistence.onPutAttrArray?.(kind, id, [val]);
-  };
-
-  const merge = (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown, idx = 0) => {
+  /** The entity's values of a kind, created (and the entity indexed) on the first */
+  const valuesOf = (id: EARS.EntityId, kind: EARS.AttrKind) => {
     const b = bucket(kind);
     let list = b.get(id);
     if (!list) {
       list = [];
       b.set(id, list);
-      (entityIndex.get(entType(id)) ?? (entityIndex.set(entType(id), new Set()), entityIndex.get(entType(id)))!)
-        .add(id);
+      indexEntity(id);
     }
-    while (list.length < idx) list.push(null as any);
-    if (list.length === idx) {
-      list.push(val as EARS.AttributeValue);
-    } else {
-      const cur = list[idx];
-      list[idx] =
-        cur && isPlainObject(cur) && isPlainObject(val)
-          ? { ...cur, ...val }
-          : (val as EARS.AttributeValue);
-    }
+    return list;
+  };
+
+  /** Sets the value at `idx`, merging it into a plain object already there */
+  const mergeAt = (list: EARS.AttributeValue[], val: unknown, idx: number) => {
+    while (list.length < idx) list.push(null as unknown as EARS.AttributeValue);
+    const cur = list[idx];
+    list[idx] = cur && isPlainObject(cur) && isPlainObject(val) ? { ...cur, ...val } : val as EARS.AttributeValue;
+  };
+
+  const add = (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown) => {
+    const list = valuesOf(id, kind);
+    list.push(val as EARS.AttributeValue);
+    persistence.onPutAttrArray?.(kind, id, list);
+  };
+
+  const put = (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown) => {
+    bucket(kind).set(id, [val as EARS.AttributeValue]);
+    indexEntity(id);
+    persistence.onPutAttrArray?.(kind, id, [val]);
+  };
+
+  const merge = (id: EARS.EntityId, kind: EARS.AttrKind, val: unknown, idx = 0) => {
+    const list = valuesOf(id, kind);
+    mergeAt(list, val, idx);
     persistence.onPutAttrArray?.(kind, id, list);
   };
 
@@ -102,25 +107,9 @@ export function createAttributeStorage({ relations, persistence }: { relations: 
     if (i !== -1) drop(id, kind, i);
   };
 
+  /** A stored value, loaded without telling persistence */
   function bulkLoadAttr(id: EARS.EntityId, kind: EARS.AttrKind, val: unknown, idx = 0) {
-    const b = bucket(kind);
-    let list = b.get(id);
-    if (!list) {
-      list = [];
-      b.set(id, list);
-      const et = entType(id);
-      (entityIndex.get(et) ?? (entityIndex.set(et, new Set()), entityIndex.get(et))!).add(id);
-    }
-    while (list.length < idx) list.push(null as any);
-    if (list.length === idx) {
-      list.push(val as EARS.AttributeValue);
-    } else {
-      const cur = list[idx];
-      list[idx] =
-        cur && isPlainObject(cur) && isPlainObject(val)
-          ? { ...cur, ...val }
-          : (val as EARS.AttributeValue);
-    }
+    mergeAt(valuesOf(id, kind), val, idx);
   }
 
   const grantRole  = (id: EARS.EntityId, role: string) =>
@@ -327,10 +316,8 @@ export function createAttributeStorage({ relations, persistence }: { relations: 
         acc[kind as string] = getAttributeStats(kind).totalValues;
         return acc;
       }, {}),
-      relations: getAllRelationKinds().reduce((acc: Record<string, number>, kind: string) => {
-        acc[kind] = 0;
-        return acc;
-      }, {}),
+      relations: Object.fromEntries(Object.entries(relationIndex).map(([kind, { bySource }]) =>
+        [kind, Object.values(bySource).reduce((total, relIds) => total + relIds.length, 0)])),
     };
   }
 

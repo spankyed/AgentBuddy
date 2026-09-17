@@ -34,7 +34,7 @@ export const migration: PackMigration = {
 
     // ── Action logs moved from the shared `log-service` source to `action:<label>` ──
     // Whoever hid `log-service` hid action logs: keep hiding them.
-    const excludedSources = (repository.settingsQueries.getSettings().plugins as any)?.logs?.excludedSources;
+    const excludedSources = repository.settingsQueries.getSettings().plugins.logs?.excludedSources;
     if (Array.isArray(excludedSources) && excludedSources.includes('log-service') && !excludedSources.includes('action:*')) {
       repository.settingsCommands.updateSettings('plugin', 'logs', ['excludedSources'], [...excludedSources, 'action:*']);
     }

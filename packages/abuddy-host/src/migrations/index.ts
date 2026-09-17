@@ -1,14 +1,13 @@
 // The app's migrations runners: the host runs them at boot, and again in an app reset
 // (services.appData.reset()). The migrations live with their packs, and the host's own (the app's
 // state) in ./app. The versions they ran to are recorded in AppState.
-import { getAppVersion, parseAppEnv } from '@abuddy/sdk/env';
+import { getAppVersion, resolveAppContext } from '@abuddy/sdk/env';
 import { compareVersions } from '@abuddy/sdk/utils';
 import type { PackMigration } from '@abuddy/sdk/framework';
 import { appState } from '../app-state/index.ts';
 import { appMigrations } from './app/index.ts';
 import type { PackRegistry } from '../packs/pack-registration.ts';
-import { getBuiltInPackInfos } from '../packs/runtime/loader.ts';
-import type { LoadedPack } from '../packs/runtime/loaded-packs.ts';
+import { getBuiltInPackInfos, type LoadedPack } from '../packs/runtime/loaded-packs.ts';
 
 /** A version without its prerelease part: a beta (`0.3.15-beta.2`) runs its release's (`0.3.15`) migrations */
 const releaseOf = (version: string): string => version.replace(/[-+].*$/, '');
@@ -18,7 +17,7 @@ const releaseOf = (version: string): string => version.replace(/[-+].*$/, '');
  * migrations are written for the release it's building towards
  */
 function targetCap(appVersion: string): string | undefined {
-  return parseAppEnv(process.env.ABUDDY_ENV) === 'development' ? undefined : releaseOf(appVersion);
+  return resolveAppContext().env === 'development' ? undefined : releaseOf(appVersion);
 }
 
 /**
@@ -71,48 +70,22 @@ export function runAppMigrations(registry: PackRegistry): boolean {
 }
 
 /**
- * External packs' migrations, run when `stored pack version < target <= manifest version`,
- * recording each pack's version in AppState `packVersions`. Run after `runAppMigrations`, which moves the
- * versions recorded before AppState.
+ * External packs' migrations, each pack's run when `stored pack version < target <= manifest version`, recording
+ * the pack's version in AppState `packVersions` once they all ran. Run after `runAppMigrations`, which moves the
+ * versions recorded before AppState. A pack that isn't loaded (disabled) keeps its recorded version.
  */
 export function runPackMigrations(packs: LoadedPack[]): void {
-  const stored = appState.get().packVersions;
-  const updated = { ...stored };
-  let anyChanged = false;
+  const packVersions = { ...appState.get().packVersions };
+  let changed = false;
 
-  for (const pack of packs) {
-    if (!pack.migrations?.length) continue;
-    const currentVersion = stored[pack.manifest.id] || '0.0.0';
-    const targetVersion = pack.manifest.version;
-    if (compareVersions(currentVersion, targetVersion) >= 0) continue;
-
-    const sorted = [...pack.migrations].sort((a, b) => compareVersions(a.target, b.target));
-    let failed = false;
-    for (const m of sorted) {
-      if (compareVersions(m.target, currentVersion) > 0 && compareVersions(m.target, targetVersion) <= 0) {
-        console.log(`[migration:${pack.manifest.id}] Running ${m.target}: ${m.description}`);
-        try {
-          m.up();
-        } catch (error) {
-          console.error(`[migration:${pack.manifest.id}] FAILED ${m.target}: ${(error as Error).message}`);
-          failed = true;
-          break;
-        }
-      }
-    }
-
-    if (!failed) {
-      updated[pack.manifest.id] = targetVersion;
-      anyChanged = true;
-    }
+  for (const { manifest, migrations } of packs) {
+    if (!migrations?.length) continue;
+    const stored = packVersions[manifest.id] || '0.0.0';
+    if (compareVersions(stored, manifest.version) >= 0) continue;
+    if (!runPending(migrations, stored, manifest.version, `:${manifest.id}`)) continue;
+    packVersions[manifest.id] = manifest.version;
+    changed = true;
   }
 
-  const installedIds = new Set(packs.map(p => p.manifest.id));
-  for (const id of Object.keys(updated)) {
-    if (!installedIds.has(id)) { delete updated[id]; anyChanged = true; }
-  }
-
-  if (anyChanged) {
-    appState.update({ packVersions: updated });
-  }
+  if (changed) appState.update({ packVersions });
 }

@@ -10,7 +10,6 @@ import { loadFaqs } from './faqs';
 import { settingsQueries, settingsCommands } from './repository';
 import { repository } from '@/__generated__/repository';
 import { detectAllArrayChanges } from '@abuddy/sdk/utils/pure';
-// TODO: move seedData orchestration out of settings — belongs in the host (its packs system)
 import { seedData, type SeedCounts, type SeedIncludeSet } from '@/__generated__/seeders';
 import { previewPackSeeds, type PackSeedsPreview } from '@abuddy/sdk/seed';
 import { testCli, isCliName, clearCliPathCache } from '@/features/code/be/utils/resolve-cli';

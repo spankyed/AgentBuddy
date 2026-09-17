@@ -3,22 +3,20 @@ import * as path from 'path';
 import { createLogger } from '@abuddy/sdk/logger';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import type { PackSystemDef } from '@abuddy/sdk/framework';
-import { seedData } from '@abuddy/sdk/utils';
 import type { PackRegistry } from '../pack-registration.ts';
 import { publishHostPackArtifacts } from '../bundle.ts';
 import type { PackManifest } from '../pack-discovery.ts';
-import { appState } from '../../app-state/index.ts';
 import {
   loadSingleExternalPack,
   clearPackRequireCache,
   registerExternalPacks,
-  getBuiltInPackInfos,
   builtInRuntimeEntry,
   loadBuiltInRuntime,
   refreshBuiltInPackInfo,
 } from './loader.ts';
+import { runPackMigrations } from '../../migrations/index.ts';
 import { orchestrateDeclarativeSeed, seedPackData } from './seed.ts';
-import { updateLoadedPack } from './loaded-packs.ts';
+import { getBuiltInPackInfos, updateLoadedPack } from './loaded-packs.ts';
 
 const logger = createLogger('pack-reload');
 
@@ -119,12 +117,8 @@ export async function reloadExternalPack(
       onShutdown: pack.boot?.onShutdown,
       onInit: pack.boot?.onInit,
       afterRegister: () => {
-        seedPackData(
-          [pack],
-          seedData,
-          appState.getPackSeedHashes,
-          appState.setPackSeedHashes,
-        );
+        runPackMigrations([pack]);
+        seedPackData([pack]);
         updateLoadedPack(pack);
       },
     };

@@ -8,7 +8,7 @@ import { services } from '../../src/services/index.ts';
 import { testPacks, testPacksView } from '../../src/testing/packs.ts';
 import { getAppVersion } from '../../src/env/index.ts';
 import { createLogger, reportError } from '../../src/logger/index.ts';
-import { boundHost } from '../../src/runtime/host-runtime.ts';
+import { boundHost, unbindHost } from '../../src/runtime/host-runtime.ts';
 import { rootEvents } from '../../src/runtime/root-events.ts';
 import { registerRepository, repository, tx } from '@abuddy/ears';
 
@@ -84,6 +84,20 @@ describe('the test host', () => {
       .toThrow('pass packs on its first call');
     expect(() => startTestRuntime({ onboarding: { hasOnboarded: () => true, completeOnboarding: () => {} } }))
       .toThrow('pass onboarding on its first call');
+  });
+
+  it('binds the test app again once a test unbound it, printing each log event still once', () => {
+    unbindHost();
+    expect(() => ears()).toThrow();
+
+    startTestRuntime();
+
+    expect(boundHost().transport.rootEvents).toBe(testRootEvents);
+    expect(entityIds()).toEqual([]);
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    createLogger('memos').info('once');
+    expect(info).toHaveBeenCalledTimes(1);
+    vi.restoreAllMocks();
   });
 
   it('keeps whether the user onboarded in memory by default, until the database is emptied', () => {

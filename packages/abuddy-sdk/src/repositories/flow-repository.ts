@@ -46,6 +46,38 @@ function handlesMatch(info: unknown, options?: Handles): boolean {
     && (handles?.targetHandle || undefined) === (options?.targetHandle || undefined);
 }
 
+/** An edge's stored info: its handles, kept for steps with several outputs (switch) */
+const handleInfo = (handles?: Handles): Handles | undefined =>
+  handles?.sourceHandle || handles?.targetHandle ? { sourceHandle: handles.sourceHandle, targetHandle: handles.targetHandle } : undefined;
+
+/**
+ * Throws unless an edge from `sourceId` to `targetId` with these handles may exist: a trigger receives none, the
+ * same edge isn't there twice, and a non-trigger's source handle has one outgoing edge. `except` is an edge being moved.
+ */
+function assertEdgeAllowed(sourceId: EARS.EntityId, targetId: EARS.EntityId, handles?: Handles, except?: EARS.EntityId): void {
+  const isTrigger = (id: EARS.EntityId) => {
+    const nodeType = qx(id).pickOne(['nodeType'])?.nodeType;
+    return typeof nodeType === 'string' && stepRegistry.isTrigger(nodeType);
+  };
+  if (isTrigger(targetId)) {
+    throw new RepositoryError('Trigger nodes cannot receive incoming connections', RepositoryErrorCode.VALIDATION_ERROR);
+  }
+
+  const existing = findRelations({ sourceEntity: sourceId, relationType: EARS.RelKind.TRANSITIONS_TO }).filter((rel) => rel.id !== except);
+  if (existing.some((rel) => rel.targetEntity === targetId && handlesMatch(rel.info, handles))) {
+    throw new RepositoryError('Edge already exists', RepositoryErrorCode.VALIDATION_ERROR);
+  }
+  if (!isTrigger(sourceId)) {
+    const occupied = existing.some((rel) => {
+      const handle = (rel.info as Handles | undefined)?.sourceHandle;
+      return handles?.sourceHandle ? handle === handles.sourceHandle : !handle;
+    });
+    if (occupied) {
+      throw new RepositoryError('Source handle already has an outgoing connection', RepositoryErrorCode.VALIDATION_ERROR);
+    }
+  }
+}
+
 /** A trigger node's own validation, run before it's stored */
 function validateNode(node: FlowNode): void {
   const result = stepRegistry.getTrigger(node.nodeType)?.validate?.(node);
@@ -243,9 +275,10 @@ export const flowRepository = {
 
     const field = relationField(current.nodeType);
     if (field && field in related) {
-      tx(nodeId).unlinkIf(EARS.RelKind.INSTANCE_OF);
       const relatedId = related[field];
+      tx(nodeId).unlinkIf(EARS.RelKind.INSTANCE_OF);
       if (relatedId) tx(nodeId).update(field, relatedId).link(EARS.RelKind.INSTANCE_OF, relatedId as EARS.EntityId);
+      else tx(nodeId).drop(EARS.AttrKind.Custom(field));
     }
 
     const transaction = tx(nodeId);
@@ -297,34 +330,8 @@ export const flowRepository = {
    * non-trigger's handle has at most one outgoing edge.
    */
   createEdge: (sourceId: EARS.EntityId, targetId: EARS.EntityId, options?: Handles): { relId: EARS.EntityId } => {
-    const nodeTypeOf = (id: EARS.EntityId) => qx(id).pickOne(['nodeType'])?.nodeType;
-    const isTrigger = (id: EARS.EntityId) => {
-      const nodeType = nodeTypeOf(id);
-      return typeof nodeType === 'string' && stepRegistry.isTrigger(nodeType);
-    };
-    if (isTrigger(targetId)) {
-      throw new RepositoryError('Trigger nodes cannot receive incoming connections', RepositoryErrorCode.VALIDATION_ERROR);
-    }
-
-    const existing = findRelations({ sourceEntity: sourceId, relationType: EARS.RelKind.TRANSITIONS_TO });
-    if (existing.some((rel) => rel.targetEntity === targetId && handlesMatch(rel.info, options))) {
-      throw new RepositoryError('Edge already exists', RepositoryErrorCode.VALIDATION_ERROR);
-    }
-    if (!isTrigger(sourceId)) {
-      const occupied = existing.some((rel) => {
-        const handle = (rel.info as Handles | undefined)?.sourceHandle;
-        return options?.sourceHandle ? handle === options.sourceHandle : !handle;
-      });
-      if (occupied) {
-        throw new RepositoryError('Source handle already has an outgoing connection', RepositoryErrorCode.VALIDATION_ERROR);
-      }
-    }
-
-    // Handles are kept for steps with several outputs (switch)
-    const info = options?.sourceHandle || options?.targetHandle
-      ? { sourceHandle: options.sourceHandle, targetHandle: options.targetHandle }
-      : undefined;
-    tx(sourceId).link(EARS.RelKind.TRANSITIONS_TO, targetId, info);
+    assertEdgeAllowed(sourceId, targetId, options);
+    tx(sourceId).link(EARS.RelKind.TRANSITIONS_TO, targetId, handleInfo(options));
 
     const relId = findRelations({ sourceEntity: sourceId, relationType: EARS.RelKind.TRANSITIONS_TO, targetEntity: targetId })
       .find((rel) => handlesMatch(rel.info, options))?.id;
@@ -336,19 +343,10 @@ export const flowRepository = {
     removeRelationById(edgeId);
   },
 
-  /** Replaces an edge with one between the new source and target */
-  updateEdge: (
-    edgeId: EARS.EntityId,
-    _oldSource: EARS.EntityId,
-    _oldTarget: EARS.EntityId,
-    newSource: EARS.EntityId,
-    newTarget: EARS.EntityId,
-  ): { newRelId: EARS.EntityId } => {
-    removeRelationById(edgeId);
-    tx(newSource).link(EARS.RelKind.TRANSITIONS_TO, newTarget);
-    const [relation] = findRelations({ sourceEntity: newSource, relationType: EARS.RelKind.TRANSITIONS_TO, targetEntity: newTarget });
-    if (!relation) throw new RepositoryError('Failed to retrieve updated edge ID', RepositoryErrorCode.OPERATION_FAILED);
-    return { newRelId: relation.id };
+  /** Moves an edge to new ends and handles, keeping its id; throws, leaving it as it was, when that edge isn't allowed */
+  updateEdge: (edgeId: EARS.EntityId, next: { source: EARS.EntityId; target: EARS.EntityId } & Handles): void => {
+    assertEdgeAllowed(next.source, next.target, next, edgeId);
+    tx(next.source).relPatch(edgeId, { sourceEntity: next.source, targetEntity: next.target, info: handleInfo(next) ?? {} });
   },
 
   /**

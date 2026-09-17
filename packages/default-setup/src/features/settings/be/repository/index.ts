@@ -112,12 +112,11 @@ export const settingsCommands = {
 
   /** Removes a stored value (its path in the stored data), so its default applies again */
   removeStored(path: string[]): void {
-    const stored = getStoredSettings();
-    const parent = path.slice(0, -1).reduce<any>((node, key) => node?.[key], stored);
+    const newData = structuredClone(getStoredSettings());
+    const parent = path.slice(0, -1).reduce<any>((node, key) => node?.[key], newData);
     const key = path[path.length - 1];
     if (!parent || typeof parent !== 'object' || !(key in parent)) return;
-    const newData = JSON.parse(JSON.stringify(stored));
-    delete path.slice(0, -1).reduce<any>((node, part) => node[part], newData)[key];
+    delete parent[key];
     tx(SETTINGS_ID)
       .put('data', newData)
       .put('updatedAt', Date.now());

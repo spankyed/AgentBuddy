@@ -6,6 +6,7 @@ import type { SeedHooks } from '../seed/hooks.ts';
 import { SDK_ENTITIES } from '../types/sdk-entities.ts';
 import type { EARS } from '../types/entities.ts';
 import type { PackRegistryView } from '../runtime/packs-view.ts';
+import { isHostBound } from '../runtime/host-runtime.ts';
 import { testPacks } from './packs.ts';
 import { bindTestRuntime, resetTestHostState, type TestOnboarding } from './host.ts';
 
@@ -80,11 +81,13 @@ export function startTestRuntime(options: TestRuntimeStartOptions = {}): void {
         throw new Error(`startTestRuntime already bound the test app without this ${key}: pass ${key} on its first call`);
       }
     }
-    return;
+    // Still bound: nothing to start. Unbound since (a test unbound the host): bound again, as first started
+    if (isHostBound()) return;
+  } else {
+    started = { packs: options.packs, appVersion: options.appVersion, onboarding: options.onboarding };
   }
-  started = { packs: options.packs, appVersion: options.appVersion, onboarding: options.onboarding };
   installFreshEngine();
-  bindTestRuntime({ engine: testEngine, resetData: resetTestData, packs: options.packs, appVersion: options.appVersion, onboarding: options.onboarding });
+  bindTestRuntime({ engine: testEngine, resetData: resetTestData, ...started });
 }
 
 /** Registers a pack's seed runtime: its entity types, its repositories (with the engine) and its seed hooks (in `testPacks`) */

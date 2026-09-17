@@ -174,7 +174,7 @@ describe('repository registry', () => {
     expect(e.query.repository.contractRepo).toBe(repo);
     e.query.registerRepository('contractRepo', { list: () => 2 });
     expect((e.query.repository.contractRepo as typeof repo).list()).toBe(2);
-    expect(() => e.query.repository.contractMissing).toThrow('[repository] "contractMissing" is not registered.');
+    expect(() => e.query.repository.contractMissing).toThrow('[repository] "contractMissing" is not registered: a pack declares its repositories in abuddy.json');
     expect((e.query.repository as Record<symbol, unknown>)[Symbol.iterator]).toBeUndefined();
   });
 });

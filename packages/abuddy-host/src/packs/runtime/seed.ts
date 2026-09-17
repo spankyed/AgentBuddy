@@ -66,62 +66,44 @@ function recordSeedOutcome(outcomes: Map<string, string | undefined>): void {
  * lastError. Its hash is stored like a successful seed's, so the same failing data isn't
  * re-imported on every boot; it's retried when the pack's seed data changes.
  */
-export function seedPackData(
-  packs: LoadedPack[],
-  seedFn: (options: { compiledDir: string; mode?: any; include?: Record<string, SeedIncludeSet | undefined>; verbose?: boolean }) => Record<string, any>,
-  getStoredHashes: () => Record<string, string>,
-  setStoredHashes: (hashes: Record<string, string>) => void,
-  options?: { cleanupStaleHashes?: boolean },
-): PackSeedFailure[] {
-  const storedHashes = getStoredHashes();
-  const updatedHashes = { ...storedHashes };
+export function seedPackData(packs: LoadedPack[], seed: typeof seedData = seedData): PackSeedFailure[] {
+  const storedHashes = appState.get().packSeedHashes;
   const failures: PackSeedFailure[] = [];
   const outcomes = new Map<string, string | undefined>();
-  let anySeeded = false;
 
   for (const pack of packs) {
+    const packId = pack.manifest.id;
     const distDir = path.join(pack.dir, BUNDLE_PATHS.seedsDir);
     const currentHash = fs.existsSync(distDir) ? computePackSeedHash(distDir) : '';
     if (!currentHash) {
       // Nothing to seed: an error from an earlier version's seed no longer applies
-      outcomes.set(pack.manifest.id, undefined);
+      outcomes.set(packId, undefined);
       continue;
     }
 
-    if (storedHashes[pack.manifest.id] === currentHash) {
-      logger.info(`Pack seed skipped (unchanged): ${pack.manifest.id}`);
+    if (storedHashes[packId] === currentHash) {
+      logger.info(`Pack seed skipped (unchanged): ${packId}`);
       continue;
     }
 
-    logger.info(`Seeding data artifacts for pack: ${pack.manifest.id}`);
+    logger.info(`Seeding data artifacts for pack: ${packId}`);
     let errors: string[];
     try {
-      errors = seedErrors(seedFn({ compiledDir: distDir, mode: 'replace-on-collision' }));
+      errors = seedErrors(seed({ compiledDir: distDir, mode: 'replace-on-collision' }));
     } catch (err) {
       errors = [err instanceof Error ? err.message : String(err)];
     }
-    updatedHashes[pack.manifest.id] = currentHash;
-    anySeeded = true;
+    appState.updatePackEntry('packSeedHashes', packId, currentHash);
     if (errors.length > 0) {
-      logger.error(`Failed to seed pack ${pack.manifest.id}:\n  ${errors.join('\n  ')}`);
-      failures.push({ packId: pack.manifest.id, errors });
-      outcomes.set(pack.manifest.id, errors.join('\n'));
+      logger.error(`Failed to seed pack ${packId}:\n  ${errors.join('\n  ')}`);
+      failures.push({ packId, errors });
+      outcomes.set(packId, errors.join('\n'));
       continue;
     }
-    outcomes.set(pack.manifest.id, undefined);
-    logger.info(`Pack seeded: ${pack.manifest.id}`);
+    outcomes.set(packId, undefined);
+    logger.info(`Pack seeded: ${packId}`);
   }
 
-  if (options?.cleanupStaleHashes) {
-    const installedIds = new Set(packs.map(p => p.manifest.id));
-    for (const id of Object.keys(updatedHashes)) {
-      if (!installedIds.has(id)) delete updatedHashes[id];
-    }
-  }
-
-  if (anySeeded || Object.keys(updatedHashes).length !== Object.keys(storedHashes).length) {
-    setStoredHashes(updatedHashes);
-  }
   recordSeedOutcome(outcomes);
   return failures;
 }

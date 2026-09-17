@@ -64,7 +64,7 @@ export const flowsQueries = {
       edges: want("edges") ? flowsQueries.flowEdges(flowId) : [],
     };
   },
-  
+
   connectedData: (): FlowsConnectedData => {
     const flows = qx(EARS.Entity.Flow)
       .orderBy('createdAt', 'desc')
@@ -75,21 +75,15 @@ export const flowsQueries = {
       .pickOne(FLOW_QUERY_FIELDS.LIST) ?? undefined;
       
     const flowId = rootFlow?.id ?? 'Flow-1';
-    const nodes = flowsQueries.flowNodes(flowId);
-    const edges = flowsQueries.flowEdges(flowId);
-
-    const selectedFlow = qx(EARS.Entity.Flow)
-      .withRole(FLOW_ROLES.ROOT_FLOW)
-      .pickOne(["id"]);
 
     return {
       graph: {
-        nodes,
-        edges,
+        nodes: flowsQueries.flowNodes(flowId),
+        edges: flowsQueries.flowEdges(flowId),
       },
       flows,
       rootFlow,
-      selectedFlowId: selectedFlow?.id ?? flowId,
+      selectedFlowId: flowId,
       models: availableModels,
       prompts: repository.promptQueries.all(),
       actions: repository.actionQueries.all(),

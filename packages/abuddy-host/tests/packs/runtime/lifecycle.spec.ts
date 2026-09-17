@@ -4,7 +4,9 @@ import * as path from 'node:path';
 import * as os from 'node:os';
 import type { Plugin } from '@abuddy/sdk/fe';
 
+import { resetTestData } from '@abuddy/sdk/testing';
 import { registry } from './test-host.ts';
+import { appState } from '../../../src/app-state/index.ts';
 import { createFePackRegistry } from '../../../src/fe/pack-store.ts';
 
 let tmpDir: string;
@@ -115,7 +117,7 @@ describe('activating and tearing down a pack at runtime', () => {
   const PACK_ID = 'activate-pack';
   const bus = { send: vi.fn() };
 
-  /** Installs a pack with one system that declares a slash command in its manifest */
+  /** Installs a pack with one system that declares a slash command in its manifest, a 1.0.0 migration and seeds */
   async function install() {
     const { installPackFromLocal } = await import('../../../src/packs/pack-installer.ts');
     const sourceDir = path.join(tmpDir, PACK_ID);
@@ -127,9 +129,27 @@ describe('activating and tearing down a pack at runtime', () => {
       commands: [{ name: 'activate-memo', placeholder: 'Text' }],
     });
     // The runtime carries what generate-entries writes from the manifest, commands and seeders included
-    writeBuild(sourceDir, PACK_ID, "[{ id: 'main', machine: { id: 'activate-pack-system' }, events: [] }], commands: [{ name: 'activate-memo', placeholder: 'Text' }], seeders: [{ key: 'memos', seed: () => ({ created: 1, updated: 0, skipped: 0 }) }]");
+    writeBuild(
+      sourceDir,
+      PACK_ID,
+      "[{ id: 'main', machine: { id: 'activate-pack-system' }, events: [] }], commands: [{ name: 'activate-memo', placeholder: 'Text' }], "
+        + "seeders: [{ key: 'memos', seed: () => { globalThis.activatePackRuns.push('seed'); return { created: 1, updated: 0, skipped: 0 }; } }], "
+        + "migrations: [{ target: '1.0.0', description: 'memos', up: () => { globalThis.activatePackRuns.push('migration'); } }]",
+      {
+        'runtime/seeds/memos.seed.json': '[]',
+        'runtime/seeds/seeds.json': JSON.stringify({ version: 1, packId: PACK_ID, seeds: [] }),
+      },
+    );
     await installPackFromLocal(sourceDir, packsDir());
   }
+
+  /** What the pack's migration and seeder did, in order */
+  const runs: string[] = [];
+  beforeEach(() => {
+    resetTestData();
+    runs.length = 0;
+    Object.assign(globalThis, { activatePackRuns: runs });
+  });
 
   afterEach(async () => {
     if (registry.getPackContributions(PACK_ID)) registry.unregisterPack(PACK_ID);
@@ -141,20 +161,25 @@ describe('activating and tearing down a pack at runtime', () => {
     const { activatePack } = await import('../../../src/packs/runtime/lifecycle.ts');
     const { getPackCommands } = await import('@abuddy/sdk/framework');
 
-    expect(activatePack(registry, PACK_ID, bus as never, { seed: true })).toBe(true);
+    expect(activatePack(registry, PACK_ID, bus as never)).toBe(true);
 
     expect(getPackCommands()).toEqual([{ name: 'activate-memo', placeholder: 'Text' }]);
     expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['PACK_CHANGED', 'ACTIVATE_PACK']);
     expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
   });
 
-  it('tells the running systems when enabling an installed pack, which seeds nothing', async () => {
+  it('runs its migrations, then its seeds, as a boot does, and neither again when it activates unchanged', async () => {
     await install();
-    const { activatePack } = await import('../../../src/packs/runtime/lifecycle.ts');
+    const { activatePack, teardownPack } = await import('../../../src/packs/runtime/lifecycle.ts');
 
     expect(activatePack(registry, PACK_ID, bus as never)).toBe(true);
+    expect(runs).toEqual(['migration', 'seed']);
+    expect(appState.get()).toMatchObject({ packVersions: { [PACK_ID]: '1.0.0' }, packSeedHashes: { [PACK_ID]: expect.any(String) } });
 
-    expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
+    // Disabled, then enabled again
+    teardownPack(registry, PACK_ID, bus as never);
+    expect(activatePack(registry, PACK_ID, bus as never)).toBe(true);
+    expect(runs).toEqual(['migration', 'seed']);
   });
 
   it('drops its commands and seeders when torn down, and tells the systems still running after stopping its own', async () => {

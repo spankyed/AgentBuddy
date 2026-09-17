@@ -63,10 +63,6 @@ export const appState = {
     }
   },
 
-  /** External packs' seed hashes, as `seedPackData` reads and records them */
-  getPackSeedHashes: (): Record<string, string> => appState.get().packSeedHashes,
-  setPackSeedHashes: (packSeedHashes: Record<string, string>): void => appState.update({ packSeedHashes }),
-
   /** Records one pack's entry in a per-pack field without disturbing the others' */
   updatePackEntry: (field: 'packVersions' | 'packSeedHashes' | 'seedHashes' | 'seedStatFingerprints', packId: string, value: string): void => {
     appState.update({ [field]: { ...appState.get()[field], [packId]: value } });
