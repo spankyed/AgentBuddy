@@ -398,7 +398,7 @@ describe('abuddy db exec', () => {
   it('keeps what the code wrote before it threw: there is no rollback', async () => {
     const dir = await appDataDir();
     const { error } = await run(['exec', "tx('Note-a').put('title', 'Written'); throw new Error('boom')", '--data-dir', dir]);
-    expect(error?.message).toBe('Transaction failed: boom');
+    expect(error?.message).toBe('Transaction failed: boom\n  The writes it made before failing stand: nothing is rolled back.');
     // The code runs as one function, not one transaction: what it wrote before throwing is flushed on close
     const { out } = await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir]);
     expect(out).toBe('Written');
@@ -408,7 +408,7 @@ describe('abuddy db exec', () => {
     const dir = await appDataDir();
     // The code writes a value LMDB can't store, then throws
     const { error } = await run(['exec', "tx('Note-a').put('count', 1n); throw new Error('boom')", '--data-dir', dir]);
-    expect(error?.message).toMatch(/^Transaction failed: boom\n  The database also failed to close: 1 write\(s\) didn't reach the database/);
+    expect(error?.message).toMatch(/^Transaction failed: boom\n  The writes it made before failing stand[^\n]*\n  The database also failed to close: 1 write\(s\) didn't reach the database/);
     expect((error as Error).cause).toBeInstanceOf(Error);
   });
 });

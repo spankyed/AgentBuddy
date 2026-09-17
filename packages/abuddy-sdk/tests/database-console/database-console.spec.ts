@@ -71,8 +71,9 @@ describe('runTransactionCode', () => {
     expect(untypedQx('Flow').ids()).toHaveLength(1);
   });
 
-  it('prefixes its error', async () => {
-    await expect(runTransactionCode('throw new Error("boom")', scope)).rejects.toThrow(new Error('Transaction failed: boom'));
+  it('prefixes its error, and says the writes it already made stand', async () => {
+    await expect(runTransactionCode('throw new Error("boom")', scope)).rejects
+      .toThrow('Transaction failed: boom\n  The writes it made before failing stand: nothing is rolled back.');
   });
 
   it('awaits a returned promise', async () => {

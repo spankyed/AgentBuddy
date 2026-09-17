@@ -118,11 +118,16 @@ export async function runQueryCode(code: string, scope: ConsoleScope): Promise<u
   }
 }
 
-/** Runs transaction code with the read and write helpers; its error's message starts "Transaction failed:" */
+/**
+ * Runs transaction code with the read and write helpers; its error's message starts "Transaction failed:". The
+ * writes are not one transaction: each helper writes as the code runs, so what ran before a failure stands, which
+ * the message says.
+ */
 export async function runTransactionCode(code: string, scope: ConsoleScope): Promise<unknown> {
   try {
     return await run(code, scope, { ...readHelpers, ...writeHelpers });
   } catch (error) {
-    throw new Error(`Transaction failed: ${error instanceof Error ? error.message : String(error)}`);
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(`Transaction failed: ${reason}\n  The writes it made before failing stand: nothing is rolled back.`);
   }
 }
