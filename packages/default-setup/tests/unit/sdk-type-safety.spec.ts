@@ -28,15 +28,20 @@ import {
 } from '@abuddy/sdk/utils';
 import {
   breadcrumb, breadcrumbWithParams, breadcrumbList,
-  contextMenuFn,
+  contextMenuFn, type ContextMenuItem,
 } from '@abuddy/sdk/fe';
 import { services, type Services } from '@/__generated__/services';
+import type { HostServices } from '@abuddy/sdk/services';
+import type { flowRepository } from '@abuddy/sdk/repositories';
+import type { promptService } from '@/features/prompts/be/services/prompt';
+import type { settingsQueries } from '@/features/settings/be/repository';
 import { EARS } from '../../src/__generated__/ears';
 
 
 // ─── Compile-time type assertions ──────────────────────────────────────
-// Checked by `vue-tsc` (npm run typecheck:pack). toEqualTypeOf, not toBeAny and expected errors fail
-// when a delegate regresses to `any`; toHaveProperty and toMatchTypeOf would pass on `any`.
+// Checked by `vue-tsc` (npm run typecheck:pack). Each assertion pins the exact type with
+// toEqualTypeOf (or an expected error): `not.toBeAny()`, toHaveProperty and toMatchTypeOf are too
+// weak — `unknown`, a wrong shape or an over-wide union all pass them.
 
 describe('Type inference — EARS runtime', () => {
   it('qx() returns a QueryBuilder typed with the pack shapes', () => {
@@ -55,8 +60,8 @@ describe('Type inference — EARS runtime', () => {
     const builder = {} as QueryBuilder;
     expectTypeOf(builder.count).returns.toEqualTypeOf<number>();
     expectTypeOf(builder.exists).returns.toEqualTypeOf<boolean>();
-    expectTypeOf(builder.ids).returns.not.toBeAny();
-    expectTypeOf(builder.first).returns.not.toBeAny();
+    expectTypeOf(builder.ids).returns.toEqualTypeOf<EARS.EntityId[]>();
+    expectTypeOf(builder.first).returns.toEqualTypeOf<EARS.EntityId | null>();
   });
 
   it('QueryBuilder.map() is generic over its return type', () => {
@@ -81,7 +86,7 @@ describe('Type inference — typed EARS helpers', () => {
 
   it('findAll, findWhere and findFirst read the declared shape', () => {
     // Wrapped in functions: only their types are checked
-    expectTypeOf(() => findAll(EARS.Entity.Prompt)[0].templateFn).returns.not.toBeAny();
+    expectTypeOf(() => findAll(EARS.Entity.Prompt)[0].templateFn).returns.toEqualTypeOf<string>();
     expectTypeOf(() => findWhere(EARS.Entity.Thread, 'status', 'active')[0].topic).returns.toEqualTypeOf<string>();
     expectTypeOf(() => findFirst(EARS.Entity.Thread, 'status', 'active')!.status).returns.toEqualTypeOf<string>();
   });
@@ -113,7 +118,7 @@ describe('Type inference — typed EARS helpers', () => {
 
   it('filterSystemFields<T> preserves the generic shape', () => {
     type Entity = { label: string; status: string; entityType: string };
-    expectTypeOf(filterSystemFields<Entity>).returns.not.toBeAny();
+    expectTypeOf(filterSystemFields<Entity>).returns.toEqualTypeOf<Partial<Entity>>();
   });
 });
 
@@ -139,7 +144,7 @@ describe('Type inference — Logger and utilities', () => {
 
   it('ChangeBlock<T> is generic', () => {
     type Action = { name: string };
-    expectTypeOf<ChangeBlock<Action>['removed']>().not.toBeAny();
+    expectTypeOf<ChangeBlock<Action>['removed']>().toEqualTypeOf<Array<Action | string> | undefined>();
   });
 
   it('SeedCounts fields are numbers', () => {
@@ -149,10 +154,14 @@ describe('Type inference — Logger and utilities', () => {
 
 describe('Type inference — FE delegate generics', () => {
   it('breadcrumb helpers return typed configs', () => {
-    expectTypeOf(breadcrumb).returns.not.toBeAny();
-    expectTypeOf(breadcrumbWithParams<{ selectedId: string }>).returns.not.toBeAny();
-    expectTypeOf(breadcrumbList<{ items: string[] }>).returns.not.toBeAny();
-    expectTypeOf(contextMenuFn<{ selectedAction: string }>).returns.not.toBeAny();
+    type Crumb = { label: string; target: string; info?: unknown };
+    expectTypeOf(breadcrumb).returns.toEqualTypeOf<{ breadcrumb: { label: string; target: string; default: boolean } }>();
+    expectTypeOf(breadcrumbWithParams<{ selectedId: string }>).returns
+      .toEqualTypeOf<{ readonly breadcrumb: (ctx: { selectedId: string }) => { label: string; target: string } }>();
+    expectTypeOf(breadcrumbList<{ items: string[] }>).returns
+      .toEqualTypeOf<{ readonly breadcrumb: (ctx: { items: string[] }) => Crumb[] }>();
+    expectTypeOf(contextMenuFn<{ selectedAction: string }>).returns
+      .toEqualTypeOf<{ readonly contextMenu: (ctx: { selectedAction: string }) => ContextMenuItem[] }>();
   });
 });
 
@@ -160,11 +169,13 @@ describe('Type inference — FE delegate generics', () => {
 
 describe('Generated services', () => {
   it('types feature, host and repository services, never any', () => {
-    expectTypeOf(services).not.toBeAny();
-    expectTypeOf(services.inference.generateText).not.toBeAny();
-    expectTypeOf(services.prompt.usePrompt).not.toBeAny();
+    expectTypeOf(services).toEqualTypeOf<Services>();
+    // Each member is pinned against its source of truth: the host's contract for `inference`,
+    // the feature's own module for a pack service and a repository.
+    expectTypeOf(services.inference.generateText).toEqualTypeOf<HostServices['inference']['generateText']>();
+    expectTypeOf(services.prompt.usePrompt).toEqualTypeOf<typeof promptService.usePrompt>();
     expectTypeOf(services.logger).toEqualTypeOf<Logger>();
-    expectTypeOf(services.repository.settingsQueries.getPluginSettings).not.toBeAny();
+    expectTypeOf(services.repository.settingsQueries.getPluginSettings).toEqualTypeOf<typeof settingsQueries.getPluginSettings>();
     expectTypeOf<Services['repository']>().toEqualTypeOf<Repositories>();
   });
 
@@ -176,7 +187,9 @@ describe('Generated services', () => {
 
 describe('Generated repository', () => {
   it('types each declared repository', () => {
-    expectTypeOf(() => repository.flowsCommands.createFlow).returns.not.toBeAny();
+    // flowsCommands exposes the SDK repository's method by reference, so the facade must carry
+    // exactly that signature (see default-setup/CLAUDE.md, "never a wrapper re-declaring it").
+    expectTypeOf(() => repository.flowsCommands.createFlow).returns.toEqualTypeOf<typeof flowRepository.createFlow>();
     // @ts-expect-error not a declared repository
     expectTypeOf(() => repository.notARepository).returns.toBeUnknown();
   });
@@ -284,11 +297,12 @@ describe('Generic flow — runtime verification', () => {
   });
 
   it('qx().map() returns correctly typed array', () => {
-    const id = createEntityWithDefaults(
+    // The row map() then walks
+    createEntityWithDefaults(
       EARS.Entity.Action as any,
       { label: 'MapTest', actionFn: 'fn()' } as any,
       'ACT',
-    ).id;
+    );
 
     const labels = qx(EARS.Entity.Action as any).map(
       (entityId) => `prefix-${entityId}`
