@@ -131,6 +131,7 @@ export interface LmdbStore {
     reopen(): void;
     reset(): Promise<void>;
     readonly sink: ShardedPersistence;
+    snapshot(partition: Partition, targetDir: string): Promise<void>;
 }
 
 // @public

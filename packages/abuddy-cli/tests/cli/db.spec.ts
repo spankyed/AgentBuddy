@@ -81,7 +81,17 @@ async function backupOf(userDataDir: string, { withMedia = false } = {}): Promis
     fs.writeFileSync(path.join(paths.media, 'image.png'), 'png');
   }
   const log = { info: () => {}, warn: () => {} };
-  return exportDatabase({ paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb } }, tempDir('backup-'), { name: 'backup', mediaPath: paths.media, log });
+  // Through an open store, as the app backs up: LMDB copies each database itself
+  const { store } = openDatabaseStore({
+    paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
+    schema: readInstalledSchema(schemaContext(userDataDir)),
+    log: () => {},
+  });
+  try {
+    return await exportDatabase(store, tempDir('backup-'), { name: 'backup', mediaPath: paths.media, log });
+  } finally {
+    store.close();
+  }
 }
 
 /** Runs `abuddy db <args>` and returns its stdout and stderr lines, and its error */

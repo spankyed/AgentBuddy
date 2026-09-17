@@ -33,9 +33,13 @@ export const isKnownDatabase = (name: string): name is DatabaseName => Object.ha
 /** Where a backup's database folder comes from and goes to: the store's partition */
 const databasePath = (store: Pick<LmdbStore, 'paths'>, name: DatabaseName) => store.paths[DATABASE_PARTITIONS[name]];
 
-/** Copies `store`'s databases (and the media folder `mediaPath`, with the primary database) into a new backup folder */
+/**
+ * Copies `store`'s databases (and the media folder `mediaPath`, with the primary database) into a new backup folder.
+ * Each database is copied by LMDB itself (`store.snapshot`), so a backup taken while the app is running holds the
+ * database as of one moment rather than whatever the files happened to say as they were read.
+ */
 export async function exportDatabase(
-  store: Pick<LmdbStore, 'paths'>,
+  store: Pick<LmdbStore, 'paths' | 'snapshot'>,
   targetPath: string,
   { name, databases = ['lmdb'], mediaPath, log = defaultLog }: { name?: string; databases?: DatabaseName[]; mediaPath: string; log?: BackupLog },
 ): Promise<string> {
@@ -59,9 +63,8 @@ export async function exportDatabase(
   });
 
   for (const dbName of databases) {
-    const sourcePath = databasePath(store, dbName);
-    if (await fs.pathExists(sourcePath)) {
-      await fs.copy(sourcePath, path.join(fullBackupPath, dbName));
+    if (await fs.pathExists(databasePath(store, dbName))) {
+      await store.snapshot(DATABASE_PARTITIONS[dbName], path.join(fullBackupPath, dbName));
       log.info(`Backed up ${dbName}`);
     }
   }

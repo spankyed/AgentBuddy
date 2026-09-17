@@ -424,3 +424,55 @@ describe('the storage format', () => {
     expect(storedFormat(paths.primary)).toBe(LMDB_FORMAT_VERSION);
   });
 });
+
+describe('snapshot', () => {
+  /** Rows in a copied database, read straight from its files */
+  function rowsIn(dir: string): Array<{ key: unknown; value: unknown }> {
+    const root = openEnv({ path: dir, maxDbs: 8, compression: true, readOnly: true });
+    try {
+      return [...root.openDB({ name: 'attrs', encoding: 'json' }).getRange()];
+    } finally {
+      root.close();
+    }
+  }
+
+  it('copies a partition into a directory of its own, readable on its own', async () => {
+    const store = openStore({ log: () => {} });
+    tx(id('Note-1'), true).put('title', 'kept');
+    await flushed();
+
+    const target = path.join(fs.mkdtempSync(path.join(root, 'snap-')), 'lmdb');
+    await store.snapshot('primary', target);
+
+    // The layout a backup folder holds: the directory is made, with data.mdb in it and no lock file
+    expect(fs.readdirSync(target)).toEqual(['data.mdb']);
+    expect(rowsIn(target).some(({ value }) => JSON.stringify(value).includes('kept'))).toBe(true);
+  });
+
+  it('holds one moment of the database, though writes land while it runs', async () => {
+    const store = openStore({ log: () => {} });
+    for (let n = 0; n < 400; n++) tx(id(`Note-${n}`), true).put('title', `before ${n}`);
+    await flushed();
+
+    // Writes carry on across the copy, as they would while the app runs
+    const target = path.join(fs.mkdtempSync(path.join(root, 'snap-')), 'lmdb');
+    const copying = store.snapshot('primary', target);
+    for (let n = 400; n < 800; n++) tx(id(`Note-${n}`), true).put('title', `during ${n}`);
+    await copying;
+    await flushed();
+
+    // Whatever the copy caught, it is a database that opens and reads: never a half-made commit
+    const rows = rowsIn(target);
+    const titles = rows.map(({ value }) => JSON.stringify(value));
+    expect(titles.filter((t) => t.includes('before')).length).toBe(400);
+    // And the store itself is untouched by having been copied
+    expect(getAttr(id('Note-799'), 'title')).toBe('during 799');
+  });
+
+  it('refuses to copy a closed store', async () => {
+    const store = openStore({ log: () => {} });
+    store.close();
+    const target = path.join(fs.mkdtempSync(path.join(root, 'snap-')), 'lmdb');
+    await expect(store.snapshot('primary', target)).rejects.toThrow('The LMDB store is closed');
+  });
+});

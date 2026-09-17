@@ -1,3 +1,4 @@
+import * as fs from 'node:fs';
 import type { PersistenceSink, PersistenceErrorStats } from '../runtime.ts';
 import { EARS } from '../entities.ts';
 import type { EarsAdmin } from '../engine.ts';
@@ -29,6 +30,12 @@ export interface LmdbStore {
   hydrate(options?: { includeVolatile?: boolean }): Promise<void>;
   /** Direct reads of a partition's environment, without hydrating it */
   query(partition: Partition): LmdbQuery;
+  /**
+   * Writes a consistent copy of `partition` into `targetDir` (as `data.mdb`, which the directory is created for).
+   * LMDB copies one read transaction's worth of data, so the copy is the database as of a single moment even
+   * while the app goes on writing — unlike copying the files, which can catch a commit half-made.
+   */
+  snapshot(partition: Partition, targetDir: string): Promise<void>;
   /**
    * Flushes pending writes and closes the environments. Returns the failed writes of the environments it closed,
    * the final flush's included (none when the store was already closed)
@@ -197,6 +204,11 @@ export function openLmdbStore({ paths, policy, engine, readOnly = false, log = c
     hydrate: ({ includeVolatile = false } = {}) =>
       hydrateSharded({ engine: engine(), envs: openEnvs(), policy, includeVolatile, shardedPersistence: sink, log }),
     query: (partition) => new LmdbQuery(openEnvs()[partition]),
+    async snapshot(partition, targetDir) {
+      // LMDB writes data.mdb into a directory that already exists, and no lock.mdb: it makes one when opened
+      fs.mkdirSync(targetDir, { recursive: true });
+      await openEnvs()[partition].root.backup(targetDir, false);
+    },
     close,
     reopen() {
       carry(closeEnvs());
