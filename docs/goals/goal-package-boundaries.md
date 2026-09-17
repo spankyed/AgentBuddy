@@ -608,9 +608,7 @@ These edits in the Decisions above fix statements that didn't match what was bui
 
 ### Open items
 
-- **Electron main's media dir from source.** `packages/main/src/modules/media-protocol/paths.ts` serves and stores media under `<cwd>/packages/api/src/core/persistence/data/untracked/media` when run from source, while the api (seeder, backups) uses `<data dir>/media`. It's gitignored data, not persistence code, and moving it would strand existing development media, so it's unchanged.
-- **`abuddy add migration`** scaffolds `Migration` from `@abuddy/sdk/build` and `async up(db)`, which don't exist (the contract is `PackMigration` from `@abuddy/sdk/framework`). This predates the goal.
-- **The loader's bridge** still maps `@abuddy/host/packs` and `/backup`, which no pack source imports.
+- Resolved after the goal: Electron main serves and stores media in the folder the API's `getMediaPath()` uses; `abuddy add migration` scaffolds a `PackMigration`; the loader's bridge no longer maps `@abuddy/host/packs` and `/backup`.
 - The example pack needs `npm install` to link `@abuddy/ears` (its `package.json` declares the `file:` dependency).
 
 ### Final verification

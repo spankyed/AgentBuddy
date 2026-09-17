@@ -237,7 +237,7 @@ The API bundles its own copy of `@abuddy/sdk`, `@abuddy/ears` and `@abuddy/host`
 
 `withHostResolution(fn)` (`packages/abuddy-host/src/packs/runtime/bridge.ts`) runs a `require()` of pack code through `withModuleBridge()` (`@abuddy/host/packs`), which:
 
-- puts the loader's instances (the API bundle's, in the app) of the bridged `@abuddy/sdk`, `@abuddy/ears` modules (every backend export of the shared-instance packages, except `@abuddy/ears/lmdb`, which only the app loads) and of `@abuddy/host/packs` and `@abuddy/host/backup` in the require cache, and patches `Module._resolveFilename` so those specifiers resolve to them;
+- puts the loader's instances (the API bundle's, in the app) of the bridged `@abuddy/sdk`, `@abuddy/ears` modules (every backend export of the shared-instance packages, except `@abuddy/ears/lmdb`, which only the app loads) in the require cache, and patches `Module._resolveFilename` so those specifiers resolve to them;
 - resolves the shared backend packages (`xstate`, `zod`) from the API, since an installed pack has no `node_modules`;
 - restores the resolver afterwards. The bridged modules stay cached, so requires the pack makes later get them too.
 

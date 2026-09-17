@@ -50,7 +50,7 @@ In this folder (all exported from `index.ts`):
 | File | Purpose |
 |------|---------|
 | `loader.ts` | Built-in and external loading, `registerExternalPacks`, `clearPackRequireCache`, the built-in pack list |
-| `bridge.ts` | The SDK bridge map (`SDK_BRIDGE`: `shared-modules.ts` plus the host modules built-in packs use), `withHostResolution()`, `getBridgedSdkSpecifiers()` |
+| `bridge.ts` | The SDK bridge map (`SDK_BRIDGE`: `shared-modules.ts`), `withHostResolution()`, `getBridgedSdkSpecifiers()` |
 | `shared-modules.ts` | Generated (`npm run shared-modules:update -w @abuddy/host`, from `../../build/shared-modules.ts`): a static import of every export of the `SHARED_INSTANCE_PACKAGES` (`@abuddy/sdk`, `@abuddy/ears`) pack runtime code can require, so the app bundle carries them |
 | `loaded-packs.ts` | `LoadedPack`, the loaded external packs list (`setLoadedPacks`, `updateLoadedPack`, `removeLoadedPack`), `getPacksWithClientLoadedFrontends()`, and the `packs.registry` entries (`getPackBundleEntries()`: a `PackBundleEntry`, `{ id, name, version, builtIn?, feEntry?, feStyles? }`, per pack; built-in entries have `builtIn: true`. The type lives in `../bundle.ts`, so the API's router declarations import it from `@abuddy/host/packs`). Imports nothing else from this folder |
 | `lifecycle.ts` | `activatePack()` and `teardownPack()` for install, uninstall, enable/disable and update at runtime |
@@ -151,7 +151,7 @@ EARS, designation and service collisions throw before anything is stored, so no 
 ## Host resolution for pack runtime code
 
 `withHostResolution(fn)` in `bridge.ts` calls `withModuleBridge()` (`../module-bridge.ts`) with:
-- `SDK_BRIDGE` — the loader's own instances (in the app, the API bundle's, which inlines `@abuddy/sdk`, `@abuddy/ears` and `@abuddy/host`) of the shared-instance packages' subpaths (`shared-modules.ts`, built from each package's exports map minus `APP_UNBRIDGED` and the app-only `@abuddy/ears/lmdb`) and `@abuddy/host/{packs,backup}`. Host modules are imported by relative path and keyed by the `@abuddy/host/*` specifiers pack code requires. They go into the require cache (under a bridge key and the real resolved path) and `Module._resolveFilename` resolves those specifiers to them, so pack code shares the bundle's bound app (its registered packs and hydrated EARS engine) instead of loading a separate SDK copy.
+- `SDK_BRIDGE` — the loader's own instances (in the app, the API bundle's, which inlines `@abuddy/sdk`, `@abuddy/ears` and `@abuddy/host`) of the shared-instance packages' subpaths (`shared-modules.ts`, built from each package's exports map minus `APP_UNBRIDGED` and the app-only `@abuddy/ears/lmdb`). They go into the require cache (under a bridge key and the real resolved path) and `Module._resolveFilename` resolves those specifiers to them, so pack code shares the bundle's bound app (its registered packs and hydrated EARS engine) instead of loading a separate SDK copy. Pack code never requires `@abuddy/host`, so no host module is bridged.
 - `getSharedBeDeps()` (`xstate`, `zod`) — resolved from `import.meta.url` (the API's `dist/server.js` in the app), since an installed pack has no `node_modules`.
 - `bridgedPackages: SHARED_INSTANCE_PACKAGES` — a pack requiring a shared-instance module the map lacks fails with "isn't provided by this AgentBuddy: rebuild the pack".
 

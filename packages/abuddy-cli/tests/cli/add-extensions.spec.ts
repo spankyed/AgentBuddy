@@ -1,4 +1,4 @@
-// `abuddy add step|artifact|block` scaffold what the host uses: flow helpers generate valid names
+// `abuddy add step|artifact|block|migration` scaffold what the host uses: flow helpers generate valid names
 // and types for a kebab-case step, and components declare the props and emits the host passes
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
@@ -9,6 +9,7 @@ import { init } from '../../src/commands/init';
 import { addStep } from '../../src/commands/add/step';
 import { addArtifact } from '../../src/commands/add/artifact';
 import { addBlock } from '../../src/commands/add/block';
+import { addMigration } from '../../src/commands/add/migration';
 import { generateEntries } from '../../src/commands/generate-entries';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
@@ -174,5 +175,25 @@ describe('abuddy add artifact and block', () => {
     write('tsconfig.sfc.json', JSON.stringify({ extends: './tsconfig.json', include: ['env.d.ts', 'src/**/*.ts', 'src/**/*.vue'] }));
     const vueTsc = run(path.join(BIN, 'vue-tsc'), ['--noEmit', '-p', 'tsconfig.sfc.json']);
     expect(vueTsc.code, vueTsc.output).toBe(0);
+  }, 180_000);
+});
+
+describe('abuddy add migration', () => {
+  it('scaffolds PackMigrations listed in the migrations index, which the pack entry registers and tsc accepts', async () => {
+    await addMigration(['0.2.0'], pack);
+    await addMigration(['--version', '0.10.1'], pack);
+
+    const migration = read('src/migrations/0.2.0.ts');
+    expect(migration).toContain("import type { PackMigration } from '@abuddy/sdk/framework';");
+    expect(migration).toMatch(/export const migration: PackMigration = \{\n {2}target: '0\.2\.0',\n {2}description: '[^']+',\n {2}up: \(\) => \{/);
+    const index = read('src/migrations/index.ts');
+    expect(index).toContain("import { migration as v0_2_0 } from './0.2.0';\nimport { migration as v0_10_1 } from './0.10.1';");
+    expect(index).toContain('export const migrations: PackMigration[] = [\n  v0_2_0,\n  v0_10_1,\n];');
+    expect(readManifest().migrations).toBe('src/migrations/index.ts');
+
+    await generateEntries([], pack);
+    expect(read('src/__generated__/pack-entry.ts')).toMatch(/import \{ migrations \} from '\.\.\/migrations\/index\.js';[\s\S]*\n {2}migrations,/);
+    const tsc = run(path.join(BIN, 'tsc'), ['--noEmit']);
+    expect(tsc.code, tsc.output).toBe(0);
   }, 180_000);
 });

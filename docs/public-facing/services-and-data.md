@@ -530,7 +530,7 @@ Migrations are version-targeted data transformations that run on app boot when t
 abuddy add migration --version 0.2.0
 ```
 
-Creates `src/migrations/0-2-0.ts`.
+Creates `src/migrations/0.2.0.ts` and lists it in `src/migrations/index.ts`.
 
 ### Writing a migration
 

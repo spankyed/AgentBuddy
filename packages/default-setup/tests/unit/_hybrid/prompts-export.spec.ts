@@ -3,7 +3,6 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { repository } from '@/__generated__/repository';
 import { resetTestData } from '@abuddy/sdk/testing';
-import '@/features/prompts/be/repository';
 import { exportPrompts } from '@/features/prompts/be/repository/export-prompts';
 import { promptFixtures } from './helpers/prompt-fixtures';
 

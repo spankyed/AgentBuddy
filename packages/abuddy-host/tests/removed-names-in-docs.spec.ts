@@ -17,7 +17,6 @@ const REMOVED_PATHS = [/ears\/internals\b/, /api\/src\/core\/persistence\b/, /\b
 /** Files that may name one of them, with the name and why */
 const ALLOWED: Record<string, { name: RegExp; reason: string }[]> = {
   'docs/goals/goal-package-boundaries.md': [...REMOVED, ...REMOVED_PATHS].map((name) => ({ name, reason: 'the goal that removed them' })),
-  'packages/main/CLAUDE.md': [{ name: /api\/src\/core\/persistence\b/, reason: "Electron main's media dir when run from source (media-protocol/paths.ts), not persistence code" }],
 };
 
 /** Every removed name `text` mentions */

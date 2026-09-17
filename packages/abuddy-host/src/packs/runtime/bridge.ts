@@ -1,26 +1,18 @@
 import { SHARED_INSTANCE_PACKAGES, getSharedBeDeps } from '../../build/shared-deps.ts';
 import { withModuleBridge } from '../module-bridge.ts';
 import { SHARED_INSTANCE_MODULES } from './shared-modules.ts';
-// Host modules bridged under their @abuddy/host specifiers, so code requiring them gets the app's instances
-// (pack sources don't: check:specifiers rejects @abuddy/host there)
-import * as _hostPacks from '../index.ts';
-import * as _hostBackup from '../../backup/index.ts';
 
 // The SDK bridge: pack runtime code shares the loader's shared-instance packages (@abuddy/sdk,
-// @abuddy/ears) and @abuddy/host modules. The API bundle inlines them (tsup bundles them). Any CJS
-// code loaded at runtime (external packs, built-in dev entry) that does require('@abuddy/ears') would
+// @abuddy/ears); it never requires @abuddy/host (check:specifiers and abuddy build reject it).
+// The API bundle inlines them (tsup bundles them). Any CJS code loaded at runtime (external packs, built-in dev entry) that does require('@abuddy/ears') would
 // otherwise get a SEPARATE module instance, with no bound app and no installed engine.
 // shared-modules.ts imports every export statically, so they resolve to the BUNDLED instances, the
 // ones with hydrated data; withHostResolution injects them into the require cache so dynamically
 // loaded pack code shares them.
-const SDK_BRIDGE: Record<string, unknown> = {
-  ...SHARED_INSTANCE_MODULES,
-  '@abuddy/host/packs': _hostPacks,
-  '@abuddy/host/backup': _hostBackup,
-};
+const SDK_BRIDGE: Record<string, unknown> = SHARED_INSTANCE_MODULES;
 
 /**
- * The shared-instance package and @abuddy/host specifiers bridged to host singletons.
+ * The shared-instance package specifiers bridged to host singletons.
  *
  * Exported for the drift guard in tests/packs/runtime/sdk-bridge-drift.spec.ts. A pack
  * importing a shared-instance subpath that is missing here does NOT fail loudly:

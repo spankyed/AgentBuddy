@@ -6,7 +6,7 @@ import { APP_UNBRIDGED, renderSharedModules } from '../../../src/build/shared-mo
 import { APP_ONLY_EXPORTS, SHARED_INSTANCE_PACKAGES } from '../../../src/build/shared-deps.ts';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..', '..');
-/** Packages whose modules pack code can require at runtime: the shared-instance packages, and host modules built-in packs use. */
+/** Packages whose exports the bridge must account for: the shared-instance packages, which pack code requires, and the host, which it never does */
 const PACKAGE_DIRS: Record<string, string> = {
   '@abuddy/sdk': path.join(REPO_ROOT, 'packages', 'abuddy-sdk'),
   '@abuddy/ears': path.join(REPO_ROOT, 'packages', 'abuddy-ears'),
@@ -53,6 +53,10 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   ['@abuddy/host/bus', 'host bus core, composed by the API and the test harness'],
   // The pack runtime itself: the app loads packs with it; pack code never requires it
   ['@abuddy/host/packs/runtime', 'the pack loader and lifecycle, run by the app'],
+  // Pack discovery, registration, install and bundles: the app and the CLI use them; packs never require them
+  ['@abuddy/host/packs', 'pack registry, installer and bundle layout, used by the app and the CLI'],
+  // Backups: packs reach export and import through services.appData
+  ['@abuddy/host/backup', 'host backups, reached by packs through services.appData'],
   // The abuddy dev server marker: the CLI writes it and Electron main's pack:// handler reads it; packs never require it
   ['@abuddy/host/packs/dev-server', 'dev server marker for the CLI and the pack:// handler'],
   // Metadata: tooling reads them, code never requires them.
@@ -95,9 +99,9 @@ function concreteExports(): string[] {
 }
 
 describe('SDK bridge drift', () => {
-  it('bridges exactly the shared-instance packages and host', () => {
+  it('bridges exactly the shared-instance packages', () => {
     const packages = new Set(getBridgedSdkSpecifiers().map((s) => s.split('/').slice(0, 2).join('/')));
-    expect([...packages].sort()).toEqual([...SHARED_INSTANCE_PACKAGES, '@abuddy/host'].sort());
+    expect([...packages].sort()).toEqual([...SHARED_INSTANCE_PACKAGES].sort());
   });
 
   it('has an up-to-date shared-modules.ts', () => {
