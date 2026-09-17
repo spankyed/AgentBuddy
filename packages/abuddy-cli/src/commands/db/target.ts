@@ -20,16 +20,21 @@ export const processIo: DbIo = {
 const TARGET_OPTIONS = {
   dev: { type: 'boolean', short: 'd', default: false },
   beta: { type: 'boolean', short: 'b', default: false },
+  production: { type: 'boolean', default: false },
   'data-dir': { type: 'string' },
 } satisfies ParseArgsConfig['options'];
 
 export const TARGET_USAGE = [
   '  -d, --dev              The development app\'s data',
   '  -b, --beta             The beta app\'s data',
-  '  --data-dir <path>      A data dir, a copy of the user\'s say (default: the production app\'s data)',
+  '  --production           The production app\'s data (what a command that only reads takes by default)',
+  '  --data-dir <path>      A data dir, a copy of the user\'s for instance',
 ].join('\n');
 
-export type DbTarget = Pick<AppContext, 'env' | 'userDataDir' | 'apiPortFile'>;
+export type DbTarget = Pick<AppContext, 'env' | 'userDataDir' | 'apiPortFile'> & {
+  /** The command named this data dir (`-d`, `-b`, `--production` or `--data-dir`) rather than taking the default */
+  named: boolean;
+};
 
 /**
  * The command's options, its positionals and the data dir it targets. Unknown options throw, with the command's
@@ -42,11 +47,15 @@ export function parseDbArgs<O extends NonNullable<ParseArgsConfig['options']>>(a
   } catch (error) {
     throw new Error(`${(error as Error).message}\n\n${usage}`);
   }
-  const { dev, beta, 'data-dir': dataDir } = parsed.values as { dev: boolean; beta: boolean; 'data-dir'?: string };
-  if (dev && beta) throw new Error(`Choose one of -d and -b\n\n${usage}`);
+  const { dev, beta, production, 'data-dir': dataDir } = parsed.values as
+    { dev: boolean; beta: boolean; production: boolean; 'data-dir'?: string };
+  // An empty --data-dir would otherwise read as "no data dir given" and target the default one
+  if (dataDir !== undefined && dataDir.trim() === '') throw new Error(`--data-dir needs a path\n\n${usage}`);
+  const named = [dev && '-d', beta && '-b', production && '--production', dataDir !== undefined && '--data-dir'].filter(Boolean) as string[];
+  if (named.length > 1) throw new Error(`Name one data dir, not ${named.length}: ${named.join(', ')}\n\n${usage}`);
   const env: AppEnv = beta ? 'beta' : dev ? 'development' : 'production';
-  const context = resolveAppContext({ env, ...(dataDir && { userDataDir: path.resolve(dataDir) }) });
-  const target: DbTarget = { env, userDataDir: context.userDataDir, apiPortFile: context.apiPortFile };
+  const context = resolveAppContext({ env, ...(dataDir !== undefined && { userDataDir: path.resolve(dataDir) }) });
+  const target: DbTarget = { env, userDataDir: context.userDataDir, apiPortFile: context.apiPortFile, named: named.length === 1 };
   return { values: parsed.values as typeof parsed.values & Record<keyof O, unknown>, positionals: parsed.positionals, target };
 }
 
@@ -56,11 +65,15 @@ export interface OpenOptions {
 }
 
 /**
- * Opens the target's database offline, after printing which data dir it is. A command that writes is refused while
- * an app runs on the data dir, which holds the database in memory and would overwrite the change or lose it; a read
+ * Opens the target's database offline, after printing which data dir it is. A command that changes the database says
+ * which data dir it means, so the production app's data is never the one a forgotten flag hits, and is refused while
+ * an app runs on that data dir, which holds the database in memory and would overwrite the change or lose it; a read
  * warns that it may miss what the app hasn't written yet.
  */
 export async function openTarget(target: DbTarget, { write }: OpenOptions, io: DbIo): Promise<AppDatabase> {
+  if (write && !target.named) {
+    throw new Error('Name the data dir to change: --production, -d, -b, or --data-dir <path>');
+  }
   io.err(`Database: ${target.userDataDir} (offline)`);
   const running = await findRunningApp(target);
   if (running && write) {

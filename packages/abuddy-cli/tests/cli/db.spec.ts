@@ -157,8 +157,55 @@ describe('abuddy db query', () => {
     expect((await run(['query', '--data-dir', dir])).error?.message).toMatch(/^No code to run\n\nUsage: abuddy db query/);
     expect((await run(['query', 'return 1', '--nope'])).error?.message).toMatch(/Unknown option '--nope'[\s\S]*Usage: abuddy db query/);
     expect((await run(['query', 'return 1', '-o', 'xml', '--data-dir', dir])).error?.message).toBe('--output must be one of pretty, json, csv');
-    expect((await run(['query', 'return 1', '-d', '-b'])).error?.message).toMatch(/^Choose one of -d and -b/);
+    expect((await run(['query', 'return 1', '-d', '-b'])).error?.message).toMatch(/^Name one data dir, not 2: -d, -b/);
     expect((await run(['query', 'return 1', '--data-dir', tempDir('empty-')])).error?.message).toMatch(/^No AgentBuddy database in /);
+  });
+});
+
+describe('naming the data dir', () => {
+  it('refuses an empty --data-dir rather than falling back to the default data dir', async () => {
+    const dir = await appDataDir();
+    process.env.ABUDDY_USER_DATA_DIR = dir;
+    try {
+      for (const args of [['query', 'return 1', '--data-dir='], ['query', 'return 1', '--data-dir', '']]) {
+        const { error, err } = await run(args);
+        expect(error?.message).toMatch(/^--data-dir needs a path\n\nUsage: abuddy db query/);
+        expect(err).toBe('');
+      }
+    } finally {
+      delete process.env.ABUDDY_USER_DATA_DIR;
+    }
+  });
+
+  it('refuses two data dirs', async () => {
+    const dir = await appDataDir();
+    expect((await run(['query', 'return 1', '-d', '--data-dir', dir])).error?.message).toMatch(/^Name one data dir, not 2: -d, --data-dir/);
+    expect((await run(['query', 'return 1', '--production', '--data-dir', dir])).error?.message).toMatch(/^Name one data dir, not 2: --production, --data-dir/);
+    expect((await run(['reset', '-b', '--production'])).error?.message).toMatch(/^Name one data dir, not 2: -b, --production/);
+  });
+
+  it('makes a command that changes the database name its data dir, and opens none until it does', async () => {
+    const dir = await appDataDir();
+    for (const args of [['exec', 'return 1'], ['reset'], ['reset', '--force'], ['clear-settings'], ['import', dir], ['repl', '--write']]) {
+      const { error, err, out } = await run(args);
+      expect(error?.message, args.join(' ')).toBe('Name the data dir to change: --production, -d, -b, or --data-dir <path>');
+      expect(`${err}${out}`).toBe('');
+    }
+    // Reading takes the production app's data without being told
+    expect((await run(['query', 'return 1'])).err).toContain('Database: ');
+  });
+
+  it('takes --production as naming the production data dir', async () => {
+    const dir = await appDataDir();
+    process.env.ABUDDY_USER_DATA_DIR = dir;
+    try {
+      const { out, err } = await ok(['exec', "tx('Note-a').put('title', 'Named')", '--production']);
+      expect(err).toContain(`Database: ${dir} (offline)`);
+      expect(out).toBe('undefined');
+      expect((await ok(['query', "return getAttr('Note-a', 'title')", '--production'])).out).toBe('Named');
+    } finally {
+      delete process.env.ABUDDY_USER_DATA_DIR;
+    }
   });
 });
 

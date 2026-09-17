@@ -33,7 +33,8 @@ Commands:
   reset                 Delete all data, as Reset Database does (lists it; --force deletes)
   clear-settings        Destroy the Settings rows, so defaults come back (lists them; --force destroys)
 
-Every command takes:
+Every command takes one of these; a command that changes the database says which data dir it means, and a command
+that only reads takes the production app's data without being told:
 ${TARGET_USAGE}
 
 abuddy db <command> --help shows a command's options.
