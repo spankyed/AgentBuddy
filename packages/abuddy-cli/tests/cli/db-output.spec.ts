@@ -38,7 +38,13 @@ describe('csv', () => {
 
   it('gives every row a column any row has, and escapes what needs it', () => {
     expect(toCSV([{ id: 'Note-1', title: 'Beta, "quoted"' }, { id: 'Note-2', tags: ['a', 'b'] }]))
-      .toBe('id,title,tags\nNote-1,"Beta, ""quoted""",\nNote-2,,"[\n  ""a"",\n  ""b""\n]"\n');
+      .toBe('id,title,tags\nNote-1,"Beta, ""quoted""",\nNote-2,,"[""a"",""b""]"\n');
+  });
+
+  it('keeps an object in a cell on one line, and copes with values JSON has no form for', () => {
+    const row: Record<string, unknown> = { id: 'Note-1', count: 3n };
+    row.self = row;
+    expect(toCSV([row])).toBe('id,count,self\nNote-1,3,"{""id"":""Note-1"",""count"":""3"",""self"":""[Circular]""}"\n');
   });
 
   it('writes a result that is not rows as cells', () => {

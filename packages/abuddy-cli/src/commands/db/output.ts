@@ -17,22 +17,27 @@ export function outputFormat(value: unknown): OutputFormat {
  * JSON, with what JSON has no form for written as text: a date as its ISO string (JSON.stringify's own doing), a
  * bigint as digits, and an object that holds itself as `[Circular]` rather than a thrown error.
  */
-export function toJSON(value: unknown): string {
+function safely(): (key: string, held: unknown) => unknown {
   const seen = new WeakSet<object>();
-  return JSON.stringify(value, function replace(this: unknown, _key: string, held: unknown) {
+  return function replace(_key: string, held: unknown) {
     if (typeof held === 'bigint') return held.toString();
     if (held !== null && typeof held === 'object') {
       if (seen.has(held)) return '[Circular]';
       seen.add(held);
     }
     return held;
-  }, 2) ?? 'undefined';
+  };
+}
+
+export function toJSON(value: unknown): string {
+  return JSON.stringify(value, safely(), 2) ?? 'undefined';
 }
 
 /** One value as a cell: a date as its ISO string, an object as JSON, nothing for null and undefined */
 function csvCell(value: unknown): string {
   if (value === null || value === undefined) return '';
-  const text = value instanceof Date ? value.toISOString() : typeof value === 'object' ? toJSON(value) : String(value);
+  // A cell stays on one line, so an object in it is written compactly
+  const text = value instanceof Date ? value.toISOString() : typeof value === 'object' ? JSON.stringify(value, safely()) ?? '' : String(value);
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
