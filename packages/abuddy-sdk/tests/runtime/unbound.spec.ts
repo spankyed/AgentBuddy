@@ -37,10 +37,7 @@ const runtime: HostRuntime = {
       generateImage: unused, generateSpeech: unused, transcribe: unused, rerank: unused,
     },
     secrets: { status: unused, list: unused, select: unused, rename: unused, delete: unused },
-    filesystem: {
-      writeFile: unused, readFile: unused, exists: unused, mkdir: unused, readDir: unused, remove: unused, rename: unused,
-      stat: async () => ({ size: 3, mtime: new Date(0), isDirectory: false, isFile: true }),
-    },
+    filesystem: { writeFile: unused, readFile: unused, exists: unused, mkdir: unused, readDir: unused, remove: unused, rename: unused, stat: unused },
   },
 };
 
@@ -156,10 +153,9 @@ describe('bindHost', () => {
     expect(() => untypedQx('Memo')).toThrow('No EARS engine is installed');
   });
 
-  it("reads the bound app's services on each call", async () => {
+  it("reads the bound app's services on each call", () => {
     bindHost(runtime);
     expect(services.repository).toBe(engine.query.repository);
     expect(() => services.secrets.list()).toThrow('unused');
-    await expect(services.filesystem.stat('/tmp/x')).resolves.toMatchObject({ size: 3, isFile: true });
   });
 });

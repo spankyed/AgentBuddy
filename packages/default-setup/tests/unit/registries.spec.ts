@@ -35,10 +35,9 @@ describe('registries/services — feature services assembly', () => {
     }
   });
 
-  it('does not include the host services (logger, emitter, repository, filesystem)', async () => {
+  it('does not include core services (logger, emitter, repository)', async () => {
     const { featureServices } = await import('../../src/__generated__/services');
 
-    expect(featureServices).not.toHaveProperty('filesystem');
     expect(featureServices).not.toHaveProperty('logger');
     expect(featureServices).not.toHaveProperty('emitter');
     expect(featureServices).not.toHaveProperty('repository');
