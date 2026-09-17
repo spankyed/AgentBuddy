@@ -29,7 +29,6 @@ export function deleteLmdbDirectories(paths: LmdbPaths): void;
 export type EntityMeta = {
     type: string;
     createdAt: number;
-    deletedAt?: number;
 };
 
 // @public (undocumented)
@@ -47,15 +46,8 @@ export function hydrateSharded(params: {
     envs: Record<Partition, LmdbDbs>;
     policy: PartitionPolicy;
     includeVolatile?: boolean;
-    skipTombstoneScan?: boolean;
     shardedPersistence?: ShardedPersistence;
 }): Promise<void>;
-
-// @public (undocumented)
-export interface LmdbAdapterOptions {
-    // (undocumented)
-    hardDelete?: boolean;
-}
 
 // @public
 export type LmdbDbs = {
@@ -75,7 +67,6 @@ export class LmdbQuery {
         maxDepth?: number;
         kind?: string;
         direction?: 'out' | 'in' | 'both';
-        skipDeleted?: boolean;
     }): Map<string, number>;
     entitiesHavingAttr(kind: string, limit?: number): Iterable<string>;
     entitiesOfType(type: string): Iterable<string>;
@@ -94,12 +85,10 @@ export class LmdbQuery {
     neighbors(id: string, opts?: {
         kind?: string;
         direction?: 'out' | 'in' | 'both';
-        skipDeleted?: boolean;
     }): string[];
     neighborsWithEdges(id: string, opts?: {
         kind?: string;
         direction?: 'out' | 'in' | 'both';
-        skipDeleted?: boolean;
     }): Array<{
         from: string;
         to: string;
@@ -110,7 +99,6 @@ export class LmdbQuery {
         kind?: string;
         src?: string;
         tgt?: string;
-        skipDeleted?: boolean;
         limit?: number;
     }): Iterable<{
         relId: string;
@@ -130,7 +118,6 @@ export interface LmdbStore {
     readonly envs: Readonly<Record<Partition, LmdbDbs>>;
     hydrate(options?: {
         includeVolatile?: boolean;
-        skipTombstoneScan?: boolean;
     }): Promise<void>;
     isOpen(): boolean;
     readonly policy: PartitionPolicy;
@@ -148,7 +135,7 @@ export interface LmdbStoreOptions {
 }
 
 // @public (undocumented)
-export function makeLmdbAdapter(dbs: LmdbDbs, options?: LmdbAdapterOptions): PersistenceSink;
+export function makeLmdbAdapter(dbs: LmdbDbs): PersistenceSink;
 
 // @public
 export function openEnvAt(basePath: string, input?: {

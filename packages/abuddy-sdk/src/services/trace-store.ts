@@ -4,7 +4,6 @@ import type { EARS } from '../types/entities.ts';
 export interface TraceEntityMeta {
   type: string;
   createdAt: number;
-  deletedAt?: number;
 }
 
 export interface TraceRelation {
@@ -22,6 +21,6 @@ export interface TraceStore {
   getEntityMeta(id: EARS.EntityId): TraceEntityMeta | null;
   /** The attribute's first value, or undefined */
   getAttr(kind: string, id: EARS.EntityId): unknown;
-  /** Relations matching the filter; relations to deleted entities are skipped unless `skipDeleted` is false */
-  relations(filter?: { kind?: string; src?: EARS.EntityId; tgt?: EARS.EntityId; skipDeleted?: boolean; limit?: number }): Array<{ id: string; rel: TraceRelation }>;
+  /** Relations matching the filter */
+  relations(filter?: { kind?: string; src?: EARS.EntityId; tgt?: EARS.EntityId; limit?: number }): Array<{ id: string; rel: TraceRelation }>;
 }

@@ -12,13 +12,10 @@ export const packagesDir = path.resolve(path.dirname(fileURLToPath(import.meta.u
 /** The data dir's LMDB store, the engine persisting to it and the registered packs, opened as the API opens them (the engine is installed) */
 export const { store, engine, packs } = openAppStore();
 
-/**
- * Registers the built-in packs; `hydrate: false` leaves LMDB untouched (e.g. before a reset).
- * `skipTombstoneScan: true` hydrates tombstoned entities' rows too, as the app's boot does (setup/backend.ts).
- */
-export async function openDatabase({ hydrate = true, skipTombstoneScan = false } = {}): Promise<void> {
+/** Registers the built-in packs and hydrates the store, as the app's boot does; `hydrate: false` leaves LMDB untouched (e.g. before a reset) */
+export async function openDatabase({ hydrate = true } = {}): Promise<void> {
   await loadBuiltInPacks(packs, packagesDir, { runtimeEntry: 'only' });
-  if (hydrate) await store.hydrate({ skipTombstoneScan });
+  if (hydrate) await store.hydrate();
 }
 
 /** How many LMDB writes have failed in this process so far (the adapter logs a failed flush and carries on) */

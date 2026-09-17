@@ -29,7 +29,7 @@ Never:
 ## Background
 
 Database operations live in `packages/api/scripts/db` and run through `npm run db:*` in the monorepo:
-- **Scripts:** `cli/run-db-cli.ts` (REPL, `-e` exec, `-s` script), `reset.ts`, `seed.ts`, `import-backup.ts`, `export-json.ts`/`export-data.ts`/`export.sh`, `destroy-settings.ts` (dry run by default, `--force`), `inspect-relations.ts`, `cleanup-settings.ts`, and one-offs (`cli/cleanup-tombstoned.ts`, `fix-prod-upgrade.ts`).
+- **Scripts:** `cli/run-db-cli.ts` (REPL, `-e` exec, `-s` script), `reset.ts`, `seed.ts`, `import-backup.ts`, `export-json.ts`/`export-data.ts`/`export.sh`, `destroy-settings.ts` (dry run by default, `--force`), `inspect-relations.ts`, `cleanup-settings.ts`, and a one-off (`fix-prod-upgrade.ts`).
 - **Env:** every script needs `ABUDDY_ENV` and `ABUDDY_USER_DATA_DIR`.
 
 **Why they can't move to `@abuddy/cli` today:** they boot the app's database through `scripts/db/database.ts`, which uses the API's composition root, `openAppStore()` (`@/setup/backend`: the pack registry, the LMDB store, the engine and the `bindHost` binding), and loads the built-in packs with `loadBuiltInPacks` (`@abuddy/host/packs/runtime`). The CLI ships as a bundled `dist/package` used outside the monorepo, so it can't depend on `@app/api`.
@@ -94,7 +94,7 @@ Database operations live in `packages/api/scripts/db` and run through `npm run d
    - The two share the executors, whether run offline or through the app, so a query means the same thing everywhere.
 8. **The monorepo scripts go.**
    - Maintained operations move into `abuddy db`, and the `npm run db:*` scripts call the CLI with the monorepo's development data dir, or are removed.
-   - The one-off scripts are deleted, not ported: `cli/cleanup-tombstoned` (`cleanup-corrupt-data`, `cleanup-export-subdoclinks` and `migrate-tnodes` are already gone).
+   - The one-off scripts are deleted, not ported (`cli/cleanup-tombstoned`, `cleanup-corrupt-data`, `cleanup-export-subdoclinks` and `migrate-tnodes` are already gone).
    - `fix-prod-upgrade.ts` is deleted once the user has run it; confirm with the user before deleting it.
    - The db CLI README becomes a section of `docs/public-facing/cli.md`.
 

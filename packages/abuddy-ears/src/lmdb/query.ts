@@ -6,7 +6,7 @@ import { isDeepStrictEqual } from 'node:util';
 const US = '\x1F';
 
 export type AttrRecord = { t: 'null' | 'string' | 'number' | 'boolean' | 'object' | 'array' | 'date' | 'blob'; v: any };
-export type EntityMeta = { type: string; createdAt: number; deletedAt?: number };
+export type EntityMeta = { type: string; createdAt: number };
 export type RelationRecord = { kind: string; src: string; tgt: string; info?: any; createdAt: number };
 
 /**
@@ -172,10 +172,6 @@ export class LmdbQuery {
       // Note: assumes no US in entityId (validated upstream)
       const [, entityId] = String(key).split(US);
       if (!seen.has(entityId)) {
-        // Skip deleted entities
-        const meta = this.dbs.entities.get(entityId) as EntityMeta | undefined;
-        if (meta?.deletedAt) continue;
-        
         seen.add(entityId);
         yield entityId;
         if (++count >= limit) break;
@@ -217,15 +213,10 @@ export class LmdbQuery {
       if (entityType) {
         let t = typeCache.get(entityId);
         if (t === undefined) {
-          const meta = this.dbs.entities.get(entityId) as EntityMeta | undefined;
-          t = meta?.deletedAt ? null as any : meta?.type;
+          t = (this.dbs.entities.get(entityId) as EntityMeta | undefined)?.type;
           typeCache.set(entityId, t);
         }
         if (t !== entityType) continue;
-      } else {
-        // Skip deleted entities when no entityType filter is provided
-        const meta = this.dbs.entities.get(entityId) as EntityMeta | undefined;
-        if (meta?.deletedAt) continue;
       }
 
       if (!seen.has(entityId)) {
@@ -259,15 +250,14 @@ export class LmdbQuery {
 
       const val = decodeAttr(value as AttrRecord);
 
-      // Deleted filter even if entityType undefined
-      let t = typeCache.get(entityId);
-      if (t === undefined) {
-        const meta = this.dbs.entities.get(entityId) as EntityMeta | undefined;
-        if (meta?.deletedAt) { typeCache.set(entityId, null as any); continue; }
-        t = meta?.type;
-        typeCache.set(entityId, t);
+      if (entityType) {
+        let t = typeCache.get(entityId);
+        if (t === undefined) {
+          t = (this.dbs.entities.get(entityId) as EntityMeta | undefined)?.type;
+          typeCache.set(entityId, t);
+        }
+        if (t !== entityType) continue;
       }
-      if (entityType && t !== entityType) continue;
 
       const pass = equals !== undefined ? eq(val, equals, deepEquals)
                  : predicate ? !!predicate(val, idx, entityId)
@@ -282,17 +272,16 @@ export class LmdbQuery {
 
   // ───────────────────────────── Entities ─────────────────────────────
 
-  /** Iterate entityIds of a given type (skips deleted) */
+  /** Iterate entityIds of a given type */
   *entitiesOfType(type: string): Iterable<string> {
     for (const { key: entityId, value: meta } of this.dbs.entities.getRange() as Iterable<{ key: string; value: EntityMeta }>) {
-      if (meta.type === type && !meta.deletedAt) yield String(entityId);
+      if (meta.type === type) yield String(entityId);
     }
   }
 
   /** Get entity meta (type, timestamps) */
   getEntityMeta(entityId: string): EntityMeta | null {
     return (this.dbs.entities.get(entityId) as EntityMeta | undefined) ?? null;
-    // Note: if you rely on tombstones, check meta?.deletedAt before using.
   }
 
   // ───────────────────────────── Relations ─────────────────────────────
@@ -302,9 +291,9 @@ export class LmdbQuery {
    * Note: O(R) fallback scan. Future optimization: add secondary indexes (relBySrc, relByTgt)
    * for O(1) prefix scans when neighbors/BFS become hot.
    */
-  *relations(filter?: { kind?: string; src?: string; tgt?: string; skipDeleted?: boolean; limit?: number })
+  *relations(filter?: { kind?: string; src?: string; tgt?: string; limit?: number })
     : Iterable<{ relId: string; rel: RelationRecord }> {
-    const { kind, src, tgt, skipDeleted = true, limit = Infinity } = filter ?? {};
+    const { kind, src, tgt, limit = Infinity } = filter ?? {};
     let count = 0;
     
     for (const { key, value } of this.dbs.relations.getRange() as Iterable<{ key: string; value: RelationRecord }>) {
@@ -312,14 +301,6 @@ export class LmdbQuery {
       if (kind && rel.kind !== kind) continue;
       if (src && rel.src !== src) continue;
       if (tgt && rel.tgt !== tgt) continue;
-      
-      // Optional tombstone filtering
-      if (skipDeleted) {
-        const s = this.dbs.entities.get(rel.src) as EntityMeta | undefined;
-        const t = this.dbs.entities.get(rel.tgt) as EntityMeta | undefined;
-        if (s?.deletedAt || t?.deletedAt) continue;
-      }
-      
       yield { relId: String(key), rel };
       if (++count >= limit) break;
     }
@@ -329,17 +310,16 @@ export class LmdbQuery {
    * Neighbors via relations: out / in / both.
    * Note: O(R) per call due to relation scan. Plan for secondary indexes if hot.
    */
-  neighbors(id: string, opts?: { kind?: string; direction?: 'out' | 'in' | 'both'; skipDeleted?: boolean }): string[] {
+  neighbors(id: string, opts?: { kind?: string; direction?: 'out' | 'in' | 'both' }): string[] {
     const kind = opts?.kind;
     const dir = opts?.direction ?? 'out';
-    const skipDeleted = opts?.skipDeleted ?? true;
     const set = new Set<string>();
 
     if (dir === 'out' || dir === 'both') {
-      for (const { rel } of this.relations({ kind, src: id, skipDeleted })) set.add(rel.tgt);
+      for (const { rel } of this.relations({ kind, src: id })) set.add(rel.tgt);
     }
     if (dir === 'in' || dir === 'both') {
-      for (const { rel } of this.relations({ kind, tgt: id, skipDeleted })) set.add(rel.src);
+      for (const { rel } of this.relations({ kind, tgt: id })) set.add(rel.src);
     }
     return [...set];
   }
@@ -348,19 +328,18 @@ export class LmdbQuery {
    * Neighbors with edge metadata: returns edge information along with neighbor IDs.
    * Useful for graph operations needing relationship details.
    */
-  neighborsWithEdges(id: string, opts?: { kind?: string; direction?: 'out' | 'in' | 'both'; skipDeleted?: boolean }): Array<{ from: string; to: string; kind: string; info?: any }> {
+  neighborsWithEdges(id: string, opts?: { kind?: string; direction?: 'out' | 'in' | 'both' }): Array<{ from: string; to: string; kind: string; info?: any }> {
     const kind = opts?.kind;
     const dir = opts?.direction ?? 'out';
-    const skipDeleted = opts?.skipDeleted ?? true;
     const out: Array<{ from: string; to: string; kind: string; info?: any }> = [];
 
     if (dir === 'out' || dir === 'both') {
-      for (const { rel } of this.relations({ kind, src: id, skipDeleted })) {
+      for (const { rel } of this.relations({ kind, src: id })) {
         out.push({ from: rel.src, to: rel.tgt, kind: rel.kind, info: rel.info });
       }
     }
     if (dir === 'in' || dir === 'both') {
-      for (const { rel } of this.relations({ kind, tgt: id, skipDeleted })) {
+      for (const { rel } of this.relations({ kind, tgt: id })) {
         out.push({ from: rel.src, to: rel.tgt, kind: rel.kind, info: rel.info });
       }
     }
@@ -371,8 +350,8 @@ export class LmdbQuery {
    * Tiny BFS over relations.
    * Note: O(depth × R) due to neighbors() calls. Future: with secondary indexes, drops to O(edges on frontier).
    */
-  bfs(startId: string, opts?: { maxDepth?: number; kind?: string; direction?: 'out' | 'in' | 'both'; skipDeleted?: boolean }) {
-    const { maxDepth = 1, kind, direction = 'out', skipDeleted = true } = opts ?? {};
+  bfs(startId: string, opts?: { maxDepth?: number; kind?: string; direction?: 'out' | 'in' | 'both' }) {
+    const { maxDepth = 1, kind, direction = 'out' } = opts ?? {};
     const dist = new Map<string, number>([[startId, 0]]);
     const q: string[] = [startId];
     
@@ -381,7 +360,7 @@ export class LmdbQuery {
       const cur = q[qi];
       const d = dist.get(cur)!;
       if (d >= maxDepth) continue;
-      for (const n of this.neighbors(cur, { kind, direction, skipDeleted })) {
+      for (const n of this.neighbors(cur, { kind, direction })) {
         if (!dist.has(n)) {
           dist.set(n, d + 1);
           q.push(n);

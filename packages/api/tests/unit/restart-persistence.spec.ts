@@ -32,7 +32,7 @@ describe('the API store across a restart', () => {
     try {
       expect(second.engine).not.toBe(first.engine);
       expect(getEntitiesOfType('Note')).toEqual([]);
-      await second.store.hydrate({ skipTombstoneScan: true });
+      await second.store.hydrate();
       expect(getEntitiesOfType('Note')).toEqual(['Note-restart']);
       expect(second.engine.query.getAttr('Note-restart' as never, 'title')).toBe('written before the restart');
     } finally {

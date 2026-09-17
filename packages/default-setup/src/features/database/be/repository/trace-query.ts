@@ -23,7 +23,6 @@ function getDescendants(
     const relations = [...query.relations({
       kind: relKind,
       src: nodeId as EARS.EntityId,
-      skipDeleted: true
     })];
     
     for (const { rel } of relations) {
@@ -47,7 +46,7 @@ function buildTNodeEntity(
   meta: any,
   includeChildren = false
 ): TrackTree | TNodeEntity | null {
-  if (!meta || meta.deletedAt) return null;
+  if (!meta) return null;
   
   const tNode: TNodeEntity = {
     id: nodeId as EARS.EntityId,
@@ -108,7 +107,7 @@ export function getTraceFlows(limit = 100): TNodeEntity[] {
     
     // Get all TNode entities
     for (const { id: entityId, meta } of query.entities()) {
-      if (meta.type === 'TNode' && !meta.deletedAt) {
+      if (meta.type === 'TNode') {
         const id = String(entityId) as EARS.EntityId;
         
         // Get tNodeType attribute to check if it's a flow
@@ -178,7 +177,6 @@ export function getFlowEvents(
     const relations = [...query.relations({ 
       kind: EARS.RelKind.TRACKED,
       src: flowId as EARS.EntityId,
-      skipDeleted: true
     })];
     
     // Build event tracks with their child steps
@@ -215,7 +213,7 @@ export function getNodeDetails(nodeId: string): TNodeEntity | null {
     const query = services.traceStore;
     const meta = query.getEntityMeta(nodeId as EARS.EntityId);
     
-    if (!meta || meta.deletedAt) {
+    if (!meta) {
       return null;
     }
     

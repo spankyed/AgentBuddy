@@ -46,7 +46,7 @@ describe('LMDB Adapter', () => {
   });
 
   it("hard-deletes an entity's row and its attributes of every kind, and nothing of another entity", () => {
-    const adapter = makeLmdbAdapter(dbs, { hardDelete: true });
+    const adapter = makeLmdbAdapter(dbs);
     for (const id of ['Task-1', 'Task-10', 'Note-1']) {
       adapter.onCreateEntity(id);
       adapter.onPutAttrArray('title', id, [`${id} title`]);
@@ -55,7 +55,7 @@ describe('LMDB Adapter', () => {
     adapter.onPutAttrArray('zeta', 'Task-1', ['last kind']);
     adapter.close?.();
 
-    const deleting = makeLmdbAdapter(dbs, { hardDelete: true });
+    const deleting = makeLmdbAdapter(dbs);
     deleting.onDestroyEntity('Task-1');
     deleting.close?.();
 
@@ -382,13 +382,12 @@ describe('Query Layer', () => {
     adapter.onCreateEntity('Entity-789', 'TestEntity');
     adapter.onPutAttrArray('Config', 'Entity-789', [{ nested: { value: 42 }, arr: [1, 2, 3] }]);
 
-    // Entities + relations for neighbor/tombstone tests
+    // Entities + relations for neighbor tests
     adapter.onCreateEntity('Doc-1', 'Document');
     adapter.onCreateEntity('Doc-2', 'Document');
     adapter.onCreateEntity('Doc-3', 'Document');
     adapter.onAddRelation('Rel-1', 'LINKS', 'Doc-1', 'Doc-2', null);
     adapter.onAddRelation('Rel-2', 'LINKS', 'Doc-1', 'Doc-3', null);
-    adapter.onDestroyEntity('Doc-2');
 
     // Pagination entities
     for (let i = 0; i < 10; i++) {
@@ -437,14 +436,9 @@ describe('Query Layer', () => {
     expect(found).toContain('Entity-789');
   });
 
-  it('neighbors() filters tombstoned entities with skipDeleted', () => {
-    const all = query.neighbors('Doc-1', { kind: 'LINKS', skipDeleted: false });
-    expect(all).toContain('Doc-2');
-    expect(all).toContain('Doc-3');
-
-    const alive = query.neighbors('Doc-1', { kind: 'LINKS', skipDeleted: true });
-    expect(alive).not.toContain('Doc-2');
-    expect(alive).toContain('Doc-3');
+  it('neighbors() follows relations of a kind, out and in', () => {
+    expect(query.neighbors('Doc-1', { kind: 'LINKS' }).sort()).toEqual(['Doc-2', 'Doc-3']);
+    expect(query.neighbors('Doc-2', { kind: 'LINKS', direction: 'in' })).toEqual(['Doc-1']);
   });
 
   it('entitiesHavingAttr() and relations() respect limit', () => {

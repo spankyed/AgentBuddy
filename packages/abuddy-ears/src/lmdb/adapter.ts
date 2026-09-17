@@ -2,10 +2,6 @@ import type { LmdbDbs } from './envs.ts';
 import type { PersistenceSink } from '../runtime.ts';
 import { EARS } from '../entities.ts';
 
-export interface LmdbAdapterOptions {
-  hardDelete?: boolean; // If true, permanently delete instead of tombstoning
-}
-
 type Encoded = { t: string; v: any };
 
 function enc(value: unknown): Encoded {
@@ -57,9 +53,8 @@ function* storedKinds(attrs: LmdbDbs['attrs']): Iterable<string> {
   }
 }
 
-export function makeLmdbAdapter(dbs: LmdbDbs, options: LmdbAdapterOptions = {}): PersistenceSink {
+export function makeLmdbAdapter(dbs: LmdbDbs): PersistenceSink {
   const { entities, attrs, relations } = dbs;
-  const { hardDelete = false } = options;
 
   // Error tracking
   let errorCount = 0;
@@ -231,25 +226,18 @@ export function makeLmdbAdapter(dbs: LmdbDbs, options: LmdbAdapterOptions = {}):
     onDestroyEntity(entityId: string) {
       if (closed) return;
 
-      if (hardDelete) {
-        discardBuffered(entityId);
-        // Immediate hard delete: the entity's row and its attributes, read per kind (keys are kind␟id␟index).
-        // Its relations are removed before this, each with onRemoveRelation.
-        try {
-          entities.transactionSync(() => {
-            entities.remove(entityId);
-            for (const kind of [...storedKinds(attrs)]) {
-              for (const key of [...attrs.getKeys(prefix(kind, entityId))]) attrs.remove(key);
-            }
-          });
-        } catch (error) {
-          console.error(`[LMDB] Failed to hard delete entity ${entityId}:`, error);
-        }
-      } else {
-        // Current behavior - mark as deleted (tombstone)
-        const ts = Date.now();
-        entityUpdates.set(entityId, { deletedAt: ts });
-        scheduleFlush();
+      discardBuffered(entityId);
+      // Deleted now: the entity's row and its attributes, read per kind (keys are kind␟id␟index).
+      // Its relations are removed before this, each with onRemoveRelation.
+      try {
+        entities.transactionSync(() => {
+          entities.remove(entityId);
+          for (const kind of [...storedKinds(attrs)]) {
+            for (const key of [...attrs.getKeys(prefix(kind, entityId))]) attrs.remove(key);
+          }
+        });
+      } catch (error) {
+        console.error(`[LMDB] Failed to delete entity ${entityId}:`, error);
       }
     },
 

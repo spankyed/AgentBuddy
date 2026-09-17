@@ -7,6 +7,6 @@
 
 export { openLmdbStore, type LmdbStore, type LmdbStoreOptions } from './store.ts';
 export { openEnvAt, openShardedEnvs, closeShardedEnvs, closeEnv, deleteLmdbDirectories, type LmdbDbs, type LmdbPaths } from './envs.ts';
-export { makeLmdbAdapter, type LmdbAdapterOptions } from './adapter.ts';
+export { makeLmdbAdapter } from './adapter.ts';
 export { hydrateSharded } from './hydrate.ts';
 export { LmdbQuery, decodeAttr, type AttrRecord, type EntityMeta, type RelationRecord, type FindByAttrOpts } from './query.ts';

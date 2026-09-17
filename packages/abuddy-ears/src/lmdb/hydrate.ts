@@ -14,17 +14,16 @@ function dec(e: { t: string; v: unknown }): unknown {
 
 /**
  * Loads the partitions `policy` hydrates (and `volatileBackup` with `includeVolatile`) into `engine`,
- * seeding `shardedPersistence`'s relation metadata. `skipTombstoneScan` loads tombstoned entities' rows too.
+ * seeding `shardedPersistence`'s relation metadata.
  */
 export async function hydrateSharded(params: {
   engine: EarsAdmin;
   envs: Record<Partition, LmdbDbs>;
   policy: PartitionPolicy;
   includeVolatile?: boolean;
-  skipTombstoneScan?: boolean;
   shardedPersistence?: ShardedPersistence;
 }) {
-  const { engine, envs, policy, includeVolatile = false, skipTombstoneScan = false, shardedPersistence } = params;
+  const { engine, envs, policy, includeVolatile = false, shardedPersistence } = params;
 
   const partitionsToHydrate: Partition[] = [];
   if (policy.hydrate.has('primary')) {
@@ -39,19 +38,6 @@ export async function hydrateSharded(params: {
   for (const partition of partitionsToHydrate) {
     const env = envs[partition];
 
-    let tombstoned: Set<string> | null = null;
-    if (!skipTombstoneScan) {
-      tombstoned = new Set<string>();
-      for (const { key, value } of env.entities.getRange()) {
-        if (value?.deletedAt) {
-          tombstoned.add(String(key));
-        }
-      }
-      if (tombstoned.size > 0) {
-        console.log(`[LMDB] Filtering ${tombstoned.size} tombstoned entities in ${partition} partition`);
-      }
-    }
-
     // Hydrate attributes
     let attrCount = 0;
     for (const { key, value } of env.attrs.getRange()) {
@@ -60,8 +46,6 @@ export async function hydrateSharded(params: {
       const sep2 = keyStr.indexOf(SEP, sep1 + 1);
       const kind = keyStr.substring(0, sep1);
       const entityId = keyStr.substring(sep1 + 1, sep2);
-
-      if (tombstoned?.has(entityId)) continue;
 
       const idx = Number(keyStr.substring(sep2 + 1));
       engine.bulkLoadAttr(entityId as EARS.EntityId, kind as EARS.AttrKind, dec(value), idx);
@@ -72,8 +56,6 @@ export async function hydrateSharded(params: {
     let relCount = 0;
     for (const { key: relId, value: r } of env.relations.getRange()) {
       const relIdStr = String(relId);
-
-      if (tombstoned && (tombstoned.has(r.src) || tombstoned.has(r.tgt))) continue;
 
       if (!r.src || typeof r.src !== 'string' || r.src.length === 0) {
         console.warn(`[Hydrate] Skipping relation with invalid src: relId=${relIdStr}, src=${r.src}`);

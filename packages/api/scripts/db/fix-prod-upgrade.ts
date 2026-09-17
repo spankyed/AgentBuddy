@@ -497,7 +497,7 @@ async function run(): Promise<void> {
   assertBuildCurrent();
 
   // Hydrated as the app boots it (setup/backend.ts), so stored rows hash as the seeders will see them
-  await openDatabase({ skipTombstoneScan: true });
+  await openDatabase();
   const errorsBefore = persistenceErrorCount();
   let flushFailed = false;
   try {

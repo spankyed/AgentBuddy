@@ -75,7 +75,6 @@ npm run db:exec "tx('Settings-app').destroy()" -- --no-confirm
 | `.help` | Query and transaction examples |
 | `.stats` | Entity counts |
 | `.export [file]` | Write the last result to a file (`.csv` writes CSV, anything else JSON; default `export-<timestamp>.json`) |
-| `.cleanup-tombstoned` | Delete tombstoned entities (see [cleanup-tombstoned](#clicleanup-tombstonedts)) |
 | `.clear` | Clear the screen |
 | `.exit` | Exit |
 
@@ -209,14 +208,6 @@ npm run db:script scripts/db/export-data.ts -- --entities Settings,Thread --form
 ```
 
 Flags: `-o, --output <dir>` (default `./exports`), `-e, --entities <a,b>` (default every registered type), `-f, --format json|csv`, `-v, --verbose`.
-
-### cli/cleanup-tombstoned.ts
-
-Behind the REPL's `.cleanup-tombstoned` command (there's no script entry for it). Deletes every entity record marked `deletedAt` (tombstoned), with its attributes, straight from LMDB in the primary and volatile backup partitions. It doesn't touch the REPL's in-memory data, so restart the CLI to see the result.
-
-```
-db> .cleanup-tombstoned
-```
 
 ## Troubleshooting
 

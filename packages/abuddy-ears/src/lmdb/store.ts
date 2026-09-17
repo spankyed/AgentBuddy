@@ -21,11 +21,8 @@ export interface LmdbStore {
   readonly envs: Readonly<Record<Partition, LmdbDbs>>;
   /** Whether the environments are open */
   isOpen(): boolean;
-  /**
-   * Loads the partitions the policy hydrates (and the volatile one with `includeVolatile`) into the
-   * store's engine. `skipTombstoneScan` loads tombstoned entities' rows too.
-   */
-  hydrate(options?: { includeVolatile?: boolean; skipTombstoneScan?: boolean }): Promise<void>;
+  /** Loads the partitions the policy hydrates (and the volatile one with `includeVolatile`) into the store's engine */
+  hydrate(options?: { includeVolatile?: boolean }): Promise<void>;
   /** Direct reads of a partition's environment, without hydrating it */
   query(partition: Partition): LmdbQuery;
   /** Flushes pending writes and closes the environments. Closing a closed store does nothing */
@@ -35,8 +32,6 @@ export interface LmdbStore {
   /** Closes the store, deletes its files and opens it empty. Doesn't touch the engine's memory */
   reset(): Promise<void>;
 }
-
-const HARD_DELETE_MODE = true;
 
 const ignoresClosed = (error: unknown) =>
   error instanceof Error && (error.message.includes('Dbi is not open') || error.message.includes('already been closed'));
@@ -67,8 +62,8 @@ export function openLmdbStore({ paths, policy, engine }: LmdbStoreOptions): Lmdb
   function open() {
     envs = openShardedEnvs(paths);
     current = makeShardedPersistence(policy, {
-      primary: makeLmdbAdapter(envs.primary, { hardDelete: HARD_DELETE_MODE }),
-      volatileBackup: makeLmdbAdapter(envs.volatileBackup, { hardDelete: HARD_DELETE_MODE }),
+      primary: makeLmdbAdapter(envs.primary),
+      volatileBackup: makeLmdbAdapter(envs.volatileBackup),
     }, relationDetails);
   }
 
@@ -122,8 +117,8 @@ export function openLmdbStore({ paths, policy, engine }: LmdbStoreOptions): Lmdb
     policy,
     get envs() { return openEnvs(); },
     isOpen: () => envs !== null,
-    hydrate: ({ includeVolatile = false, skipTombstoneScan = false } = {}) =>
-      hydrateSharded({ engine: engine(), envs: openEnvs(), policy, includeVolatile, skipTombstoneScan, shardedPersistence: sink }),
+    hydrate: ({ includeVolatile = false } = {}) =>
+      hydrateSharded({ engine: engine(), envs: openEnvs(), policy, includeVolatile, shardedPersistence: sink }),
     query: (partition) => new LmdbQuery(openEnvs()[partition]),
     close,
     reopen() {

@@ -206,8 +206,6 @@ export interface TraceEntityMeta {
     // (undocumented)
     createdAt: number;
     // (undocumented)
-    deletedAt?: number;
-    // (undocumented)
     type: string;
 }
 
@@ -238,7 +236,6 @@ export interface TraceStore {
         kind?: string;
         src?: EARS.EntityId;
         tgt?: EARS.EntityId;
-        skipDeleted?: boolean;
         limit?: number;
     }): Array<{
         id: string;

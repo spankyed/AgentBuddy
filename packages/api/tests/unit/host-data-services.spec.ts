@@ -69,7 +69,7 @@ describe('relation reads in @abuddy/ears', () => {
 
 describe('services.traceStore', () => {
   const US = '\x1F';
-  const ids = { flow: 'TNode-trace-flow', event: 'TNode-trace-event', gone: 'TNode-trace-gone' } as const;
+  const ids = { flow: 'TNode-trace-flow', event: 'TNode-trace-event', later: 'TNode-trace-later' } as const;
 
   afterAll(() => {
     const dbs = store.envs.volatileBackup;
@@ -83,17 +83,20 @@ describe('services.traceStore', () => {
     const dbs = store.envs.volatileBackup;
     dbs.entities.putSync(ids.flow, { type: 'TNode', createdAt: 1 });
     dbs.entities.putSync(ids.event, { type: 'TNode', createdAt: 2 });
-    dbs.entities.putSync(ids.gone, { type: 'TNode', createdAt: 3, deletedAt: 4 });
+    dbs.entities.putSync(ids.later, { type: 'TNode', createdAt: 3 });
     dbs.attrs.putSync(`label${US}${ids.flow}${US}0`, { t: 'string', v: 'Run' });
     dbs.relations.putSync('Relation-trace-1', { kind: 'tracked', src: ids.flow, tgt: ids.event, createdAt: 5 });
-    dbs.relations.putSync('Relation-trace-2', { kind: 'tracked', src: ids.flow, tgt: ids.gone, createdAt: 6 });
+    dbs.relations.putSync('Relation-trace-2', { kind: 'tracked', src: ids.flow, tgt: ids.later, createdAt: 6 });
 
     const traces = services.traceStore;
     expect(traces.entities().filter((e) => e.id.startsWith('TNode-trace-')).map((e) => e.id).sort()).toEqual(Object.values(ids).sort());
     expect(traces.getEntityMeta(ids.flow)).toEqual({ type: 'TNode', createdAt: 1 });
     expect(traces.getAttr('label', ids.flow)).toBe('Run');
-    expect(traces.relations({ kind: 'tracked', src: ids.flow })).toEqual([{ id: 'Relation-trace-1', rel: { kind: 'tracked', src: ids.flow, tgt: ids.event, createdAt: 5 } }]);
-    expect(traces.relations({ kind: 'tracked', src: ids.flow, skipDeleted: false })).toHaveLength(2);
+    expect(traces.relations({ kind: 'tracked', src: ids.flow })).toEqual([
+      { id: 'Relation-trace-1', rel: { kind: 'tracked', src: ids.flow, tgt: ids.event, createdAt: 5 } },
+      { id: 'Relation-trace-2', rel: { kind: 'tracked', src: ids.flow, tgt: ids.later, createdAt: 6 } },
+    ]);
+    expect(traces.relations({ kind: 'tracked', src: ids.flow, limit: 1 })).toHaveLength(1);
   });
 });
 
