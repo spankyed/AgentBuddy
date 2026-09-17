@@ -40,15 +40,17 @@ npm run typecheck:pack   # @app/default-setup only
 npm run check:ui-entries # Fails on a stale @abuddy/ui exports map or a component without an entry
 
 npm test                 # Playwright E2E tests
-npm run test:unit        # Vitest: @app/api, @app/default-setup, @abuddy/host, @abuddy/ears
+npm run test:unit        # Vitest, every suite CI calls a unit test: @app/api, @app/default-setup, @abuddy/sdk,
+                         # @abuddy/ears, @abuddy/host, @app/renderer, then @abuddy/cli (the slowest, last).
+                         # The CLI's published-package specs need npm run packages:build when dist is stale
 npm run test:all         # test:unit, then the E2E tests
 npm run bench -w @abuddy/ears    # EARS engine benchmark (baseline and tolerance: packages/abuddy-ears/CLAUDE.md)
 npm run test:external-pack       # Build the fixture packs in tests/fixtures with the CLI and run their tests (needs npm run build)
 npm run test:packaged-authoring  # Author, build, test and install a pack outside the monorepo from the packed @abuddy/* tarballs (needs npm run build)
 npm run compile          # Build packages/default-setup (abuddy build: compiled seeds, snapshot, types; DSL defs; dist/runtime/index.cjs)
 
-npm run db:cli           # Database CLI
-npm run db:reset         # Reset database
+npm run db:query -- "<code>"   # abuddy db query on the dev app's data (also db:exec, db:repl, db:inspect,
+                               # db:export, db:import, db:reset, db:clear-settings; the app closed for changes)
 
 # Published API surface (run from packages/abuddy-ears, packages/abuddy-sdk or packages/abuddy-ui)
 npm run api:check        # CI: fails if a public entry's API changed without updating reports
@@ -107,7 +109,7 @@ Layers, each importing only the ones above it (`check:specifiers`, `findUpwardIm
 |---|---|
 | `@abuddy/ears` | the engine, the EARS types, the persistence port (`/lmdb`: the LMDB store) |
 | `@abuddy/sdk` | the pack contract and pack runtime: lookups of what packs registered, the services' contracts, event sends, logging and error reports over the bound bus, the SDK entities and their repositories, the `HostRuntime` port |
-| `@abuddy/host` | the app runtime: the five app services (`/services`), app state (`/app-state`), and what the app runs (`/packs` and `/packs/runtime`, `/bus`, `/migrations`, `/secrets`) |
+| `@abuddy/host` | the app runtime: the five app services (`/services`), app state (`/app-state`), what the app runs (`/packs` and `/packs/runtime`, `/bus`, `/migrations`, `/secrets`), and its database opened outside it (`/database`) |
 | `packages/api` | transport (`node:http`, `ws`, the tRPC routers, the log stream), process boot and composition (`setup/backend.ts`) |
 | `packages/renderer` | the frontend composition: binds the frontend port |
 
@@ -170,7 +172,7 @@ Environment identity and data paths come from one resolver, `@abuddy/sdk/env` (`
 
 - The Electron main process infers the environment once at startup (`packages/main/src/app-context.ts`): Playwright → `test`; packaged builds → the channel stamped by `build/build.sh` (`production` | `beta`; an unstamped packaged build refuses to start); source runs → `ABUDDY_ENV` if set, else `development`. It passes `ABUDDY_ENV` and `ABUDDY_USER_DATA_DIR` to the API process.
 - Anything started without them throws instead of falling back to production. Manual API boots must pass both, pointing at a copy of user data: `cd packages/api && ABUDDY_ENV=development ABUDDY_USER_DATA_DIR=<copy> NODE_ENV=development API_PORT=3099 BUILT_IN_PACKS_DIR=$PWD/.. node ../../scripts/with-source.mjs node dist/server.js`. Such an API makes up its own token and writes it to `<copy>/api-token`; send that to call it.
-- The API takes calls only with a token. Electron main creates one per app run and passes it to the API (`ABUDDY_API_TOKEN`); an API started without one makes up its own; the app's windows read it through the preload (`api:token`) and send it when connecting, and in development (or when it made up its own) the API writes it to `apiTokenFile` for local tools (`abuddy dev`, default-setup's watcher), which send it in `API_TOKEN_HEADER` (`@abuddy/sdk/env`). The API listens on `127.0.0.1` only.
+- The API takes calls only with a token. Electron main creates one per app run and passes it to the API (`ABUDDY_API_TOKEN`); an API started without one makes up its own; the app's windows read it through the preload (`api:token`) and send it when connecting, and in development (or when it made up its own) the API writes it to `apiTokenFile` for local tools (`abuddy dev`, default-setup's watcher), which send it in `API_TOKEN_HEADER`. That header and the address the API listens on (`API_HOST`, `127.0.0.1` only) are defined once, in `@abuddy/sdk/utils/pure`, so the renderer's client uses the same ones.
 - CLI commands pass `{ env }` explicitly (`install`/`uninstall`/`list`/`open` default to production; `-d`/`-b` select dev/beta).
 
 ### Migrations

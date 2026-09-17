@@ -22,8 +22,10 @@ export async function hydrateSharded(params: {
   policy: PartitionPolicy;
   includeVolatile?: boolean;
   shardedPersistence?: ShardedPersistence;
+  /** Where the partition counts go; `console.log` by default */
+  log?: (message: string) => void;
 }) {
-  const { engine, envs, policy, includeVolatile = false, shardedPersistence } = params;
+  const { engine, envs, policy, includeVolatile = false, shardedPersistence, log = console.log } = params;
 
   const partitionsToHydrate: Partition[] = [];
   if (policy.hydrate.has('primary')) {
@@ -33,7 +35,7 @@ export async function hydrateSharded(params: {
     partitionsToHydrate.push('volatileBackup');
   }
 
-  console.log('[LMDB] Hydrating partitions:', partitionsToHydrate);
+  log(`[LMDB] Hydrating partitions: ${partitionsToHydrate.join(', ')}`);
 
   for (const partition of partitionsToHydrate) {
     const env = envs[partition];
@@ -88,6 +90,6 @@ export async function hydrateSharded(params: {
       relCount++;
     }
 
-    console.log(`[LMDB] Hydrated ${partition}: ${attrCount} attributes, ${relCount} relations`);
+    log(`[LMDB] Hydrated ${partition}: ${attrCount} attributes, ${relCount} relations`);
   }
 }

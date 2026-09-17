@@ -111,22 +111,53 @@ describe('services.appData', () => {
     dirs.push(dir);
     expect(await services.appData.backupInfo(dir)).toBeNull();
 
-    const backup = await services.appData.exportBackup(dir, 'probe', ['volatileLmdb']);
-    expect(backup).toBe(path.join(dir, 'probe'));
-    expect(await services.appData.backupInfo(backup)).toEqual({ timestamp: expect.any(Number), databases: ['volatileLmdb'], size: expect.any(Number), hasMedia: false });
+    version.current = '0.4.1';
+    try {
+      const backup = await services.appData.exportBackup(dir, 'probe', ['volatileLmdb']);
+      expect(backup).toBe(path.join(dir, 'probe'));
+      // What made it, so a backup folder says where it came from without opening its databases
+      expect(await services.appData.backupInfo(backup)).toEqual({
+        timestamp: expect.any(Number), databases: ['volatileLmdb'], size: expect.any(Number), hasMedia: false, appVersion: '0.4.1',
+      });
+      const metadata = JSON.parse(fs.readFileSync(path.join(backup, 'metadata.json'), 'utf-8'));
+      expect(metadata).toMatchObject({ appVersion: '0.4.1', storageFormat: expect.any(Number) });
+    } finally {
+      version.current = undefined;
+    }
   });
 
-  it("restores only the databases the app has, leaving out any other a backup lists", async () => {
+  it("refuses a backup holding a store this app doesn't have, then imports it without that store when told to", async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-unknown-db-backup-'));
     dirs.push(dir);
-    const backup = await services.appData.exportBackup(dir, 'unknown', ['volatileLmdb']);
+    const backup = await services.appData.exportBackup(dir, 'unknown', ['lmdb']);
     const metadataPath = path.join(backup, 'metadata.json');
     const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
-    fs.writeFileSync(metadataPath, JSON.stringify({ ...metadata, databases: ['volatileLmdb', 'unknownLmdb'] }));
+    fs.writeFileSync(metadataPath, JSON.stringify({ ...metadata, databases: ['lmdb', 'unknownLmdb'] }));
     fs.mkdirSync(path.join(backup, 'unknownLmdb'));
+    tx('Note-kept' as never, true).put('title', 'still here');
 
-    expect(await services.appData.backupInfo(backup)).toMatchObject({ databases: ['volatileLmdb'] });
-    expect(await services.appData.importBackup(backup)).toEqual({ databases: ['volatileLmdb'] });
+    // A partial restore of a backup a newer AgentBuddy made would cost the user their data to learn that
+    const refused = services.appData.importBackup(backup);
+    await expect(refused).rejects.toThrow("The backup holds data this AgentBuddy doesn't have: unknownLmdb");
+    await expect(refused).rejects.toMatchObject({ name: 'UnknownBackupDatabasesError', databases: ['unknownLmdb'] });
+    expect(untypedQx('Note-kept' as never).pickOne(['title'])).toMatchObject({ title: 'still here' });
+
+    // The app asks the user first, and imports it without that store when they say to
+    expect(await services.appData.importBackup(backup, { skipUnknownDatabases: true }))
+      .toEqual({ databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] });
+    expect(untypedQx('Note-kept' as never).pickOne(['title'])).toBeNull();
+  });
+
+  it('restores a backup whose listed store it holds nothing for, and says which', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-empty-db-backup-'));
+    dirs.push(dir);
+    // exportBackup lists volatileLmdb but copies no folder when there is nothing in it
+    const backup = await services.appData.exportBackup(dir, 'sparse', ['lmdb', 'volatileLmdb']);
+    fs.rmSync(path.join(backup, 'volatileLmdb'), { recursive: true, force: true });
+
+    // Reported, so the app can tell the user that store came back empty rather than dropping it silently
+    expect(await services.appData.importBackup(backup))
+      .toEqual({ databases: ['lmdb'], missingDatabases: ['volatileLmdb'], unknownEntityTypes: [] });
   });
 
   it("moves the app's state out of the settings of a backup from before AppState", async () => {
@@ -154,9 +185,38 @@ describe('services.appData', () => {
     }
   });
 
+  it('reports rows of a type no installed pack declares, and keeps them', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-gone-pack-backup-'));
+    dirs.push(dir);
+    // Backed up while the pack that declares Bookmark was installed
+    packs.registerPack({
+      id: 'bookmarks',
+      systems: [],
+      ears: { entities: { Bookmark: 'Bookmark', Tag: 'Tag' }, relKinds: {} },
+    });
+    const bookmark = tx('Bookmark' as never).put('url', 'https://example.com').id();
+    tx('Tag' as never).put('name', 'reading');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const backup = await services.appData.exportBackup(dir, 'with-pack', ['lmdb']);
+    packs.unregisterPack('bookmarks');
+    // Still installed, so its rows are not reported: only what nothing declares is
+    packs.registerPack({ id: 'tags', systems: [], ears: { entities: { Tag: 'Tag' }, relKinds: {} } });
+
+    try {
+      // Restored without the other pack: the rows come back, and the app is told so it can say why nothing shows them
+      const result = await services.appData.importBackup(backup);
+      expect(result.unknownEntityTypes).toContainEqual(['Bookmark', 1]);
+      expect(result.unknownEntityTypes.map(([type]) => type)).not.toContain('Tag');
+      // The row is there, found by id: with no pack declaring the type, a query by type reads 'Bookmark' as an id
+      expect(untypedQx(bookmark as never).pickOne(['url'])).toMatchObject({ url: 'https://example.com' });
+    } finally {
+      packs.unregisterPack('tags');
+    }
+  });
+
   it('rejects an import of a directory that is not a backup', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-not-backup-'));
     dirs.push(dir);
-    await expect(services.appData.importBackup(dir)).rejects.toThrow('Invalid backup: metadata.json not found');
+    await expect(services.appData.importBackup(dir)).rejects.toThrow(`${dir} isn't a backup: it has no metadata.json`);
   });
 });

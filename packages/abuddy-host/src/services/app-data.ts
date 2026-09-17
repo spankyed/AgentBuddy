@@ -4,6 +4,8 @@ import type { EarsAdmin } from '@abuddy/ears';
 import type { LmdbStore } from '@abuddy/ears/lmdb';
 import { exportDatabase, getBackupInfo, importDatabase } from '../backup/index.ts';
 import { secretsStore } from '../secrets/index.ts';
+import { getMediaPath } from '@abuddy/sdk/utils';
+import { getAppVersion } from '@abuddy/sdk/env';
 import type { PackRegistry } from '../packs/pack-registration.ts';
 import { getLoadedPacks } from '../packs/runtime/loaded-packs.ts';
 import { startPacks } from '../packs/runtime/start.ts';
@@ -29,16 +31,18 @@ export function createAppData(store: LmdbStore, engine: EarsAdmin, registry: Pac
     },
     hasOnboarded: () => appState.get().hasOnboarded,
     completeOnboarding: () => appState.update({ hasOnboarded: true }),
-    exportBackup: (targetPath, name, databases) => exportDatabase(targetPath, name, databases),
-    async importBackup(backupPath) {
+    exportBackup: (targetPath, name, databases) =>
+      exportDatabase(store, targetPath, { name, databases, mediaPath: getMediaPath(), appVersion: getAppVersion() }),
+    async importBackup(backupPath, options) {
       try {
-        const result = await importDatabase(store, backupPath);
+        // The installed packs' types, so a backup holding rows of a type none of them declares is reported
+        const result = await importDatabase(store, backupPath, getMediaPath(), { ...options, entityTypes: registry.getRegisteredEntityTypes() });
         const databases = result.databases as BackupDatabase[];
         await reloadMemory(databases.includes('volatileLmdb'));
         // A backup from an earlier version is migrated now, not at the next boot (one from before AppState keeps
         // the app's state in its settings)
         if (runAppMigrations(registry)) runPackMigrations(getLoadedPacks());
-        return { databases };
+        return { databases, missingDatabases: result.missingDatabases as BackupDatabase[], unknownEntityTypes: result.unknownEntityTypes };
       } catch (error) {
         // importDatabase has put the previous files back; reload them
         await reloadMemory();

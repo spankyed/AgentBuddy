@@ -6,7 +6,10 @@ import Module, { createRequire } from 'node:module';
 export interface ModuleBridgeOptions {
   /** Specifier → the module the loaded code gets for `require(specifier)` */
   modules: Readonly<Record<string, unknown>>;
-  /** Packages resolved from `resolveFrom` rather than from the loaded file (an installed pack has no node_modules) */
+  /**
+   * Packages resolved from `resolveFrom` rather than from the loaded file (an installed pack has no node_modules),
+   * with every subpath they export: a bundled dependency may require `zod/v4` where the pack imports `zod`
+   */
   hostPackages?: readonly string[];
   /** A file (path or file URL) that host packages resolve from */
   resolveFrom?: string;
@@ -53,10 +56,23 @@ export function withModuleBridge<T>(options: ModuleBridgeOptions, fn: () => T): 
   const hostRequire = createRequire(options.resolveFrom ?? import.meta.url);
   const cache = hostRequire.cache;
 
-  const hostResolutions = new Map<string, string>();
-  for (const name of options.hostPackages ?? []) {
-    try { hostResolutions.set(name, hostRequire.resolve(name)); } catch { /* not installed for the host either */ }
-  }
+  // A host package's own subpaths come from the host too (`zod` and `zod/v4`, whatever a bundled dependency asks
+  // for), so nothing has to list them: an installed pack has no node_modules, and a second copy of a package the
+  // host provides is exactly what the bridge exists to prevent
+  const hostPackages = options.hostPackages ?? [];
+  const hostResolutions = new Map<string, string | null>();
+  const resolveFromHost = (request: string): string | null => {
+    if (!hostPackages.some((name) => request === name || request.startsWith(`${name}/`))) return null;
+    if (!hostResolutions.has(request)) {
+      try {
+        hostResolutions.set(request, hostRequire.resolve(request));
+      } catch {
+        // Not installed for the host either: the pack's own resolution decides what happens
+        hostResolutions.set(request, null);
+      }
+    }
+    return hostResolutions.get(request) ?? null;
+  };
 
   const cacheEntry = (id: string, exports: unknown) => ({ id, filename: id, loaded: true, exports, children: [], paths: [] }) as unknown as NodeJS.Module;
   for (const [specifier, exports] of Object.entries(options.modules)) {
@@ -79,7 +95,7 @@ export function withModuleBridge<T>(options: ModuleBridgeOptions, fn: () => T): 
     if (options.bridgedPackages?.some(pkg => request === pkg || request.startsWith(`${pkg}/`))) {
       throw new Error(`${request} isn't provided by this AgentBuddy: rebuild the pack with the current @abuddy/cli`);
     }
-    const host = hostResolutions.get(request);
+    const host = resolveFromHost(request);
     if (host) return host;
     try {
       return originalResolve.call(this, request, parent, ...rest);

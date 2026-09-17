@@ -21,7 +21,8 @@ export interface PackMigration {
 }
 
 export interface PackSeedManifest {
-  artifacts: string[];
+  /** The pack's seeded keys (`boot.seed`), each with a `<key>.seed.json` in `compiledDir` */
+  seedKeys: string[];
   compiledDir: string;
   seedPolicy?: { skipAtBoot?: string[]; skipAfterOnboarding?: string[] };
 }

@@ -10,6 +10,8 @@ let runtimeDir: string;
 let resolveFrom: string;
 let caseCount = 0;
 let name: (base: string) => string;
+const dirsToRemove: string[] = [];
+const require = createRequire(import.meta.url);
 
 /** Installs a CommonJS package under the root's node_modules; returns its entry's path */
 function installPackage(pkg: string, source: string): string {
@@ -38,7 +40,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-  const require = createRequire(import.meta.url);
+  for (const dir of dirsToRemove.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
   for (const key of Object.keys(require.cache)) {
     if (key.includes(`-bridge-case-${caseCount}`) || key.startsWith(root) || key.startsWith(runtimeDir)) delete require.cache[key];
   }
@@ -81,6 +83,45 @@ describe('withModuleBridge', () => {
 
     expect(createRequire(resolveFrom)(lib)).toBe(alreadyLoaded);
     expect(loaded).toBe(first);
+  });
+
+  it("gives a host package's own module to the loaded code, not the copy beside it", () => {
+    const lib = name('shared-dep');
+    // The pack has its own copy installed beside it, as a published pack's node_modules would
+    const packDir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'module-bridge-pack-')));
+    dirsToRemove.push(packDir);
+    const packCopy = path.join(packDir, 'node_modules', lib);
+    fs.mkdirSync(packCopy, { recursive: true });
+    fs.writeFileSync(path.join(packCopy, 'package.json'), JSON.stringify({ name: lib, main: 'index.js' }));
+    fs.writeFileSync(path.join(packCopy, 'index.js'), `module.exports = { copy: 'the pack\\'s own' };`);
+    // And the host has one, which is the one that must win
+    const hostEntry = installPackage(lib, `module.exports = { copy: 'the host\\'s' };`);
+
+    const runtime = path.join(packDir, 'runtime.cjs');
+    fs.writeFileSync(runtime, `module.exports = require('${lib}');`);
+    const loaded = withModuleBridge({ modules: {}, hostPackages: [lib], resolveFrom }, () => createRequire(runtime)(runtime)) as { copy: string };
+
+    expect(loaded.copy).toBe("the host's");
+    // Not merely that the require worked: it is the host's module object, the one the app itself holds
+    expect(loaded).toBe(createRequire(resolveFrom)(lib));
+    expect(require.cache[hostEntry]?.exports).toBe(loaded);
+  });
+
+  it("resolves a host package's subpath from the host too, so a bundled dependency shares it", () => {
+    const lib = name('subpath-dep');
+    const dir = path.join(root, 'node_modules', lib);
+    fs.mkdirSync(path.join(dir, 'v4'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name: lib, main: 'index.js', exports: { '.': './index.js', './v4': './v4/index.js' } }));
+    fs.writeFileSync(path.join(dir, 'index.js'), `module.exports = { which: 'root' };`);
+    fs.writeFileSync(path.join(dir, 'v4', 'index.js'), `module.exports = { which: 'v4' };`);
+
+    // The runtime sits outside the root, so it resolves nothing itself: without the bridge this require fails
+    const runtime = writeRuntime(`module.exports = require('${lib}/v4');`);
+    expect(() => withModuleBridge({ modules: {}, resolveFrom }, () => createRequire(runtime)(runtime))).toThrow(/Cannot find module/);
+
+    const loaded = withModuleBridge({ modules: {}, hostPackages: [lib], resolveFrom }, () => createRequire(runtime)(runtime));
+    expect(loaded).toBe(createRequire(resolveFrom)(`${lib}/v4`));
+    expect((loaded as { which: string }).which).toBe('v4');
   });
 
   it("loads a package that can't be resolved as a module that throws on use, with stubMissing", () => {

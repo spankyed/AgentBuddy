@@ -36,8 +36,12 @@ export interface AppDataService {
     completeOnboarding(): void;
     exportBackup(targetPath: string, name?: string, databases?: BackupDatabase[]): Promise<string>;
     hasOnboarded(): boolean;
-    importBackup(backupPath: string): Promise<{
+    importBackup(backupPath: string, options?: {
+        skipUnknownDatabases?: boolean;
+    }): Promise<{
         databases: BackupDatabase[];
+        missingDatabases: BackupDatabase[];
+        unknownEntityTypes: Array<[string, number]>;
     }>;
     reset(): Promise<void>;
 }
@@ -47,6 +51,7 @@ export type BackupDatabase = 'lmdb' | 'volatileLmdb';
 
 // @public (undocumented)
 export interface BackupInfo {
+    appVersion?: string;
     // (undocumented)
     databases: BackupDatabase[];
     // (undocumented)
@@ -271,6 +276,13 @@ export interface TraceStore {
         id: string;
         rel: TraceRelation;
     }>;
+}
+
+// @public
+export class UnknownBackupDatabasesError extends Error {
+    constructor(databases: string[]);
+    // (undocumented)
+    readonly databases: string[];
 }
 
 // (No @packageDocumentation comment for this package)

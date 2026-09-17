@@ -502,7 +502,7 @@ export function generatePackFiles(
       ? `import * as _hooks from '${toImportPath(root, manifest.boot.hooks)}';`
       : '';
 
-    const artifactsList = seededKeys().map(k => JSON.stringify(k)).join(', ');
+    const seedKeysList = seededKeys().map(k => JSON.stringify(k)).join(', ');
     const hookEntries = seedHookEntries();
     const seedPolicy = manifest.boot?.seedPolicy;
     const seedPolicyLine = seedPolicy ? `\n      seedPolicy: ${JSON.stringify(seedPolicy)},` : '';
@@ -548,7 +548,7 @@ ${commands.length ? `  commands: ${JSON.stringify(commands)},` : ''}
 ${earlySystemLine}
 ${manifest.boot?.hooks ? '    ..._hooks,' : ''}
     seedManifest: {
-      artifacts: [${artifactsList}],
+      seedKeys: [${seedKeysList}],
       get compiledDir() { return getCompiledDir(); },${seedPolicyLine}
     },
   },

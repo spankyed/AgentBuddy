@@ -35,6 +35,7 @@ export {
   stageBundle, verifyBundle, readBundleInfo, isBundleDir,
   packFrontendFiles,
   createBundleArchive, extractBundleArchive, bundleArchiveName,
-  publishHostPackArtifacts,
+  publishHostPackOutput,
+  pruneHostPackOutputs,
 } from './bundle.ts';
 export type { BundleInfo, PackBundleEntry } from './bundle.ts';

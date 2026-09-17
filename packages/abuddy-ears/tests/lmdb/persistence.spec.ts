@@ -93,23 +93,23 @@ describe('LMDB Adapter', () => {
     { src: 'Document-1', tgt: '', label: 'empty tgt' },
     { src: 'nohyphen', tgt: 'Document-1', label: 'no-hyphen src' },
     { src: 'Document-1', tgt: 'nohyphen', label: 'no-hyphen tgt' },
-  ])('onAddRelation warns + returns silently on invalid input: $label', ({ src, tgt }) => {
+  ])('onAddRelation refuses invalid input, and counts the write it drops: $label', ({ src, tgt }) => {
     const adapter = makeLmdbAdapter(dbs);
     const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     adapter.onAddRelation('Relation-bad', 'TEST', src, tgt, null);
     expect(spy).toHaveBeenCalledWith(expect.stringContaining('[LMDB] Invalid'));
+    // Counted, so the store's close() reports it rather than the write vanishing with a console line
+    expect(adapter.getErrorStats?.()).toMatchObject({ errorCount: 1, lastError: { op: 'relation', key: 'Relation-bad' } });
     spy.mockRestore();
     adapter.close?.();
   });
 
-  it('onUpdateRelation warns on non-existent relation', () => {
+  it('onUpdateRelation counts an update to a relation that is not there', () => {
     const adapter = makeLmdbAdapter(dbs);
     const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     adapter.onUpdateRelation('Relation-nonexistent', { info: 'test' });
-    expect(spy).toHaveBeenCalledWith(
-      expect.stringContaining('missing relId'),
-      expect.anything()
-    );
+    expect(spy).toHaveBeenCalledWith(expect.stringContaining('missing relId'));
+    expect(adapter.getErrorStats?.()).toMatchObject({ errorCount: 1, lastError: { op: 'relation', key: 'Relation-nonexistent' } });
     spy.mockRestore();
     adapter.close?.();
   });
@@ -121,7 +121,7 @@ describe('LMDB Adapter', () => {
     { patch: { tgt: 'null' }, label: 'tgt="null"' },
     { patch: { src: 'nohyphen' }, label: 'src without hyphen' },
     { patch: { tgt: 'nohyphen' }, label: 'tgt without hyphen' },
-  ])('onUpdateRelation warns on invalid src/tgt values: $label', ({ patch }) => {
+  ])('onUpdateRelation refuses invalid src/tgt values, and counts the write it drops: $label', ({ patch }) => {
     const adapter = makeLmdbAdapter(dbs);
     // First create a valid relation so onUpdateRelation finds it
     adapter.onAddRelation('Relation-valid', 'TEST', 'Doc-1', 'Doc-2', null);
@@ -131,6 +131,7 @@ describe('LMDB Adapter', () => {
     const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
     adapter2.onUpdateRelation('Relation-valid', patch);
     expect(spy).toHaveBeenCalledWith(expect.stringContaining('[LMDB] Invalid'));
+    expect(adapter2.getErrorStats?.()).toMatchObject({ errorCount: 1, lastError: { op: 'relation', key: 'Relation-valid' } });
     spy.mockRestore();
     adapter2.close?.();
   });
@@ -139,6 +140,28 @@ describe('LMDB Adapter', () => {
 // ---------------------------------------------------------------------------
 // B. Sharded Router
 // ---------------------------------------------------------------------------
+describe('LMDB Adapter error stats', () => {
+  /** An environment whose writes all fail, as a full disk would */
+  const failing = (): LmdbDbs => {
+    const fail = () => { throw new Error('disk full'); };
+    const db = { transactionSync: fail, put: fail, remove: fail, get: () => undefined, doesExist: () => false, getKeys: () => [], getRange: () => [] };
+    return { entities: db, attrs: db, relations: db, root: db } as unknown as LmdbDbs;
+  };
+
+  it('counts a delete it could not write, so a caller is never told the row is gone', () => {
+    const adapter = makeLmdbAdapter(failing());
+    adapter.onDestroyEntity('Document-1');
+    expect(adapter.getErrorStats?.()).toMatchObject({ errorCount: 1, lastError: { op: 'destroy', key: 'Document-1' } });
+  });
+
+  it('counts a flush it could not write when the sink closes', () => {
+    const adapter = makeLmdbAdapter(failing());
+    adapter.onPutAttrArray('title', 'Document-1', ['kept']);
+    adapter.close?.();
+    expect(adapter.getErrorStats?.()).toMatchObject({ errorCount: 1, lastError: { op: 'final flush' } });
+  });
+});
+
 describe('Sharded Router', () => {
   let dirs: { primary: string; volatileBackup: string };
   let envs: Record<Partition, LmdbDbs>;

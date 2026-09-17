@@ -3,14 +3,14 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { publishHostPackArtifacts } from '@abuddy/host/packs';
+import { publishHostPackOutput } from '@abuddy/host/packs';
 import { resolveDepArtifacts } from '../../src/commands/fetch-deps';
 
 let tmp: string;
 const saved = { env: process.env.ABUDDY_ENV, dir: process.env.ABUDDY_USER_DATA_DIR, root: process.env.ABUDDY_ROOT };
 
 beforeEach(() => {
-  tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'host-artifacts-'));
+  tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'host-output-'));
   process.env.ABUDDY_USER_DATA_DIR = path.join(tmp, 'userdata');
   delete process.env.ABUDDY_ROOT;
 });
@@ -48,49 +48,49 @@ function builtBeside(dir: string) {
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'seeds-index.sha256'), hash);
 }
 
-describe('publishHostPackArtifacts', () => {
+describe('publishHostPackOutput', () => {
   it('publishes types/, build/ and runtime/index.cjs once and republishes only when they change', () => {
     const src = builtInPack();
     const dest = path.join(tmp, 'host-packs', 'base-pack');
 
-    expect(publishHostPackArtifacts(src, dest)).toBe(true);
+    expect(publishHostPackOutput(src, dest)).toBe(true);
     expect(fs.readFileSync(path.join(dest, 'types', 'snapshot.json'), 'utf-8')).toContain('base-pack');
     expect(fs.existsSync(path.join(dest, 'build', 'steps.build.mjs'))).toBe(true);
     expect(fs.readFileSync(path.join(dest, 'runtime', 'index.cjs'), 'utf-8')).toContain('registration');
     // The compiled seeds its runtime reads (settings defaults), and nothing else from dist
     expect(fs.readdirSync(path.join(dest, 'runtime', 'seeds')).sort()).toEqual(['media', 'seeds.json', 'settings.seed.json']);
     expect(fs.existsSync(path.join(dest, 'runtime', 'seeds', 'media', 'library', 'pic.png'))).toBe(true);
-    expect(publishHostPackArtifacts(src, dest)).toBe(false);
+    expect(publishHostPackOutput(src, dest)).toBe(false);
 
     fs.writeFileSync(path.join(src, 'dist', 'settings.seed.json'), '{"theme":"light"}');
-    expect(publishHostPackArtifacts(src, dest)).toBe(true);
+    expect(publishHostPackOutput(src, dest)).toBe(true);
     expect(fs.readFileSync(path.join(dest, 'runtime', 'seeds', 'settings.seed.json'), 'utf-8')).toContain('light');
 
     fs.writeFileSync(path.join(src, 'dist', 'build', 'steps.build.mjs'), 'export const steps = [1];');
-    expect(publishHostPackArtifacts(src, dest)).toBe(true);
+    expect(publishHostPackOutput(src, dest)).toBe(true);
     expect(fs.readFileSync(path.join(dest, 'build', 'steps.build.mjs'), 'utf-8')).toContain('[1]');
 
     fs.writeFileSync(path.join(src, 'dist', 'runtime', 'index.cjs'), 'exports.registration = { id: "base-pack", v: 2 };');
-    expect(publishHostPackArtifacts(src, dest)).toBe(true);
+    expect(publishHostPackOutput(src, dest)).toBe(true);
     expect(fs.readFileSync(path.join(dest, 'runtime', 'index.cjs'), 'utf-8')).toContain('v: 2');
   });
 
   it("refuses to publish a runtime with seeds compiled after it, and publishes once the runtime is rebuilt beside them", () => {
     const src = builtInPack();
     const dest = path.join(tmp, 'host-packs', 'base-pack');
-    publishHostPackArtifacts(src, dest);
+    publishHostPackOutput(src, dest);
 
     // abuddy build compiled the seeds again; the runtime wasn't rebuilt
     fs.writeFileSync(path.join(src, 'dist', 'seeds.json'), '{"version":1,"seeds":[{"key":"notes"}]}');
-    expect(() => publishHostPackArtifacts(src, dest)).toThrow(/runtime\/index\.cjs wasn't built beside the compiled seeds .*rebuild the pack's runtime/);
+    expect(() => publishHostPackOutput(src, dest)).toThrow(/runtime\/index\.cjs wasn't built beside the compiled seeds .*rebuild the pack's runtime/);
     expect(fs.readFileSync(path.join(dest, 'runtime', 'seeds', 'seeds.json'), 'utf-8')).not.toContain('notes');
 
     // A runtime never recorded as built beside any seeds isn't published with them either
     fs.rmSync(path.join(src, 'dist', 'runtime', 'seeds-index.sha256'));
-    expect(() => publishHostPackArtifacts(src, dest)).toThrow(/wasn't built beside the compiled seeds/);
+    expect(() => publishHostPackOutput(src, dest)).toThrow(/wasn't built beside the compiled seeds/);
 
     builtBeside(src);
-    expect(publishHostPackArtifacts(src, dest)).toBe(true);
+    expect(publishHostPackOutput(src, dest)).toBe(true);
     expect(fs.readFileSync(path.join(dest, 'runtime', 'seeds', 'seeds.json'), 'utf-8')).toContain('notes');
   });
 });
@@ -98,7 +98,7 @@ describe('publishHostPackArtifacts', () => {
 describe('dependency resolution from an installed app', () => {
   it('resolves a built-in dependency (snapshot, step build code, runtime) the app published, and caches it in the pack', async () => {
     const hostPacks = path.join(tmp, 'userdata', 'host-packs');
-    publishHostPackArtifacts(builtInPack(), path.join(hostPacks, 'base-pack'));
+    publishHostPackOutput(builtInPack(), path.join(hostPacks, 'base-pack'));
 
     const packRoot = path.join(tmp, 'author-pack');
     fs.mkdirSync(packRoot, { recursive: true });
@@ -116,14 +116,14 @@ describe('dependency resolution from an installed app', () => {
   it("drops a cached runtime when the dependency stops shipping one", async () => {
     const hostPacks = path.join(tmp, 'userdata', 'host-packs');
     const src = builtInPack();
-    publishHostPackArtifacts(src, path.join(hostPacks, 'base-pack'));
+    publishHostPackOutput(src, path.join(hostPacks, 'base-pack'));
     const packRoot = path.join(tmp, 'author-pack');
     fs.mkdirSync(packRoot, { recursive: true });
     expect((await resolveDepArtifacts(packRoot, 'base-pack', '*'))?.runtimeEntry).toBeDefined();
 
     fs.rmSync(path.join(src, 'dist', 'runtime'), { recursive: true });
     fs.rmSync(path.join(hostPacks, 'base-pack'), { recursive: true });
-    publishHostPackArtifacts(src, path.join(hostPacks, 'base-pack'));
+    publishHostPackOutput(src, path.join(hostPacks, 'base-pack'));
     const artifacts = await resolveDepArtifacts(packRoot, 'base-pack', '*');
     expect(artifacts?.runtimeEntry).toBeUndefined();
     expect(fs.existsSync(path.join(packRoot, '.abuddy', 'deps', 'base-pack', 'runtime'))).toBe(false);
@@ -148,7 +148,7 @@ describe('dependency resolution from an installed app', () => {
   function publishInstalled(version: string, steps = 'export const steps = [];') {
     const src = builtInPack({ types: { entities: {}, relKinds: {} }, defs: {}, manifest: { id: 'base-pack', version } } as any);
     fs.writeFileSync(path.join(src, 'dist', 'build', 'steps.build.mjs'), steps);
-    publishHostPackArtifacts(src, path.join(tmp, 'userdata', 'host-packs', 'base-pack'));
+    publishHostPackOutput(src, path.join(tmp, 'userdata', 'host-packs', 'base-pack'));
   }
 
   function authorPack(): string {

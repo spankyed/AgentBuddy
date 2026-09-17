@@ -86,7 +86,7 @@ Entity types and relation kinds come from `__generated__/ears.ts`, generated sta
 Import `EARS` from `@/__generated__/ears` by default. The SDK's `EARS` (`@abuddy/sdk`) is fine for `EntityId`, SDK-owned constants and shared EARS types (build facets use it), but its `EARS.Entity` type is open: annotate with it only when any entity name is intended, as the create step's `entityTypeTarget` does (see `packages/abuddy-sdk/TYPED-EARS.md`).
 
 Typed facades (no module augmentation):
-- `__generated__/ears.ts` — `PackShapes` (entity type → attribute interface), `EntityName`, and the typed `qx`/`tx`/`find*`/`createEntity`/`createEntityWithDefaults`/`updateEntity`/`getAttr` helpers built with `defineEars`. Feature code imports `tx` from here; migrations and the database console's transaction executor keep the unchecked `tx` from `@abuddy/ears`
+- `__generated__/ears.ts` — `PackShapes` (entity type → attribute interface), `EntityName`, and the typed `qx`/`tx`/`find*`/`createEntity`/`createEntityWithDefaults`/`updateEntity`/`getAttr` helpers built with `defineEars`. Feature code imports `tx` from here; migrations keep the unchecked `tx` from `@abuddy/ears`, as does the Database console's transaction code, which runs through `@abuddy/sdk/database-console` (`features/database/be/execute/`)
 - `__generated__/events.ts` — `PackEvents` (receiving plugin ID → the events it gets: its own system's plus every system whose `system.sendsTo` names it, e.g. actions → flows, settings → the host's `application`), `PackSystemEvents` (system → the events it receives), and typed `emit`/`sendToPlugin`/`sendToSystem` built with `defineEvents`. Frontend state machines send to systems with `sendToSystem`; backend code sends to plugins with `emit` (in a system's actions) or `sendToPlugin`. Don't import these from `@abuddy/sdk/events`; declare a cross-plugin send in `abuddy.json` `sendsTo` instead. Subscriptions (`onConnected`, `onIncoming`) come from `@abuddy/sdk/events`, `onLog` from `@abuddy/sdk/logger`
 - `__generated__/services.ts` — the `services` proxy typed as `Services` (with `services.repository` typed as `Repositories`, and `services.emitter`'s sends typed with the pack's events; actions name systems `default-setup/<feature>`)
 - `__generated__/repository.ts` — `repository`, typed with every repository in `features[].repositories`
@@ -162,7 +162,7 @@ The pack registers boot hooks via `__generated__/pack-entry.ts`:
 - `earlySystem` — the logs system, from `features[].earlySystem` (starts before hydration)
 - `onInit` — from `boot.hooks` (`src/features/hooks.ts`): `createDefaultSettings()` ensures the Settings entity exists (it stores only the user's changes to the defaults)
 - `onShutdown` — from `boot.hooks`: kills terminal processes, clears brain schedules, removes ad-hoc listeners and clears the flow actor registry
-- `seedManifest` — from `boot.seed` and `boot.seedPolicy`: the compiled seed artifacts the host seeds (hash-checked)
+- `seedManifest` — from `boot.seed` and `boot.seedPolicy`: its `seedKeys` are the compiled seeds the host seeds (hash-checked)
 
 ## Build
 

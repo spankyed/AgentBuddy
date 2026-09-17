@@ -140,6 +140,14 @@ export interface PackRegistry extends PackRegistryView {
   removeShutdownHooksForKey(key: string): void;
 }
 
+/**
+ * The app's partition policy for the entity types packs exclude (`ears.partitionPolicy.excludedEntityTypes`, the
+ * built-in packs'): those and the SDK's volatile types live in the volatile partition
+ */
+export function appPartitionPolicy(packExcluded: Iterable<string>): PartitionPolicy {
+  return makePolicy({ excludedEntityTypes: new Set([...SDK_EXCLUDED_ENTITY_TYPES, ...packExcluded]) });
+}
+
 /** A new, empty registry */
 export function createPackRegistry(): PackRegistry {
   const registrations = new Map<string, PackRegistration>();
@@ -318,7 +326,7 @@ export function createPackRegistry(): PackRegistry {
   }
 
   const policy = (): PartitionPolicy =>
-    policyCache ??= makePolicy({ excludedEntityTypes: new Set(getRegisteredEARSPolicy().excludedEntityTypes) });
+    policyCache ??= appPartitionPolicy(getRegisteredEARSPolicy().excludedEntityTypes);
 
   return {
     registerPack,
@@ -352,6 +360,16 @@ export function createPackRegistry(): PackRegistry {
     },
 
     getEventValidationMap: () => eventValidationMap ??= buildEventValidationMap(),
+
+    earsNames() {
+      const { entities, relKinds } = appEARS();
+      const names = { entities: { ...entities }, relKinds: { ...relKinds } };
+      for (const reg of registrations.values()) {
+        Object.assign(names.entities, reg.ears?.entities ?? {});
+        Object.assign(names.relKinds, reg.ears?.relKinds ?? {});
+      }
+      return names;
+    },
 
     getRegisteredEntityTypes() {
       if (!entityTypeCache) {

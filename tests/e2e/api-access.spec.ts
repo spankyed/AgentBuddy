@@ -2,7 +2,7 @@
 // (a WebSocket subprotocol, never the URL), and a WebSocket or /dev/reload call without it (a web page's, say) is
 // refused. A malformed request doesn't take the API down.
 import * as net from 'node:net';
-import { API_TOKEN_HEADER } from '@abuddy/sdk/env';
+import { API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
 import { test, expect } from './fixtures/app';
 
 /** Whether a WebSocket to `url` offering `protocols` opens, and the subprotocol the server chose */

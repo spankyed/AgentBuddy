@@ -128,7 +128,7 @@ function getBuiltInPackIds(packsDir: string): Set<string> {
   if (!fs.existsSync(hostPacksDir)) return new Set();
   return new Set(
     fs.readdirSync(hostPacksDir, { withFileTypes: true })
-      // Hidden dirs are publishes in progress (publishHostPackArtifacts)
+      // Hidden dirs are publishes in progress (publishHostPackOutput)
       .filter(entry => entry.isDirectory() && !entry.name.startsWith('.'))
       .map(entry => entry.name),
   );

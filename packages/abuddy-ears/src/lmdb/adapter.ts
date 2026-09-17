@@ -190,16 +190,23 @@ export function makeLmdbAdapter(dbs: LmdbDbs): PersistenceSink {
     }
   }
 
+  const buffered = () =>
+    ensureBuf.size + entityUpdates.size + entityRemovals.size + arrayRewrites.size + relDeletes.size + relUpserts.size > 0;
+
   function close() {
     if (closed) return;
     closed = true;
-    
-    // Always flush whatever is in the buffers, regardless of scheduled state
+    // Nothing to write (a read-only environment can't open a write transaction)
+    if (!buffered()) return;
+
+    // Flush whatever is in the buffers, regardless of scheduled state
     try {
       entities.transactionSync(() => {
         flushBody();
       });
     } catch (error) {
+      errorCount++;
+      lastError = { op: 'final flush', error };
       console.error('[LMDB] Final flush failed:', error);
     } finally {
       // Clear all buffers
@@ -210,6 +217,16 @@ export function makeLmdbAdapter(dbs: LmdbDbs): PersistenceSink {
       relDeletes.clear();
       relUpserts.clear();
     }
+  }
+
+  /**
+   * A relation write this adapter refuses: counted like any other failed write, so `close()` reports it instead of
+   * the write disappearing with a line in the console
+   */
+  function dropRelation(relId: string, reason: string): void {
+    errorCount++;
+    lastError = { op: 'relation', key: relId, error: new Error(reason) };
+    console.warn(`[LMDB] ${reason}`);
   }
 
   return {
@@ -237,6 +254,8 @@ export function makeLmdbAdapter(dbs: LmdbDbs): PersistenceSink {
           }
         });
       } catch (error) {
+        errorCount++;
+        lastError = { op: 'destroy', key: entityId, error };
         console.error(`[LMDB] Failed to delete entity ${entityId}:`, error);
       }
     },
@@ -262,20 +281,20 @@ export function makeLmdbAdapter(dbs: LmdbDbs): PersistenceSink {
       
       // Validate src and tgt are valid entity IDs (not stringified undefined/null)
       if (!src || src === 'undefined' || src === 'null' || typeof src !== 'string') {
-        console.warn(`[LMDB] Invalid src in onAddRelation: relId=${relId}, src="${src}"`);
+        dropRelation(relId, `Invalid src in onAddRelation: relId=${relId}, src="${src}"`);
         return;
       }
       if (!tgt || tgt === 'undefined' || tgt === 'null' || typeof tgt !== 'string') {
-        console.warn(`[LMDB] Invalid tgt in onAddRelation: relId=${relId}, tgt="${tgt}"`);
+        dropRelation(relId, `Invalid tgt in onAddRelation: relId=${relId}, tgt="${tgt}"`);
         return;
       }
       // Basic entity ID format check (should contain hyphen)
       if (!src.includes('-')) {
-        console.warn(`[LMDB] Invalid src format in onAddRelation: relId=${relId}, src="${src}" (missing hyphen)`);
+        dropRelation(relId, `Invalid src format in onAddRelation: relId=${relId}, src="${src}" (missing hyphen)`);
         return;
       }
       if (!tgt.includes('-')) {
-        console.warn(`[LMDB] Invalid tgt format in onAddRelation: relId=${relId}, tgt="${tgt}" (missing hyphen)`);
+        dropRelation(relId, `Invalid tgt format in onAddRelation: relId=${relId}, tgt="${tgt}" (missing hyphen)`);
         return;
       }
       
@@ -292,7 +311,7 @@ export function makeLmdbAdapter(dbs: LmdbDbs): PersistenceSink {
       if (closed) return;
       const r = relations.get(relId) || relUpserts.get(relId);
       if (!r) {
-        console.warn('[LMDB] onUpdateRelation called on missing relId:', relId);
+        dropRelation(relId, `onUpdateRelation called on missing relId: ${relId}`);
         return;
       }
       
@@ -300,11 +319,11 @@ export function makeLmdbAdapter(dbs: LmdbDbs): PersistenceSink {
       if (patch.src) {
         // Validate src is a valid entity ID
         if (patch.src === 'undefined' || patch.src === 'null' || typeof patch.src !== 'string') {
-          console.warn(`[LMDB] Invalid src in onUpdateRelation: relId=${relId}, src="${patch.src}"`);
+          dropRelation(relId, `Invalid src in onUpdateRelation: relId=${relId}, src="${patch.src}"`);
           return;
         }
         if (!patch.src.includes('-')) {
-          console.warn(`[LMDB] Invalid src format in onUpdateRelation: relId=${relId}, src="${patch.src}" (missing hyphen)`);
+          dropRelation(relId, `Invalid src format in onUpdateRelation: relId=${relId}, src="${patch.src}" (missing hyphen)`);
           return;
         }
         ensureBuf.add(patch.src);
@@ -313,11 +332,11 @@ export function makeLmdbAdapter(dbs: LmdbDbs): PersistenceSink {
       if (patch.tgt) {
         // Validate tgt is a valid entity ID
         if (patch.tgt === 'undefined' || patch.tgt === 'null' || typeof patch.tgt !== 'string') {
-          console.warn(`[LMDB] Invalid tgt in onUpdateRelation: relId=${relId}, tgt="${patch.tgt}"`);
+          dropRelation(relId, `Invalid tgt in onUpdateRelation: relId=${relId}, tgt="${patch.tgt}"`);
           return;
         }
         if (!patch.tgt.includes('-')) {
-          console.warn(`[LMDB] Invalid tgt format in onUpdateRelation: relId=${relId}, tgt="${patch.tgt}" (missing hyphen)`);
+          dropRelation(relId, `Invalid tgt format in onUpdateRelation: relId=${relId}, tgt="${patch.tgt}" (missing hyphen)`);
           return;
         }
         ensureBuf.add(patch.tgt);

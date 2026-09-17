@@ -13,7 +13,7 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`), under `userDataDi
 | Path | Contents |
 |------|----------|
 | `packs/<id>/` | Installed external packs, in the bundle layout (`abuddy.json`, `bundle.json`, `runtime/{index.cjs,fe.js,fe.css,seeds/}`, `build/`, `types/snapshot.json`; see `abuddy-host/src/packs/bundle.ts`) |
-| `host-packs/<id>/` | Built-in packs' build artifacts, published at boot by `publishHostPackArtifacts` |
+| `host-packs/<id>/` | Built-in packs' build output, published at boot by `publishHostPackOutput` |
 | `pack-registry.json` | External pack install state and `enabled` flag |
 
 Hidden `.<id>.installing-*`, `.<id>.previous-*` and `.<id>.publishing-*` dirs are installs or publishes in progress; discovery skips them and `prepareHostDataDirs` cleans up stale ones at boot.
@@ -68,7 +68,7 @@ In `packages/abuddy-host/src/packs/` (`@abuddy/host/packs`):
 | `contributions.ts`, `backend-contributions.ts` | The stores a registry keeps: definitions by type (steps merge facet by facet), designations, seed hooks, seeders, feature settings defaults, commands, shutdown hooks |
 | `pack-registry.ts` | `pack-registry.json` CRUD |
 | `module-bridge.ts` | `withModuleBridge()` |
-| `bundle.ts` | Bundle layout, stage/verify, archives, `publishHostPackArtifacts` |
+| `bundle.ts` | Bundle layout, stage/verify, archives, `publishHostPackOutput` |
 | `pack-installer.ts` | Install from a directory, archive, URL or GitHub release (stage, verify, place); uninstall; `checkDependencies` |
 | `staging.ts` | Staging dir names, `recoverStagingDirs`, `prepareHostDataDirs` |
 | `pack-updater.ts`, `github.ts` | Update checks against GitHub releases |
@@ -91,7 +91,7 @@ The API's `core/router/packs-router.ts` serves `packs.registry` from `getPackBun
    loadExternalPacks()             — discover + reconcile registry + load enabled
    registerExternalPacks()         — registerPack() each
    await built-in                  — the loader recorded them (setBuiltInPackInfos(), loaded-packs.ts)
-5. publishHostPackArtifacts()      — each built-in pack into host-packs/<id>
+5. publishHostPackOutput()      — each built-in pack into host-packs/<id>
 6. earlySystem                     — logs system starts
 7. registry.registerShutdownHook() — each pack's onShutdown, keyed by pack id
 8. store.hydrate()                 — EARS policy now sees all entity types
@@ -155,7 +155,7 @@ EARS, designation, service and repository collisions throw before anything is st
 
 `withHostResolution(fn)` in `bridge.ts` calls `withModuleBridge()` (`../module-bridge.ts`) with:
 - `SDK_BRIDGE` — the loader's own instances (in the app, the API bundle's, which inlines `@abuddy/sdk`, `@abuddy/ears` and `@abuddy/host`) of the shared-instance packages' subpaths (`shared-modules.ts`, built from each package's exports map minus `APP_UNBRIDGED` and the app-only `@abuddy/ears/lmdb`). They go into the require cache (under a bridge key and the real resolved path) and `Module._resolveFilename` resolves those specifiers to them, so pack code shares the bundle's bound app (its registered packs and hydrated EARS engine) instead of loading a separate SDK copy. Pack code never requires `@abuddy/host`, so no host module is bridged.
-- `getSharedBeDeps()` (`xstate`, `zod`) — resolved from `import.meta.url` (the API's `dist/server.js` in the app), since an installed pack has no `node_modules`.
+- `getSharedBeDeps()` (`xstate`, `zod`, and every subpath they export: a bundled dependency may require `zod/v4`) — resolved from `import.meta.url` (the API's `dist/server.js` in the app), since an installed pack has no `node_modules`.
 - `bridgedPackages: SHARED_INSTANCE_PACKAGES` — a pack requiring a shared-instance module the map lacks fails with "isn't provided by this AgentBuddy: rebuild the pack".
 - `appOnly: APP_ONLY_EXPORTS` — a pack requiring `@abuddy/ears/lmdb` fails saying only the app loads it (`abuddy build` already rejects the import).
 
@@ -204,9 +204,9 @@ The `packs.registry` query reports them as `feEntry` and `feStyles`. The rendere
 
 External pack FE modules cannot call `registerPackFE()` themselves: the renderer's registry (`createFePackRegistry()`, `renderer/src/core/fe-host.ts`) isn't theirs to reach, and they register nothing when imported. The host always mediates; pack frontends read what's registered through the SDK's lookups.
 
-## Publishing built-in pack artifacts
+## Publishing built-in pack build output
 
-At boot, `publishHostPackArtifacts(<pack dir>, host-packs/<id>)` copies a built-in pack's `dist/` into the bundle layout so pack authors resolve it as a dependency from the installed app: `dist/snapshot.json` → `types/snapshot.json`, `dist/build/` → `build/`, and, when present, `dist/runtime/index.cjs` → `runtime/index.cjs` with the compiled seeds (`*.seed.json`, `seeds.json`, `media/`) → `runtime/seeds/`.
+At boot, `publishHostPackOutput(<pack dir>, host-packs/<id>)` copies a built-in pack's `dist/` into the bundle layout so pack authors resolve it as a dependency from the installed app: `dist/snapshot.json` → `types/snapshot.json`, `dist/build/` → `build/`, and, when present, `dist/runtime/index.cjs` → `runtime/index.cjs` with the compiled seeds (`*.seed.json`, `seeds.json`, `media/`) → `runtime/seeds/`.
 
 - It does nothing without `dist/snapshot.json`, and returns `false` when the destination's `.fingerprint` (sha256 of every source) already matches.
 - The runtime and seeds must pair: `dev-build.mjs` writes `dist/runtime/seeds-index.sha256`, the sha256 of the `dist/seeds.json` it was built beside. If it doesn't match the current `seeds.json` (seeds recompiled without rebuilding the runtime), publishing throws and nothing is published; `backend.ts` logs a warning and boots on.

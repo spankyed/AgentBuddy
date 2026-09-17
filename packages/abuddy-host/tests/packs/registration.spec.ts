@@ -286,7 +286,7 @@ describe('registerPack commands', () => {
 
 describe('runRegisteredBootSeeds', () => {
   it("seeds a pack's declarative seedManifest and ignores any other boot key", () => {
-    const seedManifest = { artifacts: ['actions'], compiledDir: '/compiled' };
+    const seedManifest = { seedKeys: ['actions'], compiledDir: '/compiled' };
     const smuggled = vi.fn();
     registerPack({ id: 'built-in-pack', systems: [], boot: { seedManifest } } as unknown as PackRegistration);
     registerPack({ id: 'hooks-pack', systems: [], boot: { onInit() {}, seed: smuggled } } as unknown as PackRegistration);

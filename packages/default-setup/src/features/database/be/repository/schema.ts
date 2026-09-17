@@ -1,6 +1,6 @@
 import { EARS } from '@/__generated__/ears';
 import type { DatabaseSchemaInfo } from '../types';
-import { getAllEntityTypes, getEntitiesOfType, getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getRelationStats } from '@abuddy/ears';
+import { getAllEntityTypes, getAllAttributeKinds, getAllRelationKinds } from '@abuddy/ears';
 
 /**
  * Generate schema information from actual data in the system
@@ -23,39 +23,4 @@ export function generateSchemaInfo(): DatabaseSchemaInfo {
   }));
 
   return { entities, attributes, relations };
-}
-
-/**
- * Get detailed schema statistics
- * Useful for debugging and understanding data distribution
- */
-export function getSchemaStats() {
-  const stats = {
-    entities: {} as Record<string, number>,
-    attributes: {} as Record<string, { entityCount: number; totalValues: number }>,
-    relations: {} as Record<string, { totalRelations: number; uniqueSources: number; uniqueTargets: number }>,
-  };
-  
-  // Count entities by type using actual entity types from the index
-  const entityTypes = getAllEntityTypes();
-  for (const entityType of entityTypes) {
-    const instances = getEntitiesOfType(entityType);
-    stats.entities[entityType] = instances.length;
-  }
-  
-  // Get attribute statistics
-  const attributeKinds = getAllAttributeKinds();
-  for (const kind of attributeKinds) {
-    const attrStats = getAttributeStats(kind);
-    stats.attributes[String(kind)] = attrStats;
-  }
-  
-  // Count relations by type
-  const relationKinds = getAllRelationKinds();
-  for (const kind of relationKinds) {
-    const { total, uniqueSources, uniqueTargets } = getRelationStats(kind);
-    stats.relations[kind] = { totalRelations: total, uniqueSources, uniqueTargets };
-  }
-  
-  return stats;
 }

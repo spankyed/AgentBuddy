@@ -3,9 +3,10 @@ import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { bindHost } from '@abuddy/sdk/runtime';
 import { bus } from '@abuddy/sdk/ids';
 import { getLmdbPath, getVolatileLmdbPath } from '@abuddy/sdk/utils';
-import { createEarsEngine, type EarsEngine } from '@abuddy/ears';
-import { openLmdbStore, type LmdbStore } from '@abuddy/ears/lmdb';
-import { createPackRegistry, publishHostPackArtifacts, prepareHostDataDirs, type PackRegistry } from '@abuddy/host/packs';
+import type { EarsEngine } from '@abuddy/ears';
+import type { LmdbStore } from '@abuddy/ears/lmdb';
+import { assertNoDatabaseWriter, openDatabaseStore } from '@abuddy/host/database';
+import { createPackRegistry, discoverBuiltInPacks, publishHostPackOutput, pruneHostPackOutputs, prepareHostDataDirs, type PackRegistry } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import * as path from 'path';
 import {
@@ -52,21 +53,18 @@ export let appPacks: PackRegistry;
 
 /**
  * Opens the app's data and binds the app: the registered packs (`createPackRegistry()`, empty until the caller
- * registers them), the LMDB store (`@abuddy/ears/lmdb`) with their partition policy, the app's engine created with
- * the store's sink as its persistence and checking entity types against the registered packs', and
+ * registers them), the LMDB store and the app's engine persisting to it (`openDatabaseStore`, `@abuddy/host/database`,
+ * which `abuddy db` opens a data dir with too) with their partition policy and entity types, and
  * `bindHost(createHostRuntime(...))` with the root event bus, whose log events are printed, the app version, the
  * registry (the SDK's lookups read it), the engine (packs get its query face, installed by the bind) and the host
  * services over the store and the engine's admin face. The caller hydrates the store once the packs are registered.
- * The db scripts call it too.
  */
 export function openAppStore(): AppStore {
   const packs = createPackRegistry();
-  const store = openLmdbStore({
+  const { store, engine } = openDatabaseStore({
     paths: { primary: getLmdbPath(), volatileBackup: getVolatileLmdbPath() },
-    policy: packs.partitionPolicy,
-    engine: () => engine.admin,
+    schema: packs,
   });
-  const engine = createEarsEngine({ persistence: store.sink, isEntityType: (v: string) => packs.getRegisteredEntityTypes().has(v) });
   bindHost(createHostRuntime({ store, engine, transport: { rootEvents }, appVersion: APP_VERSION, packs }));
   printLogEvents();
   appPacks = packs;
@@ -78,6 +76,11 @@ export let backendActor: ReturnType<typeof createActor<ReturnType<typeof createA
 
 export async function setupBackend(): Promise<void> {
   initializeLogCapture();
+
+  // Before anything opens the database: a tool changing it (`abuddy db`) holds a lock until it's done, and opening
+  // now would overwrite its change from this process's memory
+  const appContext = resolveAppContext();
+  assertNoDatabaseWriter(appContext.userDataDir);
 
   // The app's data: the engine persists to it from here on, and it's hydrated once the packs are registered
   const { store, packs } = openAppStore();
@@ -94,7 +97,6 @@ export async function setupBackend(): Promise<void> {
 
   // Before discovery: a pack an interrupted install left only as its moved-aside copy is restored,
   // and abuddy install learns which AgentBuddy uses this data dir
-  const appContext = resolveAppContext();
   prepareHostDataDirs({ userDataDir: appContext.userDataDir, packsDirs: [appContext.packsDir, appContext.hostPacksDir], version: APP_VERSION });
 
   // API keys: the settings system hears of every change to them
@@ -114,15 +116,20 @@ export async function setupBackend(): Promise<void> {
 
   if (builtInPromise) {
     // Pack authors resolve built-in dependencies (types, step build code) from the installed app
-    for (const info of await builtInPromise) {
+    const builtInInfos = await builtInPromise;
+    for (const info of builtInInfos) {
       try {
-        if (publishHostPackArtifacts(info.dir, path.join(appContext.hostPacksDir, info.id))) {
-          console.log(`[packs] Published build artifacts for built-in pack ${info.id}`);
+        if (publishHostPackOutput(info.dir, path.join(appContext.hostPacksDir, info.id))) {
+          console.log(`[packs] Published build output for built-in pack ${info.id}`);
         }
       } catch (err) {
-        console.warn(`[packs] Could not publish build artifacts for ${info.id}:`, err);
+        console.warn(`[packs] Could not publish build output for ${info.id}:`, err);
       }
     }
+    // A pack this release no longer has leaves its build output behind, which tools would still read as the app's.
+    // Kept by what this build ships, not by what loaded: a pack whose runtime failed this boot still has its own.
+    const stale = pruneHostPackOutputs(appContext.hostPacksDir, discoverBuiltInPacks(builtInDir!).map((pack) => pack.id));
+    if (stale.length > 0) console.log(`[packs] Removed build output of built-in pack(s) this app no longer has: ${stale.join(', ')}`);
   }
 
   // Run early boot hooks (logs system must start before anything else)

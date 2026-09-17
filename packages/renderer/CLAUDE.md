@@ -40,7 +40,7 @@ Its static imports are evaluated first: `virtual:built-in-packs` loads every bui
 
 ## tRPC client (`src/core/trpc.ts`)
 
-- Connects a `wsLink` to `ws://127.0.0.1:<electronAPI.apiPort>` (port default 3001) with `ApiSocket`, which offers the subprotocols `abuddy` and `abuddy-token.<electronAPI.apiToken>`; the API refuses connections without the token. The token isn't in the URL, which the browser prints on a failed connection. `AppRouter` is a type-only import from `@app/api`.
+- Connects a `wsLink` to `ws://${API_HOST}:<electronAPI.apiPort>` (port default 3001) with `ApiSocket`, which offers the subprotocols `abuddy` and `abuddy-token.<electronAPI.apiToken>`; the API refuses connections without the token. The token isn't in the URL, which the browser prints on a failed connection. `AppRouter` is a type-only import from `@app/api`.
 - `trpc` is a `Proxy` over the current connection, so importers keep one binding across reconnects.
 - `reconnectApiClient(port)` closes the socket and reconnects only when the port changed, returning whether it did. A restart on the same port keeps the socket; the ws client reconnects on its own.
 
@@ -91,7 +91,7 @@ The one plugin the renderer defines (`plugin.ts`: id `packs`, `isPinned`). Its m
 
 ## Tests and checks
 
-- `npm run test:unit -w @app/renderer -- --run` runs vitest in jsdom (`vitest.config.ts` merges `vite.config.ts`); without `--run` it starts watch mode. Root `npm run test:unit` doesn't include it; CI runs it separately.
+- `npm run test:unit -w @app/renderer -- --run` runs vitest in jsdom (`vitest.config.ts` merges `vite.config.ts`); without `--run` it starts watch mode. Root `npm run test:unit` runs it too, as CI does.
   - `src/packs/__tests__/pack-loader.spec.ts` covers entry validation, a failed or missing entry, and stylesheet de-duplication.
   - `src/core/actors/__tests__/application-pack-registry.spec.ts` and `application-pack-plugins.spec.ts` drive the actor with `@/core/trpc`, `@/packs/pack-loader` and `@/core/toast` mocked: retry after a failed registry read, queued loads, unload during load, and when `packClientReady` is called.
 - `npm run typecheck:fe` (root) runs `vue-tsc --build`. `npm run build -w @app/renderer` type-checks and runs `vite build` in parallel. `lint` runs oxlint and then eslint, both with `--fix`.

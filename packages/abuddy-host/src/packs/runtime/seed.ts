@@ -86,7 +86,7 @@ export function seedPackData(packs: LoadedPack[], seed: typeof seedData = seedDa
       continue;
     }
 
-    logger.info(`Seeding data artifacts for pack: ${packId}`);
+    logger.info(`Seeding data for pack: ${packId}`);
     let errors: string[];
     try {
       errors = seedErrors(seed({ compiledDir: distDir, mode: 'replace-on-collision' }));
@@ -108,9 +108,9 @@ export function seedPackData(packs: LoadedPack[], seed: typeof seedData = seedDa
   return failures;
 }
 
-function computeManifestSeedHash(compiledDir: string, artifacts: string[]): string {
+function computeManifestSeedHash(compiledDir: string, seedKeys: string[]): string {
   const hash = crypto.createHash('sha256');
-  for (const name of artifacts) {
+  for (const name of seedKeys) {
     const filePath = seedPath(compiledDir, name);
     if (fs.existsSync(filePath)) hash.update(fs.readFileSync(filePath));
   }
@@ -142,12 +142,17 @@ function evaluateSeedPolicy(policy?: PackSeedManifest['seedPolicy']): Record<str
  * through here, so one shared hash would have each pack overwriting the others' and re-seeding forever.
  */
 export function orchestrateDeclarativeSeed(manifest: PackSeedManifest, packId: string): void {
-  const { artifacts, compiledDir, seedPolicy } = manifest;
+  const { seedKeys, compiledDir, seedPolicy } = manifest;
+  // A pack bundle built before this field was named `seedKeys` carries the old one, and its seeds would silently
+  // be no seeds at all: said plainly, as the module bridge says it for an SDK entry the app no longer has
+  if (!Array.isArray(seedKeys)) {
+    throw new Error(`Pack "${packId}" was built with an older @abuddy/cli (its seed manifest has no seedKeys): rebuild it with the current one`);
+  }
   const stored = appState.get();
   const storedHash = stored.seedHashes[packId];
 
   // Fast path: if file mtimes/sizes haven't changed, the hash is the same
-  const seedFiles = artifacts.map(name => ({ path: seedPath(compiledDir, name) }));
+  const seedFiles = seedKeys.map(name => ({ path: seedPath(compiledDir, name) }));
   const fp = statFingerprint(seedFiles);
   const storedFp = stored.seedStatFingerprints[packId];
   if (storedHash && storedFp === fp) {
@@ -157,7 +162,7 @@ export function orchestrateDeclarativeSeed(manifest: PackSeedManifest, packId: s
 
   const record = (field: 'seedHashes' | 'seedStatFingerprints', value: string) => appState.updatePackEntry(field, packId, value);
 
-  const currentHash = computeManifestSeedHash(compiledDir, artifacts);
+  const currentHash = computeManifestSeedHash(compiledDir, seedKeys);
   if (storedHash === currentHash) {
     record('seedStatFingerprints', fp);
     logger.info(`Boot seed skipped for ${packId}: data unchanged`);

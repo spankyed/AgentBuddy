@@ -9,6 +9,9 @@ another detail isn't specified, pick the conventional option, note it in the fin
 Finished when:
 - Phases 1–5 are implemented and each meets its "Done when"; every new guard or test is mutation-checked.
 - `abuddy db` covers every maintained operation of packages/api/scripts/db, and those scripts are gone or thin.
+  Except `seed.ts`: re-running a pack's boot seed needs the pack's own code (its seeders, seed hooks and
+  repositories), which an offline tool doesn't load (Decision 2), and starting the app runs that seed anyway, so the
+  command is deliberately not replaced.
 - No test or manual run opens a real data dir (~/Library/Application Support/abuddy*); all use temp
   ABUDDY_USER_DATA_DIRs.
 - `npm run typecheck`, `npm run typecheck -w @app/main`, `schema:check`, `api:check` (sdk, ui), `packages:build`
@@ -60,7 +63,7 @@ Database operations live in `packages/api/scripts/db` and run through `npm run d
    - **Commands:** `abuddy db query|exec|inspect|export|import|reset|clear-settings`.
    - **Target:** production by default, `-d`/`-b` for development/beta, as `install` does, plus `--data-dir <path>` for a copy of user data.
    - **Output:** every command prints the data dir it targets before acting.
-2. **While the app is running on the target data dir** (OPEN, decide before starting). The API holds the whole database in memory and is its only writer, so a second process writing the files while the app runs loses its writes or overwrites the app's. Choose one:
+2. **While the app is running on the target data dir** (decided 2026-09-17: **A, offline only**; Phase 2 is skipped). The API holds the whole database in memory and is its only writer, so a second process writing the files while the app runs loses its writes or overwrites the app's. Choose one:
    - **A. Offline only.**
      - The CLI always opens the files itself.
      - Writing commands (`exec`, `import`, `reset`, `clear-settings`) refuse while the app runs on that data dir.
@@ -77,7 +80,7 @@ Database operations live in `packages/api/scripts/db` and run through `npm run d
      - hydrates exactly as the API boots;
      - returns `{ query, admin, close }`, where `close` flushes and reports a failed flush as an error, not a log line.
    - **The API and the CLI both use it,** so there is one hydration path.
-4. **Version check.**
+4. **Version check.** (dropped 2026-09-17: `abuddy db` runs queries against the files and reads each data dir's schema from its installed packs, so it checks no app version)
    - Opening a data dir compares the app version the data records with the version range the CLI supports (the CLI's own version, with its major.minor). A mismatch refuses, naming both versions.
    - `--ignore-version` exists only for read commands.
    - The CLI copy bundled inside the app always matches.

@@ -524,11 +524,28 @@
       "globals": {
         "EARS": "typeof _dsl.EARS",
         "qx": "typeof _dsl.qx",
-        "tx": "typeof _dsl.tx",
-        "bp": "typeof _dsl.bp",
-        "spawn": "typeof _dsl.spawn",
+        "getAllEntities": "typeof _dsl.getAllEntities",
+        "getAll": "typeof _dsl.getAll",
+        "queryEntitiesByRelationTo": "typeof _dsl.queryEntitiesByRelationTo",
+        "getAttr": "typeof _dsl.getAttr",
+        "getAttrs": "typeof _dsl.getAttrs",
+        "getRoles": "typeof _dsl.getRoles",
+        "getEntitiesOfType": "typeof _dsl.getEntitiesOfType",
+        "queryEntitiesByAttribute": "typeof _dsl.queryEntitiesByAttribute",
+        "queryEntitiesInRelationTo": "typeof _dsl.queryEntitiesInRelationTo",
+        "findRelations": "typeof _dsl.findRelations",
+        "getRelationStats": "typeof _dsl.getRelationStats",
         "getSchemaStats": "typeof _dsl.getSchemaStats",
-        "isEntity": "typeof _dsl.isEntity"
+        "tx": "typeof _dsl.tx",
+        "destroyEntity": "typeof _dsl.destroyEntity",
+        "prepareEntity": "typeof _dsl.prepareEntity",
+        "createEntityWithDefaults": "typeof _dsl.createEntityWithDefaults",
+        "updateEntity": "typeof _dsl.updateEntity",
+        "createRelation": "typeof _dsl.createRelation",
+        "removeRelation": "typeof _dsl.removeRelation",
+        "removeRelationById": "typeof _dsl.removeRelationById",
+        "grantRole": "typeof _dsl.grantRole",
+        "revokeRole": "typeof _dsl.revokeRole"
       }
     }
   }

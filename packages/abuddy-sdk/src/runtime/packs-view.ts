@@ -8,6 +8,12 @@ import type { SeedHooks } from '../seed/hooks.ts';
 import type { Seeder } from '../utils/seed.ts';
 import type { PackSettingsDefaults } from '../framework/pack-settings.ts';
 import type { PackCommand } from '../framework/pack-commands.ts';
+
+/** Entity types and relation kinds by the name they're declared under (`abuddy.json` `entities`, `relKinds`) */
+export interface EarsNames {
+  entities: Record<string, string>;
+  relKinds: Record<string, string>;
+}
 import { isHostBound, boundHost } from './host-runtime.ts';
 import { isFeHostBound, boundFeHost } from './fe-host.ts';
 
@@ -40,6 +46,8 @@ export interface PackRegistryView extends PackContributionsView {
   onSettingsDefaultsChanged(listener: () => void): () => void;
   /** Every registered pack's declared commands, in the order the packs were first registered */
   commands(): PackCommand[];
+  /** The app's own entity types and relation kinds and every registered pack's, by the name each declares them under */
+  earsNames(): EarsNames;
 }
 
 /**

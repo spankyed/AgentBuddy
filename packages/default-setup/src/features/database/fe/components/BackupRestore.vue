@@ -380,7 +380,9 @@ watch(storedBackupInfo, (newInfo) => {
 watch(backupResult, (result) => {
   if (!result) return;
   const operation = result.operation === 'export' ? 'Export' : 'Import';
-  if (result.error) {
+  if (result.unknownDatabases?.length) {
+    askAboutUnknownDatabases(result.unknownDatabases);
+  } else if (result.error) {
     toast.value?.error(`${operation} failed`, result.error);
   } else if (result.operation === 'export') {
     toast.value?.success('Backup exported successfully!');
@@ -443,13 +445,22 @@ async function selectImportDirectory() {
   }
 }
 
-function handleImport() {
+function handleImport(skipUnknownDatabases = false) {
   if (!canImport.value) return;
 
   const confirmed = confirm('Are you sure you want to import this backup? This will stop the assistant\'s brain and replace all of your current data with the imported data.');
   if (!confirmed) return;
 
-  actor.send({ type: 'BACKUP.IMPORT', path: importPath.value });
+  actor.send({ type: 'BACKUP.IMPORT', path: importPath.value, skipUnknownDatabases });
+}
+
+/** A backup from a newer AgentBuddy: the user says whether to import it without what this one can't hold */
+function askAboutUnknownDatabases(stores: string[]): void {
+  const importAnyway = confirm(
+    `This backup was made by a newer AgentBuddy and also holds ${stores.join(', ')}, which this version doesn't have.\n\n` +
+    'Nothing has been changed yet. Import it without those, replacing your current data with the rest?',
+  );
+  if (importAnyway) actor.send({ type: 'BACKUP.IMPORT', path: importPath.value, skipUnknownDatabases: true });
 }
 
 // Utility functions

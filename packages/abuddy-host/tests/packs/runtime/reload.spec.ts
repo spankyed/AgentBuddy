@@ -7,7 +7,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { registry } from './test-host.ts';
 
-const { publishHostPackArtifacts } = await import('../../../src/packs/index.ts');
+const { publishHostPackOutput } = await import('../../../src/packs/index.ts');
 const { registerPack, unregisterPack, getPackRegistration, getPackBootHooks, registerShutdownHook, removeShutdownHooksForKey } = registry;
 const { reloadExternalPack, reloadBuiltInPack } = await import('../../../src/packs/runtime/reload.ts');
 const { loadBuiltInPacks } = await import('../../../src/packs/runtime/loader.ts');
@@ -111,7 +111,7 @@ describe('reloading a built-in pack', () => {
           systems: [{ id: 'widget', machine: { id: 'widget', config: {} }, events: new Set(['PING']) }],
           boot: {
             onInit() { module.exports.compiledDirAtInit = module.exports.getCompiledDir(); },
-            seedManifest: { artifacts: ['actions'], get compiledDir() { return module.exports.getCompiledDir(); } },
+            seedManifest: { seedKeys: ['actions'], get compiledDir() { return module.exports.getCompiledDir(); } },
           },
         },
       };
@@ -261,11 +261,11 @@ describe('reloading a built-in pack', () => {
     expect(fs.existsSync(path.join(hostPacksDir, BUILT_IN_ID, 'types', 'snapshot.json'))).toBe(true);
   });
 
-  it("republishes the pack's build artifacts and re-reads its manifest", async () => {
+  it("republishes the pack's build output and re-reads its manifest", async () => {
     const packagesDir = writeBuiltIn();
     await loadBuiltInPacks(registry, packagesDir, { runtimeEntry: 'only' });
     const { hostPacksDir } = resolveAppContext();
-    publishHostPackArtifacts(path.join(packagesDir, BUILT_IN_ID), path.join(hostPacksDir, BUILT_IN_ID));
+    publishHostPackOutput(path.join(packagesDir, BUILT_IN_ID), path.join(hostPacksDir, BUILT_IN_ID));
 
     // The rebuild changes the pack's version and its published types
     writeBuiltIn({ version: '2.0.0' });

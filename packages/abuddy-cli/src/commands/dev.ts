@@ -3,7 +3,8 @@ import * as path from 'node:path';
 import { build } from './build';
 import { findPackRoot, readManifest } from '../utils';
 import { findFEEntry, packExternalsPlugin } from '../build/fe-bundler';
-import { API_TOKEN_HEADER, resolveAppContext } from '@abuddy/sdk/env';
+import { readApiEndpoint, resolveAppContext } from '@abuddy/sdk/env';
+import { API_HOST, API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
 import { installPackFromLocal, readHostVersion } from '@abuddy/host/packs';
 import { removeDevServerMarker, writeDevServerMarker } from '@abuddy/host/packs/dev-server';
 
@@ -11,9 +12,9 @@ import { removeDevServerMarker, writeDevServerMarker } from '@abuddy/host/packs/
 function getDevApi(): { url: string; token: string } | null {
   try {
     const { apiPortFile, apiTokenFile } = resolveAppContext({ env: 'development' });
-    const port = fs.readFileSync(apiPortFile, 'utf-8').trim();
+    const api = readApiEndpoint(apiPortFile);
     const token = fs.readFileSync(apiTokenFile, 'utf-8').trim();
-    return port && token ? { url: `http://127.0.0.1:${port}`, token } : null;
+    return api && token ? { url: `http://${API_HOST}:${api.port}`, token } : null;
   } catch { return null; }
 }
 

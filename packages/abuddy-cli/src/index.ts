@@ -12,7 +12,7 @@ Commands:
   generate            Generate EARS types from manifest + deps
   generate-entries    Generate __generated__/ files from manifest
   fetch-deps          Fetch dependency type manifests
-  build [--skip-generate]  Compile pack artifacts to dist/
+  build [--skip-generate]  Compile the pack to dist/
   pack                Bundle dist/ into a verified .tgz + .sha256
   release [patch|minor|major] [--beta] [--dry-run] [--local]  Cut a release
   validate            Check manifest and types
@@ -23,9 +23,10 @@ Commands:
   init-tests            Scaffold Playwright E2E test setup
   test [args...]        Run E2E tests in AgentBuddy (--app-root <path> | --app beta)
   open [-b]           Open the installed AgentBuddy app
+  db <command>        Query, export, import or reset the app's database (AgentBuddy closed)
   info                Show pack summary
   doctor              Run health checks
-  clean               Remove build artifacts
+  clean               Remove build output
 
 Options:
   --help, -h          Show this help
@@ -49,6 +50,7 @@ const COMMANDS: Record<string, () => Promise<(args: string[]) => Promise<void>>>
   'init-tests': async () => (await import('./commands/init-tests')).initTests,
   'test':       async () => (await import('./commands/test')).test,
   'open':       async () => (await import('./commands/open')).open,
+  'db':         async () => (await import('./commands/db')).db,
   'info':       async () => (await import('./commands/info')).info,
   'doctor':     async () => (await import('./commands/doctor')).doctor,
   'clean':      async () => (await import('./commands/clean')).clean,

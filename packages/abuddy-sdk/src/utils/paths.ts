@@ -2,11 +2,32 @@ import * as path from 'path'
 import * as fs from 'fs'
 import { resolveAppContext } from '../env/index.ts'
 
-const DATA_DIRS = {
+/** @internal Host-only: the app's stores in a data dir */
+export interface AppDataPaths {
+  /** The database's primary partition */
+  lmdb: string
+  /** The database's volatile partition (run history) */
+  volatileLmdb: string
+  /** The user's API keys */
+  secretsFile: string
+  media: string
+}
+
+const DATA_DIRS: AppDataPaths = {
   lmdb:         'ears-db',
   volatileLmdb: 'ears-trace',
   secretsFile:  'secrets.json',
   media:        'media',
+}
+
+/**
+ * @internal Host-only: where `userDataDir` keeps the app's stores. A packaged app keeps them at its root, a source
+ * run (NODE_ENV=development) under `.data/`.
+ */
+export function appDataPaths(userDataDir: string, { packaged }: { packaged: boolean }): AppDataPaths {
+  const base = packaged ? userDataDir : path.join(userDataDir, '.data')
+  const entries = Object.entries(DATA_DIRS).map(([key, name]) => [key, path.join(base, name)])
+  return Object.fromEntries(entries) as AppDataPaths
 }
 
 // === Public API ===
@@ -28,7 +49,7 @@ export const ensureDirectoryExists = (dirPath: string): void => {
 }
 
 export function resolvePath(key: keyof typeof DATA_DIRS): string {
-  return getDataDirPath(DATA_DIRS[key])
+  return appDataPaths(getUserDataPath(), { packaged: process.env.NODE_ENV === 'production' })[key]
 }
 
 /** A directory the app or a pack keeps data in, under the app's data directory (`name` is its folder) */

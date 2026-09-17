@@ -3,6 +3,7 @@ import { reportError, createLogger } from '@abuddy/sdk/logger';
 import { isModelId } from '@abuddy/sdk/models';
 import { services } from '@/__generated__/services';
 import { executeQuery } from '@/features/database/be/execute/query';
+import { WRITE_HELPER_NAMES } from '@abuddy/sdk/database-console';
 import { DEFAULT_MODEL } from '../llm/model';
 import { DEFAULT_RESULT_KEY } from './result-key';
 import type { QueryNode } from './types';
@@ -13,13 +14,10 @@ const brainLogger = createLogger('brain', { debug: true });
 const QUERY_SYSTEM_PROMPT = 'DB Query System';
 
 /**
- * The database console's write helpers (`execute/transaction.ts`). The query executor doesn't provide them, so
- * a query calling one fails with "<name> is not defined" before it writes anything.
+ * The database console's write helpers. The query executor doesn't provide them, so a query calling one fails
+ * with "<name> is not defined" before it writes anything.
  */
-const WRITE_HELPERS = new Set([
-  'tx', 'destroyEntity', 'prepareEntity', 'createEntityWithDefaults', 'updateEntity',
-  'createRelation', 'removeRelation', 'removeRelationById', 'grantRole', 'revokeRole',
-]);
+const WRITE_HELPERS = new Set(WRITE_HELPER_NAMES);
 
 /** The model's reply without a markdown code fence around it */
 function stripCodeFence(text: string): string {

@@ -5,14 +5,17 @@
 ```ts
 
 // @public
-export const API_TOKEN_HEADER = "x-abuddy-api-token";
+export interface ApiEndpoint {
+    pid: number;
+    // (undocumented)
+    port: number;
+}
 
 // @public (undocumented)
 export const APP_ENVS: readonly AppEnv[];
 
 // @public (undocumented)
 export interface AppContext {
-    // (undocumented)
     apiPortFile: string;
     apiTokenFile: string;
     appName: string;
@@ -28,6 +31,9 @@ export interface AppContext {
     // (undocumented)
     userDataDir: string;
 }
+
+// @public
+export function appDataDirFor(env: AppEnv): string;
 
 // @public (undocumented)
 export type AppEnv = 'production' | 'beta' | 'development' | 'test';
@@ -47,9 +53,12 @@ export function inferElectronAppEnv(input: {
 export function parseAppEnv(value: string | undefined): AppEnv | undefined;
 
 // @public
-export type ReleaseChannel = Extract<AppEnv, 'production' | 'beta'>;
+export function readApiEndpoint(apiPortFile: string): ApiEndpoint | null;
 
 // @public
+export type ReleaseChannel = Extract<AppEnv, 'production' | 'beta'>;
+
+// @public (undocumented)
 export function resolveAppContext(input?: {
     env?: AppEnv;
     userDataDir?: string;

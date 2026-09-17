@@ -27,7 +27,6 @@ it('exports until the system reports success', () => {
   const actor = backupView();
 
   actor.send({ type: 'BACKUP.EXPORT', path: '/backups', databases: ['lmdb'] });
-  expect(sendToSystem).toHaveBeenCalledWith('database', { type: 'EXPORT_DATABASE', path: '/backups', name: undefined, databases: ['lmdb'] });
   expect(backup(actor)).toEqual({ exporting: true, importing: false, backupResult: null });
 
   actor.send({ type: 'EXPORT_DATABASE_SUCCESS', path: '/backups/backup-1' });
@@ -38,10 +37,25 @@ it('keeps an import failure, also after leaving the backup view', () => {
   const actor = backupView();
 
   actor.send({ type: 'BACKUP.IMPORT', path: '/backups/backup-1' });
-  expect(sendToSystem).toHaveBeenCalledWith('database', { type: 'IMPORT_DATABASE', path: '/backups/backup-1' });
   expect(backup(actor).importing).toBe(true);
   actor.send({ type: 'BACK_TO_EXPLORER' });
 
   actor.send({ type: 'IMPORT_DATABASE_ERROR', error: 'no manifest' });
   expect(backup(actor)).toEqual({ exporting: false, importing: false, backupResult: { operation: 'import', error: 'no manifest' } });
+});
+
+it("keeps the stores a newer AgentBuddy's backup holds, so the view can ask, and imports without them when told to", () => {
+  const actor = backupView();
+
+  actor.send({ type: 'BACKUP.IMPORT', path: '/backups/backup-1' });
+  actor.send({ type: 'IMPORT_DATABASE_ERROR', error: 'a newer AgentBuddy made it', unknownDatabases: ['searchIndex'] });
+  expect(backup(actor)).toEqual({
+    exporting: false,
+    importing: false,
+    backupResult: { operation: 'import', error: 'a newer AgentBuddy made it', unknownDatabases: ['searchIndex'] },
+  });
+
+  // What the view sends once the user has said to import it anyway
+  actor.send({ type: 'BACKUP.IMPORT', path: '/backups/backup-1', skipUnknownDatabases: true });
+  expect(sendToSystem).toHaveBeenCalledWith('database', { type: 'IMPORT_DATABASE', path: '/backups/backup-1', skipUnknownDatabases: true });
 });

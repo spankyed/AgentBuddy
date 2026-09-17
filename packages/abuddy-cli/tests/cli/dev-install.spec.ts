@@ -66,11 +66,11 @@ describe('abuddy dev reloads', () => {
   }
 
   it("send the pack id with the token from the dev app's token file", async () => {
-    const { API_TOKEN_HEADER } = await import('@abuddy/sdk/env');
+    const { API_TOKEN_HEADER } = await import('@abuddy/sdk/utils/pure');
     expect(API_TOKEN_HEADER).toBe('x-abuddy-api-token');
     const api = await fakeApi(200);
     try {
-      fs.writeFileSync(path.join(userDataDir, 'api-port'), `${api.port}\n`);
+      fs.writeFileSync(path.join(userDataDir, 'api-port'), JSON.stringify({ port: api.port, pid: process.pid }));
       fs.writeFileSync(path.join(userDataDir, 'api-token'), 'the-dev-token\n');
       const { reloadDevPack } = await import('../../src/commands/dev');
 
@@ -86,7 +86,7 @@ describe('abuddy dev reloads', () => {
     expect(await reloadDevPack('my-pack')).toBe('not-running');
 
     const api = await fakeApi(403);
-    fs.writeFileSync(path.join(userDataDir, 'api-port'), String(api.port));
+    fs.writeFileSync(path.join(userDataDir, 'api-port'), JSON.stringify({ port: api.port, pid: process.pid }));
     expect(await reloadDevPack('my-pack'), 'no token file').toBe('not-running');
     fs.writeFileSync(path.join(userDataDir, 'api-token'), '\n');
     expect(await reloadDevPack('my-pack'), 'an empty token file').toBe('not-running');

@@ -9,13 +9,11 @@ import { createLogger } from '@abuddy/sdk/logger';
 import { SERVER_CONFIG, apiToken, apiTokenIsOwn, isApiToken } from '@/setup/config';
 import { appPacks, backendActor } from '@/setup/backend';
 import { reloadBuiltInPack, reloadExternalPack } from '@abuddy/host/packs/runtime';
-import { API_TOKEN_HEADER, resolveAppContext } from '@abuddy/sdk/env';
+import { resolveAppContext, type ApiEndpoint } from '@abuddy/sdk/env';
+import { API_HOST, API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('backend');
 const reloadingPacks = new Set<string>();
-
-/** The only interface the server listens on: the app's own processes and local tools reach it, nothing on the network does */
-export const API_HOST = '127.0.0.1';
 
 /**
  * The WebSocket subprotocol the app's windows speak, the one the server answers with. They send the API token as a
@@ -92,6 +90,39 @@ function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse) 
   res.end();
 }
 
+/**
+ * Writes a file only this user can read: a new file created with those permissions, then moved over any file already
+ * there, so neither an existing file's permissions nor a half-written one is ever what a reader finds.
+ */
+function writePrivateFile(file: string, content: string): void {
+  const temp = `${file}.${process.pid}.tmp`;
+  fs.rmSync(temp, { force: true });
+  fs.writeFileSync(temp, content, { mode: 0o600, flag: 'wx' });
+  fs.renameSync(temp, file);
+}
+
+/**
+ * Tells local tools where this API is. Every run publishes its port, so a tool finds it and can tell that an app is
+ * running on the data dir, whatever the platform (`abuddy db` refuses to change a database an app holds); the port
+ * alone opens nothing, since a call needs the token. The token itself goes to a file only where a local tool may use
+ * it: a development app (`abuddy dev`, the built-in pack's watcher), and an API started by hand, which made up its
+ * own. That file is readable only by the user. Both are removed when the process exits.
+ */
+export function publishApiFiles(port: number, token: string): void {
+  const { apiPortFile, apiTokenFile } = resolveAppContext();
+  try {
+    fs.mkdirSync(path.dirname(apiPortFile), { recursive: true });
+    // With the process id, so a tool can tell a running API from a file a crashed run left behind
+    writePrivateFile(apiPortFile, JSON.stringify({ port, pid: process.pid } satisfies ApiEndpoint));
+  } catch {}
+
+  if (process.env.NODE_ENV !== 'development' && !apiTokenIsOwn()) return;
+  try {
+    writePrivateFile(apiTokenFile, token);
+    if (apiTokenIsOwn()) logger.info(`No ABUDDY_API_TOKEN given: clients send the token in ${apiTokenFile}`);
+  } catch {}
+}
+
 export function createWebSocketServer() {
   const port = SERVER_CONFIG.port;
   const token = apiToken();
@@ -110,20 +141,7 @@ export function createWebSocketServer() {
     const message = `✅ WebSocket Server listening on ws://localhost:${port} (tRPC endpoint: ws://localhost:${port}/trpc)`;
     console.log(message);
 
-    // Local tools (`abuddy dev`, the built-in pack's watcher) find a development app's API through these files, and
-    // an API started by hand tells its clients its own token the same way. The token file is readable only by the user.
-    if (process.env.NODE_ENV === 'development' || apiTokenIsOwn()) {
-      const { apiPortFile, apiTokenFile } = resolveAppContext();
-      try {
-        fs.mkdirSync(path.dirname(apiPortFile), { recursive: true });
-        fs.writeFileSync(apiPortFile, String(port));
-        // A new file created private, then moved over the old one: an existing file's permissions never apply to the token
-        const tempFile = `${apiTokenFile}.${process.pid}.tmp`;
-        fs.writeFileSync(tempFile, token, { mode: 0o600, flag: 'wx' });
-        fs.renameSync(tempFile, apiTokenFile);
-        if (apiTokenIsOwn()) logger.info(`No ABUDDY_API_TOKEN given: clients send the token in ${apiTokenFile}`);
-      } catch {}
-    }
+    publishApiFiles(port, token);
   });
 
   // Apply tRPC handler

@@ -264,6 +264,12 @@ const id = tx(EARS.Entity.Bookmark).batchPut({ url, title }).id();   // EARS.Ent
 const created = createEntityWithDefaults(EARS.Entity.Bookmark, { url, title }, 'BKM');
 ```
 
+A name the engine doesn't know as an entity type is read as an entity id, so the query finds nothing rather than
+failing. That matters when a pack your code queries isn't installed: `qx(EARS.Entity.Bookmark)` returns an empty
+list, not an error, and its rows are still there — reachable by id, and readable again as soon as the pack is back.
+`#generated/ears` rejects an entity name your pack and its dependencies don't declare at compile time, so this only
+bites where the name is a runtime `string`.
+
 `tx` from `#generated/ears` checks the values of declared fields when it knows the entity:
 seeded with an entity type, or with an id that carries one (see *Entity ids* below). Fields
 the shape doesn't declare are still accepted, and a plain id leaves every write unchecked.

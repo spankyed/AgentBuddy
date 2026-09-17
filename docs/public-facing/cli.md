@@ -1,6 +1,6 @@
 # CLI Reference
 
-The `abuddy` CLI manages the full pack lifecycle: scaffolding, code generation, building, validation, testing, releasing and installation.
+The `abuddy` CLI manages the full pack lifecycle: scaffolding, code generation, building, validation, testing, releasing and installation. It also reads and repairs the app's database (`abuddy db`).
 
 ## Installing
 
@@ -225,8 +225,104 @@ Show installed packs.
 
 Open the installed AgentBuddy app, or bring it to the front if it's running. Pass `-b` for AgentBuddy Beta. macOS only.
 
+### Database
+
+`abuddy db` reads and changes the app's database (EARS on LMDB) from the command line: to look at data, repair it when the app can't start, or move it between machines.
+
+```bash
+abuddy db query "return qx(EARS.Entity.Note).count()"
+abuddy db inspect Flow-123 --depth 2
+abuddy db export --out ./export
+abuddy db import ./agentbuddy-backup-2026-09-17 --production --force
+abuddy db reset --production        # lists what it would delete
+```
+
+**Which data.** `-d` targets the development app's data dir, `-b` AgentBuddy Beta's, `--production` the production app's, and `--data-dir <path>` any data dir, such as a copy of the user's. Name one of them, not two. A command that only reads takes the production app's data without being told, and a dry run of `import`, `reset` or `clear-settings` counts as reading; **a change (`exec`, `repl --write`, and those three with `--force`) names its data dir**, so the user's own data is never what a forgotten flag hits. Each command prints the data dir it opens (on stderr, so results on stdout stay clean). A flag means that app's own data dir, whatever `ABUDDY_USER_DATA_DIR` is set to in the shell; the variable applies only when nothing names a data dir.
+
+**While the app runs.** The commands open the database files themselves (offline); the app keeps the whole database in memory and is its only writer. So a change (`exec`, `repl --write`, and `import`, `reset` or `clear-settings` with `--force`) refuses while an AgentBuddy app runs on the data dir: the API it published is running, or (on macOS and Linux) its instance lock is held by a live process. Files left behind by a crash name processes that have exited, so they don't stand in the way. Quit the app first. Reading commands work, with a warning that they miss what the app hasn't written yet, and so do the dry runs: they open the database without writing to it, so they also work against a copy you have no permission to change.
+
+While a command changes the database it holds a lock on the data dir (`db-write.lock`), so a second `abuddy db` is refused and an AgentBuddy started meanwhile refuses to open that database instead of overwriting the change. A lock left behind by a command that was killed is ignored once its process is gone.
+
+**The run history.** The database has two partitions: the app's data, and the run history (`TNode` rows, what each flow step did). Commands read the data only, as the app does, so a query for `TNode` comes back empty until you pass `--volatile`, which reads both. `reset` deletes both either way; its listing counts the run history only with `--volatile`.
+
+**Seeding.** There is no seed command: AgentBuddy seeds each pack's data when it starts (and `abuddy dev` re-seeds a pack it rebuilds), so start the app rather than seed a data dir by hand.
+
+**Installed packs.** Entity types, relation kinds and where each type is stored come from the packs installed in the data dir (the built-in packs the app published to `host-packs/`, and the enabled packs in `packs/`); no pack code runs. A data dir the app has never started on has none, and is refused.
+
+#### `abuddy db query <code> | --file <path> [-o pretty|json|csv] [--out <file>]`
+
+Run query code with the Database console's read helpers: `qx`, `EARS`, `getAttr`, `getAttrs`, `getAll`, `getRoles`, `getAllEntities`, `getEntitiesOfType`, `findRelations`, `getRelationStats`, `getSchemaStats`, `queryEntitiesByAttribute`, `queryEntitiesByRelationTo`, `queryEntitiesInRelationTo`. The code is a function body, as in the console: `return` the result. `EARS.Entity` holds the installed packs' entity types. It runs as a plain function, so it can't use top-level `await`, `import` or `require` — a script (`abuddy db script`) can.
+
+```bash
+abuddy db query "return qx(EARS.Entity.Settings).pickAll()" -o json --out settings.json
+abuddy db query --file ./report.js -o csv
+```
+
+#### `abuddy db exec <code> | --file <path> [-o pretty|json|csv] [--out <file>]` (names its data dir)
+
+Run transaction code with the console's read and write helpers (`tx`, `destroyEntity`, `prepareEntity`, `createEntityWithDefaults`, `updateEntity`, `createRelation`, `removeRelation`, `removeRelationById`, `grantRole`, `revokeRole`). Despite the name, the code is not one transaction: each helper writes as the code runs, so code that throws part way leaves the writes it already made — the failure says so, and there is nothing to roll back. A write that fails to reach the files fails the command.
+
+```bash
+abuddy db exec "tx('Note-123').put('title', 'Renamed')"
+```
+
+#### `abuddy db repl [--write]` (`--write` names its data dir)
+
+Run console code a line at a time and print each result: query code, or with `--write` transaction code, whose changes are written on exit. `.exit` or Ctrl+D quits.
+
+#### `abuddy db script <file> [--read-only] [-o pretty|json|csv] [--out <file>] [-- <script arguments>]` (names its data dir)
+
+Run a script file against the database, for work a one-liner can't do: it imports what it likes and brings its own helpers. JavaScript (`.mjs`, `.js`, `.cjs`) runs as it is; TypeScript is compiled first, to a temp file rather than your own directory, with its relative imports compiled in and its packages resolved from where the script lives, so `import.meta` and every import still point where you'd expect. The file default-exports a function, which is called with the open database and whose result is printed like a query's.
+
+```ts
+// notes-report.ts
+export default async ({ db, EARS, args, log }) => {
+  const notes = db.query.getEntitiesOfType(EARS.Entity.Note);
+  log(`${notes.length} notes`);
+  return notes.map((id) => db.query.getAll(id));
+};
+```
+
+```bash
+abuddy db script ./notes-report.ts --production -o json --out notes.json
+abuddy db script ./cleanup.ts -d -- --older-than 30
+```
+
+| It receives | |
+|---|---|
+| `db` | the open database: `query` (`qx`, `tx`, the finders), `admin`, `store`, `schema`, `paths`, `userDataDir` |
+| `EARS` | the entity types and relation kinds of the packs installed in that data dir |
+| `args` | whatever follows `--` |
+| `log` | prints a line, like the script's own output |
+
+The database is handed to the script rather than left for it to open: the published CLI carries its own copy of the engine, so a script importing `@abuddy/ears` itself would get a second one, with no data in it. `--read-only` opens the database without writing, so a reporting script can run while AgentBuddy is open.
+
+#### `abuddy db inspect [<entity-id> | --type <Entity>] [--depth <n>] [--incoming] [--outgoing]`
+
+Print an entity, its roles and its relations grouped by kind, following them `--depth` levels (default 1); `--incoming` or `--outgoing` shows one direction. `--type` prints the first five entities of a type. With neither, it prints entities and relations per entity type.
+
+#### `abuddy db export --out <dir> [--type <Entity>...] [--format json|csv]`
+
+Write each entity type's entities, with every attribute, to `<dir>/<Entity>.json` (or `.csv`), and a summary (when it ran, the data dir, the format and the counts) to `<dir>/export.json`. Without `--type`, every type with entities. Roles are in each entity's `role` attribute, and relations are the `Relation` entities (their `relationDetails`).
+
+#### `abuddy db import <backup-dir> [--force] [--skip-unknown]` (names its data dir)
+
+Replace the database, and the media folder when the backup has one, with a backup made in the Database settings' Backup & Restore. The backup is checked first: it has `metadata.json`, lists the app's main database, that folder is there, and every database it would put in place opens in a storage format this version reads — so a backup this AgentBuddy can't read is refused before any of your data is replaced. A backup made by a newer AgentBuddy may also hold stores this one doesn't have; importing it would replace your data with an incomplete copy, so it's refused unless you pass `--skip-unknown`, which imports it without them. If the backup lists a store it holds nothing for, the listing says so and that store comes back empty. Without `--force` it lists the backup, its contents and what it would replace, and changes nothing. The app migrates the data on its next start if the backup is from an earlier version.
+
+#### `abuddy db reset [--force] [--keep-keys]` (names its data dir)
+
+Delete all of the app's data, as Reset Database in the Database settings does: both database partitions (the data and the run history) and the stored API keys. The app creates its default data (settings, seeded flows, the packs' seeds) on its next start and shows onboarding. Without `--force` it lists the entities per type and each stored key it would delete.
+
+No backup holds the API keys — `export` and the Database settings' backups copy the databases and the media folder, never the keys or the data key that encrypts them — so a deleted key is entered again in Settings → Secrets, from the provider's own account. That's why the listing names each one by provider and label (never its value), and why `--keep-keys` leaves them where they are and deletes only the data.
+
+#### `abuddy db clear-settings [--force]` (names its data dir)
+
+Destroy every Settings row (the user's changes to the default settings); the app recreates the defaults on its next start. Without `--force` it lists each row and the settings it stores.
+
+In the AgentBuddy repo, `npm run db:query`, `db:exec`, `db:repl`, `db:inspect`, `db:export`, `db:import`, `db:reset` and `db:clear-settings` run these commands on the development app's data (`-d`): `npm run db:query -- "return qx().count()"`.
+
 ### Cleanup
 
 #### `abuddy clean`
 
-Remove build artifacts: `dist/`, `.abuddy/`, `src/__generated__/`.
+Remove build output: `dist/`, `.abuddy/`, `src/__generated__/`.
