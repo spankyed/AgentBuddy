@@ -1,7 +1,7 @@
 import fs from 'fs-extra';
 import path from 'node:path';
 import { createLogger } from '@abuddy/sdk/logger';
-import { closeEnv, openEnvAt, type LmdbStore } from '@abuddy/ears/lmdb';
+import { closeEnv, openEnvAt, LMDB_FORMAT_VERSION, type LmdbStore } from '@abuddy/ears/lmdb';
 import { UnknownBackupDatabasesError } from '@abuddy/sdk/services';
 
 const logger = createLogger('database:backup');
@@ -41,7 +41,8 @@ const databasePath = (store: Pick<LmdbStore, 'paths'>, name: DatabaseName) => st
 export async function exportDatabase(
   store: Pick<LmdbStore, 'paths' | 'snapshot'>,
   targetPath: string,
-  { name, databases = ['lmdb'], mediaPath, log = defaultLog }: { name?: string; databases?: DatabaseName[]; mediaPath: string; log?: BackupLog },
+  { name, databases = ['lmdb'], mediaPath, appVersion, log = defaultLog }:
+    { name?: string; databases?: DatabaseName[]; mediaPath: string; appVersion?: string; log?: BackupLog },
 ): Promise<string> {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const fullBackupPath = path.join(targetPath, name || `agentbuddy-backup-${timestamp}`);
@@ -58,8 +59,11 @@ export async function exportDatabase(
   await fs.writeJson(path.join(fullBackupPath, 'metadata.json'), {
     timestamp: Date.now(),
     databases,
-    version: '1.0.0',
     includesMedia,
+    // What wrote it, for the refusal message and for reading a backup folder by eye. Provenance only: whether a
+    // backup restores is settled by opening its databases (readBackup), never by what this says.
+    ...(appVersion !== undefined && { appVersion }),
+    storageFormat: LMDB_FORMAT_VERSION,
   });
 
   for (const dbName of databases) {
@@ -190,6 +194,7 @@ export async function getBackupInfo(backupPath: string) {
       databases,
       size: totalSize,
       hasMedia,
+      ...(typeof metadata.appVersion === 'string' && { appVersion: metadata.appVersion }),
     };
   } catch {
     return null;
@@ -199,6 +204,13 @@ export async function getBackupInfo(backupPath: string) {
 /** What a backup holds, read without changing it */
 export interface BackupContents {
   timestamp?: number;
+  /** The AgentBuddy that made it, when it recorded one */
+  appVersion?: string;
+  /**
+   * The storage format its databases were written in, when it recorded one. Provenance only: whether this build can
+   * read them is settled by opening them, so a backup that opens restores whatever this says.
+   */
+  storageFormat?: number;
   /** The databases it restores */
   databases: DatabaseName[];
   hasMedia: boolean;
@@ -219,7 +231,7 @@ export interface BackupContents {
 /**
  * Checks the backup at `dir` restores into this app and reads what it holds: its metadata lists the primary database
  * (`lmdb`), which is there and opens (so a backup in another storage format is refused here, not half-way through an
- * import). A listed database whose folder is missing was empty and is left out, as the import leaves it out, and one
+ * import; the refusal names the AgentBuddy that made it when the backup recorded one). A listed database whose folder is missing was empty and is left out, as the import leaves it out, and one
  * this AgentBuddy doesn't have is reported as `unknownDatabases` for the caller to decide about. Throws naming what's
  * wrong. `entityTypes` are the types to count, and any type the backup holds that isn't among them comes back as
  * `unknownEntityTypes`.
@@ -227,13 +239,14 @@ export interface BackupContents {
 export function readBackup(dir: string, entityTypes: Iterable<string> = []): BackupContents {
   const metadataFile = path.join(dir, 'metadata.json');
   if (!fs.existsSync(metadataFile)) throw new Error(`${dir} isn't a backup: it has no metadata.json`);
-  let metadata: { timestamp?: unknown; databases?: unknown };
+  let metadata: { timestamp?: unknown; databases?: unknown; appVersion?: unknown; storageFormat?: unknown };
   try {
     metadata = fs.readJsonSync(metadataFile);
   } catch (error) {
     throw new Error(`${metadataFile} can't be read: ${(error as Error).message}`);
   }
   if (!Array.isArray(metadata.databases)) throw new Error(`${metadataFile} lists no databases`);
+  const appVersion = typeof metadata.appVersion === 'string' ? metadata.appVersion : undefined;
   const unknownDatabases = metadata.databases.filter((name) => !isKnownDatabase(String(name))).map(String);
   const listed = metadata.databases.filter((name) => isKnownDatabase(String(name))) as DatabaseName[];
   const missingDatabases = listed.filter((name) => !fs.existsSync(path.join(dir, name, 'data.mdb')));
@@ -242,7 +255,15 @@ export function readBackup(dir: string, entityTypes: Iterable<string> = []): Bac
   const databases = listed.filter((name) => !missingDatabases.includes(name));
   if (!databases.includes('lmdb')) throw new Error(`The backup's lmdb folder is missing or has no data.mdb`);
 
-  const env = openEnvAt(path.join(dir, 'lmdb'), { readOnly: true });
+  // Whether a backup can be restored is the files' answer, not the metadata's: a backup whose databases open is
+  // restorable whatever metadata.json claims. What it recorded about its origin goes into the message, no more.
+  let env;
+  try {
+    env = openEnvAt(path.join(dir, 'lmdb'), { readOnly: true });
+  } catch (error) {
+    const made = appVersion ? ` (backup made by AgentBuddy ${appVersion})` : '';
+    throw new Error(`${(error as Error).message}${made}`, { cause: error });
+  }
   try {
     const perType = new Map<string, number>();
     for (const { value } of env.entities.getRange() as Iterable<{ value: { type?: string } }>) {
@@ -257,6 +278,8 @@ export function readBackup(dir: string, entityTypes: Iterable<string> = []): Bac
       : [...perType].filter(([type]) => !known.has(type)).sort(([a], [b]) => a.localeCompare(b));
     return {
       ...(typeof metadata.timestamp === 'number' && { timestamp: metadata.timestamp }),
+      ...(appVersion !== undefined && { appVersion }),
+      ...(typeof metadata.storageFormat === 'number' && { storageFormat: metadata.storageFormat }),
       databases,
       unknownDatabases,
       missingDatabases,

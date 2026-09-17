@@ -8,6 +8,8 @@ export interface BackupInfo {
   /** Bytes, across the backed-up databases */
   size: number;
   hasMedia: boolean;
+  /** The AgentBuddy that made it; missing from backups made before this was recorded */
+  appVersion?: string;
 }
 
 /**

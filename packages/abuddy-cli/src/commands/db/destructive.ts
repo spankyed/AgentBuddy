@@ -170,7 +170,7 @@ export async function dbImport(args: string[], io: DbIo): Promise<void> {
       );
     }
     io.out(`Backup: ${backupDir}`);
-    if (backup.timestamp) io.out(`  made ${new Date(backup.timestamp).toISOString()}`);
+    if (backup.timestamp) io.out(`  made ${new Date(backup.timestamp).toISOString()}${backup.appVersion ? ` by AgentBuddy ${backup.appVersion}` : ''}`);
     io.out(`  databases: ${backup.databases.join(', ')}${backup.hasMedia ? ', with media' : ''}`);
     if (backup.unknownDatabases.length > 0) io.out(`  leaving out ${backup.unknownDatabases.join(', ')}, which this AgentBuddy doesn't have`);
     if (backup.missingDatabases.length > 0) io.out(`  lists ${backup.missingDatabases.join(', ')} but holds nothing for it, so it comes back empty`);

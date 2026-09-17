@@ -5,6 +5,7 @@ import type { LmdbStore } from '@abuddy/ears/lmdb';
 import { exportDatabase, getBackupInfo, importDatabase } from '../backup/index.ts';
 import { secretsStore } from '../secrets/index.ts';
 import { getMediaPath } from '@abuddy/sdk/utils';
+import { getAppVersion } from '@abuddy/sdk/env';
 import type { PackRegistry } from '../packs/pack-registration.ts';
 import { getLoadedPacks } from '../packs/runtime/loaded-packs.ts';
 import { startPacks } from '../packs/runtime/start.ts';
@@ -30,7 +31,8 @@ export function createAppData(store: LmdbStore, engine: EarsAdmin, registry: Pac
     },
     hasOnboarded: () => appState.get().hasOnboarded,
     completeOnboarding: () => appState.update({ hasOnboarded: true }),
-    exportBackup: (targetPath, name, databases) => exportDatabase(store, targetPath, { name, databases, mediaPath: getMediaPath() }),
+    exportBackup: (targetPath, name, databases) =>
+      exportDatabase(store, targetPath, { name, databases, mediaPath: getMediaPath(), appVersion: getAppVersion() }),
     async importBackup(backupPath, options) {
       try {
         // The installed packs' types, so a backup holding rows of a type none of them declares is reported

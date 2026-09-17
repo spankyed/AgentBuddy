@@ -9,6 +9,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { installEngine, installedEngine, tx, type EARS } from '@abuddy/ears';
 import { findDatabaseWriter, holdDatabaseWriteLock, openDatabaseStore, readInstalledSchema } from '@abuddy/host/database';
 import { exportDatabase } from '@abuddy/host/backup';
+import { closeEnv, openEnvAt } from '@abuddy/ears/lmdb';
 import { createSecretsStore, memoryKeyVault } from '@abuddy/host/secrets';
 import { appDataPaths } from '@abuddy/sdk/utils';
 import { db } from '../../src/commands/db';
@@ -85,12 +86,24 @@ async function backupOf(userDataDir: string, { withMedia = false } = {}): Promis
   const { store } = openDatabaseStore({
     paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
     schema: readInstalledSchema(schemaContext(userDataDir)),
+    // Read-only: LMDB copies a database whose files this user can't write just as well
+    readOnly: true,
     log: () => {},
   });
   try {
-    return await exportDatabase(store, tempDir('backup-'), { name: 'backup', mediaPath: paths.media, log });
+    return await exportDatabase(store, tempDir('backup-'), { name: 'backup', mediaPath: paths.media, appVersion: '0.3.14', log });
   } finally {
     store.close();
+  }
+}
+
+/** Records another storage format in a database's own files, as a newer AgentBuddy would have written them */
+function writeStorageFormat(databaseDir: string, format: number): void {
+  const env = openEnvAt(databaseDir);
+  try {
+    env.root.openDB({ name: 'meta', encoding: 'json' }).putSync('format', format);
+  } finally {
+    closeEnv(env, () => {});
   }
 }
 
@@ -686,6 +699,51 @@ describe('abuddy db import', () => {
     expect((await ok(['query', "return [getAttr('Note-a', 'title'), getEntitiesOfType('Note').length]", '--data-dir', dir, '-o', 'json'])).out)
       .toBe(JSON.stringify(['From the backup', 1], null, 2));
     expect(fs.readFileSync(path.join(appDataPaths(dir, { packaged: false }).media, 'image.png'), 'utf-8')).toBe('png');
+  });
+
+  it('says what made the backup, and names it when the files are in a format it cannot read', async () => {
+    const dir = await appDataDir();
+    const backup = await backupWith('From the backup');
+    const metadata = JSON.parse(fs.readFileSync(path.join(backup, 'metadata.json'), 'utf-8'));
+    expect(metadata).toMatchObject({ appVersion: '0.3.14', storageFormat: expect.any(Number) });
+    expect(Object.keys(metadata).sort()).toEqual(['appVersion', 'databases', 'includesMedia', 'storageFormat', 'timestamp']);
+
+    const listed = await ok(['import', backup, '--data-dir', dir]);
+    expect(listed.out).toMatch(/made .* by AgentBuddy 0\.3\.14/);
+
+    // The databases themselves are what a newer AgentBuddy would have written
+    writeStorageFormat(path.join(backup, 'lmdb'), 99);
+    const refused = await run(['import', backup, '--force', '--data-dir', dir]);
+    expect(refused.error?.message).toMatch(/is in storage format 99, but this version reads format 1/);
+    expect(refused.error?.message).toContain('(backup made by AgentBuddy 0.3.14)');
+    expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('Alpha');
+  });
+
+  it("restores a backup whose metadata claims a format its databases aren't in", async () => {
+    const dir = await appDataDir();
+    const backup = await backupWith('From the backup');
+    const metadataFile = path.join(backup, 'metadata.json');
+    const metadata = JSON.parse(fs.readFileSync(metadataFile, 'utf-8'));
+    // The files are what says whether a backup restores: a metadata.json claiming otherwise doesn't cost the
+    // user a backup that opens and reads
+    fs.writeFileSync(metadataFile, JSON.stringify({ ...metadata, storageFormat: 99 }));
+
+    await ok(['import', backup, '--force', '--data-dir', dir]);
+    expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('From the backup');
+  });
+
+  it('restores a backup made before what wrote it was recorded', async () => {
+    const dir = await appDataDir();
+    const backup = await backupWith('From the old backup');
+    const metadataFile = path.join(backup, 'metadata.json');
+    const { appVersion, storageFormat, ...older } = JSON.parse(fs.readFileSync(metadataFile, 'utf-8'));
+    fs.writeFileSync(metadataFile, JSON.stringify(older));
+
+    const listed = await ok(['import', backup, '--data-dir', dir]);
+    expect(listed.out).not.toContain('by AgentBuddy');
+    // The files' own stamp still answers for it
+    await ok(['import', backup, '--force', '--data-dir', dir]);
+    expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('From the old backup');
   });
 
   it("keeps the backup's own progress lines off stdout, so only the command's output is there", async () => {

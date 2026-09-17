@@ -51,6 +51,7 @@ export type BackupDatabase = 'lmdb' | 'volatileLmdb';
 
 // @public (undocumented)
 export interface BackupInfo {
+    appVersion?: string;
     // (undocumented)
     databases: BackupDatabase[];
     // (undocumented)

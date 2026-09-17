@@ -111,9 +111,19 @@ describe('services.appData', () => {
     dirs.push(dir);
     expect(await services.appData.backupInfo(dir)).toBeNull();
 
-    const backup = await services.appData.exportBackup(dir, 'probe', ['volatileLmdb']);
-    expect(backup).toBe(path.join(dir, 'probe'));
-    expect(await services.appData.backupInfo(backup)).toEqual({ timestamp: expect.any(Number), databases: ['volatileLmdb'], size: expect.any(Number), hasMedia: false });
+    version.current = '0.4.1';
+    try {
+      const backup = await services.appData.exportBackup(dir, 'probe', ['volatileLmdb']);
+      expect(backup).toBe(path.join(dir, 'probe'));
+      // What made it, so a backup folder says where it came from without opening its databases
+      expect(await services.appData.backupInfo(backup)).toEqual({
+        timestamp: expect.any(Number), databases: ['volatileLmdb'], size: expect.any(Number), hasMedia: false, appVersion: '0.4.1',
+      });
+      const metadata = JSON.parse(fs.readFileSync(path.join(backup, 'metadata.json'), 'utf-8'));
+      expect(metadata).toMatchObject({ appVersion: '0.4.1', storageFormat: expect.any(Number) });
+    } finally {
+      version.current = undefined;
+    }
   });
 
   it("refuses a backup holding a store this app doesn't have, then imports it without that store when told to", async () => {
