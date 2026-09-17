@@ -88,4 +88,30 @@ describe('createAppBus', () => {
       unregisterPack('ping-pack');
     }
   });
+
+  it('routes events to systems before any client connects, and holds back sends to plugins until one does', async () => {
+    const pings: string[] = [];
+    registerPack({
+      id: 'ping-pack',
+      systems: [{ id: 'ping-pack.feature', machine: setup({}).createMachine({ on: { PING: { actions: () => pings.push('ping') } } }), events: new Set(['PING']) }],
+    });
+    try {
+      bus.stop();
+      bus = createActor(createAppBus(registry), { systemId: 'bus' }).start();
+      // A schedule tick or a `fire` step at boot, with no window open yet
+      testRootEvents.emitIncoming({ type: 'PING', systemId: 'ping-pack.feature' });
+      testRootEvents.emitPluginSend({ type: 'EARLY', pluginId: 'ping-pack' });
+      await flush();
+      expect(pings).toEqual(['ping']);
+      expect(outgoing).toEqual([]);
+
+      testRootEvents.emitConnected();
+      testRootEvents.emitPluginSend({ type: 'LATE', pluginId: 'ping-pack' });
+      await flush();
+      expect(outgoing.map((event) => event.type)).toContain('LATE');
+      expect(outgoing.map((event) => event.type)).not.toContain('EARLY');
+    } finally {
+      unregisterPack('ping-pack');
+    }
+  });
 });

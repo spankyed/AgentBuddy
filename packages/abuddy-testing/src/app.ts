@@ -50,7 +50,7 @@ export interface FlowRun {
 export interface TestApp {
   /** Sends CLIENT_CONNECTED, as a client connecting does; systems send their startup data */
   connect(): Promise<void>;
-  /** Sends a system an event, as a client's `sendToSystem` does (the pack's own by feature id, a dependency's as `<packId>/<featureId>`) */
+  /** Sends a system an event, as a client's `sendToSystem` does (the pack's own by feature id, a dependency's as `<packId>/<featureId>`); the bus routes it whether or not a client connected */
   send(systemId: string, event: { type: string; [key: string]: unknown }): Promise<void>;
   /** Events delivered to frontend plugins (by `emit` or `sendToPlugin`, once connected), in order; optionally one plugin's. Readable after `stop` */
   emitted(pluginId?: string): OutgoingSystemEvents[];
@@ -66,9 +66,8 @@ export interface TestApp {
    * left only waiting. Without `event`, resolves with the entry tracks the flow ran when it started.
    *
    * It returns the tracks the event itself triggered. Tracks started by events those tracks send (a `fire` step,
-   * `sendToBrainSystem`) aren't in the result: `settle()` after it, then read them with `flowTrace`. Sending `event`
-   * connects the app first if needed; the app's bus drops events systems and steps send before a client connects,
-   * as the app does at a cold boot, so call `connect()` right after `startApp` when entry tracks send events.
+   * `sendToBrainSystem`) aren't in the result: `settle()` after it, then read them with `flowTrace`. It doesn't
+   * connect the app: flows run and report without a client, as they do in the app.
    */
   runFlow(label: string, options?: RunFlowOptions): Promise<FlowRun>;
   /** The steps a flow (the root flow or a subflow, by label) has run so far in this app. Readable after `stop` */
@@ -237,21 +236,12 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
     }
     wakeWaits();
   };
-  /** Whether this app's bus routes events: a client connected since it started (CLIENT_CONNECTED reaches every running app) */
-  const connected = () => bus.getSnapshot().matches('connected');
-  /** Events for this app's systems sent before a client connected, which the bus dropped (as the app's does at a cold boot) */
-  const dropped: string[] = [];
   const stopRecording = [
     testRootEvents.onOutgoing((event) => {
       emitted.push(event);
       wakeWaits();
     }),
-    testRootEvents.onIncoming((event) => {
-      if (!connected() && systems.has(event.systemId)) dropped.push(`${event.type}${typeof event.eventType === 'string' ? ` "${event.eventType}"` : ''} to ${event.systemId}`);
-    }),
   ];
-  const droppedNote = () => dropped.length === 0 ? '' :
-    ` The bus dropped ${dropped.length} event(s) sent before the app connected: ${dropped.join(', ')}. Call app.connect() after startApp when entry tracks or schedules send events.`;
 
   const finished = (tNodeId: string) => reports.some((e) => isUpdate(e) && e.data.tNodeId === tNodeId && (e.data.status === 'completed' || e.data.status === 'failed'));
   const brainRunning = () => {
@@ -351,7 +341,6 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       await settle();
     }),
     send: (systemId, event) => call(async () => {
-      if (!connected()) throw new Error('The bus routes client events only once connected: call app.connect() first');
       testRootEvents.emitIncoming({ ...event, systemId: resolveSystemId(systemId, systems) });
       await settle();
     }),
@@ -363,7 +352,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       if (index === -1) return undefined;
       taken.add(index);
       return emitted[index];
-    }, timeoutMs, () => `No ${type} sent to ${pluginId} within ${timeoutMs}ms. Sent: ${emitted.map((e) => `${e.pluginId}:${e.type}`).join(', ') || 'nothing'}.${droppedNote()}`)),
+    }, timeoutMs, () => `No ${type} sent to ${pluginId} within ${timeoutMs}ms. Sent: ${emitted.map((e) => `${e.pluginId}:${e.type}`).join(', ') || 'nothing'}.`)),
     settle: () => call(() => settle()),
     runFlow: (label, { event, data, timeoutMs = 10_000 } = {}) => call(async () => {
       const brainId = hasDesignation('brain') ? getDesignated('brain') : undefined;
@@ -382,7 +371,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
         const why = ranAndFinished
           ? 'it ran and finished'
           : 'the brain runs the root flow (root: true) and the subflows running flows spawn: make it one of those, and import flows before startApp';
-        throw new Error(`Flow "${label}" isn't running: ${why}. ${runningLabels.length > 0 ? `Running: ${runningLabels.join(', ')}` : 'No flow is running'}.${droppedNote()}`);
+        throw new Error(`Flow "${label}" isn't running: ${why}. ${runningLabels.length > 0 ? `Running: ${runningLabels.join(', ')}` : 'No flow is running'}.`);
       }
 
       const eventType = event ?? 'flow.entry';
@@ -390,9 +379,8 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       // An event's tracks are the ones it triggers from here; entry tracks ran when the flow started
       const cursor = event === undefined ? 0 : reports.length;
       const since = () => reports.slice(cursor);
-      const timedOut = () => `Flow "${label}" didn't finish "${eventType}" within ${timeoutMs}ms. Steps so far: ${since().filter(isSpawn).filter((e) => e.tNode.tNodeType !== 'event' && flowTNodeIds.includes(e.flowTNodeId)).map((e) => `${e.tNode.label} (${stepTrace(e, tNodeRows).status})`).join(', ') || 'none'}.${droppedNote()}`;
+      const timedOut = () => `Flow "${label}" didn't finish "${eventType}" within ${timeoutMs}ms. Steps so far: ${since().filter(isSpawn).filter((e) => e.tNode.tNodeType !== 'event' && flowTNodeIds.includes(e.flowTNodeId)).map((e) => `${e.tNode.label} (${stepTrace(e, tNodeRows).status})`).join(', ') || 'none'}.`;
       if (event !== undefined) {
-        if (!connected()) testRootEvents.emitConnected();
         testRootEvents.emitIncoming({ type: 'TRIGGER_BRAIN_EVENT', eventType: event, payload: data, systemId: brainId });
         await settle(deadline, timedOut);
       }
@@ -400,7 +388,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       const triggered = () => since().filter((e): e is TNodeSpawned =>
         isSpawn(e) && flowTNodeIds.includes(e.flowTNodeId) && e.tNode.tNodeType === 'event' && e.tNode.eventType === eventType);
       if (triggered().length === 0) {
-        throw new Error(`Flow "${label}" has no track for "${eventType}".${droppedNote()}`);
+        throw new Error(`Flow "${label}" has no track for "${eventType}".`);
       }
       const done = (id: string) => since().some((e) => isUpdate(e) && e.data.tNodeId === id && (e.data.status === 'completed' || e.data.status === 'failed'));
       /** Finished, or waiting by design: a waiting step, or a subflow whose own steps are all done or waiting */

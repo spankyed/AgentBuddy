@@ -117,7 +117,7 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
 - `connectedEvents` lists outgoing events sent after each connection.
 
 - On entry, the bus spawns every system with `id` and `systemId` equal to the system id. The `listen` actor is spawned as `bus-listen`. Distinct ids matter: with shared keys, stopping the bus stops only the last child.
-- The bus starts in `disconnected`, where it drops `INCOMING`, `OUTGOING` and `SYSTEMS_SPAWNED`. The first `CLIENT_CONNECTED` moves it to `connected`, and entering that state sends `CLIENT_CONNECTED` to every system except the systems of `clientLoadedPacks`. The same happens on each later connection.
+- The bus routes `INCOMING` (client events, and `sendToSystem`, `fire` and schedule ticks from backend code) in every state. It starts in `awaitingClient`, where it drops `OUTGOING` (sends to plugins) and `SYSTEMS_SPAWNED`. The first `CLIENT_CONNECTED` moves it to `clientSeen`, and entering that state sends `CLIENT_CONNECTED` to every system except the systems of `clientLoadedPacks`. The same happens on each later connection. Nothing reports a client leaving, so the bus never goes back: `clientSeen` means a client has connected since boot, and a reconnecting client gets the startup data again (`app-bus.spec.ts`).
 - `RELOAD_PACK`, `TEARDOWN_PACK`, `ACTIVATE_PACK`, `PACK_CLIENT_CONNECTED` and `PACK_CHANGED` are handled in both states.
   - `PACK_CHANGED` goes to every running system (a system that isn't running doesn't get it, without a warning).
   - Reload stops the listed systems, then respawns the ones still registered and raises `SYSTEMS_SPAWNED`, which sends them `CLIENT_CONNECTED` only while connected.

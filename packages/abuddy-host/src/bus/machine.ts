@@ -185,12 +185,18 @@ export function createBusMachine(options: BusOptions) {
     },
   }).createMachine({
     id: bus,
-    initial: 'disconnected',
+    // A client connection is only what frontend plugins need: sends to plugins are held back until one has
+    // connected, and systems send their startup data when one does. Nothing tells the bus a client left (a
+    // reconnecting client connects again and gets the startup data), so `clientSeen` means "a client has
+    // connected since the bus started", not "one is connected now".
+    initial: 'awaitingClient',
     entry: ['spawnActors', 'listen'],
     // A pack can be installed, uninstalled or rebuilt before any client connects (`abuddy dev` against a
-    // running backend, a headless boot), so these apply in both states: handled only while connected, the
-    // pack's systems would be left as they were with nothing reported.
+    // running backend, a headless boot), so these apply in both states: handled only once a client connected,
+    // the pack's systems would be left as they were with nothing reported. Events for systems don't wait for a
+    // client either: systems, steps and schedules send them (`sendToSystem`, `fire`, schedule ticks) from boot.
     on: {
+      INCOMING: { actions: 'routeIncoming' },
       RELOAD_PACK: { actions: 'reloadPack' },
       TEARDOWN_PACK: { actions: 'teardownPack' },
       ACTIVATE_PACK: { actions: 'activatePack' },
@@ -198,18 +204,17 @@ export function createBusMachine(options: BusOptions) {
       PACK_CHANGED: { actions: 'sendPackChanged' },
     },
     states: {
-      disconnected: {
+      awaitingClient: {
         on: {
-          CLIENT_CONNECTED: { target: 'connected' },
+          CLIENT_CONNECTED: { target: 'clientSeen' },
           // SYSTEMS_SPAWNED is deliberately not handled here: with no client to send startup data to,
           // the systems just spawned get their CLIENT_CONNECTED from `sendConnected` when one arrives
         },
       },
-      connected: {
+      clientSeen: {
         entry: 'sendConnected',
         on: {
           CLIENT_CONNECTED: { actions: 'sendConnected' },
-          INCOMING: { actions: 'routeIncoming' },
           OUTGOING: { actions: 'notify' },
           SYSTEMS_SPAWNED: { actions: 'sendSpawnedConnected' },
         },

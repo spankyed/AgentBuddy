@@ -95,8 +95,8 @@ it('stores a memo a client adds and sends it back', async () => {
 | Member | What it does |
 |---|---|
 | `startApp({ systems })` | Starts the named systems in registration order; `'*'` starts all. A bare id is tried as given, then as your pack's `<packId>.<featureId>`: use your feature ids, a built-in dependency's feature ids (default-setup's `settings`), or an external dependency's full bus id (`<depId>.<featureId>`) |
-| `connect()` | Sends `CLIENT_CONNECTED`, which reaches every running app, as a client connecting does. Every running system gets it (the harness has no client that loads pack frontends later). Until then the bus drops events for systems, as the app's does before its first client: client events, and the events systems, steps and schedules send (`sendToSystem`, `fire`, schedule ticks) |
-| `send(systemId, event)` | Sends a system an event. Throws before `connect()` |
+| `connect()` | Sends `CLIENT_CONNECTED`, which reaches every running app, as a client connecting does. Every running system gets it (the harness has no client that loads pack frontends later), and sends to frontend plugins are delivered from then on. Events for systems don't wait for it: client events, and the events systems, steps and schedules send (`sendToSystem`, `fire`, schedule ticks), reach them from `startApp`, as in the app |
+| `send(systemId, event)` | Sends a system an event, connected or not |
 | `emitted(pluginId?)` | Events sent to frontend plugins (`emit` and `sendToPlugin`). Both go through the bus, as in the app, so one sent before `connect()` is dropped and never appears here (systems send their startup data once a client connects, so `connect()` first) |
 | `nextEmit(pluginId, type, { timeoutMs? })` | The next such event no earlier call returned, waiting for it (default 5000 ms) |
 | `settle()` | Resolves once the systems have no work left |
@@ -179,10 +179,10 @@ it('summarizes a note', async () => {
   - It returns a `FlowRun`: `eventTNodeIds`, the trace nodes of the tracks the event triggered, and `steps`, the steps those tracks ran in start order, each a `FlowStepTrace` (`tNodeId`, `label`, `tNodeType` (`step`, or `flow` for a subflow), `status`, `nodeAttributes` (with `result`) and `params` (the inputs resolved from the event and earlier steps)).
   - It never makes a flow the root flow or restarts the brain; it fails naming the running flows when `label` isn't one.
   - The result holds only the tracks `event` triggered. Tracks started by events those tracks send (a `fire` step, `sendToBrainSystem`) aren't in it: `await app.settle()`, then read them with `flowTrace`.
-  - Sending `event` connects the app if it isn't. Events sent before that (a `fire` step in an entry track, a schedule tick) were dropped by the bus: call `app.connect()` right after `startApp` when those must reach the brain. When `runFlow` or `nextEmit` fails on an app that dropped events, the error names them.
+  - It doesn't connect the app: flows run, and events from `fire` steps and schedule ticks reach the brain, without a client. Connect only to read what systems send to plugins (`emitted`, `nextEmit`).
 - **`flowTrace(label)`** returns the steps a flow has run so far in the app, the root flow or a subflow, by the flow's label (not the label of the step that runs it). It still reads after `stop()`: rows are kept as the brain last reported them.
 - **Without a root flow** the brain doesn't start: it reports that no flow has the root role when flows exist, and stays stopped with no flows at all.
-- **Schedule triggers** register through the `scheduler` service. Mock it (`registerSchedule`, `unregisterByPrefix`, `clearAllSchedules`) and call the tick it receives to run the track. Unmocked, real cron jobs run while the app runs (connect it, or their ticks are dropped) and stop when it stops.
+- **Schedule triggers** register through the `scheduler` service. Mock it (`registerSchedule`, `unregisterByPrefix`, `clearAllSchedules`) and call the tick it receives to run the track. Unmocked, real cron jobs run while the app runs and stop when it stops.
 
 ## Exports
 
