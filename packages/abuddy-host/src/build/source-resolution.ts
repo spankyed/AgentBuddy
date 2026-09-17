@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 
 /** Packages whose exports resolve source under the @abuddy/source condition and dist otherwise */
-const SOURCE_PACKAGES = ['@abuddy/sdk', '@abuddy/ui'];
+const SOURCE_PACKAGES = ['@abuddy/ears', '@abuddy/sdk', '@abuddy/ui'];
 
 const SOURCE_CONDITION_FLAG = '--conditions=@abuddy/source';
 
@@ -29,7 +29,7 @@ function tryResolve(resolve: ResolveFile, specifier: string): string | undefined
 }
 
 /**
- * Throws when a checkout's workspace @abuddy/sdk or @abuddy/ui doesn't resolve to its source.
+ * Throws when a checkout's workspace @abuddy/ears, @abuddy/sdk or @abuddy/ui doesn't resolve to its source.
  * Without the @abuddy/source condition a process would run the checkout's dist, which is stale
  * or missing. Installed packages (they ship no src) and packages that don't resolve pass.
  *

@@ -76,6 +76,18 @@ export function hasBuiltBundleSections(packRoot: string): boolean {
   return fs.existsSync(path.join(dist, BUNDLE_PATHS.runtimeEntry)) && fs.existsSync(path.join(dist, BUNDLE_PATHS.snapshot));
 }
 
+/** A pack whose frontend the renderer loads (the API's `packs.registry`) */
+export interface PackBundleEntry {
+  id: string;
+  name: string;
+  version: string;
+  builtIn?: boolean;
+  /** The bundle's runtime/fe.js, when it has one */
+  feEntry?: string;
+  /** The bundle's runtime/fe.css, when it has one */
+  feStyles?: string;
+}
+
 /** A bundle's frontend files, bundle-relative: its FE entry and stylesheet when `abuddy build` wrote them */
 export function packFrontendFiles(bundleDir: string): { entry?: string; styles?: string } {
   const has = (file: string) => fs.existsSync(path.join(bundleDir, file));

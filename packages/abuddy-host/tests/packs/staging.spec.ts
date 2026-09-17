@@ -3,14 +3,11 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { registerHostModule } from '@abuddy/sdk/runtime';
 import { prepareHostDataDirs, recoverStagingDirs, stagingDirName } from '../../src/packs/staging.ts';
 import { discoverPacks, reconcileExternalRegistry } from '../../src/packs/pack-discovery.ts';
 import { readPackRegistry, writePackRegistry } from '../../src/packs/pack-registry.ts';
 import { readHostVersion } from '../../src/packs/host-info.ts';
 
-const noop = () => {};
-registerHostModule('logger', { createLogger: () => ({ debug: noop, info: noop, warn: noop, error: noop }), LogEvent: {} });
 
 let root: string;
 let packsDir: string;

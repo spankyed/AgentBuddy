@@ -2,7 +2,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { Plugin } from '@abuddy/sdk/fe';
 import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
-import { registerPackFE, unregisterPackFE } from '../../src/fe/pack-store.ts';
+import { bindFeHost } from '@abuddy/sdk/runtime';
+import { createFePackRegistry } from '../../src/fe/pack-store.ts';
+
+const { registerPackFE, unregisterPackFE, ...registry } = createFePackRegistry();
+bindFeHost({ application: {} as never, secrets: {} as never, transport: {} as never, packs: registry });
 
 const plugin = (id: string, designation: string) => ({ id, designation }) as unknown as Plugin;
 

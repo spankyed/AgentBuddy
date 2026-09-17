@@ -8,6 +8,7 @@ import { stagingDirName } from './staging.ts';
 import { fetchReleaseAsset, githubFetch, type GitHubReleaseAsset } from './github.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { parseManifest } from '@abuddy/sdk/build';
+import { createLogger } from '@abuddy/sdk/logger';
 import type { PackManifest } from '@abuddy/sdk/build';
 import {
   BUNDLE_PATHS,
@@ -19,10 +20,8 @@ import {
   type BundleInfo,
 } from './bundle.ts';
 
-const log = {
-  info(...args: unknown[]) { console.log(...args); },
-  warn(...args: unknown[]) { console.warn(...args); },
-};
+// The CLI installs without an app bound: its entries go to the console then
+const log = createLogger('pack-installer');
 
 export interface InstallResult {
   id: string;

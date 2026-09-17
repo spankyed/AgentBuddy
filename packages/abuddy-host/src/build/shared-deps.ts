@@ -2,6 +2,67 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
 
+/**
+ * Packages a process must load once: pack runtimes, dependency runtimes, the app and tests share one
+ * instance of each (the SDK's registries, the EARS engine's data). Every bundler external list, the
+ * host pack loader's bridge, the pack test harness's bridge and bundle-package derive from this list.
+ * The frontend shares only the SDK modules below (SDK_FE_MODULES): it keeps no EARS data, so a pack
+ * frontend inlines what it imports from @abuddy/ears (constants and pure helpers).
+ */
+export const SHARED_INSTANCE_PACKAGES = ['@abuddy/sdk', '@abuddy/ears'] as const;
+
+/** The shared-instance package a specifier belongs to (`@abuddy/sdk/ears` → `@abuddy/sdk`), if any */
+export function sharedInstancePackage(specifier: string): string | undefined {
+  return SHARED_INSTANCE_PACKAGES.find((pkg) => specifier === pkg || specifier.startsWith(`${pkg}/`));
+}
+
+/** esbuild externals for the shared-instance packages and all their subpaths */
+export function sharedInstanceExternals(): string[] {
+  return SHARED_INSTANCE_PACKAGES.flatMap((pkg) => [pkg, `${pkg}/*`]);
+}
+
+/**
+ * Shared-instance exports only the app's composition root loads, with the reason. Pack code never
+ * requires them, so neither the pack loader's bridge nor the test harness's provides them.
+ */
+export const APP_ONLY_EXPORTS: Readonly<Record<string, string>> = {
+  '@abuddy/ears/lmdb': "the app's LMDB store; it loads lmdb, which only the app installs",
+};
+
+/**
+ * The specifiers of a shared-instance package that backend code can require, read from its exports
+ * map: every code export except the frontend's (`./fe`, `./fe/*`), metadata (`.json`), wildcards,
+ * `APP_ONLY_EXPORTS` and exports only the monorepo resolves (an `@abuddy/source` target without a published one).
+ */
+export function sharedInstanceSpecifiers(pkg: string, exportsMap: Record<string, unknown>): string[] {
+  const specifier = (key: string) => (key === '.' ? pkg : `${pkg}/${key.slice(2)}`);
+  return Object.entries(exportsMap)
+    .filter(([key, target]) =>
+      !key.includes('*')
+      && !Object.hasOwn(APP_ONLY_EXPORTS, specifier(key))
+      && !key.endsWith('.json')
+      && key !== './fe' && !key.startsWith('./fe/')
+      && !(typeof target === 'object' && target !== null && Object.keys(target).every((condition) => condition === '@abuddy/source')))
+    .map(([key]) => specifier(key));
+}
+
+/**
+ * The exports map of a shared-instance package as `fromFile` (a path or file URL) resolves it. A pack
+ * that doesn't depend on one directly gets the copy its @abuddy/sdk resolves.
+ */
+export function sharedInstanceExports(pkg: string, fromFile: string): Record<string, unknown> {
+  const require = createRequire(fromFile);
+  let manifest: string;
+  try {
+    manifest = require.resolve(`${pkg}/package.json`);
+  } catch (err) {
+    if (pkg === SHARED_INSTANCE_PACKAGES[0]) throw err;
+    const sdkManifest = fs.realpathSync(require.resolve(`${SHARED_INSTANCE_PACKAGES[0]}/package.json`));
+    manifest = createRequire(sdkManifest).resolve(`${pkg}/package.json`);
+  }
+  return (JSON.parse(fs.readFileSync(manifest, 'utf-8')) as { exports: Record<string, unknown> }).exports;
+}
+
 export interface SharedDep {
   globalKey?: string;
   target: 'fe' | 'be' | 'both';

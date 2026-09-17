@@ -1,13 +1,6 @@
-// Registration
-export {
-  registerPack, unregisterPack, registerHostSystem,
-  getRegisteredSystems, buildRegisteredEventValidationMap,
-  getRegisteredEntityTypes, getRegisteredEARSPolicy,
-  getRegisteredServices, getRegisteredMigrations,
-  getBootHooks, getPackBootHooks, getPackRegistration, runRegisteredBootSeeds,
-  getPackContributions, resolveSystemAddress,
-} from './pack-registration.ts';
-export type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackContributions, PackInfo } from './pack-registration.ts';
+// Registration: the registered packs, an instance per app (the composition root), test file or build
+export { createPackRegistry } from './pack-registration.ts';
+export type { PackRegistry, PackRegistration, PackBootHooks, PackEARS, PackMigration, PackContributions, PackInfo } from './pack-registration.ts';
 
 // Loading pack runtime code on the loader's own @abuddy/sdk
 export { withModuleBridge } from './module-bridge.ts';
@@ -44,4 +37,4 @@ export {
   createBundleArchive, extractBundleArchive, bundleArchiveName,
   publishHostPackArtifacts,
 } from './bundle.ts';
-export type { BundleInfo } from './bundle.ts';
+export type { BundleInfo, PackBundleEntry } from './bundle.ts';

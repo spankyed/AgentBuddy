@@ -2,7 +2,7 @@ import fs from 'fs-extra';
 import path from 'node:path';
 import { createLogger } from '@abuddy/sdk/logger';
 import { getLmdbPath, getVolatileLmdbPath, getMediaPath } from '@abuddy/sdk/utils';
-import { closePersistence, reinitializeLmdb } from '../ears/index.ts';
+import type { LmdbStore } from '@abuddy/ears/lmdb';
 
 const logger = createLogger('database:backup');
 
@@ -57,7 +57,8 @@ export async function exportDatabase(
   return fullBackupPath;
 }
 
-export async function importDatabase(backupPath: string) {
+/** Replaces `store`'s files (and media) with the backup's, closing the store meanwhile; puts the old files back if that fails */
+export async function importDatabase(store: LmdbStore, backupPath: string) {
   if (!await fs.pathExists(path.join(backupPath, 'metadata.json'))) {
     throw new Error('Invalid backup: metadata.json not found');
   }
@@ -87,7 +88,7 @@ export async function importDatabase(backupPath: string) {
   }
 
   try {
-    closePersistence();
+    store.close();
 
     for (const dbName of databases) {
       const backupDbPath = path.join(backupPath, dbName);
@@ -106,13 +107,13 @@ export async function importDatabase(backupPath: string) {
       logger.info('Restored media assets');
     }
 
-    reinitializeLmdb();
+    store.reopen();
 
     await fs.remove(tempBackupPath);
     logger.info('Import completed');
     return { databases, skipped };
   } catch (error) {
-    closePersistence();
+    store.close();
 
     for (const dbName of databases) {
       const tempDbPath = path.join(tempBackupPath, dbName);
@@ -129,7 +130,7 @@ export async function importDatabase(backupPath: string) {
       await fs.copy(tempMediaPath, mediaPath);
     }
 
-    reinitializeLmdb();
+    store.reopen();
 
     await fs.remove(tempBackupPath);
     throw error;

@@ -1,10 +1,14 @@
 // The user's API keys, host-internal: the host and the API read and write them here. Packs reach only the metadata,
-// through `services.secrets`; this module isn't a registered host module.
+// through `services.secrets`, and never import this module.
 import * as path from 'node:path';
 import { resolveAppContext } from '@abuddy/sdk/env';
+import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
+import { rootEvents } from '@abuddy/sdk/runtime';
 import { getSecretsFilePath } from '@abuddy/sdk/utils';
+import type { SecretsSnapshot } from '@abuddy/sdk/services';
 import { createSecretsStore, type SecretsStore } from './store.ts';
 import { fileKeyVault, osKeyVault } from './vault.ts';
+import type { PackRegistry } from '../packs/pack-registration.ts';
 
 export { createSecretsStore } from './store.ts';
 export { fileKeyVault, memoryKeyVault, KeyVaultUnavailableError, type KeyVault } from './vault.ts';
@@ -40,3 +44,22 @@ export const secretsStore: SecretsStore = {
   clearAll: () => appStore().clearAll(),
   onChange: (listener) => appStore().onChange(listener),
 };
+
+/** The stored keys' metadata and their protection, as the API's procedures return them (no values) */
+export function secretsSnapshot(): SecretsSnapshot {
+  return { secrets: secretsStore.list(), status: secretsStore.status() };
+}
+
+/**
+ * Sends the `settings` designation `SECRETS_CHANGED` (no values) on the root event bus whenever the stored keys or
+ * their protection change, through the API's procedures, `services.secrets` or a failing credential store, so it
+ * refreshes its plugin and key checks. The app calls it once at boot. Before a settings system is registered there's
+ * none to tell (in `registry`): once it runs, it sends the current keys on CLIENT_CONNECTED. Returns the unsubscribe.
+ */
+export function forwardSecretsChanges(registry: Pick<PackRegistry, 'getRegisteredSystems'>): () => void {
+  return secretsStore.onChange(() => {
+    if (!hasDesignation('settings')) return;
+    const systemId = getDesignated('settings');
+    if (registry.getRegisteredSystems().has(systemId)) rootEvents.emitIncoming({ type: 'SECRETS_CHANGED', systemId });
+  });
+}

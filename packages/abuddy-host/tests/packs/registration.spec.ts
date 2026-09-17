@@ -1,10 +1,20 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createEarsEngine, installEngine, installedEngine, repository } from '@abuddy/ears';
 import { getPackCommands, getPackSettingsDefaults, type PackRegistration, type PackSystemDef } from '@abuddy/sdk/framework';
 import { artifactRegistry } from '@abuddy/sdk/artifacts';
 import { seedHookRegistry } from '@abuddy/sdk/seed';
 import { SDK_ENTITIES } from '@abuddy/sdk/types';
+import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
-import { getPackContributions, getRegisteredEARS, getRegisteredEARSPolicy, getRegisteredEntityTypes, getRegisteredServices, registerPack, resolveSystemAddress, runRegisteredBootSeeds, unregisterPack } from '../../src/packs/pack-registration.ts';
+import { startTestRuntime } from '@abuddy/sdk/testing';
+import { createPackRegistry } from '../../src/packs/pack-registration.ts';
+
+const registry = createPackRegistry();
+startTestRuntime({ packs: registry });
+const {
+  getPackContributions, getRegisteredEARS, getRegisteredEARSPolicy, getRegisteredEntityTypes, getRegisteredServices,
+  registerPack, resolveSystemAddress, runRegisteredBootSeeds, unregisterPack,
+} = registry;
 
 const registered: string[] = [];
 afterEach(() => {
@@ -31,6 +41,22 @@ describe('registerPack services', () => {
     register('first-pack', { llm: 1 });
     register('second-pack', { search: 2 });
     expect(getRegisteredServices()).toEqual({ llm: 1, search: 2 });
+  });
+});
+
+describe('registerPack repositories', () => {
+  const testEngine = installedEngine();
+  afterEach(() => { installEngine(testEngine); });
+
+  it("registers a pack's repositories with the installed engine (the app's), where repository and services read them", () => {
+    const engine = createEarsEngine({ isEntityType: () => false });
+    installEngine(engine.query);
+    const noteQueries = { all: () => [] };
+    registerPack({ id: 'repo-pack', systems: [], repositories: { noteQueries } });
+    registered.push('repo-pack');
+    expect(engine.query.repository.noteQueries).toBe(noteQueries);
+    expect(repository.noteQueries).toBe(noteQueries);
+    expect(engine.admin.repositories()).toEqual({ noteQueries });
   });
 });
 
@@ -105,8 +131,8 @@ describe('registerPack entities', () => {
     expect(() => registerEntities('second-pack', {}, { PINNED: 'pinned' })).toThrow('EARS collision: relation kind "pinned" — pack "second-pack" vs "first-pack"');
   });
 
-  it("has the SDK's entities and relation kinds with no pack registered, and doesn't count them as collisions", () => {
-    const sdkEntities = Object.values(SDK_ENTITIES);
+  it("has the SDK's and the host's entities and relation kinds with no pack registered, and doesn't count the SDK's as collisions", () => {
+    const sdkEntities = [...Object.values(SDK_ENTITIES), ...HOST_ENTITY_TYPES];
     expect([...getRegisteredEntityTypes()].sort()).toEqual([...sdkEntities].sort());
     expect(getRegisteredEARS().relKinds).toMatchObject({ CONTAINS: 'contains', TRANSITIONS_TO: 'transitions_to' });
     // Packs built with an older SDK list them
@@ -115,6 +141,10 @@ describe('registerPack entities', () => {
     expect([...getRegisteredEntityTypes()].sort()).toEqual([...sdkEntities, 'Memo', 'Tag'].sort());
     // The registration keeps only the pack's own names
     expect(getPackContributions('first-pack')?.relKinds).toEqual({});
+  });
+
+  it("rejects an entity type the host declares", () => {
+    expect(() => registerEntities('first-pack', { AppState: 'AppState' })).toThrow('EARS collision: entity type "AppState" — pack "first-pack" vs the host\'s own "AppState"');
   });
 
   it('keeps TNode out of persistence and routes Secret to the secrets store without any pack asking', () => {
