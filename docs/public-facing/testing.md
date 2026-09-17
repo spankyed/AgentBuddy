@@ -39,7 +39,6 @@ export default defineConfig({
 
 ```typescript
 // tests/setup.ts
-import '#generated/seeders';
 import { seedRuntime } from '#generated/seed-runtime';
 import { registration } from '#generated/pack-entry';
 import { setupPackTests } from '@abuddy/testing/harness';
@@ -48,12 +47,15 @@ await setupPackTests({ seedRuntime, registration });
 ```
 
 - **What's registered:** your entity types, repositories, seed hooks and seeders, and, with `registration`, your systems, services, steps and feature settings. Each dependency's full backend runtime (its systems, services and steps, on your pack's `@abuddy/sdk`) is registered too.
-- **Without `registration`**, only data code runs: each dependency contributes its seed runtime (entity types, repositories, seed hooks). These tests start faster and never load a dependency's runtime.
+- **Without `registration`**, only data code runs: each dependency contributes its seed runtime (entity types, repositories, seed hooks). Pass your seeders (`import { seeders } from '#generated/seeders'`, `setupPackTests({ seedRuntime, seeders })`) for `seedPack`; a registration carries its own. These tests start faster and never load a dependency's runtime.
+- **The registered packs are the test file's own:** the harness registers your pack and its dependencies in a registry it creates for the file, which the SDK's lookups (`getDesignated`, `stepRegistry`, `getPackCommands`, `services`, …) read. To test how your pack reacts to another pack (its commands, feature settings or seeders), register one with `registerPack({ id, systems: [], … })` from `@abuddy/testing/harness`, and `unregisterPack(id)` when done.
+- **A lookup filled directly:** for what no pack registers (a step type or designation only one test needs), fill `testPacks` from `@abuddy/sdk/testing` (`steps`, `designations`, `artifacts`, `blocks`, `services`, `seedHooks`, `seeders`, `commands`); its entries are found before the registered packs'. Empty it with `testPacks.clear()`.
 - **Run `abuddy build` once first**, so dependencies are fetched into `.abuddy/deps/`.
 - **The pack is found** at or above the vitest project's root (`--root`, `test.root`, a workspace project's directory), which `isolatedDataDir()`'s `globalSetup` passes to the harness; pass `packDir` to `setupPackTests` to name it yourself.
-- **Each test starts from an empty database** (and no secrets or media). Apps a test starts stop after it; service mocks last one test. `resetTestData()` empties the database and secrets mid-test; registrations stay.
+- **Each test starts from an empty database** (a fresh EARS engine, with your repositories registered; no secrets or media). Apps a test starts stop after it; service mocks last one test. `resetTestData()` replaces the database with a fresh engine and empties the secrets mid-test; registrations stay.
+- **The engine is the harness's.** Everything your code reaches through `#generated/ears`, `#generated/repository` and `@abuddy/ears` acts on the engine the harness installed. Code tested without the harness (a helper over the engine) can create and install its own with `createEarsEngine`/`installEngine` from `@abuddy/ears` ([Engine instances](services-and-data.md#engine-instances)); don't do that in a harness test file, which would replace the harness's engine.
 - **Tests in a file run one at a time.** The database, service mocks and apps are shared by a file's tests, so a test that runs alongside another (`it.concurrent`, `describe.concurrent` or `sequence.concurrent` next to another concurrent test) fails. Spec files still run in parallel, each in its own worker.
-- **A system error the test didn't expect fails it.** Take expected ones with `takeSystemErrors()` from `@abuddy/testing/harness`: it returns the errors systems reported with `reportError` (without `step`) since the last call, and clears them. Logs from `createLogger` print to the console and reach `onLog` subscribers, as in the app.
+- **A system error the test didn't expect fails it.** Take expected ones with `takeSystemErrors()` from `@abuddy/testing/harness`: it returns the `SYSTEM_ERROR` events systems reported with `reportError` (without `step`) since the last call (`message`, `source`, `stack`, …), and clears them. Logs from `createLogger` print to the console and reach `onLog` subscribers, as in the app.
 - **A pack scaffolded before the harness** (no `tests/setup.ts`) gets it from `abuddy add feature`, with the system test it scaffolds. A vitest config the pack has (`vitest.config.*` or `vite.config.*`) is kept: add the harness setup to it as the command prints. `@abuddy/testing` is added at your `@abuddy/sdk` range (they're released together); when your `@abuddy/testing` has no harness or your vitest is older than 3, the command prints the `npm install` that upgrades them.
 
 ## Seeds
@@ -68,7 +70,7 @@ it('seeds notes', async () => {
 });
 ```
 
-`seedPack({ keys?, mode? })` compiles your seed entries (your formats and your dependencies') and seeds them. Without `keys` it seeds every entry naming a format. Name `actions`, `prompts` and `flows` to seed those, before running flows.
+`seedPack({ keys?, mode? })` compiles your seed entries (your formats and your dependencies') and seeds them. Without `keys` it seeds every entry naming a format and no `seeder`. Name `actions`, `prompts` and `flows` to seed those, before running flows.
 
 ## Systems
 
@@ -94,7 +96,7 @@ it('stores a memo a client adds and sends it back', async () => {
 | `startApp({ systems })` | Starts the named systems in registration order; `'*'` starts all. A bare id is tried as given, then as your pack's `<packId>.<featureId>`: use your feature ids, a built-in dependency's feature ids (default-setup's `settings`), or an external dependency's full bus id (`<depId>.<featureId>`) |
 | `connect()` | Sends `CLIENT_CONNECTED`, which reaches every running app, as a client connecting does. Every running system gets it (the harness has no client that loads pack frontends later). Until then the bus drops events for systems, as the app's does before its first client: client events, and the events systems, steps and schedules send (`sendToSystem`, `fire`, schedule ticks) |
 | `send(systemId, event)` | Sends a system an event. Throws before `connect()` |
-| `emitted(pluginId?)` | Events sent to frontend plugins (`emit` and `sendToPlugin`). An `emit` goes through the bus, so one sent before `connect()` is dropped and never appears here (the bus's `emit` is how systems send startup data, so `connect()` first); `sendToPlugin` bypasses the bus and appears either way |
+| `emitted(pluginId?)` | Events sent to frontend plugins (`emit` and `sendToPlugin`). Both go through the bus, as in the app, so one sent before `connect()` is dropped and never appears here (systems send their startup data once a client connects, so `connect()` first) |
 | `nextEmit(pluginId, type, { timeoutMs? })` | The next such event no earlier call returned, waiting for it (default 5000 ms) |
 | `settle()` | Resolves once the systems have no work left |
 | `system(systemId)` | A running system's actor |
@@ -185,7 +187,7 @@ it('summarizes a note', async () => {
 
 `@abuddy/testing/harness`:
 
-- **Setup and data:** `setupPackTests` (`PackTestOptions`), `seedPack` (`SeedPackOptions`), `importFlows`, `resetTestData`, `SeedRuntime`.
+- **Setup and data:** `setupPackTests` (`PackTestOptions`), `seedPack` (`SeedPackOptions`), `importFlows`, `resetTestData`, `SeedRuntime`, and `registerPack`/`unregisterPack` (another pack in the test file's registry).
 - **Apps:** `startApp` and its types `StartAppOptions`, `TestApp`, `FlowRun`, `FlowStepTrace`, `RunFlowOptions` and `OutgoingSystemEvents` (what `emitted` and `nextEmit` return).
 - **Mocks and host state:** `mockService`, `mockInference`, `addTestSecret`, `takeSystemErrors`.
 

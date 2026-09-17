@@ -81,14 +81,14 @@ Actions access services via the `services` parameter. Service names are global a
 
 ### Host services
 
-The host implements these services (operations on the app's stored data as a whole, logging and events); packs call them through `services`. `services.inference` and `services.repository` are covered below:
+`services` holds seven host services. The SDK implements three itself, over the running app: `logger` and `emitter` over the app's event bus, and `repository` from the app's EARS engine. The app implements the other four, `appData`, `traceStore`, `inference` and `secrets` (operations on stored data and keys); their contracts are types in `@abuddy/sdk/services`. `services.inference` and `services.repository` are covered below:
 
 | Service | Methods |
 |---|---|
-| `services.appData` | `reset()` deletes all stored data and reopens empty stores. `exportBackup(targetPath, name?, databases?)` copies databases (and media) into a new backup directory. `importBackup(path)` replaces stored data with a backup and reloads memory from it, restoring the previous data on failure. `backupInfo(path)` reads a backup's metadata, or `null`. |
+| `services.appData` | `reset()` resets the whole app as a fresh boot leaves it: deletes all stored data and API keys, then runs each pack's `onInit` and boot seed and the app's migrations. `exportBackup(targetPath, name?, databases?)` copies databases (and media) into a new backup directory. `importBackup(path)` replaces stored data with a backup and reloads memory from it, restoring the previous data on failure. `backupInfo(path)` reads a backup's metadata, or `null`. `hasOnboarded()` says whether the user finished onboarding, and `completeOnboarding()` records it; the app keeps it apart from settings, so resetting settings leaves it. |
 | `services.traceStore` | Read-only access to the volatile trace store (flow execution records): `entities()`, `getEntityMeta(id)`, `getAttr(kind, id)`, `relations({ kind?, src?, tgt?, skipDeleted?, limit? })`. |
 | `services.secrets` | The user's API keys, without their values: `list()` (each key's `id`, `provider`, `label`, whether it's `selected`, timestamps), `select(id)`, `rename(id, label)`, `delete(id)` and `status()` (how keys are protected). Keys are added, and their values replaced, only in Settings → Secrets. A key's `provider` (`SecretProvider`) is a model provider or `'custom'`, for keys the app's own integrations name. |
-| `services.logger` | `debug`, `info`, `warn`, `error` (any arguments), through the host logger and its redaction. In an action it's named `action:<label>`. `createLogger(source)` from `@abuddy/sdk/logger` gives a logger tagged with your own source. |
+| `services.logger` | `debug`, `info`, `warn`, `error` (any arguments), sent to the app as redacted log events. In an action it's named `action:<label>`. `createLogger(source)` from `@abuddy/sdk/logger` gives a logger tagged with your own source. |
 | `services.emitter` | `sendToPlugin(pluginId, event)` (to the frontend), `sendToSystem(systemId, event)` (onto the bus, as `{ ...event, systemId }`) and `sendToBrainSystem({ eventType, payload?, targetFlowId? })` (fires a flow event). `Services` types the first two with your pack's events. Plugins are named by plugin id. Actions run outside any pack, so `sendToSystem` names every system `<packId>/<featureId>`, your own too (`'my-pack/bookmarks'`, `'default-setup/settings'`); the host sends it to the id that system runs under, and throws for a name no running system has. |
 
 Backups never include API keys; `exportBackup` copies the primary database (`lmdb`, with media) and the trace store (`volatileLmdb`). `importBackup` restores only the databases the app has, and leaves out any other a backup lists.
@@ -217,6 +217,15 @@ Pack code never imports `@abuddy/host`, the app's private package: `abuddy build
 
 EARS is a lightweight in-memory graph database backed by LMDB. Packs declare entity types and relation kinds in the manifest, and use the repository pattern for data access.
 
+The engine is its own package, `@abuddy/ears`, which packs may depend on and import directly: the app shares one instance of it with every pack, as it does `@abuddy/sdk`. Import from:
+
+| Module | What |
+|---|---|
+| `#generated/ears` | Your pack's `EARS` constants and the typed `qx`, `tx`, `find*`, `createEntity*`, `updateEntity`, `getAttr` (checked against your, your dependencies' and the SDK's shapes). Use these by default |
+| `#generated/repository` | `repository`, typed with your and your dependencies' repositories |
+| `@abuddy/ears` | The engine's untyped API: `untypedQx`, `tx`, relation, role, graph and blueprint helpers, `RepositoryError`, the core `EARS` types, `BaseEntity`, and `createEarsEngine`/`installEngine` for tests and tooling |
+| `@abuddy/sdk/ears` | Only what the SDK adds: its `EARS` (with the SDK's entities and relation kinds), the SDK entity shapes and the SDK entities' repositories |
+
 ### Declaring entities
 
 ```json
@@ -264,12 +273,12 @@ tx(id).put('clickCount', 3)        // ok: not declared, not checked
 tx(plainId).put('title', 42)       // ok: a plain id doesn't say which entity it is
 ```
 
-`tx` from `@abuddy/sdk/ears` is the same function, unchecked.
+`tx` from `@abuddy/ears` is the same function, unchecked.
 
 `qx(id).links(kinds)` returns the ids an entity links to. To read the relations themselves (their ids and `info`, such as a flow edge's handles) use `findRelations`; `getRelationStats(kind)` counts them:
 
 ```typescript
-import { findRelations, getRelationStats, removeRelationById } from '@abuddy/sdk/ears';
+import { findRelations, getRelationStats, removeRelationById } from '@abuddy/ears';
 
 const [edge] = findRelations({ sourceEntity: nodeId, relationType: EARS.RelKind.TRANSITIONS_TO });
 edge.info;                         // { sourceHandle: 'yes' }
@@ -277,7 +286,7 @@ removeRelationById(edge.id);
 getRelationStats(EARS.RelKind.CONTAINS);   // { total, uniqueSources, uniqueTargets }
 ```
 
-`untypedQx` from `@abuddy/sdk/ears` is the unchecked query, for fields only known at runtime.
+`untypedQx` from `@abuddy/ears` is the unchecked query, for fields only known at runtime.
 
 ### Roles
 
@@ -289,12 +298,12 @@ A role is a string tag on an entity (`EARS.RoleKind` is a `string`; `EARS.RoleKi
 | `tx(id).ensure(role, scope?)` | `#generated/ears` | Makes `id` the only holder: revokes the role from every entity that has it (or from `scope`), then grants it |
 | `qx(type).withRole(role)` | `#generated/ears` | Narrows a query to holders |
 | `findWithRole(type, role)` / `findFirstWithRole(type, role)` | `#generated/ears` | Typed rows holding the role, soft-deleted rows (`deleted: true`) left out |
-| `grantRole(id, role)` / `revokeRole(id, role)` | `@abuddy/sdk/ears` | Direct attribute writes; `grantRole` doesn't check for a duplicate |
-| `getRoles(id)` | `@abuddy/sdk/ears` | The entity's roles, `string[]` |
+| `grantRole(id, role)` / `revokeRole(id, role)` | `@abuddy/ears` | Direct attribute writes; `grantRole` doesn't check for a duplicate |
+| `getRoles(id)` | `@abuddy/ears` | The entity's roles, `string[]` |
 
 ### Relation and entity helpers
 
-From `@abuddy/sdk/ears` (untyped):
+From `@abuddy/ears` (untyped):
 
 | Call | Does |
 |---|---|
@@ -311,7 +320,7 @@ From `@abuddy/sdk/ears` (untyped):
 `bp(entityType)` builds a description of an entity graph; `spawn(blueprint)` writes it and returns the root id:
 
 ```typescript
-import { bp, spawn } from '@abuddy/sdk/ears';
+import { bp, spawn } from '@abuddy/ears';
 
 const tag = bp(EARS.Entity.Tag).attr('name', 'docs').build();
 const id = spawn(
@@ -328,7 +337,7 @@ Nested blueprints are spawned and linked (replacing an identical existing relati
 
 ### Graph helpers
 
-From `@abuddy/sdk/ears`; each walks relations of the given kind(s) and returns ids:
+From `@abuddy/ears`; each walks relations of the given kind(s) and returns ids:
 
 | Call | Returns |
 |---|---|
@@ -367,13 +376,37 @@ Declare them in the feature's `repositories` (name → `path#exportName`):
 }
 ```
 
-The generated pack entry registers them before any system starts. Use them through `repository` from `#generated/repository`, typed with your repositories and your dependencies':
+The generated pack entry carries them in its registration, and the app registers them with its engine before any system starts. Use them through `repository` from `#generated/repository`, typed with your repositories and your dependencies':
 
 ```typescript
 import { repository } from '#generated/repository';
 
 repository.bookmarkCommands.create({ url, title });
 ```
+
+### Engine instances
+
+Each app has one EARS engine, which the app creates at startup. Everything above (`qx`, `tx`, `repository`, the helpers from `#generated/ears` and `@abuddy/ears`) acts on the engine that's *installed*; a pack never creates or replaces it in the app.
+
+Unit tests and tooling create their own with `createEarsEngine` from `@abuddy/ears`. A new engine is empty, and shares nothing with the app's or with other engines:
+
+```typescript
+import { createEarsEngine, installEngine } from '@abuddy/ears';
+
+const engine = createEarsEngine({ isEntityType: (name) => ['Bookmark', 'Tag'].includes(name) });
+engine.query.tx('Bookmark').put('url', 'https://example.com');   // the engine's own query face
+engine.query.qx('Bookmark').count();                             // 1
+
+installEngine(engine.query);   // now the free functions (qx, tx, repository…) act on it
+```
+
+- `engine.query` has `qx`, `tx`, the finders, relation reads, graph helpers and its repository registry, untyped.
+- `engine.admin` is for the code that created the engine: bulk loading, clearing (`admin.clear()`), direct attribute and relation writes. Pack code never gets it.
+- `isEntityType` tells an entity type from an id: `tx('Bookmark')` creates a Bookmark only when it returns true for `'Bookmark'`.
+- `installEngine(engine.query)` returns the engine it replaced, so a tool can put it back (`installEngine(undefined)` uninstalls).
+- Calling `qx`, `tx` or `repository` with no engine installed throws, naming how to install one.
+
+In a pack's unit tests you don't need any of this: `setupPackTests` from `@abuddy/testing/harness` installs an engine with your pack's and its dependencies' entity types, and gives each test a fresh one ([Testing](testing.md)).
 
 ### Entity shapes
 
@@ -393,7 +426,7 @@ To get typed attributes on entities, declare shapes in the manifest:
 The shapes (yours, your dependencies' and the SDK's) type the query helpers that
 `#generated/ears` exports: `qx`, `tx`, `findById`, `findByIdRaw`, `findAll`, `findWhere`, `findFirst`,
 `findWithFields`, `findByIdWithFields`, `findWithRole`, `findFirstWithRole`, `createEntity`,
-`createEntityWithDefaults`, `updateEntity`, `getAttr` and `getAttrs`. Of these, `@abuddy/sdk/ears`
+`createEntityWithDefaults`, `updateEntity`, `getAttr` and `getAttrs`. Of these, `@abuddy/ears`
 exports only `tx`, unchecked. The `find*` helpers leave out soft-deleted rows (`deleted: true`), except
 `findByIdRaw`. A shape the build can't find (a wrong `source` or `type`) fails the build. It also
 exports the types `EntityShape<E>` (one entity type's shape), `OwnEntityShapes` (this pack's
@@ -480,7 +513,8 @@ TypeScript can't check a name it doesn't know yet. Constrain it to `EntityName`,
   - `Relation`: every link between entities is stored as one (`RelationEntity`).
   - The flow model its flow compiler, flow seeder and steps API use: `Flow`, `Node`, `TNode`, `Action` and `Prompt` (`FlowEntity`, `NodeBase`, `TNodeEntity`, `ActionEntity`, `PromptEntity`), and the `contains`, `transitions_to`, `instance_of`, `spawned` and `tracked` relation kinds.
   - Your step node types extend `NodeBase` (`interface PingNode extends NodeBase`). Your pack reads `Node` rows as the union of its own and its dependencies' step node types, or as `NodeBase` when none define any.
-  - The data the SDK's settings seeder and its services write and read: `Settings` (`SettingsEntity`). Library documents and notes belong to default-setup (`Document`, `Collection`, `Note`); a pack depending on it uses them like any dependency's entities. API keys aren't entities: the host keeps them ([API keys](#api-keys)).
+  - The SDK owns these entities' repositories too, exported from `@abuddy/sdk/ears`: `flowRepository` (flows, nodes, edges, the root flow, `importFromDSL`), `tnodeRepository`, `actionRepository` and `promptRepository`. Call them directly; they aren't in `services.repository`, which holds packs' repositories (default-setup's `flowsQueries`, `actionQueries` and `promptQueries` build on them).
+  - Settings, library documents and notes belong to default-setup (`Settings`, `Document`, `Collection`, `Note`); a pack depending on it uses them like any dependency's entities. The app's own state (onboarding, versions, seed hashes) isn't an entity packs see: ask `services.appData.hasOnboarded()`. API keys aren't entities: the host keeps them ([API keys](#api-keys)).
   - `TNode` rows are execution records. They and their relations are written to the volatile trace store instead of the primary database, and aren't loaded back into memory at startup; read past runs with `services.traceStore`.
 - External packs cannot use `partitionPolicy` (routing entity types to the volatile store is reserved for the built-in pack).
 
@@ -501,7 +535,7 @@ Creates `src/migrations/0-2-0.ts`.
 ### Writing a migration
 
 ```typescript
-import type { PackMigration } from '@abuddy/sdk/build';
+import type { PackMigration } from '@abuddy/sdk/framework';
 
 export const migration: PackMigration = {
   target: '0.2.0',
@@ -515,7 +549,7 @@ export const migration: PackMigration = {
 
 ### Rules
 
-- **Target the next release version** — migrations run when `stored_version < target <= app_version`.
+- **Target the next release version** — migrations run when `stored_version < target <= pack_version` (the pack's manifest version; for the built-in pack, the app's).
 - **Idempotent guards** — always check if the change is needed before applying, since migrations may re-run.
 - **Never bump `package.json` version** — the release process handles version bumps.
 - **One file per version** — multiple changes targeting the same version go in the same file.
@@ -524,7 +558,7 @@ export const migration: PackMigration = {
 
 ```typescript
 // src/migrations/index.ts
-import type { PackMigration } from '@abuddy/sdk/build';
+import type { PackMigration } from '@abuddy/sdk/framework';
 import { migration as v020 } from './0-2-0';
 
 export const migrations: PackMigration[] = [

@@ -24,7 +24,7 @@ This document describes how AgentBuddy executes flows at runtime. It covers the 
 | `packages/default-setup/src/features/brain/be/node-handlers/index.ts` | `executeNode`: runs the step type's registered runtime handler (`extensions/steps/<type>/runtime.ts` or its `index.ts`); a type without one completes with `{ executed: true }`. |
 | `packages/default-setup/src/features/brain/be/flow-completion.ts` | Centralizes flow completion rules. |
 | `packages/default-setup/src/features/brain/be/services/scheduler.ts` | Owns active Croner jobs for schedule nodes. |
-| `packages/abuddy-sdk/src/services/index.ts` (`sendToBrainSystem`) | Sends internal `TRIGGER_BRAIN_EVENT` events to the brain system (`services.emitter.sendToBrainSystem`). |
+| `packages/abuddy-sdk/src/events/index.ts` (`sendToBrainSystem`) | Sends internal `TRIGGER_BRAIN_EVENT` events to the brain system (`services.emitter.sendToBrainSystem`). |
 
 ## Brain Lifecycle
 

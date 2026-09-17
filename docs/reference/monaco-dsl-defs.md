@@ -1,6 +1,6 @@
 # Monaco DSL Definitions
 
-Monaco editor intellisense for the action, prompt and database DSLs comes from one declaration file per DSL, built by `abuddy build` and registered by the pack's frontend entry.
+Monaco editor intellisense for the action, prompt and database DSLs comes from one declaration file per DSL, built by `abuddy build` and carried by the pack's frontend registration.
 
 ## Pipeline
 
@@ -9,9 +9,9 @@ src/defs/{action,prompt,database}.ts            (1) Hand-authored type source
         ↓  abuddy build (bundleDslDefs)
 dist/defs/monaco/{action,prompt,database}-defs.d.ts  (2) Bundled declarations
         ↓
-src/__generated__/dsl-register-fe.ts            (3) Generated, imports (2) as ?raw strings
-        ↓
-registerDslType() → Monaco TypeScript worker    (4) Runtime registration
+src/__generated__/dsl-types-fe.ts               (3) Generated `dslTypes`, imports (2) as ?raw strings
+        ↓  pack-entry-fe.ts registration's `dslTypes`, which the renderer registers
+getDslTypes() → Monaco TypeScript worker        (4) The renderer's registered DSL types
 ```
 
 | Stage | File | Produced by | Purpose |
@@ -20,7 +20,7 @@ registerDslType() → Monaco TypeScript worker    (4) Runtime registration
 | 1 | `src/defs/prompt.ts` | Hand-authored | Prompt DSL types (`usePrompt`, params, `PromptEntity`) |
 | 1 | `src/defs/database.ts` | Hand-authored | EARS DSL types (`qx`, `tx`, `bp`, `spawn`, entity helpers) |
 | 2 | `dist/defs/monaco/*-defs.d.ts` | `abuddy build` | Each entry's types bundled into one declaration file, wrapped as `declare module "@app/defs/<name>"` |
-| 3 | `src/__generated__/dsl-register-fe.ts` | `abuddy generate-entries` | Imports (2) as `?raw` and calls `registerDslType()` for each DSL |
+| 3 | `src/__generated__/dsl-types-fe.ts` | `abuddy generate-entries` | Imports (2) as `?raw` and exports `dslTypes` (one `DslTypeConfig` per DSL), which `pack-entry-fe.ts` puts in the frontend registration; nothing registers on import |
 
 Every pack gets this: `abuddy build` bundles each `abuddy.json` `dsl` entry whose `targets` include `monaco` (`packages/abuddy-cli/src/build/dsl-defs.ts`, covered by `packages/abuddy-cli/tests/build/dsl-defs.spec.ts`).
 

@@ -49,8 +49,8 @@ Generated `__generated__/` files are a disconnected node in the build graph. The
 
 The **loading mechanism** for built-in packs now uses virtual modules on both sides:
 
-- **BE**: `virtual:built-in-pack-loaders` (tsup esbuild plugin in `tsup.config.ts`) — scans `packages/` for `abuddy.json` at build time, generates a loader map of `import()` expressions. esbuild traces these and bundles the pack code as a separate chunk. Pack-loader.ts imports this module and calls loaders at boot.
-- **FE**: `virtual:built-in-packs` (Vite plugin in `renderer/vite.config.ts`) — same discovery pattern, generates a lazy-loader map. `main.ts` imports this and calls `registerPackFE()` for each pack.
+- **BE**: `virtual:built-in-pack-loaders` (tsup esbuild plugin in `tsup.config.ts`) — scans `packages/` for `abuddy.json` at build time, generates a loader map of `import()` expressions. esbuild traces these and bundles the pack code as a separate chunk. `setup/backend.ts` imports this module and passes its loaders to the host pack loader (`loadBuiltInPacks`, `@abuddy/host/packs/runtime`) as `bundledLoaders`.
+- **FE**: `virtual:built-in-packs` (Vite plugin in `renderer/vite.config.ts`) — same discovery pattern, generates a lazy-loader map. `main.ts` imports this and registers each pack's frontend in the renderer's frontend registry (`fePacks.registerPackFE()`).
 
 These virtual modules handle **how** packs are loaded (dynamically, disableably). They import FROM the on-disk `__generated__/pack-entry.ts` and `pack-entry-fe.ts`. The staleness problem is about how those on-disk files are **generated**, which is a separate layer.
 
@@ -128,8 +128,8 @@ The aggregation logic for pack entries (~200 lines in `generate-entries.ts`) is 
 
 ## Related: FE barrel contamination
 
-The staleness investigation uncovered a separate issue: the SDK `utils/index.ts` barrel mixes browser-safe and Node-only modules. FE-reachable SDK modules that import from the barrel pull `paths.ts` (process.env), `resolve-cli.ts` (child_process), etc. into the browser bundle.
+The staleness investigation uncovered a separate issue: the SDK `utils/index.ts` barrel mixes browser-safe and Node-only modules. FE-reachable SDK modules that import from the barrel pull `paths.ts` (process.env) and other Node-only modules into the browser bundle.
 
-**Fix applied**: Extracted `randomId` to `utils/random-id.ts`. FE-reachable consumers (`steps/runtime-errors.ts`, `ears/attribute-storage.ts`) import directly from that file, bypassing the barrel.
+**Fix applied**: Extracted `randomId` to `utils/random-id.ts`. FE-reachable consumers import directly from that file, bypassing the barrel (the EARS engine has since moved to `@abuddy/ears`, which has its own id helper).
 
-**Principle**: FE-reachable SDK modules must never import from the `utils/` barrel. Import the specific file instead. The barrel is a BE convenience -- inherently Node-only due to `paths`, `resolve-cli`, `media`, `export`, `seed`.
+**Principle**: FE-reachable SDK modules must never import from the `utils/` barrel. Import the specific file instead. The barrel is a BE convenience -- inherently Node-only due to `paths`, `media`, `export`, `seed` (`resolve-cli` has since moved to default-setup's code feature).

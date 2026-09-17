@@ -2,7 +2,7 @@
 # Goal: clean package boundaries — @abuddy/ears, a typed host port, and one owner per concern
 
 Implement docs/goals/goal-package-boundaries.md on a branch cut after
-docs/goals/goal-pack-api-organization.md is done (it runs first): Background, Spike results, Decisions, Phases, Constraints. Read it first.
+docs/archive/goals/goal-pack-api-organization.md is done (it runs first): Background, Spike results, Decisions, Phases, Constraints. Read it first.
 Decisions are final: implement them, don't reopen them or stop to ask. Where a detail isn't
 specified, pick the conventional option, note it in the final summary, and keep going. No
 backward compatibility in code: change signatures, move modules, migrate every in-repo caller,
@@ -24,7 +24,7 @@ Finished when:
 - The registered packs are an instance: no SDK or host module holds what packs registered at
   module scope. The composition root creates it and binds its read face, packs still import only
   `@abuddy/sdk` and `@abuddy/ui`, and everything a pack contributes arrives in its registration.
-- `packages/api/src` holds only transport (Fastify, WebSocket, tRPC), process boot and
+- `packages/api/src` holds only transport (HTTP, WebSocket, tRPC), process boot and
   composition.
 - No package reads another package's data through a cast (`BuiltinRepositories`,
   `HostSettingsRepositories`); each entity's repository lives with the package that declares it.
@@ -56,35 +56,35 @@ Five packages share responsibilities that should each have one home, and the cod
 
 - **The host module registry.** `@abuddy/sdk/runtime` (`src/runtime/host.ts`) holds a process-global `Map<string, unknown>`. SDK and host code read it with `getHostModule`/`hostFn`/`hostValue` to reach code in packages they can't import. It has 14 keys:
 
-  | Key | Registered by | Read by | Implemented in |
-  |---|---|---|---|
-  | `attribute-storage`, `hydrate-sharded` | api `setup/sdk-host-init.ts` | `host/src/ears/lmdb.ts` (through `any` Proxies) | `api/src/core/ears`, `api/src/core/persistence` |
-  | `lmdb-query` | api | `host/src/services/trace-store.ts` | `api/src/core/persistence/lmdb/query.ts` |
-  | `bus-emitter` | api | `sdk/src/runtime/root-events.ts` (`@internal`) | `api/src/core/router/bus-emitter.ts` |
-  | `secrets-client` | renderer | `sdk/src/fe/secrets-client.ts` (`secretsClient`) | `renderer/src/core/secrets-client.ts` |
-  | `router-events` | api | nothing | `api/src/core/router/events.ts` |
-  | `event-transport` | api, renderer, test host | `sdk/src/events/index.ts` | `api/src/core/router/event-transport.ts`, `renderer/src/core/event-transport.ts` |
-  | `logger` | api | `sdk/src/logger/logger.ts` (`createLogger`, `onLog`) | `api/src/core/shared/debug/logger.ts` (imports `bus-emitter`) |
-  | `system-errors` | api | `sdk/src/logger/report-error.ts` | `api/src/core/shared/system-errors.ts` |
-  | `version` | api | `sdk/src/env/index.ts` (`getAppVersion`) | `api/src/version.ts` |
-  | `migrations` | api | `sdk/src/utils/index.ts` | `api/src/setup/migrations` |
-  | `pack-registry` | api, and the test harness | `sdk/src/services/index.ts` | `@abuddy/host/packs` |
-  | `app-data`, `trace-store`, `inference`, `secrets` | api (`registerHostServices`) | `sdk/src/services/*` | `@abuddy/host/services` |
-  | `application` | renderer `src/main.ts` | `sdk/src/fe/navigation.ts` | the renderer's application actor |
+  | Key | Registered by | Read by | Implemented in | Now (after this goal) |
+  |---|---|---|---|---|
+  | `attribute-storage`, `hydrate-sharded` | api `setup/sdk-host-init.ts` | `host/src/ears/lmdb.ts` (through `any` Proxies) | `api/src/core/ears`, `api/src/core/persistence` | `openLmdbStore` (`@abuddy/ears/lmdb`), opened by the api's `openAppStore()`; `store.hydrate()` loads into the engine's admin face |
+  | `lmdb-query` | api | `host/src/services/trace-store.ts` | `api/src/core/persistence/lmdb/query.ts` | `store.query(partition)` (`LmdbQuery`, `@abuddy/ears/lmdb`), given to `createTraceStore(store)` |
+  | `bus-emitter` | api | `sdk/src/runtime/root-events.ts` (`@internal`) | `api/src/core/router/bus-emitter.ts` | `HostRuntime.transport.rootEvents`, which the api supplies from the same file |
+  | `secrets-client` | renderer | `sdk/src/fe/secrets-client.ts` (`secretsClient`) | `renderer/src/core/secrets-client.ts` | `bindFeHost({ secrets })` (`renderer/src/core/fe-host.ts`) |
+  | `router-events` | api | nothing | `api/src/core/router/events.ts` | gone |
+  | `event-transport` | api, renderer, test host | `sdk/src/events/index.ts` | `api/src/core/router/event-transport.ts`, `renderer/src/core/event-transport.ts` | SDK code over `HostRuntime.transport`; in the renderer `bindFeHost({ transport })` |
+  | `logger` | api | `sdk/src/logger/logger.ts` (`createLogger`, `onLog`) | `api/src/core/shared/debug/logger.ts` (imports `bus-emitter`) | SDK code over `transport` (console when unbound); the api's `log-capture.ts` prints each log event once |
+  | `system-errors` | api | `sdk/src/logger/report-error.ts` | `api/src/core/shared/system-errors.ts` | SDK code: `reportError` emits `SYSTEM_ERROR` on `transport` |
+  | `version` | api | `sdk/src/env/index.ts` (`getAppVersion`) | `api/src/version.ts` | `HostRuntime.appVersion` (the api reads the root `package.json`) |
+  | `migrations` | api | `sdk/src/utils/index.ts` | `api/src/setup/migrations` | removed from the SDK; `@abuddy/host/migrations` (`runAppMigrations`, `runPackMigrations`), run by the api's boot and `appData.reset()` |
+  | `pack-registry` | api, and the test harness | `sdk/src/services/index.ts` | `@abuddy/host/packs` | `HostRuntime.packs`: the registry `createPackRegistry()` returns (the api, the harness per test file, the CLI per build) |
+  | `app-data`, `trace-store`, `inference`, `secrets` | api (`registerHostServices`) | `sdk/src/services/*` | `@abuddy/host/services` | `HostRuntime.services`, assembled by `createHostRuntime` |
+  | `application` | renderer `src/main.ts` | `sdk/src/fe/navigation.ts` | the renderer's application actor | `bindFeHost({ application })` |
 
   - Every read is lazy (on first call), so nothing depends on import order.
 - **What packs reach the app through, today.** File counts are pack source in default-setup and the fixture pack; "action uses" are occurrences in default-setup's seed actions, which get only `params`, `services`, `z` and `flowId`.
 
-  | Pack-facing export | Usage | Reaches the app through |
-  |---|---|---|
-  | `services.repository` | 30 files, 81 action uses | the SDK's repository registry (no host module) |
-  | `services.logger`, `createLogger` (with `{ debug }`), `onLog` (`@abuddy/sdk/logger`) | action uses name the logger `action:<label>` (`runActionCode`) | registry key `logger` |
-  | `services.emitter`, `emit`, `sendToPlugin`, `sendToSystem` (typed, from `#generated/events`), `sendToBrainSystem`, `onConnected`, `onIncoming` (`@abuddy/sdk/events`) | every pack send; `rootEvents` and `trpc.bus` are rejected in pack sources (`check:specifiers`) | registry key `event-transport` |
-  | `secretsClient` (`@abuddy/sdk/fe`) | the settings plugin's Secrets page | registry key `secrets-client` (renderer) |
-  | `navigateToPlugin` | 21 frontend files | registry key `application` (renderer) |
-  | `useActorSystem` | 82 frontend files | Vue `inject` (no registry) |
-  | `services.appData`, `services.traceStore`, `services.inference`, `services.secrets` | 2, 1, 2 and 1 files | registry keys `app-data`, `trace-store`, `inference`, `secrets` |
-  | `reportError` (`@abuddy/sdk/logger`), `getAppVersion` (`@abuddy/sdk/env`), `runMigrations` | step runtimes and systems; 1 file each for the other two | registry keys `system-errors` (without `step`), `version`, `migrations` |
+  | Pack-facing export | Usage | Reaches the app through | Now |
+  |---|---|---|---|
+  | `services.repository` | 30 files, 81 action uses | the SDK's repository registry (no host module) | the bound engine's registry (`HostRuntime.ears.repository`, `@abuddy/ears`) |
+  | `services.logger`, `createLogger` (with `{ debug }`), `onLog` (`@abuddy/sdk/logger`) | action uses name the logger `action:<label>` (`runActionCode`) | registry key `logger` | SDK code over `HostRuntime.transport` |
+  | `services.emitter`, `emit`, `sendToPlugin`, `sendToSystem` (typed, from `#generated/events`), `sendToBrainSystem`, `onConnected`, `onIncoming` (`@abuddy/sdk/events`) | every pack send; `rootEvents` and `trpc.bus` are rejected in pack sources (`check:specifiers`) | registry key `event-transport` | SDK code over `HostRuntime.transport` (the renderer's `FeTransport` for sends to systems) |
+  | `secretsClient` (`@abuddy/sdk/fe`) | the settings plugin's Secrets page | registry key `secrets-client` (renderer) | `bindFeHost({ secrets })` |
+  | `navigateToPlugin` | 21 frontend files | registry key `application` (renderer) | `bindFeHost({ application })` |
+  | `useActorSystem` | 82 frontend files | Vue `inject` (no registry) | unchanged |
+  | `services.appData`, `services.traceStore`, `services.inference`, `services.secrets` | 2, 1, 2 and 1 files | registry keys `app-data`, `trace-store`, `inference`, `secrets` | `HostRuntime.services` |
+  | `reportError` (`@abuddy/sdk/logger`), `getAppVersion` (`@abuddy/sdk/env`), the SDK's migrations runner | step runtimes and systems; 1 file each for the other two | registry keys `system-errors` (without `step`), `version`, `migrations` | `transport`, `HostRuntime.appVersion`; the runner left the SDK (the one pack caller, the reset actor, calls `services.appData.reset()`) |
 
   `services` holds seven host services (`HostServices`: `logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`) plus each pack's own. The Monaco action editor's `services` type is the generated `Services` (`default-setup/src/defs/action.ts`), which types `emitter` with the pack's events.
   - The registry dates from the SDK's extraction from api/renderer (`a96073e04`, 2026-08-30: "lazy-loaded proxy wrappers"). The private host package (`2e29d2f91`, 2026-09-13, `goal-sdk-types-architecture.md` Decision 2) made it permanent.
@@ -122,7 +122,9 @@ Five packages share responsibilities that should each have one home, and the cod
   - `api/src/packs/pack-loader.ts:61-83` (the SDK bridge map);
   - `abuddy-testing/src/dependency-runtime.ts` (the harness bridge);
   - `scripts/bundle-package.ts:57` (inlined packages).
-- **Related plan.** This goal absorbs `goal-ears-engine-instance.md` (not implemented), which makes the engine an explicit instance (`createEarsEngine`, query/admin faces). Its Decisions 1, 2, 4, 5 and 7 and its safety net (contract tests, benchmark) become Decision 9 and Phase 6 here. Two of its decisions are superseded:
+
+  *Now:* all derive from `SHARED_INSTANCE_PACKAGES` (`@abuddy/host/build/shared-deps`), and `check:specifiers` (`findSharedPackageLists`) fails when one names the packages itself.
+- **Related plan.** This goal absorbs `goal-ears-engine-instance.md` (not implemented; now in `docs/archive/goals/`), which makes the engine an explicit instance (`createEarsEngine`, query/admin faces). Its Decisions 1, 2, 4, 5 and 7 and its safety net (contract tests, benchmark) become Decision 9 and Phase 6 here. Two of its decisions are superseded:
   - Decision 3: installation goes through `HostRuntime`, not the registry.
   - Decision 6: the engine lives in `@abuddy/ears`, a new package.
 
@@ -166,11 +168,11 @@ Final.
                     error reports over the bound event bus, SDK entities and their repositories, HostRuntime port
    @abuddy/host     app runtime: the four services (/services), app state, and the subsystems the app
                     runs (/packs pack lifecycle, /bus, /migrations)
-   packages/api     transport (Fastify, WebSocket, tRPC routers, log stream) + process boot + composition
+   packages/api     transport (HTTP via node:http, WebSocket, tRPC routers, log stream) + process boot + composition
    packages/renderer  FE composition: binds the FE port
    ```
    - The api keeps transport because host has consumers without a server: the CLI (`@abuddy/host/packs`) and the pack test harness (`@abuddy/host/bus`, `/packs`).
-   - host must never import Fastify, tRPC or `ws`. The package boundary enforces that, and a guard test checks it.
+   - host must never import an HTTP server package (`fastify`), tRPC or `ws`. The package boundary enforces that, and a guard test checks it.
 2. **`@abuddy/ears` is a standalone engine package.**
    - It contains the engine (queries, transactions, relations, repository registry, typed facades `defineEars`), the core `EARS` namespace, `BaseEntity`/`EntityShapes`/`ShapeOf`/`EntityNameArg`, the persistence port (`PersistenceSink`, partition policy, sharded router) and the in-memory store.
    - It knows no packs and no SDK entity names.
@@ -179,7 +181,7 @@ Final.
 3. **LMDB is `@abuddy/ears/lmdb`.**
    - It takes the api's `core/persistence` and `core/ears`, host's `persistence` and `ears/lmdb.ts`, and host services' use of `LmdbQuery`.
    - `lmdb` is an optional peer of `@abuddy/ears`, installed by the app. Packs and tests never load it.
-   - Opening is explicit: `openLmdbStore({ paths, policy })` returns the store (sinks, hydrate, query, reset, close), and the composition root calls `setPersistence`. There's no import side effect.
+   - Opening is explicit: `openLmdbStore({ paths, policy, engine })` returns the store (sinks, hydrate, query, reset, close), and the composition root calls `setPersistence`. There's no import side effect.
    - The partition policy is an argument, built by host from the pack registry.
 4. **Packs may import `@abuddy/ears` directly; it's a shared-instance package.**
    - `SHARED_INSTANCE_PACKAGES = ['@abuddy/sdk', '@abuddy/ears']` in `@abuddy/host/build/shared-deps` is the single source for every bundler external list, the host pack loader's bridge (`@abuddy/host/packs/runtime`, Phase 0), the harness bridge and `bundle-package`.
@@ -205,7 +207,7 @@ Final.
      };
    }
    export function bindHost(runtime: HostRuntime): void;       // once per process; rebinding throws unless reset for tests
-   export function bindFeHost(runtime: { application: AnyActorRef; secrets: SecretsClient; packs: FePackRegistryView }): void;  // renderer (was application and secrets-client); `packs` from Phase 7
+   export function bindFeHost(runtime: { application: AnyActorRef; secrets: SecretsClient; transport: FeTransport; packs: FePackRegistryView }): void;  // renderer (was application, secrets-client and event-transport); `packs` from Phase 7
    ```
    - An unbound use throws, naming `bindHost` (or `bindFeHost` in the frontend).
    - **What reads the binding:**
@@ -241,7 +243,7 @@ Final.
      | Implementation | `@abuddy/host/services/<name>.ts`, same names |
      | Test double | `@abuddy/sdk/testing`: the in-memory `HostRuntime` (`fakeInference` for inference, `addTestSecret` for secrets) |
 
-     `@abuddy/host/services/index.ts` exports `createHostRuntime({ store, transport, appVersion, userDataDir })`, the only place the runtime is assembled. The SDK's contract files contain types only, and `@abuddy/sdk/services/index.ts` reads the services from the bound runtime.
+     `@abuddy/host/services/index.ts` exports `createHostRuntime({ store, engine, transport, appVersion, packs })`, the only place the runtime is assembled. The SDK's contract files contain types only, and `@abuddy/sdk/services/index.ts` reads the services from the bound runtime.
    - **Host-only code stays in host and isn't reachable from the SDK:**
      - app state, `@abuddy/host/app-state` (Decision 7);
      - `@abuddy/host/migrations`: app migrations and their runner, moved from `api/src/setup/migrations` with its CLAUDE.md. Host runs them at boot and in `appData.reset()`.
@@ -256,7 +258,7 @@ Final.
 
      default-setup keeps its UI projections (`connectedData`, `extendedData`, action and prompt export) on top of them. `builtin-repositories.ts` is deleted.
    - **Secrets** — *done:* API keys aren't an entity. The host owns them in an encrypted store (`@abuddy/host/secrets`), with several labelled keys per provider and one selected, and packs see metadata through `services.secrets`. The `Secret` entity, the secrets partition and `general.secrets` are gone.
-   - **App state:** a new entity `AppState` (one row) holds `hasOnboarded`, `version`, `packVersions`, `packSeedHashes`, `seedHash` and `seedStatFingerprint`. Host declares it (registered with the engine next to the SDK's entities), and `@abuddy/host/app-state` owns its reads and writes. The SDK and packs never read it; `hasOnboarded` reaches the renderer in the `CLIENT_CONNECTED` event, as today. Resetting settings no longer touches it.
+   - **App state:** a new entity `AppState` (one row) holds `hasOnboarded`, `version`, `packVersions`, `packSeedHashes`, and the boot seed's hashes and stat fingerprints per built-in pack (`seedHashes`, `seedStatFingerprints`). Host declares it (registered with the engine next to the SDK's entities), and `@abuddy/host/app-state` owns its reads and writes. The SDK and packs never read it; `hasOnboarded` reaches the renderer in the `CLIENT_CONNECTED` event, as today. Resetting settings no longer touches it.
    - **Settings** (UI settings: general, plugins): it's default-setup's data. default-setup declares the `Settings` entity and owns the settings seed format and seeder; the SDK stops declaring and seeding it. `packSettingsRegistry` (pack feature defaults) stays in `@abuddy/sdk/framework`; Phase 7 moves the defaults it holds into the registered packs instance, and its reads stay there.
    - **CLI paths:** `resolve-cli` (resolving and the `cliPaths` override) moves to default-setup's code feature, which owns the CLI integrations. *Done:* the override already lives in that feature's plugin settings (`plugins.code.cliPaths`).
    - **Migrations:** an app migration targeting the next release moves stored data, following `migrations/CLAUDE.md`:
@@ -462,6 +464,17 @@ Phase 4's pack slice (Decision 6). It may land before Phase 1: it reads what onl
     - the exact order and payload of persistence-sink calls for a sequence of writes;
     - hydration through bulk load, followed by queries.
   - A Vitest benchmark (`packages/abuddy-ears/bench/ears.bench.ts`): hydrate 50k entities, 200k attributes and 100k relations, then time `qx` by type with a `where` and `pickAll`, relation traversal, and `tx` batches of 1,000 creates. Record the baseline in this doc. The tolerance is +10% median per case; investigate anything beyond it.
+
+    **Baseline** (2026-09-16, module-level engine, `npm run bench -w @abuddy/ears`, Apple silicon, Node 23.11; each figure is the median of the case's per-run medians over 3 runs):
+
+    | Case | Baseline (module engine) | After (engine instance) | Change |
+    |---|---|---|---|
+    | bulk load 50k entities, 200k attributes, 100k relations | 189.3 ms | 187.3 ms | −1% |
+    | `qx('Task').where('status', …).pickAll()` | 39.9 ms | 38.8 ms | −3% |
+    | relation traversal (a project's tasks, then their assignees) | 20.8 ms | 21.7 ms | +4% |
+    | `tx` batch of 1,000 creates | 3.40 ms | 3.33 ms | −2% |
+
+    The "after" column is the same benchmark on `createEarsEngine`'s faces (same machine, 3 runs), within the +10% tolerance.
 - **Factory underneath, same behaviour:** convert each engine module to a factory closing over its state and compose `createEarsEngine` from them, keeping a temporary installed default so no caller changes. Pass cross-module dependencies (persistence, entity-type checker, relation index) through the factory.
 - **The app owns the instance:** the api's composition root creates the engine with the LMDB sinks and policy, keeps `admin` for hydration and `createHostRuntime`, and binds `query` as `HostRuntime.ears`. `appData`, `traceStore` and `@abuddy/ears/lmdb` take `admin`. The api's `scripts/db/*` and default-setup's database feature and tests move off imported write functions onto `admin`.
 - **Tooling and tests go explicit:** the CLI flow compiler and decompiler use a private engine per compile. SDK and ears tests and default-setup tests stop calling `clearMemory`/`initEARSRuntime` and get fresh engines. Run the default-setup, SDK and ears suites with file parallelism enabled, and keep it where it holds.
@@ -551,6 +564,73 @@ A copy of what host decided can disagree with host. That is how designations res
   - `docs/public-facing` says a pack contributes only through its registration (seeders and DSL types included) and names no registry to write to.
 
 **Done when:** no doc, template or CLAUDE.md mentions `registerHostModule`, `getHostModule`, `runMigrations`, `@abuddy/sdk/ears/internals`, `@abuddy/ears/internals`, `clearMemory`, `initEARSRuntime`, `api/src/core/persistence`, `BuiltinRepositories`, `settings.internal`, `registerDesignations`, `registerSeeder` or `registerDslType`.
+
+## Outcome (2026-09-16)
+
+All nine phases are implemented on `AS/package-boundaries`. Each phase ran the full check list at its end; the final run after Phase 8 is recorded under "Final verification". The example pack's steps fail only where noted there.
+
+### Per phase
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 0 — pack runtime into host | done | `api/src/packs` and `systems.ts` gone; `@abuddy/host/packs/runtime`, `createAppBus()`; `abuddy-host/tests/boundaries.spec.ts` (transport, barrel and bus clear of the runtime, no self-imports, no `api/src/packs`); event validation map owned by the registry (`event-validation-map.spec.ts`); `app-bus.spec.ts`; `db:cli` on a temp data dir |
+| 1 — `@abuddy/ears` | done | `packages/abuddy-ears` (0.1.0, fixed release group, API reports, publint/attw, TS 5.7 floor); `SHARED_INSTANCE_PACKAGES` with generated `shared-modules.ts`; `findSharedPackageLists`, `findUpwardImports`; fixture shared-engine spec and E2E prove one instance |
+| 2 — `@abuddy/ears/lmdb` | done | `openLmdbStore`; host/api EARS and persistence dirs deleted; `findLmdbImports`; `restart-persistence.spec.ts` (mutation: skipping the sink fails it); packaged `electron-builder --dir` smoke persisted a note across a restart |
+| 3 — `HostRuntime` | done | `runtime/host.ts` deleted, `no-host-modules.spec.ts`; `bindHost`/`bindFeHost`; sends, logging and error reports over `transport`; `sendToPlugin` through the bus (E2E `plugin-sends.spec.ts`, harness spec); `takeSystemErrors` returns `SYSTEM_ERROR` events |
+| 4 — app runtime out of the api | done | `@abuddy/host/migrations` (with its CLAUDE.md, `runner.spec.ts`); `createHostRuntime`; `receiveClientEvent`, `secretsSnapshot`, `forwardSecretsChanges`; `source-layout.spec.ts` lists the api's files; `boundaries.spec.ts` compares `src/services` to `HostRuntime['services']`; `app-reset.spec.ts` |
+| 5 — data ownership | done | SDK `flowRepository`, `tnodeRepository`, `actionRepository`, `promptRepository`; `builtin-repositories.ts` deleted; `@abuddy/host/app-state` and the host 0.3.15 app migration (`app-state-0.3.15.spec.ts`, run twice); Settings, its seed format and seeder in default-setup; `resolve-cli` in the code feature; `findRepositoryCasts`; `settings-reset-app-state.spec.ts` unskipped; the built api booted onboarded on old-shaped data in a temp dir |
+| 6 — engine instance | done | `createEarsEngine` (query/admin faces), `installEngine`; contract suite (32 + 4 persistence specs) passed before and after; `no-module-state.spec.ts`, `no-engine-state-access.spec.ts`, `installed-engine.spec.ts` (unbound errors, two engines); benchmark within tolerance (table above) |
+| 7 — registered packs instance | done | `createPackRegistry()`, `createFePackRegistry()`; SDK lookups read the bound `PackRegistryView`/`FePackRegistryView`; seeders and `dslTypes` in the registrations; `registered-lookups` (16), `fe-registered-lookups`, `registry-state`, `two-registries`, harness-registry, build-registry and generated-entries-import specs |
+| 8 — docs | done | root, ears (new), sdk, host, cli, testing, default-setup, api, ui CLAUDE.md files, `TYPED-EARS.md`, `docs/public-facing`, `README.md`; the engine-instance and pack-api goals moved to `docs/archive/goals/` with a note at the top; `abuddy-host/tests/removed-names-in-docs.spec.ts` |
+
+Every new guard, helper and spec was mutation-checked in its phase (each phase's report lists the mutations and their failing specs).
+
+### Conventional choices
+
+- **Phase 0:** `loaded-packs.ts` stays in `packs/runtime/`, the one runtime module the bus guard allows; `@abuddy/host` is `sideEffects: false`; `PackBundleEntry` lives in `packs/bundle.ts`; `createAppBus()` reads the SDK-bound `rootEvents` (which gained `onPackClientConnected`); `bundledLoaders` is required for `never`, and for `prefer` when it falls back.
+- **Phase 1:** the SDK depends on `@abuddy/ears` (not a peer); `@internal` tags sit on declarations; the loader's bridge is a generated, checked-in module (`APP_UNBRIDGED` = actions, testing); pack frontends don't share `@abuddy/ears`; `sharedInstanceExports` falls back to the SDK's copy of `@abuddy/ears`. Completion of `entityType` in a bare `BaseEntity` literal now suggests only `Relation` (the engine knows no SDK names); pack-typed completions are unchanged.
+- **Phase 2:** the persistence port is public in the `@abuddy/ears` root; `@abuddy/ears/lmdb` isn't bridged (`APP_ONLY_EXPORTS`); the partition policy follows registration by itself; the store has no close-on-exit hook; error counters are per adapter.
+- **Phase 3:** `startTestRuntime` binds `packs`/`appVersion` on its first call; every log event is printed once (step and system errors included); the renderer's failed sends log under `fe-host`. Behaviour notes: sends to plugins are dropped until a client connects; CLI install lines are prefixed `[pack-installer]`.
+- **Phase 4:** composition lives in `setup/backend.ts` (`openAppStore()`); the app version comes from the root `package.json`; `createHostRuntime` takes no `userDataDir` (nothing needed it); `packClientReady` and subscriptions stay in the router (transport); the reset spec lives in the api, which has the composition and the built runtime; `release.sh` points at default-setup's migrations. Behaviour note: Reset Database now leaves the seeded app data (boot seed, root flow), not an empty database.
+- **Phase 5:** SDK repositories are plain exports of `@abuddy/sdk/ears`, not engine-registry entries; onboarding reaches packs as `appData.hasOnboarded()`/`completeOnboarding()`; settings are a default-setup seed format (`boot.seed` entries may be `{ path, format, seeder }`); `AppState` keeps boot-seed hashes and stat fingerprints per built-in pack, and the old single hash is filed under each; `lastInteractionTimestamp` was dropped; data with no version runs the host migrations, then counts as new.
+- **Phase 6:** repositories arrive in `PackRegistration.repositories` and `registerPack` registers them with the installed engine (no import-time registration); the LMDB store takes an engine getter; `EarsAdmin` includes `getAttr` and `repositories()`; `installEngine(undefined)` uninstalls and returns the previous engine; the ears, sdk and default-setup suites run with file parallelism. The contract suite pins three existing quirks (a removed relation's id stays in the type index; `leaves()` without a type counts relation rows; granting a role twice).
+- **Phase 7:** shared lookups read the frontend binding when bound, else the backend's; the view's method names are `designation`, `step(s)`, `artifact(s)`, `block(s)`, `seedHooks`, `seeders`, `settingsDefaults`, `onSettingsDefaultsChanged`, `commands` (plus `plugins`, `defaultPlugin`, `tiptapPlugins`, `appExtension`, `dslTypes` in the frontend); `testPacks` is the SDK stand-in; the harness exports `registerPack`/`unregisterPack`; the CLI registers a build's loaded definitions as one registration in a private registry; step, artifact and block type collisions still merge or replace; thread teardown moved into default-setup; module state that isn't a registration (the loader's built-in list, `loaded-packs.ts`, the packs system's built-in list) stays; the api exports its registry as the live binding `appPacks`.
+- **Phase 8:** the host's app migrations runner is named `runAppMigrations` (was `runMigrations`), so no doc names the SDK export this goal removed; finished and superseded goal docs moved to `docs/archive/goals/`; the removed-names guard lives in the host suite (it runs in `npm run test:unit` with no build step) and allows `packages/main/CLAUDE.md` to name the api path that Electron main still uses for media when run from source (see Open items).
+
+### Corrections to the Decisions
+
+These edits in the Decisions above fix statements that didn't match what was built:
+- Decision 1 and "Finished when": the api's server is `node:http`, not Fastify; host's transport guard checks `fastify`, `@trpc/*` and `ws` imports.
+- Decision 3: `openLmdbStore` also takes `engine` (a getter for the admin face it hydrates into).
+- Decision 5: `bindFeHost` also takes `transport` (the renderer's sends to backend systems).
+- Decision 6: `createHostRuntime({ store, engine, transport, appVersion, packs })`; there's no `userDataDir`.
+- Decision 7: `AppState` keeps the boot seed's hashes and stat fingerprints per built-in pack (`seedHashes`, `seedStatFingerprints`).
+
+### Open items
+
+- **Electron main's media dir from source.** `packages/main/src/modules/media-protocol/paths.ts` serves and stores media under `<cwd>/packages/api/src/core/persistence/data/untracked/media` when run from source, while the api (seeder, backups) uses `<data dir>/media`. It's gitignored data, not persistence code, and moving it would strand existing development media, so it's unchanged.
+- **`abuddy add migration`** scaffolds `Migration` from `@abuddy/sdk/build` and `async up(db)`, which don't exist (the contract is `PackMigration` from `@abuddy/sdk/framework`). This predates the goal.
+- **The loader's bridge** still maps `@abuddy/host/packs` and `/backup`, which no pack source imports.
+- The example pack needs `npm install` to link `@abuddy/ears` (its `package.json` declares the `file:` dependency).
+
+### Final verification
+
+Run sequentially on 2026-09-16 after Phase 8:
+
+- `npm run typecheck`, `schema:check`, `api:check` (sdk, ui, ears), `packages:build` + `packages:check`, `npm run compile`, `facade:check`: pass.
+- Unit suites: api 66, default-setup 670 (2 skipped), host 302, ears 93, sdk 352, cli 424, renderer 27: pass.
+- `npm run build`, E2E (11, including `dev-reload.spec.ts`), `npm run test:external-pack`, `npm run test:packaged-authoring`: pass.
+- Grep proofs: no `registerHostModule`/`getHostModule`/`hostFn`/`hostValue` in code (only the guard naming them); no `lmdb` import in `@abuddy/sdk`, `@abuddy/host` or `packages/api`; `sdk/src/ears` holds only the SDK entities' repositories; `host/src/{ears,persistence}`, `api/src/core/{ears,persistence}`, `api/src/packs` and `api/src/systems.ts` don't exist; no `repository as unknown as` in any package source.
+- Benchmark (`npm run bench -w @abuddy/ears`, median of per-run medians over 5 runs, with another app using a full core; an earlier 3-run set under heavier load had traversal at +14%, and nothing in Phase 8 touched engine code):
+
+  | Case | Baseline | Final | Change |
+  |---|---|---|---|
+  | bulk load | 189.3 ms | 200.8 ms | +6% |
+  | `qx` where + `pickAll` | 39.9 ms | 40.8 ms | +2% |
+  | relation traversal | 20.8 ms | 21.3 ms | +3% |
+  | `tx` 1,000 creates | 3.40 ms | 3.41 ms | +0% |
+
+- Example pack: `abuddy build` fails with `ERR_MODULE_NOT_FOUND: @abuddy/ears` from its seed runtime bundle. Its `node_modules` has no `@abuddy/ears` link, and `npm install` there is the user's to run (its `package.json` declares the `file:` dependency). Its `tsc`, unit tests and `abuddy test` weren't reached; they passed through Phase 0 (8/8), before `@abuddy/ears` existed.
 
 ## Deferred
 

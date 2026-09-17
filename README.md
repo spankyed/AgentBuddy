@@ -7,7 +7,7 @@ AgentBuddy is an Electron desktop app for building and running AI agent workflow
 - **Actor-based runtime**: XState state machines coordinate frontend and backend behavior through a typed event bus.
 - **Packs**: Features (backend systems and frontend plugins), flow steps, seeds, artifacts and blocks ship as packs, built with the `abuddy` CLI. The app's own features are the built-in `default-setup` pack.
 - **Model integrations**: Anthropic, OpenAI, Google, Groq, Mistral and Cohere, through the Vercel AI SDK.
-- **Local graph store**: The EARS entity-attribute-relation store is backed by LMDB for fast local access.
+- **Local graph store**: The EARS entity-attribute-relation store (`@abuddy/ears`) is backed by LMDB for fast local access.
 - **Visual flow editor**: Vue Flow powers drag-and-drop authoring for agent flows.
 - **Embedded terminal**: xterm.js and node-pty provide command execution inside the app.
 - **Rich text editing**: Tiptap supports prompt and documentation authoring.
@@ -29,12 +29,10 @@ AgentBuddy is an Electron desktop app for building and running AI agent workflow
 
 ```
 packages/
-├── api/                  # Backend: node:http + ws + tRPC server that loads packs and runs their systems
+├── api/                  # Backend process: node:http + ws + tRPC transport, process boot and composition of the app runtime
 │   └── src/
-│       ├── core/         # EARS and persistence wiring, tRPC routers, shared helpers
-│       ├── packs/        # Pack loading, activation, reload and seeding
-│       ├── setup/        # Boot sequence, migration runner, websocket
-│       └── systems.ts    # Bus and host systems
+│       ├── core/         # tRPC routers, the root event emitter, log capture
+│       └── setup/        # Boot sequence and composition (opens the store, binds the app), websocket, config
 ├── default-setup/        # The built-in pack: features, steps, seeds, migrations (abuddy.json)
 │   └── src/
 │       ├── features/     # One folder per feature: be/ (system) and fe/ (plugin)
@@ -42,11 +40,12 @@ packages/
 │       ├── seeds/        # Actions, prompts, flows, library, notes, FAQs, settings
 │       ├── migrations/
 │       └── defs/         # Monaco DSL type definitions
-├── abuddy-sdk/           # @abuddy/sdk: pack-facing API (EARS, framework, steps, build pipeline)
+├── abuddy-ears/          # @abuddy/ears: the EARS engine (entity-attribute-relation store) and its LMDB store
+├── abuddy-sdk/           # @abuddy/sdk: pack-facing API (framework, events, services, steps, build pipeline, the HostRuntime port)
 ├── abuddy-ui/            # @abuddy/ui: Vue components, editors and composables
 ├── abuddy-cli/           # @abuddy/cli: the abuddy command
 ├── abuddy-testing/       # @abuddy/testing: unit test harness and Playwright fixture
-├── abuddy-host/          # @abuddy/host (private): pack registry and installer, bus, secrets, host services
+├── abuddy-host/          # @abuddy/host (private): app runtime: registered packs, installer and pack runtime (loading, reload, seeding), bus, migrations, app state, secrets, host services
 ├── main/                 # Electron main process
 │   └── src/modules/      # Window manager, API server launcher, pack:// and media protocols, etc.
 ├── preload/              # IPC bridge (contextBridge APIs)
@@ -94,7 +93,7 @@ npm run package:all      # Package for macOS, Windows, and Linux
 
 ```sh
 npm test                 # Playwright E2E tests
-npm run test:unit        # Unit tests (api, default-setup, host)
+npm run test:unit        # Unit tests (api, default-setup, host, ears)
 npm run typecheck        # Type checks for every workspace, plus import specifier and UI entry checks
 ```
 

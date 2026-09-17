@@ -231,7 +231,7 @@ export const steps: StepDefinition[] = [
 }
 ```
 
-`abuddy build` validates this pack's flows with the `build` barrel (or `register` without one), after registering each dependency's `build/steps.build.mjs`; a step type this pack and a dependency both define fails the build. Without `build`, dependents get no step code for your steps.
+`abuddy build` validates this pack's flows with the `build` barrel (or `register` without one), with each dependency's `build/steps.build.mjs` loaded as the definitions it compiles with (the build's own, not the app's); a step type this pack and a dependency both define fails the build. Without `build`, dependents get no step code for your steps.
 
 ### Flow helpers
 
@@ -568,5 +568,8 @@ The generated FE entry (`__generated__/pack-entry-fe.ts`) default-exports a `Pac
 | `artifacts` / `blocks` | `artifactsFE` / `blocksFE` from the `-fe.ts` siblings |
 | `tiptapPlugins` | `fe.tiptapPlugins` |
 | `appExtensions` | `fe.appExtensions` |
+| `dslTypes` | `dsl` entries with a `monaco` target (`__generated__/dsl-types-fe.ts`) |
+
+The renderer registers it for your pack; nothing in your frontend registers anything itself.
 
 `features[].contributions` (`ContributionTypeConfig`s from `@abuddy/sdk/fe/contributions`: how an entity type appears and navigates when referenced in the UI) is read only for built-in packs.

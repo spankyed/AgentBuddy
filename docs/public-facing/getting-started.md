@@ -17,12 +17,13 @@ Whichever `abuddy` you run, inside a pack it hands off to the `@abuddy/cli` vers
 
 | Package | What it is |
 |---|---|
-| `@abuddy/sdk` | Pack-facing API and types (`@abuddy/sdk/ears`, `/fe`, `/steps`, …). A dependency of every pack. Libraries shared with the host (vue, xstate, zod) and the AI SDK (`ai` 7, whose types `services.inference` uses) are peer dependencies, and so is TypeScript (5.7 or later). |
+| `@abuddy/sdk` | Pack-facing API and types (`@abuddy/sdk/fe`, `/steps`, `/events`, …). A dependency of every pack. Libraries shared with the host (vue, xstate, zod) and the AI SDK (`ai` 7, whose types `services.inference` uses) are peer dependencies, and so is TypeScript (5.7 or later). |
+| `@abuddy/ears` | The EARS data engine: what the generated `#generated/ears` and `#generated/repository` build on, and the untyped API packs import directly (`untypedQx`, `tx`, `findRelations`, graph and blueprint helpers, `RepositoryError`; `createEarsEngine` for tests and tooling). The app shares one instance with every pack, as it does `@abuddy/sdk`. A dependency of every pack. |
 | `@abuddy/ui` | Vue components, tiptap and Monaco editors and UI composables (`@abuddy/ui/design/button`, `@abuddy/ui/components/tiptap/TiptapEditor`). Add it when your pack's UI uses them; it brings the editor libraries, so backend-only packs leave it out. Packs use the app's copy at runtime (see `fe.bundleUi` in the manifest docs). |
 | `@abuddy/cli` | The `abuddy` command and build toolchain. A devDependency of every pack. |
 | `@abuddy/testing` | Pack tests: `@abuddy/testing/harness` runs a pack's seeds, systems, services and flows in unit tests without the app, `@abuddy/testing/vitest` configures Vitest for it (`isolatedDataDir`, `sourceConditions`), and `@abuddy/testing` is the Playwright fixture for E2E tests in the app (`@playwright/test` is a peer). |
 
-The four are released together with the same version.
+The five are released together with the same version.
 
 ## Create a pack
 
@@ -39,7 +40,7 @@ abuddy build
 ```
 my-pack/
   abuddy.json              # Pack manifest — the single source of truth
-  package.json             # depends on @abuddy/sdk, pins @abuddy/cli and @abuddy/testing
+  package.json             # depends on @abuddy/sdk and @abuddy/ears, pins @abuddy/cli and @abuddy/testing
   tsconfig.json
   vitest.config.ts         # unit tests: an isolated data dir per run, the harness setup
   .gitignore
@@ -155,7 +156,7 @@ abuddy clean      # Remove dist/, .abuddy/, __generated__/
 ## Key concepts
 
 - **Manifest (`abuddy.json`)** — declares everything: features, steps, services, seeds, entities. See [Manifest Reference](manifest.md).
-- **Generated files (`__generated__/`)** — auto-generated from the manifest. Never edit these. They are regenerated on every build.
+- **Generated files (`__generated__/`)** — auto-generated from the manifest. Never edit these. They are regenerated on every build. The generated `pack-entry.ts` and `pack-entry-fe.ts` are your pack's registrations: everything it contributes (systems, services, repositories, steps, seeders, DSL types, …) reaches the app through them, never by writing to a registry when a module is imported.
 - **Host dependencies** — packs share `vue`, `xstate`, tiptap, `lucide-vue-next` and other libraries, the SDK modules and `@abuddy/ui` with the host app via `window.__abuddy` globals. The build pipeline externalizes these automatically.
 - **Seeds** — actions, prompts, flows and entity rows are compiled at build time and seeded when the pack loads. See [Seeds](seeds.md) for what action code may import.
 - **`pack://` protocol** — the host loads your pack's FE bundle at runtime via `pack://<id>/runtime/fe.js`. This is handled automatically.

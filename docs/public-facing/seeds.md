@@ -8,7 +8,7 @@ The SDK compiles three keys a pack seeds itself:
 - **Prompts** — parameterized text templates for LLM calls
 - **Flows** — declarative event-driven workflows that orchestrate actions
 
-A fourth key, `settings`, holds the app's own default settings, so only built-in packs have it: the manifest rejects `boot.seed.settings` in any other pack. A feature's default settings go in `features[].settings` (see [Feature settings](manifest.md#feature-settings)).
+A feature's default settings go in `features[].settings` (see [Feature settings](manifest.md#feature-settings)); the settings entity and its seed are default-setup's (its `settings` entry and format).
 
 Any other entity type — yours, a dependency's, or the SDK's — is seeded from markdown or JSON with a format and a seed entry in `abuddy.json`, and no SDK code (see [Seeding entities](#seeding-entities)).
 
@@ -123,7 +123,7 @@ Actions receive a `services` object: default-setup's feature services (each is t
 | `services.repository` | The pack's declared repositories (queries and commands); actions read and write data through them |
 | `services.logger` | Structured logging, named `action:<label>` |
 | `services.emitter` | Typed sends to plugins and systems (`sendToPlugin`, `sendToSystem` naming a system `<pack>/<feature>`, such as `'my-pack/bookmarks'`, `sendToBrainSystem`) |
-| `services.appData` | Reset, back up and restore the app's data |
+| `services.appData` | Reset, back up and restore the app's data; whether the user finished onboarding (`hasOnboarded`, `completeOnboarding`) |
 | `services.traceStore` | Read flow execution records |
 | `services.secrets` | The user's API keys as metadata (`list`, `select`, `rename`, `delete`, `status`); never values |
 
@@ -417,7 +417,7 @@ Point your manifest at the seed directories:
 }
 ```
 
-A specialty key takes its path as a string or `{ "path": … }`; any other key is a [seed entry](#seeding-entities). `abuddy build` compiles each key into `<key>.seed.json` (media into `media/<key>/`) and writes `seeds.json`, which names the pack and indexes the keys and their items for Settings → Import Pack Seeds. Seeding runs at boot and when a pack is installed or reloaded, in `replace-on-collision` mode, and is skipped when the compiled output's hash hasn't changed. The hash covers every seeded key's compiled file, including a built-in pack's `settings`: changing default settings re-runs the boot seed (its other rows are still skipped by their own hashes), while `seedPolicy.skipAtBoot` keeps boot seeding from resetting settings. A seed that reports errors fails: an external pack's error is recorded on its registry entry, and the same output isn't retried until it changes.
+A specialty key takes its path as a string or `{ "path": … }`; any other key is a [seed entry](#seeding-entities). `abuddy build` compiles each key into `<key>.seed.json` (media into `media/<key>/`) and writes `seeds.json`, which names the pack and indexes the keys and their items for Settings → Import Pack Seeds. Seeding runs at boot and when a pack is installed or reloaded, in `replace-on-collision` mode, and is skipped when the compiled output's hash hasn't changed. The hash covers every seeded key's compiled file, including default-setup's `settings`: changing default settings re-runs the boot seed (its other rows are still skipped by their own hashes), while `seedPolicy.skipAtBoot` keeps boot seeding from resetting settings. A seed that reports errors fails: an external pack's error is recorded on its registry entry, and the same output isn't retried until it changes.
 
 ### Seed policy
 
@@ -526,7 +526,9 @@ The build loads TypeScript compiler modules itself, and bundles every compiler m
 
 ### Seeder modules
 
-An entry `{ "seeder": "src/seeds/custom.ts" }` (no `path` or `format`) replaces the format and generic seeder with the module's named export `seed`, registered under the entry key. The build compiles nothing for it, so the module brings its own data.
+An entry `{ "seeder": "src/seeds/custom.ts" }` (no `path` or `format`) replaces the format and generic seeder with the module's named export `seed`, which the generated `seeders.ts` puts in the pack's registration under the entry key. The build compiles nothing for it, so the module brings its own data.
+
+An entry with all three, `{ "path", "format", "seeder" }`, is compiled with the format, and the module's `seed` seeds the compiled `<key>.seed.json` instead of the generic seeder, even when the format names no entity. default-setup's `settings` entry works this way: its format merges the default settings into one record, and its seeder resets the user's settings when the seed is imported.
 
 ```typescript
 // src/seeds/custom.ts
