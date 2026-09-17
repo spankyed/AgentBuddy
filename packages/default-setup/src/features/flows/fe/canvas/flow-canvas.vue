@@ -584,14 +584,17 @@ function handleEdgesRemove(edges: { id: string }[]) {
 function handleEdgeUpdate(event: EdgeUpdateEvent) {
   const { edge, connection } = event
 
-  if (edge.source !== connection.source || edge.target !== connection.target) {
+  const moved = edge.source !== connection.source || edge.target !== connection.target
+    || (edge.sourceHandle ?? null) !== (connection.sourceHandle ?? null)
+    || (edge.targetHandle ?? null) !== (connection.targetHandle ?? null)
+  if (moved) {
     actor.send({
       type: 'EDGE.RECONNECT',
       edgeId: edge.id,
-      oldSource: edge.source,
-      oldTarget: edge.target,
-      newSource: connection.source!,
-      newTarget: connection.target!,
+      source: connection.source,
+      target: connection.target,
+      sourceHandle: connection.sourceHandle ?? undefined,
+      targetHandle: connection.targetHandle ?? undefined,
     })
   }
 }

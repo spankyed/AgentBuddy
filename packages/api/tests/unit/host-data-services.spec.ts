@@ -1,28 +1,39 @@
-// The pack-facing replacements for @abuddy/host in pack code: relation reads in @abuddy/sdk/ears,
+// The pack-facing replacements for @abuddy/host in pack code: relation reads in @abuddy/ears,
 // and the host-implemented services.appData and services.traceStore, as the API's host init registers them.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
-// The host init opens the app's stores: point them at a throwaway data dir
+/** The app version the migrations read, when a test sets one; the bound app's otherwise */
+const version = vi.hoisted(() => ({ current: undefined as string | undefined }));
+vi.mock('@abuddy/sdk/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@abuddy/sdk/env')>();
+  return { ...actual, getAppVersion: () => version.current ?? actual.getAppVersion() };
+});
+
+// The app's store, opened as the API opens it, in a throwaway data dir
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-host-data-services-'));
 process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
-await import('@/setup/sdk-host-init');
-const { findRelations, getRelationStats, untypedQx, tx } = await import('@abuddy/sdk/ears');
+const { openAppStore } = await import('@/setup/backend');
+const { store, engine, packs } = openAppStore();
+const { defineEars, findRelations, getRelationStats, installedEngine, untypedQx, tx } = await import('@abuddy/ears');
 const { services } = await import('@abuddy/sdk/services');
-const { clearMemory, createEntity, envs, qx: hostQx } = await import('@abuddy/host/ears');
+const { createEntity } = defineEars();
 
 const EARS = {
   Entity: { Flow: 'Flow', Node: 'Node' },
   RelKind: { TRANSITIONS_TO: 'transitions_to', CONTAINS: 'contains', SPAWNED: 'spawned' },
 } as const;
 
-afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
+afterAll(() => {
+  store.close();
+  fs.rmSync(dataDir, { recursive: true, force: true });
+});
 
-describe('relation reads in @abuddy/sdk/ears', () => {
-  beforeEach(() => clearMemory());
+describe('relation reads in @abuddy/ears', () => {
+  beforeEach(() => engine.admin.clear());
 
   it('findRelations returns matching relations with their ids and info', () => {
     const flow = createEntity(EARS.Entity.Flow as never);
@@ -49,17 +60,19 @@ describe('relation reads in @abuddy/sdk/ears', () => {
     expect(getRelationStats(EARS.RelKind.SPAWNED)).toEqual({ total: 0, uniqueSources: 0, uniqueTargets: 0 });
   });
 
-  it('untypedQx is the engine query the host uses', () => {
-    expect(untypedQx).toBe(hostQx);
+  it("untypedQx queries the app's engine, which binding installed", () => {
+    expect(installedEngine()).toBe(engine.query);
+    tx('Flow-query' as never, true).put('label', 'Queried');
+    expect(untypedQx('Flow-query' as never).pick(['label'])).toEqual([{ id: 'Flow-query', label: 'Queried' }]);
   });
 });
 
 describe('services.traceStore', () => {
   const US = '\x1F';
-  const ids = { flow: 'TNode-trace-flow', event: 'TNode-trace-event', gone: 'TNode-trace-gone' } as const;
+  const ids = { flow: 'TNode-trace-flow', event: 'TNode-trace-event', later: 'TNode-trace-later' } as const;
 
   afterAll(() => {
-    const dbs = envs.volatileBackup;
+    const dbs = store.envs.volatileBackup;
     for (const id of Object.values(ids)) dbs.entities.removeSync(id);
     dbs.attrs.removeSync(`label${US}${ids.flow}${US}0`);
     dbs.relations.removeSync('Relation-trace-1');
@@ -67,20 +80,23 @@ describe('services.traceStore', () => {
   });
 
   it("reads the volatile store's entities, attributes and relations", () => {
-    const dbs = envs.volatileBackup;
+    const dbs = store.envs.volatileBackup;
     dbs.entities.putSync(ids.flow, { type: 'TNode', createdAt: 1 });
     dbs.entities.putSync(ids.event, { type: 'TNode', createdAt: 2 });
-    dbs.entities.putSync(ids.gone, { type: 'TNode', createdAt: 3, deletedAt: 4 });
+    dbs.entities.putSync(ids.later, { type: 'TNode', createdAt: 3 });
     dbs.attrs.putSync(`label${US}${ids.flow}${US}0`, { t: 'string', v: 'Run' });
     dbs.relations.putSync('Relation-trace-1', { kind: 'tracked', src: ids.flow, tgt: ids.event, createdAt: 5 });
-    dbs.relations.putSync('Relation-trace-2', { kind: 'tracked', src: ids.flow, tgt: ids.gone, createdAt: 6 });
+    dbs.relations.putSync('Relation-trace-2', { kind: 'tracked', src: ids.flow, tgt: ids.later, createdAt: 6 });
 
-    const store = services.traceStore;
-    expect(store.entities().filter((e) => e.id.startsWith('TNode-trace-')).map((e) => e.id).sort()).toEqual(Object.values(ids).sort());
-    expect(store.getEntityMeta(ids.flow)).toEqual({ type: 'TNode', createdAt: 1 });
-    expect(store.getAttr('label', ids.flow)).toBe('Run');
-    expect(store.relations({ kind: 'tracked', src: ids.flow })).toEqual([{ id: 'Relation-trace-1', rel: { kind: 'tracked', src: ids.flow, tgt: ids.event, createdAt: 5 } }]);
-    expect(store.relations({ kind: 'tracked', src: ids.flow, skipDeleted: false })).toHaveLength(2);
+    const traces = services.traceStore;
+    expect(traces.entities().filter((e) => e.id.startsWith('TNode-trace-')).map((e) => e.id).sort()).toEqual(Object.values(ids).sort());
+    expect(traces.getEntityMeta(ids.flow)).toEqual({ type: 'TNode', createdAt: 1 });
+    expect(traces.getAttr('label', ids.flow)).toBe('Run');
+    expect(traces.relations({ kind: 'tracked', src: ids.flow })).toEqual([
+      { id: 'Relation-trace-1', rel: { kind: 'tracked', src: ids.flow, tgt: ids.event, createdAt: 5 } },
+      { id: 'Relation-trace-2', rel: { kind: 'tracked', src: ids.flow, tgt: ids.later, createdAt: 6 } },
+    ]);
+    expect(traces.relations({ kind: 'tracked', src: ids.flow, limit: 1 })).toHaveLength(1);
   });
 });
 
@@ -111,6 +127,31 @@ describe('services.appData', () => {
 
     expect(await services.appData.backupInfo(backup)).toMatchObject({ databases: ['volatileLmdb'] });
     expect(await services.appData.importBackup(backup)).toEqual({ databases: ['volatileLmdb'] });
+  });
+
+  it("moves the app's state out of the settings of a backup from before AppState", async () => {
+    const { appState } = await import('@abuddy/host/app-state');
+    // The release that moves it
+    version.current = '0.3.15';
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-old-backup-'));
+    dirs.push(dir);
+    // The built-in pack's settings, as 0.3.14 stored them: the app's state in `internal`, and no AppState
+    packs.registerPack({ id: 'settings-pack', systems: [], ears: { entities: { Settings: 'Settings' }, relKinds: {} } });
+    engine.admin.clear();
+    tx('Settings-app' as never, true).put('entityType', 'Settings').put('data', { internal: { hasOnboarded: true, version: '0.3.14' } });
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const backup = await services.appData.exportBackup(dir, 'old', ['lmdb']);
+    expect(appState.exists()).toBe(false);
+
+    try {
+      await services.appData.importBackup(backup);
+
+      expect(services.appData.hasOnboarded()).toBe(true);
+      expect(appState.get().version).toBe('0.3.15');
+    } finally {
+      version.current = undefined;
+      packs.unregisterPack('settings-pack');
+    }
   });
 
   it('rejects an import of a directory that is not a backup', async () => {

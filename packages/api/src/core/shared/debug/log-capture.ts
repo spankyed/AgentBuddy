@@ -1,5 +1,7 @@
+// The API's log output: every log event on the root event bus (from @abuddy/sdk/logger, error reports and captured
+// console calls) is printed once to the original console, and streamed to the client by the logs system
 import { formatWithOptions, type InspectOptions } from 'node:util';
-import type { LogLevel } from './logger';
+import type { LogEvent, LogLevel } from '@abuddy/sdk/logger';
 import { rootEvents } from '../../router/bus-emitter';
 import { redactSecretText } from '@abuddy/sdk/utils/pure';
 
@@ -11,6 +13,9 @@ export const originalConsole = {
   warn: console.warn,
   error: console.error,
 };
+
+/** The console method each level prints with */
+const PRINT_METHOD: Record<LogLevel, keyof typeof originalConsole> = { debug: 'debug', info: 'log', warn: 'warn', error: 'error' };
 
 /** The console's own formatting, without colors: the text also goes to the log sinks */
 const INSPECT_OPTIONS: InspectOptions = { colors: false };
@@ -28,23 +33,37 @@ function formatArgs(args: unknown[]): string {
   }
 }
 
-// Override console methods to capture logs
+/** Prints a log event: `[source] message meta`, as its logger was called (already redacted) */
+function printLogEvent(event: LogEvent): void {
+  originalConsole[PRINT_METHOD[event.level]](
+    ...(event.source === undefined ? [] : [`[${event.source}]`]),
+    event.message,
+    ...(event.meta === undefined ? [] : [event.meta]),
+  );
+}
+
+let stopPrinting: (() => void) | undefined;
+
+/** Prints every log event on the root event bus to the original console, once each; safe to call again */
+export function printLogEvents(): void {
+  stopPrinting ??= rootEvents.onLog(printLogEvent);
+}
+
+/** Turns console calls into log events (which printLogEvents prints) */
 export function initializeLogCapture() {
-  const captureLog = (level: LogLevel, originalMethod: (...args: unknown[]) => void) => {
+  printLogEvents();
+  const captureLog = (level: LogLevel) => {
     return function (...args: unknown[]) {
-      // Every sink (the console, log events, app-events.log) gets the same redacted text, as Logger.log's do
-      const message = formatArgs(args);
-      originalMethod.call(console, message);
-      rootEvents.emitLog({ level, message });
+      // Every sink (the console, log events, app-events.log) gets the same redacted text
+      rootEvents.emitLog({ level, message: formatArgs(args) });
     };
   };
 
-  // Override console methods
-  console.log = captureLog('info', originalConsole.log);
-  console.debug = captureLog('debug', originalConsole.debug);
-  console.info = captureLog('info', originalConsole.info);
-  console.warn = captureLog('warn', originalConsole.warn);
-  console.error = captureLog('error', originalConsole.error);
+  console.log = captureLog('info');
+  console.debug = captureLog('debug');
+  console.info = captureLog('info');
+  console.warn = captureLog('warn');
+  console.error = captureLog('error');
 }
 
 // Restore original console methods (useful for testing)

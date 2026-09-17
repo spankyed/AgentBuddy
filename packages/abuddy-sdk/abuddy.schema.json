@@ -67,7 +67,7 @@
       "additionalProperties": {
         "type": "string"
       },
-      "description": "EARS entity types this pack registers. Keys are enum names, values are string identifiers. The SDK defines Relation, Flow, Node, TNode, Action, Prompt, Settings."
+      "description": "EARS entity types this pack registers. Keys are enum names, values are string identifiers. The SDK defines Relation, Flow, Node, TNode, Action, Prompt."
     },
     "relKinds": {
       "type": "object",
@@ -292,7 +292,7 @@
                   },
                   "seeder": {
                     "type": "string",
-                    "description": "A pack module exporting seed(ctx), used instead of a format and the generic seeder."
+                    "description": "A pack module exporting seed(ctx), used instead of the generic seeder. Alone, the build compiles nothing for the entry and the module brings its own data; with \"path\" and \"format\", the module seeds the compiled records."
                   }
                 },
                 "additionalProperties": false
@@ -302,7 +302,7 @@
           "propertyNames": {
             "pattern": "^[a-z][a-z0-9-]*$"
           },
-          "description": "Seed data sources. Keys are seed names; the specialty keys (actions, prompts, flows, settings) take a path, other keys an entry object."
+          "description": "Seed data sources. Keys are seed names; the specialty keys (actions, prompts, flows) take a path, other keys an entry object."
         },
         "seedPolicy": {
           "type": "object",

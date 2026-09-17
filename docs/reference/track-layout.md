@@ -38,14 +38,14 @@ How the flow canvas positions nodes using ELK's layered layout algorithm.
 
 ## Key files
 
-`packages/renderer/src/plugins/flows/canvas/nodes/node-dimensions.ts`
+`packages/abuddy-ui/src/components/node-dimensions.ts`
 
 - Defines `NODE_DIMENSIONS` constants (shared between Vue components and layout engine) and a `NodeLayoutDescriptor` interface with `getHeight`, `getPorts`, and `hasInput`.
 - Per-type descriptors: `defaultDescriptor`, `switchDescriptor`, `listenerDescriptor`, `fireDescriptor`. Accessed via `getDescriptor(nodeType)`.
 - **`computeExitCount(nodeId, edges)`** — returns the exit count for a node by scanning edges for the highest `exit-N` handle index. Returns `undefined` if none found. This is the single source of truth for deriving exit counts from edges.
 - **`computeMaxBottom(nodes, positions, edges)`** — returns the maximum bottom y-coordinate across all nodes, using descriptor-based heights. Use this instead of manually iterating nodes and adding `LAYOUT_CONFIG.nodeHeight`.
 
-`packages/renderer/src/plugins/flows/canvas/layout-utils.ts`
+`packages/default-setup/src/features/flows/fe/canvas/layout-utils.ts`
 
 - **`buildElkGraph`** — translates app nodes/edges into an ELK graph. Delegates height and port logic to descriptors via `getDescriptor()`.
 - **`calculateLayoutAsync`** — orchestrates the full layout pipeline and returns final positions.

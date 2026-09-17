@@ -101,6 +101,8 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
     typecheck: 'tsc --noEmit',
   },
   dependencies: {
+    // The generated facades import the EARS engine; it's released with the SDK at the same version
+    '@abuddy/ears': SDK_RANGE(),
     '@abuddy/sdk': SDK_RANGE(),
   },
   devDependencies: {
@@ -139,8 +141,7 @@ export default defineConfig({
 
 // Unit tests run against an in-memory EARS with the pack's repositories, seed hooks, seeders, systems,
 // services and steps, and its dependencies' runtimes (cached by abuddy build)
-const TEST_SETUP_TEMPLATE = `import '#generated/seeders';
-import { seedRuntime } from '#generated/seed-runtime';
+const TEST_SETUP_TEMPLATE = `import { seedRuntime } from '#generated/seed-runtime';
 import { registration } from '#generated/pack-entry';
 import { setupPackTests } from '@abuddy/testing/harness';
 

@@ -35,7 +35,7 @@ export function discoverBuiltInPacks(packagesDir: string): BuiltInPackInfo[] {
       if (!manifest.builtIn || !manifest.id || !manifest.name) continue;
 
       // No source check: packaged apps ship only abuddy.json and dist/. The code comes from the
-      // API bundle's virtual:built-in-pack-loaders, and loadBuiltInPacks skips packs without one.
+      // API bundle's loaders (loadBuiltInPacks' bundledLoaders), and loadBuiltInPacks skips packs without one.
       results.push({
         id: manifest.id,
         name: manifest.name,

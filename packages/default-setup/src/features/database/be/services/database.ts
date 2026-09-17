@@ -6,8 +6,8 @@
  */
 
 import { EARS } from '@/__generated__/ears';
-import { getEntitiesOfType, getAllEntityTypes, getAll } from '@abuddy/sdk/ears';
-import { findRelations } from '@abuddy/sdk/ears';
+import { getEntitiesOfType, getAllEntityTypes, getAll } from '@abuddy/ears';
+import { findRelations } from '@abuddy/ears';
 
 /**
  * Build a query context from live data for AI query generation.

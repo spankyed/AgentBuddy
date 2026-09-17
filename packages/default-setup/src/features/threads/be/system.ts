@@ -15,7 +15,7 @@ import { type ThreadExtendedData, type BlockResponse } from './types';
 import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@abuddy/sdk/utils';
 import { exportThreads } from './export-threads';
 import { importThreads } from './import-threads';
-import { runThreadTeardown } from '@abuddy/sdk/services';
+import { runThreadTeardown } from './thread-teardown';
 import { generateAsideText } from './services/chat';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
 
@@ -434,8 +434,7 @@ export const threadsSystem = setup({
 
     // ---- Chat/agent actions (merged from agent system) ----
     checkOnboarding: ({ system }) => {
-      const internalSettings = repository.settingsQueries.getInternalSettings();
-      if (!internalSettings.hasOnboarded && !birthFlowStarted) {
+      if (!services.appData.hasOnboarded() && !birthFlowStarted) {
         birthFlowStarted = true;
         const assistantSettings = repository.settingsQueries.getAssistantSettings();
         if (!assistantSettings.birthdate) {

@@ -4,6 +4,8 @@
 
 ```ts
 
+import { EARS as EARS_2 } from '@abuddy/ears';
+
 // @public (undocumented)
 export function asArr<T>(v: MaybeArr<T>): readonly T[];
 
@@ -40,12 +42,6 @@ export type ChangeBlock<T = unknown> = {
     renames?: Rename[];
     removed?: Array<T | string>;
 };
-
-// @public
-export function clearCliPathCache(): void;
-
-// @public (undocumented)
-export type CliName = 'copilot' | 'claude-code' | 'codex' | 'gh';
 
 // @public (undocumented)
 export function compareVersions(a: string, b: string): number;
@@ -127,9 +123,6 @@ export interface ImagePart {
 // @public (undocumented)
 export type ImportMode = 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace';
 
-// @public (undocumented)
-export function isCliName(value: string): value is CliName;
-
 // @public
 export const isPlainObject: (val: unknown) => val is Record<string, unknown>;
 
@@ -190,23 +183,11 @@ export function redactSecrets<T>(value: T): T;
 // @public
 export function redactSecretText(text: string): string;
 
-// @public
-export function registerSeeders(packId: string, seeders: Seeder[]): void;
-
-// @public (undocumented)
-export function registerShutdownHook(hook: () => void, key?: string): void;
-
-// @public (undocumented)
-export function removeShutdownHooksForKey(key: string): void;
-
 // @public (undocumented)
 export type Rename = {
     from: string;
     to: string;
 };
-
-// @public
-export function resolveCliPath(cli: CliName, preferredPath?: string): Promise<string>;
 
 // @public (undocumented)
 export interface ResolvedMedia extends MediaRef {
@@ -215,9 +196,6 @@ export interface ResolvedMedia extends MediaRef {
     // (undocumented)
     mimeType: string;
 }
-
-// @public
-export function resolveForService(cli: CliName): Promise<string>;
 
 // @public
 export function resolveMedia(ref: MediaRef): ResolvedMedia | null;
@@ -239,15 +217,6 @@ export function restoreMarkdownMediaRefs(content: string, newEntityId: string, r
 
 // @public
 export function rewriteMediaUrls(markdown: string, mediaFilenameMap: Map<string, string>): string;
-
-// @public (undocumented)
-export function runMigrations(): void;
-
-// @internal
-export function runShutdownHooks(): void;
-
-// @internal
-export function runShutdownHooksForKey(key: string): void;
 
 // @public (undocumented)
 export function seedCollection<T>(opts: {
@@ -320,15 +289,6 @@ export function stripInternalFields<T extends object>(items: T[]): Record<string
 // @public
 export function stripMediaRefs(markdown: string): string;
 
-// @public
-export function testCli(cli: CliName, storedPath?: string): Promise<{
-    success: true;
-    resolvedPath: string;
-} | {
-    success: false;
-    error: string;
-}>;
-
 // @public (undocumented)
 export function toDisplayName(str: string): string;
 
@@ -343,9 +303,6 @@ export function toSlug(name: string): string;
 
 // @public (undocumented)
 export function uniqueFilename(name: string, existingNames: Set<string>): string;
-
-// @internal
-export function unregisterSeeders(packId: string): void;
 
 // @public (undocumented)
 export function writeExportFile(dir: string, filename: string, content: string): string;

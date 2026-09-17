@@ -10,5 +10,7 @@ export default defineConfig({
   ssr: { resolve: { conditions } },
   test: {
     include: ['tests/**/*.spec.ts'],
+    // Test files run in parallel: each worker's tests create their own EARS engines
+    fileParallelism: true,
   },
 });

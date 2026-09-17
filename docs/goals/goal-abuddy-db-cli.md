@@ -1,8 +1,8 @@
 ```
 # Goal: database operations through the abuddy CLI
 
-Implement docs/goals/goal-abuddy-db-cli.md on branch AS/external-test-harness (or a branch cut from it), after
-docs/goals/goal-ears-engine-instance.md has landed through its Phase 3. Read Background, Decisions, Phases and
+Implement docs/goals/goal-abuddy-db-cli.md on a branch cut after docs/goals/goal-package-boundaries.md
+(which absorbed the engine-instance goal) has landed. Read Background, Decisions, Phases and
 Constraints first. Decision 2 must be settled before starting; if it's still marked open, stop and ask. Where
 another detail isn't specified, pick the conventional option, note it in the final summary, and keep going.
 
@@ -29,21 +29,15 @@ Never:
 ## Background
 
 Database operations live in `packages/api/scripts/db` and run through `npm run db:*` in the monorepo:
-- **Scripts:** `cli/run-db-cli.ts` (REPL, `-e` exec, `-s` script), `reset.ts`, `seed.ts`, `import-backup.ts`, `export-json.ts`/`export-data.ts`/`export.sh`, `destroy-settings.ts` (dry run by default, `--force`), `inspect-relations.ts`, `cleanup-settings.ts`, and one-offs (`cleanup-corrupt-data.ts`, `cleanup-export-subdoclinks.ts`, `migrate-tnodes.ts`, `cli/cleanup-tombstoned.ts`, `fix-prod-upgrade.ts`).
+- **Scripts:** `cli/run-db-cli.ts` (REPL, `-e` exec, `-s` script), `reset.ts`, `seed.ts`, `import-backup.ts`, `export-json.ts`/`export-data.ts`/`export.sh`, `destroy-settings.ts` (dry run by default, `--force`), `inspect-relations.ts`, `cleanup-settings.ts`, and a one-off (`fix-prod-upgrade.ts`).
 - **Env:** every script needs `ABUDDY_ENV` and `ABUDDY_USER_DATA_DIR`.
 
-**Why they can't move to `@abuddy/cli` today:** they boot the API's own database layer through `scripts/db/database.ts`, which imports API internals:
-- `@/setup/sdk-host-init`
-- `@/core/ears/attribute-storage` (opens LMDB and injects persistence at import)
-- `@/core/persistence/partitioning/hydrate-sharded`
-- `@/packs/pack-loader` (loads the built-in packs)
+**Why they can't move to `@abuddy/cli` today:** they boot the app's database through `scripts/db/database.ts`, which uses the API's composition root, `openAppStore()` (`@/setup/backend`: the pack registry, the LMDB store, the engine and the `bindHost` binding), and loads the built-in packs with `loadBuiltInPacks` (`@abuddy/host/packs/runtime`). The CLI ships as a bundled `dist/package` used outside the monorepo, so it can't depend on `@app/api`.
 
-The EARS engine's write side is a module singleton reached through `@abuddy/sdk/ears/internals`, which works only under the `@abuddy/source` condition. The CLI ships as a bundled `dist/package` used outside the monorepo, so it can't depend on `@app/api` or source-only SDK entries.
-
-**What the engine goal changes:**
-- `docs/goals/goal-ears-engine-instance.md` makes the engine an instance: `createEarsEngine({ persistence, isEntityType })`, with a `query` face packs use and an `admin` face for hydration, clearing and direct writes.
-- `@abuddy/host/ears` gains hydration and reset helpers written against `EarsAdmin`, and its Phase 3 moves `scripts/db/*` onto the admin handle.
-- Once that lands, any process can open an app's database with public SDK and host exports.
+**What `goal-package-boundaries.md` already gave this goal** (it absorbed `goal-ears-engine-instance.md`):
+- The engine is an instance: `createEarsEngine({ persistence, isEntityType })` (`@abuddy/ears`), with a `query` face packs use and an `admin` face for hydration, clearing and direct writes.
+- The LMDB store is public: `openLmdbStore({ paths, policy, engine })` (`@abuddy/ears/lmdb`) opens, hydrates, queries and resets it, with no import side effect. The partition policy comes from a pack registry (`createPackRegistry()`, `@abuddy/host/packs`).
+- So a process can open an app's database with published `@abuddy/ears` exports and host modules; what's missing is the composition outside the API (Decision 3).
 
 **What exists to build on:**
 - **Data folders:** `resolveAppContext({ env })` (`@abuddy/sdk/env`) gives each environment's `userDataDir`, `packsDir`, `hostPacksDir` and `apiPortFile`. The CLI's `install`/`uninstall`/`list`/`open` already select production by default, with `-d`/`-b` for development/beta.
@@ -58,7 +52,7 @@ The EARS engine's write side is a module singleton reached through `@abuddy/sdk/
   - Built-in packs are published to `hostPacksDir` with their snapshot.
   - External packs sit in `packsDir` with `abuddy.json` and `types/snapshot.json`.
   - Their manifests give the entity types, relation kinds and partition policy that hydration needs, without running pack code.
-- **Version:** the data records the app version that last wrote it (internal settings `version`), and `readHostVersion(userDataDir)` (`@abuddy/host/packs`) reads it.
+- **Version:** the data records the app version it was migrated to (`AppState.version`, `@abuddy/host/app-state`), and `readHostVersion(userDataDir)` (`@abuddy/host/packs`) reads the version of the app that last ran on the data dir (`host.json`).
 
 ## Decisions
 
@@ -78,7 +72,7 @@ The EARS engine's write side is a module singleton reached through `@abuddy/sdk/
      - If the Electron lock is held but no API port is published (starting, or crashed), writes refuse.
      - Needs authenticated local endpoints (Decision 5).
 3. **Offline access is a host module.**
-   - **`openAppDatabase({ userDataDir, readOnly })`** in `@abuddy/host`, built on `createEarsEngine` and the host LMDB persistence and hydration helpers:
+   - **`openAppDatabase({ userDataDir, readOnly })`** in `@abuddy/host`, built on `createEarsEngine` and `openLmdbStore` (`@abuddy/ears/lmdb`):
      - reads the installed packs' manifests for entity types, relation kinds and partition policy;
      - hydrates exactly as the API boots;
      - returns `{ query, admin, close }`, where `close` flushes and reports a failed flush as an error, not a log line.
@@ -100,7 +94,7 @@ The EARS engine's write side is a module singleton reached through `@abuddy/sdk/
    - The two share the executors, whether run offline or through the app, so a query means the same thing everywhere.
 8. **The monorepo scripts go.**
    - Maintained operations move into `abuddy db`, and the `npm run db:*` scripts call the CLI with the monorepo's development data dir, or are removed.
-   - The one-off scripts are deleted, not ported: `cleanup-corrupt-data`, `cleanup-export-subdoclinks`, `migrate-tnodes`, `cli/cleanup-tombstoned`.
+   - The one-off scripts are deleted, not ported (`cli/cleanup-tombstoned`, `cleanup-corrupt-data`, `cleanup-export-subdoclinks` and `migrate-tnodes` are already gone).
    - `fix-prod-upgrade.ts` is deleted once the user has run it; confirm with the user before deleting it.
    - The db CLI README becomes a section of `docs/public-facing/cli.md`.
 

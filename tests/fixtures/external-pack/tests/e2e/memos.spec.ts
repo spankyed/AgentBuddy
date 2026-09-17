@@ -79,3 +79,14 @@ test("a re-enabled pack's plugin gets its startup data again", async ({ appPage,
   await app.navigate('memos');
   await expect(appPage.getByTestId('memo-list').getByText('Seeded from markdown', { exact: true })).toBeVisible({ timeout: 10_000 });
 });
+
+test('writes through @abuddy/ears and reads back through the SDK, on the app\'s engine', async ({ appPage, app }) => {
+  await app.waitForPlugin('memos');
+  await app.navigate('memos');
+  const text = `memo note ${Date.now()}`;
+  // The memos system writes a note with @abuddy/ears (bridged to the app's) and reads it through services.repository
+  await appPage.evaluate((t) => (window as any).applicationState.system.get('memos').send({ type: 'MEMOS.ADD_NOTE', text: t }), text);
+  const noteFor = () => appPage.evaluate((t) => ((window as any).applicationState.system.get('memos').getSnapshot().context.notes as Array<{ text: string; note: { title: string } | null }>)
+    .find((entry) => entry.text === t), text);
+  await expect.poll(noteFor, { timeout: 10_000 }).toMatchObject({ text, note: { title: text } });
+});

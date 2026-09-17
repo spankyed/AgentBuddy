@@ -3,33 +3,6 @@
  * into the api core without direct cross-package imports.
  */
 
-describe('core/lifecycle — shutdown hooks', () => {
-  it('runShutdownHooks calls all registered hooks', async () => {
-    const { registerShutdownHook, runShutdownHooks } = await import('@abuddy/sdk/utils');
-
-    const calls: string[] = [];
-    registerShutdownHook(() => calls.push('hook-a'));
-    registerShutdownHook(() => calls.push('hook-b'));
-
-    runShutdownHooks();
-
-    expect(calls).toContain('hook-a');
-    expect(calls).toContain('hook-b');
-  });
-
-  it('swallows errors from individual hooks without stopping others', async () => {
-    const { registerShutdownHook, runShutdownHooks } = await import('@abuddy/sdk/utils');
-
-    const calls: string[] = [];
-    registerShutdownHook(() => { throw new Error('boom'); });
-    registerShutdownHook(() => calls.push('after-error'));
-
-    runShutdownHooks();
-
-    expect(calls).toContain('after-error');
-  });
-});
-
 describe('boot exports — source modules', () => {
   it('default-exports the logs entry (early boot system)', async () => {
     // System modules default-export their SystemEntry, the same way plugin
@@ -71,9 +44,8 @@ describe('registries/services — feature services assembly', () => {
   });
 });
 
-describe('core/seed — seeder registry', () => {
-  it('default-setup registers all built-in seeders', async () => {
-    await import('../../src/__generated__/seeders');
+describe('core/seed — seeders', () => {
+  it("default-setup's registration carries all built-in seeders, which seedData runs for its compiled seeds", async () => {
     const { seedData } = await import('@abuddy/sdk/utils');
     const fs = await import('fs');
     const os = await import('os');

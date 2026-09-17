@@ -7,10 +7,11 @@ import * as path from 'node:path';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { SEED_INDEX_FILE, seedFile } from '@abuddy/sdk/build';
 import { createFlowSeeder, createSeeder } from '@abuddy/sdk/seed';
-import { registerSeeders, seedData, unregisterSeeders } from '@abuddy/sdk/utils';
+import { seedData } from '@abuddy/sdk/utils';
+import { registerPack, unregisterPack } from '@abuddy/testing/harness';
 import { findWhere } from '@/__generated__/ears';
 import { dropAttribute } from '@abuddy/sdk/testing';
-import { findRelations, tx } from '@abuddy/sdk/ears';
+import { findRelations, tx } from '@abuddy/ears';
 import { repository } from '@/__generated__/repository';
 import { PACK_DIR, resetDatabase } from './harness';
 
@@ -20,9 +21,13 @@ const nodesOf = (label: string) => repository.flowsQueries.flowNodes(flow(label)
 
 const dirs: string[] = [];
 // Another installed pack seeding flows: its own seeders read the seeds it compiled
-registerSeeders('other-pack', [createSeeder({ key: 'actions', entities: ['Action'], identity: ['label'] }), createSeeder({ key: 'prompts', entities: ['Prompt'], identity: ['label'] }), createFlowSeeder()]);
+registerPack({
+  id: 'other-pack',
+  systems: [],
+  seeders: [createSeeder({ key: 'actions', entities: ['Action'], identity: ['label'] }), createSeeder({ key: 'prompts', entities: ['Prompt'], identity: ['label'] }), createFlowSeeder()],
+});
 afterAll(() => {
-  unregisterSeeders('other-pack');
+  unregisterPack('other-pack');
   for (const dir of dirs) fs.rmSync(dir, { recursive: true, force: true });
 });
 

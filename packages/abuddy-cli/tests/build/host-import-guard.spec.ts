@@ -49,8 +49,15 @@ describe('abuddy build rejects @abuddy/host imports', () => {
     expect(result.error).toMatch(/@abuddy\/host\/fe is the app's private host package/);
   }, 60_000);
 
+  it('rejects an export only the app loads, the LMDB store', async () => {
+    const dir = pack({ 'src/__generated__/pack-entry.ts': "import { openLmdbStore } from '@abuddy/ears/lmdb';\nexport const registration = { openLmdbStore };\n" });
+    const result = await bundlePackRuntime(dir, path.join(dir, 'dist'));
+    expect(result.success).toBe(false);
+    expect(result.error).toMatch(/@abuddy\/ears\/lmdb is only for the app \(the app's LMDB store; it loads lmdb, which only the app installs\); packs can't import it/);
+  });
+
   it('still bundles pack code that imports @abuddy/sdk', async () => {
-    const dir = pack({ 'src/__generated__/pack-entry.ts': "import { findRelations } from '@abuddy/sdk/ears';\nexport const registration = { findRelations };\n" });
+    const dir = pack({ 'src/__generated__/pack-entry.ts': "import { findRelations } from '@abuddy/ears';\nexport const registration = { findRelations };\n" });
     expect(await bundlePackRuntime(dir, path.join(dir, 'dist'))).toEqual({ success: true });
   });
 });

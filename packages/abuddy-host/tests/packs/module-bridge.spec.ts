@@ -101,6 +101,14 @@ describe('withModuleBridge', () => {
       .toThrow(`${lib}/gone isn't provided by this AgentBuddy: rebuild the pack with the current @abuddy/cli`);
   });
 
+  it('throws for an app-only specifier, saying only the app loads it', () => {
+    const lib = name('lib');
+    installPackage(lib, `module.exports = { value: 'real copy' };`);
+    const runtime = writeRuntime(`module.exports = require('${lib}');`);
+    expect(() => withModuleBridge({ modules: {}, resolveFrom, appOnly: { [lib]: "the app's store" } }, () => createRequire(runtime)(runtime)))
+      .toThrow(`${lib} is only for the app (the app's store); pack code can't import it`);
+  });
+
   it("still throws for a missing package without stubMissing, and for a missing relative file", () => {
     const missing = name('not-installed');
     const bare = writeRuntime(`module.exports = require('${missing}');`);

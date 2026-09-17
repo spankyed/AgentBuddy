@@ -1,8 +1,8 @@
 /**
  * Settings Service
- * 
+ *
  * Provides convenient access to application settings with type-safe methods
- * for common operations on general, plugin, and internal settings.
+ * for common operations on general and plugin settings.
  */
 
 import { repository } from '@/__generated__/repository';
@@ -10,7 +10,7 @@ import type { SettingsData } from '@/features/settings/be/types';
 
 export class SettingsService {
   /**
-   * Get all settings including general, plugins, and internal
+   * Get all settings: general, plugins and assistant
    */
   getAll(): SettingsData {
     return repository.settingsQueries.getSettings();
@@ -32,13 +32,6 @@ export class SettingsService {
   }
 
   /**
-   * Get internal system settings
-   */
-  getInternalSettings(): SettingsData['internal'] {
-    return repository.settingsQueries.getInternalSettings();
-  }
-
-  /**
    * Update a plugin setting
    * @param pluginId - The plugin identifier
    * @param path - Path to the setting property (e.g., ['hotkeys', 'openTerminal'])
@@ -46,15 +39,6 @@ export class SettingsService {
    */
   updatePluginSetting(pluginId: string, path: string[], value: any): void {
     repository.settingsCommands.updateSettings('plugin', pluginId, path, value);
-  }
-
-  /**
-   * Update an internal setting
-   * @param path - Path to the setting property
-   * @param value - The new value
-   */
-  updateInternalSetting(path: string[], value: any): void {
-    repository.settingsCommands.updateSettings('internal', null, path, value);
   }
 }
 

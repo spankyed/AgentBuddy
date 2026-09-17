@@ -1,4 +1,3 @@
-import { hostService } from './host-services.ts';
 
 /** A store a backup can hold: the primary database or the volatile trace store. API keys are never backed up. */
 export type BackupDatabase = 'lmdb' | 'volatileLmdb';
@@ -11,10 +10,20 @@ export interface BackupInfo {
   hasMedia: boolean;
 }
 
-/** The app's stored data as a whole: reset it, back it up, restore a backup. The host implements it. */
+/**
+ * The app's stored data as a whole: reset it, back it up, restore a backup, and whether the user finished
+ * onboarding (the app's own state, which the host keeps). The host implements it.
+ */
 export interface AppDataService {
-  /** Deletes all stored data and reopens empty stores (the in-memory database is cleared too) */
+  /**
+   * Resets the whole app: deletes all stored data and keys, reopens empty stores (the in-memory database is cleared
+   * too), then runs each pack's init hook, the boot seed and the app migrations. Onboarding starts over
+   */
   reset(): Promise<void>;
+  /** Whether the user finished onboarding */
+  hasOnboarded(): boolean;
+  /** Records that the user finished onboarding: the app opens without its onboarding from then on */
+  completeOnboarding(): void;
   /** Copies the chosen databases (and media, with the primary database) into a new backup directory under `targetPath`; returns its path */
   exportBackup(targetPath: string, name?: string, databases?: BackupDatabase[]): Promise<string>;
   /**
@@ -25,11 +34,3 @@ export interface AppDataService {
   /** A backup's metadata, or null when `backupPath` isn't a backup */
   backupInfo(backupPath: string): Promise<BackupInfo | null>;
 }
-
-/** The host's implementation, registered under `appData` */
-export const appData: AppDataService = {
-  reset: () => hostService('appData').reset(),
-  exportBackup: (targetPath, name, databases) => hostService('appData').exportBackup(targetPath, name, databases),
-  importBackup: (backupPath) => hostService('appData').importBackup(backupPath),
-  backupInfo: (backupPath) => hostService('appData').backupInfo(backupPath),
-};

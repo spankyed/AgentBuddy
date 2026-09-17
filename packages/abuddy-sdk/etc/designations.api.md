@@ -13,12 +13,6 @@ export function getDesignated(role: string): string;
 // @public (undocumented)
 export function hasDesignation(role: string): boolean;
 
-// @internal
-export function registerDesignations(designations: Designations): void;
-
-// @internal
-export function unregisterDesignations(designations: Designations): void;
-
 // (No @packageDocumentation comment for this package)
 
 ```

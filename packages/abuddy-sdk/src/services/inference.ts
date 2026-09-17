@@ -3,7 +3,6 @@ import type {
   JSONSchema7, LanguageModel, Output, OutputInterface, rerank, RerankingModel, SpeechModel, streamText, ToolLoopAgent, ToolLoopAgentSettings, ToolSet,
   transcribe, TranscriptionModel,
 } from 'ai';
-import { hostService } from './host-services.ts';
 import type { EmbeddingModelId, ImageModelId, ModelId, ModelIdOf, ModelKind, RerankingModelId, SpeechModelId, TranscriptionModelId } from './models.ts';
 
 /** The runtime context type `ai` calls take (`runtimeContext`) */
@@ -203,18 +202,3 @@ export function createInferenceService(resolveModel: ResolveModel): InferenceSer
     },
   };
 }
-
-const host = () => hostService('inference');
-
-/** The host's implementation, registered under `inference` */
-export const inference: InferenceService = {
-  generateText: (options) => host().generateText(options),
-  streamText: (options) => host().streamText(options),
-  createAgent: (settings) => host().createAgent(settings),
-  embed: (options) => host().embed(options),
-  embedMany: (options) => host().embedMany(options),
-  generateImage: (options) => host().generateImage(options),
-  generateSpeech: (options) => host().generateSpeech(options),
-  transcribe: (options) => host().transcribe(options),
-  rerank: (options) => host().rerank(options),
-};

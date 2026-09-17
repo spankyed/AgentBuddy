@@ -1,10 +1,11 @@
 import { tx, findById, findAll, qx } from '@/__generated__/ears';
 
 import { EARS } from '@/__generated__/ears';
-import { RepositoryError, RepositoryErrorCode } from '@abuddy/sdk/ears';
+import { RepositoryError, RepositoryErrorCode } from '@abuddy/ears';
+import { trash } from '@abuddy/sdk/repositories';
 import { updateEntity } from '@/__generated__/ears';
-import { wouldCreateCycle } from '@abuddy/sdk/ears';
-import { b64Encode, b64Decode } from '@abuddy/sdk/ears';
+import { wouldCreateCycle } from '@abuddy/ears';
+import { b64Encode, b64Decode } from '@abuddy/ears';
 import type {
   ThreadEntity, MessageEntity, ArtifactEntity, BlockConfig, MessageReferences,
   ThreadCreateData,
@@ -900,16 +901,8 @@ export const chatCommands = {
     // Delete the target message AND everything after it — the user is
     // "undoing" their message. The message text is prefilled into the chat
     // input so they can re-send or edit it.
-    const toDelete = nonDeleted.slice(targetIndex);
-    const now = Date.now();
-    const deletedIds: string[] = [];
-
-    for (const msg of toDelete) {
-      if (msg.id) {
-        tx(msg.id as EARS.EntityId).put('deleted', true).put('deletedAt', now);
-        deletedIds.push(msg.id as string);
-      }
-    }
+    const toDelete = nonDeleted.slice(targetIndex).flatMap((msg) => msg.id ? [msg.id as EARS.EntityId] : []);
+    const deletedIds: string[] = trash.move(toDelete);
 
     return { deletedCount: deletedIds.length, deletedIds };
   },

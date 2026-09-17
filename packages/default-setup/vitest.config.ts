@@ -31,6 +31,8 @@ export default defineConfig(async () => {
         'src/**/*.spec.ts',
       ],
       testTimeout: 120_000,
+      // Test files run in parallel: each worker's tests create their own EARS engines
+      fileParallelism: true,
       env: dataDir.env,
       globalSetup: dataDir.globalSetup,
       setupFiles: [...dataDir.setupFiles, './tests/setup.ts'],

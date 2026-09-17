@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # End state for outside pack authors (docs/archive/goals/goal-external-pack-authoring.md): in a temp
 # dir outside the monorepo, using only the packed @abuddy/* tarballs,
-#   1. install @abuddy/cli + @abuddy/sdk from tarballs (a backend-only pack installs no editor libraries)
+#   1. install @abuddy/cli + @abuddy/sdk (with @abuddy/ears) from tarballs (a backend-only pack installs no editor libraries)
 #   2. abuddy init → add feature → a flow using keepAlive from default-setup → seeds from a format
 #      with a .ts compiler module, default-setup's notes format, and default-setup's library format
 #      (its compiler module, loaded from the dependency's bundled seed-compilers.mjs) → an llm flow and a service
@@ -31,11 +31,12 @@ export npm_config_cache="$(npm config get cache)"
 export HOME="$WORK/home"
 mkdir -p "$HOME"
 
-step "Pack @abuddy/sdk, @abuddy/ui, @abuddy/cli and @abuddy/testing"
+step "Pack @abuddy/ears, @abuddy/sdk, @abuddy/ui, @abuddy/cli and @abuddy/testing"
 (cd "$ROOT" && npm run packages:build >/dev/null)
-for dir in abuddy-sdk abuddy-ui abuddy-cli/dist/package abuddy-testing/dist/package; do
+for dir in abuddy-ears abuddy-sdk abuddy-ui abuddy-cli/dist/package abuddy-testing/dist/package; do
   (cd "$ROOT/packages/$dir" && npm pack --silent --pack-destination "$WORK" >/dev/null)
 done
+EARS_TGZ="$(ls "$WORK"/abuddy-ears-*.tgz)"
 SDK_TGZ="$(ls "$WORK"/abuddy-sdk-*.tgz)"
 UI_TGZ="$(ls "$WORK"/abuddy-ui-*.tgz)"
 CLI_TGZ="$(ls "$WORK"/abuddy-cli-*.tgz)"
@@ -43,7 +44,8 @@ TESTING_TGZ="$(ls "$WORK"/abuddy-testing-*.tgz)"
 
 step "1. Install @abuddy/cli + @abuddy/sdk from the tarballs"
 mkdir "$WORK/tools"
-(cd "$WORK/tools" && npm init -y >/dev/null && npm install --silent "$SDK_TGZ" "$CLI_TGZ")
+# The SDK's @abuddy/ears comes from its tarball too
+(cd "$WORK/tools" && npm init -y >/dev/null && npm install --silent "$EARS_TGZ" "$SDK_TGZ" "$CLI_TGZ")
 ABUDDY="$WORK/tools/node_modules/.bin/abuddy"
 "$ABUDDY" --version
 
@@ -53,7 +55,7 @@ cd "$WORK"
 PACK="$WORK/demo-pack"
 cd "$PACK"
 # The tarballs stand in for the npm registry
-npm pkg set "dependencies.@abuddy/sdk=file:$SDK_TGZ" "devDependencies.@abuddy/cli=file:$CLI_TGZ" "devDependencies.@abuddy/testing=file:$TESTING_TGZ"
+npm pkg set "dependencies.@abuddy/ears=file:$EARS_TGZ" "dependencies.@abuddy/sdk=file:$SDK_TGZ" "devDependencies.@abuddy/cli=file:$CLI_TGZ" "devDependencies.@abuddy/testing=file:$TESTING_TGZ"
 npm install --silent
 # @abuddy/sdk carries the platform API only; the component library and its editors come with @abuddy/ui
 for lib in @tiptap highlight.js lowlight @guolao/vue-monaco-editor; do
@@ -217,7 +219,7 @@ cat > tests/unit/demo-notes.spec.ts <<'TS'
 import { describe, expect, it } from 'vitest';
 import { seedPack } from '@abuddy/testing/harness';
 import { findAll } from '#generated/ears';
-import { findRelations } from '@abuddy/sdk/ears';
+import { findRelations } from '@abuddy/ears';
 
 describe('demo notes', () => {
   it("seeds notes with default-setup's format and hooks", async () => {

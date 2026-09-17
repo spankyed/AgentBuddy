@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { SHARED_DEPS } from '@abuddy/host/build/shared-deps';
+import { APP_ONLY_EXPORTS, SHARED_DEPS, sharedInstanceExternals } from '@abuddy/host/build/shared-deps';
 import { SEED_COMPILERS_FILE } from '@abuddy/sdk/build';
 import { checkSeedRuntimeLoads } from './seed-runtime-check';
 
@@ -10,7 +10,7 @@ export interface BundleRuntimeOptions {
 }
 
 /** The host-provided packages every pack bundle leaves external; the host loader resolves its own singletons. */
-const HOST_EXTERNALS = [...Object.keys(SHARED_DEPS), '@abuddy/sdk', '@abuddy/sdk/*'];
+const HOST_EXTERNALS = [...Object.keys(SHARED_DEPS), ...sharedInstanceExternals()];
 
 type EsbuildOptions = import('esbuild').BuildOptions;
 
@@ -57,7 +57,7 @@ function bundleError(err: unknown): { success: false; error: string } {
  * Bundle the pack's generated backend entry (src/__generated__/pack-entry.ts) into
  * dist/runtime/index.cjs. It exports `registration` (systems, services, steps,
  * artifacts, blocks, EARS, boot hooks, migrations) and `setCompiledDir`, the same
- * contract built-in packs use. Host-provided packages and @abuddy/sdk stay external:
+ * contract built-in packs use. Host-provided and shared-instance packages stay external:
  * the host loader resolves them to its own singletons.
  */
 export async function bundlePackRuntime(
@@ -89,7 +89,7 @@ export async function bundlePackRuntime(
 /**
  * Bundle the pack's build-time step definitions (manifest steps.build) into
  * dist/build/steps.build.mjs. Dependent packs' `abuddy build` imports it to validate
- * and compile flows with this pack's real step code. @abuddy/sdk and host-shared
+ * and compile flows with this pack's real step code. Shared-instance and host-shared
  * packages stay external and resolve from the importing pack's node_modules.
  */
 export async function bundlePackStepBuild(
@@ -116,7 +116,7 @@ export async function bundlePackStepBuild(
 /**
  * Bundle the compiler modules named in the pack's seedFormats into dist/build/seed-compilers.mjs,
  * one export per format name. Dependent packs' `abuddy build` compiles this pack's formats with it,
- * since the pack's sources aren't installed. @abuddy/sdk and host-shared packages stay external.
+ * since the pack's sources aren't installed. Shared-instance and host-shared packages stay external.
  */
 export async function bundlePackSeedCompilers(
   packDir: string,
@@ -147,7 +147,7 @@ export async function bundlePackSeedCompilers(
 /**
  * Bundle the pack's generated flow helpers (src/__generated__/flow-helpers.ts) into one ES module,
  * returned with the names it exports rather than written: the pack's snapshot carries it, and
- * dependents' generated flow helpers re-export it. @abuddy/sdk and host-shared packages stay external.
+ * dependents' generated flow helpers re-export it. Shared-instance and host-shared packages stay external.
  */
 export async function bundlePackFlowHelpersModule(
   packDir: string,
@@ -176,8 +176,9 @@ export const SEED_RUNTIME_FILE = 'seed-runtime.mjs';
 
 /**
  * Bundle the pack's seed runtime (src/__generated__/seed-runtime.ts: entity types, repositories,
- * seed hooks) into dist/build/seed-runtime.mjs. Only @abuddy/sdk stays external, so a dependent's
- * unit tests can load it with just their own @abuddy/sdk installed and share its instance. The
+ * seed hooks) into dist/build/seed-runtime.mjs. Only the shared-instance packages (@abuddy/sdk and
+ * @abuddy/ears) stay external, so a dependent's unit tests can load it with just their own installed
+ * and share their instances. The
  * build then loads it that way, so a bundle that can't load fails here.
  */
 export async function bundlePackSeedRuntime(
@@ -194,7 +195,7 @@ export async function bundlePackSeedRuntime(
     await buildPackBundle(packDir, options, {
       entryPoints: [entryPath],
       outfile,
-      external: ['@abuddy/sdk', '@abuddy/sdk/*'],
+      external: sharedInstanceExternals(),
       // Bundled CommonJS dependencies may call require(); give the ESM bundle one
       banner: { js: "import { createRequire as __abuddyCreateRequire } from 'node:module'; const require = __abuddyCreateRequire(import.meta.url);" },
     });
@@ -204,16 +205,24 @@ export async function bundlePackSeedRuntime(
   return checkSeedRuntimeLoads(packDir, outfile);
 }
 
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+
 /**
- * Fails the bundle when pack code imports @abuddy/host, the app's private package: installed
- * AgentBuddy doesn't provide it to packs, so it would only fail later, at load. Packs use @abuddy/sdk.
+ * Fails the bundle when pack code imports @abuddy/host, the app's private package, or an export only the
+ * app loads (`APP_ONLY_EXPORTS`, the LMDB store): installed AgentBuddy doesn't provide them to packs, so
+ * they would only fail later, at load. Packs use @abuddy/sdk.
  */
 export function rejectHostImportsPlugin(): import('esbuild').Plugin {
+  const appOnly = new RegExp(`^(?:${Object.keys(APP_ONLY_EXPORTS).map(escapeRegExp).join('|')})$`);
   return {
     name: 'reject-host-imports',
     setup(build) {
+      const importedFrom = (importer: string) => path.relative(process.cwd(), importer) || importer;
       build.onResolve({ filter: /^@abuddy\/host(?:\/|$)/ }, (args) => ({
-        errors: [{ text: `${args.path} is the app's private host package; packs import @abuddy/sdk instead (imported from ${path.relative(process.cwd(), args.importer) || args.importer})` }],
+        errors: [{ text: `${args.path} is the app's private host package; packs import @abuddy/sdk instead (imported from ${importedFrom(args.importer)})` }],
+      }));
+      build.onResolve({ filter: appOnly }, (args) => ({
+        errors: [{ text: `${args.path} is only for the app (${APP_ONLY_EXPORTS[args.path]}); packs can't import it (imported from ${importedFrom(args.importer)})` }],
       }));
     },
   };

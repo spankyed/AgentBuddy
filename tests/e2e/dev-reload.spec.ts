@@ -55,7 +55,7 @@ test('a rebuilt built-in pack reloads with the seed data the rebuild changed', a
   expect(renameSeededDocument(seeds.records, SEEDED_DOCUMENT, REBUILT_DOCUMENT), `${SEED_FILE} holds "${SEEDED_DOCUMENT}"`).toBe(true);
   fs.writeFileSync(SEED_FILE, JSON.stringify(seeds, null, 2));
 
-  const response = await fetch(`http://localhost:${apiPort}/dev/reload`, {
+  const response = await fetch(`http://127.0.0.1:${apiPort}/dev/reload`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ packId: 'default-setup', builtIn: true }),

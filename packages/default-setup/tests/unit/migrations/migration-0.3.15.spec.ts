@@ -1,8 +1,9 @@
-// 0.3.15 moves the boot seed's record under the pack that ran it, and marks rows seeded before the seeder
-// recorded what it wrote as unedited — without that every row an older version seeded stays frozen. Action
+// 0.3.15 drops the app's state from the settings (the host moved it to AppState first), and marks rows seeded before
+// the seeder recorded what it wrote as unedited — without that every row an older version seeded stays frozen. Action
 // logs moved from `log-service` to `action:<label>`, so whoever hid `log-service` gets `action:*` hidden too.
 import { describe, expect, it } from 'vitest'
-import { tx, untypedQx } from '@abuddy/sdk/ears'
+import { tx, untypedQx } from '@abuddy/ears'
+import type { EARS as SdkEARS } from '@abuddy/sdk'
 import { dropAttribute } from '@abuddy/sdk/testing'
 import { migrations } from '../../../src/migrations/index'
 import { repository } from '@/__generated__/repository'
@@ -12,8 +13,8 @@ import { EARS, createEntityWithDefaults } from '@/__generated__/ears'
 /** The migration as the pack registers it, so this fails too if it was never listed */
 const migration = migrations.find((m) => m.target === '0.3.15')!
 
-const internal = () => repository.settingsQueries.getInternalSettings() as Record<string, any>
-const setInternal = (key: string, value: unknown) => repository.settingsCommands.updateSettings('internal', null, [key], value)
+/** The settings row as the repository stores it: only what differs from the defaults */
+const stored = () => untypedQx('Settings-app' as SdkEARS.EntityId).pickOne(['data'])?.data as Record<string, unknown>
 
 /** A row as an older version's seeder left it: a source hash, but no record of the values it wrote */
 function seededTheOldWay(name: string) {
@@ -25,25 +26,20 @@ function seededTheOldWay(name: string) {
 const attrs = (id: string) => (untypedQx(id as never).pickAll() as Array<Record<string, unknown>>)[0]
 
 describe('the 0.3.15 migration', () => {
-  it("files the boot seed's record under the pack that ran it", () => {
+  it("drops the app's state from the stored settings, and keeps the user's", () => {
     createDefaultSettings()
-    setInternal('seedHash', 'abc123')
-    setInternal('seedStatFingerprint', 'file:1:2')
+    // As 0.3.14 stored it
+    tx('Settings-app' as SdkEARS.EntityId).update('data', {
+      general: { application: { openLinksInApp: false } },
+      internal: { hasOnboarded: true, version: '0.3.14', seedHash: 'abc123' },
+    })
 
     migration.up()
+    expect(stored()).toEqual({ general: { application: { openLinksInApp: false } } })
 
-    expect(internal().seedHashes).toEqual({ 'default-setup': 'abc123' })
-    expect(internal().seedStatFingerprints).toEqual({ 'default-setup': 'file:1:2' })
-  })
-
-  it('leaves a record it already moved alone, so it can run again after a reset', () => {
-    createDefaultSettings()
-    setInternal('seedHash', 'abc123')
-    setInternal('seedHashes', { 'default-setup': 'newer', 'other-pack': 'theirs' })
-
+    // Running again changes nothing
     migration.up()
-
-    expect(internal().seedHashes).toEqual({ 'default-setup': 'newer', 'other-pack': 'theirs' })
+    expect(stored()).toEqual({ general: { application: { openLinksInApp: false } } })
   })
 
   it('marks a row seeded before the seeder tracked its values as unedited', () => {

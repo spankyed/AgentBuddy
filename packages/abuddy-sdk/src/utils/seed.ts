@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import type { EARS } from '../types/index.ts';
+import { boundHost } from '../runtime/host-runtime.ts';
 
 export interface SeedCounts {
   created: number;
@@ -26,31 +27,9 @@ export interface Seeder {
   seed(ctx: SeederContext): SeedCounts;
 }
 
-/** Each pack's seeders: two packs may declare the same seed key with different seeders */
-const packSeeders = new Map<string, Seeder[]>();
-
-/** Registers a pack's seeders, replacing the ones it registered before (a reloaded pack's module registers again) */
-export function registerSeeders(packId: string, seeders: Seeder[]): void {
-  const keys = new Set<string>();
-  for (const { key } of seeders) {
-    if (keys.has(key)) throw new Error(`Pack "${packId}" registers two seeders for seed key "${key}"`);
-    keys.add(key);
-  }
-  packSeeders.set(packId, seeders);
-}
-
-/**
- * Drops a pack's seeders when it's torn down
- *
- * @internal Host-only: pack teardown.
- */
-export function unregisterSeeders(packId: string): void {
-  packSeeders.delete(packId);
-}
-
-/** The seed keys a pack registered seeders for: the only keys an import of its seeds can seed */
+/** The seed keys a registered pack has seeders for (its registration's `seeders`): the only keys an import of its seeds can seed */
 export function registeredSeedKeys(packId: string): string[] {
-  return (packSeeders.get(packId) ?? []).map((seeder) => seeder.key);
+  return boundHost().packs.seeders(packId).map((seeder) => seeder.key);
 }
 
 /** The index compilePack writes next to a pack's compiled seeds */
@@ -73,7 +52,7 @@ export function indexPackId(index: { packId?: string } | null, indexFile: string
   return index.packId;
 }
 
-/** Seeds a pack's compiled seeds directory with the seeders of the pack its seeds.json names */
+/** Seeds a pack's compiled seeds directory with the seeders of the registered pack its seeds.json names */
 export function seedData(options: {
   compiledDir: string;
   include?: Record<string, SeedIncludeSet | undefined>;
@@ -84,7 +63,7 @@ export function seedData(options: {
   const result: Record<string, SeedCounts> = {};
   const packId = seedingPackId(options.compiledDir);
 
-  for (const seeder of packSeeders.get(packId) ?? []) {
+  for (const seeder of boundHost().packs.seeders(packId)) {
     const inc = options.include?.[seeder.key];
     if (inc instanceof Set && inc.size === 0) {
       log(`  ${seeder.key} section skipped by include filter`);

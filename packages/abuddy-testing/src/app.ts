@@ -1,10 +1,10 @@
 // A test app: the pack's registered systems under the app's bus core, with a client the test drives.
 import { createActor, type Actor, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { createBusMachine } from '@abuddy/host/bus';
-import { getBootHooks, getRegisteredSystems, resolveSystemAddress } from '@abuddy/host/packs';
+import type { PackBootHooks } from '@abuddy/sdk/framework';
 import type { OutgoingSystemEvents } from '@abuddy/sdk/events';
 import { testRootEvents } from '@abuddy/sdk/testing';
-import { untypedQx } from '@abuddy/sdk/ears';
+import { untypedQx } from '@abuddy/ears';
 import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
 import { ROOT_FLOW_ROLE } from '@abuddy/sdk/types';
 import { stepRegistry } from '@abuddy/sdk/steps';
@@ -52,7 +52,7 @@ export interface TestApp {
   connect(): Promise<void>;
   /** Sends a system an event, as a client's `sendToSystem` does (the pack's own by feature id, a dependency's as `<packId>/<featureId>`) */
   send(systemId: string, event: { type: string; [key: string]: unknown }): Promise<void>;
-  /** Events sent to frontend plugins (by `emit` or `sendToPlugin`), in order; optionally one plugin's. Readable after `stop` */
+  /** Events delivered to frontend plugins (by `emit` or `sendToPlugin`, once connected), in order; optionally one plugin's. Readable after `stop` */
   emitted(pluginId?: string): OutgoingSystemEvents[];
   /** The next event of `type` sent to `pluginId` that no earlier `nextEmit` returned, waiting for it if needed */
   nextEmit(pluginId: string, type: string, options?: { timeoutMs?: number }): Promise<OutgoingSystemEvents>;
@@ -84,12 +84,27 @@ export interface TestApp {
   stop(): void;
 }
 
+/** What test apps read of the test file's registered packs (host's PackRegistry, which the published declarations can't name) */
+interface AppPacks {
+  getBootHooks(): PackBootHooks[];
+  resolveSystemAddress(address: string): string | undefined;
+  getRegisteredSystems(): Map<string, AnyStateMachine>;
+  getRegisteredPackSystemIds(packId: string): string[];
+}
+
 const running = new Set<TestApp>();
+let registry: AppPacks | undefined;
 let packId: string | undefined;
 
-/** @internal The harness sets the pack's id, which its bare system ids map with */
-export function setAppPackId(id: string): void {
+/** @internal The harness sets the registry apps run the systems of, and the pack's id, which its bare system ids map with */
+export function setAppPacks(packs: AppPacks, id?: string): void {
+  registry = packs;
   packId = id;
+}
+
+function packs(): AppPacks {
+  if (!registry) throw new Error('Call setupPackTests() from a vitest setup file before startApp()');
+  return registry;
 }
 
 /** @internal The harness stops apps a test left running; throws once all stopped if a pack's shutdown failed */
@@ -113,7 +128,7 @@ const describeError = (error: unknown) => error instanceof Error ? error.message
  * so each test's apps run between one onInit and one onShutdown.
  */
 function startPacks(): void {
-  for (const boot of getBootHooks()) {
+  for (const boot of packs().getBootHooks()) {
     try {
       boot.onInit?.();
     } catch (error) {
@@ -132,7 +147,7 @@ function startPacks(): void {
 /** Runs each registered pack's `boot.onShutdown`, as the app does when it stops a pack's systems */
 function shutDownPacks(): void {
   const failures: string[] = [];
-  for (const boot of getBootHooks()) {
+  for (const boot of packs().getBootHooks()) {
     try {
       boot.onShutdown?.();
     } catch (error) {
@@ -147,7 +162,7 @@ function shutDownPacks(): void {
  * `<packId>/<featureId>`, the pack's own by feature id. A full bus id is accepted too.
  */
 function resolveSystemId(id: string, registered: ReadonlyMap<string, AnyStateMachine>): string {
-  const addressed = id.includes('/') ? resolveSystemAddress(id) : packId && `${packId}.${id}`;
+  const addressed = id.includes('/') ? packs().resolveSystemAddress(id) : packId && `${packId}.${id}`;
   if (addressed && registered.has(addressed)) return addressed;
   if (registered.has(id)) return id;
   throw new Error(`No registered system is named "${id}". Registered: ${[...registered.keys()].join(', ') || 'none'} (name the pack's own systems by feature id and a dependency's as "<packId>/<featureId>"; pass the pack's registration to setupPackTests)`);
@@ -183,7 +198,7 @@ const SETTLE_LIMIT = 1000;
 
 /** Starts the named registered systems under the bus. The harness stops it after the test. */
 export async function startApp(options: StartAppOptions): Promise<TestApp> {
-  const registered = getRegisteredSystems();
+  const registered = packs().getRegisteredSystems();
   // In registration order, as the app spawns them (a pack's settings system before the systems that use it)
   const named = options.systems === '*' ? undefined : new Set(options.systems.map((id) => resolveSystemId(id, registered)));
   const systems = named ? new Map([...registered].filter(([id]) => named.has(id))) : registered;
@@ -258,6 +273,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
   /** Whether the packs are up, so a start that failed before they were doesn't shut them down twice */
   let packsUp = false;
   const bus: Actor<ReturnType<typeof createBusMachine>> = createActor(createBusMachine({
+    registry: packs(),
     systems: () => systems,
     onOutgoing: (event) => testRootEvents.emitOutgoing(event),
     listen: (send) => {
@@ -265,6 +281,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
         testRootEvents.onConnected(() => send({ type: 'CLIENT_CONNECTED' })),
         testRootEvents.onPackClientConnected((id) => send({ type: 'PACK_CLIENT_CONNECTED', packId: id })),
         testRootEvents.onIncoming((event) => send({ type: 'INCOMING', event })),
+        testRootEvents.onPluginSend((event) => send({ type: 'OUTGOING', event })),
       ];
       return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
     },

@@ -1,31 +1,31 @@
+// The registered packs' message block definitions, looked up by type in the bound registry
 import type { BlockDefinition } from './types.ts';
+import { boundPackContributions } from '../runtime/packs-view.ts';
 
-class BlockRegistry {
-  private blocks = new Map<string, BlockDefinition>();
+const block = (type: string): BlockDefinition | undefined => boundPackContributions().block(type);
 
-  register(def: BlockDefinition): void {
-    this.blocks.set(def.type, def);
-  }
-
-  get(type: string): BlockDefinition | undefined {
-    return this.blocks.get(type);
-  }
-
-  getComponent(type: string): unknown | undefined {
-    return this.blocks.get(type)?.fe?.component;
-  }
-
-  unregister(type: string): void {
-    this.blocks.delete(type);
-  }
-
-  has(type: string): boolean {
-    return this.blocks.has(type);
-  }
-
-  all(): BlockDefinition[] {
-    return [...this.blocks.values()];
-  }
+/** The registered message block definitions, by type */
+interface BlockRegistry {
+  get(type: string): BlockDefinition | undefined;
+  getComponent(type: string): unknown | undefined;
+  has(type: string): boolean;
+  all(): BlockDefinition[];
 }
 
-export const blockRegistry = new BlockRegistry();
+export const blockRegistry: BlockRegistry = {
+  get(type: string): BlockDefinition | undefined {
+    return block(type);
+  },
+
+  getComponent(type: string): unknown | undefined {
+    return block(type)?.fe?.component;
+  },
+
+  has(type: string): boolean {
+    return block(type) !== undefined;
+  },
+
+  all(): BlockDefinition[] {
+    return boundPackContributions().blocks();
+  },
+};

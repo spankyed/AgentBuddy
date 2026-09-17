@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { isStepCount, jsonSchema, Output, tool, type JSONSchema7 } from 'ai';
 import { z } from 'zod';
 import { fakeInference, startTestRuntime } from '../../src/testing/index.ts';
-import { inference as hostInference } from '../../src/services/inference.ts';
+import { services } from '../../src/services/index.ts';
 
 describe('fakeInference', () => {
   it('answers generateText with its reply and records the call', async () => {
@@ -205,6 +205,7 @@ describe('fakeInference', () => {
 
   it("is what unmocked tests don't have: the test host's inference fails naming the fix", async () => {
     startTestRuntime();
+    const hostInference = services.inference;
     await expect(hostInference.generateText({ model: 'openai:gpt-5', prompt: 'hi' })).rejects.toThrow('mock inference with mockInference(reply)');
     await expect(hostInference.streamText({ model: 'openai:gpt-5', prompt: 'hi' })).rejects.toThrow('No models in unit tests');
     await expect(hostInference.createAgent({ model: 'openai:gpt-5' })).rejects.toThrow('No models in unit tests');

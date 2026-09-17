@@ -1,7 +1,6 @@
 // ⚠️  NODE-ONLY barrel — re-exports modules that use fs, path, child_process, process.env.
 // FE-reachable SDK modules must NEVER import from this barrel; import from
 // '@abuddy/sdk/utils/pure' (or a specific sub-path like './compare-versions') instead.
-import { getHostModule } from '../runtime/host.ts';
 
 // --- Pure utilities (environment-agnostic, re-exported for backend convenience) ---
 export * from './pure.ts';
@@ -28,25 +27,10 @@ export {
   toSlug, uniqueFilename,
 } from './export.ts';
 
-// --- Resolve CLI (direct) ---
-export {
-  resolveForService, resolveCliPath, testCli,
-  isCliName, clearCliPathCache,
-} from './resolve-cli.ts';
-export type { CliName } from './resolve-cli.ts';
-
 // --- Seed (direct) ---
 export {
-  registerSeeders, unregisterSeeders, seedData, seedCollection,
+  seedData, seedCollection,
   loadJSON, shouldSeedAll, filterByInclude,
 } from './seed.ts';
 export type { SeedCounts, SeedIncludeSet, ImportMode, SeederContext, Seeder } from './seed.ts';
 
-// --- Lifecycle (direct) ---
-export { registerShutdownHook, runShutdownHooks, runShutdownHooksForKey, removeShutdownHooksForKey } from './lifecycle.ts';
-
-// --- Migrations (host-injected) ---
-let _migrationsMod: any;
-function migrationsMod() { if (!_migrationsMod) _migrationsMod = getHostModule('migrations'); return _migrationsMod; }
-
-export function runMigrations(): void { return migrationsMod().runMigrations(); }

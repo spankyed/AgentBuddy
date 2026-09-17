@@ -2,12 +2,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { EARS } from '../types/entities.ts';
-import { destroyEntity } from '../ears/index.ts';
-import { getAttr, updateAttr } from '../ears/attribute-storage.ts';
-import { tx } from '../ears/transaction.ts';
-import { qx } from '../ears/query.ts';
-import { createEntityWithDefaults, updateEntity } from '../ears/transaction-helpers.ts';
-import { findAll, findByIdRaw, findWhere } from '../ears/query-helpers.ts';
+import { destroyEntity, installedEngine as ears, tx, untypedQx as qx } from '@abuddy/ears';
 import { getMediaPath, loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.ts';
 import { seedPath } from '../build/manifest.ts';
 import { seedingPackId } from '../utils/seed.ts';
@@ -53,7 +48,7 @@ function hashValues(values: unknown[]): string {
 }
 
 function hashStoredFields(id: EARS.EntityId, fields: string[]): string {
-  return hashValues(fields.map((field) => getAttr(id, field as EARS.AttrKind) ?? null));
+  return hashValues(fields.map((field) => ears().getAttr(id, field as EARS.AttrKind) ?? null));
 }
 
 /** A record's place in its entry: the entry key, then each ancestor's and its own entity and identity */
@@ -68,7 +63,7 @@ export const seedKeyPrefix = (packId: string) => `${packId}:`;
 
 /** Records the row's values for the seeded fields, so a later seed can tell whether anything else changed them */
 function stampSeededFields(id: EARS.EntityId, fields: string[]): void {
-  updateAttr(id, SEEDED_FIELDS, { fields, hash: hashStoredFields(id, fields) } satisfies SeededFields);
+  tx(id).update(SEEDED_FIELDS, { fields, hash: hashStoredFields(id, fields) } satisfies SeededFields);
 }
 
 /** The row's seeded fields still hold what the seeder wrote */
@@ -88,7 +83,7 @@ function holdsSeededValues(id: EARS.EntityId, seeded: SeededFields): boolean {
  * then on.
  */
 export function markSeededRowUnedited(id: EARS.EntityId): void {
-  updateAttr(id, SEEDED_FIELDS, { fields: [], hash: hashValues([]) } satisfies SeededFields);
+  tx(id).update(SEEDED_FIELDS, { fields: [], hash: hashValues([]) } satisfies SeededFields);
 }
 
 /**
@@ -138,11 +133,11 @@ export function createSeeder(options: SeederOptions): Seeder {
        * (`reused`): its children are seeded under it and the row itself is left alone.
        */
       const find = (record: SeedRecord, seedKey: string, context: SeedHookContext, hooks?: SeedHooks): { match?: SeedHookMatch; reused?: boolean } => {
-        const keyed = record.entity ? findWhere<{ id: EARS.EntityId; sourceHash?: string }>(record.entity as EARS.Entity, SEED_KEY as string, seedKey)[0] : undefined;
+        const keyed = record.entity ? ears().findWhere<{ id: EARS.EntityId; sourceHash?: string }>(record.entity as EARS.Entity, SEED_KEY as string, seedKey)[0] : undefined;
         if (keyed) return { match: { id: keyed.id, sourceHash: keyed.sourceHash } };
         const match = findByIdentity(record, context, hooks);
         if (!match) return {};
-        const owner = getAttr(match.id, SEED_KEY) as string | null;
+        const owner = ears().getAttr(match.id, SEED_KEY) as string | null;
         if (owner === null) return { match };
         // The keyed lookup missed, so the row is another record's: a container holds this record's children too
         if (hooks?.container) return { match, reused: true };
@@ -155,7 +150,7 @@ export function createSeeder(options: SeederOptions): Seeder {
         const fields = identity.filter((name) => name !== 'parent');
         if (fields.length === 0) throw new Error(`Seed "${key}": entity "${record.entity}" has no find hook, so the entry needs "identity"`);
         const [first, ...rest] = fields;
-        const candidates = findWhere<Record<string, unknown> & { id: EARS.EntityId }>(record.entity as EARS.Entity, first, record[first])
+        const candidates = ears().findWhere<Record<string, unknown> & { id: EARS.EntityId }>(record.entity as EARS.Entity, first, record[first])
           .filter((row) => rest.every((name) => row[name] === record[name]));
         const match = identity.includes('parent')
           ? candidates.find((row) => qx(row.id).linksTo(relKind, undefined, false).ids()[0] === context.parentId)
@@ -165,7 +160,7 @@ export function createSeeder(options: SeederOptions): Seeder {
 
       const create = (record: SeedRecord, context: SeedHookContext, hooks?: SeedHooks): EARS.EntityId => {
         if (hooks?.create) return hooks.create(record, context);
-        const row = createEntityWithDefaults(record.entity as EARS.Entity, fieldsOf(record));
+        const row = ears().createEntityWithDefaults(record.entity as EARS.Entity, fieldsOf(record));
         if (context.parentId) tx(context.parentId).link(relKind, row.id);
         return row.id;
       };
@@ -173,14 +168,14 @@ export function createSeeder(options: SeederOptions): Seeder {
       /** Without a hook, fields the record no longer sets are dropped */
       const update = (id: EARS.EntityId, record: SeedRecord, context: SeedHookContext, hooks?: SeedHooks) => {
         if (hooks?.update) hooks.update(id, record, context);
-        else updateEntity(id, { ...fieldsOf(record), ...Object.fromEntries(context.clearedFields.map((field) => [field, null])) });
+        else ears().updateEntity(id, { ...fieldsOf(record), ...Object.fromEntries(context.clearedFields.map((field) => [field, null])) });
       };
 
       /** Hooks' repository commands may not store sourceHash; change tracking needs it, the seeded values and the seed key */
       const stamp = (id: EARS.EntityId, record: SeedRecord, seedKey: string) => {
-        if (record.sourceHash && getAttr(id, SOURCE_HASH) !== record.sourceHash) updateAttr(id, SOURCE_HASH, record.sourceHash);
+        if (record.sourceHash && ears().getAttr(id, SOURCE_HASH) !== record.sourceHash) tx(id).update(SOURCE_HASH, record.sourceHash);
         stampSeededFields(id, seededFieldNames(record));
-        updateAttr(id, SEED_KEY, seedKey);
+        tx(id).update(SEED_KEY, seedKey);
       };
 
       /**
@@ -196,7 +191,7 @@ export function createSeeder(options: SeederOptions): Seeder {
         try {
           update(existing.id, restoreMedia(record, existing.id, mediaDir, ctx.log).record, { ...context, clearedFields }, hooks);
         } catch (err) {
-          updateAttr(existing.id, SOURCE_HASH, existing.sourceHash);
+          tx(existing.id).update(SOURCE_HASH, existing.sourceHash);
           stampSeededFields(existing.id, seeded.fields);
           throw err;
         }
@@ -245,7 +240,7 @@ export function createSeeder(options: SeederOptions): Seeder {
                 ctx.log(`  ${key} skipped (existing): ${label}`);
                 return;
               }
-              const seeded = getAttr(existing.id, SEEDED_FIELDS) as SeededFields | null;
+              const seeded = ears().getAttr(existing.id, SEEDED_FIELDS) as SeededFields | null;
               if (!existing.sourceHash) {
                 counts.skipped++;
                 ctx.log(`  ${key} skipped (untracked): ${label}`);
@@ -300,9 +295,9 @@ function wipe(entities: string[], records: SeedRecord[]): void {
   const types = [...entities].sort((a, b) => rank(b) - rank(a));
   for (const entity of types) {
     const hooks = seedHookRegistry.get(entity);
-    for (const row of findAll<{ id: EARS.EntityId }>(entity as EARS.Entity)) {
+    for (const row of ears().findAll<{ id: EARS.EntityId }>(entity as EARS.Entity)) {
       // Removing a parent may already have removed this row
-      if (!findByIdRaw(row.id)) continue;
+      if (!ears().findByIdRaw(row.id)) continue;
       if (hooks?.remove) hooks.remove(row.id);
       else destroyEntity(row.id);
     }

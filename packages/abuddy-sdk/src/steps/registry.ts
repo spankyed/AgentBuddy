@@ -1,107 +1,78 @@
+// The registered packs' step definitions, looked up by type. The app registers them (a pack's registration's
+// `steps`, and the frontend facets its frontend registers); this reads the bound registry on every call.
 import type { StepDefinition, StepBuildFacet, StepRuntimeFacet, StepFEFacet, TriggerFacet } from './types.ts';
+import { boundPackContributions } from '../runtime/packs-view.ts';
 
-class StepRegistry {
-  private steps = new Map<string, StepDefinition>();
+const step = (type: string): StepDefinition | undefined => boundPackContributions().step(type);
 
-  register(def: StepDefinition): void {
-    const existing = this.steps.get(def.type);
-    if (existing) {
-      this.steps.set(def.type, {
-        ...existing,
-        ...def,
-        build: def.build ?? existing.build,
-        runtime: def.runtime ?? existing.runtime,
-        fe: def.fe ?? existing.fe,
-        trigger: def.trigger ?? existing.trigger,
-        kind: def.kind ?? existing.kind,
-      });
-    } else {
-      this.steps.set(def.type, def);
-    }
-  }
+/** The registered step definitions and their facets, by type */
+interface StepRegistry {
+  get(type: string): StepDefinition | undefined;
+  getBuild(type: string): StepBuildFacet | undefined;
+  getRuntime(type: string): StepRuntimeFacet | undefined;
+  getFE(type: string): StepFEFacet | undefined;
+  getComponent(type: string): unknown | undefined;
+  getFormComponent(type: string): unknown | undefined;
+  has(type: string): boolean;
+  isTrigger(type: string): boolean;
+  getTrigger(type: string): TriggerFacet | undefined;
+  triggers(): StepDefinition[];
+  types(): string[];
+  all(): StepDefinition[];
+  createNodeDefaults(nodeType: string): Record<string, unknown>;
+}
 
+export const stepRegistry: StepRegistry = {
   get(type: string): StepDefinition | undefined {
-    return this.steps.get(type);
-  }
+    return step(type);
+  },
 
   getBuild(type: string): StepBuildFacet | undefined {
-    return this.steps.get(type)?.build;
-  }
+    return step(type)?.build;
+  },
 
   getRuntime(type: string): StepRuntimeFacet | undefined {
-    return this.steps.get(type)?.runtime;
-  }
+    return step(type)?.runtime;
+  },
 
   getFE(type: string): StepFEFacet | undefined {
-    return this.steps.get(type)?.fe;
-  }
-
-  patchRuntime(type: string, runtime: StepRuntimeFacet): void {
-    const existing = this.steps.get(type);
-    if (existing) {
-      existing.runtime = runtime;
-    }
-  }
-
-  patchFE(type: string, fe: StepFEFacet): void {
-    const existing = this.steps.get(type);
-    if (existing) {
-      existing.fe = fe;
-    }
-  }
-
-  setComponents(type: string, components: { node?: unknown; form?: unknown }): void {
-    const existing = this.steps.get(type);
-    if (!existing?.fe) return;
-    existing.fe.components = { ...existing.fe.components, ...components };
-  }
+    return step(type)?.fe;
+  },
 
   getComponent(type: string): unknown | undefined {
-    return this.steps.get(type)?.fe?.components?.node;
-  }
+    return step(type)?.fe?.components?.node;
+  },
 
   getFormComponent(type: string): unknown | undefined {
-    return this.steps.get(type)?.fe?.components?.form;
-  }
-
-  unregister(type: string): void {
-    this.steps.delete(type);
-  }
+    return step(type)?.fe?.components?.form;
+  },
 
   has(type: string): boolean {
-    return this.steps.has(type);
-  }
+    return step(type) !== undefined;
+  },
 
   isTrigger(type: string): boolean {
-    return this.steps.get(type)?.kind === 'trigger';
-  }
+    return step(type)?.kind === 'trigger';
+  },
 
   getTrigger(type: string): TriggerFacet | undefined {
-    return this.steps.get(type)?.trigger;
-  }
+    return step(type)?.trigger;
+  },
 
   triggers(): StepDefinition[] {
-    return [...this.steps.values()].filter(s => s.kind === 'trigger');
-  }
+    return boundPackContributions().steps().filter(s => s.kind === 'trigger');
+  },
 
   types(): string[] {
-    return [...this.steps.keys()];
-  }
+    return boundPackContributions().steps().map(s => s.type);
+  },
 
   all(): StepDefinition[] {
-    return [...this.steps.values()];
-  }
-
-  initComponents(): void {
-    for (const def of this.steps.values()) {
-      if (def.fe?.loadComponents && !def.fe.components) {
-        def.fe.components = def.fe.loadComponents();
-      }
-    }
-  }
+    return boundPackContributions().steps();
+  },
 
   createNodeDefaults(nodeType: string): Record<string, unknown> {
-    const stepDef = this.steps.get(nodeType);
+    const stepDef = step(nodeType);
     if (stepDef?.fe) {
       return {
         nodeType,
@@ -110,11 +81,5 @@ class StepRegistry {
       };
     }
     return { nodeType };
-  }
-
-  clear(): void {
-    this.steps.clear();
-  }
-}
-
-export const stepRegistry = new StepRegistry();
+  },
+};

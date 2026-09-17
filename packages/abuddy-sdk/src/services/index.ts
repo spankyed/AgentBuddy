@@ -1,31 +1,20 @@
-import { getHostModule } from '../runtime/host.ts';
-import { repository } from '../ears/index.ts';
+import type { repository } from '@abuddy/ears';
+import { boundHost, type HostRuntimeServices } from '../runtime/host-runtime.ts';
 import { sendToPlugin, sendToSystem, sendToBrainSystem } from '../events/index.ts';
-import type { Logger } from '../ears/runtime.ts';
-import { appData, type AppDataService } from './app-data.ts';
-import { traceStore, type TraceStore } from './trace-store.ts';
-import { inference, type InferenceService } from './inference.ts';
-import { secrets, type SecretsService } from './secrets.ts';
+import { createLogger, type Logger } from '../logger/logger.ts';
+import type { AppDataService } from './app-data.ts';
+import type { TraceStore } from './trace-store.ts';
+import type { InferenceService } from './inference.ts';
+import type { SecretsService } from './secrets.ts';
 
 export type { AppDataService, BackupDatabase, BackupInfo } from './app-data.ts';
 export type { TraceStore, TraceEntityMeta, TraceRelation } from './trace-store.ts';
 export { createInferenceService, type InferenceModels, type InferenceService, type OutputSchema, type OutputSpec, type ResolveModel } from './inference.ts';
-export type { HostImplementedServices } from './host-services.ts';
 export type { SecretInfo, SecretProvider, SecretsProtection, SecretsService, SecretsSnapshot, SecretsStatus } from './secrets.ts';
 export { secretRules, secretProviderLabel, toSecretInfo } from './secrets-rules.ts';
 export type { ModelId, ProviderName } from './models.ts';
 
-function lazyHost(name: string) {
-  let m: any;
-  return () => m ??= getHostModule(name);
-}
-
-/** The host's pack registry, which holds the services each registered pack contributes. */
-const packRegistry = lazyHost('pack-registry');
-
-// --- Services aggregator ---
-let _logger: Logger | undefined;
-function logger() { return _logger ??= getHostModule<{ createLogger(source: string): Logger }>('logger').createLogger('log-service'); }
+const logger = createLogger('log-service');
 
 /**
  * Ambient services the host supplies to every action, alongside the services a
@@ -45,7 +34,7 @@ export interface HostServices {
     sendToBrainSystem: typeof sendToBrainSystem;
   };
   repository: typeof repository;
-  /** Reset, back up and restore the app's stored data */
+  /** Reset, back up and restore the app's stored data; whether the user finished onboarding */
   appData: AppDataService;
   /** Read the volatile trace store (flow execution records) */
   traceStore: TraceStore;
@@ -57,7 +46,7 @@ export interface HostServices {
 
 /** Sends to the system a `<packId>/<featureId>` name addresses, whatever id it runs under */
 function sendToAddressedSystem(address: string, event: { type: string; [key: string]: unknown }): void {
-  const systemId = packRegistry().resolveSystemAddress(address) as string | undefined;
+  const systemId = boundHost().packs.resolveSystemAddress(address);
   if (!systemId) {
     throw new Error(`No running system is named "${address}": services.emitter.sendToSystem takes "<packId>/<featureId>"`);
   }
@@ -66,16 +55,60 @@ function sendToAddressedSystem(address: string, event: { type: string; [key: str
 
 const emitter: HostServices['emitter'] = { sendToPlugin, sendToSystem: sendToAddressedSystem, sendToBrainSystem };
 
+/** The bound app's implementation of a service; each call reads the binding */
+const app = <K extends keyof HostRuntimeServices>(name: K): HostRuntimeServices[K] => boundHost().services[name];
+
+const appData: AppDataService = {
+  reset: () => app('appData').reset(),
+  hasOnboarded: () => app('appData').hasOnboarded(),
+  completeOnboarding: () => app('appData').completeOnboarding(),
+  exportBackup: (targetPath, name, databases) => app('appData').exportBackup(targetPath, name, databases),
+  importBackup: (backupPath) => app('appData').importBackup(backupPath),
+  backupInfo: (backupPath) => app('appData').backupInfo(backupPath),
+};
+
+const traceStore: TraceStore = {
+  entities: () => app('traceStore').entities(),
+  getEntityMeta: (id) => app('traceStore').getEntityMeta(id),
+  getAttr: (kind, id) => app('traceStore').getAttr(kind, id),
+  relations: (filter) => app('traceStore').relations(filter),
+};
+
+const inference: InferenceService = {
+  generateText: (options) => app('inference').generateText(options),
+  streamText: (options) => app('inference').streamText(options),
+  createAgent: (settings) => app('inference').createAgent(settings),
+  embed: (options) => app('inference').embed(options),
+  embedMany: (options) => app('inference').embedMany(options),
+  generateImage: (options) => app('inference').generateImage(options),
+  generateSpeech: (options) => app('inference').generateSpeech(options),
+  transcribe: (options) => app('inference').transcribe(options),
+  rerank: (options) => app('inference').rerank(options),
+};
+
+const secrets: SecretsService = {
+  status: () => app('secrets').status(),
+  list: () => app('secrets').list(),
+  select: (id) => app('secrets').select(id),
+  rename: (id, label) => app('secrets').rename(id, label),
+  delete: (id) => app('secrets').delete(id),
+};
+
+/**
+ * The services the SDK builds (logger, emitter, repository from the bound engine), the app's four, and every
+ * registered pack's. Reading them needs a bound app; the app's four are delegates that read it on each call.
+ */
 function resolveServices(): HostServices & Record<string, unknown> {
+  const runtime = boundHost();
   return {
-    logger: logger(),
+    logger,
     emitter,
-    repository,
+    repository: runtime.ears.repository,
     appData,
     traceStore,
     inference,
     secrets,
-    ...packRegistry().getRegisteredServices(),
+    ...runtime.packs.getRegisteredServices(),
   };
 }
 
@@ -91,16 +124,3 @@ export const services: HostServices & Record<string, unknown> = new Proxy({} as 
     if (prop in s) return { configurable: true, enumerable: true, value: s[prop as string] };
   },
 });
-
-// --- Thread teardown ---
-const teardowns: ((threadId: string) => void)[] = [];
-
-export function registerThreadTeardown(fn: (threadId: string) => void): void {
-  teardowns.push(fn);
-}
-
-export function runThreadTeardown(threadId: string): void {
-  for (const fn of teardowns) {
-    try { fn(threadId); } catch { /* already gone */ }
-  }
-}

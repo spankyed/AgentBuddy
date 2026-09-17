@@ -1,30 +1,17 @@
 /**
- * Tests verifying that default-setup imports from @abuddy/sdk delegates
- * resolve correctly through the host module registry.
+ * Tests verifying that default-setup imports from @abuddy/sdk and @abuddy/ears resolve to the
+ * runtime the harness binds.
  */
-import { registerHostModule, getHostModule } from '@abuddy/sdk/runtime';
 import {
   tx, repository, registerRepository, exists,
   RepositoryError, RepositoryErrorCode,
-} from '@abuddy/sdk/ears';
+} from '@abuddy/ears';
 import {
   qx, createEntity, findById, findByIdRaw, findAll, findWhere,
   createEntityWithDefaults, updateEntity, getAttr,
 } from '../../src/__generated__/ears';
 import { resetTestData } from '@abuddy/sdk/testing';
 import { EARS } from '../../src/__generated__/ears';
-
-describe('SDK runtime — host module registry', () => {
-  it('registerHostModule stores and getHostModule retrieves', () => {
-    const mod = { hello: () => 'world' };
-    registerHostModule('test-mod', mod);
-    expect(getHostModule('test-mod')).toBe(mod);
-  });
-
-  it('getHostModule throws for unregistered module', () => {
-    expect(() => getHostModule('nonexistent-mod')).toThrow(/not registered/);
-  });
-});
 
 describe('Tier 1 — EARS delegates', () => {
   beforeEach(() => resetTestData());
@@ -230,13 +217,6 @@ describe('Tier 6 — Utility delegates', () => {
     expect(typeof toSlug).toBe('function');
   });
 
-  it('resolve-cli utilities are callable', async () => {
-    const { resolveForService, testCli, isCliName } = await import('@abuddy/sdk/utils');
-    expect(typeof resolveForService).toBe('function');
-    expect(typeof testCli).toBe('function');
-    expect(typeof isCliName).toBe('function');
-  });
-
   it('randomId is callable', async () => {
     const { randomId } = await import('@abuddy/sdk/utils');
     expect(typeof randomId).toBe('function');
@@ -248,16 +228,9 @@ describe('Tier 6 — Utility delegates', () => {
   });
 
   it('seed helpers are callable', async () => {
-    const { registerSeeders, seedData, loadJSON } = await import('@abuddy/sdk/utils');
-    expect(typeof registerSeeders).toBe('function');
+    const { seedData, loadJSON } = await import('@abuddy/sdk/utils');
     expect(typeof seedData).toBe('function');
     expect(typeof loadJSON).toBe('function');
-  });
-
-  it('lifecycle helpers are callable', async () => {
-    const { registerShutdownHook, runShutdownHooks } = await import('@abuddy/sdk/utils');
-    expect(typeof registerShutdownHook).toBe('function');
-    expect(typeof runShutdownHooks).toBe('function');
   });
 });
 

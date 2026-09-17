@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { sourceConditions } from '@abuddy/sdk/build';
 
-/** A package specifier (`vue`, `@abuddy/sdk/ears`), not a relative path or a tsconfig/imports alias */
+/** A package specifier (`vue`, `@abuddy/ears`), not a relative path or a tsconfig/imports alias */
 export function isPackageSpecifier(id: string): boolean {
   return !id.startsWith('.') && !path.isAbsolute(id) && !id.startsWith('#') && !id.startsWith('@/') && !id.startsWith('\0');
 }

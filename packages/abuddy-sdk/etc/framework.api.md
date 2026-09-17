@@ -6,6 +6,8 @@
 
 import type { AnyActorRef } from 'xstate';
 import type { AnyStateMachine } from 'xstate';
+import type { BaseEntity } from '@abuddy/ears';
+import { EARS as EARS_2 } from '@abuddy/ears';
 import { z } from 'zod';
 
 // @public
@@ -52,12 +54,6 @@ export interface PackCommand {
     // (undocumented)
     placeholder: string;
 }
-
-// @internal
-export const packCommandsRegistry: {
-    register(packId: string, commands: readonly PackCommand[]): void;
-    unregister(packId: string): void;
-};
 
 // @public (undocumented)
 export interface PackEARS {
@@ -113,6 +109,8 @@ export interface PackRegistration {
     id: string;
     // (undocumented)
     migrations?: PackMigration[];
+    repositories?: Record<string, unknown>;
+    seeders?: Seeder[];
     seedHooks?: Record<string, SeedHooks>;
     // (undocumented)
     services?: Record<string, unknown>;
@@ -148,15 +146,6 @@ export interface PackSettingsDefaults {
         };
     };
 }
-
-// @internal
-export const packSettingsRegistry: {
-    register(packId: string, features: ReadonlyArray<{
-        id: string;
-        settings?: FeatureSettings;
-    }>): void;
-    unregister(packId: string): void;
-};
 
 // @public (undocumented)
 export interface PackSystemDef {

@@ -1,8 +1,7 @@
 import * as crypto from 'node:crypto';
-import { builtinRepository } from '../ears/builtin-repositories.ts';
-import { getAttr, updateAttr } from '../ears/attribute-storage.ts';
-import { findRelations } from '../ears/relations.ts';
-import { findAll, findByIdRaw } from '../ears/query-helpers.ts';
+import { flowRepository } from '../repositories/flow-repository.ts';
+import { promptRepository } from '../repositories/prompt-repository.ts';
+import { findRelations, installedEngine as ears, tx } from '@abuddy/ears';
 import { loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.ts';
 import { seedPath } from '../build/manifest.ts';
 import { compile as compileFlowDSL } from '../build/compilers/flow-compiler.ts';
@@ -28,7 +27,7 @@ const ROW_KEYS = new Set(['id', 'sourceHash', 'createdAt']);
 
 /** The flow's rows as stored now, for the fields and relation kinds the seeder wrote; independent of relation order */
 function hashGraph(flowId: EARS.EntityId, seeded: Omit<SeededGraph, 'hash'>): string {
-  const values = (id: string, fields: readonly string[] | undefined) => fields?.map((field) => getAttr(id as EARS.EntityId, field as EARS.AttrKind) ?? null) ?? null;
+  const values = (id: string, fields: readonly string[] | undefined) => fields?.map((field) => ears().getAttr(id as EARS.EntityId, field as EARS.AttrKind) ?? null) ?? null;
   const nodeIds = findRelations({ sourceEntity: flowId, relationType: EARS.RelKind.CONTAINS }).map((r) => r.targetEntity as string).sort();
   const relations = [flowId, ...nodeIds]
     .flatMap((source) => findRelations({ sourceEntity: source as EARS.EntityId }))
@@ -50,7 +49,7 @@ function stampSeededGraph(flowId: EARS.EntityId, compiled: CompiledRows): void {
     nodeFields: Object.fromEntries(nodeIds.map((id) => [id, fieldsOf(id)])),
     relKinds: [...new Set(compiled.relation.filter((r) => sources.has(r.source)).map((r) => r.kind))].sort(),
   };
-  updateAttr(flowId, SEEDED_GRAPH, { ...seeded, hash: hashGraph(flowId, seeded) } satisfies SeededGraph);
+  tx(flowId).update(SEEDED_GRAPH, { ...seeded, hash: hashGraph(flowId, seeded) } satisfies SeededGraph);
 }
 
 /** The flow's nodes, fields and relations still hold what the seeder wrote */
@@ -79,8 +78,8 @@ export function createFlowSeeder(): Seeder {
       const packId = seedingPackId(ctx.compiledDir);
 
       if (ctx.mode === 'wipe-and-replace') {
-        for (const flow of findAll<FlowEntity>(EARS.Entity.Flow)) {
-          try { builtinRepository.flowsCommands.deleteFlow(flow.id); } catch {}
+        for (const flow of ears().findAll<FlowEntity>(EARS.Entity.Flow)) {
+          try { flowRepository.deleteFlow(flow.id); } catch {}
         }
         ctx.log('  flows wiped');
       }
@@ -91,12 +90,12 @@ export function createFlowSeeder(): Seeder {
        */
       const lookupSeeded = (flows: FlowEntity[], name: string): FlowEntity | undefined => {
         const seedKey = flowSeedKey(packId, name);
-        return flows.find((flow) => getAttr(flow.id, SEED_KEY) === seedKey)
-          ?? flows.find((flow) => flow.label === name && getAttr(flow.id, SEED_KEY) === null);
+        return flows.find((flow) => ears().getAttr(flow.id, SEED_KEY) === seedKey)
+          ?? flows.find((flow) => flow.label === name && ears().getAttr(flow.id, SEED_KEY) === null);
       };
-      const existingFlows = findAll<FlowEntity>(EARS.Entity.Flow);
-      const actionMap = buildLabelMap(findAll<ActionEntity>(EARS.Entity.Action));
-      const promptMap = buildLabelMap(builtinRepository.promptQueries.all());
+      const existingFlows = ears().findAll<FlowEntity>(EARS.Entity.Flow);
+      const actionMap = buildLabelMap(ears().findAll<ActionEntity>(EARS.Entity.Action));
+      const promptMap = buildLabelMap(promptRepository.all());
 
       /**
        * Who owns the flow a DSL entry would overwrite: flow and node ids derive from the flow's name, so
@@ -108,10 +107,10 @@ export function createFlowSeeder(): Seeder {
           ? [replacing.id, ...findRelations({ sourceEntity: replacing.id, relationType: EARS.RelKind.CONTAINS }).map((r) => r.targetEntity)]
           : []);
         const ids = (compileFlowDSL({ [name]: entry }, { actions: actionMap, prompts: promptMap }).entity as Array<{ id: string }>).map((row) => row.id);
-        const taken = ids.find((id) => !ownIds.has(id) && findByIdRaw(id as EARS.EntityId));
+        const taken = ids.find((id) => !ownIds.has(id) && ears().findByIdRaw(id as EARS.EntityId));
         if (!taken) return undefined;
         const flowId = findRelations({ targetEntity: taken as EARS.EntityId, relationType: EARS.RelKind.CONTAINS })[0]?.sourceEntity ?? taken;
-        const seedKey = getAttr(flowId as EARS.EntityId, SEED_KEY) as string | null;
+        const seedKey = ears().getAttr(flowId as EARS.EntityId, SEED_KEY) as string | null;
         return seedKey ? `seeded by ${seedKey.slice(0, seedKey.indexOf(':'))}` : 'created by the user';
       };
 
@@ -158,7 +157,7 @@ export function createFlowSeeder(): Seeder {
           }
 
           // A flow whose seeded graph wasn't recorded can't be checked for edits, so it's left alone too
-          const seeded = getAttr(existing.id, SEEDED_GRAPH) as SeededGraph | null;
+          const seeded = ears().getAttr(existing.id, SEEDED_GRAPH) as SeededGraph | null;
           if (!seeded || !holdsSeededGraph(existing.id, seeded)) {
             ctx.log(`  flow skipped (edited): ${key}`);
             counts.skipped++;
@@ -176,7 +175,7 @@ export function createFlowSeeder(): Seeder {
 
         if (existing) {
           try {
-            builtinRepository.flowsCommands.deleteFlow(existing.id, { allowRoot: true });
+            flowRepository.deleteFlow(existing.id, { allowRoot: true });
             replacedLabels.add(key);
             ctx.log(`  flow replaced (hash mismatch): ${key}`);
           } catch (error: any) {
@@ -197,12 +196,12 @@ export function createFlowSeeder(): Seeder {
        * resolve by label.
        */
       const subflowTargets = (): Map<string, string> => {
-        const flows = findAll<FlowEntity>(EARS.Entity.Flow);
+        const flows = ears().findAll<FlowEntity>(EARS.Entity.Flow);
         const seededIds = new Set<string>();
         const targets = new Map<string, string>();
         for (const name of Object.keys(flowsDSL)) {
           const seedKey = flowSeedKey(packId, name);
-          const seeded = flows.find((flow) => getAttr(flow.id, SEED_KEY) === seedKey);
+          const seeded = flows.find((flow) => ears().getAttr(flow.id, SEED_KEY) === seedKey);
           if (!seeded) continue;
           targets.set(name, seeded.id);
           seededIds.add(seeded.id);
@@ -220,12 +219,12 @@ export function createFlowSeeder(): Seeder {
       }
 
       const compiled = compileFlowDSL(validFlowDSL, { actions: actionMap, prompts: promptMap, flows: subflowTargets() });
-      builtinRepository.flowsCommands.importFromDSL(compiled);
+      flowRepository.importFromDSL(compiled);
       for (const name of flowNames) {
         const row = (compiled.entity as Array<{ id: string; entityType?: string; label?: string }>)
           .find((entity) => entity.entityType === EARS.Entity.Flow && entity.label === name);
         if (row) {
-          updateAttr(row.id as EARS.EntityId, SEED_KEY, flowSeedKey(packId, name));
+          tx(row.id as EARS.EntityId).update(SEED_KEY, flowSeedKey(packId, name));
           stampSeededGraph(row.id as EARS.EntityId, compiled);
         }
         if (replacedLabels.has(name)) {

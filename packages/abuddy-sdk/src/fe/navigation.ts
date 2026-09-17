@@ -1,4 +1,4 @@
-import { getHostModule } from '../runtime/host.ts';
+import { boundFeHost } from '../runtime/fe-host.ts';
 import type { AnyActorRef } from 'xstate';
 import { getDesignated } from '../designations/index.ts';
 
@@ -6,7 +6,7 @@ import { getDesignated } from '../designations/index.ts';
 export type PluginEvent = { type: string; [key: string]: unknown };
 
 function getApp(): AnyActorRef {
-  return getHostModule<AnyActorRef>('application');
+  return boundFeHost().application;
 }
 
 export function navigateToPlugin(pluginId: string, event?: PluginEvent | PluginEvent[]) {

@@ -7,8 +7,10 @@
 import type { AnyActorRef } from 'xstate';
 import type { AnyExtension } from '@tiptap/vue-3';
 import type { AnyStateMachine } from 'xstate';
+import type { BaseEntity } from '@abuddy/ears';
 import type { Component } from 'vue';
 import { ComputedRef } from 'vue';
+import { EARS as EARS_2 } from '@abuddy/ears';
 import type { Editor } from '@tiptap/vue-3';
 import type { EditorState } from '@tiptap/pm/state';
 import type { InjectionKey } from 'vue';
@@ -248,6 +250,7 @@ export interface PackFERegistration {
     blocks?: BlockDefinition[];
     // (undocumented)
     defaultPlugin?: Plugin_2;
+    dslTypes?: Record<string, DslTypeConfig>;
     // (undocumented)
     plugins?: Plugin_2[];
     // (undocumented)
@@ -314,9 +317,6 @@ export function processHotkeys<const T extends Record<string, string>, H = unkno
 
 // @public (undocumented)
 export function pushNavHistory<T>(history: NavHistory<T>, entry: T): NavHistory<T>;
-
-// @public (undocumented)
-export function registerDslType(name: string, config: DslTypeConfig): void;
 
 // @public (undocumented)
 export type RouteComponents = Record<RouteName, Component>;
@@ -415,8 +415,6 @@ export interface TiptapPlugin {
 
 // @public (undocumented)
 export const tiptapPluginRegistry: {
-    register(plugin: TiptapPlugin, packId?: string): void;
-    unregisterAll(packId: string): void;
     getAll(): TiptapPlugin[];
 };
 

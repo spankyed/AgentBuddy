@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { bundleDslDefs, monacoDefsFile } from '../../src/build/dsl-defs';
+import { bundleDslDefs, monacoDefsFile, withoutRenameSuffixes } from '../../src/build/dsl-defs';
 import type { PackManifest } from '@abuddy/sdk/build';
 
 /**
@@ -82,5 +82,23 @@ describe('bundleDslDefs', () => {
     const result = await bundleDslDefs(dir, { ...manifest({}), dsl: { console: { entry: 'src/defs/console.ts', targets: [] } } } as PackManifest);
     expect(result).toEqual({ success: true, files: [] });
     expect(fs.existsSync(path.join(dir, monacoDefsFile('console')))).toBe(false);
+  });
+});
+
+describe('withoutRenameSuffixes', () => {
+  it("drops a suffix rollup added for a name only a global takes", () => {
+    expect(withoutRenameSuffixes('interface Node$1 { id: string }\ndeclare const root: Node$1;\nexport { Node$1 as Node };\n'))
+      .toBe('interface Node { id: string }\ndeclare const root: Node;\nexport { Node as Node };\n');
+  });
+
+  it('keeps the suffixes of a name two declarations share, so they stay apart', () => {
+    const code = [
+      "declare namespace EARS { const Entity: { readonly Relation: 'Relation' }; }",
+      "declare namespace EARS$1 { const Entity: { readonly Flow: 'Flow' }; }",
+      'declare const flow: typeof EARS$1.Entity.Flow;',
+      'export { EARS$1 as EARS, flow };',
+      '',
+    ].join('\n');
+    expect(withoutRenameSuffixes(code)).toBe(code);
   });
 });

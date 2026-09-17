@@ -1,18 +1,17 @@
 // Loads a dependency's backend runtime (runtime/index.cjs) into the test process on the pack's own
-// @abuddy/sdk, xstate and zod, the way the app loads it on its own (api/src/packs/pack-loader.ts).
-import * as fs from 'node:fs';
+// shared-instance packages, xstate and zod, the way the app loads it on its own (@abuddy/host/packs/runtime, bridge.ts).
 import { createRequire } from 'node:module';
 import * as path from 'node:path';
+import {
+  APP_ONLY_EXPORTS, SHARED_INSTANCE_PACKAGES, getSharedBeDeps, sharedInstanceExports, sharedInstanceSpecifiers,
+} from '@abuddy/host/build/shared-deps';
 import { withModuleBridge } from '@abuddy/host/packs';
 import type { PackRegistration } from '@abuddy/sdk/framework';
 
-/** @abuddy/sdk exports a backend runtime can require: not the frontend, metadata or the engine's host hook */
-function sdkSubpaths(packDir: string): string[] {
-  const manifest = createRequire(path.join(packDir, 'package.json')).resolve('@abuddy/sdk/package.json');
-  const exportsMap = (JSON.parse(fs.readFileSync(manifest, 'utf-8')) as { exports: Record<string, unknown> }).exports;
-  return Object.keys(exportsMap)
-    .filter((key) => !key.includes('*') && !key.endsWith('.json') && key !== './fe' && !key.startsWith('./fe/') && key !== './ears/internals')
-    .map((key) => (key === '.' ? '@abuddy/sdk' : `@abuddy/sdk/${key.slice(2)}`));
+/** The shared-instance exports (@abuddy/sdk, @abuddy/ears) a backend runtime can require, as the pack resolves them */
+function sharedSpecifiers(packDir: string): string[] {
+  const fromFile = path.join(packDir, 'package.json');
+  return SHARED_INSTANCE_PACKAGES.flatMap((pkg) => sharedInstanceSpecifiers(pkg, sharedInstanceExports(pkg, fromFile)));
 }
 
 function unavailable(specifier: string, reason: string): unknown {
@@ -25,7 +24,7 @@ function unavailable(specifier: string, reason: string): unknown {
 /** The modules dependency runtimes share with the test process, imported from the pack */
 async function sharedModules(packDir: string): Promise<Record<string, unknown>> {
   const modules: Record<string, unknown> = {};
-  for (const specifier of [...sdkSubpaths(packDir), 'xstate', 'zod']) {
+  for (const specifier of [...sharedSpecifiers(packDir), ...getSharedBeDeps()]) {
     try {
       modules[specifier] = await import(/* @vite-ignore */ specifier);
     } catch (err) {
@@ -50,7 +49,7 @@ export async function loadDependencyRuntime(packDir: string, depId: string, runt
   shared ??= sharedModules(packDir);
   const modules = await shared;
   const require = createRequire(runtimeEntry);
-  const mod = withModuleBridge({ modules, stubMissing: true, resolveFrom: runtimeEntry },() => require(runtimeEntry)) as {
+  const mod = withModuleBridge({ modules, stubMissing: true, resolveFrom: runtimeEntry, appOnly: APP_ONLY_EXPORTS }, () => require(runtimeEntry)) as {
     registration?: PackRegistration;
     setCompiledDir?(dir: string): void;
   };

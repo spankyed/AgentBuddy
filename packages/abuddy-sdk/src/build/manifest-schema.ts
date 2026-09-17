@@ -34,7 +34,7 @@ export const DslEntrySchema = z.object({
 }).strict();
 
 /** Seed keys compiled and seeded by the SDK's own compilers; they take a path, as a string or `{ path }` */
-export const SPECIALTY_SEED_KEYS: readonly string[] = ['actions', 'prompts', 'flows', 'settings'];
+export const SPECIALTY_SEED_KEYS: readonly string[] = ['actions', 'prompts', 'flows'];
 
 const SeedFieldSpecSchema = z.object({
   from: z.string().regex(/^(body|filename|path|frontmatter\.[\w-]+)$/, 'Must be "body", "filename", "path" or "frontmatter.<name>"')
@@ -77,12 +77,12 @@ export const SeedFormatSchema = z.object({
   }
 });
 
-/** A `boot.seed` entry: a source and the format that compiles it, or a pack seeder module */
+/** A `boot.seed` entry: a source and the format that compiles it, a pack seeder module, or both */
 export const SeedEntryConfigSchema = z.object({
   path: z.string().describe('Source directory or file, relative to the pack root.').optional(),
   format: z.string().regex(SEED_FORMAT_REF, 'Must be a seedFormats name, or "<dependency id>:<name>"')
     .describe('The format compiling `path`: a name in this pack\'s seedFormats, or "<dependency id>:<name>" for a dependency\'s.').optional(),
-  seeder: z.string().describe('A pack module exporting seed(ctx), used instead of a format and the generic seeder.').optional(),
+  seeder: z.string().describe('A pack module exporting seed(ctx), used instead of the generic seeder. Alone, the build compiles nothing for the entry and the module brings its own data; with "path" and "format", the module seeds the compiled records.').optional(),
 }).strict();
 
 // Seed keys name files and folders in the compiled output (<key>.seed.json, media/<key>) and generated identifiers
@@ -94,8 +94,8 @@ const SeedSectionSchema = z.record(z.string().regex(SEED_FORMAT_NAME, 'Must be a
       }
     } else if (typeof entry === 'string') {
       ctx.addIssue({ code: 'custom', path: [key], message: `Unknown seed key "${key}": only ${SPECIALTY_SEED_KEYS.join(', ')} take a path; other seeds are { "path", "format" } or { "seeder" }` });
-    } else if (entry.seeder ? entry.path !== undefined || entry.format !== undefined : !entry.path || !entry.format) {
-      ctx.addIssue({ code: 'custom', path: [key], message: `Seed "${key}" must be { "path", "format" } or { "seeder" }` });
+    } else if ((entry.path === undefined) !== (entry.format === undefined) || (!entry.path && !entry.seeder)) {
+      ctx.addIssue({ code: 'custom', path: [key], message: `Seed "${key}" must be { "path", "format" }, optionally with "seeder", or { "seeder" }` });
     }
   }
 });
@@ -103,7 +103,7 @@ const SeedSectionSchema = z.record(z.string().regex(SEED_FORMAT_NAME, 'Must be a
 export const BootConfigSchema = z.object({
   hooks: z.string().describe('Module exporting lifecycle hooks: onInit (after EARS hydration, before migrations and seeds) and onShutdown (when the pack\'s backend stops).').optional(),
   seed: SeedSectionSchema
-    .describe('Seed data sources. Keys are seed names; the specialty keys (actions, prompts, flows, settings) take a path, other keys an entry object.').optional(),
+    .describe('Seed data sources. Keys are seed names; the specialty keys (actions, prompts, flows) take a path, other keys an entry object.').optional(),
   seedPolicy: z.object({
     skipAtBoot: z.array(z.string()).describe('Seed types to skip during boot.').optional(),
     skipAfterOnboarding: z.array(z.string()).describe('Seed types to skip after onboarding completes.').optional(),
@@ -239,9 +239,6 @@ export const ManifestSchema = z.object({
   seedHooks: z.record(z.string(), ExportTargetSchema)
     .describe('Seed hooks for entity types this pack declares: entity type → "path#exportName" of a SeedHooks object. Any pack seeding the type uses them.').optional(),
 }).strict().superRefine((manifest, ctx) => {
-  if (!manifest.builtIn && manifest.boot?.seed?.settings !== undefined) {
-    ctx.addIssue({ code: 'custom', path: ['boot', 'seed', 'settings'], message: 'The "settings" seed holds the app\'s own defaults, so only built-in packs have one; declare a feature\'s default settings with features[].settings' });
-  }
   if (!manifest.builtIn) {
     manifest.features?.forEach((feature, index) => {
       if (feature.earlySystem) ctx.addIssue({ code: 'custom', path: ['features', index, 'earlySystem'], message: 'An early system starts before EARS hydration, before external packs load, so only built-in packs allowed to have one' });

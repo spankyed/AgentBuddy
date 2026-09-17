@@ -5,7 +5,6 @@ import {
   compilePack,
   buildPackConfigFromManifest,
   parseManifest,
-  resolveFeatureSettingsFromManifest,
   PACK_TYPES_DEF,
   entitiesWithoutShapes,
   SEED_COMPILERS_FILE,
@@ -18,7 +17,7 @@ import { bundleDslDefs, DEFS_DIR } from '../build/dsl-defs';
 import { bundlePackTypes } from '../build/types-bundler';
 import { facadeProblems } from '../build/facade-gate';
 import { bundlePackFlowHelpers } from '../build/flow-helpers-bundler';
-import { BUNDLE_PATHS } from '@abuddy/host/packs';
+import { BUNDLE_PATHS, createPackRegistry } from '@abuddy/host/packs';
 import { checkFeatureSettings } from '@abuddy/sdk/framework';
 import { generate, resolveDeps } from './generate';
 import { resolveDepArtifacts } from './fetch-deps';
@@ -95,7 +94,6 @@ export async function build(args: string[]) {
   console.log(`Building pack: ${manifest.name} v${manifest.version}${release ? ' (release)' : ''}`);
 
   let packConfig: PackConfig | null = null;
-  let featureSettingsPaths: Array<{ name: string; settingsPath: string }> | undefined;
 
   // Dependencies' step build code, so this pack's flows validate against real step definitions,
   // and their manifests and build dirs, so entries naming their seed formats compile with them
@@ -115,7 +113,6 @@ export async function build(args: string[]) {
   const seeds = manifest.boot?.seed;
   if (seeds && Object.keys(seeds).length > 0) {
     packConfig = await buildPackConfigFromManifest(manifest, root, { dependencyStepModules, dependencies });
-    featureSettingsPaths = resolveFeatureSettingsFromManifest(manifest, root);
   } else {
     console.log('No boot.seed in manifest. Skipping seed compilation.');
   }
@@ -127,11 +124,15 @@ export async function build(args: string[]) {
   let result: { seeds: Record<string, number>; warnings: string[] } | null = null;
 
   if (packConfig) {
+    // What the seeds compile with (the dependencies' steps and the pack's), in this build's own registry: a registry
+    // the process has bound (an app's, a test's) is never touched
+    const registry = createPackRegistry();
+    registry.registerPack({ id: manifest.id, systems: [], ...await packConfig.loadDefinitions?.() });
     const options: CompilePackOptions = {
       packDir,
       outputDir: seedsOutputDir,
       packConfig,
-      featureSettingsPaths,
+      definitions: { steps: registry.steps(), artifacts: registry.artifacts(), blocks: registry.blocks() },
       importModule: importPackModule,
     };
 

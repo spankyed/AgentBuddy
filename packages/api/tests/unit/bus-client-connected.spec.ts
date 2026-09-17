@@ -8,16 +8,27 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createActor, setup, type AnyActorRef } from 'xstate';
 
-vi.mock('@abuddy/host/settings', () => ({
-  settingsRepository: { settingsQueries: { getInternalSettings: () => ({ hasOnboarded: true }) } },
+vi.mock('@abuddy/host/app-state', () => ({
+  appState: { get: () => ({ hasOnboarded: true }) },
+  HOST_ENTITY_TYPES: ['AppState'],
 }));
 
-const { registerPack, unregisterPack } = await import('@abuddy/host/packs');
-const { backendSystem } = await import('@/systems');
-const { createBusMachine } = await import('@abuddy/host/bus');
+const { createPackRegistry } = await import('@abuddy/host/packs');
+const registry = createPackRegistry();
+const { registerPack, unregisterPack } = registry;
+const { createAppBus, createBusMachine } = await import('@abuddy/host/bus');
 const { rootEvents } = await import('@/core/router/bus-emitter');
-const { updateLoadedPack, removeLoadedPack } = await import('@/packs/pack-api');
-type LoadedPack = import('@/packs/pack-loader').LoadedPack;
+const { updateLoadedPack, removeLoadedPack } = await import('@abuddy/host/packs/runtime');
+type LoadedPack = import('@abuddy/host/packs/runtime').LoadedPack;
+
+// The app's bus on the api's transport, as setup/backend.ts binds it (the services reach the store only when called)
+const { bindHost } = await import('@abuddy/sdk/runtime');
+const { createHostRuntime } = await import('@abuddy/host/services');
+const { createEarsEngine } = await import('@abuddy/ears');
+const { sendToPlugin } = await import('@abuddy/sdk/events');
+type LmdbStore = import('@abuddy/ears/lmdb').LmdbStore;
+bindHost(createHostRuntime({ store: {} as LmdbStore, engine: createEarsEngine({ isEntityType: () => false }), transport: { rootEvents }, appVersion: '1.0.0', packs: registry }));
+const backendSystem = createAppBus(registry);
 
 const received: string[] = [];
 
@@ -197,6 +208,27 @@ describe('CLIENT_CONNECTED on the bus', () => {
   });
 });
 
+// sendToPlugin goes through the bus, as a system's emit does: nothing reaches a client before one connects
+describe('sendToPlugin on the bus', () => {
+  it('reaches clients only once one has connected', async () => {
+    const outgoing: Array<{ type: string }> = [];
+    const stop = rootEvents.onOutgoing((event) => { outgoing.push(event); });
+    try {
+      sendToPlugin('notes', { type: 'BEFORE_CONNECT' });
+      await flush();
+      expect(outgoing).toEqual([]);
+
+      rootEvents.emitConnected();
+      await flush();
+      sendToPlugin('notes', { type: 'AFTER_CONNECT' });
+      await flush();
+      expect(outgoing.filter((event) => event.type !== 'CLIENT_CONNECTED')).toEqual([{ type: 'AFTER_CONNECT', pluginId: 'notes' }]);
+    } finally {
+      stop();
+    }
+  });
+});
+
 describe('a bus given a subset of the registered systems', () => {
   let subsetBus: AnyActorRef;
   let connect: () => void;
@@ -213,6 +245,7 @@ describe('a bus given a subset of the registered systems', () => {
     const subset = new Map([['second-pack.feature', recorder('second-pack')]]);
     bus.stop();
     subsetBus = createActor(createBusMachine({
+      registry,
       systems: () => subset,
       onOutgoing: () => {},
       listen: (send) => {

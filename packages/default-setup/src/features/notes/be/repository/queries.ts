@@ -1,5 +1,6 @@
 import { findById, findAll, qx } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
+import { trash } from '@abuddy/sdk/repositories';
 
 import type { NoteDTO } from '../types';
 import { REFERENCES } from '../types';
@@ -80,16 +81,10 @@ export const noteQueries = {
   referencedBy: (noteId: EARS.EntityId): EARS.EntityId[] =>
     qx(noteId).linksTo(REFERENCES, EARS.Entity.Note, false).ids(),
 
-  trashedDTOs: (): NoteDTO[] => {
-    const all = qx(EARS.Entity.Note).pickAll();
-    return all.filter(n => n.deleted).map(toDTO);
-  },
+  trashedDTOs: (): NoteDTO[] => trash.list<NoteEntity>(EARS.Entity.Note).map(toDTO),
 
-  expiredSoftDeleted: (maxAgeDays: number): NoteEntity[] => {
-    const cutoff = Date.now() - (maxAgeDays * 24 * 60 * 60 * 1000);
-    const all = qx(EARS.Entity.Note).pickAll();
-    return all.filter(n => n.deleted && n.deletedAt && n.deletedAt < cutoff);
-  },
+  expiredSoftDeleted: (maxAgeDays: number): NoteEntity[] =>
+    trash.olderThan<NoteEntity>(EARS.Entity.Note, maxAgeDays * 24 * 60 * 60 * 1000),
 
   connectedData: () => ({
     notes: noteQueries.allDTOs(),

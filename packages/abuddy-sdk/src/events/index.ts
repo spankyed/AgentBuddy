@@ -1,6 +1,7 @@
 // Messaging between frontend plugins and backend systems. Frontend-safe: no Node modules and no
 // `services`, since pack frontends get this module from the host (the `sdkEvents` global).
-import { getHostModule } from '../runtime/host.ts';
+import { boundHost, isHostBound } from '../runtime/host-runtime.ts';
+import { isFeHostBound, boundFeHost } from '../runtime/fe-host.ts';
 import { getDesignated } from '../designations/index.ts';
 import type { EARS } from '../types/entities.ts';
 import type { ApplicationHotkeys } from '../types/index.ts';
@@ -59,24 +60,13 @@ export type HostPluginEvents = {
 };
 
 /**
- * How events leave the process the code runs in. The api (over its root event bus), the renderer
- * (over its API client) and the test host each register one as the `event-transport` host module.
- * @internal
+ * Delivers an event to a backend system: in the renderer over its API client, elsewhere onto the bound app's bus.
+ * A bound frontend wins, as it does for the registered packs' lookups (`boundPackContributions`).
  */
-export interface EventTransport {
-  /** Delivers an event to a backend system */
-  sendIncoming(event: IncomingSystemEvents): void;
-  /** Delivers an event to a frontend plugin (backend only) */
-  sendOutgoing(event: OutgoingSystemEvents): void;
-  /** Calls `callback` each time a client connects (backend only) */
-  onConnected(callback: () => void): () => void;
-  /** Calls `callback` with each event sent to a backend system (backend only) */
-  onIncoming(callback: (event: IncomingSystemEvents) => void): () => void;
-}
-
-let _transport: EventTransport | undefined;
-function transport(): EventTransport {
-  return _transport ??= getHostModule<EventTransport>('event-transport');
+function sendIncoming(event: IncomingSystemEvents): void {
+  if (isFeHostBound()) boundFeHost().transport.sendIncoming(event);
+  else if (isHostBound()) boundHost().transport.rootEvents.emitIncoming(event);
+  else throw new Error('No host is bound to send events through: call bindHost(runtime) (backend) or bindFeHost(runtime) (frontend) from @abuddy/sdk/runtime first');
 }
 
 /**
@@ -87,29 +77,32 @@ export function emit<P extends string, E extends { type: string }>(pluginId: P, 
   return { type: 'OUTGOING', event: { ...event, pluginId } };
 }
 
-/** Sends an event to a frontend plugin. Untyped: packs use the `sendToPlugin` from their `#generated/events`. */
+/**
+ * Sends an event to a frontend plugin through the bus, which delivers it once a client is connected (as `emit` in a
+ * system). Backend only. Untyped: packs use the `sendToPlugin` from their `#generated/events`.
+ */
 export function sendToPlugin(pluginId: string, event: { type: string; [key: string]: unknown }): void {
-  transport().sendOutgoing({ ...event, pluginId });
+  boundHost().transport.rootEvents.emitPluginSend({ ...event, pluginId });
 }
 
 /** Sends an event to a backend system. Untyped: packs use the `sendToSystem` from their `#generated/events`. */
 export function sendToSystem(systemId: string, event: { type: string; [key: string]: unknown }): void {
-  transport().sendIncoming({ ...event, systemId });
+  sendIncoming({ ...event, systemId });
 }
 
 /** Fires an event at every running flow, through the designated brain system */
 export function sendToBrainSystem(event: { eventType: string; payload?: unknown; targetFlowId?: EARS.EntityId }): void {
-  transport().sendIncoming({ ...event, type: 'TRIGGER_BRAIN_EVENT', systemId: getDesignated('brain') });
+  sendIncoming({ ...event, type: 'TRIGGER_BRAIN_EVENT', systemId: getDesignated('brain') });
 }
 
 /** Calls `callback` each time a client connects; returns the unsubscribe (backend only) */
 export function onConnected(callback: () => void): () => void {
-  return transport().onConnected(callback);
+  return boundHost().transport.rootEvents.onConnected(callback);
 }
 
 /** Calls `callback` with each event sent to a backend system; returns the unsubscribe (backend only) */
 export function onIncoming(callback: (event: IncomingSystemEvents) => void): () => void {
-  return transport().onIncoming(callback);
+  return boundHost().transport.rootEvents.onIncoming(callback);
 }
 
 /** `emit` typed against a plugin event map */

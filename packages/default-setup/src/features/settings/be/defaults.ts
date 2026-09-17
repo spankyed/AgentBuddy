@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import type { SettingsData } from './types';
-import { getAppVersion } from '@abuddy/sdk/env';
+import type { SettingsSeedRecord } from '../../../seeds/_compilers/settings';
 import { seedFile, seedPath } from '@abuddy/sdk/build';
 import { getCompiledDir } from '@/__generated__/seeders';
 import { getPackSettingsDefaults, type PackSettingsDefaults } from '@abuddy/sdk/framework';
@@ -33,17 +33,17 @@ export function getDefaultSettings(): SettingsData {
 function getBaseSettings(): SettingsData {
   if (!_base) {
     const settingsPath = seedPath(getCompiledDir(), 'settings');
-    let baseSettings: SettingsData;
+    let record: SettingsSeedRecord | undefined;
     try {
-      baseSettings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+      record = (JSON.parse(fs.readFileSync(settingsPath, 'utf-8')) as { records?: SettingsSeedRecord[] }).records?.[0];
     } catch (err) {
       throw new Error(
         `Missing or unreadable ${seedFile('settings')} at ${settingsPath}. ` +
-        `Run \`npm run compile:settings\` before starting the backend. (${(err as Error).message})`
+        `Run \`npm run compile\` before starting the backend. (${(err as Error).message})`
       );
     }
-    _base = { ...baseSettings };
-    _base.internal = { ...(baseSettings.internal ?? {} as SettingsData['internal']), version: getAppVersion() };
+    if (!record) throw new Error(`${settingsPath} holds no settings record. Run \`npm run compile\` before starting the backend.`);
+    _base = record.settings as unknown as SettingsData;
   }
   return _base;
 }

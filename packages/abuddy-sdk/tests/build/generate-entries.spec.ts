@@ -104,7 +104,9 @@ function typecheck(files: Record<string, string>, names: string[]): string[] {
   for (const [file, content] of Object.entries(files)) if (content) write(file, content);
   write('package.json', JSON.stringify({ type: 'module' }));
   const sdk = path.resolve(import.meta.dirname, '../..');
-  const links = { '@abuddy/sdk': sdk, zod: path.dirname(createRequire(path.join(sdk, 'package.json')).resolve('zod/package.json')) };
+  const fromSdk = (name: string) => path.dirname(createRequire(path.join(sdk, 'package.json')).resolve(`${name}/package.json`));
+  // The generated facades import the engine too, which a pack installs with the SDK
+  const links = { '@abuddy/sdk': sdk, '@abuddy/ears': fromSdk('@abuddy/ears'), zod: fromSdk('zod') };
   for (const [name, target] of Object.entries(links)) {
     const link = path.join(root, 'node_modules', name);
     fs.mkdirSync(path.dirname(link), { recursive: true });
@@ -307,13 +309,15 @@ describe('generated feature settings', () => {
 });
 
 describe('generated repositories', () => {
-  it('types repositories from their declarations and registers them from the backend entry', () => {
+  it('types repositories from their declarations and puts them in the registration, registering nothing on import', () => {
     write('src/features/memos/be/repository.ts', 'export const memoQueries = {};\n');
     const files = generate({ features: [{ ...system('memos'), repositories: { memoQueries: 'src/features/memos/be/repository.ts#memoQueries' } }] });
     expect(files['src/__generated__/repository.ts']).toContain("import type { memoQueries as __repo_memoQueries } from '../features/memos/be/repository.js';");
     expect(files['src/__generated__/repository.ts']).toContain('memoQueries: typeof __repo_memoQueries;');
-    expect(files['src/__generated__/repositories.ts']).toContain("registerRepository('memoQueries', __repo_memoQueries);");
-    expect(files['src/__generated__/pack-entry.ts']).toContain("import './repositories.js';");
+    expect(files['src/__generated__/repositories.ts']).toContain('  memoQueries: __repo_memoQueries,');
+    expect(files['src/__generated__/repositories.ts']).not.toContain('registerRepository');
+    expect(files['src/__generated__/pack-entry.ts']).toContain("import { repositories } from './repositories.js';");
+    expect(files['src/__generated__/pack-entry.ts']).toContain('  repositories,\n');
   });
 
   it('accepts a repository exported through a barrel', () => {
@@ -329,10 +333,10 @@ describe('generated repositories', () => {
       .toThrow('Repository "memoQueries" (feature "memos"): src/repo.ts doesn\'t export "memoQueries"');
   });
 
-  it('writes no registration module for a pack without repositories', () => {
+  it('writes no repositories module for a pack without repositories', () => {
     const files = generate({ features: [system('memos')] });
     expect(files['src/__generated__/repositories.ts']).toBeUndefined();
-    expect(files['src/__generated__/pack-entry.ts']).not.toContain('repositories.js');
+    expect(files['src/__generated__/pack-entry.ts']).not.toContain('repositories');
   });
 });
 
@@ -403,10 +407,10 @@ describe('generated services', () => {
 });
 
 describe('generated imports', () => {
-  it('names side-effect imports with .js', () => {
+  it('names generated modules with .js', () => {
     const files = generate({ features: [system('memos')] });
-    expect(files['src/__generated__/pack-entry.ts']).toContain("import './seeders.js';");
-    expect(files['src/__generated__/pack-entry.ts']).not.toMatch(/import '\.\/seeders';/);
+    expect(files['src/__generated__/pack-entry.ts']).toContain("import { getCompiledDir, seeders } from './seeders.js';");
+    expect(files['src/__generated__/pack-entry.ts']).not.toMatch(/from '\.\/seeders';/);
   });
 
   it('keeps dots in extensionless names and normalizes backslashes', () => {
@@ -470,6 +474,40 @@ describe('entitiesWithoutShapes', () => {
   });
 });
 
+describe('generated registrations', () => {
+  // Everything a pack contributes arrives in its registration: no generated module registers anything when imported
+  it("carry the pack's seeders and DSL types, which their modules only export", () => {
+    const files = generate({
+      features: [{ id: 'memos', plugin: { entry: 'src/features/memos/fe/plugin.ts' } }],
+      boot: { seed: { actions: 'src/seeds/actions' } },
+      dsl: { memo: { entry: 'src/defs/memo.ts', targets: ['monaco'], prefix: 'memo:', globals: { memos: 'typeof _dsl.memos' } } },
+    });
+    expect(files['src/__generated__/pack-entry.ts']).toContain('\n  seeders,\n');
+    expect(files['src/__generated__/seeders.ts']).toContain('export const seeders: Seeder[] = [');
+    expect(files['src/__generated__/pack-entry-fe.ts']).toContain("import { dslTypes } from './dsl-types-fe.js';");
+    expect(files['src/__generated__/pack-entry-fe.ts']).toContain('\n  dslTypes,\n');
+    expect(files['src/__generated__/dsl-types-fe.ts']).toContain([
+      'export const dslTypes: Record<string, DslTypeConfig> = {',
+      '  memo: {',
+      "    prefix: 'memo:',",
+      '    schema: memoSchema,',
+      '    globals: {',
+      "      memos: 'typeof _dsl.memos',",
+    ].join('\n'));
+    for (const [file, content] of Object.entries(files)) {
+      expect(content, file).not.toMatch(/\bregister(Seeders?|DslType)\s*\(/);
+      expect(content, file).not.toMatch(/^import '[^']+';$/m);
+    }
+  });
+
+  it('carry no seeders or DSL types for a pack without them', () => {
+    const files = generate({ features: [{ id: 'memos', plugin: { entry: 'src/features/memos/fe/plugin.ts' } }] });
+    expect(files['src/__generated__/seeders.ts']).toContain('export const seeders: Seeder[] = [];');
+    expect(files['src/__generated__/pack-entry-fe.ts']).not.toContain('dslTypes');
+    expect(files).not.toHaveProperty(['src/__generated__/dsl-types-fe.ts']);
+  });
+});
+
 describe('generated seeders', () => {
   it('registers the generic seeder with its format settings, and SDK seeders for specialty keys', () => {
     const files = generate({
@@ -486,7 +524,7 @@ describe('generated seeders', () => {
       } },
     });
     const seeders = files['src/__generated__/seeders.ts'];
-    expect(seeders).toContain(`registerSeeders("demo-pack", [\n  createSeeder({ key: 'actions', entities: ['Action'], identity: ['label'] }),`);
+    expect(seeders).toContain(`export const seeders: Seeder[] = [\n  createSeeder({ key: 'actions', entities: ['Action'], identity: ['label'] }),`);
     expect(seeders).toContain('  createFlowSeeder(),');
     expect(seeders).toContain('  createSeeder({"key":"memos","entities":["Memo"],"identity":["title","parent"],"relKind":"has_memo","media":true}),');
     expect(seeders).not.toContain('faqs');
@@ -505,6 +543,18 @@ describe('generated seeders', () => {
     const seeders = generate({ boot: { seed: { 'my-memos': { seeder: 'src/seeds/memos.ts' } } } })['src/__generated__/seeders.ts'];
     expect(seeders).toContain("import { seed as __seeder_my_memos } from '../seeds/memos.js';");
     expect(seeders).toContain('  { key: "my-memos", seed: __seeder_my_memos },');
+  });
+
+  it("registers a pack seeder module for a format entry naming one, and boot-seeds the compiled entry", () => {
+    const files = generate({
+      seedFormats: { settings: { compiler: 'src/seeds/compilers/settings.ts' } },
+      boot: { seed: { settings: { path: 'src/seeds/settings.ts', format: 'settings', seeder: 'src/seeds/settings-seeder.ts' } } },
+    });
+    const seeders = files['src/__generated__/seeders.ts'];
+    expect(seeders).toContain("import { seed as __seeder_settings } from '../seeds/settings-seeder.js';");
+    expect(seeders).toContain('  { key: "settings", seed: __seeder_settings },');
+    expect(seeders).not.toContain('createSeeder');
+    expect(files['src/__generated__/pack-entry.ts']).toContain('artifacts: ["settings"],');
   });
 
   it('accepts format entities from the SDK and dependencies, and rejects one nobody declares', () => {

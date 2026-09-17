@@ -70,7 +70,7 @@ The `features` array is the primary way to add functionality. Each entry bundles
 | `system` | `{ entry, outgoingEventsType?, sendsTo?, events? }` | no | Backend system module. `entry` must **default-export** its `SystemEntry`, declared with `satisfies SystemEntry` (a type annotation loses the system's events). `sendsTo` lists plugins it sends events to besides its own feature's (other features of the pack, dependency plugins, or `application`); each one's `emit` type then accepts this system's outgoing events. `events.incoming` lists event types the bus routes to the system besides those its machine declares. |
 | `plugin` | `{ entry }` | no | Frontend plugin module. `entry` must **default-export** its `Plugin`, which carries the plugin's `id`, `label`, `icon` and `isPinned` |
 | `services` | `Record<string, string>` | no | Services. Keys are identifiers, the names on `services`; values are `"path#exportName"`: a source file and the name of its export holding the service object (an object literal or class instance, not a factory). See [Services](services-and-data.md#services) |
-| `repositories` | `Record<string, string>` | no | Repository objects. Keys are identifiers, the names on `repository`; values are `"path#exportName"`. Registered by the generated pack entry and typed on `repository` from `#generated/repository` |
+| `repositories` | `Record<string, string>` | no | Repository objects. Keys are identifiers, the names on `repository`; values are `"path#exportName"`. Carried by the generated pack entry's registration (the app registers them with its engine) and typed on `repository` from `#generated/repository` |
 | `typesEntry` | `string` | no | Additional types to include in the generated type barrel |
 | `earlySystem` | `boolean` | no | Start this feature's system before EARS hydration. Built-in packs only: validation rejects it in an external pack |
 | `contributions` | `string` | no | Path to contribution type providers. Built-in packs only: ignored for external packs |
@@ -79,7 +79,7 @@ A feature can have just a system (backend-only), just a plugin (frontend-only), 
 
 ### Feature settings
 
-The `settings` module default-exports the feature's defaults, which the app registers when the pack loads. It may set only the feature's own plugin settings and its sidebar visibility:
+The `settings` module default-exports the feature's defaults, which the generated entry puts in the pack's registration, and the app reads when the pack loads. It may set only the feature's own plugin settings and its sidebar visibility:
 
 ```typescript
 // src/features/bookmarks/settings.ts
@@ -156,7 +156,7 @@ The `boot` object configures hooks that run during app startup:
 | Field | Type | Description |
 |---|---|---|
 | `hooks` | `string` | Module exporting lifecycle hooks (see below) |
-| `seed` | `Record<string, string \| SeedEntryConfig>` | Seed sources: `actions`, `prompts`, `flows` and `settings` take a path; any other key is `{ path, format }` or `{ seeder }`. `settings` (the app's defaults) is for built-in packs only; declare a feature's defaults with `features[].settings` |
+| `seed` | `Record<string, string \| SeedEntryConfig>` | Seed sources: `actions`, `prompts` and `flows` take a path; any other key is `{ path, format }` (optionally with `seeder`) or `{ seeder }`. Declare a feature's default settings with `features[].settings` |
 | `seedPolicy` | `object` | Controls which seed types to skip at boot or after onboarding |
 
 The `hooks` module's named exports become the pack's boot hooks:
@@ -176,11 +176,12 @@ A system that must start before hydration is a feature with `earlySystem: true`,
 
 ### SeedEntryConfig
 
-`actions`, `prompts`, `flows` and `settings` accept a path or `{ "path": … }`. Any other key is one of:
+`actions`, `prompts` and `flows` accept a path or `{ "path": … }`. Any other key is one of:
 
 | Shape | Description |
 |---|---|
 | `{ "path", "format" }` | `path`: source directory or file, relative to the pack root. `format`: a name in this pack's `seedFormats`, or `"<dependency id>:<name>"` for a dependency's; that dependency must be declared in `dependencies` |
+| `{ "path", "format", "seeder" }` | Compiled with the format, and seeded by the pack module's `seed(ctx)` instead of the generic seeder |
 | `{ "seeder" }` | A pack module exporting `seed(ctx)`, used instead of a format and the generic seeder |
 
 An entry can't carry format settings, and an unknown key given a path string fails validation. See [Seeds](seeds.md#seeding-entities) for examples.
@@ -285,7 +286,7 @@ The SDK defines the entity types `Relation`, `Flow`, `Node`, `TNode`, `Action`, 
 | `targets` | `["monaco"]` | Editors that get the definitions |
 | `prefix` | `string` | Editor models whose path starts with it get these definitions (e.g. `action:`) |
 | `inline` | `string[]` | Packages whose declarations are bundled into the definitions besides your own modules and `@abuddy/*`. The editor loads no `node_modules`, so a type it needs from another package belongs here; everything else stays an import |
-| `globals` | `Record<string, string>` | Globals in scope and their types. With `globals`, the generated FE entry registers the definitions from `dist/defs/monaco/<name>-defs.d.ts` |
+| `globals` | `Record<string, string>` | Globals in scope and their types. With `globals`, the generated FE entry's registration carries the definitions from `dist/defs/monaco/<name>-defs.d.ts` in its `dslTypes` |
 
 For each entry with a `monaco` target, `abuddy build` writes `dist/defs/monaco/<name>-defs.d.ts`: the entry's types bundled into one declaration file, wrapped as `declare module "@app/defs/<name>"`.
 

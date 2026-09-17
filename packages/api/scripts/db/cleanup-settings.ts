@@ -6,8 +6,8 @@
  *   npm run db:script scripts/db/cleanup-settings.ts
  */
 
-import { tx } from '@abuddy/sdk/ears';
-import { qx } from '@abuddy/host/ears';
+import { tx } from '@abuddy/ears';
+import { untypedQx as qx } from '@abuddy/ears';
 import { entity } from './database';
 
 async function cleanupSettings() {

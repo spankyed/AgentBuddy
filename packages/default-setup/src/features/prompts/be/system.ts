@@ -76,6 +76,7 @@ export const promptsSystem = setup({
         label: ev.label,
         inputs: ev.inputs,
         templateFn: ev.templateFn,
+        outputSchema: ev.outputSchema,
         description: ev.description,
         category: ev.category
       });
@@ -93,6 +94,7 @@ export const promptsSystem = setup({
       if (ev.label !== undefined) updates.label = ev.label;
       if (ev.inputs !== undefined) updates.inputs = ev.inputs;
       if (ev.templateFn !== undefined) updates.templateFn = ev.templateFn;
+      if (ev.outputSchema !== undefined) updates.outputSchema = ev.outputSchema;
       if (ev.description !== undefined) updates.description = ev.description;
       if (ev.category !== undefined) updates.category = ev.category;
       
@@ -168,7 +170,7 @@ export const promptsSystem = setup({
             outputSchema: item.outputSchema,
             description: item.description,
             category: item.category,
-          } as any);
+          });
 
           system.get(bus).send(emit(pluginId, {
             type: 'PROMPT_CREATED',

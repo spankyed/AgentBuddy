@@ -1,7 +1,7 @@
 // Compile-time checks, run by `tsc` (npm run typecheck:pack). Exact type equality fails when a
 // generated entity shape regresses to `any` or loses its declared field types.
 import { describe, expectTypeOf, it } from 'vitest';
-import type { BaseEntity } from '@abuddy/sdk/types';
+import type { BaseEntity } from '@abuddy/ears';
 import type { SdkEntityShapes, ActionEntity, FlowEntity, NodeBase } from '@abuddy/sdk';
 import type { NodeEntity } from '@/__generated__/types';
 import type { EntityShape, OwnEntityShapes, PackShapes } from '@/__generated__/ears';

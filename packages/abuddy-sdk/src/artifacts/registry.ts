@@ -1,35 +1,36 @@
+// The registered packs' artifact definitions, looked up by type in the bound registry
 import type { ArtifactDefinition } from './types.ts';
+import { boundPackContributions } from '../runtime/packs-view.ts';
 
-class ArtifactRegistry {
-  private artifacts = new Map<string, ArtifactDefinition>();
+const artifact = (type: string): ArtifactDefinition | undefined => boundPackContributions().artifact(type);
 
-  register(def: ArtifactDefinition): void {
-    this.artifacts.set(def.type, def);
-  }
-
-  get(type: string): ArtifactDefinition | undefined {
-    return this.artifacts.get(type);
-  }
-
-  getComponent(type: string): unknown | undefined {
-    return this.artifacts.get(type)?.fe?.component;
-  }
-
-  getIcon(type: string): unknown | undefined {
-    return this.artifacts.get(type)?.fe?.icon;
-  }
-
-  unregister(type: string): void {
-    this.artifacts.delete(type);
-  }
-
-  has(type: string): boolean {
-    return this.artifacts.has(type);
-  }
-
-  all(): ArtifactDefinition[] {
-    return [...this.artifacts.values()];
-  }
+/** The registered artifact definitions, by type */
+interface ArtifactRegistry {
+  get(type: string): ArtifactDefinition | undefined;
+  getComponent(type: string): unknown | undefined;
+  getIcon(type: string): unknown | undefined;
+  has(type: string): boolean;
+  all(): ArtifactDefinition[];
 }
 
-export const artifactRegistry = new ArtifactRegistry();
+export const artifactRegistry: ArtifactRegistry = {
+  get(type: string): ArtifactDefinition | undefined {
+    return artifact(type);
+  },
+
+  getComponent(type: string): unknown | undefined {
+    return artifact(type)?.fe?.component;
+  },
+
+  getIcon(type: string): unknown | undefined {
+    return artifact(type)?.fe?.icon;
+  },
+
+  has(type: string): boolean {
+    return artifact(type) !== undefined;
+  },
+
+  all(): ArtifactDefinition[] {
+    return boundPackContributions().artifacts();
+  },
+};

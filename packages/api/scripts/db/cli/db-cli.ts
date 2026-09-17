@@ -4,10 +4,25 @@ import * as path from 'node:path';
 import * as fs from 'node:fs';
 import { inspect } from 'node:util';
 import { pathToFileURL } from 'node:url';
-import { tx, getEntitiesOfType, getRoles, getAll } from '@abuddy/sdk/ears';
-import { qx, getAllEntities, getAttr, getAttrs } from '@abuddy/host/ears';
-import { EARS } from '@abuddy/sdk';
+import { tx, getEntitiesOfType, getRoles, getAll } from '@abuddy/ears';
+import { getAllEntities, installedEngine, untypedQx as qx, type EarsQuery } from '@abuddy/ears';
+
+const getAttr: EarsQuery['getAttr'] = (...args) => installedEngine().getAttr(...args);
+const getAttrs: EarsQuery['getAttrs'] = (...args) => installedEngine().getAttrs(...args);
+import { EARS as SdkEARS } from '@abuddy/sdk';
 import { formatResult, exportToJSON, exportToCSV, confirmAction } from './cli-utils';
+import { packs } from '../database';
+
+/**
+ * EARS with every entity type the database knows: the SDK's, the host's (AppState) and the registered packs'
+ * (Settings, Document, Note, …), read on each use, once the packs are registered
+ */
+const EARS = {
+  ...SdkEARS,
+  get Entity(): Record<string, string> {
+    return Object.fromEntries([...packs.getRegisteredEntityTypes()].map((type) => [type, type]));
+  },
+};
 
 export interface CliOptions {
   mode?: 'interactive' | 'exec' | 'script';
@@ -186,21 +201,6 @@ export class DatabaseCLI {
       }
     });
 
-    this.replServer.defineCommand('cleanup-tombstoned', {
-      help: 'Delete all tombstoned entities',
-      action: async () => {
-        try {
-          const { cleanupTombstoned } = await import('./cleanup-tombstoned');
-          console.log('🔄 Starting cleanup of tombstoned entities...');
-          const count = cleanupTombstoned();
-          console.log(`✅ Successfully deleted ${count} tombstoned entities`);
-        } catch (error) {
-          console.error('❌ Failed to cleanup tombstoned entities:', error);
-        }
-        this.replServer!.displayPrompt();
-      }
-    });
-
     this.replServer.defineCommand('help', {
       help: 'Show help',
       action: () => {
@@ -218,7 +218,6 @@ export class DatabaseCLI {
         console.log('  .stats  - Show database statistics');
         console.log('  .export - Export last result');
         console.log('  .clear  - Clear screen');
-        console.log('  .cleanup-tombstoned - Delete all tombstoned entities');
         console.log('  .exit   - Exit CLI');
         console.log();
         this.replServer!.displayPrompt();

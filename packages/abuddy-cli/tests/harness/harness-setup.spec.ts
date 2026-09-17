@@ -1,5 +1,5 @@
 // Where the harness finds the pack, and which tests it runs: a pack's unit tests run from anywhere with --root,
-// tests that run concurrently fail naming why, and a pack scaffolded before the harness gets its setup from `abuddy add feature`.
+// tests that run concurrently, or test files sharing the harness, fail naming why, and a pack scaffolded before the harness gets its setup from `abuddy add feature`.
 import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -66,6 +66,22 @@ it('seeds nothing', async () => {
 });`);
     const result = run(process.execPath, [VITEST, 'run', '--root', root], tempDir('abuddy-elsewhere-'));
     expect(result.output).toMatch(/Tests\s+1 passed/);
+  }, 180_000);
+
+  it('fail naming why when test files share the harness (vitest isolate off)', () => {
+    const spec = `
+import { expect, it } from 'vitest';
+import { seedPack } from '@abuddy/testing/harness';
+it('seeds nothing', async () => {
+  expect(await seedPack()).toEqual({});
+});`;
+    const root = dataPack(spec);
+    write(root, 'tests/other.spec.ts', spec);
+    const config = fs.readFileSync(path.join(root, 'vitest.config.ts'), 'utf-8');
+    write(root, 'vitest.config.ts', config.replace("test: { include:", "test: { isolate: false, fileParallelism: false, include:"));
+    const result = run(process.execPath, [VITEST, 'run'], root);
+    expect(result.output).toContain('setupPackTests() already ran in this process');
+    expect(result.output).toContain('`isolate` on (the default)');
   }, 180_000);
 
   it('fail concurrent tests, naming why', () => {

@@ -1,4 +1,3 @@
-import { hostService } from './host-services.ts';
 import type { ProviderName } from './models.ts';
 
 /** Whom a stored key is for: a model provider, or `custom` for keys the app's own integrations name */
@@ -46,15 +45,6 @@ export interface SecretsService {
   /** Deleting the selected key leaves its provider with none selected */
   delete(id: string): void;
 }
-
-/** The host's implementation, registered under `secrets` */
-export const secrets: SecretsService = {
-  status: () => hostService('secrets').status(),
-  list: () => hostService('secrets').list(),
-  select: (id) => hostService('secrets').select(id),
-  rename: (id, label) => hostService('secrets').rename(id, label),
-  delete: (id) => hostService('secrets').delete(id),
-};
 
 /** The user's stored keys (without values) and how they're protected */
 export interface SecretsSnapshot {

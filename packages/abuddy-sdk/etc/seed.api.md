@@ -4,14 +4,13 @@
 
 ```ts
 
+import { EARS as EARS_2 } from '@abuddy/ears';
+
 // @public (undocumented)
 export function createFlowSeeder(): Seeder;
 
 // @public
 export function createSeeder(options: SeederOptions): Seeder;
-
-// @public (undocumented)
-export function createSettingsSeeder(): Seeder;
 
 // @public
 export function markSeededRowUnedited(id: EARS.EntityId): void;
@@ -70,10 +69,6 @@ export interface SeedHookMatch {
 export interface SeedHookRegistry {
     // (undocumented)
     get(entity: string): SeedHooks | undefined;
-    // (undocumented)
-    register(entity: string, hooks: SeedHooks, packId: string): void;
-    // (undocumented)
-    unregisterAll(packId: string): void;
 }
 
 // @internal

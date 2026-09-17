@@ -22,6 +22,20 @@ function packCompilerOptions(packDir: string): Record<string, unknown> {
   return { paths, baseUrl, module, moduleResolution, target, jsx };
 }
 
+/**
+ * Rollup renames a symbol whose name is taken (`Foo$1`), often by a global the declarations shadow anyway; those
+ * suffixes only confuse completions, so they're dropped. A name two bundled declarations share keeps its suffixes:
+ * dropping them would merge the declarations (the engine's `EARS` namespace with the SDK's), and the first one
+ * would answer for both.
+ */
+export function withoutRenameSuffixes(code: string): string {
+  const declared = new Set(
+    [...code.matchAll(/^(?:export\s+)?(?:declare\s+)?(?:abstract\s+)?(?:namespace|module|const|let|var|type|interface|function|class|enum)\s+([\w$]+)/gm)]
+      .map((match) => match[1]),
+  );
+  return code.replace(/\b(\w+)\$\d+\b/g, (renamed, name: string) => (declared.has(name) ? renamed : name));
+}
+
 /** The build output holding the DSL editors' definitions, dist-relative */
 export const DEFS_DIR = 'defs';
 
@@ -57,8 +71,7 @@ export async function bundleDslDefs(
       // Monaco reads the file as the module the DSL editor's code is compiled against
       intro: `declare module "@app/defs/${name}" {`,
       outro: '}',
-      // Rollup renames colliding symbols (`Foo$1`); the declarations describe one scope, so the suffixes only confuse completions
-      renderChunk: (code) => code.replace(/\b(\w+)\$\d+\b/g, '$1'),
+      renderChunk: withoutRenameSuffixes,
       compilerOptions,
     });
     if (!result.success) return { success: false, error: `${name}: ${result.error}` };

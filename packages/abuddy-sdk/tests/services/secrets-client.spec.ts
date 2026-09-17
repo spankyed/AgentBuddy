@@ -1,10 +1,14 @@
-// secretsClient calls the frontend host's `secrets-client` module and nothing else of the API client
+// secretsClient calls the bound frontend host's secrets client and nothing else of the API client
 import { describe, expect, it } from 'vitest';
 import { secretsClient, type SecretsClient } from '../../src/fe/secrets-client.ts';
-import { registerHostModule } from '../../src/runtime/host.ts';
+import { bindFeHost } from '../../src/runtime/fe-host.ts';
 
 describe('secretsClient', () => {
-  it("passes each call to the host's secrets-client module, resolving with its snapshot", async () => {
+  it('throws, naming bindFeHost, while no frontend host is bound', () => {
+    expect(() => secretsClient.list()).toThrow('bindFeHost');
+  });
+
+  it("passes each call to the bound frontend host's secrets client, resolving with its snapshot", async () => {
     const snapshot = { secrets: [], status: { protection: 'os-keystore' as const, backend: 'test' } };
     const calls: unknown[][] = [];
     const record = (name: string) => async (...args: unknown[]) => { calls.push([name, ...args]); return snapshot; };
@@ -12,7 +16,7 @@ describe('secretsClient', () => {
       list: record('list'), add: record('add'), replaceValue: record('replaceValue'), select: record('select'),
       rename: record('rename'), delete: record('delete'), allowUnprotected: record('allowUnprotected'),
     };
-    registerHostModule('secrets-client', host);
+    bindFeHost({ application: {} as never, secrets: host, transport: { sendIncoming: () => {} }, packs: {} as never });
 
     await expect(secretsClient.add('openai', 'Work', 'sk-value')).resolves.toBe(snapshot);
     await secretsClient.list();

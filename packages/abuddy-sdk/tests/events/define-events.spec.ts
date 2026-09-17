@@ -1,4 +1,4 @@
-// A pack's typed sends go through the registered event transport, each system under the id it runs under.
+// A pack's typed sends go through the bound app's bus, each system under the id it runs under.
 import * as os from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { defineEvents, emit, type PluginEvents, type SystemEventMap } from '../../src/events/index.ts';
@@ -44,7 +44,7 @@ describe('defineEvents', () => {
 
   it('sends to a plugin, and wraps an event for the bus with emit', () => {
     const outgoing: unknown[] = [];
-    const stop = testRootEvents.onOutgoing((event) => outgoing.push(event));
+    const stop = testRootEvents.onPluginSend((event) => outgoing.push(event));
     try {
       events.sendToPlugin('memos', { type: 'MEMO_ADDED' });
     } finally {

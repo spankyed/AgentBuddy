@@ -34,7 +34,7 @@ function pack(repository: string): string {
 
 describe('abuddy build loads the seed runtime it bundles', () => {
   it('passes a seed runtime that uses only @abuddy/sdk', async () => {
-    const dir = pack("import { findRelations } from '@abuddy/sdk/ears';\nexport const memoQueries = { links: findRelations };\n");
+    const dir = pack("import { findRelations } from '@abuddy/ears';\nexport const memoQueries = { links: findRelations };\n");
     expect(await bundlePackSeedRuntime(dir, path.join(dir, 'dist'))).toEqual({ success: true });
   }, 60_000);
 

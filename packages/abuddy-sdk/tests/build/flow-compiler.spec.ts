@@ -3,11 +3,14 @@ import { compile } from '../../src/build/compilers/flow-compiler.ts';
 import { EARS } from '../../src/types/entities.ts';
 import type { FlowDSL } from '../../src/build/compilers/flow-types.ts';
 import { BinaryOperator } from '../../src/utils/index.ts';
-import { stepRegistry } from '../../src/steps/registry.ts';
+import { startTestRuntime, testPacks } from '../../src/testing/index.ts';
 import { findEntity, filterEntities, filterRelations } from './helpers/compiled-result.ts';
 import { wrapInFlow, makeSwitchDSL, parsedPredicate } from './helpers/dsl-factories.ts';
 import { steps, ctx, flows } from './helpers/fixtures.ts';
 import { ALL_TEST_STEPS } from './helpers/test-steps.ts';
+
+// The registered steps these compile against: the stand-in's, which the specs fill
+startTestRuntime();
 
 function c(dsl: FlowDSL, options?: { actions?: Map<string, string>; prompts?: Map<string, string> }) {
   return compile(dsl, options);
@@ -15,9 +18,9 @@ function c(dsl: FlowDSL, options?: { actions?: Map<string, string>; prompts?: Ma
 
 describe('compile', () => {
   beforeEach(() => {
-    for (const step of ALL_TEST_STEPS) stepRegistry.register(step);
+    for (const step of ALL_TEST_STEPS) testPacks.steps.set(step.type, step);
   });
-  afterEach(() => stepRegistry.clear());
+  afterEach(() => testPacks.steps.clear());
 
   describe('flow structure', () => {
     it('creates flow entity with correct label, entityType, flowType', () => {

@@ -1,7 +1,6 @@
-export { EARS, type BaseEntity, type EntityShapes, type ShapeOf } from './entities.ts';
+export { EARS } from './entities.ts';
 export type {
   SdkEntityShapes, RelationEntity, FlowEntity, NodeBase, ActionEntity, ActionParameter, PromptEntity, TemplateInput,
-  SettingsEntity, SettingsScope,
 } from './sdk-entities.ts';
 export type { TNodeEntity, TNodeKind } from '../steps/types.ts';
 export { ROOT_FLOW_ROLE } from './sdk-entities.ts';

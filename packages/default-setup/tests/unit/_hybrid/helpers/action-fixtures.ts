@@ -1,12 +1,14 @@
+import type { ActionInput } from '@abuddy/sdk/repositories';
+
 /**
  * Reusable action definitions for seeding tests.
  */
-export const actionFixtures = [
+export const actionFixtures: ActionInput[] = [
   {
     label: 'Send Email',
     description: 'Sends an email to a recipient',
     category: 'communication',
-    input: { to: { type: 'string' as const, required: true }, subject: { type: 'string' as const } },
+    input: { to: { type: 'string', required: true }, subject: { type: 'string' } },
     actionFn: 'async ({ to, subject }) => sendEmail(to, subject)',
     output: { sent: true },
   },
@@ -14,7 +16,7 @@ export const actionFixtures = [
     label: 'Fetch Data',
     description: 'Fetches data from an API endpoint',
     category: 'data',
-    input: { url: { type: 'string' as const, required: true } },
+    input: { url: { type: 'string', required: true } },
     actionFn: 'async ({ url }) => fetch(url).then(r => r.json())',
   },
   {

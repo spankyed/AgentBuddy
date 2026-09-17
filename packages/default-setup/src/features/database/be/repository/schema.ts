@@ -1,6 +1,6 @@
 import { EARS } from '@/__generated__/ears';
 import type { DatabaseSchemaInfo } from '../types';
-import { getAllEntityTypes, getEntitiesOfType, getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getRelationStats } from '@abuddy/sdk/ears';
+import { getAllEntityTypes, getEntitiesOfType, getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getRelationStats } from '@abuddy/ears';
 
 /**
  * Generate schema information from actual data in the system

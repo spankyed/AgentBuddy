@@ -2,9 +2,7 @@ import { compileSourceDir } from '../compile-utils.ts';
 import type { SpecialtyCompiler, CompilationContext, ValidationResult } from '../seed-compiler.ts';
 import type { CompiledEntry, CompileResult } from '../compile-utils.ts';
 import { loadFlowsFromDir, validateFlows, hashFlows } from './compile-flows.ts';
-import { loadSettingsFromFile, deepMerge } from './compile-settings.ts';
 import type { FlowDSL } from './flow-types.ts';
-import { stepRegistry } from '../../steps/registry.ts';
 
 /** Entries from a source directory of DSL functions, with duplicate labels rejected */
 function uniqueEntries(kind: string, compiled: CompileResult): CompiledEntry[] {
@@ -73,7 +71,7 @@ export const flowsCompiler: SpecialtyCompiler<FlowDSL> = {
       flows,
       actions.map((action) => action.label),
       prompts.map((prompt) => prompt.label),
-      { steps: stepRegistry.all() },
+      { steps: context.steps },
     );
   },
 
@@ -85,23 +83,9 @@ export const flowsCompiler: SpecialtyCompiler<FlowDSL> = {
   }),
 };
 
-/** The pack's base settings file merged with each feature's settings */
-export const settingsCompiler: SpecialtyCompiler<Record<string, unknown>> = {
-  async compile(filePath, { featureSettingsPaths }) {
-    let merged = await loadSettingsFromFile(filePath);
-    for (const feature of featureSettingsPaths) {
-      merged = deepMerge(merged, await loadSettingsFromFile(feature.settingsPath));
-    }
-    return merged;
-  },
-  count: () => 1,
-  items: () => [{ key: 'default-settings', description: 'Application defaults' }],
-};
-
 /** Seed keys the SDK compiles itself */
 export const SPECIALTY_COMPILERS: Record<string, SpecialtyCompiler> = {
   actions: actionsCompiler as SpecialtyCompiler,
   prompts: promptsCompiler as SpecialtyCompiler,
   flows: flowsCompiler as SpecialtyCompiler,
-  settings: settingsCompiler as SpecialtyCompiler,
 };

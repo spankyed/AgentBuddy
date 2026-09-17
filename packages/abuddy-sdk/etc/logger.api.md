@@ -4,6 +4,8 @@
 
 ```ts
 
+import { EARS as EARS_2 } from '@abuddy/ears';
+
 // @public
 export function createLogger(source?: string, options?: LoggerOptions): Logger;
 
@@ -76,6 +78,21 @@ export function setDebugEnabled(source: string, enabled: boolean): void;
 
 // @public
 export type StepErrorContext = Omit<StepRuntimeError, 'errorId' | 'message' | 'stack' | 'timestamp' | 'source'>;
+
+// @public
+export type SystemErrorEvent = {
+    type: 'SYSTEM_ERROR';
+    pluginId: 'application';
+    errorId: string;
+    message: string;
+    title?: string;
+    source?: string;
+    operation?: string;
+    entityId?: string;
+    severity: 'error' | 'fatal';
+    stack?: string;
+    timestamp: number;
+};
 
 // (No @packageDocumentation comment for this package)
 

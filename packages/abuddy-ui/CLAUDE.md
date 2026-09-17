@@ -53,7 +53,7 @@ npm run api:update -w @abuddy/ui       # regenerate etc/ reports, commit them
 
 - `etc/<entry>.api.md` for each export (API Extractor), with `/` in the subpath written as `.` (`design.button.api.md`).
 - `etc/<entry>.component.md` for each component entry (a `.ts` whose source matches `export { default } from '*.vue'`). It records props, emits, slots and `exposed` members as the TypeScript checker resolves them through `vue-component-type-helpers`. Changing a component's props, emits, slots or `defineExpose` changes this report, so run `api:update`.
-- Stale reports are deleted on update. CI runs `api:check` for the SDK and UI.
+- Stale reports are deleted on update. CI runs `api:check` for `@abuddy/ears`, the SDK and UI.
 
 The published surface supports TypeScript 5.7+ (`typescript` peer `>=5.7`). `abuddy-cli/tests/build/published-ui-types.spec.ts` compiles consumers against the packed package with both compilers (`packages/typescript-floor`).
 
@@ -85,7 +85,7 @@ Contracts and host-shared state that packs need even without `@abuddy/ui` live i
 
 - `useActorSystem` (`TiptapEditor.vue`, `KeyboardShortcutInput.vue`)
 - menu state: `onMenuOpenChange` (`TrackedContextMenuRoot.vue`), `useTrackedMenuOpen` (`ContextMenuPopup.vue`, `composables/useContextMenu.ts`)
-- registries: `tiptapPluginRegistry` (`TiptapEditor.vue`), `EXTRA_BLOCK_ITEMS_KEY` (`TiptapBlockMenu.vue`), `getDslTypes` (`monaco-config.ts`; packs register with `registerDslType`)
+- lookups of what pack frontends registered, which read the renderer's bound registry (`bindFeHost({ packs })`): `tiptapPluginRegistry` (`TiptapEditor.vue`) and `getDslTypes` (`monaco-config.ts`; packs' frontend registrations carry them as `dslTypes`); and `EXTRA_BLOCK_ITEMS_KEY` (`TiptapBlockMenu.vue`)
 - `openInAppBrowser` (`tiptap/composables/createEditorClickHandler.ts`)
 
 UI modules also read `stepRegistry` from `@abuddy/sdk/steps` (`node-styles.ts`, `node-dimensions.ts`) and types from `@abuddy/sdk/steps` (`TNodeListItem.vue`) and `@abuddy/sdk/types` (`KeyboardShortcutInput.vue`). The dependency goes one way only: `@abuddy/sdk` must not import `@abuddy/ui`, and the SDK's `package.json` doesn't declare it. `@abuddy/sdk` is a peer (`>=0.1.0 <1.0.0`), as are `vue`, `xstate`, `@xstate/vue`, `reka-ui`, `lucide-vue-next`, `@vue-flow/core`, the tiptap core packages, `monaco-editor` and `elkjs`. Tiptap extensions, `highlight.js`, `lowlight`, `tiptap-markdown` and `@guolao/vue-monaco-editor` are regular dependencies.

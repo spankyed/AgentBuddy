@@ -7,7 +7,7 @@ type ApiClient = TRPCClient<AppRouter>;
 const initialPort = (typeof window !== 'undefined' && window.electronAPI?.apiPort) || 3001;
 
 function connect(port: number) {
-  const ws = createWSClient({ url: `ws://localhost:${port}` });
+  const ws = createWSClient({ url: `ws://127.0.0.1:${port}` });
   return { port, ws, client: createTRPCClient<AppRouter>({ links: [wsLink({ client: ws })] }) };
 }
 

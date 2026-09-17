@@ -1,7 +1,7 @@
 // The create and update steps write entities with the fields their mappings resolve, as a flow on the brain runs them
 import { describe, expect, it } from 'vitest'
 import { importFlows, startApp } from '@abuddy/testing/harness'
-import { getEntityTypeChecker, initEARSRuntime } from '@abuddy/sdk/ears/internals'
+import { startTestRuntime } from '@abuddy/sdk/testing'
 import { create, on, update } from '@/__generated__/flow-helpers'
 import { createEntityWithDefaults, findAll, findById, type EARS } from '@/__generated__/ears'
 import { createStepBuild } from '@/extensions/steps/create/build'
@@ -39,19 +39,15 @@ describe('create step', () => {
   })
 
   it("creates an entity type the running app registered that this pack's own facade doesn't know (another pack's)", async () => {
-    const registered = getEntityTypeChecker()
-    initEARSRuntime({ isEntityType: (name) => name === 'Memo' || registered(name) })
-    try {
-      importFlows({ Memos: { root: true, tracks: [on('memo', [[create('Memo', { label: 'add', params: { title: 'From another pack' } })]])] } })
-      const app = await startBrain()
+    // Another pack registers Memo with the running app (for the rest of this file)
+    startTestRuntime({ entityTypes: ['Memo'] })
+    importFlows({ Memos: { root: true, tracks: [on('memo', [[create('Memo', { label: 'add', params: { title: 'From another pack' } })]])] } })
+    const app = await startBrain()
 
-      const run = await app.runFlow('Memos', { event: 'memo' })
+    const run = await app.runFlow('Memos', { event: 'memo' })
 
-      expect(run.steps.map((s) => [s.label, s.status])).toEqual([['add', 'completed']])
-      expect(result(run.steps[0])).toMatchObject({ entityType: 'Memo', title: 'From another pack' })
-    } finally {
-      initEARSRuntime({ isEntityType: registered })
-    }
+    expect(run.steps.map((s) => [s.label, s.status])).toEqual([['add', 'completed']])
+    expect(result(run.steps[0])).toMatchObject({ entityType: 'Memo', title: 'From another pack' })
   })
 
   it("fails naming an entity type that isn't registered, and writes nothing", async () => {

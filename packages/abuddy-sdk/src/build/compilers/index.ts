@@ -3,14 +3,12 @@ export {
   actionsCompiler,
   promptsCompiler,
   flowsCompiler,
-  settingsCompiler,
   SPECIALTY_COMPILERS,
   type CompiledSeedEntry,
 } from './standard.ts';
 
 // Build utilities used by compilers (useful for custom compilers too)
 export { loadFlowsFromDir, validateFlows, hashFlows } from './compile-flows.ts';
-export { loadSettingsFromFile, deepMerge } from './compile-settings.ts';
 
 // Flow types + utilities
 export type { FlowDSL, FlowConfig, Track, DSLNodeBase, DSLStepNode } from './flow-types.ts';

@@ -4,18 +4,7 @@ import { EARS } from '@/__generated__/ears';
 
 import type { SettingsData } from '../types';
 import { getDefaultSettings } from '../defaults';
-import type { SettingsEntity } from '@abuddy/sdk';
-
-// Deep merge: defaults fill missing keys, stored values win. Arrays are not merged.
-function deepMerge(defaults: any, stored: any): any {
-  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return stored ?? defaults;
-  if (!defaults || typeof defaults !== 'object' || Array.isArray(defaults)) return stored;
-  const result = { ...defaults };
-  for (const key of Object.keys(stored)) {
-    result[key] = deepMerge(defaults[key], stored[key]);
-  }
-  return result;
-}
+import { mergeSettings } from '../../merge-settings';
 
 // Use a fixed ID without hyphen to avoid LMDB persistence issues
 // The ID "Settings-app" has a bug where updates don't persist
@@ -35,7 +24,7 @@ const getStoredSettings = (): Partial<SettingsData> => {
 // The settings in effect: the defaults with the stored changes over them
 const getSettingsEntity = (): { id: EARS.EntityId; data: SettingsData } => ({
   id: SETTINGS_ID,
-  data: deepMerge(getDefaultSettings(), getStoredSettings()),
+  data: mergeSettings(getDefaultSettings(), getStoredSettings()),
 });
 
 // Helper to update nested values
@@ -71,8 +60,6 @@ export const settingsQueries = {
     return general;
   },
 
-  getInternalSettings: () => getSettingsEntity().data.internal,
-
   getAssistantSettings: () => getSettingsEntity().data.assistant,
 
   getPluginSettings: (pluginId: string) => {
@@ -87,7 +74,7 @@ export const settingsCommands = {
     const stored = getStoredSettings();
 
     // General & plugin settings are grouped by label (e.g., general.application, plugin.flows)
-    // Internal & assistant settings don't use labels
+    // Assistant settings don't use labels
     const needsLabel = type === 'general' || type === 'plugin';
     if (needsLabel && !label) {
       throw new Error(`Setting type '${type}' requires a label`);
@@ -110,6 +97,18 @@ export const settingsCommands = {
     const entity = getSettingsEntity();
     tx(entity.id)
       .put('data', data)
+      .put('updatedAt', Date.now());
+  },
+
+  /** Removes a stored value (its path in the stored data), so its default applies again */
+  removeStored(path: string[]): void {
+    const newData = structuredClone(getStoredSettings());
+    const parent = path.slice(0, -1).reduce<any>((node, key) => node?.[key], newData);
+    const key = path[path.length - 1];
+    if (!parent || typeof parent !== 'object' || !(key in parent)) return;
+    delete parent[key];
+    tx(SETTINGS_ID)
+      .put('data', newData)
       .put('updatedAt', Date.now());
   },
 

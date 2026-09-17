@@ -3,7 +3,6 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { repository } from '@/__generated__/repository';
 import { resetTestData } from '@abuddy/sdk/testing';
-import '@/features/actions/be/repository';
 import { exportActions } from '@/features/actions/be/repository/export-actions';
 import { actionFixtures } from './helpers/action-fixtures';
 

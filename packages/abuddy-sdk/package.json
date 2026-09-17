@@ -19,7 +19,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "build:package": "tsx scripts/build-package.ts",
-    "attw": "attw --pack . --profile esm-only --exclude-entrypoints ./ears/internals --exclude-entrypoints ./utils/internals",
+    "attw": "attw --pack . --profile esm-only --exclude-entrypoints ./utils/internals ./runtime/internals",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "api:build": "node -e \"require('fs').rmSync('.temp', { recursive: true, force: true })\" && tsc -p tsconfig.api-extractor.json",
@@ -70,10 +70,10 @@
       "types": "./dist/ids/index.d.ts",
       "default": "./dist/ids/index.js"
     },
-    "./ears": {
-      "@abuddy/source": "./src/ears/index.ts",
-      "types": "./dist/ears/index.d.ts",
-      "default": "./dist/ears/index.js"
+    "./repositories": {
+      "@abuddy/source": "./src/repositories/index.ts",
+      "types": "./dist/repositories/index.d.ts",
+      "default": "./dist/repositories/index.js"
     },
     "./fe": {
       "@abuddy/source": "./src/fe/index.ts",
@@ -166,11 +166,11 @@
       "default": "./dist/testing/index.js"
     },
     "./abuddy.schema.json": "./abuddy.schema.json",
-    "./ears/internals": {
-      "@abuddy/source": "./src/ears/internals.ts"
-    },
     "./utils/internals": {
       "@abuddy/source": "./src/utils/internals.ts"
+    },
+    "./runtime/internals": {
+      "@abuddy/source": "./src/runtime/internals.ts"
     }
   },
   "peerDependencies": {
@@ -212,6 +212,7 @@
     "provenance": true
   },
   "dependencies": {
+    "@abuddy/ears": "^0.1.0",
     "yaml": "^2.9.1"
   }
 }

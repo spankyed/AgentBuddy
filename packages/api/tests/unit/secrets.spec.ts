@@ -21,26 +21,24 @@ const logDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-secrets-logs-'));
 process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
 process.env.AGENTBUDDY_LOG_DIR = logDir;
-await import('@/setup/sdk-host-init');
-const { secretsRouter, forwardSecretsChanges } = await import('@/core/router/secrets-router');
+const { openAppStore } = await import('@/setup/backend');
+const { store, packs } = openAppStore();
+const { secretsRouter } = await import('@/core/router/secrets-router');
 const { rootEvents } = await import('@/core/router/bus-emitter');
-const { createLogger } = await import('@/core/shared/debug/logger');
+const { createLogger, reportError } = await import('@abuddy/sdk/logger');
 const { originalConsole, initializeLogCapture, restoreConsole } = await import('@/core/shared/debug/log-capture');
-const { reportSystemError } = await import('@/core/shared/system-errors');
-const { secretsStore } = await import('@abuddy/host/secrets');
+const { secretsStore, forwardSecretsChanges } = await import('@abuddy/host/secrets');
 const { services } = await import('@abuddy/sdk/services');
-const { registerDesignations } = await import('@abuddy/sdk/designations');
-const { registerHostSystem } = await import('@abuddy/host/packs');
 const { getSecretsFilePath } = await import('@abuddy/sdk/utils');
-const attributeStorage = await import('@/core/ears/attribute-storage');
 const { setup } = await import('xstate');
 
 const KEY = 'sk-proj-SPECKEY1234567890abcdefghij';
 const caller = secretsRouter.createCaller({});
 // What the API's boot registers; the settings system is registered in the first test, once it checks changes made before
-forwardSecretsChanges();
-registerDesignations({ settings: 'test.settings' });
-const registerSettingsSystem = () => registerHostSystem('test.settings', setup({}).createMachine({}), new Set(['SECRETS_CHANGED']));
+forwardSecretsChanges(packs);
+// A pack designating its settings feature, whose system isn't running yet
+packs.registerPack({ id: 'test', systems: [], features: [{ id: 'settings', designation: 'settings', hasSystem: true, hasPlugin: false, services: [] }] });
+const registerSettingsSystem = () => packs.registerHostSystem('settings', setup({}).createMachine({}), new Set(['SECRETS_CHANGED']));
 
 /** The incoming events `run` sends */
 async function incomingDuring(run: () => Promise<unknown> | unknown): Promise<Array<Record<string, unknown>>> {
@@ -53,9 +51,10 @@ async function incomingDuring(run: () => Promise<unknown> | unknown): Promise<Ar
   }
   return incoming;
 }
-const CHANGED = { type: 'SECRETS_CHANGED', systemId: 'test.settings' };
+const CHANGED = { type: 'SECRETS_CHANGED', systemId: 'settings' };
 
 afterAll(() => {
+  store.close();
   fs.rmSync(dataDir, { recursive: true, force: true });
   fs.rmSync(logDir, { recursive: true, force: true });
 });
@@ -133,7 +132,7 @@ describe('secrets procedures', () => {
   it('services.appData.reset deletes stored keys once the database is open again', async () => {
     await caller.add({ provider: 'openai', label: 'Work', value: KEY });
     const openAtChange: boolean[] = [];
-    const stop = secretsStore.onChange(() => openAtChange.push(attributeStorage.envs !== null));
+    const stop = secretsStore.onChange(() => openAtChange.push(store.isOpen()));
     try {
       await services.appData.reset();
     } finally {
@@ -254,7 +253,7 @@ describe('logs and error reports', () => {
     const stopOutgoing = rootEvents.onOutgoing((event) => { outgoing.push(event); });
     const printedError = vi.spyOn(originalConsole, 'error').mockImplementation(() => {});
     createLogger('spec').error(`Provider said: Incorrect API key provided: ${MISTRAL} (job ${OTHER})`);
-    reportSystemError({ error: new Error(`401 for ${MISTRAL} (job ${OTHER})`), source: 'spec' });
+    reportError({ error: new Error(`401 for ${MISTRAL} (job ${OTHER})`), source: 'spec' });
     stopLog();
     stopOutgoing();
     const printed = JSON.stringify(printedError.mock.calls);
@@ -272,7 +271,7 @@ describe('logs and error reports', () => {
   it('redact keys from system error reports', () => {
     const outgoing: Array<Record<string, unknown>> = [];
     const stop = rootEvents.onOutgoing((event) => { outgoing.push(event); });
-    reportSystemError({ error: new Error(`Incorrect API key provided: ${KEY}`), source: 'spec' });
+    reportError({ error: new Error(`Incorrect API key provided: ${KEY}`), source: 'spec' });
     stop();
     expect(JSON.stringify(outgoing)).not.toContain('SPECKEY');
     expect(JSON.stringify(outgoing)).toContain('[redacted]');

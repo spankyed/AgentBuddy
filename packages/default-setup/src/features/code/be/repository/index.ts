@@ -2,7 +2,8 @@ import { tx, qx, findById, findAll } from '@/__generated__/ears';
 
 import { EARS } from '@/__generated__/ears'
 
-import { exists } from '@abuddy/sdk/ears';
+import { exists } from '@abuddy/ears';
+import { trash } from '@abuddy/sdk/repositories';
 import { createEntityWithDefaults, updateEntity } from '@/__generated__/ears';
 import type { TerminalInfo } from '../types'
 import { createLogger } from '@abuddy/sdk/logger'
@@ -139,14 +140,9 @@ export const terminalCommands = {
       return
     }
 
-    // Mark terminal as deleted instead of actually deleting
-    const now = Date.now()
-    tx(id).updateBatch({
-      active: false,
-      deleted: true,
-      deletedAt: now,
-      updatedAt: now
-    })
+    // To the trash, inactive, rather than deleted (trash.move stamps updatedAt)
+    tx(id).put('active', false)
+    trash.move([id])
   }
 }
 

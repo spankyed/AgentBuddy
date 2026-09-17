@@ -18,11 +18,6 @@ const settings: SettingsData = {
       visibility: {}
     },
   },
-  internal: {
-    hasOnboarded: false,
-    lastInteractionTimestamp: null,
-    version: '',
-  },
   assistant: {
     name: '',
     birthdate: null

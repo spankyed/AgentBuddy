@@ -1,3 +1,5 @@
+import { boundHost } from '../runtime/host-runtime.ts';
+
 /**
  * A feature's default settings (abuddy.json `features[].settings`): its plugin's slice under
  * `plugins.<feature id>`, and whether its sidebar tab shows by default
@@ -48,48 +50,12 @@ export function checkFeatureSettings(featureId: string, settings: unknown): stri
   return problems;
 }
 
-const registered = new Map<string, Array<{ id: string; settings: FeatureSettings }>>();
-const listeners = new Set<() => void>();
-let current: PackSettingsDefaults = { revision: 0, settings: { plugins: {} } };
-
-function rebuild(): void {
-  const plugins: Record<string, unknown> = {};
-  const visibility: Record<string, boolean> = {};
-  for (const features of registered.values()) {
-    for (const { id, settings } of features) {
-      const own = settings.plugins ?? {};
-      if (id in own) plugins[id] = own[id];
-      const visible = (own._meta as { visibility?: Record<string, boolean> } | undefined)?.visibility?.[id];
-      if (visible !== undefined) visibility[id] = visible;
-    }
-  }
-  current = { revision: current.revision + 1, settings: { plugins: { ...plugins, ...(Object.keys(visibility).length > 0 && { _meta: { visibility } }) } } };
-  for (const listener of listeners) listener();
-}
-
-/** The default settings registered packs' features declare */
+/** The default settings registered packs' features declare (the bound app's registered packs) */
 export function getPackSettingsDefaults(): PackSettingsDefaults {
-  return current;
+  return boundHost().packs.settingsDefaults();
 }
 
 /** Calls `listener` whenever a pack's feature settings are registered or unregistered; returns the unsubscribe */
 export function onPackSettingsDefaultsChanged(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
+  return boundHost().packs.onSettingsDefaultsChanged(listener);
 }
-
-/** @internal Host-only: the pack registry registers each pack's feature settings */
-export const packSettingsRegistry = {
-  register(packId: string, features: ReadonlyArray<{ id: string; settings?: FeatureSettings }>): void {
-    const withSettings = features.filter((feature): feature is { id: string; settings: FeatureSettings } => feature.settings !== undefined);
-    const problems = withSettings.flatMap(({ id, settings }) => checkFeatureSettings(id, settings));
-    if (problems.length > 0) throw new Error(`Pack "${packId}" has invalid feature settings:\n  ${problems.join('\n  ')}`);
-    if (withSettings.length === 0 && !registered.has(packId)) return;
-    registered.set(packId, withSettings);
-    rebuild();
-  },
-
-  unregister(packId: string): void {
-    if (registered.delete(packId)) rebuild();
-  },
-};

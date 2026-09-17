@@ -64,16 +64,6 @@ const aliasPlugin = {
   },
 };
 
-const externalizeSdkPlugin = {
-  name: 'externalize-sdk',
-  setup(build) {
-    build.onResolve({ filter: /^@abuddy\/sdk/ }, (args) => ({
-      path: args.path,
-      external: true,
-    }));
-  },
-};
-
 const vueStubPlugin = {
   name: 'stub-vue',
   setup(build) {
@@ -92,8 +82,10 @@ const buildOptions = {
   platform: 'node',
   target: 'node23',
   sourcemap: true,
+  // Every package stays external: the app bridges the shared-instance packages (@abuddy/sdk, @abuddy/ears)
+  // to its own and resolves the rest itself
   packages: 'external',
-  plugins: [externalizeSdkPlugin, aliasPlugin, vueStubPlugin],
+  plugins: [aliasPlugin, vueStubPlugin],
   logLevel: 'info',
 };
 
@@ -110,7 +102,7 @@ async function notifyReload() {
   const port = getApiPort();
   if (!port) return;
   try {
-    const res = await fetch(`http://localhost:${port}/dev/reload`, {
+    const res = await fetch(`http://127.0.0.1:${port}/dev/reload`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ packId: 'default-setup', builtIn: true }),

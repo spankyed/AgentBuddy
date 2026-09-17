@@ -1,61 +1,110 @@
-// startTestRuntime's in-memory host: what systems, services and steps call outside the app
+// startTestRuntime's in-memory app: what systems, services and steps call outside the app
+import { installedEngine as ears } from '@abuddy/ears';
 import * as os from 'node:os';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { entityIds, dropAttribute, resetTestData, startTestRuntime, takeSystemErrors, testRootEvents } from '../../src/testing/index.ts';
 import { sendToPlugin, sendToSystem, sendToBrainSystem } from '../../src/events/index.ts';
-import { appData } from '../../src/services/app-data.ts';
-import { traceStore } from '../../src/services/trace-store.ts';
-import { registerDesignations, unregisterDesignations } from '../../src/designations/index.ts';
-import { runMigrations } from '../../src/utils/index.ts';
+import { services } from '../../src/services/index.ts';
+import { testPacks, testPacksView } from '../../src/testing/packs.ts';
 import { getAppVersion } from '../../src/env/index.ts';
-import { reportError } from '../../src/logger/index.ts';
-import * as rpc from '../../src/runtime/root-events.ts';
-import { tx } from '../../src/ears/transaction.ts';
-import { getAttr } from '../../src/ears/attribute-storage.ts';
+import { createLogger, reportError } from '../../src/logger/index.ts';
+import { boundHost, unbindHost } from '../../src/runtime/host-runtime.ts';
+import { rootEvents } from '../../src/runtime/root-events.ts';
+import { registerRepository, repository, tx } from '@abuddy/ears';
 
 process.env.ABUDDY_ENV ??= 'test';
 process.env.ABUDDY_USER_DATA_DIR ??= os.tmpdir();
 startTestRuntime();
 
 describe('the test host', () => {
-  it('delivers sendToPlugin and sendToSystem on testRootEvents, which rootEvents is', () => {
-    const outgoing: unknown[] = [];
+  it('binds testRootEvents as the bus sendToPlugin and sendToSystem send on, which rootEvents is', () => {
+    const toPlugins: unknown[] = [];
     const incoming: unknown[] = [];
-    const stop = [testRootEvents.onOutgoing((e) => outgoing.push(e)), testRootEvents.onIncoming((e) => incoming.push(e))];
-    registerDesignations({ brain: 'brain-system' });
+    const stop = [testRootEvents.onPluginSend((e) => toPlugins.push(e)), testRootEvents.onIncoming((e) => incoming.push(e))];
+    testPacks.designations.set('brain', 'brain-system');
     try {
       sendToPlugin('memos', { type: 'MEMO_ADDED' });
       sendToSystem('memos', { type: 'ADD_MEMO' });
       sendToBrainSystem({ eventType: 'user.message' });
+      rootEvents.emitIncoming({ type: 'PING', systemId: 'memos' });
     } finally {
       stop.forEach((unsubscribe) => unsubscribe());
-      unregisterDesignations({ brain: 'brain-system' });
+      testPacks.designations.delete('brain');
     }
-    expect(outgoing).toEqual([{ type: 'MEMO_ADDED', pluginId: 'memos' }]);
+    expect(toPlugins).toEqual([{ type: 'MEMO_ADDED', pluginId: 'memos' }]);
     expect(incoming).toEqual([
       { type: 'ADD_MEMO', systemId: 'memos' },
       { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message', systemId: 'brain-system' },
+      { type: 'PING', systemId: 'memos' },
     ]);
-    expect(rpc.rootEvents).toBe(testRootEvents);
+    expect(boundHost().transport.rootEvents).toBe(testRootEvents);
   });
 
-  it('records reported system errors until taken', () => {
+  it('records the SYSTEM_ERROR events systems report until taken', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
     reportError({ error: new Error('boom'), source: 'memos' });
-    expect(takeSystemErrors()).toEqual([expect.objectContaining({ source: 'memos' })]);
+    expect(takeSystemErrors()).toEqual([expect.objectContaining({ type: 'SYSTEM_ERROR', source: 'memos', message: 'boom' })]);
     expect(takeSystemErrors()).toEqual([]);
+    vi.restoreAllMocks();
   });
 
-  it('has a test version, no-op migrations, an appData that resets the database, and a trace store over it', async () => {
+  it('prints the log events on its bus once each, as the app does', () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    createLogger('memos').info('saved', { id: 1 });
+    testRootEvents.emitLog({ level: 'info', message: 'from the bus' });
+    expect(info.mock.calls).toEqual([['[memos]', 'saved', { id: 1 }], ['[test]', 'from the bus']]);
+    vi.restoreAllMocks();
+  });
+
+  it('has a test version, the engine, an appData that resets the database, and a trace store over it', async () => {
     expect(getAppVersion()).toBe('0.0.0-test');
-    expect(() => runMigrations()).not.toThrow();
+    expect(services.repository).toBe(ears().repository);
+    registerRepository('memoQueries', { all: () => [] });
     const id = tx('Memo' as never).put('text' as never, 'hello' as never).id();
-    expect(traceStore.getAttr('text', id)).toBe('hello');
+    expect(services.traceStore.getAttr('text', id)).toBe('hello');
     expect(entityIds()).toContain(id);
     dropAttribute(id, 'text');
-    expect(getAttr(id, 'text' as never)).toBeNull();
-    await appData.reset();
+    expect(ears().getAttr(id, 'text' as never)).toBeNull();
+    const before = ears();
+    await services.appData.reset();
     expect(entityIds()).toEqual([]);
-    await expect(appData.exportBackup('/tmp')).rejects.toThrow("isn't supported in unit tests");
+    // A reset replaces the engine, keeping the registered repositories
+    expect(ears()).not.toBe(before);
+    expect(services.repository).toBe(ears().repository);
+    expect(repository.memoQueries).toBe(before.repository.memoQueries);
+    expect(before.getAllEntities()).toContain(id);
+    await expect(services.appData.exportBackup('/tmp')).rejects.toThrow("isn't supported in unit tests");
     resetTestData();
+  });
+
+  it('keeps the packs and version it was first started with', () => {
+    expect(() => startTestRuntime({ entityTypes: ['Memo'] })).not.toThrow();
+    expect(() => startTestRuntime({ appVersion: '2.0.0' })).toThrow('pass appVersion on its first call');
+    expect(() => startTestRuntime({ packs: testPacksView() }))
+      .toThrow('pass packs on its first call');
+    expect(() => startTestRuntime({ onboarding: { hasOnboarded: () => true, completeOnboarding: () => {} } }))
+      .toThrow('pass onboarding on its first call');
+  });
+
+  it('binds the test app again once a test unbound it, printing each log event still once', () => {
+    unbindHost();
+    expect(() => ears()).toThrow();
+
+    startTestRuntime();
+
+    expect(boundHost().transport.rootEvents).toBe(testRootEvents);
+    expect(entityIds()).toEqual([]);
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {});
+    createLogger('memos').info('once');
+    expect(info).toHaveBeenCalledTimes(1);
+    vi.restoreAllMocks();
+  });
+
+  it('keeps whether the user onboarded in memory by default, until the database is emptied', () => {
+    expect(services.appData.hasOnboarded()).toBe(false);
+    services.appData.completeOnboarding();
+    expect(services.appData.hasOnboarded()).toBe(true);
+    resetTestData();
+    expect(services.appData.hasOnboarded()).toBe(false);
   });
 });

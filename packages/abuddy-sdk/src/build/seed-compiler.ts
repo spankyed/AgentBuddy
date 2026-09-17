@@ -2,9 +2,10 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
 import type { PackConfig, CompilePackOptions, CompilePackResult } from './types.ts';
+import type { StepDefinition } from '../steps/types.ts';
 import type { PackSeedPreviewItem } from './preview.ts';
 import { SPECIALTY_COMPILERS } from './compilers/standard.ts';
-import { buildPackConfigFromManifest, resolveFeatureSettingsFromManifest } from './manifest-bridge.ts';
+import { buildPackConfigFromManifest } from './manifest-bridge.ts';
 import { seedFile } from './manifest.ts';
 import { SEED_INDEX_FILE } from '../utils/seed.ts';
 import {
@@ -19,6 +20,8 @@ import {
 export interface CompilationContext {
   /** Another specialty key's compiled data (flows validate against actions and prompts) */
   getCompiled<T = unknown>(key: string): T | undefined;
+  /** The step definitions the pack compiles with (flows validate against them) */
+  steps: StepDefinition[];
 }
 
 export interface ValidationError {
@@ -33,11 +36,9 @@ export interface ValidationResult {
 
 export interface SpecialtyCompileContext {
   packDir: string;
-  /** Feature settings files merged into the settings seed */
-  featureSettingsPaths: Array<{ name: string; settingsPath: string }>;
 }
 
-/** The SDK's compiler for a specialty seed key (actions, prompts, flows, settings) */
+/** The SDK's compiler for a specialty seed key (actions, prompts, flows) */
 export interface SpecialtyCompiler<T = unknown> {
   compile(sourcePath: string, context: SpecialtyCompileContext): Promise<T>;
   /**
@@ -85,17 +86,12 @@ function countRecords(records: SeedRecord[]): number {
   return records.reduce((sum, record) => sum + 1 + countRecords(record.children ?? []), 0);
 }
 
-async function loadPackConfig(options: CompilePackOptions): Promise<{ packConfig: PackConfig; featureSettingsPaths: SpecialtyCompileContext['featureSettingsPaths'] }> {
-  if (options.packConfig) {
-    return { packConfig: options.packConfig, featureSettingsPaths: options.featureSettingsPaths ?? [] };
-  }
+async function loadPackConfig(options: CompilePackOptions): Promise<PackConfig> {
+  if (options.packConfig) return options.packConfig;
   const manifestPath = path.join(options.packDir, 'abuddy.json');
   if (!fs.existsSync(manifestPath)) throw new Error(`No abuddy.json in ${options.packDir}`);
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
-  return {
-    packConfig: await buildPackConfigFromManifest(manifest, options.packDir),
-    featureSettingsPaths: options.featureSettingsPaths ?? resolveFeatureSettingsFromManifest(manifest, options.packDir),
-  };
+  return buildPackConfigFromManifest(manifest, options.packDir);
 }
 
 /** @internal Removes what compilePack writes, so a key or media dropped from the sources doesn't linger (abuddy build clears it up front) */
@@ -128,7 +124,8 @@ function recordShapeProblems(value: unknown, at: string): string[] {
 }
 
 /**
- * Compiles a pack's `boot.seed` entries into `outputDir`: `<key>.seed.json` for each entry,
+ * Compiles a pack's `boot.seed` entries into `outputDir`, with the definitions it's given (or its pack config
+ * loads): `<key>.seed.json` for each entry,
  * `media/<key>/` for entries whose format has media, and `seeds.json` indexing them. Earlier
  * output there is removed first, including when compiling fails.
  */
@@ -137,9 +134,9 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
   clearCompiledSeeds(outputDir);
   const importModule = options.importModule ?? importFileModule;
   const log = options.log ?? console.log;
-  const { packConfig, featureSettingsPaths } = await loadPackConfig(options);
+  const packConfig = await loadPackConfig(options);
 
-  if (packConfig.setup) await packConfig.setup();
+  const definitions = options.definitions ?? await packConfig.loadDefinitions?.();
 
   log(`Compiling pack: ${packConfig.name}`);
   fs.mkdirSync(outputDir, { recursive: true });
@@ -155,7 +152,7 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
     if (seed.kind === 'specialty') {
       const specialty = SPECIALTY_COMPILERS[key];
       if (!fs.existsSync(sourcePath)) continue;
-      const data = await specialty.compile(sourcePath, { packDir, featureSettingsPaths });
+      const data = await specialty.compile(sourcePath, { packDir });
       for (const message of specialty.collectErrors?.(data) ?? []) errors.push(`${key}: ${message}`);
       specialtyData.set(key, data);
       compiled.push({
@@ -201,7 +198,8 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
       records = compileBuiltinFormat(key, format, sourcePath);
     }
     errors.push(...checkRecordEntities(key, format, records));
-    const seeded = formatEntities(format).length > 0;
+    // Records are seeded by the format's generic seeder, or by the entry's pack seeder
+    const seeded = formatEntities(format).length > 0 || seed.seeder !== undefined;
     compiled.push({
       key,
       ...(format.media && { media: path.join(sourcePath, format.media) }),
@@ -226,6 +224,7 @@ export async function compilePack(options: CompilePackOptions): Promise<CompileP
 
   const context: CompilationContext = {
     getCompiled: <T>(key: string) => specialtyData.get(key) as T | undefined,
+    steps: definitions?.steps ?? [],
   };
   for (const [key, data] of specialtyData) {
     const result = SPECIALTY_COMPILERS[key].validate?.(data, context);

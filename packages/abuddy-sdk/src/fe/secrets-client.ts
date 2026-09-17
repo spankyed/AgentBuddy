@@ -1,4 +1,4 @@
-import { getHostModule } from '../runtime/host.ts';
+import { boundFeHost } from '../runtime/fe-host.ts';
 import type { SecretProvider, SecretsSnapshot } from '../services/secrets.ts';
 
 export type { SecretsSnapshot };
@@ -6,8 +6,8 @@ export type { SecretsSnapshot };
 /**
  * The user's API keys, for a settings page. Values go in through `add` and `replaceValue` only, over the API
  * client and off the event bus, so they reach no log, event or listener; nothing returns one. Each call
- * resolves with the stored keys (without values) and how they're protected. The renderer provides it as the
- * `secrets-client` host module; nothing else of the API client reaches the SDK.
+ * resolves with the stored keys (without values) and how they're protected. The renderer binds it as `secrets` with
+ * `bindFeHost`; nothing else of the API client reaches the SDK.
  */
 export interface SecretsClient {
   list(): Promise<SecretsSnapshot>;
@@ -20,10 +20,7 @@ export interface SecretsClient {
   allowUnprotected(): Promise<SecretsSnapshot>;
 }
 
-let _host: SecretsClient | undefined;
-function host(): SecretsClient {
-  return _host ??= getHostModule<SecretsClient>('secrets-client');
-}
+const host = (): SecretsClient => boundFeHost().secrets;
 
 export const secretsClient: SecretsClient = {
   list: () => host().list(),

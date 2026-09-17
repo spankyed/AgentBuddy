@@ -149,19 +149,13 @@ Import uses upsert logic: existing items (matched by label) are updated, new ite
 
 Flows import via a compiled DSL JSON file. The DSL is validated against available action/prompt labels before import. Invalid references cause the flow to be skipped.
 
-## Import Setup Pack
+## Import Pack Seeds
 
-Settings → Misc → "Import Setup Pack" imports all artifact types from a single `dist/` directory (the output of `npm run compile`). Calls `seedData({ force: true, compiledDir })` which processes:
-- `compiled-actions.json`
-- `compiled-prompts.json`
-- `compiled-flows.json`
-- `compiled-library.json`
-- `compiled-notes.json`
-- `media/` directory
+Settings → General → "Import Pack Seeds" imports a pack's compiled seeds from a directory (`dist/` of a built-in pack after `npm run compile`, or an external pack's `runtime/seeds/`). The settings system previews it with `previewPackSeeds(dir)` (`@abuddy/sdk/seed`), then calls `seedData({ compiledDir, include, mode })` (`@abuddy/sdk/utils`), which runs the pack's registered seeder for each `<key>.seed.json` listed in `seeds.json` (actions, prompts, flows, library, notes, …), with media from `media/`.
 
 ## Seed pipeline
 
-On app startup, `seedData()` runs automatically. It reads compiled artifacts from `../default-setup/dist/` (sibling workspace). A SHA-256 hash of the compiled files is stored in `settings.internal.seedHash`. If the hash matches on next startup, seeding is skipped. Changed data triggers automatic re-seed.
+At boot, the host seeds each built-in pack's declared `boot.seed` (`orchestrateDeclarativeSeed`, `@abuddy/host/packs/runtime`) from its compiled `dist/`. A SHA-256 hash of the compiled seed files (and a stat fingerprint for a fast path) is stored per pack in the app's state (`AppState.seedHashes`, `AppState.seedStatFingerprints`). If they match on the next startup, seeding is skipped; changed data triggers a re-seed. External packs' seeds are hashed per pack in `AppState.packSeedHashes`.
 
 ## Media handling
 
@@ -183,12 +177,12 @@ JSON exports preserve the entity-based structure: `media/{entityId}/{filename}`.
 
 | Function | Location | Purpose |
 |---|---|---|
-| `toSlug(name)` | `core/helpers/export.ts` | Name → filesystem-safe slug (lowercase, dashes) |
-| `toDisplayName(str)` | `library/utils.ts` | Slug → display name (replace dashes with spaces) |
-| `uniqueFilename(name, used)` | `core/helpers/export.ts` | Dedup filenames (`foo.md` → `foo-2.md`) |
-| `buildFrontmatter(tags, name?)` | `library/utils.ts` | Build YAML frontmatter string |
-| `parseFrontmatter(content)` | `library/utils.ts` | Extract `{ tags, name?, description?, body }` |
-| `parseMarkdownSections(body)` | `library/utils.ts` | Parse `<!-- section:TYPE -->` markers into `ContentSection[]` |
-| `serializeContentToMarkdown(sections)` | `library/utils.ts` | `ContentSection[]` → markdown with section markers |
-| `seedData(options?)` | `setup/seed/index.ts` | Import all compiled artifacts into LMDB |
-| `computeSeedHash(dir)` | `setup/seed/index.ts` | SHA-256 hash of compiled JSON files |
+| `toSlug(name)` | `@abuddy/sdk/utils` (`utils/export.ts`) | Name → filesystem-safe slug (lowercase, dashes) |
+| `toDisplayName(str)` | `@abuddy/sdk/utils` (`utils/shared.ts`) | Slug → display name (replace dashes with spaces) |
+| `uniqueFilename(name, used)` | `@abuddy/sdk/utils` (`utils/export.ts`) | Dedup filenames (`foo.md` → `foo-2.md`) |
+| `buildFrontmatter(tags, name?)` | `library/be/utils.ts` | Build YAML frontmatter string |
+| `parseFrontmatter(content)` | `library/be/utils.ts` | Extract `{ tags, name?, description?, body }` |
+| `parseMarkdownSections(body)` | `library/be/utils.ts` | Parse `<!-- section:TYPE -->` markers into `ContentSection[]` |
+| `serializeContentToMarkdown(sections)` | `library/be/utils.ts` | `ContentSection[]` → markdown with section markers |
+| `seedData(options)` | `@abuddy/sdk/utils` (`utils/seed.ts`) | Run the registered seeders over a compiled seeds directory |
+| `computeManifestSeedHash(dir, artifacts)` | `@abuddy/host/packs/runtime` (`seed.ts`, internal) | SHA-256 hash of a boot seed's compiled files |

@@ -1,4 +1,4 @@
-// Publishes @abuddy/sdk and @abuddy/ui from their package directories (their package.json is the
+// Publishes @abuddy/ears, @abuddy/sdk and @abuddy/ui from their package directories (their package.json is the
 // published manifest) and the bundled copies of @abuddy/cli and @abuddy/testing
 // (packages/<name>/dist/package). Run `npm run packages:build` first. Versions already on the
 // registry are skipped, so re-running after a partial failure is safe. Prints "New tag:" lines,
@@ -11,6 +11,8 @@ import { execFileSync } from 'node:child_process';
 
 /** Package directory → the directory npm publishes */
 const PACKAGES: Record<string, string> = {
+  // Before the SDK, which depends on it
+  'abuddy-ears': '.',
   'abuddy-sdk': '.',
   'abuddy-ui': '.',
   'abuddy-testing': 'dist/package',

@@ -4,26 +4,29 @@
   "private": true,
   "description": "Host-only modules shared by the AgentBuddy app, CLI and test fixture",
   "type": "module",
+  "sideEffects": false,
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "shared-modules:update": "tsx scripts/shared-modules.ts"
   },
   "exports": {
+    "./app-state": "./src/app-state/index.ts",
     "./backup": "./src/backup/index.ts",
     "./build/discover": "./src/build/discover.ts",
     "./build/shared-deps": "./src/build/shared-deps.ts",
     "./build/source-resolution": "./src/build/source-resolution.ts",
     "./bus": "./src/bus/index.ts",
-    "./ears": "./src/ears/index.ts",
     "./fe": "./src/fe/index.ts",
+    "./migrations": "./src/migrations/index.ts",
     "./packs": "./src/packs/index.ts",
     "./packs/dev-server": "./src/packs/dev-server.ts",
-    "./persistence": "./src/persistence/index.ts",
+    "./packs/runtime": "./src/packs/runtime/index.ts",
     "./secrets": "./src/secrets/index.ts",
-    "./services": "./src/services/index.ts",
-    "./settings": "./src/settings/index.ts"
+    "./services": "./src/services/index.ts"
   },
   "dependencies": {
+    "@abuddy/ears": "*",
     "@abuddy/sdk": "*",
     "@ai-sdk/anthropic": "^4.0.53",
     "@ai-sdk/cohere": "^4.0.41",

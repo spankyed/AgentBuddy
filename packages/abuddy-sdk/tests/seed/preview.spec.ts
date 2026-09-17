@@ -4,7 +4,11 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { compilePack } from '../../src/build/seed-compiler.ts';
 import { previewPackSeeds } from '../../src/seed/preview.ts';
-import { registerSeeders, unregisterSeeders, type Seeder } from '../../src/utils/seed.ts';
+import type { Seeder } from '../../src/utils/seed.ts';
+import { startTestRuntime, testPacks } from '../../src/testing/index.ts';
+
+// The registered packs' seeders: the stand-in's, which the specs fill
+startTestRuntime();
 
 const noopSeeder = (key: string): Seeder => ({ key, seed: () => ({ created: 0, updated: 0, skipped: 0 }) });
 
@@ -12,7 +16,7 @@ let root: string | undefined;
 afterEach(() => {
   if (root) fs.rmSync(root, { recursive: true, force: true });
   root = undefined;
-  unregisterSeeders('demo');
+  testPacks.seeders.delete('demo');
   vi.restoreAllMocks();
 });
 
@@ -43,7 +47,7 @@ async function compileDemo(): Promise<string> {
 describe('previewPackSeeds', () => {
   it("lists the seeded keys the compiling pack's seeders import, and their items, whatever the keys are", async () => {
     const out = await compileDemo();
-    registerSeeders('demo', [noopSeeder('glossary')]);
+    testPacks.seeders.set('demo', [noopSeeder('glossary')]);
 
     expect(previewPackSeeds(out)).toEqual({
       directory: out,
@@ -55,11 +59,11 @@ describe('previewPackSeeds', () => {
 
   it("fails when the compiling pack registered no seeders (it isn't installed)", async () => {
     const out = await compileDemo();
-    registerSeeders('other', [noopSeeder('glossary')]);
+    testPacks.seeders.set('other', [noopSeeder('glossary')]);
     try {
       expect(() => previewPackSeeds(out)).toThrow(/Pack "demo" isn't installed/);
     } finally {
-      unregisterSeeders('other');
+      testPacks.seeders.delete('other');
     }
   });
 

@@ -80,7 +80,7 @@ The allowlists are populated only when `renderer` is a URL (dev server); from a 
   - Refuses a host that isn't a pack id (`/^[a-z][a-z0-9-]*$/`, so `pack://../x` can't reach the data dir), and any resolved path outside `packsDir/<packId>/` (403).
   - While `abuddy dev` runs, `devServerUrl(userDataDir, packId, path)` (`@abuddy/host/packs/dev-server`) names the pack's Vite server: a marker with an invalid port answers 502; a failed or non-OK fetch falls through to disk.
   - Serves from disk with a small MIME table.
-- **`media://<entityId>/<file>`** (`media-protocol/`) serves `getMediaBasePath()/<entityId>/<file>`, which `media:upload` writes to (PNG/JPEG/GIF/WebP, 10 MB max). Packaged, that is `<userData>/media`. From source (`media-protocol/paths.ts`) it is `<cwd>/packages/api/src/core/persistence/data/untracked/media`, not the `<data dir>/media` that the SDK's `getMediaPath()` gives the API.
+- **`media://<entityId>/<file>`** (`media-protocol/`) serves `getMediaBasePath()/<entityId>/<file>`, which `media:upload` writes to (PNG/JPEG/GIF/WebP, 10 MB max). That is the folder the SDK's `getMediaPath()` gives the API (`media-protocol/paths.ts`): `<data dir>/media` packaged, `<data dir>/.data/media` from source, following the `NODE_ENV` main passes the API.
 - **`local-file://?path=<abs>`** serves any existing local file for video playback. It uses the deprecated `registerFileProtocol` and no `stream` privilege on purpose: `stream: true` breaks seeking (Electron #38749).
 
 ## Build and dev

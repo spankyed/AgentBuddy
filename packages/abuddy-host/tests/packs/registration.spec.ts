@@ -1,10 +1,20 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createEarsEngine, installEngine, installedEngine, repository } from '@abuddy/ears';
 import { getPackCommands, getPackSettingsDefaults, type PackRegistration, type PackSystemDef } from '@abuddy/sdk/framework';
 import { artifactRegistry } from '@abuddy/sdk/artifacts';
 import { seedHookRegistry } from '@abuddy/sdk/seed';
 import { SDK_ENTITIES } from '@abuddy/sdk/types';
+import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
-import { getPackContributions, getRegisteredEARS, getRegisteredEARSPolicy, getRegisteredEntityTypes, getRegisteredServices, registerPack, resolveSystemAddress, runRegisteredBootSeeds, unregisterPack } from '../../src/packs/pack-registration.ts';
+import { startTestRuntime } from '@abuddy/sdk/testing';
+import { createPackRegistry } from '../../src/packs/pack-registration.ts';
+
+const registry = createPackRegistry();
+startTestRuntime({ packs: registry });
+const {
+  getPackContributions, getRegisteredEARS, getRegisteredEARSPolicy, getRegisteredEntityTypes, getRegisteredServices,
+  registerPack, resolveSystemAddress, runRegisteredBootSeeds, unregisterPack,
+} = registry;
 
 const registered: string[] = [];
 afterEach(() => {
@@ -31,6 +41,55 @@ describe('registerPack services', () => {
     register('first-pack', { llm: 1 });
     register('second-pack', { search: 2 });
     expect(getRegisteredServices()).toEqual({ llm: 1, search: 2 });
+  });
+});
+
+describe('registerPack repositories', () => {
+  const testEngine = installedEngine();
+  afterEach(() => { installEngine(testEngine); });
+
+  it("registers a pack's repositories with the installed engine (the app's), where repository and services read them", () => {
+    const engine = createEarsEngine({ isEntityType: () => false });
+    installEngine(engine.query);
+    const noteQueries = { all: () => [] };
+    registerPack({ id: 'repo-pack', systems: [], repositories: { noteQueries } });
+    registered.push('repo-pack');
+    expect(engine.query.repository.noteQueries).toBe(noteQueries);
+    expect(repository.noteQueries).toBe(noteQueries);
+    expect(engine.admin.repositories()).toEqual({ noteQueries });
+  });
+
+  it('removes them when the pack is unregistered', () => {
+    const engine = createEarsEngine({ isEntityType: () => false });
+    installEngine(engine.query);
+    registerPack({ id: 'repo-pack', systems: [], repositories: { noteQueries: {} } });
+
+    unregisterPack('repo-pack');
+
+    expect(engine.admin.repositories()).toEqual({});
+  });
+
+  it('rejects a repository name another pack registered, keeping that pack\'s', () => {
+    const engine = createEarsEngine({ isEntityType: () => false });
+    installEngine(engine.query);
+    const theirs = { name: 'theirs' };
+    registerPack({ id: 'first-pack', systems: [], repositories: { settingsQueries: theirs } });
+    registered.push('first-pack');
+
+    expect(() => registerPack({ id: 'second-pack', systems: [], repositories: { memoQueries: {}, settingsQueries: {} } }))
+      .toThrow('Repository collision: "settingsQueries" — pack "second-pack" vs "first-pack"');
+    expect(engine.admin.repositories()).toEqual({ settingsQueries: theirs });
+  });
+
+  it("removes a pack's repositories when a later part of its registration is refused", () => {
+    const engine = createEarsEngine({ isEntityType: () => false });
+    installEngine(engine.query);
+    registerPack({ id: 'first-pack', systems: [], commands: [{ name: 'standup', placeholder: 'Topic' }] } as unknown as PackRegistration);
+    registered.push('first-pack');
+
+    expect(() => registerPack({ id: 'second-pack', systems: [], repositories: { memoQueries: {} }, commands: [{ name: 'standup', placeholder: 'Theirs' }] } as unknown as PackRegistration))
+      .toThrow('Command collision');
+    expect(engine.admin.repositories()).toEqual({});
   });
 });
 
@@ -105,16 +164,22 @@ describe('registerPack entities', () => {
     expect(() => registerEntities('second-pack', {}, { PINNED: 'pinned' })).toThrow('EARS collision: relation kind "pinned" — pack "second-pack" vs "first-pack"');
   });
 
-  it("has the SDK's entities and relation kinds with no pack registered, and doesn't count them as collisions", () => {
-    const sdkEntities = Object.values(SDK_ENTITIES);
-    expect([...getRegisteredEntityTypes()].sort()).toEqual([...sdkEntities].sort());
+  it("has the SDK's and the host's entities and relation kinds with no pack registered, and a pack's added", () => {
+    const appEntities = [...Object.values(SDK_ENTITIES), ...HOST_ENTITY_TYPES];
+    expect([...getRegisteredEntityTypes()].sort()).toEqual([...appEntities].sort());
     expect(getRegisteredEARS().relKinds).toMatchObject({ CONTAINS: 'contains', TRANSITIONS_TO: 'transitions_to' });
-    // Packs built with an older SDK list them
-    registerEntities('first-pack', { Relation: 'Relation', Flow: 'Flow', Memo: 'Memo' }, { CONTAINS: 'contains' });
-    expect(() => registerEntities('second-pack', { Relation: 'Relation', Flow: 'Flow', Tag: 'Tag' }, { CONTAINS: 'contains' })).not.toThrow();
-    expect([...getRegisteredEntityTypes()].sort()).toEqual([...sdkEntities, 'Memo', 'Tag'].sort());
-    // The registration keeps only the pack's own names
-    expect(getPackContributions('first-pack')?.relKinds).toEqual({});
+    registerEntities('first-pack', { Memo: 'Memo' }, { PINNED: 'pinned' });
+    expect([...getRegisteredEntityTypes()].sort()).toEqual([...appEntities, 'Memo'].sort());
+    expect(getPackContributions('first-pack')?.relKinds).toEqual({ PINNED: 'pinned' });
+  });
+
+  it.each([
+    [{ AppState: 'AppState' }, {}, 'entity type "AppState"'],
+    [{ Flow: 'Flow' }, {}, 'entity type "Flow"'],
+    [{}, { CONTAINS: 'contains' }, 'relation kind "contains"'],
+  ])('rejects %o %o, which the app declares', (entities, relKinds, name) => {
+    expect(() => registerEntities('first-pack', entities, relKinds)).toThrow(`EARS collision: ${name} — pack "first-pack" vs the app's own`);
+    expect(getPackContributions('first-pack')).toBeNull();
   });
 
   it('keeps TNode out of persistence and routes Secret to the secrets store without any pack asking', () => {

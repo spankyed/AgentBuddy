@@ -219,9 +219,14 @@ export type RelationShape = Expect<Equal<typeof relation.relationDetails.sourceE
 // So is the flow model, without depending on default-setup
 const action = findAll('Action')[0]!;
 export type ActionShape = Expect<Equal<typeof action.actionFn, string>>;
-// And the settings the SDK's services use
-const settings = findAll('Settings')[0]!;
-export type SettingsShape = Expect<Equal<typeof settings.data, unknown>>;
+// Prompts too
+const prompt = findAll('Prompt')[0]!;
+export type PromptShape = Expect<Equal<typeof prompt.templateFn, string>>;
+// Settings belong to default-setup, and the app's state (AppState) to the host: neither is the SDK's
+// @ts-expect-error Settings isn't declared by either pack or the SDK
+findAll('Settings');
+// @ts-expect-error AppState isn't an entity packs see
+findAll('AppState');
 // API keys aren't graph data: the host keeps them, packs see services.secrets
 // @ts-expect-error Secret isn't an entity
 findAll('Secret');
@@ -396,7 +401,7 @@ describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ publish
     const missing = (positions: string[], expected: string[]) =>
       positions.filter((position) => !expected.every((name) => at[position]?.includes(name)));
     expect(missing(FIELD_POSITIONS, ['text', 'pinned']), 'positions without Memo field completions').toEqual([]);
-    expect(missing(NAME_POSITIONS, ['Memo', 'Tag', 'Relation', 'Settings']), 'positions without entity-name completions').toEqual([]);
+    expect(missing(NAME_POSITIONS, ['Memo', 'Tag', 'Relation', 'Prompt']), 'positions without entity-name completions').toEqual([]);
     // A typo's error lists the fields it could have been
     expect(diagnostics.find((message) => message.includes('"txet"'))).toMatch(/"text"/);
   }, 120_000);
@@ -413,6 +418,7 @@ describe.each(LAYOUTS)('generated facades with a dependency ($name)', ({ publish
   it.each(['bundler', 'node16'] as const)('offers entity-name completions in qx() under moduleResolution %s', (moduleResolution) => {
     const app = path.join(parent, 'app-pack');
     const { at } = completionsIn(app, writeTsconfig(app, moduleResolution, published));
-    expect(at.qx, 'entity-name completions in qx()').toEqual(expect.arrayContaining(['Memo', 'Tag', 'Relation', 'Settings']));
+    expect(at.qx, 'entity-name completions in qx()').toEqual(expect.arrayContaining(['Memo', 'Tag', 'Relation', 'Prompt']));
+    expect(at.qx, 'no completion for an entity no pack here declares').not.toContain('Settings');
   }, 120_000);
 });
