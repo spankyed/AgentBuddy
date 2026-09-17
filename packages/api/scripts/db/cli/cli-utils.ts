@@ -2,7 +2,6 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as readline from 'node:readline';
 import { inspect } from 'node:util';
-import { EARS } from '@abuddy/sdk';
 
 /**
  * Format result for console output
@@ -281,51 +280,6 @@ export async function confirmAction(message: string): Promise<boolean> {
       resolve(answer.toLowerCase() === 'y' || answer.toLowerCase() === 'yes');
     });
   });
-}
-
-/**
- * Parse a command string to extract entity types and operations
- */
-export function parseCommand(command: string): {
-  entities: EARS.Entity[];
-  operations: string[];
-  isDestructive: boolean;
-} {
-  const entities: EARS.Entity[] = [];
-  const operations: string[] = [];
-  let isDestructive = false;
-  
-  // Extract entity types
-  for (const entity of Object.values(EARS.Entity)) {
-    if (command.includes(entity)) {
-      entities.push(entity);
-    }
-  }
-  
-  // Extract operations
-  const operationPatterns = [
-    /\.(\w+)\(/g,  // Method calls
-    /^(\w+)\(/g,   // Function calls
-  ];
-  
-  for (const pattern of operationPatterns) {
-    let match;
-    while ((match = pattern.exec(command)) !== null) {
-      operations.push(match[1]);
-    }
-  }
-  
-  // Check if destructive
-  const destructiveOps = [
-    'destroy', 'drop', 'revoke', 'unlink', 'clear', 
-    'remove', 'delete', 'purge', 'reset'
-  ];
-  
-  isDestructive = operations.some(op => 
-    destructiveOps.some(d => op.toLowerCase().includes(d))
-  );
-  
-  return { entities, operations, isDestructive };
 }
 
 /**

@@ -79,5 +79,5 @@ The engine's types moved to `@abuddy/ears` (`packages/abuddy-ears`); the SDK kee
 - **Union field typing (2026-09-14).**
   - What happened: to make brain's trigger queries compile against the new `Node` union, the field parameters were rewritten as conditional and mapped types (`FieldArg`, `FieldsArg`, `PickedOf`). That added runtime field names and union-member fields to every field-keyed API.
   - Why tests missed it: everything compiled and every type test passed. But field completions disappeared from `pick`, `pickOne`, `linksPick`, `getAttr` and `findWithFields`, and typo errors became "not assignable to type 'never'".
-  - Resolution: reverted, and the two queries use the untyped host `qx`. The completions test in `facade-typing.spec.ts` now guards these positions.
+  - Resolution: reverted, and the two queries use the untyped `untypedQx` (`@abuddy/ears`). The completions test in `facade-typing.spec.ts` now guards these positions.
 - **No entity names in `qx('…')` (found 2026-09-14).** `qx`'s id overloads came before its name overloads, so editors offered no names there. Fixed by putting the name overloads first; the seed resolution matrix in `typed-query-builder.spec.ts` pins that nothing else changed.

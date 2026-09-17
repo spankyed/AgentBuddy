@@ -53,21 +53,13 @@
 import { computed } from 'vue'
 import { ClipboardList } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
+import type { PlanArtifactContent, PlanStatus } from '@/features/threads/be/types'
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import CopyButton from '@abuddy/ui/design/CopyButton'
 
-type PlanStatus = 'draft' | 'approved' | 'in-progress' | 'completed' | 'rejected'
-
-interface PlanContent {
-  notes: string
-  status: PlanStatus
-  steps: Array<{ id: string; title: string; description?: string; status: string }>
-  branch?: string
-  prNumber?: string | number
-}
 
 const props = defineProps<{
-  artifact: ArtifactItem<PlanContent>
+  artifact: ArtifactItem<PlanArtifactContent>
 }>()
 
 // Read status directly from the artifact content. Previously this was

@@ -1,4 +1,4 @@
-// Compile-time checks, run by `tsc` (npm run typecheck:pack). Exact type equality fails when a
+// Compile-time checks, run by `vue-tsc` (npm run typecheck:pack). Exact type equality fails when a
 // generated entity shape regresses to `any` or loses its declared field types.
 import { describe, expectTypeOf, it } from 'vitest';
 import type { BaseEntity } from '@abuddy/ears';
@@ -13,7 +13,7 @@ describe('PackShapes', () => {
     expectTypeOf<OwnEntityShapes['Message']>().toEqualTypeOf<MessageEntity>();
   });
 
-  it("includes the SDK's shapes, which the pack's feature types re-export", () => {
+  it("includes the SDK's shapes", () => {
     expectTypeOf<PackShapes['TNode']>().toEqualTypeOf<SdkEntityShapes['TNode']>();
     expectTypeOf<PackShapes['Action']>().toEqualTypeOf<ActionEntity>();
     expectTypeOf<PackShapes['Flow']>().toEqualTypeOf<FlowEntity>();

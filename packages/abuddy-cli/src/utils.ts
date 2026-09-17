@@ -1,7 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
-import type { PackManifest } from '@abuddy/sdk/build';
+import { parseManifest, type PackManifest } from '@abuddy/sdk/build';
 import type { AppEnv } from '@abuddy/sdk/env';
 
 const ENV_FLAGS = ['-d', '--dev', '-b', '--beta'] as const;
@@ -32,6 +32,16 @@ export function findPackRoot(from: string): string {
 
 export function readManifest(root: string): PackManifest {
   return JSON.parse(fs.readFileSync(path.join(root, 'abuddy.json'), 'utf-8'));
+}
+
+/** The pack's manifest, or an error listing why the installer would reject it */
+export function readValidManifest(root: string): PackManifest {
+  const manifest = readManifest(root);
+  const { errors } = parseManifest(manifest);
+  if (errors.length > 0) {
+    throw new Error(`abuddy.json is invalid:\n${errors.map(e => `  - ${e}`).join('\n')}`);
+  }
+  return manifest;
 }
 
 const cliRequire = createRequire(import.meta.url);

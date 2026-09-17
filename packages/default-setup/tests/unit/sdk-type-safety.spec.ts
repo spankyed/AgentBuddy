@@ -35,7 +35,7 @@ import { EARS } from '../../src/__generated__/ears';
 
 
 // ─── Compile-time type assertions ──────────────────────────────────────
-// Checked by `tsc` (npm run typecheck:pack). toEqualTypeOf, not toBeAny and expected errors fail
+// Checked by `vue-tsc` (npm run typecheck:pack). toEqualTypeOf, not toBeAny and expected errors fail
 // when a delegate regresses to `any`; toHaveProperty and toMatchTypeOf would pass on `any`.
 
 describe('Type inference — EARS runtime', () => {

@@ -1,4 +1,4 @@
-// Compile-time checks, run by `tsc` (npm run typecheck:pack). Exact type equality and expected
+// Compile-time checks, run by `vue-tsc` (npm run typecheck:pack). Exact type equality and expected
 // errors fail if the generated events regress to `any` or accept a wrong event.
 import { describe, expectTypeOf, it } from 'vitest';
 import type { HostPluginEvents } from '@abuddy/sdk/events';

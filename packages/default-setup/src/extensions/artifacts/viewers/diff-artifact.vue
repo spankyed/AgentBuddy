@@ -60,24 +60,14 @@
 import { computed, ref } from 'vue'
 import { FilePlus2, FileMinus2, FilePenLine, ArrowRightLeft } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
+import type { DiffArtifactContent } from '@/features/threads/be/types'
 import UnifiedMonacoEditor from '@abuddy/ui/components/UnifiedMonacoEditor'
 import { getLanguageFromPath } from '@abuddy/ui/components/monaco-config'
 
-interface DiffFile {
-  path: string
-  patch: string
-  added: number
-  removed: number
-  changeType: 'added' | 'modified' | 'deleted' | 'renamed'
-}
-
-interface DiffContent {
-  files: DiffFile[]
-  summary: string
-}
+type DiffFile = DiffArtifactContent['files'][number]
 
 const props = defineProps<{
-  artifact: ArtifactItem & { content: DiffContent }
+  artifact: ArtifactItem<DiffArtifactContent>
 }>()
 
 const content = computed(() => props.artifact.content)

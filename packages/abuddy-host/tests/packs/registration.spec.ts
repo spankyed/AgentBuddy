@@ -182,7 +182,7 @@ describe('registerPack entities', () => {
     expect(getPackContributions('first-pack')).toBeNull();
   });
 
-  it('keeps TNode out of persistence and routes Secret to the secrets store without any pack asking', () => {
+  it('keeps TNode out of persistence without any pack asking', () => {
     expect(getRegisteredEARSPolicy()).toEqual({ excludedEntityTypes: ['TNode'] });
   });
 });

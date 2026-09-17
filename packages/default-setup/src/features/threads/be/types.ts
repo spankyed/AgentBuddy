@@ -396,11 +396,15 @@ export interface DiffArtifactContent {
   summary: string;
 }
 
+/** A plan artifact's status: the plan-approval block moves it from draft */
+export type PlanStatus = 'draft' | 'approved' | 'in-progress' | 'completed' | 'rejected';
+
+/** A plan artifact's content, as the plan action helper writes it and the plan viewer reads it */
 export interface PlanArtifactContent {
   /** Raw markdown notes body. Phase D-min uses this as the only content field. */
   notes: string;
   /** Overall plan status. Approve/Reject buttons mutate this. */
-  status: 'draft' | 'approved' | 'in-progress' | 'completed' | 'rejected';
+  status: PlanStatus;
   /** Structured steps. Phase D-min leaves this empty; full Phase D will parse from notes. */
   steps: Array<{
     id: string;
@@ -408,5 +412,9 @@ export interface PlanArtifactContent {
     description?: string;
     status: 'pending' | 'in-progress' | 'done' | 'skipped';
   }>;
+  /** Git branch the plan was created on. */
+  branch?: string;
+  /** PR number associated with this plan. */
+  prNumber?: string;
 }
 

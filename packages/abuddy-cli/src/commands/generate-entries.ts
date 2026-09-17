@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { createHash } from 'node:crypto';
 import type { PackTypeManifest, PackSnapshot } from '@abuddy/sdk/build';
 import { depTypesFile, depTypesVersion, generatePackFiles } from '@abuddy/sdk/build';
-import { findPackRoot, readManifest, sdkPackageDir, sdkVersion } from '../utils';
+import { findPackRoot, readValidManifest, sdkPackageDir, sdkVersion } from '../utils';
 import { resolveDeps } from './generate';
 
 const HASH_FILE = '.inputs-hash';
@@ -74,9 +74,11 @@ export async function generateEntries(
   const outDir = path.join(root, 'src/__generated__');
   const hashPath = path.join(outDir, HASH_FILE);
   const force = _args.includes('--force');
+  // Code generated from a manifest the installer would reject would describe a pack that can't install
+  const manifest = readValidManifest(root);
 
   if (!depSnapshots) {
-    const resolved = await resolveDeps(root, readManifest(root).dependencies);
+    const resolved = await resolveDeps(root, manifest.dependencies);
     depTypes = resolved.depTypes;
     depSnapshots = resolved.depSnapshots;
   }
@@ -90,7 +92,6 @@ export async function generateEntries(
     }
   }
 
-  const manifest = readManifest(root);
   fs.mkdirSync(outDir, { recursive: true });
 
   const files = generatePackFiles(manifest, { packRoot: root, depTypes, depSnapshots });

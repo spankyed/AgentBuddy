@@ -1,9 +1,8 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import { findPackRoot, readManifest, sdkVersion } from '../utils';
+import { findPackRoot, readValidManifest, sdkVersion } from '../utils';
 import { createBundleArchive, stageBundle, verifyBundle, type BundleInfo } from '@abuddy/host/packs';
-import { parseManifest } from '@abuddy/sdk/build';
 
 const HELP = `
 Usage: abuddy pack [--out <dir>]
@@ -38,13 +37,9 @@ export interface PackResult {
 }
 
 export async function packBundle(root: string, outDir: string, options: { version?: string } = {}): Promise<PackResult> {
-  const manifest = readManifest(root);
+  const manifest = readValidManifest(root);
   if (manifest.builtIn) {
     throw new Error('Built-in packs ship inside the app and are not packed.');
-  }
-  const { errors } = parseManifest(manifest);
-  if (errors.length > 0) {
-    throw new Error(`abuddy.json is invalid:\n${errors.map(e => `  - ${e}`).join('\n')}`);
   }
   const stageDir = path.join(root, '.abuddy', 'bundle', manifest.id);
   stageBundle(root, stageDir, {

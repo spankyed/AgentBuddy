@@ -124,14 +124,14 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     expect(unit.output.replace(/\x1b\[[0-9;]*m/g, '')).toMatch(/Tests\s+3 passed/);
   }, 120_000);
 
-  it('refuses to build or pack a manifest the installer would reject', () => {
+  it('refuses to build, pack or generate entries for a manifest the installer would reject', () => {
     const manifestPath = path.join(pack, 'abuddy.json');
     const original = fs.readFileSync(manifestPath, 'utf-8');
     const manifest = JSON.parse(original);
     manifest.features[0].id = 'notes_v2';
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
     try {
-      for (const args of [['build'], ['pack', '--out', path.join(tmp, 'invalid-out')]]) {
+      for (const args of [['build'], ['pack', '--out', path.join(tmp, 'invalid-out')], ['generate-entries', '--force']]) {
         const result = run('node', [CLI, ...args], pack);
         expect(result.code, args.join(' ')).not.toBe(0);
         expect(result.output).toMatch(/abuddy\.json is invalid/);

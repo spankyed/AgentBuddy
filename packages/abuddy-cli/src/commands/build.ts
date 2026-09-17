@@ -4,7 +4,6 @@ import {
   clearCompiledSeeds,
   compilePack,
   buildPackConfigFromManifest,
-  parseManifest,
   PACK_TYPES_DEF,
   entitiesWithoutShapes,
   SEED_COMPILERS_FILE,
@@ -22,7 +21,7 @@ import { checkFeatureSettings } from '@abuddy/sdk/framework';
 import { generate, resolveDeps } from './generate';
 import { resolveDepArtifacts } from './fetch-deps';
 import { generateEntries, warnStaleDepTypes } from './generate-entries';
-import { findPackRoot, readManifest, sdkVersion } from '../utils';
+import { findPackRoot, readValidManifest, sdkVersion } from '../utils';
 
 /** Loads a pack's seed compiler module, which may be TypeScript */
 async function importPackModule(file: string): Promise<Record<string, unknown>> {
@@ -68,12 +67,8 @@ export function clearBuildOutput(outputDir: string, { builtIn }: { builtIn: bool
 
 export async function build(args: string[]) {
   const root = findPackRoot(process.cwd());
-  const manifest = readManifest(root);
   // The installer rejects an invalid manifest; don't build (or let CI publish) one
-  const { errors: manifestErrors } = parseManifest(manifest);
-  if (manifestErrors.length > 0) {
-    throw new Error(`abuddy.json is invalid:\n${manifestErrors.map(e => `  - ${e}`).join('\n')}`);
-  }
+  const manifest = readValidManifest(root);
 
   const outputDir = path.join(root, 'dist');
   const external = !manifest.builtIn;

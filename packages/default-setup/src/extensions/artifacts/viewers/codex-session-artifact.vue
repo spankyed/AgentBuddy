@@ -300,7 +300,7 @@ interface CodexThreadState {
 }
 
 defineProps<{
-  artifact: ArtifactItem & { content: CodexThreadState }
+  artifact: ArtifactItem<CodexThreadState>
 }>()
 
 const threadsActor = actorSystem.get(getDesignated('threads'))

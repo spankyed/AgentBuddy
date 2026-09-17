@@ -317,7 +317,7 @@ interface SessionContent {
 }
 
 const props = defineProps<{
-  artifact: ArtifactItem & { content: SessionContent }
+  artifact: ArtifactItem<SessionContent>
 }>()
 
 const threadsActor = actorSystem.get(getDesignated('threads'))
