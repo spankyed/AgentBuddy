@@ -113,6 +113,7 @@ npm run compile          # Build the default-setup pack (abuddy build, DSL defs,
 npm run db:query -- "return qx().count()"   # Run read-only query code
 npm run db:exec -- "<code>"                  # Run transaction code
 npm run db:repl                              # Console code, line by line
+npm run db:script -- <file> [-- <args>]      # Run a script file against the database
 npm run db:inspect -- <entity-id>            # An entity's relations
 npm run db:export -- --out <dir>             # Entities per type to files
 npm run db:import -- <backup-dir> --force    # Replace the database with a backup

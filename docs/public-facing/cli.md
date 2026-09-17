@@ -243,11 +243,13 @@ abuddy db reset --production        # lists what it would delete
 
 While a command changes the database it holds a lock on the data dir (`db-write.lock`), so a second `abuddy db` is refused and an AgentBuddy started meanwhile refuses to open that database instead of overwriting the change. A lock left behind by a command that was killed is ignored once its process is gone.
 
+**Seeding.** There is no seed command: AgentBuddy seeds each pack's data when it starts (and `abuddy dev` re-seeds a pack it rebuilds), so start the app rather than seed a data dir by hand.
+
 **Installed packs.** Entity types, relation kinds and where each type is stored come from the packs installed in the data dir (the built-in packs the app published to `host-packs/`, and the enabled packs in `packs/`); no pack code runs. A data dir the app has never started on has none, and is refused.
 
 #### `abuddy db query <code> | --file <path> [-o pretty|json|csv] [--out <file>]`
 
-Run query code with the Database console's read helpers: `qx`, `EARS`, `getAttr`, `getAttrs`, `getAll`, `getRoles`, `getAllEntities`, `getEntitiesOfType`, `findRelations`, `getRelationStats`, `getSchemaStats`, `queryEntitiesByAttribute`, `queryEntitiesByRelationTo`, `queryEntitiesInRelationTo`. The code is a function body, as in the console: `return` the result. `EARS.Entity` holds the installed packs' entity types.
+Run query code with the Database console's read helpers: `qx`, `EARS`, `getAttr`, `getAttrs`, `getAll`, `getRoles`, `getAllEntities`, `getEntitiesOfType`, `findRelations`, `getRelationStats`, `getSchemaStats`, `queryEntitiesByAttribute`, `queryEntitiesByRelationTo`, `queryEntitiesInRelationTo`. The code is a function body, as in the console: `return` the result. `EARS.Entity` holds the installed packs' entity types. It runs as a plain function, so it can't use top-level `await`, `import` or `require` — a script (`abuddy db script`) can.
 
 ```bash
 abuddy db query "return qx(EARS.Entity.Settings).pickAll()" -o json --out settings.json
@@ -265,6 +267,33 @@ abuddy db exec "tx('Note-123').put('title', 'Renamed')"
 #### `abuddy db repl [--write]` (`--write` names its data dir)
 
 Run console code a line at a time and print each result: query code, or with `--write` transaction code, whose changes are written on exit. `.exit` or Ctrl+D quits.
+
+#### `abuddy db script <file> [--read-only] [-o pretty|json|csv] [--out <file>] [-- <script arguments>]` (names its data dir)
+
+Run a script file against the database, for work a one-liner can't do: it imports what it likes and brings its own helpers. JavaScript (`.mjs`, `.js`, `.cjs`) runs as it is; TypeScript is compiled beside the file first, with its own relative imports compiled in and its packages resolved from where the script lives. The file default-exports a function, which is called with the open database and whose result is printed like a query's.
+
+```ts
+// notes-report.ts
+export default async ({ db, EARS, args, log }) => {
+  const notes = db.query.getEntitiesOfType(EARS.Entity.Note);
+  log(`${notes.length} notes`);
+  return notes.map((id) => db.query.getAll(id));
+};
+```
+
+```bash
+abuddy db script ./notes-report.ts --production -o json --out notes.json
+abuddy db script ./cleanup.ts -d -- --older-than 30
+```
+
+| It receives | |
+|---|---|
+| `db` | the open database: `query` (`qx`, `tx`, the finders), `admin`, `store`, `schema`, `paths`, `userDataDir` |
+| `EARS` | the entity types and relation kinds of the packs installed in that data dir |
+| `args` | whatever follows `--` |
+| `log` | prints a line, like the script's own output |
+
+The database is handed to the script rather than left for it to open: the published CLI carries its own copy of the engine, so a script importing `@abuddy/ears` itself would get a second one, with no data in it. `--read-only` opens the database without writing, so a reporting script can run while AgentBuddy is open.
 
 #### `abuddy db inspect [<entity-id> | --type <Entity>] [--depth <n>] [--incoming] [--outgoing]`
 

@@ -71,6 +71,7 @@
     "db:query": "abuddy db query -d",
     "db:exec": "abuddy db exec -d",
     "db:repl": "abuddy db repl -d",
+    "db:script": "abuddy db script -d",
     "db:inspect": "abuddy db inspect -d",
     "db:export": "abuddy db export -d",
     "db:import": "abuddy db import -d",

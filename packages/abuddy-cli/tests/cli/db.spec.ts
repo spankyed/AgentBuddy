@@ -4,6 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { Readable } from 'node:stream';
+import { spawnSync } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 import { installEngine, installedEngine, tx, type EARS } from '@abuddy/ears';
 import { findDatabaseWriter, holdDatabaseWriteLock, openDatabaseStore, readInstalledSchema } from '@abuddy/host/database';
@@ -322,6 +323,85 @@ describe('abuddy db repl', () => {
     await dbRepl(['--data-dir', dir, '--write'], io, Readable.from(["tx('Note-a').put('title', 'From the repl')\n"]));
     const { out } = await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir]);
     expect(out).toBe('From the repl');
+  });
+});
+
+describe('abuddy db script', () => {
+  /** A script file in the data dir, so it is cleaned up with it */
+  function writeScript(dir: string, name: string, source: string): string {
+    const file = path.join(dir, name);
+    fs.writeFileSync(file, source);
+    return file;
+  }
+
+  it('runs a file with the open database, its arguments and a printer, and prints what it returns', async () => {
+    const dir = await appDataDir();
+    const file = writeScript(dir, 'rename.ts', [
+      "import * as os from 'node:os';",
+      'export default async ({ db, EARS, args, log }: any) => {',
+      "  log(`renaming on ${typeof os.hostname()}`);",
+      "  db.query.tx('Note-a').put('title', args[0]);",
+      '  return db.query.getEntitiesOfType(EARS.Entity.Note).length;',
+      '};',
+    ].join('\n'));
+
+    const { out } = await ok(['script', file, '--data-dir', dir, '--', 'From a script']);
+    expect(out.split('\n')).toEqual(['renaming on string', '2']);
+    expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('From a script');
+  });
+
+  it('runs a plain module too, and writes what it returns to a file', async () => {
+    const dir = await appDataDir();
+    const file = writeScript(dir, 'titles.mjs', [
+      'export default ({ db }) => db.query.getEntitiesOfType("Note").map((id) => ({ id, title: db.query.getAttr(id, "title") }));',
+    ].join('\n'));
+    const out = path.join(dir, 'titles.json');
+    await ok(['script', file, '--data-dir', dir, '-o', 'json', '--out', out]);
+    expect(JSON.parse(fs.readFileSync(out, 'utf-8')).map((row: { title: string }) => row.title).sort()).toEqual(['Alpha', 'Beta, "quoted"']);
+  });
+
+  it('runs a TypeScript script through the real CLI, with its own imports, as a user does', async () => {
+    const dir = await appDataDir();
+    writeScript(dir, 'helper.ts', "export const titleOf = (db: any, id: string): string => db.query.getAttr(id, 'title');");
+    const file = writeScript(dir, 'report.ts', [
+      "import { titleOf } from './helper';",
+      'export default ({ db, args }: any) => ({ title: titleOf(db, args[0]), notes: db.query.getEntitiesOfType("Note").length });',
+    ].join('\n'));
+
+    // In this process vitest compiles the script; the CLI has to do it itself, so drive the binary
+    const cli = path.resolve(import.meta.dirname, '..', '..', 'bin', 'abuddy.mjs');
+    const run = spawnSync(process.execPath, [cli, 'db', 'script', file, '--data-dir', dir, '-o', 'json', '--', 'Note-a'], { encoding: 'utf-8' });
+    expect(run.stderr).toContain(`Database: ${dir} (offline)`);
+    expect(run.status, run.stderr).toBe(0);
+    expect(JSON.parse(run.stdout)).toEqual({ title: 'Alpha', notes: 2 });
+    // Nothing compiled is left beside the script
+    expect(fs.readdirSync(dir).filter((name) => name.endsWith('.mjs'))).toEqual([]);
+  });
+
+  it('refuses a file that is missing, or exports no function, changing nothing', async () => {
+    const dir = await appDataDir();
+    expect((await run(['script', path.join(dir, 'nope.ts'), '--data-dir', dir])).error?.message).toBe(`No script at ${path.join(dir, 'nope.ts')}`);
+    expect((await run(['script', '--data-dir', dir])).error?.message).toMatch(/^Name the script to run\n\nUsage: abuddy db script/);
+
+    const noExport = writeScript(dir, 'no-export.ts', 'export const notDefault = () => 1;');
+    expect((await run(['script', noExport, '--data-dir', dir])).error?.message)
+      .toBe(`${noExport} exports no function to run: export default ({ db, EARS, args, log }) => { ... }`);
+    expect(findDatabaseWriter(dir)).toBeNull();
+  });
+
+  it('writes by default, and only reads with --read-only, which works while an app runs', async () => {
+    const dir = await appDataDir();
+    const write = writeScript(dir, 'write.ts', "export default ({ db }: any) => db.query.tx('Note-a').put('title', 'Changed');");
+    publishApi(dir);
+    expect((await run(['script', write, '--data-dir', dir])).error?.message).toMatch(/quit it first/);
+
+    const read = writeScript(dir, 'read.ts', "export default ({ db }: any) => db.query.getAttr('Note-a', 'title');");
+    const { out, err } = await ok(['script', read, '--data-dir', dir, '--read-only']);
+    expect(out).toBe('Alpha');
+    expect(err).toMatch(/Warning: AgentBuddy is running on it/);
+    // A read-only run can't write, and takes no lock
+    const refused = await run(['script', write, '--data-dir', dir, '--read-only']);
+    expect(refused.error?.message).toMatch(/open read-only/);
   });
 });
 
