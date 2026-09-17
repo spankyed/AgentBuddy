@@ -68,14 +68,15 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
 **Bundle** (`packs/bundle.ts`): the one layout used for `dist/`, release archives and installed packs. The layout is documented in the file header, with paths in `BUNDLE_PATHS`.
 - `stageBundle(packRoot, stageDir)` copies `dist/{runtime,build,types}` without `.map` files, writes `abuddy.json` (with an optional version override) and writes `bundle.json`, which records the format version and a sha256 per file.
 - `verifyBundle` throws on a format major other than `BUNDLE_FORMAT_VERSION`, a missing file, a checksum mismatch, or an unexpected extra file.
-- `createBundleArchive` writes a reproducible `<id>-<version>.tgz` (no mtimes or uids, entries prefixed `<id>/`) plus a `.sha256` file. `extractBundleArchive` checks the sha256 when one is given and requires exactly one top-level dir.
+- `createBundleArchive` writes a reproducible `<id>-<version>.tgz` (no mtimes or uids, entries prefixed `<id>/`) plus a `.sha256` file. `extractBundleArchive` checks the sha256 when one is given (`assertChecksum`, case-insensitive) and requires exactly one top-level dir.
 - `publishHostPackOutput` is described in `src/packs/runtime/CLAUDE.md`. It is skipped when `.fingerprint` matches, and it throws when `dist/runtime/seeds-index.sha256` doesn't match `seeds.json`.
 
 **Installer** (`packs/pack-installer.ts`): every install goes through stage, then verify, then place.
 - Entry points:
   - `installPack(slug, source?)` dispatches by source: `local`, `url`, an `http(s)` URL, or otherwise a GitHub `owner/repo[@tag]` slug.
-  - `installPackFromLocal` accepts a directory, a `.tgz`/`.tar.gz` (extracted with `extractBundleArchive`) or a `.zip` (extracted by shelling out to `unzip`, with `findPackRoot`).
-  - `installPackFromGitHub` picks the release's first `.tgz` asset and uses its `<asset>.sha256` when one exists.
+  - `installPackFromLocal` accepts a directory, a `.tgz`/`.tar.gz` (extracted with `extractBundleArchive`) or a `.zip` (extracted by shelling out to `unzip`, with `findPackRoot`). An `sha256` option is checked (`assertChecksum`) before either archive is unpacked, so it covers the `.zip` path too.
+  - `installPackFromGitHub` picks the release's first `.tgz` asset and requires its `<asset>.sha256` (or an `sha256` option): a release publishing neither is refused, as is a checksum file that isn't 64 hex digits.
+  - `installPackFromUrl` warns when it has no `sha256` to check, and downloads under `DOWNLOAD_TIMEOUT_MS` (`packs/github.ts`, two minutes; the signal bounds the body too). `githubFetch` gives metadata requests 10s and release-asset downloads that same two minutes.
 - `installFromDirectory` validates the manifest (`parseManifest`) and checks the `hostVersion` option, a range test that includes prereleases (`isHostCompatible`). If the dir is an unstaged built pack source, it stages it into a tmp dir. It then verifies the bundle and calls `placePack`.
 - `placePack` copies the bundle into `.<id>.installing-<pid>-XXXXXX`, moves any existing copy to `.<id>.previous-<pid>-<hex>`, and renames the new copy into place. If that rename fails, it puts the previous copy back, then deletes the leftover.
 - `checkDependencies` reports the manifest's dependencies that are neither installed nor built in. Built-in ids come from `BUILT_IN_PACKS_DIR` when it is set, and otherwise from the non-hidden dirs in `host-packs/` next to `packsDir`.

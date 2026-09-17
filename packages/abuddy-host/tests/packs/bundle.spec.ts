@@ -1,7 +1,8 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { execFileSync } from 'node:child_process';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   BUNDLE_FORMAT_VERSION,
   createBundleArchive,
@@ -12,7 +13,7 @@ import {
   stageBundle,
   verifyBundle,
 } from '../../src/packs/bundle.ts';
-import { installPackFromLocal } from '../../src/packs/pack-installer.ts';
+import { installPackFromGitHub, installPackFromLocal, installPackFromUrl } from '../../src/packs/pack-installer.ts';
 
 let tmp: string;
 
@@ -197,5 +198,116 @@ describe('installPackFromLocal (bundle path)', () => {
   it('accepts prerelease hosts within range', async () => {
     const result = await installPackFromLocal(builtPack({ hostVersion: '>=0.3.0' }), path.join(tmp, 'packs'), { hostVersion: '0.3.15-beta.1' });
     expect(result.id).toBe('demo-pack');
+  });
+});
+
+describe('installPackFromLocal (checksums)', () => {
+  /** The built pack zipped up, or null where `zip` isn't installed. */
+  function zippedPack(): string | null {
+    const zipPath = path.join(tmp, 'pack.zip');
+    try {
+      execFileSync('zip', ['-r', zipPath, '.'], { cwd: builtPack(), stdio: 'pipe' });
+    } catch {
+      return null;
+    }
+    return zipPath;
+  }
+
+  it('refuses a .zip whose checksum does not match, unpacking nothing', async () => {
+    const zipPath = zippedPack();
+    if (!zipPath) return;
+    const packsDir = path.join(tmp, 'packs');
+
+    await expect(installPackFromLocal(zipPath, packsDir, { sha256: '0'.repeat(64) })).rejects.toThrow(/Checksum mismatch for pack\.zip/);
+    expect(fs.readdirSync(packsDir)).toEqual([]);
+  });
+
+  it('installs a .zip whose checksum matches', async () => {
+    const zipPath = zippedPack();
+    if (!zipPath) return;
+    const packsDir = path.join(tmp, 'packs');
+
+    const result = await installPackFromLocal(zipPath, packsDir, { sha256: sha256File(zipPath) });
+    expect(result.version).toBe('1.2.3');
+  });
+});
+
+describe('installPackFromGitHub', () => {
+  /** A release of demo-pack serving its archive from memory; `checksum` defaults to the archive's own, null publishes none. */
+  async function mockRelease(checksum?: string | null) {
+    const stage = path.join(tmp, 'stage');
+    stageBundle(builtPack(), stage);
+    const { file, sha256 } = await createBundleArchive(stage, path.join(tmp, 'out'));
+    const name = path.basename(file);
+    const published = checksum === undefined ? sha256 : checksum;
+    const assets = [
+      { name, browser_download_url: `https://example.test/${name}` },
+      ...(published === null ? [] : [{ name: `${name}.sha256`, browser_download_url: `https://example.test/${name}.sha256` }]),
+    ];
+
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+      if (url.startsWith('https://api.github.com/')) return new Response(JSON.stringify({ assets }), { status: 200 });
+      if (url.endsWith('.sha256')) return new Response(`${published}  ${name}\n`, { status: 200 });
+      return new Response(fs.readFileSync(file), { status: 200 });
+    }));
+    return { name };
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('installs a release whose published checksum matches the archive', async () => {
+    await mockRelease();
+
+    const result = await installPackFromGitHub('acme/pack', path.join(tmp, 'packs'));
+    expect(result.version).toBe('1.2.3');
+  });
+
+  it('refuses a release with no checksum asset, naming how to publish one', async () => {
+    const { name } = await mockRelease(null);
+
+    await expect(installPackFromGitHub('acme/pack@v1.2.3', path.join(tmp, 'packs'))).rejects.toThrow(
+      `Release v1.2.3 of acme/pack has no ${name}.sha256; publish one with "abuddy release", or install with a checksum you know`,
+    );
+    expect(fs.existsSync(path.join(tmp, 'packs'))).toBe(false);
+  });
+
+  it("refuses a release whose published checksum isn't the archive's", async () => {
+    await mockRelease('0'.repeat(64));
+
+    await expect(installPackFromGitHub('acme/pack', path.join(tmp, 'packs'))).rejects.toThrow(/Checksum mismatch/);
+  });
+
+  it('refuses a checksum file that holds something else', async () => {
+    await mockRelease('not a checksum');
+
+    await expect(installPackFromGitHub('acme/pack', path.join(tmp, 'packs'))).rejects.toThrow(/doesn't hold a sha256 checksum/);
+  });
+});
+
+describe('installPackFromUrl', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('downloads the archive under a timeout and installs it', async () => {
+    const stage = path.join(tmp, 'stage');
+    stageBundle(builtPack(), stage);
+    const { file, sha256 } = await createBundleArchive(stage, path.join(tmp, 'out'));
+    const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(fs.readFileSync(file), { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    const result = await installPackFromUrl('https://example.test/demo-pack-1.2.3.tgz', path.join(tmp, 'packs'), { sha256 });
+    expect(result.version).toBe('1.2.3');
+    expect(fetchMock.mock.calls[0][1]?.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it('names the URL when the download times out', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('The operation was aborted due to timeout'); }));
+
+    await expect(installPackFromUrl('https://example.test/demo-pack-1.2.3.tgz', path.join(tmp, 'packs'))).rejects.toThrow(
+      'Downloading https://example.test/demo-pack-1.2.3.tgz failed: The operation was aborted due to timeout',
+    );
   });
 });

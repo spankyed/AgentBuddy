@@ -5,13 +5,14 @@ import { execFileSync } from 'child_process';
 import { satisfies } from 'semver';
 import { discoverBuiltInPacks } from './pack-discovery.ts';
 import { stagingDirName } from './staging.ts';
-import { fetchReleaseAsset, githubFetch, type GitHubReleaseAsset } from './github.ts';
+import { DOWNLOAD_TIMEOUT_MS, fetchReleaseAsset, githubFetch, type GitHubReleaseAsset } from './github.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { parseManifest } from '@abuddy/sdk/build';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { PackManifest } from '@abuddy/sdk/build';
 import {
   BUNDLE_PATHS,
+  assertChecksum,
   extractBundleArchive,
   hasBuiltBundleSections,
   isBundleDir,
@@ -37,6 +38,13 @@ export interface InstallOptions {
   hostVersion?: string;
   /** Expected sha256 of a downloaded archive. */
   sha256?: string;
+}
+
+/** Reports a download's failure with its URL: a timeout, a refused connection, a body that stopped mid-way. */
+function downloadFailed(url: string) {
+  return (err: unknown): never => {
+    throw new Error(`Downloading ${url} failed: ${err instanceof Error ? err.message : err}`);
+  };
 }
 
 function ensurePacksDir(targetDir?: string): string {
@@ -220,9 +228,11 @@ export async function installPackFromLocal(source: string, targetPacksDir?: stri
 
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-install-'));
   try {
+    // Every archive is checked before anything is unpacked, whatever its format
+    if (options.sha256) assertChecksum(resolved, options.sha256);
     let root: string;
     if (resolved.endsWith('.tgz') || resolved.endsWith('.tar.gz')) {
-      root = await extractBundleArchive(resolved, tmpDir, options.sha256);
+      root = await extractBundleArchive(resolved, tmpDir);
     } else if (resolved.endsWith('.zip')) {
       extractZip(resolved, tmpDir);
       root = findPackRoot(tmpDir);
@@ -243,10 +253,15 @@ export async function installPackFromUrl(url: string, targetPacksDir?: string, o
       throw new Error('URL must point to a .tgz or .zip file');
     }
     const downloadPath = path.join(tmpDir, filename);
+    if (!options.sha256) {
+      log.warn(`Installing ${filename} from ${url} without a checksum: nothing verifies what was downloaded`);
+    }
 
-    const response = await fetch(url);
+    // The signal bounds the body too, so a download that stalls fails instead of hanging the install
+    const signal = AbortSignal.timeout(DOWNLOAD_TIMEOUT_MS);
+    const response = await fetch(url, { signal }).catch(downloadFailed(url));
     if (!response.ok) throw new Error(`Download failed: ${response.status} ${response.statusText}`);
-    fs.writeFileSync(downloadPath, Buffer.from(await response.arrayBuffer()));
+    fs.writeFileSync(downloadPath, Buffer.from(await response.arrayBuffer().catch(downloadFailed(url))));
 
     return await installPackFromLocal(downloadPath, targetPacksDir, options);
   } finally {
@@ -271,11 +286,17 @@ export async function installPackFromGitHub(slug: string, targetPacksDir?: strin
     throw new Error(`No .tgz asset found in release${tag ? ` ${tag}` : ' (latest)'}`);
   }
 
-  // Releases published by `abuddy release` carry <archive>.sha256; older releases don't
+  // Releases published by `abuddy release` carry <archive>.sha256; without one, nothing says what was downloaded is the release
   let sha256 = options.sha256;
-  const checksumAsset = release.assets.find(a => a.name === `${tgzAsset.name}.sha256`);
-  if (!sha256 && checksumAsset) {
+  if (!sha256) {
+    const checksumAsset = release.assets.find(a => a.name === `${tgzAsset.name}.sha256`);
+    if (!checksumAsset) {
+      throw new Error(`Release${tag ? ` ${tag}` : ' (latest)'} of ${owner}/${repo} has no ${tgzAsset.name}.sha256; publish one with "abuddy release", or install with a checksum you know`);
+    }
     sha256 = (await (await fetchReleaseAsset(checksumAsset)).text()).trim().split(/\s+/)[0];
+    if (!/^[0-9a-f]{64}$/i.test(sha256)) {
+      throw new Error(`${checksumAsset.name} in ${owner}/${repo} doesn't hold a sha256 checksum`);
+    }
   }
 
   // Downloaded through GitHub's API when authenticated, so private repositories install too

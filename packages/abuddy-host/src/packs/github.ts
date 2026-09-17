@@ -4,7 +4,15 @@
  * limit; failures name the cause instead of looking like "no release".
  */
 
+/** Metadata requests: a release list or a manifest, small enough that a slow one is a stuck one. */
 const TIMEOUT_MS = 10_000;
+
+/**
+ * Downloads: a pack bundle is a few megabytes, so this covers a slow connection while still
+ * failing a stalled download instead of hanging the install. It bounds the body too, since the
+ * signal aborts the response while it's being read.
+ */
+export const DOWNLOAD_TIMEOUT_MS = 120_000;
 
 export function githubToken(): string | undefined {
   return process.env.GITHUB_TOKEN || process.env.GH_TOKEN || undefined;
@@ -29,10 +37,10 @@ function headers(accept: string): Record<string, string> {
 }
 
 /** Fetches a GitHub URL, throwing GitHubRequestError with the cause when it doesn't succeed. */
-export async function githubFetch(url: string, accept = 'application/vnd.github+json'): Promise<Response> {
+export async function githubFetch(url: string, accept = 'application/vnd.github+json', timeoutMs = TIMEOUT_MS): Promise<Response> {
   let response: Response;
   try {
-    response = await fetch(url, { headers: headers(accept), signal: AbortSignal.timeout(TIMEOUT_MS) });
+    response = await fetch(url, { headers: headers(accept), signal: AbortSignal.timeout(timeoutMs) });
   } catch (err) {
     throw new GitHubRequestError(`GitHub request to ${url} failed: ${err instanceof Error ? err.message : err}`, 'failed');
   }
@@ -73,8 +81,8 @@ export interface GitHubReleaseAsset {
 /** Downloads a release asset: through the API when authenticated, else its public download URL. */
 export function fetchReleaseAsset(asset: GitHubReleaseAsset): Promise<Response> {
   return githubToken() && asset.url
-    ? githubFetch(asset.url, 'application/octet-stream')
-    : githubFetch(asset.browser_download_url, 'application/octet-stream');
+    ? githubFetch(asset.url, 'application/octet-stream', DOWNLOAD_TIMEOUT_MS)
+    : githubFetch(asset.browser_download_url, 'application/octet-stream', DOWNLOAD_TIMEOUT_MS);
 }
 
 /** A file at a tag: the contents API when authenticated (private repositories), else raw.githubusercontent.com. */

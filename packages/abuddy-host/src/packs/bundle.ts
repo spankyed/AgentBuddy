@@ -202,14 +202,17 @@ export async function createBundleArchive(stageDir: string, outDir: string): Pro
   return { file, sha256, checksumFile };
 }
 
+/** Fail unless `file` hashes to `expected` — the checksum published with an archive, or one the caller knows. */
+export function assertChecksum(file: string, expected: string): void {
+  const actual = sha256File(file);
+  if (actual !== expected.toLowerCase()) {
+    throw new Error(`Checksum mismatch for ${path.basename(file)}: expected ${expected}, got ${actual}`);
+  }
+}
+
 /** Extract a bundle archive into destDir/<id>/ and return that directory. */
 export async function extractBundleArchive(archive: string, destDir: string, expectedSha256?: string): Promise<string> {
-  if (expectedSha256) {
-    const actual = sha256File(archive);
-    if (actual !== expectedSha256) {
-      throw new Error(`Checksum mismatch for ${path.basename(archive)}: expected ${expectedSha256}, got ${actual}`);
-    }
-  }
+  if (expectedSha256) assertChecksum(archive, expectedSha256);
   fs.mkdirSync(destDir, { recursive: true });
   await tar.extract({ file: archive, cwd: destDir });
   const dirs = fs.readdirSync(destDir, { withFileTypes: true }).filter(e => e.isDirectory());

@@ -59,7 +59,7 @@ Packs import `@abuddy/sdk`, `@abuddy/ears` and `@abuddy/ui`, never `@abuddy/host
 
 Installing is stage, verify, place:
 
-1. **Stage:** a built pack source is copied into a temporary bundle (`runtime/`, `build/`, `types/` from `dist/`, without source maps), with the resolved `abuddy.json` and a `bundle.json` listing each file's sha256. A `.tgz` archive is checked against its `.sha256` (when given) and extracted.
+1. **Stage:** a built pack source is copied into a temporary bundle (`runtime/`, `build/`, `types/` from `dist/`, without source maps), with the resolved `abuddy.json` and a `bundle.json` listing each file's sha256. An archive — `.tgz` or `.zip` — is checked against its sha256 before anything is unpacked. A GitHub install takes that checksum from the release's `<archive>.sha256` asset and refuses a release that publishes none; a URL install has one only if the caller passes it, and warns when it doesn't. Downloads carry a two-minute timeout, so a stalled one fails instead of hanging the install.
 2. **Verify:** the bundle's format version must match the host's, and the files on disk must be exactly the ones `bundle.json` lists, with matching checksums.
 3. **Place:** the bundle is copied into a hidden `.<id>.installing-<pid>-…` dir in `packs/`, the current copy (if any) is renamed aside to `.<id>.previous-…`, the new copy is renamed into place, and the previous one is removed. At boot, `prepareHostDataDirs` restores a pack whose install crashed between those renames, unless the pack was uninstalled since, and removes stale staging dirs (a dir whose process is gone, or which predates the boot).
 

@@ -207,7 +207,7 @@ abuddy install ../my-pack
 abuddy install user/my-pack
 ```
 
-A GitHub release needs a `.tgz` asset; its `.sha256` asset is checked when the release has one. The bundle is verified before it's placed, and `hostVersion` is checked against the version the app recorded in that data dir. A source directory must be built: one with neither a `bundle.json` nor a `dist/runtime/index.cjs` beside `dist/types/snapshot.json` is refused, with a note to run `abuddy build` first. Restart the app after installing.
+A GitHub release needs a `.tgz` asset and the `.sha256` asset published beside it (`abuddy release` writes both); a release without one is refused, since nothing would say the download is that release. A URL install is unverified, and says so. The bundle is verified before it's placed, and `hostVersion` is checked against the version the app recorded in that data dir. A source directory must be built: one with neither a `bundle.json` nor a `dist/runtime/index.cjs` beside `dist/types/snapshot.json` is refused, with a note to run `abuddy build` first. Restart the app after installing.
 
 #### `abuddy uninstall <id> [-d|--dev] [-b|--beta]`
 
