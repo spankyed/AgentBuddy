@@ -4,6 +4,7 @@
 export * from './shared.ts';
 export * from './compare-versions.ts';
 export { randomId, type RandomIdOptions } from './random-id.ts';
+export { escapeHtml } from './escape-html.ts';
 export * from './change-mapping.ts';
 export * from './change-detection.ts';
 export { redactSecrets, redactSecretText, REDACTED } from './redact.ts';

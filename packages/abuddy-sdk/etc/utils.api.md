@@ -78,6 +78,9 @@ export const ensureDirectoryExists: (dirPath: string) => void;
 export const entries: <T extends Record<string, unknown>>(obj: T) => Array<[keyof T, T[keyof T]]>;
 
 // @public
+export function escapeHtml(text: string): string;
+
+// @public
 export function extractAndResolveImages(markdown: string): ResolvedMedia[];
 
 // @public

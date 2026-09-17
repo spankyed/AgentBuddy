@@ -56,7 +56,7 @@ The allowlists are populated only when `renderer` is a URL (dev server); from a 
   - `getApiPaths()`: `<appPath>/packages/api` from source, `<resources>/app/packages/api` packaged (no ASAR).
   - `getNodeExecutable()`: `node` from source; packaged, Electron itself with `ELECTRON_RUN_AS_NODE=1`.
   - `getExecutionArgs()`: from source `--conditions=@abuddy/source dist/server.js`, so packs' `@abuddy/*` imports resolve to workspace source.
-  - `getEnvironment()`: `API_PORT`, `NODE_ENV`, `BUILT_IN_PACKS_DIR` (`packages/`), `AGENTBUDDY_STARTUP_ID`, `AGENTBUDDY_LOG_DIR`, `ABUDDY_ENV`, `ABUDDY_USER_DATA_DIR`; packaged builds append Homebrew, `/usr/local/bin` and nvm dirs to `PATH`.
+  - `getEnvironment()`: `API_PORT`, `ABUDDY_API_TOKEN` (the run's API token), `NODE_ENV`, `BUILT_IN_PACKS_DIR` (`packages/`), `AGENTBUDDY_STARTUP_ID`, `AGENTBUDDY_LOG_DIR`, `ABUDDY_ENV`, `ABUDDY_USER_DATA_DIR`; packaged builds append Homebrew, `/usr/local/bin` and nvm dirs to `PATH`.
   - Port: `getPort({ port: preferredPort })` (3001 first, then the last port that worked) after `clearLockedPorts()`, so a restart keeps the renderer's URL when it can.
 - `ProcessManager` (`process-manager.ts`) pipes stdout/stderr to the log. The server counts as ready at the first stdout line containing `WebSocket Server listening` with `ws://localhost:<port>`. Stderr lines starting with `{"__fatal":` are collected and broadcast as `api:fatal`.
 - On exit it broadcasts `api:stopped` (`{ error, restarting }`) and restarts after 2 s, up to 3 attempts (`API_CONFIG` in `config.ts`); the count resets once a launch has run for 5 s. After the last attempt it broadcasts `api:error` and rejects `waitForReady()`.

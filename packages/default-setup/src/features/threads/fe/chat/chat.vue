@@ -51,7 +51,8 @@
                 <!-- Instructions banner -->
                 <div v-if="currentThread?.instructions" class="mb-3 rounded-lg border border-neutral-700/50 bg-neutral-800/50 px-4 py-3">
                   <div class="text-[10px] uppercase tracking-wider text-neutral-500 mb-1.5 font-medium">Instructions</div>
-                  <div class="text-neutral-300 text-sm leading-relaxed" v-html="currentThread.instructions"></div>
+                  <!-- Markdown, rendered without raw HTML -->
+                  <TiptapEditor class="text-neutral-300 text-sm leading-relaxed" mode="viewer" variant="chat" :model-value="currentThread.instructions" />
                 </div>
                 <ChatMessage
                   v-for="message in visibleMessages"
@@ -174,6 +175,7 @@ function rotateQuote() {
 }
 
 import ChatMessage from './message.vue'
+import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import ChatInput from './input.vue'
 import RecentThreads from './recent-threads.vue'
 import InlineTabBar from './inline-tab-bar.vue'

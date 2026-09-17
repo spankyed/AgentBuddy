@@ -58,6 +58,8 @@ The 12 features: **threads**, **code**, **notes**, **browser**, **library**, **f
 
 Default plugin is Threads.
 
+Frontend components don't render untrusted text as markup: script injected into the app window reaches everything it can, the API token included. Markdown renders in a Tiptap viewer (`mode="viewer" variant="chat"`, which renders no raw HTML); `v-html` takes only the output of a function that escapes its input (`escapeHtml` from `@abuddy/sdk/utils/pure`, as `highlightSearchTerm` and `highlightMatches` do).
+
 ## Systems
 
 Backend systems wired via `__generated__/pack-entry.ts` using `toPackSystemDefs()` from the SDK. Each system file default-exports a `SystemEntry` (the manifest names only the path, not an export name). The logs system is special: `features[].earlySystem: true` makes it the registration's `boot.earlySystem`, which the API starts before EARS hydration (for log capture during boot).

@@ -32,6 +32,7 @@ describe('resolveAppContext', () => {
     expect(ctx.packsDir).toBe(path.join(ctx.userDataDir, 'packs'));
     expect(ctx.registryFile).toBe(path.join(ctx.userDataDir, 'pack-registry.json'));
     expect(ctx.apiPortFile).toBe(path.join(ctx.userDataDir, 'api-port'));
+    expect(ctx.apiTokenFile).toBe(path.join(ctx.userDataDir, 'api-token'));
     expect(ctx.urlScheme).toBe('abuddy-beta');
   });
 
