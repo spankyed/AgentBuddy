@@ -6,10 +6,10 @@ import { getActor, sendParentSafe } from '@abuddy/sdk/helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
-import type { FlowsConnectedData, FlowEntity, NodeEntity } from './types';
+import type { FlowsConnectedData, NodeEntity } from './types';
 import { FLOW_ROLES } from './repository';
 import { createLogger } from '@abuddy/sdk/logger';
-import type { ActionEntity, PromptEntity } from '@/__generated__/types';
+import type { FlowEntity, ActionEntity, PromptEntity } from '@abuddy/sdk';
 import { compileFlowDSL, validateFlowDSL, exportFlowsToDSL, type FlowDSL, type ValidationError } from '@abuddy/sdk/build';
 
 const logger = createLogger('flows');
@@ -68,7 +68,7 @@ type IncomingFlowsEvents =
   | { type: 'DELETE_NODE'; flowId: string; nodeId: string }
   | { type: 'CREATE_EDGE'; flowId: string; sourceId: string; targetId: string; sourceHandle?: string; targetHandle?: string }
   | { type: 'DELETE_EDGE'; flowId: string; edgeId: string }
-  | { type: 'UPDATE_EDGE'; flowId: string; edgeId: string; oldSource: string; oldTarget: string; newSource: string; newTarget: string }
+  | { type: 'UPDATE_EDGE'; flowId: string; edgeId: string; source: string; target: string; sourceHandle?: string; targetHandle?: string }
   | { type: 'IMPORT_DSL'; dsl: any }
   | { type: 'EXPORT_DSL'; directory: string; flowId?: string }
   | { type: 'REINDEX_HANDLES'; flowId: string; nodeId: string; prefix: string; index: number; direction: 1 | -1 }
@@ -87,7 +87,8 @@ export type OutgoingFlowsEvents =
   | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId; relId: EARS.EntityId; sourceHandle?: string; targetHandle?: string }
   | { type: 'EDGE_CREATE_FAILED'; sourceId: string; targetId: string; error: string }
   | { type: 'EDGE_DELETED'; edgeId: string }
-  | { type: 'EDGE_UPDATED'; oldEdgeId: EARS.EntityId; newEdgeId: EARS.EntityId; newSource: EARS.EntityId; newTarget: EARS.EntityId }
+  | { type: 'EDGE_UPDATED'; edgeId: EARS.EntityId; source: EARS.EntityId; target: EARS.EntityId; sourceHandle?: string; targetHandle?: string }
+  | { type: 'EDGE_UPDATE_FAILED'; edgeId: string; error: string }
   | { type: 'ACTION_CREATED'; action: ActionEntity; actionId: EARS.EntityId }
   | { type: 'ACTION_UPDATED'; action: ActionEntity; actionId: EARS.EntityId }
   | { type: 'ACTION_DELETED'; actionId: EARS.EntityId }
@@ -274,26 +275,40 @@ export const flowsSystem = setup({
     },
     
     updateEdge: ({ system, event }) => {
-      const { flowId, edgeId, oldSource, oldTarget, newSource, newTarget } = flowsSpec.typeOf('UPDATE_EDGE', event);
+      const { flowId, edgeId, source, target, sourceHandle, targetHandle } = flowsSpec.typeOf('UPDATE_EDGE', event);
       const pluginId = flows;
-      
-      logger.info('Updating edge', { flowId, edgeId, oldSource, oldTarget, newSource, newTarget });
-      
-      const { newRelId } = repository.flowsCommands.updateEdge(
-        edgeId as EARS.EntityId, 
-        oldSource as EARS.EntityId,
-        oldTarget as EARS.EntityId,
-        newSource as EARS.EntityId, 
-        newTarget as EARS.EntityId
-      );
-      
-      system.get(bus).send(emit(pluginId, {
-        type: 'EDGE_UPDATED',
-        oldEdgeId: edgeId as EARS.EntityId,
-        newEdgeId: newRelId,
-        newSource: newSource as EARS.EntityId,
-        newTarget: newTarget as EARS.EntityId,
-      }));
+
+      logger.info('Updating edge', { flowId, edgeId, source, target, sourceHandle, targetHandle });
+
+      try {
+        repository.flowsCommands.updateEdge(edgeId as EARS.EntityId, {
+          source: source as EARS.EntityId,
+          target: target as EARS.EntityId,
+          sourceHandle,
+          targetHandle,
+        });
+        system.get(bus).send(emit(pluginId, {
+          type: 'EDGE_UPDATED',
+          edgeId: edgeId as EARS.EntityId,
+          source: source as EARS.EntityId,
+          target: target as EARS.EntityId,
+          sourceHandle,
+          targetHandle,
+        }));
+      } catch (err: any) {
+        logger.warn('Edge update failed', { edgeId, source, target, error: err.message });
+        // The canvas already moved the edge: send the flow as stored, and the reason
+        system.get(bus).send(emit(pluginId, {
+          type: 'FLOW_SELECTED',
+          flowId: flowId as EARS.EntityId,
+          data: repository.flowsQueries.extendedData(flowId as EARS.EntityId),
+        }));
+        system.get(bus).send(emit(pluginId, {
+          type: 'EDGE_UPDATE_FAILED',
+          edgeId,
+          error: err.message || 'Edge update failed',
+        }));
+      }
     },
     
     handleSettingsUpdate: ({ system, event }) => {
@@ -371,7 +386,7 @@ export const flowsSystem = setup({
       const promptMap = new Map<string, string>(prompts.map((p: PromptEntity) => [p.label, p.id]));
 
       // Compile DSL
-      const compiled = compileFlowDSL(dsl as FlowDSL, { Entity: EARS.Entity, RelKind: EARS.RelKind }, {
+      const compiled = compileFlowDSL(dsl as FlowDSL, {
         actions: actionMap,
         prompts: promptMap,
       });
@@ -413,7 +428,6 @@ export const flowsSystem = setup({
 
       try {
         const { filePath, flowCount } = exportFlowsToDSL(directory, {
-          ears: { Entity: EARS.Entity, RelKind: EARS.RelKind },
           rootFlowRole: FLOW_ROLES.ROOT_FLOW,
           flowIds: flowId ? [flowId] : undefined,
         });
@@ -446,6 +460,10 @@ export const flowsSystem = setup({
     idle: {
       on: {
         CLIENT_CONNECTED: {
+          actions: 'handleClientConnection',
+        },
+        // A pack's seeds can add or change flows
+        PACK_CHANGED: {
           actions: 'handleClientConnection',
         },
         FLOW_SELECT: {
@@ -495,6 +513,6 @@ export const flowsSystem = setup({
   }
 });
 
-const flowsEntry: SystemEntry = { spec: flowsSpec, machine: flowsSystem };
+const flowsEntry = { spec: flowsSpec, machine: flowsSystem } satisfies SystemEntry;
 
 export default flowsEntry;

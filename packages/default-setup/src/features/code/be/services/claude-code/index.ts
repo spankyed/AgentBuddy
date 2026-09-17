@@ -93,7 +93,7 @@ export interface ClaudeCode {
  * Bind a default context (cwd / env / cliPath) and return a `ClaudeCode`
  * instance. Per-call options on `query()` override the context.
  */
-export function createClaudeCode(ctx: ClaudeCodeContext = {}): ClaudeCode {
+function createClaudeCode(ctx: ClaudeCodeContext = {}): ClaudeCode {
   return {
     query: opts => queryRaw({
       cwd: ctx.cwd,

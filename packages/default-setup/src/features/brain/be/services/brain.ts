@@ -95,6 +95,12 @@ export function unlisten(id: string): boolean {
   return removeListener(id);
 }
 
+/** `services.brain`: ad-hoc brain event listeners for action code */
+export const brainService = {
+  listen,
+  unlisten,
+};
+
 // --- Internal API (called by brain/system.ts) ---
 
 /**

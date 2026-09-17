@@ -7,10 +7,6 @@ export type StagingKind = 'installing' | 'previous' | 'publishing';
 
 /** `.<id>.<kind>-<pid>` or `.<id>.<kind>-<pid>-<random>`: staging owned by a process */
 const OWNED_STAGING_DIR = /^\.(.+)\.(installing|previous|publishing)-(\d+)(?:-[A-Za-z0-9]+)?$/;
-/** `.<id>.<kind>-<random>`: staging from before names carried a PID */
-const LEGACY_STAGING_DIR = /^\.(.+)\.(installing|previous|publishing)-[A-Za-z0-9]+$/;
-/** Legacy staging dirs are only touched once they're this old. */
-const UNOWNED_STAGING_MAX_AGE_MS = 60 * 60 * 1000;
 
 /**
  * A hidden staging dir name for pack `id`, unique to this process: a crashed process's leftovers
@@ -32,15 +28,11 @@ function processIsRunning(pid: number): boolean {
 
 interface StagingEntry { name: string; id: string; kind: StagingKind; stale: boolean }
 
-function parseStagingDir(dir: string, name: string, now: number): StagingEntry | null {
+function parseStagingDir(name: string): StagingEntry | null {
   const owned = OWNED_STAGING_DIR.exec(name);
   if (owned) {
     const pid = Number(owned[3]);
     return { name, id: owned[1], kind: owned[2] as StagingKind, stale: pid !== process.pid && !processIsRunning(pid) };
-  }
-  const legacy = LEGACY_STAGING_DIR.exec(name);
-  if (legacy) {
-    return { name, id: legacy[1], kind: legacy[2] as StagingKind, stale: now - fs.statSync(path.join(dir, name)).mtimeMs > UNOWNED_STAGING_MAX_AGE_MS };
   }
   return null;
 }
@@ -61,7 +53,7 @@ export interface StagingRecovery {
  * install in progress and stays. Run before discovering packs, so a restored pack is found.
  * Never throws: an entry that can't be handled is reported in `failed`.
  */
-export function recoverStagingDirs(dir: string, now = Date.now()): StagingRecovery {
+export function recoverStagingDirs(dir: string): StagingRecovery {
   const result: StagingRecovery = { restored: [], removed: [], failed: [] };
   let names: string[];
   try {
@@ -74,7 +66,7 @@ export function recoverStagingDirs(dir: string, now = Date.now()): StagingRecove
   const entries: StagingEntry[] = [];
   for (const name of names) {
     try {
-      const entry = parseStagingDir(dir, name, now);
+      const entry = parseStagingDir(name);
       if (entry?.stale) entries.push(entry);
     } catch (err) {
       result.failed.push({ name, error: String(err) });

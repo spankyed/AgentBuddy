@@ -4,89 +4,244 @@
 
 ```ts
 
-// @public
-export function defineEvents<M extends PluginEvents>(): TypedEvents<M>;
+import type { DeepPartial } from 'ai';
+import { EARS as EARS_2 } from '@abuddy/ears';
+import type { embed } from 'ai';
+import type { EmbeddingModel } from 'ai';
+import type { embedMany } from 'ai';
+import type { FlexibleSchema } from 'ai';
+import type { generateImage } from 'ai';
+import type { generateSpeech } from 'ai';
+import type { generateText } from 'ai';
+import type { ImageModel } from 'ai';
+import type { InferSchema } from 'ai';
+import type { JSONSchema7 } from 'ai';
+import type { LanguageModel } from 'ai';
+import type { Output } from 'ai';
+import type { OutputInterface } from 'ai';
+import type { repository } from '@abuddy/ears';
+import type { rerank } from 'ai';
+import type { RerankingModel } from 'ai';
+import type { SpeechModel } from 'ai';
+import type { streamText } from 'ai';
+import type { ToolLoopAgent } from 'ai';
+import type { ToolLoopAgentSettings } from 'ai';
+import type { ToolSet } from 'ai';
+import type { transcribe } from 'ai';
+import type { TranscriptionModel } from 'ai';
 
 // @public
-export type HostPluginEvents = {
-    application: {
-        type: 'APPLICATION_HOTKEYS';
-        hotkeys: ApplicationHotkeys;
-    } | {
-        type: 'APPLICATION_RESTORE_LAST_PLUGIN';
-        lastActivePluginId: string;
-    } | {
-        type: 'PLUGIN_VISIBILITY_UPDATED';
-        pluginVisibility: Record<string, boolean>;
-    };
-};
+export interface AppDataService {
+    backupInfo(backupPath: string): Promise<BackupInfo | null>;
+    completeOnboarding(): void;
+    exportBackup(targetPath: string, name?: string, databases?: BackupDatabase[]): Promise<string>;
+    hasOnboarded(): boolean;
+    importBackup(backupPath: string): Promise<{
+        databases: BackupDatabase[];
+    }>;
+    reset(): Promise<void>;
+}
+
+// @public
+export type BackupDatabase = 'lmdb' | 'volatileLmdb';
+
+// @public (undocumented)
+export interface BackupInfo {
+    // (undocumented)
+    databases: BackupDatabase[];
+    // (undocumented)
+    hasMedia: boolean;
+    size: number;
+    // (undocumented)
+    timestamp: number;
+}
+
+// @internal
+export function createInferenceService(resolveModel: ResolveModel): InferenceService;
 
 // @public
 export interface HostServices {
-    // (undocumented)
+    appData: AppDataService;
     emitter: {
         sendToPlugin: typeof sendToPlugin;
-        sendToBrainSystem: typeof sendToBrainSystem;
         sendToSystem: typeof sendToSystem;
-        onOutgoing: typeof onOutgoing;
-        onIncoming: typeof onIncoming;
+        sendToBrainSystem: typeof sendToBrainSystem;
     };
+    inference: InferenceService;
     // (undocumented)
     logger: Logger;
     // (undocumented)
     repository: typeof repository;
+    secrets: SecretsService;
+    traceStore: TraceStore;
+}
+
+// @internal
+export interface InferenceModels {
+    // (undocumented)
+    embedding: EmbeddingModel;
+    // (undocumented)
+    image: ImageModel;
+    // (undocumented)
+    language: LanguageModel;
+    // (undocumented)
+    reranking: RerankingModel;
+    // (undocumented)
+    speech: SpeechModel;
+    // (undocumented)
+    transcription: TranscriptionModel;
+}
+
+// @public
+export interface InferenceService {
+    createAgent<CALL_OPTIONS = never, TOOLS extends ToolSet = {}, CONTEXT extends RuntimeContext = RuntimeContext, const O extends OutputInterface | OutputSpec = never>(settings: InferenceOptions<ToolLoopAgentSettings<CALL_OPTIONS, TOOLS, CONTEXT, OutputOf<O>>, O>): Promise<ToolLoopAgent<CALL_OPTIONS, TOOLS, CONTEXT, OutputOf<O>>>;
+    embed<CONTEXT extends RuntimeContext = RuntimeContext>(options: WithModelId<Parameters<typeof embed<CONTEXT>>[0], EmbeddingModelId>): ReturnType<typeof embed<CONTEXT>>;
+    embedMany<CONTEXT extends RuntimeContext = RuntimeContext>(options: WithModelId<Parameters<typeof embedMany<CONTEXT>>[0], EmbeddingModelId>): ReturnType<typeof embedMany<CONTEXT>>;
+    generateImage(options: WithModelId<Parameters<typeof generateImage>[0], ImageModelId>): ReturnType<typeof generateImage>;
+    generateSpeech(options: WithModelId<Parameters<typeof generateSpeech>[0], SpeechModelId>): ReturnType<typeof generateSpeech>;
+    generateText<TOOLS extends ToolSet = {}, CONTEXT extends RuntimeContext = RuntimeContext, const O extends OutputInterface | OutputSpec = OutputInterface<string, string>>(options: InferenceOptions<Parameters<typeof generateText<TOOLS, CONTEXT, OutputOf<O>>>[0], O>): ReturnType<typeof generateText<TOOLS, CONTEXT, OutputOf<O>>>;
+    rerank<VALUE extends Parameters<typeof rerank>[0]['documents'][number], CONTEXT extends RuntimeContext = RuntimeContext>(options: WithModelId<Parameters<typeof rerank<VALUE, CONTEXT>>[0], RerankingModelId>): ReturnType<typeof rerank<VALUE, CONTEXT>>;
+    streamText<TOOLS extends ToolSet = {}, CONTEXT extends RuntimeContext = RuntimeContext, const O extends OutputInterface | OutputSpec = OutputInterface<string, string, never>>(options: InferenceOptions<Parameters<typeof streamText<TOOLS, CONTEXT, OutputOf<O>>>[0], O>): Promise<ReturnType<typeof streamText<TOOLS, CONTEXT, OutputOf<O>>>>;
+    transcribe(options: WithModelId<Parameters<typeof transcribe>[0], TranscriptionModelId>): ReturnType<typeof transcribe>;
+}
+
+// @public
+export type ModelId = `${ProviderName}:${string}`;
+
+// @public
+export type OutputSchema = FlexibleSchema<unknown> | JSONSchema7;
+
+// @public
+export type OutputSpec = {
+    type: 'text';
+} | ({
+    type: 'json';
+} & OutputNaming) | ({
+    type: 'object';
+    schema: OutputSchema;
+} & OutputNaming) | ({
+    type: 'array';
+    element: OutputSchema;
+    minItems?: number;
+    maxItems?: number;
+} & OutputNaming) | ({
+    type: 'choice';
+    options: readonly string[];
+} & OutputNaming);
+
+// @public
+export type ProviderName = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral' | 'cohere';
+
+// @internal
+export type ResolveModel = <K extends ModelKind>(kind: K, id: ModelIdOf<K>) => InferenceModels[K] | Promise<InferenceModels[K]>;
+
+// @public
+export interface SecretInfo {
+    // (undocumented)
+    createdAt: number;
+    // (undocumented)
+    id: string;
+    label: string;
+    // (undocumented)
+    provider: SecretProvider;
+    selected: boolean;
+    // (undocumented)
+    updatedAt?: number;
+}
+
+// @public
+export type SecretProvider = ProviderName | 'custom';
+
+// @internal
+export const secretProviderLabel: (provider: SecretProvider) => string;
+
+// @internal (undocumented)
+export const secretRules: {
+    add<T extends SecretInfo>(secrets: readonly T[], secret: Omit<T, "selected" | "label"> & {
+        label: string;
+    }): T[];
+    select<T extends SecretInfo>(secrets: readonly T[], id: string, now: number): T[];
+    rename<T extends SecretInfo>(secrets: readonly T[], id: string, label: string, now: number): T[];
+    remove<T extends SecretInfo>(secrets: readonly T[], id: string): T[];
+    selectedFor<T extends SecretInfo>(secrets: readonly T[], provider: ProviderName): T;
+};
+
+// @public
+export type SecretsProtection = 'os-keystore' | 'unprotected' | 'unavailable';
+
+// @public
+export interface SecretsService {
+    delete(id: string): void;
+    list(): SecretInfo[];
+    // (undocumented)
+    rename(id: string, label: string): void;
+    select(id: string): void;
+    // (undocumented)
+    status(): SecretsStatus;
+}
+
+// @public
+export interface SecretsSnapshot {
+    // (undocumented)
+    secrets: SecretInfo[];
+    // (undocumented)
+    status: SecretsStatus;
 }
 
 // @public (undocumented)
-export function onIncoming(callback: (event: {
-    type: string;
-    [key: string]: unknown;
-}) => void): () => void;
-
-// @public (undocumented)
-export function onOutgoing(callback: (event: {
-    type: string;
-    [key: string]: unknown;
-}) => void): () => void;
-
-// @public (undocumented)
-export function registerThreadTeardown(fn: (threadId: string) => void): void;
-
-// @public (undocumented)
-export function runThreadTeardown(threadId: string): void;
-
-// @public (undocumented)
-export function sendToBrainSystem(event: {
-    eventType: string;
-    payload?: unknown;
-    targetFlowId?: EARS.EntityId;
-}): void;
-
-// @public
-export function sendToPlugin(pluginId: string, event: {
-    type: string;
-    [key: string]: unknown;
-}): void;
-
-// @public (undocumented)
-export function sendToSystem(systemId: string, event: {
-    type: string;
-    [key: string]: unknown;
-}): void;
+export interface SecretsStatus {
+    backend: string;
+    // (undocumented)
+    protection: SecretsProtection;
+}
 
 // @public
 export const services: HostServices & Record<string, unknown>;
 
+// @internal
+export const toSecretInfo: (input: SecretInfo) => SecretInfo;
+
+// @public
+export interface TraceEntityMeta {
+    // (undocumented)
+    createdAt: number;
+    // (undocumented)
+    type: string;
+}
+
 // @public (undocumented)
-export interface TypedEvents<M extends PluginEvents> {
+export interface TraceRelation {
     // (undocumented)
-    emit: TypedEmit<M>;
+    createdAt: number;
     // (undocumented)
-    sendToPlugin: TypedSendToPlugin<M>;
+    info?: unknown;
+    // (undocumented)
+    kind: string;
+    // (undocumented)
+    src: EARS.EntityId;
+    // (undocumented)
+    tgt: EARS.EntityId;
 }
 
 // @public
-export type TypedSendToPlugin<M extends PluginEvents> = <P extends keyof M & string>(pluginId: P, event: M[P]) => void;
+export interface TraceStore {
+    entities(): Array<{
+        id: EARS.EntityId;
+        meta: TraceEntityMeta;
+    }>;
+    getAttr(kind: string, id: EARS.EntityId): unknown;
+    // (undocumented)
+    getEntityMeta(id: EARS.EntityId): TraceEntityMeta | null;
+    relations(filter?: {
+        kind?: string;
+        src?: EARS.EntityId;
+        tgt?: EARS.EntityId;
+        limit?: number;
+    }): Array<{
+        id: string;
+        rel: TraceRelation;
+    }>;
+}
 
 // (No @packageDocumentation comment for this package)
 

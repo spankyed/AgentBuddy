@@ -312,7 +312,7 @@ async function pump(
           // not a user-facing permission prompt.
           break // fall through to eventQueue.push below
         }
-        // Legacy callback path (one-shot / non-flow callers).
+        // The caller isn't surfacing control requests, so the router answers this one.
         const response = await router.handle(line)
         stream.write(response)
         continue

@@ -1,3 +1,7 @@
-export { registerHostModule, getHostModule, hostFn, hostValue } from './host.ts';
-export { executeTemplate, createTemplateResolver } from './templates.ts';
-export type { TemplateResolver } from './templates.ts';
+export {
+  bindHost, isHostBound,
+  type HostRuntime, type HostRuntimeServices, type EarsQuery,
+} from './host-runtime.ts';
+export { boundPackContributions, type PackContributionsView, type PackRegistryView } from './packs-view.ts';
+export { bindFeHost, isFeHostBound, type FeHostRuntime, type FeTransport, type FePackRegistryView } from './fe-host.ts';
+export { rootEvents, type RootEvents } from './root-events.ts';

@@ -7,16 +7,15 @@ import {
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
 import type {
-  PromptEntity,
   OutgoingPromptEvents,
-  EARS,
   Category,
   PromptsSettings,
 } from '@/__generated__/types'
-import type { TemplateInput } from '@abuddy/sdk/build'
-import { trpc } from '@abuddy/sdk/rpc'
+import type { TemplateInput } from '@abuddy/sdk'
+import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
+import type { PromptEntity, EARS } from '@abuddy/sdk'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
@@ -127,8 +126,7 @@ const promptsState = setup({
         return
       }
       // Send event to backend to get prompt data
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'PROMPT_SELECT',
         promptId: ev.promptId,
       });
@@ -169,15 +167,13 @@ const promptsState = setup({
       
       if (isCreating) {
         // Create new prompt
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'CREATE_PROMPT',
           ...context.formData,
         })
       } else {
         // Update existing prompt
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'UPDATE_PROMPT',
           promptId: context.selectedPromptId!,
           ...context.formData,
@@ -187,8 +183,7 @@ const promptsState = setup({
 
     sendDeletePrompt: ({ event }) => {
       const ev = typeOf('PROMPT.DELETE', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'DELETE_PROMPT',
         promptId: ev.promptId,
       });
@@ -196,8 +191,7 @@ const promptsState = setup({
 
     updatePromptInputs: ({ event }) => {
       const ev = typeOf('PROMPT.UPDATE_INPUTS', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_PROMPT',
         promptId: ev.promptId,
         inputs: ev.inputs,
@@ -206,8 +200,7 @@ const promptsState = setup({
 
     createPromptInline: ({ event }) => {
       const ev = typeOf('PROMPT.CREATE_INLINE', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'CREATE_PROMPT',
         label: ev.label,
         templateFn: ev.templateFn,
@@ -217,8 +210,7 @@ const promptsState = setup({
 
     updatePromptLabel: ({ event }) => {
       const ev = typeOf('PROMPT.UPDATE_LABEL', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_PROMPT',
         promptId: ev.promptId,
         label: ev.label,
@@ -361,11 +353,10 @@ const promptsState = setup({
 
     sendImportPrompts: ({ event }) => {
       const ev = typeOf('PROMPTS.IMPORT', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'IMPORT_PROMPTS',
         prompts: ev.prompts,
-      } as any);
+      });
     },
 
     handlePromptsImported: assign(({ event }) => {
@@ -404,11 +395,10 @@ const promptsState = setup({
 
     sendExportPrompts: ({ event }) => {
       const ev = typeOf('PROMPTS.EXPORT', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'EXPORT_PROMPTS',
         directory: ev.directory,
-      } as any);
+      });
     },
 
     handlePromptsExported: assign(({ event }) => {
@@ -441,8 +431,7 @@ const promptsState = setup({
 
     /* ── pagination ────────────────────────────────────────── */
     requestNextPage: assign(({ context }) => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'FETCH_PROMPTS_PAGE',
         page: context.page + 1,
       });
@@ -460,8 +449,7 @@ const promptsState = setup({
     }),
 
     requestAllItems: assign(() => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'FETCH_ALL_PROMPTS',
       });
       return { loadingMore: true };

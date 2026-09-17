@@ -21,11 +21,10 @@
 
 import * as os from 'node:os';
 import type { EARS } from '@abuddy/sdk';
-import { getEntitiesOfType, getAllEntityTypes } from '@abuddy/sdk/ears';
-import { qx, getAllEntities } from '@abuddy/host/ears';
-import { getBootHooks, getRegisteredEntityTypes } from '@abuddy/host/packs';
-import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath } from '@abuddy/sdk/utils';
-import { openDatabase, closeDatabase } from './database';
+import { getEntitiesOfType, getAllEntityTypes } from '@abuddy/ears';
+import { getAllEntities, untypedQx as qx } from '@abuddy/ears';
+import { getLmdbPath, getVolatileLmdbPath } from '@abuddy/sdk/utils';
+import { openDatabase, closeDatabase, packs } from './database';
 
 // Suppress all console output except our final JSON
 const originalLog = console.log;
@@ -45,7 +44,7 @@ async function exportJSON() {
     await openDatabase();
 
     // Initialize packs (ensure default data exists)
-    for (const hooks of getBootHooks()) hooks.onInit?.();
+    for (const hooks of packs.getBootHooks()) hooks.onInit?.();
 
     const args = process.argv.slice(2);
     let data: any;
@@ -70,7 +69,7 @@ async function exportJSON() {
       data = qx(args[1] as EARS.EntityId).pickAll()[0];
       exportType = 'single';
       entityFilter = args[1];
-    } else if (getRegisteredEntityTypes().has(args[0])) {
+    } else if (packs.getRegisteredEntityTypes().has(args[0])) {
       // Export by entity type (registered pack entity)
       data = qx(args[0] as EARS.Entity).pickAll();
       exportType = 'type';
@@ -100,8 +99,7 @@ async function exportJSON() {
         recordCount: Array.isArray(data) ? data.length : (data ? 1 : 0),
         database: {
           primaryPath: getLmdbPath(),
-          volatilePath: getVolatileLmdbPath(),
-          secretsPath: getSecretsLmdbPath()
+          volatilePath: getVolatileLmdbPath()
         },
         environment: {
           hostname: os.hostname(),

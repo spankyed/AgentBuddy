@@ -1,33 +1,20 @@
 /**
- * Tests verifying that default-setup imports from @abuddy/sdk delegates
- * resolve correctly through the host module registry.
+ * Tests verifying that default-setup imports from @abuddy/sdk and @abuddy/ears resolve to the
+ * runtime the harness binds.
  */
-import { registerHostModule, getHostModule } from '@abuddy/sdk/runtime';
 import {
   tx, repository, registerRepository, exists,
   RepositoryError, RepositoryErrorCode,
-} from '@abuddy/sdk/ears';
+} from '@abuddy/ears';
 import {
-  clearMemory, edgeStore, relationIndex,
   qx, createEntity, findById, findByIdRaw, findAll, findWhere,
   createEntityWithDefaults, updateEntity, getAttr,
-} from '@abuddy/host/ears';
+} from '../../src/__generated__/ears';
+import { resetTestData } from '@abuddy/sdk/testing';
 import { EARS } from '../../src/__generated__/ears';
 
-describe('SDK runtime — host module registry', () => {
-  it('registerHostModule stores and getHostModule retrieves', () => {
-    const mod = { hello: () => 'world' };
-    registerHostModule('test-mod', mod);
-    expect(getHostModule('test-mod')).toBe(mod);
-  });
-
-  it('getHostModule throws for unregistered module', () => {
-    expect(() => getHostModule('nonexistent-mod')).toThrow(/not registered/);
-  });
-});
-
 describe('Tier 1 — EARS delegates', () => {
-  beforeEach(() => clearMemory());
+  beforeEach(() => resetTestData());
 
   it('qx and tx are callable functions', () => {
     expect(typeof qx).toBe('function');
@@ -122,24 +109,17 @@ describe('Tier 1 — EARS delegates', () => {
     expect(color).toBe('blue');
   });
 
-  it('clearMemory resets all state', () => {
+  it('resetTestData resets all state', () => {
     createEntityWithDefaults(
       EARS.Entity.Action as any,
       { label: 'Temp', actionFn: 'fn()' } as any,
       'ACT',
     );
     expect(findAll(EARS.Entity.Action as any).length).toBe(1);
-    clearMemory();
+    resetTestData();
     expect(findAll(EARS.Entity.Action as any).length).toBe(0);
   });
 
-  it('edgeStore is accessible', () => {
-    expect(edgeStore).toBeDefined();
-  });
-
-  it('relationIndex is accessible', () => {
-    expect(relationIndex).toBeDefined();
-  });
 });
 
 describe('Tier 2 — EARS types', () => {
@@ -165,13 +145,14 @@ describe('Tier 3 — System Framework delegates', () => {
   });
 
   it('emit and safeEvents are callable', async () => {
-    const { emit, safeEvents } = await import('@abuddy/sdk/helpers');
+    const { emit } = await import('@abuddy/sdk/events');
+    const { safeEvents } = await import('@abuddy/sdk/helpers');
     expect(typeof emit).toBe('function');
     expect(typeof safeEvents).toBe('function');
   });
 
   it('emit wraps event for bus with OUTGOING type', async () => {
-    const { emit } = await import('@abuddy/sdk/helpers');
+    const { emit } = await import('@abuddy/sdk/events');
     const wrapped = emit('test-plugin', { type: 'HELLO' });
     expect(wrapped.type).toBe('OUTGOING');
     expect(wrapped.event.pluginId).toBe('test-plugin');
@@ -202,15 +183,15 @@ describe('Tier 4 — Logger delegate', () => {
   });
 });
 
-describe('Tier 5 — RPC delegates', () => {
-  it('rootEvents is accessible', async () => {
-    const { rootEvents } = await import('@abuddy/sdk/rpc');
-    expect(rootEvents).toBeDefined();
+describe('Tier 5 — Templates and app info', () => {
+  it('executeTemplate runs a prompt function body with its params', async () => {
+    const { executeTemplate } = await import('@abuddy/sdk/templates');
+    expect(executeTemplate('return `Hi ${params.name}`', { name: 'Ada' })).toBe('Hi Ada');
   });
 
-  it('trpc proxy is accessible', async () => {
-    const { trpc } = await import('@abuddy/sdk/rpc');
-    expect(trpc).toBeDefined();
+  it('getAppVersion reads the host version', async () => {
+    const { getAppVersion } = await import('@abuddy/sdk/env');
+    expect(getAppVersion()).toBe('0.0.0-test');
   });
 });
 
@@ -236,13 +217,6 @@ describe('Tier 6 — Utility delegates', () => {
     expect(typeof toSlug).toBe('function');
   });
 
-  it('resolve-cli utilities are callable', async () => {
-    const { resolveForService, testCli, isCliName } = await import('@abuddy/sdk/utils');
-    expect(typeof resolveForService).toBe('function');
-    expect(typeof testCli).toBe('function');
-    expect(typeof isCliName).toBe('function');
-  });
-
   it('randomId is callable', async () => {
     const { randomId } = await import('@abuddy/sdk/utils');
     expect(typeof randomId).toBe('function');
@@ -254,22 +228,15 @@ describe('Tier 6 — Utility delegates', () => {
   });
 
   it('seed helpers are callable', async () => {
-    const { registerSeeder, seedData, loadJSON } = await import('@abuddy/sdk/utils');
-    expect(typeof registerSeeder).toBe('function');
+    const { seedData, loadJSON } = await import('@abuddy/sdk/utils');
     expect(typeof seedData).toBe('function');
     expect(typeof loadJSON).toBe('function');
   });
-
-  it('lifecycle helpers are callable', async () => {
-    const { registerShutdownHook, runShutdownHooks } = await import('@abuddy/sdk/utils');
-    expect(typeof registerShutdownHook).toBe('function');
-    expect(typeof runShutdownHooks).toBe('function');
-  });
 });
 
-describe('Tier 7 — Service delegates', () => {
+describe('Tier 7 — Event delegates', () => {
   it('sendToPlugin and sendToBrainSystem are callable', async () => {
-    const { sendToPlugin, sendToBrainSystem } = await import('@abuddy/sdk/services');
+    const { sendToPlugin, sendToBrainSystem } = await import('@abuddy/sdk/events');
     expect(typeof sendToPlugin).toBe('function');
     expect(typeof sendToBrainSystem).toBe('function');
   });
@@ -279,7 +246,8 @@ describe('Import isolation — no remaining @/core/* imports in .ts', () => {
   it('default-setup .ts files do not import from @/core/* (excluding FE components, migrations, type imports)', async () => {
     const { execSync } = await import('child_process');
     const result = execSync(
-      `grep -rn "from '@/core/" ../../src/ --include='*.ts' 2>/dev/null | grep -v "@abuddy" | grep -v "@/core/components" | grep -v "migrations/" | grep -v "import type" || true`,
+      // The alias is spelled in two parts so the pack-test import guard doesn't read this command as an import
+      `grep -rn "from '@/${'core'}/" ../../src/ --include='*.ts' 2>/dev/null | grep -v "@abuddy" | grep -v "@/core/components" | grep -v "migrations/" | grep -v "import type" || true`,
       { encoding: 'utf-8', cwd: __dirname }
     ).trim();
     expect(result).toBe('');

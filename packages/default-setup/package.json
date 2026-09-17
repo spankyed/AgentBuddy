@@ -7,19 +7,19 @@
     "#generated/*": "./src/__generated__/*"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "vue-tsc --noEmit",
     "test": "vitest run",
     "prepare": "abuddy generate-entries",
     "generate:entries": "abuddy generate-entries",
-    "generate:defs": "npx rollup -c rollup-defs.config.mjs",
-    "build": "abuddy build && npm run generate:defs && node dev-build.mjs",
-    "build:dev": "abuddy build --skip-fe"
+    "build": "abuddy build && node dev-build.mjs",
+    "build:dev": "abuddy build --skip-fe",
+    "facade:check": "tsx ../../scripts/facade-report.ts .",
+    "facade:update": "tsx ../../scripts/facade-report.ts . --local"
   },
   "dependencies": {
-    "@abuddy/host": "*",
+    "@abuddy/ears": "*",
     "@abuddy/sdk": "*",
     "@abuddy/ui": "*",
-    "@ai-sdk/provider": "^1.1.3",
     "@antv/g6": "^5.0.48",
     "@floating-ui/vue": "^1.1.11",
     "@leeoniya/ufuzzy": "^1.0.18",
@@ -37,17 +37,16 @@
     "croner": "^10.0.1",
     "elkjs": "^0.9.0",
     "node-pty": "^1.0.0",
-    "playwright": "^1.54.1",
     "vue-arrange": "^1.5.0"
   },
   "devDependencies": {
+    "@abuddy/testing": "*",
     "@types/node": "^25.5.0",
     "esbuild": "^0.25.0",
-    "rollup": "^4.34.0",
-    "rollup-plugin-dts": "^6.2.3",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vitest": "^3.2.4",
-    "zod": "^3.24.0"
+    "vue-tsc": "^3.0.4",
+    "zod": "^3.25.76"
   }
 }

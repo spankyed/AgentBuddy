@@ -6,17 +6,16 @@
  *   npm run db:seed
  */
 
-import { getBootHooks, runRegisteredBootSeeds } from '@abuddy/host/packs';
-import { orchestrateDeclarativeSeed } from '@/packs/pack-seed';
-import { openDatabase, closeDatabase } from './database';
+import { orchestrateDeclarativeSeed } from '@abuddy/host/packs/runtime';
+import { openDatabase, closeDatabase, packs } from './database';
 
 async function run() {
   console.log('Initializing database...');
   await openDatabase();
-  for (const hooks of getBootHooks()) hooks.onInit?.();
+  for (const hooks of packs.getBootHooks()) hooks.onInit?.();
 
   console.log('Seeding compiled artifacts...\n');
-  runRegisteredBootSeeds(orchestrateDeclarativeSeed);
+  packs.runRegisteredBootSeeds(orchestrateDeclarativeSeed);
 
   closeDatabase();
 }

@@ -1,13 +1,12 @@
-import { emit } from '@/__generated__/events';
+import { sendToPlugin } from '@/__generated__/events';
 import { assign, setup, sendParent, enqueueActions, fromCallback, spawnChild } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
 import { getActor } from '@abuddy/sdk/helpers';
 import type { LogsState, LogEntry } from './types';
 import { randomId } from '@abuddy/sdk/utils';
-import { rootEvents } from '@abuddy/sdk/rpc';
-import type { LogEvent } from '@abuddy/sdk/logger';
-import type { IncomingSystemEvents } from '@abuddy/sdk/rpc';
+import { onLog, type LogEvent } from '@abuddy/sdk/logger';
+import { onConnected, onIncoming, type IncomingSystemEvents } from '@abuddy/sdk/events';
 import { repository } from '@/__generated__/repository';
 import type { LogsSettings } from '@/__generated__/types';
 import { isSourceExcluded, filterLogsByExcludedSources } from './utils';
@@ -19,7 +18,6 @@ function effectiveExcludedSources(settings: LogsSettings | undefined): string[] 
 }
 
 type IncomingLogEvents =
-  | { type: 'EMPTY'; empty: string }
   | { type: 'CLEAR_LOGS' }
   | { type: 'REQUEST_LOGS_UPDATE' };
 
@@ -67,9 +65,9 @@ export const logsSystem = setup({
         sendBack({ type: 'CLIENT_CONNECTED' });
       };
 
-      const onLogUnsub = rootEvents.onLog(logHandler)
-      const onIncomingUnsub = rootEvents.onIncoming(incomingHandler)
-      const onConnectedUnsub = rootEvents.onConnected(connectedHandler)
+      const onLogUnsub = onLog(logHandler)
+      const onIncomingUnsub = onIncoming(incomingHandler)
+      const onConnectedUnsub = onConnected(connectedHandler)
 
       return () => {
         onLogUnsub();
@@ -111,12 +109,11 @@ export const logsSystem = setup({
       // Filter logs by excluded sources before sending
       const filteredLogs = filterLogsByExcludedSources(context.logs, excludedSources);
 
-      const wrapped = emit(logs, {
+      sendToPlugin(logs, {
         type: 'LOGS_CONNECTED',
         logs: filteredLogs,
         settings: settings ?? { maxLogs: 1000, excludedSources: [], showAppEvents: false }
       });
-      rootEvents.emitOutgoing(wrapped.event);
     },
     broadcastNewLog: ({ context }) => {
       const newLog = context.logs[0];
@@ -130,11 +127,10 @@ export const logsSystem = setup({
         return; // Don't broadcast excluded logs
       }
 
-      const wrapped = emit(logs, {
+      sendToPlugin(logs, {
         type: 'LOG_ADDED',
         log: newLog,
       });
-      rootEvents.emitOutgoing(wrapped.event);
     },
     broadcastLogsUpdate: ({ context }) => {
       // Get current settings from repository
@@ -144,17 +140,15 @@ export const logsSystem = setup({
       // Filter logs by excluded sources before sending
       const filteredLogs = filterLogsByExcludedSources(context.logs, excludedSources);
 
-      const wrapped = emit(logs, {
+      sendToPlugin(logs, {
         type: 'LOGS_UPDATE',
         logs: filteredLogs,
       });
-      rootEvents.emitOutgoing(wrapped.event);
     },
     broadcastLogsCleared: () => {
-      const wrapped = emit(logs, {
+      sendToPlugin(logs, {
         type: 'LOGS_CLEARED',
-      });
-      rootEvents.emitOutgoing(wrapped.event)
+      })
     },
     truncateLogsIfNeeded: assign({
       logs: ({ context }) => {
@@ -201,6 +195,6 @@ export const logsSystem = setup({
   },
 });
 
-const logsEntry: SystemEntry = { spec: logsSpec, machine: logsSystem };
+const logsEntry = { spec: logsSpec, machine: logsSystem } satisfies SystemEntry;
 
 export default logsEntry;

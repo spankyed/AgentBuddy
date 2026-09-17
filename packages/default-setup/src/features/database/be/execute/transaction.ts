@@ -1,14 +1,15 @@
 import { qx } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
-import { tx, getEntitiesOfType, destroyEntity, getAll, getRoles, grantRole, revokeRole, prepareEntity, createRelation, removeRelation, removeRelationById } from '@abuddy/sdk/ears';
+import { tx, getEntitiesOfType, destroyEntity, getAll, getRoles, grantRole, revokeRole, prepareEntity, createRelation, removeRelation, removeRelationById } from '@abuddy/ears';
 import { getAttr, getAttrs, createEntityWithDefaults, updateEntity } from '@/__generated__/ears';
 import {
   getAllEntities,
   queryEntitiesByRelationTo,
   queryEntitiesByAttribute,
   queryEntitiesInRelationTo,
-  relationIndex,
-} from '@abuddy/host/ears';
+  findRelations,
+  getRelationStats,
+} from '@abuddy/ears';
 
 /**
  * Execute a user-provided transaction against the EARS database
@@ -42,7 +43,8 @@ export async function executeTransaction(code: string): Promise<any> {
       'getEntitiesOfType',
       'queryEntitiesByAttribute',
       'queryEntitiesInRelationTo',
-      'relationIndex',
+      'findRelations',
+      'getRelationStats',
       // Transaction utilities (write)
       'tx',
       'destroyEntity',
@@ -71,7 +73,8 @@ export async function executeTransaction(code: string): Promise<any> {
       getEntitiesOfType,
       queryEntitiesByAttribute,
       queryEntitiesInRelationTo,
-      relationIndex,
+      findRelations,
+      getRelationStats,
       // Transaction utilities
       tx,
       destroyEntity,

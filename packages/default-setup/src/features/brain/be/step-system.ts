@@ -1,10 +1,11 @@
 import { setup, assign, sendParent, enqueueActions } from 'xstate';
 import { EARS } from '@/__generated__/ears';
-import type { ExecutionContext, TNodeEntity } from './types';
+import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import type { NodeEntity } from '@/__generated__/types';
 import { executeNode } from './node-handlers';
 import { repository } from '@/__generated__/repository';
-import { brainInspect } from './utils/brain-inspect';
+import { brainLogger } from './utils/brain-inspect';
+import { brain } from './system';
 
 type StepMachineContext = {
   tNodeId?: EARS.EntityId;
@@ -44,7 +45,7 @@ export function createStepNodeSystem(
       actions: {
         executeStep: ({ context, self }) => {
           try {
-            // brainInspect(
+            // brainLogger.debug(
             //   `Executing step: ${context.step.label} (${context.step.nodeType})`,
             // );
 
@@ -65,14 +66,12 @@ export function createStepNodeSystem(
             // Update status
             repository.brainCommands.updateTNodeStatus(context.tNodeId, 'completed');
             
-            // Send TNODE_UPDATED event to parent
-            enqueue.sendParent({
-              type: 'TNODE_UPDATED',
-              data: { 
-                tNodeId: context.tNodeId, 
-                status: 'completed', 
-                eventTNodeId: context.eventTNodeId 
-              }
+            // Straight to the brain, as flows send theirs: a parent flow finishing on this step's completion
+            // stops before a forwarded update would reach it
+            const tNodeId = context.tNodeId;
+            const eventTNodeId = context.eventTNodeId;
+            enqueue(({ system }) => {
+              system.get(brain)?.send({ type: 'TNODE_UPDATED', data: { tNodeId, status: 'completed', eventTNodeId } });
             });
           }
         }),
@@ -80,14 +79,12 @@ export function createStepNodeSystem(
           if (context.tNodeId) {
             repository.brainCommands.updateTNodeStatus(context.tNodeId, 'failed');
             
-            // Send TNODE_UPDATED event to parent
-            enqueue.sendParent({
-              type: 'TNODE_UPDATED',
-              data: { 
-                tNodeId: context.tNodeId, 
-                status: 'failed', 
-                eventTNodeId: context.eventTNodeId 
-              }
+            // Straight to the brain, as flows send theirs: a parent flow finishing on this step's completion
+            // stops before a forwarded update would reach it
+            const tNodeId = context.tNodeId;
+            const eventTNodeId = context.eventTNodeId;
+            enqueue(({ system }) => {
+              system.get(brain)?.send({ type: 'TNODE_UPDATED', data: { tNodeId, status: 'failed', eventTNodeId } });
             });
           }
         }),

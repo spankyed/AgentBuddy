@@ -4,10 +4,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { checkForUpdates, findLatestRelease } from '../../src/packs/pack-updater.ts';
 import { readPackRegistry, writePackRegistry } from '../../src/packs/pack-registry.ts';
-import { registerHostModule } from '@abuddy/sdk/runtime';
 
-const noop = () => {};
-registerHostModule('logger', { createLogger: () => ({ debug: noop, info: noop, warn: noop, error: noop }), LogEvent: {} });
 
 function mockReleases(releases: Array<{ tag_name: string; draft?: boolean; prerelease?: boolean }>) {
   const fetchMock = vi.fn(async () => new Response(JSON.stringify(releases), { status: 200 }));

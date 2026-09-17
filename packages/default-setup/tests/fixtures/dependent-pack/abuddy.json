@@ -1,0 +1,22 @@
+{
+  "$schema": "../../../../abuddy-sdk/abuddy.schema.json",
+  "id": "team-notes",
+  "name": "Team Notes",
+  "version": "0.1.0",
+  "hostVersion": ">=0.3.0",
+  "dependencies": {
+    "default-setup": "*"
+  },
+  "boot": {
+    "seed": {
+      "team-notes": {
+        "path": "src/seeds/team-notes",
+        "format": "default-setup:notes"
+      },
+      "team-docs": {
+        "path": "src/seeds/team-docs",
+        "format": "default-setup:library"
+      }
+    }
+  }
+}

@@ -7,16 +7,15 @@ import {
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
 import type {
-  ActionEntity,
   OutgoingActionEvents,
-  EARS,
   Category,
   ActionsSettings,
 } from '@/__generated__/types'
-import type { ActionParameter } from '@abuddy/sdk/build'
-import { trpc } from '@abuddy/sdk/rpc'
+import type { ActionParameter } from '@abuddy/sdk'
+import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
+import type { ActionEntity, EARS } from '@abuddy/sdk'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
@@ -127,8 +126,7 @@ const actionsState = setup({
         return
       }
       // Send event to backend to get action data
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'ACTION_SELECT',
         actionId: ev.actionId,
       });
@@ -169,15 +167,13 @@ const actionsState = setup({
       
       if (isCreating) {
         // Create new action
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'CREATE_ACTION',
           ...context.formData,
         })
       } else {
         // Update existing action
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'UPDATE_ACTION',
           actionId: context.selectedActionId!,
           ...context.formData,
@@ -187,8 +183,7 @@ const actionsState = setup({
 
     sendDeleteAction: ({ event }) => {
       const ev = typeOf('ACTION.DELETE', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'DELETE_ACTION',
         actionId: ev.actionId,
       });
@@ -196,8 +191,7 @@ const actionsState = setup({
 
     updateActionInput: ({ event }) => {
       const ev = typeOf('ACTION.UPDATE_INPUT', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_ACTION',
         actionId: ev.actionId,
         input: ev.input,
@@ -206,8 +200,7 @@ const actionsState = setup({
 
     createActionInline: ({ event }) => {
       const ev = typeOf('ACTION.CREATE_INLINE', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'CREATE_ACTION',
         label: ev.label,
         actionFn: ev.actionFn,
@@ -217,8 +210,7 @@ const actionsState = setup({
 
     updateActionLabel: ({ event }) => {
       const ev = typeOf('ACTION.UPDATE_LABEL', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_ACTION',
         actionId: ev.actionId,
         label: ev.label,
@@ -353,8 +345,7 @@ const actionsState = setup({
 
     /* ── pagination ────────────────────────────────────────── */
     requestNextPage: assign(({ context }) => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'FETCH_ACTIONS_PAGE',
         page: context.page + 1,
       });
@@ -372,8 +363,7 @@ const actionsState = setup({
     }),
 
     requestAllItems: assign(() => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'FETCH_ALL_ACTIONS',
       });
       return { loadingMore: true };
@@ -416,11 +406,10 @@ const actionsState = setup({
 
     sendImportActions: ({ event }) => {
       const ev = typeOf('ACTIONS.IMPORT', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'IMPORT_ACTIONS',
         actions: ev.actions,
-      } as any);
+      });
     },
 
     handleActionsImported: assign(({ event }) => {
@@ -459,11 +448,10 @@ const actionsState = setup({
 
     sendExportActions: ({ event }) => {
       const ev = typeOf('ACTIONS.EXPORT', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'EXPORT_ACTIONS',
         directory: ev.directory,
-      } as any);
+      });
     },
 
     handleActionsExported: assign(({ event }) => {

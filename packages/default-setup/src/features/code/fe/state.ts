@@ -1,13 +1,12 @@
 import { setup, type ActorRefFrom, assign, enqueueActions } from 'xstate';
 import breadcrumb from '@abuddy/sdk/fe';
-import { trpc } from '@abuddy/sdk/rpc';
 import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@abuddy/sdk/fe';
 import { saveOpenTabs, loadPersistedTabs, sortTabsByPinned } from './utils/persisted-tabs';
 import { loadRecentFiles, addRecentFile } from './utils/recent-files';
 import { pushTabViewHistory, nextActiveFromHistory } from './utils/tab-management';
 import { saveTabGroups, loadTabGroups, getNextAvailableColor, ALL_COLORS, type TabGroupColor, type TabGroup } from '@abuddy/sdk/fe';
 import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
-import type { OutgoingCodeEvents, CodeSettings, KeyboardShortcut } from '@/__generated__/types';
+import type { OutgoingCodeEvents, CodeSettings } from '@/__generated__/types';
 
 // Import child state machines
 import { explorerState } from './features/explorer/state';
@@ -17,6 +16,7 @@ import { pullRequestState } from './features/pull-request/state';
 import { terminalState, type TerminalInfo } from './features/terminal/state';
 import { actionsState, type ActionTab } from './features/actions/state';
 import { promptsState, type PromptTab } from './features/prompts/state';
+import type { KeyboardShortcut } from '@abuddy/sdk/types';
 
 export const id = 'code' as const;
 
@@ -344,18 +344,24 @@ const codeState = setup({
   actions: {
     spawnFeatureActors: enqueueActions(({ enqueue, context }) => {
       // Only spawn if not already
-        enqueue.spawnChild('explorerState', { systemId: 'explorer' });
-        enqueue.spawnChild('terminalState', { systemId: 'terminal' });
-        enqueue.spawnChild('searchState', { systemId: 'search' });
-        enqueue.spawnChild('commitState', { systemId: 'commit' });
-        enqueue.spawnChild('pullRequestState', { systemId: 'pr' });
-        enqueue.spawnChild('actionsState', { systemId: 'codeActions' });
-        enqueue.spawnChild('promptsState', { systemId: 'codePrompts' });
+        enqueue.spawnChild('explorerState', { id: 'explorer', systemId: 'explorer' });
+        enqueue.spawnChild('terminalState', { id: 'terminal', systemId: 'terminal' });
+        enqueue.spawnChild('searchState', { id: 'search', systemId: 'search' });
+        enqueue.spawnChild('commitState', { id: 'commit', systemId: 'commit' });
+        enqueue.spawnChild('pullRequestState', { id: 'pr', systemId: 'pr' });
+        enqueue.spawnChild('actionsState', { id: 'codeActions', systemId: 'codeActions' });
+        enqueue.spawnChild('promptsState', { id: 'codePrompts', systemId: 'codePrompts' });
     }),
 
-    notifyDirectoryChange: ({ event, context, system }) => {
+    notifyDirectoryChange: ({ event, context, system, self }) => {
       const ev = event as { type: 'UPDATE_STATE'; updates: Partial<Context> }
       if (ev.updates.baseDirectory && ev.updates.baseDirectory !== context.baseDirectory) {
+        // Swap in the new project's recent files, so Quick Open ranks its files and not
+        // the previous project's. Sent as its own event: this action runs before
+        // updateState, so assigning here would be overwritten by the same UPDATE_STATE.
+        const recentlyOpenedFiles = loadRecentFiles(ev.updates.baseDirectory)
+        self.send({ type: 'UPDATE_STATE', updates: { recentlyOpenedFiles } })
+
         // Don't send commit.REFRESH_STATUS or pr.REFRESH_STATUS here.
         // The backend handles refresh via notifyChildSystemsOfBaseChange after
         // SET_BASE_DIRECTORY is processed, avoiding a race condition where these
@@ -531,7 +537,7 @@ const codeState = setup({
 
       // Seed activeFilePath from persistence so addTab's "preserve context.activeFilePath
       // during restore" branch keeps the previously-active tab focused. If the persisted
-      // active path no longer matches a tab (corrupt/stale storage, legacy shape),
+      // active path no longer matches a tab (corrupt or stale storage),
       // fall back to the first persisted tab so the editor isn't blank on load.
       const persistedPaths = new Set(persistedTabs.map(t => t.path))
       const seededActive = persistedActive && persistedPaths.has(persistedActive)
@@ -711,7 +717,7 @@ const codeState = setup({
       const ev = event as { type: 'OPEN_QUICK_OPEN_RESULT'; path: string };
 
       // Track the file as recently opened
-      const updatedRecentFiles = addRecentFile(context.recentlyOpenedFiles, ev.path);
+      const updatedRecentFiles = addRecentFile(context.recentlyOpenedFiles, ev.path, context.baseDirectory);
       self.send({
         type: 'UPDATE_STATE',
         updates: { recentlyOpenedFiles: updatedRecentFiles }
@@ -746,9 +752,12 @@ const codeState = setup({
 
       // Update directory state from backend
       // Explorer child will receive CODE_CONNECTED via broadcastToAllFeatures and initialize itself
+      const baseDirectory = ev.data.baseDirectory || ''
+
       return {
         ...context,
-        baseDirectory: ev.data.baseDirectory || '',
+        baseDirectory,
+        recentlyOpenedFiles: loadRecentFiles(baseDirectory),
         settings: ev.data.settings,
         hotkeys: Object.keys(hotkeys).length > 0 ? hotkeys : context.hotkeys
       }
@@ -1311,7 +1320,7 @@ const codeState = setup({
     quickOpenResults: [],
     quickOpenSelectedIndex: 0,
     quickOpenLoading: false,
-    recentlyOpenedFiles: loadRecentFiles(),
+    recentlyOpenedFiles: [], // loaded per project once the backend reports baseDirectory
     tabViewHistory: [],
     // Default hotkeys for code plugin (will be overridden by settings)
     hotkeys: {},

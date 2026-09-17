@@ -1,22 +1,25 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-
-vi.mock('../../src/ears/index.ts', () => ({
-  findAll: () => [],
-  repository: { promptQueries: { all: () => [] }, flowsCommands: {} },
-}));
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createEarsEngine, installEngine } from '@abuddy/ears';
 
 const { createFlowSeeder } = await import('../../src/seed/flow-seeder.ts');
-const { stepRegistry } = await import('../../src/steps/registry.ts');
+const { startTestRuntime, testPacks } = await import('../../src/testing/index.ts');
 const { listenerTrigger, actionStep } = await import('../build/helpers/test-steps.ts');
-stepRegistry.register(listenerTrigger);
-stepRegistry.register(actionStep);
+// The registered steps the seeder compiles flows with
+startTestRuntime();
+testPacks.steps.set(listenerTrigger.type, listenerTrigger);
+testPacks.steps.set(actionStep.type, actionStep);
 const { seedPath } = await import('../../src/build/manifest.ts');
 
 let tmp: string | undefined;
+// The seeder reads and writes the installed engine: a fresh one per test
+beforeEach(() => {
+  installEngine(createEarsEngine({ isEntityType: (name) => ['Flow', 'Node', 'Action', 'Prompt', 'Relation'].includes(name) }).query);
+});
 afterEach(() => {
+  installEngine(undefined);
   if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
   tmp = undefined;
   vi.restoreAllMocks();
@@ -27,6 +30,7 @@ describe('flow seeder', () => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-seeder-'));
     const file = seedPath(tmp, 'flows');
     fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(path.join(tmp, 'seeds.json'), JSON.stringify({ version: 1, packId: 'demo', seeds: [] }));
     fs.writeFileSync(file, JSON.stringify({
       'Broken Flow': { tracks: [{ event: 'flow.entry', label: 'Flow Entry', exits: [[{ type: 'no_such_step' }]] }] },
     }));
@@ -37,5 +41,16 @@ describe('flow seeder', () => {
 
     expect(counts.errors).toEqual([expect.stringMatching(/^Flow "Broken Flow" is invalid: /)]);
     expect(counts.created).toBe(0);
+  });
+
+  it('fails with a rebuild error when the compiled seeds name no pack', () => {
+    tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'flow-seeder-'));
+    const file = seedPath(tmp, 'flows');
+    fs.mkdirSync(path.dirname(file), { recursive: true });
+    fs.writeFileSync(path.join(tmp, 'seeds.json'), JSON.stringify({ version: 1, seeds: [] }));
+    fs.writeFileSync(file, JSON.stringify({}));
+
+    expect(() => createFlowSeeder().seed({ compiledDir: tmp!, mode: 'replace-on-collision', log: () => {} }))
+      .toThrow(/doesn't name the pack that compiled these seeds: rebuild the pack/);
   });
 });

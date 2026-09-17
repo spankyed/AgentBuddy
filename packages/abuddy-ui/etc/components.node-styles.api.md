@@ -7,9 +7,6 @@
 import type { Component } from 'vue';
 
 // @public (undocumented)
-export const getAllNodeTypes: () => string[];
-
-// @public (undocumented)
 export const getConnectableNodeTypes: () => {
     type: string;
     label: string;
@@ -22,12 +19,6 @@ export const getConnectableNodeTypes: () => {
 export const getInspectionItemClasses: (type: string) => string;
 
 // @public (undocumented)
-export const getNodeAccentBarClasses: (nodeType: string, options?: NodeStyleOptions) => string;
-
-// @public (undocumented)
-export const getNodeBadgeClasses: (nodeType: string, options?: NodeStyleOptions) => string;
-
-// @public (undocumented)
 export const getNodeClasses: (nodeType: string, options?: NodeStyleOptions) => string;
 
 // @public (undocumented)
@@ -35,15 +26,6 @@ export const getNodeConfig: (nodeType: string) => NodeConfig | undefined;
 
 // @public (undocumented)
 export const getNodeDividerClass: (nodeType: string, options?: NodeStyleOptions) => string;
-
-// @public (undocumented)
-export const getNodeGlowClasses: (nodeType: string, options?: NodeStyleOptions) => string;
-
-// @public (undocumented)
-export const getNodeIconBgColor: (nodeType: string, options?: NodeStyleOptions) => string;
-
-// @public (undocumented)
-export const getNodeIconDotClasses: (nodeType: string, options?: NodeStyleOptions) => string;
 
 // @public (undocumented)
 export const getNodeIconTextColor: (nodeType: string, options?: NodeStyleOptions) => string;
@@ -87,8 +69,6 @@ export interface NodeConfig {
     bgColor: string;
     // (undocumented)
     color: string;
-    // (undocumented)
-    component?: string;
     // (undocumented)
     connectionRules: {
         inputs: number;

@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { validate } from '../../src/build/compilers/flow-dsl-validator.ts';
 import type { StepDefinition } from '../../src/steps/types.ts';
-import { stepRegistry } from '../../src/steps/registry.ts';
+import { startTestRuntime, testPacks } from '../../src/testing/index.ts';
+
+// The registered steps these compile against: the stand-in's, which the specs fill
+startTestRuntime();
 
 const baseTriggers: StepDefinition[] = [
   {
@@ -34,7 +37,7 @@ const baseTriggers: StepDefinition[] = [
 ];
 
 describe('flow DSL validator', () => {
-  afterEach(() => stepRegistry.clear());
+  afterEach(() => testPacks.steps.clear());
 
   describe('schedule tracks', () => {
     it('allows root flows with only a schedule track', () => {
@@ -160,7 +163,7 @@ describe('flow DSL validator', () => {
 
   describe('registry fallback', () => {
     it('falls back to step registry when options.steps is not provided', () => {
-      for (const step of baseTriggers) stepRegistry.register(step);
+      for (const step of baseTriggers) testPacks.steps.set(step.type, step);
 
       const result = validate({
         'Flow': [{ event: 'test.event', exits: [[]] }],

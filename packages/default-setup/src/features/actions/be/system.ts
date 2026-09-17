@@ -6,12 +6,13 @@ import { bus } from '@abuddy/sdk/ids';
 import { flows } from '@/__generated__/system-ids';
 
 import { EARS } from '@/__generated__/ears';
-import type { ActionsStartupData, ActionEntity } from './types';
+import type { ActionsStartupData } from './types';
 import { repository } from '@/__generated__/repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
 import './repository';
 import { exportActions } from './repository/export-actions';
+import type { ActionEntity } from '@abuddy/sdk';
 
 const logger = createLogger('actions');
 
@@ -320,12 +321,16 @@ export const actionsSystem = setup({
           CLIENT_CONNECTED: {
             actions: 'sendActionsStartupData',
           },
+          // A pack's seeds can add or change actions
+          PACK_CHANGED: {
+            actions: 'sendActionsStartupData',
+          },
         },
       },
     },
   }
 );
 
-const actionsEntry: SystemEntry = { spec: actionsSpec, machine: actionsSystem };
+const actionsEntry = { spec: actionsSpec, machine: actionsSystem } satisfies SystemEntry;
 
 export default actionsEntry;

@@ -76,8 +76,6 @@ export interface ClaudeCodeThreadState {
   chatState?: ChatState;
   /** Total tool calls across all turns in this session. */
   toolCallCount?: number;
-  /** The most recent tool the agent used (for the sidebar summary line). */
-  lastTool?: { name: string; summary: string; at: number };
   /** Last 3 tools executed (rolling window, most recent last). */
   recentTools?: Array<{ name: string; summary: string; at: number }>;
   /** Permission policy for the next turn. */

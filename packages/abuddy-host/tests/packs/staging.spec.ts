@@ -3,14 +3,11 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { registerHostModule } from '@abuddy/sdk/runtime';
 import { prepareHostDataDirs, recoverStagingDirs, stagingDirName } from '../../src/packs/staging.ts';
 import { discoverPacks, reconcileExternalRegistry } from '../../src/packs/pack-discovery.ts';
 import { readPackRegistry, writePackRegistry } from '../../src/packs/pack-registry.ts';
 import { readHostVersion } from '../../src/packs/host-info.ts';
 
-const noop = () => {};
-registerHostModule('logger', { createLogger: () => ({ debug: noop, info: noop, warn: noop, error: noop }), LogEvent: {} });
 
 let root: string;
 let packsDir: string;
@@ -75,15 +72,11 @@ describe('recoverStagingDirs', () => {
     expect(readPackRegistry()).toMatchObject([{ id: 'demo-pack', enabled: true }]);
   });
 
-  it('applies the age rule to legacy names, reading no PID from a random suffix', () => {
-    mkdir('.old-pack.installing-Xy12Zw');
-    mkdir('.new-pack.installing-1AbCdE');
-    mkdir('.fresh-pack.installing-99999x');
-    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
-    fs.utimesSync(path.join(packsDir, '.old-pack.installing-Xy12Zw'), twoHoursAgo, twoHoursAgo);
+  it('leaves a directory whose name carries no process id', () => {
+    mkdir('.other-pack.installing-Xy12Zw');
 
-    expect(recoverStagingDirs(packsDir).removed).toEqual(['.old-pack.installing-Xy12Zw']);
-    expect(remaining()).toEqual(['.fresh-pack.installing-99999x', '.new-pack.installing-1AbCdE']);
+    expect(recoverStagingDirs(packsDir)).toMatchObject({ restored: [], removed: [], failed: [] });
+    expect(remaining()).toEqual(['.other-pack.installing-Xy12Zw']);
   });
 
   it('ignores a packs dir that does not exist yet', () => {

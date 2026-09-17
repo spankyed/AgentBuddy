@@ -2,8 +2,8 @@
   "name": "@app/typescript-floor",
   "version": "0.0.0",
   "private": true,
-  "description": "The oldest TypeScript @abuddy/sdk and @abuddy/ui support (their typescript peer), for the published-types specs",
+  "description": "The oldest TypeScript @abuddy/ears, @abuddy/sdk and @abuddy/ui support (the SDK's and UI's typescript peer), for the published-types specs",
   "dependencies": {
-    "typescript": "5.3.3"
+    "typescript": "5.7.3"
   }
 }

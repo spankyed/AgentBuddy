@@ -2,44 +2,30 @@ import { tx, qx } from '@/__generated__/ears';
 
 import { EARS } from '@/__generated__/ears';
 
-import type { SettingsEntity, SettingsData } from '../types';
+import type { SettingsData } from '../types';
 import { getDefaultSettings } from '../defaults';
-
-// Deep merge: defaults fill missing keys, stored values win. Arrays are not merged.
-function deepMerge(defaults: any, stored: any): any {
-  if (!stored || typeof stored !== 'object' || Array.isArray(stored)) return stored ?? defaults;
-  if (!defaults || typeof defaults !== 'object' || Array.isArray(defaults)) return stored;
-  const result = { ...defaults };
-  for (const key of Object.keys(stored)) {
-    result[key] = deepMerge(defaults[key], stored[key]);
-  }
-  return result;
-}
+import { mergeSettings } from '../../merge-settings';
 
 // Use a fixed ID without hyphen to avoid LMDB persistence issues
 // The ID "Settings-app" has a bug where updates don't persist
 const SETTINGS_ID = 'Settings-app' as EARS.EntityId<'Settings'>;
 
-// Get or create the single settings entity
-const getSettingsEntity = (): { id: EARS.EntityId; data: SettingsData } => {
-  // Always query first
+// The entity stores only what differs from the defaults (the user's changes), so a changed
+// default, or a pack's feature settings coming and going, applies to every key the user didn't set
+const getStoredSettings = (): Partial<SettingsData> => {
   const existing = qx(SETTINGS_ID).pickOne(['data']);
-
-  // If doesn't exist at all, create it
-  if (!existing) {
-    tx(SETTINGS_ID, true) // treatAsNew=true to add createdAt timestamp
-      .put('entityType', EARS.Entity.Settings)
-      .put('data', getDefaultSettings());
-
-    return { id: SETTINGS_ID, data: getDefaultSettings() };
-  }
-
-  // Merge defaults with stored data so new default fields backfill automatically
-  return {
-    id: SETTINGS_ID,
-    data: deepMerge(getDefaultSettings(), existing.data)
-  };
+  if (existing) return (existing.data ?? {}) as Partial<SettingsData>;
+  tx(SETTINGS_ID, true) // treatAsNew=true to add createdAt timestamp
+    .put('entityType', EARS.Entity.Settings)
+    .put('data', {});
+  return {};
 };
+
+// The settings in effect: the defaults with the stored changes over them
+const getSettingsEntity = (): { id: EARS.EntityId; data: SettingsData } => ({
+  id: SETTINGS_ID,
+  data: mergeSettings(getDefaultSettings(), getStoredSettings()),
+});
 
 // Helper to update nested values
 const setNestedValue = (obj: any, path: string[], value: any): any => {
@@ -74,8 +60,6 @@ export const settingsQueries = {
     return general;
   },
 
-  getInternalSettings: () => getSettingsEntity().data.internal,
-
   getAssistantSettings: () => getSettingsEntity().data.assistant,
 
   getPluginSettings: (pluginId: string) => {
@@ -87,10 +71,10 @@ export const settingsQueries = {
 // COMMANDS
 export const settingsCommands = {
   updateSettings(type: string, label: string | null, path: string[], value: any): void {
-    const entity = getSettingsEntity();
+    const stored = getStoredSettings();
 
-    // General & plugin settings are grouped by label (e.g., general.secrets, plugin.flows)
-    // Internal & assistant settings don't use labels
+    // General & plugin settings are grouped by label (e.g., general.application, plugin.flows)
+    // Assistant settings don't use labels
     const needsLabel = type === 'general' || type === 'plugin';
     if (needsLabel && !label) {
       throw new Error(`Setting type '${type}' requires a label`);
@@ -102,9 +86,9 @@ export const settingsCommands = {
       ? [dataKey, label!, ...path]
       : [dataKey, ...path];
 
-    const newData = setNestedValue(entity.data, fullPath, value);
+    const newData = setNestedValue(stored, fullPath, value);
 
-    tx(entity.id)
+    tx(SETTINGS_ID)
       .put('data', newData)
       .put('updatedAt', Date.now());
   },
@@ -116,13 +100,22 @@ export const settingsCommands = {
       .put('updatedAt', Date.now());
   },
 
+  /** Removes a stored value (its path in the stored data), so its default applies again */
+  removeStored(path: string[]): void {
+    const newData = structuredClone(getStoredSettings());
+    const parent = path.slice(0, -1).reduce<any>((node, key) => node?.[key], newData);
+    const key = path[path.length - 1];
+    if (!parent || typeof parent !== 'object' || !(key in parent)) return;
+    delete parent[key];
+    tx(SETTINGS_ID)
+      .put('data', newData)
+      .put('updatedAt', Date.now());
+  },
+
   resetSettings: () => {
-    const entity = getSettingsEntity();
-    tx(entity.id).put('data', getDefaultSettings());
+    getStoredSettings();
+    tx(SETTINGS_ID).put('data', {});
   }
 };
 
-// Re-export change detection utilities
-export { detectAllArrayChanges, detectChanges, detectStatusChanges, detectCategoryChanges } from '../change-detection';
-export type { DiffResult } from '../change-detection';
 

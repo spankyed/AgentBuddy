@@ -10,10 +10,9 @@ import { executeQuery } from './execute/query';
 import { executeTransaction } from './execute/transaction';
 import { generateSchemaInfo } from './repository/schema';
 import { getTraceFlows, getFlowEvents, getNodeDetails } from './repository/trace-query';
-import { exportDatabase, importDatabase, getBackupInfo } from '@abuddy/host/backup';
 import { createLogger } from '@abuddy/sdk/logger';
-import type { TNodeEntity } from '@/__generated__/types';
-import { resetLmdbFiles, clearMemory, envs, policy, persistence, hydrateSharded } from '@abuddy/host/ears';
+import type { TNodeEntity } from '@abuddy/sdk/steps';
+import { services } from '@/__generated__/services';
 import { repository } from '@/__generated__/repository';
 
 const logger = createLogger('database');
@@ -26,7 +25,7 @@ type IncomingDatabaseEvents =
   | { type: 'GET_TRACE_FLOWS' }
   | { type: 'GET_FLOW_EVENTS'; flowId: string; offset?: number; limit?: number }
   | { type: 'GET_NODE_DETAILS'; nodeId: string }
-  | { type: 'EXPORT_DATABASE'; path: string; name?: string; databases: ('lmdb' | 'volatileLmdb' | 'secretsLmdb')[] }
+  | { type: 'EXPORT_DATABASE'; path: string; name?: string; databases: ('lmdb' | 'volatileLmdb')[] }
   | { type: 'IMPORT_DATABASE'; path: string }
   | { type: 'GET_BACKUP_INFO'; path: string }
   | { type: 'RESET_DATABASE' };
@@ -205,7 +204,7 @@ export const databaseSystem = setup({
     exportDatabase: ({ system, event }) => {
       const { path, name, databases } = databaseSpec.typeOf('EXPORT_DATABASE', event);
       
-      exportDatabase(path, name, databases).then(
+      services.appData.exportBackup(path, name, databases).then(
         (resultPath) => {
           system.get(bus).send(emit(database, { 
             type: 'EXPORT_DATABASE_SUCCESS',
@@ -225,17 +224,9 @@ export const databaseSystem = setup({
     importDatabase: ({ system, event }) => {
       const { path } = databaseSpec.typeOf('IMPORT_DATABASE', event);
       
-      importDatabase(path).then(
-        async (result) => {
-          // Clear memory and rehydrate from imported databases
-          clearMemory();
-          await hydrateSharded({ 
-            envs, 
-            policy,
-            includeVolatile: result.databases.includes('volatileLmdb'),
-            shardedPersistence: persistence
-          });
-          
+      // Replaces stored data and reloads memory from it; on failure the previous data is restored and reloaded
+      services.appData.importBackup(path).then(
+        () => {
           // Stop brain and notify success
           getActor(system, brain).send({ type: 'KILL_BRAIN' });
           system.get(bus).send(emit(database, { 
@@ -247,11 +238,7 @@ export const databaseSystem = setup({
             data: { schema: generateSchemaInfo() }
           }));
         },
-        async (error: unknown) => {
-          // Restore memory state
-          clearMemory();
-          await hydrateSharded({ envs, policy, shardedPersistence: persistence });
-          
+        (error: unknown) => {
           const errorMessage = error instanceof Error ? error.message : String(error);
           logger.error('Failed to import database:', { error: errorMessage });
           system.get(bus).send(emit(database, { 
@@ -265,7 +252,7 @@ export const databaseSystem = setup({
       const { path } = databaseSpec.typeOf('GET_BACKUP_INFO', event);
 
       try {
-        const info = await getBackupInfo(path);
+        const info = await services.appData.backupInfo(path);
         system.get(bus).send(emit(database, {
           type: 'BACKUP_INFO_RESULT',
           info
@@ -283,20 +270,13 @@ export const databaseSystem = setup({
       try {
         logger.info('Starting database reset...');
 
-        // Delete and recreate all LMDB files
-        await resetLmdbFiles();
-
-        // Create new root flow
-        const { flow, entryNode } = repository.flowsCommands.createFlowWithEntryNode({
-          label: 'Root Flow',
-          description: 'The root flow of the application',
-        });
-        repository.flowsCommands.grantRootFlowRole(flow.id);
+        // The host resets the whole app: fresh stores, then each pack's onInit and boot seed (the seeded root flow), then migrations
+        await services.appData.reset();
 
         // Restart the brain with the new root flow
         getActor(system, brain).send({ type: 'RESTART_BRAIN' });
 
-        logger.info('Database reset completed', { flowId: flow.id, entryNodeId: entryNode.id });
+        logger.info('Database reset completed', { flowId: repository.flowsQueries.rootFlow() });
 
         // Send success response and refresh
         system.get(bus).send(emit(database, {
@@ -369,6 +349,6 @@ GENERATE_AI_QUERY: {
   },
 });
 
-const databaseEntry: SystemEntry = { spec: databaseSpec, machine: databaseSystem };
+const databaseEntry = { spec: databaseSpec, machine: databaseSystem } satisfies SystemEntry;
 
 export default databaseEntry;

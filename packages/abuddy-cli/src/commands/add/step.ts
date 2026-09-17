@@ -17,13 +17,13 @@ Example:
 // Build-time facet: no FE or runtime imports, so it can ship in build/steps.build.mjs
 const BUILD = (type: string, camel: string, pascal: string) => `import type { StepDefinition, StepCompileResult, StepValidationError } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
-import type { ${pascal}DSLNode } from './types';
+import type { DSL${pascal}Node } from './types';
 
 export const ${camel}StepBuild: StepDefinition = {
   type: '${type}',
   build: {
     compile(node, nodeId, ts): StepCompileResult {
-      const step = node as unknown as ${pascal}DSLNode;
+      const step = node as unknown as DSL${pascal}Node;
       return {
         entity: { id: nodeId, entityType: EARS.Entity.Node, createdAt: ts, nodeType: '${type}', label: step.label ?? '${toLabel(type)}' },
         relations: [],
@@ -71,25 +71,42 @@ export const ${camel}StepFE: StepDefinition = {
 };
 `;
 
-const TYPES = (pascal: string, type: string) => `export interface ${pascal}DSLNode {
+// generate-entries types a `dsl.primaryField` helper's options from the first `DSL…Node` interface,
+// and adds each `… extends NodeBase` interface to the pack's Node row union
+const TYPES = (pascal: string, type: string) => `import type { NodeBase } from '@abuddy/sdk';
+import type { DSLNodeBase } from '@abuddy/sdk/build';
+
+export interface DSL${pascal}Node extends DSLNodeBase {
   type: '${type}';
   label?: string;
 }
 
-export interface ${pascal}CompiledNode {
-  type: '${type}';
+export interface ${pascal}Node extends NodeBase {
+  nodeType: '${type}';
 }
 `;
 
+// The flows editor renders a step's form with `node` and `resources` ({ actions, flows, models, prompts })
+// and listens for `update-node` (the changed fields) and `close`
 const FORM_VUE = (pascal: string) => `<script setup lang="ts">
-defineProps<{ modelValue: Record<string, unknown> }>();
-defineEmits<{ 'update:modelValue': [value: Record<string, unknown>] }>();
+import BaseForm from '@abuddy/ui/components/BaseForm';
+import type { ${pascal}Node } from './types';
+
+defineProps<{
+  node: ${pascal}Node;
+  resources?: Record<string, unknown[] | undefined>;
+}>();
+
+defineEmits<{
+  'update-node': [updates: Record<string, unknown>];
+  close: [];
+}>();
 </script>
 
 <template>
-  <div class="p-2">
+  <BaseForm :node="node" @update-node="$emit('update-node', $event)" @close="$emit('close')">
     <p class="text-xs text-neutral-400">${pascal} step configuration</p>
-  </div>
+  </BaseForm>
 </template>
 `;
 

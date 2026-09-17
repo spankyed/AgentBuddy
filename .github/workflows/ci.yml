@@ -39,25 +39,40 @@ jobs:
       - name: Schema drift check
         run: npm run schema:check --workspace @abuddy/sdk
 
-      - name: Build default-setup dev entry (for the SDK bridge drift check)
+      # Compiled seeds, snapshot and build/ (seed compilers, seed runtime): read by the seed parity,
+      # dependent-pack and seed runtime tests. The runtime records the seeds it's built beside, so it's built after
+      - name: Build default-setup pack artifacts
+        working-directory: packages/default-setup
+        run: npx abuddy build
+
+      # The facade types dependents compile against (dist/types/pack-types.d.ts) match the reviewed report
+      - name: Facade types report (default-setup)
+        run: npm run facade:check --workspace @app/default-setup
+
+      - name: Build default-setup runtime (for the SDK bridge drift check and dependent-pack tests)
         run: node packages/default-setup/dev-build.mjs
 
       - name: Unit tests (api)
         run: npm test --workspace @app/api -- --reporter=verbose
-        env:
-          REQUIRE_DEV_ENTRY: '1'
 
       - name: Unit tests (default-setup)
         run: npm test --workspace @app/default-setup -- --reporter=verbose
 
       - name: Unit tests (sdk)
         run: npm test --workspace @abuddy/sdk -- --reporter=verbose
+        env:
+          REQUIRE_SEED_RUNTIME: '1'
+
+      - name: Unit tests (ears)
+        run: npm test --workspace @abuddy/ears -- --reporter=verbose
 
       - name: Unit tests (host)
         run: npm test --workspace @abuddy/host -- --reporter=verbose
+        env:
+          REQUIRE_RUNTIME_ENTRY: '1'
 
       - name: API reports
-        run: npm run api:check --workspace @abuddy/sdk --workspace @abuddy/ui
+        run: npm run api:check --workspace @abuddy/ears --workspace @abuddy/sdk --workspace @abuddy/ui
 
       - name: Build publishable packages
         run: npm run packages:build

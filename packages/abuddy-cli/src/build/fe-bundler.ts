@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import type { Plugin as VitePlugin, Rollup } from 'vite';
 import { init as initModuleLexer, parse as parseModule } from 'es-module-lexer';
 import { sourceConditions } from '@abuddy/sdk/build';
-import { getSharedFeDeps, getSdkFeModules, getUiFeModules } from '@abuddy/host/build/shared-deps';
+import { getSharedFeDeps, getSdkFeModules, getUiFeModules, sharedInstancePackage } from '@abuddy/host/build/shared-deps';
 
 const EXTERNAL_PREFIX = '\0pack-external:';
 
@@ -109,15 +109,17 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
     return resolved && !resolved.external ? discoverModuleExports(ctx, resolved.id) : [];
   }
 
-  // The SDK's host-module registry. Proxied SDK modules share the host's copy via
-  // window.__abuddy; an inlined copy has its own empty registry, so any inlined
-  // module calling getHostModule() throws "SDK host module ... not registered".
-  async function resolveHostRegistryPath(ctx: ResolveContext): Promise<string | undefined> {
+  // The SDK's host bindings (bindHost, bindFeHost). Proxied SDK modules share the host's copy via
+  // window.__abuddy; an inlined copy has nothing bound, so any inlined module reaching the app
+  // throws "No host is bound".
+  async function resolveHostBindingPaths(ctx: ResolveContext): Promise<string[]> {
     const runtimeIndex = await resolveSdkFile(ctx, '@abuddy/sdk/runtime');
-    if (!runtimeIndex) return undefined;
-    // Workspace source, or the published package's compiled module
-    const host = ['host.ts', 'host.js'].map(f => path.join(path.dirname(runtimeIndex), f)).find(f => fs.existsSync(f));
-    return host && fs.realpathSync(host);
+    if (!runtimeIndex) return [];
+    // Workspace source, or the published package's compiled modules
+    return ['host-runtime', 'fe-host'].flatMap((name) => {
+      const file = ['ts', 'js'].map(ext => path.join(path.dirname(runtimeIndex), `${name}.${ext}`)).find(f => fs.existsSync(f));
+      return file ? [fs.realpathSync(file)] : [];
+    });
   }
 
   // SDK modules the host shares, by file. A bundled SDK module can import one of these barrels
@@ -143,15 +145,12 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
     enforce: 'pre',
 
     async generateBundle(_options, bundle) {
-      const hostPath = await resolveHostRegistryPath(this);
-      if (!hostPath) return;
-      const sdkRoot = path.dirname(path.dirname(hostPath));
       // Only code that survives tree-shaking matters (e.g. generated files re-export BE modules)
-      const rendered = Object.values(bundle).some(
-        (out) => out.type === 'chunk' && (out.modules[hostPath]?.renderedLength ?? 0) > 0,
-      );
-      if (!rendered) return;
-      const hostId = hostPath;
+      const hostId = (await resolveHostBindingPaths(this)).find((file) => Object.values(bundle).some(
+        (out) => out.type === 'chunk' && (out.modules[file]?.renderedLength ?? 0) > 0,
+      ));
+      if (!hostId) return;
+      const sdkRoot = path.dirname(path.dirname(hostId));
 
       // Walk importers back to the first pack-owned module to name the offending import
       const chain = [hostId];
@@ -170,8 +169,8 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
         : path.relative(packRoot, id);
 
       this.error(
-        'Pack FE code inlines an @abuddy/sdk module that depends on the host module registry, ' +
-        'which would fail at runtime with "SDK host module ... not registered".\n' +
+        'Pack FE code inlines an @abuddy/sdk module that reaches the app through its host binding, ' +
+        'which would fail at runtime with "No host is bound".\n' +
         `  Import chain: ${chain.reverse().map(rel).join(' → ')}\n` +
         `  Only these SDK modules are shared with the host in the renderer: ${Object.keys(sdkModules).join(', ')}.\n` +
         '  Import from one of those instead, or add the module to SDK_FE_MODULES in @abuddy/host/build/shared-deps.',
@@ -196,8 +195,9 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
       if (sdkModules[source] || uiModules[source]) {
         return EXTERNAL_PREFIX + source;
       }
-      if (source.startsWith('@abuddy/sdk')) {
-        // From the pack, not the importing module: SDK modules must resolve to the pack's SDK
+      if (sharedInstancePackage(source)) {
+        // From the pack, not the importing module: shared-instance modules (@abuddy/sdk, @abuddy/ears)
+        // must resolve to the pack's copies
         return this.resolve(source, packImporter, { ...options, skipSelf: true });
       }
     },
@@ -307,6 +307,17 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
       root: packDir,
       configFile: false,
       plugins: [
+        {
+          // The app's private host package isn't provided to packs; they import @abuddy/sdk
+          name: 'reject-host-imports',
+          enforce: 'pre',
+          resolveId(id: string, importer?: string) {
+            if (/^@abuddy\/host(?:\/|$)/.test(id)) {
+              this.error(`${id} is the app's private host package; packs import @abuddy/sdk instead${importer ? ` (imported from ${importer})` : ''}`);
+            }
+            return null;
+          },
+        },
         tailwindInjectPlugin,
         packExternalsPlugin(packDir),
         vue(),

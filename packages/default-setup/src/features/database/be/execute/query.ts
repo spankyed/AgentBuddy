@@ -1,14 +1,15 @@
 import { qx } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
-import { getEntitiesOfType, getAll, getRoles } from '@abuddy/sdk/ears';
+import { getEntitiesOfType, getAll, getRoles } from '@abuddy/ears';
 import { getAttr, getAttrs } from '@/__generated__/ears';
 import {
   getAllEntities,
   queryEntitiesByRelationTo,
   queryEntitiesByAttribute,
   queryEntitiesInRelationTo,
-  relationIndex,
-} from '@abuddy/host/ears';
+  findRelations,
+  getRelationStats,
+} from '@abuddy/ears';
 import { getSchemaStats } from '../repository/schema';
 
 /**
@@ -42,7 +43,8 @@ export async function executeQuery(code: string): Promise<any> {
       'getEntitiesOfType',
       'queryEntitiesByAttribute',
       'queryEntitiesInRelationTo',
-      'relationIndex',
+      'findRelations',
+      'getRelationStats',
       'getSchemaStats',
       functionBody
     );
@@ -59,7 +61,8 @@ export async function executeQuery(code: string): Promise<any> {
       getEntitiesOfType,
       queryEntitiesByAttribute,
       queryEntitiesInRelationTo,
-      relationIndex,
+      findRelations,
+      getRelationStats,
       getSchemaStats
     );
     

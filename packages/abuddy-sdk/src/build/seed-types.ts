@@ -1,10 +1,4 @@
-export interface ActionParameter {
-  type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-  description?: string;
-  required?: boolean;
-  default?: unknown;
-  placeholder?: string;
-}
+import type { ActionParameter, TemplateInput } from '../types/sdk-entities.ts';
 
 export interface ActionMeta {
   label: string;
@@ -14,15 +8,6 @@ export interface ActionMeta {
   output?: unknown;
 }
 
-export interface TemplateInput {
-  name: string;
-  type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
-  description?: string;
-  required?: boolean;
-  defaultValue?: unknown;
-  commonSources?: string[];
-  example?: unknown;
-}
 
 export interface PromptMeta {
   label: string;

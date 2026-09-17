@@ -17,7 +17,7 @@ Screenshots saved to `tests/screenshots/{name}.png` (gitignored).
 
 - **Never kill processes by broad pattern** (`pkill -f Electron`, `pkill -f node`, `killall Electron`, …). The user runs dev and prod AgentBuddy alongside tests, and a broad kill takes those down. If a test run hangs, stop only the process you started (its PID).
 - **E2E runs alongside dev and prod apps.** Tests use the `abuddy-test` app name and a fresh temp data dir per worker (`$TMPDIR/abuddy-e2e-*`, via `ABUDDY_USER_DATA_DIR`), so no running app needs to be closed first. Don't claim otherwise — just run the tests.
-- **Investigate a failing assertion before changing it.** Find out why it fails (`DEBUG_E2E=1`, `app.getContext()`, probing actor state with `appPage.evaluate`) and fix the cause. Loosening one to go green once removed the only backend check and hid the real cause (docs/issues/postmortem-external-pack-calendar-extraction.md, item 1).
+- **Investigate a failing assertion before changing it.** Find out why it fails (`DEBUG_E2E=1`, `app.getContext()`, probing actor state with `appPage.evaluate`) and fix the cause. Loosening one to go green once removed the only backend check and hid the real cause (docs/archive/issues/postmortem-external-pack-calendar-extraction.md, item 1).
 - **Each worker starts from an empty data dir, but tests in a worker share it.** Anything a test creates is visible to later tests in the same run; assert on unique values and clean up what you create. `E2E_KEEP_DATA=1` keeps the dir for inspection.
 
 ## How the fixture works
@@ -28,21 +28,24 @@ The test infrastructure lives in `@abuddy/testing` (source: `packages/abuddy-tes
 
 When a test worker starts, the fixture runs this sequence:
 
-1. **Resolve and validate app root** — `resolveAppRoot()` checks `ABUDDY_ROOT` env var, then auto-detects by walking up from the SDK package directory looking for `packages/entry-point.mjs`. Inside the monorepo, auto-detection always works. Once resolved, `validateAppRoot()` checks for required files (`packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist`, `packages/renderer/dist`) and throws a clear error if anything is missing.
+1. **Resolve the app** — `resolveApp()` (when `createTest()` runs, at import) takes the first of: `createTest({ appExecutable })`, `createTest({ appRoot })`, `ABUDDY_APP_EXECUTABLE`, `ABUDDY_ROOT`, then auto-detection, walking up from the `@abuddy/testing` package directory for `packages/entry-point.mjs` (always works inside the monorepo). An executable must exist. A checkout goes through `validateAppRoot()`, which checks for `packages/entry-point.mjs`, `node_modules/electron`, `packages/main/dist` and `packages/renderer/dist` and throws listing what's missing.
 
 2. **Pack setup** (only when `PACK_DIR` is set):
    - Read `abuddy.json` from `PACK_DIR` to get the pack ID and plugin IDs
-   - Always rebuild the pack (using the `abuddy build` CLI binary), then install it into the worker's temp data dir with the bundle installer (stage → verify → place)
+   - Always rebuild the pack with `node <abuddy bin> build` (the bin is `ABUDDY_CLI`, else the `@abuddy/cli` the pack resolves, else the checkout's)
+   - Install it into the worker's temp data dir with the bundle installer (stage → verify → place), passing the launched app's version (the checkout's `package.json`, or the packaged app's `Resources/app/package.json`) so a pack whose `hostVersion` excludes it fails to install
 
-3. **Launch Electron** — resolves the `electron` binary from `appRoot/node_modules/electron` (so external packs don't need `electron` installed), then launches with `_electron.launch({ executablePath, args: ['.'], cwd: appRoot })` and `PLAYWRIGHT_TEST=true`. The Electron app starts the same as dev mode but headless (no window display or splash screen) and with error handling set to crash immediately on uncaught exceptions.
+3. **Launch Electron** — for a checkout, resolves `electron` from the checkout's `node_modules` (so external packs don't need `electron` installed) and launches `_electron.launch({ executablePath, args: [<appRoot>], cwd: appRoot })`; a packaged app launches its executable with no args. The env is the runner's minus `ELECTRON_RUN_AS_NODE` (inherited from an app-bundled `abuddy`, it would start Electron as plain Node) and minus the `@abuddy/source` condition in `NODE_OPTIONS`, plus `PLAYWRIGHT_TEST=true` and `ABUDDY_USER_DATA_DIR=<worker dir>` (`src/launch-env.ts`). `PLAYWRIGHT_TEST` selects the `test` environment, a packaged build included; the app runs headless (no window display or splash screen) and crashes on uncaught exceptions.
 
-4. **Find main window** — `findMainWindow()` polls all Electron windows for `window.applicationState` (the XState actor exposed on the renderer's `window`). This distinguishes the main renderer from the splash screen. Timeout: 45s.
+4. **Find main window** — `findMainWindow()` polls all Electron windows for `window.applicationState` (the XState actor exposed on the renderer's `window`). This distinguishes the main renderer from the splash screen. Timeout: 45s. The viewport is then pinned to 1400×900, since the window's default size differs between dev and production builds of main.
 
-5. **Wait for connected state** — `page.waitForFunction()` checks `applicationState.getSnapshot().value` for `{ running: 'connected' }` or `{ onboarding: ... }`. If onboarding is detected, calls `window.__disableOnboardingUI()` then waits for `running.connected`.
+5. **Wait for connected state** — `page.waitForFunction()` checks `applicationState.getSnapshot().value` for `{ running: 'connected' }` or `{ onboarding: ... }` (45s). If onboarding is detected, calls `window.__disableOnboardingUI()` then waits for `running.connected`.
 
-6. **Wait for pack plugins** (only when `PACK_DIR` is set) — For each plugin ID from the manifest, waits for it to appear in `applicationState.getSnapshot().context.plugins`. If the renderer logs `[pack-loader] Failed to load FE entry pack://{packId}/…` for the pack under test, the test fails immediately. That failure, and a plugin that never registers, include the captured renderer errors and Electron/API error lines, so `DEBUG_E2E=1` is rarely needed to find the cause.
+6. **Check the pack's seeding** (only when `PACK_DIR` is set) — if the pack's entry in the test data dir's pack registry has a `lastError` (its data failed to seed), the fixture fails with it.
 
-7. **Provide the `appPage` and `app` fixtures** to the test.
+7. **Wait for pack plugins** (only when `PACK_DIR` is set) — For each plugin ID from the manifest, waits for it to appear in `applicationState.getSnapshot().context.plugins`. If the renderer logs `[pack-loader] Failed to load FE entry pack://{packId}/…` for the pack under test, the test fails immediately. That failure, and a plugin that never registers, include the captured renderer errors and Electron/API error lines, so `DEBUG_E2E=1` is rarely needed to find the cause.
+
+8. **Provide the `appPage` and `app` fixtures** to the test.
 
 ### Teardown
 
@@ -149,13 +152,14 @@ PACK_DIR=/path/to/my-pack npm test -- tests/e2e/smoke
 3. **Build**: always runs `abuddy build` in the pack directory (fails the run if the build fails)
 4. **Install** — installs the built pack into that data dir through the bundle installer; no other packs are present
 5. **Launch Electron** — starts the app, which discovers the pack in its packs directory
-6. **Wait for plugins** — for each plugin ID from the manifest, waits up to 30s for it to appear in `applicationState.context.plugins`. Fails immediately, with the captured errors, if the pack's FE entry fails to load.
+6. **Check seeding** — fails if the pack's registry entry has a `lastError`
+7. **Wait for plugins** — for each plugin ID from the manifest, waits up to 30s for it to appear in `applicationState.context.plugins`. Fails immediately, with the captured errors, if the pack's FE entry fails to load.
 
 The in-repo fixture pack at `tests/fixtures/external-pack` exercises this whole path from its own directory: `npm run test:external-pack`.
 
 ### Finding plugin IDs
 
-Plugin IDs come from the pack's `abuddy.json` → `features[].plugin.id` (or `features[].id` as fallback).
+Plugin IDs are the `features[].id` of the pack's `abuddy.json` features that declare a `plugin` (the manifest's `plugin` object has no `id` of its own).
 
 ## Renderer globals
 
@@ -173,7 +177,9 @@ The renderer exposes on `window`:
 | `PACK_DIR=/path/to/pack` | Builds the pack, installs it into the worker's isolated data dir, waits for plugins before tests run |
 | `E2E_KEEP_DATA=1` | Keep each worker's temp data dir (path is logged) |
 | `ABUDDY_ROOT=/path/to/AgentBuddy` | A built AgentBuddy checkout to launch (auto-detected inside the monorepo) |
-| `ABUDDY_APP_EXECUTABLE=/path/to/exe` | A packaged AgentBuddy executable to launch (set by `abuddy test --app beta`) |
+| `ABUDDY_APP_EXECUTABLE=/path/to/exe` | A packaged AgentBuddy executable to launch (set by `abuddy test --app beta`); wins over `ABUDDY_ROOT` |
+| `ABUDDY_CLI=/path/to/abuddy.mjs` | The abuddy bin that builds `PACK_DIR` (set by `abuddy test`) |
+| `ABUDDY_APP=beta` | Read by `abuddy test` (and `abuddy build`), not the fixture: use the newest matching AgentBuddy Beta without prompting (CI) |
 
 ## Key events for sendEvent()
 
@@ -192,7 +198,11 @@ The renderer exposes on `window`:
 | File | Purpose |
 |------|---------|
 | `fixtures/app.ts` | Thin re-export from `@abuddy/testing` |
-| `smoke.spec.ts` | Basic tests: app launches, reaches connected state, plugins load, default screenshot |
+| `smoke.spec.ts` | Basic tests: app launches, reaches connected state, plugins load, default screenshot, per-worker isolated data dir |
 | `navigation.spec.ts` | Navigate between plugins, screenshot each |
+| `secrets.spec.ts` | Settings → Secrets: adds and selects API keys, and checks the key strings reach no log, stored file or renderer state |
+| `import-pack-seeds.spec.ts` | Settings → Import Pack Seeds: compiles default-setup's notes and library entries into a seeds directory, previews it, imports a selection, re-imports in keep-existing mode |
+| `plugin-sends.spec.ts` | Backend sends to plugins through the bus: the code system's file watcher and terminal output, and the browser system's startup data after a pack reload, reach their plugins (recorded with `applicationState.system.inspect`) |
+| `dev-reload.spec.ts` | `POST /dev/reload` of the built-in pack re-seeds changed seed data and resends startup data |
 | `scratch.spec.ts` | Ad-hoc test file (gitignored — create as needed) |
 | `packages/abuddy-testing/src/index.ts` | The actual fixture source (shared between monorepo and external packs) |

@@ -1,19 +1,10 @@
 import { FEATURE_ID_PATTERN } from '@abuddy/sdk/build';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { generateEntries } from '../generate-entries';
+import { scaffoldUnitTestSetup, type UnitTestSetup } from '../init';
 import { toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, parseFlag, hasFlag } from './templates';
 import { readManifest, writeManifest, addFeature as addFeatureToManifest } from './manifest';
-
-const FEATURE_CONFIG = (name: string, designation?: string) => {
-  const desig = designation ? `\n  designation: '${designation}',` : '';
-  return `import type { FeatureConfig } from '@abuddy/sdk/build';
-
-export default {
-  name: '${name}',${desig}
-  settings: './settings.ts',
-} satisfies FeatureConfig;
-`;
-};
 
 const SETTINGS = (id: string) => `export default {
   plugins: {
@@ -60,10 +51,26 @@ export const ${camel}System = setup({
   },
 });
 
-const ${camel}Entry: SystemEntry = { spec: ${camel}Spec, machine: ${camel}System };
+const ${camel}Entry = { spec: ${camel}Spec, machine: ${camel}System } satisfies SystemEntry;
 
 export default ${camel}Entry;
 `;
+
+const SYSTEM_SPEC = (name: string) => {
+  const connected = `${name.toUpperCase().replace(/-/g, '_')}_CONNECTED`;
+  return `// The ${name} system under the app's bus, without the app (@abuddy/testing/harness)
+import { describe, expect, it } from 'vitest';
+import { startApp } from '@abuddy/testing/harness';
+
+describe('${name} system', () => {
+  it('sends its connected data when a client connects', async () => {
+    const app = await startApp({ systems: ['${name}'] });
+    await app.connect();
+    expect(await app.nextEmit('${name}', '${connected}')).toMatchObject({ data: {} });
+  });
+});
+`;
+};
 
 const TYPES = (pascal: string) => `export interface ${pascal}ConnectedData {
   // Define connected data shape
@@ -142,7 +149,7 @@ Usage: abuddy add feature <name> [options]
 Options:
   --label <Label>          Display label (default: derived from name)
   --icon <LucideIcon>      Lucide icon name (default: Box)
-  --designation <role>     EARS designation
+  --designation <role>     EARS designation (must equal the feature name)
 
 Example:
   abuddy add feature bookmarks --label "Bookmarks" --icon Bookmark
@@ -163,13 +170,17 @@ export async function addFeature(args: string[], root: string) {
   const label = parseFlag(args, '--label') || toLabel(name);
   const icon = parseFlag(args, '--icon') || 'Box';
   const designation = parseFlag(args, '--designation');
+  if (designation !== undefined && designation !== name) {
+    throw new Error(`Designation "${designation}" must equal the feature name "${name}": a designation routes to the feature of the same id`);
+  }
   const camel = toCamelCase(name);
   const pascal = toPascalCase(name);
   const featureDir = path.join(root, 'src', 'features', name);
 
   const created: string[] = [];
+  // The system test runs on the harness: a pack scaffolded before it has no tests/setup.ts
+  const unitTestSetup = fs.existsSync(path.join(root, 'tests', 'setup.ts')) ? undefined : scaffoldUnitTestSetup(root);
   const files: [string, string][] = [
-    [path.join(featureDir, 'feature.config.ts'), FEATURE_CONFIG(name, designation)],
     [path.join(featureDir, 'settings.ts'), SETTINGS(name)],
     [path.join(featureDir, 'be', 'system.ts'), SYSTEM(name, camel, pascal)],
     [path.join(featureDir, 'be', 'types.ts'), TYPES(pascal)],
@@ -178,6 +189,7 @@ export async function addFeature(args: string[], root: string) {
     [path.join(featureDir, 'fe', 'state.ts'), STATE(name)],
     [path.join(featureDir, 'fe', 'canvas', 'list.vue'), LIST_VUE(label)],
     [path.join(featureDir, 'fe', 'settings.vue'), SETTINGS_VUE()],
+    [path.join(root, 'tests', 'unit', `${name}-system.spec.ts`), SYSTEM_SPEC(name)],
   ];
 
   for (const [filePath, content] of files) {
@@ -187,9 +199,10 @@ export async function addFeature(args: string[], root: string) {
   const manifest = readManifest(root);
   addFeatureToManifest(manifest, {
     id: name,
+    ...(designation !== undefined && { designation }),
     settings: `src/features/${name}/settings.ts`,
     system: { entry: `src/features/${name}/be/system.ts` },
-    plugin: { entry: `src/features/${name}/fe/plugin.ts`, label, icon },
+    plugin: { entry: `src/features/${name}/fe/plugin.ts` },
     services: {},
     repositories: {
       [`${camel}Queries`]: `src/features/${name}/be/repository/index.ts#${camel}Queries`,
@@ -201,6 +214,21 @@ export async function addFeature(args: string[], root: string) {
   await generateEntries([], root);
 
   console.log(`\nCreated feature "${name}":`);
-  logCreated(root, created);
+  logCreated(root, [...(unitTestSetup?.created ?? []), ...created]);
   console.log(`\n  manifest updated + __generated__/ regenerated`);
+  if (unitTestSetup) logUnitTestSetup(unitTestSetup);
+}
+
+function logUnitTestSetup({ keptConfig, addedDependencies, upgrades }: UnitTestSetup): void {
+  console.log(`\nThe pack had no unit test setup, which the feature's system test runs on: added tests/setup.ts (@abuddy/testing/harness).`);
+  if (keptConfig) {
+    console.log(`  ${keptConfig} already exists: give its test options isolatedDataDir()'s env and globalSetup, and setupFiles: [...dataDir.setupFiles, './tests/setup.ts'] (@abuddy/testing/vitest)`);
+  }
+  if (addedDependencies.length > 0) {
+    console.log(`  Added ${addedDependencies.join(', ')} to devDependencies. Run: npm install`);
+  }
+  if (upgrades.length > 0) {
+    console.log(`  The harness can't run on the pack's ${upgrades.map(({ name, reason }) => `${name} (${reason})`).join(', ')}.`);
+    console.log(`  Upgrade: npm install -D ${upgrades.map(({ name, range }) => `${name}@"${range}"`).join(' ')}`);
+  }
 }

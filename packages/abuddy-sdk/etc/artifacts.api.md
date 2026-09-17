@@ -15,13 +15,9 @@ export interface ArtifactDefinition {
 // @public (undocumented)
 export interface ArtifactFEFacet {
     // (undocumented)
-    color?: string;
-    // (undocumented)
     component?: unknown;
     // (undocumented)
     icon: unknown;
-    // (undocumented)
-    loadComponent?: () => unknown;
 }
 
 // @public (undocumented)

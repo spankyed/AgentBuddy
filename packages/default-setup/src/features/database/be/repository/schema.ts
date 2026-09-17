@@ -1,7 +1,6 @@
 import { EARS } from '@/__generated__/ears';
 import type { DatabaseSchemaInfo } from '../types';
-import { getAllEntityTypes, getEntitiesOfType, getAllAttributeKinds, getAllRelationKinds, getAttributeStats } from '@abuddy/sdk/ears';
-import { relationIndex } from '@abuddy/host/ears';
+import { getAllEntityTypes, getEntitiesOfType, getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getRelationStats } from '@abuddy/ears';
 
 /**
  * Generate schema information from actual data in the system
@@ -54,41 +53,9 @@ export function getSchemaStats() {
   // Count relations by type
   const relationKinds = getAllRelationKinds();
   for (const kind of relationKinds) {
-    const entry = relationIndex[kind];
-    if (entry) {
-      // Count total relations by summing up all relation IDs
-      let totalRelations = 0;
-      const uniqueSources = Object.keys(entry.bySource).length;
-      const uniqueTargets = Object.keys(entry.byTarget).length;
-      
-      // Count unique relation IDs (each relation appears in both bySource and byTarget)
-      const uniqueRelationIds = new Set<string>();
-      for (const relIds of Object.values(entry.bySource) as string[][]) {
-        relIds.forEach((id: string) => uniqueRelationIds.add(id));
-      }
-      totalRelations = uniqueRelationIds.size;
-      
-      stats.relations[kind] = {
-        totalRelations,
-        uniqueSources,
-        uniqueTargets,
-      };
-    }
+    const { total, uniqueSources, uniqueTargets } = getRelationStats(kind);
+    stats.relations[kind] = { totalRelations: total, uniqueSources, uniqueTargets };
   }
   
   return stats;
-}
-
-/**
- * Get relation counts for a specific relation kind
- */
-export function getRelationCount(kind: string): number {
-  const entry = relationIndex[kind];
-  if (!entry) return 0;
-  
-  const uniqueRelationIds = new Set<string>();
-  for (const relIds of Object.values(entry.bySource) as string[][]) {
-    relIds.forEach((id: string) => uniqueRelationIds.add(id));
-  }
-  return uniqueRelationIds.size;
 }

@@ -4,6 +4,8 @@
 
 ```ts
 
+import { EARS as EARS_2 } from '@abuddy/ears';
+
 // @public (undocumented)
 export function asArr<T>(v: MaybeArr<T>): readonly T[];
 
@@ -40,12 +42,6 @@ export type ChangeBlock<T = unknown> = {
     renames?: Rename[];
     removed?: Array<T | string>;
 };
-
-// @public
-export function clearCliPathCache(): void;
-
-// @public (undocumented)
-export type CliName = 'copilot' | 'claude-code' | 'codex' | 'gh';
 
 // @public (undocumented)
 export function compareVersions(a: string, b: string): number;
@@ -84,7 +80,7 @@ export const entries: <T extends Record<string, unknown>>(obj: T) => Array<[keyo
 // @public
 export function extractAndResolveImages(markdown: string): ResolvedMedia[];
 
-// @public (undocumented)
+// @public
 export function extractImageParts(markdown: string): ImagePart[];
 
 // @public
@@ -96,20 +92,8 @@ export function extractValueByPath(source: unknown, path: string): unknown;
 // @public (undocumented)
 export function filterByInclude<T>(items: T[], getKey: (item: T) => string, inc: SeedIncludeSet | undefined): T[];
 
-// @public (undocumented)
-export function getAppVersion(): string;
-
-// @public (undocumented)
-export const getIndexFilePath: (indexId: string) => string;
-
-// @public (undocumented)
-export const getIndexMappingsPath: (indexId: string) => string;
-
-// @public (undocumented)
-export const getIndexMetadataPath: (indexId: string) => string;
-
-// @public (undocumented)
-export const getIndexPath: (indexId: string) => string;
+// @public
+export function getDataDirPath(name: string): string;
 
 // @internal
 export const getLmdbPath: () => string;
@@ -117,14 +101,8 @@ export const getLmdbPath: () => string;
 // @internal
 export const getMediaPath: () => string;
 
-// @public (undocumented)
-export const getModelsCachePath: () => string;
-
-// @public (undocumented)
-export const getSearchIndicesPath: () => string;
-
 // @internal
-export const getSecretsLmdbPath: () => string;
+export const getSecretsFilePath: () => string;
 
 // @public (undocumented)
 export const getUserDataPath: () => string;
@@ -132,7 +110,7 @@ export const getUserDataPath: () => string;
 // @internal
 export const getVolatileLmdbPath: () => string;
 
-// @public (undocumented)
+// @public
 export interface ImagePart {
     // (undocumented)
     image: Buffer;
@@ -145,10 +123,7 @@ export interface ImagePart {
 // @public (undocumented)
 export type ImportMode = 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace';
 
-// @public (undocumented)
-export function isCliName(value: string): value is CliName;
-
-// @public (undocumented)
+// @public
 export const isPlainObject: (val: unknown) => val is Record<string, unknown>;
 
 // @public (undocumented)
@@ -200,42 +175,19 @@ export function readMediaBuffer(ref: MediaRef): {
 } | null;
 
 // @public (undocumented)
-export function registerSeeder(seeder: Seeder): void;
+export const REDACTED = "[redacted]";
 
-// @public (undocumented)
-export function registerShutdownHook(hook: () => void, key?: string): void;
+// @public
+export function redactSecrets<T>(value: T): T;
 
-// @public (undocumented)
-export function removeShutdownHooksForKey(key: string): void;
+// @public
+export function redactSecretText(text: string): string;
 
 // @public (undocumented)
 export type Rename = {
     from: string;
     to: string;
 };
-
-// @public
-export function reportSystemError(input: ReportSystemErrorInput): void;
-
-// @public (undocumented)
-export interface ReportSystemErrorInput {
-    // (undocumented)
-    entityId?: string;
-    // (undocumented)
-    error: unknown;
-    // (undocumented)
-    operation?: string;
-    // (undocumented)
-    severity?: 'error' | 'fatal';
-    // (undocumented)
-    source?: string;
-    // (undocumented)
-    title?: string;
-    userMessage?: string;
-}
-
-// @public
-export function resolveCliPath(cli: CliName, preferredPath?: string): Promise<string>;
 
 // @public (undocumented)
 export interface ResolvedMedia extends MediaRef {
@@ -244,9 +196,6 @@ export interface ResolvedMedia extends MediaRef {
     // (undocumented)
     mimeType: string;
 }
-
-// @public
-export function resolveForService(cli: CliName): Promise<string>;
 
 // @public
 export function resolveMedia(ref: MediaRef): ResolvedMedia | null;
@@ -268,15 +217,6 @@ export function restoreMarkdownMediaRefs(content: string, newEntityId: string, r
 
 // @public
 export function rewriteMediaUrls(markdown: string, mediaFilenameMap: Map<string, string>): string;
-
-// @public (undocumented)
-export function runMigrations(): void;
-
-// @internal
-export function runShutdownHooks(): void;
-
-// @internal
-export function runShutdownHooksForKey(key: string): void;
 
 // @public (undocumented)
 export function seedCollection<T>(opts: {
@@ -309,7 +249,7 @@ export interface SeedCounts {
     updated: number;
 }
 
-// @public (undocumented)
+// @public
 export function seedData(options: {
     compiledDir: string;
     include?: Record<string, SeedIncludeSet | undefined>;
@@ -348,15 +288,6 @@ export function stripInternalFields<T extends object>(items: T[]): Record<string
 
 // @public
 export function stripMediaRefs(markdown: string): string;
-
-// @public
-export function testCli(cli: CliName, storedPath?: string): Promise<{
-    success: true;
-    resolvedPath: string;
-} | {
-    success: false;
-    error: string;
-}>;
 
 // @public (undocumented)
 export function toDisplayName(str: string): string;

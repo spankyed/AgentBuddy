@@ -55,7 +55,7 @@ declare global {
           appEventsLogPath: string;
         }>;
         relaunch: () => Promise<void>;
-        onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number }) => void) => () => void;
+        onEvent: (callback: (event: { type: string; error?: string; attempt?: number; maxAttempts?: number; port?: number }) => void) => () => void;
       };
       rendererLog: {
         write: (entry: {

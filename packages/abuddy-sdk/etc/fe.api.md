@@ -7,8 +7,10 @@
 import type { AnyActorRef } from 'xstate';
 import type { AnyExtension } from '@tiptap/vue-3';
 import type { AnyStateMachine } from 'xstate';
+import type { BaseEntity } from '@abuddy/ears';
 import type { Component } from 'vue';
 import { ComputedRef } from 'vue';
+import { EARS as EARS_2 } from '@abuddy/ears';
 import type { Editor } from '@tiptap/vue-3';
 import type { EditorState } from '@tiptap/pm/state';
 import type { InjectionKey } from 'vue';
@@ -248,6 +250,7 @@ export interface PackFERegistration {
     blocks?: BlockDefinition[];
     // (undocumented)
     defaultPlugin?: Plugin_2;
+    dslTypes?: Record<string, DslTypeConfig>;
     // (undocumented)
     plugins?: Plugin_2[];
     // (undocumented)
@@ -265,7 +268,6 @@ interface Plugin_2 {
     canvas?: Component | RouteComponents;
     // (undocumented)
     chat?: Component;
-    // (undocumented)
     designation?: string;
     // (undocumented)
     hotkeys?: PluginHotkeyDefinition[];
@@ -316,12 +318,6 @@ export function processHotkeys<const T extends Record<string, string>, H = unkno
 // @public (undocumented)
 export function pushNavHistory<T>(history: NavHistory<T>, entry: T): NavHistory<T>;
 
-// @internal
-export function registerDesignations(designations: Designations): void;
-
-// @public (undocumented)
-export function registerDslType(name: string, config: DslTypeConfig): void;
-
 // @public (undocumented)
 export type RouteComponents = Record<RouteName, Component>;
 
@@ -334,6 +330,34 @@ export { safeEvents }
 
 // @public (undocumented)
 export function saveTabGroups(key: string, groups: TabGroup[]): void;
+
+// @public
+export interface SecretsClient {
+    // (undocumented)
+    add(provider: SecretProvider, label: string, value: string): Promise<SecretsSnapshot>;
+    allowUnprotected(): Promise<SecretsSnapshot>;
+    // (undocumented)
+    delete(id: string): Promise<SecretsSnapshot>;
+    // (undocumented)
+    list(): Promise<SecretsSnapshot>;
+    // (undocumented)
+    rename(id: string, label: string): Promise<SecretsSnapshot>;
+    // (undocumented)
+    replaceValue(id: string, value: string): Promise<SecretsSnapshot>;
+    // (undocumented)
+    select(id: string): Promise<SecretsSnapshot>;
+}
+
+// @public (undocumented)
+export const secretsClient: SecretsClient;
+
+// @public
+export interface SecretsSnapshot {
+    // (undocumented)
+    secrets: SecretInfo[];
+    // (undocumented)
+    status: SecretsStatus;
+}
 
 // @public (undocumented)
 export function staticBreadcrumbList(crumbs: Array<{
@@ -391,8 +415,6 @@ export interface TiptapPlugin {
 
 // @public (undocumented)
 export const tiptapPluginRegistry: {
-    register(plugin: TiptapPlugin, packId?: string): void;
-    unregisterAll(packId: string): void;
     getAll(): TiptapPlugin[];
 };
 

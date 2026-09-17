@@ -9,18 +9,15 @@
  *   npm run db:reset
  */
 
-import { getBootHooks } from '@abuddy/host/packs';
-import { resetLmdbFiles } from '@/core/ears/attribute-storage';
+import { services } from '@abuddy/sdk/services';
 import { openDatabase, closeDatabase } from './database';
 
 async function run() {
   await openDatabase();
 
-  console.log('Resetting database — wiping all LMDB data...');
-  await resetLmdbFiles();
-
-  console.log('Creating default data...');
-  for (const hooks of getBootHooks()) hooks.onInit?.();
+  // The app's reset: wipes the stores, then runs each pack's onInit and boot seed, then the migrations
+  console.log('Resetting database — wiping all LMDB data and recreating the default data...');
+  await services.appData.reset();
 
   console.log('Database reset complete.');
   closeDatabase();

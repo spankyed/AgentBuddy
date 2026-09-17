@@ -66,7 +66,7 @@ export const entries: <T extends Record<string, unknown>>(obj: T) => Array<[keyo
 // @public (undocumented)
 export function extractValueByPath(source: unknown, path: string): unknown;
 
-// @public (undocumented)
+// @public
 export const isPlainObject: (val: unknown) => val is Record<string, unknown>;
 
 // @public (undocumented)
@@ -95,6 +95,15 @@ export interface RandomIdOptions {
     // (undocumented)
     prefix?: string;
 }
+
+// @public (undocumented)
+export const REDACTED = "[redacted]";
+
+// @public
+export function redactSecrets<T>(value: T): T;
+
+// @public
+export function redactSecretText(text: string): string;
 
 // @public (undocumented)
 export type Rename = {

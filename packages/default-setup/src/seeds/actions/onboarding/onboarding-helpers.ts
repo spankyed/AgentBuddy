@@ -83,7 +83,7 @@ export function finishOnboarding(
 ) {
   state.step = 'complete';
 
-  services.settings.updateInternalSetting(['hasOnboarded'], true);
+  services.appData.completeOnboarding();
 
   services.repository.threadCommands.update(threadId, {
     topic: 'General',
@@ -119,7 +119,7 @@ export function finishOnboarding(
 
   flashState(services, threadId, 'success', 'idle');
 
-  services.emitter.sendToSystem('threads', { type: 'REFRESH_THREADS' });
+  services.emitter.sendToSystem('default-setup/threads', { type: 'REFRESH_THREADS' });
 
   // Use the mode the user chose, or auto-detect from available CLIs
   const defaultMode = state.data.chosenMode
@@ -131,7 +131,7 @@ export function finishOnboarding(
     services.emitter.sendToPlugin('threads', {
       type: 'AGENT_SETTINGS_UPDATED',
       settings: chatSettings,
-    } as any);
+    });
   }
   services.emitter.sendToPlugin('threads', {
     type: 'SET_MODE',

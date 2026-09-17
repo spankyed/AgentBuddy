@@ -1,5 +1,3 @@
-import * as path from 'path';
-
 /**
  * Minimal localStorage for FE code under test.
  *
@@ -24,13 +22,12 @@ if (typeof globalThis.localStorage === 'undefined') {
     key: (i: number) => [...store.keys()][i] ?? null,
   } as Storage;
 }
-import '@/setup/sdk-host-init';
-import { registerPack, getRegisteredEntityTypes } from '@abuddy/host/packs';
-import { setCompiledDir } from '../src/__generated__/seeders';
+// The pack's runtime on the harness: in-memory EARS, systems, services and steps, no app host
+import * as path from 'path';
+import { setupPackTests } from '@abuddy/testing/harness';
+import { seedRuntime } from '../src/__generated__/seed-runtime';
 import { registration } from '../src/__generated__/pack-entry';
+import { setCompiledDir } from '../src/__generated__/seeders';
 
 setCompiledDir(path.resolve(__dirname, '..', 'dist'));
-
-if (!getRegisteredEntityTypes().has('Action')) {
-  registerPack(registration);
-}
+await setupPackTests({ seedRuntime, registration });

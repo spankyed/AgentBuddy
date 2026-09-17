@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -47,4 +48,20 @@ describe('abuddy install', () => {
     await install([builtPack('>=99.0.0'), '--dev']);
     expect(vi.mocked(console.warn).mock.calls.flat().join('\n')).toContain("hostVersion wasn't checked");
   });
+});
+
+// Tooling runs host code with no app bound: @abuddy/host/packs logs through @abuddy/sdk/logger, which writes to the console
+describe('the abuddy bin', () => {
+  it('installs a pack, printing what @abuddy/host/packs logs', () => {
+    const cli = path.resolve(__dirname, '..', '..', 'bin', 'abuddy.mjs');
+    const result = spawnSync(process.execPath, [cli, 'install', builtPack('>=0.3.0'), '--dev'], {
+      cwd: tmp,
+      encoding: 'utf-8',
+      env: { ...process.env, ABUDDY_USER_DATA_DIR: path.join(tmp, 'data'), NO_COLOR: '1', FORCE_COLOR: '0' },
+      timeout: 60_000,
+    });
+    expect(result.status, result.stderr).toBe(0);
+    expect(result.stdout).toContain('[pack-installer] Installed "Demo Pack" v1.0.0');
+    expect(fs.existsSync(path.join(tmp, 'data', 'packs', 'demo-pack', 'abuddy.json'))).toBe(true);
+  }, 60_000);
 });

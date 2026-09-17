@@ -16,7 +16,7 @@ afterAll(() => {
 function exportsWithAny(sdkDir: string): string[] {
   const manifest = JSON.parse(fs.readFileSync(path.join(sdkDir, 'package.json'), 'utf-8'));
   const entries = Object.entries(manifest.exports as Record<string, unknown>)
-    .filter(([key, target]) => key !== './ears/internals' && typeof target === 'object' && target !== null && 'types' in target)
+    .filter(([, target]) => typeof target === 'object' && target !== null && 'types' in target)
     .map(([key, target]) => [key, path.join(sdkDir, (target as { types: string }).types)] as const);
   const program = ts.createProgram(entries.map(([, file]) => file), {
     strict: true, skipLibCheck: true, noEmit: true, types: ['node'],

@@ -8,6 +8,7 @@ import { stagingDirName } from './staging.ts';
 import { fetchReleaseAsset, githubFetch, type GitHubReleaseAsset } from './github.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { parseManifest } from '@abuddy/sdk/build';
+import { createLogger } from '@abuddy/sdk/logger';
 import type { PackManifest } from '@abuddy/sdk/build';
 import {
   BUNDLE_PATHS,
@@ -19,10 +20,8 @@ import {
   type BundleInfo,
 } from './bundle.ts';
 
-const log = {
-  info(...args: unknown[]) { console.log(...args); },
-  warn(...args: unknown[]) { console.warn(...args); },
-};
+// The CLI installs without an app bound: its entries go to the console then
+const log = createLogger('pack-installer');
 
 export interface InstallResult {
   id: string;
@@ -30,8 +29,7 @@ export interface InstallResult {
   version: string;
   dir: string;
   missingDependencies: string[];
-  /** Present for bundle installs; absent for legacy (pre-bundle) packs. */
-  bundle?: BundleInfo;
+  bundle: BundleInfo;
 }
 
 export interface InstallOptions {
@@ -115,7 +113,7 @@ function findPackRoot(dir: string): string {
 }
 
 /** The app data dir's published built-in packs (`<userData>/host-packs`, written at app boot). */
-export function hostPacksDirFor(packsDir: string): string {
+function hostPacksDirFor(packsDir: string): string {
   return path.join(path.dirname(packsDir), 'host-packs');
 }
 
@@ -179,7 +177,6 @@ function placePack(sourceDir: string, packsDir: string, id: string): string {
  * Install from a directory that is one of:
  * - a bundle (bundle.json): verified, then copied as-is
  * - a pack source built in the bundle layout (dist/runtime, dist/types): staged into a bundle first
- * - a legacy pre-bundle pack (abuddy.json + dist/): copied as-is, with a warning
  */
 async function installFromDirectory(dir: string, packsDir: string, options: InstallOptions): Promise<InstallResult> {
   const manifestSource = readValidManifest(dir);
@@ -194,14 +191,10 @@ async function installFromDirectory(dir: string, packsDir: string, options: Inst
   }
 
   try {
-    let bundle: BundleInfo | undefined;
-    if (isBundleDir(bundleDir)) {
-      bundle = verifyBundle(bundleDir);
-    } else if (fs.existsSync(path.join(dir, 'dist'))) {
-      log.warn(`Installing ${manifestSource.id} in the pre-bundle layout (no ${BUNDLE_PATHS.info}); rebuild it with a current abuddy CLI`);
-    } else {
-      throw new Error('Pack is not built: no bundle.json or dist/ found. Run "abuddy build" first.');
+    if (!isBundleDir(bundleDir)) {
+      throw new Error(`Pack ${manifestSource.id} is not built: ${dir} has no ${BUNDLE_PATHS.info} and no dist/${BUNDLE_PATHS.runtimeEntry} with dist/${BUNDLE_PATHS.snapshot}. Run "abuddy build" first.`);
     }
+    const bundle = verifyBundle(bundleDir);
 
     const manifest = readValidManifest(bundleDir);
     const destDir = placePack(bundleDir, packsDir, manifest.id);

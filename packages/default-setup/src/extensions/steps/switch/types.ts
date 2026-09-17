@@ -1,8 +1,8 @@
-import type { DSLNodeBase, DSLStepNode, NodeBase } from '@abuddy/sdk/build';
+import type { NodeBase } from '@abuddy/sdk';
+import type { DSLNodeBase, DSLStepNode } from '@abuddy/sdk/build';
 
 import { BinaryOperator } from '@abuddy/sdk/utils';
 
-export { BinaryOperator } from '@abuddy/sdk/utils';
 
 export type Predicate = {
   key: string;

@@ -33,7 +33,6 @@ export const codexService = {
   // Lifecycle
   start: () => server.start(),
   stop: () => server.stop(),
-  restart: () => server.restart(),
   get status(): ServerStatus { return server.status },
 
   // Thread management

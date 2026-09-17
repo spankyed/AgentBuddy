@@ -1,8 +1,8 @@
 import fs from 'fs-extra';
 import path from 'node:path';
 import { createLogger } from '@abuddy/sdk/logger';
-import { getLmdbPath, getVolatileLmdbPath, getSecretsLmdbPath, getMediaPath } from '@abuddy/sdk/utils';
-import { closePersistence, reinitializeLmdb } from '../ears/index.ts';
+import { getLmdbPath, getVolatileLmdbPath, getMediaPath } from '@abuddy/sdk/utils';
+import type { LmdbStore } from '@abuddy/ears/lmdb';
 
 const logger = createLogger('database:backup');
 
@@ -10,13 +10,15 @@ const logger = createLogger('database:backup');
 const DATABASE_PATHS = {
   lmdb: getLmdbPath,
   volatileLmdb: getVolatileLmdbPath,
-  secretsLmdb: getSecretsLmdbPath,
 } as const;
+
+type DatabaseName = keyof typeof DATABASE_PATHS;
+const isKnownDatabase = (name: string): name is DatabaseName => Object.hasOwn(DATABASE_PATHS, name);
 
 export async function exportDatabase(
   targetPath: string,
   name?: string,
-  databases: Array<keyof typeof DATABASE_PATHS> = ['lmdb']
+  databases: DatabaseName[] = ['lmdb']
 ): Promise<string> {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const fullBackupPath = path.join(targetPath, name || `agentbuddy-backup-${timestamp}`);
@@ -55,17 +57,23 @@ export async function exportDatabase(
   return fullBackupPath;
 }
 
-export async function importDatabase(backupPath: string) {
+/** Replaces `store`'s files (and media) with the backup's, closing the store meanwhile; puts the old files back if that fails */
+export async function importDatabase(store: LmdbStore, backupPath: string) {
   if (!await fs.pathExists(path.join(backupPath, 'metadata.json'))) {
     throw new Error('Invalid backup: metadata.json not found');
   }
 
   const metadata = await fs.readJson(path.join(backupPath, 'metadata.json'));
+  // Only the databases the app has are restored; any other a backup's metadata lists is left out
+  const listed = metadata.databases as string[];
+  const databases = listed.filter(isKnownDatabase);
+  const skipped = listed.filter((name) => !isKnownDatabase(name));
+  if (skipped.length > 0) logger.warn('Skipping databases the app does not have', { skipped });
   const tempBackupPath = path.join(path.dirname(getLmdbPath()), 'temp-backup-' + Date.now());
 
   await fs.ensureDir(tempBackupPath);
-  for (const dbName of metadata.databases) {
-    const sourcePath = DATABASE_PATHS[dbName as keyof typeof DATABASE_PATHS]();
+  for (const dbName of databases) {
+    const sourcePath = DATABASE_PATHS[dbName]();
     if (await fs.pathExists(sourcePath)) {
       await fs.copy(sourcePath, path.join(tempBackupPath, dbName));
     }
@@ -80,11 +88,11 @@ export async function importDatabase(backupPath: string) {
   }
 
   try {
-    closePersistence();
+    store.close();
 
-    for (const dbName of metadata.databases) {
+    for (const dbName of databases) {
       const backupDbPath = path.join(backupPath, dbName);
-      const targetPath = DATABASE_PATHS[dbName as keyof typeof DATABASE_PATHS]();
+      const targetPath = DATABASE_PATHS[dbName]();
 
       if (await fs.pathExists(backupDbPath)) {
         await fs.remove(targetPath);
@@ -99,17 +107,17 @@ export async function importDatabase(backupPath: string) {
       logger.info('Restored media assets');
     }
 
-    reinitializeLmdb();
+    store.reopen();
 
     await fs.remove(tempBackupPath);
     logger.info('Import completed');
-    return { databases: metadata.databases as string[] };
+    return { databases, skipped };
   } catch (error) {
-    closePersistence();
+    store.close();
 
-    for (const dbName of metadata.databases) {
+    for (const dbName of databases) {
       const tempDbPath = path.join(tempBackupPath, dbName);
-      const targetPath = DATABASE_PATHS[dbName as keyof typeof DATABASE_PATHS]();
+      const targetPath = DATABASE_PATHS[dbName]();
       if (await fs.pathExists(tempDbPath)) {
         await fs.remove(targetPath);
         await fs.copy(tempDbPath, targetPath);
@@ -122,7 +130,7 @@ export async function importDatabase(backupPath: string) {
       await fs.copy(tempMediaPath, mediaPath);
     }
 
-    reinitializeLmdb();
+    store.reopen();
 
     await fs.remove(tempBackupPath);
     throw error;
@@ -135,9 +143,11 @@ export async function getBackupInfo(backupPath: string) {
     if (!await fs.pathExists(metadataPath)) return null;
 
     const metadata = await fs.readJson(metadataPath);
+    // The databases a restore would bring back (see importDatabase)
+    const databases = (metadata.databases as string[]).filter(isKnownDatabase);
     let totalSize = 0;
 
-    for (const dbName of metadata.databases) {
+    for (const dbName of databases) {
       const dbPath = path.join(backupPath, dbName);
       if (await fs.pathExists(dbPath)) {
         totalSize += (await fs.stat(dbPath)).size;
@@ -148,7 +158,7 @@ export async function getBackupInfo(backupPath: string) {
 
     return {
       timestamp: metadata.timestamp,
-      databases: metadata.databases,
+      databases,
       size: totalSize,
       hasMedia,
     };

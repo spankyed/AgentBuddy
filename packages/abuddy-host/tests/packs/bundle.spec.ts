@@ -8,6 +8,7 @@ import {
   extractBundleArchive,
   readBundleInfo,
   sha256File,
+  packFrontendFiles,
   stageBundle,
   verifyBundle,
 } from '../../src/packs/bundle.ts';
@@ -35,7 +36,6 @@ function builtPack(overrides: Record<string, unknown> = {}): string {
     name: 'Demo Pack',
     version: '1.2.3',
     hostVersion: '>=0.3.0',
-    fe: { entry: 'dist/fe.js', styles: 'dist/fe.css' },
     ...overrides,
   }));
   write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack", systems: [] } };');
@@ -48,7 +48,7 @@ function builtPack(overrides: Record<string, unknown> = {}): string {
 }
 
 describe('stageBundle', () => {
-  it('assembles the bundle layout with a resolved manifest and checksums, without source maps', () => {
+  it('assembles the bundle layout with the manifest and checksums, without source maps', () => {
     const stage = path.join(tmp, 'stage');
     const info = stageBundle(builtPack(), stage, { sdkVersion: '0.1.0', source: { commit: 'abc' } });
 
@@ -62,9 +62,7 @@ describe('stageBundle', () => {
     ]);
     expect(info.files['runtime/index.cjs']).toBe(sha256File(path.join(stage, 'runtime/index.cjs')));
 
-    const manifest = JSON.parse(fs.readFileSync(path.join(stage, 'abuddy.json'), 'utf-8'));
-    // styles removed: the build produced no fe.css
-    expect(manifest.fe).toEqual({ entry: 'runtime/fe.js' });
+    expect(JSON.parse(fs.readFileSync(path.join(stage, 'abuddy.json'), 'utf-8'))).toEqual(JSON.parse(fs.readFileSync(path.join(tmp, 'src-pack', 'abuddy.json'), 'utf-8')));
     expect(readBundleInfo(stage)).toEqual(info);
   });
 
@@ -72,6 +70,21 @@ describe('stageBundle', () => {
     const root = builtPack();
     fs.rmSync(path.join(root, 'dist', 'runtime'), { recursive: true });
     expect(() => stageBundle(root, path.join(tmp, 'stage'))).toThrow(/not built/);
+  });
+});
+
+describe('packFrontendFiles', () => {
+  it("lists the bundle's FE entry and stylesheet only when the build wrote them", () => {
+    const stage = path.join(tmp, 'stage');
+    stageBundle(builtPack(), stage);
+    expect(packFrontendFiles(stage)).toEqual({ entry: 'runtime/fe.js', styles: undefined });
+
+    fs.writeFileSync(path.join(stage, 'runtime', 'fe.css'), '.x{}');
+    expect(packFrontendFiles(stage)).toEqual({ entry: 'runtime/fe.js', styles: 'runtime/fe.css' });
+
+    fs.rmSync(path.join(stage, 'runtime', 'fe.js'));
+    fs.rmSync(path.join(stage, 'runtime', 'fe.css'));
+    expect(packFrontendFiles(stage)).toEqual({ entry: undefined, styles: undefined });
   });
 });
 
@@ -133,7 +146,7 @@ describe('installPackFromLocal (bundle path)', () => {
     const packsDir = path.join(tmp, 'packs');
     const result = await installPackFromLocal(builtPack(), packsDir);
 
-    expect(result.bundle?.id).toBe('demo-pack');
+    expect(result.bundle.id).toBe('demo-pack');
     expect(fs.readdirSync(result.dir).sort()).toEqual(['abuddy.json', 'bundle.json', 'runtime', 'types']);
     expect(verifyBundle(result.dir).version).toBe('1.2.3');
     // no staging or replacement leftovers in the packs dir
@@ -164,6 +177,15 @@ describe('installPackFromLocal (bundle path)', () => {
     await expect(installPackFromLocal(stage, packsDir)).rejects.toThrow(/failed verification/);
     expect(JSON.parse(fs.readFileSync(path.join(packsDir, 'demo-pack', 'abuddy.json'), 'utf-8')).version).toBe('1.0.0');
     expect(fs.readdirSync(packsDir)).toEqual(['demo-pack']);
+  });
+
+  it('refuses an unbuilt pack directory, naming the build it needs', async () => {
+    const root = builtPack();
+    fs.rmSync(path.join(root, 'dist'), { recursive: true });
+    await expect(installPackFromLocal(root, path.join(tmp, 'packs'))).rejects.toThrow(
+      /^Pack demo-pack is not built: .* has no bundle\.json and no dist\/runtime\/index\.cjs with dist\/types\/snapshot\.json\. Run "abuddy build" first\.$/,
+    );
+    expect(fs.existsSync(path.join(tmp, 'packs', 'demo-pack'))).toBe(false);
   });
 
   it('refuses a pack the host version does not satisfy', async () => {

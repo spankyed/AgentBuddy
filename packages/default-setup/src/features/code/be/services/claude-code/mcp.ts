@@ -38,36 +38,12 @@ export interface McpAddJsonOptions extends SubcommandOptions {
   clientSecret?: string
 }
 
-/** Add an MCP server from a JSON config string. */
-export async function addJson(
-  name: string,
-  config: string | object,
-  opts: McpAddJsonOptions = {},
-): Promise<string> {
-  const json = typeof config === 'string' ? config : JSON.stringify(config)
-  const args = ['mcp', 'add-json', name, json, ...scopeArg(opts.scope)]
-  if (opts.clientSecret) args.push('--client-secret', opts.clientSecret)
-  return run(args, opts)
-}
-
-/** Import all MCP servers from Claude Desktop's config. */
-export async function addFromClaudeDesktop(
-  opts: { scope?: Scope } & SubcommandOptions = {},
-): Promise<string> {
-  return run(['mcp', 'add-from-claude-desktop', ...scopeArg(opts.scope)], opts)
-}
-
 /** Remove an MCP server. */
 export async function remove(
   name: string,
   opts: { scope?: Scope } & SubcommandOptions = {},
 ): Promise<string> {
   return run(['mcp', 'remove', name, ...scopeArg(opts.scope)], opts)
-}
-
-/** Reset project-level MCP approval choices (.mcp.json). */
-export async function resetProjectChoices(opts?: SubcommandOptions): Promise<string> {
-  return run(['mcp', 'reset-project-choices'], opts)
 }
 
 // ─── Fallback parser for `mcp list` plain output ─────────────────────────────

@@ -77,7 +77,8 @@ export interface StepBuildFacet {
  *─────────────────────────────────────────────────────────────────*/
 
 import type { AnyActorRef } from 'xstate';
-import type { BaseEntity, EARS, RelationEntity } from '../types/entities.ts';
+import type { BaseEntity } from '@abuddy/ears';
+import type { EARS } from '../types/entities.ts';
 
 export type TimestampMs = number;
 export type EntityStatus = 'active' | 'paused' | 'completed' | 'failed';
@@ -103,11 +104,8 @@ export interface TNodeEntity extends BaseEntity {
   };
 }
 
-/** Entities whose shapes the SDK owns; every pack's generated PackShapes includes them. */
-export type SdkEntityShapes = {
-  TNode: TNodeEntity;
-  Relation: RelationEntity;
-};
+// Kept here for packs whose built types import it from @abuddy/sdk/steps
+export type { SdkEntityShapes } from '../types/sdk-entities.ts';
 
 /**
  * One track's execution, as a tree: a persisted TNode with its SPAWNED children
@@ -186,6 +184,8 @@ export interface StepRuntimeFacet {
   isAsync?: boolean;
   /** When true, the brain spawns a sub-flow machine instead of a step machine. */
   spawnsSubflow?: boolean;
+  /** The step never completes on its own (keep-alive): its track stays open while the flow runs */
+  waits?: boolean;
 }
 
 /*─────────────────────────────────────────────────────────────────
@@ -200,7 +200,6 @@ export interface StepNodeConfig {
   bgColor: string;
   hoverBgColor: string;
   connectionRules: { inputs: number; outputs: number };
-  component?: string;
   category: 'trigger' | 'action' | 'logic' | 'data' | 'ai';
   isImplemented?: boolean;
   isDisabled?: boolean;
@@ -217,7 +216,7 @@ export interface StepFEFacet {
   nodeConfig: StepNodeConfig;
   colorKey?: string;
   defaults?: Record<string, unknown>;
-  /** Vue component refs — populated by initComponents() from loadComponents factory. */
+  /** Vue component refs: the renderer's pack store (`@abuddy/host/fe`) fills them from `loadComponents` when the pack registers. */
   components?: { node?: unknown; form?: unknown };
   /** Lazy factory that returns Vue components. Runs in FE context only. */
   loadComponents?: () => { node?: unknown; form?: unknown };
@@ -225,8 +224,6 @@ export interface StepFEFacet {
   layout?: StepLayoutDescriptor;
   /** Handle prefix for multi-output steps (e.g. 'branch' → 'branch-0', 'branch-1'). */
   handlePrefix?: string;
-  /** Keys from FormResources this step's form needs (e.g. ['actions', 'prompts']). */
-  resourceKeys?: string[];
 }
 
 /*─────────────────────────────────────────────────────────────────

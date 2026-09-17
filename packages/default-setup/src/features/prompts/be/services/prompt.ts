@@ -1,6 +1,6 @@
-import { executeTemplate, createTemplateResolver } from '@abuddy/sdk/runtime';
+import { executeTemplate, createTemplateResolver } from '@abuddy/sdk/templates';
 import { repository } from '@/__generated__/repository';
-import type { PromptEntity } from '@/features/prompts/be/types';
+import type { PromptEntity } from '@abuddy/sdk';
 
 export class PromptService {
   getByLabel(label: string) {
@@ -12,7 +12,7 @@ export class PromptService {
    * @param templateFn - The template function body
    * @param templateParams - Parameters to pass to the template
    */
-  executeTemplate(
+  private executeTemplate(
     templateFn: string, 
     templateParams: Record<string, any>
   ): string {

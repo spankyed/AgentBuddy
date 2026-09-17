@@ -6,16 +6,34 @@
 
 import type { AnyActorRef } from 'xstate';
 import type { AnyStateMachine } from 'xstate';
+import type { BaseEntity } from '@abuddy/ears';
+import { EARS as EARS_2 } from '@abuddy/ears';
 import { z } from 'zod';
 
 // @public
-export function defineSystem<Id extends string>(id: Id, opts?: {
-    designation?: string;
-}): <TEvents extends {
+export function checkFeatureSettings(featureId: string, settings: unknown): string[];
+
+// @public
+export function defineSystem<Id extends string>(id: Id): <TEvents extends {
     type: string;
 }, TOutgoing extends {
     type: string;
 }, TContext = {}>() => SystemSpec<Id, TEvents, TOutgoing, TContext>;
+
+// @public
+export interface FeatureSettings {
+    // (undocumented)
+    plugins?: Record<string, unknown>;
+}
+
+// @public
+export function getPackCommands(): PackCommand[];
+
+// @public
+export function getPackSettingsDefaults(): PackSettingsDefaults;
+
+// @public
+export function onPackSettingsDefaultsChanged(listener: () => void): () => void;
 
 // @public (undocumented)
 export interface PackBootHooks {
@@ -26,9 +44,15 @@ export interface PackBootHooks {
     // (undocumented)
     onShutdown?: () => void;
     // (undocumented)
-    seed?: () => void;
-    // (undocumented)
     seedManifest?: PackSeedManifest;
+}
+
+// @public
+export interface PackCommand {
+    // (undocumented)
+    name: string;
+    // (undocumented)
+    placeholder: string;
 }
 
 // @public (undocumented)
@@ -38,7 +62,6 @@ export interface PackEARS {
     // (undocumented)
     partitionPolicy?: {
         excludedEntityTypes?: string[];
-        secretEntityTypes?: string[];
     };
     // (undocumented)
     relKinds: Record<string, string>;
@@ -49,17 +72,14 @@ export interface PackFeatureDef {
     // (undocumented)
     designation?: string;
     // (undocumented)
+    hasPlugin: boolean;
+    // (undocumented)
     hasSystem: boolean;
     // (undocumented)
     id: string;
     // (undocumented)
-    plugin?: {
-        label: string;
-        icon: string;
-        isPinned?: boolean;
-    };
-    // (undocumented)
     services: string[];
+    settings?: FeatureSettings;
 }
 
 // @public (undocumented)
@@ -80,6 +100,7 @@ export interface PackRegistration {
     blocks?: BlockDefinition[];
     // (undocumented)
     boot?: PackBootHooks;
+    commands?: PackCommand[];
     // (undocumented)
     ears?: PackEARS;
     // (undocumented)
@@ -88,6 +109,9 @@ export interface PackRegistration {
     id: string;
     // (undocumented)
     migrations?: PackMigration[];
+    repositories?: Record<string, unknown>;
+    seeders?: Seeder[];
+    seedHooks?: Record<string, SeedHooks>;
     // (undocumented)
     services?: Record<string, unknown>;
     // (undocumented)
@@ -106,6 +130,20 @@ export interface PackSeedManifest {
     seedPolicy?: {
         skipAtBoot?: string[];
         skipAfterOnboarding?: string[];
+    };
+}
+
+// @public
+export interface PackSettingsDefaults {
+    // (undocumented)
+    revision: number;
+    // (undocumented)
+    settings: {
+        plugins: Record<string, unknown> & {
+            _meta?: {
+                visibility: Record<string, boolean>;
+            };
+        };
     };
 }
 
@@ -129,12 +167,20 @@ export interface SystemEntry {
         type: string;
     }, {
         type: string;
-    }>, 'id' | 'designation'>;
+    }>, 'id'>;
 }
 
 // @public
 export type SystemEvents = {
     type: 'CLIENT_CONNECTED';
+}
+/**
+* A pack was activated, reloaded or torn down while the app runs, or its seeds were imported: what it
+* registers (its slash commands) and the data it seeded may differ. Sent once the change is complete.
+*/
+| {
+    type: 'PACK_CHANGED';
+    packId: string;
 };
 
 // @public
@@ -144,10 +190,8 @@ export interface SystemSpec<Id extends string, TEvents extends {
     type: string;
 }, TContext = {}> {
     // (undocumented)
-    designation?: string;
-    // (undocumented)
     id: Id;
-    _incoming: WithSystemId<Id, TEvents>;
+    _incoming: TEvents;
     _outgoing: WithPlugin<Id, TOutgoing>;
     // (undocumented)
     typeOf: ReturnType<typeof safeEvents<TEvents | SystemEvents>>;

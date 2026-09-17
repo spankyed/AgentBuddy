@@ -1,6 +1,6 @@
 import { describe, it } from 'vitest';
 import { expectTypeOf } from 'vitest';
-import type { QueryBuilder } from '@abuddy/sdk/ears';
+import type { QueryBuilder } from '@abuddy/ears';
 import { EARS, createEntity, findAll, findById, qx, type EntityShape, type PackShapes } from '@/__generated__/ears';
 
 // ─── EntityId<E> phantom brand ─────────────────────────────────────────

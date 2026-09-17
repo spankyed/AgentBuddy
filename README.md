@@ -5,9 +5,9 @@ AgentBuddy is an Electron desktop app for building and running AI agent workflow
 ## Features
 
 - **Actor-based runtime**: XState state machines coordinate frontend and backend behavior through a typed event bus.
-- **Plugin system**: Plugins can register canvas views, panels, machines, and workflow-specific UI.
-- **Model integrations**: Anthropic, OpenAI, and Google providers are wired through the Vercel AI SDK.
-- **Local graph store**: The EARS entity-attribute-relation store is backed by LMDB for fast local access.
+- **Packs**: Features (backend systems and frontend plugins), flow steps, seeds, artifacts and blocks ship as packs, built with the `abuddy` CLI. The app's own features are the built-in `default-setup` pack.
+- **Model integrations**: Anthropic, OpenAI, Google, Groq, Mistral and Cohere, through the Vercel AI SDK.
+- **Local graph store**: The EARS entity-attribute-relation store (`@abuddy/ears`) is backed by LMDB for fast local access.
 - **Visual flow editor**: Vue Flow powers drag-and-drop authoring for agent flows.
 - **Embedded terminal**: xterm.js and node-pty provide command execution inside the app.
 - **Rich text editing**: Tiptap supports prompt and documentation authoring.
@@ -29,29 +29,31 @@ AgentBuddy is an Electron desktop app for building and running AI agent workflow
 
 ```
 packages/
-├── api/                  # Backend — Fastify + tRPC server, XState actor systems, LMDB persistence
-│   ├── src/
-│   │   ├── core/         # Server bootstrap, event bus, tRPC router
-│   │   ├── repository/   # EARS graph database layer
-│   │   ├── services/     # Shared services (LLM, embeddings, etc.)
-│   │   ├── setup/        # Seed data, migrations, initialization
-│   │   └── systems/      # Backend actor systems (actions, brain, flows, library, etc.)
-│   └── tests/
-├── default-setup/        # DSL source + compiler for actions, prompts, flows, library
-│   ├── src/
-│   │   ├── actions/
-│   │   ├── flows/
-│   │   ├── library/
-│   │   └── prompts/
-│   └── build/            # Compiler scripts
-├── main/                 # Electron main process
-│   └── src/modules/      # Window manager, API server launcher, security, etc.
-├── preload/              # IPC bridge (contextBridge APIs)
-├── renderer/             # Frontend — Vue 3 + Tailwind CSS
+├── api/                  # Backend process: node:http + ws + tRPC transport, process boot and composition of the app runtime
 │   └── src/
-│       ├── core/         # App shell, router, event bus client
-│       ├── plugins/      # Frontend plugin actors (actions, flows, library, etc.)
-│       └── setup/        # Plugin registration
+│       ├── core/         # tRPC routers, the root event emitter, log capture
+│       └── setup/        # Boot sequence and composition (opens the store, binds the app), websocket, config
+├── default-setup/        # The built-in pack: features, steps, seeds, migrations (abuddy.json)
+│   └── src/
+│       ├── features/     # One folder per feature: be/ (system) and fe/ (plugin)
+│       ├── extensions/   # Steps, artifacts, blocks, services, tiptap plugins
+│       ├── seeds/        # Actions, prompts, flows, library, notes, FAQs, settings
+│       ├── migrations/
+│       └── defs/         # Monaco DSL type definitions
+├── abuddy-ears/          # @abuddy/ears: the EARS engine (entity-attribute-relation store) and its LMDB store
+├── abuddy-sdk/           # @abuddy/sdk: pack-facing API (framework, events, services, steps, build pipeline, the HostRuntime port)
+├── abuddy-ui/            # @abuddy/ui: Vue components, editors and composables
+├── abuddy-cli/           # @abuddy/cli: the abuddy command
+├── abuddy-testing/       # @abuddy/testing: unit test harness and Playwright fixture
+├── abuddy-host/          # @abuddy/host (private): app runtime: registered packs, installer and pack runtime (loading, reload, seeding), bus, migrations, app state, secrets, host services
+├── main/                 # Electron main process
+│   └── src/modules/      # Window manager, API server launcher, pack:// and media protocols, etc.
+├── preload/              # IPC bridge (contextBridge APIs)
+├── renderer/             # Frontend: Vue 3 + Tailwind CSS app shell
+│   └── src/
+│       ├── core/         # Application actor, components, tRPC client
+│       └── packs/        # Pack frontend loading and the packs plugin
+├── typescript-floor/     # TypeScript 5.7, the oldest @abuddy/sdk and @abuddy/ui support, for type tests
 └── electron-versions/    # Electron version management
 ```
 
@@ -76,7 +78,6 @@ The repository uses npm workspaces under `packages/*`. The root scripts coordina
 npm start                # Dev mode (skips DSL generation)
 npm run start:gen        # Dev mode with DSL generation
 npm run start:inspect    # Dev mode with Electron inspection enabled
-npm run start:no-build   # Start dev mode without rebuilding first
 ```
 
 ### Build
@@ -92,20 +93,16 @@ npm run package:all      # Package for macOS, Windows, and Linux
 
 ```sh
 npm test                 # Playwright E2E tests
-npm run test:unit        # Unit tests
-npm run typecheck        # Frontend and backend type checks
+npm run test:unit        # Unit tests (api, default-setup, host, ears)
+npm run typecheck        # Type checks for every workspace, plus import specifier and UI entry checks
 ```
 
-### DSL Compilation
+### Default Setup
 
-AgentBuddy stores default setup content as DSL source files and compiles them into generated assets.
+The built-in pack's seeds (actions, prompts, flows, library, notes, FAQs, settings) are TypeScript and markdown sources that its build compiles.
 
 ```sh
-npm run compile          # Compile all DSLs (actions, prompts, flows, library)
-npm run compile:actions  # Compile actions only
-npm run compile:prompts  # Compile prompts only
-npm run compile:flows    # Compile flows only
-npm run compile:library  # Compile library content only
+npm run compile          # Build the default-setup pack (abuddy build, DSL defs, runtime)
 ```
 
 ### Database Tools
@@ -119,7 +116,7 @@ npm run db:reset         # Reset database
 
 ## Development Notes
 
-- `npm start` builds the backend and launches `packages/dev-mode.js`.
+- `npm start` runs `packages/dev-mode.js`: it builds the backend, watches the default-setup pack, starts the renderer dev server and launches Electron.
 - `npm run start:gen` also regenerates DSL type definitions (Monaco intellisense) before launching.
 - Backend build output is produced by `@app/api`; frontend build output is produced by `@app/renderer`.
 - Production signing uses `.env.signing`; start from `.env.signing.example` when preparing signed builds.

@@ -62,10 +62,12 @@ interface PlanContent {
   notes: string
   status: PlanStatus
   steps: Array<{ id: string; title: string; description?: string; status: string }>
+  branch?: string
+  prNumber?: string | number
 }
 
 const props = defineProps<{
-  artifact: ArtifactItem & { content: PlanContent }
+  artifact: ArtifactItem<PlanContent>
 }>()
 
 // Read status directly from the artifact content. Previously this was

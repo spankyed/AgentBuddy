@@ -1,4 +1,5 @@
-import type { ActionEntity, FlowEntity, ModelCatalogEntry, PromptEntity } from '@/__generated__/types'
+import type { ActionEntity, FlowEntity, PromptEntity } from '@abuddy/sdk'
+import type { ModelCatalogEntry } from '@abuddy/sdk/models'
 
 export interface FormResources {
   actions?: ActionEntity[]

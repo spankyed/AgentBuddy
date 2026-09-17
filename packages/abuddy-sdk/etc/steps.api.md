@@ -5,6 +5,8 @@
 ```ts
 
 import type { AnyActorRef } from 'xstate';
+import type { BaseEntity } from '@abuddy/ears';
+import { EARS as EARS_2 } from '@abuddy/ears';
 import { z } from 'zod';
 
 // @public (undocumented)
@@ -42,8 +44,8 @@ export interface ExecutionEvent {
 // @public (undocumented)
 export function expandRecord(map: Record<string, string> | undefined, keyField?: string, valueField?: string): Array<Record<string, string>> | undefined;
 
-// @public (undocumented)
-export function reportStepRuntimeError(input: RuntimeErrorInput): StepRuntimeError;
+// @public
+export function isTruncated(result: unknown): result is TruncatedResult;
 
 // @public (undocumented)
 export interface RuntimeServices {
@@ -55,8 +57,12 @@ export interface RuntimeServices {
 
 // @public
 export type SdkEntityShapes = {
-    TNode: TNodeEntity;
     Relation: RelationEntity;
+    Flow: FlowEntity;
+    Node: NodeBase;
+    TNode: TNodeEntity;
+    Action: ActionEntity;
+    Prompt: PromptEntity;
 };
 
 // @public (undocumented)
@@ -151,7 +157,6 @@ export interface StepFEFacet {
     };
     // (undocumented)
     nodeConfig: StepNodeConfig;
-    resourceKeys?: string[];
 }
 
 // @public (undocumented)
@@ -181,8 +186,6 @@ export interface StepNodeConfig {
     category: 'trigger' | 'action' | 'logic' | 'data' | 'ai';
     // (undocumented)
     color: string;
-    // (undocumented)
-    component?: string;
     // (undocumented)
     connectionRules: {
         inputs: number;
@@ -269,6 +272,7 @@ export interface StepRuntimeFacet {
     // (undocumented)
     isAsync?: boolean;
     spawnsSubflow?: boolean;
+    waits?: boolean;
 }
 
 // @public (undocumented)
@@ -336,9 +340,6 @@ export interface TNodeEntity extends BaseEntity {
 // @public (undocumented)
 export type TNodeKind = 'flow' | 'event' | 'step';
 
-// @public (undocumented)
-export function toStepRuntimeError(input: RuntimeErrorInput): StepRuntimeError;
-
 // @public
 export interface TrackTree extends TNodeEntity {
     // (undocumented)
@@ -388,6 +389,19 @@ export interface TriggerRuntimeNode {
     // (undocumented)
     trackKey?: string;
 }
+
+// @public
+export interface TruncatedResult {
+    // (undocumented)
+    _truncated: true;
+    // (undocumented)
+    _type: string;
+    // (undocumented)
+    value: unknown;
+}
+
+// @public
+export function truncateResult(result: unknown, depth?: number): unknown;
 
 // (No @packageDocumentation comment for this package)
 

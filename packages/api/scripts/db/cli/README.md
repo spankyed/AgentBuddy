@@ -1,308 +1,216 @@
 # AgentBuddy Database CLI
 
-A powerful command-line interface for managing and querying the AgentBuddy database while the app is offline.
+Scripts for querying and repairing the AgentBuddy database (EARS on LMDB) while the app is closed. They live in `packages/api/scripts/db/`.
 
-## Features
+## Before you run anything
 
-- **Interactive REPL** - Full interactive shell with command history and tab completion
-- **Query Builder** - Use the familiar `qx()` API to query entities
-- **Transaction Builder** - Use `tx()` to modify data
-- **Clean JSON Export** - Export data with metadata in clean JSON format
-- **Script Support** - Run JavaScript/TypeScript files against the database
-- **Safety Features** - Confirmation prompts for destructive operations
-- **Pretty Output** - Formatted, colorized output for better readability
-
-## Installation
-
-The CLI is already integrated into the AgentBuddy API package. No additional installation required.
-
-## Quick Start
-
-All commands can be run from the project root directory.
-
-## Usage
-
-### Interactive Mode
-
-Start an interactive REPL session:
+**Every db script needs `ABUDDY_ENV` and `ABUDDY_USER_DATA_DIR`.** The scripts open the database through `resolveAppContext()` (`@abuddy/sdk/env`), which throws `App environment unknown` without `ABUDDY_ENV`, and `ABUDDY_USER_DATA_DIR` picks the data dir the scripts read and write. Don't point them at the app's live data: copy it and point at the copy.
 
 ```bash
+# Copy the dev app's data (close the app first), then work on the copy
+cp -R "$HOME/Library/Application Support/abuddy-dev" /tmp/abuddy-data-copy
+
+export ABUDDY_ENV=development
+export ABUDDY_USER_DATA_DIR=/tmp/abuddy-data-copy
+
+cd packages/api
 npm run db:cli
 ```
 
-In the REPL, you can:
-- Run queries: `qx(EARS.Entity.Settings).pickAll()`
-- Execute transactions: `tx("Settings-123").put("key", "value")`
-- Get statistics: `.stats`
-- Export results: `.export filename.json`
-- View help: `.help`
+`ABUDDY_ENV` is one of `production`, `beta`, `development`, `test`. The app's data dirs are `abuddy`, `abuddy-beta`, `abuddy-dev` and `abuddy-test` under `~/Library/Application Support/` on macOS (`%APPDATA%` on Windows, `$XDG_DATA_HOME` or `~/.local/share` on Linux).
 
-### Execute Commands
+Close the app first: LMDB files can't be safely shared with a running app.
 
-Run a single command and exit:
+## Where to run the scripts
 
-```bash
-# Simple query
-npm run db:exec "return qx(EARS.Entity.Settings).count()"
+All `db:*` scripts are defined in `packages/api/package.json`, and `packages/api` is the directory to run them from. The root `package.json` forwards only four of them:
 
-# List all settings
-npm run db:exec "qx(EARS.Entity.Settings).pickAll().forEach(s => console.log(s))"
+| Script | Root | `packages/api` |
+| --- | --- | --- |
+| `db:cli` | yes | yes |
+| `db:exec` | yes | yes |
+| `db:script` | yes | yes |
+| `db:reset` | yes | yes |
+| `db:export` | no | yes |
+| `db:import` | no | yes |
+| `db:seed` | no | yes |
+| `db:clearSettings` | no | yes |
 
-# Delete specific entity (with confirmation)
-npm run db:exec "tx('Settings-123').destroy()"
+The root scripts run `npm run <script> -w @app/api --`, so they run in `packages/api`, script paths are relative to it either way, and arguments after a single `--` reach the command from both places (`npm run db:cli -- --no-confirm -e "return 1"`). The examples below run from `packages/api`.
 
-# Skip confirmation for destructive operations
-npm run db:exec "tx('Settings-123').destroy()" -- --no-confirm
-```
-
-### Export Data
-
-Export entities to clean JSON with metadata:
+## db:cli
 
 ```bash
-# Export all Settings (use --silent for clean JSON output)
-npm run --silent db:export Settings > settings.json
-
-# Export with timestamp
-npm run --silent db:export Settings > "settings-$(date +%Y%m%d-%H%M%S).json"
-
-# Export all entities
-npm run --silent db:export > full-backup.json
-
-# Export without metadata (raw data only)
-npm run --silent db:export -- --raw Settings > settings-raw.json
-
-# Export specific entity by ID
-npm run --silent db:export -- --id Settings-123 > entity.json
-
-# Process with jq
-npm run --silent db:export Settings | jq '.exportMetadata'
-npm run --silent db:export Settings | jq '.data[].label'
+npm run db:cli                                  # interactive REPL
+npm run db:cli -- -e "return qx('Settings').count()"
+npm run db:cli -- "return qx('Settings').ids()" # positional arguments are joined into one command
+npm run db:cli -- -s scripts/db/inspect-relations.ts
+npm run db:cli -- --no-confirm -s scripts/db/inspect-relations.ts --type Flow # CLI options before -s, the script's after its path
 ```
 
-**Note:** Always use `npm run --silent` for clean JSON output that can be piped or redirected.
+`db:exec` is `db:cli --exec` and `db:script` is `db:cli --script`: `npm run db:exec "<command>"`, `npm run db:script <path> -- <script arguments>`.
 
-### Run Scripts
+| Flag | Description |
+| --- | --- |
+| `-e, --exec <command>` | Run one command and exit |
+| `-s, --script <path> [args...]` | Run a script and exit: a `.ts`/`.mts`/`.js`/`.mjs` file is imported as a module with the database already open, and sees the arguments after its path as `process.argv.slice(2)`; any other file's contents run as a command. Every argument after the path goes to the script, so put the CLI's own options before `-s` |
+| `-o, --output <format>` | `json`, `csv` or `pretty` (default `pretty`). With `-f`, `csv` writes CSV and anything else writes JSON; without `-f`, `json` prints JSON and anything else prints the pretty format |
+| `-f, --output-file <path>` | Write an exec command's result to a file instead of printing it |
+| `--no-confirm` | Don't ask before a command or script that looks destructive (its text contains `.destroy()`, `.drop(`, `.revoke(`, `.unlink(`, `.clear(`, `dropAttr(`, `destroyEntity(` or `removeRelation(`) |
+| `-v, --verbose` | Log database initialization steps |
+| `-h, --help` | Show help |
 
-Execute JavaScript/TypeScript files:
+A command is the body of an async function, so **use `return` to get a result** (`return qx('Settings').count()`); without it the result is `undefined`, in the REPL too. Commands see `qx`, `tx`, `EARS`, `getAllEntities`, `getEntitiesOfType`, `getAttr`, `getAttrs`, `getRoles` and `getAll`.
 
 ```bash
-# Run a cleanup script
-npm run db:script scripts/db/cleanup-settings.ts
-
-# Destroy settings with options
-npm run db:script scripts/db/destroy-settings.ts -- --force
-npm run db:script scripts/db/destroy-settings.ts -- --dry-run
-npm run db:script scripts/db/destroy-settings.ts -- --label secrets
-
-# Inspect relationships
-npm run db:script scripts/db/inspect-relations.ts -- --entity Thread-123
+npm run db:exec "return qx('Settings').pickAll()"
+npm run db:cli -- -e "return qx('Settings').pickAll()" -o json -f settings.json
+npm run db:exec "tx('Settings-app').destroy()" -- --no-confirm
 ```
 
-## Query Examples
+### REPL commands
 
-### Basic Queries
+| Command | Description |
+| --- | --- |
+| `.help` | Query and transaction examples |
+| `.stats` | Entity counts |
+| `.export [file]` | Write the last result to a file (`.csv` writes CSV, anything else JSON; default `export-<timestamp>.json`) |
+| `.clear` | Clear the screen |
+| `.exit` | Exit |
+
+History is kept in `~/.agentbuddy_db_history`.
+
+## Queries
+
+Entity types are the names the SDK and the loaded packs declare. `EARS.Entity` holds them (`EARS.Entity.Settings`), and a plain string works too (`qx('Settings')`).
 
 ```javascript
-// Count all entities
-qx().count()
+return qx().count()                                  // every entity
+return qx('Settings').pickAll()                      // every attribute of every Settings row
+return qx('Settings-app').pickOne(['data'])          // one entity's fields
+return qx('Thread').where('status', 'active').ids()  // filter by attribute
+return qx('Document').withRole('published').limit(10).pick(['name', 'content'])
 
-// Get all settings
-qx(EARS.Entity.Settings).pickAll()
+// Graph traversal: the Nodes a Flow contains
+return qx('Flow-123').linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Node).pickAll()
 
-// Find specific entity
-qx("Settings-123").pickOne()
-
-// Filter by attribute
-qx(EARS.Entity.Thread).where("status", "active").pickAll()
-
-// Get entity IDs only
-qx(EARS.Entity.Thread).ids()
+// Pagination: page(size, cursor?) returns { items, nextCursor } (ids, and a cursor for the next page or null)
+const first = qx('Message').orderBy('createdAt', 'desc').page(20)
+const second = qx('Message').orderBy('createdAt', 'desc').page(20, first.nextCursor)
+return second.items
 ```
 
-### Advanced Queries
+## Transactions
 
 ```javascript
-// Graph traversal
-qx("Thread-123")
-  .linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Message)
-  .orderBy("createdAt")
-  .pickAll()
-
-// Complex filtering
-qx(EARS.Entity.Document)
-  .where("tags", "important")
-  .withRole("published")
-  .limit(10)
-  .pick(["name", "content"])
-
-// Pagination
-qx(EARS.Entity.Message)
-  .orderBy("createdAt", "desc")
-  .page(2, 20) // Page 2, 20 items per page
-  .pickAll()
+tx('Document').put('name', 'My Document')                          // create (a type name makes a new entity)
+tx('Settings-app').put('data', {})                                  // set an attribute
+tx('Settings-app').update('data', { general: {} })                  // update an attribute
+tx('Document-123').add('tags', 'important')                         // add a value to a multi-valued attribute
+tx('Document-123').grant('published')                               // grant a role
+tx('Collection-123').link(EARS.RelKind.CONTAINS, 'Document-123')    // link
+tx('Settings-app').drop('oldKey')                                   // drop an attribute
+tx('Collection-123').unlinkIf(EARS.RelKind.CONTAINS, 'Document-123') // unlink by kind and target
+tx('Collection-123').unlink('Relation-456')                         // unlink by relation id
+tx('Settings-app').destroy()                                        // destroy an entity
 ```
 
-## Transaction Examples
+## Data scripts
 
-### Creating Entities
+### db:clearSettings (destroy-settings.ts)
 
-```javascript
-// Create new entity
-tx(EARS.Entity.Settings)
-  .put("key", "myKey")
-  .put("value", "myValue")
+Lists the Settings rows (id, label if the row has one, and the keys of its stored data). **It's a dry run by default**: nothing is destroyed until you pass `--force`. The app recreates the default settings on its next start.
 
-// Create with relationships
-tx(EARS.Entity.Document)
-  .put("name", "My Document")
-  .put("content", "...")
-  .link(EARS.RelKind.CONTAINS, "Collection-123")
-```
-
-### Updating Entities
-
-```javascript
-// Update attributes
-tx("Settings-123")
-  .update("value", "newValue")
-
-// Add to array attribute
-tx("Document-123")
-  .add("tags", "important")
-
-// Grant role
-tx("Document-123")
-  .grant("published")
-```
-
-### Deleting Data
-
-```javascript
-// Delete entity
-tx("Settings-123").destroy()
-
-// Remove attribute
-tx("Settings-123").drop("oldKey")
-
-// Unlink relationship
-tx("Document-123")
-  .unlink(EARS.RelKind.CONTAINS, "Collection-123")
-```
-
-## Example Scripts
-
-The package includes several useful scripts in `packages/api/scripts/db/`:
-
-### export-json.ts
-Export entities with metadata in clean JSON format:
 ```bash
-# Export all Settings
-npm run --silent db:export Settings > settings.json
-
-# Export without metadata
-npm run --silent db:export -- --raw Settings > settings-raw.json
-
-# Export specific entity
-npm run --silent db:export -- --id Thread-123 > thread.json
+npm run db:clearSettings               # dry run: lists the rows it would destroy
+npm run db:clearSettings -- --force    # destroys them
 ```
 
-### destroy-settings.ts
-Safely destroy settings with various filters:
+Unknown flags are rejected.
+
+### db:reset (reset.ts)
+
+Runs the app's reset (`services.appData.reset()`, as Settings → Reset does): wipes all LMDB data and stored keys in the data dir, runs the built-in packs' init hooks and boot seed (default settings, seeded flows with the root flow), then the app migrations. Use it when the app can't start. There's no confirmation.
+
 ```bash
-# Dry run to see what would be deleted
-npm run db:script scripts/db/destroy-settings.ts -- --dry-run
-
-# Destroy all settings (with confirmation)
-npm run db:script scripts/db/destroy-settings.ts
-
-# Force destroy without confirmation
-npm run db:script scripts/db/destroy-settings.ts -- --force
-
-# Destroy by label or type
-npm run db:script scripts/db/destroy-settings.ts -- --label secrets
-npm run db:script scripts/db/destroy-settings.ts -- --type plugin
+npm run db:reset
 ```
 
-### cleanup-settings.ts
-Finds and removes duplicate settings entities:
+### db:seed (seed.ts)
+
+Runs the built-in packs' init hooks, then seeds their compiled seed artifacts (actions, prompts, flows, library, ...) into LMDB. Compile them first with `npm run compile` from the root.
+
+```bash
+npm run db:seed
+```
+
+### db:import (import-backup.ts)
+
+Replaces the database with a backup directory (one containing `metadata.json`), then rehydrates it. It shows the backup's details and asks for confirmation unless `--force` is given.
+
+```bash
+npm run db:import -- --path /path/to/backup
+npm run db:import -- --path /path/to/backup --force --verbose
+```
+
+| Flag | Description |
+| --- | --- |
+| `-p, --path <dir>` | The backup directory (required) |
+| `-f, --force` | Skip the confirmation prompt |
+| `-v, --verbose` | Show the imported databases, and the stack trace on failure |
+| `-h, --help` | Show help |
+
+### db:export (export.sh, export-json.ts)
+
+Prints entities as JSON with an `exportMetadata` wrapper (timestamp, counts, LMDB paths). It runs the packs' init hooks first, so missing default data is created. Use `npm run --silent` so npm's own output doesn't end up in the JSON; the script discards stderr.
+
+```bash
+npm run --silent db:export > full-backup.json                # every entity
+npm run --silent db:export Settings > settings.json          # one entity type
+npm run --silent db:export -- --id Settings-app > entity.json
+npm run --silent db:export -- --raw Settings > settings-raw.json   # data only, no metadata
+npm run --silent db:export Settings | jq '.data[].id'
+```
+
+### scripts/db/inspect-relations.ts
+
+Prints relation statistics per entity type, or an entity's outgoing and incoming relations.
+
+```bash
+npm run db:script scripts/db/inspect-relations.ts                           # stats per entity type
+npm run db:script scripts/db/inspect-relations.ts -- --entity Flow-123 --depth 2
+npm run db:script scripts/db/inspect-relations.ts -- --type Flow            # the first 5 Flows
+npm run db:script scripts/db/inspect-relations.ts -- -e Flow-123 --incoming # only what points at Flow-123
+```
+
+| Flag | Description |
+| --- | --- |
+| `-e, --entity <id>` | Inspect one entity |
+| `-t, --type <type>` | Inspect the first five entities of a type |
+| `-d, --depth <n>` | How many levels of relations to follow in the directions shown (default 1) |
+| `--incoming`, `--outgoing` | Show only incoming or only outgoing relations (default, or both flags: both directions) |
+
+### scripts/db/cleanup-settings.ts
+
+Finds Settings rows that share a `key` (or `name`), and after a `y` confirmation destroys all but the most recently updated one of each.
+
 ```bash
 npm run db:script scripts/db/cleanup-settings.ts
 ```
 
-### inspect-relations.ts
-Visualizes entity relationships:
-```bash
-# Show overall statistics
-npm run db:script scripts/db/inspect-relations.ts
+### scripts/db/export-data.ts
 
-# Inspect specific entity
-npm run db:script scripts/db/inspect-relations.ts -- --entity Thread-123 --depth 2
+Writes each entity type to a timestamped file (`<type in lower case>-<timestamp>.json` or `.csv`) in an output directory, plus an `export-metadata-<timestamp>.json` summary.
 
-# Inspect all entities of a type
-npm run db:script scripts/db/inspect-relations.ts -- --type Thread
-```
-
-### export-data.ts
-Batch export entities to timestamped files:
 ```bash
 npm run db:script scripts/db/export-data.ts -- --output ./backup --format json
-npm run db:script scripts/db/export-data.ts -- --entities Settings,Secret --format csv
+npm run db:script scripts/db/export-data.ts -- --entities Settings,Thread --format csv --verbose
 ```
 
-## Command Line Options
-
-### db:cli
-Interactive REPL mode with no additional options.
-
-### db:exec
-```
-Options:
-  --no-confirm              Skip confirmation for destructive operations
-```
-
-### db:export
-```
-Options:
-  --raw                     Export data only, without metadata wrapper
-  --id <entity-id>          Export specific entity by ID
-```
-
-### db:script
-```
-Options vary by script. Common options:
-  --force                   Skip confirmations (destroy-settings.ts)
-  --dry-run                 Show what would happen without making changes
-  --label <label>           Filter by label field
-  --type <type>             Filter by type field
-  --verbose                 Show detailed output
-```
-
-## Safety Features
-
-- **Confirmation Prompts**: Destructive operations require confirmation by default
-- **Transaction Atomicity**: All operations within a transaction succeed or fail together
-- **Cycle Detection**: Prevents circular relationships when using `safeLink()`
-- **Type Safety**: Full TypeScript support with entity type checking
-
-## Tips & Best Practices
-
-1. **Always backup before bulk operations**: Export your data before running destructive scripts
-2. **Use transactions for consistency**: Group related changes in a single transaction
-3. **Test queries in REPL first**: Use interactive mode to test complex queries
-4. **Leverage scripts for repetitive tasks**: Create reusable scripts for common operations
-5. **Monitor performance**: Use `.stats` to check entity counts and relationships
+Flags: `-o, --output <dir>` (default `./exports`), `-e, --entities <a,b>` (default every registered type), `-f, --format json|csv`, `-v, --verbose`.
 
 ## Troubleshooting
 
-### Database won't initialize
-- Ensure the app is not running (database can't be accessed by multiple processes)
-- Check that LMDB files exist in the data directory
-
-### Command not found
-- Make sure you're in the `packages/api` directory
-- Run `npm install` if dependencies are missing
-
-### Permission errors
-- The CLI needs read/write access to the LMDB database files
-- Check file permissions in the data directory
+- **`App environment unknown`**: set `ABUDDY_ENV` (and `ABUDDY_USER_DATA_DIR`), see [Before you run anything](#before-you-run-anything).
+- **Database won't open**: close the app; check that the data dir has LMDB files under `.data/`.
+- **`Missing script`**: `db:export`, `db:import`, `db:seed` and `db:clearSettings` exist only in `packages/api`.

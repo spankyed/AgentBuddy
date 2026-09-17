@@ -1,39 +1,47 @@
 import { tx, findById, findByIdRaw, qx } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
-import { createRelation, removeRelation, RepositoryError, RepositoryErrorCode } from '@abuddy/sdk/ears';
+import { createRelation, removeRelation, RepositoryError, RepositoryErrorCode } from '@abuddy/ears';
 import { createEntityWithDefaults, updateEntity } from '@/__generated__/ears';
+import { trash } from '@abuddy/sdk/repositories';
 
-import type { NoteEntity } from '../types';
 import { REFERENCES } from '../types';
 import { syncReferences } from './link-utils';
+import type { NoteEntity } from '@/features/notes/be/types';
+
+/** Strips the sub-document link to a note from its parent's content */
+function removeParentLink(parentId: EARS.EntityId, id: EARS.EntityId): void {
+  const parent = findById<NoteEntity>(parentId);
+  if (parent?.content) {
+    const escaped = (id as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const documentPattern = new RegExp(`\\n?\\n?\\\\?\\[([^\\]\\\\]*)\\\\?\\]\\(document:\\/\\/${escaped}(?:\\?[^)]*)?\\)`, 'g');
+    const newContent = parent.content.replace(documentPattern, '');
+    if (newContent !== parent.content) {
+      updateEntity(parentId, { content: newContent });
+    }
+  }
+}
+
+/** Appends a sub-document link to a note to its parent's content; tasks get none */
+function appendParentLink(parentId: EARS.EntityId, id: EARS.EntityId, noteType: string): void {
+  const parent = findById<NoteEntity>(parentId);
+  if (parent && noteType !== 'task') {
+    const title = findById<NoteEntity>(id)?.title ?? 'Untitled';
+    const linkMarkdown = `\n\n[${title}](document://${id})`;
+    updateEntity(parentId, { content: (parent.content || '') + linkMarkdown });
+  }
+}
 
 function reparent(id: EARS.EntityId, oldParentId: string | null, newParentId: EARS.EntityId | null, noteType: string): void {
   // Remove old CONTAINS relation and strip sub-document link from old parent content
   if (oldParentId) {
-    const oldParentEntityId = oldParentId as EARS.EntityId;
-    removeRelation(oldParentEntityId, EARS.RelKind.CONTAINS, id);
-    const oldParent = findById<NoteEntity>(oldParentEntityId);
-    if (oldParent?.content) {
-      const escaped = (id as string).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-      const documentPattern = new RegExp(`\\n?\\n?\\\\?\\[([^\\]\\\\]*)\\\\?\\]\\(document:\\/\\/${escaped}(?:\\?[^)]*)?\\)`, 'g');
-      const newContent = oldParent.content.replace(documentPattern, '');
-      if (newContent !== oldParent.content) {
-        updateEntity(oldParentEntityId, { content: newContent });
-      }
-    }
+    removeRelation(oldParentId as EARS.EntityId, EARS.RelKind.CONTAINS, id);
+    removeParentLink(oldParentId as EARS.EntityId, id);
   }
 
   // Create new CONTAINS relation and append sub-document link to new parent content
   if (newParentId) {
     createRelation(newParentId, EARS.RelKind.CONTAINS, id);
-    const newParent = findById<NoteEntity>(newParentId);
-    const note = findById<NoteEntity>(id);
-    if (newParent && noteType !== 'task') {
-      const title = note?.title ?? 'Untitled';
-      const linkMarkdown = `\n\n[${title}](document://${id})`;
-      const newContent = (newParent.content || '') + linkMarkdown;
-      updateEntity(newParentId, { content: newContent });
-    }
+    appendParentLink(newParentId, id, noteType);
   }
 }
 
@@ -128,8 +136,10 @@ export const noteCommands = {
     completed?: boolean;
     hideCompletedChildren?: boolean;
     favorite?: boolean;
+    noteType?: 'document' | 'tasklist' | 'task';
   }, skipTimestamp?: boolean): void => {
-    if (!findById<NoteEntity>(id)) {
+    const existing = findById<NoteEntity>(id);
+    if (!existing) {
       throw new RepositoryError(`Note ${id} not found`, RepositoryErrorCode.NOT_FOUND);
     }
 
@@ -143,6 +153,7 @@ export const noteCommands = {
     if (updates.completed !== undefined) filteredUpdates.completed = updates.completed;
     if (updates.hideCompletedChildren !== undefined) filteredUpdates.hideCompletedChildren = updates.hideCompletedChildren;
     if (updates.favorite !== undefined) filteredUpdates.favorite = updates.favorite;
+    if (updates.noteType !== undefined) filteredUpdates.noteType = updates.noteType;
 
     if (Object.keys(filteredUpdates).length > 0) {
       updateEntity(id, filteredUpdates, skipTimestamp);
@@ -152,33 +163,31 @@ export const noteCommands = {
     if (updates.content !== undefined) {
       syncReferences(id, updates.content);
     }
-  },
 
-  softDelete: (id: EARS.EntityId): string[] => {
-    const existing = findById<NoteEntity>(id);
-    if (!existing) return [];
-    const now = Date.now();
-    const deletedIds: string[] = [id];
-    updateEntity(id, { deleted: true, deletedAt: now });
-    const childIds = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
-    for (const childId of childIds) {
-      deletedIds.push(...noteCommands.softDelete(childId));
+    // A task has no sub-document link in its parent's content; a note that stops being one gets it
+    const parentId = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids()[0];
+    if (parentId && updates.noteType !== undefined && (updates.noteType === 'task') !== (existing.noteType === 'task')) {
+      if (updates.noteType === 'task') removeParentLink(parentId, id);
+      else appendParentLink(parentId, id, updates.noteType);
     }
-    return deletedIds;
   },
 
+  /** Moves a note and its sub-notes to the trash; returns the ids moved */
+  softDelete: (id: EARS.EntityId): string[] => {
+    if (!findById<NoteEntity>(id)) return [];
+    const subtree = (noteId: EARS.EntityId): EARS.EntityId[] =>
+      [noteId, ...qx(noteId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids().flatMap(subtree)];
+    return trash.move(subtree(id));
+  },
+
+  /** Takes a note and its trashed sub-notes out of the trash; returns the ids restored */
   restore: (id: EARS.EntityId): string[] => {
-    const existing = findByIdRaw<NoteEntity>(id);
-    if (!existing || !existing.deleted) return [];
+    if (trash.restore([id]).length === 0) return [];
     const restoredIds: string[] = [id];
-    updateEntity(id, { deleted: false, deletedAt: 0 });
     // If parent is still deleted, detach so note restores at root
     const parentIds = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note, false).ids();
-    if (parentIds.length > 0) {
-      const parent = findByIdRaw<NoteEntity>(parentIds[0]);
-      if (parent?.deleted) {
-        removeRelation(parentIds[0], EARS.RelKind.CONTAINS, id);
-      }
+    if (parentIds.length > 0 && trash.isTrashed(parentIds[0])) {
+      removeRelation(parentIds[0], EARS.RelKind.CONTAINS, id);
     }
     const childIds = qx(id).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Note).ids();
     for (const childId of childIds) {

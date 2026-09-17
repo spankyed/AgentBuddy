@@ -4,14 +4,9 @@
  * Common functions used across library export, import, and default-setup compilation.
  */
 
-import type { ContentSection } from './types'
-import type { ExportedItem } from './export-types'
+import type { ExportedItem } from '@/features/library/be/export-types';
+import type { ContentSection } from '@/features/library/be/types';
 
-export { toSlug, uniqueFilename } from '@abuddy/sdk/utils'
-
-export function toDisplayName(str: string): string {
-  return str.replace(/-/g, ' ')
-}
 
 function escapeQuotes(str: string): string {
   return str.replace(/\\/g, '\\\\').replace(/"/g, '\\"')
@@ -163,10 +158,3 @@ export function countExportedItems(item: ExportedItem): number {
   return 1 + item.children.reduce((sum, child) => sum + countExportedItems(child), 0)
 }
 
-/** Count only documents in an item list (used by default-setup compiler). */
-export function countDocs(items: ExportedItem[]): number {
-  return items.reduce((sum, item) => {
-    if (item.type === 'collection') return sum + countDocs(item.children)
-    return sum + 1
-  }, 0)
-}

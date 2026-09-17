@@ -40,7 +40,7 @@ import { useSelector } from '@xstate/vue'
 const actorSystem = useActorSystem()
 
 const props = defineProps<{
-  artifact: ArtifactItem
+  artifact: ArtifactItem<string | { noteId?: string }>
 }>()
 
 // The artifact content is a noteId string — look up the note from the notes system

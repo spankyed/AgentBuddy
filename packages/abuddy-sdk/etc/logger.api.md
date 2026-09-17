@@ -4,23 +4,13 @@
 
 ```ts
 
-// @public (undocumented)
-export function createInspectLogger(namespace: string): InspectLogger;
+import { EARS as EARS_2 } from '@abuddy/ears';
 
-// @public (undocumented)
-export function createLogger(source?: string): Logger;
+// @public
+export function createLogger(source?: string, options?: LoggerOptions): Logger;
 
-// @public (undocumented)
-export interface InspectLogger {
-    // (undocumented)
-    inspect: (message: string, meta?: Record<string, unknown>) => void;
-    // (undocumented)
-    isEnabled: () => boolean;
-    // (undocumented)
-    logger: Logger;
-    // (undocumented)
-    setEnabled: (enabled: boolean) => void;
-}
+// @public
+export function isDebugEnabled(source: string): boolean;
 
 // @public (undocumented)
 export type LogEvent = {
@@ -44,7 +34,65 @@ export interface Logger {
 }
 
 // @public (undocumented)
+export interface LoggerOptions {
+    debug?: boolean;
+}
+
+// @public (undocumented)
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
+
+// @public
+export function onLog(callback: (event: LogEvent) => void): () => void;
+
+// @public
+function reportError_2(input: ReportErrorInput & {
+    step: StepErrorContext;
+}): StepRuntimeError;
+
+// @public (undocumented)
+function reportError_2(input: ReportErrorInput): StepRuntimeError | undefined;
+export { reportError_2 as reportError }
+
+// @public (undocumented)
+export interface ReportErrorInput {
+    // (undocumented)
+    entityId?: string;
+    // (undocumented)
+    error: unknown;
+    // (undocumented)
+    operation?: string;
+    // (undocumented)
+    severity?: 'error' | 'fatal';
+    source?: string;
+    step?: StepErrorContext;
+    // (undocumented)
+    title?: string;
+    userMessage?: string;
+}
+
+// @public
+export type ReportSystemErrorInput = Omit<ReportErrorInput, 'step'>;
+
+// @public
+export function setDebugEnabled(source: string, enabled: boolean): void;
+
+// @public
+export type StepErrorContext = Omit<StepRuntimeError, 'errorId' | 'message' | 'stack' | 'timestamp' | 'source'>;
+
+// @public
+export type SystemErrorEvent = {
+    type: 'SYSTEM_ERROR';
+    pluginId: 'application';
+    errorId: string;
+    message: string;
+    title?: string;
+    source?: string;
+    operation?: string;
+    entityId?: string;
+    severity: 'error' | 'fatal';
+    stack?: string;
+    timestamp: number;
+};
 
 // (No @packageDocumentation comment for this package)
 

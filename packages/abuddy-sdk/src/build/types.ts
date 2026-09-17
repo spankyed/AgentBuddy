@@ -1,42 +1,38 @@
-/**
- * Pack seed declaration.
- * A pack declares what seed types it provides.
- * Paths are relative to the compile.config.ts file location.
- */
-export interface PackConfig {
-  name: string;
-  actions?: string;     // directory path, e.g. './actions'
-  prompts?: string;     // directory path
-  flows?: string;       // directory path
-  library?: string;     // directory path
-  notes?: string;       // directory path
-  faqs?: string;        // directory path
-  settings?: string;    // file path, e.g. './settings.ts' — base settings for the pack
-  features?: string;    // directory path, e.g. './src/features' — scanned for per-feature settings
-  compilers?: Array<{ type: string; compiler: import('./seed-compiler.ts').SeedCompiler }>;
-  steps?: import('../steps/types.ts').StepDefinition[];
-  setup?: () => void | Promise<void>;
-  [key: string]: unknown;
+import type { ResolvedSeed } from './seeds/resolve.ts';
+import type { StepDefinition } from '../steps/types.ts';
+import type { ArtifactDefinition } from '../artifacts/types.ts';
+import type { BlockDefinition } from '../blocks/types.ts';
+
+/** The step, artifact and block definitions a pack compiles with: its dependencies' and its own */
+export interface PackBuildDefinitions {
+  steps: StepDefinition[];
+  artifacts: ArtifactDefinition[];
+  blocks: BlockDefinition[];
 }
 
-/**
- * Feature configuration within a pack.
- * Each feature can declare its own settings slice.
- */
-export interface FeatureConfig {
+/** A pack's seed sources, as `compilePack` compiles them (built from abuddy.json by buildPackConfigFromManifest) */
+export interface PackConfig {
   name: string;
-  designation?: string;
-  settings?: string;    // file path, e.g. './settings.ts'
+  /** `boot.seed`, each entry resolved to its path, seeder, or format settings */
+  seeds: Record<string, ResolvedSeed>;
+  /** Loads the definitions compiling validates against, such as the step types flows use */
+  loadDefinitions?: () => Promise<PackBuildDefinitions>;
 }
 
 export interface CompilePackOptions {
   packDir: string;
   outputDir: string;
   packConfig?: PackConfig;
-  featureSettingsPaths?: Array<{ name: string; settingsPath: string }>;
+  /** The definitions to compile with; the pack config's (`loadDefinitions`) by default, none without one */
+  definitions?: PackBuildDefinitions;
+  /** Loads a compiler module (the pack's own source, or a dependency's seed-compilers.mjs); the CLI loads TypeScript modules with tsx. Defaults to import(). */
+  importModule?: (file: string) => Promise<Record<string, unknown>>;
+  /** Progress lines (the pack and each key's item count); defaults to console.log */
+  log?: (message: string) => void;
 }
 
 export interface CompilePackResult {
+  /** Items compiled per seed key */
   seeds: Record<string, number>;
   warnings: string[];
 }

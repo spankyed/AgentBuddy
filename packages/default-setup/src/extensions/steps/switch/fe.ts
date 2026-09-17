@@ -20,7 +20,6 @@ export const switchStepFE: StepDefinition = {
       bgColor: 'bg-yellow-500/10',
       hoverBgColor: 'group-hover:bg-yellow-500/15',
       connectionRules: { inputs: 1, outputs: -1 },
-      component: 'SwitchNode',
       category: 'logic',
       isImplemented: true,
     },

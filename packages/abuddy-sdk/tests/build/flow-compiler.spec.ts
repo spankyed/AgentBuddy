@@ -1,28 +1,26 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { compile } from '../../src/build/compilers/flow-compiler.ts';
-import type { FlowEARS } from '../../src/build/compilers/flow-compiler.ts';
+import { EARS } from '../../src/types/entities.ts';
 import type { FlowDSL } from '../../src/build/compilers/flow-types.ts';
 import { BinaryOperator } from '../../src/utils/index.ts';
-import { stepRegistry } from '../../src/steps/registry.ts';
+import { startTestRuntime, testPacks } from '../../src/testing/index.ts';
 import { findEntity, filterEntities, filterRelations } from './helpers/compiled-result.ts';
 import { wrapInFlow, makeSwitchDSL, parsedPredicate } from './helpers/dsl-factories.ts';
 import { steps, ctx, flows } from './helpers/fixtures.ts';
 import { ALL_TEST_STEPS } from './helpers/test-steps.ts';
 
-const EARS: FlowEARS = {
-  Entity: { Flow: 'Flow', Node: 'Node', Action: 'Action', Prompt: 'Prompt' },
-  RelKind: { CONTAINS: 'contains', TRANSITIONS_TO: 'transitions_to', INSTANCE_OF: 'instance_of' },
-};
+// The registered steps these compile against: the stand-in's, which the specs fill
+startTestRuntime();
 
 function c(dsl: FlowDSL, options?: { actions?: Map<string, string>; prompts?: Map<string, string> }) {
-  return compile(dsl, EARS, options);
+  return compile(dsl, options);
 }
 
 describe('compile', () => {
   beforeEach(() => {
-    for (const step of ALL_TEST_STEPS) stepRegistry.register(step);
+    for (const step of ALL_TEST_STEPS) testPacks.steps.set(step.type, step);
   });
-  afterEach(() => stepRegistry.clear());
+  afterEach(() => testPacks.steps.clear());
 
   describe('flow structure', () => {
     it('creates flow entity with correct label, entityType, flowType', () => {
@@ -492,88 +490,88 @@ describe('compile', () => {
 
   describe('expression parsing (via switch conditions)', () => {
     it('"$.key == value" -> operator EQUALS', () => {
-      const pred = parsedPredicate('$.key == value', EARS);
+      const pred = parsedPredicate('$.key == value');
       expect(pred.key).toBe('$.key');
       expect(pred.operator).toBe(BinaryOperator.EQUALS);
       expect(pred.value).toBe('value');
     });
 
     it('"$.key != value" -> NOT_EQUALS', () => {
-      const pred = parsedPredicate('$.key != value', EARS);
+      const pred = parsedPredicate('$.key != value');
       expect(pred.operator).toBe(BinaryOperator.NOT_EQUALS);
     });
 
     it('"$.key > 5" -> GREATER_THAN, value: 5 (number)', () => {
-      const pred = parsedPredicate('$.key > 5', EARS);
+      const pred = parsedPredicate('$.key > 5');
       expect(pred.operator).toBe(BinaryOperator.GREATER_THAN);
       expect(pred.value).toBe(5);
     });
 
     it('"$.key >= 5" -> GREATER_THAN_OR_EQUALS', () => {
-      const pred = parsedPredicate('$.key >= 5', EARS);
+      const pred = parsedPredicate('$.key >= 5');
       expect(pred.operator).toBe(BinaryOperator.GREATER_THAN_OR_EQUALS);
       expect(pred.value).toBe(5);
     });
 
     it('>= parsed before > (longest match first)', () => {
-      const predGte = parsedPredicate('$.key >= 10', EARS);
-      const predGt = parsedPredicate('$.key > 10', EARS);
+      const predGte = parsedPredicate('$.key >= 10');
+      const predGt = parsedPredicate('$.key > 10');
       expect(predGte.operator).toBe(BinaryOperator.GREATER_THAN_OR_EQUALS);
       expect(predGt.operator).toBe(BinaryOperator.GREATER_THAN);
     });
 
     it('"$.key contains foo" -> CONTAINS', () => {
-      const pred = parsedPredicate('$.key contains foo', EARS);
+      const pred = parsedPredicate('$.key contains foo');
       expect(pred.operator).toBe(BinaryOperator.CONTAINS);
       expect(pred.value).toBe('foo');
     });
 
     it('"$.key is_empty" -> IS_EMPTY, no value', () => {
-      const pred = parsedPredicate('$.key is_empty', EARS);
+      const pred = parsedPredicate('$.key is_empty');
       expect(pred.operator).toBe(BinaryOperator.IS_EMPTY);
       expect(pred.value).toBeUndefined();
     });
 
     it('"$.key is_null" -> IS_NULL, no value', () => {
-      const pred = parsedPredicate('$.key is_null', EARS);
+      const pred = parsedPredicate('$.key is_null');
       expect(pred.operator).toBe(BinaryOperator.IS_NULL);
       expect(pred.value).toBeUndefined();
     });
 
     it('boolean values: "true" -> true, "false" -> false', () => {
-      const predTrue = parsedPredicate('$.flag == true', EARS);
+      const predTrue = parsedPredicate('$.flag == true');
       expect(predTrue.value).toBe(true);
 
-      const predFalse = parsedPredicate('$.flag == false', EARS);
+      const predFalse = parsedPredicate('$.flag == false');
       expect(predFalse.value).toBe(false);
     });
 
     it('quoted strings: "\'hello\'" -> "hello"', () => {
-      const pred = parsedPredicate("$.name == 'hello'", EARS);
+      const pred = parsedPredicate("$.name == 'hello'");
       expect(pred.value).toBe('hello');
     });
 
     it('"$.key === \'value\'" -> EQUALS, value: "value" (strict equality)', () => {
-      const pred = parsedPredicate("$.key === 'value'", EARS);
+      const pred = parsedPredicate("$.key === 'value'");
       expect(pred.key).toBe('$.key');
       expect(pred.operator).toBe(BinaryOperator.EQUALS);
       expect(pred.value).toBe('value');
     });
 
     it('"$.key !== \'value\'" -> NOT_EQUALS, value: "value"', () => {
-      const pred = parsedPredicate("$.key !== 'value'", EARS);
+      const pred = parsedPredicate("$.key !== 'value'");
       expect(pred.operator).toBe(BinaryOperator.NOT_EQUALS);
       expect(pred.value).toBe('value');
     });
 
     it('=== parsed before == (longest match first, regression for stray `= \'…\'`)', () => {
-      const pred = parsedPredicate("$.event.data.payload.mode === 'claude-code'", EARS);
+      const pred = parsedPredicate("$.event.data.payload.mode === 'claude-code'");
       expect(pred.value).toBe('claude-code');
       expect(pred.value).not.toContain('=');
     });
 
     it('path references: "$.a == $.b" -> value kept as "$.b"', () => {
-      const pred = parsedPredicate('$.a == $.b', EARS);
+      const pred = parsedPredicate('$.a == $.b');
       expect(pred.value).toBe('$.b');
     });
 

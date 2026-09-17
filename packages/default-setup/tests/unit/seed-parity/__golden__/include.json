@@ -1,0 +1,182 @@
+{
+  "fresh": {
+    "rows": {
+      "Action:Set Instructions": {
+        "label": "Set Instructions",
+        "description": "Create a thread from instructions",
+        "sourceHash": "ed3d21bb8aed3524",
+        "rowSha256": "c12b953dcdc9f3e0902a509e199deeec55f302799fd03e061bff4ff7e899e7e1"
+      },
+      "Collection:advanced": {
+        "displayOrder": 1000,
+        "name": "advanced",
+        "sourceHash": "08f76a29861feea7"
+      },
+      "Collection:Guides": {
+        "description": "How-to guides",
+        "displayOrder": 1000,
+        "name": "Guides",
+        "sourceHash": "36c6bfb727430718"
+      },
+      "Document:deep dive": {
+        "content": [
+          {
+            "type": "markdown",
+            "text": "Plain body with no frontmatter.\n"
+          }
+        ],
+        "displayOrder": 1000,
+        "name": "deep dive",
+        "shortCode": "DOC-1",
+        "sourceHash": "ab5447ee2e9df227",
+        "tags": [
+          "default"
+        ]
+      },
+      "Document:Getting Started": {
+        "content": [
+          {
+            "type": "markdown",
+            "text": "Welcome. ![diagram](media://Document:Getting Started/pic.png)"
+          },
+          {
+            "type": "field",
+            "fields": [
+              {
+                "key": "Owner",
+                "value": "docs team"
+              },
+              {
+                "key": "Status",
+                "value": "draft"
+              }
+            ]
+          },
+          {
+            "type": "list",
+            "items": [
+              "first",
+              "second"
+            ]
+          },
+          {
+            "type": "code",
+            "language": "ts",
+            "text": "const x = 1;"
+          }
+        ],
+        "displayOrder": 2000,
+        "name": "Getting Started",
+        "shortCode": "DOC-2",
+        "sourceHash": "ef063cc892ae028c",
+        "tags": [
+          "intro",
+          "docs"
+        ]
+      },
+      "Note:Projects": {
+        "completed": false,
+        "content": "Project list.\n",
+        "displayOrder": 0,
+        "entityType": "Note",
+        "hideCompletedChildren": true,
+        "icon": null,
+        "label": "New Note 1",
+        "lastSeen": 0,
+        "noteType": "tasklist",
+        "shortCode": "NOTE-1",
+        "title": "Projects"
+      },
+      "Note:Projects/2024": {
+        "completed": false,
+        "content": "A title YAML reads as a number.\n",
+        "displayOrder": 3,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 6",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-6",
+        "title": "2024"
+      },
+      "Note:Projects/Archive": {
+        "completed": false,
+        "content": "Old work.\n",
+        "displayOrder": 0,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 2",
+        "lastSeen": 0,
+        "noteType": "tasklist",
+        "shortCode": "NOTE-2",
+        "title": "Archive"
+      },
+      "Note:Projects/Archive/Old Task": {
+        "completed": false,
+        "content": "Archived task.\n",
+        "displayOrder": 0,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 3",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-3",
+        "title": "Old Task"
+      },
+      "Note:Projects/task one": {
+        "completed": true,
+        "content": "Done task.\n",
+        "displayOrder": 1,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 4",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-4",
+        "title": "task one"
+      },
+      "Note:Projects/Task Two": {
+        "completed": false,
+        "content": "Open task.\n",
+        "displayOrder": 2,
+        "entityType": "Note",
+        "icon": null,
+        "label": "New Note 5",
+        "lastSeen": 0,
+        "noteType": "task",
+        "shortCode": "NOTE-5",
+        "title": "Task Two"
+      }
+    },
+    "relations": [
+      "Collection:Guides --parent_of--> Collection:advanced",
+      "Collection:advanced --contains--> Document:deep dive",
+      "Collection:Guides --contains--> Document:Getting Started",
+      "Note:Projects --contains--> Note:Projects/Archive",
+      "Note:Projects/Archive --contains--> Note:Projects/Archive/Old Task",
+      "Note:Projects --contains--> Note:Projects/task one",
+      "Note:Projects --contains--> Note:Projects/Task Two",
+      "Note:Projects --contains--> Note:Projects/2024"
+    ],
+    "media": [
+      "Document:Getting Started/pic.png=PNGDATA"
+    ],
+    "counts": {
+      "actions": {
+        "created": 1,
+        "updated": 0,
+        "skipped": 0
+      },
+      "prompts": {
+        "created": 0,
+        "updated": 0,
+        "skipped": 0
+      },
+      "library": {
+        "created": 4,
+        "updated": 0,
+        "skipped": 0
+      }
+    }
+  }
+}

@@ -1,9 +1,8 @@
-import { emit } from '@/__generated__/events';
+import { sendToPlugin } from '@/__generated__/events';
 import { setup, fromCallback, spawnChild } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
-import { rootEvents } from '@abuddy/sdk/rpc';
-import type { IncomingSystemEvents } from '@abuddy/sdk/rpc';
+import { onConnected, onIncoming, type IncomingSystemEvents } from '@abuddy/sdk/events';
 import { browserQueries } from './repository/queries';
 import { browserCommands } from './repository/commands';
 import type { SavedTab, SavedBookmark } from './types';
@@ -46,8 +45,8 @@ export const browserSystem = setup({
         }
       };
 
-      const onConnectedUnsub = rootEvents.onConnected(connectedHandler);
-      const onIncomingUnsub = rootEvents.onIncoming(incomingHandler);
+      const onConnectedUnsub = onConnected(connectedHandler);
+      const onIncomingUnsub = onIncoming(incomingHandler);
 
       return () => {
         onConnectedUnsub();
@@ -64,12 +63,11 @@ export const browserSystem = setup({
         savedTabCount: savedTabs.length,
         savedBookmarkCount: savedBookmarks.length,
       });
-      const wrapped = emit(browser, {
+      sendToPlugin(browser, {
         type: 'BROWSER_CONNECTED',
         savedTabs,
         savedBookmarks,
       });
-      rootEvents.emitOutgoing(wrapped.event);
     },
     syncTabs: ({ event }) => {
       const ev = browserSpec.typeOf('SYNC_TABS', event);
@@ -101,6 +99,6 @@ export const browserSystem = setup({
   },
 });
 
-const browserEntry: SystemEntry = { spec: browserSpec, machine: browserSystem };
+const browserEntry = { spec: browserSpec, machine: browserSystem } satisfies SystemEntry;
 
 export default browserEntry;

@@ -1,123 +1,169 @@
-import type { Plugin, PackFERegistration } from '@abuddy/sdk/fe';
-import { tiptapPluginRegistry } from '@abuddy/sdk/fe';
-import { registerDesignations, unregisterDesignations } from '@abuddy/sdk/designations';
-import { artifactRegistry } from '@abuddy/sdk/artifacts';
-import { blockRegistry } from '@abuddy/sdk/blocks';
-import { stepRegistry } from '@abuddy/sdk/steps';
-import { registerAppExtension, unregisterAppExtension } from './app-extensions.ts';
+// The packs whose frontends the renderer registered, as an instance: the renderer creates one and binds its read
+// face for the SDK's frontend lookups (`bindFeHost({ packs })`). It holds the only writes to it.
+import type { Plugin, PackFERegistration, TiptapPlugin, DslTypeConfig } from '@abuddy/sdk/fe';
+import type { FePackRegistryView } from '@abuddy/sdk/runtime';
+import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
+import type { BlockDefinition } from '@abuddy/sdk/blocks';
+import { createDefinitionStore, createDesignationStore, createStepStore } from '../packs/contributions.ts';
+import { createAppExtensionSlots } from './app-extensions.ts';
 
 interface PackFEContributions {
-  pluginIds: string[];
+  /** The plugins this pack added: not those skipped because another pack or the host has the id */
+  plugins: Plugin[];
   stepTypes: string[];
-  tiptapPluginCount: number;
+  tiptapPlugins: TiptapPlugin[];
   appExtensionSlots: string[];
   artifactTypes: string[];
   blockTypes: string[];
-  designations: string[];
+  dslTypes: string[];
+  /** Role → id of the plugin that plays it */
+  designations: Record<string, string>;
 }
 
-const allPlugins: Plugin[] = [];
-let defaultPlugin: Plugin | undefined;
-const packContributions = new Map<string, PackFEContributions>();
+/** The renderer's registered pack frontends */
+export interface FePackRegistry extends FePackRegistryView {
+  /** Registers a pack's frontend; without a pack id (the built-in packs') it can't be unregistered */
+  registerPackFE(registration: PackFERegistration, packId?: string): void;
+  /** Unregisters a pack's frontend; returns the plugins it had added */
+  unregisterPackFE(packId: string): Plugin[];
+  /** Every registered plugin, in registration order */
+  getRegisteredPlugins(): Plugin[];
+  /** The first registered default plugin; throws when no pack registered one */
+  getRegisteredDefaultPlugin(): Plugin;
+  getAppExtension(slot: string): ReturnType<FePackRegistryView['appExtension']>;
+}
 
-export function registerPackFE(registration: PackFERegistration, packId?: string): void {
-  const plugins = registration.plugins ?? [];
-  allPlugins.push(...plugins);
+/** A new, empty frontend registry */
+export function createFePackRegistry(): FePackRegistry {
+  const allPlugins: Plugin[] = [];
+  let defaultPlugin: Plugin | undefined;
+  const packContributions = new Map<string, PackFEContributions>();
+  const designations = createDesignationStore();
+  const steps = createStepStore();
+  const artifacts = createDefinitionStore<ArtifactDefinition>();
+  const blocks = createDefinitionStore<BlockDefinition>();
+  const tiptapPlugins: TiptapPlugin[] = [];
+  const appExtensions = createAppExtensionSlots();
+  const dslTypes = new Map<string, DslTypeConfig>();
 
-  if (registration.defaultPlugin && !defaultPlugin) {
-    defaultPlugin = registration.defaultPlugin;
-  } else if (registration.defaultPlugin) {
-    console.warn(`[pack-store] defaultPlugin from pack ignored — already set`);
-  }
-
-  const designations = plugins.filter(p => p.designation).map(p => p.designation!);
-  if (designations.length) {
-    registerDesignations(designations);
-  }
-
-  if (registration.tiptapPlugins) {
-    for (const plugin of registration.tiptapPlugins) {
-      tiptapPluginRegistry.register(plugin, packId);
+  function registerPackFE(registration: PackFERegistration, packId?: string): void {
+    const fromPack = packId ? ` from pack ${packId}` : '';
+    const registeredIds = new Set(allPlugins.map(p => p.id));
+    const plugins: Plugin[] = [];
+    for (const plugin of registration.plugins ?? []) {
+      if (registeredIds.has(plugin.id)) {
+        console.warn(`[pack-store] Plugin "${plugin.id}"${fromPack} ignored — a plugin with that id is already registered`);
+        continue;
+      }
+      registeredIds.add(plugin.id);
+      plugins.push(plugin);
     }
-  }
+    allPlugins.push(...plugins);
 
-  const appExtensionSlots: string[] = [];
-  if (registration.appExtensions) {
-    for (const [slot, component] of Object.entries(registration.appExtensions)) {
-      registerAppExtension(slot, component);
+    if (registration.defaultPlugin && !defaultPlugin) {
+      defaultPlugin = registration.defaultPlugin;
+    } else if (registration.defaultPlugin) {
+      console.warn(`[pack-store] defaultPlugin from pack ignored — already set`);
+    }
+
+    const roles: Record<string, string> = {};
+    for (const { id, designation } of plugins) {
+      if (!designation) continue;
+      if (designations.has(designation) || designation in roles) {
+        console.warn(`[pack-store] Designation "${designation}" of plugin "${id}"${fromPack} ignored — another plugin plays that role`);
+      } else {
+        roles[designation] = id;
+      }
+    }
+    designations.register(roles);
+
+    tiptapPlugins.push(...registration.tiptapPlugins ?? []);
+
+    const appExtensionSlots: string[] = [];
+    for (const [slot, component] of Object.entries(registration.appExtensions ?? {})) {
+      appExtensions.register(slot, component);
       appExtensionSlots.push(slot);
     }
-  }
 
-  if (registration.artifacts) {
-    for (const def of registration.artifacts) {
-      artifactRegistry.register(def);
+    for (const def of registration.artifacts ?? []) artifacts.register(def);
+    for (const def of registration.blocks ?? []) blocks.register(def);
+
+    if (registration.steps) {
+      for (const step of registration.steps) steps.register(step);
+      // Each step's components, loaded once
+      for (const def of steps.all()) {
+        if (def.fe?.loadComponents && !def.fe.components) def.fe.components = def.fe.loadComponents();
+      }
+    }
+
+    for (const [name, config] of Object.entries(registration.dslTypes ?? {})) dslTypes.set(name, config);
+
+    if (packId) {
+      packContributions.set(packId, {
+        plugins,
+        stepTypes: (registration.steps ?? []).map(s => s.type),
+        tiptapPlugins: registration.tiptapPlugins ?? [],
+        appExtensionSlots,
+        artifactTypes: (registration.artifacts ?? []).map(a => a.type),
+        blockTypes: (registration.blocks ?? []).map(b => b.type),
+        dslTypes: Object.keys(registration.dslTypes ?? {}),
+        designations: roles,
+      });
     }
   }
 
-  if (registration.blocks) {
-    for (const def of registration.blocks) {
-      blockRegistry.register(def);
+  function unregisterPackFE(packId: string): Plugin[] {
+    const contrib = packContributions.get(packId);
+    if (!contrib) return [];
+
+    const removedPlugins: Plugin[] = [];
+    for (const plugin of contrib.plugins) {
+      const idx = allPlugins.indexOf(plugin);
+      if (idx >= 0) {
+        removedPlugins.push(plugin);
+        allPlugins.splice(idx, 1);
+      }
     }
-  }
 
-  if (registration.steps) {
-    for (const step of registration.steps) {
-      stepRegistry.register(step);
+    for (const type of contrib.stepTypes) steps.unregister(type);
+    for (const type of contrib.artifactTypes) artifacts.unregister(type);
+    for (const type of contrib.blockTypes) blocks.unregister(type);
+    for (const slot of contrib.appExtensionSlots) appExtensions.unregister(slot);
+    for (const name of contrib.dslTypes) dslTypes.delete(name);
+    for (const plugin of contrib.tiptapPlugins) {
+      const idx = tiptapPlugins.indexOf(plugin);
+      if (idx >= 0) tiptapPlugins.splice(idx, 1);
     }
-    stepRegistry.initComponents();
+    designations.unregister(contrib.designations);
+
+    packContributions.delete(packId);
+    return removedPlugins;
   }
 
-  if (packId) {
-    packContributions.set(packId, {
-      pluginIds: plugins.map(p => p.id),
-      stepTypes: (registration.steps ?? []).map(s => s.type),
-      tiptapPluginCount: registration.tiptapPlugins?.length ?? 0,
-      appExtensionSlots,
-      artifactTypes: (registration.artifacts ?? []).map(a => a.type),
-      blockTypes: (registration.blocks ?? []).map(b => b.type),
-      designations,
-    });
-  }
-}
+  return {
+    registerPackFE,
+    unregisterPackFE,
+    getRegisteredPlugins: () => allPlugins,
+    getRegisteredDefaultPlugin() {
+      if (!defaultPlugin) {
+        throw new Error('No default plugin registered. Ensure at least one pack calls registerPackFE() with a defaultPlugin.');
+      }
+      return defaultPlugin;
+    },
+    getAppExtension: appExtensions.get,
 
-export function unregisterPackFE(packId: string): Plugin[] {
-  const contrib = packContributions.get(packId);
-  if (!contrib) return [];
-
-  const removedPlugins: Plugin[] = [];
-  for (const pluginId of contrib.pluginIds) {
-    const idx = allPlugins.findIndex(p => p.id === pluginId);
-    if (idx >= 0) {
-      removedPlugins.push(allPlugins[idx]);
-      allPlugins.splice(idx, 1);
-    }
-  }
-
-  for (const type of contrib.stepTypes) stepRegistry.unregister(type);
-  for (const type of contrib.artifactTypes) artifactRegistry.unregister(type);
-  for (const type of contrib.blockTypes) blockRegistry.unregister(type);
-  for (const slot of contrib.appExtensionSlots) unregisterAppExtension(slot);
-
-  if (contrib.tiptapPluginCount > 0) {
-    tiptapPluginRegistry.unregisterAll(packId);
-  }
-
-  if (contrib.designations.length) {
-    unregisterDesignations(contrib.designations);
-  }
-
-  packContributions.delete(packId);
-  return removedPlugins;
-}
-
-export function getRegisteredPlugins(): Plugin[] {
-  return allPlugins;
-}
-
-export function getRegisteredDefaultPlugin(): Plugin {
-  if (!defaultPlugin) {
-    throw new Error('No default plugin registered. Ensure at least one pack calls registerPackFE() with a defaultPlugin.');
-  }
-  return defaultPlugin;
+    // The SDK's frontend lookups (FePackRegistryView)
+    designation: designations.get,
+    step: steps.get,
+    steps: steps.all,
+    artifact: artifacts.get,
+    artifacts: artifacts.all,
+    block: blocks.get,
+    blocks: blocks.all,
+    plugins: () => allPlugins,
+    defaultPlugin: () => defaultPlugin,
+    tiptapPlugins: () => tiptapPlugins,
+    appExtension: appExtensions.get,
+    dslTypes: () => dslTypes,
+  };
 }

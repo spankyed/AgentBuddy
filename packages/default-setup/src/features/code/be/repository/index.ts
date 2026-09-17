@@ -2,10 +2,13 @@ import { tx, qx, findById, findAll } from '@/__generated__/ears';
 
 import { EARS } from '@/__generated__/ears'
 
-import { exists } from '@abuddy/sdk/ears';
+import { exists } from '@abuddy/ears';
+import { trash } from '@abuddy/sdk/repositories';
 import { createEntityWithDefaults, updateEntity } from '@/__generated__/ears';
 import type { TerminalInfo } from '../types'
-import { terminalService } from '../services/terminal'
+import { createLogger } from '@abuddy/sdk/logger'
+
+const logger = createLogger('code')
 
 // Define Terminal entity type with required attributes
 export interface TerminalEntity {
@@ -24,10 +27,6 @@ export interface TerminalEntity {
   closedAt?: number
 }
 
-export interface StartupData {
-  terminals: TerminalInfo[]
-}
-
 export const terminalQueries = {
   byId: (id: EARS.EntityId): TerminalEntity | undefined => {
     return findById<TerminalEntity>(id)
@@ -42,16 +41,6 @@ export const terminalQueries = {
     const all = findAll<TerminalEntity>(EARS.Entity.Terminal)
     return all.filter(t => t.active === true)
   },
-  
-
-  getStartupData: (): StartupData => {
-    // Get all terminals from the service (only in-memory terminals)
-    const terminals = terminalService.list()
-    
-    return {
-      terminals
-    }
-  }
 }
 
 export const terminalCommands = {
@@ -77,7 +66,7 @@ export const terminalCommands = {
   
   resize: (id: EARS.EntityId, cols: number, rows: number): void => {
     if (!exists(id)) {
-      console.error(`Terminal ${id} not found`)
+      logger.error(`Terminal ${id} not found`)
       return
     }
 
@@ -90,7 +79,7 @@ export const terminalCommands = {
 
   rename: (id: EARS.EntityId, customTitle: string): void => {
     if (!exists(id)) {
-      console.error(`Terminal ${id} not found`)
+      logger.error(`Terminal ${id} not found`)
       return
     }
 
@@ -102,7 +91,7 @@ export const terminalCommands = {
 
   updateCwd: (id: EARS.EntityId, cwd: string, title?: string): void => {
     if (!exists(id)) {
-      console.error(`Terminal ${id} not found`)
+      logger.error(`Terminal ${id} not found`)
       return
     }
 
@@ -121,7 +110,7 @@ export const terminalCommands = {
   
   updatePid: (id: EARS.EntityId, pid: number): void => {
     if (!exists(id)) {
-      console.error(`Terminal ${id} not found`)
+      logger.error(`Terminal ${id} not found`)
       return
     }
     
@@ -133,7 +122,7 @@ export const terminalCommands = {
   
   markClosed: (id: EARS.EntityId): void => {
     if (!exists(id)) {
-      console.error(`Terminal ${id} not found`)
+      logger.error(`Terminal ${id} not found`)
       return
     }
     
@@ -147,18 +136,13 @@ export const terminalCommands = {
   
   delete: (id: EARS.EntityId): void => {
     if (!exists(id)) {
-      console.error(`Terminal ${id} not found`)
+      logger.error(`Terminal ${id} not found`)
       return
     }
 
-    // Mark terminal as deleted instead of actually deleting
-    const now = Date.now()
-    tx(id).updateBatch({
-      active: false,
-      deleted: true,
-      deletedAt: now,
-      updatedAt: now
-    })
+    // To the trash, inactive, rather than deleted (trash.move stamps updatedAt)
+    tx(id).put('active', false)
+    trash.move([id])
   }
 }
 

@@ -5,14 +5,16 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { bundlePackFE } from '../../src/build/fe-bundler';
 import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '../helpers/published-packages';
 
+const EARS_SOURCE = path.join(REPO_ROOT, 'packages', 'abuddy-ears');
 const SDK_SOURCE = path.join(REPO_ROOT, 'packages', 'abuddy-sdk');
 const UI_SOURCE = path.join(REPO_ROOT, 'packages', 'abuddy-ui');
 let installed: string | undefined;
 
 const LAYOUTS = [
-  { name: 'workspace source', sdkDir: () => SDK_SOURCE, uiDir: () => UI_SOURCE, ext: 'ts' },
+  { name: 'workspace source', earsDir: () => EARS_SOURCE, sdkDir: () => SDK_SOURCE, uiDir: () => UI_SOURCE, ext: 'ts' },
   ...(PACKAGES_BUILT ? [{
     name: 'published package',
+    earsDir: () => path.join(installed!, 'node_modules', '@abuddy', 'ears'),
     sdkDir: () => path.join(installed!, 'node_modules', '@abuddy', 'sdk'),
     uiDir: () => path.join(installed!, 'node_modules', '@abuddy', 'ui'),
     ext: 'js',
@@ -29,12 +31,13 @@ afterAll(() => {
 
 const tmpDirs: string[] = [];
 
-function makePack(layout: { sdkDir: () => string; uiDir: () => string }, entrySource: string, manifest: Record<string, unknown> = {}): { packDir: string; entry: string } {
+function makePack(layout: { earsDir: () => string; sdkDir: () => string; uiDir: () => string }, entrySource: string, manifest: Record<string, unknown> = {}): { packDir: string; entry: string } {
   const packDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-fe-bundler-'));
   tmpDirs.push(packDir);
   fs.writeFileSync(path.join(packDir, 'package.json'), JSON.stringify({ name: 'fixture-pack', type: 'module' }));
   fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: 'fixture-pack', name: 'Fixture', version: '1.0.0', ...manifest }));
   fs.mkdirSync(path.join(packDir, 'node_modules', '@abuddy'), { recursive: true });
+  fs.symlinkSync(layout.earsDir(), path.join(packDir, 'node_modules', '@abuddy', 'ears'), 'dir');
   fs.symlinkSync(layout.sdkDir(), path.join(packDir, 'node_modules', '@abuddy', 'sdk'), 'dir');
   fs.symlinkSync(layout.uiDir(), path.join(packDir, 'node_modules', '@abuddy', 'ui'), 'dir');
   fs.mkdirSync(path.join(packDir, 'src'));
@@ -47,18 +50,19 @@ afterEach(() => {
   for (const dir of tmpDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
 });
 
-describe.each(LAYOUTS)('bundlePackFE host registry guard ($name)', (layout) => {
+describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
   const { ext } = layout;
-  it('fails when pack FE code inlines an SDK module that needs the host registry', async () => {
+  it('fails when pack FE code inlines an SDK module that needs the host binding', async () => {
     const { packDir, entry } = makePack(layout,
-      `import { createLogger } from '@abuddy/sdk/logger';\nexport const log = createLogger('fixture');\n`,
+      // onLog needs the bound app (createLogger alone doesn't: unbound, it writes to the console)
+      `import { onLog } from '@abuddy/sdk/logger';\nexport const subscribe = onLog;\n`,
     );
 
     const result = await bundlePackFE({ packDir, outputDir: path.join(packDir, 'dist'), entryPoint: entry });
 
     expect(result.success).toBe(false);
-    expect(result.error).toContain('SDK host module');
-    expect(result.error).toContain(`Import chain: src/entry.ts → @abuddy/sdk/logger/index.${ext} → @abuddy/sdk/runtime/host.${ext}`);
+    expect(result.error).toContain('No host is bound');
+    expect(result.error).toContain(`Import chain: src/entry.ts → @abuddy/sdk/logger/index.${ext} → @abuddy/sdk/logger/logger.${ext} → @abuddy/sdk/runtime/host-runtime.${ext}`);
   }, 60_000);
 
   it('uses the host\'s @abuddy/ui instead of bundling it', async () => {
@@ -155,7 +159,7 @@ describe.each(LAYOUTS)('bundlePackFE host registry guard ($name)', (layout) => {
     // Shape of #generated/ears: the EARS namespace plus the pure typed-helpers factory call
     fs.writeFileSync(path.join(packDir, 'src', 'ears.ts'), [
       "export namespace EARS { export namespace Entity { export const Memo = 'Memo'; } }",
-      "import { defineEars } from '@abuddy/sdk/ears';",
+      "import { defineEars } from '@abuddy/ears';",
       "export const { qx, findById, findAll } = /*#__PURE__*/ defineEars<{ Memo: { text: string } }>();",
     ].join('\n'));
 
@@ -169,14 +173,18 @@ describe.each(LAYOUTS)('bundlePackFE host registry guard ($name)', (layout) => {
 
   it('builds when SDK imports go through host-shared proxies', async () => {
     const { packDir, entry } = makePack(layout,
-      `import { trpc } from '@abuddy/sdk/rpc';\nimport { compareVersions } from '@abuddy/sdk/utils/pure';\n` +
-      `export const x = [trpc, compareVersions];\n`,
+      `import { bindFeHost } from '@abuddy/sdk/runtime';\nimport { compareVersions } from '@abuddy/sdk/utils/pure';\n` +
+      // What #generated/events imports: a pack's frontend sends through the host's transport
+      `import { defineEvents } from '@abuddy/sdk/events';\n` +
+      `export const x = [bindFeHost, compareVersions, defineEvents({})];\n`,
     );
 
     const result = await bundlePackFE({ packDir, outputDir: path.join(packDir, 'dist'), entryPoint: entry });
 
     expect(result.error).toBeUndefined();
     expect(result.success).toBe(true);
-    expect(fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8')).toContain('window.__abuddy?.["sdkRpc"]');
+    const output = fs.readFileSync(path.join(packDir, 'dist', 'fe.js'), 'utf-8');
+    expect(output).toContain('window.__abuddy?.["sdkRuntime"]');
+    expect(output).toContain('window.__abuddy?.["sdkEvents"]');
   }, 60_000);
 });

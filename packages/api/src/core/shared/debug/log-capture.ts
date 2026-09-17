@@ -1,5 +1,9 @@
-import type { LogLevel } from './logger';
+// The API's log output: every log event on the root event bus (from @abuddy/sdk/logger, error reports and captured
+// console calls) is printed once to the original console, and streamed to the client by the logs system
+import { formatWithOptions, type InspectOptions } from 'node:util';
+import type { LogEvent, LogLevel } from '@abuddy/sdk/logger';
 import { rootEvents } from '../../router/bus-emitter';
+import { redactSecretText } from '@abuddy/sdk/utils/pure';
 
 // Store original console methods
 export const originalConsole = {
@@ -10,80 +14,56 @@ export const originalConsole = {
   error: console.error,
 };
 
-// Override console methods to capture logs
+/** The console method each level prints with */
+const PRINT_METHOD: Record<LogLevel, keyof typeof originalConsole> = { debug: 'debug', info: 'log', warn: 'warn', error: 'error' };
+
+/** The console's own formatting, without colors: the text also goes to the log sinks */
+const INSPECT_OPTIONS: InspectOptions = { colors: false };
+
+/**
+ * The arguments as the console prints them, with API keys redacted. The arguments are only read, never copied or
+ * changed, and formatting never throws out of a console call.
+ */
+function formatArgs(args: unknown[]): string {
+  try {
+    return redactSecretText(formatWithOptions(INSPECT_OPTIONS, ...args));
+  } catch (error) {
+    // A getter or custom inspect that throws, say
+    return `[console arguments that couldn't be formatted: ${redactSecretText(error instanceof Error ? error.message : String(error))}]`;
+  }
+}
+
+/** Prints a log event: `[source] message meta`, as its logger was called (already redacted) */
+function printLogEvent(event: LogEvent): void {
+  originalConsole[PRINT_METHOD[event.level]](
+    ...(event.source === undefined ? [] : [`[${event.source}]`]),
+    event.message,
+    ...(event.meta === undefined ? [] : [event.meta]),
+  );
+}
+
+let stopPrinting: (() => void) | undefined;
+
+/** Prints every log event on the root event bus to the original console, once each; safe to call again */
+export function printLogEvents(): void {
+  stopPrinting ??= rootEvents.onLog(printLogEvent);
+}
+
+/** Turns console calls into log events (which printLogEvents prints) */
 export function initializeLogCapture() {
-  const captureLog = (level: LogLevel, originalMethod: Function) => {
-    return function (...args: any[]) {
-      // Call original console method
-      originalMethod.apply(console, args);
-
-      // If no arguments, use empty message
-      if (args.length === 0) {
-        rootEvents.emitLog({
-          level,
-          message: '',
-        });
-        return;
-      }
-
-      // First argument becomes the message
-      const firstArg = args[0];
-      let message: string;
-      let stack: string | undefined;
-
-      // Handle first argument
-      if (typeof firstArg === 'string') {
-        message = firstArg;
-      } else {
-        // Stringify non-string first arguments
-        message = JSON.stringify(firstArg);
-
-        // For errors, extract stack trace
-        if (level === 'error' && firstArg instanceof Error) {
-          message = firstArg.message || firstArg.toString();
-          stack = firstArg.stack;
-        }
-      }
-
-      // Collect remaining arguments as meta
-      let meta: Record<string, any> | undefined;
-      if (args.length > 1) {
-        // If there's only one additional argument and it's an object, use it directly
-        if (args.length === 2 && typeof args[1] === 'object' && args[1] !== null && !Array.isArray(args[1])) {
-          meta = args[1];
-        } else {
-          // Otherwise, create an object with indexed keys
-          meta = {};
-          for (let i = 1; i < args.length; i++) {
-            meta[`arg${i}`] = args[i];
-          }
-        }
-      }
-
-      // Emit log event
-      const logEvent: Parameters<typeof rootEvents.emitLog>[0] = {
-        level,
-        message,
-      };
-
-      if (meta) {
-        logEvent.meta = meta;
-      }
-
-      if (stack) {
-        logEvent.stack = stack;
-      }
-
-      rootEvents.emitLog(logEvent);
+  printLogEvents();
+  const captureLog = (level: LogLevel) => {
+    return function (...args: unknown[]) {
+      // Every sink (the console, log events, app-events.log) gets the same redacted text
+      rootEvents.emitLog({ level, message: formatArgs(args) });
     };
   };
 
-  // Override console methods
-  console.log = captureLog('info', originalConsole.log);
-  console.debug = captureLog('debug', originalConsole.debug);
-  console.info = captureLog('info', originalConsole.info);
-  console.warn = captureLog('warn', originalConsole.warn);
-  console.error = captureLog('error', originalConsole.error);
+  console.log = captureLog('info');
+  console.debug = captureLog('debug');
+  console.info = captureLog('info');
+  console.warn = captureLog('warn');
+  console.error = captureLog('error');
 }
 
 // Restore original console methods (useful for testing)

@@ -4,7 +4,7 @@ import type { PackSystemDef } from './pack-registration.ts';
 
 export interface SystemEntry {
   /** The system's identity, from `defineSystem` */
-  spec: Pick<SystemSpec<string, { type: string }, { type: string }>, 'id' | 'designation'>;
+  spec: Pick<SystemSpec<string, { type: string }, { type: string }>, 'id'>;
   machine: AnyStateMachine;
 }
 
@@ -13,6 +13,5 @@ export function toPackSystemDefs(entries: SystemEntry[]): PackSystemDef[] {
     id: spec.id,
     machine,
     events: new Set(machine.events),
-    designation: spec.designation,
   }));
 }

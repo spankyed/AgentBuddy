@@ -4,69 +4,93 @@
 
 ```ts
 
+import type { BaseEntity } from '@abuddy/ears';
+import { EARS as EARS_2 } from '@abuddy/ears';
+
 // @public (undocumented)
-export interface BaseEntity {
+export interface ActionEntity extends BaseEntity {
+    // (undocumented)
+    actionFn: string;
+    // (undocumented)
+    category?: string;
     // (undocumented)
     createdAt: number;
+    deleted?: boolean;
+    deletedAt?: number;
     // (undocumented)
-    entityType: EARS.Entity;
+    description?: string;
     // (undocumented)
-    id: EARS.EntityId;
+    entityType: typeof SDK_ENTITIES.Action;
     // (undocumented)
-    updatedAt?: number;
+    input: Record<string, ActionParameter>;
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    output?: unknown;
+    shortCode?: string;
+    sourceHash?: string;
+    // (undocumented)
+    updatedAt: number;
+}
+
+// @public (undocumented)
+export interface ActionParameter {
+    // (undocumented)
+    default?: unknown;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    placeholder?: string;
+    // (undocumented)
+    required?: boolean;
+    // (undocumented)
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
 }
 
 // @public (undocumented)
 export const bus: "bus";
 
 // @public
-export function defineEars<S extends EntityShapes, N extends string = string>(): TypedEars<S, N>;
-
-// @public
-export function defineSystem<Id extends string>(id: Id, opts?: {
-    designation?: string;
-}): <TEvents extends {
+export function defineSystem<Id extends string>(id: Id): <TEvents extends {
     type: string;
 }, TOutgoing extends {
     type: string;
 }, TContext = {}>() => SystemSpec<Id, TEvents, TOutgoing, TContext>;
 
 // @public (undocumented)
-export type Designations = readonly string[] | Record<string, string>;
-
-// @public (undocumented)
 export namespace EARS {
     const // (undocumented)
     Entity: {
         readonly Relation: "Relation";
+        readonly Flow: "Flow";
         readonly Node: "Node";
+        readonly TNode: "TNode";
+        readonly Action: "Action";
+        readonly Prompt: "Prompt";
     };
     // (undocumented)
-    export interface AttributePayloads {
-        // (undocumented)
-        [key: string]: unknown;
-        // (undocumented)
-        [AttrKindValues.RelationDetails]: RelationDetail;
-        // (undocumented)
-        [AttrKindValues.Role]: RoleKind;
-    }
+    export type AttributePayloads = EARS_2.AttributePayloads;
     // (undocumented)
-    export type AttributeStore = Record<string, AttributeTypeMap>;
+    export type AttributeStore = EARS_2.AttributeStore;
     const // (undocumented)
     RelKind: {
+        readonly Custom: <T extends string>(k: T) => T & EARS_2.RelKind;
+        readonly CONTAINS: "contains";
+        readonly TRANSITIONS_TO: "transitions_to";
         readonly INSTANCE_OF: "instance_of";
-        readonly Custom: <T extends string>(k: T) => T & RelKind;
+        readonly SPAWNED: "spawned";
+        readonly TRACKED: "tracked";
     };
     // (undocumented)
-    export type AttributeType = AttrKind;
+    export type AttributeType = EARS_2.AttributeType;
     // (undocumented)
-    export type AttributeTypeMap = Record<EntityId, AttributeValue[]>;
+    export type AttributeTypeMap = EARS_2.AttributeTypeMap;
     const // (undocumented)
     RoleKind: {
-        readonly Custom: <T extends string>(k: T) => T & RoleKind;
+        readonly Custom: <T extends string>(k: T) => T & EARS_2.RoleKind;
     };
     // (undocumented)
-    export type AttributeValue<K extends AttrKind = AttrKind> = K extends keyof AttributePayloads ? AttributePayloads[K] : unknown;
+    export type AttributeValue<K extends AttrKind = AttrKind> = EARS_2.AttributeValue<K>;
     const // (undocumented)
     AttrKindValues: {
         readonly Role: "role";
@@ -74,63 +98,43 @@ export namespace EARS {
     };
     const // (undocumented)
     AttrKind: {
-        readonly Custom: <T extends string>(k: T) => T & AttrKind;
+        readonly Custom: <T extends string>(k: T) => T & EARS_2.AttrKind;
         readonly Role: "role";
         readonly RelationDetails: "relationDetails";
     };
     // (undocumented)
-    export type AttrKind = typeof AttrKindValues[keyof typeof AttrKindValues] | (string & {});
+    export type AttrKind = EARS_2.AttrKind;
     // (undocumented)
-    export type Blueprint = {
-        entity: EARS.Entity;
-        attrs?: Record<string, unknown>;
-        roles?: EARS.RoleKind[];
-        uniqueRoles?: EARS.RoleKind[];
-        rels?: {
-            kind: EARS.RelKind;
-            target: Blueprint | EARS.EntityId;
-            info?: unknown;
-        }[];
-    };
+    export type Blueprint = EARS_2.Blueprint;
     // (undocumented)
     export type Entity = typeof Entity[keyof typeof Entity] | (string & {});
-    export type EntityId<E extends string = string> = string extends E ? `${string}-${string}` : `${string}-${string}` & {
-        readonly __entity?: E;
-    };
     // (undocumented)
-    export interface RelationDetail {
-        // (undocumented)
-        info?: AttributeValue;
-        // (undocumented)
-        relationType: RelKind;
-        // (undocumented)
-        sourceEntity: EntityId;
-        // (undocumented)
-        targetEntity: EntityId;
-    }
+    export type EntityId<E extends string = string> = EARS_2.EntityId<E>;
     // (undocumented)
-    export type RelKind = string & {};
+    export type RelationDetail = EARS_2.RelationDetail;
     // (undocumented)
-    export type RoleKind = string & {};
+    export type RelKind = EARS_2.RelKind;
+    // (undocumented)
+    export type RoleKind = EARS_2.RoleKind;
 }
 
 // @public (undocumented)
-export interface EARSRuntimeDeps {
+export interface FlowEntity extends BaseEntity {
     // (undocumented)
-    isEntityType: (v: string) => boolean;
+    createdAt: number;
     // (undocumented)
-    persistence?: PersistenceSink;
+    description?: string;
+    // (undocumented)
+    entityType: typeof SDK_ENTITIES.Flow;
+    // (undocumented)
+    flowType: 'workflow' | 'integration';
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    shortCode: string;
+    // (undocumented)
+    sourceHash?: string;
 }
-
-// @public
-export function emit<P extends string, E extends {
-    type: string;
-}>(pluginId: P, event: E): {
-    type: 'OUTGOING';
-    event: E & {
-        pluginId: P;
-    };
-};
 
 // @public (undocumented)
 export function getDesignated(role: string): string;
@@ -138,19 +142,69 @@ export function getDesignated(role: string): string;
 // @public (undocumented)
 export function hasDesignation(role: string): boolean;
 
-// @internal
-export function registerDesignations(designations: Designations): void;
-
 // @public
+export interface NodeBase extends BaseEntity {
+    // (undocumented)
+    color?: string;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    entityType: typeof SDK_ENTITIES.Node;
+    // (undocumented)
+    final?: boolean;
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    nodeType: string;
+}
+
+// @public (undocumented)
+export interface PromptEntity extends BaseEntity {
+    // (undocumented)
+    category?: string;
+    // (undocumented)
+    createdAt: number;
+    deleted?: boolean;
+    deletedAt?: number;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    entityType: typeof SDK_ENTITIES.Prompt;
+    // (undocumented)
+    inputs: Record<string, TemplateInput>;
+    // (undocumented)
+    label: string;
+    outputSchema?: unknown;
+    shortCode?: string;
+    sourceHash?: string;
+    templateFn: string;
+    // (undocumented)
+    updatedAt: number;
+}
+
+// @public (undocumented)
 export interface RelationEntity extends BaseEntity {
     // (undocumented)
     relationDetails: EARS.RelationDetail;
 }
 
 // @public
+export const ROOT_FLOW_ROLE = "root_flow";
+
+// @public
 export function safeEvents<TEvent extends {
     type: string;
 }>(): <TTypes extends TEvent["type"] | readonly TEvent["type"][]>(expected: TTypes, event: TEvent) => ExtractEvent<TEvent, TTypes extends readonly TEvent["type"][] ? TTypes[number] : TTypes>;
+
+// @public
+export type SdkEntityShapes = {
+    Relation: RelationEntity;
+    Flow: FlowEntity;
+    Node: NodeBase;
+    TNode: TNodeEntity;
+    Action: ActionEntity;
+    Prompt: PromptEntity;
+};
 
 // @public (undocumented)
 export type Simplify<T> = {
@@ -160,6 +214,14 @@ export type Simplify<T> = {
 // @public
 export type SystemEvents = {
     type: 'CLIENT_CONNECTED';
+}
+/**
+* A pack was activated, reloaded or torn down while the app runs, or its seeds were imported: what it
+* registers (its slash commands) and the data it seeded may differ. Sent once the change is complete.
+*/
+| {
+    type: 'PACK_CHANGED';
+    packId: string;
 };
 
 // @public
@@ -169,10 +231,8 @@ export interface SystemSpec<Id extends string, TEvents extends {
     type: string;
 }, TContext = {}> {
     // (undocumented)
-    designation?: string;
-    // (undocumented)
     id: Id;
-    _incoming: WithSystemId<Id, TEvents>;
+    _incoming: TEvents;
     _outgoing: WithPlugin<Id, TOutgoing>;
     // (undocumented)
     typeOf: ReturnType<typeof safeEvents<TEvents | SystemEvents>>;
@@ -184,7 +244,58 @@ export interface SystemSpec<Id extends string, TEvents extends {
 }
 
 // @public (undocumented)
-export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId?: boolean): TransactionBuilder;
+export interface TemplateInput {
+    // (undocumented)
+    defaultValue?: unknown;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    example?: unknown;
+    // (undocumented)
+    name: string;
+    // (undocumented)
+    required?: boolean;
+    // (undocumented)
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+}
+
+// @public (undocumented)
+export interface TNodeEntity extends BaseEntity {
+    // (undocumented)
+    blueprint?: {
+        nodeId: EARS.EntityId;
+        flowId: EARS.EntityId;
+    };
+    // (undocumented)
+    completedAt?: TimestampMs;
+    // (undocumented)
+    cronExpression?: string;
+    // (undocumented)
+    entityType: EARS.Entity;
+    // (undocumented)
+    eventType?: string;
+    // (undocumented)
+    final?: boolean;
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    nodeAttributes?: Record<string, unknown>;
+    // (undocumented)
+    resolvedParams?: Record<string, unknown>;
+    // (undocumented)
+    startedAt: TimestampMs;
+    // (undocumented)
+    status: EntityStatus;
+    // (undocumented)
+    stepNodeType?: string;
+    // (undocumented)
+    tNodeType: TNodeKind;
+    // (undocumented)
+    triggerType?: string;
+}
+
+// @public (undocumented)
+export type TNodeKind = 'flow' | 'event' | 'step';
 
 // (No @packageDocumentation comment for this package)
 

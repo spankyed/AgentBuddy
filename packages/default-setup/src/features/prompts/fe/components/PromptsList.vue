@@ -125,8 +125,9 @@ import { computed } from 'vue';
 import { Trash2, Sparkle, Plus } from 'lucide-vue-next';
 import Button from '@abuddy/ui/design/button';
 import CategoryFilter from '@abuddy/ui/design/CategoryFilter';
-import type { PromptEntity, EARS, Category } from '@/__generated__/types';
+import type { Category } from '@/__generated__/types';
 import { useInfiniteScroll } from '@abuddy/ui/composables/useInfiniteScroll';
+import type { PromptEntity, EARS } from '@abuddy/sdk';
 
 const props = defineProps<{
   prompts: PromptEntity[];

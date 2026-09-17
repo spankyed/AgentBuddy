@@ -1,7 +1,7 @@
 import { describe, it } from 'vitest';
 import { expectTypeOf } from 'vitest';
-import type { QueryBuilder } from '@abuddy/sdk/ears';
-import { EARS, qx, type PackShapes } from '@/__generated__/ears';
+import type { QueryBuilder } from '@abuddy/ears';
+import { EARS, qx, type EntityName, type PackShapes } from '@/__generated__/ears';
 
 // ─── qx() overloads ────────────────────────────────────────────────────
 
@@ -38,6 +38,40 @@ describe('Typed QueryBuilder — qx() overloads', () => {
   it('qx(idArray) returns untyped QueryBuilder', () => {
     const ids = ['act-1', 'act-2'] as EARS.EntityId[];
     expectTypeOf(qx(ids)).toEqualTypeOf<QueryBuilder<string, PackShapes>>();
+  });
+
+  // The seeds each overload takes. Name overloads come before id overloads (so editors offer entity
+  // names in qx('…')); this pins that every seed still resolves as it did in the other order.
+  it('resolves every kind of seed to the same builder whatever the overload order', () => {
+    type QB<E extends string> = QueryBuilder<E, PackShapes, EntityName>;
+    // Type-level only: never called
+    const check = (
+      noteId: EARS.EntityId<'Note'>, plainId: EARS.EntityId, noteIds: EARS.EntityId<'Note'>[], runtimeName: string,
+      maybeName: string | undefined, maybeId: EARS.EntityId | undefined, maybeNoteId: EARS.EntityId<'Note'> | undefined,
+      anyEntity: EARS.Entity, idOrName: EARS.EntityId | EntityName,
+    ) => {
+      expectTypeOf(qx('Note')).toEqualTypeOf<QB<'Note'>>();
+      expectTypeOf(qx(noteId)).toEqualTypeOf<QB<'Note'>>();
+      expectTypeOf(qx(noteIds)).toEqualTypeOf<QB<'Note'>>();
+      expectTypeOf(qx(plainId)).toEqualTypeOf<QB<string>>();
+      expectTypeOf(qx('Note-abc123')).toEqualTypeOf<QB<string>>();
+      expectTypeOf(qx(runtimeName)).toEqualTypeOf<QB<string>>();
+      expectTypeOf(qx(['Note', 'Flow'])).toEqualTypeOf<QB<string>>();
+      expectTypeOf(qx(maybeName)).toEqualTypeOf<QB<string>>();
+      expectTypeOf(qx(maybeId)).toEqualTypeOf<QB<string>>();
+      expectTypeOf(qx(maybeNoteId)).toEqualTypeOf<QB<string>>();
+      expectTypeOf(qx(anyEntity)).toEqualTypeOf<QB<EARS.Entity>>();
+      expectTypeOf(qx(idOrName)).toEqualTypeOf<QB<string>>();
+      const byName = <E extends EntityName>(entityType: E) => qx(entityType);
+      expectTypeOf(byName<'Note'>).returns.toEqualTypeOf<QB<'Note'>>();
+      const byId = <E extends string>(id: EARS.EntityId<E>) => qx(id);
+      expectTypeOf(byId<'Note'>).returns.toEqualTypeOf<QB<'Note'>>();
+      // @ts-expect-error not a declared entity name
+      qx('Noet');
+      // @ts-expect-error not a declared entity name, in a list
+      qx(['Note', 'Noet']);
+    };
+    expectTypeOf(check).toBeFunction();
   });
 });
 

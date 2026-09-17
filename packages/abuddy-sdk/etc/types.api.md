@@ -4,6 +4,49 @@
 
 ```ts
 
+import type { BaseEntity } from '@abuddy/ears';
+import { EARS as EARS_2 } from '@abuddy/ears';
+
+// @public (undocumented)
+export interface ActionEntity extends BaseEntity {
+    // (undocumented)
+    actionFn: string;
+    // (undocumented)
+    category?: string;
+    // (undocumented)
+    createdAt: number;
+    deleted?: boolean;
+    deletedAt?: number;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    entityType: typeof SDK_ENTITIES.Action;
+    // (undocumented)
+    input: Record<string, ActionParameter>;
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    output?: unknown;
+    shortCode?: string;
+    sourceHash?: string;
+    // (undocumented)
+    updatedAt: number;
+}
+
+// @public (undocumented)
+export interface ActionParameter {
+    // (undocumented)
+    default?: unknown;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    placeholder?: string;
+    // (undocumented)
+    required?: boolean;
+    // (undocumented)
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+}
+
 // @public (undocumented)
 export interface ApplicationHotkeys {
     // (undocumented)
@@ -14,18 +57,6 @@ export interface ApplicationHotkeys {
     switchPluginUp?: KeyboardShortcut;
     // (undocumented)
     toggleInspectionPanel?: KeyboardShortcut;
-}
-
-// @public (undocumented)
-export interface BaseEntity {
-    // (undocumented)
-    createdAt: number;
-    // (undocumented)
-    entityType: EARS.Entity;
-    // (undocumented)
-    id: EARS.EntityId;
-    // (undocumented)
-    updatedAt?: number;
 }
 
 // @public (undocumented)
@@ -41,34 +72,35 @@ export namespace EARS {
     const // (undocumented)
     Entity: {
         readonly Relation: "Relation";
+        readonly Flow: "Flow";
         readonly Node: "Node";
+        readonly TNode: "TNode";
+        readonly Action: "Action";
+        readonly Prompt: "Prompt";
     };
     // (undocumented)
-    export interface AttributePayloads {
-        // (undocumented)
-        [key: string]: unknown;
-        // (undocumented)
-        [AttrKindValues.RelationDetails]: RelationDetail;
-        // (undocumented)
-        [AttrKindValues.Role]: RoleKind;
-    }
+    export type AttributePayloads = EARS_2.AttributePayloads;
     // (undocumented)
-    export type AttributeStore = Record<string, AttributeTypeMap>;
+    export type AttributeStore = EARS_2.AttributeStore;
     const // (undocumented)
     RelKind: {
+        readonly Custom: <T extends string>(k: T) => T & EARS_2.RelKind;
+        readonly CONTAINS: "contains";
+        readonly TRANSITIONS_TO: "transitions_to";
         readonly INSTANCE_OF: "instance_of";
-        readonly Custom: <T extends string>(k: T) => T & RelKind;
+        readonly SPAWNED: "spawned";
+        readonly TRACKED: "tracked";
     };
     // (undocumented)
-    export type AttributeType = AttrKind;
+    export type AttributeType = EARS_2.AttributeType;
     // (undocumented)
-    export type AttributeTypeMap = Record<EntityId, AttributeValue[]>;
+    export type AttributeTypeMap = EARS_2.AttributeTypeMap;
     const // (undocumented)
     RoleKind: {
-        readonly Custom: <T extends string>(k: T) => T & RoleKind;
+        readonly Custom: <T extends string>(k: T) => T & EARS_2.RoleKind;
     };
     // (undocumented)
-    export type AttributeValue<K extends AttrKind = AttrKind> = K extends keyof AttributePayloads ? AttributePayloads[K] : unknown;
+    export type AttributeValue<K extends AttrKind = AttrKind> = EARS_2.AttributeValue<K>;
     const // (undocumented)
     AttrKindValues: {
         readonly Role: "role";
@@ -76,50 +108,43 @@ export namespace EARS {
     };
     const // (undocumented)
     AttrKind: {
-        readonly Custom: <T extends string>(k: T) => T & AttrKind;
+        readonly Custom: <T extends string>(k: T) => T & EARS_2.AttrKind;
         readonly Role: "role";
         readonly RelationDetails: "relationDetails";
     };
     // (undocumented)
-    export type AttrKind = typeof AttrKindValues[keyof typeof AttrKindValues] | (string & {});
+    export type AttrKind = EARS_2.AttrKind;
     // (undocumented)
-    export type Blueprint = {
-        entity: EARS.Entity;
-        attrs?: Record<string, unknown>;
-        roles?: EARS.RoleKind[];
-        uniqueRoles?: EARS.RoleKind[];
-        rels?: {
-            kind: EARS.RelKind;
-            target: Blueprint | EARS.EntityId;
-            info?: unknown;
-        }[];
-    };
+    export type Blueprint = EARS_2.Blueprint;
     // (undocumented)
     export type Entity = typeof Entity[keyof typeof Entity] | (string & {});
-    export type EntityId<E extends string = string> = string extends E ? `${string}-${string}` : `${string}-${string}` & {
-        readonly __entity?: E;
-    };
     // (undocumented)
-    export interface RelationDetail {
-        // (undocumented)
-        info?: AttributeValue;
-        // (undocumented)
-        relationType: RelKind;
-        // (undocumented)
-        sourceEntity: EntityId;
-        // (undocumented)
-        targetEntity: EntityId;
-    }
+    export type EntityId<E extends string = string> = EARS_2.EntityId<E>;
     // (undocumented)
-    export type RelKind = string & {};
+    export type RelationDetail = EARS_2.RelationDetail;
     // (undocumented)
-    export type RoleKind = string & {};
+    export type RelKind = EARS_2.RelKind;
+    // (undocumented)
+    export type RoleKind = EARS_2.RoleKind;
 }
 
-// @public
-export type EntityShapes = {
-    [entityType: string]: object;
-};
+// @public (undocumented)
+export interface FlowEntity extends BaseEntity {
+    // (undocumented)
+    createdAt: number;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    entityType: typeof SDK_ENTITIES.Flow;
+    // (undocumented)
+    flowType: 'workflow' | 'integration';
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    shortCode: string;
+    // (undocumented)
+    sourceHash?: string;
+}
 
 // @public (undocumented)
 export interface KeyboardShortcut {
@@ -132,17 +157,139 @@ export interface KeyboardShortcut {
 }
 
 // @public
+export interface NodeBase extends BaseEntity {
+    // (undocumented)
+    color?: string;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    entityType: typeof SDK_ENTITIES.Node;
+    // (undocumented)
+    final?: boolean;
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    nodeType: string;
+}
+
+// @public (undocumented)
+export interface PromptEntity extends BaseEntity {
+    // (undocumented)
+    category?: string;
+    // (undocumented)
+    createdAt: number;
+    deleted?: boolean;
+    deletedAt?: number;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    entityType: typeof SDK_ENTITIES.Prompt;
+    // (undocumented)
+    inputs: Record<string, TemplateInput>;
+    // (undocumented)
+    label: string;
+    outputSchema?: unknown;
+    shortCode?: string;
+    sourceHash?: string;
+    templateFn: string;
+    // (undocumented)
+    updatedAt: number;
+}
+
+// @public (undocumented)
 export interface RelationEntity extends BaseEntity {
     // (undocumented)
     relationDetails: EARS.RelationDetail;
 }
 
 // @public
-export type ShapeOf<S extends EntityShapes, E extends string> = [
-E
-] extends [keyof S] ? S[E] & BaseEntity & {
-    id: EARS.EntityId<E>;
-} : BaseEntity & Record<string, unknown>;
+export const ROOT_FLOW_ROLE = "root_flow";
+
+// @public (undocumented)
+export const SDK_ENTITIES: {
+    readonly Relation: "Relation";
+    readonly Flow: "Flow";
+    readonly Node: "Node";
+    readonly TNode: "TNode";
+    readonly Action: "Action";
+    readonly Prompt: "Prompt";
+};
+
+// @public
+export const SDK_EXCLUDED_ENTITY_TYPES: readonly string[];
+
+// @public (undocumented)
+export const SDK_REL_KINDS: {
+    readonly CONTAINS: "contains";
+    readonly TRANSITIONS_TO: "transitions_to";
+    readonly INSTANCE_OF: "instance_of";
+    readonly SPAWNED: "spawned";
+    readonly TRACKED: "tracked";
+};
+
+// @public
+export type SdkEntityShapes = {
+    Relation: RelationEntity;
+    Flow: FlowEntity;
+    Node: NodeBase;
+    TNode: TNodeEntity;
+    Action: ActionEntity;
+    Prompt: PromptEntity;
+};
+
+// @public (undocumented)
+export interface TemplateInput {
+    // (undocumented)
+    defaultValue?: unknown;
+    // (undocumented)
+    description?: string;
+    // (undocumented)
+    example?: unknown;
+    // (undocumented)
+    name: string;
+    // (undocumented)
+    required?: boolean;
+    // (undocumented)
+    type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
+}
+
+// @public (undocumented)
+export interface TNodeEntity extends BaseEntity {
+    // (undocumented)
+    blueprint?: {
+        nodeId: EARS.EntityId;
+        flowId: EARS.EntityId;
+    };
+    // (undocumented)
+    completedAt?: TimestampMs;
+    // (undocumented)
+    cronExpression?: string;
+    // (undocumented)
+    entityType: EARS.Entity;
+    // (undocumented)
+    eventType?: string;
+    // (undocumented)
+    final?: boolean;
+    // (undocumented)
+    label: string;
+    // (undocumented)
+    nodeAttributes?: Record<string, unknown>;
+    // (undocumented)
+    resolvedParams?: Record<string, unknown>;
+    // (undocumented)
+    startedAt: TimestampMs;
+    // (undocumented)
+    status: EntityStatus;
+    // (undocumented)
+    stepNodeType?: string;
+    // (undocumented)
+    tNodeType: TNodeKind;
+    // (undocumented)
+    triggerType?: string;
+}
+
+// @public (undocumented)
+export type TNodeKind = 'flow' | 'event' | 'step';
 
 // (No @packageDocumentation comment for this package)
 

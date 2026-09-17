@@ -133,7 +133,7 @@ import { id, type BrainState } from '@/features/brain/fe/state.ts';
 import TNodeGraph from './components/TNodeGraph.vue';
 import EventsList from './components/EventsList.vue';
 import StepNodeDetails from './components/StepNodeDetails.vue';
-import { trpc } from '@abuddy/sdk/rpc';
+import { sendToSystem } from '@/__generated__/events';
 
 const actorSystem = useActorSystem()
 
@@ -172,9 +172,8 @@ const handleBackClick = () => {
 };
 
 const handleStart = () => {
-  trpc.bus.send.mutate({
-    systemId: 'brain',
-    type: 'START_BRAIN'
+  sendToSystem('brain', {
+    type: 'START_BRAIN',
   });
 };
 

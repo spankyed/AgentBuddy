@@ -1,12 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { compile } from '../../src/build/compilers/flow-compiler.ts';
-import type { FlowEARS } from '../../src/build/compilers/flow-compiler.ts';
-import { ROOT_FLOW_ROLE, resolveTracks, type DSLStepNode } from '../../src/build/compilers/flow-types.ts';
-import { stepRegistry } from '../../src/steps/registry.ts';
+import { resolveTracks, type DSLStepNode } from '../../src/build/compilers/flow-types.ts';
+import { ROOT_FLOW_ROLE } from '../../src/types/sdk-entities.ts';
+import { startTestRuntime, testPacks } from '../../src/testing/index.ts';
 import { createRoundTrip } from './helpers/round-trip.ts';
 import { wrapInFlow } from './helpers/dsl-factories.ts';
 import { steps, ctx, flows } from './helpers/fixtures.ts';
 import { ALL_TEST_STEPS } from './helpers/test-steps.ts';
+
+// The registered steps these compile against: the stand-in's, which the specs fill
+startTestRuntime();
 
 /** An exported switch step */
 interface SwitchNode extends DSLStepNode {
@@ -15,20 +18,15 @@ interface SwitchNode extends DSLStepNode {
 }
 const asSwitch = (node: DSLStepNode) => node as SwitchNode;
 
-const EARS: FlowEARS = {
-  Entity: { Flow: 'Flow', Node: 'Node', Action: 'Action', Prompt: 'Prompt' },
-  RelKind: { CONTAINS: 'contains', TRANSITIONS_TO: 'transitions_to', INSTANCE_OF: 'instance_of' },
-};
-
-const rt = createRoundTrip(EARS, ROOT_FLOW_ROLE);
+const rt = createRoundTrip(ROOT_FLOW_ROLE);
 
 beforeEach(() => {
-  for (const step of ALL_TEST_STEPS) stepRegistry.register(step);
+  for (const step of ALL_TEST_STEPS) testPacks.steps.set(step.type, step);
   rt.beforeEach();
 });
 afterEach(() => {
   rt.afterEach();
-  stepRegistry.clear();
+  testPacks.steps.clear();
 });
 
 describe('round-trip', () => {
@@ -434,7 +432,7 @@ describe('round-trip', () => {
       expect(entry.tracks[0].schedule).toBe('*/15 * * * *');
       expect(entry.tracks[1].event).toBe('manual.start');
 
-      const recompiled = compile(exported, EARS);
+      const recompiled = compile(exported);
       expect(recompiled.role.find(role => role.role === 'entry_event')).toBeUndefined();
     });
   });

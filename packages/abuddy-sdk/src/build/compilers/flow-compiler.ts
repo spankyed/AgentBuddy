@@ -6,18 +6,14 @@
  * Branching is handled generically via StepBuildFacet.branches().
  */
 
-import type { EARS } from '../../types/entities.ts';
-import type { FlowDSL, Track, DSLStepNode } from './flow-types.ts';
-import { isFlowConfig, resolveTracks, ROOT_FLOW_ROLE } from './flow-types.ts';
+import { EARS } from '../../types/entities.ts';
+import { isFlowConfig, resolveTracks, type DSLStepNode, type FlowDSL, type Track } from './flow-types.ts';
+import { ROOT_FLOW_ROLE } from '../../types/sdk-entities.ts';
 import type { CompilerContext } from './flow-entities.ts';
-import { stepRegistry, type StepDefinition } from '../../steps/index.ts';
+import type { StepDefinition } from '../../steps/index.ts';
+import { stepLookup, type StepLookup } from './step-lookup.ts';
 
 export type { CompilerContext };
-
-export interface FlowEARS {
-  Entity: Record<'Flow' | 'Node' | 'Action' | 'Prompt', EARS.Entity>;
-  RelKind: Record<'CONTAINS' | 'INSTANCE_OF' | 'TRANSITIONS_TO', EARS.RelKind>;
-}
 
 type Relation = { source: string; kind: string; target: string; info?: object };
 
@@ -27,11 +23,11 @@ interface StepResult {
 }
 
 interface FlowCompileCtx {
+  steps: StepLookup;
   flowId: string;
   flowName: string;
   ts: number;
   ctx: CompilerContext;
-  ears: FlowEARS;
   globalLabelMap: Map<string, string>;
   inlineStepIds: Map<string, string>;
 }
@@ -45,6 +41,10 @@ export interface CompiledRows {
 interface CompileOptions {
   actions?: Map<string, string>;
   prompts?: Map<string, string>;
+  /** Flows already in the database, by label, for steps naming a flow the DSL doesn't define (a subflow) */
+  flows?: Map<string, string>;
+  /** The step definitions to compile with; the registered packs' by default */
+  steps?: readonly StepDefinition[];
 }
 
 /*─────────────────────────────────────────────────────────────────
@@ -77,6 +77,7 @@ function simpleHash(str: string): number {
  *─────────────────────────────────────────────────────────────────*/
 
 function registerInlineSteps(
+  lookup: StepLookup,
   steps: DSLStepNode[],
   flowName: string,
   pathPrefix: string,
@@ -85,32 +86,33 @@ function registerInlineSteps(
 ): void {
   for (let si = 0; si < steps.length; si++) {
     const step = steps[si];
-    const label = getStepLabel(step, si);
+    const label = getStepLabel(lookup, step, si);
     const key = `${pathPrefix}-i${si}`;
-    const id = generateId('Node', `${flowName}-${label}-${key}`);
+    const id = generateId(EARS.Entity.Node, `${flowName}-${label}-${key}`);
     inlineStepIds.set(key, id);
 
     if (step.label) {
       globalLabelMap.set(step.label, id);
     }
 
-    registerBranchStepIds(step, flowName, key, globalLabelMap, inlineStepIds);
+    registerBranchStepIds(lookup, step, flowName, key, globalLabelMap, inlineStepIds);
   }
 }
 
 function registerBranchStepIds(
+  lookup: StepLookup,
   step: DSLStepNode,
   flowName: string,
   pathPrefix: string,
   globalLabelMap: Map<string, string>,
   inlineStepIds: Map<string, string>,
 ): void {
-  const build = stepRegistry.getBuild(step.type);
+  const build = lookup.getBuild(step.type);
   const branchList = build?.branches?.(step as Record<string, unknown>);
   if (!branchList?.length) return;
 
   for (const branch of branchList) {
-    registerInlineSteps(branch.steps as DSLStepNode[], flowName, `${pathPrefix}-${branch.key}`, globalLabelMap, inlineStepIds);
+    registerInlineSteps(lookup, branch.steps as DSLStepNode[], flowName, `${pathPrefix}-${branch.key}`, globalLabelMap, inlineStepIds);
   }
 }
 
@@ -130,13 +132,13 @@ function compileStepList(
     const step = steps[si];
     const stepId = stepIds[si];
 
-    const { entity, relations } = compileStep(step, stepId, fCtx.ts, fCtx.ctx);
+    const { entity, relations } = compileStep(fCtx.steps, step, stepId, fCtx.ts, fCtx.ctx);
     out.entities.push(entity);
     out.relations.push(...relations);
 
     out.relations.push({
       source: fCtx.flowId,
-      kind: fCtx.ears.RelKind.CONTAINS,
+      kind: EARS.RelKind.CONTAINS,
       target: stepId,
     });
   }
@@ -145,7 +147,7 @@ function compileStepList(
     const step = steps[si];
     const stepId = stepIds[si];
 
-    const build = stepRegistry.getBuild(step.type);
+    const build = fCtx.steps.getBuild(step.type);
     const branchList = build?.branches?.(step as Record<string, unknown>);
     if (branchList?.length) {
       const switchContinuation = si < stepIds.length - 1 ? stepIds[si + 1] : continuationId;
@@ -158,7 +160,7 @@ function compileStepList(
       if (targetId) {
         out.relations.push({
           source: stepId,
-          kind: fCtx.ears.RelKind.TRANSITIONS_TO,
+          kind: EARS.RelKind.TRANSITIONS_TO,
           target: targetId,
         });
       }
@@ -168,13 +170,13 @@ function compileStepList(
     if (si < stepIds.length - 1) {
       out.relations.push({
         source: stepId,
-        kind: fCtx.ears.RelKind.TRANSITIONS_TO,
+        kind: EARS.RelKind.TRANSITIONS_TO,
         target: stepIds[si + 1],
       });
     } else if (continuationId) {
       out.relations.push({
         source: stepId,
-        kind: fCtx.ears.RelKind.TRANSITIONS_TO,
+        kind: EARS.RelKind.TRANSITIONS_TO,
         target: continuationId,
       });
     }
@@ -199,7 +201,7 @@ function wireBranchEdges(
 
     out.relations.push({
       source: stepId,
-      kind: fCtx.ears.RelKind.TRANSITIONS_TO,
+      kind: EARS.RelKind.TRANSITIONS_TO,
       target: firstInlineId,
       info: { sourceHandle: `branch-${bi}` },
     });
@@ -214,21 +216,22 @@ function wireBranchEdges(
  * Main Compiler
  *─────────────────────────────────────────────────────────────────*/
 
-export function compile(dsl: FlowDSL, ears: FlowEARS, options: CompileOptions = {}): CompiledRows {
+export function compile(dsl: FlowDSL, options: CompileOptions = {}): CompiledRows {
   const ts = Date.now();
 
   const entities: object[] = [];
   const relations: Relation[] = [];
   const roles: Array<{ entityId: string; role: string }> = [];
 
+  const steps = stepLookup(options.steps);
   const ctx: CompilerContext = {
     actions: options.actions || new Map(),
     prompts: options.prompts || new Map(),
-    flows: new Map(),
+    flows: new Map(options.flows),
   };
 
   for (const flowName of Object.keys(dsl)) {
-    const flowId = generateId('Flow', flowName);
+    const flowId = generateId(EARS.Entity.Flow, flowName);
     ctx.flows.set(flowName, flowId);
   }
 
@@ -236,12 +239,12 @@ export function compile(dsl: FlowDSL, ears: FlowEARS, options: CompileOptions = 
     const tracks = resolveTracks(entry);
     const flowId = ctx.flows.get(flowName)!;
     const { flowEntity, nodeEntities, flowRelations, flowRoles } = compileFlow(
+      steps,
       flowName,
       tracks,
       flowId,
       ts,
       ctx,
-      ears
     );
 
     const sourceHash = isFlowConfig(entry) ? entry.sourceHash : undefined;
@@ -259,12 +262,12 @@ export function compile(dsl: FlowDSL, ears: FlowEARS, options: CompileOptions = 
 }
 
 function compileFlow(
+  steps: StepLookup,
   flowName: string,
   tracks: Track[],
   flowId: string,
   ts: number,
   ctx: CompilerContext,
-  ears: FlowEARS,
 ): {
   flowEntity: object;
   nodeEntities: object[];
@@ -275,7 +278,7 @@ function compileFlow(
 
   const flowEntity = {
     id: flowId,
-    entityType: ears.Entity.Flow,
+    entityType: EARS.Entity.Flow,
     shortCode,
     label: flowName,
     flowType: 'workflow',
@@ -291,27 +294,27 @@ function compileFlow(
 
   for (let trackIdx = 0; trackIdx < tracks.length; trackIdx++) {
     const track = tracks[trackIdx];
-    const listenerLabel = resolveTrackLabel(track, trackIdx);
-    const listenerId = generateId('Node', `${flowName}-${listenerLabel}-t${trackIdx}`);
+    const listenerLabel = resolveTrackLabel(steps, track, trackIdx);
+    const listenerId = generateId(EARS.Entity.Node, `${flowName}-${listenerLabel}-t${trackIdx}`);
     globalLabelMap.set(listenerLabel, listenerId);
 
     for (let exitIdx = 0; exitIdx < track.exits.length; exitIdx++) {
       const exitSteps = track.exits[exitIdx];
       for (let stepIdx = 0; stepIdx < exitSteps.length; stepIdx++) {
         const step = exitSteps[stepIdx];
-        const stepLabel = getStepLabel(step, stepIdx);
-        const stepId = generateId('Node', `${flowName}-${stepLabel}-t${trackIdx}-e${exitIdx}-s${stepIdx}`);
+        const stepLabel = getStepLabel(steps, step, stepIdx);
+        const stepId = generateId(EARS.Entity.Node, `${flowName}-${stepLabel}-t${trackIdx}-e${exitIdx}-s${stepIdx}`);
         if (globalLabelMap.has(stepLabel)) {
           throw new Error(`Duplicate step label "${stepLabel}" in flow "${flowName}" (track ${trackIdx}, exit ${exitIdx}, step ${stepIdx}). Use explicit labels to disambiguate.`);
         }
         globalLabelMap.set(stepLabel, stepId);
 
-        registerBranchStepIds(step, flowName, `t${trackIdx}-e${exitIdx}-s${stepIdx}`, globalLabelMap, inlineStepIds);
+        registerBranchStepIds(steps, step, flowName, `t${trackIdx}-e${exitIdx}-s${stepIdx}`, globalLabelMap, inlineStepIds);
       }
     }
   }
 
-  const fCtx: FlowCompileCtx = { flowId, flowName, ts, ctx, ears, globalLabelMap, inlineStepIds };
+  const fCtx: FlowCompileCtx = { steps, flowId, flowName, ts, ctx, globalLabelMap, inlineStepIds };
 
   for (let trackIdx = 0; trackIdx < tracks.length; trackIdx++) {
     const track = tracks[trackIdx];
@@ -333,16 +336,16 @@ function compileFlow(
   return { flowEntity, nodeEntities, flowRelations, flowRoles };
 }
 
-function resolveTrackLabel(track: Track, trackIdx: number): string {
+function resolveTrackLabel(steps: StepLookup, track: Track, trackIdx: number): string {
   if (track.label) return track.label;
   if (track.event) return track.event;
-  const triggerDef = resolveTriggerFromTrack(track);
+  const triggerDef = resolveTriggerFromTrack(steps, track);
   const prefix = triggerDef?.fe?.nodeConfig?.label || triggerDef?.type || 'Trigger';
   return `${prefix} ${trackIdx}`;
 }
 
-function resolveTriggerFromTrack(track: Track): StepDefinition | null {
-  for (const def of stepRegistry.triggers()) {
+function resolveTriggerFromTrack(steps: StepLookup, track: Track): StepDefinition | null {
+  for (const def of steps.triggers()) {
     if (def.trigger?.trackField && (track as any)[def.trigger.trackField] !== undefined) {
       return def;
     }
@@ -363,12 +366,12 @@ function compileTrack(
 } {
   const trackRoles: Array<{ entityId: string; role: string }> = [];
 
-  const triggerDef = resolveTriggerFromTrack(track);
+  const triggerDef = resolveTriggerFromTrack(fCtx.steps, track);
   if (!triggerDef?.trigger) {
-    const knownFields = stepRegistry.triggers().map(d => `"${d.trigger!.trackField}"`).join(', ');
+    const knownFields = fCtx.steps.triggers().map(d => `"${d.trigger!.trackField}"`).join(', ');
     throw new Error(`No trigger definition found for track ${trackIdx} in flow "${fCtx.flowName}". Track must have a recognized trigger field (${knownFields}).`);
   }
-  const listenerLabel = resolveTrackLabel(track, trackIdx);
+  const listenerLabel = resolveTrackLabel(fCtx.steps, track, trackIdx);
   const listenerId = fCtx.globalLabelMap.get(listenerLabel)!;
   const trackKey = `${fCtx.flowName}:track:${trackIdx}`;
 
@@ -377,7 +380,7 @@ function compileTrack(
 
   trackRelations.push({
     source: fCtx.flowId,
-    kind: fCtx.ears.RelKind.CONTAINS,
+    kind: EARS.RelKind.CONTAINS,
     target: listenerId,
   });
 
@@ -393,7 +396,7 @@ function compileTrack(
     const exitStepIds: string[] = [];
     const exitStepKeys: string[] = [];
     for (let si = 0; si < exitSteps.length; si++) {
-      const stepLabel = getStepLabel(exitSteps[si], si);
+      const stepLabel = getStepLabel(fCtx.steps, exitSteps[si], si);
       exitStepIds.push(fCtx.globalLabelMap.get(stepLabel)!);
       exitStepKeys.push(`t${trackIdx}-e${exitIdx}-s${si}`);
     }
@@ -402,7 +405,7 @@ function compileTrack(
 
     trackRelations.push({
       source: listenerId,
-      kind: fCtx.ears.RelKind.TRANSITIONS_TO,
+      kind: EARS.RelKind.TRANSITIONS_TO,
       target: exitStepIds[0],
       info: { sourceHandle: `exit-${exitIdx}` },
     });
@@ -411,15 +414,15 @@ function compileTrack(
   return { listenerEntity, trackRoles };
 }
 
-function getStepLabel(step: DSLStepNode, index: number): string {
+function getStepLabel(steps: StepLookup, step: DSLStepNode, index: number): string {
   if (step.label) return step.label;
-  const build = stepRegistry.getBuild(step.type);
+  const build = steps.getBuild(step.type);
   if (build) return build.getLabel(step as unknown as Record<string, unknown>, index);
   return `Step ${index}`;
 }
 
-function compileStep(step: DSLStepNode, stepId: string, ts: number, ctx: CompilerContext): StepResult {
-  const build = stepRegistry.getBuild(step.type);
+function compileStep(steps: StepLookup, step: DSLStepNode, stepId: string, ts: number, ctx: CompilerContext): StepResult {
+  const build = steps.getBuild(step.type);
   if (!build) throw new Error(`No step definition registered for type "${step.type}"`);
   return build.compile(step as unknown as Record<string, unknown>, stepId, ts, ctx) as StepResult;
 }

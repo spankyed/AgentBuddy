@@ -3,7 +3,8 @@
  * Defines what's available as globals in the database code editor.
  */
 
-export { EARS, type BaseEntity } from '@abuddy/sdk/types';
+export { EARS } from '@abuddy/sdk/types';
+export type { BaseEntity } from '@abuddy/ears';
 
 // The database console runs queries with the pack's typed helpers
 export { qx, getAttr, getAttrs } from '@/__generated__/ears';
@@ -14,13 +15,11 @@ export {
   createRelation, removeRelation, removeRelationById, destroyEntity, prepareEntity,
   getAllAttributeKinds, getAttributeStats, getAllRelationKinds,
   getRoles, grantRole, revokeRole,
-  getSchemaStats, isEntity,
+  getSchemaStats, isEntityType,
   descendants, ancestors, rootParent, linkSymmetric,
   topoSort, shortestPath, leaves, lowestCommonAncestor,
-  type QueryBuilder,
-} from '@abuddy/sdk/ears';
-
-export {
   getAllEntities,
   queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo,
-} from '@abuddy/host/ears';
+  findRelations, getRelationStats,
+  type QueryBuilder, type RelationMatch, type RelationRow, type RelationStats,
+} from '@abuddy/ears';

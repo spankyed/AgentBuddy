@@ -2,12 +2,13 @@ import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import type { NodeEntity } from '@/__generated__/types';
 import { EARS } from '@abuddy/sdk';
 import { repository } from '@/__generated__/repository';
-import { createInspectLogger } from '@abuddy/sdk/logger';
-import { executeTemplate, createTemplateResolver } from '@abuddy/sdk/runtime';
-import { generateText } from '@abuddy/sdk/inference';
-import { reportStepRuntimeError } from '@abuddy/sdk/steps';
+import { createLogger, reportError } from '@abuddy/sdk/logger';
+import { executeTemplate, createTemplateResolver } from '@abuddy/sdk/templates';
+import { services } from '@abuddy/sdk/services';
+import { isModelId } from '@abuddy/sdk/models';
+import { DEFAULT_MODEL } from './model';
 
-const { inspect: brainInspect, logger: brainLogger } = createInspectLogger('brain');
+const brainLogger = createLogger('brain', { debug: true });
 
 interface LLMNodeConfig {
   model?: string;
@@ -37,7 +38,7 @@ function generatePrompt(tNode: TNodeEntity, node: LLMNode): string {
 
       const templateParams: Record<string, any> = (tNode.resolvedParams as Record<string, any>) || {};
 
-      brainInspect(`Using resolved params for ${node.label}:`, templateParams);
+      brainLogger.debug(`Using resolved params for ${node.label}:`, templateParams);
 
       const promptContext = createTemplateResolver(executeTemplate, (label: string) => repository.promptQueries.byLabel(label));
 
@@ -60,30 +61,35 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
   const nodeData = t.nodeAttributes || {};
 
   try {
-    brainInspect(`Executing LLM node: ${n.label}`, { nodeData });
+    brainLogger.debug(`Executing LLM node: ${n.label}`, { nodeData });
 
     const prompt = generatePrompt(t, n);
 
-    brainInspect(`Generated prompt preview: ${prompt.substring(0, 200)}${prompt.length > 200 ? '...' : ''}`);
+    brainLogger.debug(`Generated prompt preview: ${prompt.substring(0, 200)}${prompt.length > 200 ? '...' : ''}`);
 
-    const modelString = nodeData.model as string || 'anthropic:claude-3-haiku-20240307';
-    const [provider, model] = modelString.split(':');
+    const model = (nodeData.model as string | undefined) || DEFAULT_MODEL;
+    if (!isModelId(model)) {
+      throw new Error(`LLM node "${n.label}" names model "${model}": expected provider:model, e.g. ${DEFAULT_MODEL}`);
+    }
 
-    const response = await generateText({
-      model: {
-        provider: provider as any,
-        model: model,
-      },
+    const response = await services.inference.generateText({
+      model,
       prompt,
-      system: nodeData.systemPrompt as string | undefined,
+      instructions: nodeData.systemPrompt as string | undefined,
       temperature: nodeData.temperature as number | undefined,
-      maxTokens: nodeData.maxTokens as number | undefined,
+      maxOutputTokens: nodeData.maxTokens as number | undefined,
     });
 
-    brainInspect(`LLM response received for node: ${n.label}`, {
+    brainLogger.debug(`LLM response received for node: ${n.label}`, {
       usage: response.usage,
       finishReason: response.finishReason,
     });
+
+    // The provider ignored part of the call, e.g. `temperature` on a reasoning model: kept on the step's result
+    const warnings = response.warnings ?? [];
+    if (warnings.length > 0) {
+      brainLogger.warn(`LLM node "${n.label}" ran with provider warnings`, { model, warnings });
+    }
 
     a.send({
       type: 'COMPLETE',
@@ -91,19 +97,22 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
         text: response.text,
         usage: response.usage,
         finishReason: response.finishReason,
+        ...(warnings.length > 0 && { warnings }),
       }
     });
   } catch (error) {
-    const runtimeError = reportStepRuntimeError({
+    const runtimeError = reportError({
       error,
       source: 'brain-llm',
-      phase: 'llm.execute',
-      flowTNodeId: ctx.flowTNodeId,
-      tNodeId: t.id,
-      nodeId: n.id,
-      nodeLabel: n.label,
-      nodeType: n.nodeType,
-      eventType: ctx.event?.type,
+      step: {
+        phase: 'llm.execute',
+        flowTNodeId: ctx.flowTNodeId,
+        tNodeId: t.id,
+        nodeId: n.id,
+        nodeLabel: n.label,
+        nodeType: n.nodeType,
+        eventType: ctx.event?.type,
+      },
     });
     a.send({ type: 'ERROR', error: runtimeError });
   }
