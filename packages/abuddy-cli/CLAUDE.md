@@ -94,7 +94,7 @@ Because host code is inlined, `@abuddy/host` imports are fine in `src/`. The CLI
 
 ## Tests
 
-`npm test -w @abuddy/cli` (vitest, `tests/**/*.spec.ts`). It is not part of the root `test:unit`; CI runs it after `packages:build` (`.github/workflows/ci.yml`).
+`npm test -w @abuddy/cli` (vitest, `tests/**/*.spec.ts`). The root `test:unit` runs it last, being the slowest; CI runs it after `packages:build` (`.github/workflows/ci.yml`). The `published-*` specs compare `dist` against `src`, so an edit to `@abuddy/ears`, `@abuddy/sdk` or `@abuddy/ui` needs `npm run packages:build` before this suite says anything (it fails with "dist is older than its src" rather than testing a stale build).
 
 - `tests/build/`: bundlers and gates (`facade-*`, `seed-runtime-*`, `dsl-defs`, `fe-bundler-*`, `host-import-guard`, `clear-build-output`, `feature-settings`, `step-collisions`, `build-registry`) and published-package checks (`published-*`, `ui-exports`, `ui-import-side-effects`, `import-specifiers`, `with-source`, `verify-node-modules`, `testing-source-entry`).
 - `tests/cli/`: commands run end to end or through their exports: scaffold, `add`, pack, release, install `hostVersion`, a scaffolded pack installed and loaded by the host pack loader (`init-install-load`), dev install, hand-off, source hooks, app launcher.

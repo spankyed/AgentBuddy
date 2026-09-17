@@ -85,7 +85,9 @@ export interface ConsoleScope {
 }
 
 function run(code: string, scope: ConsoleScope, helpers: Record<string, unknown>): Promise<unknown> {
-  if (!code || typeof code !== 'string') throw new Error('No code to run');
+  // Blank code is nothing to run, not code that returns nothing: whitespace alone would otherwise build a function
+  // body and answer `undefined`, which reads as a query that found nothing
+  if (typeof code !== 'string' || code.trim() === '') throw new Error('No code to run');
   const names = ['EARS', ...Object.keys(helpers)];
   const body = new Function(...names, code);
   return Promise.resolve(body(scope.EARS, ...Object.values(helpers)));

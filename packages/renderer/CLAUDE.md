@@ -91,7 +91,7 @@ The one plugin the renderer defines (`plugin.ts`: id `packs`, `isPinned`). Its m
 
 ## Tests and checks
 
-- `npm run test:unit -w @app/renderer -- --run` runs vitest in jsdom (`vitest.config.ts` merges `vite.config.ts`); without `--run` it starts watch mode. Root `npm run test:unit` doesn't include it; CI runs it separately.
+- `npm run test:unit -w @app/renderer -- --run` runs vitest in jsdom (`vitest.config.ts` merges `vite.config.ts`); without `--run` it starts watch mode. Root `npm run test:unit` runs it too, as CI does.
   - `src/packs/__tests__/pack-loader.spec.ts` covers entry validation, a failed or missing entry, and stylesheet de-duplication.
   - `src/core/actors/__tests__/application-pack-registry.spec.ts` and `application-pack-plugins.spec.ts` drive the actor with `@/core/trpc`, `@/packs/pack-loader` and `@/core/toast` mocked: retry after a failed registry read, queued loads, unload during load, and when `packClientReady` is called.
 - `npm run typecheck:fe` (root) runs `vue-tsc --build`. `npm run build -w @app/renderer` type-checks and runs `vite build` in parallel. `lint` runs oxlint and then eslint, both with `--fix`.

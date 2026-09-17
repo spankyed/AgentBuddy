@@ -80,7 +80,8 @@ async function backupOf(userDataDir: string, { withMedia = false } = {}): Promis
     fs.mkdirSync(paths.media, { recursive: true });
     fs.writeFileSync(path.join(paths.media, 'image.png'), 'png');
   }
-  return exportDatabase({ paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb } }, tempDir('backup-'), { name: 'backup', mediaPath: paths.media });
+  const log = { info: () => {}, warn: () => {} };
+  return exportDatabase({ paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb } }, tempDir('backup-'), { name: 'backup', mediaPath: paths.media, log });
 }
 
 /** Runs `abuddy db <args>` and returns its stdout and stderr lines, and its error */
@@ -324,6 +325,15 @@ describe('abuddy db exec', () => {
     expect(error?.message).toMatch(/1 write\(s\) didn't reach the database/);
   });
 
+  it('keeps what the code wrote before it threw: there is no rollback', async () => {
+    const dir = await appDataDir();
+    const { error } = await run(['exec', "tx('Note-a').put('title', 'Written'); throw new Error('boom')", '--data-dir', dir]);
+    expect(error?.message).toBe('Transaction failed: boom');
+    // The code runs as one function, not one transaction: what it wrote before throwing is flushed on close
+    const { out } = await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir]);
+    expect(out).toBe('Written');
+  });
+
   it("reports the code's own error first when closing fails too", async () => {
     const dir = await appDataDir();
     // The code writes a value LMDB can't store, then throws
@@ -342,6 +352,28 @@ describe('abuddy db repl', () => {
     await dbRepl(['--data-dir', dir], { out: (l) => out.push(l), err: (l) => err.push(l) }, input);
     expect(out).toEqual(['Alpha', '2']);
     expect(err).toContain('Error: tx is not defined');
+  });
+
+  it('refuses a --write session while an app runs on the data dir, changing nothing', async () => {
+    const dir = await appDataDir();
+    holdLock(dir);
+    const io = { out: () => {}, err: () => {} };
+    const input = Readable.from(["tx('Note-a').put('title', 'From the repl')\n"]);
+    await expect(dbRepl(['--data-dir', dir, '--write'], io, input)).rejects
+      .toThrow(/^AgentBuddy is running on .* \(process \d+ holds .*\): quit it first/);
+    const { out } = await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir]);
+    expect(out).toBe('Alpha');
+  });
+
+  it('reads while an app runs, warning as the other commands do', async () => {
+    const dir = await appDataDir();
+    holdLock(dir);
+    const out: string[] = [];
+    const err: string[] = [];
+    const input = Readable.from(["return getAttr('Note-a', 'title')\n"]);
+    await dbRepl(['--data-dir', dir], { out: (l) => out.push(l), err: (l) => err.push(l) }, input);
+    expect(out).toEqual(['Alpha']);
+    expect(err.join('\n')).toMatch(/Warning: AgentBuddy is running on it/);
   });
 
   it('saves the writes of a --write session', async () => {
@@ -477,6 +509,21 @@ describe('abuddy db inspect', () => {
     const outgoing = await ok(['inspect', 'Note-b', '--data-dir', dir, '--outgoing']);
     expect(outgoing.out).toBe('[Note] Note-b "Beta, "quoted""');
     expect((await ok(['inspect', 'Note-x', '--data-dir', dir])).out).toBe('Not found: Note-x');
+  });
+
+  it('shows only incoming relations with --incoming, and only the first five of a crowded type', async () => {
+    const dir = await appDataDir();
+    const incoming = await ok(['inspect', 'Note-a', '--data-dir', dir, '--incoming']);
+    // Note-a has one outgoing relation (parent_of Note-b) and no incoming one, so only its own line is left
+    expect(incoming.out).toBe('[Note] Note-a "Alpha"\n  roles: pinned');
+
+    await write(dir, () => {
+      for (const n of [1, 2, 3, 4, 5, 6]) tx(id(`Note-many-${n}`), true).put('entityType', 'Note').put('title', `Many ${n}`);
+    });
+    const many = await ok(['inspect', '--type', 'Note', '--data-dir', dir]);
+    const lines = many.out.split('\n');
+    expect(lines[0]).toBe('8 Note entities, the first 5:');
+    expect(lines.filter((line) => line.startsWith('[Note] '))).toHaveLength(5);
   });
 
   it('counts relations per entity type, or shows the first entities of one', async () => {
@@ -629,6 +676,16 @@ describe('abuddy db import', () => {
     expect((await ok(['query', "return [getAttr('Note-a', 'title'), getEntitiesOfType('Note').length]", '--data-dir', dir, '-o', 'json'])).out)
       .toBe(JSON.stringify(['From the backup', 1], null, 2));
     expect(fs.readFileSync(path.join(appDataPaths(dir, { packaged: false }).media, 'image.png'), 'utf-8')).toBe('png');
+  });
+
+  it("keeps the backup's own progress lines off stdout, so only the command's output is there", async () => {
+    const dir = await appDataDir();
+    const backup = await backupWith('From the backup');
+    const { out, err } = await ok(['import', backup, '--force', '--data-dir', dir]);
+    expect(err).toContain('Imported lmdb');
+    expect(err).toContain('Import completed');
+    expect(out).not.toMatch(/Imported lmdb|Restored media|Import completed/);
+    expect(out.trim().split('\n').at(-1)).toBe('Imported.');
   });
 
   it('refuses a backup that is not one or lacks a database, changing nothing', async () => {

@@ -6,6 +6,21 @@ import { UnknownBackupDatabasesError } from '@abuddy/sdk/services';
 
 const logger = createLogger('database:backup');
 
+/**
+ * Where a backup's progress lines go. The app leaves this out and they go to the log, as every other app message
+ * does; a tool passes its own sink, so the lines don't land in output meant to be read by something else (`abuddy
+ * db import` writes results on stdout and everything else on stderr).
+ */
+export interface BackupLog {
+  info(message: string): void;
+  warn(message: string, detail?: Record<string, unknown>): void;
+}
+
+const defaultLog: BackupLog = {
+  info: (message) => logger.info(message),
+  warn: (message, detail) => logger.warn(message, detail),
+};
+
 /** A backup's database folders, by the partition of the store they hold */
 const DATABASE_PARTITIONS = {
   lmdb: 'primary',
@@ -22,7 +37,7 @@ const databasePath = (store: Pick<LmdbStore, 'paths'>, name: DatabaseName) => st
 export async function exportDatabase(
   store: Pick<LmdbStore, 'paths'>,
   targetPath: string,
-  { name, databases = ['lmdb'], mediaPath }: { name?: string; databases?: DatabaseName[]; mediaPath: string },
+  { name, databases = ['lmdb'], mediaPath, log = defaultLog }: { name?: string; databases?: DatabaseName[]; mediaPath: string; log?: BackupLog },
 ): Promise<string> {
   const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
   const fullBackupPath = path.join(targetPath, name || `agentbuddy-backup-${timestamp}`);
@@ -47,16 +62,16 @@ export async function exportDatabase(
     const sourcePath = databasePath(store, dbName);
     if (await fs.pathExists(sourcePath)) {
       await fs.copy(sourcePath, path.join(fullBackupPath, dbName));
-      logger.info(`Backed up ${dbName}`);
+      log.info(`Backed up ${dbName}`);
     }
   }
 
   if (includesMedia) {
     await fs.copy(mediaPath, path.join(fullBackupPath, 'media'));
-    logger.info('Backed up media assets');
+    log.info('Backed up media assets');
   }
 
-  logger.info('Backup completed', { path: fullBackupPath });
+  log.info(`Backup completed: ${fullBackupPath}`);
   return fullBackupPath;
 }
 
@@ -68,14 +83,14 @@ export async function importDatabase(
   store: LmdbStore,
   backupPath: string,
   mediaPath: string,
-  { skipUnknownDatabases = false }: { skipUnknownDatabases?: boolean } = {},
+  { skipUnknownDatabases = false, log = defaultLog }: { skipUnknownDatabases?: boolean; log?: BackupLog } = {},
 ) {
   // Checked before anything is replaced: a backup this app can't restore must not cost the user their data first
   const { databases, unknownDatabases, missingDatabases } = readBackup(backupPath);
   if (unknownDatabases.length > 0 && !skipUnknownDatabases) throw new UnknownBackupDatabasesError(unknownDatabases);
-  if (unknownDatabases.length > 0) logger.warn('Importing without the stores this AgentBuddy does not have', { unknownDatabases });
+  if (unknownDatabases.length > 0) log.warn('Importing without the stores this AgentBuddy does not have', { unknownDatabases });
   // Said rather than silently done: the folder may have been lost since, not just never written
-  if (missingDatabases.length > 0) logger.warn('The backup lists stores it has no folder for; they are restored as empty', { missingDatabases });
+  if (missingDatabases.length > 0) log.warn('The backup lists stores it has no folder for; they are restored as empty', { missingDatabases });
   const tempBackupPath = path.join(path.dirname(store.paths.primary), 'temp-backup-' + Date.now());
 
   await fs.ensureDir(tempBackupPath);
@@ -103,20 +118,20 @@ export async function importDatabase(
       if (await fs.pathExists(backupDbPath)) {
         await fs.remove(targetPath);
         await fs.copy(backupDbPath, targetPath);
-        logger.info(`Imported ${dbName}`);
+        log.info(`Imported ${dbName}`);
       }
     }
 
     if (hasMediaInBackup) {
       await fs.remove(mediaPath);
       await fs.copy(backupMediaPath, mediaPath);
-      logger.info('Restored media assets');
+      log.info('Restored media assets');
     }
 
     store.reopen();
 
     await fs.remove(tempBackupPath);
-    logger.info('Import completed');
+    log.info('Import completed');
     return { databases, missingDatabases };
   } catch (error) {
     store.close();

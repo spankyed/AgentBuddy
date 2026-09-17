@@ -78,6 +78,8 @@ export function holdDatabaseWriteLock(userDataDir: string, what: string): Databa
   const release = () => {
     if (released) return;
     released = true;
+    // Nothing left to do at exit; without this a process taking many locks in turn (the tests) piles up listeners
+    process.off('exit', release);
     // Only this process's lock: a stale one another tool took over stays with it
     if (readLock(file)?.pid === process.pid) fs.rmSync(file, { force: true });
   };

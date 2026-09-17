@@ -24,6 +24,16 @@ const lockFile = (dir: string) => path.join(dir, 'db-write.lock');
 const exitedPid = () => spawnSync(process.execPath, ['-e', '']).pid!;
 
 describe('the database write lock', () => {
+  it('stops listening for the process exiting once it is released', () => {
+    const dir = tempDir('write-lock-');
+    const before = process.listenerCount('exit');
+    const lock = hold(dir);
+    expect(process.listenerCount('exit')).toBe(before + 1);
+    lock.release();
+    lock.release();
+    expect(process.listenerCount('exit')).toBe(before);
+  });
+
   it('is free in a data dir no tool is changing', () => {
     const dir = tempDir('write-lock-');
     expect(findDatabaseWriter(dir)).toBeNull();

@@ -38,8 +38,8 @@ export interface AppDatabase {
   query: EarsQuery;
   admin: EarsAdmin;
   /**
-   * Flushes the writes made through the engine and closes the store, uninstalling the engine. Throws when a write
-   * failed to reach the files, in this call's flush or earlier.
+   * Flushes the writes made through the engine and closes the store, putting back the engine that was installed
+   * before this one. Throws when a write failed to reach the files, in this call's flush or earlier.
    */
   close(): void;
 }
@@ -76,13 +76,16 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
     log,
   });
   try {
-    installEngine(engine.query);
+    // Hydration fills the engine it was given, not the installed one, so nothing is installed until it succeeds:
+    // an open that fails leaves this process's engine exactly as it was
     await store.hydrate({ includeVolatile });
   } catch (error) {
-    installEngine(undefined);
     store.close();
     throw error;
   }
+  // And `close()` puts back whatever was installed before, rather than leaving none: a process that already had an
+  // engine (the app, a test file) goes on working after this database is closed
+  const previousEngine = installEngine(engine.query);
 
   return {
     userDataDir,
@@ -92,7 +95,7 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
     query: engine.query,
     admin: engine.admin,
     close() {
-      installEngine(undefined);
+      installEngine(previousEngine);
       const { errorCount, lastError } = store.close();
       if (errorCount > 0) {
         const cause = (lastError as { error?: unknown } | null)?.error ?? lastError;

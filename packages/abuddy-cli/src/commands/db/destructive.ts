@@ -3,7 +3,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { EARS } from '@abuddy/ears';
-import { importDatabase, readBackup } from '@abuddy/host/backup';
+import { importDatabase, readBackup, type BackupLog } from '@abuddy/host/backup';
 import type { AppDatabase } from '@abuddy/host/database';
 import { createSecretsStore } from '@abuddy/host/secrets';
 import { openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
@@ -13,6 +13,12 @@ const IMPORT_OPTIONS = { ...FORCE, 'skip-unknown': { type: 'boolean', default: f
 const FORCE_USAGE = '  --force                Make the change (without it, the command only lists it)';
 
 const DRY_RUN = 'Dry run: nothing was changed. Run again with --force to make the change.';
+
+/** The backup's progress lines as command output: on stderr, where everything that isn't the result goes */
+const backupLog = (io: DbIo): BackupLog => ({
+  info: (message) => io.err(message),
+  warn: (message, detail) => io.err(`Warning: ${message}${detail ? `: ${Object.values(detail).flat().join(', ')}` : ''}`),
+});
 
 /** Entities per type in the hydrated database, for the types that have some */
 function entityCounts(db: AppDatabase): Array<[string, number]> {
@@ -177,7 +183,9 @@ export async function dbImport(args: string[], io: DbIo): Promise<void> {
       return null;
     }
     db.admin.clear();
-    await importDatabase(db.store, backupDir, db.paths.media, { skipUnknownDatabases: skipUnknown });
+    // Its progress lines go to stderr with everything else that isn't the result, so `abuddy db import > file` holds
+    // only what the command was asked for
+    await importDatabase(db.store, backupDir, db.paths.media, { skipUnknownDatabases: skipUnknown, log: backupLog(io) });
     return '\nImported.';
   });
   if (done) io.out(done);

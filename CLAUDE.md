@@ -40,7 +40,9 @@ npm run typecheck:pack   # @app/default-setup only
 npm run check:ui-entries # Fails on a stale @abuddy/ui exports map or a component without an entry
 
 npm test                 # Playwright E2E tests
-npm run test:unit        # Vitest: @app/api, @app/default-setup, @abuddy/host, @abuddy/ears
+npm run test:unit        # Vitest, every suite CI calls a unit test: @app/api, @app/default-setup, @abuddy/sdk,
+                         # @abuddy/ears, @abuddy/host, @app/renderer, then @abuddy/cli (the slowest, last).
+                         # The CLI's published-package specs need npm run packages:build when dist is stale
 npm run test:all         # test:unit, then the E2E tests
 npm run bench -w @abuddy/ears    # EARS engine benchmark (baseline and tolerance: packages/abuddy-ears/CLAUDE.md)
 npm run test:external-pack       # Build the fixture packs in tests/fixtures with the CLI and run their tests (needs npm run build)

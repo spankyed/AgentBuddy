@@ -41,7 +41,7 @@
     "test:e2e:ui": "node scripts/with-source.mjs playwright test tests/e2e/ --debug",
     "test:external-pack": "bash tests/scripts/test-external-pack.sh",
     "test:packaged-authoring": "bash tests/scripts/test-packaged-authoring.sh",
-    "test:unit": "npm test --workspace @app/api && npm test --workspace @app/default-setup && npm test --workspace @abuddy/host && npm test --workspace @abuddy/ears",
+    "test:unit": "npm test --workspace @app/api && npm test --workspace @app/default-setup && npm test --workspace @abuddy/sdk && npm test --workspace @abuddy/ears && npm test --workspace @abuddy/host && npm run test:unit --workspace @app/renderer -- --run && npm test --workspace @abuddy/cli",
     "test:all": "npm run test:unit && npm run test:e2e",
     "test:check": "npm run typecheck && npm run test:unit",
     "start": "node packages/dev-mode.js",

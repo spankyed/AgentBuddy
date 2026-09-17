@@ -3,7 +3,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { getEntitiesOfType, installedEngine, untypedQx, type EARS } from '@abuddy/ears';
+import { createEarsEngine, getEntitiesOfType, installEngine, installedEngine, untypedQx, type EARS } from '@abuddy/ears';
 import { appDataPaths } from '@abuddy/sdk/utils';
 import { openAppDatabase } from '../../src/database/open.ts';
 import { findAppDataPaths } from '../../src/database/layout.ts';
@@ -146,6 +146,27 @@ describe('openAppDatabase', () => {
     db.query.tx(id('Note-1')).put('count', 1n);
     expect(() => db.close()).toThrow(/1 write\(s\) didn't reach the database in .*BigInt/);
     expect(() => installedEngine()).toThrow();
+  });
+
+  it('puts back the engine that was installed before, however it ends', async () => {
+    const dir = dataDirWithPacks();
+    await writeData(dir, () => { tx(id('Note-1'), true).put('title', 'kept'); });
+    // A process that already has an engine: the app, or a test file that started a runtime
+    const outer = createEarsEngine({ isEntityType: (name) => name === 'Note' });
+    installEngine(outer.query);
+    try {
+      const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
+      expect(installedEngine()).toBe(db.query);
+      db.close();
+      expect(installedEngine()).toBe(outer.query);
+
+      // And an open that fails installs nothing at all, rather than leaving this process without an engine
+      const broken = dataDirWithPacks();
+      await expect(openAppDatabase({ env: 'test', userDataDir: broken, ...quiet })).rejects.toThrow();
+      expect(installedEngine()).toBe(outer.query);
+    } finally {
+      installEngine(undefined);
+    }
   });
 
   it('opens nothing where the data dir has no database', async () => {

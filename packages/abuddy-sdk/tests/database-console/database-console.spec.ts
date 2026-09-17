@@ -53,8 +53,12 @@ describe('runQueryCode', () => {
     expect(untypedQx('Flow').ids()).toEqual([]);
   });
 
-  it('refuses no code', async () => {
-    await expect(runQueryCode('', scope)).rejects.toThrow('No code to run');
+  it('refuses blank code rather than answering undefined', async () => {
+    // Whitespace alone is a function body that returns nothing, which would read as a query that found nothing
+    for (const blank of ['', '   ', '\n\t ']) {
+      await expect(runQueryCode(blank, scope)).rejects.toThrow('No code to run');
+      await expect(runTransactionCode(blank, scope)).rejects.toThrow('No code to run');
+    }
   });
 });
 
