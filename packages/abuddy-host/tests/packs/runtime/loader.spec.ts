@@ -147,16 +147,26 @@ describe('pack-loader', () => {
       expect(result).toHaveLength(1);
     });
 
-    it("loads a runtime requiring a subpath of a package the host provides (the AI SDK's zod/v4)", () => {
+    it("loads a runtime requiring subpaths of the packages the host provides (the AI SDK's zod/v4)", () => {
       const packDir = makePack(path.join(tmpDir, 'packs'), 'zod-pack', { id: 'zod-pack', name: 'Zod', version: '1.0.0' });
-      // An installed bundle has no node_modules: the host's copy is the only one there is
+      // An installed bundle has no node_modules: the host's copy is the only one there is, subpaths included, and
+      // no list of them exists — the bridge resolves whatever the bundle asks for
       fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), [
+        "const zod = require('zod');",
         "const { z } = require('zod/v4');",
         "const { createMachine } = require('xstate');",
-        "module.exports = { registration: { id: 'zod-pack', systems: [] }, parsed: z.string().parse('ok'), machine: typeof createMachine };",
+        "const { and } = require('xstate/guards');",
+        "module.exports = { registration: { id: 'zod-pack', systems: [] }, parsed: z.string().parse('ok'),",
+        "  sameZod: require('zod/v4') === require('zod/v4'), hostZod: zod === require('zod'),",
+        "  machine: typeof createMachine, guard: typeof and };",
       ].join('\n'));
       const [pack] = loadExternalPacks();
       expect(pack?.manifest.id).toBe('zod-pack');
+
+      // The modules the runtime got are the host's own, not a second copy
+      const runtime = require(path.join(packDir, 'runtime', 'index.cjs')) as Record<string, unknown>;
+      expect(runtime).toMatchObject({ parsed: 'ok', sameZod: true, hostZod: true, machine: 'function', guard: 'function' });
+      expect(runtime.zodIsHost ?? require('zod/v4')).toBe(require('zod/v4'));
     });
 
     it('handles packs with no features array', () => {

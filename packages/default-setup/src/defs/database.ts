@@ -1,25 +1,23 @@
 /**
- * Database DSL type surface for Monaco intellisense.
- * Defines what's available as globals in the database code editor.
+ * The Database console's type surface for Monaco: exactly the names console code can use, so the editor's types and
+ * what the code actually gets are one list. The runners provide them (`@abuddy/sdk/database-console`), and
+ * `abuddy.json`'s `dsl.database.globals` names them all (`tests/unit/database-console-globals.test.ts`).
  */
 
 export { EARS } from '@abuddy/sdk/types';
-export type { BaseEntity } from '@abuddy/ears';
+export type { BaseEntity, QueryBuilder, RelationMatch, RelationRow, RelationStats } from '@abuddy/ears';
 
-// The database console runs queries with the pack's typed helpers
+// Read: the pack's typed helpers where there are any, the engine's otherwise
 export { qx, getAttr, getAttrs } from '@/__generated__/ears';
-
 export {
-  tx, bp, spawn,
-  getEntitiesOfType, getAllEntityTypes, getAll,
-  createRelation, removeRelation, removeRelationById, destroyEntity, prepareEntity,
-  getAllAttributeKinds, getAttributeStats, getAllRelationKinds,
-  getRoles, grantRole, revokeRole,
-  getSchemaStats, isEntityType,
-  descendants, ancestors, rootParent, linkSymmetric,
-  topoSort, shortestPath, leaves, lowestCommonAncestor,
-  getAllEntities,
+  getAll, getRoles, getAllEntities, getEntitiesOfType,
   queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo,
   findRelations, getRelationStats,
-  type QueryBuilder, type RelationMatch, type RelationRow, type RelationStats,
+} from '@abuddy/ears';
+export { getSchemaStats } from '@abuddy/sdk/database-console';
+
+// Write: only a transaction gets these; a query naming one fails with "<name> is not defined"
+export { createEntityWithDefaults, updateEntity } from '@/__generated__/ears';
+export {
+  tx, destroyEntity, prepareEntity, createRelation, removeRelation, removeRelationById, grantRole, revokeRole,
 } from '@abuddy/ears';

@@ -159,13 +159,12 @@ export function getUiFeModules(fromDir: string): Record<string, SdkFeModule> {
 }
 
 /**
- * The packages the host provides to pack backends, with every subpath they export: a pack bundle leaves the whole
- * package external (esbuild), so a dependency it bundles may require a subpath (the AI SDK requires `zod/v4`)
+ * The packages the host provides to pack backends. Their subpaths come with them: a pack bundle leaves the whole
+ * package external (esbuild), so a dependency it bundles may require `zod/v4` where the pack imports `zod`, and the
+ * bridge resolves any subpath of these from the host (`withModuleBridge`'s `hostPackages`).
  */
 export function getSharedBeDeps(): string[] {
-  return Object.keys(SHARED_DEPS)
-    .filter((name) => SHARED_DEPS[name].target !== 'fe')
-    .flatMap((name) => [name, ...exportedSubpaths(name)]);
+  return Object.keys(SHARED_DEPS).filter((name) => SHARED_DEPS[name].target !== 'fe');
 }
 
 export function findSdkVersion(startDir: string): string | undefined {
