@@ -2,7 +2,7 @@
 import * as os from 'node:os';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { tx, untypedQx } from '@abuddy/ears';
-import { getSchemaStats, runQueryCode, runTransactionCode, WRITE_HELPER_NAMES } from '../../src/database-console/index.ts';
+import { getSchemaStats, READ_HELPER_NAMES, runQueryCode, runTransactionCode, WRITE_HELPER_NAMES } from '../../src/database-console/index.ts';
 import { resetTestData, startTestRuntime } from '../../src/testing/index.ts';
 
 process.env.ABUDDY_ENV ??= 'test';
@@ -12,6 +12,31 @@ startTestRuntime();
 beforeEach(() => resetTestData());
 
 const scope = { EARS: { Entity: { Flow: 'Flow' }, RelKind: {} } };
+
+describe('the helpers console code sees', () => {
+  // Spelled out, so adding or moving one is a deliberate change: the Database console, the `query` flow step and
+  // `abuddy db query`/`exec` all rest on what a query can and cannot reach
+  it('gives a query these, and nothing that writes', async () => {
+    expect([...READ_HELPER_NAMES].sort()).toEqual([
+      'findRelations', 'getAll', 'getAllEntities', 'getAttr', 'getAttrs', 'getEntitiesOfType', 'getRelationStats',
+      'getRoles', 'getSchemaStats', 'queryEntitiesByAttribute', 'queryEntitiesByRelationTo',
+      'queryEntitiesInRelationTo', 'qx',
+    ]);
+    for (const name of READ_HELPER_NAMES) {
+      await expect(runQueryCode(`return typeof ${name}`, scope), name).resolves.toBe('function');
+    }
+  });
+
+  it('gives a transaction the write helpers as well', async () => {
+    expect([...WRITE_HELPER_NAMES].sort()).toEqual([
+      'createEntityWithDefaults', 'createRelation', 'destroyEntity', 'grantRole', 'prepareEntity', 'removeRelation',
+      'removeRelationById', 'revokeRole', 'tx', 'updateEntity',
+    ]);
+    for (const name of [...READ_HELPER_NAMES, ...WRITE_HELPER_NAMES]) {
+      await expect(runTransactionCode(`return typeof ${name}`, scope), name).resolves.toBe('function');
+    }
+  });
+});
 
 describe('runQueryCode', () => {
   it('returns what the code returns, reading the installed engine and the EARS it is given', async () => {

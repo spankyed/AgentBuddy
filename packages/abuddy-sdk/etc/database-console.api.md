@@ -14,6 +14,9 @@ export interface ConsoleScope {
 export function getSchemaStats(): SchemaStats;
 
 // @public
+export const READ_HELPER_NAMES: readonly string[];
+
+// @public
 export function runQueryCode(code: string, scope: ConsoleScope): Promise<unknown>;
 
 // @public

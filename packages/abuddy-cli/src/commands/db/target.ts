@@ -98,6 +98,32 @@ export async function openTarget(target: DbTarget, { write, command }: OpenOptio
   }
 }
 
+/** The message of whatever a command threw */
+const reason = (error: unknown) => (error instanceof Error ? error.message : String(error));
+
+/**
+ * Runs `use` with the database and closes it after, whatever happens. Closing flushes what the command wrote and
+ * fails when a write didn't reach the files, so a failure there is reported — but never in place of what the command
+ * hit first.
+ */
+export async function withDatabase<T>(db: AppDatabase, use: () => Promise<T> | T): Promise<T> {
+  let result: T;
+  let failure: unknown;
+  try {
+    result = await use();
+  } catch (error) {
+    failure = error;
+  }
+  try {
+    db.close();
+  } catch (closeFailure) {
+    if (failure === undefined) throw closeFailure;
+    throw new Error(`${reason(failure)}\n  The database also failed to close: ${reason(closeFailure)}`, { cause: failure });
+  }
+  if (failure !== undefined) throw failure;
+  return result!;
+}
+
 /** `EARS` for console code: the SDK's, with the installed packs' entity types and relation kinds */
 export function consoleScope(db: AppDatabase): ConsoleScope {
   return { EARS: { ...EARS, Entity: db.schema.entities, RelKind: { ...db.schema.relKinds, Custom: EARS.RelKind.Custom } } };

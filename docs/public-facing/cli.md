@@ -237,9 +237,9 @@ abuddy db import ./agentbuddy-backup-2026-09-17 --production --force
 abuddy db reset --production        # lists what it would delete
 ```
 
-**Which data.** `-d` targets the development app's data dir, `-b` AgentBuddy Beta's, `--production` the production app's, and `--data-dir <path>` any data dir, such as a copy of the user's. Name one of them, not two. A command that only reads takes the production app's data without being told; **a command that changes the database (`exec`, `repl --write`, `import`, `reset`, `clear-settings`) names its data dir**, so the user's own data is never what a forgotten flag hits. Each command prints the data dir it opens (on stderr, so results on stdout stay clean).
+**Which data.** `-d` targets the development app's data dir, `-b` AgentBuddy Beta's, `--production` the production app's, and `--data-dir <path>` any data dir, such as a copy of the user's. Name one of them, not two. A command that only reads takes the production app's data without being told, and a dry run of `import`, `reset` or `clear-settings` counts as reading; **a change (`exec`, `repl --write`, and those three with `--force`) names its data dir**, so the user's own data is never what a forgotten flag hits. Each command prints the data dir it opens (on stderr, so results on stdout stay clean).
 
-**While the app runs.** The commands open the database files themselves (offline); the app keeps the whole database in memory and is its only writer. So a command that changes data (`exec`, `repl --write`, `import`, `reset`, `clear-settings`) refuses while an AgentBuddy app runs on the data dir: the API it published is running, or (on macOS and Linux) its instance lock is held by a live process. Files left behind by a crash name processes that have exited, so they don't stand in the way. Quit the app first. Reading commands work, with a warning that they miss what the app hasn't written yet.
+**While the app runs.** The commands open the database files themselves (offline); the app keeps the whole database in memory and is its only writer. So a change (`exec`, `repl --write`, and `import`, `reset` or `clear-settings` with `--force`) refuses while an AgentBuddy app runs on the data dir: the API it published is running, or (on macOS and Linux) its instance lock is held by a live process. Files left behind by a crash name processes that have exited, so they don't stand in the way. Quit the app first. Reading commands work, with a warning that they miss what the app hasn't written yet, and so do the dry runs: they open the database without writing to it, so they also work against a copy you have no permission to change.
 
 While a command changes the database it holds a lock on the data dir (`db-write.lock`), so a second `abuddy db` is refused and an AgentBuddy started meanwhile refuses to open that database instead of overwriting the change. A lock left behind by a command that was killed is ignored once its process is gone.
 
@@ -272,7 +272,7 @@ Print an entity, its roles and its relations grouped by kind, following them `--
 
 #### `abuddy db export --out <dir> [--type <Entity>...] [--format json|csv]`
 
-Write each entity type's entities, with every attribute, to `<dir>/<Entity>.json` (or `.csv`), and a summary (data dir, data version, counts) to `<dir>/export.json`. Without `--type`, every type with entities. Roles are in each entity's `role` attribute, and relations are the `Relation` entities (their `relationDetails`).
+Write each entity type's entities, with every attribute, to `<dir>/<Entity>.json` (or `.csv`), and a summary (when it ran, the data dir, the format and the counts) to `<dir>/export.json`. Without `--type`, every type with entities. Roles are in each entity's `role` attribute, and relations are the `Relation` entities (their `relationDetails`).
 
 #### `abuddy db import <backup-dir> [--force]` (names its data dir)
 

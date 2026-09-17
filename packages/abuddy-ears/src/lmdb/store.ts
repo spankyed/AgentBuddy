@@ -75,6 +75,8 @@ export function openLmdbStore({ paths, policy, engine, readOnly = false, log = c
     engine().getAttr(relId, EARS.AttrKind.RelationDetails) as EARS.RelationDetail | null;
   let envs: Record<Partition, LmdbDbs> | null = null;
   let current: ShardedPersistence | null = null;
+  /** Failed writes of the environments closed so far, which `close()` reports with its own */
+  let carried: PersistenceErrorStats = { errorCount: 0, lastError: null };
   /** Writes made while a reset has the store closed, written when it opens again */
   let heldForReset: Array<(sink: ShardedPersistence) => void> | null = null;
 
@@ -86,7 +88,8 @@ export function openLmdbStore({ paths, policy, engine, readOnly = false, log = c
     }, relationDetails);
   }
 
-  function close(): PersistenceErrorStats {
+  /** Closes the open environments and returns their failed writes, the final flush's included */
+  function closeEnvs(): PersistenceErrorStats {
     const [closingEnvs, closingSink] = [envs, current];
     envs = null;
     current = null;
@@ -107,6 +110,22 @@ export function openLmdbStore({ paths, policy, engine, readOnly = false, log = c
       }
     }
     return closingSink?.getErrorStats?.() ?? NO_ERRORS;
+  }
+
+  /** The failed writes of every environment closed since the last report */
+  function close(): PersistenceErrorStats {
+    const closed = closeEnvs();
+    const reported: PersistenceErrorStats = {
+      errorCount: carried.errorCount + closed.errorCount,
+      lastError: closed.lastError ?? carried.lastError,
+    };
+    carried = { errorCount: 0, lastError: null };
+    return reported;
+  }
+
+  /** Keeps the failed writes of an environment closed on the way to opening another, for the next report */
+  function carry(stats: PersistenceErrorStats): void {
+    carried = { errorCount: carried.errorCount + stats.errorCount, lastError: stats.lastError ?? carried.lastError };
   }
 
   function openEnvs(): Record<Partition, LmdbDbs> {
@@ -153,14 +172,14 @@ export function openLmdbStore({ paths, policy, engine, readOnly = false, log = c
     query: (partition) => new LmdbQuery(openEnvs()[partition]),
     close,
     reopen() {
-      close();
+      carry(closeEnvs());
       open();
     },
     async reset() {
       if (readOnly) throw new Error(`The LMDB store at ${paths.primary} is open read-only`);
       heldForReset = [];
       try {
-        close();
+        carry(closeEnvs());
         // Let LMDB release the files before deleting them
         await new Promise((resolve) => setTimeout(resolve, 100));
         deleteLmdbDirectories(paths);

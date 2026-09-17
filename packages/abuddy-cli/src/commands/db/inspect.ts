@@ -1,6 +1,6 @@
 // abuddy db inspect: an entity's relations, followed a few levels, or relation counts per entity type
 import type { EarsQuery, EARS } from '@abuddy/ears';
-import { openTarget, parseDbArgs, TARGET_USAGE, type DbIo } from './target';
+import { openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
 
 const OPTIONS = {
   type: { type: 'string', short: 't' },
@@ -102,7 +102,7 @@ export async function dbInspect(args: string[], io: DbIo): Promise<void> {
   const directions: Direction[] = incoming === outgoing ? ['outgoing', 'incoming'] : incoming ? ['incoming'] : ['outgoing'];
 
   const db = await openTarget(target, { write: false, command: 'inspect' }, io);
-  try {
+  await withDatabase(db, () => {
     if (entityId) {
       graphLines(db.query, entityId, { depth, directions }).forEach((line) => io.out(line));
     } else if (values.type) {
@@ -112,7 +112,5 @@ export async function dbInspect(args: string[], io: DbIo): Promise<void> {
     } else {
       relationStatsLines(db.query, db.schema.getRegisteredEntityTypes()).forEach((line) => io.out(line));
     }
-  } finally {
-    db.close();
-  }
+  });
 }

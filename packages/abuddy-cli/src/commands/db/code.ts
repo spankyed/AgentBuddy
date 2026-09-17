@@ -1,7 +1,7 @@
 // abuddy db query | exec: console code (the Database plugin's) run on the data dir's database
 import * as fs from 'node:fs';
 import { runQueryCode, runTransactionCode } from '@abuddy/sdk/database-console';
-import { consoleScope, openTarget, parseDbArgs, TARGET_USAGE, type DbIo } from './target';
+import { consoleScope, openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
 import { outputFormat, writeResult } from './output';
 
 const OPTIONS = {
@@ -34,12 +34,8 @@ async function runCode(command: 'query' | 'exec', args: string[], io: DbIo): Pro
 
   const write = command === 'exec';
   const db = await openTarget(target, { write, command }, io);
-  let result: unknown;
-  try {
-    result = write ? await runTransactionCode(code, consoleScope(db)) : await runQueryCode(code, consoleScope(db));
-  } finally {
-    db.close();
-  }
+  const result = await withDatabase(db, () =>
+    write ? runTransactionCode(code, consoleScope(db)) : runQueryCode(code, consoleScope(db)));
   writeResult(result, { format, out: values.out as string | undefined }, io);
 }
 

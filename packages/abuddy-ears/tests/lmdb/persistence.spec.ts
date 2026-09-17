@@ -139,6 +139,28 @@ describe('LMDB Adapter', () => {
 // ---------------------------------------------------------------------------
 // B. Sharded Router
 // ---------------------------------------------------------------------------
+describe('LMDB Adapter error stats', () => {
+  /** An environment whose writes all fail, as a full disk would */
+  const failing = (): LmdbDbs => {
+    const fail = () => { throw new Error('disk full'); };
+    const db = { transactionSync: fail, put: fail, remove: fail, get: () => undefined, doesExist: () => false, getKeys: () => [], getRange: () => [] };
+    return { entities: db, attrs: db, relations: db, root: db } as unknown as LmdbDbs;
+  };
+
+  it('counts a delete it could not write, so a caller is never told the row is gone', () => {
+    const adapter = makeLmdbAdapter(failing());
+    adapter.onDestroyEntity('Document-1');
+    expect(adapter.getErrorStats?.()).toMatchObject({ errorCount: 1, lastError: { op: 'destroy', key: 'Document-1' } });
+  });
+
+  it('counts a flush it could not write when the sink closes', () => {
+    const adapter = makeLmdbAdapter(failing());
+    adapter.onPutAttrArray('title', 'Document-1', ['kept']);
+    adapter.close?.();
+    expect(adapter.getErrorStats?.()).toMatchObject({ errorCount: 1, lastError: { op: 'final flush' } });
+  });
+});
+
 describe('Sharded Router', () => {
   let dirs: { primary: string; volatileBackup: string };
   let envs: Record<Partition, LmdbDbs>;

@@ -2,7 +2,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { EARS } from '@abuddy/ears';
-import { openTarget, parseDbArgs, TARGET_USAGE, type DbIo } from './target';
+import { openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
 import { toCSV, toJSON } from './output';
 
 const OPTIONS = {
@@ -33,7 +33,7 @@ export async function dbExport(args: string[], io: DbIo): Promise<void> {
   if (format !== 'json' && format !== 'csv') throw new Error('--format must be json or csv');
 
   const db = await openTarget(target, { write: false, command: 'export' }, io);
-  try {
+  await withDatabase(db, () => {
     const known = db.schema.getRegisteredEntityTypes();
     const requested = values.type as string[] | undefined;
     const unknown = requested?.filter((type) => !known.has(type)) ?? [];
@@ -59,7 +59,5 @@ export async function dbExport(args: string[], io: DbIo): Promise<void> {
     };
     fs.writeFileSync(path.join(outDir, 'export.json'), `${toJSON(summary)}\n`);
     io.err(`Exported ${Object.values(counts).reduce((sum, n) => sum + n, 0)} entities to ${outDir}`);
-  } finally {
-    db.close();
-  }
+  });
 }

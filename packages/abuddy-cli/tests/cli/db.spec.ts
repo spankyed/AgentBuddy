@@ -70,6 +70,16 @@ async function appDataDir(): Promise<string> {
   return dir;
 }
 
+/** A backup of a data dir, as the app exports it */
+async function backupOf(userDataDir: string, { withMedia = false } = {}): Promise<string> {
+  const paths = appDataPaths(userDataDir, { packaged: false });
+  if (withMedia) {
+    fs.mkdirSync(paths.media, { recursive: true });
+    fs.writeFileSync(path.join(paths.media, 'image.png'), 'png');
+  }
+  return exportDatabase({ paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb } }, tempDir('backup-'), { name: 'backup', mediaPath: paths.media });
+}
+
 /** Runs `abuddy db <args>` and returns its stdout and stderr lines, and its error */
 async function run(args: string[]): Promise<{ out: string; err: string; error?: Error }> {
   const out: string[] = [];
@@ -180,13 +190,25 @@ describe('naming the data dir', () => {
 
   it('makes a command that changes the database name its data dir, and opens none until it does', async () => {
     const dir = await appDataDir();
-    for (const args of [['exec', 'return 1'], ['reset'], ['reset', '--force'], ['clear-settings'], ['import', dir], ['repl', '--write']]) {
+    const changes = [['exec', 'return 1'], ['reset', '--force'], ['clear-settings', '--force'], ['import', dir, '--force'], ['repl', '--write']];
+    for (const args of changes) {
       const { error, err, out } = await run(args);
       expect(error?.message, args.join(' ')).toBe('Name the data dir to change: --production, -d, -b, or --data-dir <path>');
       expect(`${err}${out}`).toBe('');
     }
-    // Reading takes the production app's data without being told
-    expect((await run(['query', 'return 1'])).err).toContain('Database: ');
+  });
+
+  it('lets a command that only reads take the production app\'s data without being told, dry runs included', async () => {
+    const dir = await appDataDir();
+    process.env.ABUDDY_USER_DATA_DIR = dir;
+    try {
+      expect((await ok(['query', 'return 1'])).err).toContain(`Database: ${dir} (offline)`);
+      // A dry run reads: it lists what --force would delete
+      expect((await ok(['reset'])).out).toContain('Would delete the database');
+      expect((await ok(['clear-settings'])).out).toContain('Would destroy 1 Settings row(s)');
+    } finally {
+      delete process.env.ABUDDY_USER_DATA_DIR;
+    }
   });
 
   it('takes --production as naming the production data dir', async () => {
@@ -272,6 +294,14 @@ describe('abuddy db exec', () => {
     const dir = await appDataDir();
     const { error } = await run(['exec', "tx('Note-a').put('count', 1n)", '--data-dir', dir]);
     expect(error?.message).toMatch(/1 write\(s\) didn't reach the database/);
+  });
+
+  it("reports the code's own error first when closing fails too", async () => {
+    const dir = await appDataDir();
+    // The code writes a value LMDB can't store, then throws
+    const { error } = await run(['exec', "tx('Note-a').put('count', 1n); throw new Error('boom')", '--data-dir', dir]);
+    expect(error?.message).toMatch(/^Transaction failed: boom\n  The database also failed to close: 1 write\(s\) didn't reach the database/);
+    expect((error as Error).cause).toBeInstanceOf(Error);
   });
 });
 
@@ -373,6 +403,40 @@ describe('abuddy db clear-settings', () => {
   });
 });
 
+describe('a dry run of a command that changes data', () => {
+  it('reads, so it works while an app runs on the data dir and against files it may not write', async () => {
+    const running = await appDataDir();
+    publishApi(running);
+    const listed = await ok(['reset', '--data-dir', running]);
+    expect(listed.out).toContain('Would delete the database');
+    expect(listed.err).toMatch(/Warning: AgentBuddy is running on it/);
+    // Only the change itself is refused
+    expect((await run(['reset', '--force', '--data-dir', running])).error?.message).toMatch(/quit it first/);
+
+    const copy = await appDataDir();
+    const { lmdb, volatileLmdb } = appDataPaths(copy, { packaged: false });
+    const files = [lmdb, volatileLmdb].flatMap((db) => fs.readdirSync(db).map((file) => path.join(db, file)));
+    for (const file of files) fs.chmodSync(file, 0o444);
+    try {
+      expect((await ok(['clear-settings', '--data-dir', copy])).out).toContain('Would destroy 1 Settings row(s)');
+      const backup = await backupOf(copy);
+      expect((await ok(['import', backup, '--data-dir', copy])).out).toContain('Would replace the current database');
+    } finally {
+      for (const file of files) fs.chmodSync(file, 0o644);
+    }
+  });
+
+  it('takes no lock, so two dry runs can run at once', async () => {
+    const dir = await appDataDir();
+    const held = holdDatabaseWriteLock(dir, 'abuddy db import');
+    try {
+      expect((await ok(['reset', '--data-dir', dir])).out).toContain('Would delete the database');
+    } finally {
+      held.release();
+    }
+  });
+});
+
 describe('abuddy db reset', () => {
   async function withKey(dir: string): Promise<string> {
     const file = appDataPaths(dir, { packaged: false }).secretsFile;
@@ -408,15 +472,11 @@ describe('abuddy db reset', () => {
 });
 
 describe('abuddy db import', () => {
-  /** A backup of a data dir whose one note is titled `title`, as the app exports it */
-  async function backupWith(title: string): Promise<string> {
+  const backupWith = async (title: string) => {
     const source = await appDataDir();
     await write(source, () => { tx(id('Note-a')).put('title', title); tx(id('Note-b')).destroy(); });
-    const paths = appDataPaths(source, { packaged: false });
-    fs.mkdirSync(paths.media, { recursive: true });
-    fs.writeFileSync(path.join(paths.media, 'image.png'), 'png');
-    return exportDatabase({ paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb } }, tempDir('backup-'), { name: 'backup', mediaPath: paths.media });
-  }
+    return backupOf(source, { withMedia: true });
+  };
 
   it('lists the backup and what it replaces, and replaces the database and media only with --force', async () => {
     const dir = await appDataDir();

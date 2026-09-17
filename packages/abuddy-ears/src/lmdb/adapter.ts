@@ -244,6 +244,8 @@ export function makeLmdbAdapter(dbs: LmdbDbs): PersistenceSink {
           }
         });
       } catch (error) {
+        errorCount++;
+        lastError = { op: 'destroy', key: entityId, error };
         console.error(`[LMDB] Failed to delete entity ${entityId}:`, error);
       }
     },

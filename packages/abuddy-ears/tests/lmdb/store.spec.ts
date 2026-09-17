@@ -244,6 +244,23 @@ describe('openLmdbStore', () => {
     expect(reopened.query('primary').getFirstAttr('title', 'Note-1')).toBe('kept');
   });
 
+  it('reports writes lost while it was closed for a reopen or a reset, not only this close\'s', async () => {
+    const store = openStore();
+    tx(id('Note-1'), true).put('title', 'kept');
+    await flushed();
+    // JSON can't encode a BigInt: the write fails when the store closes to reopen
+    tx(id('Note-1')).put('count', 1n);
+    store.reopen();
+    expect(store.close()).toMatchObject({ errorCount: 1, lastError: { op: 'final flush' } });
+    // Reported once
+    expect(store.close()).toEqual({ errorCount: 0, lastError: null });
+
+    const resetting = openStore();
+    tx(id('Note-2'), true).put('count', 2n);
+    await resetting.reset();
+    expect(resetting.close()).toMatchObject({ errorCount: 1 });
+  });
+
   it('opens no database where none exists when read-only', () => {
     expect(() => openStore({ readOnly: true })).toThrow();
     expect(fs.existsSync(paths.primary)).toBe(false);

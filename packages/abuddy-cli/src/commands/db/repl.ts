@@ -1,7 +1,7 @@
 // abuddy db repl: console code line by line, on the data dir's database
 import * as readline from 'node:readline/promises';
 import { runQueryCode, runTransactionCode } from '@abuddy/sdk/database-console';
-import { consoleScope, openTarget, parseDbArgs, TARGET_USAGE, type DbIo } from './target';
+import { consoleScope, openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
 import { toPretty } from './output';
 
 const OPTIONS = {
@@ -28,19 +28,20 @@ export async function dbRepl(args: string[], io: DbIo, input: NodeJS.ReadableStr
   const run = write ? runTransactionCode : runQueryCode;
   const lines = readline.createInterface({ input, terminal: false });
   io.err(`${write ? 'Transaction' : 'Query'} code, one line at a time; .exit to quit`);
-  try {
-    for await (const line of lines) {
-      const code = line.trim();
-      if (code === '.exit') break;
-      if (!code) continue;
-      try {
-        io.out(toPretty(await run(code, scope)));
-      } catch (error) {
-        io.err(`Error: ${(error as Error).message}`);
+  await withDatabase(db, async () => {
+    try {
+      for await (const line of lines) {
+        const code = line.trim();
+        if (code === '.exit') break;
+        if (!code) continue;
+        try {
+          io.out(toPretty(await run(code, scope)));
+        } catch (error) {
+          io.err(`Error: ${(error as Error).message}`);
+        }
       }
+    } finally {
+      lines.close();
     }
-  } finally {
-    lines.close();
-    db.close();
-  }
+  });
 }

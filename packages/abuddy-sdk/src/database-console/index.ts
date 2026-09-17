@@ -67,6 +67,12 @@ const writeHelpers = {
   revokeRole,
 };
 
+/**
+ * What query code sees besides `EARS`. Nothing here may write: a `query` flow step's safety rests on it (the step
+ * refuses a generated query that names a write helper, which is undefined for a query).
+ */
+export const READ_HELPER_NAMES: readonly string[] = Object.keys(readHelpers);
+
 /** The helpers only a transaction sees: a query naming one fails with "<name> is not defined" */
 export const WRITE_HELPER_NAMES: readonly string[] = Object.keys(writeHelpers);
 

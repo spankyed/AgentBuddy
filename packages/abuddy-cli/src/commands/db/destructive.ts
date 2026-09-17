@@ -6,7 +6,7 @@ import type { EARS } from '@abuddy/ears';
 import { importDatabase, readBackup } from '@abuddy/host/backup';
 import type { AppDatabase } from '@abuddy/host/database';
 import { createSecretsStore } from '@abuddy/host/secrets';
-import { openTarget, parseDbArgs, TARGET_USAGE, type DbIo } from './target';
+import { openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
 
 const FORCE = { force: { type: 'boolean', default: false } } as const;
 const FORCE_USAGE = '  --force                Make the change (without it, the command only lists it)';
@@ -50,9 +50,9 @@ export async function dbReset(args: string[], io: DbIo): Promise<void> {
   if (positionals.length > 0) throw new Error(`Unexpected argument ${positionals[0]}\n\n${RESET_USAGE}`);
   const force = values.force as boolean;
 
-  const db = await openTarget(target, { write: true, command: 'reset' }, io);
-  let closed = false;
-  try {
+  // Without --force nothing is changed, so the database opens read-only: a copy the user may not write is listed too
+  const db = await openTarget(target, { write: force, command: 'reset' }, io);
+  const done = await withDatabase(db, async () => {
     const secrets = secretsStoreAt(db);
     const keys = fs.existsSync(db.paths.secretsFile) ? secrets.list().length : 0;
     io.out(`${force ? 'Deleting' : 'Would delete'} the database (${db.paths.lmdb} and ${db.paths.volatileLmdb}):`);
@@ -61,17 +61,14 @@ export async function dbReset(args: string[], io: DbIo): Promise<void> {
     io.out(`${force ? 'Deleting' : 'Would delete'} ${keys} stored API key(s)`);
     if (!force) {
       io.out(`\n${DRY_RUN}`);
-      return;
+      return null;
     }
     db.admin.clear();
     await db.store.reset();
     secrets.clearAll();
-    closed = true;
-    db.close();
-    io.out('\nReset. AgentBuddy creates its default data on its next start.');
-  } finally {
-    if (!closed) db.close();
-  }
+    return '\nReset. AgentBuddy creates its default data on its next start.';
+  });
+  if (done) io.out(done);
 }
 
 // ── clear-settings ───────────────────────────────────────────────────────
@@ -110,13 +107,13 @@ export async function dbClearSettings(args: string[], io: DbIo): Promise<void> {
   if (positionals.length > 0) throw new Error(`Unexpected argument ${positionals[0]}\n\n${CLEAR_SETTINGS_USAGE}`);
   const force = values.force as boolean;
 
-  const db = await openTarget(target, { write: true, command: 'clear-settings' }, io);
-  let closed = false;
-  try {
+  // Without --force nothing is destroyed, so the database opens read-only
+  const db = await openTarget(target, { write: force, command: 'clear-settings' }, io);
+  const done = await withDatabase(db, () => {
     const rows = db.query.getEntitiesOfType(SETTINGS_ENTITY as EARS.Entity).map((id) => describeSettingsRow(db, id));
     if (rows.length === 0) {
       io.out('No Settings rows: nothing to destroy.');
-      return;
+      return null;
     }
     io.out(`${force ? 'Destroying' : 'Would destroy'} ${rows.length} Settings row(s):`);
     for (const row of rows) {
@@ -124,15 +121,12 @@ export async function dbClearSettings(args: string[], io: DbIo): Promise<void> {
     }
     if (!force) {
       io.out(`\n${DRY_RUN}`);
-      return;
+      return null;
     }
     for (const row of rows) db.query.tx(row.id as EARS.EntityId).destroy();
-    closed = true;
-    db.close();
-    io.out(`\nDestroyed ${rows.length} Settings row(s). AgentBuddy recreates the defaults on its next start.`);
-  } finally {
-    if (!closed) db.close();
-  }
+    return `\nDestroyed ${rows.length} Settings row(s). AgentBuddy recreates the defaults on its next start.`;
+  });
+  if (done) io.out(done);
 }
 
 // ── import ───────────────────────────────────────────────────────────────
@@ -154,9 +148,9 @@ export async function dbImport(args: string[], io: DbIo): Promise<void> {
   const backupDir = path.resolve(positionals[0]);
   const force = values.force as boolean;
 
-  const db = await openTarget(target, { write: true, command: 'import' }, io);
-  let closed = false;
-  try {
+  // Without --force nothing is replaced, so the database opens read-only
+  const db = await openTarget(target, { write: force, command: 'import' }, io);
+  const done = await withDatabase(db, async () => {
     // The backup is checked before anything changes
     const backup = readBackup(backupDir, db.schema.getRegisteredEntityTypes());
     io.out(`Backup: ${backupDir}`);
@@ -168,14 +162,11 @@ export async function dbImport(args: string[], io: DbIo): Promise<void> {
     if (backup.hasMedia) io.out(`${force ? 'Replacing' : 'Would replace'} ${db.paths.media}`);
     if (!force) {
       io.out(`\n${DRY_RUN}`);
-      return;
+      return null;
     }
     db.admin.clear();
     await importDatabase(db.store, backupDir, db.paths.media);
-    closed = true;
-    db.close();
-    io.out('\nImported.');
-  } finally {
-    if (!closed) db.close();
-  }
+    return '\nImported.';
+  });
+  if (done) io.out(done);
 }
