@@ -71,7 +71,9 @@ afterAll(() => {
 
 it('lays out with the steps the test registered', () => {
   expect(stepRegistry.getFE('listener')?.nodeConfig).toEqual({ label: 'Listener', connectionRules: { inputs: 0, outputs: -1 } })
-  expect(stepRegistry.get('switch')).toBe(testPacks.steps.get('switch'))
+  // The test's frontend facet over the registered switch step, whose other facets stay
+  expect(stepRegistry.getFE('switch')).toBe(testPacks.steps.get('switch')!.fe)
+  expect(stepRegistry.getBuild('switch')).toBeDefined()
 })
 
 // --- parseHandleIndex ---
