@@ -12,7 +12,9 @@ import { exportDatabase } from '@abuddy/host/backup';
 import { closeEnv, openEnvAt } from '@abuddy/ears/lmdb';
 import { createSecretsStore, memoryKeyVault } from '@abuddy/host/secrets';
 import { appDataPaths } from '@abuddy/sdk/utils';
+import { resolveAppContext } from '@abuddy/sdk/env';
 import { db } from '../../src/commands/db';
+import { parseDbArgs } from '../../src/commands/db/target';
 import { dbRepl } from '../../src/commands/db/repl';
 
 const DEFAULT_SETUP_SNAPSHOT = path.resolve(import.meta.dirname, '..', '..', '..', 'default-setup', 'dist', 'snapshot.json');
@@ -203,6 +205,40 @@ describe('naming the data dir', () => {
         expect(error?.message).toMatch(/^--data-dir needs a path\n\nUsage: abuddy db query/);
         expect(err).toBe('');
       }
+    } finally {
+      delete process.env.ABUDDY_USER_DATA_DIR;
+    }
+  });
+
+  // Which app's data each flag means, without opening it: the flag that picks the data dir a change deletes is
+  // worth pinning by itself. parseDbArgs resolves it, so no test has to touch a real data dir to check
+  it('resolves each flag to that app\'s data dir, and --data-dir to the path given', () => {
+    const wasSet = process.env.ABUDDY_USER_DATA_DIR;
+    delete process.env.ABUDDY_USER_DATA_DIR;
+    try {
+      const targetOf = (args: string[]) => parseDbArgs(args, {}, 'usage').target;
+      for (const [args, env] of [[[], 'production'], [['--production'], 'production'], [['-d'], 'development'], [['-b'], 'beta']] as const) {
+        const target = targetOf([...args]);
+        expect(target.env, args.join(' ') || '(no flag)').toBe(env);
+        expect(target.userDataDir, args.join(' ') || '(no flag)').toBe(resolveAppContext({ env }).userDataDir);
+      }
+      // Each names a different app's data, so a swap between them can't pass
+      const dirs = [[], ['-d'], ['-b']].map((args) => targetOf(args).userDataDir);
+      expect(new Set(dirs).size).toBe(3);
+
+      const given = path.join(os.tmpdir(), 'abuddy-db-target');
+      expect(targetOf(['--data-dir', given])).toMatchObject({ userDataDir: given, named: true });
+      expect(targetOf([]).named).toBe(false);
+    } finally {
+      if (wasSet !== undefined) process.env.ABUDDY_USER_DATA_DIR = wasSet;
+    }
+  });
+
+  it('takes --data-dir over ABUDDY_USER_DATA_DIR in the environment', () => {
+    const dir = tempDir('abuddy-db-env-');
+    process.env.ABUDDY_USER_DATA_DIR = path.join(os.tmpdir(), 'abuddy-db-from-env');
+    try {
+      expect(parseDbArgs(['--data-dir', dir], {}, 'usage').target.userDataDir).toBe(dir);
     } finally {
       delete process.env.ABUDDY_USER_DATA_DIR;
     }
@@ -601,6 +637,21 @@ describe('abuddy db clear-settings', () => {
     expect(forced.out).toContain('Destroyed 1 Settings row(s)');
     expect(JSON.parse((await ok(['query', 'return getEntitiesOfType("Settings")', '--data-dir', dir, '-o', 'json'])).out)).toEqual([]);
     expect((await ok(['clear-settings', '--force', '--data-dir', dir])).out).toBe('No Settings rows: nothing to destroy.');
+  });
+
+  // Only the Settings rows: the command is for settings a user can't get past, not for their data
+  it('leaves every other entity, its roles and its relations where they were', async () => {
+    const dir = await appDataDir();
+    const rows = () => ok(['query', 'return getAllEntities().sort()', '--data-dir', dir, '-o', 'json']);
+    const before = JSON.parse((await rows()).out) as string[];
+
+    await ok(['clear-settings', '--force', '--data-dir', dir]);
+
+    expect(JSON.parse((await rows()).out)).toEqual(before.filter((entity) => entity !== 'Settings-app'));
+    expect(JSON.parse((await ok(['query', 'return getRoles("Note-a")', '--data-dir', dir, '-o', 'json'])).out)).toEqual(['pinned']);
+    expect(JSON.parse((await ok(['query', 'return findRelations({ sourceEntity: "Note-a" }).map((r) => r.targetEntity)', '--data-dir', dir, '-o', 'json'])).out))
+      .toEqual(['Note-b']);
+    expect((await ok(['query', 'return getAttr("Note-a", "title")', '--data-dir', dir])).out).toBe('Alpha');
   });
 
   it('refuses while an app runs on the data dir', async () => {
