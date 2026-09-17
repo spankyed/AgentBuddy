@@ -50,7 +50,8 @@ The allowlists are populated only when `renderer` is a URL (dev server); from a 
 
 ## API server (`src/modules/api-server/`)
 
-- `ApiServer.enable` registers IPC (`api:get-status`, `api:open-log-file`, `app:reload`, `app:relaunch`) and starts the server on `app.whenReady()`.
+- `ApiServer` creates the API token for this app run (`apiToken`, 32 random bytes). The API process gets it as `ABUDDY_API_TOKEN` (`getEnvironment`), the app's windows through the synchronous `api:token` IPC their preload sends. The in-app browser's tabs have no preload, so web pages never see it.
+- `ApiServer.enable` registers IPC (`api:token`, `api:get-status`, `api:open-log-file`, `app:reload`, `app:relaunch`) and starts the server on `app.whenReady()`.
 - `startApiServer` SIGKILLs orphaned API processes (`ps`, macOS/Linux: same `dist/server.js` path, `AgentBuddy` in the command, parent pid 1), then spawns it:
   - `getApiPaths()`: `<appPath>/packages/api` from source, `<resources>/app/packages/api` packaged (no ASAR).
   - `getNodeExecutable()`: `node` from source; packaged, Electron itself with `ELECTRON_RUN_AS_NODE=1`.

@@ -3,7 +3,7 @@ import { execFile } from 'child_process';
 import { app, ipcMain, shell } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import { randomUUID } from 'crypto';
+import { randomBytes, randomUUID } from 'crypto';
 import getPort, { clearLockedPorts } from 'get-port';
 import { AppModule } from '../../AppModule.js';
 import { ModuleContext } from '../../ModuleContext.js';
@@ -30,6 +30,12 @@ export class ApiServer implements AppModule {
   private preferredPort: number = API_CONFIG.DEFAULT_PORT;
   private lastError?: { message: string; stack?: string };
   private readonly startupId = randomUUID();
+  /**
+   * The API's token for this app run: the API refuses connections and requests without it. The API process gets it
+   * in its environment, the app's windows through the preload (`api:token`); web pages in the in-app browser have
+   * no preload and never see it.
+   */
+  private readonly apiToken = randomBytes(32).toString('base64url');
 
   constructor() {
     process.env.AGENTBUDDY_STARTUP_ID = this.startupId;
@@ -61,6 +67,9 @@ export class ApiServer implements AppModule {
       logInfo('Renderer log file location:', getLogger().getRendererLogPath());
       logInfo('App events log file location:', getLogger().getAppEventsLogPath());
     }
+
+    // The app's windows read the API token as their preload loads
+    ipcMain.on('api:token', (event) => { event.returnValue = this.apiToken; });
 
     // Let renderer query current API status on startup (avoids IPC race condition)
     ipcMain.handle('api:get-status', () => ({
@@ -204,6 +213,7 @@ export class ApiServer implements AppModule {
     const apiProcess = spawn(nodeExecutable, execArgs, {
       cwd: apiPath,
       env: getEnvironment(port, {
+        apiToken: this.apiToken,
         startupId: this.startupId,
         logDir: path.dirname(getLogger().getLogPath()),
       }),

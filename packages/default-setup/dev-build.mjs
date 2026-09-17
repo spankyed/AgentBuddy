@@ -34,6 +34,9 @@ function resolveAppDataDir(appName) {
   }
 }
 const PORT_FILE = path.join(resolveAppDataDir('abuddy-dev'), 'api-port');
+// The token the development app's API requires, sent in API_TOKEN_HEADER (@abuddy/sdk/env)
+const TOKEN_FILE = path.join(resolveAppDataDir('abuddy-dev'), 'api-token');
+const API_TOKEN_HEADER = 'x-abuddy-api-token';
 
 const aliasPlugin = {
   name: 'resolve-aliases',
@@ -93,18 +96,19 @@ let isFirstBuild = true;
 let reloadTimer = null;
 const DEBOUNCE_MS = 300;
 
-function getApiPort() {
-  try { return fs.readFileSync(PORT_FILE, 'utf-8').trim(); } catch {}
+function readDevFile(file) {
+  try { return fs.readFileSync(file, 'utf-8').trim(); } catch {}
   return null;
 }
 
 async function notifyReload() {
-  const port = getApiPort();
-  if (!port) return;
+  const port = readDevFile(PORT_FILE);
+  const token = readDevFile(TOKEN_FILE);
+  if (!port || !token) return;
   try {
     const res = await fetch(`http://127.0.0.1:${port}/dev/reload`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', [API_TOKEN_HEADER]: token },
       body: JSON.stringify({ packId: 'default-setup', builtIn: true }),
     });
     if (res.ok) {

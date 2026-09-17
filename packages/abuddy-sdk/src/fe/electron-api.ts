@@ -97,6 +97,8 @@ declare global {
       };
       rendererReady: () => void;
       apiPort: number;
+      /** The token the API requires for this app run; the host's API client sends it, pack code has no use for it */
+      apiToken: string;
       startupId?: string;
     };
   }

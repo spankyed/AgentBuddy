@@ -6,10 +6,10 @@ import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { appRouter } from '@/core/router';
 import { createContext } from '@/core/router/context';
 import { createLogger } from '@abuddy/sdk/logger';
-import { SERVER_CONFIG, WS_CONFIG } from '@/setup/config';
+import { SERVER_CONFIG, apiToken, isApiToken } from '@/setup/config';
 import { appPacks, backendActor } from '@/setup/backend';
 import { reloadBuiltInPack, reloadExternalPack } from '@abuddy/host/packs/runtime';
-import { resolveAppContext } from '@abuddy/sdk/env';
+import { API_TOKEN_HEADER, resolveAppContext } from '@abuddy/sdk/env';
 
 const logger = createLogger('backend');
 const reloadingPacks = new Set<string>();
@@ -17,14 +17,20 @@ const reloadingPacks = new Set<string>();
 /** The only interface the server listens on: the app's own processes and local tools reach it, nothing on the network does */
 export const API_HOST = '127.0.0.1';
 
+/** Whether a WebSocket connection may open: its URL carries the API token (`?token=`), as the app's windows send it */
+export function acceptsConnection(url: string | undefined, token = apiToken()): boolean {
+  return isApiToken(new URL(url ?? '/', 'http://127.0.0.1').searchParams.get('token'), token);
+}
+
 /**
  * Why a pack reload request is refused, or null to take it. Only a development or test app reloads packs, and only
- * for a local tool (`abuddy dev`, the built-in pack's watcher, the E2E tests): a browser page, the in-app browser's
- * included, always sends an `Origin` header with a cross-site POST, and those tools send none.
+ * for a caller with the API token: `abuddy dev` and the built-in pack's watcher read it from the development app's
+ * token file, the E2E tests from the app's window. A web page has no way to learn it.
  */
-export function devReloadRefusal(headers: http.IncomingHttpHeaders, env = resolveAppContext().env): string | null {
+export function devReloadRefusal(headers: http.IncomingHttpHeaders, env = resolveAppContext().env, token = apiToken()): string | null {
   if (env !== 'development' && env !== 'test') return `pack reloads are for development builds (this one is ${env})`;
-  if (headers.origin !== undefined) return 'pack reloads are for local tools, not web pages';
+  const given = headers[API_TOKEN_HEADER];
+  if (!isApiToken(Array.isArray(given) ? given[0] : given, token)) return 'the API token is missing or wrong';
   return null;
 }
 
@@ -78,12 +84,13 @@ function handleHttpRequest(req: http.IncomingMessage, res: http.ServerResponse) 
 
 export function createWebSocketServer() {
   const port = SERVER_CONFIG.port;
+  const token = apiToken();
 
   const httpServer = http.createServer(handleHttpRequest);
 
   const wss = new WebSocketServer({
     server: httpServer,
-    verifyClient: WS_CONFIG.verifyClient
+    verifyClient: ({ req }: { req: http.IncomingMessage }) => acceptsConnection(req.url, token),
   });
 
   httpServer.listen(port, API_HOST, () => {
@@ -91,11 +98,15 @@ export function createWebSocketServer() {
     const message = `✅ WebSocket Server listening on ws://localhost:${port} (tRPC endpoint: ws://localhost:${port}/trpc)`;
     console.log(message);
 
+    // Local tools (`abuddy dev`, the built-in pack's watcher) find a development app's API through these files;
+    // the token's is readable only by the user
     if (process.env.NODE_ENV === 'development') {
-      const portFile = resolveAppContext().apiPortFile;
+      const { apiPortFile, apiTokenFile } = resolveAppContext();
       try {
-        fs.mkdirSync(path.dirname(portFile), { recursive: true });
-        fs.writeFileSync(portFile, String(port));
+        fs.mkdirSync(path.dirname(apiPortFile), { recursive: true });
+        fs.writeFileSync(apiPortFile, String(port));
+        fs.writeFileSync(apiTokenFile, token, { mode: 0o600 });
+        fs.chmodSync(apiTokenFile, 0o600);
       } catch {}
     }
   });
@@ -110,7 +121,10 @@ export function createWebSocketServer() {
   // Safety net: always kill terminal processes before the API process exits
   process.on('exit', () => {
     appPacks?.runShutdownHooks();
-    try { fs.unlinkSync(resolveAppContext().apiPortFile); } catch {}
+    const { apiPortFile, apiTokenFile } = resolveAppContext();
+    for (const file of [apiPortFile, apiTokenFile]) {
+      try { fs.unlinkSync(file); } catch {}
+    }
   });
 
   // Setup graceful shutdown

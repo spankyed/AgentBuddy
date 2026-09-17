@@ -40,7 +40,7 @@ Its static imports are evaluated first: `virtual:built-in-packs` loads every bui
 
 ## tRPC client (`src/core/trpc.ts`)
 
-- Connects a `wsLink` to `ws://localhost:<electronAPI.apiPort>` (default 3001). `AppRouter` is a type-only import from `@app/api`.
+- Connects a `wsLink` to `ws://127.0.0.1:<electronAPI.apiPort>/?token=<electronAPI.apiToken>` (port default 3001); the API refuses connections without the token. `AppRouter` is a type-only import from `@app/api`.
 - `trpc` is a `Proxy` over the current connection, so importers keep one binding across reconnects.
 - `reconnectApiClient(port)` closes the socket and reconnects only when the port changed, returning whether it did. A restart on the same port keeps the socket; the ws client reconnects on its own.
 

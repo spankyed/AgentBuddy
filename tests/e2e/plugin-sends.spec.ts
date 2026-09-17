@@ -6,6 +6,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import type { Page } from '@playwright/test';
+import { API_TOKEN_HEADER } from '@abuddy/sdk/env';
 import { test, expect } from './fixtures/app';
 
 interface Received { plugin: string; type: string; data?: unknown; savedBookmarks?: Array<{ url: string }> }
@@ -91,15 +92,19 @@ test("a restarted pack's browser system sends its startup data to the browser pl
   const url = `https://example.com/e2e-plugin-sends-${Date.now()}`;
   await recordPluginEvents(appPage);
   await sendToSystem(appPage, 'browser', { type: 'SYNC_BOOKMARKS', bookmarks: [{ url, title: 'E2E bookmark', displayOrder: 0 }] });
-  const apiPort = await appPage.evaluate(() => (window as { electronAPI?: { apiPort?: number } }).electronAPI?.apiPort);
+  const { apiPort, apiToken } = await appPage.evaluate(() => {
+    const api = (window as { electronAPI?: { apiPort?: number; apiToken?: string } }).electronAPI;
+    return { apiPort: api?.apiPort, apiToken: api?.apiToken ?? '' };
+  });
   expect(apiPort, 'the renderer knows the API port').toBeTruthy();
+  expect(apiToken, 'the renderer knows the API token').toBeTruthy();
 
   try {
     // The reload restarts the pack's systems, and the bus sends them CLIENT_CONNECTED: the client is connected
     await expect.poll(async () => {
       const response = await fetch(`http://127.0.0.1:${apiPort}/dev/reload`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', [API_TOKEN_HEADER]: apiToken },
         body: JSON.stringify({ packId: 'default-setup', builtIn: true }),
       });
       return response.status;

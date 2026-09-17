@@ -3,14 +3,17 @@ import * as path from 'node:path';
 import { build } from './build';
 import { findPackRoot, readManifest } from '../utils';
 import { findFEEntry, packExternalsPlugin } from '../build/fe-bundler';
-import { resolveAppContext } from '@abuddy/sdk/env';
+import { API_TOKEN_HEADER, resolveAppContext } from '@abuddy/sdk/env';
 import { installPackFromLocal, readHostVersion } from '@abuddy/host/packs';
 import { removeDevServerMarker, writeDevServerMarker } from '@abuddy/host/packs/dev-server';
 
-function getDevApiUrl(): string | null {
+/** The running development app's API: its URL and the token it requires, from the files the API writes */
+function getDevApi(): { url: string; token: string } | null {
   try {
-    const port = fs.readFileSync(resolveAppContext({ env: 'development' }).apiPortFile, 'utf-8').trim();
-    return port ? `http://127.0.0.1:${port}` : null;
+    const { apiPortFile, apiTokenFile } = resolveAppContext({ env: 'development' });
+    const port = fs.readFileSync(apiPortFile, 'utf-8').trim();
+    const token = fs.readFileSync(apiTokenFile, 'utf-8').trim();
+    return port && token ? { url: `http://127.0.0.1:${port}`, token } : null;
   } catch { return null; }
 }
 
@@ -135,13 +138,13 @@ export async function dev(_args: string[]) {
         console.log('Installing to dev...');
         await installToDev(root);
         console.log('Triggering BE reload...');
-        const apiUrl = getDevApiUrl();
-        if (!apiUrl) {
-          console.warn('Dev app not running (no port file). Restart to apply BE changes.\n');
+        const api = getDevApi();
+        if (!api) {
+          console.warn('Dev app not running (no port or token file). Restart to apply BE changes.\n');
         } else {
-          const res = await fetch(`${apiUrl}/dev/reload`, {
+          const res = await fetch(`${api.url}/dev/reload`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', [API_TOKEN_HEADER]: api.token },
             body: JSON.stringify({ packId: manifest.id }),
           });
           if (res.ok) {
@@ -179,13 +182,13 @@ async function watchRebuildFallback(root: string, srcDir: string, packId: string
         console.log(`\nChange detected: ${label}`);
         await build([]);
         await installToDev(root);
-        const apiUrl = getDevApiUrl();
-        if (!apiUrl) {
-          console.warn('Dev app not running (no port file). Restart to apply changes.\n');
+        const api = getDevApi();
+        if (!api) {
+          console.warn('Dev app not running (no port or token file). Restart to apply changes.\n');
         } else {
-          const res = await fetch(`${apiUrl}/dev/reload`, {
+          const res = await fetch(`${api.url}/dev/reload`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 'Content-Type': 'application/json', [API_TOKEN_HEADER]: api.token },
             body: JSON.stringify({ packId }),
           });
           if (res.ok) {

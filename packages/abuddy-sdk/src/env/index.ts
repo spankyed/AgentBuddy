@@ -13,6 +13,9 @@ import { boundHost } from '../runtime/host-runtime.ts';
 
 export type AppEnv = 'production' | 'beta' | 'development' | 'test';
 
+/** The header a call to the app's API HTTP endpoints carries its token in (`AppContext.apiTokenFile`) */
+export const API_TOKEN_HEADER = 'x-abuddy-api-token';
+
 export const APP_ENVS: readonly AppEnv[] = ['production', 'beta', 'development', 'test'];
 
 /** Channels a packaged build can be stamped with (build/build.sh → __ABUDDY_CHANNEL__). */
@@ -35,6 +38,8 @@ export interface AppContext {
   hostPacksDir: string;
   registryFile: string;
   apiPortFile: string;
+  /** A development app's API token, for local tools calling its API (written by the API, readable only by the user) */
+  apiTokenFile: string;
   urlScheme: string;
 }
 
@@ -78,6 +83,7 @@ export function resolveAppContext(input: { env?: AppEnv; userDataDir?: string } 
     hostPacksDir: path.join(userDataDir, 'host-packs'),
     registryFile: path.join(userDataDir, 'pack-registry.json'),
     apiPortFile: path.join(userDataDir, 'api-port'),
+    apiTokenFile: path.join(userDataDir, 'api-token'),
     urlScheme: env === 'beta' ? 'abuddy-beta' : 'abuddy',
   };
 }

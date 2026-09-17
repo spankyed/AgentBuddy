@@ -19,6 +19,7 @@ The preload script every AgentBuddy window loads (`packages/main`'s `WindowManag
 ## Values read at load
 
 - `apiPort` — from the `--api-port=<n>` argument main appends when it creates the window (default `3001`). It is fixed for the window's life; the renderer follows later port changes through `apiStatus.onEvent` (`api:started`).
+- `apiToken` — the token the API requires for this app run, read from main with `ipcRenderer.sendSync('api:token')` as the preload loads (never on the command line, where other processes could read it). The renderer's tRPC client sends it when connecting.
 - `startupId` — from `--startup-id=<id>`: the id main generates per launch and also passes to the API as `AGENTBUDDY_STARTUP_ID`.
 
 ## IPC surface

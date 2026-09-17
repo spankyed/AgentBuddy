@@ -5,9 +5,11 @@ type ApiClient = TRPCClient<AppRouter>;
 
 /** The port this window launched with. The API can move after a restart — see reconnectApiClient. */
 const initialPort = (typeof window !== 'undefined' && window.electronAPI?.apiPort) || 3001;
+/** The token the API requires, which main gives the app's windows */
+const apiToken = (typeof window !== 'undefined' && window.electronAPI?.apiToken) || '';
 
 function connect(port: number) {
-  const ws = createWSClient({ url: `ws://127.0.0.1:${port}` });
+  const ws = createWSClient({ url: `ws://127.0.0.1:${port}/?token=${encodeURIComponent(apiToken)}` });
   return { port, ws, client: createTRPCClient<AppRouter>({ links: [wsLink({ client: ws })] }) };
 }
 
