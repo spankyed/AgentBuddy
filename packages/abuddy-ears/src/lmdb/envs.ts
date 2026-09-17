@@ -28,11 +28,20 @@ const FORMAT_KEY = 'format';
  * recorded, which is format 1) unless it's read-only. Throws for any other format.
  */
 function checkFormat(root: RootDatabase, basePath: string, readOnly: boolean): void {
-  // A read-only environment has no database the writer never created
+  // A read-only environment has no database the writer never created, and one written before formats were recorded
+  // has none either
   const meta = root.openDB({ name: META_DB, encoding: 'json' }) as Database<unknown> | undefined;
   const format = meta?.get(FORMAT_KEY);
   if (format === undefined) {
-    if (!readOnly) meta!.putSync(FORMAT_KEY, LMDB_FORMAT_VERSION);
+    // Recording it is what a writer can do for the next reader, not a condition of opening: a full disk mustn't
+    // stop an app opening a database it could read before
+    if (!readOnly && meta) {
+      try {
+        meta.putSync(FORMAT_KEY, LMDB_FORMAT_VERSION);
+      } catch (error) {
+        console.warn(`[LMDB] Couldn't record the storage format of ${basePath}:`, (error as Error).message);
+      }
+    }
     return;
   }
   if (format !== LMDB_FORMAT_VERSION) {
@@ -49,8 +58,8 @@ function checkFormat(root: RootDatabase, basePath: string, readOnly: boolean): v
  * Throws when the environment is in another storage format (`LMDB_FORMAT_VERSION`).
  */
 export function openEnvAt(basePath: string, { readOnly = false }: { readOnly?: boolean } = {}): LmdbDbs {
-  // LMDB would create the directory before failing
-  if (readOnly && !fs.existsSync(basePath)) throw new Error(`No LMDB database at ${basePath}`);
+  // LMDB would create the files before failing, so a directory with no database in it is refused here
+  if (readOnly && !fs.existsSync(path.join(basePath, 'data.mdb'))) throw new Error(`No LMDB database at ${basePath}`);
   // Ensure parent directory exists
   const parentDir = path.dirname(basePath);
   if (!readOnly && !fs.existsSync(parentDir)) {
@@ -89,7 +98,9 @@ export function openShardedEnvs(paths: LmdbPaths, { readOnly = false }: { readOn
   } catch (error) {
     // Neither partition stays open when one of them can't be
     closeEnv(primary, () => {});
-    throw error;
+    // The volatile partition holds run history and nothing else, which is worth saying before someone despairs of a
+    // database that is otherwise fine
+    throw new Error(`${(error as Error).message}\n  It holds the run history only: deleting ${paths.volatileBackup} loses that and nothing else.`, { cause: error });
   }
 }
 

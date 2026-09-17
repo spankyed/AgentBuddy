@@ -336,6 +336,49 @@ describe('the storage format', () => {
     expect(storedFormat(paths.primary)).toBe(LMDB_FORMAT_VERSION);
   });
 
+  it('reads a database written before formats were recorded, which has no meta database at all', async () => {
+    // An older version's files: the three databases it wrote, and nothing else
+    const root = openEnv({ path: paths.primary, maxDbs: 8, compression: true });
+    root.openDB({ name: 'entities', encoding: 'json' }).putSync('Note-1', { type: 'Note', createdAt: 1 });
+    root.openDB({ name: 'attrs', encoding: 'json' });
+    root.openDB({ name: 'relations', encoding: 'json' });
+    root.close();
+    const volatile = openEnv({ path: paths.volatileBackup, maxDbs: 8, compression: true });
+    volatile.openDB({ name: 'entities', encoding: 'json' });
+    volatile.openDB({ name: 'attrs', encoding: 'json' });
+    volatile.openDB({ name: 'relations', encoding: 'json' });
+    volatile.close();
+
+    // Reading them records nothing, and they read as this format
+    const readOnly = openStore({ readOnly: true, log: () => {} });
+    await readOnly.hydrate();
+    expect(readOnly.query('primary').getEntityMeta('Note-1')).toMatchObject({ type: 'Note' });
+    readOnly.close();
+    expect(storedFormat(paths.primary)).toBeUndefined();
+
+    openStore().close();
+    expect(storedFormat(paths.primary)).toBe(LMDB_FORMAT_VERSION);
+  });
+
+  it('refuses a run history in another format, saying it can be deleted, and leaves the files closed', () => {
+    openStore().close();
+    writeFormat(paths.volatileBackup, LMDB_FORMAT_VERSION + 1);
+
+    expect(() => openStore()).toThrow(
+      new RegExp(`storage format ${LMDB_FORMAT_VERSION + 1}[\\s\\S]*run history only: deleting ${paths.volatileBackup} loses that and nothing else`),
+    );
+
+    // Deleting it is enough: the data partition was never the problem
+    fs.rmSync(paths.volatileBackup, { recursive: true, force: true });
+    const store = openStore();
+    expect(store.isOpen()).toBe(true);
+  });
+
+  it('refuses a directory with no database in it when read-only', () => {
+    fs.mkdirSync(paths.primary, { recursive: true });
+    expect(() => openStore({ readOnly: true })).toThrow(`No LMDB database at ${paths.primary}`);
+  });
+
   it('refuses another format, saying which, and leaves the files closed', async () => {
     openStore().close();
     writeFormat(paths.primary, LMDB_FORMAT_VERSION + 1);

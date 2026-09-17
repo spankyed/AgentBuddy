@@ -486,6 +486,8 @@ describe('abuddy db inspect', () => {
     const byType = await ok(['inspect', '--type', 'Settings', '--data-dir', dir]);
     expect(byType.out.split('\n').slice(0, 2)).toEqual(['1 Settings entities', '[Settings] Settings-app "App"']);
     expect((await run(['inspect', 'Note-a', '--type', 'Note', '--data-dir', dir])).error?.message).toMatch(/not both/);
+    // A type no installed pack declares is a typo, not an empty result, as in export
+    expect((await run(['inspect', '--type', 'Nope', '--data-dir', dir])).error?.message).toBe('Not an entity type of the installed packs: Nope');
     expect((await run(['inspect', '--depth', '0', '--data-dir', dir])).error?.message).toMatch(/--depth/);
   });
 });

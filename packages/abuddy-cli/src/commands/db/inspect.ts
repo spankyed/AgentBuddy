@@ -106,6 +106,9 @@ export async function dbInspect(args: string[], io: DbIo): Promise<void> {
     if (entityId) {
       graphLines(db.query, entityId, { depth, directions }).forEach((line) => io.out(line));
     } else if (values.type) {
+      if (!db.schema.getRegisteredEntityTypes().has(values.type as string)) {
+        throw new Error(`Not an entity type of the installed packs: ${values.type as string}`);
+      }
       const ids = db.query.getEntitiesOfType(values.type as EARS.Entity);
       io.out(`${ids.length} ${values.type} entities${ids.length > 5 ? ', the first 5:' : ''}`);
       for (const id of ids.slice(0, 5)) graphLines(db.query, id, { depth, directions }).forEach((line) => io.out(line));

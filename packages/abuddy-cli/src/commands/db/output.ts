@@ -13,20 +13,37 @@ export function outputFormat(value: unknown): OutputFormat {
   throw new Error(`--output must be one of ${OUTPUT_FORMATS.join(', ')}`);
 }
 
+/**
+ * JSON, with what JSON has no form for written as text: a date as its ISO string (JSON.stringify's own doing), a
+ * bigint as digits, and an object that holds itself as `[Circular]` rather than a thrown error.
+ */
 export function toJSON(value: unknown): string {
-  return JSON.stringify(value, (_key, v) => (typeof v === 'bigint' ? v.toString() : v), 2) ?? 'undefined';
+  const seen = new WeakSet<object>();
+  return JSON.stringify(value, function replace(this: unknown, _key: string, held: unknown) {
+    if (typeof held === 'bigint') return held.toString();
+    if (held !== null && typeof held === 'object') {
+      if (seen.has(held)) return '[Circular]';
+      seen.add(held);
+    }
+    return held;
+  }, 2) ?? 'undefined';
 }
 
+/** One value as a cell: a date as its ISO string, an object as JSON, nothing for null and undefined */
 function csvCell(value: unknown): string {
   if (value === null || value === undefined) return '';
-  const text = typeof value === 'object' ? JSON.stringify(value) : String(value);
+  const text = value instanceof Date ? value.toISOString() : typeof value === 'object' ? toJSON(value) : String(value);
   return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
 }
 
-/** Rows of objects as CSV with a column per key any row has; one object is one row; anything else one cell */
+/**
+ * Rows of objects as CSV with a column per key any row has; one object is one row; anything else one cell. An empty
+ * result writes nothing at all, rather than a line with no columns in it.
+ */
 export function toCSV(value: unknown): string {
   const rows = Array.isArray(value) ? value : [value];
-  if (!rows.every((row) => row !== null && typeof row === 'object' && !Array.isArray(row))) {
+  if (rows.length === 0) return '';
+  if (!rows.every((row) => row !== null && typeof row === 'object' && !Array.isArray(row) && !(row instanceof Date))) {
     return rows.map((row) => csvCell(row)).join('\n') + '\n';
   }
   const columns = [...new Set(rows.flatMap((row) => Object.keys(row as object)))];
