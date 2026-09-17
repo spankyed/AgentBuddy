@@ -367,6 +367,29 @@ export function generatePackFiles(
   }
   const commands = declaredCommands();
 
+  /**
+   * The repository names the pack's direct dependencies declare, with the pack declaring each. A name
+   * this pack declares too fails the build: the app's registry refuses a pack whose repository name
+   * another registered pack holds, so the pack would build and then break the app at registration.
+   */
+  function checkRepositoryNames(): void {
+    const taken = new Map<string, string>();
+    for (const [depId, snap] of depSnapshots) {
+      for (const feature of snap.manifest.features ?? []) {
+        for (const name of Object.keys(feature.repositories ?? {})) taken.set(name, depId);
+      }
+    }
+    for (const feature of manifest.features ?? []) {
+      for (const name of Object.keys(feature.repositories ?? {})) {
+        const owner = taken.get(name);
+        if (owner) {
+          throw new Error(`Repository "${name}" (feature "${feature.id}") is declared by "${owner}", which this pack depends on: the app refuses a pack whose repository name another pack registered, so rename it in abuddy.json \`repositories\``);
+        }
+      }
+    }
+  }
+  checkRepositoryNames();
+
   // ── Manifest export targets ────────────────────────────────────
 
   /** The pack source file a manifest path names: the file itself, `<path>.ts` or `<path>/index.ts` */
@@ -750,14 +773,16 @@ ${busIdEntries},
   }
 
   /**
-   * Plugin id → the events that plugin receives from this pack's systems: its own feature's system
-   * and every system whose `sendsTo` names it. Dependency and host plugins get their map from the
-   * dependency's facade types and HostPluginEvents.
+   * Plugin id → the events that plugin receives from this pack's systems: its own feature's plugin
+   * and every plugin whose id a system's `sendsTo` names. Only features that have a plugin get a key:
+   * nothing can receive an event sent to a feature that has none. Dependency and host plugins get
+   * their map from the dependency's facade types and HostPluginEvents.
    */
   function generateEvents(): string {
     const features = manifest.features ?? [];
     const systemFeatures = features.filter(f => f.system);
     const ownIds = new Set(features.map(f => f.id));
+    const ownPluginIds = new Set(features.filter(f => f.plugin).map(f => f.id));
     const depPluginIds = new Set([...depSnapshots.values()].flatMap(snap => (snap.manifest.features ?? []).filter(f => f.plugin).map(f => f.id)));
 
     const receivers = new Map<string, string[]>();
@@ -767,11 +792,15 @@ ${busIdEntries},
       if (!senders.includes(alias)) senders.push(alias);
       receivers.set(pluginId, senders);
     };
-    for (const feature of systemFeatures) addSender(feature.id, feature);
+    for (const feature of systemFeatures) {
+      if (feature.plugin) addSender(feature.id, feature);
+    }
     for (const feature of systemFeatures) {
       for (const target of feature.system!.sendsTo ?? []) {
-        if (ownIds.has(target)) addSender(target, feature);
-        else if (!depPluginIds.has(target) && !HOST_PLUGIN_IDS.includes(target)) {
+        if (ownPluginIds.has(target)) addSender(target, feature);
+        else if (ownIds.has(target)) {
+          throw new Error(`Feature "${feature.id}": system.sendsTo names "${target}", a feature of this pack with no plugin, so nothing can receive the events: give "${target}" a plugin or remove it from sendsTo`);
+        } else if (!depPluginIds.has(target) && !HOST_PLUGIN_IDS.includes(target)) {
           throw new Error(`Feature "${feature.id}": system.sendsTo names "${target}", which is neither a feature of this pack, a plugin of its dependencies, nor a host plugin (${HOST_PLUGIN_IDS.join(', ')})`);
         }
       }

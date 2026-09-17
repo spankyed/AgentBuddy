@@ -78,6 +78,20 @@ describe('parseManifest', () => {
     expect(parseManifest({ ...pack, features: [{ id: 'defaults' }, { id: 'specs' }] }).errors).toEqual([]);
   });
 
+  it("rejects a system.sendsTo naming one of the pack's own features that has no plugin", () => {
+    const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
+    const features = (sendsTo: string[], brainPlugin = false) => [
+      { id: 'memos', system: { entry: 'src/memos/system.ts', sendsTo }, plugin: { entry: 'src/memos/fe.ts' } },
+      { id: 'brain', system: { entry: 'src/brain/system.ts' }, ...(brainPlugin ? { plugin: { entry: 'src/brain/fe.ts' } } : {}) },
+    ];
+    expect(parseManifest({ ...pack, features: features(['brain']) }).errors).toEqual([
+      'abuddy.json "features.0.system.sendsTo.0": Feature "memos": system.sendsTo names "brain", a feature of this pack with no plugin, so nothing can receive the events: give "brain" a plugin or remove it from sendsTo',
+    ]);
+    expect(parseManifest({ ...pack, features: features(['brain'], true) }).errors).toEqual([]);
+    // A dependency's plugin or a host plugin isn't in this manifest: codegen checks those
+    expect(parseManifest({ ...pack, features: features(['application']) }).errors).toEqual([]);
+  });
+
   it('rejects an app extension name that is not an identifier', () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
     expect(parseManifest({ ...pack, fe: { appExtensions: { 'my-ext': 'x.vue' } } }).errors).toEqual([expect.stringContaining('Must be an identifier')]);

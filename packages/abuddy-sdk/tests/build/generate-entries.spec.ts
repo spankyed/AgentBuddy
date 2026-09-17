@@ -35,14 +35,29 @@ function generate(fields: Record<string, unknown>, deps: Record<string, PackSnap
 }
 
 const system = (id: string, extra: Record<string, unknown> = {}) => ({ id, system: { entry: `src/features/${id}/be/system.ts`, ...extra } });
+const withPlugin = (feature: Record<string, unknown>) => ({ ...feature, plugin: { entry: `src/features/${feature.id}/fe/index.ts` } });
 
 describe('generated events', () => {
   it('keys each plugin by the systems that send to it', () => {
-    const files = generate({ features: [system('actions', { sendsTo: ['flows', 'application'] }), system('flows')] });
+    const files = generate({ features: [withPlugin(system('actions', { sendsTo: ['flows', 'application'] })), withPlugin(system('flows'))] });
     const events = files['src/__generated__/events.ts'];
     expect(events).toContain("'actions': __events_actions;");
     expect(events).toContain("'flows': __events_flows | __events_actions;");
     expect(events).toContain('export type PackEvents = OwnPackEvents & Omit<HostPluginEvents, keyof OwnPackEvents>;');
+  });
+
+  it('gives a feature with a system but no plugin no key: nothing could receive the events', () => {
+    const files = generate({ features: [withPlugin(system('actions', { sendsTo: ['flows'] })), withPlugin(system('flows')), system('brain')] });
+    const events = files['src/__generated__/events.ts'];
+    expect(events).toContain("export type OwnPackEvents = {\n  'actions': __events_actions;\n  'flows': __events_flows | __events_actions;\n};");
+    expect(events).not.toContain("'brain': __events_brain;");
+    // Its system still receives events as a system
+    expect(events).toContain("'brain': IncomingEventsOf<(typeof __specs)['brain']>;");
+  });
+
+  it('rejects a sendsTo target that is a feature of this pack with no plugin', () => {
+    expect(() => generate({ features: [withPlugin(system('memos', { sendsTo: ['brain'] })), system('brain')] }))
+      .toThrow('Feature "memos": system.sendsTo names "brain", a feature of this pack with no plugin');
   });
 
   it('includes a plugin-only feature something sends to', () => {
@@ -339,6 +354,20 @@ describe('generated repositories', () => {
     const files = generate({ features: [system('memos')] });
     expect(files['src/__generated__/repositories.ts']).toBeUndefined();
     expect(files['src/__generated__/pack-entry.ts']).not.toContain('repositories');
+  });
+
+  it("fails on a repository name a dependency declares, naming both packs: the app would refuse to register it", () => {
+    write('src/features/memos/be/repository.ts', 'export const memoQueries = {};\n');
+    const deps = { 'base-pack': dependency({ features: [{ ...system('notes'), repositories: { memoQueries: 'src/repo.ts#memoQueries' } }] }) };
+    expect(() => generate({ features: [{ ...system('memos'), repositories: { memoQueries: 'src/features/memos/be/repository.ts#memoQueries' } }] }, deps))
+      .toThrow('Repository "memoQueries" (feature "memos") is declared by "base-pack", which this pack depends on');
+  });
+
+  it("accepts a repository name no dependency declares", () => {
+    write('src/features/memos/be/repository.ts', 'export const memoQueries = {};\n');
+    const deps = { 'base-pack': dependency({ features: [{ ...system('notes'), repositories: { noteQueries: 'src/repo.ts#noteQueries' } }] }) };
+    expect(() => generate({ features: [{ ...system('memos'), repositories: { memoQueries: 'src/features/memos/be/repository.ts#memoQueries' } }] }, deps))
+      .not.toThrow();
   });
 });
 

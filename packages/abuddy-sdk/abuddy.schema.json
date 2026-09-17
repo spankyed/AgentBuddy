@@ -196,7 +196,7 @@
                 "items": {
                   "type": "string"
                 },
-                "description": "Plugins this system sends events to besides its own feature's: other features of this pack, plugins of its dependencies, or host plugins (\"application\"). Each receiving plugin's generated event type includes this system's outgoing events."
+                "description": "Plugins this system sends events to besides its own feature's: other features of this pack that have a plugin, plugins of its dependencies, or host plugins (\"application\"). Each receiving plugin's generated event type includes this system's outgoing events."
               },
               "events": {
                 "type": "object",

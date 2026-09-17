@@ -384,7 +384,7 @@ Declare them in the feature's `repositories` (name → `path#exportName`):
 }
 ```
 
-The generated pack entry carries them in its registration, and the app registers them with its engine before any system starts. Use them through `repository` from `#generated/repository`, typed with your repositories and your dependencies':
+The generated pack entry carries them in its registration, and the app registers them with its engine before any system starts. Repository names are the app's, not the feature's: `abuddy build` fails on a name two of your features declare, or one a dependency declares, naming both, since the app refuses to register two packs that share a repository name. Use them through `repository` from `#generated/repository`, typed with your repositories and your dependencies':
 
 ```typescript
 import { repository } from '#generated/repository';

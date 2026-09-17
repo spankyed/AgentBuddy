@@ -74,9 +74,10 @@ const APP_PACK = {
     entities: { Memo: 'Memo' },
     // Same type name as the dependency's Item shape
     entityShapes: { Memo: { source: 'src/types.ts', type: 'ItemEntity' } },
-    features: [{ id: 'memos', system: { entry: 'src/system.ts', sendsTo: ['threads'] } }],
+    features: [{ id: 'memos', system: { entry: 'src/system.ts', sendsTo: ['threads'] }, plugin: { entry: 'src/plugin.ts' } }],
   }),
   'src/types.ts': 'export interface ItemEntity { text: string; pinned: boolean }\n',
+  'src/plugin.ts': "import type { Plugin } from '@abuddy/sdk/fe';\nexport default { id: 'memos' } as unknown as Plugin;\n",
   'src/system.ts': [
     "import { setup } from 'xstate';",
     "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",
