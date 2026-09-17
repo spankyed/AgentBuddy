@@ -133,7 +133,8 @@ describe('services.appData', () => {
     expect(untypedQx('Note-kept' as never).pickOne(['title'])).toMatchObject({ title: 'still here' });
 
     // The app asks the user first, and imports it without that store when they say to
-    expect(await services.appData.importBackup(backup, { skipUnknownDatabases: true })).toEqual({ databases: ['lmdb'], missingDatabases: [] });
+    expect(await services.appData.importBackup(backup, { skipUnknownDatabases: true }))
+      .toEqual({ databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] });
     expect(untypedQx('Note-kept' as never).pickOne(['title'])).toBeNull();
   });
 
@@ -145,7 +146,8 @@ describe('services.appData', () => {
     fs.rmSync(path.join(backup, 'volatileLmdb'), { recursive: true, force: true });
 
     // Reported, so the app can tell the user that store came back empty rather than dropping it silently
-    expect(await services.appData.importBackup(backup)).toEqual({ databases: ['lmdb'], missingDatabases: ['volatileLmdb'] });
+    expect(await services.appData.importBackup(backup))
+      .toEqual({ databases: ['lmdb'], missingDatabases: ['volatileLmdb'], unknownEntityTypes: [] });
   });
 
   it("moves the app's state out of the settings of a backup from before AppState", async () => {
@@ -170,6 +172,35 @@ describe('services.appData', () => {
     } finally {
       version.current = undefined;
       packs.unregisterPack('settings-pack');
+    }
+  });
+
+  it('reports rows of a type no installed pack declares, and keeps them', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-gone-pack-backup-'));
+    dirs.push(dir);
+    // Backed up while the pack that declares Bookmark was installed
+    packs.registerPack({
+      id: 'bookmarks',
+      systems: [],
+      ears: { entities: { Bookmark: 'Bookmark', Tag: 'Tag' }, relKinds: {} },
+    });
+    const bookmark = tx('Bookmark' as never).put('url', 'https://example.com').id();
+    tx('Tag' as never).put('name', 'reading');
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    const backup = await services.appData.exportBackup(dir, 'with-pack', ['lmdb']);
+    packs.unregisterPack('bookmarks');
+    // Still installed, so its rows are not reported: only what nothing declares is
+    packs.registerPack({ id: 'tags', systems: [], ears: { entities: { Tag: 'Tag' }, relKinds: {} } });
+
+    try {
+      // Restored without the other pack: the rows come back, and the app is told so it can say why nothing shows them
+      const result = await services.appData.importBackup(backup);
+      expect(result.unknownEntityTypes).toContainEqual(['Bookmark', 1]);
+      expect(result.unknownEntityTypes.map(([type]) => type)).not.toContain('Tag');
+      // The row is there, found by id: with no pack declaring the type, a query by type reads 'Bookmark' as an id
+      expect(untypedQx(bookmark as never).pickOne(['url'])).toMatchObject({ url: 'https://example.com' });
+    } finally {
+      packs.unregisterPack('tags');
     }
   });
 

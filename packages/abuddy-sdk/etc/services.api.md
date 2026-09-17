@@ -41,6 +41,7 @@ export interface AppDataService {
     }): Promise<{
         databases: BackupDatabase[];
         missingDatabases: BackupDatabase[];
+        unknownEntityTypes: Array<[string, number]>;
     }>;
     reset(): Promise<void>;
 }

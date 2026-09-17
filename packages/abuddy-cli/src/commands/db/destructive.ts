@@ -174,6 +174,10 @@ export async function dbImport(args: string[], io: DbIo): Promise<void> {
     io.out(`  databases: ${backup.databases.join(', ')}${backup.hasMedia ? ', with media' : ''}`);
     if (backup.unknownDatabases.length > 0) io.out(`  leaving out ${backup.unknownDatabases.join(', ')}, which this AgentBuddy doesn't have`);
     if (backup.missingDatabases.length > 0) io.out(`  lists ${backup.missingDatabases.join(', ')} but holds nothing for it, so it comes back empty`);
+    // A pack that was installed when the backup was made and isn't now: its rows come back, unread until it is
+    if (backup.unknownEntityTypes.length > 0) {
+      io.out(`  holds ${backup.unknownEntityTypes.map(([type, count]) => `${count} ${type}`).join(', ')} that no installed pack declares; they stay, unread, until that pack is installed again`);
+    }
     countLines(backup.counts).forEach((line) => io.out(line));
     io.out(`${force ? 'Replacing' : 'Would replace'} the current database, which holds:`);
     countLines(entityCounts(db)).forEach((line) => io.out(line));

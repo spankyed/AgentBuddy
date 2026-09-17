@@ -227,16 +227,21 @@ export const databaseSystem = setup({
 
       // Replaces stored data and reloads memory from it; on failure the previous data is restored and reloaded
       services.appData.importBackup(path, { skipUnknownDatabases }).then(
-        ({ missingDatabases }) => {
+        ({ missingDatabases, unknownEntityTypes }) => {
           // Stop brain and notify success
           getActor(system, brain).send({ type: 'KILL_BRAIN' });
           // A store the backup listed but didn't hold came back empty: said, not silently dropped
           const nothingToRestore = missingDatabases.length > 0
             ? ` The backup listed ${missingDatabases.join(', ')} but held nothing for it, so it is now empty.`
             : '';
+          // Rows of a type no installed pack declares: kept, but nothing reads them until that pack is back
+          const fromMissingPacks = unknownEntityTypes.length > 0
+            ? ` It also holds ${unknownEntityTypes.map(([type, count]) => `${count} ${type}`).join(', ')} that no installed pack declares;`
+              + ' those stay until the pack that declared them is installed again.'
+            : '';
           system.get(bus).send(emit(database, {
             type: 'IMPORT_DATABASE_SUCCESS',
-            message: `Import successful.${nothingToRestore} Please restart the brain manually.`
+            message: `Import successful.${nothingToRestore}${fromMissingPacks} Please restart the brain manually.`
           }));
           system.get(bus).send(emit(database, { 
             type: 'DATABASE_REFRESH',

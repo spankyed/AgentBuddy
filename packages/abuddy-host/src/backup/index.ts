@@ -83,14 +83,19 @@ export async function importDatabase(
   store: LmdbStore,
   backupPath: string,
   mediaPath: string,
-  { skipUnknownDatabases = false, log = defaultLog }: { skipUnknownDatabases?: boolean; log?: BackupLog } = {},
+  { skipUnknownDatabases = false, entityTypes = [], log = defaultLog }:
+    { skipUnknownDatabases?: boolean; entityTypes?: Iterable<string>; log?: BackupLog } = {},
 ) {
   // Checked before anything is replaced: a backup this app can't restore must not cost the user their data first
-  const { databases, unknownDatabases, missingDatabases } = readBackup(backupPath);
+  const { databases, unknownDatabases, missingDatabases, unknownEntityTypes } = readBackup(backupPath, entityTypes);
   if (unknownDatabases.length > 0 && !skipUnknownDatabases) throw new UnknownBackupDatabasesError(unknownDatabases);
   if (unknownDatabases.length > 0) log.warn('Importing without the stores this AgentBuddy does not have', { unknownDatabases });
   // Said rather than silently done: the folder may have been lost since, not just never written
   if (missingDatabases.length > 0) log.warn('The backup lists stores it has no folder for; they are restored as empty', { missingDatabases });
+  // Restored, not dropped: the pack that declared them may be installed again
+  if (unknownEntityTypes.length > 0) {
+    log.warn('The backup holds entities of types no installed pack declares', { types: unknownEntityTypes.map(([type, count]) => `${type} (${count})`) });
+  }
   const tempBackupPath = path.join(path.dirname(store.paths.primary), 'temp-backup-' + Date.now());
 
   await fs.ensureDir(tempBackupPath);
@@ -132,7 +137,7 @@ export async function importDatabase(
 
     await fs.remove(tempBackupPath);
     log.info('Import completed');
-    return { databases, missingDatabases };
+    return { databases, missingDatabases, unknownEntityTypes };
   } catch (error) {
     store.close();
 
@@ -200,6 +205,12 @@ export interface BackupContents {
   unknownDatabases: string[];
   /** Stores its metadata lists with no folder to restore: empty when the backup was made, or lost since */
   missingDatabases: DatabaseName[];
+  /**
+   * Entity types in its primary database that no installed pack declares, with how many rows each has: a pack that
+   * was installed when the backup was made and isn't now. Restoring keeps those rows, but nothing reads them until
+   * that pack is back. Empty when the caller named no entity types to check against.
+   */
+  unknownEntityTypes: Array<[string, number]>;
 }
 
 /**
@@ -207,7 +218,8 @@ export interface BackupContents {
  * (`lmdb`), which is there and opens (so a backup in another storage format is refused here, not half-way through an
  * import). A listed database whose folder is missing was empty and is left out, as the import leaves it out, and one
  * this AgentBuddy doesn't have is reported as `unknownDatabases` for the caller to decide about. Throws naming what's
- * wrong. `entityTypes` are the types to count.
+ * wrong. `entityTypes` are the types to count, and any type the backup holds that isn't among them comes back as
+ * `unknownEntityTypes`.
  */
 export function readBackup(dir: string, entityTypes: Iterable<string> = []): BackupContents {
   const metadataFile = path.join(dir, 'metadata.json');
@@ -233,13 +245,19 @@ export function readBackup(dir: string, entityTypes: Iterable<string> = []): Bac
     for (const { value } of env.entities.getRange() as Iterable<{ value: { type?: string } }>) {
       if (value.type) perType.set(value.type, (perType.get(value.type) ?? 0) + 1);
     }
-    const counts = [...entityTypes].sort()
+    const known = new Set(entityTypes);
+    const counts = [...known].sort()
       .flatMap((type) => (perType.has(type) ? [[type, perType.get(type)!] as [string, number]] : []));
+    // With no types to check against there is nothing to call unknown, so an import that doesn't ask stays quiet
+    const unknownEntityTypes = known.size === 0
+      ? []
+      : [...perType].filter(([type]) => !known.has(type)).sort(([a], [b]) => a.localeCompare(b));
     return {
       ...(typeof metadata.timestamp === 'number' && { timestamp: metadata.timestamp }),
       databases,
       unknownDatabases,
       missingDatabases,
+      unknownEntityTypes,
       hasMedia: fs.existsSync(path.join(dir, 'media')),
       counts,
     };

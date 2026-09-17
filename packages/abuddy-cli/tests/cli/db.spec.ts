@@ -715,6 +715,29 @@ describe('abuddy db import', () => {
     expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('From the backup');
   });
 
+  it('says when the backup holds rows of a type no installed pack declares, and keeps them', async () => {
+    const dir = await appDataDir();
+    const source = await appDataDir();
+    // A pack was installed when the backup was made: its snapshot declares Bookmark, which the target dir's doesn't
+    const snapshot = path.join(source, 'host-packs', 'default-setup', 'types', 'snapshot.json');
+    const manifest = JSON.parse(fs.readFileSync(snapshot, 'utf-8'));
+    manifest.entities = { ...manifest.entities, Bookmark: 'Bookmark' };
+    fs.writeFileSync(snapshot, JSON.stringify(manifest));
+    await write(source, () => {
+      tx(id('Bookmark-1'), true).put('entityType', 'Bookmark').put('url', 'https://example.com');
+      tx(id('Bookmark-2'), true).put('entityType', 'Bookmark').put('url', 'https://example.org');
+    });
+    const backup = await backupOf(source);
+
+    const dry = await ok(['import', backup, '--data-dir', dir]);
+    expect(dry.out).toContain('holds 2 Bookmark that no installed pack declares');
+
+    await ok(['import', backup, '--force', '--data-dir', dir]);
+    // Kept, not dropped: installing that pack again brings them back into use
+    const kept = await ok(['query', "return getAttr('Bookmark-1', 'url')", '--data-dir', dir]);
+    expect(kept.out).toBe('https://example.com');
+  });
+
   it("refuses a backup from a newer AgentBuddy, saying how to import it without what this one can't hold", async () => {
     const dir = await appDataDir();
     const backup = await backupWith('From the backup');

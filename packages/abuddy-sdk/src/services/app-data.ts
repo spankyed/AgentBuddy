@@ -38,6 +38,12 @@ export interface AppDataService {
     databases: BackupDatabase[];
     /** Stores the backup listed with no folder to restore: nothing came back for them */
     missingDatabases: BackupDatabase[];
+    /**
+     * Entity types the restored data holds that no installed pack declares, with how many rows each has: a pack
+     * that was installed when the backup was made and isn't now. The rows are kept, and nothing reads them until
+     * that pack is installed again.
+     */
+    unknownEntityTypes: Array<[string, number]>;
   }>;
   /** A backup's metadata, or null when `backupPath` isn't a backup */
   backupInfo(backupPath: string): Promise<BackupInfo | null>;
