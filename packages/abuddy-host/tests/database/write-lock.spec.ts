@@ -34,8 +34,10 @@ describe('the database write lock', () => {
     const dir = tempDir('write-lock-');
     const lock = hold(dir);
     expect(findDatabaseWriter(dir)).toBe(`abuddy db reset (pid ${process.pid})`);
+    // A lock a killed tool left, whose pid something else now has, would otherwise leave no way forward
     expect(() => assertNoDatabaseWriter(dir)).toThrow(
-      new RegExp(`The database in ${dir} is being changed by abuddy db reset \\(pid ${process.pid}\\). Wait for it to finish`),
+      `The database in ${dir} is being changed by abuddy db reset (pid ${process.pid}). Wait for it to finish, then start ` +
+      `AgentBuddy again. If no tool is running, delete ${lockFile(dir)} and try again.`,
     );
     lock.release();
     expect(findDatabaseWriter(dir)).toBeNull();
@@ -58,7 +60,8 @@ describe('the database write lock', () => {
     const dir = tempDir('write-lock-');
     hold(dir, 'abuddy db import');
     expect(() => holdDatabaseWriteLock(dir, 'abuddy db exec')).toThrow(
-      `Another tool is changing the database in ${dir}: abuddy db import (pid ${process.pid})`,
+      `Another tool is changing the database in ${dir}: abuddy db import (pid ${process.pid}). If no tool is running, ` +
+      `delete ${lockFile(dir)} and try again.`,
     );
   });
 
@@ -71,13 +74,15 @@ describe('the database write lock', () => {
 
     const unreadable = tempDir('write-lock-');
     fs.writeFileSync(lockFile(unreadable), 'not json');
-    expect(findDatabaseWriter(unreadable)).toBe(`something holds ${lockFile(unreadable)}, which can't be read`);
-    expect(() => holdDatabaseWriteLock(unreadable, 'abuddy db reset')).toThrow(/which can't be read/);
+    expect(findDatabaseWriter(unreadable)).toBe("a tool whose lock can't be read");
+    expect(() => holdDatabaseWriteLock(unreadable, 'abuddy db reset')).toThrow(
+      `Another tool is changing the database in ${unreadable}: a tool whose lock can't be read. If no tool is running, delete ${lockFile(unreadable)} and try again.`,
+    );
   });
 
   it("counts a lock from another host, whose process it can't check", () => {
     const dir = tempDir('write-lock-');
     fs.writeFileSync(lockFile(dir), JSON.stringify({ pid: process.pid, host: 'another-host.local', what: 'abuddy db exec' }));
-    expect(findDatabaseWriter(dir)).toBe(`abuddy db exec on another-host.local holds ${lockFile(dir)}`);
+    expect(findDatabaseWriter(dir)).toBe('abuddy db exec on another-host.local');
   });
 });

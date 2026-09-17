@@ -256,7 +256,10 @@ describe('the lock a change holds', () => {
     const held = holdDatabaseWriteLock(dir, 'abuddy db import');
     try {
       const { error } = await run(['reset', '--force', '--data-dir', dir]);
-      expect(error?.message).toBe(`Another tool is changing the database in ${dir}: abuddy db import (pid ${process.pid})`);
+      expect(error?.message).toBe(
+        `Another tool is changing the database in ${dir}: abuddy db import (pid ${process.pid}). ` +
+        `If no tool is running, delete ${path.join(dir, 'db-write.lock')} and try again.`,
+      );
     } finally {
       held.release();
     }

@@ -38,16 +38,21 @@ function readLock(file: string): LockFile | null {
 
 /**
  * What a tool is changing in this data dir's database right now, or `null` when nothing is: a lock whose process has
- * exited, or that can't be read, doesn't count. A lock from another host can't be checked, so it counts as held.
+ * exited doesn't count. A lock from another host can't be checked, so it counts as held, and so does one this
+ * version can't read.
  */
 export function findDatabaseWriter(userDataDir: string): string | null {
   const file = lockFile(userDataDir);
   if (!fs.existsSync(file)) return null;
   const held = readLock(file);
-  if (!held) return `something holds ${file}, which can't be read`;
-  if (held.host !== os.hostname()) return `${held.what} on ${held.host} holds ${file}`;
+  if (!held) return "a tool whose lock can't be read";
+  if (held.host !== os.hostname()) return `${held.what} on ${held.host}`;
   return processExists(held.pid) ? `${held.what} (pid ${held.pid})` : null;
 }
+
+/** Where the lock is, and that removing it is the way out when no tool is really running */
+const clearHint = (userDataDir: string) =>
+  `If no tool is running, delete ${lockFile(userDataDir)} and try again.`;
 
 /** A lock a tool holds; `release()` is safe to call more than once */
 export interface DatabaseWriteLock {
@@ -61,7 +66,7 @@ export interface DatabaseWriteLock {
 export function holdDatabaseWriteLock(userDataDir: string, what: string): DatabaseWriteLock {
   const file = lockFile(userDataDir);
   const held = findDatabaseWriter(userDataDir);
-  if (held) throw new Error(`Another tool is changing the database in ${userDataDir}: ${held}`);
+  if (held) throw new Error(`Another tool is changing the database in ${userDataDir}: ${held}. ${clearHint(userDataDir)}`);
   fs.mkdirSync(userDataDir, { recursive: true });
   // Written aside and renamed, so no app ever reads a half-written lock
   const temp = `${file}.${process.pid}.tmp`;
@@ -89,7 +94,8 @@ export function assertNoDatabaseWriter(userDataDir: string): void {
   const held = findDatabaseWriter(userDataDir);
   if (held) {
     throw new Error(
-      `The database in ${userDataDir} is being changed by ${held}. Wait for it to finish, then start AgentBuddy again.`,
+      `The database in ${userDataDir} is being changed by ${held}. Wait for it to finish, then start AgentBuddy again. ` +
+      clearHint(userDataDir),
     );
   }
 }
