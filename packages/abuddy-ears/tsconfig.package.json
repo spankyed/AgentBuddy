@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "rootDir": "src",
+    "outDir": "dist",
+    // The engine runs in Node and in the renderer: no Node types in the published source
+    "types": []
+  },
+  "include": ["src/**/*.ts"]
+}
