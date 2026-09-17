@@ -9,6 +9,9 @@ another detail isn't specified, pick the conventional option, note it in the fin
 Finished when:
 - Phases 1–5 are implemented and each meets its "Done when"; every new guard or test is mutation-checked.
 - `abuddy db` covers every maintained operation of packages/api/scripts/db, and those scripts are gone or thin.
+  Except `seed.ts`: re-running a pack's boot seed needs the pack's own code (its seeders, seed hooks and
+  repositories), which an offline tool doesn't load (Decision 2), and starting the app runs that seed anyway, so the
+  command is deliberately not replaced.
 - No test or manual run opens a real data dir (~/Library/Application Support/abuddy*); all use temp
   ABUDDY_USER_DATA_DIRs.
 - `npm run typecheck`, `npm run typecheck -w @app/main`, `schema:check`, `api:check` (sdk, ui), `packages:build`
