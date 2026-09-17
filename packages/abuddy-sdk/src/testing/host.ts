@@ -99,6 +99,10 @@ const unmockedInference = () => Promise.reject(new Error(
   "No models in unit tests: mock inference with mockInference(reply) from @abuddy/testing/harness",
 ));
 
+const unmockedFilesystem = () => Promise.reject(new Error(
+  "No disk access through services in unit tests: mock it with mockService('filesystem', { ... }) from @abuddy/testing/harness",
+));
+
 const unsupported = (name: string) => () => Promise.reject(new Error(`appData.${name} isn't supported in unit tests: there is no stored data to back up`));
 
 /** Reads the in-memory database: unit tests keep flow execution records (TNodes) there */
@@ -164,6 +168,11 @@ export function bindTestRuntime({ engine, resetData, packs, appVersion = '0.0.0-
         generateSpeech: unmockedInference, transcribe: unmockedInference, rerank: unmockedInference,
       },
       secrets: memorySecrets,
+      // Code reading or writing files through services fails until the test mocks filesystem
+      filesystem: {
+        writeFile: unmockedFilesystem, readFile: unmockedFilesystem, exists: unmockedFilesystem, mkdir: unmockedFilesystem,
+        readDir: unmockedFilesystem, remove: unmockedFilesystem, rename: unmockedFilesystem, stat: unmockedFilesystem,
+      },
     },
   };
   bindHost(runtime);

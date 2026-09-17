@@ -32,7 +32,6 @@ src/
   extensions/              # Cross-cutting concerns
     artifacts/             # Artifact viewer definitions + Vue components
     blocks/                # Message block definitions (display + input)
-    services/              # Pack-level services (filesystem), declared in abuddy.json packServices
     steps/                 # Flow step definitions (action, llm, switch, fire, etc.)
     tiptap/                # Tiptap plugins (reference node, command suggestion, viewer decoration)
     Welcome.vue            # Welcome screen app extension
@@ -68,9 +67,9 @@ System IDs re-exported from `__generated__/system-ids.ts`. System specs (identit
 
 ## Services
 
-Service aggregation generated in `__generated__/services.ts`. Feature services are declared in `abuddy.json` `features[].services` and live in `src/features/<name>/be/services/`; pack-level services are declared in top-level `packServices` and live in `src/extensions/services/`. Systems and actions call them through `services.<key>`:
+Service aggregation generated in `__generated__/services.ts`. Feature services are declared in `abuddy.json` `features[].services` and live in `src/features/<name>/be/services/`; the pack declares no top-level `packServices`. Systems and actions call them through `services.<key>`, next to the host's (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`, `filesystem`):
 
-`chat`, `artifact`, `threads`, `cli`, `codex`, `library`, `action`, `prompt`, `brain`, `scheduler`, `database`, `settings`, `filesystem`
+`chat`, `artifact`, `threads`, `cli`, `codex`, `library`, `action`, `prompt`, `brain`, `scheduler`, `database`, `settings`
 
 Each service entry names one value export, `"<key>": "<path>.ts#<key>Service"`, and the module exports it as `export const <key>Service = { ... }` (or a class instance). No factories and no whole-module services. `Services` is `typeof featureServices`, so that object is the contract dependent packs build against:
 

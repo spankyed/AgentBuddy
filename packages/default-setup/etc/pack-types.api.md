@@ -1065,11 +1065,6 @@ interface FileContent {
     isVideo?: boolean;
 }
 
-interface FileEntry {
-    name: string;
-    isDirectory: boolean;
-}
-
 interface FileInfo {
     name: string;
     path: string;
@@ -1085,24 +1080,6 @@ interface FileReference {
     typeLabel: string;
     isImage: boolean;
     previewUrl?: string;
-}
-
-interface FileStat {
-    size: number;
-    mtime: Date;
-    isDirectory: boolean;
-    isFile: boolean;
-}
-
-interface FilesystemServiceType {
-    writeFile(filePath: string, content: string): Promise<void>;
-    readFile(filePath: string): Promise<string>;
-    exists(filePath: string): Promise<boolean>;
-    mkdir(dirPath: string): Promise<void>;
-    readDir(dirPath: string): Promise<FileEntry[]>;
-    remove(targetPath: string): Promise<void>;
-    rename(oldPath: string, newPath: string): Promise<void>;
-    stat(filePath: string): Promise<FileStat>;
 }
 
 interface FireNode extends NodeBase {
@@ -4412,7 +4389,6 @@ declare const featureServices: {
         buildQueryContext: typeof buildQueryContext;
     };
     settings: SettingsService;
-    filesystem: FilesystemServiceType;
 };
 
 /**

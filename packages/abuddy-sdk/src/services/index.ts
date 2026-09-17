@@ -6,10 +6,12 @@ import type { AppDataService } from './app-data.ts';
 import type { TraceStore } from './trace-store.ts';
 import type { InferenceService } from './inference.ts';
 import type { SecretsService } from './secrets.ts';
+import type { FilesystemService } from './filesystem.ts';
 
 export type { AppDataService, BackupDatabase, BackupInfo } from './app-data.ts';
 export type { TraceStore, TraceEntityMeta, TraceRelation } from './trace-store.ts';
 export { createInferenceService, type InferenceModels, type InferenceService, type OutputSchema, type OutputSpec, type ResolveModel } from './inference.ts';
+export type { FileEntry, FileStat, FilesystemService } from './filesystem.ts';
 export type { SecretInfo, SecretProvider, SecretsProtection, SecretsService, SecretsSnapshot, SecretsStatus } from './secrets.ts';
 export { secretRules, secretProviderLabel, toSecretInfo } from './secrets-rules.ts';
 export type { ModelId, ProviderName } from './models.ts';
@@ -42,6 +44,8 @@ export interface HostServices {
   inference: InferenceService;
   /** The user's API keys, without their values: list, select, rename, delete */
   secrets: SecretsService;
+  /** Files and folders on the user's disk */
+  filesystem: FilesystemService;
 }
 
 /** Sends to the system a `<packId>/<featureId>` name addresses, whatever id it runs under */
@@ -94,9 +98,20 @@ const secrets: SecretsService = {
   delete: (id) => app('secrets').delete(id),
 };
 
+const filesystem: FilesystemService = {
+  writeFile: (filePath, content) => app('filesystem').writeFile(filePath, content),
+  readFile: (filePath) => app('filesystem').readFile(filePath),
+  exists: (filePath) => app('filesystem').exists(filePath),
+  mkdir: (dirPath) => app('filesystem').mkdir(dirPath),
+  readDir: (dirPath) => app('filesystem').readDir(dirPath),
+  remove: (targetPath) => app('filesystem').remove(targetPath),
+  rename: (oldPath, newPath) => app('filesystem').rename(oldPath, newPath),
+  stat: (filePath) => app('filesystem').stat(filePath),
+};
+
 /**
- * The services the SDK builds (logger, emitter, repository from the bound engine), the app's four, and every
- * registered pack's. Reading them needs a bound app; the app's four are delegates that read it on each call.
+ * The services the SDK builds (logger, emitter, repository from the bound engine), the app's five, and every
+ * registered pack's. Reading them needs a bound app; the app's five are delegates that read it on each call.
  */
 function resolveServices(): HostServices & Record<string, unknown> {
   const runtime = boundHost();
@@ -108,6 +123,7 @@ function resolveServices(): HostServices & Record<string, unknown> {
     traceStore,
     inference,
     secrets,
+    filesystem,
     ...runtime.packs.getRegisteredServices(),
   };
 }

@@ -6,6 +6,7 @@ import type { AppDataService } from '../services/app-data.ts';
 import type { TraceStore } from '../services/trace-store.ts';
 import type { InferenceService } from '../services/inference.ts';
 import type { SecretsService } from '../services/secrets.ts';
+import type { FilesystemService } from '../services/filesystem.ts';
 import type { PackRegistryView } from './packs-view.ts';
 
 /** The app's EARS engine, as packs query it: its query face (`createEarsEngine` from `@abuddy/ears`) */
@@ -21,6 +22,8 @@ export interface HostRuntimeServices {
   inference: InferenceService;
   /** The user's API keys, as metadata */
   secrets: SecretsService;
+  /** Files and folders on the user's disk */
+  filesystem: FilesystemService;
 }
 
 /** The running app, as the SDK reaches it in a backend process */

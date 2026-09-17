@@ -112,7 +112,6 @@ Actions receive a `services` object: default-setup's feature services (each is t
 | `services.cli` | CLI tools: `git`, `gh`, `claudeCode`, `codex`, plus `testCli` |
 | `services.codex` | The Codex app-server (threads, turns, approvals, sessions) |
 | `services.browser` | Browser automation sessions (`createBrowser`) |
-| `services.filesystem` | Files and folders (`readFile`, `writeFile`, `readDir`, `mkdir`, `stat`, `exists`, `rename`, `remove`) |
 | `services.textStream` | Chunked text streaming for simulated typing (`streamText`, `streamTextByChars`) |
 
 **Host services**
@@ -126,6 +125,7 @@ Actions receive a `services` object: default-setup's feature services (each is t
 | `services.appData` | Reset, back up and restore the app's data; whether the user finished onboarding (`hasOnboarded`, `completeOnboarding`) |
 | `services.traceStore` | Read flow execution records |
 | `services.secrets` | The user's API keys as metadata (`list`, `select`, `rename`, `delete`, `status`); never values |
+| `services.filesystem` | Files and folders on disk, as UTF-8 text (`readFile`, `writeFile`, `readDir`, `mkdir`, `stat`, `exists`, `rename`, `remove`) |
 
 ### Metadata
 

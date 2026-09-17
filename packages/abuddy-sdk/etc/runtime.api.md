@@ -79,6 +79,7 @@ export interface HostRuntime {
 // @public
 export interface HostRuntimeServices {
     appData: AppDataService;
+    filesystem: FilesystemService;
     inference: InferenceService;
     secrets: SecretsService;
     traceStore: TraceStore;

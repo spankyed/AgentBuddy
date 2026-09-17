@@ -5,6 +5,7 @@ import type { EarsEngine } from '@abuddy/ears';
 import type { LmdbStore } from '@abuddy/ears/lmdb';
 import type { PackRegistry } from '../packs/pack-registration.ts';
 import { createAppData } from './app-data.ts';
+import { filesystem } from './filesystem.ts';
 import { inference } from './inference.ts';
 import { secrets } from './secrets.ts';
 import { createTraceStore } from './trace-store.ts';
@@ -33,6 +34,7 @@ export function createHostRuntime({ transport, appVersion, store, engine, packs 
       traceStore: createTraceStore(store),
       inference,
       secrets,
+      filesystem,
     },
   };
 }

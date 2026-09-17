@@ -10,6 +10,7 @@ import { testRootEvents } from '@abuddy/sdk/testing';
 import { createHostRuntime } from '../../src/services/index.ts';
 import { inference } from '../../src/services/inference.ts';
 import { secrets } from '../../src/services/secrets.ts';
+import { filesystem } from '../../src/services/filesystem.ts';
 import { createPackRegistry } from '../../src/packs/pack-registration.ts';
 import { secretsStore } from '../../src/secrets/index.ts';
 import { setLoadedPacks, type LoadedPack } from '../../src/packs/runtime/loaded-packs.ts';
@@ -46,9 +47,10 @@ describe('createHostRuntime', () => {
     expect(runtime.appVersion).toBe('1.2.3');
     expect(runtime.ears).toBe(engine.query);
     expect(runtime.packs).toBe(packs);
-    expect(Object.keys(runtime.services).sort()).toEqual(['appData', 'inference', 'secrets', 'traceStore']);
+    expect(Object.keys(runtime.services).sort()).toEqual(['appData', 'filesystem', 'inference', 'secrets', 'traceStore']);
     expect(runtime.services.inference).toBe(inference);
     expect(runtime.services.secrets).toBe(secrets);
+    expect(runtime.services.filesystem).toBe(filesystem);
 
     const service = { ping: () => 'pong' };
     packs.registerPack({ id: 'runtime-pack', systems: [{ id: 'runtime-pack.memos', machine: {} as never, events: new Set() }], services: { memoService: service } });

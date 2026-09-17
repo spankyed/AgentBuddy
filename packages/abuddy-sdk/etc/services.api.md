@@ -60,6 +60,35 @@ export interface BackupInfo {
 export function createInferenceService(resolveModel: ResolveModel): InferenceService;
 
 // @public
+export interface FileEntry {
+    // (undocumented)
+    isDirectory: boolean;
+    name: string;
+}
+
+// @public
+export interface FileStat {
+    // (undocumented)
+    isDirectory: boolean;
+    // (undocumented)
+    isFile: boolean;
+    mtime: Date;
+    size: number;
+}
+
+// @public
+export interface FilesystemService {
+    exists(filePath: string): Promise<boolean>;
+    mkdir(dirPath: string): Promise<void>;
+    readDir(dirPath: string): Promise<FileEntry[]>;
+    readFile(filePath: string): Promise<string>;
+    remove(targetPath: string): Promise<void>;
+    rename(oldPath: string, newPath: string): Promise<void>;
+    stat(filePath: string): Promise<FileStat>;
+    writeFile(filePath: string, content: string): Promise<void>;
+}
+
+// @public
 export interface HostServices {
     appData: AppDataService;
     emitter: {
@@ -67,6 +96,7 @@ export interface HostServices {
         sendToSystem: typeof sendToSystem;
         sendToBrainSystem: typeof sendToBrainSystem;
     };
+    filesystem: FilesystemService;
     inference: InferenceService;
     // (undocumented)
     logger: Logger;

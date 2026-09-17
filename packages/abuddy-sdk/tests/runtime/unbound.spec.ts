@@ -37,6 +37,10 @@ const runtime: HostRuntime = {
       generateImage: unused, generateSpeech: unused, transcribe: unused, rerank: unused,
     },
     secrets: { status: unused, list: unused, select: unused, rename: unused, delete: unused },
+    filesystem: {
+      writeFile: unused, readFile: unused, exists: unused, mkdir: unused, readDir: unused, remove: unused, rename: unused,
+      stat: async () => ({ size: 3, mtime: new Date(0), isDirectory: false, isFile: true }),
+    },
   },
 };
 
@@ -61,6 +65,8 @@ export const noTraceStore: HostRuntime = {} as WithoutService<'traceStore'>;
 export const noInference: HostRuntime = {} as WithoutService<'inference'>;
 // @ts-expect-error no secrets
 export const noSecrets: HostRuntime = {} as WithoutService<'secrets'>;
+// @ts-expect-error no filesystem
+export const noFilesystem: HostRuntime = {} as WithoutService<'filesystem'>;
 
 afterEach(() => {
   unbindHost();
@@ -83,6 +89,7 @@ describe('with no app bound', () => {
       ['services.appData', () => services.appData.reset()],
       ['services.traceStore', () => services.traceStore.entities()],
       ['services.secrets', () => services.secrets.list()],
+      ['services.filesystem', () => services.filesystem.readFile('/tmp/x')],
       ['services.repository', () => services.repository],
     ];
     for (const [name, use] of [['qx', () => untypedQx('Memo')], ['tx', () => tx('Memo')]] as const) {
@@ -149,9 +156,10 @@ describe('bindHost', () => {
     expect(() => untypedQx('Memo')).toThrow('No EARS engine is installed');
   });
 
-  it("reads the bound app's services on each call", () => {
+  it("reads the bound app's services on each call", async () => {
     bindHost(runtime);
     expect(services.repository).toBe(engine.query.repository);
     expect(() => services.secrets.list()).toThrow('unused');
+    await expect(services.filesystem.stat('/tmp/x')).resolves.toMatchObject({ size: 3, isFile: true });
   });
 });
