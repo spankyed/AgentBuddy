@@ -40,7 +40,8 @@ if (!PACKAGES_BUILT && process.env.CI) {
   throw new Error('The published-package specs need built packages in CI. Run: npm run packages:build');
 }
 for (const dir of PACKAGES_BUILT ? Object.values(PACKAGE_DIRS) : []) {
-  const builtAt = fs.statSync(path.join(dir, 'dist')).birthtimeMs;
+  // The newest file in dist, since not every filesystem records a folder's creation time
+  const builtAt = newestMtime(path.join(dir, 'dist'));
   if (newestMtime(path.join(dir, 'src')) > builtAt) {
     throw new Error(`${path.relative(REPO_ROOT, dir)}/dist is older than its src. Run: npm run packages:build`);
   }

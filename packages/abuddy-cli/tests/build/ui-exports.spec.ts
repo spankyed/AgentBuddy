@@ -43,8 +43,11 @@ describe('findComponentsWithoutEntry', () => {
       "import Button from '@abuddy/ui/design/button';",
       "import Dialog from '@abuddy/ui/design/dialog';",
       "import Panel from '@abuddy/ui/internal/Panel';",
+      // The component itself, not its entry module
+      "import Dialog2 from '@abuddy/ui/design/dialog.vue';",
+      "import Button2 from '@abuddy/ui/design/button.vue';",
     ].join('\n'));
     expect(findComponentsWithoutEntry([path.join(root, 'consumer')], path.join(root, 'src')).map((line) => line.split(': ')[1]))
-      .toEqual(['@abuddy/ui/design/dialog', '@abuddy/ui/internal/Panel']);
+      .toEqual(['@abuddy/ui/design/dialog', '@abuddy/ui/internal/Panel', '@abuddy/ui/design/dialog.vue']);
   });
 });

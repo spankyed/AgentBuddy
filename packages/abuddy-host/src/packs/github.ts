@@ -44,8 +44,18 @@ export async function githubFetch(url: string, accept = 'application/vnd.github+
     const when = Number.isFinite(reset) && reset > 0 ? ` until ${new Date(reset * 1000).toISOString()}` : '';
     throw new GitHubRequestError(`GitHub's API rate limit is used up${when}${tokenHint} to raise it`, 'rate-limited', response.status);
   }
+  // A secondary rate limit: too many requests too quickly, with quota to spare
+  if (response.status === 403 || response.status === 429) {
+    const retryAfter = Number(response.headers.get('retry-after'));
+    const when = Number.isFinite(retryAfter) && retryAfter > 0 ? ` Retry in ${retryAfter}s.` : ' Retry in a minute.';
+    throw new GitHubRequestError(`GitHub is rate limiting these requests.${when}`, 'rate-limited', response.status);
+  }
   if (response.status === 401) {
-    throw new GitHubRequestError('GitHub rejected the GITHUB_TOKEN (401)', 'unauthorized', 401);
+    throw new GitHubRequestError(
+      githubToken() ? 'GitHub rejected the GITHUB_TOKEN (401)' : 'GitHub needs credentials for this request (401); set GITHUB_TOKEN',
+      'unauthorized',
+      401,
+    );
   }
   if (response.status === 404) {
     throw new GitHubRequestError(`${url} was not found: it doesn't exist or it's private${tokenHint ? `${tokenHint} with access to it` : ''}`, 'not-found', 404);

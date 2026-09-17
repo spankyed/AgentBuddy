@@ -66,9 +66,11 @@ export function findComponentsWithoutEntry(
   for (const root of roots.filter((dir) => fs.statSync(dir, { throwIfNoEntry: false })?.isDirectory())) {
     for (const file of consumerFiles(root)) {
       for (const [, subpath] of fs.readFileSync(file, 'utf-8').matchAll(/@abuddy\/ui\/([A-Za-z0-9_./-]+?)(?=['"`\s;)])/g)) {
-        const entry = `${subpath}.ts`.split('/').join(path.sep);
+        // `@abuddy/ui/design/button` names an entry module; `…/button.vue` names the component itself
+        const component = subpath.endsWith('.vue') ? subpath.slice(0, -'.vue'.length) : subpath;
+        const entry = `${component}.ts`.split('/').join(path.sep);
         const published = fs.existsSync(path.join(src, entry)) && isPublicModule(entry);
-        if (fs.existsSync(path.join(src, `${subpath}.vue`)) && !published) {
+        if (fs.existsSync(path.join(src, `${component}.vue`)) && !published) {
           problems.push(`${path.relative(repoRoot, file)}: @abuddy/ui/${subpath}`);
         }
       }

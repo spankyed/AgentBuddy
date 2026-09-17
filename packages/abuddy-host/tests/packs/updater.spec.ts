@@ -45,6 +45,11 @@ describe('findLatestRelease', () => {
     await expect(findLatestRelease('acme/pack')).rejects.toThrow(/rate limit is used up until 2030-03-17T17:46:40\.000Z; set GITHUB_TOKEN/);
     vi.stubGlobal('fetch', vi.fn(async () => new Response('Not Found', { status: 404 })));
     await expect(findLatestRelease('acme/pack')).rejects.toThrow(/not found: it doesn't exist or it's private; set GITHUB_TOKEN with access to it/);
+    // Too many requests too quickly, with quota to spare
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('slow down', { status: 403, headers: { 'x-ratelimit-remaining': '4999', 'retry-after': '60' } })));
+    await expect(findLatestRelease('acme/pack')).rejects.toThrow(/GitHub is rate limiting these requests\. Retry in 60s\./);
+    vi.stubGlobal('fetch', vi.fn(async () => new Response('nope', { status: 401 })));
+    await expect(findLatestRelease('acme/pack')).rejects.toThrow(/GitHub needs credentials for this request \(401\); set GITHUB_TOKEN/);
   });
 
   it('authenticates with GITHUB_TOKEN and reads private release assets and manifests through the API', async () => {
