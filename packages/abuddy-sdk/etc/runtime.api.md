@@ -110,6 +110,7 @@ export interface PackContributionsView {
 // @public
 export interface PackRegistryView extends PackContributionsView {
     commands(): PackCommand[];
+    earsNames(): EarsNames;
     getRegisteredServices(): Record<string, unknown>;
     onSettingsDefaultsChanged(listener: () => void): () => void;
     resolveSystemAddress(address: string): string | undefined;

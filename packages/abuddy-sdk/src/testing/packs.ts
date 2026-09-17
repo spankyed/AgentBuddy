@@ -9,6 +9,7 @@ import type { SeedHooks } from '../seed/hooks.ts';
 import type { Seeder } from '../utils/seed.ts';
 import type { PackCommand } from '../framework/pack-commands.ts';
 import type { PackSettingsDefaults } from '../framework/pack-settings.ts';
+import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
 
 /** What tests register without an app, each lookup keyed as the SDK looks it up */
 export interface TestPacks {
@@ -28,6 +29,10 @@ export interface TestPacks {
   readonly seeders: Map<string, Seeder[]>;
   /** Declared commands by pack id, after the registered packs' */
   readonly commands: Map<string, PackCommand[]>;
+  /** Entity types by the name they're declared under, over the registered packs' */
+  readonly earsEntities: Map<string, string>;
+  /** Relation kinds by the name they're declared under, over the registered packs' */
+  readonly earsRelKinds: Map<string, string>;
   /** Empties every lookup */
   clear(): void;
 }
@@ -42,6 +47,8 @@ function createTestPacks(): TestPacks {
     seedHooks: new Map<string, SeedHooks>(),
     seeders: new Map<string, Seeder[]>(),
     commands: new Map<string, PackCommand[]>(),
+    earsEntities: new Map<string, string>(),
+    earsRelKinds: new Map<string, string>(),
   };
   return {
     ...lookups,
@@ -88,5 +95,12 @@ export function testPacksView(registered?: PackRegistryView): PackRegistryView {
     settingsDefaults: () => registered?.settingsDefaults() ?? noSettings,
     onSettingsDefaultsChanged: (listener) => registered?.onSettingsDefaultsChanged(listener) ?? (() => {}),
     commands: () => [...(registered?.commands() ?? []), ...[...testPacks.commands.values()].flat()],
+    earsNames: () => {
+      const base = registered?.earsNames() ?? { entities: { ...SDK_ENTITIES }, relKinds: { ...SDK_REL_KINDS } };
+      return {
+        entities: { ...base.entities, ...Object.fromEntries(testPacks.earsEntities) },
+        relKinds: { ...base.relKinds, ...Object.fromEntries(testPacks.earsRelKinds) },
+      };
+    },
   };
 }

@@ -361,6 +361,16 @@ export function createPackRegistry(): PackRegistry {
 
     getEventValidationMap: () => eventValidationMap ??= buildEventValidationMap(),
 
+    earsNames() {
+      const { entities, relKinds } = appEARS();
+      const names = { entities: { ...entities }, relKinds: { ...relKinds } };
+      for (const reg of registrations.values()) {
+        Object.assign(names.entities, reg.ears?.entities ?? {});
+        Object.assign(names.relKinds, reg.ears?.relKinds ?? {});
+      }
+      return names;
+    },
+
     getRegisteredEntityTypes() {
       if (!entityTypeCache) {
         entityTypeCache = new Set<string>(RESERVED_ENTITIES);

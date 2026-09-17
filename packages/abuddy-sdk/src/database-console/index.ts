@@ -6,6 +6,9 @@
  *
  * @packageDocumentation
  */
+import { boundHost } from '../runtime/host-runtime.ts';
+import type { EarsNames } from '../runtime/packs-view.ts';
+import { EARS as EARS_NAMES } from '../types/index.ts';
 import {
   defineEars, untypedQx, tx, destroyEntity, getAll, getRoles, grantRole, revokeRole, prepareEntity,
   createRelation, removeRelation, removeRelationById, getAllEntities, getEntitiesOfType, getAllEntityTypes,
@@ -82,6 +85,19 @@ export const WRITE_HELPER_NAMES: readonly string[] = Object.keys(writeHelpers);
  */
 export interface ConsoleScope {
   EARS: object;
+}
+
+/**
+ * `EARS` for console code: the SDK's, with the entity types and relation kinds `names` declares. Console code
+ * queries the whole database, so it names every installed pack's types, not only the pack running the console.
+ */
+export function consoleEars(names: EarsNames): ConsoleScope['EARS'] {
+  return { ...EARS_NAMES, Entity: { ...EARS_NAMES.Entity, ...names.entities }, RelKind: { ...EARS_NAMES.RelKind, ...names.relKinds } };
+}
+
+/** `EARS` for console code in a running app: every registered pack's, from the app's registry */
+export function installedEars(): ConsoleScope['EARS'] {
+  return consoleEars(boundHost().packs.earsNames());
 }
 
 function run(code: string, scope: ConsoleScope, helpers: Record<string, unknown>): Promise<unknown> {

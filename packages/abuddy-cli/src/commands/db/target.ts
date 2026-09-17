@@ -3,8 +3,7 @@ import * as path from 'node:path';
 import { parseArgs, type ParseArgsConfig } from 'node:util';
 import { resolveAppContext, type AppContext, type AppEnv } from '@abuddy/sdk/env';
 import { findRunningApp, holdDatabaseWriteLock, openAppDatabase, type AppDatabase } from '@abuddy/host/database';
-import { EARS } from '@abuddy/sdk/types';
-import type { ConsoleScope } from '@abuddy/sdk/database-console';
+import { consoleEars, type ConsoleScope } from '@abuddy/sdk/database-console';
 
 /** Where a command's lines go: results on stdout, what it targets and warnings on stderr */
 export interface DbIo {
@@ -129,7 +128,7 @@ export async function withDatabase<T>(db: AppDatabase, use: () => Promise<T> | T
   return result!;
 }
 
-/** `EARS` for console code: the SDK's, with the installed packs' entity types and relation kinds */
+/** `EARS` for console code: the SDK's, with the installed packs' entity types and relation kinds, as the app's console has it */
 export function consoleScope(db: AppDatabase): ConsoleScope {
-  return { EARS: { ...EARS, Entity: db.schema.entities, RelKind: { ...db.schema.relKinds, Custom: EARS.RelKind.Custom } } };
+  return { EARS: consoleEars({ entities: db.schema.entities, relKinds: db.schema.relKinds }) };
 }

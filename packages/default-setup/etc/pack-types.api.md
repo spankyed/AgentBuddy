@@ -2063,6 +2063,7 @@ type OutgoingDatabaseEvents = {
 } | {
     type: 'IMPORT_DATABASE_ERROR';
     error: string;
+    unknownDatabases?: string[];
 } | {
     type: 'BACKUP_INFO_RESULT';
     info: {
@@ -5245,6 +5246,7 @@ declare const specs: {
         } | {
             type: "IMPORT_DATABASE";
             path: string;
+            skipUnknownDatabases?: boolean;
         } | {
             type: "GET_BACKUP_INFO";
             path: string;

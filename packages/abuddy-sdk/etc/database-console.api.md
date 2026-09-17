@@ -5,6 +5,9 @@
 ```ts
 
 // @public
+export function consoleEars(names: EarsNames): ConsoleScope['EARS'];
+
+// @public
 export interface ConsoleScope {
     // (undocumented)
     EARS: object;
@@ -12,6 +15,9 @@ export interface ConsoleScope {
 
 // @public
 export function getSchemaStats(): SchemaStats;
+
+// @public
+export function installedEars(): ConsoleScope['EARS'];
 
 // @public
 export const READ_HELPER_NAMES: readonly string[];

@@ -143,6 +143,8 @@ export interface TestPacks {
     clear(): void;
     readonly commands: Map<string, PackCommand[]>;
     readonly designations: Map<string, string>;
+    readonly earsEntities: Map<string, string>;
+    readonly earsRelKinds: Map<string, string>;
     readonly seeders: Map<string, Seeder[]>;
     readonly seedHooks: Map<string, SeedHooks>;
     readonly services: Map<string, unknown>;

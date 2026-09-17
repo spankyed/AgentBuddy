@@ -2,7 +2,9 @@
 import * as os from 'node:os';
 import { beforeEach, describe, expect, it } from 'vitest';
 import { tx, untypedQx } from '@abuddy/ears';
-import { getSchemaStats, READ_HELPER_NAMES, runQueryCode, runTransactionCode, WRITE_HELPER_NAMES } from '../../src/database-console/index.ts';
+import { consoleEars, getSchemaStats, installedEars, READ_HELPER_NAMES, runQueryCode, runTransactionCode, WRITE_HELPER_NAMES } from '../../src/database-console/index.ts';
+import { testPacks } from '../../src/testing/packs.ts';
+import { EARS } from '../../src/types/index.ts';
 import { resetTestData, startTestRuntime } from '../../src/testing/index.ts';
 
 process.env.ABUDDY_ENV ??= 'test';
@@ -86,5 +88,33 @@ describe('getSchemaStats', () => {
     expect(stats.entities.Flow).toBe(2);
     expect(stats.attributes.label).toEqual({ entityCount: 2, totalValues: 2 });
     expect(stats.relations.contains).toEqual({ totalRelations: 1, uniqueSources: 1, uniqueTargets: 1 });
+  });
+});
+
+// Console code queries the whole database, so it names every installed pack's entity types, whichever pack runs the
+// console: the Database plugin and `abuddy db` read the same names
+describe('the EARS console code sees', () => {
+  it("adds the packs' entity types and relation kinds to the SDK's, keeping the SDK's own", () => {
+    const ears = consoleEars({ entities: { Memo: 'Memo' }, relKinds: { mentions: 'mentions' } }) as
+      { Entity: Record<string, string>; RelKind: Record<string, string> };
+
+    expect(ears.Entity).toMatchObject({ Memo: 'Memo', Flow: 'Flow' });
+    expect(ears.RelKind).toMatchObject({ mentions: 'mentions', Custom: EARS.RelKind.Custom });
+  });
+
+  it("names a registered pack's entity type, not only the pack whose console it is", async () => {
+    const ears = installedEars() as { Entity: Record<string, string> };
+    expect(ears.Entity.Flow).toBe('Flow');
+
+    // Another installed pack's type, as its registration declares it
+    startTestRuntime({ entityTypes: ['Memo', 'Note'] });
+    testPacks.earsEntities.set('Memo', 'Memo');
+    tx('Memo-1' as EARS.EntityId, true).put('title', 'theirs');
+    tx('Note-1' as EARS.EntityId, true).put('title', 'ours');
+
+    await expect(runQueryCode('return EARS.Entity.Memo', { EARS: installedEars() })).resolves.toBe('Memo');
+    // A name the console doesn't know reads as undefined, which queries everything, so the ids say which it was
+    await expect(runQueryCode('return qx(EARS.Entity.Memo).ids()', { EARS: installedEars() }))
+      .resolves.toEqual(['Memo-1']);
   });
 });
