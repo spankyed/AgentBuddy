@@ -15,7 +15,7 @@
 #   8. abuddy test passes against the configured app (this checkout, chosen at the first-run prompt)
 #   9. the packed CLI's abuddy db reads and exports the data that app seeded
 # No ABUDDY_ROOT, no symlinks, no PATH edits. Requires a built checkout (npm run build).
-# KEEP_WORK=1 keeps the temp dir.
+# KEEP_WORK=1 keeps the temp dir, and the app data dir step 8 keeps for step 9.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
@@ -341,8 +341,9 @@ node -e '
 
 step "8. abuddy test (the saved app)"
 # The app's data dir is kept for step 9: the app seeded the installed demo pack into it
-E2E_KEEP_DATA=1 "$ABUDDY" test 2>&1 | tee "$WORK/e2e.log"
-[ "${PIPESTATUS[0]}" -eq 0 ] || fail "abuddy test failed"
+# `if !` so the pipeline's exit status is this script's to report: under `set -e` a failure would otherwise end it
+# here, with only Playwright's own output to say why
+if ! E2E_KEEP_DATA=1 "$ABUDDY" test 2>&1 | tee "$WORK/e2e.log"; then fail "abuddy test failed"; fi
 APP_DATA="$(sed -n 's/.*\[e2e\] kept test data dir: //p' "$WORK/e2e.log" | head -n 1)"
 [ -d "$APP_DATA" ] || fail "abuddy test didn't report the data dir it kept"
 if [ -z "${KEEP_WORK:-}" ]; then trap 'rm -rf "$WORK" "$APP_DATA"' EXIT; fi
