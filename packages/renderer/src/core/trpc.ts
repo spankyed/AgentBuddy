@@ -8,8 +8,18 @@ const initialPort = (typeof window !== 'undefined' && window.electronAPI?.apiPor
 /** The token the API requires, which main gives the app's windows */
 const apiToken = (typeof window !== 'undefined' && window.electronAPI?.apiToken) || '';
 
+/**
+ * A socket offering the API's subprotocol and the token as a second one (the API's `acceptsConnection`). The token
+ * stays out of the URL, which the browser prints when a connection fails, and the app logs what the window prints.
+ */
+class ApiSocket extends WebSocket {
+  constructor(url: string | URL) {
+    super(url, ['abuddy', `abuddy-token.${apiToken}`]);
+  }
+}
+
 function connect(port: number) {
-  const ws = createWSClient({ url: `ws://127.0.0.1:${port}/?token=${encodeURIComponent(apiToken)}` });
+  const ws = createWSClient({ url: `ws://127.0.0.1:${port}`, WebSocket: ApiSocket });
   return { port, ws, client: createTRPCClient<AppRouter>({ links: [wsLink({ client: ws })] }) };
 }
 

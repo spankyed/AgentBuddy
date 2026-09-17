@@ -10,7 +10,7 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-dev-reload-'));
 process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
 process.env.ABUDDY_API_TOKEN = 'the-run-token';
-const { API_HOST, acceptsConnection, devReloadRefusal } = await import('@/setup/websocket');
+const { API_HOST, API_PROTOCOL, acceptsConnection, devReloadRefusal } = await import('@/setup/websocket');
 const { apiToken, apiTokenIsOwn, isApiToken } = await import('@/setup/config');
 const { API_TOKEN_HEADER } = await import('@abuddy/sdk/env');
 afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
@@ -31,8 +31,8 @@ describe('the API token', () => {
       expect(apiTokenIsOwn()).toBe(true);
       expect(own).toMatch(/^[\w-]{43}$/);
       expect(apiToken()).toBe(own);
-      expect(acceptsConnection('/', own)).toBe(false);
-      expect(acceptsConnection(`/?token=${own}`)).toBe(true);
+      expect(acceptsConnection('abuddy', own)).toBe(false);
+      expect(acceptsConnection(`abuddy, abuddy-token.${own}`)).toBe(true);
     } finally {
       process.env.ABUDDY_API_TOKEN = TOKEN;
     }
@@ -48,15 +48,19 @@ describe('the API token', () => {
 });
 
 describe('WebSocket connections', () => {
-  it('open with the token in the URL', () => {
-    expect(acceptsConnection(`/?token=${TOKEN}`, TOKEN)).toBe(true);
-    expect(acceptsConnection(`/?token=${encodeURIComponent('a b&c')}`, 'a b&c')).toBe(true);
+  it('open with the token among the offered subprotocols', () => {
+    expect(acceptsConnection(`abuddy, abuddy-token.${TOKEN}`, TOKEN)).toBe(true);
+    expect(acceptsConnection(`abuddy-token.${TOKEN}`, TOKEN)).toBe(true);
+    expect(API_PROTOCOL).toBe('abuddy');
   });
 
-  it('are refused without it, or with another', () => {
-    expect(acceptsConnection('/', TOKEN)).toBe(false);
+  it('are refused without it, with another, or with anything malformed', () => {
     expect(acceptsConnection(undefined, TOKEN)).toBe(false);
-    expect(acceptsConnection('/?token=guess', TOKEN)).toBe(false);
+    expect(acceptsConnection('abuddy', TOKEN)).toBe(false);
+    expect(acceptsConnection('abuddy, abuddy-token.guess', TOKEN)).toBe(false);
+    expect(acceptsConnection('abuddy, abuddy-token.', TOKEN)).toBe(false);
+    expect(acceptsConnection(TOKEN, TOKEN)).toBe(false);
+    expect(acceptsConnection('//[, ,,', TOKEN)).toBe(false);
   });
 });
 

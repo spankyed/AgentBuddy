@@ -17,9 +17,19 @@ const reloadingPacks = new Set<string>();
 /** The only interface the server listens on: the app's own processes and local tools reach it, nothing on the network does */
 export const API_HOST = '127.0.0.1';
 
-/** Whether a WebSocket connection may open: its URL carries the API token (`?token=`), as the app's windows send it */
-export function acceptsConnection(url: string | undefined, token = apiToken()): boolean {
-  return isApiToken(new URL(url ?? '/', 'http://127.0.0.1').searchParams.get('token'), token);
+/**
+ * The WebSocket subprotocol the app's windows speak, the one the server answers with. They send the API token as a
+ * second subprotocol (`abuddy-token.<token>`), not in the URL: browsers print a socket's URL when it fails to connect,
+ * and the app logs what the window prints. The renderer's API client (`packages/renderer/src/core/trpc.ts`) offers both.
+ */
+export const API_PROTOCOL = 'abuddy';
+const TOKEN_PROTOCOL = 'abuddy-token.';
+
+/** Whether a WebSocket connection may open: the subprotocols it offers (`Sec-WebSocket-Protocol`) carry the API token */
+export function acceptsConnection(offeredProtocols: string | undefined, token = apiToken()): boolean {
+  const given = (offeredProtocols ?? '').split(',').map((protocol) => protocol.trim())
+    .find((protocol) => protocol.startsWith(TOKEN_PROTOCOL))?.slice(TOKEN_PROTOCOL.length);
+  return isApiToken(given, token);
 }
 
 /**
@@ -90,7 +100,9 @@ export function createWebSocketServer() {
 
   const wss = new WebSocketServer({
     server: httpServer,
-    verifyClient: ({ req }: { req: http.IncomingMessage }) => acceptsConnection(req.url, token),
+    verifyClient: ({ req }: { req: http.IncomingMessage }) => acceptsConnection(req.headers['sec-websocket-protocol'], token),
+    // Answer with the app's protocol, never echoing the token one
+    handleProtocols: (protocols: Set<string>) => protocols.has(API_PROTOCOL) ? API_PROTOCOL : false,
   });
 
   httpServer.listen(port, API_HOST, () => {
