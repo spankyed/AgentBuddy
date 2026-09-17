@@ -94,6 +94,24 @@ describe('abuddy add step', () => {
   }, 180_000);
 });
 
+describe('abuddy add step in a pack without steps', () => {
+  it('creates the step list the manifest names, so the pack builds', async () => {
+    const bare = path.join(tmp, 'bare-pack');
+    fs.mkdirSync(bare, { recursive: true });
+    fs.writeFileSync(path.join(bare, 'abuddy.json'), JSON.stringify({ id: 'bare-pack', name: 'Bare', version: '1.0.0' }));
+    fs.writeFileSync(path.join(bare, 'package.json'), JSON.stringify({ name: 'bare-pack', type: 'module' }));
+    fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(bare, 'node_modules'), 'dir');
+
+    await addStep(['ping'], bare);
+
+    const manifest = JSON.parse(fs.readFileSync(path.join(bare, 'abuddy.json'), 'utf-8'));
+    expect(manifest.steps.register).toBe('src/extensions/steps/register.ts');
+    const register = fs.readFileSync(path.join(bare, manifest.steps.register), 'utf-8');
+    expect(register).toContain("import { pingStep } from './ping';");
+    expect(register).toMatch(/export const steps: StepDefinition\[\] = \[[^\]]*pingStep,\n\];/);
+  }, 60_000);
+});
+
 describe('abuddy add artifact and block', () => {
   beforeAll(() => {
     write('src/extensions/artifacts/register.ts', [

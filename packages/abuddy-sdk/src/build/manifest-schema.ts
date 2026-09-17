@@ -1,14 +1,25 @@
 import { z } from 'zod';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
+import { reservedEntries } from '../types/reserved-names.ts';
 
-/** Rejects a pack's declaration of a name or value the SDK owns */
-const notSdkOwned = (owned: Record<string, string>, field: string) => ({
-  check: (declared: Record<string, string>) =>
-    Object.entries(declared).every(([key, value]) => !(key in owned) && !Object.values(owned).includes(value)),
-  message: `${Object.keys(owned).join(', ')} are defined by the SDK and available to every pack; remove them from ${field}`,
-});
-const sdkEntities = notSdkOwned(SDK_ENTITIES, 'entities');
-const sdkRelKinds = notSdkOwned(SDK_REL_KINDS, 'relKinds');
+/** Rejects a pack's entries that use a name or value the SDK owns, naming each */
+const notSdkOwned = (owned: Record<string, string>) => (declared: Record<string, string>, ctx: z.RefinementCtx) => {
+  const taken = reservedEntries(declared, owned);
+  if (taken.length === 0) return;
+  ctx.addIssue({
+    code: z.ZodIssueCode.custom,
+    message: `${taken.join(', ')} ${taken.length === 1 ? 'is' : 'are'} defined by the SDK and available to every pack: remove ${taken.length === 1 ? 'it' : 'them'}`,
+  });
+};
+
+/** An entity's key is its type name: `entities: { Memo: "Memo" }` */
+const keysAreTypeNames = (declared: Record<string, string>, ctx: z.RefinementCtx) => {
+  for (const [key, value] of Object.entries(declared)) {
+    if (key !== value) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: `an entity's key must be its type name: use "${value}": "${value}"` });
+    }
+  }
+};
 
 // ── Sub-schemas ─────────────────────────────────────────────────────
 
@@ -212,10 +223,11 @@ export const ManifestSchema = z.object({
     .describe('Other packs this pack depends on. Keys are pack IDs, values are semver ranges or file/URL references.').optional(),
   permissions: z.array(PackPermissionSchema).describe('Capabilities this pack requires from the host.').optional(),
   entities: z.record(z.string(), z.string())
-    .refine(sdkEntities.check, { message: sdkEntities.message })
-    .describe(`EARS entity types this pack registers. Keys are enum names, values are string identifiers. The SDK defines ${Object.keys(SDK_ENTITIES).join(', ')}.`).optional(),
+    .superRefine(notSdkOwned(SDK_ENTITIES))
+    .superRefine(keysAreTypeNames)
+    .describe(`EARS entity types this pack registers, each key equal to its value, the type name ({ "Memo": "Memo" }). The SDK defines ${Object.keys(SDK_ENTITIES).join(', ')}.`).optional(),
   relKinds: z.record(z.string(), z.string())
-    .refine(sdkRelKinds.check, { message: sdkRelKinds.message })
+    .superRefine(notSdkOwned(SDK_REL_KINDS))
     .describe(`EARS relation kinds this pack registers. Keys are enum names, values are string identifiers. The SDK defines ${Object.keys(SDK_REL_KINDS).join(', ')}.`).optional(),
   partitionPolicy: PartitionPolicySchema.optional(),
   entityShapes: z.record(z.string(), EntityShapeSchema)

@@ -3,6 +3,21 @@ import { generateEntries } from '../generate-entries';
 import { validateName, toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, hasFlag, updateRegisterArray } from './templates';
 import { readManifest, writeManifest, addStepDefinition } from './manifest';
 
+/** The pack's list of step build definitions (`steps.build`), which `abuddy init` writes */
+export const STEPS_BUILD_TEMPLATE = `import type { StepDefinition } from '@abuddy/sdk/steps';
+
+export const steps: StepDefinition[] = [
+];
+`;
+
+/** The pack's list of step definitions (`steps.register`), which `abuddy init` writes */
+export const STEPS_REGISTER_TEMPLATE = `import type { StepDefinition } from '@abuddy/sdk/steps';
+
+export const steps: StepDefinition[] = [
+  // Add your step definitions here
+];
+`;
+
 const HELP = `
 Usage: abuddy add step <type> [options]
 
@@ -138,8 +153,18 @@ export async function addStep(args: string[], root: string) {
   }
 
   const manifest = readManifest(root);
-  const stepsConfig = manifest.steps;
-  const registerPath = stepsConfig?.register;
+  // Sets steps.register for a pack with no steps yet
+  addStepDefinition(manifest, {
+    type,
+    path: `src/extensions/steps/${type}`,
+    kind: isTrigger ? 'trigger' : 'step',
+  });
+  const stepsConfig = manifest.steps!;
+  const registerPath = stepsConfig.register;
+  // A pack not made by `abuddy init` may have no step lists yet
+  for (const [file, template] of [[registerPath, STEPS_REGISTER_TEMPLATE], [stepsConfig.build, STEPS_BUILD_TEMPLATE]] as const) {
+    if (file && writeIfNotExists(path.join(root, file), template)) created.push(path.join(root, file));
+  }
 
   if (registerPath) {
     const exportName = `${camel}Step`;
@@ -159,7 +184,7 @@ export async function addStep(args: string[], root: string) {
     );
   }
 
-  if (stepsConfig?.build) {
+  if (stepsConfig.build) {
     updateRegisterArray(
       path.join(root, stepsConfig.build),
       `import { ${camel}StepBuild } from './${type}/build';`,
@@ -167,11 +192,6 @@ export async function addStep(args: string[], root: string) {
     );
   }
 
-  addStepDefinition(manifest, {
-    type,
-    path: `src/extensions/steps/${type}`,
-    kind: isTrigger ? 'trigger' : 'step',
-  });
   writeManifest(root, manifest);
 
   await generateEntries([], root);

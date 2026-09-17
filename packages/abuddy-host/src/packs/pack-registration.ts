@@ -12,7 +12,7 @@ import type { PackRegistryView } from '@abuddy/sdk/runtime';
 import type { HostServices } from '@abuddy/sdk/services';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
-import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS } from '@abuddy/sdk/types';
+import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS, reservedEntries } from '@abuddy/sdk/types';
 import { makePolicy, registerRepository, unregisterRepository, type PartitionPolicy } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { createDefinitionStore, createDesignationStore, createStepStore } from './contributions.ts';
@@ -26,9 +26,13 @@ const HOST_SERVICE_NAMES = ['logger', 'emitter', 'repository', 'appData', 'trace
 const _allHostServicesNamed: Exclude<keyof HostServices, (typeof HOST_SERVICE_NAMES)[number]> extends never ? true : never = true;
 void _allHostServicesNamed;
 
-/** Entity types and relation kinds no pack may declare: the SDK's and the host's */
+/** Entity types no pack may declare: the SDK's and the host's */
 const RESERVED_ENTITIES: readonly string[] = [...Object.values(SDK_ENTITIES), ...HOST_ENTITY_TYPES] as const;
-const RESERVED_REL_KINDS: readonly string[] = [...Object.values(SDK_REL_KINDS)] as const;
+/** The app's own EARS names, as a manifest writes them, which no pack may use as a key or a value */
+const appEARS = (): PackEARS => ({
+  entities: { ...SDK_ENTITIES, ...Object.fromEntries(HOST_ENTITY_TYPES.map((type) => [type, type])) },
+  relKinds: SDK_REL_KINDS,
+});
 
 /**
  * Role → id of the system that plays it (`<packId>.<featureId>` for an external pack). A designated
@@ -102,7 +106,6 @@ export interface PackRegistry extends PackRegistryView {
   getEventValidationMap(): Map<string, Set<string>>;
   /** The SDK's entity types, the host's and the registered packs' */
   getRegisteredEntityTypes(): ReadonlySet<string>;
-  getRegisteredEARS(): PackEARS;
   getRegisteredEARSPolicy(): { excludedEntityTypes: string[] };
   /**
    * The app's partition policy, from the registered packs' EARS policies: an entity type any of them
@@ -164,20 +167,23 @@ export function createPackRegistry(): PackRegistry {
     policyCache = null;
   }
 
-  /** Throws when one of a pack's EARS names is reserved or another registered pack's */
+  /**
+   * Throws when a pack's EARS entry uses a name (key or value) the app or another registered pack declares:
+   * the rule the manifest schema and the code generator apply
+   */
   function checkEARS(registration: PackRegistration): void {
     if (!registration.ears) return;
     const kinds = [
-      ['entity type', Object.values(registration.ears.entities), RESERVED_ENTITIES, (ears: PackEARS) => ears.entities],
-      ['relation kind', Object.values(registration.ears.relKinds), RESERVED_REL_KINDS, (ears: PackEARS) => ears.relKinds],
+      ['entity type', (ears: PackEARS) => ears.entities],
+      ['relation kind', (ears: PackEARS) => ears.relKinds],
     ] as const;
-    for (const [kind, values, reserved, namesOf] of kinds) {
-      const taken = values.find((val) => reserved.includes(val));
-      if (taken) throw new Error(`EARS collision: ${kind} "${taken}" — pack "${registration.id}" vs the app's own "${taken}"`);
+    for (const [kind, namesOf] of kinds) {
+      const declared = namesOf(registration.ears);
+      const [reserved] = reservedEntries(declared, namesOf(appEARS()));
+      if (reserved) throw new Error(`EARS collision: ${kind} ${reserved} — pack "${registration.id}" vs the app's own`);
       for (const [existingId, existing] of registrations) {
-        const existingValues = existing.ears ? Object.values(namesOf(existing.ears)) : [];
-        const val = values.find((v) => existingValues.includes(v));
-        if (val) throw new Error(`EARS collision: ${kind} "${val}" — pack "${registration.id}" vs "${existingId}"`);
+        const [taken] = existing.ears ? reservedEntries(declared, namesOf(existing.ears)) : [];
+        if (taken) throw new Error(`EARS collision: ${kind} ${taken} — pack "${registration.id}" vs "${existingId}"`);
       }
     }
   }
@@ -365,18 +371,6 @@ export function createPackRegistry(): PackRegistry {
         }
       }
       return servicesCache;
-    },
-
-    getRegisteredEARS() {
-      const entities: Record<string, string> = { ...SDK_ENTITIES };
-      const relKinds: Record<string, string> = { ...SDK_REL_KINDS };
-      for (const reg of registrations.values()) {
-        if (reg.ears) {
-          Object.assign(entities, reg.ears.entities);
-          Object.assign(relKinds, reg.ears.relKinds);
-        }
-      }
-      return { entities, relKinds };
     },
 
     getRegisteredEARSPolicy,

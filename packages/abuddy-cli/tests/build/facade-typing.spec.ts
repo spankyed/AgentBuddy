@@ -235,9 +235,10 @@ findAll('Secret');
 findAll('Note');
 const tNodes = qx(PackEARS.Entity.TNode).linksTo(PackEARS.RelKind.SPAWNED, 'TNode').pickAll();
 export type TNodeShape = Expect<Equal<(typeof tNodes)[number]['tNodeType'], 'flow' | 'event' | 'step'>>;
-// Neither pack defines steps, so Node rows read as the SDK's NodeBase
+// Node rows are the dependency's step node types (app-pack defines none), a hand-written one that doesn't
+// narrow nodeType, and adds no required field, included
 const node = findAll('Node')[0]!;
-export type NodeFallback = Expect<Equal<typeof node.nodeType, string>>;
+export type DependencyStepNode = Expect<Equal<Extract<typeof node, { nodeType: 'ping' }>['target'], string>>;
 // A plain id leaves writes unchecked
 tx(plainId).put('text', 42);
 // @ts-expect-error undeclared entity name
@@ -253,6 +254,20 @@ function run(cmd: string, args: string[], cwd: string): { code: number; output: 
 }
 
 /** The two packs, built, in a temp dir; node_modules link the workspace or the packed packages */
+/** A step in base-pack, whose node types its dependents read: the scaffolded one and a hand-written one */
+function addBaseStep(dir: string): void {
+  const added = run(process.execPath, [CLI, 'add', 'step', 'ping'], dir);
+  if (added.code !== 0) throw new Error(`abuddy add step failed in base-pack:\n${added.output}`);
+  const types = path.join(dir, 'src', 'extensions', 'steps', 'ping', 'types.ts');
+  const scaffolded = fs.readFileSync(types, 'utf-8');
+  if (!/export interface PingNode extends NodeBase \{\n {2}nodeType: 'ping';/.test(scaffolded)) {
+    throw new Error(`unexpected step types scaffold:\n${scaffolded}`);
+  }
+  fs.writeFileSync(types, scaffolded
+    .replace("nodeType: 'ping';", "nodeType: 'ping';\n  target: string;")
+    + '\n/** A node type that doesn\'t narrow nodeType and adds no required field */\nexport interface NoteNode extends NodeBase {\n  note?: string;\n}\n');
+}
+
 function buildPacks(published: boolean): string {
   const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'facade-typing-'));
   const modules = published ? path.join(installPublishedPackages(), 'node_modules') : path.join(REPO_ROOT, 'node_modules');
@@ -260,6 +275,7 @@ function buildPacks(published: boolean): string {
     const dir = path.join(parent, name);
     write(dir, files);
     fs.symlinkSync(modules, path.join(dir, 'node_modules'), 'dir');
+    if (name === 'base-pack') addBaseStep(dir);
     const build = run(process.execPath, [CLI, 'build'], dir);
     if (build.code !== 0) throw new Error(`abuddy build failed in ${name}:\n${build.output}`);
   }

@@ -12,7 +12,7 @@ import { createPackRegistry } from '../../src/packs/pack-registration.ts';
 const registry = createPackRegistry();
 startTestRuntime({ packs: registry });
 const {
-  getPackContributions, getRegisteredEARS, getRegisteredEARSPolicy, getRegisteredEntityTypes, getRegisteredServices,
+  getPackContributions, getRegisteredEARSPolicy, getRegisteredEntityTypes, getRegisteredServices,
   registerPack, resolveSystemAddress, runRegisteredBootSeeds, unregisterPack,
 } = registry;
 
@@ -159,15 +159,21 @@ describe('registerPack entities', () => {
     expect(() => registerEntities('second-pack', { Memo: 'Memo' })).toThrow('EARS collision: entity type "Memo" — pack "second-pack" vs "first-pack"');
   });
 
-  it("rejects a relation kind another pack registered", () => {
+  it("rejects a relation kind another pack registered, by its name or its value", () => {
     registerEntities('first-pack', {}, { PINNED: 'pinned' });
-    expect(() => registerEntities('second-pack', {}, { PINNED: 'pinned' })).toThrow('EARS collision: relation kind "pinned" — pack "second-pack" vs "first-pack"');
+    expect(() => registerEntities('second-pack', {}, { PINNED: 'pinned' })).toThrow('EARS collision: relation kind "PINNED": "pinned" — pack "second-pack" vs "first-pack"');
+    expect(() => registerEntities('second-pack', {}, { STUCK: 'pinned' })).toThrow('EARS collision: relation kind "STUCK": "pinned" — pack "second-pack" vs "first-pack"');
+    expect(() => registerEntities('second-pack', {}, { PINNED: 'stuck' })).toThrow('EARS collision: relation kind "PINNED": "stuck" — pack "second-pack" vs "first-pack"');
   });
 
-  it("has the SDK's and the host's entities and relation kinds with no pack registered, and a pack's added", () => {
+  it("rejects a pack built when its registration still listed its dependency's names", () => {
+    registerEntities('base-pack', { Thread: 'Thread' });
+    expect(() => registerEntities('older-pack', { Thread: 'Thread', Memo: 'Memo' })).toThrow('EARS collision: entity type "Thread" — pack "older-pack" vs "base-pack"');
+  });
+
+  it("has the SDK's and the host's entity types with no pack registered, and a pack's added", () => {
     const appEntities = [...Object.values(SDK_ENTITIES), ...HOST_ENTITY_TYPES];
     expect([...getRegisteredEntityTypes()].sort()).toEqual([...appEntities].sort());
-    expect(getRegisteredEARS().relKinds).toMatchObject({ CONTAINS: 'contains', TRANSITIONS_TO: 'transitions_to' });
     registerEntities('first-pack', { Memo: 'Memo' }, { PINNED: 'pinned' });
     expect([...getRegisteredEntityTypes()].sort()).toEqual([...appEntities, 'Memo'].sort());
     expect(getPackContributions('first-pack')?.relKinds).toEqual({ PINNED: 'pinned' });
@@ -176,7 +182,9 @@ describe('registerPack entities', () => {
   it.each([
     [{ AppState: 'AppState' }, {}, 'entity type "AppState"'],
     [{ Flow: 'Flow' }, {}, 'entity type "Flow"'],
-    [{}, { CONTAINS: 'contains' }, 'relation kind "contains"'],
+    [{}, { CONTAINS: 'contains' }, 'relation kind "CONTAINS": "contains"'],
+    [{}, { HOLDS: 'contains' }, 'relation kind "HOLDS": "contains"'],
+    [{}, { CONTAINS: 'holds' }, 'relation kind "CONTAINS": "holds"'],
   ])('rejects %o %o, which the app declares', (entities, relKinds, name) => {
     expect(() => registerEntities('first-pack', entities, relKinds)).toThrow(`EARS collision: ${name} — pack "first-pack" vs the app's own`);
     expect(getPackContributions('first-pack')).toBeNull();

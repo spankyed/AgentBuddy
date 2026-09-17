@@ -65,16 +65,58 @@
     "entities": {
       "type": "object",
       "additionalProperties": {
-        "type": "string"
+        "type": "string",
+        "not": {
+          "enum": [
+            "Relation",
+            "Flow",
+            "Node",
+            "TNode",
+            "Action",
+            "Prompt"
+          ]
+        }
       },
-      "description": "EARS entity types this pack registers. Keys are enum names, values are string identifiers. The SDK defines Relation, Flow, Node, TNode, Action, Prompt."
+      "description": "EARS entity types this pack registers, each key equal to its value, the type name ({ \"Memo\": \"Memo\" }). The SDK defines Relation, Flow, Node, TNode, Action, Prompt.",
+      "propertyNames": {
+        "not": {
+          "enum": [
+            "Relation",
+            "Flow",
+            "Node",
+            "TNode",
+            "Action",
+            "Prompt"
+          ]
+        }
+      }
     },
     "relKinds": {
       "type": "object",
       "additionalProperties": {
-        "type": "string"
+        "type": "string",
+        "not": {
+          "enum": [
+            "contains",
+            "transitions_to",
+            "instance_of",
+            "spawned",
+            "tracked"
+          ]
+        }
       },
-      "description": "EARS relation kinds this pack registers. Keys are enum names, values are string identifiers. The SDK defines CONTAINS, TRANSITIONS_TO, INSTANCE_OF, SPAWNED, TRACKED."
+      "description": "EARS relation kinds this pack registers. Keys are enum names, values are string identifiers. The SDK defines CONTAINS, TRANSITIONS_TO, INSTANCE_OF, SPAWNED, TRACKED.",
+      "propertyNames": {
+        "not": {
+          "enum": [
+            "CONTAINS",
+            "TRANSITIONS_TO",
+            "INSTANCE_OF",
+            "SPAWNED",
+            "TRACKED"
+          ]
+        }
+      }
     },
     "partitionPolicy": {
       "type": "object",

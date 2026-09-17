@@ -12,16 +12,25 @@ describe('parseManifest', () => {
     expect(result.errors).toEqual([]);
   });
 
-  it("rejects declaring the SDK's entities or relation kinds, by name or value", () => {
+  it("rejects declaring the SDK's entities or relation kinds, by name or value, naming each", () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-    for (const entities of [{ Relation: 'Relation' }, { Link: 'Relation' }, { Action: 'Action' }, { Run: 'TNode' }, { Template: 'Prompt' }]) {
-      expect(parseManifest({ ...pack, entities }).errors).toEqual([expect.stringMatching(/"entities": Relation, Flow, Node, TNode, Action, Prompt are defined by the SDK/)]);
-    }
-    for (const relKinds of [{ CONTAINS: 'contains' }, { NEXT: 'transitions_to' }]) {
-      expect(parseManifest({ ...pack, relKinds }).errors).toEqual([expect.stringMatching(/"relKinds": CONTAINS, TRANSITIONS_TO, INSTANCE_OF, SPAWNED, TRACKED are defined by the SDK/)]);
-    }
+    const errorsOf = (field: object) => parseManifest({ ...pack, ...field }).errors;
+    expect(errorsOf({ entities: { Relation: 'Relation', Memo: 'Memo' } })).toEqual([
+      'abuddy.json "entities": "Relation" is defined by the SDK and available to every pack: remove it',
+    ]);
+    expect(errorsOf({ relKinds: { CONTAINS: 'contains', NEXT: 'transitions_to', HOLDS: 'holds', PINNED: 'pinned' } })).toEqual([
+      'abuddy.json "relKinds": "CONTAINS": "contains", "NEXT": "transitions_to" are defined by the SDK and available to every pack: remove them',
+    ]);
+    expect(errorsOf({ relKinds: { CONTAINS: 'holds' } })).toEqual([expect.stringContaining('"CONTAINS": "holds" is defined by the SDK')]);
+    // A name only an object's prototype has is a pack's to use
+    expect(errorsOf({ entities: { constructor: 'constructor', toString: 'toString' } })).toEqual([]);
     // Settings is a pack's entity (default-setup's)
-    expect(parseManifest({ ...pack, entities: { Memo: 'Memo', Note: 'Note', Settings: 'Settings' }, relKinds: { PINNED: 'pinned' } }).errors).toEqual([]);
+    expect(errorsOf({ entities: { Memo: 'Memo', Note: 'Note', Settings: 'Settings' }, relKinds: { PINNED: 'pinned' } })).toEqual([]);
+  });
+
+  it("rejects an entity whose key isn't its type name", () => {
+    const errors = parseManifest({ id: 'test-pack', name: 'Test', version: '0.1.0', entities: { Memo: 'memo', Note: 'Note' } }).errors;
+    expect(errors).toEqual(['abuddy.json "entities.Memo": an entity\'s key must be its type name: use "memo": "memo"']);
   });
 
   it('accepts a minimal valid manifest', () => {

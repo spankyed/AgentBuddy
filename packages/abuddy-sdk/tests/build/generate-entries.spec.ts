@@ -134,6 +134,7 @@ function typedDependency(systems: Record<string, string>): PackSnapshot {
   const events = Object.entries(systems).map(([id, type]) => `'${id}': { type: '${type}'; n: number }`).join('; ');
   return dependency({ features: Object.keys(systems).map((id) => system(id)) }, { [PACK_TYPES_DEF]: [
     'export type PackEntityShapes = {};',
+    'export type PackStepNodes = never;',
     'export type PackEvents = {};',
     `export type PackSystemEvents = { ${events} };`,
     'export type Services = {};',
@@ -240,7 +241,7 @@ describe('dependency types in .abuddy/generated/types.ts', () => {
       [PACK_TYPES_DEF]: 'type Local = {};\ntype TagEntity = {};\nexport type { Local as PackEntityShapes, TagEntity };\n',
     } }]]));
     expect(types).toContain("export type { TagEntity } from '../deps/base-pack/defs/pack-types.js';");
-    expect(types).not.toMatch(/Local|PackEntityShapes/);
+    expect(types).not.toMatch(/Local|PackEntityShapes|PackStepNodes/);
   });
 });
 
@@ -264,12 +265,13 @@ describe('generated entity shapes', () => {
       { 'base-pack': dependency({}) },
     )['src/__generated__/ears.ts'];
     expect(withSteps).toContain("import type { NodeEntity } from './types.js';");
-    expect(withSteps).toContain('type PackNodes = NodeEntity | StepNodesOf<__dep_base_pack_PackEntityShapes>;');
-    expect(withSteps).toContain("Node: [PackNodes] extends [never] ? SdkEntityShapes['Node'] : PackNodes;");
+    expect(withSteps).toContain("import type { PackStepNodes as __dep_base_pack_PackStepNodes } from './deps/base-pack.js';");
+    expect(withSteps).toContain('export type PackStepNodes = NodeEntity | __dep_base_pack_PackStepNodes;');
+    expect(withSteps).toContain("Node: [PackStepNodes] extends [never] ? SdkEntityShapes['Node'] : PackStepNodes;");
 
     const withoutSteps = generate({}, { 'base-pack': dependency({}) })['src/__generated__/ears.ts'];
     expect(withoutSteps).not.toContain("import type { NodeEntity }");
-    expect(withoutSteps).toContain('type PackNodes = never | StepNodesOf<__dep_base_pack_PackEntityShapes>;');
+    expect(withoutSteps).toContain('export type PackStepNodes = never | __dep_base_pack_PackStepNodes;');
   });
 
   it('fails when a declared shape type is not exported', () => {
@@ -441,13 +443,28 @@ describe("the SDK's entities and relation kinds", () => {
     expect(ears).toContain('export type Entity = string;');
   });
 
-  it("ignores dependencies built when their manifests still declared the SDK's names", () => {
-    const base = { ...dependency({}), types: { entities: { Relation: 'Relation', Flow: 'Flow', Tag: 'Tag' }, relKinds: { CONTAINS: 'contains' } } };
-    const other = { ...dependency({ id: 'other-pack' }), types: { entities: { Relation: 'Relation', Flow: 'Flow', Memo: 'Memo' }, relKinds: { CONTAINS: 'contains' } } };
-    const ears = generate({ dependencies: { 'base-pack': '*', 'other-pack': '*' } }, { 'base-pack': base, 'other-pack': other })['src/__generated__/ears.ts'];
-    expect(ears).toContain("export const Relation = 'Relation';");
-    expect(ears).toContain("export const Tag = 'Tag';");
-    expect(ears).toContain("export const Memo = 'Memo';");
+  it("rejects a dependency whose types still declare the SDK's names, asking to rebuild it", () => {
+    const base = { ...dependency({}), types: { entities: { Flow: 'Flow', Tag: 'Tag' }, relKinds: { NEXT: 'transitions_to' } } };
+    expect(() => generate({ dependencies: { 'base-pack': '*' } }, { 'base-pack': base })).toThrow(
+      'Type conflicts:\n  entity "Flow" from "base-pack" is defined by the SDK: rebuild "base-pack" with the current abuddy CLI',
+    );
+    const relKindsOnly = { ...dependency({}), types: { entities: { Tag: 'Tag' }, relKinds: { NEXT: 'transitions_to' } } };
+    expect(() => generate({ dependencies: { 'base-pack': '*' } }, { 'base-pack': relKindsOnly }))
+      .toThrow('relKind "NEXT": "transitions_to" from "base-pack" is defined by the SDK');
+  });
+
+  it('rejects a name or value two sources declare', () => {
+    const base = { ...dependency({}), types: { entities: { Tag: 'Tag' }, relKinds: { TAGGED: 'tagged' } } };
+    const withBase = (manifest: object) => () => generate({ ...manifest, dependencies: { 'base-pack': '*' } }, { 'base-pack': base });
+    expect(withBase({ entities: { Tag: 'Tag' } })).toThrow('entity "Tag" declared by both "demo-pack" and "base-pack"');
+    expect(withBase({ relKinds: { LABELLED: 'tagged' } })).toThrow('relKind "TAGGED" declared by both "demo-pack" and "base-pack"');
+    expect(withBase({ relKinds: { TAGGED: 'labelled' } })).toThrow('relKind "TAGGED" declared by both "demo-pack" and "base-pack"');
+  });
+
+  it('names entity types by their values in EntityName', () => {
+    const base = { ...dependency({}), types: { entities: { Tag: 'Tag' }, relKinds: {} } };
+    const ears = generate({ entities: { Memo: 'Memo' }, dependencies: { 'base-pack': '*' } }, { 'base-pack': base })['src/__generated__/ears.ts'];
+    expect(ears).toMatch(/export type EntityName = [^;]*'Memo'[^;]*'Tag'[^;]*'Relation'/);
   });
 
   it("registers only the pack's own entities and relation kinds, not its dependencies' or the SDK's", () => {
@@ -460,7 +477,7 @@ describe("the SDK's entities and relation kinds", () => {
   it("rejects a pack's own declaration of the SDK's names", () => {
     expect(() => generate({ entities: { Relation: 'Relation' } })).toThrow(/entity "Relation" is defined by the SDK/);
     expect(() => generate({ entities: { Action: 'Action' } })).toThrow(/entity "Action" is defined by the SDK/);
-    expect(() => generate({ relKinds: { TRANSITIONS_TO: 'transitions_to' } })).toThrow(/relKind "TRANSITIONS_TO" is defined by the SDK/);
+    expect(() => generate({ relKinds: { TRANSITIONS_TO: 'transitions_to' } })).toThrow(/relKind "TRANSITIONS_TO": "transitions_to" is defined by the SDK/);
   });
 });
 

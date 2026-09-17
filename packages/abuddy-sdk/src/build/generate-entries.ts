@@ -2,6 +2,7 @@ import { readFileSync, existsSync, statSync } from 'fs';
 import { extname, join } from 'path';
 import { dependencyCommands, type PackManifest, type PackFeatureEntry, type PackTypeManifest, type PackSnapshot, type StepEntry } from './manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
+import { reservedEntries } from '../types/reserved-names.ts';
 import { formatEntities } from './seeds/records.ts';
 import { resolveSeeds, type ResolvedSeed } from './seeds/resolve.ts';
 import { createModuleExports, type ExportInfo, type ModuleExports } from './module-exports.ts';
@@ -21,37 +22,37 @@ export function mergeRegistries(
   manifest: PackManifest,
   depManifests: Map<string, PackTypeManifest>,
 ) {
-  function merge(own: Record<string, string> | undefined, kind: string) {
-    const map = new Map<string, RegistryEntry>();
-    const errors: string[] = [];
-    // The SDK's own entities and relation kinds are in every pack
+  function merge(own: Record<string, string> = {}, kind: string) {
+    // The SDK's own entities and relation kinds are in every pack, and no pack declares them
     const sdkOwned: Record<string, string> = kind === 'entity' ? SDK_ENTITIES : SDK_REL_KINDS;
-
-    if (own) {
-      for (const [key, value] of Object.entries(own))
-        map.set(key, { value, source: ownId });
-    }
-
+    const errors = reservedEntries(own, sdkOwned).map((entry) => `${kind} ${entry} is defined by the SDK; remove it from abuddy.json`);
     for (const [depId, dep] of depManifests) {
       const depEntries = kind === 'entity' ? dep.entities : dep.relKinds;
-      for (const [key, value] of Object.entries(depEntries)) {
-        // A dependency built before the SDK owned this name still lists it
-        if (key in sdkOwned) continue;
-        const existing = map.get(key);
-        if (existing && existing.source !== depId) {
-          errors.push(`${kind} "${key}" declared by both "${existing.source}" and "${depId}"`);
-          continue;
-        }
-        map.set(key, { value, source: depId });
+      for (const entry of reservedEntries(depEntries, sdkOwned)) {
+        errors.push(`${kind} ${entry} from "${depId}" is defined by the SDK: rebuild "${depId}" with the current abuddy CLI`);
       }
     }
-
-    for (const [key, value] of Object.entries(sdkOwned)) {
-      if (map.get(key)?.source === ownId) errors.push(`${kind} "${key}" is defined by the SDK; remove it from abuddy.json`);
-      map.set(key, { value, source: SDK_SOURCE });
-    }
-
     if (errors.length > 0) throw new Error(`Type conflicts:\n  ${errors.join('\n  ')}`);
+
+    const map = new Map<string, RegistryEntry>();
+    // Each name and each value has one source
+    const valueSources = new Map<string, string>();
+    const sources: Array<[string, Record<string, string>]> = [[ownId, own]];
+    for (const [depId, dep] of depManifests) sources.push([depId, kind === 'entity' ? dep.entities : dep.relKinds]);
+    for (const [source, entries] of sources) {
+      for (const [key, value] of Object.entries(entries)) {
+        const existing = map.get(key)?.source ?? valueSources.get(value);
+        if (existing !== undefined && existing !== source) {
+          errors.push(`${kind} "${key}" declared by both "${existing}" and "${source}"`);
+          continue;
+        }
+        map.set(key, { value, source });
+        valueSources.set(value, source);
+      }
+    }
+    if (errors.length > 0) throw new Error(`Type conflicts:\n  ${errors.join('\n  ')}`);
+
+    for (const [key, value] of Object.entries(sdkOwned)) map.set(key, { value, source: SDK_SOURCE });
     return map;
   }
 
@@ -156,7 +157,7 @@ export type AllEntities = EARS.Entity;
 // ── Dependency type aggregation ─────────────────────────────────
 
 // Names the generated facades provide: re-exporting a dependency's would shadow them
-const EARS_PROVIDED = new Set(['EARS', 'BaseEntity', 'AllEntities', 'PackEntityShapes', 'PackEvents', 'Repositories']);
+const EARS_PROVIDED = new Set(['EARS', 'BaseEntity', 'AllEntities', 'PackEntityShapes', 'PackStepNodes', 'PackEvents', 'Repositories']);
 
 function parseExportedTypeNames(content: string): string[] {
   const names: string[] = [];
@@ -648,9 +649,12 @@ ${regProps.join('\n')}
     const registry = packRegistry();
     const { imports: shapeImports, entries: shapeEntries } = entityShapeEntries();
     const depShapes = depTypeImports('PackEntityShapes');
-    const entityNames = [...registry.entities.keys()].map((name) => `'${name}'`);
+    // The type names rows carry (the values; abuddy.json requires each key to equal its value)
+    const entityNames = [...registry.entities.values()].map(({ value }) => `'${value}'`);
     const ownNodes = stepNodeTypes().length > 0;
-    const packNodes = [ownNodes ? 'NodeEntity' : 'never', ...depShapes.aliases.map((a) => `StepNodesOf<${a}>`)].join(' | ');
+    // Each dependency's facade names its step node types (never when it defines none)
+    const depNodes = depTypeImports('PackStepNodes');
+    const packNodes = [ownNodes ? 'NodeEntity' : 'never', ...depNodes.aliases].join(' | ');
     return `${emitEARS(manifest.id, registry)}
 // ── Typed EARS helpers ──────────────────────────────────────────
 // The query helpers typed against this pack's entity shapes (its own and its
@@ -661,25 +665,22 @@ import { defineEars, type ShapeOf } from '@abuddy/ears';
 import type { SdkEntityShapes } from '@abuddy/sdk';
 ${ownNodes ? "import type { NodeEntity } from './types.js';\n" : ''}${shapeImports.join('\n')}
 
-${depShapes.imports.join('\n')}
+${[...depShapes.imports, ...depNodes.imports].join('\n')}
 
 /** Entity shapes this pack declares */
 export type OwnEntityShapes = {
 ${shapeEntries.join('\n')}
 };
 
-/** A dependency's step node types; never when it defines none (its Node rows read as the SDK's NodeBase) */
-type StepNodesOf<S> = S extends { Node: infer N } ? (SdkEntityShapes['Node'] extends N ? never : N) : never;
-
-/** Node rows: the step node types of this pack and its dependencies */
-type PackNodes = ${packNodes};
+/** The step node types of this pack and its dependencies; never when none defines one */
+export type PackStepNodes = ${packNodes};
 
 /**
  * Every entity shape this pack can read: the SDK's, its own and its dependencies'. Node is the union of
  * the step node types (NodeBase when no step defines one), not an intersection of each pack's.
  */
 export type PackShapes = Omit<SdkEntityShapes & OwnEntityShapes${depShapes.aliases.map((a) => ` & ${a}`).join('')}, 'Node'> & {
-  Node: [PackNodes] extends [never] ? SdkEntityShapes['Node'] : PackNodes;
+  Node: [PackStepNodes] extends [never] ? SdkEntityShapes['Node'] : PackStepNodes;
 };
 
 /** An entity type's shape in this pack; undeclared types read as base fields plus \`unknown\` values. */
@@ -1031,7 +1032,7 @@ export const seedRuntime: SeedRuntime = {
   /** The facade types dependents import, bundled into dist/types/pack-types.d.ts by \`abuddy build\` */
   function generatePackTypes(): string {
     return `${HEADER}
-export type { PackShapes as PackEntityShapes } from './ears.js';
+export type { PackShapes as PackEntityShapes, PackStepNodes } from './ears.js';
 export type { PackEvents, PackSystemEvents } from './events.js';
 export type { Services } from './services.js';
 export type { Repositories } from './repository.js';

@@ -4,6 +4,7 @@ import * as readline from 'node:readline';
 import semver from 'semver';
 import { generate, resolveDeps } from './generate';
 import { generateEntries } from './generate-entries';
+import { STEPS_BUILD_TEMPLATE, STEPS_REGISTER_TEMPLATE } from './add/step';
 import { cliVersion, readManifest, sdkVersion } from '../utils';
 
 const MANIFEST_TEMPLATE = (name: string) => {
@@ -251,18 +252,6 @@ export function scaffoldUnitTestSetup(root: string): UnitTestSetup {
 
 // Build-time facets only (no runtime handlers or FE): bundled to build/steps.build.mjs so packs
 // that depend on this one validate their flows with this pack's step code
-const STEPS_BUILD_TEMPLATE = `import type { StepDefinition } from '@abuddy/sdk/steps';
-
-export const steps: StepDefinition[] = [
-];
-`;
-
-const STEPS_REGISTER_TEMPLATE = `import type { StepDefinition } from '@abuddy/sdk/steps';
-
-export const steps: StepDefinition[] = [
-  // Add your step definitions here
-];
-`;
 
 const EXAMPLE_TEST_TEMPLATE = (name: string) => {
   const pascalName = name.split('-').map(w => w[0].toUpperCase() + w.slice(1)).join('');
