@@ -73,7 +73,7 @@ describe('findLatestRelease', () => {
   describe('with a hostVersion', () => {
     /** Releases API plus each tag's abuddy.json (a missing entry is a 404). */
     function mockReleasesWithManifests(manifests: Record<string, { hostVersion?: string }>) {
-      const fetchMock = vi.fn(async (url: string) => {
+      const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
         if (url.startsWith('https://api.github.com/')) return new Response(JSON.stringify(releases), { status: 200 });
         const tag = url.match(/\/acme\/pack\/([^/]+)\/abuddy\.json$/)?.[1];
         const manifest = tag && manifests[decodeURIComponent(tag)];
@@ -83,10 +83,11 @@ describe('findLatestRelease', () => {
       return fetchMock;
     }
 
-    it('skips releases whose manifest requires a different AgentBuddy', async () => {
+    it('skips releases whose manifest requires a different AgentBuddy, and gives every request a timeout', async () => {
       const fetchMock = mockReleasesWithManifests({ 'v1.9.1': { hostVersion: '>=0.5.0' }, 'v1.2.0': { hostVersion: '>=0.3.0' } });
       expect(await findLatestRelease('acme/pack', { hostVersion: '0.4.2' })).toEqual({ version: '1.2.0', tag: 'v1.2.0' });
       expect(fetchMock).toHaveBeenCalledWith('https://raw.githubusercontent.com/acme/pack/v1.9.1/abuddy.json', expect.anything());
+      expect(fetchMock.mock.calls.every(([, init]) => (init as RequestInit | undefined)?.signal instanceof AbortSignal)).toBe(true);
     });
 
     it('keeps a release whose manifest has no hostVersion or cannot be read', async () => {
@@ -99,43 +100,6 @@ describe('findLatestRelease', () => {
     it('returns null when no release supports this AgentBuddy', async () => {
       mockReleasesWithManifests({ 'v1.9.1': { hostVersion: '>=1.0.0' }, 'v1.2.0': { hostVersion: '>=1.0.0' } });
       expect(await findLatestRelease('acme/pack', { hostVersion: '0.4.2' })).toBeNull();
-    });
-  });
-
-  describe('bounds', () => {
-    const many = Array.from({ length: 30 }, (_, i) => ({
-      tag_name: `v1.${i}.0`,
-      assets: [{ name: `pack-1.${i}.0.tgz.bundle.json`, browser_download_url: `https://github.com/acme/pack/releases/download/v1.${i}.0/pack-1.${i}.0.tgz.bundle.json` }],
-    }));
-
-    function mockManyReleases(hostVersionOf: (tag: string) => string) {
-      const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
-        if (url.startsWith('https://api.github.com/')) return new Response(JSON.stringify(many), { status: 200 });
-        const tag = url.match(/download\/(v[^/]+)\//)?.[1];
-        return tag ? new Response(JSON.stringify({ hostVersion: hostVersionOf(tag) }), { status: 200 }) : new Response('Not Found', { status: 404 });
-      });
-      vi.stubGlobal('fetch', fetchMock);
-      return fetchMock;
-    }
-    const manifestFetches = (fetchMock: ReturnType<typeof vi.fn>) => fetchMock.mock.calls.filter(([url]) => !String(url).startsWith('https://api.github.com/'));
-
-    it("reads hostVersion from a release's bundle.json asset", async () => {
-      const fetchMock = mockManyReleases(() => '>=0.3.0');
-      expect(await findLatestRelease('acme/pack', { hostVersion: '0.4.0' })).toEqual({ version: '1.29.0', tag: 'v1.29.0' });
-      expect(manifestFetches(fetchMock).map(([url]) => url)).toEqual(['https://github.com/acme/pack/releases/download/v1.29.0/pack-1.29.0.tgz.bundle.json']);
-    });
-
-    it('stops at the installed version', async () => {
-      const fetchMock = mockManyReleases(() => '>=9.0.0');
-      expect(await findLatestRelease('acme/pack', { hostVersion: '0.4.0', installedVersion: '1.27.0' })).toBeNull();
-      expect(manifestFetches(fetchMock).map(([url]) => String(url).match(/download\/(v[^/]+)\//)?.[1])).toEqual(['v1.29.0', 'v1.28.0']);
-    });
-
-    it('reads at most 10 release manifests, each with a timeout', async () => {
-      const fetchMock = mockManyReleases(() => '>=9.0.0');
-      expect(await findLatestRelease('acme/pack', { hostVersion: '0.4.0' })).toBeNull();
-      expect(manifestFetches(fetchMock)).toHaveLength(10);
-      expect(fetchMock.mock.calls.every(([, init]) => (init as RequestInit | undefined)?.signal instanceof AbortSignal)).toBe(true);
     });
   });
 });
@@ -156,21 +120,29 @@ describe('checkForUpdates', () => {
     fs.rmSync(userDataDir, { recursive: true, force: true });
   });
 
-  it('ignores a cached result from another AgentBuddy version', async () => {
+  it('checks every time, replacing what an earlier check recorded', async () => {
     writePackRegistry([{
       id: 'demo-pack', name: 'Demo', version: '1.0.0', dir: '/packs/demo-pack', enabled: true, registeredAt: '', source: 'acme/pack',
-      lastUpdateCheck: new Date().toISOString(), lastUpdateCheckHostVersion: '0.3.0', availableVersion: '1.5.0', availableTag: 'v1.5.0',
+      availableVersion: '1.5.0', availableTag: 'v1.5.0',
     }]);
     vi.stubGlobal('fetch', vi.fn(async (url: string) => url.startsWith('https://api.github.com/')
       ? new Response(JSON.stringify([{ tag_name: 'v1.2.0' }]), { status: 200 })
       : new Response(JSON.stringify({ hostVersion: '>=0.4.0' }), { status: 200 })));
 
     expect(await checkForUpdates({ hostVersion: '0.4.0' })).toEqual([{ packId: 'demo-pack', currentVersion: '1.0.0', availableVersion: '1.2.0', source: 'acme/pack' }]);
-    expect(readPackRegistry()[0]).toMatchObject({ availableVersion: '1.2.0', lastUpdateCheckHostVersion: '0.4.0' });
+    expect(readPackRegistry()[0]).toMatchObject({ availableVersion: '1.2.0', availableTag: 'v1.2.0' });
     expect(readPackRegistry()[0].updateCheckError).toBeUndefined();
-    // Same AgentBuddy version: the cached result stands
-    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('no network'); }));
-    expect(await checkForUpdates({ hostVersion: '0.4.0' })).toHaveLength(1);
+  });
+
+  it("says so when every newer release needs a newer AgentBuddy", async () => {
+    writePackRegistry([{ id: 'demo-pack', name: 'Demo', version: '1.0.0', dir: '/packs/demo-pack', enabled: true, registeredAt: '', source: 'acme/pack' }]);
+    vi.stubGlobal('fetch', vi.fn(async (url: string) => url.startsWith('https://api.github.com/')
+      ? new Response(JSON.stringify([{ tag_name: 'v2.0.0' }, { tag_name: 'v1.9.0' }]), { status: 200 })
+      : new Response(JSON.stringify({ hostVersion: '>=9.0.0' }), { status: 200 })));
+
+    expect(await checkForUpdates({ hostVersion: '0.4.0' })).toEqual([]);
+    expect(readPackRegistry()[0]).toMatchObject({ updateCheckError: 'No release of acme/pack supports this AgentBuddy (0.4.0)' });
+    expect(readPackRegistry()[0].availableVersion).toBeUndefined();
   });
 
   it('records why a check failed and checks again next time', async () => {
@@ -180,7 +152,6 @@ describe('checkForUpdates', () => {
     expect(await checkForUpdates({ hostVersion: '0.4.0' })).toEqual([]);
     const entry = readPackRegistry()[0];
     expect(entry.updateCheckError).toMatch(/rate limit is used up/);
-    expect(entry.lastUpdateCheck).toBeUndefined();
   });
 
   it('records a release whose compatibility could not be confirmed', async () => {

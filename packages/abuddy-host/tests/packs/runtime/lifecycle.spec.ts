@@ -234,10 +234,9 @@ describe('registry source and update tracking', () => {
     expect(entries).toHaveLength(1);
     expect(entries[0].source).toBe('owner/repo');
     expect(entries[0].availableVersion).toBeUndefined();
-    expect(entries[0].lastUpdateCheck).toBeUndefined();
   });
 
-  it('stores availableVersion and lastUpdateCheck after update check', async () => {
+  it('stores availableVersion after an update check', async () => {
     const { readPackRegistry, modifyRegistry, addToRegistry } = await import('../../../src/packs/pack-registry.ts');
 
     modifyRegistry(entries => addToRegistry(entries, {
@@ -249,18 +248,12 @@ describe('registry source and update tracking', () => {
       source: 'owner/versioned',
     }));
 
-    const now = new Date().toISOString();
     modifyRegistry(entries =>
-      entries.map(e => e.id === 'versioned-pack'
-        ? { ...e, availableVersion: '2.0.0', lastUpdateCheck: now }
-        : e,
-      ),
+      entries.map(e => e.id === 'versioned-pack' ? { ...e, availableVersion: '2.0.0' } : e),
     );
 
     const entries = readPackRegistry();
-    const pack = entries.find(e => e.id === 'versioned-pack')!;
-    expect(pack.availableVersion).toBe('2.0.0');
-    expect(pack.lastUpdateCheck).toBe(now);
+    expect(entries.find(e => e.id === 'versioned-pack')!.availableVersion).toBe('2.0.0');
   });
 
   it('getAvailableUpdates returns packs with newer versions', async () => {

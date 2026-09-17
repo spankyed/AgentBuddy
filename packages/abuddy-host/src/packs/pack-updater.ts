@@ -7,8 +7,6 @@ import { fetchReleaseAsset, fetchRepoFile, githubFetch, type GitHubReleaseAsset 
 
 const logger = createLogger('pack-updater');
 
-const UPDATE_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 hours
-
 export interface UpdateCheckResult {
   packId: string;
   currentVersion: string;
@@ -23,9 +21,6 @@ export interface ReleaseCandidate {
   hostVersionUnverified?: string;
 }
 
-/** Release manifests (bundle.json assets or abuddy.json) a single check reads at most */
-const MAX_MANIFEST_FETCHES = 10;
-
 interface GitHubRelease {
   tag_name: string;
   draft?: boolean;
@@ -37,9 +32,9 @@ interface GitHubRelease {
  * Newest semver release in a GitHub repo that this AgentBuddy can run. Prereleases (e.g.
  * 1.2.0-beta.1) are only considered for the beta channel; drafts and non-semver tags are ignored,
  * and so are releases not newer than `installedVersion`. With a hostVersion, each candidate's
- * range is read from its `<archive>.bundle.json` asset (`abuddy release` uploads it), else from
- * abuddy.json at its tag; a candidate whose range can't be read is returned with
- * `hostVersionUnverified`. At most MAX_MANIFEST_FETCHES ranges are read, newest first.
+ * range is read, newest first, from its `<archive>.bundle.json` asset (`abuddy release` uploads it),
+ * else from abuddy.json at its tag; a candidate whose range can't be read is returned with
+ * `hostVersionUnverified`, and the installer checks it again.
  * A failing release list (rate limit, private or missing repository) throws GitHubRequestError.
  */
 export async function findLatestRelease(
@@ -61,7 +56,6 @@ export async function findLatestRelease(
     .sort((a, b) => semver.rcompare(a.version, b.version));
   if (!options.hostVersion) return candidates[0] ? { version: candidates[0].version, tag: candidates[0].tag } : null;
 
-  let fetches = 0;
   /** The release's hostVersion range, or why it couldn't be read */
   const hostRange = async (release: GitHubRelease): Promise<{ range?: string; unread?: string }> => {
     const asset = release.assets?.find(a => a.name.endsWith('.bundle.json'));
@@ -69,10 +63,8 @@ export async function findLatestRelease(
       ...(asset ? [() => fetchReleaseAsset(asset)] : []),
       () => fetchRepoFile(owner, repo, release.tag_name, 'abuddy.json'),
     ];
-    let unread = `the manifest fetch limit (${MAX_MANIFEST_FETCHES}) was reached`;
+    let unread = 'no manifest to read it from';
     for (const source of sources) {
-      if (fetches >= MAX_MANIFEST_FETCHES) break;
-      fetches++;
       try {
         const { hostVersion } = await (await source()).json() as { hostVersion?: unknown };
         return { range: typeof hostVersion === 'string' ? hostVersion : undefined };
@@ -83,7 +75,6 @@ export async function findLatestRelease(
     return { unread };
   };
   for (const candidate of candidates) {
-    if (fetches >= MAX_MANIFEST_FETCHES) break;
     const { range, unread } = await hostRange(candidate.release);
     if (isHostCompatible(range, options.hostVersion)) {
       return { version: candidate.version, tag: candidate.tag, ...(unread ? { hostVersionUnverified: unread } : {}) };
@@ -100,35 +91,22 @@ function updateChannelIncludesPrereleases(): boolean {
   }
 }
 
-/** Checks each installed pack's source for a newer release this AgentBuddy (hostVersion) can run. */
+/**
+ * Checks each installed pack's source for a newer release this AgentBuddy (hostVersion) can run, and
+ * records what it found on the registry entry (`availableVersion`/`availableTag`, or `updateCheckError`
+ * saying why there's nothing to offer). Nothing is cached: the Packs view runs this when asked.
+ */
 export async function checkForUpdates(options: { hostVersion?: string } = {}): Promise<UpdateCheckResult[]> {
   const entries = readPackRegistry();
   const updatable = entries.filter(e => e.source && e.enabled);
 
   if (updatable.length === 0) return [];
 
-  const now = Date.now();
   const includePrerelease = updateChannelIncludesPrereleases();
   const results: UpdateCheckResult[] = [];
   const updatedEntries = new Map<string, Partial<PackRegistryEntry>>();
 
   for (const entry of updatable) {
-    // A result checked by another AgentBuddy version may not apply to this one
-    if (entry.lastUpdateCheck && entry.lastUpdateCheckHostVersion === options.hostVersion) {
-      const lastCheck = new Date(entry.lastUpdateCheck).getTime();
-      if (now - lastCheck < UPDATE_CHECK_INTERVAL_MS) {
-        if (entry.availableVersion && isNewer(entry.availableVersion, entry.version)) {
-          results.push({
-            packId: entry.id,
-            currentVersion: entry.version,
-            availableVersion: entry.availableVersion,
-            source: entry.source!,
-          });
-        }
-        continue;
-      }
-    }
-
     let latest: ReleaseCandidate | null;
     try {
       latest = await findLatestRelease(entry.source!, { includePrerelease, hostVersion: options.hostVersion, installedVersion: entry.version });
@@ -142,12 +120,14 @@ export async function checkForUpdates(options: { hostVersion?: string } = {}): P
     const latestVersion = latest && isNewer(latest.version, entry.version) ? latest.version : undefined;
     const unverified = latestVersion ? latest!.hostVersionUnverified : undefined;
     if (unverified) logger.warn(`${entry.id} v${latestVersion}: couldn't read its hostVersion (${unverified}); installing it checks again`);
+    // Nothing newer to offer, with a newer release out there: say the releases need a newer AgentBuddy
+    const noneCompatible = !latest && options.hostVersion
+      ? `No release of ${entry.source} supports this AgentBuddy (${options.hostVersion})`
+      : undefined;
     updatedEntries.set(entry.id, {
-      lastUpdateCheck: new Date().toISOString(),
-      lastUpdateCheckHostVersion: options.hostVersion,
       availableVersion: latestVersion,
       availableTag: latestVersion ? latest!.tag : undefined,
-      updateCheckError: unverified ? `Couldn't confirm v${latestVersion} supports this AgentBuddy: ${unverified}` : undefined,
+      updateCheckError: unverified ? `Couldn't confirm v${latestVersion} supports this AgentBuddy: ${unverified}` : noneCompatible,
     });
 
     if (latestVersion) {
