@@ -243,6 +243,8 @@ abuddy db reset --production        # lists what it would delete
 
 While a command changes the database it holds a lock on the data dir (`db-write.lock`), so a second `abuddy db` is refused and an AgentBuddy started meanwhile refuses to open that database instead of overwriting the change. A lock left behind by a command that was killed is ignored once its process is gone.
 
+**The run history.** The database has two partitions: the app's data, and the run history (`TNode` rows, what each flow step did). Commands read the data only, as the app does, so a query for `TNode` comes back empty until you pass `--volatile`, which reads both. `reset` deletes both either way; its listing counts the run history only with `--volatile`.
+
 **Seeding.** There is no seed command: AgentBuddy seeds each pack's data when it starts (and `abuddy dev` re-seeds a pack it rebuilds), so start the app rather than seed a data dir by hand.
 
 **Installed packs.** Entity types, relation kinds and where each type is stored come from the packs installed in the data dir (the built-in packs the app published to `host-packs/`, and the enabled packs in `packs/`); no pack code runs. A data dir the app has never started on has none, and is refused.

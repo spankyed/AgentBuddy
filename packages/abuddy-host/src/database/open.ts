@@ -50,6 +50,11 @@ export interface OpenAppDatabaseOptions {
   userDataDir: string;
   /** Opens the files without writing to them: writes through the engine throw */
   readOnly?: boolean;
+  /**
+   * Loads the volatile partition (the run history) too. The app leaves it out, reading it directly instead, so a
+   * tool that wants those rows in its queries asks for them.
+   */
+  includeVolatile?: boolean;
   /** Where the store's progress lines go; `console.log` by default */
   log?: (message: string) => void;
 }
@@ -57,9 +62,10 @@ export interface OpenAppDatabaseOptions {
 /**
  * Opens the database in `userDataDir` as the app does: the installed packs' schema (their manifests; no pack code
  * runs), the store in the layout the data dir uses, and the primary partition hydrated. The engine's query face is
- * installed, so `@abuddy/ears`'s free functions act on it until `close()`.
+ * installed, so `@abuddy/ears`'s free functions act on it until `close()`. The volatile partition (the run history)
+ * is left out, as in the app, unless `includeVolatile` asks for it.
  */
-export async function openAppDatabase({ env, userDataDir, readOnly = false, log }: OpenAppDatabaseOptions): Promise<AppDatabase> {
+export async function openAppDatabase({ env, userDataDir, readOnly = false, includeVolatile = false, log }: OpenAppDatabaseOptions): Promise<AppDatabase> {
   const context = resolveAppContext({ env, userDataDir });
   const paths = findAppDataPaths(userDataDir);
   const schema = readInstalledSchema(context);
@@ -71,7 +77,7 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, log 
   });
   try {
     installEngine(engine.query);
-    await store.hydrate();
+    await store.hydrate({ includeVolatile });
   } catch (error) {
     installEngine(undefined);
     store.close();

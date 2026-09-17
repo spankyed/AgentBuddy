@@ -107,10 +107,19 @@ describe('openAppDatabase', () => {
     expect(db.query.findRelations({ sourceEntity: id('Note-1') })).toHaveLength(1);
     // The volatile partition isn't hydrated, as in the app
     expect(db.query.getAttr(id('Trace-1'), 'step')).toBeNull();
-    // An entity type creates an entity
-    const created = db.query.tx('Note' as never).put('title', 'new').id();
-    expect(created.startsWith('Note-')).toBe(true);
     db.close();
+
+    const withHistory = await openAppDatabase({ env: 'test', userDataDir: dir, includeVolatile: true, ...quiet });
+    expect(withHistory.query.getAttr(id('Trace-1'), 'step')).toBe('volatile');
+    expect(withHistory.query.getAttr(id('Note-1'), 'title')).toBe('kept');
+    withHistory.close();
+
+    const db2 = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
+    expect(db2.query.getAttr(id('Trace-1'), 'step')).toBeNull();
+    // An entity type creates an entity
+    const created = db2.query.tx('Note' as never).put('title', 'new').id();
+    expect(created.startsWith('Note-')).toBe(true);
+    db2.close();
     expect(() => installedEngine()).toThrow();
 
     const again = await openAppDatabase({ env: 'test', userDataDir: dir, readOnly: true, ...quiet });

@@ -22,6 +22,7 @@ const TARGET_OPTIONS = {
   beta: { type: 'boolean', short: 'b', default: false },
   production: { type: 'boolean', default: false },
   'data-dir': { type: 'string' },
+  volatile: { type: 'boolean', default: false },
 } satisfies ParseArgsConfig['options'];
 
 export const TARGET_USAGE = [
@@ -29,11 +30,14 @@ export const TARGET_USAGE = [
   '  -b, --beta             The beta app\'s data',
   '  --production           The production app\'s data (what a command that only reads takes by default)',
   '  --data-dir <path>      A data dir, a copy of the user\'s for instance',
+  '  --volatile             Read the run history too (TNode rows), which the app keeps in its own partition',
 ].join('\n');
 
 export type DbTarget = Pick<AppContext, 'env' | 'userDataDir' | 'apiPortFile'> & {
   /** The command named this data dir (`-d`, `-b`, `--production` or `--data-dir`) rather than taking the default */
   named: boolean;
+  /** `--volatile`: the run history is read with the rest of the data */
+  volatile: boolean;
 };
 
 /**
@@ -47,15 +51,15 @@ export function parseDbArgs<O extends NonNullable<ParseArgsConfig['options']>>(a
   } catch (error) {
     throw new Error(`${(error as Error).message}\n\n${usage}`);
   }
-  const { dev, beta, production, 'data-dir': dataDir } = parsed.values as
-    { dev: boolean; beta: boolean; production: boolean; 'data-dir'?: string };
+  const { dev, beta, production, 'data-dir': dataDir, volatile } = parsed.values as
+    { dev: boolean; beta: boolean; production: boolean; 'data-dir'?: string; volatile: boolean };
   // An empty --data-dir would otherwise read as "no data dir given" and target the default one
   if (dataDir !== undefined && dataDir.trim() === '') throw new Error(`--data-dir needs a path\n\n${usage}`);
   const named = [dev && '-d', beta && '-b', production && '--production', dataDir !== undefined && '--data-dir'].filter(Boolean) as string[];
   if (named.length > 1) throw new Error(`Name one data dir, not ${named.length}: ${named.join(', ')}\n\n${usage}`);
   const env: AppEnv = beta ? 'beta' : dev ? 'development' : 'production';
   const context = resolveAppContext({ env, ...(dataDir !== undefined && { userDataDir: path.resolve(dataDir) }) });
-  const target: DbTarget = { env, userDataDir: context.userDataDir, apiPortFile: context.apiPortFile, named: named.length === 1 };
+  const target: DbTarget = { env, userDataDir: context.userDataDir, apiPortFile: context.apiPortFile, named: named.length === 1, volatile };
   return { values: parsed.values as typeof parsed.values & Record<keyof O, unknown>, positionals: parsed.positionals, target };
 }
 
@@ -89,6 +93,7 @@ export async function openTarget(target: DbTarget, { write, command }: OpenOptio
       env: target.env,
       userDataDir: target.userDataDir,
       readOnly: !write,
+      includeVolatile: target.volatile,
       log: () => {},
     });
     return lock ? { ...db, close: () => { try { db.close(); } finally { lock.release(); } } } : db;

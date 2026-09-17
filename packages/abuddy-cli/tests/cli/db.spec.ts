@@ -67,6 +67,8 @@ async function appDataDir(): Promise<string> {
     tx(id('Settings-app'), true).put('entityType', 'Settings').put('label', 'App').put('data', { general: { theme: 'dark' } });
     tx(id('Note-a'), true).put('entityType', 'Note').put('title', 'Alpha').grant('pinned').link('parent_of', id('Note-b'));
     tx(id('Note-b'), true).put('entityType', 'Note').put('title', 'Beta, "quoted"');
+    // The run history, which the app keeps in its own partition (TNode is excluded from the main one)
+    tx(id('TNode-1'), true).put('entityType', 'TNode').put('status', 'completed');
   });
   return dir;
 }
@@ -265,6 +267,28 @@ describe('the lock a change holds', () => {
     holdLock(dir);
     expect((await run(['exec', 'return 1', '--data-dir', dir])).error?.message).toMatch(/quit it first/);
     expect(findDatabaseWriter(dir)).toBeNull();
+  });
+});
+
+describe('the run history', () => {
+  it('is left out until --volatile asks for it, in queries, exports and what a reset would delete', async () => {
+    const dir = await appDataDir();
+    const counted = "return [getEntitiesOfType('TNode').length, getEntitiesOfType('Note').length]";
+    expect(JSON.parse((await ok(['query', counted, '--data-dir', dir, '-o', 'json'])).out)).toEqual([0, 2]);
+    expect(JSON.parse((await ok(['query', counted, '--data-dir', dir, '-o', 'json', '--volatile'])).out)).toEqual([1, 2]);
+
+    const out = path.join(dir, 'export');
+    await ok(['export', '--out', out, '--data-dir', dir, '--volatile']);
+    expect(JSON.parse(fs.readFileSync(path.join(out, 'TNode.json'), 'utf-8'))).toEqual([expect.objectContaining({ id: 'TNode-1', status: 'completed' })]);
+
+    expect((await ok(['reset', '--data-dir', dir, '--volatile'])).out).toContain('  TNode: 1');
+    expect((await ok(['reset', '--data-dir', dir])).out).not.toContain('TNode');
+  });
+
+  it('is deleted by a reset either way', async () => {
+    const dir = await appDataDir();
+    await ok(['reset', '--force', '--data-dir', dir]);
+    expect(JSON.parse((await ok(['query', "return getAllEntities()", '--data-dir', dir, '-o', 'json', '--volatile'])).out)).toEqual([]);
   });
 });
 
