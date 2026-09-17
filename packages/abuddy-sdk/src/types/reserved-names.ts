@@ -9,6 +9,7 @@
 export function reservedEntries(declared: Record<string, string>, reserved: Record<string, string>): string[] {
   const values = new Set(Object.values(reserved));
   return Object.entries(declared)
-    .filter(([key, value]) => Object.hasOwn(reserved, key) || values.has(value))
+    // An own key only: `constructor` or `toString` is a pack's to use
+    .filter(([key, value]) => Object.prototype.hasOwnProperty.call(reserved, key) || values.has(value))
     .map(([key, value]) => (key === value ? `"${key}"` : `"${key}": "${value}"`));
 }
