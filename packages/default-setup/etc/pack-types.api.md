@@ -2916,16 +2916,16 @@ type PackEmitter = Omit<HostServices['emitter'], 'sendToPlugin' | 'sendToSystem'
  */
 type PackEvents = OwnPackEvents & Omit<HostPluginEvents, keyof OwnPackEvents>;
 
-/** Node rows: the step node types of this pack and its dependencies */
-type PackNodes = NodeEntity;
-
 /**
  * Every entity shape this pack can read: the SDK's, its own and its dependencies'. Node is the union of
  * the step node types (NodeBase when no step defines one), not an intersection of each pack's.
  */
 type PackShapes = Omit<SdkEntityShapes & OwnEntityShapes, 'Node'> & {
-    Node: [PackNodes] extends [never] ? SdkEntityShapes['Node'] : PackNodes;
+    Node: [PackStepNodes] extends [never] ? SdkEntityShapes['Node'] : PackStepNodes;
 };
+
+/** The step node types of this pack and its dependencies; never when none defines one */
+type PackStepNodes = NodeEntity;
 
 /** Feature id → the events this pack's system for that feature receives (dependents name it `default-setup/<feature>`). */
 type PackSystemEvents = {
@@ -5485,5 +5485,5 @@ declare function viewByFile(filePath: string, opts?: {
     offset?: number;
 }): Promise<any[]>;
 
-export type { PackShapes as PackEntityShapes, PackEvents, PackSystemEvents, Repositories, Services };
+export type { PackShapes as PackEntityShapes, PackEvents, PackStepNodes, PackSystemEvents, Repositories, Services };
 ```

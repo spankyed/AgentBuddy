@@ -241,7 +241,7 @@ The engine is its own package, `@abuddy/ears`, which packs may depend on and imp
 }
 ```
 
-Keys become TypeScript constants; values are runtime strings. `generate-entries` creates typed exports in `__generated__/ears.ts`:
+Keys become TypeScript constants; values are runtime strings. An entity's key must be its type name (`"Bookmark": "Bookmark"`). `generate-entries` creates typed exports in `__generated__/ears.ts`:
 
 ```typescript
 // Auto-generated — import from here
@@ -529,7 +529,7 @@ TypeScript can't check a name it doesn't know yet. Constrain it to `EntityName`,
 - The SDK owns a few entity types and relation kinds, which every pack has and none declares:
   - `Relation`: every link between entities is stored as one (`RelationEntity`).
   - The flow model its flow compiler, flow seeder and steps API use: `Flow`, `Node`, `TNode`, `Action` and `Prompt` (`FlowEntity`, `NodeBase`, `TNodeEntity`, `ActionEntity`, `PromptEntity`), and the `contains`, `transitions_to`, `instance_of`, `spawned` and `tracked` relation kinds.
-  - Your step node types extend `NodeBase` (`interface PingNode extends NodeBase`). Your pack reads `Node` rows as the union of its own and its dependencies' step node types, or as `NodeBase` when none define any.
+  - Your step node types extend `NodeBase` (`interface PingNode extends NodeBase`). Your pack reads `Node` rows as the union of its own and its dependencies' step node types (each pack's facade exports them as `PackStepNodes`), or as `NodeBase` when none define any.
   - The SDK owns these entities' repositories too, exported from `@abuddy/sdk/repositories`: `flowRepository` (flows, nodes, edges, the root flow, `importFromDSL`), `tnodeRepository`, `actionRepository` and `promptRepository`. Call them directly; they aren't in `services.repository`, which holds packs' repositories (default-setup's `flowsQueries`, `actionQueries` and `promptQueries` expose them by reference and add their views, so its code uses `repository` alone; a pack of yours can do the same).
   - Settings, library documents and notes belong to default-setup (`Settings`, `Document`, `Collection`, `Note`); a pack depending on it uses them like any dependency's entities. The app's own state (onboarding, versions, seed hashes) isn't an entity packs see: ask `services.appData.hasOnboarded()`. API keys aren't entities: the host keeps them ([API keys](#api-keys)).
   - `TNode` rows are execution records. They and their relations are written to the volatile trace store instead of the primary database, and aren't loaded back into memory at startup; read past runs with `services.traceStore`.

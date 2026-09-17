@@ -202,6 +202,9 @@ export interface RelationEntity extends BaseEntity {
     relationDetails: EARS.RelationDetail;
 }
 
+// @internal
+export function reservedEntries(declared: Record<string, string>, reserved: Record<string, string>): string[];
+
 // @public
 export const ROOT_FLOW_ROLE = "root_flow";
 

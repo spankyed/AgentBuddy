@@ -464,7 +464,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     license: z.ZodOptional<z.ZodString>;
     dependencies: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
     permissions: z.ZodOptional<z.ZodArray<z.ZodEnum<["ears", "llm", "filesystem", "network", "terminal"]>, "many">>;
-    entities: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodString>, Record<string, string>, Record<string, string>>>;
+    entities: z.ZodOptional<z.ZodEffects<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodString>, Record<string, string>, Record<string, string>>, Record<string, string>, Record<string, string>>>;
     relKinds: z.ZodOptional<z.ZodEffects<z.ZodRecord<z.ZodString, z.ZodString>, Record<string, string>, Record<string, string>>>;
     partitionPolicy: z.ZodOptional<z.ZodObject<{
         excludedEntityTypes: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
@@ -838,8 +838,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     name: string;
     version: string;
     description?: string | undefined;
-    entities?: Record<string, string> | undefined;
-    relKinds?: Record<string, string> | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -854,6 +852,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
+    entities?: Record<string, string> | undefined;
+    relKinds?: Record<string, string> | undefined;
     partitionPolicy?: {
         excludedEntityTypes?: string[] | undefined;
     } | undefined;
@@ -945,8 +945,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     name: string;
     version: string;
     description?: string | undefined;
-    entities?: Record<string, string> | undefined;
-    relKinds?: Record<string, string> | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -961,6 +959,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
+    entities?: Record<string, string> | undefined;
+    relKinds?: Record<string, string> | undefined;
     partitionPolicy?: {
         excludedEntityTypes?: string[] | undefined;
     } | undefined;
@@ -1052,8 +1052,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     name: string;
     version: string;
     description?: string | undefined;
-    entities?: Record<string, string> | undefined;
-    relKinds?: Record<string, string> | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -1068,6 +1066,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
+    entities?: Record<string, string> | undefined;
+    relKinds?: Record<string, string> | undefined;
     partitionPolicy?: {
         excludedEntityTypes?: string[] | undefined;
     } | undefined;
@@ -1159,8 +1159,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     name: string;
     version: string;
     description?: string | undefined;
-    entities?: Record<string, string> | undefined;
-    relKinds?: Record<string, string> | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -1175,6 +1173,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
     permissions?: ("ears" | "llm" | "filesystem" | "network" | "terminal")[] | undefined;
+    entities?: Record<string, string> | undefined;
+    relKinds?: Record<string, string> | undefined;
     partitionPolicy?: {
         excludedEntityTypes?: string[] | undefined;
     } | undefined;

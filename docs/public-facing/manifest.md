@@ -260,9 +260,11 @@ Run `abuddy fetch-deps` to pull dependency snapshots for cross-pack type interop
 }
 ```
 
-Keys become TypeScript constants in the generated `ears.ts`, values are the runtime strings stored in the database. Entity types and relation kinds must be globally unique across all installed packs.
+Keys become TypeScript constants in the generated `ears.ts`, values are the runtime strings stored in the database. An entity's key must be its type name, the same as its value (`"Bookmark": "Bookmark"`); a relation kind's key and value may differ.
 
-The SDK defines the entity types `Relation`, `Flow`, `Node`, `TNode`, `Action`, `Prompt` and `Settings`, and the relation kinds `CONTAINS` (`contains`), `TRANSITIONS_TO`, `INSTANCE_OF`, `SPAWNED` and `TRACKED`, for every pack. A pack can't declare them, neither the key nor the value.
+No two packs may use the same name: a key or a value another installed pack declares fails `abuddy build` (for a dependency) and the app's registration of the pack.
+
+The SDK defines the entity types `Relation`, `Flow`, `Node`, `TNode`, `Action` and `Prompt`, and the relation kinds `CONTAINS` (`contains`), `TRANSITIONS_TO` (`transitions_to`), `INSTANCE_OF` (`instance_of`), `SPAWNED` (`spawned`) and `TRACKED` (`tracked`), for every pack. A pack can't declare any of them, as a key or as a value: the error names each entry to remove, and editors using `abuddy.schema.json` flag them. A dependency built by an older CLI that still lists them fails the build until it's rebuilt.
 
 ## DSL definitions
 

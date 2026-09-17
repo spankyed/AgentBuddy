@@ -461,10 +461,15 @@ describe("the SDK's entities and relation kinds", () => {
     expect(withBase({ relKinds: { TAGGED: 'labelled' } })).toThrow('relKind "TAGGED" declared by both "demo-pack" and "base-pack"');
   });
 
-  it('names entity types by their values in EntityName', () => {
+  it('names entity types by their values in EntityName, the type names rows carry', () => {
+    // abuddy.json requires an entity's key to be its type name; the generated names follow the value regardless
     const base = { ...dependency({}), types: { entities: { Tag: 'Tag' }, relKinds: {} } };
-    const ears = generate({ entities: { Memo: 'Memo' }, dependencies: { 'base-pack': '*' } }, { 'base-pack': base })['src/__generated__/ears.ts'];
-    expect(ears).toMatch(/export type EntityName = [^;]*'Memo'[^;]*'Tag'[^;]*'Relation'/);
+    const ears = generate({ entities: { Memo: 'memo' }, dependencies: { 'base-pack': '*' } }, { 'base-pack': base })['src/__generated__/ears.ts'];
+    const names = ears.match(/export type EntityName = ([^;]*);/)![1];
+    expect(names).toContain("'memo'");
+    expect(names).not.toContain("'Memo'");
+    expect(names).toContain("'Tag'");
+    expect(names).toContain("'Relation'");
   });
 
   it("registers only the pack's own entities and relation kinds, not its dependencies' or the SDK's", () => {
