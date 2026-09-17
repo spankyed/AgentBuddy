@@ -97,7 +97,7 @@ The API's `core/router/packs-router.ts` serves `packs.registry` from `getPackBun
 8. store.hydrate()                 — EARS policy now sees all entity types
 9. startPacks(registry, external)  — start.ts; services.appData.reset() runs it too, after the shutdown hooks:
    onInit hooks                    — all packs (built-in + external)
-   runAppMigrations()              — moves the app's state from before AppState, then built-in packs' migrations against the app version (@abuddy/host/migrations)
+   runAppMigrations()              — the host's app migrations, then built-in packs', against the app version (@abuddy/host/migrations); if one fails, nothing below runs
    runPackMigrations()             — external packs' migrations, each against its pack version
    runRegisteredBootSeeds()        — built-in packs' boot.seedManifest (orchestrateDeclarativeSeed)
    seedPackData()                  — external pack compiled seeds (hash-checked)

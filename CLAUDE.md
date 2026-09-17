@@ -174,17 +174,17 @@ Environment identity and data paths come from one resolver, `@abuddy/sdk/env` (`
 
 ### Migrations
 
-Migrations live with their pack; the host only moves the app's state from before `AppState` (`packages/abuddy-host/src/migrations/legacy-app-state.ts`). default-setup's are in `packages/default-setup/src/migrations/`: each file exports a `PackMigration` (`@abuddy/sdk/framework`) with `target`, `description` and `up()`, listed in that folder's `index.ts` and registered with the pack. `@abuddy/host/migrations` (`packages/abuddy-host/src/migrations/index.ts`) holds only the runners, which the API's boot and host's `services.appData.reset()` call through `startPacks()` (after the packs' `onInit`, before the seeds), and a backup import after reloading the data:
+Migrations live with their pack; the host's own (the app's state) live in `packages/abuddy-host/src/migrations/app/`. default-setup's are in `packages/default-setup/src/migrations/`: each file exports a `PackMigration` (`@abuddy/sdk/framework`) with `target`, `description` and `up()`, listed in that folder's `index.ts` and registered with the pack. `@abuddy/host/migrations` (`packages/abuddy-host/src/migrations/index.ts`) holds only the runners, which the API's boot and host's `services.appData.reset()` call through `startPacks()` (after the packs' `onInit`, before the seeds), and a backup import after reloading the data:
 
-- `runAppMigrations(registry)` — first moves the app's state from before `AppState` whatever the version (running nothing and recording nothing if that fails), then the built-in packs' migrations in the app's registry, run when `stored app version < target <= app version` (`getAppVersion()`, the bound runtime's); records `AppState.version`. Data with no recorded version is new and at the app version (after the move recorded any older one).
-- `runPackMigrations(registry, externalPacks)` — each external pack's migrations, against that pack's own version (`stored < target <= manifest version`); records `AppState.packVersions[packId]`. External migrations never run in `runAppMigrations()`.
+- `runAppMigrations(registry)` — the host's own app migrations (moving the app's state), then the built-in packs' in the app's registry, run when `stored app version < target <= app version` (`getAppVersion()`, the bound runtime's); records `AppState.version`. A prerelease counts as its release (`0.3.15-beta.2` runs the `0.3.15` migrations, again on each new beta), and a development build (`ABUDDY_ENV=development`) runs every pending migration on every boot. A failed migration stops the rest and records nothing, and `startPacks()` then runs no pack migration or seed; the next boot retries. Data with no recorded version is new and at the app version (after the host's migrations moved any older one).
+- `runPackMigrations(externalPacks)` — each external pack's migrations, against that pack's own version (`stored < target <= manifest version`); records `AppState.packVersions[packId]`. External migrations never run in `runAppMigrations()`.
 
 Rules for default-setup migrations (details in `packages/abuddy-host/src/migrations/CLAUDE.md`):
 
 - **Target the next release version** — name the file after the version it targets (e.g. `0.2.4.ts` runs when the app is released as 0.2.4+). Several changes for one release go in the same file.
 - **Never bump `package.json` version manually** — the release process handles version bumps. Migrations are written ahead of time to target the upcoming release.
 - **List it in `packages/default-setup/src/migrations/index.ts`** — import and append to the `migrations` array in version order.
-- **Idempotent guards** — always check if the change is needed before applying (e.g. `if (!value) set(value)`), since migrations may re-run after a reset.
+- **Idempotent guards** — always check if the change is needed before applying (e.g. `if (!value) set(value)`), since migrations run again on every development boot, on each beta of their release, and after a reset.
 
 ### Path aliases
 

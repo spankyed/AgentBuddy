@@ -13,12 +13,14 @@ import { secrets } from '../../src/services/secrets.ts';
 import { createPackRegistry } from '../../src/packs/pack-registration.ts';
 import { secretsStore } from '../../src/secrets/index.ts';
 import { setLoadedPacks, type LoadedPack } from '../../src/packs/runtime/loaded-packs.ts';
+import { startPacks } from '../../src/packs/runtime/start.ts';
 
 // What a reset does, in order; the host's migrations runners and external packs' seeding record themselves here
 const order = vi.hoisted((): string[] => []);
+const appMigrations = vi.hoisted(() => ({ succeed: true }));
 vi.mock('../../src/migrations/index.ts', () => ({
-  runAppMigrations: () => { order.push('migrations'); },
-  runPackMigrations: (_registry: unknown, packs: Array<{ manifest: { id: string } }>) => { order.push(`pack migrations (${packs.map((p) => p.manifest.id)})`); },
+  runAppMigrations: () => { order.push('migrations'); return appMigrations.succeed; },
+  runPackMigrations: (packs: Array<{ manifest: { id: string } }>) => { order.push(`pack migrations (${packs.map((p) => p.manifest.id)})`); },
 }));
 vi.mock('../../src/packs/runtime/seed.ts', async (importOriginal) => ({
   ...await importOriginal<typeof import('../../src/packs/runtime/seed.ts')>(),
@@ -87,5 +89,22 @@ describe('createHostRuntime', () => {
       'migrations', 'pack migrations (reset-pack)', 'boot seed (seeded-pack)', 'pack seeds (reset-pack)',
     ]);
     expect(engine.query.getAttr(id, 'title')).toBeNull();
+  });
+});
+
+describe('startPacks', () => {
+  it("runs no pack migration or seed when the app's migrations failed", () => {
+    order.length = 0;
+    appMigrations.succeed = false;
+    const packs = createPackRegistry();
+    packs.registerPack({ id: 'late-seeded-pack', systems: [], boot: { seedManifest: { artifacts: ['notes'], compiledDir: '/nowhere' } } });
+    const external = { manifest: { id: 'late-pack', name: 'Late', version: '1.0.0' }, dir: '/nowhere', systems: new Map() } as unknown as LoadedPack;
+    try {
+      startPacks(packs, [external]);
+    } finally {
+      appMigrations.succeed = true;
+      packs.unregisterPack('late-seeded-pack');
+    }
+    expect(order).toEqual(['migrations']);
   });
 });

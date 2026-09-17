@@ -1,8 +1,8 @@
-// The host moves the app's state out of the built-in pack's settings (`internal`) into AppState on every run of the
-// migrations, whatever the app version: data from 0.3.14 comes back onboarded, at its version (so the migrations after
-// it still run), with its seed hashes, also under a development or beta version below the release that drops the
-// section. A second run changes nothing, and a failed move runs no migration.
-import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+// The host's 0.3.15 app migration moves the app's state out of the built-in pack's settings (`internal`) into
+// AppState: data from 0.3.14 comes back onboarded, at its version (so the migrations after it still run), with its
+// seed hashes, on the release, its betas and development builds. A second run changes nothing, and a failed move
+// runs no pack migration and records no version.
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -19,11 +19,15 @@ vi.mock('@abuddy/sdk/env', async (importOriginal) => {
 });
 
 import { appState } from '../../src/app-state/index.ts';
-import { moveLegacyAppState } from '../../src/migrations/legacy-app-state.ts';
+import { appMigrations } from '../../src/migrations/app/index.ts';
 import { runAppMigrations, runPackMigrations } from '../../src/migrations/index.ts';
 import { loadBuiltInPacks, type LoadedPack } from '../../src/packs/runtime/index.ts';
 
-const move = () => moveLegacyAppState(registry);
+const move = () => {
+  const migration = appMigrations(registry).find((m) => m.target === '0.3.15');
+  if (!migration) throw new Error('no 0.3.15 app migration');
+  migration.up();
+};
 
 const BUILT_IN_ID = 'app-state-built-in';
 /** The built-in and external packs' migrations that ran */
@@ -51,13 +55,26 @@ const OLD_SETTINGS = {
   },
 };
 
+const MOVED = {
+  hasOnboarded: true,
+  packSeedHashes: { 'memo-pack': 'memo-hash' },
+  seedHashes: { [BUILT_IN_ID]: 'boot-hash' },
+  seedStatFingerprints: { [BUILT_IN_ID]: 'actions.seed.json:1:2' },
+};
+
 const SETTINGS_ID = 'Settings-app' as EARS.EntityId;
 
 function writeOldSettings(data: unknown = OLD_SETTINGS): void {
   tx(SETTINGS_ID, true).put('entityType', 'Settings').put('data', data);
 }
 
+/** What a boot runs: the app's migrations, then (unless they failed) the external packs' */
+function migrate(): void {
+  if (runAppMigrations(registry)) runPackMigrations([memoPack]);
+}
+
 let builtInDir: string;
+const env = process.env.ABUDDY_ENV;
 
 beforeAll(async () => {
   builtInDir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-state-migration-'));
@@ -86,23 +103,22 @@ beforeEach(() => {
   resetTestData();
   ran.length = 0;
   version.current = undefined;
-  vi.restoreAllMocks();
+  vi.spyOn(console, 'log').mockImplementation(() => {});
 });
 
-describe("moving the app's state", () => {
+afterEach(() => {
+  vi.restoreAllMocks();
+  if (env === undefined) delete process.env.ABUDDY_ENV;
+  else process.env.ABUDDY_ENV = env;
+});
+
+describe('the 0.3.15 app migration', () => {
   it("moves the settings' internal section to AppState", () => {
     writeOldSettings();
 
     move();
 
-    expect(appState.get()).toEqual({
-      hasOnboarded: true,
-      version: '0.3.14',
-      packVersions: { 'memo-pack': '1.2.0' },
-      packSeedHashes: { 'memo-pack': 'memo-hash' },
-      seedHashes: { [BUILT_IN_ID]: 'boot-hash' },
-      seedStatFingerprints: { [BUILT_IN_ID]: 'actions.seed.json:1:2' },
-    });
+    expect(appState.get()).toEqual({ ...MOVED, version: '0.3.14', packVersions: { 'memo-pack': '1.2.0' } });
     // The settings row is the pack's: its own migration drops the section
     expect(untypedQx(SETTINGS_ID).pickOne(['data'])?.data).toEqual(OLD_SETTINGS);
   });
@@ -145,18 +161,18 @@ describe("moving the app's state", () => {
   });
 });
 
-describe('the migrations runner on data from before AppState', () => {
+describe('migrating data from before AppState', () => {
   it("runs the pack migrations after the moved version, and records the app's", () => {
     writeOldSettings();
 
-    runAppMigrations(registry);
+    migrate();
 
-    expect(ran).toEqual(['0.3.16']);
-    expect(appState.get()).toMatchObject({ hasOnboarded: true, version: TEST_APP_VERSION, seedHashes: { [BUILT_IN_ID]: 'boot-hash' } });
+    expect(ran).toEqual(['0.3.16', 'memo 2.0.0']);
+    expect(appState.get()).toEqual({ ...MOVED, version: TEST_APP_VERSION, packVersions: { 'memo-pack': '2.0.0' } });
 
     // Recorded: nothing runs again
-    runAppMigrations(registry);
-    expect(ran).toEqual(['0.3.16']);
+    migrate();
+    expect(ran).toEqual(['0.3.16', 'memo 2.0.0']);
   });
 
   it('runs no pack migration on new data, which is at the app version', () => {
@@ -166,40 +182,40 @@ describe('the migrations runner on data from before AppState', () => {
     expect(appState.get()).toMatchObject({ hasOnboarded: false, version: TEST_APP_VERSION });
   });
 
-  // A development build, and a beta of the release (0.3.15-beta.0 is below 0.3.15), run before the release that
-  // drops the section
-  it.each(['0.3.14', '0.3.15-beta.0'])('moves it at app version %s, and reruns no external pack migration', (appVersion) => {
-    version.current = appVersion;
+  it("moves it on a beta of the release, without the later release's migrations or rerunning external ones", () => {
+    version.current = '0.3.15-beta.0';
     writeOldSettings();
 
-    runAppMigrations(registry);
-    runPackMigrations(registry, [memoPack]);
+    migrate();
 
-    expect(appState.get()).toEqual({
-      hasOnboarded: true,
-      version: appVersion,
-      packVersions: { 'memo-pack': '2.0.0' },
-      packSeedHashes: { 'memo-pack': 'memo-hash' },
-      seedHashes: { [BUILT_IN_ID]: 'boot-hash' },
-      seedStatFingerprints: { [BUILT_IN_ID]: 'actions.seed.json:1:2' },
-    });
+    expect(appState.get()).toEqual({ ...MOVED, version: '0.3.15-beta.0', packVersions: { 'memo-pack': '2.0.0' } });
     expect(ran).toEqual(['memo 2.0.0']);
   });
 
-  it('runs no migration and records no version when the move fails, so the next run moves it', () => {
+  it('moves it on a development build below the release', () => {
+    process.env.ABUDDY_ENV = 'development';
+    version.current = '0.3.14';
+    writeOldSettings();
+
+    migrate();
+
+    expect(appState.get()).toEqual({ ...MOVED, version: '0.3.14', packVersions: { 'memo-pack': '2.0.0' } });
+    // A development build runs the migrations written for later releases too
+    expect(ran).toEqual(['0.3.16', 'memo 2.0.0']);
+  });
+
+  it('runs no pack migration and records no version when the move fails, so the next boot moves it', () => {
     writeOldSettings();
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const update = vi.spyOn(appState, 'update').mockImplementation(() => { throw new Error('disk full'); });
 
-    runAppMigrations(registry);
-    runPackMigrations(registry, [memoPack]);
+    migrate();
 
     expect(ran).toEqual([]);
     expect(appState.exists()).toBe(false);
     update.mockRestore();
 
-    runAppMigrations(registry);
-    runPackMigrations(registry, [memoPack]);
+    migrate();
 
     expect(ran).toEqual(['0.3.16', 'memo 2.0.0']);
     expect(appState.get()).toMatchObject({ hasOnboarded: true, version: TEST_APP_VERSION, packVersions: { 'memo-pack': '2.0.0' } });

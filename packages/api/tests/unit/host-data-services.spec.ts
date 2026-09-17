@@ -3,7 +3,14 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
+
+/** The app version the migrations read, when a test sets one; the bound app's otherwise */
+const version = vi.hoisted(() => ({ current: undefined as string | undefined }));
+vi.mock('@abuddy/sdk/env', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@abuddy/sdk/env')>();
+  return { ...actual, getAppVersion: () => version.current ?? actual.getAppVersion() };
+});
 
 // The app's store, opened as the API opens it, in a throwaway data dir
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-host-data-services-'));
@@ -121,7 +128,8 @@ describe('services.appData', () => {
 
   it("moves the app's state out of the settings of a backup from before AppState", async () => {
     const { appState } = await import('@abuddy/host/app-state');
-    const { getAppVersion } = await import('@abuddy/sdk/env');
+    // The release that moves it
+    version.current = '0.3.15';
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-old-backup-'));
     dirs.push(dir);
     // The built-in pack's settings, as 0.3.14 stored them: the app's state in `internal`, and no AppState
@@ -136,8 +144,9 @@ describe('services.appData', () => {
       await services.appData.importBackup(backup);
 
       expect(services.appData.hasOnboarded()).toBe(true);
-      expect(appState.get().version).toBe(getAppVersion());
+      expect(appState.get().version).toBe('0.3.15');
     } finally {
+      version.current = undefined;
       packs.unregisterPack('settings-pack');
     }
   });
