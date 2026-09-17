@@ -1,7 +1,6 @@
 // abuddy db, offline, against temp data dirs: each command's output and changes, the refusals while an app runs on the
 // data dir, and the dry runs of the commands that replace or delete data
 import * as fs from 'node:fs';
-import * as net from 'node:net';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { Readable } from 'node:stream';
@@ -10,7 +9,6 @@ import { installEngine, installedEngine, tx, type EARS } from '@abuddy/ears';
 import { findDatabaseWriter, holdDatabaseWriteLock, openDatabaseStore, readInstalledSchema } from '@abuddy/host/database';
 import { exportDatabase } from '@abuddy/host/backup';
 import { createSecretsStore, memoryKeyVault } from '@abuddy/host/secrets';
-import { API_HOST } from '@abuddy/sdk/env';
 import { appDataPaths } from '@abuddy/sdk/utils';
 import { db } from '../../src/commands/db';
 import { dbRepl } from '../../src/commands/db/repl';
@@ -18,9 +16,7 @@ import { dbRepl } from '../../src/commands/db/repl';
 const DEFAULT_SETUP_SNAPSHOT = path.resolve(import.meta.dirname, '..', '..', '..', 'default-setup', 'dist', 'snapshot.json');
 
 const dirs: string[] = [];
-const servers: net.Server[] = [];
-afterEach(async () => {
-  await Promise.all(servers.splice(0).map((server) => new Promise((resolve) => server.close(resolve))));
+afterEach(() => {
   for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
 });
 
@@ -95,11 +91,9 @@ async function ok(args: string[]) {
 
 const holdLock = (dir: string) => fs.symlinkSync(`${os.hostname()}-${process.pid}`, path.join(dir, 'SingletonLock'));
 
-async function publishPort(dir: string): Promise<void> {
-  const server = net.createServer();
-  servers.push(server);
-  await new Promise<void>((resolve) => server.listen(0, API_HOST, resolve));
-  fs.writeFileSync(path.join(dir, 'api-port'), String((server.address() as net.AddressInfo).port));
+/** What a running API publishes: its port and its process */
+function publishApi(dir: string): void {
+  fs.writeFileSync(path.join(dir, 'api-port'), JSON.stringify({ port: 3001, pid: process.pid }));
 }
 
 describe('abuddy db query', () => {
@@ -267,9 +261,9 @@ describe('abuddy db exec', () => {
     expect(byLock.error?.message).toMatch(/^AgentBuddy is running on .* \(process \d+ holds .*\): quit it first/);
 
     const served = await appDataDir();
-    await publishPort(served);
+    publishApi(served);
     const byPort = await run(['exec', "tx('Note-a').put('title', 'Changed')", '--data-dir', served]);
-    expect(byPort.error?.message).toMatch(/its API answers on port \d+/);
+    expect(byPort.error?.message).toMatch(new RegExp(`its API is running on port 3001 \\(pid ${process.pid}\\)`));
     const { out } = await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', served]);
     expect(out).toBe('Alpha');
   });
@@ -407,7 +401,7 @@ describe('abuddy db reset', () => {
 
   it('refuses while an app runs on the data dir', async () => {
     const dir = await appDataDir();
-    await publishPort(dir);
+    publishApi(dir);
     expect((await run(['reset', '--force', '--data-dir', dir])).error?.message).toMatch(/quit it first/);
     expect((await ok(['query', 'return getEntitiesOfType("Note").length', '--data-dir', dir])).out).toBe('2');
   });

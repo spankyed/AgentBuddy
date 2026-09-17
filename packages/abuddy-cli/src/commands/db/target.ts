@@ -80,7 +80,7 @@ export async function openTarget(target: DbTarget, { write, command }: OpenOptio
   // Taken before the check, so an app that starts from here on finds it and refuses to open the database
   const lock = write ? holdDatabaseWriteLock(target.userDataDir, `abuddy db ${command}`) : null;
   try {
-    const running = await findRunningApp(target);
+    const running = findRunningApp(target);
     if (running && write) {
       throw new Error(`AgentBuddy is running on ${target.userDataDir} (${running}): quit it first, this command changes its database`);
     }

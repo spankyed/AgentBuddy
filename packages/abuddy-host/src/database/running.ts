@@ -1,26 +1,12 @@
 // Whether an AgentBuddy app is running on a data dir: its API's port file names a port that answers, or the
 // Electron instance lock names a live process
 import * as fs from 'node:fs';
-import * as net from 'node:net';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { API_HOST, type AppContext } from '@abuddy/sdk/env';
+import { readApiEndpoint, type AppContext } from '@abuddy/sdk/env';
 
 /** Chromium's instance lock in the data dir: a symlink to `<hostname>-<pid>` */
 const SINGLETON_LOCK = 'SingletonLock';
-
-function portAnswers(port: number, timeoutMs: number): Promise<boolean> {
-  return new Promise((resolve) => {
-    const socket = net.connect({ host: API_HOST, port });
-    const done = (answers: boolean) => {
-      socket.destroy();
-      resolve(answers);
-    };
-    socket.setTimeout(timeoutMs, () => done(false));
-    socket.once('connect', () => done(true));
-    socket.once('error', () => done(false));
-  });
-}
 
 /** Whether a process with this id exists (one another user owns counts) */
 function processExists(pid: number): boolean {
@@ -32,16 +18,10 @@ function processExists(pid: number): boolean {
   }
 }
 
-/** The API's port file, when it names a port something listens on */
-async function liveApi(apiPortFile: string, timeoutMs: number): Promise<string | null> {
-  let port: number;
-  try {
-    port = Number(fs.readFileSync(apiPortFile, 'utf-8').trim());
-  } catch {
-    return null;
-  }
-  if (!Number.isInteger(port) || port <= 0 || port > 65535) return null;
-  return await portAnswers(port, timeoutMs) ? `its API answers on port ${port} (${apiPortFile})` : null;
+/** The API this data dir's port file names, while its process is running */
+function liveApi(apiPortFile: string): string | null {
+  const endpoint = readApiEndpoint(apiPortFile);
+  return endpoint && `its API is running on port ${endpoint.port} (pid ${endpoint.pid})`;
 }
 
 /** The instance lock, when a live process holds it (or a process on another host, which can't be checked) */
@@ -61,12 +41,9 @@ function liveLock(userDataDir: string): string | null {
 }
 
 /**
- * Why an app is running on the data dir, or `null` when none is: a stale port file or a lock left by a process that
- * has exited doesn't count
+ * Why an app is running on the data dir, or `null` when none is: a port file or an instance lock left behind by a
+ * process that has exited doesn't count
  */
-export async function findRunningApp(
-  context: Pick<AppContext, 'userDataDir' | 'apiPortFile'>,
-  { timeoutMs = 1000 }: { timeoutMs?: number } = {},
-): Promise<string | null> {
-  return liveLock(context.userDataDir) ?? await liveApi(context.apiPortFile, timeoutMs);
+export function findRunningApp(context: Pick<AppContext, 'userDataDir' | 'apiPortFile'>): string | null {
+  return liveLock(context.userDataDir) ?? liveApi(context.apiPortFile);
 }

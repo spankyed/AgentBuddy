@@ -10,12 +10,18 @@ export const API_HOST = "127.0.0.1";
 // @public
 export const API_TOKEN_HEADER = "x-abuddy-api-token";
 
+// @public
+export interface ApiEndpoint {
+    pid: number;
+    // (undocumented)
+    port: number;
+}
+
 // @public (undocumented)
 export const APP_ENVS: readonly AppEnv[];
 
 // @public (undocumented)
 export interface AppContext {
-    // (undocumented)
     apiPortFile: string;
     apiTokenFile: string;
     appName: string;
@@ -48,6 +54,9 @@ export function inferElectronAppEnv(input: {
 
 // @public (undocumented)
 export function parseAppEnv(value: string | undefined): AppEnv | undefined;
+
+// @public
+export function readApiEndpoint(apiPortFile: string): ApiEndpoint | null;
 
 // @public
 export type ReleaseChannel = Extract<AppEnv, 'production' | 'beta'>;

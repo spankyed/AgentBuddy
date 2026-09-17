@@ -13,7 +13,7 @@ process.env.ABUDDY_API_TOKEN = 'the-run-token';
 const { API_PROTOCOL, acceptsConnection, devReloadRefusal, publishApiFiles } = await import('@/setup/websocket');
 const { API_HOST } = await import('@abuddy/sdk/env');
 const { apiToken, apiTokenIsOwn, isApiToken } = await import('@/setup/config');
-const { resolveAppContext } = await import('@abuddy/sdk/env');
+const { readApiEndpoint, resolveAppContext } = await import('@abuddy/sdk/env');
 const { API_TOKEN_HEADER } = await import('@abuddy/sdk/env');
 afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
 
@@ -103,7 +103,9 @@ describe('the files the API publishes', () => {
     process.env.ABUDDY_API_TOKEN = TOKEN;
     publishApiFiles(4321, TOKEN);
 
-    expect(fs.readFileSync(apiPortFile, 'utf-8')).toBe('4321');
+    expect(JSON.parse(fs.readFileSync(apiPortFile, 'utf-8'))).toEqual({ port: 4321, pid: process.pid });
+    // A tool reads it back as this running API
+    expect(readApiEndpoint(apiPortFile)).toEqual({ port: 4321, pid: process.pid });
     // Only the user reads it, whatever the data dir's own permissions are
     expect(fs.statSync(apiPortFile).mode & 0o777).toBe(0o600);
     // The token stays out of the data dir: no local tool needs it there

@@ -1,7 +1,9 @@
+import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { inferElectronAppEnv, parseAppEnv, resolveAppContext } from '../../src/env/index.ts';
+import { inferElectronAppEnv, parseAppEnv, readApiEndpoint, resolveAppContext } from '../../src/env/index.ts';
 
 const saved = { env: process.env.ABUDDY_ENV, userDataDir: process.env.ABUDDY_USER_DATA_DIR };
 
@@ -100,5 +102,35 @@ describe('inferElectronAppEnv', () => {
     expect(inferElectronAppEnv(base)).toBe('development');
     expect(inferElectronAppEnv({ ...base, envVar: 'beta' })).toBe('beta');
     expect(() => inferElectronAppEnv({ ...base, envVar: 'staging' })).toThrow(/Invalid app environment/);
+  });
+});
+
+describe('readApiEndpoint', () => {
+  let dir: string;
+  beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-endpoint-')); });
+  afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
+
+  const file = () => path.join(dir, 'api-port');
+  const write = (content: unknown) => fs.writeFileSync(file(), typeof content === 'string' ? content : JSON.stringify(content));
+  /** A process id no process has any more */
+  const exitedPid = () => spawnSync(process.execPath, ['-e', '']).pid!;
+
+  it('reads the API a running process published', () => {
+    write({ port: 3001, pid: process.pid });
+    expect(readApiEndpoint(file())).toEqual({ port: 3001, pid: process.pid });
+  });
+
+  it('reads nothing from a file a crashed run left behind', () => {
+    write({ port: 3001, pid: exitedPid() });
+    expect(readApiEndpoint(file())).toBeNull();
+  });
+
+  it('reads nothing from a missing file, or one that makes no sense', () => {
+    expect(readApiEndpoint(file())).toBeNull();
+    for (const content of ['', 'not json', '3001', { port: 3001 }, { pid: process.pid }, { port: 0, pid: process.pid },
+      { port: 70000, pid: process.pid }, { port: '3001', pid: process.pid }, { port: 3001, pid: -1 }]) {
+      write(content);
+      expect(readApiEndpoint(file()), JSON.stringify(content)).toBeNull();
+    }
   });
 });

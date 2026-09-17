@@ -9,7 +9,7 @@ import { createLogger } from '@abuddy/sdk/logger';
 import { SERVER_CONFIG, apiToken, apiTokenIsOwn, isApiToken } from '@/setup/config';
 import { appPacks, backendActor } from '@/setup/backend';
 import { reloadBuiltInPack, reloadExternalPack } from '@abuddy/host/packs/runtime';
-import { API_HOST, API_TOKEN_HEADER, resolveAppContext } from '@abuddy/sdk/env';
+import { API_HOST, API_TOKEN_HEADER, resolveAppContext, type ApiEndpoint } from '@abuddy/sdk/env';
 
 const logger = createLogger('backend');
 const reloadingPacks = new Set<string>();
@@ -111,7 +111,8 @@ export function publishApiFiles(port: number, token: string): void {
   const { apiPortFile, apiTokenFile } = resolveAppContext();
   try {
     fs.mkdirSync(path.dirname(apiPortFile), { recursive: true });
-    writePrivateFile(apiPortFile, String(port));
+    // With the process id, so a tool can tell a running API from a file a crashed run left behind
+    writePrivateFile(apiPortFile, JSON.stringify({ port, pid: process.pid } satisfies ApiEndpoint));
   } catch {}
 
   if (process.env.NODE_ENV !== 'development' && !apiTokenIsOwn()) return;

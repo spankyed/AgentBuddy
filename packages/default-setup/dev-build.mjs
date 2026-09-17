@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
 // SDK source, so run with --import tsx --conditions=@abuddy/source (the build script and dev-mode.js do)
-import { API_HOST, API_TOKEN_HEADER, resolveAppContext } from '@abuddy/sdk/env';
+import { API_HOST, API_TOKEN_HEADER, readApiEndpoint, resolveAppContext } from '@abuddy/sdk/env';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const srcDir = path.resolve(__dirname, 'src');
 const entryPoint = path.resolve(srcDir, '__generated__/pack-entry.ts');
@@ -93,11 +93,11 @@ function readDevFile(file) {
 }
 
 async function notifyReload() {
-  const port = readDevFile(apiPortFile);
+  const api = readApiEndpoint(apiPortFile);
   const token = readDevFile(apiTokenFile);
-  if (!port || !token) return;
+  if (!api || !token) return;
   try {
-    const res = await fetch(`http://${API_HOST}:${port}/dev/reload`, {
+    const res = await fetch(`http://${API_HOST}:${api.port}/dev/reload`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', [API_TOKEN_HEADER]: token },
       body: JSON.stringify({ packId: 'default-setup', builtIn: true }),
