@@ -1,5 +1,3 @@
-import '@/core/event-transport';
-import '@/core/secrets-client';
 import { createApp } from 'vue'
 import { createActor } from 'xstate';
 // import { createBrowserInspector } from '@statelyai/inspect';
@@ -7,13 +5,12 @@ import type { Actor } from 'xstate';
 import App from './App.vue'
 import './style.css'
 import builtInPacks from 'virtual:built-in-packs';
-import { getRegisteredPlugins, getRegisteredDefaultPlugin, registerPackFE } from '@abuddy/host/fe';
 import { packsPlugin } from '@/packs/plugin';
 import { application, createApplicationState } from '@/core/actors/application';
 import { runFrontendMigrations } from '@/setup/migrations';
 import { handleProtocolInstall, requestPackInstall } from '@/packs/pack-install';
 import 'virtual:host-deps';
-import { registerHostModule } from '@abuddy/sdk/runtime';
+import { bindRendererHost, fePacks } from '@/core/fe-host';
 
 declare const __APP_VERSION__: string;
 
@@ -92,13 +89,13 @@ const loadedMods = await Promise.all(
   })
 );
 for (const mod of loadedMods) {
-  if (mod?.default) registerPackFE(mod.default);
+  if (mod?.default) fePacks.registerPackFE(mod.default);
 }
 
 // const { inspect } = createBrowserInspector();
 
-const plugins = [...getRegisteredPlugins(), packsPlugin];
-const defaultPlugin = getRegisteredDefaultPlugin();
+const plugins = [...fePacks.getRegisteredPlugins(), packsPlugin];
+const defaultPlugin = fePacks.getRegisteredDefaultPlugin();
 
 export const applicationState = createActor(createApplicationState(), {
   systemId: application,
@@ -109,7 +106,12 @@ export const applicationState = createActor(createApplicationState(), {
     initialPluginId,
     restoreLastActivePlugin: !isPluginPopout,
   }
-}).start();
+});
+
+// The SDK's frontend code (navigation, sends, the secrets client) reaches this window's app from here on:
+// bound before the application actor starts its plugins, and before any external pack frontend loads
+bindRendererHost(applicationState);
+applicationState.start();
 
 window.applicationState = applicationState;
 
@@ -117,8 +119,6 @@ window.__disableOnboardingUI = () => {
   applicationState.send({ type: 'ONBOARDING_COMPLETE' });
   console.log('Onboarding UI hiding disabled');
 };
-
-registerHostModule('application', applicationState);
 
 applicationState.subscribe({
   error: (error: unknown) => {

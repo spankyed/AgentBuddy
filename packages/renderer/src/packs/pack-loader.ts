@@ -1,5 +1,6 @@
 import type { Plugin } from '@/core/types';
-import { registerPackFE, unregisterPackFE, type PackFERegistration } from '@abuddy/host/fe';
+import type { PackFERegistration } from '@abuddy/host/fe';
+import { fePacks } from '@/core/fe-host';
 
 export function loadPackStyles(packId: string, stylesPath: string, packBaseUrl: string): Promise<void> {
   const href = `${packBaseUrl}/${stylesPath}`;
@@ -21,7 +22,7 @@ export function loadPackStyles(packId: string, stylesPath: string, packBaseUrl: 
   });
 }
 
-const REGISTRATION_KEYS = ['plugins', 'steps', 'artifacts', 'blocks', 'tiptapPlugins', 'appExtensions'] as const;
+const REGISTRATION_KEYS = ['plugins', 'steps', 'artifacts', 'blocks', 'tiptapPlugins', 'appExtensions', 'dslTypes'] as const;
 
 /** Imports a pack's FE entry: its registration, or null when it exports none. Throws when the import fails. */
 export async function loadPackFEEntry(
@@ -62,7 +63,7 @@ export async function loadPackFEEntry(
  * deactivated, and when a load that was already running finished for a pack deactivated meanwhile.
  */
 export function unloadPackFrontend(packId: string): void {
-  unregisterPackFE(packId);
+  fePacks.unregisterPackFE(packId);
   document.querySelectorAll(`link[data-pack-id="${packId}"]`).forEach(el => el.remove());
 }
 
@@ -86,6 +87,6 @@ export async function loadPackFrontend(pack: PackFrontend): Promise<Plugin[] | n
 
   const registration = await loadPackFEEntry(pack.feEntry, packBaseUrl);
   if (!registration) return [];
-  registerPackFE(registration, pack.id);
+  fePacks.registerPackFE(registration, pack.id);
   return registration.plugins ?? [];
 }

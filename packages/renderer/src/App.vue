@@ -3,9 +3,9 @@ import WebApp from './WebApp.vue';
 import PluginPopoutApp from './PluginPopoutApp.vue';
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue';
-import { getAppExtension } from '@abuddy/host/fe';
+import { fePacks } from '@/core/fe-host';
 
-const WelcomeComponent = getAppExtension('welcome');
+const WelcomeComponent = fePacks.getAppExtension('welcome');
 const isWelcome = useSelector(applicationState, (s) => s.hasTag('welcome'));
 const isConnecting = useSelector(applicationState, (s) => s.hasTag('connecting'));
 const isPluginPopout = new URLSearchParams(window.location.search).get('popout') === 'plugin';

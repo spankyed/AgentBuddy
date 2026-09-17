@@ -7,7 +7,6 @@ import { trpc, reconnectApiClient } from '@/core/trpc';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
 import { globalToast } from '@/core/toast';
 import { getDesignated } from '@abuddy/sdk/fe';
-import { stepRegistry } from '@abuddy/sdk/steps';
 import { loadPackFrontend, unloadPackFrontend } from '@/packs/pack-loader';
 
 declare global {
@@ -471,7 +470,6 @@ export const createApplicationState = () => setup({
       if (newPlugins.length === 0) {
         enqueue.assign({ packPluginIds, packFrontendsLoaded });
       } else {
-        stepRegistry.initComponents();
         const packsIdx = context.plugins.findIndex(p => p.id === 'packs');
         const allPlugins = packsIdx >= 0
           ? [...context.plugins.slice(0, packsIdx), ...newPlugins, ...context.plugins.slice(packsIdx)]

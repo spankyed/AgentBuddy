@@ -1,4 +1,3 @@
-import { registerHostModule } from '@abuddy/sdk/runtime';
 import type { SecretsClient } from '@abuddy/sdk/fe';
 import { trpc } from '@/core/trpc';
 
@@ -12,6 +11,3 @@ export const secretsClient: SecretsClient = {
   delete: (id) => trpc.secrets.delete.mutate({ id }),
   allowUnprotected: () => trpc.secrets.allowUnprotected.mutate(),
 };
-
-// Registered as this module loads, before any pack frontend mounts
-registerHostModule('secrets-client', secretsClient);

@@ -1,21 +1,24 @@
 # @app/renderer
 
-The Vue 3 app every AgentBuddy window runs. It hosts plugins; it doesn't implement them. Built-in plugins come from `packages/default-setup` (compiled in), and external packs' plugins load at runtime from `pack://`. The renderer owns the application actor, the tRPC client, the pack frontend loader, the shared-dependency globals packs import through, the layout shell and the Packs view. The root `CLAUDE.md` covers the plugin model; `docs/public-facing/architecture.md` ("Frontend boot", "Host dependency sharing") covers pack loading from a pack author's side, and `packages/api/src/packs/CLAUDE.md` covers the backend half.
+The Vue 3 app every AgentBuddy window runs. It hosts plugins; it doesn't implement them. Built-in plugins come from `packages/default-setup` (compiled in), and external packs' plugins load at runtime from `pack://`. The renderer owns the application actor, the tRPC client, the pack frontend loader, the shared-dependency globals packs import through, the layout shell and the Packs view. The root `CLAUDE.md` covers the plugin model; `docs/public-facing/architecture.md` ("Frontend boot", "Host dependency sharing") covers pack loading from a pack author's side, and `packages/abuddy-host/src/packs/runtime/CLAUDE.md` covers the backend half.
 
 ## Boot (`src/main.ts`)
 
-Its static imports are evaluated first: `@/core/event-transport` (imported first) registers the `event-transport` host module `@abuddy/sdk/events` sends through (events for systems go over the API client; plugin sends and subscriptions throw, being backend-only) `@/core/secrets-client` registers the `secrets-client` host module behind `@abuddy/sdk/fe`'s `secretsClient` (the API's secrets procedures, the only ones pack frontends call directly), `virtual:built-in-packs` loads every built-in pack's FE entry, and `virtual:host-deps` assigns `window.__abuddy`, so both are in place before pack code runs. The body then runs with a top-level `await`, in this order:
+Its static imports are evaluated first: `virtual:built-in-packs` loads every built-in pack's FE entry, and `virtual:host-deps` assigns `window.__abuddy`, so both are in place before pack code runs. The body then runs with a top-level `await`, in this order:
 
 1. Installs `window.error` / `unhandledrejection` reporters (`electronAPI.rendererLog.write`, `fatal: true`). Reads `?popout=plugin&pluginId=…` (set by main's `plugin:popout`).
 2. Sets `window.appVersion` (`__APP_VERSION__`, the root `package.json` version) and runs `runFrontendMigrations()` (`src/setup/migrations/index.ts`: localStorage migrations run before the actor reads its keys; the list is empty now; the version is stored under `agentbuddy-fe-version`).
-3. Built-in packs: calls each loader in `virtual:built-in-packs` and `registerPackFE(mod.default)` (`@abuddy/host/fe`), without a pack id, so they can't be unregistered.
-4. Creates the application actor with `systemId: 'application'` and input `{ plugins: [...getRegisteredPlugins(), packsPlugin], defaultPlugin: getRegisteredDefaultPlugin(), initialPluginId, restoreLastActivePlugin: !popout }`. It is exported as `applicationState`.
-5. Sets the globals and registers the host module:
+3. Built-in packs: calls each loader in `virtual:built-in-packs` and `fePacks.registerPackFE(mod.default)`, without a pack id, so they can't be unregistered. `fePacks` (`src/core/fe-host.ts`) is this window's registered pack frontends, `createFePackRegistry()` from `@abuddy/host/fe`: the pack loader registers external packs' in it, `App.vue` reads the `welcome` app extension from it, and the SDK's frontend lookups (steps, designations, tiptap plugins, DSL types) read it once bound.
+4. Creates the application actor with `systemId: 'application'` and input `{ plugins: [...fePacks.getRegisteredPlugins(), packsPlugin], defaultPlugin: fePacks.getRegisteredDefaultPlugin(), initialPluginId, restoreLastActivePlugin: !popout }`. It is exported as `applicationState`.
+5. Binds the SDK's frontend port, `bindRendererHost(applicationState)` (`src/core/fe-host.ts`: `bindFeHost({ application, secrets, transport, packs: fePacks })`), then starts the actor, so the binding is in place before any plugin runs or any external pack frontend loads:
+   - `application` backs `@abuddy/sdk/fe`'s `navigateToPlugin` and its neighbours;
+   - `secrets` is `src/core/secrets-client.ts`, the API's secrets procedures behind `secretsClient` (the only ones pack frontends call directly);
+   - `transport.sendIncoming` is how `@abuddy/sdk/events`' `sendToSystem` sends here: over the API client (`bus.send`), reporting a rejected send to the console, the app's log (`fe-host` source) and a toast, without the payload. Plugin sends and subscriptions throw (no backend app is bound in the renderer).
+6. Sets the globals:
    - `window.applicationState` is the actor. The E2E fixture (`@abuddy/testing`) finds the main window by it and drives it.
    - `window.__disableOnboardingUI()` sends `ONBOARDING_COMPLETE`.
-   - `registerHostModule('application', applicationState)` backs `@abuddy/sdk/fe`'s delegates (`navigateToPlugin`, …).
-6. Subscribes to `protocolAction`: `abuddy://install?pack=…&source=…` → `requestPackInstall` (`src/packs/pack-install.ts`), which sends `INSTALL_PACK` to the `packs` system.
-7. Mounts `App.vue` (it provides `actorSystem` and `applicationActor`), sets a Vue `errorHandler`, then calls `electronAPI.rendererReady()`, which tells main to show the window.
+7. Subscribes to `protocolAction`: `abuddy://install?pack=…&source=…` → `requestPackInstall` (`src/packs/pack-install.ts`), which sends `INSTALL_PACK` to the `packs` system.
+8. Mounts `App.vue` (it provides `actorSystem` and `applicationActor`), sets a Vue `errorHandler`, then calls `electronAPI.rendererReady()`, which tells main to show the window.
 
 `App.vue` renders `PluginPopoutApp.vue` (one plugin, `PopoutTitlebar`) for popouts, else `WebApp.vue` (toolbar, canvas and chat areas, inspection panel), plus the `welcome` app extension while the actor has the `welcome` tag, and an overlay while it has `connecting`. `index.html` defines `window.__showErrorPage(title, detail)`, the static error page, whose buttons call `electronAPI.apiStatus.reload/relaunch/openLogFile`.
 
@@ -30,7 +33,7 @@ Its static imports are evaluated first: `@/core/event-transport` (imported first
   - `getSdkFeModules()` (`sdkFe`, `sdkEvents`, `sdkRuntime`, …);
   - every `@abuddy/ui` export, keyed by specifier.
 
-  All three lists live in `@abuddy/host/build/shared-deps`. The pack FE bundler proxies the same specifiers to these globals, so packs share the host's Vue, XState and SDK registries.
+  All three lists live in `@abuddy/host/build/shared-deps`. The pack FE bundler proxies the same specifiers to these globals, so packs share the host's Vue, XState and SDK instance (with the frontend host it binds).
 - **Aliases:** `@abuddy/api` → `../api/src`. Resolve conditions include `@abuddy/source`.
 - `base: './'` (loaded from `file://` in builds), `modulePreload: false`, and a long `optimizeDeps.include` list (Monaco, xterm, tiptap, vidstack, …) for the dev server.
 - `tsconfig.app.json` includes `../abuddy-sdk/src/fe/**/*` (the `Window.electronAPI` declaration, see `packages/preload/CLAUDE.md`) and maps `@/*` → `src/*`.
@@ -72,15 +75,15 @@ The application actor owns loading; `src/packs/pack-loader.ts` does the work. Th
 3. **`packFrontendLoader`** queries `trpc.packs.registry` and, for each non-built-in pack not yet loaded, calls `loadPackFrontend(pack)`, reporting `PACK_FRONTEND_LOADED { packId, plugins }` after each pack. A pack that throws is reported with `plugins: []` and listed in `failedPacks`. At the end it sends `PACK_FRONTENDS_SETTLED { registryError?, failedPacks? }`.
 4. **`loadPackFrontend`** (`pack-loader.ts`):
    - `loadPackStyles` adds a `<link data-pack-id>` for `pack://<id>/<feStyles>`, once per href.
-   - It then `import()`s `pack://<id>/<feEntry>` and calls `registerPackFE(registration, packId)`.
+   - It then `import()`s `pack://<id>/<feEntry>` and calls `fePacks.registerPackFE(registration, packId)`.
    - It returns the plugins, or `null` when the pack has no `feEntry`. It throws when the entry fails to import or register, so the loader lists the pack in `failedPacks` (a toast).
-   - `loadPackFEEntry` warns when the module has no default export or declares none of `plugins/steps/artifacts/blocks/tiptapPlugins/appExtensions`. On an import failure it logs `[pack-loader] Failed to load FE entry pack://…:` with the error (the E2E fixture matches the prefix) and throws the reason, adding that a pack built for another AgentBuddy version needs rebuilding.
+   - `loadPackFEEntry` warns when the module has no default export or declares none of `plugins/steps/artifacts/blocks/tiptapPlugins/appExtensions/dslTypes`. On an import failure it logs `[pack-loader] Failed to load FE entry pack://…:` with the error (the E2E fixture matches the prefix) and throws the reason, adding that a pack built for another AgentBuddy version needs rebuilding.
 5. **`mergePackPlugins`:**
    - `null` records the pack as loaded and asks nothing, because the connection's `CLIENT_CONNECTED` already reached its systems.
    - Otherwise it skips plugin ids already present, inserts the new plugins before `packs`, spawns their actors, records them in `packPluginIds`, and, if `busSubscribed`, calls `packClientReady` so the pack's systems send their startup data.
    - A pack that was unloaded while its load ran (`packsUnloadedWhileLoading`) is instead unloaded again and dropped.
 6. **`onPackFrontendsSettled`:** a registry error is shown as a toast only until one read has succeeded; the next connection retries. Failed packs are shown as a toast and not retried.
-7. **Teardown:** on `PACK_DEACTIVATED` the Packs plugin (`src/packs/state.ts`) calls `unloadPackFrontend` (`unregisterPackFE` and removing the stylesheets) and sends `PACK_PLUGINS_UNLOADED`. `removePackPlugins` stops those plugin actors, navigates away if one was active, and clears the pack from `packFrontendsLoaded` so it loads again if it comes back.
+7. **Teardown:** on `PACK_DEACTIVATED` the Packs plugin (`src/packs/state.ts`) calls `unloadPackFrontend` (`fePacks.unregisterPackFE` and removing the stylesheets) and sends `PACK_PLUGINS_UNLOADED`. `removePackPlugins` stops those plugin actors, navigates away if one was active, and clears the pack from `packFrontendsLoaded` so it loads again if it comes back.
 
 ## Packs plugin (`src/packs/`)
 
