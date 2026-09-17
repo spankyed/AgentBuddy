@@ -6,7 +6,7 @@ import { getLmdbPath, getVolatileLmdbPath } from '@abuddy/sdk/utils';
 import type { EarsEngine } from '@abuddy/ears';
 import type { LmdbStore } from '@abuddy/ears/lmdb';
 import { assertNoDatabaseWriter, openDatabaseStore } from '@abuddy/host/database';
-import { createPackRegistry, discoverBuiltInPacks, publishHostPackArtifacts, pruneHostPackArtifacts, prepareHostDataDirs, type PackRegistry } from '@abuddy/host/packs';
+import { createPackRegistry, discoverBuiltInPacks, publishHostPackOutput, pruneHostPackOutputs, prepareHostDataDirs, type PackRegistry } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import * as path from 'path';
 import {
@@ -119,17 +119,17 @@ export async function setupBackend(): Promise<void> {
     const builtInInfos = await builtInPromise;
     for (const info of builtInInfos) {
       try {
-        if (publishHostPackArtifacts(info.dir, path.join(appContext.hostPacksDir, info.id))) {
-          console.log(`[packs] Published build artifacts for built-in pack ${info.id}`);
+        if (publishHostPackOutput(info.dir, path.join(appContext.hostPacksDir, info.id))) {
+          console.log(`[packs] Published build output for built-in pack ${info.id}`);
         }
       } catch (err) {
-        console.warn(`[packs] Could not publish build artifacts for ${info.id}:`, err);
+        console.warn(`[packs] Could not publish build output for ${info.id}:`, err);
       }
     }
-    // A pack this release no longer has leaves its artifacts behind, which tools would still read as the app's.
+    // A pack this release no longer has leaves its build output behind, which tools would still read as the app's.
     // Kept by what this build ships, not by what loaded: a pack whose runtime failed this boot still has its own.
-    const stale = pruneHostPackArtifacts(appContext.hostPacksDir, discoverBuiltInPacks(builtInDir!).map((pack) => pack.id));
-    if (stale.length > 0) console.log(`[packs] Removed build artifacts of built-in pack(s) this app no longer has: ${stale.join(', ')}`);
+    const stale = pruneHostPackOutputs(appContext.hostPacksDir, discoverBuiltInPacks(builtInDir!).map((pack) => pack.id));
+    if (stale.length > 0) console.log(`[packs] Removed build output of built-in pack(s) this app no longer has: ${stale.join(', ')}`);
   }
 
   // Run early boot hooks (logs system must start before anything else)

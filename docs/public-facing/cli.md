@@ -325,4 +325,4 @@ In the AgentBuddy repo, `npm run db:query`, `db:exec`, `db:repl`, `db:inspect`, 
 
 #### `abuddy clean`
 
-Remove build artifacts: `dist/`, `.abuddy/`, `src/__generated__/`.
+Remove build output: `dist/`, `.abuddy/`, `src/__generated__/`.

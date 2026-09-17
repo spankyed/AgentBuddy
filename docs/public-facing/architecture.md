@@ -77,7 +77,7 @@ The source directory must be built first: installing a directory with neither a 
    - **Built-in:** discovered from `BUILT_IN_PACKS_DIR` (`abuddy.json` with `builtIn: true`). In development each pack's `dist/runtime/index.cjs` is loaded when it exists, falling back to the loaders bundled into the API, which `setup/backend.ts` passes to `loadBuiltInPacks` as `bundledLoaders` (the API build generates them as `virtual:built-in-pack-loaders`); otherwise the bundled loader is used.
    - **External:** discovered in `packs/` and reconciled with `pack-registry.json` (new packs added enabled, missing ones removed). For each enabled pack: `hostVersion` check, bundle format check, a warning on an SDK major version mismatch, `runtime/index.cjs` loaded through the module bridge, and `earlySystem`, `seedManifest` and `partitionPolicy` stripped. Each pack's systems register as `<packId>.<featureId>`.
    - The registry's `registerPack()` stores each registration (see [Collision detection](#collision-detection)). A pack contributes only through its registration: nothing registers when its modules are imported.
-5. Publishes each built-in pack's build artifacts into `host-packs/<id>/`.
+5. Publishes each built-in pack's build output into `host-packs/<id>/`.
 6. Starts the `earlySystem` (default-setup's logs system).
 7. Wires each pack's `onShutdown` hook, keyed by pack id.
 8. Hydrates the app's engine from LMDB. Every pack's entity types are registered by now, so the partition policy sees them all.

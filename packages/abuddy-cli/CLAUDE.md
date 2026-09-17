@@ -100,7 +100,7 @@ Because host code is inlined, `@abuddy/host` imports are fine in `src/`. The CLI
 - `tests/cli/`: commands run end to end or through their exports: scaffold, `add`, pack, release, install `hostVersion`, a scaffolded pack installed and loaded by the host pack loader (`init-install-load`), dev install, hand-off, source hooks, app launcher.
 - `tests/app/`: app target resolution, beta download (`ensureBetaApp`: macOS arm64 only), Playwright resolution, app version.
 - `tests/harness/`: `@abuddy/testing/harness` from a scaffolded pack (`harness-setup`) and a dependent pack running default-setup's runtime (`dependency-runtime`, skipped until default-setup is built).
-- `tests/packs/host-artifacts.spec.ts`: `publishHostPackArtifacts` and dependency resolution from an installed app.
+- `tests/packs/host-output.spec.ts`: `publishHostPackOutput` and dependency resolution from an installed app.
 - `tests/helpers/published-packages.ts`: `PACKAGES_BUILT`, `installPublishedPackages()` (npm-packs `@abuddy/ears`, the SDK and UI into a temp `node_modules`), `compileConsumer()` over `CONSUMER_MATRIX` (current TypeScript and the 5.7 floor from `packages/typescript-floor`, × `node16`/`bundler`). The `published-*` specs skip without `dist/`, but throw in CI or when `dist` is older than `src`: run `npm run packages:build`.
 
 End-to-end coverage outside this package: `npm run test:external-pack` (`tests/fixtures`) and `npm run test:packaged-authoring` (packed tarballs, outside the monorepo).

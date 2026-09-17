@@ -12,7 +12,7 @@ process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/setup/backend');
 const { loadBuiltInPacks, loadExternalPacks, registerExternalPacks, startPacks } = await import('@abuddy/host/packs/runtime');
-const { installPackFromLocal, publishHostPackArtifacts } = await import('@abuddy/host/packs');
+const { installPackFromLocal, publishHostPackOutput } = await import('@abuddy/host/packs');
 const { openAppDatabase } = await import('@abuddy/host/database');
 const { resolveAppContext } = await import('@abuddy/sdk/env');
 const { unbindHost } = await import('@abuddy/sdk/runtime/internals');
@@ -37,7 +37,7 @@ function snapshot(query: EarsQuery) {
 async function bootApi() {
   const app = openAppStore();
   const infos = await loadBuiltInPacks(app.packs, PACKAGES_DIR, { runtimeEntry: 'only' });
-  for (const info of infos) publishHostPackArtifacts(info.dir, path.join(resolveAppContext().hostPacksDir, info.id));
+  for (const info of infos) publishHostPackOutput(info.dir, path.join(resolveAppContext().hostPacksDir, info.id));
   registerExternalPacks(app.packs, loadExternalPacks());
   await app.store.hydrate();
   return app;

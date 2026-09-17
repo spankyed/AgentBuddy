@@ -36,7 +36,7 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
 - `pack-registry.json` (`packs/pack-registry.ts`) holds install state, `enabled`, `source`, update-check results and `lastError`. It is kept outside LMDB because packs register before hydration.
 - `pack-dev-servers/<packId>.json` holds `{ port, pid }` (`packs/dev-server.ts`). It is kept outside `packs/`, because an installed pack dir holds exactly the verified bundle.
 - `secrets.json` plus `secrets.key` (file vault only) sit in the same directory (`secrets/index.ts`).
-- `packs/<id>/` holds installed bundles, and `host-packs/<id>/` holds published built-in pack artifacts (see Bundle).
+- `packs/<id>/` holds installed bundles, and `host-packs/<id>/` holds published built-in packs' build output (see Bundle).
 
 ## App state (`app-state/`)
 
@@ -69,7 +69,7 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
 - `stageBundle(packRoot, stageDir)` copies `dist/{runtime,build,types}` without `.map` files, writes `abuddy.json` (with an optional version override) and writes `bundle.json`, which records the format version and a sha256 per file.
 - `verifyBundle` throws on a format major other than `BUNDLE_FORMAT_VERSION`, a missing file, a checksum mismatch, or an unexpected extra file.
 - `createBundleArchive` writes a reproducible `<id>-<version>.tgz` (no mtimes or uids, entries prefixed `<id>/`) plus a `.sha256` file. `extractBundleArchive` checks the sha256 when one is given and requires exactly one top-level dir.
-- `publishHostPackArtifacts` is described in `src/packs/runtime/CLAUDE.md`. It is skipped when `.fingerprint` matches, and it throws when `dist/runtime/seeds-index.sha256` doesn't match `seeds.json`.
+- `publishHostPackOutput` is described in `src/packs/runtime/CLAUDE.md`. It is skipped when `.fingerprint` matches, and it throws when `dist/runtime/seeds-index.sha256` doesn't match `seeds.json`.
 
 **Installer** (`packs/pack-installer.ts`): every install goes through stage, then verify, then place.
 - Entry points:
@@ -192,7 +192,7 @@ What opening an app's database needs, shared by the API's boot and `abuddy db`, 
   - `packages/abuddy-ears/tests/lmdb/` (the LMDB adapter, sharded router, query layer and `openLmdbStore`)
   - `packages/abuddy-cli/tests/cli/init-install-load.spec.ts`
   - `packages/abuddy-cli/tests/cli/{install-host-version,dev-install,pack-cli}.spec.ts`
-  - `packages/abuddy-cli/tests/packs/host-artifacts.spec.ts`
+  - `packages/abuddy-cli/tests/packs/host-output.spec.ts`
 
 ## Gotchas
 

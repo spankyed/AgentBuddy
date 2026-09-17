@@ -12,7 +12,7 @@ Commands:
   generate            Generate EARS types from manifest + deps
   generate-entries    Generate __generated__/ files from manifest
   fetch-deps          Fetch dependency type manifests
-  build [--skip-generate]  Compile pack artifacts to dist/
+  build [--skip-generate]  Compile the pack to dist/
   pack                Bundle dist/ into a verified .tgz + .sha256
   release [patch|minor|major] [--beta] [--dry-run] [--local]  Cut a release
   validate            Check manifest and types
@@ -26,7 +26,7 @@ Commands:
   db <command>        Query, export, import or reset the app's database (AgentBuddy closed)
   info                Show pack summary
   doctor              Run health checks
-  clean               Remove build artifacts
+  clean               Remove build output
 
 Options:
   --help, -h          Show this help

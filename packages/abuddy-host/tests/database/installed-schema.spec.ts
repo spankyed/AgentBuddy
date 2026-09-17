@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { readInstalledSchema } from '../../src/database/schema.ts';
-import { pruneHostPackArtifacts } from '../../src/packs/bundle.ts';
+import { pruneHostPackOutputs } from '../../src/packs/bundle.ts';
 import { dataDirWithPacks, removeTempDirs, schemaContext } from './fixtures.ts';
 
 afterEach(removeTempDirs);
@@ -54,16 +54,16 @@ describe('packs declaring the same name', () => {
   });
 });
 
-describe('pruneHostPackArtifacts', () => {
+describe('pruneHostPackOutputs', () => {
   it('removes the artifacts of built-in packs the app no longer has, and keeps the rest', () => {
     const dir = dataDirWithPacks();
     const hostPacks = path.join(dir, 'host-packs');
     fs.cpSync(path.join(hostPacks, 'core'), path.join(hostPacks, 'dropped'), { recursive: true });
     fs.mkdirSync(path.join(hostPacks, '.core.publishing-123-abc'), { recursive: true });
 
-    expect(pruneHostPackArtifacts(hostPacks, ['core'])).toEqual(['dropped']);
+    expect(pruneHostPackOutputs(hostPacks, ['core'])).toEqual(['dropped']);
     expect(fs.readdirSync(hostPacks).sort()).toEqual(['.core.publishing-123-abc', 'core']);
-    expect(pruneHostPackArtifacts(hostPacks, ['core'])).toEqual([]);
-    expect(pruneHostPackArtifacts(path.join(dir, 'nowhere'), ['core'])).toEqual([]);
+    expect(pruneHostPackOutputs(hostPacks, ['core'])).toEqual([]);
+    expect(pruneHostPackOutputs(path.join(dir, 'nowhere'), ['core'])).toEqual([]);
   });
 });

@@ -4,7 +4,7 @@ import { createLogger } from '@abuddy/sdk/logger';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import type { PackSystemDef } from '@abuddy/sdk/framework';
 import type { PackRegistry } from '../pack-registration.ts';
-import { publishHostPackArtifacts } from '../bundle.ts';
+import { publishHostPackOutput } from '../bundle.ts';
 import type { PackManifest } from '../pack-discovery.ts';
 import {
   loadSingleExternalPack,
@@ -65,7 +65,7 @@ async function reloadPack(
     registry.registerShutdownHook(fresh.onShutdown, packId);
   }
   fresh.onInit?.();
-  // Side work once the swap is done (seeding, publishing artifacts, the loaded-pack list). By here the old
+  // Side work once the swap is done (seeding, publishing build output, the loaded-pack list). By here the old
   // registration is gone and its shutdown hooks have run, so the systems must be restarted whatever this
   // does: a throw that escaped would leave the fresh registration live, the old actors running but already
   // torn down, and nothing ever stopped or respawned.
@@ -160,9 +160,9 @@ export async function reloadBuiltInPack(
         // Pack authors resolve this pack's types, build code and seeds from the app's copy
         const { hostPacksDir } = resolveAppContext();
         try {
-          publishHostPackArtifacts(packInfo.dir, path.join(hostPacksDir, packId));
+          publishHostPackOutput(packInfo.dir, path.join(hostPacksDir, packId));
         } catch (err) {
-          logger.warn(`Could not publish build artifacts for ${packId}:`, err as Error);
+          logger.warn(`Could not publish build output for ${packId}:`, err as Error);
         }
       },
     };

@@ -145,11 +145,11 @@ export function stageBundle(
 }
 
 /**
- * Removes the published artifacts of built-in packs this app no longer has (a pack dropped in a new release), so a
+ * Removes the published build output of built-in packs this app no longer has (a pack dropped in a new release), so a
  * tool reading the data dir doesn't keep taking their entity types for the app's. Returns the ids it removed.
  * Hidden staging dirs are left to `recoverStagingDirs`.
  */
-export function pruneHostPackArtifacts(hostPacksDir: string, keep: Iterable<string>): string[] {
+export function pruneHostPackOutputs(hostPacksDir: string, keep: Iterable<string>): string[] {
   if (!fs.existsSync(hostPacksDir)) return [];
   const kept = new Set(keep);
   const stale = fs.readdirSync(hostPacksDir, { withFileTypes: true })
@@ -235,14 +235,14 @@ function builtInSeedFiles(distDir: string): string[] {
 const BUILT_IN_RUNTIME_SEEDS_HASH = 'runtime/seeds-index.sha256';
 
 /**
- * Publish a built-in pack's artifacts in the bundle layout (dist/snapshot.json → types/snapshot.json,
+ * Publish a built-in pack's build output in the bundle layout (dist/snapshot.json → types/snapshot.json,
  * dist/build/ → build/, dist/runtime/index.cjs → runtime/index.cjs, compiled seeds → runtime/seeds/) so
  * pack authors resolve it as a dependency from the installed app: builds use its types and build
  * code, tests its runtime with the seed data it reads (settings defaults). Returns false when the
  * destination was already current. Throws, publishing nothing, when the runtime wasn't built beside
  * the compiled seeds (seeds compiled again without rebuilding the runtime).
  */
-export function publishHostPackArtifacts(builtInPackDir: string, destDir: string): boolean {
+export function publishHostPackOutput(builtInPackDir: string, destDir: string): boolean {
   const distDir = path.join(builtInPackDir, 'dist');
   const snapshot = path.join(distDir, 'snapshot.json');
   if (!fs.existsSync(snapshot)) return false;
