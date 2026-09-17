@@ -97,7 +97,7 @@ export async function setupBackend(): Promise<void> {
 
   // Before discovery: a pack an interrupted install left only as its moved-aside copy is restored,
   // and abuddy install learns which AgentBuddy uses this data dir
-  prepareHostDataDirs({ userDataDir: appContext.userDataDir, packsDirs: [appContext.packsDir, appContext.hostPacksDir], version: APP_VERSION });
+  prepareHostDataDirs({ userDataDir: appContext.userDataDir, packsDir: appContext.packsDir, hostPacksDir: appContext.hostPacksDir, version: APP_VERSION });
 
   // API keys: the settings system hears of every change to them
   forwardSecretsChanges(packs);

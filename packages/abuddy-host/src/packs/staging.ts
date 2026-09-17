@@ -1,7 +1,9 @@
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { recordHostVersion } from './host-info.ts';
+import { readPackRegistry } from './pack-registry.ts';
 
 export type StagingKind = 'installing' | 'previous' | 'publishing';
 
@@ -16,6 +18,9 @@ export function stagingDirName(id: string, kind: StagingKind): string {
   return `.${id}.${kind}-${process.pid}-${crypto.randomBytes(4).toString('hex')}`;
 }
 
+/** When this machine booted: nothing written before it belongs to a running process, whatever its PID says */
+const bootTime = () => Date.now() - os.uptime() * 1000;
+
 function processIsRunning(pid: number): boolean {
   try {
     process.kill(pid, 0);
@@ -28,13 +33,17 @@ function processIsRunning(pid: number): boolean {
 
 interface StagingEntry { name: string; id: string; kind: StagingKind; stale: boolean }
 
-function parseStagingDir(name: string): StagingEntry | null {
+/**
+ * A staging dir and whether the process that made it is gone: its PID isn't running, or the dir predates
+ * this boot, which a later process reusing that PID would otherwise hide.
+ */
+function parseStagingDir(dir: string, name: string, bootedAt: number): StagingEntry | null {
   const owned = OWNED_STAGING_DIR.exec(name);
-  if (owned) {
-    const pid = Number(owned[3]);
-    return { name, id: owned[1], kind: owned[2] as StagingKind, stale: pid !== process.pid && !processIsRunning(pid) };
-  }
-  return null;
+  if (!owned) return null;
+  const pid = Number(owned[3]);
+  const fromBeforeBoot = fs.statSync(path.join(dir, name)).mtimeMs < bootedAt;
+  const stale = pid !== process.pid && (fromBeforeBoot || !processIsRunning(pid));
+  return { name, id: owned[1], kind: owned[2] as StagingKind, stale };
 }
 
 export interface StagingRecovery {
@@ -52,8 +61,11 @@ export interface StagingRecovery {
  * back; other stale staging dirs are removed. Staging owned by a running process is another
  * install in progress and stays. Run before discovering packs, so a restored pack is found.
  * Never throws: an entry that can't be handled is reported in `failed`.
+ *
+ * `installedIds` is which packs the registry still lists: a pack uninstalled after the interrupted
+ * install isn't restored. Without it (the built-in packs' dir, which has no registry) every pack is.
  */
-export function recoverStagingDirs(dir: string): StagingRecovery {
+export function recoverStagingDirs(dir: string, installedIds?: ReadonlySet<string>): StagingRecovery {
   const result: StagingRecovery = { restored: [], removed: [], failed: [] };
   let names: string[];
   try {
@@ -64,9 +76,10 @@ export function recoverStagingDirs(dir: string): StagingRecovery {
   }
 
   const entries: StagingEntry[] = [];
+  const bootedAt = bootTime();
   for (const name of names) {
     try {
-      const entry = parseStagingDir(name);
+      const entry = parseStagingDir(dir, name, bootedAt);
       if (entry?.stale) entries.push(entry);
     } catch (err) {
       result.failed.push({ name, error: String(err) });
@@ -76,6 +89,8 @@ export function recoverStagingDirs(dir: string): StagingRecovery {
   for (const entry of entries.filter((e) => e.kind === 'previous')) {
     try {
       if (fs.existsSync(path.join(dir, entry.id))) continue;
+      // Uninstalled while its interrupted install's copy sat here: it stays gone
+      if (installedIds && !installedIds.has(entry.id)) continue;
       fs.renameSync(path.join(dir, entry.name), path.join(dir, entry.id));
       result.restored.push(entry.id);
     } catch (err) {
@@ -101,7 +116,7 @@ export function recoverStagingDirs(dir: string): StagingRecovery {
  * `abuddy install` and recovers staging in each packs dir. Failures are logged; boot continues.
  */
 export function prepareHostDataDirs(
-  options: { userDataDir: string; packsDirs: string[]; version: string },
+  options: { userDataDir: string; packsDir: string; hostPacksDir?: string; version: string },
   log: Pick<Console, 'info' | 'warn'> = console,
 ): void {
   try {
@@ -109,8 +124,16 @@ export function prepareHostDataDirs(
   } catch (err) {
     log.warn(`[packs] Could not record the host version in ${options.userDataDir}: ${err}`);
   }
-  for (const dir of options.packsDirs) {
-    const { restored, removed, failed } = recoverStagingDirs(dir);
+  let installedIds: ReadonlySet<string> | undefined;
+  try {
+    installedIds = new Set(readPackRegistry().map((entry) => entry.id));
+  } catch (err) {
+    log.warn(`[packs] Could not read the pack registry, so every interrupted install is restored: ${err}`);
+  }
+  // The built-in packs' dir has no registry: its interrupted publishes are always recovered
+  for (const [dir, ids] of [[options.packsDir, installedIds], [options.hostPacksDir, undefined]] as const) {
+    if (!dir) continue;
+    const { restored, removed, failed } = recoverStagingDirs(dir, ids);
     for (const id of restored) log.info(`[packs] Restored "${id}", whose install was interrupted`);
     for (const name of removed) log.info(`[packs] Removed stale staging dir ${name}`);
     for (const { name, error } of failed) log.warn(`[packs] Could not clean up ${name}: ${error}`);

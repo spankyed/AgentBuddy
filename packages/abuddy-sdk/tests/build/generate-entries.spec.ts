@@ -550,7 +550,7 @@ describe('generated seeders', () => {
     expect(seeders).toContain('  createFlowSeeder(),');
     expect(seeders).toContain('  createSeeder({"key":"memos","entities":["Memo"],"identity":["title","parent"],"relKind":"has_memo","media":true}),');
     expect(seeders).not.toContain('faqs');
-    expect(files['src/__generated__/pack-entry.ts']).toContain('artifacts: ["actions", "flows", "memos"],');
+    expect(files['src/__generated__/pack-entry.ts']).toContain('seedKeys: ["actions", "flows", "memos"],');
   });
 
   it("uses a dependency's format settings for an entry naming it", () => {
@@ -576,7 +576,7 @@ describe('generated seeders', () => {
     expect(seeders).toContain("import { seed as __seeder_settings } from '../seeds/settings-seeder.js';");
     expect(seeders).toContain('  { key: "settings", seed: __seeder_settings },');
     expect(seeders).not.toContain('createSeeder');
-    expect(files['src/__generated__/pack-entry.ts']).toContain('artifacts: ["settings"],');
+    expect(files['src/__generated__/pack-entry.ts']).toContain('seedKeys: ["settings"],');
   });
 
   it('accepts format entities from the SDK and dependencies, and rejects one nobody declares', () => {

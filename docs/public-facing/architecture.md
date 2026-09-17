@@ -61,7 +61,7 @@ Installing is stage, verify, place:
 
 1. **Stage:** a built pack source is copied into a temporary bundle (`runtime/`, `build/`, `types/` from `dist/`, without source maps), with the resolved `abuddy.json` and a `bundle.json` listing each file's sha256. A `.tgz` archive is checked against its `.sha256` (when given) and extracted.
 2. **Verify:** the bundle's format version must match the host's, and the files on disk must be exactly the ones `bundle.json` lists, with matching checksums.
-3. **Place:** the bundle is copied into a hidden `.<id>.installing-<pid>-…` dir in `packs/`, the current copy (if any) is renamed aside to `.<id>.previous-…`, the new copy is renamed into place, and the previous one is removed. At boot, `prepareHostDataDirs` restores a pack whose install crashed between those renames and removes stale staging dirs.
+3. **Place:** the bundle is copied into a hidden `.<id>.installing-<pid>-…` dir in `packs/`, the current copy (if any) is renamed aside to `.<id>.previous-…`, the new copy is renamed into place, and the previous one is removed. At boot, `prepareHostDataDirs` restores a pack whose install crashed between those renames, unless the pack was uninstalled since, and removes stale staging dirs (a dir whose process is gone, or which predates the boot).
 
 The source directory must be built first: installing a directory with neither a `bundle.json` nor a `dist/runtime/index.cjs` beside `dist/types/snapshot.json` fails and asks you to run `abuddy build`. A directory in `packs/` that isn't a bundle is skipped at boot with a warning.
 

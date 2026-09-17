@@ -79,6 +79,33 @@ describe('recoverStagingDirs', () => {
     expect(remaining()).toEqual(['.other-pack.installing-Xy12Zw']);
   });
 
+  it("treats a dir written before this boot as stale, whatever process holds its id now", () => {
+    // A crashed install's dir whose PID a running process now has: only its age says the install is gone
+    const reused = process.ppid;
+    mkdir(`.demo-pack.installing-${reused}-a1B2c3`);
+    const beforeBoot = new Date(Date.now() - os.uptime() * 1000 - 60_000);
+    fs.utimesSync(path.join(packsDir, `.demo-pack.installing-${reused}-a1B2c3`), beforeBoot, beforeBoot);
+
+    expect(recoverStagingDirs(packsDir)).toMatchObject({ removed: [`.demo-pack.installing-${reused}-a1B2c3`], failed: [] });
+    expect(remaining()).toEqual([]);
+  });
+
+  it("doesn't restore a pack uninstalled while its interrupted install's copy sat here", () => {
+    writePack(`.demo-pack.previous-${exitedPid()}-1a2b3c4d`);
+    writePackRegistry([]);
+
+    // The registry no longer lists it: the uninstall stands
+    expect(recoverStagingDirs(packsDir, new Set())).toMatchObject({ restored: [], failed: [] });
+    expect(remaining()).toEqual([]);
+  });
+
+  it("restores a pack the registry still lists", () => {
+    writePack(`.demo-pack.previous-${exitedPid()}-1a2b3c4d`);
+
+    expect(recoverStagingDirs(packsDir, new Set(['demo-pack']))).toMatchObject({ restored: ['demo-pack'], failed: [] });
+    expect(remaining()).toEqual(['demo-pack']);
+  });
+
   it('ignores a packs dir that does not exist yet', () => {
     expect(recoverStagingDirs(path.join(packsDir, 'missing'))).toEqual({ restored: [], removed: [], failed: [] });
   });
@@ -98,12 +125,12 @@ describe('prepareHostDataDirs', () => {
     fs.chmodSync(packsDir, 0o555);
     const log = { info: vi.fn(), warn: vi.fn() };
 
-    expect(() => prepareHostDataDirs({ userDataDir: path.join(packsDir, 'unwritable'), packsDirs: [packsDir, path.join(root, 'not-a-dir.txt')], version: '1.0.0' }, log)).not.toThrow();
+    expect(() => prepareHostDataDirs({ userDataDir: path.join(packsDir, 'unwritable'), packsDir, hostPacksDir: path.join(root, 'not-a-dir.txt'), version: '1.0.0' }, log)).not.toThrow();
     expect(log.warn.mock.calls.flat().join('\n')).toMatch(/Could not record the host version[\s\S]*Could not clean up \.demo-pack\.installing-/);
   });
 
   it('records the host version atomically', () => {
-    prepareHostDataDirs({ userDataDir: root, packsDirs: [packsDir], version: '2.1.0' }, { info: vi.fn(), warn: vi.fn() });
+    prepareHostDataDirs({ userDataDir: root, packsDir, version: '2.1.0' }, { info: vi.fn(), warn: vi.fn() });
     expect(readHostVersion(root)).toBe('2.1.0');
     expect(fs.readdirSync(root).filter((f) => f.endsWith('.tmp'))).toEqual([]);
   });

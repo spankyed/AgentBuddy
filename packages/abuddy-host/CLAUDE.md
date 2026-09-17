@@ -83,8 +83,8 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
 
 **Staging recovery** (`packs/staging.ts`)
 - `stagingDirName(id, kind)` produces `.<id>.<installing|previous|publishing>-<pid>-<hex>`.
-- `recoverStagingDirs(dir)` treats a staging dir as stale only when its pid is no longer running (`process.kill(pid, 0)`; `EPERM` counts as running). For a stale `previous` dir whose `<id>` is missing, it renames the dir back to `<id>`. It deletes other stale staging dirs and leaves dir names without a pid alone. It never throws and reports failures instead.
-- `prepareHostDataDirs({ userDataDir, packsDirs, version })` records the host version and recovers each dir. The API calls it with `packs/` and `host-packs/` before discovery.
+- `recoverStagingDirs(dir, installedIds?)` treats a staging dir as stale when its pid is no longer running (`process.kill(pid, 0)`; `EPERM` counts as running) or the dir was written before this boot (`os.uptime()`), which a later process holding that pid would otherwise hide. For a stale `previous` dir whose `<id>` is missing, it renames the dir back to `<id>`, unless `installedIds` is given and doesn't list the pack: it was uninstalled while the copy sat there. It deletes other stale staging dirs and leaves dir names without a pid alone. It never throws and reports failures instead.
+- `prepareHostDataDirs({ userDataDir, packsDir, hostPacksDir?, version })` records the host version and recovers both dirs, passing the registry's pack ids for `packs/` (`host-packs/` has no registry, so every interrupted publish is recovered). The API calls it before discovery.
 
 **Updater** (`packs/pack-updater.ts`, `packs/github.ts`)
 - `checkForUpdates({ hostVersion })` covers enabled registry entries that have a `source`. The API sets `source` only for GitHub installs.
