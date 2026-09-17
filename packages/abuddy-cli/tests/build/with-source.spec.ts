@@ -1,4 +1,4 @@
-import { execFileSync, spawnSync } from 'node:child_process';
+import { execFileSync, spawn, spawnSync } from 'node:child_process';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '../helpers/published-packages';
@@ -26,6 +26,45 @@ describe('with-source', () => {
 
   it("exits with the command's code", () => {
     expect(run(['node', '-e', 'process.exit(3)']).status).toBe(3);
+  });
+
+  // The wrapper shares its process group with the command it runs, so a terminal's Ctrl+C reaches
+  // both. Running it detached and signalling the group reproduces that without a tty.
+  function ctrlC(childCode: string) {
+    return new Promise<{ out: string; code: number | null; signal: NodeJS.Signals | null }>((resolve, reject) => {
+      const child = spawn(process.execPath, [WITH_SOURCE, process.execPath, '-e', childCode], {
+        cwd: REPO_ROOT,
+        env: { PATH: process.env.PATH },
+        detached: true, // its own process group, as the terminal's foreground group is
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      let out = '';
+      let signalled = false;
+      child.stdout.setEncoding('utf-8');
+      child.stdout.on('data', (chunk: string) => {
+        out += chunk;
+        if (signalled || !out.includes('ready')) return;
+        signalled = true;
+        process.kill(-(child.pid as number), 'SIGINT');
+      });
+      child.on('error', reject);
+      child.on('exit', (code, signal) => resolve({ out, code, signal }));
+    });
+  }
+
+  const READY_THEN_COUNT_SIGINTS =
+    "let n=0;process.on('SIGINT',()=>{if(++n===1)setTimeout(()=>{console.log('sigints='+n);process.exit(0)},300)});" +
+    'setTimeout(()=>{},5000);console.log("ready")';
+
+  it.skipIf(process.platform === 'win32')('delivers a terminal Ctrl+C to the command exactly once', async () => {
+    const { out, code } = await ctrlC(READY_THEN_COUNT_SIGINTS);
+    expect(out).toContain('sigints=1');
+    expect(code).toBe(0);
+  });
+
+  it.skipIf(process.platform === 'win32')('exits the way a signalled command did', async () => {
+    const { signal } = await ctrlC("process.on('SIGINT',()=>{process.removeAllListeners('SIGINT');process.kill(process.pid,'SIGINT')});setTimeout(()=>{},5000);console.log('ready')");
+    expect(signal).toBe('SIGINT');
   });
 
   it('is the only way npm scripts in the checkout get the condition (no .npmrc node-options)', () => {

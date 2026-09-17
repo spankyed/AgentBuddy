@@ -29,13 +29,22 @@ if (process.argv[1] && import.meta.url === pathToFileURL(realpathSync(process.ar
     // npm's .bin shims are .cmd files on Windows
     shell: process.platform === 'win32',
   });
-  for (const signal of /** @type {const} */ (['SIGINT', 'SIGTERM'])) process.on(signal, () => child.kill(signal));
+  // The child runs in this process's group, so a terminal Ctrl+C (SIGINT to the whole foreground
+  // group) already reaches it; re-sending would deliver a second signal to a child that is midway
+  // through shutting down. Absorb it here instead — this process only has to outlive the child to
+  // report its status. SIGTERM is never terminal-generated, so one aimed at this process alone is
+  // forwarded once.
+  process.on('SIGINT', () => {});
+  process.on('SIGTERM', () => child.kill('SIGTERM'));
   child.on('error', (err) => {
     console.error(`${command}: ${err.message}`);
     process.exit(1);
   });
   child.on('exit', (code, signal) => {
-    if (signal) process.kill(process.pid, signal);
-    else process.exit(code ?? 1);
+    // Die the way the child did (128 + signal): dropping the listener restores the default action.
+    if (signal) {
+      process.removeAllListeners(signal);
+      process.kill(process.pid, signal);
+    } else process.exit(code ?? 1);
   });
 }
