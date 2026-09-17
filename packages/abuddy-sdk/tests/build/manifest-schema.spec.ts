@@ -14,13 +14,14 @@ describe('parseManifest', () => {
 
   it("rejects declaring the SDK's entities or relation kinds, by name or value", () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-    for (const entities of [{ Relation: 'Relation' }, { Link: 'Relation' }, { Action: 'Action' }, { Run: 'TNode' }, { Options: 'Settings' }]) {
-      expect(parseManifest({ ...pack, entities }).errors).toEqual([expect.stringMatching(/"entities": Relation, Flow, Node, TNode, Action, Prompt, Settings are defined by the SDK/)]);
+    for (const entities of [{ Relation: 'Relation' }, { Link: 'Relation' }, { Action: 'Action' }, { Run: 'TNode' }, { Template: 'Prompt' }]) {
+      expect(parseManifest({ ...pack, entities }).errors).toEqual([expect.stringMatching(/"entities": Relation, Flow, Node, TNode, Action, Prompt are defined by the SDK/)]);
     }
     for (const relKinds of [{ CONTAINS: 'contains' }, { NEXT: 'transitions_to' }]) {
       expect(parseManifest({ ...pack, relKinds }).errors).toEqual([expect.stringMatching(/"relKinds": CONTAINS, TRANSITIONS_TO, INSTANCE_OF, SPAWNED, TRACKED are defined by the SDK/)]);
     }
-    expect(parseManifest({ ...pack, entities: { Memo: 'Memo', Note: 'Note' }, relKinds: { PINNED: 'pinned' } }).errors).toEqual([]);
+    // Settings is a pack's entity (default-setup's)
+    expect(parseManifest({ ...pack, entities: { Memo: 'Memo', Note: 'Note', Settings: 'Settings' }, relKinds: { PINNED: 'pinned' } }).errors).toEqual([]);
   });
 
   it('accepts a minimal valid manifest', () => {
@@ -86,7 +87,7 @@ describe('seedFormats and boot.seed entries', () => {
   const errorsFor = (seed: Record<string, unknown>, seedFormats: Record<string, unknown> = { memos }) =>
     parseManifest({ ...pack, seedFormats, boot: { seed } }).errors;
 
-  it('accepts specialty paths, entries naming own or dependency formats, and seeder entries', () => {
+  it('accepts specialty paths, entries naming own or dependency formats, seeder entries, and format entries with a seeder', () => {
     expect(errorsFor({
       actions: 'src/seeds/actions',
       flows: { path: 'src/seeds/flows' },
@@ -95,6 +96,7 @@ describe('seedFormats and boot.seed entries', () => {
       docs: { path: 'src/seeds/docs', format: 'docs' },
       notes: { path: 'src/seeds/notes', format: 'base-pack:notes' },
       custom: { seeder: 'src/seeds/custom.ts' },
+      pinned: { path: 'src/seeds/pinned.json', format: 'tags', seeder: 'src/seeds/pinned.ts' },
     }, {
       memos,
       tags: { format: 'json', entity: 'Memo', identity: ['name'] },
@@ -106,11 +108,13 @@ describe('seedFormats and boot.seed entries', () => {
     expect(errorsFor({ library: 'src/seeds/library' })).toEqual([expect.stringMatching(/"boot\.seed\.library": Unknown seed key "library"/)]);
   });
 
-  it('rejects an entry that is neither { path, format } nor { seeder }', () => {
-    const shape = /Seed "memos" must be \{ "path", "format" \} or \{ "seeder" \}/;
+  it('rejects an entry that is neither { path, format } (with or without a seeder) nor { seeder }', () => {
+    const shape = /Seed "memos" must be \{ "path", "format" \}, optionally with "seeder", or \{ "seeder" \}/;
     expect(errorsFor({ memos: { path: 'src/seeds/memos' } })).toEqual([expect.stringMatching(shape)]);
     expect(errorsFor({ memos: { format: 'memos' } })).toEqual([expect.stringMatching(shape)]);
     expect(errorsFor({ memos: { seeder: 's.ts', path: 'p' } })).toEqual([expect.stringMatching(shape)]);
+    expect(errorsFor({ memos: { seeder: 's.ts', format: 'memos' } })).toEqual([expect.stringMatching(shape)]);
+    expect(errorsFor({ memos: {} })).toEqual([expect.stringMatching(shape)]);
   });
 
   it('rejects format settings on an entry: they belong to a seedFormats format', () => {
@@ -118,9 +122,9 @@ describe('seedFormats and boot.seed entries', () => {
     expect(errorsFor({ memos: { path: 'p', format: 'memos', entity: 'Memo' } })).toEqual([expect.stringMatching(/Unrecognized key.*entity/)]);
   });
 
-  it('accepts a settings seed only in a built-in pack: it holds the app\'s defaults', () => {
-    expect(errorsFor({ settings: 'src/seeds/default-settings.ts' })).toEqual([expect.stringMatching(/"boot\.seed\.settings": The "settings" seed holds the app's own defaults, so only built-in packs have one/)]);
-    expect(parseManifest({ ...pack, builtIn: true, boot: { seed: { settings: 'src/seeds/default-settings.ts' } } }).errors).toEqual([]);
+  it("treats settings as a pack's own seed key: an entry, in any pack", () => {
+    expect(errorsFor({ settings: 'src/seeds/default-settings.ts' })).toEqual([expect.stringMatching(/"boot\.seed\.settings": Unknown seed key "settings": only actions, prompts, flows take a path/)]);
+    expect(errorsFor({ settings: { path: 'src/seeds/settings.json', format: 'memos', seeder: 'src/seeds/settings.ts' } })).toEqual([]);
   });
 
   it('rejects the removed boot.earlySystem and boot.createDefaultSettings', () => {

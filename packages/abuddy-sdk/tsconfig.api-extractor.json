@@ -3,6 +3,8 @@
     "target": "ES2022",
     "module": "esnext",
     "moduleResolution": "bundler",
+    // @abuddy/ears resolves to its source (a dependency: not emitted here)
+    "customConditions": ["@abuddy/source"],
     "allowImportingTsExtensions": true,
     "strict": true,
     "esModuleInterop": true,
@@ -13,6 +15,5 @@
     "outDir": ".temp/api-types",
     "types": ["node"]
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["src/ears/internals.ts"]
+  "include": ["src/**/*.ts"]
 }

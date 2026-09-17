@@ -204,9 +204,21 @@ export const tags = ({ path }) => fs.readFileSync(path, 'utf-8').trim().split('\
   });
 
   it('routes specialty keys to their SDK compilers', async () => {
-    write('seeds/settings.json', JSON.stringify({ theme: 'dark' }));
-    await compile({}, { settings: 'seeds/settings.json' });
-    expect(read('settings.seed.json')).toEqual({ theme: 'dark' });
-    expect(read(SEED_INDEX_FILE).seeds).toEqual([{ key: 'settings', seeded: true, count: 1, items: [{ key: 'default-settings', description: 'Application defaults' }] }]);
+    write('seeds/prompts/greet.ts', `export const meta = { label: 'Greet', description: 'Says hello' };\nexport function template() { return 'Hello'; }\n`);
+    await compile({}, { prompts: 'seeds/prompts' });
+    expect(read('prompts.seed.json').records).toEqual([expect.objectContaining({ label: 'Greet' })]);
+    expect(read(SEED_INDEX_FILE).seeds).toEqual([{ key: 'prompts', seeded: true, identity: ['label'], count: 1, items: [{ key: 'Greet', description: 'Says hello' }] }]);
+  });
+
+  it("indexes an entry whose format seeds no entity as seeded when the pack's seeder seeds it", async () => {
+    write('seeds/theme.json', JSON.stringify([{ name: 'defaults', description: 'Theme defaults', theme: 'dark' }]));
+    const seedFormats = { theme: { format: 'json' } };
+    await compile(seedFormats, { theme: { path: 'seeds/theme.json', format: 'theme', seeder: 'src/seeds/theme.ts' } });
+    expect(read('theme.seed.json').records).toEqual([expect.objectContaining({ name: 'defaults', theme: 'dark' })]);
+    expect(read(SEED_INDEX_FILE).seeds).toEqual([{ key: 'theme', seeded: true, count: 1, items: [{ key: 'defaults', description: 'Theme defaults' }] }]);
+
+    // Without the seeder, the same entry is compiled for pack code to read, and not seeded
+    await compile(seedFormats, { theme: { path: 'seeds/theme.json', format: 'theme' } });
+    expect(read(SEED_INDEX_FILE).seeds).toEqual([{ key: 'theme', seeded: false, count: 1, items: [] }]);
   });
 });

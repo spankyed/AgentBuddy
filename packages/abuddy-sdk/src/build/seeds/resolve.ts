@@ -29,13 +29,15 @@ export type ResolvedSeed =
     format: SeedFormatConfig;
     /** Set when the format compiles with a compiler module */
     compiler?: SeedCompilerModuleRef;
+    /** The pack module seeding the compiled records instead of the generic seeder */
+    seeder?: string;
   };
 
 const FORMAT_REF = /^(?:([a-z][a-z0-9-]*):)?([a-z][a-z0-9-]*)$/;
 
 /**
  * Resolves each `boot.seed` entry: specialty keys to their path, pack seeders to their module, and
- * format entries to the settings of the format they name, in this pack's `seedFormats` or a
+ * format entries (with their pack seeder, if any) to the settings of the format they name, in this pack's `seedFormats` or a
  * dependency's. A dependency's compiler module is its bundled seed-compilers.mjs export.
  */
 export function resolveSeeds(
@@ -51,11 +53,15 @@ export function resolveSeeds(
       resolved[key] = { kind: 'specialty', path: sourcePath };
     } else if (typeof entry === 'string') {
       throw new Error(`Unknown seed key "${key}": only ${SPECIALTY_SEED_KEYS.join(', ')} take a path`);
-    } else if (entry.seeder) {
+    } else if (entry.seeder && entry.path === undefined && entry.format === undefined) {
       resolved[key] = { kind: 'seeder', seeder: entry.seeder };
     } else {
-      if (!entry.path || !entry.format) throw new Error(`Seed "${key}" must be { "path", "format" } or { "seeder" }`);
-      resolved[key] = { kind: 'format', path: entry.path, formatRef: entry.format, ...resolveFormat(key, entry.format, manifest, packDir, dependencies) };
+      if (!entry.path || !entry.format) throw new Error(`Seed "${key}" must be { "path", "format" }, optionally with "seeder", or { "seeder" }`);
+      resolved[key] = {
+        kind: 'format', path: entry.path, formatRef: entry.format,
+        ...resolveFormat(key, entry.format, manifest, packDir, dependencies),
+        ...(entry.seeder && { seeder: entry.seeder }),
+      };
     }
   }
   return resolved;

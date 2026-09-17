@@ -1,23 +1,24 @@
 // The generic seeder's change tracking at its edges: a row whose seeded values weren't recorded, rows two
 // packs' records both identify, and an update hook that fails part way.
+import { installedEngine as ears } from '@abuddy/ears';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { dropAttribute, resetTestData, startTestRuntime } from '../../src/testing/index.ts';
+import { dropAttribute, resetTestData, startTestRuntime, testPacks } from '../../src/testing/index.ts';
 import { createSeeder, markSeededRowUnedited } from '../../src/seed/seeder.ts';
-import { seedHookRegistry } from '../../src/seed/hooks.ts';
-import { findWhere } from '../../src/ears/query-helpers.ts';
-import { qx } from '../../src/ears/query.ts';
+import type { SeedHooks } from '../../src/seed/hooks.ts';
 import { getMediaPath } from '../../src/utils/index.ts';
-import { createEntityWithDefaults, updateEntity } from '../../src/ears/transaction-helpers.ts';
 import type { SeedRecord } from '../../src/build/seeds/records.ts';
 import type { EARS } from '../../src/types/entities.ts';
 
 type Memo = { id: EARS.EntityId; name: string; body: string; pinned?: boolean; mood?: string; sourceHash?: string; seededFields?: { fields: string[] } };
-const memos = (name: string) => findWhere<Memo>('Memo' as EARS.Entity, 'name', name);
+const memos = (name: string) => ears().findWhere<Memo>('Memo' as EARS.Entity, 'name', name);
 const memo = (name: string) => memos(name)[0];
-const edit = (name: string, fields: Partial<Memo>) => updateEntity(memo(name).id, fields);
+const edit = (name: string, fields: Partial<Memo>) => ears().updateEntity(memo(name).id, fields);
+
+/** Seed hooks the entity's owning pack registers */
+const registerHooks = (entity: string, hooks: SeedHooks<SeedRecord>) => testPacks.seedHooks.set(entity, hooks as SeedHooks);
 
 const dirs: string[] = [];
 let dataDir: string;
@@ -28,7 +29,7 @@ beforeAll(() => {
   startTestRuntime({ entityTypes: ['Memo', 'Folder'] });
 });
 beforeEach(() => resetTestData());
-afterEach(() => seedHookRegistry.unregisterAll('memo-hooks'));
+afterEach(() => testPacks.seedHooks.clear());
 afterAll(() => {
   for (const dir of [...dirs, dataDir]) fs.rmSync(dir, { recursive: true, force: true });
 });
@@ -102,8 +103,8 @@ describe("two packs' records with the same entry key and identity", () => {
 
 describe("a folder another pack seeded", () => {
   type Folder = { id: EARS.EntityId; name: string; label?: string; seedKey?: string };
-  const folders = () => findWhere<Folder>('Folder' as EARS.Entity, 'name', 'internal');
-  const contents = (folder: Folder) => qx(folder.id).linksTo('contains', 'Memo' as EARS.Entity, true).pick(['name']).map((row) => row.name as string).sort();
+  const folders = () => ears().findWhere<Folder>('Folder' as EARS.Entity, 'name', 'internal');
+  const contents = (folder: Folder) => ears().qx(folder.id).linksTo('contains', 'Memo' as EARS.Entity, true).pick(['name']).map((row) => row.name as string).sort();
 
   /** A pack's entry: one folder holding a memo per name, with the pack's own label on the folder */
   function tree(packId: string, memoNames: string[], entryKey = 'memos'): string {
@@ -122,7 +123,7 @@ describe("a folder another pack seeded", () => {
   }
 
   it('is seeded into, not copied, when its hooks mark it a container', () => {
-    seedHookRegistry.register('Folder', { container: true }, 'memo-hooks');
+    registerHooks('Folder', { container: true });
 
     expect(seed(tree('pack-a', ['welcome.md']))).toEqual({ created: 2, updated: 0, skipped: 0 });
     // The folder is pack-a's; only pack-b's own memo is new
@@ -137,7 +138,7 @@ describe("a folder another pack seeded", () => {
   });
 
   it('is found again by the pack seeding into it: seeding it twice adds nothing', () => {
-    seedHookRegistry.register('Folder', { container: true }, 'memo-hooks');
+    registerHooks('Folder', { container: true });
     seed(tree('pack-a', ['welcome.md']));
     seed(tree('pack-b', ['theirs.md']));
 
@@ -147,7 +148,7 @@ describe("a folder another pack seeded", () => {
   });
 
   it("takes the other pack's new records in keep-existing mode, which skips only rows that exist", () => {
-    seedHookRegistry.register('Folder', { container: true }, 'memo-hooks');
+    registerHooks('Folder', { container: true });
     seed(tree('pack-a', ['welcome.md']));
 
     const counts = seeder.seed({ compiledDir: tree('pack-b', ['theirs.md']), mode: 'keep-existing', log: () => {} });
@@ -157,7 +158,7 @@ describe("a folder another pack seeded", () => {
   });
 
   it("is shared by two entries of the pack that seeded it, like another pack's", () => {
-    seedHookRegistry.register('Folder', { container: true }, 'memo-hooks');
+    registerHooks('Folder', { container: true });
     const docs = createSeeder({ key: 'docs', entities: ['Memo', 'Folder'], identity: ['name'] });
     seed(tree('pack-a', ['welcome.md']));
 
@@ -169,7 +170,7 @@ describe("a folder another pack seeded", () => {
   });
 
   it("is copied when its hooks don't, so a pack never writes into another's rows", () => {
-    seedHookRegistry.register('Folder', {}, 'memo-hooks');
+    registerHooks('Folder', {});
 
     seed(tree('pack-a', ['welcome.md']));
     seed(tree('pack-b', ['theirs.md']));
@@ -179,7 +180,7 @@ describe("a folder another pack seeded", () => {
   });
 
   it('is updated as usual by the pack that seeded it', () => {
-    seedHookRegistry.register('Folder', { container: true }, 'memo-hooks');
+    registerHooks('Folder', { container: true });
     seed(tree('pack-a', ['welcome.md']));
 
     const dir = tree('pack-a', ['welcome.md']);
@@ -197,11 +198,11 @@ describe("a folder another pack seeded", () => {
 
 describe('wipe-and-replace', () => {
   const wipeSeed = (dir: string) => seeder.seed({ compiledDir: dir, mode: 'wipe-and-replace', log: () => {} });
-  const folderNames = () => qx('Folder' as EARS.Entity).pick(['name']).map((row) => row.name as string).sort();
+  const folderNames = () => ears().qx('Folder' as EARS.Entity).pick(['name']).map((row) => row.name as string).sort();
 
   it("removes rows of every entity type the entry seeds, even types its records don't hold", () => {
-    createEntityWithDefaults('Folder' as EARS.Entity, { name: 'old folder' });
-    createEntityWithDefaults('Memo' as EARS.Entity, { name: 'old memo', body: 'mine' });
+    ears().createEntityWithDefaults('Folder' as EARS.Entity, { name: 'old folder' });
+    ears().createEntityWithDefaults('Memo' as EARS.Entity, { name: 'old memo', body: 'mine' });
 
     // Only top-level memos: no Folder record, yet the entry seeds folders too
     expect(wipeSeed(compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]))).toEqual({ created: 1, updated: 0, skipped: 0 });
@@ -212,7 +213,7 @@ describe('wipe-and-replace', () => {
   });
 
   it('wipes when the entry has no records', () => {
-    createEntityWithDefaults('Memo' as EARS.Entity, { name: 'old memo', body: 'mine' });
+    ears().createEntityWithDefaults('Memo' as EARS.Entity, { name: 'old memo', body: 'mine' });
 
     expect(wipeSeed(compiled('pack-a', []))).toEqual({ created: 0, updated: 0, skipped: 0 });
 
@@ -221,7 +222,7 @@ describe('wipe-and-replace', () => {
 
   it("leaves entity types the entry doesn't seed", () => {
     const memosOnly = createSeeder({ key: 'memos', entities: ['Memo'], identity: ['name'] });
-    createEntityWithDefaults('Folder' as EARS.Entity, { name: 'kept folder' });
+    ears().createEntityWithDefaults('Folder' as EARS.Entity, { name: 'kept folder' });
 
     memosOnly.seed({ compiledDir: compiled('pack-a', [{ name: 'Intro', body: 'Hello' }]), mode: 'wipe-and-replace', log: () => {} });
 
@@ -232,14 +233,14 @@ describe('wipe-and-replace', () => {
 describe('an update hook that fails part way', () => {
   it("reports the error and leaves the row updatable, not edited: the next seed updates it", () => {
     let failing = true;
-    seedHookRegistry.register('Memo', {
-      create: (record) => createEntityWithDefaults('Memo' as EARS.Entity, { name: record.name, body: record.body, pinned: false }).id,
+    registerHooks('Memo', {
+      create: (record) => ears().createEntityWithDefaults('Memo' as EARS.Entity, { name: record.name, body: record.body, pinned: false }).id,
       update: (id, record) => {
-        updateEntity(id, { body: record.body });
+        ears().updateEntity(id, { body: record.body });
         if (failing) throw new Error('disk full');
-        updateEntity(id, { pinned: record.pinned });
+        ears().updateEntity(id, { pinned: record.pinned });
       },
-    }, 'memo-hooks');
+    });
     const pinnedRecord = (version: string, pinned: boolean) => {
       const dir = compiled('demo', [{ name: 'Intro', body: `Hello ${version}`, version }]);
       const file = path.join(dir, 'memos.seed.json');
@@ -260,12 +261,12 @@ describe('an update hook that fails part way', () => {
   });
 
   it("keeps the row's previous seeded fields: a field the record newly sets isn't recorded as seeded", () => {
-    seedHookRegistry.register('Memo', {
+    registerHooks('Memo', {
       update: (id, record) => {
-        updateEntity(id, { body: record.body });
+        ears().updateEntity(id, { body: record.body });
         throw new Error('disk full');
       },
-    }, 'memo-hooks');
+    });
     seed(compiled('demo', [{ name: 'Intro', body: 'Hello' }]));
     // The user's mood, which the next version of the record sets too
     edit('Intro', { mood: 'mine' });
@@ -286,12 +287,12 @@ describe('a field a changed record no longer sets', () => {
 
   it('is passed to the update hook to reset', () => {
     const cleared: string[][] = [];
-    seedHookRegistry.register('Memo', {
+    registerHooks('Memo', {
       update: (id, record, { clearedFields }) => {
         cleared.push(clearedFields);
-        updateEntity(id, { body: record.body, ...(clearedFields.includes('pinned') && { pinned: false }) });
+        ears().updateEntity(id, { body: record.body, ...(clearedFields.includes('pinned') && { pinned: false }) });
       },
-    }, 'memo-hooks');
+    });
     seed(compiled('demo', [{ name: 'Intro', body: 'Hello', pinned: true }]));
     seed(compiled('demo', [{ name: 'Intro', body: 'Hello', version: 'v2' }]));
     expect(cleared).toEqual([['pinned']]);
@@ -302,12 +303,12 @@ describe('a field a changed record no longer sets', () => {
 describe('a created row that fails before it is tracked', () => {
   it('is removed and the error reported, so the next seed creates it again and tracks it', () => {
     let failing = true;
-    seedHookRegistry.register('Memo', {
+    registerHooks('Memo', {
       update: (id, record) => {
         if (failing) throw new Error('disk full');
-        updateEntity(id, { body: record.body });
+        ears().updateEntity(id, { body: record.body });
       },
-    }, 'memo-hooks');
+    });
     const mediaSeeder = createSeeder({ key: 'memos', entities: ['Memo', 'Folder'], identity: ['name'], media: true });
     const dir = compiled('demo', [{ name: 'Intro', body: 'See ![pic](media/pic.png)' }]);
     fs.mkdirSync(path.join(dir, 'media', 'memos'), { recursive: true });

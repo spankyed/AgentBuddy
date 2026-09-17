@@ -1,21 +1,25 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-
-vi.mock('../../src/ears/builtin-repositories.ts', () => ({
-  builtinRepository: { promptQueries: { all: () => [] }, flowsCommands: {} },
-}));
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { createEarsEngine, installEngine } from '@abuddy/ears';
 
 const { createFlowSeeder } = await import('../../src/seed/flow-seeder.ts');
-const { stepRegistry } = await import('../../src/steps/registry.ts');
+const { startTestRuntime, testPacks } = await import('../../src/testing/index.ts');
 const { listenerTrigger, actionStep } = await import('../build/helpers/test-steps.ts');
-stepRegistry.register(listenerTrigger);
-stepRegistry.register(actionStep);
+// The registered steps the seeder compiles flows with
+startTestRuntime();
+testPacks.steps.set(listenerTrigger.type, listenerTrigger);
+testPacks.steps.set(actionStep.type, actionStep);
 const { seedPath } = await import('../../src/build/manifest.ts');
 
 let tmp: string | undefined;
+// The seeder reads and writes the installed engine: a fresh one per test
+beforeEach(() => {
+  installEngine(createEarsEngine({ isEntityType: (name) => ['Flow', 'Node', 'Action', 'Prompt', 'Relation'].includes(name) }).query);
+});
 afterEach(() => {
+  installEngine(undefined);
   if (tmp) fs.rmSync(tmp, { recursive: true, force: true });
   tmp = undefined;
   vi.restoreAllMocks();

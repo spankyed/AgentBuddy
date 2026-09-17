@@ -115,7 +115,7 @@ export namespace EARS {
 ${entityValue}
   export type Entity = ${entityUnion};
 
-  export type EntityId<E extends string = string> = import('@abuddy/sdk').EARS.EntityId<E>;
+  export type EntityId<E extends string = string> = import('@abuddy/ears').EARS.EntityId<E>;
 
   export namespace RelKind {
 ${relKindMembers.join('\n')}
@@ -126,7 +126,7 @@ ${relKindMembers.join('\n')}
   export namespace RoleKind {
     export const Custom = <T extends string>(k: T) => k as T & RoleKind;
   }
-  export type RoleKind = import('@abuddy/sdk').EARS.RoleKind;
+  export type RoleKind = import('@abuddy/ears').EARS.RoleKind;
 
   export const AttrKindValues = { Role: 'role', RelationDetails: 'relationDetails' } as const;
   export namespace AttrKind {
@@ -136,17 +136,17 @@ ${relKindMembers.join('\n')}
     export type RelationDetails = typeof RelationDetails;
     export const Custom = <T extends string>(k: T) => k as T & AttrKind;
   }
-  export type AttrKind = import('@abuddy/sdk').EARS.AttrKind;
+  export type AttrKind = import('@abuddy/ears').EARS.AttrKind;
 
-  export type Blueprint = import('@abuddy/sdk').EARS.Blueprint;
-  export type RelationDetail = import('@abuddy/sdk').EARS.RelationDetail;
-  export type AttributePayloads = import('@abuddy/sdk').EARS.AttributePayloads;
-  export type AttributeValue<K extends AttrKind = AttrKind> = import('@abuddy/sdk').EARS.AttributeValue<K>;
-  export type AttributeTypeMap = import('@abuddy/sdk').EARS.AttributeTypeMap;
-  export type AttributeStore = import('@abuddy/sdk').EARS.AttributeStore;
+  export type Blueprint = import('@abuddy/ears').EARS.Blueprint;
+  export type RelationDetail = import('@abuddy/ears').EARS.RelationDetail;
+  export type AttributePayloads = import('@abuddy/ears').EARS.AttributePayloads;
+  export type AttributeValue<K extends AttrKind = AttrKind> = import('@abuddy/ears').EARS.AttributeValue<K>;
+  export type AttributeTypeMap = import('@abuddy/ears').EARS.AttributeTypeMap;
+  export type AttributeStore = import('@abuddy/ears').EARS.AttributeStore;
 }
 
-export type BaseEntity = import('@abuddy/sdk').BaseEntity;
+export type BaseEntity = import('@abuddy/ears').BaseEntity;
 
 export const AllEntities = EARS.Entity;
 export type AllEntities = EARS.Entity;
@@ -173,7 +173,6 @@ const SPECIALTY_SEEDERS: Record<string, { factory: string; args: string }> = {
   actions: { factory: 'createSeeder', args: `{ key: 'actions', entities: ['Action'], identity: ['label'] }` },
   prompts: { factory: 'createSeeder', args: `{ key: 'prompts', entities: ['Prompt'], identity: ['label'] }` },
   flows: { factory: 'createFlowSeeder', args: '' },
-  settings: { factory: 'createSettingsSeeder', args: '' },
 };
 
 const COMPILED_DIR_ACCESSORS = `let _compiledDir = '';
@@ -510,30 +509,31 @@ export function generatePackFiles(
     return `${HEADER}
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import { toPackSystemDefs } from '@abuddy/sdk/framework';
-${hasRepositories() ? "// Registers this pack's repositories before any system uses them\nimport './repositories.js';\n" : ''}
+${hasRepositories() ? "import { repositories } from './repositories.js';\n" : ''}
 ${systemImports}
 ${earlyImport}
 import { featureServices } from './services.js';
 import { EARS } from './ears.js';
 ${hooksImport}
-import './seeders.js';
 ${hookEntries.map(([, path, exportName], i) => `import { ${exportName} as __seedHooks_${i} } from '${path}';`).join('\n')}
 ${settingsImports}
 ${manifest.migrations ? `import { migrations } from '${toImportPath(root, manifest.migrations)}';` : ''}
 ${stepsRegister ? `import { steps } from '${toImportPath(root, stepsRegister)}';` : ''}
 ${manifest.artifacts ? `import { artifacts } from '${toImportPath(root, manifest.artifacts)}';` : ''}
 ${manifest.blocks ? `import { blocks } from '${toImportPath(root, manifest.blocks)}';` : ''}
-import { getCompiledDir } from './seeders.js';
+import { getCompiledDir, seeders } from './seeders.js';
 export { setCompiledDir } from './seeders.js';
 
 export const registration: PackRegistration = {
   id: '${manifest.id}',
   systems: ${systemsExpr},
   services: featureServices,
+${hasRepositories() ? '  repositories,' : ''}
 ${stepsRegister ? '  steps,' : ''}
 ${manifest.artifacts ? '  artifacts,' : ''}
 ${manifest.blocks ? '  blocks,' : ''}
 ${hookEntries.length > 0 ? `  seedHooks: { ${hookEntries.map(([entity], i) => `${JSON.stringify(entity)}: __seedHooks_${i}`).join(', ')} },` : ''}
+  seeders,
 ${commands.length ? `  commands: ${JSON.stringify(commands)},` : ''}
   ears: {
     // Only this pack's own: EARS also names its dependencies' and the SDK's, which they register
@@ -613,15 +613,16 @@ ${manifest.migrations ? '  migrations,' : ''}
     if (feExts.artifacts) regProps.push(`  artifacts: artifactsFE,`);
     if (feExts.blocks) regProps.push(`  blocks: blocksFE,`);
 
-    const dslImport = manifest.dsl && Object.values(manifest.dsl).some(d => d.targets.includes('monaco') && d.globals)
-      ? `import './dsl-register-fe.js';\n`
-      : '';
+    if (monacoDslEntries().length > 0) {
+      extraImports.push(`import { dslTypes } from './dsl-types-fe.js';`);
+      regProps.push(`  dslTypes,`);
+    }
 
     return `${HEADER}
 import type { PackFERegistration } from '@abuddy/sdk/fe';
 ${pluginImports}
 ${extraImports.join('\n')}
-${dslImport}
+
 export default {
   plugins: [${pluginList}],
   defaultPlugin: ${defaultPluginId},
@@ -656,7 +657,7 @@ ${regProps.join('\n')}
 // dependencies'). The call is pure, so bundles that only use the EARS constants above
 // drop it.
 
-import { defineEars, type ShapeOf } from '@abuddy/sdk/ears';
+import { defineEars, type ShapeOf } from '@abuddy/ears';
 import type { SdkEntityShapes } from '@abuddy/sdk';
 ${ownNodes ? "import type { NodeEntity } from './types.js';\n" : ''}${shapeImports.join('\n')}
 
@@ -918,7 +919,7 @@ ${nodeEntity}`;
 
     return `${HEADER}
 import type { z } from 'zod';
-import type { EARS } from '@abuddy/sdk';
+import type { EARS } from '@abuddy/ears';
 import { services as sdkServices, type HostServices } from '@abuddy/sdk/services';
 import type { TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
 import type { Repositories } from './repository.js';
@@ -975,7 +976,7 @@ export type EntityId = EARS.EntityId;
     const entries = repositoryEntries();
     const deps = depTypeImports('Repositories');
     return `${HEADER}
-import { repository as sdkRepository } from '@abuddy/sdk/ears';
+import { repository as earsRepository } from '@abuddy/ears';
 ${entries.map(([name, path, exportName]) => `import type { ${exportName} as __repo_${name} } from '${path}';`).join('\n')}
 ${deps.imports.join('\n')}
 
@@ -987,19 +988,20 @@ ${entries.map(([name]) => `  ${name}: typeof __repo_${name};`).join('\n')}
 /** Every repository this pack can use: its own and its dependencies' */
 export type Repositories = OwnRepositories${deps.aliases.map(a => ` & ${a}`).join('')};
 
-export const repository = sdkRepository as unknown as Repositories;
+export const repository = earsRepository as unknown as Repositories;
 `;
   }
 
-  /** Registers this pack's repositories; the backend entry imports it first */
+  /** This pack's repositories by name, which its registration carries (the host registers them with the app's engine) */
   function generateRepositories(): string {
     const entries = repositoryEntries();
     if (entries.length === 0) return '';
     return `${HEADER}
-import { registerRepository } from '@abuddy/sdk/ears';
 ${entries.map(([name, path, exportName]) => `import { ${exportName} as __repo_${name} } from '${path}';`).join('\n')}
 
-${entries.map(([name]) => `registerRepository('${name}', __repo_${name});`).join('\n')}
+export const repositories: Record<string, unknown> = {
+${entries.map(([name]) => `  ${name}: __repo_${name},`).join('\n')}
+};
 `;
   }
 
@@ -1094,11 +1096,16 @@ export type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } fr
       }
     }
 
+    /** A pack module's `seed`, registered under the entry key */
+    const packSeeder = (key: string, seeder: string) => {
+      const importName = `__seeder_${toIdentifier(key)}`;
+      packImports.push(`import { seed as ${importName} } from '${toImportPath(root, seeder)}';`);
+      registrations.push(`{ key: ${JSON.stringify(key)}, seed: ${importName} }`);
+    };
+
     for (const [key, seed] of Object.entries(resolvedSeeds())) {
       if (seed.kind === 'seeder') {
-        const importName = `__seeder_${toIdentifier(key)}`;
-        packImports.push(`import { seed as ${importName} } from '${toImportPath(root, seed.seeder)}';`);
-        registrations.push(`{ key: ${JSON.stringify(key)}, seed: ${importName} }`);
+        packSeeder(key, seed.seeder);
         continue;
       }
 
@@ -1115,6 +1122,10 @@ export type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } fr
           throw new Error(`Seed "${key}": format "${seed.formatRef}" seeds entity "${entity}", which isn't declared by this pack, its dependencies or the SDK`);
         }
       }
+      if (seed.seeder) {
+        packSeeder(key, seed.seeder);
+        continue;
+      }
       // A compile-only format (no entity): pack code reads its seed file
       if (formatEntities(format).length === 0) continue;
 
@@ -1129,17 +1140,20 @@ export type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } fr
       registrations.push(`createSeeder(${JSON.stringify(options)})`);
     }
 
-    if (registrations.length === 0) return `${HEADER}\n${COMPILED_DIR_ACCESSORS}`;
+    if (registrations.length === 0) {
+      return `${HEADER}\nimport type { Seeder } from '@abuddy/sdk/utils';\n\n${COMPILED_DIR_ACCESSORS}\n/** The pack's seeders, which its registration carries */\nexport const seeders: Seeder[] = [];\n`;
+    }
 
     return `${HEADER}
 ${seedImports.size > 0 ? `import { ${Array.from(seedImports).join(', ')} } from '@abuddy/sdk/seed';` : ''}
-import { registerSeeders, seedData, type SeedCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
+import { seedData, type Seeder, type SeedCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
 ${packImports.join('\n')}
 
 ${COMPILED_DIR_ACCESSORS}
-registerSeeders(${JSON.stringify(manifest.id)}, [
+/** The pack's seeders, one per seeded key, which its registration carries */
+export const seeders: Seeder[] = [
 ${registrations.map((registration) => `  ${registration},`).join('\n')}
-]);
+];
 
 export { seedData };
 export type { SeedCounts, SeedIncludeSet };
@@ -1156,7 +1170,7 @@ export type { ImportMode } from '@abuddy/sdk/utils';
   /** The seed keys the host seeds into the database: entries with a seeder */
   function seededKeys(): string[] {
     return Object.entries(resolvedSeeds())
-      .filter(([, seed]) => seed.kind !== 'format' || formatEntities(seed.format).length > 0)
+      .filter(([, seed]) => seed.kind !== 'format' || seed.seeder !== undefined || formatEntities(seed.format).length > 0)
       .map(([key]) => key);
   }
 
@@ -1317,31 +1331,34 @@ export type { ImportMode } from '@abuddy/sdk/utils';
 
   // ── DSL defs ───────────────────────────────────────────────────
 
-  function generateDslRegisterFe(): string {
-    const dsl = manifest.dsl;
-    if (!dsl) return '';
+  /** The `dsl` entries the host's code editors get: a `monaco` target with globals */
+  function monacoDslEntries() {
+    return Object.entries(manifest.dsl ?? {}).filter(([, def]) => def.targets.includes('monaco') && def.globals);
+  }
 
-    const monacoEntries = Object.entries(dsl).filter(([, def]) =>
-      def.targets.includes('monaco') && def.globals
-    );
+  function generateDslTypesFe(): string {
+    const monacoEntries = monacoDslEntries();
     if (monacoEntries.length === 0) return '';
 
     const imports = monacoEntries.map(([name]) =>
       `import ${name}Schema from '../../dist/defs/monaco/${name}-defs.d.ts?raw';`
     );
 
-    const registrations = monacoEntries.map(([name, def]) => {
+    const entries = monacoEntries.map(([name, def]) => {
       const globalsObj = Object.entries(def.globals!)
-        .map(([k, v]) => `    ${k}: '${v}',`)
+        .map(([k, v]) => `      ${k}: '${v}',`)
         .join('\n');
-      return `registerDslType('${name}', {\n  prefix: '${def.prefix}',\n  schema: ${name}Schema,\n  globals: {\n${globalsObj}\n  },\n});`;
+      return `  ${name}: {\n    prefix: '${def.prefix}',\n    schema: ${name}Schema,\n    globals: {\n${globalsObj}\n    },\n  },`;
     });
 
     return `${HEADER}
-import { registerDslType } from '@abuddy/sdk/fe';
+import type { DslTypeConfig } from '@abuddy/sdk/fe';
 ${imports.join('\n')}
 
-${registrations.join('\n\n')}
+/** The pack's DSL types for the host's code editors, which its frontend registration carries */
+export const dslTypes: Record<string, DslTypeConfig> = {
+${entries.join('\n')}
+};
 `;
   }
 
@@ -1377,7 +1394,7 @@ ${registrations.join('\n\n')}
     ['src/__generated__/seed-runtime.ts', generateSeedRuntime()],
     ['src/__generated__/flow-helpers.ts', generateFlowHelpers()],
     ['src/__generated__/step-types.ts', generateStepTypes()],
-    ['src/__generated__/dsl-register-fe.ts', generateDslRegisterFe()],
+    ['src/__generated__/dsl-types-fe.ts', generateDslTypesFe()],
   ] as [string, string][]).filter(([, content]) => content);
 
   return Object.fromEntries(files);

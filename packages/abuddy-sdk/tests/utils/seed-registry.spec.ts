@@ -2,12 +2,17 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { registerSeeders, seedData, unregisterSeeders, type Seeder, type SeederContext } from '../../src/utils/index.ts';
+import { seedData, type Seeder, type SeederContext } from '../../src/utils/index.ts';
+import { startTestRuntime, testPacks } from '../../src/testing/index.ts';
+
+// The registered packs' seeders (a registration's `seeders`): the stand-in's, which the specs fill. The host's
+// registry refuses two seeders for one key (host tests/packs/registered-lookups.spec.ts).
+startTestRuntime();
+const registerSeeders = (packId: string, seeders: Seeder[]) => testPacks.seeders.set(packId, seeders);
 
 const dirs: string[] = [];
 afterEach(() => {
-  unregisterSeeders('pack-a');
-  unregisterSeeders('pack-b');
+  testPacks.seeders.clear();
   for (const dir of dirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
 });
 
@@ -25,7 +30,7 @@ function recording(key: string, created: number): Seeder & { seen: string[] } {
   return { key, seen, seed: (ctx: SeederContext) => { seen.push(ctx.compiledDir); return { created, updated: 0, skipped: 0 }; } };
 }
 
-describe('seeder registry', () => {
+describe('seedData', () => {
   it("keeps each pack's seeders for the same key apart", () => {
     const a = recording('library', 1);
     const b = recording('library', 2);
@@ -51,22 +56,7 @@ describe('seeder registry', () => {
     expect(seedData({ compiledDir: compiledDir('pack-c') })).toEqual({});
   });
 
-  it("replaces a pack's seeders when it registers again, and drops them when unregistered", () => {
-    const first = recording('notes', 1);
-    const second = recording('memos', 1);
-    registerSeeders('pack-a', [first]);
-    registerSeeders('pack-a', [second]);
-    const dir = compiledDir('pack-a');
-    expect(Object.keys(seedData({ compiledDir: dir }))).toEqual(['memos']);
-    expect(first.seen).toEqual([]);
-
-    unregisterSeeders('pack-a');
-    expect(seedData({ compiledDir: dir })).toEqual({});
-  });
-
-  it('refuses two seeders for one key in a pack, and a directory that names no pack', () => {
-    expect(() => registerSeeders('pack-a', [recording('notes', 1), recording('notes', 2)]))
-      .toThrow('Pack "pack-a" registers two seeders for seed key "notes"');
+  it('refuses a directory that names no pack', () => {
     expect(() => seedData({ compiledDir: compiledDir() })).toThrow("doesn't name the pack that compiled these seeds");
   });
 });

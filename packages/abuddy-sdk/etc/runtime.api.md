@@ -4,27 +4,132 @@
 
 ```ts
 
+import type { AnyActorRef } from 'xstate';
+import type { AnyExtension } from '@tiptap/vue-3';
+import type { AnyStateMachine } from 'xstate';
+import type { BaseEntity } from '@abuddy/ears';
+import type { Component } from 'vue';
+import type { DeepPartial } from 'ai';
+import { EARS as EARS_2 } from '@abuddy/ears';
+import { EarsQuery } from '@abuddy/ears';
+import type { EditorState } from '@tiptap/pm/state';
+import type { embed } from 'ai';
+import type { embedMany } from 'ai';
+import type { FlexibleSchema } from 'ai';
+import type { generateImage } from 'ai';
+import type { generateSpeech } from 'ai';
+import type { generateText } from 'ai';
+import type { InferSchema } from 'ai';
+import type { JSONSchema7 } from 'ai';
+import type { Output } from 'ai';
+import type { OutputInterface } from 'ai';
+import type { rerank } from 'ai';
+import type { streamText } from 'ai';
+import type { ToolLoopAgent } from 'ai';
+import type { ToolLoopAgentSettings } from 'ai';
+import type { ToolSet } from 'ai';
+import type { transcribe } from 'ai';
+import { z } from 'zod';
+
+// @public
+export function bindFeHost(runtime: FeHostRuntime): void;
+
+// @public
+export function bindHost(runtime: HostRuntime): void;
+
 // @internal
-export function getHostModule<T = unknown>(key: string): T;
-
-// @public (undocumented)
-export function hostFn<TArgs extends unknown[] = unknown[], TResult = unknown>(moduleKey: string, fnName: string): (...args: TArgs) => TResult;
-
-// @public (undocumented)
-export function hostValue<T = unknown>(moduleKey: string, name: string): T;
+export function boundFeHost(): FeHostRuntime;
 
 // @internal
-export function initRpc(): void;
+export function boundHost(): HostRuntime;
 
 // @internal
-export function registerHostModule(key: string, mod: unknown): void;
+export function boundPackContributions(): PackContributionsView;
+
+export { EarsQuery }
+
+// @public
+export interface FeHostRuntime {
+    application: AnyActorRef;
+    packs: FePackRegistryView;
+    secrets: SecretsClient;
+    transport: FeTransport;
+}
+
+// @public
+export interface FePackRegistryView extends PackContributionsView {
+    appExtension(slot: string): Component | undefined;
+    defaultPlugin(): Plugin_2 | undefined;
+    dslTypes(): ReadonlyMap<string, DslTypeConfig>;
+    plugins(): Plugin_2[];
+    // (undocumented)
+    tiptapPlugins(): TiptapPlugin[];
+}
+
+// @public
+export interface FeTransport {
+    sendIncoming(event: IncomingSystemEvents): void;
+}
+
+// @public
+export interface HostRuntime {
+    appVersion: string;
+    ears: EarsQuery;
+    packs: PackRegistryView;
+    services: HostRuntimeServices;
+    transport: {
+        rootEvents: RootEvents;
+    };
+}
+
+// @public
+export interface HostRuntimeServices {
+    appData: AppDataService;
+    inference: InferenceService;
+    secrets: SecretsService;
+    traceStore: TraceStore;
+}
+
+// @internal
+export function isFeHostBound(): boolean;
+
+// @internal
+export function isHostBound(): boolean;
+
+// @public
+export interface PackContributionsView {
+    // (undocumented)
+    artifact(type: string): ArtifactDefinition | undefined;
+    // (undocumented)
+    artifacts(): ArtifactDefinition[];
+    // (undocumented)
+    block(type: string): BlockDefinition | undefined;
+    // (undocumented)
+    blocks(): BlockDefinition[];
+    designation(role: string): string | undefined;
+    // (undocumented)
+    step(type: string): StepDefinition | undefined;
+    steps(): StepDefinition[];
+}
+
+// @public
+export interface PackRegistryView extends PackContributionsView {
+    commands(): PackCommand[];
+    getRegisteredServices(): Record<string, unknown>;
+    onSettingsDefaultsChanged(listener: () => void): () => void;
+    resolveSystemAddress(address: string): string | undefined;
+    seeders(packId: string): readonly Seeder[];
+    seedHooks(entity: string): SeedHooks | undefined;
+    settingsDefaults(): PackSettingsDefaults;
+}
 
 // @internal
 export interface RootEvents {
+    emitIncoming(event: IncomingSystemEvents): void;
     // (undocumented)
     emitLog(event: LogEvent): void;
-    // (undocumented)
     emitOutgoing(event: OutgoingSystemEvents): void;
+    emitPluginSend(event: OutgoingSystemEvents): void;
     // (undocumented)
     onConnected(callback: () => void): () => void;
     // (undocumented)
@@ -33,10 +138,19 @@ export interface RootEvents {
     onLog(callback: (event: LogEvent) => void): () => void;
     // (undocumented)
     onOutgoing(callback: (event: OutgoingSystemEvents) => void): () => void;
+    onPackClientConnected(callback: (packId: string) => void): () => void;
+    // (undocumented)
+    onPluginSend(callback: (event: OutgoingSystemEvents) => void): () => void;
 }
 
-// @internal (undocumented)
-export let rootEvents: RootEvents;
+// @internal
+export const rootEvents: RootEvents;
+
+// @internal
+export function unbindFeHost(): void;
+
+// @internal
+export function unbindHost(): void;
 
 // (No @packageDocumentation comment for this package)
 

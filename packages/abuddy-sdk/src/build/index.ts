@@ -1,5 +1,5 @@
 // Types
-export type { PackConfig, CompilePackOptions, CompilePackResult } from './types.ts';
+export type { PackConfig, PackBuildDefinitions, CompilePackOptions, CompilePackResult } from './types.ts';
 
 // Seed compiler framework
 export { clearCompiledSeeds, compilePack, SEED_INDEX_FILE } from './seed-compiler.ts';
@@ -18,9 +18,8 @@ export type { CompileConfig, CompiledEntry, CompileResult } from './compile-util
 
 // Compilers: standard instances, build utilities, types
 export {
-  actionsCompiler, promptsCompiler, flowsCompiler, settingsCompiler, SPECIALTY_COMPILERS,
+  actionsCompiler, promptsCompiler, flowsCompiler, SPECIALTY_COMPILERS,
   loadFlowsFromDir, validateFlows, hashFlows,
-  loadSettingsFromFile, deepMerge,
   isFlowConfig, resolveTracks,
   validateFlowDSL,
   compileFlowDSL,
@@ -35,7 +34,7 @@ export type {
 export type { PackSeedsPreview, PackSeedPreviewItem } from './preview.ts';
 
 // Manifest bridge
-export { buildPackConfigFromManifest, resolveFeatureSettingsFromManifest } from './manifest-bridge.ts';
+export { buildPackConfigFromManifest } from './manifest-bridge.ts';
 
 // Pack manifest types
 export type {

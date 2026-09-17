@@ -4,6 +4,8 @@
 
 ```ts
 
+import { EARS as EARS_2 } from '@abuddy/ears';
+
 // @public
 export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(systemIds: Readonly<Record<string, string>>): TypedEvents<P, S>;
 
@@ -16,14 +18,6 @@ export function emit<P extends string, E extends {
         pluginId: P;
     };
 };
-
-// @internal
-export interface EventTransport {
-    onConnected(callback: () => void): () => void;
-    onIncoming(callback: (event: IncomingSystemEvents) => void): () => void;
-    sendIncoming(event: IncomingSystemEvents): void;
-    sendOutgoing(event: OutgoingSystemEvents): void;
-}
 
 // @public
 export type HostPluginEvents = {

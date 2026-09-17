@@ -1,32 +1,42 @@
 # @abuddy/sdk
 
-The pack-facing API, types and build tooling for AgentBuddy packs, used by built-in and external packs alike. It also holds the pack build pipeline that `@abuddy/cli` drives (`src/build/`), the seed engine the host runs (`src/seed/`), and the module-level registries the host fills when it loads a pack. The host-only side lives in `@abuddy/host`.
+The pack-facing API, types and build tooling for AgentBuddy packs, used by built-in and external packs alike. It also holds the pack build pipeline that `@abuddy/cli` drives (`src/build/`), the seed engine the host runs (`src/seed/`), and the lookups of what registered packs contributed, which read the registry the app binds (it holds no registry of its own). The host-only side lives in `@abuddy/host`.
 
-The root `CLAUDE.md` covers the subpath split (`/ears`, `/fe`, `/utils` vs `/utils/pure`), the `@abuddy/source` condition, `.ts` relative specifiers, and API reports. This file goes one level deeper. The typed EARS contract is in `TYPED-EARS.md`; read it before touching `src/types/entities.ts`, `src/ears/runtime.ts`, `src/ears/typed.ts`, `src/types/sdk-entities.ts` or `generateEars` in `src/build/generate-entries.ts`. Pack-facing guides: `docs/public-facing/manifest.md`, `seeds.md`, `services-and-data.md`, `testing.md`, `cli.md`.
+The root `CLAUDE.md` covers the subpath split (`/ears`, `/fe`, `/utils` vs `/utils/pure`), the `@abuddy/source` condition, `.ts` relative specifiers, and API reports. This file goes one level deeper. The typed EARS contract is in `TYPED-EARS.md`; read it before touching `src/types/entities.ts`, `src/types/sdk-entities.ts`, `@abuddy/ears`'s `src/entities.ts`, `src/runtime.ts` and `src/typed.ts`, or `generateEars` in `src/build/generate-entries.ts`. Pack-facing guides: `docs/public-facing/manifest.md`, `seeds.md`, `services-and-data.md`, `testing.md`, `cli.md`.
+
+## Layers
+
+Imports point down only (`check:specifiers`, `findUpwardImports`; `package.json` declares only `@abuddy/ears`):
+
+- `@abuddy/ears` below: the engine, the core `EARS` types and the persistence port. The SDK adds its entities, their shapes and repositories on top, and holds no engine state.
+- The SDK: the pack contract and the pack runtime (the lookups of what packs registered, the services' contracts, event sends, logging and error reports, the SDK entities' repositories) and the `HostRuntime` port.
+- `@abuddy/host` above (never imported here): the four app services, app state, and what the app runs (pack runtime, bus, migrations). The API and the renderer compose and bind it.
+
+The rule for what crosses the port: bind resources, derive behaviour. A resource has identity per running app and is a `HostRuntime` member: the event bus (`transport`), the engine's query face (`ears`), the registered packs (`packs`), the app version and the four services doing I/O on user data or keys (`services`: `appData`, `traceStore`, `inference`, `secrets`; their contracts are types in `src/services/<name>.ts`, implemented in `@abuddy/host/services/<name>.ts`). Behaviour over a resource is SDK code, written once: the sends, `createLogger`/`onLog` and `reportError` run over the bound bus, and `services.logger`, `services.emitter` and `services.repository` are built here. The registered packs are an instance the composition root creates (the API, the renderer, the harness per test file, the CLI per build) and binds as `packs`; the SDK only reads it (`PackRegistryView`, `FePackRegistryView`), and contexts without an app use `testPacks`.
 
 ## `src/` map
 
 Each directory is one `package.json` export (`./<dir>` → `src/<dir>/index.ts`) unless noted.
 
 - `actions/`: pure helpers seed actions may inline (`formatProviderError`, `buildTranscript`). It's the only bare import `compileSourceDir` allows in action and prompt sources.
-- `artifacts/`, `blocks/`, `steps/`: definition types and their registries (see Registries). `steps/` also has `utils.ts`.
+- `artifacts/`, `blocks/`, `steps/`: definition types and their lookups (see Registered packs). `steps/` also has `utils.ts` and `result-truncator.ts` (`truncateResult`, `isTruncated`: what a step records on its TNode is capped).
 - `build/`: manifest schema, codegen, seed compilers and the flow DSL compiler (see Build pipeline).
-- `designations/`: the role → feature id registry (`getDesignated`, `hasDesignation`).
-- `ears/`: the EARS engine (`query.ts`, `transaction.ts`, `attribute-storage.ts`, `edge-store.ts`, `relation-index.ts`), typed helpers (`typed.ts`), and the repository registry (`repository.ts`). `internals.ts` is the host's hook into the engine. It is exported only under `@abuddy/source` and left out of `dist/` (`tsconfig.package.json`) and the API reports (`tsconfig.api-extractor.json`).
-- `env/`: `resolveAppContext()`, the single resolver for environment and data paths, and `getAppVersion()` (the `version` host module).
-- `events/`: messaging (`emit`, `sendToPlugin`, `sendToSystem`, `sendToBrainSystem`, `onConnected`, `onIncoming`), `defineEvents` (the typed sends `#generated/events` builds) and the event map types. Frontend-safe: it sends through the `event-transport` host module.
-- `fe/`: plugin contracts and the frontend state packs share with the host (`actor-system.ts`, `menu-state.ts`, `tiptap-plugins.ts`, `dsl-types.ts`, `pack-fe-registration.ts`). `./fe/contributions` maps to `fe/contribution-types.ts`.
-- `framework/`: `defineSystem`, `toPackSystemDefs`, the `PackRegistration` contract (`pack-registration.ts`) and feature settings (`pack-settings.ts`).
+- `designations/`: role → feature id lookups (`getDesignated`, `hasDesignation`), over the registered packs.
+- `ears/`: only what the SDK adds to the EARS engine, which is `@abuddy/ears` (`packages/abuddy-ears`, the SDK's one `@abuddy` dependency): the SDK's `EARS` and entity shapes, and the repositories of the SDK's entities: `flowRepository` (flows, nodes, edges, the root flow role, `reindexHandles`, `importFromDSL`), `tnodeRepository` (`updateTNodeResult`), `actionRepository` and `promptRepository` (`all`, `byId`, `byLabel`, create, update, soft delete). They're plain exports, not registered with the engine's repository registry; SDK code (the flow seeder, `reportError`, the harness's `importFlows`) calls them directly, and default-setup's flows, actions, prompts and brain repositories build their views over them. The engine (`createEarsEngine`, an instance with `query` and `admin` faces), its typed helpers (`defineEars`) and the repository registry live there; SDK code reads the installed engine (`installedEngine()`, or `untypedQx`/`tx`) and never touches engine state.
+- `env/`: `resolveAppContext()`, the single resolver for environment and data paths, and `getAppVersion()` (the bound runtime's `appVersion`).
+- `events/`: messaging (`emit`, `sendToPlugin`, `sendToSystem`, `sendToBrainSystem`, `onConnected`, `onIncoming`), `defineEvents` (the typed sends `#generated/events` builds) and the event map types. Frontend-safe: it sends over the bound runtime's bus (`HostRuntime.transport.rootEvents`), or in the renderer over the frontend port's `transport`. `sendToPlugin` emits a plugin send (`emitPluginSend`), which the app's bus delivers only while a client is connected, as a system's `emit`.
+- `fe/`: plugin contracts and the frontend state packs share with the host (`actor-system.ts`, `menu-state.ts`), the frontend lookups (`tiptap-plugins.ts`, `dsl-types.ts`) and `PackFERegistration` (`pack-fe-registration.ts`, which carries a pack's `dslTypes`). `./fe/contributions` maps to `fe/contribution-types.ts`.
+- `framework/`: `defineSystem`, `toPackSystemDefs`, the `PackRegistration` contract (`pack-registration.ts`, which carries a pack's `seeders`), feature settings (`pack-settings.ts`: `checkFeatureSettings`, and the registered defaults) and the registered commands (`pack-commands.ts`).
 - `helpers/`: actor helpers (`safeEvents`, `sendParentSafe`, `getActor`, `getBus`) and `Simplify`.
 - `ids/`: the `bus` system id.
-- `logger/`: `createLogger` (with the per-source debug toggle) and `onLog` over the `logger` host module (`logger.ts`), and `reportError` (`report-error.ts`): the `system-errors` host module without `step`, or a step error logged, recorded on its TNode and sent as `BRAIN_RUNTIME_ERROR`.
-- `runtime/`: `host.ts` is the host module table (`registerHostModule`, `getHostModule`, `hostFn`, `hostValue`) that every SDK delegate reads. `root-events.ts` holds the `@internal` `rootEvents` (`initRpc()` reads the `bus-emitter` host module). `fe/secrets-client.ts` delegates `secretsClient` to the `secrets-client` host module the renderer registers (the `SecretsClient` contract); the SDK holds no general API client.
+- `logger/`: `createLogger` (with the per-source debug toggle) and `onLog` (`logger.ts`): bound, a logger redacts each entry and emits it as a log event on the bus (meta made JSON-safe, an error entry's stack from `meta.error` or the call site); unbound (tooling), it writes to the console. `reportError` (`report-error.ts`): without `step`, a log event plus a `SYSTEM_ERROR` (`SystemErrorEvent`) to the `application` plugin; with `step`, a step error logged, recorded on its TNode and sent as `BRAIN_RUNTIME_ERROR`.
+- `runtime/`: the port to the app. `host-runtime.ts`: `HostRuntime` (`transport.rootEvents`, `ears` — the app's engine's query face (`EarsQuery` from `@abuddy/ears`), which `bindHost` installs for `@abuddy/ears`'s free functions — `packs: PackRegistryView` (the registered packs, read-only), `appVersion`, `services`: the app's four), `bindHost` (once per process; `unbindHost` for tests, which also uninstalls the engine) and the `@internal` `boundHost()`, which throws naming `bindHost`. `packs-view.ts`: `PackContributionsView` (what backend and frontend both look up: `designation`, `step`/`steps`, `artifact`/`artifacts`, `block`/`blocks`), `PackRegistryView` (adds `getRegisteredServices`, `resolveSystemAddress`, `seedHooks`, `seeders`, `settingsDefaults`, `onSettingsDefaultsChanged`, `commands`) and the `@internal` `boundPackContributions()`: the frontend host's `packs` when one is bound, else the backend's, throwing naming `bindHost` and `bindFeHost` when neither is. `fe-host.ts`: `FeHostRuntime` (`application`, `secrets`, `transport.sendIncoming`, `packs: FePackRegistryView`, which adds `plugins`, `defaultPlugin`, `tiptapPlugins`, `appExtension`, `dslTypes`) and `bindFeHost`/`boundFeHost()`; the renderer binds it. `root-events.ts`: the `RootEvents` contract and the `@internal` `rootEvents`, which delegates each call to the bound bus. `fe/secrets-client.ts` delegates `secretsClient` to the frontend port's `secrets` (the `SecretsClient` contract); the SDK holds no general API client. Nothing else reads the app: `tests/runtime/no-host-modules.spec.ts` fails if the old string-keyed registry comes back.
 - `templates/`: runs prompt function bodies (`executeTemplate`, `createTemplateResolver`).
 - `seed/`: the seed engine (see Seed engine).
-- `services/`: the `services` proxy and `HostServices` (`index.ts`), plus the contracts for `appData`, `traceStore`, `inference` and `secrets`. `host-services.ts` resolves each of these from the host module of the same name. `./models` maps to `services/models.ts`.
+- `services/`: the `services` proxy and `HostServices` (`index.ts`), plus the contracts (types, and `createInferenceService`) for `appData` (reset, backups, and whether the user finished onboarding: `hasOnboarded`, `completeOnboarding`, the app's state packs reach only through it), `traceStore`, `inference` and `secrets`. `services` builds `logger` and `emitter` itself, reads `repository` from the bound `ears`, pack services from the bound `packs`, and delegates the app's four to the bound `services` on each call. `./models` maps to `services/models.ts`.
 - `testing/`: the in-memory runtime behind `@abuddy/testing/harness` (see Testing entry).
-- `types/`: `EARS`, `BaseEntity`, and the entities the SDK owns (`sdk-entities.ts`: `SDK_ENTITIES`, `SDK_REL_KINDS`, `SDK_SHAPED_ENTITIES`).
-- `utils/`: `index.ts` (Node), `pure.ts` (environment-agnostic), and the seeder registry and `seedData` (`seed.ts`). `./cron` and `./utils/compare-versions` are single-file exports. `internals.ts` (secret redaction's host side) is exported only under `@abuddy/source`.
+- `types/`: `EARS` (`entities.ts`: the engine's namespace with the SDK's entity types and relation kinds), and the entities the SDK owns (`sdk-entities.ts`: `SDK_ENTITIES`, `SDK_REL_KINDS`, `SDK_SHAPED_ENTITIES`): Relation and the flow model (Flow, Node, TNode, Action, Prompt). Settings is default-setup's; the app's state (`AppState`) is the host's.
+- `utils/`: `index.ts` (Node), `pure.ts` (environment-agnostic), and `seedData` with the `Seeder` contract (`seed.ts`). CLI resolution isn't here: it's default-setup's code feature's (`features/code/be/utils/resolve-cli.ts`). `./cron` and `./utils/compare-versions` are single-file exports. `internals.ts` (secret redaction's host side) is exported only under `@abuddy/source`.
 
 ## Build pipeline (`src/build/`, `@abuddy/sdk/build`)
 
@@ -35,21 +45,21 @@ Each directory is one `package.json` export (`./<dir>` → `src/<dir>/index.ts`)
 - **Manifest schema** (`manifest-schema.ts`): the Zod `ManifestSchema` is the single source for `abuddy.json`.
   - `manifest.ts` derives `PackManifest` and the other types with `z.infer`. It also defines `PackSnapshot` (with `dependencyCommands`, the commands declared across the pack's dependency tree), `PackFlowHelpers`, `dependencyCommands()`, `seedFile`/`seedPath` and `SEED_COMPILERS_FILE`.
   - The cross-field rules live in `superRefine`:
-    - Only built-in packs may have a `settings` seed or an `earlySystem`.
+    - Only built-in packs may have an `earlySystem`.
     - A `boot.seed` format must name a `seedFormats` entry or `<dependency>:<name>`.
     - `seedHooks` may name only the pack's own `entities`.
     - `entities`/`relKinds` may not redeclare names the SDK owns.
   - A feature id may not be a JavaScript reserved word or `busId` (`RESERVED_FEATURE_IDS`), and `fe.appExtensions` keys must be identifiers: both become names in generated code.
-  - `SPECIALTY_SEED_KEYS` (`actions`, `prompts`, `flows`, `settings`) take a path. Every other seed key takes `{ path, format }` or `{ seeder }`.
+  - `SPECIALTY_SEED_KEYS` (`actions`, `prompts`, `flows`) take a path. Every other seed key takes `{ path, format }` (optionally with `seeder`: the pack module seeds the compiled records instead of the generic seeder, as default-setup's `settings` entry does) or `{ seeder }` alone.
   - `abuddy.schema.json` is generated from the schema by `scripts/generate-schema.ts` (`zod-to-json-schema`). Run `generate:schema` after changing the schema; CI runs `schema:check`.
 - **Validation** (`validate.ts`): `parseManifest`/`validateManifest` run the schema. `validateFeatures` checks that each feature's `settings`, `system.entry` and `plugin.entry` files exist and that `designation === id`.
 - **Codegen** (`generate-entries.ts`): `generatePackFiles(manifest, { packRoot, depTypes?, depSnapshots? })` returns `{ path: content }` for `src/__generated__/`. The CLI's `generate-entries` command writes the files; empty contents are dropped.
   - Pack entries and ids: `pack-entry.ts` (the `PackRegistration`; systems whose feature has designation `settings` come first), `pack-entry-fe.ts`, `system-ids.ts`, and `bus-ids.ts` (import-free so FE code can use it; ids are `<packId>.<featureId>` unless `builtIn`).
-  - Typed facades: `ears.ts`, `events.ts` (`sendsTo` targets are checked against own features, dependency plugins and `HOST_PLUGIN_IDS`), `services.ts`, `repository.ts` and `repositories.ts`.
+  - Typed facades: `ears.ts`, `events.ts` (`sendsTo` targets are checked against own features, dependency plugins and `HOST_PLUGIN_IDS`), `services.ts`, `repository.ts` and `repositories.ts` (the pack's repositories by name, which `pack-entry.ts` puts in `PackRegistration.repositories`; nothing registers on import).
   - `pack-types.ts`: the facade dependents import, which `abuddy build` bundles into `dist/types/pack-types.d.ts`.
-  - Seeding: `seeders.ts` (one `registerSeeders(<packId>, [...])` call with a seeder per seeded key, plus `setCompiledDir`/`getCompiledDir`) and `seed-runtime.ts`.
+  - Seeding: `seeders.ts` (`seeders`, a seeder per seeded key, which `pack-entry.ts` puts in `PackRegistration.seeders`, plus `setCompiledDir`/`getCompiledDir`) and `seed-runtime.ts`.
   - Flows and steps: `flow-helpers.ts` (a helper per step `dsl`, trigger track builders read from the step's `trackField`, and dependencies' helpers) and `step-types.ts`.
-  - Other: `types.ts`, `contributions.ts` and `dsl-register-fe.ts`.
+  - Other: `types.ts`, `contributions.ts` and `dsl-types-fe.ts` (`dslTypes`, which `pack-entry-fe.ts` puts in `PackFERegistration.dslTypes`). No generated module registers anything when imported (`tests/build/generate-entries.spec.ts`).
   - Per typed dependency, it also writes `deps/<id>.d.ts` and `deps/<id>.flow-helpers.{js,d.ts}` from the dependency's snapshot. `depTypesVersion` reads the version header that the CLI's stale-deps warning uses.
   - `mergeRegistries` merges own, dependency and SDK entities/relKinds, and throws when two packs declare the same name. `emitEARS` writes the `EARS` namespace. `emitDepTypes` is used by the CLI's `generate` command.
 - **`module-exports.ts`**: `createModuleExports(packRoot, files)` builds one TypeScript program over every file a manifest `"path#export"` names: services, repositories, `packServices`, `seedHooks`, `entityShapes` sources and feature settings. The program uses the pack's `tsconfig.json`, `sourceConditions(packRoot)` and `types: []`. `exportOf(file, name)` follows alias chains and returns `{ value?: 'object' | 'function' | 'class', type }`.
@@ -57,15 +67,14 @@ Each directory is one `package.json` export (`./<dir>` → `src/<dir>/index.ts`)
   - It checks entity shapes (the export must be a type) and requires feature settings to have a default export.
   - The program is created lazily, on the first `exportOf`. It needs the optional `typescript` peer and throws with an install hint when it is missing.
 - **`source-conditions.ts`**: `sourceConditions(dir)` returns `['@abuddy/source']` when the pack's `@abuddy/sdk` resolves outside `node_modules` (a linked checkout), and `[]` otherwise. `bundleFile` and `createModuleExports` both use it.
-- **Pack config** (`manifest-bridge.ts`): `buildPackConfigFromManifest` resolves `boot.seed` (`resolveSeeds`). Its `setup()` fills the registries that compiling validates against:
-  - It registers dependency step modules (`build/steps.build.mjs`) first, then the pack's `steps.build` (or `steps.register`), `artifacts` and `blocks`.
+- **Pack config** (`manifest-bridge.ts`): `buildPackConfigFromManifest` resolves `boot.seed` (`resolveSeeds`; a format entry keeps its `seeder`). Its `loadDefinitions()` loads the definitions compiling validates against (`PackBuildDefinitions`), writing no registry:
+  - Dependency step modules (`build/steps.build.mjs`) first, then the pack's `steps.build` (or `steps.register`), `artifacts` and `blocks`; a type's facets merge.
   - A pack step type that a dependency also defines throws.
-  - `resolveFeatureSettingsFromManifest` lists existing `features[].settings` files.
-- **Seed compiler** (`seed-compiler.ts`): `compilePack` first clears earlier output (`clearCompiledSeeds`), then compiles each `boot.seed` entry.
+- **Seed compiler** (`seed-compiler.ts`): `compilePack` first clears earlier output (`clearCompiledSeeds`), then compiles each `boot.seed` entry with the definitions it's given (`options.definitions`: the CLI passes its private registry's, the harness the test file's), else its pack config's `loadDefinitions()`, else none.
   - Specialty keys use `SPECIALTY_COMPILERS` (`compilers/standard.ts`).
   - A format entry uses `compileBuiltinFormat` (`markdown-tree` or `json`, in `seeds/records.ts`) or its compiler module's export, loaded with `options.importModule`. The CLI passes a tsx loader.
-  - `seeder` entries are skipped because the pack's seeder reads its own sources.
-  - Compile errors (`collectErrors`, `checkRecordEntities`) are collected and thrown together, before the cross-seed `validate` step (flows against compiled action and prompt labels and `stepRegistry.all()`).
+  - `{ seeder }` entries are skipped because the pack's seeder reads its own sources. A format entry with a `seeder` is compiled and indexed as seeded even when its format names no entity.
+  - Compile errors (`collectErrors`, `checkRecordEntities`) are collected and thrown together, before the cross-seed `validate` step (flows against compiled action and prompt labels and the definitions' steps, `CompilationContext.steps`).
   - Output: `<key>.seed.json` per key, `media/<key>/` per key, and `seeds.json` (`SeedIndex`: `packId`, and per key `seeded`, `identity`, `count`, preview `items`).
   - `seeds/resolve.ts` resolves format refs. A dependency's compiler is `<buildDir>/seed-compilers.mjs#<name>`.
   - `seeds/markdown-tree.ts` walks markdown (YAML frontmatter, CRLF and BOM tolerated; only the `media` directory it's given is skipped). Records get a default `sourceHash` (`withSourceHashes`).
@@ -76,14 +85,14 @@ Each directory is one `package.json` export (`./<dir>` → `src/<dir>/index.ts`)
 - **Flow DSL** (`compilers/`):
   - Loading: `loadFlowsFromDir` imports each `.ts` default export, skipping `_*.ts` and `*.example.ts`; duplicate names or more than one `root` throw.
   - Checking: `flow-dsl-validator.ts` (`validateFlowDSL`).
-  - Compiling: `flow-compiler.ts` (`compileFlowDSL` turns DSL into entity and relation rows), `flow-to-dsl.ts` (`exportFlowsToDSL`, the reverse), and `hashFlows` (`sourceHash` of `tracks` + `root`).
+  - Compiling: `flow-compiler.ts` (`compileFlowDSL` turns DSL into entity and relation rows), `flow-to-dsl.ts` (`exportFlowsToDSL`, the reverse), and `hashFlows` (`sourceHash` of `tracks` + `root`). Each takes the step definitions it works with (`steps`, and `validateFlowDSL`'s `steps`), else looks them up in the registered packs (`step-lookup.ts`); tooling passes them.
   - Track builders: `flow-helpers.ts` exports `entry`/`on`, which generated flow helpers re-export.
 
 ## Seed engine (`src/seed/`, `@abuddy/sdk/seed`)
 
 The user-facing rules (change tracking, import modes, seed hooks) are in `docs/public-facing/seeds.md`. The code:
 
-- **Registry and driver** (`utils/seed.ts`): seeders are kept per pack. `registerSeeders(packId, seeders)` replaces that pack's set (a reloaded runtime registers again), and the API's `teardownPack` calls `unregisterSeeders` (not `unregisterPack`: a reload loads the fresh module before unregistering the old one). `seedData({ compiledDir, include, mode, verbose })` reads the pack id from the directory's `seeds.json` (`seedingPackId`, which throws when it names none) and runs only that pack's seeders; a key with an empty include set is skipped. `ImportMode` is `keep-existing` | `replace-on-collision` | `wipe-and-replace`. The generated `seeders.ts` registers the pack's seeders when the pack entry imports it. `seedCollection` is an older generic helper that nothing in `src/` uses.
+- **Driver** (`utils/seed.ts`): a pack's seeders arrive in its registration (`PackRegistration.seeders`), which the host's registry keeps per pack, so they come and go with the pack. `seedData({ compiledDir, include, mode, verbose })` reads the pack id from the directory's `seeds.json` (`seedingPackId`, which throws when it names none) and runs only that registered pack's seeders (`boundHost().packs.seeders(packId)`); a key with an empty include set is skipped. `registeredSeedKeys(packId)` lists their keys. `ImportMode` is `keep-existing` | `replace-on-collision` | `wipe-and-replace`. `seedCollection` is an older generic helper that nothing in `src/` uses.
 - **`createSeeder(options)`** (`seeder.ts`) is the generic record seeder, used for `actions`/`prompts` (identity `label`) and every format entry.
   - Rows carry `sourceHash`, `seededFields` (the field names plus a hash of their stored values) and `seedKey`. `seedKey` is `<packId>:<key>/…`, built by `childSeedKey` per tree level, with `packId` read from `seeds.json` (`seedingPackId`, which throws if it is missing).
   - `find` tries `seedKey` first, then the `find` hook or `identity` (with `parent` matched through `relKind`). An identity match that carries a `seedKey` is ignored.
@@ -101,42 +110,39 @@ The user-facing rules (change tracking, import modes, seed hooks) are in `docs/p
 - **`createFlowSeeder()`** (`flow-seeder.ts`) validates each DSL entry and applies the same skip rules, using `seededGraph` in place of `seededFields`.
   - `seededGraph` hashes the flow row's fields, its nodes' fields and the relations between them, independent of order.
   - It refuses an entry whose compiled ids collide with another pack's or a user's flow (`collidingOwner`).
-  - It deletes a replaced flow, imports through `builtinRepository.flowsCommands.importFromDSL`, then stamps `seedKey` and `seededGraph`.
+  - It deletes a replaced flow, imports through `flowRepository.importFromDSL`, then stamps `seedKey` and `seededGraph`.
   - Subflow names resolve to this pack's seeded flows by seed key, and to other flows by label.
   - `wipe-and-replace` deletes every flow.
-- **`createSettingsSeeder()`**: under a mode other than `keep-existing`, it calls `builtinRepository.settingsCommands.resetSettings()`.
-- **Seed hooks** (`hooks.ts`): `SeedHooks` (`find`/`create`/`update`/`remove`) are keyed by entity type. `seedHookRegistry.register` throws when a different pack already owns the type.
+- **Seed hooks** (`hooks.ts`): `SeedHooks` (`find`/`create`/`update`/`remove`) are keyed by entity type. Seeders read them with the `@internal` `seedHookRegistry.get` (the registered packs'); the host's registry refuses hooks for a type another pack owns.
 - **`previewPackSeeds(dir)`** (`preview.ts`) reads `seeds.json` for the import dialog and lists only seeded keys.
 
-## Registries
+## Registered packs
 
-The registries are module-level singletons, so a process must load exactly one SDK instance. The API's pack loader and the test harness map every `@abuddy/sdk` subpath to one copy through `withModuleBridge` in `@abuddy/host/packs`. The host fills them in `abuddy-host/src/packs/pack-registration.ts` (backend) and `abuddy-host/src/fe/pack-store.ts` (frontend).
+What packs registered isn't SDK state: the app that registers them owns it, an instance per app (`createPackRegistry()` and `createFePackRegistry()` in `@abuddy/host`; `tests/packs/registry-state.spec.ts` there fails if one of the lookup modules below keeps module-level state). The SDK defines the read-only views (`runtime/packs-view.ts`, `runtime/fe-host.ts`), the app binds them (`HostRuntime.packs`, `FeHostRuntime.packs`), and the SDK's lookups read the bound one on every call, so packs call the same functions whatever registered them. There are no write functions: everything a pack contributes arrives in its `PackRegistration` or `PackFERegistration`. A process still loads exactly one SDK instance (and one `@abuddy/ears`: `SHARED_INSTANCE_PACKAGES` in `@abuddy/host/build/shared-deps`), since the binding lives in it: the API's pack loader and the test harness map every `@abuddy/sdk` subpath to one copy through `withModuleBridge` in `@abuddy/host/packs`.
 
-- `stepRegistry` (`steps/registry.ts`): `register` merges into an existing type facet by facet (`build`, `runtime`, `fe`, `trigger`, `kind`), so the build, runtime and FE definitions of one step combine. Also `patchRuntime`/`patchFE`, `setComponents`/`initComponents`, `isTrigger`/`triggers`, `createNodeDefaults` and `clear`.
-- `artifactRegistry` (`artifacts/registry.ts`) and `blockRegistry` (`blocks/registry.ts`): keyed by `type`, last registration wins.
-- `seedHookRegistry` (`seed/hooks.ts`): per entity type, owned by one pack; `unregisterAll(packId)`.
-- Seeders (`utils/seed.ts`): keyed by seed key; `seedData` iterates them.
-- `packSettingsRegistry` (`framework/pack-settings.ts`): validates each feature's settings (`checkFeatureSettings`: a feature may set only `plugins.<id>` and `plugins._meta.visibility.<id>`) and merges them into `getPackSettingsDefaults()`, bumping `revision` and notifying `onPackSettingsDefaultsChanged` listeners.
-- Designations (`designations/index.ts`): role → id of the system or plugin that plays it. Packs read them with `getDesignated` (throws for an unknown role) and `hasDesignation`; `registerDesignations`/`unregisterDesignations` are host-only, exported only from `@abuddy/sdk/designations`.
-- Repositories (`ears/repository.ts`): `registerRepository(name, value)`. The `repository` proxy throws for an unregistered name.
-- Host modules (`runtime/host.ts`): `registerHostModule(key, mod)`. The `services` proxy (`services/index.ts`) resolves on every property read: host services plus `pack-registry`'s `getRegisteredServices()`.
-- FE: `tiptapPluginRegistry` (`fe/tiptap-plugins.ts`, `unregisterAll(packId)`) and `registerDslType`/`getDslTypes` (`fe/dsl-types.ts`).
+- Backend and frontend (`boundPackContributions()`: the frontend host's when bound, else the backend's): `stepRegistry` (`steps/registry.ts`: `get`, the facet getters, `has`, `isTrigger`/`getTrigger`/`triggers`, `types`, `all`, `createNodeDefaults`), `artifactRegistry` and `blockRegistry` (`get`, `getComponent`, `has`, `all`), and designations (`designations/index.ts`: `getDesignated`, which throws for an unknown role, and `hasDesignation`).
+- Backend (`boundHost().packs`): `seedHookRegistry.get`, `seedData`/`registeredSeedKeys` (a pack's seeders), `getPackSettingsDefaults`/`onPackSettingsDefaultsChanged` (`framework/pack-settings.ts`), `getPackCommands` (`framework/pack-commands.ts`) and pack services in `services`.
+- Frontend (`boundFeHost().packs`): `tiptapPluginRegistry.getAll` (`fe/tiptap-plugins.ts`) and `getDslTypes` (`fe/dsl-types.ts`). The renderer reads its plugins and app extensions from its registry directly.
+- Repositories (`@abuddy/ears`, `src/repository.ts`): each engine has its own registry; the free `registerRepository(name, value)` and `repository` act on the installed engine's. A pack's arrive in its registration, which the host's registry registers. The registry's proxy throws for an unregistered name; `services.repository` is the bound engine's.
+- The bound app (`runtime/host-runtime.ts`): `bindHost(runtime)` once per process. The `services` proxy (`services/index.ts`) resolves on every property read: the SDK's and the app's services plus the bound `packs.getRegisteredServices()`.
+- Contexts without an app use the SDK's stand-in (`testing/packs.ts`), never host's registry.
 
 ## Testing entry (`src/testing/`, `@abuddy/sdk/testing`)
 
-This is the in-memory runtime that `@abuddy/testing/harness` drives (see `packages/abuddy-testing/CLAUDE.md`). It lives in the SDK so tests share the pack's registries.
+This is the in-memory runtime that `@abuddy/testing/harness` drives (see `packages/abuddy-testing/CLAUDE.md`). It lives in the SDK so tests bind the pack's SDK instance, whose lookups and engine the pack's code reads.
 
-- `startTestRuntime({ entityTypes })` initializes EARS with the SDK's entity types plus the given ones; calling it again adds types. It then calls `registerTestHostModules` (`host.ts`), which registers in-memory host modules (a console logger that also records log events, `testRootEvents` and the `event-transport` over it, system errors, `appData`, trace store, `secrets`, and an `inference` that fails until mocked), each only if the host hasn't registered its own.
-- `SeedRuntime` and `registerSeedRuntime(runtime)`: registers a pack's entity types, repositories and seed hooks. The generated `seed-runtime.ts` exports it; `abuddy build` bundles it to `dist/build/seed-runtime.mjs`.
-- `resetTestData`, `entityIds`, `dropAttribute`, `takeSystemErrors`, `addTestSecret`, and `fakeInference` (`fake-inference.ts`).
+- `startTestRuntime({ entityTypes, packs?, appVersion?, onboarding? })` creates and installs an EARS engine (`createEarsEngine`) checking the SDK's entity types plus the given ones; calling it again adds types. Its first call binds the in-memory app (`bindTestRuntime`, `host.ts`): `testRootEvents` as the bus (its log events printed to the console, its `SYSTEM_ERROR` events recorded), `packs`: `testPacks` over the given registry (`testPacksView`; none by default; the harness passes the registry it creates, with its mocks), `appVersion` (`0.0.0-test` by default), `appData` (reset, and onboarding kept in `onboarding`: in memory by default, the host's `AppState` in the harness), a trace store over the in-memory database, `secrets`, and an `inference` that fails until mocked. `packs` and `appVersion` count only on the first call; a later call giving different ones throws.
+- `testPacks` (`packs.ts`): the stand-in for the registered packs, plain maps tests fill directly (`designations`, `steps`, `artifacts`, `blocks`, `services`, `seedHooks`, `seeders`, `commands`; `clear()`), found before the registry `startTestRuntime` was given. SDK specs and pack tests that need a lookup filled without registering a pack use it (default-setup's `layout-utils.test.ts`).
+- `SeedRuntime` and `registerSeedRuntime(runtime)`: registers a pack's entity types, repositories (with the engine) and seed hooks (in `testPacks`); the CLI's seed runtime check uses it, while the harness registers seed runtimes in its registry. The generated `seed-runtime.ts` exports it; `abuddy build` bundles it to `dist/build/seed-runtime.mjs`.
+- `resetTestData` (installs a fresh engine, carrying over the registered repositories, so nothing is shared with the test before), `entityIds`, `dropAttribute`, `takeSystemErrors` (the recorded `SYSTEM_ERROR` events), `addTestSecret`, and `fakeInference` (`fake-inference.ts`). `testRootEvents` has no bus actor: a test of `sendToPlugin` listens with `onPluginSend`, and `@abuddy/testing`'s `startApp` delivers them.
 
 ## Scripts
 
 Run these from `packages/abuddy-sdk`, or from the repo root with `-w @abuddy/sdk`.
 
-- `npm test`: vitest over `tests/**/*.spec.ts` (`build/`, `seed/`, `ears/`, `env/`, `framework/`, `services/`, `testing/`, `utils/`), with `@abuddy/source` set in `vitest.config.ts`. The root `test:unit` doesn't run it; CI does.
+- `npm test`: vitest over `tests/**/*.spec.ts` (files in parallel: each test creates or installs its own engine) (`build/`, `designations/`, `ears/` (the SDK entities' repositories), `env/`, `events/`, `framework/`, `logger/`, `runtime/`, `seed/`, `services/`, `testing/`, `utils/`), with `@abuddy/source` set in `vitest.config.ts`. The root `test:unit` doesn't run it; CI does.
 - `npm run typecheck`: `tsc --noEmit`. `npm run build` is the same `tsconfig.json`, which sets `noEmit`, so it emits nothing.
-- `npm run build:package`: `scripts/build-package.ts`. It compiles `dist/` with `tsconfig.package.json`, copies hand-written `.d.ts` files, and checks that every bare import in `dist` is declared and every export target was built. The root `packages:build` runs it; `npm run attw` (with the two internals excluded) runs in the root `packages:check`.
+- `npm run build:package`: `scripts/build-package.ts`. It compiles `dist/` with `tsconfig.package.json`, copies hand-written `.d.ts` files, and checks that every bare import in `dist` is declared and every export target was built. The root `packages:build` runs it; `npm run attw` (excluding the source-only `./utils/internals`) runs in the root `packages:check`.
 - `npm run api:check` / `api:update`: `api:build` emits declarations to `.temp/api-types`, then `scripts/api-reports.ts` compares or rewrites `etc/<entry>.api.md`, one per export with `types`.
 - `npm run generate:schema` / `schema:check`: regenerate or verify `abuddy.schema.json`.
 
@@ -147,4 +153,5 @@ Run these from `packages/abuddy-sdk`, or from the repo root with `-w @abuddy/sdk
 - `esbuild` and `typescript` are optional peers. `compile-utils.ts` imports both at module load, and `module-exports.ts` loads `typescript` lazily. Pack runtime code must not import `@abuddy/sdk/build`.
 - Seeded rows are found by `seedKey`, which starts with the pack id from `seeds.json`. Compiled seeds without `packId` fail to seed until the pack is rebuilt.
 - `compilePack` wipes its output directory's seed files and `media/` before compiling, even if compiling then fails.
-- The `services`, `repository` and host-module lookups throw when nothing is registered, so an SDK delegate called outside the app needs `startTestRuntime` or a host.
+- `@abuddy/ears`'s free functions (`untypedQx`, `tx`, `repository`, the `defineEars` facades, and the SDK code over them: repositories, seeders) throw when no engine is installed; tooling passes or installs its own (`exportFlowsToDSL(dir, { engine })`, `tests/build/compile-engine.spec.ts`).
+- `services`, the sends, `onLog`, `reportError`, `getAppVersion()` and the lookups of what packs registered throw naming `bindHost` (the frontend lookups `bindFeHost`) when no app is bound, so SDK code calling them outside the app needs `startTestRuntime` or a host. `createLogger` doesn't: unbound, it writes to the console. The FE bundler fails a pack frontend that inlines the binding modules (`host-runtime.ts`, `fe-host.ts`) where a bound app is needed.

@@ -4,7 +4,10 @@
 
 ```ts
 
+import type { AnyActorRef } from 'xstate';
+import type { BaseEntity } from '@abuddy/ears';
 import type { DeepPartial } from 'ai';
+import { EARS as EARS_2 } from '@abuddy/ears';
 import type { embed } from 'ai';
 import type { embedMany } from 'ai';
 import type { FlexibleSchema } from 'ai';
@@ -21,6 +24,7 @@ import type { ToolLoopAgent } from 'ai';
 import type { ToolLoopAgentSettings } from 'ai';
 import type { ToolSet } from 'ai';
 import type { transcribe } from 'ai';
+import { z } from 'zod';
 
 // @public
 export function addTestSecret(provider: SecretProvider, label: string): SecretInfo;
@@ -124,27 +128,48 @@ export interface SeedRuntime {
 }
 
 // @public
-export function startTestRuntime(options?: {
-    entityTypes?: readonly string[];
-}): void;
+export function startTestRuntime(options?: TestRuntimeStartOptions): void;
 
 // @public
-export function takeSystemErrors(): ReportSystemErrorInput[];
+export function takeSystemErrors(): SystemErrorEvent[];
+
+// @public
+export type TestOnboarding = Pick<AppDataService, 'hasOnboarded' | 'completeOnboarding'>;
+
+// @public
+export interface TestPacks {
+    readonly artifacts: Map<string, ArtifactDefinition>;
+    readonly blocks: Map<string, BlockDefinition>;
+    clear(): void;
+    readonly commands: Map<string, PackCommand[]>;
+    readonly designations: Map<string, string>;
+    readonly seeders: Map<string, Seeder[]>;
+    readonly seedHooks: Map<string, SeedHooks>;
+    readonly services: Map<string, unknown>;
+    readonly steps: Map<string, StepDefinition>;
+}
+
+// @public
+export const testPacks: TestPacks;
 
 // @public
 export interface TestRootEvents extends RootEvents {
     // (undocumented)
     emitConnected(): void;
     // (undocumented)
-    emitIncoming(event: IncomingSystemEvents): void;
-    // (undocumented)
     emitPackClientConnected(packId: string): void;
-    // (undocumented)
-    onPackClientConnected(callback: (packId: string) => void): () => void;
 }
 
 // @public
 export const testRootEvents: TestRootEvents;
+
+// @public
+export interface TestRuntimeStartOptions {
+    appVersion?: string;
+    entityTypes?: readonly string[];
+    onboarding?: TestOnboarding;
+    packs?: PackRegistryView;
+}
 
 // (No @packageDocumentation comment for this package)
 

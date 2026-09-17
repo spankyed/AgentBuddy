@@ -1,5 +1,6 @@
 export { stepRegistry } from './registry.ts';
 export { expandRecord, collapseRecord } from './utils.ts';
+export { truncateResult, isTruncated, type TruncatedResult } from './result-truncator.ts';
 export type {
   StepDefinition,
   StepDSLMeta,

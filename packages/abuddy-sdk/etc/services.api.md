@@ -5,6 +5,7 @@
 ```ts
 
 import type { DeepPartial } from 'ai';
+import { EARS as EARS_2 } from '@abuddy/ears';
 import type { embed } from 'ai';
 import type { EmbeddingModel } from 'ai';
 import type { embedMany } from 'ai';
@@ -18,6 +19,7 @@ import type { JSONSchema7 } from 'ai';
 import type { LanguageModel } from 'ai';
 import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
+import type { repository } from '@abuddy/ears';
 import type { rerank } from 'ai';
 import type { RerankingModel } from 'ai';
 import type { SpeechModel } from 'ai';
@@ -31,7 +33,9 @@ import type { TranscriptionModel } from 'ai';
 // @public
 export interface AppDataService {
     backupInfo(backupPath: string): Promise<BackupInfo | null>;
+    completeOnboarding(): void;
     exportBackup(targetPath: string, name?: string, databases?: BackupDatabase[]): Promise<string>;
+    hasOnboarded(): boolean;
     importBackup(backupPath: string): Promise<{
         databases: BackupDatabase[];
     }>;
@@ -56,7 +60,7 @@ export interface BackupInfo {
 export function createInferenceService(resolveModel: ResolveModel): InferenceService;
 
 // @internal
-export type HostImplementedServices = Pick<HostServices, 'appData' | 'traceStore' | 'inference' | 'secrets'>;
+export type HostImplementedServices = HostRuntimeServices;
 
 // @public
 export interface HostServices {
@@ -131,14 +135,8 @@ export type OutputSpec = {
 // @public
 export type ProviderName = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral' | 'cohere';
 
-// @public (undocumented)
-export function registerThreadTeardown(fn: (threadId: string) => void): void;
-
 // @internal
 export type ResolveModel = <K extends ModelKind>(kind: K, id: ModelIdOf<K>) => InferenceModels[K] | Promise<InferenceModels[K]>;
-
-// @public (undocumented)
-export function runThreadTeardown(threadId: string): void;
 
 // @public
 export interface SecretInfo {

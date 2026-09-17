@@ -4,6 +4,9 @@
 
 ```ts
 
+import type { BaseEntity } from '@abuddy/ears';
+import { EARS as EARS_2 } from '@abuddy/ears';
+
 // @public (undocumented)
 export interface ActionEntity extends BaseEntity {
     // (undocumented)
@@ -45,22 +48,7 @@ export interface ActionParameter {
 }
 
 // @public (undocumented)
-export interface BaseEntity {
-    // (undocumented)
-    createdAt: number;
-    // (undocumented)
-    entityType: EARS.Entity;
-    // (undocumented)
-    id: EARS.EntityId;
-    // (undocumented)
-    updatedAt?: number;
-}
-
-// @public (undocumented)
 export const bus: "bus";
-
-// @public
-export function defineEars<S extends EntityShapes, N extends string = string>(): TypedEars<S, N>;
 
 // @public
 export function defineSystem<Id extends string>(id: Id): <TEvents extends {
@@ -79,22 +67,14 @@ export namespace EARS {
         readonly TNode: "TNode";
         readonly Action: "Action";
         readonly Prompt: "Prompt";
-        readonly Settings: "Settings";
     };
     // (undocumented)
-    export interface AttributePayloads {
-        // (undocumented)
-        [key: string]: unknown;
-        // (undocumented)
-        [AttrKindValues.RelationDetails]: RelationDetail;
-        // (undocumented)
-        [AttrKindValues.Role]: RoleKind;
-    }
+    export type AttributePayloads = EARS_2.AttributePayloads;
     // (undocumented)
-    export type AttributeStore = Record<string, AttributeTypeMap>;
+    export type AttributeStore = EARS_2.AttributeStore;
     const // (undocumented)
     RelKind: {
-        readonly Custom: <T extends string>(k: T) => T & RelKind;
+        readonly Custom: <T extends string>(k: T) => T & EARS_2.RelKind;
         readonly CONTAINS: "contains";
         readonly TRANSITIONS_TO: "transitions_to";
         readonly INSTANCE_OF: "instance_of";
@@ -102,15 +82,15 @@ export namespace EARS {
         readonly TRACKED: "tracked";
     };
     // (undocumented)
-    export type AttributeType = AttrKind;
+    export type AttributeType = EARS_2.AttributeType;
     // (undocumented)
-    export type AttributeTypeMap = Record<EntityId, AttributeValue[]>;
+    export type AttributeTypeMap = EARS_2.AttributeTypeMap;
     const // (undocumented)
     RoleKind: {
-        readonly Custom: <T extends string>(k: T) => T & RoleKind;
+        readonly Custom: <T extends string>(k: T) => T & EARS_2.RoleKind;
     };
     // (undocumented)
-    export type AttributeValue<K extends AttrKind = AttrKind> = K extends keyof AttributePayloads ? AttributePayloads[K] : unknown;
+    export type AttributeValue<K extends AttrKind = AttrKind> = EARS_2.AttributeValue<K>;
     const // (undocumented)
     AttrKindValues: {
         readonly Role: "role";
@@ -118,52 +98,24 @@ export namespace EARS {
     };
     const // (undocumented)
     AttrKind: {
-        readonly Custom: <T extends string>(k: T) => T & AttrKind;
+        readonly Custom: <T extends string>(k: T) => T & EARS_2.AttrKind;
         readonly Role: "role";
         readonly RelationDetails: "relationDetails";
     };
     // (undocumented)
-    export type AttrKind = typeof AttrKindValues[keyof typeof AttrKindValues] | (string & {});
+    export type AttrKind = EARS_2.AttrKind;
     // (undocumented)
-    export type Blueprint = {
-        entity: EARS.Entity;
-        attrs?: Record<string, unknown>;
-        roles?: EARS.RoleKind[];
-        uniqueRoles?: EARS.RoleKind[];
-        rels?: {
-            kind: EARS.RelKind;
-            target: Blueprint | EARS.EntityId;
-            info?: unknown;
-        }[];
-    };
+    export type Blueprint = EARS_2.Blueprint;
     // (undocumented)
     export type Entity = typeof Entity[keyof typeof Entity] | (string & {});
-    export type EntityId<E extends string = string> = string extends E ? `${string}-${string}` : `${string}-${string}` & {
-        readonly __entity?: E;
-    };
     // (undocumented)
-    export interface RelationDetail {
-        // (undocumented)
-        info?: AttributeValue;
-        // (undocumented)
-        relationType: RelKind;
-        // (undocumented)
-        sourceEntity: EntityId;
-        // (undocumented)
-        targetEntity: EntityId;
-    }
+    export type EntityId<E extends string = string> = EARS_2.EntityId<E>;
     // (undocumented)
-    export type RelKind = string & {};
+    export type RelationDetail = EARS_2.RelationDetail;
     // (undocumented)
-    export type RoleKind = string & {};
-}
-
-// @public (undocumented)
-export interface EARSRuntimeDeps {
+    export type RelKind = EARS_2.RelKind;
     // (undocumented)
-    isEntityType: (v: string) => boolean;
-    // (undocumented)
-    persistence?: PersistenceSink;
+    export type RoleKind = EARS_2.RoleKind;
 }
 
 // @public (undocumented)
@@ -252,19 +204,7 @@ export type SdkEntityShapes = {
     TNode: TNodeEntity;
     Action: ActionEntity;
     Prompt: PromptEntity;
-    Settings: SettingsEntity;
 };
-
-// @public (undocumented)
-export interface SettingsEntity extends BaseEntity {
-    data: unknown;
-    // (undocumented)
-    entityType: typeof SDK_ENTITIES.Settings;
-    name: string;
-}
-
-// @public (undocumented)
-export type SettingsScope = 'general' | 'plugin' | 'internal';
 
 // @public (undocumented)
 export type Simplify<T> = {
@@ -356,9 +296,6 @@ export interface TNodeEntity extends BaseEntity {
 
 // @public (undocumented)
 export type TNodeKind = 'flow' | 'event' | 'step';
-
-// @public (undocumented)
-export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId?: boolean): TransactionBuilder;
 
 // (No @packageDocumentation comment for this package)
 

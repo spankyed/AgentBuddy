@@ -1,12 +1,13 @@
 /**
  * The entity types and relation kinds the SDK owns: the EARS engine's own (Relation) and the data
- * models the SDK's compilers, seeders and services are written against (flows, actions and prompts;
- * settings and secrets). Every pack has them, and no pack
- * declares them. The generator, the manifest schema and the host all read this module.
+ * model the SDK's compilers, seeders and repositories are written against (flows and their nodes,
+ * step executions, actions and prompts). Every pack has them, and no pack declares them. The
+ * generator, the manifest schema and the host all read this module.
  *
  * The shapes here are part of the typed EARS contract (packages/abuddy-sdk/TYPED-EARS.md).
  */
-import type { BaseEntity, EARS } from './entities.ts';
+import type { BaseEntity } from '@abuddy/ears';
+import type { EARS } from './entities.ts';
 import type { TNodeEntity } from '../steps/types.ts';
 
 export const SDK_ENTITIES = {
@@ -19,7 +20,6 @@ export const SDK_ENTITIES = {
   TNode: 'TNode',
   Action: 'Action',
   Prompt: 'Prompt',
-  Settings: 'Settings',
 } as const;
 
 export const SDK_REL_KINDS = {
@@ -124,16 +124,6 @@ export interface PromptEntity extends BaseEntity {
   deletedAt?: number;
 }
 
-export type SettingsScope = 'general' | 'plugin' | 'internal';
-
-export interface SettingsEntity extends BaseEntity {
-  entityType: typeof SDK_ENTITIES.Settings;
-  /** e.g. 'internal', 'general.application', 'plugin.flows' */
-  name: string;
-  /** The settings stored under this name; their structure belongs to the pack that owns them */
-  data: unknown;
-}
-
 /**
  * Shapes of the SDK's entities; every pack's generated PackShapes includes them. A pack that defines
  * steps reads Node rows as its step node types (and its dependencies') instead of NodeBase.
@@ -145,13 +135,11 @@ export type SdkEntityShapes = {
   TNode: TNodeEntity;
   Action: ActionEntity;
   Prompt: PromptEntity;
-  Settings: SettingsEntity;
 };
 
 /** The keys of SdkEntityShapes, at runtime */
 export const SDK_SHAPED_ENTITIES = [
   SDK_ENTITIES.Relation, SDK_ENTITIES.Flow, SDK_ENTITIES.Node, SDK_ENTITIES.TNode, SDK_ENTITIES.Action, SDK_ENTITIES.Prompt,
-  SDK_ENTITIES.Settings,
 ] as const;
 
 // Fails to compile when SDK_SHAPED_ENTITIES and SdkEntityShapes list different entities

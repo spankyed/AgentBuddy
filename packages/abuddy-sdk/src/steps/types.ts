@@ -77,7 +77,8 @@ export interface StepBuildFacet {
  *─────────────────────────────────────────────────────────────────*/
 
 import type { AnyActorRef } from 'xstate';
-import type { BaseEntity, EARS } from '../types/entities.ts';
+import type { BaseEntity } from '@abuddy/ears';
+import type { EARS } from '../types/entities.ts';
 
 export type TimestampMs = number;
 export type EntityStatus = 'active' | 'paused' | 'completed' | 'failed';

@@ -1,10 +1,10 @@
-import { getHostModule } from '../runtime/host.ts';
 import { rootEvents } from '../runtime/root-events.ts';
 import { sendToPlugin } from '../events/index.ts';
 // Import directly — not from '../utils' barrel which pulls in Node-only modules (fs, child_process)
 import { randomId } from '../utils/random-id.ts';
+import { RepositoryError, RepositoryErrorCode } from '@abuddy/ears';
 import { redactSecrets, redactSecretText } from '../utils/redact.ts';
-import { builtinRepository } from '../ears/builtin-repositories.ts';
+import { tnodeRepository } from '../ears/tnode-repository.ts';
 import type { EARS } from '../types/entities.ts';
 import type { StepRuntimeError } from '../steps/types.ts';
 import { createLogger } from './logger.ts';
@@ -28,17 +28,23 @@ export interface ReportErrorInput {
   step?: StepErrorContext;
 }
 
-/** The input the host's `system-errors` module reports (a `SYSTEM_ERROR` for the app to show) */
+/** A system error's report, without a step */
 export type ReportSystemErrorInput = Omit<ReportErrorInput, 'step'>;
 
-interface SystemErrorsHost {
-  reportSystemError(input: ReportSystemErrorInput): void;
-}
-
-let _systemErrors: SystemErrorsHost | undefined;
-function systemErrors(): SystemErrorsHost {
-  return _systemErrors ??= getHostModule<SystemErrorsHost>('system-errors');
-}
+/** What the app shows for a system error: sent to the `application` plugin */
+export type SystemErrorEvent = {
+  type: 'SYSTEM_ERROR';
+  pluginId: 'application';
+  errorId: string;
+  message: string;
+  title?: string;
+  source?: string;
+  operation?: string;
+  entityId?: string;
+  severity: 'error' | 'fatal';
+  stack?: string;
+  timestamp: number;
+};
 
 /**
  * Reports an error: logs it and shows it to the user. Without `step` the app shows it as a system error.
@@ -49,10 +55,60 @@ export function reportError(input: ReportErrorInput & { step: StepErrorContext }
 export function reportError(input: ReportErrorInput): StepRuntimeError | undefined;
 export function reportError({ step, ...input }: ReportErrorInput): StepRuntimeError | undefined {
   if (!step) {
-    systemErrors().reportSystemError(input);
+    reportSystemError(input);
     return undefined;
   }
   return reportStepError(input, step);
+}
+
+/** The error's name, message and stack, with key-shaped strings redacted (provider errors can quote the key) */
+function normalizeError(error: unknown): { message: string; stack?: string; name?: string } {
+  if (error instanceof Error) {
+    return {
+      name: error.name,
+      message: redactSecretText(error.message || error.toString()),
+      stack: error.stack && redactSecretText(error.stack),
+    };
+  }
+  if (typeof error === 'string') return { message: redactSecretText(error) };
+  try {
+    return { message: redactSecretText(JSON.stringify(error)) };
+  } catch {
+    return { message: redactSecretText(String(error)) };
+  }
+}
+
+function userSafeMessage(error: unknown, fallback: string): string {
+  if (error instanceof RepositoryError && error.code === RepositoryErrorCode.NOT_FOUND) return 'That item no longer exists.';
+  return fallback;
+}
+
+/** Logs a system error and sends it to the app, which shows it */
+function reportSystemError(input: ReportSystemErrorInput): void {
+  const normalized = normalizeError(input.error);
+  const message = input.userMessage ?? userSafeMessage(input.error, normalized.message);
+  const severity = input.severity ?? 'error';
+  const event: SystemErrorEvent = {
+    type: 'SYSTEM_ERROR',
+    pluginId: 'application',
+    errorId: randomId({ prefix: 'err_', counterSafe: true }),
+    title: input.title,
+    message,
+    source: input.source,
+    operation: input.operation,
+    entityId: input.entityId,
+    severity,
+    stack: normalized.stack,
+    timestamp: Date.now(),
+  };
+  rootEvents.emitLog({
+    level: 'error',
+    source: input.source ?? 'system',
+    message,
+    stack: normalized.stack,
+    meta: { errorId: event.errorId, operation: input.operation, entityId: input.entityId, severity, error: normalized },
+  });
+  rootEvents.emitOutgoing(event);
 }
 
 function reportStepError(input: ReportSystemErrorInput, step: StepErrorContext): StepRuntimeError {
@@ -79,7 +135,7 @@ function reportStepError(input: ReportSystemErrorInput, step: StepErrorContext):
 
   if (runtimeError.tNodeId) {
     try {
-      builtinRepository.brainCommands.updateTNodeResult(runtimeError.tNodeId as EARS.EntityId, {
+      tnodeRepository.updateTNodeResult(runtimeError.tNodeId as EARS.EntityId, {
         error: {
           message: runtimeError.message,
           source: runtimeError.source,
@@ -89,9 +145,7 @@ function reportStepError(input: ReportSystemErrorInput, step: StepErrorContext):
         },
       });
     } catch (err) {
-      if (!(err instanceof Error && err.message.includes('"brainCommands" is not registered'))) {
-        logger.warn('Failed to persist runtime error on TNode', { tNodeId: runtimeError.tNodeId, error: err });
-      }
+      logger.warn('Failed to persist runtime error on TNode', { tNodeId: runtimeError.tNodeId, error: err });
     }
   }
 

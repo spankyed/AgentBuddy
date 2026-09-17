@@ -5,6 +5,8 @@
 ```ts
 
 import type { AnyActorRef } from 'xstate';
+import type { BaseEntity } from '@abuddy/ears';
+import { EARS as EARS_2 } from '@abuddy/ears';
 import { z } from 'zod';
 
 // @public (undocumented)
@@ -42,6 +44,9 @@ export interface ExecutionEvent {
 // @public (undocumented)
 export function expandRecord(map: Record<string, string> | undefined, keyField?: string, valueField?: string): Array<Record<string, string>> | undefined;
 
+// @public
+export function isTruncated(result: unknown): result is TruncatedResult;
+
 // @public (undocumented)
 export interface RuntimeServices {
     // (undocumented)
@@ -58,7 +63,6 @@ export type SdkEntityShapes = {
     TNode: TNodeEntity;
     Action: ActionEntity;
     Prompt: PromptEntity;
-    Settings: SettingsEntity;
 };
 
 // @public (undocumented)
@@ -385,6 +389,19 @@ export interface TriggerRuntimeNode {
     // (undocumented)
     trackKey?: string;
 }
+
+// @public
+export interface TruncatedResult {
+    // (undocumented)
+    _truncated: true;
+    // (undocumented)
+    _type: string;
+    // (undocumented)
+    value: unknown;
+}
+
+// @public
+export function truncateResult(result: unknown, depth?: number): unknown;
 
 // (No @packageDocumentation comment for this package)
 

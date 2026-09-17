@@ -1,21 +1,16 @@
 // services.emitter.sendToSystem names systems <packId>/<featureId>, since actions run outside any pack: the host's
-// pack registry resolves the name to the id the system runs under
+// bound pack registry resolves the name to the id the system runs under
 import * as os from 'node:os';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { services } from '../../src/services/index.ts';
-import { registerHostModule } from '../../src/runtime/host.ts';
 import { startTestRuntime, testRootEvents } from '../../src/testing/index.ts';
+import { testPacksView } from '../../src/testing/packs.ts';
 
 process.env.ABUDDY_ENV ??= 'test';
 process.env.ABUDDY_USER_DATA_DIR ??= os.tmpdir();
-startTestRuntime();
-
 const running: Record<string, string> = { 'default-setup/notes': 'notes', 'ext/notes': 'ext.notes' };
-beforeAll(() => {
-  registerHostModule('pack-registry', {
-    getRegisteredServices: () => ({}),
-    resolveSystemAddress: (address: string) => running[address],
-  });
+startTestRuntime({
+  packs: { ...testPacksView(), resolveSystemAddress: (address) => running[address] },
 });
 
 function incoming(send: () => void): unknown[] {

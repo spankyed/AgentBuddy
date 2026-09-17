@@ -19,7 +19,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "build:package": "tsx scripts/build-package.ts",
-    "attw": "attw --pack . --profile esm-only --exclude-entrypoints ./ears/internals --exclude-entrypoints ./utils/internals",
+    "attw": "attw --pack . --profile esm-only --exclude-entrypoints ./utils/internals",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "api:build": "node -e \"require('fs').rmSync('.temp', { recursive: true, force: true })\" && tsc -p tsconfig.api-extractor.json",
@@ -166,9 +166,6 @@
       "default": "./dist/testing/index.js"
     },
     "./abuddy.schema.json": "./abuddy.schema.json",
-    "./ears/internals": {
-      "@abuddy/source": "./src/ears/internals.ts"
-    },
     "./utils/internals": {
       "@abuddy/source": "./src/utils/internals.ts"
     }
@@ -212,6 +209,7 @@
     "provenance": true
   },
   "dependencies": {
+    "@abuddy/ears": "^0.1.0",
     "yaml": "^2.9.1"
   }
 }
