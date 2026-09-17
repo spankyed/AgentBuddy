@@ -17,7 +17,6 @@
 import { sendToPlugin } from '@/__generated__/events';
 import { setup, enqueueActions, assign } from 'xstate'
 
-import './repository' // side-effect: registers terminalQueries/terminalCommands
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
 import { GitRepository } from './services/git'
 import { GitWatcherService } from './services/gitwatcher'

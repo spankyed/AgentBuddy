@@ -3,7 +3,6 @@ import { assign, setup, enqueueActions, raise } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
 import { bus } from '@abuddy/sdk/ids';
-import './repository'; // side-effect: registers brainQueries/brainCommands
 import { getActor } from '@abuddy/sdk/helpers';
 import { EARS } from '@/__generated__/ears';
 import type { FlowTNodeData, TNodeUpdate } from './types';

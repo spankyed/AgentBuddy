@@ -5,7 +5,6 @@ import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
 import { bus } from '@abuddy/sdk/ids';
 import { brain } from '@/__generated__/system-ids';
-import './repository'; // side-effect: registers threadQueries/threadCommands/chatQueries/chatCommands
 import { getActor, sendParentSafe } from '@abuddy/sdk/helpers';
 import { tx, EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
