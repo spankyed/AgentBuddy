@@ -6,9 +6,11 @@ import type { EARS } from '@abuddy/ears';
 import { importDatabase, readBackup, type BackupLog } from '@abuddy/host/backup';
 import type { AppDatabase } from '@abuddy/host/database';
 import { createSecretsStore } from '@abuddy/host/secrets';
+import { secretProviderLabel } from '@abuddy/sdk/services';
 import { openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
 
 const FORCE = { force: { type: 'boolean', default: false } } as const;
+const RESET_OPTIONS = { ...FORCE, 'keep-keys': { type: 'boolean', default: false } } as const;
 const IMPORT_OPTIONS = { ...FORCE, 'skip-unknown': { type: 'boolean', default: false } } as const;
 const FORCE_USAGE = '  --force                Make the change (without it, the command only lists it)';
 
@@ -31,6 +33,16 @@ function countLines(counts: Array<[string, number]>): string[] {
   return counts.length > 0 ? counts.map(([type, count]) => `  ${type}: ${count}`) : ['  (no entities)'];
 }
 
+/**
+ * The stored keys by provider and label, never their values, so what a reset deletes is named: a key is entered
+ * again from the provider's own account, and the label says which account it was
+ */
+function keyLines(secrets: ReturnType<typeof secretsStoreAt>): string[] {
+  return secrets.list()
+    .map(({ provider, label, selected }) => `  ${secretProviderLabel(provider)} — ${label}${selected ? ' (selected)' : ''}`)
+    .sort();
+}
+
 /** The stored API keys' file, whose keys a reset deletes; listing them needs no data key */
 function secretsStoreAt(db: AppDatabase) {
   const refuse = () => { throw new Error('abuddy db never reads a key value'); };
@@ -44,35 +56,43 @@ export const RESET_USAGE = [
   'Usage: abuddy db reset [--force] [options]',
   '',
   'Deletes all of the app\'s data, as Reset Database in the Database settings does: both database partitions and the',
-  'stored API keys.',
+  'stored API keys, which no backup holds: each is entered again in Settings → Secrets.',
   'AgentBuddy creates its default data again on its next start, and shows onboarding.',
   '',
   'Options:',
   FORCE_USAGE,
+  '  --keep-keys            Leave the stored API keys where they are, and delete only the data',
   TARGET_USAGE,
 ].join('\n');
 
 export async function dbReset(args: string[], io: DbIo): Promise<void> {
-  const { values, positionals, target } = parseDbArgs(args, FORCE, RESET_USAGE);
+  const { values, positionals, target } = parseDbArgs(args, RESET_OPTIONS, RESET_USAGE);
   if (positionals.length > 0) throw new Error(`Unexpected argument ${positionals[0]}\n\n${RESET_USAGE}`);
   const force = values.force as boolean;
+  const keepKeys = values['keep-keys'] as boolean;
 
   // Without --force nothing is changed, so the database opens read-only: a copy the user may not write is listed too
   const db = await openTarget(target, { write: force, command: 'reset' }, io);
   const done = await withDatabase(db, async () => {
     const secrets = secretsStoreAt(db);
-    const keys = fs.existsSync(db.paths.secretsFile) ? secrets.list().length : 0;
+    const keys = fs.existsSync(db.paths.secretsFile) ? keyLines(secrets) : [];
     io.out(`${force ? 'Deleting' : 'Would delete'} the database (${db.paths.lmdb} and ${db.paths.volatileLmdb}):`);
     countLines(entityCounts(db)).forEach((line) => io.out(line));
     io.out(`  and the volatile partition (run history)`);
-    io.out(`${force ? 'Deleting' : 'Would delete'} ${keys} stored API key(s)`);
+    if (keepKeys) {
+      io.out(`Keeping ${keys.length} stored API key(s) (--keep-keys)`);
+    } else {
+      // Named, because no backup holds them: the provider and the account's label are what it takes to enter one again
+      io.out(`${force ? 'Deleting' : 'Would delete'} ${keys.length} stored API key(s), which no backup holds:`);
+      keys.forEach((line) => io.out(line));
+    }
     if (!force) {
       io.out(`\n${DRY_RUN}`);
       return null;
     }
     db.admin.clear();
     await db.store.reset();
-    secrets.clearAll();
+    if (!keepKeys) secrets.clearAll();
     return '\nReset. AgentBuddy creates its default data on its next start.';
   });
   if (done) io.out(done);

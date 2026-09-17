@@ -309,9 +309,11 @@ Write each entity type's entities, with every attribute, to `<dir>/<Entity>.json
 
 Replace the database, and the media folder when the backup has one, with a backup made in the Database settings' Backup & Restore. The backup is checked first: it has `metadata.json`, lists the app's main database, that folder is there, and it opens. A backup made by a newer AgentBuddy may also hold stores this one doesn't have; importing it would replace your data with an incomplete copy, so it's refused unless you pass `--skip-unknown`, which imports it without them. If the backup lists a store it holds nothing for, the listing says so and that store comes back empty. Without `--force` it lists the backup, its contents and what it would replace, and changes nothing. The app migrates the data on its next start if the backup is from an earlier version.
 
-#### `abuddy db reset [--force]` (names its data dir)
+#### `abuddy db reset [--force] [--keep-keys]` (names its data dir)
 
-Delete all of the app's data, as Reset Database in the Database settings does: both database partitions (the data and the run history) and the stored API keys. The app creates its default data (settings, seeded flows, the packs' seeds) on its next start and shows onboarding. Without `--force` it lists the entities per type and the number of stored keys it would delete.
+Delete all of the app's data, as Reset Database in the Database settings does: both database partitions (the data and the run history) and the stored API keys. The app creates its default data (settings, seeded flows, the packs' seeds) on its next start and shows onboarding. Without `--force` it lists the entities per type and each stored key it would delete.
+
+No backup holds the API keys — `export` and the Database settings' backups copy the databases and the media folder, never the keys or the data key that encrypts them — so a deleted key is entered again in Settings → Secrets, from the provider's own account. That's why the listing names each one by provider and label (never its value), and why `--keep-keys` leaves them where they are and deletes only the data.
 
 #### `abuddy db clear-settings [--force]` (names its data dir)
 

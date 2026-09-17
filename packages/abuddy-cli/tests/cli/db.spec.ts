@@ -720,7 +720,7 @@ describe('abuddy db reset', () => {
     const dry = await ok(['reset', '--data-dir', dir]);
     expect(dry.out).toContain('Would delete the database');
     expect(dry.out).toContain('  Note: 2');
-    expect(dry.out).toContain('Would delete 1 stored API key(s)');
+    expect(dry.out).toContain('Would delete 1 stored API key(s), which no backup holds:\n  Anthropic — Work (selected)');
     expect(dry.out).toContain('Dry run: nothing was changed');
     expect(JSON.parse(fs.readFileSync(secretsFile, 'utf-8')).secrets).toHaveLength(1);
 
@@ -730,6 +730,20 @@ describe('abuddy db reset', () => {
     const after = await ok(['query', 'return getAllEntities()', '--data-dir', dir, '-o', 'json']);
     expect(JSON.parse(after.out)).toEqual([]);
     expect((await ok(['reset', '--data-dir', dir])).out).toContain('Would delete 0 stored API key(s)');
+  });
+
+  // The keys are the half no backup holds, so wiping the data doesn't have to take them
+  it('keeps the stored keys with --keep-keys, and says so', async () => {
+    const dir = await appDataDir();
+    const secretsFile = await withKey(dir);
+
+    const dry = await ok(['reset', '--keep-keys', '--data-dir', dir]);
+    expect(dry.out).toContain('Keeping 1 stored API key(s) (--keep-keys)');
+    expect(dry.out).not.toContain('Would delete 1 stored API key');
+
+    await ok(['reset', '--keep-keys', '--force', '--data-dir', dir]);
+    expect(JSON.parse(fs.readFileSync(secretsFile, 'utf-8')).secrets).toHaveLength(1);
+    expect(JSON.parse((await ok(['query', 'return getAllEntities()', '--data-dir', dir, '-o', 'json'])).out)).toEqual([]);
   });
 
   it('refuses while an app runs on the data dir', async () => {
