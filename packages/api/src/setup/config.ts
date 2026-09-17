@@ -1,4 +1,4 @@
-import { timingSafeEqual } from 'node:crypto';
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 
 export const SERVER_CONFIG = {
   DEFAULT_PORT: 3001,
@@ -7,15 +7,20 @@ export const SERVER_CONFIG = {
   }
 };
 
+/** The token an API started without `ABUDDY_API_TOKEN` (by hand) made up for itself */
+let ownToken: string | undefined;
+
 /**
- * The token every client must present, which Electron main creates for each app run and passes as
- * `ABUDDY_API_TOKEN`. Without it the API refuses to start: an open API would take any local web page's calls.
+ * The token every client must present: the one Electron main creates for each app run and passes as
+ * `ABUDDY_API_TOKEN`, or, for an API started by hand, a random one it makes up (see `apiTokenIsOwn`).
+ * The API is never open: an open API would take any local web page's calls.
  */
 export function apiToken(): string {
-  const token = process.env.ABUDDY_API_TOKEN;
-  if (!token) throw new Error('ABUDDY_API_TOKEN is unset: the app passes it to the API it starts; a manual boot sets one');
-  return token;
+  return process.env.ABUDDY_API_TOKEN || (ownToken ??= randomBytes(32).toString('base64url'));
 }
+
+/** Whether the API made up its own token (nobody passed one), so only its token file tells clients what it is */
+export const apiTokenIsOwn = (): boolean => !process.env.ABUDDY_API_TOKEN;
 
 /** Whether `given` is the API token, compared in constant time */
 export function isApiToken(given: string | null | undefined, token = apiToken()): boolean {

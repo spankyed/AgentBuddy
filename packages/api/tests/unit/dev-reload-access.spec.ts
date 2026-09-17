@@ -1,5 +1,5 @@
-// The API takes calls only from clients with its token, which Electron main creates for each app run: the app's
-// windows send it when connecting, local tools with POST /dev/reload. A web page (the in-app browser's included)
+// The API takes calls only from clients with its token, which Electron main creates for each app run (an API started by
+// hand makes up its own): the app's windows send it when connecting, local tools with POST /dev/reload. A web page (the in-app browser's included)
 // can't learn it. /dev/reload is also only for development and test apps, and the server listens on loopback only.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -11,7 +11,7 @@ process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
 process.env.ABUDDY_API_TOKEN = 'the-run-token';
 const { API_HOST, acceptsConnection, devReloadRefusal } = await import('@/setup/websocket');
-const { apiToken, isApiToken } = await import('@/setup/config');
+const { apiToken, apiTokenIsOwn, isApiToken } = await import('@/setup/config');
 const { API_TOKEN_HEADER } = await import('@abuddy/sdk/env');
 afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
 
@@ -19,11 +19,20 @@ const TOKEN = 'the-run-token';
 const withToken = (token: string) => ({ [API_TOKEN_HEADER]: token });
 
 describe('the API token', () => {
-  it("is the app run's, and the API refuses to start without one", () => {
+  it("is the app run's when one is given", () => {
     expect(apiToken()).toBe(TOKEN);
+    expect(apiTokenIsOwn()).toBe(false);
+  });
+
+  it('is made up, random and kept, for an API started without one', () => {
     delete process.env.ABUDDY_API_TOKEN;
     try {
-      expect(() => apiToken()).toThrow('ABUDDY_API_TOKEN is unset');
+      const own = apiToken();
+      expect(apiTokenIsOwn()).toBe(true);
+      expect(own).toMatch(/^[\w-]{43}$/);
+      expect(apiToken()).toBe(own);
+      expect(acceptsConnection('/', own)).toBe(false);
+      expect(acceptsConnection(`/?token=${own}`)).toBe(true);
     } finally {
       process.env.ABUDDY_API_TOKEN = TOKEN;
     }

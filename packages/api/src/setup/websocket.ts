@@ -6,7 +6,7 @@ import { applyWSSHandler } from '@trpc/server/adapters/ws';
 import { appRouter } from '@/core/router';
 import { createContext } from '@/core/router/context';
 import { createLogger } from '@abuddy/sdk/logger';
-import { SERVER_CONFIG, apiToken, isApiToken } from '@/setup/config';
+import { SERVER_CONFIG, apiToken, apiTokenIsOwn, isApiToken } from '@/setup/config';
 import { appPacks, backendActor } from '@/setup/backend';
 import { reloadBuiltInPack, reloadExternalPack } from '@abuddy/host/packs/runtime';
 import { API_TOKEN_HEADER, resolveAppContext } from '@abuddy/sdk/env';
@@ -98,15 +98,16 @@ export function createWebSocketServer() {
     const message = `✅ WebSocket Server listening on ws://localhost:${port} (tRPC endpoint: ws://localhost:${port}/trpc)`;
     console.log(message);
 
-    // Local tools (`abuddy dev`, the built-in pack's watcher) find a development app's API through these files;
-    // the token's is readable only by the user
-    if (process.env.NODE_ENV === 'development') {
+    // Local tools (`abuddy dev`, the built-in pack's watcher) find a development app's API through these files, and
+    // an API started by hand tells its clients its own token the same way. The token's is readable only by the user.
+    if (process.env.NODE_ENV === 'development' || apiTokenIsOwn()) {
       const { apiPortFile, apiTokenFile } = resolveAppContext();
       try {
         fs.mkdirSync(path.dirname(apiPortFile), { recursive: true });
         fs.writeFileSync(apiPortFile, String(port));
         fs.writeFileSync(apiTokenFile, token, { mode: 0o600 });
         fs.chmodSync(apiTokenFile, 0o600);
+        if (apiTokenIsOwn()) logger.info(`No ABUDDY_API_TOKEN given: clients send the token in ${apiTokenFile}`);
       } catch {}
     }
   });
