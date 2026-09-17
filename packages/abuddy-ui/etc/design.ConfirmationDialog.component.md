@@ -21,7 +21,7 @@ emits {
   (event: "update:modelValue", value: boolean) => void;
 }
 slots {
-  default?: ((props: {}) => any) | undefined;
+  default?: ((props: typeof __VLS_39) => any) | undefined;
 }
 exposed {
 }

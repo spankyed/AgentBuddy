@@ -11,7 +11,7 @@ emits {
   (event: "update:modelValue", value: string | null) => void;
 }
 slots {
-  default?: ((props: { toggle: () => void; }) => any) | undefined;
+  default?: ((props: typeof __VLS_1) => any) | undefined;
 }
 exposed {
 }

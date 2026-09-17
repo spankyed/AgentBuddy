@@ -4,7 +4,7 @@
 
 ```ts
 props {
-  editor: import("@tiptap/core/dist/index").Editor;
+  editor: Editor;
 }
 emits {
   (event: string, ...args: any[]) => void;

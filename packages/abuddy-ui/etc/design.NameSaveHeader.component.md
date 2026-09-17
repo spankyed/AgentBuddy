@@ -16,8 +16,8 @@ emits {
   (event: "save") => void;
 }
 slots {
-  actions?: ((props: {}) => any) | undefined;
-  default?: ((props: {}) => any) | undefined;
+  actions?: ((props: typeof __VLS_3) => any) | undefined;
+  default?: ((props: typeof __VLS_1) => any) | undefined;
 }
 exposed {
 }

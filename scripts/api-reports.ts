@@ -81,11 +81,23 @@ for (const [key, declaration] of entries()) {
   }
 }
 
-/** Component entries (a .ts module re-exporting an SFC's default): [subpath, declaration] */
-function componentEntries(): [string, string][] {
-  return entries().filter(([key]) => {
+/** A component entry: the `.ts` module that re-exports an SFC's default, and the two declarations */
+interface ComponentEntry {
+  key: string;
+  /** The entry module's declaration, which the contract file imports the component from */
+  declaration: string;
+  /** The SFC's own declaration, where the component and the types it names are declared */
+  componentDeclaration: string;
+}
+
+/** Component entries (a .ts module re-exporting an SFC's default) */
+function componentEntries(): ComponentEntry[] {
+  return entries().flatMap(([key, declaration]) => {
     const source = (pkg.exports[key] as Record<string, string>)['@abuddy/source'];
-    return /export\s*\{\s*default\s*\}\s*from\s*['"][^'"]+\.vue['"]/.test(fs.readFileSync(path.join(pkgDir, source), 'utf-8'));
+    const sfc = /export\s*\{\s*default\s*\}\s*from\s*['"]([^'"]+\.vue)['"]/.exec(fs.readFileSync(path.join(pkgDir, source), 'utf-8'));
+    if (!sfc) return [];
+    // The entry only re-exports; the SFC's own declaration is where the component is declared
+    return [{ key, declaration, componentDeclaration: path.join(path.dirname(declaration), `${path.basename(sfc[1])}.d.ts`) }];
   });
 }
 
@@ -96,11 +108,11 @@ function componentEntries(): [string, string][] {
  * the last one, so the instance members are read from every construct signature; a functional
  * component uses the helpers.
  */
-function componentContracts(components: [string, string][]): Map<string, string> {
+function componentContracts(components: ComponentEntry[]): Map<string, string> {
   const contractFile = path.join(typesDir, '__component-contracts.ts');
   fs.writeFileSync(contractFile, [
     "import type { ComponentProps, ComponentEmit, ComponentSlots, ComponentExposed } from 'vue-component-type-helpers';",
-    ...components.flatMap(([, declaration], i) => {
+    ...components.flatMap(({ declaration }, i) => {
       const specifier = `./${path.relative(typesDir, declaration).replace(/\.d\.ts$/, '.js')}`;
       return [
         `import C${i} from '${specifier}';`,
@@ -130,34 +142,38 @@ function componentContracts(components: [string, string][]): Map<string, string>
   const fromVue = (symbol: ts.Symbol) => (symbol.declarations ?? []).length > 0
     && symbol.declarations!.every((d) => /\/node_modules\/@vue\//.test(d.getSourceFile().fileName));
   // Union members print in type-creation order, which depends on the rest of the program: sort them
-  const typeText = (type: ts.Type): string => {
-    if (!type.isUnion() || type.aliasSymbol) return relativize(checker.typeToString(type, source, flags));
-    let members = [...new Set(type.types.map(typeText))];
+  const typeText = (type: ts.Type, location: ts.Node): string => {
+    if (!type.isUnion() || type.aliasSymbol) return relativize(checker.typeToString(type, location, flags));
+    let members = [...new Set(type.types.map((member) => typeText(member, location)))];
     if (members.includes('true') && members.includes('false')) members = [...members.filter((m) => m !== 'true' && m !== 'false'), 'boolean'];
     // Function and conditional types need parentheses inside a union
     return members.map((m) => (/=>|\bextends\b/.test(m) ? `(${m})` : m)).sort().join(' | ');
   };
-  const member = (symbol: ts.Symbol) => {
+  const member = (symbol: ts.Symbol, location: ts.Node) => {
     const optional = symbol.flags & ts.SymbolFlags.Optional ? '?' : '';
-    return `  ${symbol.name}${optional}: ${typeText(checker.getTypeOfSymbolAtLocation(symbol, source))};`;
+    return `  ${symbol.name}${optional}: ${typeText(checker.getTypeOfSymbolAtLocation(symbol, location), location)};`;
   };
   /** A member of the component instance, from any construct signature */
-  const instanceMember = (component: ts.Type, name: string): ts.Type | undefined => {
+  const instanceMember = (component: ts.Type, name: string, location: ts.Node): ts.Type | undefined => {
     for (const signature of checker.getSignaturesOfType(component, ts.SignatureKind.Construct)) {
       const property = checker.getReturnTypeOfSignature(signature).getProperty(name);
-      if (property) return checker.getNonNullableType(checker.getTypeOfSymbolAtLocation(property, source));
+      if (property) return checker.getNonNullableType(checker.getTypeOfSymbolAtLocation(property, location));
     }
     return undefined;
   };
 
   const contracts = new Map<string, string>();
-  components.forEach(([key], i) => {
+  components.forEach(({ key, componentDeclaration }, i) => {
+    // Print each type as the component's own declaration sees it: a type that file imports prints
+    // by name, the way someone reading the component does, instead of as a path into this build's
+    // .temp — which would record how the dependency resolved rather than what the contract is
+    const location = program.getSourceFile(componentDeclaration) ?? source;
     const component = checker.getTypeOfSymbolAtLocation(scope(`component${i}`, ts.SymbolFlags.Variable), source);
     const constructs = checker.getSignaturesOfType(component, ts.SignatureKind.Construct);
     const alias = (name: string) => checker.getDeclaredTypeOfSymbol(scope(`${name}${i}`, ts.SymbolFlags.TypeAlias));
-    const propsType = constructs.length > 0 ? instanceMember(component, '$props') : alias('FunctionalProps');
-    const emitType = constructs.length > 0 ? instanceMember(component, '$emit') : alias('FunctionalEmit');
-    const slotsType = constructs.length > 0 ? instanceMember(component, '$slots') : alias('FunctionalSlots');
+    const propsType = constructs.length > 0 ? instanceMember(component, '$props', location) : alias('FunctionalProps');
+    const emitType = constructs.length > 0 ? instanceMember(component, '$emit', location) : alias('FunctionalEmit');
+    const slotsType = constructs.length > 0 ? instanceMember(component, '$slots', location) : alias('FunctionalSlots');
     const exposedType = constructs.length > 0 ? checker.getReturnTypeOfSignature(constructs[0]) : alias('FunctionalExposed');
 
     const props = propsType ? checker.getPropertiesOfType(propsType).filter((p) => !fromVue(p)) : [];
@@ -173,10 +189,10 @@ function componentContracts(components: [string, string][]): Map<string, string>
       '> Generated by scripts/api-reports.ts; api:check fails when it is out of date.',
       '',
       '```ts',
-      ...block('props', props.map(member)),
-      ...block('emits', emits.map((sig) => `  ${relativize(checker.signatureToString(sig, source, flags))};`)),
-      ...block('slots', slots.map(member)),
-      ...block('exposed', exposed.map(member)),
+      ...block('props', props.map((p) => member(p, location))),
+      ...block('emits', emits.map((sig) => `  ${relativize(checker.signatureToString(sig, location, flags))};`)),
+      ...block('slots', slots.map((p) => member(p, location))),
+      ...block('exposed', exposed.map((p) => member(p, location))),
       '```',
       '',
     ].join('\n'));

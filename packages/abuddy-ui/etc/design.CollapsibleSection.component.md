@@ -16,9 +16,9 @@ emits {
   (event: "update:modelValue", value: boolean) => void;
 }
 slots {
-  default?: ((props: {}) => any) | undefined;
-  header-actions?: ((props: {}) => any) | undefined;
-  label?: ((props: {}) => any) | undefined;
+  default?: ((props: typeof __VLS_10) => any) | undefined;
+  header-actions?: ((props: typeof __VLS_8) => any) | undefined;
+  label?: ((props: typeof __VLS_6) => any) | undefined;
 }
 exposed {
 }

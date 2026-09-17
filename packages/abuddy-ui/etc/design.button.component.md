@@ -20,7 +20,7 @@ emits {
   (event: "touchstart", event: Event) => void;
 }
 slots {
-  default?: ((props: {}) => any) | undefined;
+  default?: ((props: typeof __VLS_1) => any) | undefined;
 }
 exposed {
 }

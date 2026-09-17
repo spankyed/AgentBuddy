@@ -5,9 +5,9 @@
 ```ts
 props {
   depth?: number | undefined;
-  node: import("../../../abuddy-sdk/dist/steps/types").TNodeEntity | import("../../../abuddy-sdk/dist/steps/types").TrackTree;
-  nodeDetails?: import("../../../abuddy-sdk/dist/steps/types").TNodeEntity | undefined;
-  nodeDetailsMap?: Map<string, import("../../../abuddy-sdk/dist/steps/types").TNodeEntity> | undefined;
+  node: TNodeEntity | TrackTree;
+  nodeDetails?: TNodeEntity | undefined;
+  nodeDetailsMap?: Map<string, TNodeEntity> | undefined;
   onOpen-flow?: ((tNodeId: string) => any) | undefined;
   onRequest-details?: ((nodeId: string) => any) | undefined;
   onToggle?: ((nodeId: string) => any) | undefined;

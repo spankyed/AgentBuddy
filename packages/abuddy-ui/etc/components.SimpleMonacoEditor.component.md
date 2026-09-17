@@ -4,7 +4,7 @@
 
 ```ts
 props {
-  actions?: import("components/monaco-config").EditorAction[] | undefined;
+  actions?: EditorAction[] | undefined;
   dslParams?: Record<string, { type: string; }> | undefined;
   dslType?: "action" | "database" | "prompt" | undefined;
   executeKeybinding?: undefined | { key: string; modifiers: string[]; };
@@ -16,9 +16,9 @@ props {
   onChange?: ((value: string) => any) | undefined;
   onCursorChange?: ((position: { line: number; col: number; }) => any) | undefined;
   onExecute?: (() => any) | undefined;
-  onMount?: ((editor: import("monaco-editor/esm/vs/editor/editor.api").editor.IStandaloneCodeEditor) => any) | undefined;
+  onMount?: ((editor: editor.IStandaloneCodeEditor) => any) | undefined;
   onUpdate:modelValue?: ((value: string) => any) | undefined;
-  options?: import("monaco-editor/esm/vs/editor/editor.api").editor.IStandaloneEditorConstructionOptions | undefined;
+  options?: editor.IStandaloneEditorConstructionOptions | undefined;
   placeholder?: string | undefined;
   readOnly?: boolean | undefined;
   theme?: string | undefined;
@@ -27,7 +27,7 @@ emits {
   (event: "change", value: string) => void;
   (event: "cursorChange", position: { line: number; col: number; }) => void;
   (event: "execute") => void;
-  (event: "mount", editor: import("monaco-editor/esm/vs/editor/editor.api").editor.IStandaloneCodeEditor) => void;
+  (event: "mount", editor: editor.IStandaloneCodeEditor) => void;
   (event: "update:modelValue", value: string) => void;
 }
 slots {

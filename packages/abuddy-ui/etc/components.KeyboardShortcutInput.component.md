@@ -9,13 +9,13 @@ props {
   id?: string | undefined;
   inputClass?: string | undefined;
   label?: string | undefined;
-  modelValue?: import("../../../abuddy-sdk/dist/types/keyboard").KeyboardShortcut | null | undefined;
+  modelValue?: KeyboardShortcut | null | undefined;
   multiArrowSupport?: boolean | undefined;
   multiArrowTimeout?: number | undefined;
-  onChange?: ((value: import("../../../abuddy-sdk/dist/types/keyboard").KeyboardShortcut | null) => any) | undefined;
+  onChange?: ((value: KeyboardShortcut | null) => any) | undefined;
   onRecording-end?: (() => any) | undefined;
   onRecording-start?: (() => any) | undefined;
-  onUpdate:modelValue?: ((value: import("../../../abuddy-sdk/dist/types/keyboard").KeyboardShortcut | null) => any) | undefined;
+  onUpdate:modelValue?: ((value: KeyboardShortcut | null) => any) | undefined;
   placeholder?: string | undefined;
   recordingPlaceholder?: string | undefined;
   resetButtonTitle?: string | undefined;
@@ -23,10 +23,10 @@ props {
   showResetButton?: boolean | undefined;
 }
 emits {
-  (event: "change", value: import("../../../abuddy-sdk/dist/types/keyboard").KeyboardShortcut | null) => void;
+  (event: "change", value: KeyboardShortcut | null) => void;
   (event: "recording-end") => void;
   (event: "recording-start") => void;
-  (event: "update:modelValue", value: import("../../../abuddy-sdk/dist/types/keyboard").KeyboardShortcut | null) => void;
+  (event: "update:modelValue", value: KeyboardShortcut | null) => void;
 }
 slots {
 }

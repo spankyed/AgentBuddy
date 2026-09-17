@@ -9,7 +9,7 @@ emits {
   (event: string, ...args: any[]) => void;
 }
 slots {
-  default?: ((props: {}) => any) | undefined;
+  default?: ((props: typeof __VLS_10) => any) | undefined;
 }
 exposed {
 }

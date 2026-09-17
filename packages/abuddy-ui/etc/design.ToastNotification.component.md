@@ -13,7 +13,7 @@ slots {
 exposed {
   error: (message: string, description?: string) => string;
   info: (message: string, description?: string) => string;
-  show: (toast: Omit<import("design/ToastNotification.vue").Toast, "id">) => string;
+  show: (toast: Omit<Toast, "id">) => string;
   success: (message: string, description?: string) => string;
 }
 ```

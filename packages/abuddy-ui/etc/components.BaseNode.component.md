@@ -7,7 +7,7 @@ props {
   canRemoveHandles?: boolean | undefined;
   connectable: import("@vue-flow/core/dist/index").HandleConnectable;
   connectedHandles?: Set<string> | undefined;
-  data: import("components/BaseNode.vue").BaseNodeData;
+  data: BaseNodeData;
   dimensions: import("@vue-flow/core/dist/index").Dimensions;
   dragHandle?: string | undefined;
   dragging: boolean;
@@ -32,9 +32,9 @@ props {
   showSourceHandle?: boolean | undefined;
   showStatusIndicator?: boolean | undefined;
   showTargetHandle?: boolean | undefined;
-  sourceHandles?: import("components/node-handles").HandleConfig[] | undefined;
+  sourceHandles?: HandleConfig[] | undefined;
   sourcePosition?: import("@vue-flow/core/dist/index").Position.Bottom | import("@vue-flow/core/dist/index").Position.Left | import("@vue-flow/core/dist/index").Position.Right | import("@vue-flow/core/dist/index").Position.Top | undefined;
-  targetHandles?: import("components/node-handles").HandleConfig[] | undefined;
+  targetHandles?: HandleConfig[] | undefined;
   targetPosition?: import("@vue-flow/core/dist/index").Position.Bottom | import("@vue-flow/core/dist/index").Position.Left | import("@vue-flow/core/dist/index").Position.Right | import("@vue-flow/core/dist/index").Position.Top | undefined;
   type: string;
   zIndex: number;

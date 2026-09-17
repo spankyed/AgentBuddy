@@ -4,7 +4,7 @@
 
 ```ts
 props {
-  items: import("composables/useContextMenu").MenuItem[];
+  items: MenuItem[];
   label?: string | undefined;
   onClose?: (() => any) | undefined;
   pos: { x: number; y: number; };

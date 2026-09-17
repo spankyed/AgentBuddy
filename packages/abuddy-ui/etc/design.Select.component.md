@@ -12,7 +12,7 @@ emits {
   (event: "update:modelValue", value: string | number) => void;
 }
 slots {
-  default?: ((props: {}) => any) | undefined;
+  default?: ((props: typeof __VLS_1) => any) | undefined;
 }
 exposed {
 }

@@ -15,7 +15,7 @@ emits {
   (event: "update-node", updates: Record<string, any>) => void;
 }
 slots {
-  default?: ((props: {}) => any) | undefined;
+  default?: ((props: typeof __VLS_21) => any) | undefined;
 }
 exposed {
 }
