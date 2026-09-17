@@ -83,8 +83,10 @@ export async function openAppDatabase({ env, userDataDir, readOnly = false, incl
     store.close();
     throw error;
   }
-  // And `close()` puts back whatever was installed before, rather than leaving none: a process that already had an
-  // engine (the app, a test file) goes on working after this database is closed
+  // Installed so `@abuddy/ears`'s free functions (qx, tx, the finders) read this database until `close()`, which
+  // puts back whatever was installed before rather than leaving none. `abuddy db`, the one caller today, has no
+  // engine of its own, so it gets none back; what this is for is a caller that does — a test file, or a command
+  // holding one data dir open while it reads another, where uninstalling would leave the first unreachable.
   const previousEngine = installEngine(engine.query);
 
   return {
