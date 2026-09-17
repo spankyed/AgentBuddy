@@ -44,6 +44,19 @@ function arrayRewriteKey(kind: string, entityId: string) {
 
 const entTypeOf = (id: string) => id.split('-')[0] ?? id;
 
+/** The attribute kinds stored in `attrs`: keys sort by kind, so each lookup skips past the kind before it */
+function* storedKinds(attrs: LmdbDbs['attrs']): Iterable<string> {
+  let start = '';
+  for (;;) {
+    const [key] = attrs.getKeys({ start, limit: 1 }) as Iterable<string>;
+    if (key === undefined) return;
+    const kind = String(key).split(SEP)[0];
+    yield kind;
+    // Past every `kind␟…` key (ids sort below \xFF, as in prefix())
+    start = `${kind}${SEP}\xFF`;
+  }
+}
+
 export function makeLmdbAdapter(dbs: LmdbDbs, options: LmdbAdapterOptions = {}): PersistenceSink {
   const { entities, attrs, relations } = dbs;
   const { hardDelete = false } = options;
@@ -220,27 +233,13 @@ export function makeLmdbAdapter(dbs: LmdbDbs, options: LmdbAdapterOptions = {}):
 
       if (hardDelete) {
         discardBuffered(entityId);
-        // Immediate hard delete - remove entity and all its attributes
+        // Immediate hard delete: the entity's row and its attributes, read per kind (keys are kind␟id␟index).
+        // Its relations are removed before this, each with onRemoveRelation.
         try {
           entities.transactionSync(() => {
-            // Delete entity record
             entities.remove(entityId);
-
-            // Delete all attributes for this entity
-            // Attributes are stored with format: kind\x1FentityId\x1Findex
-            for (const { key } of attrs.getRange()) {
-              const keyStr = String(key);
-              // Check if this attribute belongs to the entity
-              if (keyStr.includes(`\x1F${entityId}\x1F`)) {
-                attrs.remove(key);
-              }
-            }
-
-            // Delete relations where this entity is source or target
-            for (const { key, value } of relations.getRange()) {
-              if (value && (value.src === entityId || value.tgt === entityId)) {
-                relations.remove(key);
-              }
+            for (const kind of [...storedKinds(attrs)]) {
+              for (const key of [...attrs.getKeys(prefix(kind, entityId))]) attrs.remove(key);
             }
           });
         } catch (error) {

@@ -73,30 +73,8 @@ export function makeShardedPersistence(
     onDestroyEntity(entityId: string) {
       // Destruction is semantic; delete from whichever partition it lives in
       const p = pickEntity(entityId);
+      // Its relations were removed before this, each with onRemoveRelation
       sinks[p].onDestroyEntity(entityId);
-
-      // Clean up relation caches for any relations involving this entity
-      const relationsToRemove: string[] = [];
-      for (const [rid, meta] of relMeta.entries()) {
-        if (meta.src === entityId || meta.tgt === entityId) {
-          relationsToRemove.push(rid);
-        }
-      }
-
-      // Remove these relations from their partitions and clean caches
-      for (const rid of relationsToRemove) {
-        const part = relationPartitions.get(rid) ?? computePartitionFor(rid);
-        if (part) {
-          sinks[part].onRemoveRelation(rid);
-        } else {
-          // Unknown; remove from all sinks to be safe
-          for (const sink of Object.values(sinks)) {
-            sink.onRemoveRelation(rid);
-          }
-        }
-        relationPartitions.delete(rid);
-        relMeta.delete(rid);
-      }
     },
 
     onPutAttrArray(kind: string, entityId: string, values: unknown[]) {

@@ -45,6 +45,28 @@ describe('LMDB Adapter', () => {
     expect(rec.type).toBe('TestType');
   });
 
+  it("hard-deletes an entity's row and its attributes of every kind, and nothing of another entity", () => {
+    const adapter = makeLmdbAdapter(dbs, { hardDelete: true });
+    for (const id of ['Task-1', 'Task-10', 'Note-1']) {
+      adapter.onCreateEntity(id);
+      adapter.onPutAttrArray('title', id, [`${id} title`]);
+      adapter.onPutAttrArray('tags', id, ['a', 'b']);
+    }
+    adapter.onPutAttrArray('zeta', 'Task-1', ['last kind']);
+    adapter.close?.();
+
+    const deleting = makeLmdbAdapter(dbs, { hardDelete: true });
+    deleting.onDestroyEntity('Task-1');
+    deleting.close?.();
+
+    const keysOf = (id: string) => [...dbs.attrs.getKeys()].map(String).filter((key) => key.split('\x1F')[1] === id);
+    expect(dbs.entities.get('Task-1')).toBeUndefined();
+    expect(keysOf('Task-1')).toEqual([]);
+    expect(keysOf('Task-10')).toHaveLength(3);
+    expect(keysOf('Note-1')).toHaveLength(3);
+    expect(dbs.entities.get('Task-10')).toBeTruthy();
+  });
+
   it("types an entity's row by its id's prefix, unless it's created with another type", () => {
     const adapter = makeLmdbAdapter(dbs);
     adapter.onCreateEntity('Task-typed', 'Task');
@@ -215,18 +237,17 @@ describe('Sharded Router', () => {
     expect(() => sharded.onRemoveRelation('Relation-mystery')).not.toThrow();
   });
 
-  it('cleans relation caches on entity destroy', () => {
+  it("drops a relation's cache entry when the engine removes it, before destroying its ends", () => {
     sharded.onCreateEntity('Document-d1', 'Document');
     sharded.onCreateEntity('Document-d2', 'Document');
     sharded.onAddRelation('Relation-cd1', 'REF', 'Document-d1', 'Document-d2', null);
+    expect(sharded.getRelMeta().has('Relation-cd1')).toBe(true);
 
-    const before = sharded.getRelMeta();
-    expect(before.has('Relation-cd1')).toBe(true);
-
+    // The engine's order (contract/persistence.spec.ts)
+    sharded.onRemoveRelation('Relation-cd1');
     sharded.onDestroyEntity('Document-d1');
 
-    const after = sharded.getRelMeta();
-    expect(after.has('Relation-cd1')).toBe(false);
+    expect(sharded.getRelMeta().has('Relation-cd1')).toBe(false);
   });
 
   it('system continues working after encountering invalid data', () => {
