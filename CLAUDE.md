@@ -31,6 +31,7 @@ edit — running it after every change costs minutes and finds nothing the narro
 | a comment, a doc, a CLAUDE.md | nothing, unless a spec asserts the text (`removed-names-in-docs`, the door table) |
 | an npm script | the one path that runs it, end to end, once |
 | the renderer, the app's boot, or a pack's FE | `npm test -- <spec>` for the affected E2E, not the whole suite |
+| a public export of `@abuddy/ears`, `/sdk` or `/ui` | `npm run api:check`, then `npm run api:update` if it fails, and commit the reports |
 | anything, before you ask for a merge | the full chain, once |
 
 Things that waste the most time, in order:
@@ -87,10 +88,13 @@ npm run compile          # Build packages/default-setup (abuddy build: compiled 
 npm run db:query -- "<code>"   # abuddy db query on the dev app's data (also db:exec, db:repl, db:inspect,
                                # db:export, db:import, db:reset, db:clear-settings; the app closed for changes)
 
-# Published API surface (run from packages/abuddy-ears, packages/abuddy-sdk or packages/abuddy-ui)
+# Published API surface (from the root for all three, or inside one of the packages for just it)
 npm run api:check        # CI: fails if a public entry's API changed without updating reports
 npm run api:update       # Dev: regenerate etc/<entry>.api.md (and etc/<entry>.component.md for UI components)
                          # Both read an @abuddy dependency's built declarations: npm run packages:build first
+                         # All three take ~46s (ui is 33s of it), so this is a before-merge check, not a
+                         # per-edit one. Nothing else runs it: CI is the only other caller, so a public
+                         # export changed without api:update goes unnoticed until CI runs
 
 # Built-in pack facade types (after `abuddy build`; from packages/default-setup or with -w @app/default-setup)
 npm run facade:check     # CI: fails if dist/types/pack-types.d.ts changed without updating etc/pack-types.api.md
