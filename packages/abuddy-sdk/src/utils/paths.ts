@@ -34,13 +34,13 @@ export function _appDataPaths(userDataDir: string, { packaged }: { packaged: boo
 
 export const getUserDataPath = (): string => resolveAppContext().userDataDir
 /** @internal Host-only: the app's database location. */
-export const _getLmdbPath = (): string => resolvePath('lmdb')
+export const _getLmdbPath = (): string => _resolvePath('lmdb')
 /** @internal Host-only: the app's database location. */
-export const _getVolatileLmdbPath = (): string => resolvePath('volatileLmdb')
+export const _getVolatileLmdbPath = (): string => _resolvePath('volatileLmdb')
 /** @internal Host-only: the file holding the user's API keys (values encrypted). */
-export const _getSecretsFilePath = (): string => resolvePath('secretsFile')
+export const _getSecretsFilePath = (): string => _resolvePath('secretsFile')
 /** @internal Host-only: the app's media location. */
-export const _getMediaPath = (): string => resolvePath('media')
+export const _getMediaPath = (): string => _resolvePath('media')
 
 export const ensureDirectoryExists = (dirPath: string): void => {
   if (!fs.existsSync(dirPath)) {
@@ -48,7 +48,11 @@ export const ensureDirectoryExists = (dirPath: string): void => {
   }
 }
 
-export function resolvePath(key: keyof typeof DATA_DIRS): string {
+/**
+ * @internal Host-only: one of the app's own stores. Every key is the app's — the database, the run
+ * history, the user's keys, the media store — so a pack keeps its data under `getDataDirPath`.
+ */
+export function _resolvePath(key: keyof typeof DATA_DIRS): string {
   return _appDataPaths(getUserDataPath(), { packaged: process.env.NODE_ENV === 'production' })[key]
 }
 

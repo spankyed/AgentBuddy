@@ -16,7 +16,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, inject, type RunnerTask, type RunnerTestCase } from 'vitest';
-import { resetTestData, startTestRuntime, takeSystemErrors, addTestSecret, type SeedRuntime, fakeInference, type FakeInference } from '@abuddy/sdk/testing';
+import { resetTestData as resetSdkTestData, startTestRuntime, takeSystemErrors, addTestSecret, type SeedRuntime, fakeInference, type FakeInference } from '@abuddy/sdk/testing';
 import type { PackRegistryView } from '@abuddy/sdk/runtime';
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import { createPackRegistry } from '@abuddy/host/packs';
@@ -30,7 +30,26 @@ import { actionRepository, flowRepository, promptRepository } from '@abuddy/sdk/
 import { untypedQx } from '@abuddy/ears';
 import { _getMediaPath, seedData, type ImportMode, type SeedCounts, type Seeder } from '@abuddy/sdk/utils';
 
-export { resetTestData, takeSystemErrors, addTestSecret, type SeedRuntime };
+export { takeSystemErrors, addTestSecret, type SeedRuntime };
+
+/**
+ * Where the media a test's seeds wrote lands: the store itself, or one row's folder
+ * (`media/<entityId>/<file>`). A pack's tests read and assert on it through this; the path itself is
+ * the app's, and the data dir is this package's contract (`isolatedDataDir`).
+ */
+export function testMediaPath(entityId?: string): string {
+  return entityId ? path.join(_getMediaPath(), entityId) : _getMediaPath();
+}
+
+/**
+ * Empties what a test wrote: the in-memory database and the stored keys (the SDK's `resetTestData`),
+ * and the media store with them, which is what a test between tests expects. The harness calls it
+ * before each test; a test that reseeds mid-run calls it itself.
+ */
+export function resetTestData(): void {
+  resetSdkTestData();
+  fs.rmSync(testMediaPath(), { recursive: true, force: true });
+}
 export { startApp, type StartAppOptions, type TestApp, type OutgoingSystemEvents, type FlowRun, type FlowStepTrace, type RunFlowOptions } from './app.ts';
 
 const serviceMocks = new Map<string, unknown>();
@@ -242,7 +261,6 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
     }
     inTest = true;
     resetTestData();
-    fs.rmSync(_getMediaPath(), { recursive: true, force: true });
   });
   afterEach(() => {
     inTest = false;

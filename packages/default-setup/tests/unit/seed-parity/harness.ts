@@ -4,9 +4,10 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { buildPackConfigFromManifest, compilePack } from '@abuddy/sdk/build';
-import { _getMediaPath, seedData, type ImportMode, type SeedCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
+import { seedData, type ImportMode, type SeedCounts, type SeedIncludeSet } from '@abuddy/sdk/utils';
 import { untypedQx as qx } from '@abuddy/ears';
-import { entityIds, resetTestData } from '@abuddy/sdk/testing';
+import { entityIds } from '@abuddy/sdk/testing';
+import { resetTestData, testMediaPath } from '@abuddy/testing/harness';
 
 export const PACK_DIR = path.resolve(import.meta.dirname, '../../..');
 export const FIXTURES = path.join(PACK_DIR, 'tests/fixtures/seed-parity');
@@ -45,7 +46,6 @@ export async function compileSeeds(sources: SourceSet): Promise<string> {
 /** Empties the in-memory database and the media store */
 export function resetDatabase(): void {
   resetTestData();
-  fs.rmSync(_getMediaPath(), { recursive: true, force: true });
 }
 
 export function seed(compiledDir: string, options: { mode?: ImportMode; include?: Record<string, SeedIncludeSet> } = {}): Record<string, SeedCounts> {
@@ -109,7 +109,7 @@ export function snapshot(): Snapshot {
   }
 
   const media: string[] = [];
-  const mediaRoot = _getMediaPath();
+  const mediaRoot = testMediaPath();
   if (fs.existsSync(mediaRoot)) {
     for (const dir of fs.readdirSync(mediaRoot)) {
       for (const file of fs.readdirSync(path.join(mediaRoot, dir))) {

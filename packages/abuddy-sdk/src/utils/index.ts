@@ -10,7 +10,7 @@ export {
   getUserDataPath, getDataDirPath,
   _getLmdbPath, _getVolatileLmdbPath, _getSecretsFilePath, _getMediaPath,
   ensureDirectoryExists, createExportDir,
-  resolvePath, _appDataPaths, type _AppDataPaths,
+  _resolvePath, _appDataPaths, type _AppDataPaths,
 } from './paths.ts';
 
 // --- Media (direct) ---

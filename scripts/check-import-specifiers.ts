@@ -203,6 +203,38 @@ export function findRawPackHelpers(dirs = PACK_SOURCE_DIRS, root = repoRoot): st
 }
 
 /**
+ * A host-only export a pack named: `@internal` exports are prefixed `_` (API Extractor's
+ * `ae-internal-missing-underscore` keeps them that way), so the name alone says the app owns it. It
+ * reads the imported name, not the local one, so an alias can't hide one and a public name aliased
+ * to an underscore local is fine. A namespace import (`import * as u`, then `u._x()`) is not caught:
+ * a per-node rule has no scope tracking, as with `rawPackHelper`. It's a guardrail, not a sandbox.
+ */
+const internalImport: Rule = (node) => {
+  const internal = (names: string[], module: string) =>
+    names.filter((name) => name.startsWith('_')).map((name) => `${name} from ${module}`);
+  if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) {
+    const module = moduleOf(node);
+    if (!module?.startsWith('@abuddy/')) return;
+    const bindings = ts.isImportDeclaration(node) ? node.importClause?.namedBindings : node.exportClause;
+    if (!bindings || ts.isNamespaceImport(bindings) || ts.isNamespaceExport(bindings)) return;
+    return internal(bindings.elements.map((el) => (el.propertyName ?? el.name).text), module);
+  }
+  // `const { _x } = await import('@abuddy/…')`
+  if (ts.isVariableDeclaration(node) && node.initializer && ts.isObjectBindingPattern(node.name)) {
+    const call = ts.isAwaitExpression(node.initializer) ? node.initializer.expression : node.initializer;
+    const module = moduleOf(call);
+    if (!module?.startsWith('@abuddy/')) return;
+    return internal(node.name.elements.map((el) => (el.propertyName ?? el.name).getText()), module);
+  }
+};
+
+/** `file:line: name from module` for each host-only export a pack's sources or tests import. Generated files are exempt. */
+export function findInternalPackageImports(dirs = [...PACK_SOURCE_DIRS, ...PACK_TEST_DIRS], root = repoRoot): string[] {
+  const files = packFiles(dirs, root).filter((file) => !file.split(path.sep).includes('__generated__'));
+  return findInFiles(files, root, internalImport);
+}
+
+/**
  * `file:line: specifier` for each `@abuddy/host` module a pack source loads. The host package is
  * private to the app; packs use @abuddy/sdk (`services.appData`, `services.traceStore`, …).
  */
@@ -950,6 +982,7 @@ if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])
   const checks: [find: () => string[], rule: string][] = [
     [findJsSpecifiers, 'Relative imports must name the TypeScript source (tsc and tsdown emit .js)'],
     [findRawPackHelpers, 'Pack code uses the typed facades: emit, sendToPlugin and sendToSystem from #generated/events, repositories declared in abuddy.json'],
+    [findInternalPackageImports, "Pack code imports only the @abuddy packages' public API: an export named `_x` is @internal, the app's alone, and a pack that needs one asks for it to be made public"],
     [findRawTransport, 'Pack code sends with sendToPlugin and sendToSystem from #generated/events, and subscribes with onConnected and onIncoming from @abuddy/sdk/events'],
     [findPackBackendConsole, 'Pack backend code logs with createLogger from @abuddy/sdk/logger'],
     [findHostImports, "Pack code doesn't import the host's private @abuddy/host package; use @abuddy/sdk"],

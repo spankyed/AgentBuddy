@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   findAppImportsInPackTests, findCrossCheckoutResolution, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackBackendConsole, findRawPackHelpers,
-  findRawTransport, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs,
+  findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs,
   DECLARES_SOURCE_BY_DESIGN, RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
 } from '../../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '../helpers/published-packages';
@@ -110,6 +110,38 @@ const ALLOWED = [
   'const { busId } = trpc; trpc.buses.list();',
   "logger.info('saved');",
 ].join('\n');
+
+describe('findInternalPackageImports', () => {
+  it.each([
+    ["import { _getMediaPath } from '@abuddy/sdk/utils';", '_getMediaPath from @abuddy/sdk/utils'],
+    ["const { _getMediaPath } = await import('@abuddy/sdk/utils');", '_getMediaPath from @abuddy/sdk/utils'],
+  ])('flags %s', (code, problem) => {
+    write('pack/feature.ts', code);
+    expect(findInternalPackageImports(['src/pack'], root)).toEqual([`src/pack/feature.ts:1: ${problem}`]);
+  });
+
+  it("flags one a pack's tests import, not only its sources", () => {
+    writeAt('tests/unit/seed.spec.ts', "import { _getMediaPath } from '@abuddy/sdk/utils';\n");
+    expect(findInternalPackageImports(['tests'], root)).toEqual(['tests/unit/seed.spec.ts:1: _getMediaPath from @abuddy/sdk/utils']);
+  });
+
+  it('allows public names, a public name aliased to an underscore, a pack-local one and other packages', () => {
+    write('pack/feature.ts', [
+      "import { seedData, getDataDirPath } from '@abuddy/sdk/utils';",
+      "import { formatProviderError as _formatProviderError } from '@abuddy/sdk/actions';",
+      "import { _fmt } from './_helpers/format.ts';",
+      "import * as utils from '@abuddy/sdk/utils';",
+      "import { _ } from 'lodash';",
+      ALLOWED,
+    ].join('\n'));
+    write('pack/__generated__/events.ts', "import { _rootEvents } from '@abuddy/sdk/runtime';\n");
+    expect(findInternalPackageImports(['src/pack'], root)).toEqual([]);
+  });
+
+  it('holds for the repo', () => {
+    expect(findInternalPackageImports()).toEqual([]);
+  });
+});
 
 describe('findRawPackHelpers', () => {
   it.each([

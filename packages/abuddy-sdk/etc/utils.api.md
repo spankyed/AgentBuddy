@@ -226,8 +226,8 @@ export interface ResolvedMedia extends MediaRef {
 // @public
 export function resolveMedia(ref: MediaRef): ResolvedMedia | null;
 
-// @public (undocumented)
-export function resolvePath(key: keyof typeof DATA_DIRS): string;
+// @internal
+export function _resolvePath(key: keyof typeof DATA_DIRS): string;
 
 // @public
 export function restoreJsonMediaRefs(content: string, newEntityId: string, importDir: string): {

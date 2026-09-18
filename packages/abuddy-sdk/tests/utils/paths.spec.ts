@@ -2,7 +2,7 @@
 // (findAppDataPaths in @abuddy/host), so these two have to agree about what a packaged run and a source run look like.
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { _appDataPaths, getDataDirPath, _getLmdbPath, _getMediaPath, _getSecretsFilePath, _getVolatileLmdbPath, resolvePath } from '../../src/utils/paths.ts';
+import { _appDataPaths, getDataDirPath, _getLmdbPath, _getMediaPath, _getSecretsFilePath, _getVolatileLmdbPath, _resolvePath } from '../../src/utils/paths.ts';
 
 const saved = { nodeEnv: process.env.NODE_ENV, abuddyEnv: process.env.ABUDDY_ENV, userDataDir: process.env.ABUDDY_USER_DATA_DIR };
 const dataDir = path.join(path.sep, 'tmp', 'a-data-dir');
@@ -36,15 +36,15 @@ describe('_appDataPaths', () => {
   });
 });
 
-describe('resolvePath', () => {
+describe('_resolvePath', () => {
   it('takes the packaged layout for NODE_ENV=production and the source layout otherwise', () => {
     process.env.NODE_ENV = 'production';
-    expect(resolvePath('lmdb')).toBe(path.join(dataDir, 'ears-db'));
+    expect(_resolvePath('lmdb')).toBe(path.join(dataDir, 'ears-db'));
 
     for (const value of ['development', 'test', undefined]) {
       if (value === undefined) delete process.env.NODE_ENV;
       else process.env.NODE_ENV = value;
-      expect(resolvePath('lmdb'), `NODE_ENV=${value}`).toBe(path.join(dataDir, '.data', 'ears-db'));
+      expect(_resolvePath('lmdb'), `NODE_ENV=${value}`).toBe(path.join(dataDir, '.data', 'ears-db'));
     }
   });
 
