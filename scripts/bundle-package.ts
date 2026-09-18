@@ -49,6 +49,23 @@ const CONFIGS: Record<string, BundleConfig> = {
   },
 };
 
+/**
+ * Every file the published exports map names is there. Declarations are the fragile half: tsc puts them
+ * under the common source directory of the whole program, so one entry importing a file from outside the
+ * package moves all of them, and the exports map would point at nothing. npm packs that without a word
+ * and a dependent then sees an untyped module, so the build fails here instead.
+ */
+function assertExportsExist(exports: unknown, outDir: string, name: string): void {
+  const missing = Object.entries((exports ?? {}) as Record<string, Record<string, string>>)
+    .flatMap(([subpath, conditions]) => Object.entries(conditions)
+      .filter(([, target]) => !fs.existsSync(path.join(outDir, target)))
+      .map(([condition, target]) => `  ${name}${subpath.slice(1)} (${condition}): ${target}`));
+  if (missing.length > 0) {
+    throw new Error(`The published exports name files this build did not write:\n${missing.join('\n')}\n`
+      + 'A declaration emitted somewhere else means an entry reached outside the package: import it through a package specifier instead.');
+  }
+}
+
 const repoRoot = path.resolve(import.meta.dirname, '..');
 const pkgDir = path.resolve(process.argv[2] ?? '');
 const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf-8'));
@@ -191,6 +208,7 @@ async function main(): Promise<void> {
     publishConfig: { access: 'public', provenance: true },
   };
   fs.writeFileSync(path.join(outDir, 'package.json'), JSON.stringify(manifest, null, 2) + '\n');
+  assertExportsExist(config.manifest.exports, outDir, pkg.name);
   console.log(`Built ${pkg.name}@${pkg.version} into ${path.relative(process.cwd(), outDir)}`);
 }
 

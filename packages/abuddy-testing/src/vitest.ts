@@ -20,14 +20,6 @@ export interface IsolatedDataDir {
   setupFiles: string[];
 }
 
-/**
- * The resolve conditions for a pack's vitest config: `@abuddy/source` when the pack's @abuddy
- * packages are a checkout's (whose TypeScript source is on disk), none when they are installed
- * from the registry (a tarball has no source to resolve to). It is `abuddy build`'s own rule,
- * imported rather than repeated, so a pack's tests resolve exactly what its build does — including
- * the error when a pack's installs disagree.
- */
-export { sourceConditions } from '@abuddy/sdk/build/source-conditions';
 
 /** A sibling module of this one, with this module's extension (source .ts, or the bundle's .js) */
 function sibling(name: string): string {

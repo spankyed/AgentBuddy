@@ -35,7 +35,6 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   // Shared-instance exports only the app's composition root loads (the LMDB store)
   ...Object.entries(APP_ONLY_EXPORTS),
   // Redaction's host side: only the secrets store registers the values logs must mask, and a pack must not
-  ['@abuddy/sdk/utils/internals', 'host-only — a pack could otherwise replace what redaction treats as a secret'],
   // The bound runtimes and unbinding: a pack could otherwise unbind the app or reach its raw services
   ['@abuddy/sdk/runtime/internals', 'host-only — a pack could otherwise unbind the app or take over its services'],
   // Build-time only: consumed by vite configs and the abuddy CLI, never by a
@@ -43,6 +42,7 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   ['@abuddy/host/build/shared-deps', 'build-time only'],
   ['@abuddy/host/build/discover', 'build-time only'],
   ['@abuddy/host/build/source-resolution', 'host tooling only (CLI, fixture, API boot)'],
+  ['@abuddy/host/build/packages-built', 'checkout build tooling: the freshness rule behind npm run packages:ensure'],
   // The user's API keys with their values: only the API and host services use it, packs get services.secrets (no values)
   ['@abuddy/host/secrets', 'host store of API key values, never handed to packs'],
   // The app's HostRuntime, which the API binds; packs reach its services through services (appData, traceStore, inference, secrets)
