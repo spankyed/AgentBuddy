@@ -125,7 +125,28 @@ function inputFiles(target: string, out: string[] = []): string[] {
   return out;
 }
 
-/** A content fingerprint of `inputs`: every file's repo-relative path and its bytes, sorted. */
+/**
+ * A content fingerprint of `inputs`: every file's repo-relative path and its bytes, sorted.
+ *
+ * It reads every byte, and that has been proposed twice as the thing to optimise — record each input's
+ * `(size, mtimeNs)` in the stamp and skip the hashing when they all match, as Bazel and Turborepo do.
+ * Measured on this repo before taking that trade:
+ *
+ *     417 files, 2.5MB      walk (readdir) 3ms | stat every file 1ms | walk + hash 24ms
+ *     npm run packages:ensure, everything fresh: 345ms
+ *
+ * So the hashing is 24ms of a 345ms command; the other 320ms is the npm spawn, node and tsx starting,
+ * and modules loading. Stat-before-hash would save about 20ms, in exchange for a cache key that is right
+ * unless a file changes content while keeping its size and timestamp. Bazel makes that trade over
+ * gigabytes and thousands of targets; over 2.5MB it buys 6% of one command. Not worth it — if this cost
+ * ever matters, the 320ms of process startup is the part to attack, by calling `stalePackageUnits()`
+ * from a process that is already running rather than spawning one.
+ *
+ * Note this is a different question from the one the header answers. There, mtimes are rejected for
+ * deciding whether *output* is current, where a failed build leaves a complete-looking tree that reads
+ * as fresh forever. Here they would be a cache key over *inputs*, which is sound in principle — the
+ * reason not to is the arithmetic above, not the same objection.
+ */
 export function fingerprintInputs(inputs: readonly string[]): string {
   const hash = createHash('sha256');
   for (const file of [...new Set(inputs.flatMap((target) => inputFiles(target)))].sort()) {
