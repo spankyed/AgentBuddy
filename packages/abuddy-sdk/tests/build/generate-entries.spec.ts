@@ -630,6 +630,58 @@ describe("a dependency's facade", () => {
     )).toThrow(/without `PackEvents`, which is needed because this pack's system.sendsTo names one of its plugins/);
   });
 
+  // The remedy has to be one the reader can carry out. "Rebuild it" is right for a workspace sibling
+  // and impossible for a release someone else published — there is no source tree to build.
+  describe('names a remedy that fits where the dependency came from', () => {
+    const incapable = () => ({ 'base-pack': publishing(ALL.filter((n) => n !== 'Services')) });
+    const failure = (sources?: Record<string, string>) => {
+      try {
+        generatePackFiles(manifest({ features: [system('brain')] }), {
+          packRoot: root,
+          depSnapshots: new Map(Object.entries(incapable())),
+          depSources: sources && new Map(Object.entries(sources)),
+        });
+      } catch (err) {
+        return (err as Error).message;
+      }
+      throw new Error('expected the facade check to fail');
+    };
+
+    it('tells the author to rebuild a workspace dependency, and says where it came from', () => {
+      const message = failure({ 'base-pack': 'workspace' });
+      expect(message).toContain('(from workspace)');
+      expect(message).toContain('Rebuild "base-pack"');
+      expect(message).not.toContain("can't rebuild it yourself");
+    });
+
+    it('tells the author to rebuild a file: dependency', () => {
+      const message = failure({ 'base-pack': 'file:/packs/base-pack' });
+      expect(message).toContain('(from file:/packs/base-pack)');
+      expect(message).toContain('Rebuild "base-pack"');
+    });
+
+    it('does not tell the author to rebuild a downloaded release', () => {
+      const message = failure({ 'base-pack': 'github:acme/base-pack@1.4.0' });
+      expect(message).toContain('(from github:acme/base-pack@1.4.0)');
+      expect(message).toContain("You can't rebuild it yourself");
+      expect(message).toContain('ask its author for a release built with a current abuddy CLI');
+      expect(message).not.toMatch(/Rebuild "base-pack"/);
+    });
+
+    // Taken out of an installed app, so there is no source tree here either
+    it('does not tell the author to rebuild a bundle from an installed app', () => {
+      expect(failure({ 'base-pack': 'installed app (production)' })).toContain("You can't rebuild it yourself");
+    });
+
+    // A cache hit records no source, so the message offers both and names neither situation
+    it('offers both options when the dependency came from the cache', () => {
+      const message = failure();
+      expect(message).not.toContain('(from ');
+      expect(message).toContain('Rebuild "base-pack"');
+      expect(message).toContain("if it isn't yours to build");
+    });
+  });
+
   // A pack built before facades existed has no facade at all. That stays a silent downgrade to
   // untyped, which is what `typedDeps` is for — the check is only about a facade that exists.
   it('accepts a dependency with no facade at all, which stays untyped', () => {

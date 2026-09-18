@@ -195,15 +195,45 @@ function parseExportedTypeNames(content: string): string[] {
 const REQUIRED_FACADE_EXPORTS = ['PackEntityShapes', 'PackStepNodes', 'PackSystemEvents', 'Services', 'Repositories'] as const;
 
 /**
+ * Whether a dependency that resolved from `source` is one whose source tree the author has, and can
+ * therefore run `abuddy build` in. A workspace sibling or a `file:` path is; a release downloaded from
+ * GitHub, or a bundle taken out of an installed app, is not — there is nothing to `cd` into.
+ */
+function isRebuildableSource(source: string): boolean {
+  return source === 'workspace' || source.startsWith('file:');
+}
+
+/**
+ * What to tell the author to do about a dependency they can't build against.
+ *
+ * With no `source` the resolution came from the `.abuddy/deps` cache, which records nothing about
+ * where it was originally fetched from, so this hedges the way `verifyBundle` does — two options,
+ * because it doesn't know which one the reader is in a position to take.
+ */
+function facadeRemedy(depId: string, source: string | undefined): string {
+  if (source && !isRebuildableSource(source)) {
+    return `You can't rebuild it yourself: ask its author for a release built with a current abuddy CLI, or pin your CLI to one that matches this release.`;
+  }
+  if (source) {
+    return `Rebuild "${depId}" with this version of the abuddy CLI (\`abuddy build\` in that pack, or \`npm run compile\` for a built-in one).`;
+  }
+  return `Rebuild "${depId}" with this version of the abuddy CLI (\`abuddy build\` in that pack, or \`npm run compile\` for a built-in one), or — if it isn't yours to build — ask its author for a release built with a current one.`;
+}
+
+/**
  * Throws when a dependency's facade doesn't export every name in `required`, naming the missing ones
  * and how the facade was built. `usage` says what needs them, for the conditional requirements whose
  * absence is only a problem for this pack.
+ *
+ * The message leads with what was observed — the facade lacks exports — rather than asserting that an
+ * older CLI built it. That is the likely explanation, not an established one: a hand-assembled or
+ * truncated bundle reads the same way, and the reader can check the recorded versions themselves.
  */
 function requireFacadeExports(
   depId: string,
   snap: PackSnapshot,
   required: readonly string[],
-  usage?: string,
+  options: { usage?: string; source?: string } = {},
 ): void {
   const exported = new Set(parseExportedTypeNames(snap.defs[PACK_TYPES_DEF]));
   const missing = required.filter((name) => !exported.has(name));
@@ -213,10 +243,10 @@ function requireFacadeExports(
     `facade format ${snap.typesFormat ?? '(none recorded)'}`,
   ].filter(Boolean).join(', ');
   throw new Error(
-    `Dependency "${depId}" publishes facade types without ${missing.map((n) => `\`${n}\``).join(', ')}`
-    + `${usage ? `, which ${usage}` : ", which this pack's generated code imports"}. `
+    `Dependency "${depId}"${options.source ? ` (from ${options.source})` : ''} publishes facade types without ${missing.map((n) => `\`${n}\``).join(', ')}`
+    + `${options.usage ? `, which ${options.usage}` : ", which this pack's generated code imports"}. `
     + `(Built with ${builtWith}; this CLI generates facade format ${PACK_TYPES_FORMAT}.) `
-    + `Rebuild "${depId}" with this version of the abuddy CLI (\`abuddy build\` in that pack, or \`npm run compile\` for a built-in one).`,
+    + facadeRemedy(depId, options.source),
   );
 }
 
@@ -398,6 +428,12 @@ export interface GenerateEntriesOptions {
   packRoot: string;
   depTypes?: Map<string, PackTypeManifest>;
   depSnapshots?: Map<string, PackSnapshot>;
+  /**
+   * Dependency id → where it resolved from (`workspace`, `file:<path>`, `installed app (production)`,
+   * `github:<owner>/<repo>@<version>`), which decides what a facade failure can tell the author to do.
+   * A dependency served from the `.abuddy/deps` cache has no entry; see `facadeRemedy`.
+   */
+  depSources?: Map<string, string>;
 }
 
 export function generatePackFiles(
@@ -417,9 +453,10 @@ export function generatePackFiles(
    * Missing exports fire exactly when the build would break, and name what to look for. The recorded
    * format and SDK version ride along as diagnostic context, which is all they are good for here.
    */
+  const depSources = opts.depSources ?? new Map<string, string>();
   for (const [depId, snap] of depSnapshots) {
     if (!snap.defs?.[PACK_TYPES_DEF]) continue;
-    requireFacadeExports(depId, snap, REQUIRED_FACADE_EXPORTS);
+    requireFacadeExports(depId, snap, REQUIRED_FACADE_EXPORTS, { source: depSources.get(depId) });
   }
   // Dependencies built with facade types (older snapshots have none, so their types stay untyped)
   const typedDeps = [...depSnapshots].filter(([, snap]) => snap.defs?.[PACK_TYPES_DEF]).map(([depId]) => depId);
@@ -981,7 +1018,10 @@ ${busIdEntries},
     const eventDeps = typedDeps.filter((depId) => depTargets.has(depId));
     // `PackEvents` is imported only for these, so it is required here rather than with the rest
     for (const depId of eventDeps) {
-      requireFacadeExports(depId, depSnapshots.get(depId)!, ['PackEvents'], 'is needed because this pack\'s system.sendsTo names one of its plugins');
+      requireFacadeExports(depId, depSnapshots.get(depId)!, ['PackEvents'], {
+        usage: 'is needed because this pack\'s system.sendsTo names one of its plugins',
+        source: depSources.get(depId),
+      });
     }
     const quoted = (ids: Iterable<string>) => [...ids].map((id) => `'${id}'`).join(' | ');
     const externalReceivers = [

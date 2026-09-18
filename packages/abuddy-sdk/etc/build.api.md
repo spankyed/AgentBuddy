@@ -453,6 +453,7 @@ export function formatEntities(format: SeedFormatConfig): string[];
 export interface GenerateEntriesOptions {
     // (undocumented)
     depSnapshots?: Map<string, PackSnapshot>;
+    depSources?: Map<string, string>;
     // (undocumented)
     depTypes?: Map<string, PackTypeManifest>;
     // (undocumented)

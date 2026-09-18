@@ -96,9 +96,9 @@ export async function build(args: string[]) {
   clearBuildOutput(outputDir, { builtIn: !external });
 
   if (!args.includes('--skip-generate')) {
-    const { depTypes, depSnapshots } = await resolveDeps(root, manifest.dependencies);
+    const { depTypes, depSnapshots, depSources } = await resolveDeps(root, manifest.dependencies);
     await generate([], undefined, depSnapshots);
-    await generateEntries([], undefined, depTypes, depSnapshots);
+    await generateEntries([], undefined, depTypes, depSnapshots, depSources);
   }
 
   const settingsProblems = await featureSettingsProblems(root, manifest.features ?? []);

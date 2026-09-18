@@ -69,6 +69,7 @@ export async function generateEntries(
   packRoot?: string,
   depTypes?: Map<string, PackTypeManifest>,
   depSnapshots?: Map<string, PackSnapshot>,
+  depSources?: Map<string, string>,
 ) {
   const root = packRoot ?? findPackRoot(process.cwd());
   const outDir = path.join(root, 'src/__generated__');
@@ -81,6 +82,7 @@ export async function generateEntries(
     const resolved = await resolveDeps(root, manifest.dependencies);
     depTypes = resolved.depTypes;
     depSnapshots = resolved.depSnapshots;
+    depSources = resolved.depSources;
   }
   const currentHash = computeInputsHash(root, depSnapshots);
 
@@ -94,7 +96,7 @@ export async function generateEntries(
 
   fs.mkdirSync(outDir, { recursive: true });
 
-  const files = generatePackFiles(manifest, { packRoot: root, depTypes, depSnapshots });
+  const files = generatePackFiles(manifest, { packRoot: root, depTypes, depSnapshots, depSources });
 
   // Dependencies' facade types are rewritten from their snapshots each time
   fs.rmSync(path.join(outDir, 'deps'), { recursive: true, force: true });
