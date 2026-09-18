@@ -211,6 +211,11 @@ function isRebuildableSource(source: string): boolean {
  * because it doesn't know which one the reader is in a position to take.
  */
 function facadeRemedy(depId: string, source: string | undefined): string {
+  // Taken out of an installed AgentBuddy, so the pack came with the app and moves with it. That makes
+  // the step the same one verifyBundle names for a bundle this host can't read: update AgentBuddy.
+  if (source?.startsWith('installed app')) {
+    return `You can't rebuild it yourself: update AgentBuddy, which is where this copy came from, or pin your CLI to one that matches it.`;
+  }
   if (source && !isRebuildableSource(source)) {
     return `You can't rebuild it yourself: ask its author for a release built with a current abuddy CLI, or pin your CLI to one that matches this release.`;
   }

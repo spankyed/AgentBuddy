@@ -97,6 +97,21 @@ describe('generated events', () => {
     expect(events).toContain("'flows': ['ACTIONS_CONNECTED', 'ACTIONS_UPDATED', 'FLOWS_CONNECTED', 'FLOWS_UPDATED'],");
   });
 
+  // `{ type: 'A' | 'B' }` is one member covering two event types, a legal way to write an event whose
+  // payload is the same either way — the style StepEvent already uses. Reading only single literals
+  // rejected it, failing the build on a declaration nothing else objects to.
+  it("expands a member whose `type` is a union of literals", () => {
+    write('src/features/jobs/be/system.ts', "export type OutgoingJobsEvents = { type: 'CANCEL' | 'COMPLETE'; id: string } | { type: 'JOBS_CONNECTED' };\n");
+    const events = generate({ features: [withPlugin({ id: 'jobs', system: { entry: 'src/features/jobs/be/system.ts' }, plugin: { entry: 'src/features/jobs/fe/index.ts' } })] })['src/__generated__/events.ts'];
+    expect(events).toContain("'jobs': ['CANCEL', 'COMPLETE', 'JOBS_CONNECTED'],");
+  });
+
+  it('still refuses a member whose `type` is not a literal at all', () => {
+    write('src/features/loose/be/system.ts', 'export type OutgoingLooseEvents = { type: string };\n');
+    expect(() => generate({ features: [withPlugin({ id: 'loose', system: { entry: 'src/features/loose/be/system.ts' }, plugin: { entry: 'src/features/loose/fe/index.ts' } })] }))
+      .toThrow(/`type` is string, not a string literal or a union of them/);
+  });
+
   it('records nothing for a plugin no system sends to, so a send there is rejected', () => {
     const events = generate({ features: [withPlugin(system('actions')), withPlugin({ id: 'viewer', plugin: { entry: 'src/features/viewer/fe/index.ts' } })] })['src/__generated__/events.ts'];
     expect(events).toContain("'actions': ['ACTIONS_CONNECTED', 'ACTIONS_UPDATED'],");
@@ -668,9 +683,14 @@ describe("a dependency's facade", () => {
       expect(message).not.toMatch(/Rebuild "base-pack"/);
     });
 
-    // Taken out of an installed app, so there is no source tree here either
-    it('does not tell the author to rebuild a bundle from an installed app', () => {
-      expect(failure({ 'base-pack': 'installed app (production)' })).toContain("You can't rebuild it yourself");
+    // Taken out of an installed app, so there is no source tree here — and no author to ask either:
+    // the copy came with AgentBuddy and moves when AgentBuddy does
+    it('tells the author to update AgentBuddy for a bundle from an installed app', () => {
+      const message = failure({ 'base-pack': 'installed app (production)' });
+      expect(message).toContain('(from installed app (production))');
+      expect(message).toContain('update AgentBuddy');
+      expect(message).not.toContain('ask its author');
+      expect(message).not.toMatch(/Rebuild "base-pack"/);
     });
 
     // A cache hit records no source, so the message offers both and names neither situation
