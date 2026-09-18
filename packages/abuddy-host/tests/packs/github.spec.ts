@@ -144,6 +144,24 @@ describe('githubFetch', () => {
     expect(downloadTimeout).toBeGreaterThan(apiTimeout);
   });
 
+  // fetchReleaseAsset has two branches and every test above runs without a token, so only the public
+  // download URL was ever exercised. Dropping DOWNLOAD_TIMEOUT_MS from the API branch left all of them
+  // green.
+  it('downloads a release asset through the API when a token is set, with the same accept and timeout', async () => {
+    process.env.GITHUB_TOKEN = 'github';
+    const fetchMock = respond(200);
+    vi.stubGlobal('fetch', fetchMock);
+    const timeout = vi.spyOn(AbortSignal, 'timeout');
+
+    await fetchReleaseAsset({ name: 'p.tgz', url: 'https://api.github.com/a', browser_download_url: 'https://x/p.tgz' });
+
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, { headers: Record<string, string> }];
+    expect(url).toBe('https://api.github.com/a');
+    expect(init.headers.Accept).toContain('octet-stream');
+    expect(init.headers.Authorization).toBe('Bearer github');
+    expect(timeout.mock.calls[0][0]).toBe(DOWNLOAD_TIMEOUT_MS);
+  });
+
   it('asks for a release asset as a binary stream, not as JSON', async () => {
     const fetchMock = respond(200);
     vi.stubGlobal('fetch', fetchMock);
