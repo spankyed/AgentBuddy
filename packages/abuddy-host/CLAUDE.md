@@ -172,7 +172,7 @@ What opening an app's database needs, shared by the API's boot and `abuddy db`, 
 - `SHARED_DEPS` lists the packages the host provides to packs. FE entries are exposed on `window.__abuddy` under `globalKey`, and BE entries (`xstate`, `zod`) are bridged.
   - `getSharedFeDeps()` also shares every exported subpath of `@tiptap/pm` and `@tiptap/vue-3`, and aliases `prosemirror-<name>` to `@tiptap/pm/<name>`.
   - To give pack FE code a new SDK module, add it to `SDK_FE_MODULES`. The FE bundler's error message says to do this.
-- `assertSourceResolution(resolve, processName)` throws when a checkout's `@abuddy/ears`, `@abuddy/sdk` or `@abuddy/ui` (a package with `src/`) resolves outside `src/`. It is called by the API boot (except under Electron), the CLI bin (`abuddy-cli/bin/abuddy.mjs`) and `@abuddy/testing` (`src/source-check.ts`).
+- `assertSourceResolution(resolve, processName)` throws when a checkout's `@abuddy/ears`, `@abuddy/sdk` or `@abuddy/ui` (a package with `src/`) resolves outside `src/`. It is called by the API boot (except under Electron) and the CLI bin (`abuddy-cli/bin/abuddy.mjs`) — host processes, which load workspace source. `@abuddy/testing` doesn't call it: a pack's test run resolves the packages' `dist` like the pack itself, and checks instead that the checkout built that `dist` from its current sources (`src/checkout-freshness.ts`).
 - `withSourceCondition` and `withoutSourceCondition` edit `NODE_OPTIONS`. `abuddy test` and the fixture's launch env use them.
 
 ## Tests (`tests/`)
