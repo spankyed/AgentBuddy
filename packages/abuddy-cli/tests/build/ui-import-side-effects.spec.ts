@@ -41,8 +41,31 @@ function importTimeStatements(file: string): string[] {
     });
 }
 
+/**
+ * A stylesheet from another package is global: its selectors are written for whoever installs it,
+ * not namespaced to a component. @abuddy/ui ships inside every pack that sets `fe.bundleUi`, so such
+ * an import would inject a second copy of those rules into the running app and restyle it. The app
+ * imports those stylesheets itself (`packages/renderer/src/main.ts`), which keeps one copy, owned by
+ * the host. A component's own `./x.css` is fine: it is namespaced by the component's root class.
+ */
+function foreignStylesheetImports(file: string): string[] {
+  const code = fs.readFileSync(file, 'utf-8');
+  const lines = code.split('\n');
+  const bare = (specifier: string): boolean => !specifier.startsWith('.') && !specifier.startsWith('/');
+  return lines.flatMap((line, index) => {
+    const esm = /^\s*import\s+['"]([^'"]+\.css)['"]/.exec(line);
+    const css = /^\s*@import\s+['"]([^'"]+)['"]/.exec(line);
+    const specifier = esm?.[1] ?? css?.[1];
+    return specifier && bare(specifier) ? [`${path.relative(UI_SRC, file)}:${index + 1}: ${specifier}`] : [];
+  });
+}
+
 describe('@abuddy/ui modules', () => {
   it('do nothing when imported', () => {
     expect(modules(UI_SRC).flatMap(importTimeStatements)).toEqual([]);
+  });
+
+  it('import no stylesheet from another package, so nothing global ships inside a pack', () => {
+    expect(modules(UI_SRC).flatMap(foreignStylesheetImports)).toEqual([]);
   });
 });

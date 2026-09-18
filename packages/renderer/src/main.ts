@@ -4,6 +4,9 @@ import { createActor } from 'xstate';
 import type { Actor } from 'xstate';
 import App from './App.vue'
 import './style.css'
+// highlight.js's stylesheet is global (.hljs, pre code.hljs), so the app owns it: imported from
+// @abuddy/ui it would ship again inside every fe.bundleUi pack and restyle code everywhere.
+import 'highlight.js/styles/github-dark.css'
 import builtInPacks from 'virtual:built-in-packs';
 import { packsPlugin } from '@/packs/plugin';
 import { application, createApplicationState } from '@/core/actors/application';

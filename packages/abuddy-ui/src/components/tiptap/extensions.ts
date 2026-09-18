@@ -1,4 +1,3 @@
-import 'highlight.js/styles/github-dark.css'
 import type { AnyExtension } from '@tiptap/vue-3'
 import { markInputRule } from '@tiptap/core'
 import Code from '@tiptap/extension-code'

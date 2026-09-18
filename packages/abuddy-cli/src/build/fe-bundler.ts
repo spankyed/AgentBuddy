@@ -252,6 +252,14 @@ export function packExternalsPlugin(packDir: string): VitePlugin {
       if (sdkModules[source] || uiModules[source]) {
         return EXTERNAL_PREFIX + source;
       }
+      // A pack without @abuddy/ui installed gets an empty proxy list, which is right until it imports
+      // one: the import would be bundled instead of taken from the host, and every component in it
+      // would fail at load with no sign of why. A pack that means to carry its own sets fe.bundleUi.
+      if (!bundlesUi(packDir) && /^@abuddy\/ui(\/|$)/.test(source)) {
+        throw new Error(
+          `This pack imports ${source}, but @abuddy/ui can't be resolved from ${packDir}, so there is nothing to take from the host. Install @abuddy/ui in the pack, or set fe.bundleUi to carry your own copy.`,
+        );
+      }
       if (sharedInstancePackage(source)) {
         // From the pack, not the importing module: shared-instance modules (@abuddy/sdk, @abuddy/ears)
         // must resolve to the pack's copies
