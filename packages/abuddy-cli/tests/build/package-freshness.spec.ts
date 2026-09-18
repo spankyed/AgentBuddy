@@ -4,7 +4,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  BUILD_UNITS, CHECKOUT_MARKER, fingerprintInputs, staleMessage, stampFile, stampedBuild, unitStaleReason, withBuildLock,
+  BUILD_UNITS, CHECKOUT_MARKER, fingerprintInputs, fingerprintUnit, STAMP_VERSION, staleMessage, stampFile,
+  stampedBuild, unitStaleReason, withBuildLock,
 } from '@abuddy/host/build/packages-built';
 import { PACKED_PACKAGES, REPO_ROOT } from '../helpers/published-packages';
 
@@ -42,7 +43,7 @@ function fixture(): { root: string; src: string; out: string; unit: { inputs: st
 /** What a successful build of the fixture writes */
 function stampFor(f: ReturnType<typeof fixture>): string {
   const stamp = path.join(f.root, 'stamp.json');
-  fs.writeFileSync(stamp, JSON.stringify({ fingerprint: fingerprintInputs(f.unit.inputs) }));
+  fs.writeFileSync(stamp, JSON.stringify({ version: STAMP_VERSION, fingerprint: fingerprintUnit(f.unit) }));
   return stamp;
 }
 
@@ -106,6 +107,53 @@ describe('the watched input set', () => {
     expect(new Set(stamps).size).toBe(stamps.length);
     for (const [workspace, unit] of Object.entries(BUILD_UNITS)) {
       for (const output of unit.outputs) expect(stampFile(workspace).startsWith(output)).toBe(false);
+    }
+  });
+});
+
+describe('the stamp protocol', () => {
+  it('reads a stamp from another format as never built, so a protocol change rebuilds once', () => {
+    const f = fixture();
+    const stamp = path.join(f.root, 'stamp.json');
+    fs.writeFileSync(stamp, JSON.stringify({ version: STAMP_VERSION - 1, fingerprint: fingerprintUnit(f.unit) }));
+    expect(unitStaleReason(f.unit, stamp)).toMatch(/another format/);
+  });
+
+  it('reads a stamp with no version the same way, since every stamp this build writes has one', () => {
+    const f = fixture();
+    const stamp = path.join(f.root, 'stamp.json');
+    fs.writeFileSync(stamp, JSON.stringify({ fingerprint: fingerprintUnit(f.unit) }));
+    expect(unitStaleReason(f.unit, stamp)).toMatch(/another format/);
+  });
+
+  // Hashing only the contents would read a widened input set against the old stamp and call it fresh
+  it('is stale when a unit gains a watched path, before anything under it changes', () => {
+    const f = fixture();
+    const stamp = stampFor(f);
+    expect(unitStaleReason(f.unit, stamp)).toBeNull();
+    const widened = { inputs: [...f.unit.inputs, path.join(f.root, 'tsdown.config.ts')], outputs: f.unit.outputs };
+    expect(unitStaleReason(widened, stamp)).toMatch(/sources changed/);
+  });
+
+  it('is stale when a unit gains an output, which changes what counts as built', () => {
+    const f = fixture();
+    const stamp = stampFor(f);
+    const widened = { inputs: f.unit.inputs, outputs: [...f.unit.outputs, path.join(f.root, 'dist2')] };
+    // The missing output is reported first; the point is that the stamp no longer matches either
+    expect(unitStaleReason(widened, stamp)).not.toBeNull();
+    fs.mkdirSync(path.join(f.root, 'dist2'), { recursive: true });
+    expect(unitStaleReason(widened, stamp)).toMatch(/sources changed/);
+  });
+
+  // This module decides whether to build; it cannot change what a build emits
+  it('does not watch the code that decides freshness', () => {
+    const watched = new Set(Object.values(BUILD_UNITS).flatMap((unit) => [...unit.inputs]));
+    for (const rule of ['scripts/ensure-packages-built.ts', 'packages/abuddy-host/src/build/packages-built.ts']) {
+      expect(watched, rule).not.toContain(path.join(REPO_ROOT, rule));
+    }
+    // @abuddy/testing and @abuddy/cli still watch all of abuddy-host/src, which their bundles inline
+    for (const workspace of ['@abuddy/testing', '@abuddy/cli']) {
+      expect(new Set(BUILD_UNITS[workspace].inputs), workspace).toContain(path.join(REPO_ROOT, 'packages', 'abuddy-host', 'src'));
     }
   });
 });

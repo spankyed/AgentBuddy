@@ -48,9 +48,20 @@ export const REPO_ROOT = findCheckoutRoot();
 const repoFile = (...parts: string[]): string => path.join(REPO_ROOT, ...parts);
 const pkgFile = (pkg: string, ...parts: string[]): string => repoFile('packages', pkg, ...parts);
 
-/** Read by every build: `packages:build` itself, the toolchain, and this file's input sets and stamp protocol */
-const SHARED_INPUTS = [repoFile('package.json'), repoFile('package-lock.json'),
-  repoFile('packages', 'abuddy-host', 'src', 'build', 'packages-built.ts'), repoFile('scripts', 'ensure-packages-built.ts')];
+/**
+ * Read by every build: the scripts that run it and the toolchain it runs with. This module is not among
+ * them — it decides *whether* to build and cannot change what a build emits, so it is the cache's
+ * implementation rather than an input. Its two jobs that do affect a verdict are covered without it:
+ * `STAMP_VERSION` invalidates every stamp when the protocol changes, and each unit's declared paths are
+ * part of its own fingerprint, so editing one unit's input set invalidates that unit alone.
+ */
+const SHARED_INPUTS = [repoFile('package.json'), repoFile('package-lock.json')];
+
+/**
+ * The stamp format. Bump it when a stamp written by an older build would be read wrongly by this one —
+ * a different hash, a different set of things hashed — and every unit rebuilds once, which is correct.
+ */
+export const STAMP_VERSION = 2;
 
 export interface BuildUnit {
   /** Files and directories the build reads, absolute; a directory is walked */
@@ -131,19 +142,35 @@ export function fingerprintInputs(inputs: readonly string[]): string {
   return hash.digest('hex');
 }
 
+/**
+ * A unit's fingerprint: the paths it declares, and the bytes under its inputs. The paths are in it so a
+ * unit that gains or loses a watched directory invalidates itself — and only itself. Hashing the input
+ * contents alone would read the new set against the old stamp and call it fresh.
+ */
+export function fingerprintUnit(unit: BuildUnit): string {
+  const declared = [...unit.inputs, ...unit.outputs].map((target) => path.relative(REPO_ROOT, target)).sort();
+  return createHash('sha256')
+    .update(declared.join('\0'))
+    .update('\0')
+    .update(fingerprintInputs(unit.inputs))
+    .digest('hex');
+}
+
 export interface StaleUnit { readonly workspace: string; readonly reason: string }
 
 /** Why `unit` needs building, or null when its stamp says a build of exactly these inputs succeeded. Never throws. */
 export function unitStaleReason(unit: BuildUnit, stamp: string): string | null {
   const missing = unit.outputs.filter((output) => !fs.existsSync(output)).map((output) => path.relative(REPO_ROOT, output));
   if (missing.length > 0) return `not built (no ${missing.join(', ')})`;
-  let stored: unknown;
+  let record: { fingerprint?: unknown; version?: unknown } = {};
   try {
-    stored = JSON.parse(fs.readFileSync(stamp, 'utf-8')).fingerprint;
+    record = JSON.parse(fs.readFileSync(stamp, 'utf-8'));
   } catch { /* missing or unreadable: the same as never built */ }
-  if (typeof stored !== 'string') return 'no build stamp — never built by this script, or the last build failed or was interrupted';
+  if (typeof record.fingerprint !== 'string') return 'no build stamp — never built by this script, or the last build failed or was interrupted';
+  // A stamp from another protocol says nothing about this one, so it counts as never built
+  if (record.version !== STAMP_VERSION) return `its build stamp is from another format (${String(record.version)}, this is ${STAMP_VERSION})`;
   try {
-    return stored === fingerprintInputs(unit.inputs) ? null : 'its sources changed since the last successful build';
+    return record.fingerprint === fingerprintUnit(unit) ? null : 'its sources changed since the last successful build';
   } catch (err) {
     return `its sources could not be read (${(err as Error).message})`;
   }
@@ -239,11 +266,11 @@ export async function stampedBuild(
   lock?: string,
 ): Promise<void> {
   await withBuildLock(label, async () => {
-    const fingerprint = fingerprintInputs(unit.inputs);
+    const fingerprint = fingerprintUnit(unit);
     fs.rmSync(stamp, { force: true });
     await build();
     fs.mkdirSync(path.dirname(stamp), { recursive: true });
-    fs.writeFileSync(stamp, `${JSON.stringify({ workspace: label, fingerprint, builtAt: new Date().toISOString() }, null, 2)}\n`);
+    fs.writeFileSync(stamp, `${JSON.stringify({ workspace: label, version: STAMP_VERSION, fingerprint, builtAt: new Date().toISOString() }, null, 2)}\n`);
   }, lock);
 }
 
@@ -256,8 +283,8 @@ export async function runPackageBuild(workspace: string, build: () => void | Pro
 
 /** Thrown when the build itself failed, so the caller doesn't report a check error as one */
 export class PackagesBuildFailed extends Error {
-  constructor(readonly status: number) {
-    super('npm run packages:build failed');
+  constructor(readonly status: number, readonly workspace?: string) {
+    super(workspace ? `building ${workspace} failed` : 'npm run packages:build failed');
   }
 }
 
@@ -266,15 +293,20 @@ export function ensurePackagesBuilt(): void {
   const stale = stalePackageUnits();
   if (stale.length === 0) return;
   // Synchronous: a message written just before the process exits must not sit in a pipe's buffer
-  fs.writeSync(2, `Published packages are out of date:\n${staleMessage(stale)}\nRunning: npm run packages:build (which rebuilds all ${Object.keys(BUILD_UNITS).length})\n`);
+  fs.writeSync(2, `Published packages are out of date:\n${staleMessage(stale)}\nRebuilding ${stale.length} of ${Object.keys(BUILD_UNITS).length}\n`);
   // npm is a shell script on Windows, which execFile cannot spawn without one
   const windows = process.platform === 'win32';
-  try {
-    // cwd, not a workspace flag: npm keeps --workspace out of a script's environment, so this runs
-    // the repo's own packages:build even as @abuddy/cli's pretest
-    execFileSync(windows ? 'npm.cmd' : 'npm', ['run', 'packages:build'], { cwd: REPO_ROOT, stdio: 'inherit', shell: windows });
-  } catch (err) {
-    const status = (err as { status?: number }).status;
-    throw new PackagesBuildFailed(typeof status === 'number' && status !== 0 ? status : 1);
+  // One workspace at a time, not `packages:build`, which rebuilds all five whenever one is stale. The
+  // units are independent: every build resolves the other packages under the source condition
+  // (their tsconfigs' customConditions, bundle-package.ts's esbuild conditions), so none reads
+  // another's dist and no order is implied. The workspace is named explicitly and the cwd is the repo,
+  // so this runs the right script even as a workspace's own pretest.
+  for (const { workspace } of stale) {
+    try {
+      execFileSync(windows ? 'npm.cmd' : 'npm', ['run', 'build:package', '-w', workspace], { cwd: REPO_ROOT, stdio: 'inherit', shell: windows });
+    } catch (err) {
+      const status = (err as { status?: number }).status;
+      throw new PackagesBuildFailed(typeof status === 'number' && status !== 0 ? status : 1, workspace);
+    }
   }
 }

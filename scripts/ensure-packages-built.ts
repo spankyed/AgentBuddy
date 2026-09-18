@@ -20,7 +20,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(fs.realpathSync(process
   } catch (err) {
     if (!(err instanceof PackagesBuildFailed)) throw err;
     // The build printed its own error; exit with its status rather than a stack trace over it
-    fs.writeSync(2, 'npm run packages:build failed — the packages are not built.\n');
+    fs.writeSync(2, `${err.message} — the packages are not built.\n`);
     process.exitCode = err.status;
   }
 }
