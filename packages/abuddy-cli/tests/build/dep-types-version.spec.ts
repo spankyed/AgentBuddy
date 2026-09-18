@@ -17,7 +17,11 @@ afterEach(() => {
 /** Writes the facade types generation produces for base-pack at `version` */
 function generateDepTypes(version: string): void {
   const manifest = { id: 'app-pack', name: 'App', version: '1.0.0' } as PackManifest;
-  const snapshot = { types: { entities: {}, relKinds: {} }, defs: { [PACK_TYPES_DEF]: 'export type PackEvents = {};' }, typesFormat: PACK_TYPES_FORMAT, manifest: { id: 'base-pack', name: 'Base', version } } as PackSnapshot;
+  // The exports generation imports from every typed dependency: a facade without them is one an older
+  // CLI produced, which generation refuses outright
+  const facade = ['PackEntityShapes', 'PackStepNodes', 'PackEvents', 'PackSystemEvents', 'Services', 'Repositories']
+    .map((name) => `export type ${name} = {};`).join('\n');
+  const snapshot = { types: { entities: {}, relKinds: {} }, defs: { [PACK_TYPES_DEF]: facade }, typesFormat: PACK_TYPES_FORMAT, manifest: { id: 'base-pack', name: 'Base', version } } as PackSnapshot;
   for (const [file, content] of Object.entries(generatePackFiles(manifest, { packRoot: root, depSnapshots: new Map([['base-pack', snapshot]]) }))) {
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     fs.writeFileSync(path.join(root, file), content);

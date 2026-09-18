@@ -27,7 +27,29 @@ function manifest(fields: Record<string, unknown>): PackManifest {
   return { id: 'demo-pack', name: 'Demo', version: '1.0.0', ...fields } as unknown as PackManifest;
 }
 
-function dependency(fields: Record<string, unknown>, defs: Record<string, string> = { [PACK_TYPES_DEF]: 'export type PackEvents = {};' }): PackSnapshot {
+/** The exports every facade `abuddy build` bundles publishes, and the declaration each gets by default */
+const FACADE_DEFAULTS = {
+  PackEntityShapes: '{}',
+  PackStepNodes: 'never',
+  PackEvents: '{}',
+  PackSystemEvents: '{}',
+  Services: '{}',
+  Repositories: '{}',
+};
+
+/**
+ * A dependency's facade as `abuddy build` bundles one, with `overrides` replacing a named export's
+ * declaration. Generated code imports these from every typed dependency, so a fixture publishing
+ * fewer stands for a pack built by a CLI too old to build against — not for a smaller pack.
+ */
+function facade(overrides: Partial<Record<keyof typeof FACADE_DEFAULTS, string>> = {}): Record<string, string> {
+  const body = Object.entries({ ...FACADE_DEFAULTS, ...overrides })
+    .map(([name, type]) => `export type ${name} = ${type};`)
+    .join('\n');
+  return { [PACK_TYPES_DEF]: body };
+}
+
+function dependency(fields: Record<string, unknown>, defs: Record<string, string> = facade()): PackSnapshot {
   // A dependency built by this CLI records the facade shape it publishes; one that doesn't is the
   // stale-facade case, covered on its own below
   return { types: { entities: {}, relKinds: {} }, defs, typesFormat: PACK_TYPES_FORMAT, manifest: manifest({ id: 'base-pack', ...fields }) };
@@ -82,7 +104,7 @@ describe('generated events', () => {
   });
 
   it('records only this pack\'s own plugins: a dependency\'s and the host\'s are their owners\' to declare', () => {
-    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { entry: 'y' } }] }, { [PACK_TYPES_DEF]: "export type PackEvents = { memos: { type: 'MEMO_ADDED' } };" }) };
+    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { entry: 'y' } }] }, facade({ PackEvents: "{ memos: { type: 'MEMO_ADDED' } }" })) };
     const events = generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions', { sendsTo: ['memos', 'application'] }))] }, deps)['src/__generated__/events.ts'];
     const runtime = events.slice(events.indexOf('receivedEventTypes'));
     expect(runtime).toContain("'actions':");
@@ -199,7 +221,7 @@ describe('_dependencyPlugins', () => {
 });
 
 describe('generated system sends', () => {
-  const baseTypes = { [PACK_TYPES_DEF]: 'export type PackEvents = {};\nexport type PackSystemEvents = {};' };
+  const baseTypes = facade();
 
   it("names the pack's own systems by feature id and its dependencies' as <dependency>/<feature>", () => {
     const files = generate({ features: [system('memos')] }, {
@@ -261,14 +283,7 @@ function typecheck(files: Record<string, string>, names: string[]): string[] {
 /** A dependency whose facade declares `systems` (feature id → incoming event type) */
 function typedDependency(systems: Record<string, string>): PackSnapshot {
   const events = Object.entries(systems).map(([id, type]) => `'${id}': { type: '${type}'; n: number }`).join('; ');
-  return dependency({ features: Object.keys(systems).map((id) => system(id)) }, { [PACK_TYPES_DEF]: [
-    'export type PackEntityShapes = {};',
-    'export type PackStepNodes = never;',
-    'export type PackEvents = {};',
-    `export type PackSystemEvents = { ${events} };`,
-    'export type Services = {};',
-    'export type Repositories = {};',
-  ].join('\n') });
+  return dependency({ features: Object.keys(systems).map((id) => system(id)) }, facade({ PackSystemEvents: `{ ${events} }` }));
 }
 
 describe('generated sends compile', () => {
@@ -322,16 +337,10 @@ describe('generated sends compile', () => {
       "const spec = defineSystem('memos')<{ type: 'ADD_MEMO'; text: string }, OutgoingMemosEvents>();",
       "export default { spec, machine: undefined as unknown as SystemEntry['machine'] } satisfies SystemEntry;",
     ].join('\n'));
-    const base = dependency({ features: [withPlugin(system('threads')), withPlugin(system('code'))] }, {
-      [PACK_TYPES_DEF]: [
-        'export type PackEntityShapes = {};',
-        'export type PackStepNodes = never;',
-        "export type PackEvents = { 'threads': { type: 'TAG_ADDED'; name: string }; 'code': { type: 'FILE_OPENED'; path: string } };",
-        'export type PackSystemEvents = {};',
-        'export type Services = {};',
-        'export type Repositories = {};',
-      ].join('\n'),
-    });
+    const base = dependency(
+      { features: [withPlugin(system('threads')), withPlugin(system('code'))] },
+      facade({ PackEvents: "{ 'threads': { type: 'TAG_ADDED'; name: string }; 'code': { type: 'FILE_OPENED'; path: string } }" }),
+    );
     const files = generatePackFiles(
       manifest({ features: [withPlugin(system('memos', { sendsTo: ['threads', 'application'] }))] }),
       { packRoot: root, depSnapshots: new Map([['base-pack', base]]) },
@@ -528,7 +537,7 @@ describe('a diamond dependency', () => {
 
   const surfacing = (id: string, owner: string) => ({
     types: { entities: { Memo: 'Memo' }, relKinds: {} },
-    defs: { [PACK_TYPES_DEF]: 'export type PackEvents = {};' },
+    defs: facade(),
     typesFormat: PACK_TYPES_FORMAT,
     typeOwners: { entities: { Memo: owner }, relKinds: {} },
     manifest: manifest({ id }),
@@ -561,25 +570,68 @@ describe('a diamond dependency', () => {
   });
 });
 
-describe("a dependency's facade format", () => {
-  const facade = { [PACK_TYPES_DEF]: 'export type PackEvents = {};' };
+describe("a dependency's facade", () => {
+  /** A snapshot whose facade publishes only `names`, standing for one an older CLI produced */
+  const publishing = (names: string[], fields: Record<string, unknown> = {}) => ({
+    types: { entities: {}, relKinds: {} },
+    defs: { [PACK_TYPES_DEF]: names.map((n) => `export type ${n} = {};`).join('\n') },
+    typesFormat: PACK_TYPES_FORMAT,
+    manifest: manifest({ id: 'base-pack' }),
+    ...fields,
+  }) as PackSnapshot;
+
+  const ALL = Object.keys(FACADE_DEFAULTS);
 
   // Presence used to be the whole check, so a facade whose shape had changed was consumed and blew up
-  // later as TS2305 inside generated code, naming nothing the author could act on.
-  it('fails, naming the dependency to rebuild, when it records no format', () => {
+  // later as TS2305 inside generated code, naming nothing the author could act on. The check is on the
+  // exports the generated code imports, so the message names those instead.
+  it('fails naming each export the generated code imports and the facade lacks', () => {
     expect(() => generate({ features: [system('brain')] }, {
-      'base-pack': { types: { entities: {}, relKinds: {} }, defs: facade, manifest: manifest({ id: 'base-pack' }) } as PackSnapshot,
-    })).toThrow(/Dependency "base-pack" publishes facade types in format \(none recorded\).*Rebuild "base-pack"/s);
+      'base-pack': publishing(ALL.filter((n) => n !== 'Services' && n !== 'Repositories')),
+    })).toThrow(/publishes facade types without `Services`, `Repositories`.*Rebuild "base-pack"/s);
   });
 
-  it('fails on a format this CLI does not generate against', () => {
+  it('names how the facade was built, as context for the missing exports', () => {
     expect(() => generate({ features: [system('brain')] }, {
-      'base-pack': { types: { entities: {}, relKinds: {} }, defs: facade, typesFormat: PACK_TYPES_FORMAT + 1, manifest: manifest({ id: 'base-pack' }) } as PackSnapshot,
-    })).toThrow(`format ${PACK_TYPES_FORMAT + 1}`);
+      'base-pack': publishing(['PackEvents'], { sdkVersion: '0.2.1', typesFormat: PACK_TYPES_FORMAT + 1 }),
+    })).toThrow(`(Built with SDK 0.2.1, facade format ${PACK_TYPES_FORMAT + 1}; this CLI generates facade format ${PACK_TYPES_FORMAT}.)`);
+  });
+
+  // The format number is a proxy for the exports, and a worse one: it fails a dependency whose facade
+  // changed in ways this pack never touches. Capability is the check; the format is only context.
+  it('accepts a capable facade whose recorded format this CLI does not generate', () => {
+    expect(() => generate({ features: [system('brain')] }, {
+      'base-pack': publishing(ALL, { typesFormat: PACK_TYPES_FORMAT + 1 }),
+    })).not.toThrow();
+  });
+
+  it('accepts a capable facade that records no format at all', () => {
+    expect(() => generate({ features: [system('brain')] }, {
+      'base-pack': publishing(ALL, { typesFormat: undefined }),
+    })).not.toThrow();
+  });
+
+  // PackEvents is imported only for a dependency a sendsTo names, so requiring it of every dependency
+  // would fail builds over a type they never import.
+  it('does not require PackEvents of a dependency no sendsTo names', () => {
+    expect(() => generate({ features: [system('brain')] }, {
+      'base-pack': publishing(ALL.filter((n) => n !== 'PackEvents')),
+    })).not.toThrow();
+  });
+
+  it('requires PackEvents of a dependency whose plugin a sendsTo names', () => {
+    expect(() => generate(
+      { features: [withPlugin(system('memos', { sendsTo: ['threads'] }))] },
+      {
+        'base-pack': publishing(ALL.filter((n) => n !== 'PackEvents'), {
+          manifest: manifest({ id: 'base-pack', features: [withPlugin(system('threads'))] }),
+        }),
+      },
+    )).toThrow(/without `PackEvents`, which is needed because this pack's system.sendsTo names one of its plugins/);
   });
 
   // A pack built before facades existed has no facade at all. That stays a silent downgrade to
-  // untyped, which is what `typedDeps` is for — the format check is only about a facade that exists.
+  // untyped, which is what `typedDeps` is for — the check is only about a facade that exists.
   it('accepts a dependency with no facade at all, which stays untyped', () => {
     expect(() => generate({ features: [system('brain')] }, {
       'base-pack': { types: { entities: {}, relKinds: {} }, defs: {}, manifest: manifest({ id: 'base-pack' }) } as PackSnapshot,
@@ -679,7 +731,7 @@ describe('generated services', () => {
   });
 
   it("types the emitter with the pack's events, naming every system <pack>/<feature>", () => {
-    const files = generate({ features: [system('memos')] }, { 'base-pack': dependency({ features: [system('threads')] }, { [PACK_TYPES_DEF]: 'export type PackEvents = {};\nexport type PackSystemEvents = {};' }) });
+    const files = generate({ features: [system('memos')] }, { 'base-pack': dependency({ features: [system('threads')] }, facade()) });
     expect(files['src/__generated__/events.ts']).toContain('export type QualifiedSystemEvents = { [K in keyof PackSystemEvents & string as `demo-pack/${K}`]: PackSystemEvents[K] } & { [K in keyof __dep_base_pack_PackSystemEvents & string as `base-pack/${K}`]: __dep_base_pack_PackSystemEvents[K] };');
     const services = files['src/__generated__/services.ts'];
     expect(services).toContain("import type { PackEvents, QualifiedSystemEvents } from './events.js';");

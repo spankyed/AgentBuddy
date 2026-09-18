@@ -183,6 +183,43 @@ function parseExportedTypeNames(content: string): string[] {
   return [...new Set(names)];
 }
 
+/**
+ * The facade exports every typed dependency must publish: `depTypeImports` splices an import of each
+ * into the generated files for every typed dependency, with no guard, so a facade missing one produces
+ * a generated file that cannot compile.
+ *
+ * `PackEvents` is deliberately not here. It is imported only for a dependency some `sendsTo` names
+ * (`eventDeps`), so it is required at that point instead — a dependency whose plugins this pack never
+ * sends to should not fail the build over a type it never imports.
+ */
+const REQUIRED_FACADE_EXPORTS = ['PackEntityShapes', 'PackStepNodes', 'PackSystemEvents', 'Services', 'Repositories'] as const;
+
+/**
+ * Throws when a dependency's facade doesn't export every name in `required`, naming the missing ones
+ * and how the facade was built. `usage` says what needs them, for the conditional requirements whose
+ * absence is only a problem for this pack.
+ */
+function requireFacadeExports(
+  depId: string,
+  snap: PackSnapshot,
+  required: readonly string[],
+  usage?: string,
+): void {
+  const exported = new Set(parseExportedTypeNames(snap.defs[PACK_TYPES_DEF]));
+  const missing = required.filter((name) => !exported.has(name));
+  if (missing.length === 0) return;
+  const builtWith = [
+    snap.sdkVersion ? `SDK ${snap.sdkVersion}` : undefined,
+    `facade format ${snap.typesFormat ?? '(none recorded)'}`,
+  ].filter(Boolean).join(', ');
+  throw new Error(
+    `Dependency "${depId}" publishes facade types without ${missing.map((n) => `\`${n}\``).join(', ')}`
+    + `${usage ? `, which ${usage}` : ", which this pack's generated code imports"}. `
+    + `(Built with ${builtWith}; this CLI generates facade format ${PACK_TYPES_FORMAT}.) `
+    + `Rebuild "${depId}" with this version of the abuddy CLI (\`abuddy build\` in that pack, or \`npm run compile\` for a built-in one).`,
+  );
+}
+
 /** The SDK seeders of the specialty seed keys */
 const SPECIALTY_SEEDERS: Record<string, { factory: string; args: string }> = {
   actions: { factory: 'createSeeder', args: `{ key: 'actions', entities: ['Action'], identity: ['label'] }` },
@@ -370,19 +407,19 @@ export function generatePackFiles(
   const root = opts.packRoot;
   const depSnapshots = opts.depSnapshots ?? new Map<string, PackSnapshot>();
   /**
-   * A dependency's facade has to be a shape this CLI can generate against, and presence is not that.
-   * A facade from a CLI whose facade shape has since changed used to be consumed anyway, and failed
-   * later as `TS2305: has no exported member` inside generated code — a message naming nothing the
-   * author could act on. `PACK_TYPES_FORMAT` makes it name the dependency to rebuild instead.
+   * A dependency's facade has to carry the types this pack's generated code imports from it, and a
+   * facade from a CLI whose shape has since changed may not. Such a facade used to be consumed anyway
+   * and failed later as `TS2305: has no exported member` inside generated code — a message naming
+   * nothing the author could act on.
+   *
+   * The check is on the exports themselves, not on `typesFormat`: a format number is a proxy for the
+   * thing that matters, and it fails a dependency whose facade changed in ways this pack never touches.
+   * Missing exports fire exactly when the build would break, and name what to look for. The recorded
+   * format and SDK version ride along as diagnostic context, which is all they are good for here.
    */
   for (const [depId, snap] of depSnapshots) {
     if (!snap.defs?.[PACK_TYPES_DEF]) continue;
-    if (snap.typesFormat !== PACK_TYPES_FORMAT) {
-      throw new Error(
-        `Dependency "${depId}" publishes facade types in format ${snap.typesFormat ?? '(none recorded)'}, but this CLI generates against format ${PACK_TYPES_FORMAT}. `
-        + `Rebuild "${depId}" with this version of the abuddy CLI (\`abuddy build\` in that pack, or \`npm run compile\` for a built-in one).`,
-      );
-    }
+    requireFacadeExports(depId, snap, REQUIRED_FACADE_EXPORTS);
   }
   // Dependencies built with facade types (older snapshots have none, so their types stay untyped)
   const typedDeps = [...depSnapshots].filter(([, snap]) => snap.defs?.[PACK_TYPES_DEF]).map(([depId]) => depId);
@@ -942,6 +979,10 @@ ${busIdEntries},
     const systemEntries = systemFeatures.map(f => `  '${f.id}': IncomingEventsOf<(typeof __specs)['${f.id}']>;`).join('\n');
     // Only the dependencies a sendsTo names: a plugin nothing declares a send to isn't this pack's to send to
     const eventDeps = typedDeps.filter((depId) => depTargets.has(depId));
+    // `PackEvents` is imported only for these, so it is required here rather than with the rest
+    for (const depId of eventDeps) {
+      requireFacadeExports(depId, depSnapshots.get(depId)!, ['PackEvents'], 'is needed because this pack\'s system.sendsTo names one of its plugins');
+    }
     const quoted = (ids: Iterable<string>) => [...ids].map((id) => `'${id}'`).join(' | ');
     const externalReceivers = [
       ...eventDeps.map((depId) => ` & Omit<Pick<${depAlias(depId, 'PackEvents')}, ${quoted(depTargets.get(depId)!)}>, keyof OwnPackEvents>`),

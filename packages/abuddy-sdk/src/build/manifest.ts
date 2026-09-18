@@ -30,16 +30,17 @@ export interface PackTypeManifest {
 
 /**
  * The shape of the facade types a pack publishes for its dependents (`dist/types/pack-types.d.ts`
- * and the snapshot's `defs`).
+ * and the snapshot's `defs`), recorded so a build can say how a dependency's facade was produced.
  *
- * A dependent used to consume a dependency's facade on presence alone: if `defs[PACK_TYPES_DEF]`
- * existed, it was used. A facade from an older CLI, whose shape has since changed, therefore got as
- * far as the generated files and failed there as `TS2305: has no exported member` — pointing at
- * generated code, naming nothing the author could act on. Worse, a dependency built before facades
- * existed silently lost its services, repositories and events, with no message at all.
+ * This is diagnostic context, not a compatibility gate. Whether a dependency's facade can be built
+ * against is decided by `requireFacadeExports` in `generate-entries.ts`, which checks for the exports
+ * the generated code actually imports. A format number is only a proxy for that: it fails a
+ * dependency whose facade changed in ways the dependent never touches, and it names a number rather
+ * than the missing export. Bumping this changes no build's outcome — it only makes a real failure's
+ * message more useful, so bump it when the generated facade's shape changes.
  *
- * Bumping this makes those cases say which dependency to rebuild. Bump it whenever a change to the
- * generated facade would not compile against the previous shape.
+ * A dependency built before facades existed has no `defs[PACK_TYPES_DEF]` at all; that is a separate
+ * path, reported where a `sendsTo` names one of its plugins.
  */
 export const PACK_TYPES_FORMAT = 1;
 
