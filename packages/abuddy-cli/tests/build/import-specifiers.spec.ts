@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  findAppImportsInPackTests, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackBackendConsole, findRawPackHelpers,
+  findAppImportsInPackTests, findCrossCheckoutResolution, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackBackendConsole, findRawPackHelpers,
   findRawTransport, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs,
   RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
 } from '../../../../scripts/check-import-specifiers.ts';
@@ -459,6 +459,35 @@ const NEEDS = (file: string, option: string) =>
   `${file}: needs ${option} with "${SOURCE_CONDITION}", or an entry in RESOLVES_DIST_BY_DESIGN saying why it resolves dist`;
 const TSCONFIG_OPTION = 'compilerOptions.customConditions';
 const VITE_OPTION = 'resolve.conditions (and ssr.resolve.conditions)';
+
+describe('findCrossCheckoutResolution', () => {
+  it('holds for the repo', () => {
+    expect(findCrossCheckoutResolution()).toEqual([]);
+  });
+
+  it('catches a checkout that resolves a workspace package to another one', () => {
+    // What a worktree nested in the repository does: its own build output is missing, so TypeScript
+    // keeps walking up and resolves the package to the parent checkout's
+    const outer = path.join(root, 'outer');
+    const inner = path.join(outer, 'nested', 'worktree');
+    for (const checkout of [outer, inner]) {
+      writeAt(path.relative(root, path.join(checkout, 'package.json')), JSON.stringify({ name: 'root', workspaces: ['packages/*'] }));
+      writeAt(path.relative(root, path.join(checkout, 'packages', 'api', 'package.json')), JSON.stringify({ name: '@app/api', types: 'dist/types.d.ts' }));
+    }
+    // Only the outer checkout is built, and the inner one links the package it hasn't built
+    writeAt(path.relative(root, path.join(outer, 'packages', 'api', 'dist', 'types.d.ts')), 'export {};\n');
+    fs.mkdirSync(path.join(inner, 'node_modules', '@app'), { recursive: true });
+    fs.symlinkSync(path.join(inner, 'packages', 'api'), path.join(inner, 'node_modules', '@app', 'api'), 'dir');
+    fs.mkdirSync(path.join(outer, 'node_modules', '@app'), { recursive: true });
+    fs.symlinkSync(path.join(outer, 'packages', 'api'), path.join(outer, 'node_modules', '@app', 'api'), 'dir');
+
+    expect(findCrossCheckoutResolution(outer)).toEqual([]);
+    expect(findCrossCheckoutResolution(inner)).toEqual([
+      // realpath: on macOS the temp dir is /var/… and resolves to /private/var/…
+      expect.stringContaining(`@app/api resolves to ${fs.realpathSync(path.join(outer, 'packages', 'api', 'dist', 'types.d.ts'))}, outside this checkout`),
+    ]);
+  });
+});
 
 describe('findMissingSourceConditions', () => {
   beforeEach(workspace);

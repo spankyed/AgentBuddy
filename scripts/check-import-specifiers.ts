@@ -838,6 +838,46 @@ export function findMissingSourceConditions(root = repoRoot, exceptions = RESOLV
   return problems;
 }
 
+/**
+ * Each workspace package, resolved the way TypeScript resolves it, must land inside this checkout.
+ *
+ * A worktree created under the repository (Claude Code's `.claude/worktrees/`, say) is isolated for
+ * writes and porous for reads: TypeScript keeps walking up for `node_modules` when a package's own
+ * types target is missing, so a workspace package whose build output this checkout lacks resolves to
+ * the *parent* checkout's built output. A typecheck then passes against another checkout's files —
+ * including a half-finished edit someone else is making. A package that resolves nowhere is fine:
+ * that is an honest "not built", which is what a worktree outside the repository gives you.
+ */
+export function findCrossCheckoutResolution(root = repoRoot): string[] {
+  const checkout = fs.realpathSync(root);
+  const host = {
+    fileExists: ts.sys.fileExists,
+    readFile: ts.sys.readFile,
+    directoryExists: ts.sys.directoryExists,
+    getCurrentDirectory: () => checkout,
+    getDirectories: ts.sys.getDirectories,
+    realpath: ts.sys.realpath,
+  };
+  // A file inside the checkout: resolution starts from its directory, whether or not the file exists
+  const from = path.join(checkout, 'packages', '__resolution-probe__.ts');
+  const problems: string[] = [];
+  for (const dir of fs.readdirSync(path.join(checkout, 'packages'))) {
+    const manifest = path.join(checkout, 'packages', dir, 'package.json');
+    if (!fs.existsSync(manifest)) continue;
+    const { name } = readJsonFile<{ name?: string }>(manifest);
+    if (name === undefined) continue;
+    // Bundler resolution: the repo's other mode (nodenext) walks up the same way, so one pass sees it
+    const resolved = ts.resolveModuleName(name, from, { moduleResolution: ts.ModuleResolutionKind.Bundler }, host).resolvedModule?.resolvedFileName;
+    if (resolved === undefined) continue;
+    const real = fs.realpathSync(resolved);
+    if (real === checkout || real.startsWith(checkout + path.sep)) continue;
+    problems.push(`${name} resolves to ${real}, outside this checkout (${checkout}). `
+      + 'A worktree inside the repository reads the parent checkout when its own build output is missing: '
+      + 'build it here, or create worktrees outside the repository (a WorktreeCreate hook).');
+  }
+  return [...new Set(problems)];
+}
+
 // Run as a script, also through a symlinked path (tests import findJsSpecifiers)
 if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])) {
   const checks: [find: () => string[], rule: string][] = [
@@ -851,6 +891,7 @@ if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])
     [findLmdbImports, "Only @abuddy/ears/lmdb loads lmdb: the host and the API open the store through it, the engine's root and packs never load it"],
     [findSharedPackageLists, 'Derive shared-instance packages from SHARED_INSTANCE_PACKAGES (@abuddy/host/build/shared-deps) instead of naming them'],
     [findRepositoryCasts, "Call a package's repositories through its exports, not a cast of the repository registry"],
+    [findCrossCheckoutResolution, 'Workspace packages resolve inside this checkout, so a worktree nested in the repository never typechecks against the parent checkout'],
     [findMissingSourceConditions, 'Every config that compiles or bundles code importing @abuddy/ears, @abuddy/sdk, @abuddy/ui or @abuddy/testing declares the @abuddy/source condition, so it reads their TypeScript source instead of a stale dist'],
   ];
   for (const [find, rule] of checks) {
