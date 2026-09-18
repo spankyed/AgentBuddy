@@ -1,6 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 import type { Plugin as VitePlugin, Rollup } from 'vite';
 import { init as initModuleLexer, parse as parseModule } from 'es-module-lexer';
 import { getSharedFeDeps, unresolvedSubpathPackages, getSdkFeModules, getUiFeModules, sharedInstancePackage } from '@abuddy/host/build/shared-deps';
@@ -346,6 +347,27 @@ function readTsconfigAliases(packDir: string): Record<string, string> {
  *   classes at all, and a toolchain problem shouldn't stop it building. The reason is still printed,
  *   together with what the bundle is missing.
  */
+/**
+ * @abuddy/ui's Tailwind preset, resolved from the pack, or none when its copy is too old to ship one.
+ *
+ * A pack building against an older @abuddy/ui has no `./tailwind-preset` export. That is not worth
+ * failing the build over — it is the behaviour every such pack already had — so it degrades to the
+ * warning below and the pack can still ship.
+ */
+async function uiTailwindPresets(packDir: string): Promise<unknown[]> {
+  const require = createRequire(path.join(packDir, 'package.json'));
+  let resolved: string;
+  try {
+    resolved = require.resolve('@abuddy/ui/tailwind-preset');
+  } catch {
+    console.warn("! FE bundle: this @abuddy/ui has no tailwind-preset export, so @abuddy/ui's own theme (primary-*) gets no CSS. Upgrade @abuddy/ui, or define those colours in this pack's tailwind config.");
+    return [];
+  }
+  const mod = await import(pathToFileURL(resolved).href) as { uiTailwindPreset?: unknown; default?: unknown };
+  const preset = mod.uiTailwindPreset ?? mod.default;
+  return preset ? [preset] : [];
+}
+
 async function tailwindPostcssPlugins(packDir: string): Promise<any[]> {
   const packTwConfig = [path.join(packDir, 'tailwind.config.ts'), path.join(packDir, 'tailwind.config.js')]
     .find((f) => fs.existsSync(f));
@@ -372,7 +394,14 @@ async function tailwindPostcssPlugins(packDir: string): Promise<any[]> {
   }
 
   const uiContent = bundleUi ? uiTailwindContent(packDir) : [];
-  let twConfig: unknown = { content: [path.join(packDir, 'src/**/*.{vue,js,ts,jsx,tsx}'), ...uiContent] };
+  // Scanning @abuddy/ui's files finds the class names; the theme behind them (primary-*) is defined
+  // only in a Tailwind config, so without its preset those classes match nothing and Tailwind emits
+  // no CSS for them — the component renders with its accent silently missing.
+  const uiPresets = bundleUi ? await uiTailwindPresets(packDir) : [];
+  let twConfig: unknown = {
+    content: [path.join(packDir, 'src/**/*.{vue,js,ts,jsx,tsx}'), ...uiContent],
+    ...(uiPresets.length > 0 && { presets: uiPresets }),
+  };
   if (packTwConfig) {
     // Tailwind loads a config path itself; only a pack that also needs @abuddy/ui's globs merged in
     // has to be loaded here
@@ -391,7 +420,13 @@ async function tailwindPostcssPlugins(packDir: string): Promise<any[]> {
           `${path.basename(packTwConfig)} must set \`content\` to an array of globs or to { files: [...] }, so that fe.bundleUi can add @abuddy/ui's files to it; got ${JSON.stringify(config.content)}`,
         );
       }
-      twConfig = { ...config, content: { ...content, files: [...content.files, ...uiContent] } };
+      // The pack's own presets stay first, so it can still override the theme it inherits
+      const presets = Array.isArray((config as { presets?: unknown[] }).presets) ? (config as { presets: unknown[] }).presets : [];
+      twConfig = {
+        ...config,
+        content: { ...content, files: [...content.files, ...uiContent] },
+        ...(uiPresets.length > 0 && { presets: [...uiPresets, ...presets] }),
+      };
     }
   }
   return [tailwindcss(twConfig), autoprefixer()];

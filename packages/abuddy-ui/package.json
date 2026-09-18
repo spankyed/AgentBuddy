@@ -353,6 +353,11 @@
       "types": "./dist/layout/panel-resizer.d.ts",
       "default": "./dist/layout/panel-resizer.js"
     },
+    "./tailwind-preset": {
+      "@abuddy/source": "./src/tailwind-preset.ts",
+      "types": "./dist/tailwind-preset.d.ts",
+      "default": "./dist/tailwind-preset.js"
+    },
     "./utils/json-detection": {
       "@abuddy/source": "./src/utils/json-detection.ts",
       "types": "./dist/utils/json-detection.d.ts",
