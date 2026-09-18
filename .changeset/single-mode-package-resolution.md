@@ -1,10 +1,10 @@
 ---
-'@abuddy/testing': major
-'@abuddy/sdk': major
-'@abuddy/cli': major
+'@abuddy/testing': minor
+'@abuddy/sdk': minor
+'@abuddy/cli': minor
 ---
 
-Packs resolve one layout: the `@abuddy` packages' published `dist`. Source-vs-dist detection is gone, with the exports and the environment variable that drove it.
+Packs resolve one layout: the `@abuddy` packages' published `dist`. Source-vs-dist detection is gone, with the exports and the environment variable that drove it. (`@abuddy/ears` and `@abuddy/ui` release at the same version, so they move with these three.)
 
 **`@abuddy/testing/vitest` no longer exports `sourceConditions`.** A `vitest.config.ts` scaffolded by an older `abuddy init` fails at config load with:
 
@@ -32,4 +32,6 @@ Do the same in a `tsconfig.json` that sets `"customConditions": ["@abuddy/source
 
 **`@abuddy/sdk/build/source-conditions` is removed**, and `sourceConditions` with it. `ABUDDY_PACKAGES=source|dist` is no longer read anywhere; unset it.
 
-**`@abuddy/sdk/testing` gained `startFeTestRuntime`/`stopFeTestRuntime`**, which bind a frontend host for a test file. `FeTestRuntimeOptions` references `vue` and `@tiptap/*` types, so a pack whose unit tests import `@abuddy/sdk/testing` and type-check with `skipLibCheck: false` needs those packages installed — the pack frontend template already has them.
+**`@abuddy/testing`'s three entries resolve their built bundle on every condition**, so a checkout's copy is that bundle too. `abuddy test` and `abuddy dev` rebuild it when the checkout's sources moved; a run started directly (`npx vitest`, `npx playwright test`) fails naming `npm run packages:ensure` rather than testing the previous build silently.
+
+**`@abuddy/sdk/testing` gained `startFeTestRuntime`/`stopFeTestRuntime`**, which bind a frontend host for a test file. Its `FeTestRuntimeOptions` references `vue` and `@tiptap/*` types, which the scaffolded `tsconfig.json` never sees because it sets `skipLibCheck: true`. A pack that turns that off needs `vue` (a required peer of `@abuddy/sdk`) installed, and `@tiptap/vue-3` and `@tiptap/pm` (optional peers) to check the tiptap members.

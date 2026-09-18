@@ -42,4 +42,13 @@ describe('the checkout a pack\'s @abuddy packages come from', () => {
   it('is nothing when the pack has no @abuddy/sdk at all', () => {
     expect(checkoutFor(pack('none'))).toBeUndefined();
   });
+
+  // Asking only the SDK would miss this: the linked package's dist is built on demand and would be used
+  // stale, with nothing saying so
+  it('is the checkout when any one package is linked to it, not only @abuddy/sdk', () => {
+    const dir = pack('installed');
+    const modules = path.join(dir, 'node_modules', '@abuddy');
+    fs.symlinkSync(path.join(REPO_ROOT, 'packages', 'abuddy-ui'), path.join(modules, 'ui'), 'dir');
+    expect(checkoutFor(dir)).toBe(REPO_ROOT);
+  });
 });

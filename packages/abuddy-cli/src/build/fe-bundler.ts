@@ -59,6 +59,13 @@ function bundlesUi(packDir: string): boolean {
  * one of them unstyled, with no error. An unresolvable package and a package whose build is missing are
  * the same fault to the pack author: what they get is an unstyled app.
  */
+/** Whether any file under `dir`, at any depth, has this extension */
+function hasFile(dir: string, ext: string): boolean {
+  return fs.readdirSync(dir, { withFileTypes: true }).some((entry) => (entry.isDirectory()
+    ? hasFile(path.join(dir, entry.name), ext)
+    : entry.name.endsWith(ext)));
+}
+
 function uiTailwindContent(packDir: string): string[] {
   let uiDir: string;
   try {
@@ -69,12 +76,15 @@ function uiTailwindContent(packDir: string): string[] {
     );
   }
   const built = path.join(uiDir, 'dist');
-  if (!fs.existsSync(built) || fs.readdirSync(built).length === 0) {
+  const content = path.join(built, '**/*.js');
+  // Tailwind reads class names out of the built modules and silently generates nothing when it finds no
+  // file to read — so check for what the glob actually matches, not merely that the directory is non-empty
+  if (!fs.existsSync(built) || !hasFile(built, '.js')) {
     throw new Error(
-      `This pack sets fe.bundleUi, but @abuddy/ui has no build at ${built}, so Tailwind would generate none of its components' classes. Build the packages first: npm run packages:ensure`,
+      `This pack sets fe.bundleUi, but @abuddy/ui has no built modules at ${content}, so Tailwind would generate none of its components' classes. Build the packages first: npm run packages:ensure`,
     );
   }
-  return [path.join(built, '**/*.js')];
+  return [content];
 }
 
 export function packExternalsPlugin(packDir: string): VitePlugin {
