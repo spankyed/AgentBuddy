@@ -29,7 +29,7 @@ export function generateLabelWithCount(baseLabel: string, entityType: EARS.Entit
   return installedEngine().generateLabelWithCount(baseLabel, entityType);
 }
 
-export function filterSystemFields<T extends Record<string, any>>(
+export function filterSystemFields<T extends object>(
   updates: T,
   additionalExcludes: string[] = []
 ): Partial<T> {
@@ -37,7 +37,7 @@ export function filterSystemFields<T extends Record<string, any>>(
   const filtered: Partial<T> = {};
   Object.entries(updates).forEach(([key, value]) => {
     if (!systemFields.includes(key) && value !== undefined) {
-      filtered[key as keyof T] = value;
+      filtered[key as keyof T] = value as T[keyof T];
     }
   });
   return filtered;

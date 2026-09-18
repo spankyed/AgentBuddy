@@ -378,7 +378,7 @@ E
 } & Record<string, unknown> : Record<string, unknown>;
 
 // @public (undocumented)
-export function filterSystemFields<T extends Record<string, any>>(updates: T, additionalExcludes?: string[]): Partial<T>;
+export function filterSystemFields<T extends object>(updates: T, additionalExcludes?: string[]): Partial<T>;
 
 // @public
 export function findRelations(match?: RelationMatch): RelationRow[];

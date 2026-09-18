@@ -120,6 +120,14 @@ describe('Type inference — typed EARS helpers', () => {
     type Entity = { label: string; status: string; entityType: string };
     expectTypeOf(filterSystemFields<Entity>).returns.toEqualTypeOf<Partial<Entity>>();
   });
+
+  it('filterSystemFields takes an interface, as a pack declares its entities', () => {
+    // A `Record<string, …>` constraint would reject this: an interface has no implicit index
+    // signature, while the object-literal alias above has one
+    interface TerminalEntity { id: string; title: string; pid: number }
+    const terminal = {} as TerminalEntity;
+    expectTypeOf(filterSystemFields(terminal)).toEqualTypeOf<Partial<TerminalEntity>>();
+  });
 });
 
 describe('Type inference — Logger and utilities', () => {

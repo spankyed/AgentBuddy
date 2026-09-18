@@ -11,8 +11,10 @@ export type SystemEvents =
   | { type: 'PACK_CHANGED'; packId: string }
 
 /** Add `pluginId` literal to every member of an outgoing event union. */
+// `E extends unknown` is the distribution idiom (`extends any` would do the same, but the published
+// types carry no `any`: tests/build/published-sdk-any.spec.ts in @abuddy/cli)
 type WithPlugin<Id extends string, E extends { type: string }> =
-  E extends any ? Simplify<E & { pluginId: Id }> : never;
+  E extends unknown ? Simplify<E & { pluginId: Id }> : never;
 
 /** The definition object returned by `defineSystem()`. */
 export interface SystemSpec<
