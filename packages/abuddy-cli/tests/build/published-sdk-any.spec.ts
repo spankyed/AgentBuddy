@@ -1,4 +1,5 @@
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -147,4 +148,75 @@ describe.skipIf(!PACKAGES_BUILT)('published pack-facing packages', () => {
       expect(exportsWithAny(name, path.join(consumer!, 'node_modules', ...name.split('/')), roots)).toEqual([]);
     }, 120_000);
   }
+});
+
+/**
+ * The detector proved against declarations that leak on purpose. Without these the suite asserts only
+ * that today's packages are clean, so a walk that quietly stopped following `this` parameters,
+ * conditional branches or namespace members would keep passing — green and blind, which is the failure
+ * this check exists to prevent in the first place.
+ */
+describe('the any detector itself', () => {
+  const fixtures: string[] = [];
+  afterAll(() => {
+    for (const dir of fixtures.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  /** A package whose single entry declares `source`, scanned as first-party */
+  function scan(source: string): string[] {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'any-detector-'));
+    fixtures.push(dir);
+    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({
+      name: '@fixture/leaky', version: '0.0.0', exports: { '.': { types: './index.d.ts', default: './index.js' } },
+    }));
+    fs.writeFileSync(path.join(dir, 'index.d.ts'), source);
+    return exportsWithAny('@fixture/leaky', dir, [fs.realpathSync(dir)]);
+  }
+
+  it.each([
+    ['a type-parameter default', 'export declare function f<T = any>(x: T): void;'],
+    ['a type-parameter constraint', 'export declare function f<T extends { leak: any }>(x: T): void;'],
+    ['a this parameter', 'export declare function f(this: any, x: number): void;'],
+    ['a return type', 'export declare function f(): any;'],
+    ['a generic conditional branch', 'export type f<T> = T extends string ? any : number;'],
+    ['a return type', 'export declare function f(): any;'],
+    ['a public member', 'export interface f { leak: any }'],
+    ['a type argument', 'export declare const f: Array<any>;'],
+    ['an index signature', 'export interface f { [key: string]: any }'],
+  ])('catches %s', (_form, source) => {
+    expect(scan(source)).toEqual(['. f']);
+  });
+
+  it('reports nothing for declarations that expose no any', () => {
+    expect(scan([
+      'export declare function fn<T extends { ok: string } = { ok: string }>(this: void, x: T): T;',
+      'export interface Shape { value: unknown; nested: { list: readonly string[] } }',
+      'export declare namespace NS { type Alias = string }',
+      'export type Cond<T> = T extends string ? number : boolean;',
+    ].join('\n'))).toEqual([]);
+  });
+
+  // The namespace case is reported by the member that leaks, not by the namespace
+  it('catches a type-only namespace member, naming the member', () => {
+    expect(scan('export declare namespace f { type Leak = any; }')).toEqual(['. f.Leak']);
+  });
+
+  it('leaves a third-party type alone, since a library\'s any is its own business', () => {
+    // The dependency sits beside the package, not inside it: a node_modules *under* the scanned root
+    // is still under it, and first-party is decided by path prefix
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'any-detector-third-'));
+    fixtures.push(root);
+    const other = path.join(root, 'node_modules', 'other');
+    fs.mkdirSync(other, { recursive: true });
+    fs.writeFileSync(path.join(other, 'package.json'), JSON.stringify({ name: 'other', version: '0.0.0', types: './index.d.ts' }));
+    fs.writeFileSync(path.join(other, 'index.d.ts'), 'export interface Theirs { leak: any }\n');
+
+    const pkg = path.join(root, 'pkg');
+    fs.mkdirSync(pkg, { recursive: true });
+    fs.writeFileSync(path.join(pkg, 'package.json'), JSON.stringify({
+      name: '@fixture/leaky', version: '0.0.0', exports: { '.': { types: './index.d.ts', default: './index.js' } },
+    }));
+    fs.writeFileSync(path.join(pkg, 'index.d.ts'), "import type { Theirs } from 'other';\nexport declare const f: Theirs;\n");
+    expect(exportsWithAny('@fixture/leaky', pkg, [fs.realpathSync(pkg)])).toEqual([]);
+  });
 });
