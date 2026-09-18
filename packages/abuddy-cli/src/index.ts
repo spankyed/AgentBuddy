@@ -39,7 +39,7 @@ const COMMANDS: Record<string, () => Promise<(args: string[]) => Promise<void>>>
   'generate':          async () => (await import('./commands/generate')).generate,
   'generate-entries':  async () => (await import('./commands/generate-entries')).generateEntries,
   'fetch-deps':        async () => (await import('./commands/fetch-deps')).fetchDeps,
-  'build':      async () => (await import('./commands/build')).build,
+  'build':      async () => (await import('./commands/build')).buildCommand,
   'pack':       async () => (await import('./commands/pack')).pack,
   'release':    async () => (await import('./commands/release')).release,
   'validate':   async () => (await import('./commands/validate')).validate,

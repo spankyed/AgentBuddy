@@ -11,6 +11,7 @@ import {
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type SeedDependency,
 } from '@abuddy/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
+import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
 import { bundlePackRuntime, bundlePackSeedCompilers, bundlePackSeedRuntime, bundlePackStepBuild, SEED_RUNTIME_FILE } from '../build/be-bundler';
 import { bundleDslDefs, DEFS_DIR } from '../build/dsl-defs';
 import { bundlePackTypes } from '../build/types-bundler';
@@ -63,6 +64,18 @@ export function clearBuildOutput(outputDir: string, { builtIn }: { builtIn: bool
   const owned = builtIn ? [BUNDLE_PATHS.buildDir, BUNDLE_PATHS.typesDir, DEFS_DIR, BUILT_IN_SNAPSHOT] : ['.'];
   for (const entry of owned) fs.rmSync(path.join(outputDir, entry), { recursive: true, force: true });
   if (builtIn) clearCompiledSeeds(outputDir);
+}
+
+/**
+ * `abuddy build` as the user runs it. A pack compiles against the @abuddy packages' dist, and when that
+ * dist belongs to a checkout it is built on demand, so the command brings it up to date first — as
+ * `abuddy test` and `abuddy dev` do. It sits here rather than in `build()` because `abuddy dev` calls
+ * that on every file change, and the freshness check reads every source of all five packages: once per
+ * command is right, once per keystroke is not.
+ */
+export async function buildCommand(args: string[]): Promise<void> {
+  ensureCheckoutPackages(findPackRoot(process.cwd()));
+  await build(args);
 }
 
 export async function build(args: string[]) {

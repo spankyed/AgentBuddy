@@ -42,7 +42,37 @@ describe('the checkout a pack\'s @abuddy packages come from', () => {
   it('is nothing when the pack has no @abuddy/sdk at all', () => {
     expect(checkoutFor(pack('none'))).toBeUndefined();
   });
+});
 
+/**
+ * Which entry points bring a checkout's packages up to date. `abuddy dev` rebuilds the pack on every
+ * file change through `build()`, and the freshness check reads every source of all five packages — so
+ * the check belongs to the command a user runs, not to the function the watch loop calls.
+ */
+describe('the commands that refresh a checkout before loading its packages', () => {
+  const source = (file: string) => fs.readFileSync(path.join(import.meta.dirname, '..', '..', 'src', file), 'utf-8');
+
+  it.each(['commands/test.ts', 'commands/dev.ts', 'commands/build.ts'])('%s asks the checkout to build', (file) => {
+    expect(source(file)).toContain('ensureCheckoutPackages(');
+  });
+
+  it('asks once per abuddy build, not once per rebuild in abuddy dev', () => {
+    const build = source('commands/build.ts');
+    // buildCommand is what the CLI dispatches; build() is what dev's watch loop calls
+    const command = build.indexOf('export async function buildCommand');
+    const reusable = build.indexOf('export async function build(');
+    expect(command).toBeGreaterThan(-1);
+    expect(reusable).toBeGreaterThan(command);
+    expect(build.slice(command, reusable)).toContain('ensureCheckoutPackages(');
+    expect(build.slice(reusable)).not.toContain('ensureCheckoutPackages(');
+  });
+
+  it('dispatches abuddy build to the command that refreshes, not to the bare build', () => {
+    expect(source('index.ts')).toContain("'build':      async () => (await import('./commands/build')).buildCommand,");
+  });
+});
+
+describe('the checkout a pack\'s @abuddy packages come from', () => {
   // Asking only the SDK would miss this: the linked package's dist is built on demand and would be used
   // stale, with nothing saying so
   it('is the checkout when any one package is linked to it, not only @abuddy/sdk', () => {

@@ -48,6 +48,36 @@ export default defineConfig({
 
 The run's dir is named `<prefix><pid>-XXXXXX`; `isolatedDataDir` first removes dirs with its prefix whose process is gone, left by runs that crashed before their teardown. The per-worker split matters when spec files run in parallel: without it, a spec resetting the media store deletes another worker's files mid-test. The entry uses only Node built-ins (`src/vitest.ts`, `vitest-worker.ts`, `vitest-teardown.ts`), so it loads without the `@abuddy/source` condition. The bundle ships the three as separate entries, since vitest loads the worker and teardown modules by path. The global setup also `provide`s the vitest project's root (`PROJECT_ROOT_KEY`), which the harness `inject`s to find the pack. A pack's config sets no `resolve.conditions`: a pack resolves the `@abuddy` packages' published `dist` whether they came from the registry or a checkout link, so there is nothing to select, and `check:specifiers` fails a pack config that declares the `@abuddy/source` condition. This is the config `abuddy init` scaffolds (`abuddy-cli/src/commands/init.ts`). default-setup's `vitest.config.ts` uses `isolatedDataDir` and is a pack config too: it also declares no condition, and `npm run typecheck:pack` and `npm run test:external-pack` run `packages:ensure` first so the `dist` it reads is current.
 
+## Keeping a checkout's packages current
+
+A pack loads the `@abuddy` packages' built `dist`, and in a checkout that `dist` is built on demand, so
+something has to bring it up to date before a pack's code compiles or runs against it. One rule does
+that, `@abuddy/host/build/packages-built` (the fingerprint-and-stamp freshness check), reached through
+several entry points. They are not competing mechanisms; they are two kinds, and each covers a way in
+that the others don't.
+
+**Fixers** run before the process starts, so they rebuild and carry on:
+
+| Way in | What refreshes it |
+|---|---|
+| a repo command (`npm test`, `npm run build`, `npm run typecheck`, `compile`, `typecheck:pack`, `test:external-pack`) | `npm run packages:ensure &&` in the script |
+| `npm test -w @abuddy/cli`, `npm test -w @app/default-setup` run directly | that workspace's `pretest` |
+| `abuddy build`, `abuddy test`, `abuddy dev` from any directory | `ensureCheckoutPackages` (`abuddy-cli/src/build/checkout-packages.ts`) |
+
+**A checker** runs inside a process that has already started, where the modules are loaded and rebuilding
+mid-run would be wrong, so all it can do is fail:
+
+| Way in | What catches it |
+|---|---|
+| a pack author's bare `npx vitest` or `npx playwright test`, with no CLI in front of it | `assertCheckoutPackagesFresh` (`src/checkout-freshness.ts`), from `setupPackTests` and the `electronApp` fixture |
+
+Two things follow. A new entry point that loads the packages needs a fixer in front of it, not another
+copy of the rule. And a fixer belongs to the command a user runs, not to a function a watch loop calls:
+`abuddy dev` rebuilds the pack on every file change through `build()`, and the check reads every source
+of all five packages, so `abuddy build` refreshes in `buildCommand` and `build()` stays clean
+(`abuddy-cli/tests/build/checkout-packages.spec.ts`). For an installed pack there is no checkout above
+it, every one of these is a no-op, and what npm delivered is what there is.
+
 ## Unit test harness (`@abuddy/testing/harness`)
 
 A pack's unit tests run its code without the app: seeds, repositories and seed hooks against an in-memory EARS, and with `registration` its systems, services, steps and flows, all including its dependencies' behaviour. The registered packs are the test file's own: `harness.ts` creates a registry (`createPackRegistry()` from `@abuddy/host/packs`) per test file, registers the pack and its dependencies in it with no guard against an earlier registration, binds it for the SDK's lookups and hands it to `startApp` (`setAppPacks`). `abuddy init` scaffolds the setup (`vitest.config.ts` with `isolatedDataDir`, `tests/setup.ts` passing `seedRuntime` and `registration`, an example seed test); `abuddy add feature` scaffolds a system test, adding `tests/setup.ts` (and `vitest.config.ts` when vitest has no config, devDependencies) to a pack without it. Published declarations import only published packages (`OutgoingSystemEvents` from `@abuddy/sdk/events`, never `@abuddy/host`). Pack-facing guide: `docs/public-facing/testing.md`.
