@@ -8,6 +8,7 @@ import type { OutgoingSystemEvents } from '@abuddy/sdk/events';
 import { createAppBus } from '../../src/bus/index.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { createPackRegistry } from '../../src/packs/pack-registration.ts';
+import { PACKS_PLUGIN_EVENT_TYPES } from '../../src/packs/runtime/packs-system.ts';
 
 const registry = createPackRegistry();
 startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: registry });
@@ -38,8 +39,16 @@ beforeEach(async () => {
   registry.registerPack({
     id: 'memo-pack',
     systems: [{ id: 'memo-pack.memos', machine, events: new Set(['PING']) }],
+    features: [{ id: 'memos', hasSystem: true, hasPlugin: true, services: [] }],
     receivedEventTypes: { memos: ['MEMOS_CONNECTED', 'MEMO_ADDED'] },
   });
+  // A pack from before receivedEventTypes existed: it still names its plugins, through `features`
+  registry.registerPack({
+    id: 'older-pack',
+    systems: [{ id: 'older-pack.legacy', machine, events: new Set(['PING']) }],
+    features: [{ id: 'legacy', hasSystem: true, hasPlugin: true, services: [] }],
+  });
+  registry.registerHostPlugin('packs', PACKS_PLUGIN_EVENT_TYPES);
   bus = createActor(createAppBus(registry), { systemId: 'bus' }).start();
   await connect();
 });
@@ -48,6 +57,7 @@ afterEach(() => {
   bus.stop();
   stopOutgoing();
   registry.unregisterPack('memo-pack');
+  registry.unregisterPack('older-pack');
   takeSystemErrors();
 });
 
@@ -86,5 +96,32 @@ describe('an event a system sends to a plugin', () => {
     await send({ type: 'APPLICATION_EXPLODE', pluginId: 'application' });
     expect(delivered().map((e) => e.type)).not.toContain('APPLICATION_EXPLODE');
     expect(takeSystemErrors()[0]?.message).toContain('APPLICATION_EXPLODE');
+  });
+
+  // The packs view is driven entirely by a host system's sends. Checking sends without declaring the
+  // host's own plugins dropped every one of them, and the view stopped updating.
+  it("delivers the packs system's sends to the packs plugin", async () => {
+    await send({ type: 'PACKS_LIST', pluginId: 'packs', packs: [] });
+    expect(delivered().map((e) => e.type)).toEqual(['PACKS_LIST']);
+    expect(takeSystemErrors()).toEqual([]);
+  });
+});
+
+/**
+ * A pack built before `receivedEventTypes` existed declares none, and the app can't check its sends
+ * against anything. Dropping them would leave the pack installed and inert, and its user can't rebuild
+ * it — so its sends pass, and only packs that declare are checked.
+ */
+describe('a pack that declared no event types', () => {
+  it('has its sends delivered rather than dropped', async () => {
+    await send({ type: 'ANYTHING_AT_ALL', pluginId: 'legacy' });
+    expect(delivered().map((e) => e.type)).toEqual(['ANYTHING_AT_ALL']);
+    expect(takeSystemErrors()).toEqual([]);
+  });
+
+  it('does not make an unknown plugin id pass too', async () => {
+    await send({ type: 'ANYTHING_AT_ALL', pluginId: 'not-a-plugin' });
+    expect(delivered()).toEqual([]);
+    expect(takeSystemErrors()[0]?.message).toContain('no registered pack declares');
   });
 });

@@ -45,9 +45,103 @@ describe('getPluginEventValidationMap', () => {
     expect(registry.getPluginEventValidationMap().has('memos')).toBe(false);
   });
 
-  it('is empty for a pack that declares none, so a send to its plugin is rejected rather than waved through', () => {
+  // A pack built before receivedEventTypes existed still says which plugins are its own, through the
+  // `features` codegen has always emitted. Its plugins map to null: known, but nothing to check against.
+  it('maps a plugin of a pack that declared no event types to null, not to absent', () => {
+    registry.registerPack({
+      id: 'older-pack',
+      systems: [{ id: 'older-pack.notes', machine, events: new Set(['PING']) }],
+      features: [{ id: 'notes', hasSystem: true, hasPlugin: true, services: [] }],
+    });
+    expect(registry.getPluginEventValidationMap().has('notes')).toBe(true);
+    expect(registry.getPluginEventValidationMap().get('notes')).toBeNull();
+    registry.unregisterPack('older-pack');
+  });
+
+  it('leaves a plugin no registered pack owns absent, so a wrong id is still caught', () => {
     registry.registerPack({ id: 'silent-pack', systems: [] });
     expect(registry.getPluginEventValidationMap().has('silent')).toBe(false);
     registry.unregisterPack('silent-pack');
+  });
+
+  // An owned plugin its pack's systems send nothing to gets an empty set, not null: the pack declared,
+  // so a send there is a mistake, not an unknown.
+  it('gives an owned plugin with no declared events an empty set', () => {
+    registry.registerPack({
+      id: 'quiet-pack',
+      systems: [],
+      features: [{ id: 'quiet', hasSystem: false, hasPlugin: true, services: [] }],
+      receivedEventTypes: {},
+    });
+    expect(registry.getPluginEventValidationMap().get('quiet')).toEqual(new Set());
+    registry.unregisterPack('quiet-pack');
+  });
+});
+
+// The map used to union every pack's receivedEventTypes into one set per plugin id, so any pack could
+// add event types to any plugin — the host's included — whatever its own plugins were.
+describe('a pack cannot widen a plugin it does not own', () => {
+  const plugin = (id: string) => ({ id, hasSystem: false, hasPlugin: true, services: [] });
+
+  // A pack owns what its features name and what it declares events for, so a hand-written registration
+  // that gives only one of the two still has its plugins known
+  it('owns the plugins its features name and the ones it declares events for', () => {
+    const registry = createPackRegistry();
+    registry.registerPack({
+      id: 'both-pack',
+      systems: [],
+      features: [plugin('fromFeatures')],
+      receivedEventTypes: { fromEvents: ['AN_EVENT'] },
+    });
+    const map = registry.getPluginEventValidationMap();
+    expect(map.get('fromEvents')).toEqual(new Set(['AN_EVENT']));
+    expect(map.get('fromFeatures')).toEqual(new Set());
+  });
+
+  it("cannot add event types to the host's plugin by owning its id", () => {
+    const registry = createPackRegistry();
+    const host = registry.getPluginEventValidationMap().get('application');
+    registry.registerPack({
+      id: 'impostor-pack',
+      systems: [],
+      features: [plugin('application')],
+      receivedEventTypes: { application: ['ANYTHING'] },
+    });
+    expect(registry.getPluginEventValidationMap().get('application')).toEqual(host);
+    expect(registry.getPluginEventValidationMap().get('application')?.has('ANYTHING')).toBe(false);
+  });
+
+  // A pack feature may share an id with another pack's plugin, which the app tolerates (default-setup's
+  // settings defaults resolve it in the app's favour). The first owner keeps the id here, so the second
+  // cannot widen what the first declared.
+  it('leaves a shadowed plugin with the first owner\'s event types', () => {
+    const registry = createPackRegistry();
+    registry.registerPack({
+      id: 'first-pack', systems: [], features: [plugin('memos')], receivedEventTypes: { memos: ['MEMO_ADDED'] },
+    });
+    registry.registerPack({
+      id: 'second-pack', systems: [], features: [plugin('memos')], receivedEventTypes: { memos: ['HIJACKED'] },
+    });
+    expect(registry.getPluginEventValidationMap().get('memos')).toEqual(new Set(['MEMO_ADDED']));
+  });
+});
+
+describe('a host plugin', () => {
+  it('is checked with the event types the host registers for it', () => {
+    const registry = createPackRegistry();
+    registry.registerHostPlugin('packs', ['PACKS_LIST', 'PACK_ACTIVATED']);
+    expect(registry.getPluginEventValidationMap().get('packs')).toEqual(new Set(['PACKS_LIST', 'PACK_ACTIVATED']));
+  });
+
+  // Whichever order they register in, the host's declaration is the one that counts
+  it("wins over a pack that registered the id first", () => {
+    const registry = createPackRegistry();
+    registry.registerPack({
+      id: 'owner-pack', systems: [],
+      features: [{ id: 'packs', hasSystem: false, hasPlugin: true, services: [] }],
+      receivedEventTypes: { packs: ['NOT_THE_HOSTS'] },
+    });
+    registry.registerHostPlugin('packs', ['PACKS_LIST']);
+    expect(registry.getPluginEventValidationMap().get('packs')).toEqual(new Set(['PACKS_LIST']));
   });
 });

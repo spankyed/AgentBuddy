@@ -72,7 +72,7 @@ beforeEach(() => {
 
 afterEach(() => {
   bus.stop();
-  for (const id of ['first-pack', 'second-pack', 'external-pack']) {
+  for (const id of ['first-pack', 'second-pack', 'external-pack', 'notes-pack']) {
     try { unregisterPack(id); } catch { /* not registered */ }
     removeLoadedPack(id);
   }
@@ -210,6 +210,17 @@ describe('CLIENT_CONNECTED on the bus', () => {
 
 // sendToPlugin goes through the bus, as a system's emit does: nothing reaches a client before one connects
 describe('sendToPlugin on the bus', () => {
+  // The plugin's own pack declares what it receives, as in the app: a send to a plugin no pack owns is
+  // dropped, which is the check's job and not what this test is about
+  beforeEach(() => {
+    registerPack({
+      id: 'notes-pack',
+      systems: [],
+      features: [{ id: 'notes', hasSystem: false, hasPlugin: true, services: [] }],
+      receivedEventTypes: { notes: ['BEFORE_CONNECT', 'AFTER_CONNECT'] },
+    });
+  });
+
   it('reaches clients only once one has connected', async () => {
     const outgoing: Array<{ type: string }> = [];
     const stop = rootEvents.onOutgoing((event) => { outgoing.push(event); });

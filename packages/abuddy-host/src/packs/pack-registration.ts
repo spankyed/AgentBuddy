@@ -90,12 +90,30 @@ export interface PackInfo {
   updateCheckError?: string;
 }
 
+/**
+ * What a plugin's sends are checked against: the event types it receives, or `null` for a plugin whose
+ * pack declared none.
+ *
+ * `null` is a pack built before `receivedEventTypes` existed. Its plugin ids are still known, because
+ * codegen has always emitted `features`, so the app can tell "this pack declared nothing" from "nobody
+ * owns this id" and pass the first through instead of dropping every event the pack sends. Rejecting
+ * such a pack instead would be a worse trade: at runtime the user can't rebuild it, so the pack would
+ * simply be lost.
+ */
+export type PluginEventTypes = Set<string> | null;
+
 /** The registered packs, and the app's host systems and shutdown hooks */
 export interface PackRegistry extends PackRegistryView {
   /** Registers a pack; throws on a collision, registering none of it */
   registerPack(pack: PackRegistration): void;
   unregisterPack(packId: string): void;
   registerHostSystem(id: string, machine: AnyStateMachine, events: Set<string>): void;
+  /**
+   * Declares a plugin the host owns and the event types it receives, so the host's own systems are
+   * checked like a pack's. Separate from `HOST_PLUGIN_EVENT_TYPES`, which is the subset a pack may
+   * name in `sendsTo`: a plugin registered here is the host's to send to and no pack's.
+   */
+  registerHostPlugin(pluginId: string, types: Iterable<string>): void;
   /** Host systems and every registered pack's, by id */
   getRegisteredSystems(): Map<string, AnyStateMachine>;
   /** The bus ids of a registered pack's systems (external packs' are `<packId>.<featureId>`) */
@@ -109,8 +127,12 @@ export interface PackRegistry extends PackRegistryView {
    * Each plugin's id → the event types it receives, the outgoing counterpart of `getEventValidationMap`.
    * A pack declares its own plugins' (`PackRegistration.receivedEventTypes`, generated from its systems'
    * outgoing unions) and the host declares its own. Cached on the same terms as the incoming map.
+   *
+   * A plugin absent from the map is one no registered pack owns. `null` is different: the plugin's pack
+   * owns it but declared no event types, which is a pack built before they existed — there is nothing to
+   * check it against, so its sends pass. See `PluginEventTypes`.
    */
-  getPluginEventValidationMap(): Map<string, Set<string>>;
+  getPluginEventValidationMap(): Map<string, PluginEventTypes>;
   /** The SDK's entity types, the host's and the registered packs' */
   getRegisteredEntityTypes(): ReadonlySet<string>;
   getRegisteredEARSPolicy(): { excludedEntityTypes: string[] };
@@ -159,6 +181,7 @@ export function appPartitionPolicy(packExcluded: Iterable<string>): PartitionPol
 export function createPackRegistry(): PackRegistry {
   const registrations = new Map<string, PackRegistration>();
   const hostSystems = new Map<string, { machine: AnyStateMachine; events: Set<string> }>();
+  const hostPlugins = new Map<string, Set<string>>();
   const designations = createDesignationStore();
   const steps = createStepStore();
   const artifacts = createDefinitionStore<ArtifactDefinition>();
@@ -172,7 +195,7 @@ export function createPackRegistry(): PackRegistry {
   let entityTypeCache: Set<string> | null = null;
   let servicesCache: Record<string, unknown> | null = null;
   let eventValidationMap: Map<string, Set<string>> | null = null;
-  let pluginEventValidationMap: Map<string, Set<string>> | null = null;
+  let pluginEventValidationMap: Map<string, PluginEventTypes> | null = null;
   let policyCache: PartitionPolicy | null = null;
 
   /** Drops what's derived from the registrations */
@@ -326,16 +349,49 @@ export function createPackRegistry(): PackRegistry {
     return map;
   }
 
-  function buildPluginEventValidationMap(): Map<string, Set<string>> {
+  /**
+   * The plugins a pack owns: the ones it declares events for, and the ones its `features` name.
+   *
+   * `features` is what makes the second half matter. Codegen has always emitted it, and it predates
+   * `receivedEventTypes`, so a pack built before event declarations existed still says which plugins are
+   * its own — which is how the app tells "this pack declared nothing" from "nobody owns this id" instead
+   * of dropping every event such a pack sends. A hand-written registration may name only one of the two,
+   * so neither is required to be the complete record.
+   *
+   * Owning an id is not claiming one: the map below gives it to whoever had it first, the host included.
+   */
+  function ownedPluginIds(reg: PackRegistration): string[] {
+    const ids = new Set<string>(Object.keys(reg.receivedEventTypes ?? {}));
+    for (const feature of reg.features ?? []) if (feature.hasPlugin) ids.add(feature.id);
+    return [...ids];
+  }
+
+  /** Every plugin the host owns: those a pack may `sendsTo`, and those only the host sends to */
+  function hostPluginEventTypes(): Map<string, Set<string>> {
     const map = new Map<string, Set<string>>();
-    // The host's own plugins, pinned to HostPluginEvents by a compile-time check in @abuddy/sdk/events
-    for (const [pluginId, types] of Object.entries(HOST_PLUGIN_EVENT_TYPES)) {
-      map.set(pluginId, new Set<string>(types));
-    }
-    // A pack declares only its own plugins, so two packs never widen each other's
+    // Pinned to HostPluginEvents by a compile-time check in @abuddy/sdk/events
+    for (const [pluginId, types] of Object.entries(HOST_PLUGIN_EVENT_TYPES)) map.set(pluginId, new Set<string>(types));
+    for (const [pluginId, types] of hostPlugins) map.set(pluginId, new Set(types));
+    return map;
+  }
+
+  function buildPluginEventValidationMap(): Map<string, PluginEventTypes> {
+    const map = new Map<string, PluginEventTypes>(hostPluginEventTypes());
+    /**
+     * Each pack contributes only the plugins it owns, and never one already claimed — the host's are in
+     * first, then packs in registration order. The merge this replaced unioned every `receivedEventTypes`
+     * key into one set per plugin id, so any pack could add event types to any plugin, `application`
+     * included, whatever the comment above it claimed.
+     *
+     * A pack shadowing another's plugin id isn't refused, because a pack feature may share an id with
+     * another pack's plugin (default-setup's settings defaults resolve that in the app's favour). Here
+     * the first owner simply keeps the id, so shadowing can't widen what the owner declared.
+     */
     for (const reg of registrations.values()) {
-      for (const [pluginId, types] of Object.entries(reg.receivedEventTypes ?? {})) {
-        map.set(pluginId, new Set([...(map.get(pluginId) ?? []), ...types]));
+      const declared = reg.receivedEventTypes;
+      for (const pluginId of ownedPluginIds(reg)) {
+        if (map.has(pluginId)) continue;
+        map.set(pluginId, declared ? new Set(declared[pluginId] ?? []) : null);
       }
     }
     return map;
@@ -362,6 +418,11 @@ export function createPackRegistry(): PackRegistry {
       }
       hostSystems.set(id, { machine, events });
       eventValidationMap = null;
+    },
+
+    registerHostPlugin(pluginId, types) {
+      hostPlugins.set(pluginId, new Set(types));
+      pluginEventValidationMap = null;
     },
 
     getRegisteredSystems() {
