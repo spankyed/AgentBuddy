@@ -52,7 +52,11 @@ export class BareImports {
    * over the text does not, and reads the examples in doc comments as imports).
    */
   fromDeclaration(contents: string, importer: string): void {
-    for (const { fileName } of ts.preProcessFile(contents, true, true).importedFiles) {
+    const info = ts.preProcessFile(contents, true, true);
+    // `/// <reference types="x" />` pulls in x's declarations as surely as an import does, and a
+    // consumer without x in their tree fails the same way — so it counts as a dependency here.
+    // `lib` references name TypeScript's own libs, not packages, so they are not included.
+    for (const { fileName } of [...info.importedFiles, ...info.typeReferenceDirectives]) {
       if (fileName.startsWith('.') || fileName.startsWith('#')) continue;
       const name = packageName(fileName);
       if (!this.imports.has(name)) this.imports.set(name, new Set());
@@ -104,15 +108,36 @@ export const isDeclaration = (file: string): boolean => file.endsWith('.d.ts') |
  *
  * Only relative specifiers ending in `.ts` change. `.vue` is left alone: @abuddy/ui's declarations
  * import `./button.vue`, which resolves to the `button.d.vue.ts` beside it.
+ *
+ * The specifiers come from `ts.preProcessFile`, the scanner `fromDeclaration` uses, rather than a
+ * regex over the text. A regex matching `from '...'` and `import('...')` reaches neither a bare
+ * `import './x.ts';`, nor `declare module './x.ts'`, nor `import x = require('./x.ts')` — all of
+ * which appear in declarations — and it rewrites the `import './x.ts'` in a doc comment, which is
+ * not code. The scanner reports every form with its exact position and knows what a comment is.
  */
 export function rewriteDeclarationExtensions(outDir: string): number {
   let changed = 0;
   for (const file of walk(outDir).filter(isDeclaration)) {
     const before = fs.readFileSync(file, 'utf-8');
-    const after = before.replace(
-      /(\bfrom\s*|\bimport\s*\(\s*)(['"])(\.\.?\/[^'"]*)\.ts\2/g,
-      (_m, lead: string, quote: string, spec: string) => `${lead}${quote}${spec}.js${quote}`,
-    );
+    // A FileReference's `pos` is the opening quote and its `end` is `pos + fileName.length`, one short
+    // of the closing quote, so the text is located from `pos` and the name's length rather than `end`.
+    // Positions come in the scanner's order, not the file's, so rewrite from the end: an earlier edit
+    // would shift every position after it.
+    const relative = ts.preProcessFile(before, true, true).importedFiles
+      .filter(({ fileName }) => /^\.\.?\//.test(fileName) && fileName.endsWith('.ts'))
+      .sort((a, b) => b.pos - a.pos);
+    if (relative.length === 0) continue;
+    let after = before;
+    for (const { fileName, pos } of relative) {
+      const start = pos + 1;
+      const stop = start + fileName.length;
+      // Cheap insurance against a TypeScript release moving these: a mismatch means the offsets no
+      // longer mean what this assumes, and rewriting blind would corrupt every published declaration.
+      if (before.slice(start, stop) !== fileName) {
+        throw new Error(`${file}: expected "${fileName}" at ${start} but found "${before.slice(start, stop)}" — ts.preProcessFile's FileReference offsets have changed`);
+      }
+      after = after.slice(0, start) + `${fileName.slice(0, -'.ts'.length)}.js` + after.slice(stop);
+    }
     if (after !== before) {
       fs.writeFileSync(file, after);
       changed++;
