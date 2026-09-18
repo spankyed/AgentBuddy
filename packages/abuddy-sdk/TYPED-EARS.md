@@ -42,17 +42,10 @@ The engine's types moved to `@abuddy/ears` (`packages/abuddy-ears`); the SDK kee
 - Typed queries return ids tagged with their entity type (`ids()`, `first()`, `pick`'s `id`, a row's `id`).
 - A plain `EARS.EntityId` carries no tag and is accepted wherever a tagged id is, including `includes` and `Set.has`. Only an id tagged with a different entity type is rejected.
 - Link ids use `NoInferType`, so a result passed straight into a generic function keeps its shape.
-- **A hyphenated literal is structurally an id, so a misspelled entity name containing a dash takes the
-  id overload instead of failing the name check** (`qx('user-note')` compiles, matches nothing at
-  runtime). `EntityId<E>` is `` `${string}-${string}` `` with an *optional* `__entity` brand, and that one
-  property is both why a bare literal qualifies and why `E` infers from a real id — the hole and the
-  inference are the same thing. Narrowing the overload to check the literal's prefix was measured: it
-  breaks entity-type inference from a tagged id in ten places, because the literal must be captured at an
-  inference site while `E` must come from the brand, and a bare literal has no brand. The fix is to make
-  the brand **required**, so only an engine-returned id or an explicit cast is an id; every existing
-  `as EARS.EntityId` keeps working and plain strings need one. It is not done, because entity names here
-  are PascalCase without dashes, so no realistic misspelling reaches it — and this is change-controlled
-  ground, so it needs the checklist below rather than a drive-by.
+- **A hyphenated literal is structurally an id.** `qx('user-note')` compiles and matches nothing at
+  runtime, because `EntityId` is `` `${string}-${string}` `` and any dashed literal satisfies it. This is
+  known, it is not fixable without changing behaviour, and the measurements are in Incidents below —
+  read them before proposing a fix.
 
 **Writes.**
 - `tx` from `#generated/ears` checks declared fields' values when it knows the entity: seeded with a declared name or a tagged id.
@@ -75,6 +68,10 @@ The engine's types moved to `@abuddy/ears` (`packages/abuddy-ears`); the SDK kee
 
 ## Before changing any of these types
 
+0. **Check Incidents first.** Two of the things most often reported as bugs here — `qx('user-note')`
+   compiling, and `findAll<T>('Tpyo')` skipping the name check — have been investigated and measured. The
+   first has two failed fix attempts recorded with their blast radius; the second is the contract. Do not
+   re-derive them.
 1. **Treat it as a design change.** Get agreement on the new behavior first. If a call site doesn't fit the contract, change the call site instead:
    - an explicit shape
    - an `EntityName` constraint
@@ -97,4 +94,32 @@ The engine's types moved to `@abuddy/ears` (`packages/abuddy-ears`); the SDK kee
   - What happened: to make brain's trigger queries compile against the new `Node` union, the field parameters were rewritten as conditional and mapped types (`FieldArg`, `FieldsArg`, `PickedOf`). That added runtime field names and union-member fields to every field-keyed API.
   - Why tests missed it: everything compiled and every type test passed. But field completions disappeared from `pick`, `pickOne`, `linksPick`, `getAttr` and `findWithFields`, and typo errors became "not assignable to type 'never'".
   - Resolution: reverted, and the two queries use the untyped `untypedQx` (`@abuddy/ears`). The completions test in `facade-typing.spec.ts` now guards these positions.
+- **`qx('user-note')` compiles: the dash heuristic (investigated 2026-09-18, not fixed).**
+  - What it is: `EntityId<E>` is `` `${string}-${string}` `` with an *optional* `__entity` brand. `qx` and
+    `tx` take a name *or* an id, and the dash is the only thing telling those apart. So a misspelled
+    entity name containing a dash fails the name check and lands on the id overload.
+  - **Four things depend on that one shape**, which is why it looks fixable and isn't: the dash
+    discriminates name from id; the *optional* brand is what lets `E` infer from a tagged id; the
+    looseness is what lets real literal ids be written (`id === 'TNode-Root'`, `'Settings-app' as
+    EntityId<'Settings'>`); and a plain `string` is *already* rejected, which is why `as EARS.EntityId`
+    casts are everywhere. The hole and the ergonomics are the same property.
+  - **Attempt 1 — check the literal's prefix in the overload** (`Id & IdArg<N, Id>`, where `IdArg` maps a
+    literal prefix that isn't a declared name to `never`). Correct in isolation; **10 type errors** in the
+    repo, all legitimate calls. Cause: to check the literal you must capture it at an inference site, but
+    `E` must come from the brand, and the two cannot both infer from one argument — so `E` collapsed and
+    rows lost their shapes (`brain/be/repository/index.ts`, `brain/be/system.ts`).
+  - **Attempt 2 — make the id marker required** (`& { readonly __earsId: true }`, entity tag left
+    optional). Passes every documented property in isolation — `E` still infers, a plain id still goes
+    where a tagged one is expected, casts still work, `'user-note'` is rejected. **17 type errors** in the
+    repo: `id === 'TNode-Root'` comparisons (`database/be/repository/trace-query.ts`,
+    `database/fe/state.ts`), literal ids passed in `browser/be/repository/commands.ts`, and an array cast
+    in `abuddy-ears/tests/contract/persistence.spec.ts`. All correct code.
+  - **Conclusion: there is no type-level fix that leaves current behaviour unchanged.** Anything that
+    stops `'user-note'` being an id also stops `'TNode-Root'` being one.
+  - **The only design that gets both properties** is to stop overloading: a checked `qx(name)` and a
+    separate `qx.byId(id)` that accepts any string. Then ids need no casts, names are fully checked, and
+    the ambiguity cannot exist. That is an API change across every call site, not a type tweak — cost it
+    as one.
+  - Why it is tolerable meanwhile: entity names here are PascalCase with no dashes, so no realistic
+    misspelling of `Thread`, `TNode` or `Flow` reaches the id overload.
 - **No entity names in `qx('…')` (found 2026-09-14).** `qx`'s id overloads came before its name overloads, so editors offered no names there. Fixed by putting the name overloads first; the seed resolution matrix in `typed-query-builder.spec.ts` pins that nothing else changed.
