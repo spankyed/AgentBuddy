@@ -126,6 +126,47 @@ describe('a pack cannot widen a plugin it does not own', () => {
   });
 });
 
+/**
+ * Registering a pack's contributions is observable: settingsDefaults.register notifies its listeners,
+ * and default-setup's settings system reacts by sending to its plugin. A send reaches the bus while it
+ * is idle, so the bus checks it synchronously — inside registerPack. With the pack listed last, that
+ * send was checked against a registry that did not yet contain the pack sending it.
+ */
+describe('a pack registering', () => {
+  const plugin = (id: string) => ({ id, hasSystem: false, hasPlugin: true, services: [] });
+
+  it('is listed before its contributions are registered, so a listener sees its plugins', () => {
+    const registry = createPackRegistry();
+    let seen: Set<string> | null | undefined = 'unset' as never;
+    const stop = registry.onSettingsDefaultsChanged(() => {
+      seen = registry.getPluginEventValidationMap().get('memos');
+    });
+    registry.registerPack({
+      id: 'memo-pack',
+      systems: [],
+      features: [{ ...plugin('memos'), settings: { plugins: { memos: { sort: 'newest' } } } }],
+      receivedEventTypes: { memos: ['MEMO_ADDED'] },
+    });
+    stop();
+    expect(seen).toEqual(new Set(['MEMO_ADDED']));
+  });
+
+  // The rollback has to take it back out again, or a refused pack stays listed
+  it('is unlisted again when its contributions are refused', () => {
+    const registry = createPackRegistry();
+    // Two seeders for one key: refused partway through registering the contributions
+    expect(() => registry.registerPack({
+      id: 'clumsy-pack',
+      systems: [],
+      features: [plugin('memos')],
+      receivedEventTypes: { memos: ['MEMO_ADDED'] },
+      seeders: [{ key: 'notes' } as never, { key: 'notes' } as never],
+    })).toThrow('two seeders');
+    expect(registry.getPluginEventValidationMap().has('memos')).toBe(false);
+    expect(registry.getRegisteredPackSystemIds('clumsy-pack')).toEqual([]);
+  });
+});
+
 describe('a host plugin', () => {
   it('is checked with the event types the host registers for it', () => {
     const registry = createPackRegistry();

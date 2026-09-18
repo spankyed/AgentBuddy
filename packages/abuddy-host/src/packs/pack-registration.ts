@@ -268,6 +268,21 @@ export function createPackRegistry(): PackRegistry {
     const registeredArtifacts: string[] = [];
     const registeredBlocks: string[] = [];
 
+    /**
+     * The pack is listed before its contributions are registered, because registering them is
+     * observable: `settingsDefaults.register` notifies its listeners, the settings system reacts by
+     * sending `SETTINGS_UPDATED` to its plugin, and a send reaches the bus while it is idle, so the
+     * bus processes it synchronously — inside this call. Listed last, as it used to be, that send was
+     * checked against a registry that did not yet contain the pack sending it, and was dropped as
+     * belonging to no plugin. Reporting that drop logs, and a log event is itself a send to the logs
+     * plugin, so the same moment dropped that too.
+     *
+     * It reads as a reload bug because reload is where it shows: the listeners are already subscribed
+     * by then. It is not — it is any registration whose contributions wake a running system.
+     */
+    registrations.set(registration.id, registration);
+    changed();
+
     try {
       // Into the installed engine (the app's), before anything that may use them
       for (const [name, repo] of Object.entries(registration.repositories ?? {})) {
@@ -302,11 +317,13 @@ export function createPackRegistry(): PackRegistry {
       for (const type of registeredArtifacts) artifacts.unregister(type);
       for (const type of registeredBlocks) blocks.unregister(type);
       for (const name of registeredRepositories) unregisterRepository(name);
+      // Listed above, so the rollback takes it back out: a refused pack leaves nothing of itself behind
+      registrations.delete(registration.id);
+      changed();
       throw err;
     }
 
     designations.register(roles);
-    registrations.set(registration.id, registration);
     changed();
   }
 
