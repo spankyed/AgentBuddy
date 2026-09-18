@@ -17,6 +17,7 @@
   "scripts": {
     "build:package": "tsx ../../scripts/bundle-package.ts .",
     "typecheck": "tsc --noEmit",
+    "pretest": "tsx ../../scripts/ensure-packages-built.ts",
     "test": "vitest run"
   },
   "dependencies": {

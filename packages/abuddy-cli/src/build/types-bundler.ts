@@ -1,6 +1,5 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { sourceConditions } from '@abuddy/sdk/build';
 
 /** A package specifier (`vue`, `@abuddy/ears`), not a relative path or a tsconfig/imports alias */
 export function isPackageSpecifier(id: string): boolean {
@@ -53,7 +52,6 @@ export async function bundleDeclarations(
         tsconfig: options.compilerOptions || !fs.existsSync(tsconfig) ? undefined : tsconfig,
         compilerOptions: {
           // A pack linked to a checkout reads @abuddy/* declarations from source
-          customConditions: sourceConditions(packDir),
           allowImportingTsExtensions: true,
           skipLibCheck: true,
           ...options.compilerOptions,

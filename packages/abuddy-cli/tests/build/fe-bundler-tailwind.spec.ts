@@ -93,6 +93,46 @@ describe('pack FE Tailwind setup', () => {
     expect(result.error).toContain('fe.bundleUi');
   }, 60_000);
 
+  /** A bundleUi pack whose @abuddy/ui resolves but has no build: a checkout before packages:build */
+  function uiWithoutBuild(): string {
+    const packDir = makePack({ manifest: { fe: { bundleUi: true } }, linkNodeModules: false });
+    const modules = path.join(packDir, 'node_modules', '@abuddy');
+    fs.mkdirSync(path.join(modules, 'ui'), { recursive: true });
+    for (const entry of fs.readdirSync(path.join(REPO_ROOT, 'node_modules'))) {
+      if (entry === '@abuddy' || entry.startsWith('.')) continue;
+      fs.symlinkSync(path.join(REPO_ROOT, 'node_modules', entry), path.join(packDir, 'node_modules', entry), 'dir');
+    }
+    for (const name of ['ears', 'sdk']) {
+      fs.symlinkSync(path.join(REPO_ROOT, 'packages', `abuddy-${name}`), path.join(modules, name), 'dir');
+    }
+    fs.writeFileSync(path.join(modules, 'ui', 'package.json'), JSON.stringify({ name: '@abuddy/ui', version: '0.0.0', exports: { '.': './dist/index.js', './package.json': './package.json' } }));
+    return packDir;
+  }
+
+  it("fails the build when a bundleUi pack's @abuddy/ui has no build to read classes from", async () => {
+    // Resolving the package isn't enough: Tailwind reads its compiled output, and an empty dist globs
+    // nothing, which would ship every @abuddy/ui component unstyled with no error at all.
+    const packDir = uiWithoutBuild();
+
+    const result = await build(packDir);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('@abuddy/ui has no built modules');
+    expect(result.error).toContain('packages:ensure');
+  }, 60_000);
+
+  it("fails the build when a bundleUi pack's @abuddy/ui dist holds no module to read", async () => {
+    // A dist with only declarations in it is the same silence: Tailwind's glob matches no file either
+    // way, so "the directory exists and is not empty" is not the question worth asking
+    const packDir = uiWithoutBuild();
+    const dist = path.join(packDir, 'node_modules', '@abuddy', 'ui', 'dist', 'design');
+    fs.mkdirSync(dist, { recursive: true });
+    fs.writeFileSync(path.join(dist, 'button.d.ts'), 'export declare const x: number;\n');
+
+    const result = await build(packDir);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('@abuddy/ui has no built modules');
+  }, 60_000);
+
   it("fails the build when abuddy.json can't be read, so fe.bundleUi is unknown", async () => {
     const packDir = makePack({ manifest: '{ not json' });
     const result = await build(packDir);

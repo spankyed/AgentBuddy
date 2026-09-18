@@ -118,6 +118,8 @@ Steps:
 
 Bundle and gate failures are all reported, and the command exits with code 1. `--release` minifies and drops source maps.
 
+A build resolves the pack's `@abuddy` packages to the `dist` each published package ships — the one layout a pack ever has, whether the packages came from the registry or from a link to an AgentBuddy checkout. There is nothing to configure, and a pack's own configs set no resolution conditions. `abuddy test` and `abuddy dev` resolve the same way, so a pack's tests run against what its build compiled; against a checkout they first bring that `dist` up to date with the checkout's sources.
+
 #### `abuddy pack [--out <dir>]`
 
 Stage the built `dist/` into a verified bundle (`bundle.json` lists a sha256 per file) and write `<id>-<version>.tgz` and `<id>-<version>.tgz.sha256` to `--out` (default: the pack root). Run `abuddy build` first (`--release` for publishable output). Refuses built-in packs and invalid manifests.

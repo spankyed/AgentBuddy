@@ -2892,10 +2892,11 @@ type PackEmitter = Omit<HostServices['emitter'], 'sendToPlugin' | 'sendToSystem'
 };
 
 /**
- * Every plugin this pack's systems can send to: its own, its dependencies' and the host's. A plugin
- * id this pack also uses types as its own plugin.
+ * Every plugin this pack's systems can send to: its own, and the dependency and host plugins a
+ * `sendsTo` names. Those keep the events their owner declares they receive — a pack widens only its
+ * own plugins. A plugin id this pack also uses types as its own plugin.
  */
-type PackEvents = OwnPackEvents & Omit<HostPluginEvents, keyof OwnPackEvents>;
+type PackEvents = OwnPackEvents & Omit<Pick<HostPluginEvents, 'application'>, keyof OwnPackEvents>;
 
 /**
  * Every entity shape this pack can read: the SDK's, its own and its dependencies'. Node is the union of

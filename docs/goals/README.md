@@ -150,9 +150,9 @@ When the work is done, the implementing agent adds an Outcome section before Def
 
 Benchmarks and measurements go where the doc asked for them: inside the phase, or in a table in the Outcome.
 
-Then move the doc to `docs/archive/goals/` and add a status blockquote as its first line, above the session note:
+Then move the doc to `docs/archive/goals/` and add a status blockquote as its first line, above the session note. Move it when the work is done, not when it merges: a goal whose phases are all finished is history, and leaving it in `docs/goals/` reads as a plan and keeps describing code that no longer exists. Name wherever the work is — a PR, a branch, a commit — or nothing at all if there's nothing useful to name.
 
-- **Done:** `> **Done** (merged in #NNN). The text below is the plan as written; <what later work changed>. For the current layout, see <doc>.`
+- **Done:** `> **Done** (<where the work is, if it's worth naming>). The text below is the plan as written; <what later work changed>. For the current layout, see <doc>.`
 - **Absorbed by another goal:** `> **Absorbed by [`goal-x.md`](../../goals/goal-x.md)** (its Decision N and Phase M). <which decisions it superseded>. The text below is the plan as written…`
 - **Superseded in part:** `> **Superseded in part** by `goal-x.md`: <what changed>.`
 

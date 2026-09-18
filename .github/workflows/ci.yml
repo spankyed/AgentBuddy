@@ -71,8 +71,9 @@ jobs:
         env:
           REQUIRE_RUNTIME_ENTRY: '1'
 
+      # The typecheck step already built these through typecheck:pack; this confirms they are current
       - name: Build publishable packages
-        run: npm run packages:build
+        run: npm run packages:ensure
 
       # After the build: a package's reports read its dependencies' published declarations
       - name: API reports

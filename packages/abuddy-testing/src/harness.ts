@@ -10,6 +10,7 @@
 //   import { registration } from '#generated/pack-entry';
 //   import { setupPackTests } from '@abuddy/testing/harness';
 //   await setupPackTests({ seedRuntime, registration });
+import { assertCheckoutPackagesFresh } from './checkout-freshness.ts';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -191,6 +192,8 @@ function seedRuntimeRegistration(runtime: SeedRuntime, seeders?: Seeder[]): Pack
  * registered in the test file's registry; the database emptied before each test. Call it once, from a vitest setup file.
  */
 export async function setupPackTests(options: PackTestOptions): Promise<void> {
+  // From a checkout, this bundle is built on demand: refuse to test yesterday's packages silently
+  assertCheckoutPackagesFresh();
   if (context) {
     throw new Error(
       'setupPackTests() already ran in this process. Call it once, from a vitest setup file, and keep vitest\'s ' +

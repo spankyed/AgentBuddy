@@ -6,18 +6,16 @@
   "type": "module",
   "exports": {
     ".": {
-      "@abuddy/source": "./src/index.ts",
-      "types": "./src/index.ts",
-      "default": "./src/requires-source.ts"
+      "types": "./dist/package/dist/index.d.ts",
+      "default": "./dist/package/dist/index.js"
     },
     "./vitest": {
-      "types": "./src/vitest.ts",
-      "default": "./src/vitest.ts"
+      "types": "./dist/package/dist/vitest.d.ts",
+      "default": "./dist/package/dist/vitest.js"
     },
     "./harness": {
-      "@abuddy/source": "./src/harness.ts",
-      "types": "./src/harness.ts",
-      "default": "./src/harness-requires-source.ts"
+      "types": "./dist/package/dist/harness.d.ts",
+      "default": "./dist/package/dist/harness.js"
     }
   },
   "engines": {

@@ -1,6 +1,6 @@
 export {
   bindHost, isHostBound,
-  type HostRuntime, type HostRuntimeServices, type EarsQuery,
+  type HostRuntime, type HostRuntimeServices, type SecretRedaction, type EarsQuery,
 } from './host-runtime.ts';
 export { boundPackContributions, type PackContributionsView, type PackRegistryView } from './packs-view.ts';
 export { bindFeHost, isFeHostBound, type FeHostRuntime, type FeTransport, type FePackRegistryView } from './fe-host.ts';

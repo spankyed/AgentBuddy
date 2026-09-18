@@ -60,6 +60,7 @@ describe('assertSourceResolution', () => {
     expect(() => assertSourceResolution(nodeResolver(dir), 'The test process')).toThrow(/to its unbuilt dist/);
   });
 
+
   it('passes when the process has the source condition', () => {
     const dir = checkout({ built: true });
     expect(() => assertSourceResolution(nodeResolver(dir, ['@abuddy/source']), 'The test process')).not.toThrow();

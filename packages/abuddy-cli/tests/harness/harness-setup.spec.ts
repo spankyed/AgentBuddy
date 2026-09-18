@@ -42,11 +42,9 @@ function dataPack(spec: string): string {
   // As `abuddy init` scaffolds it
   write(root, 'vitest.config.ts', `
 import { defineConfig } from 'vitest/config';
-import { isolatedDataDir, sourceConditions } from '@abuddy/testing/vitest';
-const conditions = sourceConditions(import.meta.dirname);
+import { isolatedDataDir } from '@abuddy/testing/vitest';
 const dataDir = isolatedDataDir('harness-setup-');
 export default defineConfig({
-  resolve: { conditions }, ssr: { resolve: { conditions } },
   test: { include: ['tests/*.spec.ts'], env: dataDir.env, globalSetup: dataDir.globalSetup, setupFiles: [...dataDir.setupFiles, './tests/setup.ts'] },
 });`);
   write(root, 'tests/setup.ts', `

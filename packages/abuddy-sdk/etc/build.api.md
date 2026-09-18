@@ -1651,11 +1651,6 @@ export interface SeedRecord {
 // @public (undocumented)
 export type SeedTreeSpec = NonNullable<SeedFormatConfig['tree']>;
 
-// Warning: (ae-internal-missing-underscore) The name "sourceConditions" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
-export function sourceConditions(dir: string): string[];
-
 // @public (undocumented)
 export function sourceHash(data: object): string;
 

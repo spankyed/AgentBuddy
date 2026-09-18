@@ -2,7 +2,6 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import type * as TS from 'typescript';
-import { sourceConditions } from './source-conditions.ts';
 
 /** What a module exports under a name, as the TypeScript compiler resolves it */
 export interface ExportInfo {
@@ -53,7 +52,7 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
   const program = ts.createProgram({
     rootNames: files,
     // No ambient type packages (`types`): exports don't depend on them, and loading them is most of the program's cost
-    options: { ...compilerOptions(ts, packRoot), customConditions: sourceConditions(packRoot), types: [], noEmit: true },
+    options: { ...compilerOptions(ts, packRoot), types: [], noEmit: true },
   });
   const checker = program.getTypeChecker();
 

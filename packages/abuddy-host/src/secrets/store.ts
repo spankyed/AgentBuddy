@@ -6,7 +6,7 @@
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import { secretRules, secretProviderLabel, toSecretInfo, type ProviderName, type SecretInfo, type SecretProvider, type SecretsStatus } from '@abuddy/sdk/services';
-import { registerSecretValue } from '@abuddy/sdk/utils/internals';
+import { registerSecretValue } from './redaction.ts';
 import { writePrivateFile } from './private-file.ts';
 import { KeyVaultUnavailableError, type KeyVault } from './vault.ts';
 

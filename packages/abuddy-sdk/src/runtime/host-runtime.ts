@@ -1,6 +1,7 @@
 // The one port between the SDK and the app it runs in: the resources a running app owns, bound once per
 // process. Behaviour over them (sends, logging, error reports, `services`) is SDK code.
 import { installEngine, type EarsQuery } from '@abuddy/ears';
+import { setSecretValueMatcher } from '../utils/redact.ts';
 import type { RootEvents } from './root-events.ts';
 import type { AppDataService } from '../services/app-data.ts';
 import type { TraceStore } from '../services/trace-store.ts';
@@ -26,6 +27,15 @@ export interface HostRuntimeServices {
   filesystem: FilesystemService;
 }
 
+/**
+ * What log redaction asks whether a run of characters is one of the key values this process has used.
+ * The host owns the values (its secrets store records each one it encrypts or decrypts) and binds
+ * this; the SDK only reads it, so nothing can install its own and decide what counts as a secret.
+ */
+export interface SecretRedaction {
+  matchesSecret(text: string, from: number, to: number): boolean;
+}
+
 /** The running app, as the SDK reaches it in a backend process */
 export interface HostRuntime {
   /** The app's event bus */
@@ -38,6 +48,8 @@ export interface HostRuntime {
   appVersion: string;
   /** The services packs call that the app implements */
   services: HostRuntimeServices;
+  /** What redaction masks in logs; absent in a runtime with no secrets of its own (tests, tooling) */
+  redaction?: SecretRedaction;
 }
 
 let bound: HostRuntime | undefined;
@@ -47,12 +59,14 @@ export function bindHost(runtime: HostRuntime): void {
   if (bound) throw new Error('A host is already bound in this process: bindHost runs once, at boot');
   bound = runtime;
   installEngine(runtime.ears);
+  setSecretValueMatcher(runtime.redaction && ((text, from, to) => runtime.redaction!.matchesSecret(text, from, to)));
 }
 
 /** @internal Tests only: forgets the bound app and uninstalls its engine, so a test can bind another */
 export function unbindHost(): void {
   bound = undefined;
   installEngine(undefined);
+  setSecretValueMatcher(undefined);
 }
 
 /** @internal Whether an app is bound */

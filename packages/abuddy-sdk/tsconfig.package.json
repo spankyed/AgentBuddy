@@ -2,6 +2,8 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "noEmit": false,
+    // A type error must not leave a half-written dist that looks like a build
+    "noEmitOnError": true,
     "declaration": true,
     "rootDir": "src",
     "outDir": "dist"

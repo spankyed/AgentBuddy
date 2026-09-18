@@ -9,6 +9,7 @@ import * as path from 'node:path';
 import { builtinModules, createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import { packageName } from './lib/published-imports.ts';
+import { runPackageBuild } from '@abuddy/host/build/packages-built';
 import { SHARED_INSTANCE_PACKAGES } from '@abuddy/host/build/shared-deps';
 import { build, type BuildOptions, type Plugin } from 'esbuild';
 
@@ -48,6 +49,37 @@ const CONFIGS: Record<string, BundleConfig> = {
   },
 };
 
+/** Every path the published manifest points at, as [what names it, where it points] */
+function publishedPaths(config: BundleConfig): [string, string][] {
+  const manifest = config.manifest as { exports?: Record<string, string | Record<string, string>>; bin?: Record<string, string> };
+  const paths: [string, string][] = [];
+  for (const [subpath, target] of Object.entries(manifest.exports ?? {})) {
+    // An export names either one target or a target per condition
+    if (typeof target === 'string') paths.push([`exports["${subpath}"]`, target]);
+    else for (const [condition, file] of Object.entries(target)) paths.push([`exports["${subpath}"] (${condition})`, file]);
+  }
+  for (const [command, target] of Object.entries(manifest.bin ?? {})) paths.push([`bin.${command}`, target]);
+  for (const file of config.copy ?? []) paths.push(['a copied file', file]);
+  return paths;
+}
+
+/**
+ * Every file the published package points at is there. Declarations are the fragile half: tsc puts them
+ * under the common source directory of the whole program, so one entry importing a file from outside the
+ * package moves all of them, and the exports map would point at nothing. npm packs that without a word
+ * and a dependent then sees an untyped module, so the build fails here instead. `bin` and the copied
+ * files are checked with them: the CLI publishes no exports map, and its bin is how the layout is read.
+ */
+function assertPublishedPathsExist(config: BundleConfig, outDir: string, name: string): void {
+  const missing = publishedPaths(config)
+    .filter(([, target]) => !fs.existsSync(path.join(outDir, target)))
+    .map(([names, target]) => `  ${name} ${names}: ${target}`);
+  if (missing.length > 0) {
+    throw new Error(`The published package names files this build did not write:\n${missing.join('\n')}\n`
+      + 'A declaration emitted somewhere else means an entry reached outside the package: import it through a package specifier instead.');
+  }
+}
+
 const repoRoot = path.resolve(import.meta.dirname, '..');
 const pkgDir = path.resolve(process.argv[2] ?? '');
 const pkg = JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf-8'));
@@ -83,8 +115,6 @@ function versionOf(name: string): string {
   throw new Error(`${pkg.name} bundle imports ${name}, which neither ${pkg.name}, the shared-instance packages nor @abuddy/host declares`);
 }
 
-fs.rmSync(outDir, { recursive: true, force: true });
-
 const externalizeAllButHost: Plugin = {
   name: 'externalize-all-but-host',
   setup(b) {
@@ -106,87 +136,95 @@ const sharedOptions = {
   banner: { js: "import { createRequire as __abuddyCreateRequire } from 'node:module'; const require = __abuddyCreateRequire(import.meta.url);" },
 } satisfies BuildOptions;
 
-const sharedExternal = config.sharedExternalEntries && await build({
-  ...sharedOptions,
-  entryPoints: Object.fromEntries(Object.entries(config.sharedExternalEntries).map(([name, src]) => [name, path.join(pkgDir, src)])),
-  outdir: path.join(outDir, 'dist'),
-  plugins: [externalizeAllButHost],
-});
+async function main(): Promise<void> {
+  fs.rmSync(outDir, { recursive: true, force: true });
 
-const result = await build({
-  entryPoints: Object.fromEntries(Object.entries(config.entries).map(([name, src]) => [name, path.join(pkgDir, src)])),
-  outdir: path.join(outDir, 'dist'),
-  bundle: true,
-  splitting: true,
-  format: 'esm',
-  platform: 'node',
-  target: 'node22',
-  metafile: true,
-  logLevel: 'warning',
-  // Inlined workspace packages bundle from source (see their package.json exports)
-  conditions: ['@abuddy/source', 'module'],
-  // Bundled CommonJS dependencies may call require(); give ESM chunks one
-  banner: { js: "import { createRequire as __abuddyCreateRequire } from 'node:module'; const require = __abuddyCreateRequire(import.meta.url);" },
-  plugins: [externalizeAllButInlined],
-});
+  const sharedExternal = config.sharedExternalEntries && await build({
+    ...sharedOptions,
+    entryPoints: Object.fromEntries(Object.entries(config.sharedExternalEntries).map(([name, src]) => [name, path.join(pkgDir, src)])),
+    outdir: path.join(outDir, 'dist'),
+    plugins: [externalizeAllButHost],
+  });
 
-const imported = new Set<string>();
-for (const output of [...Object.values(result.metafile.outputs), ...Object.values(sharedExternal?.metafile?.outputs ?? {})]) {
-  for (const imp of output.imports) {
-    if (imp.external && !builtins.has(imp.path)) imported.add(packageName(imp.path));
+  const result = await build({
+    entryPoints: Object.fromEntries(Object.entries(config.entries).map(([name, src]) => [name, path.join(pkgDir, src)])),
+    outdir: path.join(outDir, 'dist'),
+    bundle: true,
+    splitting: true,
+    format: 'esm',
+    platform: 'node',
+    target: 'node22',
+    metafile: true,
+    logLevel: 'warning',
+    // Inlined workspace packages bundle from source (see their package.json exports)
+    conditions: ['@abuddy/source', 'module'],
+    // Bundled CommonJS dependencies may call require(); give ESM chunks one
+    banner: { js: "import { createRequire as __abuddyCreateRequire } from 'node:module'; const require = __abuddyCreateRequire(import.meta.url);" },
+    plugins: [externalizeAllButInlined],
+  });
+
+  const imported = new Set<string>();
+  for (const output of [...Object.values(result.metafile.outputs), ...Object.values(sharedExternal?.metafile?.outputs ?? {})]) {
+    for (const imp of output.imports) {
+      if (imp.external && !builtins.has(imp.path)) imported.add(packageName(imp.path));
+    }
   }
-}
 
-// Declared dependencies stay (some are only loaded by other dependencies, e.g. vue for
-// @vitejs/plugin-vue); packages the inlined SDK code imports are added
-const peers = new Set(Object.keys(pkg.peerDependencies ?? {}));
-const dependencies: Record<string, string> = { ...pkg.dependencies };
-for (const name of imported) {
-  if (!peers.has(name) && !SHARED.has(name)) dependencies[name] ??= versionOf(name);
-}
-const peerDependencies: Record<string, string> = { ...pkg.peerDependencies };
-for (const shared of sharedPkgs) {
-  if (config.sharedExternalEntries && imported.has(shared.name)) {
-    // Those entries run on the pack's installed instances: a peer, so the package never brings its own copy
-    delete dependencies[shared.name];
-    peerDependencies[shared.name] = `^${shared.version}`;
-  } else if (dependencies[shared.name]) {
-    // Packs build against the version released with this package
-    dependencies[shared.name] = shared.version;
+  // Declared dependencies stay (some are only loaded by other dependencies, e.g. vue for
+  // @vitejs/plugin-vue); packages the inlined SDK code imports are added
+  const peers = new Set(Object.keys(pkg.peerDependencies ?? {}));
+  const dependencies: Record<string, string> = { ...pkg.dependencies };
+  for (const name of imported) {
+    if (!peers.has(name) && !SHARED.has(name)) dependencies[name] ??= versionOf(name);
   }
-}
-// The private host package is inlined, never installed
-delete dependencies['@abuddy/host'];
+  const peerDependencies: Record<string, string> = { ...pkg.peerDependencies };
+  for (const shared of sharedPkgs) {
+    if (config.sharedExternalEntries && imported.has(shared.name)) {
+      // Those entries run on the pack's installed instances: a peer, so the package never brings its own copy
+      delete dependencies[shared.name];
+      peerDependencies[shared.name] = `^${shared.version}`;
+    } else if (dependencies[shared.name]) {
+      // Packs build against the version released with this package
+      dependencies[shared.name] = shared.version;
+    }
+  }
+  // The private host package is inlined, never installed
+  delete dependencies['@abuddy/host'];
 
-for (const file of config.copy ?? []) {
-  const dest = path.join(outDir, file);
-  fs.mkdirSync(path.dirname(dest), { recursive: true });
-  fs.copyFileSync(path.join(pkgDir, file), dest);
+  for (const file of config.copy ?? []) {
+    const dest = path.join(outDir, file);
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    fs.copyFileSync(path.join(pkgDir, file), dest);
+  }
+
+  if (config.declarations) {
+    const tsc = createRequire(import.meta.url).resolve('typescript/bin/tsc');
+    const entryFiles = [...Object.values(config.entries), ...Object.values(config.sharedExternalEntries ?? {})].map((src) => path.join(pkgDir, src));
+    execFileSync(process.execPath, [
+      tsc, ...entryFiles, '--declaration', '--emitDeclarationOnly', '--outDir', path.join(outDir, 'dist'),
+      '--module', 'esnext', '--moduleResolution', 'bundler', '--customConditions', '@abuddy/source', '--allowImportingTsExtensions', '--target', 'es2022',
+      '--strict', '--esModuleInterop', '--skipLibCheck', '--types', 'node',
+    ], { stdio: 'inherit' });
+  }
+
+  const manifest = {
+    name: pkg.name,
+    version: pkg.version,
+    description: pkg.description,
+    license: 'MIT',
+    repository: { type: 'git', url: 'git+https://github.com/spankyed/AgentBuddy.git', directory: `packages/${path.basename(pkgDir)}` },
+    type: 'module',
+    engines: pkg.engines,
+    ...config.manifest,
+    dependencies: Object.fromEntries(Object.entries(dependencies).sort(([a], [b]) => a.localeCompare(b))),
+    peerDependencies: Object.keys(peerDependencies).length > 0 ? peerDependencies : undefined,
+    peerDependenciesMeta: pkg.peerDependenciesMeta,
+    publishConfig: { access: 'public', provenance: true },
+  };
+  fs.writeFileSync(path.join(outDir, 'package.json'), JSON.stringify(manifest, null, 2) + '\n');
+  assertPublishedPathsExist(config, outDir, pkg.name);
+  console.log(`Built ${pkg.name}@${pkg.version} into ${path.relative(process.cwd(), outDir)}`);
 }
 
-if (config.declarations) {
-  const tsc = createRequire(import.meta.url).resolve('typescript/bin/tsc');
-  const entryFiles = [...Object.values(config.entries), ...Object.values(config.sharedExternalEntries ?? {})].map((src) => path.join(pkgDir, src));
-  execFileSync(process.execPath, [
-    tsc, ...entryFiles, '--declaration', '--emitDeclarationOnly', '--outDir', path.join(outDir, 'dist'),
-    '--module', 'esnext', '--moduleResolution', 'bundler', '--customConditions', '@abuddy/source', '--allowImportingTsExtensions', '--target', 'es2022',
-    '--strict', '--esModuleInterop', '--skipLibCheck', '--types', 'node',
-  ], { stdio: 'inherit' });
-}
-
-const manifest = {
-  name: pkg.name,
-  version: pkg.version,
-  description: pkg.description,
-  license: 'MIT',
-  repository: { type: 'git', url: 'git+https://github.com/spankyed/AgentBuddy.git', directory: `packages/${path.basename(pkgDir)}` },
-  type: 'module',
-  engines: pkg.engines,
-  ...config.manifest,
-  dependencies: Object.fromEntries(Object.entries(dependencies).sort(([a], [b]) => a.localeCompare(b))),
-  peerDependencies: Object.keys(peerDependencies).length > 0 ? peerDependencies : undefined,
-  peerDependenciesMeta: pkg.peerDependenciesMeta,
-  publishConfig: { access: 'public', provenance: true },
-};
-fs.writeFileSync(path.join(outDir, 'package.json'), JSON.stringify(manifest, null, 2) + '\n');
-console.log(`Built ${pkg.name}@${pkg.version} into ${path.relative(process.cwd(), outDir)}`);
+// The build's own success stamp: written only if main() returns, and cleared before it touches dist/package
+await runPackageBuild(pkg.name, main);

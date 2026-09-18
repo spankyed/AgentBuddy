@@ -4,12 +4,13 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  findAppImportsInPackTests, findHostImports, findJsSpecifiers, findPackBackendConsole, findRawPackHelpers, findRawTransport,
-  findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs, SHARED_LIST_CONSUMERS,
+  findAppImportsInPackTests, findCrossCheckoutResolution, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackBackendConsole, findRawPackHelpers,
+  findRawTransport, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs,
+  DECLARES_SOURCE_BY_DESIGN, RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
 } from '../../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '../helpers/published-packages';
 
-/** scripts/check-import-specifiers.ts: relative imports in sdk, host and ui name TypeScript sources */
+/** scripts/check-import-specifiers.ts, over a temp tree holding the modules the checks resolve against */
 let root: string;
 beforeEach(() => {
   root = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-specifiers-'));
@@ -25,9 +26,15 @@ afterEach(() => {
   fs.rmSync(root, { recursive: true, force: true });
 });
 
+/** A file at `file` under the temp root */
+function writeAt(file: string, content: string): void {
+  fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+  fs.writeFileSync(path.join(root, file), content);
+}
+
+/** A file under the temp root's src/, which the checks below are pointed at */
 function write(file: string, content: string): void {
-  fs.mkdirSync(path.dirname(path.join(root, 'src', file)), { recursive: true });
-  fs.writeFileSync(path.join(root, 'src', file), content);
+  writeAt(path.join('src', file), content);
 }
 
 function problems(file: string, content: string): string[] {
@@ -84,8 +91,7 @@ describe('findJsSpecifiers', () => {
 /** Pack code a CLI template writes, in a file under one of CLI_TEMPLATE_SOURCES */
 function writeTemplateSource(content: string): string {
   const dir = 'packages/abuddy-cli/src/commands/add';
-  fs.mkdirSync(path.join(root, dir), { recursive: true });
-  fs.writeFileSync(path.join(root, dir, 'feature.ts'), content);
+  writeAt(path.join(dir, 'feature.ts'), content);
   return dir;
 }
 
@@ -248,12 +254,8 @@ describe('findAppImportsInPackTests', () => {
 
 /** A layered package in `root`: its package.json and source files */
 function layer(dir: string, manifest: Record<string, unknown>, files: Record<string, string>): void {
-  fs.mkdirSync(path.join(root, dir), { recursive: true });
-  fs.writeFileSync(path.join(root, dir, 'package.json'), JSON.stringify({ name: 'x', ...manifest }));
-  for (const [file, content] of Object.entries(files)) {
-    fs.mkdirSync(path.dirname(path.join(root, dir, file)), { recursive: true });
-    fs.writeFileSync(path.join(root, dir, file), content);
-  }
+  writeAt(path.join(dir, 'package.json'), JSON.stringify({ name: 'x', ...manifest }));
+  for (const [file, content] of Object.entries(files)) writeAt(path.join(dir, file), content);
 }
 
 describe('findUpwardImports', () => {
@@ -294,8 +296,7 @@ describe('findUpwardImports', () => {
     ['renderer', 'src/store.ts', "import { openLmdbStore } from '@abuddy/ears/lmdb';", 'layers/renderer/src/store.ts:1: @abuddy/ears/lmdb'],
   ])('flags an upward import in %s: %s', (pkg, file, code, problem) => {
     allowed();
-    fs.mkdirSync(path.dirname(path.join(root, 'layers', pkg, file)), { recursive: true });
-    fs.writeFileSync(path.join(root, 'layers', pkg, file), code);
+    writeAt(path.join('layers', pkg, file), code);
     expect(findUpwardImports(layers, root)).toEqual([problem]);
   });
 
@@ -305,7 +306,7 @@ describe('findUpwardImports', () => {
     ['host', { dependencies: { '@abuddy/ears': '*', '@abuddy/sdk': '*' }, devDependencies: { '@abuddy/cli': '*' } }, 'layers/host/package.json: devDependencies: @abuddy/cli'],
   ])("flags an @abuddy package %s's manifest may not declare", (pkg, manifest, problem) => {
     allowed();
-    fs.writeFileSync(path.join(root, 'layers', pkg, 'package.json'), JSON.stringify({ name: 'x', ...manifest }));
+    writeAt(path.join('layers', pkg, 'package.json'), JSON.stringify({ name: 'x', ...manifest }));
     expect(findUpwardImports(layers, root)).toEqual([problem]);
   });
 
@@ -313,9 +314,9 @@ describe('findUpwardImports', () => {
     ['api', { devDependencies: { '@abuddy/ears': '*', '@abuddy/sdk': '*' } }, 'layers/api/package.json: undeclared: @abuddy/host'],
     ['renderer', { dependencies: { '@abuddy/host': '*', '@abuddy/sdk': '*' } }, 'layers/renderer/package.json: undeclared: @abuddy/ui'],
     ['host', { dependencies: { '@abuddy/sdk': '*' } }, 'layers/host/package.json: undeclared: @abuddy/ears'],
-  ])("flags an @abuddy package %s imports without declaring it", (pkg, manifest, problem) => {
+  ])('flags an @abuddy package %s imports without declaring it', (pkg, manifest, problem) => {
     allowed();
-    fs.writeFileSync(path.join(root, 'layers', pkg, 'package.json'), JSON.stringify({ name: 'x', ...manifest }));
+    writeAt(path.join('layers', pkg, 'package.json'), JSON.stringify({ name: 'x', ...manifest }));
     expect(findUpwardImports(layers, root)).toEqual([problem]);
   });
 
@@ -369,7 +370,7 @@ describe('findSharedPackageLists', () => {
   it.each([
     ["const EXTERNALS = ['@abuddy/sdk', '@abuddy/sdk/*'];", ['"@abuddy/sdk"', '"@abuddy/sdk/*"']],
     ["if (source.startsWith('@abuddy/ears/')) return;", ['"@abuddy/ears/"']],
-    ["bridge({ bridgedPackages: [`@abuddy/ears`] });", ['"@abuddy/ears"']],
+    ['bridge({ bridgedPackages: [`@abuddy/ears`] });', ['"@abuddy/ears"']],
   ])('flags a shared package named outside an import: %s', (code, found) => {
     write('consumer.ts', code);
     expect(findSharedPackageLists(['src/consumer.ts'], root)).toEqual(found.map((what) => `src/consumer.ts:1: ${what}`));
@@ -421,8 +422,7 @@ describe('findRepositoryCasts', () => {
       'packages/abuddy-ears/src', 'packages/abuddy-sdk/src', 'packages/abuddy-host/src', 'packages/abuddy-testing/src',
       'packages/api/src', 'packages/default-setup/src', 'packages/renderer/src',
     ]));
-    fs.mkdirSync(path.join(root, 'packages', 'new-package', 'src'), { recursive: true });
-    fs.writeFileSync(path.join(root, 'packages', 'new-package', 'src', 'index.ts'), 'export const x = (repository as unknown as Repos).x;');
+    writeAt('packages/new-package/src/index.ts', 'export const x = (repository as unknown as Repos).x;');
     fs.mkdirSync(path.join(root, 'packages', 'no-sources'), { recursive: true });
     expect(packageSourceDirs(root)).toEqual(['packages/new-package/src']);
     expect(findRepositoryCasts(packageSourceDirs(root), root)).toEqual(['packages/new-package/src/index.ts:1: repository as unknown as Repos']);
@@ -430,5 +430,359 @@ describe('findRepositoryCasts', () => {
 
   it('holds for the repo', () => {
     expect(findRepositoryCasts()).toEqual([]);
+  });
+});
+
+/** A workspace package whose exports resolve source under the condition, and a consumer that imports it */
+function workspace(): void {
+  writeAt('packages/lib/package.json', JSON.stringify({
+    name: '@abuddy/lib',
+    exports: { '.': { [SOURCE_CONDITION]: './src/index.ts', default: './dist/index.js' } },
+  }));
+  writeAt('packages/lib/src/index.ts', 'export const x = 1;');
+  writeAt('packages/consumer/package.json', JSON.stringify({ name: '@app/consumer' }));
+  writeAt('packages/consumer/src/app.ts', "import { x } from '@abuddy/lib';\nexport const y = x;\n");
+}
+
+/** A second package with code of its own, for the configs that reach across directories */
+function otherPackage(): void {
+  writeAt('packages/other/package.json', JSON.stringify({ name: '@app/other' }));
+  writeAt('packages/other/src/own.ts', 'export const own = 1;\n');
+}
+
+/** The problems for the temp root, with the given exceptions in place of the repo's */
+function conditionProblems(exceptions = new Map<string, string>(), packExceptions = new Map<string, string>()): string[] {
+  return findMissingSourceConditions(root, exceptions, packExceptions);
+}
+
+const NEEDS = (file: string, option: string) =>
+  `${file}: needs ${option} with "${SOURCE_CONDITION}", or an entry in RESOLVES_DIST_BY_DESIGN saying why it resolves dist`;
+const TSCONFIG_OPTION = 'compilerOptions.customConditions';
+const VITE_OPTION = 'resolve.conditions (and ssr.resolve.conditions)';
+
+describe('findCrossCheckoutResolution', () => {
+  it('holds for the repo', () => {
+    expect(findCrossCheckoutResolution()).toEqual([]);
+  });
+
+  it('catches a checkout that resolves a workspace package to another one', () => {
+    // What a worktree nested in the repository does: its own build output is missing, so TypeScript
+    // keeps walking up and resolves the package to the parent checkout's
+    const outer = path.join(root, 'outer');
+    const inner = path.join(outer, 'nested', 'worktree');
+    for (const checkout of [outer, inner]) {
+      writeAt(path.relative(root, path.join(checkout, 'package.json')), JSON.stringify({ name: 'root', workspaces: ['packages/*'] }));
+      writeAt(path.relative(root, path.join(checkout, 'packages', 'api', 'package.json')), JSON.stringify({ name: '@app/api', types: 'dist/types.d.ts' }));
+    }
+    // Only the outer checkout is built, and the inner one links the package it hasn't built
+    writeAt(path.relative(root, path.join(outer, 'packages', 'api', 'dist', 'types.d.ts')), 'export {};\n');
+    fs.mkdirSync(path.join(inner, 'node_modules', '@app'), { recursive: true });
+    fs.symlinkSync(path.join(inner, 'packages', 'api'), path.join(inner, 'node_modules', '@app', 'api'), 'dir');
+    fs.mkdirSync(path.join(outer, 'node_modules', '@app'), { recursive: true });
+    fs.symlinkSync(path.join(outer, 'packages', 'api'), path.join(outer, 'node_modules', '@app', 'api'), 'dir');
+
+    expect(findCrossCheckoutResolution(outer)).toEqual([]);
+    expect(findCrossCheckoutResolution(inner)).toEqual([
+      // realpath: on macOS the temp dir is /var/… and resolves to /private/var/…
+      expect.stringContaining(`@app/api resolves to ${fs.realpathSync(path.join(outer, 'packages', 'api', 'dist', 'types.d.ts'))}, outside this checkout`),
+    ]);
+  });
+});
+
+describe('findMissingSourceConditions', () => {
+  beforeEach(workspace);
+
+  it('lists the workspace packages whose exports resolve source under the condition', () => {
+    expect(sourceConditionPackages(root)).toEqual(['@abuddy/lib']);
+    // @abuddy/testing is not among them: its entries resolve its built bundle whoever loads them, so a
+    // config importing it selects nothing and needs no condition
+    expect(sourceConditionPackages()).toEqual(['@abuddy/ears', '@abuddy/sdk', '@abuddy/ui']);
+  });
+
+  // Every config-file name the check recognises, with the option each kind declares the condition in
+  it.each([
+    ['tsconfig.json', '{ "compilerOptions": { "strict": true } }', TSCONFIG_OPTION],
+    ['tsconfig.build.json', '{ "extends": "./tsconfig.json" }', TSCONFIG_OPTION],
+    ['tsconfig-build.json', '{ "compilerOptions": { "strict": true } }', TSCONFIG_OPTION],
+    ['vite.config.ts', 'export default { build: {} };', VITE_OPTION],
+    ['vite.config.prod.ts', 'export default { build: {} };\n', VITE_OPTION],
+    ['vitest.config.mts', 'export default { test: {} };', VITE_OPTION],
+    ['vitest.node.config.mts', 'export default { test: {} };\n', VITE_OPTION],
+    ['tsup.config.ts', "export default { entry: ['src/app.ts'] };", 'conditions'],
+    ['tsdown.config.ts', "export default { entry: ['src/app.ts'] };", 'conditions'],
+    ['rollup.config.mjs', "export default { input: 'src/app.ts' };\n", 'conditions'],
+    ['rollup-defs.config.mjs', "export default { input: 'src/app.ts' };\n", 'conditions'],
+    ['esbuild.config.ts', 'export default { entry: [] };\n', 'conditions'],
+    ['build.config.ts', 'export default { entries: [] };\n', 'conditions'],
+  ])('flags %s, naming the option it needs', (file, content, option) => {
+    writeAt(`packages/consumer/${file}`, content);
+    expect(conditionProblems()).toEqual([NEEDS(`packages/consumer/${file}`, option)]);
+  });
+
+  it.each([
+    ['declared directly', 'tsconfig.json', '{ "compilerOptions": { "customConditions": ["@abuddy/source"] } }'],
+    ['a vite config listing it', 'vite.config.ts', "export default { resolve: { conditions: ['@abuddy/source'] } };"],
+    ['a list the file declares', 'vitest.config.ts', `const conditions = ['${SOURCE_CONDITION}', 'node'];\nexport default { resolve: { conditions } };\n`],
+    ['a spread of a list the file declares', 'vitest.config.ts', `const base = ['${SOURCE_CONDITION}'];\nexport default { resolve: { conditions: [...base, 'node'] } };\n`],
+    ['an option set by assignment', 'vitest.config.ts', `export default { esbuildOptions(o) { o.conditions = ['${SOURCE_CONDITION}', 'module']; } };\n`],
+  ])('accepts a config declaring the condition with %s', (_form, file, content) => {
+    writeAt(`packages/consumer/${file}`, content);
+    expect(conditionProblems()).toEqual([]);
+  });
+
+  it('follows an extends chain and a config merged from another one', () => {
+    writeAt('packages/consumer/tsconfig.json', '{ "compilerOptions": { "customConditions": ["@abuddy/source"] } }');
+    // A comment and a trailing comma: tsconfigs are JSONC
+    writeAt('packages/consumer/tsconfig.test.json', '{\n  // built on the package tsconfig\n  "extends": "./tsconfig.json",\n}');
+    writeAt('packages/consumer/vite.config.ts', "export default { resolve: { conditions: ['@abuddy/source'] } };");
+    writeAt('packages/consumer/vitest.config.ts', "import viteConfig from './vite.config';\nexport default mergeConfig(viteConfig, {});");
+    expect(conditionProblems()).toEqual([]);
+  });
+
+  it.each([
+    ['a tsconfig extending a package base', '{ "extends": "@app/tsconfig/base.json" }'],
+    ['a tsconfig extending a file named anything', '{ "extends": "./base.tsconfig.json" }'],
+  ])('follows %s', (_form, content) => {
+    writeAt('packages/consumer/node_modules/@app/tsconfig/package.json', JSON.stringify({ name: '@app/tsconfig' }));
+    writeAt('packages/consumer/node_modules/@app/tsconfig/base.json', `{ "compilerOptions": { "customConditions": ["${SOURCE_CONDITION}"] } }`);
+    writeAt('packages/consumer/base.tsconfig.json', `{ "compilerOptions": { "customConditions": ["${SOURCE_CONDITION}"] } }`);
+    writeAt('packages/consumer/tsconfig.json', content);
+    expect(conditionProblems()).toEqual([]);
+  });
+
+  it('takes the conditions a config sets over the ones it merged, which they replace', () => {
+    writeAt('packages/consumer/vite.config.ts', `export default { resolve: { conditions: ['${SOURCE_CONDITION}'] } };\n`);
+    writeAt('packages/consumer/vitest.config.ts', "import viteConfig from './vite.config';\nexport default mergeConfig(viteConfig, { resolve: { conditions: ['node'] } });\n");
+    expect(conditionProblems()).toEqual([NEEDS('packages/consumer/vitest.config.ts', VITE_OPTION)]);
+  });
+
+  it.each([
+    ['the condition named in another option', `export default { test: { exclude: ['${SOURCE_CONDITION}'] } };\n`],
+    ['the condition named in an unrelated string', `export default { name: '${SOURCE_CONDITION} demo', test: {} };\n`],
+    ['a comment before a closing token', `export default { test: {\n  // '${SOURCE_CONDITION}' would go here\n} };\n`],
+    ['a comment after the last element', `export default { resolve: { conditions: [\n  'node',\n  // and '${SOURCE_CONDITION}', one day\n] } };\n`],
+    ['the condition named only in a comment', `// resolve.conditions carries '${SOURCE_CONDITION}' — in a comment, so it declares nothing\nexport default { test: {} };\n`],
+  ])('declares nothing with %s', (_form, content) => {
+    writeAt('packages/consumer/vitest.config.ts', content);
+    expect(conditionProblems()).toEqual([NEEDS('packages/consumer/vitest.config.ts', VITE_OPTION)]);
+  });
+
+  it.each([
+    ['comes from outside this file', "import { conditions } from './shared-conditions';\nexport default { resolve: { conditions } };\n"],
+    ['is built by', 'export default { resolve: { conditions: buildConditions() } };\n'],
+  ])("says a condition list that %s can't be read", (why, content) => {
+    writeAt('packages/consumer/vitest.config.ts', content);
+    expect(conditionProblems()).toEqual([expect.stringContaining(why)]);
+  });
+
+  it('ignores a config whose tree imports no source-condition package, and a solution tsconfig', () => {
+    otherPackage();
+    writeAt('packages/other/src/app.ts', "import { readFile } from 'node:fs/promises';\nexport const r = readFile;\n");
+    writeAt('packages/other/tsconfig.json', '{ "compilerOptions": { "strict": true } }');
+    writeAt('packages/consumer/tsconfig.json', '{ "files": [], "references": [{ "path": "./tsconfig.app.json" }] }');
+    writeAt('packages/consumer/tsconfig.app.json', '{ "compilerOptions": { "customConditions": ["@abuddy/source"] } }');
+    expect(conditionProblems()).toEqual([]);
+  });
+
+  it('ignores the package name in a comment or a string, and skips node_modules and dist', () => {
+    writeAt('packages/plain/package.json', JSON.stringify({ name: '@app/plain' }));
+    writeAt('packages/plain/src/app.ts', "// import { x } from '@abuddy/lib';\nexport const hint = 'install @abuddy/lib first';\n");
+    writeAt('packages/plain/node_modules/dep/index.ts', "import { x } from '@abuddy/lib';\n");
+    writeAt('packages/plain/dist/index.js', "import { x } from '@abuddy/lib';\n");
+    writeAt('packages/plain/tsconfig.json', '{ "compilerOptions": { "strict": true } }');
+    expect(conditionProblems()).toEqual([]);
+  });
+
+  it('asks nothing of the config in a directory whose own code imports nothing', () => {
+    writeAt('packages/consumer/tsconfig.json', `{ "compilerOptions": { "customConditions": ["${SOURCE_CONDITION}"] }, "include": ["src/**/*"] }`);
+    writeAt('packages/consumer/tsconfig.scripts.json', '{ "compilerOptions": { "strict": true }, "include": ["scripts/**/*.ts"] }');
+    writeAt('packages/consumer/scripts/run.ts', "import { readFile } from 'node:fs/promises';\nexport const r = readFile;\n");
+    expect(conditionProblems()).toEqual([]);
+  });
+
+  it('compiles the include of a tsconfig that lists no files but references others', () => {
+    writeAt('packages/consumer/tsconfig.json', '{ "files": [], "references": [{ "path": "./tsconfig.node.json" }], "include": ["src/**/*"] }');
+    expect(conditionProblems()).toEqual([NEEDS('packages/consumer/tsconfig.json', TSCONFIG_OPTION)]);
+  });
+
+  it.each([
+    ['a tsconfig whose include reaches another package', 'packages/other/tsconfig.json', '{ "include": ["../consumer/src/**/*"] }'],
+    ['a bundler config whose root is another package', 'packages/other/vite.config.ts', "export default defineConfig(() => ({ root: '../consumer' }));\n"],
+  ])('sees %s', (_form, file, content) => {
+    otherPackage();
+    writeAt(file, content);
+    expect(conditionProblems()).toEqual([expect.stringContaining(`${file}: needs `)]);
+  });
+
+  it('reads the declarations a tsconfig compiles, which resolve @abuddy imports too', () => {
+    otherPackage();
+    writeAt('packages/other/api.d.ts', "import type { X } from '@abuddy/lib';\nexport type Y = X;\n");
+    writeAt('packages/other/tsconfig.json', '{ "compilerOptions": { "strict": true } }');
+    expect(conditionProblems()).toEqual([NEEDS('packages/other/tsconfig.json', TSCONFIG_OPTION)]);
+  });
+
+  it.each([
+    ['a projects list', "export default { test: { projects: ['packages/consumer', 'packages/lib'] } };\n"],
+    // Vitest's older field for the same thing
+    ['the older workspace field', "export default { test: { workspace: ['packages/consumer', 'packages/lib'] } };\n"],
+    // A list the file declares is still a list of paths
+    ['a projects list the file declares', "const projects = ['packages/consumer', 'packages/lib'];\nexport default { test: { projects } };\n"],
+  ])('asks nothing of a vitest config whose projects all name another config: %s', (_form, content) => {
+    writeAt('vitest.config.ts', content);
+    expect(conditionProblems()).toEqual([]);
+  });
+
+  it.each([
+    // One project defined inline has no config of its own, so this config resolves for it
+    ['a project defined inline', "export default { test: { projects: ['packages/consumer', { test: { root: 'packages/lib' } }] } };\n"],
+    // A config that lists projects and also runs test files of its own compiles those files
+    ['a projects list beside its own include', "export default { test: { projects: ['packages/consumer'], include: ['packages/consumer/**/*.spec.ts'] } };\n"],
+    ['a projects list beside its own setupFiles', "export default { test: { projects: ['packages/consumer'], setupFiles: ['./setup.ts'] } };\n"],
+    // `projects` is somebody else's option here: vite-tsconfig-paths takes one
+    ['a projects option that is not the test one', "export default { define: { projects: ['packages/consumer'] }, test: { } };\n"],
+    ['a plugin option named projects', "export default { plugins: [tsconfigPaths({ projects: ['./tsconfig.test.json'] })], test: {} };\n"],
+  ])('flags a vitest config with %s', (_form, content) => {
+    writeAt('vitest.config.ts', content);
+    expect(conditionProblems()).toEqual([expect.stringContaining('vitest.config.ts: needs resolve.conditions')]);
+  });
+
+  it('says what to change when a projects list is built at run time', () => {
+    writeAt('vitest.config.ts', 'export default { test: { projects: discoverProjects() } };\n');
+    expect(conditionProblems()).toEqual([expect.stringContaining("its projects isn't a literal list of project paths")]);
+  });
+
+  it('sees code reachable only through a symlinked directory, and ends on a symlink to an ancestor', () => {
+    writeAt('elsewhere/app.ts', "import { x } from '@abuddy/lib';\nexport const y = x;\n");
+    writeAt('packages/other/package.json', JSON.stringify({ name: '@app/other' }));
+    writeAt('packages/other/vite.config.ts', 'export default { build: {} };\n');
+    fs.symlinkSync(path.join(root, 'elsewhere'), path.join(root, 'packages/other/src'));
+    // A directory symlinked to its own ancestor: the walk records real paths, so it ends
+    fs.symlinkSync(path.join(root, 'packages'), path.join(root, 'packages/other/loop'));
+    const started = Date.now();
+    expect(conditionProblems()).toEqual([expect.stringContaining('packages/other/vite.config.ts: needs ')]);
+    expect(Date.now() - started).toBeLessThan(5_000);
+  });
+
+  const REASON = 'API Extractor analyses .d.ts';
+
+  it('takes an exception with its reason instead of flagging the config', () => {
+    writeAt('packages/consumer/tsconfig.api-extractor.json', '{ "compilerOptions": { "strict": true } }');
+    expect(conditionProblems()).toHaveLength(1);
+    expect(conditionProblems(new Map([['packages/consumer/tsconfig.api-extractor.json', REASON]]))).toEqual([]);
+  });
+
+  it.each([
+    ['the config declares the condition', 'tsconfig.json', 'it already declares the condition or compiles no such code'],
+    ['the config is gone', 'gone.config.ts', 'the config is gone'],
+  ])('reports an exception that no longer applies: %s', (_form, file, why) => {
+    writeAt('packages/consumer/tsconfig.json', '{ "compilerOptions": { "customConditions": ["@abuddy/source"] } }');
+    expect(conditionProblems(new Map([[`packages/consumer/${file}`, REASON]])))
+      .toEqual([`packages/consumer/${file}: listed in RESOLVES_DIST_BY_DESIGN (${REASON}) but ${why}`]);
+  });
+
+  it('records why the api-extractor tsconfigs resolve dist', () => {
+    for (const file of ['packages/abuddy-sdk/tsconfig.api-extractor.json', 'packages/abuddy-ui/tsconfig.api-extractor.json']) {
+      expect(fs.existsSync(path.join(REPO_ROOT, file)), file).toBe(true);
+      expect(RESOLVES_DIST_BY_DESIGN.get(file), file).toMatch(/API Extractor/);
+    }
+  });
+
+  it('names the manifest that does not parse', () => {
+    writeAt('packages/broken/package.json', '{ "name": ');
+    expect(() => sourceConditionPackages(root)).toThrow(/packages\/broken\/package\.json: invalid JSON/);
+  });
+
+  // The other half of the rule: a pack resolves what a pack author has, which is the published dist. A
+  // pack config declaring the condition compiles against a layout that exists only in this checkout.
+  describe('a pack, which is any directory holding abuddy.json', () => {
+    const MUST_NOT = (file: string, option: string) =>
+      `${file}: a pack resolves the @abuddy packages' published dist, so it must not declare "${SOURCE_CONDITION}" in ${option}`
+      + '; move a host-side config out of the pack tree, or add it to DECLARES_SOURCE_BY_DESIGN saying why it belongs there';
+
+    /** A pack in the temp root, with the same importing source a host consumer has */
+    function pack(dir = 'packages/my-pack'): string {
+      writeAt(`${dir}/abuddy.json`, JSON.stringify({ id: 'my-pack', version: '0.1.0' }));
+      writeAt(`${dir}/package.json`, JSON.stringify({ name: '@app/my-pack' }));
+      writeAt(`${dir}/src/app.ts`, "import { x } from '@abuddy/lib';\nexport const y = x;\n");
+      return dir;
+    }
+
+    it.each([
+      ['a tsconfig', 'tsconfig.json', '{ "compilerOptions": { "customConditions": ["@abuddy/source"] } }', TSCONFIG_OPTION],
+      ['a vitest config', 'vitest.config.ts', `export default { resolve: { conditions: ['${SOURCE_CONDITION}'] } };`, VITE_OPTION],
+      ['a vite config', 'vite.config.ts', `export default { resolve: { conditions: ['${SOURCE_CONDITION}'] } };`, VITE_OPTION],
+    ])('flags %s that declares the condition', (_form, file, content, option) => {
+      const dir = pack();
+      writeAt(`${dir}/${file}`, content);
+      expect(conditionProblems()).toEqual([MUST_NOT(`${dir}/${file}`, option)]);
+    });
+
+    it('accepts a pack config that declares none, where a host config would be flagged', () => {
+      const dir = pack();
+      writeAt(`${dir}/tsconfig.json`, '{ "compilerOptions": { "strict": true } }');
+      writeAt(`${dir}/vitest.config.ts`, 'export default { test: {} };\n');
+      expect(conditionProblems()).toEqual([]);
+      // The same config outside a pack is the host half of the rule
+      writeAt('packages/consumer/vitest.config.ts', 'export default { test: {} };\n');
+      expect(conditionProblems()).toEqual([NEEDS('packages/consumer/vitest.config.ts', VITE_OPTION)]);
+    });
+
+    it('covers a config anywhere under the pack, not just beside its manifest', () => {
+      const dir = pack();
+      writeAt(`${dir}/tests/vitest.config.ts`, `export default { resolve: { conditions: ['${SOURCE_CONDITION}'] } };`);
+      expect(conditionProblems()).toEqual([MUST_NOT(`${dir}/tests/vitest.config.ts`, VITE_OPTION)]);
+    });
+
+    // A condition list this check cannot read is no excuse: it may or may not carry the condition
+    it('flags a pack config whose condition list it cannot read', () => {
+      const dir = pack();
+      writeAt(`${dir}/vitest.config.ts`, 'export default { resolve: { conditions: buildConditions() } };\n');
+      expect(conditionProblems()).toEqual([MUST_NOT(`${dir}/vitest.config.ts`, VITE_OPTION)]);
+    });
+
+    it('holds for every pack in the repo, built-in and fixture', () => {
+      expect(findMissingSourceConditions()).toEqual([]);
+    });
+
+    // The escape for a host-side config that lives in a pack's tree. It is deliberately hard to reach
+    // for: the message names it, and an entry that stops applying is reported like any other.
+    describe('DECLARES_SOURCE_BY_DESIGN', () => {
+      const WHY = 'a Vite config the renderer builds this pack with';
+
+      it('takes an exception with its reason instead of flagging the config', () => {
+        const dir = pack();
+        writeAt(`${dir}/vite.config.ts`, `export default { resolve: { conditions: ['${SOURCE_CONDITION}'] } };`);
+        expect(conditionProblems()).toHaveLength(1);
+        expect(conditionProblems(undefined, new Map([[`${dir}/vite.config.ts`, WHY]]))).toEqual([]);
+      });
+
+      it('excepts only the config it names, not the pack around it', () => {
+        const dir = pack();
+        writeAt(`${dir}/vite.config.ts`, `export default { resolve: { conditions: ['${SOURCE_CONDITION}'] } };`);
+        writeAt(`${dir}/vitest.config.ts`, `export default { resolve: { conditions: ['${SOURCE_CONDITION}'] } };`);
+        expect(conditionProblems(undefined, new Map([[`${dir}/vite.config.ts`, WHY]])))
+          .toEqual([MUST_NOT(`${dir}/vitest.config.ts`, VITE_OPTION)]);
+      });
+
+      it.each([
+        ['the config no longer declares the condition', 'export default { test: {} };\n', 'it declares no condition, so it needs no exception'],
+        ['the config is gone', undefined, 'the config is gone'],
+      ])('reports an exception that no longer applies: %s', (_form, content, why) => {
+        const dir = pack();
+        if (content !== undefined) writeAt(`${dir}/vite.config.ts`, content);
+        expect(conditionProblems(undefined, new Map([[`${dir}/vite.config.ts`, WHY]])))
+          .toEqual([`${dir}/vite.config.ts: listed in DECLARES_SOURCE_BY_DESIGN (${WHY}) but ${why}`]);
+      });
+
+      // Every case so far has been better served by moving the file, and the table's doc comment says so
+      it('is empty in this repo, and every entry it ever holds still applies', () => {
+        expect([...DECLARES_SOURCE_BY_DESIGN.keys()]).toEqual([]);
+        expect(findMissingSourceConditions()).toEqual([]);
+      });
+    });
+  });
+
+  it('holds for the repo', () => {
+    expect(findMissingSourceConditions()).toEqual([]);
   });
 });
