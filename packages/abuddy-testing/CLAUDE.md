@@ -35,7 +35,7 @@ Unit tests that open EARS or the media store need `ABUDDY_ENV` and `ABUDDY_USER_
 import { defineConfig } from 'vitest/config';
 import { isolatedDataDir, sourceConditions } from '@abuddy/testing/vitest';
 
-const conditions = sourceConditions(import.meta.dirname);   // ['@abuddy/source'] for a pack linked to a checkout, else []
+const conditions = sourceConditions(import.meta.dirname);   // ['@abuddy/source'] for a pack linked to a checkout, else []; throws when its installs disagree
 const dataDir = isolatedDataDir('my-pack-tests-');
 
 export default defineConfig({
@@ -49,7 +49,7 @@ export default defineConfig({
 });
 ```
 
-The run's dir is named `<prefix><pid>-XXXXXX`; `isolatedDataDir` first removes dirs with its prefix whose process is gone, left by runs that crashed before their teardown. The per-worker split matters when spec files run in parallel: without it, a spec resetting the media store deletes another worker's files mid-test. The entry uses only Node built-ins (`src/vitest.ts`, `vitest-worker.ts`, `vitest-teardown.ts`), so it loads without the `@abuddy/source` condition. The bundle ships the three as separate entries, since vitest loads the worker and teardown modules by path. The global setup also `provide`s the vitest project's root (`PROJECT_ROOT_KEY`), which the harness `inject`s to find the pack. `sourceConditions(packDir)` returns `@abuddy/source` when the pack's `@abuddy/sdk` resolves outside `node_modules` (the rule `abuddy build` uses); a pack's config passes it to both `resolve` and `ssr.resolve` and no Vite defaults: vitest merges its default conditions into them. This is the config `abuddy init` scaffolds (`abuddy-cli/src/commands/init.ts`). default-setup's `vitest.config.ts` uses `isolatedDataDir` but sets `@abuddy/source` directly (with Vite's server conditions), since it always runs from the checkout.
+The run's dir is named `<prefix><pid>-XXXXXX`; `isolatedDataDir` first removes dirs with its prefix whose process is gone, left by runs that crashed before their teardown. The per-worker split matters when spec files run in parallel: without it, a spec resetting the media store deletes another worker's files mid-test. The entry uses only Node built-ins (`src/vitest.ts`, `vitest-worker.ts`, `vitest-teardown.ts`), so it loads without the `@abuddy/source` condition. The bundle ships the three as separate entries, since vitest loads the worker and teardown modules by path. The global setup also `provide`s the vitest project's root (`PROJECT_ROOT_KEY`), which the harness `inject`s to find the pack. `sourceConditions(packDir)` is `abuddy build`'s own rule, re-exported from `@abuddy/sdk/build/source-conditions` rather than repeated: `@abuddy/source` when the pack's `@abuddy` packages are a checkout's, `[]` when they came from the registry, an error when they disagree, and whatever `ABUDDY_PACKAGES` says when it is set; a pack's config passes it to both `resolve` and `ssr.resolve` and no Vite defaults: vitest merges its default conditions into them. This is the config `abuddy init` scaffolds (`abuddy-cli/src/commands/init.ts`). default-setup's `vitest.config.ts` uses `isolatedDataDir` but sets `@abuddy/source` directly (with Vite's server conditions), since it always runs from the checkout.
 
 ## Unit test harness (`@abuddy/testing/harness`)
 

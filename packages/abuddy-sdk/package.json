@@ -115,6 +115,11 @@
       "types": "./dist/build/index.d.ts",
       "default": "./dist/build/index.js"
     },
+    "./build/source-conditions": {
+      "@abuddy/source": "./src/build/source-conditions.ts",
+      "types": "./dist/build/source-conditions.d.ts",
+      "default": "./dist/build/source-conditions.js"
+    },
     "./runtime": {
       "@abuddy/source": "./src/runtime/index.ts",
       "types": "./dist/runtime/index.d.ts",

@@ -10,6 +10,10 @@ export function initialize(data) {
 }
 
 export async function resolve(specifier, context, next) {
+  // A run that declared it resolves the published packages keeps them, checkout or not
+  // (ABUDDY_PACKAGES, PACKAGES_MODE_ENV in @abuddy/sdk/build/source-conditions; read by hand here
+  // because these hooks load before anything else)
+  if (process.env.ABUDDY_PACKAGES === 'dist') return next(specifier, context);
   if (!specifier.startsWith('@abuddy/') || context.conditions.includes('@abuddy/source')) {
     return next(specifier, context);
   }

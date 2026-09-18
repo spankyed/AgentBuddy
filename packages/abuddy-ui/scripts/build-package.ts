@@ -9,6 +9,7 @@ import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { BareImports, assertExportTargetsBuilt, walk } from '../../../scripts/lib/published-imports.ts';
 import { computeExports, findComponentsWithoutEntry, missingEntriesMessage, pkgDir } from './exports.ts';
+import { runPackageBuild } from '../../../scripts/ensure-packages-built.ts';
 
 const outDir = path.join(pkgDir, 'dist');
 const require = createRequire(import.meta.url);
@@ -43,4 +44,5 @@ async function main(): Promise<void> {
   console.log(`Built ${pkg.name}@${pkg.version} into ${path.relative(process.cwd(), outDir)}`);
 }
 
-await main();
+// The build's own success stamp: written only if main() returns, and cleared before it touches dist
+await runPackageBuild('@abuddy/ui', main);

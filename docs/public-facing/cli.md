@@ -118,6 +118,8 @@ Steps:
 
 Bundle and gate failures are all reported, and the command exits with code 1. `--release` minifies and drops source maps.
 
+A build resolves the pack's `@abuddy` packages either to a checkout's TypeScript source or to the `dist` a published package ships, and that choice is one setting for the whole compilation. `ABUDDY_PACKAGES=source` or `ABUDDY_PACKAGES=dist` states which, for a build that would rather say than be read — CI, a container, an install laid out in a way the check can't read. Unset, the mode comes from what the pack has installed. Either way it is one answer for every `@abuddy` package, so link every one of them to a checkout or install every one from the registry: a pack with `@abuddy/sdk` linked and `@abuddy/ui` installed (or the reverse) is refused, naming both and the variable that would settle it. `abuddy test` resolves the same way, so a pack's tests compile what its build does.
+
 #### `abuddy pack [--out <dir>]`
 
 Stage the built `dist/` into a verified bundle (`bundle.json` lists a sha256 per file) and write `<id>-<version>.tgz` and `<id>-<version>.tgz.sha256` to `--out` (default: the pack root). Run `abuddy build` first (`--release` for publishable output). Refuses built-in packs and invalid manifests.

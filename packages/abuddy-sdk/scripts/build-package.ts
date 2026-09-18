@@ -7,6 +7,7 @@ import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { BareImports, assertExportTargetsBuilt, walk } from '../../../scripts/lib/published-imports.ts';
+import { runPackageBuild } from '../../../scripts/ensure-packages-built.ts';
 
 const pkgDir = path.resolve(import.meta.dirname, '..');
 const srcDir = path.join(pkgDir, 'src');
@@ -39,4 +40,5 @@ async function main(): Promise<void> {
   console.log(`Built ${pkg.name}@${pkg.version} into ${path.relative(process.cwd(), outDir)}`);
 }
 
-await main();
+// The build's own success stamp: written only if main() returns, and cleared before it touches dist
+await runPackageBuild('@abuddy/sdk', main);

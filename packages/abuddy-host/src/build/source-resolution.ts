@@ -1,8 +1,7 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 
-/** Packages whose exports resolve source under the @abuddy/source condition and dist otherwise */
-const SOURCE_PACKAGES = ['@abuddy/ears', '@abuddy/sdk', '@abuddy/ui'];
+import { PACKAGES_MODE_ENV, SOURCE_PACKAGES } from '@abuddy/sdk/build/source-conditions';
 
 const SOURCE_CONDITION_FLAG = '--conditions=@abuddy/source';
 
@@ -37,6 +36,8 @@ function tryResolve(resolve: ResolveFile, specifier: string): string | undefined
  * @param processName names the process in the error
  */
 export function assertSourceResolution(resolve: ResolveFile, processName: string): void {
+  // A build that declared it resolves the published packages means it: this checks the other case
+  if (process.env[PACKAGES_MODE_ENV] === 'dist') return;
   for (const name of SOURCE_PACKAGES) {
     const manifestPath = tryResolve(resolve, `${name}/package.json`);
     if (!manifestPath) continue;

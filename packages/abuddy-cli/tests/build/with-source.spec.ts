@@ -7,8 +7,8 @@ import { REPO_ROOT } from '../helpers/published-packages';
 const WITH_SOURCE = path.join(REPO_ROOT, 'scripts', 'with-source.mjs');
 const PRINT_NODE_OPTIONS = ['node', '-p', 'process.env.NODE_OPTIONS'];
 
-function run(args: string[], nodeOptions?: string) {
-  const env: NodeJS.ProcessEnv = { PATH: process.env.PATH };
+function run(args: string[], nodeOptions?: string, extraEnv: NodeJS.ProcessEnv = {}) {
+  const env: NodeJS.ProcessEnv = { PATH: process.env.PATH, ...extraEnv };
   if (nodeOptions !== undefined) env.NODE_OPTIONS = nodeOptions;
   return spawnSync(process.execPath, [WITH_SOURCE, ...args], { cwd: REPO_ROOT, env, encoding: 'utf-8' });
 }
@@ -18,6 +18,15 @@ describe('with-source', () => {
     expect(run(PRINT_NODE_OPTIONS, '--max-old-space-size=4096').stdout.trim())
       .toBe('--max-old-space-size=4096 --conditions=@abuddy/source');
     expect(run(PRINT_NODE_OPTIONS).stdout.trim()).toBe('--conditions=@abuddy/source');
+  });
+
+  it('leaves it off for a run that declared it resolves the published packages', () => {
+    // ABUDDY_PACKAGES is the one place the mode is declared, and every decider reads it, so a run
+    // can't have this wrapper adding source resolution while the rest of it resolves dist
+    expect(run(PRINT_NODE_OPTIONS, undefined, { ABUDDY_PACKAGES: 'dist' }).stdout.trim()).toBe('');
+    expect(run(PRINT_NODE_OPTIONS, '--conditions=@abuddy/source --max-old-space-size=4096', { ABUDDY_PACKAGES: 'dist' }).stdout.trim())
+      .toBe('--max-old-space-size=4096');
+    expect(run(PRINT_NODE_OPTIONS, undefined, { ABUDDY_PACKAGES: 'source' }).stdout.trim()).toBe('--conditions=@abuddy/source');
   });
 
   it('adds the condition once when nested', () => {

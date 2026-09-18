@@ -7,7 +7,6 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 
 export interface IsolatedDataDir {
@@ -22,18 +21,13 @@ export interface IsolatedDataDir {
 }
 
 /**
- * The resolve conditions for a pack's vitest config: `@abuddy/source` when the pack's @abuddy/sdk is
- * an AgentBuddy checkout (a linked pack, whose packages resolve to source), none when installed
- * (published packages have no source to resolve to). Same rule as abuddy build's.
+ * The resolve conditions for a pack's vitest config: `@abuddy/source` when the pack's @abuddy
+ * packages are a checkout's (whose TypeScript source is on disk), none when they are installed
+ * from the registry (a tarball has no source to resolve to). It is `abuddy build`'s own rule,
+ * imported rather than repeated, so a pack's tests resolve exactly what its build does — including
+ * the error when a pack's installs disagree.
  */
-export function sourceConditions(packDir = process.cwd()): string[] {
-  try {
-    const manifest = createRequire(path.join(packDir, 'package.json')).resolve('@abuddy/sdk/package.json');
-    return fs.realpathSync(manifest).split(path.sep).includes('node_modules') ? [] : ['@abuddy/source'];
-  } catch {
-    return [];
-  }
-}
+export { sourceConditions } from '@abuddy/sdk/build/source-conditions';
 
 /** A sibling module of this one, with this module's extension (source .ts, or the bundle's .js) */
 function sibling(name: string): string {

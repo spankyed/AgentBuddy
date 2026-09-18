@@ -4,8 +4,9 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  findAppImportsInPackTests, findHostImports, findJsSpecifiers, findPackBackendConsole, findRawPackHelpers, findRawTransport,
-  findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs, SHARED_LIST_CONSUMERS,
+  findAppImportsInPackTests, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackBackendConsole, findRawPackHelpers,
+  findRawTransport, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs,
+  RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
 } from '../../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '../helpers/published-packages';
 
@@ -430,5 +431,260 @@ describe('findRepositoryCasts', () => {
 
   it('holds for the repo', () => {
     expect(findRepositoryCasts()).toEqual([]);
+  });
+});
+
+/** A file at `file` under the temp root */
+function writeAt(file: string, content: string): void {
+  fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+  fs.writeFileSync(path.join(root, file), content);
+}
+
+/** A workspace package whose exports resolve source under the condition, and a consumer that imports it */
+function workspace(): void {
+  writeAt('packages/lib/package.json', JSON.stringify({
+    name: '@abuddy/lib',
+    exports: { '.': { [SOURCE_CONDITION]: './src/index.ts', default: './dist/index.js' } },
+  }));
+  writeAt('packages/lib/src/index.ts', 'export const x = 1;');
+  writeAt('packages/consumer/package.json', JSON.stringify({ name: '@app/consumer' }));
+  writeAt('packages/consumer/src/app.ts', "import { x } from '@abuddy/lib';\nexport const y = x;\n");
+}
+
+/** The problems for the temp root, with the given exceptions */
+function conditionProblems(exceptions = new Map<string, string>()): string[] {
+  return findMissingSourceConditions(root, exceptions);
+}
+
+describe('findMissingSourceConditions', () => {
+  beforeEach(workspace);
+
+  it('lists the workspace packages whose exports resolve source under the condition', () => {
+    expect(sourceConditionPackages(root)).toEqual(['@abuddy/lib']);
+    expect(sourceConditionPackages()).toEqual(['@abuddy/ears', '@abuddy/sdk', '@abuddy/testing', '@abuddy/ui']);
+  });
+
+  it.each([
+    ['tsconfig.json', '{ "compilerOptions": { "strict": true } }', 'compilerOptions.customConditions'],
+    ['tsconfig.build.json', '{ "extends": "./tsconfig.json" }', 'compilerOptions.customConditions'],
+    ['vite.config.ts', "export default { build: {} };", 'resolve.conditions (and ssr.resolve.conditions)'],
+    ['vitest.config.mts', "export default { test: {} };", 'resolve.conditions (and ssr.resolve.conditions)'],
+    ['tsup.config.ts', "export default { entry: ['src/app.ts'] };", 'conditions'],
+    ['tsdown.config.ts', "export default { entry: ['src/app.ts'] };", 'conditions'],
+  ])('flags %s, naming the option it needs', (file, content, option) => {
+    writeAt(`packages/consumer/${file}`, content);
+    expect(conditionProblems()).toEqual([
+      `packages/consumer/${file}: needs ${option} with "@abuddy/source", or an entry in RESOLVES_DIST_BY_DESIGN saying why it resolves dist`,
+    ]);
+  });
+
+  it.each([
+    ['declared directly', 'tsconfig.json', '{ "compilerOptions": { "customConditions": ["@abuddy/source"] } }'],
+    ['a vite config listing it', 'vite.config.ts', "export default { resolve: { conditions: ['@abuddy/source'] } };"],
+    ['the sourceConditions helper', 'vitest.config.ts', "import { sourceConditions } from '@abuddy/testing/vitest';\nexport default { resolve: { conditions: sourceConditions(import.meta.dirname) } };"],
+  ])('accepts a config with %s', (_form, file, content) => {
+    writeAt(`packages/consumer/${file}`, content);
+    expect(conditionProblems()).toEqual([]);
+  });
+
+  it('follows an extends chain and a config merged from another one', () => {
+    writeAt('packages/consumer/tsconfig.json', '{ "compilerOptions": { "customConditions": ["@abuddy/source"] } }');
+    // A comment and a trailing comma: tsconfigs are JSONC
+    writeAt('packages/consumer/tsconfig.test.json', '{\n  // built on the package tsconfig\n  "extends": "./tsconfig.json",\n}');
+    writeAt('packages/consumer/vite.config.ts', "export default { resolve: { conditions: ['@abuddy/source'] } };");
+    writeAt('packages/consumer/vitest.config.ts', "import viteConfig from './vite.config';\nexport default mergeConfig(viteConfig, {});");
+    expect(conditionProblems()).toEqual([]);
+  });
+
+  it('ignores a config whose tree imports no source-condition package, and a solution tsconfig', () => {
+    writeAt('packages/other/package.json', JSON.stringify({ name: '@app/other' }));
+    writeAt('packages/other/src/app.ts', "import { readFile } from 'node:fs/promises';\nexport const r = readFile;\n");
+    writeAt('packages/other/tsconfig.json', '{ "compilerOptions": { "strict": true } }');
+    writeAt('packages/consumer/tsconfig.json', '{ "files": [], "references": [{ "path": "./tsconfig.app.json" }] }');
+    writeAt('packages/consumer/tsconfig.app.json', '{ "compilerOptions": { "customConditions": ["@abuddy/source"] } }');
+    expect(conditionProblems()).toEqual([]);
+  });
+
+  it('ignores the package name in a comment or a string, and skips node_modules and dist', () => {
+    writeAt('packages/plain/package.json', JSON.stringify({ name: '@app/plain' }));
+    writeAt('packages/plain/src/app.ts', "// import { x } from '@abuddy/lib';\nexport const hint = 'install @abuddy/lib first';\n");
+    writeAt('packages/plain/node_modules/dep/index.ts', "import { x } from '@abuddy/lib';\n");
+    writeAt('packages/plain/dist/index.js', "import { x } from '@abuddy/lib';\n");
+    writeAt('packages/plain/tsconfig.json', '{ "compilerOptions": { "strict": true } }');
+    expect(conditionProblems()).toEqual([]);
+  });
+
+  const REASON = 'API Extractor analyses .d.ts';
+
+  it('takes an exception with its reason instead of flagging the config', () => {
+    writeAt('packages/consumer/tsconfig.api-extractor.json', '{ "compilerOptions": { "strict": true } }');
+    expect(conditionProblems()).toHaveLength(1);
+    expect(conditionProblems(new Map([['packages/consumer/tsconfig.api-extractor.json', REASON]]))).toEqual([]);
+  });
+
+  it.each([
+    ['the config declares the condition', 'tsconfig.json', 'it already declares the condition or compiles no such code'],
+    ['the config is gone', 'gone.config.ts', 'the config is gone'],
+  ])('reports an exception that no longer applies: %s', (_form, file, why) => {
+    writeAt('packages/consumer/tsconfig.json', '{ "compilerOptions": { "customConditions": ["@abuddy/source"] } }');
+    expect(conditionProblems(new Map([[`packages/consumer/${file}`, REASON]])))
+      .toEqual([`packages/consumer/${file}: listed in RESOLVES_DIST_BY_DESIGN (${REASON}) but ${why}`]);
+  });
+
+  it('records why the api-extractor tsconfigs resolve dist', () => {
+    for (const file of ['packages/abuddy-sdk/tsconfig.api-extractor.json', 'packages/abuddy-ui/tsconfig.api-extractor.json']) {
+      expect(fs.existsSync(path.join(REPO_ROOT, file)), file).toBe(true);
+      expect(RESOLVES_DIST_BY_DESIGN.get(file), file).toMatch(/API Extractor/);
+    }
+  });
+
+  it('reads the condition where a config declares it, not where a comment names it', () => {
+    writeAt('packages/consumer/vitest.config.ts', `// resolve.conditions carries '${SOURCE_CONDITION}' — in a comment, so it declares nothing\nexport default { test: {} };\n`);
+    expect(conditionProblems()).toEqual(['packages/consumer/vitest.config.ts: needs resolve.conditions (and ssr.resolve.conditions) with "@abuddy/source", or an entry in RESOLVES_DIST_BY_DESIGN saying why it resolves dist']);
+
+    writeAt('packages/consumer/vitest.config.ts', `export default { resolve: { conditions: ['${SOURCE_CONDITION}'] }, test: {} };\n`);
+    expect(conditionProblems()).toEqual([]);
+  });
+
+  it('asks nothing of a vitest config whose projects all name another config', () => {
+    writeAt('vitest.config.ts', "export default { test: { projects: ['packages/consumer', 'packages/lib'] } };\n");
+    expect(conditionProblems()).toEqual([]);
+
+    // Vitest's older field for the same thing
+    writeAt('vitest.config.ts', "export default { test: { workspace: ['packages/consumer', 'packages/lib'] } };\n");
+    expect(conditionProblems()).toEqual([]);
+
+    // A list the file declares is still a list of paths
+    writeAt('vitest.config.ts', "const projects = ['packages/consumer', 'packages/lib'];\nexport default { test: { projects } };\n");
+    expect(conditionProblems()).toEqual([]);
+
+    // One project defined inline has no config of its own, so this config resolves for it
+    writeAt('vitest.config.ts', "export default { test: { projects: ['packages/consumer', { test: { root: 'packages/lib' } }] } };\n");
+    expect(conditionProblems()).toEqual([expect.stringContaining("vitest.config.ts: needs resolve.conditions (and ssr.resolve.conditions) with \"@abuddy/source\"")]);
+  });
+
+  it.each([
+    // A config that lists projects and also runs test files of its own compiles those files
+    ['a projects list beside its own include', "export default { test: { projects: ['packages/consumer'], include: ['packages/consumer/**/*.spec.ts'] } };\n"],
+    ['a projects list beside its own setupFiles', "export default { test: { projects: ['packages/consumer'], setupFiles: ['./setup.ts'] } };\n"],
+    // `projects` is somebody else's option here: vite-tsconfig-paths takes one
+    ['a projects option that is not the test one', "export default { define: { projects: ['packages/consumer'] }, test: { } };\n"],
+    ['a plugin option named projects', "export default { plugins: [tsconfigPaths({ projects: ['./tsconfig.test.json'] })], test: {} };\n"],
+  ])('flags a vitest config with %s', (_form, content) => {
+    writeAt('vitest.config.ts', content);
+    expect(conditionProblems()).toEqual([expect.stringContaining('vitest.config.ts: needs resolve.conditions')]);
+  });
+
+  it('says what to change when a projects list is built at run time', () => {
+    writeAt('vitest.config.ts', 'export default { test: { projects: discoverProjects() } };\n');
+    expect(conditionProblems()).toEqual([expect.stringContaining("its projects isn't a literal list of project paths")]);
+  });
+
+  it('compiles the include of a tsconfig that lists no files but references others', () => {
+    writeAt('packages/consumer/tsconfig.json', '{ "files": [], "references": [{ "path": "./tsconfig.node.json" }], "include": ["src/**/*"] }');
+    expect(conditionProblems()).toEqual([expect.stringContaining('packages/consumer/tsconfig.json: needs compilerOptions.customConditions')]);
+  });
+
+  it.each([
+    ['a tsconfig whose include reaches another package', 'packages/other/tsconfig.json', '{ "include": ["../consumer/src/**/*"] }'],
+    ['a bundler config whose root is another package', 'packages/other/vite.config.ts', "export default defineConfig(() => ({ root: '../consumer' }));\n"],
+  ])('sees %s', (_form, file, content) => {
+    writeAt('packages/other/package.json', JSON.stringify({ name: '@app/other' }));
+    writeAt('packages/other/src/own.ts', "export const own = 1;\n");
+    writeAt(file, content);
+    expect(conditionProblems()).toEqual([expect.stringContaining(`${file}: needs `)]);
+  });
+
+  it('asks nothing of the config in a directory whose own code imports nothing', () => {
+    writeAt('packages/consumer/tsconfig.json', `{ "compilerOptions": { "customConditions": ["${SOURCE_CONDITION}"] }, "include": ["src/**/*"] }`);
+    writeAt('packages/consumer/tsconfig.scripts.json', '{ "compilerOptions": { "strict": true }, "include": ["scripts/**/*.ts"] }');
+    writeAt('packages/consumer/scripts/run.ts', "import { readFile } from 'node:fs/promises';\nexport const r = readFile;\n");
+    expect(conditionProblems()).toEqual([]);
+  });
+
+  it('reads the declarations a tsconfig compiles, which resolve @abuddy imports too', () => {
+    writeAt('packages/other/package.json', JSON.stringify({ name: '@app/other' }));
+    writeAt('packages/other/api.d.ts', "import type { X } from '@abuddy/lib';\nexport type Y = X;\n");
+    writeAt('packages/other/tsconfig.json', '{ "compilerOptions": { "strict": true } }');
+    expect(conditionProblems()).toEqual([expect.stringContaining('packages/other/tsconfig.json: needs ')]);
+  });
+
+  it.each([
+    ['vite.config.prod.ts', 'export default { build: {} };\n'],
+    ['vitest.node.config.mts', 'export default { test: {} };\n'],
+    ['tsconfig-build.json', '{ "compilerOptions": { "strict": true } }'],
+    ['rollup.config.mjs', "export default { input: 'src/app.ts' };\n"],
+    ['rollup-defs.config.mjs', "export default { input: 'src/app.ts' };\n"],
+    ['esbuild.config.ts', 'export default { entry: [] };\n'],
+    ['build.config.ts', 'export default { entries: [] };\n'],
+  ])('checks %s', (file, content) => {
+    writeAt(`packages/consumer/${file}`, content);
+    expect(conditionProblems()).toEqual([expect.stringContaining(`packages/consumer/${file}: needs `)]);
+  });
+
+  it.each([
+    ['a tsconfig extending a package base', 'tsconfig.json', '{ "extends": "@app/tsconfig/base.json" }'],
+    ['a tsconfig extending a file named anything', 'tsconfig.json', '{ "extends": "./base.tsconfig.json" }'],
+  ])('follows %s', (_form, file, content) => {
+    writeAt('packages/consumer/node_modules/@app/tsconfig/package.json', JSON.stringify({ name: '@app/tsconfig' }));
+    writeAt('packages/consumer/node_modules/@app/tsconfig/base.json', `{ "compilerOptions": { "customConditions": ["${SOURCE_CONDITION}"] } }`);
+    writeAt('packages/consumer/base.tsconfig.json', `{ "compilerOptions": { "customConditions": ["${SOURCE_CONDITION}"] } }`);
+    writeAt(`packages/consumer/${file}`, content);
+    expect(conditionProblems()).toEqual([]);
+  });
+
+  it.each([
+    ['a list the file declares', `const conditions = ['${SOURCE_CONDITION}', 'node'];\nexport default { resolve: { conditions } };\n`],
+    ['a spread of a list the file declares', `const base = ['${SOURCE_CONDITION}'];\nexport default { resolve: { conditions: [...base, 'node'] } };\n`],
+    ['an option set by assignment', `export default { esbuildOptions(o) { o.conditions = ['${SOURCE_CONDITION}', 'module']; } };\n`],
+  ])('reads a condition list built from %s', (_form, content) => {
+    writeAt('packages/consumer/vitest.config.ts', content);
+    expect(conditionProblems()).toEqual([]);
+  });
+
+  it.each([
+    ['comes from outside this file', "import { conditions } from './shared-conditions';\nexport default { resolve: { conditions } };\n"],
+    ['is built by', 'export default { resolve: { conditions: buildConditions() } };\n'],
+  ])("says a condition list that %s can't be read", (why, content) => {
+    writeAt('packages/consumer/vitest.config.ts', content);
+    expect(conditionProblems()).toEqual([expect.stringContaining(why)]);
+  });
+
+  it.each([
+    ['the condition named in another option', `export default { test: { exclude: ['${SOURCE_CONDITION}'] } };\n`],
+    ['an unused import of the helper', "import { sourceConditions } from '@abuddy/testing/vitest';\nexport default { test: {} };\n"],
+    ['the helper named in a string', "export default { name: 'sourceConditions demo', test: {} };\n"],
+    ['a comment before a closing token', 'export default { test: {\n  // sourceConditions() would go here\n} };\n'],
+    ['a comment after the last element', `export default { resolve: { conditions: [\n  'node',\n  // and '${SOURCE_CONDITION}', one day\n] } };\n`],
+  ])('declares nothing with %s', (_form, content) => {
+    writeAt('packages/consumer/vitest.config.ts', content);
+    expect(conditionProblems()).toEqual([expect.stringContaining('packages/consumer/vitest.config.ts: needs ')]);
+  });
+
+  it('takes the conditions a config sets over the ones it merged, which they replace', () => {
+    writeAt('packages/consumer/vite.config.ts', `export default { resolve: { conditions: ['${SOURCE_CONDITION}'] } };\n`);
+    writeAt('packages/consumer/vitest.config.ts', "import viteConfig from './vite.config';\nexport default mergeConfig(viteConfig, { resolve: { conditions: ['node'] } });\n");
+    expect(conditionProblems()).toEqual([expect.stringContaining('packages/consumer/vitest.config.ts: needs ')]);
+  });
+
+  it('sees code reachable only through a symlinked directory, and ends on a symlink to an ancestor', () => {
+    writeAt('elsewhere/app.ts', "import { x } from '@abuddy/lib';\nexport const y = x;\n");
+    writeAt('packages/other/package.json', JSON.stringify({ name: '@app/other' }));
+    writeAt('packages/other/vite.config.ts', 'export default { build: {} };\n');
+    fs.symlinkSync(path.join(root, 'elsewhere'), path.join(root, 'packages/other/src'));
+    // A directory symlinked to its own ancestor: the walk records real paths, so it ends
+    fs.symlinkSync(path.join(root, 'packages'), path.join(root, 'packages/other/loop'));
+    const started = Date.now();
+    expect(conditionProblems()).toEqual([expect.stringContaining('packages/other/vite.config.ts: needs ')]);
+    expect(Date.now() - started).toBeLessThan(5_000);
+  });
+
+  it('names the manifest that does not parse', () => {
+    writeAt('packages/broken/package.json', '{ "name": ');
+    expect(() => sourceConditionPackages(root)).toThrow(/packages\/broken\/package\.json: invalid JSON/);
+  });
+
+  it('holds for the repo', () => {
+    expect(findMissingSourceConditions()).toEqual([]);
   });
 });

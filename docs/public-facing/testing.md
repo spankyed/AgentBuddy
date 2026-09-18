@@ -34,7 +34,7 @@ export default defineConfig({
 });
 ```
 
-- **`sourceConditions(packDir)`** returns `['@abuddy/source']` when the pack's `@abuddy/sdk` resolves outside `node_modules` (a pack linked to a checkout), else `[]`. Set it on both `resolve` and `ssr.resolve`; vitest adds its default conditions to them.
+- **`sourceConditions(packDir)`** returns `['@abuddy/source']` when the pack's `@abuddy` packages are a checkout's, and `[]` when they came from the registry — it reads what each install holds, so the tests resolve exactly what `abuddy build` does. Set it on both `resolve` and `ssr.resolve`; vitest adds its default conditions to them. It **throws** when a pack's installs disagree (`@abuddy/sdk` linked while `@abuddy/ui` is installed, say), because one condition list can't be right for both: link them all to the checkout, install them all from the registry, or state the mode with `ABUDDY_PACKAGES=source|dist`, which every part of a build reads.
 - **`isolatedDataDir(prefix?)`** creates the run's data dir. `setupPackTests` fails when `ABUDDY_USER_DATA_DIR` is unset, so keep its `env`, `globalSetup` and `setupFiles`, with its setup files before yours.
 - **Keep vitest's `isolate` on** (the default). The harness keeps one registry, database and set of mocks per test file, and `setupPackTests` fails, saying so, when it runs a second time in one process (`isolate: false`).
 

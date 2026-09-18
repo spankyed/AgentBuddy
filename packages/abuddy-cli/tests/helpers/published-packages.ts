@@ -3,11 +3,20 @@ import { promisify } from 'node:util';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { BUILD_UNITS, staleMessage, stalePackageUnits } from '../../../../scripts/ensure-packages-built.ts';
 
 const execFileAsync = promisify(execFile);
 
 export const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
-const PACKAGE_DIRS: Record<string, string> = {
+
+/**
+ * The packages `installPublishedPackages()` npm-packs into a consumer fixture, by the name a
+ * consumer installs them as. Deliberately not the build-freshness watch list (`BUILD_UNITS`), which
+ * covers everything a build reads — `@abuddy/host` and `@abuddy/testing` among it — and must be
+ * free to grow without changing what is packed into a fixture.
+ * `tests/build/package-freshness.spec.ts` checks every packed package is one the build builds.
+ */
+export const PACKED_PACKAGES: Record<string, string> = {
   ears: path.join(REPO_ROOT, 'packages', 'abuddy-ears'),
   sdk: path.join(REPO_ROOT, 'packages', 'abuddy-sdk'),
   ui: path.join(REPO_ROOT, 'packages', 'abuddy-ui'),
@@ -23,28 +32,26 @@ export type TscVersion = keyof typeof TSC_VERSIONS;
 export const CONSUMER_MATRIX = (Object.keys(TSC_VERSIONS) as TscVersion[])
   .flatMap((tsc) => (['node16', 'bundler'] as const).map((moduleResolution) => ({ tsc, moduleResolution })));
 
-/** Newest modification time of the files under dir */
-function newestMtime(dir: string): number {
-  return Math.max(0, ...fs.readdirSync(dir, { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile())
-    .map((entry) => fs.statSync(path.join(entry.parentPath, entry.name)).mtimeMs));
-}
-
 /**
- * dist/ is written by `npm run packages:build`; CI builds it before these tests. Without it the
- * published-package specs skip, except in CI. A dist older than its source fails instead of
- * testing stale output.
+ * The build output is written by `npm run packages:build`. `npm test -w @abuddy/cli` builds it first
+ * when it is out of date (the suite's `pretest`, scripts/ensure-packages-built.ts), and CI builds it
+ * before the suite, so both arrive here up to date. With nothing built the published-package specs
+ * skip, except in CI. Every spec that reads build output guards on `PACKAGES_BUILT`, including the
+ * ones reading the CLI and testing bundles, so it covers all of `BUILD_UNITS`, not just the three
+ * packages a fixture installs.
+ *
+ * The guard below is for a run that bypassed `pretest` (`npx vitest`, a watch run over an edit): a
+ * build output that no successful build of the current sources produced fails, rather than testing
+ * stale output. Importing this file never builds — that is the pretest's job, in its own process.
+ * It reads the same `stalePackageUnits()` the pretest acts on, so the two can never disagree.
  */
-export const PACKAGES_BUILT = Object.values(PACKAGE_DIRS).every((dir) => fs.existsSync(path.join(dir, 'dist')));
+export const PACKAGES_BUILT = Object.values(BUILD_UNITS).every((unit) => unit.outputs.every((output) => fs.existsSync(output)));
 if (!PACKAGES_BUILT && process.env.CI) {
   throw new Error('The published-package specs need built packages in CI. Run: npm run packages:build');
 }
-for (const dir of PACKAGES_BUILT ? Object.values(PACKAGE_DIRS) : []) {
-  // The newest file in dist, since not every filesystem records a folder's creation time
-  const builtAt = newestMtime(path.join(dir, 'dist'));
-  if (newestMtime(path.join(dir, 'src')) > builtAt) {
-    throw new Error(`${path.relative(REPO_ROOT, dir)}/dist is older than its src. Run: npm run packages:build`);
-  }
+const stale = PACKAGES_BUILT ? stalePackageUnits() : [];
+if (stale.length > 0) {
+  throw new Error(`The published packages are out of date:\n${staleMessage(stale)}\nRun: npm run packages:build (or npm test -w @abuddy/cli, which builds them)`);
 }
 
 /**
@@ -59,7 +66,7 @@ export function installPublishedPackages(): string {
     if (entry === '@abuddy' || entry.startsWith('.')) continue;
     fs.symlinkSync(path.join(REPO_ROOT, 'node_modules', entry), path.join(modules, entry), 'dir');
   }
-  for (const [name, dir] of Object.entries(PACKAGE_DIRS)) {
+  for (const [name, dir] of Object.entries(PACKED_PACKAGES)) {
     const [{ filename }] = JSON.parse(execFileSync('npm', ['pack', '--json', '--pack-destination', root], { cwd: dir }).toString());
     const target = path.join(modules, '@abuddy', name);
     fs.mkdirSync(target);
