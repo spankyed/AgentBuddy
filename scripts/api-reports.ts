@@ -92,12 +92,15 @@ function componentEntries(): ComponentEntry[] {
   });
 }
 
-const contracts = componentContracts({
+// componentContracts builds a TypeScript program, which is the slow part of this script. A package
+// with no component entries (@abuddy/ears, @abuddy/sdk) has nothing for it to report, so don't.
+const components = componentEntries();
+const contracts = components.length === 0 ? [] : componentContracts({
   packageName: pkg.name,
   projectDir: pkgDir,
   typesDir,
   tsconfigPath: path.join(pkgDir, 'tsconfig.api-extractor.json'),
-  components: componentEntries(),
+  components,
 });
 
 for (const [key, contract] of contracts) {
