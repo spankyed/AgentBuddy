@@ -1,3 +1,5 @@
+> **Done** (PR #192, branch `AS/single-mode-packs`). The text below is the plan as written; see the Outcome for where the implementation differs from it — chiefly `@abuddy/testing`, which went fully single-mode rather than keeping the `@abuddy/source` condition the Decisions describe. For the current rule, see the root `CLAUDE.md`.
+
 > **Written in session** `36f122d9-3a1e-40ef-988d-40b2574fc098` (Claude Code, 2026-09-17). Resume it with `claude -r 36f122d9-3a1e-40ef-988d-40b2574fc098`.
 
 ```
