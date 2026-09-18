@@ -54,6 +54,8 @@ export function incomingEvents<S extends { _incoming: unknown }>(spec: S): { _in
  */
 export type HostPluginEvents = {
   application:
+    // The app's own send after each client connection (`ApplicationConnectedEvent`, @abuddy/host/bus)
+    | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean }
     | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationHotkeys }
     | { type: 'APPLICATION_RESTORE_LAST_PLUGIN'; lastActivePluginId: string }
     | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> };
@@ -69,6 +71,22 @@ export const HOST_PLUGIN_IDS = ['application'] as const;
 type SameMembers<A extends string, B extends string> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
 const _hostPluginIdsMatchEvents: SameMembers<(typeof HOST_PLUGIN_IDS)[number], keyof HostPluginEvents> = true;
 void _hostPluginIdsMatchEvents;
+
+/**
+ * The event types each host plugin receives, as a value the app can check a send against — the same
+ * problem `HOST_PLUGIN_IDS` solves, one level down: a union of event shapes cannot be enumerated at
+ * runtime. A pack's own plugins get this generated from their systems' declared unions; the host's are
+ * written here, and the check below fails to compile when they drift from `HostPluginEvents`.
+ */
+export const HOST_PLUGIN_EVENT_TYPES = {
+  application: ['CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'APPLICATION_RESTORE_LAST_PLUGIN', 'PLUGIN_VISIBILITY_UPDATED'],
+} as const satisfies Record<keyof HostPluginEvents, readonly string[]>;
+
+type TypeOfEvent<T> = T extends { type: infer K extends string } ? K : never;
+const _hostPluginEventTypesMatch: {
+  [K in keyof HostPluginEvents]: SameMembers<(typeof HOST_PLUGIN_EVENT_TYPES)[K][number], TypeOfEvent<HostPluginEvents[K]>>
+} = { application: true };
+void _hostPluginEventTypesMatch;
 
 /**
  * Delivers an event to a backend system: in the renderer over its API client, elsewhere onto the bound app's bus.

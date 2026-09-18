@@ -501,6 +501,8 @@ export function generatePackFiles(
       ...targets,
       ...Object.values(manifest.entityShapes ?? {}).map((shape) => shape.source),
       ...features.flatMap((f) => (f.settings ? [f.settings] : [])),
+      // The systems' entries: their outgoing unions are where the event types a plugin receives are read from
+      ...features.flatMap((f) => (f.system ? [f.system.entry] : [])),
     ];
     return [...new Set(sources.map(sourceFileOf).filter((file): file is string => file !== undefined))];
   }
@@ -509,6 +511,11 @@ export function generatePackFiles(
   function exportOf(file: string, name: string): ExportInfo | undefined {
     moduleExports ??= createModuleExports(root, exportedFromFiles());
     return moduleExports.exportOf(file, name);
+  }
+
+  function eventTypesOf(file: string, name: string): string[] | undefined {
+    moduleExports ??= createModuleExports(root, exportedFromFiles());
+    return moduleExports.eventTypesOf(file, name);
   }
 
   /** A `"path#exportName"` target that must export a runtime value */
@@ -536,6 +543,11 @@ export function generatePackFiles(
     if (!file) throw new Error(`${label}: no settings file found at ${feature.settings} (.ts or /index.ts)`);
     if (!exportOf(file, 'default')?.value) throw new Error(`${label}: settings ${feature.settings} has no default export of the settings object`);
     return feature.settings!;
+  }
+
+  /** Whether this pack has a system at all: without one it sends nothing and declares no received events */
+  function hasSystemFeatures(): boolean {
+    return (manifest.features ?? []).some((f) => f.system);
   }
 
   function outgoingEventsType(feature: PackFeatureEntry): string {
@@ -624,7 +636,7 @@ ${stepsRegister ? `import { steps } from '${toImportPath(root, stepsRegister)}';
 ${manifest.artifacts ? `import { artifacts } from '${toImportPath(root, manifest.artifacts)}';` : ''}
 ${manifest.blocks ? `import { blocks } from '${toImportPath(root, manifest.blocks)}';` : ''}
 import { getCompiledDir, seeders } from './seeders.js';
-export { setCompiledDir } from './seeders.js';
+${hasSystemFeatures() ? "import { receivedEventTypes } from './events.js';\n" : ''}export { setCompiledDir } from './seeders.js';
 
 export const registration: PackRegistration = {
   id: '${manifest.id}',
@@ -636,6 +648,7 @@ ${manifest.artifacts ? '  artifacts,' : ''}
 ${manifest.blocks ? '  blocks,' : ''}
 ${hookEntries.length > 0 ? `  seedHooks: { ${hookEntries.map(([entity], i) => `${JSON.stringify(entity)}: __seedHooks_${i}`).join(', ')} },` : ''}
   seeders,
+${hasSystemFeatures() ? '  receivedEventTypes,' : ''}
 ${commands.length ? `  commands: ${JSON.stringify(commands)},` : ''}
   ears: {
     // Only this pack's own: EARS also names its dependencies' and the SDK's, which they register
@@ -877,11 +890,16 @@ ${busIdEntries},
     );
 
     const receivers = new Map<string, string[]>();
+    /** Own plugin id → the features whose systems send to it, for reading their declared event types */
+    const senderFeatures = new Map<string, PackFeatureEntry[]>();
     const addSender = (pluginId: string, feature: PackFeatureEntry) => {
       const alias = `__events_${feature.id}`;
       const senders = receivers.get(pluginId) ?? [];
       if (!senders.includes(alias)) senders.push(alias);
       receivers.set(pluginId, senders);
+      const sending = senderFeatures.get(pluginId) ?? [];
+      if (!sending.includes(feature)) sending.push(feature);
+      senderFeatures.set(pluginId, sending);
     };
     for (const feature of systemFeatures) {
       if (feature.plugin) addSender(feature.id, feature);
@@ -945,6 +963,23 @@ ${busIdEntries},
         .map((f) => `  '${depId}/${f.id}': '${runningSystemId(depId, snap, f.id)}',`)),
     ];
 
+    // The event types each own plugin receives, read from the senders' declared outgoing unions. Only this
+    // pack's own plugins: a dependency's and the host's are declared by whoever owns them, and the app
+    // merges every registered pack's map, so declaring them here would be a second opinion on someone
+    // else's contract.
+    const receivedTypes = [...senderFeatures].map(([pluginId, sending]) => {
+      const types = new Set(sending.flatMap((feature) => {
+        const file = sourceFileOf(feature.system!.entry);
+        const name = outgoingEventsType(feature);
+        const declared = file && eventTypesOf(file, name);
+        if (!declared) {
+          throw new Error(`Feature "${feature.id}": its system entry doesn't export "${name}", so the events it sends can't be read: export the union of the events its system emits, or set system.outgoingEventsType to the name it uses`);
+        }
+        return declared;
+      }));
+      return `  '${pluginId}': [${[...types].sort().map((type) => `'${type}'`).join(', ')}],`;
+    }).join('\n');
+
     return `${HEADER}
 import { defineEvents, ${hostTargets.size ? 'type HostPluginEvents, ' : ''}type IncomingEventsOf } from '@abuddy/sdk/events';
 ${hasSystems ? `import { busId } from './bus-ids.js';\nimport type { specs as __specs } from './system-specs.js';\n` : ''}${imports}
@@ -961,6 +996,15 @@ ${entries}
  * own plugins. A plugin id this pack also uses types as its own plugin.
  */
 export type PackEvents = OwnPackEvents${externalReceivers};
+
+/**
+ * Plugin id → the event types that plugin receives, the runtime half of \`OwnPackEvents\`. The app checks
+ * a system's send against it and drops what no one declared. Only this pack's own plugins: a dependency's
+ * and the host's come from their own packs.
+ */
+export const receivedEventTypes: Record<string, readonly string[]> = {
+${receivedTypes}
+};
 
 /** Feature id → the events this pack's system for that feature receives (dependents name it \`${manifest.id}/<feature>\`). */
 export type PackSystemEvents = {

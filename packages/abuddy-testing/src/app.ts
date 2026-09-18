@@ -89,6 +89,8 @@ interface AppPacks {
   resolveSystemAddress(address: string): string | undefined;
   getRegisteredSystems(): Map<string, AnyStateMachine>;
   getRegisteredPackSystemIds(packId: string): string[];
+  /** What each plugin receives, so a test app drops a send no plugin declares, as the app does */
+  getPluginEventValidationMap(): Map<string, Set<string>>;
 }
 
 const running = new Set<TestApp>();

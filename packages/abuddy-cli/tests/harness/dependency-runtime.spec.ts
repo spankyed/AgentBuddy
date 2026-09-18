@@ -50,6 +50,9 @@ await setupPackTests({
   registration: {
     id: 'dependent-pack',
     systems: [{ id: 'memos', machine: memos, events: new Set(['SAVE', 'NOTIFY']) }],
+    // A hand-written registration declares what its plugin receives, as a generated one does: the bus
+    // drops a send to a plugin nothing declares
+    receivedEventTypes: { memos: ['MEMOS_STARTED', 'MEMOS_NOTIFIED'] },
     features: [{ id: 'widgets', hasSystem: false, services: [], settings: { plugins: { widgets: { size: 3 } } } }],
   },
 });`);

@@ -14,6 +14,13 @@ export interface ExportInfo {
 export interface ModuleExports {
   /** The export `name` of `file` (an absolute path the reader was created with); undefined when it has none */
   exportOf(file: string, name: string): ExportInfo | undefined;
+  /**
+   * The `type` literals of an exported event union: `{ type: 'A' } | { type: 'B' }` reads as `['A', 'B']`.
+   * Undefined when `file` exports no such name. A member with no literal `type` — a union widened to
+   * `string`, or a shape that isn't an event — throws, because a map built from it would be silently
+   * short and the check over it would reject real events.
+   */
+  eventTypesOf(file: string, name: string): string[] | undefined;
 }
 
 function loadTypeScript(): typeof TS {
@@ -56,6 +63,22 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
   });
   const checker = program.getTypeChecker();
 
+  /** The declared type of an exported name, following aliases, or undefined when there is none */
+  function exportedType(file: string, name: string): TS.Type | undefined {
+    const sourceFile = program.getSourceFile(file);
+    if (!sourceFile) throw new Error(`${file} is not part of the program reading pack exports`);
+    const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
+    const exported = moduleSymbol && checker.getExportsOfModule(moduleSymbol).find((symbol) => symbol.name === name);
+    if (!exported) return undefined;
+    let symbol = exported;
+    while (symbol.flags & ts.SymbolFlags.Alias) {
+      const target = checker.getImmediateAliasedSymbol(symbol);
+      if (!target) return undefined;
+      symbol = target;
+    }
+    return checker.getDeclaredTypeOfSymbol(symbol);
+  }
+
   return {
     exportOf(file, name) {
       const sourceFile = program.getSourceFile(file);
@@ -80,6 +103,21 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
       if (symbol.flags & ts.SymbolFlags.Class) return { value: 'class', type };
       const callable = symbol.flags & ts.SymbolFlags.Function || checker.getTypeOfSymbol(symbol).getCallSignatures().length > 0;
       return { value: callable ? 'function' : 'object', type };
+    },
+
+    eventTypesOf(file, name) {
+      const declared = exportedType(file, name);
+      if (!declared) return undefined;
+      // A single event is its own type, not a union of one
+      const members = declared.isUnion() ? declared.types : [declared];
+      return members.map((member) => {
+        const property = member.getProperty('type');
+        const literal = property && checker.getTypeOfSymbolAtLocation(property, property.valueDeclaration ?? property.declarations![0]);
+        if (!literal?.isStringLiteral()) {
+          throw new Error(`${path.basename(file)} exports "${name}" with a member whose \`type\` is ${literal ? checker.typeToString(literal) : 'missing'}, not a string literal: the events a plugin receives are read from these, and a member without one would leave the map short`);
+        }
+        return literal.value;
+      });
     },
   };
 }

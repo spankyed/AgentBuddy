@@ -2,6 +2,7 @@
 // clients. The app composes it with its event sources and client sink (createAppBus, app-bus.ts); the pack
 // test harness runs the same machine with a recording sink.
 import { enqueueActions, fromCallback, setup, spawnChild, type AnyActorRef, type AnyStateMachine } from 'xstate';
+import { reportError } from '@abuddy/sdk/logger';
 import { bus } from '@abuddy/sdk/ids';
 import type { PackRegistry } from '../packs/pack-registration.ts';
 
@@ -44,7 +45,7 @@ export type BusSourceEvent = Extract<BackendEvents, { type: 'INCOMING' | 'OUTGOI
 
 export interface BusOptions {
   /** The registered packs whose systems the bus runs */
-  registry: Pick<PackRegistry, 'getRegisteredSystems' | 'getRegisteredPackSystemIds'>;
+  registry: Pick<PackRegistry, 'getRegisteredSystems' | 'getRegisteredPackSystemIds' | 'getPluginEventValidationMap'>;
   /** The systems the bus runs, by id; defaults to every system in `registry` */
   systems?(): ReadonlyMap<string, AnyStateMachine>;
   /** Delivers an event a system sent to a frontend plugin */
@@ -125,7 +126,24 @@ export function createBusMachine(options: BusOptions) {
       // Its own id, so it doesn't share a key with the systems spawned beside it
       listen: spawnChild('listen', { id: 'bus-listen' }),
       notify: ({ event }) => {
-        if (event.type === 'OUTGOING') options.onOutgoing(event.event);
+        if (event.type !== 'OUTGOING') return;
+        // The counterpart of receiveClientEvent: a client's event is checked against what a system
+        // accepts, and a system's event against what the plugin receives. Reported and dropped rather
+        // than thrown — the caller is a running system, and a malformed message must not take it down.
+        // takeSystemErrors fails any pack test that leaves one, so this is loud where it should be.
+        const { pluginId, type } = event.event;
+        const accepted = options.registry.getPluginEventValidationMap().get(pluginId);
+        if (!accepted?.has(type)) {
+          reportError({
+            source: 'bus',
+            operation: 'sendToPlugin',
+            error: new Error(accepted
+              ? `Dropped "${type}" sent to the "${pluginId}" plugin, which declares no such event. A plugin receives what its own pack's systems declare they emit: add it to that system's outgoing events, or send an event the plugin handles.`
+              : `Dropped "${type}" sent to "${pluginId}", which no registered pack declares as a plugin that receives events. Check the id, or give the plugin's own pack a system that declares what it sends there.`),
+          });
+          return;
+        }
+        options.onOutgoing(event.event);
       },
       routeIncoming: ({ event, system }) => {
         if (event.type !== 'INCOMING') return;

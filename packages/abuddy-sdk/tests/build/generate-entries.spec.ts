@@ -37,7 +37,22 @@ function generate(fields: Record<string, unknown>, deps: Record<string, PackSnap
   return generatePackFiles(manifest(fields), { packRoot: root, depSnapshots: new Map(Object.entries(deps)) });
 }
 
-const system = (id: string, extra: Record<string, unknown> = {}) => ({ id, system: { entry: `src/features/${id}/be/system.ts`, ...extra } });
+/**
+ * A feature with a system, and the system entry it names. The entry declares the events the system
+ * emits: the generated `receivedEventTypes` reads them from it, so a fixture without one is a pack
+ * whose sends could not be checked.
+ */
+const system = (id: string, extra: Record<string, unknown> = {}) => {
+  const entry = `src/features/${id}/be/system.ts`;
+  const typeName = (extra.outgoingEventsType as string | undefined)
+    ?? `Outgoing${id.replace(/(^|[-_])(\w)/g, (_, __, c: string) => c.toUpperCase())}Events`;
+  // A test that writes its own richer system entry keeps it; this only fills in the declaration a
+  // fixture would otherwise lack, since generation now reads the events from it
+  if (!fs.existsSync(path.join(root, entry))) {
+    write(entry, `export type ${typeName} = { type: '${id.toUpperCase()}_CONNECTED' } | { type: '${id.toUpperCase()}_UPDATED' };\n`);
+  }
+  return { id, system: { entry, ...extra } };
+};
 const withPlugin = (feature: Record<string, unknown>) => ({ ...feature, plugin: { entry: `src/features/${feature.id}/fe/index.ts` } });
 
 describe('generated events', () => {
@@ -49,6 +64,30 @@ describe('generated events', () => {
     // A host plugin keeps the events the host declares it receives: a pack widens only its own plugins
     expect(events).toContain("export type PackEvents = OwnPackEvents & Omit<Pick<HostPluginEvents, 'application'>, keyof OwnPackEvents>;");
     expect(events).not.toContain("'application': __events_actions");
+  });
+
+  // The runtime half of OwnPackEvents: the app checks a system's send against it, so it has to say the
+  // same thing as the types beside it
+  it('records the event types each own plugin receives, read from its senders\' declared unions', () => {
+    const events = generate({ features: [withPlugin(system('actions', { sendsTo: ['flows'] })), withPlugin(system('flows'))] })['src/__generated__/events.ts'];
+    expect(events).toContain("'actions': ['ACTIONS_CONNECTED', 'ACTIONS_UPDATED'],");
+    // flows receives its own system's events and the ones actions sends it, sorted and deduplicated
+    expect(events).toContain("'flows': ['ACTIONS_CONNECTED', 'ACTIONS_UPDATED', 'FLOWS_CONNECTED', 'FLOWS_UPDATED'],");
+  });
+
+  it('records nothing for a plugin no system sends to, so a send there is rejected', () => {
+    const events = generate({ features: [withPlugin(system('actions')), withPlugin({ id: 'viewer', plugin: { entry: 'src/features/viewer/fe/index.ts' } })] })['src/__generated__/events.ts'];
+    expect(events).toContain("'actions': ['ACTIONS_CONNECTED', 'ACTIONS_UPDATED'],");
+    expect(events).not.toContain("'viewer':");
+  });
+
+  it('records only this pack\'s own plugins: a dependency\'s and the host\'s are their owners\' to declare', () => {
+    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { entry: 'y' } }] }, { [PACK_TYPES_DEF]: "export type PackEvents = { memos: { type: 'MEMO_ADDED' } };" }) };
+    const events = generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions', { sendsTo: ['memos', 'application'] }))] }, deps)['src/__generated__/events.ts'];
+    const runtime = events.slice(events.indexOf('receivedEventTypes'));
+    expect(runtime).toContain("'actions':");
+    expect(runtime).not.toContain("'memos':");
+    expect(runtime).not.toContain("'application':");
   });
 
   it('leaves out a host plugin no sendsTo names', () => {

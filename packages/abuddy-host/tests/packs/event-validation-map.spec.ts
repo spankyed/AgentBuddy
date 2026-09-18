@@ -25,3 +25,29 @@ describe('getEventValidationMap', () => {
     expect(getEventValidationMap().get('validation-host')).toEqual(new Set(['HELLO']));
   });
 });
+
+describe('getPluginEventValidationMap', () => {
+  const registry = createPackRegistry();
+
+  it("starts with the host's own plugins, which no pack declares", () => {
+    expect(registry.getPluginEventValidationMap().get('application')).toEqual(
+      new Set(['CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'APPLICATION_RESTORE_LAST_PLUGIN', 'PLUGIN_VISIBILITY_UPDATED']),
+    );
+  });
+
+  it('follows packs registering and unregistering, with no manual invalidation', () => {
+    expect(registry.getPluginEventValidationMap().has('memos')).toBe(false);
+
+    registry.registerPack({ id: 'memo-pack', systems: [], receivedEventTypes: { memos: ['MEMO_ADDED', 'MEMOS_CONNECTED'] } });
+    expect(registry.getPluginEventValidationMap().get('memos')).toEqual(new Set(['MEMO_ADDED', 'MEMOS_CONNECTED']));
+
+    registry.unregisterPack('memo-pack');
+    expect(registry.getPluginEventValidationMap().has('memos')).toBe(false);
+  });
+
+  it('is empty for a pack that declares none, so a send to its plugin is rejected rather than waved through', () => {
+    registry.registerPack({ id: 'silent-pack', systems: [] });
+    expect(registry.getPluginEventValidationMap().has('silent')).toBe(false);
+    registry.unregisterPack('silent-pack');
+  });
+});

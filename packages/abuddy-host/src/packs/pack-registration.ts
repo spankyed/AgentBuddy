@@ -13,6 +13,7 @@ import type { HostServices } from '@abuddy/sdk/services';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS, _reservedEntries } from '@abuddy/sdk/types';
+import { HOST_PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
 import { makePolicy, registerRepository, unregisterRepository, type PartitionPolicy } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { createDefinitionStore, createDesignationStore, createStepStore } from './contributions.ts';
@@ -104,6 +105,12 @@ export interface PackRegistry extends PackRegistryView {
    * pack or host system registers or a pack unregisters.
    */
   getEventValidationMap(): Map<string, Set<string>>;
+  /**
+   * Each plugin's id → the event types it receives, the outgoing counterpart of `getEventValidationMap`.
+   * A pack declares its own plugins' (`PackRegistration.receivedEventTypes`, generated from its systems'
+   * outgoing unions) and the host declares its own. Cached on the same terms as the incoming map.
+   */
+  getPluginEventValidationMap(): Map<string, Set<string>>;
   /** The SDK's entity types, the host's and the registered packs' */
   getRegisteredEntityTypes(): ReadonlySet<string>;
   getRegisteredEARSPolicy(): { excludedEntityTypes: string[] };
@@ -165,6 +172,7 @@ export function createPackRegistry(): PackRegistry {
   let entityTypeCache: Set<string> | null = null;
   let servicesCache: Record<string, unknown> | null = null;
   let eventValidationMap: Map<string, Set<string>> | null = null;
+  let pluginEventValidationMap: Map<string, Set<string>> | null = null;
   let policyCache: PartitionPolicy | null = null;
 
   /** Drops what's derived from the registrations */
@@ -172,6 +180,7 @@ export function createPackRegistry(): PackRegistry {
     entityTypeCache = null;
     servicesCache = null;
     eventValidationMap = null;
+    pluginEventValidationMap = null;
     policyCache = null;
   }
 
@@ -317,6 +326,21 @@ export function createPackRegistry(): PackRegistry {
     return map;
   }
 
+  function buildPluginEventValidationMap(): Map<string, Set<string>> {
+    const map = new Map<string, Set<string>>();
+    // The host's own plugins, pinned to HostPluginEvents by a compile-time check in @abuddy/sdk/events
+    for (const [pluginId, types] of Object.entries(HOST_PLUGIN_EVENT_TYPES)) {
+      map.set(pluginId, new Set<string>(types));
+    }
+    // A pack declares only its own plugins, so two packs never widen each other's
+    for (const reg of registrations.values()) {
+      for (const [pluginId, types] of Object.entries(reg.receivedEventTypes ?? {})) {
+        map.set(pluginId, new Set([...(map.get(pluginId) ?? []), ...types]));
+      }
+    }
+    return map;
+  }
+
   function getRegisteredEARSPolicy(): { excludedEntityTypes: string[] } {
     const excluded: string[] = [...SDK_EXCLUDED_ENTITY_TYPES];
     for (const reg of registrations.values()) {
@@ -360,6 +384,7 @@ export function createPackRegistry(): PackRegistry {
     },
 
     getEventValidationMap: () => eventValidationMap ??= buildEventValidationMap(),
+    getPluginEventValidationMap: () => pluginEventValidationMap ??= buildPluginEventValidationMap(),
 
     earsNames() {
       const { entities, relKinds } = appEARS();
