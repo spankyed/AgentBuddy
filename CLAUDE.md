@@ -18,6 +18,41 @@ Monorepo using npm workspaces. Requires Node >= 23.0.0.
 
 Do not edit release/version metadata unless the user explicitly asks for a release or version bump. This includes `package.json` version fields, `package-lock.json` root package versions, app version constants, release notes, changelogs, and generated release artifacts. The release process owns those changes.
 
+## What to run after a change
+
+Run the narrowest thing that could fail, and stop. The full chain exists for the merge, not for the
+edit — running it after every change costs minutes and finds nothing the narrow check wouldn't.
+
+| You changed | Run |
+|---|---|
+| one package's source | that workspace's `npm test -w <pkg>`, plus its typecheck if the change is typed |
+| a spec | that spec file: `npx vitest run <path> --root packages/<pkg>` |
+| a build script, bundler or gate | `npm test -w @abuddy/cli`, plus the one command whose output changed |
+| a comment, a doc, a CLAUDE.md | nothing, unless a spec asserts the text (`removed-names-in-docs`, the door table) |
+| an npm script | the one path that runs it, end to end, once |
+| the renderer, the app's boot, or a pack's FE | `npm test -- <spec>` for the affected E2E, not the whole suite |
+| anything, before you ask for a merge | the full chain, once |
+
+Things that waste the most time, in order:
+
+- **Running `npm run build` to test a change no build output depends on.** The renderer and API build
+  from source; a CLI or SDK change does not need them rebuilt to be tested.
+- **Running an E2E suite to find a bug you have a stack trace for.** A minified frame with a line and
+  column is a solved problem: build once with `sourcemap: true` in the renderer's Vite config, decode
+  the mapping, read the source. Do that before you grep, not after.
+- **Re-running the full chain after a fix to a thing the chain already covered.** If the CLI suite
+  caught it, the CLI suite proves the fix.
+- **Running suites concurrently.** They share the package build lock and the build stamps, so a
+  background `test:unit` racing a foreground `test:external-pack` produces failures that are about the
+  race, not the code.
+
+Two rules that pay for themselves:
+
+- **Measure before you optimise, and before you accept someone else's measurement.** Two proposals in
+  this repo were rejected by one command each, and both had been argued for at length first.
+- **A mutation check is worth more than a re-run.** Breaking the thing on purpose and watching the
+  right test fail proves more than running the whole suite again.
+
 ## Commands
 
 ```bash
