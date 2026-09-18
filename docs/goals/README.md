@@ -132,7 +132,19 @@ The standing rules, as prose bullets (the prompt's "Never" list in fuller form),
 
 ## Finishing a goal
 
-When the work is done, the implementing agent adds an Outcome section before Deferred and Constraints:
+When the work is done, move the doc to `docs/archive/goals/` and add a status blockquote as its first line, above the session note. Move it when the work is done, not when it merges: a goal whose phases are all finished is history, and leaving it in `docs/goals/` reads as a plan and keeps describing code that no longer exists. Name wherever the work is — a PR, a branch, a commit — or nothing at all if there's nothing useful to name.
+
+- **Done:** `> **Done** (<where the work is, if it's worth naming>). The text below is the plan as written; <what later work changed>. For the current layout, see <doc>.`
+- **Absorbed by another goal:** `> **Absorbed by [`goal-x.md`](../../goals/goal-x.md)** (its Decision N and Phase M). <which decisions it superseded>. The text below is the plan as written…`
+- **Superseded in part:** `> **Superseded in part** by `goal-x.md`: <what changed>.`
+
+Fix links in other docs to the moved file. Docs outside the archive must describe the code as it is; the archived doc keeps the old names.
+
+### The Outcome section
+
+An archived doc carries an Outcome section, before Deferred and Constraints. **Write it at archive time if it isn't there already, and never hold up the move for it.** Nobody writes one as they go, so requiring it first is how finished goals sit in `docs/goals/` describing code that has changed — which costs more than a thin Outcome does.
+
+Take the parts that have something in them:
 
 ```
 ## Outcome (YYYY-MM-DD)
@@ -148,15 +160,11 @@ When the work is done, the implementing agent adds an Outcome section before Def
 ### Final verification                 (the full check list, with results)
 ```
 
+A goal that went as planned needs the paragraph and the per-phase lines, not five headings — leave out a section with nothing in it, as everywhere else in this format. The two worth stretching for are **Corrections to the Decisions**, because a decision the implementation had to break is the thing a later reader most needs and the only place it gets recorded, and **Open items**, which is where the follow-ups go instead of a conversation nobody can find.
+
+Writing it later means writing it from the branch rather than from memory: the commits, the specs that landed and the doc's own Phases are enough to reconstruct one, and an Outcome written that way is no worse than one written as you went.
+
 Benchmarks and measurements go where the doc asked for them: inside the phase, or in a table in the Outcome.
-
-Then move the doc to `docs/archive/goals/` and add a status blockquote as its first line, above the session note. Move it when the work is done, not when it merges: a goal whose phases are all finished is history, and leaving it in `docs/goals/` reads as a plan and keeps describing code that no longer exists. Name wherever the work is — a PR, a branch, a commit — or nothing at all if there's nothing useful to name.
-
-- **Done:** `> **Done** (<where the work is, if it's worth naming>). The text below is the plan as written; <what later work changed>. For the current layout, see <doc>.`
-- **Absorbed by another goal:** `> **Absorbed by [`goal-x.md`](../../goals/goal-x.md)** (its Decision N and Phase M). <which decisions it superseded>. The text below is the plan as written…`
-- **Superseded in part:** `> **Superseded in part** by `goal-x.md`: <what changed>.`
-
-Fix links in other docs to the moved file. Docs outside the archive must describe the code as it is; the archived doc keeps the old names.
 
 ## Writing style
 
