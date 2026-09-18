@@ -1,7 +1,13 @@
 // Keeping API keys out of logs: key-shaped strings in text, the values of credential fields, and values the app has used
 import { describe, expect, it } from 'vitest';
-import { REDACTED, redactSecrets, redactSecretText } from '../../src/utils/redact.ts';
-import { registerSecretValue } from '../../src/utils/internals.ts';
+import { REDACTED, redactSecrets, redactSecretText, setSecretValueMatcher } from '../../src/utils/redact.ts';
+
+// What the app binds as `HostRuntime.redaction`, which `bindHost` hands to redaction: here, the values themselves
+const known = new Set<string>();
+const registerSecretValue = (value: string) => {
+  known.add(value);
+  setSecretValueMatcher((text, from, to) => known.has(text.slice(from, to)));
+};
 
 describe('redactSecretText', () => {
   it.each([

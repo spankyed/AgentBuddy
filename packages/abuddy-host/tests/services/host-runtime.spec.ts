@@ -1,5 +1,6 @@
 // createHostRuntime assembles the app the SDK binds: the given bus and version, the engine, the registered packs,
 // and the host's services over the store. A reset leaves the app as a fresh boot does.
+import { secretRedaction } from '../../src/secrets/redaction.ts';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -42,7 +43,9 @@ describe('createHostRuntime', () => {
     const engine = newEngine();
     const packs = createPackRegistry();
     const runtime = createHostRuntime({ store: {} as LmdbStore, engine, transport: { rootEvents: testRootEvents }, appVersion: '1.2.3', packs });
-    expect(Object.keys(runtime).sort()).toEqual(['appVersion', 'ears', 'packs', 'services', 'transport']);
+    expect(Object.keys(runtime).sort()).toEqual(['appVersion', 'ears', 'packs', 'redaction', 'services', 'transport']);
+    // What log redaction masks: the host's own check over the values its secrets store has handled
+    expect(runtime.redaction).toBe(secretRedaction);
     expect(runtime.transport.rootEvents).toBe(testRootEvents);
     expect(runtime.appVersion).toBe('1.2.3');
     expect(runtime.ears).toBe(engine.query);
