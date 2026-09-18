@@ -83,6 +83,11 @@
       "types": "./dist/components/monaco-config.d.ts",
       "default": "./dist/components/monaco-config.js"
     },
+    "./components/monaco-error-filters": {
+      "@abuddy/source": "./src/components/monaco-error-filters.ts",
+      "types": "./dist/components/monaco-error-filters.d.ts",
+      "default": "./dist/components/monaco-error-filters.js"
+    },
     "./components/node-dimensions": {
       "@abuddy/source": "./src/components/node-dimensions.ts",
       "types": "./dist/components/node-dimensions.d.ts",

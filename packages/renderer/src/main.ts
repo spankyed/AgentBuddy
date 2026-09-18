@@ -11,6 +11,7 @@ import { runFrontendMigrations } from '@/setup/migrations';
 import { handleProtocolInstall, requestPackInstall } from '@/packs/pack-install';
 import 'virtual:host-deps';
 import { bindRendererHost, fePacks } from '@/core/fe-host';
+import { installMonacoErrorFilters } from '@abuddy/ui/components/monaco-error-filters';
 
 declare const __APP_VERSION__: string;
 
@@ -58,6 +59,10 @@ function reportRendererError(source: string, error: unknown, meta?: unknown) {
     fatal: true,
   }).catch(() => {});
 }
+
+// Before the listener below: Monaco's diff view throws a recoverable range error that this would
+// otherwise report as fatal, and listeners on one target run in the order they were added.
+installMonacoErrorFilters();
 
 window.addEventListener('error', (event) => {
   reportRendererError('window.error', event.error ?? event.message, {
