@@ -67,6 +67,18 @@ export function formatResult(value: unknown, format: OutputFormat): string {
   return toPretty(value);
 }
 
+/**
+ * Waits for what was printed to reach stdout and stderr. Node takes a write to a pipe into memory and sends it as the
+ * reader takes it, and `process.exit` drops whatever is still waiting, so a command that prints a lot and then exits
+ * (a failing script, above all) loses its output without this.
+ */
+export async function flushOutput(): Promise<void> {
+  await Promise.all([process.stdout, process.stderr].map((stream) => new Promise<void>((resolve) => {
+    if (stream.writableLength === 0 || stream.writableEnded || stream.destroyed) return resolve();
+    stream.write('', () => resolve());
+  })));
+}
+
 /** Prints the result, or writes it to `out` (its extension doesn't change the format) */
 export function writeResult(value: unknown, { format, out }: { format: OutputFormat; out?: string }, io: DbIo): void {
   const text = formatResult(value, format);

@@ -8,7 +8,7 @@ import { builtinModules, createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import type { AppDatabase } from '@abuddy/host/database';
 import { consoleScope, openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
-import { outputFormat, writeResult } from './output';
+import { flushOutput, outputFormat, writeResult } from './output';
 
 const OPTIONS = {
   'read-only': { type: 'boolean', default: false },
@@ -104,6 +104,11 @@ async function importScript(scriptFile: string): Promise<{ default?: unknown }> 
   }
 }
 
+/** What the script failed with, named after the script, so a failure is never read as the CLI's own */
+function scriptFailure(scriptFile: string, error: unknown): Error {
+  return new Error(`${scriptFile} failed: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+}
+
 export async function dbScript(args: string[], io: DbIo): Promise<void> {
   const { values, positionals, target } = parseDbArgs(args, OPTIONS, SCRIPT_USAGE);
   const format = outputFormat(values.output);
@@ -114,13 +119,24 @@ export async function dbScript(args: string[], io: DbIo): Promise<void> {
 
   // A script writes unless it says it only reads, so it's refused while an app runs on the data dir
   const db = await openTarget(target, { write: !values['read-only'], command: 'script' }, io);
-  const result = await withDatabase(db, async () => {
-    const module = await importScript(scriptFile);
-    if (typeof module.default !== 'function') {
-      throw new Error(`${scriptFile} exports no function to run: export default ({ db, EARS, args, log }) => { ... }`);
-    }
-    const context: DbScriptContext = { db, EARS: consoleScope(db).EARS, args: scriptArgs, log: io.out };
-    return (module.default as (context: DbScriptContext) => unknown)(context);
-  });
-  if (result !== undefined) writeResult(result, { format, out: values.out as string | undefined }, io);
+  try {
+    const result = await withDatabase(db, async () => {
+      const module = await importScript(scriptFile).catch((error: unknown) => { throw scriptFailure(scriptFile, error); });
+      if (typeof module.default !== 'function') {
+        throw new Error(`${scriptFile} exports no function to run: export default ({ db, EARS, args, log }) => { ... }`);
+      }
+      const context: DbScriptContext = { db, EARS: consoleScope(db).EARS, args: scriptArgs, log: io.out };
+      try {
+        // Awaited here, inside withDatabase: the script's own work — its writes, an interactive question — finishes
+        // before the database is closed, and what it throws or rejects with fails the command rather than being lost
+        return await (module.default as (context: DbScriptContext) => unknown)(context);
+      } catch (error) {
+        throw scriptFailure(scriptFile, error);
+      }
+    });
+    if (result !== undefined) writeResult(result, { format, out: values.out as string | undefined }, io);
+  } finally {
+    // What the script printed reaches stdout before the CLI exits, which drops whatever is still buffered for a pipe
+    await flushOutput();
+  }
 }

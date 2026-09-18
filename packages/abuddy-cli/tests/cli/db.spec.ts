@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { Readable } from 'node:stream';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
 import { installEngine, installedEngine, tx, type EARS } from '@abuddy/ears';
 import { findDatabaseWriter, holdDatabaseWriteLock, openDatabaseStore, readInstalledSchema } from '@abuddy/host/database';
@@ -533,6 +533,102 @@ describe('abuddy db script', () => {
     } finally {
       fs.chmodSync(scripts, 0o755);
     }
+  });
+
+  const cliBin = () => path.resolve(import.meta.dirname, '..', '..', 'bin', 'abuddy.mjs');
+
+  /** The CLI as a user runs it: its own process, so a script's pending work and the exit code are the real ones */
+  function runCli(args: string[], input = ''): { status: number | null; stdout: string; stderr: string } {
+    const run = spawnSync(process.execPath, [cliBin(), 'db', 'script', ...args], { encoding: 'utf-8', input });
+    return { status: run.status, stdout: run.stdout, stderr: run.stderr };
+  }
+
+  /**
+   * The same, with nothing read from it until it exits (or a moment passes, since a run that waits for its output to
+   * be taken can't exit first): a slow reader, where output the CLI hasn't flushed is lost.
+   */
+  function runCliSlowReader(args: string[]): Promise<{ status: number | null; stdout: string; stderr: string }> {
+    return new Promise((resolve) => {
+      const child = spawn(process.execPath, [cliBin(), 'db', 'script', ...args], { stdio: ['ignore', 'pipe', 'pipe'] });
+      let stdout = '';
+      let stderr = '';
+      let reading = false;
+      const read = () => {
+        if (reading) return;
+        reading = true;
+        child.stdout.setEncoding('utf-8');
+        child.stderr.setEncoding('utf-8');
+        child.stdout.on('data', (chunk: string) => { stdout += chunk; });
+        child.stderr.on('data', (chunk: string) => { stderr += chunk; });
+      };
+      const waited = setTimeout(read, 1500);
+      child.on('exit', read);
+      child.on('close', (status) => { clearTimeout(waited); resolve({ status, stdout, stderr }); });
+    });
+  }
+
+  it('waits for an async script, printing everything it logged and saving what it wrote', async () => {
+    const dir = await appDataDir();
+    const file = writeScript(dir, 'slow.mjs', [
+      'export default async ({ db, log }) => {',
+      "  log('first');",
+      '  await new Promise((resolve) => setTimeout(resolve, 250));',
+      "  db.query.tx('Note-a').put('title', 'Written late');",
+      "  log('second');",
+      '  await new Promise((resolve) => setTimeout(resolve, 250));',
+      "  return 'finished';",
+      '};',
+    ].join('\n'));
+
+    const run = runCli([file, '--data-dir', dir]);
+    expect(run.status, run.stderr).toBe(0);
+    expect(run.stdout.trim().split('\n')).toEqual(['first', 'second', 'finished']);
+    expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('Written late');
+  });
+
+  it('waits for a script that asks the user something', async () => {
+    const dir = await appDataDir();
+    const file = writeScript(dir, 'ask.mjs', [
+      "import * as readline from 'node:readline/promises';",
+      'export default async ({ db, log }) => {',
+      '  const lines = readline.createInterface({ input: process.stdin, output: process.stdout });',
+      "  const answer = await lines.question('Rename Note-a? (y/N) ');",
+      '  lines.close();',
+      "  if (answer.trim().toLowerCase() !== 'y') return 'cancelled';",
+      "  db.query.tx('Note-a').put('title', 'Renamed');",
+      "  log('renamed');",
+      "  return 'done';",
+      '};',
+    ].join('\n'));
+
+    const run = runCli([file, '--data-dir', dir], 'y\n');
+    expect(run.status, run.stderr).toBe(0);
+    expect(run.stdout).toContain('renamed');
+    expect(run.stdout.trim().endsWith('done')).toBe(true);
+    expect((await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir])).out).toBe('Renamed');
+  });
+
+  it('fails, naming the script, when it throws or rejects, keeping what it printed first', async () => {
+    const dir = await appDataDir();
+    const rejects = writeScript(dir, 'rejects.mjs', [
+      'export default async ({ log }) => {',
+      '  for (let i = 0; i < 20000; i++) log(`line ${i} ${"x".repeat(100)}`);',
+      '  await new Promise((resolve) => setTimeout(resolve, 100));',
+      "  throw new Error('boom from the script');",
+      '};',
+    ].join('\n'));
+
+    const rejected = await runCliSlowReader([rejects, '--data-dir', dir]);
+    expect(rejected.status).not.toBe(0);
+    expect(rejected.stderr).toContain(`${rejects} failed: boom from the script`);
+    // Everything it printed before it failed is there, rather than dropped by the exit
+    expect(rejected.stdout.trim().split('\n').at(-1)).toBe(`line 19999 ${'x'.repeat(100)}`);
+
+    const throws = writeScript(dir, 'throws.mjs', "export default () => { throw new Error('thrown at once'); };");
+    const thrown = await run(['script', throws, '--data-dir', dir]);
+    expect(thrown.error?.message).toBe(`${throws} failed: thrown at once`);
+    // The database was closed whichever way it failed, so nothing holds the write lock
+    expect(findDatabaseWriter(dir)).toBeNull();
   });
 
   it('refuses a file that is missing, or exports no function, changing nothing', async () => {
