@@ -6,13 +6,12 @@ const SOURCE_PACKAGES = ['@abuddy/ears', '@abuddy/sdk', '@abuddy/ui'] as const;
 
 const SOURCE_CONDITION_FLAG = '--conditions=@abuddy/source';
 
-/** NODE_OPTIONS with the source condition appended once (scripts/with-source.mjs does the same) */
-export function withSourceCondition(nodeOptions: string | undefined): string {
-  const options = (nodeOptions ?? '').split(/\s+/).filter(Boolean);
-  return (options.includes(SOURCE_CONDITION_FLAG) ? options : [...options, SOURCE_CONDITION_FLAG]).join(' ');
-}
-
-/** NODE_OPTIONS without the source condition, for processes that choose their own conditions */
+/**
+ * NODE_OPTIONS without the source condition, for the processes the CLI starts to run pack code: the
+ * Playwright runner, the seed-runtime check and the app the fixture launches, each of which resolves the
+ * @abuddy packages' dist as a pack does. Nothing here adds the condition — a host process that needs it
+ * gets it from `scripts/with-source.mjs`, which runs before any TypeScript loader and keeps its own copy.
+ */
 export function withoutSourceCondition(nodeOptions: string | undefined): string {
   return (nodeOptions ?? '').split(/\s+/).filter((option) => option && option !== SOURCE_CONDITION_FLAG).join(' ');
 }

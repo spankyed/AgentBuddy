@@ -173,7 +173,7 @@ What opening an app's database needs, shared by the API's boot and `abuddy db`, 
   - `getSharedFeDeps()` also shares every exported subpath of `@tiptap/pm` and `@tiptap/vue-3`, and aliases `prosemirror-<name>` to `@tiptap/pm/<name>`.
   - To give pack FE code a new SDK module, add it to `SDK_FE_MODULES`. The FE bundler's error message says to do this.
 - `assertSourceResolution(resolve, processName)` throws when a checkout's `@abuddy/ears`, `@abuddy/sdk` or `@abuddy/ui` (a package with `src/`) resolves outside `src/`. It is called by the API boot (except under Electron) and the CLI bin (`abuddy-cli/bin/abuddy.mjs`) — host processes, which load workspace source. `@abuddy/testing` doesn't call it: a pack's test run resolves the packages' `dist` like the pack itself, and checks instead that the checkout built that `dist` from its current sources (`src/checkout-freshness.ts`).
-- `withSourceCondition` and `withoutSourceCondition` edit `NODE_OPTIONS`. `abuddy test` and the fixture's launch env use them.
+- `withoutSourceCondition` strips the source condition from `NODE_OPTIONS`, for the processes the CLI starts to run pack code: `abuddy test`'s Playwright runner, `checkSeedRuntimeLoads` and the fixture's launch env. Nothing here adds the condition; a host process that needs it is started through `scripts/with-source.mjs`, which runs before any TypeScript loader and keeps its own copy.
 
 ## Tests (`tests/`)
 
