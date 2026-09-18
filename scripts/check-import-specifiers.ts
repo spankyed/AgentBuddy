@@ -433,40 +433,35 @@ const TEST_FILE_OPTIONS = ['include', 'includeSource', 'dir', 'root', 'setupFile
 /**
  * Pack configs that declare the `@abuddy/source` condition on purpose, with the reason each does.
  *
- * The rule this excepts: a pack resolves the `@abuddy` packages' published `dist`, because that is the
- * one layout a pack author ever has. A pack config declaring the condition compiles against this
- * checkout's TypeScript source instead, so what it builds is something no pack author can reproduce.
+ * The rule this excepts: a pack resolves the `@abuddy` packages' published `dist`, the one layout a pack
+ * author ever has. A pack config that declares the condition compiles against this checkout's source
+ * instead, so it builds something no pack author can reproduce.
  *
- * **Keep this table much smaller than `RESOLVES_DIST_BY_DESIGN`, and prefer moving the file to adding a
- * row.** The two are not mirror images. An exception there resolves `dist` — the layout every consumer
- * has — so a mistaken entry costs a stale build, which shows up as a type error or a missing symbol. An
- * exception here resolves source, so a mistaken entry costs a build that only exists in this checkout,
- * and nothing downstream notices: `types-bundler-determinism.spec.ts` compares a synthetic fixture pack
- * against the published tarballs, never the packs in this repository.
+ * **Try moving the file first.** What this is for is a config that belongs to a pack but is run by a
+ * host build: a Vite config for a built-in pack's frontend that the renderer runs, or a tsconfig the
+ * app's build extends to compile that pack's sources. Both are host code by role and pack code only by
+ * location. Putting such a file in `packages/renderer/` and naming it after the pack costs nothing but
+ * distance from the code it configures — so add a row only when moving it is genuinely not possible.
  *
- * Use it for:
- * - **a host-side config that physically sits in a pack's tree** and is consumed by a host build — a
- *   Vite config the renderer imports to build a built-in pack's frontend, say. It is host code by role
- *   and pack code only by location, so it declares the condition like every other host config. Moving it
- *   out of the pack tree is better wherever that is possible, and usually it is.
- * - **pack-local tooling that must read the packages' TypeScript source** rather than their built
- *   declarations: the mirror of the API Extractor entries above, which need the opposite for the same
- *   kind of reason.
+ * **Never to make a pack's own build or test run work.** That pack then builds unlike every pack
+ * author's, which is the failure this rule exists to prevent. A pack build that needs source is one
+ * whose `dist` is stale: run `npm run packages:ensure`. Same for a "canary" pack compiled against SDK
+ * source to catch breaking changes early — it reports on a world no pack author lives in, and
+ * `npm run typecheck:sdk` and the `api:check` reports already cover that surface against the real
+ * declarations.
  *
- * Do not use it for:
- * - **making a pack's own build or test run work.** That pack then builds unlike every pack author's
- *   build, which is the failure this rule exists to prevent, and no test compares the two. If a pack
- *   build needs source, the packages' `dist` is stale — run `npm run packages:ensure`.
- * - **a "canary" pack compiled against SDK source** to catch breaking changes early. It reports on a
- *   world no pack author lives in; `npm run typecheck:sdk` and the `api:check` reports already cover
- *   that surface, against the declarations packs actually get.
- *
- * An entry that excepts a pack's **build** owes a test that builds that pack both ways and compares the
- * output, as `types-bundler-determinism.spec.ts` does for its fixture. An entry for a host-side config
- * that merely sits in the tree owes nothing: it was never a pack build in the first place.
+ * **Keep it much smaller than `RESOLVES_DIST_BY_DESIGN`.** The two are not mirror images. An exception
+ * there resolves `dist`, the layout every consumer has, so a wrong entry costs a stale build and surfaces
+ * as a type error. An exception here resolves this checkout's source, so a wrong entry costs a build
+ * nobody outside this checkout can reproduce — and nothing notices, because
+ * `types-bundler-determinism.spec.ts` compares a synthetic fixture pack against the published tarballs,
+ * never the packs in this repository. So a row excepting a pack's *build* owes a test that builds that
+ * pack both ways and compares the output; a row for a host config that merely sits in the tree owes
+ * nothing, having never been a pack build.
  */
 export const DECLARES_SOURCE_BY_DESIGN = new Map<string, string>([
-  // Empty on purpose. Every case so far has been better served by moving the file out of the pack tree.
+  // Empty on purpose: every case so far has been better served by moving the file out of the pack tree.
+  // A spec asserts it stays empty, so the first row costs a deliberate edit rather than an absent-minded one.
 ]);
 
 export const RESOLVES_DIST_BY_DESIGN = new Map<string, string>([
