@@ -94,6 +94,31 @@ across the workspaces in no guaranteed order, so nothing there can be relied on 
 For an installed pack there is no checkout above it, every one of these is a no-op, and what npm
 delivered is what there is.
 
+### What a running dev app does and doesn't pick up
+
+`npm start` leaves two halves of the built-in pack on different clocks, and knowing which is which saves
+an afternoon.
+
+**Follows your SDK and UI source, live.** The renderer's Vite config declares the condition
+(`resolve.conditions` and its `ssr` twin), so editing `@abuddy/sdk`, `@abuddy/ears` or `@abuddy/ui`
+source hot-reloads the browser with no build step. The API's tsup build declares it too
+(`esbuildOptions.conditions`), and built-in packs' backends are bundled into the API, so the pack's
+running code follows source as well.
+
+**Frozen at the moment the command ran.** Everything `abuddy build` produced for the pack, because a
+pack build resolves the packages' `dist`: the compiled seeds (`*.seed.json`), the facade types
+(`dist/types/pack-types.d.ts`), the step build and the seed runtime (`dist/build/`). `npm start` builds
+those once, through door 3, and nothing rebuilds them while the app runs.
+
+The one that bites in practice is the facade. `packages/default-setup/tsconfig.json` declares no
+condition — it is a pack config — so **your editor type-checks default-setup against the packages'
+`dist`**. Change an SDK type and the editor keeps showing the old one until something rebuilds it. Any
+command with a door does (`npm run typecheck`, `typecheck:pack`, `compile`), or `npm run packages:ensure`
+on its own. This is the cost single mode trades for: a pack, the built-in one included, compiles against
+the layout a pack author has, and in a checkout that layout is only as current as the last build.
+
+
+
 ## Unit test harness (`@abuddy/testing/harness`)
 
 A pack's unit tests run its code without the app: seeds, repositories and seed hooks against an in-memory EARS, and with `registration` its systems, services, steps and flows, all including its dependencies' behaviour. The registered packs are the test file's own: `harness.ts` creates a registry (`createPackRegistry()` from `@abuddy/host/packs`) per test file, registers the pack and its dependencies in it with no guard against an earlier registration, binds it for the SDK's lookups and hands it to `startApp` (`setAppPacks`). `abuddy init` scaffolds the setup (`vitest.config.ts` with `isolatedDataDir`, `tests/setup.ts` passing `seedRuntime` and `registration`, an example seed test); `abuddy add feature` scaffolds a system test, adding `tests/setup.ts` (and `vitest.config.ts` when vitest has no config, devDependencies) to a pack without it. Published declarations import only published packages (`OutgoingSystemEvents` from `@abuddy/sdk/events`, never `@abuddy/host`). Pack-facing guide: `docs/public-facing/testing.md`.
