@@ -32,7 +32,9 @@ The engine's types moved to `@abuddy/ears` (`packages/abuddy-ears`); the SDK kee
 
 **Entity names.**
 - A literal entity name must be one the pack, its dependencies or the SDK declares (`EntityName`). A name typed `string` passes unchecked (`EntityNameArg`).
-- The explicit-shape overloads (`findAll<T>(name)`) also accept a runtime name.
+- The explicit-shape overloads (`findAll<T>(name)`) also accept a runtime name: supplying `T` leaves the
+  name's `E` at its `string` default, so `findAll<Shape>('Tpyo')` compiles by design. Without a type
+  argument the same call is checked.
 - A generic helper constrains its name to `EntityName`, or opts out with `as string`.
 - Overload order in `typed.ts` is part of the contract. `qx`'s name overloads come before its id overloads: in the other order, editors offer no entity names in `qx('…')`. It's also the order the runtime resolves a seed in (a registered entity type first, then an id).
 
@@ -40,10 +42,25 @@ The engine's types moved to `@abuddy/ears` (`packages/abuddy-ears`); the SDK kee
 - Typed queries return ids tagged with their entity type (`ids()`, `first()`, `pick`'s `id`, a row's `id`).
 - A plain `EARS.EntityId` carries no tag and is accepted wherever a tagged id is, including `includes` and `Set.has`. Only an id tagged with a different entity type is rejected.
 - Link ids use `NoInferType`, so a result passed straight into a generic function keeps its shape.
+- **A hyphenated literal is structurally an id, so a misspelled entity name containing a dash takes the
+  id overload instead of failing the name check** (`qx('user-note')` compiles, matches nothing at
+  runtime). `EntityId<E>` is `` `${string}-${string}` `` with an *optional* `__entity` brand, and that one
+  property is both why a bare literal qualifies and why `E` infers from a real id — the hole and the
+  inference are the same thing. Narrowing the overload to check the literal's prefix was measured: it
+  breaks entity-type inference from a tagged id in ten places, because the literal must be captured at an
+  inference site while `E` must come from the brand, and a bare literal has no brand. The fix is to make
+  the brand **required**, so only an engine-returned id or an explicit cast is an id; every existing
+  `as EARS.EntityId` keeps working and plain strings need one. It is not done, because entity names here
+  are PascalCase without dashes, so no realistic misspelling reaches it — and this is change-controlled
+  ground, so it needs the checklist below rather than a drive-by.
 
 **Writes.**
 - `tx` from `#generated/ears` checks declared fields' values when it knows the entity: seeded with a declared name or a tagged id.
 - Undeclared fields are accepted, and a plain id leaves every write unchecked.
+- So `put` and `add` take a field *name* of any string (`put<K extends string>`), and an undeclared one
+  gets `unknown` for its value. This is deliberate — EARS stores attributes a shape need not declare —
+  but it is inconsistent with `updateEntity`, which does check names against the shape. Writing through
+  `updateEntity` gets completions and a typo's error; writing through `tx().put()` does not.
 
 **Which `EARS` to import.**
 - Pack code imports `EARS` from its `#generated/ears` by default.
