@@ -14,7 +14,7 @@ import * as path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { BareImports, assertExportTargetsBuilt, walk } from './lib/published-imports.ts';
+import { BareImports, assertExportTargetsBuilt, isDeclaration, rewriteDeclarationExtensions, walk } from './lib/published-imports.ts';
 import { computeExports, findComponentsWithoutEntry, missingEntriesMessage, pkgDir } from '../packages/abuddy-ui/scripts/exports.ts';
 import { runPackageBuild } from '@abuddy/host/build/packages-built';
 
@@ -41,10 +41,16 @@ async function main(): Promise<void> {
     fs.renameSync(file, file.replace(/\.vue\.d\.ts$/, '.d.vue.ts'));
   }
 
-  // Every package the compiled modules import must be installable by a pack that uses them
+  // rewriteRelativeImportExtensions rewrites the emitted JS but not the declarations beside it
+  rewriteDeclarationExtensions(outDir);
+
+  // Every package the compiled modules import must be installable by a pack that uses them —
+  // declarations included, since a type-only import is erased from the JS and would ship unseen
   const bareImports = new BareImports(outDir);
-  for (const file of walk(outDir).filter((f) => f.endsWith('.js'))) {
-    await bareImports.fromModule(fs.readFileSync(file, 'utf-8'), 'js', path.dirname(file), file);
+  for (const file of walk(outDir).filter((f) => f.endsWith('.js') || isDeclaration(f))) {
+    const contents = fs.readFileSync(file, 'utf-8');
+    if (isDeclaration(file)) bareImports.fromDeclaration(contents, file);
+    else await bareImports.fromModule(contents, 'js', path.dirname(file), file);
   }
   bareImports.assertDeclared(pkg, 'packages/abuddy-ui/package.json');
   assertExportTargetsBuilt(pkgDir, pkg.exports);

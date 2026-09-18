@@ -15,7 +15,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { BareImports, assertExportTargetsBuilt, walk } from './lib/published-imports.ts';
+import { BareImports, assertExportTargetsBuilt, isDeclaration, rewriteDeclarationExtensions, walk } from './lib/published-imports.ts';
 import { runPackageBuild } from '@abuddy/host/build/packages-built';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
@@ -40,10 +40,16 @@ async function main(): Promise<void> {
     fs.copyFileSync(file, dest);
   }
 
-  // Every shipped module's imports must be installable by a pack that uses it
+  // rewriteRelativeImportExtensions rewrites the emitted JS but not the declarations beside it
+  rewriteDeclarationExtensions(outDir);
+
+  // Every shipped module's imports must be installable by a pack that uses it — declarations included,
+  // because a type-only import is erased from the JS, so an undeclared dependency would ship unseen
   const bareImports = new BareImports(outDir);
-  for (const file of walk(outDir).filter((f) => f.endsWith('.js'))) {
-    await bareImports.fromModule(fs.readFileSync(file, 'utf-8'), 'js', path.dirname(file), file);
+  for (const file of walk(outDir).filter((f) => f.endsWith('.js') || isDeclaration(f))) {
+    const contents = fs.readFileSync(file, 'utf-8');
+    if (isDeclaration(file)) bareImports.fromDeclaration(contents, file);
+    else await bareImports.fromModule(contents, 'js', path.dirname(file), file);
   }
   bareImports.assertDeclared(pkg, path.join(path.relative(repoRoot, pkgDir), 'package.json'));
   assertExportTargetsBuilt(pkgDir, pkg.exports);
