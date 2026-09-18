@@ -132,11 +132,14 @@ const notesState = setup({
     events: {} as NotesEvents,
   },
   actions: {
-    setPluginData: assign(({ event }) => {
+    setPluginData: assign(({ context, event }) => {
       const ev = typeOf('NOTES_CONNECTED', event)
+      // The backend sends whatever the repositories hold, and settings are absent until the Settings row
+      // has an entry for this plugin. Assigning that over the context blanks the defaults this machine
+      // declares, and every selector and computed reading them throws on the next render.
       return {
-        notes: ev.data.notes,
-        settings: ev.data.settings,
+        notes: ev.data.notes ?? context.notes,
+        settings: ev.data.settings ?? context.settings,
       }
     }),
 
