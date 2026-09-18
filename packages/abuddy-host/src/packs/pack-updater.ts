@@ -29,8 +29,9 @@ interface GitHubRelease {
 }
 
 /**
- * Newest semver release in a GitHub repo that this AgentBuddy can run. Prereleases (e.g.
- * 1.2.0-beta.1) are only considered for the beta channel; drafts and non-semver tags are ignored,
+ * Newest semver release in a GitHub repo that this AgentBuddy can run. Prereleases — by tag (e.g.
+ * 1.2.0-beta.1) or by GitHub's own `prerelease` flag — are only considered for the beta channel;
+ * drafts and non-semver tags are ignored,
  * and so are releases not newer than `installedVersion`. With a hostVersion, each candidate's
  * range is read, newest first, from its `<archive>.bundle.json` asset (`abuddy release` uploads it),
  * else from abuddy.json at its tag; a candidate whose range can't be read is returned with
@@ -51,7 +52,9 @@ export async function findLatestRelease(
     .filter(r => !r.draft)
     .map(r => ({ release: r, tag: r.tag_name, version: semver.clean(r.tag_name.replace(/^v/, '')) }))
     .filter((r): r is { release: GitHubRelease; tag: string; version: string } => r.version !== null)
-    .filter(r => options.includePrerelease || semver.prerelease(r.version) === null)
+    // A release is a prerelease if its tag says so OR GitHub is flagged as one: a maintainer can
+    // tag `1.2.0` and mark the release pre-release, and going by the tag alone offers it as stable
+    .filter(r => options.includePrerelease || (semver.prerelease(r.version) === null && !r.release.prerelease))
     .filter(r => !installed || semver.gt(r.version, installed))
     .sort((a, b) => semver.rcompare(a.version, b.version));
   if (!options.hostVersion) return candidates[0] ? { version: candidates[0].version, tag: candidates[0].tag } : null;

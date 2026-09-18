@@ -17,6 +17,18 @@ afterEach(() => {
 });
 
 describe('findLatestRelease', () => {
+  // GitHub's own prerelease flag, not only the tag: a maintainer can tag `2.0.0` and mark the
+  // release pre-release, and going by the tag alone offered it to everyone as a stable update.
+  it('skips a release GitHub flags as a prerelease even when its tag looks stable', async () => {
+    mockReleases([{ tag_name: 'v2.0.0', prerelease: true }, { tag_name: 'v1.2.0' }]);
+    await expect(findLatestRelease('o/r')).resolves.toMatchObject({ version: '1.2.0' });
+  });
+
+  it('offers that same release on the beta channel, which takes prereleases', async () => {
+    mockReleases([{ tag_name: 'v2.0.0', prerelease: true }, { tag_name: 'v1.2.0' }]);
+    await expect(findLatestRelease('o/r', { includePrerelease: true })).resolves.toMatchObject({ version: '2.0.0' });
+  });
+
   const releases = [
     { tag_name: 'v1.2.0' },
     { tag_name: 'v1.10.0-beta.2', prerelease: true },

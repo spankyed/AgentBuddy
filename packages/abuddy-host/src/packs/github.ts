@@ -20,6 +20,10 @@ export function githubToken(): string | undefined {
 
 export type GitHubFailure = 'rate-limited' | 'not-found' | 'unauthorized' | 'failed';
 
+/** The variable a token came from, so a message names the one the user actually set */
+const tokenVar = (): string | undefined =>
+  process.env.GITHUB_TOKEN ? 'GITHUB_TOKEN' : process.env.GH_TOKEN ? 'GH_TOKEN' : undefined;
+
 export class GitHubRequestError extends Error {
   constructor(message: string, readonly reason: GitHubFailure, readonly status?: number) {
     super(message);
@@ -46,7 +50,7 @@ export async function githubFetch(url: string, accept = 'application/vnd.github+
   }
   if (response.ok) return response;
 
-  const tokenHint = githubToken() ? '' : '; set GITHUB_TOKEN';
+  const tokenHint = githubToken() ? '' : '; set GITHUB_TOKEN';  // no token yet, so name the documented one
   if ((response.status === 403 || response.status === 429) && response.headers.get('x-ratelimit-remaining') === '0') {
     const reset = Number(response.headers.get('x-ratelimit-reset'));
     const when = Number.isFinite(reset) && reset > 0 ? ` until ${new Date(reset * 1000).toISOString()}` : '';
@@ -60,7 +64,7 @@ export async function githubFetch(url: string, accept = 'application/vnd.github+
   }
   if (response.status === 401) {
     throw new GitHubRequestError(
-      githubToken() ? 'GitHub rejected the GITHUB_TOKEN (401)' : 'GitHub needs credentials for this request (401); set GITHUB_TOKEN',
+      tokenVar() ? `GitHub rejected the ${tokenVar()} (401)` : 'GitHub needs credentials for this request (401); set GITHUB_TOKEN',
       'unauthorized',
       401,
     );
