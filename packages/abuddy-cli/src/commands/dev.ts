@@ -114,7 +114,7 @@ export async function dev(_args: string[]) {
     },
     logLevel: 'info',
     optimizeDeps: {
-      exclude: Object.keys((await import('@abuddy/host/build/shared-deps')).getSharedFeDeps()),
+      exclude: Object.keys((await import('@abuddy/host/build/shared-deps')).getSharedFeDeps(root)),
     },
   });
 

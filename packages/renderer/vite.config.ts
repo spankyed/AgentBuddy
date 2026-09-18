@@ -60,7 +60,7 @@ function builtInPacksPlugin(): Plugin {
 function hostDepsPlugin(): Plugin {
   const VIRTUAL_ID = 'virtual:host-deps';
   const RESOLVED_VIRTUAL = '\0' + VIRTUAL_ID;
-  const feDeps = getSharedFeDeps();
+  const feDeps = getSharedFeDeps(import.meta.dirname);
   const sdkModules = getSdkFeModules();
 
   // Aliases share a global (prosemirror-model and @tiptap/pm/model): import each once

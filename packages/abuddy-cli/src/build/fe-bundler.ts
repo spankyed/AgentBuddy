@@ -3,7 +3,7 @@ import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import type { Plugin as VitePlugin, Rollup } from 'vite';
 import { init as initModuleLexer, parse as parseModule } from 'es-module-lexer';
-import { getSharedFeDeps, getSdkFeModules, getUiFeModules, sharedInstancePackage } from '@abuddy/host/build/shared-deps';
+import { getSharedFeDeps, unresolvedSubpathPackages, getSdkFeModules, getUiFeModules, sharedInstancePackage } from '@abuddy/host/build/shared-deps';
 
 const EXTERNAL_PREFIX = '\0pack-external:';
 
@@ -87,8 +87,29 @@ function uiTailwindContent(packDir: string): string[] {
   return [content];
 }
 
+/** A pack's @abuddy/ui, which is what depends on tiptap and may hold its own nested copy */
+function uiPackageDir(packDir: string): string | undefined {
+  try {
+    return path.dirname(fs.realpathSync(createRequire(path.join(packDir, 'package.json')).resolve('@abuddy/ui/package.json')));
+  } catch {
+    return undefined;
+  }
+}
+
 export function packExternalsPlugin(packDir: string): VitePlugin {
-  const feDeps = getSharedFeDeps();
+  const resolveFrom = [packDir, uiPackageDir(packDir)].filter((dir): dir is string => dir !== undefined);
+  const feDeps = getSharedFeDeps(...resolveFrom);
+  // A bundleUi pack imports ProseMirror and tiptap's Vue menus through the shared subpaths. If they
+  // resolve to nothing the pack inlines its own copy and the app ends up with two ProseMirror
+  // instances, which fails at runtime in ways that do not point here — so fail now, naming them.
+  if (bundlesUi(packDir)) {
+    const unresolved = unresolvedSubpathPackages(...resolveFrom);
+    if (unresolved.length > 0) {
+      throw new Error(
+        `This pack sets fe.bundleUi, but ${unresolved.join(' and ')} cannot be resolved from ${packDir}, so the pack would bundle its own ProseMirror instead of sharing the app's. Install ${unresolved.length > 1 ? 'them' : 'it'} in the pack.`,
+      );
+    }
+  }
   const sdkModules = getSdkFeModules();
   // @abuddy/ui comes from the host like the SDK modules, unless the pack bundles all of it
   const uiModules = bundlesUi(packDir) ? {} : getUiFeModules(packDir);

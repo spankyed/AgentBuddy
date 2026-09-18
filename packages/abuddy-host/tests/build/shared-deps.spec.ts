@@ -1,7 +1,12 @@
 // The app-only exports (the LMDB store) stay out of what pack code shares: the app's bridge and the harness's
 import { describe, expect, it } from 'vitest';
-import { APP_ONLY_EXPORTS, SHARED_DEPS, getSharedBeDeps, getSharedFeDeps, sharedInstanceExports, sharedInstanceSpecifiers } from '../../src/build/shared-deps.ts';
+import * as fs from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+import { APP_ONLY_EXPORTS, SHARED_DEPS, getSharedBeDeps, getSharedFeDeps, unresolvedSubpathPackages, sharedInstanceExports, sharedInstanceSpecifiers } from '../../src/build/shared-deps.ts';
 import { appBridgedSpecifiers } from '../../src/build/shared-modules.ts';
+
+const REPO_ROOT = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 
 describe('APP_ONLY_EXPORTS', () => {
   it('names exports @abuddy/ears has', () => {
@@ -36,9 +41,38 @@ describe('getSharedBeDeps', () => {
   });
 
   it('shares nothing with the frontend list that the frontend gets under another key', () => {
-    const fe = getSharedFeDeps();
+    const fe = getSharedFeDeps(REPO_ROOT);
     for (const name of getSharedBeDeps()) {
       if (fe[name]) expect(SHARED_DEPS[name].target, name).toBe('both');
+    }
+  });
+});
+
+describe('the shared tiptap and ProseMirror subpaths', () => {
+  // They used to resolve from this module's own location, which is inside the CLI bundle: under a
+  // global CLI, npx or pnpm that found nothing, returned no subpaths, and a fe.bundleUi pack inlined
+  // its own ProseMirror — the duplicate instance the sharing exists to prevent, with no error.
+  it('resolves from the directory it is given, not from this module', () => {
+    expect(Object.keys(getSharedFeDeps(REPO_ROOT))).toEqual(expect.arrayContaining(['@tiptap/pm/state', 'prosemirror-state']));
+  });
+
+  it('reports what it could not resolve instead of silently sharing nothing', () => {
+    const nowhere = fs.mkdtempSync(path.join(os.tmpdir(), 'shared-deps-'));
+    try {
+      expect(unresolvedSubpathPackages(nowhere)).toEqual(['@tiptap/pm', '@tiptap/vue-3']);
+      expect(Object.keys(getSharedFeDeps(nowhere))).not.toContain('@tiptap/pm/state');
+      expect(unresolvedSubpathPackages(REPO_ROOT)).toEqual([]);
+    } finally {
+      fs.rmSync(nowhere, { recursive: true, force: true });
+    }
+  });
+
+  it('finds them through any of the directories it is given', () => {
+    const nowhere = fs.mkdtempSync(path.join(os.tmpdir(), 'shared-deps-'));
+    try {
+      expect(unresolvedSubpathPackages(nowhere, REPO_ROOT)).toEqual([]);
+    } finally {
+      fs.rmSync(nowhere, { recursive: true, force: true });
     }
   });
 });

@@ -89,12 +89,20 @@ export const SHARED_DEPS: Record<string, SharedDep> = {
  */
 const SHARED_SUBPATH_PACKAGES = ['@tiptap/pm', '@tiptap/vue-3'];
 
-/** Exported code subpaths of an installed package (`@tiptap/pm/state`, …) */
-function exportedSubpaths(name: string): string[] {
-  const require = createRequire(import.meta.url);
-  const manifestPath = (require.resolve.paths(name) ?? [])
-    .map((dir) => path.join(dir, name, 'package.json'))
-    .find((file) => fs.existsSync(file));
+/**
+ * Exported code subpaths of a package installed near `fromDir` (`@tiptap/pm/state`, …).
+ *
+ * `fromDir` is the directory that owns the dependency — the pack being built, or the renderer — never
+ * this module's own location. Resolving from here worked only because the CLI happened to sit in a
+ * checkout whose node_modules had tiptap; under a global install, `npx` or pnpm it found nothing,
+ * returned no subpaths, and a `fe.bundleUi` pack quietly inlined its own ProseMirror — the duplicate
+ * instance this list exists to prevent.
+ */
+function exportedSubpaths(name: string, fromDirs: readonly string[]): string[] {
+  const manifestPath = fromDirs.flatMap((fromDir) => {
+    const require = createRequire(path.join(fromDir, 'package.json'));
+    return (require.resolve.paths(name) ?? []).map((dir) => path.join(dir, name, 'package.json'));
+  }).find((file) => fs.existsSync(file));
   if (!manifestPath) return [];
   const exports: Record<string, unknown> = JSON.parse(fs.readFileSync(manifestPath, 'utf-8')).exports ?? {};
   return Object.keys(exports)
@@ -102,11 +110,21 @@ function exportedSubpaths(name: string): string[] {
     .map((key) => `${name}${key.slice(1)}`);
 }
 
-export function getSharedFeDeps(): Record<string, SharedDep & { globalKey: string }> {
+/** The shared subpath packages that resolve to nothing from `fromDir`, so none of their subpaths is shared */
+export function unresolvedSubpathPackages(...fromDirs: string[]): string[] {
+  return SHARED_SUBPATH_PACKAGES.filter((name) => exportedSubpaths(name, fromDirs).length === 0);
+}
+
+/**
+ * @param fromDirs the directories whose installs own the shared packages, tried in order: the pack
+ * being built and its `@abuddy/ui` (which is what actually depends on tiptap, and may hold its own
+ * nested copy), or the renderer.
+ */
+export function getSharedFeDeps(...fromDirs: string[]): Record<string, SharedDep & { globalKey: string }> {
   const deps = Object.fromEntries(
     Object.entries(SHARED_DEPS).filter(([, d]) => d.target !== 'be' && d.globalKey),
   ) as Record<string, SharedDep & { globalKey: string }>;
-  for (const specifier of SHARED_SUBPATH_PACKAGES.flatMap(exportedSubpaths)) {
+  for (const specifier of SHARED_SUBPATH_PACKAGES.flatMap((name) => exportedSubpaths(name, fromDirs))) {
     deps[specifier] ??= { globalKey: specifier, target: 'fe' };
     // @tiptap/pm/<name> is `export * from 'prosemirror-<name>'`: libraries importing ProseMirror
     // directly (tiptap-markdown → prosemirror-markdown) get the same module
