@@ -8,6 +8,7 @@ import {
   entitiesWithoutShapes,
   SEED_COMPILERS_FILE,
   _dependencyCommands,
+  _dependencyPlugins,
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type SeedDependency,
 } from '@abuddy/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
@@ -208,10 +209,14 @@ export async function build(args: string[]) {
   if (!flowHelpers.success) fail(`Flow helpers bundle failed: ${flowHelpers.error}`);
   // Dependents check their commands against this pack's whole dependency tree through it
   const depCommands = _dependencyCommands([...depSnapshots]);
+  // And their plugins the same way, so a dependent naming one this pack only reaches transitively is
+  // told which pack to depend on rather than that the plugin doesn't exist
+  const depPlugins = _dependencyPlugins([...depSnapshots]);
   const snapshot: PackSnapshot = {
     types, defs, manifest, sdkVersion: sdkVersion(),
     ...(flowHelpers.success && { flowHelpers: flowHelpers.flowHelpers }),
     ...(depCommands.length > 0 && { dependencyCommands: depCommands }),
+    ...(depPlugins.length > 0 && { dependencyPlugins: depPlugins }),
   };
   const finish = () => {
     if (failures.length > 0) {

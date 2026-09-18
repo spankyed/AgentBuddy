@@ -238,6 +238,30 @@ export interface DependencyCommandSource {
     };
 }
 
+// @public
+export interface DependencyPlugin {
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    packId: string;
+}
+
+// @internal
+export function _dependencyPlugins(snapshots: ReadonlyArray<readonly [string, DependencyPluginSource]>): DependencyPlugin[];
+
+// @public
+export interface DependencyPluginSource {
+    // (undocumented)
+    dependencyPlugins?: ReadonlyArray<DependencyPlugin>;
+    // (undocumented)
+    manifest: {
+        features?: ReadonlyArray<{
+            id: string;
+            plugin?: unknown;
+        }>;
+    };
+}
+
 // @internal
 export function _depTypesFile(depId: string): string;
 
@@ -1369,6 +1393,7 @@ export interface PackSnapshot {
     // (undocumented)
     defs: Record<string, string>;
     dependencyCommands?: DependencyCommand[];
+    dependencyPlugins?: DependencyPlugin[];
     flowHelpers?: PackFlowHelpers;
     // (undocumented)
     manifest: PackManifest;

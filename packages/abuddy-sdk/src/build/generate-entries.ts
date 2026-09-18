@@ -1,7 +1,7 @@
 import { readFileSync, existsSync, statSync } from 'fs';
 import { HOST_PLUGIN_IDS as SDK_HOST_PLUGIN_IDS } from '../events/index.ts';
 import { extname, join } from 'path';
-import { _dependencyCommands, type PackManifest, type PackFeatureEntry, type PackTypeManifest, type PackSnapshot, type StepEntry } from './manifest.ts';
+import { _dependencyCommands, _dependencyPlugins, type PackManifest, type PackFeatureEntry, type PackTypeManifest, type PackSnapshot, type StepEntry } from './manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
 import { formatEntities } from './seeds/records.ts';
@@ -806,6 +806,12 @@ ${busIdEntries},
     const depPluginIds = new Set([...depSnapshots.values()].flatMap(snap => (snap.manifest.features ?? []).filter(f => f.plugin).map(f => f.id)));
     /** Dependency id → the plugins its own `PackEvents` keys, the only ones a send to it can be typed against */
     const depReceivers = new Map([...depSnapshots].map(([depId, snap]) => [depId, receivingPlugins(snap.manifest)] as const));
+    /** Plugin id → the pack owning it, for plugins this pack reaches only through a dependency */
+    const transitivePluginOwners = new Map(
+      _dependencyPlugins([...depSnapshots])
+        .filter(({ id }) => !depPluginIds.has(id))
+        .map(({ id, packId }) => [id, packId] as const),
+    );
 
     const receivers = new Map<string, string[]>();
     const addSender = (pluginId: string, feature: PackFeatureEntry) => {
@@ -837,7 +843,13 @@ ${busIdEntries},
         } else if (HOST_PLUGIN_IDS.includes(target)) {
           hostTargets.add(target);
         } else {
-          throw new Error(`Feature "${feature.id}": system.sendsTo names "${target}", which is neither a feature of this pack, a plugin of its dependencies, nor a host plugin (${HOST_PLUGIN_IDS.join(', ')})`);
+          // A plugin further down the tree is real, but a send to it is typed against its owner's
+          // PackEvents, and only a direct dependency has a facade to name that. Say which pack to
+          // depend on: reporting it as unknown sends the author looking for a typo that isn't there.
+          const owner = transitivePluginOwners.get(target);
+          throw new Error(owner
+            ? `Feature "${feature.id}": system.sendsTo names "${target}", a plugin of "${owner}", which this pack depends on only through another pack, so no send to it can be typed: add "${owner}" to this pack's dependencies, or remove "${target}" from sendsTo`
+            : `Feature "${feature.id}": system.sendsTo names "${target}", which is neither a feature of this pack, a plugin of its dependencies, nor a host plugin (${HOST_PLUGIN_IDS.join(', ')})`);
         }
       }
     }

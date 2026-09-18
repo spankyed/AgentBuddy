@@ -40,6 +40,19 @@ describe('a built pack\'s snapshot', () => {
     }
   });
 
+  // Plugins travel the same way, for the diagnostic rather than for resolution: a pack depending on
+  // the fixture can't send to a default-setup plugin, and this is what lets the build say which pack
+  // to depend on instead of reporting the plugin as unknown.
+  it.skipIf(!fixtureBuilt || !built)('records its dependencies\' plugins, with the pack owning each', () => {
+    const dependency = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages/default-setup/abuddy.json'), 'utf-8'));
+    const owned = (dependency.features ?? []).filter((f: { plugin?: unknown }) => f.plugin).map((f: { id: string }) => f.id);
+    const recorded = JSON.parse(fs.readFileSync(snapshotFile(fixture)!, 'utf-8')).dependencyPlugins ?? [];
+    expect(owned.length).toBeGreaterThan(0);
+    for (const id of owned) {
+      expect(recorded, `${fixture} records ${id}`).toContainEqual({ id, packId: 'default-setup' });
+    }
+  });
+
   it.skipIf(!fixtureBuilt)('keeps its own names when a dependency declares one with the same key', () => {
     const own = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, fixture, 'abuddy.json'), 'utf-8'));
     const entities = snapshotAt(fixture).types.entities;

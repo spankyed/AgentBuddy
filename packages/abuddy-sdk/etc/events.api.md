@@ -20,6 +20,9 @@ export function emit<P extends string, E extends {
 };
 
 // @public
+export const HOST_PLUGIN_IDS: readonly ["application"];
+
+// @public
 export type HostPluginEvents = {
     application: {
         type: 'APPLICATION_HOTKEYS';

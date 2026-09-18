@@ -40,6 +40,14 @@ export interface PackSnapshot {
    * declaring each: a dependent reads the whole tree from its direct dependencies' snapshots.
    */
   dependencyCommands?: DependencyCommand[];
+  /**
+   * The plugins the pack's dependencies own, their own dependencies' included, with the pack owning
+   * each — read the same way, and for the same reason: a dependent sees the whole tree from its
+   * direct dependencies' snapshots. Only a *direct* dependency's plugin can be sent to, because a
+   * send is typed against that pack's `PackEvents` and only a direct dependency has a facade to name
+   * it. This list is what lets the build say so, instead of reporting the plugin as unknown.
+   */
+  dependencyPlugins?: DependencyPlugin[];
 }
 
 /** A command declared somewhere in a pack's dependency tree, and the pack declaring it */
@@ -52,6 +60,18 @@ export interface DependencyCommand {
 export interface DependencyCommandSource {
   manifest: { commands?: ReadonlyArray<{ name: string }> };
   dependencyCommands?: ReadonlyArray<DependencyCommand>;
+}
+
+/** A plugin owned somewhere in a pack's dependency tree, and the pack owning it */
+export interface DependencyPlugin {
+  id: string;
+  packId: string;
+}
+
+/** What `_dependencyPlugins` reads from a dependency's snapshot */
+export interface DependencyPluginSource {
+  manifest: { features?: ReadonlyArray<{ id: string; plugin?: unknown }> };
+  dependencyPlugins?: ReadonlyArray<DependencyPlugin>;
 }
 
 /**
@@ -67,6 +87,22 @@ export function _dependencyCommands(snapshots: ReadonlyArray<readonly [string, D
     for (const { name } of snapshot.manifest.commands ?? []) owners.set(name, depId);
   }
   return [...owners].map(([name, packId]) => ({ name, packId }));
+}
+
+/**
+ * @internal Host-only: abuddy CLI build tooling.
+ *
+ * The plugins owned across these dependencies and everything they depend on, once each, with the
+ * owning pack. A nearer pack wins, as it does for commands: that is the one a dependent could add to
+ * its own dependencies to reach the plugin.
+ */
+export function _dependencyPlugins(snapshots: ReadonlyArray<readonly [string, DependencyPluginSource]>): DependencyPlugin[] {
+  const owners = new Map<string, string>();
+  for (const [depId, snapshot] of snapshots) {
+    for (const { id, packId } of snapshot.dependencyPlugins ?? []) owners.set(id, packId);
+    for (const feature of snapshot.manifest.features ?? []) if (feature.plugin) owners.set(feature.id, depId);
+  }
+  return [...owners].map(([id, packId]) => ({ id, packId }));
 }
 
 /**

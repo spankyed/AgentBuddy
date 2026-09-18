@@ -59,8 +59,15 @@ function publishedTarget(target: unknown): boolean {
 
 /**
  * Why an @abuddy/* import isn't part of the published package, or null. A linked checkout resolves
- * source-only exports (`@abuddy/sdk/utils/internals`) and private packages (`@abuddy/host`); a
+ * source-only exports (`@abuddy/sdk/runtime/internals`) and private packages (`@abuddy/host`); a
  * dependent installing from the registry resolves neither.
+ *
+ * This reads the exports map rather than trying to resolve: a source-only entry is one whose target
+ * names no condition but `@abuddy/source`. That is why such an entry must not gain a `default`, even
+ * one pointing at a module that throws a friendlier error than ERR_MODULE_NOT_FOUND — a published
+ * target makes it look resolvable here, and the gate stops reporting it. A pack importing a host-only
+ * entry should fail this build, not the user's app. `abuddy-sdk/tests/runtime/internals-entry.spec.ts`
+ * pins the shape from the other side.
  */
 function unpublishedReason(packDir: string, name: string, specifier: string): string | null {
   const manifestFile = findPackageJson(packDir, name);
