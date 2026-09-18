@@ -463,6 +463,30 @@ describe('abuddy db script', () => {
     return file;
   }
 
+  // A script that awaits anything must finish before the command reports success: it used to exit early
+  // and say it worked, so an export wrote a truncated file and a prompt was never answered. Driven
+  // through the binary on purpose — in-process the command is just awaited, and a premature
+  // `process.exit` is exactly what an in-process call cannot catch.
+  it('waits for a script that awaits, before the process exits', async () => {
+    const dir = await appDataDir();
+    const marker = path.join(dir, 'finished.txt');
+    const file = writeScript(dir, 'slow.ts', [
+      "import * as fs from 'node:fs';",
+      'export default async ({ log }: any) => {',
+      "  log('started');",
+      '  await new Promise((resolve) => setTimeout(resolve, 400));',
+      `  fs.writeFileSync(${JSON.stringify(marker)}, 'finished');`,
+      "  return 'done';",
+      '};',
+    ].join('\n'));
+
+    const cli = path.resolve(import.meta.dirname, '..', '..', 'bin', 'abuddy.mjs');
+    const run = spawnSync(process.execPath, [cli, 'db', 'script', file, '--data-dir', dir], { encoding: 'utf-8' });
+    expect(run.status, run.stderr).toBe(0);
+    expect(fs.existsSync(marker), 'the script finished before the process exited').toBe(true);
+    expect(run.stdout.trim().split('\n')).toEqual(['started', 'done']);
+  });
+
   it('runs a file with the open database, its arguments and a printer, and prints what it returns', async () => {
     const dir = await appDataDir();
     const file = writeScript(dir, 'rename.ts', [
