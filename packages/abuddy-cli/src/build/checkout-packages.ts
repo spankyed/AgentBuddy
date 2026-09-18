@@ -1,3 +1,4 @@
+// Fixer 3 of the package-freshness doors (the doors are listed in packages/abuddy-testing/CLAUDE.md):
 // A pack compiles and runs against the @abuddy packages' published dist. When those packages come from
 // an AgentBuddy checkout (a linked pack, the in-repo fixtures), that dist is built on demand and can be
 // behind the checkout's source — so a command that loads it asks the checkout to bring it up to date.

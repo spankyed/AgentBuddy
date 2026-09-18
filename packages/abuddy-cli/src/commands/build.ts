@@ -69,7 +69,7 @@ export function clearBuildOutput(outputDir: string, { builtIn }: { builtIn: bool
 /**
  * `abuddy build` as the user runs it. A pack compiles against the @abuddy packages' dist, and when that
  * dist belongs to a checkout it is built on demand, so the command brings it up to date first — as
- * `abuddy test` and `abuddy dev` do. It sits here rather than in `build()` because `abuddy dev` calls
+ * `abuddy test` and `abuddy dev` do (the doors are listed in packages/abuddy-testing/CLAUDE.md). It sits here rather than in `build()` because `abuddy dev` calls
  * that on every file change, and the freshness check reads every source of all five packages: once per
  * command is right, once per keystroke is not.
  */

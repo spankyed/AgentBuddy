@@ -1,3 +1,4 @@
+// Checker 5 of the package-freshness doors (the doors are listed in packages/abuddy-testing/CLAUDE.md):
 // A pack loads this harness from the @abuddy/testing bundle, and in a checkout that bundle is built on
 // demand: `abuddy test` and `abuddy dev` refresh it first, but `npx vitest` and `npx playwright test` in
 // a pack repo do not. A stale bundle is the dangerous case — it loads and silently tests the previous

@@ -51,32 +51,43 @@ The run's dir is named `<prefix><pid>-XXXXXX`; `isolatedDataDir` first removes d
 ## Keeping a checkout's packages current
 
 A pack loads the `@abuddy` packages' built `dist`, and in a checkout that `dist` is built on demand, so
-something has to bring it up to date before a pack's code compiles or runs against it. One rule does
-that, `@abuddy/host/build/packages-built` (the fingerprint-and-stamp freshness check), reached through
-several entry points. They are not competing mechanisms; they are two kinds, and each covers a way in
-that the others don't.
+something has to bring it up to date before a pack's code compiles or runs against it. One rule decides
+that — `@abuddy/host/build/packages-built`, the fingerprint-and-stamp freshness check — reached through
+several entry points. They are not competing mechanisms. They are two kinds, and each covers a way in
+that the others don't. This table is the record, because most of the doors are npm scripts and JSON
+carries no comments.
 
-**Fixers** run before the process starts, so they rebuild and carry on:
+**Fixers** run before the process starts, so they rebuild and carry on.
 
-| Way in | What refreshes it |
-|---|---|
-| a repo command (`npm test`, `npm run build`, `npm run typecheck`, `compile`, `typecheck:pack`, `test:external-pack`) | `npm run packages:ensure &&` in the script |
-| `npm test -w @abuddy/cli`, `npm test -w @app/default-setup` run directly | that workspace's `pretest` |
-| `abuddy build`, `abuddy test`, `abuddy dev` from any directory | `ensureCheckoutPackages` (`abuddy-cli/src/build/checkout-packages.ts`) |
+| # | Door | Covers | Where |
+|---|---|---|---|
+| 1 | `npm run packages:ensure &&` in a root script | a repo command: `test`, `test:smoke`, `test:e2e`, `test:external-pack`, `typecheck`, `typecheck:pack`, `compile`, `prebuild`, `prebuild:be:dev` | root `package.json` |
+| 2 | that workspace's `pretest` | `npm test -w @abuddy/cli` and `npm test -w @app/default-setup` run directly, which no root script wraps | each package's `package.json` |
+| 3 | `ensureCheckoutPackages(packRoot)` | `abuddy build`, `abuddy test`, `abuddy dev` — from any directory, for a pack whose packages are a checkout's | `abuddy-cli/src/build/checkout-packages.ts`, called from `commands/{build,test,dev}.ts` |
+| 4 | the `Build publishable packages` step | CI, whose typecheck step already built them through `typecheck:pack` | `.github/workflows/ci.yml` |
 
-**A checker** runs inside a process that has already started, where the modules are loaded and rebuilding
-mid-run would be wrong, so all it can do is fail:
+**Checkers** run inside a process that has already started, where the modules are loaded and rebuilding
+mid-run would be wrong. All they can do is fail, and say what to run.
 
-| Way in | What catches it |
-|---|---|
-| a pack author's bare `npx vitest` or `npx playwright test`, with no CLI in front of it | `assertCheckoutPackagesFresh` (`src/checkout-freshness.ts`), from `setupPackTests` and the `electronApp` fixture |
+| # | Door | Covers | Where |
+|---|---|---|---|
+| 5 | `assertCheckoutPackagesFresh()` | a pack author's bare `npx vitest` or `npx playwright test`, with no CLI in front of it | `src/checkout-freshness.ts`, called from `setupPackTests` and the `electronApp` fixture |
+| 6 | a throw while the module loads | the CLI's own `published-*` specs run without their `pretest` (`npx vitest`, a watch run) | `abuddy-cli/tests/helpers/published-packages.ts` |
 
-Two things follow. A new entry point that loads the packages needs a fixer in front of it, not another
-copy of the rule. And a fixer belongs to the command a user runs, not to a function a watch loop calls:
-`abuddy dev` rebuilds the pack on every file change through `build()`, and the check reads every source
-of all five packages, so `abuddy build` refreshes in `buildCommand` and `build()` stays clean
-(`abuddy-cli/tests/build/checkout-packages.spec.ts`). For an installed pack there is no checkout above
-it, every one of these is a no-op, and what npm delivered is what there is.
+Three things follow.
+
+- **A new entry point needs a fixer in front of it, not another copy of the rule.** Every door above calls
+  the same check; what differs is only when it runs and whether it can repair what it finds.
+- **A fixer belongs to the command a user runs, not to a function a watch loop calls.** `abuddy dev`
+  rebuilds the pack through `build()` on every file change, and the check reads every source of all five
+  packages, so `abuddy build` refreshes in `buildCommand` while `build()` stays clean. Both placements
+  are pinned by `abuddy-cli/tests/build/checkout-packages.spec.ts`.
+- **A checker must not try to repair.** Its process has already resolved and loaded modules; a rebuild
+  underneath it would leave half of two builds in memory. `assertCheckoutPackagesFresh` reports a build
+  running beside it separately for that reason, and says to wait rather than to start another.
+
+For an installed pack there is no checkout above it, every one of these is a no-op, and what npm
+delivered is what there is.
 
 ## Unit test harness (`@abuddy/testing/harness`)
 
