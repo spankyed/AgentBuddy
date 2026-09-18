@@ -62,9 +62,8 @@ const TSCONFIG_TEMPLATE = JSON.stringify({
     skipLibCheck: true,
     noEmit: true,
     types: ['node'],
-    // A pack linked to an AgentBuddy checkout typechecks its @abuddy/* packages from source, like
-    // abuddy build does; installed packages don't use the condition. Their sources name .ts files.
-    customConditions: ['@abuddy/source'],
+    // A pack typechecks the @abuddy packages' published declarations, which is what abuddy build
+    // compiles it against. Their declarations name .ts files.
     allowImportingTsExtensions: true,
     // Mirrors package.json "imports": TypeScript doesn't add extensions to subpath import targets
     paths: {
@@ -118,17 +117,12 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
 }, null, 2);
 
 const VITEST_CONFIG_TEMPLATE = `import { defineConfig } from 'vitest/config';
-import { isolatedDataDir, sourceConditions } from '@abuddy/testing/vitest';
+import { isolatedDataDir } from '@abuddy/testing/vitest';
 
-// A pack linked to an AgentBuddy checkout resolves its @abuddy/* packages to source; installed packages don't.
-// Vitest adds its default conditions to these.
-const conditions = sourceConditions(import.meta.dirname);
 // A throwaway data dir per run (media, stores), one subdir per worker
 const dataDir = isolatedDataDir();
 
 export default defineConfig({
-  resolve: { conditions },
-  ssr: { resolve: { conditions } },
   test: {
     globals: true,
     // tests/e2e holds Playwright specs (abuddy init-tests), run with \`abuddy test\`

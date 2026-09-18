@@ -22,8 +22,8 @@
       "Action:CC: Commit Message": {
         "label": "CC: Commit Message",
         "description": "Generate a git commit message from a diff using Claude CLI",
-        "sourceHash": "5a6871139b651c4f",
-        "rowSha256": "0d76e8ca738e84a83c640c4d49ec537b68638ae1b69b4e2bc125c8e7b998c809"
+        "sourceHash": "8b21762755bcbf80",
+        "rowSha256": "8651ac8aeb3173e34e29e2409d252e92c25c6d83d2775dbaa9383e99aaa458a6"
       },
       "Action:CC: Compact": {
         "label": "CC: Compact",
@@ -40,14 +40,14 @@
       "Action:CC: DB Query": {
         "label": "CC: DB Query",
         "description": "Generate a read-only EARS database query using Claude CLI",
-        "sourceHash": "2922c75a650eb29b",
-        "rowSha256": "ad80c28d19f2ebee955b1897703116a47c6e0ec7cddaad1f0e50ce91768c58c3"
+        "sourceHash": "3cfb7fa9eced1216",
+        "rowSha256": "1fa3b9ea716b61f949a4cadb0731e09bd597f049a5558b490b59ad04af1e4dd8"
       },
       "Action:CC: DB Transaction": {
         "label": "CC: DB Transaction",
         "description": "Generate an EARS database transaction using Claude CLI",
-        "sourceHash": "3f1dcabb1ad7c1f9",
-        "rowSha256": "0585cef953ce4855006184b3845e132c0c17cd356c52d585d30a88765093b8ee"
+        "sourceHash": "9c29ee483c10ac75",
+        "rowSha256": "d1934e559a5f465e9fc6640a0811906af9a1bcbcfb98fb271b75e7ada4d87823"
       },
       "Action:CC: Deny Tool": {
         "label": "CC: Deny Tool",
@@ -184,8 +184,8 @@
       "Action:CDX: Commit Message": {
         "label": "CDX: Commit Message",
         "description": "Generate a git commit message from a diff using Codex CLI",
-        "sourceHash": "9d8ed62aff6fd28e",
-        "rowSha256": "f8a8fd86247adea5cda69d49ca86da10ad96a92dee7e60f0e6573caaf16ef5c5"
+        "sourceHash": "ac84270ff6c86a49",
+        "rowSha256": "03e30f0af77f5e92f037db445ca7d4707a40394318dd210e371879b19acc4f98"
       },
       "Action:CDX: Compact": {
         "label": "CDX: Compact",
@@ -196,14 +196,14 @@
       "Action:CDX: DB Query": {
         "label": "CDX: DB Query",
         "description": "Generate a read-only EARS database query using Codex CLI",
-        "sourceHash": "dd73f3b0bcbd9551",
-        "rowSha256": "db5fd1f416684fcbf26e4ecdc48692255d3177a0d12133744eba63700eb42206"
+        "sourceHash": "fa3eff2c76519865",
+        "rowSha256": "f2b2af359500960e01925c88870b1b26bfc81e24657eb3d7de9426aa4ad5976e"
       },
       "Action:CDX: DB Transaction": {
         "label": "CDX: DB Transaction",
         "description": "Generate an EARS database transaction using Codex CLI",
-        "sourceHash": "f67918e9c23cf950",
-        "rowSha256": "db0e9629579539547903d42c9897f47933cea238aff7bde3d8025d783b4f39dc"
+        "sourceHash": "39d8756d96a36789",
+        "rowSha256": "05437a6939f52229664e547a6078d6afe361732c01d99da53d47efa9bf4ea21f"
       },
       "Action:CDX: Deny Tool": {
         "label": "CDX: Deny Tool",
@@ -328,8 +328,8 @@
       "Action:Claude Code Chat": {
         "label": "Claude Code Chat",
         "description": "Drives Claude Code in streaming mode for the current thread, resuming prior sessions and prompting the user for tool permissions.",
-        "sourceHash": "c09a62f39461912d",
-        "rowSha256": "d4d51eaed990d9f0b0dbcd0e4d609ca67227a4f718f01dcad3ad4ab80a46619a"
+        "sourceHash": "789060f0b7dcfb90",
+        "rowSha256": "750ee718d4653035cdeb1c2f6985a3c7a7f6016b0c8e87b8f3ff72cbda2e70f0"
       },
       "Action:Claude Code List Sessions": {
         "label": "Claude Code List Sessions",
@@ -352,8 +352,8 @@
       "Action:Codex Chat": {
         "label": "Codex Chat",
         "description": "Drives Codex via app-server for the current thread.",
-        "sourceHash": "11eab82c27a1b136",
-        "rowSha256": "8ea1e6a5db7e4d2719b88d26eefe8ca2e5e33888c4832ebbabd9213a336cb0ed"
+        "sourceHash": "6aeb5cea8776e81f",
+        "rowSha256": "c6f6a47e69ecb19e85317e23baa0f3aeee45d8248bef09870e103198cba91c3a"
       },
       "Action:Handle Choose Mode Step": {
         "label": "Handle Choose Mode Step",

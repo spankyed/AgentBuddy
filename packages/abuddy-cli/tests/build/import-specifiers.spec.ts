@@ -520,7 +520,6 @@ describe('findMissingSourceConditions', () => {
   it.each([
     ['declared directly', 'tsconfig.json', '{ "compilerOptions": { "customConditions": ["@abuddy/source"] } }'],
     ['a vite config listing it', 'vite.config.ts', "export default { resolve: { conditions: ['@abuddy/source'] } };"],
-    ['the sourceConditions helper', 'vitest.config.ts', "import { sourceConditions } from '@abuddy/testing/vitest';\nexport default { resolve: { conditions: sourceConditions(import.meta.dirname) } };"],
     ['a list the file declares', 'vitest.config.ts', `const conditions = ['${SOURCE_CONDITION}', 'node'];\nexport default { resolve: { conditions } };\n`],
     ['a spread of a list the file declares', 'vitest.config.ts', `const base = ['${SOURCE_CONDITION}'];\nexport default { resolve: { conditions: [...base, 'node'] } };\n`],
     ['an option set by assignment', 'vitest.config.ts', `export default { esbuildOptions(o) { o.conditions = ['${SOURCE_CONDITION}', 'module']; } };\n`],
@@ -557,9 +556,8 @@ describe('findMissingSourceConditions', () => {
 
   it.each([
     ['the condition named in another option', `export default { test: { exclude: ['${SOURCE_CONDITION}'] } };\n`],
-    ['an unused import of the helper', "import { sourceConditions } from '@abuddy/testing/vitest';\nexport default { test: {} };\n"],
-    ['the helper named in a string', "export default { name: 'sourceConditions demo', test: {} };\n"],
-    ['a comment before a closing token', 'export default { test: {\n  // sourceConditions() would go here\n} };\n'],
+    ['the condition named in an unrelated string', `export default { name: '${SOURCE_CONDITION} demo', test: {} };\n`],
+    ['a comment before a closing token', `export default { test: {\n  // '${SOURCE_CONDITION}' would go here\n} };\n`],
     ['a comment after the last element', `export default { resolve: { conditions: [\n  'node',\n  // and '${SOURCE_CONDITION}', one day\n] } };\n`],
     ['the condition named only in a comment', `// resolve.conditions carries '${SOURCE_CONDITION}' — in a comment, so it declares nothing\nexport default { test: {} };\n`],
   ])('declares nothing with %s', (_form, content) => {

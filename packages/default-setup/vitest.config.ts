@@ -1,10 +1,5 @@
 import { defineConfig } from 'vitest/config';
 import { isolatedDataDir } from '@abuddy/testing/vitest';
-import { defaultServerConditions } from 'vite';
-
-// Vitest's own defaults: Vite's server conditions without 'module'
-const conditions = ['@abuddy/source', ...defaultServerConditions.filter((c) => c !== 'module')];
-
 // The harness requires an explicit environment and data dir (the media store). Each run gets a
 // throwaway data dir, split per worker and removed when the run ends.
 const dataDir = isolatedDataDir('default-setup-tests-');
@@ -13,8 +8,6 @@ export default defineConfig(async () => {
   const { default: tsconfigPaths } = await import('vite-tsconfig-paths');
   return {
     // Workspace @abuddy/* packages resolve to source (see their package.json exports)
-    resolve: { conditions },
-    ssr: { resolve: { conditions } },
     plugins: [
       tsconfigPaths({ projects: ['./tsconfig.test.json'] }),
     ],

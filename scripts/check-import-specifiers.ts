@@ -412,8 +412,6 @@ const CONFIG_FILE = /^(?:tsconfig(?:[.-][\w.-]+)?\.json|(?:vite|vitest|tsup|tsdo
 const SKIPPED_DIRS = /^(?:node_modules|dist|out|coverage|\..+)$/;
 /** Files a config compiles or bundles. Declarations included: tsc resolves their imports too */
 const CODE_FILE = /\.(?:[cm]?[jt]sx?|vue)$/;
-/** Helpers that build a config's condition list (@abuddy/testing's vitest helper, the host's NODE_OPTIONS helper) */
-const CONDITION_HELPER = /^(?:sourceConditions|withSourceCondition)$/;
 /** The extensions a relative config import may leave out */
 const CONFIG_EXTENSIONS = ['', '.ts', '.mts', '.cts', '.js', '.mjs', '.cjs'];
 /**
@@ -479,6 +477,8 @@ interface ConditionScan {
   packages: readonly string[];
   configs: string[];
   code: string[];
+  /** Every directory holding an `abuddy.json` */
+  packs: string[];
   /** Whether a file imports one of `packages`, by absolute path */
   imports: Map<string, boolean>;
   tsconfigs: Map<string, ts.ParsedCommandLine>;
@@ -510,6 +510,8 @@ function walkTree(dir: string, scan: ConditionScan, ancestors: Set<string>): voi
       // A config is code too: a tsconfig that lists `vitest.config.ts` compiles it
       if (CONFIG_FILE.test(entry.name)) scan.configs.push(full);
       if (CODE_FILE.test(entry.name)) scan.code.push(full);
+      // A directory with a manifest is a pack, and a pack resolves the packages' published dist
+      if (entry.name === 'abuddy.json') scan.packs.push(dir);
     }
   }
   ancestors.delete(real);
@@ -763,11 +765,10 @@ function yieldsCondition(raw: ts.Expression, source: ts.SourceFile, seen: Set<ts
     if (declared.length === 0) return { unreadable: `the condition list ${value.text} comes from outside this file` };
     return combine(declared.map((init) => yieldsCondition(init, source, seen)));
   }
+  // A computed list says nothing either way: every config that needs the condition names it outright
   if (ts.isCallExpression(value)) {
     const callee = ts.isIdentifier(value.expression) ? value.expression.text
       : ts.isPropertyAccessExpression(value.expression) ? value.expression.name.text : undefined;
-    // sourceConditions() and withSourceCondition() add the condition; any other call is opaque here
-    if (callee !== undefined && CONDITION_HELPER.test(callee)) return true;
     return { unreadable: `its condition list is built by ${callee ?? 'a call'}()` };
   }
   // Both branches of a conditional must carry it: one that doesn't resolves dist
@@ -814,15 +815,24 @@ function declaresCondition(file: string, scan: ConditionScan, seen = new Set<str
 export function findMissingSourceConditions(root = repoRoot, exceptions = RESOLVES_DIST_BY_DESIGN): string[] {
   const scan: ConditionScan = {
     packages: sourceConditionPackages(root),
-    configs: [], code: [], imports: new Map(), tsconfigs: new Map(), sources: new Map(),
+    configs: [], code: [], packs: [], imports: new Map(), tsconfigs: new Map(), sources: new Map(),
   };
   walkTree(root, scan, new Set());
   const problems: string[] = [];
   const applied = new Set<string>();
+  const inPack = (file: string) => scan.packs.some((pack) => file.startsWith(pack + path.sep));
   for (const file of scan.configs.sort()) {
     const relative = path.relative(root, file).split(path.sep).join('/');
-    const scope = configScope(file, scan);
     const verdict = declaresCondition(file, scan);
+    // A pack compiles the packages' published dist, the one layout a pack author has, so its configs
+    // declare nothing. The rule is the other way round for the repo's own code, below.
+    if (inPack(file)) {
+      if (verdict !== false) {
+        problems.push(`${relative}: a pack resolves the @abuddy packages' published dist, so it must not declare "${SOURCE_CONDITION}" in ${conditionOption(file)}`);
+      }
+      continue;
+    }
+    const scope = configScope(file, scan);
     if (verdict === true || !compilesImportingCode(scope, scan)) continue;
     if (exceptions.has(relative)) { applied.add(relative); continue; }
     const notes = [verdict === false ? undefined : verdict.unreadable, scope.kind === 'trees' ? scope.hint : undefined];
@@ -892,7 +902,7 @@ if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])
     [findSharedPackageLists, 'Derive shared-instance packages from SHARED_INSTANCE_PACKAGES (@abuddy/host/build/shared-deps) instead of naming them'],
     [findRepositoryCasts, "Call a package's repositories through its exports, not a cast of the repository registry"],
     [findCrossCheckoutResolution, 'Workspace packages resolve inside this checkout, so a worktree nested in the repository never typechecks against the parent checkout'],
-    [findMissingSourceConditions, 'Every config that compiles or bundles code importing @abuddy/ears, @abuddy/sdk, @abuddy/ui or @abuddy/testing declares the @abuddy/source condition, so it reads their TypeScript source instead of a stale dist'],
+    [findMissingSourceConditions, "The repo's own configs declare the @abuddy/source condition when they compile or bundle code importing @abuddy/ears, @abuddy/sdk, @abuddy/ui or @abuddy/testing, so they read TypeScript source instead of a stale dist; a pack's configs declare none, because a pack resolves the published dist"],
   ];
   for (const [find, rule] of checks) {
     const problems = find();
