@@ -35,12 +35,8 @@ function sourceTargets(exportsField: unknown): string[] {
   return targets;
 }
 
-interface Install {
-  /** `source` when this install's own files include what its `@abuddy/source` exports point at */
-  layout: 'source' | 'dist';
-  /** The package's directory, for the mismatch message */
-  dir: string;
-}
+/** `source` when the install holds the files its `@abuddy/source` exports name; `dir` names it in the mismatch message */
+interface Install { layout: 'source' | 'dist'; dir: string }
 
 /**
  * How one @abuddy package is installed for a pack in `dir`, or undefined when the pack can't resolve
@@ -72,9 +68,8 @@ function installOf(dir: string, pkg: string): Install | undefined {
 }
 
 /**
- * Says outright which way a build resolves the @abuddy packages, instead of leaving it to be read
- * off the install. Every decider honours it: this function, `scripts/with-source.mjs`, the CLI's
- * `bin/source-hooks.mjs` and `assertSourceResolution` in `@abuddy/host/build/source-resolution`.
+ * Declares which way a build resolves the @abuddy packages. Every decider reads it: this function,
+ * `scripts/with-source.mjs`, the CLI's `bin/source-hooks.mjs` and `assertSourceResolution`.
  *
  * @internal Host-only: abuddy CLI build tooling.
  */
@@ -91,23 +86,13 @@ function declaredMode(): 'source' | 'dist' | undefined {
 }
 
 /**
- * Extra resolve conditions for building pack code in `dir`: `['@abuddy/source']` to compile the
- * @abuddy packages from a checkout's TypeScript, `[]` to resolve the `dist` a published package
- * ships.
+ * Extra resolve conditions for building pack code in `dir`: `['@abuddy/source']` for @abuddy
+ * packages installed as a checkout's TypeScript, `[]` for the `dist` a published one ships.
+ * `ABUDDY_PACKAGES` decides when it is set; otherwise the installs do.
  *
- * `ABUDDY_PACKAGES=source|dist` states the mode outright, and is how a build says what it means
- * rather than leaving it to be inferred — CI, a container, or a developer working around an install
- * this can't read. Unset, the mode is taken from what the pack has installed, which is the only
- * thing that knows: a checkout has the `src/…` files its exports name under `@abuddy/source`, a
- * tarball ships `dist` alone.
- *
- * Every caller feeds the result to a setting that is global to one compilation — tsconfig
- * `customConditions`, esbuild/Vite `conditions`, `node --conditions` — so a build can't resolve
- * @abuddy/sdk from source and @abuddy/ui from dist. When a pack's installs disagree, there is no
- * condition list that is right for both: switching the condition on breaks the published package
- * (its tarball has no `src/…` to resolve), leaving it off silently compiles the linked one's
- * stale dist. So this reports the mismatch and names the packages instead of picking one, and
- * says which declaration would settle it.
+ * Callers feed this to a setting that is global to one compilation (tsconfig `customConditions`,
+ * esbuild/Vite `conditions`, `node --conditions`), so installs that disagree have no right answer
+ * and throw rather than resolve half of them wrongly.
  *
  * @internal Host-only: abuddy CLI build tooling.
  */
@@ -117,14 +102,14 @@ export function sourceConditions(dir: string): string[] {
   if (typeof dir !== 'string' || dir === '') {
     throw new Error(`sourceConditions needs the directory whose install to read, and got ${JSON.stringify(dir)}. Pass the pack's root, or declare the mode with ${PACKAGES_MODE_ENV}.`);
   }
-  const installs = SOURCE_PACKAGES
-    .map((pkg) => [pkg, installOf(dir, pkg)] as const)
-    .filter((entry): entry is readonly [(typeof SOURCE_PACKAGES)[number], Install] => entry[1] !== undefined);
-
-  const fromSource = installs.filter(([, install]) => install.layout === 'source');
-  const fromDist = installs.filter(([, install]) => install.layout === 'dist');
+  const installs = SOURCE_PACKAGES.flatMap((pkg) => {
+    const install = installOf(dir, pkg);
+    return install ? [{ pkg, ...install }] : [];
+  });
+  const fromSource = installs.filter(({ layout }) => layout === 'source');
+  const fromDist = installs.filter(({ layout }) => layout === 'dist');
   if (fromSource.length > 0 && fromDist.length > 0) {
-    const list = (entries: typeof installs) => entries.map(([pkg, install]) => `${pkg} (${install.dir})`).join(', ');
+    const list = (entries: typeof installs) => entries.map(({ pkg, dir: at }) => `${pkg} (${at})`).join(', ');
     throw new Error(
       `The @abuddy packages installed for ${dir} disagree on how they resolve, and a build resolves them all the same way (${SOURCE_CONDITION} is one list of conditions per compilation, not a setting per package).\n` +
       `  from a checkout's source: ${list(fromSource)}\n` +

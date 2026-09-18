@@ -33,17 +33,11 @@ export const CONSUMER_MATRIX = (Object.keys(TSC_VERSIONS) as TscVersion[])
   .flatMap((tsc) => (['node16', 'bundler'] as const).map((moduleResolution) => ({ tsc, moduleResolution })));
 
 /**
- * The build output is written by `npm run packages:build`. `npm test -w @abuddy/cli` builds it first
- * when it is out of date (the suite's `pretest`, scripts/ensure-packages-built.ts), and CI builds it
- * before the suite, so both arrive here up to date. With nothing built the published-package specs
- * skip, except in CI. Every spec that reads build output guards on `PACKAGES_BUILT`, including the
- * ones reading the CLI and testing bundles, so it covers all of `BUILD_UNITS`, not just the three
- * packages a fixture installs.
- *
- * The guard below is for a run that bypassed `pretest` (`npx vitest`, a watch run over an edit): a
- * build output that no successful build of the current sources produced fails, rather than testing
- * stale output. Importing this file never builds — that is the pretest's job, in its own process.
- * It reads the same `stalePackageUnits()` the pretest acts on, so the two can never disagree.
+ * Whether every `BUILD_UNITS` output exists: specs reading build output guard on it, and skip
+ * without one — except in CI, where nothing should be unbuilt. The staleness check below catches a
+ * run that bypassed the suite's `pretest` (`npx vitest`, a watch run): it reads the same verdict the
+ * pretest acts on, so the two can't disagree, and refuses rather than testing stale output.
+ * Importing this never builds; that is the pretest's job, in its own process.
  */
 export const PACKAGES_BUILT = Object.values(BUILD_UNITS).every((unit) => unit.outputs.every((output) => fs.existsSync(output)));
 if (!PACKAGES_BUILT && process.env.CI) {

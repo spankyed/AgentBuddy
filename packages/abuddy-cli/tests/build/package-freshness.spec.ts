@@ -4,9 +4,9 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  BUILD_UNITS, REPO_ROOT, fingerprintInputs, staleMessage, stampFile, stampedBuild, unitStaleReason, withBuildLock,
+  BUILD_UNITS, fingerprintInputs, staleMessage, stampFile, stampedBuild, unitStaleReason, withBuildLock,
 } from '../../../../scripts/ensure-packages-built.ts';
-import { PACKED_PACKAGES } from '../helpers/published-packages';
+import { PACKED_PACKAGES, REPO_ROOT } from '../helpers/published-packages';
 
 /**
  * The freshness rule behind `npm test -w @abuddy/cli`'s pretest (scripts/ensure-packages-built.ts):
