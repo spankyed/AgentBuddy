@@ -24,7 +24,7 @@
     "bench": "vitest bench --run",
     "api:build": "node -e \"require('fs').rmSync('.temp', { recursive: true, force: true })\" && tsc -p tsconfig.api-extractor.json",
     "api:check": "npm run api:build && tsx ../../scripts/api-reports.ts .",
-    "api:update": "npm run api:build && tsx ../../scripts/api-reports.ts . --local"
+    "api:update": "npm run api:build && tsx ../../scripts/api-reports.ts . --local && tsx ../../scripts/api-report-stamp.ts . --write"
   },
   "exports": {
     ".": {

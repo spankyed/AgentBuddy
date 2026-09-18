@@ -26,7 +26,7 @@
     "generate:schema": "tsx scripts/generate-schema.ts",
     "schema:check": "tsx scripts/generate-schema.ts --check",
     "api:check": "npm run api:build && tsx ../../scripts/api-reports.ts .",
-    "api:update": "npm run api:build && tsx ../../scripts/api-reports.ts . --local"
+    "api:update": "npm run api:build && tsx ../../scripts/api-reports.ts . --local && tsx ../../scripts/api-report-stamp.ts . --write"
   },
   "exports": {
     ".": {
