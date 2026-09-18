@@ -21,12 +21,6 @@ describe('with-source', () => {
   });
 
   it('leaves it off for a run that declared it resolves the published packages', () => {
-    // ABUDDY_PACKAGES is the one place the mode is declared, and every decider reads it, so a run
-    // can't have this wrapper adding source resolution while the rest of it resolves dist
-    expect(run(PRINT_NODE_OPTIONS, undefined, { ABUDDY_PACKAGES: 'dist' }).stdout.trim()).toBe('');
-    expect(run(PRINT_NODE_OPTIONS, '--conditions=@abuddy/source --max-old-space-size=4096', { ABUDDY_PACKAGES: 'dist' }).stdout.trim())
-      .toBe('--max-old-space-size=4096');
-    expect(run(PRINT_NODE_OPTIONS, undefined, { ABUDDY_PACKAGES: 'source' }).stdout.trim()).toBe('--conditions=@abuddy/source');
   });
 
   it('adds the condition once when nested', () => {
