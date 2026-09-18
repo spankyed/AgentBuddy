@@ -43,7 +43,15 @@ describe('generated events', () => {
     const events = files['src/__generated__/events.ts'];
     expect(events).toContain("'actions': __events_actions;");
     expect(events).toContain("'flows': __events_flows | __events_actions;");
-    expect(events).toContain('export type PackEvents = OwnPackEvents & Omit<HostPluginEvents, keyof OwnPackEvents>;');
+    // A host plugin keeps the events the host declares it receives: a pack widens only its own plugins
+    expect(events).toContain("export type PackEvents = OwnPackEvents & Omit<Pick<HostPluginEvents, 'application'>, keyof OwnPackEvents>;");
+    expect(events).not.toContain("'application': __events_actions");
+  });
+
+  it('leaves out a host plugin no sendsTo names', () => {
+    const events = generate({ features: [withPlugin(system('actions'))] })['src/__generated__/events.ts'];
+    expect(events).toContain('export type PackEvents = OwnPackEvents;');
+    expect(events).not.toContain('HostPluginEvents');
   });
 
   it('gives a feature with a system but no plugin no key: nothing could receive the events', () => {
@@ -65,17 +73,42 @@ describe('generated events', () => {
     expect(files['src/__generated__/events.ts']).toContain("'sidebar': __events_notes;");
   });
 
-  it("intersects each dependency's plugin events and accepts its plugins as targets", () => {
+  it("takes a dependency's plugin a sendsTo names, with the events that dependency declares it receives", () => {
     const files = generate(
       { features: [system('memos', { sendsTo: ['threads'] })] },
-      { 'base-pack': dependency({ features: [{ id: 'threads', plugin: { entry: 'x' } }] }) },
+      { 'base-pack': dependency({ features: [withPlugin(system('threads')), withPlugin(system('code'))] }) },
     );
     const events = files['src/__generated__/events.ts'];
     expect(events).toContain("import type { PackEvents as __dep_base_pack_PackEvents } from './deps/base-pack.js';");
-    expect(events).toContain('export type PackEvents = OwnPackEvents & Omit<__dep_base_pack_PackEvents, keyof OwnPackEvents> & Omit<HostPluginEvents, keyof OwnPackEvents>;');
+    // Only the plugin named, and only the events its own pack declares for it
+    expect(events).toContain("export type PackEvents = OwnPackEvents & Omit<Pick<__dep_base_pack_PackEvents, 'threads'>, keyof OwnPackEvents>;");
     expect(files['src/__generated__/deps/base-pack.d.ts']).toContain('export type PackEvents = {};');
     expect(files['src/__generated__/deps/base-pack.d.ts']).toContain('// base-pack@1.0.0 facade types\n');
     expect(depTypesVersion(files[depTypesFile('base-pack')], 'base-pack')).toBe('1.0.0');
+  });
+
+  it("leaves out a dependency's plugins no sendsTo names", () => {
+    const files = generate(
+      { features: [withPlugin(system('memos'))] },
+      { 'base-pack': dependency({ features: [withPlugin(system('threads'))] }) },
+    );
+    const events = files['src/__generated__/events.ts'];
+    expect(events).toContain('export type PackEvents = OwnPackEvents;');
+    expect(events).not.toContain("import type { PackEvents as __dep_base_pack_PackEvents }");
+  });
+
+  it("rejects a sendsTo naming a dependency's plugin its own pack declares no events for", () => {
+    expect(() => generate(
+      { features: [system('memos', { sendsTo: ['threads'] })] },
+      { 'base-pack': dependency({ features: [{ id: 'threads', plugin: { entry: 'x' } }] }) },
+    )).toThrow('system.sendsTo names "threads", a plugin of a dependency that declares no events for it');
+  });
+
+  it("rejects a sendsTo naming a plugin of a dependency built without facade types", () => {
+    expect(() => generate(
+      { features: [system('memos', { sendsTo: ['threads'] })] },
+      { 'base-pack': dependency({ features: [withPlugin(system('threads'))] }, {}) },
+    )).toThrow('a plugin of "base-pack", which was built without facade types');
   });
 
   it('rejects a sendsTo target no pack or host provides', () => {
@@ -197,6 +230,42 @@ describe('generated sends compile', () => {
       "sendToSystem('base-pack/threads', { type: 'THREADS_RUN' });",
       '// @ts-expect-error the pack has no system of its own',
       "sendToSystem('sidebar', { type: 'THREADS_RUN', n: 1 });",
+    ].join('\n'));
+    expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
+  });
+
+  it("to a dependency's plugin and a host plugin a sendsTo names, with the events their owner declares", () => {
+    write('src/features/memos/be/system.ts', [
+      "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",
+      "export type OutgoingMemosEvents = { type: 'MEMO_ADDED'; text: string };",
+      "const spec = defineSystem('memos')<{ type: 'ADD_MEMO'; text: string }, OutgoingMemosEvents>();",
+      "export default { spec, machine: undefined as unknown as SystemEntry['machine'] } satisfies SystemEntry;",
+    ].join('\n'));
+    const base = dependency({ features: [withPlugin(system('threads')), withPlugin(system('code'))] }, {
+      [PACK_TYPES_DEF]: [
+        'export type PackEntityShapes = {};',
+        'export type PackStepNodes = never;',
+        "export type PackEvents = { 'threads': { type: 'TAG_ADDED'; name: string }; 'code': { type: 'FILE_OPENED'; path: string } };",
+        'export type PackSystemEvents = {};',
+        'export type Services = {};',
+        'export type Repositories = {};',
+      ].join('\n'),
+    });
+    const files = generatePackFiles(
+      manifest({ features: [withPlugin(system('memos', { sendsTo: ['threads', 'application'] }))] }),
+      { packRoot: root, depSnapshots: new Map([['base-pack', base]]) },
+    );
+    write('src/probe.ts', [
+      "import { emit, sendToPlugin } from './__generated__/events.js';",
+      "emit('memos', { type: 'MEMO_ADDED', text: 'x' });",
+      "emit('threads', { type: 'TAG_ADDED', name: 'x' });",
+      "sendToPlugin('application', { type: 'APPLICATION_RESTORE_LAST_PLUGIN', lastActivePluginId: 'memos' });",
+      "// @ts-expect-error a dependency's plugin takes only the events its own pack declares for it",
+      "emit('threads', { type: 'MEMO_ADDED', text: 'x' });",
+      '// @ts-expect-error the host declares what its application plugin receives',
+      "sendToPlugin('application', { type: 'MEMO_ADDED', text: 'x' });",
+      "// @ts-expect-error no sendsTo names the dependency's code plugin",
+      "emit('code', { type: 'FILE_OPENED', path: 'x' });",
     ].join('\n'));
     expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
   });

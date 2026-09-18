@@ -45,6 +45,11 @@ const BASE_PACK = {
       plugin: { entry: 'src/plugin.ts' },
       services: { search: 'src/search.ts#searchService' },
       repositories: { tagQueries: 'src/repository.ts#tagQueries' },
+    }, {
+      // A second plugin of the dependency, which no sendsTo of the dependent names
+      id: 'inbox',
+      system: { entry: 'src/inbox.ts' },
+      plugin: { entry: 'src/inbox-plugin.ts' },
     }],
   }),
   'src/types.ts': 'export interface TagEntity { name: string }\nexport interface ItemEntity { title: string }\n',
@@ -58,6 +63,15 @@ const BASE_PACK = {
     'export default entry;',
   ].join('\n'),
   'src/plugin.ts': "import type { Plugin } from '@abuddy/sdk/fe';\nexport default { id: 'threads' } as unknown as Plugin;\n",
+  'src/inbox.ts': [
+    "import { setup } from 'xstate';",
+    "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",
+    "export type OutgoingInboxEvents = { type: 'MAIL_ARRIVED'; from: string };",
+    "export const inboxSpec = defineSystem('inbox')<{ type: 'FETCH_MAIL' }, OutgoingInboxEvents>();",
+    'const entry = { spec: inboxSpec, machine: setup({ types: inboxSpec.types }).createMachine({ id: inboxSpec.id }) } satisfies SystemEntry;',
+    'export default entry;',
+  ].join('\n'),
+  'src/inbox-plugin.ts': "import type { Plugin } from '@abuddy/sdk/fe';\nexport default { id: 'inbox' } as unknown as Plugin;\n",
   'src/search.ts': 'export const searchService = { query: (q: string): string[] => [q] };\n',
   'src/repository.ts': [
     "import { findAll, EARS } from '#generated/ears.js';",
@@ -74,7 +88,7 @@ const APP_PACK = {
     entities: { Memo: 'Memo' },
     // Same type name as the dependency's Item shape
     entityShapes: { Memo: { source: 'src/types.ts', type: 'ItemEntity' } },
-    features: [{ id: 'memos', system: { entry: 'src/system.ts', sendsTo: ['threads'] }, plugin: { entry: 'src/plugin.ts' } }],
+    features: [{ id: 'memos', system: { entry: 'src/system.ts', sendsTo: ['threads', 'application'] }, plugin: { entry: 'src/plugin.ts' } }],
   }),
   'src/types.ts': 'export interface ItemEntity { text: string; pinned: boolean }\n',
   'src/plugin.ts': "import type { Plugin } from '@abuddy/sdk/fe';\nexport default { id: 'memos' } as unknown as Plugin;\n",
@@ -120,12 +134,17 @@ export type RepositoryService = Expect<Equal<typeof services.repository, typeof 
 // @ts-expect-error not a service of this pack or its dependency
 services.nope;
 
-// The memos system declares sendsTo: ['threads'], a plugin of the dependency
+// The memos system declares sendsTo: ['threads', 'application']: a plugin of the dependency and the host's
 emit('threads', { type: 'TAG_ADDED', name: 'x' });
 emit('memos', { type: 'MEMO_ADDED', text: 'x' });
 sendToPlugin('application', { type: 'APPLICATION_RESTORE_LAST_PLUGIN', lastActivePluginId: 'memos' });
+// A plugin someone else owns keeps the events its owner declares it receives: sendsTo opens the channel, it doesn't widen them
 // @ts-expect-error the threads plugin doesn't receive this event
 emit('threads', { type: 'MEMO_ADDED', text: 'x' });
+// @ts-expect-error the host declares what its application plugin receives
+sendToPlugin('application', { type: 'MEMO_ADDED', text: 'x' });
+// @ts-expect-error no sendsTo names the dependency's inbox plugin
+emit('inbox', { type: 'MAIL_ARRIVED', from: 'x' });
 
 // Systems: this pack's by feature id, the dependency's as <dependency>/<feature>
 sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });
