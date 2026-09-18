@@ -99,9 +99,12 @@ commit is partly that work being deleted again, and none of the second half reac
 - **Secret redaction stays a bound resource.** `HostRuntime.redaction`, installed by `bindHost`, cleared by
   `unbindHost`, with the values living in `@abuddy/host`'s secrets store. Already implemented on
   `single-mode/phase-1`, mutation-checked, and independent of the resolution model — it can land first.
-- **`ABUDDY_PACKAGES` goes.** It is a global process switch saying what the configs already say, read in
-  five places (`sourceConditions`, `assertSourceResolution` at `source-resolution.ts:40`,
-  `scripts/with-source.mjs`, `bin/source-hooks.mjs`, and `docs/public-facing/cli.md`). Under single mode
+- **`ABUDDY_PACKAGES` goes.** It is a global process switch saying what the configs already say, named in
+  nine places: `sourceConditions` (`PACKAGES_MODE_ENV`, `declaredMode()`), `assertSourceResolution`
+  (`source-resolution.ts:40`), `scripts/with-source.mjs`, `packages/abuddy-cli/bin/source-hooks.mjs`,
+  `packages/abuddy-sdk/etc/build.source-conditions.api.md`, and four documents —
+  `docs/public-facing/cli.md`, `docs/public-facing/testing.md`, `packages/abuddy-sdk/CLAUDE.md` and
+  `packages/abuddy-testing/CLAUDE.md`. Under single mode
   nothing infers a mode, so it has no pack-facing purpose left. The capability people reach for it for —
   "build this the way a consumer would" — already exists in a better form: `installPublishedPackages()`
   (`packages/abuddy-cli/tests/helpers/published-packages.ts`) builds a temp `node_modules` with the three
@@ -115,9 +118,13 @@ commit is partly that work being deleted again, and none of the second half reac
   packaging faults the old one never could — `@abuddy/testing`'s tarball carries 10 `src` files and no
   `dist` (it is `private` with no `files` field while its exports point into `dist/package/dist/`), which a
   workspace-vs-tarball comparison fails on immediately.
-- **`@abuddy/testing`'s `types` moves to the built declarations.** Today `types` resolves
-  `./src/index.ts` while `default` resolves the bundle, so a pack type-checks source and runs a bundle —
-  the same split this goal removes everywhere else. It is also why `typecheck:pack` pulls 98
+- **`@abuddy/testing` resolves its built output on both conditions.** On this branch `.` and `./harness`
+  resolve `types` to `./src/{index,harness}.ts` and `default` to `./src/{requires-source,harness-requires-source}.ts`,
+  the stubs that throw when the condition isn't set. Phase 2 points `default` at
+  `./dist/package/dist/{index,harness}.js` (the deletion the other branch already made) **and** `types` at
+  the matching `.d.ts`, so a pack type-checks the declarations it runs rather than source — the same split
+  this goal removes everywhere else. Doing only the first half leaves a pack type-checking source and
+  running a bundle. It is also why `typecheck:pack` pulls 98
   `@abuddy/host` source files into default-setup's program, though the root `CLAUDE.md` says a pack does
   not depend on host. Declaration quality is not a reason to hesitate: the bundled `.d.ts` are 120 lines
   with their JSDoc intact, real generics (`mockService<S extends object, K extends keyof S & string>`),
@@ -143,6 +150,9 @@ later phases lean on it, and re-add anything that went missing:
   watched for staleness are different lists. Merging them makes
   `tests/helpers/published-packages.ts` pack `@abuddy/testing` — whose tarball carries 10 `src` files and
   no `dist`, because it is `private` with no `files` field — into seven specs' fixtures.
+- The cross-checkout resolution check (`d7ad05bc5`): a worktree nested inside the repo resolves a missing
+  build output to the **parent** checkout instead of failing, which silently type-checks another branch's
+  source. Keep it; this goal's phases are worked in exactly that layout.
 - The rewritten `findMissingSourceConditions` (config-scope analysis via
   `ts.getParsedCommandLineOfConfigFile`, AST reading of the real `conditions` option, unreadable-verdict
   reporting, symlink-safe walking, per-run caches).
@@ -163,9 +173,11 @@ later phases lean on it, and re-add anything that went missing:
   `source-conditions.ts`, the early return at `packages/abuddy-host/src/build/source-resolution.ts:40`, the
   `=== 'dist'` branch in `scripts/with-source.mjs`, the early-out in `packages/abuddy-cli/bin/source-hooks.mjs`,
   and the paragraph in `docs/public-facing/cli.md`. Their specs go with them.
-- Point `@abuddy/testing`'s `.` and `./harness` `types` at `./dist/package/dist/{index,harness}.d.ts`, so a
-  pack type-checks the declarations it runs against, and order the condition keys the same way on all three
-  entries (`.` and `./harness` list `@abuddy/source` first, `./vitest` lists it second).
+- Point `@abuddy/testing`'s `.` and `./harness` at their built output on both conditions — `default` to
+  `./dist/package/dist/{index,harness}.js` and `types` to the matching `.d.ts` — and delete the
+  `requires-source.ts` / `harness-requires-source.ts` stubs those defaults name today, together with
+  `src/source-check.ts` and `tests/build/testing-source-entry.spec.ts`. Phase 4 replaces the diagnostic
+  those stubs provided. Order the condition keys the same way on all three entries.
 - Re-point `packages/abuddy-cli/tests/build/types-bundler-determinism.spec.ts` from "source vs installed
   dist" to **workspace install vs packed tarball**: keep `installPublishedPackages()` for one side, use the
   monorepo's own `node_modules` for the other, and drop the two `sourceConditions` assertions that proved
