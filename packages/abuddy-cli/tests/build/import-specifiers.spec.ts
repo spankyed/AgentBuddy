@@ -97,10 +97,10 @@ function writeTemplateSource(content: string): string {
 
 /** Code none of the pack rules flag: comments, string text and the allowed imports */
 const ALLOWED = [
-  "// import { emit } from '@abuddy/sdk/events'; rootEvents; trpc.bus; console.log('x')",
+  "// import { emit } from '@abuddy/sdk/events'; _rootEvents; trpc.bus; console.log('x')",
   "/* import * as events from '@abuddy/sdk/events'; console.log('x') */",
   "const url = 'https://console.anthropic.com/settings/keys';",
-  "const prompt = `rootEvents.emitOutgoing(event); console.log(ev.type)`;",
+  "const prompt = `_rootEvents.emitOutgoing(event); console.log(ev.type)`;",
   "import { emit, sendToSystem } from '#generated/events';",
   "import { sendToPlugin } from '@/__generated__/events';",
   "import { sendToBrainSystem, onIncoming } from '@abuddy/sdk/events';",
@@ -147,7 +147,7 @@ describe('findRawTransport', () => {
   it.each([
     ["import { trpc } from '@abuddy/sdk/rpc';", '@abuddy/sdk/rpc'],
     ["const rpc = await import('@abuddy/sdk/rpc/client');", '@abuddy/sdk/rpc/client'],
-    ['rootEvents.emitOutgoing(event);', 'rootEvents'],
+    ['_rootEvents.emitOutgoing(event);', '_rootEvents'],
     ["trpc.bus.send.mutate({ systemId: 'notes', type: 'GET_NOTES' });", 'trpc.bus'],
     ['trpc?.bus.send.mutate(event);', 'trpc.bus'],
   ])('flags %s', (code, problem) => {
@@ -157,8 +157,8 @@ describe('findRawTransport', () => {
 
   it('allows comments, strings and the typed sends, and checks generated files', () => {
     write('pack/feature.ts', ALLOWED);
-    write('pack/__generated__/events.ts', "\nimport { rootEvents } from '@abuddy/sdk/runtime';\n");
-    expect(findRawTransport(['src/pack'], root)).toEqual(['src/pack/__generated__/events.ts:2: rootEvents']);
+    write('pack/__generated__/events.ts', "\nimport { _rootEvents } from '@abuddy/sdk/runtime';\n");
+    expect(findRawTransport(['src/pack'], root)).toEqual(['src/pack/__generated__/events.ts:2: _rootEvents']);
   });
 
   it("checks the pack code in the CLI's templates, with its line", () => {

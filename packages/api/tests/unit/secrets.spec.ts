@@ -29,7 +29,7 @@ const { createLogger, reportError } = await import('@abuddy/sdk/logger');
 const { originalConsole, initializeLogCapture, restoreConsole } = await import('@/core/shared/debug/log-capture');
 const { secretsStore, forwardSecretsChanges } = await import('@abuddy/host/secrets');
 const { services } = await import('@abuddy/sdk/services');
-const { getSecretsFilePath } = await import('@abuddy/sdk/utils');
+const { _getSecretsFilePath } = await import('@abuddy/sdk/utils');
 const { setup } = await import('xstate');
 
 const KEY = 'sk-proj-SPECKEY1234567890abcdefghij';
@@ -106,7 +106,7 @@ describe('secrets procedures', () => {
 
   it("tell the settings system when adding a key fails for want of a credential store, so it can offer unprotected storage", async () => {
     // The first key stored: its data key is made now (clearing keeps the one already in use)
-    fs.rmSync(getSecretsFilePath(), { force: true });
+    fs.rmSync(_getSecretsFilePath(), { force: true });
     vaultDown.value = true;
     try {
       const incoming = await incomingDuring(() => expect(caller.add({ provider: 'openai', label: 'Work', value: KEY })).rejects.toThrow("Secret Service isn't available"));
@@ -146,14 +146,14 @@ describe('secrets procedures', () => {
     ['is not JSON', '{"format": 1, "secrets": [tru'],
     ['is in a format the store does not know', JSON.stringify({ format: 99, secrets: [] })],
   ])('services.appData.reset completes when the stored keys file %s, and deletes it', async (_name, contents) => {
-    fs.writeFileSync(getSecretsFilePath(), contents);
+    fs.writeFileSync(_getSecretsFilePath(), contents);
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     try {
       await expect(services.appData.reset()).resolves.toBeUndefined();
     } finally {
       warn.mockRestore();
     }
-    expect(fs.existsSync(getSecretsFilePath())).toBe(false);
+    expect(fs.existsSync(_getSecretsFilePath())).toBe(false);
     expect(services.secrets.list()).toEqual([]);
   });
 });

@@ -1,7 +1,7 @@
 // A scripted `services.inference` for unit tests: the AI SDK's real calls on its test models, so results, steps,
 // `output` parsing, tool execution, agents and stream parts behave as in the app. `ai` loads on the first call, so
 // @abuddy/sdk/testing loads in packs that don't install it.
-import { createInferenceService, type InferenceService, type ResolveModel } from '../services/inference.ts';
+import { _createInferenceService, type InferenceService, type _ResolveModel } from '../services/inference.ts';
 import { parseModelId, type EmbeddingModelId, type ImageModelId, type ModelId, type ModelKind, type RerankingModelId, type SpeechModelId, type TranscriptionModelId } from '../services/models.ts';
 
 /** A language model call the code under test made (`generateText`, `streamText`, an agent's step) */
@@ -146,7 +146,7 @@ export function fakeInference(
         return { text: transcript, segments: [], language: undefined, durationInSeconds: undefined, warnings: [], response };
       } }) as never;
     }
-  }) as ResolveModel;
+  }) as _ResolveModel;
 
   const languageModel = (mocks: typeof import('ai/test'), model: ModelId, names: { provider?: string; modelId: string }) => {
     const { MockLanguageModelV4, simulateReadableStream } = mocks;
@@ -174,5 +174,5 @@ export function fakeInference(
     });
   };
 
-  return { calls, ...createInferenceService(modelFor) };
+  return { calls, ..._createInferenceService(modelFor) };
 }

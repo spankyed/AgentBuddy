@@ -61,10 +61,8 @@ export interface BackupInfo {
     timestamp: number;
 }
 
-// Warning: (ae-internal-missing-underscore) The name "createInferenceService" should be prefixed with an underscore because the declaration is marked as @internal
-//
 // @internal
-export function createInferenceService(resolveModel: ResolveModel): InferenceService;
+export function _createInferenceService(resolveModel: _ResolveModel): InferenceService;
 
 // @public
 export interface FileEntry {
@@ -113,10 +111,8 @@ export interface HostServices {
     traceStore: TraceStore;
 }
 
-// Warning: (ae-internal-missing-underscore) The name "InferenceModels" should be prefixed with an underscore because the declaration is marked as @internal
-//
 // @internal
-export interface InferenceModels {
+export interface _InferenceModels {
     // (undocumented)
     embedding: EmbeddingModel;
     // (undocumented)
@@ -171,10 +167,8 @@ export type OutputSpec = {
 // @public
 export type ProviderName = 'google' | 'anthropic' | 'openai' | 'groq' | 'mistral' | 'cohere';
 
-// Warning: (ae-internal-missing-underscore) The name "ResolveModel" should be prefixed with an underscore because the declaration is marked as @internal
-//
 // @internal
-export type ResolveModel = <K extends ModelKind>(kind: K, id: ModelIdOf<K>) => InferenceModels[K] | Promise<InferenceModels[K]>;
+export type _ResolveModel = <K extends ModelKind>(kind: K, id: ModelIdOf<K>) => _InferenceModels[K] | Promise<_InferenceModels[K]>;
 
 // @public
 export interface SecretInfo {
@@ -193,15 +187,11 @@ export interface SecretInfo {
 // @public
 export type SecretProvider = ProviderName | 'custom';
 
-// Warning: (ae-internal-missing-underscore) The name "secretProviderLabel" should be prefixed with an underscore because the declaration is marked as @internal
-//
 // @internal
-export const secretProviderLabel: (provider: SecretProvider) => string;
+export const _secretProviderLabel: (provider: SecretProvider) => string;
 
-// Warning: (ae-internal-missing-underscore) The name "secretRules" should be prefixed with an underscore because the declaration is marked as @internal
-//
 // @internal (undocumented)
-export const secretRules: {
+export const _secretRules: {
     add<T extends SecretInfo>(secrets: readonly T[], secret: Omit<T, "selected" | "label"> & {
         label: string;
     }): T[];
@@ -243,10 +233,8 @@ export interface SecretsStatus {
 // @public
 export const services: HostServices & Record<string, unknown>;
 
-// Warning: (ae-internal-missing-underscore) The name "toSecretInfo" should be prefixed with an underscore because the declaration is marked as @internal
-//
 // @internal
-export const toSecretInfo: (input: SecretInfo) => SecretInfo;
+export const _toSecretInfo: (input: SecretInfo) => SecretInfo;
 
 // @public
 export interface TraceEntityMeta {

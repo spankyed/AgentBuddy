@@ -2,7 +2,7 @@
 // startTestRuntime binds it over the registry it's given (the harness's), so what a test puts here is found first.
 import type { PackRegistryView } from '../runtime/packs-view.ts';
 import type { StepDefinition } from '../steps/types.ts';
-import { mergeStepDefinitions } from '../steps/merge.ts';
+import { _mergeStepDefinitions } from '../steps/merge.ts';
 import type { ArtifactDefinition } from '../artifacts/types.ts';
 import type { BlockDefinition } from '../blocks/types.ts';
 import type { SeedHooks } from '../seed/hooks.ts';
@@ -69,7 +69,7 @@ function withOwn<T extends { type: string }>(registered: readonly T[] = [], own:
 /** A test's step definitions over the registered ones: a type both define is merged facet by facet, as the registry merges a pack's */
 function stepsWithOwn(registered: readonly StepDefinition[] = []): StepDefinition[] {
   const own = testPacks.steps;
-  const merged = registered.map((def) => (own.has(def.type) ? mergeStepDefinitions(def, own.get(def.type)!) : def));
+  const merged = registered.map((def) => (own.has(def.type) ? _mergeStepDefinitions(def, own.get(def.type)!) : def));
   const registeredTypes = new Set(registered.map((def) => def.type));
   return [...merged, ...[...own.values()].filter((def) => !registeredTypes.has(def.type))];
 }
@@ -81,7 +81,7 @@ export function testPacksView(registered?: PackRegistryView): PackRegistryView {
     step: (type) => {
       const own = testPacks.steps.get(type);
       const def = registered?.step(type);
-      return own && def ? mergeStepDefinitions(def, own) : own ?? def;
+      return own && def ? _mergeStepDefinitions(def, own) : own ?? def;
     },
     steps: () => stepsWithOwn(registered?.steps()),
     artifact: (type) => testPacks.artifacts.get(type) ?? registered?.artifact(type),

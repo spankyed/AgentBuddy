@@ -621,7 +621,7 @@ These edits in the Decisions above fix statements that didn't match what was bui
 
 ### Open items
 
-- Resolved after the goal: Electron main serves and stores media in the folder the API's `getMediaPath()` uses; `abuddy add migration` scaffolds a `PackMigration`; the loader's bridge no longer maps `@abuddy/host/packs` and `/backup`.
+- Resolved after the goal: Electron main serves and stores media in the folder the API's `_getMediaPath()` uses; `abuddy add migration` scaffolds a `PackMigration`; the loader's bridge no longer maps `@abuddy/host/packs` and `/backup`.
 - Review fixes after the goal: a beta runs its release's migrations (again on each new beta) and a development build runs every pending migration, so the host's 0.3.15 app-state move reaches them; a failed migration stops the rest, records no version and skips the packs' migrations and seeds, so nothing deletes the old state; pack repositories are collision-checked and removed with their pack; reset shuts packs down and starts them the way boot does (`startPacks`); backup import runs the migrations; `flowRepository.updateNode` keeps a node's link on a partial update; the LMDB store no longer writes back an entity destroyed in the same tick, and moves a relation it didn't see written; kept query builders drop destroyed ids; `abuddy build` and the bridges refuse `@abuddy/ears/lmdb` in packs; pack tests fail when the pack's `@abuddy/ears` isn't the SDK's copy; `unbindHost`/`boundHost` moved to the source-only `@abuddy/sdk/runtime/internals`; the renderer binds its host before creating the application actor.
 
 ### Final verification

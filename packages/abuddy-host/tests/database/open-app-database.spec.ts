@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createEarsEngine, getEntitiesOfType, installEngine, installedEngine, untypedQx, type EARS } from '@abuddy/ears';
-import { appDataPaths } from '@abuddy/sdk/utils';
+import { _appDataPaths } from '@abuddy/sdk/utils';
 import { openAppDatabase } from '../../src/database/open.ts';
 import { findAppDataPaths } from '../../src/database/layout.ts';
 import { readInstalledSchema } from '../../src/database/schema.ts';
@@ -55,17 +55,17 @@ describe('findAppDataPaths', () => {
   it('finds the layout the database was written in', async () => {
     const source = dataDirWithPacks();
     await writeData(source, () => {});
-    expect(findAppDataPaths(source)).toEqual(appDataPaths(source, { packaged: false }));
+    expect(findAppDataPaths(source)).toEqual(_appDataPaths(source, { packaged: false }));
 
     const packaged = dataDirWithPacks();
     await writeData(packaged, () => {}, { packaged: true });
-    expect(findAppDataPaths(packaged)).toEqual(appDataPaths(packaged, { packaged: true }));
+    expect(findAppDataPaths(packaged)).toEqual(_appDataPaths(packaged, { packaged: true }));
   });
 
   it('refuses a data dir holding only one of the two partitions, whether it reads or writes', async () => {
     const dir = dataDirWithPacks();
     await writeData(dir, () => {});
-    const paths = appDataPaths(dir, { packaged: false });
+    const paths = _appDataPaths(dir, { packaged: false });
     fs.rmSync(paths.volatileLmdb, { recursive: true });
     const missingHistory = new RegExp(`missing the run history \\(${paths.volatileLmdb}\\): copy the whole data dir`);
     expect(() => findAppDataPaths(dir)).toThrow(missingHistory);
@@ -76,7 +76,7 @@ describe('findAppDataPaths', () => {
 
     const onlyHistory = dataDirWithPacks();
     await writeData(onlyHistory, () => {});
-    fs.rmSync(appDataPaths(onlyHistory, { packaged: false }).lmdb, { recursive: true });
+    fs.rmSync(_appDataPaths(onlyHistory, { packaged: false }).lmdb, { recursive: true });
     expect(() => findAppDataPaths(onlyHistory)).toThrow(/missing the data \(/);
   });
 
@@ -100,7 +100,7 @@ describe('openAppDatabase', () => {
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
     expect(installedEngine()).toBe(db.query);
-    expect(db.paths).toEqual(appDataPaths(dir, { packaged: false }));
+    expect(db.paths).toEqual(_appDataPaths(dir, { packaged: false }));
     expect(getEntitiesOfType('Note').sort()).toEqual(['Note-1', 'Note-2']);
     expect(untypedQx('Note' as never).ids()).toHaveLength(2);
     expect(db.query.getRoles(id('Note-1'))).toEqual(['pinned']);

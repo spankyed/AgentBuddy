@@ -5,7 +5,7 @@
 // also recorded as a digest, so logs can mask it (`rememberForRedaction`); no plaintext is kept.
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
-import { secretRules, secretProviderLabel, toSecretInfo, type ProviderName, type SecretInfo, type SecretProvider, type SecretsStatus } from '@abuddy/sdk/services';
+import { _secretRules, _secretProviderLabel, _toSecretInfo, type ProviderName, type SecretInfo, type SecretProvider, type SecretsStatus } from '@abuddy/sdk/services';
 import { registerSecretValue } from './redaction.ts';
 import { writePrivateFile } from './private-file.ts';
 import { KeyVaultUnavailableError, type KeyVault } from './vault.ts';
@@ -174,7 +174,7 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
   };
 
   const decrypt = (file: SecretsFile, secret: StoredSecret): string => {
-    const unreadable = new Error(`The ${secretProviderLabel(secret.provider)} key "${secret.label}" can't be read on this machine: enter it again in Settings → Secrets`);
+    const unreadable = new Error(`The ${_secretProviderLabel(secret.provider)} key "${secret.label}" can't be read on this machine: enter it again in Settings → Secrets`);
     const key = loadKey(file, secret.value.keyId);
     if (!key) throw unreadable;
     try {
@@ -212,19 +212,19 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
       if (osVaultUnavailable && vault.protection === 'os-keystore') return { protection: 'unavailable', backend: vault.backend };
       return { protection: vault.protection, backend: vault.backend };
     },
-    list: () => read().secrets.map(toSecretInfo),
-    select: (id) => change((secrets) => secretRules.select(secrets, id, now())),
-    rename: (id, label) => change((secrets) => secretRules.rename(secrets, id, label, now())),
-    delete: (id) => change((secrets) => secretRules.remove(secrets, id)),
+    list: () => read().secrets.map(_toSecretInfo),
+    select: (id) => change((secrets) => _secretRules.select(secrets, id, now())),
+    rename: (id, label) => change((secrets) => _secretRules.rename(secrets, id, label, now())),
+    delete: (id) => change((secrets) => _secretRules.remove(secrets, id)),
 
     add(provider, label, value) {
       const file = read();
       const id = `Secret-${crypto.randomUUID()}`;
-      const withMeta = secretRules.add(file.secrets, { id, provider, label, createdAt: now(), value: undefined as never });
+      const withMeta = _secretRules.add(file.secrets, { id, provider, label, createdAt: now(), value: undefined as never });
       const encrypted = encrypt(file, id, provider, value);
       file.secrets = withMeta.map((secret) => secret.id === id ? { ...secret, value: encrypted } : secret);
       write(file);
-      return toSecretInfo(file.secrets.find((secret) => secret.id === id)!);
+      return _toSecretInfo(file.secrets.find((secret) => secret.id === id)!);
     },
 
     replaceValue(id, value) {
@@ -238,7 +238,7 @@ export function createSecretsStore(options: SecretsStoreOptions): SecretsStore {
 
     keyFor(provider) {
       const file = read();
-      return decrypt(file, secretRules.selectedFor(file.secrets, provider));
+      return decrypt(file, _secretRules.selectedFor(file.secrets, provider));
     },
 
     allowUnprotected() {

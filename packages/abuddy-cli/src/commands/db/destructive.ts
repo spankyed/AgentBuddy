@@ -6,7 +6,7 @@ import type { EARS } from '@abuddy/ears';
 import { importDatabase, readBackup, type BackupLog } from '@abuddy/host/backup';
 import type { AppDatabase } from '@abuddy/host/database';
 import { createSecretsStore } from '@abuddy/host/secrets';
-import { secretProviderLabel } from '@abuddy/sdk/services';
+import { _secretProviderLabel } from '@abuddy/sdk/services';
 import { openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
 
 const FORCE = { force: { type: 'boolean', default: false } } as const;
@@ -39,7 +39,7 @@ function countLines(counts: Array<[string, number]>): string[] {
  */
 function keyLines(secrets: ReturnType<typeof secretsStoreAt>): string[] {
   return secrets.list()
-    .map(({ provider, label, selected }) => `  ${secretProviderLabel(provider)} — ${label}${selected ? ' (selected)' : ''}`)
+    .map(({ provider, label, selected }) => `  ${_secretProviderLabel(provider)} — ${label}${selected ? ' (selected)' : ''}`)
     .sort();
 }
 

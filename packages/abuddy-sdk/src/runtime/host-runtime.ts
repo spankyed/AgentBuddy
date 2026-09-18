@@ -70,7 +70,7 @@ export function unbindHost(): void {
 }
 
 /** @internal Whether an app is bound */
-export function isHostBound(): boolean {
+export function _isHostBound(): boolean {
   return bound !== undefined;
 }
 

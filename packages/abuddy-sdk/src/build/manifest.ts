@@ -48,7 +48,7 @@ export interface DependencyCommand {
   packId: string;
 }
 
-/** What `dependencyCommands` reads from a dependency's snapshot */
+/** What `_dependencyCommands` reads from a dependency's snapshot */
 export interface DependencyCommandSource {
   manifest: { commands?: ReadonlyArray<{ name: string }> };
   dependencyCommands?: ReadonlyArray<DependencyCommand>;
@@ -60,7 +60,7 @@ export interface DependencyCommandSource {
  * The commands declared across these dependencies and everything they depend on, once each, with the
  * declaring pack. The app refuses a pack whose command another registered pack declares.
  */
-export function dependencyCommands(snapshots: ReadonlyArray<readonly [string, DependencyCommandSource]>): DependencyCommand[] {
+export function _dependencyCommands(snapshots: ReadonlyArray<readonly [string, DependencyCommandSource]>): DependencyCommand[] {
   const owners = new Map<string, string>();
   for (const [depId, snapshot] of snapshots) {
     for (const { name, packId } of snapshot.dependencyCommands ?? []) owners.set(name, packId);

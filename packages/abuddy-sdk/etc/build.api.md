@@ -94,10 +94,8 @@ export function bundleFile(filePath: string): Promise<BundleResult>;
 // @public
 export function checkRecordEntities(key: string, format: SeedFormatConfig, records: SeedRecord[]): string[];
 
-// Warning: (ae-internal-missing-underscore) The name "clearCompiledSeeds" should be prefixed with an underscore because the declaration is marked as @internal
-//
 // @internal
-export function clearCompiledSeeds(outputDir: string): void;
+export function _clearCompiledSeeds(outputDir: string): void;
 
 // @public (undocumented)
 export interface CompilationContext {
@@ -225,10 +223,8 @@ export interface DependencyCommand {
     packId: string;
 }
 
-// Warning: (ae-internal-missing-underscore) The name "dependencyCommands" should be prefixed with an underscore because the declaration is marked as @internal
-//
 // @internal
-export function dependencyCommands(snapshots: ReadonlyArray<readonly [string, DependencyCommandSource]>): DependencyCommand[];
+export function _dependencyCommands(snapshots: ReadonlyArray<readonly [string, DependencyCommandSource]>): DependencyCommand[];
 
 // @public
 export interface DependencyCommandSource {
@@ -242,15 +238,11 @@ export interface DependencyCommandSource {
     };
 }
 
-// Warning: (ae-internal-missing-underscore) The name "depTypesFile" should be prefixed with an underscore because the declaration is marked as @internal
-//
 // @internal
-export function depTypesFile(depId: string): string;
+export function _depTypesFile(depId: string): string;
 
-// Warning: (ae-internal-missing-underscore) The name "depTypesVersion" should be prefixed with an underscore because the declaration is marked as @internal
-//
 // @internal
-export function depTypesVersion(content: string, depId: string): string | undefined;
+export function _depTypesVersion(content: string, depId: string): string | undefined;
 
 // @public (undocumented)
 export const DslEntrySchema: z.ZodObject<{

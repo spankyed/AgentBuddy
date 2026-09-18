@@ -6,7 +6,7 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { createEarsEngine, untypedQx, tx } from '@abuddy/ears';
 import { bindHost, unbindHost, type HostRuntime } from '../../src/runtime/host-runtime.ts';
-import { rootEvents } from '../../src/runtime/root-events.ts';
+import { _rootEvents } from '../../src/runtime/root-events.ts';
 import { onConnected, onIncoming, sendToBrainSystem, sendToPlugin, sendToSystem } from '../../src/events/index.ts';
 import { createLogger, onLog, reportError } from '../../src/logger/index.ts';
 import { services } from '../../src/services/index.ts';
@@ -15,7 +15,7 @@ import { getDesignated, hasDesignation } from '../../src/designations/index.ts';
 import { stepRegistry } from '../../src/steps/registry.ts';
 import { artifactRegistry } from '../../src/artifacts/registry.ts';
 import { blockRegistry } from '../../src/blocks/registry.ts';
-import { seedHookRegistry } from '../../src/seed/hooks.ts';
+import { _seedHookRegistry } from '../../src/seed/hooks.ts';
 import { getPackCommands, getPackSettingsDefaults, onPackSettingsDefaultsChanged } from '../../src/framework/index.ts';
 import { seedData, registeredSeedKeys } from '../../src/utils/seed.ts';
 import { getDslTypes } from '../../src/fe/dsl-types.ts';
@@ -25,7 +25,7 @@ import { testPacksView } from '../../src/testing/packs.ts';
 const unused = () => { throw new Error('unused'); };
 const engine = createEarsEngine({ isEntityType: (name) => name === 'Memo' });
 const runtime: HostRuntime = {
-  transport: { rootEvents },
+  transport: { rootEvents: _rootEvents },
   ears: engine.query,
   packs: testPacksView(),
   appVersion: '1.2.3',
@@ -80,7 +80,7 @@ describe('with no app bound', () => {
       ['onIncoming', () => onIncoming(() => {})],
       ['onLog', () => onLog(() => {})],
       ['reportError', () => reportError({ error: new Error('boom'), source: 'memos' })],
-      ['rootEvents', () => rootEvents.emitLog({ level: 'info', message: 'x' })],
+      ['_rootEvents', () => _rootEvents.emitLog({ level: 'info', message: 'x' })],
       ['getAppVersion', () => getAppVersion()],
       ['services.inference', () => services.inference.generateText({ model: 'openai:gpt-5', prompt: 'hi' })],
       ['services.appData', () => services.appData.reset()],
@@ -114,7 +114,7 @@ describe('with no app bound', () => {
       expect(use, name).toThrow(/bindHost\(runtime\).*\(the renderer with bindFeHost\(runtime\)\)/);
     }
     const backendLookups: Array<[string, () => unknown]> = [
-      ['seedHookRegistry.get', () => seedHookRegistry.get('Memo')],
+      ['_seedHookRegistry.get', () => _seedHookRegistry.get('Memo')],
       ['seedData', () => seedData({ compiledDir: seedsDir })],
       ['registeredSeedKeys', () => registeredSeedKeys('memo-pack')],
       ['getPackSettingsDefaults', () => getPackSettingsDefaults()],

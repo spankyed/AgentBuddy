@@ -1,4 +1,4 @@
-import { rootEvents } from '../runtime/root-events.ts';
+import { _rootEvents } from '../runtime/root-events.ts';
 import { sendToPlugin } from '../events/index.ts';
 // Import directly — not from '../utils' barrel which pulls in Node-only modules (fs, child_process)
 import { randomId } from '../utils/random-id.ts';
@@ -101,14 +101,14 @@ function reportSystemError(input: ReportSystemErrorInput): void {
     stack: normalized.stack,
     timestamp: Date.now(),
   };
-  rootEvents.emitLog({
+  _rootEvents.emitLog({
     level: 'error',
     source: input.source ?? 'system',
     message,
     stack: normalized.stack,
     meta: { errorId: event.errorId, operation: input.operation, entityId: input.entityId, severity, error: normalized },
   });
-  rootEvents.emitOutgoing(event);
+  _rootEvents.emitOutgoing(event);
 }
 
 function reportStepError(input: ReportSystemErrorInput, step: StepErrorContext): StepRuntimeError {
@@ -125,7 +125,7 @@ function reportStepError(input: ReportSystemErrorInput, step: StepErrorContext):
   };
 
   // Recorded in the log only; the flow shows it
-  rootEvents.emitLog({
+  _rootEvents.emitLog({
     level: 'error',
     source: 'step-runtime',
     message: runtimeError.message,

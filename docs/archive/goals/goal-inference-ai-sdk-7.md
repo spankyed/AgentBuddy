@@ -155,7 +155,7 @@ Final.
    - An unknown provider or a missing key throws, naming the provider (and, for a key, where to set it).
    - `openai.responses` and `model-provider.ts` are removed.
 7. **Pure pieces come from `ai` directly.** Packs import `tool`, `Output`, `isStepCount`, `ModelMessage` and result types from `ai`. The SDK re-exports none of them, and `@abuddy/sdk/inference` is removed.
-   - *Amended after implementation:* `output` also takes plain data (`OutputSpec`: `{ type: 'text' | 'json' | 'object' | 'array' | 'choice', … }`), translated to the matching `Output.*` by the SDK's `createInferenceService`, which the host's implementation and `fakeInference` share. Sandboxed actions can't import `ai`, and a data form can be stored. An `Output` instance still passes through unchanged, so nothing from `ai` is lost.
+   - *Amended after implementation:* `output` also takes plain data (`OutputSpec`: `{ type: 'text' | 'json' | 'object' | 'array' | 'choice', … }`), translated to the matching `Output.*` by the SDK's `_createInferenceService`, which the host's implementation and `fakeInference` share. Sandboxed actions can't import `ai`, and a data form can be stored. An `Output` instance still passes through unchanged, so nothing from `ai` is lost.
 8. **Tests mock the service; only the SDK fakes a model.**
    - **Default:** the test host (`@abuddy/sdk/testing`) registers an `inference` whose calls throw, naming `mockService('inference', fakeInference(…))`.
    - **`fakeInference(reply)`** (`@abuddy/sdk/testing`) returns an `InferenceService & { calls: FakeInferenceCall[] }`:

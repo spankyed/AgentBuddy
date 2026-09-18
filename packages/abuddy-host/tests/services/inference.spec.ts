@@ -9,7 +9,7 @@ import * as path from 'node:path';
 import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { JSONSchema7 } from 'ai';
 import { availableModels, parseModelId, providerCapabilities, providerLabels, PROVIDER_BASE_URLS, type ModelKind, type ProviderName } from '@abuddy/sdk/models';
-import { createInferenceService, type InferenceService } from '@abuddy/sdk/services';
+import { _createInferenceService, type InferenceService } from '@abuddy/sdk/services';
 
 // The app's store, on a temporary file with keys in memory
 const secretsDir = vi.hoisted(() => ({ path: '' }));
@@ -89,7 +89,7 @@ async function provider(body: object = {}): Promise<{ baseURL: string; inference
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   const baseURL = `http://127.0.0.1:${(server.address() as AddressInfo).port}/v1`;
   const baseUrls = Object.fromEntries(PROVIDERS.map((name) => [name, baseURL])) as Record<ProviderName, string>;
-  return { baseURL, inference: createInferenceService(createModelResolver({ baseUrls })), requests, bodies, paths };
+  return { baseURL, inference: _createInferenceService(createModelResolver({ baseUrls })), requests, bodies, paths };
 }
 
 describe("the app's inference service", () => {

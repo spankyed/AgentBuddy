@@ -1,7 +1,7 @@
 // Where a data dir keeps the app's stores: a packaged app at its root, a source run under .data/ (@abuddy/sdk/utils).
 // A tool opening a data dir finds out which from the files there.
 import * as fs from 'node:fs';
-import { appDataPaths, type AppDataPaths } from '@abuddy/sdk/utils';
+import { _appDataPaths, type _AppDataPaths } from '@abuddy/sdk/utils';
 
 /**
  * The stores of the database in `userDataDir`, in the layout it was written in. Throws when the data dir holds no
@@ -9,8 +9,8 @@ import { appDataPaths, type AppDataPaths } from '@abuddy/sdk/utils';
  * of one: the app writes both partitions, so a data dir missing one was copied or emptied by hand, and a tool that
  * opened it would read an app's data while writing somewhere the app never looks.
  */
-export function findAppDataPaths(userDataDir: string): AppDataPaths {
-  const layouts = [appDataPaths(userDataDir, { packaged: true }), appDataPaths(userDataDir, { packaged: false })]
+export function findAppDataPaths(userDataDir: string): _AppDataPaths {
+  const layouts = [_appDataPaths(userDataDir, { packaged: true }), _appDataPaths(userDataDir, { packaged: false })]
     .filter((paths) => fs.existsSync(paths.lmdb) || fs.existsSync(paths.volatileLmdb));
   if (layouts.length === 0) throw new Error(`No AgentBuddy database in ${userDataDir}`);
   if (layouts.length > 1) {

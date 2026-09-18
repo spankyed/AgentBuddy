@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { inferElectronAppEnv, parseAppEnv, readApiEndpoint, resolveAppContext } from '../../src/env/index.ts';
+import { _inferElectronAppEnv, parseAppEnv, readApiEndpoint, resolveAppContext } from '../../src/env/index.ts';
 
 const saved = { env: process.env.ABUDDY_ENV, userDataDir: process.env.ABUDDY_USER_DATA_DIR };
 
@@ -76,32 +76,32 @@ describe('parseAppEnv', () => {
   });
 });
 
-describe('inferElectronAppEnv', () => {
+describe('_inferElectronAppEnv', () => {
   const base = { playwrightTest: false, isPackaged: false, channel: '', envVar: undefined };
 
   it('Playwright always means test, even for a packaged build', () => {
-    expect(inferElectronAppEnv({ ...base, playwrightTest: true })).toBe('test');
-    expect(inferElectronAppEnv({ ...base, playwrightTest: true, isPackaged: true, channel: 'production' })).toBe('test');
+    expect(_inferElectronAppEnv({ ...base, playwrightTest: true })).toBe('test');
+    expect(_inferElectronAppEnv({ ...base, playwrightTest: true, isPackaged: true, channel: 'production' })).toBe('test');
   });
 
   it('packaged builds use their stamped channel', () => {
-    expect(inferElectronAppEnv({ ...base, isPackaged: true, channel: 'production' })).toBe('production');
-    expect(inferElectronAppEnv({ ...base, isPackaged: true, channel: 'beta' })).toBe('beta');
+    expect(_inferElectronAppEnv({ ...base, isPackaged: true, channel: 'production' })).toBe('production');
+    expect(_inferElectronAppEnv({ ...base, isPackaged: true, channel: 'beta' })).toBe('beta');
   });
 
   it('packaged builds ignore ABUDDY_ENV from the launching shell', () => {
-    expect(inferElectronAppEnv({ ...base, isPackaged: true, channel: 'production', envVar: 'development' })).toBe('production');
+    expect(_inferElectronAppEnv({ ...base, isPackaged: true, channel: 'production', envVar: 'development' })).toBe('production');
   });
 
   it('a packaged build without a valid stamp refuses to guess', () => {
-    expect(() => inferElectronAppEnv({ ...base, isPackaged: true, channel: '' })).toThrow(/no valid release channel stamp/);
-    expect(() => inferElectronAppEnv({ ...base, isPackaged: true, channel: 'development' })).toThrow(/no valid release channel stamp/);
+    expect(() => _inferElectronAppEnv({ ...base, isPackaged: true, channel: '' })).toThrow(/no valid release channel stamp/);
+    expect(() => _inferElectronAppEnv({ ...base, isPackaged: true, channel: 'development' })).toThrow(/no valid release channel stamp/);
   });
 
   it('source runs default to development, or ABUDDY_ENV when set', () => {
-    expect(inferElectronAppEnv(base)).toBe('development');
-    expect(inferElectronAppEnv({ ...base, envVar: 'beta' })).toBe('beta');
-    expect(() => inferElectronAppEnv({ ...base, envVar: 'staging' })).toThrow(/Invalid app environment/);
+    expect(_inferElectronAppEnv(base)).toBe('development');
+    expect(_inferElectronAppEnv({ ...base, envVar: 'beta' })).toBe('beta');
+    expect(() => _inferElectronAppEnv({ ...base, envVar: 'staging' })).toThrow(/Invalid app environment/);
   });
 });
 

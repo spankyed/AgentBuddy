@@ -2,7 +2,7 @@
  * App environment resolution — the only place that decides which environment a process
  * belongs to and where its data lives.
  *
- * The Electron main process infers the environment once (inferElectronAppEnv) and hands
+ * The Electron main process infers the environment once (_inferElectronAppEnv) and hands
  * ABUDDY_ENV + ABUDDY_USER_DATA_DIR to everything it spawns. Every other process either
  * receives those or passes { env } explicitly (CLI commands). Nothing falls back to
  * production: an unknown environment is an error, not a guess.
@@ -133,7 +133,7 @@ export function resolveAppContext(input: { env?: AppEnv; userDataDir?: string } 
  *
  * @internal Host-only: the Electron main process infers its environment.
  */
-export function inferElectronAppEnv(input: {
+export function _inferElectronAppEnv(input: {
   playwrightTest: boolean;
   isPackaged: boolean;
   channel: string;

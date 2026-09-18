@@ -10,7 +10,7 @@ import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
 import { stepRegistry, type StepDefinition } from '@abuddy/sdk/steps';
 import { artifactRegistry } from '@abuddy/sdk/artifacts';
 import { blockRegistry } from '@abuddy/sdk/blocks';
-import { seedHookRegistry } from '@abuddy/sdk/seed';
+import { _seedHookRegistry } from '@abuddy/sdk/seed';
 import { getPackCommands, getPackSettingsDefaults, onPackSettingsDefaultsChanged, type PackRegistration, type PackSystemDef } from '@abuddy/sdk/framework';
 import { seedData, type Seeder } from '@abuddy/sdk/utils';
 import { createPackRegistry } from '../../src/packs/pack-registration.ts';
@@ -157,9 +157,9 @@ describe('seed hooks', () => {
   it("are found once their pack registers, and gone once it unregisters", () => {
     const hooks = { find: () => undefined };
     add({ id: 'memo-pack', seedHooks: { Memo: hooks } });
-    expect(seedHookRegistry.get('Memo')).toBe(hooks);
+    expect(_seedHookRegistry.get('Memo')).toBe(hooks);
     remove('memo-pack');
-    expect(seedHookRegistry.get('Memo')).toBeUndefined();
+    expect(_seedHookRegistry.get('Memo')).toBeUndefined();
   });
 });
 

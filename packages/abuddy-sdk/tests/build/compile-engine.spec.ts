@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createEarsEngine, installEngine, installedEngine, untypedQx } from '@abuddy/ears';
 import { ROOT_FLOW_ROLE } from '../../src/types/sdk-entities.ts';
 import { EARS } from '../../src/types/entities.ts';
-import { isHostBound } from '../../src/runtime/host-runtime.ts';
+import { _isHostBound } from '../../src/runtime/host-runtime.ts';
 import { createRoundTrip } from './helpers/round-trip.ts';
 import { flows } from './helpers/fixtures.ts';
 import { ALL_TEST_STEPS } from './helpers/test-steps.ts';
@@ -19,7 +19,7 @@ afterEach(() => {
 
 describe('a flow compile', () => {
   it('runs with no engine installed and no app bound', () => {
-    expect(isHostBound()).toBe(false);
+    expect(_isHostBound()).toBe(false);
     expect(() => installedEngine()).toThrow('No EARS engine is installed');
     expect(rt.roundTrip(flows.simple)).toHaveProperty('Simple');
     expect(() => installedEngine()).toThrow('No EARS engine is installed');

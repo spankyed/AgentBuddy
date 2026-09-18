@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { getAppContext } from '../../app-context.js';
 
 /**
- * The folder the API's `getMediaPath()` (`@abuddy/sdk/utils`) uses: `<data dir>/media` for the packaged app,
+ * The folder the API's `_getMediaPath()` (`@abuddy/sdk/utils`) uses: `<data dir>/media` for the packaged app,
  * `<data dir>/.data/media` otherwise, the NODE_ENV `api-server/config.ts` gives the API process
  */
 export function getMediaBasePath(): string {

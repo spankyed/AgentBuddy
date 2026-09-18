@@ -2,7 +2,7 @@
 export type { PackConfig, PackBuildDefinitions, CompilePackOptions, CompilePackResult } from './types.ts';
 
 // Seed compiler framework
-export { clearCompiledSeeds, compilePack, SEED_INDEX_FILE } from './seed-compiler.ts';
+export { _clearCompiledSeeds, compilePack, SEED_INDEX_FILE } from './seed-compiler.ts';
 export { compileMarkdownTree, parseMarkdownFile, toDisplayName, type MarkdownItem, type MarkdownTreeOptions } from './seeds/markdown-tree.ts';
 export {
   compileBuiltinFormat, checkRecordEntities, recordLabel, formatEntities, withSourceHashes, defaultSourceHash, RECORD_KEYS,
@@ -43,7 +43,7 @@ export type {
   PackFeatureEntry, PackBootConfig, SeedEntryConfig, SeedFormatConfig,
   StepEntry, StepDSLMeta,
 } from './manifest.ts';
-export { seedFile, seedPath, SEED_COMPILERS_FILE, dependencyCommands } from './manifest.ts';
+export { seedFile, seedPath, SEED_COMPILERS_FILE, _dependencyCommands } from './manifest.ts';
 
 // Flow DSL helpers (track builders)
 export { entry, on } from './flow-helpers.ts';
@@ -54,7 +54,7 @@ export type { ActionMeta, PromptMeta } from './seed-types.ts';
 // Entry codegen
 export {
   generatePackFiles, emitEARS, mergeRegistries, emitDepTypes, entitiesWithoutShapes, PACK_TYPES_DEF,
-  depTypesFile, depTypesVersion,
+  _depTypesFile, _depTypesVersion,
 } from './generate-entries.ts';
 export type { GenerateEntriesOptions } from './generate-entries.ts';
 

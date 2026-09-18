@@ -1,4 +1,4 @@
-import { boundHost, isHostBound } from '../runtime/host-runtime.ts';
+import { boundHost, _isHostBound } from '../runtime/host-runtime.ts';
 import { redactSecrets, redactSecretText } from '../utils/redact.ts';
 
 export interface Logger {
@@ -65,7 +65,7 @@ function errorStack(meta: unknown, message: string): string | undefined {
  * without one, to the console. Either way key-shaped strings are redacted first.
  */
 function log(level: LogLevel, source: string | undefined, args: unknown[]): void {
-  if (!isHostBound()) {
+  if (!_isHostBound()) {
     console[level](...(source === undefined ? [] : [`[${source}]`]), ...args.map((arg) => redactSecrets(arg)));
     return;
   }

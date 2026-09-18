@@ -6,7 +6,7 @@ import type { SeedHooks } from '../seed/hooks.ts';
 import { SDK_ENTITIES } from '../types/sdk-entities.ts';
 import type { EARS } from '../types/entities.ts';
 import type { PackRegistryView } from '../runtime/packs-view.ts';
-import { isHostBound } from '../runtime/host-runtime.ts';
+import { _isHostBound } from '../runtime/host-runtime.ts';
 import { testPacks } from './packs.ts';
 import { bindTestRuntime, resetTestHostState, type TestOnboarding } from './host.ts';
 
@@ -85,7 +85,7 @@ export function startTestRuntime(options: TestRuntimeStartOptions = {}): void {
       }
     }
     // Still bound: nothing to start. Unbound since (a test unbound the host): bound again, as first started
-    if (isHostBound()) return;
+    if (_isHostBound()) return;
   } else {
     started = { packs: options.packs, appVersion: options.appVersion, onboarding: options.onboarding };
   }

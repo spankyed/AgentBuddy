@@ -1,8 +1,8 @@
 import { readFileSync, existsSync, statSync } from 'fs';
 import { extname, join } from 'path';
-import { dependencyCommands, type PackManifest, type PackFeatureEntry, type PackTypeManifest, type PackSnapshot, type StepEntry } from './manifest.ts';
+import { _dependencyCommands, type PackManifest, type PackFeatureEntry, type PackTypeManifest, type PackSnapshot, type StepEntry } from './manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
-import { reservedEntries } from '../types/reserved-names.ts';
+import { _reservedEntries } from '../types/reserved-names.ts';
 import { formatEntities } from './seeds/records.ts';
 import { resolveSeeds, type ResolvedSeed } from './seeds/resolve.ts';
 import { createModuleExports, type ExportInfo, type ModuleExports } from './module-exports.ts';
@@ -25,10 +25,10 @@ export function mergeRegistries(
   function merge(own: Record<string, string> = {}, kind: string) {
     // The SDK's own entities and relation kinds are in every pack, and no pack declares them
     const sdkOwned: Record<string, string> = kind === 'entity' ? SDK_ENTITIES : SDK_REL_KINDS;
-    const errors = reservedEntries(own, sdkOwned).map((entry) => `${kind} ${entry} is defined by the SDK; remove it from abuddy.json`);
+    const errors = _reservedEntries(own, sdkOwned).map((entry) => `${kind} ${entry} is defined by the SDK; remove it from abuddy.json`);
     for (const [depId, dep] of depManifests) {
       const depEntries = kind === 'entity' ? dep.entities : dep.relKinds;
-      for (const entry of reservedEntries(depEntries, sdkOwned)) {
+      for (const entry of _reservedEntries(depEntries, sdkOwned)) {
         errors.push(`${kind} ${entry} from "${depId}" is defined by the SDK: rebuild "${depId}" with the current abuddy CLI`);
       }
     }
@@ -291,7 +291,7 @@ export const PACK_TYPES_DEF = 'pack-types';
  *
  * @internal Host-only: abuddy CLI build tooling.
  */
-export function depTypesFile(depId: string): string {
+export function _depTypesFile(depId: string): string {
   return `src/__generated__/deps/${depId}.d.ts`;
 }
 
@@ -312,7 +312,7 @@ function depTypesHeader(depId: string, version: string): string {
  *
  * @internal Host-only: abuddy CLI build tooling.
  */
-export function depTypesVersion(content: string, depId: string): string | undefined {
+export function _depTypesVersion(content: string, depId: string): string | undefined {
   const prefix = `// ${depId}@`;
   const suffix = ' facade types';
   const line = content.split('\n').find((l) => l.startsWith(prefix) && l.endsWith(suffix));
@@ -371,7 +371,7 @@ export function generatePackFiles(
    */
   function declaredCommands(): NonNullable<PackManifest['commands']> {
     const commands = manifest.commands ?? [];
-    const taken = dependencyCommands([...depSnapshots]);
+    const taken = _dependencyCommands([...depSnapshots]);
     for (const { name } of commands) {
       const owner = taken.find((command) => command.name === name)?.packId;
       if (owner) {
@@ -1453,7 +1453,7 @@ ${entries.join('\n')}
     // Each dependency's facade types, from its snapshot
     ...typedDeps.map((depId) => {
       const snap = depSnapshots.get(depId)!;
-      return [depTypesFile(depId), `${HEADER}${depTypesHeader(depId, snap.manifest.version)}\n${snap.defs[PACK_TYPES_DEF]}`];
+      return [_depTypesFile(depId), `${HEADER}${depTypesHeader(depId, snap.manifest.version)}\n${snap.defs[PACK_TYPES_DEF]}`];
     }),
     // Each dependency's flow helpers module and its declarations, from its snapshot
     ...[...depSnapshots].flatMap(([depId, snap]) => snap.flowHelpers

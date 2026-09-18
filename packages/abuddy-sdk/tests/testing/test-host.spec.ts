@@ -9,7 +9,7 @@ import { testPacks, testPacksView } from '../../src/testing/packs.ts';
 import { getAppVersion } from '../../src/env/index.ts';
 import { createLogger, reportError } from '../../src/logger/index.ts';
 import { boundHost, unbindHost } from '../../src/runtime/host-runtime.ts';
-import { rootEvents } from '../../src/runtime/root-events.ts';
+import { _rootEvents } from '../../src/runtime/root-events.ts';
 import { registerRepository, repository, tx } from '@abuddy/ears';
 
 process.env.ABUDDY_ENV ??= 'test';
@@ -17,7 +17,7 @@ process.env.ABUDDY_USER_DATA_DIR ??= os.tmpdir();
 startTestRuntime();
 
 describe('the test host', () => {
-  it('binds testRootEvents as the bus sendToPlugin and sendToSystem send on, which rootEvents is', () => {
+  it('binds testRootEvents as the bus sendToPlugin and sendToSystem send on, which _rootEvents is', () => {
     const toPlugins: unknown[] = [];
     const incoming: unknown[] = [];
     const stop = [testRootEvents.onPluginSend((e) => toPlugins.push(e)), testRootEvents.onIncoming((e) => incoming.push(e))];
@@ -26,7 +26,7 @@ describe('the test host', () => {
       sendToPlugin('memos', { type: 'MEMO_ADDED' });
       sendToSystem('memos', { type: 'ADD_MEMO' });
       sendToBrainSystem({ eventType: 'user.message' });
-      rootEvents.emitIncoming({ type: 'PING', systemId: 'memos' });
+      _rootEvents.emitIncoming({ type: 'PING', systemId: 'memos' });
     } finally {
       stop.forEach((unsubscribe) => unsubscribe());
       testPacks.designations.delete('brain');

@@ -210,11 +210,11 @@ export function findHostImports(dirs = PACK_SOURCE_DIRS, root = repoRoot): strin
   return findSpecifierText(packFiles(dirs, root), root, (text) => /^@abuddy\/host(?:\/|$)/.test(text));
 }
 
-/** The host's raw event paths: `@abuddy/sdk/rpc` modules, `rootEvents` and `trpc.bus` */
+/** The host's raw event paths: `@abuddy/sdk/rpc` modules, `_rootEvents` and `trpc.bus` */
 const rawTransport: Rule = (node) => {
   const module = moduleOf(node);
   if (module && /^@abuddy\/sdk\/rpc(\/|$)/.test(module)) return [module];
-  if (ts.isIdentifier(node) && node.text === 'rootEvents') return ['rootEvents'];
+  if (ts.isIdentifier(node) && node.text === '_rootEvents') return ['_rootEvents'];
   if (ts.isPropertyAccessExpression(node) && node.name.text === 'bus' && ts.isIdentifier(node.expression) && node.expression.text === 'trpc') {
     return ['trpc.bus'];
   }

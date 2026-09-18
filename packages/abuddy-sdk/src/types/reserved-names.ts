@@ -6,7 +6,7 @@
  *
  * @internal
  */
-export function reservedEntries(declared: Record<string, string>, reserved: Record<string, string>): string[] {
+export function _reservedEntries(declared: Record<string, string>, reserved: Record<string, string>): string[] {
   const values = new Set(Object.values(reserved));
   return Object.entries(declared)
     // An own key only: `constructor` or `toString` is a pack's to use

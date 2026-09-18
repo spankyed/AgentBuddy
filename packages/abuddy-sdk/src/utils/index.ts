@@ -8,9 +8,9 @@ export * from './pure.ts';
 // --- Paths (direct) ---
 export {
   getUserDataPath, getDataDirPath,
-  getLmdbPath, getVolatileLmdbPath, getSecretsFilePath, getMediaPath,
+  _getLmdbPath, _getVolatileLmdbPath, _getSecretsFilePath, _getMediaPath,
   ensureDirectoryExists, createExportDir,
-  resolvePath, appDataPaths, type AppDataPaths,
+  resolvePath, _appDataPaths, type _AppDataPaths,
 } from './paths.ts';
 
 // --- Media (direct) ---

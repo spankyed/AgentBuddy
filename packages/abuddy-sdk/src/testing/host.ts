@@ -12,7 +12,7 @@ import type { LogEvent, SystemErrorEvent } from '../logger/index.ts';
 import type { TraceStore } from '../services/trace-store.ts';
 import type { AppDataService } from '../services/app-data.ts';
 import type { SecretInfo, SecretProvider, SecretsService } from '../services/secrets.ts';
-import { secretRules } from '../services/secrets-rules.ts';
+import { _secretRules } from '../services/secrets-rules.ts';
 
 /** The test app's root event bus: what clients (and the test) send the backend, and what it sends them */
 export interface TestRootEvents extends RootEvents {
@@ -41,7 +41,7 @@ class TestEventBus extends EventEmitter implements TestRootEvents {
   onOutgoing(callback: (event: OutgoingSystemEvents) => void): () => void { return this.subscribe('outgoing', callback); }
 }
 
-/** The in-memory app's bus (the SDK's internal `rootEvents` once started) */
+/** The in-memory app's bus (the SDK's internal `_rootEvents` once started) */
 export const testRootEvents: TestRootEvents = new TestEventBus();
 
 const systemErrors: SystemErrorEvent[] = [];
@@ -60,7 +60,7 @@ let testSecretCount = 0;
 /** Stores a key (no value: unit tests never reach a provider) as Settings → Secrets would; returns it */
 export function addTestSecret(provider: SecretProvider, label: string): SecretInfo {
   const id = `Secret-test-${++testSecretCount}`;
-  testSecrets = secretRules.add(testSecrets, { id, provider, label, createdAt: Date.now() });
+  testSecrets = _secretRules.add(testSecrets, { id, provider, label, createdAt: Date.now() });
   return testSecrets.find((secret) => secret.id === id)!;
 }
 
@@ -85,9 +85,9 @@ export function resetTestHostState(): void {
 const memorySecrets: SecretsService = {
   status: () => ({ protection: 'os-keystore', backend: 'memory' }),
   list: () => testSecrets.map((secret) => ({ ...secret })),
-  select: (id) => { testSecrets = secretRules.select(testSecrets, id, Date.now()); },
-  rename: (id, label) => { testSecrets = secretRules.rename(testSecrets, id, label, Date.now()); },
-  delete: (id) => { testSecrets = secretRules.remove(testSecrets, id); },
+  select: (id) => { testSecrets = _secretRules.select(testSecrets, id, Date.now()); },
+  rename: (id, label) => { testSecrets = _secretRules.rename(testSecrets, id, label, Date.now()); },
+  delete: (id) => { testSecrets = _secretRules.remove(testSecrets, id); },
 };
 
 /** The SYSTEM_ERROR events systems reported with `reportError` (without `step`) since the last call; clears them */

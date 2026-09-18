@@ -95,7 +95,7 @@ async function loadPackConfig(options: CompilePackOptions): Promise<PackConfig> 
 }
 
 /** @internal Removes what compilePack writes, so a key or media dropped from the sources doesn't linger (abuddy build clears it up front) */
-export function clearCompiledSeeds(outputDir: string): void {
+export function _clearCompiledSeeds(outputDir: string): void {
   if (!fs.existsSync(outputDir)) return;
   for (const entry of fs.readdirSync(outputDir, { withFileTypes: true })) {
     if (entry.isFile() && (entry.name.endsWith(seedFile('')) || entry.name === SEED_INDEX_FILE)) {
@@ -131,7 +131,7 @@ function recordShapeProblems(value: unknown, at: string): string[] {
  */
 export async function compilePack(options: CompilePackOptions): Promise<CompilePackResult> {
   const { packDir, outputDir } = options;
-  clearCompiledSeeds(outputDir);
+  _clearCompiledSeeds(outputDir);
   const importModule = options.importModule ?? importFileModule;
   const log = options.log ?? console.log;
   const packConfig = await loadPackConfig(options);

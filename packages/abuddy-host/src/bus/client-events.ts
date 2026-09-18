@@ -1,6 +1,6 @@
 // Events the app's clients send its backend systems (the API's `bus.send`): checked against the registered systems,
 // logged and put on the root event bus the app bus listens to (the SDK's bound transport).
-import { rootEvents } from '@abuddy/sdk/runtime';
+import { _rootEvents } from '@abuddy/sdk/runtime';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { PackRegistry } from '../packs/pack-registration.ts';
 import type { IncomingSystemEvents } from './machine.ts';
@@ -47,5 +47,5 @@ export function receiveClientEvent(registry: Pick<PackRegistry, 'getEventValidat
   }
 
   logger.info(`→ Incoming: "${event.type}"`, { event: summarizeEventForLog(event) });
-  rootEvents.emitIncoming(event);
+  _rootEvents.emitIncoming(event);
 }

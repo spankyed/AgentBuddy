@@ -1,7 +1,7 @@
 export {
-  bindHost, isHostBound,
+  bindHost, _isHostBound,
   type HostRuntime, type HostRuntimeServices, type SecretRedaction, type EarsQuery,
 } from './host-runtime.ts';
-export { boundPackContributions, type PackContributionsView, type PackRegistryView } from './packs-view.ts';
-export { bindFeHost, isFeHostBound, type FeHostRuntime, type FeTransport, type FePackRegistryView } from './fe-host.ts';
-export { rootEvents, type RootEvents } from './root-events.ts';
+export { _boundPackContributions, type PackContributionsView, type PackRegistryView } from './packs-view.ts';
+export { bindFeHost, _isFeHostBound, type FeHostRuntime, type FeTransport, type FePackRegistryView } from './fe-host.ts';
+export { _rootEvents, type RootEvents } from './root-events.ts';

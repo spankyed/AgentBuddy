@@ -73,7 +73,7 @@ produce today.
    only ever that; the thing it used to name becomes the pack's layout/archive.
 3. **`registry` is a live in-process collection things register into — never a file.** The remote sense is
    qualified (`resolveFromRemoteRegistry`). `stepRegistry`, `artifactRegistry`, `blockRegistry`,
-   `seedHookRegistry` and `tiptapPluginRegistry` keep the word; the docs stop calling them "lookups" so prose
+   `_seedHookRegistry` and `tiptapPluginRegistry` keep the word; the docs stop calling them "lookups" so prose
    and code agree.
 4. **`host` is the app; `machine` is the computer.**
 5. **A borrowed generic word is qualified by what it is *of*; if it describes *when* rather than *what*, it is

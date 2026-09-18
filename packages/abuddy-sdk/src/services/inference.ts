@@ -67,7 +67,7 @@ type InferenceOptions<Options, O> = {
 } & { model: ModelId; output?: O };
 
 /** @internal The AI SDK model of each kind */
-export interface InferenceModels {
+export interface _InferenceModels {
   language: LanguageModel;
   embedding: EmbeddingModel;
   image: ImageModel;
@@ -135,13 +135,13 @@ async function toAiOutput(output: OutputInterface | OutputSpec | undefined): Pro
 }
 
 /** @internal A model of a kind, for an id naming a provider that gives it */
-export type ResolveModel = <K extends ModelKind>(kind: K, id: ModelIdOf<K>) => InferenceModels[K] | Promise<InferenceModels[K]>;
+export type _ResolveModel = <K extends ModelKind>(kind: K, id: ModelIdOf<K>) => _InferenceModels[K] | Promise<_InferenceModels[K]>;
 
 /**
  * @internal An {@link InferenceService} that runs the AI SDK on the models `resolveModel` gives for ids:
  * the host's implementation and `fakeInference`. `ai` loads on the first call.
  */
-export function createInferenceService(resolveModel: ResolveModel): InferenceService {
+export function _createInferenceService(resolveModel: _ResolveModel): InferenceService {
   /** A language model named by id; one the AI SDK already resolved passes through */
   const languageModel = async (model: unknown) => typeof model === 'string' ? resolveModel('language', model as ModelId) : model;
   type PrepareStep = ((options: never) => unknown) | undefined;

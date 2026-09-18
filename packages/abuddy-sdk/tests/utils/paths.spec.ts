@@ -2,7 +2,7 @@
 // (findAppDataPaths in @abuddy/host), so these two have to agree about what a packaged run and a source run look like.
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { appDataPaths, getDataDirPath, getLmdbPath, getMediaPath, getSecretsFilePath, getVolatileLmdbPath, resolvePath } from '../../src/utils/paths.ts';
+import { _appDataPaths, getDataDirPath, _getLmdbPath, _getMediaPath, _getSecretsFilePath, _getVolatileLmdbPath, resolvePath } from '../../src/utils/paths.ts';
 
 const saved = { nodeEnv: process.env.NODE_ENV, abuddyEnv: process.env.ABUDDY_ENV, userDataDir: process.env.ABUDDY_USER_DATA_DIR };
 const dataDir = path.join(path.sep, 'tmp', 'a-data-dir');
@@ -19,15 +19,15 @@ afterEach(() => {
   }
 });
 
-describe('appDataPaths', () => {
+describe('_appDataPaths', () => {
   it('puts a packaged app\'s stores at the root of the data dir and a source run\'s under .data', () => {
-    expect(appDataPaths(dataDir, { packaged: true })).toEqual({
+    expect(_appDataPaths(dataDir, { packaged: true })).toEqual({
       lmdb: path.join(dataDir, 'ears-db'),
       volatileLmdb: path.join(dataDir, 'ears-trace'),
       secretsFile: path.join(dataDir, 'secrets.json'),
       media: path.join(dataDir, 'media'),
     });
-    expect(appDataPaths(dataDir, { packaged: false })).toEqual({
+    expect(_appDataPaths(dataDir, { packaged: false })).toEqual({
       lmdb: path.join(dataDir, '.data', 'ears-db'),
       volatileLmdb: path.join(dataDir, '.data', 'ears-trace'),
       secretsFile: path.join(dataDir, '.data', 'secrets.json'),
@@ -48,15 +48,15 @@ describe('resolvePath', () => {
     }
   });
 
-  it('gives every store the layout appDataPaths does, so the app and abuddy db agree', () => {
+  it('gives every store the layout _appDataPaths does, so the app and abuddy db agree', () => {
     for (const nodeEnv of ['production', 'development']) {
       process.env.NODE_ENV = nodeEnv;
-      const expected = appDataPaths(dataDir, { packaged: nodeEnv === 'production' });
+      const expected = _appDataPaths(dataDir, { packaged: nodeEnv === 'production' });
       expect({
-        lmdb: getLmdbPath(),
-        volatileLmdb: getVolatileLmdbPath(),
-        secretsFile: getSecretsFilePath(),
-        media: getMediaPath(),
+        lmdb: _getLmdbPath(),
+        volatileLmdb: _getVolatileLmdbPath(),
+        secretsFile: _getSecretsFilePath(),
+        media: _getMediaPath(),
       }, nodeEnv).toEqual(expected);
     }
   });

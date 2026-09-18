@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { transformSync } from 'esbuild';
 import ts from 'typescript';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { depTypesFile, depTypesVersion, entitiesWithoutShapes, generatePackFiles, PACK_TYPES_DEF } from '../../src/build/generate-entries.ts';
+import { _depTypesFile, _depTypesVersion, entitiesWithoutShapes, generatePackFiles, PACK_TYPES_DEF } from '../../src/build/generate-entries.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../../src/types/sdk-entities.ts';
 import type { PackManifest, PackSnapshot } from '../../src/build/manifest.ts';
 
@@ -84,7 +84,7 @@ describe('generated events', () => {
     expect(events).toContain("export type PackEvents = OwnPackEvents & Omit<Pick<__dep_base_pack_PackEvents, 'threads'>, keyof OwnPackEvents>;");
     expect(files['src/__generated__/deps/base-pack.d.ts']).toContain('export type PackEvents = {};');
     expect(files['src/__generated__/deps/base-pack.d.ts']).toContain('// base-pack@1.0.0 facade types\n');
-    expect(depTypesVersion(files[depTypesFile('base-pack')], 'base-pack')).toBe('1.0.0');
+    expect(_depTypesVersion(files[_depTypesFile('base-pack')], 'base-pack')).toBe('1.0.0');
   });
 
   it("leaves out a dependency's plugins no sendsTo names", () => {

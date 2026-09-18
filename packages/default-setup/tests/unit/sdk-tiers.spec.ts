@@ -197,10 +197,10 @@ describe('Tier 5 — Templates and app info', () => {
 
 describe('Tier 6 — Utility delegates', () => {
   it('path utilities are callable', async () => {
-    const { createExportDir, ensureDirectoryExists, getMediaPath } = await import('@abuddy/sdk/utils');
+    const { createExportDir, ensureDirectoryExists, _getMediaPath } = await import('@abuddy/sdk/utils');
     expect(typeof createExportDir).toBe('function');
     expect(typeof ensureDirectoryExists).toBe('function');
-    expect(typeof getMediaPath).toBe('function');
+    expect(typeof _getMediaPath).toBe('function');
   });
 
   it('media utilities are callable', async () => {

@@ -53,7 +53,7 @@ export function unbindFeHost(): void {
 }
 
 /** @internal Whether a frontend host is bound */
-export function isFeHostBound(): boolean {
+export function _isFeHostBound(): boolean {
   return bound !== undefined;
 }
 

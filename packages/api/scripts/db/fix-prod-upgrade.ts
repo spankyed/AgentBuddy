@@ -65,10 +65,10 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { resolveAppContext } from '@abuddy/sdk/env';
-import { secretProviderLabel, type SecretProvider } from '@abuddy/sdk/services';
+import { _secretProviderLabel, type SecretProvider } from '@abuddy/sdk/services';
 import { findRelations, tx } from '@abuddy/ears';
 import { LmdbQuery, closeEnv, openEnvAt, type LmdbDbs } from '@abuddy/ears/lmdb';
-import { recordLabel, seedHookRegistry, type SeedHookContext, type SeedRecord } from '@abuddy/sdk/seed';
+import { recordLabel, _seedHookRegistry, type SeedHookContext, type SeedRecord } from '@abuddy/sdk/seed';
 import { compileFlowDSL, type CompiledRows } from '@abuddy/sdk/build';
 import type { EARS } from '@abuddy/sdk';
 import { closeDatabase, engine, flushDatabase, openDatabase, packagesDir, persistenceErrorCount } from './database';
@@ -170,7 +170,7 @@ function readOldKeys(dir: string): string[] {
       const provider = query.getFirstAttr('provider', id) as string | null;
       if (!provider) continue;
       const label = query.getFirstAttr('customName', id) as string | null;
-      keys.push(`${secretProviderLabel(provider as SecretProvider) || provider}: ${label || '(no label)'}`);
+      keys.push(`${_secretProviderLabel(provider as SecretProvider) || provider}: ${label || '(no label)'}`);
     }
     return keys.sort();
   } finally {
@@ -236,7 +236,7 @@ function removeOldCommandsDocument(): void {
   console.log('\n3. Old commands document');
   const inInternal = new Set(findWhere<{ id: EARS.EntityId }>('Collection' as EARS.Entity, 'name', 'internal')
     .flatMap((collection) => findRelations({ sourceEntity: collection.id, relationType: 'contains' as EARS.RelKind }).map((r) => r.targetEntity as string)));
-  const remove = seedHookRegistry.get('Document')?.remove;
+  const remove = _seedHookRegistry.get('Document')?.remove;
   if (!remove) throw new Error('The Document seed hook is not registered: is default-setup built?');
 
   const old = findWhere<{ id: EARS.EntityId }>('Document' as EARS.Entity, 'name', 'commands').find((document) => inInternal.has(document.id));
@@ -348,7 +348,7 @@ function stampGenericRows(): void {
     const findRow = (record: SeedRecord, seedKey: string, context: SeedHookContext): EARS.EntityId | undefined => {
       const keyed = record.entity ? findWhere<{ id: EARS.EntityId }>(record.entity as EARS.Entity, SEED_KEY as string, seedKey)[0] : undefined;
       if (keyed) return keyed.id;
-      const hooks = record.entity ? seedHookRegistry.get(record.entity) : undefined;
+      const hooks = record.entity ? _seedHookRegistry.get(record.entity) : undefined;
       let match: EARS.EntityId | undefined;
       if (hooks?.find) {
         match = hooks.find(record, context)?.id;

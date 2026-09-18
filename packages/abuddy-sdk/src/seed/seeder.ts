@@ -3,11 +3,11 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { EARS } from '../types/entities.ts';
 import { destroyEntity, installedEngine as ears, tx, untypedQx as qx } from '@abuddy/ears';
-import { getMediaPath, loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.ts';
+import { _getMediaPath, loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.ts';
 import { seedPath } from '../build/manifest.ts';
 import { seedingPackId } from '../utils/seed.ts';
 import { RECORD_KEYS, recordLabel, type CompiledSeedFile, type SeedRecord } from '../build/seeds/records.ts';
-import { seedHookRegistry, type SeedHookContext, type SeedHookMatch, type SeedHooks } from './hooks.ts';
+import { _seedHookRegistry, type SeedHookContext, type SeedHookMatch, type SeedHooks } from './hooks.ts';
 
 export interface SeederOptions {
   key: string;
@@ -212,7 +212,7 @@ export function createSeeder(options: SeederOptions): Seeder {
         } catch (err) {
           if (hooks?.remove) hooks.remove(id);
           else destroyEntity(id);
-          if (mediaDir) fs.rmSync(path.join(getMediaPath(), id), { recursive: true, force: true });
+          if (mediaDir) fs.rmSync(path.join(_getMediaPath(), id), { recursive: true, force: true });
           throw err;
         }
         return id;
@@ -221,7 +221,7 @@ export function createSeeder(options: SeederOptions): Seeder {
       const visit = (items: SeedRecord[], parentId: EARS.EntityId | undefined, parentKey: string) => {
         items.forEach((record, index) => {
           const context: SeedHookContext = { parentId, index, clearedFields: [] };
-          const hooks = record.entity ? seedHookRegistry.get(record.entity) : undefined;
+          const hooks = record.entity ? _seedHookRegistry.get(record.entity) : undefined;
           const label = recordLabel(record, identity);
           const seedKey = childSeedKey(parentKey, record, identity);
           try {
@@ -291,10 +291,10 @@ function wipe(entities: string[], records: SeedRecord[]): void {
     }
   };
   measure(records, 0);
-  const rank = (entity: string) => depth.get(entity) ?? (seedHookRegistry.get(entity)?.container ? -2 : -1);
+  const rank = (entity: string) => depth.get(entity) ?? (_seedHookRegistry.get(entity)?.container ? -2 : -1);
   const types = [...entities].sort((a, b) => rank(b) - rank(a));
   for (const entity of types) {
-    const hooks = seedHookRegistry.get(entity);
+    const hooks = _seedHookRegistry.get(entity);
     for (const row of ears().findAll<{ id: EARS.EntityId }>(entity as EARS.Entity)) {
       // Removing a parent may already have removed this row
       if (!ears().findByIdRaw(row.id)) continue;
@@ -329,7 +329,7 @@ function restoreMedia(
       for (const match of value.matchAll(MEDIA_LINK_RE)) {
         const filename = match[3];
         const source = path.resolve(mediaDir, filename);
-        const destination = path.join(getMediaPath(), id);
+        const destination = path.join(_getMediaPath(), id);
         const target = path.resolve(destination, filename);
         if (!isInside(path.resolve(mediaDir), source) || !isInside(path.resolve(destination), target)) {
           log(`    media skipped (outside the media folder): ${filename}`);

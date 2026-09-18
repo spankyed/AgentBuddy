@@ -2,7 +2,7 @@
 // for that provider in Settings → Secrets (never the environment: each provider gets an explicit key), at the
 // provider's own URL (never the environment either: each provider gets an explicit `baseURL`, so
 // `ANTHROPIC_BASE_URL`/`OPENAI_BASE_URL` can't redirect a call). A provider's package loads on its first call.
-import { createInferenceService, type ResolveModel, type ProviderName } from '@abuddy/sdk/services';
+import { _createInferenceService, type _ResolveModel, type ProviderName } from '@abuddy/sdk/services';
 import { parseModelId, providerCapabilities, providerLabels, PROVIDER_BASE_URLS, type ModelKind } from '@abuddy/sdk/models';
 import { secretsStore } from '../secrets/index.ts';
 
@@ -34,7 +34,7 @@ const PROVIDERS: Record<ProviderName, () => Promise<ProviderFactory>> = {
  * @internal `baseUrls` is a host-internal override for tests, which point a provider at a local server. It is not
  * reachable from a pack: the app's own resolver, `model` below, passes none.
  */
-export function createModelResolver(options: { baseUrls?: Partial<Record<ProviderName, string>> } = {}): ResolveModel {
+export function createModelResolver(options: { baseUrls?: Partial<Record<ProviderName, string>> } = {}): _ResolveModel {
   return (async (kind: ModelKind, id: string): Promise<unknown> => {
     const parts = parseModelId(id);
     if (!parts) throw new Error(`Unknown model provider in "${id}": expected one of ${Object.keys(PROVIDERS).join(', ')}, as provider:model`);
@@ -44,10 +44,10 @@ export function createModelResolver(options: { baseUrls?: Partial<Record<Provide
     const baseURL = options.baseUrls?.[parts.provider] ?? PROVIDER_BASE_URLS[parts.provider];
     const provider = (await PROVIDERS[parts.provider]())({ apiKey: secretsStore.keyFor(parts.provider), baseURL }) as Record<string, (modelId: string) => never>;
     return provider[MODEL_METHODS[kind]](parts.model);
-  }) as ResolveModel;
+  }) as _ResolveModel;
 }
 
 /** The AI SDK model of `kind` an id names, built with its provider's current key */
 export const model = createModelResolver();
 
-export const inference = createInferenceService(model);
+export const inference = _createInferenceService(model);

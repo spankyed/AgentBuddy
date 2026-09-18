@@ -45,6 +45,6 @@ export interface SeedHookRegistry {
 }
 
 /** @internal Seeders read the hooks of the bound app's registered packs (a pack's registration's `seedHooks`) */
-export const seedHookRegistry: SeedHookRegistry = {
+export const _seedHookRegistry: SeedHookRegistry = {
   get: (entity) => boundHost().packs.seedHooks(entity),
 };

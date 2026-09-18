@@ -37,10 +37,8 @@ export function bindFeHost(runtime: FeHostRuntime): void;
 // @public
 export function bindHost(runtime: HostRuntime): void;
 
-// Warning: (ae-internal-missing-underscore) The name "boundPackContributions" should be prefixed with an underscore because the declaration is marked as @internal
-//
 // @internal
-export function boundPackContributions(): PackContributionsView;
+export function _boundPackContributions(): PackContributionsView;
 
 export { EarsQuery }
 
@@ -88,15 +86,11 @@ export interface HostRuntimeServices {
     traceStore: TraceStore;
 }
 
-// Warning: (ae-internal-missing-underscore) The name "isFeHostBound" should be prefixed with an underscore because the declaration is marked as @internal
-//
 // @internal
-export function isFeHostBound(): boolean;
+export function _isFeHostBound(): boolean;
 
-// Warning: (ae-internal-missing-underscore) The name "isHostBound" should be prefixed with an underscore because the declaration is marked as @internal
-//
 // @internal
-export function isHostBound(): boolean;
+export function _isHostBound(): boolean;
 
 // @public
 export interface PackContributionsView {
@@ -126,9 +120,7 @@ export interface PackRegistryView extends PackContributionsView {
     settingsDefaults(): PackSettingsDefaults;
 }
 
-// Warning: (ae-internal-missing-underscore) The name "RootEvents" should be prefixed with an underscore because the declaration is marked as @internal
-//
-// @internal
+// @public
 export interface RootEvents {
     emitIncoming(event: IncomingSystemEvents): void;
     // (undocumented)
@@ -148,20 +140,14 @@ export interface RootEvents {
     onPluginSend(callback: (event: OutgoingSystemEvents) => void): () => void;
 }
 
-// Warning: (ae-internal-missing-underscore) The name "rootEvents" should be prefixed with an underscore because the declaration is marked as @internal
-//
 // @internal
-export const rootEvents: RootEvents;
+export const _rootEvents: RootEvents;
 
 // @public
 export interface SecretRedaction {
     // (undocumented)
     matchesSecret(text: string, from: number, to: number): boolean;
 }
-
-// Warnings were encountered during analysis:
-//
-// .temp/api-types/runtime/host-runtime.d.ts:36:9 - (ae-incompatible-release-tags) The symbol "rootEvents" is marked as @public, but its signature references "RootEvents" which is marked as @internal
 
 // (No @packageDocumentation comment for this package)
 

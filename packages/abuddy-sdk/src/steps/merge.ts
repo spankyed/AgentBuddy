@@ -4,7 +4,7 @@ import type { StepDefinition } from './types.ts';
  * @internal A step definition merged into an earlier one of its type, facet by facet: a build facet and a runtime
  * one registered separately combine, and a facet the later definition sets replaces the earlier one's
  */
-export function mergeStepDefinitions(existing: StepDefinition, def: StepDefinition): StepDefinition {
+export function _mergeStepDefinitions(existing: StepDefinition, def: StepDefinition): StepDefinition {
   return {
     ...existing,
     ...def,

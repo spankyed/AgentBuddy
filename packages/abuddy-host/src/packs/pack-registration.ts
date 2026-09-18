@@ -12,7 +12,7 @@ import type { PackRegistryView } from '@abuddy/sdk/runtime';
 import type { HostServices } from '@abuddy/sdk/services';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
-import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS, reservedEntries } from '@abuddy/sdk/types';
+import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS, _reservedEntries } from '@abuddy/sdk/types';
 import { makePolicy, registerRepository, unregisterRepository, type PartitionPolicy } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { createDefinitionStore, createDesignationStore, createStepStore } from './contributions.ts';
@@ -187,10 +187,10 @@ export function createPackRegistry(): PackRegistry {
     ] as const;
     for (const [kind, namesOf] of kinds) {
       const declared = namesOf(registration.ears);
-      const [reserved] = reservedEntries(declared, namesOf(appEARS()));
+      const [reserved] = _reservedEntries(declared, namesOf(appEARS()));
       if (reserved) throw new Error(`EARS collision: ${kind} ${reserved} — pack "${registration.id}" vs the app's own`);
       for (const [existingId, existing] of registrations) {
-        const [taken] = existing.ears ? reservedEntries(declared, namesOf(existing.ears)) : [];
+        const [taken] = existing.ears ? _reservedEntries(declared, namesOf(existing.ears)) : [];
         if (taken) throw new Error(`EARS collision: ${kind} ${taken} — pack "${registration.id}" vs "${existingId}"`);
       }
     }

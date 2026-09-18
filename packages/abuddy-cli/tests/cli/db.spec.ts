@@ -11,7 +11,7 @@ import { findDatabaseWriter, holdDatabaseWriteLock, openDatabaseStore, readInsta
 import { exportDatabase } from '@abuddy/host/backup';
 import { closeEnv, openEnvAt } from '@abuddy/ears/lmdb';
 import { createSecretsStore, memoryKeyVault } from '@abuddy/host/secrets';
-import { appDataPaths } from '@abuddy/sdk/utils';
+import { _appDataPaths } from '@abuddy/sdk/utils';
 import { appDataDirFor, resolveAppContext } from '@abuddy/sdk/env';
 import { db } from '../../src/commands/db';
 import { parseDbArgs } from '../../src/commands/db/target';
@@ -43,7 +43,7 @@ function schemaContext(userDataDir: string) {
 
 /** Writes to the data dir's database as the app does (default-setup published, source layout) */
 async function write(userDataDir: string, change: () => void): Promise<void> {
-  const paths = appDataPaths(userDataDir, { packaged: false });
+  const paths = _appDataPaths(userDataDir, { packaged: false });
   const { store, engine } = openDatabaseStore({
     paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
     schema: readInstalledSchema(schemaContext(userDataDir)),
@@ -78,7 +78,7 @@ async function appDataDir(): Promise<string> {
 
 /** A backup of a data dir, as the app exports it */
 async function backupOf(userDataDir: string, { withMedia = false, databases }: { withMedia?: boolean; databases?: Array<'lmdb' | 'volatileLmdb'> } = {}): Promise<string> {
-  const paths = appDataPaths(userDataDir, { packaged: false });
+  const paths = _appDataPaths(userDataDir, { packaged: false });
   if (withMedia) {
     fs.mkdirSync(paths.media, { recursive: true });
     fs.writeFileSync(path.join(paths.media, 'image.png'), 'png');
@@ -166,7 +166,7 @@ describe('abuddy db query', () => {
 
   it('reads data whose files it may not write', async () => {
     const dir = await appDataDir();
-    const { lmdb, volatileLmdb } = appDataPaths(dir, { packaged: false });
+    const { lmdb, volatileLmdb } = _appDataPaths(dir, { packaged: false });
     const files = [lmdb, volatileLmdb].flatMap((db) => fs.readdirSync(db).map((file) => path.join(db, file)));
     for (const file of files) fs.chmodSync(file, 0o444);
     try {
@@ -779,7 +779,7 @@ describe('a dry run of a command that changes data', () => {
     expect((await run(['reset', '--force', '--data-dir', running])).error?.message).toMatch(/quit it first/);
 
     const copy = await appDataDir();
-    const { lmdb, volatileLmdb } = appDataPaths(copy, { packaged: false });
+    const { lmdb, volatileLmdb } = _appDataPaths(copy, { packaged: false });
     const files = [lmdb, volatileLmdb].flatMap((db) => fs.readdirSync(db).map((file) => path.join(db, file)));
     for (const file of files) fs.chmodSync(file, 0o444);
     try {
@@ -804,7 +804,7 @@ describe('a dry run of a command that changes data', () => {
 
 describe('abuddy db reset', () => {
   async function withKey(dir: string): Promise<string> {
-    const file = appDataPaths(dir, { packaged: false }).secretsFile;
+    const file = _appDataPaths(dir, { packaged: false }).secretsFile;
     const vault = memoryKeyVault('unprotected');
     createSecretsStore({ filePath: file, osVault: () => vault, fileVault: () => vault, useFileVault: true }).add('anthropic', 'Work', 'sk-ant-api03-test');
     return file;
@@ -870,7 +870,7 @@ describe('abuddy db import', () => {
     await ok(['import', backup, '--force', '--data-dir', dir]);
     expect((await ok(['query', "return [getAttr('Note-a', 'title'), getEntitiesOfType('Note').length]", '--data-dir', dir, '-o', 'json'])).out)
       .toBe(JSON.stringify(['From the backup', 1], null, 2));
-    expect(fs.readFileSync(path.join(appDataPaths(dir, { packaged: false }).media, 'image.png'), 'utf-8')).toBe('png');
+    expect(fs.readFileSync(path.join(_appDataPaths(dir, { packaged: false }).media, 'image.png'), 'utf-8')).toBe('png');
   });
 
   it('says what made the backup, and names it when the files are in a format it cannot read', async () => {

@@ -3,8 +3,8 @@ import type { LogEvent } from '../logger/index.ts';
 import type { IncomingSystemEvents, OutgoingSystemEvents } from '../events/index.ts';
 
 /**
- * The backend's root event bus
- * @internal
+ * The backend's root event bus. Public because `HostRuntime.transport` names it: the program that
+ * assembles an app implements this to bind one.
  */
 export interface RootEvents {
   emitLog(event: LogEvent): void;
@@ -30,7 +30,7 @@ const bus = () => boundHost().transport.rootEvents;
  * would break an EventEmitter's listener bookkeeping); it throws, naming bindHost, when no app is bound.
  * @internal
  */
-export const rootEvents: RootEvents = {
+export const _rootEvents: RootEvents = {
   emitLog: (event) => bus().emitLog(event),
   onLog: (callback) => bus().onLog(callback),
   onConnected: (callback) => bus().onConnected(callback),

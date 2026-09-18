@@ -1,8 +1,8 @@
 // The registered packs' message block definitions, looked up by type in the bound registry
 import type { BlockDefinition } from './types.ts';
-import { boundPackContributions } from '../runtime/packs-view.ts';
+import { _boundPackContributions } from '../runtime/packs-view.ts';
 
-const block = (type: string): BlockDefinition | undefined => boundPackContributions().block(type);
+const block = (type: string): BlockDefinition | undefined => _boundPackContributions().block(type);
 
 /** The registered message block definitions, by type */
 interface BlockRegistry {
@@ -26,6 +26,6 @@ export const blockRegistry: BlockRegistry = {
   },
 
   all(): BlockDefinition[] {
-    return boundPackContributions().blocks();
+    return _boundPackContributions().blocks();
   },
 };

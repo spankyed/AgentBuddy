@@ -1,8 +1,8 @@
 // The registered packs' artifact definitions, looked up by type in the bound registry
 import type { ArtifactDefinition } from './types.ts';
-import { boundPackContributions } from '../runtime/packs-view.ts';
+import { _boundPackContributions } from '../runtime/packs-view.ts';
 
-const artifact = (type: string): ArtifactDefinition | undefined => boundPackContributions().artifact(type);
+const artifact = (type: string): ArtifactDefinition | undefined => _boundPackContributions().artifact(type);
 
 /** The registered artifact definitions, by type */
 interface ArtifactRegistry {
@@ -31,6 +31,6 @@ export const artifactRegistry: ArtifactRegistry = {
   },
 
   all(): ArtifactDefinition[] {
-    return boundPackContributions().artifacts();
+    return _boundPackContributions().artifacts();
   },
 };

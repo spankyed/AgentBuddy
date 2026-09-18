@@ -1,6 +1,6 @@
 // The lookups the backend's and the renderer's registries both keep of what registered packs contributed, each
 // owned by the registry that creates it (createPackRegistry, createFePackRegistry)
-import { mergeStepDefinitions, type StepDefinition } from '@abuddy/sdk/steps';
+import { _mergeStepDefinitions, type StepDefinition } from '@abuddy/sdk/steps';
 
 /** Definitions by type: a later registration of a type replaces the earlier one, or, with `merge`, combines with it */
 export function createDefinitionStore<T extends { type: string }>(merge: (existing: T, def: T) => T = (_, def) => def) {
@@ -20,7 +20,7 @@ export function createDefinitionStore<T extends { type: string }>(merge: (existi
 
 /** Step definitions, a type's build, runtime and frontend facets combining across registrations */
 export function createStepStore() {
-  return createDefinitionStore<StepDefinition>(mergeStepDefinitions);
+  return createDefinitionStore<StepDefinition>(_mergeStepDefinitions);
 }
 
 /** Role → id of the system or plugin that plays it */

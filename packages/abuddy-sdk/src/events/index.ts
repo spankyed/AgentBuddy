@@ -1,7 +1,7 @@
 // Messaging between frontend plugins and backend systems. Frontend-safe: no Node modules and no
 // `services`, since pack frontends get this module from the host (the `sdkEvents` global).
-import { boundHost, isHostBound } from '../runtime/host-runtime.ts';
-import { isFeHostBound, boundFeHost } from '../runtime/fe-host.ts';
+import { boundHost, _isHostBound } from '../runtime/host-runtime.ts';
+import { _isFeHostBound, boundFeHost } from '../runtime/fe-host.ts';
 import { getDesignated } from '../designations/index.ts';
 import type { EARS } from '../types/entities.ts';
 import type { ApplicationHotkeys } from '../types/index.ts';
@@ -61,11 +61,11 @@ export type HostPluginEvents = {
 
 /**
  * Delivers an event to a backend system: in the renderer over its API client, elsewhere onto the bound app's bus.
- * A bound frontend wins, as it does for the registered packs' lookups (`boundPackContributions`).
+ * A bound frontend wins, as it does for the registered packs' lookups (`_boundPackContributions`).
  */
 function sendIncoming(event: IncomingSystemEvents): void {
-  if (isFeHostBound()) boundFeHost().transport.sendIncoming(event);
-  else if (isHostBound()) boundHost().transport.rootEvents.emitIncoming(event);
+  if (_isFeHostBound()) boundFeHost().transport.sendIncoming(event);
+  else if (_isHostBound()) boundHost().transport.rootEvents.emitIncoming(event);
   else throw new Error('No host is bound to send events through: call bindHost(runtime) (backend) or bindFeHost(runtime) (frontend) from @abuddy/sdk/runtime first');
 }
 

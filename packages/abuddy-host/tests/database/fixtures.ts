@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { tx, installEngine } from '@abuddy/ears';
-import { appDataPaths } from '@abuddy/sdk/utils';
+import { _appDataPaths } from '@abuddy/sdk/utils';
 import { openDatabaseStore } from '../../src/database/open.ts';
 import { readInstalledSchema } from '../../src/database/schema.ts';
 
@@ -61,7 +61,7 @@ const context = (userDataDir: string) => ({
 
 /** Writes through a store opened on the data dir's layout, as the app writes (the engine installed meanwhile) */
 export async function writeData(userDataDir: string, write: () => void, { packaged = false } = {}): Promise<void> {
-  const paths = appDataPaths(userDataDir, { packaged });
+  const paths = _appDataPaths(userDataDir, { packaged });
   const { store, engine } = openDatabaseStore({
     paths: { primary: paths.lmdb, volatileBackup: paths.volatileLmdb },
     schema: readInstalledSchema(context(userDataDir)),

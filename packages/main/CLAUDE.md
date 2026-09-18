@@ -44,7 +44,7 @@ The allowlists are populated only when `renderer` is a URL (dev server); from a 
 
 `initAppContext()` runs first and is the only place the environment is decided:
 
-- `inferElectronAppEnv` (`@abuddy/sdk/env`) gets `PLAYWRIGHT_TEST === 'true'`, `app.isPackaged`, the build-time `__ABUDDY_CHANNEL__` and `process.env.ABUDDY_ENV`. `__ABUDDY_CHANNEL__` is `ABUDDY_ENV` at build time (`vite.config.js` `define`), which `build/build.sh` exports as `production` or `beta`; a packaged build without a valid stamp throws.
+- `_inferElectronAppEnv` (`@abuddy/sdk/env`) gets `PLAYWRIGHT_TEST === 'true'`, `app.isPackaged`, the build-time `__ABUDDY_CHANNEL__` and `process.env.ABUDDY_ENV`. `__ABUDDY_CHANNEL__` is `ABUDDY_ENV` at build time (`vite.config.js` `define`), which `build/build.sh` exports as `production` or `beta`; a packaged build without a valid stamp throws.
 - `resolveAppContext({ env })` gives the app name, data dir, `packsDir`, `urlScheme`, …. It then calls `app.setName` and `app.setPath('userData')` (so the single-instance lock and Electron's own storage follow it), and writes `ABUDDY_ENV` / `ABUDDY_USER_DATA_DIR` to `process.env`, which the API child inherits.
 - Everything else reads it with `getAppContext()`, which throws if called first. Don't read `app.getPath('userData')`, `NODE_ENV` or `PLAYWRIGHT_TEST` to choose paths.
 
@@ -81,7 +81,7 @@ The allowlists are populated only when `renderer` is a URL (dev server); from a 
   - Refuses a host that isn't a pack id (`/^[a-z][a-z0-9-]*$/`, so `pack://../x` can't reach the data dir), and any resolved path outside `packsDir/<packId>/` (403).
   - While `abuddy dev` runs, `devServerUrl(userDataDir, packId, path)` (`@abuddy/host/packs/dev-server`) names the pack's Vite server: a marker with an invalid port answers 502; a failed or non-OK fetch falls through to disk.
   - Serves from disk with a small MIME table.
-- **`media://<entityId>/<file>`** (`media-protocol/`) serves `getMediaBasePath()/<entityId>/<file>`, which `media:upload` writes to (PNG/JPEG/GIF/WebP, 10 MB max). That is the folder the SDK's `getMediaPath()` gives the API (`media-protocol/paths.ts`): `<data dir>/media` packaged, `<data dir>/.data/media` from source, following the `NODE_ENV` main passes the API.
+- **`media://<entityId>/<file>`** (`media-protocol/`) serves `getMediaBasePath()/<entityId>/<file>`, which `media:upload` writes to (PNG/JPEG/GIF/WebP, 10 MB max). That is the folder the SDK's `_getMediaPath()` gives the API (`media-protocol/paths.ts`): `<data dir>/media` packaged, `<data dir>/.data/media` from source, following the `NODE_ENV` main passes the API.
 - **`local-file://?path=<abs>`** serves any existing local file for video playback. It uses the deprecated `registerFileProtocol` and no `stream` privilege on purpose: `stream: true` breaks seeking (Electron #38749).
 
 ## Build and dev

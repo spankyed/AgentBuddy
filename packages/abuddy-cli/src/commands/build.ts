@@ -1,13 +1,13 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {
-  clearCompiledSeeds,
+  _clearCompiledSeeds,
   compilePack,
   buildPackConfigFromManifest,
   PACK_TYPES_DEF,
   entitiesWithoutShapes,
   SEED_COMPILERS_FILE,
-  dependencyCommands,
+  _dependencyCommands,
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type SeedDependency,
 } from '@abuddy/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
@@ -63,7 +63,7 @@ const BUILT_IN_SNAPSHOT = 'snapshot.json';
 export function clearBuildOutput(outputDir: string, { builtIn }: { builtIn: boolean }): void {
   const owned = builtIn ? [BUNDLE_PATHS.buildDir, BUNDLE_PATHS.typesDir, DEFS_DIR, BUILT_IN_SNAPSHOT] : ['.'];
   for (const entry of owned) fs.rmSync(path.join(outputDir, entry), { recursive: true, force: true });
-  if (builtIn) clearCompiledSeeds(outputDir);
+  if (builtIn) _clearCompiledSeeds(outputDir);
 }
 
 /**
@@ -195,7 +195,7 @@ export async function build(args: string[]) {
   const flowHelpers = await bundlePackFlowHelpers(root, path.join(outputDir, BUNDLE_PATHS.typesDir), { release });
   if (!flowHelpers.success) fail(`Flow helpers bundle failed: ${flowHelpers.error}`);
   // Dependents check their commands against this pack's whole dependency tree through it
-  const depCommands = dependencyCommands([...depSnapshots]);
+  const depCommands = _dependencyCommands([...depSnapshots]);
   const snapshot: PackSnapshot = {
     types, defs, manifest, sdkVersion: sdkVersion(),
     ...(flowHelpers.success && { flowHelpers: flowHelpers.flowHelpers }),

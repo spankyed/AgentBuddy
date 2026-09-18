@@ -1,10 +1,10 @@
 import { z } from 'zod';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
-import { reservedEntries } from '../types/reserved-names.ts';
+import { _reservedEntries } from '../types/reserved-names.ts';
 
 /** Rejects a pack's entries that use a name or value the SDK owns, naming each */
 const notSdkOwned = (owned: Record<string, string>) => (declared: Record<string, string>, ctx: z.RefinementCtx) => {
-  const taken = reservedEntries(declared, owned);
+  const taken = _reservedEntries(declared, owned);
   if (taken.length === 0) return;
   ctx.addIssue({
     code: z.ZodIssueCode.custom,

@@ -12,10 +12,8 @@ export const API_HOST = "127.0.0.1";
 // @public
 export const API_TOKEN_HEADER = "x-abuddy-api-token";
 
-// Warning: (ae-internal-missing-underscore) The name "AppDataPaths" should be prefixed with an underscore because the declaration is marked as @internal
-//
 // @internal
-export interface AppDataPaths {
+export interface _AppDataPaths {
     lmdb: string;
     // (undocumented)
     media: string;
@@ -23,12 +21,10 @@ export interface AppDataPaths {
     volatileLmdb: string;
 }
 
-// Warning: (ae-internal-missing-underscore) The name "appDataPaths" should be prefixed with an underscore because the declaration is marked as @internal
-//
 // @internal
-export function appDataPaths(userDataDir: string, input: {
+export function _appDataPaths(userDataDir: string, input: {
     packaged: boolean;
-}): AppDataPaths;
+}): _AppDataPaths;
 
 // @public (undocumented)
 export function asArr<T>(v: MaybeArr<T>): readonly T[];
@@ -122,28 +118,20 @@ export function filterByInclude<T>(items: T[], getKey: (item: T) => string, inc:
 // @public
 export function getDataDirPath(name: string): string;
 
-// Warning: (ae-internal-missing-underscore) The name "getLmdbPath" should be prefixed with an underscore because the declaration is marked as @internal
-//
 // @internal
-export const getLmdbPath: () => string;
+export const _getLmdbPath: () => string;
 
-// Warning: (ae-internal-missing-underscore) The name "getMediaPath" should be prefixed with an underscore because the declaration is marked as @internal
-//
 // @internal
-export const getMediaPath: () => string;
+export const _getMediaPath: () => string;
 
-// Warning: (ae-internal-missing-underscore) The name "getSecretsFilePath" should be prefixed with an underscore because the declaration is marked as @internal
-//
 // @internal
-export const getSecretsFilePath: () => string;
+export const _getSecretsFilePath: () => string;
 
 // @public (undocumented)
 export const getUserDataPath: () => string;
 
-// Warning: (ae-internal-missing-underscore) The name "getVolatileLmdbPath" should be prefixed with an underscore because the declaration is marked as @internal
-//
 // @internal
-export const getVolatileLmdbPath: () => string;
+export const _getVolatileLmdbPath: () => string;
 
 // @public
 export interface ImagePart {

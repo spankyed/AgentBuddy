@@ -1,5 +1,5 @@
 import {app} from 'electron';
-import {inferElectronAppEnv, resolveAppContext, type AppContext} from '@abuddy/sdk/env';
+import {_inferElectronAppEnv, resolveAppContext, type AppContext} from '@abuddy/sdk/env';
 
 declare const __ABUDDY_CHANNEL__: string;
 
@@ -10,7 +10,7 @@ let context: AppContext | null = null;
  * source of truth for this process and everything it spawns.
  */
 export function initAppContext(): AppContext {
-  const env = inferElectronAppEnv({
+  const env = _inferElectronAppEnv({
     playwrightTest: process.env.PLAYWRIGHT_TEST === 'true',
     isPackaged: app.isPackaged,
     channel: __ABUDDY_CHANNEL__,

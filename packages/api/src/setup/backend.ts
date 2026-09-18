@@ -2,7 +2,7 @@ import { createActor } from 'xstate';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { bindHost } from '@abuddy/sdk/runtime';
 import { bus } from '@abuddy/sdk/ids';
-import { getLmdbPath, getVolatileLmdbPath } from '@abuddy/sdk/utils';
+import { _getLmdbPath, _getVolatileLmdbPath } from '@abuddy/sdk/utils';
 import type { EarsEngine } from '@abuddy/ears';
 import type { LmdbStore } from '@abuddy/ears/lmdb';
 import { assertNoDatabaseWriter, openDatabaseStore } from '@abuddy/host/database';
@@ -62,7 +62,7 @@ export let appPacks: PackRegistry;
 export function openAppStore(): AppStore {
   const packs = createPackRegistry();
   const { store, engine } = openDatabaseStore({
-    paths: { primary: getLmdbPath(), volatileBackup: getVolatileLmdbPath() },
+    paths: { primary: _getLmdbPath(), volatileBackup: _getVolatileLmdbPath() },
     schema: packs,
   });
   bindHost(createHostRuntime({ store, engine, transport: { rootEvents }, appVersion: APP_VERSION, packs }));

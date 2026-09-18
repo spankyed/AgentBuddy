@@ -10,7 +10,7 @@ process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/setup/backend');
 const { tx, getEntitiesOfType } = await import('@abuddy/ears');
-const { getLmdbPath } = await import('@abuddy/sdk/utils');
+const { _getLmdbPath } = await import('@abuddy/sdk/utils');
 const { unbindHost } = await import('@abuddy/sdk/runtime/internals');
 
 afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
@@ -21,7 +21,7 @@ const flushed = () => new Promise<void>((resolve) => setImmediate(resolve));
 describe('the API store across a restart', () => {
   it('hydrates what the previous run wrote', async () => {
     const first = openAppStore();
-    expect(getLmdbPath().startsWith(dataDir)).toBe(true);
+    expect(_getLmdbPath().startsWith(dataDir)).toBe(true);
     tx('Note-restart' as never, true).put('entityType', 'Note').put('title', 'written before the restart');
     await flushed();
     first.store.close();

@@ -4,7 +4,7 @@ import type { SecretInfo, SecretProvider } from './secrets.ts';
 import { providerLabels, type ProviderName } from './models.ts';
 
 /** @internal A provider's display name, for messages and default labels */
-export const secretProviderLabel = (provider: SecretProvider): string =>
+export const _secretProviderLabel = (provider: SecretProvider): string =>
   provider === 'custom' ? 'Custom' : providerLabels[provider as ProviderName];
 
 function find<T extends SecretInfo>(secrets: readonly T[], id: string): T {
@@ -17,12 +17,12 @@ function checkLabel(secrets: readonly SecretInfo[], provider: SecretProvider, la
   const trimmed = label.trim();
   if (!trimmed) throw new Error('A key needs a label');
   const taken = secrets.some((secret) => secret.id !== exceptId && secret.provider === provider && secret.label.toLowerCase() === trimmed.toLowerCase());
-  if (taken) throw new Error(`${secretProviderLabel(provider)} already has a key labelled "${trimmed}"`);
+  if (taken) throw new Error(`${_secretProviderLabel(provider)} already has a key labelled "${trimmed}"`);
   return trimmed;
 }
 
 /** @internal */
-export const secretRules = {
+export const _secretRules = {
   /** Adds a key; a provider's first key is selected */
   add<T extends SecretInfo>(secrets: readonly T[], secret: Omit<T, 'selected' | 'label'> & { label: string }): T[] {
     const label = checkLabel(secrets, secret.provider, secret.label);
@@ -55,7 +55,7 @@ export const secretRules = {
   /** The key a provider uses, or why there's none, naming the fix */
   selectedFor<T extends SecretInfo>(secrets: readonly T[], provider: ProviderName): T {
     const keys = secrets.filter((secret) => secret.provider === provider);
-    const label = secretProviderLabel(provider);
+    const label = _secretProviderLabel(provider);
     if (keys.length === 0) throw new Error(`No ${label} key: add one in Settings → Secrets`);
     const selected = keys.find((secret) => secret.selected);
     if (!selected) throw new Error(`No ${label} key selected (${keys.map((secret) => secret.label).join(', ')}): choose one in Settings → Secrets`);
@@ -64,5 +64,5 @@ export const secretRules = {
 };
 
 /** @internal A key's metadata, copied out of a store's record */
-export const toSecretInfo = ({ id, provider, label, selected, createdAt, updatedAt }: SecretInfo): SecretInfo =>
+export const _toSecretInfo = ({ id, provider, label, selected, createdAt, updatedAt }: SecretInfo): SecretInfo =>
   ({ id, provider, label, selected, createdAt, ...(updatedAt !== undefined && { updatedAt }) });

@@ -3,7 +3,7 @@
 import { createEarsEngine, installEngine, type EarsAdmin, type EarsEngine, type EarsQuery } from '@abuddy/ears';
 import { openLmdbStore, type LmdbPaths, type LmdbStore } from '@abuddy/ears/lmdb';
 import { resolveAppContext, type AppEnv } from '@abuddy/sdk/env';
-import type { AppDataPaths } from '@abuddy/sdk/utils';
+import type { _AppDataPaths } from '@abuddy/sdk/utils';
 import { findAppDataPaths } from './layout.ts';
 import { readInstalledSchema, type DatabaseSchema, type InstalledSchema } from './schema.ts';
 
@@ -31,7 +31,7 @@ export function openDatabaseStore({ paths, schema, readOnly, log }: DatabaseStor
 export interface AppDatabase {
   userDataDir: string;
   /** The data dir's stores */
-  paths: AppDataPaths;
+  paths: _AppDataPaths;
   /** The installed packs' entity types, relation kinds and partition policy */
   schema: InstalledSchema;
   store: LmdbStore;

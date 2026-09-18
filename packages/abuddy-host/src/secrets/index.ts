@@ -3,8 +3,8 @@
 import * as path from 'node:path';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
-import { rootEvents } from '@abuddy/sdk/runtime';
-import { getSecretsFilePath } from '@abuddy/sdk/utils';
+import { _rootEvents } from '@abuddy/sdk/runtime';
+import { _getSecretsFilePath } from '@abuddy/sdk/utils';
 import type { SecretsSnapshot } from '@abuddy/sdk/services';
 import { createSecretsStore, type SecretsStore } from './store.ts';
 import { fileKeyVault, osKeyVault } from './vault.ts';
@@ -19,7 +19,7 @@ let store: SecretsStore | undefined;
 function appStore(): SecretsStore {
   if (store) return store;
   const context = resolveAppContext();
-  const filePath = getSecretsFilePath();
+  const filePath = _getSecretsFilePath();
   store = createSecretsStore({
     filePath,
     osVault: () => osKeyVault(context.appName),
@@ -60,6 +60,6 @@ export function forwardSecretsChanges(registry: Pick<PackRegistry, 'getRegistere
   return secretsStore.onChange(() => {
     if (!hasDesignation('settings')) return;
     const systemId = getDesignated('settings');
-    if (registry.getRegisteredSystems().has(systemId)) rootEvents.emitIncoming({ type: 'SECRETS_CHANGED', systemId });
+    if (registry.getRegisteredSystems().has(systemId)) _rootEvents.emitIncoming({ type: 'SECRETS_CHANGED', systemId });
   });
 }

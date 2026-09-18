@@ -8,7 +8,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from
 import { dropAttribute, resetTestData, startTestRuntime, testPacks } from '../../src/testing/index.ts';
 import { createSeeder, markSeededRowUnedited } from '../../src/seed/seeder.ts';
 import type { SeedHooks } from '../../src/seed/hooks.ts';
-import { getMediaPath } from '../../src/utils/index.ts';
+import { _getMediaPath } from '../../src/utils/index.ts';
 import type { SeedRecord } from '../../src/build/seeds/records.ts';
 import type { EARS } from '../../src/types/entities.ts';
 
@@ -322,7 +322,7 @@ describe('a created row that fails before it is tracked', () => {
     expect(seedMedia()).toEqual({ created: 1, updated: 0, skipped: 0 });
     const { id, body } = memo('Intro');
     expect(body).toBe(`See ![pic](media://${id}/pic.png)`);
-    expect(fs.readdirSync(getMediaPath())).toEqual([id]);
+    expect(fs.readdirSync(_getMediaPath())).toEqual([id]);
     expect(seedMedia()).toEqual({ created: 0, updated: 0, skipped: 1 });
   });
 });
@@ -343,9 +343,9 @@ describe('media links that point outside the media folders', () => {
 
     const { id, body } = memo('Escape');
     expect(body).toBe(`A ![up](media/../../secret.txt) B ![link](media/linked.png) C ![side](media/../memos/pic.png) D ![ok](media://${id}/pic.png)`);
-    expect(fs.readdirSync(path.join(getMediaPath(), id))).toEqual(['pic.png']);
+    expect(fs.readdirSync(path.join(_getMediaPath(), id))).toEqual(['pic.png']);
     // Where the `..` links would have been written
-    expect(fs.existsSync(path.join(getMediaPath(), 'memos'))).toBe(false);
-    expect(fs.existsSync(path.join(getMediaPath(), '..', 'secret.txt'))).toBe(false);
+    expect(fs.existsSync(path.join(_getMediaPath(), 'memos'))).toBe(false);
+    expect(fs.existsSync(path.join(_getMediaPath(), '..', 'secret.txt'))).toBe(false);
   });
 });
