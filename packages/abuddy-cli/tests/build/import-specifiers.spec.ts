@@ -494,7 +494,9 @@ describe('findMissingSourceConditions', () => {
 
   it('lists the workspace packages whose exports resolve source under the condition', () => {
     expect(sourceConditionPackages(root)).toEqual(['@abuddy/lib']);
-    expect(sourceConditionPackages()).toEqual(['@abuddy/ears', '@abuddy/sdk', '@abuddy/testing', '@abuddy/ui']);
+    // @abuddy/testing is not among them: its entries resolve its built bundle whoever loads them, so a
+    // config importing it selects nothing and needs no condition
+    expect(sourceConditionPackages()).toEqual(['@abuddy/ears', '@abuddy/sdk', '@abuddy/ui']);
   });
 
   // Every config-file name the check recognises, with the option each kind declares the condition in
@@ -688,6 +690,58 @@ describe('findMissingSourceConditions', () => {
   it('names the manifest that does not parse', () => {
     writeAt('packages/broken/package.json', '{ "name": ');
     expect(() => sourceConditionPackages(root)).toThrow(/packages\/broken\/package\.json: invalid JSON/);
+  });
+
+  // The other half of the rule: a pack resolves what a pack author has, which is the published dist. A
+  // pack config declaring the condition compiles against a layout that exists only in this checkout.
+  describe('a pack, which is any directory holding abuddy.json', () => {
+    const MUST_NOT = (file: string, option: string) =>
+      `${file}: a pack resolves the @abuddy packages' published dist, so it must not declare "${SOURCE_CONDITION}" in ${option}`;
+
+    /** A pack in the temp root, with the same importing source a host consumer has */
+    function pack(dir = 'packages/my-pack'): string {
+      writeAt(`${dir}/abuddy.json`, JSON.stringify({ id: 'my-pack', version: '0.1.0' }));
+      writeAt(`${dir}/package.json`, JSON.stringify({ name: '@app/my-pack' }));
+      writeAt(`${dir}/src/app.ts`, "import { x } from '@abuddy/lib';\nexport const y = x;\n");
+      return dir;
+    }
+
+    it.each([
+      ['a tsconfig', 'tsconfig.json', '{ "compilerOptions": { "customConditions": ["@abuddy/source"] } }', TSCONFIG_OPTION],
+      ['a vitest config', 'vitest.config.ts', `export default { resolve: { conditions: ['${SOURCE_CONDITION}'] } };`, VITE_OPTION],
+      ['a vite config', 'vite.config.ts', `export default { resolve: { conditions: ['${SOURCE_CONDITION}'] } };`, VITE_OPTION],
+    ])('flags %s that declares the condition', (_form, file, content, option) => {
+      const dir = pack();
+      writeAt(`${dir}/${file}`, content);
+      expect(conditionProblems()).toEqual([MUST_NOT(`${dir}/${file}`, option)]);
+    });
+
+    it('accepts a pack config that declares none, where a host config would be flagged', () => {
+      const dir = pack();
+      writeAt(`${dir}/tsconfig.json`, '{ "compilerOptions": { "strict": true } }');
+      writeAt(`${dir}/vitest.config.ts`, 'export default { test: {} };\n');
+      expect(conditionProblems()).toEqual([]);
+      // The same config outside a pack is the host half of the rule
+      writeAt('packages/consumer/vitest.config.ts', 'export default { test: {} };\n');
+      expect(conditionProblems()).toEqual([NEEDS('packages/consumer/vitest.config.ts', VITE_OPTION)]);
+    });
+
+    it('covers a config anywhere under the pack, not just beside its manifest', () => {
+      const dir = pack();
+      writeAt(`${dir}/tests/vitest.config.ts`, `export default { resolve: { conditions: ['${SOURCE_CONDITION}'] } };`);
+      expect(conditionProblems()).toEqual([MUST_NOT(`${dir}/tests/vitest.config.ts`, VITE_OPTION)]);
+    });
+
+    // A condition list this check cannot read is no excuse: it may or may not carry the condition
+    it('flags a pack config whose condition list it cannot read', () => {
+      const dir = pack();
+      writeAt(`${dir}/vitest.config.ts`, 'export default { resolve: { conditions: buildConditions() } };\n');
+      expect(conditionProblems()).toEqual([MUST_NOT(`${dir}/vitest.config.ts`, VITE_OPTION)]);
+    });
+
+    it('holds for every pack in the repo, built-in and fixture', () => {
+      expect(findMissingSourceConditions()).toEqual([]);
+    });
   });
 
   it('holds for the repo', () => {

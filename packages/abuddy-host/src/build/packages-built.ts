@@ -163,6 +163,16 @@ function alive(pid: number): boolean {
 
 interface LockHolder { pid: number; label: string; startedAt: string }
 
+/**
+ * The build running right now, if one is. A reader of the stamps needs this: a build removes each stamp
+ * before it rewrites it, so anything checking freshness while one runs sees units that look unbuilt and
+ * would otherwise report them as stale, telling the reader to run the build that is already running.
+ */
+export function runningPackageBuild(file = LOCK_FILE): { pid: number; label: string; startedAt: string } | undefined {
+  const holder = readLock(file);
+  return holder && alive(holder.pid) ? holder : undefined;
+}
+
 function readLock(file: string): LockHolder | null {
   try {
     return JSON.parse(fs.readFileSync(file, 'utf-8'));

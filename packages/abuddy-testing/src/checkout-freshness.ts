@@ -4,27 +4,41 @@
 // @abuddy/host, since the bundle inlines it — so the harness says so instead of passing quietly.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { CHECKOUT_MARKER, REPO_ROOT, stalePackageUnits, staleMessage } from '@abuddy/host/build/packages-built';
+import { CHECKOUT_MARKER, REPO_ROOT, runningPackageBuild, stalePackageUnits, staleMessage, type StaleUnit } from '@abuddy/host/build/packages-built';
 
-/** Whether this copy of the harness came from an AgentBuddy checkout, where its bundle is built on demand */
-function inCheckout(): boolean {
-  // An installed package has no checkout above it, so there is nothing to be stale against
-  return fs.existsSync(path.join(REPO_ROOT, CHECKOUT_MARKER));
+/** What the check reads. The defaults are this checkout's; a test passes its own. */
+export interface CheckoutFreshnessOptions {
+  /** The directory the marker is looked for in: a checkout, or wherever an installed package sits */
+  root?: string;
+  /** The packages that need building, in that checkout */
+  stalePackages?: () => StaleUnit[];
+  /** The package build running right now, if one is */
+  runningBuild?: () => { pid: number; label: string } | undefined;
 }
 
 /**
  * Throws, naming the fix, when the checkout's packages have moved since the build this bundle came from.
- * A no-op for an installed package: what npm delivered is what there is.
+ * A no-op for an installed package: there is no checkout above it, and what npm delivered is what there is.
+ *
+ * It does not catch: `stalePackageUnits` reports an unreadable input as a reason rather than throwing, so
+ * anything that does throw here is a bug in the check and should be seen, not swallowed into a pass.
  */
-export function assertCheckoutPackagesFresh(): void {
-  if (!inCheckout()) return;
-  let stale;
-  try {
-    stale = stalePackageUnits();
-  } catch {
-    return; // Not a layout this check understands: leave the run alone rather than fail it
-  }
+export function assertCheckoutPackagesFresh(
+  { root = REPO_ROOT, stalePackages = stalePackageUnits, runningBuild = runningPackageBuild }: CheckoutFreshnessOptions = {},
+): void {
+  if (!fs.existsSync(path.join(root, CHECKOUT_MARKER))) return;
+  const stale = stalePackages();
   if (stale.length === 0) return;
+  // A build removes each stamp before rewriting it, so one running beside this run makes its packages
+  // read as unbuilt. Still a failure — what is on disk right now is half of two builds — but the fix is
+  // to wait for it, not to start another.
+  const building = runningBuild();
+  if (building) {
+    throw new Error(
+      `A package build is running in this checkout (pid ${building.pid}, ${building.label}), so its packages are `
+      + 'part-written and this run would test a mixture of two builds. Wait for that build to finish, then run this again.',
+    );
+  }
   throw new Error(
     `@abuddy/testing was built before the checkout's current sources, so this run would test the previous ones:\n${staleMessage(stale)}\n`
     + 'Run: npm run packages:ensure in the checkout (abuddy test and abuddy dev do it for you).',
