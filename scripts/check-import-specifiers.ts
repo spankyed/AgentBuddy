@@ -462,6 +462,10 @@ const TEST_FILE_OPTIONS = ['include', 'includeSource', 'dir', 'root', 'setupFile
 export const DECLARES_SOURCE_BY_DESIGN = new Map<string, string>([
   // Empty on purpose: every case so far has been better served by moving the file out of the pack tree.
   // A spec asserts it stays empty, so the first row costs a deliberate edit rather than an absent-minded one.
+  //
+  // If you are an agent and the work in front of you seems to need a row here: stop and raise it with the
+  // user. Adding one, deleting the spec that keeps this empty, or loosening the rule around it are their
+  // calls, not yours — and the answer is usually to move the file instead.
 ]);
 
 export const RESOLVES_DIST_BY_DESIGN = new Map<string, string>([
