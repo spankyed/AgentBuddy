@@ -12,6 +12,7 @@ import {
 } from '@abuddy/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
 import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
+import { internalImportProblems } from '../build/internal-imports-gate.ts';
 import { bundlePackRuntime, bundlePackSeedCompilers, bundlePackSeedRuntime, bundlePackStepBuild, SEED_RUNTIME_FILE } from '../build/be-bundler';
 import { bundleDslDefs, DEFS_DIR } from '../build/dsl-defs';
 import { bundlePackTypes } from '../build/types-bundler';
@@ -101,6 +102,11 @@ export async function build(args: string[]) {
   const settingsProblems = await featureSettingsProblems(root, manifest.features ?? []);
   if (settingsProblems.length > 0) {
     throw new Error(`Invalid feature settings:\n${settingsProblems.map(p => `  - ${p}`).join('\n')}`);
+  }
+
+  const internalImports = internalImportProblems(root);
+  if (internalImports.length > 0) {
+    throw new Error(`A pack names only the @abuddy packages' public API; an export prefixed _ is the app's own, and an app update is free to rename it:\n${internalImports.map(p => `  - ${p}`).join('\n')}`);
   }
 
   const release = args.includes('--release');
