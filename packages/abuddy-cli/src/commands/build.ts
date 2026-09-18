@@ -173,9 +173,15 @@ export async function build(args: string[]) {
     failures.push(message.split('\n')[0]);
   };
 
+  // A dependent generates its EntityName from this pack's snapshot and its own direct dependencies'
+  // — it never reads a dependency's dependencies. So a snapshot records what this pack can surface,
+  // its dependencies' names included, and a chain A → B → C leaves C's names reachable in A without
+  // anyone resolving snapshots transitively. A name whose shape A lacks reads as unknown values, which
+  // is what an unshaped entity does anyway.
+  const depTypeManifests = [...depSnapshots.values()].map((snap) => snap.types);
   const types: PackTypeManifest = {
-    entities: manifest.entities ?? {},
-    relKinds: manifest.relKinds ?? {},
+    entities: Object.assign({}, ...depTypeManifests.map((t) => t.entities ?? {}), manifest.entities ?? {}),
+    relKinds: Object.assign({}, ...depTypeManifests.map((t) => t.relKinds ?? {}), manifest.relKinds ?? {}),
   };
 
   // Facade types for dependents: they import this pack's entity shapes, events, services and repositories
