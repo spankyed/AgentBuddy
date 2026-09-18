@@ -13,6 +13,7 @@ const CHECKED_DIRS = [
   'packages/abuddy-sdk/src', 'packages/abuddy-sdk/tests', 'packages/abuddy-sdk/scripts',
   'packages/abuddy-host/src', 'packages/abuddy-host/tests',
   'packages/abuddy-ui/src', 'packages/abuddy-ui/scripts',
+  'packages/abuddy-testing/src',
 ];
 
 /** Emitted extension → the source extensions that compile to it */
@@ -958,7 +959,7 @@ if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])
     [findSharedPackageLists, 'Derive shared-instance packages from SHARED_INSTANCE_PACKAGES (@abuddy/host/build/shared-deps) instead of naming them'],
     [findRepositoryCasts, "Call a package's repositories through its exports, not a cast of the repository registry"],
     [findCrossCheckoutResolution, 'Workspace packages resolve inside this checkout, so a worktree nested in the repository never typechecks against the parent checkout'],
-    [findMissingSourceConditions, "The repo's own configs declare the @abuddy/source condition when they compile or bundle code importing @abuddy/ears, @abuddy/sdk, @abuddy/ui or @abuddy/testing, so they read TypeScript source instead of a stale dist; a pack's configs declare none, because a pack resolves the published dist"],
+    [findMissingSourceConditions, "The repo's own configs declare the @abuddy/source condition when they compile or bundle code importing @abuddy/ears, @abuddy/sdk or @abuddy/ui, so they read TypeScript source instead of a stale dist; a pack's configs declare none, because a pack resolves the published dist"],
   ];
   for (const [find, rule] of checks) {
     const problems = find();

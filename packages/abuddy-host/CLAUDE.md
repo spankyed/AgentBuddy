@@ -26,7 +26,7 @@ Host-only modules shared by the API, the renderer, the Electron main process, th
 | `./fe` | `fe/pack-store.ts`, `fe/app-extensions.ts` | `createFePackRegistry()`: the renderer's registered pack frontends (`registerPackFE`, `unregisterPackFE`, `getRegisteredPlugins`, `getRegisteredDefaultPlugin`, `getAppExtension`, and the `FePackRegistryView` the SDK reads) |
 | `./build/discover` | `build/discover.ts` | `discoverBuiltInPacksForBuild`, used by the API tsup config and the renderer's Vite and Tailwind configs |
 | `./build/shared-deps` | `build/shared-deps.ts` | `SHARED_INSTANCE_PACKAGES` (and `APP_ONLY_EXPORTS`, `sharedInstanceSpecifiers`, `sharedInstanceExports`, `sharedInstanceExternals`, `sharedInstancePackage`), `SHARED_DEPS`, `SDK_FE_MODULES`, `getSharedFeDeps`, `getUiFeModules`, `getSharedBeDeps`, `findSdkVersion` |
-| `./build/source-resolution` | `build/source-resolution.ts` | `assertSourceResolution`, `withSourceCondition`, `withoutSourceCondition` |
+| `./build/source-resolution` | `build/source-resolution.ts` | `assertSourceResolution`, `withoutSourceCondition` |
 
 ## Data dirs
 

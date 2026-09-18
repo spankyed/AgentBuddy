@@ -7,9 +7,9 @@ import { execFileSync } from 'child_process';
 import { createRequire } from 'module';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { installPackFromLocal } from '@abuddy/host/packs';
-import { appVersion } from './app-version.js';
-import { appLaunchEnv } from './launch-env.js';
-import { assertCheckoutPackagesFresh } from './checkout-freshness.js';
+import { appVersion } from './app-version.ts';
+import { appLaunchEnv } from './launch-env.ts';
+import { assertCheckoutPackagesFresh } from './checkout-freshness.ts';
 
 export interface AppHelper {
   sendEvent: (event: Record<string, unknown>) => Promise<void>;
