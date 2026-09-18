@@ -110,13 +110,17 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
       if (!declared) return undefined;
       // A single event is its own type, not a union of one
       const members = declared.isUnion() ? declared.types : [declared];
-      return members.map((member) => {
+      return members.flatMap((member) => {
         const property = member.getProperty('type');
-        const literal = property && checker.getTypeOfSymbolAtLocation(property, property.valueDeclaration ?? property.declarations![0]);
-        if (!literal?.isStringLiteral()) {
-          throw new Error(`${path.basename(file)} exports "${name}" with a member whose \`type\` is ${literal ? checker.typeToString(literal) : 'missing'}, not a string literal: the events a plugin receives are read from these, and a member without one would leave the map short`);
+        const declaredType = property && checker.getTypeOfSymbolAtLocation(property, property.valueDeclaration ?? property.declarations![0]);
+        // `{ type: 'A' | 'B' }` is one member covering two event types, which is a legal way to write
+        // an event whose payload is the same either way. Reading only single literals rejected it, so
+        // the union is expanded here and every constituent still has to be a literal.
+        const literals = declaredType?.isUnion() ? declaredType.types : declaredType ? [declaredType] : [];
+        if (literals.length === 0 || !literals.every((t) => t.isStringLiteral())) {
+          throw new Error(`${path.basename(file)} exports "${name}" with a member whose \`type\` is ${declaredType ? checker.typeToString(declaredType) : 'missing'}, not a string literal or a union of them: the events a plugin receives are read from these, and a member without one would leave the map short`);
         }
-        return literal.value;
+        return literals.map((t) => (t as import('typescript').StringLiteralType).value);
       });
     },
   };
