@@ -7,7 +7,8 @@ const dataDir = isolatedDataDir('default-setup-tests-');
 export default defineConfig(async () => {
   const { default: tsconfigPaths } = await import('vite-tsconfig-paths');
   return {
-    // Workspace @abuddy/* packages resolve to source (see their package.json exports)
+    // No resolve.conditions: default-setup is a pack, so it resolves the @abuddy packages' built dist
+    // like every other pack. npm run typecheck:pack and test:external-pack refresh that dist first.
     plugins: [
       tsconfigPaths({ projects: ['./tsconfig.test.json'] }),
     ],

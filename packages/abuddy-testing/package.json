@@ -6,17 +6,14 @@
   "type": "module",
   "exports": {
     ".": {
-      "@abuddy/source": "./src/index.ts",
       "types": "./dist/package/dist/index.d.ts",
       "default": "./dist/package/dist/index.js"
     },
     "./vitest": {
-      "@abuddy/source": "./src/vitest.ts",
       "types": "./dist/package/dist/vitest.d.ts",
       "default": "./dist/package/dist/vitest.js"
     },
     "./harness": {
-      "@abuddy/source": "./src/harness.ts",
       "types": "./dist/package/dist/harness.d.ts",
       "default": "./dist/package/dist/harness.js"
     }
