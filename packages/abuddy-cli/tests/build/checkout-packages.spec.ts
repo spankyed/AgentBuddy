@@ -70,6 +70,20 @@ describe('the commands that refresh a checkout before loading its packages', () 
   it('dispatches abuddy build to the command that refreshes, not to the bare build', () => {
     expect(source('index.ts')).toContain("'build':      async () => (await import('./commands/build')).buildCommand,");
   });
+
+  // npm start declares no packages:ensure of its own: it reaches the check by building the built-in pack
+  // with `abuddy build`. Nothing else holds that link, so a build:dev that stopped being an abuddy build
+  // would drop npm start's only door without failing anything.
+  it('leaves npm start reaching the check through abuddy build, its only door on that path', () => {
+    const script = (pkg: string, name: string): string =>
+      JSON.parse(fs.readFileSync(path.join(REPO_ROOT, pkg, 'package.json'), 'utf-8')).scripts[name] ?? '';
+
+    const prebuild = script('.', 'prebuild:be:dev');
+    expect(prebuild).toContain('build:dev -w @app/default-setup');
+    expect(prebuild, 'npm start needs exactly one door: abuddy build ensures, so this must not also')
+      .not.toContain('packages:ensure');
+    expect(script('packages/default-setup', 'build:dev')).toMatch(/^abuddy build\b/);
+  });
 });
 
 describe('the checkout a pack\'s @abuddy packages come from', () => {
