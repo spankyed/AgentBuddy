@@ -9,7 +9,7 @@ import * as path from 'node:path';
 import { builtinModules, createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import { packageName } from './lib/published-imports.ts';
-import { runPackageBuild } from './ensure-packages-built.ts';
+import { runPackageBuild } from '@abuddy/host/build/packages-built';
 import { SHARED_INSTANCE_PACKAGES } from '@abuddy/host/build/shared-deps';
 import { build, type BuildOptions, type Plugin } from 'esbuild';
 

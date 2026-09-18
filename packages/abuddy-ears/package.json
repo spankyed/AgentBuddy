@@ -17,7 +17,7 @@
     "dist"
   ],
   "scripts": {
-    "build:package": "tsx scripts/build-package.ts",
+    "build:package": "tsx ../../scripts/build-package.ts .",
     "attw": "attw --pack . --profile esm-only",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

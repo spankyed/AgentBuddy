@@ -13,7 +13,7 @@
     "dist"
   ],
   "scripts": {
-    "build:package": "tsx scripts/build-package.ts",
+    "build:package": "tsx ../../scripts/build-ui-package.ts .",
     "exports:update": "tsx scripts/exports.ts",
     "attw": "attw --pack . --profile esm-only",
     "typecheck": "vue-tsc --noEmit",

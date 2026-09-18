@@ -5,11 +5,11 @@ import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   BUILD_UNITS, fingerprintInputs, staleMessage, stampFile, stampedBuild, unitStaleReason, withBuildLock,
-} from '../../../../scripts/ensure-packages-built.ts';
+} from '@abuddy/host/build/packages-built';
 import { PACKED_PACKAGES, REPO_ROOT } from '../helpers/published-packages';
 
 /**
- * The freshness rule behind `npm test -w @abuddy/cli`'s pretest (scripts/ensure-packages-built.ts):
+ * The freshness rule behind `npm test -w @abuddy/cli`'s pretest (@abuddy/host/build/packages-built):
  * a success stamp holding a content fingerprint of the build's inputs, so output that no successful
  * build produced never reads as built. Everything here runs on temporary fixtures — a spec must
  * never build the repo's packages (that is the pretest's job, in its own process).
@@ -71,11 +71,17 @@ describe('the watched input set', () => {
   it('covers each package build script and the configs it reads', () => {
     for (const [pkg, unit] of [['abuddy-ears', '@abuddy/ears'], ['abuddy-sdk', '@abuddy/sdk'], ['abuddy-ui', '@abuddy/ui']] as const) {
       const inputs = new Set(BUILD_UNITS[unit].inputs);
-      for (const input of ['src', 'scripts', 'package.json', 'tsconfig.json', 'tsconfig.package.json']) {
-        expect(inputs).toContain(path.join(REPO_ROOT, 'packages', pkg, input));
+      for (const input of ['src', 'package.json', 'tsconfig.json', 'tsconfig.package.json']) {
+        expect(inputs, `${unit}: ${input}`).toContain(path.join(REPO_ROOT, 'packages', pkg, input));
       }
+      // The build script is the repo's, not the package's: a package's own scripts are its other tooling
+      expect(inputs, `${unit}: the build script`).toContain(path.join(REPO_ROOT, 'scripts', 'build-package.ts'));
     }
-    expect(new Set(BUILD_UNITS['@abuddy/ui'].inputs)).toContain(path.join(REPO_ROOT, 'packages', 'abuddy-ui', 'tsdown.config.ts'));
+    const ui = new Set(BUILD_UNITS['@abuddy/ui'].inputs);
+    expect(ui).toContain(path.join(REPO_ROOT, 'packages', 'abuddy-ui', 'tsdown.config.ts'));
+    expect(ui).toContain(path.join(REPO_ROOT, 'scripts', 'build-ui-package.ts'));
+    // @abuddy/ui's build reads its exports helper, which stays with the package for exports:update
+    expect(ui).toContain(path.join(REPO_ROOT, 'packages', 'abuddy-ui', 'scripts', 'exports.ts'));
   });
 
   it('names only paths that exist, so a renamed input cannot drop out unnoticed', () => {

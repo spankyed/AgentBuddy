@@ -9,7 +9,7 @@ import { SHARED_INSTANCE_PACKAGES } from '@abuddy/host/build/shared-deps';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
 const CHECKED_DIRS = [
-  'packages/abuddy-ears/src', 'packages/abuddy-ears/tests', 'packages/abuddy-ears/scripts',
+  'packages/abuddy-ears/src', 'packages/abuddy-ears/tests',
   'packages/abuddy-sdk/src', 'packages/abuddy-sdk/tests', 'packages/abuddy-sdk/scripts',
   'packages/abuddy-host/src', 'packages/abuddy-host/tests',
   'packages/abuddy-ui/src', 'packages/abuddy-ui/scripts',
@@ -82,7 +82,12 @@ function findSpecifiers(files: string[], root: string, matches: (text: string, f
  * An import of hand-written declarations (`./speech-event.js` → speech-event.d.ts) has no source and is fine.
  */
 export function findJsSpecifiers(dirs = CHECKED_DIRS, root = repoRoot): string[] {
-  const files = dirs.flatMap((dir) => [...sourceFiles(path.join(root, dir))]);
+  const files = dirs.flatMap((dir) => {
+    // A listed directory that is gone means the list is stale and something is no longer checked,
+    // which is worth failing over — but say so, rather than letting a readdir ENOENT stack out
+    if (!fs.existsSync(path.join(root, dir))) throw new Error(`${dir} is listed in CHECKED_DIRS and does not exist: remove it, or restore the directory`);
+    return [...sourceFiles(path.join(root, dir))];
+  });
   return findSpecifiers(files, root, (text, file) => {
     const emitted = path.extname(text);
     const base = path.resolve(path.dirname(file), text.slice(0, -emitted.length));

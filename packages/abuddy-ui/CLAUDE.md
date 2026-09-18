@@ -16,8 +16,7 @@ src/components/tiptap/   TiptapEditor, TiptapSearchBar, internal menus (TiptapBu
                   editor-config.ts, editor-system.ts, tiptap-theme.css
 src/composables/  useClickOutside, useCollapsibleState, useContextMenu, useDebounce, useExternalFileDrag, useInfiniteScroll
 src/utils/        json-detection, path-truncation (pure helpers)
-scripts/exports.ts         computes the exports map; `--check` mode
-scripts/build-package.ts   builds dist/
+scripts/exports.ts         computes the exports map; `--check` mode (the build reads it too)
 tsdown.config.ts           compile config
 etc/                       API and component contract reports (committed)
 ```
@@ -60,7 +59,7 @@ The published surface supports TypeScript 5.7+ (`typescript` peer `>=5.7`). `abu
 
 ## Build (`npm run build:package`, part of root `packages:build`)
 
-`scripts/build-package.ts`:
+The repo's `scripts/build-ui-package.ts` (it lives there, not here, so this package's own `scripts/` imports nothing above its layer):
 
 1. Fails on missing entries or a stale exports map.
 2. tsdown (`tsdown.config.ts`) compiles `computeEntries()` to `dist/` as ESM, `platform: 'neutral'`, with source maps. Shared modules become chunks. `unplugin-vue` compiles the SFCs. `dependencies` and `peerDependencies` are never bundled (`deps.neverBundle`, `onlyBundle: []`), so importing an undeclared package fails the build.

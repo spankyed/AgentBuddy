@@ -53,11 +53,13 @@ export interface BuildUnit {
   readonly outputs: readonly string[];
 }
 
-/** A package compiled to its own `dist/` by `scripts/build-package.ts` */
+/** A package compiled to its own `dist/` by `scripts/build-package.ts` (or, for @abuddy/ui, build-ui-package.ts) */
 function compiled(pkg: string, ...extraInputs: string[]): BuildUnit {
   return {
-    inputs: [...SHARED_INPUTS, repoFile('scripts', 'lib', 'published-imports.ts'), ...extraInputs,
-      pkgFile(pkg, 'src'), pkgFile(pkg, 'scripts'),
+    // The build scripts live in the repo's scripts/, not the package's: a package's own scripts are its
+    // other tooling (the SDK's schema generator) and no input of this build, bar @abuddy/ui's exports
+    inputs: [...SHARED_INPUTS, repoFile('scripts', 'lib', 'published-imports.ts'), repoFile('scripts', 'build-package.ts'), ...extraInputs,
+      pkgFile(pkg, 'src'),
       pkgFile(pkg, 'package.json'), pkgFile(pkg, 'tsconfig.json'), pkgFile(pkg, 'tsconfig.package.json')],
     outputs: [pkgFile(pkg, 'dist')],
   };
@@ -77,7 +79,8 @@ function bundled(pkg: string, ...extraInputs: string[]): BuildUnit {
 export const BUILD_UNITS: Record<string, BuildUnit> = {
   '@abuddy/ears': compiled('abuddy-ears'),
   '@abuddy/sdk': compiled('abuddy-sdk'),
-  '@abuddy/ui': compiled('abuddy-ui', pkgFile('abuddy-ui', 'tsdown.config.ts')),
+  '@abuddy/ui': compiled('abuddy-ui', pkgFile('abuddy-ui', 'tsdown.config.ts'), repoFile('scripts', 'build-ui-package.ts'),
+    pkgFile('abuddy-ui', 'scripts', 'exports.ts')),
   '@abuddy/testing': bundled('abuddy-testing'),
   '@abuddy/cli': bundled('abuddy-cli', pkgFile('abuddy-cli', 'bin')),
 };

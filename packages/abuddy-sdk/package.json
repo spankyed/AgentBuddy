@@ -18,7 +18,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "build:package": "tsx scripts/build-package.ts",
+    "build:package": "tsx ../../scripts/build-package.ts .",
     "attw": "attw --pack . --profile esm-only --exclude-entrypoints ./runtime/internals",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",

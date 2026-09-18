@@ -144,7 +144,7 @@ Run these from `packages/abuddy-sdk`, or from the repo root with `-w @abuddy/sdk
 
 - `npm test`: vitest over `tests/**/*.spec.ts` (files in parallel: each test creates or installs its own engine) (`build/`, `designations/`, `env/`, `events/`, `framework/`, `logger/`, `repositories/` (the SDK entities' repositories), `runtime/`, `seed/`, `services/`, `testing/`, `utils/`), with `@abuddy/source` set in `vitest.config.ts`. The root `test:unit` runs it, as CI does.
 - `npm run typecheck`: `tsc --noEmit`. `npm run build` is the same `tsconfig.json`, which sets `noEmit`, so it emits nothing.
-- `npm run build:package`: `scripts/build-package.ts`. It compiles `dist/` with `tsconfig.package.json`, copies hand-written `.d.ts` files, and checks that every bare import in `dist` is declared and every export target was built. The root `packages:build` runs it; `npm run attw` (excluding the source-only `./utils/internals`) runs in the root `packages:check`.
+- `npm run build:package`: the repo's `scripts/build-package.ts`, shared with `@abuddy/ears`, which builds the same way. It compiles `dist/` with `tsconfig.package.json`, copies hand-written `.d.ts` files, and checks that every bare import in `dist` is declared and every export target was built. The root `packages:build` runs it; `npm run attw` (excluding the source-only `./utils/internals`) runs in the root `packages:check`.
 - `npm run api:check` / `api:update`: `api:build` emits declarations to `.temp/api-types`, then `scripts/api-reports.ts` compares or rewrites `etc/<entry>.api.md`, one per export with `types`.
 - `npm run generate:schema` / `schema:check`: regenerate or verify `abuddy.schema.json`.
 
