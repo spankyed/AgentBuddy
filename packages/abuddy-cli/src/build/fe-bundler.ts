@@ -3,7 +3,6 @@ import * as path from 'node:path';
 import { createRequire } from 'node:module';
 import type { Plugin as VitePlugin, Rollup } from 'vite';
 import { init as initModuleLexer, parse as parseModule } from 'es-module-lexer';
-import { sourceConditions } from '@abuddy/sdk/build';
 import { getSharedFeDeps, getSdkFeModules, getUiFeModules, sharedInstancePackage } from '@abuddy/host/build/shared-deps';
 
 const EXTERNAL_PREFIX = '\0pack-external:';
@@ -54,10 +53,11 @@ function bundlesUi(packDir: string): boolean {
 }
 
 /**
- * Tailwind content globs for the @abuddy/ui a pack bundles: its source when linked to a checkout,
- * else its build. Only reached for a pack that set `fe.bundleUi`, so an @abuddy/ui it can't resolve
- * is a build failure: its components are nothing but Tailwind classes, and returning no globs would
- * bundle every one of them unstyled.
+ * Tailwind content globs for the @abuddy/ui a pack bundles: its build, which is what a pack resolves.
+ * Only reached for a pack that set `fe.bundleUi`, so anything that leaves Tailwind nothing to read is a
+ * build failure — its components are nothing but Tailwind classes, and empty globs would bundle every
+ * one of them unstyled, with no error. An unresolvable package and a package whose build is missing are
+ * the same fault to the pack author: what they get is an unstyled app.
  */
 function uiTailwindContent(packDir: string): string[] {
   let uiDir: string;
@@ -68,9 +68,13 @@ function uiTailwindContent(packDir: string): string[] {
       `This pack sets fe.bundleUi, but @abuddy/ui can't be resolved from ${packDir}, so Tailwind would generate none of its components' classes: ${errorMessage(err)}`,
     );
   }
-  return sourceConditions(packDir).length > 0 && fs.existsSync(path.join(uiDir, 'src'))
-    ? [path.join(uiDir, 'src/**/*.{vue,ts}')]
-    : [path.join(uiDir, 'dist/**/*.js')];
+  const built = path.join(uiDir, 'dist');
+  if (!fs.existsSync(built) || fs.readdirSync(built).length === 0) {
+    throw new Error(
+      `This pack sets fe.bundleUi, but @abuddy/ui has no build at ${built}, so Tailwind would generate none of its components' classes. Build the packages first: npm run packages:ensure`,
+    );
+  }
+  return [path.join(built, '**/*.js')];
 }
 
 export function packExternalsPlugin(packDir: string): VitePlugin {
@@ -409,7 +413,7 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
       },
       resolve: {
         alias: aliasEntries,
-        conditions: [...sourceConditions(packDir), ...vite.defaultClientConditions],
+        conditions: [...vite.defaultClientConditions],
       },
       build: {
         lib: {

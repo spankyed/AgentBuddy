@@ -1,9 +1,10 @@
+import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { parseTestAppFlags, resolveTestApp, type AppTarget } from '../app/app-target';
-import { resolvePlaywrightCli, testingFromSource } from '../app/playwright';
-import { withSourceCondition, withoutSourceCondition } from '@abuddy/host/build/source-resolution';
+import { resolvePlaywrightCli } from '../app/playwright';
+import { withoutSourceCondition } from '@abuddy/host/build/source-resolution';
 import { cliBin, readManifest } from '../utils';
 
 export const TEST_USAGE = `Usage: abuddy test [--app-root <path> | --app beta] [playwright args...]
@@ -16,9 +17,11 @@ hostVersion, downloaded and cached), ABUDDY_ROOT, or the app you chose on first 
  * Env the @abuddy/testing fixture reads to launch the app and install the pack. The runner gets
  * the @abuddy/source condition only when @abuddy/testing is a checkout's source.
  */
-export function fixtureEnv(app: AppTarget, packDir: string | undefined, base: NodeJS.ProcessEnv, fromSource = false): NodeJS.ProcessEnv {
+export function fixtureEnv(app: AppTarget, packDir: string | undefined, base: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = { ...base };
-  const nodeOptions = fromSource ? withSourceCondition(base.NODE_OPTIONS) : withoutSourceCondition(base.NODE_OPTIONS);
+  // A pack resolves the packages' published dist, whoever runs it: the condition never reaches this run,
+  // even when the caller had it (npm test in a checkout)
+  const nodeOptions = withoutSourceCondition(base.NODE_OPTIONS);
   if (nodeOptions) env.NODE_OPTIONS = nodeOptions;
   else delete env.NODE_OPTIONS;
   delete env.ABUDDY_ROOT;
@@ -59,10 +62,18 @@ export async function test(args: string[]): Promise<void> {
     process.exit(1);
   }
 
+  // The harness bundle this run loads is built from the checkout's source, so bring it up to date first
+  try {
+    ensureCheckoutPackages(cwd);
+  } catch (err) {
+    console.error((err as Error).message);
+    process.exit(1);
+  }
+
   console.log(app.kind === 'source' ? `Testing in AgentBuddy from ${app.root}` : `Testing in AgentBuddy Beta ${app.version}`);
   const result = spawnSync(process.execPath, [playwrightCli, 'test', ...flags.args], {
     cwd,
-    env: fixtureEnv(app, manifest ? cwd : undefined, process.env, testingFromSource(cwd)),
+    env: fixtureEnv(app, manifest ? cwd : undefined, process.env),
     stdio: 'inherit',
   });
   if (result.status !== 0) process.exit(result.status ?? 1);

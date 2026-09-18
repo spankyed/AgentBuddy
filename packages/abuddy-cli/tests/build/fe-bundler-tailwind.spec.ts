@@ -93,6 +93,28 @@ describe('pack FE Tailwind setup', () => {
     expect(result.error).toContain('fe.bundleUi');
   }, 60_000);
 
+  it("fails the build when a bundleUi pack's @abuddy/ui has no build to read classes from", async () => {
+    // Resolving the package isn't enough: Tailwind reads its compiled output, and an empty dist globs
+    // nothing, which would ship every @abuddy/ui component unstyled with no error at all.
+    const packDir = makePack({ manifest: { fe: { bundleUi: true } }, linkNodeModules: false });
+    const modules = path.join(packDir, 'node_modules', '@abuddy');
+    fs.mkdirSync(path.join(modules, 'ui'), { recursive: true });
+    for (const entry of fs.readdirSync(path.join(REPO_ROOT, 'node_modules'))) {
+      if (entry === '@abuddy' || entry.startsWith('.')) continue;
+      fs.symlinkSync(path.join(REPO_ROOT, 'node_modules', entry), path.join(packDir, 'node_modules', entry), 'dir');
+    }
+    for (const name of ['ears', 'sdk']) {
+      fs.symlinkSync(path.join(REPO_ROOT, 'packages', `abuddy-${name}`), path.join(modules, name), 'dir');
+    }
+    // An @abuddy/ui that resolves and has no build: what a checkout looks like before packages:build
+    fs.writeFileSync(path.join(modules, 'ui', 'package.json'), JSON.stringify({ name: '@abuddy/ui', version: '0.0.0', exports: { '.': './dist/index.js', './package.json': './package.json' } }));
+
+    const result = await build(packDir);
+    expect(result.success).toBe(false);
+    expect(result.error).toContain('@abuddy/ui has no build');
+    expect(result.error).toContain('packages:ensure');
+  }, 60_000);
+
   it("fails the build when abuddy.json can't be read, so fe.bundleUi is unknown", async () => {
     const packDir = makePack({ manifest: '{ not json' });
     const result = await build(packDir);

@@ -1,10 +1,10 @@
+import { withoutSourceCondition } from '@abuddy/host/build/source-resolution';
 import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import { createRequire } from 'node:module';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { sourceConditions } from '@abuddy/sdk/build';
 
 const LOAD_TIMEOUT_MS = 60_000;
 /**
@@ -63,10 +63,8 @@ export async function checkSeedRuntimeLoads(
   // The load's user data dir, removed after
   const dataDir = fs.mkdtempSync(path.join(tmpDir, 'abuddy-seed-runtime-check-'));
   try {
-    const fromSource = sourceConditions(packDir).length > 0;
     const args = [
-      // A pack linked to a checkout loads the SDK from TypeScript source, like its unit tests
-      ...(fromSource ? ['--conditions=@abuddy/source', '--import', pathToFileURL(createRequire(import.meta.url).resolve('tsx/esm')).href] : []),
+      // The bundle loads the packages' published dist, as a dependent's tests do
       '--input-type=module',
       '--eval',
       LOAD_SCRIPT,
@@ -85,7 +83,16 @@ export async function checkSeedRuntimeLoads(
     const { code, output } = await new Promise<{ code: number | null; output: string }>((resolve, reject) => {
       const child = spawn(process.execPath, args, {
         cwd: packDir,
-        env: { ...process.env, ABUDDY_ENV: 'test', ABUDDY_USER_DATA_DIR: dataDir, ABUDDY_SEED_RUNTIME_CHECK: check },
+        // Without the caller's source condition: the bundle loads the packages' published dist, as a
+        // dependent's tests do, and a run that carries the condition (npm test, PACK_DIR=…) would
+        // otherwise make this child resolve TypeScript source with no loader to read it
+        env: {
+          ...process.env,
+          NODE_OPTIONS: withoutSourceCondition(process.env.NODE_OPTIONS),
+          ABUDDY_ENV: 'test',
+          ABUDDY_USER_DATA_DIR: dataDir,
+          ABUDDY_SEED_RUNTIME_CHECK: check,
+        },
         stdio: ['ignore', 'ignore', 'pipe'],
         timeout: LOAD_TIMEOUT_MS,
       });

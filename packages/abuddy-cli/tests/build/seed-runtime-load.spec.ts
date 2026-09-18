@@ -38,6 +38,20 @@ describe('abuddy build loads the seed runtime it bundles', () => {
     expect(await bundlePackSeedRuntime(dir, path.join(dir, 'dist'))).toEqual({ success: true });
   }, 60_000);
 
+  it('passes when the caller carries the source condition, as npm test and PACK_DIR builds do', async () => {
+    // The check loads the bundle in a child process. Inheriting --conditions=@abuddy/source would make
+    // that child resolve the packages' TypeScript with no loader to read it, and the build would fail
+    // naming the pack's seed runtime rather than the loader.
+    const dir = pack("import { findRelations } from '@abuddy/ears';\nexport const memoQueries = { links: findRelations };\n");
+    const before = process.env.NODE_OPTIONS;
+    process.env.NODE_OPTIONS = `${before ?? ''} --conditions=@abuddy/source`.trim();
+    try {
+      expect(await bundlePackSeedRuntime(dir, path.join(dir, 'dist'))).toEqual({ success: true });
+    } finally {
+      if (before === undefined) delete process.env.NODE_OPTIONS; else process.env.NODE_OPTIONS = before;
+    }
+  }, 60_000);
+
   it('fails one bundling a native addon', async () => {
     // The shape of node-gyp-build and bindings: the addon path is computed, so esbuild leaves the require
     const dir = pack([
