@@ -63,7 +63,7 @@ const SHARED_INPUTS = [repoFile('package.json'), repoFile('package-lock.json')];
  */
 export const STAMP_VERSION = 2;
 
-export interface BuildUnit {
+interface BuildUnit {
   /** Files and directories the build reads, absolute; a directory is walked */
   readonly inputs: readonly string[];
   /** Paths the build writes; all must exist for the unit to count as built */
