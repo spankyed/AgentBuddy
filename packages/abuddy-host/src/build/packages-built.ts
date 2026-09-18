@@ -20,8 +20,14 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-/** The file whose presence says a directory is an AgentBuddy checkout, not an installed package */
-export const CHECKOUT_MARKER = path.join('scripts', 'ensure-packages-built.ts');
+/**
+ * The file whose presence says a directory is an AgentBuddy checkout, not an installed package: this
+ * module's own source. It names itself on purpose. A marker somewhere else looks correct after that file
+ * is renamed, and the guard then reads every checkout as an installed package and quietly does nothing —
+ * so the only way to break this one is to move the file holding the constant that names it.
+ * `package-freshness.spec.ts` asserts it resolves in this repo, so a move fails a test rather than a run.
+ */
+export const CHECKOUT_MARKER = path.join('packages', 'abuddy-host', 'src', 'build', 'packages-built.ts');
 
 /**
  * The checkout this file belongs to, found by walking up from wherever it runs. Bundlers inline this

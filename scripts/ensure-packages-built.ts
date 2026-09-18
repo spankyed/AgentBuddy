@@ -8,8 +8,7 @@
  * The rule itself lives in `@abuddy/host/build/packages-built`, which everything that needs it imports
  * by that name: a relative import of this file would put the repo root into `@abuddy/testing`'s
  * declaration emit and move every declaration its bundle publishes.
- *
- * Its presence is also what marks a directory as a checkout (`CHECKOUT_MARKER`).
+
  */
 import * as fs from 'node:fs';
 import { pathToFileURL } from 'node:url';

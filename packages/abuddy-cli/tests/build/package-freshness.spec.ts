@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  BUILD_UNITS, fingerprintInputs, staleMessage, stampFile, stampedBuild, unitStaleReason, withBuildLock,
+  BUILD_UNITS, CHECKOUT_MARKER, fingerprintInputs, staleMessage, stampFile, stampedBuild, unitStaleReason, withBuildLock,
 } from '@abuddy/host/build/packages-built';
 import { PACKED_PACKAGES, REPO_ROOT } from '../helpers/published-packages';
 
@@ -82,6 +82,12 @@ describe('the watched input set', () => {
     expect(ui).toContain(path.join(REPO_ROOT, 'scripts', 'build-ui-package.ts'));
     // @abuddy/ui's build reads its exports helper, which stays with the package for exports:update
     expect(ui).toContain(path.join(REPO_ROOT, 'packages', 'abuddy-ui', 'scripts', 'exports.ts'));
+  });
+
+  // "No marker" and "not a checkout" are the same observation, and the second is legitimate for every
+  // installed pack — so a marker that stops resolving turns the freshness guard off with nothing to see
+  it('marks this checkout with a file that is here, so moving the marker fails a test and not a run', () => {
+    expect(fs.existsSync(path.join(REPO_ROOT, CHECKOUT_MARKER)), CHECKOUT_MARKER).toBe(true);
   });
 
   it('names only paths that exist, so a renamed input cannot drop out unnoticed', () => {
