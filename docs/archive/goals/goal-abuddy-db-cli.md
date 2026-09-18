@@ -1,3 +1,5 @@
+> **Done** (merged in #190, `AS/abuddy-db-cli`). The text below is the plan as written; its Outcome was reconstructed from the branch when the doc was archived, not kept as the work went. For the commands as they are now, see `packages/abuddy-cli/CLAUDE.md` and `docs/public-facing/cli.md`.
+
 ```
 # Goal: database operations through the abuddy CLI
 
@@ -167,6 +169,39 @@ Database operations live in `packages/api/scripts/db` and run through `npm run d
 - **E2E** (monorepo): with the app running in the test environment, `abuddy db query --data-dir <worker dir>` reads the app's data. Under B, `db exec` writes a row the renderer then shows; under A, the command refuses.
 
 **Done when:** both pass, and every item in "Finished when" passes.
+
+## Outcome (2026-09-18, written at archive time)
+
+Landed on `AS/abuddy-db-cli` as 40 commits, merged as #190 (`eea6a8ba1`). Every phase that applied is done;
+Phase 2 did not apply. Reconstructed from the branch and the code rather than recorded as the work went, so
+it records what is checkable now and leaves out what would be guessed.
+
+### Per phase
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — offline database access in `@abuddy/host` | done | `packages/abuddy-host/src/database/` (`open`, `schema`, `layout`, `running`, `write-lock`), with `tests/database/` covering `open-app-database`, `installed-schema`, `running-app` and `write-lock` |
+| 2 — app endpoints | **not applicable** | conditional on Decision 2 choosing B; it chose offline-only (`f9c25135b`), so no `db.*` tRPC endpoints were added |
+| 3 — `abuddy db` commands | done | `packages/abuddy-cli/src/commands/db/` (`code`, `destructive`, `export`, `inspect`, `repl`, `script`, `target`, `output`), spec `tests/cli/db.spec.ts` |
+| 4 — retire `packages/api/scripts/db` | done | every root `db:*` script delegates to `abuddy db`; the directory is down to `database.ts` and the one-off `fix-prod-upgrade.ts` |
+| 5 — packaged use | done | `bin/app-launcher.sh` runs the bundled CLI on Electron as Node, spec `tests/cli/app-launcher.spec.ts` |
+
+### Conventional choices
+
+- **`seed.ts` is deliberately not replaced** (`50663661e`). Re-running a pack's boot seed needs the pack's own
+  seeders, seed hooks and repositories, which an offline tool doesn't load, and starting the app runs that seed
+  anyway.
+- **`abuddy db reset --keep-keys`** was added (`811bde98b`), so a reset can drop the data without deleting the
+  stored API keys, which no backup holds.
+- **Backups take an LMDB snapshot** (`6b5c868fd`), so one taken while the app runs holds a single moment rather
+  than files read mid-commit.
+- **A named target flag wins over `ABUDDY_USER_DATA_DIR`** (`2e8fe1d69`): `-d`/`-b`/`--production` resolve that
+  app's own data dir, so the variable can't redirect a named target, while it still applies when no flag is given.
+
+### Open items
+
+- `packages/api/scripts/db/fix-prod-upgrade.ts` is a one-off for this machine's production install. Its header
+  says to run it once and delete it; it is still there.
 
 ## Constraints
 

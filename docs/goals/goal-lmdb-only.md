@@ -117,7 +117,7 @@ The user wants **LMDB-only**: reads query LMDB directly, writes are committed sy
   - `appData.reset` does `engine.clear` → `store.reset` → `startPacks`.
   - `importBackup` reloads memory.
   - Backup export copies live env files with `fs.copy` (`packages/abuddy-host/src/backup/index.ts:43-47`), which isn't a consistent snapshot.
-- **Multiple processes.** `abuddy db` opens the store offline: reads open it read-only, even while the app runs, and writes refuse while the app runs. With LMDB-only, each process sees the other's writes. See docs/goals/goal-abuddy-db-cli.md.
+- **Multiple processes.** `abuddy db` opens the store offline: reads open it read-only, even while the app runs, and writes refuse while the app runs. With LMDB-only, each process sees the other's writes. See docs/archive/goals/goal-abuddy-db-cli.md.
 
 ## Spike results (2026-09-17)
 
@@ -293,7 +293,7 @@ These are the ones settled by the spikes. The ones below them need the user.
 - Delete hydration, the router, `PersistenceSink`, `LmdbQuery` and the store's engine reader (Decision 1).
 - Port `appData.reset`, backup export/import (Decision 8), `services.traceStore` and `restart-persistence.spec`.
 - Add the format migration (Decision 7).
-- `abuddy db` (`@abuddy/host/database`) opens the env with the app's flags, coordinated with docs/goals/goal-abuddy-db-cli.md.
+- `abuddy db` (`@abuddy/host/database`) opens the env with the app's flags, coordinated with docs/archive/goals/goal-abuddy-db-cli.md.
 
 **Done when:**
 - The api and host suites pass.
