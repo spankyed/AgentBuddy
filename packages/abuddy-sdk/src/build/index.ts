@@ -44,7 +44,7 @@ export type {
   PackFeatureEntry, PackBootConfig, SeedEntryConfig, SeedFormatConfig,
   StepEntry, StepDSLMeta,
 } from './manifest.ts';
-export { seedFile, seedPath, SEED_COMPILERS_FILE, _dependencyCommands, _dependencyPlugins } from './manifest.ts';
+export { seedFile, seedPath, SEED_COMPILERS_FILE, PACK_TYPES_FORMAT, _dependencyCommands, _dependencyPlugins } from './manifest.ts';
 
 // Flow DSL helpers (track builders)
 export { entry, on } from './flow-helpers.ts';

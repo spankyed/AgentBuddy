@@ -1,7 +1,7 @@
 import { readFileSync, existsSync, statSync } from 'fs';
 import { HOST_PLUGIN_IDS as SDK_HOST_PLUGIN_IDS } from '../events/index.ts';
 import { extname, join } from 'path';
-import { _dependencyCommands, _dependencyPlugins, type PackManifest, type PackFeatureEntry, type PackTypeManifest, type PackSnapshot, type StepEntry } from './manifest.ts';
+import { _dependencyCommands, _dependencyPlugins, PACK_TYPES_FORMAT, type PackManifest, type PackFeatureEntry, type PackTypeManifest, type PackSnapshot, type StepEntry } from './manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
 import { formatEntities } from './seeds/records.ts';
@@ -22,6 +22,8 @@ export function mergeRegistries(
   ownId: string,
   manifest: PackManifest,
   depManifests: Map<string, PackTypeManifest>,
+  /** Per dependency, which pack owns each name it surfaces (its snapshot's `typeOwners`) */
+  depOwners: Map<string, { entities?: Record<string, string>; relKinds?: Record<string, string> }> = new Map(),
 ) {
   function merge(own: Record<string, string> = {}, kind: string) {
     // The SDK's own entities and relation kinds are in every pack, and no pack declares them
@@ -40,8 +42,19 @@ export function mergeRegistries(
     const valueSources = new Map<string, string>();
     const sources: Array<[string, Record<string, string>]> = [[ownId, own]];
     for (const [depId, dep] of depManifests) sources.push([depId, kind === 'entity' ? dep.entities : dep.relKinds]);
-    for (const [source, entries] of sources) {
+    /**
+     * Who declares a name, rather than which dependency handed it over. A dependency surfaces its own
+     * dependencies' names too, so the same ancestor name arrives through every path that reaches it;
+     * attributing it to the dependency it came through makes a diamond look like a collision.
+     */
+    const declaredBy = (via: string, key: string): string => {
+      if (via === ownId) return ownId;
+      const owners = kind === 'entity' ? depOwners.get(via)?.entities : depOwners.get(via)?.relKinds;
+      return owners?.[key] ?? via;
+    };
+    for (const [via, entries] of sources) {
       for (const [key, value] of Object.entries(entries)) {
+        const source = declaredBy(via, key);
         const existing = map.get(key)?.source ?? valueSources.get(value);
         if (existing !== undefined && existing !== source) {
           errors.push(`${kind} "${key}" declared by both "${existing}" and "${source}"`);
@@ -356,6 +369,21 @@ export function generatePackFiles(
 ): Record<string, string> {
   const root = opts.packRoot;
   const depSnapshots = opts.depSnapshots ?? new Map<string, PackSnapshot>();
+  /**
+   * A dependency's facade has to be a shape this CLI can generate against, and presence is not that.
+   * A facade from a CLI whose facade shape has since changed used to be consumed anyway, and failed
+   * later as `TS2305: has no exported member` inside generated code — a message naming nothing the
+   * author could act on. `PACK_TYPES_FORMAT` makes it name the dependency to rebuild instead.
+   */
+  for (const [depId, snap] of depSnapshots) {
+    if (!snap.defs?.[PACK_TYPES_DEF]) continue;
+    if (snap.typesFormat !== PACK_TYPES_FORMAT) {
+      throw new Error(
+        `Dependency "${depId}" publishes facade types in format ${snap.typesFormat ?? '(none recorded)'}, but this CLI generates against format ${PACK_TYPES_FORMAT}. `
+        + `Rebuild "${depId}" with this version of the abuddy CLI (\`abuddy build\` in that pack, or \`npm run compile\` for a built-in one).`,
+      );
+    }
+  }
   // Dependencies built with facade types (older snapshots have none, so their types stay untyped)
   const typedDeps = [...depSnapshots].filter(([, snap]) => snap.defs?.[PACK_TYPES_DEF]).map(([depId]) => depId);
   /** `import type { name as alias }` from each typed dependency, and the aliases */
@@ -405,6 +433,40 @@ export function generatePackFiles(
     }
   }
   checkRepositoryNames();
+
+  /**
+   * The same rule for service names, in both directions.
+   *
+   * A pack's generated `Services` is the intersection of its dependencies' (`_S0 & _S1 & …`), and an
+   * intersection is silent about a collision: two dependencies both providing `db` give
+   * `db: A['db'] & B['db']`, a type that is usually unusable and sometimes `never`, with no error
+   * anywhere. The app's registry does refuse the second pack at registration, so the collision
+   * surfaces — at app start, far from the pack that caused it. This reports it at build time, where
+   * commands and repositories are already reported.
+   */
+  function checkServiceNames(): void {
+    const serviceNames = (m: PackManifest): string[] => [
+      ...Object.keys(m.packServices ?? {}),
+      ...(m.features ?? []).flatMap((f) => Object.keys(f.services ?? {})),
+    ];
+    const taken = new Map<string, string>();
+    for (const [depId, snap] of depSnapshots) {
+      for (const name of serviceNames(snap.manifest)) {
+        const owner = taken.get(name);
+        if (owner && owner !== depId) {
+          throw new Error(`Service "${name}" is declared by both "${owner}" and "${depId}", which this pack depends on: their services are intersected into one \`services\`, so the two would silently merge. Only one of them can provide it.`);
+        }
+        taken.set(name, depId);
+      }
+    }
+    for (const name of serviceNames(manifest)) {
+      const owner = taken.get(name);
+      if (owner) {
+        throw new Error(`Service "${name}" is declared by "${owner}", which this pack depends on: the app refuses a pack whose service name another pack registered, so rename it in abuddy.json \`services\``);
+      }
+    }
+  }
+  checkServiceNames();
 
   // ── Manifest export targets ────────────────────────────────────
 
@@ -681,7 +743,8 @@ ${regProps.join('\n')}
       depTypes = new Map<string, PackTypeManifest>();
       for (const [id, snap] of depSnapshots) depTypes.set(id, snap.types);
     }
-    return mergeRegistries(manifest.id, manifest, depTypes);
+    const depOwners = new Map([...depSnapshots].map(([id, snap]) => [id, snap.typeOwners ?? {}] as const));
+    return mergeRegistries(manifest.id, manifest, depTypes, depOwners);
   }
 
   function generateEars(): string {

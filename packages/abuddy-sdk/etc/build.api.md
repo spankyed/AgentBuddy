@@ -1317,7 +1317,11 @@ export interface MarkdownTreeOptions {
 }
 
 // @public (undocumented)
-export function mergeRegistries(ownId: string, manifest: PackManifest, depManifests: Map<string, PackTypeManifest>): {
+export function mergeRegistries(ownId: string, manifest: PackManifest, depManifests: Map<string, PackTypeManifest>,
+depOwners?: Map<string, {
+    entities?: Record<string, string>;
+    relKinds?: Record<string, string>;
+}>): {
     entities: Map<string, RegistryEntry>;
     relKinds: Map<string, RegistryEntry>;
 };
@@ -1327,6 +1331,9 @@ export function on(event: string, exits: DSLStepNode[][], label?: string): Track
 
 // @public
 export const PACK_TYPES_DEF = "pack-types";
+
+// @public
+export const PACK_TYPES_FORMAT = 1;
 
 // @public (undocumented)
 export type PackBootConfig = z.infer<typeof BootConfigSchema>;
@@ -1399,8 +1406,13 @@ export interface PackSnapshot {
     manifest: PackManifest;
     // (undocumented)
     sdkVersion?: string;
+    typeOwners?: {
+        entities?: Record<string, string>;
+        relKinds?: Record<string, string>;
+    };
     // (undocumented)
     types: PackTypeManifest;
+    typesFormat?: number;
 }
 
 // @public (undocumented)

@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { generatePackFiles, PACK_TYPES_DEF, type PackManifest, type PackSnapshot } from '@abuddy/sdk/build';
+import { generatePackFiles, PACK_TYPES_DEF, PACK_TYPES_FORMAT, type PackManifest, type PackSnapshot } from '@abuddy/sdk/build';
 import { warnStaleDepTypes } from '../../src/commands/generate-entries';
 
 let root: string;
@@ -17,7 +17,7 @@ afterEach(() => {
 /** Writes the facade types generation produces for base-pack at `version` */
 function generateDepTypes(version: string): void {
   const manifest = { id: 'app-pack', name: 'App', version: '1.0.0' } as PackManifest;
-  const snapshot = { types: { entities: {}, relKinds: {} }, defs: { [PACK_TYPES_DEF]: 'export type PackEvents = {};' }, manifest: { id: 'base-pack', name: 'Base', version } } as PackSnapshot;
+  const snapshot = { types: { entities: {}, relKinds: {} }, defs: { [PACK_TYPES_DEF]: 'export type PackEvents = {};' }, typesFormat: PACK_TYPES_FORMAT, manifest: { id: 'base-pack', name: 'Base', version } } as PackSnapshot;
   for (const [file, content] of Object.entries(generatePackFiles(manifest, { packRoot: root, depSnapshots: new Map([['base-pack', snapshot]]) }))) {
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     fs.writeFileSync(path.join(root, file), content);

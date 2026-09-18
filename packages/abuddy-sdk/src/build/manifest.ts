@@ -28,11 +28,37 @@ export interface PackTypeManifest {
   relKinds: Record<string, string>;
 }
 
+/**
+ * The shape of the facade types a pack publishes for its dependents (`dist/types/pack-types.d.ts`
+ * and the snapshot's `defs`).
+ *
+ * A dependent used to consume a dependency's facade on presence alone: if `defs[PACK_TYPES_DEF]`
+ * existed, it was used. A facade from an older CLI, whose shape has since changed, therefore got as
+ * far as the generated files and failed there as `TS2305: has no exported member` — pointing at
+ * generated code, naming nothing the author could act on. Worse, a dependency built before facades
+ * existed silently lost its services, repositories and events, with no message at all.
+ *
+ * Bumping this makes those cases say which dependency to rebuild. Bump it whenever a change to the
+ * generated facade would not compile against the previous shape.
+ */
+export const PACK_TYPES_FORMAT = 1;
+
 export interface PackSnapshot {
   types: PackTypeManifest;
   defs: Record<string, string>;
   manifest: PackManifest;
   sdkVersion?: string;
+  /** The facade shape this pack's `defs` are in (`PACK_TYPES_FORMAT` when it was built) */
+  typesFormat?: number;
+  /**
+   * Entity type and relation kind → the pack that declares it, for everything `types` surfaces.
+   *
+   * `types` carries this pack's names and its dependencies', so a dependent resolves a chain one
+   * level deep. Without owners, a dependent of two packs that share an ancestor sees the ancestor's
+   * names arriving from both and reads that as two packs declaring the same entity — a collision
+   * that isn't one. Every pack depends on the base pack, so that is every diamond.
+   */
+  typeOwners?: { entities?: Record<string, string>; relKinds?: Record<string, string> };
   /** The pack's flow helpers, which dependents' generated flow helpers re-export */
   flowHelpers?: PackFlowHelpers;
   /**

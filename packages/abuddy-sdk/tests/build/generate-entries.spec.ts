@@ -6,7 +6,7 @@ import { transformSync } from 'esbuild';
 import ts from 'typescript';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { _depTypesFile, _depTypesVersion, entitiesWithoutShapes, generatePackFiles, PACK_TYPES_DEF } from '../../src/build/generate-entries.ts';
-import { _dependencyPlugins } from '../../src/build/manifest.ts';
+import { _dependencyPlugins, PACK_TYPES_FORMAT } from '../../src/build/manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../../src/types/sdk-entities.ts';
 import type { PackManifest, PackSnapshot } from '../../src/build/manifest.ts';
 
@@ -28,7 +28,9 @@ function manifest(fields: Record<string, unknown>): PackManifest {
 }
 
 function dependency(fields: Record<string, unknown>, defs: Record<string, string> = { [PACK_TYPES_DEF]: 'export type PackEvents = {};' }): PackSnapshot {
-  return { types: { entities: {}, relKinds: {} }, defs, manifest: manifest({ id: 'base-pack', ...fields }) };
+  // A dependency built by this CLI records the facade shape it publishes; one that doesn't is the
+  // stale-facade case, covered on its own below
+  return { types: { entities: {}, relKinds: {} }, defs, typesFormat: PACK_TYPES_FORMAT, manifest: manifest({ id: 'base-pack', ...fields }) };
 }
 
 function generate(fields: Record<string, unknown>, deps: Record<string, PackSnapshot> = {}): Record<string, string> {
@@ -477,6 +479,106 @@ describe('generated repositories', () => {
     const deps = { 'base-pack': dependency({ features: [{ ...system('notes'), repositories: { noteQueries: 'src/repo.ts#noteQueries' } }] }) };
     expect(() => generate({ features: [{ ...system('memos'), repositories: { memoQueries: 'src/features/memos/be/repository.ts#memoQueries' } }] }, deps))
       .not.toThrow();
+  });
+});
+
+// A → B and A → C, both of which depend on D. Nothing exercised two dependencies converging, which
+// is where a collision is silent rather than obvious: each dependency is fine on its own.
+describe('a diamond dependency', () => {
+  const dep = (id: string, fields: Record<string, unknown> = {}) => ({ ...dependency({ id, ...fields }), manifest: manifest({ id, ...fields }) }) as PackSnapshot;
+
+  const surfacing = (id: string, owner: string) => ({
+    types: { entities: { Memo: 'Memo' }, relKinds: {} },
+    defs: { [PACK_TYPES_DEF]: 'export type PackEvents = {};' },
+    typesFormat: PACK_TYPES_FORMAT,
+    typeOwners: { entities: { Memo: owner }, relKinds: {} },
+    manifest: manifest({ id }),
+  }) as PackSnapshot;
+
+  // Both sides surface deep-pack's Memo, because a snapshot carries its dependencies' names so a
+  // chain resolves one level deep. Attributing it to the dependency it arrived through made this
+  // read as two packs declaring Memo — and since every pack depends on the base pack, that was every
+  // pack with two dependencies.
+  it('accepts one ancestor\'s entity arriving through both sides', () => {
+    expect(() => generate({ features: [system('brain')] }, {
+      'left-pack': surfacing('left-pack', 'deep-pack'),
+      'right-pack': surfacing('right-pack', 'deep-pack'),
+    })).not.toThrow();
+  });
+
+  it('still reports two different packs that each declare the same entity', () => {
+    expect(() => generate({ features: [system('brain')] }, {
+      'left-pack': surfacing('left-pack', 'left-pack'),
+      'right-pack': surfacing('right-pack', 'right-pack'),
+    })).toThrow(/entity "Memo" declared by both/);
+  });
+
+  it("names the deeper pack once for a plugin both sides surface", () => {
+    const owners = [{ id: 'threads', packId: 'deep-pack' }];
+    expect(() => generate({ features: [system('memos', { sendsTo: ['threads'] })] }, {
+      'left-pack': { ...dep('left-pack'), dependencyPlugins: owners } as PackSnapshot,
+      'right-pack': { ...dep('right-pack'), dependencyPlugins: owners } as PackSnapshot,
+    })).toThrow('a plugin of "deep-pack"');
+  });
+});
+
+describe("a dependency's facade format", () => {
+  const facade = { [PACK_TYPES_DEF]: 'export type PackEvents = {};' };
+
+  // Presence used to be the whole check, so a facade whose shape had changed was consumed and blew up
+  // later as TS2305 inside generated code, naming nothing the author could act on.
+  it('fails, naming the dependency to rebuild, when it records no format', () => {
+    expect(() => generate({ features: [system('brain')] }, {
+      'base-pack': { types: { entities: {}, relKinds: {} }, defs: facade, manifest: manifest({ id: 'base-pack' }) } as PackSnapshot,
+    })).toThrow(/Dependency "base-pack" publishes facade types in format \(none recorded\).*Rebuild "base-pack"/s);
+  });
+
+  it('fails on a format this CLI does not generate against', () => {
+    expect(() => generate({ features: [system('brain')] }, {
+      'base-pack': { types: { entities: {}, relKinds: {} }, defs: facade, typesFormat: PACK_TYPES_FORMAT + 1, manifest: manifest({ id: 'base-pack' }) } as PackSnapshot,
+    })).toThrow(`format ${PACK_TYPES_FORMAT + 1}`);
+  });
+
+  // A pack built before facades existed has no facade at all. That stays a silent downgrade to
+  // untyped, which is what `typedDeps` is for — the format check is only about a facade that exists.
+  it('accepts a dependency with no facade at all, which stays untyped', () => {
+    expect(() => generate({ features: [system('brain')] }, {
+      'base-pack': { types: { entities: {}, relKinds: {} }, defs: {}, manifest: manifest({ id: 'base-pack' }) } as PackSnapshot,
+    })).not.toThrow();
+  });
+});
+
+describe('service name collisions', () => {
+  const withService = (id: string, name: string) => ({ id, services: { [name]: 'src/x.ts#svc' } });
+
+  // Services from dependencies are intersected (_S0 & _S1), which says nothing about a collision:
+  // two `db` services merge into an unusable type with no error. The registry refuses the second
+  // pack at registration, so without this the report arrives at app start instead of at build.
+  it('fails when two dependencies declare the same service name', () => {
+    expect(() => generate({ features: [system('brain')] }, {
+      'base-pack': dependency({ id: 'base-pack', features: [withService('a', 'db')] }),
+      'other-pack': dependency({ id: 'other-pack', features: [withService('b', 'db')] }),
+    })).toThrow('Service "db" is declared by both');
+  });
+
+  it("fails when this pack declares a name a dependency declares, as commands and repositories do", () => {
+    expect(() => generate({ features: [withService('mine', 'db')] }, {
+      'base-pack': dependency({ id: 'base-pack', features: [withService('a', 'db')] }),
+    })).toThrow('Service "db" is declared by "base-pack"');
+  });
+
+  it('covers pack-level services, not only a feature\'s', () => {
+    expect(() => generate({ features: [system('brain')] }, {
+      'base-pack': dependency({ id: 'base-pack', packServices: { db: 'src/x.ts#svc' } }),
+      'other-pack': dependency({ id: 'other-pack', features: [withService('b', 'db')] }),
+    })).toThrow('Service "db" is declared by both');
+  });
+
+  it('accepts distinct names across dependencies', () => {
+    expect(() => generate({ features: [system('brain')] }, {
+      'base-pack': dependency({ id: 'base-pack', features: [withService('a', 'db')] }),
+      'other-pack': dependency({ id: 'other-pack', features: [withService('b', 'cache')] }),
+    })).not.toThrow();
   });
 });
 

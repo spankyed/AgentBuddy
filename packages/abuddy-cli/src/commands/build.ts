@@ -9,6 +9,7 @@ import {
   SEED_COMPILERS_FILE,
   _dependencyCommands,
   _dependencyPlugins,
+  PACK_TYPES_FORMAT,
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type SeedDependency,
 } from '@abuddy/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
@@ -190,6 +191,17 @@ export async function build(args: string[]) {
     entities: Object.assign({}, ...depTypeManifests.map((t) => t.entities ?? {}), manifest.entities ?? {}),
     relKinds: Object.assign({}, ...depTypeManifests.map((t) => t.relKinds ?? {}), manifest.relKinds ?? {}),
   };
+  // And who declares each of them. A dependent of two packs that share an ancestor receives the
+  // ancestor's names through both; without an owner it reads that as two packs declaring the same
+  // entity. Every pack depends on the base pack, so that is every diamond.
+  const ownerOf = (kind: 'entities' | 'relKinds'): Record<string, string> => Object.assign(
+    {},
+    ...[...depSnapshots].map(([depId, snap]) => Object.fromEntries(
+      Object.keys(snap.types[kind] ?? {}).map((name) => [name, snap.typeOwners?.[kind]?.[name] ?? depId]),
+    )),
+    Object.fromEntries(Object.keys(manifest[kind] ?? {}).map((name) => [name, manifest.id])),
+  );
+  const typeOwners = { entities: ownerOf('entities'), relKinds: ownerOf('relKinds') };
 
   // Facade types for dependents: they import this pack's entity shapes, events, services and repositories
   const defs: Record<string, string> = {};
@@ -213,7 +225,8 @@ export async function build(args: string[]) {
   // told which pack to depend on rather than that the plugin doesn't exist
   const depPlugins = _dependencyPlugins([...depSnapshots]);
   const snapshot: PackSnapshot = {
-    types, defs, manifest, sdkVersion: sdkVersion(),
+    types, defs, manifest, sdkVersion: sdkVersion(), typesFormat: PACK_TYPES_FORMAT,
+    typeOwners,
     ...(flowHelpers.success && { flowHelpers: flowHelpers.flowHelpers }),
     ...(depCommands.length > 0 && { dependencyCommands: depCommands }),
     ...(depPlugins.length > 0 && { dependencyPlugins: depPlugins }),
