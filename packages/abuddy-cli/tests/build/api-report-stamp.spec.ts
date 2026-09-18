@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { declarationFingerprint, declarationInputs, declarationPackages, staleReason, stampFile } from '../../../../scripts/api-report-stamp.ts';
+import { declarationInputs, declarationPackages, declarationStamp, staleReason, stampFile } from '../../../../scripts/api-report-stamp.ts';
 
 /**
  * The cheap staleness gate for the committed API reports (scripts/api-report-stamp.ts), which runs in
@@ -39,9 +39,9 @@ function pkg(root: string, name: string, dist: Record<string, string>, deps: str
   return dir;
 }
 
-const stamp = (dir: string, value: string): void => {
+const stamp = (dir: string, value: string = declarationStamp(dir)): void => {
   fs.mkdirSync(path.join(dir, 'etc'), { recursive: true });
-  fs.writeFileSync(stampFile(dir), `${value}\n`);
+  fs.writeFileSync(stampFile(dir), value);
 };
 
 describe('the API report staleness gate', () => {
@@ -89,20 +89,52 @@ describe('the API report staleness gate', () => {
     it('passes when the stamp matches the declarations', () => {
       const root = tempDir();
       const dir = pkg(root, '@abuddy/thing', { 'index.d.ts': 'export declare const a: number;' });
-      stamp(dir, declarationFingerprint(dir));
+      stamp(dir);
       expect(staleReason(dir)).toBeNull();
     });
 
     it('reports a declaration change, naming what to run', () => {
       const root = tempDir();
       const dir = pkg(root, '@abuddy/thing', { 'index.d.ts': 'export declare const a: number;' });
-      stamp(dir, declarationFingerprint(dir));
+      stamp(dir);
       fs.writeFileSync(path.join(dir, 'dist', 'index.d.ts'), 'export declare const a: string;');
       expect(staleReason(dir)).toContain('api:update');
     });
 
     // Unbuilt declarations are a different problem with a different fix, and saying "run api:update"
     // there sends the reader to a command that cannot help.
+    // "ui is stale" was most often @abuddy/sdk's declarations moving, and the message couldn't say so
+    it("names the dependency whose declarations moved, not just this package", () => {
+      const root = tempDir();
+      const base = pkg(root, '@abuddy/base', { 'index.d.ts': 'export declare const a: string;' }, ['@abuddy/leaf']);
+      const leaf = pkg(root, '@abuddy/leaf', { 'index.d.ts': 'export declare const b: string;' });
+      stamp(base);
+
+      fs.writeFileSync(path.join(leaf, 'dist', 'index.d.ts'), 'export declare const b: number;');
+      const reason = staleReason(base);
+      expect(reason).toContain('@abuddy/leaf');
+      expect(reason).not.toContain('@abuddy/base');
+      expect(reason).toContain('api:update');
+    });
+
+    it("says 'its declarations' when the package's own moved", () => {
+      const root = tempDir();
+      const base = pkg(root, '@abuddy/base', { 'index.d.ts': 'export declare const a: string;' }, ['@abuddy/leaf']);
+      pkg(root, '@abuddy/leaf', { 'index.d.ts': 'export declare const b: string;' });
+      stamp(base);
+
+      fs.writeFileSync(path.join(base, 'dist', 'index.d.ts'), 'export declare const a: number;');
+      expect(staleReason(base)).toContain('its declarations changed');
+    });
+
+    // The old format was one bare hash naming nothing, so it can't say which package moved
+    it('treats a stamp from before per-package hashes as one to regenerate', () => {
+      const root = tempDir();
+      const dir = pkg(root, '@abuddy/solo', { 'index.d.ts': 'export declare const a: string;' });
+      stamp(dir, 'deadbeef\n');
+      expect(staleReason(dir)).toContain('api:update');
+    });
+
     it('names the build, not api:update, when nothing is built', () => {
       const root = tempDir();
       const dir = pkg(root, '@abuddy/thing', {});
