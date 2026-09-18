@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   findAppImportsInPackTests, findCrossCheckoutResolution, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackBackendConsole, findRawPackHelpers,
   findRawTransport, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs,
-  RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
+  DECLARES_SOURCE_BY_DESIGN, RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
 } from '../../../../scripts/check-import-specifiers.ts';
 import { REPO_ROOT } from '../helpers/published-packages';
 
@@ -451,8 +451,8 @@ function otherPackage(): void {
 }
 
 /** The problems for the temp root, with the given exceptions in place of the repo's */
-function conditionProblems(exceptions = new Map<string, string>()): string[] {
-  return findMissingSourceConditions(root, exceptions);
+function conditionProblems(exceptions = new Map<string, string>(), packExceptions = new Map<string, string>()): string[] {
+  return findMissingSourceConditions(root, exceptions, packExceptions);
 }
 
 const NEEDS = (file: string, option: string) =>
@@ -696,7 +696,8 @@ describe('findMissingSourceConditions', () => {
   // pack config declaring the condition compiles against a layout that exists only in this checkout.
   describe('a pack, which is any directory holding abuddy.json', () => {
     const MUST_NOT = (file: string, option: string) =>
-      `${file}: a pack resolves the @abuddy packages' published dist, so it must not declare "${SOURCE_CONDITION}" in ${option}`;
+      `${file}: a pack resolves the @abuddy packages' published dist, so it must not declare "${SOURCE_CONDITION}" in ${option}`
+      + '; move a host-side config out of the pack tree, or add it to DECLARES_SOURCE_BY_DESIGN saying why it belongs there';
 
     /** A pack in the temp root, with the same importing source a host consumer has */
     function pack(dir = 'packages/my-pack'): string {
@@ -741,6 +742,43 @@ describe('findMissingSourceConditions', () => {
 
     it('holds for every pack in the repo, built-in and fixture', () => {
       expect(findMissingSourceConditions()).toEqual([]);
+    });
+
+    // The escape for a host-side config that lives in a pack's tree. It is deliberately hard to reach
+    // for: the message names it, and an entry that stops applying is reported like any other.
+    describe('DECLARES_SOURCE_BY_DESIGN', () => {
+      const WHY = 'a Vite config the renderer builds this pack with';
+
+      it('takes an exception with its reason instead of flagging the config', () => {
+        const dir = pack();
+        writeAt(`${dir}/vite.config.ts`, `export default { resolve: { conditions: ['${SOURCE_CONDITION}'] } };`);
+        expect(conditionProblems()).toHaveLength(1);
+        expect(conditionProblems(undefined, new Map([[`${dir}/vite.config.ts`, WHY]]))).toEqual([]);
+      });
+
+      it('excepts only the config it names, not the pack around it', () => {
+        const dir = pack();
+        writeAt(`${dir}/vite.config.ts`, `export default { resolve: { conditions: ['${SOURCE_CONDITION}'] } };`);
+        writeAt(`${dir}/vitest.config.ts`, `export default { resolve: { conditions: ['${SOURCE_CONDITION}'] } };`);
+        expect(conditionProblems(undefined, new Map([[`${dir}/vite.config.ts`, WHY]])))
+          .toEqual([MUST_NOT(`${dir}/vitest.config.ts`, VITE_OPTION)]);
+      });
+
+      it.each([
+        ['the config no longer declares the condition', 'export default { test: {} };\n', 'it declares no condition, so it needs no exception'],
+        ['the config is gone', undefined, 'the config is gone'],
+      ])('reports an exception that no longer applies: %s', (_form, content, why) => {
+        const dir = pack();
+        if (content !== undefined) writeAt(`${dir}/vite.config.ts`, content);
+        expect(conditionProblems(undefined, new Map([[`${dir}/vite.config.ts`, WHY]])))
+          .toEqual([`${dir}/vite.config.ts: listed in DECLARES_SOURCE_BY_DESIGN (${WHY}) but ${why}`]);
+      });
+
+      // Every case so far has been better served by moving the file, and the table's doc comment says so
+      it('is empty in this repo, and every entry it ever holds still applies', () => {
+        expect([...DECLARES_SOURCE_BY_DESIGN.keys()]).toEqual([]);
+        expect(findMissingSourceConditions()).toEqual([]);
+      });
     });
   });
 
