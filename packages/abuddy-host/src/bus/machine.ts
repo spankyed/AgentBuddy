@@ -115,6 +115,22 @@ export function createBusMachine(options: BusOptions) {
   const { registry } = options;
   const systems = options.systems ?? registry.getRegisteredSystems;
   const clientLoadedPacks = () => new Set(options.clientLoadedPacks?.() ?? []);
+  /**
+   * The `<plugin>/<type>` pairs whose drop has already been reported, so each is reported once per bus.
+   *
+   * Reporting a drop logs it, and a log event becomes a send to the logs plugin (default-setup's logs
+   * system forwards it as LOG_ADDED). When the plugin being dropped is that one, reporting a drop
+   * produces another droppable send, and the cycle feeds itself.
+   *
+   * It feeds itself through the actor's queue rather than the call stack — the send arrives as a fresh
+   * OUTGOING event, not a nested call — so it shows up as an app that stops responding rather than a
+   * stack overflow, and nothing that reasons about re-entrancy within one transition can see it.
+   * Reporting each pair once bounds it whatever the timing, keeps the first of every distinct problem,
+   * and independently stops a misbehaving pack from flooding the log.
+   *
+   * Scoped to the machine, not the module: a test app's drops are its own.
+   */
+  const reportedDrops = new Set<string>();
   return setup({
     types: {
       events: {} as BackendEvents,
@@ -136,20 +152,18 @@ export function createBusMachine(options: BusOptions) {
         // Three cases, and only the first two are wrong. `null` is a plugin whose pack declared no event
         // types at all — built before they existed — so there is nothing to check the send against and
         // dropping it would break the pack outright rather than catch a mistake.
+        const reportDrop = (message: string) => {
+          const pair = `${pluginId}/${type}`;
+          if (reportedDrops.has(pair)) return;
+          reportedDrops.add(pair);
+          reportError({ source: 'bus', operation: 'sendToPlugin', error: new Error(message) });
+        };
         if (accepted === undefined) {
-          reportError({
-            source: 'bus',
-            operation: 'sendToPlugin',
-            error: new Error(`Dropped "${type}" sent to "${pluginId}", which no registered pack declares as a plugin that receives events. Check the id, or give the plugin's own pack a system that declares what it sends there.`),
-          });
+          reportDrop(`Dropped "${type}" sent to "${pluginId}", which no registered pack declares as a plugin that receives events. Check the id, or give the plugin's own pack a system that declares what it sends there.`);
           return;
         }
         if (accepted !== null && !accepted.has(type)) {
-          reportError({
-            source: 'bus',
-            operation: 'sendToPlugin',
-            error: new Error(`Dropped "${type}" sent to the "${pluginId}" plugin, which declares no such event. A plugin receives what its own pack's systems declare they emit: add it to that system's outgoing events, or send an event the plugin handles.`),
-          });
+          reportDrop(`Dropped "${type}" sent to the "${pluginId}" plugin, which declares no such event. A plugin receives what its own pack's systems declare they emit: add it to that system's outgoing events, or send an event the plugin handles.`);
           return;
         }
         options.onOutgoing(event.event);

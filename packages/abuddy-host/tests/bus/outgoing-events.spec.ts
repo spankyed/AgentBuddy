@@ -4,6 +4,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, setup, type AnyActorRef } from 'xstate';
 import { startTestRuntime, takeSystemErrors, testRootEvents } from '@abuddy/sdk/testing';
+import { onLog } from '@abuddy/sdk/logger';
 import type { OutgoingSystemEvents } from '@abuddy/sdk/events';
 import { createAppBus } from '../../src/bus/index.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
@@ -104,6 +105,39 @@ describe('an event a system sends to a plugin', () => {
     await send({ type: 'PACKS_LIST', pluginId: 'packs', packs: [] });
     expect(delivered().map((e) => e.type)).toEqual(['PACKS_LIST']);
     expect(takeSystemErrors()).toEqual([]);
+  });
+});
+
+/**
+ * Reporting a drop logs it, and a log event becomes a send to the logs plugin. When that plugin is the
+ * one being dropped, reporting a drop produces another droppable send — and the send arrives as a fresh
+ * OUTGOING event rather than a nested call, so the cycle grows the actor's queue instead of the call
+ * stack. It stops responding rather than overflowing, which is why nothing that reasons about
+ * re-entrancy within a transition catches it. The test has to drive a running bus for the same reason.
+ */
+describe('a drop whose report produces another droppable send', () => {
+  it('reports the pair once and settles, rather than feeding itself', async () => {
+    // Stands in for default-setup's logs system: every log event becomes a send to the logs plugin,
+    // which no pack here declares, so each send is dropped and reporting it logs again.
+    const stopRelay = onLog(() => { bus.send({ type: 'OUTGOING', event: { type: 'LOG_ADDED', pluginId: 'logs' } }); });
+    try {
+      await send({ type: 'LOG_ADDED', pluginId: 'logs' });
+      for (let i = 0; i < 5; i++) await flush();
+      const errors = takeSystemErrors().filter((e) => e.message?.includes('logs'));
+      expect(errors).toHaveLength(1);
+    } finally {
+      stopRelay();
+    }
+  });
+
+  it('still reports a different plugin, so deduplication is per pair and not a global mute', async () => {
+    await send({ type: 'MEMO_SHREDDED', pluginId: 'memos' });
+    expect(takeSystemErrors().map((e) => e.message)).toHaveLength(1);
+    // The same pair again is silent; a different type on the same plugin is not
+    await send({ type: 'MEMO_SHREDDED', pluginId: 'memos' });
+    expect(takeSystemErrors()).toEqual([]);
+    await send({ type: 'MEMO_BURNED', pluginId: 'memos' });
+    expect(takeSystemErrors()).toHaveLength(1);
   });
 });
 
