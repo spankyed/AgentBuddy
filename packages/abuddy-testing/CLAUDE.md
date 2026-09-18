@@ -61,7 +61,7 @@ carries no comments.
 
 | # | Door | Covers | Where |
 |---|---|---|---|
-| 1 | `npm run packages:ensure &&` in a root script | a repo command: `test`, `test:smoke`, `test:e2e`, `test:external-pack`, `typecheck`, `typecheck:pack`, `compile`, `prebuild`, `prebuild:be:dev` | root `package.json` |
+| 1 | `npm run packages:ensure &&` in a root script | a repo command: `test`, `test:smoke`, `test:e2e`, `test:external-pack`, `typecheck`, `typecheck:pack`, `compile`, `prebuild` | root `package.json` |
 | 2 | that workspace's `pretest` | `npm test -w @abuddy/cli` and `npm test -w @app/default-setup` run directly, which no root script wraps | each package's `package.json` |
 | 3 | `ensureCheckoutPackages(packRoot)` | `abuddy build`, `abuddy test`, `abuddy dev` — from any directory, for a pack whose packages are a checkout's | `abuddy-cli/src/build/checkout-packages.ts`, called from `commands/{build,test,dev}.ts` |
 | 4 | the `Build publishable packages` step | CI, whose typecheck step already built them through `typecheck:pack` | `.github/workflows/ci.yml` |
@@ -85,6 +85,11 @@ Three things follow.
 - **A checker must not try to repair.** Its process has already resolved and loaded modules; a rebuild
   underneath it would leave half of two builds in memory. `assertCheckoutPackagesFresh` reports a build
   running beside it separately for that reason, and says to wait rather than to start another.
+
+One path is deliberately not in the table twice. `npm start` reaches door 3, because its
+`prebuild:be:dev` builds the built-in pack with `abuddy build --skip-fe`, and that command ensures —
+so the script carries no prefix of its own. `prebuild` does carry one: `npm run build -ws` fans out
+across the workspaces in no guaranteed order, so nothing there can be relied on to ensure first.
 
 For an installed pack there is no checkout above it, every one of these is a no-op, and what npm
 delivered is what there is.
