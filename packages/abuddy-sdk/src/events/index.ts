@@ -60,6 +60,17 @@ export type HostPluginEvents = {
 };
 
 /**
+ * The host plugins a pack's system may name in `sendsTo`, as a value the build can read — the keys of
+ * `HostPluginEvents`, which a type cannot be enumerated into at runtime. The check below fails to
+ * compile if the two ever disagree, so adding a host plugin to one without the other is not possible.
+ */
+export const HOST_PLUGIN_IDS = ['application'] as const;
+
+type SameMembers<A extends string, B extends string> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
+const _hostPluginIdsMatchEvents: SameMembers<(typeof HOST_PLUGIN_IDS)[number], keyof HostPluginEvents> = true;
+void _hostPluginIdsMatchEvents;
+
+/**
  * Delivers an event to a backend system: in the renderer over its API client, elsewhere onto the bound app's bus.
  * A bound frontend wins, as it does for the registered packs' lookups (`_boundPackContributions`).
  */

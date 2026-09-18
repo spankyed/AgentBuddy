@@ -10,7 +10,6 @@ import type { ActionsStartupData } from './types';
 import { repository } from '@/__generated__/repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
-import './repository';
 import { exportActions } from './repository/export-actions';
 import type { ActionEntity } from '@abuddy/sdk';
 

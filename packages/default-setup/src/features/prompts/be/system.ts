@@ -8,7 +8,6 @@ import type { PromptsConnectedData } from './types';
 import { repository } from '@/__generated__/repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
-import './repository';
 import { exportPrompts } from './repository/export-prompts';
 import type { PromptEntity } from '@abuddy/sdk';
 

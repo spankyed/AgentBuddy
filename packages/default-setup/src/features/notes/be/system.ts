@@ -8,7 +8,6 @@ import { EARS } from '@/__generated__/ears';
 import type { NoteDTO, NotesConnectedData, OutgoingNotesSearchEvent } from './types';
 import { repository } from '@/__generated__/repository';
 
-import './repository';
 import { syncReferences } from './repository/link-utils';
 import { exportNotes } from './export-notes';
 import { importNotes } from './import-notes';

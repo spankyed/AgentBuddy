@@ -1,4 +1,5 @@
 import { readFileSync, existsSync, statSync } from 'fs';
+import { HOST_PLUGIN_IDS as SDK_HOST_PLUGIN_IDS } from '../events/index.ts';
 import { extname, join } from 'path';
 import { _dependencyCommands, type PackManifest, type PackFeatureEntry, type PackTypeManifest, type PackSnapshot, type StepEntry } from './manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
@@ -258,8 +259,8 @@ function toImportPath(root: string, manifestPath: string): string {
   return `${rel}.js`;
 }
 
-/** Host plugins pack systems can send to: the keys of HostPluginEvents in @abuddy/sdk/services */
-const HOST_PLUGIN_IDS = ['application'];
+/** Host plugins pack systems can send to. Declared beside `HostPluginEvents`, which pins the two together. */
+const HOST_PLUGIN_IDS: readonly string[] = SDK_HOST_PLUGIN_IDS;
 
 /**
  * The plugins a pack's own `PackEvents` keys, from its manifest: a feature that has both a system and
