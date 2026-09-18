@@ -19,7 +19,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "build:package": "tsx scripts/build-package.ts",
-    "attw": "attw --pack . --profile esm-only --exclude-entrypoints ./utils/internals ./runtime/internals",
+    "attw": "attw --pack . --profile esm-only --exclude-entrypoints ./runtime/internals",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "api:build": "node -e \"require('fs').rmSync('.temp', { recursive: true, force: true })\" && tsc -p tsconfig.api-extractor.json",
@@ -115,11 +115,6 @@
       "types": "./dist/build/index.d.ts",
       "default": "./dist/build/index.js"
     },
-    "./build/source-conditions": {
-      "@abuddy/source": "./src/build/source-conditions.ts",
-      "types": "./dist/build/source-conditions.d.ts",
-      "default": "./dist/build/source-conditions.js"
-    },
     "./runtime": {
       "@abuddy/source": "./src/runtime/index.ts",
       "types": "./dist/runtime/index.d.ts",
@@ -176,9 +171,6 @@
       "default": "./dist/testing/index.js"
     },
     "./abuddy.schema.json": "./abuddy.schema.json",
-    "./utils/internals": {
-      "@abuddy/source": "./src/utils/internals.ts"
-    },
     "./runtime/internals": {
       "@abuddy/source": "./src/runtime/internals.ts"
     }

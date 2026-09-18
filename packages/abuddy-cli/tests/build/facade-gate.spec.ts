@@ -70,19 +70,21 @@ describe('facade gate', () => {
     ]);
   }, 60_000);
 
-  // A linked checkout resolves these; a dependent installing the published packages doesn't
-  it('fails a facade that imports an @abuddy/* module only a checkout resolves', async () => {
+  // Nothing resolves these now: a pack build compiles the published packages, so a source-only export
+  // fails the rule and fails to compile, and the rule's message is what names the reason
+  it('fails a facade that imports an @abuddy/* module no pack resolves', async () => {
     const { problems } = await gate('source-only-export', {
       'src/internals.ts': [
-        "import type { registerSecretValue } from '@abuddy/sdk/utils/internals';",
+        "import type { unbindHost } from '@abuddy/sdk/runtime/internals';",
         "import type { PackInfo } from '@abuddy/host/packs';",
-        'export const internalsService = { redaction: (): typeof registerSecretValue | null => null, pack: (): PackInfo | null => null };',
+        'export const internalsService = { unbind: (): typeof unbindHost | null => null, pack: (): PackInfo | null => null };',
       ].join('\n'),
       'src/__generated__/pack-types.ts': "import type { internalsService } from '../internals.js';\nexport type Services = { internals: typeof internalsService };\n",
     });
     expect(problems).toEqual([
-      expect.stringMatching(/imports "@abuddy\/sdk\/utils\/internals", which @abuddy\/sdk exports only to a linked checkout \(the @abuddy\/source condition\), not to installed dependents \(reached from: Services\)$/),
+      expect.stringMatching(/imports "@abuddy\/sdk\/runtime\/internals", which @abuddy\/sdk exports only to a linked checkout \(the @abuddy\/source condition\), not to installed dependents \(reached from: Services\)$/),
       expect.stringMatching(/imports "@abuddy\/host\/packs", a private package dependents can't install \(reached from: Services\)$/),
+      expect.stringContaining("error TS2307: Cannot find module '@abuddy/sdk/runtime/internals'"),
     ]);
   }, 60_000);
 
