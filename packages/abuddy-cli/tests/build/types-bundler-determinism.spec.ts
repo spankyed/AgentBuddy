@@ -3,13 +3,14 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { sourceConditions } from '@abuddy/sdk/build';
 import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '../helpers/published-packages';
 
 /**
- * A pack's facade bundle (dist/types/pack-types.d.ts) is the same whether its @abuddy/* packages
- * resolve from a linked checkout's source or from installed dist declarations: dependents, the
- * snapshot and a pack's reviewed facade report don't change with how the author installed the SDK.
+ * A pack's facade bundle (dist/types/pack-types.d.ts) is the same whether its @abuddy/* packages come
+ * from this checkout's workspace links or from the tarballs npm would publish: what the repo builds
+ * against is what a pack author installs. A package whose `files` or `exports` ship something other
+ * than the workspace has, as a private package with no `files` field does, shows up here as a
+ * different facade — or as a build that cannot resolve the packages at all.
  */
 const CLI = path.join(REPO_ROOT, 'packages', 'abuddy-cli', 'bin', 'abuddy.mjs');
 
@@ -79,13 +80,10 @@ describe.skipIf(!PACKAGES_BUILT)('facade bundle determinism (needs dist: npm run
   const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'facade-determinism-'));
   afterAll(() => fs.rmSync(parent, { recursive: true, force: true }));
 
-  it('is identical with @abuddy/* from source and from installed dist', () => {
-    const fromSource = buildFacade(parent, 'source', path.join(REPO_ROOT, 'node_modules'));
-    const fromDist = buildFacade(parent, 'dist', path.join(installPublishedPackages(), 'node_modules'));
-    // The two builds really resolved the SDK differently
-    expect(sourceConditions(path.join(parent, 'source'))).toEqual(['@abuddy/source']);
-    expect(sourceConditions(path.join(parent, 'dist'))).toEqual([]);
-    expect(fromSource).toContain('QueryBuilder');
-    expect(fromDist).toBe(fromSource);
+  it('is identical from the workspace and from the packed tarballs a consumer installs', () => {
+    const fromWorkspace = buildFacade(parent, 'workspace', path.join(REPO_ROOT, 'node_modules'));
+    const fromPacked = buildFacade(parent, 'packed', path.join(installPublishedPackages(), 'node_modules'));
+    expect(fromWorkspace).toContain('QueryBuilder');
+    expect(fromPacked).toBe(fromWorkspace);
   }, 240_000);
 });

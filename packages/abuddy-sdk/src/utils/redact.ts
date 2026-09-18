@@ -4,7 +4,7 @@
  * Strings shaped like provider API keys (OpenAI, Anthropic, Groq, Google), masked or not, wherever they start after a
  * character that isn't a letter or digit (`foo_sk-…` too). Mistral and Cohere keys have no prefix: text can't tell them
  * from other long tokens, so they're redacted as the values of credential fields below, and by value once the app has
- * used them (`@abuddy/sdk/utils/internals`).
+ * used them (the app's `HostRuntime.redaction`).
  */
 const KEY_SHAPED = /(?<![A-Za-z0-9])(?:sk-(?:ant-|proj-)?|gsk_|AIza)[A-Za-z0-9_\-*.…]{16,}/g;
 
@@ -29,17 +29,19 @@ const MAX_DEPTH = 50;
 /** The shortest run worth checking against the values the app has used */
 const MIN_RUN = 20;
 
-/** Whether `text` from `from` to `to` is a key value the app has used, installed by the host (`@abuddy/sdk/utils/internals`) */
+/** Whether `text` from `from` to `to` is a key value the app has used, from the app's `HostRuntime.redaction` */
 let matchesSecretValue: ((text: string, from: number, to: number) => boolean) | undefined;
 
 /**
- * Installs the check that tells redaction whether a run of characters is one of the key values this process has used,
- * so keys with no recognizable prefix (Mistral, Cohere) are masked too. The host's `@abuddy/sdk/utils/internals`
- * installs it; this module's setter isn't exported from `@abuddy/sdk/utils` or `/pure`, so packs can't replace it.
+ * Takes the check that tells redaction whether a run of characters is one of the key values this process has used, so
+ * keys with no recognizable prefix (Mistral, Cohere) are masked too. `bindHost` calls this with the app's
+ * `redaction`, and `unbindHost` clears it: the values belong to the host's secrets store, and the only way to decide
+ * what counts as one is to be the app. This module is `@abuddy/sdk/utils/pure`, so it reads the bound app through
+ * nothing — the binding pushes the check in, which also keeps the engine out of frontend bundles.
  *
  * @internal
  */
-export function setSecretValueMatcher(matches: (text: string, from: number, to: number) => boolean): void {
+export function setSecretValueMatcher(matches: ((text: string, from: number, to: number) => boolean) | undefined): void {
   matchesSecretValue = matches;
 }
 
@@ -96,7 +98,7 @@ function previousSeparator(text: string, from: number, to: number): number {
 
 /**
  * `text` with key-shaped strings, the quoted values of credential fields printed in it, and the key values this process
- * has used (`@abuddy/sdk/utils/internals`), replaced
+ * has used (the app's `HostRuntime.redaction`), replaced
  */
 export function redactSecretText(text: string): string {
   const masked = text

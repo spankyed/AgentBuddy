@@ -1,15 +1,22 @@
-// Builds @abuddy/ui's dist/: tsdown compiles the components and modules to ESM (with the CSS
-// each component imports), and vue-tsc typechecks them and emits per-module declarations.
-// package.json is the published manifest; its exports resolve source under the @abuddy/source
-// condition (monorepo tooling) and dist otherwise.
+// Builds @abuddy/ui's dist/: tsdown compiles the components and modules to ESM (with the CSS each
+// component imports), and vue-tsc typechecks them and emits per-module declarations. package.json is the
+// published manifest; its exports resolve source under the @abuddy/source condition (the repo's own
+// configs) and dist otherwise.
+//
+//   tsx ../../scripts/build-ui-package.ts .     (from packages/abuddy-ui)
+//
+// Separate from build-package.ts, which is plain tsc: the two share no steps beyond the shipped-imports
+// check. It lives here rather than in the package because it reads the repo's build rule
+// (@abuddy/host/build/packages-built), and a package's own scripts import no package above their layer.
+// The exports helpers stay with the package, since `npm run exports:update -w @abuddy/ui` runs them too.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { isDeepStrictEqual } from 'node:util';
 import { execFileSync } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { BareImports, assertExportTargetsBuilt, walk } from '../../../scripts/lib/published-imports.ts';
-import { computeExports, findComponentsWithoutEntry, missingEntriesMessage, pkgDir } from './exports.ts';
-import { runPackageBuild } from '../../../scripts/ensure-packages-built.ts';
+import { BareImports, assertExportTargetsBuilt, walk } from './lib/published-imports.ts';
+import { computeExports, findComponentsWithoutEntry, missingEntriesMessage, pkgDir } from '../packages/abuddy-ui/scripts/exports.ts';
+import { runPackageBuild } from '@abuddy/host/build/packages-built';
 
 const outDir = path.join(pkgDir, 'dist');
 const require = createRequire(import.meta.url);

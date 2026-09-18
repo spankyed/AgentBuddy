@@ -9,10 +9,11 @@ import { SHARED_INSTANCE_PACKAGES } from '@abuddy/host/build/shared-deps';
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
 const CHECKED_DIRS = [
-  'packages/abuddy-ears/src', 'packages/abuddy-ears/tests', 'packages/abuddy-ears/scripts',
+  'packages/abuddy-ears/src', 'packages/abuddy-ears/tests',
   'packages/abuddy-sdk/src', 'packages/abuddy-sdk/tests', 'packages/abuddy-sdk/scripts',
   'packages/abuddy-host/src', 'packages/abuddy-host/tests',
   'packages/abuddy-ui/src', 'packages/abuddy-ui/scripts',
+  'packages/abuddy-testing/src',
 ];
 
 /** Emitted extension → the source extensions that compile to it */
@@ -82,7 +83,12 @@ function findSpecifiers(files: string[], root: string, matches: (text: string, f
  * An import of hand-written declarations (`./speech-event.js` → speech-event.d.ts) has no source and is fine.
  */
 export function findJsSpecifiers(dirs = CHECKED_DIRS, root = repoRoot): string[] {
-  const files = dirs.flatMap((dir) => [...sourceFiles(path.join(root, dir))]);
+  const files = dirs.flatMap((dir) => {
+    // A listed directory that is gone means the list is stale and something is no longer checked,
+    // which is worth failing over — but say so, rather than letting a readdir ENOENT stack out
+    if (!fs.existsSync(path.join(root, dir))) throw new Error(`${dir} is listed in CHECKED_DIRS and does not exist: remove it, or restore the directory`);
+    return [...sourceFiles(path.join(root, dir))];
+  });
   return findSpecifiers(files, root, (text, file) => {
     const emitted = path.extname(text);
     const base = path.resolve(path.dirname(file), text.slice(0, -emitted.length));
@@ -412,8 +418,6 @@ const CONFIG_FILE = /^(?:tsconfig(?:[.-][\w.-]+)?\.json|(?:vite|vitest|tsup|tsdo
 const SKIPPED_DIRS = /^(?:node_modules|dist|out|coverage|\..+)$/;
 /** Files a config compiles or bundles. Declarations included: tsc resolves their imports too */
 const CODE_FILE = /\.(?:[cm]?[jt]sx?|vue)$/;
-/** Helpers that build a config's condition list (@abuddy/testing's vitest helper, the host's NODE_OPTIONS helper) */
-const CONDITION_HELPER = /^(?:sourceConditions|withSourceCondition)$/;
 /** The extensions a relative config import may leave out */
 const CONFIG_EXTENSIONS = ['', '.ts', '.mts', '.cts', '.js', '.mjs', '.cjs'];
 /**
@@ -427,6 +431,44 @@ const TEST_FILE_OPTIONS = ['include', 'includeSource', 'dir', 'root', 'setupFile
  * or bundles code importing a source-condition package must declare the condition, so a new one
  * either declares it or is listed here.
  */
+/**
+ * Pack configs that declare the `@abuddy/source` condition on purpose, with the reason each does.
+ *
+ * The rule this excepts: a pack resolves the `@abuddy` packages' published `dist`, the one layout a pack
+ * author ever has. A pack config that declares the condition compiles against this checkout's source
+ * instead, so it builds something no pack author can reproduce.
+ *
+ * **Try moving the file first.** What this is for is a config that belongs to a pack but is run by a
+ * host build: a Vite config for a built-in pack's frontend that the renderer runs, or a tsconfig the
+ * app's build extends to compile that pack's sources. Both are host code by role and pack code only by
+ * location. Putting such a file in `packages/renderer/` and naming it after the pack costs nothing but
+ * distance from the code it configures — so add a row only when moving it is genuinely not possible.
+ *
+ * **Never to make a pack's own build or test run work.** That pack then builds unlike every pack
+ * author's, which is the failure this rule exists to prevent. A pack build that needs source is one
+ * whose `dist` is stale: run `npm run packages:ensure`. Same for a "canary" pack compiled against SDK
+ * source to catch breaking changes early — it reports on a world no pack author lives in, and
+ * `npm run typecheck:sdk` and the `api:check` reports already cover that surface against the real
+ * declarations.
+ *
+ * **Keep it much smaller than `RESOLVES_DIST_BY_DESIGN`.** The two are not mirror images. An exception
+ * there resolves `dist`, the layout every consumer has, so a wrong entry costs a stale build and surfaces
+ * as a type error. An exception here resolves this checkout's source, so a wrong entry costs a build
+ * nobody outside this checkout can reproduce — and nothing notices, because
+ * `types-bundler-determinism.spec.ts` compares a synthetic fixture pack against the published tarballs,
+ * never the packs in this repository. So a row excepting a pack's *build* owes a test that builds that
+ * pack both ways and compares the output; a row for a host config that merely sits in the tree owes
+ * nothing, having never been a pack build.
+ */
+export const DECLARES_SOURCE_BY_DESIGN = new Map<string, string>([
+  // Empty on purpose: every case so far has been better served by moving the file out of the pack tree.
+  // A spec asserts it stays empty, so the first row costs a deliberate edit rather than an absent-minded one.
+  //
+  // If you are an agent and the work in front of you seems to need a row here: stop and raise it with the
+  // user. Adding one, deleting the spec that keeps this empty, or loosening the rule around it are their
+  // calls, not yours — and the answer is usually to move the file instead.
+]);
+
 export const RESOLVES_DIST_BY_DESIGN = new Map<string, string>([
   // API Extractor reads the .d.ts rollup of a package's dependencies, so they must resolve to built
   // declarations; with the source condition tsc would analyse the dependency's .ts instead and report
@@ -479,6 +521,8 @@ interface ConditionScan {
   packages: readonly string[];
   configs: string[];
   code: string[];
+  /** Every directory holding an `abuddy.json` */
+  packs: string[];
   /** Whether a file imports one of `packages`, by absolute path */
   imports: Map<string, boolean>;
   tsconfigs: Map<string, ts.ParsedCommandLine>;
@@ -510,6 +554,8 @@ function walkTree(dir: string, scan: ConditionScan, ancestors: Set<string>): voi
       // A config is code too: a tsconfig that lists `vitest.config.ts` compiles it
       if (CONFIG_FILE.test(entry.name)) scan.configs.push(full);
       if (CODE_FILE.test(entry.name)) scan.code.push(full);
+      // A directory with a manifest is a pack, and a pack resolves the packages' published dist
+      if (entry.name === 'abuddy.json') scan.packs.push(dir);
     }
   }
   ancestors.delete(real);
@@ -763,11 +809,10 @@ function yieldsCondition(raw: ts.Expression, source: ts.SourceFile, seen: Set<ts
     if (declared.length === 0) return { unreadable: `the condition list ${value.text} comes from outside this file` };
     return combine(declared.map((init) => yieldsCondition(init, source, seen)));
   }
+  // A computed list says nothing either way: every config that needs the condition names it outright
   if (ts.isCallExpression(value)) {
     const callee = ts.isIdentifier(value.expression) ? value.expression.text
       : ts.isPropertyAccessExpression(value.expression) ? value.expression.name.text : undefined;
-    // sourceConditions() and withSourceCondition() add the condition; any other call is opaque here
-    if (callee !== undefined && CONDITION_HELPER.test(callee)) return true;
     return { unreadable: `its condition list is built by ${callee ?? 'a call'}()` };
   }
   // Both branches of a conditional must carry it: one that doesn't resolves dist
@@ -811,18 +856,33 @@ function declaresCondition(file: string, scan: ConditionScan, seen = new Set<str
  * next one through. An exception that no longer applies is reported too, so the list doesn't outlive
  * its reason.
  */
-export function findMissingSourceConditions(root = repoRoot, exceptions = RESOLVES_DIST_BY_DESIGN): string[] {
+export function findMissingSourceConditions(
+  root = repoRoot,
+  exceptions = RESOLVES_DIST_BY_DESIGN,
+  packExceptions = DECLARES_SOURCE_BY_DESIGN,
+): string[] {
   const scan: ConditionScan = {
     packages: sourceConditionPackages(root),
-    configs: [], code: [], imports: new Map(), tsconfigs: new Map(), sources: new Map(),
+    configs: [], code: [], packs: [], imports: new Map(), tsconfigs: new Map(), sources: new Map(),
   };
   walkTree(root, scan, new Set());
   const problems: string[] = [];
   const applied = new Set<string>();
+  const packApplied = new Set<string>();
+  const inPack = (file: string) => scan.packs.some((pack) => file.startsWith(pack + path.sep));
   for (const file of scan.configs.sort()) {
     const relative = path.relative(root, file).split(path.sep).join('/');
-    const scope = configScope(file, scan);
     const verdict = declaresCondition(file, scan);
+    // A pack compiles the packages' published dist, the one layout a pack author has, so its configs
+    // declare nothing. The rule is the other way round for the repo's own code, below.
+    if (inPack(file)) {
+      if (verdict === false) continue;
+      if (packExceptions.has(relative)) { packApplied.add(relative); continue; }
+      problems.push(`${relative}: a pack resolves the @abuddy packages' published dist, so it must not declare "${SOURCE_CONDITION}" in ${conditionOption(file)}`
+        + '; move a host-side config out of the pack tree, or add it to DECLARES_SOURCE_BY_DESIGN saying why it belongs there');
+      continue;
+    }
+    const scope = configScope(file, scan);
     if (verdict === true || !compilesImportingCode(scope, scan)) continue;
     if (exceptions.has(relative)) { applied.add(relative); continue; }
     const notes = [verdict === false ? undefined : verdict.unreadable, scope.kind === 'trees' ? scope.hint : undefined];
@@ -833,6 +893,13 @@ export function findMissingSourceConditions(root = repoRoot, exceptions = RESOLV
   for (const [relative, reason] of exceptions) {
     if (!applied.has(relative)) {
       problems.push(`${relative}: listed in RESOLVES_DIST_BY_DESIGN (${reason}) but ${present.has(relative) ? 'it already declares the condition or compiles no such code' : 'the config is gone'}`);
+    }
+  }
+  // An exception that stopped applying is itself a problem: the reason it records is no longer true of
+  // anything, and a row nobody revisits is how a table like this grows past what it can justify
+  for (const [relative, reason] of packExceptions) {
+    if (!packApplied.has(relative)) {
+      problems.push(`${relative}: listed in DECLARES_SOURCE_BY_DESIGN (${reason}) but ${present.has(relative) ? 'it declares no condition, so it needs no exception' : 'the config is gone'}`);
     }
   }
   return problems;
@@ -892,7 +959,7 @@ if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])
     [findSharedPackageLists, 'Derive shared-instance packages from SHARED_INSTANCE_PACKAGES (@abuddy/host/build/shared-deps) instead of naming them'],
     [findRepositoryCasts, "Call a package's repositories through its exports, not a cast of the repository registry"],
     [findCrossCheckoutResolution, 'Workspace packages resolve inside this checkout, so a worktree nested in the repository never typechecks against the parent checkout'],
-    [findMissingSourceConditions, 'Every config that compiles or bundles code importing @abuddy/ears, @abuddy/sdk, @abuddy/ui or @abuddy/testing declares the @abuddy/source condition, so it reads their TypeScript source instead of a stale dist'],
+    [findMissingSourceConditions, "The repo's own configs declare the @abuddy/source condition when they compile or bundle code importing @abuddy/ears, @abuddy/sdk or @abuddy/ui, so they read TypeScript source instead of a stale dist; a pack's configs declare none, because a pack resolves the published dist"],
   ];
   for (const [find, rule] of checks) {
     const problems = find();

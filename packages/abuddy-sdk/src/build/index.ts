@@ -59,7 +59,6 @@ export {
 export type { GenerateEntriesOptions } from './generate-entries.ts';
 
 // Resolve conditions for building pack code against a linked checkout
-export { sourceConditions } from './source-conditions.ts';
 
 // Pack validation
 export { validateManifest, validateFeatures, parseManifest } from './validate.ts';

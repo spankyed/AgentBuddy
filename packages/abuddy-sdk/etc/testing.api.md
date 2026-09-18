@@ -5,9 +5,13 @@
 ```ts
 
 import type { AnyActorRef } from 'xstate';
+import type { AnyExtension } from '@tiptap/vue-3';
+import type { AnyStateMachine } from 'xstate';
 import type { BaseEntity } from '@abuddy/ears';
+import type { Component } from 'vue';
 import type { DeepPartial } from 'ai';
 import { EARS as EARS_2 } from '@abuddy/ears';
+import type { EditorState } from '@tiptap/pm/state';
 import type { embed } from 'ai';
 import type { embedMany } from 'ai';
 import type { FlexibleSchema } from 'ai';
@@ -108,6 +112,10 @@ export interface FakeTextCall {
 }
 
 // @public
+export interface FeTestRuntimeOptions extends Partial<FeHostRuntime> {
+}
+
+// @public
 export function registerSeedRuntime(runtime: SeedRuntime): void;
 
 // @public
@@ -128,7 +136,13 @@ export interface SeedRuntime {
 }
 
 // @public
+export function startFeTestRuntime(options?: FeTestRuntimeOptions): () => void;
+
+// @public
 export function startTestRuntime(options?: TestRuntimeStartOptions): void;
+
+// @public
+export function stopFeTestRuntime(): void;
 
 // @public
 export function takeSystemErrors(): SystemErrorEvent[];

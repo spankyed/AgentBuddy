@@ -1,3 +1,5 @@
+> **Done** (PR #192, branch `AS/single-mode-packs`). The text below is the plan as written; see the Outcome for where the implementation differs from it — chiefly `@abuddy/testing`, which went fully single-mode rather than keeping the `@abuddy/source` condition the Decisions describe. For the current rule, see the root `CLAUDE.md`.
+
 > **Written in session** `36f122d9-3a1e-40ef-988d-40b2574fc098` (Claude Code, 2026-09-17). Resume it with `claude -r 36f122d9-3a1e-40ef-988d-40b2574fc098`.
 
 ```
@@ -242,6 +244,99 @@ Each of these is a verified defect, with the reproduction in the review:
 - **Done when:** each passes, with the command and its output in the summary. The review's two
   highest-severity defects lived in exactly these paths while every unit suite was green, so this phase is
   the evidence, not a formality.
+
+## Outcome (2026-09-18)
+
+Landed on `AS/single-mode-packs`, branched from `AS/package-resolution` at `0ccb78e35`, as 11 commits in
+PR #192 (stacked on #191). Every phase is done and every "Done when" met. Two things differ from the
+Decisions, both recorded below: the `@abuddy/testing` entries went fully single-mode rather than keeping
+the `@abuddy/source` key, and the changeset is a `minor` rather than a `major`. Nothing was deferred for
+lack of time; the open items below are choices left standing, not unfinished work.
+
+### Per phase
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — the mechanical baseline | done (confirmed, not rebuilt) | `npm test -w @abuddy/cli` green at the start: 60 files, 621 tests. `package-freshness.spec.ts` still covers the interrupted build, the deleted source and the future-dated source; no consumer fixture installs `@abuddy/testing`. |
+| 2 — remove the inference | done | `acd6263d0`, `bac70f8f2`, `f9649ab7f`, `3ab270cc3`. `check:specifiers` mutation-checked both ways on the committed tree: a pack config declaring the condition and a host config omitting it each produce their own message. Nothing reads `ABUDDY_PACKAGES`. `vue-tsc -p packages/default-setup/tsconfig.json --explainFiles \| grep -c abuddy-host/src` returns **0**, against 98 before. |
+| 3 — fix what the review found | done | `16ad7ab44`. Five defects: the seed-runtime check's inherited `NODE_OPTIONS`, `fixtureEnv`'s per-pack decision, Tailwind's silent empty `@abuddy/ui` dist, `abuddy test`/`abuddy dev` against a stale checkout, and the repo's own entry points. |
+| 4 — restore the invariants | done | `157c8209e`, `2dc4ed515`, `28c283f5e`. `secret-matcher-reach.spec.ts` fails if the setter appears in `@abuddy/sdk/utils`, `/utils/pure` or the pack bridge. `assertCheckoutPackagesFresh` verified from a pack outside the monorepo, green and failing, and covered by `checkout-freshness.spec.ts` (9 tests). |
+| 5 — contracts and documentation | done | `4e2ed2943`, `f16b862a3`. `abuddy init` scaffolds no condition; a changeset names the break; no non-archive doc names a deleted export. |
+| 6 — verify the paths a unit suite doesn't reach | done | See Final verification. |
+
+### Conventional choices
+
+- **Phase 2.** `CONDITION_HELPER` was deleted outright rather than trimmed: after `sourceConditions` went,
+  nothing in the repo built a config's condition list from a call, so a computed list is now reported as
+  unreadable, which is the honest verdict. Two `import-specifiers.spec.ts` cases that existed only to
+  exercise the dead helper name were rewritten without it.
+- **Phase 3.** The freshness rule moved from `scripts/ensure-packages-built.ts` into
+  `@abuddy/host/build/packages-built`, so `@abuddy/testing` reaches it by package specifier. A relative
+  import of a repo-root script puts the repo root into that bundle's declaration emit and moves every
+  `.d.ts` it publishes out from under its own exports map — npm packs that silently and a dependent then
+  sees an untyped module. `scripts/bundle-package.ts` gained a check that every path the published
+  manifest names exists, `bin` and copied files included.
+- **Phase 4.** `assertCheckoutPackagesFresh` takes its checkout and staleness reader as options so it can
+  be tested; it reports a build running beside it separately from a stale one, because a build removes each
+  stamp before rewriting it and the old message told the reader to run the build already running.
+- **Phase 5.** The `@abuddy/host` build helper `withSourceCondition` was deleted with the rest: nothing
+  added the condition to a child process any more.
+
+### Corrections to the Decisions
+
+- **`@abuddy/testing` is fully single-mode, not "built output on both conditions".** The Decision and its
+  phase disagreed: Phase 2 says "on both conditions", while the Decision's last lines say "The repo's own
+  code is unaffected, since it sets the condition and keeps resolving source" — which keeps the
+  `@abuddy/source` key and leaves the repo on a second resolution. It was implemented that way first
+  (`3ab270cc3`), and the consequence showed up immediately: the source entry calls
+  `assertCheckoutPackagesFresh`, which reports on a bundle that entry never loads, so **any** edit to a
+  package's source broke `npm test` with a message about something the E2E does not use. `eecfbf9aa`
+  drops the key from all three entries; the repo now runs the fixture a pack runs, and `npm test`,
+  `test:smoke`, `test:e2e` and `typecheck` each run `packages:ensure` first. The cost the Decision
+  anticipated is real and now applies to the repo too: an edit to the fixture's own source needs that
+  rebuild before `npm test` sees it.
+- **The changeset is a `minor`.** A `major` on 0.x means 1.0.0, and the `fixed` group carries it to
+  `@abuddy/ears` and `@abuddy/ui`, which the changeset does not name — taking all five out of 0.x on a
+  break no one is on the other side of. Owner's call: no consumers, fix forward.
+- **`typecheck` runs `packages:ensure` first, not only `typecheck:pack`.** Once `@abuddy/testing` resolves
+  its declarations, `tsc -p tests` needs the bundle, and it runs before `typecheck:pack` would have built it.
+
+### Open items
+
+- **`inPack` has no exception path.** `RESOLVES_DIST_BY_DESIGN` is consulted only on the host branch, so a
+  pack subtree that one day needs a host-side config has no escape. The rule has tests, so it fails loudly.
+- **`CHECKOUT_MARKER` is a filename.** "Am I in a checkout?" is answered by `scripts/ensure-packages-built.ts`
+  existing; renaming or moving it turns the freshness guard into a silent no-op.
+- **Two spellings reach the build rule.** `@abuddy/host/build/packages-built` and
+  `../../../scripts/ensure-packages-built.ts`, the latter a re-export so the `@abuddy/{ears,sdk,ui}` build
+  scripts don't name a package two layers below them — which they still load. Noted beside the layer rule
+  in the root `CLAUDE.md`; collapsing it to one spelling, or moving those scripts into the repo's
+  `scripts/`, is a separate change.
+- **Four mechanisms enforce build freshness**: the `packages:ensure &&` prefixes, `pretest` in
+  `@abuddy/cli` and `@app/default-setup`, `ensureCheckoutPackages`, and `assertCheckoutPackagesFresh`.
+  Each is defensible alone; which is authoritative deserves one deliberate pass.
+- **`test:packaged-authoring`'s E2E prints two renderer `TypeError`s** while passing. No renderer,
+  `@abuddy/ui` or component source changed on this branch, so it predates the work, but it is real.
+
+### Final verification
+
+| Command | Result |
+|---|---|
+| `npm run typecheck` | all 11 checks pass |
+| `npm run test:unit` | 72 / 690 / 395 / 118 / 366 / 28 / 636, exit 0 |
+| `npm run build` | passes |
+| `npm test` (E2E) | 13 passed |
+| `npm run test:external-pack` | 23 unit + 7 + 1 E2E |
+| `npm run test:packaged-authoring` | `External pack authoring end state: OK` |
+| `npm start` from a deleted `dist` | rebuilt all five, app connected, window created |
+| `abuddy test --app-root` in a linked pack outside the monorepo | 2 passed; with a checkout source edited, it rebuilt the five packages first and then passed |
+| `npm run schema:check` | up to date |
+| `npm run api:check` (ears, sdk, ui) | 2 / 28 / 100 reports up to date |
+| `npm run packages:check` | exit 0 |
+| `npm run facade:check` | up to date |
+
+Every new guard and test was mutation-checked in both directions, on the committed tree rather than on a
+work-in-progress one.
 
 ## Constraints
 

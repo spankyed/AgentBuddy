@@ -13,6 +13,9 @@ import { bindTestRuntime, resetTestHostState, type TestOnboarding } from './host
 export { testRootEvents, takeSystemErrors, addTestSecret, type TestRootEvents, type TestOnboarding } from './host.ts';
 export { testPacks, type TestPacks } from './packs.ts';
 export { fakeInference, type FakeInference, type FakeInferenceCall, type FakeInferenceReplies, type FakeInferenceReply, type FakeTextCall } from './fake-inference.ts';
+// A pack's own tests bind a frontend host for the file and forget it again; bindFeHost is the renderer's,
+// bound once at boot, and its unbind is host-only
+export { startFeTestRuntime, stopFeTestRuntime, type FeTestRuntimeOptions } from './fe-runtime.ts';
 
 /**
  * What a pack's seeding needs outside the app: its entity types and relation kinds, its repositories

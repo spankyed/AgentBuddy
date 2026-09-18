@@ -8,8 +8,8 @@ import { createSecretsStore, KeyVaultUnavailableError, memoryKeyVault, fileKeyVa
 
 // Every value the store handles is handed to redaction, which keeps only its digest and length
 const registered = vi.hoisted(() => [] as string[]);
-vi.mock('@abuddy/sdk/utils/internals', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('@abuddy/sdk/utils/internals')>();
+vi.mock('../../src/secrets/redaction.ts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../src/secrets/redaction.ts')>();
   return { ...actual, registerSecretValue: (value: string) => { registered.push(value); } };
 });
 

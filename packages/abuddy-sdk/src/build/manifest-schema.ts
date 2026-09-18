@@ -124,7 +124,7 @@ export const BootConfigSchema = z.object({
 const SystemSchema = z.object({
   entry: z.string().describe('Path to the backend system module.'),
   outgoingEventsType: z.string().describe('TypeScript type name for outgoing events (used by codegen).').optional(),
-  sendsTo: z.array(z.string()).describe('Plugins this system sends events to besides its own feature\'s: other features of this pack that have a plugin, plugins of its dependencies, or host plugins ("application"). Each receiving plugin\'s generated event type includes this system\'s outgoing events.').optional(),
+  sendsTo: z.array(z.string()).describe('Plugins this system sends events to besides its own feature\'s: other features of this pack that have a plugin, plugins of its dependencies, or host plugins ("application"). Another feature of this pack gains this system\'s outgoing events; a dependency\'s plugin or a host plugin keeps the events its own owner declares it receives, and naming it here is what makes it sendable at all.').optional(),
   events: z.object({
     incoming: z.array(z.string()).describe('Event types this system listens for.').optional(),
   }).strict().describe('Event routing declarations.').optional(),

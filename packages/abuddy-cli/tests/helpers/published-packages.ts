@@ -3,7 +3,7 @@ import { promisify } from 'node:util';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { BUILD_UNITS, staleMessage, stalePackageUnits } from '../../../../scripts/ensure-packages-built.ts';
+import { BUILD_UNITS, staleMessage, stalePackageUnits } from '@abuddy/host/build/packages-built';
 
 const execFileAsync = promisify(execFile);
 
@@ -35,7 +35,8 @@ export const CONSUMER_MATRIX = (Object.keys(TSC_VERSIONS) as TscVersion[])
 /**
  * Whether every `BUILD_UNITS` output exists: specs reading build output guard on it, and skip
  * without one — except in CI, where nothing should be unbuilt. The staleness check below catches a
- * run that bypassed the suite's `pretest` (`npx vitest`, a watch run): it reads the same verdict the
+ * run that bypassed the suite's `pretest` (`npx vitest`, a watch run) — checker 6 of the package-freshness
+ * doors (the doors are listed in packages/abuddy-testing/CLAUDE.md). It reads the same verdict the
  * pretest acts on, so the two can't disagree, and refuses rather than testing stale output.
  * Importing this never builds; that is the pretest's job, in its own process.
  */

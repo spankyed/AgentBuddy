@@ -21,7 +21,7 @@ Whichever `abuddy` you run, inside a pack it hands off to the `@abuddy/cli` vers
 | `@abuddy/ears` | The EARS data engine: what the generated `#generated/ears` and `#generated/repository` build on, and the untyped API packs import directly (`untypedQx`, `tx`, `findRelations`, graph and blueprint helpers, `RepositoryError`; `createEarsEngine` for tests and tooling). The app shares one instance with every pack, as it does `@abuddy/sdk`. A dependency of every pack. |
 | `@abuddy/ui` | Vue components, tiptap and Monaco editors and UI composables (`@abuddy/ui/design/button`, `@abuddy/ui/components/tiptap/TiptapEditor`). Add it when your pack's UI uses them; it brings the editor libraries, so backend-only packs leave it out. Packs use the app's copy at runtime (see `fe.bundleUi` in the manifest docs). |
 | `@abuddy/cli` | The `abuddy` command and build toolchain. A devDependency of every pack. |
-| `@abuddy/testing` | Pack tests: `@abuddy/testing/harness` runs a pack's seeds, systems, services and flows in unit tests without the app, `@abuddy/testing/vitest` configures Vitest for it (`isolatedDataDir`, `sourceConditions`), and `@abuddy/testing` is the Playwright fixture for E2E tests in the app (`@playwright/test` is a peer). |
+| `@abuddy/testing` | Pack tests: `@abuddy/testing/harness` runs a pack's seeds, systems, services and flows in unit tests without the app, `@abuddy/testing/vitest` configures Vitest for it (`isolatedDataDir`), and `@abuddy/testing` is the Playwright fixture for E2E tests in the app (`@playwright/test` is a peer). |
 
 The five are released together with the same version.
 

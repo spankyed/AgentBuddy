@@ -14,16 +14,12 @@ This page covers unit tests.
 ```typescript
 // vitest.config.ts
 import { defineConfig } from 'vitest/config';
-import { isolatedDataDir, sourceConditions } from '@abuddy/testing/vitest';
+import { isolatedDataDir } from '@abuddy/testing/vitest';
 
-// A pack linked to an AgentBuddy checkout resolves its @abuddy/* packages to source; installed packages don't
-const conditions = sourceConditions(import.meta.dirname);
 // A throwaway data dir per run, one subdir per worker
 const dataDir = isolatedDataDir();
 
 export default defineConfig({
-  resolve: { conditions },
-  ssr: { resolve: { conditions } },
   test: {
     globals: true,
     include: ['tests/unit/**/*.spec.ts'],
@@ -34,7 +30,7 @@ export default defineConfig({
 });
 ```
 
-- **`sourceConditions(packDir)`** returns `['@abuddy/source']` when the pack's `@abuddy` packages are a checkout's, and `[]` when they came from the registry — it reads what each install holds, so the tests resolve exactly what `abuddy build` does. Set it on both `resolve` and `ssr.resolve`; vitest adds its default conditions to them. It **throws** when a pack's installs disagree (`@abuddy/sdk` linked while `@abuddy/ui` is installed, say), because one condition list can't be right for both: link them all to the checkout, install them all from the registry, or state the mode with `ABUDDY_PACKAGES=source|dist`, which every part of a build reads.
+- **Set no `resolve.conditions`.** A pack's tests resolve its `@abuddy` packages exactly as `abuddy build` does: to the `dist` each published package ships. That is the one layout a pack ever has, so there is nothing to select.
 - **`isolatedDataDir(prefix?)`** creates the run's data dir. `setupPackTests` fails when `ABUDDY_USER_DATA_DIR` is unset, so keep its `env`, `globalSetup` and `setupFiles`, with its setup files before yours.
 - **Keep vitest's `isolate` on** (the default). The harness keeps one registry, database and set of mocks per test file, and `setupPackTests` fails, saying so, when it runs a second time in one process (`isolate: false`).
 
@@ -192,4 +188,17 @@ it('summarizes a note', async () => {
 - **Apps:** `startApp` and its types `StartAppOptions`, `TestApp`, `FlowRun`, `FlowStepTrace`, `RunFlowOptions` and `OutgoingSystemEvents` (what `emitted` and `nextEmit` return).
 - **Mocks and host state:** `mockService`, `mockInference`, `addTestSecret`, `takeSystemErrors`.
 
-`@abuddy/testing/vitest`: `isolatedDataDir` (`IsolatedDataDir`) and `sourceConditions`.
+`@abuddy/testing/vitest`: `isolatedDataDir` (`IsolatedDataDir`).
+
+`@abuddy/sdk/testing`, for the two cases the harness doesn't cover:
+
+- **`startFeTestRuntime(options?)` / `stopFeTestRuntime()`** — a frontend host for a test file that exercises plugin code, a tiptap plugin or a DSL type, which read the bound frontend the way a pack's backend reads the bound app. Bind it once per file and unbind at the end; nothing is registered unless the test passes it, so a contribution that registers itself on import is one this returns.
+
+  ```typescript
+  import { startFeTestRuntime } from '@abuddy/sdk/testing';
+
+  const stopFeTestRuntime = startFeTestRuntime();
+  afterAll(stopFeTestRuntime);
+  ```
+
+- **`registeredSeedKeys(packId)`** (`@abuddy/sdk/utils`) — the seed keys a registered pack has seeders for, which are the only keys an import of its seeds can seed. Assert against it when a test needs to know that a seeder is registered under the key its seed entry names, rather than inferring it from a `seedPack` count.

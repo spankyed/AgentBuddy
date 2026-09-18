@@ -4,12 +4,13 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  BUILD_UNITS, fingerprintInputs, staleMessage, stampFile, stampedBuild, unitStaleReason, withBuildLock,
-} from '../../../../scripts/ensure-packages-built.ts';
+  BUILD_UNITS, CHECKOUT_MARKER, fingerprintInputs, fingerprintUnit, STAMP_VERSION, staleMessage, stampFile,
+  stampedBuild, unitStaleReason, withBuildLock,
+} from '@abuddy/host/build/packages-built';
 import { PACKED_PACKAGES, REPO_ROOT } from '../helpers/published-packages';
 
 /**
- * The freshness rule behind `npm test -w @abuddy/cli`'s pretest (scripts/ensure-packages-built.ts):
+ * The freshness rule behind `npm test -w @abuddy/cli`'s pretest (@abuddy/host/build/packages-built):
  * a success stamp holding a content fingerprint of the build's inputs, so output that no successful
  * build produced never reads as built. Everything here runs on temporary fixtures — a spec must
  * never build the repo's packages (that is the pretest's job, in its own process).
@@ -42,7 +43,7 @@ function fixture(): { root: string; src: string; out: string; unit: { inputs: st
 /** What a successful build of the fixture writes */
 function stampFor(f: ReturnType<typeof fixture>): string {
   const stamp = path.join(f.root, 'stamp.json');
-  fs.writeFileSync(stamp, JSON.stringify({ fingerprint: fingerprintInputs(f.unit.inputs) }));
+  fs.writeFileSync(stamp, JSON.stringify({ version: STAMP_VERSION, fingerprint: fingerprintUnit(f.unit) }));
   return stamp;
 }
 
@@ -71,11 +72,23 @@ describe('the watched input set', () => {
   it('covers each package build script and the configs it reads', () => {
     for (const [pkg, unit] of [['abuddy-ears', '@abuddy/ears'], ['abuddy-sdk', '@abuddy/sdk'], ['abuddy-ui', '@abuddy/ui']] as const) {
       const inputs = new Set(BUILD_UNITS[unit].inputs);
-      for (const input of ['src', 'scripts', 'package.json', 'tsconfig.json', 'tsconfig.package.json']) {
-        expect(inputs).toContain(path.join(REPO_ROOT, 'packages', pkg, input));
+      for (const input of ['src', 'package.json', 'tsconfig.json', 'tsconfig.package.json']) {
+        expect(inputs, `${unit}: ${input}`).toContain(path.join(REPO_ROOT, 'packages', pkg, input));
       }
+      // The build script is the repo's, not the package's: a package's own scripts are its other tooling
+      expect(inputs, `${unit}: the build script`).toContain(path.join(REPO_ROOT, 'scripts', 'build-package.ts'));
     }
-    expect(new Set(BUILD_UNITS['@abuddy/ui'].inputs)).toContain(path.join(REPO_ROOT, 'packages', 'abuddy-ui', 'tsdown.config.ts'));
+    const ui = new Set(BUILD_UNITS['@abuddy/ui'].inputs);
+    expect(ui).toContain(path.join(REPO_ROOT, 'packages', 'abuddy-ui', 'tsdown.config.ts'));
+    expect(ui).toContain(path.join(REPO_ROOT, 'scripts', 'build-ui-package.ts'));
+    // @abuddy/ui's build reads its exports helper, which stays with the package for exports:update
+    expect(ui).toContain(path.join(REPO_ROOT, 'packages', 'abuddy-ui', 'scripts', 'exports.ts'));
+  });
+
+  // "No marker" and "not a checkout" are the same observation, and the second is legitimate for every
+  // installed pack — so a marker that stops resolving turns the freshness guard off with nothing to see
+  it('marks this checkout with a file that is here, so moving the marker fails a test and not a run', () => {
+    expect(fs.existsSync(path.join(REPO_ROOT, CHECKOUT_MARKER)), CHECKOUT_MARKER).toBe(true);
   });
 
   it('names only paths that exist, so a renamed input cannot drop out unnoticed', () => {
@@ -94,6 +107,53 @@ describe('the watched input set', () => {
     expect(new Set(stamps).size).toBe(stamps.length);
     for (const [workspace, unit] of Object.entries(BUILD_UNITS)) {
       for (const output of unit.outputs) expect(stampFile(workspace).startsWith(output)).toBe(false);
+    }
+  });
+});
+
+describe('the stamp protocol', () => {
+  it('reads a stamp from another format as never built, so a protocol change rebuilds once', () => {
+    const f = fixture();
+    const stamp = path.join(f.root, 'stamp.json');
+    fs.writeFileSync(stamp, JSON.stringify({ version: STAMP_VERSION - 1, fingerprint: fingerprintUnit(f.unit) }));
+    expect(unitStaleReason(f.unit, stamp)).toMatch(/another format/);
+  });
+
+  it('reads a stamp with no version the same way, since every stamp this build writes has one', () => {
+    const f = fixture();
+    const stamp = path.join(f.root, 'stamp.json');
+    fs.writeFileSync(stamp, JSON.stringify({ fingerprint: fingerprintUnit(f.unit) }));
+    expect(unitStaleReason(f.unit, stamp)).toMatch(/another format/);
+  });
+
+  // Hashing only the contents would read a widened input set against the old stamp and call it fresh
+  it('is stale when a unit gains a watched path, before anything under it changes', () => {
+    const f = fixture();
+    const stamp = stampFor(f);
+    expect(unitStaleReason(f.unit, stamp)).toBeNull();
+    const widened = { inputs: [...f.unit.inputs, path.join(f.root, 'tsdown.config.ts')], outputs: f.unit.outputs };
+    expect(unitStaleReason(widened, stamp)).toMatch(/sources changed/);
+  });
+
+  it('is stale when a unit gains an output, which changes what counts as built', () => {
+    const f = fixture();
+    const stamp = stampFor(f);
+    const widened = { inputs: f.unit.inputs, outputs: [...f.unit.outputs, path.join(f.root, 'dist2')] };
+    // The missing output is reported first; the point is that the stamp no longer matches either
+    expect(unitStaleReason(widened, stamp)).not.toBeNull();
+    fs.mkdirSync(path.join(f.root, 'dist2'), { recursive: true });
+    expect(unitStaleReason(widened, stamp)).toMatch(/sources changed/);
+  });
+
+  // This module decides whether to build; it cannot change what a build emits
+  it('does not watch the code that decides freshness', () => {
+    const watched = new Set(Object.values(BUILD_UNITS).flatMap((unit) => [...unit.inputs]));
+    for (const rule of ['scripts/ensure-packages-built.ts', 'packages/abuddy-host/src/build/packages-built.ts']) {
+      expect(watched, rule).not.toContain(path.join(REPO_ROOT, rule));
+    }
+    // @abuddy/testing and @abuddy/cli still watch all of abuddy-host/src, which their bundles inline
+    for (const workspace of ['@abuddy/testing', '@abuddy/cli']) {
+      expect(new Set(BUILD_UNITS[workspace].inputs), workspace).toContain(path.join(REPO_ROOT, 'packages', 'abuddy-host', 'src'));
     }
   });
 });

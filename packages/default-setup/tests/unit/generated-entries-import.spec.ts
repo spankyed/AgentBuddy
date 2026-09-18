@@ -1,31 +1,26 @@
 // Everything default-setup contributes arrives in its registrations: importing its generated entries registers
 // nothing. Its seeders are the backend registration's `seeders`, its DSL types the frontend registration's `dslTypes`.
 import { afterAll, describe, expect, it, vi } from 'vitest';
-import { bindFeHost, type FePackRegistryView } from '@abuddy/sdk/runtime';
-import { boundHost, unbindFeHost } from '@abuddy/sdk/runtime/internals';
+import { startFeTestRuntime } from '@abuddy/sdk/testing';
+import { registeredSeedKeys } from '@abuddy/sdk/utils';
 import { getDslTypes } from '@abuddy/sdk/fe';
 import { registration } from '../../src/__generated__/pack-entry';
 
 // A frontend with no pack registered, where a DSL type registered on import would show
-const noFrontends: FePackRegistryView = {
-  designation: () => undefined, step: () => undefined, steps: () => [], artifact: () => undefined, artifacts: () => [],
-  block: () => undefined, blocks: () => [], plugins: () => [], defaultPlugin: () => undefined, tiptapPlugins: () => [],
-  appExtension: () => undefined, dslTypes: () => new Map(),
-};
-bindFeHost({ application: {} as never, secrets: {} as never, transport: {} as never, packs: noFrontends });
-afterAll(() => unbindFeHost());
+afterAll(startFeTestRuntime());
 
 describe("default-setup's generated entries", () => {
   it('carry its seeders in the registration, and a fresh import registers none', async () => {
-    const registered = boundHost().packs.seeders('default-setup');
-    expect(registered).toBe(registration.seeders);
-    expect(registered.map((seeder) => seeder.key)).toEqual(['actions', 'prompts', 'flows', 'library', 'notes', 'settings']);
+    const registered = registeredSeedKeys('default-setup');
+    expect(registered).toEqual(['actions', 'prompts', 'flows', 'library', 'notes', 'settings']);
+    expect(registration.seeders?.map((seeder) => seeder.key)).toEqual(registered);
 
+    // A fresh import builds its own seeders and registers none: the registered keys don't move
     vi.resetModules();
     const fresh = await import('../../src/__generated__/seeders');
-    expect(fresh.seeders).not.toBe(registered);
-    expect(fresh.seeders.map((seeder) => seeder.key)).toEqual(registered.map((seeder) => seeder.key));
-    expect(boundHost().packs.seeders('default-setup')).toBe(registered);
+    expect(fresh.seeders).not.toBe(registration.seeders);
+    expect(fresh.seeders.map((seeder) => seeder.key)).toEqual(registered);
+    expect(registeredSeedKeys('default-setup')).toEqual(registered);
   });
 
   it('carry its DSL types for the frontend registration, and importing them registers none', async () => {

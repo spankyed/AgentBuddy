@@ -72,6 +72,7 @@ export interface HostRuntime {
     appVersion: string;
     ears: EarsQuery;
     packs: PackRegistryView;
+    redaction?: SecretRedaction;
     services: HostRuntimeServices;
     transport: {
         rootEvents: RootEvents;
@@ -152,9 +153,15 @@ export interface RootEvents {
 // @internal
 export const rootEvents: RootEvents;
 
+// @public
+export interface SecretRedaction {
+    // (undocumented)
+    matchesSecret(text: string, from: number, to: number): boolean;
+}
+
 // Warnings were encountered during analysis:
 //
-// .temp/api-types/runtime/host-runtime.d.ts:28:9 - (ae-incompatible-release-tags) The symbol "rootEvents" is marked as @public, but its signature references "RootEvents" which is marked as @internal
+// .temp/api-types/runtime/host-runtime.d.ts:36:9 - (ae-incompatible-release-tags) The symbol "rootEvents" is marked as @public, but its signature references "RootEvents" which is marked as @internal
 
 // (No @packageDocumentation comment for this package)
 

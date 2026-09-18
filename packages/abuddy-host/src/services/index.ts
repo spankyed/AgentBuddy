@@ -1,5 +1,6 @@
 // The host's implementations of the services packs reach through `services` (contracts in @abuddy/sdk/services),
 // and the one place the app's HostRuntime is assembled.
+import { secretRedaction } from '../secrets/redaction.ts';
 import type { HostRuntime, RootEvents } from '@abuddy/sdk/runtime';
 import type { EarsEngine } from '@abuddy/ears';
 import type { LmdbStore } from '@abuddy/ears/lmdb';
@@ -29,6 +30,7 @@ export function createHostRuntime({ transport, appVersion, store, engine, packs 
     ears: engine.query,
     packs,
     appVersion,
+    redaction: secretRedaction,
     services: {
       appData: createAppData(store, engine.admin, packs),
       traceStore: createTraceStore(store),

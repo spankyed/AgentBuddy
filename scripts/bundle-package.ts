@@ -9,7 +9,7 @@ import * as path from 'node:path';
 import { builtinModules, createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import { packageName } from './lib/published-imports.ts';
-import { runPackageBuild } from './ensure-packages-built.ts';
+import { runPackageBuild } from '@abuddy/host/build/packages-built';
 import { SHARED_INSTANCE_PACKAGES } from '@abuddy/host/build/shared-deps';
 import { build, type BuildOptions, type Plugin } from 'esbuild';
 
@@ -48,6 +48,37 @@ const CONFIGS: Record<string, BundleConfig> = {
     } },
   },
 };
+
+/** Every path the published manifest points at, as [what names it, where it points] */
+function publishedPaths(config: BundleConfig): [string, string][] {
+  const manifest = config.manifest as { exports?: Record<string, string | Record<string, string>>; bin?: Record<string, string> };
+  const paths: [string, string][] = [];
+  for (const [subpath, target] of Object.entries(manifest.exports ?? {})) {
+    // An export names either one target or a target per condition
+    if (typeof target === 'string') paths.push([`exports["${subpath}"]`, target]);
+    else for (const [condition, file] of Object.entries(target)) paths.push([`exports["${subpath}"] (${condition})`, file]);
+  }
+  for (const [command, target] of Object.entries(manifest.bin ?? {})) paths.push([`bin.${command}`, target]);
+  for (const file of config.copy ?? []) paths.push(['a copied file', file]);
+  return paths;
+}
+
+/**
+ * Every file the published package points at is there. Declarations are the fragile half: tsc puts them
+ * under the common source directory of the whole program, so one entry importing a file from outside the
+ * package moves all of them, and the exports map would point at nothing. npm packs that without a word
+ * and a dependent then sees an untyped module, so the build fails here instead. `bin` and the copied
+ * files are checked with them: the CLI publishes no exports map, and its bin is how the layout is read.
+ */
+function assertPublishedPathsExist(config: BundleConfig, outDir: string, name: string): void {
+  const missing = publishedPaths(config)
+    .filter(([, target]) => !fs.existsSync(path.join(outDir, target)))
+    .map(([names, target]) => `  ${name} ${names}: ${target}`);
+  if (missing.length > 0) {
+    throw new Error(`The published package names files this build did not write:\n${missing.join('\n')}\n`
+      + 'A declaration emitted somewhere else means an entry reached outside the package: import it through a package specifier instead.');
+  }
+}
 
 const repoRoot = path.resolve(import.meta.dirname, '..');
 const pkgDir = path.resolve(process.argv[2] ?? '');
@@ -191,6 +222,7 @@ async function main(): Promise<void> {
     publishConfig: { access: 'public', provenance: true },
   };
   fs.writeFileSync(path.join(outDir, 'package.json'), JSON.stringify(manifest, null, 2) + '\n');
+  assertPublishedPathsExist(config, outDir, pkg.name);
   console.log(`Built ${pkg.name}@${pkg.version} into ${path.relative(process.cwd(), outDir)}`);
 }
 

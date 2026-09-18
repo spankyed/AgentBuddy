@@ -1,3 +1,4 @@
+import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { build } from './build';
@@ -62,6 +63,9 @@ export async function dev(_args: string[]) {
   const manifest = readManifest(root);
   const feEntry = findFEEntry(root);
   const { packsDir, userDataDir } = resolveAppContext({ env: 'development' });
+
+  // The build and the app both read the @abuddy packages' dist; from a checkout that dist is built on demand
+  ensureCheckoutPackages(root);
 
   console.log('Running initial build...\n');
   await build([]);

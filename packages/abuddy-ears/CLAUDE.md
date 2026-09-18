@@ -74,5 +74,5 @@ EARS, the entity-attribute-relation graph store behind AgentBuddy's data: the en
 
 - `npm run typecheck -w @abuddy/ears` (`npm run typecheck:ears` at the root): `tsc --noEmit` over `src`, `tests`, `bench` and `scripts`.
 - `npm test -w @abuddy/ears` (part of `npm run test:unit`), `npm run bench -w @abuddy/ears`.
-- `npm run build:package -w @abuddy/ears` (`scripts/build-package.ts`, part of `npm run packages:build`): `dist/` from `tsconfig.package.json`, checking every export target was built. `npm run packages:check` runs publint and attw on it.
+- `npm run build:package -w @abuddy/ears` (the repo's `scripts/build-package.ts`, shared with `@abuddy/sdk`, part of `npm run packages:build`): `dist/` from `tsconfig.package.json`, checking every export target was built. `npm run packages:check` runs publint and attw on it.
 - `npm run api:check` / `npm run api:update` (from `packages/abuddy-ears`): the API reports `etc/index.api.md` and `etc/lmdb.api.md`. Review their diff with any export change; pack-facing exports have no `any`.

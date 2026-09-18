@@ -10,14 +10,9 @@ import { pathToFileURL } from 'node:url';
 
 export const SOURCE_CONDITION = '--conditions=@abuddy/source';
 
-/**
- * NODE_OPTIONS with the source condition appended once, or left alone when the run declared it
- * resolves the published packages (`ABUDDY_PACKAGES=dist`; the name is `PACKAGES_MODE_ENV` in
- * @abuddy/sdk/build/source-conditions, read here by hand because this script bootstraps the run)
- */
+/** NODE_OPTIONS with the source condition appended once */
 export function withSourceCondition(nodeOptions = '') {
   const options = nodeOptions.split(/\s+/).filter(Boolean);
-  if (process.env.ABUDDY_PACKAGES === 'dist') return options.filter((option) => option !== SOURCE_CONDITION).join(' ');
   return (options.includes(SOURCE_CONDITION) ? options : [...options, SOURCE_CONDITION]).join(' ');
 }
 

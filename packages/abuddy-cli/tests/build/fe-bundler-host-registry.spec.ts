@@ -11,7 +11,8 @@ const UI_SOURCE = path.join(REPO_ROOT, 'packages', 'abuddy-ui');
 let installed: string | undefined;
 
 const LAYOUTS = [
-  { name: 'workspace source', earsDir: () => EARS_SOURCE, sdkDir: () => SDK_SOURCE, uiDir: () => UI_SOURCE, ext: 'ts' },
+  // A pack resolves the packages' published dist whether they are linked from the workspace or installed
+  { name: 'workspace install', earsDir: () => EARS_SOURCE, sdkDir: () => SDK_SOURCE, uiDir: () => UI_SOURCE, ext: 'js' },
   ...(PACKAGES_BUILT ? [{
     name: 'published package',
     earsDir: () => path.join(installed!, 'node_modules', '@abuddy', 'ears'),
@@ -148,10 +149,8 @@ describe.each(LAYOUTS)('bundlePackFE host binding guard ($name)', (layout) => {
     const { sources } = JSON.parse(fs.readFileSync(path.join(packDir, 'dist', 'fe.js.map'), 'utf-8')) as { sources: string[] };
     const uiSources = sources.filter((source) => source.includes('@abuddy/ui/') || source.includes('abuddy-ui/'));
     expect(uiSources.length).toBeGreaterThan(0);
-    // The published package ships compiled components; only the monorepo's source condition yields SFCs
-    const compiledSfcs = uiSources.filter((source) => /\.vue(\?|$)/.test(source));
-    if (layout.name === 'published package') expect(compiledSfcs).toEqual([]);
-    else expect(compiledSfcs.length).toBeGreaterThan(0);
+    // @abuddy/ui ships compiled components, and a pack reads those whichever way it has the package
+    expect(uiSources.filter((source) => /\.vue(\?|$)/.test(source))).toEqual([]);
   }, 60_000);
 
   it('drops the generated EARS facade from FE code that only uses the EARS constants', async () => {

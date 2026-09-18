@@ -8,6 +8,7 @@
   },
   "scripts": {
     "typecheck": "vue-tsc --noEmit",
+    "pretest": "tsx ../../scripts/ensure-packages-built.ts",
     "test": "vitest run",
     "prepare": "abuddy generate-entries",
     "generate:entries": "abuddy generate-entries",

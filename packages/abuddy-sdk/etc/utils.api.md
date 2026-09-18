@@ -218,6 +218,9 @@ export function redactSecrets<T>(value: T): T;
 // @public
 export function redactSecretText(text: string): string;
 
+// @public
+export function registeredSeedKeys(packId: string): string[];
+
 // @public (undocumented)
 export type Rename = {
     from: string;

@@ -26,7 +26,7 @@ Host-only modules shared by the API, the renderer, the Electron main process, th
 | `./fe` | `fe/pack-store.ts`, `fe/app-extensions.ts` | `createFePackRegistry()`: the renderer's registered pack frontends (`registerPackFE`, `unregisterPackFE`, `getRegisteredPlugins`, `getRegisteredDefaultPlugin`, `getAppExtension`, and the `FePackRegistryView` the SDK reads) |
 | `./build/discover` | `build/discover.ts` | `discoverBuiltInPacksForBuild`, used by the API tsup config and the renderer's Vite and Tailwind configs |
 | `./build/shared-deps` | `build/shared-deps.ts` | `SHARED_INSTANCE_PACKAGES` (and `APP_ONLY_EXPORTS`, `sharedInstanceSpecifiers`, `sharedInstanceExports`, `sharedInstanceExternals`, `sharedInstancePackage`), `SHARED_DEPS`, `SDK_FE_MODULES`, `getSharedFeDeps`, `getUiFeModules`, `getSharedBeDeps`, `findSdkVersion` |
-| `./build/source-resolution` | `build/source-resolution.ts` | `assertSourceResolution`, `withSourceCondition`, `withoutSourceCondition` |
+| `./build/source-resolution` | `build/source-resolution.ts` | `assertSourceResolution`, `withoutSourceCondition` |
 
 ## Data dirs
 
@@ -135,7 +135,7 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
 - `secrets.json` holds `{ format: 1, protection, keyId, secrets[] }`. Metadata is stored in plain text. Each value is AES-256-GCM encrypted with a 12-byte IV and a 16-byte tag, using the AAD `<id>:<provider>`. The 32-byte data key is stored in the vault under the account `secrets:<keyId>`.
 - `list`, `select`, `rename` and `delete` never load a data key. Selection and label rules come from `secretRules` (`@abuddy/sdk/services`).
 - `keyFor(provider)` decrypts the selected key on every call. An unreadable value throws an error that tells the user to enter it again in Settings, then Secrets.
-- Every value the store encrypts or decrypts is passed to `registerSecretValue` (`@abuddy/sdk/utils/internals`), so logs can mask it without keeping the plaintext.
+- Every value the store encrypts or decrypts is passed to `registerSecretValue` (`secrets/redaction.ts`), so logs can mask it without keeping the plaintext. That module is the host's `SecretRedaction`, which `createHostRuntime` puts on the `HostRuntime` and `bindHost` installs as log redaction's matcher: the host owns the values and the SDK only reads the predicate, so no pack can install its own (`abuddy-sdk/tests/utils/secret-matcher-reach.spec.ts`).
 - `status()` probes the OS vault once per process by reading the unused account `secrets:probe`. `KeyVaultUnavailableError` switches the status to `unavailable`, and a later successful vault call switches it back. Listeners from `onChange` hear these status changes as well as data changes.
 - `allowUnprotected()` re-encrypts the readable values under a new key in the file vault, sets `protection: 'unprotected'` and deletes the old OS vault entries.
 - `clearAll()` empties the key list but keeps `keyId`. If the file can't be read or emptied, it deletes the file.
@@ -172,8 +172,8 @@ What opening an app's database needs, shared by the API's boot and `abuddy db`, 
 - `SHARED_DEPS` lists the packages the host provides to packs. FE entries are exposed on `window.__abuddy` under `globalKey`, and BE entries (`xstate`, `zod`) are bridged.
   - `getSharedFeDeps()` also shares every exported subpath of `@tiptap/pm` and `@tiptap/vue-3`, and aliases `prosemirror-<name>` to `@tiptap/pm/<name>`.
   - To give pack FE code a new SDK module, add it to `SDK_FE_MODULES`. The FE bundler's error message says to do this.
-- `assertSourceResolution(resolve, processName)` throws when a checkout's `@abuddy/ears`, `@abuddy/sdk` or `@abuddy/ui` (a package with `src/`) resolves outside `src/`. It is called by the API boot (except under Electron), the CLI bin (`abuddy-cli/bin/abuddy.mjs`) and `@abuddy/testing` (`src/source-check.ts`).
-- `withSourceCondition` and `withoutSourceCondition` edit `NODE_OPTIONS`. `abuddy test` and the fixture's launch env use them.
+- `assertSourceResolution(resolve, processName)` throws when a checkout's `@abuddy/ears`, `@abuddy/sdk` or `@abuddy/ui` (a package with `src/`) resolves outside `src/`. It is called by the API boot (except under Electron) and the CLI bin (`abuddy-cli/bin/abuddy.mjs`) — host processes, which load workspace source. `@abuddy/testing` doesn't call it: a pack's test run resolves the packages' `dist` like the pack itself, and checks instead that the checkout built that `dist` from its current sources (`src/checkout-freshness.ts`).
+- `withoutSourceCondition` strips the source condition from `NODE_OPTIONS`, for the processes the CLI starts to run pack code: `abuddy test`'s Playwright runner, `checkSeedRuntimeLoads` and the fixture's launch env. Nothing here adds the condition; a host process that needs it is started through `scripts/with-source.mjs`, which runs before any TypeScript loader and keeps its own copy.
 
 ## Tests (`tests/`)
 
