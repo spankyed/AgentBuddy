@@ -1,5 +1,5 @@
-import { emit } from '@abuddy/sdk/helpers'
-import { rootEvents } from '@abuddy/sdk/rpc'
+
+import { sendToPlugin } from '@/__generated__/events';
 import { GitRepository } from '../services/git'
 
 const pluginId = 'code' as const
@@ -13,17 +13,11 @@ export function requireGitRepository<T extends { gitRepository: GitRepository | 
   if (!context.gitRepository) {
     const message = 'No directory selected. Please select a directory first.'
     
-    const wrapped = errorEventType === 'pr.ERROR'
-      ? emit(pluginId, {
-          type: 'pr.ERROR',
-          message
-        })
-      : emit(pluginId, {
-          type: 'commit.ERROR_RECEIVED',
-          data: { message }
-        })
-    
-    rootEvents.emitOutgoing(wrapped.event)
+    if (errorEventType === 'pr.ERROR') {
+      sendToPlugin(pluginId, { type: 'pr.ERROR', message })
+    } else {
+      sendToPlugin(pluginId, { type: 'commit.ERROR_RECEIVED', data: { message } })
+    }
     return false
   }
   return true

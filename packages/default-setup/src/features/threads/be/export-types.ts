@@ -10,8 +10,7 @@ export interface ExportedMessage {
    * Block response as stored on the message at export time. See
    * `BlockResponse` in `./types` for the full union of observed shapes
    * (raw strings, string arrays, `{approved,reason}`, `{cancelled:true}`).
-   * Exported threads may also carry legacy shapes from versions before
-   * this type existed; import round-trips them unchanged.
+   * Import round-trips whatever an export carries, unchanged.
    */
   blockResponse?: BlockResponse
   forkable?: boolean

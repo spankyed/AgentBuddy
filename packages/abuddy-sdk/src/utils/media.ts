@@ -1,6 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
-import { getMediaPath, ensureDirectoryExists } from './paths'
+import { _getMediaPath, ensureDirectoryExists } from './paths.ts'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -61,7 +61,7 @@ export function extractMediaRefs(markdown: string): MediaRef[] {
 
 /** Resolve a MediaRef to an absolute file path with mime type. Returns null if file doesn't exist. */
 export function resolveMedia(ref: MediaRef): ResolvedMedia | null {
-  const filePath = path.join(getMediaPath(), ref.entityId, ref.filename)
+  const filePath = path.join(_getMediaPath(), ref.entityId, ref.filename)
   if (!fs.existsSync(filePath)) return null
   return {
     ...ref,
@@ -85,6 +85,24 @@ export function extractAndResolveImages(markdown: string): ResolvedMedia[] {
   return extractMediaRefs(markdown)
     .map(ref => resolveMedia(ref))
     .filter((img): img is ResolvedMedia => img !== null)
+}
+
+/** An image loaded into memory, shaped as a model message's image content part. */
+export interface ImagePart {
+  type: 'image'
+  image: Buffer
+  mimeType: string
+}
+
+/**
+ * Extract media refs from markdown and read each image into memory, filtering out missing
+ * files. Prefer `extractAndResolveImages` when file paths will do: this loads every image.
+ */
+export function extractImageParts(markdown: string): ImagePart[] {
+  return extractMediaRefs(markdown)
+    .map(ref => readMediaBuffer(ref))
+    .filter((img): img is NonNullable<typeof img> => img !== null)
+    .map(img => ({ type: 'image' as const, image: img.data, mimeType: img.mimeType }))
 }
 
 /** Rewrite media:// URLs to flat relative paths using a filename map. */
@@ -157,7 +175,7 @@ export function restoreJsonMediaRefs(
   for (const ref of refs) {
     const srcFile = path.join(importDir, 'media', ref.entityId, ref.filename)
     if (!fs.existsSync(srcFile)) continue
-    const destDir = path.join(getMediaPath(), newEntityId)
+    const destDir = path.join(_getMediaPath(), newEntityId)
     ensureDirectoryExists(destDir)
     fs.copyFileSync(srcFile, path.join(destDir, ref.filename))
     mediaRestored++
@@ -185,7 +203,7 @@ export function restoreMarkdownMediaRefs(
     processedFiles.add(cleanFilename)
     const srcFile = path.join(rootImportDir, 'media', cleanFilename)
     if (!fs.existsSync(srcFile)) continue
-    const destDir = path.join(getMediaPath(), newEntityId)
+    const destDir = path.join(_getMediaPath(), newEntityId)
     ensureDirectoryExists(destDir)
     fs.copyFileSync(srcFile, path.join(destDir, cleanFilename))
     mediaRestored++

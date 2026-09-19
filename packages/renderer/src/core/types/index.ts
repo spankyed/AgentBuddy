@@ -1,4 +1,4 @@
-export type { Plugin } from '@abuddy/sdk/fe/host';
+export type { Plugin } from '@abuddy/host/fe';
 export type { RouteComponents } from '@abuddy/sdk/fe';
 
 export {

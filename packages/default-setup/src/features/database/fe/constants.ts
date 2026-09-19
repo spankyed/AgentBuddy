@@ -46,29 +46,29 @@ for (const entityId of allEntities) {
 return results.slice(0, 20);`
 
 export const transactionExampleQuery =
-  `// Create a new agent entity
-const agentId = tx(EARS.Entity.Agent)
-  .put('name', 'My Assistant')
-  .put('description', 'A helpful AI agent')
-  .put('status', 'active')
+  `// Create a new note entity
+const noteId = tx(EARS.Entity.Note)
+  .put('title', 'My Note')
+  .put('content', 'A helpful note')
+  .put('noteType', 'document')
   .grant('primary')
   .id();
 
 // Update existing entity
-tx(agentId)
-  .put('lastActive', Date.now())
-  .merge('capabilities', ['chat', 'analysis']);
+tx(noteId)
+  .put('lastSeen', Date.now())
+  .merge('tags', ['chat', 'analysis']);
 
 // Create relationships
 const threadId = tx(EARS.Entity.Thread)
   .put('title', 'New Conversation')
   .put('createdAt', Date.now())
-  .link(EARS.RelKind.CONTAINS, agentId)
+  .link(EARS.RelKind.CONTAINS, noteId)
   .id();
 
 return {
-  created: { agentId, threadId },
-  message: 'Successfully created agent and thread'
+  created: { noteId, threadId },
+  message: 'Successfully created note and thread'
 };
 
 // More transaction examples:

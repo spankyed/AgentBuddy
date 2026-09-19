@@ -270,7 +270,7 @@ import { useSelector } from '@xstate/vue'
 import { Bot, Check, Copy, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
 import { useActorSystem, navigateToPlugin, getDesignated } from '@abuddy/sdk/fe'
-import { trpc } from '@abuddy/sdk/rpc'
+import { sendToSystem } from '@/__generated__/events'
 
 const actorSystem = useActorSystem()
 
@@ -300,7 +300,7 @@ interface CodexThreadState {
 }
 
 defineProps<{
-  artifact: ArtifactItem & { content: CodexThreadState }
+  artifact: ArtifactItem<CodexThreadState>
 }>()
 
 const threadsActor = actorSystem.get(getDesignated('threads'))
@@ -464,8 +464,7 @@ function openTerminalTab() {
 function updateSessionSettings(payload: { approvalMode?: ApprovalMode; sandbox?: SandboxMode; networkAccess?: boolean; webSearch?: 'live' | 'cached' | 'disabled' }) {
   const threadId = currentThread.value?.id
   if (!threadId) return
-  trpc.bus.send.mutate({
-    systemId: 'threads',
+  sendToSystem('threads', {
     type: 'FORWARD_BRAIN_EVENT',
     eventType: 'user.update.codexSessionSettings',
     payload: { threadId, ...payload },

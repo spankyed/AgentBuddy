@@ -27,7 +27,7 @@ export interface CompiledEntry {
   description?: string;
   category?: string;
   sourceHash: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface CompileResult {

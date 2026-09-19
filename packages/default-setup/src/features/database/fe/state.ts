@@ -7,13 +7,13 @@ import type {
   DatabaseSchemaInfo,
   DatabaseStartupData,
   OutgoingDatabaseEvents,
-  EARS,
-  TNodeEntity,
   DatabaseSettings,
 } from '@/__generated__/types'
-import { trpc } from '@abuddy/sdk/rpc'
+import { sendToSystem } from '@/__generated__/events'
 import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate, transactionExampleQuery } from './constants'
 import { History, HardDriveDownload } from 'lucide-vue-next'
+import type { TNodeEntity } from '@abuddy/sdk/steps'
+import type { EARS } from '@abuddy/sdk'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
@@ -51,6 +51,15 @@ export interface DatabaseContext {
   };
   // Backup fields
   backupInfo: { timestamp: number; databases: string[]; size: number; hasMedia?: boolean } | null;
+  exporting: boolean;
+  importing: boolean;
+  /** The last export or import to finish, a new object each time */
+  backupResult: {
+    operation: 'export' | 'import';
+    error?: string;
+    /** The backup holds these stores, which this AgentBuddy doesn't have: importing it leaves them out */
+    unknownDatabases?: string[];
+  } | null;
 }
 
 type SystemEvent = OutgoingDatabaseEvents |
@@ -63,7 +72,7 @@ type SystemEvent = OutgoingDatabaseEvents |
   { type: 'EXPORT_DATABASE_SUCCESS'; path: string } |
   { type: 'EXPORT_DATABASE_ERROR'; error: string } |
   { type: 'IMPORT_DATABASE_SUCCESS'; message?: string } |
-  { type: 'IMPORT_DATABASE_ERROR'; error: string } |
+  { type: 'IMPORT_DATABASE_ERROR'; error: string; unknownDatabases?: string[] } |
   { type: 'BACKUP_INFO_RESULT'; info: { timestamp: number; databases: string[]; size: number; hasMedia?: boolean } | null } |
   { type: 'RESET_DATABASE_SUCCESS'; message: string } |
   { type: 'RESET_DATABASE_ERROR'; error: string }
@@ -85,6 +94,8 @@ type UIEvent =
   | { type: 'ENTITY.DELETE'; entityId: string }
   | { type: 'VIEW_BACKUP' }
   | { type: 'BACK_TO_EXPLORER' }
+  | { type: 'BACKUP.EXPORT'; path: string; name?: string; databases: Array<'lmdb' | 'volatileLmdb'> }
+  | { type: 'BACKUP.IMPORT'; path: string; skipUnknownDatabases?: boolean }
   | TrailClickEvent
 
 export type DatabaseEvents = UIEvent | SystemEvent
@@ -127,8 +138,7 @@ const databaseState = setup({
     /* ── query interactions ────────────────────────────── */
     executeQuery: ({ event, context }) => {
       const ev = typeOf('QUERY.EXECUTE', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'EXECUTE_QUERY',
         code: ev.code,
       });
@@ -136,8 +146,7 @@ const databaseState = setup({
 
     executeTransaction: ({ event, context }) => {
       const ev = typeOf('TRANSACTION.EXECUTE', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'EXECUTE_TRANSACTION',
         code: ev.code,
       });
@@ -147,8 +156,7 @@ const databaseState = setup({
       const ev = typeOf('ENTITY.DELETE', event);
       // Use tx() to delete the entity
       const deleteCode = `tx('${ev.entityId}').destroy(); return { deleted: '${ev.entityId}' };`;
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'EXECUTE_TRANSACTION',
         code: deleteCode,
       });
@@ -157,8 +165,7 @@ const databaseState = setup({
     refreshAfterDelete: ({ context }) => {
       // Re-run the current query after successful deletion
       if (context.currentQuery) {
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'EXECUTE_QUERY',
           code: context.currentQuery,
         });
@@ -241,8 +248,7 @@ const databaseState = setup({
         console.error('Invalid prompt provided for AI query generation');
         return;
       }
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'GENERATE_AI_QUERY',
         prompt: ev.prompt.trim(),
         mode: ev.mode,
@@ -277,8 +283,7 @@ const databaseState = setup({
     }),
 
     refreshSchema: () => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'REFRESH_SCHEMA',
       });
     },
@@ -296,8 +301,7 @@ const databaseState = setup({
       const newMode = context.viewMode === 'database' ? 'trace' : 'database';
       if (newMode === 'trace' && context.traceFlows.length === 0) {
         // Request trace flows when switching to trace mode for the first time
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'GET_TRACE_FLOWS',
         });
       }
@@ -308,8 +312,7 @@ const databaseState = setup({
     }),
 
     requestTraceFlows: () => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'GET_TRACE_FLOWS',
       });
     },
@@ -334,8 +337,7 @@ const databaseState = setup({
       // Auto-select first flow if we have flows and no current selection
       if (sortedFlows.length > 0) {
         const firstFlow = sortedFlows[0];
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'GET_FLOW_EVENTS',
           flowId: firstFlow.id,
           offset: 0,
@@ -357,8 +359,7 @@ const databaseState = setup({
 
     selectFlow: assign(({ event }) => {
       const ev = typeOf('TRACE.SELECT_FLOW', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'GET_FLOW_EVENTS',
         flowId: ev.flowId,
         offset: 0,
@@ -394,8 +395,7 @@ const databaseState = setup({
       if (!context.currentFlowId || !context.tracePagination.hasMore) return;
 
       const newOffset = context.tracePagination.offset + context.tracePagination.limit;
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'GET_FLOW_EVENTS',
         flowId: context.currentFlowId,
         offset: newOffset,
@@ -420,8 +420,7 @@ const databaseState = setup({
         newExpanded.add(ev.nodeId);
         // Request node details if not already loaded
         if (!context.nodeDetails.has(ev.nodeId)) {
-          trpc.bus.send.mutate({
-            systemId: id,
+          sendToSystem(id, {
             type: 'GET_NODE_DETAILS',
             nodeId: ev.nodeId,
           });
@@ -453,10 +452,33 @@ const databaseState = setup({
       };
     }),
 
+    exportBackup: ({ event }) => {
+      const { path, name, databases } = typeOf('BACKUP.EXPORT', event);
+      sendToSystem(id, { type: 'EXPORT_DATABASE', path, name, databases });
+    },
+
+    importBackup: ({ event }) => {
+      const { path, skipUnknownDatabases } = typeOf('BACKUP.IMPORT', event);
+      sendToSystem(id, { type: 'IMPORT_DATABASE', path, skipUnknownDatabases });
+    },
+
+    exportFinished: assign(({ event }) => ({
+      exporting: false,
+      backupResult: { operation: 'export' as const, error: event.type === 'EXPORT_DATABASE_ERROR' ? event.error : undefined },
+    })),
+
+    importFinished: assign(({ event }) => ({
+      importing: false,
+      backupResult: {
+        operation: 'import' as const,
+        error: event.type === 'IMPORT_DATABASE_ERROR' ? event.error : undefined,
+        ...(event.type === 'IMPORT_DATABASE_ERROR' && event.unknownDatabases ? { unknownDatabases: event.unknownDatabases } : {}),
+      },
+    })),
+
     /* ── reset database actions ─────────────────────────── */
     resetDatabase: () => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'RESET_DATABASE',
       });
     },
@@ -506,6 +528,9 @@ const databaseState = setup({
     },
     // Backup fields
     backupInfo: null,
+    exporting: false,
+    importing: false,
+    backupResult: null,
   },
   on: {
     ...TRAIL_CLICK([
@@ -525,6 +550,10 @@ AI_QUERY_LOADING: { actions: 'setAiQueryLoading' },
     NODE_DETAILS_RESULT: { actions: 'setNodeDetails' },
     // Backup events
     BACKUP_INFO_RESULT: { actions: 'setBackupInfo' },
+    EXPORT_DATABASE_SUCCESS: { actions: 'exportFinished' },
+    EXPORT_DATABASE_ERROR: { actions: 'exportFinished' },
+    IMPORT_DATABASE_SUCCESS: { actions: 'importFinished' },
+    IMPORT_DATABASE_ERROR: { actions: 'importFinished' },
     // Reset database events
     RESET_DATABASE_SUCCESS: { actions: 'handleResetSuccess' },
     RESET_DATABASE_ERROR: { actions: 'handleResetError' },
@@ -593,6 +622,8 @@ AI_QUERY_LOADING: { actions: 'setAiQueryLoading' },
         'BACK_TO_EXPLORER': {
           target: 'explorer',
         },
+        'BACKUP.EXPORT': { actions: ['exportBackup', assign({ exporting: true })] },
+        'BACKUP.IMPORT': { actions: ['importBackup', assign({ importing: true })] },
       },
     },
   },

@@ -251,10 +251,8 @@ async function handleResume(
     return { text: confirmText, skipMessage: true };
   }
 
-  services.emitter.sendToPlugin('threads', {
-    type: 'LOAD_CHAT_THREAD',
-    data: services.repository.chatQueries.threadData(targetThreadId as EntityId),
-  });
+  const threadData = services.repository.chatQueries.threadData(targetThreadId as EntityId);
+  if (threadData) services.emitter.sendToPlugin('threads', { type: 'LOAD_CHAT_THREAD', data: threadData });
 
   return { text: confirmText };
 }

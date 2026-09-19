@@ -1,6 +1,7 @@
-export { stepRegistry } from './registry';
-export { expandRecord, collapseRecord } from './utils';
-export { reportStepRuntimeError, toStepRuntimeError } from './runtime-errors';
+export { stepRegistry } from './registry.ts';
+export { expandRecord, collapseRecord } from './utils.ts';
+export { _mergeStepDefinitions } from './merge.ts';
+export { truncateResult, isTruncated, type TruncatedResult } from './result-truncator.ts';
 export type {
   StepDefinition,
   StepDSLMeta,
@@ -23,10 +24,11 @@ export type {
   EntityStatus,
   TNodeKind,
   TNodeEntity,
+  SdkEntityShapes,
   TrackTree,
   ExecutionEvent,
   StepRun,
   RuntimeServices,
   ExecutionContext,
   StepRuntimeError,
-} from './types';
+} from './types.ts';

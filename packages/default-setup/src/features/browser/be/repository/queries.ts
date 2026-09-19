@@ -1,4 +1,5 @@
-import { findAll } from '@abuddy/sdk/ears';
+
+import { findAll } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
 import type { BrowserTabEntity, SavedTab, BrowserBookmarkEntity, SavedBookmark } from '../types';
 import { normalizeSavedTabs } from './normalize-tabs';

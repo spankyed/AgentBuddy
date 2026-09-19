@@ -1,4 +1,4 @@
-import type { TNodeEntity, TrackTree } from '@/__generated__/types';
+import type { TNodeEntity, TrackTree } from '@abuddy/sdk/steps'
 
 export interface NormalizedTNodeTree {
   byId: Record<string, TNodeEntity>;

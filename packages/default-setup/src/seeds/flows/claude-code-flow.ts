@@ -8,7 +8,7 @@ import { entry, on, keepAlive, action, branch } from '#generated/flow-helpers';
  * action only when the user is in `Claude Code` mode. Any other mode (`chat`,
  * `note`, `Birth`, …) flows past this track untouched — the switch node
  * emits a `noMatch` completion and the chain ends without firing any
- * action. See `packages/api/src/systems/brain/node-handlers/switch-node.ts`
+ * action. See `src/extensions/steps/switch/runtime.ts`
  * for the runtime semantics of "no condition matched, no else".
  *
  * The `phase` sub-value (`Plan` / `Edit` / `review`) is passed through so

@@ -174,7 +174,7 @@ import { getThreadDotColor, isThreadBusy } from './thread-status'
 import { ContextMenuRoot, ContextMenuTrigger } from 'reka-ui'
 import ThreadContextMenu from '@/features/threads/fe/canvas/components/thread-context-menu.vue'
 import SidebarThreadItem from './sidebar-thread-item.vue'
-import { trpc } from '@abuddy/sdk/rpc'
+import { sendToSystem } from '@/__generated__/events'
 
 const actorSystem = useActorSystem()
 
@@ -389,7 +389,7 @@ function toggleArchive() {
   displayCount.value = BATCH_SIZE
   archiveDisplayCount.value = BATCH_SIZE
   if (showArchive.value) {
-    trpc.bus.send.mutate({ systemId: id, type: 'GET_ARCHIVED_THREADS' })
+    sendToSystem(id, { type: 'GET_ARCHIVED_THREADS' })
   }
 }
 </script>

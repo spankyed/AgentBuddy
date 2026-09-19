@@ -1,4 +1,8 @@
 import { defineConfig } from 'vitest/config';
+import { defaultServerConditions } from 'vite';
+
+// Vitest's own defaults: Vite's server conditions without 'module'
+const conditions = ['@abuddy/source', ...defaultServerConditions.filter((c) => c !== 'module')];
 import { config as dotenvConfig } from 'dotenv';
 
 // Load environment variables from .env file
@@ -8,6 +12,8 @@ export default defineConfig(async () => {
   const { default: tsconfigPaths } = await import('vite-tsconfig-paths');
   return {
   /* Vite‑level plugins -------------------------------------------------- */
+  // Workspace @abuddy/* packages resolve to source (see their package.json exports)
+  ssr: { resolve: { conditions } },
   plugins: [
     tsconfigPaths({ projects: ['./tsconfig.test.json'] }),
   ],
@@ -24,6 +30,7 @@ export default defineConfig(async () => {
   },
 
   resolve: {
+    conditions,
     alias: [
       { find: /^@\//, replacement: new URL('./src/', import.meta.url).pathname },
     ],

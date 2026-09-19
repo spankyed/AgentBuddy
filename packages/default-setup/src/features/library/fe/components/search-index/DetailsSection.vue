@@ -113,9 +113,9 @@
 <script setup lang="ts">
 import { ref, watch, computed, onMounted } from 'vue'
 import SegmentedSlider from './form/SegmentedSlider.vue'
-import Select from '@abuddy/sdk/fe/design/Select.vue'
+import Select from '@abuddy/ui/design/Select'
 import type { SearchIndexFormData } from '../../types/search-index'
-import { EMBEDDING_MODEL_CONFIGS, getLocalModels, getApiModels, EMBEDDING_MODELS } from '../../config/embedding-models'
+import { DEFAULT_EMBEDDING_MODEL, getInferenceModels, getLocalModels } from '../../../embedding-models'
 
 const props = defineProps<{
   modelValue: SearchIndexFormData
@@ -136,7 +136,7 @@ const connectorOptions = [
 
 // Get available models
 const localModels = computed(() => getLocalModels())
-const apiModels = computed(() => getApiModels())
+const apiModels = computed(() => getInferenceModels())
 
 watch(() => props.modelValue, (newValue) => {
   localData.value = { ...newValue }
@@ -159,7 +159,7 @@ function getConnectorDescription(value: number): string {
 // Initialize with default model
 onMounted(() => {
   if (!localData.value.embeddingModel) {
-    localData.value.embeddingModel = EMBEDDING_MODELS.BGE_SMALL_EN_V15
+    localData.value.embeddingModel = DEFAULT_EMBEDDING_MODEL
     updateValue()
   }
 })

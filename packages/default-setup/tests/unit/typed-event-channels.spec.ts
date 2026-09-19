@@ -1,86 +1,103 @@
-import { describe, it } from 'vitest';
-import { expectTypeOf } from 'vitest';
-import type { PluginEventRegistry } from '@abuddy/sdk/types';
-import { emit } from '@abuddy/sdk/helpers';
-import '@/__generated__/event-channels';
+// Compile-time checks, run by `vue-tsc` (npm run typecheck:pack). Exact type equality and expected
+// errors fail if the generated events regress to `any` or accept a wrong event.
+import { describe, expectTypeOf, it } from 'vitest';
+import type { HostPluginEvents } from '@abuddy/sdk/events';
+import type { ApplicationHotkeys } from '@abuddy/sdk/types';
+import type { EARS } from '@/__generated__/ears';
+import type { Services } from '@/__generated__/services';
+import { emit, sendToPlugin, sendToSystem, type PackEvents } from '@/__generated__/events';
+import type { OutgoingActionEvents } from '@/features/actions/be/system';
+import type { OutgoingFlowsEvents } from '@/features/flows/be/system';
+import type { OutgoingThreadsEvents } from '@/features/threads/be/system';
 
-// ─── PluginEventRegistry augmentation ──────────────────────────────────
+declare const actionEvent: OutgoingActionEvents;
+declare const hotkeys: ApplicationHotkeys;
+// What a seed action receives
+declare const services: Services;
 
-describe('PluginEventRegistry — augmented keys', () => {
-  it('registry includes all 12 plugin IDs', () => {
-    type Keys = keyof PluginEventRegistry;
-    expectTypeOf<'threads'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'code'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'settings'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'database'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'brain'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'flows'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'library'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'logs'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'notes'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'browser'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'prompts'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'actions'>().toMatchTypeOf<Keys>();
+describe('PackEvents', () => {
+  it('maps each plugin to exactly the events it receives', () => {
+    expectTypeOf<PackEvents['threads']>().toEqualTypeOf<OutgoingThreadsEvents>();
+    // The flows plugin receives its own system's events and the actions system's (sendsTo)
+    expectTypeOf<PackEvents['flows']>().toEqualTypeOf<OutgoingFlowsEvents | OutgoingActionEvents>();
+    expectTypeOf<PackEvents['application']>().toEqualTypeOf<HostPluginEvents['application']>();
   });
 
-  it('unregistered plugin is not a key', () => {
-    type Keys = keyof PluginEventRegistry;
-    expectTypeOf<'unknown-plugin'>().not.toMatchTypeOf<Keys>();
-  });
-});
-
-// ─── PluginEventRegistry event shapes ──────────────────────────────────
-
-describe('PluginEventRegistry — event shapes', () => {
-  it('threads events include THREAD_CONNECTED', () => {
-    type ThreadEvents = PluginEventRegistry['threads'];
-    expectTypeOf<Extract<ThreadEvents, { type: 'THREAD_CONNECTED' }>>().not.toBeNever();
-  });
-
-  it('threads events include THREAD_CREATED', () => {
-    type ThreadEvents = PluginEventRegistry['threads'];
-    expectTypeOf<Extract<ThreadEvents, { type: 'THREAD_CREATED' }>>().not.toBeNever();
-  });
-
-  it('code events include CODE_CONNECTED', () => {
-    type CodeEvents = PluginEventRegistry['code'];
-    expectTypeOf<Extract<CodeEvents, { type: 'CODE_CONNECTED' }>>().not.toBeNever();
-  });
-
-  it('settings events include SETTINGS_LOADED', () => {
-    type SettingsEvents = PluginEventRegistry['settings'];
-    expectTypeOf<Extract<SettingsEvents, { type: 'SETTINGS_LOADED' }>>().not.toBeNever();
+  it('has no entry for a plugin nothing sends to', () => {
+    // @ts-expect-error not a plugin of this pack, its dependencies or the host
+    expectTypeOf<PackEvents['unknown-plugin']>().toBeNever();
   });
 });
 
-// ─── Typed emit() overload ─────────────────────────────────────────────
-
-describe('Typed emit() — constrained by PluginEventRegistry', () => {
-  it('emit return type includes OUTGOING wrapper', () => {
-    type EmitFn = typeof emit;
-    expectTypeOf<ReturnType<EmitFn>>().toHaveProperty('type');
-    expectTypeOf<ReturnType<EmitFn>>().toHaveProperty('event');
+describe('emit and sendToPlugin', () => {
+  // Wrapped in functions that never run: only their types are checked
+  it('accept an event the plugin receives', () => {
+    const wrapped = emit('threads', { type: 'THREAD_CREATED', id: 't1' as EARS.EntityId, shortCode: 'T1', entityType: 'Thread' as EARS.Entity, timestamp: 0 });
+    expectTypeOf(wrapped.event.pluginId).toEqualTypeOf<'threads'>();
+    expectTypeOf(() => {
+      emit('flows', actionEvent);
+      emit('application', { type: 'APPLICATION_HOTKEYS', hotkeys });
+      sendToPlugin('application', { type: 'APPLICATION_RESTORE_LAST_PLUGIN', lastActivePluginId: 'notes' });
+    }).toBeFunction();
   });
 
-  it('emit with unregistered plugin accepts any event via fallback overload', () => {
-    const fallback: (id: string, event: { type: string }) => any = emit;
-    expectTypeOf(fallback).toBeFunction();
-  });
-
-  it('emit constrained overload narrows event param for registered plugin', () => {
-    type ThreadEvent = PluginEventRegistry['threads'];
-    type EmitThreads = (pluginId: 'threads', event: ThreadEvent) => any;
-    const typedEmit: EmitThreads = emit;
-    expectTypeOf(typedEmit).toBeFunction();
+  it('reject an event the plugin does not receive', () => {
+    expectTypeOf(() => {
+      // @ts-expect-error the threads plugin doesn't receive action events
+      emit('threads', actionEvent);
+      // @ts-expect-error not an application event
+      emit('application', { type: 'SETTINGS_LOADED' });
+      // @ts-expect-error unknown plugin
+      sendToPlugin('unknown-plugin', { type: 'ANYTHING' });
+    }).toBeFunction();
   });
 });
 
-// ─── Extensibility ─────────────────────────────────────────────────────
+describe('sendToSystem', () => {
+  // Wrapped in functions that never run: only their types are checked
+  it('accepts an event the system receives', () => {
+    expectTypeOf(() => {
+      sendToSystem('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'notes', path: ['sort'], value: 'title' });
+      sendToSystem('notes', { type: 'DELETE_NOTE', id: 'Note-1' });
+    }).toBeFunction();
+  });
 
-describe('PluginEventRegistry — extensibility', () => {
-  it('registry is open for declaration merging', () => {
-    type Keys = keyof PluginEventRegistry;
-    type HasThreads = 'threads' extends Keys ? true : false;
-    expectTypeOf<HasThreads>().toEqualTypeOf<true>();
+  it('rejects an unknown system, an unknown event type, a missing field and a union system or type', () => {
+    expectTypeOf((systemId: 'notes' | 'settings', brainIsDead: boolean) => {
+      // @ts-expect-error not a system of this pack or its dependencies
+      sendToSystem('unknown-system', { type: 'GET_SETTINGS' });
+      // @ts-expect-error the settings system doesn't receive this event
+      sendToSystem('settings', { type: 'DELETE_NOTE', id: 'Note-1' });
+      // @ts-expect-error DELETE_NOTE needs an id
+      sendToSystem('notes', { type: 'DELETE_NOTE' });
+      // @ts-expect-error one system per send
+      sendToSystem(systemId, { type: 'GET_SETTINGS' });
+      // @ts-expect-error one event type per send
+      sendToSystem('brain', { type: brainIsDead ? 'START_BRAIN' : 'RESTART_BRAIN' });
+    }).toBeFunction();
+  });
+});
+
+describe('services.emitter in actions', () => {
+  // Wrapped in functions that never run: only their types are checked
+  it('accepts an event the plugin or system receives', () => {
+    expectTypeOf(() => {
+      services.emitter.sendToPlugin('database', { type: 'AI_QUERY_LOADING' });
+      services.emitter.sendToSystem('default-setup/notes', { type: 'DELETE_NOTE', id: 'Note-1' });
+      services.emitter.sendToBrainSystem({ eventType: 'user.message' });
+    }).toBeFunction();
+  });
+
+  it('rejects an event the plugin or system does not receive', () => {
+    expectTypeOf(() => {
+      // @ts-expect-error the database plugin doesn't receive this event
+      services.emitter.sendToPlugin('database', { type: 'SET_PHASE', phase: 'Edit' });
+      // @ts-expect-error unknown plugin
+      services.emitter.sendToPlugin('unknown-plugin', { type: 'ANYTHING' });
+      // @ts-expect-error DELETE_NOTE needs an id
+      services.emitter.sendToSystem('default-setup/notes', { type: 'DELETE_NOTE' });
+      // @ts-expect-error actions name every system <pack>/<feature>
+      services.emitter.sendToSystem('notes', { type: 'DELETE_NOTE', id: 'Note-1' });
+    }).toBeFunction();
   });
 });

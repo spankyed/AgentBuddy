@@ -1,14 +1,12 @@
-import type { DSLNodeBase, NodeBase } from '@abuddy/sdk/build';
-
-declare module '@abuddy/sdk/types' {
-  interface NodeEntityRegistry { llm: LLMNode }
-}
+import type { NodeBase } from '@abuddy/sdk';
+import type { DSLNodeBase } from '@abuddy/sdk/build';
+import type { ModelId } from '@abuddy/sdk/models';
 
 export interface DSLLLMNode extends DSLNodeBase {
   type: 'llm';
   prompt: string;
   map?: Record<string, string>;
-  model?: string;
+  model?: ModelId;
   temperature?: number;
   maxTokens?: number;
   systemPrompt?: string;
@@ -19,7 +17,7 @@ export interface LLMNode extends NodeBase {
   prompt?: string;
   promptTemplateId?: string;
   fieldMappings?: Array<{ target: string; source: string; default?: any }>;
-  model?: string;
+  model?: ModelId;
   temperature?: number;
   maxTokens?: number;
   systemPrompt?: string;

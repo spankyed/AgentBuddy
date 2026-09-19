@@ -9,23 +9,19 @@ import {
 } from '@abuddy/sdk/fe'
 import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
 import type {
-  FlowEntity,
   OutgoingFlowsEvents,
   NodeEntity,
-  EARS,
   EdgeEntity,
-  PromptEntity,
-  ModelCatalogEntry,
-  ActionEntity,
-  TNodeEntity,
-  TrackTree,
   OutgoingBrainEvents,
 } from '@/__generated__/types'
-import { trpc } from '@abuddy/sdk/rpc'
-import { getNodeConfig, isTriggerNode } from '@abuddy/sdk/fe/components/node-styles'
+import { sendToSystem } from '@/__generated__/events'
+import { getNodeConfig, isTriggerNode } from '@abuddy/ui/components/node-styles'
 import { stepRegistry } from '@abuddy/sdk/steps'
 import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG, layoutComponentAroundSource, type LayoutPositions } from './canvas/layout-utils'
-import { computeMaxBottom, type LayoutNodeData } from '@abuddy/sdk/fe/components/node-dimensions'
+import { computeMaxBottom, type LayoutNodeData } from '@abuddy/ui/components/node-dimensions'
+import type { FlowEntity, PromptEntity, ActionEntity, EARS } from '@abuddy/sdk'
+import type { ModelCatalogEntry } from '@abuddy/sdk/models'
+import type { TNodeEntity, TrackTree } from '@abuddy/sdk/steps'
 
 const randId = () => Math.random().toString(36).slice(2, 8)
 
@@ -118,6 +114,8 @@ export interface FlowsContext {
   actions: ActionEntity[];
   // Track temporary IDs during async creation
   tempIdMap: Record<string, string>; // tempId -> permanentId
+  /** The root flow the brain runs (the flow with the root role), as the flows system last sent it */
+  rootFlowId?: string;
   // Settings
   settings?: any; // FlowsSettings
   // Dialog bridge flags (set by context menu, consumed by watchers in flow-canvas.vue)
@@ -163,7 +161,7 @@ type UIEvent =
   | { type: 'NODE.SELECTION_CHANGE'; nodeId: string; selected: boolean }
   | { type: 'EDGE.CONNECT'; src: string; tgt: string; sourceHandle?: string; targetHandle?: string }
   | { type: 'EDGE.DISCONNECT'; edgeId: string }
-  | { type: 'EDGE.RECONNECT'; edgeId: string; oldSource: string; oldTarget: string; newSource: string; newTarget: string }
+  | { type: 'EDGE.RECONNECT'; edgeId: string; source: string; target: string; sourceHandle?: string; targetHandle?: string }
   | { type: 'NODE.CREATE'; nodeType: string; position?: { x: number; y: number } }
   | { type: 'NODE.CREATE_CONNECTED'; nodeType: string; sourceNodeId: string; sourceHandle?: string }
   | { type: 'NODE.UPDATE'; nodeId: EARS.EntityId; updates: Partial<NodeEntity> }
@@ -171,6 +169,8 @@ type UIEvent =
   | { type: 'FLOW.PREVIEW'; flowId: EARS.EntityId }
   | { type: 'FLOW.SELECT'; flowId: EARS.EntityId }
   | { type: 'SELECT_ROOT_FLOW' }
+  /** Makes a flow the root flow, or, with null, leaves no flow the root */
+  | { type: 'ROOT_FLOW.SET'; flowId: string | null }
   | { type: 'SELECT_AND_EDIT_FIRST_NODE' }
   | { type: 'FLOW.CREATE'; }
   | { type: 'FLOW.DELETE'; flowId: EARS.EntityId }
@@ -231,6 +231,7 @@ const flowsState = setup({
           edges: graphEdges,
           positions: needsLayout ? {} : existingPositions,
         },
+        rootFlowId: ev.data.rootFlow?.id,
         settings: ev.data.settings || {},
       }
     }),
@@ -251,15 +252,14 @@ const flowsState = setup({
         return
       }
       // Send event to backend to get flow data
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'FLOW_SELECT',
         flowId: ev.flowId,
       });
     },
 
     selectRootFlow: ({ context }) => {
-      const rootFlowId = context.settings?.rootFlowId;
+      const rootFlowId = context.rootFlowId;
       if (!rootFlowId) {
         console.warn('No root flow configured');
         return;
@@ -268,8 +268,7 @@ const flowsState = setup({
         return;
       }
       // Send event to backend to get root flow data
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'FLOW_SELECT',
         flowId: rootFlowId,
       });
@@ -303,13 +302,12 @@ const flowsState = setup({
 
     sendCreateFlow: ({ event }) => {
       const ev = typeOf('FLOW.CREATE', event);
-      trpc.bus.send.mutate({ systemId: id, type: 'CREATE_FLOW' });
+      sendToSystem(id, { type: 'CREATE_FLOW' });
     },
 
     sendUpdateLabel: ({ event }) => {
       const ev = typeOf('FLOW.UPDATE_LABEL', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_FLOW_LABEL',
         flowId: ev.flowId,
         label: ev.label,
@@ -353,10 +351,9 @@ const flowsState = setup({
       const ev = event as { type: 'FLOW.DELETE'; flowId: EARS.EntityId };
       if (ev.type !== 'FLOW.DELETE') return;
 
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'DELETE_FLOW',
-        flowId: ev.flowId as string
+        flowId: ev.flowId as string,
       });
     },
 
@@ -458,8 +455,7 @@ const flowsState = setup({
 
       // Only send if both IDs are permanent (not temporary)
       if (!ev.src.startsWith('temp-') && !ev.tgt.startsWith('temp-')) {
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'CREATE_EDGE',
           flowId: context.selectedFlowId,
           sourceId: ev.src,
@@ -487,8 +483,7 @@ const flowsState = setup({
       const ev = typeOf('EDGE.DISCONNECT', event);
       if (!context.selectedFlowId) return;
       
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'DELETE_EDGE',
         flowId: context.selectedFlowId,
         edgeId: ev.edgeId,
@@ -497,41 +492,23 @@ const flowsState = setup({
     
     reconnectEdge: assign(({ context, event }) => {
       const ev = typeOf('EDGE.RECONNECT', event);
-      
-      // Update the edge with new source and target
-      const updatedEdges = context.graph.edges.map(edge => {
-        if (edge.id === ev.edgeId) {
-          return { 
-            ...edge, 
-            source: ev.newSource as EARS.EntityId, 
-            target: ev.newTarget as EARS.EntityId 
-          };
-        }
-        return edge;
-      });
-      
-      return {
-        graph: {
-          ...context.graph,
-          edges: updatedEdges,
-        },
-      };
+      const edges = context.graph.edges.map(edge => edge.id === ev.edgeId
+        ? { ...edge, source: ev.source as EARS.EntityId, target: ev.target as EARS.EntityId, sourceHandle: ev.sourceHandle, targetHandle: ev.targetHandle }
+        : edge);
+      return { graph: { ...context.graph, edges } };
     }),
-    
+
     sendEdgeReconnected: ({ context, event }) => {
       const ev = typeOf('EDGE.RECONNECT', event);
       if (!context.selectedFlowId) return;
-      
-      // Send update edge event to backend
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_EDGE',
         flowId: context.selectedFlowId,
         edgeId: ev.edgeId,
-        oldSource: ev.oldSource,
-        oldTarget: ev.oldTarget,
-        newSource: ev.newSource,
-        newTarget: ev.newTarget,
+        source: ev.source,
+        target: ev.target,
+        sourceHandle: ev.sourceHandle,
+        targetHandle: ev.targetHandle,
       });
     },
     
@@ -551,7 +528,7 @@ const flowsState = setup({
     deselectHandle: assign({ selectedHandle: undefined }),
     clearCanvasError: assign({ canvasError: undefined }),
     surfaceEdgeError: assign(({ event }) => {
-      const ev = typeOf('EDGE_CREATE_FAILED', event)
+      const ev = typeOf(['EDGE_CREATE_FAILED', 'EDGE_UPDATE_FAILED'], event)
       return { canvasError: ev.error }
     }),
 
@@ -571,8 +548,7 @@ const flowsState = setup({
         : ev.nodeId
       if (nodeId.startsWith('temp-')) return
 
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'REINDEX_HANDLES',
         flowId: context.selectedFlowId,
         nodeId,
@@ -620,8 +596,7 @@ const flowsState = setup({
       if (context.selectedFlowId &&
           !handle.nodeId.startsWith('temp-') &&
           !ev.nodeId.startsWith('temp-')) {
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'CREATE_EDGE',
           flowId: context.selectedFlowId,
           sourceId: handle.nodeId,
@@ -670,8 +645,7 @@ const flowsState = setup({
       const ev = typeOf('NODE.DELETE', event);
       if (!context.selectedFlowId) return;
       
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'DELETE_NODE',
         flowId: context.selectedFlowId,
         nodeId: ev.nodeId,
@@ -686,8 +660,7 @@ const flowsState = setup({
       const nodeConfig = getNodeConfig(ev.nodeType)
       const label = nodeConfig?.defaultLabel || nodeConfig?.label || `New ${ev.nodeType}`
 
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'CREATE_NODE',
         flowId: context.selectedFlowId,
         tempId,
@@ -865,8 +838,7 @@ const flowsState = setup({
       } as EdgeEntity
 
       // Send create to backend
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'CREATE_NODE',
         flowId: context.selectedFlowId,
         tempId: tempId,
@@ -933,8 +905,7 @@ const flowsState = setup({
       if (!node) return;
 
       // Send update to backend
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_NODE',
         flowId: context.selectedFlowId,
         nodeId: nodeId,
@@ -1009,8 +980,7 @@ const flowsState = setup({
             || (edge.target === permanentId && context.graph.edges.find(e => e.id === edge.id)?.target === tempId);
           
           if (wasUpdated && !edge.source.startsWith('temp-') && !edge.target.startsWith('temp-')) {
-            trpc.bus.send.mutate({
-              systemId: id,
+            sendToSystem(id, {
               type: 'CREATE_EDGE',
               flowId: context.selectedFlowId!,
               sourceId: edge.source,
@@ -1063,31 +1033,6 @@ const flowsState = setup({
       };
     }),
     
-    reconcileUpdatedEdgeId: assign(({ context, event }) => {
-      const ev = typeOf('EDGE_UPDATED', event);
-      const { oldEdgeId, newEdgeId, newSource, newTarget } = ev;
-      
-      // Update the edge with the old ID to have the new ID and connections
-      const updatedEdges = context.graph.edges.map(edge => {
-        if (edge.id === oldEdgeId) {
-          return { 
-            ...edge, 
-            id: newEdgeId,
-            source: newSource,
-            target: newTarget
-          };
-        }
-        return edge;
-      });
-      
-      return {
-        graph: {
-          ...context.graph,
-          edges: updatedEdges,
-        },
-      };
-    }),
-    
     removeDeletedEdge: assign(({ context, event }) => {
       const ev = typeOf('EDGE_DELETED', event);
       const { edgeId } = ev;
@@ -1113,11 +1058,10 @@ const flowsState = setup({
 
     sendImportDSL: ({ event }) => {
       const ev = typeOf('DSL.IMPORT', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'IMPORT_DSL',
         dsl: ev.dsl,
-      } as any);
+      });
     },
 
     handleDSLImported: assign(({ context, event }) => {
@@ -1166,12 +1110,11 @@ const flowsState = setup({
 
     sendExportDSL: ({ event }) => {
       const ev = typeOf('DSL.EXPORT', event);
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'EXPORT_DSL',
         directory: ev.directory,
         ...(ev.flowId && { flowId: ev.flowId }),
-      } as any);
+      });
     },
 
     handleDSLExported: assign(({ event }) => {
@@ -1253,6 +1196,9 @@ const flowsState = setup({
     FLOWS_SETTINGS_UPDATED: {
       actions: 'handleSettingsUpdate'
     },
+    'ROOT_FLOW.SET': {
+      actions: ({ event }) => sendToSystem(id, { type: 'SET_ROOT_FLOW', flowId: typeOf('ROOT_FLOW.SET', event).flowId }),
+    },
     FLOW_SELECTED: { actions: 'loadFlowData' },
     LAYOUT_COMPUTED: {
       actions: assign(({ context, event }) => {
@@ -1292,7 +1238,11 @@ const flowsState = setup({
       actions: 'clearCanvasError',
     },
     EDGE_UPDATED: {
-      actions: 'reconcileUpdatedEdgeId'
+      // Backend confirmation - edge already moved locally
+    },
+    // A refused move: the stored flow comes back as FLOW_SELECTED, then the reason
+    EDGE_UPDATE_FAILED: {
+      actions: 'surfaceEdgeError',
     },
     EDGE_DELETED: {
       actions: 'removeDeletedEdge'
@@ -1356,7 +1306,7 @@ const flowsState = setup({
         target: '.view',
         actions: assign(({ context }) => {
           const result = goBack(context.navHistory)!;
-          trpc.bus.send.mutate({ systemId: id, type: 'FLOW_SELECT', flowId: result.entry as string });
+          sendToSystem(id, { type: 'FLOW_SELECT', flowId: result.entry as string });
           return { navHistory: result.history };
         }),
       },
@@ -1382,7 +1332,7 @@ const flowsState = setup({
         target: '.view',
         actions: assign(({ context }) => {
           const result = goForward(context.navHistory)!;
-          trpc.bus.send.mutate({ systemId: id, type: 'FLOW_SELECT', flowId: result.entry as string });
+          sendToSystem(id, { type: 'FLOW_SELECT', flowId: result.entry as string });
           return { navHistory: result.history };
         }),
       },
@@ -1439,8 +1389,8 @@ const flowsState = setup({
             // Find in flows array
             const flow = ctx.flows.find(f => f.id === ctx.selectedFlowId);
 
-            // Check if it's the root flow (based on settings)
-            if (flow && ctx.settings?.rootFlowId === flow.id) {
+            // Check if it's the root flow
+            if (flow && ctx.rootFlowId === flow.id) {
               return `${flow.label || 'Flow'} (Root)`;
             }
 
@@ -1448,7 +1398,7 @@ const flowsState = setup({
           }
         }),
         ...contextMenuFn<FlowsContext>((ctx) => {
-          const isRoot = ctx.selectedFlowId === ctx.settings?.rootFlowId;
+          const isRoot = ctx.selectedFlowId === ctx.rootFlowId;
           return [
             { label: 'Edit Label', icon: Edit, event: { type: 'FLOW.REQUEST_EDIT_LABEL' }, iconColor: 'text-primary-400' },
             ...(!isRoot ? [{

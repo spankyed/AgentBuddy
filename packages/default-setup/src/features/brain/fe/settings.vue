@@ -12,7 +12,7 @@
                 Brain Stopped
               </h4>
               <p class="text-sm text-neutral-500">
-                The brain system is currently inactive. Start it to begin dialog execution.
+                {{ startError ?? 'The brain system is currently inactive. Start it to begin dialog execution.' }}
               </p>
             </div>
           </div>
@@ -142,12 +142,13 @@
 <script setup lang="ts">
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed } from 'vue'
-import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
+import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { RefreshCw, AlertTriangle, Power, CheckCircle, PlayCircle } from 'lucide-vue-next'
 import type { BrainSettings } from '@/__generated__/types'
-import { trpc } from '@abuddy/sdk/rpc'
+import { sendToSystem } from '@/__generated__/events'
 import { useSelector } from '@xstate/vue'
 import { id as brainId, type BrainState } from '@/features/brain/fe/state'
+import { id as flowsId, type FlowsState } from '@/features/flows/fe/state'
 
 const actorSystem = useActorSystem()
 
@@ -164,11 +165,16 @@ const props = withDefaults(defineProps<Props>(), {
 // Get brain state from brain state machine
 const brainActor: BrainState = actorSystem.get(brainId);
 const brainIsDead = useSelector(brainActor, (state) => state.context.brainIsDead)
+const startError = useSelector(brainActor, (state) => state.context.startError)
+const runningRootFlowId = useSelector(brainActor, (state) => state.context.runningRootFlowId)
+// The root flow is the flows plugin's (the flow with the root role)
+const flowsActor: FlowsState = actorSystem.get(flowsId)
+const rootFlowId = useSelector(flowsActor, (state) => state.context.rootFlowId)
 
 // Compute if restart is needed by comparing root flow IDs
 const needsRestart = computed(() => {
-  const flowsRootId = props.allSettings?.plugins?.flows?.rootFlowId
-  const brainRunningId = props.allSettings?.plugins?.brain?.runningRootFlowId
+  const flowsRootId = rootFlowId.value
+  const brainRunningId = runningRootFlowId.value
   
   // Need restart if:
   // 1. Brain is running (not dead) AND
@@ -184,32 +190,28 @@ const inspectEnabled = ref<boolean>(false)
 const handleRestart = () => {
   // If brain is dead, send START_BRAIN, otherwise RESTART_BRAIN
   if (brainIsDead.value) {
-    trpc.bus.send.mutate({
-      systemId: 'brain',
-      type: 'START_BRAIN'
+    sendToSystem('brain', {
+      type: 'START_BRAIN',
     })
   } else {
-    trpc.bus.send.mutate({
-      systemId: 'brain',
-      type: 'RESTART_BRAIN'
+    sendToSystem('brain', {
+      type: 'RESTART_BRAIN',
     })
   }
 }
 
 const handleKill = () => {
   // Send kill event to backend brain system
-  trpc.bus.send.mutate({
-    systemId: 'brain',
-    type: 'KILL_BRAIN'
+  sendToSystem('brain', {
+    type: 'KILL_BRAIN',
   })
 }
 
 const toggleInspect = () => {
   inspectEnabled.value = !inspectEnabled.value
   // Send toggle inspect event to backend
-  trpc.bus.send.mutate({
-    systemId: 'brain',
-    type: 'TOGGLE_INSPECT'
+  sendToSystem('brain', {
+    type: 'TOGGLE_INSPECT',
   })
 }
 </script>

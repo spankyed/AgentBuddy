@@ -48,9 +48,6 @@ export async function initApp(initConfig: AppInitConfig) {
     // Disable auto-updater until GitHub releases are configured
     // .init(autoUpdater())
 
-    // Install DevTools extension if needed
-    // .init(chromeDevToolsExtension({extension: 'VUEJS3_DEVTOOLS'}))
-
     // Security
     .init(allowInternalOrigins(
       new Set(initConfig.renderer instanceof URL ? [initConfig.renderer.origin] : []),

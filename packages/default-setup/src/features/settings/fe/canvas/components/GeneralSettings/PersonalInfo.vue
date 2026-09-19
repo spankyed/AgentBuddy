@@ -74,9 +74,10 @@
 
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useDebounce } from '@abuddy/sdk/fe'
+import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import { User, MapPin } from 'lucide-vue-next'
 import AddressInput from './AddressInput.vue'
+import type { Address } from '../../../../be/types'
 
 interface Props {
   settings?: any
@@ -96,7 +97,7 @@ const emit = defineEmits<{
 const formData = ref<{
   name: string
   phoneNumber: string
-  address: any // Can be string (legacy) or structured object
+  address: Address
 }>({
   name: props.settings?.name || '',
   phoneNumber: props.settings?.phoneNumber || '',

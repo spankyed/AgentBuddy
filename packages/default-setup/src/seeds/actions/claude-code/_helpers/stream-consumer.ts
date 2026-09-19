@@ -426,7 +426,7 @@ export async function consumeStream(
           // Guard: if the CLI sends an AskUserQuestion with no parseable questions,
           // auto-approve rather than rendering an empty block.
           if (questions.length > 0) {
-            const questionMsg = (services.chat as any).sendQuestionBlock({
+            const questionMsg = services.chat.sendQuestionBlock({
               threadId,
               text: questions[0].header || 'Select an option',
               prompt: questions[0].header || 'Select an option',

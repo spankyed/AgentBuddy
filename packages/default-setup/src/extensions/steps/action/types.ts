@@ -1,8 +1,5 @@
-import type { DSLNodeBase, NodeBase } from '@abuddy/sdk/build';
-
-declare module '@abuddy/sdk/types' {
-  interface NodeEntityRegistry { action: ActionNode }
-}
+import type { NodeBase } from '@abuddy/sdk';
+import type { DSLNodeBase } from '@abuddy/sdk/build';
 
 export interface DSLActionNode extends DSLNodeBase {
   type: 'action';

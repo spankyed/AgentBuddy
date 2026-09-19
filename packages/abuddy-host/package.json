@@ -1,0 +1,50 @@
+{
+  "name": "@abuddy/host",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Host-only modules shared by the AgentBuddy app, CLI and test fixture",
+  "type": "module",
+  "sideEffects": false,
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "shared-modules:update": "tsx scripts/shared-modules.ts"
+  },
+  "exports": {
+    "./app-state": "./src/app-state/index.ts",
+    "./backup": "./src/backup/index.ts",
+    "./build/discover": "./src/build/discover.ts",
+    "./build/packages-built": "./src/build/packages-built.ts",
+    "./build/shared-deps": "./src/build/shared-deps.ts",
+    "./build/source-resolution": "./src/build/source-resolution.ts",
+    "./bus": "./src/bus/index.ts",
+    "./database": "./src/database/index.ts",
+    "./fe": "./src/fe/index.ts",
+    "./migrations": "./src/migrations/index.ts",
+    "./packs": "./src/packs/index.ts",
+    "./packs/dev-server": "./src/packs/dev-server.ts",
+    "./packs/runtime": "./src/packs/runtime/index.ts",
+    "./secrets": "./src/secrets/index.ts",
+    "./services": "./src/services/index.ts"
+  },
+  "dependencies": {
+    "@abuddy/ears": "*",
+    "@abuddy/sdk": "*",
+    "@ai-sdk/anthropic": "^4.0.53",
+    "@ai-sdk/cohere": "^4.0.41",
+    "@ai-sdk/google": "^4.0.69",
+    "@ai-sdk/groq": "^4.0.41",
+    "@ai-sdk/mistral": "^4.0.43",
+    "@ai-sdk/openai": "^4.0.66",
+    "@napi-rs/keyring": "^1.3.0",
+    "ai": "^7.0.100",
+    "fs-extra": "^11.4.0",
+    "semver": "^7.8.5",
+    "tar": "^7.5.22",
+    "xstate": "^5.19.2"
+  },
+  "devDependencies": {
+    "@types/fs-extra": "^11.0.4",
+    "@types/semver": "^7.8.0"
+  }
+}

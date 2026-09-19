@@ -1,11 +1,12 @@
-import { qx } from '../../ears/index';
-import { edgeStore } from '../../ears/internals';
-import { createExportDir, ensureDirectoryExists, writeExportJson } from '../../utils/index';
-import { stepRegistry } from '../../steps/index';
-import type { FlowDSL, Track, DSLStepNode } from './flow-types';
-import type { FlowEARS } from './flow-compiler';
+import { installedEngine, type EarsQuery } from '@abuddy/ears';
+import { createExportDir, ensureDirectoryExists, writeExportJson } from '../../utils/index.ts';
+import type { StepDefinition } from '../../steps/index.ts';
+import { stepLookup, type StepLookup } from './step-lookup.ts';
+import type { FlowDSL, Track, DSLStepNode } from './flow-types.ts';
+import { EARS } from '../../types/entities.ts';
 
 interface DecompileGraphCtx {
+  steps: StepLookup;
   nodes: any[];
   edges: any[];
   triggerNodeIds: Set<string>;
@@ -18,30 +19,34 @@ interface DecompileGraphCtx {
 }
 
 export interface ExportFlowsOptions {
-  ears: FlowEARS;
   rootFlowRole: string;
   flowIds?: string[];
+  /** The engine to read the flows from; the installed one by default */
+  engine?: EarsQuery;
+  /** The step definitions to decompile with; the registered packs' by default */
+  steps?: readonly StepDefinition[];
 }
 
-function getFlowNodes(flowId: string, ears: FlowEARS): any[] {
+function getFlowNodes({ qx }: EarsQuery, steps: StepLookup, flowId: string): any[] {
   const nodeIds = qx(flowId)
-    .links(ears.RelKind.CONTAINS, ears.Entity.Node)
+    .links(EARS.RelKind.CONTAINS, EARS.Entity.Node)
     .map(({ id }: any) => id);
 
   const nodes = qx(nodeIds).pickAll();
 
   return nodes.map((node: any) => {
-    const rel = stepRegistry.getBuild(node.nodeType)?.relation;
+    const rel = steps.getBuild(node.nodeType)?.relation;
     if (!rel) return node;
     const linkedId = qx(node.id)
-      .links(ears.RelKind.INSTANCE_OF)
+      .links(EARS.RelKind.INSTANCE_OF)
       .map(({ id }: any) => id)[0];
     return linkedId ? { ...node, [rel.field]: linkedId } : node;
   });
 }
 
-function getFlowEdges(flowId: string, ears: FlowEARS): any[] {
-  const nodes = getFlowNodes(flowId, ears);
+function getFlowEdges(engine: EarsQuery, steps: StepLookup, flowId: string): any[] {
+  const { qx } = engine;
+  const nodes = getFlowNodes(engine, steps, flowId);
   const nodeIds = nodes.map((n: any) => n.id).filter(Boolean);
 
   const seen = new Set<string>();
@@ -49,23 +54,18 @@ function getFlowEdges(flowId: string, ears: FlowEARS): any[] {
 
   for (const source of nodeIds) {
     qx(source)
-      .links([ears.RelKind.TRANSITIONS_TO], [ears.Entity.Node])
+      .links([EARS.RelKind.TRANSITIONS_TO], [EARS.Entity.Node])
       .filter(({ id: targetId }: any) => nodeIds.includes(targetId))
       .forEach(({ relation, id: target }: any) => {
-        const relId = edgeStore.relIds({
+        const relDetails = engine.findRelations({
           sourceEntity: source,
           relationType: relation,
           targetEntity: target,
         })[0];
+        const relId = relDetails?.id;
 
         if (!relId || seen.has(relId)) return;
         seen.add(relId);
-
-        const relDetails = edgeStore.find({
-          sourceEntity: source,
-          relationType: relation,
-          targetEntity: target,
-        })[0];
 
         edges.push({
           id: relId,
@@ -173,7 +173,7 @@ function decompileStepNode(
   node: any,
   graphCtx: DecompileGraphCtx,
 ): DSLStepNode {
-  const build = stepRegistry.getBuild(node.nodeType);
+  const build = graphCtx.steps.getBuild(node.nodeType);
   if (build?.decompile) {
     return build.decompile(node, {
       actionMap: graphCtx.actionMap,
@@ -192,13 +192,14 @@ function decompileStepNode(
  *─────────────────────────────────────────────────────────────────*/
 
 function buildTracksFromGraph(
+  steps: StepLookup,
   nodes: any[],
   edges: any[],
   actionMap: Map<string, string>,
   promptMap: Map<string, string>,
   flowMap: Map<string, string>,
 ): Track[] {
-  const allTriggerNodes = nodes.filter((n: any) => stepRegistry.isTrigger(n.nodeType));
+  const allTriggerNodes = nodes.filter((n: any) => steps.isTrigger(n.nodeType));
 
   const incomingEdges = new Map<string, string[]>();
   const outgoingEdges = new Map<string, string[]>();
@@ -215,6 +216,7 @@ function buildTracksFromGraph(
   const triggerNodeIds = new Set(allTriggerNodes.map((n: any) => n.id as string));
 
   const graphCtx: DecompileGraphCtx = {
+    steps,
     nodes,
     edges,
     triggerNodeIds,
@@ -279,7 +281,7 @@ function buildTracksFromGraph(
   }
 
   for (const triggerNode of allTriggerNodes) {
-    const triggerFacet = stepRegistry.getTrigger(triggerNode.nodeType);
+    const triggerFacet = steps.getTrigger(triggerNode.nodeType);
     if (!triggerFacet?.decompile) continue;
 
     const trackFields = triggerFacet.decompile(triggerNode as unknown as Record<string, unknown>);
@@ -305,15 +307,16 @@ function buildTracksFromGraph(
  *─────────────────────────────────────────────────────────────────*/
 
 function decompileFlow(
+  engine: EarsQuery,
+  steps: StepLookup,
   flow: any,
   actionMap: Map<string, string>,
   promptMap: Map<string, string>,
   flowMap: Map<string, string>,
-  ears: FlowEARS,
 ): { name: string; tracks: Track[] } {
-  const nodes = getFlowNodes(flow.id, ears);
-  const edges = getFlowEdges(flow.id, ears);
-  const tracks = buildTracksFromGraph(nodes, edges, actionMap, promptMap, flowMap);
+  const nodes = getFlowNodes(engine, steps, flow.id);
+  const edges = getFlowEdges(engine, steps, flow.id);
+  const tracks = buildTracksFromGraph(steps, nodes, edges, actionMap, promptMap, flowMap);
   return { name: flow.label, tracks };
 }
 
@@ -326,10 +329,12 @@ export function exportFlowsToDSL(
   options: ExportFlowsOptions,
   versioned = true,
 ): { filePath: string; flowCount: number } {
-  const { ears, rootFlowRole, flowIds } = options;
+  const { rootFlowRole, flowIds, engine = installedEngine() } = options;
+  const { qx } = engine;
+  const steps = stepLookup(options.steps);
 
-  const actions = qx(ears.Entity.Action).pickAll() as any[];
-  const prompts = qx(ears.Entity.Prompt).pickAll() as any[];
+  const actions = qx(EARS.Entity.Action).pickAll() as any[];
+  const prompts = qx(EARS.Entity.Prompt).pickAll() as any[];
 
   const actionMap = new Map<string, string>();
   for (const action of actions) actionMap.set(action.id, action.label);
@@ -337,7 +342,7 @@ export function exportFlowsToDSL(
   const promptMap = new Map<string, string>();
   for (const prompt of prompts) promptMap.set(prompt.id, prompt.label);
 
-  let flows = qx(ears.Entity.Flow).pickAll() as any[];
+  let flows = qx(EARS.Entity.Flow).pickAll() as any[];
   if (flowIds) {
     const idSet = new Set(flowIds);
     flows = flows.filter((f: any) => idSet.has(f.id));
@@ -352,7 +357,7 @@ export function exportFlowsToDSL(
   let exported = 0;
 
   for (const flow of flows) {
-    const { name, tracks } = decompileFlow(flow, actionMap, promptMap, flowMap, ears);
+    const { name, tracks } = decompileFlow(engine, steps, flow, actionMap, promptMap, flowMap);
     if (tracks.length === 0) continue;
 
     if (flow.id === rootFlowId) {

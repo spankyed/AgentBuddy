@@ -1,31 +1,40 @@
 import * as esbuild from 'esbuild';
+import * as crypto from 'crypto';
 import * as path from 'path';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
+// SDK source, so run with --import tsx --conditions=@abuddy/source (the build script and dev-mode.js do)
+import { readApiEndpoint, resolveAppContext } from '@abuddy/sdk/env';
+import { API_HOST, API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const srcDir = path.resolve(__dirname, 'src');
 const entryPoint = path.resolve(srcDir, '__generated__/pack-entry.ts');
-const outfile = path.resolve(__dirname, 'dist/dev-entry.cjs');
+// The pack's backend runtime, in the pack layout (runtime/index.cjs): the API loads it in development,
+// and the app publishes it with the snapshot and build/ for packs depending on default-setup
+const outfile = path.resolve(__dirname, 'dist/runtime/index.cjs');
+// The compiled seeds index (abuddy build) this runtime is built beside, by its sha256: the app publishes
+// the runtime with the compiled seeds only when it matches, so a stale runtime never ships with newer seeds
+const seedsIndex = path.resolve(__dirname, 'dist/seeds.json');
+const seedsIndexHash = path.resolve(__dirname, 'dist/runtime/seeds-index.sha256');
 
-import * as os from 'os';
-const watchMode = process.argv.includes('--watch');
-
-function resolveAppDataDir(appName) {
-  const home = os.homedir();
-  switch (process.platform) {
-    case 'darwin': return path.join(home, 'Library', 'Application Support', appName);
-    case 'win32': return path.join(process.env.APPDATA || path.join(home, 'AppData', 'Roaming'), appName);
-    default: return path.join(process.env.XDG_DATA_HOME || path.join(home, '.local', 'share'), appName);
+function recordSeedsIndex() {
+  if (fs.existsSync(seedsIndex)) {
+    fs.writeFileSync(seedsIndexHash, crypto.createHash('sha256').update(fs.readFileSync(seedsIndex)).digest('hex'));
+  } else {
+    fs.rmSync(seedsIndexHash, { force: true });
   }
 }
-const PORT_FILE = path.join(resolveAppDataDir('abuddy-dev'), 'api-port');
+
+const watchMode = process.argv.includes('--watch');
+
+// Where the development app's API writes its port and the token /dev/reload requires
+const { apiPortFile, apiTokenFile } = resolveAppContext({ env: 'development' });
 
 const aliasPlugin = {
   name: 'resolve-aliases',
   setup(build) {
     const aliases = {
       '@/__generated__/': path.join(srcDir, '__generated__/'),
-      '@/registries/': path.join(srcDir, 'registries/'),
       '@/features/': path.join(srcDir, 'features/'),
       '@/extensions/': path.join(srcDir, 'extensions/'),
     };
@@ -50,16 +59,6 @@ const aliasPlugin = {
   },
 };
 
-const externalizeSdkPlugin = {
-  name: 'externalize-sdk',
-  setup(build) {
-    build.onResolve({ filter: /^@abuddy\/sdk/ }, (args) => ({
-      path: args.path,
-      external: true,
-    }));
-  },
-};
-
 const vueStubPlugin = {
   name: 'stub-vue',
   setup(build) {
@@ -78,8 +77,10 @@ const buildOptions = {
   platform: 'node',
   target: 'node23',
   sourcemap: true,
+  // Every package stays external: the app bridges the shared-instance packages (@abuddy/sdk, @abuddy/ears)
+  // to its own and resolves the rest itself
   packages: 'external',
-  plugins: [externalizeSdkPlugin, aliasPlugin, vueStubPlugin],
+  plugins: [aliasPlugin, vueStubPlugin],
   logLevel: 'info',
 };
 
@@ -87,18 +88,19 @@ let isFirstBuild = true;
 let reloadTimer = null;
 const DEBOUNCE_MS = 300;
 
-function getApiPort() {
-  try { return fs.readFileSync(PORT_FILE, 'utf-8').trim(); } catch {}
+function readDevFile(file) {
+  try { return fs.readFileSync(file, 'utf-8').trim(); } catch {}
   return null;
 }
 
 async function notifyReload() {
-  const port = getApiPort();
-  if (!port) return;
+  const api = readApiEndpoint(apiPortFile);
+  const token = readDevFile(apiTokenFile);
+  if (!api || !token) return;
   try {
-    const res = await fetch(`http://localhost:${port}/dev/reload`, {
+    const res = await fetch(`http://${API_HOST}:${api.port}/dev/reload`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', [API_TOKEN_HEADER]: token },
       body: JSON.stringify({ packId: 'default-setup', builtIn: true }),
     });
     if (res.ok) {
@@ -122,6 +124,7 @@ if (watchMode) {
         setup(build) {
           build.onEnd((result) => {
             if (result.errors.length === 0) {
+              recordSeedsIndex();
               if (isFirstBuild) {
                 isFirstBuild = false;
                 process.send?.({ type: 'ready' });
@@ -140,5 +143,6 @@ if (watchMode) {
   console.log('[dev-build] Watching for changes...');
 } else {
   await esbuild.build(buildOptions);
+  recordSeedsIndex();
   console.log('[dev-build] Build complete');
 }

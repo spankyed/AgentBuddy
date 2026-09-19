@@ -197,29 +197,6 @@
                 </div>
               </label>
 
-              <!-- Secrets Database Card -->
-              <label class="relative cursor-pointer group">
-                <input
-                  type="checkbox"
-                  v-model="selectedDatabases.secretsLmdb"
-                  class="peer sr-only"
-                />
-                <div class="p-4 bg-neutral-800/50 border border-neutral-700 rounded-lg transition-all duration-200 peer-checked:border-blue-500/50 peer-checked:bg-blue-500/5 hover:bg-neutral-800/70">
-                  <div class="flex items-start gap-3">
-                    <div class="relative mt-0.5">
-                      <div class="w-5 h-5 rounded border-2 border-neutral-600 bg-neutral-900 transition-all peer-checked:border-blue-500 peer-checked:bg-blue-500"></div>
-                      <Check v-if="selectedDatabases.secretsLmdb" class="absolute inset-0 w-5 h-5 text-white p-0.5" />
-                    </div>
-                    <div class="flex-1">
-                      <div class="flex items-center gap-2">
-                        <Lock class="w-4 h-4 text-amber-400" />
-                        <span class="text-sm font-medium text-white">Secrets Database</span>
-                      </div>
-                      <p class="text-xs text-neutral-500 mt-1">API keys and credentials</p>
-                    </div>
-                  </div>
-                </div>
-              </label>
             </div>
           </div>
 
@@ -323,7 +300,6 @@ import {
   Database,
   // Search, // [SEARCH_INDEX_FF]
   Activity,
-  Lock,
   Check,
   CheckCircle,
   AlertCircle,
@@ -332,8 +308,8 @@ import {
   Image as ImageIcon
 } from 'lucide-vue-next';
 import { id, type DatabaseState } from '../state';
-import { trpc } from '@abuddy/sdk/rpc';
-import ToastNotification from '@abuddy/sdk/fe/design/ToastNotification.vue';
+import { sendToSystem } from '@/__generated__/events';
+import ToastNotification from '@abuddy/ui/design/ToastNotification';
 
 const actorSystem = useActorSystem()
 
@@ -341,6 +317,9 @@ const actor: DatabaseState = actorSystem.get(id);
 
 // Get backup info from state
 const storedBackupInfo = useSelector(actor, (state) => state.context.backupInfo);
+const isExporting = useSelector(actor, (state) => state.context.exporting);
+const isImporting = useSelector(actor, (state) => state.context.importing);
+const backupResult = useSelector(actor, (state) => state.context.backupResult);
 
 // Tab state
 const activeTab = ref<'export' | 'import'>('export');
@@ -352,15 +331,12 @@ const selectedDatabases = ref({
   lmdb: true,
   // searchIndices: true, // [SEARCH_INDEX_FF]
   volatileLmdb: false,
-  secretsLmdb: false,
 });
-const isExporting = ref(false);
 const toast = ref<InstanceType<typeof ToastNotification>>();
 
 // Import state
 const importPath = ref('');
 const backupInfo = ref<any>(null);
-const isImporting = ref(false);
 
 // Computed
 const canExport = computed(() => {
@@ -400,6 +376,22 @@ watch(storedBackupInfo, (newInfo) => {
   }
 });
 
+// Report each finished export or import; a successful import reloads the window to reload client state
+watch(backupResult, (result) => {
+  if (!result) return;
+  const operation = result.operation === 'export' ? 'Export' : 'Import';
+  if (result.unknownDatabases?.length) {
+    askAboutUnknownDatabases(result.unknownDatabases);
+  } else if (result.error) {
+    toast.value?.error(`${operation} failed`, result.error);
+  } else if (result.operation === 'export') {
+    toast.value?.success('Backup exported successfully!');
+  } else {
+    toast.value?.success('Backup imported successfully!', 'Page will refresh in 2 seconds...');
+    setTimeout(() => window.location.reload(), 1500);
+  }
+});
+
 // Load saved paths from localStorage on mount
 onMounted(() => {
   const savedExportPath = localStorage.getItem('database-backup-export-path');
@@ -423,31 +415,19 @@ async function selectExportDirectory() {
   }
 }
 
-async function handleExport() {
+function handleExport() {
   if (!canExport.value) return;
 
-  isExporting.value = true;
+  const databases = Object.entries(selectedDatabases.value)
+    .filter(([_, selected]) => selected)
+    .map(([key]) => key) as Array<'lmdb' | 'volatileLmdb'>; // 'searchIndices' removed [SEARCH_INDEX_FF]
 
-  try {
-    const databases = Object.entries(selectedDatabases.value)
-      .filter(([_, selected]) => selected)
-      .map(([key]) => key) as Array<'lmdb' | 'volatileLmdb' | 'secretsLmdb'>; // 'searchIndices' removed [SEARCH_INDEX_FF]
-
-    await trpc.bus.send.mutate({
-      systemId: id,
-      type: 'EXPORT_DATABASE',
-      path: exportPath.value,
-      name: backupName.value || undefined,
-      databases,
-    });
-
-    toast.value?.success('Backup exported successfully!');
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    toast.value?.error('Export failed', errorMessage);
-  } finally {
-    isExporting.value = false;
-  }
+  actor.send({
+    type: 'BACKUP.EXPORT',
+    path: exportPath.value,
+    name: backupName.value || undefined,
+    databases,
+  });
 }
 
 // Import functions
@@ -458,41 +438,29 @@ async function selectImportDirectory() {
     // Save to localStorage for future use
     localStorage.setItem('database-backup-import-path', directoryPath);
     // Get backup info for the selected directory
-    trpc.bus.send.mutate({
-      systemId: id,
+    sendToSystem(id, {
       type: 'GET_BACKUP_INFO',
       path: directoryPath,
     });
   }
 }
 
-async function handleImport() {
+function handleImport(skipUnknownDatabases = false) {
   if (!canImport.value) return;
 
   const confirmed = confirm('Are you sure you want to import this backup? This will stop the assistant\'s brain and replace all of your current data with the imported data.');
   if (!confirmed) return;
 
-  isImporting.value = true;
+  actor.send({ type: 'BACKUP.IMPORT', path: importPath.value, skipUnknownDatabases });
+}
 
-  try {
-    await trpc.bus.send.mutate({
-      systemId: id,
-      type: 'IMPORT_DATABASE',
-      path: importPath.value,
-    });
-
-    toast.value?.success('Backup imported successfully!', 'Page will refresh in 2 seconds...');
-
-    // Refresh the page after a short delay to reload client state
-    setTimeout(() => {
-      window.location.reload();
-    }, 1500);
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    toast.value?.error('Import failed', errorMessage);
-  } finally {
-    isImporting.value = false;
-  }
+/** A backup from a newer AgentBuddy: the user says whether to import it without what this one can't hold */
+function askAboutUnknownDatabases(stores: string[]): void {
+  const importAnyway = confirm(
+    `This backup was made by a newer AgentBuddy and also holds ${stores.join(', ')}, which this version doesn't have.\n\n` +
+    'Nothing has been changed yet. Import it without those, replacing your current data with the rest?',
+  );
+  if (importAnyway) actor.send({ type: 'BACKUP.IMPORT', path: importPath.value, skipUnknownDatabases: true });
 }
 
 // Utility functions

@@ -1,10 +1,12 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
+    "noEmit": true,
     "paths": {
-      "@abuddy/sdk": ["../abuddy-sdk/src/index.ts"],
-      "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts", "../abuddy-sdk/src/*"],
       "@/*": ["src/*"]
     }
-  }
+  },
+  // The one-off scripts (scripts/db/fix-prod-upgrade.ts), typechecked by npm run typecheck:be (they import the API's src)
+  "include": ["scripts/**/*.ts", "src/env.d.ts"],
+  "exclude": []
 }

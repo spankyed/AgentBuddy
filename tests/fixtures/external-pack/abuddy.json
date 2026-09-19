@@ -14,10 +14,6 @@
     }
   },
   "relKinds": {},
-  "fe": {
-    "entry": "dist/fe.js",
-    "styles": "dist/fe.css"
-  },
   "features": [
     {
       "id": "memos",
@@ -26,13 +22,68 @@
         "entry": "src/features/memos/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/memos/fe/plugin.ts",
-        "label": "Memos",
-        "icon": "StickyNote"
+        "entry": "src/features/memos/fe/plugin.ts"
       },
-      "services": {}
+      "services": {},
+      "repositories": {
+        "memoQueries": "src/features/memos/be/repository.ts#memoQueries",
+        "memoCommands": "src/features/memos/be/repository.ts#memoCommands"
+      }
     }
   ],
-  "dependencies": {},
-  "permissions": []
+  "commands": [
+    {
+      "name": "memo-note",
+      "placeholder": "Memo text"
+    }
+  ],
+  "dependencies": {
+    "default-setup": "*"
+  },
+  "permissions": [],
+  "seedFormats": {
+    "memos": {
+      "format": "markdown-tree",
+      "entity": "Memo",
+      "identity": [
+        "title"
+      ],
+      "fields": {
+        "title": {
+          "from": "frontmatter.title",
+          "default": "filename",
+          "type": "string"
+        },
+        "text": {
+          "from": "body"
+        }
+      }
+    },
+    "quick-memos": {
+      "compiler": "src/seeds/compilers/quick-memos.ts",
+      "entity": "Memo",
+      "identity": [
+        "title"
+      ]
+    }
+  },
+  "boot": {
+    "hooks": "src/features/hooks.ts",
+    "seed": {
+      "actions": "src/seeds/actions",
+      "flows": "src/seeds/flows",
+      "memos": {
+        "path": "src/seeds/memos",
+        "format": "memos"
+      },
+      "quick-memos": {
+        "path": "src/seeds/quick-memos.txt",
+        "format": "quick-memos"
+      },
+      "library": {
+        "path": "src/seeds/library",
+        "format": "default-setup:library"
+      }
+    }
+  }
 }

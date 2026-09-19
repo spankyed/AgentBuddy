@@ -1,10 +1,9 @@
 import type { StepDefinition } from '@abuddy/sdk/steps';
-import { compile, validate, getLabel, decompile } from './build';
+import { actionStepBuild } from './build';
 import { actionStepFE } from './fe';
 
 export const actionStep: StepDefinition = {
-  type: 'action',
-  build: { compile, validate, getLabel, decompile, relation: { field: 'actionId', targetEntity: 'Action' } },
+  ...actionStepBuild,
   runtime: {
     handler: async (tNode, node, ctx, actor) => {
       const { handler } = await import('./runtime');

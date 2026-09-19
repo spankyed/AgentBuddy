@@ -4,12 +4,12 @@
       <h3 class="text-lg font-semibold text-white mb-4">Review & Confirmation</h3>
       <div class="space-y-4">
         <div class="p-4 bg-neutral-900 rounded-lg">
-          <p class="text-neutral-300">{{ artifact.content.message || 'Please review the following changes:' }}</p>
+          <p class="text-neutral-300">{{ artifact.content?.message || 'Please review the following changes:' }}</p>
         </div>
         
-        <div v-if="artifact.content.items" class="space-y-2">
+        <div v-if="artifact.content?.items" class="space-y-2">
           <div 
-            v-for="(item, index) in artifact.content.items" 
+            v-for="(item, index) in artifact.content?.items" 
             :key="index"
             class="flex items-start space-x-2 p-3 bg-neutral-900 rounded"
           >
@@ -35,7 +35,13 @@
 import { CheckSquare } from 'lucide-vue-next';
 import type { ArtifactItem } from '@abuddy/sdk/artifacts';
 
+interface ReviewContent {
+  message?: string;
+  items?: string[];
+}
+
 defineProps<{
-  artifact: ArtifactItem;
+  // A review can arrive without content
+  artifact: ArtifactItem<ReviewContent | undefined>;
 }>();
 </script>

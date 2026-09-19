@@ -269,7 +269,7 @@ import {
   DropdownMenuItem,
 } from 'reka-ui'
 import { useNoteTreeDragDrop } from './composables/useNoteTreeDragDrop'
-import type { MenuItem } from '@abuddy/sdk/fe'
+import type { MenuItem } from '@abuddy/ui/composables/useContextMenu'
 import { useActorSystem, useTrackedMenuOpen } from '@abuddy/sdk/fe'
 
 const actorSystem = useActorSystem()

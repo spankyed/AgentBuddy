@@ -1,7 +1,7 @@
 import { Node, mergeAttributes } from '@tiptap/core'
 import { referenceSuggestionPlugin } from './reference-suggestion-plugin'
-import { getEditorSystem } from '@abuddy/sdk/fe/components/tiptap/editor-system'
-import { CONTRIBUTION_TYPES, ALL_PROTOCOLS, type ReferenceType } from './reference-config'
+import { getEditorSystem } from '@abuddy/ui/components/tiptap/editor-system'
+import { REFERENCE_TYPES, ALL_PROTOCOLS, type ReferenceType } from './reference-config'
 
 function createIconSvg(type: ReferenceType): SVGSVGElement {
   const ns = 'http://www.w3.org/2000/svg'
@@ -15,7 +15,7 @@ function createIconSvg(type: ReferenceType): SVGSVGElement {
   svg.setAttribute('stroke-linecap', 'round')
   svg.setAttribute('stroke-linejoin', 'round')
 
-  for (const [tag, attrs] of CONTRIBUTION_TYPES[type]?.svgElements || CONTRIBUTION_TYPES.thread.svgElements) {
+  for (const [tag, attrs] of REFERENCE_TYPES[type]?.svgElements || REFERENCE_TYPES.thread.svgElements) {
     const el = document.createElementNS(ns, tag)
     for (const [k, v] of Object.entries(attrs)) {
       el.setAttribute(k, v)
@@ -42,7 +42,7 @@ export const ReferenceNode = Node.create({
   },
 
   parseHTML() {
-    return Object.entries(CONTRIBUTION_TYPES).map(([refType, cfg]) => ({
+    return Object.entries(REFERENCE_TYPES).map(([refType, cfg]) => ({
       tag: `a[href^="${cfg.protocol}://"]`,
       priority: 60,
       getAttrs(node: HTMLElement) {
@@ -54,7 +54,7 @@ export const ReferenceNode = Node.create({
   },
 
   renderHTML({ node }) {
-    const cfg = CONTRIBUTION_TYPES[node.attrs.refType as ReferenceType]
+    const cfg = REFERENCE_TYPES[node.attrs.refType as ReferenceType]
     const protocol = cfg?.protocol || 'thread'
     return [
       'a',
@@ -90,7 +90,7 @@ export const ReferenceNode = Node.create({
 
         const refType = node.attrs.refType as ReferenceType
         const refId = node.attrs.refId as string
-        const cfg = CONTRIBUTION_TYPES[refType]
+        const cfg = REFERENCE_TYPES[refType]
 
         cfg.navigate(getEditorSystem(), refId)
       })
@@ -136,7 +136,7 @@ export const ReferenceNode = Node.create({
     return {
       markdown: {
         serialize(state: any, node: any) {
-          const cfg = CONTRIBUTION_TYPES[node.attrs.refType as ReferenceType]
+          const cfg = REFERENCE_TYPES[node.attrs.refType as ReferenceType]
           const protocol = cfg?.protocol || 'thread'
           state.write(`[${node.attrs.label}](${protocol}://${node.attrs.shortCode})`)
         },

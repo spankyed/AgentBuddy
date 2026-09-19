@@ -1,8 +1,10 @@
 import type { LogEntry } from './types';
 
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 /**
  * Checks if a log source matches any of the provided exclusion patterns.
- * Supports wildcards (*) in patterns.
+ * A pattern matches the source exactly, except that `*` matches anything (`action:*` hides every action's logs).
  * 
  * @param source - The log source to check
  * @param excludedPatterns - Array of patterns to match against
@@ -14,8 +16,8 @@ export function isSourceExcluded(source: string | undefined, excludedPatterns: s
   }
   
   return excludedPatterns.some(pattern => {
-    // Support wildcards: convert * to regex
-    const regex = new RegExp('^' + pattern.replace(/\*/g, '.*') + '$');
+    // Everything but `*` is literal: sources like `action:<label>` carry user text
+    const regex = new RegExp('^' + pattern.split('*').map(escapeRegExp).join('.*') + '$');
     return regex.test(source);
   });
 }

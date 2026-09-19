@@ -41,7 +41,7 @@
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, onMounted, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
-import SimpleMonacoEditor from '@abuddy/sdk/fe/components/SimpleMonacoEditor.vue'
+import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor'
 
 const actorSystem = useActorSystem()
 

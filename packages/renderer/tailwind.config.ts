@@ -2,7 +2,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import type { Config } from 'tailwindcss';
 import containerQueries from '@tailwindcss/container-queries';
-import { discoverBuiltInPacksForBuild } from '@abuddy/sdk/build/discover';
+import { discoverBuiltInPacksForBuild } from '@abuddy/host/build/discover';
+import { uiTailwindPreset } from '@abuddy/ui/tailwind-preset';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packagesDir = path.join(__dirname, '..');
@@ -13,7 +14,7 @@ export default {
   content: [
     path.join(__dirname, './index.html'),
     path.join(__dirname, './src/**/*.{vue,js,ts,jsx,tsx}'),
-    path.join(packagesDir, 'abuddy-sdk/src/fe/**/*.{vue,js,ts,jsx,tsx}'),
+    path.join(packagesDir, 'abuddy-ui/src/**/*.{vue,js,ts,jsx,tsx}'),
     ...builtInPacks.map(p => path.join(p.srcDir, '**/*.{vue,js,ts,jsx,tsx}')),
   ],
   safelist: [
@@ -25,16 +26,11 @@ export default {
     'text-neutral-100',
     'block'
   ],
+  // @abuddy/ui's components name primary-*, so its theme comes from the package rather than being
+  // repeated here — a pack that bundles @abuddy/ui applies the same preset
+  presets: [uiTailwindPreset],
   theme: {
     extend: {
-      colors: {
-        primary: {
-          400: '#4B96F3',
-          500: '#2D7EE8',
-          600: '#1E6FD9',
-          700: '#1A5BB4',
-        }
-      },
       keyframes: {
         'slide-down': {
           '0%': {

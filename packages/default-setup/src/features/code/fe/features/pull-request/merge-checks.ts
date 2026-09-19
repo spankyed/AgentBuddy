@@ -2,7 +2,7 @@ import type { GhPullRequest } from '@/__generated__/types'
 
 export type StatusCheck = NonNullable<GhPullRequest['statusCheckRollup']>[number]
 
-export const FAILING_CONCLUSIONS = new Set(['FAILURE', 'CANCELLED', 'TIMED_OUT', 'ACTION_REQUIRED'])
+const FAILING_CONCLUSIONS = new Set(['FAILURE', 'CANCELLED', 'TIMED_OUT', 'ACTION_REQUIRED'])
 export const PENDING_STATUSES = new Set(['QUEUED', 'IN_PROGRESS', 'PENDING'])
 
 export const isFailing = (c: StatusCheck): boolean =>

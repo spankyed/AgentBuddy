@@ -7,15 +7,24 @@ interface RecentFile {
   timestamp: number
 }
 
-const STORAGE_KEY = 'code-plugin-recent-files'
+const STORAGE_PREFIX = 'code-plugin-recent-files'
 const MAX_RECENT_FILES = 50
+
+/**
+ * Recent files are per project: opening a different directory must not rank the previous
+ * project's files, and coming back must restore the list this project earned. An empty
+ * base directory (before the backend reports one) keeps the unscoped key.
+ */
+function storageKey(baseDirectory: string): string {
+  return baseDirectory ? `${STORAGE_PREFIX}:${baseDirectory}` : STORAGE_PREFIX
+}
 
 /**
  * Load recently opened files from localStorage
  */
-export function loadRecentFiles(): string[] {
+export function loadRecentFiles(baseDirectory: string): string[] {
   try {
-    const stored = localStorage.getItem(STORAGE_KEY)
+    const stored = localStorage.getItem(storageKey(baseDirectory))
     if (!stored) return []
     
     const recentFiles: RecentFile[] = JSON.parse(stored)
@@ -35,7 +44,7 @@ export function loadRecentFiles(): string[] {
 /**
  * Save recently opened files to localStorage
  */
-export function saveRecentFiles(recentFiles: string[]): void {
+function saveRecentFiles(recentFiles: string[], baseDirectory: string): void {
   try {
     const timestampedFiles: RecentFile[] = recentFiles.map((path, index) => ({
       path,
@@ -43,7 +52,7 @@ export function saveRecentFiles(recentFiles: string[]): void {
       timestamp: Date.now() - index
     }))
     
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(timestampedFiles))
+    localStorage.setItem(storageKey(baseDirectory), JSON.stringify(timestampedFiles))
   } catch (error) {
     console.error('Failed to save recent files:', error)
   }
@@ -52,7 +61,7 @@ export function saveRecentFiles(recentFiles: string[]): void {
 /**
  * Add a file to the recent files list
  */
-export function addRecentFile(recentFiles: string[], filePath: string): string[] {
+export function addRecentFile(recentFiles: string[], filePath: string, baseDirectory: string): string[] {
   // Remove the file if it already exists (we'll add it to the front)
   const filtered = recentFiles.filter(path => path !== filePath)
   
@@ -60,32 +69,9 @@ export function addRecentFile(recentFiles: string[], filePath: string): string[]
   const updated = [filePath, ...filtered].slice(0, MAX_RECENT_FILES)
   
   // Save to localStorage
-  saveRecentFiles(updated)
+  saveRecentFiles(updated, baseDirectory)
   
   return updated
-}
-
-/**
- * Remove a file from the recent files list
- */
-export function removeRecentFile(recentFiles: string[], filePath: string): string[] {
-  const filtered = recentFiles.filter(path => path !== filePath)
-  
-  // Save to localStorage
-  saveRecentFiles(filtered)
-  
-  return filtered
-}
-
-/**
- * Clear all recent files
- */
-export function clearRecentFiles(): void {
-  try {
-    localStorage.removeItem(STORAGE_KEY)
-  } catch (error) {
-    console.error('Failed to clear recent files:', error)
-  }
 }
 
 /**

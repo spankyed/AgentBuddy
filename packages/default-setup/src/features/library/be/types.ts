@@ -2,8 +2,6 @@ import type { EARS, BaseEntity } from '@/__generated__/ears'
 
 export type DocumentShortCode = `DOC-${number}`;
 
-export type ContentType = 'field' | 'list' | 'markdown' | 'text' | 'code'
-
 export interface FieldContent {
   type: 'field'
   fields: Array<{ key: string; value: string }>
@@ -30,9 +28,12 @@ export interface CodeContent {
   language: string
 }
 
+/** A section of a document's content, as the library compiler parses it from markdown */
 export type ContentSection = FieldContent | ListContent | MarkdownContent | TextContent | CodeContent
 
-export interface Document extends BaseEntity {
+export type ContentType = ContentSection['type']
+
+export interface DocumentEntity extends BaseEntity {
   _type: EARS.Entity.Document
   name: string
   content: ContentSection[]
@@ -40,17 +41,17 @@ export interface Document extends BaseEntity {
   displayOrder?: number
   /** Free-form tags, stored directly on the document as a string array. */
   tags?: string[]
-  /** SHA256 hash of DSL source at last seed. Absent on user-created documents. */
+  /** Hash of the seed source at last seed. Absent on user-created documents. */
   sourceHash?: string
 }
 
-export interface Collection extends BaseEntity {
+export interface CollectionEntity extends BaseEntity {
   _type: EARS.Entity.Collection
   name: string
   description?: string
   displayOrder?: number
   symlinkPath?: string
-  /** SHA256 hash of DSL source at last seed. Absent on user-created collections. */
+  /** Hash of the seed source at last seed. Absent on user-created collections. */
   sourceHash?: string
 }
 
@@ -128,6 +129,15 @@ export interface FolderContents {
   lastKnownPath?: string
 }
 
+/**
+ * Every document and folder in the library, by name: what the reference picker offers and the
+ * panel counts. The file browser reads one folder at a time through `FolderContents` instead.
+ */
+export interface LibraryIndex {
+  documents: Array<{ id: EARS.EntityId; name: string; shortCode: DocumentShortCode; tags: string[] }>
+  folders: Array<{ id: EARS.EntityId; name: string }>
+}
+
 export interface BreadcrumbItem {
   id: EARS.EntityId | null
   name: string
@@ -146,7 +156,7 @@ export interface LibrarySystemContext {
 }
 
 // Library-internal re-exports from search-index subsystem
-export type { ModelProvider, EmbeddingModelId, EmbeddingModelConfig } from './search-index/types/embedding-models'
+export type { SearchEmbeddingModel, SearchEmbeddingModelId, LocalEmbeddingModel, InferenceEmbeddingModel } from '../embedding-models'
 export type {
   EmbeddingModel,
   IndexMetric,

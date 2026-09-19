@@ -9,7 +9,7 @@ import type {
   OutgoingNotesEvents,
   NoteDTO,
 } from '@/__generated__/types'
-import { trpc } from '@abuddy/sdk/rpc'
+import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
 import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
@@ -132,11 +132,14 @@ const notesState = setup({
     events: {} as NotesEvents,
   },
   actions: {
-    setPluginData: assign(({ event }) => {
+    setPluginData: assign(({ context, event }) => {
       const ev = typeOf('NOTES_CONNECTED', event)
+      // The backend sends whatever the repositories hold, and settings are absent until the Settings row
+      // has an entry for this plugin. Assigning that over the context blanks the defaults this machine
+      // declares, and every selector and computed reading them throws on the next render.
       return {
-        notes: ev.data.notes,
-        settings: ev.data.settings,
+        notes: ev.data.notes ?? context.notes,
+        settings: ev.data.settings ?? context.settings,
       }
     }),
 
@@ -199,8 +202,7 @@ const notesState = setup({
     sendViewNote: ({ context }) => {
       const noteId = context.viewedNoteId ?? context.currentNoteId
       if (noteId) {
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'VIEW_NOTE',
           id: noteId,
         })
@@ -209,8 +211,7 @@ const notesState = setup({
 
     sendCreateNote: ({ event }) => {
       const ev = typeOf('NOTE.CREATE', event)
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'CREATE_NOTE',
         title: ev.title ?? 'Untitled',
         content: ev.content,
@@ -221,8 +222,7 @@ const notesState = setup({
 
     sendDeleteNote: ({ event }) => {
       const ev = typeOf('NOTE.DELETE', event)
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'DELETE_NOTE',
         id: ev.noteId,
       })
@@ -230,8 +230,7 @@ const notesState = setup({
 
     sendSoftDeleteTask: ({ event }) => {
       const ev = typeOf('TASK.DELETE', event)
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'DELETE_NOTE',
         id: ev.taskId,
       })
@@ -239,8 +238,7 @@ const notesState = setup({
 
     sendSoftDeleteNote: ({ event }) => {
       const ev = typeOf('NOTE.SOFT_DELETE', event)
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'SOFT_DELETE_NOTE',
         id: ev.noteId,
       })
@@ -248,8 +246,7 @@ const notesState = setup({
 
     sendRestoreNote: ({ event }) => {
       const ev = typeOf('NOTE.RESTORE', event)
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'RESTORE_NOTE',
         id: ev.noteId,
       })
@@ -275,8 +272,7 @@ const notesState = setup({
 
     sendUpdateContent: ({ event }) => {
       const ev = typeOf('NOTE.UPDATE_CONTENT', event)
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_NOTE',
         id: ev.noteId,
         content: ev.content,
@@ -299,8 +295,7 @@ const notesState = setup({
 
     sendUpdateTitle: ({ event }) => {
       const ev = typeOf('NOTE.UPDATE_TITLE', event)
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_NOTE',
         id: ev.noteId,
         title: ev.title,
@@ -323,8 +318,7 @@ const notesState = setup({
 
     sendUpdateIcon: ({ event }) => {
       const ev = typeOf('NOTE.UPDATE_ICON', event)
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_NOTE',
         id: ev.noteId,
         icon: ev.icon,
@@ -354,8 +348,7 @@ const notesState = setup({
       const ev = typeOf('NOTE.TOGGLE_FAVORITE', event)
       const note = context.notes.find(n => n.id === ev.noteId)
       if (!note) return
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_NOTE',
         id: ev.noteId,
         favorite: note.favorite,
@@ -449,8 +442,7 @@ const notesState = setup({
 
     sendCreateChildForSubDocumentInsert: ({ event }) => {
       const ev = typeOf('NOTE.REQUEST_DOCUMENT_INSERT', event)
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'CREATE_NOTE',
         title: 'Untitled',
         parentId: ev.parentId,
@@ -460,8 +452,7 @@ const notesState = setup({
 
     sendSearchNotes: ({ event }) => {
       const ev = typeOf('NOTE.SEARCH', event)
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'SEARCH_NOTES',
         query: ev.query,
       })
@@ -492,8 +483,7 @@ const notesState = setup({
 
     sendMoveNotes: ({ event }) => {
       const ev = typeOf('NOTE.MOVE', event)
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'MOVE_NOTE',
         ids: ev.noteIds,
         newParentId: ev.newParentId,
@@ -502,8 +492,7 @@ const notesState = setup({
 
     sendReorderNote: ({ event }) => {
       const ev = typeOf('NOTE.REORDER', event)
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'REORDER_NOTE',
         id: ev.noteId,
         newParentId: ev.newParentId,
@@ -513,8 +502,7 @@ const notesState = setup({
 
     sendCreateTaskList: ({ event }) => {
       const ev = typeOf('NOTE.CREATE_TASKLIST', event)
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'CREATE_NOTE',
         title: 'Untitled',
         noteType: 'tasklist',
@@ -538,8 +526,7 @@ const notesState = setup({
 
     sendCreateTask: ({ event }) => {
       const ev = typeOf('TASK.CREATE', event)
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'CREATE_NOTE',
         title: 'Untitled',
         parentId: ev.parentId,
@@ -552,8 +539,7 @@ const notesState = setup({
       const ev = typeOf('TASK.TOGGLE_COMPLETE', event)
       const task = context.notes.find(n => n.id === ev.taskId)
       if (!task) return
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_NOTE',
         id: ev.taskId,
         completed: !task.completed,
@@ -562,8 +548,7 @@ const notesState = setup({
 
     sendTaskUpdateContent: ({ event }) => {
       const ev = typeOf('TASK.UPDATE_CONTENT', event)
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_NOTE',
         id: ev.taskId,
         content: ev.content,
@@ -595,8 +580,7 @@ const notesState = setup({
 
     sendTaskUpdateTitle: ({ event }) => {
       const ev = typeOf('TASK.UPDATE_TITLE', event)
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_NOTE',
         id: ev.taskId,
         title: ev.title,
@@ -605,8 +589,7 @@ const notesState = setup({
 
     sendDeleteTask: ({ event }) => {
       const ev = typeOf('TASK.DELETE', event)
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'DELETE_NOTE',
         id: ev.taskId,
       })
@@ -616,8 +599,7 @@ const notesState = setup({
       if (!context.currentNoteId) return
       const note = context.notes.find(n => n.id === context.currentNoteId)
       if (!note) return
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_NOTE',
         id: context.currentNoteId,
         hideCompletedChildren: !note.hideCompletedChildren,
@@ -628,8 +610,7 @@ const notesState = setup({
       const ev = typeOf('TASK.TOGGLE_HIDE_COMPLETED_CHILDREN', event)
       const note = context.notes.find(n => n.id === ev.nodeId)
       if (!note) return
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'UPDATE_NOTE',
         id: ev.nodeId,
         hideCompletedChildren: !note.hideCompletedChildren,
@@ -652,11 +633,10 @@ const notesState = setup({
 
     sendImportNotes: ({ event }) => {
       if (event.type === 'NOTES.IMPORT') {
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'IMPORT_NOTES',
           directory: event.directory,
-        } as any)
+        })
       }
     },
 
@@ -700,12 +680,11 @@ const notesState = setup({
 
     sendExportNotes: ({ event }) => {
       if (event.type === 'NOTES.EXPORT') {
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'EXPORT_NOTES',
           directory: event.directory,
           format: event.format,
-        } as any)
+        })
       }
     },
 
@@ -749,8 +728,7 @@ const notesState = setup({
     showTrash: assign({ showTrash: true, trashedNotes: [] }),
 
     requestTrashedNotes: () => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'GET_TRASHED_NOTES',
       })
     },
@@ -764,8 +742,7 @@ const notesState = setup({
 
     sendPermanentlyDelete: ({ event }) => {
       const ev = typeOf('NOTE.PERMANENTLY_DELETE', event)
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'PERMANENTLY_DELETE_NOTE',
         id: ev.noteId,
       })
@@ -779,8 +756,7 @@ const notesState = setup({
     }),
 
     sendEmptyTrash: () => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'EMPTY_TRASH',
       })
     },
@@ -955,7 +931,7 @@ const notesState = setup({
         target: '.editor',
         actions: [
           assign(({ event, context }) => {
-            const noteId = (event as TrailClickEvent).info
+            const noteId = (event as TrailClickEvent<string>).info
             if (!noteId) return {}
             const note = context.notes.find(n => n.id === noteId) || null
 

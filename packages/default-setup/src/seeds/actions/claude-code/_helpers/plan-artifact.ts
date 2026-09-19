@@ -14,8 +14,7 @@
  * module-level cache. EARS is LMDB-backed and kept in memory, so the
  * repository query is essentially a Map access.
  *
- * Shape contract: PlanArtifactContent lives in the threads feature types
- * — { notes: string, status: PlanStatus, steps: [] }
+ * Shape contract: PlanArtifactContent, from the threads feature types (the plan viewer reads the same type)
  *
  * Files without `export const meta` are auto-inlined into the consuming
  * action at compile time (see packages/default-setup/CLAUDE.md), so this
@@ -23,28 +22,9 @@
  */
 
 import type { Services, EntityId } from '@/__generated__/services';
+import type { PlanArtifactContent } from '@/features/threads/be/types';
 
-export type PlanStatus =
-  | 'draft'
-  | 'approved'
-  | 'in-progress'
-  | 'completed'
-  | 'rejected';
-
-export interface PlanArtifactContent {
-  notes: string;
-  status: PlanStatus;
-  steps: Array<{
-    id: string;
-    title: string;
-    description?: string;
-    status: string;
-  }>;
-  /** Git branch the plan was created on. */
-  branch?: string;
-  /** PR number associated with this plan. */
-  prNumber?: string;
-}
+export type { PlanArtifactContent };
 
 /**
  * Extract a human-readable title from the plan markdown.

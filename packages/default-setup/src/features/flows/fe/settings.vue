@@ -196,11 +196,12 @@
 <script setup lang="ts">
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, watch } from 'vue'
-import CollapsibleSection from '@abuddy/sdk/fe/design/CollapsibleSection.vue'
+import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { AlertTriangle, Brain, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import type { FlowsSettings } from '@/__generated__/types'
 import { useSelector } from '@xstate/vue'
 import { id, type FlowsState } from './state'
+import { id as brainId, type BrainState } from '@/features/brain/fe/state'
 
 const actorSystem = useActorSystem()
 
@@ -222,12 +223,14 @@ const emit = defineEmits<{
 }>()
 
 // State
-const selectedRootFlowId = ref<string>(props.settings?.rootFlowId || '')
 const enableFlowPreview = ref<boolean>(props.settings?.enableFlowPreview ?? true)
 
 // Get flows actor and state via selectors
 const flowsActor: FlowsState = actorSystem.get(id)
 const flows = useSelector(flowsActor, (state) => state.context.flows || [])
+// The root flow is the flows system's (the flow with the root role), not a setting
+const rootFlowId = useSelector(flowsActor, (state) => state.context.rootFlowId)
+const selectedRootFlowId = ref<string>(rootFlowId.value || '')
 const isImporting = useSelector(flowsActor, (state) => state.context.dslImport.status === 'importing')
 const importStatus = useSelector(flowsActor, (state) => state.context.dslImport.status)
 const importErrors = useSelector(flowsActor, (state) => state.context.dslImport.errors)
@@ -243,11 +246,13 @@ const exportedFlowCount = useSelector(flowsActor, (state) => state.context.dslEx
 
 // Get settings actor for navigation only
 const settingsActor = actorSystem.get('settings')
+const brainActor: BrainState = actorSystem.get(brainId)
+const runningRootFlowId = useSelector(brainActor, (state) => state.context.runningRootFlowId)
 
 // Check if restart is needed by comparing root flow IDs
 const needsRestart = computed(() => {
-  const flowsRootId = props.allSettings?.plugins?.flows?.rootFlowId
-  const brainRunningId = props.allSettings?.plugins?.brain?.runningRootFlowId
+  const flowsRootId = rootFlowId.value
+  const brainRunningId = runningRootFlowId.value
 
   // Need restart if:
   // 1. Brain is running (not dead/undefined) AND
@@ -261,11 +266,9 @@ const currentRootFlow = computed(() => {
   return flows.value.find(f => f.id === selectedRootFlowId.value)
 })
 
-// Watch for settings changes from backend
-watch(() => props.settings?.rootFlowId, (newValue) => {
-  if (newValue !== undefined) {
-    selectedRootFlowId.value = newValue || ''
-  }
+// Follow the root flow the flows system reports
+watch(rootFlowId, (newValue) => {
+  selectedRootFlowId.value = newValue || ''
 })
 
 watch(() => props.settings?.enableFlowPreview, (newValue) => {
@@ -283,10 +286,7 @@ const handleFlowPreviewChange = () => {
 }
 
 const handleRootFlowChange = () => {
-  emit('update-setting', {
-    path: ['rootFlowId'],
-    value: selectedRootFlowId.value || undefined
-  })
+  flowsActor.send({ type: 'ROOT_FLOW.SET', flowId: selectedRootFlowId.value || null })
 }
 
 const goToBrainSettings = () => {

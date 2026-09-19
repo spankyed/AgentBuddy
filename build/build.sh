@@ -32,6 +32,8 @@ validate_api_package() {
     echo -e "  ❌ Build validation failed: API package not found"
     exit 1
   fi
+  # electron-builder's dependency collector has silently dropped modules before
+  node build/prod/verify-node-modules.mjs "$1"
 }
 
 # Colors for output
@@ -61,7 +63,7 @@ echo ""
 # Step 2: Install dependencies
 echo -e "${BLUE}[2/7]${NC} Installing dependencies..."
 # Force development mode so devDependencies (typescript, @types/*, etc.) are installed
-# even if NODE_ENV=production leaked from a previous session (see docs/issues/node-env-build-failure.md)
+# even if NODE_ENV=production leaked from a previous session (see docs/reference/node-env-build-failure.md)
 NODE_ENV=development npm install --loglevel warn
 unset NODE_ENV
 
@@ -74,22 +76,18 @@ npm run generate:entries -w @app/default-setup
 # Step 3: Compile default-setup
 if [ -z "$SKIP_COMPILE" ]; then
   echo -e "${BLUE}[3/7]${NC} Compiling default-setup..."
-  npm run compile:prod
+  npm run compile
   echo -e "${GREEN}✓${NC} Default-setup compiled"
 else
   echo -e "${BLUE}[3/7]${NC} Skipping default-setup compilation (SKIP_COMPILE set)"
 fi
 echo ""
 
-# Step 3.5: Generate DSL defs (needed by renderer before build)
-echo -e "${BLUE}[3.5/7]${NC} Generating DSL type definitions..."
-npm run generate:defs -w @app/default-setup
-echo -e "${GREEN}✓${NC} DSL defs generated"
-echo ""
-
 # Step 4: Build TypeScript/Vite packages
 echo -e "${BLUE}[4/7]${NC} Building packages..."
 npm run build
+# The CLI the app bundles (Resources/cli/abuddy runs it)
+npm run build:package -w @abuddy/cli
 echo -e "${GREEN}✓${NC} Packages built"
 echo ""
 
@@ -170,13 +168,13 @@ echo ""
 echo "📁 Output:"
 if $IS_MAC; then
   echo "  • App: dist/mac-arm64/${APP_NAME}.app"
-  echo "  • DMG: dist/${APP_NAME}-*.dmg"
-  echo "  • ZIP: dist/${APP_NAME}-*.zip"
+  echo "  • DMG: dist/${APP_NAME// /-}-*.dmg"
+  echo "  • ZIP: dist/${APP_NAME// /-}-*.zip"
 elif $IS_WIN; then
-  echo "  • Installer: dist/${APP_NAME}-*.exe"
+  echo "  • Installer: dist/${APP_NAME// /-}-*.exe"
 else
-  echo "  • AppImage: dist/${APP_NAME}-*.AppImage"
-  echo "  • Deb: dist/${APP_NAME}-*.deb"
+  echo "  • AppImage: dist/${APP_NAME// /-}-*.AppImage"
+  echo "  • Deb: dist/${APP_NAME// /-}-*.deb"
 fi
 echo ""
 echo "📦 Next steps:"

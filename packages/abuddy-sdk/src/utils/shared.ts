@@ -1,5 +1,6 @@
+/** A non-null object that isn't an array */
 export const isPlainObject = (val: unknown): val is Record<string, unknown> =>
-  typeof val === 'object' && val !== null;
+  typeof val === 'object' && val !== null && !Array.isArray(val);
 
 export type MaybeArr<T> = T | readonly T[];
 export function asArr<T>(v: MaybeArr<T>): readonly T[] {
@@ -13,7 +14,7 @@ export function toDisplayName(str: string): string {
   return str.replace(/-/g, ' ');
 }
 
-export function extractValueByPath(source: any, path: string): any {
+export function extractValueByPath(source: unknown, path: string): unknown {
   if (!path || path === '$') return source;
   const cleanPath = path.startsWith('$.') ? path.slice(2) : path;
   const segments = cleanPath.split('.');
@@ -21,15 +22,16 @@ export function extractValueByPath(source: any, path: string): any {
   let current = source;
   for (const segment of segments) {
     if (current == null) return undefined;
+    const record = current as Record<string, unknown>;
 
     const selector = segment.match(/^(\w+)\[(\w+)=([^\]]+)\]$/);
     if (selector) {
       const [, arrayName, field, value] = selector;
-      const arr = current[arrayName];
+      const arr = record[arrayName];
       if (!Array.isArray(arr)) return undefined;
-      current = arr.find((item: any) => item?.[field] === value);
+      current = arr.find((item: Record<string, unknown> | null | undefined) => item?.[field] === value);
     } else {
-      current = current[segment];
+      current = record[segment];
     }
   }
   return current;

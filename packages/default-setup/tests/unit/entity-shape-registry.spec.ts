@@ -1,110 +1,53 @@
-import { describe, it } from 'vitest';
-import { expectTypeOf } from 'vitest';
-import type { EntityShapeRegistry, EntityShape, BaseEntity } from '@abuddy/sdk/types';
-import '@/__generated__/entity-shapes';
+// Compile-time checks, run by `vue-tsc` (npm run typecheck:pack). Exact type equality fails when a
+// generated entity shape regresses to `any` or loses its declared field types.
+import { describe, expectTypeOf, it } from 'vitest';
+import type { BaseEntity } from '@abuddy/ears';
+import type { SdkEntityShapes, ActionEntity, FlowEntity, NodeBase } from '@abuddy/sdk';
+import type { NodeEntity } from '@/__generated__/types';
+import type { EntityShape, OwnEntityShapes, PackShapes } from '@/__generated__/ears';
+import type { MessageEntity, ThreadEntity } from '@/features/threads/be/types';
 
-// ─── EntityShapeRegistry augmentation ────────────────────────────────
-// These tests verify that the declaration merging in entity-shapes.ts
-// correctly augments the SDK's EntityShapeRegistry, and that
-// EntityShape<E> resolves to the right type.
-
-describe('EntityShapeRegistry — augmented types', () => {
-  it('registry has Action with label and actionFn', () => {
-    expectTypeOf<EntityShapeRegistry['Action']>().toHaveProperty('label');
-    expectTypeOf<EntityShapeRegistry['Action']>().toHaveProperty('actionFn');
+describe('PackShapes', () => {
+  it('maps declared entities to their shape types', () => {
+    expectTypeOf<OwnEntityShapes['Thread']>().toEqualTypeOf<ThreadEntity>();
+    expectTypeOf<OwnEntityShapes['Message']>().toEqualTypeOf<MessageEntity>();
   });
 
-  it('registry has Thread with topic and status', () => {
-    expectTypeOf<EntityShapeRegistry['Thread']>().toHaveProperty('topic');
-    expectTypeOf<EntityShapeRegistry['Thread']>().toHaveProperty('status');
+  it("includes the SDK's shapes", () => {
+    expectTypeOf<PackShapes['TNode']>().toEqualTypeOf<SdkEntityShapes['TNode']>();
+    expectTypeOf<PackShapes['Action']>().toEqualTypeOf<ActionEntity>();
+    expectTypeOf<PackShapes['Flow']>().toEqualTypeOf<FlowEntity>();
+    expectTypeOf<PackShapes['Relation']>().toEqualTypeOf<SdkEntityShapes['Relation']>();
   });
 
-  it('registry has Flow with label and flowType', () => {
-    expectTypeOf<EntityShapeRegistry['Flow']>().toHaveProperty('label');
-    expectTypeOf<EntityShapeRegistry['Flow']>().toHaveProperty('flowType');
+  it("reads Node rows as the pack's step node types, not the SDK's NodeBase", () => {
+    expectTypeOf<SdkEntityShapes['Node']>().toEqualTypeOf<NodeBase>();
+    expectTypeOf<PackShapes['Node']>().toEqualTypeOf<NodeEntity>();
   });
 
-  it('registry has Document with name and content', () => {
-    expectTypeOf<EntityShapeRegistry['Document']>().toHaveProperty('name');
-    expectTypeOf<EntityShapeRegistry['Document']>().toHaveProperty('content');
-  });
-
-  it('registry has Prompt with label and templateFn', () => {
-    expectTypeOf<EntityShapeRegistry['Prompt']>().toHaveProperty('label');
-    expectTypeOf<EntityShapeRegistry['Prompt']>().toHaveProperty('templateFn');
-  });
-
-  it('registry has Message with sender and text', () => {
-    expectTypeOf<EntityShapeRegistry['Message']>().toHaveProperty('sender');
-    expectTypeOf<EntityShapeRegistry['Message']>().toHaveProperty('text');
+  it('has no key for an undeclared entity', () => {
+    // @ts-expect-error not declared in abuddy.json entityShapes
+    expectTypeOf<OwnEntityShapes['SomeFutureEntity']>().toBeNever();
   });
 });
 
-describe('EntityShape<E> — type resolution', () => {
-  it('resolves registered entity to shape + BaseEntity', () => {
-    type ActionShape = EntityShape<'Action'>;
-    expectTypeOf<ActionShape>().toHaveProperty('label');
-    expectTypeOf<ActionShape>().toHaveProperty('actionFn');
-    expectTypeOf<ActionShape>().toHaveProperty('id');
-    expectTypeOf<ActionShape>().toHaveProperty('entityType');
-    expectTypeOf<ActionShape>().toHaveProperty('createdAt');
+describe('EntityShape<E>', () => {
+  it('types declared fields exactly, with the base entity fields', () => {
+    expectTypeOf<EntityShape<'Action'>['actionFn']>().toEqualTypeOf<string>();
+    expectTypeOf<EntityShape<'Thread'>['topic']>().toEqualTypeOf<string>();
+    expectTypeOf<EntityShape<'Thread'>['pinned']>().toEqualTypeOf<boolean | undefined>();
+    expectTypeOf<EntityShape<'Flow'>['flowType']>().toEqualTypeOf<'workflow' | 'integration'>();
+    expectTypeOf<EntityShape<'Message'>['sender']>().toEqualTypeOf<'user' | 'assistant' | 'system' | 'marker'>();
+    expectTypeOf<EntityShape<'Action'>['createdAt']>().toEqualTypeOf<number>();
   });
 
-  it('resolves Thread to shape + BaseEntity', () => {
-    type ThreadShape = EntityShape<'Thread'>;
-    expectTypeOf<ThreadShape>().toHaveProperty('topic');
-    expectTypeOf<ThreadShape>().toHaveProperty('status');
-    expectTypeOf<ThreadShape>().toHaveProperty('id');
-    expectTypeOf<ThreadShape>().toHaveProperty('createdAt');
+  it('rejects a field the shape does not declare', () => {
+    // @ts-expect-error Action has no such field
+    expectTypeOf<EntityShape<'Action'>['notAField']>().toBeUnknown();
   });
 
-  it('resolves Flow to shape + BaseEntity', () => {
-    type FlowShape = EntityShape<'Flow'>;
-    expectTypeOf<FlowShape>().toHaveProperty('label');
-    expectTypeOf<FlowShape>().toHaveProperty('flowType');
-    expectTypeOf<FlowShape>().toHaveProperty('id');
-  });
-
-  it('falls back to Record<string, any> for unregistered entity', () => {
-    type UnknownShape = EntityShape<'SomeFutureEntity'>;
-    expectTypeOf<UnknownShape>().toEqualTypeOf<Record<string, any>>();
-  });
-
-  it('EntityShape includes BaseEntity fields for registered types', () => {
-    type ActionShape = EntityShape<'Action'>;
-    const shape = {} as ActionShape;
-    expectTypeOf(shape.id).toMatchTypeOf<BaseEntity['id']>();
-    expectTypeOf(shape.entityType).toMatchTypeOf<BaseEntity['entityType']>();
-    expectTypeOf(shape.createdAt).toBeNumber();
-  });
-
-  it('Flow.flowType is narrowed to union', () => {
-    type FlowShape = EntityShape<'Flow'>;
-    expectTypeOf<FlowShape['flowType']>().toMatchTypeOf<'workflow' | 'integration'>();
-  });
-
-  it('Action.input is Record', () => {
-    type ActionShape = EntityShape<'Action'>;
-    expectTypeOf<ActionShape['input']>().toMatchTypeOf<Record<string, unknown>>();
-  });
-
-  it('Thread has optional fields typed correctly', () => {
-    type ThreadShape = EntityShape<'Thread'>;
-    expectTypeOf<ThreadShape['pinned']>().toMatchTypeOf<boolean | undefined>();
-    expectTypeOf<ThreadShape['tags']>().toMatchTypeOf<string[] | undefined>();
-  });
-});
-
-describe('EntityShapeRegistry — extensibility', () => {
-  it('keyof includes all augmented entity types', () => {
-    type Keys = keyof EntityShapeRegistry;
-    expectTypeOf<'Action'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'Thread'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'Flow'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'Document'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'Prompt'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'Secret'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'Note'>().toMatchTypeOf<Keys>();
-    expectTypeOf<'Message'>().toMatchTypeOf<Keys>();
+  it('reads an undeclared entity as base fields plus unknown values, never any', () => {
+    expectTypeOf<EntityShape<'SomeFutureEntity'>>().toEqualTypeOf<BaseEntity & Record<string, unknown>>();
+    expectTypeOf<EntityShape<'SomeFutureEntity'>['anything']>().toBeUnknown();
   });
 });

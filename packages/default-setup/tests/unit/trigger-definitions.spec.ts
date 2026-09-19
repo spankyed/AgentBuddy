@@ -1,9 +1,12 @@
-import { stepRegistry } from '@abuddy/sdk/steps';
+import { stepRegistry, type StepDefinition } from '@abuddy/sdk/steps';
+import { testPacks } from '@abuddy/sdk/testing';
 import { listenerTrigger } from '../../src/extensions/steps/listener';
 import { scheduleTrigger } from '../../src/extensions/steps/schedule';
 
-beforeEach(() => {
-  stepRegistry.clear();
+// Steps a test registers go in the test runtime's stand-in, over the pack's registered ones
+const register = (step: StepDefinition) => testPacks.steps.set(step.type, step);
+afterEach(() => {
+  testPacks.steps.clear();
 });
 
 describe('listener trigger definition', () => {
@@ -211,8 +214,8 @@ describe('schedule trigger definition', () => {
 
 describe('step registry integration', () => {
   beforeEach(() => {
-    stepRegistry.register(listenerTrigger);
-    stepRegistry.register(scheduleTrigger);
+    register(listenerTrigger);
+    register(scheduleTrigger);
   });
 
   it('recognizes both as triggers', () => {
@@ -221,7 +224,7 @@ describe('step registry integration', () => {
   });
 
   it('does not treat regular steps as triggers', () => {
-    stepRegistry.register({ type: 'action', kind: 'step' });
+    register({ type: 'action', kind: 'step' });
     expect(stepRegistry.isTrigger('action')).toBe(false);
   });
 
@@ -239,7 +242,7 @@ describe('step registry integration', () => {
   });
 
   it('getTrigger returns undefined for non-triggers', () => {
-    stepRegistry.register({ type: 'action', kind: 'step' });
+    register({ type: 'action', kind: 'step' });
     expect(stepRegistry.getTrigger('action')).toBeUndefined();
   });
 

@@ -5,13 +5,13 @@
  * artifacts, fork relations, and media from both instructions and messages.
  */
 
-import { qx } from '@abuddy/sdk/ears'
+import { qx } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears'
 import { createExportDir } from '@abuddy/sdk/utils'
 import { extractMediaRefs, copyMediaByRef } from '@abuddy/sdk/utils'
 import { writeExportJson } from '@abuddy/sdk/utils'
 import type { MediaRef } from '@abuddy/sdk/utils'
-import { repository } from '@abuddy/sdk/ears'
+import { repository } from '@/__generated__/repository';
 import type { ExportedThread, ExportedThreadsData, ExportedMessage, ExportedThreadLink, ExportedArtifact } from './export-types'
 import type { MessageEntity } from './types'
 
@@ -52,7 +52,7 @@ export function exportThreads(outputDir: string): { filePath: string; threadCoun
     })
 
     const exportedLinks: ExportedThreadLink[] = linkedThreads
-      .map((link: { shortCode: string; relation: string; topic?: string; status?: string }) => ({
+      .map((link) => ({
         shortCode: link.shortCode as string,
         relation: link.relation as ExportedThreadLink['relation'],
       }))

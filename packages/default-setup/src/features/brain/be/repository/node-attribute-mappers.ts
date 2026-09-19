@@ -1,7 +1,8 @@
 import type { NodeEntity } from '@/__generated__/types';
-import type { ExecutionContext, FieldMapping, SourceResolver } from '../types';
-import { brainInspect, brainLogger } from '../utils/brain-inspect';
-import { truncateResult, isTruncated } from '../utils/result-truncator';
+import type { FieldMapping, SourceResolver } from '../types';
+import { brainLogger } from '../utils/brain-inspect';
+import { truncateResult, isTruncated } from '@abuddy/sdk/steps';
+import type { ExecutionContext } from '@abuddy/sdk/steps';
 
 /*─────────────────────────────────────────────────────────────
  * Field Mapping Utilities
@@ -63,7 +64,7 @@ function mapTemplateFields(
 ): Record<string, any> {
   const result: Record<string, any> = {};
 
-  brainInspect('Applying field mappings:', {
+  brainLogger.debug('Applying field mappings:', {
     eventType: context.event.type,
     eventDataKeys: Object.keys(context.event.data),
     eventData: context.event.data,
@@ -79,7 +80,7 @@ function mapTemplateFields(
 
       result[mapping.target] = value;
 
-      brainInspect(`Mapped ${mapping.target}:`, {
+      brainLogger.debug(`Mapped ${mapping.target}:`, {
         source: typeof mapping.source === 'function' ? '[Function]' : mapping.source,
         value
       });
@@ -137,7 +138,7 @@ function applyFieldMappingsIfSupported(
   const mappings = Array.isArray(fm) ? fm : [fm];
   if (mappings.length === 0) return undefined;
 
-  brainInspect(`Applying field mappings for ${node.nodeType} node: ${node.label}`, {
+  brainLogger.debug(`Applying field mappings for ${node.nodeType} node: ${node.label}`, {
     mappingsCount: mappings.length,
     isArray: Array.isArray(fm)
   });
@@ -167,9 +168,13 @@ function truncateAll(obj: Record<string, any>): Record<string, any> {
  *─────────────────────────────────────────────────────────────*/
 
 export interface PreparedAttributes {
-  /** All attributes (config + user data) for UI display. */
+  /** All attributes (config + user data) for UI display, truncated to bound the trace's size. */
   nodeAttributes: Record<string, any>;
-  /** Only user-provided params (direct + mapped) for action/template execution. */
+  /**
+   * Only user-provided params (direct + mapped), whole: this is what the step runs on and writes, so it
+   * is never truncated. A create or update step writing it would otherwise persist a cut-off string, or a
+   * `{ value, _truncated }` wrapper in place of a long array or object.
+   */
   resolvedParams: Record<string, any>;
 }
 
@@ -195,6 +200,6 @@ export function prepareNodeAttributes(
 
   return {
     nodeAttributes: truncateAll(resolvedAttributes),
-    resolvedParams: truncateAll(resolvedParams),
+    resolvedParams,
   };
 }

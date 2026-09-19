@@ -1,14 +1,15 @@
+import { emit } from '@/__generated__/events';
 import { setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
-import { emit } from '@abuddy/sdk/helpers';
+
 import { EARS } from '@/__generated__/ears';
-import type { PromptsConnectedData, PromptEntity } from './types';
-import { repository } from '@abuddy/sdk/ears';
+import type { PromptsConnectedData } from './types';
+import { repository } from '@/__generated__/repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
-import './repository';
 import { exportPrompts } from './repository/export-prompts';
+import type { PromptEntity } from '@abuddy/sdk';
 
 const logger = createLogger('prompts');
 
@@ -74,6 +75,7 @@ export const promptsSystem = setup({
         label: ev.label,
         inputs: ev.inputs,
         templateFn: ev.templateFn,
+        outputSchema: ev.outputSchema,
         description: ev.description,
         category: ev.category
       });
@@ -91,6 +93,7 @@ export const promptsSystem = setup({
       if (ev.label !== undefined) updates.label = ev.label;
       if (ev.inputs !== undefined) updates.inputs = ev.inputs;
       if (ev.templateFn !== undefined) updates.templateFn = ev.templateFn;
+      if (ev.outputSchema !== undefined) updates.outputSchema = ev.outputSchema;
       if (ev.description !== undefined) updates.description = ev.description;
       if (ev.category !== undefined) updates.category = ev.category;
       
@@ -166,7 +169,7 @@ export const promptsSystem = setup({
             outputSchema: item.outputSchema,
             description: item.description,
             category: item.category,
-          } as any);
+          });
 
           system.get(bus).send(emit(pluginId, {
             type: 'PROMPT_CREATED',
@@ -311,12 +314,16 @@ export const promptsSystem = setup({
           CLIENT_CONNECTED: {
             actions: 'sendPromptsConnectedData',
           },
+          // A pack's seeds can add or change prompts
+          PACK_CHANGED: {
+            actions: 'sendPromptsConnectedData',
+          },
         },
       },
     },
   }
 );
 
-const promptsEntry: SystemEntry = { spec: promptsSpec, machine: promptsSystem };
+const promptsEntry = { spec: promptsSpec, machine: promptsSystem } satisfies SystemEntry;
 
 export default promptsEntry;

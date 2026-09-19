@@ -1,10 +1,9 @@
 export interface BlockFEFacet {
-  loadComponent?: () => unknown;
   component?: unknown;
 }
 
 export interface BlockBEFacet {
-  generateAsideText?(block: { type: string; props: Record<string, any> }, response: any, context: string): string | null;
+  generateAsideText?(block: { type: string; props: Record<string, unknown> }, response: unknown, context: string): string | null;
 }
 
 export interface BlockDefinition {

@@ -45,9 +45,11 @@ jobs:
           if [[ "$TAG_VERSION" == *-beta* ]] || [[ "${{ inputs.channel }}" == "beta" ]]; then
             echo "is_beta=true" >> "$GITHUB_OUTPUT"
             echo "product_name=AgentBuddy Beta" >> "$GITHUB_OUTPUT"
+            echo "artifact_prefix=AgentBuddy-Beta" >> "$GITHUB_OUTPUT"
           else
             echo "is_beta=false" >> "$GITHUB_OUTPUT"
             echo "product_name=AgentBuddy" >> "$GITHUB_OUTPUT"
+            echo "artifact_prefix=AgentBuddy" >> "$GITHUB_OUTPUT"
           fi
           echo "tag_version=${TAG_VERSION}" >> "$GITHUB_OUTPUT"
 
@@ -58,7 +60,9 @@ jobs:
           PKG_VERSION=$(node -p "require('./package.json').version")
           echo "Tag version: $TAG_VERSION"
           echo "Package version: $PKG_VERSION"
-          if [ "$TAG_VERSION" != "$PKG_VERSION" ]; then
+          # release.sh tags v<version>-beta.0 on a production release that had no beta
+          # (beta-before-production rule); that tag builds the same version as AgentBuddy Beta
+          if [ "$TAG_VERSION" != "$PKG_VERSION" ] && [ "$TAG_VERSION" != "${PKG_VERSION}-beta.0" ]; then
             echo "::error::Tag version ($TAG_VERSION) does not match package.json ($PKG_VERSION)"
             exit 1
           fi
@@ -112,7 +116,13 @@ jobs:
           if [ "${{ steps.channel.outputs.is_beta }}" = "true" ]; then
             PRERELEASE_FLAG="--prerelease"
           fi
-          assets=(dist/${APP_NAME}-*.dmg dist/${APP_NAME}-*.zip)
+          # `abuddy test --app beta` verifies downloads against these
+          # electron-builder.mjs artifactName: the product name without spaces
+          PREFIX="${{ steps.channel.outputs.artifact_prefix }}"
+          for file in dist/"${PREFIX}"-*.dmg dist/"${PREFIX}"-*.zip; do
+            (cd dist && shasum -a 256 "$(basename "$file")" > "$(basename "$file").sha256")
+          done
+          assets=(dist/"${PREFIX}"-*.dmg dist/"${PREFIX}"-*.zip dist/"${PREFIX}"-*.sha256)
 
           if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
             gh release upload "$GITHUB_REF_NAME" "${assets[@]}" --clobber

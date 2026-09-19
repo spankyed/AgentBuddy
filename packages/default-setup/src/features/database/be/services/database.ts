@@ -1,51 +1,13 @@
 /**
  * Database Service
- * 
- * Centralized service that provides access to all database operations
- * including EARS transaction and query utilities.
+ *
+ * `services.database`: live-data context for AI query generation. Actions read and write
+ * entities through `services.repository`; pack code imports `qx`/`tx` from `@/__generated__/ears`.
  */
 
-// Export transaction helpers for common operations
-export {
-  prepareEntity,
-  createEntityWithDefaults,
-  updateEntity,
-  createRelation,
-  removeRelation,
-  removeRelationById,
-  grantRole,
-  revokeRole,
-} from '@abuddy/sdk/ears';
-
-// Export EARS transaction builder
-export { tx } from '@abuddy/sdk/ears';
-export type { SafeLinkOptions } from '@abuddy/sdk/ears';
-
-// Export EARS query builder
-export { qx } from '@abuddy/sdk/ears';
-
-// Export type-safe query helpers
-export {
-  findById,
-  findAll,
-  findWhere,
-  findFirst,
-  findWithFields,
-  findByIdWithFields,
-  countEntities,
-  exists,
-  findWithRole,
-  findFirstWithRole
-} from '@abuddy/sdk/ears';
-
-// Re-export EARS types for convenience
-export { EARS } from '@/__generated__/ears';
-
-// ─── Query context for AI prompt generation ─────────────────────────────
-
-import { EARS as EARSTypes } from '@/__generated__/ears';
-import { getEntitiesOfType, getAllEntityTypes, getAll } from '@abuddy/sdk/ears';
-import { relationIndex } from '@abuddy/sdk/ears/internals';
+import { EARS } from '@/__generated__/ears';
+import { getEntitiesOfType, getAllEntityTypes, getAll } from '@abuddy/ears';
+import { findRelations } from '@abuddy/ears';
 
 /**
  * Build a query context from live data for AI query generation.
@@ -56,7 +18,7 @@ export function buildQueryContext(): { schema: string; topology: string } {
   // Sample entities
   const schemaLines: string[] = [];
   for (const type of getAllEntityTypes()) {
-    const ids = getEntitiesOfType(type as EARSTypes.Entity);
+    const ids = getEntitiesOfType(type as EARS.Entity);
     if (ids.length === 0) continue;
 
     const raw = getAll(ids[0]);
@@ -81,28 +43,11 @@ export function buildQueryContext(): { schema: string; topology: string } {
     schemaLines.push(`${type} (${ids.length})\n  fields: ${fields.join(', ')}\n  sample: ${truncated}`);
   }
 
-  // Build topology — build reverse lookup (relId → targetEntityId) first for O(n)
+  // Build topology: relation counts by source type, kind and target type
   const edges = new Map<string, number>();
-  for (const [kind, entry] of Object.entries(relationIndex) as [string, { byTarget: Record<string, string[]>; bySource: Record<string, string[]> }][]) {
-    // Build relId → targetId map for this kind
-    const relToTarget = new Map<string, string>();
-    for (const [targetId, tRelIds] of Object.entries(entry.byTarget) as [string, string[]][]) {
-      for (const relId of tRelIds) {
-        relToTarget.set(relId, targetId);
-      }
-    }
-    // Now iterate sources and look up targets in O(1)
-    for (const [sourceId, relIds] of Object.entries(entry.bySource) as [string, string[]][]) {
-      const sourceType = sourceId.split('-')[0];
-      for (const relId of relIds) {
-        const targetId = relToTarget.get(relId);
-        if (targetId) {
-          const targetType = targetId.split('-')[0];
-          const edgeKey = `${sourceType} --${kind}--> ${targetType}`;
-          edges.set(edgeKey, (edges.get(edgeKey) ?? 0) + 1);
-        }
-      }
-    }
+  for (const { sourceEntity, relationType, targetEntity } of findRelations()) {
+    const edgeKey = `${sourceEntity.split('-')[0]} --${relationType}--> ${targetEntity.split('-')[0]}`;
+    edges.set(edgeKey, (edges.get(edgeKey) ?? 0) + 1);
   }
 
   const topologyLines = [...edges.entries()]
@@ -114,3 +59,7 @@ export function buildQueryContext(): { schema: string; topology: string } {
     topology: topologyLines.join('\n'),
   };
 }
+
+export const databaseService = {
+  buildQueryContext,
+};

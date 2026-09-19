@@ -58,27 +58,7 @@ export interface ThinkingBlockProps {
   defaultOpen?: boolean;
 }
 
-// Link block types
-export interface LinkEvent {
-  target: 'application' | 'external' | string; // 'application', 'external', or plugin name
-  data: any;
-}
-
-export type LinkIcon =
-  | 'external-link'
-  | 'file-text'
-  | 'message-square'
-  | 'settings'
-  | 'link';
-
-export interface LinkConfig {
-  label: string;
-  event: LinkEvent;
-  icon?: LinkIcon; // Optional lucide icon name
-}
-
 // Button-group block types — canonical definitions live in the SDK
-export type { ButtonConfig, ButtonGroupResponse } from '@abuddy/sdk/blocks';
 
 export interface FileReference {
   name: string;
@@ -134,13 +114,9 @@ export interface MessageReferences {
  * shape (see claude-code-approval-response.spec.ts and
  * onboarding-step-response.spec.ts for the pattern).
  *
- * Legacy data: messages persisted before this type was introduced may
- * carry the stale `{ value: 'yes' }` shape, but no frontend has ever
- * emitted it — the `?? response` fallback in the old handler was dead
- * code. Still, `blockResponse?: unknown` at the storage boundary is
- * more defensive than assuming the union is exhaustive; however the
- * EVENT-level and FIELD-level types use the union because every
- * non-legacy emit matches one of its arms.
+ * `blockResponse?: unknown` at the storage boundary is more defensive than
+ * assuming the union is exhaustive; the event-level and field-level types use
+ * the union, because every emit matches one of its arms.
  */
 export type BlockResponse =
   /** Approval buttons: InteractionContainer `handleApprove`/`handleDeny`. */
@@ -340,7 +316,6 @@ export type AgentConnectedData = {
   recentThreads: Partial<ThreadEntity>[];
   tabs: Tab[];
   settings?: AgentSettings;
-  hasRequiredApiKeys: boolean;
   commands?: CommandItem[];
 };
 
@@ -380,8 +355,6 @@ export interface ClaudeSessionArtifactContent {
   chatState: 'idle' | 'working' | 'paused';
   /** Total tool calls across all turns in this session. */
   toolCallCount: number;
-  /** The most recent tool the agent used (for the sidebar summary line). */
-  lastTool?: { name: string; summary: string; at: number };
   /** Last 3 tools executed (rolling window, most recent last). */
   recentTools?: Array<{ name: string; summary: string; at: number }>;
   /**
@@ -423,11 +396,15 @@ export interface DiffArtifactContent {
   summary: string;
 }
 
+/** A plan artifact's status: the plan-approval block moves it from draft */
+export type PlanStatus = 'draft' | 'approved' | 'in-progress' | 'completed' | 'rejected';
+
+/** A plan artifact's content, as the plan action helper writes it and the plan viewer reads it */
 export interface PlanArtifactContent {
   /** Raw markdown notes body. Phase D-min uses this as the only content field. */
   notes: string;
   /** Overall plan status. Approve/Reject buttons mutate this. */
-  status: 'draft' | 'approved' | 'in-progress' | 'completed' | 'rejected';
+  status: PlanStatus;
   /** Structured steps. Phase D-min leaves this empty; full Phase D will parse from notes. */
   steps: Array<{
     id: string;
@@ -435,7 +412,9 @@ export interface PlanArtifactContent {
     description?: string;
     status: 'pending' | 'in-progress' | 'done' | 'skipped';
   }>;
+  /** Git branch the plan was created on. */
+  branch?: string;
+  /** PR number associated with this plan. */
+  prNumber?: string;
 }
 
-// ArtifactItem — canonical definition lives in the SDK
-export type { ArtifactItem } from '@abuddy/sdk/artifacts';

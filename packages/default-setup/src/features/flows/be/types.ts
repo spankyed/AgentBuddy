@@ -1,40 +1,22 @@
-import { type BaseEntity, EARS } from '@/__generated__/ears';
-import type { ActionEntity, PromptEntity } from '@/__generated__/types';
-import type { ModelCatalogEntry } from '@abuddy/sdk/inference';
-import type { NodeEntity } from '@abuddy/sdk/types';
-
-export { BinaryOperator } from '@abuddy/sdk/utils';
-export type { ModelCatalogEntry } from '@abuddy/sdk/inference';
+import { type NodeEntity } from '@/__generated__/types';
+import { EARS } from '@/__generated__/ears';
+import type { ModelCatalogEntry } from '@abuddy/sdk/models';
+import type { FlowEdge } from '@abuddy/sdk/repositories';
 
 /*─────────────────────────────────────────────────────────────────
  * Flow & Edge entities
  *─────────────────────────────────────────────────────────────────*/
 
-export interface FlowEntity extends BaseEntity {
-  entityType: EARS.Entity.Flow;
-  shortCode: string;
-  label: string;
-  description?: string;
-  flowType: 'workflow' | 'integration';
-  createdAt: number;
-  sourceHash?: string;
-}
+import type { FlowEntity, ActionEntity, PromptEntity } from '@abuddy/sdk';
 
-export type EdgeEntity = {
-  id: EARS.EntityId;
-  kind: EARS.RelKind;
-  source: EARS.EntityId;
-  target: EARS.EntityId;
-  sourceHandle?: string;
-  targetHandle?: string;
-  info?: { [key: string]: any; }
-};
+/** A transition between two nodes, as the SDK's flow repository returns it */
+export type EdgeEntity = FlowEdge;
 
 /*─────────────────────────────────────────────────────────────────
- * Node entity (auto-populated via module augmentation in each step's types.ts)
+ * Node entity: generated union of the step node interfaces in each step's types.ts
  *─────────────────────────────────────────────────────────────────*/
 
-export type { NodeEntity } from '@abuddy/sdk/types';
+export type { NodeEntity } from '@/__generated__/types';
 
 export type NodeKind = NodeEntity['nodeType'] | (string & {});
 

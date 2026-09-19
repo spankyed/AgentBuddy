@@ -1,20 +1,20 @@
-import { registerRepository, qx, findById, tx } from '@abuddy/sdk/ears';
+import { tx, qx, findById } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears';
-import { edgeStore } from '@abuddy/sdk/ears/internals';
+import { findRelations, untypedQx } from '@abuddy/ears';
 import type {
   FlowTNodeData,
-  TNodeEntity,
-  TrackTree,
   EventListenerEntity,
   TNodeUpdate,
-  ExecutionContext
 } from '../types';
-import type { FlowEntity, NodeEntity } from '@/__generated__/types';
+import type { NodeEntity } from '@/__generated__/types';
 import type { FlowNode } from '@/extensions/steps/subflow/types';
 import { stepRegistry } from '@abuddy/sdk/steps';
 import { prepareNodeAttributes, type PreparedAttributes } from './node-attribute-mappers';
-import { truncateResult } from '../utils/result-truncator';
+import { truncateResult } from '@abuddy/sdk/steps';
+import { tnodeRepository } from '@abuddy/sdk/repositories';
 import { brainLogger } from '../utils/brain-inspect';
+import type { TNodeEntity, TrackTree, ExecutionContext } from '@abuddy/sdk/steps';
+import { ROOT_FLOW_ROLE, type FlowEntity } from '@abuddy/sdk';
 // Brain Repository - Manages execution traces and TNode trees
 
 // Helper function to prepare node attributes with optional execution context
@@ -36,7 +36,7 @@ function resolveNodeAttributes(
  */
 const ROOT_TNODE_ID = 'TNode-Root' as EARS.EntityId<'TNode'>;
 const ROOT_TRACE_NODE_ROLE = EARS.RoleKind.Custom("root_trace_node");
-const ROOT_FLOW_ROLE = EARS.RoleKind.Custom("root_flow");
+const ROOT_FLOW = EARS.RoleKind.Custom(ROOT_FLOW_ROLE);
 // Common column selections for TNode queries
 const TNODE_COLUMNS = [
   "id", 
@@ -106,18 +106,6 @@ export const brainQueries = {
     return qx(id).pickOne(TNODE_COLUMNS);
   },
 
-  eventFirstStep: (eventNodeId: EARS.EntityId): NodeEntity | undefined => {
-    const transitionLinks = qx(eventNodeId)
-      .links(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node]);
-
-    if (transitionLinks.length > 0) {
-      return qx(transitionLinks[0].id)
-        .pickAll()[0] as unknown as NodeEntity | undefined;
-    }
-
-    return undefined;
-  },
-
   eventAllSteps: (eventNodeId: EARS.EntityId): NodeEntity[] => {
     const nodes = qx(eventNodeId)
       .links(EARS.RelKind.TRANSITIONS_TO, [EARS.Entity.Node])
@@ -141,7 +129,7 @@ export const brainQueries = {
   // Get next node for a specific branch (used by switch nodes)
   nextNodeForBranch: (nodeId: EARS.EntityId, sourceHandle?: string): NodeEntity | undefined => {
     // Get all TRANSITIONS_TO edges from this node
-    const edges = edgeStore.find({
+    const edges = findRelations({
       sourceEntity: nodeId,
       relationType: EARS.RelKind.TRANSITIONS_TO,
     });
@@ -150,7 +138,7 @@ export const brainQueries = {
     type EdgeInfo = { sourceHandle?: string; targetHandle?: string };
     let edge;
     if (sourceHandle) {
-      edge = edges.find((e: any) => (e.info as EdgeInfo)?.sourceHandle === sourceHandle);
+      edge = edges.find((e) => (e.info as EdgeInfo | undefined)?.sourceHandle === sourceHandle);
     } else {
       brainLogger.warn(`nextNodeForBranch called without sourceHandle for node ${nodeId}, falling back to first edge`);
       edge = edges[0];
@@ -205,7 +193,8 @@ export const brainQueries = {
     const events: EventListenerEntity[] = [];
     for (const def of stepRegistry.triggers()) {
       const fields = ['id', 'nodeType', 'label', 'trackKey', ...(def.trigger?.queryFields || [])] as const;
-      const triggerNodes = qx(flowId)
+      // Untyped: each trigger names its own fields, which only some step node types have
+      const triggerNodes = untypedQx(flowId)
         .linksPick(EARS.RelKind.CONTAINS, fields, [EARS.Entity.Node])
         .filter((n: any) => n.nodeType === def.type);
       for (const n of triggerNodes as any[]) {
@@ -494,7 +483,7 @@ export const brainCommands = {
     const rootId = ROOT_TNODE_ID;
 
     const rootFlow = qx(EARS.Entity.Flow)
-      .withRole(ROOT_FLOW_ROLE)
+      .withRole(ROOT_FLOW)
       .pickOne(["id", "label", "flowType", "createdAt"]);
 
     if (!rootFlow) {
@@ -552,26 +541,8 @@ export const brainCommands = {
     }
   },
   
-  updateTNodeResult: (
-    tNodeId: EARS.EntityId,
-    result: any
-  ): void => {
-    // Truncate the result to prevent memory overflow
-    const truncatedResult = truncateResult(result);
-    
-    // Get current nodeAttributes
-    const tNode = qx(tNodeId).pickOne(['nodeAttributes']);
-    
-    if (tNode) {
-      // Merge truncated result into existing nodeAttributes
-      const updatedAttributes = {
-        ...(tNode.nodeAttributes || {}),
-        result: truncatedResult
-      };
-      
-      tx(tNodeId).update('nodeAttributes', updatedAttributes);
-    }
-  },
+  /** Records a step's result on its TNode, truncated (the SDK's TNode repository) */
+  updateTNodeResult: tnodeRepository.updateTNodeResult,
   
   updateTNodeAttributes: (
     tNodeId: EARS.EntityId,
@@ -597,5 +568,3 @@ export const brainCommands = {
   },
 } as const;
 
-registerRepository('brainQueries', brainQueries);
-registerRepository('brainCommands', brainCommands);

@@ -3,33 +3,6 @@
  * into the api core without direct cross-package imports.
  */
 
-describe('core/lifecycle — shutdown hooks', () => {
-  it('runShutdownHooks calls all registered hooks', async () => {
-    const { registerShutdownHook, runShutdownHooks } = await import('@abuddy/sdk/utils');
-
-    const calls: string[] = [];
-    registerShutdownHook(() => calls.push('hook-a'));
-    registerShutdownHook(() => calls.push('hook-b'));
-
-    runShutdownHooks();
-
-    expect(calls).toContain('hook-a');
-    expect(calls).toContain('hook-b');
-  });
-
-  it('swallows errors from individual hooks without stopping others', async () => {
-    const { registerShutdownHook, runShutdownHooks } = await import('@abuddy/sdk/utils');
-
-    const calls: string[] = [];
-    registerShutdownHook(() => { throw new Error('boom'); });
-    registerShutdownHook(() => calls.push('after-error'));
-
-    runShutdownHooks();
-
-    expect(calls).toContain('after-error');
-  });
-});
-
 describe('boot exports — source modules', () => {
   it('default-exports the logs entry (early boot system)', async () => {
     // System modules default-export their SystemEntry, the same way plugin
@@ -52,9 +25,9 @@ describe('registries/services — feature services assembly', () => {
     const { featureServices } = await import('../../src/__generated__/services');
 
     const expectedKeys = [
-      'llm', 'database', 'prompt', 'action', 'library', 'browser',
-      'settings', 'textStream', 'chat', 'artifact', 'brain',
-      'cli', 'filesystem', 'threads', 'codex', 'modelClient', 'openaiAuth',
+      'database', 'prompt', 'action', 'library',
+      'settings', 'chat', 'artifact', 'brain',
+      'cli', 'threads', 'codex',
     ];
 
     for (const key of expectedKeys) {
@@ -71,69 +44,18 @@ describe('registries/services — feature services assembly', () => {
   });
 });
 
-describe('core/seed — seeder registry', () => {
-  it('seedData runs registered seeders and returns keyed counts', async () => {
-    const { registerSeeder, seedData } = await import('@abuddy/sdk/utils');
-    const os = await import('os');
-    const path = await import('path');
-
-    registerSeeder({
-      key: 'test-artifact',
-      seed(ctx) {
-        return { created: 2, updated: 1, skipped: 0 };
-      },
-    });
-
-    const result = seedData({ compiledDir: path.join(os.tmpdir(), 'nonexistent') });
-
-    expect(result['test-artifact']).toEqual({ created: 2, updated: 1, skipped: 0 });
-  });
-
-  it('skips seeders whose include set is empty', async () => {
-    const { registerSeeder, seedData } = await import('@abuddy/sdk/utils');
-    const os = await import('os');
-    const path = await import('path');
-
-    let called = false;
-    registerSeeder({
-      key: 'skip-me',
-      seed() {
-        called = true;
-        return { created: 0, updated: 0, skipped: 0 };
-      },
-    });
-
-    seedData({
-      compiledDir: path.join(os.tmpdir(), 'nonexistent'),
-      include: { 'skip-me': new Set() },
-    });
-
-    expect(called).toBe(false);
-  });
-
-  it('silently replaces duplicate seeder keys', async () => {
-    const { registerSeeder, seedData } = await import('@abuddy/sdk/utils');
-    const os = await import('os');
-    const path = await import('path');
-
-    let callCount = 0;
-    const seed1 = () => { callCount = 1; return { created: 0, updated: 0, skipped: 0 }; };
-    const seed2 = () => { callCount = 2; return { created: 0, updated: 0, skipped: 0 }; };
-
-    registerSeeder({ key: 'dup-replace-test', seed: seed1 });
-    registerSeeder({ key: 'dup-replace-test', seed: seed2 });
-
-    seedData({ compiledDir: path.join(os.tmpdir(), 'empty-dir-' + Date.now()) });
-    expect(callCount).toBe(2);
-  });
-
-  it('default-setup registers all built-in seeders', async () => {
-    await import('../../src/__generated__/seeders');
+describe('core/seed — seeders', () => {
+  it("default-setup's registration carries all built-in seeders, which seedData runs for its compiled seeds", async () => {
     const { seedData } = await import('@abuddy/sdk/utils');
+    const fs = await import('fs');
     const os = await import('os');
     const path = await import('path');
 
-    const result = seedData({ compiledDir: path.join(os.tmpdir(), 'empty-dir-' + Date.now()) });
+    // A compiled seeds directory of default-setup's with no seed files: every seeder runs and finds nothing
+    const compiledDir = fs.mkdtempSync(path.join(os.tmpdir(), 'default-setup-seeds-'));
+    fs.writeFileSync(path.join(compiledDir, 'seeds.json'), JSON.stringify({ version: 1, packId: 'default-setup', seeds: [] }));
+    const result = seedData({ compiledDir });
+    fs.rmSync(compiledDir, { recursive: true, force: true });
 
     const keys = Object.keys(result);
     expect(keys).toContain('actions');

@@ -285,7 +285,7 @@ import {
   MessageSquare, Code, Pencil, Trash2, Send, Loader2,
   ChevronRight, Reply, CheckCircle
 } from 'lucide-vue-next'
-import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
+import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import type { GhPRComment, GhReviewThread, GhReviewComment } from '@/__generated__/types'
 import { getCommentDatabaseId } from './comment-id'
 

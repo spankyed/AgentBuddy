@@ -1,0 +1,24 @@
+{
+  "$schema": "../../../packages/abuddy-sdk/abuddy.schema.json",
+  "id": "bundled-ui-fixture",
+  "name": "Bundled UI Fixture",
+  "version": "0.1.0",
+  "hostVersion": ">=0.3.0",
+  "entities": {},
+  "relKinds": {},
+  "fe": {
+    "bundleUi": true
+  },
+  "features": [
+    {
+      "id": "scribbles",
+      "settings": "src/features/scribbles/settings.ts",
+      "plugin": {
+        "entry": "src/features/scribbles/fe/plugin.ts"
+      },
+      "services": {}
+    }
+  ],
+  "dependencies": {},
+  "permissions": []
+}

@@ -263,7 +263,7 @@ import { useSelector } from '@xstate/vue'
 import { Wrench, Copy, Check, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
 import { useActorSystem, navigateToPlugin, getDesignated } from '@abuddy/sdk/fe'
-import { trpc } from '@abuddy/sdk/rpc'
+import { sendToSystem } from '@/__generated__/events'
 
 const actorSystem = useActorSystem()
 
@@ -301,7 +301,6 @@ interface SessionContent {
   totalCostUsd: number
   chatState: 'idle' | 'working' | 'paused' | 'error'
   toolCallCount: number
-  lastTool?: { name: string; summary: string; at: number }
   recentTools?: Array<{ name: string; summary: string; at: number }>
   permissionMode?: PermissionMode
   useWorktree?: boolean
@@ -318,7 +317,7 @@ interface SessionContent {
 }
 
 const props = defineProps<{
-  artifact: ArtifactItem & { content: SessionContent }
+  artifact: ArtifactItem<SessionContent>
 }>()
 
 const threadsActor = actorSystem.get(getDesignated('threads'))
@@ -328,16 +327,12 @@ const currentThread = useSelector(
 )
 const currentThreadId = computed(() => currentThread.value?.id as string | undefined)
 
-// Read session data from thread context (source of truth).
-// Falls back to artifact content for backward compat during migration.
+// The thread context is the source of truth for session data.
 const content = computed<SessionContent>(() =>
   currentThread.value?.context?.claudeCode ?? ({} as SessionContent)
 )
 
-// Backward compat: fall back to legacy lastTool if recentTools isn't populated yet.
-const recentTools = computed(() =>
-  content.value?.recentTools ?? (content.value?.lastTool ? [content.value.lastTool] : [])
-)
+const recentTools = computed(() => content.value?.recentTools ?? [])
 
 // Context usage — prefer full contextUsage data from CLI /context query
 const ctx = computed(() => content.value?.contextUsage ?? null)
@@ -472,8 +467,7 @@ function selectPermissionMode(mode: PermissionMode) {
     console.warn('[claude-session-artifact] no current thread; cannot update permission mode')
     return
   }
-  trpc.bus.send.mutate({
-    systemId: 'threads',
+  sendToSystem('threads', {
     type: 'FORWARD_BRAIN_EVENT',
     eventType: 'user.update.permissionMode',
     payload: { threadId, mode },
@@ -483,8 +477,7 @@ function selectPermissionMode(mode: PermissionMode) {
 function clearGoal() {
   const threadId = currentThreadId.value
   if (!threadId) return
-  trpc.bus.send.mutate({
-    systemId: 'threads',
+  sendToSystem('threads', {
     type: 'FORWARD_BRAIN_EVENT',
     eventType: 'user.goal.clear',
     payload: { threadId },
@@ -497,8 +490,7 @@ function selectWorktree(value: boolean) {
   if (value === useWorktree.value) return
   const threadId = currentThreadId.value
   if (!threadId) return
-  trpc.bus.send.mutate({
-    systemId: 'threads',
+  sendToSystem('threads', {
     type: 'FORWARD_BRAIN_EVENT',
     eventType: 'user.update.worktree',
     payload: { threadId, useWorktree: value },

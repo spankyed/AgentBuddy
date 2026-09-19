@@ -4,6 +4,8 @@
  * Penalizes: gaps between matches, distance from start
  */
 
+import { escapeHtml } from '@abuddy/sdk/utils/pure'
+
 export interface FuzzyMatch {
   score: number
   positions: number[] // Character positions that matched
@@ -56,7 +58,7 @@ function isWordBoundary(str: string, index: number): boolean {
 /**
  * Fuzzy match a pattern against a target string
  */
-export function fuzzyMatch(pattern: string, target: string, filename?: string): FuzzyMatch | null {
+function fuzzyMatch(pattern: string, target: string, filename?: string): FuzzyMatch | null {
   if (!pattern || !target) return null
   
   const patternLower = pattern.toLowerCase()
@@ -229,28 +231,26 @@ export function fuzzySearch<T>(
 }
 
 /**
- * Highlight matched portions of text
+ * `text` as HTML, escaped, with the matched ranges wrapped in a highlight span
  */
 export function highlightMatches(
   text: string,
   ranges: Array<[number, number]>,
   highlightClass: string = 'fuzzy-match-highlight'
 ): string {
-  if (ranges.length === 0) return text
-  
   let result = ''
   let lastEnd = 0
   
   for (const [start, end] of ranges) {
     // Add text before match
-    result += text.slice(lastEnd, start)
+    result += escapeHtml(text.slice(lastEnd, start))
     // Add highlighted match
-    result += `<span class="${highlightClass}">${text.slice(start, end)}</span>`
+    result += `<span class="${highlightClass}">${escapeHtml(text.slice(start, end))}</span>`
     lastEnd = end
   }
   
   // Add remaining text
-  result += text.slice(lastEnd)
+  result += escapeHtml(text.slice(lastEnd))
   
   return result
 }

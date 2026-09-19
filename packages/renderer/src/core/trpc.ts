@@ -1,25 +1,51 @@
-// // In Electron, we use the preload-exposed tRPC client
-// import { trpc } from '@app/preload';
-
-// // Re-export for compatibility with existing code
-// export { trpc };
-
-import { createWSClient, wsLink, createTRPCClient } from '@trpc/client';
+import { createWSClient, wsLink, createTRPCClient, type TRPCClient } from '@trpc/client';
+import { API_HOST } from '@abuddy/sdk/utils/pure';
 import type { AppRouter } from '@app/api';   // ← BE import Type‑only!
 
-// Get the API port from the preload-exposed value or fall back to default
-const getApiPort = (): number => {
-  if (typeof window !== 'undefined' && window.electronAPI?.apiPort) {
-    return window.electronAPI.apiPort;
+type ApiClient = TRPCClient<AppRouter>;
+
+/** The port this window launched with. The API can move after a restart — see reconnectApiClient. */
+const initialPort = (typeof window !== 'undefined' && window.electronAPI?.apiPort) || 3001;
+/**
+ * The token the API requires, which main gives the app's windows. The preload exposes it as `electronAPI.apiToken`,
+ * which only this client reads: it's deliberately left out of the SDK's `Window.electronAPI` type packs see.
+ */
+const apiToken = (typeof window !== 'undefined' && (window.electronAPI as { apiToken?: string } | undefined)?.apiToken) || '';
+
+/**
+ * A socket offering the API's subprotocol and the token as a second one (the API's `acceptsConnection`). The token
+ * stays out of the URL, which the browser prints when a connection fails, and the app logs what the window prints.
+ */
+class ApiSocket extends WebSocket {
+  constructor(url: string | URL) {
+    super(url, ['abuddy', `abuddy-token.${apiToken}`]);
   }
-  // Fallback for development or if preload fails
-  return 3001;
-};
+}
 
-const apiPort = getApiPort();
-const wsUrl = `ws://localhost:${apiPort}`;
+function connect(port: number) {
+  const ws = createWSClient({ url: `ws://${API_HOST}:${port}`, WebSocket: ApiSocket });
+  return { port, ws, client: createTRPCClient<AppRouter>({ links: [wsLink({ client: ws })] }) };
+}
 
-const ws = createWSClient({ url: wsUrl });
-export const trpc = createTRPCClient<AppRouter>({
-    links: [wsLink({ client: ws })],
+let connection = connect(initialPort);
+
+/**
+ * The API client. A proxy, because the client is rebuilt when the API restarts on a different
+ * port: importers hold this binding for the window's lifetime, so every call has to reach
+ * whichever client is current.
+ */
+export const trpc: ApiClient = new Proxy({} as ApiClient, {
+  get: (_, prop) => connection.client[prop as keyof ApiClient],
 });
+
+/**
+ * Points the client at `port`, closing the old socket. Returns false when the port is unchanged,
+ * so a caller can leave a working connection — and its subscriptions — alone.
+ */
+export function reconnectApiClient(port: number): boolean {
+  if (port === connection.port) return false;
+  console.info(`[trpc] API moved to port ${port}; reconnecting`);
+  connection.ws.close();
+  connection = connect(port);
+  return true;
+}

@@ -5,42 +5,29 @@
     @update-node="$emit('update-node', $event)"
     @close="$emit('close')"
   >
-    <div>
-      <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
-        ENTITY TYPE
-      </label>
-      <select
-        :value="nodeData.entityTypeTarget || 'thread'"
-        @change="$emit('update-node', { entityTypeTarget: ($event.target as HTMLSelectElement).value })"
-        class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800 border-neutral-700 text-neutral-200 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-      >
-        <option value="thread">Thread</option>
-        <option value="message">Message</option>
-        <option value="node">Node</option>
-        <option value="flow">Flow</option>
-      </select>
-    </div>
-    <div>
-      <label class="block text-xs font-medium uppercase tracking-wider text-neutral-400 mb-2">
-        ENTITY ID (OPTIONAL)
-      </label>
-      <input
-        :value="nodeData.entityId || ''"
-        @input="$emit('update-node', { entityId: ($event.target as HTMLInputElement).value || undefined })"
-        placeholder="Auto-generated if empty"
-        class="w-full px-3 py-2 text-sm border rounded-md bg-neutral-800 border-neutral-700 text-neutral-200 placeholder-neutral-500 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+    <div class="space-y-6">
+      <EntityTypeInput
+        :model-value="nodeData.entityTypeTarget"
+        @update:model-value="$emit('update-node', { entityTypeTarget: $event })"
       />
-    </div>
-    <div>
-      <label class="flex items-center text-sm text-neutral-200">
-        <input
-          type="checkbox"
-          :checked="nodeData.inferLabel ?? true"
-          @change="$emit('update-node', { inferLabel: ($event.target as HTMLInputElement).checked })"
-          class="mr-2 rounded border-neutral-700 bg-neutral-800 text-blue-500 focus:ring-2 focus:ring-blue-500"
-        />
-        <span class="text-xs font-medium uppercase tracking-wider text-neutral-400">INFER LABEL</span>
-      </label>
+      <Fields
+        :model-value="nodeData.fieldMappings"
+        @update:model-value="$emit('update-node', { fieldMappings: $event })"
+      />
+      <div>
+        <label class="flex items-center text-sm text-neutral-200">
+          <input
+            type="checkbox"
+            :checked="nodeData.inferLabel ?? true"
+            @change="$emit('update-node', { inferLabel: ($event.target as HTMLInputElement).checked })"
+            class="mr-2 rounded border-neutral-700 bg-neutral-800 text-blue-500 focus:ring-2 focus:ring-blue-500"
+          />
+          <span class="text-xs font-medium uppercase tracking-wider text-neutral-400">INFER LABEL</span>
+        </label>
+        <p class="mt-1.5 text-xs text-neutral-600">
+          Without a <code class="text-neutral-400">label</code> field, label the entity from its title, name or topic
+        </p>
+      </div>
     </div>
   </BaseForm>
 </template>
@@ -48,17 +35,19 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { NodeEntity } from '@/__generated__/types'
-import BaseForm from '@abuddy/sdk/fe/components/BaseForm.vue'
+import BaseForm from '@abuddy/ui/components/BaseForm'
+import type { CreateNode } from './types'
+import Fields from './fields.vue'
+import EntityTypeInput from './entity-type-input.vue'
 
 const props = defineProps<{
   node: NodeEntity
 }>()
 
 defineEmits<{
-  'update-node': [updates: Record<string, any>]
+  'update-node': [updates: Partial<CreateNode>]
   'close': []
 }>()
 
-// Type assertion for create node properties
-const nodeData = computed(() => props.node as any)
+const nodeData = computed(() => props.node as CreateNode)
 </script>

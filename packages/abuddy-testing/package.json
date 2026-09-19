@@ -1,0 +1,49 @@
+{
+  "name": "@abuddy/testing",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Playwright E2E fixture, vitest helpers and a unit test harness for AgentBuddy packs",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/package/dist/index.d.ts",
+      "default": "./dist/package/dist/index.js"
+    },
+    "./vitest": {
+      "types": "./dist/package/dist/vitest.d.ts",
+      "default": "./dist/package/dist/vitest.js"
+    },
+    "./harness": {
+      "types": "./dist/package/dist/harness.d.ts",
+      "default": "./dist/package/dist/harness.js"
+    }
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build:package": "tsx ../../scripts/bundle-package.ts .",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@abuddy/ears": "*",
+    "@abuddy/host": "*",
+    "@abuddy/sdk": "*",
+    "tsx": "^4.19.4"
+  },
+  "peerDependencies": {
+    "@playwright/test": ">=1.40.0",
+    "vitest": ">=3.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  },
+  "peerDependenciesMeta": {
+    "@playwright/test": {
+      "optional": true
+    },
+    "vitest": {
+      "optional": true
+    }
+  }
+}

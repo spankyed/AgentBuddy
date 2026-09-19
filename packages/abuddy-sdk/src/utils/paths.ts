@@ -1,25 +1,46 @@
 import * as path from 'path'
 import * as fs from 'fs'
-import { resolveAppContext } from '../env'
+import { resolveAppContext } from '../env/index.ts'
 
-const DATA_DIRS = {
-  modelsCache:  'models-cache',
-  searchIndices: 'search-indices',
+/** @internal Host-only: the app's stores in a data dir */
+export interface _AppDataPaths {
+  /** The database's primary partition */
+  lmdb: string
+  /** The database's volatile partition (run history) */
+  volatileLmdb: string
+  /** The user's API keys */
+  secretsFile: string
+  media: string
+}
+
+const DATA_DIRS: _AppDataPaths = {
   lmdb:         'ears-db',
   volatileLmdb: 'ears-trace',
-  secretsLmdb:  'ears-secrets',
+  secretsFile:  'secrets.json',
   media:        'media',
+}
+
+/**
+ * @internal Host-only: where `userDataDir` keeps the app's stores. A packaged app keeps them at its root, a source
+ * run (NODE_ENV=development) under `.data/`.
+ */
+export function _appDataPaths(userDataDir: string, { packaged }: { packaged: boolean }): _AppDataPaths {
+  const base = packaged ? userDataDir : path.join(userDataDir, '.data')
+  const entries = Object.entries(DATA_DIRS).map(([key, name]) => [key, path.join(base, name)])
+  return Object.fromEntries(entries) as _AppDataPaths
 }
 
 // === Public API ===
 
 export const getUserDataPath = (): string => resolveAppContext().userDataDir
-export const getSearchIndicesPath = (): string => resolvePath('searchIndices')
-export const getModelsCachePath = (): string => resolvePath('modelsCache')
-export const getLmdbPath = (): string => resolvePath('lmdb')
-export const getVolatileLmdbPath = (): string => resolvePath('volatileLmdb')
-export const getSecretsLmdbPath = (): string => resolvePath('secretsLmdb')
-export const getMediaPath = (): string => resolvePath('media')
+/** @internal Host-only: the app's database location. */
+export const _getLmdbPath = (): string => _resolvePath('lmdb')
+/** @internal Host-only: the app's database location. */
+export const _getVolatileLmdbPath = (): string => _resolvePath('volatileLmdb')
+/** @internal Host-only: the file holding the user's API keys (values encrypted). */
+export const _getSecretsFilePath = (): string => _resolvePath('secretsFile')
+/** @internal Host-only: the app's media location. */
+export const _getMediaPath = (): string => _resolvePath('media')
 
 export const ensureDirectoryExists = (dirPath: string): void => {
   if (!fs.existsSync(dirPath)) {
@@ -27,20 +48,16 @@ export const ensureDirectoryExists = (dirPath: string): void => {
   }
 }
 
-export const getIndexPath = (indexId: string): string =>
-  path.join(getSearchIndicesPath(), indexId)
+/**
+ * @internal Host-only: one of the app's own stores. Every key is the app's — the database, the run
+ * history, the user's keys, the media store — so a pack keeps its data under `getDataDirPath`.
+ */
+export function _resolvePath(key: keyof typeof DATA_DIRS): string {
+  return _appDataPaths(getUserDataPath(), { packaged: process.env.NODE_ENV === 'production' })[key]
+}
 
-export const getIndexFilePath = (indexId: string): string =>
-  path.join(getIndexPath(indexId), 'index.usearch')
-
-export const getIndexMetadataPath = (indexId: string): string =>
-  path.join(getIndexPath(indexId), 'metadata.json')
-
-export const getIndexMappingsPath = (indexId: string): string =>
-  path.join(getIndexPath(indexId), 'mappings.json')
-
-export function resolvePath(key: keyof typeof DATA_DIRS): string {
-  const name = DATA_DIRS[key]
+/** A directory the app or a pack keeps data in, under the app's data directory (`name` is its folder) */
+export function getDataDirPath(name: string): string {
   // Existing on-disk layout: packaged builds store data at the root of the data dir,
   // source runs (NODE_ENV=development) under .data/
   const userDataDir = getUserDataPath()

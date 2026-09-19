@@ -40,7 +40,7 @@ export function breadcrumbWithParams<C>({
 }
 
 export function breadcrumbList<C>(
-  getCrumbs: (ctx: C) => Array<{ label: string; target: string; info?: any }>
+  getCrumbs: (ctx: C) => Array<{ label: string; target: string; info?: unknown }>
 ) {
   return {
     breadcrumb: getCrumbs,
@@ -48,7 +48,7 @@ export function breadcrumbList<C>(
 }
 
 export function staticBreadcrumbList(
-  crumbs: Array<{ label: string; target: string; info?: any }>
+  crumbs: Array<{ label: string; target: string; info?: unknown }>
 ) {
   return {
     breadcrumb: crumbs,

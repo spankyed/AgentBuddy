@@ -5,9 +5,10 @@
  * Follows a pure vs side-effect pattern similar to chat service.
  */
 
+import { sendToPlugin } from '@/__generated__/events';
 import { EARS } from '@/__generated__/ears';
-import { sendToPlugin } from '@abuddy/sdk/services';
-import { repository } from '@abuddy/sdk/ears';
+
+import { repository } from '@/__generated__/repository';
 import type { ArtifactType } from '@/features/threads/be/types';
 
 export interface CreateArtifactOptions {
@@ -125,3 +126,10 @@ export function findOrCreateByType(
   });
   return { artifactId, created: true };
 }
+
+/** `services.artifact`: artifact writes with frontend notification */
+export const artifactService = {
+  createAndNotify,
+  updateAndNotify,
+  findOrCreateByType,
+};
