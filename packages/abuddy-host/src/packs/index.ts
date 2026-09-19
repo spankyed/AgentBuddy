@@ -16,7 +16,7 @@ export {
   readInstalledPacks, writeInstalledPacks, packRecord, packRecords, disabledPackIds,
   recordInstalled, setPackEnabled, recordUpdateCheck, recordUpdateInstalled, recordSeedOutcomes, forgetPack,
 } from './installed-packs.ts';
-export type { PackRecord, InstalledPacksRecord } from './installed-packs.ts';
+export type { PackRecord } from './installed-packs.ts';
 
 // Installer
 export {

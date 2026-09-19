@@ -45,34 +45,27 @@ function getInstalledPacksPath(): string {
 }
 
 /**
- * What the record says, or that it couldn't be read at all — no file (a fresh data dir, or one last
- * written by a version that kept this somewhere else) or one that won't parse.
+ * The rows in `installedPacksPath` (the app's `installed-packs.json` by default).
  *
- * Most callers want `packRecord` or `packRecords`, which answer for a pack whether or not it has a row.
- * This is for a caller that has to tell "the record says nothing about this pack" from "there is no
- * record to say anything".
+ * No file and an unreadable one both read as no rows, and mean the same thing: nothing has been decided
+ * about any pack. That is not "no packs" — the packs directory says what is installed — so there is
+ * nothing for a caller to tell apart.
  */
-export type InstalledPacksRecord =
-  | { found: true; packs: PackRecord[] }
-  | { found: false };
-
-/** Reads the record in `installedPacksPath` (the app's `installed-packs.json` by default). */
-export function readInstalledPacks(installedPacksPath = getInstalledPacksPath()): InstalledPacksRecord {
-  if (!fs.existsSync(installedPacksPath)) return { found: false };
+export function readInstalledPacks(installedPacksPath = getInstalledPacksPath()): PackRecord[] {
+  if (!fs.existsSync(installedPacksPath)) return [];
 
   try {
     const data: InstalledPacksFile = JSON.parse(fs.readFileSync(installedPacksPath, 'utf-8'));
-    return { found: true, packs: (data.packs ?? []).map(e => ({ ...e, enabled: e.enabled ?? true })) };
+    return (data.packs ?? []).map(e => ({ ...e, enabled: e.enabled ?? true }));
   } catch (err) {
     logger.warn('Failed to read the installed packs, starting fresh:', err as Error);
-    return { found: false };
+    return [];
   }
 }
 
 /** What the app has recorded, by pack id, for the packs it has recorded anything about. */
 export function packRecords(): Map<string, PackRecord> {
-  const record = readInstalledPacks();
-  return new Map((record.found ? record.packs : []).map(e => [e.id, e]));
+  return new Map(readInstalledPacks().map(e => [e.id, e]));
 }
 
 /**
@@ -95,8 +88,7 @@ export function packRecord(id: string, records = packRecords()): PackRecord {
  * would have it read the database by a schema the app can't start with.
  */
 export function disabledPackIds(installedPacksPath = getInstalledPacksPath()): ReadonlySet<string> {
-  const record = readInstalledPacks(installedPacksPath);
-  return new Set(record.found ? record.packs.filter(e => !e.enabled).map(e => e.id) : []);
+  return new Set(readInstalledPacks(installedPacksPath).filter(e => !e.enabled).map(e => e.id));
 }
 
 /** Writes the record, reporting whether it reached disk: a caller acting on a user's decision says so. */
@@ -218,9 +210,8 @@ function removeInstalledPack(entries: PackRecord[], id: string): PackRecord[] {
 
 /** Applies `mutate` and writes the result, reporting whether what it changed reached disk. */
 function updateInstalledPacks(mutate: (entries: PackRecord[]) => PackRecord[]): boolean {
-  const record = readInstalledPacks();
   // A write over an unreadable record starts from nothing: the row being written is the one fact we have
-  const entries = record.found ? record.packs : [];
+  const entries = readInstalledPacks();
   const updated = mutate(entries);
   // A mutation that changed nothing writes nothing, so a data dir where nothing has been decided keeps no
   // record at all rather than gaining an empty one — and nothing was lost, so it reports success

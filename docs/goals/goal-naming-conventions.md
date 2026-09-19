@@ -194,6 +194,12 @@ unchanged. No code moves in this phase.
 
 ### Phase 2 — names that hide what absence costs
 
+> **Done, and then superseded.** The two readers were collapsed in `1d6cf3226` and the liveness
+> predicates merged in `8cbf795d9`. `goal-installed-packs-record.md` then removed the absent-case question
+> from the record entirely — the packs directory is the list, so a missing row means "nothing decided",
+> not "not installed" — which also deleted `recoverStagingDirs`'s known/not-known argument. Nothing in
+> this phase is left to do; the third bullet's target no longer exists.
+
 - Collapse `readInstalledPacks` / `readInstalledPacksRecord`
   (`packages/abuddy-host/src/packs/installed-packs.ts`) into one function returning a result that
   distinguishes "no readable record" from "the record lists nothing" (Decision 2). Migrate every caller;

@@ -2,7 +2,6 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { recordHostVersion } from './host-info.ts';
-import { readInstalledPacks } from './installed-packs.ts';
 import { _writerIsRunning } from '@abuddy/sdk/env';
 
 export type StagingKind = 'installing' | 'previous' | 'publishing';
@@ -33,11 +32,6 @@ function parseStagingDir(dir: string, name: string): StagingEntry | null {
   return { name, id: owned[1], kind: owned[2] as StagingKind, stale };
 }
 
-/** Which packs are still installed, or that the caller has no way to know */
-export type InstalledIds =
-  | { known: true; ids: ReadonlySet<string> }
-  | { known: false };
-
 export interface StagingRecovery {
   /** Packs whose install crashed between moving the old copy aside and placing the new one */
   restored: string[];
@@ -54,11 +48,13 @@ export interface StagingRecovery {
  * install in progress and stays. Run before discovering packs, so a restored pack is found.
  * Never throws: an entry that can't be handled is reported in `failed`.
  *
- * `installed` is which packs are still installed. `known: false` is the caller saying it cannot tell —
- * the built-in packs' dir, which has no record, or a record that wouldn't read — and then every pack is
- * restored. An empty `ids` is the opposite answer, "nothing is installed", so the two can't be confused.
+ * An orphaned `.previous` is always restored, whatever else the app has recorded. Only `placePack` makes
+ * one, and it removes it on success and on a failed rename, so one that survives means an install died
+ * part-way. An uninstall cannot have happened since: it needs `<id>` to be there, and the interrupted
+ * install moved it aside. Restoring is also the safe direction — deleting a pack's only copy is the bug
+ * this function exists to avoid.
  */
-export function recoverStagingDirs(dir: string, installed: InstalledIds): StagingRecovery {
+export function recoverStagingDirs(dir: string): StagingRecovery {
   const result: StagingRecovery = { restored: [], removed: [], failed: [] };
   let names: string[];
   try {
@@ -81,8 +77,6 @@ export function recoverStagingDirs(dir: string, installed: InstalledIds): Stagin
   for (const entry of entries.filter((e) => e.kind === 'previous')) {
     try {
       if (fs.existsSync(path.join(dir, entry.id))) continue;
-      // Uninstalled while its interrupted install's copy sat here: it stays gone
-      if (installed.known && !installed.ids.has(entry.id)) continue;
       fs.renameSync(path.join(dir, entry.name), path.join(dir, entry.id));
       result.restored.push(entry.id);
     } catch (err) {
@@ -116,15 +110,9 @@ export function prepareHostDataDirs(
   } catch (err) {
     log.warn(`[packs] Could not record the host version in ${options.userDataDir}: ${err}`);
   }
-  const record = readInstalledPacks();
-  // "No record" is not "no packs": without it, every interrupted install below is restored rather than deleted
-  const installed: InstalledIds = record.found ? { known: true, ids: new Set(record.packs.map(entry => entry.id)) } : { known: false };
-  if (!record.found) log.warn('[packs] No readable record of installed packs, so every interrupted install is restored');
-  // The built-in packs' dir has no record of its own: its interrupted publishes are always recovered
-  const dirs: [string | undefined, InstalledIds][] = [[options.packsDir, installed], [options.hostPacksDir, { known: false }]];
-  for (const [dir, ids] of dirs) {
+  for (const dir of [options.packsDir, options.hostPacksDir]) {
     if (!dir) continue;
-    const { restored, removed, failed } = recoverStagingDirs(dir, ids);
+    const { restored, removed, failed } = recoverStagingDirs(dir);
     for (const id of restored) log.info(`[packs] Restored "${id}", whose install was interrupted`);
     for (const name of removed) log.info(`[packs] Removed stale staging dir ${name}`);
     for (const { name, error } of failed) log.warn(`[packs] Could not clean up ${name}: ${error}`);

@@ -318,10 +318,9 @@ describe('reloading a pack', () => {
 
     await reloadExternalPack(registry, PACK_ID, bus as never);
 
-    expect(readInstalledPacks()).toMatchObject({
-      found: true,
-      packs: [expect.objectContaining({ id: PACK_ID, lastError: expect.stringContaining("doesn't name the pack that compiled these seeds") })],
-    });
+    expect(readInstalledPacks()).toMatchObject([
+      expect.objectContaining({ id: PACK_ID, lastError: expect.stringContaining("doesn't name the pack that compiled these seeds") }),
+    ]);
   });
 
   // A pack that seeds cleanly and has decided nothing keeps no row: the packs directory is what makes it
@@ -332,7 +331,7 @@ describe('reloading a pack', () => {
 
     await reloadExternalPack(registry, PACK_ID, bus as never);
 
-    expect(readInstalledPacks()).toEqual({ found: false });
+    expect(fs.existsSync(resolveAppContext().installedPacksFile), 'no record was written at all').toBe(false);
   });
 
   it('shuts the running pack down and restarts its systems once the rebuild is registered', async () => {

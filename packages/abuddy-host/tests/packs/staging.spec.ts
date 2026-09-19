@@ -7,12 +7,7 @@ import { prepareHostDataDirs, recoverStagingDirs, stagingDirName } from '../../s
 import { discoverPacks, enabledExternalPacks } from '../../src/packs/pack-discovery.ts';
 import { readInstalledPacks, writeInstalledPacks } from '../../src/packs/installed-packs.ts';
 
-/** The recorded packs; these specs always write a record first, so a missing one is a failure */
-function recordedPacks() {
-  const record = readInstalledPacks();
-  if (!record.found) throw new Error('no installed-packs record');
-  return record.packs;
-}
+const recordedPacks = () => readInstalledPacks();
 
 import { readHostVersion } from '../../src/packs/host-info.ts';
 
@@ -56,7 +51,7 @@ describe('recoverStagingDirs', () => {
     mkdir(`.other-pack.installing-${running}-d4E5f6`);
     mkdir(`.other-pack.previous-${process.pid}-0a1b2c3d`);
 
-    const result = recoverStagingDirs(packsDir, { known: false });
+    const result = recoverStagingDirs(packsDir);
     expect(result.removed.sort()).toEqual([
       `.base-pack.publishing-${exited}`,
       `.demo-pack.installing-${exited}-a1B2c3`,
@@ -73,7 +68,7 @@ describe('recoverStagingDirs', () => {
     fs.renameSync(path.join(packsDir, 'demo-pack'), path.join(packsDir, `.demo-pack.previous-${exitedPid()}-1a2b3c4d`));
     mkdir(`.demo-pack.installing-${exitedPid()}-x1Y2z3`);
 
-    expect(recoverStagingDirs(packsDir, { known: false })).toMatchObject({ restored: ['demo-pack'], failed: [] });
+    expect(recoverStagingDirs(packsDir)).toMatchObject({ restored: ['demo-pack'], failed: [] });
     expect(remaining()).toEqual(['demo-pack']);
     expect(enabledExternalPacks(discoverPacks(packsDir), new Set()).map((p) => p.manifest.id)).toEqual(['demo-pack']);
     expect(recordedPacks()).toMatchObject([{ id: 'demo-pack', enabled: true }]);
@@ -82,7 +77,7 @@ describe('recoverStagingDirs', () => {
   it('leaves a directory whose name carries no process id', () => {
     mkdir('.other-pack.installing-Xy12Zw');
 
-    expect(recoverStagingDirs(packsDir, { known: false })).toMatchObject({ restored: [], removed: [], failed: [] });
+    expect(recoverStagingDirs(packsDir)).toMatchObject({ restored: [], removed: [], failed: [] });
     expect(remaining()).toEqual(['.other-pack.installing-Xy12Zw']);
   });
 
@@ -93,30 +88,23 @@ describe('recoverStagingDirs', () => {
     const beforeBoot = new Date(Date.now() - os.uptime() * 1000 - 60_000);
     fs.utimesSync(path.join(packsDir, `.demo-pack.installing-${reused}-a1B2c3`), beforeBoot, beforeBoot);
 
-    expect(recoverStagingDirs(packsDir, { known: false })).toMatchObject({ removed: [`.demo-pack.installing-${reused}-a1B2c3`], failed: [] });
+    expect(recoverStagingDirs(packsDir)).toMatchObject({ removed: [`.demo-pack.installing-${reused}-a1B2c3`], failed: [] });
     expect(remaining()).toEqual([]);
   });
 
-  it("doesn't restore a pack uninstalled while its interrupted install's copy sat here", () => {
+  // Only placePack makes a `.previous`, and it removes it on success and on a failed rename, so one that
+  // survives means an install died part-way. What the app has recorded cannot change that: an uninstall
+  // needs the pack's directory to be there, and the interrupted install moved it aside.
+  it("restores an interrupted install's copy whatever the record says about the pack", () => {
     writePack(`.demo-pack.previous-${exitedPid()}-1a2b3c4d`);
     writeInstalledPacks([]);
 
-    // The registry no longer lists it: the uninstall stands
-    expect(recoverStagingDirs(packsDir, { known: true, ids: new Set() })).toMatchObject({ restored: [], failed: [] });
-    expect(remaining()).toEqual([]);
-  });
-
-  it("restores a pack the registry still lists", () => {
-    writePack(`.demo-pack.previous-${exitedPid()}-1a2b3c4d`);
-
-    expect(recoverStagingDirs(packsDir, { known: true, ids: new Set(['demo-pack']) })).toMatchObject({ restored: ['demo-pack'], failed: [] });
+    expect(recoverStagingDirs(packsDir)).toMatchObject({ restored: ['demo-pack'], failed: [] });
     expect(remaining()).toEqual(['demo-pack']);
   });
 
-  // "The record lists no packs" and "there is no record" are opposite answers, and reading a missing
-  // installed-packs.json as an empty list deleted the interrupted install's only copy — the restore this
-  // function exists to perform — on the first boot after the file was renamed. prepareHostDataDirs is the
-  // caller that has to tell them apart.
+  // Deleting an interrupted install's only copy is the bug this function exists to avoid; it once did
+  // exactly that, on the first boot after installed-packs.json was renamed away.
   it('restores every interrupted install when there is no record of what is installed', () => {
     writePack(`.demo-pack.previous-${exitedPid()}-1a2b3c4d`);
     expect(fs.existsSync(path.join(root, 'installed-packs.json'))).toBe(false);
@@ -136,7 +124,7 @@ describe('recoverStagingDirs', () => {
   });
 
   it('ignores a packs dir that does not exist yet', () => {
-    expect(recoverStagingDirs(path.join(packsDir, 'missing'), { known: false })).toEqual({ restored: [], removed: [], failed: [] });
+    expect(recoverStagingDirs(path.join(packsDir, 'missing'))).toEqual({ restored: [], removed: [], failed: [] });
   });
 
   it('names staging dirs uniquely per process and call, in the owned format', () => {

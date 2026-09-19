@@ -5,12 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { checkForUpdates, findLatestRelease } from '../../src/packs/pack-updater.ts';
 import { readInstalledPacks, writeInstalledPacks } from '../../src/packs/installed-packs.ts';
 
-/** The recorded packs; these specs always write a record first, so a missing one is a failure */
-function recordedPacks() {
-  const record = readInstalledPacks();
-  if (!record.found) throw new Error('no installed-packs record');
-  return record.packs;
-}
+const recordedPacks = () => readInstalledPacks();
 
 
 

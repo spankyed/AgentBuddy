@@ -169,7 +169,7 @@ describe('a pack that is gone', () => {
       await vi.waitFor(() => {
         expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_COMPLETE');
       });
-      expect(readInstalledPacks()).toMatchObject({ found: true, packs: [] });
+      expect(readInstalledPacks()).toEqual([]);
     } finally {
       system.stop();
     }
@@ -208,6 +208,6 @@ describe('a pack that is gone', () => {
 
     forgetPacksExcept(new Set(['here-pack']));
 
-    expect(readInstalledPacks()).toMatchObject({ found: true, packs: [{ id: 'here-pack' }] });
+    expect(readInstalledPacks()).toMatchObject([{ id: 'here-pack' }]);
   });
 });
