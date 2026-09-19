@@ -1,25 +1,30 @@
-> **Written in session** `b9ed13ae-1ac2-48e4-ae3d-6e96f091dbb1` (Claude Code, 2026-09-17). Resume it with `claude -r b9ed13ae-1ac2-48e4-ae3d-6e96f091dbb1`.
+> **Written in session** `b9ed13ae-1ac2-48e4-ae3d-6e96f091dbb1` (Claude Code, 2026-09-17), revised 2026-09-18 against the tree after `77f4c910a`. Resume it with `claude -r b9ed13ae-1ac2-48e4-ae3d-6e96f091dbb1`.
 
 ```
 # Goal: one word per concept in the pack vocabulary
 
 Implement docs/goals/goal-pack-naming.md. Read Background, Rules, Decisions, Open decisions, Phases and
-Constraints first. Open decision 1 must be settled before Phase 5; if it's still marked open, stop and ask.
-Where another detail isn't specified, pick the conventional option, note it in the final summary, and keep
-going.
+Constraints first. Open decisions 1 and 2 must be settled before Phases 3 and 4; if either is still marked
+open when you reach its phase, stop and ask. Where another detail isn't specified, pick the conventional
+option, note it in the final summary, and keep going.
 
 This is a renaming goal: no behaviour changes, no new features, and **no backward-compatibility code**. No
 pack built by anyone exists outside this repo, and no released app has shipped pack modularization, so
 every name here is free to change outright. A rename that "also handles the old shape" is wrong.
 
+Before adopting a candidate name, check what else already uses the word (`grep -rn` over packages/, docs/,
+scripts/, excluding node_modules, dist/ and docs/archive). Two candidates in this goal's first draft were
+already taken — see Decision 4 and Open decision 1. Moving a word onto another live word is not a fix.
+
 Finished when:
-- Phases 1–6 are implemented and each meets its "Done when"; every new guard or test is mutation-checked.
-- No retired name survives anywhere (code, tests, docs, scaffold templates, generated files), enforced by the
-  guard in Phase 6 rather than by grepping once.
+- Phases 1–5 are implemented and each meets its "Done when"; every new guard or test is mutation-checked.
+- No retired name survives anywhere (code, tests, docs, scaffold templates, generated files), enforced by
+  the guard in Phase 5 rather than by grepping once.
 - `npm run typecheck`, `npm run typecheck -w @app/main`, `schema:check`, `api:check` (ears, sdk, ui),
   `packages:build` + `packages:check`, `npm run compile`, `facade:check -w @app/default-setup`, and
   `npm run test:unit` pass.
-- `npm run build`, the monorepo E2E, `npm run test:external-pack` and `npm run test:packaged-authoring` pass.
+- `npm run build`, the monorepo E2E, `npm run test:external-pack` and `npm run test:packaged-authoring`
+  pass. Rebuild before E2E: `npm test` launches built output, not source (`tests/e2e/CLAUDE.md`).
 - A final summary: phase → done, evidence, conventional choices.
 
 Never:
@@ -33,170 +38,238 @@ Never:
 
 ## Background
 
-Several words in this codebase name two or three unrelated things. The collisions were found by audit, each
-with evidence in the tree:
+Several words name two or more unrelated things. Counts are grep line-counts over `packages/`, `docs/` and
+`scripts/`, excluding `node_modules`, `dist/` and `docs/archive`, verified 2026-09-18.
 
-- **`registry`** — `createPackRegistry()` is the in-process collection packs register into (43 refs);
-  `pack-registry.json` is the on-disk record of installed external packs (~105 refs across 7 identifiers);
-  `resolveFromRegistry` is a remote package registry (unimplemented). The first two interact, so the docs have
-  to disambiguate them in prose. The file also spells its install timestamp `registeredAt`.
-- **`bundle`** — a noun (the verified, checksummed shippable layout: `BUNDLE_PATHS` 70 refs, `verifyBundle`,
-  `stageBundle`, `bundle.json`) and a verb (run esbuild/Vite: `bundlePackFE`, `bundleFile`,
-  `bundlePackRuntime`). `buildPackBundle` reads as "build the bundle" but is the shared esbuild setup.
-- **`extensions`** — `packages/default-setup/src/extensions/` is the umbrella for everything the pack
-  contributes (artifacts, blocks, steps, services, tiptap) *and* holds `Welcome.vue`, registered as
-  `fe.appExtensions.welcome`. The umbrella wears one of its children's names. The CLI scaffold hard-codes this
-  path in four places (`add/manifest.ts`, `add/service.ts`, `add/step.ts`, `init.ts`).
-- **`snapshot`** — `PackSnapshot` / `snapshot.json` / `depSnapshots` hold `types`, `defs`, `manifest`,
-  `sdkVersion`, `flowHelpers` and `provenance`: exactly what a dependent pack compiles against. That is
-  a contract; "snapshot" describes when it was taken, not what it is. `secretsSnapshot()` and the LMDB store's
-  `snapshot()` are two further senses.
-- **`host`** — the app (`@abuddy/host`, `HostRuntime`, `hostVersion`, `host-packs/`) and the machine
-  (`db-write.lock`'s `host: os.hostname()`, `SingletonLock`'s `<host>-<pid>`).
+- **`registry` — four senses.**
+  1. `createPackRegistry()` / `PackRegistry` / `PackRegistryView`: the in-process collection packs register
+     into (71 / 46 / 27 refs), `packs/pack-registration.ts`.
+  2. `pack-registry.json`: the on-disk record of installed external packs — `PackRegistryEntry` (15),
+     `readPackRegistry` (30), `writePackRegistry` (15), `modifyRegistry` (21), `addToRegistry` (14),
+     `removeFromRegistry` (4), `reconcileExternalRegistry` (12), `AppContext.registryFile` (17), and the
+     entry field `registeredAt` (21). Owned by `packs/pack-registry.ts` — except `reconcileExternalRegistry`,
+     which lives in `packs/pack-discovery.ts:86`.
+  3. `packs.registry`: the tRPC route serving the **loaded-packs list over the wire**
+     (`api/src/core/router/packs-router.ts`, from `getPackBundleEntries()`), with `registryError` (8) and the
+     renderer's `registryQuery`.
+  4. `resolveFromRegistry`: a remote package registry (`cli/src/commands/install.ts:17`, still the
+     always-throws stub), 2 refs in code.
 
-Two senses of `artifact` were already retired (the published build output of built-in packs, and
-`PackSeedManifest.artifacts` → `seedKeys`); `artifact` now means only the first-class pack contribution. A
-third survives in `resolveDepArtifacts` (`fetch-deps.ts`), which resolves a dependency's files.
+  Senses 1 and 2 interact, so the docs disambiguate them in prose; sense 4 is the industry meaning that
+  sense 2 fights.
+- **`bundle` — a noun and a verb.** Noun: the verified, checksummed shippable layout — `BUNDLE_PATHS` (64
+  lines / 74 occurrences), `verifyBundle` (28), `stageBundle` (24), `extractBundleArchive` (16),
+  `createBundleArchive` (14), `BUNDLE_FORMAT_VERSION` (13), `bundle.json`. Verb: run esbuild/Vite —
+  `bundleFile`, `bundlePackFE`, `bundlePackRuntime`, `bundlePackStepBuild`, `bundlePackSeedCompilers`,
+  `bundlePackFlowHelpers(Module)`, `bundlePackSeedRuntime`, `bundlePackTypes`, `bundleDeclarations`,
+  `bundleDslDefs`, and the `fe.bundleUi` flag. `buildPackBundle` (`cli/src/build/be-bundler.ts:22`) reads as
+  "build the bundle" but is the shared esbuild setup.
+- **`snapshot` — one misnomer among correct uses.** `PackSnapshot` (59) / `snapshot.json` (67) /
+  `depSnapshots` (62) hold `types`, `defs`, `manifest`, `sdkVersion`, `typesFormat`, `provenance` and
+  `flowHelpers`: what a dependent compiles against, which is not a point in time. Every other use *is*
+  point-in-time and correct — xstate's `getSnapshot`, `_threadSnapshot`, `secretsSnapshot` (14), and the LMDB
+  store's `snapshot(partition, targetDir)` added 2026-09-17.
+- **`host` — the app vs the machine.** The app: `@abuddy/host`, `HostRuntime`, `hostVersion`, `host-packs/`.
+  The machine: `db-write.lock`'s `host: os.hostname()` (`database/write-lock.ts:73`, read at `:49` and
+  `database/running.ts:39`), and `SingletonLock`'s `<host>-<pid>`.
+- **`artifact` — one build-sense survivor.** Two senses were retired on 2026-09-17 (the published build
+  output of built-in packs, and `PackSeedManifest.artifacts` → `seedKeys`). What remains is
+  `resolveDepArtifacts` (`cli/src/commands/fetch-deps.ts:392`, 25 refs) with `DepArtifacts` (17) and
+  `findDepArtifacts` (7): a dependency's resolved files, not a pack's first-class artifacts.
+
+**Two words that look free and are not** — checked 2026-09-18, and the reason this goal's prompt now carries
+a "check the word first" instruction:
+
+- **`contract` already has five senses**, one added this month: the typed-EARS change-controlled contract;
+  the host-service contract types in `@abuddy/sdk/services`; the pack entry contract; the black-box specs in
+  `abuddy-ears/tests/contract/`; and, since `70c30d4e2`/`ee18e48d4`, a **Vue component's public API report**
+  (`scripts/component-contracts.ts`, `componentContracts()`, `abuddy-ui/etc/*.component.md`, described in
+  `abuddy-ui/CLAUDE.md` as "component contract reports"). Bare `contract` is 155 occurrences.
+- **`contributions` and `extensions` are both live umbrella words.** `@abuddy/sdk/fe/contributions` is a
+  published export and `PackContributionsView` the runtime type; meanwhile `docs/public-facing/extensions.md`
+  is titled *"Extensions — Steps, Artifacts, Blocks & FE Extension Points"* and is the user-facing umbrella.
+  Swapping the directory from one to the other trades synonyms rather than removing a collision.
 
 **Why now:** the user is the only user, on 0.3.14, and no pack built against the modular SDK exists outside
-this repo. Every name below — including files in a data directory and paths inside a pack bundle — can change
+this repo. Every name below — files in a data directory and paths inside a pack bundle included — can change
 outright. That will not be true later.
 
 ## Rules
 
-The renames follow five rules. Prefer the rule over the table when they disagree; the table is what the rules
-produce today.
+The renames follow five rules. Prefer the rule over the table when they disagree.
 
 1. **One word per pack lifecycle stage, and no word in two stages.** A pack is authored → built → staged →
    archived → installed → loaded → registered → active. *loaded*, *registered* and *active* are already right.
 2. **A word is a noun or a verb here, never both.** `bundle` is the industry verb for esbuild/Vite, so it is
    only ever that; the thing it used to name becomes the pack's layout/archive.
-3. **`registry` is a live in-process collection things register into — never a file.** The remote sense is
-   qualified (`resolveFromRemoteRegistry`). `stepRegistry`, `artifactRegistry`, `blockRegistry`,
-   `_seedHookRegistry` and `tiptapPluginRegistry` keep the word; the docs stop calling them "lookups" so prose
-   and code agree.
+3. **`registry` is a live in-process collection things register into — never a file, never a wire route.**
+   The remote sense is qualified (`resolveFromRemoteRegistry`). `stepRegistry`, `artifactRegistry`,
+   `blockRegistry`, `seedHookRegistry` and `tiptapPluginRegistry` keep the word; the docs stop calling them
+   "lookups" so prose and code agree.
 4. **`host` is the app; `machine` is the computer.**
 5. **A borrowed generic word is qualified by what it is *of*; if it describes *when* rather than *what*, it is
-   the wrong word.** Hence `PackSnapshot` → `PackContract`, and `snapshot` freed for point-in-time meanings.
+   the wrong word.** This is why `PackSnapshot` is a misnomer — and, given no free replacement was found,
+   also why it stays for now (Decision 4).
 
 ## Decisions
 
 Final.
 
-**Decision 1 — every name in the Rules table changes outright, with no compatibility handling.** No pack built
-against the modular SDK exists outside this repo and no released app has shipped pack modularization, so there
-is no old shape to read, no file to migrate and no alias to keep.
+**Decision 1 — every name below changes outright, with no compatibility handling.** No pack built against the
+modular SDK exists outside this repo and no released app has shipped pack modularization, so there is no old
+shape to read, no file to migrate and no alias to keep.
 
 **Decision 2 — the pack's integrity file follows the layout rename.** `bundle.json` becomes `integrity.json`,
-and the release asset the updater reads (`*.bundle.json`, `findLatestRelease` in `packs/github.ts`) becomes
-`*.integrity.json`. No published release carries the old asset.
+and the release asset the updater reads (`.bundle.json`, written at `cli/src/commands/release.ts:196`, read at
+`packs/pack-updater.ts:64`) becomes `.integrity.json`. No published release carries the old asset.
 
 **Decision 3 — the in-process registry keeps the word.** `createPackRegistry`, `PackRegistry`,
-`PackRegistryView`, `registerPack` and the per-kind `*Registry` lookups are unchanged; only the on-disk record
-and the remote sense move (rule 3).
+`PackRegistryView`, `registerPack` and the per-kind `*Registry` lookups are unchanged; the on-disk record, the
+wire route and the remote sense move (rule 3).
 
-## Open decisions (settle with the user before Phase 5)
+**Decision 4 — `PackSnapshot` is not renamed in this goal.** It is a misnomer by rule 5, but `contract` is
+taken five times over and `descriptor` is taken too (50 refs), and no candidate was found that is clearly
+better than the name it would replace. Its cost is also the highest here — every pack's `dist/`, every
+dependent's resolution path, and the published `@abuddy/sdk/build` API. Renaming `store.snapshot` → `copyTo`
+(Phase 4) leaves `snapshot` meaning point-in-time everywhere except this one type, which is a tolerable end
+state. Reopen only with a replacement word checked against the tree first.
 
-**1. The `seedKeys` rebuild guard.** `orchestrateDeclarativeSeed` throws `Pack "<id>" was built with an older
-@abuddy/cli (its seed manifest has no seedKeys): rebuild it with the current one` when a seed manifest lacks
-`seedKeys`. No bundle predating that field exists outside this repo, so by Decision 1 it is compatibility code
-and should go. Against that: it also catches a stale `dist/` inside the monorepo, where the failure is
-otherwise a pack that silently seeds nothing.
-- **A.** Remove it and its spec (`packages/abuddy-host/tests/packs/runtime/seed.spec.ts`).
+## Open decisions (settle with the user)
+
+**1. The umbrella word for a pack's contributions — before Phase 3.** `packages/default-setup/src/extensions/`
+holds `artifacts/`, `blocks/`, `steps/` and `tiptap/` (there is no `services/`; that is only what the CLI
+scaffolds), plus `Welcome.vue` at its root, registered as `fe.appExtensions.welcome`. Both candidate words are
+live: `extensions` is the public-facing umbrella, `contributions` the internal one.
+- **A.** Keep `src/extensions/` and fix only the odd one out: move `Welcome.vue` to `src/extensions/app/`, so
+  the directory's root holds kind-folders and nothing else. Smallest change; leaves two umbrella words in the
+  codebase, each dominant in its own audience.
+- **B.** Pick one umbrella word repo-wide and move everything to it — the directory, the public doc's title,
+  `@abuddy/sdk/fe/contributions`, `PackContributionsView`, the CLI scaffold and the tsconfig path aliases.
+  Removes the synonym pair; much larger, and changes a published SDK export.
+— *open*
+
+**2. The `seedKeys` rebuild guard — before Phase 4.** `orchestrateDeclarativeSeed` throws `Pack "<id>" was
+built with an older @abuddy/cli (its seed manifest has no seedKeys): rebuild it with the current one` when a
+seed manifest lacks `seedKeys`. No bundle predating that field exists outside this repo, so by Decision 1 it
+is compatibility code.
+- **A.** Remove it and its spec (`abuddy-host/tests/packs/runtime/seed.spec.ts`).
 - **B.** Keep it, reworded as a stale-build check that doesn't mention an older CLI.
+
+  *Evidence against B, from the one real staleness incident (2026-09-17):* the guard did **not** fire, because
+  the stale half was the API bundle *reading* the field, not the manifest carrying it. Old code cannot contain
+  a new guard, so it only covers the direction that didn't happen.
 — *open*
 
 ## Phases
 
-Each phase is landable on its own and leaves every check green. Rename in this order: the phases get
-progressively deeper into files that packs and data directories carry.
+Each phase is landable on its own and leaves every check green.
 
 ### Phase 1 — installed packs are not a registry
-- `pack-registry.ts` → `installed-packs.ts`. `PackRegistryEntry` → `InstalledPack`; `readPackRegistry` →
-  `readInstalledPacks`; `writePackRegistry` → `writeInstalledPacks`; `modifyRegistry` →
-  `updateInstalledPacks`; `reconcileExternalRegistry` → `reconcileInstalledPacks`.
-- The entry's `registeredAt` → `installedAt`.
+- `packs/pack-registry.ts` → `packs/installed-packs.ts`. `PackRegistryEntry` → `InstalledPack`;
+  `readPackRegistry` → `readInstalledPacks`; `writePackRegistry` → `writeInstalledPacks`; `modifyRegistry` →
+  `updateInstalledPacks`; `addToRegistry` → `addInstalledPack`; `removeFromRegistry` → `removeInstalledPack`;
+  the entry's `registeredAt` → `installedAt`.
+- `reconcileExternalRegistry` → `reconcileInstalledPacks`, **in `packs/pack-discovery.ts`** — it does not live
+  in the module being renamed, so this is a cross-file change.
 - `AppContext.registryFile` → `installedPacksFile` (`@abuddy/sdk/env`, published — `api:update`), and the file
-  itself `pack-registry.json` → `installed-packs.json`.
-- `createPackRegistry()`, `PackRegistry`, `PackRegistryView` and `registerPack` keep their names: they are the
-  in-process registry, which is what rule 3 reserves the word for.
+  `pack-registry.json` → `installed-packs.json`.
+- The wire route (sense 3): `packs.registry` → `packs.loaded`, with `registryError` → `loadedPacksError` and
+  the renderer's `registryQuery` following. It serves `getPackBundleEntries()`, which is the loaded packs, not
+  any registry.
+- Unchanged by Decision 3: `createPackRegistry`, `PackRegistry`, `PackRegistryView`, `registerPack`, and the
+  per-kind `*Registry` lookups.
 - **No migration.** A development data dir holding the old file simply has no installed-packs record;
   `reconcileInstalledPacks` re-adds the packs it finds in `packs/` as enabled at the next boot, which is what
-  it already does for a pack it has never seen. What is lost is each entry's `source` and update-check cache.
-  Delete the stale file by hand if it bothers you.
+  it already does for a pack it has never seen. Each entry's `source` and update-check cache is lost.
 
-**Done when:** no identifier or path outside `createPackRegistry`'s own module calls the on-disk record a
-registry; a temp-data-dir test shows a data dir with no `installed-packs.json` coming up with its packs enabled.
+**Done when:** `registry` names only the in-process collection and the remote stub; a temp-data-dir test shows
+a data dir with no `installed-packs.json` coming up with its packs enabled.
 
 ### Phase 2 — `bundle` becomes only a verb
 - `BUNDLE_PATHS` → `PACK_LAYOUT`; `BUNDLE_FORMAT_VERSION` → `PACK_LAYOUT_VERSION`; `stageBundle` →
   `stagePack`; `verifyBundle` → `verifyPack`; `createBundleArchive` → `createPackArchive`;
-  `extractBundleArchive` → `extractPackArchive`.
-- `bundle.json` → `integrity.json` (Decision 2), and `PACK_LAYOUT.info` → `PACK_LAYOUT.integrity`.
-- The one ambiguous verb: `buildPackBundle` → `bundlePackSource`.
-- Everything else keeps `bundle` as a verb: `bundlePackFE`, `bundlePackRuntime`, `bundlePackTypes`,
-  `bundlePackSeedRuntime`, `bundlePackStepBuild`, `bundleFile`, `bundle-package.ts`, and the manifest key
-  `fe.bundleUi`.
-- `packs/github.ts` reads `*.integrity.json` as the release asset.
+  `extractBundleArchive` → `extractPackArchive`; `bundleArchiveName` → `packArchiveName`.
+- `bundle.json` → `integrity.json` (Decision 2), `PACK_LAYOUT.info` → `PACK_LAYOUT.integrity`, and
+  `readBundleInfo`/`BundleInfo` → `readPackIntegrity`/`PackIntegrity`.
+- The ambiguous verb: `buildPackBundle` → `bundlePackSource`.
+- Noun leftovers to follow: `isBundleDir`, `hasBuiltBundleSections`, `getPackBundleEntries`, `PackBundleEntry`,
+  `bundleDir`. (`PackBundleEntry` is the payload of the route Phase 1 renames, so the two phases meet here;
+  either order works.)
+- Everything else keeps `bundle` as a verb, including `bundleDeclarations`, `bundleDslDefs` and the manifest
+  key `fe.bundleUi`.
 
 **Done when:** `bundle` appears only as a verb or in a bundler's own vocabulary; `abuddy pack` still produces
 an archive that `abuddy install` verifies, proven by the existing round-trip tests.
 
-### Phase 3 — the umbrella is contributions
-- `packages/default-setup/src/extensions/` → `src/contributions/`, with `abuddy.json`'s paths and the
-  regenerated entries following. `Welcome.vue` moves with it and stays registered as `fe.appExtensions.welcome`.
-- The CLI scaffold writes `src/contributions/...`: `add/manifest.ts`, `add/service.ts`, `add/step.ts`,
-  `init.ts`, and any fixture pack under `tests/fixtures/`.
-- The contribution *kinds* keep their names (`artifacts`, `blocks`, `steps`, `services`, `tiptapPlugins`,
-  `fe.appExtensions`). Only the umbrella changes, matching the SDK's existing `PackContributionsView`.
+### Phase 3 — the umbrella's odd one out
+Scope depends on Open decision 1. Under **A** (the smaller path):
+- Move `packages/default-setup/src/extensions/Welcome.vue` → `src/extensions/app/Welcome.vue`, with
+  `abuddy.json`'s `fe.appExtensions.welcome` path and the regenerated `pack-entry-fe.ts` import following.
+- Leave the directory, the public doc and the SDK export alone; record in `default-setup/CLAUDE.md` that the
+  root of `src/extensions/` holds kind-folders only.
 
-**Done when:** `abuddy init` followed by `abuddy add step`/`add artifact`/`add service` scaffolds under
-`src/contributions/` and builds; `npm run compile` regenerates default-setup with the new paths.
+Under **B**, add: the directory rename; the four CLI scaffold sites (`cli/src/commands/init.ts:23`,
+`add/manifest.ts:21`, `add/step.ts:159`, `add/service.ts:53`); the tsconfig path aliases `@/extensions/*`
+(`default-setup/tsconfig.json:19`, `tsconfig.test.json:7`); the CLI specs that hard-code the path
+(`tests/cli/add-extensions.spec.ts`, ~15 lines; `tests/cli/scaffold.spec.ts:90`;
+`tests/build/trigger-track-helpers.spec.ts:22`; `tests/build/import-specifiers.spec.ts:281`); the external
+pack fixture's generated flow helpers; and the public docs (`extensions.md` including its title, `cli.md`,
+`manifest.md`, `seeds.md`, `services-and-data.md`).
 
-### Phase 4 — a pack's contract is not a snapshot
-- `PackSnapshot` → `PackContract`; `snapshot.json` → `contract.json` (both `dist/contract.json` and
-  `PACK_LAYOUT.contract` = `types/contract.json`); `depSnapshots` → `depContracts`.
-- The CLI's dependency resolution follows: `resolveDeps`, `fetch-deps.ts`, `.abuddy/deps`, the stale-deps
-  warning, and `resolveDepArtifacts` → `resolveDepFiles` (the last surviving build-sense `artifact`).
-- `snapshot` is then free for point-in-time meanings only.
+**Done when:** the root of the umbrella directory holds only kind-folders, and `abuddy init` followed by
+`abuddy add step`/`add artifact`/`add service` scaffolds and builds.
 
-**Done when:** a dependent pack resolves and compiles against a dependency's `contract.json` end to end —
-`npm run test:external-pack` and `npm run test:packaged-authoring` cover this path.
-
-### Phase 5 — the remaining single-sense fixes
+### Phase 4 — the remaining single-sense fixes
+- `resolveDepArtifacts` → `resolveDepFiles`, with `DepArtifacts` → `DepFiles` and `findDepArtifacts` →
+  `findDepFiles` (`cli/src/commands/fetch-deps.ts`; callers in `commands/build.ts`, `commands/generate.ts` and
+  `tests/packs/host-output.spec.ts`). This is the last build-sense `artifact`; afterwards the word means only a
+  pack's first-class artifact.
 - `store.snapshot(partition, targetDir)` → `store.copyTo(partition, targetDir)` (`@abuddy/ears/lmdb`,
-  published — `api:update`), so `snapshot` keeps one meaning per package.
-- `db-write.lock`'s `host` field → `machine`, and `findDatabaseWriter`'s "on <host>" message with it; the
-  `SingletonLock` `<host>-<pid>` reader says machine too (rule 4).
-- `resolveFromRegistry` → `resolveFromRemoteRegistry`.
+  published — `api:update`; call site `abuddy-host/src/backup/index.ts:71`, and the ears store spec).
+- `db-write.lock`'s `host` field → `machine`, with `findDatabaseWriter`'s "on <host>" message, the reader in
+  `database/running.ts:39`, and the `SingletonLock` `<host>-<pid>` comments (rule 4).
+- `resolveFromRegistry` → `resolveFromRemoteRegistry` (`cli/src/commands/install.ts`).
 - The docs stop calling `stepRegistry` and friends "lookups" (rule 3).
-- The open decision's outcome for the `seedKeys` guard.
+- Open decision 2's outcome for the `seedKeys` guard.
 
-**Done when:** each renamed symbol has one meaning in the tree, and the write-lock and database specs still
-pass unchanged apart from the field name.
+**Done when:** each renamed symbol has one meaning in the tree, and the write-lock and database specs pass
+unchanged apart from the field name.
 
-### Phase 6 — keep the retired names retired
-- Extend `packages/abuddy-host/tests/removed-names-in-docs.spec.ts` (which already guards the names the
-  package-boundaries goal removed) with every name retired here, checked across docs, CLI scaffold templates
-  and pack sources, with the same per-file allowance-and-reason table.
-- Update the docs that describe these areas: root `CLAUDE.md`, `packages/abuddy-host/CLAUDE.md`,
-  `packages/abuddy-host/src/packs/runtime/CLAUDE.md`, `packages/abuddy-cli/CLAUDE.md`,
-  `packages/abuddy-sdk/CLAUDE.md`, `packages/default-setup/CLAUDE.md`, `docs/public-facing/architecture.md`,
-  `cli.md`, `manifest.md` and `seeds.md`.
-- Record the five rules in `packages/abuddy-sdk/CLAUDE.md` (or a short `docs/reference/naming.md`) so the next
-  name is chosen by the rule rather than by precedent.
+### Phase 5 — keep the retired names retired
+- Extend `packages/abuddy-host/tests/removed-names-in-docs.spec.ts` — which already has exactly this shape, a
+  `REMOVED` list of word regexes plus a per-file `ALLOWED` table with reasons — with every name retired here,
+  checked across docs, CLI scaffold templates and pack sources.
+- Update the docs describing these areas: root `CLAUDE.md`, `abuddy-host/CLAUDE.md`,
+  `abuddy-host/src/packs/runtime/CLAUDE.md`, `abuddy-cli/CLAUDE.md`, `abuddy-sdk/CLAUDE.md`,
+  `default-setup/CLAUDE.md`, `api/CLAUDE.md`, `docs/public-facing/architecture.md`, `cli.md`, `manifest.md`,
+  `seeds.md` and `extensions.md`.
+- Record the five rules, and the "check the word first" instruction, in `docs/reference/naming.md` (new), so
+  the next name is chosen by the rule rather than by precedent. Both words this goal had to reject —
+  `contract`, and the `contributions`/`extensions` pair — belong in it as worked examples.
 
 **Done when:** the guard fails if a retired name comes back, mutation-checked by reintroducing one.
+
+## Deferred
+
+- **Renaming `PackSnapshot`** (Decision 4). Revisit only with a replacement word checked against the tree.
+- **The `qx`/`tx` name-or-id overload.** `qx('Memo')` for a name no pack declares silently returns `[]`,
+  because the dash is the only thing separating a name from an id. Recorded, with two failed fix attempts and
+  the design that would work (`qx(name)` checked plus a separate `qx.byId(id)`), in
+  `packages/abuddy-sdk/TYPED-EARS.md`. It is an API change across every call site, not a naming fix.
 
 ## Constraints
 
 - **Renames only.** Behaviour, file contents beyond names, and test assertions other than the names must not
   change. A phase whose diff shows a logic change has gone wrong.
+- **Check a candidate word against the tree before adopting it** (`grep -rn`, excluding `node_modules`,
+  `dist/` and `docs/archive`). Decision 4 and Open decision 1 exist because two candidates were already taken.
 - **Published surfaces need their reports regenerated**, not hand-edited: `api:update` in `@abuddy/ears`
-  (Phase 5), `@abuddy/sdk` (Phases 1 and 4), and `schema:check` after any manifest-schema touch.
+  (Phase 4), `@abuddy/sdk` (Phase 1), and `schema:check` after any manifest-schema touch.
 - **Generated files are regenerated, never edited**: `npm run compile` (or `abuddy generate-entries --force`)
-  after Phases 3 and 4.
-- **No compatibility handling of any kind** — no reading the old filename, no accepting the old field, no
-  deprecation alias. If something would break for a hypothetical existing install, that is acceptable and
-  should be stated in the phase's notes rather than coded around.
+  after Phase 3.
+- **Rebuild before E2E.** `npm test` launches built output, not source, so a backend rename is not in the run
+  until `npm run build` has run (`tests/e2e/CLAUDE.md`). Renaming across the codegen boundary and running only
+  `npm run compile` leaves the API bundle reading the old name, which fails as a crash, not a type error.
+- **No compatibility handling of any kind.** If something would break for a hypothetical existing install,
+  that is acceptable and should be stated in the phase's notes rather than coded around.
 - Work on temp `ABUDDY_USER_DATA_DIR`s only.
