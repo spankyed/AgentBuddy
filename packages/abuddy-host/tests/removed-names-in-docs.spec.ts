@@ -66,6 +66,35 @@ const ALLOWED: Record<string, { name: RegExp; reason: string }[]> = {
   'docs/goals/goal-package-boundaries.md': [...REMOVED, ...REMOVED_PATHS].map((name) => ({ name, reason: 'the goal that removed them' })),
   // A commit message is history: the commit is named so the reader can find it, and it can't be reworded.
   'tests/e2e/CLAUDE.md': [{ name: /\bcontributions\b/, reason: 'quotes the subject of commit fix(packs), which predates the rename' }],
+  // A spec that asserts a name is gone has to write it down. Each of these names one to prove it is absent,
+  // so the allowance is per name, not per file: a different retired name in the same spec still fails.
+  'packages/abuddy-sdk/tests/runtime/no-host-modules.spec.ts': [
+    { name: /\bregisterHostModule\b/, reason: 'a sibling guard: scans every code file for the host module registry' },
+    { name: /\bgetHostModule\b/, reason: 'a sibling guard: scans every code file for the host module registry' },
+    { name: /\bhostFn\b/, reason: 'a sibling guard: scans every code file for the host module registry' },
+    { name: /\bhostValue\b/, reason: 'a sibling guard: scans every code file for the host module registry' },
+  ],
+  'packages/abuddy-ears/tests/no-engine-state-access.spec.ts': [
+    { name: /\bclearMemory\b/, reason: "a sibling guard: no code reaches engine state through a module" },
+    { name: /\binitEARSRuntime\b/, reason: "a sibling guard: no code reaches engine state through a module" },
+    { name: /ears\/internals\b/, reason: "a sibling guard: no code reaches engine state through a module" },
+  ],
+  'packages/abuddy-cli/tests/build/published-sdk-types.spec.ts': [
+    { name: /\bclearMemory\b/, reason: 'a fixture importing the removed export, which the build must reject' },
+    { name: /@abuddy\/sdk\/ears\b/, reason: 'a fixture importing the removed entry, which the build must reject' },
+    { name: /ears\/internals\b/, reason: 'a fixture importing the removed entry, which the build must reject' },
+  ],
+  'packages/abuddy-host/tests/build/shared-deps.spec.ts': [
+    { name: /ears\/internals\b/, reason: 'asserts the bridge does not carry it' },
+  ],
+  'packages/abuddy-sdk/tests/designations/pack-facing.spec.ts': [
+    { name: /\bregisterDesignations\b/, reason: 'asserts the SDK does not export it to packs' },
+  ],
+  // The source dir is gone; from source Electron main still writes media under that path at runtime, and the
+  // comment says so to explain why the boundary check counts source files only.
+  'packages/abuddy-host/tests/boundaries.spec.ts': [
+    { name: /api\/src\/core\/persistence\b/, reason: 'names the runtime media path, not a source dir' },
+  ],
 };
 
 /** Every removed name `text` mentions */
@@ -86,13 +115,23 @@ const isPackSource = (file: string) => file.startsWith('packages/default-setup/s
 const isAppSource = (file: string) =>
   /^packages\/(abuddy-(host|sdk|ears|ui|cli|testing)|api|renderer|main|preload)\/src\//.test(file)
   && /\.(ts|vue)$/.test(file);
+/**
+ * Specs and fixtures, which describe the same concepts and drift the same way — seven retired names were
+ * still in spec files after the source was clean, and a manual sweep found them, not this guard. This file
+ * is the one exception: its whole job is to name them.
+ */
+const SELF = 'packages/abuddy-host/tests/removed-names-in-docs.spec.ts';
+const isTestSource = (file: string) =>
+  file !== SELF
+  && (/^packages\/[^/]+\/tests\//.test(file) || /^tests\//.test(file))
+  && /\.(ts|vue)$/.test(file);
 
-/** The docs, CLI templates, pack sources and app sources in the repo, tracked or not (ignored files left out) */
+/** The docs, CLI templates, pack sources, app sources and specs in the repo, tracked or not (ignored files left out) */
 function checkedFiles(): string[] {
   return execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: ROOT, encoding: 'utf-8' })
     .split('\n')
     .filter((file) => file && !/(^|\/)(node_modules|dist|__generated__)\//.test(file))
-    .filter((file) => isDoc(file) || isTemplate(file) || isPackSource(file) || isAppSource(file))
+    .filter((file) => isDoc(file) || isTemplate(file) || isPackSource(file) || isAppSource(file) || isTestSource(file))
     .filter((file) => fs.existsSync(path.join(ROOT, file)));
 }
 
@@ -103,6 +142,7 @@ describe('names the package-boundaries goal removed', () => {
     expect(files.filter(isTemplate).length).toBeGreaterThan(10);
     expect(files.filter(isPackSource).length).toBeGreaterThan(500);
     expect(files.filter(isAppSource).length).toBeGreaterThan(200);
+    expect(files.filter(isTestSource).length).toBeGreaterThan(100);
     const found = files.flatMap((file) => {
       const allowed = (ALLOWED[file] ?? []).map(({ name }) => name);
       return removedNames(fs.readFileSync(path.join(ROOT, file), 'utf-8'), allowed).map((name) => `${file}: ${name}`);
