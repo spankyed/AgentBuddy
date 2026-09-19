@@ -107,19 +107,23 @@ export function removedNames(text: string, allowed: RegExp[] = []): string[] {
 const isDoc = (file: string) => file.endsWith('.md') && !file.startsWith('docs/archive/') && path.basename(file) !== 'CHANGELOG.md';
 const isTemplate = (file: string) => file.startsWith('packages/abuddy-cli/src/commands/');
 const isPackSource = (file: string) => file.startsWith('packages/default-setup/src/') || /^tests\/fixtures\/[^/]+\/src\//.test(file);
+/** Code, whatever it is written in: a retired name survives in a shell comment as easily as in a doc */
+const isCode = (file: string) => /\.(ts|vue|mjs|cjs|sh)$/.test(file);
+
 /** The app's own shipping source: a retired name survives in a comment or an error string as easily as in a doc */
 const isAppSource = (file: string) =>
   /^packages\/(abuddy-(host|sdk|ears|ui|cli|testing)|api|renderer|main|preload)\/src\//.test(file)
-  && /\.(ts|vue)$/.test(file);
+  && isCode(file);
 /**
- * Specs and fixtures, which describe the same concepts as the source and drift the same way. This file is
- * the one exception: naming the retired names is its job.
+ * Specs, fixtures and the scripts beside them, which describe the same concepts as the source and drift the
+ * same way — a `.sh` header outlived a rename whose own commit edited that file. This file is the one
+ * exception: naming the retired names is its job.
  */
 const SELF = 'packages/abuddy-host/tests/removed-names-in-docs.spec.ts';
 const isTestSource = (file: string) =>
   file !== SELF
   && (/^packages\/[^/]+\/tests\//.test(file) || /^tests\//.test(file))
-  && /\.(ts|vue)$/.test(file);
+  && isCode(file);
 
 /** The docs, CLI templates, pack sources, app sources and specs in the repo, tracked or not (ignored files left out) */
 function checkedFiles(): string[] {
