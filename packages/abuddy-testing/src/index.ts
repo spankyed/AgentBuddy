@@ -139,18 +139,53 @@ const launchStartedAt = new WeakMap<ElectronApplication, number>();
 const userDataDirs = new WeakMap<ElectronApplication, string>();
 const outputTails = new WeakMap<ElectronApplication, string[]>();
 
+/** What the pack loader said about the pack under test, kept whole while the tail scrolls past it. */
+type PackLoad = { registered?: true; failure?: string };
+const packLoads = new WeakMap<ElectronApplication, PackLoad>();
+
 function captureOutput(app: ElectronApplication): void {
   const tail: string[] = [];
   outputTails.set(app, tail);
+  const packLoad: PackLoad = {};
+  packLoads.set(app, packLoad);
+  const packId = getPackManifest()?.id;
+  // The loader logs one line per outcome for every pack it reaches (loader.ts): a registration, or a
+  // reason it was skipped or couldn't be loaded. Watched here because the tail only keeps the last
+  // few hundred lines and the app has usually logged past boot by the time a test asks.
+  const registered = packId && new RegExp(`Registered pack: ${packId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+  const failed = packId && new RegExp(`(Skipping|Failed to load|Failed to register pack) ${packId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
   const onData = (data: Buffer) => {
     for (const line of data.toString().split('\n')) {
       if (!line.trim()) continue;
       tail.push(line);
       if (tail.length > OUTPUT_TAIL_LINES) tail.shift();
+      if (registered && registered.test(line)) packLoad.registered = true;
+      else if (failed && failed.test(line) && !packLoad.failure) packLoad.failure = line.trim();
     }
   };
   app.process().stdout?.on('data', onData);
   app.process().stderr?.on('data', onData);
+}
+
+/**
+ * Waits for the pack under test to have been loaded and registered by the app's backend.
+ *
+ * Nothing else in this fixture observes the backend: seeding reports only its own failures, and the
+ * plugin wait below covers a pack with a frontend. A backend-only pack whose systems never registered
+ * — an incompatible hostVersion, an unsupported layout, a throw in its runtime — used to pass its whole
+ * suite while dead, because every test it runs asks the app about something else.
+ */
+async function waitForPackBackend(app: ElectronApplication, packId: string, timeoutMs = 15_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    const load = packLoads.get(app);
+    if (load?.registered) return;
+    if (load?.failure) throw describeFailure(`Pack ${packId} was not loaded by the app:\n  ${load.failure}`, app);
+    if (Date.now() >= deadline) {
+      throw describeFailure(`Pack ${packId} was not loaded by the app within ${timeoutMs / 1000}s (the loader never reached it)`, app);
+    }
+    await new Promise(resolve => setTimeout(resolve, 50));
+  }
 }
 
 const ERROR_LINE = /error|exception|failed|cannot|not found|no machine export/i;
@@ -367,6 +402,7 @@ export function createTest(options: CreateTestOptions = {}) {
         if (seedError) {
           throw describeFailure(`Pack ${manifest!.id} failed to seed its data:\n${seedError}`, electronApp, rendererErrors);
         }
+        if (manifest) await waitForPackBackend(electronApp, manifest.id);
         if (manifest && manifest.pluginIds.length > 0) {
           for (const pluginId of manifest.pluginIds) {
             // Fail on the captured loader error as soon as it appears instead of timing out later
@@ -435,9 +471,12 @@ export function createTest(options: CreateTestOptions = {}) {
           }, pluginId);
           await page.waitForFunction((id) => {
             const snap = (window as any).applicationState?.getSnapshot();
-            return snap?.context?.activePlugin?.id === id;
+            if (snap?.context?.activePlugin?.id !== id) return false;
+            // The state switching is not the canvas being on screen: Vue renders on the next flush, and a
+            // test that clicks or screenshots straight after a navigate needs that flush to have happened.
+            // data-active-plugin (WebApp.vue) is written in the flush that swaps the canvas.
+            return document.querySelector(`[data-active-plugin="${id}"]`) !== null;
           }, pluginId, { timeout: 10_000 });
-          await page.waitForTimeout(500);
         },
 
         waitForPlugin: async (pluginId, timeout = 30_000) => {

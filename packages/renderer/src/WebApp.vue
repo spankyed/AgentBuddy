@@ -1,5 +1,7 @@
 <template>
-<div class="flex flex-col h-screen">
+<!-- data-active-plugin is the active plugin as rendered. Vue writes it in the same flush that swaps the
+     canvas below, so a test can wait for a navigation to be on screen rather than sleep after it. -->
+<div class="flex flex-col h-screen" :data-active-plugin="activePlugin.id">
     <ToastNotification ref="toast" />
     <div class="flex flex-grow overflow-hidden">
     <!-- Left Toolbar (hidden during onboarding) -->
