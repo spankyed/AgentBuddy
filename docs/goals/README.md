@@ -37,7 +37,10 @@ Then a fenced code block (```` ``` ````) holding the prompt a user pastes to sta
 ```
 # Goal: <what it achieves, in one line>
 
-Implement docs/goals/goal-<topic>.md on a branch cut from <branch or "after goal-<other>.md lands">.
+Implement docs/goals/goal-<topic>.md on <branch>, at or after <commit> — the base its Background was
+surveyed at. <If it waits on another goal: "after goal-<other>.md lands.">
+Before Phase 1, confirm the base: <the names or paths the plan acts on> exist at HEAD. If they don't,
+stop and say so — the plan was surveyed somewhere else.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
 reopen them or stop to ask. <If there are open decisions: "The Open decisions must be settled with the
 user before Phase N; if any is still marked open, stop and ask.">
@@ -80,6 +83,8 @@ Never:
 Rules for the prompt block:
 - **"Finished when" is the stop condition.** A `/goal` hook checks it, so every item must be checkable from the transcript: a spec passes, a command succeeds, a name no longer exists.
 - **Keep the "Never" list.** It's the standing list (git, publishing, real data, processes, preload, example pack, release metadata, typed EARS, shims, assertions) plus the goal's own. Don't list an item in "Never" that a phase requires: if the goal needs something the list normally forbids, say so in the phase and leave it out of the list. A goal once required a step its own "Never" forbade, and the run could not finish.
+- **Name the base the survey was made at, not the default branch.** Give the branch *and* the commit from the Background header, and check that the names the plan acts on exist there before writing the line. "A branch cut from master" is the reflex answer and is wrong whenever the survey was made on a feature branch: five of the first seven goal docs said it, and at least two described code that has never existed on master, so an agent starting there would have found no Background and no targets. A branch name alone doesn't pin a tree either — branches move, and the commit is what the survey was true at. The confirm-the-base line above turns a wrong base into an immediate stop instead of a confusing run.
+- **Don't instruct a branch to be created.** Where the work lands is the user's call, and a goal doc is read long after the conversation that could have asked. Name the base; leave the branching out.
 - **Name steps that need the user.** If a check depends on something only the user can do (installing dependencies in another repo, approving a data copy), say so in the prompt, so the agent asks instead of looping.
 
 ### 2. Background
@@ -87,7 +92,7 @@ Rules for the prompt block:
 What exists now, and why the goal is needed, as facts the agent can check:
 - file paths with line numbers where they matter (`packages/abuddy-ears/src/query.ts:57`);
 - how the current code works, and what depends on the part being changed;
-- the date and commit the survey was made at, when the code moves quickly (`## Background (2026-09-14, at 114d18e1b)`).
+- the date, commit and branch the survey was made at (`## Background (2026-09-14, at 114d18e1b on AS/package-boundaries)`). The prompt block's base has to match it, and the branch is what says where that commit is.
 
 Keep it factual. No recommendations here; those go in Decisions.
 

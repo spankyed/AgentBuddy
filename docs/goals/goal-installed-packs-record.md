@@ -9,8 +9,10 @@
 Implement docs/goals/goal-installed-packs-record.md on `AS/external-pack-authoring`, at or after
 `18b068a18`. The base matters: `reconcileInstalledPacks`, `ensureInstalledPack`, `InstalledPacksRecord`
 and `InstalledIds` are all on that branch and none of them exists on master, so most of this plan has
-nothing to act on anywhere else. Read Background, Decisions, Phases and Constraints first. Decisions are
-final: implement them, don't reopen them or stop to ask.
+nothing to act on anywhere else. Before Phase 1, confirm the base: `reconcileInstalledPacks` and
+`ensureInstalledPack` exist at HEAD. If they don't, stop and say so — the plan was surveyed somewhere
+else. Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them,
+don't reopen them or stop to ask.
 
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
 going. No backward compatibility in code: change signatures, move modules, migrate every in-repo caller,
