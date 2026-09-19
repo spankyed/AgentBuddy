@@ -4,8 +4,9 @@
 # Goal: abuddy.json has a shape, not a pile of keys
 
 Implement docs/goals/goal-manifest-redesign.md on a branch cut from master.
-Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
-reopen them or stop to ask.
+Read Background, Decisions, Phases and Constraints first, and
+docs/goals/goal-manifest-redesign.example.json, which is the finished shape for the built-in pack.
+Decisions are final: implement them, don't reopen them or stop to ask.
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
 going. No backward compatibility anywhere: no dual-read of old and new keys, no deprecation window, no
 migration of an installed pack's manifest. Nothing has shipped — the newest tag is v0.3.14 and it
@@ -15,10 +16,12 @@ change, and fix forward.
 Finished when:
 - Phases 1–6 are implemented and each meets its "Done when"; every new guard, helper or test is
   mutation-checked.
-- packages/default-setup/abuddy.json has exactly these top-level keys and no others: $schema, id, name,
-  version, description, license, builtIn, hostVersion, relations, features, extensions, seed,
-  lifecycle. No key holds a map whose keys equal its values.
-- Every feature carries an `about` line, and every entity is declared by the feature that owns it.
+- packages/default-setup/abuddy.json has exactly these top-level keys, in this order and no others:
+  $schema, id, name, version, description, license, builtIn, hostVersion, data, features, extensions,
+  seed, lifecycle, migrations. No key holds a map whose keys equal its values.
+- Every feature carries an `about` line, and every entity is declared once — on the feature that owns
+  it, or in `data.entities` when no feature does — as a shape reference or null.
+- No entity gains or loses a typed shape: the generated src/__generated__/ears.ts is byte-identical.
 - No manifest in the repo spells a module reference two ways: `path#export` is the only form, and a
   bare path means the module's default export.
 - `features[].designation` does not exist in any manifest or in the schema.
@@ -59,7 +62,9 @@ Never:
 The manifest works, and it grew one key at a time. It is now 24 top-level keys over 552 lines for the
 built-in pack, with four concerns interleaved at the same level, three different ways to name a module,
 and two maps that carry no information. This goal gives it a shape a pack author can hold in their head,
-without changing what a pack can declare.
+without changing what a pack can declare: 14 top-level keys over 485 lines, worked out in full in
+`docs/goals/goal-manifest-redesign.example.json`, which is default-setup's manifest rewritten to the
+shape the Decisions specify. That file is the target; read it beside them.
 
 ## Background (2026-09-19, at 4f24d04f7)
 
@@ -156,52 +161,156 @@ a nested one.
 
 Final.
 
-**1. The root says what the pack *is*; every other key is one concern.**
+**1. The root says what the pack *is*; every other key is one concern, and a section has to earn it.**
 
 > A root key is the pack's identity, what it requires, or what it may do. Everything else is one key
-> per concern, and a concern with parts is an object.
+> per concern. A concern becomes a section only when it passes all three of these:
+>
+> 1. it answers **one question a reader actually asks**;
+> 2. its absence would mean **searching several keys** for that answer;
+> 3. its members **change together**.
 
-Root after this goal: `$schema` (the file-format marker every JSON-Schema file carries), `id`, `name`,
-`version`, `description`, `license`, `builtIn` — identity; `hostVersion`, `dependencies` — what it
-requires; `permissions` — what it may do. Then one key each for the five concerns: `relations`,
-`features`, `extensions`, `seed`, `lifecycle`.
+Four sections pass: `data` (what the pack adds to the EARS namespace), `features`, `extensions` (what
+it gives the host) and `seed` (what data it ships). `lifecycle` and `migrations` do not — two keys is
+not a search and neither changes with the other — so they stay flat rather than being wrapped in a
+container invented for tidiness.
 
-Every key is covered by a clause, with `$schema` the single universal exception. An earlier draft said
-"identity at the root, everything else in sections" and then kept `migrations`, `defaultPlugin` and
-`relations` at the root anyway — four of eleven keys breaking their own rule, papered over with the
-invented term "scalar identity field". A rule with four exceptions answers nothing; this one answers
-where a new key goes, which is the only job it has.
+Root after this goal, in this order:
 
-`relations` is a bare list because the concern has one part. It does not follow entities into features
-(Decision 3): an entity has a shape in one file and so has an owner, while a relation kind is a string
-in a shared vocabulary — `parent_of` is used by three of default-setup's features — and nesting it
-would invent an ownership that does not exist.
+```
+$schema
+id  name  version  description  license        who it is
+builtIn  hostVersion  dependencies  permissions   what it needs
+data                                             what it adds to EARS
+features                                         what it is made of
+extensions                                       what it gives the host
+seed                                             what data it ships
+lifecycle  migrations                            what runs, and how its data moves
+```
 
-The enforcement is not the prose. Phase 6 adds a spec naming the exact root keys, which a later author
-cannot reinterpret the way they can reinterpret a principle.
+`dependencies` and `permissions` are optional and default-setup declares neither, so its manifest has
+fourteen of these sixteen; the order is the same either way.
+
+**The order is part of the format, not a convention.** Nesting and navigation are different problems,
+and reaching for nesting to solve navigation is what produces containers like `lifecycle`. A flat root
+reads fine when its order tells the pack's story — this repo's own `package.json` has 12 root keys and
+no sections, and nobody finds it unnavigable, because the ecosystem settled on a conventional order
+(the one `sort-package-json` encodes) rather than on nesting. Every
+`abuddy add` subcommand that edits a manifest writes it through one line (`writeManifest`,
+`add/manifest.ts:7`), so the order is enforced in one place, which also makes manifest diffs stable.
+
+An earlier draft of this decision said "identity at the root, everything else in sections" and then
+left keys at the root that its own rule sent into sections, papered over with the invented term
+"scalar identity field" for whichever ones it wanted to keep. A rule that needs a coined term to
+explain its exceptions answers nothing. This one answers where a new key goes, which is its only job:
+`migrations` and `lifecycle` sit at the root not by exception but because neither passes the test.
+
+The enforcement is not the prose. Phase 6 adds a spec naming the exact root keys and their order, which
+a later author cannot reinterpret the way they can reinterpret a principle.
 
 **2. One encoding for a module reference: `"path#export"`.** A bare `"path"` means the module's default
 export. `entityShapes`' `{ source, type }` object goes. Every place that names a module — services,
 repositories, systems, plugins, references, seed hooks, seed compilers, step definitions, DSL entries,
 migrations — uses the same form, and the schema validates it with one shared refinement.
 
-**3. `entities` and `entityShapes` merge, and move onto the feature that owns them.** Every one of
-default-setup's twelve entities is declared by exactly one feature's directory, so the pack-level list
-was hiding information the shapes already carried. The value is a shape reference, or `null` for an
-entity with no typed shape:
+**3. `entities` and `entityShapes` merge into one map, which lives on the feature that owns the
+entity.** Two keys hold one fact today — the entity type and its shape — and one of them is an identity
+map, all twelve keys equal to their values. They become a single map from entity name to shape
+reference, `null` when the entity has no typed shape:
 
 ```jsonc
-{ "id": "notes",
-  "entities": { "Note": "be/types.ts#NoteEntity" } }
+{ "id": "library",
+  "about": "Documents and collections, with a dormant semantic search index.",
+  "entities": {
+    "SearchIndex": null,
+    "IndexedDoc": null,
+    "Document": "be/types.ts#DocumentEntity",
+    "Collection": "be/types.ts#CollectionEntity"
+  } }
 ```
 
-Entity types stay pack-global and collision-checked; `generate-entries` flattens the features' maps into
-the pack's set. A pack with an entity no feature owns declares it in a root `entities` map, which
-default-setup does not need. `abuddy init` scaffolds a feature so a new pack's entity has an owner.
+**`null` means the entity type exists in the database and has no registered EARS shape**, so queries
+for it come back untyped. It is not a placeholder: it is the manifest reporting a gap in the code
+accurately, the same gap today's manifest reports by listing the name under `entities` and skipping it
+under `entityShapes`. `SearchIndex` and `IndexedDoc` are the two, and they stay `null` through every
+phase of this goal.
 
-**4. `relKinds` becomes the root `relations`, a list of wire values.** `["parent_of", "has", "relates_to"]`.
-Codegen derives the `EARS.RelKind.PARENT_OF` constant by upper-casing. The phase proves the generated
-`ears.ts` is unchanged.
+**This goal grants no new types, and takes none away.** Moving a declaration from one key to another
+changes who the manifest says owns an entity — information for a person reading the file — and changes
+nothing the compiler sees. Every entity that is typed today is typed after, by the same shape; every
+entity that is untyped today is untyped after. Phase 1's check is exactly this: a byte-identical
+generated `ears.ts`. A phase that improves inference has gone outside its scope.
+
+**The feature is the home because the entity has an owner, and the manifest should record it.** All
+twelve of default-setup's entities live in exactly one feature's directory — including `SearchIndex`
+and `IndexedDoc`, whose code is `src/features/library/be/search-index/`, and whose ownership is
+invisible today precisely because they have no shape path to disclose it. The other ten disclose it
+only by accident, in a path prefix: a pack-level `"Note": "src/features/notes/be/types.ts#NoteEntity"`
+repeats `src/features/<id>/` for every typed entity, which is the redundancy Decision 7 removes
+everywhere else. On the feature, the same line is `"Note": "be/types.ts#NoteEntity"`.
+
+**`data.entities` stays, as the home for an entity no feature owns.** A pack may have entities that
+belong to no feature, and a pack may have no features at all — one that contributes only a data model
+and a seed is a legitimate shape. That case needs a home, and it is the same key, one level up.
+default-setup does not use it, which is the point: the pack-level map is where an entity goes when the
+normal answer does not apply, not a second normal answer.
+
+**Exactly one home per entity.** An entity declared both on a feature and in `data.entities` fails
+`validate`, naming both. Entity types stay pack-global and collision-checked pack-wide (`checkEARS`,
+`pack-registration.ts:228-243`, checks entities and relation kinds in one loop), so the split home
+changes where a name is written, never what it is scoped to.
+
+**The merge exists once, and two readers will not tell you when they miss it.** Twelve call sites
+across three packages read `manifest.entities` today — `generate-entries.ts` (four), `manifest.ts`'s
+provenance builder, `manifest-schema.ts`'s `seedHooks` refinement, `build.ts`'s snapshot,
+`abuddy-host`'s `database/schema.ts` (two), `packs/runtime/loader.ts` and `packs-system.ts` (two, which
+feed the Packs view's `entityCount` and entity list). Every one must see the same set, or the build and
+the running app disagree about what a pack declared. So the phase adds one exported helper —
+`packEntities(manifest)`, returning the merged map — and every reader calls it; `@abuddy/host` already
+imports `@abuddy/sdk/build` at runtime in three modules, so nothing new is dragged in.
+
+Deleting the root `entities` key makes ten of the twelve a compile error, which finds them for you.
+**The other two keep compiling and return nothing, and they are the two that matter most:**
+
+- `ProvenanceManifest` (`manifest.ts:89-94`) is a hand-written structural interface — "the parts of a
+  manifest `PROVENANCE_KINDS` reads" — with its own optional `entities?: Record<string, string>`. A
+  `PackManifest` without a root `entities` still satisfies it, so nothing fails to compile and
+  `PROVENANCE_KINDS.entities` starts returning `[]` for every pack. Provenance is what records which
+  pack declares each name, so the damage is a dependent's codegen and the collision messages, both of
+  which degrade quietly. Update this interface in the same commit as the schema.
+- `packs-system.ts:71`'s `readManifest(dir): Record<string, any> | null` is untyped, so
+  `manifest?.entities` compiles forever and yields `undefined`. This is the `entityCount: 0` case, and
+  it is the one a user sees. Give that function a real return type while you are in it.
+
+**The snapshot stays flat.** `build.ts:189` merges the manifest's entities with each dependency's
+`snap.types` (`PackTypeManifest`), which is a single flat map and must remain one: the split is how a
+pack *author* writes a manifest, not how a compiled pack publishes its names, and every dependent's
+`EntityName` comes from that flat form. Propagating `data`/`features` into `PackTypeManifest` would
+break dependent codegen for no gain.
+
+**The helper is total; `validate` is where a duplicate is an error.** An entity declared both on a
+feature and in `data.entities` fails `validate` at build time (above). `packEntities` itself never
+throws — the host calls it at boot on manifests it did not build, and refusing to start over a
+malformed manifest is worse than starting with a deterministic merge. Define the precedence (feature
+first, then pack level) and spec it, so two implementers cannot pick differently.
+
+A spec asserts no reader open-codes the merge, the way `check:specifiers` guards the other
+single-source lists. Keep its pattern narrow — `manifest.entities` and `manifest?.entities`, not a bare
+`.entities`, which matches the engine's `ears.entities`, the store's `envs.<p>.entities`, the trace
+store and `getSchemaStats`.
+
+**4. `relKinds` becomes `data.relations`, a list of wire values, and stays at pack level.**
+`["parent_of", "has", "relates_to"]`. It is the other identity map — `{ "PARENT_OF": "parent_of" }` —
+and the key was always derivable: codegen builds the `EARS.RelKind.PARENT_OF` constant by upper-casing
+(all three of default-setup's follow that rule today, and the schema requires it).
+
+It does not move onto a feature, because a relation kind has no owner in the way an entity does:
+`parent_of`, `has` and `relates_to` are a vocabulary the whole pack links with, and the same kind joins
+two features' entities. An entity is declared by whoever holds its data; a relation kind is declared by
+the pack. That is why `data` keeps a section rather than dissolving: it holds the pack-level half of
+the data model, which for default-setup is `relations` alone. A section is defined by the vocabulary a
+manifest may use, not by how much of it one pack fills — `extensions` holds one key in a small pack too.
+The phase proves the generated `ears.ts` is unchanged.
 
 **5. `partitionPolicy` becomes `volatile` on the entity that is volatile, and every pack may use it.**
 
@@ -216,7 +325,8 @@ The section goes; the capability moves onto the declaration it describes:
 ```
 
 An entity's value is a shape reference, `null` for no typed shape, or an object carrying `shape` and
-`volatile` (Decision 3 puts entities on their feature). `generate-entries` derives `excludedEntityTypes` from the entities marked volatile, so the
+`volatile`, wherever the entity is declared (Decision 3: its feature, or `data.entities`).
+`generate-entries` derives `excludedEntityTypes` from the entities marked volatile, so the
 plumbing below the manifest — `PackRegistration.ears`, `getRegisteredEARSPolicy`, `appPartitionPolicy`
 — is unchanged, and the SDK's own `TNode` exclusion stays where it is.
 
@@ -273,14 +383,38 @@ entry) or an object with `entry` plus them. A feature with nothing but an entry 
 and `fe` (tiptap plugins, app extensions). This is VS Code's `contributes`.
 
 **10. Every seed concern moves under `seed`**: `formats` (was `seedFormats`), `hooks` (was `seedHooks`),
-`data` (was `boot.seed`), `policy` (was `boot.seedPolicy`).
+`sources` (was `boot.seed`), `policy` (was `boot.seedPolicy`).
 
-**`boot` becomes `lifecycle` and takes `migrations` from the root.** `startPacks` runs each pack's
-`onInit`, then the migrations, then the seeds (`packs/runtime/start.ts:9-18`), so all three are boot
-lifecycle and `migrations` was content loose at the root. `lifecycle` holds the two that are *code run
-at a defined point* — `hooks` and `migrations`. `seed` stays a sibling because it is declarative data
-and a compiler vocabulary (formats, identity, fields, policy), not a module to call; that is a
-difference in kind, not in size.
+`boot.seed` becomes `sources`, not `data`, for two reasons. It is what the entries are: every value is
+a path or a `{ path, format, seeder }` over source files a compiler reads, and both the current schema
+description ("Seed data sources") and `resolve.ts`'s `sourcePath` already use the word. And it keeps
+`data` meaning one thing in the file: the root `data` is the pack's data model — the types it declares
+— while these are the records it ships. Two keys a screen apart, both spelled `data` and meaning
+different halves of the same subject, is the kind of thing a reader resolves wrongly once and then
+stops trusting the manifest over.
+
+Renaming the root instead was the other option, and every candidate is worse: `schema` sits directly
+below `$schema`, the JSON Schema pointer and the file's first key; `model` reads as an inference model
+in an app whose ids are `provider:model`; `ears` matches `PackEARS` in the registration but means
+nothing to a pack author who has not read the architecture docs. `data` is the right word for a data
+model, so the other key gives way.
+
+**`boot` flattens to `lifecycle`, a single path, and `migrations` stays its own root key.**
+
+```jsonc
+"lifecycle": "src/features/hooks.ts",
+"migrations": "src/migrations/index.ts"
+```
+
+`boot` holds three unrelated things today — `hooks`, `seed` and `seedPolicy` — and the seed pair leaves
+for `seed`. What remains is one module path, so it becomes one key with a path as its value, named for
+what it is rather than when it runs. (`earlySystem` is already a feature key, and stays one.)
+
+An earlier draft grouped `lifecycle: { hooks, migrations }`. That fails the section test: two keys is
+not a search, and neither changes when the other does — a pack adds a migration per release and touches
+its hooks almost never. Both are a single module path, and a key whose value is a path needs no
+container. `seed` remains a section because it genuinely is one: formats, hooks, data and policy are
+four keys that change together whenever a seeded format changes.
 
 **11. The schema is the specification and the docs follow it.** `manifest-schema.ts` gains a
 `.describe()` on every field, `npm run generate:schema` regenerates `abuddy.schema.json`, and
@@ -308,22 +442,27 @@ it, then leaves the full chain green. They are ordered so the largest mechanical
 
 ### Phase 1 — the data model a pack declares
 
-- Merge `entities` and `entityShapes` onto the feature that owns each entity (Decision 3), `relKinds` into
-  the root `relations`
-  (Decision 4). Replace the `partitionPolicy` section with `volatile` on the entity (Decision 5): widen
+- Merge `entities` and `entityShapes` into one `entities` map, on the feature that owns each entity,
+  with `data.entities` for an entity no feature owns (Decision 3), and `relKinds` into `data.relations`
+  (Decision 4). Add `packEntities(manifest)` and route all twelve readers through it. Replace the `partitionPolicy` section with `volatile` on the entity (Decision 5): widen
   the entity value to `string | null | { shape, volatile }`, derive `excludedEntityTypes` in
   `generate-entries.ts:701-703` from the entities marked volatile, read the same in `schema.ts:127`, and
   delete `loader.ts:211-216` outright — there is nothing left to strip once a pack can only mark what it
   declares.
 - Update `manifest-schema.ts`, `generate-entries.ts` (entity names, shapes, relation constants),
-  `abuddy-host/src/database/schema.ts` (`readInstalledSchema`), `abuddy-cli/src/commands/add/manifest.ts`
-  and `init.ts`'s scaffold.
+  `abuddy-host/src/database/schema.ts` (`readInstalledSchema`), `packs/runtime/loader.ts`,
+  `packs/runtime/packs-system.ts` (both `PackInfo` builders, and give its `readManifest` a real return
+  type in place of `Record<string, any>`), `abuddy-sdk/src/build/manifest.ts` (`ProvenanceManifest`'s
+  own `entities` field, which does not fail to compile on its own),
+  `abuddy-cli/src/commands/build.ts` (the snapshot, whose `PackTypeManifest` stays flat),
+  `abuddy-cli/src/commands/add/manifest.ts` and `init.ts`'s scaffold.
 - Update default-setup, both fixtures, and the pack that `tests/scripts/test-packaged-authoring.sh` writes.
 
 **Done when:** `npm run generate:schema` is clean and `abuddy.schema.json` is committed; `abuddy build`
 for default-setup produces a `src/__generated__/ears.ts` byte-identical to the one before the change
 (diff it, and record that in the phase's commit); `partitionPolicy` appears in no manifest and in no schema, and
-`loader.ts` no longer mentions it; `packages/abuddy-host/tests/packs/partition-policy.spec.ts` passes,
+`loader.ts` no longer mentions it; every reader of a manifest's entities calls `packEntities` and a
+spec fails when one open-codes the merge; `packages/abuddy-host/tests/packs/partition-policy.spec.ts` passes,
 with a case added for an external pack marking its own entity volatile and that entity routing to
 `volatileBackup`; the schema's description of `volatile` says persisted-but-not-hydrated and not
 backed up, and the phrase "in-memory only" appears nowhere; `npm run typecheck`, `npm run test:unit`,
@@ -331,7 +470,12 @@ backed up, and the phrase "in-memory only" appears nowhere; `npm run typecheck`,
 Mutations: an entity listed with a shape reference whose export does not exist fails the build, naming
 the entity; removing `TNode` from `SDK_EXCLUDED_ENTITY_TYPES` fails `partition-policy.spec.ts`; a pack
 declaring an entity another pack owns still fails registration with the EARS collision message, which
-is what keeps `volatile` scoped to its declarer.
+is what keeps `volatile` scoped to its declarer; the same entity declared on a feature and in
+`data.entities` fails `validate` naming both; a pack whose entities are all on features reports the
+right `entityCount` in the Packs view, and reverting `packs-system.ts` to read the pack-level map alone
+makes it report `0`; reverting `ProvenanceManifest` to its own `entities` field leaves the build green
+and empties the snapshot's entity provenance, which a spec over a two-pack fixture must catch, since
+the compiler will not.
 
 ### Phase 2 — `extensions`: everything a pack contributes
 
@@ -346,13 +490,13 @@ fails schema validation with a message naming `extensions`.
 
 ### Phase 3 — `seed`: one section for seeding
 
-- Move `seedFormats` → `seed.formats`, `seedHooks` → `seed.hooks`, `boot.seed` → `seed.data`,
-  `boot.seedPolicy` → `seed.policy`; rename `boot` to `lifecycle` and move the root `migrations` into it
-  (Decision 10).
+- Move `seedFormats` → `seed.formats`, `seedHooks` → `seed.hooks`, `boot.seed` → `seed.sources`,
+  `boot.seedPolicy` → `seed.policy`; what remains of `boot` becomes the flat `lifecycle: "<path>"`, and
+  `migrations` stays a root key (Decision 10).
 - Update `generate-entries.ts` (seeders, seed runtime), `build.ts` (compilers), the host's seed runtime.
 
-**Done when:** no manifest has a `boot` key or a root `migrations`, and `lifecycle` holds `hooks` and
-`migrations`; the compiled seeds for default-setup are
+**Done when:** no manifest has a `boot` key, `lifecycle` is a string in every manifest that has one,
+and `migrations` is still a root key; the compiled seeds for default-setup are
 byte-identical (`dist/*.seed.json`, `dist/seeds.json`); `tests/unit/seed-parity` passes;
 `npm run compile`, `npm run test:unit`, `npm run test:external-pack` pass.
 
@@ -366,7 +510,9 @@ byte-identical (`dist/*.seed.json`, `dist/seeds.json`); `tests/unit/seed-parity`
 - Move `defaultPlugin` onto the feature's plugin as `{ "default": true }` (Decision 12).
 - Add `about` to every feature and require it in `validate.ts`; `abuddy add feature` prompts for it
   (Decision 13).
-- Move each entity onto the feature that owns it (Decision 3), which Phase 1 prepared.
+- Rename `features[].typesEntry` to `types`, relative to the feature's directory like every other
+  feature path (Decision 7). Phase 1 already put `entities` on the feature; this phase makes its shape
+  paths relative with the rest.
 - Update `generate-entries.ts`, `validate.ts`, `add/feature.ts`, `init.ts`, `doctor.ts` and the loader.
 
 **Done when:** no manifest contains the string `src/features/` inside a `features[]` entry; no manifest
@@ -391,19 +537,28 @@ fail validation with the message naming the expected form.
 
 ### Phase 6 — the schema is the documentation
 
-- Every field in `manifest-schema.ts` carries a `.describe()`; regenerate `abuddy.schema.json`.
+- Every field in `manifest-schema.ts` carries a `.describe()`; regenerate `abuddy.schema.json`. The
+  entity value's description says what `null` means — the type exists and has no registered shape, so
+  its rows read untyped — since that is the one value in the manifest a reader is most likely to take
+  for "not set yet".
 - Rewrite `docs/public-facing/manifest.md` from the new shape. Update
   `packages/default-setup/CLAUDE.md`, `packages/abuddy-cli/CLAUDE.md` and the root `CLAUDE.md` where they
   name a manifest key.
-- Add a spec asserting the built-in pack's manifest has exactly the thirteen root keys the prompt
-  block names, and no map whose keys equal its values, so the shape does not silently regrow. Naming them
-  beats counting them: a count passes when one key is swapped for another. This spec, not Decision 1's
-  prose, is what stops the root regrowing to 24 keys.
+- Add a spec asserting the built-in pack's manifest has exactly the fourteen root keys the prompt block
+  names, **in that order**, and no map whose keys equal its values, so the shape does not silently
+  regrow. Naming them beats counting them: a count passes when one key is swapped for another, and the
+  order is half of what makes a flat root readable (Decision 1). This spec, not Decision 1's prose, is
+  what stops the root regrowing to 24 keys.
+- Make `abuddy add`'s manifest writer emit the canonical order (`writeManifest`,
+  `abuddy-cli/src/commands/add/manifest.ts:7`, the one line `add feature`, `add service`,
+  `add migration` and `add step` all write through), so no `add` command can produce a file the spec
+  then rejects.
 
 **Done when:** `npm run schema:check` passes; `docs/public-facing/manifest.md` mentions no retired key
-(`entityShapes`, `relKinds`, `seedFormats`, `seedHooks`, `partitionPolicy`, `designation`,
-`boot.seed`, `boot.seedPolicy`, and the six moved extension keys); the new spec passes. Mutation: adding
-a 13th top-level key, or a map whose keys equal its values, fails that spec.
+(`entityShapes`, `relKinds`, `seedFormats`, `seedHooks`, `partitionPolicy`, `designation`, `boot`,
+`boot.seed`, `boot.seedPolicy`, `defaultPlugin`, and the six moved extension keys); the new spec passes.
+Mutations: adding a 15th top-level key fails that spec; so does a map whose keys equal its values; so
+does writing the fourteen keys in a different order.
 
 ## Deferred
 
@@ -413,6 +568,15 @@ a 13th top-level key, or a map whose keys equal its values, fails that spec.
   remove the `path#export` strings entirely in favour of real imports, and it changes how the CLI, the
   loader and the installed-pack layout all read a manifest. Worth its own goal if authors ask for it.
 - **`permissions`**, which only fixtures declare and nothing enforces yet. Leave the key where it is.
+- **Giving `SearchIndex` and `IndexedDoc` typed shapes.** They are the only two of default-setup's
+  twelve entities with none, so their rows are untyped wherever they are read. The types are written
+  already — `SearchIndex` and `IndexedDocEntity` in
+  `src/features/library/be/search-index/types/search-index.ts` — but they are plain interfaces: neither
+  extends `BaseEntity` or carries the `_type: EARS.Entity.<name>` discriminator a shape needs, and
+  `EARS.Entity.SearchIndex` and `EARS.Entity.IndexedDoc` already exist for them to name
+  (`src/__generated__/ears.ts:11-14`). So it is a change to that file plus one entity line, small but
+  outside a goal whose proof is that the generated types did not move. Do it before or after, not
+  during.
 - **Splitting "not hydrated" from "not backed up".** Decision 5 keeps `volatile` meaning both, because
   that is what the partition already does. They are separate axes, and an entity that wants one without
   the other has no way to say so: "persisted, loaded at boot, kept out of backups" is a reasonable thing

@@ -7,11 +7,13 @@
   "license": "MIT",
   "builtIn": true,
   "hostVersion": ">=0.3.0",
-  "relations": [
-    "parent_of",
-    "has",
-    "relates_to"
-  ],
+  "data": {
+    "relations": [
+      "parent_of",
+      "has",
+      "relates_to"
+    ]
+  },
   "features": [
     {
       "id": "threads",
@@ -97,10 +99,10 @@
       "settings": true,
       "references": true,
       "entities": {
-        "Document": "be/types.ts#DocumentEntity",
-        "Collection": "be/types.ts#CollectionEntity",
         "SearchIndex": null,
-        "IndexedDoc": null
+        "IndexedDoc": null,
+        "Document": "be/types.ts#DocumentEntity",
+        "Collection": "be/types.ts#CollectionEntity"
       },
       "services": {
         "library": "be/services/library.ts#libraryService"
@@ -457,7 +459,7 @@
       "Document": "src/seeds/hooks/library.ts#documentSeedHooks",
       "Note": "src/seeds/hooks/notes.ts#noteSeedHooks"
     },
-    "data": {
+    "sources": {
       "actions": "src/seeds/actions",
       "prompts": "src/seeds/prompts",
       "flows": "src/seeds/flows",
@@ -488,8 +490,6 @@
       ]
     }
   },
-  "lifecycle": {
-    "hooks": "src/features/hooks.ts",
-    "migrations": "src/migrations/index.ts"
-  }
+  "lifecycle": "src/features/hooks.ts",
+  "migrations": "src/migrations/index.ts"
 }
