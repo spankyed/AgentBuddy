@@ -67,6 +67,9 @@ export type PluginSettingsUpdatedEvent = { type: `${string}_SETTINGS_UPDATED`; s
  * Sends a plugin its updated settings. Any pack's plugin can have settings, so the receiver isn't one
  * this pack's event maps name.
  */
+/** The reserved key inside `plugins` for the app's own metadata (visibility, last active) — not a plugin */
+const PLUGIN_SETTINGS_META_KEY = '_meta';
+
 const emitPluginSettings = emit as (pluginId: string, event: PluginSettingsUpdatedEvent) => ReturnType<typeof emit>;
 
 export const settingsSpec = defineSystem('settings')<IncomingSettingsEvents | SettingsInternalEvents, OutgoingSettingsEvents>();
@@ -162,8 +165,14 @@ export const settingsSystem = setup({
         }));
       }
       
-      // If plugin settings were updated, forward to both backend and frontend
-      if (ev.entityType === 'plugin' && data.plugins) {
+      // If plugin settings were updated, forward to both backend and frontend.
+      //
+      // `_meta` is not one of them. It is the reserved key inside `plugins` holding the app's own
+      // metadata — which plugins are visible, which was last active — and `checkFeatureSettings`
+      // already excludes it from the plugins a feature may set. Treating it as a plugin id sent
+      // `_META_SETTINGS_UPDATED` to a plugin that does not exist, on every visibility toggle and
+      // every plugin switch, which the bus dropped and reported.
+      if (ev.entityType === 'plugin' && ev.label !== PLUGIN_SETTINGS_META_KEY && data.plugins) {
         const pluginSettings = data.plugins[ev.label as keyof typeof data.plugins];
         if (pluginSettings) {
           // Detect changes for all arrays in the settings generically
