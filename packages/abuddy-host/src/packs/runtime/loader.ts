@@ -6,8 +6,8 @@ import { resolveAppContext, getAppVersion } from '@abuddy/sdk/env';
 import type { PackSnapshot } from '@abuddy/sdk/build';
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import type { PackRegistry } from '../pack-registration.ts';
-import { discoverBuiltInPacks, enabledExternalPacks, type BuiltInPackInfo, type PackManifest } from '../pack-discovery.ts';
-import { disabledPackIds } from '../installed-packs.ts';
+import { discoverBuiltInPacks, discoverPacks, discoveredPackIds, enabledExternalPacks, type BuiltInPackInfo, type PackManifest } from '../pack-discovery.ts';
+import { disabledPackIds, forgetPacksExcept } from '../installed-packs.ts';
 import { PACK_LAYOUT, PACK_LAYOUT_VERSION, isPackLayout, readPackIntegrity } from '../pack-layout.ts';
 import { isHostCompatible } from '../pack-installer.ts';
 import { findSdkVersion } from '../../build/shared-deps.ts';
@@ -284,7 +284,10 @@ export function clearPackRequireCache(packDir: string): void {
 
 export function loadExternalPacks(): LoadedPack[] {
   const { packsDir } = resolveAppContext();
-  const enabled = enabledExternalPacks(packsDir, disabledPackIds());
+  const discovered = discoverPacks(packsDir);
+  // Boot is where what is installed is settled, so it is where rows for packs that are gone are dropped
+  forgetPacksExcept(discoveredPackIds(discovered));
+  const enabled = enabledExternalPacks(discovered, disabledPackIds());
 
   if (enabled.length === 0) return [];
 

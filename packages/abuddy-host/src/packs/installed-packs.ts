@@ -185,6 +185,21 @@ export function recordSeedOutcomes(outcomes: ReadonlyMap<string, string | undefi
   return recorded;
 }
 
+/**
+ * Drops what was recorded about packs that are no longer installed.
+ *
+ * Called at boot with the packs discovery just found, which is the one moment the answer is settled: an
+ * install moves a pack's directory aside while it replaces it (`placePack`), so a prune that went by
+ * what is on disk at any other time could throw away the enabled choice and install source of a pack
+ * that is merely mid-install.
+ */
+export function forgetPacksExcept(installed: ReadonlySet<string>): boolean {
+  return updateInstalledPacks(entries => {
+    const kept = entries.filter(e => installed.has(e.id));
+    return kept.length === entries.length ? entries : kept;
+  });
+}
+
 /** Drops everything recorded about a pack, for one that is no longer installed. */
 export function forgetPack(id: string): boolean {
   return updateInstalledPacks(entries => entries.some(e => e.id === id) ? removeInstalledPack(entries, id) : entries);

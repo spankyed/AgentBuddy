@@ -91,7 +91,8 @@ export interface DiscoveredPack {
 }
 
 /**
- * The external packs a data dir has enabled: everything in `packsDir`, minus the ids `disabled` names.
+ * The external packs a data dir has enabled: everything `discovered` in its packs directory, minus the
+ * ids `disabled` names.
  *
  * The directory is the list. A pack the record has never heard of is installed and enabled — which is
  * what an `abuddy install` outside the app leaves behind, and what `abuddy dev` leaves when it installs
@@ -101,8 +102,8 @@ export interface DiscoveredPack {
  * carries on with everything enabled and says so, while a tool reading someone else's data dir refuses
  * rather than answer differently from the app it is standing in for.
  */
-export function enabledExternalPacks(packsDir: string, disabled: ReadonlySet<string>): DiscoveredPack[] {
-  return discoverPacks(packsDir).filter(({ manifest }) => !disabled.has(manifest.id));
+export function enabledExternalPacks(discovered: DiscoveredPack[], disabled: ReadonlySet<string>): DiscoveredPack[] {
+  return discovered.filter(({ manifest }) => !disabled.has(manifest.id));
 }
 
 /** A pack the app has: what its directory says, with what the app has recorded about it. */
@@ -119,5 +120,10 @@ export interface InstalledPack extends DiscoveredPack {
 export function installedPacks(packsDir = resolveAppContext().packsDir): InstalledPack[] {
   const records = packRecords();
   return discoverPacks(packsDir).map(pack => ({ ...pack, record: packRecord(pack.manifest.id, records) }));
+}
+
+/** The ids of the packs in `discovered`, for `forgetPacksExcept`. */
+export function discoveredPackIds(discovered: DiscoveredPack[]): ReadonlySet<string> {
+  return new Set(discovered.map(({ manifest }) => manifest.id));
 }
 

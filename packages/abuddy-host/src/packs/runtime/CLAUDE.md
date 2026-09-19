@@ -35,7 +35,7 @@ Hidden `.<id>.installing-*`, `.<id>.previous-*` and `.<id>.publishing-*` dirs ar
 
 `loadExternalPacks()`:
 1. Discovers packs in `packsDir` (`discoverPacks()`; each needs an `abuddy.json` with `id`, `name`, `version`)
-2. Takes the packs the record doesn't disable (`enabledExternalPacks()`): the directory is the list, and the record only takes packs out of it
+2. Drops what was recorded about packs it no longer finds (`forgetPacksExcept()`), then takes the ones the record doesn't disable (`enabledExternalPacks()`): the directory is the list, and the record only takes packs out of it
 3. Loads each enabled pack with `loadSingleExternalPack()`:
    - `hostVersion` check (`isHostCompatible`), pack layout format check, warning on an SDK major version mismatch
    - `runtime/index.cjs` through `withHostResolution()`; the registration id must match the manifest. A directory without a `integrity.json` and a `runtime/index.cjs` isn't an installed pack: it's skipped with a warning pointing at `abuddy install` or `abuddy dev`

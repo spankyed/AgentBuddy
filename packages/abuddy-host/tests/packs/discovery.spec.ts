@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { discoverBuiltInPacks, enabledExternalPacks, installedPacks } from '../../src/packs/pack-discovery.ts';
+import { discoverBuiltInPacks, discoverPacks, enabledExternalPacks, installedPacks } from '../../src/packs/pack-discovery.ts';
 import { writeInstalledPacks } from '../../src/packs/installed-packs.ts';
 
 let packagesDir: string;
@@ -31,7 +31,7 @@ describe('enabledExternalPacks', () => {
     external('memo-pack');
     external('scribble-pack');
 
-    expect(enabledExternalPacks(packagesDir, new Set()).map(p => p.manifest.id).sort())
+    expect(enabledExternalPacks(discoverPacks(packagesDir), new Set()).map(p => p.manifest.id).sort())
       .toEqual(['memo-pack', 'scribble-pack']);
   });
 
@@ -39,10 +39,10 @@ describe('enabledExternalPacks', () => {
     external('memo-pack');
     external('scribble-pack');
 
-    expect(enabledExternalPacks(packagesDir, new Set(['memo-pack'])).map(p => p.manifest.id))
+    expect(enabledExternalPacks(discoverPacks(packagesDir), new Set(['memo-pack'])).map(p => p.manifest.id))
       .toEqual(['scribble-pack']);
     // An id for a pack that isn't there takes nothing away
-    expect(enabledExternalPacks(packagesDir, new Set(['gone-pack'])).map(p => p.manifest.id).sort())
+    expect(enabledExternalPacks(discoverPacks(packagesDir), new Set(['gone-pack'])).map(p => p.manifest.id).sort())
       .toEqual(['memo-pack', 'scribble-pack']);
   });
 });

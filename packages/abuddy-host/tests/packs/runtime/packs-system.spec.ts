@@ -6,6 +6,7 @@ import { createActor, setup, type AnyEventObject } from 'xstate';
 import { bus } from '@abuddy/sdk/ids';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { takeSystemErrors } from '@abuddy/sdk/testing';
+import { readInstalledPacks } from '../../../src/packs/installed-packs.ts';
 import { registry } from './test-host.ts';
 import { createPacksSystem, packs } from '../../../src/packs/runtime/packs-system.ts';
 import { activatePack } from '../../../src/packs/runtime/lifecycle.ts';
@@ -149,5 +150,64 @@ describe('a decision that could not be saved', () => {
     } finally {
       system.stop();
     }
+  });
+});
+
+describe('a pack that is gone', () => {
+  const recordFile = () => resolveAppContext({ env: 'test', userDataDir: tmpDir }).installedPacksFile;
+
+  it('leaves no row behind when it is uninstalled', async () => {
+    const system = runPacksSystem();
+    try {
+      const { installPackFromLocal } = await import('../../../src/packs/pack-installer.ts');
+      await installPackFromLocal(packSource('1.0.0'));
+      const { recordInstalled } = await import('../../../src/packs/installed-packs.ts');
+      recordInstalled(PACK_ID, 'acme/reinstall-pack');
+
+      system.send({ type: 'UNINSTALL_PACK', packId: PACK_ID });
+
+      await vi.waitFor(() => {
+        expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_COMPLETE');
+      });
+      expect(readInstalledPacks()).toMatchObject({ found: true, packs: [] });
+    } finally {
+      system.stop();
+    }
+  });
+
+  // The pack is still in the packs directory, so it is still installed — there is no record to roll back,
+  // because the record never claimed it was installed in the first place
+  it('stays listed when the uninstall fails', async () => {
+    const system = runPacksSystem();
+    try {
+      const { installPackFromLocal } = await import('../../../src/packs/pack-installer.ts');
+      await installPackFromLocal(packSource('1.0.0'));
+      // A read-only pack directory: the uninstall can't unlink what is inside it, so it throws with the
+      // pack still there — which is the case this is about, an uninstall that did not happen
+      fs.chmodSync(path.join(tmpDir, 'packs', PACK_ID), 0o500);
+
+      system.send({ type: 'UNINSTALL_PACK', packId: PACK_ID });
+
+      await vi.waitFor(() => {
+        expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_FAILED');
+      });
+      fs.chmodSync(path.join(tmpDir, 'packs', PACK_ID), 0o700);
+      system.send({ type: 'GET_INSTALLED_PACKS' });
+      const list = emitted(system.sent).filter(e => e.type === 'PACKS_LIST').pop();
+      expect(list?.packs).toContainEqual(expect.objectContaining({ id: PACK_ID }));
+    } finally {
+      fs.chmodSync(path.join(tmpDir, 'packs', PACK_ID), 0o700);
+      system.stop();
+    }
+  });
+
+  it("drops what was recorded about packs boot doesn't find, so rows don't pile up", async () => {
+    const { recordInstalled, forgetPacksExcept } = await import('../../../src/packs/installed-packs.ts');
+    recordInstalled('gone-pack', 'acme/gone');
+    recordInstalled('here-pack', 'acme/here');
+
+    forgetPacksExcept(new Set(['here-pack']));
+
+    expect(readInstalledPacks()).toMatchObject({ found: true, packs: [{ id: 'here-pack' }] });
   });
 });

@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { prepareHostDataDirs, recoverStagingDirs, stagingDirName } from '../../src/packs/staging.ts';
-import { enabledExternalPacks } from '../../src/packs/pack-discovery.ts';
+import { discoverPacks, enabledExternalPacks } from '../../src/packs/pack-discovery.ts';
 import { readInstalledPacks, writeInstalledPacks } from '../../src/packs/installed-packs.ts';
 
 /** The recorded packs; these specs always write a record first, so a missing one is a failure */
@@ -75,7 +75,7 @@ describe('recoverStagingDirs', () => {
 
     expect(recoverStagingDirs(packsDir, { known: false })).toMatchObject({ restored: ['demo-pack'], failed: [] });
     expect(remaining()).toEqual(['demo-pack']);
-    expect(enabledExternalPacks(packsDir, new Set()).map((p) => p.manifest.id)).toEqual(['demo-pack']);
+    expect(enabledExternalPacks(discoverPacks(packsDir), new Set()).map((p) => p.manifest.id)).toEqual(['demo-pack']);
     expect(recordedPacks()).toMatchObject([{ id: 'demo-pack', enabled: true }]);
   });
 
