@@ -78,11 +78,6 @@ export function holdDatabaseWriteLock(userDataDir: string, what: string): Databa
   const held = findDatabaseWriter(userDataDir);
   if (held) throw new Error(`Another tool is changing the database in ${userDataDir}: ${held}. ${clearHint(userDataDir)}`);
   fs.mkdirSync(userDataDir, { recursive: true });
-  // Written aside and renamed, so no app ever reads a half-written lock
-  const temp = `${file}.${process.pid}.tmp`;
-  const mine: LockFile = { pid: process.pid, machine: os.hostname(), what, since: new Date().toISOString() };
-  fs.writeFileSync(temp, JSON.stringify(mine));
-  fs.renameSync(temp, file);
 
   let released = false;
   const release = () => {
@@ -104,8 +99,23 @@ export function holdDatabaseWriteLock(userDataDir: string, what: string): Databa
     release();
     process.kill(process.pid, signal);
   }
+  // Before the lock exists, not after: a process that is descheduled between writing the file and getting
+  // here would be killed by the default disposition and leave the lock behind — the very thing these
+  // handlers are for. Registered first, there is no moment when the file is on disk unguarded.
   process.once('exit', release);
   for (const signal of INTERRUPTS) process.once(signal, onInterrupt);
+
+  // Written aside and renamed, so no app ever reads a half-written lock
+  const temp = `${file}.${process.pid}.tmp`;
+  const mine: LockFile = { pid: process.pid, machine: os.hostname(), what, since: new Date().toISOString() };
+  try {
+    fs.writeFileSync(temp, JSON.stringify(mine));
+    fs.renameSync(temp, file);
+  } catch (err) {
+    // No lock was taken, so this only drops the handlers registered above
+    release();
+    throw err;
+  }
   return { release };
 }
 
