@@ -269,6 +269,74 @@ fails the accumulation spec. **Closes action item 1b.**
 packages/abuddy-host` and `npx vitest run tests/unit/boot-recovery.spec.ts --root packages/api` pass.
 Mutation: deleting rather than restoring an orphaned `.previous` fails both boot-recovery specs.
 
+## Outcome (2026-09-19, at `908a3b1cf`)
+
+Done. Phases 1–7 landed as six commits — Phases 2 and 3 as one, see below.
+
+| Phase | Commit |
+|---|---|
+| 1 — one derivation, shared with `abuddy db` | `7ccdafb53` |
+| 2 + 3 — the row stops copying the directory; a missing row is a defined state | `4890f5acf` |
+| 4 — writes are intentions | `a0756328b` |
+| 5 — a failed write names the lost decision (**item 1a**) | `0936c68d4` |
+| 6 — a pack that is gone (**item 1b**) | `c487ba187` |
+| 7 — staging stops consulting the record | `908a3b1cf` |
+
+### Corrections to the Decisions
+
+- **Phases 2 and 3 are one commit.** Phase 2 removes `name`, `version` and `dir` from the row, which
+  forces every reader that used them onto the join — which is Phase 3's change for those same readers.
+  Split, neither commit builds. The goal README's own warning applies: once two phases touch one file
+  there is no honest split left.
+- **`InstalledPacksRecord` died in Phase 7, not Phase 3.** Staging was its last reader, and Phase 7 is
+  what removes that. Keeping it one phase longer is what let each phase leave the suite green.
+- **`recordSeedOutcomes` moved in Phase 2/3, not Phase 4.** With `ensureInstalledPack` gone, a first-time
+  pack's seed failure had nothing to write onto, so the fix had to travel with the deletion for the
+  coverage to stay continuous.
+- **`enabledExternalPacks` takes the discovered packs, not a directory** (Phase 6). Boot prunes and
+  filters from one discovery pass; passing a directory meant two.
+
+### Conventional choices made
+
+- The row is `PackRecord`; the join of a pack's directory with its row is `InstalledPack`
+  (`pack-discovery.ts`), which is the name the row used to have.
+- `packRecord(id)` is total — it answers with defaults for a pack that has no row — so no caller repeats
+  what absence means.
+- The boot prune takes the ids discovery just found rather than testing the filesystem itself: an install
+  moves a pack's directory aside while it replaces it, so any other moment could read a mid-install pack
+  as gone and throw away its enabled choice.
+- `writeInstalledPacks` reports a failed write rather than throwing, so boot can carry on while a user
+  action can speak up.
+
+### What it deleted
+
+`reconcileInstalledPacks`, `ensureInstalledPack`, `InstalledPacksRecord`, `InstalledIds`,
+`recoverStagingDirs`'s installed-ids argument, and the exported `addInstalledPack` /
+`removeInstalledPack` / `updateInstalledPacks`. A boundary spec keeps the last three inside the module.
+
+Also deleted: the documented gotcha at `packages/abuddy-host/CLAUDE.md:214`, where an out-of-app
+reinstall silently lost a pack's update source. `tests/packs/discovery.spec.ts` pins that the slug now
+survives a version change on disk.
+
+### Tests removed, deliberately
+
+- `reload.spec.ts`: "records a pack it is the first to load" and "leaves an existing entry alone" —
+  both described `ensureInstalledPack`, which no longer exists. "Records a first-time pack's seed
+  failure" survives, reworded: the behaviour is still wanted, the ordering constraint it named is not.
+- `discovery.spec.ts`: the two `reconcileInstalledPacks` specs, with the function.
+- `staging.spec.ts`: "doesn't restore a pack uninstalled while its interrupted install's copy sat here"
+  and "restores a pack the registry still lists" — both described the argument Phase 7 deletes. One spec
+  replaces them, asserting the restore happens whatever the record says.
+- `tests/fixtures/external-pack/tests/e2e/dev-reload.spec.ts` keeps the half that matters (the pack comes
+  back up) and drops its record assertion.
+
+### Checks
+
+`npm run typecheck`, `npm run test:unit` (7 suites), `npm run build`, `npm test` (13),
+`npm run test:external-pack` (23 unit + 8 + 1 E2E) and `npm run test:packaged-authoring` all pass. Every
+new guard, helper and test was mutation-checked; the mutations and what they broke are in the commit
+messages and the session transcript.
+
 ## Deferred
 
 Found while surveying; out of scope, and the agent must not do them.
