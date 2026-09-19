@@ -7,9 +7,7 @@
 # Goal: names that state their contract, and checks that keep them doing it
 
 Implement docs/goals/goal-naming-conventions.md on a branch cut from master. Read Background, Decisions,
-Open decisions, Phases and Constraints first. Decisions are final: implement them, don't reopen them or
-stop to ask. The Open decision must be settled with the user before Phase 7; if it is still marked open
-when you reach it, stop and ask.
+Phases and Constraints first. Decisions are final: implement them, don't reopen them or stop to ask.
 
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
 going. No backward compatibility in code: change signatures, move modules, migrate every in-repo caller,
@@ -118,12 +116,14 @@ six times in ten is unreliable in both directions.
 (`abuddy-host/src/packs/runtime/loaded-packs.ts:12`). The stages are real and useful; the names hide them
 behind a filler word, and only the last one names its stage.
 
-**`source` remains the largest overload, and the pack-naming goal deferred it deliberately.** ~707
-occurrences. Distinct senses visible in identifiers: `sourceHandle` (Vue Flow's edge endpoint),
-`sourceHash` (a seed record's content hash), `sourceTab`, `sourceEntity`, `sourceThreadId`, `sourcePath`,
-an install's origin (`installPackFromLocal`'s parameter, `PackIntegrity.source` for git provenance), a log
-or error's origin (`createLogger(source)`), and the `@abuddy/source` resolution condition. That goal's
-Deferred section records the condition and the logger's `source` as intentionally kept.
+**`source` is one sense in compounds and three senses bare.** ~707 occurrences. The compounds are
+consistent — `sourceHandle` (146, Vue Flow's edge endpoint), `sourceId` (56, an EARS relation's origin),
+`sourceEntity` (49), `sourceHash` (93, the text a seed record compiled from), `sourcePath` (42, a backup
+copy's origin), `sourceTab` (70), `sourceThreadId` (34) — each naming the origin of the thing the compound
+names. The bare fields are not: in the pack install path alone, `installPack(slug, source?)`
+(`abuddy-host/src/packs/pack-installer.ts:324`) takes a kind, `installPackFromLocal(source)`
+(`:228`) takes a path, and `PackIntegrity.source` (`abuddy-host/src/packs/pack-layout.ts:49`) is git
+provenance. The pack-naming goal's Open items recorded the last two as senses it did not reach.
 
 ## Decisions
 
@@ -167,20 +167,18 @@ Final.
    out the published surface would leave `Context` meaning two things, which is the defect this goal
    exists to remove.
 
-9. **The conventions are written in the root `CLAUDE.md`,** in a `## Naming` section, because that is the
+9. **`source` keeps its compounds and loses its bare fields.** Every compound names the same abstract
+   sense, "the origin of X", disambiguated by what follows: `sourceHandle` and `sourceId` are a directed
+   edge's origin, `sourcePath` a copy's, `sourceHash` the text a record compiled from, `sourceTab` and
+   `sourceThreadId` a UI or thread origin. Those are correct and stay. What is not correct is a bare
+   `source` field, which names the sense without saying of what — and the pack install path has three of
+   them meaning different things: `installPack(slug, source?)` is a *kind* (`local` | `url` | a GitHub
+   slug), `installPackFromLocal(source)` is a *path or archive*, and `PackIntegrity.source` is *git
+   provenance* (`{ repo, commit }`). Those three get names; the compounds are left alone.
+
+10. **The conventions are written in the root `CLAUDE.md`,** in a `## Naming` section, because that is the
    file every agent loads before writing code. The section states each rule in one line and names its check
    where one exists.
-
-## Open decisions (settle with the user before Phase 7)
-
-1. **How far to take `source` (Phase 7).** Its senses are not equally worth changing, and the pack-naming
-   goal deferred the two most entangled.
-   - **A. Enumerate every sense, then rename only those inside this repo's own vocabulary** — the install
-     origin, the seed record's `sourceHash`, `sourceEntity`, `sourceTab` — leaving Vue Flow's
-     `sourceHandle`, the logger's `source` and the `@abuddy/source` condition, as that goal decided.
-   - **B. Enumerate and stop.** Record the senses in the doc, change nothing, and let the conventions
-     prevent new ones. `source` is ~707 occurrences and the least likely to repay a sweep.
-   — *open*
 
 ## Phases
 
@@ -256,17 +254,23 @@ Mutation: adding an `export interface FooInfo` anywhere under `packages/*/src` f
 **Done when:** the invariant passes; `npm run test:unit` passes. Mutation: renaming one
 `<Feature>ConnectedData` to `<Feature>Startup` fails the spec.
 
-### Phase 7 — `source`
+### Phase 7 — the bare `source` fields in the pack install path
 
-Settle the Open decision first.
+- Name the three bare `source` fields per Decision 9, leaving every compound alone:
+  - `installPack(packSlug, source?)` (`packages/abuddy-host/src/packs/pack-installer.ts:324`) and
+    `INSTALL_PACK`'s `source` (`packages/abuddy-host/src/packs/runtime/packs-system.ts:20`) take a kind,
+    not a location;
+  - `installPackFromLocal(source, …)` (`pack-installer.ts:228`) takes a path or an archive;
+  - `PackIntegrity.source` (`packages/abuddy-host/src/packs/pack-layout.ts:49`) is the git provenance
+    `abuddy release` records, and is written into every pack's `integrity.json`.
+- `PackIntegrity` is read by the installer, the updater and `abuddy release`; the field appears in the
+  `.integrity.json` release asset, so rename it in the writer and every reader in the same change.
+- Add the invariant: no exported interface has a field named exactly `source`.
 
-- Enumerate every sense of `source` in the tree, with counts and an example path each, into a table in this
-  doc's Outcome.
-- If the decision was to rename, rename the senses inside this repo's own vocabulary, leaving `sourceHandle`,
-  the logger's `source` and the `@abuddy/source` condition.
-
-**Done when:** the table exists; if A was chosen, the renamed senses are gone and the full check list is
-green. If the decision was to enumerate only, this phase is the table alone and records that as its result.
+**Done when:** the three fields are named for what they hold; the invariant passes; `npm run build`,
+`npm run test:external-pack` and `npm run test:packaged-authoring` are green, the last two because they
+build and install a pack through the path this phase renames. Mutation: adding a bare `source` field to an
+exported interface fails the spec.
 
 ## Deferred
 
