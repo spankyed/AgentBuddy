@@ -19,8 +19,6 @@
   },
   "include": [
     "src/**/*.ts",
-    "tests/**/*.ts",
-    ".abuddy/generated/**/*.ts",
-    ".abuddy/deps/**/*.d.ts"
+    "tests/**/*.ts"
   ]
 }
