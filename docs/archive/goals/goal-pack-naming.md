@@ -310,9 +310,9 @@ the argument for the guard.
 |---|---|---|
 | 1 — installed packs are not a registry | done | `packs/installed-packs.ts`, `InstalledPack`, `installedAt`, `installedFrom`, `installed-packs.json`, and the route `packs.loaded` with `loadedPacksError`. Phase grep reads zero |
 | 2 — `bundle` becomes only a verb | done, after a follow-up | `PACK_LAYOUT`, `PACK_LAYOUT_VERSION`, `stagePack`, `verifyPack`, `PackIntegrity`, `integrity.json`, `isPackLayout`, `getLoadedPackEntries`, `LoadedPackEntry`, `bundlePackSource`, `buildPackArchive`; module renamed `packs/pack-layout.ts`. Phase grep reads zero — but it greps names, and three noun leftovers had none of them; see *What the phase greps missed* |
-| 3 — the umbrella's odd one out | done | `src/extensions/app/Welcome.vue` with the manifest path and regenerated entry following; then the second pass: `features[].contributions` → `references` (manifest key, `@abuddy/sdk/fe/references`, `ReferenceTypeConfig`, `ReferenceItem`, `REFERENCE_TYPES`, generated `references.ts`), and `contributions` retired in favour of `extensions` everywhere else. `grep -rn contribution` over `packages/` and `docs/public-facing/` reads zero |
+| 3 — the umbrella's odd one out | done | `src/extensions/app/Welcome.vue` with the manifest path and regenerated entry following; then the second pass: `features[].contributions` → `references` (manifest key, `@abuddy/sdk/fe/references`, `ReferenceTypeConfig`, `ReferenceItem`, `REFERENCE_TYPES`, generated `references.ts`), and `contributions` retired in favour of `extensions` everywhere else. `grep -rn contribution` over `packages/` and `docs/public-facing/` reads zero — but that scope left `docs/goals/` and `docs/plans/`, where eight uses survived; see *What the phase greps missed* |
 | 4 — the remaining single-sense fixes | done | `resolveDepFiles`/`DepFiles`/`ResolvedDepFiles`, `resolvedFrom`, `store.copyTo`, the write-lock's `machine`, `resolveFromRemoteRegistry`, the `seedKeys` guard removed (Open decision 2 A), and the docs calling the per-kind registries "registries" |
-| 5 — keep the retired names retired | done | `removed-names-in-docs.spec.ts` extended with 28 names and 4 paths, plus a case per rename asserting the replacement is *not* caught |
+| 5 — keep the retired names retired | done, after a follow-up | `removed-names-in-docs.spec.ts` extended with 28 names and 4 paths, plus a case per rename asserting the replacement is *not* caught. It covered `registry`, `bundle` and `artifact` but not `contributions`, the goal's largest rename, and read no app source; both closed in review |
 
 ### Corrections to the Decisions
 - **Open decision 1 was mis-framed, and answering it took two passes.** It asked which of `extensions` and
@@ -367,10 +367,15 @@ fixed, and Phase 5's guard was widened so the next one fails a test instead.
 | `PACK_LAYOUT.info`, which Phase 2 named explicitly | The key, not the value: `integrity.json` and `PackIntegrity` had landed, so `bundle.json` and `BundleInfo` both read zero while `info` — the last of `BundleInfo` — sat in `PACK_LAYOUT` and nine call sites |
 | `packFrontendFiles(bundleDir)` | The Conventional-choices note scoped `bundleDir` → `layoutDir` to `pack-installer.ts`. The parameter in `pack-layout.ts` was a second site, and `bundleDir` is not a retired *name* |
 | `bundle` as a noun in `pack-layout.ts`'s header, its doc comments and three error strings (`Not a pack bundle: …`) | The word alone is not a retired name, and it is legitimate in the bundler sense elsewhere, so no grep could be written for it without false positives |
+| `contributions` in `docs/plans/codegen-staleness.md` and `docs/goals/deferred/goal-pack-frontend-isolation.md` (8 uses) | The phase-3 grep was scoped to `packages/` and `docs/public-facing/`. The deferred goal was the costly one: its whole purpose is to be picked up later, and it used the retired word as its umbrella throughout |
 
-Phase 5's guard read only docs, CLI templates and pack sources — never the app's own source — which is why all
-three survived it. `isAppSource` now covers `packages/*/src` for host, SDK, ears, UI, CLI, testing, api,
-renderer, main and preload, mutation-checked by reintroducing `readBundleInfo` into a host source file.
+Phase 5's guard read only docs, CLI templates and pack sources — never the app's own source — and its name
+list covered `registry`, `bundle` and `artifact` but not `contributions`, so none of the four survived by
+accident: the guard could not have caught any of them. `isAppSource` now covers `packages/*/src` for host, SDK, ears, UI, CLI, testing, api,
+renderer, main and preload, mutation-checked by reintroducing `readBundleInfo` into a host source file. The
+`contributions` names are listed too, the bare words among them: the leftovers were prose and a manifest key,
+so a symbol-only list would have missed every one. `tests/e2e/CLAUDE.md` has an allowance — it names the
+commit `fix(packs): list a pack before registering its contributions`, and a commit subject is history.
 
 Two doc references also pointed at `packs/bundle.ts` and one at `packs/pack-registry.ts`, modules this goal
 renamed; `installed-packs.json`'s `installedFrom` was still called `source` in three places in
