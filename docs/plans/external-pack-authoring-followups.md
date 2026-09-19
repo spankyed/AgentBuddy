@@ -17,129 +17,33 @@ Four notes were dropped as already fixed, and are recorded here so they are not 
 
 ---
 
-# Ready to do
+# Done
 
-Each of these is a contained change, verifiable on this machine.
+All 22 ready items were completed on `AS/external-pack-authoring`. Each change carries its reason in the
+code; this is the index from item to commit.
 
-## Ships the wrong artifact, silently
+| Item | Commit |
+|---|---|
+| 1, 2 — release packs a dev build; `--app beta` resolved deps against the wrong app | `c5a16033b` |
+| 3 — tear down an active pack before installing over it | `e5d71b849` |
+| 4, 5 — `test()` exiting on the release path; a resumable `abuddy release` | `6efd8f48c` |
+| 6, 7, 8 — delete `emitDepTypes`, drop the deps glob, use the scaffolded tsconfig | `7d018e0e5`, `df90afeae` |
+| 9 — one installed-packs reader, "no record" in its type | `1d6cf3226` |
+| 10 — `recoverStagingDirs` takes known/not-known, not an optional Set | `d78131150` |
+| 11 — one liveness call whose argument names the failure it chooses | `8cbf795d9` |
+| 12, 13 — `includePrerelease` for GitHub deps; a JSONC tsconfig reader | `9d040629a` |
+| 14 — swap a built-in pack's published output instead of replacing it | `a78311a5c` |
+| 15, 16, 17 — dry-run version, `package-lock.json`, a failing check's output | `4200d3df2` |
+| 18 — say why a dev reload did not happen | `a2f4fd4ae` |
+| 19, 21 — fail when the pack never loaded; wait for the canvas instead of sleeping | `588f87b27` |
+| 20 — `PACK_ARCHIVE`, so step 8 tests the archive a release ships | `40d0e9c1c` |
+| 22 — the changelog-comment sweep | `5a53ab5fa` |
 
-**1. Release packs a dev build.** `verify()` builds `--release`, the E2E fixture then rebuilds with plain
-`abuddy build`, and `packRelease()` ships that — unminified, with source maps. Pack before E2E, or teach the
-fixture `--release`. The workflow path is unaffected because CI rebuilds.
-`release.ts:140,150`, `abuddy-testing/src/index.ts:225`
-
-**2. `--app beta` resolves dependencies against the wrong app.** `appFromEnv` reads `ABUDDY_APP`;
-`fixtureEnv` sets only `ABUDDY_APP_EXECUTABLE`. Locally it silently uses the saved checkout; in CI, with no
-saved choice, the build fails on an unresolvable dependency. The fix is one env var and a unit test on
-`fixtureEnv`; the beta download itself is not needed to prove it.
-`test.ts:20-37`, `app-target.ts:79,106`
-
-## Pack state
-
-**3. Tear down an active pack before installing over it.** `INSTALL_PACK` goes straight to `activatePack`,
-and `registerPack` throws "already registered".
-`packs-system.ts:159-177`
-
-## Release flow
-
-**4. Stop `test()` calling `process.exit` on the release path**, so the "revert version files" message
-prints. `test.ts:48,62,70,79`
-
-**5. Make `abuddy release` resumable, and print the exact state after a post-commit failure.** Four failure
-points follow the version commit (pack, tag, push, publish); each leaves a bumped commit, and a rerun calls
-`nextReleaseVersion` on the already-bumped version and bumps again. `packRelease` has to follow the commit
-so `integrity.json`'s `source.commit` is the tagged commit, so reordering cannot close the window — detect
-the state and continue instead. Rolling back with `git reset --hard` is the wrong instinct. Testable against
-a temporary git repo. `release.ts:287`
-
-## Types and the dev loop
-
-**6. Delete `emitDepTypes` and `.abuddy/generated/types.ts`.** Nothing imports the barrel — the `#generated/*`
-alias points at `src/__generated__/`, not at it. The scaffolded tsconfig compiles it, so it can only fail,
-never help. This *is* the `file:`-dependency bug: `resolveDepFiles` returns early on the `filePath` branch
-without `cacheDep`, so `.abuddy/deps/<id>/defs/` never exists and the barrel's import dangles. Deleting the
-barrel removes the bug without a caching change.
-`generate.ts:70`, `generate-entries.ts:287`, `fetch-deps.ts:392`
-
-**7. Drop `.abuddy/deps/**/*.d.ts` from the scaffolded tsconfig.** A cache is not program input, and no pack
-source imports from it. Today every pack type-checks ~161 KB of dependency declarations twice — once inlined
-at `src/__generated__/deps/<id>.d.ts`, once from the cache. `init.ts:73`
-
-**8. Make the test packs use the tsconfig `abuddy init` scaffolds.** `pack-builds.ts` compiles only
-`src/**/*.ts`; the scaffold adds three more globs. That divergence is why `facade-typing.spec.ts` exercises a
-`file:` dependency and still passes — no spec ever compiles generated output.
-`tests/helpers/pack-builds.ts:44`
-
-## Contained refactors
-
-**9. Collapse the two `installed-packs.json` readers into one outcome type.** `readInstalledPacks()`
-flattens "no record" to `[]`, which reads as "every pack was uninstalled" — it already deleted a pack's only
-copy once. Return `{ found: true; packs } | { found: false }`.
-`installed-packs.ts:53,69`. 6 production callers of the plain reader (`pack-updater.ts:103,160`,
-`activation-outcome.ts:11`, `packs-system.ts:143,246,343`), 2 of the record reader (`pack-discovery.ts:91`,
-`staging.ts:114`), plus the barrel at `packs/index.ts:16`.
-Verify: `npm test -w @abuddy/host`, `npx vitest run tests/unit/boot-recovery.spec.ts --root packages/api`
-
-**10. Make "unknown" unrepresentable in `recoverStagingDirs`.** An omitted `installedIds?` means "restore
-everything", an empty Set means "delete everything", and `new Set([])` is truthy. Take
-`{ known: true; ids } | { known: false }`.
-`staging.ts:54`. 1 production caller (`:120`), 7 in tests.
-Verify: `npx vitest run tests/packs/staging.spec.ts --root packages/abuddy-host`
-
-**11. Merge the two liveness predicates into one call that names its policy.** `_writerIsRunning` can report
-a live holder as gone (it is wall-clock derived); using it for a lock admits two DB writers, using
-`_processIsRunning` for staging only leaves a directory uncollected. Neither name says so.
-`process-liveness.ts:19,78`. **Do the OS-lock item first if it is going to happen at all** — it removes the
-lock's need for a predicate and shrinks this to staging plus `readApiEndpoint`.
-Verify: `npx vitest run tests/database --root packages/abuddy-host`
-
-## Small fixes
-
-**12. Add `includePrerelease` to the GitHub release filter in `fetch-deps`,** so `v0.2.0-beta.0` matches `*`.
-The local check has it. `fetch-deps.ts:190` vs `:126`
-
-**13. Fix the tsconfig comment stripper.** `.replace(/\/\/.*/g, '')` eats the rest of any line holding `//`,
-so `"$schema": "https://…"` breaks the parse and path aliases are silently dropped. Use a JSONC parser.
-`be-bundler.ts:250`
-
-**14. Non-atomic host pack publishing.** `pack-layout.ts:290` deletes `destDir` before renaming staging into
-place — a window where a built-in pack's published output does not exist.
-
-**15. A dry-run release produces a version-mismatched archive.** `writeVersion` is skipped on a dry run
-(`release.ts:268`) but `buildPackArchive` gets the `{ version }` override, so `abuddy.json` carries the new
-version while the snapshot inside carries the old one.
-
-**16. `abuddy release` never bumps `package-lock.json`.** The string does not appear in `release.ts`.
-
-**17. Release output hides `tsc` and `vitest` diagnostics.** `release.ts:47,117-150`. (The Windows shell half
-of this note is deferred — it cannot be tested here.)
-
-**18. `abuddy dev` reports one generic failure** ("Could not reach dev app"). Now a single site, down from
-two. `dev.ts:46`
-
-## Coverage
-
-**19. Have the E2E fixture assert the pack's backend actually loaded**, not only that seeding left no
-`lastError`. Boot-time failures (hostVersion, format, a runtime throw) are logged, so a backend-only pack
-passes its tests while dead. `abuddy-testing/src/index.ts`
-
-**20. Make `test-packaged-authoring.sh` exercise the installed archive** rather than rebuilding from source
-at step 8.
-
-**21. The E2E fixture sleeps instead of waiting for a condition.** `waitForTimeout(500)` in `navigate`.
-`abuddy-testing/src/index.ts:437`
-
-## Cleanup
-
-**22. Sweep the codebase for changelog-style comments.** The criterion is in the root `CLAUDE.md` ("A comment
-is for whoever opens the file cold"); the repo-wide pass has not run. Tedious but mechanical.
-
-## Suggested order
-
-1. **1, 2** — small, and each makes a release or a CI run silently wrong.
-2. **6, 7, 8** — deletions that remove a bug and the blind spot that hid it.
-3. **4, 5** — the release flow, in that order.
-4. Everything else by appetite.
+One thing outside the list was fixed on the way, because it was failing the E2E suite: the secrets test
+read every file under the data and logs directories with `readFileSync`, and the shared
+`~/Library/Logs/abuddy-test/app-events.log` has reached 24 GB, which `readFileSync` refuses outright
+(`dbb14383d`). **That log file grows without bound and is worth its own look** — every test run on the
+machine appends to it, and nothing rotates it.
 
 ---
 
