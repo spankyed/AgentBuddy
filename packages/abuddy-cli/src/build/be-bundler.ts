@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import ts from 'typescript';
 import { APP_ONLY_EXPORTS, SHARED_DEPS, sharedInstanceExternals } from '@abuddy/host/build/shared-deps';
 import { SEED_COMPILERS_FILE } from '@abuddy/sdk/build';
 import { checkSeedRuntimeLoads } from './seed-runtime-check';
@@ -242,14 +243,18 @@ function stubFrontendAssetsPlugin(): import('esbuild').Plugin {
   };
 }
 
-function readTsconfigAliases(packDir: string): Record<string, string> {
+/** A pack tsconfig's `paths` as esbuild aliases: `{ "#generated/*": "src/__generated__/*" }` → absolute dirs. */
+export function readTsconfigAliases(packDir: string): Record<string, string> {
   const aliases: Record<string, string> = {};
   const tsconfigPath = path.join(packDir, 'tsconfig.json');
   if (!fs.existsSync(tsconfigPath)) return aliases;
   try {
-    const raw = fs.readFileSync(tsconfigPath, 'utf-8').replace(/\/\/.*/g, '').replace(/,\s*([}\]])/g, '$1');
-    const tsconfig = JSON.parse(raw);
-    const paths: Record<string, string[]> = tsconfig.compilerOptions?.paths ?? {};
+    // TypeScript's own JSONC reader, not a regex: a `//` inside a string is the common case here
+    // (`"$schema": "https://…"`), and stripping to end of line there breaks the parse, which used to
+    // drop every path alias in silence.
+    const { config, error } = ts.readConfigFile(tsconfigPath, file => fs.readFileSync(file, 'utf-8'));
+    if (error) return aliases;
+    const paths: Record<string, string[]> = config?.compilerOptions?.paths ?? {};
     for (const [pattern, targets] of Object.entries(paths)) {
       if (!pattern.endsWith('/*') || !targets[0]?.endsWith('/*')) continue;
       const alias = pattern.slice(0, -2);

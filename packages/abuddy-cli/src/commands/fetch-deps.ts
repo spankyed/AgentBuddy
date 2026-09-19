@@ -153,9 +153,26 @@ function resolveFromFile(root: string, filePath: string): DepFiles | null {
 
 // ── GitHub release resolution ──
 
-interface GitHubRelease {
+export interface GitHubRelease {
   tag_name: string;
   assets: Array<{ name: string; url: string }>;
+}
+
+/**
+ * The newest release whose tag satisfies `range`.
+ *
+ * `includePrerelease`, as the local resolution check does (`inRange`): a dependency range is on the pack,
+ * not on a release channel, so `*` has to match a `v0.2.0-beta.0` an author published on purpose. Without
+ * it, semver treats every prerelease as out of range and a pack whose only releases are betas resolves to
+ * nothing.
+ */
+export function pickRelease(releases: GitHubRelease[], range: string): { release: GitHubRelease; version: string } | null {
+  const matching = releases
+    .map(r => ({ release: r, version: tagToVersion(r.tag_name) }))
+    .filter((r): r is { release: GitHubRelease; version: string } =>
+      r.version !== null && satisfies(r.version, range, { includePrerelease: true }))
+    .sort((a, b) => rcompare(a.version, b.version));
+  return matching[0] ?? null;
 }
 
 function githubHeaders(): Record<string, string> {
@@ -182,20 +199,12 @@ async function resolveFromGitHub(root: string, depId: string, repo: string, rang
     return null;
   }
 
-  const releases = await res.json() as GitHubRelease[];
-
-  const matching = releases
-    .map(r => ({ release: r, version: tagToVersion(r.tag_name) }))
-    .filter((r): r is { release: GitHubRelease; version: string } =>
-      r.version !== null && satisfies(r.version, range))
-    .sort((a, b) => rcompare(a.version, b.version));
-
-  if (matching.length === 0) {
+  const picked = pickRelease(await res.json() as GitHubRelease[], range);
+  if (!picked) {
     console.warn(`  No release matching "${range}" in ${repo}`);
     return null;
   }
-
-  const { release, version } = matching[0];
+  const { release, version } = picked;
 
   // abuddy pack names the archive <id>-<version>.tgz and publishes its .sha256 next to it
   const asset = release.assets.find(a => a.name === `${depId}-${version}.tgz`);
