@@ -74,28 +74,32 @@ describe('abuddy dev reloads', () => {
       fs.writeFileSync(path.join(userDataDir, 'api-token'), 'the-dev-token\n');
       const { reloadDevPack } = await import('../../src/commands/dev');
 
-      expect(await reloadDevPack('my-pack')).toBe('reloaded');
+      expect(await reloadDevPack('my-pack')).toEqual({ status: 'reloaded' });
       expect(api.requests).toEqual([{ url: '/dev/reload', token: 'the-dev-token', body: JSON.stringify({ packId: 'my-pack' }) }]);
     } finally {
       api.close();
     }
   });
 
-  it('report a refused reload, a missing port or token file, and an app that no longer answers', async () => {
+  // Each of these needs something different of the author — start the app, read its logs, look at what
+  // holds the port — so the status alone was not enough to act on
+  it('report a refused reload, a missing port or token file, and an app that no longer answers, and say which', async () => {
     const { reloadDevPack } = await import('../../src/commands/dev');
-    expect(await reloadDevPack('my-pack')).toBe('not-running');
+    expect(await reloadDevPack('my-pack')).toMatchObject({ status: 'not-running', detail: expect.stringContaining('api-port') });
 
     const api = await fakeApi(403);
     fs.writeFileSync(path.join(userDataDir, 'api-port'), JSON.stringify({ port: api.port, pid: process.pid }));
-    expect(await reloadDevPack('my-pack'), 'no token file').toBe('not-running');
+    expect(await reloadDevPack('my-pack'), 'no token file')
+      .toMatchObject({ status: 'not-running', detail: expect.stringContaining('api-token') });
     fs.writeFileSync(path.join(userDataDir, 'api-token'), '\n');
-    expect(await reloadDevPack('my-pack'), 'an empty token file').toBe('not-running');
+    expect(await reloadDevPack('my-pack'), 'an empty token file')
+      .toMatchObject({ status: 'not-running', detail: expect.stringContaining('is empty') });
     fs.writeFileSync(path.join(userDataDir, 'api-token'), 'the-dev-token');
     try {
-      expect(await reloadDevPack('my-pack')).toBe('failed');
+      expect(await reloadDevPack('my-pack')).toMatchObject({ status: 'failed', detail: expect.stringContaining('403') });
     } finally {
       api.close();
     }
-    expect(await reloadDevPack('my-pack')).toBe('unreachable');
+    expect(await reloadDevPack('my-pack')).toMatchObject({ status: 'unreachable', detail: expect.stringContaining(`127.0.0.1:${api.port}`) });
   });
 });

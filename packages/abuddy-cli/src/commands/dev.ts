@@ -9,41 +9,60 @@ import { API_HOST, API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
 import { installPackFromLocal, readHostVersion } from '@abuddy/host/packs';
 import { removeDevServerMarker, writeDevServerMarker } from '@abuddy/host/packs/dev-server';
 
+const reason = (err: unknown) => (err instanceof Error ? err.message : String(err));
+
 /** The running development app's API: its URL and the token it requires, from the files the API writes */
-function getDevApi(): { url: string; token: string } | null {
+function findDevApi(): { api: { url: string; token: string } } | { problem: string } {
+  const { apiPortFile, apiTokenFile } = resolveAppContext({ env: 'development' });
+  const endpoint = readApiEndpoint(apiPortFile);
+  if (!endpoint) return { problem: `no running development app in ${apiPortFile}` };
+  let token: string;
   try {
-    const { apiPortFile, apiTokenFile } = resolveAppContext({ env: 'development' });
-    const api = readApiEndpoint(apiPortFile);
-    const token = fs.readFileSync(apiTokenFile, 'utf-8').trim();
-    return api && token ? { url: `http://${API_HOST}:${api.port}`, token } : null;
-  } catch { return null; }
+    token = fs.readFileSync(apiTokenFile, 'utf-8').trim();
+  } catch (err) {
+    return { problem: `couldn't read ${apiTokenFile}: ${reason(err)}` };
+  }
+  if (!token) return { problem: `${apiTokenFile} is empty` };
+  return { api: { url: `http://${API_HOST}:${endpoint.port}`, token } };
 }
 
 /**
- * Asks the running development app to reload a pack's runtime, with its API token. `not-running` when there's no
- * port or token file, `failed` when the app refused or couldn't reload, `unreachable` when nothing answered.
+ * What a reload came to. `detail` says which of the several ways it went wrong this was, since they need
+ * different things of the author: start the app, look at its logs, or check what is holding the port.
  */
-export async function reloadDevPack(packId: string): Promise<'reloaded' | 'not-running' | 'failed' | 'unreachable'> {
-  const api = getDevApi();
-  if (!api) return 'not-running';
+export type DevReload =
+  | { status: 'reloaded' }
+  /** No port or token file to reach an app with */
+  | { status: 'not-running'; detail: string }
+  /** The app answered and refused, or couldn't reload */
+  | { status: 'failed'; detail: string }
+  /** Nothing answered on the port the app published */
+  | { status: 'unreachable'; detail: string };
+
+/** Asks the running development app to reload a pack's runtime, with its API token. */
+export async function reloadDevPack(packId: string): Promise<DevReload> {
+  const found = findDevApi();
+  if ('problem' in found) return { status: 'not-running', detail: found.problem };
   try {
-    const res = await fetch(`${api.url}/dev/reload`, {
+    const res = await fetch(`${found.api.url}/dev/reload`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', [API_TOKEN_HEADER]: api.token },
+      headers: { 'Content-Type': 'application/json', [API_TOKEN_HEADER]: found.api.token },
       body: JSON.stringify({ packId }),
     });
-    return res.ok ? 'reloaded' : 'failed';
-  } catch {
-    return 'unreachable';
+    if (res.ok) return { status: 'reloaded' };
+    const body = await res.text().catch(() => '');
+    return { status: 'failed', detail: `${res.status} ${res.statusText}${body.trim() ? `: ${body.trim()}` : ''}` };
+  } catch (err) {
+    return { status: 'unreachable', detail: `${found.api.url}: ${reason(err)}` };
   }
 }
 
 /** Prints what a reload came to; `what` names the changes (`BE changes`, `changes`) */
-function reportReload(result: Awaited<ReturnType<typeof reloadDevPack>>, what: string): void {
-  if (result === 'reloaded') console.log('BE reloaded successfully.\n');
-  else if (result === 'not-running') console.warn(`Dev app not running (no port or token file). Restart to apply ${what}.\n`);
-  else if (result === 'failed') console.warn('BE reload failed. Restart the app to apply changes.\n');
-  else console.warn(`Could not reach dev app. Restart to apply ${what}.\n`);
+function reportReload(result: DevReload, what: string): void {
+  if (result.status === 'reloaded') console.log('BE reloaded successfully.\n');
+  else if (result.status === 'not-running') console.warn(`Dev app not running (${result.detail}). Restart to apply ${what}.\n`);
+  else if (result.status === 'failed') console.warn(`The dev app refused the reload (${result.detail}). Restart the app to apply ${what}.\n`);
+  else console.warn(`Could not reach the dev app (${result.detail}). Restart to apply ${what}.\n`);
 }
 
 /** Installs into the dev data dir, checking hostVersion against the dev app that last used it. */
