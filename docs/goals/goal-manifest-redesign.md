@@ -3,7 +3,8 @@
 ```
 # Goal: abuddy.json has a shape, not a pile of keys
 
-Implement docs/goals/goal-manifest-redesign.md on a branch cut from master.
+Implement docs/goals/goal-manifest-redesign.md on AS/external-pack-authoring, at or after 4f24d04f7 —
+the base its Background was surveyed at.
 Read Background, Decisions, Phases and Constraints first, and
 docs/goals/goal-manifest-redesign.example.json, which is the finished shape for the built-in pack.
 Decisions are final: implement them, don't reopen them or stop to ask.
