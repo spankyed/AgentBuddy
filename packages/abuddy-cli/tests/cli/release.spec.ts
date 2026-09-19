@@ -27,6 +27,8 @@ function builtPack(version = '1.2.3'): string {
     fs.writeFileSync(path.join(root, rel), content);
   };
   write('abuddy.json', JSON.stringify({ id: 'demo-pack', name: 'Demo Pack', version, hostVersion: '>=0.3.0' }));
+  write('package.json', JSON.stringify({ name: 'demo-pack', version }));
+  write('package-lock.json', JSON.stringify({ name: 'demo-pack', version, lockfileVersion: 3, packages: { '': { name: 'demo-pack', version } } }));
   write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack", systems: [] } };');
   write('dist/types/snapshot.json', '{}');
   return root;
@@ -212,6 +214,20 @@ function packRepo(): { root: string; origin: string; run: Runner } {
 
 const releaseOptions = { bump: 'patch', beta: false, dryRun: false, local: false, skipTests: true, skipE2e: true } as const;
 
+describe('defaultRunner', () => {
+  // A release stops on the first failing check; without this its message was "Command failed" and the
+  // author had to rerun tsc or the tests by hand to see what was wrong
+  it("puts a failing command's own output in the error", () => {
+    const script = 'console.log("a type error"); console.error("a failing test"); process.exit(1);';
+    expect(() => defaultRunner(process.execPath, ['-e', script], tmp))
+      .toThrow(/failed:[\s\S]*a type error[\s\S]*a failing test/);
+  });
+
+  it('returns trimmed stdout when the command succeeds', () => {
+    expect(defaultRunner(process.execPath, ['-e', 'console.log(" ok ")'], tmp)).toBe('ok');
+  });
+});
+
 describe('runRelease', () => {
   it('packs after the version commit, so integrity.json records the tagged commit', async () => {
     const { root, origin, run } = packRepo();
@@ -222,6 +238,37 @@ describe('runRelease', () => {
     expect(git(root, 'log', '-1', '--format=%s', tagged)).toBe('release: v1.2.4');
     expect(readPackIntegrity(path.join(root, '.abuddy', 'staged', 'demo-pack')).source?.commit).toBe(tagged);
     expect(git(origin, 'rev-parse', 'v1.2.4^{commit}')).toBe(tagged);
+  }, 60_000);
+
+  // The dry run writes no version files, so a --version override on the staged pack would make its
+  // abuddy.json disagree with the snapshot built beside it
+  it('packs the version on disk on a dry run, not the one a real release would cut', async () => {
+    const { root, run } = packRepo();
+
+    const { version, archive } = await runRelease(root, { ...releaseOptions, dryRun: true, run, env: {} });
+
+    expect(version).toBe('1.2.4');
+    expect(path.basename(archive)).toBe('demo-pack-1.2.3.tgz');
+    expect(readPackIntegrity(path.join(root, '.abuddy', 'staged', 'demo-pack')).version).toBe('1.2.3');
+    expect(JSON.parse(fs.readFileSync(path.join(root, 'abuddy.json'), 'utf-8')).version).toBe('1.2.3');
+    expect(git(root, 'log', '-1', '--format=%s')).toBe('initial pack');
+  }, 60_000);
+
+  // npm ci refuses a lockfile whose root version disagrees with package.json, so a release that moved
+  // only the two manifests broke the pack's own CI on the commit it had just tagged
+  it('bumps every version file, the lockfile included, and commits them together', async () => {
+    const { root, run } = packRepo();
+
+    await runRelease(root, { ...releaseOptions, run, env: {} });
+
+    const read = (file: string) => JSON.parse(fs.readFileSync(path.join(root, file), 'utf-8'));
+    expect(read('abuddy.json').version).toBe('1.2.4');
+    expect(read('package.json').version).toBe('1.2.4');
+    expect(read('package-lock.json')).toMatchObject({ version: '1.2.4', packages: { '': { version: '1.2.4' } } });
+    expect(git(root, 'show', '--name-only', '--format=', 'HEAD').split('\n').sort())
+      .toEqual(['abuddy.json', 'package-lock.json', 'package.json']);
+    // no tracked file left behind modified (.abuddy/ build output is untracked, and gitignored in a real pack)
+    expect(git(root, 'status', '--porcelain', '--untracked-files=no')).toBe('');
   }, 60_000);
 
   it('resumes the committed version instead of bumping past it', async () => {

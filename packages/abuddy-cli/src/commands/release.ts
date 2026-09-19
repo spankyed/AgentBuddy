@@ -20,7 +20,8 @@ release   Preflight, bump the version (beta cycle: 1.2.3 → 1.2.4-beta.0 → -b
           and push. The pack's .github/workflows/release.yml publishes the GitHub release
           from the tag. With --local, publishes from this machine instead.
           --dry-run changes nothing: no file edits, git operations or publishing; it
-          produces and verifies the pack for the next version under .abuddy/release/.
+          builds, packs and verifies the pack under .abuddy/release/, at the version
+          on disk, since nothing was bumped.
 
 publish   Create the GitHub release for the pack in <dir> (default .abuddy/release)
           and upload <id>-<version>.tgz, .sha256 and .integrity.json. Used by the release workflow.
@@ -85,8 +86,23 @@ export function releaseStateReport(version: string, state: ReleaseState): string
   ].join('\n');
 }
 
-export const defaultRunner: Runner = (cmd, args, cwd) =>
-  execFileSync(cmd, args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] }).toString().trim();
+/**
+ * Runs a command, capturing its output — git's, which callers read, and the checks' in `verify`.
+ *
+ * A failure carries that output in the error. execFileSync's own message is `Command failed: …` and
+ * nothing else, so a release that stopped on a type error or a failing test said only that a command
+ * had failed, and the author had to rerun the check by hand to find out which.
+ */
+export const defaultRunner: Runner = (cmd, args, cwd) => {
+  try {
+    return execFileSync(cmd, args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] }).toString().trim();
+  } catch (err) {
+    const { stdout, stderr } = err as { stdout?: Buffer; stderr?: Buffer };
+    const output = [stdout?.toString(), stderr?.toString()].filter(Boolean).join('\n').trim();
+    if (!output) throw err;
+    throw new Error(`${[cmd, ...args].join(' ')} failed:\n${output}`);
+  }
+};
 
 export interface PreflightResult {
   errors: string[];
@@ -156,6 +172,7 @@ export async function preflight(root: string, options: { local: boolean; run: Ru
   return { errors, warnings };
 }
 
+/** The version files this pack has, written to `version`. Returns them for the release commit. */
 function writeVersion(root: string, version: string): string[] {
   const changed: string[] = [];
   for (const file of ['abuddy.json', 'package.json']) {
@@ -165,6 +182,16 @@ function writeVersion(root: string, version: string): string[] {
     json.version = version;
     fs.writeFileSync(p, JSON.stringify(json, null, 2) + '\n');
     changed.push(file);
+  }
+  // The lockfile records the root package's version twice, and `npm ci` refuses a lockfile that
+  // disagrees with package.json — so a release that left it behind broke the pack's own CI
+  const lockPath = path.join(root, 'package-lock.json');
+  if (fs.existsSync(lockPath)) {
+    const lock = JSON.parse(fs.readFileSync(lockPath, 'utf-8'));
+    lock.version = version;
+    if (lock.packages?.['']) lock.packages[''].version = version;
+    fs.writeFileSync(lockPath, JSON.stringify(lock, null, 2) + '\n');
+    changed.push('package-lock.json');
   }
   return changed;
 }
@@ -314,7 +341,7 @@ export async function runRelease(root: string, options: ReleaseOptions): Promise
     console.warn(`Preflight problems (a real release would stop here):\n${report}`);
   }
 
-  if (!options.dryRun && !resume.committed) writeVersion(root, version);
+  const versionFiles = !options.dryRun && !resume.committed ? writeVersion(root, version) : [];
   try {
     await verify(root, { skipTests: options.skipTests, skipE2e: options.skipE2e, run });
   } catch (err) {
@@ -325,28 +352,32 @@ export async function runRelease(root: string, options: ReleaseOptions): Promise
   }
 
   const releaseDir = path.join(root, '.abuddy', 'release');
-  const packRelease = async () => {
+  const packRelease = async (packVersion: string) => {
     fs.rmSync(releaseDir, { recursive: true, force: true });
-    const packed = await buildPackArchive(root, releaseDir, { version });
+    const packed = await buildPackArchive(root, releaseDir, { version: packVersion });
     console.log(`\nPack: ${packed.file}\n  sha256: ${packed.sha256}\n  files: ${Object.keys(readPackIntegrity(path.join(root, '.abuddy', 'staged', manifest.id)).files).length}`);
     return packed;
   };
 
   if (options.dryRun) {
-    const packed = await packRelease();
-    console.log(`\n[dry-run] Would commit version files, tag v${version} and push${options.local ? ', then publish the GitHub release locally' : ' (the release workflow publishes from the tag)'}.`);
+    // At the version on disk, not the next one: a dry run writes no version files, so overriding the
+    // staged abuddy.json would produce an archive claiming a version the snapshot built beside it
+    // doesn't carry. What the dry run checks is that the pack builds, stages and verifies.
+    const packed = await packRelease(manifest.version);
+    console.log(`\n[dry-run] Packed v${manifest.version}, the version on disk; a real release bumps to ${version} first.`);
+    console.log(`[dry-run] Would commit version files, tag v${version} and push${options.local ? ', then publish the GitHub release locally' : ' (the release workflow publishes from the tag)'}.`);
     return { version, archive: packed.file };
   }
 
   const git = (...args: string[]) => run('git', args, root);
   if (!resume.committed) {
-    git('add', 'abuddy.json', ...(fs.existsSync(path.join(root, 'package.json')) ? ['package.json'] : []));
+    git('add', ...versionFiles);
     git('commit', '-m', `release: v${version}`);
   }
   try {
     // After the commit, so integrity.json's source.commit is the tagged commit. Which is also why the
     // commit can't be moved later to close the window this resume path exists for.
-    const packed = await packRelease();
+    const packed = await packRelease(version);
     if (!resume.tagged) git('tag', '-a', `v${version}`, '-m', `v${version}`);
     git('push', '--follow-tags', 'origin', 'HEAD');
 
