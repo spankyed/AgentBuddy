@@ -6,9 +6,11 @@
 ```
 # Goal: the packs directory is what's installed
 
-Implement docs/goals/goal-installed-packs-record.md on a branch cut from master. Read Background,
-Decisions, Phases and Constraints first. Decisions are final: implement them, don't reopen them or stop
-to ask.
+Implement docs/goals/goal-installed-packs-record.md on `AS/external-pack-authoring`, at or after
+`18b068a18`. The base matters: `reconcileInstalledPacks`, `ensureInstalledPack`, `InstalledPacksRecord`
+and `InstalledIds` are all on that branch and none of them exists on master, so most of this plan has
+nothing to act on anywhere else. Read Background, Decisions, Phases and Constraints first. Decisions are
+final: implement them, don't reopen them or stop to ask.
 
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
 going. No backward compatibility in code: change signatures, move modules, migrate every in-repo caller,
@@ -52,7 +54,7 @@ Never:
 - change the on-disk file name or its top-level `{ packs: [...] }` shape (Decision 9).
 ```
 
-## Background (2026-09-19, at `18b068a18`)
+## Background (2026-09-19, at `18b068a18` on `AS/external-pack-authoring`)
 
 `installed-packs.json` is modelled as a **mirror** of what is installed. Every path that changes reality
 has to remember to update the mirror, in the right order, with the right merge semantics — and a missing
