@@ -16,6 +16,7 @@ import {
 } from './loader.ts';
 import { runPackMigrations } from '../../migrations/index.ts';
 import { orchestrateDeclarativeSeed, seedPackData } from './seed.ts';
+import { ensureInstalledPack } from '../installed-packs.ts';
 import { getBuiltInPackInfos, updateLoadedPack } from './loaded-packs.ts';
 
 const logger = createLogger('pack-reload');
@@ -120,6 +121,10 @@ export async function reloadExternalPack(
         runPackMigrations([pack]);
         seedPackData([pack]);
         updateLoadedPack(pack);
+        // A reload can be the first this app has seen of a pack (`abuddy dev` installs it into a running
+        // app), and it is installed and running now, so the record says so rather than the Packs view
+        // showing nothing where a running pack is until the next boot reconciles it
+        ensureInstalledPack({ id: packId, name: manifest.name, version: manifest.version, dir: packDir, enabled: true });
       },
     };
   }, packDir);

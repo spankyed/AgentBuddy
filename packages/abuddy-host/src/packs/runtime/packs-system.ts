@@ -93,38 +93,7 @@ function mergeExtensions(base: Omit<PackInfo, keyof PackExtensions>, contrib: Pa
   };
 }
 
-/**
- * What the app knows about an installed external pack: its record entry, or — for one the record has
- * lost — the pack the app loaded. `installedAt` is the only thing the record alone can say.
- */
-type ExternalPackEntry = Omit<InstalledPack, 'installedAt'> & { installedAt?: string };
-
-/**
- * The external packs the app has: every entry in `installed-packs.json`, plus any pack it loaded that
- * the record doesn't mention.
- *
- * The record is not the only evidence. It is written after an install and rebuilt at boot from the packs
- * directory, but `writeInstalledPacks` reports a failed write to the log and no further, so that rebuild
- * can be lost while the packs it was rebuilt from are already running. A pack the app is running is one
- * it has, whatever the file says, and leaving it out means the user can neither see it nor act on it.
- *
- * An empty record is not itself a problem: it is what every data dir with no external packs has, since
- * the boot rebuild writes nothing when it discovers none.
- */
-function externalPacks(): ExternalPackEntry[] {
-  const record = readInstalledPacks();
-  const entries: ExternalPackEntry[] = record.found ? record.packs : [];
-  const recorded = new Set(entries.map(e => e.id));
-  const unrecorded = getLoadedPacks()
-    .filter(p => !recorded.has(p.manifest.id))
-    .map(p => ({ id: p.manifest.id, name: p.manifest.name, version: p.manifest.version, dir: p.dir, enabled: true }));
-  if (unrecorded.length > 0) {
-    console.warn(`[packs] Running but missing from the installed packs record: ${unrecorded.map(p => p.id).join(', ')}. Reporting them as installed.`);
-  }
-  return [...entries, ...unrecorded];
-}
-
-function toExternalPackInfoList(registry: PackRegistry, entries: ExternalPackEntry[]): PackInfo[] {
+function toExternalPackInfoList(registry: PackRegistry, entries: InstalledPack[]): PackInfo[] {
   return entries.map(e => {
     const manifest = readManifest(e.dir);
     const entities = manifest?.entities ?? {};
@@ -171,7 +140,8 @@ function toBuiltInPackInfoList(registry: PackRegistry): PackInfo[] {
 }
 
 function emitPacksList(registry: PackRegistry, system: any) {
-  const external = toExternalPackInfoList(registry, externalPacks());
+  const record = readInstalledPacks();
+  const external = toExternalPackInfoList(registry, record.found ? record.packs : []);
   const builtIn = toBuiltInPackInfoList(registry);
   system.get(bus).send(emit(packs, { type: 'PACKS_LIST' as const, packs: [...builtIn, ...external] }));
 }
@@ -290,7 +260,8 @@ export function createPacksSystem(registry: PackRegistry) {
       updatePack: ({ system, event }) => {
         const ev = packsSpec.typeOf('UPDATE_PACK', event);
         const packId = ev.packId;
-        const entry = externalPacks().find(e => e.id === packId);
+        const record = readInstalledPacks();
+        const entry = record.found ? record.packs.find(e => e.id === packId) : undefined;
         if (!entry?.installedFrom) {
           system.get(bus).send(emit(packs, {
             type: 'PACK_UPDATE_FAILED' as const,
@@ -386,7 +357,8 @@ export function createPacksSystem(registry: PackRegistry) {
           return;
         }
 
-        const entry = externalPacks().find(e => e.id === packId);
+        const record = readInstalledPacks();
+        const entry = record.found ? record.packs.find(e => e.id === packId) : undefined;
         if (!entry) {
           console.warn(`[packs] Pack not found: ${packId}`);
           return;
@@ -401,8 +373,8 @@ export function createPacksSystem(registry: PackRegistry) {
           system.get(bus).send(emit(packs, { type: 'PACK_ACTIVATED' as const, packId }));
         }
 
-        // addInstalledPack, not a map over what is recorded: a pack the record has lost would otherwise be
-        // toggled in the UI and left out of the write, so the choice would be gone again at the next boot
+        // addInstalledPack, not a map over the entries: a map silently writes nothing when the entry it
+        // is looking for has gone, which loses the click rather than reporting anything
         updateInstalledPacks(entries => addInstalledPack(entries, { ...entry, enabled: newEnabled }));
         system.get(bus).send(emit(packs, {
           type: 'PACK_ENABLED_CHANGED' as const,

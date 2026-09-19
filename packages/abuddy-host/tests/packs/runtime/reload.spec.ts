@@ -17,6 +17,7 @@ const { resolveAppContext } = await import('@abuddy/sdk/env');
 // The test host's logger reports through its root event bus, so a test can read what the code under test logged
 const { testRootEvents: rootEvents, resetTestData, testPacks } = await import('@abuddy/sdk/testing');
 const { appState } = await import('../../../src/app-state/index.ts');
+const { readInstalledPacks, writeInstalledPacks } = await import('../../../src/packs/installed-packs.ts');
 
 const PACK_ID = 'reload-pack';
 
@@ -302,6 +303,35 @@ describe('reloading a pack', () => {
     writeRebuild(runtime(`services: { taken: {} },`));
     await expect(reloadExternalPack(registry, PACK_ID, bus as never)).rejects.toThrow(`Failed to register pack ${PACK_ID}`);
     expectRunningPackIntact();
+  });
+
+  // `abuddy dev` installs into a running app and asks it to reload, so a reload can be the first this app
+  // has seen of a pack. Without a record of it the Packs view shows nothing where a running pack is, until
+  // the next boot reconciles the packs directory.
+  it('records a pack it is the first to load, so it is installed as far as the app is concerned', async () => {
+    writeRebuild(runtime());
+
+    await reloadExternalPack(registry, PACK_ID, bus as never);
+
+    expect(readInstalledPacks()).toMatchObject({
+      found: true,
+      packs: [expect.objectContaining({ id: PACK_ID, version: '1.0.1', enabled: true })],
+    });
+  });
+
+  it("leaves an existing entry alone, since a reload knows neither the user's choice nor where the pack came from", async () => {
+    writeInstalledPacks([{
+      id: PACK_ID, name: PACK_ID, version: '1.0.0', dir: path.join(tmpDir, 'packs', PACK_ID),
+      enabled: false, installedAt: '2020-01-01T00:00:00.000Z', installedFrom: 'acme/reload-pack',
+    }]);
+    writeRebuild(runtime());
+
+    await reloadExternalPack(registry, PACK_ID, bus as never);
+
+    expect(readInstalledPacks()).toMatchObject({
+      found: true,
+      packs: [expect.objectContaining({ enabled: false, installedFrom: 'acme/reload-pack', installedAt: '2020-01-01T00:00:00.000Z' })],
+    });
   });
 
   it('shuts the running pack down and restarts its systems once the rebuild is registered', async () => {

@@ -100,6 +100,21 @@ export function removeInstalledPack(entries: InstalledPack[], id: string): Insta
   return entries.filter(e => e.id !== id);
 }
 
+/**
+ * Records a pack that is installed and has no entry yet, leaving an existing entry alone.
+ *
+ * The record is written by whoever installs a pack and rebuilt at boot from the packs directory. The
+ * `abuddy dev` reload is the third way a pack becomes installed-and-running (`reloadExternalPack`), and
+ * it can load one this app has never seen — so it says so here instead of leaving the pack invisible
+ * until the next boot. An existing entry is never touched: it carries the user's enabled choice and
+ * where the pack came from, neither of which a reload knows.
+ */
+export function ensureInstalledPack(pack: Omit<InstalledPack, 'installedAt'>): void {
+  const record = readInstalledPacks();
+  if (record.found && record.packs.some(e => e.id === pack.id)) return;
+  updateInstalledPacks(entries => addInstalledPack(entries, pack));
+}
+
 export function updateInstalledPacks(mutate: (entries: InstalledPack[]) => InstalledPack[]): InstalledPack[] {
   const record = readInstalledPacks();
   // A write over an unreadable record starts from nothing: the entry being written is the one fact we have
