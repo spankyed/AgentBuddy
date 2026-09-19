@@ -41,7 +41,7 @@ Packs import `@abuddy/sdk`, `@abuddy/ears` and `@abuddy/ui`, never `@abuddy/host
 
 ### Install
 
-`abuddy install` (or the Packs view) installs into the data dir's `packs/<id>/`. An installed pack has the bundle layout, the same layout as `abuddy build`'s `dist/` and the release archive:
+`abuddy install` (or the Packs view) installs into the data dir's `packs/<id>/`. An installed pack has the pack layout, the same layout as `abuddy build`'s `dist/` and the release archive:
 
 ```
 <id>/
@@ -60,10 +60,10 @@ Packs import `@abuddy/sdk`, `@abuddy/ears` and `@abuddy/ui`, never `@abuddy/host
 Installing is stage, verify, place:
 
 1. **Stage:** a built pack source is copied into a temporary bundle (`runtime/`, `build/`, `types/` from `dist/`, without source maps), with the resolved `abuddy.json` and a `integrity.json` listing each file's sha256. An archive — `.tgz` or `.zip` — is checked against its sha256 before anything is unpacked. A GitHub install takes that checksum from the release's `<archive>.sha256` asset and refuses a release that publishes none; a URL install has one only if the caller passes it, and warns when it doesn't. Downloads carry a two-minute timeout, so a stalled one fails instead of hanging the install.
-2. **Verify:** the bundle's format version must match the host's, and the files on disk must be exactly the ones `integrity.json` lists, with matching checksums.
-3. **Place:** the bundle is copied into a hidden `.<id>.installing-<pid>-…` dir in `packs/`, the current copy (if any) is renamed aside to `.<id>.previous-…`, the new copy is renamed into place, and the previous one is removed. At boot, `prepareHostDataDirs` restores a pack whose install crashed between those renames, unless the pack was uninstalled since, and removes stale staging dirs (a dir whose process is gone, or which predates the boot).
+2. **Verify:** the pack's format version must match the host's, and the files on disk must be exactly the ones `integrity.json` lists, with matching checksums.
+3. **Place:** the staged pack is copied into a hidden `.<id>.installing-<pid>-…` dir in `packs/`, the current copy (if any) is renamed aside to `.<id>.previous-…`, the new copy is renamed into place, and the previous one is removed. At boot, `prepareHostDataDirs` restores a pack whose install crashed between those renames, unless the pack was uninstalled since, and removes stale staging dirs (a dir whose process is gone, or which predates the boot).
 
-The source directory must be built first: installing a directory with neither a `integrity.json` nor a `dist/runtime/index.cjs` beside `dist/types/snapshot.json` fails and asks you to run `abuddy build`. A directory in `packs/` that isn't a bundle is skipped at boot with a warning.
+The source directory must be built first: installing a directory with neither a `integrity.json` nor a `dist/runtime/index.cjs` beside `dist/types/snapshot.json` fails and asks you to run `abuddy build`. A directory in `packs/` that isn't a pack layout is skipped at boot with a warning.
 
 ### Backend boot
 
@@ -90,7 +90,7 @@ The source directory must be built first: installing a directory with neither a 
 
 Built-in packs' frontends are compiled into the renderer (`virtual:built-in-packs` imports each pack's `__generated__/pack-entry-fe.ts`). External packs load at runtime:
 
-1. Each time this window's bus subscription is established, the application actor queries the loaded packs (`trpc.packs.loaded`), which lists each loaded external pack's `feEntry` and `feStyles` — the bundle's `runtime/fe.js` and `runtime/fe.css`, when it has them. It loads only the packs it hasn't loaded yet, so a query that fails leaves them to the next connection and a pack is never loaded twice.
+1. Each time this window's bus subscription is established, the application actor queries the loaded packs (`trpc.packs.loaded`), which lists each loaded external pack's `feEntry` and `feStyles` — the pack's `runtime/fe.js` and `runtime/fe.css`, when it has them. It loads only the packs it hasn't loaded yet, so a query that fails leaves them to the next connection and a pack is never loaded twice.
 2. For each external pack, `loadPackFrontend(pack)`:
    - loads `pack://<id>/runtime/fe.css` as a `<link>` when the pack has styles;
    - imports `pack://<id>/runtime/fe.js` and registers its default export, a `PackFERegistration`, in the renderer's frontend registry (`createFePackRegistry()` from `@abuddy/host/fe`, bound with `bindFeHost`);
@@ -183,7 +183,7 @@ pack://<packId>/<filePath>
 
 - Resolves to `<userDataDir>/packs/<packId>/<filePath>`
 - Path traversal protection: the resolved path must be inside the pack's directory
-- While `abuddy dev` runs, `<userDataDir>/pack-dev-servers/<packId>.json` names the pack's Vite dev server port, and requests are proxied there (an invalid port answers 502; a failed or non-OK fetch falls back to the file). The marker lives outside the pack directory, so the installed bundle still verifies and the marker survives reinstalls
+- While `abuddy dev` runs, `<userDataDir>/pack-dev-servers/<packId>.json` names the pack's Vite dev server port, and requests are proxied there (an invalid port answers 502; a failed or non-OK fetch falls back to the file). The marker lives outside the pack directory, so the installed pack still verifies and the marker survives reinstalls
 - Used by the renderer to load `runtime/fe.js`, `runtime/fe.css`, and other pack assets
 
 ## Host dependency sharing

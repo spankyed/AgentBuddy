@@ -220,7 +220,7 @@ A `seedFormats` value, keyed by the format name: a lowercase letter, then lowerc
 | `appExtensions` | `Record<string, string>` | Named app extensions: extension name (an identifier) → Vue component path |
 | `bundleUi` | `boolean` | Bundle a copy of `@abuddy/ui` into the pack instead of using the app's (default `false`). All of `@abuddy/ui` is bundled, so the pack never mixes the two. |
 
-The frontend entry itself isn't declared here: `abuddy build` bundles `src/pack-entry-fe.ts` (or `.js`) if present, else the generated `src/__generated__/pack-entry-fe.ts`, into the bundle's `runtime/fe.js`, with any extracted styles as `runtime/fe.css`. The app loads whichever of those two files the installed bundle has.
+The frontend entry itself isn't declared here: `abuddy build` bundles `src/pack-entry-fe.ts` (or `.js`) if present, else the generated `src/__generated__/pack-entry-fe.ts`, into the pack's `runtime/fe.js`, with any extracted styles as `runtime/fe.css`. The app loads whichever of those two files the installed pack has.
 
 ## Dependencies
 

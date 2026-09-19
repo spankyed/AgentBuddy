@@ -38,7 +38,7 @@ Hidden `.<id>.installing-*`, `.<id>.previous-*` and `.<id>.publishing-*` dirs ar
 2. Reconciles with `installed-packs.json` (`reconcileInstalledPacks()`: adds new packs enabled, updates version/dir, removes missing, keeps `enabled`)
 3. Loads each enabled pack with `loadSingleExternalPack()`:
    - `hostVersion` check (`isHostCompatible`), bundle format check, warning on an SDK major version mismatch
-   - `runtime/index.cjs` through `withHostResolution()`; the registration id must match the manifest. A directory without a `integrity.json` and a `runtime/index.cjs` isn't an installed bundle: it's skipped with a warning pointing at `abuddy install` or `abuddy dev`
+   - `runtime/index.cjs` through `withHostResolution()`; the registration id must match the manifest. A directory without a `integrity.json` and a `runtime/index.cjs` isn't an installed pack: it's skipped with a warning pointing at `abuddy install` or `abuddy dev`
    - strips `boot.earlySystem`, `boot.seedManifest` (external seeds go through `seedPackData`) and `ears.partitionPolicy`
 
 `registerExternalPacks(registry, packs)` registers each pack with its systems as `<packId>.<featureId>` (its seeders, commands and the rest of its registration with it) and returns the packs whose registration succeeded.
@@ -56,8 +56,8 @@ In this folder (all exported from `index.ts`):
 | `lifecycle.ts` | `activatePack()` and `teardownPack()` for install, uninstall, enable/disable and update at runtime |
 | `reload.ts` | `reloadExternalPack()` / `reloadBuiltInPack()` for the API's `POST /dev/reload` (`setup/websocket.ts`) |
 | `packs-system.ts` | The host `packs` XState system: `INSTALL_PACK`, `UNINSTALL_PACK`, `TOGGLE_PACK_ENABLED`, `UPDATE_PACK`, `CHECK_FOR_UPDATES`, `GET_INSTALLED_PACKS`; emits `PACKS_LIST`, `PACK_ACTIVATED`/`PACK_DEACTIVATED` and install/update/uninstall results |
-| `activation-outcome.ts` | `activationProblem()`: why a just-installed or updated pack isn't working (failed to load, or the seed error recorded on its registry entry) |
-| `seed.ts` | `computePackSeedHash`, `seedPackData` (hash-checked external seeds, the hashes kept in `AppState.packSeedHashes`, which keeps a pack's hash while it's disabled; every seeder the pack registered runs; failures recorded as the registry entry's `lastError`), `orchestrateDeclarativeSeed` (built-in `boot.seed`, hash-checked per pack in `AppState`, `seedPolicy.skipAfterOnboarding` read from `AppState.hasOnboarded`; the hash covers every seeded key's compiled file, `settings.seed.json` included, so changing default settings re-runs the boot seed even though `seedPolicy.skipAtBoot` keeps settings from being reset) |
+| `activation-outcome.ts` | `activationProblem()`: why a just-installed or updated pack isn't working (failed to load, or the seed error recorded on its installed-packs entry) |
+| `seed.ts` | `computePackSeedHash`, `seedPackData` (hash-checked external seeds, the hashes kept in `AppState.packSeedHashes`, which keeps a pack's hash while it's disabled; every seeder the pack registered runs; failures recorded as the installed-packs entry's `lastError`), `orchestrateDeclarativeSeed` (built-in `boot.seed`, hash-checked per pack in `AppState`, `seedPolicy.skipAfterOnboarding` read from `AppState.hasOnboarded`; the hash covers every seeded key's compiled file, `settings.seed.json` included, so changing default settings re-runs the boot seed even though `seedPolicy.skipAtBoot` keeps settings from being reset) |
 
 In `packages/abuddy-host/src/packs/` (`@abuddy/host/packs`):
 
@@ -88,7 +88,7 @@ The API's `core/router/packs-router.ts` serves `packs.loaded` from `getLoadedPac
 2. prepareHostDataDirs()           — record host version; recover staging in packs/ and host-packs/
 3. forwardSecretsChanges()         — settings system hears of API key changes (@abuddy/host/secrets)
 4. loadBuiltInPacks() (async)      — with the bundled loaders; started, runs while:
-   loadExternalPacks()             — discover + reconcile registry + load enabled
+   loadExternalPacks()             — discover + reconcile installed packs + load enabled
    registerExternalPacks()         — registerPack() each
    await built-in                  — the loader recorded them (setBuiltInPackInfos(), loaded-packs.ts)
 5. publishHostPackOutput()      — each built-in pack into host-packs/<id>
@@ -214,4 +214,4 @@ At boot, `publishHostPackOutput(<pack dir>, host-packs/<id>)` copies a built-in 
 
 ## Tests
 
-`packages/abuddy-host/tests/packs/runtime/` runs on the SDK's test host (`test-host.ts`: `startTestRuntime({ appVersion, packs: registry })`, with the `registry` it exports, which the specs pass to the runtime): `loader` (external and built-in loading, the bundled loaders option, seeding, the registry entries), `lifecycle`, `reload`, `activation-outcome`, `bridge-leaves`, `sdk-bridge-drift` (set `REQUIRE_RUNTIME_ENTRY` to require default-setup's built runtime) and `pack-e2e`. `tests/bus/app-bus.spec.ts` runs `createAppBus(registry)` on the test host; `tests/packs/shutdown-hooks.spec.ts` covers a registry's shutdown hooks. Elsewhere: `packages/api/tests/unit/bus-client-connected.spec.ts` (the app bus on the API's transport) and `packages/abuddy-cli/tests/cli/init-install-load.spec.ts` (a scaffolded pack installed and loaded).
+`packages/abuddy-host/tests/packs/runtime/` runs on the SDK's test host (`test-host.ts`: `startTestRuntime({ appVersion, packs: registry })`, with the `registry` it exports, which the specs pass to the runtime): `loader` (external and built-in loading, the bundled loaders option, seeding, the installed-packs entries), `lifecycle`, `reload`, `activation-outcome`, `bridge-leaves`, `sdk-bridge-drift` (set `REQUIRE_RUNTIME_ENTRY` to require default-setup's built runtime) and `pack-e2e`. `tests/bus/app-bus.spec.ts` runs `createAppBus(registry)` on the test host; `tests/packs/shutdown-hooks.spec.ts` covers a registry's shutdown hooks. Elsewhere: `packages/api/tests/unit/bus-client-connected.spec.ts` (the app bus on the API's transport) and `packages/abuddy-cli/tests/cli/init-install-load.spec.ts` (a scaffolded pack installed and loaded).

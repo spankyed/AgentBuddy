@@ -120,7 +120,7 @@ abuddy install user/repo           # latest GitHub release (user/repo@v0.1.0 for
 
 After installing, **restart the app** for the pack to load.
 
-To release a version, run `abuddy release [patch|minor|major] [--beta]`: it checks the repo, bumps the version, builds, typechecks, runs the unit and E2E tests, commits, tags and pushes; the scaffolded workflow publishes the GitHub release. `--dry-run` builds and verifies the bundle without bumping, committing or publishing anything, `--local` publishes from your machine instead of CI, and `--skip-tests`/`--skip-e2e` skip the unit or E2E tests.
+To release a version, run `abuddy release [patch|minor|major] [--beta]`: it checks the repo, bumps the version, builds, typechecks, runs the unit and E2E tests, commits, tags and pushes; the scaffolded workflow publishes the GitHub release. `--dry-run` builds and verifies the pack without bumping, committing or publishing anything, `--local` publishes from your machine instead of CI, and `--skip-tests`/`--skip-e2e` skip the unit or E2E tests.
 
 ## Unit tests
 
