@@ -5,8 +5,7 @@
 
 Implement docs/goals/goal-manifest-redesign.md on a branch cut from master.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
-reopen them or stop to ask. The Open decisions must be settled with the user before Phase 1; if any is
-still marked open, stop and ask.
+reopen them or stop to ask.
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
 going. No backward compatibility anywhere: no dual-read of old and new keys, no deprecation window, no
 migration of an installed pack's manifest. Nothing has shipped — the newest tag is v0.3.14 and it
@@ -17,8 +16,8 @@ Finished when:
 - Phases 1–6 are implemented and each meets its "Done when"; every new guard, helper or test is
   mutation-checked.
 - packages/default-setup/abuddy.json has exactly these top-level keys and no others: $schema, id, name,
-  version, description, license, builtIn, hostVersion, defaultPlugin, migrations, relations, features,
-  extensions, seed, boot. No key holds a map whose keys equal its values.
+  version, description, license, builtIn, hostVersion, relations, features, extensions, seed,
+  lifecycle. No key holds a map whose keys equal its values.
 - Every feature carries an `about` line, and every entity is declared by the feature that owns it.
 - No manifest in the repo spells a module reference two ways: `path#export` is the only form, and a
   bare path means the module's default export.
@@ -155,14 +154,31 @@ a nested one.
 
 ## Decisions
 
-Final, except where the Open decisions below override them.
+Final.
 
-**1. Identity stays flat at the root; everything else moves into named sections.** Root keys after this
-goal: `$schema`, `id`, `name`, `version`, `description`, `license`, `builtIn`, `hostVersion`,
-`dependencies`, `permissions`, `defaultPlugin`, `migrations`, `relations`, plus the sections `features`,
-`extensions`, `seed` and `boot`. That is the package.json split: who this package is, then what it
-contains. `relations` is a root key rather than a section because relation kinds are pack-wide
-vocabulary used across features, and a one-key section earns nothing.
+**1. The root says what the pack *is*; every other key is one concern.**
+
+> A root key is the pack's identity, what it requires, or what it may do. Everything else is one key
+> per concern, and a concern with parts is an object.
+
+Root after this goal: `$schema` (the file-format marker every JSON-Schema file carries), `id`, `name`,
+`version`, `description`, `license`, `builtIn` — identity; `hostVersion`, `dependencies` — what it
+requires; `permissions` — what it may do. Then one key each for the five concerns: `relations`,
+`features`, `extensions`, `seed`, `lifecycle`.
+
+Every key is covered by a clause, with `$schema` the single universal exception. An earlier draft said
+"identity at the root, everything else in sections" and then kept `migrations`, `defaultPlugin` and
+`relations` at the root anyway — four of eleven keys breaking their own rule, papered over with the
+invented term "scalar identity field". A rule with four exceptions answers nothing; this one answers
+where a new key goes, which is the only job it has.
+
+`relations` is a bare list because the concern has one part. It does not follow entities into features
+(Decision 3): an entity has a shape in one file and so has an owner, while a relation kind is a string
+in a shared vocabulary — `parent_of` is used by three of default-setup's features — and nesting it
+would invent an ownership that does not exist.
+
+The enforcement is not the prose. Phase 6 adds a spec naming the exact root keys, which a later author
+cannot reinterpret the way they can reinterpret a principle.
 
 **2. One encoding for a module reference: `"path#export"`.** A bare `"path"` means the module's default
 export. `entityShapes`' `{ source, type }` object goes. Every place that names a module — services,
@@ -257,29 +273,33 @@ entry) or an object with `entry` plus them. A feature with nothing but an entry 
 and `fe` (tiptap plugins, app extensions). This is VS Code's `contributes`.
 
 **10. Every seed concern moves under `seed`**: `formats` (was `seedFormats`), `hooks` (was `seedHooks`),
-`data` (was `boot.seed`), `policy` (was `boot.seedPolicy`). `boot` keeps only lifecycle: `hooks`
-(`onInit`/`onShutdown`).
+`data` (was `boot.seed`), `policy` (was `boot.seedPolicy`).
+
+**`boot` becomes `lifecycle` and takes `migrations` from the root.** `startPacks` runs each pack's
+`onInit`, then the migrations, then the seeds (`packs/runtime/start.ts:9-18`), so all three are boot
+lifecycle and `migrations` was content loose at the root. `lifecycle` holds the two that are *code run
+at a defined point* — `hooks` and `migrations`. `seed` stays a sibling because it is declarative data
+and a compiler vocabulary (formats, identity, fields, policy), not a module to call; that is a
+difference in kind, not in size.
 
 **11. The schema is the specification and the docs follow it.** `manifest-schema.ts` gains a
 `.describe()` on every field, `npm run generate:schema` regenerates `abuddy.schema.json`, and
 `docs/public-facing/manifest.md` is rewritten from the new shape rather than edited.
 
-**12. Every feature carries an `about` line.** The manifest is the one place that says what a pack
+**12. `defaultPlugin` moves onto the plugin it names.** It is loose content at the root today, and it
+names a feature's plugin, so it belongs there: `"plugin": { "default": true }`, with `entry` omitted
+meaning the conventional path exactly as `"plugin": true` does. The host already resolves it first-wins
+across packs and warns on the second (`fe/pack-store.ts:63-66`), so nothing about the competition
+changes; `validate` additionally rejects two features of one pack claiming it.
+
+**13. Every feature carries an `about` line.** The manifest is the one place that says what a pack
 contributes, and today it cannot say what any feature is *for* — only where its files are. A one-line
 `about` is the highest-value thing the manifest can gain, and the only part of this goal that adds
 content rather than moving it. `abuddy add feature` prompts for it and `validate` requires it.
 
-**13. No compatibility of any kind.** No dual-read, no alias, no deprecation warning. Every manifest in
+**14. No compatibility of any kind.** No dual-read, no alias, no deprecation warning. Every manifest in
 the repo — default-setup, both fixtures, the `abuddy init` scaffold, the packaged-authoring script's
 generated pack — changes in the same phase as the schema section it depends on.
-
-## Open decisions (settle with the user before Phase 1)
-
-**1. Whether `defaultPlugin` stays at the root or becomes a feature flag.** — *open*
-
-- **A. Root `"defaultPlugin": "threads"`** — one place to look, matches `"main"` in package.json.
-- **B. `"default": true` on the feature's plugin** — colocated, and a feature moved between packs takes
-  it along; the cost is that finding it means scanning the features array, and two features could set it.
 
 ## Phases
 
@@ -327,10 +347,12 @@ fails schema validation with a message naming `extensions`.
 ### Phase 3 — `seed`: one section for seeding
 
 - Move `seedFormats` → `seed.formats`, `seedHooks` → `seed.hooks`, `boot.seed` → `seed.data`,
-  `boot.seedPolicy` → `seed.policy` (Decision 10). `boot` keeps only `hooks`.
+  `boot.seedPolicy` → `seed.policy`; rename `boot` to `lifecycle` and move the root `migrations` into it
+  (Decision 10).
 - Update `generate-entries.ts` (seeders, seed runtime), `build.ts` (compilers), the host's seed runtime.
 
-**Done when:** `boot` holds only `hooks` in every manifest; the compiled seeds for default-setup are
+**Done when:** no manifest has a `boot` key or a root `migrations`, and `lifecycle` holds `hooks` and
+`migrations`; the compiled seeds for default-setup are
 byte-identical (`dist/*.seed.json`, `dist/seeds.json`); `tests/unit/seed-parity` passes;
 `npm run compile`, `npm run test:unit`, `npm run test:external-pack` pass.
 
@@ -341,18 +363,20 @@ byte-identical (`dist/*.seed.json`, `dist/seeds.json`); `tests/unit/seed-parity`
   path and a string to override (Decision 7). A key's absence means the feature has no such thing.
 - Collapse `system.entry`/`plugin.entry` to `system`/`plugin`, `true`, a string, or an object with
   `entry` plus `sendsTo`/`outgoingEventsType` (Decision 8).
+- Move `defaultPlugin` onto the feature's plugin as `{ "default": true }` (Decision 12).
 - Add `about` to every feature and require it in `validate.ts`; `abuddy add feature` prompts for it
-  (Decision 12).
+  (Decision 13).
 - Move each entity onto the feature that owns it (Decision 3), which Phase 1 prepared.
 - Update `generate-entries.ts`, `validate.ts`, `add/feature.ts`, `init.ts`, `doctor.ts` and the loader.
 
 **Done when:** no manifest contains the string `src/features/` inside a `features[]` entry; no manifest
-contains `designation`; every feature in every manifest has an `about`; the generated `pack-entry.ts`,
+contains `designation` or a root `defaultPlugin`; every feature in every manifest has an `about`; the generated `pack-entry.ts`,
 `pack-entry-fe.ts` and `system-ids.ts` for default-setup are byte-identical to before; `npm run
 typecheck` and the full unit chain pass. Mutations: a feature naming a path that escapes its directory
 (`../other/be/system.ts`) fails validation; a feature with `"system": true` whose `be/system.ts` does
 not exist fails the build naming the expected path, rather than silently having no system; a feature
-without `about` fails `validate`.
+without `about` fails `validate`; two features of one pack both claiming `plugin.default` fail
+`validate`.
 
 ### Phase 5 — one encoding for a module reference
 
@@ -371,9 +395,10 @@ fail validation with the message naming the expected form.
 - Rewrite `docs/public-facing/manifest.md` from the new shape. Update
   `packages/default-setup/CLAUDE.md`, `packages/abuddy-cli/CLAUDE.md` and the root `CLAUDE.md` where they
   name a manifest key.
-- Add a spec asserting the built-in pack's manifest has exactly the fifteen top-level keys the prompt
+- Add a spec asserting the built-in pack's manifest has exactly the thirteen root keys the prompt
   block names, and no map whose keys equal its values, so the shape does not silently regrow. Naming them
-  beats counting them: a count passes when one key is swapped for another.
+  beats counting them: a count passes when one key is swapped for another. This spec, not Decision 1's
+  prose, is what stops the root regrowing to 24 keys.
 
 **Done when:** `npm run schema:check` passes; `docs/public-facing/manifest.md` mentions no retired key
 (`entityShapes`, `relKinds`, `seedFormats`, `seedHooks`, `partitionPolicy`, `designation`,

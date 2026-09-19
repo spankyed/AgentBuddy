@@ -7,8 +7,6 @@
   "license": "MIT",
   "builtIn": true,
   "hostVersion": ">=0.3.0",
-  "defaultPlugin": "threads",
-  "migrations": "src/migrations/index.ts",
   "relations": [
     "parent_of",
     "has",
@@ -20,7 +18,9 @@
       "about": "Chat threads: messages, artifacts and the conversation UI.",
       "designated": true,
       "system": true,
-      "plugin": true,
+      "plugin": {
+        "default": true
+      },
       "settings": true,
       "references": true,
       "entities": {
@@ -488,7 +488,8 @@
       ]
     }
   },
-  "boot": {
-    "hooks": "src/features/hooks.ts"
+  "lifecycle": {
+    "hooks": "src/features/hooks.ts",
+    "migrations": "src/migrations/index.ts"
   }
 }
