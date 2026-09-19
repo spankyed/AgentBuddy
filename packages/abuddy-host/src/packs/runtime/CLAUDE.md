@@ -35,7 +35,7 @@ Hidden `.<id>.installing-*`, `.<id>.previous-*` and `.<id>.publishing-*` dirs ar
 
 `loadExternalPacks()`:
 1. Discovers packs in `packsDir` (`discoverPacks()`; each needs an `abuddy.json` with `id`, `name`, `version`)
-2. Reconciles with `installed-packs.json` (`reconcileInstalledPacks()`: adds new packs enabled, updates version/dir, removes missing, keeps `enabled`)
+2. Takes the packs the record doesn't disable (`enabledExternalPacks()`): the directory is the list, and the record only takes packs out of it
 3. Loads each enabled pack with `loadSingleExternalPack()`:
    - `hostVersion` check (`isHostCompatible`), pack layout format check, warning on an SDK major version mismatch
    - `runtime/index.cjs` through `withHostResolution()`; the registration id must match the manifest. A directory without a `integrity.json` and a `runtime/index.cjs` isn't an installed pack: it's skipped with a warning pointing at `abuddy install` or `abuddy dev`
@@ -55,7 +55,7 @@ In this folder (all exported from `index.ts`):
 | `loaded-packs.ts` | `LoadedPack`, the loaded external packs list (`getLoadedPacks`, `setLoadedPacks`, `updateLoadedPack`, `removeLoadedPack`), the loaded built-in packs (`getBuiltInPackInfos`, `setBuiltInPackInfos`, which `loadBuiltInPacks` records), `getPacksWithClientLoadedFrontends()`, and the `packs.loaded` entries (`getLoadedPackEntries()`: a `LoadedPackEntry`, `{ id, name, version, builtIn?, feEntry?, feStyles? }`, per pack; built-in entries have `builtIn: true`. The type lives in `../pack-layout.ts`, so the API's router declarations import it from `@abuddy/host/packs`). Imports nothing else from this folder |
 | `lifecycle.ts` | `activatePack()` and `teardownPack()` for install, uninstall, enable/disable and update at runtime |
 | `reload.ts` | `reloadExternalPack()` / `reloadBuiltInPack()` for the API's `POST /dev/reload` (`setup/websocket.ts`) |
-| `packs-system.ts` | The host `packs` XState system: `INSTALL_PACK`, `UNINSTALL_PACK`, `TOGGLE_PACK_ENABLED`, `UPDATE_PACK`, `CHECK_FOR_UPDATES`, `GET_INSTALLED_PACKS`, and `PACK_CHANGED`, on which it sends the list again like any other system that reads what packs register; emits `PACKS_LIST`, `PACK_ACTIVATED`/`PACK_DEACTIVATED` and install/update/uninstall results. The installed external packs are `installed-packs.json`, which every path that loads a pack keeps current |
+| `packs-system.ts` | The host `packs` XState system: `INSTALL_PACK`, `UNINSTALL_PACK`, `TOGGLE_PACK_ENABLED`, `UPDATE_PACK`, `CHECK_FOR_UPDATES`, `GET_INSTALLED_PACKS`, and `PACK_CHANGED`, on which it sends the list again like any other system that reads what packs register; emits `PACKS_LIST`, `PACK_ACTIVATED`/`PACK_DEACTIVATED` and install/update/uninstall results. It lists `installedPacks()`: the packs directory, joined with what the record says about each |
 | `activation-outcome.ts` | `activationProblem()`: why a just-installed or updated pack isn't working (failed to load, or the seed error recorded on its installed-packs entry) |
 | `seed.ts` | `computePackSeedHash`, `seedPackData` (hash-checked external seeds, the hashes kept in `AppState.packSeedHashes`, which keeps a pack's hash while it's disabled; every seeder the pack registered runs; failures recorded as the installed-packs entry's `lastError`), `orchestrateDeclarativeSeed` (built-in `boot.seed`, hash-checked per pack in `AppState`, `seedPolicy.skipAfterOnboarding` read from `AppState.hasOnboarded`; the hash covers every seeded key's compiled file, `settings.seed.json` included, so changing default settings re-runs the boot seed even though `seedPolicy.skipAtBoot` keeps settings from being reset) |
 
@@ -63,7 +63,7 @@ In `packages/abuddy-host/src/packs/` (`@abuddy/host/packs`):
 
 | File | Purpose |
 |------|---------|
-| `pack-discovery.ts` | `discoverBuiltInPacks`, `discoverPacks`, `reconcileInstalledPacks` |
+| `pack-discovery.ts` | `discoverBuiltInPacks`, `discoverPacks`, `enabledExternalPacks`, `installedPacks` |
 | `pack-registration.ts` | `createPackRegistry()`, the registered packs as an instance: `registerPack`/`unregisterPack`, `registerHostSystem`, boot hooks, migrations, EARS policy, extensions, shutdown hooks (`registerShutdownHook`, `runShutdownHooks`, `runShutdownHooksForKey`, `removeShutdownHooksForKey`), `getEventValidationMap()` (what `bus.send` accepts, cached until a registration changes), and the lookups the SDK reads once it's bound (`PackRegistryView`). Collision detection with rollback |
 | `extensions.ts`, `backend-extensions.ts` | The stores a registry keeps: definitions by type (steps merge facet by facet), designations, seed hooks, seeders, feature settings defaults, commands, shutdown hooks |
 | `installed-packs.ts` | `installed-packs.json` CRUD |
@@ -182,7 +182,7 @@ Update tears down with `replacing`, installs the release the update check found,
 `POST /dev/reload { packId, builtIn? }` (from `abuddy dev` and default-setup's `dev-build.mjs`; one reload per pack at a time) calls `reloadBuiltInPack(registry, …)` (requires `dist/runtime/index.cjs`) or `reloadExternalPack(registry, …)` on the app's registry. Both:
 1. clear the pack's require cache and load the fresh runtime (a load failure throws; the running pack is untouched)
 2. unregister the running registration and register the fresh one; if that throws, re-register the previous one and rethrow (registering and unregistering drop the cached event validation map and partition policy)
-3. run the old shutdown hooks, register the new `onShutdown`, run `onInit`; external packs run their migrations (`runPackMigrations()`), re-seed and `updateLoadedPack()`, then `ensureInstalledPack()` — a reload can be the first this app has seen of a pack, since `abuddy dev` installs into a running app, and one that is running is installed as far as the Packs view is concerned. An existing entry is left alone: it carries the user's enabled choice and where the pack came from, neither of which a reload knows
+3. run the old shutdown hooks, register the new `onShutdown`, run `onInit`; external packs run their migrations (`runPackMigrations()`), re-seed and `updateLoadedPack()`. A reload can be the first this app has seen of a pack, since `abuddy dev` installs into a running app — it needs no record entry, because the directory is what makes it installed
 4. send the bus `RELOAD_PACK` with old and new system ids: it stops each running one, starts those still registered, and sends them `CLIENT_CONNECTED`
 5. send the bus `PACK_CHANGED`
 

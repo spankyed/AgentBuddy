@@ -239,14 +239,18 @@ describe('activating and tearing down a pack at runtime', () => {
 });
 
 describe('registry source and update tracking', () => {
+  /** The pack on disk, which is what makes it installed and where its version comes from */
+  function installed(id: string, version = '1.0.0') {
+    const dir = path.join(packsDir(), id);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify({ id, name: id, version }));
+  }
+
   it('stores source field in registry when GitHub slug is used', async () => {
     const { readInstalledPacks, updateInstalledPacks, addInstalledPack } = await import('../../../src/packs/installed-packs.ts');
 
     updateInstalledPacks(entries => addInstalledPack(entries, {
       id: 'github-pack',
-      name: 'GitHub Pack',
-      version: '1.0.0',
-      dir: path.join(packsDir(), 'github-pack'),
       enabled: true,
       installedFrom: 'owner/repo',
     }));
@@ -263,9 +267,6 @@ describe('registry source and update tracking', () => {
 
     updateInstalledPacks(entries => addInstalledPack(entries, {
       id: 'versioned-pack',
-      name: 'Versioned Pack',
-      version: '1.0.0',
-      dir: path.join(packsDir(), 'versioned-pack'),
       enabled: true,
       installedFrom: 'owner/versioned',
     }));
@@ -281,21 +282,17 @@ describe('registry source and update tracking', () => {
   it('getAvailableUpdates returns packs with newer versions', async () => {
     const { updateInstalledPacks, addInstalledPack } = await import('../../../src/packs/installed-packs.ts');
     const { getAvailableUpdates } = await import('../../../src/packs/pack-updater.ts');
+    installed('has-update');
+    installed('no-update');
 
     updateInstalledPacks(entries => {
       let updated = addInstalledPack(entries, {
-        id: 'has-update',
-        name: 'Has Update',
-        version: '1.0.0',
-        dir: path.join(packsDir(), 'has-update'),
+      id: 'has-update',
         enabled: true,
         installedFrom: 'owner/has-update',
       });
       updated = addInstalledPack(updated, {
-        id: 'no-update',
-        name: 'No Update',
-        version: '2.0.0',
-        dir: path.join(packsDir(), 'no-update'),
+      id: 'no-update',
         enabled: true,
         installedFrom: 'owner/no-update',
       });

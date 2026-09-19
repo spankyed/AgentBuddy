@@ -1,4 +1,4 @@
-import { readInstalledPacks } from '../installed-packs.ts';
+import { packRecord } from '../installed-packs.ts';
 
 /**
  * Why a just-installed or updated pack isn't working, or undefined when it activated and
@@ -7,8 +7,7 @@ import { readInstalledPacks } from '../installed-packs.ts';
  */
 export function activationProblem(packId: string, activated: boolean): string | undefined {
   if (!activated) return 'failed to load (see the app logs for the loader error)';
-  // Seeding records failures (e.g. invalid flows) on the installed-packs entry
-  const record = readInstalledPacks();
-  const seedError = record.found ? record.packs.find(e => e.id === packId)?.lastError : undefined;
+  // Seeding records failures (e.g. invalid flows) on the pack's record
+  const seedError = packRecord(packId).lastError;
   return seedError ? `its data failed to seed:\n${seedError}` : undefined;
 }

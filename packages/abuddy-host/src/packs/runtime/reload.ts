@@ -16,7 +16,6 @@ import {
 } from './loader.ts';
 import { runPackMigrations } from '../../migrations/index.ts';
 import { orchestrateDeclarativeSeed, seedPackData } from './seed.ts';
-import { ensureInstalledPack } from '../installed-packs.ts';
 import { getBuiltInPackInfos, updateLoadedPack } from './loaded-packs.ts';
 
 const logger = createLogger('pack-reload');
@@ -118,10 +117,6 @@ export async function reloadExternalPack(
       onShutdown: pack.boot?.onShutdown,
       onInit: pack.boot?.onInit,
       afterRegister: () => {
-        // First, because seeding writes this pack's seed outcome to its entry: a reload can be the first
-        // this app has seen of a pack (`abuddy dev` installs into a running app), and one that is running
-        // is installed as far as the record is concerned
-        ensureInstalledPack({ id: packId, name: manifest.name, version: manifest.version, dir: packDir, enabled: true });
         runPackMigrations([pack]);
         seedPackData([pack]);
         updateLoadedPack(pack);

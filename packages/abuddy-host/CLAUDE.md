@@ -63,8 +63,8 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
 **Discovery and registry** (`packs/pack-discovery.ts`, `packs/installed-packs.ts`)
 - `discoverBuiltInPacks(dir)` needs `builtIn`, `id` and `name` in `abuddy.json` and doesn't check for source, since packaged apps ship only `abuddy.json` and `dist/`.
 - `discoverPacks(packsDir)` skips hidden dirs, and skips manifests without `id`, `name` and `version`.
-- `reconcileInstalledPacks` adds newly found packs as enabled, rewrites entries whose version or dir changed, drops missing packs, and returns the enabled packs.
-- `readInstalledPacks()` returns `{ found: true, packs }` or `{ found: false }`: no readable record is not an empty list, and a caller deciding what to delete has to say what it does about it. `updateInstalledPacks(fn)` reads, applies `fn` and writes the file. `writeInstalledPacks` writes to `installed-packs.json.tmp` and renames it into place. A failed write is logged, not thrown.
+- `enabledExternalPacks(packsDir, disabled)` is the list: every pack in `packsDir` minus the ids the caller says are disabled. The packs directory is what makes a pack installed, so a pack the record has never heard of is in it. `installedPacks()` joins that with the record for callers that want both.
+- `installed-packs.json` is a side table keyed by pack id, not the list of packs: it holds only what the directory can't say (`enabled`, `installedFrom`, `installedAt`, `lastError`, and the last update check). `packRecord(id)` answers for any pack, with defaults when it has no row — absence means enabled and nothing decided. `readInstalledPacks()` still distinguishes "no readable record" for the one caller that needs to. `updateInstalledPacks(fn)` reads, applies `fn` and writes, and writes nothing when `fn` changed nothing. `writeInstalledPacks` writes to `installed-packs.json.tmp` and renames it into place. A failed write is logged, not thrown.
 
 **Pack layout** (`packs/pack-layout.ts`): the one layout used for `dist/`, release archives and installed packs. The layout is documented in the file header, with paths in `PACK_LAYOUT`.
 - `stagePack(packRoot, stageDir)` copies `dist/{runtime,build,types}` without `.map` files, writes the built `abuddy.json` as it is, and writes `integrity.json`, which records the format version and a sha256 per file. It never substitutes a version: `dist/types/snapshot.json` is a build artifact copied verbatim and carries its own, so a version reaches an archive by being written before the build.
@@ -81,7 +81,7 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
 - `installFromDirectory` validates the manifest (`parseManifest`) and checks the `hostVersion` option, a range test that includes prereleases (`isHostCompatible`). If the dir is an unstaged built pack source, it stages it into a tmp dir. It then verifies the layout and calls `placePack`.
 - `placePack` copies the staged pack into `.<id>.installing-<pid>-XXXXXX`, moves any existing copy to `.<id>.previous-<pid>-<hex>`, and renames the new copy into place. If that rename fails, it puts the previous copy back, then deletes the leftover.
 - `checkDependencies` reports the manifest's dependencies that are neither installed nor built in. Built-in ids come from `BUILT_IN_PACKS_DIR` when it is set, and otherwise from the non-hidden dirs in `host-packs/` next to `packsDir`.
-- `uninstallPack` deletes `packs/<id>` and throws if the dir is missing. Neither function touches `installed-packs.json`. The host `packs` system (`packs/runtime/packs-system.ts`) updates it after an install. The CLI never writes it, so a CLI install is picked up by `reconcileInstalledPacks` at the next boot, without an `installedFrom`.
+- `uninstallPack` deletes `packs/<id>` and throws if the dir is missing. Neither function touches `installed-packs.json`. The host `packs` system (`packs/runtime/packs-system.ts`) records the install source after an install. The CLI never writes the record, so a CLI-installed pack simply has no row: it is installed because it is in the directory, and enabled because nothing says otherwise.
 
 **Staging recovery** (`packs/staging.ts`)
 - `stagingDirName(id, kind)` produces `.<id>.<installing|previous|publishing>-<pid>-<hex>`.
@@ -211,7 +211,6 @@ What opening an app's database needs, shared by the API's boot and `abuddy db`, 
 
 ## Gotchas
 
-- `reconcileInstalledPacks` rebuilds an entry whose version or dir changed from only `id`, `name`, `version`, `dir` and `enabled`, so fields like `installedFrom` and `availableVersion` are dropped. An out-of-app reinstall (`abuddy install`) therefore loses the pack's update source at the next boot.
 - `writeInstalledPacks` doesn't throw on failure, so callers can't tell that a registry write was lost: the record then disagrees with what is running, and only a log line says so.
 - External pack FE code can't reach the renderer's `createFePackRegistry()` instance: the renderer calls `registerPackFE` on its behalf (see the pack runtime doc's FE entry section), and pack frontends read it through the SDK's lookups.
 - Adding a host service means updating `HostServices` and `HostRuntimeServices` in the SDK, `HOST_SERVICE_NAMES` (`pack-registration.ts`), `createHostRuntime`'s `services` (`services/index.ts`, with the implementation in `services/<kebab-case key>.ts`) and `HOST_SERVICE_KEYS` in `tests/boundaries.spec.ts`. All are type-checked against the SDK types. Helpers that aren't a service don't go in `services/`.

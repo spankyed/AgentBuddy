@@ -1,13 +1,15 @@
 /**
- * Installed packs
+ * What the app has recorded about the external packs it has.
  *
- * The persistent JSON file recording which external packs are installed, with their
- * install state and enabled/disabled status. Built-in packs don't use this — they load
- * directly from discovery.
+ * `installed-packs.json` is not the list of installed packs — `packs/<id>/` is, and `enabledExternalPacks`
+ * (`pack-discovery.ts`) derives it. This file is a side table keyed by pack id, holding only what the
+ * directory cannot say: the user's enabled choice, where an install came from, and what the last seed and
+ * update check found. A pack with no row is installed all the same, which is what `abuddy install` and
+ * `abuddy dev` leave behind — they write the directory and never this file.
  *
- * Lives outside LMDB because packs must register before EARS hydration. It is not a
- * registry: a registry is the in-process collection packs register into
- * (`createPackRegistry()`), and this is the record on disk.
+ * Lives outside LMDB because packs must register before EARS hydration. It is not a registry: a registry
+ * is the in-process collection packs register into (`createPackRegistry()`), and this is the record on
+ * disk.
  */
 
 import * as fs from 'fs';
@@ -17,13 +19,13 @@ import { resolveAppContext } from '@abuddy/sdk/env';
 
 const logger = createLogger('installed-packs');
 
-export interface InstalledPack {
+/** What the app has recorded about one pack. Every field is something the packs directory cannot answer. */
+export interface PackRecord {
   id: string;
-  name: string;
-  version: string;
-  dir: string;
   enabled: boolean;
-  installedAt: string;
+  /** When the app placed it; absent for a pack installed outside the app */
+  installedAt?: string;
+  /** The GitHub slug an update reinstalls from; absent for a pack installed outside the app */
   installedFrom?: string;
   availableVersion?: string;
   /** Release tag for availableVersion, so updates install exactly what the check found. */
@@ -35,7 +37,7 @@ export interface InstalledPack {
 }
 
 interface InstalledPacksFile {
-  packs: InstalledPack[];
+  packs: PackRecord[];
 }
 
 function getInstalledPacksPath(): string {
@@ -43,16 +45,15 @@ function getInstalledPacksPath(): string {
 }
 
 /**
- * What `installed-packs.json` says. `found: false` is no readable record at all — no file (a fresh data dir,
- * or one last written by a version that kept this list somewhere else) or one that won't parse.
+ * What the record says, or that it couldn't be read at all — no file (a fresh data dir, or one last
+ * written by a version that kept this somewhere else) or one that won't parse.
  *
- * The two are separate cases and not an empty list, because "the record lists no packs" and "there is no
- * record" are opposite answers: the first says a pack is gone, the second says we don't know. A caller
- * deciding what to *delete* has to tell them apart; one that only shows or scans the list writes the
- * fallback out at the call site, where it can be seen.
+ * Most callers want `packRecord` or `packRecords`, which answer for a pack whether or not it has a row.
+ * This is for a caller that has to tell "the record says nothing about this pack" from "there is no
+ * record to say anything".
  */
 export type InstalledPacksRecord =
-  | { found: true; packs: InstalledPack[] }
+  | { found: true; packs: PackRecord[] }
   | { found: false };
 
 /** Reads the record in `installedPacksPath` (the app's `installed-packs.json` by default). */
@@ -68,6 +69,23 @@ export function readInstalledPacks(installedPacksPath = getInstalledPacksPath())
   }
 }
 
+/** What the app has recorded, by pack id, for the packs it has recorded anything about. */
+export function packRecords(): Map<string, PackRecord> {
+  const record = readInstalledPacks();
+  return new Map((record.found ? record.packs : []).map(e => [e.id, e]));
+}
+
+/**
+ * What the app has recorded about `id` — a row of defaults when it has recorded nothing.
+ *
+ * A pack with no row is one nothing has decided anything about yet: enabled, from nowhere in particular,
+ * with no seed or update check behind it. Callers get a whole record either way, so none of them repeats
+ * what absence means.
+ */
+export function packRecord(id: string, records = packRecords()): PackRecord {
+  return records.get(id) ?? { id, enabled: true };
+}
+
 /**
  * The packs the app has recorded as disabled.
  *
@@ -81,7 +99,7 @@ export function disabledPackIds(installedPacksPath = getInstalledPacksPath()): R
   return new Set(record.found ? record.packs.filter(e => !e.enabled).map(e => e.id) : []);
 }
 
-export function writeInstalledPacks(entries: InstalledPack[]): void {
+export function writeInstalledPacks(entries: PackRecord[]): void {
   const installedPacksPath = getInstalledPacksPath();
   const dir = path.dirname(installedPacksPath);
   if (!fs.existsSync(dir)) {
@@ -99,40 +117,25 @@ export function writeInstalledPacks(entries: InstalledPack[]): void {
   }
 }
 
-export function addInstalledPack(entries: InstalledPack[], pack: Omit<InstalledPack, 'installedAt'>): InstalledPack[] {
+/** Puts `pack`'s row in `entries`, keeping the `installedAt` of a row already there. */
+export function addInstalledPack(entries: PackRecord[], pack: PackRecord): PackRecord[] {
   const idx = entries.findIndex(e => e.id === pack.id);
-  if (idx >= 0) {
-    const entry: InstalledPack = { ...pack, installedAt: entries[idx].installedAt };
-    return [...entries.slice(0, idx), entry, ...entries.slice(idx + 1)];
-  }
-  const entry: InstalledPack = { ...pack, installedAt: new Date().toISOString() };
-  return [...entries, entry];
+  if (idx < 0) return [...entries, pack];
+  const entry: PackRecord = { ...pack, installedAt: pack.installedAt ?? entries[idx].installedAt };
+  return [...entries.slice(0, idx), entry, ...entries.slice(idx + 1)];
 }
 
-export function removeInstalledPack(entries: InstalledPack[], id: string): InstalledPack[] {
+export function removeInstalledPack(entries: PackRecord[], id: string): PackRecord[] {
   return entries.filter(e => e.id !== id);
 }
 
-/**
- * Records a pack that is installed and has no entry yet, leaving an existing entry alone.
- *
- * The record is written by whoever installs a pack and rebuilt at boot from the packs directory. The
- * `abuddy dev` reload is the third way a pack becomes installed-and-running (`reloadExternalPack`), and
- * it can load one this app has never seen — so it says so here instead of leaving the pack invisible
- * until the next boot. An existing entry is never touched: it carries the user's enabled choice and
- * where the pack came from, neither of which a reload knows.
- */
-export function ensureInstalledPack(pack: Omit<InstalledPack, 'installedAt'>): void {
+export function updateInstalledPacks(mutate: (entries: PackRecord[]) => PackRecord[]): PackRecord[] {
   const record = readInstalledPacks();
-  if (record.found && record.packs.some(e => e.id === pack.id)) return;
-  updateInstalledPacks(entries => addInstalledPack(entries, pack));
-}
-
-export function updateInstalledPacks(mutate: (entries: InstalledPack[]) => InstalledPack[]): InstalledPack[] {
-  const record = readInstalledPacks();
-  // A write over an unreadable record starts from nothing: the entry being written is the one fact we have
+  // A write over an unreadable record starts from nothing: the row being written is the one fact we have
   const entries = record.found ? record.packs : [];
   const updated = mutate(entries);
-  writeInstalledPacks(updated);
+  // A mutation that changed nothing writes nothing, so a data dir where nothing has been decided keeps no
+  // record at all rather than gaining an empty one
+  if (updated !== entries) writeInstalledPacks(updated);
   return updated;
 }

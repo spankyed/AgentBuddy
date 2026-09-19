@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { prepareHostDataDirs, recoverStagingDirs, stagingDirName } from '../../src/packs/staging.ts';
-import { discoverPacks, reconcileInstalledPacks } from '../../src/packs/pack-discovery.ts';
+import { enabledExternalPacks } from '../../src/packs/pack-discovery.ts';
 import { readInstalledPacks, writeInstalledPacks } from '../../src/packs/installed-packs.ts';
 
 /** The recorded packs; these specs always write a record first, so a missing one is a failure */
@@ -68,15 +68,14 @@ describe('recoverStagingDirs', () => {
 
   it('restores a pack whose install crashed between moving it aside and placing the new copy, and keeps it enabled', () => {
     writePack('demo-pack');
-    writeInstalledPacks([{ id: 'demo-pack', name: 'Demo', version: '1.0.0', dir: path.join(packsDir, 'demo-pack'), enabled: true, installedAt: '' }]);
+    writeInstalledPacks([{ id: 'demo-pack', enabled: true }]);
     // The crash: the old copy moved aside, the new one never placed
     fs.renameSync(path.join(packsDir, 'demo-pack'), path.join(packsDir, `.demo-pack.previous-${exitedPid()}-1a2b3c4d`));
     mkdir(`.demo-pack.installing-${exitedPid()}-x1Y2z3`);
 
     expect(recoverStagingDirs(packsDir, { known: false })).toMatchObject({ restored: ['demo-pack'], failed: [] });
     expect(remaining()).toEqual(['demo-pack']);
-    const enabled = reconcileInstalledPacks(discoverPacks(packsDir));
-    expect(enabled.map((p) => p.manifest.id)).toEqual(['demo-pack']);
+    expect(enabledExternalPacks(packsDir, new Set()).map((p) => p.manifest.id)).toEqual(['demo-pack']);
     expect(recordedPacks()).toMatchObject([{ id: 'demo-pack', enabled: true }]);
   });
 

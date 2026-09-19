@@ -1,5 +1,6 @@
 import { createLogger } from '@abuddy/sdk/logger';
-import { readInstalledPacks, updateInstalledPacks, type InstalledPack } from './installed-packs.ts';
+import { updateInstalledPacks, type PackRecord } from './installed-packs.ts';
+import { installedPacks } from './pack-discovery.ts';
 import * as semver from 'semver';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { isHostCompatible } from './pack-installer.ts';
@@ -100,20 +101,19 @@ function updateChannelIncludesPrereleases(): boolean {
  * saying why there's nothing to offer). Nothing is cached: the Packs view runs this when asked.
  */
 export async function checkForUpdates(options: { hostVersion?: string } = {}): Promise<UpdateCheckResult[]> {
-  const record = readInstalledPacks();
-  const entries = record.found ? record.packs : [];
-  const updatable = entries.filter(e => e.installedFrom && e.enabled);
+  const updatable = installedPacks().filter(p => p.record.installedFrom && p.record.enabled);
 
   if (updatable.length === 0) return [];
 
   const includePrerelease = updateChannelIncludesPrereleases();
   const results: UpdateCheckResult[] = [];
-  const updatedEntries = new Map<string, Partial<InstalledPack>>();
+  const updatedEntries = new Map<string, Partial<PackRecord>>();
 
-  for (const entry of updatable) {
+  for (const { manifest, record: entry } of updatable) {
+    const installedVersion = manifest.version;
     let latest: ReleaseCandidate | null;
     try {
-      latest = await findLatestRelease(entry.installedFrom!, { includePrerelease, hostVersion: options.hostVersion, installedVersion: entry.version });
+      latest = await findLatestRelease(entry.installedFrom!, { includePrerelease, hostVersion: options.hostVersion, installedVersion });
     } catch (err) {
       // Not checked: kept out of the cache so the next check tries again
       const message = err instanceof Error ? err.message : String(err);
@@ -121,7 +121,7 @@ export async function checkForUpdates(options: { hostVersion?: string } = {}): P
       updatedEntries.set(entry.id, { updateCheckError: message });
       continue;
     }
-    const latestVersion = latest && isNewer(latest.version, entry.version) ? latest.version : undefined;
+    const latestVersion = latest && isNewer(latest.version, installedVersion) ? latest.version : undefined;
     const unverified = latestVersion ? latest!.hostVersionUnverified : undefined;
     if (unverified) logger.warn(`${entry.id} v${latestVersion}: couldn't read its hostVersion (${unverified}); installing it checks again`);
     // Nothing newer to offer, with a newer release out there: say the releases need a newer AgentBuddy
@@ -137,7 +137,7 @@ export async function checkForUpdates(options: { hostVersion?: string } = {}): P
     if (latestVersion) {
       results.push({
         packId: entry.id,
-        currentVersion: entry.version,
+        currentVersion: installedVersion,
         availableVersion: latestVersion,
         installedFrom: entry.installedFrom!,
       });
@@ -158,15 +158,13 @@ export async function checkForUpdates(options: { hostVersion?: string } = {}): P
 }
 
 export function getAvailableUpdates(): UpdateCheckResult[] {
-  const record = readInstalledPacks();
-  const entries = record.found ? record.packs : [];
-  return entries
-    .filter(e => e.availableVersion && e.installedFrom && isNewer(e.availableVersion, e.version))
-    .map(e => ({
-      packId: e.id,
-      currentVersion: e.version,
-      availableVersion: e.availableVersion!,
-      installedFrom: e.installedFrom!,
+  return installedPacks()
+    .filter(({ manifest, record }) => record.availableVersion && record.installedFrom && isNewer(record.availableVersion, manifest.version))
+    .map(({ manifest, record }) => ({
+      packId: record.id,
+      currentVersion: manifest.version,
+      availableVersion: record.availableVersion!,
+      installedFrom: record.installedFrom!,
     }));
 }
 

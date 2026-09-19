@@ -5,10 +5,11 @@ import { defineSystem } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
 import { emit } from '@abuddy/sdk/events';
 import { getAppVersion } from '@abuddy/sdk/env';
-import { readInstalledPacks, updateInstalledPacks, addInstalledPack, removeInstalledPack, type InstalledPack } from '../installed-packs.ts';
+import { updateInstalledPacks, addInstalledPack, removeInstalledPack, packRecord } from '../installed-packs.ts';
 import { installPack as runInstall, uninstallPack as runUninstall, installPackFromGitHub } from '../pack-installer.ts';
 import type { PackExtensions, PackInfo, PackRegistry } from '../pack-registration.ts';
 import { packFrontendFiles } from '../pack-layout.ts';
+import { installedPacks, type InstalledPack } from '../pack-discovery.ts';
 import { checkForUpdates } from '../pack-updater.ts';
 import { teardownPack, activatePack } from './lifecycle.ts';
 import { activationProblem } from './activation-outcome.ts';
@@ -93,28 +94,27 @@ function mergeExtensions(base: Omit<PackInfo, keyof PackExtensions>, contrib: Pa
   };
 }
 
-function toExternalPackInfoList(registry: PackRegistry, entries: InstalledPack[]): PackInfo[] {
-  return entries.map(e => {
-    const manifest = readManifest(e.dir);
-    const entities = manifest?.entities ?? {};
-    const contrib = registry.getPackExtensions(e.id);
+function toExternalPackInfoList(registry: PackRegistry, packs: InstalledPack[]): PackInfo[] {
+  return packs.map(({ manifest, dir, record }) => {
+    const entities = manifest.entities ?? {};
+    const contrib = registry.getPackExtensions(record.id);
     return mergeExtensions({
-      id: e.id,
-      name: e.name,
-      version: e.version,
-      enabled: e.enabled,
+      id: record.id,
+      name: manifest.name,
+      version: manifest.version,
+      enabled: record.enabled,
       builtIn: false,
       entityCount: Object.keys(entities).length,
-      hasFrontend: !!packFrontendFiles(e.dir).entry,
-      hostVersion: manifest?.hostVersion,
-      description: manifest?.description,
+      hasFrontend: !!packFrontendFiles(dir).entry,
+      hostVersion: manifest.hostVersion,
+      description: manifest.description,
       entities,
-      permissions: manifest?.permissions ?? [],
-      dir: e.dir,
-      installedAt: e.installedAt,
-      installedFrom: e.installedFrom,
-      availableVersion: e.availableVersion,
-      updateCheckError: e.updateCheckError,
+      permissions: manifest.permissions ?? [],
+      dir,
+      installedAt: record.installedAt,
+      installedFrom: record.installedFrom,
+      availableVersion: record.availableVersion,
+      updateCheckError: record.updateCheckError,
     }, contrib);
   });
 }
@@ -140,8 +140,7 @@ function toBuiltInPackInfoList(registry: PackRegistry): PackInfo[] {
 }
 
 function emitPacksList(registry: PackRegistry, system: any) {
-  const record = readInstalledPacks();
-  const external = toExternalPackInfoList(registry, record.found ? record.packs : []);
+  const external = toExternalPackInfoList(registry, installedPacks());
   const builtIn = toBuiltInPackInfoList(registry);
   system.get(bus).send(emit(packs, { type: 'PACKS_LIST' as const, packs: [...builtIn, ...external] }));
 }
@@ -168,10 +167,8 @@ export function createPacksSystem(registry: PackRegistry) {
         runInstall(packSlug, ev.source, undefined, { hostVersion: getAppVersion() }).then(result => {
           updateInstalledPacks(entries => addInstalledPack(entries, {
             id: result.id,
-            name: result.name,
-            version: result.version,
-            dir: result.dir,
             enabled: true,
+            installedAt: new Date().toISOString(),
             installedFrom: isGitHub ? packSlug : undefined,
           }));
 
@@ -260,9 +257,8 @@ export function createPacksSystem(registry: PackRegistry) {
       updatePack: ({ system, event }) => {
         const ev = packsSpec.typeOf('UPDATE_PACK', event);
         const packId = ev.packId;
-        const record = readInstalledPacks();
-        const entry = record.found ? record.packs.find(e => e.id === packId) : undefined;
-        if (!entry?.installedFrom) {
+        const entry = packRecord(packId);
+        if (!entry.installedFrom) {
           system.get(bus).send(emit(packs, {
             type: 'PACK_UPDATE_FAILED' as const,
             packId,
@@ -357,12 +353,12 @@ export function createPacksSystem(registry: PackRegistry) {
           return;
         }
 
-        const record = readInstalledPacks();
-        const entry = record.found ? record.packs.find(e => e.id === packId) : undefined;
-        if (!entry) {
+        const installed = installedPacks().find(p => p.record.id === packId);
+        if (!installed) {
           console.warn(`[packs] Pack not found: ${packId}`);
           return;
         }
+        const entry = installed.record;
         const newEnabled = !entry.enabled;
 
         if (!newEnabled) {

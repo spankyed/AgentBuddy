@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { createLogger } from '@abuddy/sdk/logger';
 import { PACK_LAYOUT } from '../pack-layout.ts';
-import { updateInstalledPacks } from '../installed-packs.ts';
+import { addInstalledPack, updateInstalledPacks } from '../installed-packs.ts';
 import type { LoadedPack } from './loaded-packs.ts';
 import type { PackSeedManifest } from '@abuddy/sdk/framework';
 import { seedPath } from '@abuddy/sdk/build';
@@ -45,26 +45,30 @@ function seedErrors(result: Record<string, { errors?: string[] }> | undefined): 
   return Object.entries(result ?? {}).flatMap(([key, counts]) => (counts?.errors ?? []).map(e => `${key}: ${e}`));
 }
 
-/** Record each seeded pack's outcome on its installed-packs entry (the pack install state owner). */
+/**
+ * Records what each seeded pack's seed came to.
+ *
+ * A row appears only when there is something to say: a pack that seeded cleanly and has no row keeps
+ * none, and one whose row carries an error from before has it cleared.
+ */
 function recordSeedOutcome(outcomes: Map<string, string | undefined>): void {
   if (outcomes.size === 0) return;
   try {
-    const recorded = new Set<string>();
-    updateInstalledPacks(entries => entries.map(e => {
-      if (!outcomes.has(e.id)) return e;
-      recorded.add(e.id);
-      const lastError = outcomes.get(e.id);
-      const { lastError: _previous, ...rest } = e;
-      return lastError ? { ...rest, lastError } : rest;
-    }));
-    // Every pack has an entry by the time it seeds — installed, reconciled at boot, or recorded by the
-    // reload that loaded it. One that doesn't would have its failure written to an entry that isn't there,
-    // which a map does by doing nothing at all.
-    for (const [packId, error] of outcomes) {
-      if (error && !recorded.has(packId)) {
-        logger.warn(`Pack ${packId} has no installed packs entry, so its seed failure is only in this log:\n  ${error}`);
+    updateInstalledPacks(entries => {
+      let next = entries;
+      for (const [packId, lastError] of outcomes) {
+        const existing = next.find(e => e.id === packId);
+        if (!lastError) {
+          if (existing?.lastError) {
+            const { lastError: _cleared, ...rest } = existing;
+            next = addInstalledPack(next, rest);
+          }
+          continue;
+        }
+        next = addInstalledPack(next, { ...(existing ?? { id: packId, enabled: true }), lastError });
       }
-    }
+      return next;
+    });
   } catch (err) {
     logger.warn('Failed to record pack seed outcome in the registry:', err as Error);
   }

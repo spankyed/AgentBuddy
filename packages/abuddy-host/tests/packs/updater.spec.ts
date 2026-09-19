@@ -145,11 +145,16 @@ describe('checkForUpdates', () => {
     fs.rmSync(userDataDir, { recursive: true, force: true });
   });
 
+  /** The pack on disk, which is what makes it installed and where its version comes from */
+  function installed(id: string, version: string) {
+    const dir = path.join(userDataDir, 'packs', id);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify({ id, name: id, version }));
+  }
+
   it('checks every time, replacing what an earlier check recorded', async () => {
-    writeInstalledPacks([{
-      id: 'demo-pack', name: 'Demo', version: '1.0.0', dir: '/packs/demo-pack', enabled: true, installedAt: '', installedFrom: 'acme/pack',
-      availableVersion: '1.5.0', availableTag: 'v1.5.0',
-    }]);
+    installed('demo-pack', '1.0.0');
+    writeInstalledPacks([{ id: 'demo-pack', enabled: true, installedFrom: 'acme/pack', availableVersion: '1.5.0', availableTag: 'v1.5.0' }]);
     vi.stubGlobal('fetch', vi.fn(async (url: string) => url.startsWith('https://api.github.com/')
       ? new Response(JSON.stringify([{ tag_name: 'v1.2.0' }]), { status: 200 })
       : new Response(JSON.stringify({ hostVersion: '>=0.4.0' }), { status: 200 })));
@@ -160,7 +165,8 @@ describe('checkForUpdates', () => {
   });
 
   it("says so when every newer release needs a newer AgentBuddy", async () => {
-    writeInstalledPacks([{ id: 'demo-pack', name: 'Demo', version: '1.0.0', dir: '/packs/demo-pack', enabled: true, installedAt: '', installedFrom: 'acme/pack' }]);
+    installed('demo-pack', '1.0.0');
+    writeInstalledPacks([{ id: 'demo-pack', enabled: true, installedFrom: 'acme/pack' }]);
     vi.stubGlobal('fetch', vi.fn(async (url: string) => url.startsWith('https://api.github.com/')
       ? new Response(JSON.stringify([{ tag_name: 'v2.0.0' }, { tag_name: 'v1.9.0' }]), { status: 200 })
       : new Response(JSON.stringify({ hostVersion: '>=9.0.0' }), { status: 200 })));
@@ -171,7 +177,8 @@ describe('checkForUpdates', () => {
   });
 
   it('records why a check failed and checks again next time', async () => {
-    writeInstalledPacks([{ id: 'demo-pack', name: 'Demo', version: '1.0.0', dir: '/packs/demo-pack', enabled: true, installedAt: '', installedFrom: 'acme/pack' }]);
+    installed('demo-pack', '1.0.0');
+    writeInstalledPacks([{ id: 'demo-pack', enabled: true, installedFrom: 'acme/pack' }]);
     vi.stubGlobal('fetch', vi.fn(async () => new Response('limited', { status: 429, headers: { 'x-ratelimit-remaining': '0' } })));
 
     expect(await checkForUpdates({ hostVersion: '0.4.0' })).toEqual([]);
@@ -180,7 +187,8 @@ describe('checkForUpdates', () => {
   });
 
   it('records a release whose compatibility could not be confirmed', async () => {
-    writeInstalledPacks([{ id: 'demo-pack', name: 'Demo', version: '1.0.0', dir: '/packs/demo-pack', enabled: true, installedAt: '', installedFrom: 'acme/pack' }]);
+    installed('demo-pack', '1.0.0');
+    writeInstalledPacks([{ id: 'demo-pack', enabled: true, installedFrom: 'acme/pack' }]);
     vi.stubGlobal('fetch', vi.fn(async (url: string) => url.startsWith('https://api.github.com/')
       ? new Response(JSON.stringify([{ tag_name: 'v1.2.0' }]), { status: 200 })
       : new Response('Not Found', { status: 404 })));

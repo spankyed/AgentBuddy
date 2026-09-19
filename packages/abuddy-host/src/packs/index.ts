@@ -7,16 +7,16 @@ export { withModuleBridge } from './module-bridge.ts';
 
 // Discovery
 export {
-  discoverBuiltInPacks, discoverPacks, reconcileInstalledPacks,
+  discoverBuiltInPacks, discoverPacks, enabledExternalPacks, installedPacks,
 } from './pack-discovery.ts';
-export type { BuiltInPackInfo, PackManifest } from './pack-discovery.ts';
+export type { BuiltInPackInfo, DiscoveredPack, InstalledPack, PackManifest } from './pack-discovery.ts';
 
 // Installed packs (JSON file CRUD)
 export {
   readInstalledPacks, updateInstalledPacks,
   addInstalledPack, removeInstalledPack,
 } from './installed-packs.ts';
-export type { InstalledPack, InstalledPacksRecord } from './installed-packs.ts';
+export type { PackRecord, InstalledPacksRecord } from './installed-packs.ts';
 
 // Installer
 export {

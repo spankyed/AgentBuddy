@@ -4,6 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { createActor, setup, type AnyEventObject } from 'xstate';
 import { bus } from '@abuddy/sdk/ids';
+import { resolveAppContext } from '@abuddy/sdk/env';
 import { registry } from './test-host.ts';
 import { createPacksSystem, packs } from '../../../src/packs/runtime/packs-system.ts';
 import { activatePack } from '../../../src/packs/runtime/lifecycle.ts';
@@ -99,6 +100,28 @@ describe('a pack changing underneath the packs system', () => {
       system.send({ type: 'PACK_CHANGED', packId: 'anything' });
 
       expect(emitted(system.sent).map(e => e.type)).toEqual(['PACKS_LIST']);
+    } finally {
+      system.stop();
+    }
+  });
+});
+
+// The packs directory is what makes a pack installed. `abuddy install` and `abuddy dev` write it and
+// never installed-packs.json, so a pack with no row is the ordinary case, not a broken one.
+describe('a pack with nothing recorded about it', () => {
+  it('is listed, enabled', async () => {
+    const system = runPacksSystem();
+    try {
+      const { installPackFromLocal } = await import('../../../src/packs/pack-installer.ts');
+      await installPackFromLocal(packSource('1.0.0'));
+      expect(fs.existsSync(resolveAppContext({ env: 'test', userDataDir: tmpDir }).installedPacksFile)).toBe(false);
+
+      system.send({ type: 'GET_INSTALLED_PACKS' });
+
+      const list = emitted(system.sent).find(e => e.type === 'PACKS_LIST');
+      expect(list?.packs).toContainEqual(
+        expect.objectContaining({ id: PACK_ID, version: '1.0.0', enabled: true, builtIn: false }),
+      );
     } finally {
       system.stop();
     }

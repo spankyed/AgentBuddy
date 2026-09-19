@@ -2,7 +2,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { createLogger } from '@abuddy/sdk/logger';
-import { readInstalledPacks, writeInstalledPacks, addInstalledPack } from './installed-packs.ts';
+import { resolveAppContext } from '@abuddy/sdk/env';
+import { packRecord, packRecords, type PackRecord } from './installed-packs.ts';
 import type { PackManifest } from '@abuddy/sdk/build';
 
 const logger = createLogger('pack-discovery');
@@ -104,52 +105,19 @@ export function enabledExternalPacks(packsDir: string, disabled: ReadonlySet<str
   return discoverPacks(packsDir).filter(({ manifest }) => !disabled.has(manifest.id));
 }
 
-export function reconcileInstalledPacks(
-  discovered: { manifest: PackManifest; dir: string }[],
-): { manifest: PackManifest; dir: string }[] {
-  // With no readable record every pack in packs/ is added back enabled, any the user had disabled included.
-  // None of them is newly discovered, so they are reported once, together, rather than as fresh installs.
-  const record = readInstalledPacks();
-  const rebuilding = !record.found;
-  let installed = record.found ? record.packs : [];
-  let changed = false;
-
-  const discoveredById = new Map(discovered.map(d => [d.manifest.id, d]));
-
-  for (const { manifest, dir } of discovered) {
-    const existing = installed.find(e => e.id === manifest.id);
-    if (!existing) {
-      installed = addInstalledPack(installed, {
-        id: manifest.id,
-        name: manifest.name,
-        version: manifest.version,
-        dir,
-        enabled: true,
-      });
-      changed = true;
-      if (!rebuilding) logger.info(`New external pack discovered: ${manifest.id}`);
-    } else if (existing.version !== manifest.version || existing.dir !== dir) {
-      installed = addInstalledPack(installed, {
-        id: existing.id,
-        name: manifest.name,
-        version: manifest.version,
-        dir,
-        enabled: existing.enabled,
-      });
-      changed = true;
-    }
-  }
-
-  const before = installed.length;
-  installed = installed.filter(e => discoveredById.has(e.id));
-  if (installed.length !== before) changed = true;
-
-  if (rebuilding && installed.length > 0) {
-    const names = installed.map(e => e.id).join(', ');
-    logger.warn(`No record of installed packs: rebuilt it from the packs directory, and ${installed.length} pack(s) are enabled (${names}). A pack disabled before this is enabled again.`);
-  }
-  if (changed) writeInstalledPacks(installed);
-
-  const enabledIds = new Set(installed.filter(e => e.enabled).map(e => e.id));
-  return discovered.filter(d => enabledIds.has(d.manifest.id));
+/** A pack the app has: what its directory says, with what the app has recorded about it. */
+export interface InstalledPack extends DiscoveredPack {
+  record: PackRecord;
 }
+
+/**
+ * Every pack in the packs directory, enabled or not, with what the app has recorded about it.
+ *
+ * What the Packs view lists and what an install, update or toggle acts on. A pack with no row is here
+ * like any other: the directory is what makes it installed.
+ */
+export function installedPacks(packsDir = resolveAppContext().packsDir): InstalledPack[] {
+  const records = packRecords();
+  return discoverPacks(packsDir).map(pack => ({ ...pack, record: packRecord(pack.manifest.id, records) }));
+}
+

@@ -2,17 +2,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { discoverBuiltInPacks, enabledExternalPacks, reconcileInstalledPacks } from '../../src/packs/pack-discovery.ts';
-import { readInstalledPacks, writeInstalledPacks } from '../../src/packs/installed-packs.ts';
-
-/** The recorded packs; these specs always write a record first, so a missing one is a failure */
-function recordedPacks() {
-  const record = readInstalledPacks();
-  if (!record.found) throw new Error('no installed-packs record');
-  return record.packs;
-}
-
-import type { PackManifest } from '@abuddy/sdk/build';
+import { discoverBuiltInPacks, enabledExternalPacks, installedPacks } from '../../src/packs/pack-discovery.ts';
+import { writeInstalledPacks } from '../../src/packs/installed-packs.ts';
 
 let packagesDir: string;
 
@@ -56,6 +47,54 @@ describe('enabledExternalPacks', () => {
   });
 });
 
+describe('installedPacks', () => {
+  let userDataDir: string;
+  const env = { ABUDDY_ENV: process.env.ABUDDY_ENV, ABUDDY_USER_DATA_DIR: process.env.ABUDDY_USER_DATA_DIR };
+
+  beforeEach(() => {
+    userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'installed-packs-'));
+    process.env.ABUDDY_ENV = 'test';
+    process.env.ABUDDY_USER_DATA_DIR = userDataDir;
+  });
+  afterEach(() => {
+    for (const [key, value] of Object.entries(env)) {
+      if (value === undefined) delete process.env[key];
+      else process.env[key] = value;
+    }
+    fs.rmSync(userDataDir, { recursive: true, force: true });
+  });
+
+  function onDisk(id: string, version: string) {
+    const dir = path.join(userDataDir, 'packs', id);
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify({ id, name: id, version }));
+  }
+
+  it('reports a pack nothing has recorded anything about, enabled', () => {
+    onDisk('memo-pack', '1.0.0');
+
+    expect(installedPacks()).toMatchObject([
+      { manifest: { id: 'memo-pack', version: '1.0.0' }, record: { id: 'memo-pack', enabled: true } },
+    ]);
+  });
+
+  // The version lives in the pack's manifest and nowhere else, so an `abuddy install` outside the app —
+  // which writes the directory and never the record — cannot cost the pack the slug its updates come
+  // from. A record that copied the version had to be rewritten when it changed, and that rewrite is what
+  // used to take `installedFrom` with it.
+  it('keeps what only the record can say when the pack on disk changes version', () => {
+    onDisk('memo-pack', '1.0.0');
+    writeInstalledPacks([{ id: 'memo-pack', enabled: true, installedFrom: 'acme/memo-pack', installedAt: '2020-01-01T00:00:00.000Z' }]);
+
+    onDisk('memo-pack', '2.0.0');
+
+    expect(installedPacks()).toMatchObject([{
+      manifest: { version: '2.0.0' },
+      record: { installedFrom: 'acme/memo-pack', installedAt: '2020-01-01T00:00:00.000Z' },
+    }]);
+  });
+});
+
 describe('discoverBuiltInPacks', () => {
   it('finds a built-in pack in the packaged app layout (abuddy.json + dist, no src)', () => {
     const dir = writeManifest('default-setup', { id: 'default-setup', name: 'Default Setup', version: '1.2.3', builtIn: true });
@@ -70,58 +109,5 @@ describe('discoverBuiltInPacks', () => {
     fs.mkdirSync(path.join(packagesDir, 'api'));
 
     expect(discoverBuiltInPacks(packagesDir)).toEqual([]);
-  });
-});
-
-describe('reconcileInstalledPacks with no record', () => {
-  let userDataDir: string;
-  const env = { ABUDDY_ENV: process.env.ABUDDY_ENV, ABUDDY_USER_DATA_DIR: process.env.ABUDDY_USER_DATA_DIR };
-  const found = (id: string) => ({ manifest: { id, name: id, version: '1.0.0' } as PackManifest, dir: `/packs/${id}` });
-
-  beforeEach(() => {
-    userDataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'reconcile-'));
-    process.env.ABUDDY_ENV = 'test';
-    process.env.ABUDDY_USER_DATA_DIR = userDataDir;
-  });
-  afterEach(() => {
-    for (const [key, value] of Object.entries(env)) {
-      if (value === undefined) delete process.env[key];
-      else process.env[key] = value;
-    }
-    fs.rmSync(userDataDir, { recursive: true, force: true });
-  });
-
-  // Without a record every pack in packs/ comes back enabled, a pack the user disabled included. That
-  // follows from having nothing to read, but reporting it per pack as "New external pack discovered" would
-  // describe a fresh install of each. One warning says what happened, and names the packs it re-enabled.
-  it('rebuilds the record with every pack enabled, and says so once', () => {
-    // Every channel, not just warn: the per-pack line this replaces is logged at info level
-    const lines: string[] = [];
-    const real = { log: console.log, info: console.info, warn: console.warn, error: console.error };
-    const capture = (...args: unknown[]) => { lines.push(args.map(String).join(' ')); };
-    Object.assign(console, { log: capture, info: capture, warn: capture, error: capture });
-    try {
-      expect(reconcileInstalledPacks([found('memo-pack'), found('scribble-pack')]).map(d => d.manifest.id))
-        .toEqual(['memo-pack', 'scribble-pack']);
-    } finally {
-      Object.assign(console, real);
-    }
-
-    expect(recordedPacks().map(e => [e.id, e.enabled])).toEqual([['memo-pack', true], ['scribble-pack', true]]);
-    const rebuilt = lines.filter(w => w.includes('No record of installed packs'));
-    expect(rebuilt).toHaveLength(1);
-    expect(rebuilt[0]).toContain('memo-pack, scribble-pack');
-    expect(rebuilt[0]).toContain('A pack disabled before this is enabled again.');
-    expect(lines.filter(w => w.includes('New external pack discovered'))).toEqual([]);
-  });
-
-  it('keeps a disabled pack disabled once the record exists, and reports a genuinely new one', () => {
-    writeInstalledPacks([
-      { id: 'memo-pack', name: 'memo-pack', version: '1.0.0', dir: '/packs/memo-pack', enabled: false, installedAt: '' },
-    ]);
-
-    expect(reconcileInstalledPacks([found('memo-pack'), found('scribble-pack')]).map(d => d.manifest.id))
-      .toEqual(['scribble-pack']);
-    expect(recordedPacks().find(e => e.id === 'memo-pack')?.enabled).toBe(false);
   });
 });
