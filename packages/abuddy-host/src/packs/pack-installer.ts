@@ -211,7 +211,7 @@ async function installFromDirectory(dir: string, packsDir: string, options: Inst
 
   try {
     if (!isPackLayout(layoutDir)) {
-      throw new Error(`Pack ${manifestSource.id} is not built: ${dir} has no ${PACK_LAYOUT.info} and no dist/${PACK_LAYOUT.runtimeEntry} with dist/${PACK_LAYOUT.snapshot}. Run "abuddy build" first.`);
+      throw new Error(`Pack ${manifestSource.id} is not built: ${dir} has no ${PACK_LAYOUT.integrity} and no dist/${PACK_LAYOUT.runtimeEntry} with dist/${PACK_LAYOUT.snapshot}. Run "abuddy build" first.`);
     }
     const integrity = verifyPack(layoutDir);
 

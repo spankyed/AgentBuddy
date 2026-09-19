@@ -56,7 +56,7 @@ const BUILT_IN_SNAPSHOT = 'snapshot.json';
 /**
  * Removes the previous build's output before anything can fail, so a failed build or a dropped
  * output never leaves an older file behind.
- * - External packs build into the bundle layout (runtime/, build/, types/); dist/ is pure output,
+ * - External packs build into the pack layout (runtime/, build/, types/); dist/ is pure output,
  *   cleared whole, so `abuddy pack` and the test fixture never ship an older build.
  * - Built-in packs keep their in-repo layout, where the pack's runtime build writes runtime/ too. Only
  *   this build's output goes: the compiled seeds, build/, types/, defs/ and snapshot. The runtime records

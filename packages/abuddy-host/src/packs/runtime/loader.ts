@@ -163,7 +163,7 @@ export function loadSingleExternalPack(
 
   const runtimeEntry = path.join(dir, PACK_LAYOUT.runtimeEntry);
   if (!isPackLayout(dir) || !fs.existsSync(runtimeEntry)) {
-    logger.warn(`Skipping ${manifest.id}: ${dir} isn't an installed pack (no ${PACK_LAYOUT.info} or ${PACK_LAYOUT.runtimeEntry}). Install it with abuddy install or abuddy dev`);
+    logger.warn(`Skipping ${manifest.id}: ${dir} isn't an installed pack (no ${PACK_LAYOUT.integrity} or ${PACK_LAYOUT.runtimeEntry}). Install it with abuddy install or abuddy dev`);
     return null;
   }
   try {
@@ -173,7 +173,7 @@ export function loadSingleExternalPack(
       return null;
     }
   } catch (err) {
-    logger.warn(`Skipping ${manifest.id}: unreadable ${PACK_LAYOUT.info}`, err as Error);
+    logger.warn(`Skipping ${manifest.id}: unreadable ${PACK_LAYOUT.integrity}`, err as Error);
     return null;
   }
 

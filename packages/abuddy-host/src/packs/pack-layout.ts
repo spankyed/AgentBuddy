@@ -1,5 +1,5 @@
 /**
- * Pack bundle: the one layout an external pack has everywhere — build output
+ * Pack layout: the one layout an external pack has everywhere — build output
  * (dist/), the release archive, and the installed pack directory.
  *
  *   <id>/abuddy.json            the pack's manifest
@@ -25,7 +25,7 @@ export const PACK_LAYOUT_VERSION = 1;
 
 export const PACK_LAYOUT = {
   manifest: 'abuddy.json',
-  info: 'integrity.json',
+  integrity: 'integrity.json',
   runtimeDir: 'runtime',
   runtimeEntry: 'runtime/index.cjs',
   feEntry: 'runtime/fe.js',
@@ -37,7 +37,7 @@ export const PACK_LAYOUT = {
   snapshot: 'types/snapshot.json',
 } as const;
 
-/** Sections `abuddy build` writes into dist/ and staging copies into the bundle. */
+/** Sections `abuddy build` writes into dist/ and staging copies into the staged pack. */
 const SECTIONS = [PACK_LAYOUT.runtimeDir, PACK_LAYOUT.buildDir, PACK_LAYOUT.typesDir];
 
 export interface PackIntegrity {
@@ -47,7 +47,7 @@ export interface PackIntegrity {
   hostVersion?: string;
   sdkVersion?: string;
   source?: { repo?: string; commit?: string };
-  /** sha256 of every file in the bundle except integrity.json, keyed by bundle-relative path. */
+  /** sha256 of every file in the pack except integrity.json, keyed by pack-relative path. */
   files: Record<string, string>;
 }
 
@@ -67,10 +67,10 @@ function listFiles(dir: string, base = dir): string[] {
 }
 
 export function isPackLayout(dir: string): boolean {
-  return fs.existsSync(path.join(dir, PACK_LAYOUT.info));
+  return fs.existsSync(path.join(dir, PACK_LAYOUT.integrity));
 }
 
-/** Whether a pack source directory has been built in the bundle layout. */
+/** Whether a pack source directory has been built in the pack layout. */
 export function hasBuiltPackSections(packRoot: string): boolean {
   const dist = path.join(packRoot, 'dist');
   return fs.existsSync(path.join(dist, PACK_LAYOUT.runtimeEntry)) && fs.existsSync(path.join(dist, PACK_LAYOUT.snapshot));
@@ -82,15 +82,15 @@ export interface LoadedPackEntry {
   name: string;
   version: string;
   builtIn?: boolean;
-  /** The bundle's runtime/fe.js, when it has one */
+  /** The pack's runtime/fe.js, when it has one */
   feEntry?: string;
-  /** The bundle's runtime/fe.css, when it has one */
+  /** The pack's runtime/fe.css, when it has one */
   feStyles?: string;
 }
 
-/** A bundle's frontend files, bundle-relative: its FE entry and stylesheet when `abuddy build` wrote them */
-export function packFrontendFiles(bundleDir: string): { entry?: string; styles?: string } {
-  const has = (file: string) => fs.existsSync(path.join(bundleDir, file));
+/** A pack's frontend files, pack-relative: its FE entry and stylesheet when `abuddy build` wrote them */
+export function packFrontendFiles(layoutDir: string): { entry?: string; styles?: string } {
+  const has = (file: string) => fs.existsSync(path.join(layoutDir, file));
   return {
     entry: has(PACK_LAYOUT.feEntry) ? PACK_LAYOUT.feEntry : undefined,
     styles: has(PACK_LAYOUT.feStyles) ? PACK_LAYOUT.feStyles : undefined,
@@ -98,8 +98,8 @@ export function packFrontendFiles(bundleDir: string): { entry?: string; styles?:
 }
 
 /**
- * Assemble a bundle directory from a built pack. Throws if the pack hasn't been
- * built in the bundle layout. Source maps stay out of bundles.
+ * Assemble a staged pack directory from a built pack. Throws if the pack hasn't been
+ * built in the pack layout. Source maps stay out of staged packs.
  */
 export function stagePack(
   packRoot: string,
@@ -128,10 +128,10 @@ export function stagePack(
 
   const files: Record<string, string> = {};
   for (const rel of listFiles(stageDir)) {
-    if (rel === PACK_LAYOUT.info) continue;
+    if (rel === PACK_LAYOUT.integrity) continue;
     files[rel] = sha256File(path.join(stageDir, rel));
   }
-  const info: PackIntegrity = {
+  const integrity: PackIntegrity = {
     formatVersion: PACK_LAYOUT_VERSION,
     id: manifest.id,
     version: manifest.version,
@@ -140,8 +140,8 @@ export function stagePack(
     source: options.source,
     files,
   };
-  fs.writeFileSync(path.join(stageDir, PACK_LAYOUT.info), JSON.stringify(info, null, 2) + '\n');
-  return info;
+  fs.writeFileSync(path.join(stageDir, PACK_LAYOUT.integrity), JSON.stringify(integrity, null, 2) + '\n');
+  return integrity;
 }
 
 /**
@@ -160,29 +160,29 @@ export function pruneHostPackOutputs(hostPacksDir: string, keep: Iterable<string
 }
 
 export function readPackIntegrity(dir: string): PackIntegrity {
-  const infoPath = path.join(dir, PACK_LAYOUT.info);
-  if (!fs.existsSync(infoPath)) throw new Error(`Not a pack bundle: no ${PACK_LAYOUT.info} in ${dir}`);
-  return JSON.parse(fs.readFileSync(infoPath, 'utf-8'));
+  const integrityPath = path.join(dir, PACK_LAYOUT.integrity);
+  if (!fs.existsSync(integrityPath)) throw new Error(`Not a pack layout: no ${PACK_LAYOUT.integrity} in ${dir}`);
+  return JSON.parse(fs.readFileSync(integrityPath, 'utf-8'));
 }
 
 /** Check format version and that the files on disk are exactly the ones recorded. */
 export function verifyPack(dir: string): PackIntegrity {
-  const info = readPackIntegrity(dir);
-  if (Math.floor(info.formatVersion) !== PACK_LAYOUT_VERSION) {
-    throw new Error(`Pack bundle ${info.id} uses format ${info.formatVersion}; this host supports format ${PACK_LAYOUT_VERSION}. Update AgentBuddy or rebuild the pack.`);
+  const integrity = readPackIntegrity(dir);
+  if (Math.floor(integrity.formatVersion) !== PACK_LAYOUT_VERSION) {
+    throw new Error(`Pack ${integrity.id} uses format ${integrity.formatVersion}; this host supports format ${PACK_LAYOUT_VERSION}. Update AgentBuddy or rebuild the pack.`);
   }
   const problems: string[] = [];
-  const onDisk = new Set(listFiles(dir).filter(f => f !== PACK_LAYOUT.info));
-  for (const [rel, expected] of Object.entries(info.files)) {
+  const onDisk = new Set(listFiles(dir).filter(f => f !== PACK_LAYOUT.integrity));
+  for (const [rel, expected] of Object.entries(integrity.files)) {
     if (!onDisk.has(rel)) problems.push(`missing ${rel}`);
     else if (sha256File(path.join(dir, rel)) !== expected) problems.push(`checksum mismatch ${rel}`);
     onDisk.delete(rel);
   }
   for (const extra of onDisk) problems.push(`unexpected ${extra}`);
   if (problems.length > 0) {
-    throw new Error(`Pack bundle ${info.id}@${info.version} failed verification:\n${problems.map(p => `  - ${p}`).join('\n')}`);
+    throw new Error(`Pack ${integrity.id}@${integrity.version} failed verification:\n${problems.map(p => `  - ${p}`).join('\n')}`);
   }
-  return info;
+  return integrity;
 }
 
 export function packArchiveName(id: string, version: string): string {
@@ -191,11 +191,11 @@ export function packArchiveName(id: string, version: string): string {
 
 /** Write <outDir>/<id>-<version>.tgz (entries prefixed with <id>/) and its .sha256 file. */
 export async function createPackArchive(stageDir: string, outDir: string): Promise<{ file: string; sha256: string; checksumFile: string }> {
-  const info = readPackIntegrity(stageDir);
+  const integrity = readPackIntegrity(stageDir);
   fs.mkdirSync(outDir, { recursive: true });
-  const file = path.join(outDir, packArchiveName(info.id, info.version));
+  const file = path.join(outDir, packArchiveName(integrity.id, integrity.version));
   // Reproducible archives: no uid/gid or mtimes
-  await tar.create({ gzip: true, file, cwd: stageDir, prefix: info.id, portable: true, noMtime: true }, fs.readdirSync(stageDir).sort());
+  await tar.create({ gzip: true, file, cwd: stageDir, prefix: integrity.id, portable: true, noMtime: true }, fs.readdirSync(stageDir).sort());
   const sha256 = sha256File(file);
   const checksumFile = `${file}.sha256`;
   fs.writeFileSync(checksumFile, `${sha256}  ${path.basename(file)}\n`);
@@ -210,7 +210,7 @@ export function assertChecksum(file: string, expected: string): void {
   }
 }
 
-/** Extract a bundle archive into destDir/<id>/ and return that directory. */
+/** Extract a pack archive into destDir/<id>/ and return that directory. */
 export async function extractPackArchive(archive: string, destDir: string, expectedSha256?: string): Promise<string> {
   if (expectedSha256) assertChecksum(archive, expectedSha256);
   fs.mkdirSync(destDir, { recursive: true });
@@ -238,7 +238,7 @@ function builtInSeedFiles(distDir: string): string[] {
 const BUILT_IN_RUNTIME_SEEDS_HASH = 'runtime/seeds-index.sha256';
 
 /**
- * Publish a built-in pack's build output in the bundle layout (dist/snapshot.json → types/snapshot.json,
+ * Publish a built-in pack's build output in the pack layout (dist/snapshot.json → types/snapshot.json,
  * dist/build/ → build/, dist/runtime/index.cjs → runtime/index.cjs, compiled seeds → runtime/seeds/) so
  * pack authors resolve it as a dependency from the installed app: builds use its types and build
  * code, tests its runtime with the seed data it reads (settings defaults). Returns false when the
