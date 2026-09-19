@@ -337,6 +337,26 @@ export function createTest(options: CreateTestOptions = {}) {
         }, null, { timeout: 10_000 });
       }
 
+      /**
+       * Every send the bus dropped during the test, collected from the app's own SYSTEM_ERROR events.
+       *
+       * A send to a plugin nobody declares is the failure the outgoing check exists to catch, and it is
+       * reported quietly (`diagnostic`, so it raises no toast) — which means without this it would sit
+       * in the log and fail nothing. `takeSystemErrors()` does the same job for unit tests; this is its
+       * counterpart for a running app, and it found a real one the first time it ran: the settings
+       * system treated `_meta`, the reserved key for plugin visibility, as a plugin id.
+       */
+      await page.evaluate(() => {
+        const win = window as any;
+        if (win.__droppedSends) return;
+        win.__droppedSends = [];
+        win.applicationState?.system?.inspect?.((inspection: any) => {
+          const event = inspection?.event;
+          if (inspection?.type !== '@xstate.event' || event?.type !== 'SYSTEM_ERROR') return;
+          if (event.operation === 'sendToPlugin') win.__droppedSends.push(String(event.message ?? ''));
+        });
+      });
+
       if (process.env.PACK_DIR) {
         const manifest = getPackManifest();
         // Seeding runs before the backend accepts connections, so its outcome is final by now
@@ -362,6 +382,17 @@ export function createTest(options: CreateTestOptions = {}) {
 
       page.removeListener('pageerror', onPageError);
       page.removeListener('console', onConsole);
+
+      // Read after the test rather than during it, so a drop fails the test that caused it. A page that
+      // navigated away loses the collector, which is a miss rather than a false alarm.
+      const dropped: string[] = await page.evaluate(() => (window as any).__droppedSends ?? []).catch(() => []);
+      if (dropped.length > 0) {
+        throw describeFailure(
+          `The bus dropped ${dropped.length} send(s) to plugins during this test:\n  ${[...new Set(dropped)].join('\n  ')}`,
+          electronApp,
+          rendererErrors,
+        );
+      }
     },
 
     app: async ({ appPage: page }, use) => {

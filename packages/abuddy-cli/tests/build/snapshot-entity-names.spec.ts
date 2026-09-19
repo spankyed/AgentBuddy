@@ -40,16 +40,31 @@ describe('a built pack\'s snapshot', () => {
     }
   });
 
+  /**
+   * Surfacing an inherited name is half of it; saying who declares it is the other half, and the half a
+   * dependent of two packs sharing an ancestor depends on. The diamond spec proves the mechanism on
+   * synthetic packs; this proves the real graph's snapshot carries it — written by the same
+   * `abuddy build` a pack author runs.
+   */
+  it.skipIf(!fixtureBuilt || !built)("attributes an inherited entity to the pack that declares it, not the one it arrived through", () => {
+    const declared = Object.keys(JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages/default-setup/abuddy.json'), 'utf-8')).entities ?? {});
+    const recorded = JSON.parse(fs.readFileSync(snapshotFile(fixture)!, 'utf-8')).provenance?.entities ?? {};
+    expect(declared.length).toBeGreaterThan(0);
+    for (const name of declared) {
+      expect(recorded[name], `${fixture} attributes ${name}`).toBe('default-setup');
+    }
+  });
+
   // Plugins travel the same way, for the diagnostic rather than for resolution: a pack depending on
   // the fixture can't send to a default-setup plugin, and this is what lets the build say which pack
   // to depend on instead of reporting the plugin as unknown.
   it.skipIf(!fixtureBuilt || !built)('records its dependencies\' plugins, with the pack owning each', () => {
     const dependency = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'packages/default-setup/abuddy.json'), 'utf-8'));
     const owned = (dependency.features ?? []).filter((f: { plugin?: unknown }) => f.plugin).map((f: { id: string }) => f.id);
-    const recorded = JSON.parse(fs.readFileSync(snapshotFile(fixture)!, 'utf-8')).dependencyPlugins ?? [];
+    const recorded = JSON.parse(fs.readFileSync(snapshotFile(fixture)!, 'utf-8')).provenance?.plugins ?? {};
     expect(owned.length).toBeGreaterThan(0);
     for (const id of owned) {
-      expect(recorded, `${fixture} records ${id}`).toContainEqual({ id, packId: 'default-setup' });
+      expect(recorded[id], `${fixture} records ${id}`).toBe('default-setup');
     }
   });
 

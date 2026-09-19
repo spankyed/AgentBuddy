@@ -7,8 +7,7 @@ import {
   PACK_TYPES_DEF,
   entitiesWithoutShapes,
   SEED_COMPILERS_FILE,
-  _dependencyCommands,
-  _dependencyPlugins,
+  _buildProvenance,
   PACK_TYPES_FORMAT,
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type SeedDependency,
 } from '@abuddy/sdk/build';
@@ -96,9 +95,9 @@ export async function build(args: string[]) {
   clearBuildOutput(outputDir, { builtIn: !external });
 
   if (!args.includes('--skip-generate')) {
-    const { depTypes, depSnapshots } = await resolveDeps(root, manifest.dependencies);
+    const { depTypes, depSnapshots, depSources } = await resolveDeps(root, manifest.dependencies);
     await generate([], undefined, depSnapshots);
-    await generateEntries([], undefined, depTypes, depSnapshots);
+    await generateEntries([], undefined, depTypes, depSnapshots, depSources);
   }
 
   const settingsProblems = await featureSettingsProblems(root, manifest.features ?? []);
@@ -191,18 +190,6 @@ export async function build(args: string[]) {
     entities: Object.assign({}, ...depTypeManifests.map((t) => t.entities ?? {}), manifest.entities ?? {}),
     relKinds: Object.assign({}, ...depTypeManifests.map((t) => t.relKinds ?? {}), manifest.relKinds ?? {}),
   };
-  // And who declares each of them. A dependent of two packs that share an ancestor receives the
-  // ancestor's names through both; without an owner it reads that as two packs declaring the same
-  // entity. Every pack depends on the base pack, so that is every diamond.
-  const ownerOf = (kind: 'entities' | 'relKinds'): Record<string, string> => Object.assign(
-    {},
-    ...[...depSnapshots].map(([depId, snap]) => Object.fromEntries(
-      Object.keys(snap.types[kind] ?? {}).map((name) => [name, snap.typeOwners?.[kind]?.[name] ?? depId]),
-    )),
-    Object.fromEntries(Object.keys(manifest[kind] ?? {}).map((name) => [name, manifest.id])),
-  );
-  const typeOwners = { entities: ownerOf('entities'), relKinds: ownerOf('relKinds') };
-
   // Facade types for dependents: they import this pack's entity shapes, events, services and repositories
   const defs: Record<string, string> = {};
   const packTypesFile = path.join(outputDir, BUNDLE_PATHS.typesDir, `${PACK_TYPES_DEF}.d.ts`);
@@ -219,17 +206,20 @@ export async function build(args: string[]) {
   // Flow helpers for dependents: their generated flow helpers re-export this pack's
   const flowHelpers = await bundlePackFlowHelpers(root, path.join(outputDir, BUNDLE_PATHS.typesDir), { release });
   if (!flowHelpers.success) fail(`Flow helpers bundle failed: ${flowHelpers.error}`);
-  // Dependents check their commands against this pack's whole dependency tree through it
-  const depCommands = _dependencyCommands([...depSnapshots]);
-  // And their plugins the same way, so a dependent naming one this pack only reaches transitively is
-  // told which pack to depend on rather than that the plugin doesn't exist
-  const depPlugins = _dependencyPlugins([...depSnapshots]);
+  /**
+   * What this pack's whole tree declares, and which pack declares each name.
+   *
+   * A dependent sees only its direct dependencies' snapshots, so this has to carry the tree rather
+   * than just this pack: a dependent of two packs sharing an ancestor receives the ancestor's names
+   * through both, and without knowing who declares them reads that as a collision. Every pack depends
+   * on the base pack, so that is every diamond. It is also what lets a dependent naming a plugin it
+   * only reaches transitively be told which pack to depend on, rather than that the plugin is unknown.
+   */
+  const provenance = _buildProvenance([...depSnapshots], { id: manifest.id, manifest });
   const snapshot: PackSnapshot = {
     types, defs, manifest, sdkVersion: sdkVersion(), typesFormat: PACK_TYPES_FORMAT,
-    typeOwners,
+    ...(Object.keys(provenance).length > 0 && { provenance }),
     ...(flowHelpers.success && { flowHelpers: flowHelpers.flowHelpers }),
-    ...(depCommands.length > 0 && { dependencyCommands: depCommands }),
-    ...(depPlugins.length > 0 && { dependencyPlugins: depPlugins }),
   };
   const finish = () => {
     if (failures.length > 0) {

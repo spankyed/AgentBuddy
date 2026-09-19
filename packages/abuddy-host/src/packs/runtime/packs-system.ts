@@ -40,6 +40,34 @@ type OutgoingPacksEvents =
 export const packsSpec = defineSystem('packs')<IncomingPacksEvents, OutgoingPacksEvents>();
 export const packs = packsSpec.id;
 
+/**
+ * The event types the `packs` plugin receives, as a value the app can check a send against — the same
+ * problem `HOST_PLUGIN_EVENT_TYPES` solves for `application`, and solved here because the union lives
+ * here. It is registered with `registerHostPlugin`, not added to `HostPluginEvents`, because that map
+ * is what a pack may name in `sendsTo`: these are the host's to send, and no pack's.
+ *
+ * The check below fails to compile when the two drift, so adding an outgoing event without listing it
+ * here is not possible.
+ */
+export const PACKS_PLUGIN_EVENT_TYPES = [
+  'PACKS_LIST',
+  'PACK_INSTALL_STARTED',
+  'PACK_INSTALL_COMPLETE',
+  'PACK_INSTALL_FAILED',
+  'PACK_UNINSTALL_COMPLETE',
+  'PACK_UNINSTALL_FAILED',
+  'PACK_ENABLED_CHANGED',
+  'PACK_ACTIVATED',
+  'PACK_DEACTIVATED',
+  'PACK_UPDATE_COMPLETE',
+  'PACK_UPDATE_FAILED',
+] as const;
+
+type SameMembers<A extends string, B extends string> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
+type TypeOfEvent<T> = T extends { type: infer K extends string } ? K : never;
+const _packsPluginEventTypesMatch: SameMembers<(typeof PACKS_PLUGIN_EVENT_TYPES)[number], TypeOfEvent<OutgoingPacksEvents>> = true;
+void _packsPluginEventTypesMatch;
+
 function readManifest(dir: string): Record<string, any> | null {
   try {
     const manifestPath = path.join(dir, 'abuddy.json');
@@ -286,6 +314,9 @@ export function createPacksSystem(registry: PackRegistry) {
           }));
           emitPacksList(registry, system);
         }).finally(() => {
+          // Registering the replacement clears this; if nothing registered, the window ends here rather
+          // than leaving the pack's plugins marked as expected-to-be-missing for the rest of the run
+          registry.clearPackReplacing(packId);
           // Activation sends PACK_CHANGED itself; without it the pack is gone, which running systems must hear
           if (!activated) system.get(bus).send({ type: 'PACK_CHANGED', packId });
           _inFlightOps.delete(packId);

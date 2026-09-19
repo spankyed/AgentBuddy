@@ -70,6 +70,36 @@ describe('with-source', () => {
     expect(signal).toBe('SIGINT');
   });
 
+  /**
+   * SIGTERM is never terminal-generated, so one aimed at the wrapper alone does not reach the command
+   * in its group: the wrapper forwards it. Signalling the process rather than the group is what tells
+   * the two paths apart — absorbing SIGTERM the way SIGINT is absorbed would leave the command running.
+   */
+  it.skipIf(process.platform === 'win32')('forwards a SIGTERM aimed at the wrapper alone to the command', async () => {
+    const child = spawn(process.execPath, [WITH_SOURCE, process.execPath, '-e',
+      "process.on('SIGTERM',()=>{console.log('sigterm');process.exit(0)});setTimeout(()=>{},5000);console.log('ready')"], {
+      cwd: REPO_ROOT,
+      env: { PATH: process.env.PATH },
+      detached: true,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    const result = await new Promise<{ out: string; code: number | null }>((resolve, reject) => {
+      let out = '';
+      let signalled = false;
+      child.stdout.setEncoding('utf-8');
+      child.stdout.on('data', (chunk: string) => {
+        out += chunk;
+        if (signalled || !out.includes('ready')) return;
+        signalled = true;
+        child.kill('SIGTERM'); // the wrapper alone, not its process group
+      });
+      child.on('error', reject);
+      child.on('exit', (code) => resolve({ out, code }));
+    });
+    expect(result.out).toContain('sigterm');
+    expect(result.code).toBe(0);
+  });
+
   it('is the only way npm scripts in the checkout get the condition (no .npmrc node-options)', () => {
     const value = execFileSync('npm', ['config', 'get', 'node-options'], { cwd: REPO_ROOT, env: { PATH: process.env.PATH }, encoding: 'utf-8' });
     expect(value.trim()).toBe('null');

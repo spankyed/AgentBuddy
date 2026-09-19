@@ -113,6 +113,23 @@ describe('dependency resolution from an installed app', () => {
     expect(fs.readdirSync(artifacts!.seedsDir!).sort()).toEqual(['media', 'seeds.json', 'settings.seed.json']);
   });
 
+  // The label reaches the facade check, which uses it to pick a remedy the reader can carry out: a
+  // pack taken out of an installed app has no source tree to rebuild.
+  it('reports where the dependency resolved from, and reports nothing for a later cache hit', async () => {
+    const hostPacks = path.join(tmp, 'userdata', 'host-packs');
+    publishHostPackOutput(builtInPack(), path.join(hostPacks, 'base-pack'));
+    const packRoot = path.join(tmp, 'author-pack');
+    fs.mkdirSync(packRoot, { recursive: true });
+
+    expect((await resolveDepArtifacts(packRoot, 'base-pack', '*'))?.source).toMatch(/^installed app \(/);
+
+    // Once the app's copy is gone the cache stands in, and it records no provenance
+    fs.rmSync(path.join(hostPacks, 'base-pack'), { recursive: true });
+    const cached = await resolveDepArtifacts(packRoot, 'base-pack', '*');
+    expect(cached?.snapshot.manifest.id).toBe('base-pack');
+    expect(cached?.source).toBeUndefined();
+  });
+
   it("drops a cached runtime when the dependency stops shipping one", async () => {
     const hostPacks = path.join(tmp, 'userdata', 'host-packs');
     const src = builtInPack();

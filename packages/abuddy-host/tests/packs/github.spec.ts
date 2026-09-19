@@ -129,11 +129,37 @@ describe('githubFetch', () => {
   it('passes an abort signal, and gives a release asset the longer download timeout', async () => {
     const fetchMock = respond(200);
     vi.stubGlobal('fetch', fetchMock);
+    // AbortSignal.timeout keeps its duration to itself, so the assertion is on the value reaching it.
+    // Comparing the two calls is the point: asserting DOWNLOAD_TIMEOUT_MS's own value here only
+    // restated the constant, and stayed green however fetchReleaseAsset passed it — or didn't.
+    const timeout = vi.spyOn(AbortSignal, 'timeout');
+
     await githubFetch('https://api.github.com/x');
     expect((fetchMock.mock.calls[0] as unknown as [string, { signal?: AbortSignal }])[1].signal).toBeInstanceOf(AbortSignal);
+    const [apiTimeout] = timeout.mock.calls[0];
 
     await fetchReleaseAsset({ name: 'p.tgz', url: 'https://api.github.com/a', browser_download_url: 'https://x/p.tgz' });
-    expect(DOWNLOAD_TIMEOUT_MS).toBeGreaterThan(10_000);
+    const [downloadTimeout] = timeout.mock.calls[1];
+    expect(downloadTimeout).toBe(DOWNLOAD_TIMEOUT_MS);
+    expect(downloadTimeout).toBeGreaterThan(apiTimeout);
+  });
+
+  // fetchReleaseAsset has two branches and every test above runs without a token, so only the public
+  // download URL was ever exercised. Dropping DOWNLOAD_TIMEOUT_MS from the API branch left all of them
+  // green.
+  it('downloads a release asset through the API when a token is set, with the same accept and timeout', async () => {
+    process.env.GITHUB_TOKEN = 'github';
+    const fetchMock = respond(200);
+    vi.stubGlobal('fetch', fetchMock);
+    const timeout = vi.spyOn(AbortSignal, 'timeout');
+
+    await fetchReleaseAsset({ name: 'p.tgz', url: 'https://api.github.com/a', browser_download_url: 'https://x/p.tgz' });
+
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, { headers: Record<string, string> }];
+    expect(url).toBe('https://api.github.com/a');
+    expect(init.headers.Accept).toContain('octet-stream');
+    expect(init.headers.Authorization).toBe('Bearer github');
+    expect(timeout.mock.calls[0][0]).toBe(DOWNLOAD_TIMEOUT_MS);
   });
 
   it('asks for a release asset as a binary stream, not as JSON', async () => {

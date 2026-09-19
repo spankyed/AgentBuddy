@@ -109,6 +109,7 @@ export interface PackRegistration {
     id: string;
     // (undocumented)
     migrations?: PackMigration[];
+    receivedEventTypes?: Record<string, readonly string[]>;
     repositories?: Record<string, unknown>;
     seeders?: Seeder[];
     seedHooks?: Record<string, SeedHooks>;

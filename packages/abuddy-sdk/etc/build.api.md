@@ -88,6 +88,12 @@ export const BootConfigSchema: z.ZodObject<{
 // @public (undocumented)
 export function buildPackConfigFromManifest(manifest: PackManifest, packDir: string, options?: PackConfigOptions): Promise<PackConfig>;
 
+// @internal
+export function _buildProvenance(dependencies: ReadonlyArray<readonly [string, ProvenanceSource]>, own?: {
+    id: string;
+    manifest: ProvenanceManifest;
+}): PackProvenance;
+
 // @public (undocumented)
 export function bundleFile(filePath: string): Promise<BundleResult>;
 
@@ -214,53 +220,6 @@ export function compileSourceDir(sourceDir: string, config: Omit<CompileConfig, 
 
 // @public
 export function defaultSourceHash(record: SeedRecord): string;
-
-// @public
-export interface DependencyCommand {
-    // (undocumented)
-    name: string;
-    // (undocumented)
-    packId: string;
-}
-
-// @internal
-export function _dependencyCommands(snapshots: ReadonlyArray<readonly [string, DependencyCommandSource]>): DependencyCommand[];
-
-// @public
-export interface DependencyCommandSource {
-    // (undocumented)
-    dependencyCommands?: ReadonlyArray<DependencyCommand>;
-    // (undocumented)
-    manifest: {
-        commands?: ReadonlyArray<{
-            name: string;
-        }>;
-    };
-}
-
-// @public
-export interface DependencyPlugin {
-    // (undocumented)
-    id: string;
-    // (undocumented)
-    packId: string;
-}
-
-// @internal
-export function _dependencyPlugins(snapshots: ReadonlyArray<readonly [string, DependencyPluginSource]>): DependencyPlugin[];
-
-// @public
-export interface DependencyPluginSource {
-    // (undocumented)
-    dependencyPlugins?: ReadonlyArray<DependencyPlugin>;
-    // (undocumented)
-    manifest: {
-        features?: ReadonlyArray<{
-            id: string;
-            plugin?: unknown;
-        }>;
-    };
-}
 
 // @internal
 export function _depTypesFile(depId: string): string;
@@ -453,6 +412,7 @@ export function formatEntities(format: SeedFormatConfig): string[];
 export interface GenerateEntriesOptions {
     // (undocumented)
     depSnapshots?: Map<string, PackSnapshot>;
+    depSources?: Map<string, string>;
     // (undocumented)
     depTypes?: Map<string, PackTypeManifest>;
     // (undocumented)
@@ -1316,12 +1276,15 @@ export interface MarkdownTreeOptions {
     recursive?: boolean;
 }
 
+// @internal
+export function _mergeProvenance(kind: ProvenanceKind, dependencies: ReadonlyArray<readonly [string, ProvenanceSource]>, own?: {
+    id: string;
+    manifest: ProvenanceManifest;
+}): Record<string, string>;
+
 // @public (undocumented)
 export function mergeRegistries(ownId: string, manifest: PackManifest, depManifests: Map<string, PackTypeManifest>,
-depOwners?: Map<string, {
-    entities?: Record<string, string>;
-    relKinds?: Record<string, string>;
-}>): {
+depProvenance?: Map<string, PackProvenance>): {
     entities: Map<string, RegistryEntry>;
     relKinds: Map<string, RegistryEntry>;
 };
@@ -1379,6 +1342,9 @@ export const PackPermissionSchema: z.ZodEnum<["ears", "llm", "filesystem", "netw
 export type PackPluginEntry = NonNullable<PackFeatureEntry['plugin']>;
 
 // @public
+export type PackProvenance = Partial<Record<ProvenanceKind, Record<string, string>>>;
+
+// @public
 export interface PackSeedPreviewItem {
     childCount?: number;
     // (undocumented)
@@ -1399,17 +1365,12 @@ export interface PackSeedsPreview {
 export interface PackSnapshot {
     // (undocumented)
     defs: Record<string, string>;
-    dependencyCommands?: DependencyCommand[];
-    dependencyPlugins?: DependencyPlugin[];
     flowHelpers?: PackFlowHelpers;
     // (undocumented)
     manifest: PackManifest;
+    provenance?: PackProvenance;
     // (undocumented)
     sdkVersion?: string;
-    typeOwners?: {
-        entities?: Record<string, string>;
-        relKinds?: Record<string, string>;
-    };
     // (undocumented)
     types: PackTypeManifest;
     typesFormat?: number;
@@ -1451,6 +1412,42 @@ export interface PromptMeta {
 
 // @public (undocumented)
 export const promptsCompiler: SpecialtyCompiler<DslCompiled>;
+
+// @public
+export const PROVENANCE_KINDS: {
+    readonly entities: (m: ProvenanceManifest) => string[];
+    readonly relKinds: (m: ProvenanceManifest) => string[];
+    readonly commands: (m: ProvenanceManifest) => string[];
+    readonly plugins: (m: ProvenanceManifest) => string[];
+};
+
+// @public (undocumented)
+export type ProvenanceKind = keyof typeof PROVENANCE_KINDS;
+
+// @public
+export interface ProvenanceManifest {
+    // (undocumented)
+    commands?: ReadonlyArray<{
+        name: string;
+    }>;
+    // (undocumented)
+    entities?: Record<string, string>;
+    // (undocumented)
+    features?: ReadonlyArray<{
+        id: string;
+        plugin?: unknown;
+    }>;
+    // (undocumented)
+    relKinds?: Record<string, string>;
+}
+
+// @public
+export interface ProvenanceSource {
+    // (undocumented)
+    manifest: ProvenanceManifest;
+    // (undocumented)
+    provenance?: PackProvenance;
+}
 
 // @public
 export const RECORD_KEYS: ReadonlySet<string>;

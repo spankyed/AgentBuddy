@@ -1,7 +1,7 @@
 import { readFileSync, existsSync, statSync } from 'fs';
 import { HOST_PLUGIN_IDS as SDK_HOST_PLUGIN_IDS } from '../events/index.ts';
 import { extname, join } from 'path';
-import { _dependencyCommands, _dependencyPlugins, PACK_TYPES_FORMAT, type PackManifest, type PackFeatureEntry, type PackTypeManifest, type PackSnapshot, type StepEntry } from './manifest.ts';
+import { _mergeProvenance, PACK_TYPES_FORMAT, type PackManifest, type PackFeatureEntry, type PackProvenance, type PackTypeManifest, type PackSnapshot, type ProvenanceKind, type StepEntry } from './manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
 import { formatEntities } from './seeds/records.ts';
@@ -22,8 +22,14 @@ export function mergeRegistries(
   ownId: string,
   manifest: PackManifest,
   depManifests: Map<string, PackTypeManifest>,
-  /** Per dependency, which pack owns each name it surfaces (its snapshot's `typeOwners`) */
-  depOwners: Map<string, { entities?: Record<string, string>; relKinds?: Record<string, string> }> = new Map(),
+  /**
+   * Per dependency, which pack declares each name it surfaces — its snapshot's `provenance`.
+   *
+   * Per dependency, not merged across them: that distinction is the whole check. Two dependencies
+   * naming the same ancestor for a name is a diamond and fine; two naming different packs is a real
+   * collision. A single merged record answers "who declares this" and cannot tell those apart.
+   */
+  depProvenance: Map<string, PackProvenance> = new Map(),
 ) {
   function merge(own: Record<string, string> = {}, kind: string) {
     // The SDK's own entities and relation kinds are in every pack, and no pack declares them
@@ -47,14 +53,12 @@ export function mergeRegistries(
      * dependencies' names too, so the same ancestor name arrives through every path that reaches it;
      * attributing it to the dependency it came through makes a diamond look like a collision.
      */
-    const declaredBy = (via: string, key: string): string => {
-      if (via === ownId) return ownId;
-      const owners = kind === 'entity' ? depOwners.get(via)?.entities : depOwners.get(via)?.relKinds;
-      return owners?.[key] ?? via;
-    };
+    const provenanceKind: ProvenanceKind = kind === 'entity' ? 'entities' : 'relKinds';
+    const declaringPack = (via: string, key: string): string =>
+      via === ownId ? ownId : depProvenance.get(via)?.[provenanceKind]?.[key] ?? via;
     for (const [via, entries] of sources) {
       for (const [key, value] of Object.entries(entries)) {
-        const source = declaredBy(via, key);
+        const source = declaringPack(via, key);
         const existing = map.get(key)?.source ?? valueSources.get(value);
         if (existing !== undefined && existing !== source) {
           errors.push(`${kind} "${key}" declared by both "${existing}" and "${source}"`);
@@ -181,6 +185,78 @@ function parseExportedTypeNames(content: string): string[] {
   for (const m of content.matchAll(/^export\s+(?:declare\s+)?(?:type|interface)\s+(\w+)/gm))
     names.push(m[1]);
   return [...new Set(names)];
+}
+
+/**
+ * The facade exports every typed dependency must publish: `depTypeImports` splices an import of each
+ * into the generated files for every typed dependency, with no guard, so a facade missing one produces
+ * a generated file that cannot compile.
+ *
+ * `PackEvents` is deliberately not here. It is imported only for a dependency some `sendsTo` names
+ * (`eventDeps`), so it is required at that point instead — a dependency whose plugins this pack never
+ * sends to should not fail the build over a type it never imports.
+ */
+const REQUIRED_FACADE_EXPORTS = ['PackEntityShapes', 'PackStepNodes', 'PackSystemEvents', 'Services', 'Repositories'] as const;
+
+/**
+ * Whether a dependency that resolved from `source` is one whose source tree the author has, and can
+ * therefore run `abuddy build` in. A workspace sibling or a `file:` path is; a release downloaded from
+ * GitHub, or a bundle taken out of an installed app, is not — there is nothing to `cd` into.
+ */
+function isRebuildableSource(source: string): boolean {
+  return source === 'workspace' || source.startsWith('file:');
+}
+
+/**
+ * What to tell the author to do about a dependency they can't build against.
+ *
+ * With no `source` the resolution came from the `.abuddy/deps` cache, which records nothing about
+ * where it was originally fetched from, so this hedges the way `verifyBundle` does — two options,
+ * because it doesn't know which one the reader is in a position to take.
+ */
+function facadeRemedy(depId: string, source: string | undefined): string {
+  // Taken out of an installed AgentBuddy, so the pack came with the app and moves with it. That makes
+  // the step the same one verifyBundle names for a bundle this host can't read: update AgentBuddy.
+  if (source?.startsWith('installed app')) {
+    return `You can't rebuild it yourself: update AgentBuddy, which is where this copy came from, or pin your CLI to one that matches it.`;
+  }
+  if (source && !isRebuildableSource(source)) {
+    return `You can't rebuild it yourself: ask its author for a release built with a current abuddy CLI, or pin your CLI to one that matches this release.`;
+  }
+  if (source) {
+    return `Rebuild "${depId}" with this version of the abuddy CLI (\`abuddy build\` in that pack, or \`npm run compile\` for a built-in one).`;
+  }
+  return `Rebuild "${depId}" with this version of the abuddy CLI (\`abuddy build\` in that pack, or \`npm run compile\` for a built-in one), or — if it isn't yours to build — ask its author for a release built with a current one.`;
+}
+
+/**
+ * Throws when a dependency's facade doesn't export every name in `required`, naming the missing ones
+ * and how the facade was built. `usage` says what needs them, for the conditional requirements whose
+ * absence is only a problem for this pack.
+ *
+ * The message leads with what was observed — the facade lacks exports — rather than asserting that an
+ * older CLI built it. That is the likely explanation, not an established one: a hand-assembled or
+ * truncated bundle reads the same way, and the reader can check the recorded versions themselves.
+ */
+function requireFacadeExports(
+  depId: string,
+  snap: PackSnapshot,
+  required: readonly string[],
+  options: { usage?: string; source?: string } = {},
+): void {
+  const exported = new Set(parseExportedTypeNames(snap.defs[PACK_TYPES_DEF]));
+  const missing = required.filter((name) => !exported.has(name));
+  if (missing.length === 0) return;
+  const builtWith = [
+    snap.sdkVersion ? `SDK ${snap.sdkVersion}` : undefined,
+    `facade format ${snap.typesFormat ?? '(none recorded)'}`,
+  ].filter(Boolean).join(', ');
+  throw new Error(
+    `Dependency "${depId}"${options.source ? ` (from ${options.source})` : ''} publishes facade types without ${missing.map((n) => `\`${n}\``).join(', ')}`
+    + `${options.usage ? `, which ${options.usage}` : ", which this pack's generated code imports"}. `
+    + `(Built with ${builtWith}; this CLI generates facade format ${PACK_TYPES_FORMAT}.) `
+    + facadeRemedy(depId, options.source),
+  );
 }
 
 /** The SDK seeders of the specialty seed keys */
@@ -361,6 +437,12 @@ export interface GenerateEntriesOptions {
   packRoot: string;
   depTypes?: Map<string, PackTypeManifest>;
   depSnapshots?: Map<string, PackSnapshot>;
+  /**
+   * Dependency id → where it resolved from (`workspace`, `file:<path>`, `installed app (production)`,
+   * `github:<owner>/<repo>@<version>`), which decides what a facade failure can tell the author to do.
+   * A dependency served from the `.abuddy/deps` cache has no entry; see `facadeRemedy`.
+   */
+  depSources?: Map<string, string>;
 }
 
 export function generatePackFiles(
@@ -370,19 +452,20 @@ export function generatePackFiles(
   const root = opts.packRoot;
   const depSnapshots = opts.depSnapshots ?? new Map<string, PackSnapshot>();
   /**
-   * A dependency's facade has to be a shape this CLI can generate against, and presence is not that.
-   * A facade from a CLI whose facade shape has since changed used to be consumed anyway, and failed
-   * later as `TS2305: has no exported member` inside generated code — a message naming nothing the
-   * author could act on. `PACK_TYPES_FORMAT` makes it name the dependency to rebuild instead.
+   * A dependency's facade has to carry the types this pack's generated code imports from it, and a
+   * facade from a CLI whose shape has since changed may not. Such a facade used to be consumed anyway
+   * and failed later as `TS2305: has no exported member` inside generated code — a message naming
+   * nothing the author could act on.
+   *
+   * The check is on the exports themselves, not on `typesFormat`: a format number is a proxy for the
+   * thing that matters, and it fails a dependency whose facade changed in ways this pack never touches.
+   * Missing exports fire exactly when the build would break, and name what to look for. The recorded
+   * format and SDK version ride along as diagnostic context, which is all they are good for here.
    */
+  const depSources = opts.depSources ?? new Map<string, string>();
   for (const [depId, snap] of depSnapshots) {
     if (!snap.defs?.[PACK_TYPES_DEF]) continue;
-    if (snap.typesFormat !== PACK_TYPES_FORMAT) {
-      throw new Error(
-        `Dependency "${depId}" publishes facade types in format ${snap.typesFormat ?? '(none recorded)'}, but this CLI generates against format ${PACK_TYPES_FORMAT}. `
-        + `Rebuild "${depId}" with this version of the abuddy CLI (\`abuddy build\` in that pack, or \`npm run compile\` for a built-in one).`,
-      );
-    }
+    requireFacadeExports(depId, snap, REQUIRED_FACADE_EXPORTS, { source: depSources.get(depId) });
   }
   // Dependencies built with facade types (older snapshots have none, so their types stay untyped)
   const typedDeps = [...depSnapshots].filter(([, snap]) => snap.defs?.[PACK_TYPES_DEF]).map(([depId]) => depId);
@@ -400,9 +483,9 @@ export function generatePackFiles(
    */
   function declaredCommands(): NonNullable<PackManifest['commands']> {
     const commands = manifest.commands ?? [];
-    const taken = _dependencyCommands([...depSnapshots]);
+    const taken = _mergeProvenance('commands', [...depSnapshots]);
     for (const { name } of commands) {
-      const owner = taken.find((command) => command.name === name)?.packId;
+      const owner = taken[name];
       if (owner) {
         throw new Error(`Command "${name}" is declared by "${owner}", which this pack depends on: the app refuses a pack whose command another pack declares, so rename it in abuddy.json \`commands\``);
       }
@@ -501,6 +584,8 @@ export function generatePackFiles(
       ...targets,
       ...Object.values(manifest.entityShapes ?? {}).map((shape) => shape.source),
       ...features.flatMap((f) => (f.settings ? [f.settings] : [])),
+      // The systems' entries: their outgoing unions are where the event types a plugin receives are read from
+      ...features.flatMap((f) => (f.system ? [f.system.entry] : [])),
     ];
     return [...new Set(sources.map(sourceFileOf).filter((file): file is string => file !== undefined))];
   }
@@ -509,6 +594,11 @@ export function generatePackFiles(
   function exportOf(file: string, name: string): ExportInfo | undefined {
     moduleExports ??= createModuleExports(root, exportedFromFiles());
     return moduleExports.exportOf(file, name);
+  }
+
+  function eventTypesOf(file: string, name: string): string[] | undefined {
+    moduleExports ??= createModuleExports(root, exportedFromFiles());
+    return moduleExports.eventTypesOf(file, name);
   }
 
   /** A `"path#exportName"` target that must export a runtime value */
@@ -536,6 +626,11 @@ export function generatePackFiles(
     if (!file) throw new Error(`${label}: no settings file found at ${feature.settings} (.ts or /index.ts)`);
     if (!exportOf(file, 'default')?.value) throw new Error(`${label}: settings ${feature.settings} has no default export of the settings object`);
     return feature.settings!;
+  }
+
+  /** Whether this pack has a system at all: without one it sends nothing and declares no received events */
+  function hasSystemFeatures(): boolean {
+    return (manifest.features ?? []).some((f) => f.system);
   }
 
   function outgoingEventsType(feature: PackFeatureEntry): string {
@@ -624,7 +719,7 @@ ${stepsRegister ? `import { steps } from '${toImportPath(root, stepsRegister)}';
 ${manifest.artifacts ? `import { artifacts } from '${toImportPath(root, manifest.artifacts)}';` : ''}
 ${manifest.blocks ? `import { blocks } from '${toImportPath(root, manifest.blocks)}';` : ''}
 import { getCompiledDir, seeders } from './seeders.js';
-export { setCompiledDir } from './seeders.js';
+${hasSystemFeatures() ? "import { receivedEventTypes } from './events.js';\n" : ''}export { setCompiledDir } from './seeders.js';
 
 export const registration: PackRegistration = {
   id: '${manifest.id}',
@@ -636,6 +731,7 @@ ${manifest.artifacts ? '  artifacts,' : ''}
 ${manifest.blocks ? '  blocks,' : ''}
 ${hookEntries.length > 0 ? `  seedHooks: { ${hookEntries.map(([entity], i) => `${JSON.stringify(entity)}: __seedHooks_${i}`).join(', ')} },` : ''}
   seeders,
+${hasSystemFeatures() ? '  receivedEventTypes,' : ''}
 ${commands.length ? `  commands: ${JSON.stringify(commands)},` : ''}
   ears: {
     // Only this pack's own: EARS also names its dependencies' and the SDK's, which they register
@@ -743,8 +839,8 @@ ${regProps.join('\n')}
       depTypes = new Map<string, PackTypeManifest>();
       for (const [id, snap] of depSnapshots) depTypes.set(id, snap.types);
     }
-    const depOwners = new Map([...depSnapshots].map(([id, snap]) => [id, snap.typeOwners ?? {}] as const));
-    return mergeRegistries(manifest.id, manifest, depTypes, depOwners);
+    const depProvenance = new Map([...depSnapshots].map(([id, snap]) => [id, snap.provenance ?? {}] as const));
+    return mergeRegistries(manifest.id, manifest, depTypes, depProvenance);
   }
 
   function generateEars(): string {
@@ -871,17 +967,20 @@ ${busIdEntries},
     const depReceivers = new Map([...depSnapshots].map(([depId, snap]) => [depId, receivingPlugins(snap.manifest)] as const));
     /** Plugin id → the pack owning it, for plugins this pack reaches only through a dependency */
     const transitivePluginOwners = new Map(
-      _dependencyPlugins([...depSnapshots])
-        .filter(({ id }) => !depPluginIds.has(id))
-        .map(({ id, packId }) => [id, packId] as const),
+      Object.entries(_mergeProvenance('plugins', [...depSnapshots])).filter(([id]) => !depPluginIds.has(id)),
     );
 
     const receivers = new Map<string, string[]>();
+    /** Own plugin id → the features whose systems send to it, for reading their declared event types */
+    const senderFeatures = new Map<string, PackFeatureEntry[]>();
     const addSender = (pluginId: string, feature: PackFeatureEntry) => {
       const alias = `__events_${feature.id}`;
       const senders = receivers.get(pluginId) ?? [];
       if (!senders.includes(alias)) senders.push(alias);
       receivers.set(pluginId, senders);
+      const sending = senderFeatures.get(pluginId) ?? [];
+      if (!sending.includes(feature)) sending.push(feature);
+      senderFeatures.set(pluginId, sending);
     };
     for (const feature of systemFeatures) {
       if (feature.plugin) addSender(feature.id, feature);
@@ -924,6 +1023,13 @@ ${busIdEntries},
     const systemEntries = systemFeatures.map(f => `  '${f.id}': IncomingEventsOf<(typeof __specs)['${f.id}']>;`).join('\n');
     // Only the dependencies a sendsTo names: a plugin nothing declares a send to isn't this pack's to send to
     const eventDeps = typedDeps.filter((depId) => depTargets.has(depId));
+    // `PackEvents` is imported only for these, so it is required here rather than with the rest
+    for (const depId of eventDeps) {
+      requireFacadeExports(depId, depSnapshots.get(depId)!, ['PackEvents'], {
+        usage: 'is needed because this pack\'s system.sendsTo names one of its plugins',
+        source: depSources.get(depId),
+      });
+    }
     const quoted = (ids: Iterable<string>) => [...ids].map((id) => `'${id}'`).join(' | ');
     const externalReceivers = [
       ...eventDeps.map((depId) => ` & Omit<Pick<${depAlias(depId, 'PackEvents')}, ${quoted(depTargets.get(depId)!)}>, keyof OwnPackEvents>`),
@@ -945,6 +1051,23 @@ ${busIdEntries},
         .map((f) => `  '${depId}/${f.id}': '${runningSystemId(depId, snap, f.id)}',`)),
     ];
 
+    // The event types each own plugin receives, read from the senders' declared outgoing unions. Only this
+    // pack's own plugins: a dependency's and the host's are declared by whoever owns them, and the app
+    // merges every registered pack's map, so declaring them here would be a second opinion on someone
+    // else's contract.
+    const receivedTypes = [...senderFeatures].map(([pluginId, sending]) => {
+      const types = new Set(sending.flatMap((feature) => {
+        const file = sourceFileOf(feature.system!.entry);
+        const name = outgoingEventsType(feature);
+        const declared = file && eventTypesOf(file, name);
+        if (!declared) {
+          throw new Error(`Feature "${feature.id}": its system entry doesn't export "${name}", so the events it sends can't be read: export the union of the events its system emits, or set system.outgoingEventsType to the name it uses`);
+        }
+        return declared;
+      }));
+      return `  '${pluginId}': [${[...types].sort().map((type) => `'${type}'`).join(', ')}],`;
+    }).join('\n');
+
     return `${HEADER}
 import { defineEvents, ${hostTargets.size ? 'type HostPluginEvents, ' : ''}type IncomingEventsOf } from '@abuddy/sdk/events';
 ${hasSystems ? `import { busId } from './bus-ids.js';\nimport type { specs as __specs } from './system-specs.js';\n` : ''}${imports}
@@ -961,6 +1084,15 @@ ${entries}
  * own plugins. A plugin id this pack also uses types as its own plugin.
  */
 export type PackEvents = OwnPackEvents${externalReceivers};
+
+/**
+ * Plugin id → the event types that plugin receives, the runtime half of \`OwnPackEvents\`. The app checks
+ * a system's send against it and drops what no one declared. Only this pack's own plugins: a dependency's
+ * and the host's come from their own packs.
+ */
+export const receivedEventTypes: Record<string, readonly string[]> = {
+${receivedTypes}
+};
 
 /** Feature id → the events this pack's system for that feature receives (dependents name it \`${manifest.id}/<feature>\`). */
 export type PackSystemEvents = {

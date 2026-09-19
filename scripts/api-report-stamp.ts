@@ -96,8 +96,35 @@ export function declarationInputs(pkgDir: string): string[] {
   return declarationPackages(pkgDir).flatMap((dir) => declarationFiles(path.join(dir, 'dist')));
 }
 
-export function declarationFingerprint(pkgDir: string): string {
-  return fingerprintInputs(declarationInputs(pkgDir));
+/** A package's name, for naming it in a stamp and in a message */
+function packageName(dir: string): string {
+  return (JSON.parse(fs.readFileSync(path.join(dir, 'package.json'), 'utf-8')) as { name: string }).name;
+}
+
+/**
+ * One fingerprint per contributing package, nearest first: `<name> <hash of its own declarations>`.
+ *
+ * A single combined hash said only "something moved". Since a package's reports are generated from its
+ * dependencies' declarations too, "ui is stale" was most often @abuddy/sdk's declarations moving, and
+ * the message gave the reader no way to tell that from a change to @abuddy/ui itself — the last time it
+ * happened here it was diagnosed by rebuilding UI and diffing, which measures the wrong input set.
+ * Recording each contributor separately costs two lines and lets the message name the one that moved.
+ */
+export function declarationFingerprints(pkgDir: string): Array<{ name: string; hash: string }> {
+  return declarationPackages(pkgDir).map((dir) => ({
+    name: packageName(dir),
+    hash: fingerprintInputs(declarationFiles(path.join(dir, 'dist'))),
+  }));
+}
+
+/** The stamp file's contents: one `<name> <hash>` line per contributing package */
+export function declarationStamp(pkgDir: string): string {
+  return declarationFingerprints(pkgDir).map(({ name, hash }) => `${name} ${hash}`).join('\n') + '\n';
+}
+
+function parseStamp(contents: string): Map<string, string> {
+  const entries = contents.trim().split('\n').map((line) => line.trim().split(/\s+/));
+  return new Map(entries.filter((parts) => parts.length === 2).map(([name, hash]) => [name, hash]));
 }
 
 /** Why the reports may be out of date, or null. Never throws. */
@@ -106,12 +133,25 @@ export function staleReason(pkgDir: string): string | null {
   if (inputs.length === 0) {
     return 'its declarations are not built (no dist); run npm run packages:build';
   }
-  let recorded: string | undefined;
+  let contents: string | undefined;
   try {
-    recorded = fs.readFileSync(stampFile(pkgDir), 'utf-8').trim();
+    contents = fs.readFileSync(stampFile(pkgDir), 'utf-8').trim();
   } catch { /* missing or unreadable: the same as never stamped */ }
-  if (!recorded) return `no ${path.basename(stampFile(pkgDir))}; run npm run api:update`;
-  return recorded === declarationFingerprint(pkgDir) ? null : 'its declarations changed since the reports were generated; run npm run api:update';
+  if (!contents) return `no ${path.basename(stampFile(pkgDir))}; run npm run api:update`;
+
+  const recorded = parseStamp(contents);
+  // A stamp from before this recorded one hash and no names: it says nothing about which package moved,
+  // so it is treated as no stamp rather than guessed at
+  if (recorded.size === 0) return `${path.basename(stampFile(pkgDir))} predates per-package stamps; run npm run api:update`;
+
+  const current = declarationFingerprints(pkgDir);
+  const moved = current.filter(({ name, hash }) => recorded.get(name) !== hash).map(({ name }) => name);
+  if (moved.length === 0) return null;
+  const own = packageName(path.resolve(pkgDir));
+  // Naming the dependency is the whole point: "ui is stale" and "ui is stale because @abuddy/sdk's
+  // declarations changed" send the reader to different places
+  const whose = moved.length === 1 && moved[0] === own ? 'its declarations' : `${moved.join(', ')}'s declarations`;
+  return `${whose} changed since the reports were generated; run npm run api:update`;
 }
 
 if (process.argv[1] && import.meta.url.endsWith(path.basename(process.argv[1]))) {
@@ -119,7 +159,7 @@ if (process.argv[1] && import.meta.url.endsWith(path.basename(process.argv[1])))
   const name = (JSON.parse(fs.readFileSync(path.join(pkgDir, 'package.json'), 'utf-8')) as { name: string }).name;
   if (process.argv.includes('--write')) {
     fs.mkdirSync(path.dirname(stampFile(pkgDir)), { recursive: true });
-    fs.writeFileSync(stampFile(pkgDir), `${declarationFingerprint(pkgDir)}\n`);
+    fs.writeFileSync(stampFile(pkgDir), declarationStamp(pkgDir));
     console.log(`${name}: recorded the declarations its API reports came from`);
   } else {
     const reason = staleReason(pkgDir);

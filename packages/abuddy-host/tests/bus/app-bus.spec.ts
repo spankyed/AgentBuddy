@@ -76,6 +76,8 @@ describe('createAppBus', () => {
     registerPack({
       id: 'ping-pack',
       systems: [{ id: 'ping-pack.feature', machine: setup({}).createMachine({ on: { PING: { actions: () => pings.push('ping') } } }), events: new Set(['PING']) }],
+      // The bus drops a send to a plugin that declares no such event, so this case declares the two it sends
+      receivedEventTypes: { 'ping-pack': ['EARLY', 'LATE'] },
     });
     try {
       bus.stop();
@@ -94,6 +96,8 @@ describe('createAppBus', () => {
     registerPack({
       id: 'ping-pack',
       systems: [{ id: 'ping-pack.feature', machine: setup({}).createMachine({ on: { PING: { actions: () => pings.push('ping') } } }), events: new Set(['PING']) }],
+      // The bus drops a send to a plugin that declares no such event, so this case declares the two it sends
+      receivedEventTypes: { 'ping-pack': ['EARLY', 'LATE'] },
     });
     try {
       bus.stop();

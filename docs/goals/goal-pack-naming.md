@@ -48,7 +48,7 @@ with evidence in the tree:
   `fe.appExtensions.welcome`. The umbrella wears one of its children's names. The CLI scaffold hard-codes this
   path in four places (`add/manifest.ts`, `add/service.ts`, `add/step.ts`, `init.ts`).
 - **`snapshot`** — `PackSnapshot` / `snapshot.json` / `depSnapshots` hold `types`, `defs`, `manifest`,
-  `sdkVersion`, `flowHelpers` and `dependencyCommands`: exactly what a dependent pack compiles against. That is
+  `sdkVersion`, `flowHelpers` and `provenance`: exactly what a dependent pack compiles against. That is
   a contract; "snapshot" describes when it was taken, not what it is. `secretsSnapshot()` and the LMDB store's
   `snapshot()` are two further senses.
 - **`host`** — the app (`@abuddy/host`, `HostRuntime`, `hostVersion`, `host-packs/`) and the machine

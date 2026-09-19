@@ -89,6 +89,16 @@ interface AppPacks {
   resolveSystemAddress(address: string): string | undefined;
   getRegisteredSystems(): Map<string, AnyStateMachine>;
   getRegisteredPackSystemIds(packId: string): string[];
+  /**
+   * What each plugin receives, so a test app drops a send no plugin declares, as the app does. `null` is
+   * a plugin whose pack declared no event types, whose sends pass unchecked (host's `PluginEventTypes`).
+   */
+  getPluginEventValidationMap(): Map<string, Set<string> | null>;
+  /**
+   * Whether a plugin's pack is mid-replacement, so a send to it is an expected drop rather than a
+   * mistake. A pack test replaces nothing, so the harness's registry always answers false.
+   */
+  isPluginReplacing(pluginId: string): boolean;
 }
 
 const running = new Set<TestApp>();

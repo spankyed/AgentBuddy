@@ -371,25 +371,40 @@ async function resolveFromUpstream(root: string, depId: string, depValue: string
 }
 
 /**
+ * A resolved dependency, with where it came from when that is known.
+ *
+ * The label is the one `abuddy fetch-deps` prints (`workspace`, `file:<path>`, `installed app (env)`,
+ * `github:<owner>/<repo>@<version>`). It is per-resolution, not a property of the artifact — the same
+ * bundle is a workspace sibling to its author and a GitHub release to everyone else — so it is not
+ * recorded in the snapshot, which ships inside the bundle. It exists so a build failure can name a
+ * remedy the reader can actually carry out.
+ */
+export type ResolvedDepArtifacts = DepArtifacts & { source?: string };
+
+const withSource = (artifacts: DepArtifacts | null, source: string): ResolvedDepArtifacts | null =>
+  artifacts && { ...artifacts, source };
+
+/**
  * Resolve a dependency's artifacts (snapshot, plus build code and backend runtime when it ships them). Sources on this machine
  * win and refresh the .abuddy/deps cache; the cache only stands in for a network source, and
  * only while it satisfies the declared range.
  */
-export async function resolveDepArtifacts(root: string, depId: string, depValue: string, skipCache = false): Promise<DepArtifacts | null> {
+export async function resolveDepArtifacts(root: string, depId: string, depValue: string, skipCache = false): Promise<ResolvedDepArtifacts | null> {
   const { github, filePath, range } = parseDepValue(depValue);
   if (filePath) {
     const found = await resolveFromUpstream(root, depId, depValue);
-    if (!found) return null;
-    const { source: _source, ...artifacts } = found;
-    return artifacts;
+    return found ?? null;
   }
 
   const local = await resolveFromMachine(root, depId, range);
   if (local) {
     cacheDep(root, depId, local);
-    return resolveFromLocal(root, depId);
+    return withSource(resolveFromLocal(root, depId), local.source);
   }
 
+  // A cache hit carries no source: cacheDep writes the snapshot, defs, build code and runtime, and
+  // nothing about where they came from. Recording provenance in .abuddy/deps would cover this, and
+  // isn't worth a new cache artifact until a hedged message proves annoying in practice.
   if (!skipCache) {
     const cached = resolveFromLocal(root, depId);
     if (cached && inRange(cached, range)) return cached;
@@ -398,7 +413,7 @@ export async function resolveDepArtifacts(root: string, depId: string, depValue:
   const fetched = await resolveFromNetwork(root, depId, github, range);
   if (!fetched) return null;
   cacheDep(root, depId, fetched);
-  return resolveFromLocal(root, depId);
+  return withSource(resolveFromLocal(root, depId), fetched.source);
 }
 
 export async function resolveDep(root: string, depId: string, depValue: string, skipCache = false): Promise<PackSnapshot | null> {

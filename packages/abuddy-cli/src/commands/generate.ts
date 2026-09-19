@@ -2,14 +2,17 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { PackSnapshot, PackTypeManifest } from '@abuddy/sdk/build';
 import { emitDepTypes } from '@abuddy/sdk/build';
-import { resolveDep } from './fetch-deps';
+import { resolveDepArtifacts } from './fetch-deps';
 import { findPackRoot, readManifest } from '../utils';
 
-async function loadDepSnapshots(root: string, deps: Record<string, string>): Promise<Map<string, PackSnapshot>> {
+async function loadDepSnapshots(root: string, deps: Record<string, string>): Promise<{ snapshots: Map<string, PackSnapshot>; sources: Map<string, string> }> {
   const result = new Map<string, PackSnapshot>();
+  const sources = new Map<string, string>();
   const unresolved: string[] = [];
   for (const [depId, depValue] of Object.entries(deps)) {
-    const resolved = await resolveDep(root, depId, depValue);
+    const artifacts = await resolveDepArtifacts(root, depId, depValue);
+    const resolved = artifacts?.snapshot;
+    if (artifacts?.source) sources.set(depId, artifacts.source);
     if (!resolved) {
       unresolved.push(depValue.startsWith('file:')
         ? `${depId}: no build output at ${path.resolve(root, depValue.slice('file:'.length).trim())} (run "abuddy build" there first)`
@@ -23,23 +26,29 @@ async function loadDepSnapshots(root: string, deps: Record<string, string>): Pro
   if (unresolved.length > 0) {
     throw new Error(`Unresolved pack dependencies:\n${unresolved.map(u => `  - ${u}`).join('\n')}\nUse "file:<path>" or "github:<owner>/<repo> <range>" in abuddy.json dependencies.`);
   }
-  return result;
+  return { snapshots: result, sources };
 }
 
 export interface ResolvedDeps {
   depTypes: Map<string, PackTypeManifest>;
   depSnapshots: Map<string, PackSnapshot>;
+  /**
+   * Dependency id → where it resolved from, for the dependencies that reported one. It reaches
+   * `generatePackFiles`, which uses it to tell a facade failure's reader what they can actually do:
+   * `abuddy build` in a workspace sibling is right, and useless for a downloaded release.
+   */
+  depSources: Map<string, string>;
 }
 
 export async function resolveDeps(root: string, deps?: Record<string, string>): Promise<ResolvedDeps> {
-  const depSnapshots = deps
+  const { snapshots: depSnapshots, sources: depSources } = deps
     ? await loadDepSnapshots(root, deps)
-    : new Map<string, PackSnapshot>();
+    : { snapshots: new Map<string, PackSnapshot>(), sources: new Map<string, string>() };
 
   const depTypes = new Map<string, PackTypeManifest>();
   for (const [id, snap] of depSnapshots) depTypes.set(id, snap.types);
 
-  return { depTypes, depSnapshots };
+  return { depTypes, depSnapshots, depSources };
 }
 
 // ── Command ──
@@ -51,7 +60,7 @@ export async function generate(_args: string[], packRoot?: string, preResolvedDe
   console.log(`Generating types for: ${manifest.name}`);
 
   const depSnapshots = preResolvedDeps ?? (manifest.dependencies
-    ? await loadDepSnapshots(root, manifest.dependencies)
+    ? (await loadDepSnapshots(root, manifest.dependencies)).snapshots
     : new Map<string, PackSnapshot>());
 
   const generatedDir = path.join(root, '.abuddy', 'generated');

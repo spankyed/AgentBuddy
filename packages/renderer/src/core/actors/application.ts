@@ -107,7 +107,7 @@ export type ApplicationEvent =
   | { type: 'SHOW_INSPECTION_PANEL' }
   | { type: 'HIDE_INSPECTION_PANEL' }
   | { type: 'RESET_CHAT_HEIGHT' }
-  | { type: 'SYSTEM_ERROR'; errorId?: string; title?: string; message: string; source?: string; operation?: string; entityId?: string; severity?: 'error' | 'fatal'; stack?: string; timestamp?: number }
+  | { type: 'SYSTEM_ERROR'; errorId?: string; title?: string; message: string; source?: string; operation?: string; entityId?: string; severity?: 'diagnostic' | 'error' | 'fatal'; stack?: string; timestamp?: number }
   | { type: 'BACKEND_ERROR'; error: string | { message: string; stack?: string } }
   | { type: 'BUS_SUBSCRIBED' }
   | { type: 'BUS_CONNECTION_LOST' }
@@ -1167,6 +1167,9 @@ export const createApplicationState = () => setup({
     SYSTEM_ERROR: {
       actions: ({ event }) => {
         const ev = typeOf('SYSTEM_ERROR', event);
+        // A diagnostic is for whoever is building the app or a pack, and it is already in the Logs
+        // plugin. Interrupting the person using the app with it tells them nothing they can act on.
+        if (ev.severity === 'diagnostic') return;
         if (ev.severity === 'fatal') {
           window.__showErrorPage?.(
             ev.title ?? 'Something went wrong',

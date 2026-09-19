@@ -10,7 +10,7 @@ import { createPackRegistry, discoverBuiltInPacks, publishHostPackOutput, pruneH
 import { resolveAppContext } from '@abuddy/sdk/env';
 import * as path from 'path';
 import {
-  createPacksSystem, packsEvents,
+  createPacksSystem, packsEvents, PACKS_PLUGIN_EVENT_TYPES,
   loadBuiltInPacks, getBuiltInPackInfos,
   loadExternalPacks, registerExternalPacks,
   startPacks, setLoadedPacks,
@@ -94,6 +94,8 @@ export async function setupBackend(): Promise<void> {
 
   // ── Register host-level systems (before any pack loading) ──────────
   packs.registerHostSystem('packs', createPacksSystem(packs), packsEvents);
+  // The packs system's sends are checked like a pack's, so the plugin it sends to has to be declared
+  packs.registerHostPlugin('packs', PACKS_PLUGIN_EVENT_TYPES);
 
   // Before discovery: a pack an interrupted install left only as its moved-aside copy is restored,
   // and abuddy install learns which AgentBuddy uses this data dir

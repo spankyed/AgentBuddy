@@ -71,4 +71,11 @@ export interface PackRegistration {
   /** The slash commands this pack adds to the chat (abuddy.json `commands`) */
   commands?: import('./pack-commands.ts').PackCommand[];
   features?: PackFeatureDef[];
+  /**
+   * Plugin id → the event types that plugin receives, generated from the systems' declared outgoing
+   * unions (`receivedEventTypes` in `#generated/events`). The app checks a send against it, as it checks
+   * an incoming client event against what a system accepts. Only this pack's own plugins: a dependency's
+   * and the host's are declared by whoever owns them.
+   */
+  receivedEventTypes?: Record<string, readonly string[]>;
 }
