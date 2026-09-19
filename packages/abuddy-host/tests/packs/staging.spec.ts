@@ -56,7 +56,7 @@ describe('recoverStagingDirs', () => {
     mkdir(`.other-pack.installing-${running}-d4E5f6`);
     mkdir(`.other-pack.previous-${process.pid}-0a1b2c3d`);
 
-    const result = recoverStagingDirs(packsDir);
+    const result = recoverStagingDirs(packsDir, { known: false });
     expect(result.removed.sort()).toEqual([
       `.base-pack.publishing-${exited}`,
       `.demo-pack.installing-${exited}-a1B2c3`,
@@ -73,7 +73,7 @@ describe('recoverStagingDirs', () => {
     fs.renameSync(path.join(packsDir, 'demo-pack'), path.join(packsDir, `.demo-pack.previous-${exitedPid()}-1a2b3c4d`));
     mkdir(`.demo-pack.installing-${exitedPid()}-x1Y2z3`);
 
-    expect(recoverStagingDirs(packsDir)).toMatchObject({ restored: ['demo-pack'], failed: [] });
+    expect(recoverStagingDirs(packsDir, { known: false })).toMatchObject({ restored: ['demo-pack'], failed: [] });
     expect(remaining()).toEqual(['demo-pack']);
     const enabled = reconcileInstalledPacks(discoverPacks(packsDir));
     expect(enabled.map((p) => p.manifest.id)).toEqual(['demo-pack']);
@@ -83,7 +83,7 @@ describe('recoverStagingDirs', () => {
   it('leaves a directory whose name carries no process id', () => {
     mkdir('.other-pack.installing-Xy12Zw');
 
-    expect(recoverStagingDirs(packsDir)).toMatchObject({ restored: [], removed: [], failed: [] });
+    expect(recoverStagingDirs(packsDir, { known: false })).toMatchObject({ restored: [], removed: [], failed: [] });
     expect(remaining()).toEqual(['.other-pack.installing-Xy12Zw']);
   });
 
@@ -94,7 +94,7 @@ describe('recoverStagingDirs', () => {
     const beforeBoot = new Date(Date.now() - os.uptime() * 1000 - 60_000);
     fs.utimesSync(path.join(packsDir, `.demo-pack.installing-${reused}-a1B2c3`), beforeBoot, beforeBoot);
 
-    expect(recoverStagingDirs(packsDir)).toMatchObject({ removed: [`.demo-pack.installing-${reused}-a1B2c3`], failed: [] });
+    expect(recoverStagingDirs(packsDir, { known: false })).toMatchObject({ removed: [`.demo-pack.installing-${reused}-a1B2c3`], failed: [] });
     expect(remaining()).toEqual([]);
   });
 
@@ -103,21 +103,21 @@ describe('recoverStagingDirs', () => {
     writeInstalledPacks([]);
 
     // The registry no longer lists it: the uninstall stands
-    expect(recoverStagingDirs(packsDir, new Set())).toMatchObject({ restored: [], failed: [] });
+    expect(recoverStagingDirs(packsDir, { known: true, ids: new Set() })).toMatchObject({ restored: [], failed: [] });
     expect(remaining()).toEqual([]);
   });
 
   it("restores a pack the registry still lists", () => {
     writePack(`.demo-pack.previous-${exitedPid()}-1a2b3c4d`);
 
-    expect(recoverStagingDirs(packsDir, new Set(['demo-pack']))).toMatchObject({ restored: ['demo-pack'], failed: [] });
+    expect(recoverStagingDirs(packsDir, { known: true, ids: new Set(['demo-pack']) })).toMatchObject({ restored: ['demo-pack'], failed: [] });
     expect(remaining()).toEqual(['demo-pack']);
   });
 
-  // "The record lists no packs" and "there is no record" are opposite answers, and the second one reaches
-  // here as `undefined`. Reading a missing installed-packs.json as an empty list deleted the interrupted
-  // install's only copy — the restore this function exists to perform — on the first boot after the file
-  // was renamed. prepareHostDataDirs is the caller that has to tell them apart.
+  // "The record lists no packs" and "there is no record" are opposite answers, and reading a missing
+  // installed-packs.json as an empty list deleted the interrupted install's only copy — the restore this
+  // function exists to perform — on the first boot after the file was renamed. prepareHostDataDirs is the
+  // caller that has to tell them apart.
   it('restores every interrupted install when there is no record of what is installed', () => {
     writePack(`.demo-pack.previous-${exitedPid()}-1a2b3c4d`);
     expect(fs.existsSync(path.join(root, 'installed-packs.json'))).toBe(false);
@@ -137,7 +137,7 @@ describe('recoverStagingDirs', () => {
   });
 
   it('ignores a packs dir that does not exist yet', () => {
-    expect(recoverStagingDirs(path.join(packsDir, 'missing'))).toEqual({ restored: [], removed: [], failed: [] });
+    expect(recoverStagingDirs(path.join(packsDir, 'missing'), { known: false })).toEqual({ restored: [], removed: [], failed: [] });
   });
 
   it('names staging dirs uniquely per process and call, in the owned format', () => {

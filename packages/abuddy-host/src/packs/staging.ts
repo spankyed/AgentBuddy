@@ -32,6 +32,11 @@ function parseStagingDir(dir: string, name: string): StagingEntry | null {
   return { name, id: owned[1], kind: owned[2] as StagingKind, stale };
 }
 
+/** Which packs are still installed, or that the caller has no way to know */
+export type InstalledIds =
+  | { known: true; ids: ReadonlySet<string> }
+  | { known: false };
+
 export interface StagingRecovery {
   /** Packs whose install crashed between moving the old copy aside and placing the new one */
   restored: string[];
@@ -48,10 +53,11 @@ export interface StagingRecovery {
  * install in progress and stays. Run before discovering packs, so a restored pack is found.
  * Never throws: an entry that can't be handled is reported in `failed`.
  *
- * `installedIds` is which packs the registry still lists: a pack uninstalled after the interrupted
- * install isn't restored. Without it (the built-in packs' dir, which has no registry) every pack is.
+ * `installed` is which packs are still installed. `known: false` is the caller saying it cannot tell —
+ * the built-in packs' dir, which has no record, or a record that wouldn't read — and then every pack is
+ * restored. An empty `ids` is the opposite answer, "nothing is installed", so the two can't be confused.
  */
-export function recoverStagingDirs(dir: string, installedIds?: ReadonlySet<string>): StagingRecovery {
+export function recoverStagingDirs(dir: string, installed: InstalledIds): StagingRecovery {
   const result: StagingRecovery = { restored: [], removed: [], failed: [] };
   let names: string[];
   try {
@@ -75,7 +81,7 @@ export function recoverStagingDirs(dir: string, installedIds?: ReadonlySet<strin
     try {
       if (fs.existsSync(path.join(dir, entry.id))) continue;
       // Uninstalled while its interrupted install's copy sat here: it stays gone
-      if (installedIds && !installedIds.has(entry.id)) continue;
+      if (installed.known && !installed.ids.has(entry.id)) continue;
       fs.renameSync(path.join(dir, entry.name), path.join(dir, entry.id));
       result.restored.push(entry.id);
     } catch (err) {
@@ -111,10 +117,11 @@ export function prepareHostDataDirs(
   }
   const record = readInstalledPacks();
   // "No record" is not "no packs": without it, every interrupted install below is restored rather than deleted
-  const installedIds: ReadonlySet<string> | undefined = record.found ? new Set(record.packs.map(entry => entry.id)) : undefined;
+  const installed: InstalledIds = record.found ? { known: true, ids: new Set(record.packs.map(entry => entry.id)) } : { known: false };
   if (!record.found) log.warn('[packs] No readable record of installed packs, so every interrupted install is restored');
-  // The built-in packs' dir has no registry: its interrupted publishes are always recovered
-  for (const [dir, ids] of [[options.packsDir, installedIds], [options.hostPacksDir, undefined]] as const) {
+  // The built-in packs' dir has no record of its own: its interrupted publishes are always recovered
+  const dirs: [string | undefined, InstalledIds][] = [[options.packsDir, installed], [options.hostPacksDir, { known: false }]];
+  for (const [dir, ids] of dirs) {
     if (!dir) continue;
     const { restored, removed, failed } = recoverStagingDirs(dir, ids);
     for (const id of restored) log.info(`[packs] Restored "${id}", whose install was interrupted`);
