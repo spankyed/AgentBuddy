@@ -18,13 +18,16 @@
     {
       "id": "threads",
       "about": "Chat threads: messages, artifacts and the conversation UI.",
-      "designated": true,
-      "system": true,
+      "designation": "threads",
+      "provides": [
+        "system",
+        "plugin",
+        "settings",
+        "references"
+      ],
       "plugin": {
         "default": true
       },
-      "settings": true,
-      "references": true,
       "entities": {
         "Thread": "be/types.ts#ThreadEntity",
         "Message": "be/types.ts#MessageEntity",
@@ -45,9 +48,11 @@
     {
       "id": "code",
       "about": "Terminals and coding agents (Claude Code, Codex) in an embedded shell.",
-      "system": true,
-      "plugin": true,
-      "settings": true,
+      "provides": [
+        "system",
+        "plugin",
+        "settings"
+      ],
       "entities": {
         "Terminal": "be/repository/index.ts#TerminalEntity"
       },
@@ -63,10 +68,12 @@
     {
       "id": "notes",
       "about": "A hierarchical notebook of markdown notes.",
-      "system": true,
-      "plugin": true,
-      "settings": true,
-      "references": true,
+      "provides": [
+        "system",
+        "plugin",
+        "settings",
+        "references"
+      ],
       "entities": {
         "Note": "be/types.ts#NoteEntity"
       },
@@ -78,10 +85,12 @@
     {
       "id": "browser",
       "about": "An embedded browser with tabs and bookmarks.",
-      "designated": true,
-      "system": true,
-      "plugin": true,
-      "settings": true,
+      "designation": "browser",
+      "provides": [
+        "system",
+        "plugin",
+        "settings"
+      ],
       "entities": {
         "BrowserTab": "be/types.ts#BrowserTabEntity",
         "BrowserBookmark": "be/types.ts#BrowserBookmarkEntity"
@@ -94,10 +103,12 @@
     {
       "id": "library",
       "about": "Documents and collections, with a dormant semantic search index.",
-      "system": true,
-      "plugin": true,
-      "settings": true,
-      "references": true,
+      "provides": [
+        "system",
+        "plugin",
+        "settings",
+        "references"
+      ],
       "entities": {
         "SearchIndex": null,
         "IndexedDoc": null,
@@ -115,10 +126,12 @@
     {
       "id": "flows",
       "about": "The visual flow editor: flows, nodes and their wiring.",
-      "system": true,
-      "plugin": true,
-      "settings": true,
-      "types": "be/types",
+      "provides": [
+        "system",
+        "plugin",
+        "settings",
+        "types"
+      ],
       "repositories": {
         "flowsQueries": "be/repository/index.ts#flowsQueries",
         "flowsCommands": "be/repository/index.ts#flowsCommands"
@@ -127,15 +140,17 @@
     {
       "id": "actions",
       "about": "Reusable code actions a flow step can run.",
+      "provides": [
+        "system",
+        "plugin",
+        "settings"
+      ],
       "system": {
-        "entry": true,
         "outgoingEventsType": "OutgoingActionEvents",
         "sendsTo": [
           "flows"
         ]
       },
-      "plugin": true,
-      "settings": true,
       "services": {
         "action": "be/services/action.ts#actionService"
       },
@@ -147,12 +162,14 @@
     {
       "id": "prompts",
       "about": "Reusable prompts an llm step can run.",
+      "provides": [
+        "system",
+        "plugin",
+        "settings"
+      ],
       "system": {
-        "entry": true,
         "outgoingEventsType": "OutgoingPromptEvents"
       },
-      "plugin": true,
-      "settings": true,
       "services": {
         "prompt": "be/services/prompt.ts#promptService"
       },
@@ -164,10 +181,12 @@
     {
       "id": "brain",
       "about": "Runs flows: the scheduler, the run loop and the trace view.",
-      "designated": true,
-      "system": true,
-      "plugin": true,
-      "settings": true,
+      "designation": "brain",
+      "provides": [
+        "system",
+        "plugin",
+        "settings"
+      ],
       "services": {
         "brain": "be/services/brain.ts#brainService",
         "scheduler": "be/services/scheduler.ts#schedulerService"
@@ -180,9 +199,11 @@
     {
       "id": "database",
       "about": "A console over the EARS store, with backup and restore.",
-      "system": true,
-      "plugin": true,
-      "settings": true,
+      "provides": [
+        "system",
+        "plugin",
+        "settings"
+      ],
       "services": {
         "database": "be/services/database.ts#databaseService"
       }
@@ -190,24 +211,28 @@
     {
       "id": "logs",
       "about": "The app's log stream. Starts before EARS hydration so boot is captured.",
-      "designated": true,
+      "designation": "logs",
       "earlySystem": true,
-      "system": true,
-      "plugin": true,
-      "settings": true
+      "provides": [
+        "system",
+        "plugin",
+        "settings"
+      ]
     },
     {
       "id": "settings",
       "about": "App and per-plugin settings, API keys and the pack list.",
-      "designated": true,
+      "designation": "settings",
+      "provides": [
+        "system",
+        "plugin",
+        "settings"
+      ],
       "system": {
-        "entry": true,
         "sendsTo": [
           "application"
         ]
       },
-      "plugin": true,
-      "settings": true,
       "entities": {
         "Settings": "be/types.ts#SettingsEntity"
       },

@@ -26,12 +26,14 @@ Finished when:
 - No entity gains or loses a typed shape: the generated src/__generated__/ears.ts is byte-identical.
 - No manifest in the repo spells a module reference two ways: `path#export` is the only form, and a
   bare path means the module's default export.
-- `features[].designation` does not exist in any manifest or in the schema.
+- `features[].designation` is a string that need not equal the feature id, and no manifest or schema
+  spells `designated`.
 - `partitionPolicy` exists in no manifest and no schema; an entity is volatile by carrying
   `"volatile": true` beside the entity's shape, any pack may mark one it declares, and `loader.ts` strips
   nothing.
-- Every path inside a feature is relative to that feature's directory, and a feature that follows the
-  conventional layout declares no paths at all.
+- Every feature lists what it contributes in one `provides` line, no feature key holds the value
+  `true`, every path inside a feature is relative to that feature's directory, and a feature on the
+  conventional layout spells out no path at all.
 - npm run schema:check passes with the regenerated abuddy.schema.json committed.
 - npm run api:update has been run and etc/*.api.md committed in every phase that changed the schema:
   PackManifest is published API, and npm run typecheck fails on a stale report until you do.
@@ -375,39 +377,87 @@ it for an oversight. Making such a link primary instead would leave a dangling r
 that does not hydrate volatile: nothing in `@abuddy/ears` validates relation endpoints, and nothing
 would ever remove it, because the entity it points at never returns to trigger a removal.
 
-**6. `features[].designation` is deleted.** A feature that registers a designation writes
-`"designated": true`. The registration keeps using the feature id, which is what it did anyway.
+**6. `features[].designation` stays a string, and stops being required to equal the feature id.** A
+designation is a **role** — `settings`, `logs`, `brain`, the thing `getDesignated(role)` looks up — and
+a role is not a feature's name. Today `validate.ts:55-57` rejects any designation that differs from
+the id, so all five of default-setup's are the id repeated, which is what made the key look redundant.
+An earlier draft of this decision therefore replaced it with `"designated": true`. That was wrong: it
+deleted the ability to name a role, not a redundancy.
 
-**7. Paths inside a feature are relative to `src/features/<id>/`, and a conventional one is written
-`true`.** A key's presence says the feature has that thing; its value says where. `true` means the
-conventional path (`be/system.ts`, `fe/plugin.ts`, `settings.ts`, `fe/references`), a string overrides
-it, and an absent key means the feature does not have one — one meaning for absence, and nothing
-inferred from the filesystem.
+**Nothing but that one check enforces the equality.** `designationsOf`
+(`pack-registration.ts:42-47`) already maps `[f.designation, systemId(f.id)]` — role and system id as
+two separate values — and codegen already carries them apart, building a `Map([[featureId,
+designation]])` (`generate-entries.ts:630`) and emitting `designation: '<value>'` onto the system and
+plugin definitions (`:642`, `:729`). The machinery has always supported a role that differs from the
+feature that plays it; only the validator did not. Delete the check.
 
-All 41 paths default-setup's features declare today are already the conventional one — every `system`,
-`plugin` and `settings`, and both `references` and the one `typesEntry` (measured at `4f24d04f7`). So
-`true` is not an ergonomic bet: it empties every path string in the pack's twelve features, and a
-manifest that still spells one out is saying something real.
+Role uniqueness is unaffected and still enforced where it matters: `registerPack` throws when another
+pack already holds a role (`pack-registration.ts:252-254`). Add the one rule that a free-form string
+makes reachable — **two features of one pack claiming the same role fails `validate`** — because
+`designationsOf` builds an object from entries, so today a duplicate would silently take the last one.
 
-This is `package.json`'s `main`: a default value you may override, never a rule that decides whether the
-thing exists. The manifest stays the answer to "what does this feature contribute", which a reader
-cannot get from a directory listing, while `abuddy add feature` writes the conventional lines and
-`abuddy doctor` reports a declared path that is missing or a conventional file that is present but
-undeclared. Convention drives the tooling; it does not drive the semantics.
+**7. A feature lists what it provides in one line, and paths inside it are relative to
+`src/features/<id>/`.**
+
+```jsonc
+{ "id": "library",
+  "about": "Documents and collections, with a dormant semantic search index.",
+  "provides": ["system", "plugin", "settings", "references"],
+  "entities": { ... }, "services": { ... }, "repositories": { ... } }
+```
+
+`provides` is the complete list of what the feature contributes that lives in a file: `system`,
+`plugin`, `settings`, `references`, `types`. Each name resolves to the conventional path
+(`be/system.ts`, `fe/plugin.ts`, `settings.ts`, `fe/references`, `be/types`), and the paths a feature
+does spell out are relative to its own directory, not the pack root.
+
+**Why a list and not a key per thing.** The first draft of this decision wrote `"system": true` and a
+key per capability. Measured against default-setup that is **37 lines whose entire content is the word
+`true`** — because all 41 paths its features declare today are already the conventional one (every
+`system`, `plugin` and `settings`, both `references` and the one `typesEntry`, at `4f24d04f7`). A
+boolean there is a *marker*, not a value: it says the feature has a system without saying anything
+about it, and five of them in a row read as a checklist rather than a description. One line that names
+them is the same fact with the noise removed, and it reads as a sentence.
+
+**Why not derive it from the directory instead.** Dropping the declaration entirely — `be/system.ts`
+exists, therefore the feature has a system — was the other candidate and is what Next.js and Rails do.
+Three things rule it out here. The argument eats itself: if a file's presence declares a capability,
+then `src/features/library/` declares a feature, and there is no principled reason to keep the
+`features` array hand-written while deriving its contents. It removes the off switch, so a scratch
+`be/system.ts` becomes a registered system with no way to say otherwise. And it gives up the property
+this manifest is for — half of default-setup's features would shrink to an id and a sentence, and the
+file would no longer answer "what does this feature contribute" at all, which is the question it
+exists to answer.
+
+`provides` does duplicate what the directory shows, and so can drift. `validate` closes that: every
+name in `provides` resolves to a file, and a conventional file present but unlisted is a `doctor`
+warning. That is the same bargain `package.json`'s `files` and `exports` make, and it is the reason
+`exports` is worth writing out.
 
 Paths outside a feature (seed data, extension registers, migrations) stay relative to the pack root.
 
-**8. `system.entry` and `plugin.entry` collapse to `system` and `plugin`.** The wrapper object existed to
-carry `outgoingEventsType`, `sendsTo` and `events`; those stay, so the value is `true` (Decision 7's
-conventional path), a string (a different path), or an object with `entry` plus them.
+**8. A capability key appears only when there is more to say than "it exists".** `provides` says the
+feature has a system; a sibling `system` key annotates it, carrying the `outgoingEventsType`,
+`sendsTo` and `events` that `system.entry`'s wrapper object carries today, and an `entry` when the
+file is not at the conventional path.
 
-The three forms add information monotonically — yes / yes-here / yes-here-plus-details — which is why
-this is a progression rather than variance for its own sake. But record what each is worth: of
-default-setup's 24 `system` and `plugin` declarations, **21 need only `true`, 3 need the object
-(`actions.system`, `prompts.system`, `settings.system`, for `sendsTo` and `outgoingEventsType`), and
-none needs the bare string.** The string form is there for an external pack that puts its entry
-somewhere else, not because anything here relies on it; a later reader deciding whether to keep it
-should know that.
+```jsonc
+{ "id": "actions", "about": "…",
+  "provides": ["system", "plugin", "settings"],
+  "system": { "sendsTo": ["flows"], "outgoingEventsType": "OutgoingActionEvents" } }
+
+{ "id": "weird", "about": "…",
+  "provides": ["system"],
+  "system": { "entry": "src/backend/main.ts" } }
+```
+
+This is a list with annotations, not two homes for one fact: `validate` requires every capability key
+to be named in `provides`, so a `system` block on a feature that does not provide one is an error
+rather than a second way of declaring it. Measured, the annotations are rare — of default-setup's 24
+`system` and `plugin` declarations, **three carry anything beyond the entry** (`actions.system` and
+`settings.system` for `sendsTo`, `prompts.system` for `outgoingEventsType`), and **none** overrides
+the path. The `entry` override exists for an external pack with a different layout, not because
+anything here needs it.
 
 **9. Every extension point moves under `extensions`**: `steps`, `artifacts`, `blocks`, `commands`,
 `dsl`, `fe` (tiptap plugins, app extensions) and `packServices`, which becomes `extensions.services`.
@@ -458,8 +508,9 @@ four keys that change together whenever a seeded format changes.
 `docs/public-facing/manifest.md` is rewritten from the new shape rather than edited.
 
 **12. `defaultPlugin` moves onto the plugin it names.** It is loose content at the root today, and it
-names a feature's plugin, so it belongs there: `"plugin": { "default": true }`, with `entry` omitted
-meaning the conventional path exactly as `"plugin": true` does. The host already resolves it first-wins
+names a feature's plugin, so it belongs there: `"plugin": { "default": true }`, one of the sibling
+annotations of Decision 8 — the feature still lists `plugin` in `provides`, and the annotation says
+which of the app's plugins opens first. The host already resolves it first-wins
 across packs and warns on the second (`fe/pack-store.ts:63-66`), so nothing about the competition
 changes; `validate` additionally rejects two features of one pack claiming it.
 
@@ -564,11 +615,10 @@ resting on an undocumented invariant is one bad refactor from being wrong.
 
 **15. This is the last cheap rename, and the discipline starts at the first release with users.**
 
-This goal makes **22 breaking changes to the manifest in one commit series** — every key that moves,
-is renamed, changes type or becomes required. Three of them are pure naming and nothing else:
-`boot.hooks` → `lifecycle`, `typesEntry` → `types`, `designation` → `designated`. In an
-additive-only world none of those three would ever happen, because a cosmetic rename is not worth
-asking every pack author to rebuild. They are worth doing here only because the break is already
+This goal makes **21 breaking changes to the manifest in one commit series** — every key that moves,
+is renamed, changes type or becomes required. Two of them are pure naming and nothing else:
+`boot.hooks` → `lifecycle` and `typesEntry` → `types`. In an additive-only world neither would ever
+happen, because a cosmetic rename is not worth asking every pack author to rebuild. They are worth doing here only because the break is already
 being paid for.
 
 That is the rule this goal is spending, and it should be spent deliberately rather than discovered
@@ -683,17 +733,21 @@ byte-identical (`dist/*.seed.json`, `dist/seeds.json`); `tests/unit/seed-parity`
 
 ### Phase 4 — features: what they contribute, and where
 
-- Delete `features[].designation`; add `"designated": true` (Decision 6).
-- Make every path inside a feature relative to `src/features/<id>/`, with `true` for the conventional
-  path and a string to override (Decision 7). A key's absence means the feature has no such thing.
-- Collapse `system.entry`/`plugin.entry` to `system`/`plugin`, `true`, a string, or an object with
-  `entry` plus `sendsTo`/`outgoingEventsType` (Decision 8).
+- Keep `features[].designation` as a string and delete the `designation === id` check at
+  `validate.ts:55-57`; add the rule that two features of one pack may not claim the same role
+  (Decision 6).
+- Replace the per-capability keys with one `provides` list (`system`, `plugin`, `settings`,
+  `references`, `types`), each name resolving to the conventional path, and make every path a feature
+  does spell out relative to `src/features/<id>/` (Decision 7).
+- Keep `system`/`plugin` as optional sibling annotations carrying `sendsTo`, `outgoingEventsType`,
+  `events` and an `entry` override, and make `validate` reject one whose name is absent from
+  `provides` (Decision 8).
 - Move `defaultPlugin` onto the feature's plugin as `{ "default": true }` (Decision 12).
-- Widen `validateFeatures` (`validate.ts:42-59`) to check **every** feature path, not the three it
-  checks today (`settings`, `system.entry`, `plugin.entry`). Once `true` means "the conventional file
-  is there", an unchecked `"references": true` or `"types": true` points at nothing and says so only
-  much later. Resolve `true` to the convention and a string against the feature's directory before the
-  existence check, and reject a path that escapes it.
+- Widen `validateFeatures` (`validate.ts:42-59`) to check **every** name in `provides`, not the three
+  paths it checks today (`settings`, `system.entry`, `plugin.entry`). A listed `references` or `types`
+  whose file is missing must fail here, not much later. Resolve each name to its conventional path, or
+  to the feature-relative `entry` when one is given, and reject a path that escapes the feature's
+  directory.
 - Add `about` to every feature and require it in `validate.ts`; `abuddy add feature` prompts for it
   (Decision 13).
 - Rename `features[].typesEntry` to `types`, relative to the feature's directory like every other
@@ -701,13 +755,16 @@ byte-identical (`dist/*.seed.json`, `dist/seeds.json`); `tests/unit/seed-parity`
   paths relative with the rest.
 - Update `generate-entries.ts`, `validate.ts`, `add/feature.ts`, `init.ts`, `doctor.ts` and the loader.
 
-**Done when:** no manifest contains the string `src/features/` inside a `features[]` entry; no manifest
-contains `designation` or a root `defaultPlugin`; every feature in every manifest has an `about`; the generated `pack-entry.ts`,
+**Done when:** no manifest contains the string `src/features/` inside a `features[]` entry; no feature
+key anywhere holds the value `true` except `earlySystem` and `plugin.default`; no manifest
+contains a root `defaultPlugin`; every feature in every manifest has an `about` and a `provides`; the generated `pack-entry.ts`,
 `pack-entry-fe.ts` and `system-ids.ts` for default-setup are byte-identical to before; `npm run
 typecheck` and the full unit chain pass. Mutations: a feature naming a path that escapes its directory
-(`../other/be/system.ts`) fails validation; a feature with `"system": true` whose `be/system.ts` does
-not exist fails the build naming the expected path, rather than silently having no system; a feature
-without `about` fails `validate`; two features of one pack both claiming `plugin.default` fail
+(`../other/be/system.ts`) fails validation; a feature listing `"system"` in `provides` whose
+`be/system.ts` does not exist fails the build naming the expected path, rather than silently having no
+system; a `system` annotation on a feature whose `provides` omits `system` fails `validate`; a feature
+without `about` fails `validate`; a feature whose `designation` differs from its id builds and
+registers that role, and two features of one pack claiming one role fail `validate`; two features of one pack both claiming `plugin.default` fail
 `validate`.
 
 ### Phase 5 — one encoding for a module reference
