@@ -5,9 +5,10 @@
 
 Implement docs/goals/goal-manifest-redesign.md on AS/external-pack-authoring, at or after 4f24d04f7 —
 the base its Background was surveyed at.
-Read Background, Decisions, Phases and Constraints first, and
+Read Background, Decisions, Open decisions, Phases and Constraints first, and
 docs/goals/goal-manifest-redesign.example.json, which is the finished shape for the built-in pack.
-Decisions are final: implement them, don't reopen them or stop to ask.
+Decisions are final: implement them, don't reopen them or stop to ask. The two Open decisions must be
+settled with the user before Phase 1 starts.
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
 going. No backward compatibility anywhere: no dual-read of old and new keys, no deprecation window, no
 migration of an installed pack's manifest. Nothing has shipped — the newest tag is v0.3.14 and it
@@ -561,9 +562,53 @@ contents while leaving `host-packs/<id>/` as "build output". Phase 6 fixes all t
 caused by the goal — it is true at `4f24d04f7` — but Decision 14 now rests on it, and a decision
 resting on an undocumented invariant is one bad refactor from being wrong.
 
-**15. No compatibility of any kind.** No dual-read, no alias, no deprecation warning. Every manifest in
+**15. This is the last cheap rename, and the discipline starts at the first release with users.**
+
+This goal makes **22 breaking changes to the manifest in one commit series** — every key that moves,
+is renamed, changes type or becomes required. Three of them are pure naming and nothing else:
+`boot.hooks` → `lifecycle`, `typesEntry` → `types`, `designation` → `designated`. In an
+additive-only world none of those three would ever happen, because a cosmetic rename is not worth
+asking every pack author to rebuild. They are worth doing here only because the break is already
+being paid for.
+
+That is the rule this goal is spending, and it should be spent deliberately rather than discovered
+later: **anything cosmetic that is not fixed now will not be worth fixing afterwards.** A final read
+of the key names before Phase 6 lands is part of the work, not a nicety.
+
+After the first release that has users, the manifest follows `package.json`'s discipline, and the
+schema's own doc comment says so:
+
+- **Additive is free.** A new optional key, a new value accepted by an existing key, a new entry in a
+  map. Old packs keep working; old hosts ignore what they do not know.
+- **A rename, a removal, a required field or a changed value type is a format break**, and costs a
+  `PACK_FORMAT_VERSION` bump and a rebuild of every pack in the wild. The bar for one is a problem
+  that cannot be solved additively, not a name someone would spell differently.
+- **Deprecate by leaving it alone.** A key that stops mattering stops being written by
+  `abuddy add` and stops being documented; it does not need removing, and removing it is the
+  expensive half.
+
+**16. No compatibility of any kind.** No dual-read, no alias, no deprecation warning. Every manifest in
 the repo — default-setup, both fixtures, the `abuddy init` scaffold, the packaged-authoring script's
 generated pack — changes in the same phase as the schema section it depends on.
+
+## Open decisions
+
+Settle these with the owner before Phase 1. Both are cosmetic renames, which is exactly why they have
+to be decided now rather than later: after this goal a rename costs a format bump (Decision 15), so a
+name not fixed here is a name kept for good.
+
+1. **`extensions.fe` → `extensions.frontend`?** `fe` is the repo's internal shorthand and it is
+   everywhere in the source, but `abuddy.json` is the pack author's surface and an unexplained
+   two-letter abbreviation is the one kind of name a newcomer cannot guess. Against: `fe`/`be` is
+   consistent with the directory layout an author already sees (`src/features/<id>/fe/`), so the
+   abbreviation is one they meet on their first day either way.
+2. **`hostVersion` → `engines: { abuddy: ">=0.3.0" }`?** For: it is exactly npm's and VS Code's
+   spelling for this field (`engines.node`, `engines.vscode`), so it is recognised on sight, and
+   Decision 14 already cites that precedent as the one AgentBuddy follows. Against: `engines` is a map
+   because npm packages have several; a pack has one host, so the map is a wrapper around a single
+   key, and `hostVersion` says the same thing in one line with no nesting.
+
+Everything else in Decisions is final.
 
 ## Phases
 
@@ -644,6 +689,11 @@ byte-identical (`dist/*.seed.json`, `dist/seeds.json`); `tests/unit/seed-parity`
 - Collapse `system.entry`/`plugin.entry` to `system`/`plugin`, `true`, a string, or an object with
   `entry` plus `sendsTo`/`outgoingEventsType` (Decision 8).
 - Move `defaultPlugin` onto the feature's plugin as `{ "default": true }` (Decision 12).
+- Widen `validateFeatures` (`validate.ts:42-59`) to check **every** feature path, not the three it
+  checks today (`settings`, `system.entry`, `plugin.entry`). Once `true` means "the conventional file
+  is there", an unchecked `"references": true` or `"types": true` points at nothing and says so only
+  much later. Resolve `true` to the convention and a string against the feature's directory before the
+  existence check, and reject a path that escapes it.
 - Add `about` to every feature and require it in `validate.ts`; `abuddy add feature` prompts for it
   (Decision 13).
 - Rename `features[].typesEntry` to `types`, relative to the feature's directory like every other
