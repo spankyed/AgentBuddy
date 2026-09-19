@@ -55,10 +55,16 @@ Finished when:
 - <npm run build, E2E, test:external-pack, test:packaged-authoring, the example pack, as relevant>
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
 
+Commit as you go:
+- Commit each phase when its "Done when" holds and the checks are green — not once at the end. A
+  phase is landable on its own; a commit is how that stays true. Conventional message, no
+  Co-Authored-By or session lines, `git commit -- <paths>` naming only that phase's files.
+- Check `git diff --cached` first: something outside the session stages files, and a pathspec commit
+  leaves the rest of the index alone.
+- Don't push, tag, or open a PR unless the user asks.
+
 Never:
-- commit, stage, push or tag unless the user asks in this session. When asked, commit in logical
-  chunks (conventional messages, no Co-Authored-By or session lines) with `git commit -- <paths>`,
-  and check `git diff --cached` first: something outside the session stages files.
+- push, tag or open a PR unless the user asks in this session.
 - npm publish, create GitHub releases, or trigger workflows (dry runs only).
 - open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
@@ -112,6 +118,8 @@ The settled design, numbered so phases and later notes can cite them ("Decision 
 
 Order phases so each leaves the code working and the full check list passing. A phase that can't finish without another says so ("after Phase 3"). If a phase can land before an earlier one, say that too.
 
+**Commit a phase when it's done, before starting the next one.** "Landable on its own" is a property the code has while the phase is finishing and loses once the next one starts: a later phase that edits the same files makes the earlier one impossible to separate afterwards. `git commit -- <paths>` takes a file's whole working state, so once two phases have touched one file there is no honest split left — you either ship both together or ship a commit that doesn't build. The pack-naming goal ran all five phases before committing and could only be landed as three commits instead of five, nine files having picked up several phases each (`docs/archive/goals/goal-pack-naming.md`). Committing as you go costs nothing and is the only moment the split is free.
+
 ### 7. Deferred (optional)
 
 Work deliberately left out of the goal, with a pointer to where it's tracked if anywhere. The agent must not do it.
@@ -119,7 +127,8 @@ Work deliberately left out of the goal, with a pointer to where it's tracked if 
 ### 8. Constraints
 
 The standing rules, as prose bullets (the prompt's "Never" list in fuller form), plus the goal's own:
-- commits only on request, in logical chunks, no attribution lines, `git diff --cached` first;
+- commit each phase as it finishes, in logical chunks, no attribution lines, `git diff --cached` first;
+  pushing, tagging and PRs are on request;
 - no publishing, releases or triggered workflows;
 - no real data dirs, no broad pkill, E2E in the `abuddy-test` namespace;
 - preload, example pack and release metadata rules;
