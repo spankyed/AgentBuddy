@@ -1,3 +1,6 @@
+> **Done** (2026-09-19) on `AS/external-pack-authoring`. All five phases landed. Open decision 1 was
+> settled as A after the decision itself turned out to be mis-framed — see Corrections below.
+
 > **Written in session** `b9ed13ae-1ac2-48e4-ae3d-6e96f091dbb1` (Claude Code, 2026-09-17), revised 2026-09-18 against the tree after `77f4c910a`, and again after `634f613f2` — every count below re-verified, two collisions added that the earlier passes could not have seen because the work that created them had not landed. Resume it with `claude -r b9ed13ae-1ac2-48e4-ae3d-6e96f091dbb1`.
 
 ```
@@ -294,6 +297,83 @@ pack's.
   `contract`, and the `contributions`/`extensions` pair — belong in it as worked examples.
 
 **Done when:** the guard fails if a retired name comes back, mutation-checked by reintroducing one.
+
+## Outcome (2026-09-19)
+
+All five phases landed. `registry` names only the in-process collection and the remote stub, `bundle` is
+only a verb, the last build-sense `artifact` is gone, and `source` names three things instead of five. The
+guard in Phase 5 caught a real regression the moment it was written, which is recorded below because it is
+the argument for the guard.
+
+### Per phase
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — installed packs are not a registry | done | `packs/installed-packs.ts`, `InstalledPack`, `installedAt`, `installedFrom`, `installed-packs.json`, and the route `packs.loaded` with `loadedPacksError`. Phase grep reads zero |
+| 2 — `bundle` becomes only a verb | done | `PACK_LAYOUT`, `PACK_LAYOUT_VERSION`, `stagePack`, `verifyPack`, `PackIntegrity`, `integrity.json`, `isPackLayout`, `getLoadedPackEntries`, `LoadedPackEntry`, `bundlePackSource`, `buildPackArchive`; module renamed `packs/pack-layout.ts`. Phase grep reads zero |
+| 3 — the umbrella's odd one out | done | `src/extensions/app/Welcome.vue` with the manifest path and regenerated entry following; then the second pass: `features[].contributions` → `references` (manifest key, `@abuddy/sdk/fe/references`, `ReferenceTypeConfig`, `ReferenceItem`, `REFERENCE_TYPES`, generated `references.ts`), and `contributions` retired in favour of `extensions` everywhere else. `grep -rn contribution` over `packages/` and `docs/public-facing/` reads zero |
+| 4 — the remaining single-sense fixes | done | `resolveDepFiles`/`DepFiles`/`ResolvedDepFiles`, `resolvedFrom`, `store.copyTo`, the write-lock's `machine`, `resolveFromRemoteRegistry`, the `seedKeys` guard removed (Open decision 2 A), and the docs calling the per-kind registries "registries" |
+| 5 — keep the retired names retired | done | `removed-names-in-docs.spec.ts` extended with 28 names and 4 paths, plus a case per rename asserting the replacement is *not* caught |
+
+### Corrections to the Decisions
+- **Open decision 1 was mis-framed, and answering it took two passes.** It asked which of `extensions` and
+  `contributions` should be the single umbrella word. That was the wrong axis: there were three concepts,
+  and *both* words named two of them.
+
+  | Concept | Was | Is |
+  |---|---|---|
+  | Step/artifact/block definitions a pack registers | `src/extensions/` **and** `PackContributionsView` | extensions |
+  | Vue components filling named app-shell slots | `fe.appExtensions` | app extensions |
+  | Which of a feature's things are linkable from an editor | `features[].contributions`, `@abuddy/sdk/fe/contributions` | references |
+
+  The third was the mis-named one. `ContributionTypeConfig` is `{ protocol, category, plugin, icon,
+  svgElements, navigate }` — typing `#` in an editor opens a picker, and choosing an item inserts a
+  `note://ab12` link that `navigate()` opens. Its only consumers are `reference-config.ts`,
+  `reference-node.ts` and `referenceSuggestionPlugin`, and the inserted node is literally `name: 'reference'`.
+  The manifest key was the odd one out, not the code.
+
+  Renaming it to `references` freed `contributions` to mean one thing — and that one thing was what
+  `src/extensions/` already held, so `contributions` was retired entirely: `PackContributionsView` →
+  `PackExtensionsView`, `getPackContributions` → `getPackExtensions`, `packs/contributions.ts` →
+  `packs/extensions.ts`, and the word is now absent from code and live docs.
+
+  The first pass took option A alone (moving the loose `Welcome.vue` out of the kind-folders' root) and
+  recorded the three concepts as a reason not to converge. That was half an answer: the concepts *are*
+  distinct, but two of them were sharing a word in both directions, which is the collision this goal
+  exists to remove.
+- **`ResolvedDepArtifacts` was missing from Phase 4's list** and was added; it postdates the goal's first
+  draft, and a grep for `DepArtifacts` finds it, so omitting it would have left the rename half-done while
+  the greps read clean.
+
+### Conventional choices
+- **`packs/bundle.ts` → `packs/pack-layout.ts`** (and its spec). Phase 2 renamed every symbol in the module
+  but not the module; leaving `bundle.ts` holding `PACK_LAYOUT` would have kept the noun in the one place a
+  reader looks first.
+- **`.abuddy/bundle/<id>` → `.abuddy/staged/<id>`.** The staging directory is the noun sense, and `staged`
+  is the lifecycle stage rule 1 already names.
+- **`packBundle` → `buildPackArchive`** (`abuddy pack`'s own function), checked free first.
+- **`InstallResult.bundle` → `integrity`**, and `bundleDir` → `layoutDir`, the noun leftovers inside
+  `pack-installer.ts`.
+- **The per-kind registries are called registries in prose**, not "lookups", per rule 3 — across the root
+  `CLAUDE.md` and the sdk, ui, api and renderer ones.
+
+### Open items
+- **`source` still names three things** by design: the `@abuddy/source` condition, a log or error's origin,
+  and the declaring pack inside `mergeRegistries`. The condition is a resolution contract in every host
+  config; the other two are conventional and read correctly. See Deferred.
+- **The install *request* parameter is still `source`** (`INSTALL_PACK`'s `source`, `installPackFromLocal`,
+  `handleProtocolInstall`), as is the bundle's git provenance (`PackIntegrity.source`). Both are distinct
+  from the stored origin this goal renamed, and neither was in the doc's inventory; recorded here rather
+  than renamed, since a fourth and fifth sense of `source` were outside what was decided.
+
+### Final verification
+| Check | Result |
+|---|---|
+| `npm run typecheck` | passes |
+| `npm run test:unit` | passes |
+| `npm run test:external-pack` | passes |
+| `npm run compile` | passes; `pack-entry-fe.ts` regenerated with the new Welcome path |
+| `api:update` | `@abuddy/sdk` (`installedPacksFile`), `@abuddy/ears` (`copyTo`) |
+| Phase greps | every retired name reads zero outside `docs/archive` |
 
 ## Deferred
 
