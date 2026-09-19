@@ -7,7 +7,7 @@ This file describes how to write one. The best current examples are [`goal-packa
 ## Where they live
 
 - **`docs/goals/`**: goals not started or in progress.
-- **`docs/archive/goals/`**: finished, absorbed or abandoned goals. Moving a doc there takes a note at the top (see [Finishing a goal](#finishing-a-goal)). Archived docs aren't checked against the code (`packages/abuddy-host/tests/removed-names-in-docs.spec.ts` skips `docs/archive/`).
+- **`docs/archive/goals/`**: finished, absorbed or abandoned goals. Moving a doc there takes a note at the top (see [Finishing a goal](#finishing-a-goal)). An archived doc records the code as it was, so it will name things that have since been renamed or removed: read it as history, and don't update it to match the code.
 - **File name:** `goal-<short-kebab-topic>.md`, named after what it achieves, not the ticket or the date (`goal-lmdb-only.md`, `goal-abuddy-db-cli.md`).
 
 ## When to write one
