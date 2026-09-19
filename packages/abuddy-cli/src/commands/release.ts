@@ -44,14 +44,7 @@ export function nextReleaseVersion(current: string, bump: BumpType, beta: boolea
 
 export type Runner = (cmd: string, args: string[], cwd: string) => string;
 
-/**
- * Whether a previous run already committed (and possibly tagged) this pack's current version.
- *
- * Four steps follow the version commit — pack, tag, push, publish — and any of them can fail. Without
- * this, the rerun reads the bumped version as the new current one and bumps again, so a failed 1.2.4
- * release becomes 1.2.5 and leaves 1.2.4 committed behind it. A release is resumed, not restarted:
- * `git reset --hard` on a commit that may not be the only thing in the tree is not a recovery.
- */
+/** How far a previous run got with this pack's current version. */
 export function releaseInProgress(root: string, version: string, run: Runner): ReleaseState {
   const quiet = (...args: string[]) => { try { return run('git', args, root); } catch { return ''; } };
   return {
@@ -67,6 +60,26 @@ export interface ReleaseState {
   pushed: boolean;
 }
 
+/** Nothing of a version exists yet: the state a release being cut fresh starts from. */
+const NOTHING_RELEASED: ReleaseState = { committed: false, tagged: false, pushed: false };
+
+/**
+ * Whether a run should continue `state`'s release rather than cut the next version.
+ *
+ * Pack, tag, push and publish all follow the version commit, and any of them can fail. Without this a
+ * rerun reads the bumped version as the current one and bumps again, so a failed 1.2.4 becomes 1.2.5
+ * with 1.2.4 committed behind it. A release is resumed, not restarted: `git reset --hard` on a commit
+ * that may not be the only thing in the tree is not a recovery.
+ *
+ * The tag reaching origin ends it. Past that the release exists for everyone and a rerun is asking for
+ * the next version — the beta cycle is two releases in a row with nothing committed between them, and
+ * reading the finished one as resumable would mean -beta.1 could never be cut. A `--local` publish
+ * that failed after the push is `abuddy release publish`, which exists for exactly that.
+ */
+export function isResumable(state: ReleaseState): boolean {
+  return state.committed && !(state.tagged && state.pushed);
+}
+
 /**
  * What a release left behind when a step after the version commit failed, and how to continue.
  *
@@ -75,14 +88,18 @@ export interface ReleaseState {
  */
 export function releaseStateReport(version: string, state: ReleaseState): string {
   const mark = (done: boolean) => (done ? '✓' : '·');
+  const next = isResumable(state)
+    ? ['Rerun the same `abuddy release` command to continue: it resumes this version instead of bumping again.',
+       'Nothing needs reverting first.']
+    : ['The tag is on origin, so the release itself is done and a rerun would cut the next version.',
+       'To finish publishing it, run `abuddy release publish`.'];
   return [
     `Release v${version} stopped part-way. What exists now:`,
     `  ${mark(state.committed)} version commit "release: v${version}"`,
     `  ${mark(state.tagged)} local tag v${version}`,
     `  ${mark(state.pushed)} tag v${version} on origin`,
     '',
-    'Rerun the same `abuddy release` command to continue: it resumes this version instead of bumping again.',
-    'Nothing needs reverting first.',
+    ...next,
   ].join('\n');
 }
 
@@ -183,8 +200,10 @@ function writeVersion(root: string, version: string): string[] {
     fs.writeFileSync(p, JSON.stringify(json, null, 2) + '\n');
     changed.push(file);
   }
-  // The lockfile records the root package's version twice, and `npm ci` refuses a lockfile that
-  // disagrees with package.json — so a release that left it behind broke the pack's own CI
+  // The lockfile records the root package's version twice, so leaving it behind tags a commit that
+  // disagrees with itself — and the next `npm install` rewrites it, which dirties the author's tree
+  // straight after a release and then fails the next release's preflight as uncommitted changes.
+  // `npm ci` is not the reason: it validates dependencies and passes a root version mismatch (npm 10).
   const lockPath = path.join(root, 'package-lock.json');
   if (fs.existsSync(lockPath)) {
     const lock = JSON.parse(fs.readFileSync(lockPath, 'utf-8'));
@@ -321,19 +340,20 @@ export async function runRelease(root: string, options: ReleaseOptions): Promise
   const run = options.run ?? defaultRunner;
   const env = options.env ?? process.env;
   const manifest = readManifest(root);
-  // A run that already committed this version is resumed at the step that failed, not bumped again
-  const resume: ReleaseState = options.dryRun
-    ? { committed: false, tagged: false, pushed: false }
-    : releaseInProgress(root, manifest.version, run);
-  const version = resume.committed ? manifest.version : nextReleaseVersion(manifest.version, options.bump, options.beta);
-  if (resume.committed) {
-    console.log(`Resuming the release of ${manifest.id} v${version}: it is already committed${resume.tagged ? ' and tagged' : ''}.`);
+  const prior = options.dryRun ? NOTHING_RELEASED : releaseInProgress(root, manifest.version, run);
+  const resuming = isResumable(prior);
+  const version = resuming ? manifest.version : nextReleaseVersion(manifest.version, options.bump, options.beta);
+  // What exists for the version this run is releasing. `prior` is about the version on disk, which is a
+  // different version unless this is a resume — so a fresh release starts from nothing, whatever tags
+  // the last one left behind.
+  const existing = resuming ? prior : NOTHING_RELEASED;
+  if (resuming) {
+    console.log(`Resuming the release of ${manifest.id} v${version}: it is already committed${existing.tagged ? ' and tagged' : ''}.`);
   } else {
     console.log(`Releasing ${manifest.id}: ${manifest.version} → ${version}${options.dryRun ? ' (dry run)' : ''}`);
   }
 
-  // The remote tag is only a conflict for a new version: a resumed release is the one that pushed it
-  const { errors, warnings } = await preflight(root, { local: options.local, run, env, version: resume.committed ? undefined : version });
+  const { errors, warnings } = await preflight(root, { local: options.local, run, env, version });
   for (const w of warnings) console.warn(`  ! ${w}`);
   if (errors.length > 0) {
     const report = errors.map(e => `  - ${e}`).join('\n');
@@ -341,12 +361,12 @@ export async function runRelease(root: string, options: ReleaseOptions): Promise
     console.warn(`Preflight problems (a real release would stop here):\n${report}`);
   }
 
-  const versionFiles = !options.dryRun && !resume.committed ? writeVersion(root, version) : [];
+  const versionFiles = !options.dryRun && !existing.committed ? writeVersion(root, version) : [];
   try {
     await verify(root, { skipTests: options.skipTests, skipE2e: options.skipE2e, run });
   } catch (err) {
     if (options.dryRun) throw err;
-    if (resume.committed) console.error(releaseStateReport(version, resume));
+    if (existing.committed) console.error(releaseStateReport(version, existing));
     else console.error(`Verification failed; version files were bumped to ${version} — revert them before retrying.`);
     throw err;
   }
@@ -370,7 +390,7 @@ export async function runRelease(root: string, options: ReleaseOptions): Promise
   }
 
   const git = (...args: string[]) => run('git', args, root);
-  if (!resume.committed) {
+  if (!existing.committed) {
     git('add', ...versionFiles);
     git('commit', '-m', `release: v${version}`);
   }
@@ -378,7 +398,7 @@ export async function runRelease(root: string, options: ReleaseOptions): Promise
     // After the commit, so integrity.json's source.commit is the tagged commit. Which is also why the
     // commit can't be moved later to close the window this resume path exists for.
     const packed = await packRelease(version);
-    if (!resume.tagged) git('tag', '-a', `v${version}`, '-m', `v${version}`);
+    if (!existing.tagged) git('tag', '-a', `v${version}`, '-m', `v${version}`);
     git('push', '--follow-tags', 'origin', 'HEAD');
 
     if (options.local) {

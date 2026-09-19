@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { defaultRunner, nextReleaseVersion, preflight, publishRelease, runRelease, type Runner } from '../../src/commands/release';
+import { defaultRunner, nextReleaseVersion, preflight, publishRelease, releaseStateReport, runRelease, type Runner } from '../../src/commands/release';
 import { readPackIntegrity } from '@abuddy/host/packs';
 
 // runRelease verifies with a release build; these tests use prebuilt packs
@@ -27,6 +27,7 @@ function builtPack(version = '1.2.3'): string {
     fs.writeFileSync(path.join(root, rel), content);
   };
   write('abuddy.json', JSON.stringify({ id: 'demo-pack', name: 'Demo Pack', version, hostVersion: '>=0.3.0' }));
+  write('.gitignore', '.abuddy/\n');
   write('package.json', JSON.stringify({ name: 'demo-pack', version }));
   write('package-lock.json', JSON.stringify({ name: 'demo-pack', version, lockfileVersion: 3, packages: { '': { name: 'demo-pack', version } } }));
   write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack", systems: [] } };');
@@ -228,6 +229,16 @@ describe('defaultRunner', () => {
   });
 });
 
+describe('releaseStateReport', () => {
+  it('tells a part-way release to rerun, and a pushed one to publish', () => {
+    expect(releaseStateReport('1.2.4', { committed: true, tagged: true, pushed: false }))
+      .toMatch(/resumes this version/);
+    // Past the push the release exists for everyone: a rerun cuts the next version, so say the other thing
+    expect(releaseStateReport('1.2.4', { committed: true, tagged: true, pushed: true }))
+      .toMatch(/abuddy release publish/);
+  });
+});
+
 describe('runRelease', () => {
   it('packs after the version commit, so integrity.json records the tagged commit', async () => {
     const { root, origin, run } = packRepo();
@@ -254,8 +265,8 @@ describe('runRelease', () => {
     expect(git(root, 'log', '-1', '--format=%s')).toBe('initial pack');
   }, 60_000);
 
-  // npm ci refuses a lockfile whose root version disagrees with package.json, so a release that moved
-  // only the two manifests broke the pack's own CI on the commit it had just tagged
+  // A release that moved only the two manifests tagged a commit whose lockfile disagreed with it, and
+  // the author's next `npm install` rewrote the lockfile and dirtied the tree
   it('bumps every version file, the lockfile included, and commits them together', async () => {
     const { root, run } = packRepo();
 
@@ -270,6 +281,16 @@ describe('runRelease', () => {
     // no tracked file left behind modified (.abuddy/ build output is untracked, and gitignored in a real pack)
     expect(git(root, 'status', '--porcelain', '--untracked-files=no')).toBe('');
   }, 60_000);
+
+  // A finished release sits at HEAD with its own commit subject. Reading that as one to resume would
+  // re-run it and never cut the next version — the beta cycle (-beta.0 → -beta.1) is exactly this shape.
+  it('cuts the next version after a release that finished, with no commits in between', async () => {
+    const { root, run } = packRepo();
+
+    expect((await runRelease(root, { ...releaseOptions, run, env: {} })).version).toBe('1.2.4');
+    expect((await runRelease(root, { ...releaseOptions, run, env: {} })).version).toBe('1.2.5');
+    expect(git(root, 'tag', '--list').split('\n').sort()).toEqual(['v1.2.4', 'v1.2.5']);
+  }, 90_000);
 
   it('resumes the committed version instead of bumping past it', async () => {
     const { root, origin, run } = packRepo();
