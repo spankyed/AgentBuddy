@@ -43,6 +43,11 @@ Things that waste the most time, in order:
   the mapping, read the source. Do that before you grep, not after.
 - **Re-running the full chain after a fix to a thing the chain already covered.** If the CLI suite
   caught it, the CLI suite proves the fix.
+- **Reading the source twice to explain a bug the running app would show you.** A hang or a dropped
+  event in the real app is worth one instrumented E2E run — a `console.error` in the failing path,
+  `npm run build:be`, `DEBUG_E2E=1 npm test -- <spec> --grep "<title>"`. Two carefully argued
+  explanations have been wrong where one such run was decisive. `tests/e2e/CLAUDE.md` has the method,
+  including what to rebuild first and how to put the instrumentation back.
 - **Running suites concurrently.** They share the package build lock and the build stamps, so a
   background `test:unit` racing a foreground `test:external-pack` produces failures that are about the
   race, not the code.

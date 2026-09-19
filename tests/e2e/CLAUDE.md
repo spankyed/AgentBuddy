@@ -18,6 +18,9 @@ Screenshots saved to `tests/screenshots/{name}.png` (gitignored).
 - **Never kill processes by broad pattern** (`pkill -f Electron`, `pkill -f node`, `killall Electron`, …). The user runs dev and prod AgentBuddy alongside tests, and a broad kill takes those down. If a test run hangs, stop only the process you started (its PID).
 - **E2E runs alongside dev and prod apps.** Tests use the `abuddy-test` app name and a fresh temp data dir per worker (`$TMPDIR/abuddy-e2e-*`, via `ABUDDY_USER_DATA_DIR`), so no running app needs to be closed first. Don't claim otherwise — just run the tests.
 - **Investigate a failing assertion before changing it.** Find out why it fails (`DEBUG_E2E=1`, `app.getContext()`, probing actor state with `appPage.evaluate`) and fix the cause. Loosening one to go green once removed the only backend check and hid the real cause (docs/archive/issues/postmortem-external-pack-calendar-extraction.md, item 1).
+- **The app under test is built, not source.** `npm test` does not rebuild it, so a backend edit is not in
+  the run until `npm run build:be`. See [Debugging the running app](#debugging-the-running-app), which also
+  covers instrumenting a path and getting the output back.
 - **Each worker starts from an empty data dir, but tests in a worker share it.** Anything a test creates is visible to later tests in the same run; assert on unique values and clean up what you create. `E2E_KEEP_DATA=1` keeps the dir for inspection.
 
 ## How the fixture works
@@ -116,6 +119,79 @@ test('check something', async ({ app, appPage }) => {
 Run with: `npm test -- tests/e2e/scratch`
 
 Create it fresh each time you need to visually verify something. Delete when done.
+
+## Debugging the running app
+
+Use this when a bug only appears in the real app — a hang, a dropped event, something whose cause you
+can't settle by reading. Reading twice and guessing twice costs more than one instrumented run: two
+separate explanations for one such bug were argued from the source and both were wrong, and a single
+`console.error` in the failing path settled it in one cycle
+(`fix(packs): list a pack before registering its contributions`, whose message records both wrong answers).
+
+### The app under test is built, not source
+
+This is the thing that wastes a cycle. `npm test` runs `packages:ensure` and then Playwright — it does
+**not** rebuild the app. Electron launches built output, so an edit to backend source is not in the run
+unless you rebuild first:
+
+| You edited | Rebuild with |
+|---|---|
+| `packages/abuddy-host/src/**`, `packages/abuddy-sdk/src/**`, `packages/api/src/**` | `npm run build:be` (bundles them into the API) |
+| `packages/renderer/src/**` | `npm run build -w @app/renderer` |
+| `packages/main/src/**`, `packages/preload/src/**` | `npm run build -w @app/main`, `-w @app/preload` |
+| a built-in pack (`packages/default-setup/**`) | `npm run compile` |
+
+A first instrumented run that prints nothing usually means this, not that the line wasn't reached.
+
+### Getting output back
+
+`DEBUG_E2E=1` pipes the Electron and API stdout/stderr into the test terminal. `console.error` from the
+API process arrives prefixed `[API Server Error]:`, `console.log` as `[API Server]:`.
+
+Pick a unique tag so you can extract the lines whatever else is logging, and print a timestamp — the
+app is several processes and the interleaving is what you are usually trying to establish:
+
+```ts
+console.error(`[DROPDBG] t=${Date.now()} plugin=${pluginId} keys=[${[...map.keys()].join('|')}]`);
+```
+
+```bash
+npm run build:be && DEBUG_E2E=1 npm test -- tests/e2e/plugin-sends.spec.ts --grep "restarted pack" \
+  2>&1 | grep -oE "\[DROPDBG\] t=[0-9]+ .*" | head -20
+```
+
+`--grep "<title substring>"` runs one test, which keeps a cycle at seconds rather than minutes.
+
+Print **state, not just arrival**. "It was dropped" says nothing; the keys of the map it was checked
+against, at a timestamp, says which moment the code was in. Instrument both sides of a suspected
+window — the thing that moves and the thing that observes it — so the ordering is in the output rather
+than in your head.
+
+### Putting it back
+
+Instrumentation is temporary and must not reach a commit. Copy the file to your scratchpad first, and
+restore from that copy rather than by hand or with `git checkout`:
+
+```bash
+SC=<your scratchpad>
+cp packages/abuddy-host/src/bus/machine.ts "$SC/machine.orig"
+# …instrument, build, run, read…
+cp "$SC/machine.orig" packages/abuddy-host/src/bus/machine.ts
+git status --porcelain   # confirm nothing of yours is left behind
+```
+
+`git checkout -- .` has wiped a session's uncommitted work in this repo. Restore the one file you
+touched, never the tree.
+
+### Driving the app, not just watching it
+
+The fixture is an app driver: `app.navigate(pluginId)`, `app.sendEvent(...)`, `app.getContext()`,
+`app.waitForState(...)`, and `appPage.evaluate()` for anything reachable from the renderer. A scratch
+test (see above) that navigates to the screen, does the thing and waits is usually a faster reproducer
+than the real test you are chasing, and it is gitignored.
+
+For backend endpoints the renderer doesn't call, read the port and token from the page and `fetch`
+them from the test — `tests/e2e/plugin-sends.spec.ts` does this for `POST /dev/reload`.
 
 ## Testing external packs
 
