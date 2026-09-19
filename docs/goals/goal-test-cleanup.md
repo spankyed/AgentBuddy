@@ -97,8 +97,17 @@ in the Phases below.
 
 `AS/pack-naming-convention` is a second branch, outside that audit, classified in
 [`docs/plans/test-audit-pack-naming-pr.md`](../plans/test-audit-pack-naming-pr.md). It needs no phase of
-its own — 15 of its 17 added tests are keeps — and its two exceptions are folded into Phase 2. Three
-findings from it are carried into the Decisions and the Phases preamble below.
+its own — 15 of its 17 added tests are keeps — and its two exceptions are folded into Phase 2.
+
+[`docs/plans/test-inventory.md`](../plans/test-inventory.md) then covers the whole repo: all 2,211 tests
+in 279 files, each blamed to the commit that introduced it. It changes the shape of this goal in one
+way worth reading before starting. **Pinning, not dead guards, is the dominant pathology**: 327 tests
+assert a message of 45+ characters or an exact call/length count, against a much smaller set of guards
+that cannot fail. `TRIM` will be the most common verdict and Decision 2 the load-bearing one. It also
+names three targets the branch audit could not see — `claude-code-permission-shape.spec.ts` (10 tests of
+a standalone mirror), the `_hybrid` export clones (14 tests, one parameterised suite), and
+`import-specifiers.spec.ts`'s 12 allowlist self-checks — and gives a per-package density table saying
+cli and sdk pay first, default-setup last despite being the largest.
 
 ### A second test, found after the audit (2026-09-19)
 
@@ -167,10 +176,13 @@ Final.
    boot."* Spare a test that states the level it adds. Where one is kept without saying, add the
    sentence — an unexplained duplicate is indistinguishable from an accident, which is how ~30 of them
    got here.
-11. **Provenance predicts the verdict.** A test written to close a specific failure is almost always a
-   keep; a test written to steer a refactor is almost always scaffolding. `git log -S` on the test's
-   title, or the commit that added the file, answers it faster than reading the assertions. Use it to
-   order the work inside a phase, not to skip the reading.
+11. **Provenance tells you what a test was for; it does not tell you whether to keep it.** `git blame`
+   on the `it(` line answers "why does this exist" when the intent is unclear, which is a reading aid
+   worth using. It is not a filter: measured across all 2,211 tests, the share carrying a pathology
+   signal is flat by commit type — `fix(` 16%, `feat(` 16%, `refactor(` 14%, `test(` 11%. A test born in
+   a bug fix is no likelier to be clean than one born in a refactor. An earlier draft of this decision
+   said the opposite, inferred from 17 tests on one branch where every addition came from a review
+   finding; see [`test-inventory.md`](../plans/test-inventory.md) Finding 1.
 12. **An allowance is load-bearing or it goes.** Delete it, watch the guard fail, put it back; if the
    guard still passes, the allowance was describing a file that no longer trips it. A *growing* list is
    the guard reporting that it no longer matches how the code is written. An *empty* list is different:
@@ -215,8 +227,13 @@ Delete:
   also reads the user's global npm config, so it fails on a machine that sets `node-options`).
 - `tests/cli/pack-generate.spec.ts`: "delegates infrastructure types to SDK" (`facade-typing.spec.ts`
   typechecks the generated facades).
+- `tests/build/import-specifiers.spec.ts`: the 12 tests whose subject is the allowlist rather than the
+  rule — Decision 12's check applies, so delete an entry and see whether the rule's own test fails.
 
 Trim:
+- `tests/cli/db.spec.ts`: 27 whole-message assertions, the largest pinning cluster in the repo. A CLI's
+  output is nearer a contract than most strings, so read before editing: keep the part a user acts on
+  (the refusal, the named file, the flag to pass), drop the sentence around it.
 - `pack-generate.spec.ts`: drop the re-export's module path; loosen the ordered `RelKind` union to the
   `export type RelKind =` line and `(string & {})`.
 - `pack-cli.spec.ts` "scaffolds a valid pack directory structure": drop the "old feature folder is gone"
@@ -351,6 +368,10 @@ the typed-EARS specs (`packages/abuddy-sdk/TYPED-EARS.md`).
 
 ### Phase 4 — default-setup, part A
 
+From the repo inventory:
+- `tests/unit/_hybrid/actions-export.spec.ts` and `prompts-export.spec.ts` are structural clones: the
+  same seven titles, the same shape, differing only in entity type. One parameterised suite, −7 tests.
+
 Delete:
 - `tests/unit/generated-entries-import.spec.ts` (whole file): a transitional guard that importing the
   generated entries registers nothing, pinning the seeder and DSL-type key lists.
@@ -426,6 +447,13 @@ Trim:
 passes.
 
 ### Phase 6 — api, renderer, E2E and fixture packs
+
+From the repo inventory:
+- `api/tests/unit/claude-code-permission-shape.spec.ts`: 10 tests whose subject is a standalone Zod
+  mirror of the Claude Code CLI's permission response, declared in the test. They cannot fail when our
+  code changes, only when the mirror does. Delete, or replace all ten with one that checks the mirror
+  against a recorded real response — the mirror is only worth anything if it matches the CLI.
+- `renderer` is the densest package in the repo (16 of 33 flagged); read all of it rather than sampling.
 
 Delete:
 - `packages/api/tests/unit/host-data-services.spec.ts`: the whole `relation reads in @abuddy/ears`
