@@ -319,6 +319,25 @@ describe('reloading a pack', () => {
     });
   });
 
+  // Seeding writes its outcome to the pack's entry, so the entry has to exist before the seed runs. It
+  // does that with a map over the recorded packs, which writes nothing at all when the entry is missing.
+  it("records a first-time pack's seed failure, rather than seeding before it has an entry to record it on", async () => {
+    resetTestData();
+    writeRebuild(runtime());
+    // Compiled seeds from a pack built by an older CLI: seedData refuses them, which is a failed seed
+    fs.writeFileSync(
+      path.join(tmpDir, 'packs', PACK_ID, 'runtime', 'seeds', 'seeds.json'),
+      JSON.stringify({ version: 1, seeds: [] }),
+    );
+
+    await reloadExternalPack(registry, PACK_ID, bus as never);
+
+    expect(readInstalledPacks()).toMatchObject({
+      found: true,
+      packs: [expect.objectContaining({ id: PACK_ID, lastError: expect.stringContaining("doesn't name the pack that compiled these seeds") })],
+    });
+  });
+
   it("leaves an existing entry alone, since a reload knows neither the user's choice nor where the pack came from", async () => {
     writeInstalledPacks([{
       id: PACK_ID, name: PACK_ID, version: '1.0.0', dir: path.join(tmpDir, 'packs', PACK_ID),

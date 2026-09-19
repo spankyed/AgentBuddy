@@ -88,3 +88,19 @@ describe('installing over a pack that is already running', () => {
     }
   });
 });
+
+// Five of default-setup's systems re-send their data on PACK_CHANGED; the system whose whole job is
+// listing packs did not, so an open Packs view stayed stale after an `abuddy dev` reload — the one way a
+// pack changes without this system doing it.
+describe('a pack changing underneath the packs system', () => {
+  it('sends the list again', () => {
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'PACK_CHANGED', packId: 'anything' });
+
+      expect(emitted(system.sent).map(e => e.type)).toEqual(['PACKS_LIST']);
+    } finally {
+      system.stop();
+    }
+  });
+});
