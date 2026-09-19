@@ -32,9 +32,13 @@ const HOLD_UNTIL_SIGNALLED =
   "const [, dir, src] = process.argv;" +
   "import(src).then(({ holdDatabaseWriteLock }) => { holdDatabaseWriteLock(dir, 'abuddy db import'); setInterval(() => {}, 1000); });";
 
-/** Polls until `done`, so the test never outruns the child process */
-async function waitFor(done: () => boolean): Promise<void> {
-  for (let i = 0; i < 200 && !done(); i++) await new Promise((r) => setTimeout(r, 25));
+/** Polls until `done`, or fails naming what it was waiting for rather than leaving that to the assertion */
+async function waitFor(what: string, done: () => boolean, timeoutMs = 5_000): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  while (!done()) {
+    if (Date.now() >= deadline) throw new Error(`Timed out after ${timeoutMs}ms waiting for ${what}`);
+    await new Promise((r) => setTimeout(r, 25));
+  }
 }
 /** A pid no process has any more */
 const exitedPid = () => spawnSync(process.execPath, ['-e', '']).pid!;
@@ -117,14 +121,17 @@ describe('the database write lock', () => {
     const dir = tempDir('write-lock-');
     const holder = spawn(process.execPath, ['--import', pathToFileURL(TSX).href, '-e', HOLD_UNTIL_SIGNALLED, dir, SRC], { stdio: 'ignore' });
     try {
-      await waitFor(() => fs.existsSync(lockFile(dir)));
+      // The holder compiles this package's source through tsx, which takes seconds when the whole unit
+      // suite is running beside it. The release it is asked for afterwards is immediate, and is the
+      // thing under test, so only the boot gets the long budget.
+      await waitFor('the holder to take the lock', () => fs.existsSync(lockFile(dir)), 60_000);
       process.kill(holder.pid!, signal);
-      await waitFor(() => !fs.existsSync(lockFile(dir)));
+      await waitFor(`the ${signal} handler to release the lock`, () => !fs.existsSync(lockFile(dir)));
     } finally {
       holder.kill('SIGKILL');
     }
     expect(fs.existsSync(lockFile(dir))).toBe(false);
-  });
+  }, 90_000);
 
   it("counts a lock from another machine, whose process it can't check", () => {
     const dir = tempDir('write-lock-');
