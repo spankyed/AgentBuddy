@@ -52,13 +52,21 @@ export function removedNames(text: string, allowed: RegExp[] = []): string[] {
 const isDoc = (file: string) => file.endsWith('.md') && !file.startsWith('docs/archive/') && path.basename(file) !== 'CHANGELOG.md';
 const isTemplate = (file: string) => file.startsWith('packages/abuddy-cli/src/commands/');
 const isPackSource = (file: string) => file.startsWith('packages/default-setup/src/') || /^tests\/fixtures\/[^/]+\/src\//.test(file);
+/**
+ * The app's own shipping source. A retired name survives in a comment or an error string as easily as in a
+ * doc — `PACK_LAYOUT.info` and `packFrontendFiles(bundleDir)` both outlived the rename that was supposed to
+ * take them, with every suite green, because this guard read only docs and pack sources.
+ */
+const isAppSource = (file: string) =>
+  /^packages\/(abuddy-(host|sdk|ears|ui|cli|testing)|api|renderer|main|preload)\/src\//.test(file)
+  && /\.(ts|vue)$/.test(file);
 
-/** The docs, CLI templates and pack sources in the repo, tracked or not (ignored files left out) */
+/** The docs, CLI templates, pack sources and app sources in the repo, tracked or not (ignored files left out) */
 function checkedFiles(): string[] {
   return execFileSync('git', ['ls-files', '--cached', '--others', '--exclude-standard'], { cwd: ROOT, encoding: 'utf-8' })
     .split('\n')
     .filter((file) => file && !/(^|\/)(node_modules|dist|__generated__)\//.test(file))
-    .filter((file) => isDoc(file) || isTemplate(file) || isPackSource(file))
+    .filter((file) => isDoc(file) || isTemplate(file) || isPackSource(file) || isAppSource(file))
     .filter((file) => fs.existsSync(path.join(ROOT, file)));
 }
 
@@ -68,6 +76,7 @@ describe('names the package-boundaries goal removed', () => {
     expect(files.filter(isDoc).length).toBeGreaterThan(50);
     expect(files.filter(isTemplate).length).toBeGreaterThan(10);
     expect(files.filter(isPackSource).length).toBeGreaterThan(500);
+    expect(files.filter(isAppSource).length).toBeGreaterThan(200);
     const found = files.flatMap((file) => {
       const allowed = (ALLOWED[file] ?? []).map(({ name }) => name);
       return removedNames(fs.readFileSync(path.join(ROOT, file), 'utf-8'), allowed).map((name) => `${file}: ${name}`);
