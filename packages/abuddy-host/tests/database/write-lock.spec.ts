@@ -107,6 +107,19 @@ describe('the database write lock', () => {
     expect(findDatabaseWriter(running)).toBe(`abuddy db import (pid ${process.pid})`);
   });
 
+  // A lock from a previous boot names a pid this boot reassigned. Without the bound it reads as held by
+  // whatever took that number, and the app refuses to start for as long as the file is there.
+  it('ignores a lock that predates this boot, even when its pid is live now', () => {
+    const dir = tempDir('write-lock-');
+    fs.writeFileSync(lockFile(dir), JSON.stringify({ pid: process.pid, machine: os.hostname(), what: 'abuddy db import' }));
+    expect(findDatabaseWriter(dir)).toBe(`abuddy db import (pid ${process.pid})`);
+
+    const before = new Date(Date.now() - os.uptime() * 1000 - 60_000);
+    fs.utimesSync(lockFile(dir), before, before);
+    expect(findDatabaseWriter(dir)).toBeNull();
+    expect(() => hold(dir)).not.toThrow();
+  });
+
   it("counts a lock from another machine, whose process it can't check", () => {
     const dir = tempDir('write-lock-');
     fs.writeFileSync(lockFile(dir), JSON.stringify({ pid: process.pid, machine: 'another-machine.local', what: 'abuddy db exec' }));

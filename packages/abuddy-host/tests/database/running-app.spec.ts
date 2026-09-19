@@ -27,6 +27,12 @@ function exitedPid(): number {
 
 const lock = (dir: string, target: string) => fs.symlinkSync(target, path.join(dir, 'SingletonLock'));
 
+/** Backdate a file to before this machine booted, as a previous boot's leftover would be */
+function backdateToPreviousBoot(file: string): void {
+  const before = new Date(Date.now() - os.uptime() * 1000 - 60_000);
+  fs.lutimesSync(file, before, before);
+}
+
 describe('findRunningApp', () => {
   it('finds nothing in a data dir with neither file', () => {
     expect(findRunningApp(context())).toBeNull();
@@ -68,5 +74,28 @@ describe('findRunningApp', () => {
     const unreadable = context();
     lock(unreadable.userDataDir, 'garbage');
     expect(findRunningApp(unreadable)).toMatch(/SingletonLock is held \(garbage\)/);
+  });
+});
+
+// After a reboot, a pid is very likely some unrelated process, so a file a crashed run left behind names a
+// live pid and reads as "an app is running" forever — and the tools that ask refuse to touch the data dir.
+// The boot epoch settles it: nothing a running app wrote can predate the boot it is running in.
+describe('findRunningApp, on files left by a previous boot', () => {
+  it('ignores a port file that predates this boot, whatever pid it names', () => {
+    const ctx = context();
+    publishApi(ctx.userDataDir);
+    expect(findRunningApp(ctx)).toMatch(/its API is running on port 3001/);
+
+    backdateToPreviousBoot(ctx.apiPortFile);
+    expect(findRunningApp(ctx)).toBeNull();
+  });
+
+  it('ignores an instance lock that predates this boot, whatever pid it names', () => {
+    const ctx = context();
+    lock(ctx.userDataDir, `${os.hostname()}-${process.pid}`);
+    expect(findRunningApp(ctx)).toMatch(/holds/);
+
+    backdateToPreviousBoot(path.join(ctx.userDataDir, 'SingletonLock'));
+    expect(findRunningApp(ctx)).toBeNull();
   });
 });
