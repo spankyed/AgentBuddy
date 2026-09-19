@@ -1,4 +1,4 @@
-> **Written in session** `b9ed13ae-1ac2-48e4-ae3d-6e96f091dbb1` (Claude Code, 2026-09-17), revised 2026-09-18 against the tree after `77f4c910a`. Resume it with `claude -r b9ed13ae-1ac2-48e4-ae3d-6e96f091dbb1`.
+> **Written in session** `b9ed13ae-1ac2-48e4-ae3d-6e96f091dbb1` (Claude Code, 2026-09-17), revised 2026-09-18 against the tree after `77f4c910a`, and again after `634f613f2` — every count below re-verified, two collisions added that the earlier passes could not have seen because the work that created them had not landed. Resume it with `claude -r b9ed13ae-1ac2-48e4-ae3d-6e96f091dbb1`.
 
 ```
 # Goal: one word per concept in the pack vocabulary
@@ -19,7 +19,12 @@ already taken — see Decision 4 and Open decision 1. Moving a word onto another
 Finished when:
 - Phases 1–5 are implemented and each meets its "Done when"; every new guard or test is mutation-checked.
 - No retired name survives anywhere (code, tests, docs, scaffold templates, generated files), enforced by
-  the guard in Phase 5 rather than by grepping once.
+  the guard in Phase 5 rather than by grepping once. Each phase also ends with its own grep, given in its
+  "Done when": green tests do not show a rename is complete, because a name left in a doc, a comment, a
+  spec title or a string literal still compiles and still passes.
+- `source` names three things rather than five: the `@abuddy/source` condition, a log or error's origin,
+  and the declaring pack inside `mergeRegistries`. An installed pack's origin is `installedFrom` and a
+  dependency's is `resolvedFrom`.
 - `npm run typecheck`, `npm run typecheck -w @app/main`, `schema:check`, `api:check` (ears, sdk, ui),
   `packages:build` + `packages:check`, `npm run compile`, `facade:check -w @app/default-setup`, and
   `npm run test:unit` pass.
@@ -40,6 +45,11 @@ Never:
 
 Several words name two or more unrelated things. Counts are grep line-counts over `packages/`, `docs/` and
 `scripts/`, excluding `node_modules`, `dist/` and `docs/archive`, verified 2026-09-18.
+
+They are an inventory, not a measurement: this file is inside that scope and discusses every name it counts,
+so each revision inflates its own numbers by a few. Use them to judge scale and to find call sites — not to
+detect drift, and never as a phase's completion check. The completion check is the grep in each "Done when",
+which reads zero or does not.
 
 - **`registry` — four senses.**
   1. `createPackRegistry()` / `PackRegistry` / `PackRegistryView`: the in-process collection packs register
@@ -76,6 +86,28 @@ Several words name two or more unrelated things. Counts are grep line-counts ove
   output of built-in packs, and `PackSeedManifest.artifacts` → `seedKeys`). What remains is
   `resolveDepArtifacts` (`cli/src/commands/fetch-deps.ts:392`, 25 refs) with `DepArtifacts` (17) and
   `findDepArtifacts` (7): a dependency's resolved files, not a pack's first-class artifacts.
+
+- **`source` — five senses, and the newest is four days old.** This is now the largest collision in the
+  tree and the only one this goal had not recorded.
+  1. The `@abuddy/source` export condition — 176 refs across host tsconfigs, Vite/Vitest configs, esbuild
+     and `node --conditions`. A published resolution contract; effectively immovable.
+  2. A pack's install origin: `InstalledPack.source` (`github:owner/repo@tag`), read by the updater.
+  3. A log or error's origin: `createLogger(source)`, `reportError({ source })`.
+  4. The declaring pack, in `mergeRegistries`' `{ value, source }` registry entries and `valueSources`.
+  5. Where a dependency resolved from: `DepArtifacts.source` (`workspace`, `file:…`, `installed app (env)`,
+     `github:…`), added 2026-09-18 in `516487a5d` to give a facade failure an actionable remedy.
+
+  Bare `source` is 1020 occurrences. Senses 1 and 3 are conventional and stay; 2 and 5 are small, and each
+  sits inside a rename this goal already makes, so they are qualified there rather than in a phase of their
+  own (Phases 1 and 4). Sense 4 is local to one function and reads correctly in place.
+- **`diagnostic` — checked, and accepted.** `severity: 'diagnostic'` on a `SYSTEM_ERROR` (7 refs, added
+  2026-09-18 in `4311bf8ef`) sits beside TypeScript's `Diagnostic`/`getSemanticDiagnostics` in the build
+  scripts (35 refs). Both are qualified by context — one is a severity value on a runtime event, the other a
+  compiler type in tooling — and rule 5 asks for qualification, not a unique word. Recorded here as a worked
+  example for the naming doc rather than renamed.
+
+  It is also the second name added *while this goal sat open* that its own "check the word first" rule would
+  have caught. That is the argument for landing the phases sooner rather than widening them.
 
 **Two words that look free and are not** — checked 2026-09-18, and the reason this goal's prompt now carries
 a "check the word first" instruction:
@@ -168,7 +200,9 @@ Each phase is landable on its own and leaves every check green.
 - `packs/pack-registry.ts` → `packs/installed-packs.ts`. `PackRegistryEntry` → `InstalledPack`;
   `readPackRegistry` → `readInstalledPacks`; `writePackRegistry` → `writeInstalledPacks`; `modifyRegistry` →
   `updateInstalledPacks`; `addToRegistry` → `addInstalledPack`; `removeFromRegistry` → `removeInstalledPack`;
-  the entry's `registeredAt` → `installedAt`.
+  the entry's `registeredAt` → `installedAt`, and its `source` → `installedFrom` (one of the five senses of
+  `source`; the field names where the pack came from, and `InstalledPack.installedFrom` says so without the
+  word). Callers: `pack-updater.ts`, `packs-system.ts`, `pack-installer.ts` and their specs.
 - `reconcileExternalRegistry` → `reconcileInstalledPacks`, **in `packs/pack-discovery.ts`** — it does not live
   in the module being renamed, so this is a cross-file change.
 - `AppContext.registryFile` → `installedPacksFile` (`@abuddy/sdk/env`, published — `api:update`), and the file
@@ -183,7 +217,9 @@ Each phase is landable on its own and leaves every check green.
   it already does for a pack it has never seen. Each entry's `source` and update-check cache is lost.
 
 **Done when:** `registry` names only the in-process collection and the remote stub; a temp-data-dir test shows
-a data dir with no `installed-packs.json` coming up with its packs enabled.
+a data dir with no `installed-packs.json` coming up with its packs enabled. Mechanically:
+`grep -rn 'PackRegistryEntry\|readPackRegistry\|writePackRegistry\|modifyRegistry\|addToRegistry\|removeFromRegistry\|reconcileExternalRegistry\|registryFile\|registeredAt' packages/ scripts/ docs/`
+returns nothing outside `docs/archive`.
 
 ### Phase 2 — `bundle` becomes only a verb
 - `BUNDLE_PATHS` → `PACK_LAYOUT`; `BUNDLE_FORMAT_VERSION` → `PACK_LAYOUT_VERSION`; `stageBundle` →
@@ -199,7 +235,11 @@ a data dir with no `installed-packs.json` coming up with its packs enabled.
   key `fe.bundleUi`.
 
 **Done when:** `bundle` appears only as a verb or in a bundler's own vocabulary; `abuddy pack` still produces
-an archive that `abuddy install` verifies, proven by the existing round-trip tests.
+an archive that `abuddy install` verifies, proven by the existing round-trip tests. Mechanically: every
+`grep -rn` for a retired noun (`BUNDLE_PATHS`, `BUNDLE_FORMAT_VERSION`, `verifyBundle`, `stageBundle`,
+`readBundleInfo`, `BundleInfo`, `isBundleDir`, `hasBuiltBundleSections`, `getPackBundleEntries`,
+`PackBundleEntry`, `buildPackBundle`, `bundleArchiveName`, `createBundleArchive`, `extractBundleArchive`)
+returns nothing outside `docs/archive`.
 
 ### Phase 3 — the umbrella's odd one out
 Scope depends on Open decision 1. Under **A** (the smaller path):
@@ -220,10 +260,14 @@ pack fixture's generated flow helpers; and the public docs (`extensions.md` incl
 `abuddy add step`/`add artifact`/`add service` scaffolds and builds.
 
 ### Phase 4 — the remaining single-sense fixes
-- `resolveDepArtifacts` → `resolveDepFiles`, with `DepArtifacts` → `DepFiles` and `findDepArtifacts` →
-  `findDepFiles` (`cli/src/commands/fetch-deps.ts`; callers in `commands/build.ts`, `commands/generate.ts` and
-  `tests/packs/host-output.spec.ts`). This is the last build-sense `artifact`; afterwards the word means only a
-  pack's first-class artifact.
+- `resolveDepArtifacts` → `resolveDepFiles`, with `DepArtifacts` → `DepFiles`, **`ResolvedDepArtifacts` →
+  `ResolvedDepFiles`** and `findDepArtifacts` → `findDepFiles` (`cli/src/commands/fetch-deps.ts`; callers in
+  `commands/build.ts`, `commands/generate.ts` and `tests/packs/host-output.spec.ts`). `ResolvedDepArtifacts`
+  postdates this goal's first pass — it was added in `516487a5d` — and a `grep` for `DepArtifacts` finds it,
+  so leaving it out would leave the rename half-done while the greps read clean.
+- `DepFiles.source` → `resolvedFrom`, the fifth sense of `source`: the field records where a dependency
+  resolved from, and only `generate-entries.ts`'s `facadeRemedy` reads it. Renamed here because the type it
+  sits on is already changing.
 - `store.snapshot(partition, targetDir)` → `store.copyTo(partition, targetDir)` (`@abuddy/ears/lmdb`,
   published — `api:update`; call site `abuddy-host/src/backup/index.ts:71`, and the ears store spec).
 - `db-write.lock`'s `host` field → `machine`, with `findDatabaseWriter`'s "on <host>" message, the reader in
@@ -233,7 +277,9 @@ pack fixture's generated flow helpers; and the public docs (`extensions.md` incl
 - Open decision 2's outcome for the `seedKeys` guard.
 
 **Done when:** each renamed symbol has one meaning in the tree, and the write-lock and database specs pass
-unchanged apart from the field name.
+unchanged apart from the field name. Mechanically: `grep -rn 'DepArtifacts\|findDepArtifacts\|resolveDepArtifacts'`
+returns nothing outside `docs/archive`, and `source` no longer names a dependency's origin or an installed
+pack's.
 
 ### Phase 5 — keep the retired names retired
 - Extend `packages/abuddy-host/tests/removed-names-in-docs.spec.ts` — which already has exactly this shape, a
@@ -251,6 +297,12 @@ unchanged apart from the field name.
 
 ## Deferred
 
+- **The `@abuddy/source` condition and the logger's `source`** (senses 1 and 3 of `source`). The condition is
+  named in every host tsconfig, Vite/Vitest config, esbuild config and `node --conditions` invocation, and in
+  the published `exports` maps of three packages — 176 refs, and a resolution contract rather than a word
+  choice. The logger's `source` is the conventional name for the field and reads correctly. Qualifying the
+  two small senses (Phases 1 and 4) takes `source` from five senses to three, which is where the cost curve
+  turns.
 - **Renaming `PackSnapshot`** (Decision 4). Revisit only with a replacement word checked against the tree.
 - **The `qx`/`tx` name-or-id overload.** `qx('Memo')` for a name no pack declares silently returns `[]`,
   because the dash is the only thing separating a name from an id. Recorded, with two failed fix attempts and
@@ -266,7 +318,12 @@ unchanged apart from the field name.
 - **Published surfaces need their reports regenerated**, not hand-edited: `api:update` in `@abuddy/ears`
   (Phase 4), `@abuddy/sdk` (Phase 1), and `schema:check` after any manifest-schema touch.
 - **Generated files are regenerated, never edited**: `npm run compile` (or `abuddy generate-entries --force`)
-  after Phase 3.
+  after Phase 3. Checked 2026-09-18: no name this goal retires appears in any committed generated file
+  (`src/__generated__/`, the fixtures' generated trees) or in any CLI scaffold template, so regeneration is
+  a Phase 3 concern only and the other phases cannot leave a stale name in generated output.
+- **Finish each phase with its grep, not with its tests.** A rename is complete when the old name returns
+  nothing, and green tests do not show that: a name surviving in a doc, a comment, a spec title or a string
+  literal compiles and passes. Each phase's "Done when" carries the exact command; run it before moving on.
 - **Rebuild before E2E.** `npm test` launches built output, not source, so a backend rename is not in the run
   until `npm run build` has run (`tests/e2e/CLAUDE.md`). Renaming across the codegen boundary and running only
   `npm run compile` leaves the API bundle reading the old name, which fails as a crash, not a type error.
