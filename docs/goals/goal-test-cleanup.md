@@ -95,6 +95,11 @@ Some of this has already landed on master and is not part of this goal:
 The audit's own reports were written to a session scratchpad, which is not durable. Everything needed is
 in the Phases below.
 
+`AS/pack-naming-convention` is a second branch, outside that audit, classified in
+[`docs/plans/test-audit-pack-naming-pr.md`](../plans/test-audit-pack-naming-pr.md). It needs no phase of
+its own — 15 of its 17 added tests are keeps — and its two exceptions are folded into Phase 2. Three
+findings from it are carried into the Decisions and the Phases preamble below.
+
 ### A second test, found after the audit (2026-09-19)
 
 Asking "could someone write this today?" is necessary and not sufficient. A guard can forbid something
@@ -156,7 +161,17 @@ Final.
    compares every file under `packages/api/src` against a list, so it already fails on a recreated
    `api/src/packs` — which is why `boundaries.spec.ts`'s absence checks for that directory went in
    acf10618a. An allowlist catches what nobody predicted and cannot go stale as the code moves.
-10. **An allowance is load-bearing or it goes.** Delete it, watch the guard fail, put it back; if the
+10. **A duplicate that names its level is not a duplicate.** `api/tests/unit/boot-recovery.spec.ts`
+   repeats two `@abuddy/host` unit tests on purpose, and says why: *"The unit tests for these live in
+   @abuddy/host. This one boots the real composition, because what both regressions broke was the
+   boot."* Spare a test that states the level it adds. Where one is kept without saying, add the
+   sentence — an unexplained duplicate is indistinguishable from an accident, which is how ~30 of them
+   got here.
+11. **Provenance predicts the verdict.** A test written to close a specific failure is almost always a
+   keep; a test written to steer a refactor is almost always scaffolding. `git log -S` on the test's
+   title, or the commit that added the file, answers it faster than reading the assertions. Use it to
+   order the work inside a phase, not to skip the reading.
+12. **An allowance is load-bearing or it goes.** Delete it, watch the guard fail, put it back; if the
    guard still passes, the allowance was describing a file that no longer trips it. A *growing* list is
    the guard reporting that it no longer matches how the code is written. An *empty* list is different:
    `DECLARES_SOURCE_BY_DESIGN` is empty on purpose, with a spec keeping it empty and a note telling
@@ -187,6 +202,11 @@ second opinion, not a guard (Decision 4, and *A second test, found after the aud
 
 Line numbers are from 1dd69172e plus the three commits named in Background; find the test by its title,
 not its line. A listed test that no longer exists is skipped.
+
+**Count, don't diff, when a branch renamed things.** A rename lands inside test titles, so `git diff`
+reports a renamed test as added. Compare `grep -c '^\s*it('` per file between the two ends first, and
+read only the files whose count moved. On the pack-naming branch that was the difference between ~40
+apparent additions and 17 real ones.
 
 ### Phase 1 — @abuddy/cli
 
@@ -273,6 +293,15 @@ Trim:
 - `services/host-runtime.spec.ts`: drop the exact `Object.keys(runtime)`; the type enforces it.
 - `services/inference.spec.ts`: assert `model.provider.split('.')[0]` instead of the AI SDK's internal
   provider ids, or delete the case as a duplicate of the catalog check.
+
+From the pack-naming audit:
+- `packs/staging.spec.ts`: merge "restores every interrupted install when there is no record" and "…when
+  the record cannot be parsed". They differ only in how the record is unreadable, and both reach the one
+  branch where `readInstalledPacksRecord()` returns `null`. One test, both inputs.
+- `packs/discovery.spec.ts`: trim "rebuilds the record with every pack enabled, and says so once". It
+  depends on log wording four times — the filter substring, a whole sentence, an absent message, and a
+  four-method console patch to catch them. Keep that every pack returns `enabled: true`, that one line
+  is logged rather than one per pack, and that the line names the packs. Drop the sentence pins.
 
 **Done when:** the listed tests are gone, the trims are applied, and `npm test -w @abuddy/host` passes.
 
@@ -440,7 +469,7 @@ single package's phase can do.
   goes, and the removal is recorded in the Outcome against Decision 1's second question.
 - For each allowance in each remaining guard (`ALLOWED`, `GUARDS`, `UNBRIDGED_BY_DESIGN`): delete it and
   run the guard. Still green means the allowance describes a file that no longer trips it — drop it.
-  `DECLARES_SOURCE_BY_DESIGN` is exempt: empty on purpose, kept empty by its own spec (Decision 10).
+  `DECLARES_SOURCE_BY_DESIGN` is exempt: empty on purpose, kept empty by its own spec (Decision 12).
 - Run the whole list from the prompt block, in order, from a clean build.
 - Record each suite's test count and `Duration` next to the numbers taken before Phase 1.
 - Write the Outcome section: per phase, the tests kept against the audit and why, and any bug a deleted
