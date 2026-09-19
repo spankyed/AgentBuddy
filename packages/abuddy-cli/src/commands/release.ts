@@ -151,7 +151,7 @@ async function verify(root: string, options: { skipTests: boolean; skipE2e: bool
     console.log('Running E2E tests...');
     const { test } = await import('./test');
     process.exitCode = 0;
-    await test([]);
+    await test(['--release']);
     if (process.exitCode) throw new Error('E2E tests failed');
   }
 }

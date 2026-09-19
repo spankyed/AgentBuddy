@@ -220,9 +220,12 @@ export function createTest(options: CreateTestOptions = {}) {
           if (!manifest) throw new Error(`No abuddy.json found in PACK_DIR: ${packDir}`);
           // Always rebuild: installing an existing dist would silently test stale code
           const abuddyBin = resolveAbuddyBin(appLaunch, packDir);
-          console.log(`[pack] Building ${manifest.id} from ${packDir}...`);
+          // A release run tests what it ships: without this the rebuild below replaces the release
+          // build with a development one, and the archive is cut from that.
+          const buildArgs = process.env.ABUDDY_PACK_RELEASE ? ['build', '--release'] : ['build'];
+          console.log(`[pack] Building ${manifest.id} from ${packDir}${process.env.ABUDDY_PACK_RELEASE ? ' (release)' : ''}...`);
           try {
-            execFileSync(process.execPath, [abuddyBin, 'build'], { cwd: packDir, stdio: 'pipe' });
+            execFileSync(process.execPath, [abuddyBin, ...buildArgs], { cwd: packDir, stdio: 'pipe' });
           } catch (e: any) {
             const output = [e.stdout?.toString(), e.stderr?.toString()].filter(Boolean).join('\n') || e.message;
             throw new Error(`Pack build failed for ${manifest.id}:\n${output}`);

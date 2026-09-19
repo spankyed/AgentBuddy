@@ -123,10 +123,12 @@ export async function configuredAppPackagesDir(options: ConfiguredAppOptions = {
 export interface TestAppFlags {
   appRoot?: string;
   app?: string;
+  /** Build the pack as a release before testing it, so the tests run what a release ships */
+  release?: boolean;
   args: string[];
 }
 
-/** Pulls `--app-root <path>` and `--app <beta>` out of the args forwarded to Playwright. */
+/** Pulls `--app-root <path>`, `--app <beta>` and `--release` out of the args forwarded to Playwright. */
 export function parseTestAppFlags(argv: string[]): TestAppFlags {
   const flags: TestAppFlags = { args: [] };
   for (let i = 0; i < argv.length; i++) {
@@ -137,6 +139,8 @@ export function parseTestAppFlags(argv: string[]): TestAppFlags {
       if (!value) throw new Error(`${name} needs a value`);
       if (name === '--app-root') flags.appRoot = value;
       else flags.app = value;
+    } else if (name === '--release') {
+      flags.release = true;
     } else {
       flags.args.push(arg);
     }

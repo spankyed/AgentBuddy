@@ -57,6 +57,11 @@ describe('parseTestAppFlags', () => {
     });
   });
 
+  it('takes --release too, so Playwright never sees it', () => {
+    expect(parseTestAppFlags(['--release', '-g', 'renders'])).toEqual({ release: true, args: ['-g', 'renders'] });
+    expect(parseTestAppFlags(['-g', 'renders'])).toEqual({ args: ['-g', 'renders'] });
+  });
+
   it('rejects unknown app channels', () => {
     expect(() => parseTestAppFlags(['--app', 'nightly'])).toThrow(/Unknown --app "nightly"/);
   });
@@ -214,12 +219,27 @@ describe('appLaunchEnv (@abuddy/testing)', () => {
 
 describe('fixtureEnv', () => {
   it('points the fixture at exactly one app', () => {
-    const base = { ABUDDY_ROOT: '/stale', ABUDDY_APP_EXECUTABLE: '/stale-exe', ELECTRON_RUN_AS_NODE: '1', HOME: '/home' };
+    const base = { ABUDDY_ROOT: '/stale', ABUDDY_APP_EXECUTABLE: '/stale-exe', ABUDDY_APP: 'beta', ELECTRON_RUN_AS_NODE: '1', HOME: '/home' };
     expect(fixtureEnv({ kind: 'packaged', executable: '/exe', version: '1.0.0-beta.0' }, '/pack', base))
-      .toEqual({ ABUDDY_APP_EXECUTABLE: '/exe', PACK_DIR: '/pack', ABUDDY_CLI: cliBin(), ELECTRON_RUN_AS_NODE: '1', HOME: '/home' });
+      .toEqual({ ABUDDY_APP_EXECUTABLE: '/exe', ABUDDY_APP: 'beta', PACK_DIR: '/pack', ABUDDY_CLI: cliBin(), ELECTRON_RUN_AS_NODE: '1', HOME: '/home' });
     expect(fixtureEnv({ kind: 'source', root: '/repo' }, undefined, base))
       .toEqual({ ABUDDY_ROOT: '/repo', ABUDDY_CLI: cliBin(), ELECTRON_RUN_AS_NODE: '1', HOME: '/home' });
     expect(fs.existsSync(cliBin())).toBe(true);
+  });
+
+  // The executable says which app to launch; ABUDDY_APP says which app to resolve dependencies against,
+  // and the fixture builds the pack. Without both, `--app beta` builds against whatever checkout was
+  // saved on first run, and against nothing at all in CI.
+  it('tells the fixture which app to resolve dependencies against, not just which to launch', () => {
+    expect(fixtureEnv({ kind: 'packaged', executable: '/exe', version: '1.0.0-beta.0' }, '/pack', {}).ABUDDY_APP).toBe('beta');
+    expect(fixtureEnv({ kind: 'source', root: '/repo' }, '/pack', { ABUDDY_APP: 'beta' })).not.toHaveProperty('ABUDDY_APP');
+  });
+
+  it('asks for a release build only when the caller does', () => {
+    const app = { kind: 'source', root: '/repo' } as const;
+    expect(fixtureEnv(app, '/pack', {}, { release: true }).ABUDDY_PACK_RELEASE).toBe('1');
+    expect(fixtureEnv(app, '/pack', {})).not.toHaveProperty('ABUDDY_PACK_RELEASE');
+    expect(fixtureEnv(app, '/pack', { ABUDDY_PACK_RELEASE: '1' })).not.toHaveProperty('ABUDDY_PACK_RELEASE');
   });
 
   it('never gives the runner the @abuddy/source condition: a pack resolves the published dist', () => {
