@@ -442,7 +442,7 @@ describe('snapshot', () => {
     await flushed();
 
     const target = path.join(fs.mkdtempSync(path.join(root, 'snap-')), 'lmdb');
-    await store.snapshot('primary', target);
+    await store.copyTo('primary', target);
 
     // The layout a backup folder holds: the directory is made, with data.mdb in it and no lock file
     expect(fs.readdirSync(target)).toEqual(['data.mdb']);
@@ -456,7 +456,7 @@ describe('snapshot', () => {
 
     // Writes carry on across the copy, as they would while the app runs
     const target = path.join(fs.mkdtempSync(path.join(root, 'snap-')), 'lmdb');
-    const copying = store.snapshot('primary', target);
+    const copying = store.copyTo('primary', target);
     for (let n = 400; n < 800; n++) tx(id(`Note-${n}`), true).put('title', `during ${n}`);
     await copying;
     await flushed();
@@ -473,6 +473,6 @@ describe('snapshot', () => {
     const store = openStore({ log: () => {} });
     store.close();
     const target = path.join(fs.mkdtempSync(path.join(root, 'snap-')), 'lmdb');
-    await expect(store.snapshot('primary', target)).rejects.toThrow('The LMDB store is closed');
+    await expect(store.copyTo('primary', target)).rejects.toThrow('The LMDB store is closed');
   });
 });
