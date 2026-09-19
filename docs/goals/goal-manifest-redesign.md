@@ -396,8 +396,16 @@ undeclared. Convention drives the tooling; it does not drive the semantics.
 Paths outside a feature (seed data, extension registers, migrations) stay relative to the pack root.
 
 **8. `system.entry` and `plugin.entry` collapse to `system` and `plugin`.** The wrapper object existed to
-carry `outgoingEventsType`, `sendsTo` and `events`; those stay, so the value is either a string (the
-entry) or an object with `entry` plus them. A feature with nothing but an entry writes the string.
+carry `outgoingEventsType`, `sendsTo` and `events`; those stay, so the value is `true` (Decision 7's
+conventional path), a string (a different path), or an object with `entry` plus them.
+
+The three forms add information monotonically — yes / yes-here / yes-here-plus-details — which is why
+this is a progression rather than variance for its own sake. But record what each is worth: of
+default-setup's 24 `system` and `plugin` declarations, **21 need only `true`, 3 need the object
+(`actions.system`, `prompts.system`, `settings.system`, for `sendsTo` and `outgoingEventsType`), and
+none needs the bare string.** The string form is there for an external pack that puts its entry
+somewhere else, not because anything here relies on it; a later reader deciding whether to keep it
+should know that.
 
 **9. Every extension point moves under `extensions`**: `steps`, `artifacts`, `blocks`, `commands`,
 `dsl`, `fe` (tiptap plugins, app extensions) and `packServices`, which becomes `extensions.services`.
@@ -490,18 +498,38 @@ is — a new pack format. Rename `PACK_LAYOUT_VERSION` to `PACK_FORMAT_VERSION` 
 `pack-layout.ts`, `packs/index.ts`, `loader.ts` and one spec) so the widened meaning is visible rather
 than assumed, and document on it that it covers the layout *and* the manifest's structure.
 
+**Drop `Math.floor` from both checks while renaming them.** `verifyPack` (`pack-layout.ts:173`) and
+the loader (`loader.ts:171`) compare `Math.floor(integrity.formatVersion)`, which treats the stamp as
+`major.minor` with a compatible minor. Nothing writes a fractional version — `stagePack` writes the
+constant — so it is machinery for an evolution that has not happened, and it silently accepts a `1.5`
+that no code could have produced. A plain `!==` says what the check means. Keeping the floor would be
+the same speculative move as `$manifestVersion`, in a smaller package.
+
 **It stays at `1`.** Nothing has shipped — the newest tag is v0.3.14, which predates the pack machinery
 — so there is no pack anywhere built against the old shape for a bump to protect. Every pack in the
 repo is rebuilt by these phases. A stamp is for skew between a pack and a host that were built apart;
 bumping it here would only mean rebuilding packs that this goal rebuilds anyway. The first bump belongs
 to the first structural change made after a release exists.
 
-**The gap, and why it does not bite.** A built-in pack has no `integrity.json` —
-`publishHostPackOutput` writes only a `.fingerprint` — and neither does an unbuilt source pack, so
-neither carries the stamp. Skew is impossible for both: a built-in pack ships inside the host that
-reads it, and an unbuilt source pack is built by a CLI its author chose. The one case where a pack and
-a host can disagree is an installed external pack, which is exactly the case that always has
-`integrity.json`.
+**The gap, why it does not bite, and why it needs writing down.** A published built-in pack
+(`host-packs/<id>/`) is a *partial* pack layout: `publishHostPackOutput` writes `types/snapshot.json`,
+`build/`, `runtime/index.cjs` with `runtime/seeds/`, and a `.fingerprint` — **no `abuddy.json` and no
+`integrity.json`** (its manifest is read from inside `snapshot.json`). An unbuilt source pack has
+neither either. So neither carries the stamp, and skew is impossible for both: a built-in pack ships
+inside the host that reads it, and an unbuilt source pack is built by a CLI its author chose. The one
+case where a pack and a host can disagree is an installed external pack — exactly the case that always
+has `integrity.json`. The two files are doing different jobs, which is the whole explanation:
+`.fingerprint` answers "is this copy current" for output the host itself just produced, and
+`integrity.json` answers "is this complete and untampered, and can I read its format" for a directory
+that arrived from elsewhere.
+
+**None of that is written down anywhere**, and the asymmetry reads as an oversight to anyone who finds
+it: `pack-layout.ts`'s header documents "the one layout an external pack has everywhere" and lists
+`integrity.json` in it, `publishHostPackOutput`'s doc comment says what it copies but not what it
+deliberately omits, and `packs/runtime/CLAUDE.md`'s install-locations table enumerates `packs/<id>/`'s
+contents while leaving `host-packs/<id>/` as "build output". Phase 6 fixes all three. This one is not
+caused by the goal — it is true at `4f24d04f7` — but Decision 14 now rests on it, and a decision
+resting on an undocumented invariant is one bad refactor from being wrong.
 
 **15. No compatibility of any kind.** No dual-read, no alias, no deprecation warning. Every manifest in
 the repo — default-setup, both fixtures, the `abuddy init` scaffold, the packaged-authoring script's
@@ -619,6 +647,13 @@ fail validation with the message naming the expected form.
   entity value's description says what `null` means — the type exists and has no registered shape, so
   its rows read untyped — since that is the one value in the manifest a reader is most likely to take
   for "not set yet".
+- Document what a published built-in pack's directory holds and why it is a partial layout
+  (Decision 14): the header of `pack-layout.ts` (which today describes the external pack's layout as
+  "the one layout ... everywhere"), `publishHostPackOutput`'s doc comment (what it omits, not only what
+  it copies) and `packs/runtime/CLAUDE.md`'s install-locations table (enumerate `host-packs/<id>/` as
+  it does `packs/<id>/`). Say what each file is for — `.fingerprint` for "is this copy current",
+  `integrity.json` for "is this complete, untampered and in a format I read" — so the asymmetry reads
+  as a decision rather than a hole.
 - Rewrite `docs/public-facing/manifest.md` from the new shape, and update every other doc that names a
   retired key. That surface is larger than it looks: eight public-facing docs (`manifest`,
   `architecture`, `cli`, `getting-started`, `extensions`, `features`, `seeds`, `services-and-data`) and
@@ -657,6 +692,16 @@ does writing the fourteen keys in a different order.
   remove the `path#export` strings entirely in favour of real imports, and it changes how the CLI, the
   loader and the installed-pack layout all read a manifest. Worth its own goal if authors ask for it.
 - **`permissions`**, which only fixtures declare and nothing enforces yet. Leave the key where it is.
+- **Deleting the pre-release migrations.** `v0.3.14` is tagged and the app has no users, so the five
+  default-setup migrations (`0.3.0`, `0.3.1`, `0.3.13`, `0.3.14`, `0.3.15`) and the host's
+  `app/0.3.15.ts` — 262 lines — move data shapes that exist only in a developer's own data dir. Two
+  things come with them: `markSeededRowUnedited` (`@abuddy/sdk/seed`) is a **published export whose
+  only non-test caller is `0.3.15.ts`**, so it goes too and the API reports shrink; and the runners
+  stay regardless, since external packs migrate against their own versions. This is not a manifest
+  change and does not belong in this goal: it is a decision about real data in a real data dir, which
+  is the owner's to make and to time, and it is only safe if they are willing to reset a dev install
+  that still holds a pre-`0.3.15` shape. Worth doing before the first release that has users, when the
+  slate is genuinely clean and nothing is lost by it.
 - **Giving `SearchIndex` and `IndexedDoc` typed shapes.** They are the only two of default-setup's
   twelve entities with none, so their rows are untyped wherever they are read. The types are written
   already — `SearchIndex` and `IndexedDocEntity` in
