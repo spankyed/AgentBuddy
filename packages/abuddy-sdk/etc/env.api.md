@@ -23,9 +23,9 @@ export interface AppContext {
     env: AppEnv;
     hostPacksDir: string;
     // (undocumented)
-    packsDir: string;
+    installedPacksFile: string;
     // (undocumented)
-    registryFile: string;
+    packsDir: string;
     // (undocumented)
     urlScheme: string;
     // (undocumented)
@@ -37,6 +37,9 @@ export function appDataDirFor(env: AppEnv): string;
 
 // @public (undocumented)
 export type AppEnv = 'production' | 'beta' | 'development' | 'test';
+
+// @internal
+export function _bootTime(): number;
 
 // @public
 export function getAppVersion(): string;
@@ -52,6 +55,9 @@ export function _inferElectronAppEnv(input: {
 // @public (undocumented)
 export function parseAppEnv(value: string | undefined): AppEnv | undefined;
 
+// @internal
+export function _processIsRunning(pid: number): boolean;
+
 // @public
 export function readApiEndpoint(apiPortFile: string): ApiEndpoint | null;
 
@@ -63,6 +69,12 @@ export function resolveAppContext(input?: {
     env?: AppEnv;
     userDataDir?: string;
 }): AppContext;
+
+// @internal
+export function _writerIsRunning(pid: number, writtenAtMs: number): boolean;
+
+// @internal
+export function _writtenAt(file: string): number | null;
 
 // (No @packageDocumentation comment for this package)
 

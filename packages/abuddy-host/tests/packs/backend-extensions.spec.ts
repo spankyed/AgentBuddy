@@ -1,7 +1,7 @@
 // The backend registry's command and feature settings stores: what a registry does with a pack's declared
 // commands and feature settings when it registers and unregisters
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { createCommandStore, createSettingsDefaultsStore } from '../../src/packs/backend-contributions.ts';
+import { createCommandStore, createSettingsDefaultsStore } from '../../src/packs/backend-extensions.ts';
 
 describe('the command store', () => {
   let packCommandsRegistry: ReturnType<typeof createCommandStore>;

@@ -56,7 +56,7 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   // The pack runtime itself: the app loads packs with it; pack code never requires it
   ['@abuddy/host/packs/runtime', 'the pack loader and lifecycle, run by the app'],
   // Pack discovery, registration, install and bundles: the app and the CLI use them; packs never require them
-  ['@abuddy/host/packs', 'pack registry, installer and bundle layout, used by the app and the CLI'],
+  ['@abuddy/host/packs', 'installed packs, installer and pack layout, used by the app and the CLI'],
   // The app's database opened outside the app: the API's composition and abuddy db use it; packs get the engine the app installs
   ['@abuddy/host/database', "the app's database opened by the host and abuddy db"],
   // Backups: packs reach export and import through services.appData

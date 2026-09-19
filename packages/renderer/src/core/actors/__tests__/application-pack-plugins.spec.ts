@@ -25,8 +25,8 @@ vi.mock('@/core/trpc', () => ({
       },
       packClientReady: { mutate: packClientReady },
     },
-    // This window's pack frontend loader has nothing to load here; application-pack-registry.spec covers it
-    packs: { registry: { query: () => Promise.resolve([]) } },
+    // This window's pack frontend loader has nothing to load here; application-pack-loading.spec covers it
+    packs: { loaded: { query: () => Promise.resolve([]) } },
   },
 }));
 

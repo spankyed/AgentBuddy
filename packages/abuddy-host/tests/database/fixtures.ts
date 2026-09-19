@@ -45,8 +45,8 @@ export function dataDirWithPacks({ external = [] as Array<{ id: string; entities
   }
   const listed = external.filter((pack) => pack.enabled !== undefined);
   if (listed.length > 0) {
-    writeJSON(path.join(dir, 'pack-registry.json'), {
-      packs: listed.map((pack) => ({ id: pack.id, name: pack.id, version: '1.0.0', dir: path.join(dir, 'packs', pack.id), enabled: pack.enabled, registeredAt: '' })),
+    writeJSON(path.join(dir, 'installed-packs.json'), {
+      packs: listed.map((pack) => ({ id: pack.id, name: pack.id, version: '1.0.0', dir: path.join(dir, 'packs', pack.id), enabled: pack.enabled, installedAt: '' })),
     });
   }
   return dir;
@@ -56,7 +56,7 @@ const context = (userDataDir: string) => ({
   userDataDir,
   packsDir: path.join(userDataDir, 'packs'),
   hostPacksDir: path.join(userDataDir, 'host-packs'),
-  registryFile: path.join(userDataDir, 'pack-registry.json'),
+  installedPacksFile: path.join(userDataDir, 'installed-packs.json'),
 });
 
 /** Writes through a store opened on the data dir's layout, as the app writes (the engine installed meanwhile) */

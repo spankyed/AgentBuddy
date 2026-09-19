@@ -11,7 +11,7 @@ vi.mock('@/core/toast', () => ({ globalToast: toast, registerGlobalToast: () => 
 vi.mock('@/core/trpc', () => ({
   trpc: {
     bus: { sub: { subscribe: () => ({ unsubscribe: () => {} }) }, packClientReady: { mutate: () => Promise.resolve() } },
-    packs: { registry: { query: () => Promise.resolve([]) } },
+    packs: { loaded: { query: () => Promise.resolve([]) } },
   },
 }));
 

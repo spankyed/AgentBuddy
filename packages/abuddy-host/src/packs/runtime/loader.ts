@@ -6,8 +6,8 @@ import { resolveAppContext, getAppVersion } from '@abuddy/sdk/env';
 import type { PackSnapshot } from '@abuddy/sdk/build';
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import type { PackRegistry } from '../pack-registration.ts';
-import { discoverBuiltInPacks, discoverPacks, reconcileExternalRegistry, type BuiltInPackInfo, type PackManifest } from '../pack-discovery.ts';
-import { BUNDLE_PATHS, BUNDLE_FORMAT_VERSION, isBundleDir, readBundleInfo } from '../bundle.ts';
+import { discoverBuiltInPacks, discoverPacks, reconcileInstalledPacks, type BuiltInPackInfo, type PackManifest } from '../pack-discovery.ts';
+import { PACK_LAYOUT, PACK_LAYOUT_VERSION, isPackLayout, readPackIntegrity } from '../pack-layout.ts';
 import { isHostCompatible } from '../pack-installer.ts';
 import { findSdkVersion } from '../../build/shared-deps.ts';
 import { withHostResolution } from './bridge.ts';
@@ -32,9 +32,9 @@ function getHostSdkVersion(): string | undefined {
 /** The app bundle's loaders for its built-in packs, by pack id (the API's virtual:built-in-pack-loaders) */
 export type BundledPackLoaders = Record<string, () => Promise<BuiltInRuntime>>;
 
-/** A built-in pack's built backend runtime (dist/runtime/index.cjs, the bundle layout's runtime entry) */
+/** A built-in pack's built backend runtime (dist/runtime/index.cjs, the pack layout's runtime entry) */
 export function builtInRuntimeEntry(packDir: string): string {
-  return path.join(packDir, 'dist', BUNDLE_PATHS.runtimeEntry);
+  return path.join(packDir, 'dist', PACK_LAYOUT.runtimeEntry);
 }
 
 /** A built-in pack's runtime module, as its built entry exports it */
@@ -65,7 +65,7 @@ export function refreshBuiltInPackInfo(packId: string): void {
   const info = getBuiltInPackInfos().find(p => p.id === packId);
   if (!info) return;
   try {
-    const manifest = JSON.parse(fs.readFileSync(path.join(info.dir, BUNDLE_PATHS.manifest), 'utf-8')) as { name?: string; version?: string };
+    const manifest = JSON.parse(fs.readFileSync(path.join(info.dir, PACK_LAYOUT.manifest), 'utf-8')) as { name?: string; version?: string };
     if (manifest.name) info.name = manifest.name;
     if (manifest.version) info.version = manifest.version;
   } catch (err) {
@@ -161,23 +161,23 @@ export function loadSingleExternalPack(
     return null;
   }
 
-  const runtimeEntry = path.join(dir, BUNDLE_PATHS.runtimeEntry);
-  if (!isBundleDir(dir) || !fs.existsSync(runtimeEntry)) {
-    logger.warn(`Skipping ${manifest.id}: ${dir} isn't an installed pack bundle (no ${BUNDLE_PATHS.info} or ${BUNDLE_PATHS.runtimeEntry}). Install it with abuddy install or abuddy dev`);
+  const runtimeEntry = path.join(dir, PACK_LAYOUT.runtimeEntry);
+  if (!isPackLayout(dir) || !fs.existsSync(runtimeEntry)) {
+    logger.warn(`Skipping ${manifest.id}: ${dir} isn't an installed pack (no ${PACK_LAYOUT.integrity} or ${PACK_LAYOUT.runtimeEntry}). Install it with abuddy install or abuddy dev`);
     return null;
   }
   try {
-    const info = readBundleInfo(dir);
-    if (Math.floor(info.formatVersion) !== BUNDLE_FORMAT_VERSION) {
-      logger.warn(`Skipping ${manifest.id}: bundle format ${info.formatVersion} is not supported (host supports ${BUNDLE_FORMAT_VERSION})`);
+    const integrity = readPackIntegrity(dir);
+    if (Math.floor(integrity.formatVersion) !== PACK_LAYOUT_VERSION) {
+      logger.warn(`Skipping ${manifest.id}: pack layout format ${integrity.formatVersion} is not supported (host supports ${PACK_LAYOUT_VERSION})`);
       return null;
     }
   } catch (err) {
-    logger.warn(`Skipping ${manifest.id}: unreadable ${BUNDLE_PATHS.info}`, err as Error);
+    logger.warn(`Skipping ${manifest.id}: unreadable ${PACK_LAYOUT.integrity}`, err as Error);
     return null;
   }
 
-  const snapshotPath = path.join(dir, BUNDLE_PATHS.snapshot);
+  const snapshotPath = path.join(dir, PACK_LAYOUT.snapshot);
   if (fs.existsSync(snapshotPath)) {
     try {
       const snapshot: PackSnapshot = JSON.parse(fs.readFileSync(snapshotPath, 'utf-8'));
@@ -228,15 +228,15 @@ function loadBundledRuntime(
   try {
     registration = withHostResolution(() => {
       const mod = esmRequire(runtimeEntry);
-      mod.setCompiledDir?.(path.join(dir, BUNDLE_PATHS.seedsDir));
+      mod.setCompiledDir?.(path.join(dir, PACK_LAYOUT.seedsDir));
       return mod.registration;
     });
   } catch (err) {
-    logger.error(`Failed to load ${manifest.id} runtime (${BUNDLE_PATHS.runtimeEntry}): ${(err as Error).message}`, err as Error);
+    logger.error(`Failed to load ${manifest.id} runtime (${PACK_LAYOUT.runtimeEntry}): ${(err as Error).message}`, err as Error);
     return null;
   }
   if (!registration) {
-    logger.error(`Pack ${manifest.id}: ${BUNDLE_PATHS.runtimeEntry} does not export \`registration\``);
+    logger.error(`Pack ${manifest.id}: ${PACK_LAYOUT.runtimeEntry} does not export \`registration\``);
     return null;
   }
   if (registration.id !== manifest.id) {
@@ -284,7 +284,7 @@ export function clearPackRequireCache(packDir: string): void {
 export function loadExternalPacks(): LoadedPack[] {
   const { packsDir } = resolveAppContext();
   const discovered = discoverPacks(packsDir);
-  const enabled = reconcileExternalRegistry(discovered);
+  const enabled = reconcileInstalledPacks(discovered);
 
   if (enabled.length === 0) return [];
 

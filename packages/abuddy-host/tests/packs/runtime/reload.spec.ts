@@ -26,13 +26,13 @@ const running = { id: PACK_ID, systems: [{ id: `${PACK_ID}.widget`, machine: { i
 const bus = { send: vi.fn() };
 const shutdown = vi.fn();
 
-/** Writes the rebuilt pack: a bundle whose runtime entry is `runtimeSource` */
+/** Writes the rebuilt pack: a pack layout whose runtime entry is `runtimeSource` */
 function writeRebuild(runtimeSource: string) {
   const packDir = path.join(tmpDir, 'packs', PACK_ID);
   fs.mkdirSync(path.join(packDir, 'runtime', 'seeds'), { recursive: true });
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: PACK_ID, name: PACK_ID, version: '1.0.1' }));
-  fs.writeFileSync(path.join(packDir, 'bundle.json'), JSON.stringify({ formatVersion: 1, id: PACK_ID, version: '1.0.1', files: {} }));
+  fs.writeFileSync(path.join(packDir, 'integrity.json'), JSON.stringify({ formatVersion: 1, id: PACK_ID, version: '1.0.1', files: {} }));
   fs.writeFileSync(path.join(packDir, 'types', 'snapshot.json'), '{}');
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), runtimeSource);
 }

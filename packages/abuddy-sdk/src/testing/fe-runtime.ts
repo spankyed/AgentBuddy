@@ -28,7 +28,7 @@ export interface FeTestRuntimeOptions extends Partial<FeHostRuntime> {}
  *     const stopFeTestRuntime = startFeTestRuntime();
  *     afterAll(stopFeTestRuntime);
  *
- * Nothing is registered unless the test passes it, so a contribution that registers itself on import
+ * Nothing is registered unless the test passes it, so an extension that registers itself on import
  * shows up as one this returned.
  */
 export function startFeTestRuntime(options: FeTestRuntimeOptions = {}): () => void {

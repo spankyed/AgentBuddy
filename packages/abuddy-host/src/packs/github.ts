@@ -8,7 +8,7 @@
 const TIMEOUT_MS = 10_000;
 
 /**
- * Downloads: a pack bundle is a few megabytes, so this covers a slow connection while still
+ * Downloads: a pack archive is a few megabytes, so this covers a slow connection while still
  * failing a stalled download instead of hanging the install. It bounds the body too, since the
  * signal aborts the response while it's being read.
  */

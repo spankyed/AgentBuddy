@@ -4,11 +4,11 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { defaultRunner, nextReleaseVersion, preflight, publishRelease, runRelease, type Runner } from '../../src/commands/release';
-import { readBundleInfo } from '@abuddy/host/packs';
+import { readPackIntegrity } from '@abuddy/host/packs';
 
 // runRelease verifies with a release build; these tests use prebuilt packs
 vi.mock('../../src/commands/build', () => ({ build: vi.fn(async () => {}) }));
-import { packBundle } from '../../src/commands/pack';
+import { buildPackArchive } from '../../src/commands/pack';
 
 let tmp: string;
 
@@ -145,14 +145,14 @@ describe('publishRelease', () => {
   it('creates a prerelease for beta versions and uploads the archive and checksum', async () => {
     const root = builtPack('1.3.0-beta.2');
     const releaseDir = path.join(tmp, 'release');
-    await packBundle(root, releaseDir);
+    await buildPackArchive(root, releaseDir);
     const { octokit, createRelease, uploadReleaseAsset } = mockOctokit();
 
     const result = await publishRelease(root, releaseDir, { octokit, env: { GITHUB_REPOSITORY: 'acme/demo-pack' }, run: fakeGit({}) });
 
     expect(result).toEqual({ tag: 'v1.3.0-beta.2', prerelease: true });
     expect(createRelease).toHaveBeenCalledWith(expect.objectContaining({ owner: 'acme', repo: 'demo-pack', tag_name: 'v1.3.0-beta.2', prerelease: true }));
-    expect(uploadReleaseAsset.mock.calls.map(([arg]: any[]) => arg.name)).toEqual(['demo-pack-1.3.0-beta.2.tgz', 'demo-pack-1.3.0-beta.2.tgz.sha256', 'demo-pack-1.3.0-beta.2.tgz.bundle.json']);
+    expect(uploadReleaseAsset.mock.calls.map(([arg]: any[]) => arg.name)).toEqual(['demo-pack-1.3.0-beta.2.tgz', 'demo-pack-1.3.0-beta.2.tgz.sha256', 'demo-pack-1.3.0-beta.2.tgz.integrity.json']);
     // The update check reads hostVersion from this asset
     const info = JSON.parse(String((uploadReleaseAsset.mock.calls[2] as any[])[0].data));
     expect(info).toMatchObject({ id: 'demo-pack', version: '1.3.0-beta.2', hostVersion: expect.any(String) });
@@ -161,7 +161,7 @@ describe('publishRelease', () => {
   it('refuses to publish an archive that fails verification', async () => {
     const root = builtPack('1.0.0');
     const releaseDir = path.join(tmp, 'release');
-    await packBundle(root, releaseDir);
+    await buildPackArchive(root, releaseDir);
     fs.writeFileSync(path.join(releaseDir, 'demo-pack-1.0.0.tgz.sha256'), `${'0'.repeat(64)}  demo-pack-1.0.0.tgz\n`);
     const { octokit, createRelease } = mockOctokit();
 
@@ -173,7 +173,7 @@ describe('publishRelease', () => {
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
     const root = builtPack('2.0.0');
     const releaseDir = path.join(tmp, 'release');
-    await packBundle(root, releaseDir);
+    await buildPackArchive(root, releaseDir);
     const { octokit, createRelease } = mockOctokit();
 
     const result = await publishRelease(root, releaseDir, {
@@ -184,12 +184,12 @@ describe('publishRelease', () => {
     });
     expect(result).toEqual({ tag: 'v2.0.0', prerelease: false });
     expect(createRelease).not.toHaveBeenCalled();
-    expect(log.mock.calls.flat().join('\n')).toMatch(/with demo-pack-2\.0\.0\.tgz, demo-pack-2\.0\.0\.tgz\.sha256 and demo-pack-2\.0\.0\.tgz\.bundle\.json/);
+    expect(log.mock.calls.flat().join('\n')).toMatch(/with demo-pack-2\.0\.0\.tgz, demo-pack-2\.0\.0\.tgz\.sha256 and demo-pack-2\.0\.0\.tgz\.integrity\.json/);
   });
 });
 
 describe('runRelease', () => {
-  it('packs after the version commit, so bundle.json records the tagged commit', async () => {
+  it('packs after the version commit, so integrity.json records the tagged commit', async () => {
     const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, stdio: 'pipe' }).toString().trim();
     const origin = path.join(tmp, 'origin.git');
     fs.mkdirSync(origin);
@@ -211,7 +211,7 @@ describe('runRelease', () => {
     expect(version).toBe('1.2.4');
     const tagged = git(root, 'rev-parse', 'v1.2.4^{commit}');
     expect(git(root, 'log', '-1', '--format=%s', tagged)).toBe('release: v1.2.4');
-    expect(readBundleInfo(path.join(root, '.abuddy', 'bundle', 'demo-pack')).source?.commit).toBe(tagged);
+    expect(readPackIntegrity(path.join(root, '.abuddy', 'staged', 'demo-pack')).source?.commit).toBe(tagged);
     expect(git(origin, 'rev-parse', 'v1.2.4^{commit}')).toBe(tagged);
   }, 60_000);
 });

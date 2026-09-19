@@ -32,7 +32,7 @@ describe('resolveAppContext', () => {
     expect(path.basename(ctx.userDataDir)).toBe('abuddy-beta');
     expect(ctx.userDataDir.startsWith(os.homedir())).toBe(true);
     expect(ctx.packsDir).toBe(path.join(ctx.userDataDir, 'packs'));
-    expect(ctx.registryFile).toBe(path.join(ctx.userDataDir, 'pack-registry.json'));
+    expect(ctx.installedPacksFile).toBe(path.join(ctx.userDataDir, 'installed-packs.json'));
     expect(ctx.apiPortFile).toBe(path.join(ctx.userDataDir, 'api-port'));
     expect(ctx.apiTokenFile).toBe(path.join(ctx.userDataDir, 'api-token'));
     expect(ctx.urlScheme).toBe('abuddy-beta');
@@ -122,6 +122,17 @@ describe('readApiEndpoint', () => {
 
   it('reads nothing from a file a crashed run left behind', () => {
     write({ port: 3001, pid: exitedPid() });
+    expect(readApiEndpoint(file())).toBeNull();
+  });
+
+  // Pids are recycled, so after a reboot a crashed run's file names an unrelated live process. Without the
+  // boot bound `abuddy dev` and the pack watcher believe an API is there and talk to a port nobody holds.
+  it('reads nothing from a file written before this boot, whatever pid it names', () => {
+    write({ port: 3001, pid: process.pid });
+    expect(readApiEndpoint(file())).toEqual({ port: 3001, pid: process.pid });
+
+    const before = new Date(Date.now() - os.uptime() * 1000 - 60_000);
+    fs.utimesSync(file(), before, before);
     expect(readApiEndpoint(file())).toBeNull();
   });
 

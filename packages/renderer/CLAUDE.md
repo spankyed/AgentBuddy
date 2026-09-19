@@ -8,7 +8,7 @@ Its static imports are evaluated first: `virtual:built-in-packs` loads every bui
 
 1. Installs `window.error` / `unhandledrejection` reporters (`electronAPI.rendererLog.write`, `fatal: true`). Reads `?popout=plugin&pluginId=…` (set by main's `plugin:popout`).
 2. Sets `window.appVersion` (`__APP_VERSION__`, the root `package.json` version) and runs `runFrontendMigrations()` (`src/setup/migrations/index.ts`: localStorage migrations run before the actor reads its keys; the list is empty now; the version is stored under `agentbuddy-fe-version`).
-3. Built-in packs: calls each loader in `virtual:built-in-packs` and `fePacks.registerPackFE(mod.default)`, without a pack id, so they can't be unregistered. `fePacks` (`src/core/fe-host.ts`) is this window's registered pack frontends, `createFePackRegistry()` from `@abuddy/host/fe`: the pack loader registers external packs' in it, `App.vue` reads the `welcome` app extension from it, and the SDK's frontend lookups (steps, designations, tiptap plugins, DSL types) read it once bound.
+3. Built-in packs: calls each loader in `virtual:built-in-packs` and `fePacks.registerPackFE(mod.default)`, without a pack id, so they can't be unregistered. `fePacks` (`src/core/fe-host.ts`) is this window's registered pack frontends, `createFePackRegistry()` from `@abuddy/host/fe`: the pack loader registers external packs' in it, `App.vue` reads the `welcome` app extension from it, and the SDK's frontend registries (steps, designations, tiptap plugins, DSL types) read it once bound.
 4. Creates the application actor with `systemId: 'application'` and input `{ plugins: [...fePacks.getRegisteredPlugins(), packsPlugin], defaultPlugin: fePacks.getRegisteredDefaultPlugin(), initialPluginId, restoreLastActivePlugin: !popout }`. It is exported as `applicationState`.
 5. Binds the SDK's frontend port, `bindRendererHost(applicationState)` (`src/core/fe-host.ts`: `bindFeHost({ application, secrets, transport, packs: fePacks })`), then starts the actor, so the binding is in place before any plugin runs or any external pack frontend loads:
    - `application` backs `@abuddy/sdk/fe`'s `navigateToPlugin` and its neighbours;
@@ -72,7 +72,7 @@ The application actor owns loading; `src/packs/pack-loader.ts` does the work. Th
 
 1. **`BUS_SUBSCRIBED`**, handled in every state: it sets `busSubscribed`, runs `announceLoadedPacks` (`trpc.bus.packClientReady` for each pack in `packPluginIds`), then `loadPackFrontends`. `LOAD_PACK_FRONTENDS` (sent by the Packs plugin on `PACK_ACTIVATED`) also runs `loadPackFrontends`.
 2. **`loadPackFrontends`** spawns `packFrontendLoader` with `packFrontendsLoaded`, one run at a time. A request made during a run sets `packLoadQueued`, and the loader runs again when that run settles.
-3. **`packFrontendLoader`** queries `trpc.packs.registry` and, for each non-built-in pack not yet loaded, calls `loadPackFrontend(pack)`, reporting `PACK_FRONTEND_LOADED { packId, plugins }` after each pack. A pack that throws is reported with `plugins: []` and listed in `failedPacks`. At the end it sends `PACK_FRONTENDS_SETTLED { registryError?, failedPacks? }`.
+3. **`packFrontendLoader`** queries `trpc.packs.loaded` and, for each non-built-in pack not yet loaded, calls `loadPackFrontend(pack)`, reporting `PACK_FRONTEND_LOADED { packId, plugins }` after each pack. A pack that throws is reported with `plugins: []` and listed in `failedPacks`. At the end it sends `PACK_FRONTENDS_SETTLED { loadedPacksError?, failedPacks? }`.
 4. **`loadPackFrontend`** (`pack-loader.ts`):
    - `loadPackStyles` adds a `<link data-pack-id>` for `pack://<id>/<feStyles>`, once per href.
    - It then `import()`s `pack://<id>/<feEntry>` and calls `fePacks.registerPackFE(registration, packId)`.
@@ -82,7 +82,7 @@ The application actor owns loading; `src/packs/pack-loader.ts` does the work. Th
    - `null` records the pack as loaded and asks nothing, because the connection's `CLIENT_CONNECTED` already reached its systems.
    - Otherwise it skips plugin ids already present, inserts the new plugins before `packs`, spawns their actors, records them in `packPluginIds`, and, if `busSubscribed`, calls `packClientReady` so the pack's systems send their startup data.
    - A pack that was unloaded while its load ran (`packsUnloadedWhileLoading`) is instead unloaded again and dropped.
-6. **`onPackFrontendsSettled`:** a registry error is shown as a toast only until one read has succeeded; the next connection retries. Failed packs are shown as a toast and not retried.
+6. **`onPackFrontendsSettled`:** a failed read is shown as a toast only until one read has succeeded; the next connection retries. Failed packs are shown as a toast and not retried.
 7. **Teardown:** on `PACK_DEACTIVATED` the Packs plugin (`src/packs/state.ts`) calls `unloadPackFrontend` (`fePacks.unregisterPackFE` and removing the stylesheets) and sends `PACK_PLUGINS_UNLOADED`. `removePackPlugins` stops those plugin actors, navigates away if one was active, and clears the pack from `packFrontendsLoaded` so it loads again if it comes back.
 
 ## Packs plugin (`src/packs/`)
@@ -93,5 +93,5 @@ The one plugin the renderer defines (`plugin.ts`: id `packs`, `isPinned`). Its m
 
 - `npm run test:unit -w @app/renderer -- --run` runs vitest in jsdom (`vitest.config.ts` merges `vite.config.ts`); without `--run` it starts watch mode. Root `npm run test:unit` runs it too, as CI does.
   - `src/packs/__tests__/pack-loader.spec.ts` covers entry validation, a failed or missing entry, and stylesheet de-duplication.
-  - `src/core/actors/__tests__/application-pack-registry.spec.ts` and `application-pack-plugins.spec.ts` drive the actor with `@/core/trpc`, `@/packs/pack-loader` and `@/core/toast` mocked: retry after a failed registry read, queued loads, unload during load, and when `packClientReady` is called.
+  - `src/core/actors/__tests__/application-pack-loading.spec.ts` and `application-pack-plugins.spec.ts` drive the actor with `@/core/trpc`, `@/packs/pack-loader` and `@/core/toast` mocked: retry after a failed read of the loaded packs, queued loads, unload during load, and when `packClientReady` is called.
 - `npm run typecheck:fe` (root) runs `vue-tsc --build`. `npm run build -w @app/renderer` type-checks and runs `vite build` in parallel. `lint` runs oxlint and then eslint, both with `--fix`.

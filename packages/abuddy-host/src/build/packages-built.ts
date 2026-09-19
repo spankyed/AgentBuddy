@@ -17,6 +17,7 @@
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
+import * as os from 'node:os';
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -208,17 +209,26 @@ export function stalePackageUnits(): StaleUnit[] {
 export const staleMessage = (stale: readonly StaleUnit[]): string =>
   stale.map(({ workspace, reason }) => `  ${workspace}: ${reason}`).join('\n');
 
-/** Whether a process still exists (EPERM means it does, under another user) */
-function alive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (err) {
-    return (err as NodeJS.ErrnoException).code === 'EPERM';
-  }
-}
-
 interface LockHolder { pid: number; label: string; startedAt: string }
+
+/**
+ * Whether the build that took the lock is still running: its pid exists, and it started in this boot.
+ *
+ * The same rule as `_writerIsRunning` in `@abuddy/sdk/env`, deliberately not that function. This module is
+ * the freshness rule the package builds themselves run through, so it resolves the packages' published
+ * `dist` — which, while they are being built, is the stale copy that has yet to export anything new. It
+ * bounds by the lock's own `startedAt` rather than a file's mtime, so it needs nothing but the lock.
+ */
+function holderIsRunning(holder: LockHolder): boolean {
+  try {
+    process.kill(holder.pid, 0);
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'EPERM') return false;
+  }
+  // Pids are recycled: after a reboot a crashed build's lock names whatever took its number
+  const startedAt = Date.parse(holder.startedAt);
+  return Number.isFinite(startedAt) && startedAt >= Date.now() - os.uptime() * 1000;
+}
 
 /**
  * The build running right now, if one is. A reader of the stamps needs this: a build removes each stamp
@@ -227,7 +237,7 @@ interface LockHolder { pid: number; label: string; startedAt: string }
  */
 export function runningPackageBuild(file = LOCK_FILE): { pid: number; label: string; startedAt: string } | undefined {
   const holder = readLock(file);
-  return holder && alive(holder.pid) ? holder : undefined;
+  return holder && holderIsRunning(holder) ? holder : undefined;
 }
 
 function readLock(file: string): LockHolder | null {
@@ -256,7 +266,7 @@ export async function withBuildLock<T>(label: string, run: () => T | Promise<T>,
       } catch (err) {
         if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
         const holder = readLock(file);
-        if (attempt > 0 || holder === null || alive(holder.pid)) {
+        if (attempt > 0 || holder === null || holderIsRunning(holder)) {
           const who = holder === null ? 'an unreadable lock file' : `pid ${holder.pid} (${holder.label}, started ${holder.startedAt})`;
           throw new Error(`another package build holds ${path.relative(REPO_ROOT, file)}: ${who}. Wait for it to finish, then run this again.`);
         }

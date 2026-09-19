@@ -346,7 +346,7 @@ export const FeatureEntrySchema: z.ZodObject<{
     }>>;
     services: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
     repositories: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-    contributions: z.ZodOptional<z.ZodString>;
+    references: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
     id: string;
     designation?: string | undefined;
@@ -366,7 +366,7 @@ export const FeatureEntrySchema: z.ZodObject<{
     } | undefined;
     services?: Record<string, string> | undefined;
     repositories?: Record<string, string> | undefined;
-    contributions?: string | undefined;
+    references?: string | undefined;
 }, {
     id: string;
     designation?: string | undefined;
@@ -386,7 +386,7 @@ export const FeatureEntrySchema: z.ZodObject<{
     } | undefined;
     services?: Record<string, string> | undefined;
     repositories?: Record<string, string> | undefined;
-    contributions?: string | undefined;
+    references?: string | undefined;
 }>;
 
 // @public (undocumented)
@@ -508,7 +508,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }>>;
         services: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
         repositories: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
-        contributions: z.ZodOptional<z.ZodString>;
+        references: z.ZodOptional<z.ZodString>;
     }, "strict", z.ZodTypeAny, {
         id: string;
         designation?: string | undefined;
@@ -528,7 +528,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
-        contributions?: string | undefined;
+        references?: string | undefined;
     }, {
         id: string;
         designation?: string | undefined;
@@ -548,7 +548,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
-        contributions?: string | undefined;
+        references?: string | undefined;
     }>, "many">>;
     defaultPlugin: z.ZodOptional<z.ZodString>;
     packServices: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
@@ -864,7 +864,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
-        contributions?: string | undefined;
+        references?: string | undefined;
     }[] | undefined;
     defaultPlugin?: string | undefined;
     packServices?: Record<string, string> | undefined;
@@ -971,7 +971,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
-        contributions?: string | undefined;
+        references?: string | undefined;
     }[] | undefined;
     defaultPlugin?: string | undefined;
     packServices?: Record<string, string> | undefined;
@@ -1078,7 +1078,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
-        contributions?: string | undefined;
+        references?: string | undefined;
     }[] | undefined;
     defaultPlugin?: string | undefined;
     packServices?: Record<string, string> | undefined;
@@ -1185,7 +1185,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
-        contributions?: string | undefined;
+        references?: string | undefined;
     }[] | undefined;
     defaultPlugin?: string | undefined;
     packServices?: Record<string, string> | undefined;

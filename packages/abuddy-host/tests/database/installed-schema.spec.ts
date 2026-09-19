@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { readInstalledSchema } from '../../src/database/schema.ts';
-import { pruneHostPackOutputs } from '../../src/packs/bundle.ts';
+import { pruneHostPackOutputs } from '../../src/packs/pack-layout.ts';
 import { dataDirWithPacks, removeTempDirs, schemaContext } from './fixtures.ts';
 
 afterEach(removeTempDirs);
@@ -34,7 +34,7 @@ describe('a file readInstalledSchema cannot use', () => {
 
   it("refuses a registry it can't read, rather than taking in packs the app leaves out", () => {
     const dir = dataDirWithPacks({ external: [{ id: 'off', entities: { Hidden: 'Hidden' }, enabled: false }] });
-    const registry = path.join(dir, 'pack-registry.json');
+    const registry = path.join(dir, 'installed-packs.json');
     expect(readInstalledSchema(schemaContext(dir)).getRegisteredEntityTypes().has('Hidden')).toBe(false);
 
     write(registry, 'not json');

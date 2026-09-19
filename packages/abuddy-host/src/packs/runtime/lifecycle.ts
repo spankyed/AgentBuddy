@@ -21,8 +21,8 @@ export function teardownPack(
   busActor: import('xstate').AnyActorRef,
   { replacing = false }: { replacing?: boolean } = {},
 ): void {
-  const contributions = registry.getPackContributions(packId);
-  const systemIds = contributions?.systems ?? [];
+  const extensions = registry.getPackExtensions(packId);
+  const systemIds = extensions?.systems ?? [];
 
   logger.info(`Tearing down pack: ${packId}`);
 

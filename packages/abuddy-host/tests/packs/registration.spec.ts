@@ -12,7 +12,7 @@ import { createPackRegistry } from '../../src/packs/pack-registration.ts';
 const registry = createPackRegistry();
 startTestRuntime({ packs: registry });
 const {
-  getPackContributions, getRegisteredEARSPolicy, getRegisteredEntityTypes, getRegisteredServices,
+  getPackExtensions, getRegisteredEARSPolicy, getRegisteredEntityTypes, getRegisteredServices,
   registerPack, resolveSystemAddress, runRegisteredBootSeeds, unregisterPack,
 } = registry;
 
@@ -176,7 +176,7 @@ describe('registerPack entities', () => {
     expect([...getRegisteredEntityTypes()].sort()).toEqual([...appEntities].sort());
     registerEntities('first-pack', { Memo: 'Memo' }, { PINNED: 'pinned' });
     expect([...getRegisteredEntityTypes()].sort()).toEqual([...appEntities, 'Memo'].sort());
-    expect(getPackContributions('first-pack')?.relKinds).toEqual({ PINNED: 'pinned' });
+    expect(getPackExtensions('first-pack')?.relKinds).toEqual({ PINNED: 'pinned' });
   });
 
   it.each([
@@ -187,7 +187,7 @@ describe('registerPack entities', () => {
     [{}, { CONTAINS: 'holds' }, 'relation kind "CONTAINS": "holds"'],
   ])('rejects %o %o, which the app declares', (entities, relKinds, name) => {
     expect(() => registerEntities('first-pack', entities, relKinds)).toThrow(`EARS collision: ${name} — pack "first-pack" vs the app's own`);
-    expect(getPackContributions('first-pack')).toBeNull();
+    expect(getPackExtensions('first-pack')).toBeNull();
   });
 
   it('keeps TNode out of persistence without any pack asking', () => {
@@ -210,7 +210,7 @@ describe('registerPack feature settings', () => {
     const invalid = { ...memos, settings: { plugins: { threads: { hidden: true } } } };
     expect(() => registerPack({ id: 'bad-pack', systems: [], ...hooks, features: [invalid] } as unknown as PackRegistration))
       .toThrow('Feature "memos" settings set "plugins.threads"');
-    expect(getPackContributions('bad-pack')).toBeNull();
+    expect(getPackExtensions('bad-pack')).toBeNull();
     expect(_seedHookRegistry.get('Memo')).toBeUndefined();
     expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
   });
@@ -234,7 +234,7 @@ describe('registerPack seed hooks', () => {
     expect(() => registerPack(other as unknown as PackRegistration))
       .toThrow('Seed hooks for "Memo" are already registered by pack "memo-pack"');
 
-    expect(getPackContributions('other-pack')).toBeNull();
+    expect(getPackExtensions('other-pack')).toBeNull();
     expect(_seedHookRegistry.get('Memo')).toBe(memoHooks);
     expect(_seedHookRegistry.get('Card')).toBeUndefined();
     expect(artifactRegistry.has('card-view')).toBe(false);
@@ -270,7 +270,7 @@ describe('registerPack commands', () => {
     expect(() => registerPack({ id: 'other-pack', systems: [], steps: [], commands: [{ name: 'standup', placeholder: 'Theirs' }] } as unknown as PackRegistration))
       .toThrow('Command collision: "standup" — pack "other-pack" vs "memo-pack"');
 
-    expect(getPackContributions('other-pack')).toBeNull();
+    expect(getPackExtensions('other-pack')).toBeNull();
     expect(getPackCommands()).toEqual(commands);
   });
 
@@ -299,7 +299,7 @@ describe('runRegisteredBootSeeds', () => {
     // With the pack it belongs to, so each pack's boot seed is tracked under its own id
     expect(orchestrate).toHaveBeenCalledWith(seedManifest, 'built-in-pack');
     expect(smuggled).not.toHaveBeenCalled();
-    expect(getPackContributions('built-in-pack')?.bootHooks).toEqual(['seedManifest']);
-    expect(getPackContributions('hooks-pack')?.bootHooks).toEqual(['onInit']);
+    expect(getPackExtensions('built-in-pack')?.bootHooks).toEqual(['seedManifest']);
+    expect(getPackExtensions('hooks-pack')?.bootHooks).toEqual(['onInit']);
   });
 });

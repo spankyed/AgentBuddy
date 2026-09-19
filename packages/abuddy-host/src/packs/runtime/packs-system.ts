@@ -5,10 +5,10 @@ import { defineSystem } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
 import { emit } from '@abuddy/sdk/events';
 import { getAppVersion } from '@abuddy/sdk/env';
-import { readPackRegistry, modifyRegistry, addToRegistry, removeFromRegistry, type PackRegistryEntry } from '../pack-registry.ts';
+import { readInstalledPacks, updateInstalledPacks, addInstalledPack, removeInstalledPack, type InstalledPack } from '../installed-packs.ts';
 import { installPack as runInstall, uninstallPack as runUninstall, installPackFromGitHub } from '../pack-installer.ts';
-import type { PackContributions, PackInfo, PackRegistry } from '../pack-registration.ts';
-import { packFrontendFiles } from '../bundle.ts';
+import type { PackExtensions, PackInfo, PackRegistry } from '../pack-registration.ts';
+import { packFrontendFiles } from '../pack-layout.ts';
 import { checkForUpdates } from '../pack-updater.ts';
 import { teardownPack, activatePack } from './lifecycle.ts';
 import { activationProblem } from './activation-outcome.ts';
@@ -78,7 +78,7 @@ function readManifest(dir: string): Record<string, any> | null {
   return null;
 }
 
-function mergeContributions(base: Omit<PackInfo, keyof PackContributions>, contrib: PackContributions | null): PackInfo {
+function mergeExtensions(base: Omit<PackInfo, keyof PackExtensions>, contrib: PackExtensions | null): PackInfo {
   return {
     ...base,
     systems: contrib?.systems ?? [],
@@ -93,12 +93,12 @@ function mergeContributions(base: Omit<PackInfo, keyof PackContributions>, contr
   };
 }
 
-function toExternalPackInfoList(registry: PackRegistry, entries: PackRegistryEntry[]): PackInfo[] {
+function toExternalPackInfoList(registry: PackRegistry, entries: InstalledPack[]): PackInfo[] {
   return entries.map(e => {
     const manifest = readManifest(e.dir);
     const entities = manifest?.entities ?? {};
-    const contrib = registry.getPackContributions(e.id);
-    return mergeContributions({
+    const contrib = registry.getPackExtensions(e.id);
+    return mergeExtensions({
       id: e.id,
       name: e.name,
       version: e.version,
@@ -111,8 +111,8 @@ function toExternalPackInfoList(registry: PackRegistry, entries: PackRegistryEnt
       entities,
       permissions: manifest?.permissions ?? [],
       dir: e.dir,
-      registeredAt: e.registeredAt,
-      source: e.source,
+      installedAt: e.installedAt,
+      installedFrom: e.installedFrom,
       availableVersion: e.availableVersion,
       updateCheckError: e.updateCheckError,
     }, contrib);
@@ -123,8 +123,8 @@ function toBuiltInPackInfoList(registry: PackRegistry): PackInfo[] {
   return getBuiltInPackInfos().map(p => {
     const manifest = readManifest(p.dir);
     const entities = manifest?.entities ?? {};
-    const contrib = registry.getPackContributions(p.id);
-    return mergeContributions({
+    const contrib = registry.getPackExtensions(p.id);
+    return mergeExtensions({
       id: p.id,
       name: p.name,
       version: p.version,
@@ -140,7 +140,7 @@ function toBuiltInPackInfoList(registry: PackRegistry): PackInfo[] {
 }
 
 function emitPacksList(registry: PackRegistry, system: any) {
-  const external = toExternalPackInfoList(registry, readPackRegistry());
+  const external = toExternalPackInfoList(registry, readInstalledPacks());
   const builtIn = toBuiltInPackInfoList(registry);
   system.get(bus).send(emit(packs, { type: 'PACKS_LIST' as const, packs: [...builtIn, ...external] }));
 }
@@ -165,13 +165,13 @@ export function createPacksSystem(registry: PackRegistry) {
         const isGitHub = !ev.source && !packSlug.startsWith('http') && packSlug.includes('/');
 
         runInstall(packSlug, ev.source, undefined, { hostVersion: getAppVersion() }).then(result => {
-          modifyRegistry(entries => addToRegistry(entries, {
+          updateInstalledPacks(entries => addInstalledPack(entries, {
             id: result.id,
             name: result.name,
             version: result.version,
             dir: result.dir,
             enabled: true,
-            source: isGitHub ? packSlug : undefined,
+            installedFrom: isGitHub ? packSlug : undefined,
           }));
 
           const problem = activationProblem(result.id, activatePack(registry, result.id, system.get(bus)));
@@ -220,7 +220,7 @@ export function createPacksSystem(registry: PackRegistry) {
         system.get(bus).send(emit(packs, { type: 'PACK_DEACTIVATED' as const, packId }));
 
         runUninstall(packId).then(() => {
-          modifyRegistry(entries => removeFromRegistry(entries, packId));
+          updateInstalledPacks(entries => removeInstalledPack(entries, packId));
 
           system.get(bus).send(emit(packs, {
             type: 'PACK_UNINSTALL_COMPLETE' as const,
@@ -243,9 +243,9 @@ export function createPacksSystem(registry: PackRegistry) {
       updatePack: ({ system, event }) => {
         const ev = packsSpec.typeOf('UPDATE_PACK', event);
         const packId = ev.packId;
-        const entries = readPackRegistry();
+        const entries = readInstalledPacks();
         const entry = entries.find(e => e.id === packId);
-        if (!entry?.source) {
+        if (!entry?.installedFrom) {
           system.get(bus).send(emit(packs, {
             type: 'PACK_UPDATE_FAILED' as const,
             packId,
@@ -260,7 +260,7 @@ export function createPacksSystem(registry: PackRegistry) {
         }
         _inFlightOps.add(packId);
 
-        const sourceSlug = entry.source.split('@')[0];
+        const sourceSlug = entry.installedFrom.split('@')[0];
         // Install the release the update check found (it may be a beta prerelease); fall back to latest
         const target = entry.availableTag ? `${sourceSlug}@${entry.availableTag}` : sourceSlug;
         console.log(`[packs] Update requested: ${packId} from ${target}`);
@@ -271,7 +271,7 @@ export function createPacksSystem(registry: PackRegistry) {
         let activated = false;
 
         installPackFromGitHub(target, undefined, { hostVersion: getAppVersion() }).then(result => {
-          modifyRegistry(reg =>
+          updateInstalledPacks(reg =>
             reg.map(e => e.id === packId ? {
               ...e,
               version: result.version,
@@ -340,7 +340,7 @@ export function createPacksSystem(registry: PackRegistry) {
           return;
         }
 
-        const current = readPackRegistry();
+        const current = readInstalledPacks();
         const entry = current.find(e => e.id === packId);
         if (!entry) {
           console.warn(`[packs] Pack not found: ${packId}`);
@@ -356,7 +356,7 @@ export function createPacksSystem(registry: PackRegistry) {
           system.get(bus).send(emit(packs, { type: 'PACK_ACTIVATED' as const, packId }));
         }
 
-        modifyRegistry(entries =>
+        updateInstalledPacks(entries =>
           entries.map(e => e.id === packId ? { ...e, enabled: newEnabled } : e),
         );
         system.get(bus).send(emit(packs, {

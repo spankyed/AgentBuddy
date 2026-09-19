@@ -27,6 +27,12 @@ function exitedPid(): number {
 
 const lock = (dir: string, target: string) => fs.symlinkSync(target, path.join(dir, 'SingletonLock'));
 
+/** Backdate a file to before this machine booted, as a previous boot's leftover would be */
+function backdateToPreviousBoot(file: string): void {
+  const before = new Date(Date.now() - os.uptime() * 1000 - 60_000);
+  fs.lutimesSync(file, before, before);
+}
+
 describe('findRunningApp', () => {
   it('finds nothing in a data dir with neither file', () => {
     expect(findRunningApp(context())).toBeNull();
@@ -69,4 +75,19 @@ describe('findRunningApp', () => {
     lock(unreadable.userDataDir, 'garbage');
     expect(findRunningApp(unreadable)).toMatch(/SingletonLock is held \(garbage\)/);
   });
+});
+
+// `readApiEndpoint` bounds its answer by the boot that wrote the port file, where a wrong "nothing is
+// running" costs a connection error to a dead port. The instance lock does not: there a wrong answer lets a
+// tool write while the app has the database open, so its pid is taken at face value.
+describe('findRunningApp, on a port file left by a previous boot', () => {
+  it('ignores a port file that predates this boot, whatever pid it names', () => {
+    const ctx = context();
+    publishApi(ctx.userDataDir);
+    expect(findRunningApp(ctx)).toMatch(/its API is running on port 3001/);
+
+    backdateToPreviousBoot(ctx.apiPortFile);
+    expect(findRunningApp(ctx)).toBeNull();
+  });
+
 });

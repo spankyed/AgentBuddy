@@ -19,7 +19,7 @@ export interface CategoryConfig {
 
 // @public
 export interface CategoryItemsProvider<TSnapshot = unknown> {
-    buildItems(snapshot: TSnapshot | undefined): ContributionItem[];
+    buildItems(snapshot: TSnapshot | undefined): ReferenceItem[];
     // (undocumented)
     category: string;
     // (undocumented)
@@ -27,7 +27,7 @@ export interface CategoryItemsProvider<TSnapshot = unknown> {
 }
 
 // @public (undocumented)
-export interface ContributionItem {
+export interface ReferenceItem {
     // (undocumented)
     id: string;
     // (undocumented)
@@ -39,7 +39,7 @@ export interface ContributionItem {
 }
 
 // @public
-export interface ContributionTypeConfig {
+export interface ReferenceTypeConfig {
     // (undocumented)
     category: string;
     // (undocumented)

@@ -11,15 +11,15 @@ import { parseManifest } from '@abuddy/sdk/build';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { PackManifest } from '@abuddy/sdk/build';
 import {
-  BUNDLE_PATHS,
+  PACK_LAYOUT,
   assertChecksum,
-  extractBundleArchive,
-  hasBuiltBundleSections,
-  isBundleDir,
-  stageBundle,
-  verifyBundle,
-  type BundleInfo,
-} from './bundle.ts';
+  extractPackArchive,
+  hasBuiltPackSections,
+  isPackLayout,
+  stagePack,
+  verifyPack,
+  type PackIntegrity,
+} from './pack-layout.ts';
 
 // The CLI installs without an app bound: its entries go to the console then
 const log = createLogger('pack-installer');
@@ -30,7 +30,7 @@ export interface InstallResult {
   version: string;
   dir: string;
   missingDependencies: string[];
-  bundle: BundleInfo;
+  integrity: PackIntegrity;
 }
 
 export interface InstallOptions {
@@ -194,32 +194,32 @@ function placePack(sourceDir: string, packsDir: string, id: string): string {
 
 /**
  * Install from a directory that is one of:
- * - a bundle (bundle.json): verified, then copied as-is
- * - a pack source built in the bundle layout (dist/runtime, dist/types): staged into a bundle first
+ * - a pack layout (integrity.json): verified, then copied as-is
+ * - a pack source built in that layout (dist/runtime, dist/types): staged first
  */
 async function installFromDirectory(dir: string, packsDir: string, options: InstallOptions): Promise<InstallResult> {
   const manifestSource = readValidManifest(dir);
   assertHostCompatible(manifestSource, options.hostVersion);
 
-  let bundleDir = dir;
+  let layoutDir = dir;
   let stageRoot: string | undefined;
-  if (!isBundleDir(dir) && hasBuiltBundleSections(dir)) {
+  if (!isPackLayout(dir) && hasBuiltPackSections(dir)) {
     stageRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-stage-'));
-    bundleDir = path.join(stageRoot, manifestSource.id);
-    stageBundle(dir, bundleDir);
+    layoutDir = path.join(stageRoot, manifestSource.id);
+    stagePack(dir, layoutDir);
   }
 
   try {
-    if (!isBundleDir(bundleDir)) {
-      throw new Error(`Pack ${manifestSource.id} is not built: ${dir} has no ${BUNDLE_PATHS.info} and no dist/${BUNDLE_PATHS.runtimeEntry} with dist/${BUNDLE_PATHS.snapshot}. Run "abuddy build" first.`);
+    if (!isPackLayout(layoutDir)) {
+      throw new Error(`Pack ${manifestSource.id} is not built: ${dir} has no ${PACK_LAYOUT.integrity} and no dist/${PACK_LAYOUT.runtimeEntry} with dist/${PACK_LAYOUT.snapshot}. Run "abuddy build" first.`);
     }
-    const bundle = verifyBundle(bundleDir);
+    const integrity = verifyPack(layoutDir);
 
-    const manifest = readValidManifest(bundleDir);
-    const destDir = placePack(bundleDir, packsDir, manifest.id);
+    const manifest = readValidManifest(layoutDir);
+    const destDir = placePack(layoutDir, packsDir, manifest.id);
     const missingDependencies = checkDependencies(manifest, packsDir);
     log.info(`Installed "${manifest.name}" v${manifest.version} to ${destDir}`);
-    return { id: manifest.id, name: manifest.name, version: manifest.version, dir: destDir, missingDependencies, bundle };
+    return { id: manifest.id, name: manifest.name, version: manifest.version, dir: destDir, missingDependencies, integrity };
   } finally {
     if (stageRoot) fs.rmSync(stageRoot, { recursive: true, force: true });
   }
@@ -243,7 +243,7 @@ export async function installPackFromLocal(source: string, targetPacksDir?: stri
     if (options.sha256) assertChecksum(resolved, options.sha256);
     let root: string;
     if (resolved.endsWith('.tgz') || resolved.endsWith('.tar.gz')) {
-      root = await extractBundleArchive(resolved, tmpDir);
+      root = await extractPackArchive(resolved, tmpDir);
     } else if (resolved.endsWith('.zip')) {
       extractZip(resolved, tmpDir);
       root = findPackRoot(tmpDir);

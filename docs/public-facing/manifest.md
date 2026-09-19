@@ -73,7 +73,7 @@ The `features` array is the primary way to add functionality. Each entry bundles
 | `repositories` | `Record<string, string>` | no | Repository objects. Keys are identifiers, the names on `repository`; values are `"path#exportName"`. Carried by the generated pack entry's registration (the app registers them with its engine) and typed on `repository` from `#generated/repository`. A name is the app's, not the feature's: declaring one twice in a pack, or one a dependency declares, fails the build, since the app refuses to register two packs that share a repository name |
 | `typesEntry` | `string` | no | Additional types to include in the generated type barrel |
 | `earlySystem` | `boolean` | no | Start this feature's system before EARS hydration. Built-in packs only: validation rejects it in an external pack |
-| `contributions` | `string` | no | Path to contribution type providers. Built-in packs only: ignored for external packs |
+| `references` | `string` | no | Path to the module declaring which of the feature's things are linkable from an editor. Built-in packs only: ignored for external packs |
 
 A feature can have just a system (backend-only), just a plugin (frontend-only), or both.
 
@@ -207,7 +207,7 @@ A `seedFormats` value, keyed by the format name: a lowercase letter, then lowerc
   "fe": {
     "tiptapPlugins": "src/extensions/tiptap/index.ts",
     "appExtensions": {
-      "welcome": "src/extensions/Welcome.vue"
+      "welcome": "src/extensions/app/Welcome.vue"
     },
     "bundleUi": false
   }
@@ -220,7 +220,7 @@ A `seedFormats` value, keyed by the format name: a lowercase letter, then lowerc
 | `appExtensions` | `Record<string, string>` | Named app extensions: extension name (an identifier) → Vue component path |
 | `bundleUi` | `boolean` | Bundle a copy of `@abuddy/ui` into the pack instead of using the app's (default `false`). All of `@abuddy/ui` is bundled, so the pack never mixes the two. |
 
-The frontend entry itself isn't declared here: `abuddy build` bundles `src/pack-entry-fe.ts` (or `.js`) if present, else the generated `src/__generated__/pack-entry-fe.ts`, into the bundle's `runtime/fe.js`, with any extracted styles as `runtime/fe.css`. The app loads whichever of those two files the installed bundle has.
+The frontend entry itself isn't declared here: `abuddy build` bundles `src/pack-entry-fe.ts` (or `.js`) if present, else the generated `src/__generated__/pack-entry-fe.ts`, into the pack's `runtime/fe.js`, with any extracted styles as `runtime/fe.css`. The app loads whichever of those two files the installed pack has.
 
 ## Dependencies
 

@@ -192,7 +192,7 @@ it('summarizes a note', async () => {
 
 `@abuddy/sdk/testing`, for the two cases the harness doesn't cover:
 
-- **`startFeTestRuntime(options?)` / `stopFeTestRuntime()`** — a frontend host for a test file that exercises plugin code, a tiptap plugin or a DSL type, which read the bound frontend the way a pack's backend reads the bound app. Bind it once per file and unbind at the end; nothing is registered unless the test passes it, so a contribution that registers itself on import is one this returns.
+- **`startFeTestRuntime(options?)` / `stopFeTestRuntime()`** — a frontend host for a test file that exercises plugin code, a tiptap plugin or a DSL type, which read the bound frontend the way a pack's backend reads the bound app. Bind it once per file and unbind at the end; nothing is registered unless the test passes it, so an extension that registers itself on import is one this returns.
 
   ```typescript
   import { startFeTestRuntime } from '@abuddy/sdk/testing';

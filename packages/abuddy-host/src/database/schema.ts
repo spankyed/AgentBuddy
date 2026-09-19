@@ -7,7 +7,7 @@ import type { PackManifest, PackSnapshot } from '@abuddy/sdk/build';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '@abuddy/sdk/types';
 import type { PartitionPolicy } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
-import { BUNDLE_PATHS } from '../packs/bundle.ts';
+import { PACK_LAYOUT } from '../packs/pack-layout.ts';
 import { discoverPacks } from '../packs/pack-discovery.ts';
 import { appPartitionPolicy } from '../packs/pack-registration.ts';
 
@@ -29,7 +29,7 @@ export interface InstalledSchema extends DatabaseSchema {
 }
 
 /** The directories and files of a data dir the schema is read from */
-export type SchemaContext = Pick<AppContext, 'userDataDir' | 'packsDir' | 'hostPacksDir' | 'registryFile'>;
+export type SchemaContext = Pick<AppContext, 'userDataDir' | 'packsDir' | 'hostPacksDir' | 'installedPacksFile'>;
 
 function readJSON<T>(file: string, what: string): T {
   let parsed: unknown;
@@ -58,19 +58,19 @@ function builtInManifests(hostPacksDir: string): PackManifest[] {
   if (!fs.existsSync(hostPacksDir)) return [];
   return fs.readdirSync(hostPacksDir, { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.'))
-    .map((entry) => path.join(hostPacksDir, entry.name, BUNDLE_PATHS.snapshot))
+    .map((entry) => path.join(hostPacksDir, entry.name, PACK_LAYOUT.snapshot))
     .filter((file) => fs.existsSync(file))
     .map((file) => packEARS(readJSON<PackSnapshot>(file, "a built-in pack's snapshot").manifest, file));
 }
 
 /**
- * The packs the registry file lists as disabled. A file it can't read is refused rather than read as "nothing is
+ * The packs `installed-packs.json` lists as disabled. A file it can't read is refused rather than read as "nothing is
  * disabled", which would take in packs the app leaves out.
  */
-function disabledPacks(registryFile: string): Set<string> {
-  if (!fs.existsSync(registryFile)) return new Set();
-  const { packs } = readJSON<{ packs?: unknown }>(registryFile, 'the installed packs');
-  if (!Array.isArray(packs)) throw new Error(`${registryFile} lists no installed packs`);
+function disabledPacks(installedPacksFile: string): Set<string> {
+  if (!fs.existsSync(installedPacksFile)) return new Set();
+  const { packs } = readJSON<{ packs?: unknown }>(installedPacksFile, 'the installed packs');
+  if (!Array.isArray(packs)) throw new Error(`${installedPacksFile} lists no installed packs`);
   return new Set(packs.filter((pack) => (pack as { enabled?: unknown }).enabled === false).map((pack) => String((pack as { id?: unknown }).id)));
 }
 
@@ -78,8 +78,8 @@ function disabledPacks(registryFile: string): Set<string> {
  * The external packs the app loads from `packsDir`: those the registry doesn't list as disabled (the app registers a
  * pack it hasn't listed yet as enabled)
  */
-function externalManifests({ packsDir, registryFile }: SchemaContext): PackManifest[] {
-  const disabled = disabledPacks(registryFile);
+function externalManifests({ packsDir, installedPacksFile }: SchemaContext): PackManifest[] {
+  const disabled = disabledPacks(installedPacksFile);
   return discoverPacks(packsDir)
     .map(({ manifest, dir }) => packEARS(manifest, path.join(dir, 'abuddy.json')))
     .filter((manifest) => !disabled.has(manifest.id));

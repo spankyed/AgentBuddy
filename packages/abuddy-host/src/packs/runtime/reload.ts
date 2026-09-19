@@ -4,7 +4,7 @@ import { createLogger } from '@abuddy/sdk/logger';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import type { PackSystemDef } from '@abuddy/sdk/framework';
 import type { PackRegistry } from '../pack-registration.ts';
-import { publishHostPackOutput } from '../bundle.ts';
+import { publishHostPackOutput } from '../pack-layout.ts';
 import type { PackManifest } from '../pack-discovery.ts';
 import {
   loadSingleExternalPack,

@@ -36,7 +36,7 @@ When a test worker starts, the fixture runs this sequence:
 2. **Pack setup** (only when `PACK_DIR` is set):
    - Read `abuddy.json` from `PACK_DIR` to get the pack ID and plugin IDs
    - Always rebuild the pack with `node <abuddy bin> build` (the bin is `ABUDDY_CLI`, else the `@abuddy/cli` the pack resolves, else the checkout's)
-   - Install it into the worker's temp data dir with the bundle installer (stage → verify → place), passing the launched app's version (the checkout's `package.json`, or the packaged app's `Resources/app/package.json`) so a pack whose `hostVersion` excludes it fails to install
+   - Install it into the worker's temp data dir with the pack installer (stage → verify → place), passing the launched app's version (the checkout's `package.json`, or the packaged app's `Resources/app/package.json`) so a pack whose `hostVersion` excludes it fails to install
 
 3. **Launch Electron** — for a checkout, resolves `electron` from the checkout's `node_modules` (so external packs don't need `electron` installed) and launches `_electron.launch({ executablePath, args: [<appRoot>], cwd: appRoot })`; a packaged app launches its executable with no args. The env is the runner's minus `ELECTRON_RUN_AS_NODE` (inherited from an app-bundled `abuddy`, it would start Electron as plain Node) and minus the `@abuddy/source` condition in `NODE_OPTIONS`, plus `PLAYWRIGHT_TEST=true` and `ABUDDY_USER_DATA_DIR=<worker dir>` (`src/launch-env.ts`). `PLAYWRIGHT_TEST` selects the `test` environment, a packaged build included; the app runs headless (no window display or splash screen) and crashes on uncaught exceptions.
 
@@ -44,7 +44,7 @@ When a test worker starts, the fixture runs this sequence:
 
 5. **Wait for connected state** — `page.waitForFunction()` checks `applicationState.getSnapshot().value` for `{ running: 'connected' }` or `{ onboarding: ... }` (45s). If onboarding is detected, calls `window.__disableOnboardingUI()` then waits for `running.connected`.
 
-6. **Check the pack's seeding** (only when `PACK_DIR` is set) — if the pack's entry in the test data dir's pack registry has a `lastError` (its data failed to seed), the fixture fails with it.
+6. **Check the pack's seeding** (only when `PACK_DIR` is set) — if the pack's entry in the test data dir's `installed-packs.json` has a `lastError` (its data failed to seed), the fixture fails with it.
 
 7. **Wait for pack plugins** (only when `PACK_DIR` is set) — For each plugin ID from the manifest, waits for it to appear in `applicationState.getSnapshot().context.plugins`. If the renderer logs `[pack-loader] Failed to load FE entry pack://{packId}/…` for the pack under test, the test fails immediately. That failure, and a plugin that never registers, include the captured renderer errors and Electron/API error lines, so `DEBUG_E2E=1` is rarely needed to find the cause.
 
@@ -226,9 +226,9 @@ PACK_DIR=/path/to/my-pack npm test -- tests/e2e/smoke
 1. **Read manifest** — parses `abuddy.json` from `PACK_DIR` to get the pack ID and plugin IDs
 2. **Isolated data dir** — creates `$TMPDIR/abuddy-e2e-*` for the worker
 3. **Build**: always runs `abuddy build` in the pack directory (fails the run if the build fails)
-4. **Install** — installs the built pack into that data dir through the bundle installer; no other packs are present
+4. **Install** — installs the built pack into that data dir through the pack installer; no other packs are present
 5. **Launch Electron** — starts the app, which discovers the pack in its packs directory
-6. **Check seeding** — fails if the pack's registry entry has a `lastError`
+6. **Check seeding** — fails if the pack's installed-packs entry has a `lastError`
 7. **Wait for plugins** — for each plugin ID from the manifest, waits up to 30s for it to appear in `applicationState.context.plugins`. Fails immediately, with the captured errors, if the pack's FE entry fails to load.
 
 The in-repo fixture pack at `tests/fixtures/external-pack` exercises this whole path from its own directory: `npm run test:external-pack`.

@@ -14,7 +14,7 @@ function detectSource(input: string): 'local' | 'url' | 'registry' | undefined {
   return 'registry';
 }
 
-async function resolveFromRegistry(name: string): Promise<string> {
+async function resolveFromRemoteRegistry(name: string): Promise<string> {
   // TODO: resolve pack name from abuddy.com registry API
   throw new Error(`Registry install not yet available. Could not resolve "${name}" from abuddy.com.\n\nUse a local path, URL, or GitHub slug (owner/repo) instead.`);
 }
@@ -48,7 +48,7 @@ Options:
 
   let resolvedSource = source;
   if (kind === 'registry') {
-    resolvedSource = await resolveFromRegistry(source);
+    resolvedSource = await resolveFromRemoteRegistry(source);
   }
 
   const result = kind === 'local'

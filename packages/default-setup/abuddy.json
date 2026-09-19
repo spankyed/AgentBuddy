@@ -40,7 +40,7 @@
       "plugin": {
         "entry": "src/features/threads/fe/plugin.ts"
       },
-      "contributions": "src/features/threads/fe/contributions",
+      "references": "src/features/threads/fe/references",
       "services": {
         "chat": "src/features/threads/be/services/chat.ts#chatService",
         "artifact": "src/features/threads/be/services/artifact.ts#artifactService",
@@ -80,7 +80,7 @@
       "plugin": {
         "entry": "src/features/notes/fe/plugin.ts"
       },
-      "contributions": "src/features/notes/fe/contributions",
+      "references": "src/features/notes/fe/references",
       "services": {},
       "repositories": {
         "noteQueries": "src/features/notes/be/repository/index.ts#noteQueries",
@@ -111,7 +111,7 @@
       "plugin": {
         "entry": "src/features/library/fe/plugin.ts"
       },
-      "contributions": "src/features/library/fe/contributions",
+      "references": "src/features/library/fe/references",
       "services": {
         "library": "src/features/library/be/services/library.ts#libraryService"
       },
@@ -481,7 +481,7 @@
   "fe": {
     "tiptapPlugins": "src/extensions/tiptap/index.ts",
     "appExtensions": {
-      "welcome": "src/extensions/Welcome.vue"
+      "welcome": "src/extensions/app/Welcome.vue"
     }
   },
   "migrations": "src/migrations/index.ts",

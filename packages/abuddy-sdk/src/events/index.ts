@@ -90,7 +90,7 @@ void _hostPluginEventTypesMatch;
 
 /**
  * Delivers an event to a backend system: in the renderer over its API client, elsewhere onto the bound app's bus.
- * A bound frontend wins, as it does for the registered packs' lookups (`_boundPackContributions`).
+ * A bound frontend wins, as it does for the registered packs' lookups (`_boundPackExtensions`).
  */
 function sendIncoming(event: IncomingSystemEvents): void {
   if (_isFeHostBound()) boundFeHost().transport.sendIncoming(event);

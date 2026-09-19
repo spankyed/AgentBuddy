@@ -223,7 +223,7 @@ describe('findPackBackendConsole', () => {
       'extensions/tiptap/index.ts',
       'extensions/artifacts/viewers/format.ts',
       'extensions/blocks/display/label.ts',
-      'extensions/Welcome.vue',
+      'extensions/app/Welcome.vue',
       'features/notes/be/system.spec.ts',
       'features/notes/be/__tests__/helpers.ts',
       'lib/features/notes/be/system.ts',

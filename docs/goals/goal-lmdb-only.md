@@ -324,7 +324,7 @@ These are the ones settled by the spikes. The ones below them need the user.
 **Done when:**
 - All suites pass.
 - Test run time is within about +20% of the current run, or the user accepts the difference.
-- No doc names hydration, `PersistenceSink`, the sharded router or `LmdbQuery`, except this goal (extend `abuddy-host/tests/removed-names-in-docs.spec.ts`).
+- No doc names hydration, `PersistenceSink`, the sharded router or `LmdbQuery`, except this goal.
 
 ## Constraints
 

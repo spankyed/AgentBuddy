@@ -63,7 +63,7 @@ describe('pack full lifecycle: init → install → load', () => {
 
     const installedDir = path.join(packsDir, 'my-test-pack');
     expect(fs.existsSync(path.join(installedDir, 'abuddy.json'))).toBe(true);
-    expect(fs.existsSync(path.join(installedDir, 'bundle.json'))).toBe(true);
+    expect(fs.existsSync(path.join(installedDir, 'integrity.json'))).toBe(true);
     expect(fs.existsSync(path.join(installedDir, 'runtime', 'index.cjs'))).toBe(true);
 
     // The loader finds it under ABUDDY_USER_DATA_DIR

@@ -2,8 +2,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { createLogger } from '@abuddy/sdk/logger';
-import { BUNDLE_PATHS } from '../bundle.ts';
-import { modifyRegistry } from '../pack-registry.ts';
+import { PACK_LAYOUT } from '../pack-layout.ts';
+import { updateInstalledPacks } from '../installed-packs.ts';
 import type { LoadedPack } from './loaded-packs.ts';
 import type { PackSeedManifest } from '@abuddy/sdk/framework';
 import { seedPath } from '@abuddy/sdk/build';
@@ -45,11 +45,11 @@ function seedErrors(result: Record<string, { errors?: string[] }> | undefined): 
   return Object.entries(result ?? {}).flatMap(([key, counts]) => (counts?.errors ?? []).map(e => `${key}: ${e}`));
 }
 
-/** Record each seeded pack's outcome on its registry entry (the pack install state owner). */
+/** Record each seeded pack's outcome on its installed-packs entry (the pack install state owner). */
 function recordSeedOutcome(outcomes: Map<string, string | undefined>): void {
   if (outcomes.size === 0) return;
   try {
-    modifyRegistry(entries => entries.map(e => {
+    updateInstalledPacks(entries => entries.map(e => {
       if (!outcomes.has(e.id)) return e;
       const lastError = outcomes.get(e.id);
       const { lastError: _previous, ...rest } = e;
@@ -62,7 +62,7 @@ function recordSeedOutcome(outcomes: Map<string, string | undefined>): void {
 
 /**
  * Seed external packs whose compiled data changed. A pack whose seed reports errors
- * (e.g. an invalid flow) is a failed seed: the error is recorded as the registry entry's
+ * (e.g. an invalid flow) is a failed seed: the error is recorded as the installed-packs entry's
  * lastError. Its hash is stored like a successful seed's, so the same failing data isn't
  * re-imported on every boot; it's retried when the pack's seed data changes.
  */
@@ -73,7 +73,7 @@ export function seedPackData(packs: LoadedPack[], seed: typeof seedData = seedDa
 
   for (const pack of packs) {
     const packId = pack.manifest.id;
-    const distDir = path.join(pack.dir, BUNDLE_PATHS.seedsDir);
+    const distDir = path.join(pack.dir, PACK_LAYOUT.seedsDir);
     const currentHash = fs.existsSync(distDir) ? computePackSeedHash(distDir) : '';
     if (!currentHash) {
       // Nothing to seed: an error from an earlier version's seed no longer applies
@@ -143,11 +143,6 @@ function evaluateSeedPolicy(policy?: PackSeedManifest['seedPolicy']): Record<str
  */
 export function orchestrateDeclarativeSeed(manifest: PackSeedManifest, packId: string): void {
   const { seedKeys, compiledDir, seedPolicy } = manifest;
-  // A pack bundle built before this field was named `seedKeys` carries the old one, and its seeds would silently
-  // be no seeds at all: said plainly, as the module bridge says it for an SDK entry the app no longer has
-  if (!Array.isArray(seedKeys)) {
-    throw new Error(`Pack "${packId}" was built with an older @abuddy/cli (its seed manifest has no seedKeys): rebuild it with the current one`);
-  }
   const stored = appState.get();
   const storedHash = stored.seedHashes[packId];
 

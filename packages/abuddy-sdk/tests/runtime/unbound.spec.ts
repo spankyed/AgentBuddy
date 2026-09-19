@@ -130,9 +130,9 @@ describe('with no app bound', () => {
   it('logs to the console, redacted', () => {
     const info = vi.spyOn(console, 'info').mockImplementation(() => {});
     const error = vi.spyOn(console, 'error').mockImplementation(() => {});
-    createLogger('pack-registry').info('Installed', { pack: 'memos' });
+    createLogger('installed-packs').info('Installed', { pack: 'memos' });
     createLogger().error('key sk-proj-abcdef1234567890 rejected');
-    expect(info.mock.calls).toEqual([['[pack-registry]', 'Installed', { pack: 'memos' }]]);
+    expect(info.mock.calls).toEqual([['[installed-packs]', 'Installed', { pack: 'memos' }]]);
     expect(error.mock.calls).toEqual([['key [redacted] rejected']]);
   });
 });

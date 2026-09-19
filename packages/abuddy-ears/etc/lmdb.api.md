@@ -119,6 +119,7 @@ export class LmdbQuery {
 // @public
 export interface LmdbStore {
     close(): PersistenceErrorStats;
+    copyTo(partition: Partition, targetDir: string): Promise<void>;
     readonly envs: Readonly<Record<Partition, LmdbDbs>>;
     hydrate(options?: {
         includeVolatile?: boolean;
@@ -131,7 +132,6 @@ export interface LmdbStore {
     reopen(): void;
     reset(): Promise<void>;
     readonly sink: ShardedPersistence;
-    snapshot(partition: Partition, targetDir: string): Promise<void>;
 }
 
 // @public

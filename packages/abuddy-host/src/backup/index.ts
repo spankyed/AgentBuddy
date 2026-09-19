@@ -35,11 +35,11 @@ const databasePath = (store: Pick<LmdbStore, 'paths'>, name: DatabaseName) => st
 
 /**
  * Copies `store`'s databases (and the media folder `mediaPath`, with the primary database) into a new backup folder.
- * Each database is copied by LMDB itself (`store.snapshot`), so a backup taken while the app is running holds the
+ * Each database is copied by LMDB itself (`store.copyTo`), so a backup taken while the app is running holds the
  * database as of one moment rather than whatever the files happened to say as they were read.
  */
 export async function exportDatabase(
-  store: Pick<LmdbStore, 'paths' | 'snapshot'>,
+  store: Pick<LmdbStore, 'paths' | 'copyTo'>,
   targetPath: string,
   { name, databases = ['lmdb'], mediaPath, appVersion, log = defaultLog }:
     { name?: string; databases?: DatabaseName[]; mediaPath: string; appVersion?: string; log?: BackupLog },
@@ -68,7 +68,7 @@ export async function exportDatabase(
 
   for (const dbName of databases) {
     if (await fs.pathExists(databasePath(store, dbName))) {
-      await store.snapshot(DATABASE_PARTITIONS[dbName], path.join(fullBackupPath, dbName));
+      await store.copyTo(DATABASE_PARTITIONS[dbName], path.join(fullBackupPath, dbName));
       log.info(`Backed up ${dbName}`);
     }
   }

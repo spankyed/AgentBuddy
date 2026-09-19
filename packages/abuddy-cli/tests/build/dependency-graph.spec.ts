@@ -66,7 +66,7 @@ afterAll(() => {
   if (parent) fs.rmSync(parent, { recursive: true, force: true });
 });
 
-/** A built-in pack writes dist/snapshot.json; an external one writes it into the bundle's types dir */
+/** A built-in pack writes dist/snapshot.json; an external one writes it into the pack's types dir */
 const snapshotOf = (id: string) => {
   const file = [path.join(parent, id, 'dist', 'snapshot.json'), path.join(parent, id, 'dist', 'types', 'snapshot.json')]
     .find((candidate) => fs.existsSync(candidate));

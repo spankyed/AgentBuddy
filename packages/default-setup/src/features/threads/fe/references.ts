@@ -1,9 +1,9 @@
 import { History } from 'lucide-vue-next'
 import { navigateToPlugin } from '@abuddy/sdk/fe'
 import { id as threads, threadsFromStore } from './state'
-import type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider, ContributionItem } from '@abuddy/sdk/fe/contributions'
+import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider, ReferenceItem } from '@abuddy/sdk/fe/references'
 
-export const contributionTypes: Record<string, ContributionTypeConfig> = {
+export const referenceTypes: Record<string, ReferenceTypeConfig> = {
   thread: {
     protocol: 'thread',
     category: 'threads',
@@ -27,7 +27,7 @@ export const categories: CategoryConfig[] = [
 export const itemsProvider: CategoryItemsProvider = {
   category: 'threads',
   pluginId: threads,
-  buildItems: (actorState: any): ContributionItem[] => {
+  buildItems: (actorState: any): ReferenceItem[] => {
     const threadMap = actorState?.context?.threadMap || {}
     const threadIds = actorState?.context?.threadIds || []
     const sorted = threadsFromStore(threadMap, threadIds)

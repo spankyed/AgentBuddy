@@ -1,3 +1,6 @@
+> **Done** (2026-09-19) on `AS/external-pack-authoring`. All five phases landed. Open decision 1 was
+> settled as A after the decision itself turned out to be mis-framed — see Corrections below.
+
 > **Written in session** `b9ed13ae-1ac2-48e4-ae3d-6e96f091dbb1` (Claude Code, 2026-09-17), revised 2026-09-18 against the tree after `77f4c910a`, and again after `634f613f2` — every count below re-verified, two collisions added that the earlier passes could not have seen because the work that created them had not landed. Resume it with `claude -r b9ed13ae-1ac2-48e4-ae3d-6e96f091dbb1`.
 
 ```
@@ -294,6 +297,146 @@ pack's.
   `contract`, and the `contributions`/`extensions` pair — belong in it as worked examples.
 
 **Done when:** the guard fails if a retired name comes back, mutation-checked by reintroducing one.
+
+## Outcome (2026-09-19)
+
+All five phases landed. `registry` names only the in-process collection and the remote stub, `bundle` is
+only a verb, the last build-sense `artifact` is gone, and `source` names three things instead of five. The
+guard in Phase 5 caught a real regression the moment it was written, which is recorded below because it is
+the argument for the guard.
+
+### Per phase
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — installed packs are not a registry | done, after a follow-up | `packs/installed-packs.ts`, `InstalledPack`, `installedAt`, `installedFrom`, `installed-packs.json`, and the route `packs.loaded` with `loadedPacksError`. Phase grep reads zero — the module and the route's consumer kept the word in their own names; see *What the phase greps missed* |
+| 2 — `bundle` becomes only a verb | done, after a follow-up | `PACK_LAYOUT`, `PACK_LAYOUT_VERSION`, `stagePack`, `verifyPack`, `PackIntegrity`, `integrity.json`, `isPackLayout`, `getLoadedPackEntries`, `LoadedPackEntry`, `bundlePackSource`, `buildPackArchive`; module renamed `packs/pack-layout.ts`. Phase grep reads zero — but it greps names, and three noun leftovers had none of them; see *What the phase greps missed* |
+| 3 — the umbrella's odd one out | done | `src/extensions/app/Welcome.vue` with the manifest path and regenerated entry following; then the second pass: `features[].contributions` → `references` (manifest key, `@abuddy/sdk/fe/references`, `ReferenceTypeConfig`, `ReferenceItem`, `REFERENCE_TYPES`, generated `references.ts`), and `contributions` retired in favour of `extensions` everywhere else. `grep -rn contribution` over `packages/` and `docs/public-facing/` reads zero — but that scope left `docs/goals/` and `docs/plans/`, where eight uses survived; see *What the phase greps missed* |
+| 4 — the remaining single-sense fixes | done | `resolveDepFiles`/`DepFiles`/`ResolvedDepFiles`, `resolvedFrom`, `store.copyTo`, the write-lock's `machine`, `resolveFromRemoteRegistry`, the `seedKeys` guard removed (Open decision 2 A), and the docs calling the per-kind registries "registries" |
+| 5 — keep the retired names retired | done, after a follow-up | `removed-names-in-docs.spec.ts` extended with 28 names and 4 paths, plus a case per rename asserting the replacement is *not* caught. It covered `registry`, `bundle` and `artifact` but not `contributions`, the goal's largest rename, and read no app source; both closed in review |
+
+### Corrections to the Decisions
+- **Open decision 1 was mis-framed, and answering it took two passes.** It asked which of `extensions` and
+  `contributions` should be the single umbrella word. That was the wrong axis: there were three concepts,
+  and *both* words named two of them.
+
+  | Concept | Was | Is |
+  |---|---|---|
+  | Step/artifact/block definitions a pack registers | `src/extensions/` **and** `PackContributionsView` | extensions |
+  | Vue components filling named app-shell slots | `fe.appExtensions` | app extensions |
+  | Which of a feature's things are linkable from an editor | `features[].contributions`, `@abuddy/sdk/fe/contributions` | references |
+
+  The third was the mis-named one. `ContributionTypeConfig` is `{ protocol, category, plugin, icon,
+  svgElements, navigate }` — typing `#` in an editor opens a picker, and choosing an item inserts a
+  `note://ab12` link that `navigate()` opens. Its only consumers are `reference-config.ts`,
+  `reference-node.ts` and `referenceSuggestionPlugin`, and the inserted node is literally `name: 'reference'`.
+  The manifest key was the odd one out, not the code.
+
+  Renaming it to `references` freed `contributions` to mean one thing — and that one thing was what
+  `src/extensions/` already held, so `contributions` was retired entirely: `PackContributionsView` →
+  `PackExtensionsView`, `getPackContributions` → `getPackExtensions`, `packs/contributions.ts` →
+  `packs/extensions.ts`, and the word is now absent from code and live docs.
+
+  The first pass took option A alone (moving the loose `Welcome.vue` out of the kind-folders' root) and
+  recorded the three concepts as a reason not to converge. That was half an answer: the concepts *are*
+  distinct, but two of them were sharing a word in both directions, which is the collision this goal
+  exists to remove.
+- **`ResolvedDepArtifacts` was missing from Phase 4's list** and was added; it postdates the goal's first
+  draft, and a grep for `DepArtifacts` finds it, so omitting it would have left the rename half-done while
+  the greps read clean.
+
+### Conventional choices
+- **`packs/bundle.ts` → `packs/pack-layout.ts`** (and its spec). Phase 2 renamed every symbol in the module
+  but not the module; leaving `bundle.ts` holding `PACK_LAYOUT` would have kept the noun in the one place a
+  reader looks first.
+- **`.abuddy/bundle/<id>` → `.abuddy/staged/<id>`.** The staging directory is the noun sense, and `staged`
+  is the lifecycle stage rule 1 already names.
+- **`packBundle` → `buildPackArchive`** (`abuddy pack`'s own function), checked free first.
+- **`InstallResult.bundle` → `integrity`**, and `bundleDir` → `layoutDir`, the noun leftovers inside
+  `pack-installer.ts`.
+- **The per-kind registries are called registries in prose**, not "lookups", per rule 3 — across the root
+  `CLAUDE.md` and the sdk, ui, api and renderer ones.
+
+### What the phase greps missed
+
+The greps in each phase look for the retired *names*. Three leftovers carried none of those names, so every
+grep read zero and the suite stayed green while the rename was incomplete. A PR review found them; they are
+fixed, and Phase 5's guard was widened so the next one fails a test instead.
+
+| Leftover | Why no grep caught it |
+|---|---|
+| `PACK_LAYOUT.info`, which Phase 2 named explicitly | The key, not the value: `integrity.json` and `PackIntegrity` had landed, so `bundle.json` and `BundleInfo` both read zero while `info` — the last of `BundleInfo` — sat in `PACK_LAYOUT` and nine call sites |
+| `packFrontendFiles(bundleDir)` | The Conventional-choices note scoped `bundleDir` → `layoutDir` to `pack-installer.ts`. The parameter in `pack-layout.ts` was a second site, and `bundleDir` is not a retired *name* |
+| `bundle` as a noun in `pack-layout.ts`'s header, its doc comments and three error strings (`Not a pack bundle: …`) | The word alone is not a retired name, and it is legitimate in the bundler sense elsewhere, so no grep could be written for it without false positives |
+| `contributions` in `docs/plans/codegen-staleness.md` and `docs/goals/deferred/goal-pack-frontend-isolation.md` (8 uses) | The phase-3 grep was scoped to `packages/` and `docs/public-facing/`. The deferred goal was the costly one: its whole purpose is to be picked up later, and it used the retired word as its umbrella throughout |
+| `registry` for the file, inside `installed-packs.ts` itself — the header, `PackRegistryFile`, `getRegistryPath`, `registryPath` | `registry` is *kept* for the in-process collection (Decision 3), so no name grep can separate the retired sense from the kept one. These are new compounds, not retired names |
+| `registry` for the wire route, in the renderer's `application.ts` — `packRegistryRead`, the `packs.loaded` result variable, seven comments, and a spec named `application-pack-registry.spec.ts` | Same reason. A stale `packs.registry` mock also survived in `application-system-error.spec.ts`, naming a route that no longer exists (unreachable there, so nothing failed) |
+
+Phase 5's guard read only docs, CLI templates and pack sources — never the app's own source — and its name
+list covered `registry`, `bundle` and `artifact` but not `contributions`, so none of the four survived by
+accident: the guard could not have caught any of them. `isAppSource` now covers `packages/*/src` for host, SDK, ears, UI, CLI, testing, api,
+renderer, main and preload, mutation-checked by reintroducing `readBundleInfo` into a host source file. The
+`contributions` names are listed too, the bare words among them: the leftovers were prose and a manifest key,
+so a symbol-only list would have missed every one. `tests/e2e/CLAUDE.md` has an allowance — it names the
+commit `fix(packs): list a pack before registering its contributions`, and a commit subject is history.
+
+Two doc references also pointed at `packs/bundle.ts` and one at `packs/pack-registry.ts`, modules this goal
+renamed; `installed-packs.json`'s `installedFrom` was still called `source` in three places in
+`abuddy-host/CLAUDE.md`. Neither class is a retired name either.
+
+The `registry` rows above are the important ones, because they are permanent: a word this goal *kept* in one
+sense cannot be guarded against in another. Adding bare `registry` to the list would fire on
+`createPackRegistry`, `PackRegistryView` and `stepRegistry`. The guard now says so in its own header, so the
+next concept rename knows to budget for reading rather than grepping. The full sweep that followed also found
+the same two senses in `pack-discovery.ts`, `loaded-packs.ts`, `seed.ts`, `activation-outcome.ts`,
+`schema.ts`, `pack-updater.ts`, the `packs` barrel, five docs and three spec files — about sixty sites in all,
+none of which any phase grep could have reported.
+
+### Where Decision 1 didn't reach
+
+Decision 1 ("no compatibility handling") was argued about `installed-packs.json`: a list the app rebuilds
+from `packs/` at the next boot, so losing it costs nothing. Three renames in this goal changed on-disk
+formats, and two of them are not that kind of file. A later review found both; both are fixed, with a
+regression test each.
+
+- **`db-write.lock`'s `host` → `machine` blocked startup.** `readLock` required `machine`, so a lock written
+  by any earlier version read as unreadable — and `findDatabaseWriter` returns "a tool whose lock can't be
+  read" *before* it checks whether the pid is alive. The API's boot calls `assertNoDatabaseWriter`, so a
+  stale lock left by a killed `abuddy db` refused the app permanently, with nothing running. The fix makes
+  the pid the authority and `machine` optional: a lock with no readable pid is still held (that is the
+  conservative case the rule was written for, a *newer* format), but one whose pid is dead is stale whatever
+  it says about machines. Not a compatibility read — the field `host` is never looked at.
+- **`pack-registry.json` → `installed-packs.json` deleted an interrupted install's only copy.**
+  `prepareHostDataDirs` passes `recoverStagingDirs` the ids the record lists. With the file renamed away,
+  `readInstalledPacks()` answered `[]`, and an empty Set is truthy, so every `.previous` directory took the
+  "uninstalled while the copy sat there" branch and was deleted instead of restored. The intended fallback —
+  "can't read the record, so restore everything" — could never run, because `readInstalledPacks` never
+  throws: it flattens both a missing file and an unparseable one to `[]`. `readInstalledPacksRecord` now
+  returns `null` for "no readable record", and the one caller that decides what to *delete* uses it.
+- **Disabled packs come back enabled**, which does follow from having no record, and Decision 1 covers it.
+  What it didn't cover is that each was logged as `New external pack discovered`, describing a fresh install
+  of a pack the user had deliberately turned off. Rebuilding now says so once, and names the packs.
+
+The lesson for the next rename of a file the app reads: ask whether losing it costs a rebuild or costs data,
+and check what the code does with "empty" versus "absent" before assuming they are the same answer.
+
+### Open items
+- **`source` still names three things** by design: the `@abuddy/source` condition, a log or error's origin,
+  and the declaring pack inside `mergeRegistries`. The condition is a resolution contract in every host
+  config; the other two are conventional and read correctly. See Deferred.
+- **The install *request* parameter is still `source`** (`INSTALL_PACK`'s `source`, `installPackFromLocal`,
+  `handleProtocolInstall`), as is the bundle's git provenance (`PackIntegrity.source`). Both are distinct
+  from the stored origin this goal renamed, and neither was in the doc's inventory; recorded here rather
+  than renamed, since a fourth and fifth sense of `source` were outside what was decided.
+
+### Final verification
+| Check | Result |
+|---|---|
+| `npm run typecheck` | passes |
+| `npm run test:unit` | passes |
+| `npm run test:external-pack` | passes |
+| `npm run compile` | passes; `pack-entry-fe.ts` regenerated with the new Welcome path |
+| `api:update` | `@abuddy/sdk` (`installedPacksFile`), `@abuddy/ears` (`copyTo`) |
+| Phase greps | every retired name reads zero outside `docs/archive` |
 
 ## Deferred
 

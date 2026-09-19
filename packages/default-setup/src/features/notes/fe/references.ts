@@ -1,15 +1,15 @@
 import { NotebookText, CircleCheck, ListChecks } from 'lucide-vue-next'
 import { navigateToPlugin } from '@abuddy/sdk/fe'
 import { id as notes } from './state'
-import type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider, ContributionItem } from '@abuddy/sdk/fe/contributions'
+import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider, ReferenceItem } from '@abuddy/sdk/fe/references'
 
-export const NOTE_TYPE_TO_CONTRIBUTION_TYPE: Record<string, string> = {
+export const NOTE_TYPE_TO_REFERENCE_TYPE: Record<string, string> = {
   document: 'note',
   task: 'task',
   tasklist: 'tasklist',
 }
 
-export const contributionTypes: Record<string, ContributionTypeConfig> = {
+export const referenceTypes: Record<string, ReferenceTypeConfig> = {
   note: {
     protocol: 'note',
     category: 'notes',
@@ -67,15 +67,15 @@ export const categories: CategoryConfig[] = [
 export const itemsProvider: CategoryItemsProvider = {
   category: 'notes',
   pluginId: notes,
-  buildItems: (actorState: any): ContributionItem[] => {
+  buildItems: (actorState: any): ReferenceItem[] => {
     const allNotes = actorState?.context?.notes || []
     return allNotes
-      .filter((n: any) => n.noteType in NOTE_TYPE_TO_CONTRIBUTION_TYPE)
+      .filter((n: any) => n.noteType in NOTE_TYPE_TO_REFERENCE_TYPE)
       .map((n: any) => ({
         id: n.id,
         shortCode: n.id,
         label: n.title || n.id,
-        type: NOTE_TYPE_TO_CONTRIBUTION_TYPE[n.noteType] as string,
+        type: NOTE_TYPE_TO_REFERENCE_TYPE[n.noteType] as string,
       }))
   },
 }

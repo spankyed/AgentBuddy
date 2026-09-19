@@ -13,7 +13,7 @@ Every process resolves its environment and data paths through `resolveAppContext
 |---|---|
 | `packs/` | Installed external packs, one directory per pack id |
 | `host-packs/` | Build artifacts of the app's built-in packs, published at boot for pack authors' dependency resolution |
-| `pack-registry.json` | Installed external packs and their `enabled` state |
+| `installed-packs.json` | Installed external packs and their `enabled` state |
 | `ears-db/` | Primary LMDB database |
 | `ears-trace/` | Volatile LMDB database (flow execution records) |
 | `secrets.json` | API keys: metadata plain, values encrypted |
@@ -41,12 +41,12 @@ Packs import `@abuddy/sdk`, `@abuddy/ears` and `@abuddy/ui`, never `@abuddy/host
 
 ### Install
 
-`abuddy install` (or the Packs view) installs into the data dir's `packs/<id>/`. An installed pack has the bundle layout, the same layout as `abuddy build`'s `dist/` and the release archive:
+`abuddy install` (or the Packs view) installs into the data dir's `packs/<id>/`. An installed pack has the pack layout, the same layout as `abuddy build`'s `dist/` and the release archive:
 
 ```
 <id>/
   abuddy.json          # The pack's manifest, as written
-  bundle.json          # Format version, versions, source, sha256 of every file
+  integrity.json          # Format version, versions, source, sha256 of every file
   runtime/
     index.cjs          # Backend: exports `registration` and `setCompiledDir`
     fe.js              # Frontend entry
@@ -59,11 +59,11 @@ Packs import `@abuddy/sdk`, `@abuddy/ears` and `@abuddy/ui`, never `@abuddy/host
 
 Installing is stage, verify, place:
 
-1. **Stage:** a built pack source is copied into a temporary bundle (`runtime/`, `build/`, `types/` from `dist/`, without source maps), with the resolved `abuddy.json` and a `bundle.json` listing each file's sha256. An archive — `.tgz` or `.zip` — is checked against its sha256 before anything is unpacked. A GitHub install takes that checksum from the release's `<archive>.sha256` asset and refuses a release that publishes none; a URL install has one only if the caller passes it, and warns when it doesn't. Downloads carry a two-minute timeout, so a stalled one fails instead of hanging the install.
-2. **Verify:** the bundle's format version must match the host's, and the files on disk must be exactly the ones `bundle.json` lists, with matching checksums.
-3. **Place:** the bundle is copied into a hidden `.<id>.installing-<pid>-…` dir in `packs/`, the current copy (if any) is renamed aside to `.<id>.previous-…`, the new copy is renamed into place, and the previous one is removed. At boot, `prepareHostDataDirs` restores a pack whose install crashed between those renames, unless the pack was uninstalled since, and removes stale staging dirs (a dir whose process is gone, or which predates the boot).
+1. **Stage:** a built pack source is copied into a temporary staging directory (`runtime/`, `build/`, `types/` from `dist/`, without source maps), with the resolved `abuddy.json` and a `integrity.json` listing each file's sha256. An archive — `.tgz` or `.zip` — is checked against its sha256 before anything is unpacked. A GitHub install takes that checksum from the release's `<archive>.sha256` asset and refuses a release that publishes none; a URL install has one only if the caller passes it, and warns when it doesn't. Downloads carry a two-minute timeout, so a stalled one fails instead of hanging the install.
+2. **Verify:** the pack's format version must match the host's, and the files on disk must be exactly the ones `integrity.json` lists, with matching checksums.
+3. **Place:** the staged pack is copied into a hidden `.<id>.installing-<pid>-…` dir in `packs/`, the current copy (if any) is renamed aside to `.<id>.previous-…`, the new copy is renamed into place, and the previous one is removed. At boot, `prepareHostDataDirs` restores a pack whose install crashed between those renames, unless the pack was uninstalled since, and removes stale staging dirs (a dir whose process is gone, or which predates the boot).
 
-The source directory must be built first: installing a directory with neither a `bundle.json` nor a `dist/runtime/index.cjs` beside `dist/types/snapshot.json` fails and asks you to run `abuddy build`. A directory in `packs/` that isn't a bundle is skipped at boot with a warning.
+The source directory must be built first: installing a directory with neither a `integrity.json` nor a `dist/runtime/index.cjs` beside `dist/types/snapshot.json` fails and asks you to run `abuddy build`. A directory in `packs/` that isn't a pack layout is skipped at boot with a warning.
 
 ### Backend boot
 
@@ -75,7 +75,7 @@ The source directory must be built first: installing a directory with neither a 
 3. `forwardSecretsChanges` (`@abuddy/host/secrets`): the settings system hears of API key changes.
 4. Loads packs. Built-in packs load asynchronously while external packs load and register:
    - **Built-in:** discovered from `BUILT_IN_PACKS_DIR` (`abuddy.json` with `builtIn: true`). In development each pack's `dist/runtime/index.cjs` is loaded when it exists, falling back to the loaders bundled into the API, which `setup/backend.ts` passes to `loadBuiltInPacks` as `bundledLoaders` (the API build generates them as `virtual:built-in-pack-loaders`); otherwise the bundled loader is used.
-   - **External:** discovered in `packs/` and reconciled with `pack-registry.json` (new packs added enabled, missing ones removed). For each enabled pack: `hostVersion` check, bundle format check, a warning on an SDK major version mismatch, `runtime/index.cjs` loaded through the module bridge, and `earlySystem`, `seedManifest` and `partitionPolicy` stripped. Each pack's systems register as `<packId>.<featureId>`.
+   - **External:** discovered in `packs/` and reconciled with `installed-packs.json` (new packs added enabled, missing ones removed). For each enabled pack: `hostVersion` check, pack layout format check, a warning on an SDK major version mismatch, `runtime/index.cjs` loaded through the module bridge, and `earlySystem`, `seedManifest` and `partitionPolicy` stripped. Each pack's systems register as `<packId>.<featureId>`.
    - The registry's `registerPack()` stores each registration (see [Collision detection](#collision-detection)). A pack contributes only through its registration: nothing registers when its modules are imported.
 5. Publishes each built-in pack's build output into `host-packs/<id>/`.
 6. Starts the `earlySystem` (default-setup's logs system).
@@ -90,7 +90,7 @@ The source directory must be built first: installing a directory with neither a 
 
 Built-in packs' frontends are compiled into the renderer (`virtual:built-in-packs` imports each pack's `__generated__/pack-entry-fe.ts`). External packs load at runtime:
 
-1. Each time this window's bus subscription is established, the application actor queries the pack registry (`trpc.packs.registry`), which lists each loaded external pack's `feEntry` and `feStyles` — the bundle's `runtime/fe.js` and `runtime/fe.css`, when it has them. It loads only the packs it hasn't loaded yet, so a query that fails leaves them to the next connection and a pack is never loaded twice.
+1. Each time this window's bus subscription is established, the application actor queries the loaded packs (`trpc.packs.loaded`), which lists each loaded external pack's `feEntry` and `feStyles` — the pack's `runtime/fe.js` and `runtime/fe.css`, when it has them. It loads only the packs it hasn't loaded yet, so a query that fails leaves them to the next connection and a pack is never loaded twice.
 2. For each external pack, `loadPackFrontend(pack)`:
    - loads `pack://<id>/runtime/fe.css` as a `<link>` when the pack has styles;
    - imports `pack://<id>/runtime/fe.js` and registers its default export, a `PackFERegistration`, in the renderer's frontend registry (`createFePackRegistry()` from `@abuddy/host/fe`, bound with `bindFeHost`);
@@ -105,7 +105,7 @@ A connection's own `CLIENT_CONNECTED` skips the systems of external packs with f
 The `packs` system handles install, uninstall, enable/disable and update from the Packs view:
 
 - **Activate** (after install or update, or on enable): reads the pack's manifest, loads and registers it, registers `onShutdown`, runs `onInit`, then the pack's pending migrations and its seeds (skipped when its compiled seeds are unchanged), sends the bus `PACK_CHANGED` so running systems refresh what they read from packs, then `ACTIVATE_PACK` to spawn its systems. The renderer hears `PACK_ACTIVATED` and asks the application actor to load the frontends it hasn't, the new pack's included. The bus sends `CLIENT_CONNECTED` right away only for a pack without frontend code; otherwise it waits for `packClientReady`. An install or update that activated but failed to seed reports the seed error.
-- **Teardown** (before uninstall or update, or on disable): runs the pack's shutdown hooks, unregisters it (registration keeps the event types `bus.send` accepts current), clears its modules from the require cache, and sends the bus `TEARDOWN_PACK` to stop its systems. The renderer hears `PACK_DEACTIVATED`, unregisters the pack's FE contributions, removes its stylesheets and unloads its plugins.
+- **Teardown** (before uninstall or update, or on disable): runs the pack's shutdown hooks, unregisters it (registration keeps the event types `bus.send` accepts current), clears its modules from the require cache, and sends the bus `TEARDOWN_PACK` to stop its systems. The renderer hears `PACK_DEACTIVATED`, unregisters the pack's FE extensions, removes its stylesheets and unloads its plugins.
 - **Reload** (development, `POST /dev/reload` on the API from `abuddy dev` or a built-in pack's watch build; a development or test app takes it only with the API token, handled by `reloadExternalPack`/`reloadBuiltInPack` in `@abuddy/host/packs/runtime`): loads and registers the rebuilt runtime before shutting the running one down. If the fresh runtime fails to load or register, the running pack is re-registered and stays as it was. Otherwise the old shutdown hooks run, the new `onShutdown` registers, `onInit` runs, external packs run their pending migrations and re-seed, and the bus `RELOAD_PACK` stops the old and new system ids and starts those still registered, then sends them `CLIENT_CONNECTED`; `PACK_CHANGED` follows for every running system. Teardown (disable, uninstall) sends it too, after stopping the pack's systems.
 
 An external pack's migrations run at boot, on activation and on reload, each against the pack's own version; the app's run at boot and after a reset or backup import.
@@ -183,7 +183,7 @@ pack://<packId>/<filePath>
 
 - Resolves to `<userDataDir>/packs/<packId>/<filePath>`
 - Path traversal protection: the resolved path must be inside the pack's directory
-- While `abuddy dev` runs, `<userDataDir>/pack-dev-servers/<packId>.json` names the pack's Vite dev server port, and requests are proxied there (an invalid port answers 502; a failed or non-OK fetch falls back to the file). The marker lives outside the pack directory, so the installed bundle still verifies and the marker survives reinstalls
+- While `abuddy dev` runs, `<userDataDir>/pack-dev-servers/<packId>.json` names the pack's Vite dev server port, and requests are proxied there (an invalid port answers 502; a failed or non-OK fetch falls back to the file). The marker lives outside the pack directory, so the installed pack still verifies and the marker survives reinstalls
 - Used by the renderer to load `runtime/fe.js`, `runtime/fe.css`, and other pack assets
 
 ## Host dependency sharing
@@ -300,7 +300,7 @@ The policy (the app's registry's `partitionPolicy`) is the union of the SDK's ex
 | `pack-types.ts` | The facade types `abuddy build` bundles into `dist/types/pack-types.d.ts` for dependents |
 | `deps/<id>.d.ts` | Each dependency's facade types, from its snapshot. Its header names the version (`// <id>@<version> facade types`); `abuddy build` warns when the dependency it builds with is another version |
 | `deps/<id>.flow-helpers.js`, `.d.ts` | Each dependency's flow helpers module and declarations, from its snapshot |
-| `contributions.ts` | Contribution type aggregation |
+| `references.ts` | Reference type aggregation: which things are linkable from an editor |
 | `seeders.ts` | `seeders`, one per seeded key, which `pack-entry.ts` puts in the registration, and the compiled data path accessors (`setCompiledDir`, `getCompiledDir`) |
 | `seed-runtime.ts` | The pack's seed runtime (entity types, relation kinds, repositories, seed hooks). The pack's tests import it; `abuddy build` bundles it into `dist/build/seed-runtime.mjs` for dependents' tests |
 | `flow-helpers.ts` | Typed DSL helpers for each step definition, with dependencies' |

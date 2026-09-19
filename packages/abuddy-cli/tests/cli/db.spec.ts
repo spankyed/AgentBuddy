@@ -37,7 +37,7 @@ function schemaContext(userDataDir: string) {
     userDataDir,
     packsDir: path.join(userDataDir, 'packs'),
     hostPacksDir: path.join(userDataDir, 'host-packs'),
-    registryFile: path.join(userDataDir, 'pack-registry.json'),
+    installedPacksFile: path.join(userDataDir, 'installed-packs.json'),
   };
 }
 

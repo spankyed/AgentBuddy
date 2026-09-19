@@ -10,8 +10,8 @@
 #   4. unit tests on the harness: seeds with default-setup's formats and hooks, the feature's system, the service
 #      and the llm flow on default-setup's brain, with inference mocked by mockInference
 #   5. @abuddy/testing's published declarations type-check on their own (skipLibCheck off)
-#   6. abuddy release --local --dry-run produces a verified bundle
-#   7. install that bundle into an isolated test data dir
+#   6. abuddy release --local --dry-run produces a verified archive
+#   7. install that archive into an isolated test data dir
 #   8. abuddy test passes against the configured app (this checkout, chosen at the first-run prompt)
 #   9. the packed CLI's abuddy db reads and exports the data that app seeded
 # No ABUDDY_ROOT, no symlinks, no PATH edits. Requires a built checkout (npm run build).
@@ -323,21 +323,21 @@ git add -A
 git -c user.name=author -c user.email=author@example.com commit --quiet -m "initial pack"
 git remote add origin https://github.com/example/demo-pack.git
 "$ABUDDY" release patch --local --dry-run --skip-e2e | tee "$WORK/release.log"
-BUNDLE="$(sed -n 's/^Bundle: //p' "$WORK/release.log")"
-[ -f "$BUNDLE" ] && [ -f "$BUNDLE.sha256" ] || fail "release did not produce a bundle and checksum"
-(cd "$(dirname "$BUNDLE")" && shasum -a 256 -c "$(basename "$BUNDLE").sha256")
+ARCHIVE="$(sed -n 's/^Pack: //p' "$WORK/release.log")"
+[ -f "$ARCHIVE" ] && [ -f "$ARCHIVE.sha256" ] || fail "release did not produce an archive and checksum"
+(cd "$(dirname "$ARCHIVE")" && shasum -a 256 -c "$(basename "$ARCHIVE").sha256")
 [ -z "$(git status --porcelain)" ] || fail "a dry run changed the pack's files"
 
-step "7. Install the bundle into an isolated test data dir"
+step "7. Install the pack into an isolated test data dir"
 DATA="$WORK/test-data"
-ABUDDY_USER_DATA_DIR="$DATA" "$ABUDDY" install "$BUNDLE"
-INSTALLED="$(find "$DATA" -path '*/demo-pack/bundle.json' | head -n 1)"
-[ -n "$INSTALLED" ] || fail "the bundle was not installed"
+ABUDDY_USER_DATA_DIR="$DATA" "$ABUDDY" install "$ARCHIVE"
+INSTALLED="$(find "$DATA" -path '*/demo-pack/integrity.json' | head -n 1)"
+[ -n "$INSTALLED" ] || fail "the pack was not installed"
 node -e '
   const b = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
-  if (b.id !== "demo-pack" || b.version !== "0.1.1") throw new Error(`unexpected bundle ${b.id}@${b.version}`);
+  if (b.id !== "demo-pack" || b.version !== "0.1.1") throw new Error(`unexpected pack ${b.id}@${b.version}`);
 ' "$INSTALLED"
-[ -f "$(dirname "$INSTALLED")/runtime/index.cjs" ] || fail "installed bundle has no runtime"
+[ -f "$(dirname "$INSTALLED")/runtime/index.cjs" ] || fail "installed pack has no runtime"
 
 step "8. abuddy test (the saved app)"
 # The app's data dir is kept for step 9: the app seeded the installed demo pack into it

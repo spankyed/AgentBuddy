@@ -11,6 +11,9 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { boundHost } from '../runtime/host-runtime.ts';
+import { _writerIsRunning, _writtenAt } from './process-liveness.ts';
+
+export { _bootTime, _processIsRunning, _writerIsRunning, _writtenAt } from './process-liveness.ts';
 
 export type AppEnv = 'production' | 'beta' | 'development' | 'test';
 
@@ -23,8 +26,11 @@ export interface ApiEndpoint {
 
 /**
  * The API running on this data dir, from the file it published, or `null` when there is none: no file, one that
- * can't be read, or one a crashed run left behind, whose process has exited. A process this user may not signal
- * counts as running. Whether the API answers is the caller's to check.
+ * can't be read, or one a crashed run left behind. A process this user may not signal counts as running.
+ * Whether the API answers is the caller's to check.
+ *
+ * "Left behind" is the pid *and* the boot it was written in: pids are recycled, so after a reboot a crashed
+ * run's file names an unrelated live process and would otherwise report an API that isn't there.
  */
 export function readApiEndpoint(apiPortFile: string): ApiEndpoint | null {
   let published: { port?: unknown; pid?: unknown };
@@ -36,11 +42,8 @@ export function readApiEndpoint(apiPortFile: string): ApiEndpoint | null {
   const { port, pid } = published;
   if (!Number.isInteger(port) || (port as number) <= 0 || (port as number) > 65535) return null;
   if (!Number.isInteger(pid) || (pid as number) <= 0) return null;
-  try {
-    process.kill(pid as number, 0);
-  } catch (error) {
-    if ((error as NodeJS.ErrnoException).code === 'ESRCH') return null;
-  }
+  const at = _writtenAt(apiPortFile);
+  if (at === null || !_writerIsRunning(pid as number, at)) return null;
   return { port: port as number, pid: pid as number };
 }
 
@@ -64,7 +67,7 @@ export interface AppContext {
   packsDir: string;
   /** Build-time artifacts (types/, build/) of the app's built-in packs, for pack authors' dependency resolution. */
   hostPacksDir: string;
-  registryFile: string;
+  installedPacksFile: string;
   /** Where a running API publishes its port and process id (`readApiEndpoint`), so local tools find it */
   apiPortFile: string;
   /** A development app's API token, for local tools calling its API (written by the API, readable only by the user) */
@@ -118,7 +121,7 @@ export function resolveAppContext(input: { env?: AppEnv; userDataDir?: string } 
     userDataDir,
     packsDir: path.join(userDataDir, 'packs'),
     hostPacksDir: path.join(userDataDir, 'host-packs'),
-    registryFile: path.join(userDataDir, 'pack-registry.json'),
+    installedPacksFile: path.join(userDataDir, 'installed-packs.json'),
     apiPortFile: path.join(userDataDir, 'api-port'),
     apiTokenFile: path.join(userDataDir, 'api-token'),
     urlScheme: env === 'beta' ? 'abuddy-beta' : 'abuddy',

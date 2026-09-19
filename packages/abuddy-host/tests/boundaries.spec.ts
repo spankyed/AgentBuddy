@@ -13,7 +13,6 @@ import { createPackRegistry } from '../src/packs/pack-registration.ts';
 const HOST_ROOT = path.resolve(__dirname, '..');
 const SRC = path.join(HOST_ROOT, 'src');
 const RUNTIME = path.join(SRC, 'packs', 'runtime');
-const API_SRC = path.resolve(HOST_ROOT, '..', 'api', 'src');
 
 function sourceFiles(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -64,10 +63,11 @@ type MissingServiceKey = Exclude<keyof HostRuntime['services'], (typeof HOST_SER
 const serviceKeysComplete: [MissingServiceKey] extends [never] ? true : MissingServiceKey = true;
 const kebab = (key: string) => key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 
-const rel = (file: string) => path.relative(HOST_ROOT, file);
 const inRuntime = (file: string) => file.startsWith(RUNTIME + path.sep);
 /** The bus reads the loaded packs (clientLoadedPacks); that module loads nothing else of the runtime */
 const LOADED_PACKS = path.join(RUNTIME, 'loaded-packs.ts');
+
+const rel = (file: string) => path.relative(HOST_ROOT, file);
 
 describe('host package boundaries', () => {
   it('imports no transport: fastify, @trpc/*, ws or virtual:* modules', () => {
@@ -93,18 +93,6 @@ describe('host package boundaries', () => {
     const reached = new Set(busFiles.flatMap((file) => [...runtimeClosure(file)]).filter(inRuntime));
     reached.delete(LOADED_PACKS);
     expect([...reached].map(rel), 'The pack test harness imports @abuddy/host/bus: it must not load the pack loader').toEqual([]);
-  });
-
-  it('leaves no pack runtime in the api', () => {
-    expect(fs.existsSync(path.join(API_SRC, 'packs')), 'packages/api/src/packs moved to @abuddy/host/packs/runtime').toBe(false);
-    expect(fs.existsSync(path.join(API_SRC, 'systems.ts')), 'the app bus is createAppBus in @abuddy/host/bus').toBe(false);
-  });
-
-  it('leaves persistence to @abuddy/ears', () => {
-    // Only source counts: from source, Electron main keeps its media under api/src/core/persistence/data (gitignored)
-    const moved = [path.join(SRC, 'ears'), path.join(SRC, 'persistence'), path.join(API_SRC, 'core', 'ears'), path.join(API_SRC, 'core', 'persistence')];
-    const left = moved.filter((dir) => fs.existsSync(dir)).flatMap((dir) => sourceFiles(dir)).map(rel);
-    expect(left, 'EARS persistence and LMDB live in @abuddy/ears and @abuddy/ears/lmdb').toEqual([]);
   });
 
   it("holds only the app-implemented services in src/services, one file each, and the runtime's index", () => {

@@ -1,9 +1,9 @@
 // The registered packs' step definitions, looked up by type. The app registers them (a pack's registration's
 // `steps`, and the frontend facets its frontend registers); this reads the bound registry on every call.
 import type { StepDefinition, StepBuildFacet, StepRuntimeFacet, StepFEFacet, TriggerFacet } from './types.ts';
-import { _boundPackContributions } from '../runtime/packs-view.ts';
+import { _boundPackExtensions } from '../runtime/packs-view.ts';
 
-const step = (type: string): StepDefinition | undefined => _boundPackContributions().step(type);
+const step = (type: string): StepDefinition | undefined => _boundPackExtensions().step(type);
 
 /** The registered step definitions and their facets, by type */
 interface StepRegistry {
@@ -60,15 +60,15 @@ export const stepRegistry: StepRegistry = {
   },
 
   triggers(): StepDefinition[] {
-    return _boundPackContributions().steps().filter(s => s.kind === 'trigger');
+    return _boundPackExtensions().steps().filter(s => s.kind === 'trigger');
   },
 
   types(): string[] {
-    return _boundPackContributions().steps().map(s => s.type);
+    return _boundPackExtensions().steps().map(s => s.type);
   },
 
   all(): StepDefinition[] {
-    return _boundPackContributions().steps();
+    return _boundPackExtensions().steps();
   },
 
   createNodeDefaults(nodeType: string): Record<string, unknown> {

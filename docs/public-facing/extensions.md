@@ -554,7 +554,7 @@ The block answers with a `ButtonGroupResponse` — `{ buttonId, state }`. Respon
 
 ### App extensions
 
-`fe.appExtensions` maps a slot name to a Vue component file: `{ "welcome": "src/extensions/Welcome.vue" }`. The app renders one slot, `welcome`: an overlay shown to first-time users during onboarding. A pack registering a slot another pack registered replaces it.
+`fe.appExtensions` maps a slot name to a Vue component file: `{ "welcome": "src/extensions/app/Welcome.vue" }`. The app renders one slot, `welcome`: an overlay shown to first-time users during onboarding. A pack registering a slot another pack registered replaces it.
 
 ### PackFERegistration
 
@@ -572,4 +572,4 @@ The generated FE entry (`__generated__/pack-entry-fe.ts`) default-exports a `Pac
 
 The renderer registers it for your pack; nothing in your frontend registers anything itself.
 
-`features[].contributions` (`ContributionTypeConfig`s from `@abuddy/sdk/fe/contributions`: how an entity type appears and navigates when referenced in the UI) is read only for built-in packs.
+`features[].references` (`ReferenceTypeConfig`s from `@abuddy/sdk/fe/references`: how an entity type appears and navigates when referenced in the UI) is read only for built-in packs.

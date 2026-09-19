@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { createLogger } from '@abuddy/sdk/logger';
-import { readPackRegistry, writePackRegistry, addToRegistry } from './pack-registry.ts';
+import { readInstalledPacksRecord, writeInstalledPacks, addInstalledPack } from './installed-packs.ts';
 import type { PackManifest } from '@abuddy/sdk/build';
 
 const logger = createLogger('pack-discovery');
@@ -83,18 +83,22 @@ export function discoverPacks(packsDir: string): { manifest: PackManifest; dir: 
   return results;
 }
 
-export function reconcileExternalRegistry(
+export function reconcileInstalledPacks(
   discovered: { manifest: PackManifest; dir: string }[],
 ): { manifest: PackManifest; dir: string }[] {
-  let registry = readPackRegistry();
+  // With no readable record every pack in packs/ is added back enabled, any the user had disabled included.
+  // None of them is newly discovered, so they are reported once, together, rather than as fresh installs.
+  const record = readInstalledPacksRecord();
+  const rebuilding = record === null;
+  let installed = record ?? [];
   let changed = false;
 
   const discoveredById = new Map(discovered.map(d => [d.manifest.id, d]));
 
   for (const { manifest, dir } of discovered) {
-    const existing = registry.find(e => e.id === manifest.id);
+    const existing = installed.find(e => e.id === manifest.id);
     if (!existing) {
-      registry = addToRegistry(registry, {
+      installed = addInstalledPack(installed, {
         id: manifest.id,
         name: manifest.name,
         version: manifest.version,
@@ -102,9 +106,9 @@ export function reconcileExternalRegistry(
         enabled: true,
       });
       changed = true;
-      logger.info(`New external pack discovered: ${manifest.id}`);
+      if (!rebuilding) logger.info(`New external pack discovered: ${manifest.id}`);
     } else if (existing.version !== manifest.version || existing.dir !== dir) {
-      registry = addToRegistry(registry, {
+      installed = addInstalledPack(installed, {
         id: existing.id,
         name: manifest.name,
         version: manifest.version,
@@ -115,12 +119,16 @@ export function reconcileExternalRegistry(
     }
   }
 
-  const before = registry.length;
-  registry = registry.filter(e => discoveredById.has(e.id));
-  if (registry.length !== before) changed = true;
+  const before = installed.length;
+  installed = installed.filter(e => discoveredById.has(e.id));
+  if (installed.length !== before) changed = true;
 
-  if (changed) writePackRegistry(registry);
+  if (rebuilding && installed.length > 0) {
+    const names = installed.map(e => e.id).join(', ');
+    logger.warn(`No record of installed packs: rebuilt it from the packs directory, and ${installed.length} pack(s) are enabled (${names}). A pack disabled before this is enabled again.`);
+  }
+  if (changed) writeInstalledPacks(installed);
 
-  const enabledIds = new Set(registry.filter(e => e.enabled).map(e => e.id));
+  const enabledIds = new Set(installed.filter(e => e.enabled).map(e => e.id));
   return discovered.filter(d => enabledIds.has(d.manifest.id));
 }

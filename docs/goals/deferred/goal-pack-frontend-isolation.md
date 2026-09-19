@@ -66,7 +66,7 @@ So installing an external pack today means trusting it as much as the app itself
 **What depends on the shared realm.**
 - `@abuddy/ui` components render inside the host's DOM and styles; with `fe.bundleUi` a pack bundles its own copy.
 - Host-shared frontend state lives in `@abuddy/sdk/fe`: `useActorSystem`, menu state, the tiptap plugin and DSL type lookups (`FePackRegistryView`).
-- Pack contributions the host renders directly: app extensions (`getAppExtension`), tiptap plugins, blocks and artifact viewers (`fe` facets of `BlockDefinition` / `ArtifactDefinition`), step forms.
+- Pack extensions the host renders directly: app extensions (`getAppExtension`), tiptap plugins, blocks and artifact viewers (`fe` facets of `BlockDefinition` / `ArtifactDefinition`), step forms.
 - The E2E fixture (`@abuddy/testing`) finds pack plugins through `window.applicationState` and matches the `pack://` URL.
 
 ## Open decisions (settle with the user before Phase 1)
@@ -78,7 +78,7 @@ So installing an external pack today means trusting it as much as the app itself
 2. **The isolation mechanism.** — *open*
    - **A. A sandboxed iframe per pack** inside the app window, on its own origin (a `pack://<id>` page with `sandbox="allow-scripts"`, no `allow-same-origin`). The host talks to it through `postMessage`.
      - **Pros:** it renders inline where plugins render today, and has no preload, so no `electronAPI`.
-     - **Cons:** `@abuddy/ui` and styles load inside each frame; host-rendered contributions (tiptap plugins, blocks, step forms) can't be plain components shared across the boundary.
+     - **Cons:** `@abuddy/ui` and styles load inside each frame; host-rendered extensions (tiptap plugins, blocks, step forms) can't be plain components shared across the boundary.
    - **B. A `WebContentsView` per pack**, like browser tabs: its own process, with a minimal preload that exposes only the SDK bridge.
      - **Pros:** the strongest isolation (a separate renderer process).
      - **Cons:** positioning views over the app layout (as the browser plugin does), more memory per pack, and the same limit on shared components.
@@ -90,9 +90,9 @@ So installing an external pack today means trusting it as much as the app itself
    - **A. The pack-facing SDK only:** events (`sendToSystem`, incoming events), the lookups packs may read, `navigateToPlugin`, `secretsClient` (metadata only), and nothing from `electronAPI`. Anything a pack needs from the preload becomes an SDK call the host mediates (for example "pick a file" instead of "read any path").
    - **B. The SDK plus a per-pack, permissioned `electronAPI` subset**, declared in `abuddy.json` and shown to the user at install time.
 
-4. **How contributions the host renders work** (tiptap plugins, blocks, artifact viewers, step forms, app extensions) for isolated packs. — *open*
-   - **A. Not supported for isolated packs:** these contribution types stay built-in-only until a follow-up designs them.
-   - **B. Rendered inside the pack's isolated context**, with the host embedding that context where the contribution appears (one frame per rendered block, say).
+4. **How extensions the host renders work** (tiptap plugins, blocks, artifact viewers, step forms, app extensions) for isolated packs. — *open*
+   - **A. Not supported for isolated packs:** these extension types stay built-in-only until a follow-up designs them.
+   - **B. Rendered inside the pack's isolated context**, with the host embedding that context where the extension appears (one frame per rendered block, say).
    - **C. Declarative only:** isolated packs describe blocks and viewers as data the host renders (schemas, templates), no pack code in the app window.
 
 ## Phases
@@ -116,7 +116,7 @@ So installing an external pack today means trusting it as much as the app itself
 - a unit spec refuses a message outside the bridge's set, and a send to a system the pack may not address;
 - mutations: accepting any message, or any system address, fails those specs.
 
-### Phase 3 — contributions and testing support
+### Phase 3 — extensions and testing support
 
 - Implement Open decision 4 for tiptap plugins, blocks, artifact viewers, step forms and app extensions.
 - `@abuddy/testing` finds isolated plugins, and `abuddy test` / `abuddy init-tests` scaffolds keep working for pack authors (`packages/abuddy-testing/CLAUDE.md`).

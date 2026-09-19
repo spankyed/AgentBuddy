@@ -109,7 +109,7 @@ The 15 generated files split into two categories with different virtualization t
 - `types.ts` — type barrel from each feature's types file
 - `events.ts` — `PackEvents` and the typed `emit`/`sendToPlugin` facade
 - `step-types.ts` — step type registry
-- `contributions.ts` — pack contributions barrel
+- `references.ts` — reference type barrel from each feature's references file
 - `seeders.ts` — seeder aggregation
 
 These are pure barrels: scan `abuddy.json`, generate `export { x } from '../features/y'`. A Vite/esbuild plugin can produce them on the fly from the manifest. Eliminates staleness for these files entirely.

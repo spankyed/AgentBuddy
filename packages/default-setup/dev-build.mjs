@@ -9,7 +9,7 @@ import { API_HOST, API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const srcDir = path.resolve(__dirname, 'src');
 const entryPoint = path.resolve(srcDir, '__generated__/pack-entry.ts');
-// The pack's backend runtime, in the bundle layout (runtime/index.cjs): the API loads it in development,
+// The pack's backend runtime, in the pack layout (runtime/index.cjs): the API loads it in development,
 // and the app publishes it with the snapshot and build/ for packs depending on default-setup
 const outfile = path.resolve(__dirname, 'dist/runtime/index.cjs');
 // The compiled seeds index (abuddy build) this runtime is built beside, by its sha256: the app publishes

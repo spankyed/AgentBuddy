@@ -724,7 +724,7 @@ describe("a dependency's facade", () => {
 
     // Taken out of an installed app, so there is no source tree here — and no author to ask either:
     // the copy came with AgentBuddy and moves when AgentBuddy does
-    it('tells the author to update AgentBuddy for a bundle from an installed app', () => {
+    it('tells the author to update AgentBuddy for a pack from an installed app', () => {
       const message = failure({ 'base-pack': 'installed app (production)' });
       expect(message).toContain('(from installed app (production))');
       expect(message).toContain('update AgentBuddy');

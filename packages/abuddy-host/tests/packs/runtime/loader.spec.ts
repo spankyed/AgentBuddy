@@ -6,14 +6,14 @@ import * as os from 'os';
 import { loadBuiltInPacks, loadExternalPacks } from '../../../src/packs/runtime/loader.ts';
 import { seedPackData, computePackSeedHash } from '../../../src/packs/runtime/seed.ts';
 import { appState } from '../../../src/app-state/index.ts';
-import { getPackBundleEntries, setBuiltInPackInfos, setLoadedPacks } from '../../../src/packs/runtime/loaded-packs.ts';
+import { getLoadedPackEntries, setBuiltInPackInfos, setLoadedPacks } from '../../../src/packs/runtime/loaded-packs.ts';
 import { resetTestData, testRootEvents as rootEvents } from '@abuddy/sdk/testing';
 import { seedFile } from '@abuddy/sdk/build';
 
 let tmpDir: string;
 let origEnv: { env?: string; userDataDir?: string };
 
-/** An installed pack bundle: its manifest, bundle.json and a runtime/index.cjs registering `systemsSource` */
+/** An installed pack: its manifest, integrity.json and a runtime/index.cjs registering `systemsSource` */
 function makePack(
   packsDir: string,
   id: string,
@@ -23,7 +23,7 @@ function makePack(
   const packDir = path.join(packsDir, id);
   fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify(manifest));
-  fs.writeFileSync(path.join(packDir, 'bundle.json'), JSON.stringify({ formatVersion: 1, id, version: '1.0.0', files: {} }));
+  fs.writeFileSync(path.join(packDir, 'integrity.json'), JSON.stringify({ formatVersion: 1, id, version: '1.0.0', files: {} }));
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(manifest.id)}, systems: ${systemsSource} } };`);
   return packDir;
 }
@@ -79,22 +79,22 @@ describe('pack-loader', () => {
       expect(result[0].systems.get('myFeature')!.events.has('DO_THING')).toBe(true);
     });
 
-    it("skips a pack directory that isn't an installed bundle, naming how to install it", () => {
+    it("skips a pack directory that isn't an installed pack, naming how to install it", () => {
       const packDir = makePack(path.join(tmpDir, 'packs'), 'unbundled', { id: 'unbundled', name: 'Unbundled', version: '1.0.0' });
-      fs.rmSync(path.join(packDir, 'bundle.json'));
+      fs.rmSync(path.join(packDir, 'integrity.json'));
       const warnings: string[] = [];
       const unsubscribe = rootEvents.onLog(event => {
         if (event.level === 'warn' && event.source === 'pack-loader') warnings.push(event.message);
       });
       try {
         expect(loadExternalPacks()).toEqual([]);
-        expect(warnings).toEqual([expect.stringMatching(/^Skipping unbundled: .* isn't an installed pack bundle \(no bundle\.json or runtime\/index\.cjs\)\. Install it with abuddy install or abuddy dev$/)]);
+        expect(warnings).toEqual([expect.stringMatching(/^Skipping unbundled: .* isn't an installed pack \(no integrity\.json or runtime\/index\.cjs\)\. Install it with abuddy install or abuddy dev$/)]);
       } finally {
         unsubscribe();
       }
     });
 
-    it('skips a bundle without runtime/index.cjs', () => {
+    it('skips a pack without runtime/index.cjs', () => {
       const packDir = makePack(path.join(tmpDir, 'packs'), 'no-runtime', { id: 'no-runtime', name: 'No Runtime', version: '1.0.0' });
       fs.rmSync(path.join(packDir, 'runtime', 'index.cjs'));
       expect(loadExternalPacks()).toEqual([]);
@@ -149,8 +149,8 @@ describe('pack-loader', () => {
 
     it("loads a runtime requiring subpaths of the packages the host provides (the AI SDK's zod/v4)", () => {
       const packDir = makePack(path.join(tmpDir, 'packs'), 'zod-pack', { id: 'zod-pack', name: 'Zod', version: '1.0.0' });
-      // An installed bundle has no node_modules: the host's copy is the only one there is, subpaths included, and
-      // no list of them exists — the bridge resolves whatever the bundle asks for
+      // An installed pack has no node_modules: the host's copy is the only one there is, subpaths included, and
+      // no list of them exists — the bridge resolves whatever the pack asks for
       fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), [
         "const zod = require('zod');",
         "const { z } = require('zod/v4');",
@@ -211,7 +211,7 @@ describe('loadBuiltInPacks: the bundled loaders', () => {
   }
 
   afterEach(async () => {
-    for (const id of ['bundled-only', 'built-pack']) if (registry.getPackContributions(id)) registry.unregisterPack(id);
+    for (const id of ['bundled-only', 'built-pack']) if (registry.getPackExtensions(id)) registry.unregisterPack(id);
   });
 
   it("throws without them when runtimeEntry is 'never', naming the option", async () => {
@@ -243,7 +243,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     fs.mkdirSync(path.join(packDir, 'runtime', 'seeds'), { recursive: true });
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id, name: id, version: '1.0.0', ...manifestExtra }));
-    fs.writeFileSync(path.join(packDir, 'bundle.json'), JSON.stringify({ formatVersion: 1, id, version: '1.0.0', files: {} }));
+    fs.writeFileSync(path.join(packDir, 'integrity.json'), JSON.stringify({ formatVersion: 1, id, version: '1.0.0', files: {} }));
     fs.writeFileSync(path.join(packDir, 'types', 'snapshot.json'), '{}');
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), registrationSource);
     return packDir;
@@ -362,9 +362,9 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     expect(loadExternalPacks()).toEqual([]);
   });
 
-  it('refuses a bundle format this host does not support', () => {
+  it('refuses a layout version this host does not support', () => {
     const dir = makeBundledPack('future-format', registration('future-format'));
-    fs.writeFileSync(path.join(dir, 'bundle.json'), JSON.stringify({ formatVersion: 2, id: 'future-format', version: '1.0.0', files: {} }));
+    fs.writeFileSync(path.join(dir, 'integrity.json'), JSON.stringify({ formatVersion: 2, id: 'future-format', version: '1.0.0', files: {} }));
     expect(loadExternalPacks()).toEqual([]);
   });
 
@@ -387,12 +387,12 @@ describe('seedPackData: failures', () => {
     return { manifest: { id, name: id, version: '1.0.0' }, dir, systems: new Map() } as any;
   }
   function registryEntry(id: string) {
-    const registry = JSON.parse(fs.readFileSync(path.join(tmpDir, 'pack-registry.json'), 'utf-8'));
+    const registry = JSON.parse(fs.readFileSync(path.join(tmpDir, 'installed-packs.json'), 'utf-8'));
     return registry.packs.find((p: any) => p.id === id);
   }
   function writeRegistry(ids: string[]) {
-    fs.writeFileSync(path.join(tmpDir, 'pack-registry.json'), JSON.stringify({
-      packs: ids.map(id => ({ id, name: id, version: '1.0.0', dir: '', enabled: true, registeredAt: '' })),
+    fs.writeFileSync(path.join(tmpDir, 'installed-packs.json'), JSON.stringify({
+      packs: ids.map(id => ({ id, name: id, version: '1.0.0', dir: '', enabled: true, installedAt: '' })),
     }));
   }
 
@@ -439,8 +439,8 @@ describe('seedPackData: failures', () => {
   it("clears an earlier version's lastError when the pack no longer has seed data", () => {
     const pack = installedPack('no-more-seeds');
     fs.rmSync(path.join(pack.dir, 'runtime', 'seeds'), { recursive: true });
-    fs.writeFileSync(path.join(tmpDir, 'pack-registry.json'), JSON.stringify({
-      packs: [{ id: 'no-more-seeds', name: 'n', version: '1.0.1', dir: '', enabled: true, registeredAt: '', lastError: 'v1.0.0 failure' }],
+    fs.writeFileSync(path.join(tmpDir, 'installed-packs.json'), JSON.stringify({
+      packs: [{ id: 'no-more-seeds', name: 'n', version: '1.0.1', dir: '', enabled: true, installedAt: '', lastError: 'v1.0.0 failure' }],
     }));
 
     seedPackData([pack], vi.fn());
@@ -481,8 +481,8 @@ describe('seedPackData: failures', () => {
 
   it('clears lastError after a successful seed', () => {
     const pack = installedPack('recovered');
-    fs.writeFileSync(path.join(tmpDir, 'pack-registry.json'), JSON.stringify({
-      packs: [{ id: 'recovered', name: 'r', version: '1.0.0', dir: '', enabled: true, registeredAt: '', lastError: 'old failure' }],
+    fs.writeFileSync(path.join(tmpDir, 'installed-packs.json'), JSON.stringify({
+      packs: [{ id: 'recovered', name: 'r', version: '1.0.0', dir: '', enabled: true, installedAt: '', lastError: 'old failure' }],
     }));
     const failures = seedPackData([pack], () => ({ flows: { created: 1, updated: 0, skipped: 0 } }));
     expect(failures).toEqual([]);
@@ -660,7 +660,7 @@ describe('computePackSeedHash', () => {
   });
 });
 
-describe('loaded packs: the packs.registry entries', () => {
+describe('loaded packs: the packs.loaded entries', () => {
   afterEach(() => {
     setLoadedPacks([]);
     setBuiltInPackInfos([]);
@@ -677,7 +677,7 @@ describe('loaded packs: the packs.registry entries', () => {
     setBuiltInPackInfos([{ id: 'built-in', name: 'Built-in', version: '1.0.0', dir: tmpDir }]);
     setLoadedPacks([loadedPack('with-fe', withFrontend), loadedPack('be-only', backendOnly)]);
 
-    expect(getPackBundleEntries()).toEqual([
+    expect(getLoadedPackEntries()).toEqual([
       { id: 'built-in', name: 'Built-in', version: '1.0.0', builtIn: true },
       { id: 'with-fe', name: 'with-fe', version: '2.0.0', feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css' },
     ]);

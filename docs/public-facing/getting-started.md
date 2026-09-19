@@ -1,6 +1,6 @@
 # Getting Started
 
-A **pack** is a self-contained extension for AgentBuddy. It can contribute backend systems, frontend plugins, flow steps, seeds (actions, prompts, flows), artifact viewers, message blocks, services, and data migrations. Packs are declared via an `abuddy.json` manifest and compiled into a distributable bundle.
+A **pack** is a self-contained extension for AgentBuddy. It can contribute backend systems, frontend plugins, flow steps, seeds (actions, prompts, flows), artifact viewers, message blocks, services, and data migrations. Packs are declared via an `abuddy.json` manifest and compiled into a distributable archive.
 
 ## Prerequisites
 
@@ -100,7 +100,7 @@ See [CLI Reference](cli.md#building) for details.
 # Compile the pack
 abuddy build
 
-# Bundle into a verified .tgz archive (bundle.json lists a sha256 per file)
+# Pack into a verified .tgz archive (integrity.json lists a sha256 per file)
 abuddy pack
 # Creates my-pack-0.1.0.tgz and my-pack-0.1.0.tgz.sha256
 
@@ -120,7 +120,7 @@ abuddy install user/repo           # latest GitHub release (user/repo@v0.1.0 for
 
 After installing, **restart the app** for the pack to load.
 
-To release a version, run `abuddy release [patch|minor|major] [--beta]`: it checks the repo, bumps the version, builds, typechecks, runs the unit and E2E tests, commits, tags and pushes; the scaffolded workflow publishes the GitHub release. `--dry-run` builds and verifies the bundle without bumping, committing or publishing anything, `--local` publishes from your machine instead of CI, and `--skip-tests`/`--skip-e2e` skip the unit or E2E tests.
+To release a version, run `abuddy release [patch|minor|major] [--beta]`: it checks the repo, bumps the version, builds, typechecks, runs the unit and E2E tests, commits, tags and pushes; the scaffolded workflow publishes the GitHub release. `--dry-run` builds and verifies the pack without bumping, committing or publishing anything, `--local` publishes from your machine instead of CI, and `--skip-tests`/`--skip-e2e` skip the unit or E2E tests.
 
 ## Unit tests
 
@@ -163,7 +163,7 @@ abuddy clean      # Remove dist/, .abuddy/, __generated__/
 
 ## Constraints
 
-- Some manifest fields are for built-in packs only: validation rejects `features[].earlySystem` and `boot.seed.settings` in an external pack, and the app ignores an external pack's `partitionPolicy` and `features[].contributions`.
+- Some manifest fields are for built-in packs only: validation rejects `features[].earlySystem` and `boot.seed.settings` in an external pack, and the app ignores an external pack's `partitionPolicy` and `features[].references`.
 - Entity types, relation kinds and service keys must be unique across all installed packs, or the pack fails to load. Service keys also can't be the host's (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`).
 - The app must be restarted after installing or uninstalling a pack.
 

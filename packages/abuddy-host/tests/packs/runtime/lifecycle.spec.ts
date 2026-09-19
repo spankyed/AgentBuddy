@@ -152,7 +152,7 @@ describe('activating and tearing down a pack at runtime', () => {
   });
 
   afterEach(async () => {
-    if (registry.getPackContributions(PACK_ID)) registry.unregisterPack(PACK_ID);
+    if (registry.getPackExtensions(PACK_ID)) registry.unregisterPack(PACK_ID);
     bus.send.mockReset();
   });
 
@@ -240,68 +240,68 @@ describe('activating and tearing down a pack at runtime', () => {
 
 describe('registry source and update tracking', () => {
   it('stores source field in registry when GitHub slug is used', async () => {
-    const { readPackRegistry, modifyRegistry, addToRegistry } = await import('../../../src/packs/pack-registry.ts');
+    const { readInstalledPacks, updateInstalledPacks, addInstalledPack } = await import('../../../src/packs/installed-packs.ts');
 
-    modifyRegistry(entries => addToRegistry(entries, {
+    updateInstalledPacks(entries => addInstalledPack(entries, {
       id: 'github-pack',
       name: 'GitHub Pack',
       version: '1.0.0',
       dir: path.join(packsDir(), 'github-pack'),
       enabled: true,
-      source: 'owner/repo',
+      installedFrom: 'owner/repo',
     }));
 
-    const entries = readPackRegistry();
+    const entries = readInstalledPacks();
     expect(entries).toHaveLength(1);
-    expect(entries[0].source).toBe('owner/repo');
+    expect(entries[0].installedFrom).toBe('owner/repo');
     expect(entries[0].availableVersion).toBeUndefined();
   });
 
   it('stores availableVersion after an update check', async () => {
-    const { readPackRegistry, modifyRegistry, addToRegistry } = await import('../../../src/packs/pack-registry.ts');
+    const { readInstalledPacks, updateInstalledPacks, addInstalledPack } = await import('../../../src/packs/installed-packs.ts');
 
-    modifyRegistry(entries => addToRegistry(entries, {
+    updateInstalledPacks(entries => addInstalledPack(entries, {
       id: 'versioned-pack',
       name: 'Versioned Pack',
       version: '1.0.0',
       dir: path.join(packsDir(), 'versioned-pack'),
       enabled: true,
-      source: 'owner/versioned',
+      installedFrom: 'owner/versioned',
     }));
 
-    modifyRegistry(entries =>
+    updateInstalledPacks(entries =>
       entries.map(e => e.id === 'versioned-pack' ? { ...e, availableVersion: '2.0.0' } : e),
     );
 
-    const entries = readPackRegistry();
+    const entries = readInstalledPacks();
     expect(entries.find(e => e.id === 'versioned-pack')!.availableVersion).toBe('2.0.0');
   });
 
   it('getAvailableUpdates returns packs with newer versions', async () => {
-    const { modifyRegistry, addToRegistry } = await import('../../../src/packs/pack-registry.ts');
+    const { updateInstalledPacks, addInstalledPack } = await import('../../../src/packs/installed-packs.ts');
     const { getAvailableUpdates } = await import('../../../src/packs/pack-updater.ts');
 
-    modifyRegistry(entries => {
-      let updated = addToRegistry(entries, {
+    updateInstalledPacks(entries => {
+      let updated = addInstalledPack(entries, {
         id: 'has-update',
         name: 'Has Update',
         version: '1.0.0',
         dir: path.join(packsDir(), 'has-update'),
         enabled: true,
-        source: 'owner/has-update',
+        installedFrom: 'owner/has-update',
       });
-      updated = addToRegistry(updated, {
+      updated = addInstalledPack(updated, {
         id: 'no-update',
         name: 'No Update',
         version: '2.0.0',
         dir: path.join(packsDir(), 'no-update'),
         enabled: true,
-        source: 'owner/no-update',
+        installedFrom: 'owner/no-update',
       });
       return updated;
     });
 
-    modifyRegistry(entries =>
+    updateInstalledPacks(entries =>
       entries.map(e => {
         if (e.id === 'has-update') return { ...e, availableVersion: '2.0.0' };
         if (e.id === 'no-update') return { ...e, availableVersion: '1.0.0' };
@@ -318,7 +318,7 @@ describe('registry source and update tracking', () => {
 });
 
 describe('FE pack deregistration', () => {
-  it('unregisterPackFE removes contributions and returns removed plugins', async () => {
+  it('unregisterPackFE removes extensions and returns removed plugins', async () => {
     const { registerPackFE, unregisterPackFE } = createFePackRegistry();
 
     const testPlugin = { id: 'test-plugin', label: 'Test' } as unknown as Plugin;
@@ -352,7 +352,7 @@ describe('FE pack deregistration', () => {
     expect(getRegisteredPlugins()).not.toContain(packOwn);
   });
 
-  it('unregisterPackFE handles pack with no contributions gracefully', async () => {
+  it('unregisterPackFE handles pack with no extensions gracefully', async () => {
     const { unregisterPackFE } = createFePackRegistry();
 
     const removed = unregisterPackFE('nonexistent-pack');
@@ -362,7 +362,7 @@ describe('FE pack deregistration', () => {
 
 describe('pack-registration teardown', () => {
   it('registerPack then unregisterPack cleans up SDK registries', async () => {
-    const { registerPack, unregisterPack, getPackContributions } = registry;
+    const { registerPack, unregisterPack, getPackExtensions } = registry;
 
     const packId = 'teardown-test-pack';
     registerPack({
@@ -373,11 +373,11 @@ describe('pack-registration teardown', () => {
       blocks: [],
     });
 
-    expect(getPackContributions(packId)).not.toBeNull();
+    expect(getPackExtensions(packId)).not.toBeNull();
 
     unregisterPack(packId);
 
-    expect(getPackContributions(packId)).toBeNull();
+    expect(getPackExtensions(packId)).toBeNull();
   });
 
   it('unregisterPack throws for unknown pack', async () => {

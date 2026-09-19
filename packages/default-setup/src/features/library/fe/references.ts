@@ -1,9 +1,9 @@
 import { Library, Folder } from 'lucide-vue-next'
 import { navigateToPlugin } from '@abuddy/sdk/fe'
 import { id as library } from './state'
-import type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider, ContributionItem } from '@abuddy/sdk/fe/contributions'
+import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider, ReferenceItem } from '@abuddy/sdk/fe/references'
 
-export const contributionTypes: Record<string, ContributionTypeConfig> = {
+export const referenceTypes: Record<string, ReferenceTypeConfig> = {
   document: {
     protocol: 'doc',
     category: 'documents',
@@ -40,17 +40,17 @@ export const categories: CategoryConfig[] = [
 export const itemsProvider: CategoryItemsProvider = {
   category: 'documents',
   pluginId: library,
-  buildItems: (actorState: any): ContributionItem[] => {
+  buildItems: (actorState: any): ReferenceItem[] => {
     const index = actorState?.context?.index ?? { documents: [], folders: [] }
 
-    const docItems: ContributionItem[] = index.documents.map((d: any) => ({
+    const docItems: ReferenceItem[] = index.documents.map((d: any) => ({
       id: d.id,
       shortCode: d.shortCode || d.id,
       label: d.name || d.shortCode || d.id,
       type: 'document' as const,
     }))
 
-    const folderItems: ContributionItem[] = index.folders.map((f: any) => ({
+    const folderItems: ReferenceItem[] = index.folders.map((f: any) => ({
       id: f.id,
       shortCode: f.id,
       label: f.name || f.id,

@@ -354,7 +354,7 @@ function writeTsconfig(app: string, moduleResolution: 'bundler' | 'node16', publ
     },
     // Every generated facade, not only the ones the consumer imports
     include: ['src/__generated__/**/*.ts', 'src/consumer.ts'],
-    exclude: ['src/__generated__/pack-entry-fe.ts', 'src/__generated__/contributions.ts'],
+    exclude: ['src/__generated__/pack-entry-fe.ts', 'src/__generated__/references.ts'],
   }));
   return name;
 }

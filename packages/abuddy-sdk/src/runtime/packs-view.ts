@@ -18,7 +18,7 @@ import { _isHostBound, boundHost } from './host-runtime.ts';
 import { _isFeHostBound, boundFeHost } from './fe-host.ts';
 
 /** What backend and frontend code both look up in the registered packs */
-export interface PackContributionsView {
+export interface PackExtensionsView {
   /** The id of the system (backend) or plugin (frontend) that plays a role */
   designation(role: string): string | undefined;
   step(type: string): StepDefinition | undefined;
@@ -31,7 +31,7 @@ export interface PackContributionsView {
 }
 
 /** The registered packs, read-only: what the SDK looks up in them in a backend process */
-export interface PackRegistryView extends PackContributionsView {
+export interface PackRegistryView extends PackExtensionsView {
   /** Every registered pack's services, by name */
   getRegisteredServices(): Record<string, unknown>;
   /** The id of the running system a `<packId>/<featureId>` name addresses, if any */
@@ -51,10 +51,10 @@ export interface PackRegistryView extends PackContributionsView {
 }
 
 /**
- * @internal The registered packs' contributions: the frontend's in the renderer, the backend's elsewhere. Throws,
+ * @internal The registered packs' extensions: the frontend's in the renderer, the backend's elsewhere. Throws,
  * naming bindHost and bindFeHost, when neither is bound.
  */
-export function _boundPackContributions(): PackContributionsView {
+export function _boundPackExtensions(): PackExtensionsView {
   if (_isFeHostBound()) return boundFeHost().packs;
   if (_isHostBound()) return boundHost().packs;
   throw new Error(

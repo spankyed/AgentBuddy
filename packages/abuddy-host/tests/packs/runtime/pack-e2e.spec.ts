@@ -3,7 +3,7 @@
  * test data directory (resolved through @abuddy/sdk/env, never the user's
  * real app data). The test installs a fresh test pack, runs the full
  * boot-sequence functions, and verifies the system loads, registers, and
- * could serve plugins to the FE (the packs.registry entries).
+ * could serve plugins to the FE (the packs.loaded entries).
  *
  * Cleans up after itself.
  */
@@ -43,11 +43,11 @@ function installTestPack() {
     ],
   }, null, 2));
 
-  fs.writeFileSync(path.join(TEST_PACK_DIR, 'bundle.json'), JSON.stringify({
+  fs.writeFileSync(path.join(TEST_PACK_DIR, 'integrity.json'), JSON.stringify({
     formatVersion: 1, id: TEST_PACK_ID, version: '1.0.0', files: {},
   }));
 
-  // The pack's frontend, which the renderer loads from the bundle
+  // The pack's frontend, which the renderer loads from the installed pack
   fs.writeFileSync(path.join(TEST_PACK_DIR, 'runtime', 'fe.js'), 'export default { plugins: [] };');
 
   // A real runtime registration whose system machine requires xstate from the host

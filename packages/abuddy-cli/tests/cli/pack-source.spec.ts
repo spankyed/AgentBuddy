@@ -11,7 +11,7 @@ afterEach(() => {
   tmp = undefined;
 });
 
-describe('gitSource (bundle.json source)', () => {
+describe('gitSource (integrity.json source)', () => {
   it("records the origin without credentials an https remote carries", () => {
     tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'pack-source-'));
     const git = (...args: string[]) => execFileSync('git', args, { cwd: tmp, stdio: 'pipe' }).toString().trim();

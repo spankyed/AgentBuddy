@@ -31,7 +31,7 @@ describe('checkDependencies', () => {
   });
 
   it('publishes built-in packs through a hidden staging dir, which never counts as a pack', async () => {
-    const { publishHostPackOutput } = await import('../../src/packs/bundle.ts');
+    const { publishHostPackOutput } = await import('../../src/packs/pack-layout.ts');
     const source = path.join(userData, 'app', 'default-setup');
     fs.mkdirSync(path.join(source, 'dist'), { recursive: true });
     fs.writeFileSync(path.join(source, 'dist', 'snapshot.json'), '{}');
