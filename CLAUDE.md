@@ -34,6 +34,11 @@ edit — running it after every change costs minutes and finds nothing the narro
 | a public export of `@abuddy/ears`, `/sdk` or `/ui` | `npm run api:update`, and commit `etc/` — `typecheck` fails until you do |
 | anything, before you ask for a merge | the full chain, once |
 
+That last row is the whole gate: **CI does not run, on purpose.** `.github/workflows/ci.yml` has its `push`
+and `pull_request` triggers commented out while this is a single-contributor repo, so `gh run list` is empty
+and always will be. That is not a failure to report, and CI is not a check to cite — the local chain is the
+check. The workflow's header says when it goes back on.
+
 Things that waste the most time, in order:
 
 - **Running `npm run build` to test a change no build output depends on.** The renderer and API build
