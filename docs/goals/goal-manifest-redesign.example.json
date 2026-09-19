@@ -1,0 +1,435 @@
+{
+  "$schema": "../abuddy-sdk/abuddy.schema.json",
+  "id": "default-setup",
+  "name": "Default Setup",
+  "version": "0.1.0",
+  "description": "The official AgentBuddy starter pack. Provides core entity types, backend systems, services, frontend plugins, artifacts, seed data, message blocks, and default settings.",
+  "license": "MIT",
+  "builtIn": true,
+  "hostVersion": ">=0.3.0",
+  "defaultPlugin": "threads",
+  "migrations": "src/migrations/index.ts",
+  "data": {
+    "entities": {
+      "Thread": "src/features/threads/be/types.ts#ThreadEntity",
+      "Message": "src/features/threads/be/types.ts#MessageEntity",
+      "Artifact": "src/features/threads/be/types.ts#ArtifactEntity",
+      "SearchIndex": null,
+      "IndexedDoc": null,
+      "Terminal": "src/features/code/be/repository/index.ts#TerminalEntity",
+      "BrowserTab": "src/features/browser/be/types.ts#BrowserTabEntity",
+      "BrowserBookmark": "src/features/browser/be/types.ts#BrowserBookmarkEntity",
+      "Document": "src/features/library/be/types.ts#DocumentEntity",
+      "Collection": "src/features/library/be/types.ts#CollectionEntity",
+      "Note": "src/features/notes/be/types.ts#NoteEntity",
+      "Settings": "src/features/settings/be/types.ts#SettingsEntity"
+    },
+    "relations": [
+      "parent_of",
+      "has",
+      "relates_to"
+    ]
+  },
+  "features": [
+    {
+      "id": "threads",
+      "designated": true,
+      "services": {
+        "chat": "be/services/chat.ts#chatService",
+        "artifact": "be/services/artifact.ts#artifactService",
+        "threads": "be/services/threads.ts#threadsService"
+      },
+      "repositories": {
+        "threadQueries": "be/repository/index.ts#threadQueries",
+        "threadCommands": "be/repository/index.ts#threadCommands",
+        "chatQueries": "be/repository/index.ts#chatQueries",
+        "chatCommands": "be/repository/index.ts#chatCommands"
+      }
+    },
+    {
+      "id": "code",
+      "services": {
+        "cli": "be/services/cli.ts#cliService",
+        "codex": "be/services/codex/index.ts#codexService"
+      },
+      "repositories": {
+        "terminalQueries": "be/repository/index.ts#terminalQueries",
+        "terminalCommands": "be/repository/index.ts#terminalCommands"
+      }
+    },
+    {
+      "id": "notes",
+      "repositories": {
+        "noteQueries": "be/repository/index.ts#noteQueries",
+        "noteCommands": "be/repository/index.ts#noteCommands"
+      }
+    },
+    {
+      "id": "browser",
+      "designated": true,
+      "repositories": {
+        "browserQueries": "be/repository/index.ts#browserQueries",
+        "browserCommands": "be/repository/index.ts#browserCommands"
+      }
+    },
+    {
+      "id": "library",
+      "services": {
+        "library": "be/services/library.ts#libraryService"
+      },
+      "repositories": {
+        "libraryQueries": "be/repository/index.ts#libraryQueries",
+        "libraryCommands": "be/repository/index.ts#libraryCommands"
+      }
+    },
+    {
+      "id": "flows",
+      "typesEntry": "be/types",
+      "repositories": {
+        "flowsQueries": "be/repository/index.ts#flowsQueries",
+        "flowsCommands": "be/repository/index.ts#flowsCommands"
+      }
+    },
+    {
+      "id": "actions",
+      "system": {
+        "outgoingEventsType": "OutgoingActionEvents",
+        "sendsTo": [
+          "flows"
+        ]
+      },
+      "services": {
+        "action": "be/services/action.ts#actionService"
+      },
+      "repositories": {
+        "actionQueries": "be/repository/index.ts#actionQueries",
+        "actionCommands": "be/repository/index.ts#actionCommands"
+      }
+    },
+    {
+      "id": "prompts",
+      "system": {
+        "outgoingEventsType": "OutgoingPromptEvents"
+      },
+      "services": {
+        "prompt": "be/services/prompt.ts#promptService"
+      },
+      "repositories": {
+        "promptQueries": "be/repository/index.ts#promptQueries",
+        "promptCommands": "be/repository/index.ts#promptCommands"
+      }
+    },
+    {
+      "id": "brain",
+      "designated": true,
+      "services": {
+        "brain": "be/services/brain.ts#brainService",
+        "scheduler": "be/services/scheduler.ts#schedulerService"
+      },
+      "repositories": {
+        "brainQueries": "be/repository/index.ts#brainQueries",
+        "brainCommands": "be/repository/index.ts#brainCommands"
+      }
+    },
+    {
+      "id": "database",
+      "services": {
+        "database": "be/services/database.ts#databaseService"
+      }
+    },
+    {
+      "id": "logs",
+      "designated": true,
+      "earlySystem": true
+    },
+    {
+      "id": "settings",
+      "designated": true,
+      "system": {
+        "sendsTo": [
+          "application"
+        ]
+      },
+      "services": {
+        "settings": "be/services/settings.ts#settingsService"
+      },
+      "repositories": {
+        "settingsQueries": "be/repository/index.ts#settingsQueries",
+        "settingsCommands": "be/repository/index.ts#settingsCommands"
+      }
+    }
+  ],
+  "extensions": {
+    "steps": {
+      "register": "src/extensions/steps/register.ts",
+      "build": "src/extensions/steps/build.ts",
+      "definitions": [
+        {
+          "type": "action",
+          "path": "src/extensions/steps/action",
+          "dsl": {
+            "primaryField": "action"
+          }
+        },
+        {
+          "type": "llm",
+          "path": "src/extensions/steps/llm",
+          "dsl": {
+            "primaryField": "prompt"
+          }
+        },
+        {
+          "type": "fire",
+          "path": "src/extensions/steps/fire",
+          "dsl": {
+            "primaryField": "event"
+          }
+        },
+        {
+          "type": "subflow",
+          "path": "src/extensions/steps/subflow",
+          "dsl": {
+            "primaryField": "flow"
+          }
+        },
+        {
+          "type": "query",
+          "path": "src/extensions/steps/query",
+          "dsl": {
+            "primaryField": "prompt"
+          }
+        },
+        {
+          "type": "create",
+          "path": "src/extensions/steps/create",
+          "dsl": {
+            "primaryField": "entity"
+          }
+        },
+        {
+          "type": "update",
+          "path": "src/extensions/steps/update",
+          "dsl": {
+            "primaryField": "target"
+          }
+        },
+        {
+          "type": "transform",
+          "path": "src/extensions/steps/transform",
+          "dsl": {
+            "primaryField": "script"
+          }
+        },
+        {
+          "type": "keep_alive",
+          "path": "src/extensions/steps/keep-alive",
+          "dsl": {}
+        },
+        {
+          "type": "kill",
+          "path": "src/extensions/steps/kill",
+          "dsl": {
+            "defaultLabel": "Kill Flow"
+          }
+        },
+        {
+          "type": "switch",
+          "path": "src/extensions/steps/switch",
+          "dsl": {
+            "custom": true
+          }
+        },
+        {
+          "type": "schedule",
+          "path": "src/extensions/steps/schedule",
+          "kind": "trigger"
+        },
+        {
+          "type": "listener",
+          "path": "src/extensions/steps/listener",
+          "kind": "trigger"
+        }
+      ]
+    },
+    "artifacts": "src/extensions/artifacts/register.ts",
+    "blocks": "src/extensions/blocks/register.ts",
+    "commands": [
+      {
+        "name": "pr2md",
+        "placeholder": "PR number or GitHub URL (optional)"
+      },
+      {
+        "name": "instructions",
+        "placeholder": "Thread instructions text"
+      }
+    ],
+    "dsl": {
+      "action": {
+        "entry": "src/defs/action.ts",
+        "targets": [
+          "monaco"
+        ],
+        "prefix": "action:",
+        "inline": [
+          "ai",
+          "@ai-sdk/provider",
+          "@ai-sdk/provider-utils",
+          "@ai-sdk/gateway",
+          "@standard-schema/spec"
+        ],
+        "globals": {
+          "services": "typeof _dsl.services",
+          "z": "typeof _dsl.z",
+          "flowId": "string"
+        }
+      },
+      "prompt": {
+        "entry": "src/defs/prompt.ts",
+        "targets": [
+          "monaco"
+        ],
+        "prefix": "prompt:",
+        "globals": {
+          "usePrompt": "typeof _dsl.usePrompt"
+        }
+      },
+      "database": {
+        "entry": "src/defs/database.ts",
+        "targets": [
+          "monaco"
+        ],
+        "prefix": "database:",
+        "globals": {
+          "EARS": "typeof _dsl.EARS",
+          "qx": "typeof _dsl.qx",
+          "getAllEntities": "typeof _dsl.getAllEntities",
+          "getAll": "typeof _dsl.getAll",
+          "queryEntitiesByRelationTo": "typeof _dsl.queryEntitiesByRelationTo",
+          "getAttr": "typeof _dsl.getAttr",
+          "getAttrs": "typeof _dsl.getAttrs",
+          "getRoles": "typeof _dsl.getRoles",
+          "getEntitiesOfType": "typeof _dsl.getEntitiesOfType",
+          "queryEntitiesByAttribute": "typeof _dsl.queryEntitiesByAttribute",
+          "queryEntitiesInRelationTo": "typeof _dsl.queryEntitiesInRelationTo",
+          "findRelations": "typeof _dsl.findRelations",
+          "getRelationStats": "typeof _dsl.getRelationStats",
+          "getSchemaStats": "typeof _dsl.getSchemaStats",
+          "tx": "typeof _dsl.tx",
+          "destroyEntity": "typeof _dsl.destroyEntity",
+          "prepareEntity": "typeof _dsl.prepareEntity",
+          "createEntityWithDefaults": "typeof _dsl.createEntityWithDefaults",
+          "updateEntity": "typeof _dsl.updateEntity",
+          "createRelation": "typeof _dsl.createRelation",
+          "removeRelation": "typeof _dsl.removeRelation",
+          "removeRelationById": "typeof _dsl.removeRelationById",
+          "grantRole": "typeof _dsl.grantRole",
+          "revokeRole": "typeof _dsl.revokeRole"
+        }
+      }
+    },
+    "fe": {
+      "tiptapPlugins": "src/extensions/tiptap/index.ts",
+      "appExtensions": {
+        "welcome": "src/extensions/app/Welcome.vue"
+      }
+    }
+  },
+  "seed": {
+    "formats": {
+      "notes": {
+        "format": "markdown-tree",
+        "entity": "Note",
+        "identity": [
+          "title",
+          "parent"
+        ],
+        "tree": {
+          "branch": "index.md",
+          "relKind": "contains"
+        },
+        "fields": {
+          "title": {
+            "from": "frontmatter.title",
+            "default": "filename",
+            "type": "string"
+          },
+          "noteType": {
+            "from": "frontmatter.type"
+          },
+          "icon": {
+            "from": "frontmatter.icon",
+            "default": null,
+            "type": "string"
+          },
+          "favorite": {
+            "from": "frontmatter.favorite"
+          },
+          "hideCompletedChildren": {
+            "from": "frontmatter.hideCompletedChildren"
+          },
+          "completed": {
+            "from": "frontmatter.completed"
+          },
+          "content": {
+            "from": "body"
+          }
+        }
+      },
+      "library": {
+        "compiler": "src/seeds/_compilers/library.ts",
+        "entity": [
+          "Collection",
+          "Document"
+        ],
+        "identity": [
+          "name"
+        ],
+        "media": "media"
+      },
+      "faqs": {
+        "compiler": "src/seeds/_compilers/faqs.ts"
+      },
+      "settings": {
+        "compiler": "src/seeds/_compilers/settings.ts"
+      }
+    },
+    "hooks": {
+      "Collection": "src/seeds/hooks/library.ts#collectionSeedHooks",
+      "Document": "src/seeds/hooks/library.ts#documentSeedHooks",
+      "Note": "src/seeds/hooks/notes.ts#noteSeedHooks"
+    },
+    "data": {
+      "actions": "src/seeds/actions",
+      "prompts": "src/seeds/prompts",
+      "flows": "src/seeds/flows",
+      "library": {
+        "path": "src/seeds/library",
+        "format": "library"
+      },
+      "notes": {
+        "path": "src/seeds/notes",
+        "format": "notes"
+      },
+      "faqs": {
+        "path": "src/seeds/faqs",
+        "format": "faqs"
+      },
+      "settings": {
+        "path": "src/seeds/default-settings.ts",
+        "format": "settings",
+        "seeder": "src/seeds/settings/seeder.ts"
+      }
+    },
+    "policy": {
+      "skipAtBoot": [
+        "settings"
+      ],
+      "skipAfterOnboarding": [
+        "notes"
+      ]
+    }
+  },
+  "boot": {
+    "hooks": "src/features/hooks.ts"
+  }
+}
