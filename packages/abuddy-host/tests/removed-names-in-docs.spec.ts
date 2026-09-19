@@ -30,6 +30,14 @@ const REMOVED = [
   'hasBuiltBundleSections', 'getPackBundleEntries', 'PackBundleEntry', 'buildPackBundle', 'packBundle',
   // `artifact` is a pack's first-class artifact, not a dependency's resolved files:
   'resolveDepArtifacts', 'DepArtifacts', 'findDepArtifacts',
+  // `contributions` named two concepts at once and is retired outright: what a pack registers for the host
+  // to render is an *extension*, and what a feature makes linkable from an editor is a *reference*. The bare
+  // words are listed because the leftovers were prose and a manifest key, not symbols — no symbol grep
+  // would have found "pack contributions barrel" or `features[].contributions`:
+  'contribution', 'contributions', 'contributionTypes', 'ContributionItem', 'ContributionTypeConfig',
+  'CONTRIBUTION_TYPES', 'NOTE_TYPE_TO_CONTRIBUTION_TYPE', 'PackContributions', 'PackContributionsView',
+  'PackFEContributions', '_boundPackContributions', 'getPackContributions', 'mergeContributions',
+  'generateContributions', 'packContributions',
 ].map((name) => new RegExp(`\\b${name}\\b`));
 const REMOVED_PATHS = [
   /@abuddy\/sdk\/ears\b/, /ears\/internals\b/, /api\/src\/core\/persistence\b/, /\bsettings\.internal\b/,
@@ -40,6 +48,8 @@ const REMOVED_PATHS = [
 /** Files that may name one of them, with the name and why */
 const ALLOWED: Record<string, { name: RegExp; reason: string }[]> = {
   'docs/goals/goal-package-boundaries.md': [...REMOVED, ...REMOVED_PATHS].map((name) => ({ name, reason: 'the goal that removed them' })),
+  // A commit message is history: the commit is named so the reader can find it, and it can't be reworded.
+  'tests/e2e/CLAUDE.md': [{ name: /\bcontributions\b/, reason: 'quotes the subject of commit fix(packs), which predates the rename' }],
 };
 
 /** Every removed name `text` mentions */
@@ -108,5 +118,17 @@ describe('names the package-boundaries goal removed', () => {
     // The in-process collection keeps the word (Decision 3), so these must not be caught
     expect(removedNames('createPackRegistry(), PackRegistry, PackRegistryView, stepRegistry, registerPack')).toEqual([]);
     expect(removedNames('resolveFromRemoteRegistry is the stub')).toEqual([]);
+    // `contributions` is retired outright: an extension is what a pack registers, a reference is what an
+    // editor links to. Prose and the manifest key are caught, which no symbol grep would have done.
+    expect(removedNames('`getPackContributions()` reads `PackContributionsView`')).toEqual(['PackContributionsView', 'getPackContributions']);
+    expect(removedNames('`getPackExtensions()` reads `PackExtensionsView`')).toEqual([]);
+    expect(removedNames('`contributions.ts` — pack contributions barrel')).toEqual(['contributions']);
+    expect(removedNames("`references.ts` — reference type barrel from each feature's references file")).toEqual([]);
+    expect(removedNames('declared in `features[].contributions`')).toEqual(['contributions']);
+    expect(removedNames('declared in `features[].references`')).toEqual([]);
+    expect(removedNames('a `ContributionItem` from `@abuddy/sdk/fe/contributions`')).toEqual(['contributions', 'ContributionItem']);
+    expect(removedNames('a `ReferenceItem` from `@abuddy/sdk/fe/references`')).toEqual([]);
+    // The extensions that replaced the word, and the app extensions beside them, stay
+    expect(removedNames('src/extensions/, appExtensions, getAppExtension, PackExtensions')).toEqual([]);
   });
 });
