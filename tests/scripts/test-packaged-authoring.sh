@@ -328,22 +328,26 @@ ARCHIVE="$(sed -n 's/^Pack: //p' "$WORK/release.log")"
 (cd "$(dirname "$ARCHIVE")" && shasum -a 256 -c "$(basename "$ARCHIVE").sha256")
 [ -z "$(git status --porcelain)" ] || fail "a dry run changed the pack's files"
 
-step "7. Install the pack into an isolated test data dir"
+step "7. Install the packed archive into an isolated test data dir"
 DATA="$WORK/test-data"
 ABUDDY_USER_DATA_DIR="$DATA" "$ABUDDY" install "$ARCHIVE"
 INSTALLED="$(find "$DATA" -path '*/demo-pack/integrity.json' | head -n 1)"
 [ -n "$INSTALLED" ] || fail "the pack was not installed"
 node -e '
   const b = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));
-  if (b.id !== "demo-pack" || b.version !== "0.1.1") throw new Error(`unexpected pack ${b.id}@${b.version}`);
+  // The version on disk: a dry run bumps nothing, so it packs what is there rather than the next version
+  if (b.id !== "demo-pack" || b.version !== "0.1.0") throw new Error(`unexpected pack ${b.id}@${b.version}`);
 ' "$INSTALLED"
 [ -f "$(dirname "$INSTALLED")/runtime/index.cjs" ] || fail "installed pack has no runtime"
 
-step "8. abuddy test (the saved app)"
+step "8. abuddy test on the packed archive (the saved app)"
+# PACK_ARCHIVE installs step 6's .tgz as it is, so this runs the artifact a release ships rather than
+# another build of the same source — the one thing the rest of the script cannot check.
 # The app's data dir is kept for step 9: the app seeded the installed demo pack into it
 # `if !` so the pipeline's exit status is this script's to report: under `set -e` a failure would otherwise end it
 # here, with only Playwright's own output to say why
-if ! E2E_KEEP_DATA=1 "$ABUDDY" test 2>&1 | tee "$WORK/e2e.log"; then fail "abuddy test failed"; fi
+if ! PACK_ARCHIVE="$ARCHIVE" E2E_KEEP_DATA=1 "$ABUDDY" test 2>&1 | tee "$WORK/e2e.log"; then fail "abuddy test failed"; fi
+grep -q "Installing demo-pack from $ARCHIVE" "$WORK/e2e.log" || fail "abuddy test did not install the packed archive"
 APP_DATA="$(sed -n 's/.*\[e2e\] kept test data dir: //p' "$WORK/e2e.log" | head -n 1)"
 [ -d "$APP_DATA" ] || fail "abuddy test didn't report the data dir it kept"
 if [ -z "${KEEP_WORK:-}" ]; then trap 'rm -rf "$WORK" "$APP_DATA"' EXIT; fi

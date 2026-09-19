@@ -213,7 +213,7 @@ The fixture launches, in priority order: `createTest({ appExecutable })`, `creat
 
 1. **Pack build/install** (if `PACK_DIR` is set):
    - Parse `abuddy.json` from `PACK_DIR` → extract pack `id` and `pluginIds`
-   - Always rebuild the pack with `abuddy build` (a stale `dist/` would otherwise be tested silently), including while `abuddy dev` runs for that pack: its marker means a dev server is up, not that `dist/` is current (N4 in `docs/archive/issues/postmortem-external-pack-calendar-extraction.md`)
+   - Always rebuild the pack with `abuddy build` (a stale `dist/` would otherwise be tested silently), including while `abuddy dev` runs for that pack: its marker means a dev server is up, not that `dist/` is current (N4 in `docs/archive/issues/postmortem-external-pack-calendar-extraction.md`). `PACK_ARCHIVE` skips the build and installs that packed `.tgz` as it is, so a run can exercise the artifact a release ships (`tests/scripts/test-packaged-authoring.sh` step 8); everything else still comes from `PACK_DIR`
    - Install it into the worker's data dir with `installPackFromLocal()` — the same stage → verify → place bundle path users get — passing `hostVersion`: the launched app's version (`src/app-version.ts`: the checkout's `package.json`, or the packaged app's `Resources/app/package.json` / `resources/app/package.json`), so a pack whose manifest `hostVersion` excludes it fails to install
    - Build uses `ABUDDY_CLI` (set by `abuddy test`), else the `@abuddy/cli` the pack resolves, else the checkout's; it runs as `node <bin> build`
    - After the app connects, the fixture fails the test if the pack's installed-packs entry has a `lastError` (its data failed to seed)
@@ -293,6 +293,7 @@ Screenshot output location depends on context:
 | `ABUDDY_CLI` | The abuddy bin that builds the pack. Set by `abuddy test`. |
 | `ABUDDY_APP` | `beta`: `abuddy test` and `abuddy build` use the newest matching AgentBuddy Beta (CI; the scaffolded release workflow sets it). |
 | `PACK_DIR` | Path to an external pack directory. Triggers build/install and plugin waiting. |
+| `PACK_ARCHIVE` | A packed `<id>-<version>.tgz` to install instead of building `PACK_DIR`, so the run tests what a release ships. |
 | `E2E_KEEP_DATA` | Set to `1` to keep each worker's temp data dir for debugging. |
 | `PLAYWRIGHT_TEST` | Set automatically to `'true'` by the fixture. The app resolves the `test` environment (`abuddy-test` name, lock and data dir), crashes on uncaught errors, and runs headless (suppresses window display and splash screen). |
 | `ABUDDY_USER_DATA_DIR` | Optional. Overrides the app's data dir (e.g. an isolated temp dir); read through `@abuddy/sdk/env`. |

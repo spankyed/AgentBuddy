@@ -172,8 +172,8 @@ function captureOutput(app: ElectronApplication): void {
  *
  * Nothing else in this fixture observes the backend: seeding reports only its own failures, and the
  * plugin wait below covers a pack with a frontend. A backend-only pack whose systems never registered
- * — an incompatible hostVersion, an unsupported layout, a throw in its runtime — used to pass its whole
- * suite while dead, because every test it runs asks the app about something else.
+ * — an incompatible hostVersion, an unsupported layout, a throw in its runtime — would otherwise pass
+ * its whole suite while dead, because every test it runs asks the app about something else.
  */
 async function waitForPackBackend(app: ElectronApplication, packId: string, timeoutMs = 15_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
@@ -253,22 +253,28 @@ export function createTest(options: CreateTestOptions = {}) {
           const packDir = path.resolve(process.env.PACK_DIR);
           const manifest = getPackManifest();
           if (!manifest) throw new Error(`No abuddy.json found in PACK_DIR: ${packDir}`);
-          // Always rebuild: installing an existing dist would silently test stale code
-          const abuddyBin = resolveAbuddyBin(appLaunch, packDir);
-          // A release run tests what it ships: without this the rebuild below replaces the release
-          // build with a development one, and the archive is cut from that.
-          const buildArgs = process.env.ABUDDY_PACK_RELEASE ? ['build', '--release'] : ['build'];
-          console.log(`[pack] Building ${manifest.id} from ${packDir}${process.env.ABUDDY_PACK_RELEASE ? ' (release)' : ''}...`);
-          try {
-            execFileSync(process.execPath, [abuddyBin, ...buildArgs], { cwd: packDir, stdio: 'pipe' });
-          } catch (e: any) {
-            const output = [e.stdout?.toString(), e.stderr?.toString()].filter(Boolean).join('\n') || e.message;
-            throw new Error(`Pack build failed for ${manifest.id}:\n${output}`);
+          // PACK_ARCHIVE names a packed .tgz to install as it is, so a run can exercise the artifact a
+          // release ships rather than another build of the same source. Everything else — the plugin ids
+          // the fixture waits for, the screenshot directory — still comes from PACK_DIR.
+          const archive = process.env.PACK_ARCHIVE ? path.resolve(process.env.PACK_ARCHIVE) : undefined;
+          if (!archive) {
+            // Always rebuild: installing an existing dist would silently test stale code
+            const abuddyBin = resolveAbuddyBin(appLaunch, packDir);
+            // A release run tests what it ships: without this the rebuild below replaces the release
+            // build with a development one, and the archive is cut from that.
+            const buildArgs = process.env.ABUDDY_PACK_RELEASE ? ['build', '--release'] : ['build'];
+            console.log(`[pack] Building ${manifest.id} from ${packDir}${process.env.ABUDDY_PACK_RELEASE ? ' (release)' : ''}...`);
+            try {
+              execFileSync(process.execPath, [abuddyBin, ...buildArgs], { cwd: packDir, stdio: 'pipe' });
+            } catch (e: any) {
+              const output = [e.stdout?.toString(), e.stderr?.toString()].filter(Boolean).join('\n') || e.message;
+              throw new Error(`Pack build failed for ${manifest.id}:\n${output}`);
+            }
           }
           // Install through the same bundle path users get (stage → verify → place)
           const { packsDir } = resolveAppContext({ env: 'test', userDataDir });
-          console.log(`[pack] Installing ${manifest.id} into an isolated test data dir...`);
-          await installPackFromLocal(packDir, packsDir, { hostVersion: appVersion(appLaunch) });
+          console.log(`[pack] Installing ${manifest.id} from ${archive ?? packDir} into an isolated test data dir...`);
+          await installPackFromLocal(archive ?? packDir, packsDir, { hostVersion: appVersion(appLaunch) });
         }
 
         // A checkout runs its sources with its own electron, so packs don't need electron installed
