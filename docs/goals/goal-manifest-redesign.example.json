@@ -9,31 +9,25 @@
   "hostVersion": ">=0.3.0",
   "defaultPlugin": "threads",
   "migrations": "src/migrations/index.ts",
-  "data": {
-    "entities": {
-      "Thread": "src/features/threads/be/types.ts#ThreadEntity",
-      "Message": "src/features/threads/be/types.ts#MessageEntity",
-      "Artifact": "src/features/threads/be/types.ts#ArtifactEntity",
-      "SearchIndex": null,
-      "IndexedDoc": null,
-      "Terminal": "src/features/code/be/repository/index.ts#TerminalEntity",
-      "BrowserTab": "src/features/browser/be/types.ts#BrowserTabEntity",
-      "BrowserBookmark": "src/features/browser/be/types.ts#BrowserBookmarkEntity",
-      "Document": "src/features/library/be/types.ts#DocumentEntity",
-      "Collection": "src/features/library/be/types.ts#CollectionEntity",
-      "Note": "src/features/notes/be/types.ts#NoteEntity",
-      "Settings": "src/features/settings/be/types.ts#SettingsEntity"
-    },
-    "relations": [
-      "parent_of",
-      "has",
-      "relates_to"
-    ]
-  },
+  "relations": [
+    "parent_of",
+    "has",
+    "relates_to"
+  ],
   "features": [
     {
       "id": "threads",
+      "about": "Chat threads: messages, artifacts and the conversation UI.",
       "designated": true,
+      "system": true,
+      "plugin": true,
+      "settings": true,
+      "references": true,
+      "entities": {
+        "Thread": "be/types.ts#ThreadEntity",
+        "Message": "be/types.ts#MessageEntity",
+        "Artifact": "be/types.ts#ArtifactEntity"
+      },
       "services": {
         "chat": "be/services/chat.ts#chatService",
         "artifact": "be/services/artifact.ts#artifactService",
@@ -48,6 +42,13 @@
     },
     {
       "id": "code",
+      "about": "Terminals and coding agents (Claude Code, Codex) in an embedded shell.",
+      "system": true,
+      "plugin": true,
+      "settings": true,
+      "entities": {
+        "Terminal": "be/repository/index.ts#TerminalEntity"
+      },
       "services": {
         "cli": "be/services/cli.ts#cliService",
         "codex": "be/services/codex/index.ts#codexService"
@@ -59,6 +60,14 @@
     },
     {
       "id": "notes",
+      "about": "A hierarchical notebook of markdown notes.",
+      "system": true,
+      "plugin": true,
+      "settings": true,
+      "references": true,
+      "entities": {
+        "Note": "be/types.ts#NoteEntity"
+      },
       "repositories": {
         "noteQueries": "be/repository/index.ts#noteQueries",
         "noteCommands": "be/repository/index.ts#noteCommands"
@@ -66,7 +75,15 @@
     },
     {
       "id": "browser",
+      "about": "An embedded browser with tabs and bookmarks.",
       "designated": true,
+      "system": true,
+      "plugin": true,
+      "settings": true,
+      "entities": {
+        "BrowserTab": "be/types.ts#BrowserTabEntity",
+        "BrowserBookmark": "be/types.ts#BrowserBookmarkEntity"
+      },
       "repositories": {
         "browserQueries": "be/repository/index.ts#browserQueries",
         "browserCommands": "be/repository/index.ts#browserCommands"
@@ -74,6 +91,17 @@
     },
     {
       "id": "library",
+      "about": "Documents and collections, with a dormant semantic search index.",
+      "system": true,
+      "plugin": true,
+      "settings": true,
+      "references": true,
+      "entities": {
+        "Document": "be/types.ts#DocumentEntity",
+        "Collection": "be/types.ts#CollectionEntity",
+        "SearchIndex": null,
+        "IndexedDoc": null
+      },
       "services": {
         "library": "be/services/library.ts#libraryService"
       },
@@ -84,7 +112,11 @@
     },
     {
       "id": "flows",
-      "typesEntry": "be/types",
+      "about": "The visual flow editor: flows, nodes and their wiring.",
+      "system": true,
+      "plugin": true,
+      "settings": true,
+      "types": "be/types",
       "repositories": {
         "flowsQueries": "be/repository/index.ts#flowsQueries",
         "flowsCommands": "be/repository/index.ts#flowsCommands"
@@ -92,12 +124,16 @@
     },
     {
       "id": "actions",
+      "about": "Reusable code actions a flow step can run.",
       "system": {
+        "entry": true,
         "outgoingEventsType": "OutgoingActionEvents",
         "sendsTo": [
           "flows"
         ]
       },
+      "plugin": true,
+      "settings": true,
       "services": {
         "action": "be/services/action.ts#actionService"
       },
@@ -108,9 +144,13 @@
     },
     {
       "id": "prompts",
+      "about": "Reusable prompts an llm step can run.",
       "system": {
+        "entry": true,
         "outgoingEventsType": "OutgoingPromptEvents"
       },
+      "plugin": true,
+      "settings": true,
       "services": {
         "prompt": "be/services/prompt.ts#promptService"
       },
@@ -121,7 +161,11 @@
     },
     {
       "id": "brain",
+      "about": "Runs flows: the scheduler, the run loop and the trace view.",
       "designated": true,
+      "system": true,
+      "plugin": true,
+      "settings": true,
       "services": {
         "brain": "be/services/brain.ts#brainService",
         "scheduler": "be/services/scheduler.ts#schedulerService"
@@ -133,22 +177,37 @@
     },
     {
       "id": "database",
+      "about": "A console over the EARS store, with backup and restore.",
+      "system": true,
+      "plugin": true,
+      "settings": true,
       "services": {
         "database": "be/services/database.ts#databaseService"
       }
     },
     {
       "id": "logs",
+      "about": "The app's log stream. Starts before EARS hydration so boot is captured.",
       "designated": true,
-      "earlySystem": true
+      "earlySystem": true,
+      "system": true,
+      "plugin": true,
+      "settings": true
     },
     {
       "id": "settings",
+      "about": "App and per-plugin settings, API keys and the pack list.",
       "designated": true,
       "system": {
+        "entry": true,
         "sendsTo": [
           "application"
         ]
+      },
+      "plugin": true,
+      "settings": true,
+      "entities": {
+        "Settings": "be/types.ts#SettingsEntity"
       },
       "services": {
         "settings": "be/services/settings.ts#settingsService"

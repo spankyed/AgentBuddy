@@ -17,13 +17,14 @@ Finished when:
 - Phases 1–6 are implemented and each meets its "Done when"; every new guard, helper or test is
   mutation-checked.
 - packages/default-setup/abuddy.json has exactly these top-level keys and no others: $schema, id, name,
-  version, description, license, builtIn, hostVersion, defaultPlugin, migrations, data, features,
+  version, description, license, builtIn, hostVersion, defaultPlugin, migrations, relations, features,
   extensions, seed, boot. No key holds a map whose keys equal its values.
+- Every feature carries an `about` line, and every entity is declared by the feature that owns it.
 - No manifest in the repo spells a module reference two ways: `path#export` is the only form, and a
   bare path means the module's default export.
 - `features[].designation` does not exist in any manifest or in the schema.
 - `partitionPolicy` exists in no manifest and no schema; an entity is volatile by carrying
-  `"volatile": true` in `data.entities`, any pack may mark one it declares, and `loader.ts` strips
+  `"volatile": true` beside the entity's shape, any pack may mark one it declares, and `loader.ts` strips
   nothing.
 - Every path inside a feature is relative to that feature's directory, and a feature that follows the
   conventional layout declares no paths at all.
@@ -158,27 +159,31 @@ Final, except where the Open decisions below override them.
 
 **1. Identity stays flat at the root; everything else moves into named sections.** Root keys after this
 goal: `$schema`, `id`, `name`, `version`, `description`, `license`, `builtIn`, `hostVersion`,
-`dependencies`, `permissions`, `defaultPlugin`, `migrations`, plus the sections `data`, `features`,
-`extensions` and `seed`. That is the package.json split: who this package is, then what it contains.
+`dependencies`, `permissions`, `defaultPlugin`, `migrations`, `relations`, plus the sections `features`,
+`extensions`, `seed` and `boot`. That is the package.json split: who this package is, then what it
+contains. `relations` is a root key rather than a section because relation kinds are pack-wide
+vocabulary used across features, and a one-key section earns nothing.
 
 **2. One encoding for a module reference: `"path#export"`.** A bare `"path"` means the module's default
 export. `entityShapes`' `{ source, type }` object goes. Every place that names a module — services,
 repositories, systems, plugins, references, seed hooks, seed compilers, step definitions, DSL entries,
 migrations — uses the same form, and the schema validates it with one shared refinement.
 
-**3. `entities` and `entityShapes` merge into `data.entities`**, a map of entity name to its shape
-reference, or `null` when the entity has no typed shape:
+**3. `entities` and `entityShapes` merge, and move onto the feature that owns them.** Every one of
+default-setup's twelve entities is declared by exactly one feature's directory, so the pack-level list
+was hiding information the shapes already carried. The value is a shape reference, or `null` for an
+entity with no typed shape:
 
-```json
-"data": {
-  "entities": {
-    "Thread": "src/features/threads/be/types.ts#ThreadEntity",
-    "SearchIndex": null
-  }
-}
+```jsonc
+{ "id": "notes",
+  "entities": { "Note": "be/types.ts#NoteEntity" } }
 ```
 
-**4. `relKinds` becomes `data.relations`, a list of wire values.** `["parent_of", "has", "relates_to"]`.
+Entity types stay pack-global and collision-checked; `generate-entries` flattens the features' maps into
+the pack's set. A pack with an entity no feature owns declares it in a root `entities` map, which
+default-setup does not need. `abuddy init` scaffolds a feature so a new pack's entity has an owner.
+
+**4. `relKinds` becomes the root `relations`, a list of wire values.** `["parent_of", "has", "relates_to"]`.
 Codegen derives the `EARS.RelKind.PARENT_OF` constant by upper-casing. The phase proves the generated
 `ears.ts` is unchanged.
 
@@ -187,16 +192,15 @@ Codegen derives the `EARS.RelKind.PARENT_OF` constant by upper-casing. The phase
 The section goes; the capability moves onto the declaration it describes:
 
 ```jsonc
-"data": {
+{ "id": "code",
   "entities": {
-    "Note":       "src/features/notes/be/types.ts#NoteEntity",
-    "Scrollback": { "shape": "src/features/code/be/types.ts#ScrollbackEntity", "volatile": true }
-  }
-}
+    "Terminal":   "be/types.ts#TerminalEntity",
+    "Scrollback": { "shape": "be/types.ts#ScrollbackEntity", "volatile": true }
+  } }
 ```
 
 An entity's value is a shape reference, `null` for no typed shape, or an object carrying `shape` and
-`volatile`. `generate-entries` derives `excludedEntityTypes` from the entities marked volatile, so the
+`volatile` (Decision 3 puts entities on their feature). `generate-entries` derives `excludedEntityTypes` from the entities marked volatile, so the
 plumbing below the manifest — `PackRegistration.ears`, `getRegisteredEARSPolicy`, `appPartitionPolicy`
 — is unchanged, and the SDK's own `TNode` exclusion stays where it is.
 
@@ -231,9 +235,19 @@ would ever remove it, because the entity it points at never returns to trigger a
 **6. `features[].designation` is deleted.** A feature that registers a designation writes
 `"designated": true`. The registration keeps using the feature id, which is what it did anyway.
 
-**7. Paths inside a feature are relative to `src/features/<id>/`.** `"system": "be/system.ts"`, not
-`"system": "src/features/threads/be/system.ts"`. Paths outside a feature (seed data, extension
-registers, migrations) stay relative to the pack root.
+**7. Paths inside a feature are relative to `src/features/<id>/`, and a conventional one is written
+`true`.** A key's presence says the feature has that thing; its value says where. `true` means the
+conventional path (`be/system.ts`, `fe/plugin.ts`, `settings.ts`, `fe/references`), a string overrides
+it, and an absent key means the feature does not have one — one meaning for absence, and nothing
+inferred from the filesystem.
+
+This is `package.json`'s `main`: a default value you may override, never a rule that decides whether the
+thing exists. The manifest stays the answer to "what does this feature contribute", which a reader
+cannot get from a directory listing, while `abuddy add feature` writes the conventional lines and
+`abuddy doctor` reports a declared path that is missing or a conventional file that is present but
+undeclared. Convention drives the tooling; it does not drive the semantics.
+
+Paths outside a feature (seed data, extension registers, migrations) stay relative to the pack root.
 
 **8. `system.entry` and `plugin.entry` collapse to `system` and `plugin`.** The wrapper object existed to
 carry `outgoingEventsType`, `sendsTo` and `events`; those stay, so the value is either a string (the
@@ -250,33 +264,18 @@ and `fe` (tiptap plugins, app extensions). This is VS Code's `contributes`.
 `.describe()` on every field, `npm run generate:schema` regenerates `abuddy.schema.json`, and
 `docs/public-facing/manifest.md` is rewritten from the new shape rather than edited.
 
-**12. No compatibility of any kind.** No dual-read, no alias, no deprecation warning. Every manifest in
+**12. Every feature carries an `about` line.** The manifest is the one place that says what a pack
+contributes, and today it cannot say what any feature is *for* — only where its files are. A one-line
+`about` is the highest-value thing the manifest can gain, and the only part of this goal that adds
+content rather than moving it. `abuddy add feature` prompts for it and `validate` requires it.
+
+**13. No compatibility of any kind.** No dual-read, no alias, no deprecation warning. Every manifest in
 the repo — default-setup, both fixtures, the `abuddy init` scaffold, the packaged-authoring script's
 generated pack — changes in the same phase as the schema section it depends on.
 
 ## Open decisions (settle with the user before Phase 1)
 
-**1. How far to take convention over configuration for feature paths.** — *open*
-
-- **A. Relative paths, no defaults.** A feature always names its files, but relative to its own
-  directory: `"system": "be/system.ts"`. Shortest change, nothing inferred, every file still visible in
-  the manifest.
-- **B. Relative paths with conventional defaults.** `be/system.ts`, `fe/plugin.ts`, `settings.ts` and
-  `fe/references` are assumed to exist when the file is there, and the manifest names only deviations. A
-  fully conventional feature becomes `{ "id": "notes", "repositories": { … } }`. Smallest manifest;
-  the cost is that a file's presence becomes load-bearing, and `abuddy doctor` has to report what it
-  inferred.
-- **C. B, but only for `settings.ts` and `fe/references`**, which are already optional and always
-  conventional, keeping `system` and `plugin` explicit because they decide whether a feature has a
-  backend or a frontend at all.
-
-**2. What the data section is called.** — *open*
-
-- **A. `data`** — reads well next to `features` and `seed`, says what it holds.
-- **B. `ears`** — names the engine the declarations are registered with, and matches `EARS` everywhere
-  else in the codebase.
-
-**3. Whether `defaultPlugin` stays at the root or becomes a feature flag.** — *open*
+**1. Whether `defaultPlugin` stays at the root or becomes a feature flag.** — *open*
 
 - **A. Root `"defaultPlugin": "threads"`** — one place to look, matches `"main"` in package.json.
 - **B. `"default": true` on the feature's plugin** — colocated, and a feature moved between packs takes
@@ -287,9 +286,10 @@ generated pack — changes in the same phase as the schema section it depends on
 Each phase changes one section of the schema, every manifest that uses it, and every consumer that reads
 it, then leaves the full chain green. They are ordered so the largest mechanical wins land first.
 
-### Phase 1 — `data`: the model a pack declares
+### Phase 1 — the data model a pack declares
 
-- Merge `entities` and `entityShapes` into `data.entities` (Decision 3), `relKinds` into `data.relations`
+- Merge `entities` and `entityShapes` onto the feature that owns each entity (Decision 3), `relKinds` into
+  the root `relations`
   (Decision 4). Replace the `partitionPolicy` section with `volatile` on the entity (Decision 5): widen
   the entity value to `string | null | { shape, volatile }`, derive `excludedEntityTypes` in
   `generate-entries.ts:701-703` from the entities marked volatile, read the same in `schema.ts:127`, and
@@ -334,18 +334,25 @@ fails schema validation with a message naming `extensions`.
 byte-identical (`dist/*.seed.json`, `dist/seeds.json`); `tests/unit/seed-parity` passes;
 `npm run compile`, `npm run test:unit`, `npm run test:external-pack` pass.
 
-### Phase 4 — features: relative paths, no redundant designation
+### Phase 4 — features: what they contribute, and where
 
 - Delete `features[].designation`; add `"designated": true` (Decision 6).
-- Make every path inside a feature relative to `src/features/<id>/` (Decision 7), and apply whichever
-  convention level Open decision 1 settles on.
-- Collapse `system.entry`/`plugin.entry` to `system`/`plugin`, string or object (Decision 8).
+- Make every path inside a feature relative to `src/features/<id>/`, with `true` for the conventional
+  path and a string to override (Decision 7). A key's absence means the feature has no such thing.
+- Collapse `system.entry`/`plugin.entry` to `system`/`plugin`, `true`, a string, or an object with
+  `entry` plus `sendsTo`/`outgoingEventsType` (Decision 8).
+- Add `about` to every feature and require it in `validate.ts`; `abuddy add feature` prompts for it
+  (Decision 12).
+- Move each entity onto the feature that owns it (Decision 3), which Phase 1 prepared.
 - Update `generate-entries.ts`, `validate.ts`, `add/feature.ts`, `init.ts`, `doctor.ts` and the loader.
 
 **Done when:** no manifest contains the string `src/features/` inside a `features[]` entry; no manifest
-contains `designation`; the generated `pack-entry.ts`, `pack-entry-fe.ts` and `system-ids.ts` for
-default-setup are byte-identical to before; `npm run typecheck` and the full unit chain pass. Mutation:
-a feature naming a path that escapes its directory (`../other/be/system.ts`) fails validation.
+contains `designation`; every feature in every manifest has an `about`; the generated `pack-entry.ts`,
+`pack-entry-fe.ts` and `system-ids.ts` for default-setup are byte-identical to before; `npm run
+typecheck` and the full unit chain pass. Mutations: a feature naming a path that escapes its directory
+(`../other/be/system.ts`) fails validation; a feature with `"system": true` whose `be/system.ts` does
+not exist fails the build naming the expected path, rather than silently having no system; a feature
+without `about` fails `validate`.
 
 ### Phase 5 — one encoding for a module reference
 
