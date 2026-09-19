@@ -152,6 +152,56 @@ describe('a drop whose report produces another droppable send', () => {
 });
 
 /**
+ * Updating a pack tears it down, downloads the new release, then activates it — so its plugins belong
+ * to nobody for as long as the download takes. Sends in that window are still dropped, because there
+ * is nothing running to receive them, but they are expected: nothing went wrong.
+ */
+describe('a plugin whose pack is being replaced', () => {
+  it('has its sends dropped without reporting anything', async () => {
+    registry.markPackReplacing('memo-pack');
+    registry.unregisterPack('memo-pack');
+
+    await send({ type: 'MEMO_ADDED', pluginId: 'memos', id: 'memo-1' });
+
+    expect(delivered()).toEqual([]);
+    expect(takeSystemErrors()).toEqual([]);
+    // Put it back so afterEach's unregister finds it
+    registry.registerPack({
+      id: 'memo-pack',
+      systems: [{ id: 'memo-pack.memos', machine, events: new Set(['PING']) }],
+      features: [{ id: 'memos', hasSystem: true, hasPlugin: true, services: [] }],
+      receivedEventTypes: { memos: ['MEMOS_CONNECTED', 'MEMO_ADDED'] },
+    });
+  });
+
+  it('reports again once the replacement registers', async () => {
+    registry.markPackReplacing('memo-pack');
+    expect(registry.isPluginReplacing('memos')).toBe(true);
+
+    // Re-registering is what closes the window, so the same registration is enough to reopen reporting
+    registry.unregisterPack('memo-pack');
+    registry.registerPack({
+      id: 'memo-pack',
+      systems: [{ id: 'memo-pack.memos', machine, events: new Set(['PING']) }],
+      features: [{ id: 'memos', hasSystem: true, hasPlugin: true, services: [] }],
+      receivedEventTypes: { memos: ['MEMOS_CONNECTED', 'MEMO_ADDED'] },
+    });
+    expect(registry.isPluginReplacing('memos')).toBe(false);
+
+    await send({ type: 'MEMO_SHREDDED', pluginId: 'memos' });
+    expect(takeSystemErrors()).toHaveLength(1);
+  });
+
+  // An update whose activation also fails would otherwise leave the window open for the rest of the run
+  it('stops being expected when the window is closed with nothing in its place', () => {
+    registry.markPackReplacing('memo-pack');
+    expect(registry.isPluginReplacing('memos')).toBe(true);
+    registry.clearPackReplacing('memo-pack');
+    expect(registry.isPluginReplacing('memos')).toBe(false);
+  });
+});
+
+/**
  * A pack built before `receivedEventTypes` existed declares none, and the app can't check its sends
  * against anything. Dropping them would leave the pack installed and inert, and its user can't rebuild
  * it — so its sends pass, and only packs that declare are checked.

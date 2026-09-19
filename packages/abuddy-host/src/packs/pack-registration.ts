@@ -114,6 +114,18 @@ export interface PackRegistry extends PackRegistryView {
    * name in `sendsTo`: a plugin registered here is the host's to send to and no pack's.
    */
   registerHostPlugin(pluginId: string, types: Iterable<string>): void;
+  /**
+   * Notes that a pack is being replaced, so the plugins it owns are expected to be missing until its
+   * replacement registers. Cleared when the pack registers again, or is torn down for good.
+   */
+  markPackReplacing(packId: string): void;
+  /**
+   * Whether a plugin's pack is mid-replacement. A send to it is still dropped — its systems are
+   * stopped and there is nothing to receive — but it is an expected drop, not a mistake to report.
+   */
+  isPluginReplacing(pluginId: string): boolean;
+  /** Ends a replacement window, whether or not anything took the pack's place */
+  clearPackReplacing(packId: string): void;
   /** Host systems and every registered pack's, by id */
   getRegisteredSystems(): Map<string, AnyStateMachine>;
   /** The bus ids of a registered pack's systems (external packs' are `<packId>.<featureId>`) */
@@ -182,6 +194,8 @@ export function createPackRegistry(): PackRegistry {
   const registrations = new Map<string, PackRegistration>();
   const hostSystems = new Map<string, { machine: AnyStateMachine; events: Set<string> }>();
   const hostPlugins = new Map<string, Set<string>>();
+  /** Pack id → the plugins it owned when it was torn down to be replaced (an update's download window) */
+  const replacingPacks = new Map<string, Set<string>>();
   const designations = createDesignationStore();
   const steps = createStepStore();
   const artifacts = createDefinitionStore<ArtifactDefinition>();
@@ -281,6 +295,7 @@ export function createPackRegistry(): PackRegistry {
      * by then. It is not — it is any registration whose contributions wake a running system.
      */
     registrations.set(registration.id, registration);
+    replacingPacks.delete(registration.id);
     changed();
 
     try {
@@ -440,6 +455,20 @@ export function createPackRegistry(): PackRegistry {
     registerHostPlugin(pluginId, types) {
       hostPlugins.set(pluginId, new Set(types));
       pluginEventValidationMap = null;
+    },
+
+    markPackReplacing(packId) {
+      const reg = registrations.get(packId);
+      if (reg) replacingPacks.set(packId, new Set(ownedPluginIds(reg)));
+    },
+
+    isPluginReplacing(pluginId) {
+      for (const plugins of replacingPacks.values()) if (plugins.has(pluginId)) return true;
+      return false;
+    },
+
+    clearPackReplacing(packId) {
+      replacingPacks.delete(packId);
     },
 
     getRegisteredSystems() {

@@ -45,7 +45,7 @@ export type BusSourceEvent = Extract<BackendEvents, { type: 'INCOMING' | 'OUTGOI
 
 export interface BusOptions {
   /** The registered packs whose systems the bus runs */
-  registry: Pick<PackRegistry, 'getRegisteredSystems' | 'getRegisteredPackSystemIds' | 'getPluginEventValidationMap'>;
+  registry: Pick<PackRegistry, 'getRegisteredSystems' | 'getRegisteredPackSystemIds' | 'getPluginEventValidationMap' | 'isPluginReplacing'>;
   /** The systems the bus runs, by id; defaults to every system in `registry` */
   systems?(): ReadonlyMap<string, AnyStateMachine>;
   /** Delivers an event a system sent to a frontend plugin */
@@ -153,6 +153,9 @@ export function createBusMachine(options: BusOptions) {
         // types at all — built before they existed — so there is nothing to check the send against and
         // dropping it would break the pack outright rather than catch a mistake.
         const reportDrop = (message: string) => {
+          // A pack mid-replacement has no systems running and no plugins registered until its
+          // replacement lands. Dropping is right; saying something went wrong is not.
+          if (options.registry.isPluginReplacing(pluginId)) return;
           const pair = `${pluginId}/${type}`;
           if (reportedDrops.has(pair)) return;
           reportedDrops.add(pair);

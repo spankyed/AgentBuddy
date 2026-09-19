@@ -94,6 +94,11 @@ interface AppPacks {
    * a plugin whose pack declared no event types, whose sends pass unchecked (host's `PluginEventTypes`).
    */
   getPluginEventValidationMap(): Map<string, Set<string> | null>;
+  /**
+   * Whether a plugin's pack is mid-replacement, so a send to it is an expected drop rather than a
+   * mistake. A pack test replaces nothing, so the harness's registry always answers false.
+   */
+  isPluginReplacing(pluginId: string): boolean;
 }
 
 const running = new Set<TestApp>();

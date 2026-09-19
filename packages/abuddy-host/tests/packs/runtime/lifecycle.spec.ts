@@ -215,6 +215,27 @@ describe('activating and tearing down a pack at runtime', () => {
     activatePack(registry, PACK_ID, bus as never);
     expect(bus.send.mock.calls.map(([event]) => event.type)).toEqual(['TEARDOWN_PACK', 'PACK_CHANGED', 'ACTIVATE_PACK']);
   });
+
+  // An update downloads between the two, so the pack's plugins belong to nobody for that whole time.
+  // Sends there are still dropped — nothing is running to receive them — but they are expected.
+  it("marks its plugins as expected to be missing while it is replaced, and not when it is torn down for good", async () => {
+    await install();
+    const { activatePack, teardownPack } = await import('../../../src/packs/runtime/lifecycle.ts');
+    // The marking has to happen while the pack is still registered, since that is what says which
+    // plugins are its own — so it is asserted on the call, not on this fixture, which has no plugin
+    const marked = vi.spyOn(registry, 'markPackReplacing');
+    activatePack(registry, PACK_ID, bus as never);
+
+    teardownPack(registry, PACK_ID, bus as never, { replacing: true });
+    expect(marked).toHaveBeenCalledWith(PACK_ID);
+    expect(registry.getPackRegistration(PACK_ID), 'marked before unregistering').toBeFalsy();
+
+    marked.mockClear();
+    activatePack(registry, PACK_ID, bus as never);
+    teardownPack(registry, PACK_ID, bus as never);
+    expect(marked, 'a teardown for good opens no window').not.toHaveBeenCalled();
+    marked.mockRestore();
+  });
 });
 
 describe('registry source and update tracking', () => {

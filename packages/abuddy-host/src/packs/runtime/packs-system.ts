@@ -314,6 +314,9 @@ export function createPacksSystem(registry: PackRegistry) {
           }));
           emitPacksList(registry, system);
         }).finally(() => {
+          // Registering the replacement clears this; if nothing registered, the window ends here rather
+          // than leaving the pack's plugins marked as expected-to-be-missing for the rest of the run
+          registry.clearPackReplacing(packId);
           // Activation sends PACK_CHANGED itself; without it the pack is gone, which running systems must hear
           if (!activated) system.get(bus).send({ type: 'PACK_CHANGED', packId });
           _inFlightOps.delete(packId);

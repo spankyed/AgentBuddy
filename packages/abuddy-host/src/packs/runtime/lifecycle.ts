@@ -28,6 +28,12 @@ export function teardownPack(
 
   registry.runShutdownHooksForKey(packId);
 
+  // An update tears the pack down, downloads the new release, then activates it — so its plugins are
+  // missing for as long as the download takes, and a send to one of them in that window is expected
+  // rather than a mistake. Marked before unregistering, while the registration still says which
+  // plugins are the pack's; registering the replacement clears it.
+  if (replacing) registry.markPackReplacing(packId);
+
   try {
     registry.unregisterPack(packId);
   } catch {
