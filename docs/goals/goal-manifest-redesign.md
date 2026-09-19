@@ -22,8 +22,9 @@ Finished when:
 - No manifest in the repo spells a module reference two ways: `path#export` is the only form, and a
   bare path means the module's default export.
 - `features[].designation` does not exist in any manifest or in the schema.
-- `partitionPolicy` and `excludedEntityTypes` exist in no manifest, no schema and no pack-facing type;
-  `SDK_EXCLUDED_ENTITY_TYPES` is the only thing that excludes an entity from the primary partition.
+- `partitionPolicy` exists in no manifest and no schema; an entity is volatile by carrying
+  `"volatile": true` in `data.entities`, any pack may mark one it declares, and `loader.ts` strips
+  nothing.
 - Every path inside a feature is relative to that feature's directory, and a feature that follows the
   conventional layout declares no paths at all.
 - npm run schema:check passes with the regenerated abuddy.schema.json committed.
@@ -112,6 +113,15 @@ The only exclusion that takes effect is `SDK_EXCLUDED_ENTITY_TYPES = [TNode]` (`
 applied by the host regardless of any manifest. `generate-entries.ts:701-703` emits the object
 unconditionally, so a pack that omits the key produces a byte-identical `pack-entry.ts`.
 
+The strip is not over-caution. The list is unscoped in both directions: `manifest-schema.ts:187` accepts
+`z.array(z.string())`, and `pack-registration.ts:432-437` concatenates every registration's entries into
+one global list with no check that a pack named an entity it owns. A pack writing
+`"excludedEntityTypes": ["Note"]` would route another pack's Notes to `volatileBackup`, which
+`makePolicy` does not hydrate (`policy.ts:28`) and `exportDatabase` does not back up (`backup/index.ts:44`,
+`databases = ['lmdb']`). Entity-type ownership is already enforced at registration
+(`tests/packs/registration.spec.ts:157-171`), so the scoping exists — the policy list simply does not
+use it.
+
 **Four concerns are interleaved at the top level.** Ordered by weight in lines:
 
 | Concern | Keys today |
@@ -166,20 +176,40 @@ reference, or `null` when the entity has no typed shape:
 Codegen derives the `EARS.RelKind.PARENT_OF` constant by upper-casing. The phase proves the generated
 `ears.ts` is unchanged.
 
-**5. `partitionPolicy` is deleted, not moved.** The field has no users and cannot have one: the only
-built-in pack declares `excludedEntityTypes: []`, and `loader.ts:211-216` strips the key from every
-external pack, warning when it was non-empty, because letting a pack route its data to another store
-would take that data out of backups. The one real exclusion is hardcoded — `SDK_EXCLUDED_ENTITY_TYPES
-= [TNode]` (`sdk-entities.ts:39`), merged at `pack-registration.ts:189` whatever any manifest says.
+**5. `partitionPolicy` becomes `volatile` on the entity that is volatile, and every pack may use it.**
 
-So the whole path `manifest → schema → generate-entries → PackRegistration.ears → policy` carries a
-value that is empty for the one pack allowed to set it and discarded for everyone else. Remove it from
-all five, and from the loader's strip. `appPartitionPolicy` keeps taking the SDK's list, so nothing
-observable changes. `data` is then `entities` and `relations`.
+The section goes; the capability moves onto the declaration it describes:
 
-Storage routing is the app's concern, which the loader already enforces; the manifest field says the
-opposite and is a trap for a pack author who reads it as a control they have. When a pack genuinely
-needs a volatile entity, it belongs on the entity, not in a policy list beside it — see Deferred.
+```jsonc
+"data": {
+  "entities": {
+    "Note":       "src/features/notes/be/types.ts#NoteEntity",
+    "Scrollback": { "shape": "src/features/code/be/types.ts#ScrollbackEntity", "volatile": true }
+  }
+}
+```
+
+An entity's value is a shape reference, `null` for no typed shape, or an object carrying `shape` and
+`volatile`. `generate-entries` derives `excludedEntityTypes` from the entities marked volatile, so the
+plumbing below the manifest — `PackRegistration.ears`, `getRegisteredEARSPolicy`, `appPartitionPolicy`
+— is unchanged, and the SDK's own `TNode` exclusion stays where it is.
+
+**The restriction on external packs is dropped, and `loader.ts:211-216`'s strip is deleted rather than
+replaced.** That strip exists because the exclusion list is unscoped: `manifest-schema.ts:187` accepts
+`z.array(z.string())`, and `pack-registration.ts:432-437` pushes whatever a registration names into one
+global list. A pack writing `"excludedEntityTypes": ["Note"]` would route another pack's Notes to
+`volatileBackup`, which is not hydrated at boot and is outside backups — real destruction of data the
+pack does not own.
+
+A property on the entity cannot do that. A pack can only mark an entity it declares, and `registerPack`
+already refuses a declaration another pack or the SDK owns (`EARS collision: entity type "Thread" —
+pack "older-pack" vs "base-pack"`, `tests/packs/registration.spec.ts:157-171`). The hazard stops being
+mitigated and becomes unrepresentable, which is why the restriction can go rather than being restated.
+
+Two effects stay, both inside the declaring pack, and the schema's description says so: volatile data is
+not in backups (`exportDatabase` defaults to `['lmdb']`), and a relation touching a volatile entity is
+itself routed volatile (`routeRelation` → volatile if either side is) and so is not hydrated — a link
+from a persisted entity to a volatile one does not survive a restart.
 
 **6. `features[].designation` is deleted.** A feature that registers a designation writes
 `"designated": true`. The registration keeps using the feature id, which is what it did anyway.
@@ -243,8 +273,11 @@ it, then leaves the full chain green. They are ordered so the largest mechanical
 ### Phase 1 — `data`: the model a pack declares
 
 - Merge `entities` and `entityShapes` into `data.entities` (Decision 3), `relKinds` into `data.relations`
-  (Decision 4). Delete `partitionPolicy` from the manifest, the schema, `generate-entries.ts:701-703`,
-  `PackRegistration.ears` and the loader's strip (Decision 5).
+  (Decision 4). Replace the `partitionPolicy` section with `volatile` on the entity (Decision 5): widen
+  the entity value to `string | null | { shape, volatile }`, derive `excludedEntityTypes` in
+  `generate-entries.ts:701-703` from the entities marked volatile, read the same in `schema.ts:127`, and
+  delete `loader.ts:211-216` outright — there is nothing left to strip once a pack can only mark what it
+  declares.
 - Update `manifest-schema.ts`, `generate-entries.ts` (entity names, shapes, relation constants),
   `abuddy-host/src/database/schema.ts` (`readInstalledSchema`), `abuddy-cli/src/commands/add/manifest.ts`
   and `init.ts`'s scaffold.
@@ -252,12 +285,14 @@ it, then leaves the full chain green. They are ordered so the largest mechanical
 
 **Done when:** `npm run generate:schema` is clean and `abuddy.schema.json` is committed; `abuddy build`
 for default-setup produces a `src/__generated__/ears.ts` byte-identical to the one before the change
-(diff it, and record that in the phase's commit); `partitionPolicy` and `excludedEntityTypes` appear in
-no manifest, in no schema and in no pack-facing type, and `packages/abuddy-host/tests/packs/partition-policy.spec.ts`
-still passes on the SDK's own exclusion alone; `npm run typecheck`, `npm run test:unit`,
-`npm run test:external-pack` pass. Mutation: an entity listed with a shape reference whose export does
-not exist fails the build, naming the entity; removing `TNode` from `SDK_EXCLUDED_ENTITY_TYPES` fails
-`partition-policy.spec.ts`.
+(diff it, and record that in the phase's commit); `partitionPolicy` appears in no manifest and in no schema, and
+`loader.ts` no longer mentions it; `packages/abuddy-host/tests/packs/partition-policy.spec.ts` passes,
+with a case added for an external pack marking its own entity volatile and that entity routing to
+`volatileBackup`; `npm run typecheck`, `npm run test:unit`, `npm run test:external-pack` pass.
+Mutations: an entity listed with a shape reference whose export does not exist fails the build, naming
+the entity; removing `TNode` from `SDK_EXCLUDED_ENTITY_TYPES` fails `partition-policy.spec.ts`; a pack
+declaring an entity another pack owns still fails registration with the EARS collision message, which
+is what keeps `volatile` scoped to its declarer.
 
 ### Phase 2 — `extensions`: everything a pack contributes
 
@@ -327,20 +362,10 @@ a 13th top-level key, or a map whose keys equal its values, fails that spec.
   remove the `path#export` strings entirely in favour of real imports, and it changes how the CLI, the
   loader and the installed-pack layout all read a manifest. Worth its own goal if authors ask for it.
 - **`permissions`**, which only fixtures declare and nothing enforces yet. Leave the key where it is.
-- **Giving a pack a volatile entity again.** Decision 5 removes the field because nothing uses it. If a
-  pack later needs one — high-churn ephemeral state such as terminal scrollback — declare it on the
-  entity rather than in a policy list beside it, so there is no second list to keep in sync:
-
-  ```jsonc
-  "entities": {
-    "Note":       "src/features/notes/be/types.ts#NoteEntity",
-    "Scrollback": { "shape": "…#ScrollbackEntity", "volatile": true }
-  }
-  ```
-
-  Two questions to settle then, not now: whether a pack may set it at all, since volatile data is
-  outside backups and that is why v1 stripped it; and whether `volatile` is the right word when the
-  partition is called `volatileBackup`.
+- **Backing up the volatile partition.** Decision 5 keeps `volatile` meaning both "not hydrated at boot"
+  and "not in backups", because that is what the partition already does. Separating the two — backing up
+  `volatileBackup` and letting `volatile` mean only "rebuildable, don't load at boot" — is the safer
+  long-term shape, and it is a persistence change rather than a manifest one.
 
 ## Constraints
 
