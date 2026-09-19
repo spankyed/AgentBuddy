@@ -6,15 +6,9 @@
 ```
 # Goal: the packs directory is what's installed
 
-Implement docs/goals/goal-installed-packs-record.md on `AS/external-pack-authoring`, at or after
-`18b068a18`. The base matters: `reconcileInstalledPacks`, `ensureInstalledPack`, `InstalledPacksRecord`
-and `InstalledIds` are all on that branch and none of them exists on master, so most of this plan has
-nothing to act on anywhere else. Before Phase 1, confirm the base: `reconcileInstalledPacks` and
-`ensureInstalledPack` exist at HEAD. If they don't, stop and say so — the plan was surveyed somewhere
-else. Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them,
-don't reopen them or stop to ask.
+Implement docs/goals/goal-installed-packs-record.md on `AS/external-pack-authoring`.
 
-Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
+Where a detail isn't specified, pick the conventional option following best practices, note it in the final summary, and keep
 going. No backward compatibility in code: change signatures, move modules, migrate every in-repo caller,
 test, fixture, template and doc in the same change, and fix forward. Stored user data is the exception:
 it moves with migrations — though this goal needs none (Decision 9).

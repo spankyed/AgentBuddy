@@ -488,6 +488,35 @@ move both: the manifest's keys changed, and a pack built before it cannot be loa
 the other and a pack reads "layout 1, manifest 2" — the files are where I expect and I cannot read one
 of them. Nobody has a use for that state, and nobody wants to remember to move two numbers together.
 
+**Why a manifest gets no version of its own, and why the artifact still gets one.** A format version
+earns its place where the artifact outlives its reader and cannot be rebuilt: Kubernetes objects carry
+`apiVersion` because the YAML sits in git and is served by many API-server versions, Chrome extensions
+carry `manifest_version` because they sit in a store on machines that will never rebuild them, OCI
+image manifests carry `schemaVersion` for the same reason. Where a toolchain the author runs rebuilds
+the artifact, there is none: `package.json`, `Cargo.toml` and `pyproject.toml` have no format version
+between them. Docker Compose is the direct precedent for deleting one — its top-level `version:` key
+was deprecated and is now reported as obsolete.
+
+`package.json` gets away with it for a reason worth naming, because it is not "a stamp is never
+needed": **npm has never made a breaking change to it.** Fifteen years of purely additive evolution,
+new fields that old readers ignore. That is a discipline, and it is one this goal is explicitly not
+following. A pack, meanwhile, is a built artifact — `abuddy build` produces it and `stagePack` writes
+the built `abuddy.json` into the archive beside `integrity.json` — so it is in `package.json`'s
+category, and the manifest needs no version inside it.
+
+**`hostVersion` cannot take over the job, which is why the artifact keeps one stamp.** It is already
+the `engines.vscode` answer, checked at install (`pack-installer.ts:118`), at load (`loader.ts:159`)
+and by update checks. But it is author-declared and open at the top: `abuddy init` scaffolds
+`">=0.3.0"`, and a 0.4.0 host satisfies that. `hostVersion` says "the oldest host I work with", never
+"the newest", so a pack built against the old manifest shape would claim compatibility with a host
+that cannot read it. Expressing a format break needs something the host controls and the author
+cannot overstate, which is what `formatVersion` in `integrity.json` is.
+
+So the answer to "how does a host know a pack's format" is: from `integrity.json`, which it reads
+before the manifest, for the one case where the two can disagree. And after the first release with
+users, the goal is to need it as rarely as npm does — additive changes only, a key never renamed — at
+which point the stamp is vestigial and is exactly what lets you break once if you truly must.
+
 The placement settles it. `$manifestVersion` sits **inside the file it versions**, so reading it means
 already parsing the file whose parseability is in question. `integrity.json`'s `formatVersion` sits
 **outside** the files it covers, beside the `id`, `version`, `hostVersion` and `sdkVersion` it already
