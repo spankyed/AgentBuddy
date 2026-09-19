@@ -1,4 +1,4 @@
-// Docs, CLI templates and pack sources name nothing two goals retired.
+// Docs, CLI templates, pack sources and the app's own source name nothing two goals retired.
 //
 // The package-boundaries goal removed: the host module registry, the SDK's migrations runner, the SDK's EARS
 // module (now `@abuddy/sdk/types` and `/repositories`), the engine's module-state entry points, the API's
@@ -6,9 +6,25 @@
 // to write to (docs/archive/goals/goal-package-boundaries.md, Phase 8).
 //
 // The pack-naming goal retired the words that named two things: `registry` for a file and a wire route,
-// `bundle` as a noun, and `artifact` for a dependency's resolved files
+// `bundle` as a noun, `artifact` for a dependency's resolved files, and `contributions` outright
 // (docs/archive/goals/goal-pack-naming.md, Phase 5). A name left in a doc or a comment still compiles and
 // still passes, which is why this is a guard rather than a grep run once.
+//
+// WHAT THIS GUARD CANNOT DO, and no list of names could:
+//
+// It matches retired *names*. It cannot match the retired *sense* of a word the goal kept. `registry` is
+// kept for the in-process collection packs register into (Decision 3), so `createPackRegistry`,
+// `PackRegistryView` and `stepRegistry` must pass — and that means `PackRegistryFile` (the JSON file),
+// `registryPath` and `packRegistryRead` (the `packs.loaded` response) pass too, though each is the file or
+// wire-route sense the goal removed. All three shipped in the naming PR and were found by review, not here.
+// Adding bare `registry` would fire on every legitimate use, so the boundary is permanent, not an oversight.
+//
+// The same holds for `bundle`, kept as the bundler verb: `readBundleInfo` is caught, "the bundle layout"
+// in a comment is not. Where a bare word *is* safe to list it is listed — see `contribution` below, whose
+// leftovers were prose and a manifest key rather than symbols.
+//
+// So: this guard stops a retired name coming back. Catching a kept word used in a retired sense is a
+// reading job, and belongs in review of any PR that renames a concept rather than a symbol.
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
