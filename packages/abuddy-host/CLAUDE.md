@@ -212,6 +212,6 @@ What opening an app's database needs, shared by the API's boot and `abuddy db`, 
 ## Gotchas
 
 - `reconcileInstalledPacks` rebuilds an entry whose version or dir changed from only `id`, `name`, `version`, `dir` and `enabled`, so fields like `installedFrom` and `availableVersion` are dropped. An out-of-app reinstall (`abuddy install`) therefore loses the pack's update source at the next boot.
-- `writeInstalledPacks` doesn't throw on failure, so callers can't tell that a registry write was lost.
+- `writeInstalledPacks` doesn't throw on failure, so callers can't tell that a registry write was lost. The packs system works around the visible half of that (`externalPacks()` lists a loaded pack the record has forgotten), but nothing else does, and a lost write is still only a log line.
 - External pack FE code can't reach the renderer's `createFePackRegistry()` instance: the renderer calls `registerPackFE` on its behalf (see the pack runtime doc's FE entry section), and pack frontends read it through the SDK's lookups.
 - Adding a host service means updating `HostServices` and `HostRuntimeServices` in the SDK, `HOST_SERVICE_NAMES` (`pack-registration.ts`), `createHostRuntime`'s `services` (`services/index.ts`, with the implementation in `services/<kebab-case key>.ts`) and `HOST_SERVICE_KEYS` in `tests/boundaries.spec.ts`. All are type-checked against the SDK types. Helpers that aren't a service don't go in `services/`.

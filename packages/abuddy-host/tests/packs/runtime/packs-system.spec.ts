@@ -4,7 +4,9 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { createActor, setup, type AnyEventObject } from 'xstate';
 import { bus } from '@abuddy/sdk/ids';
+import { resolveAppContext } from '@abuddy/sdk/env';
 import { registry } from './test-host.ts';
+import { readInstalledPacks } from '../../../src/packs/installed-packs.ts';
 import { createPacksSystem, packs } from '../../../src/packs/runtime/packs-system.ts';
 import { activatePack } from '../../../src/packs/runtime/lifecycle.ts';
 import { removeLoadedPack } from '../../../src/packs/runtime/loaded-packs.ts';
@@ -83,6 +85,53 @@ describe('installing over a pack that is already running', () => {
       // Registered once, by the copy that was just installed
       expect(registry.getPackExtensions(PACK_ID)).not.toBeNull();
       expect(emitted(system.sent).find(e => e.type === 'PACK_INSTALL_COMPLETE')).toMatchObject({ version: '2.0.0' });
+    } finally {
+      system.stop();
+    }
+  });
+});
+
+// installed-packs.json is written after an install and rebuilt at boot, but a failed write is logged and
+// nothing more — so the app can be running a pack the record does not mention. An `abuddy install` done
+// outside the app leaves the same state, which is what these set up.
+describe('a pack the app is running that the record has lost', () => {
+  async function runningButUnrecorded() {
+    const { installPackFromLocal } = await import('../../../src/packs/pack-installer.ts');
+    await installPackFromLocal(packSource('1.0.0'));
+    expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
+    // The record going missing under a running pack: the write that failed, or the file removed by hand
+    fs.rmSync(resolveAppContext({ env: 'test', userDataDir: tmpDir }).installedPacksFile, { force: true });
+    expect(readInstalledPacks().found).toBe(false);
+  }
+
+  it('is in the list, rather than the user being shown nothing where a running pack is', async () => {
+    const system = runPacksSystem();
+    try {
+      await runningButUnrecorded();
+
+      system.send({ type: 'GET_INSTALLED_PACKS' });
+
+      const list = emitted(system.sent).find(e => e.type === 'PACKS_LIST');
+      expect(list?.packs).toContainEqual(
+        expect.objectContaining({ id: PACK_ID, version: '1.0.0', enabled: true, builtIn: false }),
+      );
+    } finally {
+      system.stop();
+    }
+  });
+
+  it('is written to the record when the user disables it, so the choice survives the next boot', async () => {
+    const system = runPacksSystem();
+    try {
+      await runningButUnrecorded();
+
+      system.send({ type: 'TOGGLE_PACK_ENABLED', packId: PACK_ID });
+
+      expect(readInstalledPacks()).toMatchObject({
+        found: true,
+        packs: [expect.objectContaining({ id: PACK_ID, enabled: false })],
+      });
+      expect(emitted(system.sent).map(e => e.type)).toContain('PACK_DEACTIVATED');
     } finally {
       system.stop();
     }
