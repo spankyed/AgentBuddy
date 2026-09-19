@@ -149,7 +149,7 @@ describe('pack-loader', () => {
 
     it("loads a runtime requiring subpaths of the packages the host provides (the AI SDK's zod/v4)", () => {
       const packDir = makePack(path.join(tmpDir, 'packs'), 'zod-pack', { id: 'zod-pack', name: 'Zod', version: '1.0.0' });
-      // An installed bundle has no node_modules: the host's copy is the only one there is, subpaths included, and
+      // An installed pack has no node_modules: the host's copy is the only one there is, subpaths included, and
       // no list of them exists — the bridge resolves whatever the pack asks for
       fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), [
         "const zod = require('zod');",

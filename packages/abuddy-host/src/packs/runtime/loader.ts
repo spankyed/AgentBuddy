@@ -32,7 +32,7 @@ function getHostSdkVersion(): string | undefined {
 /** The app bundle's loaders for its built-in packs, by pack id (the API's virtual:built-in-pack-loaders) */
 export type BundledPackLoaders = Record<string, () => Promise<BuiltInRuntime>>;
 
-/** A built-in pack's built backend runtime (dist/runtime/index.cjs, the bundle layout's runtime entry) */
+/** A built-in pack's built backend runtime (dist/runtime/index.cjs, the pack layout's runtime entry) */
 export function builtInRuntimeEntry(packDir: string): string {
   return path.join(packDir, 'dist', PACK_LAYOUT.runtimeEntry);
 }

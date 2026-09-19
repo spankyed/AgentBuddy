@@ -211,7 +211,7 @@ const REQUIRED_FACADE_EXPORTS = ['PackEntityShapes', 'PackStepNodes', 'PackSyste
 /**
  * Whether a dependency that resolved from `source` is one whose source tree the author has, and can
  * therefore run `abuddy build` in. A workspace sibling or a `file:` path is; a release downloaded from
- * GitHub, or a bundle taken out of an installed app, is not — there is nothing to `cd` into.
+ * GitHub, or a pack taken out of an installed app, is not — there is nothing to `cd` into.
  */
 function isRebuildableSource(source: string): boolean {
   return source === 'workspace' || source.startsWith('file:');
@@ -226,7 +226,7 @@ function isRebuildableSource(source: string): boolean {
  */
 function facadeRemedy(depId: string, source: string | undefined): string {
   // Taken out of an installed AgentBuddy, so the pack came with the app and moves with it. That makes
-  // the step the same one verifyPack names for a bundle this host can't read: update AgentBuddy.
+  // the step the same one verifyPack names for a pack this host can't read: update AgentBuddy.
   if (source?.startsWith('installed app')) {
     return `You can't rebuild it yourself: update AgentBuddy, which is where this copy came from, or pin your CLI to one that matches it.`;
   }

@@ -7,7 +7,7 @@ import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { REPO_ROOT } from '../helpers/published-packages';
 
-/** A built-in pack writes dist/snapshot.json; an external one writes it into the bundle's types dir */
+/** A built-in pack writes dist/snapshot.json; an external one writes it into the pack's types dir */
 const snapshotFile = (pack: string): string | undefined =>
   [path.join(REPO_ROOT, pack, 'dist', 'snapshot.json'), path.join(REPO_ROOT, pack, 'dist', 'types', 'snapshot.json')]
     .find((file) => fs.existsSync(file));

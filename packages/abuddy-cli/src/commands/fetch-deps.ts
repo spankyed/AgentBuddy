@@ -55,14 +55,14 @@ function tryReadSnapshot(filePath: string): PackSnapshot | null {
 
 /**
  * Find artifacts in a pack directory in any layout: an installed or extracted bundle
- * (types/, build/), an external pack source built in the bundle layout (dist/types,
+ * (types/, build/), an external pack source built in the pack layout (dist/types,
  * dist/build), or a built-in pack's dist/ (dist/snapshot.json).
  */
 export function findDepFiles(dir: string): DepFiles | null {
   const candidates = [
     { root: dir, snapshot: path.join(dir, 'types', 'snapshot.json') },
     { root: path.join(dir, 'dist'), snapshot: path.join(dir, 'dist', 'types', 'snapshot.json') },
-    // A built-in pack's dist: its snapshot at the top, build/ and runtime/ in the bundle layout
+    // A built-in pack's dist: its snapshot at the top, build/ and runtime/ in the pack layout
     { root: path.join(dir, 'dist'), snapshot: path.join(dir, 'dist', 'snapshot.json') },
     // .abuddy/deps/<id>/ cache
     { root: dir, snapshot: path.join(dir, 'snapshot.json') },
@@ -78,7 +78,7 @@ export function findDepFiles(dir: string): DepFiles | null {
 function withBuildAndRuntime(snapshot: PackSnapshot, root: string): DepFiles {
   const buildDir = path.join(root, PACK_LAYOUT.buildDir);
   const runtimeEntry = path.join(root, PACK_LAYOUT.runtimeEntry);
-  // A bundle's seeds are under runtime/; a built-in pack's dist keeps them at its top
+  // An installed pack's seeds are under runtime/; a built-in pack's dist keeps them at its top
   const seedsDir = [path.join(root, PACK_LAYOUT.seedsDir), root].find((dir) => fs.existsSync(path.join(dir, SEED_INDEX_FILE)));
   const hasRuntime = fs.existsSync(runtimeEntry);
   return {
@@ -376,7 +376,7 @@ async function resolveFromUpstream(root: string, depId: string, depValue: string
  * The label is the one `abuddy fetch-deps` prints (`workspace`, `file:<path>`, `installed app (env)`,
  * `github:<owner>/<repo>@<version>`). It is per-resolution, not a property of the artifact — the same
  * bundle is a workspace sibling to its author and a GitHub release to everyone else — so it is not
- * recorded in the snapshot, which ships inside the bundle. It exists so a build failure can name a
+ * recorded in the snapshot, which ships inside the pack. It exists so a build failure can name a
  * remedy the reader can actually carry out.
  */
 export type ResolvedDepFiles = DepFiles & { resolvedFrom?: string };

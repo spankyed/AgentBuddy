@@ -20,9 +20,9 @@ release   Preflight, bump the version (beta cycle: 1.2.3 → 1.2.4-beta.0 → -b
           and push. The pack's .github/workflows/release.yml publishes the GitHub release
           from the tag. With --local, publishes from this machine instead.
           --dry-run changes nothing: no file edits, git operations or publishing; it
-          produces and verifies the bundle for the next version under .abuddy/release/.
+          produces and verifies the pack for the next version under .abuddy/release/.
 
-publish   Create the GitHub release for the bundle in <dir> (default .abuddy/release)
+publish   Create the GitHub release for the pack in <dir> (default .abuddy/release)
           and upload <id>-<version>.tgz, .sha256 and .integrity.json. Used by the release workflow.
           Needs GITHUB_TOKEN (or GH_TOKEN) and GITHUB_REPOSITORY or an origin remote.
 `.trim();
@@ -191,7 +191,7 @@ export async function publishRelease(root: string, releaseDir: string, options: 
   // Refuse to publish anything that doesn't verify
   const sha256 = fs.readFileSync(checksumFile, 'utf-8').trim().split(/\s+/)[0];
   const scratch = fs.mkdtempSync(path.join(releaseDir, '.verify-'));
-  // The bundle's integrity.json (id, version, hostVersion) as its own asset: the app's update check
+  // The pack's integrity.json (id, version, hostVersion) as its own asset: the app's update check
   // reads a release's hostVersion from it without downloading the archive
   const infoFile = `${archive}.integrity.json`;
   try {

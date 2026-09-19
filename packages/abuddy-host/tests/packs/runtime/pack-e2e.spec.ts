@@ -47,7 +47,7 @@ function installTestPack() {
     formatVersion: 1, id: TEST_PACK_ID, version: '1.0.0', files: {},
   }));
 
-  // The pack's frontend, which the renderer loads from the bundle
+  // The pack's frontend, which the renderer loads from the installed pack
   fs.writeFileSync(path.join(TEST_PACK_DIR, 'runtime', 'fe.js'), 'export default { plugins: [] };');
 
   // A real runtime registration whose system machine requires xstate from the host

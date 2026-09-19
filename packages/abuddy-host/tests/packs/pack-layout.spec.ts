@@ -44,12 +44,12 @@ function builtPack(overrides: Record<string, unknown> = {}): string {
   write('dist/runtime/fe.js', 'export default {};');
   write('dist/runtime/seeds/actions.seed.json', '[]');
   write('dist/types/snapshot.json', '{"types":{}}');
-  write('src/ignored.ts', 'not part of the bundle');
+  write('src/ignored.ts', 'not part of the pack');
   return root;
 }
 
 describe('stagePack', () => {
-  it('assembles the bundle layout with the manifest and checksums, without source maps', () => {
+  it('assembles the pack layout with the manifest and checksums, without source maps', () => {
     const stage = path.join(tmp, 'stage');
     const info = stagePack(builtPack(), stage, { sdkVersion: '0.1.0', source: { commit: 'abc' } });
 
@@ -67,7 +67,7 @@ describe('stagePack', () => {
     expect(readPackIntegrity(stage)).toEqual(info);
   });
 
-  it('refuses a pack that has not been built in the bundle layout', () => {
+  it('refuses a pack that has not been built in the pack layout', () => {
     const root = builtPack();
     fs.rmSync(path.join(root, 'dist', 'runtime'), { recursive: true });
     expect(() => stagePack(root, path.join(tmp, 'stage'))).toThrow(/not built/);
@@ -75,7 +75,7 @@ describe('stagePack', () => {
 });
 
 describe('packFrontendFiles', () => {
-  it("lists the bundle's FE entry and stylesheet only when the build wrote them", () => {
+  it("lists the pack's FE entry and stylesheet only when the build wrote them", () => {
     const stage = path.join(tmp, 'stage');
     stagePack(builtPack(), stage);
     expect(packFrontendFiles(stage)).toEqual({ entry: 'runtime/fe.js', styles: undefined });
@@ -143,7 +143,7 @@ describe('bundle archives', () => {
 });
 
 describe('installPackFromLocal (pack layout path)', () => {
-  it('stages a built source pack and installs only the bundle', async () => {
+  it('stages a built source pack and installs only the staged pack', async () => {
     const packsDir = path.join(tmp, 'packs');
     const result = await installPackFromLocal(builtPack(), packsDir);
 
