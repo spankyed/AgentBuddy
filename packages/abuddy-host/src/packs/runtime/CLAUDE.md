@@ -37,7 +37,7 @@ Hidden `.<id>.installing-*`, `.<id>.previous-*` and `.<id>.publishing-*` dirs ar
 1. Discovers packs in `packsDir` (`discoverPacks()`; each needs an `abuddy.json` with `id`, `name`, `version`)
 2. Reconciles with `installed-packs.json` (`reconcileInstalledPacks()`: adds new packs enabled, updates version/dir, removes missing, keeps `enabled`)
 3. Loads each enabled pack with `loadSingleExternalPack()`:
-   - `hostVersion` check (`isHostCompatible`), bundle format check, warning on an SDK major version mismatch
+   - `hostVersion` check (`isHostCompatible`), pack layout format check, warning on an SDK major version mismatch
    - `runtime/index.cjs` through `withHostResolution()`; the registration id must match the manifest. A directory without a `integrity.json` and a `runtime/index.cjs` isn't an installed pack: it's skipped with a warning pointing at `abuddy install` or `abuddy dev`
    - strips `boot.earlySystem`, `boot.seedManifest` (external seeds go through `seedPackData`) and `ears.partitionPolicy`
 
@@ -192,7 +192,7 @@ The app's migrations run only at boot (and in an app reset). An external pack's 
 
 ## Client startup data for packs with frontends
 
-`getPacksWithClientLoadedFrontends()` (`loaded-packs.ts`) lists loaded external packs whose bundle has a `runtime/fe.js` (`packFrontendFiles()`). The app bus (`createAppBus()` in `abuddy-host/src/bus/app-bus.ts`, passing it to `createBusMachine` as `clientLoadedPacks`) skips their systems when a connection's `CLIENT_CONNECTED` broadcasts, and doesn't send `CLIENT_CONNECTED` on their `ACTIVATE_PACK`.
+`getPacksWithClientLoadedFrontends()` (`loaded-packs.ts`) lists loaded external packs whose layout has a `runtime/fe.js` (`packFrontendFiles()`). The app bus (`createAppBus()` in `abuddy-host/src/bus/app-bus.ts`, passing it to `createBusMachine` as `clientLoadedPacks`) skips their systems when a connection's `CLIENT_CONNECTED` broadcasts, and doesn't send `CLIENT_CONNECTED` on their `ACTIVATE_PACK`.
 
 The renderer loads each such pack's frontend, then calls `trpc.bus.packClientReady({ packId })`, which sends the pack's running systems `CLIENT_CONNECTED` (`PACK_CLIENT_CONNECTED` on the bus). It calls it again for every loaded pack when its bus subscription reconnects.
 

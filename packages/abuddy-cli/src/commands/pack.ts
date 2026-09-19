@@ -7,7 +7,7 @@ import { createPackArchive, stagePack, verifyPack, type PackIntegrity } from '@a
 const HELP = `
 Usage: abuddy pack [--out <dir>]
 
-Stage the built pack (dist/) into a verified bundle and write
+Stage the built pack (dist/) into a verified pack layout and write
 <id>-<version>.tgz plus <id>-<version>.tgz.sha256. Run "abuddy build" first
 ("abuddy build --release" for publishable output).
 
@@ -33,7 +33,7 @@ export interface PackResult {
   file: string;
   sha256: string;
   checksumFile: string;
-  bundle: PackIntegrity;
+  integrity: PackIntegrity;
 }
 
 export async function buildPackArchive(root: string, outDir: string, options: { version?: string } = {}): Promise<PackResult> {
@@ -47,9 +47,9 @@ export async function buildPackArchive(root: string, outDir: string, options: { 
     source: gitSource(root),
     version: options.version,
   });
-  const bundle = verifyPack(stageDir);
+  const integrity = verifyPack(stageDir);
   const archive = await createPackArchive(stageDir, outDir);
-  return { ...archive, bundle };
+  return { ...archive, integrity };
 }
 
 export async function pack(args: string[]) {
@@ -67,7 +67,7 @@ export async function pack(args: string[]) {
     return rel.startsWith('..') ? p : rel;
   };
   const sizeKB = (fs.statSync(result.file).size / 1024).toFixed(1);
-  const fileCount = Object.keys(result.bundle.files).length;
+  const fileCount = Object.keys(result.integrity.files).length;
 
   console.log(`Packed ${show(result.file)} (${sizeKB} KB, ${fileCount} files)`);
   console.log(`  sha256: ${result.sha256}`);

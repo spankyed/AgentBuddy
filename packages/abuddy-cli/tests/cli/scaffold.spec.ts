@@ -63,7 +63,7 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     expect(result.output).toMatch(/must start with a lowercase letter and contain only letters and digits/);
   });
 
-  it('adds a feature, builds, typechecks and packs a verified bundle', async () => {
+  it('adds a feature, builds, typechecks and packs a verified archive', async () => {
     expect(run('node', [CLI, 'add', 'feature', 'notes', '--label', 'Notes'], pack).code).toBe(0);
 
     const build = run('node', [CLI, 'build'], pack);

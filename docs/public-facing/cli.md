@@ -122,13 +122,13 @@ A build resolves the pack's `@abuddy` packages to the `dist` each published pack
 
 #### `abuddy pack [--out <dir>]`
 
-Stage the built `dist/` into a verified bundle (`integrity.json` lists a sha256 per file) and write `<id>-<version>.tgz` and `<id>-<version>.tgz.sha256` to `--out` (default: the pack root). Run `abuddy build` first (`--release` for publishable output). Refuses built-in packs and invalid manifests.
+Stage the built `dist/` into a verified pack (`integrity.json` lists a sha256 per file) and write `<id>-<version>.tgz` and `<id>-<version>.tgz.sha256` to `--out` (default: the pack root). Run `abuddy build` first (`--release` for publishable output). Refuses built-in packs and invalid manifests.
 
 #### `abuddy dev`
 
 A dev server for the dev app (`npm start` in an AgentBuddy checkout). It builds, installs the pack into the development data dir, then:
 
-- serves the FE entry from a Vite dev server (port 5199, or the next free one) with HMR, recording its port in `pack-dev-servers/<id>.json` in the development data dir so the app's `pack://` requests go to it. The marker sits outside the installed pack, which stays exactly the verified bundle, and is removed when `abuddy dev` exits
+- serves the FE entry from a Vite dev server (port 5199, or the next free one) with HMR, recording its port in `pack-dev-servers/<id>.json` in the development data dir so the app's `pack://` requests go to it. The marker sits outside the installed pack, which stays exactly the verified files, and is removed when `abuddy dev` exits
 - on `abuddy.json` changes, regenerates `src/__generated__/`
 - on `.ts` changes under `src/`, rebuilds, reinstalls and asks the running dev app to reload the pack's backend
 
@@ -186,7 +186,7 @@ Cut a release (default `patch`):
 3. `abuddy build --release`, `tsc --noEmit`, the `test` script (skip with `--skip-tests`), and `abuddy test` when `playwright.config.ts` exists (skip with `--skip-e2e`)
 4. Commit, pack into `.abuddy/release/`, tag `v<version>` and push
 
-The scaffolded `.github/workflows/release.yml` publishes the GitHub release from the tag. `--local` publishes from this machine instead; it needs `GITHUB_TOKEN` or `GH_TOKEN` and refuses when the workflow exists. `--dry-run` edits no files, runs no git operations and publishes nothing: it builds and verifies the next version's bundle under `.abuddy/release/`.
+The scaffolded `.github/workflows/release.yml` publishes the GitHub release from the tag. `--local` publishes from this machine instead; it needs `GITHUB_TOKEN` or `GH_TOKEN` and refuses when the workflow exists. `--dry-run` edits no files, runs no git operations and publishes nothing: it builds and verifies the next version's pack under `.abuddy/release/`.
 
 #### `abuddy release publish [--dir <dir>] [--dry-run]`
 
@@ -198,7 +198,7 @@ Install a pack into the app's data dir (`<userDataDir>/packs/<id>`). `<source>` 
 
 | Source | Example |
 |---|---|
-| Local directory (a built pack or bundle) | `../my-pack` |
+| Local directory (a built pack source or a pack layout) | `../my-pack` |
 | Local archive (`.tgz`, `.tar.gz`, `.zip`) | `./my-pack-0.1.0.tgz` |
 | URL to a `.tgz`, `.tar.gz` or `.zip` | `https://example.com/my-pack-0.1.0.tgz` |
 | GitHub release: `owner/repo`, or `owner/repo@tag` (default: latest) | `user/my-pack@v0.1.0` |

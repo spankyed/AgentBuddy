@@ -176,7 +176,7 @@ export interface PublishOptions {
   octokit?: Pick<Octokit, 'rest'>;
 }
 
-/** Create the GitHub release for a packed bundle and upload the archive + checksum. */
+/** Create the GitHub release for a packed archive and upload it + its checksum. */
 export async function publishRelease(root: string, releaseDir: string, options: PublishOptions = {}): Promise<{ tag: string; prerelease: boolean }> {
   const env = options.env ?? process.env;
   const run = options.run ?? defaultRunner;
@@ -197,7 +197,7 @@ export async function publishRelease(root: string, releaseDir: string, options: 
   try {
     const extracted = await extractPackArchive(archive, scratch, sha256);
     const info = verifyPack(extracted);
-    if (info.version !== version) throw new Error(`Bundle version ${info.version} does not match abuddy.json ${version}`);
+    if (info.version !== version) throw new Error(`Pack version ${info.version} does not match abuddy.json ${version}`);
     fs.writeFileSync(infoFile, JSON.stringify(info, null, 2) + '\n');
   } finally {
     fs.rmSync(scratch, { recursive: true, force: true });

@@ -167,9 +167,9 @@ export function loadSingleExternalPack(
     return null;
   }
   try {
-    const info = readPackIntegrity(dir);
-    if (Math.floor(info.formatVersion) !== PACK_LAYOUT_VERSION) {
-      logger.warn(`Skipping ${manifest.id}: bundle format ${info.formatVersion} is not supported (host supports ${PACK_LAYOUT_VERSION})`);
+    const integrity = readPackIntegrity(dir);
+    if (Math.floor(integrity.formatVersion) !== PACK_LAYOUT_VERSION) {
+      logger.warn(`Skipping ${manifest.id}: pack layout format ${integrity.formatVersion} is not supported (host supports ${PACK_LAYOUT_VERSION})`);
       return null;
     }
   } catch (err) {

@@ -29,7 +29,7 @@ export { prepareHostDataDirs } from './staging.ts';
 // Updater
 export { checkForUpdates, getAvailableUpdates } from './pack-updater.ts';
 
-// Bundle (build output, release archive and installed layout)
+// Pack layout (build output, release archive and installed layout)
 export {
   PACK_LAYOUT_VERSION, PACK_LAYOUT,
   stagePack, verifyPack, readPackIntegrity, isPackLayout,

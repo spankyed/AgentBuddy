@@ -1,6 +1,6 @@
 # Getting Started
 
-A **pack** is a self-contained extension for AgentBuddy. It can contribute backend systems, frontend plugins, flow steps, seeds (actions, prompts, flows), artifact viewers, message blocks, services, and data migrations. Packs are declared via an `abuddy.json` manifest and compiled into a distributable bundle.
+A **pack** is a self-contained extension for AgentBuddy. It can contribute backend systems, frontend plugins, flow steps, seeds (actions, prompts, flows), artifact viewers, message blocks, services, and data migrations. Packs are declared via an `abuddy.json` manifest and compiled into a distributable archive.
 
 ## Prerequisites
 
@@ -100,7 +100,7 @@ See [CLI Reference](cli.md#building) for details.
 # Compile the pack
 abuddy build
 
-# Bundle into a verified .tgz archive (integrity.json lists a sha256 per file)
+# Pack into a verified .tgz archive (integrity.json lists a sha256 per file)
 abuddy pack
 # Creates my-pack-0.1.0.tgz and my-pack-0.1.0.tgz.sha256
 

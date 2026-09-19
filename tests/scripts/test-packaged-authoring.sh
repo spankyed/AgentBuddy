@@ -10,7 +10,7 @@
 #   4. unit tests on the harness: seeds with default-setup's formats and hooks, the feature's system, the service
 #      and the llm flow on default-setup's brain, with inference mocked by mockInference
 #   5. @abuddy/testing's published declarations type-check on their own (skipLibCheck off)
-#   6. abuddy release --local --dry-run produces a verified bundle
+#   6. abuddy release --local --dry-run produces a verified archive
 #   7. install that bundle into an isolated test data dir
 #   8. abuddy test passes against the configured app (this checkout, chosen at the first-run prompt)
 #   9. the packed CLI's abuddy db reads and exports the data that app seeded

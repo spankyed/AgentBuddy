@@ -1,7 +1,7 @@
 /**
  * `abuddy dev` state: which packs have a Vite dev server the app's `pack://` handler proxies their
  * frontend requests to. It lives in the data dir beside the packs, never inside an installed pack
- * directory, which holds exactly the verified bundle files and is replaced on every install.
+ * directory, which holds exactly the verified pack files and is replaced on every install.
  *
  *   <userDataDir>/pack-dev-servers/<packId>.json   { port, pid }
  *

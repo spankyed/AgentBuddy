@@ -126,7 +126,7 @@ export async function dev(_args: string[]) {
     throw new Error('Vite dev server failed to bind a port');
   }
 
-  // Outside the installed pack: its directory is the verified bundle, replaced by every install below
+  // Outside the installed pack: its directory is the verified pack, replaced by every install below
   writeDevServerMarker(userDataDir, manifest.id, { port, pid: process.pid });
 
   function cleanup() {
