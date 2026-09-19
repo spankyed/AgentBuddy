@@ -287,9 +287,23 @@ export function publishHostPackOutput(builtInPackDir: string, destDir: string): 
     }
   }
   fs.writeFileSync(path.join(staging, '.fingerprint'), fingerprint);
-  fs.rmSync(destDir, { recursive: true, force: true });
+
+  // Move the published copy aside rather than deleting it first, as placePack does: between the delete
+  // and the rename the pack has no published output at all, and anything resolving it then — a pack
+  // build running beside this one — reads a dependency that does not exist.
   fs.mkdirSync(path.dirname(destDir), { recursive: true });
-  fs.renameSync(staging, destDir);
+  const previous = fs.existsSync(destDir)
+    ? path.join(path.dirname(destDir), stagingDirName(path.basename(destDir), 'previous'))
+    : null;
+  if (previous) fs.renameSync(destDir, previous);
+  try {
+    fs.renameSync(staging, destDir);
+  } catch (err) {
+    if (previous && !fs.existsSync(destDir)) fs.renameSync(previous, destDir);
+    fs.rmSync(staging, { recursive: true, force: true });
+    throw err;
+  }
+  if (previous) fs.rmSync(previous, { recursive: true, force: true });
   return true;
 }
 
