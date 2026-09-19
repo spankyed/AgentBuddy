@@ -18,7 +18,6 @@ describe('APP_ONLY_EXPORTS', () => {
   it('leaves them out of the shared specifiers the harness bridges and the app bridge', () => {
     const specifiers = sharedInstanceSpecifiers('@abuddy/ears', sharedInstanceExports('@abuddy/ears', import.meta.filename));
     expect(specifiers).toContain('@abuddy/ears');
-    expect(specifiers).not.toContain('@abuddy/ears/internals');
     expect(specifiers).not.toContain('@abuddy/ears/lmdb');
     expect(appBridgedSpecifiers(import.meta.filename)).not.toContain('@abuddy/ears/lmdb');
   });

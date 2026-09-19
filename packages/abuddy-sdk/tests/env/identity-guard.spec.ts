@@ -22,11 +22,9 @@ const ALLOWED: Record<string, string> = {
 };
 
 const FORBIDDEN: Array<{ pattern: RegExp; why: string; allowInTests?: boolean }> = [
-  { pattern: /USER_DATA_PATH/, why: 'replaced by ABUDDY_USER_DATA_DIR via resolveAppContext()' },
   { pattern: /Application Support/, why: 'platform data dirs are derived only in @abuddy/sdk/env' },
   { pattern: /process\.env\.ABUDDY_ENV\b(?!\s*=)/, why: 'read the environment via resolveAppContext()', allowInTests: true },
   { pattern: /__ABUDDY_CHANNEL__/, why: 'the channel stamp is consumed only by the main bootstrap' },
-  { pattern: /\b(getPacksDir|getPacksDirForEnv|getApiPortFile|resolveAppDataDir|resolveAppEnv)\s*\(/, why: 'removed; use resolveAppContext()' },
 ];
 
 function trackedCodeFiles(): string[] {

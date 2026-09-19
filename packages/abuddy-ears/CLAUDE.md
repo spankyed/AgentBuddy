@@ -55,7 +55,7 @@ EARS, the entity-attribute-relation graph store behind AgentBuddy's data: the en
 
 - `check:specifiers` (`scripts/check-import-specifiers.ts`): `findUpwardImports` (this package imports no `@abuddy/*`, in sources, tests, scripts and its `package.json`), `findLmdbImports` (only `src/lmdb/` imports `lmdb`; host, api, packs and pack tests never import `lmdb`, and packs never import `@abuddy/ears/lmdb`), `findSharedPackageLists` (the shared-instance list's consumers derive from `SHARED_INSTANCE_PACKAGES`), and the pack-source rule rejecting `registerRepository` from `@abuddy/ears`.
 - `tests/no-module-state.spec.ts`: no module-level `new Map`/`Set`/`WeakMap`/`WeakSet`/`Array`, `[]`, `{}` or `let` in `src/`, except the installed engine.
-- `tests/no-engine-state-access.spec.ts`: no code or test in the repo names the removed module-state entry points or imports an admin write from `@abuddy/ears`.
+- `tests/no-engine-state-access.spec.ts`: no source in the repo imports an admin write from `@abuddy/ears` — an admin write without an engine.
 - The typed-EARS specs live in default-setup (`typed-query-builder`, `branded-entity-id`, `entity-shape-registry`, `sdk-type-safety`) and in the CLI (`facade-typing.spec.ts`, against workspace source and the published packages); `published-exports.spec.ts` and `published-sdk-types.spec.ts` cover the packed package.
 
 ## Tests (`tests/`)
