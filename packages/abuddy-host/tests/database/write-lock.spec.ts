@@ -83,8 +83,8 @@ describe('the database write lock', () => {
     expect(findDatabaseWriter(dir)).toBe(`abuddy db reset (pid ${process.pid})`);
   });
 
-  it('refuses a lock it cannot read, which is one with no pid to check', () => {
-    for (const body of ['not json', JSON.stringify({ machine: os.hostname(), what: 'a tool' })]) {
+  it('refuses a lock it cannot read, which is one missing what would resolve it', () => {
+    for (const body of ['not json', JSON.stringify({ machine: os.hostname(), what: 'a tool' }), JSON.stringify({ pid: 1, what: 'a tool' })]) {
       const unreadable = tempDir('write-lock-');
       fs.writeFileSync(lockFile(unreadable), body);
       expect(findDatabaseWriter(unreadable)).toBe("a tool whose lock can't be read");
@@ -92,19 +92,6 @@ describe('the database write lock', () => {
         `Another tool is changing the database in ${unreadable}: a tool whose lock can't be read. If no tool is running, delete ${lockFile(unreadable)} and try again.`,
       );
     }
-  });
-
-  // A lock file written before the machine field was named `machine` has a readable pid, and the pid is what
-  // says whether the holder still runs. Reading it as unreadable refused the app forever with nothing running.
-  it('checks a lock that names no machine by its pid, like any other', () => {
-    const stale = tempDir('write-lock-');
-    fs.writeFileSync(lockFile(stale), JSON.stringify({ pid: exitedPid(), what: 'abuddy db import' }));
-    expect(findDatabaseWriter(stale)).toBeNull();
-    expect(() => hold(stale)).not.toThrow();
-
-    const running = tempDir('write-lock-');
-    fs.writeFileSync(lockFile(running), JSON.stringify({ pid: process.pid, what: 'abuddy db import' }));
-    expect(findDatabaseWriter(running)).toBe(`abuddy db import (pid ${process.pid})`);
   });
 
   // A lock from a previous boot names a pid this boot reassigned. Without the bound it reads as held by

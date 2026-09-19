@@ -7,38 +7,28 @@ import * as path from 'node:path';
 import { _writerIsRunning, _writtenAt } from '@abuddy/sdk/env';
 
 /**
- * What a reader may find in the file. `pid` is the authority: it is the only field that answers the question
- * the lock exists to answer, "is the holder still running". `machine` answers a narrower one, "is that pid
- * mine to check", so it is optional here — a lock naming no machine is still one whose pid can be read, and
- * reading it as unreadable instead would refuse the app with nothing running and no way out but deleting the
- * file by hand.
- *
- * The narrowing is deliberate, not tolerance for an old format: `machine` is absent only in a file this
- * module did not write, because `WrittenLock` makes the writer set it. A foreign writer that omitted it
- * while running on another host would have its pid compared against this host's process table, which is
- * why the field is required on the way out and optional on the way in.
+ * What the file holds. `pid` answers the question the lock exists to ask, "is the holder still running";
+ * `machine` says whether that pid is this machine's to check, since a pid from another host means nothing
+ * against this one's process table. A file missing either can't be resolved, and an unresolved lock counts
+ * as held.
  */
 interface LockFile {
   pid: number;
-  machine?: string;
+  machine: string;
   /** What the holder is doing, for the message the app shows */
   what: string;
   since: string;
 }
-
-/** What this module writes: every field a reader can use to resolve the lock without guessing */
-type WrittenLock = Required<LockFile>;
 
 const lockFile = (userDataDir: string) => path.join(userDataDir, 'db-write.lock');
 
 function readLock(file: string): LockFile | null {
   try {
     const held = JSON.parse(fs.readFileSync(file, 'utf-8')) as Partial<LockFile>;
-    // Only an unreadable pid makes a lock unreadable: without it nothing can say whether the holder still runs
-    if (typeof held.pid !== 'number') return null;
+    if (typeof held.pid !== 'number' || typeof held.machine !== 'string') return null;
     return {
       pid: held.pid,
-      machine: typeof held.machine === 'string' ? held.machine : undefined,
+      machine: held.machine,
       what: String(held.what ?? 'a tool'),
       since: String(held.since ?? ''),
     };
@@ -50,16 +40,15 @@ function readLock(file: string): LockFile | null {
 /**
  * What a tool is changing in this data dir's database right now, or `null` when nothing is: a lock whose process has
  * exited doesn't count, nor does one left by a previous boot, whose pid this boot has reassigned. Two cases
- * can't be resolved and count as held: a lock with no readable pid, and one naming another machine, whose
- * pid means nothing here. A lock naming no machine is settled by its pid, which is the best answer
- * available and better than refusing forever.
+ * can't be resolved and count as held: a lock this version can't read, and one naming another machine,
+ * whose pid means nothing here.
  */
 export function findDatabaseWriter(userDataDir: string): string | null {
   const file = lockFile(userDataDir);
   if (!fs.existsSync(file)) return null;
   const held = readLock(file);
   if (!held) return "a tool whose lock can't be read";
-  if (held.machine !== undefined && held.machine !== os.hostname()) return `${held.what} on ${held.machine}`;
+  if (held.machine !== os.hostname()) return `${held.what} on ${held.machine}`;
   // A lock from a previous boot names a pid this boot reassigned, so the pid alone can't settle it
   const at = _writtenAt(file);
   if (at === null) return null;
@@ -86,7 +75,7 @@ export function holdDatabaseWriteLock(userDataDir: string, what: string): Databa
   fs.mkdirSync(userDataDir, { recursive: true });
   // Written aside and renamed, so no app ever reads a half-written lock
   const temp = `${file}.${process.pid}.tmp`;
-  const mine: WrittenLock = { pid: process.pid, machine: os.hostname(), what, since: new Date().toISOString() };
+  const mine: LockFile = { pid: process.pid, machine: os.hostname(), what, since: new Date().toISOString() };
   fs.writeFileSync(temp, JSON.stringify(mine));
   fs.renameSync(temp, file);
 

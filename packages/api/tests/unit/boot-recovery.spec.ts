@@ -24,15 +24,18 @@ const packsDir = path.join(dataDir, 'packs');
 const stagingDir = `.demo-pack.previous-${exitedPid()}-a1b2c3d4`;
 
 beforeAll(async () => {
-  // A lock a killed `abuddy db` left behind, in the shape written before the machine field was renamed.
-  // Its pid is gone, so nothing is changing the database.
-  fs.writeFileSync(path.join(dataDir, 'db-write.lock'), JSON.stringify({
-    pid: exitedPid(), host: os.hostname(), what: 'abuddy db import', since: new Date().toISOString(),
+  // A lock a killed `abuddy db` left behind, naming a pid this boot has since handed to something else.
+  // Backdating it is what makes that true: the holder cannot have been running before the machine booted.
+  const lock = path.join(dataDir, 'db-write.lock');
+  fs.writeFileSync(lock, JSON.stringify({
+    pid: process.pid, machine: os.hostname(), what: 'abuddy db import', since: new Date().toISOString(),
   }));
+  const beforeBoot = new Date(Date.now() - os.uptime() * 1000 - 60_000);
+  fs.utimesSync(lock, beforeBoot, beforeBoot);
 
   // An install interrupted between moving the old copy aside and placing the new one: `demo-pack` is gone
-  // and the moved-aside copy is the only one left. There is no installed-packs record, as a data dir
-  // written by a version that kept that list elsewhere would have none.
+  // and the moved-aside copy is the only one left. This data dir has no installed-packs record, as a fresh
+  // one does not, and as one whose record will not parse does not either.
   fs.mkdirSync(path.join(packsDir, stagingDir), { recursive: true });
   fs.writeFileSync(
     path.join(packsDir, stagingDir, 'abuddy.json'),
