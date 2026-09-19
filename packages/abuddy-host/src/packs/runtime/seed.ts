@@ -45,7 +45,7 @@ function seedErrors(result: Record<string, { errors?: string[] }> | undefined): 
   return Object.entries(result ?? {}).flatMap(([key, counts]) => (counts?.errors ?? []).map(e => `${key}: ${e}`));
 }
 
-/** Record each seeded pack's outcome on its registry entry (the pack install state owner). */
+/** Record each seeded pack's outcome on its installed-packs entry (the pack install state owner). */
 function recordSeedOutcome(outcomes: Map<string, string | undefined>): void {
   if (outcomes.size === 0) return;
   try {
@@ -62,7 +62,7 @@ function recordSeedOutcome(outcomes: Map<string, string | undefined>): void {
 
 /**
  * Seed external packs whose compiled data changed. A pack whose seed reports errors
- * (e.g. an invalid flow) is a failed seed: the error is recorded as the registry entry's
+ * (e.g. an invalid flow) is a failed seed: the error is recorded as the installed-packs entry's
  * lastError. Its hash is stored like a successful seed's, so the same failing data isn't
  * re-imported on every boot; it's retried when the pack's seed data changes.
  */

@@ -57,7 +57,7 @@ export function removeLoadedPack(packId: string) {
 
 /**
  * The loaded external packs with frontend code (a runtime/fe.js): the renderer loads it after connecting,
- * from the registry entries below, and then asks for their startup data
+ * from the installed-packs entries below, and then asks for their startup data
  */
 export function getPacksWithClientLoadedFrontends(): string[] {
   return _loadedPacks.filter(p => packFrontendFiles(p.dir).entry).map(p => p.manifest.id);

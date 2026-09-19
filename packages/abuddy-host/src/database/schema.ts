@@ -64,7 +64,7 @@ function builtInManifests(hostPacksDir: string): PackManifest[] {
 }
 
 /**
- * The packs the registry file lists as disabled. A file it can't read is refused rather than read as "nothing is
+ * The packs `installed-packs.json` lists as disabled. A file it can't read is refused rather than read as "nothing is
  * disabled", which would take in packs the app leaves out.
  */
 function disabledPacks(installedPacksFile: string): Set<string> {

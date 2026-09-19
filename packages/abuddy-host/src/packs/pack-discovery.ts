@@ -86,15 +86,15 @@ export function discoverPacks(packsDir: string): { manifest: PackManifest; dir: 
 export function reconcileInstalledPacks(
   discovered: { manifest: PackManifest; dir: string }[],
 ): { manifest: PackManifest; dir: string }[] {
-  let registry = readInstalledPacks();
+  let installed = readInstalledPacks();
   let changed = false;
 
   const discoveredById = new Map(discovered.map(d => [d.manifest.id, d]));
 
   for (const { manifest, dir } of discovered) {
-    const existing = registry.find(e => e.id === manifest.id);
+    const existing = installed.find(e => e.id === manifest.id);
     if (!existing) {
-      registry = addInstalledPack(registry, {
+      installed = addInstalledPack(installed, {
         id: manifest.id,
         name: manifest.name,
         version: manifest.version,
@@ -104,7 +104,7 @@ export function reconcileInstalledPacks(
       changed = true;
       logger.info(`New external pack discovered: ${manifest.id}`);
     } else if (existing.version !== manifest.version || existing.dir !== dir) {
-      registry = addInstalledPack(registry, {
+      installed = addInstalledPack(installed, {
         id: existing.id,
         name: manifest.name,
         version: manifest.version,
@@ -115,12 +115,12 @@ export function reconcileInstalledPacks(
     }
   }
 
-  const before = registry.length;
-  registry = registry.filter(e => discoveredById.has(e.id));
-  if (registry.length !== before) changed = true;
+  const before = installed.length;
+  installed = installed.filter(e => discoveredById.has(e.id));
+  if (installed.length !== before) changed = true;
 
-  if (changed) writeInstalledPacks(registry);
+  if (changed) writeInstalledPacks(installed);
 
-  const enabledIds = new Set(registry.filter(e => e.enabled).map(e => e.id));
+  const enabledIds = new Set(installed.filter(e => e.enabled).map(e => e.id));
   return discovered.filter(d => enabledIds.has(d.manifest.id));
 }

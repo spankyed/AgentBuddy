@@ -96,7 +96,7 @@ function updateChannelIncludesPrereleases(): boolean {
 
 /**
  * Checks each installed pack's source for a newer release this AgentBuddy (hostVersion) can run, and
- * records what it found on the registry entry (`availableVersion`/`availableTag`, or `updateCheckError`
+ * records what it found on the installed-packs entry (`availableVersion`/`availableTag`, or `updateCheckError`
  * saying why there's nothing to offer). Nothing is cached: the Packs view runs this when asked.
  */
 export async function checkForUpdates(options: { hostVersion?: string } = {}): Promise<UpdateCheckResult[]> {

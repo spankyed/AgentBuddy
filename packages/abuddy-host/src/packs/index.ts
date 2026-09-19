@@ -11,7 +11,7 @@ export {
 } from './pack-discovery.ts';
 export type { BuiltInPackInfo, PackManifest } from './pack-discovery.ts';
 
-// Registry (JSON file CRUD)
+// Installed packs (JSON file CRUD)
 export {
   readInstalledPacks, updateInstalledPacks,
   addInstalledPack, removeInstalledPack,

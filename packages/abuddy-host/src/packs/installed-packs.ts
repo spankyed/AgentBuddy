@@ -1,11 +1,13 @@
 /**
- * Pack Registry
+ * Installed packs
  *
- * Persistent JSON-file registry of installed external packs.
- * Tracks install state and enabled/disabled status.
- * Built-in packs don't use this — they load directly from discovery.
+ * The persistent JSON file recording which external packs are installed, with their
+ * install state and enabled/disabled status. Built-in packs don't use this — they load
+ * directly from discovery.
  *
- * Lives outside LMDB because packs must register before EARS hydration.
+ * Lives outside LMDB because packs must register before EARS hydration. It is not a
+ * registry: a registry is the in-process collection packs register into
+ * (`createPackRegistry()`), and this is the record on disk.
  */
 
 import * as fs from 'fs';
@@ -32,20 +34,20 @@ export interface InstalledPack {
   updateCheckError?: string;
 }
 
-interface PackRegistryFile {
+interface InstalledPacksFile {
   packs: InstalledPack[];
 }
 
-function getRegistryPath(): string {
+function getInstalledPacksPath(): string {
   return resolveAppContext().installedPacksFile;
 }
 
-/** The installed external packs' entries (in `registryPath`, the app's registry file by default) */
-export function readInstalledPacks(registryPath = getRegistryPath()): InstalledPack[] {
-  if (!fs.existsSync(registryPath)) return [];
+/** The installed external packs' entries (in `installedPacksPath`, the app's `installed-packs.json` by default) */
+export function readInstalledPacks(installedPacksPath = getInstalledPacksPath()): InstalledPack[] {
+  if (!fs.existsSync(installedPacksPath)) return [];
 
   try {
-    const data: PackRegistryFile = JSON.parse(fs.readFileSync(registryPath, 'utf-8'));
+    const data: InstalledPacksFile = JSON.parse(fs.readFileSync(installedPacksPath, 'utf-8'));
     return (data.packs ?? []).map(e => ({
       ...e,
       enabled: e.enabled ?? true,
@@ -57,17 +59,17 @@ export function readInstalledPacks(registryPath = getRegistryPath()): InstalledP
 }
 
 export function writeInstalledPacks(entries: InstalledPack[]): void {
-  const registryPath = getRegistryPath();
-  const dir = path.dirname(registryPath);
+  const installedPacksPath = getInstalledPacksPath();
+  const dir = path.dirname(installedPacksPath);
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
 
-  const data: PackRegistryFile = { packs: entries };
-  const tmpPath = registryPath + '.tmp';
+  const data: InstalledPacksFile = { packs: entries };
+  const tmpPath = installedPacksPath + '.tmp';
   try {
     fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf-8');
-    fs.renameSync(tmpPath, registryPath);
+    fs.renameSync(tmpPath, installedPacksPath);
   } catch (err) {
     logger.error('Failed to write the installed packs:', err as Error);
     try { fs.unlinkSync(tmpPath); } catch {}
