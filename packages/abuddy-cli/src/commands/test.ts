@@ -61,31 +61,17 @@ export async function test(args: string[]): Promise<void> {
   const cwd = process.cwd();
 
   if (!fs.existsSync(path.join(cwd, 'playwright.config.ts'))) {
-    console.error('No playwright.config.ts found. Run `abuddy init-tests` first.');
-    process.exit(1);
+    throw new Error('No playwright.config.ts found. Run `abuddy init-tests` first.');
   }
 
   const manifest = fs.existsSync(path.join(cwd, 'abuddy.json')) ? readManifest(cwd) : undefined;
 
-  let app: AppTarget;
-  let playwrightCli: string;
-  let flags;
-  try {
-    flags = parseTestAppFlags(args);
-    playwrightCli = resolvePlaywrightCli(cwd);
-    app = await resolveTestApp({ flags, hostVersion: manifest?.hostVersion ?? '*' });
-  } catch (err) {
-    console.error((err as Error).message);
-    process.exit(1);
-  }
+  const flags = parseTestAppFlags(args);
+  const playwrightCli = resolvePlaywrightCli(cwd);
+  const app = await resolveTestApp({ flags, hostVersion: manifest?.hostVersion ?? '*' });
 
   // The harness bundle this run loads is built from the checkout's source, so bring it up to date first
-  try {
-    ensureCheckoutPackages(cwd);
-  } catch (err) {
-    console.error((err as Error).message);
-    process.exit(1);
-  }
+  ensureCheckoutPackages(cwd);
 
   console.log(app.kind === 'source' ? `Testing in AgentBuddy from ${app.root}` : `Testing in AgentBuddy Beta ${app.version}`);
   const result = spawnSync(process.execPath, [playwrightCli, 'test', ...flags.args], {
@@ -93,5 +79,7 @@ export async function test(args: string[]): Promise<void> {
     env: fixtureEnv(app, manifest ? cwd : undefined, process.env, { release: flags.release }),
     stdio: 'inherit',
   });
-  if (result.status !== 0) process.exit(result.status ?? 1);
+  // Thrown, not exited: `abuddy release` calls this, and an exit here skipped the message telling the
+  // author their version files are already bumped. The CLI's dispatcher prints the message and exits 1.
+  if (result.status !== 0) throw new Error(`E2E tests failed (Playwright exited ${result.status ?? 'without a status'})`);
 }

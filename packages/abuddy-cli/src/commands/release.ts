@@ -43,6 +43,48 @@ export function nextReleaseVersion(current: string, bump: BumpType, beta: boolea
 
 export type Runner = (cmd: string, args: string[], cwd: string) => string;
 
+/**
+ * Whether a previous run already committed (and possibly tagged) this pack's current version.
+ *
+ * Four steps follow the version commit — pack, tag, push, publish — and any of them can fail. Without
+ * this, the rerun reads the bumped version as the new current one and bumps again, so a failed 1.2.4
+ * release becomes 1.2.5 and leaves 1.2.4 committed behind it. A release is resumed, not restarted:
+ * `git reset --hard` on a commit that may not be the only thing in the tree is not a recovery.
+ */
+export function releaseInProgress(root: string, version: string, run: Runner): ReleaseState {
+  const quiet = (...args: string[]) => { try { return run('git', args, root); } catch { return ''; } };
+  return {
+    committed: quiet('log', '-1', '--format=%s') === `release: v${version}`,
+    tagged: quiet('tag', '--list', `v${version}`) !== '',
+    pushed: quiet('ls-remote', '--tags', 'origin', `refs/tags/v${version}`) !== '',
+  };
+}
+
+export interface ReleaseState {
+  committed: boolean;
+  tagged: boolean;
+  pushed: boolean;
+}
+
+/**
+ * What a release left behind when a step after the version commit failed, and how to continue.
+ *
+ * Printed where the failure is, because the instinct at that point is `git reset --hard`, which takes
+ * whatever else is in the tree with it and loses a commit the rerun is going to look for.
+ */
+export function releaseStateReport(version: string, state: ReleaseState): string {
+  const mark = (done: boolean) => (done ? '✓' : '·');
+  return [
+    `Release v${version} stopped part-way. What exists now:`,
+    `  ${mark(state.committed)} version commit "release: v${version}"`,
+    `  ${mark(state.tagged)} local tag v${version}`,
+    `  ${mark(state.pushed)} tag v${version} on origin`,
+    '',
+    'Rerun the same `abuddy release` command to continue: it resumes this version instead of bumping again.',
+    'Nothing needs reverting first.',
+  ].join('\n');
+}
+
 export const defaultRunner: Runner = (cmd, args, cwd) =>
   execFileSync(cmd, args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] }).toString().trim();
 
@@ -150,9 +192,7 @@ async function verify(root: string, options: { skipTests: boolean; skipE2e: bool
   if (!options.skipE2e && fs.existsSync(path.join(root, 'playwright.config.ts'))) {
     console.log('Running E2E tests...');
     const { test } = await import('./test');
-    process.exitCode = 0;
     await test(['--release']);
-    if (process.exitCode) throw new Error('E2E tests failed');
   }
 }
 
@@ -254,10 +294,19 @@ export async function runRelease(root: string, options: ReleaseOptions): Promise
   const run = options.run ?? defaultRunner;
   const env = options.env ?? process.env;
   const manifest = readManifest(root);
-  const version = nextReleaseVersion(manifest.version, options.bump, options.beta);
-  console.log(`Releasing ${manifest.id}: ${manifest.version} → ${version}${options.dryRun ? ' (dry run)' : ''}`);
+  // A run that already committed this version is resumed at the step that failed, not bumped again
+  const resume: ReleaseState = options.dryRun
+    ? { committed: false, tagged: false, pushed: false }
+    : releaseInProgress(root, manifest.version, run);
+  const version = resume.committed ? manifest.version : nextReleaseVersion(manifest.version, options.bump, options.beta);
+  if (resume.committed) {
+    console.log(`Resuming the release of ${manifest.id} v${version}: it is already committed${resume.tagged ? ' and tagged' : ''}.`);
+  } else {
+    console.log(`Releasing ${manifest.id}: ${manifest.version} → ${version}${options.dryRun ? ' (dry run)' : ''}`);
+  }
 
-  const { errors, warnings } = await preflight(root, { local: options.local, run, env, version });
+  // The remote tag is only a conflict for a new version: a resumed release is the one that pushed it
+  const { errors, warnings } = await preflight(root, { local: options.local, run, env, version: resume.committed ? undefined : version });
   for (const w of warnings) console.warn(`  ! ${w}`);
   if (errors.length > 0) {
     const report = errors.map(e => `  - ${e}`).join('\n');
@@ -265,11 +314,13 @@ export async function runRelease(root: string, options: ReleaseOptions): Promise
     console.warn(`Preflight problems (a real release would stop here):\n${report}`);
   }
 
-  if (!options.dryRun) writeVersion(root, version);
+  if (!options.dryRun && !resume.committed) writeVersion(root, version);
   try {
     await verify(root, { skipTests: options.skipTests, skipE2e: options.skipE2e, run });
   } catch (err) {
-    if (!options.dryRun) console.error(`Verification failed; version files were bumped to ${version} — revert them before retrying.`);
+    if (options.dryRun) throw err;
+    if (resume.committed) console.error(releaseStateReport(version, resume));
+    else console.error(`Verification failed; version files were bumped to ${version} — revert them before retrying.`);
     throw err;
   }
 
@@ -288,19 +339,27 @@ export async function runRelease(root: string, options: ReleaseOptions): Promise
   }
 
   const git = (...args: string[]) => run('git', args, root);
-  git('add', 'abuddy.json', ...(fs.existsSync(path.join(root, 'package.json')) ? ['package.json'] : []));
-  git('commit', '-m', `release: v${version}`);
-  // After the commit, so integrity.json's source.commit is the tagged commit
-  const packed = await packRelease();
-  git('tag', '-a', `v${version}`, '-m', `v${version}`);
-  git('push', '--follow-tags', 'origin', 'HEAD');
-
-  if (options.local) {
-    await publishRelease(root, releaseDir, { env, run });
-  } else {
-    console.log(`\nPushed v${version}. The release workflow will build and publish it.`);
+  if (!resume.committed) {
+    git('add', 'abuddy.json', ...(fs.existsSync(path.join(root, 'package.json')) ? ['package.json'] : []));
+    git('commit', '-m', `release: v${version}`);
   }
-  return { version, archive: packed.file };
+  try {
+    // After the commit, so integrity.json's source.commit is the tagged commit. Which is also why the
+    // commit can't be moved later to close the window this resume path exists for.
+    const packed = await packRelease();
+    if (!resume.tagged) git('tag', '-a', `v${version}`, '-m', `v${version}`);
+    git('push', '--follow-tags', 'origin', 'HEAD');
+
+    if (options.local) {
+      await publishRelease(root, releaseDir, { env, run });
+    } else {
+      console.log(`\nPushed v${version}. The release workflow will build and publish it.`);
+    }
+    return { version, archive: packed.file };
+  } catch (err) {
+    console.error(`\n${releaseStateReport(version, releaseInProgress(root, version, run))}`);
+    throw err;
+  }
 }
 
 export async function release(args: string[]) {

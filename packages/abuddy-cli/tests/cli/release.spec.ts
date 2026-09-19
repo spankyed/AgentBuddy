@@ -188,31 +188,67 @@ describe('publishRelease', () => {
   });
 });
 
+const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, stdio: 'pipe' }).toString().trim();
+
+/** A committed pack repo pushed to a local bare origin, and the runner runRelease drives it with. */
+function packRepo(): { root: string; origin: string; run: Runner } {
+  const origin = path.join(tmp, 'origin.git');
+  fs.mkdirSync(origin);
+  git(origin, 'init', '--quiet', '--bare', '-b', 'main');
+  const root = builtPack();
+  git(root, 'init', '--quiet', '-b', 'main');
+  git(root, 'add', '-A');
+  git(root, '-c', 'user.name=author', '-c', 'user.email=author@example.com', 'commit', '--quiet', '-m', 'initial pack');
+  git(root, 'remote', 'add', 'origin', origin);
+  git(root, 'push', '--quiet', '-u', 'origin', 'main');
+  git(root, 'remote', 'set-head', 'origin', 'main');
+  vi.spyOn(console, 'log').mockImplementation(() => {});
+  vi.spyOn(console, 'warn').mockImplementation(() => {});
+  // Real git (commit, tag, push to the local origin); verification commands do nothing
+  const run: Runner = (cmd, args, cwd) =>
+    cmd === 'git' ? defaultRunner(cmd, ['-c', 'user.name=author', '-c', 'user.email=author@example.com', ...args], cwd) : '';
+  return { root, origin, run };
+}
+
+const releaseOptions = { bump: 'patch', beta: false, dryRun: false, local: false, skipTests: true, skipE2e: true } as const;
+
 describe('runRelease', () => {
   it('packs after the version commit, so integrity.json records the tagged commit', async () => {
-    const git = (cwd: string, ...args: string[]) => execFileSync('git', args, { cwd, stdio: 'pipe' }).toString().trim();
-    const origin = path.join(tmp, 'origin.git');
-    fs.mkdirSync(origin);
-    git(origin, 'init', '--quiet', '--bare', '-b', 'main');
-    const root = builtPack();
-    git(root, 'init', '--quiet', '-b', 'main');
-    git(root, 'add', '-A');
-    git(root, '-c', 'user.name=author', '-c', 'user.email=author@example.com', 'commit', '--quiet', '-m', 'initial pack');
-    git(root, 'remote', 'add', 'origin', origin);
-    git(root, 'push', '--quiet', '-u', 'origin', 'main');
-    git(root, 'remote', 'set-head', 'origin', 'main');
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(console, 'warn').mockImplementation(() => {});
-
-    // Real git (commit, tag, push to the local origin); verification commands do nothing
-    const run: Runner = (cmd, args, cwd) => (cmd === 'git' ? defaultRunner(cmd, ['-c', 'user.name=author', '-c', 'user.email=author@example.com', ...args], cwd) : '');
-    const { version } = await runRelease(root, { bump: 'patch', beta: false, dryRun: false, local: false, skipTests: true, skipE2e: true, run, env: {} });
+    const { root, origin, run } = packRepo();
+    const { version } = await runRelease(root, { ...releaseOptions, run, env: {} });
 
     expect(version).toBe('1.2.4');
     const tagged = git(root, 'rev-parse', 'v1.2.4^{commit}');
     expect(git(root, 'log', '-1', '--format=%s', tagged)).toBe('release: v1.2.4');
     expect(readPackIntegrity(path.join(root, '.abuddy', 'staged', 'demo-pack')).source?.commit).toBe(tagged);
     expect(git(origin, 'rev-parse', 'v1.2.4^{commit}')).toBe(tagged);
+  }, 60_000);
+
+  it('resumes the committed version instead of bumping past it', async () => {
+    const { root, origin, run } = packRepo();
+    // The state a failed pack, tag or push leaves: the version is committed, nothing else happened
+    fs.writeFileSync(path.join(root, 'abuddy.json'), JSON.stringify({ ...JSON.parse(fs.readFileSync(path.join(root, 'abuddy.json'), 'utf-8')), version: '1.2.4' }, null, 2) + '\n');
+    git(root, 'add', 'abuddy.json');
+    git(root, '-c', 'user.name=author', '-c', 'user.email=author@example.com', 'commit', '--quiet', '-m', 'release: v1.2.4');
+
+    const { version } = await runRelease(root, { ...releaseOptions, run, env: {} });
+
+    expect(version).toBe('1.2.4');
+    expect(git(root, 'rev-list', '--count', 'HEAD')).toBe('2');
+    expect(git(origin, 'rev-parse', 'v1.2.4^{commit}')).toBe(git(root, 'rev-parse', 'HEAD'));
+    expect(git(root, 'tag', '--list')).toBe('v1.2.4');
+  }, 60_000);
+
+  it('reports what the release left behind when a step after the commit fails', async () => {
+    const { root, run } = packRepo();
+    const errors: string[] = [];
+    vi.spyOn(console, 'error').mockImplementation(msg => void errors.push(String(msg)));
+    // No origin: preflight passes on the first pass through, the push at the end does not
+    const failing: Runner = (cmd, args, cwd) => (cmd === 'git' && args[0] === 'push' ? (() => { throw new Error('push rejected'); })() : run(cmd, args, cwd));
+
+    await expect(runRelease(root, { ...releaseOptions, run: failing, env: {} })).rejects.toThrow('push rejected');
+
+    expect(errors.join('\n')).toMatch(/Release v1\.2\.4 stopped part-way[\s\S]*✓ version commit[\s\S]*✓ local tag v1\.2\.4[\s\S]*· tag v1\.2\.4 on origin[\s\S]*resumes this version/);
   }, 60_000);
 });
 
