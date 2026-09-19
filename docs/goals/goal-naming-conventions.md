@@ -8,7 +8,7 @@
 
 Implement docs/goals/goal-naming-conventions.md on a branch cut from master. Read Background, Decisions,
 Open decisions, Phases and Constraints first. Decisions are final: implement them, don't reopen them or
-stop to ask. The Open decisions must be settled with the user before Phase 4; if any is still marked open
+stop to ask. The Open decision must be settled with the user before Phase 7; if it is still marked open
 when you reach it, stop and ask.
 
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
@@ -159,26 +159,21 @@ Final.
    nobody may type. Ban-lists expire when a rename lands; invariants do not. Checks live with the suites
    that already police shape, not in a new top-level guard.
 
-8. **The conventions are written in the root `CLAUDE.md`,** in a `## Naming` section, because that is the
+8. **Pack-facing types are renamed like everything else.** `StepCompileContext`, `StepValidationContext`,
+   `StepDecompileContext`, `ExecutionContext`, `SeedHookContext`, `SeederContext` and `CompilationContext`
+   are exported from `@abuddy/sdk` and appear in `etc/*.api.md` and default-setup's facade. No release has
+   shipped them to anyone, so there is no surface to preserve: rename them, run `api:update` and
+   `facade:update`, and follow the rename into the CLI's scaffold templates and the fixture packs. Carving
+   out the published surface would leave `Context` meaning two things, which is the defect this goal
+   exists to remove.
+
+9. **The conventions are written in the root `CLAUDE.md`,** in a `## Naming` section, because that is the
    file every agent loads before writing code. The section states each rule in one line and names its check
    where one exists.
 
-## Open decisions (settle with the user before Phase 4)
+## Open decisions (settle with the user before Phase 7)
 
-1. **Pack-facing `*Context` types.** `StepCompileContext`, `StepValidationContext`, `StepDecompileContext`,
-   `ExecutionContext`, `SeedHookContext`, `SeederContext` and `CompilationContext` are exported from
-   `@abuddy/sdk` and appear in `etc/*.api.md` and in default-setup's facade. Renaming them is a published
-   API change that external pack authors would have to follow.
-   - **A. Rename them with everything else.** One vocabulary, no exception carved for the published
-     surface. Costs `api:update`, `facade:update`, and a rename in the CLI's scaffold templates and the
-     fixture packs. Consistent with the repo's no-backward-compatibility rule and the fact that no release
-     has shipped them to anyone.
-   - **B. Rename only host-internal ones, and leave the SDK's.** Smaller diff and no published-API churn,
-     at the cost of `Context` meaning two things again — which is the defect this goal exists to remove,
-     now with an exception that has to be remembered.
-   — *open*
-
-2. **How far to take `source` (Phase 7).** Its senses are not equally worth changing, and the pack-naming
+1. **How far to take `source` (Phase 7).** Its senses are not equally worth changing, and the pack-naming
    goal deferred the two most entangled.
    - **A. Enumerate every sense, then rename only those inside this repo's own vocabulary** — the install
      origin, the seed record's `sourceHash`, `sourceEntity`, `sourceTab` — leaving Vue Flow's
@@ -233,14 +228,13 @@ pass. Mutation: renaming one `find*` back to `get*` fails the spec, naming the f
 
 ### Phase 4 — `Context` names one thing
 
-- Reclassify the non-XState `*Context` types per Decision 3 and Open decision 1.
+- Reclassify the non-XState `*Context` types per Decision 3, the published ones included (Decision 8).
 - Qualify the 15 bare `Context` exports per Decision 4 — 14 in `packages/default-setup/src/features/code/`
   and `packages/api/src/core/router/context.ts:7`.
 - Add the invariant: no module exports a type named exactly `Context`.
 
 **Done when:** `Context` appears only as an XState machine's context or qualified by its owner; the
-invariant spec passes; `npm run api:update` and `npm run facade:check -w @app/default-setup` are green if
-Open decision 1 chose A. Mutation: exporting a bare `Context` from any module fails the spec.
+invariant spec passes; `npm run api:update` and `npm run facade:check -w @app/default-setup` are green. Mutation: exporting a bare `Context` from any module fails the spec.
 
 ### Phase 5 — `Info` goes, stages get named
 
@@ -264,15 +258,15 @@ Mutation: adding an `export interface FooInfo` anywhere under `packages/*/src` f
 
 ### Phase 7 — `source`
 
-Settle Open decision 2 first.
+Settle the Open decision first.
 
 - Enumerate every sense of `source` in the tree, with counts and an example path each, into a table in this
   doc's Outcome.
-- If Open decision 2 chose A, rename the senses inside this repo's own vocabulary, leaving `sourceHandle`,
+- If the decision was to rename, rename the senses inside this repo's own vocabulary, leaving `sourceHandle`,
   the logger's `source` and the `@abuddy/source` condition.
 
 **Done when:** the table exists; if A was chosen, the renamed senses are gone and the full check list is
-green. If B was chosen, this phase is the table alone and records that as its result.
+green. If the decision was to enumerate only, this phase is the table alone and records that as its result.
 
 ## Deferred
 
