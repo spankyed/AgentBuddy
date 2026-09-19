@@ -22,6 +22,7 @@ Host-only modules shared by the API, the renderer, the Electron main process, th
 | `./services` | `services/{index,app-data,trace-store,inference,secrets,filesystem}.ts` | `createHostRuntime(...)`. Only the five app-implemented services and the index (`tests/boundaries.spec.ts`) |
 | `./backup` | `backup/index.ts` | `exportDatabase(store, dir, { mediaPath })`, `importDatabase(store, path, mediaPath)`, `getBackupInfo`, `readBackup` |
 | `./database` | `database/{index,open,schema,layout,running}.ts` | A data dir's database opened outside the app (`abuddy db`), through the composition the API's boot uses (see Database) |
+| `./logs` | `logs.ts` | `appendCappedLine(dir, name, line)` and `LOG_FILE_MAX_BYTES`: the app's log files, rotated to `<name>.old` at 10 MB. electron-log caps only its own `main.log`; the four files the app appends beside it go through this |
 | `./app-state` | `app-state/index.ts` | `appState` (the one `AppState` row: `get`, `update`, `updatePackEntry`, the pack seed hash accessors), `HOST_ENTITY_TYPES`, `APP_STATE_ENTITY` |
 | `./fe` | `fe/pack-store.ts`, `fe/app-extensions.ts` | `createFePackRegistry()`: the renderer's registered pack frontends (`registerPackFE`, `unregisterPackFE`, `getRegisteredPlugins`, `getRegisteredDefaultPlugin`, `getAppExtension`, and the `FePackRegistryView` the SDK reads) |
 | `./build/discover` | `build/discover.ts` | `discoverBuiltInPacksForBuild`, used by the API tsup config and the renderer's Vite and Tailwind configs |

@@ -1,6 +1,5 @@
 import { EventEmitter } from 'events';
-import * as fs from 'fs';
-import * as path from 'path';
+import { appendCappedLine } from '@abuddy/host/logs';
 import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/core/router/events';
 import type { LogEvent } from '@abuddy/sdk/logger';
 import type { RootEvents } from '@abuddy/sdk/runtime';
@@ -8,17 +7,11 @@ import type { RootEvents } from '@abuddy/sdk/runtime';
 function appendAppEventLog(event: LogEvent) {
   const logDir = process.env.AGENTBUDDY_LOG_DIR;
   if (!logDir) return;
-
-  try {
-    fs.mkdirSync(logDir, { recursive: true });
-    fs.appendFileSync(path.join(logDir, 'app-events.log'), JSON.stringify({
-      timestamp: new Date().toISOString(),
-      startupId: process.env.AGENTBUDDY_STARTUP_ID,
-      ...event,
-    }) + '\n');
-  } catch {
-    // Logging must never break runtime event delivery.
-  }
+  appendCappedLine(logDir, 'app-events.log', JSON.stringify({
+    timestamp: new Date().toISOString(),
+    startupId: process.env.AGENTBUDDY_STARTUP_ID,
+    ...event,
+  }) + '\n');
 }
 
 /** The app's event bus: what the SDK binds as HostRuntime.transport, and the tRPC routers serve */

@@ -20,6 +20,7 @@
     "./bus": "./src/bus/index.ts",
     "./database": "./src/database/index.ts",
     "./fe": "./src/fe/index.ts",
+    "./logs": "./src/logs.ts",
     "./migrations": "./src/migrations/index.ts",
     "./packs": "./src/packs/index.ts",
     "./packs/dev-server": "./src/packs/dev-server.ts",

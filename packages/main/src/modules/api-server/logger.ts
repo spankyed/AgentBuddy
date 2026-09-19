@@ -2,9 +2,15 @@ import log from 'electron-log/main';
 import { app } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
+import { appendCappedLine } from '@abuddy/host/logs';
 
 // Match previous 10MB rotation limit
 log.transports.file.maxSize = 10 * 1024 * 1024;
+
+// Resolved on demand rather than when this module is imported, which happens before `initAppContext()`
+// can point the app at its own log directory. Without this a run given its own data dir still wrote to
+// the shared ~/Library/Logs/<appName>, and every Playwright worker appended to the same files.
+log.transports.file.resolvePathFn = (variables) => path.join(app.getPath('logs'), variables.fileName ?? 'main.log');
 
 const originalConsole = {
   log: console.log.bind(console),
@@ -77,36 +83,32 @@ function formatRendererArg(arg: unknown): string {
 }
 
 function appendStructuredLog(fileName: string, level: string, args: unknown[]): void {
-  try {
-    const logPath = log.transports.file.getFile().path;
-    const logDir = path.dirname(logPath);
-    fs.mkdirSync(logDir, { recursive: true });
-    fs.appendFileSync(path.join(logDir, fileName), JSON.stringify({
-      timestamp: new Date().toISOString(),
-      startupId: process.env.AGENTBUDDY_STARTUP_ID,
-      level,
-      message: args.map(formatRendererArg).join(' '),
-      args,
-    }) + '\n');
-  } catch {
-    // Logging must never break the app.
-  }
+  appendCappedLine(logDir(), fileName, JSON.stringify({
+    timestamp: new Date().toISOString(),
+    startupId: process.env.AGENTBUDDY_STARTUP_ID,
+    level,
+    message: args.map(formatRendererArg).join(' '),
+    args,
+  }) + '\n');
+}
+
+/** Where electron-log keeps its own file, which is where the app's other log files go too */
+function logDir(): string {
+  return path.dirname(log.transports.file.getFile().path);
 }
 
 export function getRendererLogPath(): string {
-  return path.join(path.dirname(log.transports.file.getFile().path), 'renderer.log');
+  return path.join(logDir(), 'renderer.log');
 }
 
 export function getAppEventsLogPath(): string {
-  return path.join(path.dirname(log.transports.file.getFile().path), 'app-events.log');
+  return path.join(logDir(), 'app-events.log');
 }
 
 export function logRenderer(level: 'debug' | 'info' | 'warn' | 'error', ...args: unknown[]): void {
   const timestamp = new Date().toISOString();
   const message = args.length > 0 ? args.map(formatRendererArg).join(' ') : '';
-  const line = `[${timestamp}] ${level.toUpperCase()}: ${message}\n`;
-  fs.mkdirSync(path.dirname(getRendererLogPath()), { recursive: true });
-  fs.appendFileSync(getRendererLogPath(), line);
+  appendCappedLine(logDir(), 'renderer.log', `[${timestamp}] ${level.toUpperCase()}: ${message}\n`);
   appendStructuredLog('renderer.jsonl', level, args);
 }
 

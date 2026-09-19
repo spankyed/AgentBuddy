@@ -63,6 +63,9 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   ['@abuddy/host/backup', 'host backups, reached by packs through services.appData'],
   // The abuddy dev server marker: the CLI writes it and Electron main's pack:// handler reads it; packs never require it
   ['@abuddy/host/packs/dev-server', 'dev server marker for the CLI and the pack:// handler'],
+  // The app's log files: Electron main and the API append to them; a pack logs through createLogger, which
+  // reaches the same files as a log event, redacted and capped like everything else the app writes
+  ['@abuddy/host/logs', "the app's log files, appended to by main and the API"],
   // Metadata: tooling reads them, code never requires them.
   ['@abuddy/sdk/package.json', 'package metadata, not code'],
   ['@abuddy/ears/package.json', 'package metadata, not code'],
