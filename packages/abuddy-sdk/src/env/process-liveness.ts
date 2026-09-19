@@ -54,42 +54,25 @@ export function _writtenAt(file: string): number | null {
  * and the record dates from this boot. A record from an earlier boot names a pid since reassigned.
  *
  * Pass only a record this machine wrote. `os.uptime()` is this machine's boot and a foreign mtime is on
- * another clock, so a caller that can tell whose record it is — the write lock's `machine`, the instance
- * lock's hostname — must check that first.
+ * another clock, so a caller that can tell whose record it is must check that first.
  *
- * ## The two ways this answer can be wrong
+ * ## Which predicate a caller wants
  *
- * A **false held** says a dead holder is alive. The record outlives its writer (SIGKILL, power loss) and
- * the pid it names now belongs to something unrelated. For a lock this refuses the app or the tools, which
- * is loud and costs one `rm` — the error names the file to delete.
+ * The boot bound clears a record whose pid this boot reassigned — a **false held**, where a dead writer
+ * reads as alive. It buys that with a **false free**, where a live writer reads as dead: `bootTime()` is
+ * `Date.now() - os.uptime()`, so it moves with the wall clock, and a forward step of `X` makes a record
+ * written at uptime `u` look pre-boot whenever `X > u`.
  *
- * A **false free** says a live holder is gone, and for a lock that means two writers on the same database.
- * Silent, and it costs data. This is the direction to protect.
+ * Use this where a false free is harmless — staging recovery restores a directory that did not need it,
+ * `readApiEndpoint` reports an API that has gone. Use `_processIsRunning` alone where a false free costs
+ * data: the database write lock and the app's instance lock both guard against two writers, and there a
+ * false held is the better failure, being loud and one `rm` against an error that names the file.
  *
- * ## Why the boot bound is here, and what it is worth
- *
- * Without it, only the pid is consulted, and pids recycle. That recycling is not rare and is not only a
- * reboot thing: a pid space of ~100k against a few thousand live processes wraps within a single long
- * uptime. The bound catches only the reboot-crossing half of that — a record from a previous boot — and a
- * within-boot reuse reads the same with or without it.
- *
- * So the bound buys a partial reduction in the *likelier, milder* failure, and it buys it with a small
- * amount of the *rarer, severe* one: `Date.now() - os.uptime()` moves with the wall clock, so a forward
- * step of `X` makes a record written at uptime `u` look pre-boot whenever `X > u`, and a live holder then
- * reads as gone. Reaching it needs a step of hours taken while a holder is live and shortly after boot,
- * which is why it is accepted rather than removed.
- *
- * ## The sound alternative, if this ever bites
- *
- * Record `os.uptime()` alongside the record and treat it as a previous boot's iff the current uptime is
- * *lower*. Uptime is monotonic and clock-independent, so that test cannot fire spuriously: no false free,
- * ever. It is sound but incomplete — a record written early in the previous boot and read late in this one
- * escapes it, falling back to the pid alone — which is a strictly better trade than the one here, at the
- * cost of a field in every record's format. Per-platform start time (`/proc/<pid>/stat`, `ps -o lstart`)
- * is the exact answer and the most work.
- *
- * Do not "simplify" the bound away without deciding which failure you are choosing. Removing it does not
- * make the code safer; it trades the rare severe failure for more of the common mild one.
+ * Neither is exact. A pid space of ~100k against a few thousand live processes recycles within one long
+ * uptime, which the bound cannot see either. The exact answer is the holder's start time
+ * (`/proc/<pid>/stat`, `ps -o lstart`), read per platform; the answer with no staleness at all is an OS
+ * advisory lock (`flock`/`LockFileEx`), which the kernel releases on process death. Reach for those if a
+ * record's staleness ever has to be settled rather than estimated.
  * @internal
  */
 export function _writerIsRunning(pid: number, writtenAtMs: number): boolean {

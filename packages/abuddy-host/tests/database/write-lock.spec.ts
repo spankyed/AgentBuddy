@@ -2,7 +2,9 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
+import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import { assertNoDatabaseWriter, findDatabaseWriter, holdDatabaseWriteLock } from '../../src/database/write-lock.ts';
 import { removeTempDirs, tempDir } from './fixtures.ts';
@@ -20,6 +22,20 @@ const hold = (dir: string, what = 'abuddy db reset') => {
 };
 
 const lockFile = (dir: string) => path.join(dir, 'db-write.lock');
+
+/** The module under test, loaded by a child process that holds a real lock and waits to be signalled */
+const SRC = path.resolve(import.meta.dirname, '../../src/database/write-lock.ts');
+/** The child is plain node, so it needs the TypeScript loader this suite already runs under */
+const TSX = createRequire(import.meta.url).resolve('tsx/esm');
+// `node -e` has no script slot, so the arguments start at argv[1]
+const HOLD_UNTIL_SIGNALLED =
+  "const [, dir, src] = process.argv;" +
+  "import(src).then(({ holdDatabaseWriteLock }) => { holdDatabaseWriteLock(dir, 'abuddy db import'); setInterval(() => {}, 1000); });";
+
+/** Polls until `done`, so the test never outruns the child process */
+async function waitFor(done: () => boolean): Promise<void> {
+  for (let i = 0; i < 200 && !done(); i++) await new Promise((r) => setTimeout(r, 25));
+}
 /** A pid no process has any more */
 const exitedPid = () => spawnSync(process.execPath, ['-e', '']).pid!;
 
@@ -94,17 +110,20 @@ describe('the database write lock', () => {
     }
   });
 
-  // A lock from a previous boot names a pid this boot reassigned. Without the bound it reads as held by
-  // whatever took that number, and the app refuses to start for as long as the file is there.
-  it('ignores a lock that predates this boot, even when its pid is live now', () => {
+  // Node runs no `exit` handler for a signal, so without the interrupt handlers Ctrl-C on any `abuddy db`
+  // command left the lock behind and the next reader had to work out that its holder was gone. Only SIGKILL
+  // can still do that, and nothing can catch it.
+  it.each(['SIGINT', 'SIGTERM', 'SIGHUP'] as const)('releases the lock when the tool is interrupted with %s', async (signal) => {
     const dir = tempDir('write-lock-');
-    fs.writeFileSync(lockFile(dir), JSON.stringify({ pid: process.pid, machine: os.hostname(), what: 'abuddy db import' }));
-    expect(findDatabaseWriter(dir)).toBe(`abuddy db import (pid ${process.pid})`);
-
-    const before = new Date(Date.now() - os.uptime() * 1000 - 60_000);
-    fs.utimesSync(lockFile(dir), before, before);
-    expect(findDatabaseWriter(dir)).toBeNull();
-    expect(() => hold(dir)).not.toThrow();
+    const holder = spawn(process.execPath, ['--import', pathToFileURL(TSX).href, '-e', HOLD_UNTIL_SIGNALLED, dir, SRC], { stdio: 'ignore' });
+    try {
+      await waitFor(() => fs.existsSync(lockFile(dir)));
+      process.kill(holder.pid!, signal);
+      await waitFor(() => !fs.existsSync(lockFile(dir)));
+    } finally {
+      holder.kill('SIGKILL');
+    }
+    expect(fs.existsSync(lockFile(dir))).toBe(false);
   });
 
   it("counts a lock from another machine, whose process it can't check", () => {

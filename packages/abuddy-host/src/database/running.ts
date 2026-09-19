@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { readApiEndpoint, type AppContext } from '@abuddy/sdk/env';
-import { _writerIsRunning, _writtenAt } from '@abuddy/sdk/env';
+import { _processIsRunning } from '@abuddy/sdk/env';
 
 /** Chromium's instance lock in the data dir: a symlink to `<hostname>-<pid>` */
 const SINGLETON_LOCK = 'SingletonLock';
@@ -28,9 +28,8 @@ function liveLock(userDataDir: string): string | null {
   const [host, pid] = [target.slice(0, dash), Number(target.slice(dash + 1))];
   if (dash <= 0 || !Number.isInteger(pid) || pid <= 0) return `${lock} is held (${target})`;
   if (host !== os.hostname()) return `${lock} is held by a process on ${host}`;
-  const at = _writtenAt(lock);
-  if (at === null) return null;
-  return _writerIsRunning(pid, at) ? `process ${pid} holds ${lock}` : null;
+  // The pid alone, as with the write lock: reading a live app as gone lets a tool write underneath it
+  return _processIsRunning(pid) ? `process ${pid} holds ${lock}` : null;
 }
 
 /**

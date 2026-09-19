@@ -77,10 +77,10 @@ describe('findRunningApp', () => {
   });
 });
 
-// After a reboot, a pid is very likely some unrelated process, so a file a crashed run left behind names a
-// live pid and reads as "an app is running" forever — and the tools that ask refuse to touch the data dir.
-// The boot epoch settles it: nothing a running app wrote can predate the boot it is running in.
-describe('findRunningApp, on files left by a previous boot', () => {
+// `readApiEndpoint` bounds its answer by the boot that wrote the port file, where a wrong "nothing is
+// running" costs a connection error to a dead port. The instance lock does not: there a wrong answer lets a
+// tool write while the app has the database open, so its pid is taken at face value.
+describe('findRunningApp, on a port file left by a previous boot', () => {
   it('ignores a port file that predates this boot, whatever pid it names', () => {
     const ctx = context();
     publishApi(ctx.userDataDir);
@@ -90,12 +90,4 @@ describe('findRunningApp, on files left by a previous boot', () => {
     expect(findRunningApp(ctx)).toBeNull();
   });
 
-  it('ignores an instance lock that predates this boot, whatever pid it names', () => {
-    const ctx = context();
-    lock(ctx.userDataDir, `${os.hostname()}-${process.pid}`);
-    expect(findRunningApp(ctx)).toMatch(/holds/);
-
-    backdateToPreviousBoot(path.join(ctx.userDataDir, 'SingletonLock'));
-    expect(findRunningApp(ctx)).toBeNull();
-  });
 });
