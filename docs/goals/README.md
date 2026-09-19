@@ -2,7 +2,7 @@
 
 A goal doc is a plan an agent can pick up later and carry out without the conversation that produced it. It holds the prompt to run it with, the facts behind the plan, the decisions already made, the work in phases with checks, and the rules for doing it. When the work is done, the doc records what happened and moves to the archive.
 
-This file describes how to write one. The best current examples are [`goal-package-boundaries.md`](goal-package-boundaries.md) (a finished goal with its outcome) and [`goal-lmdb-only.md`](goal-lmdb-only.md) (a goal with spike results and open decisions).
+This file describes how to write one. The best current examples are [`goal-package-boundaries.md`](../archive/goals/goal-package-boundaries.md) (a finished goal with its outcome) and [`goal-lmdb-only.md`](goal-lmdb-only.md) (a goal with spike results and open decisions).
 
 ## Where they live
 
