@@ -38,9 +38,6 @@ export function appDataDirFor(env: AppEnv): string;
 // @public (undocumented)
 export type AppEnv = 'production' | 'beta' | 'development' | 'test';
 
-// @internal
-export function _bootTime(): number;
-
 // @public
 export function getAppVersion(): string;
 
@@ -52,11 +49,16 @@ export function _inferElectronAppEnv(input: {
     envVar: string | undefined;
 }): AppEnv;
 
+// @internal
+export type _Liveness = {
+    ifUnsure: 'held';
+} | {
+    ifUnsure: 'free';
+    writtenAtMs: number;
+};
+
 // @public (undocumented)
 export function parseAppEnv(value: string | undefined): AppEnv | undefined;
-
-// @internal
-export function _processIsRunning(pid: number): boolean;
 
 // @public
 export function readApiEndpoint(apiPortFile: string): ApiEndpoint | null;
@@ -71,7 +73,7 @@ export function resolveAppContext(input?: {
 }): AppContext;
 
 // @internal
-export function _writerIsRunning(pid: number, writtenAtMs: number): boolean;
+export function _writerIsRunning(pid: number, policy: _Liveness): boolean;
 
 // @internal
 export function _writtenAt(file: string): number | null;

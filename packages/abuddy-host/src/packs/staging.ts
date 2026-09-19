@@ -28,7 +28,8 @@ function parseStagingDir(dir: string, name: string): StagingEntry | null {
   const owned = OWNED_STAGING_DIR.exec(name);
   if (!owned) return null;
   const pid = Number(owned[3]);
-  const stale = pid !== process.pid && !_writerIsRunning(pid, fs.statSync(path.join(dir, name)).mtimeMs);
+  const stale = pid !== process.pid
+    && !_writerIsRunning(pid, { ifUnsure: 'free', writtenAtMs: fs.statSync(path.join(dir, name)).mtimeMs });
   return { name, id: owned[1], kind: owned[2] as StagingKind, stale };
 }
 

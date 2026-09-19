@@ -4,7 +4,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { _processIsRunning } from '@abuddy/sdk/env';
+import { _writerIsRunning } from '@abuddy/sdk/env';
 
 /**
  * What the file holds. `pid` answers the question the lock exists to ask, "is the holder still running";
@@ -57,7 +57,7 @@ export function findDatabaseWriter(userDataDir: string): string | null {
   const held = readLock(file);
   if (!held) return "a tool whose lock can't be read";
   if (held.machine !== os.hostname()) return `${held.what} on ${held.machine}`;
-  return _processIsRunning(held.pid) ? `${held.what} (pid ${held.pid})` : null;
+  return _writerIsRunning(held.pid, { ifUnsure: 'held' }) ? `${held.what} (pid ${held.pid})` : null;
 }
 
 /** Where the lock is, and that removing it is the way out when no tool is really running */
