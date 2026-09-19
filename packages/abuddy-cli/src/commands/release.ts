@@ -372,18 +372,17 @@ export async function runRelease(root: string, options: ReleaseOptions): Promise
   }
 
   const releaseDir = path.join(root, '.abuddy', 'release');
-  const packRelease = async (packVersion: string) => {
+  const packRelease = async () => {
     fs.rmSync(releaseDir, { recursive: true, force: true });
-    const packed = await buildPackArchive(root, releaseDir, { version: packVersion });
+    const packed = await buildPackArchive(root, releaseDir);
     console.log(`\nPack: ${packed.file}\n  sha256: ${packed.sha256}\n  files: ${Object.keys(readPackIntegrity(path.join(root, '.abuddy', 'staged', manifest.id)).files).length}`);
     return packed;
   };
 
   if (options.dryRun) {
-    // At the version on disk, not the next one: a dry run writes no version files, so overriding the
-    // staged abuddy.json would produce an archive claiming a version the snapshot built beside it
-    // doesn't carry. What the dry run checks is that the pack builds, stages and verifies.
-    const packed = await packRelease(manifest.version);
+    // A dry run writes no version files, so this packs the version on disk. What it checks is that the
+    // pack builds, stages and verifies.
+    const packed = await packRelease();
     console.log(`\n[dry-run] Packed v${manifest.version}, the version on disk; a real release bumps to ${version} first.`);
     console.log(`[dry-run] Would commit version files, tag v${version} and push${options.local ? ', then publish the GitHub release locally' : ' (the release workflow publishes from the tag)'}.`);
     return { version, archive: packed.file };
@@ -397,7 +396,7 @@ export async function runRelease(root: string, options: ReleaseOptions): Promise
   try {
     // After the commit, so integrity.json's source.commit is the tagged commit. Which is also why the
     // commit can't be moved later to close the window this resume path exists for.
-    const packed = await packRelease(version);
+    const packed = await packRelease();
     if (!existing.tagged) git('tag', '-a', `v${version}`, '-m', `v${version}`);
     git('push', '--follow-tags', 'origin', 'HEAD');
 

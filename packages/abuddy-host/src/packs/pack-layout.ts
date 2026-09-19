@@ -104,12 +104,15 @@ export function packFrontendFiles(layoutDir: string): { entry?: string; styles?:
 export function stagePack(
   packRoot: string,
   stageDir: string,
-  options: { sdkVersion?: string; source?: PackIntegrity['source']; version?: string } = {},
+  options: { sdkVersion?: string; source?: PackIntegrity['source'] } = {},
 ): PackIntegrity {
   if (!hasBuiltPackSections(packRoot)) {
     throw new Error(`Pack at ${packRoot} is not built (missing dist/${PACK_LAYOUT.runtimeEntry} or dist/${PACK_LAYOUT.snapshot}). Run "abuddy build" first.`);
   }
-  const source: PackManifest = JSON.parse(fs.readFileSync(path.join(packRoot, PACK_LAYOUT.manifest), 'utf-8'));
+  // The built manifest, staged as it is. A pack's version reaches an archive by being written before the
+  // build, never by being substituted here: dist/types/snapshot.json is a build artifact copied verbatim,
+  // and a dependent range-checks against the version in it while the app reads abuddy.json.
+  const manifest: PackManifest = JSON.parse(fs.readFileSync(path.join(packRoot, PACK_LAYOUT.manifest), 'utf-8'));
 
   fs.rmSync(stageDir, { recursive: true, force: true });
   fs.mkdirSync(stageDir, { recursive: true });
@@ -123,7 +126,6 @@ export function stagePack(
     });
   }
 
-  const manifest: PackManifest = options.version ? { ...source, version: options.version } : source;
   fs.writeFileSync(path.join(stageDir, PACK_LAYOUT.manifest), JSON.stringify(manifest, null, 2) + '\n');
 
   const files: Record<string, string> = {};

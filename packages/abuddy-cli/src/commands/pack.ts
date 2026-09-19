@@ -36,17 +36,13 @@ export interface PackResult {
   integrity: PackIntegrity;
 }
 
-export async function buildPackArchive(root: string, outDir: string, options: { version?: string } = {}): Promise<PackResult> {
+export async function buildPackArchive(root: string, outDir: string): Promise<PackResult> {
   const manifest = readValidManifest(root);
   if (manifest.builtIn) {
     throw new Error('Built-in packs ship inside the app and are not packed.');
   }
   const stageDir = path.join(root, '.abuddy', 'staged', manifest.id);
-  stagePack(root, stageDir, {
-    sdkVersion: sdkVersion(),
-    source: gitSource(root),
-    version: options.version,
-  });
+  stagePack(root, stageDir, { sdkVersion: sdkVersion(), source: gitSource(root) });
   const integrity = verifyPack(stageDir);
   const archive = await createPackArchive(stageDir, outDir);
   return { ...archive, integrity };

@@ -72,6 +72,24 @@ describe('stagePack', () => {
     fs.rmSync(path.join(root, 'dist', 'runtime'), { recursive: true });
     expect(() => stagePack(root, path.join(tmp, 'stage'))).toThrow(/not built/);
   });
+
+  // A dependent range-checks the version in the snapshot (fetch-deps' inRange) while the app and the
+  // installer read abuddy.json, so a staged pack naming two versions is two answers to "which version
+  // is this". Staging the built manifest as it is keeps there being one.
+  it('stages one version: the built manifest, which integrity and the built snapshot agree on', () => {
+    const root = builtPack();
+    fs.writeFileSync(
+      path.join(root, 'dist', 'types', 'snapshot.json'),
+      JSON.stringify({ types: {}, manifest: { id: 'demo-pack', version: '1.2.3' } }),
+    );
+    const stage = path.join(tmp, 'stage');
+
+    const integrity = stagePack(root, stage);
+
+    const staged = (rel: string) => JSON.parse(fs.readFileSync(path.join(stage, rel), 'utf-8'));
+    expect([integrity.version, staged('abuddy.json').version, staged('types/snapshot.json').manifest.version])
+      .toEqual(['1.2.3', '1.2.3', '1.2.3']);
+  });
 });
 
 describe('packFrontendFiles', () => {
