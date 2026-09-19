@@ -1,7 +1,7 @@
 import { readFileSync, existsSync, statSync } from 'fs';
 import { HOST_PLUGIN_IDS as SDK_HOST_PLUGIN_IDS } from '../events/index.ts';
 import { extname, join } from 'path';
-import { _dependencyCommands, _dependencyPlugins, PACK_TYPES_FORMAT, type PackManifest, type PackFeatureEntry, type PackTypeManifest, type PackSnapshot, type StepEntry } from './manifest.ts';
+import { _mergeProvenance, PACK_TYPES_FORMAT, type PackManifest, type PackFeatureEntry, type PackProvenance, type PackTypeManifest, type PackSnapshot, type ProvenanceKind, type StepEntry } from './manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
 import { formatEntities } from './seeds/records.ts';
@@ -22,8 +22,14 @@ export function mergeRegistries(
   ownId: string,
   manifest: PackManifest,
   depManifests: Map<string, PackTypeManifest>,
-  /** Per dependency, which pack owns each name it surfaces (its snapshot's `typeOwners`) */
-  depOwners: Map<string, { entities?: Record<string, string>; relKinds?: Record<string, string> }> = new Map(),
+  /**
+   * Per dependency, which pack declares each name it surfaces — its snapshot's `provenance`.
+   *
+   * Per dependency, not merged across them: that distinction is the whole check. Two dependencies
+   * naming the same ancestor for a name is a diamond and fine; two naming different packs is a real
+   * collision. A single merged record answers "who declares this" and cannot tell those apart.
+   */
+  depProvenance: Map<string, PackProvenance> = new Map(),
 ) {
   function merge(own: Record<string, string> = {}, kind: string) {
     // The SDK's own entities and relation kinds are in every pack, and no pack declares them
@@ -47,14 +53,12 @@ export function mergeRegistries(
      * dependencies' names too, so the same ancestor name arrives through every path that reaches it;
      * attributing it to the dependency it came through makes a diamond look like a collision.
      */
-    const declaredBy = (via: string, key: string): string => {
-      if (via === ownId) return ownId;
-      const owners = kind === 'entity' ? depOwners.get(via)?.entities : depOwners.get(via)?.relKinds;
-      return owners?.[key] ?? via;
-    };
+    const provenanceKind: ProvenanceKind = kind === 'entity' ? 'entities' : 'relKinds';
+    const declaringPack = (via: string, key: string): string =>
+      via === ownId ? ownId : depProvenance.get(via)?.[provenanceKind]?.[key] ?? via;
     for (const [via, entries] of sources) {
       for (const [key, value] of Object.entries(entries)) {
-        const source = declaredBy(via, key);
+        const source = declaringPack(via, key);
         const existing = map.get(key)?.source ?? valueSources.get(value);
         if (existing !== undefined && existing !== source) {
           errors.push(`${kind} "${key}" declared by both "${existing}" and "${source}"`);
@@ -479,9 +483,9 @@ export function generatePackFiles(
    */
   function declaredCommands(): NonNullable<PackManifest['commands']> {
     const commands = manifest.commands ?? [];
-    const taken = _dependencyCommands([...depSnapshots]);
+    const taken = _mergeProvenance('commands', [...depSnapshots]);
     for (const { name } of commands) {
-      const owner = taken.find((command) => command.name === name)?.packId;
+      const owner = taken[name];
       if (owner) {
         throw new Error(`Command "${name}" is declared by "${owner}", which this pack depends on: the app refuses a pack whose command another pack declares, so rename it in abuddy.json \`commands\``);
       }
@@ -835,8 +839,8 @@ ${regProps.join('\n')}
       depTypes = new Map<string, PackTypeManifest>();
       for (const [id, snap] of depSnapshots) depTypes.set(id, snap.types);
     }
-    const depOwners = new Map([...depSnapshots].map(([id, snap]) => [id, snap.typeOwners ?? {}] as const));
-    return mergeRegistries(manifest.id, manifest, depTypes, depOwners);
+    const depProvenance = new Map([...depSnapshots].map(([id, snap]) => [id, snap.provenance ?? {}] as const));
+    return mergeRegistries(manifest.id, manifest, depTypes, depProvenance);
   }
 
   function generateEars(): string {
@@ -963,9 +967,7 @@ ${busIdEntries},
     const depReceivers = new Map([...depSnapshots].map(([depId, snap]) => [depId, receivingPlugins(snap.manifest)] as const));
     /** Plugin id → the pack owning it, for plugins this pack reaches only through a dependency */
     const transitivePluginOwners = new Map(
-      _dependencyPlugins([...depSnapshots])
-        .filter(({ id }) => !depPluginIds.has(id))
-        .map(({ id, packId }) => [id, packId] as const),
+      Object.entries(_mergeProvenance('plugins', [...depSnapshots])).filter(([id]) => !depPluginIds.has(id)),
     );
 
     const receivers = new Map<string, string[]>();

@@ -1,3 +1,7 @@
+> **Absorbed** (2026-09-18) into [goal-dependency-provenance](goal-dependency-provenance.md), whose Phases 3 and 4
+> are this goal: the four-pack diamond and the facade-missing-an-export case both landed there, in
+> `packages/abuddy-cli/tests/build/dependency-graph.spec.ts`. Kept for the reasoning behind them.
+
 # Goal: prove a diamond dependency builds, and that a facade missing an export fails
 
 > **Written in session** `36f122d9-3a1e-40ef-988d-40b2574fc098` (Claude Code, 2026-09-18). Resume it with `claude -r 36f122d9-3a1e-40ef-988d-40b2574fc098`.
