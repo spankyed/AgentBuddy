@@ -1,9 +1,9 @@
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
-import * as os from 'node:os';
 import * as path from 'node:path';
 import { recordHostVersion } from './host-info.ts';
 import { readInstalledPacksRecord } from './installed-packs.ts';
+import { writerIsRunning } from '../process-liveness.ts';
 
 export type StagingKind = 'installing' | 'previous' | 'publishing';
 
@@ -18,31 +18,17 @@ export function stagingDirName(id: string, kind: StagingKind): string {
   return `.${id}.${kind}-${process.pid}-${crypto.randomBytes(4).toString('hex')}`;
 }
 
-/** When this machine booted: nothing written before it belongs to a running process, whatever its PID says */
-const bootTime = () => Date.now() - os.uptime() * 1000;
-
-function processIsRunning(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (err) {
-    // EPERM: the process exists but belongs to someone else
-    return (err as NodeJS.ErrnoException).code === 'EPERM';
-  }
-}
-
 interface StagingEntry { name: string; id: string; kind: StagingKind; stale: boolean }
 
 /**
  * A staging dir and whether the process that made it is gone: its PID isn't running, or the dir predates
  * this boot, which a later process reusing that PID would otherwise hide.
  */
-function parseStagingDir(dir: string, name: string, bootedAt: number): StagingEntry | null {
+function parseStagingDir(dir: string, name: string): StagingEntry | null {
   const owned = OWNED_STAGING_DIR.exec(name);
   if (!owned) return null;
   const pid = Number(owned[3]);
-  const fromBeforeBoot = fs.statSync(path.join(dir, name)).mtimeMs < bootedAt;
-  const stale = pid !== process.pid && (fromBeforeBoot || !processIsRunning(pid));
+  const stale = pid !== process.pid && !writerIsRunning(pid, fs.statSync(path.join(dir, name)).mtimeMs);
   return { name, id: owned[1], kind: owned[2] as StagingKind, stale };
 }
 
@@ -76,10 +62,9 @@ export function recoverStagingDirs(dir: string, installedIds?: ReadonlySet<strin
   }
 
   const entries: StagingEntry[] = [];
-  const bootedAt = bootTime();
   for (const name of names) {
     try {
-      const entry = parseStagingDir(dir, name, bootedAt);
+      const entry = parseStagingDir(dir, name);
       if (entry?.stale) entries.push(entry);
     } catch (err) {
       result.failed.push({ name, error: String(err) });

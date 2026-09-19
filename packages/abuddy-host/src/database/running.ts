@@ -4,24 +4,19 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { readApiEndpoint, type AppContext } from '@abuddy/sdk/env';
+import { writerIsRunning, writtenAt } from '../process-liveness.ts';
 
 /** Chromium's instance lock in the data dir: a symlink to `<hostname>-<pid>` */
 const SINGLETON_LOCK = 'SingletonLock';
 
-/** Whether a process with this id exists (one another user owns counts) */
-function processExists(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code !== 'ESRCH';
-  }
-}
-
 /** The API this data dir's port file names, while its process is running */
 function liveApi(apiPortFile: string): string | null {
   const endpoint = readApiEndpoint(apiPortFile);
-  return endpoint && `its API is running on port ${endpoint.port} (pid ${endpoint.pid})`;
+  if (!endpoint) return null;
+  // A running app wrote its port file this boot; one from an earlier boot names a pid since reassigned
+  const at = writtenAt(apiPortFile);
+  if (at === null || !writerIsRunning(endpoint.pid, at)) return null;
+  return `its API is running on port ${endpoint.port} (pid ${endpoint.pid})`;
 }
 
 /** The instance lock, when a live process holds it (or a process on another host, which can't be checked) */
@@ -37,7 +32,9 @@ function liveLock(userDataDir: string): string | null {
   const [host, pid] = [target.slice(0, dash), Number(target.slice(dash + 1))];
   if (dash <= 0 || !Number.isInteger(pid) || pid <= 0) return `${lock} is held (${target})`;
   if (host !== os.hostname()) return `${lock} is held by a process on ${host}`;
-  return processExists(pid) ? `process ${pid} holds ${lock}` : null;
+  const at = writtenAt(lock);
+  if (at === null) return null;
+  return writerIsRunning(pid, at) ? `process ${pid} holds ${lock}` : null;
 }
 
 /**

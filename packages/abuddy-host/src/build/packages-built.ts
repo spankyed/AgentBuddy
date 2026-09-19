@@ -18,6 +18,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { writerIsRunning, writtenAt } from '../process-liveness.ts';
 import { fileURLToPath } from 'node:url';
 
 /**
@@ -208,17 +209,13 @@ export function stalePackageUnits(): StaleUnit[] {
 export const staleMessage = (stale: readonly StaleUnit[]): string =>
   stale.map(({ workspace, reason }) => `  ${workspace}: ${reason}`).join('\n');
 
-/** Whether a process still exists (EPERM means it does, under another user) */
-function alive(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (err) {
-    return (err as NodeJS.ErrnoException).code === 'EPERM';
-  }
-}
-
 interface LockHolder { pid: number; label: string; startedAt: string }
+
+/** Whether the build that took the lock is still running: its pid, bounded by the boot that wrote the file */
+function holderIsRunning(file: string, holder: LockHolder): boolean {
+  const at = writtenAt(file);
+  return at !== null && writerIsRunning(holder.pid, at);
+}
 
 /**
  * The build running right now, if one is. A reader of the stamps needs this: a build removes each stamp
@@ -227,7 +224,7 @@ interface LockHolder { pid: number; label: string; startedAt: string }
  */
 export function runningPackageBuild(file = LOCK_FILE): { pid: number; label: string; startedAt: string } | undefined {
   const holder = readLock(file);
-  return holder && alive(holder.pid) ? holder : undefined;
+  return holder && holderIsRunning(file, holder) ? holder : undefined;
 }
 
 function readLock(file: string): LockHolder | null {
@@ -256,7 +253,7 @@ export async function withBuildLock<T>(label: string, run: () => T | Promise<T>,
       } catch (err) {
         if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
         const holder = readLock(file);
-        if (attempt > 0 || holder === null || alive(holder.pid)) {
+        if (attempt > 0 || holder === null || holderIsRunning(file, holder)) {
           const who = holder === null ? 'an unreadable lock file' : `pid ${holder.pid} (${holder.label}, started ${holder.startedAt})`;
           throw new Error(`another package build holds ${path.relative(REPO_ROOT, file)}: ${who}. Wait for it to finish, then run this again.`);
         }

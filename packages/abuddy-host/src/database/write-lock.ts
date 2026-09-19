@@ -4,6 +4,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { writerIsRunning, writtenAt } from '../process-liveness.ts';
 
 /**
  * What a reader may find in the file. `pid` is the authority: it is the only field that answers the question
@@ -30,16 +31,6 @@ type WrittenLock = Required<LockFile>;
 
 const lockFile = (userDataDir: string) => path.join(userDataDir, 'db-write.lock');
 
-/** Whether a process with this id exists (one another user owns counts) */
-function processExists(pid: number): boolean {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (error) {
-    return (error as NodeJS.ErrnoException).code !== 'ESRCH';
-  }
-}
-
 function readLock(file: string): LockFile | null {
   try {
     const held = JSON.parse(fs.readFileSync(file, 'utf-8')) as Partial<LockFile>;
@@ -58,9 +49,10 @@ function readLock(file: string): LockFile | null {
 
 /**
  * What a tool is changing in this data dir's database right now, or `null` when nothing is: a lock whose process has
- * exited doesn't count. Two cases can't be resolved and count as held: a lock with no readable pid, and one
- * naming another machine, whose pid means nothing here. A lock naming no machine is settled by its pid,
- * which is the best answer available and better than refusing forever.
+ * exited doesn't count, nor does one left by a previous boot, whose pid this boot has reassigned. Two cases
+ * can't be resolved and count as held: a lock with no readable pid, and one naming another machine, whose
+ * pid means nothing here. A lock naming no machine is settled by its pid, which is the best answer
+ * available and better than refusing forever.
  */
 export function findDatabaseWriter(userDataDir: string): string | null {
   const file = lockFile(userDataDir);
@@ -68,7 +60,10 @@ export function findDatabaseWriter(userDataDir: string): string | null {
   const held = readLock(file);
   if (!held) return "a tool whose lock can't be read";
   if (held.machine !== undefined && held.machine !== os.hostname()) return `${held.what} on ${held.machine}`;
-  return processExists(held.pid) ? `${held.what} (pid ${held.pid})` : null;
+  // A lock from a previous boot names a pid this boot reassigned, so the pid alone can't settle it
+  const at = writtenAt(file);
+  if (at === null) return null;
+  return writerIsRunning(held.pid, at) ? `${held.what} (pid ${held.pid})` : null;
 }
 
 /** Where the lock is, and that removing it is the way out when no tool is really running */
