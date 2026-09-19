@@ -12,7 +12,7 @@ import { packFrontendFiles } from '../pack-layout.ts';
 import { checkForUpdates } from '../pack-updater.ts';
 import { teardownPack, activatePack } from './lifecycle.ts';
 import { activationProblem } from './activation-outcome.ts';
-import { getBuiltInPackInfos } from './loaded-packs.ts';
+import { getBuiltInPackInfos, getLoadedPacks } from './loaded-packs.ts';
 
 export type { PackInfo };
 
@@ -174,8 +174,24 @@ export function createPacksSystem(registry: PackRegistry) {
             installedFrom: isGitHub ? packSlug : undefined,
           }));
 
-          const problem = activationProblem(result.id, activatePack(registry, result.id, system.get(bus)));
+          // Installing over a pack that is already running — a reinstall, or the same pack from another
+          // source — has replaced its files underneath it. Without the teardown, registering the new copy
+          // collides with the old registration and the pack is reported as installed but dead. Silent
+          // (`replacing`), because the activation below announces the change.
+          const replaced = getLoadedPacks().some(p => p.manifest.id === result.id);
+          if (replaced) {
+            teardownPack(registry, result.id, system.get(bus), { replacing: true });
+            system.get(bus).send(emit(packs, { type: 'PACK_DEACTIVATED' as const, packId: result.id }));
+          }
+
+          const activated = activatePack(registry, result.id, system.get(bus));
+          const problem = activationProblem(result.id, activated);
           if (problem) {
+            if (replaced && !activated) {
+              // The replacement never registered: end the window, and tell the running systems the pack is gone
+              registry.clearPackReplacing(result.id);
+              system.get(bus).send({ type: 'PACK_CHANGED', packId: result.id });
+            }
             system.get(bus).send(emit(packs, {
               type: 'PACK_INSTALL_FAILED' as const,
               packSlug,
