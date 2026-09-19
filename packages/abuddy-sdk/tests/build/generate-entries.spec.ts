@@ -6,7 +6,7 @@ import { transformSync } from 'esbuild';
 import ts from 'typescript';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { _depTypesFile, _depTypesVersion, entitiesWithoutShapes, generatePackFiles, PACK_TYPES_DEF } from '../../src/build/generate-entries.ts';
-import { PACK_TYPES_FORMAT } from '../../src/build/manifest.ts';
+import { PACK_TYPES_FORMAT, _buildProvenance } from '../../src/build/manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../../src/types/sdk-entities.ts';
 import type { PackManifest, PackSnapshot } from '../../src/build/manifest.ts';
 
@@ -395,6 +395,25 @@ describe('generated backend entry', () => {
       .toContain('commands: [{"name":"memo","placeholder":"Mine"}],');
   });
 
+  /**
+   * `constructor` matches the command-name pattern, so it is a name a pack may declare. Looked up on an
+   * ordinary object it finds `Object`'s constructor, and the build failed with
+   * `declared by "function Object() { [native code] }"` — for a command nothing had declared.
+   */
+  it('accepts a command named after something on Object.prototype, which no pack declared', () => {
+    expect(() => generate(
+      { dependencies: { 'base-pack': '1.0.0' }, commands: [{ name: 'constructor' }] },
+      { 'base-pack': dependency({ id: 'base-pack' }) },
+    )).not.toThrow();
+  });
+
+  it('still fails when a dependency really does declare that name', () => {
+    expect(() => generate(
+      { dependencies: { 'base-pack': '1.0.0' }, commands: [{ name: 'constructor' }] },
+      { 'base-pack': dependency({ id: 'base-pack', commands: [{ name: 'constructor' }] }) },
+    )).toThrow('Command "constructor" is declared by "base-pack"');
+  });
+
   it("fails for a command a dependency's own dependency declares, from the snapshot's provenance", () => {
     const mid = { 'mid-pack': { ...dependency({ id: 'mid-pack' }), provenance: { commands: { pr2md: 'default-setup' } } } };
     expect(() => generate({ commands: [{ name: 'pr2md', placeholder: 'Mine' }], features: [system('brain')] }, mid))
@@ -545,6 +564,47 @@ describe('a diamond dependency', () => {
     expect(() => generate({ features: [system('brain')] }, {
       'left-pack': surfacing('left-pack', 'deep-pack'),
       'right-pack': surfacing('right-pack', 'deep-pack'),
+    })).not.toThrow();
+  });
+
+  /**
+   * The same diamond, on an entity name assignment to an ordinary object would have lost. Each side's
+   * provenance is produced by `_buildProvenance` and put through JSON, as a real build's is, because
+   * that round trip is where the two halves of the hazard differ: `JSON.parse` defines `__proto__` as an
+   * own property, while the assignment that wrote it did not.
+   */
+  /**
+   * The read half, which the write half does not cover. A dependency can surface a name its provenance
+   * does not record — its own dependency was built without provenance, say — and the lookup is then meant
+   * to fall back to the pack the name arrived through. On an ordinary object a name like `constructor`
+   * finds `Object`'s constructor instead, and that function becomes the declaring pack: it is compared
+   * against other packs' names, and printed if a collision is reported.
+   */
+  it('falls back to the dependency for a surfaced name its provenance omits, even one Object.prototype has', async () => {
+    const { mergeRegistries } = await import('../../src/build/generate-entries.ts');
+    const depTypes = new Map([['base-pack', { entities: { constructor: 'constructor' }, relKinds: {} }]]);
+    const provenanceOmittingIt = new Map([['base-pack', { entities: JSON.parse('{"Memo":"deep-pack"}') }]]);
+
+    const registry = mergeRegistries('app-pack', manifest({ id: 'app-pack' }), depTypes, provenanceOmittingIt);
+
+    expect(registry.entities.get('constructor')?.source).toBe('base-pack');
+  });
+
+  it("accepts an ancestor's entity named __proto__ arriving through both sides", () => {
+    const side = (id: string) => ({
+      types: { entities: { ['__proto__']: '__proto__' }, relKinds: {} },
+      defs: facade(),
+      typesFormat: PACK_TYPES_FORMAT,
+      provenance: JSON.parse(JSON.stringify(_buildProvenance(
+        [['deep-pack', { manifest: { entities: { ['__proto__']: '__proto__' } } }] as const],
+        { id, manifest: {} },
+      ))),
+      manifest: manifest({ id }),
+    }) as PackSnapshot;
+
+    expect(() => generate({ features: [system('brain')] }, {
+      'left-pack': side('left-pack'),
+      'right-pack': side('right-pack'),
     })).not.toThrow();
   });
 

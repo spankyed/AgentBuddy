@@ -87,6 +87,43 @@ describe('_mergeProvenance', () => {
   });
 });
 
+/**
+ * Declared names are user input, and the schemas allow names that mean something to an ordinary object:
+ * `constructor` matches the command-name and feature-id patterns, and `entities`/`relKinds` are
+ * unrestricted strings. A record indexed by them has to be a record, not an object with a prototype.
+ */
+describe('a name that means something to an ordinary object', () => {
+  it('is not found on a record that never declared it', () => {
+    const merged = _mergeProvenance('entities', [dep('base-pack', { manifest: { entities: { Memo: 'Memo' } } })]);
+    expect(merged['constructor']).toBeUndefined();
+    expect(merged['toString']).toBeUndefined();
+  });
+
+  it('is recorded like any other name when a pack does declare it', () => {
+    const merged = _mergeProvenance('commands', [dep('base-pack', { manifest: { commands: [{ name: 'constructor' }] } })]);
+    expect(merged['constructor']).toBe('base-pack');
+  });
+
+  // `record['__proto__'] = id` on an ordinary object sets the prototype and adds no entry, so the name
+  // vanished from the snapshot — and a dependent then fell back to the pack it arrived through
+  it("keeps an entity named __proto__, which assignment to an ordinary object would drop", () => {
+    const merged = _mergeProvenance('entities', [dep('base-pack', { manifest: { entities: { ['__proto__']: '__proto__', Memo: 'Memo' } } })]);
+    expect(Object.keys(merged).sort()).toEqual(['Memo', '__proto__']);
+    expect(merged['__proto__']).toBe('base-pack');
+  });
+
+  /**
+   * The round trip a dependency's provenance actually makes. `JSON.parse` *defines* `__proto__` as an
+   * own property where assignment would not, so the read side was never the half that lost it.
+   */
+  it('survives being written to a snapshot and read back', () => {
+    const written = _buildProvenance([dep('deep-pack', { manifest: { entities: { ['__proto__']: '__proto__' } } })]);
+    const readBack = JSON.parse(JSON.stringify(written));
+    const merged = _mergeProvenance('entities', [dep('mid-pack', { manifest: {}, provenance: readBack })]);
+    expect(merged['__proto__']).toBe('deep-pack');
+  });
+});
+
 describe('_buildProvenance', () => {
   it('records every kind that declared something', () => {
     const provenance = _buildProvenance(

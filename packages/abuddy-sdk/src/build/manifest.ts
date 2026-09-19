@@ -93,6 +93,27 @@ export interface ProvenanceManifest {
   features?: ReadonlyArray<{ id: string; plugin?: unknown }>;
 }
 
+/**
+ * @internal Host-only: abuddy CLI build tooling.
+ *
+ * A record of declared names, safe to index with any of them.
+ *
+ * Declared names come from a manifest, and the schemas allow names that mean something to an ordinary
+ * object: `constructor` matches the command-name and feature-id patterns, and `entities`/`relKinds` are
+ * unrestricted strings. On an ordinary object `record['constructor']` returns `Object`'s constructor
+ * rather than `undefined`, and `record['__proto__'] = id` sets the prototype instead of adding an entry.
+ * A null-prototype record has neither: nothing is inherited to find, and `__proto__` is an ordinary key.
+ *
+ * Copying is by `Object.keys`, own enumerable properties only — which is exactly what a snapshot read
+ * back from disk holds, since `JSON.parse` *defines* `__proto__` as an own property where assignment
+ * would not. That asymmetry is why the write side loses the name and the read side does not.
+ */
+export function _provenanceRecord(source?: Record<string, string>): Record<string, string> {
+  const record: Record<string, string> = Object.create(null);
+  if (source) for (const name of Object.keys(source)) record[name] = source[name];
+  return record;
+}
+
 /** What `_mergeProvenance` reads from a dependency: its own manifest, and what it inherited */
 export interface ProvenanceSource {
   manifest: ProvenanceManifest;
@@ -115,9 +136,10 @@ export function _mergeProvenance(
   own?: { id: string; manifest: ProvenanceManifest },
 ): Record<string, string> {
   const namesOf = PROVENANCE_KINDS[kind];
-  const declaredBy: Record<string, string> = {};
+  const declaredBy = _provenanceRecord();
   for (const [depId, snapshot] of dependencies) {
-    Object.assign(declaredBy, snapshot.provenance?.[kind]);
+    const inherited = snapshot.provenance?.[kind];
+    if (inherited) for (const name of Object.keys(inherited)) declaredBy[name] = inherited[name];
     for (const name of namesOf(snapshot.manifest)) declaredBy[name] = depId;
   }
   if (own) for (const name of namesOf(own.manifest)) declaredBy[name] = own.id;

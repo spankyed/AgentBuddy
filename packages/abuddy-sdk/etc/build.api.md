@@ -1441,6 +1441,9 @@ export interface ProvenanceManifest {
     relKinds?: Record<string, string>;
 }
 
+// @internal
+export function _provenanceRecord(source?: Record<string, string>): Record<string, string>;
+
 // @public
 export interface ProvenanceSource {
     // (undocumented)

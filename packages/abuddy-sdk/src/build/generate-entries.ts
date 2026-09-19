@@ -54,8 +54,18 @@ export function mergeRegistries(
      * attributing it to the dependency it came through makes a diamond look like a collision.
      */
     const provenanceKind: ProvenanceKind = kind === 'entity' ? 'entities' : 'relKinds';
-    const declaringPack = (via: string, key: string): string =>
-      via === ownId ? ownId : depProvenance.get(via)?.[provenanceKind]?.[key] ?? via;
+    /**
+     * `hasOwnProperty` rather than indexing, because these records come off a snapshot read from disk
+     * and are indexed by names a manifest chose. `entities`/`relKinds` are unrestricted strings, so a
+     * name like `constructor` is legal — and indexing an ordinary object for it finds `Object`'s
+     * constructor and returns that function as the declaring pack, instead of falling back to the
+     * dependency the name arrived through. (`Object.hasOwn` is newer than the shared lib floor.)
+     */
+    const declaringPack = (via: string, key: string): string => {
+      if (via === ownId) return ownId;
+      const declared = depProvenance.get(via)?.[provenanceKind];
+      return declared && Object.prototype.hasOwnProperty.call(declared, key) ? declared[key] : via;
+    };
     for (const [via, entries] of sources) {
       for (const [key, value] of Object.entries(entries)) {
         const source = declaringPack(via, key);
