@@ -18,8 +18,7 @@ export async function action(
   flowId: string,
 ) {
   // If onboarding is already complete, do nothing
-  const internal = services.settings.getInternalSettings();
-  if (internal.hasOnboarded) {
+  if (services.appData.hasOnboarded()) {
     return { success: true, skipped: true };
   }
 

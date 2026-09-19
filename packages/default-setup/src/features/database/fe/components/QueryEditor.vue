@@ -94,7 +94,7 @@ import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { id, type DatabaseState } from '../state';
 import QueryEditorHeader from './query-editor/QueryEditorHeader.vue';
-import SimpleMonacoEditor from '@abuddy/sdk/fe/components/SimpleMonacoEditor.vue';
+import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor';
 import QueryEditorExamples from './query-editor/QueryEditorExamples.vue';
 
 const actorSystem = useActorSystem()

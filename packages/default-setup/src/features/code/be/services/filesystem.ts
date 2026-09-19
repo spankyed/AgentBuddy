@@ -3,6 +3,9 @@ import * as path from 'path'
 import { spawn, execFile } from 'child_process'
 import { rgPath } from '@vscode/ripgrep'
 import type { FileInfo, DirectoryContent, FileContent, CodeSystemError, SearchOptions, SearchResult, SearchMatch, QuickOpenResult } from '../types'
+import { createLogger } from '@abuddy/sdk/logger'
+
+const logger = createLogger('filesystem')
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB
 
@@ -570,7 +573,7 @@ export class FileSystemRepository {
         }
       } catch (error) {
         if ((error as any).code !== 'EACCES') {
-          console.error(`Error reading directory ${dir}:`, error)
+          logger.error(`Error reading directory ${dir}`, { error })
         }
       }
     }

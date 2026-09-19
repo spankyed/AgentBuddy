@@ -27,5 +27,18 @@ if (handoff) {
   register();
   // Published packages run the compiled bundle
   const bundle = new URL('../dist/cli.js', import.meta.url);
+  if (!existsSync(bundle)) {
+    // In a checkout, workspace @abuddy/* packages resolve to their source. Registered after tsx,
+    // so it runs first and tsx resolves with the added condition. Only this process, and only the
+    // CLI's own code: a pack is compiled and run against those packages' dist, so the children this
+    // CLI starts for pack code (the Playwright runner, the seed-runtime check, the app) have the
+    // condition stripped from NODE_OPTIONS rather than added.
+    const { register: registerHooks } = await import('node:module');
+    registerHooks(new URL('./source-hooks.mjs', import.meta.url), {
+      data: { checkout: new URL('../../../', import.meta.url).href },
+    });
+    const { assertSourceResolution } = await import('@abuddy/host/build/source-resolution');
+    assertSourceResolution((specifier) => fileURLToPath(import.meta.resolve(specifier)), 'The abuddy CLI');
+  }
   await import(existsSync(bundle) ? bundle.href : '../src/index.ts');
 }

@@ -1,8 +1,6 @@
 export interface ArtifactFEFacet {
   icon: unknown;
-  loadComponent?: () => unknown;
   component?: unknown;
-  color?: string;
 }
 
 export interface ArtifactDefinition {
@@ -10,15 +8,15 @@ export interface ArtifactDefinition {
   fe?: ArtifactFEFacet;
 }
 
-export interface ArtifactItem {
+export interface ArtifactItem<TContent = unknown> {
   id: string;
   type: string;
   title: string;
-  content: any;
+  content: TContent;
   color?: string;
   metadata?: {
     createdAt: number;
     updatedAt?: number;
-    [key: string]: any;
+    [key: string]: unknown;
   };
 }

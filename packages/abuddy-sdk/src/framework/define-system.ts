@@ -1,17 +1,20 @@
-import { safeEvents } from '../helpers/actor-helpers';
-import type { Simplify } from '../helpers/type-helpers';
+import { safeEvents } from '../helpers/actor-helpers.ts';
+import type { Simplify } from '../helpers/type-helpers.ts';
 
 /** Common system events sent by the bus to all systems. */
 export type SystemEvents =
   | { type: 'CLIENT_CONNECTED' }
-
-/** Add `systemId` literal to every member of an incoming event union. */
-type WithSystemId<Id extends string, E extends { type: string }> =
-  E extends any ? Simplify<E & { systemId: Id }> : never;
+  /**
+   * A pack was activated, reloaded or torn down while the app runs, or its seeds were imported: what it
+   * registers (its slash commands) and the data it seeded may differ. Sent once the change is complete.
+   */
+  | { type: 'PACK_CHANGED'; packId: string }
 
 /** Add `pluginId` literal to every member of an outgoing event union. */
+// `E extends unknown` is the distribution idiom (`extends any` would do the same, but the published
+// types carry no `any`: tests/build/published-sdk-any.spec.ts in @abuddy/cli)
 type WithPlugin<Id extends string, E extends { type: string }> =
-  E extends any ? Simplify<E & { pluginId: Id }> : never;
+  E extends unknown ? Simplify<E & { pluginId: Id }> : never;
 
 /** The definition object returned by `defineSystem()`. */
 export interface SystemSpec<
@@ -21,11 +24,10 @@ export interface SystemSpec<
   TContext = {},
 > {
   id: Id;
-  designation?: string;
   types: { context: TContext; events: TEvents | SystemEvents };
   typeOf: ReturnType<typeof safeEvents<TEvents | SystemEvents>>;
-  /** Phantom — incoming events with `systemId` attached (wire format). */
-  _incoming: WithSystemId<Id, TEvents>;
+  /** Phantom: the events the system receives, as a sender writes them (the bus adds `systemId`). */
+  _incoming: TEvents;
   /** Phantom — outgoing events with `pluginId` attached. */
   _outgoing: WithPlugin<Id, TOutgoing>;
 }
@@ -41,14 +43,13 @@ export interface SystemSpec<
  * >();
  * ```
  */
-export function defineSystem<Id extends string>(id: Id, opts?: { designation?: string }) {
+export function defineSystem<Id extends string>(id: Id) {
   return <
     TEvents extends { type: string },
     TOutgoing extends { type: string },
     TContext = {},
   >(): SystemSpec<Id, TEvents, TOutgoing, TContext> => ({
     id,
-    designation: opts?.designation,
     types: {
       context: {} as TContext,
       events: {} as TEvents | SystemEvents,

@@ -34,16 +34,6 @@ describe('resolvePlaywrightCli', () => {
     expect(resolvePlaywrightCli(pack)).toBe(path.join(testing, 'node_modules', '@playwright', 'test', 'cli.js'));
   });
 
-  it('follows the deprecated @abuddy/sdk/testing re-export to @abuddy/testing', () => {
-    const sdk = path.join(pack, 'node_modules', '@abuddy', 'sdk');
-    writePackage(sdk, { name: '@abuddy/sdk', exports: { './testing': './testing.js' } }, { 'testing.js': '' });
-    const testing = path.join(sdk, 'node_modules', '@abuddy', 'testing');
-    writePackage(testing, { name: '@abuddy/testing', main: 'index.js' }, { 'index.js': '' });
-    playwright(path.join(testing, 'node_modules', '@playwright', 'test'));
-
-    expect(resolvePlaywrightCli(pack)).toBe(path.join(testing, 'node_modules', '@playwright', 'test', 'cli.js'));
-  });
-
   it('tells the author what to install', () => {
     expect(() => resolvePlaywrightCli(pack)).toThrow('npm i -D @abuddy/testing @playwright/test');
   });

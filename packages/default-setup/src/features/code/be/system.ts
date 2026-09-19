@@ -14,14 +14,13 @@
  * Priority on startup:
  *   baseDirectory > defaultBaseDirectory > first workspace project > null
  */
+import { sendToPlugin } from '@/__generated__/events';
 import { setup, enqueueActions, assign } from 'xstate'
-import { emit } from '@abuddy/sdk/helpers'
-import { rootEvents } from '@abuddy/sdk/rpc'
-import './repository' // side-effect: registers terminalQueries/terminalCommands
+
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
 import { GitRepository } from './services/git'
 import { GitWatcherService } from './services/gitwatcher'
-import { repository } from '@abuddy/sdk/ears'
+import { repository } from '@/__generated__/repository';
 
 // child systems
 import { explorerSystem, type IncomingExplorerEvents, type OutgoingExplorerEvents } from './features/explorer'
@@ -51,6 +50,7 @@ export type OutgoingCodeEvents =
   | OutgoingPullRequestEvents
   | OutgoingTerminalEvents
   | OutgoingActionsEvents
+  | OutgoingPromptsEvents
   // Broadcast events (sent to all child systems)
   | { type: 'CODE_CONNECTED'; data: CodeConnectedData }
   | { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
@@ -111,8 +111,10 @@ export const systemMachine = setup({
   },
   actions: {
     spawnFeatureActors: enqueueActions(({ enqueue, context }) => {
-      // Spawn all child systems with input and shared services
+      // Each child is spawned under its own id as well as its system id: the parent tracks its children by
+      // id, so without one they share a key, and stopping this system leaves the others' system ids taken
       enqueue.spawnChild('explorerSystem', {
+        id: 'explorer',
         systemId: 'explorer',
         input: {
           baseDirectory: context.baseDirectory,
@@ -120,12 +122,14 @@ export const systemMachine = setup({
         }
       });
       enqueue.spawnChild('searchSystem', {
+        id: 'search',
         systemId: 'search',
         input: {
           baseDirectory: context.baseDirectory
         }
       });
       enqueue.spawnChild('commitSystem', {
+        id: 'commit',
         systemId: 'commit',
         input: {
           baseDirectory: context.baseDirectory,
@@ -134,6 +138,7 @@ export const systemMachine = setup({
         }
       });
       enqueue.spawnChild('pullRequestSystem', {
+        id: 'pr',
         systemId: 'pr',
         input: {
           baseDirectory: context.baseDirectory,
@@ -141,15 +146,15 @@ export const systemMachine = setup({
         }
       });
       enqueue.spawnChild('terminalSystem', {
+        id: 'terminal',
         systemId: 'terminal',
         input: {
           baseDirectory: context.baseDirectory
         }
       });
-      enqueue.spawnChild('actionsSystem', { systemId: 'codeActions' });
-      enqueue.spawnChild('promptsSystem', { systemId: 'codePrompts' });
+      enqueue.spawnChild('actionsSystem', { id: 'codeActions', systemId: 'codeActions' });
+      enqueue.spawnChild('promptsSystem', { id: 'codePrompts', systemId: 'codePrompts' });
     }),
-
 
     routeEvent: ({ event, system }) => {
       const eventType = event.type;
@@ -247,11 +252,10 @@ export const systemMachine = setup({
       }
 
       // Forward settings to frontend
-      const wrapped = emit(id, {
+      sendToPlugin(id, {
         type: 'CODE_SETTINGS_UPDATED',
         settings: ev.settings
       })
-      rootEvents.emitOutgoing(wrapped.event)
     },
     
     broadcastConnected: ({ system, context }) => {
@@ -270,11 +274,10 @@ export const systemMachine = setup({
         settings: codeSettings
       };
 
-      const wrapped = emit(id, {
+      sendToPlugin(id, {
         type: 'CODE_CONNECTED',
         data: connectedData
       })
-      rootEvents.emitOutgoing(wrapped.event)
     },
     
     setupGitWatcher: async ({ context, system }) => {
@@ -375,6 +378,6 @@ export const systemMachine = setup({
   }
 })
 
-const codeEntry: SystemEntry = { spec: codeSpec, machine: systemMachine };
+const codeEntry = { spec: codeSpec, machine: systemMachine } satisfies SystemEntry;
 
 export default codeEntry;

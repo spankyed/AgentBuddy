@@ -15,7 +15,6 @@ export const flowStepFE: StepDefinition = {
       bgColor: 'bg-purple-500/10',
       hoverBgColor: 'group-hover:bg-purple-500/15',
       connectionRules: { inputs: 1, outputs: 1 },
-      component: 'VariableNode',
       category: 'logic',
       isImplemented: true,
     },

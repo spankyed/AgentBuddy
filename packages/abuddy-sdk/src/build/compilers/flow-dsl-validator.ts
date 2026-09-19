@@ -1,12 +1,7 @@
-import type {
-  FlowConfig,
-  Track,
-  ValidationError,
-  ValidationResult,
-} from './flow-types';
-import { isFlowConfig, resolveTracks } from './flow-types';
-import { stepRegistry } from '../../steps/registry';
-import type { StepDefinition, StepBuildFacet, StepValidationContext } from '../../steps/types';
+import type { ValidationError, ValidationResult } from '../seed-compiler.ts';
+import { isFlowConfig, resolveTracks, type FlowConfig, type Track } from './flow-types.ts';
+import { stepLookup } from './step-lookup.ts';
+import type { StepDefinition, StepBuildFacet, StepValidationContext } from '../../steps/types.ts';
 
 const FALLBACK_STEP_TYPES = [
   'action', 'llm', 'switch', 'fire', 'transform',
@@ -29,24 +24,13 @@ interface ResolvedSteps {
 }
 
 function resolveSteps(options: ValidateOptions): ResolvedSteps {
-  const defs = options.steps;
-  if (!defs || defs.length === 0) {
-    return {
-      triggers: stepRegistry.triggers(),
-      isTrigger: (type) => stepRegistry.isTrigger(type),
-      getBuild: (type) => stepRegistry.getBuild(type),
-      types: () => stepRegistry.types(),
-    };
-  }
-
-  const map = new Map<string, StepDefinition>();
-  for (const def of defs) map.set(def.type, def);
-
+  // Without definitions, the registered packs' steps
+  const steps = stepLookup(options.steps);
   return {
-    triggers: defs.filter(d => d.kind === 'trigger'),
-    isTrigger: (type) => map.get(type)?.kind === 'trigger',
-    getBuild: (type) => map.get(type)?.build,
-    types: () => [...map.keys()],
+    triggers: steps.triggers(),
+    isTrigger: (type) => steps.isTrigger(type),
+    getBuild: (type) => steps.getBuild(type),
+    types: () => steps.types(),
   };
 }
 
@@ -174,7 +158,10 @@ function validateTrack(
 
   const triggerDefs = resolved.triggers;
   if (triggerDefs.length === 0) {
-    throw new Error('No trigger types provided. Pass step definitions via options.steps or register them in the step registry.');
+    throw new Error(options.steps !== undefined
+      ? 'No trigger step among the step definitions given, so no track can be validated. A pack build compiles flows against '
+        + "its pack config's step definitions (loadDefinitions) or compilePack's options.definitions: give it the definitions of a pack whose steps include triggers (default-setup's)."
+      : 'No trigger types provided. Pass step definitions via options.steps, or register a pack that defines them.');
   }
   const knownTrackFields = triggerDefs.map(d => d.trigger!.trackField);
   const presentFields = knownTrackFields.filter(f => typeof t[f] === 'string' && (t[f] as string).length > 0);

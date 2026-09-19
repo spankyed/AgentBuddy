@@ -3,17 +3,6 @@ import { navigateToPlugin } from '@abuddy/sdk/fe'
 import { id as library } from './state'
 import type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider, ContributionItem } from '@abuddy/sdk/fe/contributions'
 
-function flattenCollections(colls: any[]): any[] {
-  const result: any[] = []
-  for (const c of colls) {
-    result.push(c)
-    if (c.childCollections?.length) {
-      result.push(...flattenCollections(c.childCollections))
-    }
-  }
-  return result
-}
-
 export const contributionTypes: Record<string, ContributionTypeConfig> = {
   document: {
     protocol: 'doc',
@@ -52,20 +41,19 @@ export const itemsProvider: CategoryItemsProvider = {
   category: 'documents',
   pluginId: library,
   buildItems: (actorState: any): ContributionItem[] => {
-    const documents = actorState?.context?.documents || []
-    const collections = actorState?.context?.collections || []
+    const index = actorState?.context?.index ?? { documents: [], folders: [] }
 
-    const docItems: ContributionItem[] = documents.map((d: any) => ({
+    const docItems: ContributionItem[] = index.documents.map((d: any) => ({
       id: d.id,
       shortCode: d.shortCode || d.id,
       label: d.name || d.shortCode || d.id,
       type: 'document' as const,
     }))
 
-    const folderItems: ContributionItem[] = flattenCollections(collections).map((c: any) => ({
-      id: c.id,
-      shortCode: c.id,
-      label: c.name || c.id,
+    const folderItems: ContributionItem[] = index.folders.map((f: any) => ({
+      id: f.id,
+      shortCode: f.id,
+      label: f.name || f.id,
       type: 'folder' as const,
     }))
 

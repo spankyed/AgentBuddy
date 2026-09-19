@@ -12,29 +12,35 @@
     "dist"
   ],
   "engines": {
-    "node": ">=20.6.0"
+    "node": ">=22"
   },
   "scripts": {
     "build:package": "tsx ../../scripts/bundle-package.ts .",
     "typecheck": "tsc --noEmit",
+    "pretest": "tsx ../../scripts/ensure-packages-built.ts",
     "test": "vitest run"
   },
   "dependencies": {
+    "@abuddy/host": "*",
     "@abuddy/sdk": "*",
     "@octokit/rest": "^21.1.1",
     "@vitejs/plugin-vue": "^6.0.1",
     "autoprefixer": "^10.4.14",
     "env-paths": "^3.0.0",
+    "es-module-lexer": "^1.7.0",
     "esbuild": "^0.25.0",
+    "lmdb": "^3.4.2",
+    "rollup": "^4.60.1",
+    "rollup-plugin-dts": "^6.4.1",
     "semver": "^7.8.5",
     "tailwindcss": "^3.3.2",
     "tsx": "^4.19.4",
+    "typescript": "^5.8.3",
     "vite": "^7.0.6",
     "vue": "^3.5.18"
   },
   "devDependencies": {
     "@types/semver": "^7.8.0",
-    "typescript": "^5.8.3",
     "vitest": "^3.2.4"
   }
 }

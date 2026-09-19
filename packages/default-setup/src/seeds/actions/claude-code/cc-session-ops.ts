@@ -235,10 +235,8 @@ async function handleResume(
   }
 
   // Same thread: reload thread data to show imported messages
-  services.emitter.sendToPlugin('threads', {
-    type: 'LOAD_CHAT_THREAD',
-    data: services.repository.chatQueries.threadData(targetThreadId as any),
-  });
+  const threadData = services.repository.chatQueries.threadData(targetThreadId as any);
+  if (threadData) services.emitter.sendToPlugin('threads', { type: 'LOAD_CHAT_THREAD', data: threadData });
 
   return { text: confirmText };
 }

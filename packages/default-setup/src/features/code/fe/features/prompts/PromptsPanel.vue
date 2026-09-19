@@ -242,7 +242,7 @@ import { id as promptsPluginId } from '@/features/prompts/fe/state'
 import { ExternalLink, Plus, X, Pencil, Trash2, Sparkle, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import CodePanelHeader from '@/features/code/fe/features/CodePanelHeader.vue'
 import EmptyState from '@/features/code/fe/features/EmptyState.vue'
-import type { PromptEntity } from '@/__generated__/types'
+import type { PromptEntity } from '@abuddy/sdk'
 import {
   ContextMenuRoot,
   ContextMenuTrigger,
@@ -251,8 +251,8 @@ import {
   ContextMenuPortal,
 } from 'reka-ui'
 import { MENU_CONTENT_CLASS, MENU_ITEM_CLASS } from '../explorer/constants'
-import { useInfiniteScroll } from '@abuddy/sdk/fe'
-import Button from '@abuddy/sdk/fe/design/button.vue'
+import { useInfiniteScroll } from '@abuddy/ui/composables/useInfiniteScroll'
+import Button from '@abuddy/ui/design/button'
 import uFuzzy from '@leeoniya/ufuzzy'
 
 const actorSystem = useActorSystem()

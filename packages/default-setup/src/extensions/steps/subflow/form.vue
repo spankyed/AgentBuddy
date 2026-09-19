@@ -139,11 +139,12 @@ import {
   ComboboxViewport,
   useFilter
 } from 'reka-ui'
-import BaseForm from '@abuddy/sdk/fe/components/BaseForm.vue'
-import TipSection from '@abuddy/sdk/fe/components/TipSection.vue'
-import type { FlowEntity, NodeEntity } from '@/__generated__/types'
+import BaseForm from '@abuddy/ui/components/BaseForm'
+import TipSection from '@abuddy/ui/components/TipSection'
+import type { NodeEntity } from '@/__generated__/types'
 import type { FormResources } from '@/features/flows/fe/types/form-props'
 import { flowsId } from '@/features/flows/fe/state'
+import type { FlowEntity } from '@abuddy/sdk'
 
 const actorSystem = useActorSystem()
 

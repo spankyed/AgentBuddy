@@ -1,113 +1,66 @@
+import { vi, describe, expect, it } from 'vitest';
+import { mockService } from '@abuddy/testing/harness';
+import { services, type Services } from '@/__generated__/services';
+import { repository } from '@/__generated__/repository';
 import { action as handleRevert } from '../../src/seeds/actions/claude-code/handle-revert';
 
-function createServices(viewSessionResult: unknown[] | Error = [], sendBlockMessage = vi.fn()) {
-  const thread = {
-    id: 'thread-1',
-    context: {
-      claudeCode: {
-        sessionId: 'session-1',
-        cwd: '/project',
-        isRunning: true,
-      },
-    },
-    tags: ['claude-code'],
-  };
+// The action runs on the harness's services: a real thread and messages in the in-memory database,
+// with the CLI and the chat, threads, settings and artifact services it drives mocked
+async function createServices(viewSessionResult: unknown[] | Error = [], sendBlockMessage = vi.fn()) {
+  const { id: threadId } = repository.threadCommands.create({ topic: 'Revert', instructions: '', tags: ['claude-code'] });
+  repository.threadCommands.update(threadId, { context: { claudeCode: { sessionId: 'session-1', cwd: '/project', isRunning: true } } });
+  repository.chatCommands.addMessage({ threadId, sender: 'user', text: 'hello' });
+  const assistant = repository.chatCommands.addMessage({ threadId, sender: 'assistant', text: 'hi', context: { cliUuid: 'uuid-1' } });
 
-  return {
-    cli: {
-      claudeCode: {
-        getHandle: vi.fn(() => undefined),
-        clearHandle: vi.fn(),
-        viewSession: vi.fn(async () => {
-          if (viewSessionResult instanceof Error) throw viewSessionResult;
-          return viewSessionResult;
-        }),
-      },
-    },
-    repository: {
-      threadQueries: {
-        byId: vi.fn(() => thread),
-      },
-      threadCommands: {
-        update: vi.fn((_threadId: string, updates: any) => {
-          thread.context = updates.context;
-          thread.tags = updates.tags ?? thread.tags;
-        }),
-      },
-      chatQueries: {
-        threadData: vi.fn(() => ({
-          messages: [
-            { id: 'msg-1', sender: 'user', text: 'hello' },
-            { id: 'msg-2', sender: 'assistant', text: 'hi', context: { cliUuid: 'uuid-1' } },
-          ],
-        })),
-      },
-    },
-    chat: {
-      updateMessageState: vi.fn(),
-      sendBlockMessage,
-    },
-    threads: {
-      updateChatState: vi.fn(),
-    },
-    emitter: {
-      sendToPlugin: vi.fn(),
-    },
-    settings: {
-      updatePluginSetting: vi.fn(),
-    },
-    artifact: {
-      findOrCreateByType: vi.fn(() => ({ artifactId: 'art-1' })),
-    },
-    logger: {
-      debug: vi.fn(),
-      info: vi.fn(),
-      warn: vi.fn(),
-      error: vi.fn(),
-    },
-  } as any;
+  mockService<Services, 'cli'>('cli', {
+    claudeCode: {
+      getHandle: vi.fn(() => undefined),
+      clearHandle: vi.fn(),
+      viewSession: vi.fn(async () => {
+        if (viewSessionResult instanceof Error) throw viewSessionResult;
+        return viewSessionResult;
+      }),
+    } as never,
+  });
+  mockService<Services, 'chat'>('chat', { updateMessageState: vi.fn(), sendBlockMessage } as never);
+  mockService<Services, 'threads'>('threads', { updateChatState: vi.fn() } as never);
+  mockService<Services, 'settings'>('settings', { updatePluginSetting: vi.fn() } as never);
+  mockService<Services, 'artifact'>('artifact', { findOrCreateByType: vi.fn(() => ({ artifactId: 'art-1' })) } as never);
+  mockService<Services, 'logger'>('logger', { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() });
+  return { threadId, messageId: assistant.id };
 }
 
 describe('CC: Handle Revert', () => {
   it('reverts with valid cliUuid when viewSession confirms it', async () => {
-    const services = createServices([
+    const { threadId, messageId } = await createServices([
       { type: 'assistant', uuid: 'uuid-1' },
     ]);
 
-    const result = await handleRevert({
-      threadId: 'thread-1',
-      messageId: 'msg-2',
-    }, services);
+    const result = await handleRevert({ threadId, messageId }, services);
 
     expect(result).toMatchObject({
       success: true,
       cliUuid: 'uuid-1',
     });
-    expect(services.threads.updateChatState).toHaveBeenLastCalledWith('thread-1', 'idle');
+    expect(services.threads.updateChatState).toHaveBeenLastCalledWith(threadId, 'idle');
   });
 
   it('clears cliUuid when viewSession shows UUID not in session (post-compaction)', async () => {
-    const services = createServices([]);
+    const { threadId, messageId } = await createServices([]);
 
-    const result = await handleRevert({
-      threadId: 'thread-1',
-      messageId: 'msg-2',
-    }, services);
+    const result = await handleRevert({ threadId, messageId }, services);
 
     expect(result).toMatchObject({
       success: true,
       cliUuid: undefined,
     });
-    expect(services.threads.updateChatState).toHaveBeenLastCalledWith('thread-1', 'idle');
+    expect(services.threads.updateChatState).toHaveBeenLastCalledWith(threadId, 'idle');
   });
 
   it('clears cliUuid when viewSession throws', async () => {
-    const services = createServices(new Error('JSONL not found'));
+    const { threadId, messageId } = await createServices(new Error('JSONL not found'));
 
-    const result = await handleRevert({
-      threadId: 'thread-1',
-      messageId: 'msg-2',
-    }, services);
+    const result = await handleRevert({ threadId, messageId }, services);
 
     expect(result).toMatchObject({
       success: true,

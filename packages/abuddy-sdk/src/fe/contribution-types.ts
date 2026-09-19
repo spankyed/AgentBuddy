@@ -1,4 +1,5 @@
 import type { Component } from 'vue'
+import type { PluginActorSystem } from './actor-system.ts'
 
 type SvgElement = ['path', { d: string }] | ['rect', Record<string, string>] | ['circle', Record<string, string>]
 
@@ -9,7 +10,7 @@ export interface ContributionTypeConfig {
   plugin: string
   icon: Component
   svgElements: SvgElement[]
-  navigate: (system: any, refId: string) => void
+  navigate: (system: PluginActorSystem, refId: string) => void
 }
 
 export interface CategoryConfig {
@@ -26,8 +27,9 @@ export interface ContributionItem {
 }
 
 /** Provides items for a contribution category by querying feature actor state. */
-export interface CategoryItemsProvider {
+export interface CategoryItemsProvider<TSnapshot = unknown> {
   category: string
   pluginId: string
-  buildItems: (actorState: any) => ContributionItem[]
+  /** Builds the items from the plugin actor's snapshot (undefined until the actor exists) */
+  buildItems(snapshot: TSnapshot | undefined): ContributionItem[]
 }

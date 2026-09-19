@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { validate } from '../../src/build/compilers/flow-dsl-validator';
-import type { StepDefinition } from '../../src/steps/types';
-import { stepRegistry } from '../../src/steps/registry';
+import { validate } from '../../src/build/compilers/flow-dsl-validator.ts';
+import type { StepDefinition } from '../../src/steps/types.ts';
+import { startTestRuntime, testPacks } from '../../src/testing/index.ts';
+
+// The registered steps these compile against: the stand-in's, which the specs fill
+startTestRuntime();
 
 const baseTriggers: StepDefinition[] = [
   {
@@ -34,7 +37,7 @@ const baseTriggers: StepDefinition[] = [
 ];
 
 describe('flow DSL validator', () => {
-  afterEach(() => stepRegistry.clear());
+  afterEach(() => testPacks.steps.clear());
 
   describe('schedule tracks', () => {
     it('allows root flows with only a schedule track', () => {
@@ -160,7 +163,7 @@ describe('flow DSL validator', () => {
 
   describe('registry fallback', () => {
     it('falls back to step registry when options.steps is not provided', () => {
-      for (const step of baseTriggers) stepRegistry.register(step);
+      for (const step of baseTriggers) testPacks.steps.set(step.type, step);
 
       const result = validate({
         'Flow': [{ event: 'test.event', exits: [[]] }],
@@ -173,6 +176,14 @@ describe('flow DSL validator', () => {
       expect(() => validate({
         'Flow': [{ event: 'test.event', exits: [[]] }],
       })).toThrow('No trigger types provided');
+    });
+
+    it('names the definitions it was given when they have no trigger, without falling back to the registry', () => {
+      for (const step of baseTriggers) testPacks.steps.set(step.type, step);
+
+      expect(() => validate({
+        'Flow': [{ event: 'test.event', exits: [[]] }],
+      }, { steps: [] })).toThrow("No trigger step among the step definitions given, so no track can be validated. A pack build compiles flows against its pack config's step definitions (loadDefinitions)");
     });
   });
 });

@@ -1,6 +1,6 @@
 import { setup, type ActorRefFrom, assign, log } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
-import { trpc } from '@abuddy/sdk/rpc';
+import { sendToSystem } from '@/__generated__/events';
 import type { OutgoingLogsEvents } from '@/__generated__/types';
 
 export const id = 'logs' as const;
@@ -66,8 +66,7 @@ const logsState = setup({
       logs: () => [],
     }),
     sendClearLogsToBackend: () => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'CLEAR_LOGS',
       });
     },
@@ -85,9 +84,8 @@ const logsState = setup({
     }),
     updateSettings: assign({
       settings: ({ event }) => {
-        trpc.bus.send.mutate({
+        sendToSystem(id, {
           type: 'REQUEST_LOGS_UPDATE',
-          systemId: id,
         });
 
         return typeOf('LOGS_SETTINGS_UPDATED', event).settings

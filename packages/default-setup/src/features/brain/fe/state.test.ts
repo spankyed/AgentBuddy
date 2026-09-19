@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applyTNodeSpawn, denormalizeTNodeTree, normalizeTNodeTree, type NormalizedTNodeTree } from './trace-tree';
-import type { TNodeEntity, TrackTree } from '@/__generated__/types';
+import type { TNodeEntity, TrackTree } from '@abuddy/sdk/steps';
 
 function tNode(id: string, label = id): TNodeEntity {
   return {

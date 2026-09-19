@@ -164,7 +164,8 @@ export default /** @type import('electron-builder').Configuration */
   
   // Extra resources
   extraResources: [
-    // TODO: [SEARCH_INDEX_FF] Re-enable when search index is restored
+    // [SEARCH_INDEX_FF] FastEmbed weights for the dormant library search index (the path is the API's old cache):
+    // packages/default-setup/src/features/library/be/search-index/README.md
     // {
     //   from: 'packages/api/local_cache',
     //   to: 'api/local_cache',

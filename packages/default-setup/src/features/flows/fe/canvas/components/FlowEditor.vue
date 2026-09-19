@@ -123,7 +123,7 @@ import { nodeTypes } from '../nodes'
 import { useNodeViewport } from '../useNodeViewport'
 
 import type { LayoutDirection } from '@/features/flows/fe/canvas/layout-utils'
-import { isTriggerNode } from '@abuddy/sdk/fe/components/node-styles'
+import { isTriggerNode } from '@abuddy/ui/components/node-styles'
 
 provide('BaseNodeAddHandle', AddHandle)
 

@@ -25,5 +25,8 @@ export const safeEvents =
         `Expected type ${expectedArr.join(' | ')}, got ${event.type}`
       );
     }
-    return event as any;
+    return event as ExtractEvent<
+      TEvent,
+      TTypes extends readonly TEvent['type'][] ? TTypes[number] : TTypes
+    >;
   };

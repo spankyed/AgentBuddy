@@ -204,6 +204,12 @@ describe('appLaunchEnv (@abuddy/testing)', () => {
       ABUDDY_USER_DATA_DIR: '/tmp/data',
     });
   });
+
+  it("doesn't pass the runner's @abuddy/source condition to the app", () => {
+    expect(appLaunchEnv({ NODE_OPTIONS: '--max-old-space-size=4096 --conditions=@abuddy/source' }, '/tmp/data').NODE_OPTIONS)
+      .toBe('--max-old-space-size=4096');
+    expect(appLaunchEnv({ NODE_OPTIONS: '--conditions=@abuddy/source' }, '/tmp/data')).not.toHaveProperty('NODE_OPTIONS');
+  });
 });
 
 describe('fixtureEnv', () => {
@@ -215,4 +221,15 @@ describe('fixtureEnv', () => {
       .toEqual({ ABUDDY_ROOT: '/repo', ABUDDY_CLI: cliBin(), ELECTRON_RUN_AS_NODE: '1', HOME: '/home' });
     expect(fs.existsSync(cliBin())).toBe(true);
   });
+
+  it('never gives the runner the @abuddy/source condition: a pack resolves the published dist', () => {
+    const app = { kind: 'source', root: '/repo' } as const;
+    // The caller's own flags survive; the condition does not, however the run was started
+    expect(fixtureEnv(app, undefined, { NODE_OPTIONS: '--max-old-space-size=4096' }).NODE_OPTIONS)
+      .toBe('--max-old-space-size=4096');
+    expect(fixtureEnv(app, undefined, { NODE_OPTIONS: '--conditions=@abuddy/source --max-old-space-size=4096' }).NODE_OPTIONS)
+      .toBe('--max-old-space-size=4096');
+    expect(fixtureEnv(app, undefined, { NODE_OPTIONS: '--conditions=@abuddy/source' })).not.toHaveProperty('NODE_OPTIONS');
+  });
 });
+

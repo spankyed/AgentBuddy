@@ -67,12 +67,8 @@ interface SlackContent {
 }
 
 const props = defineProps<{
-  artifact: ArtifactItem;
+  artifact: ArtifactItem<Partial<SlackContent> | undefined>;
 }>();
 
-// Extract channels from artifact content
-const channels = computed(() => {
-  const content = props.artifact.content as SlackContent;
-  return content?.channels || [];
-});
+const channels = computed(() => props.artifact.content?.channels ?? []);
 </script>

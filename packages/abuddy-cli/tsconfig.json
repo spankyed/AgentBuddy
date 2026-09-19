@@ -1,5 +1,9 @@
 {
   "compilerOptions": {
+    // Workspace @abuddy/* sources import .ts files by name
+    "allowImportingTsExtensions": true,
+    // Workspace @abuddy/* packages resolve to source (see their package.json exports)
+    "customConditions": ["@abuddy/source"],
     "target": "ES2022",
     "module": "esnext",
     "moduleResolution": "bundler",

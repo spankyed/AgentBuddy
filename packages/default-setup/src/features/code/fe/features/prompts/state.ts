@@ -1,15 +1,7 @@
 import { setup } from 'xstate';
-import { trpc } from '@abuddy/sdk/rpc';
+import { sendToSystem } from '@/__generated__/events';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
-import type { PromptEntity } from '@/__generated__/types';
-
-const sendToBackend = (type: string, data: any) => {
-  trpc.bus.send.mutate({
-    systemId: 'code' as any,
-    type: type as any,
-    ...data
-  } as any)
-}
+import type { PromptEntity } from '@abuddy/sdk';
 
 export interface PromptTab {
   path: string
@@ -44,14 +36,15 @@ export const promptsState = setup({
   actions: {
     openPrompt: ({ event }) => {
       const ev = event as { type: 'codePrompts.OPEN_PROMPT'; promptId: string }
-      sendToBackend('codePrompts.OPEN_PROMPT', { promptId: ev.promptId })
+      sendToSystem('code', { type: 'codePrompts.OPEN_PROMPT', promptId: ev.promptId })
     },
 
     savePrompt: ({ event }) => {
       const ev = event as { type: 'codePrompts.SAVE_PROMPT'; promptId: string; content: string }
-      sendToBackend('codePrompts.SAVE_PROMPT', {
+      sendToSystem('code', {
+        type: 'codePrompts.SAVE_PROMPT',
         promptId: ev.promptId,
-        templateFn: ev.content
+        templateFn: ev.content,
       })
     },
 
@@ -107,7 +100,7 @@ export const promptsState = setup({
       const ev = event as { type: 'codePrompts.OPEN_TABS'; promptIds: string[] }
       // Open each prompt
       ev.promptIds.forEach(promptId => {
-        sendToBackend('codePrompts.OPEN_PROMPT', { promptId })
+        sendToSystem('code', { type: 'codePrompts.OPEN_PROMPT', promptId })
       })
     }
   }

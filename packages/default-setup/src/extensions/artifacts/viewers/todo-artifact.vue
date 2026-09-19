@@ -117,7 +117,7 @@ interface TodoContent {
 }
 
 const props = defineProps<{
-  artifact: ArtifactItem;
+  artifact: ArtifactItem<Partial<TodoContent>>;
 }>();
 
 const threadsActor = actorSystem.get(getDesignated('threads'));

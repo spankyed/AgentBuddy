@@ -87,6 +87,20 @@ describe('highlightSearchTerm', () => {
     expect(result).not.toContain('<mark class="text-yellow-200 bg-yellow-500/30">auth</mark>');
   });
 
+  it('escapes the text, the highlighted parts included', () => {
+    const payload = '<img src=x onload=alert(1)> error <b>';
+    expect(highlightSearchTerm(payload, 'error')).toBe(
+      '&lt;img src=x onload=alert(1)&gt; <mark class="text-yellow-200 bg-yellow-500/30">error</mark> &lt;b&gt;',
+    );
+    expect(highlightSearchTerm(payload, 'img')).toBe(
+      '&lt;<mark class="text-yellow-200 bg-yellow-500/30">img</mark> src=x onload=alert(1)&gt; error &lt;b&gt;',
+    );
+    expect(highlightSearchTerm(payload, '<b>')).toContain('<mark class="text-yellow-200 bg-yellow-500/30">&lt;b&gt;</mark>');
+    // With nothing to highlight, the text is still escaped
+    expect(highlightSearchTerm(payload, '')).toBe('&lt;img src=x onload=alert(1)&gt; error &lt;b&gt;');
+    expect(highlightSearchTerm(payload, '-error')).toBe('&lt;img src=x onload=alert(1)&gt; error &lt;b&gt;');
+  });
+
   it('should handle multiple terms', () => {
     const result = highlightSearchTerm('error warning info', 'error info');
     expect(result).toContain('<mark class="text-yellow-200 bg-yellow-500/30">error</mark>');

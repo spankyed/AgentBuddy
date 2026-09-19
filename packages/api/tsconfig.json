@@ -1,5 +1,10 @@
 {
   "compilerOptions": {
+    // Workspace @abuddy/* packages resolve to source (see their package.json exports)
+    "customConditions": ["@abuddy/source"],
+    // Their sources import .ts files by name; this config emits, which requires rewriteRelativeImportExtensions too
+    "allowImportingTsExtensions": true,
+    "rewriteRelativeImportExtensions": true,
     "target": "ES2022",
     "lib": ["ES2022"],
     "strict": true,
@@ -8,23 +13,14 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "outDir": "dist",
-    "declaration": true,
-    "declarationMap": true,
-    "emitDeclarationOnly": false,
-    "noEmit": false,
     "baseUrl": ".",
     "paths": {
-      "@abuddy/sdk": ["../abuddy-sdk/src/index.ts"],
-      "@abuddy/sdk/*": ["../abuddy-sdk/src/*/index.ts", "../abuddy-sdk/src/*"],
       "@/*": ["src/*"]
     },
-    "moduleResolution": "node",
-    "module": "commonjs",
-    "allowImportingTsExtensions": false
+    // tsup bundles the server as ESM
+    "moduleResolution": "bundler",
+    "module": "esnext"
   },
   "include": ["src"],
-  // [SEARCH_INDEX_FF] search-index excluded because its deps (fastembed, usearch, openai) are uninstalled.
-  // To re-enable: npm i fastembed@^1.14.1 usearch@^2.15.2 openai@^4.100.0 --workspace @app/api
-  // then remove "src/systems/library/search-index/**/*" from the exclude array below.
   "exclude": ["scripts/**/*"]
 }

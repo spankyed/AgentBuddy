@@ -1,15 +1,17 @@
+import { emit } from '@/__generated__/events';
+// Cross-plugin send: the flows plugin also receives action events
 import { assign, createMachine, setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
 import { flows } from '@/__generated__/system-ids';
-import { emit } from '@abuddy/sdk/helpers';
+
 import { EARS } from '@/__generated__/ears';
-import type { ActionsStartupData, ActionEntity } from './types';
-import { repository } from '@abuddy/sdk/ears';
+import type { ActionsStartupData } from './types';
+import { repository } from '@/__generated__/repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
-import './repository';
 import { exportActions } from './repository/export-actions';
+import type { ActionEntity } from '@abuddy/sdk';
 
 const logger = createLogger('actions');
 
@@ -42,7 +44,7 @@ export type OutgoingActionEvents =
 export const actionsSpec = defineSystem('actions')<IncomingActionEvents | ActionsInternalEvents, OutgoingActionEvents>();
 export const actions = actionsSpec.id;
 
-// Helper to broadcast action events to both actions and flows plugins
+// Broadcasts action events to both the actions and flows plugins (abuddy.json sendsTo)
 const broadcastActionEvent = (system: any, event: OutgoingActionEvents) => {
   const busSvc = system.get(bus);
   busSvc.send(emit(actions, event));
@@ -318,12 +320,16 @@ export const actionsSystem = setup({
           CLIENT_CONNECTED: {
             actions: 'sendActionsStartupData',
           },
+          // A pack's seeds can add or change actions
+          PACK_CHANGED: {
+            actions: 'sendActionsStartupData',
+          },
         },
       },
     },
   }
 );
 
-const actionsEntry: SystemEntry = { spec: actionsSpec, machine: actionsSystem };
+const actionsEntry = { spec: actionsSpec, machine: actionsSystem } satisfies SystemEntry;
 
 export default actionsEntry;

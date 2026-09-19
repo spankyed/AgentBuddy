@@ -1,29 +1,30 @@
-// TODO: [SEARCH_INDEX_FF] Reinstall deps: npm i fastembed@^1.14.1 usearch@^2.15.2 openai@^4.100.0 --workspace @app/api
+// [SEARCH_INDEX_FF] The search index is dormant: ./search-index/README.md lists its call sites and how to turn it on
 import { setup } from 'xstate'
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
 import type { EARS } from '@/__generated__/ears'
-import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryItem, FolderContents, FieldContent, ContentSection } from './types'
+import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryIndex, LibraryItem, FolderContents } from './types'
 // [SEARCH_INDEX_FF] import type { SearchIndex } from './search-index/types/search-index'
 import { bus } from '@abuddy/sdk/ids'
-import { repository } from '@abuddy/sdk/ears'
+import { repository } from '@/__generated__/repository';
 import * as path from 'path'
 import * as os from 'os'
 import * as fs from 'fs/promises'
 import { libraryService } from './services/library'
-import './repository'
 import * as symlink from './repository/symlink'
-// [SEARCH_INDEX_FF] import { EMBEDDING_MODELS } from '@/features/library/be/search-index/config/embedding-models'
+// [SEARCH_INDEX_FF] import { DEFAULT_EMBEDDING_MODEL } from '@/features/library/embedding-models'
 import { toMap, toIdentifierSet, mapArray } from '@abuddy/sdk/utils'
 import { exportLibrary } from './export-library'
 import { importLibrary } from './import-library'
+import type { ContentSection } from '@/features/library/be/types';
+import type { CommandItem } from '@/features/settings/be/types';
+import { threads } from '@/__generated__/system-ids';
 
 type IncomingLibraryEvents =
-  | { type: 'LIST_DOCUMENTS'; collectionId?: string }
   | { type: 'CREATE_DOCUMENT'; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }
   | { type: 'UPDATE_DOCUMENT'; id: string; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }
   | { type: 'DELETE_DOCUMENT'; id: string }
   | { type: 'GET_DOCUMENT'; id: string }
-  | { type: 'LIST_COLLECTIONS' }
+  | { type: 'GET_LIBRARY_INDEX' }
   | { type: 'CREATE_COLLECTION'; name: string; description?: string; parentId?: string }
   | { type: 'UPDATE_COLLECTION'; id: string; name: string; description?: string }
   | { type: 'DELETE_COLLECTION'; id: string }
@@ -43,16 +44,15 @@ type IncomingLibraryEvents =
   | { type: 'EXPORT_LIBRARY'; directory: string; format: 'markdown' | 'json' }
 
 export type OutgoingLibraryEvents =
-  | { type: 'LIBRARY_CONNECTED'; data: { documents: DocumentDTO[]; collections: CollectionDTO[]; settings: any } }
-  | { type: 'DOCUMENTS_LOADED'; data: { documents: DocumentDTO[] } }
+  | { type: 'LIBRARY_CONNECTED'; data: { index: LibraryIndex; settings: any } }
   | { type: 'DOCUMENT_CREATED'; data: { document: DocumentDTO } }
   | { type: 'DOCUMENT_UPDATED'; data: { document: DocumentDTO } }
   | { type: 'DOCUMENT_DELETED'; data: { documentId: string } }
   | { type: 'DOCUMENT_LOADED'; data: { document: DocumentDTO } }
-  | { type: 'COLLECTIONS_LOADED'; data: { collections: CollectionDTO[] } }
   | { type: 'COLLECTION_CREATED'; data: { collection: CollectionDTO } }
   | { type: 'COLLECTION_UPDATED'; data: { collection: CollectionDTO } }
   | { type: 'COLLECTION_DELETED'; data: { collectionId: string } }
+  | { type: 'LIBRARY_INDEX_LOADED'; data: { index: LibraryIndex } }
   | { type: 'LIBRARY_ERROR'; data: { error: string } }
   // Symlink events
   | { type: 'SYMLINK_UPDATED'; data: { collection: CollectionDTO } }
@@ -88,22 +88,21 @@ function resolveHomePath(inputPath: string): string {
   return trimmed
 }
 
+/**
+ * Tells the threads system the chat's slash commands changed, when a library change altered them: a document in the
+ * commands folder, or the folder, was created, edited, moved, renamed, deleted or imported. `before` is the list from
+ * before the change.
+ */
+function notifyIfCommandsChanged(system: { get(id: string): { send(event: unknown): void } | undefined }, before: CommandItem[]): void {
+  if (JSON.stringify(libraryService.commands()) === JSON.stringify(before)) return
+  system.get(threads)?.send({ type: 'COMMANDS_CHANGED' })
+}
+
 export const librarySystem = setup({
   types: librarySpec.types,
   actions: {
-    loadDocuments: async ({ system, event }) => {
-      const ev = event as { type: 'LIST_DOCUMENTS'; collectionId?: string }
-      const documents = repository.libraryQueries.getDocuments(ev.collectionId)
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
-          type: 'DOCUMENTS_LOADED' as const,
-          pluginId: 'library',
-          data: { documents },
-        },
-      })
-    },
     createDocument: async ({ system, event }) => {
+      const commandsBefore = libraryService.commands()
       const ev = event as { type: 'CREATE_DOCUMENT'; name: string; content: any[]; tags: string[]; collectionId?: string }
       const document = await libraryService.create({
         name: ev.name,
@@ -124,17 +123,10 @@ export const librarySystem = setup({
         })
       }
 
-      // If this is the internal/commands doc, notify threads plugin
-      if (document.name === 'commands' && document.collectionPath?.join('/') === 'internal') {
-        const fieldSection = document.content.find((s: any): s is FieldContent => s.type === 'field');
-        const commands = fieldSection?.fields?.map(f => ({ name: f.key, placeholder: f.value })) ?? [];
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: { type: 'COMMANDS_UPDATED' as const, pluginId: 'threads' as any, commands },
-        });
-      }
+      notifyIfCommandsChanged(system, commandsBefore)
     },
     updateDocument: async ({ system, event }) => {
+      const commandsBefore = libraryService.commands()
       const ev = event as { type: 'UPDATE_DOCUMENT'; id: string; name: string; content: any[]; tags: string[]; collectionId?: string }
       const document = await libraryService.update({
         id: ev.id,
@@ -147,17 +139,10 @@ export const librarySystem = setup({
         event: { type: 'DOCUMENT_UPDATED' as const, pluginId: 'library', data: { document } },
       })
 
-      // If this is the internal/commands doc, notify threads plugin
-      if (document.name === 'commands' && document.collectionPath?.join('/') === 'internal') {
-        const fieldSection = document.content.find((s: any): s is FieldContent => s.type === 'field');
-        const commands = fieldSection?.fields?.map(f => ({ name: f.key, placeholder: f.value })) ?? [];
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: { type: 'COMMANDS_UPDATED' as const, pluginId: 'threads' as any, commands },
-        });
-      }
+      notifyIfCommandsChanged(system, commandsBefore)
     },
     deleteDocument: async ({ system, event }) => {
+      const commandsBefore = libraryService.commands()
       const ev = event as { type: 'DELETE_DOCUMENT'; id: string }
       repository.libraryCommands.deleteDocument(ev.id as EARS.EntityId)
       system.get(bus).send({
@@ -168,6 +153,7 @@ export const librarySystem = setup({
           data: { documentId: ev.id },
         },
       })
+      notifyIfCommandsChanged(system, commandsBefore)
     },
     getDocument: async ({ system, event }) => {
       const ev = event as { type: 'GET_DOCUMENT'; id: string }
@@ -184,14 +170,13 @@ export const librarySystem = setup({
         })
       }
     },
-    loadCollections: async ({ system }) => {
-      const collections = repository.libraryQueries.getCollections()
+    sendIndex: ({ system }) => {
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: {
-          type: 'COLLECTIONS_LOADED' as const,
+          type: 'LIBRARY_INDEX_LOADED' as const,
           pluginId: 'library',
-          data: { collections },
+          data: { index: repository.libraryQueries.getIndex() },
         },
       })
     },
@@ -221,6 +206,7 @@ export const librarySystem = setup({
       }
     },
     updateCollection: async ({ system, event }) => {
+      const commandsBefore = libraryService.commands()
       const ev = event as { type: 'UPDATE_COLLECTION'; id: string; name: string; description?: string }
       const collection = repository.libraryCommands.updateCollection(
         ev.id as EARS.EntityId,
@@ -235,8 +221,10 @@ export const librarySystem = setup({
           data: { collection },
         },
       })
+      notifyIfCommandsChanged(system, commandsBefore)
     },
     deleteCollection: async ({ system, event }) => {
+      const commandsBefore = libraryService.commands()
       const ev = event as { type: 'DELETE_COLLECTION'; id: string }
       repository.libraryCommands.deleteCollection(ev.id as EARS.EntityId)
       system.get(bus).send({
@@ -247,8 +235,10 @@ export const librarySystem = setup({
           data: { collectionId: ev.id },
         },
       })
+      notifyIfCommandsChanged(system, commandsBefore)
     },
     moveDocument: async ({ system, event }) => {
+      const commandsBefore = libraryService.commands()
       const ev = event as { type: 'MOVE_DOCUMENT'; documentId: string; collectionId?: string }
       const document = repository.libraryCommands.moveDocument(
         ev.documentId as EARS.EntityId,
@@ -262,14 +252,13 @@ export const librarySystem = setup({
           data: { document },
         },
       })
+      notifyIfCommandsChanged(system, commandsBefore)
     },
     sendInitialData: async ({ system }) => {
       // Run migrations
       repository.libraryCommands.migrateDocumentShortCodes()
       repository.libraryCommands.migrateDisplayOrders()
 
-      const documents = repository.libraryQueries.getDocuments()
-      const collections = repository.libraryQueries.getCollections()
       const librarySettings = repository.settingsQueries.getPluginSettings('library')
 
       system.get(bus).send({
@@ -278,8 +267,7 @@ export const librarySystem = setup({
           type: 'LIBRARY_CONNECTED' as const,
           pluginId: 'library',
           data: {
-            documents,
-            collections,
+            index: repository.libraryQueries.getIndex(),
             settings: librarySettings || null
           },
         },
@@ -319,6 +307,7 @@ export const librarySystem = setup({
       })
     },
     renameItem: async ({ system, event }) => {
+      const commandsBefore = libraryService.commands()
       const ev = event as { type: 'RENAME_ITEM'; id: string; name: string; itemType: 'document' | 'folder' }
       if (symlink.isSymlinkId(ev.id)) {
         await libraryService.rename(ev.id, ev.name)
@@ -351,22 +340,27 @@ export const librarySystem = setup({
           event: { type: 'ITEM_RENAMED' as const, pluginId: 'library', data: { item } },
         })
       }
+      notifyIfCommandsChanged(system, commandsBefore)
     },
     deleteItems: async ({ system, event }) => {
+      const commandsBefore = libraryService.commands()
       const ev = event as { type: 'DELETE_ITEMS'; ids: string[] }
       await libraryService.remove(ev.ids)
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: { type: 'ITEMS_DELETED' as const, pluginId: 'library', data: { ids: ev.ids } },
       })
+      notifyIfCommandsChanged(system, commandsBefore)
     },
     moveItems: async ({ system, event }) => {
+      const commandsBefore = libraryService.commands()
       const ev = event as { type: 'MOVE_ITEMS'; ids: string[]; targetFolderId: string | null }
       await libraryService.move(ev.ids, ev.targetFolderId)
       system.get(bus).send({
         type: 'OUTGOING' as const,
         event: { type: 'ITEMS_MOVED' as const, pluginId: 'library', data: { ids: ev.ids, targetFolderId: ev.targetFolderId } },
       })
+      notifyIfCommandsChanged(system, commandsBefore)
     },
     // [SEARCH_INDEX_FF] Search index actions — commented out
     // listSearchIndices: async ({ system, event }) => {
@@ -501,6 +495,7 @@ export const librarySystem = setup({
     },
     // Import/Export actions
     importLibraryItems: async ({ system, event }) => {
+      const commandsBefore = libraryService.commands()
       const ev = event as { type: 'IMPORT_LIBRARY'; directory: string }
       const pluginId = library
 
@@ -530,8 +525,6 @@ export const librarySystem = setup({
         })
 
         // Refresh library data
-        const documents = repository.libraryQueries.getDocuments()
-        const collections = repository.libraryQueries.getCollections()
         const librarySettings = repository.settingsQueries.getPluginSettings('library')
 
         system.get(bus).send({
@@ -540,8 +533,7 @@ export const librarySystem = setup({
             type: 'LIBRARY_CONNECTED' as const,
             pluginId,
             data: {
-              documents,
-              collections,
+              index: repository.libraryQueries.getIndex(),
               settings: librarySettings || null,
             },
           },
@@ -557,6 +549,8 @@ export const librarySystem = setup({
           },
         })
       }
+      // An import can fail part way, after creating documents
+      notifyIfCommandsChanged(system, commandsBefore)
     },
     exportLibraryToFile: async ({ system, event }) => {
       const ev = event as { type: 'EXPORT_LIBRARY'; directory: string; format: 'markdown' | 'json' }
@@ -636,6 +630,10 @@ export const librarySystem = setup({
     CLIENT_CONNECTED: {
       actions: ['sendInitialData'],
     },
+    // A pack's seeds can add or change the library's documents
+    PACK_CHANGED: {
+      actions: ['sendInitialData'],
+    },
     LIBRARY_SETTINGS_UPDATED: {
       actions: ['handleSettingsUpdate'],
     },
@@ -643,9 +641,6 @@ export const librarySystem = setup({
   states: {
     idle: {
       on: {
-        LIST_DOCUMENTS: {
-          actions: ['loadDocuments'],
-        },
         CREATE_DOCUMENT: {
           actions: ['createDocument'],
         },
@@ -658,8 +653,8 @@ export const librarySystem = setup({
         GET_DOCUMENT: {
           actions: ['getDocument'],
         },
-        LIST_COLLECTIONS: {
-          actions: ['loadCollections'],
+        GET_LIBRARY_INDEX: {
+          actions: ['sendIndex'],
         },
         CREATE_COLLECTION: {
           actions: ['createCollection'],
@@ -714,6 +709,6 @@ export const librarySystem = setup({
   },
 })
 
-const libraryEntry: SystemEntry = { spec: librarySpec, machine: librarySystem };
+const libraryEntry = { spec: librarySpec, machine: librarySystem } satisfies SystemEntry;
 
 export default libraryEntry;

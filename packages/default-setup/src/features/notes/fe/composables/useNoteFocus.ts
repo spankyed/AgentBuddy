@@ -1,7 +1,7 @@
 import { watch, nextTick, type Ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import type { NotesState } from '../state'
-import type TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue'
+import type TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 
 export function useNoteFocus(
   actor: NotesState,

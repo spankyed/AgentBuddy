@@ -1,28 +1,55 @@
+import { ensureCheckoutPackages } from '../build/checkout-packages.ts';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { build } from './build';
 import { findPackRoot, readManifest } from '../utils';
 import { findFEEntry, packExternalsPlugin } from '../build/fe-bundler';
-import { resolveAppContext } from '@abuddy/sdk/env';
-import { installPackFromLocal } from '@abuddy/sdk/packs';
+import { readApiEndpoint, resolveAppContext } from '@abuddy/sdk/env';
+import { API_HOST, API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
+import { installPackFromLocal, readHostVersion } from '@abuddy/host/packs';
+import { removeDevServerMarker, writeDevServerMarker } from '@abuddy/host/packs/dev-server';
 
-function getDevApiUrl(): string | null {
+/** The running development app's API: its URL and the token it requires, from the files the API writes */
+function getDevApi(): { url: string; token: string } | null {
   try {
-    const port = fs.readFileSync(resolveAppContext({ env: 'development' }).apiPortFile, 'utf-8').trim();
-    return port ? `http://localhost:${port}` : null;
+    const { apiPortFile, apiTokenFile } = resolveAppContext({ env: 'development' });
+    const api = readApiEndpoint(apiPortFile);
+    const token = fs.readFileSync(apiTokenFile, 'utf-8').trim();
+    return api && token ? { url: `http://${API_HOST}:${api.port}`, token } : null;
   } catch { return null; }
 }
 
-function writeSignalFile(packsDir: string, packId: string, port: number): string {
-  const packDir = path.join(packsDir, packId);
-  fs.mkdirSync(packDir, { recursive: true });
-  const signalPath = path.join(packDir, '.dev');
-  fs.writeFileSync(signalPath, JSON.stringify({ port, pid: process.pid }));
-  return signalPath;
+/**
+ * Asks the running development app to reload a pack's runtime, with its API token. `not-running` when there's no
+ * port or token file, `failed` when the app refused or couldn't reload, `unreachable` when nothing answered.
+ */
+export async function reloadDevPack(packId: string): Promise<'reloaded' | 'not-running' | 'failed' | 'unreachable'> {
+  const api = getDevApi();
+  if (!api) return 'not-running';
+  try {
+    const res = await fetch(`${api.url}/dev/reload`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', [API_TOKEN_HEADER]: api.token },
+      body: JSON.stringify({ packId }),
+    });
+    return res.ok ? 'reloaded' : 'failed';
+  } catch {
+    return 'unreachable';
+  }
 }
 
-function removeSignalFile(signalPath: string) {
-  try { fs.unlinkSync(signalPath); } catch {}
+/** Prints what a reload came to; `what` names the changes (`BE changes`, `changes`) */
+function reportReload(result: Awaited<ReturnType<typeof reloadDevPack>>, what: string): void {
+  if (result === 'reloaded') console.log('BE reloaded successfully.\n');
+  else if (result === 'not-running') console.warn(`Dev app not running (no port or token file). Restart to apply ${what}.\n`);
+  else if (result === 'failed') console.warn('BE reload failed. Restart the app to apply changes.\n');
+  else console.warn(`Could not reach dev app. Restart to apply ${what}.\n`);
+}
+
+/** Installs into the dev data dir, checking hostVersion against the dev app that last used it. */
+export function installToDev(root: string) {
+  const { packsDir, userDataDir } = resolveAppContext({ env: 'development' });
+  return installPackFromLocal(root, packsDir, { hostVersion: readHostVersion(userDataDir) });
 }
 
 export async function dev(_args: string[]) {
@@ -35,13 +62,16 @@ export async function dev(_args: string[]) {
 
   const manifest = readManifest(root);
   const feEntry = findFEEntry(root);
-  const { packsDir } = resolveAppContext({ env: 'development' });
+  const { packsDir, userDataDir } = resolveAppContext({ env: 'development' });
+
+  // The build and the app both read the @abuddy packages' dist; from a checkout that dist is built on demand
+  ensureCheckoutPackages(root);
 
   console.log('Running initial build...\n');
   await build([]);
 
   console.log(`Installing pack to dev environment...`);
-  const result = await installPackFromLocal(root, packsDir);
+  const result = await installToDev(root);
   console.log(`  ${result.dir}\n`);
 
   if (!feEntry) {
@@ -84,7 +114,7 @@ export async function dev(_args: string[]) {
     },
     logLevel: 'info',
     optimizeDeps: {
-      exclude: Object.keys((await import('@abuddy/sdk/build/shared-deps')).getSharedFeDeps()),
+      exclude: Object.keys((await import('@abuddy/host/build/shared-deps')).getSharedFeDeps(root)),
     },
   });
 
@@ -96,10 +126,11 @@ export async function dev(_args: string[]) {
     throw new Error('Vite dev server failed to bind a port');
   }
 
-  const signalPath = writeSignalFile(packsDir, manifest.id, port);
+  // Outside the installed pack: its directory is the verified bundle, replaced by every install below
+  writeDevServerMarker(userDataDir, manifest.id, { port, pid: process.pid });
 
   function cleanup() {
-    removeSignalFile(signalPath);
+    removeDevServerMarker(userDataDir, manifest.id);
     server.close();
   }
 
@@ -137,25 +168,11 @@ export async function dev(_args: string[]) {
         console.log('Rebuilding...');
         await build([]);
         console.log('Installing to dev...');
-        await installPackFromLocal(root, packsDir);
+        await installToDev(root);
         console.log('Triggering BE reload...');
-        const apiUrl = getDevApiUrl();
-        if (!apiUrl) {
-          console.warn('Dev app not running (no port file). Restart to apply BE changes.\n');
-        } else {
-          const res = await fetch(`${apiUrl}/dev/reload`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ packId: manifest.id }),
-          });
-          if (res.ok) {
-            console.log('BE reloaded successfully.\n');
-          } else {
-            console.warn('BE reload failed. Restart the app to apply changes.\n');
-          }
-        }
+        reportReload(await reloadDevPack(manifest.id), 'BE changes');
       } catch {
-        console.warn('Could not reach dev app. Restart to apply BE changes.\n');
+        console.warn('Rebuild failed. Fix the error to apply BE changes.\n');
       } finally {
         beReloading = false;
       }
@@ -182,24 +199,10 @@ async function watchRebuildFallback(root: string, srcDir: string, packId: string
       try {
         console.log(`\nChange detected: ${label}`);
         await build([]);
-        await installPackFromLocal(root, packsDir);
-        const apiUrl = getDevApiUrl();
-        if (!apiUrl) {
-          console.warn('Dev app not running (no port file). Restart to apply changes.\n');
-        } else {
-          const res = await fetch(`${apiUrl}/dev/reload`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ packId }),
-          });
-          if (res.ok) {
-            console.log('BE reloaded successfully.\n');
-          } else {
-            console.warn('BE reload failed. Restart the app to apply changes.\n');
-          }
-        }
+        await installToDev(root);
+        reportReload(await reloadDevPack(packId), 'changes');
       } catch {
-        console.warn('Could not reach dev app. Restart to apply changes.\n');
+        console.warn('Rebuild failed. Fix the error to apply changes.\n');
       } finally {
         reloading = false;
       }

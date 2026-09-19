@@ -17,6 +17,7 @@
 import type { ArtifactItem } from '@abuddy/sdk/artifacts';
 
 defineProps<{
-  artifact: ArtifactItem;
+  /** content: the image's URL */
+  artifact: ArtifactItem<string>;
 }>();
 </script>

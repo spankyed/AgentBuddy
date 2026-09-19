@@ -1,6 +1,6 @@
+import { sendToPlugin } from '@/__generated__/events';
 import { setup, assign } from 'xstate'
-import { emit } from '@abuddy/sdk/helpers'
-import { rootEvents } from '@abuddy/sdk/rpc'
+
 import { createLogger } from '@abuddy/sdk/logger'
 import { GitRepository } from '../services/git'
 import type { GitStatusFile, GitDiff, GhPullRequest, GhPRComment, GhReviewThread } from '../types'
@@ -119,8 +119,7 @@ function humanizeBranchName(branch: string): string {
 }
 
 function emitToFrontend(event: OutgoingPullRequestEvents) {
-  const wrapped = emit(pluginId, event)
-  rootEvents.emitOutgoing(wrapped.event)
+  sendToPlugin(pluginId, event)
 }
 
 function emitError(message: string) {

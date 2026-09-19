@@ -30,18 +30,31 @@ export interface CommandItem {
 
 // ── Settings types ────────────────────────────────────────────────────────
 
-export type SETTINGS_SCOPE = 'general' | 'plugin' | 'internal';
-
 export interface SettingsData {
   general: GeneralSettings;
   plugins: PluginSettings;
-  internal: InternalSettings;
   assistant: AssistantSettings;
+}
+
+/** The one Settings row: the user's changes to the default settings (`SettingsData`), and nothing else */
+export interface SettingsEntity extends BaseEntity {
+  entityType: typeof EARS.Entity.Settings;
+  /** Only what differs from the defaults */
+  data: Partial<SettingsData>;
+  updatedAt?: number;
+}
+
+/** A Help tab FAQ: the first `# heading` of a src/seeds/faqs file, and the rest as its answer */
+export interface FAQItem {
+  id: string;
+  question: string;
+  answer: string;
+  category?: string;
+  order?: number;
 }
 
 export interface GeneralSettings {
   personal: PersonalInfo;
-  secrets: Secrets;
   application: AppSettings;
   projects: Project[];
 }
@@ -58,22 +71,9 @@ export interface Address {
 export interface PersonalInfo {
   name?: string;
   phoneNumber?: string;
-  address?: string | Address; // Support both legacy string and new structured format
+  address?: Address;
 }
 
-export interface Secrets {
-  google?: string | null; // Secret ID reference
-  anthropic?: string | null; // Secret ID reference
-  openai?: string | null; // Secret ID reference
-  groq?: string | null; // Secret ID reference
-  mistral?: string | null; // Secret ID reference
-  cohere?: string | null; // Secret ID reference
-  custom?: Record<string, string>; // Custom provider name -> Secret ID
-  required: string[]; // List of required providers, e.g., ['openai']
-  cliPaths?: Record<string, string>; // e.g., { 'claude-code': '/usr/local/bin/claude' }
-}
-
-export type { KeyboardShortcut, CustomHotkey, ApplicationHotkeys } from '@abuddy/sdk/types';
 import type { KeyboardShortcut, ApplicationHotkeys } from '@abuddy/sdk/types';
 
 export interface AppSettings {
@@ -152,13 +152,11 @@ export interface ActionsSettings {
 
 // Flows plugin settings
 export interface FlowsSettings {
-  rootFlowId?: string; // ID of the flow with the root_flow role
   enableFlowPreview?: boolean; // Enable flow preview on single click
 }
 
 // Brain plugin settings
 export interface BrainSettings {
-  runningRootFlowId?: string; // The ID of the root flow currently running in the brain
   inspectEnabled?: boolean; // Whether the brain inspection panel is enabled
 }
 
@@ -188,26 +186,9 @@ export interface PluginSettings {
   [pluginId: string]: any; // Plugin-specific settings
 }
 
-export interface InternalSettings {
-  hasOnboarded: boolean;
-  lastInteractionTimestamp: number | null;
-  version: string;
-  seedHash: string | null;
-  packSeedHashes?: Record<string, string>;
-  packVersions?: Record<string, string>;
-}
-
 export interface AssistantSettings {
   name: string;
   birthdate: string | null;
-}
-
-export interface FAQItem {
-  id: string;
-  question: string;
-  answer: string;
-  category?: string;
-  order?: number;
 }
 
 export interface AgentSettings {
@@ -225,10 +206,3 @@ export interface AgentSettings {
 }
 
 // System-private entity type
-export interface SettingsEntity extends BaseEntity {
-  entityType: EARS.Entity.Settings;
-  name: string; // e.g., 'internal', 'general.secrets', 'plugin.flows'
-  data: any; // Flexible data structure
-  type?: SETTINGS_SCOPE; // Optional for backward compatibility
-  label?: string; // Optional for backward compatibility
-}

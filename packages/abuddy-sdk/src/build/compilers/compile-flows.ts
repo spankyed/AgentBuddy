@@ -2,16 +2,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
 import { pathToFileURL } from 'url';
-import type { FlowDSL, FlowConfig, ValidationResult } from './flow-types';
-import { isFlowConfig } from './flow-types';
-import { validate } from './flow-dsl-validator';
-
-export interface FlowCompileResult {
-  merged: Record<string, object>;
-  rootFlowName: string | null;
-  loaded: number;
-  validation: ValidationResult;
-}
+import type { ValidationResult } from '../seed-compiler.ts';
+import { isFlowConfig, type FlowConfig, type FlowDSL } from './flow-types.ts';
+import { validate } from './flow-dsl-validator.ts';
 
 export async function loadFlowsFromDir(flowsDir: string): Promise<{
   merged: FlowDSL;
@@ -62,7 +55,7 @@ export function validateFlows(
   merged: FlowDSL,
   actionLabels: string[],
   promptLabels: string[],
-  options?: { steps?: import('../../steps/types').StepDefinition[] },
+  options?: { steps?: import('../../steps/types.ts').StepDefinition[] },
 ): ValidationResult {
   return validate(merged, { actions: actionLabels, prompts: promptLabels, steps: options?.steps });
 }

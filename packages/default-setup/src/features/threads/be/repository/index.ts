@@ -1,25 +1,22 @@
-import { registerRepository } from '@abuddy/sdk/ears';
+import { tx, findById, findAll, qx } from '@/__generated__/ears';
+
 import { EARS } from '@/__generated__/ears';
-import {
-  findById,
-  findAll,
-  updateEntity,
-  RepositoryError,
-  RepositoryErrorCode
-} from '@abuddy/sdk/ears';
-import { wouldCreateCycle } from '@abuddy/sdk/ears';
-import { qx, b64Encode, b64Decode } from '@abuddy/sdk/ears';
-import { tx } from '@abuddy/sdk/ears';
+import { RepositoryError, RepositoryErrorCode } from '@abuddy/ears';
+import { trash } from '@abuddy/sdk/repositories';
+import { updateEntity } from '@/__generated__/ears';
+import { wouldCreateCycle } from '@abuddy/ears';
+import { b64Encode, b64Decode } from '@abuddy/ears';
 import type {
   ThreadEntity, MessageEntity, ArtifactEntity, BlockConfig, MessageReferences,
   ThreadCreateData,
   ThreadExtendedData,
   ThreadTypeShortCode,
   ThreadConnectedData,
-  AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType, ArtifactItem,
+  AgentThreadData, RecentThreadRefreshData, AgentConnectedData, Tab, ArtifactType,
 } from '../types';
 import type { ThreadsSettings, ThreadTagOption } from '@/__generated__/types';
-import { repository } from '@abuddy/sdk/ears';
+import { repository } from '@/__generated__/repository';
+import type { ArtifactItem } from '@abuddy/sdk/artifacts';
 
 /**
  * Threads Repository
@@ -52,16 +49,10 @@ export const threadQueries = {
   allUnfiltered: () =>
     findAll<ThreadEntity>(EARS.Entity.Thread),
 
-  allByRecency: () => {
-    const threads = findAll<ThreadEntity>(EARS.Entity.Thread).filter(t => !t.archived);
-    return threads.sort((a, b) => {
-      // Priority: lastVisitedTimestamp > lastMessageTimestamp > timestamp
-      const aTime = a.lastVisitedTimestamp || a.lastMessageTimestamp || a.timestamp;
-      const bTime = b.lastVisitedTimestamp || b.lastMessageTimestamp || b.timestamp;
-      return bTime - aTime;
-    });
-  },
-  
+  /** The first thread holding the role, e.g. the onboarding birth thread */
+  idByRole: (role: EARS.RoleKind): EARS.EntityId | null =>
+    qx().withRole(role).first(),
+
   // Get thread messages
   messages: (threadId: EARS.EntityId) => 
     qx(threadId)
@@ -106,50 +97,6 @@ export const threadQueries = {
     return getArchivedThreads();
   },
 
-  kanbanItems: () => {
-    // Get all threads and transform them into kanban work items
-    const allThreads = (qx(EARS.Entity.Thread)
-      .pick(['id', 'topic', 'status', 'updatedAt', 'createdAt', 'shortCode', 'archived'] as const))
-      .filter(t => !t.archived)
-    
-    // Sort threads by most recent update (fallback to createdAt)
-    const sortedThreads = allThreads.sort((a, b) => {
-      const aTime = (a.updatedAt as number) || (a.createdAt as number) || 0;
-      const bTime = (b.updatedAt as number) || (b.createdAt as number) || 0;  
-      return bTime - aTime;
-    }
-    );
-    
-    // Transform threads into work items
-    const workItems = sortedThreads.map((thread, index) => ({
-      id: thread.id,
-      name: String(thread.topic || `Thread ${thread.shortCode || index + 1}`),
-      time: new Date((thread.updatedAt as number) || (thread.createdAt as number) || Date.now()).toLocaleTimeString('en-US', { 
-        hour: '2-digit', 
-        minute: '2-digit',
-        hour12: false 
-      }),
-      date: new Date((thread.updatedAt as number) || (thread.createdAt as number) || Date.now()).toLocaleDateString('en-US', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit'
-      }),
-      priority: 1, // Default priority
-      tags: [],
-      status: thread.status || 'backlog',
-      type: 'work-item' as const
-    }));
-    
-    return {
-      content: {
-        workItems
-      },
-      metadata: {
-        createdAt: Date.now()
-      }
-    };
-  },
-  
   // Get connected data — sends only thread metadata (no messages/linkedThreads).
   // Messages are fetched on demand via VIEW_THREAD / OPEN_THREAD_CHAT.
   connectedData: (): ThreadConnectedData => {
@@ -372,6 +319,11 @@ export const threadCommands = {
     // 4. Finally, delete the thread entity itself
     tx(id).destroy();
   },
+
+  /** Destroy a thread record left without data (a stale role holder); `delete` cleans up a real thread's links */
+  destroyStale: (id: EARS.EntityId): void => {
+    tx(id).destroy();
+  },
 } as const;
 
 // ---- Chat queries & commands (merged from agent system) ----
@@ -532,15 +484,6 @@ function paginatedMessages(threadId: EARS.EntityId, cursor?: string | null): {
 }
 
 export const chatQueries = {
-  hasRequiredApiKeys: (): boolean => {
-    const secrets = repository.settingsQueries.getGeneralSettings().secrets;
-    const required = ['openai', 'anthropic'];
-    return required.some(provider => {
-      const secretId = secrets[provider as keyof typeof secrets];
-      return secretId !== null && secretId !== undefined && secretId !== '';
-    });
-  },
-
   threadArtifacts: (threadId: EARS.EntityId) => {
     return getThreadArtifacts(threadId);
   },
@@ -619,7 +562,6 @@ export const chatQueries = {
       recentThreads: getRecentThreads(),
       tabs,
       settings: chatSettings,
-      hasRequiredApiKeys: chatQueries.hasRequiredApiKeys(),
     };
   },
 
@@ -770,11 +712,11 @@ export const chatCommands = {
       .put('updatedAt', now);
 
     let updatedBlocks: BlockConfig[] | undefined;
-    const fullMessage = qx(messageId).pickOne(['blocks']);
+    const storedBlocks = qx(messageId).pickOne(['blocks'])?.blocks;
 
-    if (fullMessage?.blocks && response.buttonId) {
+    if (Array.isArray(storedBlocks) && response.buttonId) {
       let buttonToggled = false;
-      const newBlocks = fullMessage.blocks.map((block: BlockConfig) => {
+      const newBlocks = (storedBlocks as BlockConfig[]).map((block: BlockConfig) => {
         if (block.type === 'button-group') {
           const updatedButtons = block.props.buttons.map((button: any) => {
             if (button.toggleStates && button.id === response.buttonId) {
@@ -959,16 +901,8 @@ export const chatCommands = {
     // Delete the target message AND everything after it — the user is
     // "undoing" their message. The message text is prefilled into the chat
     // input so they can re-send or edit it.
-    const toDelete = nonDeleted.slice(targetIndex);
-    const now = Date.now();
-    const deletedIds: string[] = [];
-
-    for (const msg of toDelete) {
-      if (msg.id) {
-        tx(msg.id as EARS.EntityId).put('deleted', true).put('deletedAt', now);
-        deletedIds.push(msg.id as string);
-      }
-    }
+    const toDelete = nonDeleted.slice(targetIndex).flatMap((msg) => msg.id ? [msg.id as EARS.EntityId] : []);
+    const deletedIds: string[] = trash.move(toDelete);
 
     return { deletedCount: deletedIds.length, deletedIds };
   },
@@ -1027,7 +961,3 @@ export const chatCommands = {
   ): ArtifactEntity | undefined => findArtifactByThreadAndType(threadId, artifactType),
 } as const;
 
-registerRepository('threadQueries', threadQueries);
-registerRepository('threadCommands', threadCommands);
-registerRepository('chatQueries', chatQueries);
-registerRepository('chatCommands', chatCommands);

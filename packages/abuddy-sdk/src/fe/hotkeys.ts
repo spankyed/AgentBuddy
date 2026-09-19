@@ -36,7 +36,7 @@ export function matchesHotkey(event: HotkeyEvent, config: KeyboardShortcut): boo
   return event.key.toLowerCase() === config.key.toLowerCase() && modifierMatch;
 }
 
-export function processHotkeys<const T extends Record<string, string>, H = any>(
+export function processHotkeys<const T extends Record<string, string>, H = unknown>(
   event: HotkeyEvent,
   hotkeys: H | undefined,
   actionMap: T
@@ -45,7 +45,7 @@ export function processHotkeys<const T extends Record<string, string>, H = any>(
 
   for (const actionName of Object.keys(actionMap) as (keyof T)[]) {
     if (event.allowedActions && !event.allowedActions.has(actionName as string)) continue;
-    const hotkeyConfig = (hotkeys as any)[actionName as string];
+    const hotkeyConfig = (hotkeys as Record<string, unknown>)[actionName as string];
     if (hotkeyConfig && matchesHotkey(event, hotkeyConfig as KeyboardShortcut)) {
       event.preventDefault();
       return actionMap[actionName];

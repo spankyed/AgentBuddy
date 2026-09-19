@@ -1,5 +1,3 @@
-export type { ValidationError, ValidationResult } from '../seed-compiler';
-
 export interface DSLNodeBase {
   label?: string;
   description?: string;
@@ -36,5 +34,3 @@ export function isFlowConfig(value: Track[] | FlowConfig): value is FlowConfig {
 export function resolveTracks(entry: Track[] | FlowConfig): Track[] {
   return isFlowConfig(entry) ? entry.tracks : entry;
 }
-
-export const ROOT_FLOW_ROLE = 'root_flow';

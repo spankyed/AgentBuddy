@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { extractBundleArchive, verifyBundle } from '@abuddy/sdk/packs';
+import { extractBundleArchive, verifyBundle } from '@abuddy/host/packs';
 
 /**
  * The scaffold an outside author starts from must build, typecheck and pack as
@@ -13,6 +13,9 @@ import { extractBundleArchive, verifyBundle } from '@abuddy/sdk/packs';
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const CLI = path.join(REPO_ROOT, 'packages', 'abuddy-cli', 'bin', 'abuddy.mjs');
 const TSC = path.join(REPO_ROOT, 'node_modules', '.bin', 'tsc');
+// Plain tsc on the generated tsconfig: the borrowed node_modules link the workspace @abuddy/*
+// packages, which the scaffold's tsconfig typechecks from source
+const TSC_ARGS = ['--noEmit'];
 
 let tmp: string;
 let pack: string;
@@ -67,8 +70,11 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     expect(build.code, build.output).toBe(0);
     expect(fs.existsSync(path.join(pack, 'dist', 'runtime', 'index.cjs'))).toBe(true);
     expect(fs.existsSync(path.join(pack, 'dist', 'runtime', 'fe.js'))).toBe(true);
+    // The scaffold's example entry seeds the pack's own entity type from markdown
+    const examples = JSON.parse(fs.readFileSync(path.join(pack, 'dist', 'runtime', 'seeds', 'examples.seed.json'), 'utf-8'));
+    expect(examples.records).toEqual([expect.objectContaining({ entity: 'DemoPack', title: 'Hello', content: expect.stringContaining('hello.md') })]);
 
-    const tsc = run(TSC, ['--noEmit'], pack);
+    const tsc = run(TSC, TSC_ARGS, pack);
     expect(tsc.code, tsc.output).toBe(0);
 
     const out = path.join(tmp, 'out');
@@ -81,6 +87,8 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
   it('adds a step (registered, shipped in build/steps.build.mjs) and a service that build', async () => {
     expect(run('node', [CLI, 'add', 'step', 'ping'], pack).code).toBe(0);
     expect(run('node', [CLI, 'add', 'service', 'cache'], pack).code).toBe(0);
+    expect(JSON.parse(fs.readFileSync(path.join(pack, 'abuddy.json'), 'utf-8')).packServices).toEqual({ cache: 'src/extensions/services/cache.ts#cacheService' });
+    expect(fs.readFileSync(path.join(pack, 'src', '__generated__', 'services.ts'), 'utf-8')).toContain("import { cacheService as __service_cache } from '../extensions/services/cache.js';");
     const stepsDir = path.join(pack, 'src', 'extensions', 'steps');
     expect(fs.readFileSync(path.join(stepsDir, 'register.ts'), 'utf-8')).toMatch(/import \{ pingStep \} from '\.\/ping';[\s\S]*\[[\s\S]*pingStep,/);
     expect(fs.readFileSync(path.join(stepsDir, 'build.ts'), 'utf-8')).toMatch(/import \{ pingStepBuild \} from '\.\/ping\/build';[\s\S]*\[[\s\S]*pingStepBuild,/);
@@ -90,7 +98,7 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     const stepsBuild = await import(path.join(pack, 'dist', 'build', 'steps.build.mjs'));
     expect(stepsBuild.steps.map((step: { type: string }) => step.type)).toEqual(['ping']);
 
-    const tsc = run(TSC, ['--noEmit'], pack);
+    const tsc = run(TSC, TSC_ARGS, pack);
     expect(tsc.code, tsc.output).toBe(0);
   }, 240_000);
 
@@ -100,7 +108,7 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
 
     const generate = run('node', [CLI, 'generate-entries'], pack);
     expect(generate.output).not.toMatch(/inputs unchanged/);
-    expect(fs.readFileSync(path.join(pack, 'src', '__generated__', 'services.ts'), 'utf-8')).toMatch(/import \{ cacheService \}/);
+    expect(fs.readFileSync(path.join(pack, 'src', '__generated__', 'services.ts'), 'utf-8')).toMatch(/import \{ cacheService as __service_cache \}/);
     expect(run('node', [CLI, 'generate-entries'], pack).output).toMatch(/inputs unchanged/);
   }, 120_000);
 
@@ -111,16 +119,19 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     const unit = run(path.join(REPO_ROOT, 'node_modules', '.bin', 'vitest'), ['run'], pack);
     expect(unit.code, unit.output).toBe(0);
     expect(unit.output).toMatch(/tests\/unit\/demo-pack\.spec\.ts/);
+    // The scaffold's seed test and the added feature's system test run through the harness
+    expect(unit.output).toMatch(/tests\/unit\/notes-system\.spec\.ts/);
+    expect(unit.output.replace(/\x1b\[[0-9;]*m/g, '')).toMatch(/Tests\s+3 passed/);
   }, 120_000);
 
-  it('refuses to build or pack a manifest the installer would reject', () => {
+  it('refuses to build, pack or generate entries for a manifest the installer would reject', () => {
     const manifestPath = path.join(pack, 'abuddy.json');
     const original = fs.readFileSync(manifestPath, 'utf-8');
     const manifest = JSON.parse(original);
     manifest.features[0].id = 'notes_v2';
     fs.writeFileSync(manifestPath, JSON.stringify(manifest, null, 2));
     try {
-      for (const args of [['build'], ['pack', '--out', path.join(tmp, 'invalid-out')]]) {
+      for (const args of [['build'], ['pack', '--out', path.join(tmp, 'invalid-out')], ['generate-entries', '--force']]) {
         const result = run('node', [CLI, ...args], pack);
         expect(result.code, args.join(' ')).not.toBe(0);
         expect(result.output).toMatch(/abuddy\.json is invalid/);

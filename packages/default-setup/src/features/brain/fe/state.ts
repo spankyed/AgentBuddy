@@ -7,8 +7,9 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@abuddy/sdk/fe';
 import type {
   OutgoingBrainEvents,
 } from '@/__generated__/types'
-import type { StepRuntimeError, TNodeEntity, EventListenerEntity, FlowTNodeData, TrackTree } from '@/__generated__/types';
-import { trpc } from '@abuddy/sdk/rpc';
+import type { EventListenerEntity, FlowTNodeData } from '@/__generated__/types';
+import { sendToSystem } from '@/__generated__/events';
+import type { StepRuntimeError, TNodeEntity, TrackTree } from '@abuddy/sdk/steps';
 import {
   applyTNodeSpawn,
   denormalizeTNodeTree,
@@ -32,6 +33,10 @@ export interface BrainContext {
   inspectEnabled: boolean;
   animationsEnabled: boolean;
   brainIsDead: boolean;
+  /** Why the brain couldn't start, while it stays stopped for that reason */
+  startError?: string;
+  /** The root flow the running brain started with; the flows plugin's root flow differing from it takes a restart */
+  runningRootFlowId?: string;
   brainIsPaused: boolean;
   latestRuntimeError?: StepRuntimeError;
   runtimeErrors: StepRuntimeError[];
@@ -43,8 +48,6 @@ type SystemEvent = OutgoingBrainEvents
   | { type: 'TNODE_DETAILS'; tNodeId: string; details: TNodeEntity | null }
   | { type: 'INSPECT_TOGGLED'; enabled: boolean }
   | { type: 'BRAIN_SETTINGS_UPDATED'; settings: any }
-  | { type: 'BRAIN_KILLED' }
-  | { type: 'BRAIN_STARTED' }
   | { type: 'BRAIN_PAUSED' }
   | { type: 'BRAIN_RESUMED' }
   | { type: 'BRAIN_RUNTIME_ERROR'; error: StepRuntimeError }
@@ -176,10 +179,9 @@ const brainState = setup({
 
       // If this is the currently selected step node, refresh its details
       if (context.selectedStepNode?.id === tNodeId) {
-        trpc.bus.send.mutate({
-          systemId: id,
+        sendToSystem(id, {
           type: 'GET_TNODE_DETAILS',
-          tNodeId
+          tNodeId,
         });
       }
     },
@@ -195,24 +197,21 @@ const brainState = setup({
     navigateToFlow: ({ event }) => {
       if (event.type !== 'FLOW.NAVIGATE') return;
 
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'OPEN_TNODE',
-        tNodeId: event.tNodeId
+        tNodeId: event.tNodeId,
       });
     },
     goBack: ({ context }) => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'GO_BACK_TNODE',
-        currentFlowTNodeId: context.flowTNodeId
+        currentFlowTNodeId: context.flowTNodeId,
       });
     },
     requestPluginData: ({ context }) => {
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'REQUEST_PLUGIN_DATA',
-        ...(context.flowTNodeId && { flowTNodeId: context.flowTNodeId })
+        ...(context.flowTNodeId && { flowTNodeId: context.flowTNodeId }),
       });
     },
     toggleLeftPanel: assign({
@@ -221,10 +220,9 @@ const brainState = setup({
     requestNodeDetails: assign(({ event }) => {
       if (event.type !== 'NODE.CLICK') return {};
 
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'GET_TNODE_DETAILS',
-        tNodeId: event.nodeId
+        tNodeId: event.nodeId,
       });
 
       // Set the selected node ID immediately
@@ -254,10 +252,9 @@ const brainState = setup({
       }
 
       // Request details for this node
-      trpc.bus.send.mutate({
-        systemId: id,
+      sendToSystem(id, {
         type: 'GET_TNODE_DETAILS',
-        tNodeId: firstNodeId
+        tNodeId: firstNodeId,
       });
 
       // Set the selected node ID immediately
@@ -277,9 +274,8 @@ const brainState = setup({
       selectedStepNode: undefined
     }),
     toggleInspect: () => {
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'TOGGLE_INSPECT'
+      sendToSystem(id, {
+        type: 'TOGGLE_INSPECT',
       });
     },
     setInspectEnabled: assign(({ event }) => {
@@ -299,6 +295,8 @@ const brainState = setup({
     }),
     setBrainKilled: assign({
       brainIsDead: true,
+      startError: ({ event }) => typeOf('BRAIN_KILLED', event).startError,
+      runningRootFlowId: undefined,
       brainIsPaused: false,
       possibleEvents: [],
       flowHierarchy: [],
@@ -306,6 +304,8 @@ const brainState = setup({
     }),
     setBrainStarted: assign({
       brainIsDead: false,
+      startError: undefined,
+      runningRootFlowId: ({ event }) => typeOf('BRAIN_STARTED', event).rootFlowId,
       brainIsPaused: false,
     }),
     setBrainPaused: assign({
@@ -326,38 +326,33 @@ const brainState = setup({
       latestRuntimeError: undefined,
     }),
     pauseBrain: () => {
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'PAUSE_BRAIN'
+      sendToSystem(id, {
+        type: 'PAUSE_BRAIN',
       });
     },
     resumeBrain: () => {
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'RESUME_BRAIN'
+      sendToSystem(id, {
+        type: 'RESUME_BRAIN',
       });
     },
     restartBrain: ({ context }) => {
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: context.brainIsDead ? 'START_BRAIN' : 'RESTART_BRAIN'
-      });
+      if (context.brainIsDead) sendToSystem(id, { type: 'START_BRAIN' });
+      else sendToSystem(id, { type: 'RESTART_BRAIN' });
     },
     killBrain: () => {
-      trpc.bus.send.mutate({
-        systemId: id,
-        type: 'KILL_BRAIN'
+      sendToSystem(id, {
+        type: 'KILL_BRAIN',
       });
     },
     handleBreadcrumbClick: ({ event, context }) => {
       const target = (event as TrailClickEvent).target;
 
       if (target === 'root') {
-        trpc.bus.send.mutate({ systemId: id, type: 'GO_BACK_TNODE' });
+        sendToSystem(id, { type: 'GO_BACK_TNODE' });
       } else if (target.startsWith('flow:')) {
         const flowTNodeId = target.substring(5);
         if (flowTNodeId !== context.flowTNodeId) {
-          trpc.bus.send.mutate({ systemId: id, type: 'OPEN_TNODE', tNodeId: flowTNodeId });
+          sendToSystem(id, { type: 'OPEN_TNODE', tNodeId: flowTNodeId });
         }
       }
     },
@@ -485,10 +480,9 @@ const brainState = setup({
             // Request fresh data for the current flow to show new events
             // Pass the current flowTNodeId to maintain the current view
             setTimeout(() => {
-              trpc.bus.send.mutate({
-                systemId: id,
+              sendToSystem(id, {
                 type: 'REQUEST_PLUGIN_DATA',
-                ...(context.flowTNodeId && { flowTNodeId: context.flowTNodeId })
+                ...(context.flowTNodeId && { flowTNodeId: context.flowTNodeId }),
               });
             }, 100);
           }]
@@ -526,10 +520,9 @@ const brainState = setup({
         BRAIN_RUNTIME_ERROR: {
           actions: ['addRuntimeError', ({ event }) => {
             if (event.type !== 'BRAIN_RUNTIME_ERROR' || !event.error.tNodeId) return;
-            trpc.bus.send.mutate({
-              systemId: id,
+            sendToSystem(id, {
               type: 'GET_TNODE_DETAILS',
-              tNodeId: event.error.tNodeId
+              tNodeId: event.error.tNodeId,
             });
           }]
         },

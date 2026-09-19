@@ -43,7 +43,8 @@ import { useSelector } from '@xstate/vue';
 import { id, type PromptsState } from './state';
 import PromptsList from './components/PromptsList.vue';
 import PromptDetail from './components/PromptDetail.vue';
-import type { EARS, TemplateInput } from '@/__generated__/types';
+import type { EARS } from '@abuddy/sdk';
+import type { TemplateInput } from '@abuddy/sdk';
 
 const actorSystem = useActorSystem()
 

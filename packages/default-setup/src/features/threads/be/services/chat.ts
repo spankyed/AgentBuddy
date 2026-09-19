@@ -1,10 +1,14 @@
+import { sendToPlugin } from '@/__generated__/events';
 import { EARS } from '@/__generated__/ears';
-import { repository } from '@abuddy/sdk/ears';
-import type { BlockConfig, BlockResponse, LinkConfig, MessageEntity, ButtonConfig, ThreadCreateData, MessageReferences } from '@/features/threads/be/types';
-import { sendToPlugin } from '@abuddy/sdk/services';
+import { repository } from '@/__generated__/repository';
+import type { BlockConfig, BlockResponse, MessageEntity, ThreadCreateData, MessageReferences } from '@/features/threads/be/types';
+
 import { readMediaBuffer } from '@abuddy/sdk/utils';
 import * as threadsService from './threads';
 import { blockRegistry } from '@abuddy/sdk/blocks';
+import { createLogger } from '@abuddy/sdk/logger';
+
+const logger = createLogger('chat');
 
 /**
  * Block-based interaction helpers for creating composable messages
@@ -30,7 +34,7 @@ type BlockMessageOptions = BlockMessageBase & AutoHideOptions;
  * Create a message with custom blocks (pure function)
  * Returns message data without side effects
  */
-export function createBlockMessage(options: BlockMessageOptions): {
+function createBlockMessage(options: BlockMessageOptions): {
   messageId: EARS.EntityId;
   threadId: EARS.EntityId;
   message: MessageEntity;
@@ -116,34 +120,6 @@ export function sendSystemMessage(options: {
   });
 
   return { messageId: result.id };
-}
-
-/**
- * Create a file picker interaction using blocks
- */
-export function sendFilePickerBlock(options: {
-  threadId: EARS.EntityId;
-  text: string;
-  prompt: string;
-  fileType?: 'file' | 'directory' | 'both';
-  allowMultiple?: boolean;
-  displayText?: string;
-  forkable?: boolean;
-} & AutoHideOptions): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, fileType = 'both', allowMultiple = false, displayText, forkable, autoHide, asUser, asideContext } = options;
-
-  const blocks: BlockConfig[] = [
-    {
-      type: 'prompt',
-      props: { content: prompt }
-    },
-    {
-      type: 'file-picker',
-      props: { fileType, allowMultiple, displayText }
-    }
-  ];
-
-  return sendBlockMessage({ threadId, text, blocks, forkable, autoHide, asUser, asideContext } as BlockMessageOptions);
 }
 
 /**
@@ -244,157 +220,6 @@ export function sendApprovalBlock(options: {
 }
 
 /**
- * Create a text input interaction using blocks
- */
-export function sendTextInputBlock(options: {
-  threadId: EARS.EntityId;
-  text: string;
-  prompt: string;
-  placeholder?: string;
-  multiline?: boolean;
-  required?: boolean;
-  displayText?: string;
-  suggestions?: string[];
-  forkable?: boolean;
-} & AutoHideOptions): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, placeholder, multiline = false, required = false, displayText, suggestions, forkable, autoHide, asUser, asideContext } = options;
-
-  const blocks: BlockConfig[] = [
-    {
-      type: 'prompt',
-      props: { content: prompt }
-    },
-    {
-      type: 'text',
-      props: { placeholder, multiline, required, displayText, suggestions }
-    }
-  ];
-
-  return sendBlockMessage({ threadId, text, blocks, forkable, autoHide, asUser, asideContext } as BlockMessageOptions);
-}
-
-/**
- * Create a link block with navigation actions
- */
-export function sendLinkBlock(options: {
-  threadId: EARS.EntityId;
-  text: string;
-  prompt?: string;
-  links: LinkConfig[];
-  forkable?: boolean;
-}): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, links, forkable } = options;
-
-  const blocks: BlockConfig[] = [];
-
-  if (prompt) {
-    blocks.push({
-      type: 'prompt',
-      props: { content: prompt }
-    });
-  }
-
-  blocks.push({
-    type: 'link',
-    props: { links }
-  });
-
-  return sendBlockMessage({ threadId, text, blocks, forkable });
-}
-
-/**
- * Create a button-group interaction using blocks
- *
- * Button groups support two modes (both backend-controlled):
- * 1. toggleStates - Auto-cycling on/off buttons (backend automatically flips state)
- * 2. states - Manual state transitions (flow/brain determines new state with custom logic)
- *
- * Both follow the same data flow: Frontend → Backend → Database → UPDATE_MESSAGE_STATE → Frontend
- *
- * @example
- * // Auto-toggling buttons (backend auto-cycles)
- * sendButtonGroupBlock({
- *   threadId,
- *   text: 'Quick toggles:',
- *   prompt: 'Configure settings',
- *   buttons: [{
- *     id: 'dark-mode',
- *     label: 'Dark Mode',
- *     state: 'off',
- *     toggleStates: {
- *       off: { label: 'Enable Dark Mode', variant: 'secondary' },
- *       on: { label: 'Disable Dark Mode', variant: 'success' }
- *     }
- *   }],
- *   keepInteractive: true
- * });
- * // Flow: User clicks → INTERACTIVE_MSG_RESPONSE → Backend auto-cycles on↔off
- * //       → Persists to DB → UPDATE_MESSAGE_STATE → Frontend updates
- *
- * @example
- * // Manual state buttons (flow/brain controlled)
- * const { messageId } = sendButtonGroupBlock({
- *   threadId,
- *   text: 'Advanced control:',
- *   buttons: [{
- *     id: 'build',
- *     label: 'Build',
- *     state: 'idle',
- *     states: {
- *       idle: { label: 'Start Build', variant: 'primary' },
- *       building: { label: 'Building...', variant: 'secondary', disabled: true },
- *       success: { label: 'Build Complete', variant: 'success' },
- *       error: { label: 'Build Failed', variant: 'danger' }
- *     }
- *   }]
- * });
- * // Flow: User clicks → INTERACTIVE_MSG_RESPONSE → Forwarded to brain/flow
- * //       → Flow determines new state → Calls updateMessageState with new blocks
- * //       → Backend sends UPDATE_MESSAGE_STATE → Frontend updates
- *
- * @example
- * // Mixed button group (both types)
- * sendButtonGroupBlock({
- *   threadId,
- *   text: 'Control panel:',
- *   buttons: [
- *     // Auto-toggle (backend handles)
- *     { id: 'debug', state: 'off', toggleStates: { ... } },
- *     // Manual control (flow handles)
- *     { id: 'deploy', state: 'idle', states: { idle: ..., deploying: ..., deployed: ... } }
- *   ],
- *   keepInteractive: true
- * });
- */
-export function sendButtonGroupBlock(options: {
-  threadId: EARS.EntityId;
-  text: string;
-  prompt?: string;
-  buttons: ButtonConfig[];
-  keepInteractive?: boolean;
-  displayText?: string;
-  forkable?: boolean;
-} & AutoHideOptions): { messageId: EARS.EntityId } {
-  const { threadId, text, prompt, buttons, keepInteractive = false, displayText, forkable, autoHide, asUser, asideContext } = options;
-
-  const blocks: BlockConfig[] = [];
-
-  if (prompt) {
-    blocks.push({
-      type: 'prompt',
-      props: { content: prompt }
-    });
-  }
-
-  blocks.push({
-    type: 'button-group',
-    props: { buttons, keepInteractive, displayText }
-  });
-
-  return sendBlockMessage({ threadId, text, blocks, forkable, autoHide, asUser, asideContext } as BlockMessageOptions);
-}
-
-/**
  * Update a message with block interaction response data
  */
 export function updateMessageBlockResponse(
@@ -436,7 +261,7 @@ export function updateMessageState(
       updates
     });
   } catch (err) {
-    console.error(`[chat] updateMessageState failed for ${messageId}:`, (err as Error)?.message);
+    logger.error(`updateMessageState failed for ${messageId}`, { error: err instanceof Error ? err.message : String(err) });
     return;
   }
 
@@ -831,3 +656,19 @@ function truncate(text: string, maxLen: number): string {
   if (text.length <= maxLen) return text;
   return text.slice(0, maxLen - 1) + '…';
 }
+
+/** `services.chat`: thread message and notification operations for actions and systems */
+export const chatService = {
+  sendBlockMessage,
+  sendSystemMessage,
+  sendChoiceBlock,
+  sendQuestionBlock,
+  updateMessageState,
+  createMarkerMessage,
+  addMessagesToThread,
+  createThreadAndNotify,
+  openThreadChatAndRefreshRecent,
+  openThreadTabAndRefresh,
+  sendRecentThreadsRefresh,
+  resolveReferences,
+};

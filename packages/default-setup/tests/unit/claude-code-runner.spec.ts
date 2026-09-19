@@ -1,8 +1,8 @@
 /**
  * Tests for the child-env scrubber used by `execOnce` and `spawnStream`.
  *
- * The scrub prevents `ANTHROPIC_API_KEY` (which the API server's `llm.ts`
- * client needs via dotenv) from leaking into the Claude CLI subprocess,
+ * The scrub prevents an `ANTHROPIC_API_KEY` in the API server's environment
+ * (loaded from `.env` by dotenv) from leaking into the Claude CLI subprocess,
  * where it would override the user's stored `claude auth login` session
  * and fail with "Invalid API key · Fix external API key".
  */

@@ -1,16 +1,18 @@
+import { qx } from '@/__generated__/ears';
+import { emit } from '@/__generated__/events';
 import { setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
-import { emit } from '@abuddy/sdk/helpers';
+
 import { EARS } from '@/__generated__/ears';
-import type { NoteDTO, NoteEntity, NotesConnectedData, OutgoingNotesSearchEvent } from './types';
-import { repository } from '@abuddy/sdk/ears';
-import { qx } from '@abuddy/sdk/ears';
-import './repository';
+import type { NoteDTO, NotesConnectedData, OutgoingNotesSearchEvent } from './types';
+import { repository } from '@/__generated__/repository';
+
 import { syncReferences } from './repository/link-utils';
 import { exportNotes } from './export-notes';
 import { importNotes } from './import-notes';
 import { createLogger } from '@abuddy/sdk/logger';
+import type { NoteEntity } from '@/features/notes/be/types';
 
 const logger = createLogger('notes');
 
@@ -639,11 +641,15 @@ export const notesSystem = setup({
         CLIENT_CONNECTED: {
           actions: 'sendNotesConnectedData',
         },
+        // A pack's seeds can add or change notes
+        PACK_CHANGED: {
+          actions: 'sendNotesConnectedData',
+        },
       },
     },
   },
 });
 
-const notesEntry: SystemEntry = { spec: notesSpec, machine: notesSystem };
+const notesEntry = { spec: notesSpec, machine: notesSystem } satisfies SystemEntry;
 
 export default notesEntry;

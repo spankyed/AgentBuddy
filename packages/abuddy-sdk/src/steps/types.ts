@@ -76,7 +76,9 @@ export interface StepBuildFacet {
  * packs get real types instead of `unknown` casts.
  *─────────────────────────────────────────────────────────────────*/
 
-import type { BaseEntity, EARS } from '../types/entities';
+import type { AnyActorRef } from 'xstate';
+import type { BaseEntity } from '@abuddy/ears';
+import type { EARS } from '../types/entities.ts';
 
 export type TimestampMs = number;
 export type EntityStatus = 'active' | 'paused' | 'completed' | 'failed';
@@ -102,15 +104,8 @@ export interface TNodeEntity extends BaseEntity {
   };
 }
 
-/**
- * TNode's shape is fully owned by the SDK, so it is registered here rather than
- * in each pack's manifest. Mirrors how packs augment NodeEntityRegistry.
- */
-declare module '../types/entities' {
-  interface EntityShapeRegistry {
-    'TNode': TNodeEntity;
-  }
-}
+// Kept here for packs whose built types import it from @abuddy/sdk/steps
+export type { SdkEntityShapes } from '../types/sdk-entities.ts';
 
 /**
  * One track's execution, as a tree: a persisted TNode with its SPAWNED children
@@ -118,7 +113,7 @@ declare module '../types/entities' {
  *
  * Deliberately not named `TrackEntity` — `Track` is not a declared entity type,
  * and in this codebase an `XEntity` suffix means "shape of a persisted EARS
- * entity" (i.e. a key in EntityShapeRegistry). Not to be confused with `Track`
+ * entity" (i.e. an entity in a pack's PackShapes). Not to be confused with `Track`
  * in build/compilers/flow-types.ts, which is the static DSL track definition.
  */
 export interface TrackTree extends TNodeEntity {
@@ -140,8 +135,8 @@ export interface StepRun {
 }
 
 export interface RuntimeServices {
-  getFlowActor: (flowTNodeId: EARS.EntityId) => any | undefined;
-  getAppServices: () => any;
+  getFlowActor: (flowTNodeId: EARS.EntityId) => AnyActorRef | undefined;
+  getAppServices: () => unknown;
 }
 
 export interface ExecutionContext {
@@ -189,6 +184,8 @@ export interface StepRuntimeFacet {
   isAsync?: boolean;
   /** When true, the brain spawns a sub-flow machine instead of a step machine. */
   spawnsSubflow?: boolean;
+  /** The step never completes on its own (keep-alive): its track stays open while the flow runs */
+  waits?: boolean;
 }
 
 /*─────────────────────────────────────────────────────────────────
@@ -203,7 +200,6 @@ export interface StepNodeConfig {
   bgColor: string;
   hoverBgColor: string;
   connectionRules: { inputs: number; outputs: number };
-  component?: string;
   category: 'trigger' | 'action' | 'logic' | 'data' | 'ai';
   isImplemented?: boolean;
   isDisabled?: boolean;
@@ -220,7 +216,7 @@ export interface StepFEFacet {
   nodeConfig: StepNodeConfig;
   colorKey?: string;
   defaults?: Record<string, unknown>;
-  /** Vue component refs — populated by initComponents() from loadComponents factory. */
+  /** Vue component refs: the renderer's pack store (`@abuddy/host/fe`) fills them from `loadComponents` when the pack registers. */
   components?: { node?: unknown; form?: unknown };
   /** Lazy factory that returns Vue components. Runs in FE context only. */
   loadComponents?: () => { node?: unknown; form?: unknown };
@@ -228,8 +224,6 @@ export interface StepFEFacet {
   layout?: StepLayoutDescriptor;
   /** Handle prefix for multi-output steps (e.g. 'branch' → 'branch-0', 'branch-1'). */
   handlePrefix?: string;
-  /** Keys from FormResources this step's form needs (e.g. ['actions', 'prompts']). */
-  resourceKeys?: string[];
 }
 
 /*─────────────────────────────────────────────────────────────────
@@ -264,16 +258,16 @@ export interface TriggerRuntimeNode {
 }
 
 export interface TriggerRuntimeContext {
-  flowTNodeId: string;
-  sendToBrainSystem: (event: { eventType: string; payload?: any; targetFlowId?: any }) => void;
+  flowTNodeId: EARS.EntityId;
+  sendToBrainSystem: (event: { eventType: string; payload?: unknown; targetFlowId?: EARS.EntityId }) => void;
 }
 
 /*─────────────────────────────────────────────────────────────────
  * Step Definition
  *─────────────────────────────────────────────────────────────────*/
 
-export type { StepDSLMeta } from '../build/manifest';
-import type { StepDSLMeta } from '../build/manifest';
+export type { StepDSLMeta } from '../build/manifest.ts';
+import type { StepDSLMeta } from '../build/manifest.ts';
 
 export interface StepDefinition {
   type: string;

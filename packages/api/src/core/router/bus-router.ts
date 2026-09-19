@@ -1,31 +1,16 @@
+// Lets declaration emit name tRPC's router types through a public entry (TS2742 under bundler resolution)
+import type {} from '@trpc/server/unstable-core-do-not-import';
 import { observable } from '@trpc/server/observable';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import type { OutgoingSystemEvents } from '@/core/router/events';
-import type { IncomingSystemEvents } from '@/systems';
-import { getEventValidationMap } from '@/systems';
+import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/core/router/events';
+import { receiveClientEvent, UnknownClientEventError } from '@abuddy/host/bus';
 import { procedure, router } from './trpc';
-import { createLogger } from '@/core/shared/debug/logger';
+import { createLogger } from '@abuddy/sdk/logger';
 import { rootEvents } from '@/core/router/bus-emitter';
+import { appPacks } from '@/setup/backend';
 
 const logger = createLogger('app-events');
-
-function summarizeEventForLog(event: IncomingSystemEvents) {
-  const MAX_ARRAY_LOG_SIZE = 5;
-  const summary: Record<string, unknown> = {};
-  let truncated = false;
-
-  for (const [key, value] of Object.entries(event)) {
-    if (Array.isArray(value) && value.length > MAX_ARRAY_LOG_SIZE) {
-      summary[key] = { count: value.length, sample: value.slice(0, MAX_ARRAY_LOG_SIZE) };
-      truncated = true;
-    } else {
-      summary[key] = value;
-    }
-  }
-
-  return truncated ? summary : event;
-}
 
 export const systemBusRouter = router({
   send: procedure
@@ -33,16 +18,24 @@ export const systemBusRouter = router({
       typeof val === 'object' && val !== null && 'type' in val && 'systemId' in val
     ))
     .mutation(({ input }) => {
-      const validTypes = getEventValidationMap().get(input.systemId);
-      if (!validTypes) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: `Unknown system: "${input.systemId}"` });
+      try {
+        receiveClientEvent(appPacks, input);
+      } catch (error) {
+        if (error instanceof UnknownClientEventError) throw new TRPCError({ code: 'BAD_REQUEST', message: error.message });
+        throw error;
       }
-      if (!validTypes.has('*') && !validTypes.has(input.type)) {
-        throw new TRPCError({ code: 'BAD_REQUEST', message: `Unknown event "${input.type}" for system "${input.systemId}"` });
-      }
-
-      logger.info(`→ Incoming: "${input.type}"`, { event: summarizeEventForLog(input) });
-      rootEvents.emitIncoming(input);
+    }),
+  /**
+   * The client finished loading a pack's frontend (at boot, on activation), whatever it added, or its
+   * subscription reconnected: the pack's systems get CLIENT_CONNECTED, which the connection's broadcast and
+   * the activation skip for external packs with frontend code. Their replies reach every client, not only
+   * this one: outgoing events carry no client address.
+   */
+  packClientReady: procedure
+    .input(z.object({ packId: z.string().min(1) }))
+    .mutation(({ input }) => {
+      logger.info(`→ Pack client ready: "${input.packId}"`, { packId: input.packId });
+      rootEvents.emitPackClientConnected(input.packId);
     }),
   sub: procedure
     .subscription(() =>
@@ -59,30 +52,4 @@ export const systemBusRouter = router({
         };
       }),
     ),
-    // .subscription(async function* ({ ctx }) {
-    //   const queue: OutgoingSystemEvents[] = [];
-
-    //   const handler = (event: { event: OutgoingSystemEvents }) => {
-    //     console.log('Notification received!', event);
-    //     // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    //     queue.push(event as any);
-    //   };
-
-    //   ctx.actor.on('OUTGOING', handler);
-
-    //   try {
-    //     while (true) {
-    //       // Wait until there's an item in the queue
-    //       while (queue.length > 0) {
-    //         // biome-ignore lint/style/noNonNullAssertion: <explanation>
-    //         yield queue.shift()!;
-    //       }
-    //       await new Promise(resolve => setTimeout(resolve, 100)); // crude polling
-    //     }
-    //   } finally {
-    //     // ctx.actor.off('OUTGOING', handler);
-    //   }
-    // }),
 });
-
-export type SystemBusRouter = typeof systemBusRouter;

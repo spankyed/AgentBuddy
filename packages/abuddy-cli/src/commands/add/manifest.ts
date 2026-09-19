@@ -26,20 +26,22 @@ export function addStepDefinition(manifest: PackManifest, entry: { type: string;
   manifest.steps.definitions.push(entry);
 }
 
-export function addPackService(manifest: PackManifest, key: string, servicePath: string): void {
+/** Adds a pack-level service: `target` is "path#exportName" of the service object */
+export function addPackService(manifest: PackManifest, key: string, target: string): void {
   if (!manifest.packServices) manifest.packServices = {};
   if (manifest.packServices[key]) {
     throw new Error(`Pack service "${key}" already exists in manifest`);
   }
-  manifest.packServices[key] = servicePath;
+  manifest.packServices[key] = target;
 }
 
-export function addFeatureService(manifest: PackManifest, featureId: string, key: string, servicePath: string): void {
+/** Adds a feature service: `target` is "path#exportName" of the service object */
+export function addFeatureService(manifest: PackManifest, featureId: string, key: string, target: string): void {
   const feature = manifest.features?.find(f => f.id === featureId);
   if (!feature) throw new Error(`Feature "${featureId}" not found in manifest`);
   if (!feature.services) feature.services = {};
   if (feature.services[key]) {
     throw new Error(`Service "${key}" already exists on feature "${featureId}"`);
   }
-  feature.services[key] = servicePath;
+  feature.services[key] = target;
 }

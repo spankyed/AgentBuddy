@@ -24,7 +24,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue';
 import { useActorSystem } from '@abuddy/sdk/fe';
-import TiptapEditor from '@abuddy/sdk/fe/components/tiptap/TiptapEditor.vue';
+import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor';
 import { DISCORD_URL } from '../features/settings/constants';
 
 const system = useActorSystem();

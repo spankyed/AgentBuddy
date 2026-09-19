@@ -51,7 +51,8 @@
                 <!-- Instructions banner -->
                 <div v-if="currentThread?.instructions" class="mb-3 rounded-lg border border-neutral-700/50 bg-neutral-800/50 px-4 py-3">
                   <div class="text-[10px] uppercase tracking-wider text-neutral-500 mb-1.5 font-medium">Instructions</div>
-                  <div class="text-neutral-300 text-sm leading-relaxed" v-html="currentThread.instructions"></div>
+                  <!-- Markdown, rendered without raw HTML -->
+                  <TiptapEditor class="text-neutral-300 text-sm leading-relaxed" mode="viewer" variant="chat" :model-value="currentThread.instructions" />
                 </div>
                 <ChatMessage
                   v-for="message in visibleMessages"
@@ -174,20 +175,21 @@ function rotateQuote() {
 }
 
 import ChatMessage from './message.vue'
+import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import ChatInput from './input.vue'
 import RecentThreads from './recent-threads.vue'
 import InlineTabBar from './inline-tab-bar.vue'
 import AgentCanvas from '@/features/threads/fe/canvas/agent/canvas.vue'
 import ThreadSidebar from './thread-sidebar.vue'
-import PanelResizer from '@abuddy/sdk/fe/layout/panel-resizer.vue'
-import ImageLightbox from '@abuddy/sdk/fe/design/ImageLightbox.vue'
-import ConfirmationDialog from '@abuddy/sdk/fe/design/ConfirmationDialog.vue'
-import ScrollToBottomFob from '@abuddy/sdk/fe/design/ScrollToBottomFob.vue'
+import PanelResizer from '@abuddy/ui/layout/panel-resizer'
+import ImageLightbox from '@abuddy/ui/design/ImageLightbox'
+import ConfirmationDialog from '@abuddy/ui/design/ConfirmationDialog'
+import ScrollToBottomFob from '@abuddy/ui/design/ScrollToBottomFob'
 import { useActorSystem, useApplicationActor, navigateToPlugin } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import { id, threadsFromStore, type ThreadsState } from '@/features/threads/fe/state';
 import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, QuickPrompt, AgentSettings } from '@/__generated__/types'
-import { trpc } from '@abuddy/sdk/rpc'
+import { sendToSystem } from '@/__generated__/events'
 
 const actorSystem = useActorSystem()
 const appActor = useApplicationActor()
@@ -357,8 +359,7 @@ function onScroll() {
 }
 
 function updateThreadsSetting(path: string[], value: unknown) {
-  trpc.bus.send.mutate({
-    systemId: 'settings',
+  sendToSystem('settings', {
     type: 'UPDATE_SETTINGS',
     entityType: 'plugin',
     label: 'threads',
@@ -487,8 +488,7 @@ function confirmRevert() {
     else doRevert(pendingRevertMessageId.value)
   }
   if (dontAskAgain.value) {
-    trpc.bus.send.mutate({
-      systemId: 'settings',
+    sendToSystem('settings', {
       type: 'UPDATE_SETTINGS',
       entityType: 'plugin',
       label: 'threads',
@@ -546,8 +546,7 @@ function doSummarize(messageId: string) {
 }
 
 function handleToggleCompacted(markerId: string, compacted: boolean) {
-  trpc.bus.send.mutate({
-    systemId: 'threads',
+  sendToSystem('threads', {
     type: 'TOGGLE_COMPACTED',
     markerId,
     compacted,

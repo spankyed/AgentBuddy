@@ -1,9 +1,9 @@
+import { sendToPlugin } from '@/__generated__/events';
 import { setup } from 'xstate'
-import { emit } from '@abuddy/sdk/helpers'
-import { rootEvents } from '@abuddy/sdk/rpc'
-import { repository } from '@abuddy/sdk/ears'
+
+import { repository } from '@/__generated__/repository';
 import { EARS } from '@/__generated__/ears'
-import type { PromptEntity } from '@/__generated__/types'
+import type { PromptEntity } from '@abuddy/sdk'
 
 const pluginId = 'code' as const
 
@@ -26,7 +26,6 @@ export type Event =
   | { type: 'codePrompts.OPEN_PROMPT'; promptId: string }
   | { type: 'codePrompts.SAVE_PROMPT'; promptId: string; templateFn: string };
 
-
 export const promptsSystem = setup({
   types: {
     context: {} as Context,
@@ -44,20 +43,18 @@ export const promptsSystem = setup({
           templateFnContent: prompt.templateFn
         }
 
-        const wrapped = emit(pluginId, {
+        sendToPlugin(pluginId, {
           type: 'codePrompts.PROMPT_SELECTED',
           promptId: ev.promptId as EARS.EntityId,
           data: promptWithContent
-        } as any)
-        rootEvents.emitOutgoing(wrapped.event as any)
+        })
       } else {
-        const wrapped = emit(pluginId, {
+        sendToPlugin(pluginId, {
           type: 'codePrompts.CODE_ERROR',
           data: {
             message: `Prompt ${ev.promptId} not found`
           }
-        } as any)
-        rootEvents.emitOutgoing(wrapped.event as any)
+        })
       }
     },
 
@@ -71,12 +68,11 @@ export const promptsSystem = setup({
 
       const updatedPrompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId)
       if (updatedPrompt) {
-        const wrapped = emit(pluginId, {
+        sendToPlugin(pluginId, {
           type: 'codePrompts.PROMPT_UPDATED',
           prompt: updatedPrompt,
           promptId: updatedPrompt.id
-        } as any)
-        rootEvents.emitOutgoing(wrapped.event as any)
+        })
       }
     }
   }

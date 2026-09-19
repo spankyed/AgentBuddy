@@ -4,9 +4,9 @@ import * as path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { satisfies, rcompare, clean } from 'semver';
-import type { PackSnapshot } from '@abuddy/sdk/build';
+import { SEED_INDEX_FILE, type PackSnapshot } from '@abuddy/sdk/build';
 import { findPackRoot, readManifest } from '../utils';
-import { extractBundleArchive, verifyBundle } from '@abuddy/sdk/packs';
+import { BUNDLE_PATHS, extractBundleArchive, verifyBundle } from '@abuddy/host/packs';
 import { resolveAppContext, type AppEnv } from '@abuddy/sdk/env';
 import { configuredAppPackagesDir } from '../app/app-target';
 
@@ -35,11 +35,15 @@ function parseDepValue(value: string): DepSource {
 
 // ── Artifact discovery ──
 
-/** A dependency's build-time artifacts: its snapshot, plus step build code when it ships any. */
+/** A dependency's artifacts: its snapshot, plus build code and a backend runtime when it ships them. */
 export interface DepArtifacts {
   snapshot: PackSnapshot;
-  /** Directory with the dependency's build-time code (build/steps.build.mjs), if present. */
+  /** Directory with the dependency's build-time code (build/steps.build.mjs, build/seed-compilers.mjs), if present. */
   buildDir?: string;
+  /** The dependency's backend runtime (runtime/index.cjs), if present: what a dependent's tests load. */
+  runtimeEntry?: string;
+  /** The compiled seeds its runtime reads (runtime/seeds/, or a built-in pack's dist/), with the runtime */
+  seedsDir?: string;
 }
 
 function tryReadSnapshot(filePath: string): PackSnapshot | null {
@@ -52,21 +56,37 @@ function tryReadSnapshot(filePath: string): PackSnapshot | null {
 /**
  * Find artifacts in a pack directory in any layout: an installed or extracted bundle
  * (types/, build/), an external pack source built in the bundle layout (dist/types,
- * dist/build), or a built-in / pre-bundle pack (dist/snapshot.json).
+ * dist/build), or a built-in pack's dist/ (dist/snapshot.json).
  */
 export function findDepArtifacts(dir: string): DepArtifacts | null {
   const candidates = [
-    { snapshot: path.join(dir, 'types', 'snapshot.json'), build: path.join(dir, 'build') },
-    { snapshot: path.join(dir, 'dist', 'types', 'snapshot.json'), build: path.join(dir, 'dist', 'build') },
-    { snapshot: path.join(dir, 'dist', 'snapshot.json'), build: path.join(dir, 'dist', 'build') },
+    { root: dir, snapshot: path.join(dir, 'types', 'snapshot.json') },
+    { root: path.join(dir, 'dist'), snapshot: path.join(dir, 'dist', 'types', 'snapshot.json') },
+    // A built-in pack's dist: its snapshot at the top, build/ and runtime/ in the bundle layout
+    { root: path.join(dir, 'dist'), snapshot: path.join(dir, 'dist', 'snapshot.json') },
     // .abuddy/deps/<id>/ cache
-    { snapshot: path.join(dir, 'snapshot.json'), build: path.join(dir, 'build') },
+    { root: dir, snapshot: path.join(dir, 'snapshot.json') },
   ];
   for (const c of candidates) {
     const snapshot = tryReadSnapshot(c.snapshot);
-    if (snapshot) return { snapshot, buildDir: fs.existsSync(c.build) ? c.build : undefined };
+    if (snapshot) return withBuildAndRuntime(snapshot, c.root);
   }
   return null;
+}
+
+/** The snapshot plus the build dir, runtime entry and its seeds under `root`, where they exist */
+function withBuildAndRuntime(snapshot: PackSnapshot, root: string): DepArtifacts {
+  const buildDir = path.join(root, BUNDLE_PATHS.buildDir);
+  const runtimeEntry = path.join(root, BUNDLE_PATHS.runtimeEntry);
+  // A bundle's seeds are under runtime/; a built-in pack's dist keeps them at its top
+  const seedsDir = [path.join(root, BUNDLE_PATHS.seedsDir), root].find((dir) => fs.existsSync(path.join(dir, SEED_INDEX_FILE)));
+  const hasRuntime = fs.existsSync(runtimeEntry);
+  return {
+    snapshot,
+    ...(fs.existsSync(buildDir) && { buildDir }),
+    ...(hasRuntime && { runtimeEntry }),
+    ...(hasRuntime && seedsDir && { seedsDir }),
+  };
 }
 
 // ── Local cache ──
@@ -78,25 +98,23 @@ function depCacheDir(root: string, depId: string): string {
 function resolveFromLocal(root: string, depId: string): DepArtifacts | null {
   const dir = depCacheDir(root, depId);
   const snapshot = tryReadSnapshot(path.join(dir, 'snapshot.json'));
-  if (!snapshot) return null;
-  const buildDir = path.join(dir, 'build');
-  return { snapshot, buildDir: fs.existsSync(buildDir) ? buildDir : undefined };
+  return snapshot && withBuildAndRuntime(snapshot, dir);
 }
 
 // ── Workspace resolution ──
 
+/**
+ * A dependency in a directory the pack sits under: a workspace package (`<ancestor>/packages/<depId>`)
+ * or a sibling checkout (`<ancestor>/<depId>`). The nearest ancestor wins, so a pack at any depth
+ * inside an AgentBuddy checkout (a test fixture, say) builds against that checkout's packages rather
+ * than an installed app's older copy.
+ */
 function resolveFromWorkspace(root: string, depId: string): DepArtifacts | null {
-  const candidates = [
-    path.resolve(root, '..', depId),
-    path.resolve(root, '..', '..', 'packages', depId),
-    path.resolve(root, '..', '..', depId),
-  ];
-
-  for (const candidate of candidates) {
-    const result = findDepArtifacts(candidate);
+  for (let dir = path.dirname(path.resolve(root)); ; dir = path.dirname(dir)) {
+    const result = findDepArtifacts(path.join(dir, 'packages', depId)) ?? findDepArtifacts(path.join(dir, depId));
     if (result) return result;
+    if (path.dirname(dir) === dir) return null;
   }
-  return null;
 }
 
 // ── Installed app resolution ──
@@ -256,7 +274,7 @@ async function lookupRegistry(_depId: string): Promise<string | null> {
 
 function cacheDep(root: string, depId: string, artifacts: DepArtifacts): void {
   const depDir = depCacheDir(root, depId);
-  const { snapshot, buildDir } = artifacts;
+  const { snapshot, buildDir, runtimeEntry, seedsDir } = artifacts;
   fs.mkdirSync(depDir, { recursive: true });
   fs.writeFileSync(path.join(depDir, 'snapshot.json'), JSON.stringify(snapshot, null, 2));
 
@@ -276,6 +294,29 @@ function cacheDep(root: string, depId: string, artifacts: DepArtifacts): void {
   } else if (!buildDir) {
     fs.rmSync(cachedBuild, { recursive: true, force: true });
   }
+
+  // The backend runtime entry and the compiled seeds it reads; a dependency's FE bundle isn't used
+  const cachedRuntime = path.join(depDir, BUNDLE_PATHS.runtimeEntry);
+  if (runtimeEntry && path.resolve(runtimeEntry) !== path.resolve(cachedRuntime)) {
+    fs.rmSync(path.join(depDir, BUNDLE_PATHS.runtimeDir), { recursive: true, force: true });
+    fs.mkdirSync(path.dirname(cachedRuntime), { recursive: true });
+    fs.copyFileSync(runtimeEntry, cachedRuntime);
+    if (seedsDir) copySeeds(seedsDir, path.join(depDir, BUNDLE_PATHS.seedsDir));
+  } else if (!runtimeEntry) {
+    fs.rmSync(path.join(depDir, BUNDLE_PATHS.runtimeDir), { recursive: true, force: true });
+  }
+}
+
+/** Copies compiled seeds (`*.seed.json`, `seeds.json`, `media/`) without the rest of a built-in pack's dist */
+function copySeeds(from: string, to: string): void {
+  fs.mkdirSync(to, { recursive: true });
+  for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
+    if (entry.isFile() && (entry.name.endsWith('.seed.json') || entry.name === SEED_INDEX_FILE)) {
+      fs.copyFileSync(path.join(from, entry.name), path.join(to, entry.name));
+    } else if (entry.isDirectory() && entry.name === 'media') {
+      fs.cpSync(path.join(from, entry.name), path.join(to, entry.name), { recursive: true });
+    }
+  }
 }
 
 // ── Resolution chain ──
@@ -291,11 +332,15 @@ async function resolveFromMachine(root: string, depId: string, range: string): P
 
   const configured = await resolveFromConfiguredApp(root, depId);
   if (configured && inRange(configured, range)) {
-    return { snapshot: configured.snapshot, buildDir: configured.buildDir, source: configured.label };
+    const { label, ...artifacts } = configured;
+    return { ...artifacts, source: label };
   }
 
   const installed = resolveFromInstalledApp(depId, range);
-  if (installed) return { snapshot: installed.snapshot, buildDir: installed.buildDir, source: `installed app (${installed.env})` };
+  if (installed) {
+    const { env, ...artifacts } = installed;
+    return { ...artifacts, source: `installed app (${env})` };
+  }
   return null;
 }
 
@@ -326,23 +371,40 @@ async function resolveFromUpstream(root: string, depId: string, depValue: string
 }
 
 /**
- * Resolve a dependency's artifacts (snapshot + optional build code). Sources on this machine
+ * A resolved dependency, with where it came from when that is known.
+ *
+ * The label is the one `abuddy fetch-deps` prints (`workspace`, `file:<path>`, `installed app (env)`,
+ * `github:<owner>/<repo>@<version>`). It is per-resolution, not a property of the artifact — the same
+ * bundle is a workspace sibling to its author and a GitHub release to everyone else — so it is not
+ * recorded in the snapshot, which ships inside the bundle. It exists so a build failure can name a
+ * remedy the reader can actually carry out.
+ */
+export type ResolvedDepArtifacts = DepArtifacts & { source?: string };
+
+const withSource = (artifacts: DepArtifacts | null, source: string): ResolvedDepArtifacts | null =>
+  artifacts && { ...artifacts, source };
+
+/**
+ * Resolve a dependency's artifacts (snapshot, plus build code and backend runtime when it ships them). Sources on this machine
  * win and refresh the .abuddy/deps cache; the cache only stands in for a network source, and
  * only while it satisfies the declared range.
  */
-export async function resolveDepArtifacts(root: string, depId: string, depValue: string, skipCache = false): Promise<DepArtifacts | null> {
+export async function resolveDepArtifacts(root: string, depId: string, depValue: string, skipCache = false): Promise<ResolvedDepArtifacts | null> {
   const { github, filePath, range } = parseDepValue(depValue);
   if (filePath) {
     const found = await resolveFromUpstream(root, depId, depValue);
-    return found && { snapshot: found.snapshot, buildDir: found.buildDir };
+    return found ?? null;
   }
 
   const local = await resolveFromMachine(root, depId, range);
   if (local) {
     cacheDep(root, depId, local);
-    return resolveFromLocal(root, depId);
+    return withSource(resolveFromLocal(root, depId), local.source);
   }
 
+  // A cache hit carries no source: cacheDep writes the snapshot, defs, build code and runtime, and
+  // nothing about where they came from. Recording provenance in .abuddy/deps would cover this, and
+  // isn't worth a new cache artifact until a hedged message proves annoying in practice.
   if (!skipCache) {
     const cached = resolveFromLocal(root, depId);
     if (cached && inRange(cached, range)) return cached;
@@ -351,7 +413,7 @@ export async function resolveDepArtifacts(root: string, depId: string, depValue:
   const fetched = await resolveFromNetwork(root, depId, github, range);
   if (!fetched) return null;
   cacheDep(root, depId, fetched);
-  return resolveFromLocal(root, depId);
+  return withSource(resolveFromLocal(root, depId), fetched.source);
 }
 
 export async function resolveDep(root: string, depId: string, depValue: string, skipCache = false): Promise<PackSnapshot | null> {

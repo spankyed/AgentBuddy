@@ -1,7 +1,6 @@
-import { qx, tx } from '@abuddy/sdk/ears'
-import { edgeStore } from '@abuddy/sdk/ears/internals'
+import { tx, qx } from '@/__generated__/ears';
 import { EARS } from '@/__generated__/ears'
-import type { ContentSection } from '../types'
+import type { ContentSection } from '@/features/library/be/types';
 
 // ================ Helper Functions ================
 
@@ -22,7 +21,7 @@ export const getDisplayOrder = (item: any): number => {
   return Array.isArray(d) ? d[0] || 0 : (d as number) || 0
 }
 
-export const getItemsForReordering = (folderId: EARS.EntityId | null) => {
+const getItemsForReordering = (folderId: EARS.EntityId | null) => {
   if (folderId === null) {
     return [
       ...qx(EARS.Entity.Collection).pickAll()

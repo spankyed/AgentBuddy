@@ -1,6 +1,6 @@
 import type { CodexTurnHandle } from './types'
 import { createLogger } from '@abuddy/sdk/logger'
-import { registerThreadTeardown } from '@abuddy/sdk/services'
+import { registerThreadTeardown } from '@/features/threads/be/thread-teardown'
 
 const logger = createLogger('codex-handle-store')
 const activeHandles = new Map<string, CodexTurnHandle>()

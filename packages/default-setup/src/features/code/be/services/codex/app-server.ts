@@ -11,7 +11,7 @@
 import { spawn, type ChildProcess } from 'child_process'
 import { createInterface, type Interface } from 'readline'
 import { createLogger } from '@abuddy/sdk/logger'
-import { resolveForService } from '@abuddy/sdk/utils'
+import { resolveForService } from '../../utils/resolve-cli'
 import type {
   ServerStatus,
   ApprovalDecision,

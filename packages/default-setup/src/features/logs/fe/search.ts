@@ -1,3 +1,4 @@
+import { escapeHtml } from '@abuddy/sdk/utils/pure';
 import type { LogEntry } from './state';
 
 export interface SearchFilter {
@@ -59,16 +60,17 @@ export function searchLog(log: LogEntry, filter: SearchFilter): boolean {
   return false;
 }
 
+/** `text` as HTML, escaped, with the search's include terms wrapped in `<mark>` */
 export function highlightSearchTerm(text: string, searchTerm: string): string {
   if (!searchTerm || !searchTerm.trim()) {
-    return text;
+    return escapeHtml(text);
   }
 
   const filter = parseSearchTerm(searchTerm);
   
   // Only highlight include terms, not exclude terms
   if (filter.includes.length === 0) {
-    return text;
+    return escapeHtml(text);
   }
 
   // Create a regex pattern for all include terms
@@ -76,6 +78,9 @@ export function highlightSearchTerm(text: string, searchTerm: string): string {
     .map(term => term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     .join('|');
   
+  // Split on the terms (a capturing group keeps them at odd indexes), escaping every piece
   const regex = new RegExp(`(${pattern})`, 'gi');
-  return text.replace(regex, '<mark class="text-yellow-200 bg-yellow-500/30">$1</mark>');
+  return text.split(regex)
+    .map((part, i) => i % 2 === 1 ? `<mark class="text-yellow-200 bg-yellow-500/30">${escapeHtml(part)}</mark>` : escapeHtml(part))
+    .join('');
 }

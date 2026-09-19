@@ -1,11 +1,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { pathToFileURL } from 'url';
-import type { PackConfig } from './types';
-import type { PackManifest } from './manifest';
-import { stepRegistry } from '../steps/registry';
-import { artifactRegistry } from '../artifacts/registry';
-import { blockRegistry } from '../blocks/registry';
+import type { PackBuildDefinitions, PackConfig } from './types.ts';
+import type { PackManifest } from './manifest.ts';
+import type { StepDefinition } from '../steps/types.ts';
+import { _mergeStepDefinitions } from '../steps/merge.ts';
+import { resolveSeeds, type SeedDependency } from './seeds/resolve.ts';
 
 function findExportedArray(mod: Record<string, unknown>): unknown[] | null {
   for (const value of Object.values(mod)) {
@@ -16,10 +16,12 @@ function findExportedArray(mod: Record<string, unknown>): unknown[] | null {
 
 export interface PackConfigOptions {
   /**
-   * Dependencies' build/steps.build.mjs modules. Registered before this pack's own
+   * Dependencies' build/steps.build.mjs modules. Loaded before this pack's own
    * steps so flows can use dependency steps and are validated with their real code.
    */
   dependencyStepModules?: string[];
+  /** Dependencies whose seed formats this pack's entries may name */
+  dependencies?: ReadonlyMap<string, SeedDependency>;
 }
 
 export async function buildPackConfigFromManifest(
@@ -27,73 +29,60 @@ export async function buildPackConfigFromManifest(
   packDir: string,
   options: PackConfigOptions = {},
 ): Promise<PackConfig> {
-  const config: PackConfig = {
+  return {
     name: manifest.id,
-    ...(manifest.boot?.seed as Record<string, string> | undefined),
-    async setup() {
-      // Step type → dependency module defining it; a pack step with the same type would silently
-      // merge over the dependency's definition in the registry
-      const dependencyStepTypes = new Map<string, string>();
-      for (const modulePath of options.dependencyStepModules ?? []) {
-        const mod = await import(pathToFileURL(modulePath).href);
-        const items = findExportedArray(mod);
-        if (!items) throw new Error(`${modulePath} does not export a step definition array`);
-        for (const item of items) {
-          dependencyStepTypes.set((item as { type: string }).type, modulePath);
-          stepRegistry.register(item as never);
-        }
-      }
-      const registerPackStep = (step: { type: string }) => {
-        const dependency = dependencyStepTypes.get(step.type);
-        if (dependency) {
-          throw new Error(`Step type "${step.type}" is defined by this pack and by a dependency (${dependency}); rename this pack's step`);
-        }
-        stepRegistry.register(step as never);
-      };
-
-      const registrations: Array<{
-        path: string | undefined;
-        register: (item: any) => void;
-        label: string;
-      }> = [
-        // Build-only definitions avoid loading runtime and FE code (Vue components) in the CLI
-        { path: manifest.steps?.build ?? manifest.steps?.register, register: registerPackStep, label: 'steps' },
-        { path: manifest.artifacts, register: (a) => artifactRegistry.register(a), label: 'artifacts' },
-        { path: manifest.blocks, register: (b) => blockRegistry.register(b), label: 'blocks' },
-      ];
-
-      for (const { path: relPath, register, label } of registrations) {
-        if (!relPath) continue;
-        const fullPath = path.resolve(packDir, relPath);
-        if (!fs.existsSync(fullPath)) {
-          console.warn(`Warning: ${label} file not found at ${relPath}`);
-          continue;
-        }
-        const mod = await import(pathToFileURL(fullPath).href);
-        const items = findExportedArray(mod);
-        if (items) {
-          for (const item of items) register(item);
-        }
-      }
-    },
+    seeds: resolveSeeds(manifest, packDir, options.dependencies),
+    loadDefinitions: () => loadPackDefinitions(manifest, packDir, options.dependencyStepModules ?? []),
   };
-
-  return config;
 }
 
-export function resolveFeatureSettingsFromManifest(
-  manifest: PackManifest,
-  packDir: string,
-): Array<{ name: string; settingsPath: string }> {
-  if (!manifest.features?.length) return [];
+/** Merges a step definition into the one of its type, facet by facet (a build facet and a runtime one combine) */
+function mergeStep(steps: Map<string, StepDefinition>, def: StepDefinition): void {
+  const existing = steps.get(def.type);
+  steps.set(def.type, existing ? _mergeStepDefinitions(existing, def) : def);
+}
 
-  const results: Array<{ name: string; settingsPath: string }> = [];
-  for (const feature of manifest.features) {
-    if (!feature.settings) continue;
-    const settingsPath = path.resolve(packDir, feature.settings);
-    if (fs.existsSync(settingsPath)) {
-      results.push({ name: feature.id, settingsPath });
+/**
+ * The definitions a pack compiles with: its dependencies' steps (their build/steps.build.mjs), then its own
+ * steps, artifacts and blocks. A pack step whose type a dependency defines throws.
+ */
+async function loadPackDefinitions(manifest: PackManifest, packDir: string, dependencyStepModules: readonly string[]): Promise<PackBuildDefinitions> {
+  const steps = new Map<string, StepDefinition>();
+  // Step type → dependency module defining it; a pack step with the same type would silently
+  // merge over the dependency's definition
+  const dependencyStepTypes = new Map<string, string>();
+  for (const modulePath of dependencyStepModules) {
+    const mod = await import(pathToFileURL(modulePath).href);
+    const items = findExportedArray(mod);
+    if (!items) throw new Error(`${modulePath} does not export a step definition array`);
+    for (const item of items as StepDefinition[]) {
+      dependencyStepTypes.set(item.type, modulePath);
+      mergeStep(steps, item);
     }
   }
-  return results;
+
+  const loadArray = async (relPath: string | undefined, label: string): Promise<unknown[]> => {
+    if (!relPath) return [];
+    const fullPath = path.resolve(packDir, relPath);
+    if (!fs.existsSync(fullPath)) {
+      console.warn(`Warning: ${label} file not found at ${relPath}`);
+      return [];
+    }
+    return findExportedArray(await import(pathToFileURL(fullPath).href)) ?? [];
+  };
+
+  // Build-only definitions avoid loading runtime and FE code (Vue components) in the CLI
+  for (const step of await loadArray(manifest.steps?.build ?? manifest.steps?.register, 'steps') as StepDefinition[]) {
+    const dependency = dependencyStepTypes.get(step.type);
+    if (dependency) {
+      throw new Error(`Step type "${step.type}" is defined by this pack and by a dependency (${dependency}); rename this pack's step`);
+    }
+    mergeStep(steps, step);
+  }
+
+  return {
+    steps: [...steps.values()],
+    artifacts: await loadArray(manifest.artifacts, 'artifacts') as PackBuildDefinitions['artifacts'],
+    blocks: await loadArray(manifest.blocks, 'blocks') as PackBuildDefinitions['blocks'],
+  };
 }

@@ -1,16 +1,21 @@
+import { emit } from '#generated/events';
 import { setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
-import { emit } from '@abuddy/sdk/helpers';
-import { memoCommands, memoQueries } from './repository';
+
+import { repository } from '#generated/repository';
+import { addMemoNote, type MemoNoteDTO } from './memo-notes';
 import type { MemoDTO } from './types';
 
 type IncomingMemosEvents =
-  | { type: 'ADD_MEMO'; text: string };
+  | { type: 'ADD_MEMO'; text: string }
+  | { type: 'ADD_MEMO_NOTE'; text: string };
 
 export type OutgoingMemosEvents =
   | { type: 'MEMOS_CONNECTED'; memos: MemoDTO[] }
-  | { type: 'MEMO_ADDED'; memo: MemoDTO };
+  | { type: 'MEMO_ADDED'; memo: MemoDTO }
+  /** `note` is null when the note written through @abuddy/ears isn't found through the SDK */
+  | { type: 'MEMO_NOTE_ADDED'; text: string; note: MemoNoteDTO | null };
 
 export const memosSpec = defineSystem('memos')<IncomingMemosEvents, OutgoingMemosEvents>();
 export const memos = memosSpec.id;
@@ -19,11 +24,15 @@ export const memosSystem = setup({
   types: memosSpec.types,
   actions: {
     sendConnectedData: ({ system }) => {
-      system.get(bus).send(emit(memos, { type: 'MEMOS_CONNECTED', memos: memoQueries.all() }));
+      system.get(bus).send(emit(memos, { type: 'MEMOS_CONNECTED', memos: repository.memoQueries.all() }));
     },
     addMemo: ({ system, event }) => {
       const { text } = memosSpec.typeOf('ADD_MEMO', event);
-      system.get(bus).send(emit(memos, { type: 'MEMO_ADDED', memo: memoCommands.add(text) }));
+      system.get(bus).send(emit(memos, { type: 'MEMO_ADDED', memo: repository.memoCommands.add(text) }));
+    },
+    addMemoNote: ({ system, event }) => {
+      const { text } = memosSpec.typeOf('ADD_MEMO_NOTE', event);
+      system.get(bus).send(emit(memos, { type: 'MEMO_NOTE_ADDED', text, note: addMemoNote(text) }));
     },
   },
 }).createMachine({
@@ -31,6 +40,7 @@ export const memosSystem = setup({
   initial: 'idle',
   on: {
     ADD_MEMO: { actions: 'addMemo' },
+    ADD_MEMO_NOTE: { actions: 'addMemoNote' },
   },
   states: {
     idle: {
@@ -41,6 +51,6 @@ export const memosSystem = setup({
   },
 });
 
-const memosEntry: SystemEntry = { spec: memosSpec, machine: memosSystem };
+const memosEntry = { spec: memosSpec, machine: memosSystem } satisfies SystemEntry;
 
 export default memosEntry;
