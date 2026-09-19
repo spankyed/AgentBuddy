@@ -308,7 +308,7 @@ the argument for the guard.
 ### Per phase
 | Phase | Status | Evidence |
 |---|---|---|
-| 1 — installed packs are not a registry | done | `packs/installed-packs.ts`, `InstalledPack`, `installedAt`, `installedFrom`, `installed-packs.json`, and the route `packs.loaded` with `loadedPacksError`. Phase grep reads zero |
+| 1 — installed packs are not a registry | done, after a follow-up | `packs/installed-packs.ts`, `InstalledPack`, `installedAt`, `installedFrom`, `installed-packs.json`, and the route `packs.loaded` with `loadedPacksError`. Phase grep reads zero — the module and the route's consumer kept the word in their own names; see *What the phase greps missed* |
 | 2 — `bundle` becomes only a verb | done, after a follow-up | `PACK_LAYOUT`, `PACK_LAYOUT_VERSION`, `stagePack`, `verifyPack`, `PackIntegrity`, `integrity.json`, `isPackLayout`, `getLoadedPackEntries`, `LoadedPackEntry`, `bundlePackSource`, `buildPackArchive`; module renamed `packs/pack-layout.ts`. Phase grep reads zero — but it greps names, and three noun leftovers had none of them; see *What the phase greps missed* |
 | 3 — the umbrella's odd one out | done | `src/extensions/app/Welcome.vue` with the manifest path and regenerated entry following; then the second pass: `features[].contributions` → `references` (manifest key, `@abuddy/sdk/fe/references`, `ReferenceTypeConfig`, `ReferenceItem`, `REFERENCE_TYPES`, generated `references.ts`), and `contributions` retired in favour of `extensions` everywhere else. `grep -rn contribution` over `packages/` and `docs/public-facing/` reads zero — but that scope left `docs/goals/` and `docs/plans/`, where eight uses survived; see *What the phase greps missed* |
 | 4 — the remaining single-sense fixes | done | `resolveDepFiles`/`DepFiles`/`ResolvedDepFiles`, `resolvedFrom`, `store.copyTo`, the write-lock's `machine`, `resolveFromRemoteRegistry`, the `seedKeys` guard removed (Open decision 2 A), and the docs calling the per-kind registries "registries" |
@@ -368,6 +368,8 @@ fixed, and Phase 5's guard was widened so the next one fails a test instead.
 | `packFrontendFiles(bundleDir)` | The Conventional-choices note scoped `bundleDir` → `layoutDir` to `pack-installer.ts`. The parameter in `pack-layout.ts` was a second site, and `bundleDir` is not a retired *name* |
 | `bundle` as a noun in `pack-layout.ts`'s header, its doc comments and three error strings (`Not a pack bundle: …`) | The word alone is not a retired name, and it is legitimate in the bundler sense elsewhere, so no grep could be written for it without false positives |
 | `contributions` in `docs/plans/codegen-staleness.md` and `docs/goals/deferred/goal-pack-frontend-isolation.md` (8 uses) | The phase-3 grep was scoped to `packages/` and `docs/public-facing/`. The deferred goal was the costly one: its whole purpose is to be picked up later, and it used the retired word as its umbrella throughout |
+| `registry` for the file, inside `installed-packs.ts` itself — the header, `PackRegistryFile`, `getRegistryPath`, `registryPath` | `registry` is *kept* for the in-process collection (Decision 3), so no name grep can separate the retired sense from the kept one. These are new compounds, not retired names |
+| `registry` for the wire route, in the renderer's `application.ts` — `packRegistryRead`, the `packs.loaded` result variable, seven comments, and a spec named `application-pack-registry.spec.ts` | Same reason. A stale `packs.registry` mock also survived in `application-system-error.spec.ts`, naming a route that no longer exists (unreachable there, so nothing failed) |
 
 Phase 5's guard read only docs, CLI templates and pack sources — never the app's own source — and its name
 list covered `registry`, `bundle` and `artifact` but not `contributions`, so none of the four survived by
@@ -380,6 +382,14 @@ commit `fix(packs): list a pack before registering its contributions`, and a com
 Two doc references also pointed at `packs/bundle.ts` and one at `packs/pack-registry.ts`, modules this goal
 renamed; `installed-packs.json`'s `installedFrom` was still called `source` in three places in
 `abuddy-host/CLAUDE.md`. Neither class is a retired name either.
+
+The `registry` rows above are the important ones, because they are permanent: a word this goal *kept* in one
+sense cannot be guarded against in another. Adding bare `registry` to the list would fire on
+`createPackRegistry`, `PackRegistryView` and `stepRegistry`. The guard now says so in its own header, so the
+next concept rename knows to budget for reading rather than grepping. The full sweep that followed also found
+the same two senses in `pack-discovery.ts`, `loaded-packs.ts`, `seed.ts`, `activation-outcome.ts`,
+`schema.ts`, `pack-updater.ts`, the `packs` barrel, five docs and three spec files — about sixty sites in all,
+none of which any phase grep could have reported.
 
 ### Open items
 - **`source` still names three things** by design: the `@abuddy/source` condition, a log or error's origin,
