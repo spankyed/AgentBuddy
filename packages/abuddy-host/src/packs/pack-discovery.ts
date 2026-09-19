@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { createLogger } from '@abuddy/sdk/logger';
-import { readInstalledPacks, writeInstalledPacks, addInstalledPack } from './installed-packs.ts';
+import { readInstalledPacksRecord, writeInstalledPacks, addInstalledPack } from './installed-packs.ts';
 import type { PackManifest } from '@abuddy/sdk/build';
 
 const logger = createLogger('pack-discovery');
@@ -86,7 +86,12 @@ export function discoverPacks(packsDir: string): { manifest: PackManifest; dir: 
 export function reconcileInstalledPacks(
   discovered: { manifest: PackManifest; dir: string }[],
 ): { manifest: PackManifest; dir: string }[] {
-  let installed = readInstalledPacks();
+  // No readable record: every pack in packs/ is added back as enabled, including any the user had disabled.
+  // That follows from having nothing to read, but it isn't a discovery, and saying so per pack would report
+  // a fresh install of each. One line says what actually happened.
+  const record = readInstalledPacksRecord();
+  const rebuilding = record === null;
+  let installed = record ?? [];
   let changed = false;
 
   const discoveredById = new Map(discovered.map(d => [d.manifest.id, d]));
@@ -102,7 +107,7 @@ export function reconcileInstalledPacks(
         enabled: true,
       });
       changed = true;
-      logger.info(`New external pack discovered: ${manifest.id}`);
+      if (!rebuilding) logger.info(`New external pack discovered: ${manifest.id}`);
     } else if (existing.version !== manifest.version || existing.dir !== dir) {
       installed = addInstalledPack(installed, {
         id: existing.id,
@@ -119,6 +124,10 @@ export function reconcileInstalledPacks(
   installed = installed.filter(e => discoveredById.has(e.id));
   if (installed.length !== before) changed = true;
 
+  if (rebuilding && installed.length > 0) {
+    const names = installed.map(e => e.id).join(', ');
+    logger.warn(`No record of installed packs: rebuilt it from the packs directory, and ${installed.length} pack(s) are enabled (${names}). A pack disabled before this is enabled again.`);
+  }
   if (changed) writeInstalledPacks(installed);
 
   const enabledIds = new Set(installed.filter(e => e.enabled).map(e => e.id));
