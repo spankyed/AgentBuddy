@@ -122,6 +122,12 @@ one global list with no check that a pack named an entity it owns. A pack writin
 (`tests/packs/registration.spec.ts:157-171`), so the scoping exists — the policy list simply does not
 use it.
 
+The field's own description is also wrong. `manifest-schema.ts:187` reads "excluded from persistence
+(in-memory only)", but `volatileBackup` is an on-disk LMDB store (`envs.ts:97`) that the sink writes
+like any other; it is simply not hydrated at boot (`policy.ts:28`) and not in backups
+(`backup/index.ts:44`). `abuddy db --volatile` reads it. Anything written from that description —
+including the first draft of this goal — treats volatile data as lost when it is only unread.
+
 **Four concerns are interleaved at the top level.** Ordered by weight in lines:
 
 | Concern | Keys today |
@@ -206,10 +212,21 @@ already refuses a declaration another pack or the SDK owns (`EARS collision: ent
 pack "older-pack" vs "base-pack"`, `tests/packs/registration.spec.ts:157-171`). The hazard stops being
 mitigated and becomes unrepresentable, which is why the restriction can go rather than being restated.
 
-Two effects stay, both inside the declaring pack, and the schema's description says so: volatile data is
-not in backups (`exportDatabase` defaults to `['lmdb']`), and a relation touching a volatile entity is
-itself routed volatile (`routeRelation` → volatile if either side is) and so is not hydrated — a link
-from a persisted entity to a volatile one does not survive a restart.
+Two effects stay, both inside the declaring pack, and the schema's description must state them
+correctly, which today's does not. `manifest-schema.ts:187` says "excluded from persistence (in-memory
+only)" and that is wrong: `volatileBackup` is a real on-disk LMDB store (`envs.ts:97`) written like any
+other. What `volatile` means is **persisted to a store that is not hydrated at boot** (`policy.ts:28`,
+`hydrate` defaults to `['primary']`) **and not included in backups** (`exportDatabase` defaults to
+`['lmdb']`). `abuddy db --volatile` reads that store today, so the data is there to be read.
+
+The second effect: a relation touching a volatile entity is itself routed volatile (`routeRelation` →
+volatile if either side is), so a link from a persisted entity to a volatile one is on disk but not
+loaded at boot. That is deliberate, not a gap, and `sharded-router.ts:173-188` gives the reasoning — a
+run record's link to the node it ran belongs to the run, so deleting the node must not erase it. Keep
+the routing as it is, and cite that comment in the schema description so the next reader does not take
+it for an oversight. Making such a link primary instead would leave a dangling relation after a boot
+that does not hydrate volatile: nothing in `@abuddy/ears` validates relation endpoints, and nothing
+would ever remove it, because the entity it points at never returns to trigger a removal.
 
 **6. `features[].designation` is deleted.** A feature that registers a designation writes
 `"designated": true`. The registration keeps using the feature id, which is what it did anyway.
@@ -288,7 +305,9 @@ for default-setup produces a `src/__generated__/ears.ts` byte-identical to the o
 (diff it, and record that in the phase's commit); `partitionPolicy` appears in no manifest and in no schema, and
 `loader.ts` no longer mentions it; `packages/abuddy-host/tests/packs/partition-policy.spec.ts` passes,
 with a case added for an external pack marking its own entity volatile and that entity routing to
-`volatileBackup`; `npm run typecheck`, `npm run test:unit`, `npm run test:external-pack` pass.
+`volatileBackup`; the schema's description of `volatile` says persisted-but-not-hydrated and not
+backed up, and the phrase "in-memory only" appears nowhere; `npm run typecheck`, `npm run test:unit`,
+`npm run test:external-pack` pass.
 Mutations: an entity listed with a shape reference whose export does not exist fails the build, naming
 the entity; removing `TNode` from `SDK_EXCLUDED_ENTITY_TYPES` fails `partition-policy.spec.ts`; a pack
 declaring an entity another pack owns still fails registration with the EARS collision message, which
@@ -362,10 +381,14 @@ a 13th top-level key, or a map whose keys equal its values, fails that spec.
   remove the `path#export` strings entirely in favour of real imports, and it changes how the CLI, the
   loader and the installed-pack layout all read a manifest. Worth its own goal if authors ask for it.
 - **`permissions`**, which only fixtures declare and nothing enforces yet. Leave the key where it is.
-- **Backing up the volatile partition.** Decision 5 keeps `volatile` meaning both "not hydrated at boot"
-  and "not in backups", because that is what the partition already does. Separating the two — backing up
-  `volatileBackup` and letting `volatile` mean only "rebuildable, don't load at boot" — is the safer
-  long-term shape, and it is a persistence change rather than a manifest one.
+- **Splitting "not hydrated" from "not backed up".** Decision 5 keeps `volatile` meaning both, because
+  that is what the partition already does. They are separate axes, and an entity that wants one without
+  the other has no way to say so: "persisted, loaded at boot, kept out of backups" is a reasonable thing
+  for rebuildable-but-expensive data to want, and it is not expressible. The seam is `makePolicy`'s
+  `hydratePartitions`, which already takes a set and is always given `['primary']` — so the change is
+  `policy.ts`, `hydrate.ts`, `store.ts` and `exportDatabase`, plus the schema and codegen. A persistence
+  change rather than a manifest one, and once the axes are separate `volatile` is probably the wrong
+  word for either of them.
 
 ## Constraints
 
