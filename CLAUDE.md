@@ -57,12 +57,20 @@ Things that waste the most time, in order:
   background `test:unit` racing a foreground `test:external-pack` produces failures that are about the
   race, not the code.
 
-Two rules that pay for themselves:
+Three rules that pay for themselves:
 
 - **Measure before you optimise, and before you accept someone else's measurement.** Two proposals in
   this repo were rejected by one command each, and both had been argued for at length first.
 - **A mutation check is worth more than a re-run.** Breaking the thing on purpose and watching the
   right test fail proves more than running the whole suite again.
+- **A comment is for whoever opens the file cold, not for whoever reads the diff.** What changed, how many
+  copies there used to be, what you measured to decide, why some other value would be worse — that is
+  commit-message material, and the commit message is where someone looks when they ask why. The test: will
+  this sentence still be true, and still worth reading, a year from now, to a reader who never saw the
+  change? "Three modules did X" needs rewriting the first time a fourth one does, and usually goes stale
+  before it lands. "This replaces the default rather than capping it" does not. Keep what the code cannot
+  say: why a non-obvious choice was made, what breaks if you undo it, and the condition that would make a
+  recorded tradeoff worth revisiting.
 
 ## Commands
 
