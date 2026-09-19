@@ -31,6 +31,11 @@ tests but whose audit covered one branch (`AS/package-boundaries` at `1dd69172e`
 its author date and its subject — 36k lines blamed, so provenance is per test, not per file. Signals are
 then matched against each test's body (from its `it(` to the next one).
 
+**These are source tests, not executed tests.** The count is `it(`/`test(` lines in the source, which is
+what you edit. Vitest reports more, because `it.each` and `describe.each` expand at runtime — the CLI
+suite is 502 source tests and 718 executed. Use this inventory to decide what to change; use vitest's
+numbers to compare runtimes.
+
 Two things this does **not** do, and a reader should not assume otherwise:
 
 - **A signal is a candidate, not a verdict.** 391 tests carry at least one; each still needs reading.

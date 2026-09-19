@@ -1,9 +1,9 @@
-# Goal: tests that fail only when behaviour breaks
+# Goal: tests that fail only when behaviour breaks, and a loop that costs seconds
 
 > **Written in session** `ce3c21bc-00a5-4105-bf57-ff442b38b8a0` (Claude Code, 2026-09-19). Resume it with `claude -r ce3c21bc-00a5-4105-bf57-ff442b38b8a0`.
 
 ```
-# Goal: tests that fail only when behaviour breaks
+# Goal: tests that fail only when behaviour breaks, and a loop that costs seconds
 
 Implement docs/goals/goal-test-cleanup.md on a branch cut from master. Read Background, Decisions,
 Phases and Constraints first. Decisions are final: implement them, don't reopen them or stop to ask.
@@ -16,7 +16,7 @@ the difference goes in the final summary. The audit was made at 1dd69172e and th
 an item whose test no longer exists is skipped, not reconstructed.
 
 Finished when:
-- Phases 1–7 are implemented and each meets its "Done when".
+- Phases 1–10 are implemented and each meets its "Done when".
 - No test in the repo fails only because a name removed by an earlier refactor came back, a message was
   reworded, a call count changed, or a generated file's formatting changed, except where the Decisions
   keep that check.
@@ -34,8 +34,13 @@ Finished when:
   schema:check, api:check (sdk, ui, ears), packages:build + packages:check, compile + facade:check,
   the api, sdk, ears, host, cli, default-setup and renderer unit suites, npm run build, npm test (E2E),
   test:external-pack and test:packaged-authoring.
-- The suites are no slower than before the goal: record `Duration` per suite before Phase 1 and after
-  Phase 7 in the Outcome.
+- `npm test -w @abuddy/cli` runs no build, install or child process and finishes under 15s;
+  `npm run test:integration -w @abuddy/cli` runs the specs that do; CI and the pre-merge chain run both.
+- `npm run test:unit` runs its suites concurrently and finishes under 25s, and a concurrent
+  `test:external-pack` does not make it fail.
+- Every regression path covered today is still covered by `npm run test:all`, wherever it now runs.
+- The loop is measured before Phase 1 and after Phase 9, per suite and per typecheck step, in the
+  Outcome — the numbers in *The loop* are from 2026-09-18 and the suite has grown since.
 - A final summary: phase → done/deferred, evidence, the tests kept against the audit and why, and the
   conventional choices made.
 
@@ -55,8 +60,10 @@ Never:
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release metadata.
 - change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
 - delete a test because it fails; investigate it, and keep it if it found something.
-- widen a kept test's scope, add new coverage, or refactor the code under test. This goal removes and
-  loosens test code only. A bug a deleted test was covering goes in the Outcome's Open items.
+- widen a kept test's scope, add new coverage, or refactor the code under test. Phases 3-9 remove and
+  loosen test code only; a bug a deleted test was covering goes in the Outcome's Open items. Phases 1, 2
+  and 10 change how tests are run, never what they assert — the one exception is the guard Phase 1 adds
+  to keep the fast suite fast.
 ```
 
 ## Background (2026-09-19)
@@ -97,7 +104,7 @@ in the Phases below.
 
 `AS/pack-naming-convention` is a second branch, outside that audit, classified in
 [`docs/plans/test-audit-pack-naming-pr.md`](../plans/test-audit-pack-naming-pr.md). It needs no phase of
-its own — 15 of its 17 added tests are keeps — and its two exceptions are folded into Phase 2.
+its own — 15 of its 17 added tests are keeps — and its two exceptions are folded into Phase 4.
 
 [`docs/plans/test-inventory.md`](../plans/test-inventory.md) then covers the whole repo: all 2,211 tests
 in 279 files, each blamed to the commit that introduced it. It changes the shape of this goal in one
@@ -128,6 +135,47 @@ a better message and no allowance list to maintain.
 The same trap caught a mutation check. Adding that import and watching the guard fail proves the guard
 *fires*; it does not prove the guard is *needed*. Both questions have to be asked, and the second one is
 the one that gets skipped.
+
+## The loop (measured 2026-09-18)
+
+Verifying a one-line change costs minutes, so it gets skipped or done wrong. Warm, one run each:
+
+| Stage | Total | Longest step |
+|---|---|---|
+| `npm run typecheck` (11 steps) | 48.9s | `typecheck:pack` **16.4s** (vue-tsc over default-setup) |
+| `npm run test:unit` (7 suites, sequential) | 92.3s | `@abuddy/cli` **53.1s** |
+| `npm run build` | 44.0s | |
+| `npm run compile` | 14.1s | |
+
+Every other typecheck step is 1.2–5.3s; every other unit suite is 1.9–18.4s. **`@abuddy/cli` is 58% of
+all unit-test time** — 61 files and 653 tests then, 68 and 718 now, so re-measure before Phase 1, one
+warm run each, reported as a table in the Outcome.
+
+Inside it: 277s of file-time in 53s of wall clock, concentrated in sixteen files over 5s each (251.1s)
+against forty-five at ≤5s (25.9s).
+
+```
+51.1s  tests/build/facade-typing.spec.ts              real `abuddy build` ×2, then a 4-cell tsc matrix
+38.2s  tests/cli/scaffold.spec.ts                     abuddy init → add feature → build → tsc → pack
+23.5s  tests/build/fe-bundler-host-registry.spec.ts   real Vite library builds
+21.0s  tests/build/types-bundler-determinism.spec.ts  two facade builds + npm pack
+15.4s  tests/harness/harness-setup.spec.ts            vitest inside a temp pack
+13.6s  tests/build/published-sdk-types.spec.ts        npm pack + tsc over the consumer matrix
+13.2s  tests/build/import-specifiers.spec.ts          166 tests, pure in-process analysis
+```
+
+That last line is why the split cannot be by duration. `import-specifiers` is slow because it has 166
+tests, not because it spawns anything, and it belongs in the fast suite.
+
+**Slow does not mean bad.** The CLI suite caught the declaration-emit break on `AS/single-mode-packs` —
+`tsc --emitDeclarationOnly` moved every published `.d.ts` when an entry imported a file from outside the
+package — and it caught it precisely *because* it runs a real build. The problem is that it runs on every
+change, not that it exists.
+
+**Slow does not mean valuable either.** A test that is expensive *and* guards nothing should be deleted,
+not carefully partitioned. `import-specifiers.spec.ts` is the example: [`test-inventory.md`](../plans/test-inventory.md)
+finds 12 of its 166 assert things about the allowlist rather than the rule. Deleting them makes the fast
+suite faster with no coverage lost and no file moved.
 
 ## Decisions
 
@@ -166,6 +214,9 @@ Final.
    product code — they check a MIME map declared in the test and a copy of the install logic — but the
    branch only moved the file, so it is outside this goal's scope (Deferred).
 8. **A phase is one package's tests**, so each lands on its own with its suite green.
+   Phases 1 and 2 come before any of them, and are not about test content at all: they make the loop
+   the per-package phases pay cheap enough to run. Resolve a test by its title, not its path — Phase 1
+   renames CLI specs to `*.integration.spec.ts`.
 9. **Prefer an allowlist to a denylist** wherever the scope is enumerable. `api/tests/unit/source-layout.spec.ts`
    compares every file under `packages/api/src` against a list, so it already fails on a recreated
    `api/src/packs` — which is why `boundaries.spec.ts`'s absence checks for that directory went in
@@ -183,7 +234,31 @@ Final.
    a bug fix is no likelier to be clean than one born in a refactor. An earlier draft of this decision
    said the opposite, inferred from 17 tests on one branch where every addition came from a review
    finding; see [`test-inventory.md`](../plans/test-inventory.md) Finding 1.
-12. **An allowance is load-bearing or it goes.** Delete it, watch the guard fail, put it back; if the
+12. **Split the CLI suite by what a spec does, not how long it takes.** A spec that runs a build, an
+   install or another process is an integration spec; one that runs in-process is a unit spec, however
+   many assertions it has. Duration is the symptom, spawning is the cause, and it is the thing that
+   stays true as the suite grows.
+13. **Use `*.integration.spec.ts`.** Already this repo's convention
+   (`default-setup/tests/integration/_hybrid/claude-code-permission-flow.integration.spec.ts`). Don't
+   invent a second one, and don't move files between directories: `tests/build/`, `tests/cli/`,
+   `tests/app/` and `tests/harness/` group by area, and the suffix is orthogonal.
+14. **The split is guarded, not just documented.** A spec asserts that no file in the fast `include`
+   spawns a build or a child process. Without it the fast suite silently becomes slow again, which is
+   the failure mode this repo keeps rediscovering.
+15. **CI runs both halves, and so does the pre-merge chain.** The trade accepted is that a developer who
+   runs only the fast suite learns about an integration failure from CI. That is the normal trade for an
+   integration suite; it is not acceptable for CI to cover less than it covers today.
+16. **A deletion can move a file back.** When a per-package phase removes the last spawning test from a
+   `*.integration.spec.ts`, that file belongs in the fast suite again. Phase 1's guard catches the
+   opposite mistake, not this one.
+17. **Parallelising `test:unit` comes after the build lock is fixed, not before.** The suites share the
+   package build stamps, and a build removes each stamp before rewriting it, so concurrent suites
+   produce failures about the race rather than the code. Observed, not theorised: a backgrounded
+   `test:unit` racing a foreground `test:external-pack` failed two scaffold specs with "no build stamp".
+18. **No build-cache tool.** Turborepo or Nx would be a large dependency and a new mental model for a
+   pipeline Phase 1 alone takes under 10s in the common case. Revisit only if the numbers are met and
+   still not enough.
+19. **An allowance is load-bearing or it goes.** Delete it, watch the guard fail, put it back; if the
    guard still passes, the allowance was describing a file that no longer trips it. A *growing* list is
    the guard reporting that it no longer matches how the code is written. An *empty* list is different:
    `DECLARES_SOURCE_BY_DESIGN` is empty on purpose, with a spec keeping it empty and a note telling
@@ -212,15 +287,51 @@ second opinion, not a guard (Decision 4, and *A second test, found after the aud
 
 ## Phases
 
+Phases 1, 2 and 10 change how tests run; 3-9 change which tests exist. The order is not negotiable at
+the front: 1 and 2 make the loop that 3-9 pay repeatedly cheap enough to run, and 1's criterion is
+structural, so it waits on nothing. 10 is optional and last.
+
 Line numbers are from 1dd69172e plus the three commits named in Background; find the test by its title,
-not its line. A listed test that no longer exists is skipped.
+not its line, and not its path — Phase 1 renames CLI specs. A listed test that no longer exists is
+skipped.
 
 **Count, don't diff, when a branch renamed things.** A rename lands inside test titles, so `git diff`
 reports a renamed test as added. Compare `grep -c '^\s*it('` per file between the two ends first, and
 read only the files whose count moved. On the pack-naming branch that was the difference between ~40
 apparent additions and 17 real ones.
 
-### Phase 1 — @abuddy/cli
+### Phase 1 — split the CLI suite
+
+Not about test content: `@abuddy/cli` is ~53s against 3–9s for every other package, and it is Phase 3.
+Splitting it makes the most expensive phase in this goal roughly 3.5× cheaper to iterate on, and the
+criterion is structural, so nothing here waits on a verdict.
+
+- Rename each spec that runs a build, an install or a child process to `*.integration.spec.ts`. The
+  candidates are the sixteen over 5s in *The loop*, minus `import-specifiers.spec.ts`, plus any file
+  under 5s that spawns — classify by reading, not by the timing table.
+- `packages/abuddy-cli/vitest.config.ts`: the default `include` excludes `**/*.integration.spec.ts`.
+  Add a `test:integration` script whose `include` is only that.
+- Root `package.json`: `test:unit` keeps calling `npm test -w @abuddy/cli` (now the fast half). The
+  pre-merge chain and `.github/workflows/ci.yml` gain the integration step.
+- Update `packages/abuddy-cli/CLAUDE.md`'s Tests section: which suite holds what, the rule for choosing,
+  and that deleting the last spawning test from an integration spec moves that file back (Decision 16).
+- **Done when:** `npm test -w @abuddy/cli` finishes under 15s and runs no child process; every spec is in
+  exactly one of the two suites; a guard spec fails when a fast-suite file spawns a build. Mutation:
+  renaming one integration spec back to `*.spec.ts` fails that guard.
+
+### Phase 2 — let the suites run together
+
+- `withBuildLock` currently fails immediately when another process holds the lock, which is right for a
+  command and wrong for a reader. Give the freshness checkers a way to wait for an in-flight build
+  instead of reporting its half-written stamps as stale. `runningPackageBuild`
+  (`@abuddy/host/build/packages-built`) already identifies a live build; `assertCheckoutPackagesFresh`
+  already reports it separately. The missing half is `published-packages.ts` and the fixers.
+- Then make `test:unit` run its suites concurrently rather than as an `&&` chain.
+- **Done when:** `npm run test:unit` and `npm run test:external-pack` started together both pass, ten
+  times in a row; `test:unit` wall clock is under 25s. Mutation: reverting the lock change makes the
+  concurrent run fail with a stamp error.
+
+### Phase 3 — @abuddy/cli
 
 Delete:
 - `tests/build/with-source.spec.ts`: "is the only way npm scripts in the checkout get the condition" (it
@@ -264,7 +375,7 @@ Trim:
 **Done when:** the two tests are gone, the trims are applied, `npm test -w @abuddy/cli` passes, and
 `npm run packages:build` has run first (the CLI suite needs it).
 
-### Phase 2 — @abuddy/host
+### Phase 4 — @abuddy/host
 
 Delete:
 - `bus/client-events.spec.ts`: "logs arrays over 5 items as their count and first 5".
@@ -322,7 +433,7 @@ From the pack-naming audit:
 
 **Done when:** the listed tests are gone, the trims are applied, and `npm test -w @abuddy/host` passes.
 
-### Phase 3 — @abuddy/sdk and @abuddy/ears
+### Phase 5 — @abuddy/sdk and @abuddy/ears
 
 Delete:
 - `abuddy-ears/tests/no-engine-state-access.spec.ts` (whole file, Decision 4). Update the root CLAUDE.md
@@ -366,7 +477,7 @@ the typed-EARS specs (`packages/abuddy-sdk/TYPED-EARS.md`).
 **Done when:** the listed tests are gone, the trims are applied, `npm test -w @abuddy/sdk` and
 `npm test -w @abuddy/ears` pass, `npm run typecheck` passes, and no doc names a deleted file.
 
-### Phase 4 — default-setup, part A
+### Phase 6 — default-setup, part A
 
 From the repo inventory:
 - `tests/unit/_hybrid/actions-export.spec.ts` and `prompts-export.spec.ts` are structural clones: the
@@ -406,7 +517,7 @@ Trim:
 **Done when:** the listed tests are gone, the trims are applied, and `npm test -w @app/default-setup`
 passes (run `npm run compile` first).
 
-### Phase 5 — default-setup, part B
+### Phase 7 — default-setup, part B
 
 Delete:
 - `tests/unit/service-registry.spec.ts` (whole file): restates the generated `Services` type;
@@ -446,7 +557,7 @@ Trim:
 **Done when:** the listed tests are gone, the trims are applied, and `npm test -w @app/default-setup`
 passes.
 
-### Phase 6 — api, renderer, E2E and fixture packs
+### Phase 8 — api, renderer, E2E and fixture packs
 
 From the repo inventory:
 - `api/tests/unit/claude-code-permission-shape.spec.ts`: 10 tests whose subject is a standalone Zod
@@ -487,7 +598,7 @@ Keep (Decision 5): `tests/e2e/smoke.spec.ts` "runs in an isolated per-worker tes
 **Done when:** the listed tests are gone, the trims are applied, and `npm test -w @app/api`,
 `npm test -w @app/renderer`, `npm test` (E2E) and `npm run test:external-pack` pass.
 
-### Phase 7 — the guards that stay, and the full check list
+### Phase 9 — the guards that stay, and the full check list
 
 The per-package phases delete and trim tests. This one proves what is left earns its place, which no
 single package's phase can do.
@@ -497,13 +608,23 @@ single package's phase can do.
   goes, and the removal is recorded in the Outcome against Decision 1's second question.
 - For each allowance in each remaining guard (`ALLOWED`, `GUARDS`, `UNBRIDGED_BY_DESIGN`): delete it and
   run the guard. Still green means the allowance describes a file that no longer trips it — drop it.
-  `DECLARES_SOURCE_BY_DESIGN` is exempt: empty on purpose, kept empty by its own spec (Decision 12).
+  `DECLARES_SOURCE_BY_DESIGN` is exempt: empty on purpose, kept empty by its own spec (Decision 19).
 - Run the whole list from the prompt block, in order, from a clean build.
 - Record each suite's test count and `Duration` next to the numbers taken before Phase 1.
 - Write the Outcome section: per phase, the tests kept against the audit and why, and any bug a deleted
   test turned out to be covering.
 
 **Done when:** every check passes, every remaining guard and allowance has its mutation check recorded, and the Outcome is written.
+
+### Phase 10 — project references for the type checks (optional)
+
+- `typecheck:pack` is 16.4s of vue-tsc over default-setup, a third of `npm run typecheck`. The
+  `@abuddy/source` condition used to block `tsc -b`; pack configs no longer declare it, so references
+  are possible. They need every package to go `composite` and `@abuddy/host` to gain a build.
+- The largest change here with the least certain payoff, and the only phase that touches no test. Do it
+  last, and stop if Phases 1 and 2 already made the loop fast enough to stop being a complaint.
+- **Done when:** `npm run typecheck` is under 30s with every check still running, or the phase is
+  deliberately abandoned with the measurement that says it is not worth it.
 
 ## Deferred
 
