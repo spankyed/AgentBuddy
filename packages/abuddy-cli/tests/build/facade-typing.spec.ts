@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import ts from 'typescript';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '../helpers/published-packages';
+import { CLI, TSC, packageJson, preparePack, run, tsconfig, write } from '../helpers/pack-builds';
 
 /**
  * A pack's typed facades (#generated/ears, events, services, repository) cover its own
@@ -12,25 +13,6 @@ import { PACKAGES_BUILT, REPO_ROOT, installPublishedPackages } from '../helpers/
  * types; a dependent pack built against it (file: dependency) typechecks a consumer, with every
  * generated file, against the workspace SDK source and the packed SDK under node16 and bundler.
  */
-const CLI = path.join(REPO_ROOT, 'packages', 'abuddy-cli', 'bin', 'abuddy.mjs');
-const TSC = path.join(REPO_ROOT, 'node_modules', '.bin', 'tsc');
-
-function write(dir: string, files: Record<string, string>): void {
-  for (const [rel, content] of Object.entries(files)) {
-    fs.mkdirSync(path.dirname(path.join(dir, rel)), { recursive: true });
-    fs.writeFileSync(path.join(dir, rel), typeof content === 'string' ? content : JSON.stringify(content));
-  }
-}
-
-const packageJson = (name: string) => JSON.stringify({ name, type: 'module', imports: { '#generated/*': './src/__generated__/*' } });
-const tsconfig = JSON.stringify({
-  compilerOptions: {
-    target: 'ES2022', module: 'esnext', moduleResolution: 'bundler', strict: true, skipLibCheck: true, noEmit: true, types: ['node'],
-    customConditions: ['@abuddy/source'], allowImportingTsExtensions: true, paths: { '#generated/*': ['./src/__generated__/*'] },
-  },
-  include: ['src/**/*.ts'],
-});
-
 // Relative and #generated imports name .js, so the sources are valid under node16 too
 const BASE_PACK = {
   'package.json': packageJson('base-pack'),
@@ -265,14 +247,6 @@ tx(plainId).put('text', 42);
 tx('Nope');
 `;
 
-function run(cmd: string, args: string[], cwd: string): { code: number; output: string } {
-  try {
-    return { code: 0, output: execFileSync(cmd, args, { cwd, stdio: 'pipe', env: { ...process.env, FORCE_COLOR: '0' } }).toString() };
-  } catch (err: any) {
-    return { code: err.status ?? 1, output: `${err.stdout ?? ''}${err.stderr ?? ''}` };
-  }
-}
-
 /** The two packs, built, in a temp dir; node_modules link the workspace or the packed packages */
 /** A step in base-pack, whose node types its dependents read: the scaffolded one and a hand-written one */
 function addBaseStep(dir: string): void {
@@ -292,9 +266,7 @@ function buildPacks(published: boolean): string {
   const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'facade-typing-'));
   const modules = published ? path.join(installPublishedPackages(), 'node_modules') : path.join(REPO_ROOT, 'node_modules');
   for (const [name, files] of [['base-pack', BASE_PACK], ['app-pack', APP_PACK]] as const) {
-    const dir = path.join(parent, name);
-    write(dir, files);
-    fs.symlinkSync(modules, path.join(dir, 'node_modules'), 'dir');
+    const dir = preparePack(parent, name, files, modules);
     if (name === 'base-pack') addBaseStep(dir);
     const build = run(process.execPath, [CLI, 'build'], dir);
     if (build.code !== 0) throw new Error(`abuddy build failed in ${name}:\n${build.output}`);

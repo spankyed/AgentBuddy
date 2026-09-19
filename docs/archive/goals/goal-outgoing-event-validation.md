@@ -1,3 +1,7 @@
+> **Done** (2026-09-18) on `AS/outgoing-event-validation`, `5ec2d849f`…`f919b197c`. Phases 1–4 landed.
+> Phase 5 was not started: Open decision 1 was never settled, so the payload half stays open — see the
+> Outcome, which says what the types still lie about.
+
 > **Written in session** `34470405-e643-41fb-8244-6a561a0963c5` (Claude Code, 2026-09-18). Resume it with `claude -r 34470405-e643-41fb-8244-6a561a0963c5`.
 
 ```
@@ -151,6 +155,58 @@ goal is to make the class safe rather than to visit its members.
 ### Phase 5 — payload schemas (only if Open decision 1 says yes)
 - Scope to be written once that decision is made. It touches `defineSystem`, the generated events, every
   system's declarations and the harness, and it is the half that would have caught the notes bug.
+
+## Outcome (2026-09-18)
+
+Phases 1–4 landed. Phase 5 did not: Open decision 1 (runtime payload schemas) was never answered, so
+type-name validation is all this closes and a declared event with a missing field still passes. That is
+the asymmetry the doc asked not to paper over, and it is recorded here rather than left implied.
+
+Most of the work is not in the phases. Reviewing the finished branch found five defects in the check
+itself, three of them user-visible, and chasing one of those through the running app found a bug in pack
+registration that had nothing to do with events. The phases were the cheap part.
+
+### Per phase
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — declared types as runtime data | done | `receivedEventTypes` in `#generated/events`, read by `eventTypesOf`; `abuddy-sdk/tests/build/generate-entries.spec.ts` |
+| 2 — the registry side | done | `getPluginEventValidationMap()`; `abuddy-host/tests/packs/event-validation-map.spec.ts` |
+| 3 — the check | done | `bus/machine.ts` reports and drops; `abuddy-host/tests/bus/outgoing-events.spec.ts` |
+| 4 — the repo's own sends | done | `CLIENT_CONNECTED` on `application` and the host `packs` plugin were real contract gaps, both closed by declaring |
+| 5 — payload schemas | **not started** | Open decision 1 unsettled |
+
+### What the review found after the phases were "done"
+| Defect | Fix |
+|---|---|
+| Every send from the host `packs` system was dropped — the Packs view stopped updating | `registerHostPlugin` + `PACKS_PLUGIN_EVENT_TYPES`, pinned to the union by a compile-time check (`503cd2cd9`) |
+| Any pack could widen any plugin's accepted events, the host's included | ownership is explicit and the map never overwrites a claimed id (`503cd2cd9`) |
+| A pack built before `receivedEventTypes` had every send dropped | its plugins map to `null` — known, nothing to check against — so its sends pass (`503cd2cd9`) |
+| A dropped send could not distinguish "unknown plugin" from "pack mid-update" | `markPackReplacing`, using `teardownPack`'s existing `replacing` flag (`29c6a5222`) |
+| Reporting a drop produced another droppable send, unbounded | reported once per `(plugin, type)`; the cycle runs through the actor's queue, not the call stack (`50fd094b7`) |
+| A drop raised "Something went wrong" at the person using the app | new `diagnostic` severity: logged and recorded, no toast (`4311bf8ef`) |
+| `_meta`, the plugin-visibility key, was treated as a plugin id | excluded, as `checkFeatureSettings` already did (`729727a1e`) |
+| A drop in an E2E run failed nothing | the fixture fails the test that produced one (`f919b197c`) |
+
+### Corrections to the Decisions
+- **Cross-pack widening was fixed by non-override, not by refusing the pack.** Throwing at registration
+  broke `pack-settings-defaults.spec.ts`, which documents that a pack feature may share an id with
+  another pack's plugin and that settings resolve in the app's favour. Refusing the pack outright is a
+  product change this goal did not ask for; the first owner keeps the id instead.
+- **Plugin ownership reads `features` *and* `receivedEventTypes`, not `features` alone.** A hand-written
+  registration may name only one of the two. Non-override is what prevents widening; `features` is what
+  lets a pack that declared no event types still be known to own its plugins.
+
+### Open items
+- **Phase 5 / Open decision 1.** Runtime payload schemas. Until then a declared event with a missing
+  field passes, which is the class the notes bug belonged to.
+- **`notes/fe/state.ts:723` assigns `settings` unguarded.** Upstream guards with `if (pluginSettings)`
+  and no reaching path was found; noted, not claimed.
+- **`secrets.spec.ts` E2E fails** reading a 2.6GB LMDB file in the test data dir. Environmental.
+
+### Final verification
+`npm run typecheck`, `npm run test:unit` (2,479), `npm run test:external-pack`, and the E2E suite at
+12 passed / 1 failed — the failure being `secrets.spec.ts` above. The two reload E2E tests that failed
+throughout went 60s and 15s timeouts to 2.1s and 163ms once the feedback loop was fixed.
 
 ## Deferred
 

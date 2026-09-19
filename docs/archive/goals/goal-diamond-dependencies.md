@@ -1,3 +1,18 @@
+> **Done** (2026-09-18), as Phases 3 and 4 of [goal-dependency-provenance](goal-dependency-provenance.md)
+> on `AS/dependency-provenance`. All three phases landed, in
+> `packages/abuddy-cli/tests/helpers/pack-builds.ts` and
+> `packages/abuddy-cli/tests/build/dependency-graph.spec.ts`. Kept for the reasoning behind them.
+>
+> Two notes for a later reader:
+>
+> - **Phase 2 asks the diamond to assert `typeOwners.entities`, which no longer exists.** The goal it
+>   landed inside replaced `typeOwners`, `dependencyCommands` and `dependencyPlugins` with one
+>   `provenance` field, so the assertion is on `provenance.entities` — same claim, current shape.
+> - **The measured cost this goal asked for:** the new spec runs in **26.1s** (8 tests, 25.9s of it in
+>   the tests themselves), for 9 `abuddy build` invocations. That is over the four-build budget its
+>   sibling goal stated; every one of them is a case the two Finished-when lists ask for, so it is
+>   reported rather than trimmed.
+
 # Goal: prove a diamond dependency builds, and that a facade missing an export fails
 
 > **Written in session** `36f122d9-3a1e-40ef-988d-40b2574fc098` (Claude Code, 2026-09-18). Resume it with `claude -r 36f122d9-3a1e-40ef-988d-40b2574fc098`.

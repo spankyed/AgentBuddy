@@ -6,7 +6,7 @@ import { transformSync } from 'esbuild';
 import ts from 'typescript';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { _depTypesFile, _depTypesVersion, entitiesWithoutShapes, generatePackFiles, PACK_TYPES_DEF } from '../../src/build/generate-entries.ts';
-import { _dependencyPlugins, PACK_TYPES_FORMAT } from '../../src/build/manifest.ts';
+import { PACK_TYPES_FORMAT } from '../../src/build/manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../../src/types/sdk-entities.ts';
 import type { PackManifest, PackSnapshot } from '../../src/build/manifest.ts';
 
@@ -197,43 +197,22 @@ describe('generated events', () => {
 
   // A send is typed against the owning pack's PackEvents, which only a direct dependency's facade
   // names, so this stays rejected — but as the dependency it is, not as a plugin nobody has.
-  it("names the owning pack for a plugin reached only through a dependency, from the snapshot's dependencyPlugins", () => {
-    const mid = { 'mid-pack': { ...dependency({ id: 'mid-pack' }), dependencyPlugins: [{ id: 'threads', packId: 'deep-pack' }] } };
+  it("names the owning pack for a plugin reached only through a dependency, from the snapshot's provenance", () => {
+    const mid = { 'mid-pack': { ...dependency({ id: 'mid-pack' }), provenance: { plugins: { threads: 'deep-pack' } } } };
     expect(() => generate({ features: [system('memos', { sendsTo: ['threads'] })] }, mid))
       .toThrow('a plugin of "deep-pack", which this pack depends on only through another pack');
   });
 
   it('still sends to a direct dependency\'s plugin when a transitive record names the same id', () => {
     const base = {
-      'base-pack': { ...dependency({ features: [withPlugin(system('threads'))] }), dependencyPlugins: [{ id: 'threads', packId: 'deep-pack' }] },
+      'base-pack': { ...dependency({ features: [withPlugin(system('threads'))] }), provenance: { plugins: { threads: 'deep-pack' } } },
     };
     const files = generate({ features: [system('memos', { sendsTo: ['threads'] })] }, base);
     expect(files['src/__generated__/events.ts']).toContain("Pick<__dep_base_pack_PackEvents, 'threads'>");
   });
 });
 
-// The reader behind that message. Its ordering rule is the one _dependencyCommands uses: within a
-// snapshot a pack's own plugins override what it inherited, and a later snapshot overrides an earlier
-// one — so the pack named is always the nearest one a dependent could add to its own dependencies.
-describe('_dependencyPlugins', () => {
-  const snap = (fields: Record<string, unknown>) => fields as unknown as Parameters<typeof _dependencyPlugins>[0][number][1];
-
-  it('collects the plugins of a dependency and of everything it depends on', () => {
-    expect(_dependencyPlugins([
-      ['mid-pack', snap({ manifest: { features: [{ id: 'threads', plugin: {} }, { id: 'brain' }] }, dependencyPlugins: [{ id: 'notes', packId: 'deep-pack' }] })],
-    ])).toEqual([{ id: 'notes', packId: 'deep-pack' }, { id: 'threads', packId: 'mid-pack' }]);
-  });
-
-  it('names the nearer pack when one owns a plugin it also inherited', () => {
-    expect(_dependencyPlugins([
-      ['mid-pack', snap({ manifest: { features: [{ id: 'threads', plugin: {} }] }, dependencyPlugins: [{ id: 'threads', packId: 'deep-pack' }] })],
-    ])).toEqual([{ id: 'threads', packId: 'mid-pack' }]);
-  });
-
-  it('gives a feature without a plugin no entry: nothing could be sent there', () => {
-    expect(_dependencyPlugins([['mid-pack', snap({ manifest: { features: [{ id: 'brain' }] } })]])).toEqual([]);
-  });
-});
+// The reader behind that message is `_mergeProvenance`, covered on its own in provenance.spec.ts.
 
 describe('generated system sends', () => {
   const baseTypes = facade();
@@ -416,8 +395,8 @@ describe('generated backend entry', () => {
       .toContain('commands: [{"name":"memo","placeholder":"Mine"}],');
   });
 
-  it("fails for a command a dependency's own dependency declares, from the snapshot's dependencyCommands", () => {
-    const mid = { 'mid-pack': { ...dependency({ id: 'mid-pack' }), dependencyCommands: [{ name: 'pr2md', packId: 'default-setup' }] } };
+  it("fails for a command a dependency's own dependency declares, from the snapshot's provenance", () => {
+    const mid = { 'mid-pack': { ...dependency({ id: 'mid-pack' }), provenance: { commands: { pr2md: 'default-setup' } } } };
     expect(() => generate({ commands: [{ name: 'pr2md', placeholder: 'Mine' }], features: [system('brain')] }, mid))
       .toThrow('Command "pr2md" is declared by "default-setup", which this pack depends on');
   });
@@ -554,7 +533,7 @@ describe('a diamond dependency', () => {
     types: { entities: { Memo: 'Memo' }, relKinds: {} },
     defs: facade(),
     typesFormat: PACK_TYPES_FORMAT,
-    typeOwners: { entities: { Memo: owner }, relKinds: {} },
+    provenance: { entities: { Memo: owner } },
     manifest: manifest({ id }),
   }) as PackSnapshot;
 
@@ -577,10 +556,10 @@ describe('a diamond dependency', () => {
   });
 
   it("names the deeper pack once for a plugin both sides surface", () => {
-    const owners = [{ id: 'threads', packId: 'deep-pack' }];
+    const owners = { threads: 'deep-pack' };
     expect(() => generate({ features: [system('memos', { sendsTo: ['threads'] })] }, {
-      'left-pack': { ...dep('left-pack'), dependencyPlugins: owners } as PackSnapshot,
-      'right-pack': { ...dep('right-pack'), dependencyPlugins: owners } as PackSnapshot,
+      'left-pack': { ...dep('left-pack'), provenance: { plugins: owners } } as PackSnapshot,
+      'right-pack': { ...dep('right-pack'), provenance: { plugins: owners } } as PackSnapshot,
     })).toThrow('a plugin of "deep-pack"');
   });
 });
