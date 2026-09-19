@@ -13,7 +13,7 @@ Host-only modules shared by the API, the renderer, the Electron main process, th
 
 | Subpath | Files | What it holds |
 |---|---|---|
-| `./packs` | `packs/index.ts` (barrel) | Registration (`createPackRegistry()`, with `packs/extensions.ts` and `packs/backend-extensions.ts`), discovery, registry, installer, updater, bundle, staging, host info, `withModuleBridge` |
+| `./packs` | `packs/index.ts` (barrel) | Registration (`createPackRegistry()`, with `packs/extensions.ts` and `packs/backend-extensions.ts`), discovery, registry, installer, updater, pack layout, staging, host info, `withModuleBridge` |
 | `./packs/runtime` | `packs/runtime/*.ts` | The pack runtime the app runs, on the registry it's given: loader, SDK bridge, loaded packs, lifecycle, reload, seed, the host `packs` system (`createPacksSystem(registry)`), activation outcome ([its CLAUDE.md](src/packs/runtime/CLAUDE.md)). The `./packs` barrel never imports it |
 | `./packs/dev-server` | `packs/dev-server.ts` | The `abuddy dev` marker file and `devServerUrl` |
 | `./bus` | `bus/{index,machine,app-bus,client-events}.ts` | `createBusMachine` and the bus event types (`machine.ts`), `createAppBus(registry)` (`app-bus.ts`), `receiveClientEvent(registry, event)` and `UnknownClientEventError` (`client-events.ts`) |
@@ -33,10 +33,10 @@ Host-only modules shared by the API, the renderer, the Electron main process, th
 All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives `userDataDir`, `packsDir` (`packs/`), `hostPacksDir` (`host-packs/`), `installedPacksFile` (`installed-packs.json`) and `appName`. The database, media and secrets file paths come from `@abuddy/sdk/utils` `paths.ts` (`ears-db`, `ears-trace`, `media`, `secrets.json`). No path is resolved at import time: each is resolved on the call that needs it, because the environment isn't known until then. Files this package writes under `userDataDir`:
 
 - `host.json` holds `{ version }` (`packs/host-info.ts`). `recordHostVersion` writes it at boot, using a temp file and a rename. `readHostVersion` lets `abuddy install` check a pack's `hostVersion` without the app running.
-- `installed-packs.json` (`packs/installed-packs.ts`) holds install state, `enabled`, `source`, update-check results and `lastError`. It is kept outside LMDB because packs register before hydration.
-- `pack-dev-servers/<packId>.json` holds `{ port, pid }` (`packs/dev-server.ts`). It is kept outside `packs/`, because an installed pack dir holds exactly the verified bundle.
+- `installed-packs.json` (`packs/installed-packs.ts`) holds install state, `enabled`, `installedFrom`, update-check results and `lastError`. It is kept outside LMDB because packs register before hydration.
+- `pack-dev-servers/<packId>.json` holds `{ port, pid }` (`packs/dev-server.ts`). It is kept outside `packs/`, because an installed pack dir holds exactly the verified pack.
 - `secrets.json` plus `secrets.key` (file vault only) sit in the same directory (`secrets/index.ts`).
-- `packs/<id>/` holds installed bundles, and `host-packs/<id>/` holds published built-in packs' build output (see Bundle).
+- `packs/<id>/` holds installed packs, and `host-packs/<id>/` holds published built-in packs' build output (see Pack layout).
 
 ## App state (`app-state/`)
 
@@ -66,7 +66,7 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
 - `reconcileInstalledPacks` adds newly found packs as enabled, rewrites entries whose version or dir changed, drops missing packs, and returns the enabled packs.
 - `updateInstalledPacks(fn)` reads, applies `fn` and writes the file. `writeInstalledPacks` writes to `installed-packs.json.tmp` and renames it into place. A failed write is logged, not thrown.
 
-**Bundle** (`packs/bundle.ts`): the one layout used for `dist/`, release archives and installed packs. The layout is documented in the file header, with paths in `PACK_LAYOUT`.
+**Pack layout** (`packs/pack-layout.ts`): the one layout used for `dist/`, release archives and installed packs. The layout is documented in the file header, with paths in `PACK_LAYOUT`.
 - `stagePack(packRoot, stageDir)` copies `dist/{runtime,build,types}` without `.map` files, writes `abuddy.json` (with an optional version override) and writes `integrity.json`, which records the format version and a sha256 per file.
 - `verifyPack` throws on a format major other than `PACK_LAYOUT_VERSION`, a missing file, a checksum mismatch, or an unexpected extra file.
 - `createPackArchive` writes a reproducible `<id>-<version>.tgz` (no mtimes or uids, entries prefixed `<id>/`) plus a `.sha256` file. `extractPackArchive` checks the sha256 when one is given (`assertChecksum`, case-insensitive) and requires exactly one top-level dir.
@@ -78,10 +78,10 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
   - `installPackFromLocal` accepts a directory, a `.tgz`/`.tar.gz` (extracted with `extractPackArchive`) or a `.zip` (extracted by shelling out to `unzip`, with `findPackRoot`). An `sha256` option is checked (`assertChecksum`) before either archive is unpacked, so it covers the `.zip` path too.
   - `installPackFromGitHub` picks the release's first `.tgz` asset and requires its `<asset>.sha256` (or an `sha256` option): a release publishing neither is refused, as is a checksum file that isn't 64 hex digits.
   - `installPackFromUrl` warns when it has no `sha256` to check, and downloads under `DOWNLOAD_TIMEOUT_MS` (`packs/github.ts`, two minutes; the signal bounds the body too). `githubFetch` gives metadata requests 10s and release-asset downloads that same two minutes.
-- `installFromDirectory` validates the manifest (`parseManifest`) and checks the `hostVersion` option, a range test that includes prereleases (`isHostCompatible`). If the dir is an unstaged built pack source, it stages it into a tmp dir. It then verifies the bundle and calls `placePack`.
-- `placePack` copies the bundle into `.<id>.installing-<pid>-XXXXXX`, moves any existing copy to `.<id>.previous-<pid>-<hex>`, and renames the new copy into place. If that rename fails, it puts the previous copy back, then deletes the leftover.
+- `installFromDirectory` validates the manifest (`parseManifest`) and checks the `hostVersion` option, a range test that includes prereleases (`isHostCompatible`). If the dir is an unstaged built pack source, it stages it into a tmp dir. It then verifies the layout and calls `placePack`.
+- `placePack` copies the staged pack into `.<id>.installing-<pid>-XXXXXX`, moves any existing copy to `.<id>.previous-<pid>-<hex>`, and renames the new copy into place. If that rename fails, it puts the previous copy back, then deletes the leftover.
 - `checkDependencies` reports the manifest's dependencies that are neither installed nor built in. Built-in ids come from `BUILT_IN_PACKS_DIR` when it is set, and otherwise from the non-hidden dirs in `host-packs/` next to `packsDir`.
-- `uninstallPack` deletes `packs/<id>` and throws if the dir is missing. Neither function touches `installed-packs.json`. The host `packs` system (`packs/runtime/packs-system.ts`) updates it after an install. The CLI never writes it, so a CLI install is picked up by `reconcileInstalledPacks` at the next boot, without a `source`.
+- `uninstallPack` deletes `packs/<id>` and throws if the dir is missing. Neither function touches `installed-packs.json`. The host `packs` system (`packs/runtime/packs-system.ts`) updates it after an install. The CLI never writes it, so a CLI install is picked up by `reconcileInstalledPacks` at the next boot, without an `installedFrom`.
 
 **Staging recovery** (`packs/staging.ts`)
 - `stagingDirName(id, kind)` produces `.<id>.<installing|previous|publishing>-<pid>-<hex>`.
@@ -89,7 +89,7 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
 - `prepareHostDataDirs({ userDataDir, packsDir, hostPacksDir?, version })` records the host version and recovers both dirs, passing the registry's pack ids for `packs/` (`host-packs/` has no registry, so every interrupted publish is recovered). The API calls it before discovery.
 
 **Updater** (`packs/pack-updater.ts`, `packs/github.ts`)
-- `checkForUpdates({ hostVersion })` covers enabled registry entries that have a `source`. The API sets `source` only for GitHub installs. It runs when the Packs view asks (`CHECK_FOR_UPDATES`), nothing else, and caches nothing: each run replaces the entry's `availableVersion`/`availableTag`, or sets `updateCheckError` saying why there's nothing to offer (the check failed, the newest release's compatibility couldn't be confirmed, or no release supports this AgentBuddy).
+- `checkForUpdates({ hostVersion })` covers enabled registry entries that have an `installedFrom`. The API sets `installedFrom` only for GitHub installs. It runs when the Packs view asks (`CHECK_FOR_UPDATES`), nothing else, and caches nothing: each run replaces the entry's `availableVersion`/`availableTag`, or sets `updateCheckError` saying why there's nothing to offer (the check failed, the newest release's compatibility couldn't be confirmed, or no release supports this AgentBuddy).
 - `findLatestRelease` ignores drafts, non-semver tags and versions that aren't newer. It includes prereleases only when `resolveAppContext().env === 'beta'`.
 - With a `hostVersion`, `findLatestRelease` reads each candidate's range, newest first, from the `*.integrity.json` release asset, falling back to `abuddy.json` at the tag, and takes the newest one this app can run. Only releases newer than the installed version are candidates, so a check reads few manifests. A candidate whose range it couldn't read comes back with `hostVersionUnverified`, and the install checks the range again.
 - The update installs `availableTag`, so it gets exactly the release the check found.
@@ -181,7 +181,7 @@ What opening an app's database needs, shared by the API's boot and `abuddy db`, 
 - `boundaries.spec.ts`: no transport or `virtual:*` imports, no `@abuddy/host/*` self-imports, the `./packs` barrel and the bus clear of `packs/runtime` (the bus may load only `loaded-packs.ts`), no `packages/api/src/packs` or `systems.ts`, no persistence source left in `src/ears`, `src/persistence` or the API's `core/ears` and `core/persistence`, and `src/services` holding exactly one file per `HostRuntime['services']` key plus `index.ts` (checked against the type and against `createHostRuntime`'s services).
 - `removed-names-in-docs.spec.ts`: no doc (outside `docs/archive`), CLI template or pack source names what the package-boundaries goal removed (the host module registry, the SDK's `run…Migrations` export, the engine's module-state entry points, the cast repository types, the app state in settings, the registries packs wrote to), with a per-file allowance and its reason.
 - `migrations/`: `runner` (both runners on the SDK test host, each migration once, versions recorded in `AppState`; which migrations a release, a beta and a development build run; a failure stops the rest and records nothing) and `app-state-0.3.15` (the host's move of the app's state out of old-shaped settings, run twice; the runners on data from before `AppState` on the release, a beta and a development build, on new data, and after a failed move).
-- `packs/`: `bundle`, `dependencies` (`checkDependencies`, publish staging), `dev-server`, `discovery`, `event-validation-map`, `host-info`, `module-bridge`, `partition-policy`, `registration` (including repositories: registered, removed, collisions and rollback), `pack-protocol` (the `pack://` MIME table), `registered-lookups` (each SDK lookup through the functions packs call: registering, unregistering, collisions with rollback), `two-registries`, `registry-state` (no module-level state in the registry and lookup modules), `backend-extensions` (the command and settings stores), `shutdown-hooks`, `staging`, and `updater` (`findLatestRelease`, with `fetch` mocked).
+- `packs/`: `pack-layout`, `dependencies` (`checkDependencies`, publish staging), `dev-server`, `discovery`, `event-validation-map`, `host-info`, `module-bridge`, `partition-policy`, `registration` (including repositories: registered, removed, collisions and rollback), `pack-protocol` (the `pack://` MIME table), `registered-lookups` (each SDK lookup through the functions packs call: registering, unregistering, collisions with rollback), `two-registries`, `registry-state` (no module-level state in the registry and lookup modules), `backend-extensions` (the command and settings stores), `shutdown-hooks`, `staging`, and `updater` (`findLatestRelease`, with `fetch` mocked).
 - `fe/`: `fe-registered-lookups` and `pack-store-designations` (`createFePackRegistry()` bound with `bindFeHost`).
 - `packs/runtime/`: the pack runtime's specs, on the SDK test host (`test-host.ts`); see its CLAUDE.md.
 - `bus/`: `app-bus` (`createAppBus()` on the SDK test host) and `client-events` (`receiveClientEvent`).
@@ -197,7 +197,7 @@ What opening an app's database needs, shared by the API's boot and `abuddy db`, 
 
 ## Gotchas
 
-- `reconcileInstalledPacks` rebuilds an entry whose version or dir changed from only `id`, `name`, `version`, `dir` and `enabled`, so fields like `source` and `availableVersion` are dropped. An out-of-app reinstall (`abuddy install`) therefore loses the pack's update source at the next boot.
+- `reconcileInstalledPacks` rebuilds an entry whose version or dir changed from only `id`, `name`, `version`, `dir` and `enabled`, so fields like `installedFrom` and `availableVersion` are dropped. An out-of-app reinstall (`abuddy install`) therefore loses the pack's update source at the next boot.
 - `writeInstalledPacks` doesn't throw on failure, so callers can't tell that a registry write was lost.
 - External pack FE code can't reach the renderer's `createFePackRegistry()` instance: the renderer calls `registerPackFE` on its behalf (see the pack runtime doc's FE entry section), and pack frontends read it through the SDK's lookups.
 - Adding a host service means updating `HostServices` and `HostRuntimeServices` in the SDK, `HOST_SERVICE_NAMES` (`pack-registration.ts`), `createHostRuntime`'s `services` (`services/index.ts`, with the implementation in `services/<kebab-case key>.ts`) and `HOST_SERVICE_KEYS` in `tests/boundaries.spec.ts`. All are type-checked against the SDK types. Helpers that aren't a service don't go in `services/`.
