@@ -1,5 +1,5 @@
 // What packs registered lives in the registry instances the app, the harness and the CLI create: no module that
-// registers or looks up packs' contributions keeps any of it at module scope.
+// registers or looks up packs' extensions keeps any of it at module scope.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import ts from 'typescript';
@@ -26,8 +26,8 @@ const REGISTRY_MODULES = [
   ].map((file) => path.join(SDK_SRC, file)),
   ...[
     'packs/pack-registration.ts',
-    'packs/contributions.ts',
-    'packs/backend-contributions.ts',
+    'packs/extensions.ts',
+    'packs/backend-extensions.ts',
     'fe/pack-store.ts',
     'fe/app-extensions.ts',
   ].map((file) => path.join(HOST_SRC, file)),

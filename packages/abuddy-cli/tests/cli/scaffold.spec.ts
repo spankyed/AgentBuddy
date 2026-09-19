@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { extractBundleArchive, verifyBundle } from '@abuddy/host/packs';
+import { extractPackArchive, verifyPack } from '@abuddy/host/packs';
 
 /**
  * The scaffold an outside author starts from must build, typecheck and pack as
@@ -80,8 +80,8 @@ describe('abuddy init → add feature → build → tsc → pack', () => {
     const out = path.join(tmp, 'out');
     const packed = run('node', [CLI, 'pack', '--out', out], pack);
     expect(packed.code, packed.output).toBe(0);
-    const extracted = await extractBundleArchive(path.join(out, 'demo-pack-0.1.0.tgz'), path.join(tmp, 'extract'));
-    expect(verifyBundle(extracted).id).toBe('demo-pack');
+    const extracted = await extractPackArchive(path.join(out, 'demo-pack-0.1.0.tgz'), path.join(tmp, 'extract'));
+    expect(verifyPack(extracted).id).toBe('demo-pack');
   }, 240_000);
 
   it('adds a step (registered, shipped in build/steps.build.mjs) and a service that build', async () => {

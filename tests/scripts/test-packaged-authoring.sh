@@ -323,7 +323,7 @@ git add -A
 git -c user.name=author -c user.email=author@example.com commit --quiet -m "initial pack"
 git remote add origin https://github.com/example/demo-pack.git
 "$ABUDDY" release patch --local --dry-run --skip-e2e | tee "$WORK/release.log"
-BUNDLE="$(sed -n 's/^Bundle: //p' "$WORK/release.log")"
+BUNDLE="$(sed -n 's/^Pack: //p' "$WORK/release.log")"
 [ -f "$BUNDLE" ] && [ -f "$BUNDLE.sha256" ] || fail "release did not produce a bundle and checksum"
 (cd "$(dirname "$BUNDLE")" && shasum -a 256 -c "$(basename "$BUNDLE").sha256")
 [ -z "$(git status --porcelain)" ] || fail "a dry run changed the pack's files"
@@ -331,7 +331,7 @@ BUNDLE="$(sed -n 's/^Bundle: //p' "$WORK/release.log")"
 step "7. Install the bundle into an isolated test data dir"
 DATA="$WORK/test-data"
 ABUDDY_USER_DATA_DIR="$DATA" "$ABUDDY" install "$BUNDLE"
-INSTALLED="$(find "$DATA" -path '*/demo-pack/bundle.json' | head -n 1)"
+INSTALLED="$(find "$DATA" -path '*/demo-pack/integrity.json' | head -n 1)"
 [ -n "$INSTALLED" ] || fail "the bundle was not installed"
 node -e '
   const b = JSON.parse(require("fs").readFileSync(process.argv[1], "utf8"));

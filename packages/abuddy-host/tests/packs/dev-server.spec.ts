@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resolveAppContext } from '@abuddy/sdk/env';
-import { verifyBundle } from '../../src/packs/bundle.ts';
+import { verifyPack } from '../../src/packs/pack-layout.ts';
 import { installPackFromLocal } from '../../src/packs/pack-installer.ts';
 import {
   devServerMarkerPath,
@@ -67,10 +67,10 @@ describe('dev server marker', () => {
     const { dir } = await installPackFromLocal(builtPack(), packsDir);
     writeDevServerMarker(userDataDir, 'demo-pack', { port: 5199, pid: 42 });
 
-    expect(verifyBundle(dir).id).toBe('demo-pack');
+    expect(verifyPack(dir).id).toBe('demo-pack');
 
     await installPackFromLocal(builtPack(), packsDir);
-    expect(verifyBundle(dir).id).toBe('demo-pack');
+    expect(verifyPack(dir).id).toBe('demo-pack');
     expect(devServerUrl(userDataDir, 'demo-pack', '/runtime/fe.js')).toBe('http://localhost:5199/runtime/fe.js');
   });
 });

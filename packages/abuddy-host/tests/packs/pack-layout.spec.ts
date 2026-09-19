@@ -4,15 +4,15 @@ import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  BUNDLE_FORMAT_VERSION,
-  createBundleArchive,
-  extractBundleArchive,
-  readBundleInfo,
+  PACK_LAYOUT_VERSION,
+  createPackArchive,
+  extractPackArchive,
+  readPackIntegrity,
   sha256File,
   packFrontendFiles,
-  stageBundle,
-  verifyBundle,
-} from '../../src/packs/bundle.ts';
+  stagePack,
+  verifyPack,
+} from '../../src/packs/pack-layout.ts';
 import { installPackFromGitHub, installPackFromLocal, installPackFromUrl } from '../../src/packs/pack-installer.ts';
 
 let tmp: string;
@@ -48,12 +48,12 @@ function builtPack(overrides: Record<string, unknown> = {}): string {
   return root;
 }
 
-describe('stageBundle', () => {
+describe('stagePack', () => {
   it('assembles the bundle layout with the manifest and checksums, without source maps', () => {
     const stage = path.join(tmp, 'stage');
-    const info = stageBundle(builtPack(), stage, { sdkVersion: '0.1.0', source: { commit: 'abc' } });
+    const info = stagePack(builtPack(), stage, { sdkVersion: '0.1.0', source: { commit: 'abc' } });
 
-    expect(info).toMatchObject({ formatVersion: BUNDLE_FORMAT_VERSION, id: 'demo-pack', version: '1.2.3', hostVersion: '>=0.3.0', sdkVersion: '0.1.0', source: { commit: 'abc' } });
+    expect(info).toMatchObject({ formatVersion: PACK_LAYOUT_VERSION, id: 'demo-pack', version: '1.2.3', hostVersion: '>=0.3.0', sdkVersion: '0.1.0', source: { commit: 'abc' } });
     expect(Object.keys(info.files).sort()).toEqual([
       'abuddy.json',
       'runtime/fe.js',
@@ -64,20 +64,20 @@ describe('stageBundle', () => {
     expect(info.files['runtime/index.cjs']).toBe(sha256File(path.join(stage, 'runtime/index.cjs')));
 
     expect(JSON.parse(fs.readFileSync(path.join(stage, 'abuddy.json'), 'utf-8'))).toEqual(JSON.parse(fs.readFileSync(path.join(tmp, 'src-pack', 'abuddy.json'), 'utf-8')));
-    expect(readBundleInfo(stage)).toEqual(info);
+    expect(readPackIntegrity(stage)).toEqual(info);
   });
 
   it('refuses a pack that has not been built in the bundle layout', () => {
     const root = builtPack();
     fs.rmSync(path.join(root, 'dist', 'runtime'), { recursive: true });
-    expect(() => stageBundle(root, path.join(tmp, 'stage'))).toThrow(/not built/);
+    expect(() => stagePack(root, path.join(tmp, 'stage'))).toThrow(/not built/);
   });
 });
 
 describe('packFrontendFiles', () => {
   it("lists the bundle's FE entry and stylesheet only when the build wrote them", () => {
     const stage = path.join(tmp, 'stage');
-    stageBundle(builtPack(), stage);
+    stagePack(builtPack(), stage);
     expect(packFrontendFiles(stage)).toEqual({ entry: 'runtime/fe.js', styles: undefined });
 
     fs.writeFileSync(path.join(stage, 'runtime', 'fe.css'), '.x{}');
@@ -89,21 +89,21 @@ describe('packFrontendFiles', () => {
   });
 });
 
-describe('verifyBundle', () => {
+describe('verifyPack', () => {
   it('accepts an untouched bundle', () => {
     const stage = path.join(tmp, 'stage');
-    stageBundle(builtPack(), stage);
-    expect(verifyBundle(stage).id).toBe('demo-pack');
+    stagePack(builtPack(), stage);
+    expect(verifyPack(stage).id).toBe('demo-pack');
   });
 
   it('reports modified, missing and unexpected files', () => {
     const stage = path.join(tmp, 'stage');
-    stageBundle(builtPack(), stage);
+    stagePack(builtPack(), stage);
     fs.appendFileSync(path.join(stage, 'runtime/index.cjs'), '\n// tampered');
     fs.rmSync(path.join(stage, 'runtime/fe.js'));
     fs.writeFileSync(path.join(stage, 'runtime/extra.js'), '');
 
-    const message = (() => { try { verifyBundle(stage); return ''; } catch (e) { return (e as Error).message; } })();
+    const message = (() => { try { verifyPack(stage); return ''; } catch (e) { return (e as Error).message; } })();
     expect(message).toContain('checksum mismatch runtime/index.cjs');
     expect(message).toContain('missing runtime/fe.js');
     expect(message).toContain('unexpected runtime/extra.js');
@@ -111,45 +111,45 @@ describe('verifyBundle', () => {
 
   it('rejects an unsupported format version', () => {
     const stage = path.join(tmp, 'stage');
-    stageBundle(builtPack(), stage);
-    const info = readBundleInfo(stage);
-    fs.writeFileSync(path.join(stage, 'bundle.json'), JSON.stringify({ ...info, formatVersion: BUNDLE_FORMAT_VERSION + 1 }));
-    expect(() => verifyBundle(stage)).toThrow(/uses format/);
+    stagePack(builtPack(), stage);
+    const info = readPackIntegrity(stage);
+    fs.writeFileSync(path.join(stage, 'integrity.json'), JSON.stringify({ ...info, formatVersion: PACK_LAYOUT_VERSION + 1 }));
+    expect(() => verifyPack(stage)).toThrow(/uses format/);
   });
 });
 
 describe('bundle archives', () => {
   it('round-trips through a reproducible .tgz with a matching .sha256 file', async () => {
     const stage = path.join(tmp, 'stage');
-    stageBundle(builtPack(), stage);
+    stagePack(builtPack(), stage);
 
-    const first = await createBundleArchive(stage, path.join(tmp, 'out1'));
-    const second = await createBundleArchive(stage, path.join(tmp, 'out2'));
+    const first = await createPackArchive(stage, path.join(tmp, 'out1'));
+    const second = await createPackArchive(stage, path.join(tmp, 'out2'));
     expect(path.basename(first.file)).toBe('demo-pack-1.2.3.tgz');
     expect(second.sha256).toBe(first.sha256);
     expect(fs.readFileSync(first.checksumFile, 'utf-8')).toBe(`${first.sha256}  demo-pack-1.2.3.tgz\n`);
 
-    const extracted = await extractBundleArchive(first.file, path.join(tmp, 'extract'), first.sha256);
+    const extracted = await extractPackArchive(first.file, path.join(tmp, 'extract'), first.sha256);
     expect(path.basename(extracted)).toBe('demo-pack');
-    expect(verifyBundle(extracted).version).toBe('1.2.3');
+    expect(verifyPack(extracted).version).toBe('1.2.3');
   });
 
   it('refuses an archive whose checksum does not match', async () => {
     const stage = path.join(tmp, 'stage');
-    stageBundle(builtPack(), stage);
-    const { file } = await createBundleArchive(stage, path.join(tmp, 'out'));
-    await expect(extractBundleArchive(file, path.join(tmp, 'extract'), '0'.repeat(64))).rejects.toThrow(/Checksum mismatch/);
+    stagePack(builtPack(), stage);
+    const { file } = await createPackArchive(stage, path.join(tmp, 'out'));
+    await expect(extractPackArchive(file, path.join(tmp, 'extract'), '0'.repeat(64))).rejects.toThrow(/Checksum mismatch/);
   });
 });
 
-describe('installPackFromLocal (bundle path)', () => {
+describe('installPackFromLocal (pack layout path)', () => {
   it('stages a built source pack and installs only the bundle', async () => {
     const packsDir = path.join(tmp, 'packs');
     const result = await installPackFromLocal(builtPack(), packsDir);
 
-    expect(result.bundle.id).toBe('demo-pack');
-    expect(fs.readdirSync(result.dir).sort()).toEqual(['abuddy.json', 'bundle.json', 'runtime', 'types']);
-    expect(verifyBundle(result.dir).version).toBe('1.2.3');
+    expect(result.integrity.id).toBe('demo-pack');
+    expect(fs.readdirSync(result.dir).sort()).toEqual(['abuddy.json', 'integrity.json', 'runtime', 'types']);
+    expect(verifyPack(result.dir).version).toBe('1.2.3');
     // no staging or replacement leftovers in the packs dir
     expect(fs.readdirSync(packsDir)).toEqual(['demo-pack']);
   });
@@ -159,8 +159,8 @@ describe('installPackFromLocal (bundle path)', () => {
     await installPackFromLocal(builtPack({ version: '1.0.0' }), packsDir);
 
     const stage = path.join(tmp, 'stage');
-    stageBundle(builtPack({ version: '2.0.0' }), stage);
-    const { file, sha256 } = await createBundleArchive(stage, path.join(tmp, 'out'));
+    stagePack(builtPack({ version: '2.0.0' }), stage);
+    const { file, sha256 } = await createPackArchive(stage, path.join(tmp, 'out'));
     const result = await installPackFromLocal(file, packsDir, { sha256 });
 
     expect(result.version).toBe('2.0.0');
@@ -172,7 +172,7 @@ describe('installPackFromLocal (bundle path)', () => {
     await installPackFromLocal(builtPack({ version: '1.0.0' }), packsDir);
 
     const stage = path.join(tmp, 'stage');
-    stageBundle(builtPack({ version: '2.0.0' }), stage);
+    stagePack(builtPack({ version: '2.0.0' }), stage);
     fs.appendFileSync(path.join(stage, 'runtime/index.cjs'), '\n// tampered');
 
     await expect(installPackFromLocal(stage, packsDir)).rejects.toThrow(/failed verification/);
@@ -184,7 +184,7 @@ describe('installPackFromLocal (bundle path)', () => {
     const root = builtPack();
     fs.rmSync(path.join(root, 'dist'), { recursive: true });
     await expect(installPackFromLocal(root, path.join(tmp, 'packs'))).rejects.toThrow(
-      /^Pack demo-pack is not built: .* has no bundle\.json and no dist\/runtime\/index\.cjs with dist\/types\/snapshot\.json\. Run "abuddy build" first\.$/,
+      /^Pack demo-pack is not built: .* has no integrity\.json and no dist\/runtime\/index\.cjs with dist\/types\/snapshot\.json\. Run "abuddy build" first\.$/,
     );
     expect(fs.existsSync(path.join(tmp, 'packs', 'demo-pack'))).toBe(false);
   });
@@ -236,8 +236,8 @@ describe('installPackFromGitHub', () => {
   /** A release of demo-pack serving its archive from memory; `checksum` defaults to the archive's own, null publishes none. */
   async function mockRelease(checksum?: string | null) {
     const stage = path.join(tmp, 'stage');
-    stageBundle(builtPack(), stage);
-    const { file, sha256 } = await createBundleArchive(stage, path.join(tmp, 'out'));
+    stagePack(builtPack(), stage);
+    const { file, sha256 } = await createPackArchive(stage, path.join(tmp, 'out'));
     const name = path.basename(file);
     const published = checksum === undefined ? sha256 : checksum;
     const assets = [
@@ -293,8 +293,8 @@ describe('installPackFromUrl', () => {
 
   it('downloads the archive under a timeout and installs it', async () => {
     const stage = path.join(tmp, 'stage');
-    stageBundle(builtPack(), stage);
-    const { file, sha256 } = await createBundleArchive(stage, path.join(tmp, 'out'));
+    stagePack(builtPack(), stage);
+    const { file, sha256 } = await createPackArchive(stage, path.join(tmp, 'out'));
     const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => new Response(fs.readFileSync(file), { status: 200 }));
     vi.stubGlobal('fetch', fetchMock);
 

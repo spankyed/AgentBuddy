@@ -16,8 +16,8 @@ import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS, _reservedEntrie
 import { HOST_PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
 import { makePolicy, registerRepository, unregisterRepository, type PartitionPolicy } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
-import { createDefinitionStore, createDesignationStore, createStepStore } from './contributions.ts';
-import { createCommandStore, createSeedHookStore, createSeederStore, createSettingsDefaultsStore, createShutdownHooks } from './backend-contributions.ts';
+import { createDefinitionStore, createDesignationStore, createStepStore } from './extensions.ts';
+import { createCommandStore, createSeedHookStore, createSeederStore, createSettingsDefaultsStore, createShutdownHooks } from './backend-extensions.ts';
 
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration };
 
@@ -48,7 +48,7 @@ function designationsOf({ id, systems, features = [] }: PackRegistration): Recor
   ]);
 }
 
-export interface PackContributions {
+export interface PackExtensions {
   systems: string[];
   services: string[];
   steps: string[];
@@ -83,8 +83,8 @@ export interface PackInfo {
   bootHooks: string[];
   features: PackFeatureDef[];
   dir?: string;
-  registeredAt?: string;
-  source?: string;
+  installedAt?: string;
+  installedFrom?: string;
   availableVersion?: string;
   /** Why the last update check couldn't finish or confirm compatibility */
   updateCheckError?: string;
@@ -170,7 +170,7 @@ export interface PackRegistry extends PackRegistryView {
    * loader strips it from external packs, which seed through `seedPackData`)
    */
   runRegisteredBootSeeds(orchestrateSeed: (manifest: PackSeedManifest, packId: string) => void): void;
-  getPackContributions(packId: string): PackContributions | null;
+  getPackExtensions(packId: string): PackExtensions | null;
   /** Registers a hook run when the pack `key` stops, or, without a key, when the app exits */
   registerShutdownHook(hook: () => void, key?: string): void;
   /** Runs every registered shutdown hook (the app exiting) */
@@ -283,7 +283,7 @@ export function createPackRegistry(): PackRegistry {
     const registeredBlocks: string[] = [];
 
     /**
-     * The pack is listed before its contributions are registered, because registering them is
+     * The pack is listed before its extensions are registered, because registering them is
      * observable: `settingsDefaults.register` notifies its listeners, the settings system reacts by
      * sending `SETTINGS_UPDATED` to its plugin, and a send reaches the bus while it is idle, so the
      * bus processes it synchronously — inside this call. Listed last, as it used to be, that send was
@@ -292,7 +292,7 @@ export function createPackRegistry(): PackRegistry {
      * plugin, so the same moment dropped that too.
      *
      * It reads as a reload bug because reload is where it shows: the listeners are already subscribed
-     * by then. It is not — it is any registration whose contributions wake a running system.
+     * by then. It is not — it is any registration whose extensions wake a running system.
      */
     registrations.set(registration.id, registration);
     replacingPacks.delete(registration.id);
@@ -550,7 +550,7 @@ export function createPackRegistry(): PackRegistry {
       }
     },
 
-    getPackContributions(packId) {
+    getPackExtensions(packId) {
       const reg = registrations.get(packId);
       if (!reg) return null;
 

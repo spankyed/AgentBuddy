@@ -4,10 +4,10 @@ import type { Plugin, PackFERegistration, TiptapPlugin, DslTypeConfig } from '@a
 import type { FePackRegistryView } from '@abuddy/sdk/runtime';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
-import { createDefinitionStore, createDesignationStore, createStepStore } from '../packs/contributions.ts';
+import { createDefinitionStore, createDesignationStore, createStepStore } from '../packs/extensions.ts';
 import { createAppExtensionSlots } from './app-extensions.ts';
 
-interface PackFEContributions {
+interface PackFEExtensions {
   /** The plugins this pack added: not those skipped because another pack or the host has the id */
   plugins: Plugin[];
   stepTypes: string[];
@@ -37,7 +37,7 @@ export interface FePackRegistry extends FePackRegistryView {
 export function createFePackRegistry(): FePackRegistry {
   const allPlugins: Plugin[] = [];
   let defaultPlugin: Plugin | undefined;
-  const packContributions = new Map<string, PackFEContributions>();
+  const packExtensions = new Map<string, PackFEExtensions>();
   const designations = createDesignationStore();
   const steps = createStepStore();
   const artifacts = createDefinitionStore<ArtifactDefinition>();
@@ -99,7 +99,7 @@ export function createFePackRegistry(): FePackRegistry {
     for (const [name, config] of Object.entries(registration.dslTypes ?? {})) dslTypes.set(name, config);
 
     if (packId) {
-      packContributions.set(packId, {
+      packExtensions.set(packId, {
         plugins,
         stepTypes: (registration.steps ?? []).map(s => s.type),
         tiptapPlugins: registration.tiptapPlugins ?? [],
@@ -113,7 +113,7 @@ export function createFePackRegistry(): FePackRegistry {
   }
 
   function unregisterPackFE(packId: string): Plugin[] {
-    const contrib = packContributions.get(packId);
+    const contrib = packExtensions.get(packId);
     if (!contrib) return [];
 
     const removedPlugins: Plugin[] = [];
@@ -136,7 +136,7 @@ export function createFePackRegistry(): FePackRegistry {
     }
     designations.unregister(contrib.designations);
 
-    packContributions.delete(packId);
+    packExtensions.delete(packId);
     return removedPlugins;
   }
 

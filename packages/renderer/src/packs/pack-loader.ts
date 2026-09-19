@@ -47,7 +47,7 @@ export async function loadPackFEEntry(
   // A module without a default export falls back to its namespace object, which registers
   // nothing; say so instead of loading a pack whose plugins silently never appear. A default
   // export that declares registration fields, even empty ones, is deliberate: the generated
-  // entry of a pack without FE contributions is { plugins: [], defaultPlugin: undefined }.
+  // entry of a pack without FE extensions is { plugins: [], defaultPlugin: undefined }.
   const declaresRegistration = REGISTRATION_KEYS.some(key => key in registration);
   if (!mod.default || !declaresRegistration) {
     console.warn(
@@ -59,7 +59,7 @@ export async function loadPackFEEntry(
 }
 
 /**
- * Undoes a pack's frontend load: its registered contributions and its stylesheets. Used when the pack is
+ * Undoes a pack's frontend load: its registered extensions and its stylesheets. Used when the pack is
  * deactivated, and when a load that was already running finished for a pack deactivated meanwhile.
  */
 export function unloadPackFrontend(packId: string): void {
@@ -67,7 +67,7 @@ export function unloadPackFrontend(packId: string): void {
   document.querySelectorAll(`link[data-pack-id="${packId}"]`).forEach(el => el.remove());
 }
 
-/** An external pack's frontend, as the pack registry lists it: the bundle's runtime/fe.js and runtime/fe.css when it has them */
+/** An external pack's frontend, as the loaded-packs list gives it: the pack's runtime/fe.js and runtime/fe.css when it has them */
 export interface PackFrontend {
   id: string;
   feEntry?: string;

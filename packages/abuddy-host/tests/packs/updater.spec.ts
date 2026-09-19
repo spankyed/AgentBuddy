@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { checkForUpdates, findLatestRelease } from '../../src/packs/pack-updater.ts';
-import { readPackRegistry, writePackRegistry } from '../../src/packs/pack-registry.ts';
+import { readInstalledPacks, writeInstalledPacks } from '../../src/packs/installed-packs.ts';
 
 
 function mockReleases(releases: Array<{ tag_name: string; draft?: boolean; prerelease?: boolean }>) {
@@ -70,7 +70,7 @@ describe('findLatestRelease', () => {
       const fetchMock = vi.fn(async (url: string, _init?: RequestInit) => {
         if (url.endsWith('/releases?per_page=100')) {
           return new Response(JSON.stringify([
-            { tag_name: 'v2.0.0', assets: [{ name: 'p-2.0.0.tgz.bundle.json', url: 'https://api.github.com/repos/acme/pack/releases/assets/7', browser_download_url: 'https://github.com/x' }] },
+            { tag_name: 'v2.0.0', assets: [{ name: 'p-2.0.0.tgz.integrity.json', url: 'https://api.github.com/repos/acme/pack/releases/assets/7', browser_download_url: 'https://github.com/x' }] },
             { tag_name: 'v1.0.0', assets: [] },
           ]), { status: 200 });
         }
@@ -138,46 +138,46 @@ describe('checkForUpdates', () => {
   });
 
   it('checks every time, replacing what an earlier check recorded', async () => {
-    writePackRegistry([{
-      id: 'demo-pack', name: 'Demo', version: '1.0.0', dir: '/packs/demo-pack', enabled: true, registeredAt: '', source: 'acme/pack',
+    writeInstalledPacks([{
+      id: 'demo-pack', name: 'Demo', version: '1.0.0', dir: '/packs/demo-pack', enabled: true, installedAt: '', installedFrom: 'acme/pack',
       availableVersion: '1.5.0', availableTag: 'v1.5.0',
     }]);
     vi.stubGlobal('fetch', vi.fn(async (url: string) => url.startsWith('https://api.github.com/')
       ? new Response(JSON.stringify([{ tag_name: 'v1.2.0' }]), { status: 200 })
       : new Response(JSON.stringify({ hostVersion: '>=0.4.0' }), { status: 200 })));
 
-    expect(await checkForUpdates({ hostVersion: '0.4.0' })).toEqual([{ packId: 'demo-pack', currentVersion: '1.0.0', availableVersion: '1.2.0', source: 'acme/pack' }]);
-    expect(readPackRegistry()[0]).toMatchObject({ availableVersion: '1.2.0', availableTag: 'v1.2.0' });
-    expect(readPackRegistry()[0].updateCheckError).toBeUndefined();
+    expect(await checkForUpdates({ hostVersion: '0.4.0' })).toEqual([{ packId: 'demo-pack', currentVersion: '1.0.0', availableVersion: '1.2.0', installedFrom: 'acme/pack' }]);
+    expect(readInstalledPacks()[0]).toMatchObject({ availableVersion: '1.2.0', availableTag: 'v1.2.0' });
+    expect(readInstalledPacks()[0].updateCheckError).toBeUndefined();
   });
 
   it("says so when every newer release needs a newer AgentBuddy", async () => {
-    writePackRegistry([{ id: 'demo-pack', name: 'Demo', version: '1.0.0', dir: '/packs/demo-pack', enabled: true, registeredAt: '', source: 'acme/pack' }]);
+    writeInstalledPacks([{ id: 'demo-pack', name: 'Demo', version: '1.0.0', dir: '/packs/demo-pack', enabled: true, installedAt: '', installedFrom: 'acme/pack' }]);
     vi.stubGlobal('fetch', vi.fn(async (url: string) => url.startsWith('https://api.github.com/')
       ? new Response(JSON.stringify([{ tag_name: 'v2.0.0' }, { tag_name: 'v1.9.0' }]), { status: 200 })
       : new Response(JSON.stringify({ hostVersion: '>=9.0.0' }), { status: 200 })));
 
     expect(await checkForUpdates({ hostVersion: '0.4.0' })).toEqual([]);
-    expect(readPackRegistry()[0]).toMatchObject({ updateCheckError: 'No release of acme/pack supports this AgentBuddy (0.4.0)' });
-    expect(readPackRegistry()[0].availableVersion).toBeUndefined();
+    expect(readInstalledPacks()[0]).toMatchObject({ updateCheckError: 'No release of acme/pack supports this AgentBuddy (0.4.0)' });
+    expect(readInstalledPacks()[0].availableVersion).toBeUndefined();
   });
 
   it('records why a check failed and checks again next time', async () => {
-    writePackRegistry([{ id: 'demo-pack', name: 'Demo', version: '1.0.0', dir: '/packs/demo-pack', enabled: true, registeredAt: '', source: 'acme/pack' }]);
+    writeInstalledPacks([{ id: 'demo-pack', name: 'Demo', version: '1.0.0', dir: '/packs/demo-pack', enabled: true, installedAt: '', installedFrom: 'acme/pack' }]);
     vi.stubGlobal('fetch', vi.fn(async () => new Response('limited', { status: 429, headers: { 'x-ratelimit-remaining': '0' } })));
 
     expect(await checkForUpdates({ hostVersion: '0.4.0' })).toEqual([]);
-    const entry = readPackRegistry()[0];
+    const entry = readInstalledPacks()[0];
     expect(entry.updateCheckError).toMatch(/rate limit is used up/);
   });
 
   it('records a release whose compatibility could not be confirmed', async () => {
-    writePackRegistry([{ id: 'demo-pack', name: 'Demo', version: '1.0.0', dir: '/packs/demo-pack', enabled: true, registeredAt: '', source: 'acme/pack' }]);
+    writeInstalledPacks([{ id: 'demo-pack', name: 'Demo', version: '1.0.0', dir: '/packs/demo-pack', enabled: true, installedAt: '', installedFrom: 'acme/pack' }]);
     vi.stubGlobal('fetch', vi.fn(async (url: string) => url.startsWith('https://api.github.com/')
       ? new Response(JSON.stringify([{ tag_name: 'v1.2.0' }]), { status: 200 })
       : new Response('Not Found', { status: 404 })));
 
     expect(await checkForUpdates({ hostVersion: '0.4.0' })).toHaveLength(1);
-    expect(readPackRegistry()[0].updateCheckError).toMatch(/^Couldn't confirm v1\.2\.0 supports this AgentBuddy: .*abuddy\.json was not found/);
+    expect(readInstalledPacks()[0].updateCheckError).toMatch(/^Couldn't confirm v1\.2\.0 supports this AgentBuddy: .*abuddy\.json was not found/);
   });
 });

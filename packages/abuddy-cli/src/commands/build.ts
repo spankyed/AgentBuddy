@@ -19,10 +19,10 @@ import { bundleDslDefs, DEFS_DIR } from '../build/dsl-defs';
 import { bundlePackTypes } from '../build/types-bundler';
 import { facadeProblems } from '../build/facade-gate';
 import { bundlePackFlowHelpers } from '../build/flow-helpers-bundler';
-import { BUNDLE_PATHS, createPackRegistry } from '@abuddy/host/packs';
+import { PACK_LAYOUT, createPackRegistry } from '@abuddy/host/packs';
 import { checkFeatureSettings } from '@abuddy/sdk/framework';
 import { generate, resolveDeps } from './generate';
-import { resolveDepArtifacts } from './fetch-deps';
+import { resolveDepFiles } from './fetch-deps';
 import { generateEntries, warnStaleDepTypes } from './generate-entries';
 import { findPackRoot, readValidManifest, sdkVersion } from '../utils';
 
@@ -63,7 +63,7 @@ const BUILT_IN_SNAPSHOT = 'snapshot.json';
  *   the compiled seeds it was built beside, and the app doesn't publish it with seeds compiled after it.
  */
 export function clearBuildOutput(outputDir: string, { builtIn }: { builtIn: boolean }): void {
-  const owned = builtIn ? [BUNDLE_PATHS.buildDir, BUNDLE_PATHS.typesDir, DEFS_DIR, BUILT_IN_SNAPSHOT] : ['.'];
+  const owned = builtIn ? [PACK_LAYOUT.buildDir, PACK_LAYOUT.typesDir, DEFS_DIR, BUILT_IN_SNAPSHOT] : ['.'];
   for (const entry of owned) fs.rmSync(path.join(outputDir, entry), { recursive: true, force: true });
   if (builtIn) _clearCompiledSeeds(outputDir);
 }
@@ -121,7 +121,7 @@ export async function build(args: string[]) {
   const dependencies = new Map<string, SeedDependency>();
   const depSnapshots = new Map<string, PackSnapshot>();
   for (const [depId, depValue] of Object.entries(manifest.dependencies ?? {})) {
-    const artifacts = await resolveDepArtifacts(root, depId, depValue);
+    const artifacts = await resolveDepFiles(root, depId, depValue);
     if (!artifacts) throw new Error(`Dependency "${depId}" could not be resolved`);
     const stepsModule = artifacts.buildDir && path.join(artifacts.buildDir, 'steps.build.mjs');
     if (stepsModule && fs.existsSync(stepsModule)) dependencyStepModules.push(stepsModule);
@@ -138,8 +138,8 @@ export async function build(args: string[]) {
   }
 
   const packDir = root;
-  const seedsOutputDir = external ? path.join(outputDir, BUNDLE_PATHS.seedsDir) : outputDir;
-  const snapshotPath = path.join(outputDir, external ? BUNDLE_PATHS.snapshot : BUILT_IN_SNAPSHOT);
+  const seedsOutputDir = external ? path.join(outputDir, PACK_LAYOUT.seedsDir) : outputDir;
+  const snapshotPath = path.join(outputDir, external ? PACK_LAYOUT.snapshot : BUILT_IN_SNAPSHOT);
 
   let result: { seeds: Record<string, number>; warnings: string[] } | null = null;
 
@@ -192,7 +192,7 @@ export async function build(args: string[]) {
   };
   // Facade types for dependents: they import this pack's entity shapes, events, services and repositories
   const defs: Record<string, string> = {};
-  const packTypesFile = path.join(outputDir, BUNDLE_PATHS.typesDir, `${PACK_TYPES_DEF}.d.ts`);
+  const packTypesFile = path.join(outputDir, PACK_LAYOUT.typesDir, `${PACK_TYPES_DEF}.d.ts`);
   const packTypes = await bundlePackTypes(root, packTypesFile);
   const packTypesProblems = packTypes.success ? facadeProblems(root, packTypesFile) : [];
   if (packTypes.success && packTypesProblems.length === 0) {
@@ -204,7 +204,7 @@ export async function build(args: string[]) {
     fail(`Pack types bundle failed: ${packTypes.error}`);
   }
   // Flow helpers for dependents: their generated flow helpers re-export this pack's
-  const flowHelpers = await bundlePackFlowHelpers(root, path.join(outputDir, BUNDLE_PATHS.typesDir), { release });
+  const flowHelpers = await bundlePackFlowHelpers(root, path.join(outputDir, PACK_LAYOUT.typesDir), { release });
   if (!flowHelpers.success) fail(`Flow helpers bundle failed: ${flowHelpers.error}`);
   /**
    * What this pack's whole tree declares, and which pack declares each name.
@@ -254,7 +254,7 @@ export async function build(args: string[]) {
   if (manifest.steps?.build) {
     const stepBuild = await bundlePackStepBuild(root, outputDir, manifest.steps.build, { release });
     if (stepBuild.success) {
-      console.log(`  step build: dist/${BUNDLE_PATHS.stepsBuild}`);
+      console.log(`  step build: dist/${PACK_LAYOUT.stepsBuild}`);
     } else {
       fail(`Step build bundle failed: ${stepBuild.error}`);
     }
@@ -263,12 +263,12 @@ export async function build(args: string[]) {
   // ── Seed runtime (for dependents' unit tests) ─────────────────────────
   const seedRuntime = await bundlePackSeedRuntime(root, outputDir, { release });
   if (seedRuntime.success) {
-    console.log(`  seed runtime: dist/${BUNDLE_PATHS.buildDir}/${SEED_RUNTIME_FILE}`);
+    console.log(`  seed runtime: dist/${PACK_LAYOUT.buildDir}/${SEED_RUNTIME_FILE}`);
   } else {
     fail(`Seed runtime bundle failed: ${seedRuntime.error}`);
   }
 
-  if (seedCompilersBundled) console.log(`  seed compilers: dist/${BUNDLE_PATHS.buildDir}/${SEED_COMPILERS_FILE}`);
+  if (seedCompilersBundled) console.log(`  seed compilers: dist/${PACK_LAYOUT.buildDir}/${SEED_COMPILERS_FILE}`);
 
   // ── DSL editor definitions ───────────────────────────────────────────
   if (manifest.dsl) {
@@ -290,7 +290,7 @@ export async function build(args: string[]) {
   // ── Backend runtime ──────────────────────────────────────────────────
   const runtimeResult = await bundlePackRuntime(root, outputDir, { release });
   if (runtimeResult.success) {
-    console.log(`  runtime: dist/${BUNDLE_PATHS.runtimeEntry}`);
+    console.log(`  runtime: dist/${PACK_LAYOUT.runtimeEntry}`);
   } else {
     fail(`Runtime bundle failed: ${runtimeResult.error}`);
   }
@@ -298,12 +298,12 @@ export async function build(args: string[]) {
   // ── FE bundling ──────────────────────────────────────────────────────
   const feEntry = args.includes('--skip-fe') ? null : findFEEntry(root);
   if (feEntry) {
-    const feOutputDir = path.join(outputDir, BUNDLE_PATHS.runtimeDir);
+    const feOutputDir = path.join(outputDir, PACK_LAYOUT.runtimeDir);
     const feResult = await bundlePackFE({ packDir: root, outputDir: feOutputDir, entryPoint: feEntry, release });
     if (feResult.success) {
-      console.log(`  fe: dist/${BUNDLE_PATHS.feEntry}`);
-      if (fs.existsSync(path.join(outputDir, BUNDLE_PATHS.feStyles))) {
-        console.log(`  fe styles: dist/${BUNDLE_PATHS.feStyles}`);
+      console.log(`  fe: dist/${PACK_LAYOUT.feEntry}`);
+      if (fs.existsSync(path.join(outputDir, PACK_LAYOUT.feStyles))) {
+        console.log(`  fe styles: dist/${PACK_LAYOUT.feStyles}`);
       }
     } else {
       fail(`FE bundle failed: ${feResult.error}`);

@@ -6,7 +6,7 @@ import type { Component } from 'vue';
 import type { Plugin } from '../fe/plugin.ts';
 import type { TiptapPlugin } from '../fe/tiptap-plugins.ts';
 import type { DslTypeConfig } from '../fe/dsl-types.ts';
-import type { PackContributionsView } from './packs-view.ts';
+import type { PackExtensionsView } from './packs-view.ts';
 
 /** How frontend code sends to backend systems (the renderer's API client) */
 export interface FeTransport {
@@ -15,7 +15,7 @@ export interface FeTransport {
 }
 
 /** The packs whose frontends the renderer registered, read-only */
-export interface FePackRegistryView extends PackContributionsView {
+export interface FePackRegistryView extends PackExtensionsView {
   /** Every registered plugin, in registration order */
   plugins(): Plugin[];
   /** The first registered default plugin */

@@ -36,7 +36,7 @@ describe('loadPackFEEntry', () => {
     expect(warnings).toEqual([expect.stringMatching(/registers nothing[\s\S]*default export declares none of them/)]);
   });
 
-  it("doesn't warn for the generated entry of a pack without FE contributions", async () => {
+  it("doesn't warn for the generated entry of a pack without FE extensions", async () => {
     const { warnings } = await load('fe.mjs', 'export default { plugins: [], defaultPlugin: undefined };');
     expect(warnings).toEqual([]);
   });

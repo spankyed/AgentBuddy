@@ -255,9 +255,9 @@
             },
             "description": "Repository objects. Keys are repository names on `repository` (from #generated/repository), values are \"path#exportName\" of the object in a source file."
           },
-          "contributions": {
+          "references": {
             "type": "string",
-            "description": "Built-in packs only. Ignored for external packs."
+            "description": "Path to a module declaring which of this feature's things are linkable from an editor (protocol, category, icon, navigate). Built-in packs only. Ignored for external packs."
           }
         },
         "required": [

@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { PackSnapshot, PackTypeManifest } from '@abuddy/sdk/build';
 import { emitDepTypes } from '@abuddy/sdk/build';
-import { resolveDepArtifacts } from './fetch-deps';
+import { resolveDepFiles } from './fetch-deps';
 import { findPackRoot, readManifest } from '../utils';
 
 async function loadDepSnapshots(root: string, deps: Record<string, string>): Promise<{ snapshots: Map<string, PackSnapshot>; sources: Map<string, string> }> {
@@ -10,9 +10,9 @@ async function loadDepSnapshots(root: string, deps: Record<string, string>): Pro
   const sources = new Map<string, string>();
   const unresolved: string[] = [];
   for (const [depId, depValue] of Object.entries(deps)) {
-    const artifacts = await resolveDepArtifacts(root, depId, depValue);
+    const artifacts = await resolveDepFiles(root, depId, depValue);
     const resolved = artifacts?.snapshot;
-    if (artifacts?.source) sources.set(depId, artifacts.source);
+    if (artifacts?.resolvedFrom) sources.set(depId, artifacts.resolvedFrom);
     if (!resolved) {
       unresolved.push(depValue.startsWith('file:')
         ? `${depId}: no build output at ${path.resolve(root, depValue.slice('file:'.length).trim())} (run "abuddy build" there first)`

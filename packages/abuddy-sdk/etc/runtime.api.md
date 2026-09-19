@@ -38,7 +38,7 @@ export function bindFeHost(runtime: FeHostRuntime): void;
 export function bindHost(runtime: HostRuntime): void;
 
 // @internal
-export function _boundPackContributions(): PackContributionsView;
+export function _boundPackExtensions(): PackExtensionsView;
 
 export { EarsQuery }
 
@@ -51,7 +51,7 @@ export interface FeHostRuntime {
 }
 
 // @public
-export interface FePackRegistryView extends PackContributionsView {
+export interface FePackRegistryView extends PackExtensionsView {
     appExtension(slot: string): Component | undefined;
     defaultPlugin(): Plugin_2 | undefined;
     dslTypes(): ReadonlyMap<string, DslTypeConfig>;
@@ -93,7 +93,7 @@ export function _isFeHostBound(): boolean;
 export function _isHostBound(): boolean;
 
 // @public
-export interface PackContributionsView {
+export interface PackExtensionsView {
     // (undocumented)
     artifact(type: string): ArtifactDefinition | undefined;
     // (undocumented)
@@ -109,7 +109,7 @@ export interface PackContributionsView {
 }
 
 // @public
-export interface PackRegistryView extends PackContributionsView {
+export interface PackRegistryView extends PackExtensionsView {
     commands(): PackCommand[];
     earsNames(): EarsNames;
     getRegisteredServices(): Record<string, unknown>;

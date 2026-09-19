@@ -121,10 +121,10 @@ function getPackManifest(): { id: string; pluginIds: string[] } | null {
 
 const E2E_VIEWPORT = { width: 1400, height: 900 };
 
-/** The pack's recorded install/seed error in the test app's pack registry, if any. */
+/** The pack's recorded install/seed error in the test app's installed packs, if any. */
 function readPackLastError(packId: string, userDataDir: string): string | undefined {
   try {
-    const registry = JSON.parse(fs.readFileSync(resolveAppContext({ env: 'test', userDataDir }).registryFile, 'utf-8'));
+    const registry = JSON.parse(fs.readFileSync(resolveAppContext({ env: 'test', userDataDir }).installedPacksFile, 'utf-8'));
     return registry.packs?.find((p: { id: string }) => p.id === packId)?.lastError;
   } catch {
     return undefined;

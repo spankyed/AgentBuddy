@@ -22,8 +22,8 @@ afterEach(() => {
 });
 
 function writeRegistry(entry: Record<string, unknown>) {
-  fs.writeFileSync(path.join(tmpDir, 'pack-registry.json'), JSON.stringify({
-    packs: [{ name: 'p', version: '1.0.0', dir: '', enabled: true, registeredAt: '', ...entry }],
+  fs.writeFileSync(path.join(tmpDir, 'installed-packs.json'), JSON.stringify({
+    packs: [{ name: 'p', version: '1.0.0', dir: '', enabled: true, installedAt: '', ...entry }],
   }));
 }
 

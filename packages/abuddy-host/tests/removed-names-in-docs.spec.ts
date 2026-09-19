@@ -1,6 +1,14 @@
-// Docs, CLI templates and pack sources name nothing the package-boundaries goal removed: the host module registry,
-// the SDK's migrations runner, the SDK's EARS module (now `@abuddy/sdk/types` and `/repositories`), the engine's module-state entry points, the API's persistence dir, the cast repository
-// types, the app state kept in settings, and the registries packs used to write to (docs/goals/goal-package-boundaries.md, Phase 8)
+// Docs, CLI templates and pack sources name nothing two goals retired.
+//
+// The package-boundaries goal removed: the host module registry, the SDK's migrations runner, the SDK's EARS
+// module (now `@abuddy/sdk/types` and `/repositories`), the engine's module-state entry points, the API's
+// persistence dir, the cast repository types, the app state kept in settings, and the registries packs used
+// to write to (docs/archive/goals/goal-package-boundaries.md, Phase 8).
+//
+// The pack-naming goal retired the words that named two things: `registry` for a file and a wire route,
+// `bundle` as a noun, and `artifact` for a dependency's resolved files
+// (docs/archive/goals/goal-pack-naming.md, Phase 5). A name left in a doc or a comment still compiles and
+// still passes, which is why this is a guard rather than a grep run once.
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
@@ -11,8 +19,23 @@ const ROOT = path.resolve(import.meta.dirname, '..', '..', '..');
 const REMOVED = [
   'registerHostModule', 'getHostModule', 'hostFn', 'hostValue', 'runMigrations', 'clearMemory', 'initEARSRuntime',
   'BuiltinRepositories', 'registerDesignations', 'registerSeeder', 'registerDslType',
+  // The pack vocabulary's one-word-per-concept renames (docs/archive/goals/goal-pack-naming.md).
+  // `registry` is the in-process collection things register into, never a file and never a wire route:
+  'PackRegistryEntry', 'readPackRegistry', 'writePackRegistry', 'modifyRegistry', 'addToRegistry',
+  'removeFromRegistry', 'reconcileExternalRegistry', 'registryFile', 'registeredAt', 'registryError',
+  'resolveFromRegistry',
+  // `bundle` is the verb for running a bundler; the thing it used to name is the pack's layout or archive:
+  'BUNDLE_PATHS', 'BUNDLE_FORMAT_VERSION', 'verifyBundle', 'stageBundle', 'createBundleArchive',
+  'extractBundleArchive', 'bundleArchiveName', 'readBundleInfo', 'BundleInfo', 'isBundleDir',
+  'hasBuiltBundleSections', 'getPackBundleEntries', 'PackBundleEntry', 'buildPackBundle', 'packBundle',
+  // `artifact` is a pack's first-class artifact, not a dependency's resolved files:
+  'resolveDepArtifacts', 'DepArtifacts', 'findDepArtifacts',
 ].map((name) => new RegExp(`\\b${name}\\b`));
-const REMOVED_PATHS = [/@abuddy\/sdk\/ears\b/, /ears\/internals\b/, /api\/src\/core\/persistence\b/, /\bsettings\.internal\b/];
+const REMOVED_PATHS = [
+  /@abuddy\/sdk\/ears\b/, /ears\/internals\b/, /api\/src\/core\/persistence\b/, /\bsettings\.internal\b/,
+  // The on-disk record of installed packs, the wire route, the pack's integrity file and the store's copy:
+  /\bpack-registry\.json\b/, /\bpacks\.registry\b/, /\bbundle\.json\b/, /\bstore\.snapshot\b/,
+];
 
 /** Files that may name one of them, with the name and why */
 const ALLOWED: Record<string, { name: RegExp; reason: string }[]> = {
@@ -62,5 +85,19 @@ describe('names the package-boundaries goal removed', () => {
     expect(removedNames('generated seeders call registerSeeder()')).toEqual(['registerSeeder']);
     expect(removedNames('runAppMigrations(registry), getRegisteredSeeders(), clearMemoryCache')).toEqual([]);
     expect(removedNames('runMigrations()', [/\brunMigrations\b/])).toEqual([]);
+  });
+
+  it('finds the pack-naming retirements, and not the names that replaced them', () => {
+    expect(removedNames('read with `readPackRegistry()` from pack-registry.json')).toEqual(['readPackRegistry', 'pack-registry.json']);
+    expect(removedNames('read with `readInstalledPacks()` from installed-packs.json')).toEqual([]);
+    expect(removedNames('`BUNDLE_PATHS.info` is bundle.json, verified by `verifyBundle`')).toEqual(['BUNDLE_PATHS', 'verifyBundle', 'bundle.json']);
+    expect(removedNames('`PACK_LAYOUT.integrity` is integrity.json, verified by `verifyPack`')).toEqual([]);
+    expect(removedNames('the route `packs.registry` serves `getPackBundleEntries()`')).toEqual(['getPackBundleEntries', 'packs.registry']);
+    expect(removedNames('the route `packs.loaded` serves `getLoadedPackEntries()`')).toEqual([]);
+    expect(removedNames('`resolveDepArtifacts` returns `DepArtifacts`')).toEqual(['resolveDepArtifacts', 'DepArtifacts']);
+    expect(removedNames('`resolveDepFiles` returns `DepFiles`')).toEqual([]);
+    // The in-process collection keeps the word (Decision 3), so these must not be caught
+    expect(removedNames('createPackRegistry(), PackRegistry, PackRegistryView, stepRegistry, registerPack')).toEqual([]);
+    expect(removedNames('resolveFromRemoteRegistry is the stub')).toEqual([]);
   });
 });

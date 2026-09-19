@@ -85,10 +85,10 @@
       "types": "./dist/fe/index.d.ts",
       "default": "./dist/fe/index.js"
     },
-    "./fe/contributions": {
-      "@abuddy/source": "./src/fe/contribution-types.ts",
-      "types": "./dist/fe/contribution-types.d.ts",
-      "default": "./dist/fe/contribution-types.js"
+    "./fe/references": {
+      "@abuddy/source": "./src/fe/reference-types.ts",
+      "types": "./dist/fe/reference-types.d.ts",
+      "default": "./dist/fe/reference-types.js"
     },
     "./actions": {
       "@abuddy/source": "./src/actions/index.ts",

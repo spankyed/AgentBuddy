@@ -221,12 +221,12 @@ function isRebuildableSource(source: string): boolean {
  * What to tell the author to do about a dependency they can't build against.
  *
  * With no `source` the resolution came from the `.abuddy/deps` cache, which records nothing about
- * where it was originally fetched from, so this hedges the way `verifyBundle` does — two options,
+ * where it was originally fetched from, so this hedges the way `verifyPack` does — two options,
  * because it doesn't know which one the reader is in a position to take.
  */
 function facadeRemedy(depId: string, source: string | undefined): string {
   // Taken out of an installed AgentBuddy, so the pack came with the app and moves with it. That makes
-  // the step the same one verifyBundle names for a bundle this host can't read: update AgentBuddy.
+  // the step the same one verifyPack names for a bundle this host can't read: update AgentBuddy.
   if (source?.startsWith('installed app')) {
     return `You can't rebuild it yourself: update AgentBuddy, which is where this copy came from, or pin your CLI to one that matches it.`;
   }
@@ -1329,24 +1329,24 @@ export type { Repositories } from './repository.js';
 `;
   }
 
-  function generateContributions(): string {
+  function generateReferences(): string {
     const features = manifest.features ?? [];
-    const contribFeatures = features.filter(f => f.contributions);
+    const referenceFeatures = features.filter(f => f.references);
 
-    const imports = contribFeatures.map((f, i) => {
-      const importPath = toImportPath(root, f.contributions!);
-      return `import { contributionTypes as types${i}, categories as categories${i}, itemsProvider as itemsProvider${i} } from '${importPath}';`;
+    const imports = referenceFeatures.map((f, i) => {
+      const importPath = toImportPath(root, f.references!);
+      return `import { referenceTypes as types${i}, categories as categories${i}, itemsProvider as itemsProvider${i} } from '${importPath}';`;
     }).join('\n');
 
-    const typesSpread = contribFeatures.map((_, i) => `  ...types${i},`).join('\n');
-    const categoriesSpread = contribFeatures.map((_, i) => `  ...categories${i},`).join('\n');
-    const providersEntries = contribFeatures.map((_, i) => `  itemsProvider${i},`).join('\n');
+    const typesSpread = referenceFeatures.map((_, i) => `  ...types${i},`).join('\n');
+    const categoriesSpread = referenceFeatures.map((_, i) => `  ...categories${i},`).join('\n');
+    const providersEntries = referenceFeatures.map((_, i) => `  itemsProvider${i},`).join('\n');
 
     return `${HEADER}
-import type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } from '@abuddy/sdk/fe/contributions';
+import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from '@abuddy/sdk/fe/references';
 ${imports}
 
-export const CONTRIBUTION_TYPES: Record<string, ContributionTypeConfig> = {
+export const REFERENCE_TYPES: Record<string, ReferenceTypeConfig> = {
 ${typesSpread}
 };
 
@@ -1359,16 +1359,16 @@ ${providersEntries}
 ];
 
 export const PROTOCOL_TO_TYPE: Record<string, string> = Object.fromEntries(
-  Object.entries(CONTRIBUTION_TYPES).map(([type, cfg]) => [cfg.protocol, type])
+  Object.entries(REFERENCE_TYPES).map(([type, cfg]) => [cfg.protocol, type])
 );
 
-export const ALL_PROTOCOLS: string[] = Object.values(CONTRIBUTION_TYPES).map((cfg) => cfg.protocol);
+export const ALL_PROTOCOLS: string[] = Object.values(REFERENCE_TYPES).map((cfg) => cfg.protocol);
 
 export function categoryOfType(type: string): string {
-  return CONTRIBUTION_TYPES[type]?.category ?? '';
+  return REFERENCE_TYPES[type]?.category ?? '';
 }
 
-export type { ContributionTypeConfig, CategoryConfig, CategoryItemsProvider } from '@abuddy/sdk/fe/contributions';
+export type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider } from '@abuddy/sdk/fe/references';
 `;
   }
 
@@ -1680,7 +1680,7 @@ ${entries.join('\n')}
         [depFlowHelpersFile(depId, '.d.ts'), `${HEADER}\n${snap.flowHelpers.types}`],
       ]
       : []),
-    ['src/__generated__/contributions.ts', generateContributions()],
+    ['src/__generated__/references.ts', generateReferences()],
     ['src/__generated__/seeders.ts', generateSeeders()],
     ['src/__generated__/seed-runtime.ts', generateSeedRuntime()],
     ['src/__generated__/flow-helpers.ts', generateFlowHelpers()],

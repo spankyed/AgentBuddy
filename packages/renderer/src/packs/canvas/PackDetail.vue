@@ -85,14 +85,14 @@
       </section>
 
       <!-- Extra metadata for external packs -->
-      <section v-if="pack.hostVersion || pack.registeredAt || pack.dir" class="space-y-1 text-xs">
+      <section v-if="pack.hostVersion || pack.installedAt || pack.dir" class="space-y-1 text-xs">
         <div v-if="pack.hostVersion" class="flex gap-2">
           <span class="text-neutral-500">Requires host</span>
           <span class="text-neutral-400">{{ pack.hostVersion }}</span>
         </div>
-        <div v-if="pack.registeredAt" class="flex gap-2">
+        <div v-if="pack.installedAt" class="flex gap-2">
           <span class="text-neutral-500">Installed</span>
-          <span class="text-neutral-400">{{ formatDate(pack.registeredAt) }}</span>
+          <span class="text-neutral-400">{{ formatDate(pack.installedAt) }}</span>
         </div>
         <div v-if="pack.dir" class="flex gap-2 min-w-0">
           <span class="text-neutral-500 flex-shrink-0">Directory</span>

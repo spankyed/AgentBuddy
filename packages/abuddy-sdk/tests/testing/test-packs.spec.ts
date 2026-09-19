@@ -19,7 +19,7 @@ const registered: PackRegistryView = {
 afterEach(() => testPacks.clear());
 
 describe('testPacksView', () => {
-  it("finds the registry's contributions when the test put none", () => {
+  it("finds the registry's extensions when the test put none", () => {
     const view = testPacksView(registered);
     expect(view.designation('brain')).toBe('brain-system');
     expect(view.steps()).toEqual([registeredNote]);

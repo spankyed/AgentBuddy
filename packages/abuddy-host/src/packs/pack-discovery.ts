@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { createLogger } from '@abuddy/sdk/logger';
-import { readPackRegistry, writePackRegistry, addToRegistry } from './pack-registry.ts';
+import { readInstalledPacks, writeInstalledPacks, addInstalledPack } from './installed-packs.ts';
 import type { PackManifest } from '@abuddy/sdk/build';
 
 const logger = createLogger('pack-discovery');
@@ -83,10 +83,10 @@ export function discoverPacks(packsDir: string): { manifest: PackManifest; dir: 
   return results;
 }
 
-export function reconcileExternalRegistry(
+export function reconcileInstalledPacks(
   discovered: { manifest: PackManifest; dir: string }[],
 ): { manifest: PackManifest; dir: string }[] {
-  let registry = readPackRegistry();
+  let registry = readInstalledPacks();
   let changed = false;
 
   const discoveredById = new Map(discovered.map(d => [d.manifest.id, d]));
@@ -94,7 +94,7 @@ export function reconcileExternalRegistry(
   for (const { manifest, dir } of discovered) {
     const existing = registry.find(e => e.id === manifest.id);
     if (!existing) {
-      registry = addToRegistry(registry, {
+      registry = addInstalledPack(registry, {
         id: manifest.id,
         name: manifest.name,
         version: manifest.version,
@@ -104,7 +104,7 @@ export function reconcileExternalRegistry(
       changed = true;
       logger.info(`New external pack discovered: ${manifest.id}`);
     } else if (existing.version !== manifest.version || existing.dir !== dir) {
-      registry = addToRegistry(registry, {
+      registry = addInstalledPack(registry, {
         id: existing.id,
         name: manifest.name,
         version: manifest.version,
@@ -119,7 +119,7 @@ export function reconcileExternalRegistry(
   registry = registry.filter(e => discoveredById.has(e.id));
   if (registry.length !== before) changed = true;
 
-  if (changed) writePackRegistry(registry);
+  if (changed) writeInstalledPacks(registry);
 
   const enabledIds = new Set(registry.filter(e => e.enabled).map(e => e.id));
   return discovered.filter(d => enabledIds.has(d.manifest.id));

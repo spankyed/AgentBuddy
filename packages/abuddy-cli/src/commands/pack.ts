@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { findPackRoot, readValidManifest, sdkVersion } from '../utils';
-import { createBundleArchive, stageBundle, verifyBundle, type BundleInfo } from '@abuddy/host/packs';
+import { createPackArchive, stagePack, verifyPack, type PackIntegrity } from '@abuddy/host/packs';
 
 const HELP = `
 Usage: abuddy pack [--out <dir>]
@@ -15,7 +15,7 @@ Options:
   --out <dir>   Output directory (default: pack root)
 `.trim();
 
-export function gitSource(root: string): BundleInfo['source'] | undefined {
+export function gitSource(root: string): PackIntegrity['source'] | undefined {
   const git = (...args: string[]) => {
     try {
       return execFileSync('git', args, { cwd: root, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim() || undefined;
@@ -33,22 +33,22 @@ export interface PackResult {
   file: string;
   sha256: string;
   checksumFile: string;
-  bundle: BundleInfo;
+  bundle: PackIntegrity;
 }
 
-export async function packBundle(root: string, outDir: string, options: { version?: string } = {}): Promise<PackResult> {
+export async function buildPackArchive(root: string, outDir: string, options: { version?: string } = {}): Promise<PackResult> {
   const manifest = readValidManifest(root);
   if (manifest.builtIn) {
     throw new Error('Built-in packs ship inside the app and are not packed.');
   }
-  const stageDir = path.join(root, '.abuddy', 'bundle', manifest.id);
-  stageBundle(root, stageDir, {
+  const stageDir = path.join(root, '.abuddy', 'staged', manifest.id);
+  stagePack(root, stageDir, {
     sdkVersion: sdkVersion(),
     source: gitSource(root),
     version: options.version,
   });
-  const bundle = verifyBundle(stageDir);
-  const archive = await createBundleArchive(stageDir, outDir);
+  const bundle = verifyPack(stageDir);
+  const archive = await createPackArchive(stageDir, outDir);
   return { ...archive, bundle };
 }
 
@@ -61,7 +61,7 @@ export async function pack(args: string[]) {
   const outIndex = args.indexOf('--out');
   const outDir = outIndex >= 0 && args[outIndex + 1] ? path.resolve(args[outIndex + 1]) : root;
 
-  const result = await packBundle(root, outDir);
+  const result = await buildPackArchive(root, outDir);
   const show = (p: string) => {
     const rel = path.relative(process.cwd(), p);
     return rel.startsWith('..') ? p : rel;

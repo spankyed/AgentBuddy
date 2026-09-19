@@ -19,7 +19,7 @@ type EsbuildOptions = import('esbuild').BuildOptions;
  * package.json subpath imports, the host-import guard and frontend-asset stub, and node/esm defaults.
  * `overrides` supplies the entry, output and per-bundle options.
  */
-async function buildPackBundle<T extends EsbuildOptions>(
+async function bundlePackSource<T extends EsbuildOptions>(
   packDir: string,
   options: BundleRuntimeOptions,
   overrides: T,
@@ -74,7 +74,7 @@ export async function bundlePackRuntime(
   fs.mkdirSync(runtimeDir, { recursive: true });
 
   try {
-    await buildPackBundle(packDir, options, {
+    await bundlePackSource(packDir, options, {
       entryPoints: [entryPath],
       format: 'cjs',
       outfile: path.join(runtimeDir, 'index.cjs'),
@@ -103,7 +103,7 @@ export async function bundlePackStepBuild(
     return { success: false, error: `steps.build entry not found: ${entry}` };
   }
   try {
-    await buildPackBundle(packDir, options, {
+    await bundlePackSource(packDir, options, {
       entryPoints: [entryPath],
       outfile: path.join(outputDir, 'build', 'steps.build.mjs'),
     });
@@ -134,7 +134,7 @@ export async function bundlePackSeedCompilers(
     .join('\n');
 
   try {
-    await buildPackBundle(packDir, options, {
+    await bundlePackSource(packDir, options, {
       stdin: { contents, resolveDir: packDir, sourcefile: 'seed-compilers.ts', loader: 'ts' },
       outfile: path.join(outputDir, 'build', SEED_COMPILERS_FILE),
     });
@@ -158,7 +158,7 @@ export async function bundlePackFlowHelpersModule(
     return { success: false, error: 'No src/__generated__/flow-helpers.ts. Run "abuddy generate-entries" first.' };
   }
   try {
-    const result = await buildPackBundle(packDir, options, {
+    const result = await bundlePackSource(packDir, options, {
       entryPoints: [entryPath],
       outfile: path.join(packDir, 'flow-helpers.mjs'),
       write: false,
@@ -192,7 +192,7 @@ export async function bundlePackSeedRuntime(
   }
   const outfile = path.join(outputDir, 'build', SEED_RUNTIME_FILE);
   try {
-    await buildPackBundle(packDir, options, {
+    await bundlePackSource(packDir, options, {
       entryPoints: [entryPath],
       outfile,
       external: sharedInstanceExternals(),

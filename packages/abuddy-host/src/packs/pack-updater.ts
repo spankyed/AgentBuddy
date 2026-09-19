@@ -1,5 +1,5 @@
 import { createLogger } from '@abuddy/sdk/logger';
-import { readPackRegistry, modifyRegistry, type PackRegistryEntry } from './pack-registry.ts';
+import { readInstalledPacks, updateInstalledPacks, type InstalledPack } from './installed-packs.ts';
 import * as semver from 'semver';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { isHostCompatible } from './pack-installer.ts';
@@ -11,7 +11,7 @@ export interface UpdateCheckResult {
   packId: string;
   currentVersion: string;
   availableVersion: string;
-  source: string;
+  installedFrom: string;
 }
 
 export interface ReleaseCandidate {
@@ -33,7 +33,7 @@ interface GitHubRelease {
  * 1.2.0-beta.1) or by GitHub's own `prerelease` flag — are only considered for the beta channel;
  * drafts and non-semver tags are ignored,
  * and so are releases not newer than `installedVersion`. With a hostVersion, each candidate's
- * range is read, newest first, from its `<archive>.bundle.json` asset (`abuddy release` uploads it),
+ * range is read, newest first, from its `<archive>.integrity.json` asset (`abuddy release` uploads it),
  * else from abuddy.json at its tag; a candidate whose range can't be read is returned with
  * `hostVersionUnverified`, and the installer checks it again.
  * A failing release list (rate limit, private or missing repository) throws GitHubRequestError.
@@ -61,7 +61,7 @@ export async function findLatestRelease(
 
   /** The release's hostVersion range, or why it couldn't be read */
   const hostRange = async (release: GitHubRelease): Promise<{ range?: string; unread?: string }> => {
-    const asset = release.assets?.find(a => a.name.endsWith('.bundle.json'));
+    const asset = release.assets?.find(a => a.name.endsWith('.integrity.json'));
     const sources = [
       ...(asset ? [() => fetchReleaseAsset(asset)] : []),
       () => fetchRepoFile(owner, repo, release.tag_name, 'abuddy.json'),
@@ -100,19 +100,19 @@ function updateChannelIncludesPrereleases(): boolean {
  * saying why there's nothing to offer). Nothing is cached: the Packs view runs this when asked.
  */
 export async function checkForUpdates(options: { hostVersion?: string } = {}): Promise<UpdateCheckResult[]> {
-  const entries = readPackRegistry();
-  const updatable = entries.filter(e => e.source && e.enabled);
+  const entries = readInstalledPacks();
+  const updatable = entries.filter(e => e.installedFrom && e.enabled);
 
   if (updatable.length === 0) return [];
 
   const includePrerelease = updateChannelIncludesPrereleases();
   const results: UpdateCheckResult[] = [];
-  const updatedEntries = new Map<string, Partial<PackRegistryEntry>>();
+  const updatedEntries = new Map<string, Partial<InstalledPack>>();
 
   for (const entry of updatable) {
     let latest: ReleaseCandidate | null;
     try {
-      latest = await findLatestRelease(entry.source!, { includePrerelease, hostVersion: options.hostVersion, installedVersion: entry.version });
+      latest = await findLatestRelease(entry.installedFrom!, { includePrerelease, hostVersion: options.hostVersion, installedVersion: entry.version });
     } catch (err) {
       // Not checked: kept out of the cache so the next check tries again
       const message = err instanceof Error ? err.message : String(err);
@@ -125,7 +125,7 @@ export async function checkForUpdates(options: { hostVersion?: string } = {}): P
     if (unverified) logger.warn(`${entry.id} v${latestVersion}: couldn't read its hostVersion (${unverified}); installing it checks again`);
     // Nothing newer to offer, with a newer release out there: say the releases need a newer AgentBuddy
     const noneCompatible = !latest && options.hostVersion
-      ? `No release of ${entry.source} supports this AgentBuddy (${options.hostVersion})`
+      ? `No release of ${entry.installedFrom} supports this AgentBuddy (${options.hostVersion})`
       : undefined;
     updatedEntries.set(entry.id, {
       availableVersion: latestVersion,
@@ -138,13 +138,13 @@ export async function checkForUpdates(options: { hostVersion?: string } = {}): P
         packId: entry.id,
         currentVersion: entry.version,
         availableVersion: latestVersion,
-        source: entry.source!,
+        installedFrom: entry.installedFrom!,
       });
     }
   }
 
   if (updatedEntries.size > 0) {
-    modifyRegistry(entries =>
+    updateInstalledPacks(entries =>
       entries.map(e => {
         const update = updatedEntries.get(e.id);
         return update ? { ...e, ...update } : e;
@@ -157,14 +157,14 @@ export async function checkForUpdates(options: { hostVersion?: string } = {}): P
 }
 
 export function getAvailableUpdates(): UpdateCheckResult[] {
-  const entries = readPackRegistry();
+  const entries = readInstalledPacks();
   return entries
-    .filter(e => e.availableVersion && e.source && isNewer(e.availableVersion, e.version))
+    .filter(e => e.availableVersion && e.installedFrom && isNewer(e.availableVersion, e.version))
     .map(e => ({
       packId: e.id,
       currentVersion: e.version,
       availableVersion: e.availableVersion!,
-      source: e.source!,
+      installedFrom: e.installedFrom!,
     }));
 }
 

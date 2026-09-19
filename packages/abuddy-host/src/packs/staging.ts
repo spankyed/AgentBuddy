@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { recordHostVersion } from './host-info.ts';
-import { readPackRegistry } from './pack-registry.ts';
+import { readInstalledPacks } from './installed-packs.ts';
 
 export type StagingKind = 'installing' | 'previous' | 'publishing';
 
@@ -126,9 +126,9 @@ export function prepareHostDataDirs(
   }
   let installedIds: ReadonlySet<string> | undefined;
   try {
-    installedIds = new Set(readPackRegistry().map((entry) => entry.id));
+    installedIds = new Set(readInstalledPacks().map((entry) => entry.id));
   } catch (err) {
-    log.warn(`[packs] Could not read the pack registry, so every interrupted install is restored: ${err}`);
+    log.warn(`[packs] Could not read the installed packs, so every interrupted install is restored: ${err}`);
   }
   // The built-in packs' dir has no registry: its interrupted publishes are always recovered
   for (const [dir, ids] of [[options.packsDir, installedIds], [options.hostPacksDir, undefined]] as const) {

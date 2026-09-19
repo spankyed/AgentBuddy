@@ -122,7 +122,7 @@ A build resolves the pack's `@abuddy` packages to the `dist` each published pack
 
 #### `abuddy pack [--out <dir>]`
 
-Stage the built `dist/` into a verified bundle (`bundle.json` lists a sha256 per file) and write `<id>-<version>.tgz` and `<id>-<version>.tgz.sha256` to `--out` (default: the pack root). Run `abuddy build` first (`--release` for publishable output). Refuses built-in packs and invalid manifests.
+Stage the built `dist/` into a verified bundle (`integrity.json` lists a sha256 per file) and write `<id>-<version>.tgz` and `<id>-<version>.tgz.sha256` to `--out` (default: the pack root). Run `abuddy build` first (`--release` for publishable output). Refuses built-in packs and invalid manifests.
 
 #### `abuddy dev`
 
@@ -190,7 +190,7 @@ The scaffolded `.github/workflows/release.yml` publishes the GitHub release from
 
 #### `abuddy release publish [--dir <dir>] [--dry-run]`
 
-Verify the bundle in `<dir>` (default `.abuddy/release`) and create the GitHub release `v<version>` (a prerelease for prerelease versions), uploading `<id>-<version>.tgz`, `.sha256` and `.bundle.json`. The release workflow runs it. Needs `GITHUB_TOKEN` (or `GH_TOKEN`), and `GITHUB_REPOSITORY` or a GitHub `origin` remote.
+Verify the bundle in `<dir>` (default `.abuddy/release`) and create the GitHub release `v<version>` (a prerelease for prerelease versions), uploading `<id>-<version>.tgz`, `.sha256` and `.integrity.json`. The release workflow runs it. Needs `GITHUB_TOKEN` (or `GH_TOKEN`), and `GITHUB_REPOSITORY` or a GitHub `origin` remote.
 
 #### `abuddy install <source> [-d|--dev] [-b|--beta]`
 
@@ -209,7 +209,7 @@ abuddy install ../my-pack
 abuddy install user/my-pack
 ```
 
-A GitHub release needs a `.tgz` asset and the `.sha256` asset published beside it (`abuddy release` writes both); a release without one is refused, since nothing would say the download is that release. A URL install is unverified, and says so. The bundle is verified before it's placed, and `hostVersion` is checked against the version the app recorded in that data dir. A source directory must be built: one with neither a `bundle.json` nor a `dist/runtime/index.cjs` beside `dist/types/snapshot.json` is refused, with a note to run `abuddy build` first. Restart the app after installing.
+A GitHub release needs a `.tgz` asset and the `.sha256` asset published beside it (`abuddy release` writes both); a release without one is refused, since nothing would say the download is that release. A URL install is unverified, and says so. The bundle is verified before it's placed, and `hostVersion` is checked against the version the app recorded in that data dir. A source directory must be built: one with neither a `integrity.json` nor a `dist/runtime/index.cjs` beside `dist/types/snapshot.json` is refused, with a note to run `abuddy build` first. Restart the app after installing.
 
 #### `abuddy uninstall <id> [-d|--dev] [-b|--beta]`
 

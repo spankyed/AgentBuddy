@@ -7,8 +7,8 @@ import { findPackRoot, readManifest } from '../utils';
 import { parseManifest } from '@abuddy/sdk/build';
 import { resolveDeps } from './generate';
 import { build } from './build';
-import { packBundle } from './pack';
-import { bundleArchiveName, readBundleInfo, verifyBundle, extractBundleArchive } from '@abuddy/host/packs';
+import { buildPackArchive } from './pack';
+import { packArchiveName, readPackIntegrity, verifyPack, extractPackArchive } from '@abuddy/host/packs';
 
 const HELP = `
 Usage:
@@ -23,7 +23,7 @@ release   Preflight, bump the version (beta cycle: 1.2.3 → 1.2.4-beta.0 → -b
           produces and verifies the bundle for the next version under .abuddy/release/.
 
 publish   Create the GitHub release for the bundle in <dir> (default .abuddy/release)
-          and upload <id>-<version>.tgz, .sha256 and .bundle.json. Used by the release workflow.
+          and upload <id>-<version>.tgz, .sha256 and .integrity.json. Used by the release workflow.
           Needs GITHUB_TOKEN (or GH_TOKEN) and GITHUB_REPOSITORY or an origin remote.
 `.trim();
 
@@ -182,7 +182,7 @@ export async function publishRelease(root: string, releaseDir: string, options: 
   const run = options.run ?? defaultRunner;
   const manifest = readManifest(root);
   const version = manifest.version;
-  const archive = path.join(releaseDir, bundleArchiveName(manifest.id, version));
+  const archive = path.join(releaseDir, packArchiveName(manifest.id, version));
   const checksumFile = `${archive}.sha256`;
   if (!fs.existsSync(archive) || !fs.existsSync(checksumFile)) {
     throw new Error(`No ${path.basename(archive)} (+ .sha256) in ${releaseDir}. Run "abuddy pack --out ${releaseDir}" first.`);
@@ -191,12 +191,12 @@ export async function publishRelease(root: string, releaseDir: string, options: 
   // Refuse to publish anything that doesn't verify
   const sha256 = fs.readFileSync(checksumFile, 'utf-8').trim().split(/\s+/)[0];
   const scratch = fs.mkdtempSync(path.join(releaseDir, '.verify-'));
-  // The bundle's bundle.json (id, version, hostVersion) as its own asset: the app's update check
+  // The bundle's integrity.json (id, version, hostVersion) as its own asset: the app's update check
   // reads a release's hostVersion from it without downloading the archive
-  const infoFile = `${archive}.bundle.json`;
+  const infoFile = `${archive}.integrity.json`;
   try {
-    const extracted = await extractBundleArchive(archive, scratch, sha256);
-    const info = verifyBundle(extracted);
+    const extracted = await extractPackArchive(archive, scratch, sha256);
+    const info = verifyPack(extracted);
     if (info.version !== version) throw new Error(`Bundle version ${info.version} does not match abuddy.json ${version}`);
     fs.writeFileSync(infoFile, JSON.stringify(info, null, 2) + '\n');
   } finally {
@@ -276,8 +276,8 @@ export async function runRelease(root: string, options: ReleaseOptions): Promise
   const releaseDir = path.join(root, '.abuddy', 'release');
   const packRelease = async () => {
     fs.rmSync(releaseDir, { recursive: true, force: true });
-    const packed = await packBundle(root, releaseDir, { version });
-    console.log(`\nBundle: ${packed.file}\n  sha256: ${packed.sha256}\n  files: ${Object.keys(readBundleInfo(path.join(root, '.abuddy', 'bundle', manifest.id)).files).length}`);
+    const packed = await buildPackArchive(root, releaseDir, { version });
+    console.log(`\nPack: ${packed.file}\n  sha256: ${packed.sha256}\n  files: ${Object.keys(readPackIntegrity(path.join(root, '.abuddy', 'staged', manifest.id)).files).length}`);
     return packed;
   };
 
@@ -290,7 +290,7 @@ export async function runRelease(root: string, options: ReleaseOptions): Promise
   const git = (...args: string[]) => run('git', args, root);
   git('add', 'abuddy.json', ...(fs.existsSync(path.join(root, 'package.json')) ? ['package.json'] : []));
   git('commit', '-m', `release: v${version}`);
-  // After the commit, so bundle.json's source.commit is the tagged commit
+  // After the commit, so integrity.json's source.commit is the tagged commit
   const packed = await packRelease();
   git('tag', '-a', `v${version}`, '-m', `v${version}`);
   git('push', '--follow-tags', 'origin', 'HEAD');

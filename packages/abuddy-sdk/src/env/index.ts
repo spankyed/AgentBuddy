@@ -64,7 +64,7 @@ export interface AppContext {
   packsDir: string;
   /** Build-time artifacts (types/, build/) of the app's built-in packs, for pack authors' dependency resolution. */
   hostPacksDir: string;
-  registryFile: string;
+  installedPacksFile: string;
   /** Where a running API publishes its port and process id (`readApiEndpoint`), so local tools find it */
   apiPortFile: string;
   /** A development app's API token, for local tools calling its API (written by the API, readable only by the user) */
@@ -118,7 +118,7 @@ export function resolveAppContext(input: { env?: AppEnv; userDataDir?: string } 
     userDataDir,
     packsDir: path.join(userDataDir, 'packs'),
     hostPacksDir: path.join(userDataDir, 'host-packs'),
-    registryFile: path.join(userDataDir, 'pack-registry.json'),
+    installedPacksFile: path.join(userDataDir, 'installed-packs.json'),
     apiPortFile: path.join(userDataDir, 'api-port'),
     apiTokenFile: path.join(userDataDir, 'api-token'),
     urlScheme: env === 'beta' ? 'abuddy-beta' : 'abuddy',

@@ -21,7 +21,7 @@ src/
     repository.ts          # repository, typed with the repositories declared in abuddy.json
     repositories.ts        # Those repositories by name, carried by pack-entry.ts's registration
     pack-types.ts          # Facade types abuddy build bundles into dist/types/pack-types.d.ts
-    contributions.ts       # Contribution types, categories, item providers (tiptap references)
+    references.ts          # Which of the feature's things are linkable from an editor (tiptap references)
     seeders.ts             # `seeders` for all seed types, which pack-entry.ts carries; compiled dir accessors
     seed-runtime.ts        # seedRuntime: entity types, relation kinds, repositories, seed hooks (unit tests; bundled to dist/build/seed-runtime.mjs)
     step-types.ts          # Step type augmentation
@@ -50,7 +50,7 @@ Each feature lives in `src/features/<name>/` with this layout:
 - `fe/plugin.ts` — Frontend plugin definition (id, label, icon, state machine, canvas/panel components)
 - `fe/state.ts` — XState frontend state machine
 - `fe/canvas/` — Main view components
-- `fe/contributions.ts` — Tiptap contribution type definitions (if applicable)
+- `fe/references.ts` — which of the feature's things are linkable from an editor, and how (if applicable)
 - `settings.ts` — Per-feature default settings
 
 The 12 features: **threads**, **code**, **notes**, **browser**, **library**, **flows**, **actions**, **prompts**, **brain**, **database**, **logs**, **settings**.
@@ -149,14 +149,14 @@ FE registration: `src/extensions/blocks/register-fe.ts`.
 ## Extensions
 
 - **Tiptap plugins** (`src/extensions/tiptap/index.ts`) — reference node (inline entity mentions), command suggestion (slash commands), command viewer decoration. Carried by `pack-entry-fe.ts`'s registration.
-- **App extensions** — Welcome screen component (`src/extensions/Welcome.vue`). Registered via `pack-entry-fe.ts`.
-- **Contributions** (`__generated__/contributions.ts`) — aggregates contribution types, categories, and item providers from threads, library, and notes features for the tiptap reference system.
+- **App extensions** — Welcome screen component (`src/extensions/app/Welcome.vue`). Registered via `pack-entry-fe.ts`. The root of `src/extensions/` holds kind-folders only (`app/`, `artifacts/`, `blocks/`, `steps/`, `tiptap/`), never a component: a loose file there reads as a kind that isn't one.
+- **References** (`__generated__/references.ts`) — aggregates reference types, categories and item providers from the threads, library and notes features, for the tiptap reference system: which of each feature's things can be linked to from an editor, and how to render and open a link.
 
 ## Migrations
 
 Version-targeted migrations in `src/migrations/`, one file per target version. Registered in `src/migrations/index.ts` as `PackMigration[]` (`abuddy.json` `migrations`). As a built-in pack's, they are app migrations: `runAppMigrations()` (`@abuddy/host/migrations`, `packages/abuddy-host/src/migrations/index.ts`) runs each when `stored app version < target <= app version`, at boot and after an app reset (`services.appData.reset()`, which the settings system's reset actor only calls). Add to the latest unreleased target (see `packages/abuddy-host/src/migrations/CLAUDE.md`).
 
-## Boot sequence contributions
+## Boot sequence extensions
 
 The pack registers boot hooks via `__generated__/pack-entry.ts`:
 - `earlySystem` — the logs system, from `features[].earlySystem` (starts before hydration)

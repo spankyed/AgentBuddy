@@ -1,11 +1,11 @@
-// The external and built-in packs the app loaded, and the pack registry entries the renderer loads frontends from.
+// The external and built-in packs the app loaded, and the loaded-packs entries the renderer loads frontends from.
 // Imports nothing else from packs/runtime: the app bus reads it (clientLoadedPacks).
 import type { AnyStateMachine } from 'xstate';
 import type { PackBootHooks, PackEARS, PackFeatureDef, PackMigration, PackRegistration } from '@abuddy/sdk/framework';
 import type { StepDefinition } from '@abuddy/sdk/steps';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
-import { packFrontendFiles, type PackBundleEntry } from '../bundle.ts';
+import { packFrontendFiles, type LoadedPackEntry } from '../pack-layout.ts';
 import type { BuiltInPackInfo, PackManifest } from '../pack-discovery.ts';
 
 /** An external pack's loaded runtime */
@@ -73,7 +73,7 @@ export function setBuiltInPackInfos(packs: BuiltInPackInfo[]) {
 }
 
 /** The built-in packs, then the loaded external packs with frontend files */
-export function getPackBundleEntries(): PackBundleEntry[] {
+export function getLoadedPackEntries(): LoadedPackEntry[] {
   return [
     ..._builtInPacks.map(p => ({ id: p.id, name: p.name, version: p.version, builtIn: true })),
     ..._loadedPacks.flatMap(p => {

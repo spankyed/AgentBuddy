@@ -127,7 +127,7 @@ describe('a pack cannot widen a plugin it does not own', () => {
 });
 
 /**
- * Registering a pack's contributions is observable: settingsDefaults.register notifies its listeners,
+ * Registering a pack's extensions is observable: settingsDefaults.register notifies its listeners,
  * and default-setup's settings system reacts by sending to its plugin. A send reaches the bus while it
  * is idle, so the bus checks it synchronously — inside registerPack. With the pack listed last, that
  * send was checked against a registry that did not yet contain the pack sending it.
@@ -135,7 +135,7 @@ describe('a pack cannot widen a plugin it does not own', () => {
 describe('a pack registering', () => {
   const plugin = (id: string) => ({ id, hasSystem: false, hasPlugin: true, services: [] });
 
-  it('is listed before its contributions are registered, so a listener sees its plugins', () => {
+  it('is listed before its extensions are registered, so a listener sees its plugins', () => {
     const registry = createPackRegistry();
     let seen: Set<string> | null | undefined = 'unset' as never;
     const stop = registry.onSettingsDefaultsChanged(() => {
@@ -152,9 +152,9 @@ describe('a pack registering', () => {
   });
 
   // The rollback has to take it back out again, or a refused pack stays listed
-  it('is unlisted again when its contributions are refused', () => {
+  it('is unlisted again when its extensions are refused', () => {
     const registry = createPackRegistry();
-    // Two seeders for one key: refused partway through registering the contributions
+    // Two seeders for one key: refused partway through registering the extensions
     expect(() => registry.registerPack({
       id: 'clumsy-pack',
       systems: [],

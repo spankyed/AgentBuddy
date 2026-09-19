@@ -100,7 +100,7 @@ See [CLI Reference](cli.md#building) for details.
 # Compile the pack
 abuddy build
 
-# Bundle into a verified .tgz archive (bundle.json lists a sha256 per file)
+# Bundle into a verified .tgz archive (integrity.json lists a sha256 per file)
 abuddy pack
 # Creates my-pack-0.1.0.tgz and my-pack-0.1.0.tgz.sha256
 
@@ -163,7 +163,7 @@ abuddy clean      # Remove dist/, .abuddy/, __generated__/
 
 ## Constraints
 
-- Some manifest fields are for built-in packs only: validation rejects `features[].earlySystem` and `boot.seed.settings` in an external pack, and the app ignores an external pack's `partitionPolicy` and `features[].contributions`.
+- Some manifest fields are for built-in packs only: validation rejects `features[].earlySystem` and `boot.seed.settings` in an external pack, and the app ignores an external pack's `partitionPolicy` and `features[].references`.
 - Entity types, relation kinds and service keys must be unique across all installed packs, or the pack fails to load. Service keys also can't be the host's (`logger`, `emitter`, `repository`, `appData`, `traceStore`, `inference`, `secrets`).
 - The app must be restarted after installing or uninstalling a pack.
 

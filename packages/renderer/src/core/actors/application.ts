@@ -70,7 +70,7 @@ export interface ApplicationContext {
   packFrontendsLoaded: string[];
   /** Packs unloaded while the loader was running: a result that arrives for one of them is dropped */
   packsUnloadedWhileLoading: string[];
-  /** Whether the pack registry was ever read: until it is, a failed read is worth telling the user about */
+  /** Whether the loaded packs were ever read: until it is, a failed read is worth telling the user about */
   packRegistryRead: boolean;
 }
 
@@ -114,10 +114,10 @@ export type ApplicationEvent =
   /** Load the frontends of the external packs this window hasn't loaded: on connecting, and when a pack activates */
   | { type: 'LOAD_PACK_FRONTENDS' }
   /**
-   * The loader finished: `registryError` is why the registry couldn't be read, when it couldn't, and
+   * The loader finished: `loadedPacksError` is why the registry couldn't be read, when it couldn't, and
    * `failedPacks` the packs that threw while loading, which the registry read reached
    */
-  | { type: 'PACK_FRONTENDS_SETTLED'; registryError?: string; failedPacks?: { packId: string; error: string }[] }
+  | { type: 'PACK_FRONTENDS_SETTLED'; loadedPacksError?: string; failedPacks?: { packId: string; error: string }[] }
   /**
    * A pack's frontend load finished, with the plugins it exports: none when it failed to load, and null
    * for a pack without frontend code, which is recorded as loaded and asked for nothing
@@ -278,7 +278,7 @@ export const createApplicationState = () => setup({
     }),
 
     /**
-     * Reads the pack registry and loads the frontend of every external pack in it this window hasn't
+     * Reads the loaded packs and loads the frontend of every external pack in it this window hasn't
      * loaded yet, reporting each one to the parent as it finishes. A failed registry query leaves the
      * packs unloaded: the parent runs the loader again whenever the bus subscription is established, so
      * the next connection picks them up. One pack that throws doesn't stop the others; it's reported as
@@ -288,7 +288,7 @@ export const createApplicationState = () => setup({
       let stopped = false;
       const failedPacks: { packId: string; error: string }[] = [];
 
-      trpc.packs.registry.query().then(async (registry) => {
+      trpc.packs.loaded.query().then(async (registry) => {
         for (const pack of registry) {
           if (stopped) return;
           if (pack.builtIn || input.loadedPackIds.includes(pack.id)) continue;
@@ -307,7 +307,7 @@ export const createApplicationState = () => setup({
         }
         if (!stopped) sendBack({ type: 'PACK_FRONTENDS_SETTLED', failedPacks });
       }).catch((err: unknown) => {
-        if (!stopped) sendBack({ type: 'PACK_FRONTENDS_SETTLED', registryError: messageOf(err), failedPacks });
+        if (!stopped) sendBack({ type: 'PACK_FRONTENDS_SETTLED', loadedPacksError: messageOf(err), failedPacks });
       });
 
       return () => { stopped = true; };
@@ -510,7 +510,7 @@ export const createApplicationState = () => setup({
 
     /** The loader finished: run it again when a load was asked for meanwhile, and report what failed */
     onPackFrontendsSettled: enqueueActions(({ context, event, enqueue }) => {
-      const { registryError, failedPacks } = typeOf('PACK_FRONTENDS_SETTLED', event);
+      const { loadedPacksError, failedPacks } = typeOf('PACK_FRONTENDS_SETTLED', event);
       enqueue.stopChild(packFrontendLoaderId);
 
       // Every result of the run that finished has arrived, so nothing is left to drop
@@ -527,13 +527,13 @@ export const createApplicationState = () => setup({
         enqueue.assign({ packLoadRunning: false });
       }
 
-      if (registryError) {
+      if (loadedPacksError) {
         // The next connection runs the loader again, so a read that fails while the API restarts repairs
         // itself; the user hears about it only while no pack has ever loaded
         const firstRead = !context.packRegistryRead;
         enqueue(() => {
-          console.warn('[pack-loader] Failed to read the pack registry:', registryError);
-          if (firstRead) globalToast.error("Add-on packs couldn't be loaded", registryError);
+          console.warn('[pack-loader] Failed to read the loaded packs:', loadedPacksError);
+          if (firstRead) globalToast.error("Add-on packs couldn't be loaded", loadedPacksError);
         });
       } else if (!context.packRegistryRead) {
         enqueue.assign({ packRegistryRead: true });

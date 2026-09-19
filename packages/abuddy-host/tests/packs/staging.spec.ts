@@ -4,8 +4,8 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { prepareHostDataDirs, recoverStagingDirs, stagingDirName } from '../../src/packs/staging.ts';
-import { discoverPacks, reconcileExternalRegistry } from '../../src/packs/pack-discovery.ts';
-import { readPackRegistry, writePackRegistry } from '../../src/packs/pack-registry.ts';
+import { discoverPacks, reconcileInstalledPacks } from '../../src/packs/pack-discovery.ts';
+import { readInstalledPacks, writeInstalledPacks } from '../../src/packs/installed-packs.ts';
 import { readHostVersion } from '../../src/packs/host-info.ts';
 
 
@@ -60,16 +60,16 @@ describe('recoverStagingDirs', () => {
 
   it('restores a pack whose install crashed between moving it aside and placing the new copy, and keeps it enabled', () => {
     writePack('demo-pack');
-    writePackRegistry([{ id: 'demo-pack', name: 'Demo', version: '1.0.0', dir: path.join(packsDir, 'demo-pack'), enabled: true, registeredAt: '' }]);
+    writeInstalledPacks([{ id: 'demo-pack', name: 'Demo', version: '1.0.0', dir: path.join(packsDir, 'demo-pack'), enabled: true, installedAt: '' }]);
     // The crash: the old copy moved aside, the new one never placed
     fs.renameSync(path.join(packsDir, 'demo-pack'), path.join(packsDir, `.demo-pack.previous-${exitedPid()}-1a2b3c4d`));
     mkdir(`.demo-pack.installing-${exitedPid()}-x1Y2z3`);
 
     expect(recoverStagingDirs(packsDir)).toMatchObject({ restored: ['demo-pack'], failed: [] });
     expect(remaining()).toEqual(['demo-pack']);
-    const enabled = reconcileExternalRegistry(discoverPacks(packsDir));
+    const enabled = reconcileInstalledPacks(discoverPacks(packsDir));
     expect(enabled.map((p) => p.manifest.id)).toEqual(['demo-pack']);
-    expect(readPackRegistry()).toMatchObject([{ id: 'demo-pack', enabled: true }]);
+    expect(readInstalledPacks()).toMatchObject([{ id: 'demo-pack', enabled: true }]);
   });
 
   it('leaves a directory whose name carries no process id', () => {
@@ -92,7 +92,7 @@ describe('recoverStagingDirs', () => {
 
   it("doesn't restore a pack uninstalled while its interrupted install's copy sat here", () => {
     writePack(`.demo-pack.previous-${exitedPid()}-1a2b3c4d`);
-    writePackRegistry([]);
+    writeInstalledPacks([]);
 
     // The registry no longer lists it: the uninstall stands
     expect(recoverStagingDirs(packsDir, new Set())).toMatchObject({ restored: [], failed: [] });
