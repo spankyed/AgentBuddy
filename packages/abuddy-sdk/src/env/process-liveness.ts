@@ -1,14 +1,22 @@
-// Whether the process that wrote a record on disk is still running: the database write lock, the app's
-// instance lock and port file, staging dirs and the package build lock all turn on that question.
-//
-// A pid alone cannot answer it. Pids are recycled, so a record left behind by a crash names whatever took
-// its number, and reads as held for as long as the file exists — the app refuses to boot, tools refuse the
-// data dir, builds block. `writerIsRunning` bounds the pid by when the record was written.
+/**
+ * Whether the process that wrote a record on disk is still running: the API's port file here, and in the app
+ * the database write lock, the instance lock, staging dirs and the package build lock.
+ *
+ * A pid alone cannot answer it. Pids are recycled, so a record left behind by a crash names whatever took its
+ * number, and reads as held for as long as the file exists — the app refuses to boot, tools refuse the data
+ * dir, builds block. `_writerIsRunning` bounds the pid by when the record was written.
+ *
+ * `@internal`: this is app plumbing, not part of the pack contract. It lives here because `readApiEndpoint`
+ * does, and that is reachable from a pack's build script, which cannot import `@abuddy/host`.
+ */
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 
-/** Whether a process with this id exists (one another user owns counts) */
-export function processIsRunning(pid: number): boolean {
+/**
+ * Whether a process with this id exists (one another user owns counts).
+ * @internal
+ */
+export function _processIsRunning(pid: number): boolean {
   try {
     process.kill(pid, 0);
     return true;
@@ -17,8 +25,11 @@ export function processIsRunning(pid: number): boolean {
   }
 }
 
-/** When this machine booted: a record written before it belongs to a previous boot, whatever pid it names */
-export function bootTime(): number {
+/**
+ * When this machine booted: a record written before it belongs to a previous boot, whatever pid it names.
+ * @internal
+ */
+export function _bootTime(): number {
   return Date.now() - os.uptime() * 1000;
 }
 
@@ -28,8 +39,9 @@ export function bootTime(): number {
  * `lstat`, not `stat`: Chromium's `SingletonLock` is a symlink whose target (`<host>-<pid>`) is not a path
  * and never resolves, so `stat` throws on a lock that is genuinely held and the caller reads "no app is
  * running" — the answer that lets a tool write to a database the app has open.
+ * @internal
  */
-export function writtenAt(file: string): number | null {
+export function _writtenAt(file: string): number | null {
   try {
     return fs.lstatSync(file).mtimeMs;
   } catch {
@@ -51,7 +63,8 @@ export function writtenAt(file: string): number | null {
  * pre-boot and a live holder look gone. That needs an NTP step of hours shortly after boot while a holder
  * is live; the recycled pid it replaces blocks the app on every reboot. Swap it for start time if the
  * clock-step case ever shows up.
+ * @internal
  */
-export function writerIsRunning(pid: number, writtenAtMs: number): boolean {
-  return processIsRunning(pid) && writtenAtMs >= bootTime();
+export function _writerIsRunning(pid: number, writtenAtMs: number): boolean {
+  return _processIsRunning(pid) && writtenAtMs >= _bootTime();
 }

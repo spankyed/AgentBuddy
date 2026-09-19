@@ -4,7 +4,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { writerIsRunning, writtenAt } from '../process-liveness.ts';
+import { _writerIsRunning, _writtenAt } from '@abuddy/sdk/env';
 
 /**
  * What a reader may find in the file. `pid` is the authority: it is the only field that answers the question
@@ -61,9 +61,9 @@ export function findDatabaseWriter(userDataDir: string): string | null {
   if (!held) return "a tool whose lock can't be read";
   if (held.machine !== undefined && held.machine !== os.hostname()) return `${held.what} on ${held.machine}`;
   // A lock from a previous boot names a pid this boot reassigned, so the pid alone can't settle it
-  const at = writtenAt(file);
+  const at = _writtenAt(file);
   if (at === null) return null;
-  return writerIsRunning(held.pid, at) ? `${held.what} (pid ${held.pid})` : null;
+  return _writerIsRunning(held.pid, at) ? `${held.what} (pid ${held.pid})` : null;
 }
 
 /** Where the lock is, and that removing it is the way out when no tool is really running */
