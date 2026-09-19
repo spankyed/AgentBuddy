@@ -6,7 +6,8 @@ import { resolveAppContext, getAppVersion } from '@abuddy/sdk/env';
 import type { PackSnapshot } from '@abuddy/sdk/build';
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import type { PackRegistry } from '../pack-registration.ts';
-import { discoverBuiltInPacks, discoverPacks, reconcileInstalledPacks, type BuiltInPackInfo, type PackManifest } from '../pack-discovery.ts';
+import { discoverBuiltInPacks, discoverPacks, enabledExternalPacks, reconcileInstalledPacks, type BuiltInPackInfo, type PackManifest } from '../pack-discovery.ts';
+import { disabledPackIds } from '../installed-packs.ts';
 import { PACK_LAYOUT, PACK_LAYOUT_VERSION, isPackLayout, readPackIntegrity } from '../pack-layout.ts';
 import { isHostCompatible } from '../pack-installer.ts';
 import { findSdkVersion } from '../../build/shared-deps.ts';
@@ -283,8 +284,9 @@ export function clearPackRequireCache(packDir: string): void {
 
 export function loadExternalPacks(): LoadedPack[] {
   const { packsDir } = resolveAppContext();
-  const discovered = discoverPacks(packsDir);
-  const enabled = reconcileInstalledPacks(discovered);
+  // Keeps installed-packs.json current for what reads it; the list itself is the packs directory
+  reconcileInstalledPacks(discoverPacks(packsDir));
+  const enabled = enabledExternalPacks(packsDir, disabledPackIds());
 
   if (enabled.length === 0) return [];
 

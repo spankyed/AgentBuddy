@@ -68,6 +68,19 @@ export function readInstalledPacks(installedPacksPath = getInstalledPacksPath())
   }
 }
 
+/**
+ * The packs the app has recorded as disabled.
+ *
+ * An unreadable record means no decisions can be read, and the app carries on with every pack enabled —
+ * `readInstalledPacks` has already logged why. A tool reading a data dir the app isn't running on makes
+ * the opposite choice (`database/schema.ts`): it refuses, because answering differently from the app
+ * would have it read the database by a schema the app can't start with.
+ */
+export function disabledPackIds(installedPacksPath = getInstalledPacksPath()): ReadonlySet<string> {
+  const record = readInstalledPacks(installedPacksPath);
+  return new Set(record.found ? record.packs.filter(e => !e.enabled).map(e => e.id) : []);
+}
+
 export function writeInstalledPacks(entries: InstalledPack[]): void {
   const installedPacksPath = getInstalledPacksPath();
   const dir = path.dirname(installedPacksPath);

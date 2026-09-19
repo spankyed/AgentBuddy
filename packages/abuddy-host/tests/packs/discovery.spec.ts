@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { discoverBuiltInPacks, reconcileInstalledPacks } from '../../src/packs/pack-discovery.ts';
+import { discoverBuiltInPacks, enabledExternalPacks, reconcileInstalledPacks } from '../../src/packs/pack-discovery.ts';
 import { readInstalledPacks, writeInstalledPacks } from '../../src/packs/installed-packs.ts';
 
 /** The recorded packs; these specs always write a record first, so a missing one is a failure */
@@ -30,6 +30,31 @@ function writeManifest(name: string, manifest: Record<string, unknown>): string 
   fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify(manifest));
   return dir;
 }
+
+describe('enabledExternalPacks', () => {
+  const external = (id: string) => writeManifest(id, { id, name: id, version: '1.0.0' });
+
+  // The directory is the list: an `abuddy install` outside the app, or an `abuddy dev` into a running
+  // one, leaves a pack the record has never heard of, and it is installed and enabled all the same
+  it('takes every pack in the directory, including ones the record has never heard of', () => {
+    external('memo-pack');
+    external('scribble-pack');
+
+    expect(enabledExternalPacks(packagesDir, new Set()).map(p => p.manifest.id).sort())
+      .toEqual(['memo-pack', 'scribble-pack']);
+  });
+
+  it('leaves out the ones named disabled, and nothing else', () => {
+    external('memo-pack');
+    external('scribble-pack');
+
+    expect(enabledExternalPacks(packagesDir, new Set(['memo-pack'])).map(p => p.manifest.id))
+      .toEqual(['scribble-pack']);
+    // An id for a pack that isn't there takes nothing away
+    expect(enabledExternalPacks(packagesDir, new Set(['gone-pack'])).map(p => p.manifest.id).sort())
+      .toEqual(['memo-pack', 'scribble-pack']);
+  });
+});
 
 describe('discoverBuiltInPacks', () => {
   it('finds a built-in pack in the packaged app layout (abuddy.json + dist, no src)', () => {

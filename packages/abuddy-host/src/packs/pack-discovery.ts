@@ -83,6 +83,27 @@ export function discoverPacks(packsDir: string): { manifest: PackManifest; dir: 
   return results;
 }
 
+/** A pack found in a packs directory, with the manifest read from it */
+export interface DiscoveredPack {
+  manifest: PackManifest;
+  dir: string;
+}
+
+/**
+ * The external packs a data dir has enabled: everything in `packsDir`, minus the ids `disabled` names.
+ *
+ * The directory is the list. A pack the record has never heard of is installed and enabled — which is
+ * what an `abuddy install` outside the app leaves behind, and what `abuddy dev` leaves when it installs
+ * into a running one. The record only ever takes packs away from this list.
+ *
+ * The caller reads `disabled`, because what an unreadable record means depends on who is asking: the app
+ * carries on with everything enabled and says so, while a tool reading someone else's data dir refuses
+ * rather than answer differently from the app it is standing in for.
+ */
+export function enabledExternalPacks(packsDir: string, disabled: ReadonlySet<string>): DiscoveredPack[] {
+  return discoverPacks(packsDir).filter(({ manifest }) => !disabled.has(manifest.id));
+}
+
 export function reconcileInstalledPacks(
   discovered: { manifest: PackManifest; dir: string }[],
 ): { manifest: PackManifest; dir: string }[] {
