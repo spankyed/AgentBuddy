@@ -13,8 +13,8 @@ export type { BuiltInPackInfo, DiscoveredPack, InstalledPack, PackManifest } fro
 
 // Installed packs (JSON file CRUD)
 export {
-  readInstalledPacks, updateInstalledPacks,
-  addInstalledPack, removeInstalledPack,
+  readInstalledPacks, writeInstalledPacks, packRecord, packRecords, disabledPackIds,
+  recordInstalled, setPackEnabled, recordUpdateCheck, recordUpdateInstalled, recordSeedOutcomes, forgetPack,
 } from './installed-packs.ts';
 export type { PackRecord, InstalledPacksRecord } from './installed-packs.ts';
 

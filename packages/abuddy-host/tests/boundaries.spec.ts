@@ -70,6 +70,18 @@ const LOADED_PACKS = path.join(RUNTIME, 'loaded-packs.ts');
 const rel = (file: string) => path.relative(HOST_ROOT, file);
 
 describe('host package boundaries', () => {
+  // The record's shape is one module's business. Every write outside it is a named intention — an
+  // install, a choice, a check's findings — so no call site merges rows, and none can silently write
+  // nothing because the row it was looking for wasn't there.
+  it('keeps the installed-packs file shape inside installed-packs.ts', () => {
+    const owner = path.join(SRC, 'packs', 'installed-packs.ts');
+    const offenders = sourceFiles(SRC)
+      .filter((file) => file !== owner)
+      .filter((file) => /\b(addInstalledPack|removeInstalledPack|updateInstalledPacks)\b/.test(fs.readFileSync(file, 'utf-8')));
+
+    expect(offenders.map((file) => path.relative(HOST_ROOT, file))).toEqual([]);
+  });
+
   it('imports no transport: fastify, @trpc/*, ws or virtual:* modules', () => {
     const transport = /^(fastify(\/|$)|@fastify\/|@trpc\/|ws$|ws\/|virtual:)/;
     const offending = sourceFiles(SRC).flatMap((file) =>

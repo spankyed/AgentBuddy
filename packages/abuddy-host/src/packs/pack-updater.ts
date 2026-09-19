@@ -1,5 +1,5 @@
 import { createLogger } from '@abuddy/sdk/logger';
-import { updateInstalledPacks, type PackRecord } from './installed-packs.ts';
+import { recordUpdateCheck, type PackRecord } from './installed-packs.ts';
 import { installedPacks } from './pack-discovery.ts';
 import * as semver from 'semver';
 import { resolveAppContext } from '@abuddy/sdk/env';
@@ -107,7 +107,7 @@ export async function checkForUpdates(options: { hostVersion?: string } = {}): P
 
   const includePrerelease = updateChannelIncludesPrereleases();
   const results: UpdateCheckResult[] = [];
-  const updatedEntries = new Map<string, Partial<PackRecord>>();
+  const updatedEntries = new Map<string, Pick<PackRecord, 'availableVersion' | 'availableTag' | 'updateCheckError'>>();
 
   for (const { manifest, record: entry } of updatable) {
     const installedVersion = manifest.version;
@@ -144,14 +144,7 @@ export async function checkForUpdates(options: { hostVersion?: string } = {}): P
     }
   }
 
-  if (updatedEntries.size > 0) {
-    updateInstalledPacks(entries =>
-      entries.map(e => {
-        const update = updatedEntries.get(e.id);
-        return update ? { ...e, ...update } : e;
-      }),
-    );
-  }
+  for (const [packId, found] of updatedEntries) recordUpdateCheck(packId, found);
 
   logger.info(`Update check complete: ${results.length} update(s) available`);
   return results;

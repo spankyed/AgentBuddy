@@ -3,7 +3,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { createLogger } from '@abuddy/sdk/logger';
 import { PACK_LAYOUT } from '../pack-layout.ts';
-import { addInstalledPack, updateInstalledPacks } from '../installed-packs.ts';
+import { recordSeedOutcomes } from '../installed-packs.ts';
 import type { LoadedPack } from './loaded-packs.ts';
 import type { PackSeedManifest } from '@abuddy/sdk/framework';
 import { seedPath } from '@abuddy/sdk/build';
@@ -45,34 +45,6 @@ function seedErrors(result: Record<string, { errors?: string[] }> | undefined): 
   return Object.entries(result ?? {}).flatMap(([key, counts]) => (counts?.errors ?? []).map(e => `${key}: ${e}`));
 }
 
-/**
- * Records what each seeded pack's seed came to.
- *
- * A row appears only when there is something to say: a pack that seeded cleanly and has no row keeps
- * none, and one whose row carries an error from before has it cleared.
- */
-function recordSeedOutcome(outcomes: Map<string, string | undefined>): void {
-  if (outcomes.size === 0) return;
-  try {
-    updateInstalledPacks(entries => {
-      let next = entries;
-      for (const [packId, lastError] of outcomes) {
-        const existing = next.find(e => e.id === packId);
-        if (!lastError) {
-          if (existing?.lastError) {
-            const { lastError: _cleared, ...rest } = existing;
-            next = addInstalledPack(next, rest);
-          }
-          continue;
-        }
-        next = addInstalledPack(next, { ...(existing ?? { id: packId, enabled: true }), lastError });
-      }
-      return next;
-    });
-  } catch (err) {
-    logger.warn('Failed to record pack seed outcome in the registry:', err as Error);
-  }
-}
 
 /**
  * Seed external packs whose compiled data changed. A pack whose seed reports errors
@@ -118,7 +90,7 @@ export function seedPackData(packs: LoadedPack[], seed: typeof seedData = seedDa
     logger.info(`Pack seeded: ${packId}`);
   }
 
-  recordSeedOutcome(outcomes);
+  recordSeedOutcomes(outcomes);
   return failures;
 }
 

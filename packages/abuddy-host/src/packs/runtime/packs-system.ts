@@ -5,7 +5,7 @@ import { defineSystem } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
 import { emit } from '@abuddy/sdk/events';
 import { getAppVersion } from '@abuddy/sdk/env';
-import { updateInstalledPacks, addInstalledPack, removeInstalledPack, packRecord } from '../installed-packs.ts';
+import { forgetPack, packRecord, recordInstalled, recordUpdateInstalled, setPackEnabled } from '../installed-packs.ts';
 import { installPack as runInstall, uninstallPack as runUninstall, installPackFromGitHub } from '../pack-installer.ts';
 import type { PackExtensions, PackInfo, PackRegistry } from '../pack-registration.ts';
 import { packFrontendFiles } from '../pack-layout.ts';
@@ -165,12 +165,7 @@ export function createPacksSystem(registry: PackRegistry) {
         const isGitHub = !ev.source && !packSlug.startsWith('http') && packSlug.includes('/');
 
         runInstall(packSlug, ev.source, undefined, { hostVersion: getAppVersion() }).then(result => {
-          updateInstalledPacks(entries => addInstalledPack(entries, {
-            id: result.id,
-            enabled: true,
-            installedAt: new Date().toISOString(),
-            installedFrom: isGitHub ? packSlug : undefined,
-          }));
+          recordInstalled(result.id, isGitHub ? packSlug : undefined);
 
           // Installing over a pack that is already running — a reinstall, or the same pack from another
           // source — has replaced its files underneath it. Without the teardown, registering the new copy
@@ -234,7 +229,7 @@ export function createPacksSystem(registry: PackRegistry) {
         system.get(bus).send(emit(packs, { type: 'PACK_DEACTIVATED' as const, packId }));
 
         runUninstall(packId).then(() => {
-          updateInstalledPacks(entries => removeInstalledPack(entries, packId));
+          forgetPack(packId);
 
           system.get(bus).send(emit(packs, {
             type: 'PACK_UNINSTALL_COMPLETE' as const,
@@ -284,15 +279,7 @@ export function createPacksSystem(registry: PackRegistry) {
         let activated = false;
 
         installPackFromGitHub(target, undefined, { hostVersion: getAppVersion() }).then(result => {
-          updateInstalledPacks(reg =>
-            reg.map(e => e.id === packId ? {
-              ...e,
-              version: result.version,
-              dir: result.dir,
-              availableVersion: undefined,
-              availableTag: undefined,
-            } : e),
-          );
+          recordUpdateInstalled(packId);
 
           activated = activatePack(registry, packId, system.get(bus));
           const problem = activationProblem(packId, activated);
@@ -369,9 +356,7 @@ export function createPacksSystem(registry: PackRegistry) {
           system.get(bus).send(emit(packs, { type: 'PACK_ACTIVATED' as const, packId }));
         }
 
-        // addInstalledPack, not a map over the entries: a map silently writes nothing when the entry it
-        // is looking for has gone, which loses the click rather than reporting anything
-        updateInstalledPacks(entries => addInstalledPack(entries, { ...entry, enabled: newEnabled }));
+        setPackEnabled(packId, newEnabled);
         system.get(bus).send(emit(packs, {
           type: 'PACK_ENABLED_CHANGED' as const,
           packId,

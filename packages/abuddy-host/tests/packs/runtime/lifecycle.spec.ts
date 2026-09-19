@@ -246,66 +246,37 @@ describe('registry source and update tracking', () => {
     fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify({ id, name: id, version }));
   }
 
-  it('stores source field in registry when GitHub slug is used', async () => {
-    const { readInstalledPacks, updateInstalledPacks, addInstalledPack } = await import('../../../src/packs/installed-packs.ts');
+  it('records where an install came from', async () => {
+    const { packRecord, recordInstalled } = await import('../../../src/packs/installed-packs.ts');
 
-    updateInstalledPacks(entries => addInstalledPack(entries, {
-      id: 'github-pack',
-      enabled: true,
-      installedFrom: 'owner/repo',
-    }));
+    recordInstalled('github-pack', 'owner/repo');
 
-    const record = readInstalledPacks();
-    expect(record.found && record.packs).toHaveLength(1);
-    const entries = record.found ? record.packs : [];
-    expect(entries[0].installedFrom).toBe('owner/repo');
-    expect(entries[0].availableVersion).toBeUndefined();
+    expect(packRecord('github-pack')).toMatchObject({ installedFrom: 'owner/repo', enabled: true });
+    expect(packRecord('github-pack').availableVersion).toBeUndefined();
   });
 
-  it('stores availableVersion after an update check', async () => {
-    const { readInstalledPacks, updateInstalledPacks, addInstalledPack } = await import('../../../src/packs/installed-packs.ts');
+  it('records what an update check found, and forgets it once that update is installed', async () => {
+    const { packRecord, recordInstalled, recordUpdateCheck, recordUpdateInstalled } = await import('../../../src/packs/installed-packs.ts');
+    recordInstalled('versioned-pack', 'owner/versioned');
 
-    updateInstalledPacks(entries => addInstalledPack(entries, {
-      id: 'versioned-pack',
-      enabled: true,
-      installedFrom: 'owner/versioned',
-    }));
+    recordUpdateCheck('versioned-pack', { availableVersion: '2.0.0', availableTag: 'v2.0.0', updateCheckError: undefined });
+    expect(packRecord('versioned-pack').availableVersion).toBe('2.0.0');
 
-    updateInstalledPacks(entries =>
-      entries.map(e => e.id === 'versioned-pack' ? { ...e, availableVersion: '2.0.0' } : e),
-    );
-
-    const record = readInstalledPacks();
-    expect(record.found && record.packs.find(e => e.id === 'versioned-pack')!.availableVersion).toBe('2.0.0');
+    recordUpdateInstalled('versioned-pack');
+    expect(packRecord('versioned-pack').availableVersion).toBeUndefined();
+    expect(packRecord('versioned-pack').installedFrom, 'the slug an update reinstalls from').toBe('owner/versioned');
   });
 
   it('getAvailableUpdates returns packs with newer versions', async () => {
-    const { updateInstalledPacks, addInstalledPack } = await import('../../../src/packs/installed-packs.ts');
+    const { recordInstalled, recordUpdateCheck } = await import('../../../src/packs/installed-packs.ts');
     const { getAvailableUpdates } = await import('../../../src/packs/pack-updater.ts');
     installed('has-update');
     installed('no-update');
 
-    updateInstalledPacks(entries => {
-      let updated = addInstalledPack(entries, {
-      id: 'has-update',
-        enabled: true,
-        installedFrom: 'owner/has-update',
-      });
-      updated = addInstalledPack(updated, {
-      id: 'no-update',
-        enabled: true,
-        installedFrom: 'owner/no-update',
-      });
-      return updated;
-    });
-
-    updateInstalledPacks(entries =>
-      entries.map(e => {
-        if (e.id === 'has-update') return { ...e, availableVersion: '2.0.0' };
-        if (e.id === 'no-update') return { ...e, availableVersion: '1.0.0' };
-        return e;
-      }),
-    );
+    recordInstalled('has-update', 'owner/has-update');
+    recordInstalled('no-update', 'owner/no-update');
+    recordUpdateCheck('has-update', { availableVersion: '2.0.0', availableTag: 'v2.0.0', updateCheckError: undefined });
+    recordUpdateCheck('no-update', { availableVersion: '1.0.0', availableTag: 'v1.0.0', updateCheckError: undefined });
 
     const updates = getAvailableUpdates();
     expect(updates).toHaveLength(1);
