@@ -421,17 +421,6 @@ describe('generated backend entry', () => {
   });
 });
 
-describe('dependency types in .abuddy/generated/types.ts', () => {
-  it("re-exports a dependency's types by their exported names, not the facade names", async () => {
-    const { emitDepTypes } = await import('../../src/build/generate-entries.ts');
-    const types = emitDepTypes(new Map([['base-pack', { types: { entities: {}, relKinds: {} }, defs: {
-      [PACK_TYPES_DEF]: 'type Local = {};\ntype TagEntity = {};\nexport type { Local as PackEntityShapes, TagEntity };\n',
-    } }]]));
-    expect(types).toContain("export type { TagEntity } from '../deps/base-pack/defs/pack-types.js';");
-    expect(types).not.toMatch(/Local|PackEntityShapes|PackStepNodes/);
-  });
-});
-
 describe('generated entity shapes', () => {
   it('imports own shapes under aliases and dependency shapes from their facade types', () => {
     write('src/features/memos/be/types.ts', 'export interface ItemEntity { text: string }\n');

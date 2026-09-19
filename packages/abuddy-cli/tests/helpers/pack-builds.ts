@@ -4,6 +4,7 @@
 import { execFileSync } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { PACK_TSCONFIG } from '../../src/commands/init';
 import { REPO_ROOT } from './published-packages';
 
 /** The CLI these specs build with: the repo's own bin, run from source */
@@ -37,11 +38,11 @@ export const packageJson = (name: string) =>
  * `check:specifiers` records as `DECLARES_SOURCE_BY_DESIGN` for this file's callers.
  */
 export const tsconfig = JSON.stringify({
-  compilerOptions: {
-    target: 'ES2022', module: 'esnext', moduleResolution: 'bundler', strict: true, skipLibCheck: true, noEmit: true, types: ['node'],
-    customConditions: ['@abuddy/source'], allowImportingTsExtensions: true, paths: { '#generated/*': ['./src/__generated__/*'] },
-  },
-  include: ['src/**/*.ts'],
+  ...PACK_TSCONFIG,
+  // The one deliberate difference: these packs sit inside the checkout and resolve the workspace
+  // packages. Everything else, `include` above all, is the scaffold's, so a test pack compiles the
+  // same file set a real one does.
+  compilerOptions: { ...PACK_TSCONFIG.compilerOptions, customConditions: ['@abuddy/source'] },
 });
 
 /** Writes a pack and links it to the given `node_modules`, so `abuddy build` can run in it */

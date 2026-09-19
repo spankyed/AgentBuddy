@@ -22,9 +22,8 @@ A command module exports `async (args: string[]) => void`; `src/index.ts` maps t
 
 | Command | Source | Notes |
 |---|---|---|
-| `init [name]` | `commands/init.ts` | Writes `abuddy.json`, `package.json`, `tsconfig.json`, `.github/workflows/release.yml` (`RELEASE_WORKFLOW_TEMPLATE`), steps register/build stubs, a markdown seed format example, then runs `generate` + `generate-entries`. `scaffoldUnitTestSetup()` (also used by `add feature`) writes `vitest.config.ts`, `tests/setup.ts` and devDependencies |
+| `init [name]` | `commands/init.ts` | Writes `abuddy.json`, `package.json`, `tsconfig.json`, `.github/workflows/release.yml` (`RELEASE_WORKFLOW_TEMPLATE`), steps register/build stubs, a markdown seed format example, then runs `generate-entries`. `scaffoldUnitTestSetup()` (also used by `add feature`) writes `vitest.config.ts`, `tests/setup.ts` and devDependencies |
 | `add <entity>` | `commands/add.ts` → `commands/add/*.ts` | Entities: `feature`, `step`, `artifact`, `block`, `action`, `prompt`, `flow`, `service`, `migration`. Shared helpers in `add/templates.ts` (naming, `writeIfNotExists`, `parseFlag`) and `add/manifest.ts` (manifest edits). `add feature` rejects a `--designation` other than the feature name and regenerates entries |
-| `generate` | `commands/generate.ts` | Resolves dependency snapshots (`resolveDeps`, fails on any unresolved one) and writes `.abuddy/generated/types.ts` with `emitDepTypes` |
 | `generate-entries [--force]` | `commands/generate-entries.ts` | `generatePackFiles` (`@abuddy/sdk/build`) into `src/__generated__/`. Skips when `.inputs-hash` matches (manifest, `src/`, dependency snapshots and the SDK's codegen source). Deletes generated files it no longer emits; `warnStaleDepTypes` flags `deps/<id>.d.ts` from another version |
 | `fetch-deps` | `commands/fetch-deps.ts` | Resolution chain: `file:` path; else workspace (`packages/<id>` or `<id>` in the nearest directory above the pack) → the app configured for `abuddy test` → installed apps (`resolveFromMachine`); else the `.abuddy/deps` cache; else GitHub releases (registry lookup is a stub). `resolveDepFiles` is what `build` uses |
 | `build [--skip-generate] [--skip-fe] [--release]` | `commands/build.ts` | See Build pipeline |
@@ -45,7 +44,7 @@ A command module exports `async (args: string[]) => void`; `src/index.ts` maps t
 ## Build pipeline (`commands/build.ts`)
 
 1. `parseManifest`; `clearBuildOutput` (external: all of `dist/`; built-in: only this build's outputs, since the runtime build also writes there).
-2. Unless `--skip-generate`: `resolveDeps` → `generate` → `generateEntries`.
+2. Unless `--skip-generate`: `resolveDeps` → `generateEntries`.
 3. `featureSettingsProblems` (each `features[].settings` through `checkFeatureSettings`).
 4. Dependencies' `steps.build.mjs` and manifests feed `buildPackConfigFromManifest`; its `loadDefinitions()` go into a registry of this build's own (`createPackRegistry()`, so a registry the process has bound is never touched: `tests/build/build-registry.spec.ts`), whose steps, artifacts and blocks `compilePack` compiles `boot.seed` with (pack TypeScript loaded with tsx's `tsImport`), then `bundlePackSeedCompilers` (`seedFormats[].compiler`).
 5. Facade types: `bundlePackTypes` (`build/types-bundler.ts`, rollup-plugin-dts) → `dist/types/pack-types.d.ts`, then the facade gate (below). Then `bundlePackFlowHelpers` (`build/flow-helpers-bundler.ts`); the snapshot is written last, once every step succeeded.

@@ -271,12 +271,6 @@ export interface DSLStepNode extends DSLNodeBase {
 }
 
 // @public (undocumented)
-export function emitDepTypes(depSnapshots: Map<string, {
-    types: PackTypeManifest;
-    defs: Record<string, string>;
-}>): string;
-
-// @public (undocumented)
 export function emitEARS(ownId: string, registry: ReturnType<typeof mergeRegistries>): string;
 
 // @public

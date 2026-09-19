@@ -21,7 +21,7 @@ import { facadeProblems } from '../build/facade-gate';
 import { bundlePackFlowHelpers } from '../build/flow-helpers-bundler';
 import { PACK_LAYOUT, createPackRegistry } from '@abuddy/host/packs';
 import { checkFeatureSettings } from '@abuddy/sdk/framework';
-import { generate, resolveDeps } from './generate';
+import { resolveDeps } from './generate';
 import { resolveDepFiles } from './fetch-deps';
 import { generateEntries, warnStaleDepTypes } from './generate-entries';
 import { findPackRoot, readValidManifest, sdkVersion } from '../utils';
@@ -96,7 +96,6 @@ export async function build(args: string[]) {
 
   if (!args.includes('--skip-generate')) {
     const { depTypes, depSnapshots, depSources } = await resolveDeps(root, manifest.dependencies);
-    await generate([], undefined, depSnapshots);
     await generateEntries([], undefined, depTypes, depSnapshots, depSources);
   }
 

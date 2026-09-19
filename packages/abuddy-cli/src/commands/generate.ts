@@ -1,9 +1,6 @@
-import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { PackSnapshot, PackTypeManifest } from '@abuddy/sdk/build';
-import { emitDepTypes } from '@abuddy/sdk/build';
 import { resolveDepFiles } from './fetch-deps';
-import { findPackRoot, readManifest } from '../utils';
 
 async function loadDepSnapshots(root: string, deps: Record<string, string>): Promise<{ snapshots: Map<string, PackSnapshot>; sources: Map<string, string> }> {
   const result = new Map<string, PackSnapshot>();
@@ -49,26 +46,4 @@ export async function resolveDeps(root: string, deps?: Record<string, string>): 
   for (const [id, snap] of depSnapshots) depTypes.set(id, snap.types);
 
   return { depTypes, depSnapshots, depSources };
-}
-
-// ── Command ──
-
-export async function generate(_args: string[], packRoot?: string, preResolvedDeps?: Map<string, PackSnapshot>) {
-  const root = packRoot ?? findPackRoot(process.cwd());
-  const manifest = readManifest(root);
-
-  console.log(`Generating types for: ${manifest.name}`);
-
-  const depSnapshots = preResolvedDeps ?? (manifest.dependencies
-    ? (await loadDepSnapshots(root, manifest.dependencies)).snapshots
-    : new Map<string, PackSnapshot>());
-
-  const generatedDir = path.join(root, '.abuddy', 'generated');
-  fs.mkdirSync(generatedDir, { recursive: true });
-
-  const typesPath = path.join(generatedDir, 'types.ts');
-  fs.writeFileSync(typesPath, emitDepTypes(depSnapshots));
-
-  const depCount = depSnapshots.size;
-  console.log(`  Types:     ${path.relative(process.cwd(), typesPath)}${depCount > 0 ? ` (from ${depCount} deps)` : ''}`);
 }

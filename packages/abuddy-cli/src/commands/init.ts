@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as readline from 'node:readline';
 import semver from 'semver';
-import { generate, resolveDeps } from './generate';
+import { resolveDeps } from './generate';
 import { generateEntries } from './generate-entries';
 import { STEPS_BUILD_TEMPLATE, STEPS_REGISTER_TEMPLATE } from './add/step';
 import { cliVersion, readManifest, sdkVersion } from '../utils';
@@ -52,7 +52,12 @@ title: Hello
 Seeded from src/seeds/${SEED_ROWS_KEY}/hello.md by the "${SEED_ROWS_KEY}" seed entry and format in abuddy.json.
 `;
 
-const TSCONFIG_TEMPLATE = JSON.stringify({
+/**
+ * The tsconfig `abuddy init` scaffolds, as an object so the test packs can build on it. A test pack that
+ * compiles a narrower file set than a real one hides whole classes of bug: a dangling import in generated
+ * code stayed invisible for exactly that reason.
+ */
+export const PACK_TSCONFIG = {
   compilerOptions: {
     target: 'ES2022',
     module: 'esnext',
@@ -70,8 +75,10 @@ const TSCONFIG_TEMPLATE = JSON.stringify({
       '#generated/*': ['./src/__generated__/*'],
     },
   },
-  include: ['src/**/*.ts', 'tests/**/*.ts', '.abuddy/generated/**/*.ts', '.abuddy/deps/**/*.d.ts'],
-}, null, 2);
+  include: ['src/**/*.ts', 'tests/**/*.ts'],
+};
+
+const TSCONFIG_TEMPLATE = JSON.stringify(PACK_TSCONFIG, null, 2);
 
 const ENV_DTS_TEMPLATE = `// Plain \`tsc\` can't read .vue files, so the pack's own single-file components resolve to a
 // generic component here. @abuddy/ui components ship declarations and keep their prop types.
@@ -93,7 +100,6 @@ const PACKAGE_JSON_TEMPLATE = (name: string) => JSON.stringify({
   },
   scripts: {
     prepare: 'abuddy generate-entries',
-    generate: 'abuddy generate',
     build: 'abuddy build',
     validate: 'abuddy validate',
     dev: 'abuddy dev',
@@ -368,7 +374,6 @@ export async function init(args: string[]) {
 
   const initManifest = readManifest(dir);
   const { depTypes, depSnapshots, depSources } = await resolveDeps(dir, initManifest.dependencies);
-  await generate([], dir, depSnapshots);
   await generateEntries([], dir, depTypes, depSnapshots, depSources);
 
   console.log(`\nCreated pack "${name}" at ./${name}/`);

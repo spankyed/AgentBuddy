@@ -338,7 +338,7 @@ Vue SFCs (`.vue` files) are compiled automatically — no extra build step neede
 
 ## Build-time dependency resolution
 
-`abuddy generate`, `abuddy generate-entries`, `abuddy validate`, `abuddy build` and `abuddy fetch-deps` resolve each dependency in `abuddy.json` to its artifacts: `types/snapshot.json`, plus `build/` and `runtime/index.cjs` with its compiled seeds when it ships them (dependents' tests load the runtime). Sources, in order:
+`abuddy generate-entries`, `abuddy validate`, `abuddy build` and `abuddy fetch-deps` resolve each dependency in `abuddy.json` to its artifacts: `types/snapshot.json`, plus `build/` and `runtime/index.cjs` with its compiled seeds when it ships them (dependents' tests load the runtime). Sources, in order:
 
 1. **`file:` path** — the given directory (relative to the pack root or absolute), in any layout. Not cached. A missing snapshot is an error.
 2. **Workspace** — `../<id>`, `../../packages/<id>`, `../../<id>`.

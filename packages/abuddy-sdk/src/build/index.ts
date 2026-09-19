@@ -54,7 +54,7 @@ export type { ActionMeta, PromptMeta } from './seed-types.ts';
 
 // Entry codegen
 export {
-  generatePackFiles, emitEARS, mergeRegistries, emitDepTypes, entitiesWithoutShapes, PACK_TYPES_DEF,
+  generatePackFiles, emitEARS, mergeRegistries, entitiesWithoutShapes, PACK_TYPES_DEF,
   _depTypesFile, _depTypesVersion,
 } from './generate-entries.ts';
 export type { GenerateEntriesOptions } from './generate-entries.ts';

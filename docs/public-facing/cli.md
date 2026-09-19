@@ -62,10 +62,6 @@ and adds a `features[]` entry with `settings`, `system.entry`, `plugin` (`entry`
 
 ### Code generation
 
-#### `abuddy generate`
-
-Resolve pack dependencies and write their EARS types to `.abuddy/generated/types.ts`, for cross-pack type interop.
-
 #### `abuddy generate-entries`
 
 Read `abuddy.json` and generate all files in `src/__generated__/`. Uses input hashing to skip when the manifest and template haven't changed. Pass `--force` to regenerate unconditionally.

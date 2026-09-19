@@ -9,7 +9,6 @@ abuddy - AgentBuddy Pack CLI
 Commands:
   init [name]         Scaffold a new pack
   add <entity>        Add a feature, step, seed, etc.
-  generate            Generate EARS types from manifest + deps
   generate-entries    Generate __generated__/ files from manifest
   fetch-deps          Fetch dependency type manifests
   build [--skip-generate]  Compile the pack to dist/
@@ -36,7 +35,6 @@ Options:
 const COMMANDS: Record<string, () => Promise<(args: string[]) => Promise<void>>> = {
   'init':              async () => (await import('./commands/init')).init,
   'add':               async () => (await import('./commands/add')).add,
-  'generate':          async () => (await import('./commands/generate')).generate,
   'generate-entries':  async () => (await import('./commands/generate-entries')).generateEntries,
   'fetch-deps':        async () => (await import('./commands/fetch-deps')).fetchDeps,
   'build':      async () => (await import('./commands/build')).buildCommand,
