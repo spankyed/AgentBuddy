@@ -699,10 +699,10 @@ export const pullRequestState = setup({
     handleCommentMutated: enqueueActions(({ enqueue, context }) => {
       enqueue.assign({ _commentSnapshot: null })
       if (context.selectedPR) {
-        // Narrow refresh — just the comments. Previously this was pr.SELECT_PR,
-        // which re-fetched the full PR details, diff, threads and ran through
-        // every asset-URL resolver on every click. pr.GET_COMMENTS keeps the UI
-        // snappy and avoids re-rendering unrelated panels on each mutation.
+        // Narrow refresh — just the comments. pr.SELECT_PR would re-fetch the full
+        // PR details, diff and threads and run every asset-URL resolver on each
+        // click; pr.GET_COMMENTS keeps the UI snappy and leaves unrelated panels
+        // alone on each mutation.
         enqueue(() => sendToSystem('code', { type: 'pr.GET_COMMENTS', number: context.selectedPR!.number }))
       }
     }),

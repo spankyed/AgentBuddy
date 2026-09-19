@@ -22,8 +22,7 @@
 // deliberately excluded — it changes when a function body changes, which is exactly the false alarm
 // this is built to avoid. `.map` files are excluded too: they embed absolute paths.
 //
-// Two properties were measured on this repo before this was written, because the gate is worthless
-// without them:
+// Two measured properties of this repo, without which the gate is worthless:
 //
 //   - emit is deterministic: rebuilding a package with no source change gives the same fingerprint
 //   - a body-only edit (a local added inside `randomId`) leaves the fingerprint byte-identical

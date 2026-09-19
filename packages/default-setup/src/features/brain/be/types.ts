@@ -71,7 +71,7 @@ export const ContextPaths = {
   LAST_STEP_RESULT: '$.lastStep.result' as const,
   STEPS: '$.steps' as const,
 
-  // Helper functions (return the same string shapes as before)
+  // Helper functions, returning the same string shapes as the constants above
   stepById: (tNodeId: string): JsonPath => `$.steps[id=${tNodeId}].result`,
   stepByLabel: (label: string): JsonPath => `$.steps[label=${label}].result`,
 } as const;

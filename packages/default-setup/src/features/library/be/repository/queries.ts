@@ -34,7 +34,6 @@ export const libraryQueries = {
     const documents = query.pick(['name', 'content', 'shortCode', 'createdAt', 'updatedAt', 'tags', 'displayOrder'])
 
     const documentsWithDetails = documents.map((doc) => {
-      // Tags are now stored as string array on documents
       const tags = doc.tags || []
 
       // Find collection that contains this document
@@ -69,7 +68,6 @@ export const libraryQueries = {
 
     if (!document) return null
 
-    // Tags are now stored as string array on documents
     const tags = document.tags || []
 
     const collection = qx(EARS.Entity.Collection).pickAll().find(col => 
@@ -235,8 +233,6 @@ export const libraryQueries = {
       const contentLength = getContentLength(contentSections)
       const size = formatFileSize(contentLength)
       
-      // Get tags
-      // Tags are now stored as string array on documents
       const tags = doc.tags || []
       
       items.push({
@@ -341,7 +337,6 @@ export const libraryQueries = {
       .pick(['name', 'content', 'shortCode', 'createdAt', 'updatedAt', 'tags', 'displayOrder'])
 
     const documentsWithDetails = documents.map((doc) => {
-      // Tags are now stored as string array on documents
       const tags = doc.tags || []
 
       // Find collection that contains this document

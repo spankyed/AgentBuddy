@@ -250,8 +250,8 @@ export function readTsconfigAliases(packDir: string): Record<string, string> {
   if (!fs.existsSync(tsconfigPath)) return aliases;
   try {
     // TypeScript's own JSONC reader, not a regex: a `//` inside a string is the common case here
-    // (`"$schema": "https://…"`), and stripping to end of line there breaks the parse, which used to
-    // drop every path alias in silence.
+    // (`"$schema": "https://…"`), and stripping to end of line there breaks the parse — which the
+    // catch below swallows, dropping every path alias in silence.
     const { config, error } = ts.readConfigFile(tsconfigPath, file => fs.readFileSync(file, 'utf-8'));
     if (error) return aliases;
     const paths: Record<string, string[]> = config?.compilerOptions?.paths ?? {};

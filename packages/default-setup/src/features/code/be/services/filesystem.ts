@@ -482,11 +482,6 @@ export class FileSystemRepository {
     }
   }
 
-  // Removed project file scanning - no longer needed
-  async findTypeScriptFiles(rootPath: string): Promise<string[]> {
-    return []
-  }
-
   // Get all files for quick open, respecting .gitignore
   async getAllFiles(rootPath: string): Promise<QuickOpenResult[]> {
     const validPath = this.validatePath(rootPath)

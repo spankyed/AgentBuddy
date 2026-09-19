@@ -10,8 +10,6 @@ import {
   findDocumentCollection,
   getDisplayOrder,
   getNextDisplayOrder,
-  // createTagsForEntity, // Removed - tags are now stored as arrays
-  // removeAllTagsFromEntity, // Removed - tags are now in settings
   getCollectionPath,
   formatFileSize,
   getContentLength,
@@ -88,7 +86,6 @@ export const libraryCommands = {
       updatedAt: now,
     })
       
-    // Tags are now stored as string array on documents
     tx(documentId).updateBatch({ tags })
 
     // Find collections that contain this document
@@ -131,8 +128,6 @@ export const libraryCommands = {
 
   deleteDocument(id: EARS.EntityId): void {
     const documentId = id
-
-    // Tags are now stored as string array on documents - no need to remove entity tags
 
     const collection = qx(EARS.Entity.Collection).pickAll().find(col => 
       qx(col.id as EARS.EntityId).linksTo(EARS.RelKind.CONTAINS, EARS.Entity.Document).ids().includes(documentId as EARS.EntityId)

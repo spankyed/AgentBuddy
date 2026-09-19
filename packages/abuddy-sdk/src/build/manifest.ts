@@ -60,9 +60,9 @@ export interface PackSnapshot {
    * same name — a collision that isn't one. Every pack depends on the base pack, so that is every
    * diamond.
    *
-   * Entities, relation kinds, commands and plugins used to travel as three differently-shaped fields
-   * with three readers running the same algorithm. `_mergeProvenance` is that algorithm once, and
-   * `PROVENANCE_KINDS` is where a new kind costs a line.
+   * Every kind — entities, relation kinds, commands, plugins — goes through one algorithm,
+   * `_mergeProvenance`, and `PROVENANCE_KINDS` is where a new kind costs a line rather than a
+   * differently-shaped field with a reader of its own.
    */
   provenance?: PackProvenance;
   /** The pack's flow helpers, which dependents' generated flow helpers re-export */

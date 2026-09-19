@@ -117,8 +117,6 @@ export const commitSystem = setup({
     input: {} as { baseDirectory: string | null; gitRepository?: GitRepository | null; gitWatcher?: GitWatcherService | null }
   },
   actions: {
-    // Git watcher is now managed by parent code system
-
     handleGitStatusChanged: ({ context, self, system }) => {
       // Debounce: collapse rapid status-change notifications into one refresh.
       // This prevents double-refresh from write-action + watcher both triggering.

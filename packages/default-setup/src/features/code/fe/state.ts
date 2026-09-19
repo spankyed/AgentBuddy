@@ -445,8 +445,7 @@ const codeState = setup({
       }
 
       // During restore, don't bounce activeFilePath as tabs stream in — leave
-      // the previously-active tab focused. For user-initiated opens, focus the
-      // new tab as before.
+      // the previously-active tab focused. A user-initiated open focuses the new tab.
       let activeFilePath = isRestoring
         ? context.activeFilePath
         : (ev.extraUpdates?.activeFilePath ?? incomingTab.path)

@@ -102,8 +102,8 @@ export function componentContracts(options: ContractOptions): Map<string, string
     const propsType = constructs.length > 0 ? instanceMember(component, '$props', location) : alias('FunctionalProps');
     const emitType = constructs.length > 0 ? instanceMember(component, '$emit', location) : alias('FunctionalEmit');
     // Every Vue component instance has $props and $emit. Missing means this isn't the shape vue-tsc
-    // emitted when this was written, and the contract below would report a component with no props
-    // — a wrong answer that reads like a real one. Fail instead.
+    // emits, and the contract below would report a component with no props — a wrong answer that
+    // reads like a real one. Fail instead.
     if (constructs.length > 0 && (!propsType || !emitType)) {
       throw new Error(`${packageName}${key.slice(1)}: its declaration has no ${!propsType ? '$props' : '$emit'} to read the contract from. vue-tsc's emitted shape has changed; scripts/component-contracts.ts needs updating.`);
     }

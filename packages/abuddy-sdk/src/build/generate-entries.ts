@@ -414,9 +414,9 @@ export function generatePackFiles(
   const depSnapshots = opts.depSnapshots ?? new Map<string, PackSnapshot>();
   /**
    * A dependency's facade has to carry the types this pack's generated code imports from it, and a
-   * facade from a CLI whose shape has since changed may not. Such a facade used to be consumed anyway
-   * and failed later as `TS2305: has no exported member` inside generated code — a message naming
-   * nothing the author could act on.
+   * facade from a CLI whose shape has since changed may not. Consumed anyway, such a facade fails
+   * later as `TS2305: has no exported member` inside generated code — a message naming nothing the
+   * author could act on.
    *
    * The check is on the exports themselves, not on `typesFormat`: a format number is a proxy for the
    * thing that matters, and it fails a dependency whose facade changed in ways this pack never touches.

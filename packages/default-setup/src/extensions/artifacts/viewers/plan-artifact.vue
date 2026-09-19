@@ -62,12 +62,9 @@ const props = defineProps<{
   artifact: ArtifactItem<PlanArtifactContent>
 }>()
 
-// Read status directly from the artifact content. Previously this was
-// mirrored into a local ref so Approve/Reject clicks could feel instant,
-// but those local buttons were removed — the real approval flow now
-// round-trips through the chat approval block and the backend pushes
-// status updates via services.artifact.updateAndNotify, which hydrates
-// the prop directly. No local state needed.
+// Status comes straight from the artifact content, with no local mirror: approval
+// round-trips through the chat approval block, and the backend pushes the new status
+// with services.artifact.updateAndNotify, which hydrates this prop.
 const status = computed<PlanStatus>(() => props.artifact.content?.status ?? 'draft')
 
 const notes = computed(() => props.artifact.content?.notes ?? '')

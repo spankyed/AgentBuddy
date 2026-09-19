@@ -286,10 +286,10 @@ export function createPackRegistry(): PackRegistry {
      * The pack is listed before its extensions are registered, because registering them is
      * observable: `settingsDefaults.register` notifies its listeners, the settings system reacts by
      * sending `SETTINGS_UPDATED` to its plugin, and a send reaches the bus while it is idle, so the
-     * bus processes it synchronously — inside this call. Listed last, as it used to be, that send was
-     * checked against a registry that did not yet contain the pack sending it, and was dropped as
-     * belonging to no plugin. Reporting that drop logs, and a log event is itself a send to the logs
-     * plugin, so the same moment dropped that too.
+     * bus processes it synchronously — inside this call. Listed after them, that send is checked
+     * against a registry that does not yet contain the pack sending it, and is dropped as belonging
+     * to no plugin. Reporting that drop logs, and a log event is itself a send to the logs plugin,
+     * so the same moment drops that too.
      *
      * It reads as a reload bug because reload is where it shows: the listeners are already subscribed
      * by then. It is not — it is any registration whose extensions wake a running system.
