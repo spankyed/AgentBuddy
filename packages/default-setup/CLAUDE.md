@@ -63,7 +63,7 @@ Frontend components don't render untrusted text as markup: script injected into 
 
 Backend systems wired via `__generated__/pack-entry.ts` using `toPackSystemDefs()` from the SDK. Each system file default-exports a `SystemEntry` (the manifest names only the path, not an export name). The logs system is special: `features[].earlySystem: true` makes it the registration's `boot.earlySystem`, which the API starts before EARS hydration (for log capture during boot).
 
-System IDs re-exported from `__generated__/system-ids.ts`. System specs (identity + types) defined via `defineSystem()` in each system file. A feature's designation comes only from `abuddy.json` `features[].designation`, which must equal the feature id.
+System IDs re-exported from `__generated__/system-ids.ts`. System specs (identity + types) defined via `defineSystem()` in each system file. A feature's designation comes only from `abuddy.json` `features[].designation`. It is a role, not a name: it need not equal the feature id, and every one default-setup declares happens to.
 
 ## Services
 

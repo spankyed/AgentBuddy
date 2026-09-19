@@ -136,7 +136,7 @@ Without an FE entry it rebuilds, reinstalls and reloads on any change instead.
 
 Checks:
 - Manifest structure validation
-- Each `features[]` entry against the pack: its `settings`, `system.entry` and `plugin.entry` files exist, and its `designation`, if set, equals the feature id
+- Each `features[]` entry against the pack: its `settings`, `system.entry` and `plugin.entry` files exist, and no two features claim the same `designation`
 - Dependency resolution (a warning when one can't be resolved)
 
 Exits with code 1 on errors.

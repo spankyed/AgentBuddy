@@ -26,8 +26,14 @@ Finished when:
 - No entity gains or loses a typed shape: the generated src/__generated__/ears.ts is byte-identical.
 - No manifest in the repo spells a module reference two ways: `path#export` is the only form, and a
   bare path means the module's default export.
-- `features[].designation` is a string that need not equal the feature id, and no manifest or schema
-  spells `designated`.
+- `features[].designation` is a string that need not equal the feature id (already true at the base
+  commit — Decision 6 landed ahead of the phases), and no manifest or schema spells `designated`.
+- `packServices` exists in no manifest and no schema; a pack-level service is `extensions.services`.
+- `$manifestVersion` exists in no manifest and no schema, `PACK_LAYOUT_VERSION` is renamed
+  `PACK_FORMAT_VERSION` and still `1`, and neither it nor `verifyPack` uses `Math.floor`.
+- `FEATURE_LAYOUT` is the one definition of the feature layout; `validateFeatures`, `generate-entries`,
+  `doctor` and `abuddy add feature` all resolve through it, and a spec fails when the documented table
+  and the constant disagree.
 - `partitionPolicy` exists in no manifest and no schema; an entity is volatile by carrying
   `"volatile": true` beside the entity's shape, any pack may mark one it declares, and `loader.ts` strips
   nothing.
@@ -67,10 +73,15 @@ Never:
 
 The manifest works, and it grew one key at a time. It is now 24 top-level keys over 552 lines for the
 built-in pack, with four concerns interleaved at the same level, three different ways to name a module,
-and two maps that carry no information. This goal gives it a shape a pack author can hold in their head,
-without changing what a pack can declare: 14 top-level keys over 485 lines, worked out in full in
+and two maps that carry no information. This goal gives it a shape a pack author can hold in their
+head: 14 top-level keys over 520 lines, worked out in full in
 `docs/goals/goal-manifest-redesign.example.json`, which is default-setup's manifest rewritten to the
 shape the Decisions specify. That file is the target; read it beside them.
+
+Almost all of it is moving what a pack already declares. Two decisions do change what a pack *can*
+declare, both by removing a restriction rather than adding a feature: an external pack may mark its
+own entity volatile (Decision 5), and a feature's designation need no longer equal its id
+(Decision 6). Nothing a pack can express today stops being expressible.
 
 ## Background (2026-09-19, at 4f24d04f7)
 
@@ -78,10 +89,17 @@ shape the Decisions specify. That file is the target; read it beside them.
 `packages/abuddy-sdk/src/build/manifest-schema.ts` (299 lines), which generates
 `packages/abuddy-sdk/abuddy.schema.json` (`npm run generate:schema`, checked by `npm run schema:check`).
 
-Manifest consumers: `abuddy-sdk/src/build/generate-entries.ts` (most of it),
-`abuddy-cli/src/commands/build.ts`, `add/{manifest,step,artifact,block}.ts`, `info.ts`, `doctor.ts`,
-`init.ts`, `init-tests.ts`, `build/dsl-defs.ts`, `abuddy-host/src/packs/runtime/loader.ts`,
-`abuddy-host/src/database/schema.ts`.
+Manifest consumers: `abuddy-sdk/src/build/generate-entries.ts` (most of it), `manifest.ts`
+(`PROVENANCE_KINDS`, over the hand-written `ProvenanceManifest`), `manifest-schema.ts`'s own
+`superRefine` (14 cross-field rules), `validate.ts`, `abuddy-cli/src/commands/build.ts`,
+`add/{manifest,step,artifact,block}.ts`, `info.ts`, `doctor.ts`, `init.ts`, `init-tests.ts`,
+`build/dsl-defs.ts`, `abuddy-host/src/packs/runtime/loader.ts`, `packs/runtime/packs-system.ts` (two
+`PackInfo` builders, over an untyped `readManifest`), `abuddy-host/src/database/schema.ts` and
+`@abuddy/testing`'s `harness.ts:228`.
+
+Two of those read a manifest through a type that is **not** `PackManifest` — `ProvenanceManifest`'s own
+optional fields and `packs-system.ts`'s `Record<string, any>` — so they do not fail to compile when a
+key is removed. Decision 3 covers what that costs.
 
 Other manifests in the repo: `tests/fixtures/external-pack/abuddy.json` (89 lines),
 `tests/fixtures/bundled-ui-pack/abuddy.json` (24 lines), and the one `abuddy init` scaffolds
@@ -101,9 +119,11 @@ default-setup does not.
 **One concept is declared in two places.** `entities` lists 12 names; `entityShapes` types 10 of them,
 keyed by the same names. `SearchIndex` and `IndexedDoc` have no shape.
 
-**`designation` is always the feature id.** Five features declare one, and all five match; the schema and
-the root `CLAUDE.md` both say it must. The only information the field carries is whether the feature has
-a designation at all.
+**`designation` is always the feature id, because a validator says it must be.** Five features declare
+one and all five match — `validate.ts:55-57` rejects anything else, and the root `CLAUDE.md` records
+the rule. Nothing below that check requires it: `designationsOf` (`pack-registration.ts:42-47`) maps
+`[designation, systemId(id)]` as two values, and codegen carries them apart
+(`generate-entries.ts:630`, `:642`). So the redundancy is the validator's, not the field's.
 
 **Three encodings for "a module and its export".**
 
@@ -113,9 +133,10 @@ a designation at all.
 | `system.entry`, `plugin.entry`, `references` | `"src/features/threads/be/system.ts"` |
 | `entityShapes` | `{ "source": "src/features/threads/be/types.ts", "type": "ThreadEntity" }` |
 
-**Paths repeat their own location.** 84 path strings begin `src/features/<id>/`, and 36 of those name a
-fully conventional file (`be/system.ts`, `fe/plugin.ts`, `settings.ts`). A feature's id is already the
-directory name.
+**Paths repeat their own location.** 85 path strings begin `src/features/<id>/`. Forty of them are a
+feature's declared entry (`system`, `plugin`, `settings`, `references`, `typesEntry`) and **all forty
+are the conventional path** — no feature in the pack puts a file anywhere else. A feature's id is
+already the directory name.
 
 **One section is configuration that is never configured.** `partitionPolicy.excludedEntityTypes` is
 declared empty by default-setup, the only built-in pack and so the only pack whose value is read
@@ -152,6 +173,12 @@ including the first draft of this goal — treats volatile data as lost when it 
 
 `boot` holds lifecycle hooks *and* two seed keys, so seeding is spread across three top-level keys and
 a nested one.
+
+The table is what default-setup uses. The schema allows **28** root keys: those 24 plus `dependencies`
+and `permissions` (fixtures only), `packServices` (a pack-level service map, used by codegen at four
+sites, `info.ts` and `abuddy add service`, which no manifest in the repo declares) and
+`$manifestVersion` (`z.literal(1).optional()`, "Enables future format evolution" —
+**read by no code and set by no manifest**; its only appearance anywhere is its own declaration).
 
 ### Prior art the design follows
 
@@ -260,8 +287,8 @@ pack: `abuddy init` scaffolds `features: []` with one entity, seeds rows of it t
 and only then tells the author to run `abuddy add feature` (`init.ts:18-20`, `init.ts:386`). So the
 scaffolded shape is exactly an entity with no feature to own it, and the pack-level map is the one a
 new pack is born with. Entities move onto features as the pack grows a structure to hold them;
-default-setup is the far end of that path, with all twelve placed, which is why its `data.entities` is
-empty. A pack that never grows features — one contributing only a data model and a seed — simply stays
+default-setup is the far end of that path, with all twelve placed, which is why it has no
+`data.entities` at all. A pack that never grows features — one contributing only a data model and a seed — simply stays
 where it started.
 
 `abuddy add feature` does not relocate an entity: that would edit a declaration the author did not
@@ -338,10 +365,13 @@ The section goes; the capability moves onto the declaration it describes:
 ```jsonc
 { "id": "code",
   "entities": {
-    "Terminal":   "be/types.ts#TerminalEntity",
+    "Terminal":   "be/repository/index.ts#TerminalEntity",
     "Scrollback": { "shape": "be/types.ts#ScrollbackEntity", "volatile": true }
   } }
 ```
+
+(`Scrollback` is illustrative — default-setup declares no volatile entity today, which is why
+`partitionPolicy.excludedEntityTypes` is empty and the section disappears from its manifest entirely.)
 
 An entity's value is a shape reference, `null` for no typed shape, or an object carrying `shape` and
 `volatile`, wherever the entity is declared (Decision 3: its feature, or `data.entities`).
@@ -377,7 +407,9 @@ it for an oversight. Making such a link primary instead would leave a dangling r
 that does not hydrate volatile: nothing in `@abuddy/ears` validates relation endpoints, and nothing
 would ever remove it, because the entity it points at never returns to trigger a removal.
 
-**6. `features[].designation` stays a string, and stops being required to equal the feature id.** A
+**6. `features[].designation` stays a string, and stops being required to equal the feature id.**
+**Already done** — landed outside the phases, since it is three lines and was blocking work now; the
+rest of this decision is the record of why. A
 designation is a **role** — `settings`, `logs`, `brain`, the thing `getDesignated(role)` looks up — and
 a role is not a feature's name. Today `validate.ts:55-57` rejects any designation that differs from
 the id, so all five of default-setup's are the id repeated, which is what made the key look redundant.
@@ -392,9 +424,19 @@ plugin definitions (`:642`, `:729`). The machinery has always supported a role t
 feature that plays it; only the validator did not. Delete the check.
 
 Role uniqueness is unaffected and still enforced where it matters: `registerPack` throws when another
-pack already holds a role (`pack-registration.ts:252-254`). Add the one rule that a free-form string
-makes reachable — **two features of one pack claiming the same role fails `validate`** — because
-`designationsOf` builds an object from entries, so today a duplicate would silently take the last one.
+pack already holds a role (`pack-registration.ts:252-254`). The equality check was also the only thing
+stopping **two features of one pack** claiming one role — ids are unique, so equal-to-id designations
+were unique too — and `designationsOf` builds an object from entries, so a duplicate would silently
+take the last one. So the removal shipped with its replacement: `validateFeatures` now reports
+`designation "<role>" is already claimed by feature "<id>"` (the frontend store already warned and
+ignored, `fe/pack-store.ts:72-73`).
+
+**One thing to know before touching this again.** `docs/archive/goals/goal-cleanup-and-docs.md:90` is
+why the check existed: at that time "the designation registry maps role → role … so a designation only
+routes correctly when it equals the feature id". That is no longer true — `createDesignationStore`
+(`packs/extensions.ts:26-39`) holds a real `Map<role, id>` and both registries populate it with the
+system or plugin id — so the check was guarding an invariant the code had already outgrown. Read the
+archived note as history, not as a reason to put it back.
 
 **7. A feature lists what it provides in one line, and paths inside it are relative to
 `src/features/<id>/`.**
@@ -469,6 +511,17 @@ What stays true even so: a convention is knowledge an author has to acquire once
 above is that they acquire it from an error message, a scaffold or a hover in their editor rather than
 by reading the source of the build.
 
+**One name in the list does less than it looks for an external pack.** `references` generates the
+pack's own `src/__generated__/references.ts`, but `PackFERegistration`
+(`fe/pack-fe-registration.ts:10-20`) has no `references` member, so nothing an external pack declares
+reaches the app's reference system — `docs/public-facing/extensions.md:575` already says it is read
+only for built-in packs. Under `provides` that becomes a listed capability whose file exists, so
+`validate` passes and nothing happens. Don't gate it in the schema the way `earlySystem` is gated: a
+pack's own frontend can import its generated file, so the declaration is not inert, only narrower than
+it reads. Make it a `doctor` warning naming the limit, and fix `extensions.md`'s sentence to say that
+the types reach the declaring pack's own frontend and no further. If it turns out nothing can use them
+at all, gating it is then a one-line follow-up with the evidence already gathered.
+
 Paths outside a feature (seed data, extension registers, migrations) stay relative to the pack root.
 
 **8. A capability key appears only when there is more to say than "it exists".** `provides` says the
@@ -488,10 +541,19 @@ file is not at the conventional path.
 
 This is a list with annotations, not two homes for one fact: `validate` requires every capability key
 to be named in `provides`, so a `system` block on a feature that does not provide one is an error
-rather than a second way of declaring it. Measured, the annotations are rare — of default-setup's 24
-`system` and `plugin` declarations, **three carry anything beyond the entry** (`actions.system` and
-`settings.system` for `sendsTo`, `prompts.system` for `outgoingEventsType`), and **none** overrides
-the path. The `entry` override exists for an external pack with a different layout, not because
+rather than a second way of declaring it.
+
+**One reader breaks silently here, the same way two do in Decision 3.** `init-tests.ts:46` picks the
+feature to scaffold a test for with `(manifest.features ?? []).find((f: any) => f.plugin)` — an
+`any`-typed predicate, so after this change it compiles, finds nothing, and `abuddy init-tests`
+scaffolds against no plugin. It becomes `f.provides?.includes('plugin')`. Together with
+`ProvenanceManifest` and `packs-system.ts`, that is **every loosely-typed manifest read in the repo**:
+`abuddy-cli/src/utils.ts:34` returns a real `PackManifest`, and `@abuddy/testing`'s
+`harness.ts:228` casts to one, so both fail to compile like everything else. Three, and the compiler
+names none of them. Measured, the annotations are rare — of default-setup's 24
+`system` and `plugin` declarations, **three carry anything beyond the entry** — `actions.system`
+(`sendsTo` and `outgoingEventsType`), `prompts.system` (`outgoingEventsType`) and `settings.system`
+(`sendsTo`) — and **none** overrides the path. The `entry` override exists for an external pack with a different layout, not because
 anything here needs it.
 
 **9. Every extension point moves under `extensions`**: `steps`, `artifacts`, `blocks`, `commands`,
@@ -650,11 +712,17 @@ resting on an undocumented invariant is one bad refactor from being wrong.
 
 **15. This is the last cheap rename, and the discipline starts at the first release with users.**
 
-This goal makes **21 breaking changes to the manifest in one commit series** — every key that moves,
-is renamed, changes type or becomes required. Two of them are pure naming and nothing else:
-`boot.hooks` → `lifecycle` and `typesEntry` → `types`. In an additive-only world neither would ever
-happen, because a cosmetic rename is not worth asking every pack author to rebuild. They are worth doing here only because the break is already
-being paid for.
+Of the **28 root keys the schema allows**, this goal renames, moves or deletes **16**
+(`artifacts`, `blocks`, `boot`, `commands`, `defaultPlugin`, `dsl`, `entities`, `entityShapes`, `fe`,
+`packServices`, `partitionPolicy`, `relKinds`, `seedFormats`, `seedHooks`, `steps`,
+`$manifestVersion`); `features` keeps its name and is rewritten inside; and **11 are untouched**
+(`$schema`, `id`, `name`, `version`, `description`, `license`, `builtIn`, `hostVersion`,
+`dependencies`, `permissions`, `migrations`). Every pack in the world has to be rebuilt.
+
+Two of those are pure naming and nothing else: `boot.hooks` → `lifecycle` and `typesEntry` → `types`.
+In an additive-only world neither would ever happen, because a cosmetic rename is not worth asking
+every pack author to rebuild. They are worth doing here only because the break is already being paid
+for.
 
 That is the rule this goal is spending, and it should be spent deliberately rather than discovered
 later: **anything cosmetic that is not fixed now will not be worth fixing afterwards.** A final read
@@ -757,6 +825,9 @@ fails schema validation with a message naming `extensions`.
   `boot.seedPolicy` → `seed.policy`; what remains of `boot` becomes the flat `lifecycle: "<path>"`, and
   `migrations` stays a root key (Decision 10).
 - Update `generate-entries.ts` (seeders, seed runtime), `build.ts` (compilers), the host's seed runtime.
+- Update `tests/scripts/test-packaged-authoring.sh`, which edits `m.seedFormats` and `m.boot.seed`
+  in **three** separate node snippets (around lines 137-142 and 194-196). Phase 1 names the script for
+  its data-model keys; these are the seed ones, and they are the edits that actually fail here.
 
 **Done when:** no manifest has a `boot` key, `lifecycle` is a string in every manifest that has one,
 and `migrations` is still a root key; no pack re-seeds on the next boot — `computePackSeedHash`
@@ -768,9 +839,8 @@ byte-identical (`dist/*.seed.json`, `dist/seeds.json`); `tests/unit/seed-parity`
 
 ### Phase 4 — features: what they contribute, and where
 
-- Keep `features[].designation` as a string and delete the `designation === id` check at
-  `validate.ts:55-57`; add the rule that two features of one pack may not claim the same role
-  (Decision 6).
+- Nothing to do for designations: Decision 6 already landed (`validate.ts`, its spec, the CLI spec,
+  and the three docs that stated the old rule). Keep `features[].designation` as the string it is.
 - Add `FEATURE_LAYOUT` to `@abuddy/sdk/build` as the one definition of the feature layout, derive
   `provides`' schema enum from its keys, and route `validateFeatures`, `generate-entries`' import
   paths, `doctor` and `abuddy add feature`'s scaffold through it — `add/feature.ts:203-205` keeps its
@@ -802,8 +872,7 @@ typecheck` and the full unit chain pass. Mutations: a feature naming a path that
 (`../other/be/system.ts`) fails validation; a feature listing `"system"` in `provides` whose
 `be/system.ts` does not exist fails the build naming the expected path, rather than silently having no
 system; a `system` annotation on a feature whose `provides` omits `system` fails `validate`; a feature
-without `about` fails `validate`; a feature whose `designation` differs from its id builds and
-registers that role, and two features of one pack claiming one role fail `validate`; two features of one pack both claiming `plugin.default` fail
+without `about` fails `validate`; two features of one pack both claiming `plugin.default` fail
 `validate`.
 
 ### Phase 5 — one encoding for a module reference

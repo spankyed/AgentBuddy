@@ -43,10 +43,24 @@ describe('validateFeatures', () => {
     expect(validateFeatures(root, { features: [notes] }).errors).toEqual([`Feature "notes": ${field} file "${missing}" not found`]);
   });
 
-  it('reports a designation that is not the feature id', () => {
+  it('accepts a designation that differs from the feature id: a designation is a role, not a name', () => {
     const root = pack(notesFiles);
-    expect(validateFeatures(root, { features: [{ ...notes, designation: 'memos' }] }).errors).toEqual([
-      'Feature "notes": designation "memos" must equal the feature id',
-    ]);
+    expect(validateFeatures(root, { features: [{ ...notes, designation: 'memos' }] }).errors).toEqual([]);
+  });
+
+  it('reports one role claimed by two features of the same pack', () => {
+    const root = pack(notesFiles);
+    const other = { ...notes, id: 'scraps' };
+    const errors = validateFeatures(root, {
+      features: [{ ...notes, designation: 'memos' }, { ...other, designation: 'memos' }],
+    }).errors;
+    expect(errors).toEqual(['Feature "scraps": designation "memos" is already claimed by feature "notes"']);
+  });
+
+  it('accepts two features with different designations', () => {
+    const root = pack(notesFiles);
+    expect(validateFeatures(root, {
+      features: [{ ...notes, designation: 'memos' }, { ...notes, id: 'scraps', designation: 'scraps' }],
+    }).errors).toEqual([]);
   });
 });

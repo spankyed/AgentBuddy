@@ -35,12 +35,18 @@ export function validateManifest(manifestPath: string): ManifestValidation {
 }
 
 /**
- * Checks a manifest's `features[]` against the pack on disk: each feature's `settings`, `system.entry` and
- * `plugin.entry` file exists, and a `designation` equals its feature id (the designation registry routes a
- * role to the feature of the same id).
+ * Checks a manifest's `features[]` against the pack on disk: each feature's `settings`, `system.entry`
+ * and `plugin.entry` file exists, and no two features claim the same designation.
+ *
+ * A designation is a role, not a name, so it need not match the feature id: the registries map the role
+ * to the id of the system (`pack-registration.ts` `designationsOf`) or plugin (`fe/pack-store.ts`) that
+ * plays it. Within one pack nothing else catches a role claimed twice — `designationsOf` builds an
+ * object, so the last one would silently win — which is what the check below is for. Across packs
+ * `registerPack` throws.
  */
 export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 'features'>): ManifestValidation {
   const errors: string[] = [];
+  const designatedBy = new Map<string, string>();
   for (const feature of manifest.features ?? []) {
     const files: [string, string | undefined][] = [
       ['settings', feature.settings],
@@ -52,8 +58,13 @@ export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 
         errors.push(`Feature "${feature.id}": ${field} file "${file}" not found`);
       }
     }
-    if (feature.designation !== undefined && feature.designation !== feature.id) {
-      errors.push(`Feature "${feature.id}": designation "${feature.designation}" must equal the feature id`);
+    if (feature.designation !== undefined) {
+      const held = designatedBy.get(feature.designation);
+      if (held !== undefined) {
+        errors.push(`Feature "${feature.id}": designation "${feature.designation}" is already claimed by feature "${held}"`);
+      } else {
+        designatedBy.set(feature.designation, feature.id);
+      }
     }
   }
   return { errors, warnings: [] };

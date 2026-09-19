@@ -68,7 +68,7 @@ describe('abuddy add feature', () => {
 });
 
 describe('abuddy validate', () => {
-  it("reports a feature's missing settings file and a designation that is not its id", async () => {
+  it("reports a feature's missing settings file, and accepts a designation that is not its id", async () => {
     await addFeature(['notes'], pack);
     const manifest = readManifest();
     manifest.features[0].designation = 'memos';
@@ -79,7 +79,7 @@ describe('abuddy validate', () => {
 
     expect(exitCode).toBe(1);
     expect(output).toContain('Feature "notes": settings file "src/features/notes/settings.ts" not found');
-    expect(output).toContain('Feature "notes": designation "memos" must equal the feature id');
+    expect(output).not.toContain('designation');
   }, 60_000);
 
   describe('seed entries (the checks code generation makes)', () => {

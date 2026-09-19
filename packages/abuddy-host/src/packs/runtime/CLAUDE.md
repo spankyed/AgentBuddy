@@ -130,7 +130,7 @@ export const registration: PackRegistration = {
 };
 ```
 
-Designations come from the manifest's `features[].designation`: generate-entries sets them on the pack's system and plugin definitions, and `registerPack()` maps each role to the id of the system that plays it (`<packId>.<featureId>` for an external pack; the feature id when no registered system does, as for the early logs system). A designation must equal its feature id (`abuddy validate` checks it).
+Designations come from the manifest's `features[].designation`: generate-entries sets them on the pack's system and plugin definitions, and `registerPack()` maps each role to the id of the system that plays it (`<packId>.<featureId>` for an external pack; the feature id when no registered system does, as for the early logs system). A designation is a role, not a name, and need not equal the feature id: both registries map the role to the id of the system or plugin that plays it. `abuddy validate` rejects one role claimed by two features of a pack; across packs `registerPack` throws.
 
 ## Collision detection
 
