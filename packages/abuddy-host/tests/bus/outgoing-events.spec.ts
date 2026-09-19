@@ -78,6 +78,16 @@ describe('an event a system sends to a plugin', () => {
     expect(error?.message).toContain('declares no such event');
   });
 
+  /**
+   * Still a SYSTEM_ERROR, so takeSystemErrors fails the pack test that left it — and `diagnostic`, so
+   * the app doesn't raise a toast over it. The reader is whoever wrote the send, the message is already
+   * in the Logs plugin where they are looking, and the person using the app can do nothing about it.
+   */
+  it('is reported as a diagnostic, which is recorded and logged but not shown to the user', async () => {
+    await send({ type: 'MEMO_SHREDDED', pluginId: 'memos' });
+    expect(takeSystemErrors().map((e) => e.severity)).toEqual(['diagnostic']);
+  });
+
   // The case the notes bug's neighbours live in: a plugin id nothing registered declares
   it('is dropped and reported when no pack declares that plugin at all', async () => {
     await send({ type: 'MEMO_ADDED', pluginId: 'ghost' });

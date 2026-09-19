@@ -61,8 +61,7 @@ export interface ReportErrorInput {
     error: unknown;
     // (undocumented)
     operation?: string;
-    // (undocumented)
-    severity?: 'error' | 'fatal';
+    severity?: SystemErrorSeverity;
     source?: string;
     step?: StepErrorContext;
     // (undocumented)
@@ -89,10 +88,13 @@ export type SystemErrorEvent = {
     source?: string;
     operation?: string;
     entityId?: string;
-    severity: 'error' | 'fatal';
+    severity: SystemErrorSeverity;
     stack?: string;
     timestamp: number;
 };
+
+// @public
+export type SystemErrorSeverity = 'diagnostic' | 'error' | 'fatal';
 
 // (No @packageDocumentation comment for this package)
 

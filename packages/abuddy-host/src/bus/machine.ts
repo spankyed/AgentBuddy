@@ -156,7 +156,10 @@ export function createBusMachine(options: BusOptions) {
           const pair = `${pluginId}/${type}`;
           if (reportedDrops.has(pair)) return;
           reportedDrops.add(pair);
-          reportError({ source: 'bus', operation: 'sendToPlugin', error: new Error(message) });
+          // `diagnostic`: logged, recorded, and failing any pack test that leaves one — but no toast.
+          // Whoever is using the app can do nothing about a send to a plugin nobody declares, and the
+          // message already reaches the Logs plugin, where the person who can is looking.
+          reportError({ source: 'bus', operation: 'sendToPlugin', severity: 'diagnostic', error: new Error(message) });
         };
         if (accepted === undefined) {
           reportDrop(`Dropped "${type}" sent to "${pluginId}", which no registered pack declares as a plugin that receives events. Check the id, or give the plugin's own pack a system that declares what it sends there.`);

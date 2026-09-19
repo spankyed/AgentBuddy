@@ -14,6 +14,9 @@ const logger = createLogger('step-runtime');
 /** Where in a flow run an error happened: the step's phase and the TNode, node, flow and event it belongs to */
 export type StepErrorContext = Omit<StepRuntimeError, 'errorId' | 'message' | 'stack' | 'timestamp' | 'source'>;
 
+/** How loudly a system error is shown: an error page, a toast, or neither */
+export type SystemErrorSeverity = 'diagnostic' | 'error' | 'fatal';
+
 export interface ReportErrorInput {
   error: unknown;
   /** What reported it: a system or step id (`notes`, `brain-llm`) */
@@ -21,7 +24,16 @@ export interface ReportErrorInput {
   title?: string;
   operation?: string;
   entityId?: string;
-  severity?: 'error' | 'fatal';
+  /**
+   * How loudly the app shows it. `fatal` replaces the window with an error page, `error` raises a
+   * toast, and `diagnostic` does neither: it is logged and recorded like the others, and reaches the
+   * Logs plugin and `takeSystemErrors()` the same way, but it does not interrupt.
+   *
+   * `diagnostic` is for a report whose reader is whoever is building the app or a pack — a send to a
+   * plugin nobody declares, say. The person using the app cannot act on it, and a toast reading
+   * "Something went wrong" over a correct action of theirs costs more than it tells anyone.
+   */
+  severity?: SystemErrorSeverity;
   /** Shown to the user instead of the error's own message */
   userMessage?: string;
   /** The step run the error came from: the error is recorded on its TNode and shown in the flow instead of as a toast */
@@ -41,7 +53,7 @@ export type SystemErrorEvent = {
   source?: string;
   operation?: string;
   entityId?: string;
-  severity: 'error' | 'fatal';
+  severity: SystemErrorSeverity;
   stack?: string;
   timestamp: number;
 };
