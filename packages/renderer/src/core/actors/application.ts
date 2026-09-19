@@ -61,7 +61,7 @@ export interface ApplicationContext {
   busSubscribed: boolean;
   /** Whether the pack frontend loader is running: one run at a time, so a pack is never loaded twice */
   packLoadRunning: boolean;
-  /** A load was asked for while one was running — the registry it read may predate the request — so it runs again */
+  /** A load was asked for while one was running — the list it read may predate the request — so it runs again */
   packLoadQueued: boolean;
   /**
    * Every pack the loader has finished with, whatever its frontend added — plugins, styles alone, or
@@ -71,7 +71,7 @@ export interface ApplicationContext {
   /** Packs unloaded while the loader was running: a result that arrives for one of them is dropped */
   packsUnloadedWhileLoading: string[];
   /** Whether the loaded packs were ever read: until it is, a failed read is worth telling the user about */
-  packRegistryRead: boolean;
+  loadedPacksRead: boolean;
 }
 
 export const application = 'application' as const;
@@ -114,8 +114,8 @@ export type ApplicationEvent =
   /** Load the frontends of the external packs this window hasn't loaded: on connecting, and when a pack activates */
   | { type: 'LOAD_PACK_FRONTENDS' }
   /**
-   * The loader finished: `loadedPacksError` is why the registry couldn't be read, when it couldn't, and
-   * `failedPacks` the packs that threw while loading, which the registry read reached
+   * The loader finished: `loadedPacksError` is why the loaded packs couldn't be read, when they couldn't,
+   * and `failedPacks` the packs that threw while loading, which that read reached
    */
   | { type: 'PACK_FRONTENDS_SETTLED'; loadedPacksError?: string; failedPacks?: { packId: string; error: string }[] }
   /**
@@ -279,17 +279,17 @@ export const createApplicationState = () => setup({
 
     /**
      * Reads the loaded packs and loads the frontend of every external pack in it this window hasn't
-     * loaded yet, reporting each one to the parent as it finishes. A failed registry query leaves the
+     * loaded yet, reporting each one to the parent as it finishes. A failed query leaves the
      * packs unloaded: the parent runs the loader again whenever the bus subscription is established, so
      * the next connection picks them up. One pack that throws doesn't stop the others; it's reported as
-     * its own failure, since the registry was read and only that pack is missing.
+     * its own failure, since the loaded packs were read and only that pack is missing.
      */
     packFrontendLoader: fromCallback<{ type: string }, { loadedPackIds: string[] }>(({ sendBack, input }) => {
       let stopped = false;
       const failedPacks: { packId: string; error: string }[] = [];
 
-      trpc.packs.loaded.query().then(async (registry) => {
-        for (const pack of registry) {
+      trpc.packs.loaded.query().then(async (loadedPacks) => {
+        for (const pack of loadedPacks) {
           if (stopped) return;
           if (pack.builtIn || input.loadedPackIds.includes(pack.id)) continue;
           try {
@@ -530,17 +530,17 @@ export const createApplicationState = () => setup({
       if (loadedPacksError) {
         // The next connection runs the loader again, so a read that fails while the API restarts repairs
         // itself; the user hears about it only while no pack has ever loaded
-        const firstRead = !context.packRegistryRead;
+        const firstRead = !context.loadedPacksRead;
         enqueue(() => {
           console.warn('[pack-loader] Failed to read the loaded packs:', loadedPacksError);
           if (firstRead) globalToast.error("Add-on packs couldn't be loaded", loadedPacksError);
         });
-      } else if (!context.packRegistryRead) {
-        enqueue.assign({ packRegistryRead: true });
+      } else if (!context.loadedPacksRead) {
+        enqueue.assign({ loadedPacksRead: true });
       }
 
       if (failedPacks?.length) {
-        // The registry was read: these packs alone are missing, and the loader won't come back to them
+        // The loaded packs were read: these packs alone are missing, and the loader won't come back to them
         const names = failedPacks.map(p => p.packId).join(', ');
         const details = failedPacks.map(p => `${p.packId}: ${p.error}`).join('\n');
         enqueue(() => {
@@ -948,7 +948,7 @@ export const createApplicationState = () => setup({
       packLoadQueued: false,
       packFrontendsLoaded: [],
       packsUnloadedWhileLoading: [],
-      packRegistryRead: false,
+      loadedPacksRead: false,
     };
   },
   initial: 'running',
@@ -1058,7 +1058,7 @@ export const createApplicationState = () => setup({
       actions: 'updateHotkeys'
     },
     // In every state: onboarding and the error page keep pack systems' startup data flowing too.
-    // The loader runs on every establishment of the subscription, so packs a failed registry query left
+    // The loader runs on every establishment of the subscription, so packs a failed query left
     // unloaded are picked up by the next one.
     BUS_SUBSCRIBED: {
       actions: [assign({ busSubscribed: true }), 'announceLoadedPacks', 'loadPackFrontends'],

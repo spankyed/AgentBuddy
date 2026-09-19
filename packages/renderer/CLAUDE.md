@@ -82,7 +82,7 @@ The application actor owns loading; `src/packs/pack-loader.ts` does the work. Th
    - `null` records the pack as loaded and asks nothing, because the connection's `CLIENT_CONNECTED` already reached its systems.
    - Otherwise it skips plugin ids already present, inserts the new plugins before `packs`, spawns their actors, records them in `packPluginIds`, and, if `busSubscribed`, calls `packClientReady` so the pack's systems send their startup data.
    - A pack that was unloaded while its load ran (`packsUnloadedWhileLoading`) is instead unloaded again and dropped.
-6. **`onPackFrontendsSettled`:** a registry error is shown as a toast only until one read has succeeded; the next connection retries. Failed packs are shown as a toast and not retried.
+6. **`onPackFrontendsSettled`:** a failed read is shown as a toast only until one read has succeeded; the next connection retries. Failed packs are shown as a toast and not retried.
 7. **Teardown:** on `PACK_DEACTIVATED` the Packs plugin (`src/packs/state.ts`) calls `unloadPackFrontend` (`fePacks.unregisterPackFE` and removing the stylesheets) and sends `PACK_PLUGINS_UNLOADED`. `removePackPlugins` stops those plugin actors, navigates away if one was active, and clears the pack from `packFrontendsLoaded` so it loads again if it comes back.
 
 ## Packs plugin (`src/packs/`)
@@ -93,5 +93,5 @@ The one plugin the renderer defines (`plugin.ts`: id `packs`, `isPinned`). Its m
 
 - `npm run test:unit -w @app/renderer -- --run` runs vitest in jsdom (`vitest.config.ts` merges `vite.config.ts`); without `--run` it starts watch mode. Root `npm run test:unit` runs it too, as CI does.
   - `src/packs/__tests__/pack-loader.spec.ts` covers entry validation, a failed or missing entry, and stylesheet de-duplication.
-  - `src/core/actors/__tests__/application-pack-registry.spec.ts` and `application-pack-plugins.spec.ts` drive the actor with `@/core/trpc`, `@/packs/pack-loader` and `@/core/toast` mocked: retry after a failed registry read, queued loads, unload during load, and when `packClientReady` is called.
+  - `src/core/actors/__tests__/application-pack-loading.spec.ts` and `application-pack-plugins.spec.ts` drive the actor with `@/core/trpc`, `@/packs/pack-loader` and `@/core/toast` mocked: retry after a failed read of the loaded packs, queued loads, unload during load, and when `packClientReady` is called.
 - `npm run typecheck:fe` (root) runs `vue-tsc --build`. `npm run build -w @app/renderer` type-checks and runs `vite build` in parallel. `lint` runs oxlint and then eslint, both with `--fix`.

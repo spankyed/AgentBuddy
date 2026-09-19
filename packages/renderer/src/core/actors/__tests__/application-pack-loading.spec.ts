@@ -42,7 +42,7 @@ function plugin(id: string): Plugin {
   return { id, label: id, icon: 'Zap', state: setup({}).createMachine({}), canvas: {} } as unknown as Plugin;
 }
 
-/** Lets the loader's registry query and frontend loads settle */
+/** Lets the loader's query for the loaded packs and its frontend loads settle */
 const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 
 let app: Actor<ReturnType<typeof createApplicationState>>;
@@ -71,8 +71,8 @@ afterEach(() => {
 const connect = () => subscription.handlers!.onStarted();
 const dropConnection = () => subscription.handlers!.onConnectionStateChange({ state: 'connecting' });
 
-describe('loading pack frontends from the registry', () => {
-  it('loads the packs on a later connection when the first registry query fails', async () => {
+describe('loading pack frontends from the loaded packs', () => {
+  it('loads the packs on a later connection when the first query fails', async () => {
     loadedPacksQuery.mockRejectedValueOnce(new Error('connection closed'));
 
     connect();
@@ -114,7 +114,7 @@ describe('loading pack frontends from the registry', () => {
     expect(app.getSnapshot().context.packPluginIds).toEqual({ ext: ['pack-own'] });
   });
 
-  it('loads a pack activated while a load is running, whose registry read predates it', async () => {
+  it('loads a pack activated while a load is running, whose read predates it', async () => {
     let releaseFirstQuery: (packs: unknown[]) => void = () => {};
     loadedPacksQuery.mockReturnValueOnce(new Promise<unknown[]>(resolve => { releaseFirstQuery = resolve; }));
 
@@ -179,13 +179,13 @@ describe('loading pack frontends from the registry', () => {
 
     expect(app.getSnapshot().context.packPluginIds).toEqual({ bad: [], good: ['good-plugin'] });
     expect(app.system.get('good-plugin')).toBeDefined();
-    // The failure names the pack, not the registry, which was read fine
+    // The failure names the pack, not the read, which succeeded
     expect(toastError).toHaveBeenCalledWith("Couldn't load bad", 'styles blew up');
     expect(toastError).toHaveBeenCalledTimes(1);
     expect(warn).not.toHaveBeenCalledWith('[pack-loader] Failed to read the loaded packs:', expect.anything());
   });
 
-  it('tells the user about a failed registry read only while no read has succeeded', async () => {
+  it('tells the user about a failed read only while no read has succeeded', async () => {
     loadedPacksQuery.mockRejectedValueOnce(new Error('connection closed'));
     connect();
     await settle();

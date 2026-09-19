@@ -171,4 +171,4 @@ app.mount('#app');
 window.electronAPI?.rendererReady?.();
 
 // External pack FE extensions load from the application actor, each time this window's bus
-// subscription is established: a failed registry query is retried on the next connection.
+// subscription is established: a failed query is retried on the next connection.
