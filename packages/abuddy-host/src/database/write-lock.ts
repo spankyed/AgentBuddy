@@ -8,7 +8,7 @@ import * as path from 'node:path';
 /** What the holder wrote about itself */
 interface LockFile {
   pid: number;
-  host: string;
+  machine: string;
   /** What the holder is doing, for the message the app shows */
   what: string;
   since: string;
@@ -29,8 +29,8 @@ function processExists(pid: number): boolean {
 function readLock(file: string): LockFile | null {
   try {
     const held = JSON.parse(fs.readFileSync(file, 'utf-8')) as Partial<LockFile>;
-    if (typeof held.pid !== 'number' || typeof held.host !== 'string') return null;
-    return { pid: held.pid, host: held.host, what: String(held.what ?? 'a tool'), since: String(held.since ?? '') };
+    if (typeof held.pid !== 'number' || typeof held.machine !== "string") return null;
+    return { pid: held.pid, machine: held.machine, what: String(held.what ?? 'a tool'), since: String(held.since ?? '') };
   } catch {
     return null;
   }
@@ -38,7 +38,7 @@ function readLock(file: string): LockFile | null {
 
 /**
  * What a tool is changing in this data dir's database right now, or `null` when nothing is: a lock whose process has
- * exited doesn't count. A lock from another host can't be checked, so it counts as held, and so does one this
+ * exited doesn't count. A lock from another machine can't be checked, so it counts as held, and so does one this
  * version can't read.
  */
 export function findDatabaseWriter(userDataDir: string): string | null {
@@ -46,7 +46,7 @@ export function findDatabaseWriter(userDataDir: string): string | null {
   if (!fs.existsSync(file)) return null;
   const held = readLock(file);
   if (!held) return "a tool whose lock can't be read";
-  if (held.host !== os.hostname()) return `${held.what} on ${held.host}`;
+  if (held.machine !== os.hostname()) return `${held.what} on ${held.machine}`;
   return processExists(held.pid) ? `${held.what} (pid ${held.pid})` : null;
 }
 
@@ -70,7 +70,7 @@ export function holdDatabaseWriteLock(userDataDir: string, what: string): Databa
   fs.mkdirSync(userDataDir, { recursive: true });
   // Written aside and renamed, so no app ever reads a half-written lock
   const temp = `${file}.${process.pid}.tmp`;
-  const mine: LockFile = { pid: process.pid, host: os.hostname(), what, since: new Date().toISOString() };
+  const mine: LockFile = { pid: process.pid, machine: os.hostname(), what, since: new Date().toISOString() };
   fs.writeFileSync(temp, JSON.stringify(mine));
   fs.renameSync(temp, file);
 

@@ -61,7 +61,7 @@ describe('the database write lock', () => {
     const dir = tempDir('write-lock-');
     const lock = hold(dir);
     // Another tool took the lock over (this one's file was removed by hand, say)
-    fs.writeFileSync(lockFile(dir), JSON.stringify({ pid: process.ppid, host: os.hostname(), what: 'another tool' }));
+    fs.writeFileSync(lockFile(dir), JSON.stringify({ pid: process.ppid, machine: os.hostname(), what: 'another tool' }));
     lock.release();
     expect(findDatabaseWriter(dir)).toBe(`another tool (pid ${process.ppid})`);
   });
@@ -77,7 +77,7 @@ describe('the database write lock', () => {
 
   it('takes over a lock whose process has exited, and one that cannot be read', () => {
     const dir = tempDir('write-lock-');
-    fs.writeFileSync(lockFile(dir), JSON.stringify({ pid: exitedPid(), host: os.hostname(), what: 'a tool that died' }));
+    fs.writeFileSync(lockFile(dir), JSON.stringify({ pid: exitedPid(), machine: os.hostname(), what: 'a tool that died' }));
     expect(findDatabaseWriter(dir)).toBeNull();
     hold(dir);
     expect(findDatabaseWriter(dir)).toBe(`abuddy db reset (pid ${process.pid})`);
@@ -90,9 +90,9 @@ describe('the database write lock', () => {
     );
   });
 
-  it("counts a lock from another host, whose process it can't check", () => {
+  it("counts a lock from another machine, whose process it can't check", () => {
     const dir = tempDir('write-lock-');
-    fs.writeFileSync(lockFile(dir), JSON.stringify({ pid: process.pid, host: 'another-host.local', what: 'abuddy db exec' }));
-    expect(findDatabaseWriter(dir)).toBe('abuddy db exec on another-host.local');
+    fs.writeFileSync(lockFile(dir), JSON.stringify({ pid: process.pid, machine: 'another-machine.local', what: 'abuddy db exec' }));
+    expect(findDatabaseWriter(dir)).toBe('abuddy db exec on another-machine.local');
   });
 });
