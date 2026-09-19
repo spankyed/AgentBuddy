@@ -107,18 +107,13 @@ export function removedNames(text: string, allowed: RegExp[] = []): string[] {
 const isDoc = (file: string) => file.endsWith('.md') && !file.startsWith('docs/archive/') && path.basename(file) !== 'CHANGELOG.md';
 const isTemplate = (file: string) => file.startsWith('packages/abuddy-cli/src/commands/');
 const isPackSource = (file: string) => file.startsWith('packages/default-setup/src/') || /^tests\/fixtures\/[^/]+\/src\//.test(file);
-/**
- * The app's own shipping source. A retired name survives in a comment or an error string as easily as in a
- * doc — `PACK_LAYOUT.info` and `packFrontendFiles(bundleDir)` both outlived the rename that was supposed to
- * take them, with every suite green, because this guard read only docs and pack sources.
- */
+/** The app's own shipping source: a retired name survives in a comment or an error string as easily as in a doc */
 const isAppSource = (file: string) =>
   /^packages\/(abuddy-(host|sdk|ears|ui|cli|testing)|api|renderer|main|preload)\/src\//.test(file)
   && /\.(ts|vue)$/.test(file);
 /**
- * Specs and fixtures, which describe the same concepts and drift the same way — seven retired names were
- * still in spec files after the source was clean, and a manual sweep found them, not this guard. This file
- * is the one exception: its whole job is to name them.
+ * Specs and fixtures, which describe the same concepts as the source and drift the same way. This file is
+ * the one exception: naming the retired names is its job.
  */
 const SELF = 'packages/abuddy-host/tests/removed-names-in-docs.spec.ts';
 const isTestSource = (file: string) =>

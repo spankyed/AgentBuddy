@@ -109,9 +109,8 @@ export function prepareHostDataDirs(
   } catch (err) {
     log.warn(`[packs] Could not record the host version in ${options.userDataDir}: ${err}`);
   }
-  // No readable record means we can't say a pack was uninstalled, so every interrupted install is restored.
-  // `readInstalledPacks` would answer `[]` here, which reads as "nothing is installed" and deletes the
-  // interrupted install's only copy — the restore this function exists to perform.
+  // `readInstalledPacksRecord`, not `readInstalledPacks`: the plain reader flattens a missing record to `[]`,
+  // which reads as "every pack was uninstalled" and deletes the copies below instead of restoring them.
   const record = readInstalledPacksRecord();
   const installedIds: ReadonlySet<string> | undefined = record ? new Set(record.map((entry) => entry.id)) : undefined;
   if (!record) log.warn('[packs] No readable record of installed packs, so every interrupted install is restored');

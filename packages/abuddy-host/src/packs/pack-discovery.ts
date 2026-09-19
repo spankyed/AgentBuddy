@@ -86,9 +86,8 @@ export function discoverPacks(packsDir: string): { manifest: PackManifest; dir: 
 export function reconcileInstalledPacks(
   discovered: { manifest: PackManifest; dir: string }[],
 ): { manifest: PackManifest; dir: string }[] {
-  // No readable record: every pack in packs/ is added back as enabled, including any the user had disabled.
-  // That follows from having nothing to read, but it isn't a discovery, and saying so per pack would report
-  // a fresh install of each. One line says what actually happened.
+  // With no readable record every pack in packs/ is added back enabled, any the user had disabled included.
+  // None of them is newly discovered, so they are reported once, together, rather than as fresh installs.
   const record = readInstalledPacksRecord();
   const rebuilding = record === null;
   let installed = record ?? [];

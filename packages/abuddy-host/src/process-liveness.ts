@@ -1,9 +1,9 @@
-// Whether the process that wrote a record on disk is still running. Three modules asked that question with
-// three copies of `process.kill(pid, 0)` and only one of them bounded the answer, which is the half that
-// matters: pids are recycled, so after a reboot a record's pid is very likely an unrelated process and the
-// record reads as held forever. The module where that was cheapest (a staging dir goes uncollected) had the
-// bound; the two where it is expensive — the app refuses to boot, tools refuse to touch the data dir — did
-// not.
+// Whether the process that wrote a record on disk is still running: the database write lock, the app's
+// instance lock and port file, staging dirs and the package build lock all turn on that question.
+//
+// A pid alone cannot answer it. Pids are recycled, so a record left behind by a crash names whatever took
+// its number, and reads as held for as long as the file exists — the app refuses to boot, tools refuse the
+// data dir, builds block. `writerIsRunning` bounds the pid by when the record was written.
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 
@@ -32,17 +32,19 @@ export function writtenAt(file: string): number | null {
 }
 
 /**
- * Whether the process that wrote a record at `writtenAtMs`, naming `pid`, is still running.
+ * Whether the process that wrote a record at `writtenAtMs`, naming `pid`, is still running: its pid exists
+ * and the record dates from this boot. A record from an earlier boot names a pid since reassigned.
  *
- * Only for a record this machine wrote: `os.uptime()` is this machine's boot, and an mtime from another host
- * is on another clock. Callers that can tell whose record it is — the write lock's `machine`, the instance
- * lock's hostname — check that first and never reach here for a foreign one.
+ * Pass only a record this machine wrote. `os.uptime()` is this machine's boot and a foreign mtime is on
+ * another clock, so a caller that can tell whose record it is — the write lock's `machine`, the instance
+ * lock's hostname — must check that first.
  *
- * The bound is the boot epoch rather than the holder's start time, which would be exact but is read
- * per-platform (`/proc/<pid>/stat`, `ps -o lstart`). The tradeoff it accepts: `Date.now() - os.uptime()`
- * moves with the wall clock, so a forward clock step larger than the uptime at which a record was written
- * makes it look pre-boot. That needs an NTP step of hours shortly after boot while a holder is live, against
- * a recycled pid blocking the app on every reboot, which is certain rather than rare.
+ * Bounding by boot rather than the holder's start time is a deliberate tradeoff, not an oversight: start
+ * time is exact but read per-platform (`/proc/<pid>/stat`, `ps -o lstart`), while `Date.now() - os.uptime()`
+ * moves with the wall clock, so a forward clock step larger than a record's age at writing makes it look
+ * pre-boot and a live holder look gone. That needs an NTP step of hours shortly after boot while a holder
+ * is live; the recycled pid it replaces blocks the app on every reboot. Swap it for start time if the
+ * clock-step case ever shows up.
  */
 export function writerIsRunning(pid: number, writtenAtMs: number): boolean {
   return processIsRunning(pid) && writtenAtMs >= bootTime();
