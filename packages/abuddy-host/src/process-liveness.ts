@@ -22,7 +22,13 @@ export function bootTime(): number {
   return Date.now() - os.uptime() * 1000;
 }
 
-/** When `file` was last written, or `null` when it isn't there. `lstat`, so a symlink's own time is used. */
+/**
+ * When `file` was last written, or `null` when it isn't there.
+ *
+ * `lstat`, not `stat`: Chromium's `SingletonLock` is a symlink whose target (`<host>-<pid>`) is not a path
+ * and never resolves, so `stat` throws on a lock that is genuinely held and the caller reads "no app is
+ * running" — the answer that lets a tool write to a database the app has open.
+ */
 export function writtenAt(file: string): number | null {
   try {
     return fs.lstatSync(file).mtimeMs;
