@@ -42,9 +42,16 @@ function getInstalledPacksPath(): string {
   return resolveAppContext().installedPacksFile;
 }
 
-/** The installed external packs' entries (in `installedPacksPath`, the app's `installed-packs.json` by default) */
-export function readInstalledPacks(installedPacksPath = getInstalledPacksPath()): InstalledPack[] {
-  if (!fs.existsSync(installedPacksPath)) return [];
+/**
+ * The installed external packs' entries, or `null` when there is no readable record: no file (a fresh data
+ * dir, or one last written by a version that kept this list somewhere else) or one that won't parse.
+ *
+ * Callers that only read the list want `readInstalledPacks`, which flattens both cases to `[]`. A caller
+ * deciding what to *delete* must use this one, because "the record lists no packs" and "there is no record"
+ * are opposite answers: the first says a pack is gone, the second says we don't know.
+ */
+export function readInstalledPacksRecord(installedPacksPath = getInstalledPacksPath()): InstalledPack[] | null {
+  if (!fs.existsSync(installedPacksPath)) return null;
 
   try {
     const data: InstalledPacksFile = JSON.parse(fs.readFileSync(installedPacksPath, 'utf-8'));
@@ -54,8 +61,13 @@ export function readInstalledPacks(installedPacksPath = getInstalledPacksPath())
     }));
   } catch (err) {
     logger.warn('Failed to read the installed packs, starting fresh:', err as Error);
-    return [];
+    return null;
   }
+}
+
+/** The installed external packs' entries (in `installedPacksPath`, the app's `installed-packs.json` by default) */
+export function readInstalledPacks(installedPacksPath = getInstalledPacksPath()): InstalledPack[] {
+  return readInstalledPacksRecord(installedPacksPath) ?? [];
 }
 
 export function writeInstalledPacks(entries: InstalledPack[]): void {

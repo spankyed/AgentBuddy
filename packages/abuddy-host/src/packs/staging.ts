@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { recordHostVersion } from './host-info.ts';
-import { readInstalledPacks } from './installed-packs.ts';
+import { readInstalledPacksRecord } from './installed-packs.ts';
 
 export type StagingKind = 'installing' | 'previous' | 'publishing';
 
@@ -124,12 +124,12 @@ export function prepareHostDataDirs(
   } catch (err) {
     log.warn(`[packs] Could not record the host version in ${options.userDataDir}: ${err}`);
   }
-  let installedIds: ReadonlySet<string> | undefined;
-  try {
-    installedIds = new Set(readInstalledPacks().map((entry) => entry.id));
-  } catch (err) {
-    log.warn(`[packs] Could not read the installed packs, so every interrupted install is restored: ${err}`);
-  }
+  // No readable record means we can't say a pack was uninstalled, so every interrupted install is restored.
+  // `readInstalledPacks` would answer `[]` here, which reads as "nothing is installed" and deletes the
+  // interrupted install's only copy — the restore this function exists to perform.
+  const record = readInstalledPacksRecord();
+  const installedIds: ReadonlySet<string> | undefined = record ? new Set(record.map((entry) => entry.id)) : undefined;
+  if (!record) log.warn('[packs] No readable record of installed packs, so every interrupted install is restored');
   // The built-in packs' dir has no registry: its interrupted publishes are always recovered
   for (const [dir, ids] of [[options.packsDir, installedIds], [options.hostPacksDir, undefined]] as const) {
     if (!dir) continue;

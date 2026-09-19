@@ -106,6 +106,28 @@ describe('recoverStagingDirs', () => {
     expect(remaining()).toEqual(['demo-pack']);
   });
 
+  // "The record lists no packs" and "there is no record" are opposite answers, and the second one reaches
+  // here as `undefined`. Reading a missing installed-packs.json as an empty list deleted the interrupted
+  // install's only copy — the restore this function exists to perform — on the first boot after the file
+  // was renamed. prepareHostDataDirs is the caller that has to tell them apart.
+  it('restores every interrupted install when there is no record of what is installed', () => {
+    writePack(`.demo-pack.previous-${exitedPid()}-1a2b3c4d`);
+    expect(fs.existsSync(path.join(root, 'installed-packs.json'))).toBe(false);
+
+    prepareHostDataDirs({ userDataDir: root, packsDir, version: '0.3.14' });
+
+    expect(remaining()).toEqual(['demo-pack']);
+  });
+
+  it('restores every interrupted install when the record cannot be parsed', () => {
+    writePack(`.demo-pack.previous-${exitedPid()}-1a2b3c4d`);
+    fs.writeFileSync(path.join(root, 'installed-packs.json'), 'not json');
+
+    prepareHostDataDirs({ userDataDir: root, packsDir, version: '0.3.14' });
+
+    expect(remaining()).toEqual(['demo-pack']);
+  });
+
   it('ignores a packs dir that does not exist yet', () => {
     expect(recoverStagingDirs(path.join(packsDir, 'missing'))).toEqual({ restored: [], removed: [], failed: [] });
   });
