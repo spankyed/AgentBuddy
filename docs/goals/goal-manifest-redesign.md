@@ -434,6 +434,41 @@ name in `provides` resolves to a file, and a conventional file present but unlis
 warning. That is the same bargain `package.json`'s `files` and `exports` make, and it is the reason
 `exports` is worth writing out.
 
+**The convention is a declared table, not folklore — and today it is folklore.** Because every path is
+spelled out in the manifest right now, the layout exists nowhere as a definition: three hardcoded
+strings in `abuddy add feature`'s scaffold (`add/feature.ts:203-205`, which does not even scaffold
+`references` or `types`) and prose examples in `cli.md:57`, `features.md` and `manifest.md`. A
+`provides` list resolved against an undocumented layout would be exactly the magic this goal is
+supposed to remove. So the table ships with it:
+
+```ts
+// @abuddy/sdk/build — the one definition of what a feature may provide and where it lives
+export const FEATURE_LAYOUT = {
+  system:     'be/system.ts',
+  plugin:     'fe/plugin.ts',
+  settings:   'settings.ts',
+  references: 'fe/references',
+  types:      'be/types',
+} as const;
+```
+
+Four things follow from its being one object, and each is what keeps the convention findable:
+
+- **`provides`' vocabulary is `Object.keys(FEATURE_LAYOUT)`**, so the Zod enum and the resolver cannot
+  drift, and a name that is not a capability cannot be listed.
+- **Every consumer derives from it** — `validateFeatures`, the import paths `generate-entries` writes,
+  `doctor`, and `abuddy add feature`'s scaffold, which today keeps its own copy of three of the five.
+- **Errors name the resolved path**: `Feature "notes": provides "system", but
+  src/features/notes/be/system.ts is missing`, and the inverse in `doctor` for a conventional file that
+  is present and unlisted. A convention whose failure message names the path it looked for is
+  discoverable; one that fails vaguely is the magic.
+- **The docs are checked against it, not written beside it.** `features.md` and `manifest.md` carry the
+  table, and a spec fails when the prose and `FEATURE_LAYOUT` disagree.
+
+What stays true even so: a convention is knowledge an author has to acquire once. The point of the four
+above is that they acquire it from an error message, a scaffold or a hover in their editor rather than
+by reading the source of the build.
+
 Paths outside a feature (seed data, extension registers, migrations) stay relative to the pack root.
 
 **8. A capability key appears only when there is more to say than "it exists".** `provides` says the
@@ -736,9 +771,13 @@ byte-identical (`dist/*.seed.json`, `dist/seeds.json`); `tests/unit/seed-parity`
 - Keep `features[].designation` as a string and delete the `designation === id` check at
   `validate.ts:55-57`; add the rule that two features of one pack may not claim the same role
   (Decision 6).
-- Replace the per-capability keys with one `provides` list (`system`, `plugin`, `settings`,
-  `references`, `types`), each name resolving to the conventional path, and make every path a feature
-  does spell out relative to `src/features/<id>/` (Decision 7).
+- Add `FEATURE_LAYOUT` to `@abuddy/sdk/build` as the one definition of the feature layout, derive
+  `provides`' schema enum from its keys, and route `validateFeatures`, `generate-entries`' import
+  paths, `doctor` and `abuddy add feature`'s scaffold through it — `add/feature.ts:203-205` keeps its
+  own copy of three of the five today (Decision 7).
+- Replace the per-capability keys with one `provides` list, each name resolving through
+  `FEATURE_LAYOUT`, and make every path a feature does spell out relative to `src/features/<id>/`
+  (Decision 7).
 - Keep `system`/`plugin` as optional sibling annotations carrying `sendsTo`, `outgoingEventsType`,
   `events` and an `entry` override, and make `validate` reject one whose name is absent from
   `provides` (Decision 8).
@@ -784,6 +823,10 @@ fail validation with the message naming the expected form.
   entity value's description says what `null` means — the type exists and has no registered shape, so
   its rows read untyped — since that is the one value in the manifest a reader is most likely to take
   for "not set yet".
+- Document the feature layout from `FEATURE_LAYOUT` in `docs/public-facing/features.md` and
+  `manifest.md`, and add a spec that fails when the documented table and the constant disagree. The
+  layout is a contract as soon as `provides` resolves against it, and `cli.md:57-58`'s prose list is
+  where a reader looks for it today.
 - Document what a published built-in pack's directory holds and why it is a partial layout
   (Decision 14): the header of `pack-layout.ts` (which today describes the external pack's layout as
   "the one layout ... everywhere"), `publishHostPackOutput`'s doc comment (what it omits, not only what
