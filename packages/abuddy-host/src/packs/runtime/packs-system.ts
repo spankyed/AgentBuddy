@@ -140,7 +140,8 @@ function toBuiltInPackInfoList(registry: PackRegistry): PackInfo[] {
 }
 
 function emitPacksList(registry: PackRegistry, system: any) {
-  const external = toExternalPackInfoList(registry, readInstalledPacks());
+  const record = readInstalledPacks();
+  const external = toExternalPackInfoList(registry, record.found ? record.packs : []);
   const builtIn = toBuiltInPackInfoList(registry);
   system.get(bus).send(emit(packs, { type: 'PACKS_LIST' as const, packs: [...builtIn, ...external] }));
 }
@@ -259,8 +260,8 @@ export function createPacksSystem(registry: PackRegistry) {
       updatePack: ({ system, event }) => {
         const ev = packsSpec.typeOf('UPDATE_PACK', event);
         const packId = ev.packId;
-        const entries = readInstalledPacks();
-        const entry = entries.find(e => e.id === packId);
+        const record = readInstalledPacks();
+        const entry = record.found ? record.packs.find(e => e.id === packId) : undefined;
         if (!entry?.installedFrom) {
           system.get(bus).send(emit(packs, {
             type: 'PACK_UPDATE_FAILED' as const,
@@ -356,7 +357,8 @@ export function createPacksSystem(registry: PackRegistry) {
           return;
         }
 
-        const current = readInstalledPacks();
+        const record = readInstalledPacks();
+        const current = record.found ? record.packs : [];
         const entry = current.find(e => e.id === packId);
         if (!entry) {
           console.warn(`[packs] Pack not found: ${packId}`);

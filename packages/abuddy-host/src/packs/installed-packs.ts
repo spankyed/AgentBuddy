@@ -43,31 +43,29 @@ function getInstalledPacksPath(): string {
 }
 
 /**
- * The installed external packs' entries, or `null` when there is no readable record: no file (a fresh data
- * dir, or one last written by a version that kept this list somewhere else) or one that won't parse.
+ * What `installed-packs.json` says. `found: false` is no readable record at all — no file (a fresh data dir,
+ * or one last written by a version that kept this list somewhere else) or one that won't parse.
  *
- * Callers that only read the list want `readInstalledPacks`, which flattens both cases to `[]`. A caller
- * deciding what to *delete* must use this one, because "the record lists no packs" and "there is no record"
- * are opposite answers: the first says a pack is gone, the second says we don't know.
+ * The two are separate cases and not an empty list, because "the record lists no packs" and "there is no
+ * record" are opposite answers: the first says a pack is gone, the second says we don't know. A caller
+ * deciding what to *delete* has to tell them apart; one that only shows or scans the list writes the
+ * fallback out at the call site, where it can be seen.
  */
-export function readInstalledPacksRecord(installedPacksPath = getInstalledPacksPath()): InstalledPack[] | null {
-  if (!fs.existsSync(installedPacksPath)) return null;
+export type InstalledPacksRecord =
+  | { found: true; packs: InstalledPack[] }
+  | { found: false };
+
+/** Reads the record in `installedPacksPath` (the app's `installed-packs.json` by default). */
+export function readInstalledPacks(installedPacksPath = getInstalledPacksPath()): InstalledPacksRecord {
+  if (!fs.existsSync(installedPacksPath)) return { found: false };
 
   try {
     const data: InstalledPacksFile = JSON.parse(fs.readFileSync(installedPacksPath, 'utf-8'));
-    return (data.packs ?? []).map(e => ({
-      ...e,
-      enabled: e.enabled ?? true,
-    }));
+    return { found: true, packs: (data.packs ?? []).map(e => ({ ...e, enabled: e.enabled ?? true })) };
   } catch (err) {
     logger.warn('Failed to read the installed packs, starting fresh:', err as Error);
-    return null;
+    return { found: false };
   }
-}
-
-/** The installed external packs' entries (in `installedPacksPath`, the app's `installed-packs.json` by default) */
-export function readInstalledPacks(installedPacksPath = getInstalledPacksPath()): InstalledPack[] {
-  return readInstalledPacksRecord(installedPacksPath) ?? [];
 }
 
 export function writeInstalledPacks(entries: InstalledPack[]): void {
@@ -103,7 +101,9 @@ export function removeInstalledPack(entries: InstalledPack[], id: string): Insta
 }
 
 export function updateInstalledPacks(mutate: (entries: InstalledPack[]) => InstalledPack[]): InstalledPack[] {
-  const entries = readInstalledPacks();
+  const record = readInstalledPacks();
+  // A write over an unreadable record starts from nothing: the entry being written is the one fact we have
+  const entries = record.found ? record.packs : [];
   const updated = mutate(entries);
   writeInstalledPacks(updated);
   return updated;

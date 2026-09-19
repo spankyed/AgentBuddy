@@ -4,6 +4,14 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { discoverBuiltInPacks, reconcileInstalledPacks } from '../../src/packs/pack-discovery.ts';
 import { readInstalledPacks, writeInstalledPacks } from '../../src/packs/installed-packs.ts';
+
+/** The recorded packs; these specs always write a record first, so a missing one is a failure */
+function recordedPacks() {
+  const record = readInstalledPacks();
+  if (!record.found) throw new Error('no installed-packs record');
+  return record.packs;
+}
+
 import type { PackManifest } from '@abuddy/sdk/build';
 
 let packagesDir: string;
@@ -74,7 +82,7 @@ describe('reconcileInstalledPacks with no record', () => {
       Object.assign(console, real);
     }
 
-    expect(readInstalledPacks().map(e => [e.id, e.enabled])).toEqual([['memo-pack', true], ['scribble-pack', true]]);
+    expect(recordedPacks().map(e => [e.id, e.enabled])).toEqual([['memo-pack', true], ['scribble-pack', true]]);
     const rebuilt = lines.filter(w => w.includes('No record of installed packs'));
     expect(rebuilt).toHaveLength(1);
     expect(rebuilt[0]).toContain('memo-pack, scribble-pack');
@@ -89,6 +97,6 @@ describe('reconcileInstalledPacks with no record', () => {
 
     expect(reconcileInstalledPacks([found('memo-pack'), found('scribble-pack')]).map(d => d.manifest.id))
       .toEqual(['scribble-pack']);
-    expect(readInstalledPacks().find(e => e.id === 'memo-pack')?.enabled).toBe(false);
+    expect(recordedPacks().find(e => e.id === 'memo-pack')?.enabled).toBe(false);
   });
 });

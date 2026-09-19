@@ -251,8 +251,9 @@ describe('registry source and update tracking', () => {
       installedFrom: 'owner/repo',
     }));
 
-    const entries = readInstalledPacks();
-    expect(entries).toHaveLength(1);
+    const record = readInstalledPacks();
+    expect(record.found && record.packs).toHaveLength(1);
+    const entries = record.found ? record.packs : [];
     expect(entries[0].installedFrom).toBe('owner/repo');
     expect(entries[0].availableVersion).toBeUndefined();
   });
@@ -273,8 +274,8 @@ describe('registry source and update tracking', () => {
       entries.map(e => e.id === 'versioned-pack' ? { ...e, availableVersion: '2.0.0' } : e),
     );
 
-    const entries = readInstalledPacks();
-    expect(entries.find(e => e.id === 'versioned-pack')!.availableVersion).toBe('2.0.0');
+    const record = readInstalledPacks();
+    expect(record.found && record.packs.find(e => e.id === 'versioned-pack')!.availableVersion).toBe('2.0.0');
   });
 
   it('getAvailableUpdates returns packs with newer versions', async () => {

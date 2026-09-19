@@ -5,6 +5,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { checkForUpdates, findLatestRelease } from '../../src/packs/pack-updater.ts';
 import { readInstalledPacks, writeInstalledPacks } from '../../src/packs/installed-packs.ts';
 
+/** The recorded packs; these specs always write a record first, so a missing one is a failure */
+function recordedPacks() {
+  const record = readInstalledPacks();
+  if (!record.found) throw new Error('no installed-packs record');
+  return record.packs;
+}
+
+
 
 function mockReleases(releases: Array<{ tag_name: string; draft?: boolean; prerelease?: boolean }>) {
   const fetchMock = vi.fn(async () => new Response(JSON.stringify(releases), { status: 200 }));
@@ -147,8 +155,8 @@ describe('checkForUpdates', () => {
       : new Response(JSON.stringify({ hostVersion: '>=0.4.0' }), { status: 200 })));
 
     expect(await checkForUpdates({ hostVersion: '0.4.0' })).toEqual([{ packId: 'demo-pack', currentVersion: '1.0.0', availableVersion: '1.2.0', installedFrom: 'acme/pack' }]);
-    expect(readInstalledPacks()[0]).toMatchObject({ availableVersion: '1.2.0', availableTag: 'v1.2.0' });
-    expect(readInstalledPacks()[0].updateCheckError).toBeUndefined();
+    expect(recordedPacks()[0]).toMatchObject({ availableVersion: '1.2.0', availableTag: 'v1.2.0' });
+    expect(recordedPacks()[0].updateCheckError).toBeUndefined();
   });
 
   it("says so when every newer release needs a newer AgentBuddy", async () => {
@@ -158,8 +166,8 @@ describe('checkForUpdates', () => {
       : new Response(JSON.stringify({ hostVersion: '>=9.0.0' }), { status: 200 })));
 
     expect(await checkForUpdates({ hostVersion: '0.4.0' })).toEqual([]);
-    expect(readInstalledPacks()[0]).toMatchObject({ updateCheckError: 'No release of acme/pack supports this AgentBuddy (0.4.0)' });
-    expect(readInstalledPacks()[0].availableVersion).toBeUndefined();
+    expect(recordedPacks()[0]).toMatchObject({ updateCheckError: 'No release of acme/pack supports this AgentBuddy (0.4.0)' });
+    expect(recordedPacks()[0].availableVersion).toBeUndefined();
   });
 
   it('records why a check failed and checks again next time', async () => {
@@ -167,7 +175,7 @@ describe('checkForUpdates', () => {
     vi.stubGlobal('fetch', vi.fn(async () => new Response('limited', { status: 429, headers: { 'x-ratelimit-remaining': '0' } })));
 
     expect(await checkForUpdates({ hostVersion: '0.4.0' })).toEqual([]);
-    const entry = readInstalledPacks()[0];
+    const entry = recordedPacks()[0];
     expect(entry.updateCheckError).toMatch(/rate limit is used up/);
   });
 
@@ -178,6 +186,6 @@ describe('checkForUpdates', () => {
       : new Response('Not Found', { status: 404 })));
 
     expect(await checkForUpdates({ hostVersion: '0.4.0' })).toHaveLength(1);
-    expect(readInstalledPacks()[0].updateCheckError).toMatch(/^Couldn't confirm v1\.2\.0 supports this AgentBuddy: .*abuddy\.json was not found/);
+    expect(recordedPacks()[0].updateCheckError).toMatch(/^Couldn't confirm v1\.2\.0 supports this AgentBuddy: .*abuddy\.json was not found/);
   });
 });

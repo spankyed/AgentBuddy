@@ -8,6 +8,7 @@ import { readInstalledPacks } from '../installed-packs.ts';
 export function activationProblem(packId: string, activated: boolean): string | undefined {
   if (!activated) return 'failed to load (see the app logs for the loader error)';
   // Seeding records failures (e.g. invalid flows) on the installed-packs entry
-  const seedError = readInstalledPacks().find(e => e.id === packId)?.lastError;
+  const record = readInstalledPacks();
+  const seedError = record.found ? record.packs.find(e => e.id === packId)?.lastError : undefined;
   return seedError ? `its data failed to seed:\n${seedError}` : undefined;
 }

@@ -2,7 +2,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { recordHostVersion } from './host-info.ts';
-import { readInstalledPacksRecord } from './installed-packs.ts';
+import { readInstalledPacks } from './installed-packs.ts';
 import { _writerIsRunning } from '@abuddy/sdk/env';
 
 export type StagingKind = 'installing' | 'previous' | 'publishing';
@@ -109,11 +109,10 @@ export function prepareHostDataDirs(
   } catch (err) {
     log.warn(`[packs] Could not record the host version in ${options.userDataDir}: ${err}`);
   }
-  // `readInstalledPacksRecord`, not `readInstalledPacks`: the plain reader flattens a missing record to `[]`,
-  // which reads as "every pack was uninstalled" and deletes the copies below instead of restoring them.
-  const record = readInstalledPacksRecord();
-  const installedIds: ReadonlySet<string> | undefined = record ? new Set(record.map((entry) => entry.id)) : undefined;
-  if (!record) log.warn('[packs] No readable record of installed packs, so every interrupted install is restored');
+  const record = readInstalledPacks();
+  // "No record" is not "no packs": without it, every interrupted install below is restored rather than deleted
+  const installedIds: ReadonlySet<string> | undefined = record.found ? new Set(record.packs.map(entry => entry.id)) : undefined;
+  if (!record.found) log.warn('[packs] No readable record of installed packs, so every interrupted install is restored');
   // The built-in packs' dir has no registry: its interrupted publishes are always recovered
   for (const [dir, ids] of [[options.packsDir, installedIds], [options.hostPacksDir, undefined]] as const) {
     if (!dir) continue;

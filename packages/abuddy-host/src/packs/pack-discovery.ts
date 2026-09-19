@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { createLogger } from '@abuddy/sdk/logger';
-import { readInstalledPacksRecord, writeInstalledPacks, addInstalledPack } from './installed-packs.ts';
+import { readInstalledPacks, writeInstalledPacks, addInstalledPack } from './installed-packs.ts';
 import type { PackManifest } from '@abuddy/sdk/build';
 
 const logger = createLogger('pack-discovery');
@@ -88,9 +88,9 @@ export function reconcileInstalledPacks(
 ): { manifest: PackManifest; dir: string }[] {
   // With no readable record every pack in packs/ is added back enabled, any the user had disabled included.
   // None of them is newly discovered, so they are reported once, together, rather than as fresh installs.
-  const record = readInstalledPacksRecord();
-  const rebuilding = record === null;
-  let installed = record ?? [];
+  const record = readInstalledPacks();
+  const rebuilding = !record.found;
+  let installed = record.found ? record.packs : [];
   let changed = false;
 
   const discoveredById = new Map(discovered.map(d => [d.manifest.id, d]));

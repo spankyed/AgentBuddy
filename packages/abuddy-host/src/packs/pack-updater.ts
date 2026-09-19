@@ -100,7 +100,8 @@ function updateChannelIncludesPrereleases(): boolean {
  * saying why there's nothing to offer). Nothing is cached: the Packs view runs this when asked.
  */
 export async function checkForUpdates(options: { hostVersion?: string } = {}): Promise<UpdateCheckResult[]> {
-  const entries = readInstalledPacks();
+  const record = readInstalledPacks();
+  const entries = record.found ? record.packs : [];
   const updatable = entries.filter(e => e.installedFrom && e.enabled);
 
   if (updatable.length === 0) return [];
@@ -157,7 +158,8 @@ export async function checkForUpdates(options: { hostVersion?: string } = {}): P
 }
 
 export function getAvailableUpdates(): UpdateCheckResult[] {
-  const entries = readInstalledPacks();
+  const record = readInstalledPacks();
+  const entries = record.found ? record.packs : [];
   return entries
     .filter(e => e.availableVersion && e.installedFrom && isNewer(e.availableVersion, e.version))
     .map(e => ({

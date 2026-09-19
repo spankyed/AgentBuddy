@@ -6,6 +6,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { prepareHostDataDirs, recoverStagingDirs, stagingDirName } from '../../src/packs/staging.ts';
 import { discoverPacks, reconcileInstalledPacks } from '../../src/packs/pack-discovery.ts';
 import { readInstalledPacks, writeInstalledPacks } from '../../src/packs/installed-packs.ts';
+
+/** The recorded packs; these specs always write a record first, so a missing one is a failure */
+function recordedPacks() {
+  const record = readInstalledPacks();
+  if (!record.found) throw new Error('no installed-packs record');
+  return record.packs;
+}
+
 import { readHostVersion } from '../../src/packs/host-info.ts';
 
 
@@ -69,7 +77,7 @@ describe('recoverStagingDirs', () => {
     expect(remaining()).toEqual(['demo-pack']);
     const enabled = reconcileInstalledPacks(discoverPacks(packsDir));
     expect(enabled.map((p) => p.manifest.id)).toEqual(['demo-pack']);
-    expect(readInstalledPacks()).toMatchObject([{ id: 'demo-pack', enabled: true }]);
+    expect(recordedPacks()).toMatchObject([{ id: 'demo-pack', enabled: true }]);
   });
 
   it('leaves a directory whose name carries no process id', () => {

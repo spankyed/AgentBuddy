@@ -16,7 +16,7 @@ export {
   readInstalledPacks, updateInstalledPacks,
   addInstalledPack, removeInstalledPack,
 } from './installed-packs.ts';
-export type { InstalledPack } from './installed-packs.ts';
+export type { InstalledPack, InstalledPacksRecord } from './installed-packs.ts';
 
 // Installer
 export {
