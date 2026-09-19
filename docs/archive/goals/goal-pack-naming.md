@@ -391,6 +391,34 @@ the same two senses in `pack-discovery.ts`, `loaded-packs.ts`, `seed.ts`, `activ
 `schema.ts`, `pack-updater.ts`, the `packs` barrel, five docs and three spec files — about sixty sites in all,
 none of which any phase grep could have reported.
 
+### Where Decision 1 didn't reach
+
+Decision 1 ("no compatibility handling") was argued about `installed-packs.json`: a list the app rebuilds
+from `packs/` at the next boot, so losing it costs nothing. Three renames in this goal changed on-disk
+formats, and two of them are not that kind of file. A later review found both; both are fixed, with a
+regression test each.
+
+- **`db-write.lock`'s `host` → `machine` blocked startup.** `readLock` required `machine`, so a lock written
+  by any earlier version read as unreadable — and `findDatabaseWriter` returns "a tool whose lock can't be
+  read" *before* it checks whether the pid is alive. The API's boot calls `assertNoDatabaseWriter`, so a
+  stale lock left by a killed `abuddy db` refused the app permanently, with nothing running. The fix makes
+  the pid the authority and `machine` optional: a lock with no readable pid is still held (that is the
+  conservative case the rule was written for, a *newer* format), but one whose pid is dead is stale whatever
+  it says about machines. Not a compatibility read — the field `host` is never looked at.
+- **`pack-registry.json` → `installed-packs.json` deleted an interrupted install's only copy.**
+  `prepareHostDataDirs` passes `recoverStagingDirs` the ids the record lists. With the file renamed away,
+  `readInstalledPacks()` answered `[]`, and an empty Set is truthy, so every `.previous` directory took the
+  "uninstalled while the copy sat there" branch and was deleted instead of restored. The intended fallback —
+  "can't read the record, so restore everything" — could never run, because `readInstalledPacks` never
+  throws: it flattens both a missing file and an unparseable one to `[]`. `readInstalledPacksRecord` now
+  returns `null` for "no readable record", and the one caller that decides what to *delete* uses it.
+- **Disabled packs come back enabled**, which does follow from having no record, and Decision 1 covers it.
+  What it didn't cover is that each was logged as `New external pack discovered`, describing a fresh install
+  of a pack the user had deliberately turned off. Rebuilding now says so once, and names the packs.
+
+The lesson for the next rename of a file the app reads: ask whether losing it costs a rebuild or costs data,
+and check what the code does with "empty" versus "absent" before assuming they are the same answer.
+
 ### Open items
 - **`source` still names three things** by design: the `@abuddy/source` condition, a log or error's origin,
   and the declaring pack inside `mergeRegistries`. The condition is a resolution contract in every host
