@@ -6,6 +6,7 @@ import { bus } from '@abuddy/sdk/ids';
 import { emit } from '@abuddy/sdk/events';
 import { getAppVersion } from '@abuddy/sdk/env';
 import { forgetPack, packRecord, recordInstalled, recordUpdateInstalled, setPackEnabled } from '../installed-packs.ts';
+import { reportError } from '@abuddy/sdk/logger';
 import { installPack as runInstall, uninstallPack as runUninstall, installPackFromGitHub } from '../pack-installer.ts';
 import type { PackExtensions, PackInfo, PackRegistry } from '../pack-registration.ts';
 import { packFrontendFiles } from '../pack-layout.ts';
@@ -356,7 +357,17 @@ export function createPacksSystem(registry: PackRegistry) {
           system.get(bus).send(emit(packs, { type: 'PACK_ACTIVATED' as const, packId }));
         }
 
-        setPackEnabled(packId, newEnabled);
+        // The pack has already been torn down or activated; what may not have survived is the choice
+        // itself, and at the next boot the pack comes back the way it was. Saying which decision was
+        // lost is the difference between that and the app quietly disagreeing with the user.
+        if (!setPackEnabled(packId, newEnabled)) {
+          reportError({
+            source: 'packs',
+            operation: 'setPackEnabled',
+            severity: 'error',
+            error: new Error(`Couldn't save that ${packId} is ${newEnabled ? 'enabled' : 'disabled'}: it will be ${newEnabled ? 'disabled' : 'enabled'} again the next time AgentBuddy starts.`),
+          });
+        }
         system.get(bus).send(emit(packs, {
           type: 'PACK_ENABLED_CHANGED' as const,
           packId,

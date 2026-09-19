@@ -99,7 +99,8 @@ export function disabledPackIds(installedPacksPath = getInstalledPacksPath()): R
   return new Set(record.found ? record.packs.filter(e => !e.enabled).map(e => e.id) : []);
 }
 
-export function writeInstalledPacks(entries: PackRecord[]): void {
+/** Writes the record, reporting whether it reached disk: a caller acting on a user's decision says so. */
+export function writeInstalledPacks(entries: PackRecord[]): boolean {
   const installedPacksPath = getInstalledPacksPath();
   const dir = path.dirname(installedPacksPath);
   if (!fs.existsSync(dir)) {
@@ -111,9 +112,11 @@ export function writeInstalledPacks(entries: PackRecord[]): void {
   try {
     fs.writeFileSync(tmpPath, JSON.stringify(data, null, 2), 'utf-8');
     fs.renameSync(tmpPath, installedPacksPath);
+    return true;
   } catch (err) {
     logger.error('Failed to write the installed packs:', err as Error);
     try { fs.unlinkSync(tmpPath); } catch {}
+    return false;
   }
 }
 
@@ -125,8 +128,8 @@ export function writeInstalledPacks(entries: PackRecord[]): void {
  * `undefined` for "nothing to record" — which is how a pack that has decided nothing keeps no row at all.
  * Returning the row it was given writes nothing either.
  */
-function changeRecord(id: string, change: (record: PackRecord) => PackRecord | undefined): void {
-  updateInstalledPacks(entries => {
+function changeRecord(id: string, change: (record: PackRecord) => PackRecord | undefined): boolean {
+  return updateInstalledPacks(entries => {
     const existing = entries.find(e => e.id === id);
     const next = change(existing ?? { id, enabled: true });
     return next === undefined || next === existing ? entries : addInstalledPack(entries, next);
@@ -139,8 +142,8 @@ function changeRecord(id: string, change: (record: PackRecord) => PackRecord | u
  * What an update check last offered goes with it — the pack on disk is now whatever was just installed,
  * so an offer made against the old one says nothing.
  */
-export function recordInstalled(id: string, installedFrom?: string): void {
-  changeRecord(id, previous => ({
+export function recordInstalled(id: string, installedFrom?: string): boolean {
+  return changeRecord(id, previous => ({
     id,
     enabled: true,
     installedAt: previous.installedAt ?? new Date().toISOString(),
@@ -149,18 +152,18 @@ export function recordInstalled(id: string, installedFrom?: string): void {
 }
 
 /** Records the user's enable or disable choice. */
-export function setPackEnabled(id: string, enabled: boolean): void {
-  changeRecord(id, record => ({ ...record, enabled }));
+export function setPackEnabled(id: string, enabled: boolean): boolean {
+  return changeRecord(id, record => ({ ...record, enabled }));
 }
 
 /** Records what an update check found for a pack, or why it couldn't say. */
-export function recordUpdateCheck(id: string, found: Pick<PackRecord, 'availableVersion' | 'availableTag' | 'updateCheckError'>): void {
-  changeRecord(id, record => ({ ...record, ...found }));
+export function recordUpdateCheck(id: string, found: Pick<PackRecord, 'availableVersion' | 'availableTag' | 'updateCheckError'>): boolean {
+  return changeRecord(id, record => ({ ...record, ...found }));
 }
 
 /** Records that the update a check offered is the pack now on disk, so the offer no longer stands. */
-export function recordUpdateInstalled(id: string): void {
-  changeRecord(id, ({ availableVersion: _version, availableTag: _tag, ...rest }) => rest);
+export function recordUpdateInstalled(id: string): boolean {
+  return changeRecord(id, ({ availableVersion: _version, availableTag: _tag, ...rest }) => rest);
 }
 
 /**
@@ -169,20 +172,22 @@ export function recordUpdateInstalled(id: string): void {
  * A row appears only when there is something to say: a pack that seeded cleanly and has no row keeps
  * none, and one whose row carries an error from before has it cleared.
  */
-export function recordSeedOutcomes(outcomes: ReadonlyMap<string, string | undefined>): void {
+export function recordSeedOutcomes(outcomes: ReadonlyMap<string, string | undefined>): boolean {
+  let recorded = true;
   for (const [id, lastError] of outcomes) {
-    changeRecord(id, record => {
+    recorded = changeRecord(id, record => {
       if (lastError) return { ...record, lastError };
       if (!record.lastError) return undefined;
       const { lastError: _cleared, ...rest } = record;
       return rest;
-    });
+    }) && recorded;
   }
+  return recorded;
 }
 
 /** Drops everything recorded about a pack, for one that is no longer installed. */
-export function forgetPack(id: string): void {
-  updateInstalledPacks(entries => entries.some(e => e.id === id) ? removeInstalledPack(entries, id) : entries);
+export function forgetPack(id: string): boolean {
+  return updateInstalledPacks(entries => entries.some(e => e.id === id) ? removeInstalledPack(entries, id) : entries);
 }
 
 function addInstalledPack(entries: PackRecord[], pack: PackRecord): PackRecord[] {
@@ -196,13 +201,13 @@ function removeInstalledPack(entries: PackRecord[], id: string): PackRecord[] {
   return entries.filter(e => e.id !== id);
 }
 
-function updateInstalledPacks(mutate: (entries: PackRecord[]) => PackRecord[]): PackRecord[] {
+/** Applies `mutate` and writes the result, reporting whether what it changed reached disk. */
+function updateInstalledPacks(mutate: (entries: PackRecord[]) => PackRecord[]): boolean {
   const record = readInstalledPacks();
   // A write over an unreadable record starts from nothing: the row being written is the one fact we have
   const entries = record.found ? record.packs : [];
   const updated = mutate(entries);
   // A mutation that changed nothing writes nothing, so a data dir where nothing has been decided keeps no
-  // record at all rather than gaining an empty one
-  if (updated !== entries) writeInstalledPacks(updated);
-  return updated;
+  // record at all rather than gaining an empty one — and nothing was lost, so it reports success
+  return updated === entries || writeInstalledPacks(updated);
 }

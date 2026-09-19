@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import { createActor, setup, type AnyEventObject } from 'xstate';
 import { bus } from '@abuddy/sdk/ids';
 import { resolveAppContext } from '@abuddy/sdk/env';
+import { takeSystemErrors } from '@abuddy/sdk/testing';
 import { registry } from './test-host.ts';
 import { createPacksSystem, packs } from '../../../src/packs/runtime/packs-system.ts';
 import { activatePack } from '../../../src/packs/runtime/lifecycle.ts';
@@ -122,6 +123,29 @@ describe('a pack with nothing recorded about it', () => {
       expect(list?.packs).toContainEqual(
         expect.objectContaining({ id: PACK_ID, version: '1.0.0', enabled: true, builtIn: false }),
       );
+    } finally {
+      system.stop();
+    }
+  });
+});
+
+// A write that fails is only a log line by default, and the app then disagrees with the user until the
+// next boot puts the pack back the way it was. The decision that was lost is what has to be said.
+describe('a decision that could not be saved', () => {
+  it('says which one, rather than letting the toggle look like it worked', async () => {
+    const system = runPacksSystem();
+    try {
+      const { installPackFromLocal } = await import('../../../src/packs/pack-installer.ts');
+      await installPackFromLocal(packSource('1.0.0'));
+      expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
+      takeSystemErrors();
+      // A directory where the record goes: the rename onto it fails, whatever is written beside it
+      fs.mkdirSync(resolveAppContext({ env: 'test', userDataDir: tmpDir }).installedPacksFile, { recursive: true });
+
+      system.send({ type: 'TOGGLE_PACK_ENABLED', packId: PACK_ID });
+
+      expect(takeSystemErrors().map(e => e.message).join('\n'))
+        .toMatch(new RegExp(`Couldn't save that ${PACK_ID} is disabled`));
     } finally {
       system.stop();
     }
