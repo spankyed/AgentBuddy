@@ -57,12 +57,39 @@ export function _writtenAt(file: string): number | null {
  * another clock, so a caller that can tell whose record it is — the write lock's `machine`, the instance
  * lock's hostname — must check that first.
  *
- * Bounding by boot rather than the holder's start time is a deliberate tradeoff, not an oversight: start
- * time is exact but read per-platform (`/proc/<pid>/stat`, `ps -o lstart`), while `Date.now() - os.uptime()`
- * moves with the wall clock, so a forward clock step larger than a record's age at writing makes it look
- * pre-boot and a live holder look gone. That needs an NTP step of hours shortly after boot while a holder
- * is live; the recycled pid it replaces blocks the app on every reboot. Swap it for start time if the
- * clock-step case ever shows up.
+ * ## The two ways this answer can be wrong
+ *
+ * A **false held** says a dead holder is alive. The record outlives its writer (SIGKILL, power loss) and
+ * the pid it names now belongs to something unrelated. For a lock this refuses the app or the tools, which
+ * is loud and costs one `rm` — the error names the file to delete.
+ *
+ * A **false free** says a live holder is gone, and for a lock that means two writers on the same database.
+ * Silent, and it costs data. This is the direction to protect.
+ *
+ * ## Why the boot bound is here, and what it is worth
+ *
+ * Without it, only the pid is consulted, and pids recycle. That recycling is not rare and is not only a
+ * reboot thing: a pid space of ~100k against a few thousand live processes wraps within a single long
+ * uptime. The bound catches only the reboot-crossing half of that — a record from a previous boot — and a
+ * within-boot reuse reads the same with or without it.
+ *
+ * So the bound buys a partial reduction in the *likelier, milder* failure, and it buys it with a small
+ * amount of the *rarer, severe* one: `Date.now() - os.uptime()` moves with the wall clock, so a forward
+ * step of `X` makes a record written at uptime `u` look pre-boot whenever `X > u`, and a live holder then
+ * reads as gone. Reaching it needs a step of hours taken while a holder is live and shortly after boot,
+ * which is why it is accepted rather than removed.
+ *
+ * ## The sound alternative, if this ever bites
+ *
+ * Record `os.uptime()` alongside the record and treat it as a previous boot's iff the current uptime is
+ * *lower*. Uptime is monotonic and clock-independent, so that test cannot fire spuriously: no false free,
+ * ever. It is sound but incomplete — a record written early in the previous boot and read late in this one
+ * escapes it, falling back to the pid alone — which is a strictly better trade than the one here, at the
+ * cost of a field in every record's format. Per-platform start time (`/proc/<pid>/stat`, `ps -o lstart`)
+ * is the exact answer and the most work.
+ *
+ * Do not "simplify" the bound away without deciding which failure you are choosing. Removing it does not
+ * make the code safer; it trades the rare severe failure for more of the common mild one.
  * @internal
  */
 export function _writerIsRunning(pid: number, writtenAtMs: number): boolean {

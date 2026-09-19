@@ -165,6 +165,8 @@ It lives in the SDK, `@internal` and `_`-prefixed, because `readApiEndpoint` doe
 
 Only for a record this machine wrote: `os.uptime()` is this machine's boot and a foreign mtime is on another clock, so callers that can tell whose record it is (the write lock's `machine`, the instance lock's hostname) check that first.
 
+Before changing the bound, read the analysis on `_writerIsRunning`. It is a weighed trade, not an oversight: a **false held** (a dead holder read as alive) refuses the app and costs one `rm`, a **false free** (a live holder read as gone) puts two writers on the database and costs data. The bound reduces the first and admits a little of the second, and it covers only reboot-crossing reuse — pids recycle within a long uptime too, which it cannot see. The module records the sound alternative (compare `os.uptime()` rather than a wall-clock-derived boot time) and when it would be worth the format change. Removing the bound is not a simplification; it picks the other failure.
+
 `build/packages-built.ts` keeps its own copy of the rule on purpose: it is the freshness check the package builds run through, so it resolves the packages' published `dist` — the stale copy, while they are being built. It bounds by the lock's own `startedAt` instead of a file's mtime.
 
 ## Persistence and backup
