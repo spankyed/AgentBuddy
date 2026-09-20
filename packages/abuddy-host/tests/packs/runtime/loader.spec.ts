@@ -702,7 +702,7 @@ describe('computePackSeedHash', () => {
     expect(computePackSeedHash(emptyDir)).toBe('');
   });
 
-  it('returns consistent hash for the same content', () => {
+  it('returns the same hash for files nothing has touched', () => {
     const distDir = path.join(tmpDir, 'hash-test');
     fs.mkdirSync(distDir, { recursive: true });
     fs.writeFileSync(path.join(distDir, seedFile('actions')), '[]');
@@ -712,6 +712,46 @@ describe('computePackSeedHash', () => {
 
     expect(hash1).toBe(hash2);
     expect(hash1).toHaveLength(16);
+  });
+
+  // An install replaces the pack's files rather than editing them, and reinstalling the version already
+  // installed leaves the bytes identical. Only the files tell the two apart, and only an install makes new
+  // ones — which is how `abuddy install` gets a re-seed without reaching into the app's database.
+  it('returns a different hash when the same bytes are put back in new files', () => {
+    const distDir = path.join(tmpDir, 'hash-replaced');
+    fs.mkdirSync(distDir, { recursive: true });
+    const file = path.join(distDir, seedFile('actions'));
+    fs.writeFileSync(file, '[{"label":"same"}]');
+    const before = computePackSeedHash(distDir);
+
+    // What placePack leaves behind: the same content, in a file that wasn't there a moment ago
+    fs.writeFileSync(file, '[{"label":"same"}]');
+    const replaced = new Date(Date.now() + 5_000);
+    fs.utimesSync(file, replaced, replaced);
+
+    expect(computePackSeedHash(distDir)).not.toBe(before);
+  });
+
+  // The claim the rest of this rests on: an install really does leave new files, so `abuddy install` gets a
+  // re-seed without the CLI reaching into the app's database the way the in-app install once did
+  it('changes after installing the same pack source over itself', async () => {
+    const { installPackFromLocal } = await import('../../../src/packs/pack-installer.ts');
+    const source = path.join(tmpDir, 'reinstall-source');
+    fs.mkdirSync(path.join(source, 'dist', 'runtime', 'seeds'), { recursive: true });
+    fs.writeFileSync(path.join(source, 'abuddy.json'), JSON.stringify({ id: 'reinstalled', name: 'R', version: '1.0.0' }));
+    fs.writeFileSync(path.join(source, 'dist', 'runtime', 'index.cjs'), 'module.exports = {};');
+    fs.mkdirSync(path.join(source, 'dist', 'types'), { recursive: true });
+    fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), '{}');
+    fs.writeFileSync(path.join(source, 'dist', 'runtime', 'seeds', seedFile('actions')), '[{"label":"same"}]');
+
+    const packsDir = path.join(tmpDir, 'packs');
+    const { dir } = await installPackFromLocal(source, packsDir);
+    const seeds = path.join(dir, 'runtime', 'seeds');
+    const before = computePackSeedHash(seeds);
+
+    await installPackFromLocal(source, packsDir);
+
+    expect(computePackSeedHash(seeds), 'a reinstall left the seeds looking untouched').not.toBe(before);
   });
 
   it('returns different hash when content changes', () => {

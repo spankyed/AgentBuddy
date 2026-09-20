@@ -24,6 +24,15 @@ function statFingerprint(files: { path: string }[]): string {
   return parts.join('|');
 }
 
+/**
+ * What a pack's compiled seeds are, as they sit on disk: their contents, and the files they are in.
+ *
+ * The files and not only the bytes, because installing a pack is a user asking for its data to be put in
+ * place, and an install of the version already installed leaves the bytes identical. `placePack` copies
+ * into a fresh directory and renames it over the old one, so every install — from the app or from
+ * `abuddy install` — leaves new files whatever they contain. Hashing contents alone can't tell "nothing
+ * changed" from "replaced with an identical copy", and only the second is a reason to seed again.
+ */
 export function computePackSeedHash(distDir: string): string {
   const files = fs.readdirSync(distDir).filter(f => f.endsWith('.json')).sort();
   if (files.length === 0) return '';
@@ -32,6 +41,7 @@ export function computePackSeedHash(distDir: string): string {
     hash.update(file);
     hash.update(fs.readFileSync(path.join(distDir, file)));
   }
+  hash.update(statFingerprint(files.map(file => ({ path: path.join(distDir, file) }))));
   return hash.digest('hex').slice(0, 16);
 }
 
@@ -127,18 +137,6 @@ export function seedPackData(packs: Iterable<PackSeedTarget>, seed: typeof seedD
 
   recordSeedOutcomes(outcomes);
   return failures;
-}
-
-/**
- * Forgets what a pack last seeded, so the next seed runs whatever its data's hash says.
- *
- * Installing or updating a pack is what a user reaches for when its data didn't seed. The hash is there to
- * skip a *boot* over data that hasn't changed, not to make a deliberate reinstall a no-op: reinstalling the
- * same version leaves the compiled files byte for byte identical, so without this the seed is skipped, and
- * what the install then reports is about no attempt at all.
- */
-export function forgetPackSeed(packId: string): void {
-  appState.updatePackEntry('packSeedHashes', packId, undefined);
 }
 
 function computeManifestSeedHash(compiledDir: string, seedKeys: string[]): string {
