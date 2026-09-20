@@ -59,7 +59,8 @@ Never:
 
 ## Background
 
-Surveyed at `89133cf71` on `AS/external-pack-authoring`.
+Surveyed at `89133cf71` on `AS/external-pack-authoring`, and re-checked against `ef358680f`: see
+**Since the survey** at the end of this section before acting on a line reference.
 
 ### Three ways to name a feature, and one missing layer
 
@@ -71,7 +72,7 @@ Surveyed at `89133cf71` on `AS/external-pack-authoring`.
 
 A system has a **name** layer over its **id**, so `sendToSystem('default-setup/threads')` works whatever
 the id is. A plugin has no name layer: the bare feature id *is* the global identity, for every pack.
-Built-in system ids being bare (`generate-entries.ts:899`, `manifest.builtIn ? f.id : …`, duplicated at
+Built-in system ids being bare (`generate-entries.ts:900`, `manifest.builtIn ? f.id : …`, duplicated at
 `:394`) is incidental, not principled — no comment gives a reason — and it is why the asymmetry reads as
 a hidden fallback to default-setup.
 
@@ -91,13 +92,13 @@ SDK, API and renderer all checked. Since codegen derives (2) from the same list 
 agree, and the branch is dead weight.
 
 The two `s.designation!` assertions and the `systemId()` helper follow from it; that helper duplicates
-`resolveSystemAddress`'s bare-or-prefixed find (`pack-registration.ts:558`), differing only in its
+`resolveSystemAddress`'s bare-or-prefixed find (`pack-registration.ts:569`), differing only in its
 fallback.
 
 ### The frontend has the same duplication, as a hidden binding
 
 `Plugin.designation` is a **public, optional, author-settable field** of `@abuddy/sdk/fe`
-(`fe/plugin.ts:12`). Codegen spreads over it on every build:
+(`fe/plugin.ts:11-12`). Codegen spreads over it on every build:
 
 ```js
 const notes = { ...notes_module, designation: 'notes' } as typeof notes_module;
@@ -109,7 +110,7 @@ const notes = { ...notes_module, designation: 'notes' } as typeof notes_module;
 manifest nor the overwrite. The type's doc comment admits the binding — on hover, in a field the API
 invites you to fill.
 
-Its only reader is `fe/pack-store.ts:72`. `PackFERegistration` carries no `features`, only `plugins[]`,
+Its only reader is `fe/pack-store.ts:90`. `PackFERegistration` carries no `features`, only `plugins[]`,
 which is *why* the role was grafted onto the author's object.
 
 ### The frontend registration doesn't say which pack it is
@@ -121,18 +122,19 @@ argument** instead:
 registerPackFE(registration: PackFERegistration, packId?: string): void   // fe/pack-store.ts:26
 ```
 
-The renderer passes it for external packs (`packs/pack-loader.ts:90`) and omits it for built-in ones
+The renderer passes it for external packs (`packs/pack-loader.ts:97`) and omits it for built-in ones
 (`main.ts:100`). Three things follow, all the same root cause — a contribution the store can't attribute to
 a pack:
 
-- `packExtensions.set(packId, …)` is guarded by `if (packId)` (`:105`), so a built-in pack's frontend
-  contributions are never recorded, and `unregisterPackFE` returns `[]` for it (`:119-121`). They cannot be
+- `packExtensions.set(packId, …)` is guarded by `if (packId)` (`:145`), so a built-in pack's frontend
+  contributions are never recorded, and `unregisterPackFE` returns `[]` for it (`:152-154`). They cannot be
   removed.
-- The store needed a `BUILT_IN_OWNER = '<built-in>'` sentinel (`:43,85`) to give those contributions an
+- The store needed a `BUILT_IN_OWNER = '<built-in>'` sentinel (`:43,110`) to give those contributions an
   owner for `createOwnedStore`.
-- `defaultPlugin` is taken from whichever registration arrives first and is **never cleared on teardown**,
-  so the pack that supplied it can unregister and leave the app pointing at a plugin that is no longer
-  registered.
+- ~~`defaultPlugin` is taken from whichever registration arrives first and is **never cleared on
+  teardown**, so the pack that supplied it can unregister and leave the app pointing at a plugin that is
+  no longer registered.~~ **Fixed since the survey** (`pack-store.ts:84`): the registration that sets it
+  records an undo that clears it. The root cause this section is about is unchanged for the other two.
 
 This is the mirror of the designation problem: a fact about the pack with no home on the object, so it gets
 carried alongside — and where the designation was grafted *onto* the author's plugin, the pack id is simply
@@ -142,13 +144,13 @@ missing and every caller has to remember it.
 
 Two packs each with a feature named `notes`:
 
-- `fe/pack-store.ts:57` — the second plugin is dropped with a `console.warn` to the renderer console. The
+- `fe/pack-store.ts:68` — the second plugin is dropped with a `console.warn` to the renderer console. The
   pack installs "successfully" and has no UI.
 - `getPluginEventValidationMap` — the first owner keeps the id, so the second pack's `receivedEventTypes`
   never register and its sends are validated against the first pack's contract.
 - `sendToPlugin('notes')`, `emit('notes')` and manifest `sendsTo: ['notes']` all reach the first pack.
 - Nothing refuses it. `registerPack` throws on duplicate services, commands, repositories and
-  designations; plugin ids are the one contribution deliberately left to shadow (`:474`).
+  designations; plugin ids are the one contribution deliberately left to shadow (`:493-495`).
 
 The id is **persisted user data**: `settings.plugins.<pluginId>`, `_meta.visibility.<pluginId>` and
 `_meta.lastActivePlugin` (`features/settings/be/system.ts:70,115`). Changing the scheme is a migration.
@@ -174,6 +176,22 @@ the rest. That is why these are one goal.
   role).
 - `settings.plugins` defaults: one file (`features/settings/settings.ts`).
 
+### Since the survey
+
+Re-checked at `ef358680f`. `fe/pack-store.ts` and `packs/pack-registration.ts` were both reworked after
+this was written (recorded undos for a pack's contributions, then one undo log shared by the backend and
+frontend registries), so the frontend line references above have moved and are corrected in place. Two
+findings change the plan rather than its citations:
+
+- **The `defaultPlugin` teardown bug is fixed.** Phase 4's third bullet and its "Done when" are satisfied
+  already; what remains of that phase is recording the pack id, not clearing the default.
+- **`registerPackFE` now throws on a pack registering twice**, which it did not at survey time. A phase
+  that changes its signature has that guard to keep.
+
+Everything else held: `designationsOf` (`pack-registration.ts:44-51`) is unchanged and
+`pack-registration.ts:48` is still the only reader of `PackSystemDef.designation`; `loader.ts:287` still
+writes it; `main.ts:100` still omits the pack id for built-in packs.
+
 ## Decisions
 
 Final.
@@ -193,8 +211,8 @@ Final.
    would carry data the frontend never reads.
 4. **`PackFERegistration` identifies itself**, with an `id` like `PackRegistration`. `registerPackFE`
    becomes single-argument, the `BUILT_IN_OWNER` sentinel goes, a built-in pack's frontend contributions are
-   recorded and removable like any other pack's, and `defaultPlugin` is cleared when the pack that supplied
-   it unregisters. This is what makes the two types parallel in the way that matters — each self-identifying
+   recorded and removable like any other pack's. (Clearing `defaultPlugin` on teardown was part of this
+   decision and has since landed on its own.) This is what makes the two types parallel in the way that matters — each self-identifying
    — and is why they keep their current names: `PackRegistration` is the pack plus what it contributes to
    the backend, not "the backend half", since `id`, `boot`, `migrations`, `ears` and `repositories` have no
    frontend counterpart and never will. A rename to `PackBERegistration` would mislabel them.
@@ -260,10 +278,11 @@ unchanged. Delete `Plugin.designation`. `fe/pack-store.ts` builds its roles from
 `registration.designations` instead of `plugins[].designation`.
 
 *The pack's identity.* Add `PackFERegistration.id`, emitted by the same codegen. `registerPackFE` drops
-its optional `packId` parameter and reads `registration.id`; `main.ts:100` and `packs/pack-loader.ts:90`
-both stop passing one. `packExtensions.set` loses its `if (packId)` guard, so a built-in pack's frontend
-contributions are recorded and removable like any other's. Delete the `BUILT_IN_OWNER` sentinel. Record
-which pack supplied `defaultPlugin` and clear it in `unregisterPackFE` when that pack leaves.
+its optional `packId` parameter and reads `registration.id`; `main.ts:100` and `packs/pack-loader.ts:97`
+both stop passing one, and the guard it added against a pack registering twice moves to the new shape.
+`packExtensions.set` loses its `if (packId)` guard, so a built-in pack's frontend contributions are
+recorded and removable like any other's. Delete the `BUILT_IN_OWNER` sentinel. `defaultPlugin` already
+records the undo that clears it, so nothing is owed there beyond keeping it working.
 
 **Done when:** `Plugin` has no `designation` and no generated frontend entry spreads over a plugin module;
 `registerPackFE` takes one argument and `git grep BUILT_IN_OWNER` is empty; `unregisterPackFE` returns a
@@ -271,8 +290,8 @@ built-in pack's plugins rather than `[]`; `fe-registered-lookups.spec.ts` and
 `pack-store-designations.spec.ts` pass against the new sources; `npm run api:update` committed.
 **Mutation, three:** a designation in the manifest but absent from `designations` leaves the role
 unresolved; a pack registered and then unregistered leaves its plugins behind (the `if (packId)` guard
-restored); the pack that supplied `defaultPlugin` unregisters and the default still points at its plugin.
-Each must fail a test.
+restored); the undo that clears `defaultPlugin` is dropped and the default still points at the plugin of
+a pack that has left. Each must fail a test.
 
 ### Phase 3 — one resolver, and the spec corrected
 

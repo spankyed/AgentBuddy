@@ -4,9 +4,10 @@
 # Goal: abuddy.json has a shape, not a pile of keys
 
 Implement docs/goals/goal-manifest-redesign.md on AS/external-pack-authoring, at or after 4f24d04f7 —
-the base its Background was surveyed at. One decision has landed since that survey (Decision 6,
-`validate.ts`), and Background marks what it changed; everything else Background describes was still
-true at 4f24d04f7 — confirm the names a phase acts on exist before acting.
+the base its Background was surveyed at. Two decisions have landed since that survey — Decision 6
+(`validate.ts`) and Decision 12 (`b8d66af4e`, the default plugin) — and Background and the Phases mark
+what they changed; everything else Background describes was still true at 4f24d04f7 — confirm the names
+a phase acts on exist before acting.
 Read Background, Decisions, Open decisions, Phases and Constraints first, and
 docs/goals/goal-manifest-redesign.example.json, which is the finished shape for the built-in pack.
 Decisions are final: implement them, don't reopen them or stop to ask. The two Open decisions must be
@@ -73,7 +74,7 @@ Never:
 
 # Goal: abuddy.json has a shape, not a pile of keys
 
-The manifest works, and it grew one key at a time. It is now 24 top-level keys over 552 lines for the
+The manifest works, and it grew one key at a time. It is now 23 top-level keys over 552 lines for the
 built-in pack, with four concerns interleaved at the same level, three different ways to name a module,
 and two maps that carry no information. This goal gives it a shape a pack author can hold in their
 head: 14 top-level keys over 520 lines, worked out in full in
@@ -87,7 +88,8 @@ own entity volatile (Decision 5), and a feature's designation need no longer equ
 
 ## Background (2026-09-19, at 4f24d04f7)
 
-`packages/default-setup/abuddy.json` is 552 lines and 24 top-level keys. The schema is
+`packages/default-setup/abuddy.json` is 552 lines and 23 top-level keys (24 at the survey; Decision 12
+has since taken `defaultPlugin` off the root). The schema is
 `packages/abuddy-sdk/src/build/manifest-schema.ts` (299 lines), which generates
 `packages/abuddy-sdk/abuddy.schema.json` (`npm run generate:schema`, checked by `npm run schema:check`).
 
@@ -619,7 +621,11 @@ four keys that change together whenever a seeded format changes.
 `.describe()` on every field, `npm run generate:schema` regenerates `abuddy.schema.json`, and
 `docs/public-facing/manifest.md` is rewritten from the new shape rather than edited.
 
-**12. `defaultPlugin` moves onto the plugin it names.** It is loose content at the root today, and it
+**12. `defaultPlugin` moves onto the plugin it names.** — **Landed** in `b8d66af4e`, ahead of this goal
+and on its own. The root key is gone, `PluginSchema` takes `default`, the schema rejects two features of
+one pack claiming it, and codegen reads the claim instead of resolving a feature id. Nothing else in this
+redesign was touched, so Decision 8's sibling annotations still have to accommodate it rather than
+introduce it. It is loose content at the root today, and it
 names a feature's plugin, so it belongs there: `"plugin": { "default": true }`, one of the sibling
 annotations of Decision 8 — the feature still lists `plugin` in `provides`, and the annotation says
 which of the app's plugins opens first. The host already resolves it first-wins
