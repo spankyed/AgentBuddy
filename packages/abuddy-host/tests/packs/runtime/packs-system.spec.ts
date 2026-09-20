@@ -211,3 +211,48 @@ describe('a pack that is gone', () => {
     expect(readInstalledPacks()).toMatchObject([{ id: 'here-pack' }]);
   });
 });
+
+describe('installing over a pack that is already running', () => {
+  // The install replaces the pack's directory. A pack left running across that reads the new code on its
+  // next lazy require, so the teardown has to happen while the files it was loaded from are still there.
+  it('tears the running copy down before its files are replaced', async () => {
+    const { installPackFromLocal } = await import('../../../src/packs/pack-installer.ts');
+    await installPackFromLocal(packSource('1.0.0'));
+    expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
+
+    /** What the pack's manifest on disk said each time the callback ran */
+    const versionsWhenCalled: string[] = [];
+    await installPackFromLocal(packSource('2.0.0'), undefined, {
+      beforePlace: () => {
+        const installed = path.join(tmpDir, 'packs', PACK_ID, 'abuddy.json');
+        versionsWhenCalled.push(JSON.parse(fs.readFileSync(installed, 'utf-8')).version);
+      },
+    });
+
+    expect(versionsWhenCalled, 'the old copy is still in place when the caller is told').toEqual(['1.0.0']);
+  });
+
+  it('refuses a second install of the same slug while one is in flight', async () => {
+    const system = runPacksSystem();
+    try {
+      const warned: string[] = [];
+      const realWarn = console.warn;
+      console.warn = (...args: unknown[]) => void warned.push(args.map(String).join(' '));
+      try {
+        system.send({ type: 'INSTALL_PACK', packSlug: packSource('1.0.0'), source: 'local' });
+        system.send({ type: 'INSTALL_PACK', packSlug: packSource('1.0.0'), source: 'local' });
+      } finally {
+        console.warn = realWarn;
+      }
+
+      await vi.waitFor(() => {
+        expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_COMPLETE');
+      });
+      // One install started, not two
+      expect(emitted(system.sent).filter(e => e.type === 'PACK_INSTALL_STARTED')).toHaveLength(1);
+      expect(warned.join('\n')).toMatch(/Operation already in progress/);
+    } finally {
+      system.stop();
+    }
+  });
+});

@@ -159,29 +159,41 @@ export function createPacksSystem(registry: PackRegistry) {
       installPack: ({ system, event }) => {
         const ev = packsSpec.typeOf('INSTALL_PACK', event);
         const packSlug = ev.packSlug;
+
+        // Keyed on the slug, because an install learns the pack's id only from its result: two installs of
+        // the same slug at once would place two copies over each other and register the loser
+        if (_inFlightOps.has(packSlug)) {
+          console.warn(`[packs] Operation already in progress for ${packSlug}, skipping install`);
+          return;
+        }
+        _inFlightOps.add(packSlug);
         console.log(`[packs] Install requested: ${packSlug} (source: ${ev.source ?? 'default'})`);
 
         system.get(bus).send(emit(packs, { type: 'PACK_INSTALL_STARTED' as const, packSlug }));
 
         const isGitHub = !ev.source && !packSlug.startsWith('http') && packSlug.includes('/');
+        // The id of the running pack this install tore down, which a slug or a URL doesn't carry
+        let replacedId: string | undefined;
 
-        runInstall(packSlug, ev.source, undefined, { hostVersion: getAppVersion() }).then(result => {
+        runInstall(packSlug, ev.source, undefined, {
+          hostVersion: getAppVersion(),
+          // Installing over a pack that is already running is a reinstall, or the same pack from another
+          // source. It is torn down before its files are replaced rather than after: a pack left running
+          // on a directory that has been swapped underneath it loads the new code on its next lazy
+          // require. Silent (`replacing`), because the activation below announces the change.
+          beforePlace: (manifest) => {
+            if (!getLoadedPacks().some(p => p.manifest.id === manifest.id)) return;
+            replacedId = manifest.id;
+            teardownPack(registry, manifest.id, system.get(bus), { replacing: true });
+            system.get(bus).send(emit(packs, { type: 'PACK_DEACTIVATED' as const, packId: manifest.id }));
+          },
+        }).then(result => {
           recordInstalled(result.id, isGitHub ? packSlug : undefined);
-
-          // Installing over a pack that is already running — a reinstall, or the same pack from another
-          // source — has replaced its files underneath it. Without the teardown, registering the new copy
-          // collides with the old registration and the pack is reported as installed but dead. Silent
-          // (`replacing`), because the activation below announces the change.
-          const replaced = getLoadedPacks().some(p => p.manifest.id === result.id);
-          if (replaced) {
-            teardownPack(registry, result.id, system.get(bus), { replacing: true });
-            system.get(bus).send(emit(packs, { type: 'PACK_DEACTIVATED' as const, packId: result.id }));
-          }
 
           const activated = activatePack(registry, result.id, system.get(bus));
           const problem = activationProblem(result.id, activated);
           if (problem) {
-            if (replaced && !activated) {
+            if (replacedId && !activated) {
               // The replacement never registered: end the window, and tell the running systems the pack is gone
               registry.clearPackReplacing(result.id);
               system.get(bus).send({ type: 'PACK_CHANGED', packId: result.id });
@@ -207,11 +219,18 @@ export function createPacksSystem(registry: PackRegistry) {
         }).catch(err => {
           const message = err instanceof Error ? err.message : String(err);
           console.error(`[packs] Install failed for ${packSlug}:`, message);
+          // The pack was torn down for a replacement that never arrived: end the window and say it is gone
+          if (replacedId) {
+            registry.clearPackReplacing(replacedId);
+            system.get(bus).send({ type: 'PACK_CHANGED', packId: replacedId });
+          }
           system.get(bus).send(emit(packs, {
             type: 'PACK_INSTALL_FAILED' as const,
             packSlug,
             error: message,
           }));
+        }).finally(() => {
+          _inFlightOps.delete(packSlug);
         });
       },
 

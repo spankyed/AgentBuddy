@@ -38,6 +38,13 @@ export interface InstallOptions {
   hostVersion?: string;
   /** Expected sha256 of a downloaded archive. */
   sha256?: string;
+  /**
+   * Called with the verified manifest of what is about to be placed, before the pack's directory is
+   * touched. The last moment a caller can act on the copy that is still there: the running app tears an
+   * installed pack down here, so it is never left running on files that have been replaced underneath it.
+   * The pack's id isn't known before this — a GitHub slug or a URL doesn't carry one.
+   */
+  beforePlace?: (manifest: PackManifest) => void;
 }
 
 /** Reports a download's failure with its URL: a timeout, a refused connection, a body that stopped mid-way. */
@@ -216,6 +223,7 @@ async function installFromDirectory(dir: string, packsDir: string, options: Inst
     const integrity = verifyPack(layoutDir);
 
     const manifest = readValidManifest(layoutDir);
+    options.beforePlace?.(manifest);
     const destDir = placePack(layoutDir, packsDir, manifest.id);
     const missingDependencies = checkDependencies(manifest, packsDir);
     log.info(`Installed "${manifest.name}" v${manifest.version} to ${destDir}`);
