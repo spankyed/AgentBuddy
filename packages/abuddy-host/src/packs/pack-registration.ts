@@ -427,14 +427,26 @@ export function createPackRegistry(): PackRegistry {
 
     // The undos its registration produced, not a second reading of the registration: what comes out is
     // exactly what went in
-    // A copy: reversing the stored list in place leaves it that way if an undo throws, and the
-    // delete below never runs, so a retry would then undo in the order the work was done
-    for (const undo of [...(packUndos.get(packId) ?? [])].reverse()) undo();
+    // Every undo runs and the pack goes, whatever one of them does: a contribution that can't be taken
+    // back out is a leak, and stopping here would add to it a pack that is registered and torn down at
+    // once. The copy is so a throw doesn't leave the stored list reversed.
+    const failures: string[] = [];
+    for (const undo of [...(packUndos.get(packId) ?? [])].reverse()) {
+      try {
+        undo();
+      } catch (err) {
+        failures.push(err instanceof Error ? err.message : String(err));
+      }
+    }
     packUndos.delete(packId);
 
     registrations.delete(packId);
     origins.delete(packId);
     changed();
+
+    if (failures.length > 0) {
+      throw new Error(`Pack "${packId}" is unregistered, but ${failures.length} of its contributions could not be taken back out: ${failures.join('; ')}`);
+    }
   }
 
   function getRegisteredPackSystemIds(packId: string): string[] {

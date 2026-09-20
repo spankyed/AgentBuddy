@@ -33,10 +33,17 @@ export function teardownPack(
   // plugins are the pack's; registering the replacement clears it.
   if (replacing) registry.markPackReplacing(packId);
 
-  try {
-    registry.unregisterPack(packId);
-  } catch {
+  // Asked, not caught: unregisterPack also throws when a contribution couldn't be taken back out, and
+  // reporting that as a pack nobody had registered is the wrong story. The pack is unregistered either
+  // way, so the rest of the teardown — the require cache, stopping its systems — still has to happen.
+  if (!registry.getPackRegistration(packId)) {
     logger.info(`Pack ${packId} was not previously registered`);
+  } else {
+    try {
+      registry.unregisterPack(packId);
+    } catch (err) {
+      logger.error(`Tearing down pack ${packId}:`, err as Error);
+    }
   }
 
   const packDir = path.join(resolveAppContext().packsDir, packId);

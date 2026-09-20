@@ -202,6 +202,39 @@ describe('activating and tearing down a pack at runtime', () => {
     expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
   });
 
+  // Its contributions come out one at a time and one can fail — a settings listener that throws is enough.
+  // The pack is unregistered either way, so the rest of the teardown still has to run, its systems stopped
+  // and the systems still up told; and what failed has to be reported as that, not as a pack nobody had
+  // registered.
+  it('finishes tearing a pack down when one of its contributions will not come out', async () => {
+    const { teardownPack } = await import('../../../src/packs/runtime/lifecycle.ts');
+    const { onPackSettingsDefaultsChanged } = await import('@abuddy/sdk/framework');
+    const { testRootEvents } = await import('@abuddy/sdk/testing');
+
+    registry.registerPack({
+      id: 'stuck-pack',
+      systems: [],
+      features: [{ id: 'stuck', hasSystem: false, hasPlugin: true, services: [], settings: { plugins: { stuck: { a: 1 } } } }],
+    });
+    const stopListening = onPackSettingsDefaultsChanged(() => { throw new Error('a settings listener threw'); });
+
+    // The cause is on the event, not in its text: the logger puts an error in `stack`/`meta`
+    const logged: string[] = [];
+    const stopLogging = testRootEvents.onLog((event) => void logged.push(`${event.message} ${event.stack ?? ''} ${JSON.stringify(event.meta ?? {})}`));
+    bus.send.mockReset();
+    try {
+      teardownPack(registry, 'stuck-pack', bus as never);
+    } finally {
+      stopLogging();
+      stopListening();
+    }
+
+    expect(registry.getPackRegistration('stuck-pack')).toBeNull();
+    expect(bus.send.mock.calls.map(([event]) => event.type)).toContain('PACK_CHANGED');
+    expect(logged.join('\n')).toContain('a settings listener threw');
+    expect(logged.join('\n')).not.toContain('was not previously registered');
+  });
+
   it("says nothing when torn down to be replaced, so the systems never see the updating pack missing", async () => {
     await install();
     const { activatePack, teardownPack } = await import('../../../src/packs/runtime/lifecycle.ts');
