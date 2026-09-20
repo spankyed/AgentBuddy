@@ -9,7 +9,7 @@ The Electron main process. It decides the app environment, spawns the API server
 - `renderer`: `new URL(VITE_DEV_SERVER_URL)` when `MODE=development` and that variable is set (`npm start`), else `{ path: renderer/dist/index.html }`.
 - `preload`: `preload/dist/exposed.mjs`.
 
-The entry point also installs crash handling: `showAndExit` on uncaught errors in development, Playwright and CI, and `electron-log`'s `errorHandler` otherwise (EPIPE ignored). That handler starts before `initApp()`, so a crash in the first moments of a run given its own data dir is written to the platform log directory rather than that run's — the crash handler has to be up before anything can crash.
+The entry point also installs crash handling: `showAndExit` on uncaught errors in development, Playwright and CI, and `electron-log`'s `errorHandler` otherwise (EPIPE ignored). It still starts after the app context exists: `entry-point.mjs` imports `initApp` statically, and evaluating that bundle runs `logger.ts`, which asks for the context.
 
 ## Module runner
 
@@ -89,3 +89,7 @@ The allowlists are populated only when `renderer` is a URL (dev server); from a 
 - `vite build` (`vite.config.js`) produces a single SSR ES bundle `dist/index.js`. `@abuddy/sdk` and `@abuddy/host` are bundled in (`ssr.noExternal`), because packaged builds strip `.ts`. They resolve under `@abuddy/source`. Splash assets and `resources/logo.svg` are copied to `dist/assets`.
 - `npm start` (`packages/dev-mode.js`) starts the renderer dev server, builds the API, then builds preload and main in watch mode with the `@app/renderer-watch-server-provider` plugin. Main's `handleHotReload` restarts Electron after each rebuild (`ELECTRON_INSPECT=true`, via `npm run start:inspect`, adds `--inspect`).
 - `npm run typecheck -w @app/main` runs `tsc --noEmit`. Root `npm run typecheck` and CI don't run it.
+
+## Tests
+
+`npm test -w @app/main` (vitest, `tests/**/*.spec.ts`), in the root `test:unit` chain. `tests/electron-stub.ts` stands in for Electron's `app` and records what a module asked it to do; `vitest.config.ts` aliases `electron` to it and defines `__ABUDDY_CHANNEL__`, which the identity guard allows for the same reason it allows `vite.config.js`. A test must take the stub from the same fresh registry as the module under test (`load()` in `tests/app-context.spec.ts`), because `vi.resetModules()` gives the module a new one.

@@ -95,7 +95,8 @@ npm run check:ui-entries # Fails on a stale @abuddy/ui exports map or a componen
 
 npm test                 # Playwright E2E tests
 npm run test:unit        # Vitest, every suite CI calls a unit test: @app/api, @app/default-setup, @abuddy/sdk,
-                         # @abuddy/ears, @abuddy/host, @app/renderer, then @abuddy/cli (the slowest, last).
+                         # @abuddy/ears, @abuddy/host, @app/main, @app/renderer, then @abuddy/cli (the slowest,
+                         # last).
                          # The CLI suite rebuilds the published packages itself when its dist is stale
 npm run test:all         # test:unit, then the E2E tests
 npm run bench -w @abuddy/ears    # EARS engine benchmark (baseline and tolerance: packages/abuddy-ears/CLAUDE.md)

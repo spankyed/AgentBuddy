@@ -14,6 +14,7 @@ const ALLOWED: Record<string, string> = {
   'packages/abuddy-sdk/src/env/index.ts': 'the resolver itself',
   'packages/main/src/app-context.ts': 'main-process bootstrap: infers the environment once',
   'packages/main/vite.config.js': 'build time: bakes the release channel stamp',
+  'packages/main/vitest.config.ts': 'test time: supplies the stamp the build bakes, so the bootstrap can be tested',
   'electron-builder.mjs': 'build time: picks the beta appId/productName',
   'build/build.sh': 'build time: exports the release channel',
   'build/prod/clean.sh': 'manual cleanup script that deliberately removes a packaged app\'s data dir',

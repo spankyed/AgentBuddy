@@ -1,5 +1,4 @@
 import {app} from 'electron';
-import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {_inferElectronAppEnv, resolveAppContext, type AppContext} from '@abuddy/sdk/env';
 
@@ -45,7 +44,6 @@ function initialise(): MainAppContext {
   // Console.app looks. A run given its own data dir keeps its logs there instead, so that one Playwright
   // worker's logs are not another's.
   const logsDir = isolated ? path.join(resolved.userDataDir, 'logs') : app.getPath('logs');
-  fs.mkdirSync(logsDir, {recursive: true});
   app.setPath('logs', logsDir);
 
   process.env.ABUDDY_ENV = resolved.env;
