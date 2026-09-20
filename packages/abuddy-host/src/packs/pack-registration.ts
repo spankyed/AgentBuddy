@@ -17,6 +17,7 @@ import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS, _reservedEntrie
 import { HOST_PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
 import { makePolicy, registerRepository, unregisterRepository, type PartitionPolicy } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
+import { packSeedOrder } from './pack-discovery.ts';
 import { createDefinitionStore, createDesignationStore, createStepStore } from './extensions.ts';
 import { createCommandStore, createSeedHookStore, createSeederStore, createSettingsDefaultsStore, createShutdownHooks } from './backend-extensions.ts';
 
@@ -195,6 +196,10 @@ export interface PackRegistry extends PackRegistryView {
    * Each registered external pack as the runtime's per-pack helpers take it: where it came from, plus the
    * migrations it registered. One place joins the two halves, so no caller holds its own list of packs.
    * With `packIds`, only those — activation and reload migrate and seed the one pack they handled.
+   *
+   * In dependency order (`packSeedOrder`), so a pack's migrations and seeds run after those of the packs
+   * it depends on: its seeds may reference what they seeded. Registration order, which decides who wins a
+   * designation or a plugin id, is a different order and is not this.
    */
   externalPackTargets(packIds?: Iterable<string>): Array<{ manifest: PackManifest; dir: string; migrations?: PackMigration[] }>;
   /**
@@ -537,9 +542,12 @@ export function createPackRegistry(): PackRegistry {
     externalPacks: () => [...origins.values()].filter((o) => !o.builtIn),
     externalPackTargets: (packIds) => {
       const wanted = packIds && new Set(packIds);
-      return [...origins.values()]
-        .filter((o) => !o.builtIn && o.manifest && (!wanted || wanted.has(o.id)))
-        .map((o) => ({ manifest: o.manifest!, dir: o.dir, migrations: registrations.get(o.id)?.migrations }));
+      const external = [...origins.values()].filter((o) => !o.builtIn && o.manifest);
+      // Ordered over every installed external pack, then narrowed: a subset's order still has to agree
+      // with the whole, and a dependency outside the subset is one this call isn't seeding anyway
+      return packSeedOrder(external.map((o) => ({ id: o.id, dependencies: o.manifest!.dependencies, origin: o })))
+        .filter((p) => !wanted || wanted.has(p.id))
+        .map(({ origin }) => ({ manifest: origin.manifest!, dir: origin.dir, migrations: registrations.get(origin.id)?.migrations }));
     },
 
     resolveSystemAddress(address) {

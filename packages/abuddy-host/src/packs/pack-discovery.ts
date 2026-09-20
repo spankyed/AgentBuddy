@@ -127,3 +127,49 @@ export function discoveredPackIds(discovered: DiscoveredPack[]): ReadonlySet<str
   return new Set(discovered.map(({ manifest }) => manifest.id));
 }
 
+
+/** A pack and what it declares it depends on (`abuddy.json` `dependencies`), as the seed order reads it */
+export interface PackDependents {
+  id: string;
+  dependencies?: Record<string, string>;
+}
+
+/**
+ * `packs`, ordered so each one follows the packs in the list it depends on.
+ *
+ * Only edges between the packs given. A dependency on a built-in pack is already satisfied — the built-in
+ * packs' boot seeds run before any external pack's — and one that isn't installed is reported when the
+ * pack is installed, so neither is an edge here.
+ *
+ * A cycle has no order that satisfies it, and a pack-authoring mistake must not stop an app booting, so
+ * the packs in one are still returned, in an order that is arbitrary but deterministic, and the cycle is
+ * logged. Stable otherwise: packs with nothing between them come back as they went in.
+ */
+export function packSeedOrder<T extends PackDependents>(packs: readonly T[]): T[] {
+  const byId = new Map(packs.map((pack) => [pack.id, pack]));
+  const state = new Map<string, 'visiting' | 'done'>();
+  const ordered: T[] = [];
+  const cycles: string[] = [];
+
+  function visit(pack: T, trail: readonly string[]): void {
+    const seen = state.get(pack.id);
+    if (seen === 'done') return;
+    if (seen === 'visiting') {
+      cycles.push([...trail.slice(trail.indexOf(pack.id)), pack.id].join(' -> '));
+      return;
+    }
+    state.set(pack.id, 'visiting');
+    for (const depId of Object.keys(pack.dependencies ?? {})) {
+      const dep = byId.get(depId);
+      if (dep) visit(dep, [...trail, pack.id]);
+    }
+    state.set(pack.id, 'done');
+    ordered.push(pack);
+  }
+
+  for (const pack of packs) visit(pack, []);
+  if (cycles.length > 0) {
+    logger.warn(`Packs depend on each other, so no order satisfies them all; seeding them anyway: ${cycles.join(', ')}`);
+  }
+  return ordered;
+}
