@@ -106,7 +106,7 @@ describe('pack full lifecycle: install → discover', () => {
 
     const { loadExternalPacks } = await import('../../../src/packs/runtime/loader.ts');
     const packs = loadExternalPacks();
-    const ids = packs.map(p => p.manifest.id).sort();
+    const ids = packs.map(p => p.origin.id).sort();
     expect(ids).toEqual(['pack-alpha', 'pack-beta', 'pack-gamma']);
   });
 });

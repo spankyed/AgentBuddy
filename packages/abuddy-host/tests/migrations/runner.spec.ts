@@ -21,6 +21,7 @@ vi.mock('@abuddy/sdk/env', async (importOriginal) => {
 });
 
 import { loadBuiltInPacks, registerExternalPacks, type LoadedPack } from '../../src/packs/runtime/index.ts';
+import type { PackMigrationTarget } from '../../src/migrations/index.ts';
 import { runAppMigrations, runPackMigrations } from '../../src/migrations/index.ts';
 import { appState } from '../../src/app-state/index.ts';
 import { resetTestData } from '@abuddy/sdk/testing';
@@ -59,14 +60,14 @@ describe('boot migrations', () => {
     });
 
     const externalMigration: PackMigration = { target: TEST_APP_VERSION, description: 'external', up: () => { runs.external++; } };
+    const manifest = { id: 'migrations-external', name: 'External', version: TEST_APP_VERSION };
     const external = {
-      manifest: { id: 'migrations-external', name: 'External', version: TEST_APP_VERSION } as LoadedPack['manifest'],
-      dir: builtInDir,
-      systems: new Map(),
-      migrations: [externalMigration],
+      registration: { id: manifest.id, systems: [], migrations: [externalMigration] },
+      origin: { ...manifest, dir: builtInDir, builtIn: false, manifest: manifest as never },
     } satisfies LoadedPack;
-    const externalPacks = registerExternalPacks(registry, [external]);
-    expect(externalPacks).toHaveLength(1);
+    expect(registerExternalPacks(registry, [external])).toHaveLength(1);
+    // What the boot passes on: the registry joins each registered pack's origin with its migrations
+    const externalPacks = registry.externalPackTargets();
 
     // The boot's order (the API's setup/backend.ts)
     runAppMigrations(registry);
@@ -91,15 +92,13 @@ describe('boot migrations', () => {
     const ran: string[] = [];
     let failing: string | undefined = '1.1.0';
     const pack = {
-      manifest: { id: 'failing-pack', name: 'Failing', version: '1.2.0' } as LoadedPack['manifest'],
-      dir: builtInDir,
-      systems: new Map(),
-      migrations: ['1.1.0', '1.2.0'].map((target) => ({
+      manifest: { id: 'failing-pack', version: '1.2.0' },
+          migrations: ['1.1.0', '1.2.0'].map((target) => ({
         target,
         description: target,
         up: () => { if (target === failing) throw new Error('failed'); ran.push(target); },
       })),
-    } satisfies LoadedPack;
+    } satisfies PackMigrationTarget;
 
     runPackMigrations([pack]);
     expect(ran).toEqual([]);

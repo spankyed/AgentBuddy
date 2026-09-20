@@ -24,7 +24,8 @@ vi.mock('@abuddy/sdk/env', async (importOriginal) => {
 import { appState } from '../../src/app-state/index.ts';
 import { appMigrations } from '../../src/migrations/app/index.ts';
 import { runAppMigrations, runPackMigrations } from '../../src/migrations/index.ts';
-import { loadBuiltInPacks, type LoadedPack } from '../../src/packs/runtime/index.ts';
+import { loadBuiltInPacks } from '../../src/packs/runtime/index.ts';
+import type { PackMigrationTarget } from '../../src/migrations/index.ts';
 
 const move = () => {
   const migration = appMigrations(registry).find((m) => m.target === '0.3.15');
@@ -38,11 +39,9 @@ const ran: string[] = [];
 
 /** An external pack at 2.0.0 whose 1.2.0 migration ran before (0.3.14 recorded it) */
 const memoPack = {
-  manifest: { id: 'memo-pack', name: 'Memo', version: '2.0.0' } as LoadedPack['manifest'],
-  dir: '/nowhere',
-  systems: new Map(),
+  manifest: { id: 'memo-pack', version: '2.0.0' },
   migrations: ['1.2.0', '2.0.0'].map((target) => ({ target, description: target, up: () => { ran.push(`memo ${target}`); } })),
-} satisfies LoadedPack;
+} satisfies PackMigrationTarget;
 
 /** The settings row as 0.3.14 stored it: the user's changes, and the app's state in `internal` */
 const OLD_SETTINGS = {

@@ -31,6 +31,6 @@ describe('external pack runtime', () => {
 
     const pack = loadSingleExternalPack({ id: 'bridge-pack', name: 'Bridge', version: '1.0.0' } as never, packDir);
 
-    expect(pack?.services).toEqual({ leaves: { cron: expect.any(String), newer: 1 } });
+    expect(pack?.registration.services).toEqual({ leaves: { cron: expect.any(String), newer: 1 } });
   });
 });

@@ -194,8 +194,9 @@ export interface PackRegistry extends PackRegistryView {
   /**
    * Each registered external pack as the runtime's per-pack helpers take it: where it came from, plus the
    * migrations it registered. One place joins the two halves, so no caller holds its own list of packs.
+   * With `packIds`, only those — activation and reload migrate and seed the one pack they handled.
    */
-  externalPackTargets(): Array<{ manifest: PackManifest; dir: string; migrations?: PackMigration[] }>;
+  externalPackTargets(packIds?: Iterable<string>): Array<{ manifest: PackManifest; dir: string; migrations?: PackMigration[] }>;
   /**
    * Seeds each registered pack's declarative boot seed (`boot.seedManifest`, built-in packs only: the
    * loader strips it from external packs, which seed through `seedPackData`)
@@ -275,6 +276,55 @@ export function createPackRegistry(): PackRegistry {
     }
   }
 
+  /** Each pack's undos, as its registration produced them */
+  const packUndos = new Map<string, Array<() => void>>();
+
+  /**
+   * Everything a registration contributes, and how to take exactly that back out.
+   *
+   * Each entry registers its own kind and hands `undo` the way to remove what it just did. Both paths that
+   * remove a pack run those undos — the rollback when a later entry throws, and `unregisterPack` — so a new
+   * kind of contribution is one entry here rather than one line in each of three lists that nothing checks
+   * agree.
+   *
+   * The undos are recorded as the work happens, not returned at the end, because an entry can throw partway
+   * through its own items: the seed hooks of one pack are refused one entity at a time. And they undo what
+   * the `add` did rather than re-reading the registration, because a pack refused for a step collision must
+   * not unregister the step it collided with.
+   */
+  const contributions: ReadonlyArray<(reg: PackRegistration, undo: (fn: () => void) => void) => void> = [
+    // Into the installed engine (the app's), before anything that may use them
+    (reg, undo) => {
+      for (const [name, repo] of Object.entries(reg.repositories ?? {})) {
+        registerRepository(name, repo);
+        undo(() => unregisterRepository(name));
+      }
+    },
+    (reg, undo) => {
+      for (const step of reg.steps ?? []) { steps.register(step, reg.id); undo(() => steps.unregister(step.type, reg.id)); }
+    },
+    (reg, undo) => {
+      for (const art of reg.artifacts ?? []) { artifacts.register(art, reg.id); undo(() => artifacts.unregister(art.type, reg.id)); }
+    },
+    (reg, undo) => {
+      for (const block of reg.blocks ?? []) { blocks.register(block, reg.id); undo(() => blocks.unregister(block.type, reg.id)); }
+    },
+    (reg, undo) => {
+      // Registered one entity at a time and refused the same way, so the undo is in place before the first
+      undo(() => seedHooks.unregisterAll(reg.id));
+      for (const [entity, hooks] of Object.entries(reg.seedHooks ?? {})) seedHooks.register(entity, hooks, reg.id);
+    },
+    (reg, undo) => { undo(() => seeders.unregister(reg.id)); seeders.register(reg.id, reg.seeders ?? []); },
+    (reg, undo) => { undo(() => commands.unregister(reg.id)); commands.register(reg.id, reg.commands ?? []); },
+    (reg, undo) => { undo(() => settingsDefaults.unregister(reg.id)); settingsDefaults.register(reg.id, reg.features ?? []); },
+    // Last, and collision-checked before any of the above ran, so nothing after it can refuse the pack
+    (reg, undo) => {
+      const roles = designationsOf(reg);
+      designations.register(roles);
+      undo(() => designations.unregister(roles));
+    },
+  ];
+
   function registerPack(registration: PackRegistration, origin?: PackOrigin): void {
     if (registrations.has(registration.id)) {
       throw new Error(`Pack "${registration.id}" is already registered`);
@@ -310,11 +360,6 @@ export function createPackRegistry(): PackRegistry {
       if (name) throw new Error(`Repository collision: "${name}" — pack "${registration.id}" vs "${existingId}"`);
     }
 
-    const registeredRepositories: string[] = [];
-    const registeredSteps: string[] = [];
-    const registeredArtifacts: string[] = [];
-    const registeredBlocks: string[] = [];
-
     /**
      * The pack is listed before its extensions are registered, because registering them is
      * observable: `settingsDefaults.register` notifies its listeners, the settings system reacts by
@@ -332,65 +377,34 @@ export function createPackRegistry(): PackRegistry {
     replacingPacks.delete(registration.id);
     changed();
 
+    const undos: Array<() => void> = [];
+    const undoAll = () => {
+      for (const undo of undos.splice(0).reverse()) undo();
+    };
     try {
-      // Into the installed engine (the app's), before anything that may use them
-      for (const [name, repo] of Object.entries(registration.repositories ?? {})) {
-        registerRepository(name, repo);
-        registeredRepositories.push(name);
-      }
-
-      for (const step of registration.steps ?? []) {
-        steps.register(step);
-        registeredSteps.push(step.type);
-      }
-      for (const art of registration.artifacts ?? []) {
-        artifacts.register(art);
-        registeredArtifacts.push(art.type);
-      }
-      for (const block of registration.blocks ?? []) {
-        blocks.register(block);
-        registeredBlocks.push(block.type);
-      }
-      for (const [entity, hooks] of Object.entries(registration.seedHooks ?? {})) {
-        seedHooks.register(entity, hooks, registration.id);
-      }
-      seeders.register(registration.id, registration.seeders ?? []);
-      commands.register(registration.id, registration.commands ?? []);
-      settingsDefaults.register(registration.id, registration.features ?? []);
+      const undo = (fn: () => void) => void undos.push(fn);
+      for (const add of contributions) add(registration, undo);
     } catch (err) {
-      commands.unregister(registration.id);
-      settingsDefaults.unregister(registration.id);
-      seeders.unregister(registration.id);
-      seedHooks.unregisterAll(registration.id);
-      for (const type of registeredSteps) steps.unregister(type);
-      for (const type of registeredArtifacts) artifacts.unregister(type);
-      for (const type of registeredBlocks) blocks.unregister(type);
-      for (const name of registeredRepositories) unregisterRepository(name);
-      // Listed above, so the rollback takes it back out: a refused pack leaves nothing of itself behind,
-      // its origin included — one left here would name a pack the app never registered as one it loaded
+      // Only what this call registered: a pack refused for a step collision must not unregister the step
+      // it collided with. A refused pack leaves nothing of itself behind, its origin included — one left
+      // here would name a pack the app never registered as one it loaded.
+      undoAll();
       registrations.delete(registration.id);
       origins.delete(registration.id);
       changed();
       throw err;
     }
-
-    designations.register(roles);
+    packUndos.set(registration.id, undos);
     changed();
   }
 
   function unregisterPack(packId: string): void {
-    const reg = registrations.get(packId);
-    if (!reg) throw new Error(`Pack "${packId}" is not registered`);
+    if (!registrations.has(packId)) throw new Error(`Pack "${packId}" is not registered`);
 
-    for (const step of reg.steps ?? []) steps.unregister(step.type);
-    for (const art of reg.artifacts ?? []) artifacts.unregister(art.type);
-    for (const block of reg.blocks ?? []) blocks.unregister(block.type);
-    for (const name of Object.keys(reg.repositories ?? {})) unregisterRepository(name);
-    seedHooks.unregisterAll(packId);
-    seeders.unregister(packId);
-    settingsDefaults.unregister(packId);
-    commands.unregister(packId);
-    designations.unregister(designationsOf(reg));
+    // The undos its registration produced, not a second reading of the registration: what comes out is
+    // exactly what went in
+    for (const undo of (packUndos.get(packId) ?? []).reverse()) undo();
+    packUndos.delete(packId);
 
     registrations.delete(packId);
     origins.delete(packId);
@@ -521,10 +535,12 @@ export function createPackRegistry(): PackRegistry {
     packOrigin: (packId) => origins.get(packId) ?? null,
     builtInPacks: () => [...origins.values()].filter((o) => o.builtIn),
     externalPacks: () => [...origins.values()].filter((o) => !o.builtIn),
-    externalPackTargets: () =>
-      [...origins.values()]
-        .filter((o) => !o.builtIn && o.manifest)
-        .map((o) => ({ manifest: o.manifest!, dir: o.dir, migrations: registrations.get(o.id)?.migrations })),
+    externalPackTargets: (packIds) => {
+      const wanted = packIds && new Set(packIds);
+      return [...origins.values()]
+        .filter((o) => !o.builtIn && o.manifest && (!wanted || wanted.has(o.id)))
+        .map((o) => ({ manifest: o.manifest!, dir: o.dir, migrations: registrations.get(o.id)?.migrations }));
+    },
 
     resolveSystemAddress(address) {
       const slash = address.indexOf('/');

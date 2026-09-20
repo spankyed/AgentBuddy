@@ -96,18 +96,21 @@ export function activatePack(
     return false;
   }
 
-  if (pack.boot?.onShutdown) {
-    registry.registerShutdownHook(pack.boot.onShutdown, packId);
+  const { boot } = pack.registration;
+  if (boot?.onShutdown) {
+    registry.registerShutdownHook(boot.onShutdown, packId);
   }
-  pack.boot?.onInit?.();
-  runPackMigrations([pack]);
-  seedPackData([pack]);
+  boot?.onInit?.();
+  // The pack is registered by now, so its migrations and seeds are read from the registry like a boot's
+  const targets = registry.externalPackTargets([packId]);
+  runPackMigrations(targets);
+  seedPackData(targets);
 
   // The running systems read what the pack registered and seeded (the chat's slash commands, say). Sent
   // before its own systems start: they send their startup data when they do
   busActor.send({ type: 'PACK_CHANGED', packId });
 
-  const systemIds = Array.from(pack.systems.keys()).map(featureId => `${packId}.${featureId}`);
+  const systemIds = registry.getRegisteredPackSystemIds(packId);
   if (systemIds.length > 0) {
     busActor.send({ type: 'ACTIVATE_PACK', packId, systemIds });
   }

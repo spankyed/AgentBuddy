@@ -112,12 +112,13 @@ export async function reloadExternalPack(
         // registerExternalPacks logs why a registration was refused
         if (registerExternalPacks(registry, [pack]).length === 0) throw new Error(`Failed to register pack ${packId}`);
       },
-      newSystemIds: Array.from(pack.systems.keys()).map(featureId => `${packId}.${featureId}`),
-      onShutdown: pack.boot?.onShutdown,
-      onInit: pack.boot?.onInit,
+      newSystemIds: pack.registration.systems.map((s) => s.id),
+      onShutdown: pack.registration.boot?.onShutdown,
+      onInit: pack.registration.boot?.onInit,
       afterRegister: () => {
-        runPackMigrations([pack]);
-        seedPackData([pack]);
+        const targets = registry.externalPackTargets([packId]);
+        runPackMigrations(targets);
+        seedPackData(targets);
       },
     };
   }, packDir);

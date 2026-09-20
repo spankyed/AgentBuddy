@@ -90,6 +90,24 @@ describe("a pack's frontend", () => {
     expect(stepRegistry.get('note')).toMatchObject({ type: 'note', kind: 'step', fe: { nodeConfig: { label: 'Note' } } });
   });
 
+  // Its counterpart: the merged type, the slot and the DSL name are each held by two packs, and the one
+  // that stays keeps what it contributed when the other unregisters
+  it("leaves the other pack's contributions in place when one of two unregisters", () => {
+    const build = { type: 'note', kind: 'step' } as StepDefinition;
+    const otherWelcome = { name: 'OtherWelcome' } as never;
+    add('build-pack', { steps: [build], appExtensions: { welcome: Welcome }, dslTypes: { memo: memoDsl } });
+    add('notebook-pack', { steps: [noteStepFE], appExtensions: { welcome: otherWelcome }, dslTypes: { memo: { other: true } as never } });
+    expect(stepRegistry.get('note')?.fe).toBeDefined();
+    expect(appExtension('welcome')).toBe(otherWelcome);
+
+    remove('notebook-pack');
+
+    expect(stepRegistry.get('note'), "the remaining pack's step went with the one that left").toBeDefined();
+    expect(stepRegistry.get('note')?.fe).toBeUndefined();
+    expect(appExtension('welcome')).toBe(Welcome);
+    expect(getDslTypes().get('memo')).toBe(memoDsl);
+  });
+
   it("keeps the first plugin with an id, and the first default plugin", () => {
     const first = plugin('notes');
     add('first-pack', { plugins: [first], defaultPlugin: first });

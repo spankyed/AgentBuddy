@@ -29,7 +29,11 @@ afterEach(() => {
 
 describe('what the loader says about a pack', () => {
   it('registers with the sentence the harness watches for', () => {
-    const pack = { manifest: { id: PACK_ID, name: PACK_ID, version: '1.0.0' }, dir: tmpDir, systems: new Map() };
+    const manifest = { id: PACK_ID, name: PACK_ID, version: '1.0.0' };
+    const pack = {
+      registration: { id: PACK_ID, systems: [] },
+      origin: { ...manifest, dir: tmpDir, builtIn: false, manifest },
+    };
 
     expect(registerExternalPacks(registry, [pack as never])).toHaveLength(1);
 

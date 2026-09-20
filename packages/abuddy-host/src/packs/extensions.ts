@@ -2,19 +2,58 @@
 // owned by the registry that creates it (createPackRegistry, createFePackRegistry)
 import { _mergeStepDefinitions, type StepDefinition } from '@abuddy/sdk/steps';
 
-/** Definitions by type: a later registration of a type replaces the earlier one, or, with `merge`, combines with it */
-export function createDefinitionStore<T extends { type: string }>(merge: (existing: T, def: T) => T = (_, def) => def) {
-  const byType = new Map<string, T>();
+/**
+ * Values packs contribute per key, folded in registration order.
+ *
+ * Each contribution is kept with the pack that made it, so removing a pack re-folds what is left rather
+ * than dropping the key. Two packs may hold one key between them — a step's build and frontend facets
+ * routinely arrive from different packs, and an app-extension slot or a DSL type name is simply taken by
+ * whoever registered last — so dropping the key when one of them unregisters takes the other's
+ * contribution with it, until the app restarts. Reload is where that shows, being a teardown and a
+ * registration.
+ *
+ * `fold` defaults to last-wins. Pass one that combines when a key is meant to be shared.
+ */
+export function createOwnedStore<V>(fold: (existing: V, next: V) => V = (_, next) => next) {
+  /** Each key's contributions, in registration order: the resolved value is a fold over them */
+  const contributions = new Map<string, Array<{ owner: string; value: V }>>();
+  const resolved = new Map<string, V>();
+
+  function refold(key: string): void {
+    const held = contributions.get(key);
+    if (!held?.length) {
+      contributions.delete(key);
+      resolved.delete(key);
+      return;
+    }
+    resolved.set(key, held.map((c) => c.value).reduce((existing, value) => fold(existing, value)));
+  }
+
   return {
-    register(def: T): void {
-      const existing = byType.get(def.type);
-      byType.set(def.type, existing ? merge(existing, def) : def);
+    set(key: string, value: V, owner: string): void {
+      contributions.set(key, [...(contributions.get(key) ?? []), { owner, value }]);
+      refold(key);
     },
-    unregister(type: string): void {
-      byType.delete(type);
+    remove(key: string, owner: string): void {
+      const held = contributions.get(key);
+      if (!held) return;
+      contributions.set(key, held.filter((c) => c.owner !== owner));
+      refold(key);
     },
-    get: (type: string): T | undefined => byType.get(type),
-    all: (): T[] => [...byType.values()],
+    get: (key: string): V | undefined => resolved.get(key),
+    all: (): V[] => [...resolved.values()],
+    entries: (): ReadonlyMap<string, V> => resolved,
+  };
+}
+
+/** Definitions by type, over `createOwnedStore`: a type's contributions fold with `merge`, last-wins by default */
+export function createDefinitionStore<T extends { type: string }>(merge: (existing: T, def: T) => T = (_, def) => def) {
+  const store = createOwnedStore<T>(merge);
+  return {
+    register: (def: T, owner: string): void => store.set(def.type, def, owner),
+    unregister: (type: string, owner: string): void => store.remove(type, owner),
+    get: store.get,
+    all: store.all,
   };
 }
 

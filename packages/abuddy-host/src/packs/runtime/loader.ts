@@ -5,7 +5,7 @@ import { createLogger } from '@abuddy/sdk/logger';
 import { resolveAppContext, getAppVersion } from '@abuddy/sdk/env';
 import type { PackSnapshot } from '@abuddy/sdk/build';
 import type { PackRegistration } from '@abuddy/sdk/framework';
-import type { PackRegistry } from '../pack-registration.ts';
+import type { PackRegistry, PackOrigin } from '../pack-registration.ts';
 import type { AnyStateMachine } from 'xstate';
 import type { PackBootHooks, PackEARS, PackFeatureDef, PackMigration } from '@abuddy/sdk/framework';
 import type { StepDefinition } from '@abuddy/sdk/steps';
@@ -24,31 +24,15 @@ const esmRequire = Module.createRequire(import.meta.url);
 const logger = createLogger('pack-loader');
 
 /**
- * An external pack's loaded runtime: what its bundle registered, plus the manifest and directory it was
- * loaded from. The registry keeps those two as the pack's `PackOrigin`; this is the loader's own value,
- * between reading the bundle and registering it.
+ * An external pack the loader read: what its bundle registered, and where the app found it.
+ *
+ * The registration is the pack's own object, passed to the registry as it is. It used to be flattened into
+ * this type field by field and reassembled on the way out; the two hand-written field lists silently lost
+ * `receivedEventTypes` when it was added to `PackRegistration`.
  */
 export interface LoadedPack {
-  manifest: PackManifest;
-  dir: string;
-  systems: Map<string, { machine: AnyStateMachine; events: Set<string> }>;
-  services?: Record<string, unknown>;
-  steps?: StepDefinition[];
-  artifacts?: ArtifactDefinition[];
-  blocks?: BlockDefinition[];
-  ears?: PackEARS;
-  repositories?: PackRegistration['repositories'];
-  boot?: PackBootHooks;
-  migrations?: PackMigration[];
-  seedHooks?: PackRegistration['seedHooks'];
-  /** The pack's seeders, which seeding its compiled seeds runs */
-  seeders?: PackRegistration['seeders'];
-  /** The slash commands the pack declares (abuddy.json `commands`) */
-  commands?: PackRegistration['commands'];
-  /** Feature definitions, with each feature's default settings */
-  features?: PackFeatureDef[];
-  /** Plugin id → the event types that plugin receives, which the bus checks the pack's sends against */
-  receivedEventTypes?: PackRegistration['receivedEventTypes'];
+  registration: PackRegistration;
+  origin: PackOrigin;
 }
 
 
@@ -229,36 +213,52 @@ export function loadSingleExternalPack(
     } catch {}
   }
 
-  const pack = loadBundledRuntime(manifest, dir, runtimeEntry);
-  if (!pack) return null;
+  const registration = loadBundledRuntime(manifest, dir, runtimeEntry);
+  if (!registration) return null;
 
-  if (!pack.ears && (manifest.entities || manifest.relKinds)) {
-    pack.ears = { entities: manifest.entities ?? {}, relKinds: manifest.relKinds ?? {} };
+  if (!registration.ears && (manifest.entities || manifest.relKinds)) {
+    registration.ears = { entities: manifest.entities ?? {}, relKinds: manifest.relKinds ?? {} };
   }
 
-  if (pack.boot?.earlySystem) {
-    logger.warn(`Pack ${manifest.id}: earlySystem blocked for external packs`);
-    delete pack.boot.earlySystem;
+  // `boot` and `ears` are the pack module's own objects; what the app refuses an external pack is taken off
+  // a copy, so a reload that reuses the module sees what the pack exported rather than what the last load
+  // left of it
+  if (registration.boot?.earlySystem || registration.boot?.seedManifest) {
+    registration.boot = { ...registration.boot };
+    if (registration.boot.earlySystem) {
+      logger.warn(`Pack ${manifest.id}: earlySystem blocked for external packs`);
+      delete registration.boot.earlySystem;
+    }
+    // External pack seeds are hash-checked per pack by seedPackData(); the declarative
+    // boot seed path tracks a single global hash and is reserved for built-in packs
+    delete registration.boot.seedManifest;
   }
-  // External pack seeds are hash-checked per pack by seedPackData(); the declarative
-  // boot seed path tracks a single global hash and is reserved for built-in packs
-  if (pack.boot?.seedManifest) delete pack.boot.seedManifest;
-  const policy = pack.ears?.partitionPolicy;
+  const policy = registration.ears?.partitionPolicy;
   if (policy) {
     if ((policy.excludedEntityTypes?.length ?? 0) > 0) {
       logger.warn(`Pack ${manifest.id}: partitionPolicy ignored for external packs (v1)`);
     }
-    delete pack.ears!.partitionPolicy;
+    registration.ears = { ...registration.ears! };
+    delete registration.ears.partitionPolicy;
   }
 
-  return pack;
+  return {
+    registration,
+    origin: { id: manifest.id, name: manifest.name, version: manifest.version, dir, builtIn: false, manifest },
+  };
 }
 
+/**
+ * The pack's own registration from its runtime bundle, with its systems completed from the manifest: the
+ * bus id (`<packId>.<featureId>`), the designation its feature declares, and the incoming events the
+ * manifest adds to the ones the system declared. Completed here and not again: the registry takes the
+ * object as it is.
+ */
 function loadBundledRuntime(
   manifest: PackManifest,
   dir: string,
   runtimeEntry: string,
-): LoadedPack | null {
+): PackRegistration | null {
   let registration: PackRegistration;
   try {
     registration = withHostResolution(() => {
@@ -279,33 +279,15 @@ function loadBundledRuntime(
     return null;
   }
 
-  const systems = new Map<string, { machine: import('xstate').AnyStateMachine; events: Set<string> }>();
-  for (const def of registration.systems ?? []) {
-    const feature = manifest.features?.find(f => f.id === def.id);
+  const systems = (registration.systems ?? []).map((def) => {
+    const feature = manifest.features?.find((f) => f.id === def.id);
     const events = new Set<string>(def.events);
     for (const evt of feature?.system?.events?.incoming ?? []) events.add(evt);
-    systems.set(def.id, { machine: def.machine, events });
     logger.info(`Loaded system: ${manifest.id}/${def.id}`);
-  }
+    return { id: `${manifest.id}.${def.id}`, machine: def.machine, events, designation: feature?.designation };
+  });
 
-  return {
-    manifest,
-    dir,
-    systems,
-    services: registration.services,
-    steps: registration.steps,
-    artifacts: registration.artifacts,
-    blocks: registration.blocks,
-    ears: registration.ears,
-    repositories: registration.repositories,
-    boot: registration.boot ? { ...registration.boot } : undefined,
-    migrations: registration.migrations,
-    seedHooks: registration.seedHooks,
-    seeders: registration.seeders,
-    commands: registration.commands,
-    features: registration.features,
-    receivedEventTypes: registration.receivedEventTypes,
-  };
+  return { ...registration, systems };
 }
 
 export function clearPackRequireCache(packDir: string): void {
@@ -341,45 +323,12 @@ export function loadExternalPacks(): LoadedPack[] {
 export function registerExternalPacks(registry: PackRegistry, packs: LoadedPack[]): LoadedPack[] {
   const registered: LoadedPack[] = [];
   for (const pack of packs) {
-    const systems = Array.from(pack.systems.entries()).map(([featureId, sys]) => {
-      const entries = pack.manifest.features;
-      const pluginDef = entries?.find(p => p.id === featureId);
-      return {
-        id: `${pack.manifest.id}.${featureId}`,
-        machine: sys.machine,
-        events: sys.events,
-        designation: pluginDef?.designation,
-      };
-    });
     try {
-      registry.registerPack({
-        id: pack.manifest.id,
-        systems,
-        services: pack.services,
-        steps: pack.steps,
-        artifacts: pack.artifacts,
-        blocks: pack.blocks,
-        ears: pack.ears,
-        repositories: pack.repositories,
-        boot: pack.boot,
-        migrations: pack.migrations,
-        seedHooks: pack.seedHooks,
-        seeders: pack.seeders,
-        commands: pack.commands,
-        features: pack.features,
-        receivedEventTypes: pack.receivedEventTypes,
-      }, {
-        id: pack.manifest.id,
-        name: pack.manifest.name,
-        version: pack.manifest.version,
-        dir: pack.dir,
-        builtIn: false,
-        manifest: pack.manifest,
-      });
+      registry.registerPack(pack.registration, pack.origin);
       registered.push(pack);
-      logger.info(packRegistered(pack.manifest.id, systems.length));
+      logger.info(packRegistered(pack.origin.id, pack.registration.systems.length));
     } catch (err) {
-      logger.error(`${packLoadFailed(pack.manifest.id)}:`, err as Error);
+      logger.error(`${packLoadFailed(pack.origin.id)}:`, err as Error);
     }
   }
   return registered;

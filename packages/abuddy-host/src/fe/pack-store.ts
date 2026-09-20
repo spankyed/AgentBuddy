@@ -4,7 +4,7 @@ import type { Plugin, PackFERegistration, TiptapPlugin, DslTypeConfig } from '@a
 import type { FePackRegistryView } from '@abuddy/sdk/runtime';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
-import { createDefinitionStore, createDesignationStore, createStepStore } from '../packs/extensions.ts';
+import { createDefinitionStore, createDesignationStore, createOwnedStore, createStepStore } from '../packs/extensions.ts';
 import { createAppExtensionSlots } from './app-extensions.ts';
 
 interface PackFEExtensions {
@@ -39,12 +39,14 @@ export function createFePackRegistry(): FePackRegistry {
   let defaultPlugin: Plugin | undefined;
   const packExtensions = new Map<string, PackFEExtensions>();
   const designations = createDesignationStore();
+  /** The owner recorded for contributions that arrive without a pack id (the built-in packs') */
+  const BUILT_IN_OWNER = '<built-in>';
   const steps = createStepStore();
   const artifacts = createDefinitionStore<ArtifactDefinition>();
   const blocks = createDefinitionStore<BlockDefinition>();
   const tiptapPlugins: TiptapPlugin[] = [];
   const appExtensions = createAppExtensionSlots();
-  const dslTypes = new Map<string, DslTypeConfig>();
+  const dslTypes = createOwnedStore<DslTypeConfig>();
 
   function registerPackFE(registration: PackFERegistration, packId?: string): void {
     const fromPack = packId ? ` from pack ${packId}` : '';
@@ -79,24 +81,26 @@ export function createFePackRegistry(): FePackRegistry {
 
     tiptapPlugins.push(...registration.tiptapPlugins ?? []);
 
+    // Built-in packs register without a pack id and are never unregistered, so they share one owner
+    const owner = packId ?? BUILT_IN_OWNER;
     const appExtensionSlots: string[] = [];
     for (const [slot, component] of Object.entries(registration.appExtensions ?? {})) {
-      appExtensions.register(slot, component);
+      appExtensions.register(slot, component, owner);
       appExtensionSlots.push(slot);
     }
 
-    for (const def of registration.artifacts ?? []) artifacts.register(def);
-    for (const def of registration.blocks ?? []) blocks.register(def);
+    for (const def of registration.artifacts ?? []) artifacts.register(def, owner);
+    for (const def of registration.blocks ?? []) blocks.register(def, owner);
 
     if (registration.steps) {
-      for (const step of registration.steps) steps.register(step);
+      for (const step of registration.steps) steps.register(step, owner);
       // Each step's components, loaded once
       for (const def of steps.all()) {
         if (def.fe?.loadComponents && !def.fe.components) def.fe.components = def.fe.loadComponents();
       }
     }
 
-    for (const [name, config] of Object.entries(registration.dslTypes ?? {})) dslTypes.set(name, config);
+    for (const [name, config] of Object.entries(registration.dslTypes ?? {})) dslTypes.set(name, config, owner);
 
     if (packId) {
       packExtensions.set(packId, {
@@ -125,11 +129,11 @@ export function createFePackRegistry(): FePackRegistry {
       }
     }
 
-    for (const type of contrib.stepTypes) steps.unregister(type);
-    for (const type of contrib.artifactTypes) artifacts.unregister(type);
-    for (const type of contrib.blockTypes) blocks.unregister(type);
-    for (const slot of contrib.appExtensionSlots) appExtensions.unregister(slot);
-    for (const name of contrib.dslTypes) dslTypes.delete(name);
+    for (const type of contrib.stepTypes) steps.unregister(type, packId);
+    for (const type of contrib.artifactTypes) artifacts.unregister(type, packId);
+    for (const type of contrib.blockTypes) blocks.unregister(type, packId);
+    for (const slot of contrib.appExtensionSlots) appExtensions.unregister(slot, packId);
+    for (const name of contrib.dslTypes) dslTypes.remove(name, packId);
     for (const plugin of contrib.tiptapPlugins) {
       const idx = tiptapPlugins.indexOf(plugin);
       if (idx >= 0) tiptapPlugins.splice(idx, 1);
@@ -164,6 +168,6 @@ export function createFePackRegistry(): FePackRegistry {
     defaultPlugin: () => defaultPlugin,
     tiptapPlugins: () => tiptapPlugins,
     appExtension: appExtensions.get,
-    dslTypes: () => dslTypes,
+    dslTypes: () => dslTypes.entries(),
   };
 }

@@ -69,9 +69,10 @@ describe('pack full lifecycle: init → install → load', () => {
     // The loader finds it under ABUDDY_USER_DATA_DIR
     const packs = loadExternalPacks();
     expect(packs).toHaveLength(1);
-    expect(packs[0].manifest.id).toBe('my-test-pack');
-    expect(packs[0].manifest.name).toBe('My Test Pack');
-    expect(packs[0].systems.has('main')).toBe(true);
-    expect(packs[0].systems.get('main')!.events.has('TEST_EVENT')).toBe(true);
+    expect(packs[0].origin.id).toBe('my-test-pack');
+    expect(packs[0].origin.name).toBe('My Test Pack');
+    const main = packs[0].registration.systems.find((s) => s.id === 'my-test-pack.main')!;
+    expect(main).toBeDefined();
+    expect(main.events.has('TEST_EVENT')).toBe(true);
   });
 });

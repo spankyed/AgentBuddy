@@ -152,8 +152,8 @@ export async function setupBackend(): Promise<void> {
     }
   }
   for (const pack of externalPacks) {
-    if (pack.boot?.onShutdown) {
-      packs.registerShutdownHook(pack.boot.onShutdown, pack.manifest.id);
+    if (pack.registration.boot?.onShutdown) {
+      packs.registerShutdownHook(pack.registration.boot.onShutdown, pack.origin.id);
     }
   }
 

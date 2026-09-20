@@ -16,6 +16,11 @@ import { loadExternalPacks } from '../../../src/packs/runtime/loader.ts';
 import { getPacksWithClientLoadedFrontends } from '../../../src/packs/pack-layout.ts';
 import type { LoadedPack } from '../../../src/packs/runtime/loader.ts';
 
+/** A loaded pack's system by feature id: the loader now completes each system's bus id (`<packId>.<featureId>`) */
+const systemOf = (pack: LoadedPack, featureId: string) =>
+  pack.registration.systems.find((s) => s.id === `${pack.origin.id}.${featureId}`)!;
+
+
 const USER_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'pack-e2e-'));
 const TEST_PACK_ID = 'e2e-test-pack';
 const TEST_PACK_DIR = path.join(USER_DATA_DIR, 'packs', TEST_PACK_ID);
@@ -116,44 +121,44 @@ describe('E2E: pack loading pipeline', () => {
 
   it('discovers the test pack from the resolved packs directory', () => {
     packs = loadExternalPacks();
-    const testPack = packs.find(p => p.manifest.id === TEST_PACK_ID);
+    const testPack = packs.find(p => p.origin.id === TEST_PACK_ID);
     expect(testPack).toBeDefined();
-    expect(testPack!.manifest.name).toBe('E2E Test Pack');
-    expect(testPack!.manifest.version).toBe('1.0.0');
-    expect(testPack!.dir).toBe(TEST_PACK_DIR);
+    expect(testPack!.origin.name).toBe('E2E Test Pack');
+    expect(testPack!.origin.version).toBe('1.0.0');
+    expect(testPack!.origin.dir).toBe(TEST_PACK_DIR);
   });
 
   it('loads the runtime registration via Module._resolveFilename override', () => {
-    const testPack = packs.find(p => p.manifest.id === TEST_PACK_ID)!;
-    expect(testPack.systems.has('hello')).toBe(true);
+    const testPack = packs.find(p => p.origin.id === TEST_PACK_ID)!;
+    expect(systemOf(testPack, 'hello')).toBeDefined();
 
-    const system = testPack.systems.get('hello')!;
+    const system = systemOf(testPack, 'hello');
     expect(system.machine).toBeDefined();
     expect(system.machine.id).toBe('e2e-hello');
   });
 
   it('merges manifest-declared events into the system event set', () => {
-    const testPack = packs.find(p => p.manifest.id === TEST_PACK_ID)!;
-    const system = testPack.systems.get('hello')!;
+    const testPack = packs.find(p => p.origin.id === TEST_PACK_ID)!;
+    const system = systemOf(testPack, 'hello');
 
     expect(system.events.has('HELLO_PING')).toBe(true);
   });
 
   it('registers no system for a feature that has only a plugin', () => {
-    const testPack = packs.find(p => p.manifest.id === TEST_PACK_ID)!;
-    expect(testPack.systems.has('dataOnly')).toBe(false);
+    const testPack = packs.find(p => p.origin.id === TEST_PACK_ID)!;
+    expect(systemOf(testPack, 'dataOnly')).toBeUndefined();
   });
 
   it('lists the pack as one whose frontend a client loads', () => {
-    const testPack = packs.find(p => p.manifest.id === TEST_PACK_ID)!;
-    const loaded = { externalPacks: () => [{ id: TEST_PACK_ID, name: TEST_PACK_ID, version: '1.0.0', dir: testPack.dir, builtIn: false }] };
+    const testPack = packs.find(p => p.origin.id === TEST_PACK_ID)!;
+    const loaded = { externalPacks: () => [{ id: TEST_PACK_ID, name: TEST_PACK_ID, version: '1.0.0', dir: testPack.origin.dir, builtIn: false }] };
 
     expect(getPacksWithClientLoadedFrontends(loaded)).toEqual([TEST_PACK_ID]);
   });
 
   it('xstate machine from pack is functional (can create states)', () => {
-    const testPack = packs.find(p => p.manifest.id === TEST_PACK_ID)!;
-    const machine = testPack.systems.get('hello')!.machine;
+    const testPack = packs.find(p => p.origin.id === TEST_PACK_ID)!;
+    const machine = systemOf(testPack, 'hello').machine;
 
     // Verify the machine has the expected structure
     expect(machine.config.initial).toBe('idle');

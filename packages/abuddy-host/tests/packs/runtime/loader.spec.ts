@@ -3,12 +3,18 @@ import { registry } from './test-host.ts';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { loadBuiltInPacks, loadExternalPacks } from '../../../src/packs/runtime/loader.ts';
-import { seedPackData, computePackSeedHash } from '../../../src/packs/runtime/seed.ts';
+import { loadBuiltInPacks, loadExternalPacks, type LoadedPack } from '../../../src/packs/runtime/loader.ts';
+import { seedPackData, computePackSeedHash, type PackSeedTarget } from '../../../src/packs/runtime/seed.ts';
 import { appState } from '../../../src/app-state/index.ts';
 import { getLoadedPackEntries } from '../../../src/packs/pack-layout.ts';
 import { resetTestData, testRootEvents as rootEvents } from '@abuddy/sdk/testing';
 import { seedFile } from '@abuddy/sdk/build';
+
+
+/** A loaded pack's system by feature id: the loader now completes each system's bus id (`<packId>.<featureId>`) */
+const systemOf = (pack: LoadedPack, featureId: string) =>
+  pack.registration.systems.find((s) => s.id === `${pack.origin.id}.${featureId}`)!;
+
 
 let tmpDir: string;
 let origEnv: { env?: string; userDataDir?: string };
@@ -74,9 +80,9 @@ describe('pack-loader', () => {
       const result = loadExternalPacks();
 
       expect(result).toHaveLength(1);
-      expect(result[0].manifest.id).toBe('test-pack');
-      expect(result[0].systems.has('myFeature')).toBe(true);
-      expect(result[0].systems.get('myFeature')!.events.has('DO_THING')).toBe(true);
+      expect(result[0].origin.id).toBe('test-pack');
+      expect(result[0].registration.systems.map((sys) => sys.id)).toEqual(['test-pack.myFeature']);
+      expect(systemOf(result[0], 'myFeature').events.has('DO_THING')).toBe(true);
     });
 
     it("skips a pack directory that isn't an installed pack, naming how to install it", () => {
@@ -161,7 +167,7 @@ describe('pack-loader', () => {
         "  machine: typeof createMachine, guard: typeof and };",
       ].join('\n'));
       const [pack] = loadExternalPacks();
-      expect(pack?.manifest.id).toBe('zod-pack');
+      expect(pack?.origin.id).toBe('zod-pack');
 
       // The modules the runtime got are the host's own, not a second copy
       const runtime = require(path.join(packDir, 'runtime', 'index.cjs')) as Record<string, unknown>;
@@ -177,7 +183,7 @@ describe('pack-loader', () => {
       });
       const result = loadExternalPacks();
       expect(result).toHaveLength(1);
-      expect(result[0].systems.size).toBe(0);
+      expect(result[0].registration.systems).toEqual([]);
     });
 
     it('handles features without system entry', () => {
@@ -192,7 +198,7 @@ describe('pack-loader', () => {
       });
       const result = loadExternalPacks();
       expect(result).toHaveLength(1);
-      expect(result[0].systems.size).toBe(0);
+      expect(result[0].registration.systems).toEqual([]);
     });
 
   });
@@ -278,12 +284,12 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     });
 
     const [pack] = loadExternalPacks();
-    expect(pack.manifest.id).toBe('bundled-pack');
-    expect([...pack.systems.keys()]).toEqual(['widget']);
-    expect([...pack.systems.get('widget')!.events].sort()).toEqual(['EXTRA', 'PING']);
-    expect(Object.keys(pack.services ?? {})).toEqual(['hello']);
-    expect(pack.ears?.entities).toEqual({ Widget: 'Widget' });
-    expect(pack.boot?.onInit).toBeTypeOf('function');
+    expect(pack.origin.id).toBe('bundled-pack');
+    expect(pack.registration.systems.map((sys) => sys.id)).toEqual(['bundled-pack.widget']);
+    expect([...systemOf(pack, 'widget').events].sort()).toEqual(['EXTRA', 'PING']);
+    expect(Object.keys(pack.registration.services ?? {})).toEqual(['hello']);
+    expect(pack.registration.ears?.entities).toEqual({ Widget: 'Widget' });
+    expect(pack.registration.boot?.onInit).toBeTypeOf('function');
 
     // seeds live under runtime/seeds for bundled packs
     const mod = require(path.join(dir, 'runtime', 'index.cjs'));
@@ -312,8 +318,8 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
   it('strips the declarative boot seed and an empty partition policy', () => {
     makeBundledPack('strip-pack', registration('strip-pack'));
     const [pack] = loadExternalPacks();
-    expect(pack.boot?.seedManifest).toBeUndefined();
-    expect(pack.ears?.partitionPolicy).toBeUndefined();
+    expect(pack.registration.boot?.seedManifest).toBeUndefined();
+    expect(pack.registration.ears?.partitionPolicy).toBeUndefined();
   });
 
   it("never calls a seed function an external pack's boot hooks export; seedPackData seeds it once", async () => {
@@ -334,7 +340,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
       expect(orchestrate).not.toHaveBeenCalled();
 
       const seedFn = vi.fn(() => ({}));
-      seedPackData(packs, seedFn);
+      seedPackData(packs.map((p) => ({ manifest: p.origin, dir: p.origin.dir })), seedFn);
       expect(seedFn).toHaveBeenCalledTimes(1);
       expect(seedFn).toHaveBeenCalledWith(expect.objectContaining({ compiledDir: path.join(dir, 'runtime', 'seeds') }));
     } finally {
@@ -350,7 +356,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
       makeBundledPack('stale-pack', `require('@abuddy/sdk/rpc');\n${registration('stale-pack')}`);
       makeBundledPack('current-pack', registration('current-pack'));
 
-      expect(loadExternalPacks().map(p => p.manifest.id)).toEqual(['current-pack']);
+      expect(loadExternalPacks().map(p => p.origin.id)).toEqual(['current-pack']);
       expect(errors).toEqual([expect.stringContaining("@abuddy/sdk/rpc isn't provided by this AgentBuddy: rebuild the pack with the current @abuddy/cli")]);
     } finally {
       stop();
@@ -373,7 +379,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     fs.writeFileSync(path.join(dir, 'runtime', 'seeds', 'actions.seed.json'), '[]');
     const packs = loadExternalPacks();
     const seedFn = vi.fn(() => ({}));
-    seedPackData(packs, seedFn);
+    seedPackData(packs.map((p) => ({ manifest: p.origin, dir: p.origin.dir })), seedFn);
     expect(seedFn).toHaveBeenCalledWith(expect.objectContaining({ compiledDir: path.join(dir, 'runtime', 'seeds') }));
   });
 });
@@ -384,7 +390,7 @@ describe('seedPackData: failures', () => {
     fs.mkdirSync(path.join(dir, 'runtime', 'seeds'), { recursive: true });
     fs.writeFileSync(path.join(dir, 'runtime', 'index.cjs'), '');
     fs.writeFileSync(path.join(dir, 'runtime', 'seeds', 'flows.seed.json'), '{}');
-    return { manifest: { id, name: id, version: '1.0.0' }, dir, systems: new Map() } as any;
+    return { manifest: { id }, dir } satisfies PackSeedTarget;
   }
   function registryEntry(id: string) {
     const registry = JSON.parse(fs.readFileSync(path.join(tmpDir, 'installed-packs.json'), 'utf-8'));

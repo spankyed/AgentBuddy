@@ -271,16 +271,31 @@ survey turned up.
   migrated and seeded it. Caught by auditing the three parallel lists in this module, not by a test, which
   is the point of the first open item below.
 
+### Phase 5 (follow-up, same session) — the class, not the instances
+
+Both open items were closed, and auditing them found a third bug.
+
+- **`LoadedPack` is `{ registration, origin }`.** The unpack/repack round trip is gone: the registration
+  the pack's bundle exports is passed to the registry as it is, with its systems completed once (bus id,
+  designation, and the manifest's incoming events) instead of array → Map → array. Two hand-written
+  13-field lists deleted. The external-pack adjustments (`earlySystem`, `seedManifest`, `partitionPolicy`)
+  now take their copies before deleting, so nothing borrowed from the pack module is mutated.
+- **`registerPack` has one `contributions` table** in place of three hand-maintained lists. Each entry
+  records its undo as it works — not returned at the end, because an entry can throw partway through its
+  own items, which is how the seed-hook rollback was already being handled specially. `unregisterPack`
+  runs the same undos, so what comes out is exactly what went in.
+- **Found while auditing: a type two packs contribute facets of was dropped when either left.**
+  `createDefinitionStore.unregister(type)` deleted the key outright, and merging facets across packs is
+  a supported, documented case. Reload is a teardown and a registration, so an external pack reloading
+  took the built-in pack's facet of any shared step with it until restart. The same shape was in the
+  frontend's app-extension slots and DSL types. All three now go through `createOwnedStore`, which keeps
+  each contribution with its pack and re-folds the rest.
+
 ### Open items
 
-- The unpack/repack round trip in `loader.ts` still exists — Phase 3 removed the second *list*, not the
-  field-by-field copy between `PackRegistration` and `LoadedPack`. That copy is what lost
-  `receivedEventTypes`, and it is still the shape that can lose the next field. Collapsing `LoadedPack`
-  into `{ registration, origin }` is the follow-up, and is now a local change to one file.
-- **`registerPack` keeps three hand-maintained lists of the registerable kinds** — register, roll back,
-  unregister — and nothing checks they agree. Ten kinds today; adding an eleventh means remembering three
-  places. The origin bug above is what that costs. A table of `{ register, unregister }` pairs iterated by
-  all three, or a spec asserting the three cover the same set, would make it structural.
+None from this goal. The general lesson is in `abuddy-host/CLAUDE.md`: a contribution keyed by anything
+other than the pack id belongs in `createOwnedStore`, and a removal path that re-reads the registration
+rather than undoing what the registration did is the shape to look for.
 
 ### Final verification
 

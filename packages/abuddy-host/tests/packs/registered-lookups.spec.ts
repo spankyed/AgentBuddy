@@ -202,10 +202,89 @@ describe('seeders', () => {
   });
 });
 
-// The rollback's rule is that a refused pack leaves nothing of itself behind. Where it came from is part of
-// itself: an origin left over would list a pack that isn't registered as one the app loaded, and the boot
-// would then migrate and seed it.
+// The rollback's rule is that a refused pack leaves nothing of itself behind, and takes nothing of anyone
+// else's with it. registerPack registers every kind of contribution through one table whose entries hand
+// back their own undo, and the rollback and unregisterPack both run those — so what this pins is the rule,
+// across the kinds, rather than three hand-written lists agreeing.
+// A step type's build, runtime and frontend facets may come from different packs — that is what merging is
+// for. Removing one pack used to drop the merged type outright, so the other pack's facet went with it until
+// the app restarted. Reload is where that shows, being a teardown and a registration.
+describe('a type two packs contribute facets of', () => {
+  it("keeps the facets of the pack that stays when the other unregisters", () => {
+    add({ id: 'build-pack', steps: [{ type: 'shared', kind: 'step', build: build('Shared') }] });
+    add({ id: 'fe-pack', steps: [{ type: 'shared', kind: 'step', fe: { nodeConfig: { label: 'Shared' } } as never }] });
+    expect(stepRegistry.get('shared')?.build).toBeDefined();
+    expect(stepRegistry.get('shared')?.fe).toBeDefined();
+
+    remove('fe-pack');
+
+    expect(stepRegistry.get('shared'), "the remaining pack's step went with the one that left").toBeDefined();
+    expect(stepRegistry.get('shared')?.build).toBeDefined();
+    expect(stepRegistry.get('shared')?.fe).toBeUndefined();
+  });
+
+  it('is gone once the last pack contributing it unregisters', () => {
+    add({ id: 'only-pack', artifacts: [{ type: 'solo-view' } as never] });
+    expect(artifactRegistry.has('solo-view')).toBe(true);
+
+    remove('only-pack');
+    expect(artifactRegistry.has('solo-view')).toBe(false);
+  });
+});
+
 describe('a pack whose registration is refused', () => {
+  const scratch: string[] = [];
+  afterEach(() => { for (const dir of scratch.splice(0)) fs.rmSync(dir, { recursive: true, force: true }); });
+  /** A compiled seeds directory whose seeds.json names `packId` */
+  const seedsOf = (packId: string) => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'refused-rollback-'));
+    scratch.push(dir);
+    fs.writeFileSync(path.join(dir, 'seeds.json'), JSON.stringify({ version: 1, packId, seeds: [] }));
+    return dir;
+  };
+  const aSeeder = (key: string): Seeder => ({ key, seed: () => ({ created: 1, updated: 0, skipped: 0 }) });
+
+  it('takes back every kind it had registered, and leaves the pack it collided with whole', () => {
+    add({
+      id: 'incumbent',
+      steps: [noteStep],
+      artifacts: [{ type: 'note-view' } as never],
+      blocks: [{ type: 'note-block' } as never],
+      seedHooks: { Note: {} as never },
+      seeders: [aSeeder('notes')],
+      commands: [{ name: 'standup', placeholder: 'Topic' }],
+      features: [{ id: 'notes', hasSystem: false, hasPlugin: true, services: [], settings: { plugins: { notes: { from: 'incumbent' } } } }],
+    });
+
+    // Every kind of its own, and a command the incumbent already declares — refused after the rest registered
+    expect(() => add({
+      id: 'refused',
+      steps: [tickTrigger],
+      artifacts: [{ type: 'card-view' } as never],
+      blocks: [{ type: 'card-block' } as never],
+      seedHooks: { Card: {} as never },
+      seeders: [aSeeder('cards')],
+      commands: [{ name: 'standup', placeholder: 'Theirs' }],
+      features: [{ id: 'cards', hasSystem: false, hasPlugin: true, services: [], settings: { plugins: { cards: {} } } }],
+    })).toThrow('Command collision');
+
+    // Nothing of the refused pack survives
+    expect(stepRegistry.has('tick')).toBe(false);
+    expect(artifactRegistry.has('card-view')).toBe(false);
+    expect(blockRegistry.has('card-block')).toBe(false);
+    expect(_seedHookRegistry.get('Card')).toBeUndefined();
+    expect(seedData({ compiledDir: seedsOf('refused') })).toEqual({});
+    expect(getPackSettingsDefaults().settings.plugins).not.toHaveProperty('cards');
+
+    // ...and nothing of the incumbent's was taken with it
+    expect(stepRegistry.has('note')).toBe(true);
+    expect(artifactRegistry.has('note-view')).toBe(true);
+    expect(blockRegistry.has('note-block')).toBe(true);
+    expect(_seedHookRegistry.get('Note')).toBeDefined();
+    expect(getPackCommands().map((c) => c.name)).toEqual(['standup']);
+    expect(getPackSettingsDefaults().settings.plugins).toHaveProperty('notes');
+  });
+
   it('leaves no origin behind either', () => {
     add({ id: 'holder-pack', commands: [{ name: 'standup', placeholder: 'Topic' }] });
     const origin = { id: 'refused-pack', name: 'Refused', version: '1.0.0', dir: '/packs/refused-pack', builtIn: false };
