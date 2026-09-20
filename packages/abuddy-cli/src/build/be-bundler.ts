@@ -249,17 +249,19 @@ export function readTsconfigAliases(packDir: string): Record<string, string> {
   const tsconfigPath = path.join(packDir, 'tsconfig.json');
   if (!fs.existsSync(tsconfigPath)) return aliases;
   try {
-    // TypeScript's own JSONC reader, not a regex: a `//` inside a string is the common case here
+    // TypeScript's own reader, not a regex: a `//` inside a string is the common case here
     // (`"$schema": "https://…"`), and stripping to end of line there breaks the parse — which the
     // catch below swallows, dropping every path alias in silence.
     const { config, error } = ts.readConfigFile(tsconfigPath, file => fs.readFileSync(file, 'utf-8'));
     if (error) return aliases;
-    const paths: Record<string, string[]> = config?.compilerOptions?.paths ?? {};
-    for (const [pattern, targets] of Object.entries(paths)) {
+    // And TypeScript's own merge, so a pack whose tsconfig extends a shared base gets the base's paths.
+    // Reading one file answers for one file; `extends` is a chain only the compiler knows how to walk.
+    const parsed = ts.parseJsonConfigFileContent(config, ts.sys, packDir);
+    // Where a relative target is relative: `baseUrl` when the config sets one, the pack otherwise
+    const from = parsed.options.baseUrl ?? packDir;
+    for (const [pattern, targets] of Object.entries(parsed.options.paths ?? {})) {
       if (!pattern.endsWith('/*') || !targets[0]?.endsWith('/*')) continue;
-      const alias = pattern.slice(0, -2);
-      const target = targets[0].slice(0, -2);
-      aliases[alias] = path.resolve(packDir, target);
+      aliases[pattern.slice(0, -2)] = path.resolve(from, targets[0].slice(0, -2));
     }
   } catch {}
   return aliases;

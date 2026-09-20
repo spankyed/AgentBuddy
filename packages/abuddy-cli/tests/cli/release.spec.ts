@@ -224,6 +224,21 @@ describe('defaultRunner', () => {
       .toThrow(/failed:[\s\S]*a type error[\s\S]*a failing test/);
   });
 
+  // The release reruns and resumes on top of these, and a caller telling a failed check from a killed one
+  // needs what execFileSync attached; only the message was ever missing
+  it('rethrows the error the command failed with, status and all', () => {
+    // With output, since that is the path that used to replace the error wholesale
+    const script = 'console.log("a type error"); process.exit(3)';
+    let thrown: unknown;
+    try {
+      defaultRunner(process.execPath, ['-e', script], tmp);
+    } catch (err) {
+      thrown = err;
+    }
+
+    expect((thrown as { status?: number }).status).toBe(3);
+  });
+
   it('returns trimmed stdout when the command succeeds', () => {
     expect(defaultRunner(process.execPath, ['-e', 'console.log(" ok ")'], tmp)).toBe('ok');
   });

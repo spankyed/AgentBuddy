@@ -30,6 +30,29 @@ describe('readTsconfigAliases', () => {
     expect(readTsconfigAliases(packDir)).toEqual({ '#generated': path.join(packDir, 'src/__generated__') });
   });
 
+  // A pack that keeps its compiler settings in a shared base has its aliases there, and reading one file
+  // answers for one file: the bundler saw no aliases at all and resolved nothing
+  it('takes the paths a tsconfig inherits from the base it extends', () => {
+    fs.writeFileSync(path.join(packDir, 'base.json'), JSON.stringify({
+      compilerOptions: { paths: { '#generated/*': ['./src/__generated__/*'] } },
+    }));
+    writeTsconfig(JSON.stringify({ extends: './base.json', compilerOptions: { strict: true } }));
+
+    expect(readTsconfigAliases(packDir)).toEqual({ '#generated': path.join(packDir, 'src/__generated__') });
+  });
+
+  it("lets the pack's own paths win over the base's", () => {
+    fs.writeFileSync(path.join(packDir, 'base.json'), JSON.stringify({
+      compilerOptions: { paths: { '#generated/*': ['./base-generated/*'] } },
+    }));
+    writeTsconfig(JSON.stringify({
+      extends: './base.json',
+      compilerOptions: { paths: { '#generated/*': ['./src/__generated__/*'] } },
+    }));
+
+    expect(readTsconfigAliases(packDir)).toEqual({ '#generated': path.join(packDir, 'src/__generated__') });
+  });
+
   it('is empty when there is no tsconfig, and when one cannot be parsed', () => {
     expect(readTsconfigAliases(packDir)).toEqual({});
     writeTsconfig('{ not json');

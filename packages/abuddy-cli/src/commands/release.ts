@@ -106,9 +106,13 @@ export function releaseStateReport(version: string, state: ReleaseState): string
 /**
  * Runs a command, capturing its output — git's, which callers read, and the checks' in `verify`.
  *
- * A failure carries that output in the error. execFileSync's own message is `Command failed: …` and
- * nothing else, so a release that stopped on a type error or a failing test said only that a command
- * had failed, and the author had to rerun the check by hand to find out which.
+ * A failure is rethrown with that output in its message. execFileSync's own message is
+ * `Command failed: …` and nothing else, so a release that stopped on a type error or a failing test said
+ * only that a command had failed, and the author had to rerun the check by hand to find out which.
+ *
+ * The error itself is the one execFileSync threw, with its message rewritten: it carries the exit status,
+ * the signal and the captured streams, and a caller that wants to tell a failed command from a killed one
+ * still can.
  */
 export const defaultRunner: Runner = (cmd, args, cwd) => {
   try {
@@ -116,8 +120,8 @@ export const defaultRunner: Runner = (cmd, args, cwd) => {
   } catch (err) {
     const { stdout, stderr } = err as { stdout?: Buffer; stderr?: Buffer };
     const output = [stdout?.toString(), stderr?.toString()].filter(Boolean).join('\n').trim();
-    if (!output) throw err;
-    throw new Error(`${[cmd, ...args].join(' ')} failed:\n${output}`);
+    if (output && err instanceof Error) err.message = `${[cmd, ...args].join(' ')} failed:\n${output}`;
+    throw err;
   }
 };
 
