@@ -18,9 +18,17 @@ export interface AppState {
   hasOnboarded: boolean;
   /** The app version the data was last migrated to; absent until the first migrations run records it */
   version?: string;
-  /** Each external pack's version its migrations last ran to, by pack id */
+  /**
+   * Each external pack's version its migrations last ran to, by pack id.
+   *
+   * Kept when the pack is uninstalled, along with `packSeedHashes`: these say what has been done to the
+   * data, and uninstalling a pack deletes its directory, not its rows. Forgetting them would run a
+   * reinstalled pack's migrations again over data they have already moved. A pack reinstalled at the
+   * version it was therefore neither migrates nor re-seeds — `services.appData` re-imports its seeds if
+   * the rows really are gone.
+   */
   packVersions: Record<string, string>;
-  /** Each external pack's compiled seed data last seeded, by pack id */
+  /** Each external pack's compiled seed data last seeded, by pack id. Kept on uninstall; see above */
   packSeedHashes: Record<string, string>;
   /** Each built-in pack's boot seed last seeded, by pack id: the hash of its compiled data */
   seedHashes: Record<string, string>;

@@ -106,8 +106,8 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
 
 **Dev server** (`packs/dev-server.ts`)
 - `writeDevServerMarker` writes the marker with a temp file and a rename. `removeDevServerMarker` deletes it.
-- `devServerUrl(userDataDir, packId, filePath)` returns `null` when there is no marker, and throws on invalid JSON or a bad port. `packages/main/src/modules/pack-protocol/PackProtocol.ts` calls it.
-- A marker only means a dev server is running, never that anything on disk is current. Don't use it to skip a build.
+- `devServerUrl(userDataDir, packId, filePath)` returns `null` when there is no marker or the process that wrote it is gone (`_writerIsRunning`), and throws on invalid JSON, a bad port or a missing pid. A marker outlives a crashed `abuddy dev`, and a dead port looks like a live one from here: without the check the pack's frontend fails to load with a connection error and nothing names the marker. `packages/main/src/modules/pack-protocol/PackProtocol.ts` calls it.
+- A marker means a dev server was running and its process still is, never that anything on disk is current. Don't use it to skip a build.
 
 ## Bus composition (`bus/`)
 

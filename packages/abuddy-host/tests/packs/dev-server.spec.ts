@@ -2,6 +2,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { verifyPack } from '../../src/packs/pack-layout.ts';
@@ -50,7 +51,7 @@ describe('dev server marker', () => {
 
   it("gives the pack:// handler the dev server URL while the marker exists", () => {
     expect(devServerUrl(userDataDir, 'demo-pack', '/runtime/fe.js')).toBeNull();
-    writeDevServerMarker(userDataDir, 'demo-pack', { port: 5200, pid: 42 });
+    writeDevServerMarker(userDataDir, 'demo-pack', { port: 5200, pid: process.pid });
     expect(devServerUrl(userDataDir, 'demo-pack', '/runtime/fe.js')).toBe('http://localhost:5200/runtime/fe.js');
     expect(devServerUrl(userDataDir, 'other-pack', '/runtime/fe.js')).toBeNull();
     removeDevServerMarker(userDataDir, 'demo-pack');
@@ -65,12 +66,35 @@ describe('dev server marker', () => {
 
   it('leaves an installed pack verifiable, and survives the reinstalls abuddy dev runs', async () => {
     const { dir } = await installPackFromLocal(builtPack(), packsDir);
-    writeDevServerMarker(userDataDir, 'demo-pack', { port: 5199, pid: 42 });
+    writeDevServerMarker(userDataDir, 'demo-pack', { port: 5199, pid: process.pid });
 
     expect(verifyPack(dir).id).toBe('demo-pack');
 
     await installPackFromLocal(builtPack(), packsDir);
     expect(verifyPack(dir).id).toBe('demo-pack');
     expect(devServerUrl(userDataDir, 'demo-pack', '/runtime/fe.js')).toBe('http://localhost:5199/runtime/fe.js');
+  });
+});
+
+// The marker is removed on the way out, so one still here after `abuddy dev` crashed names a port nothing
+// is listening on. Serving the pack's frontend from it fails with a connection error and nothing saying
+// this file is why; falling back to the installed copy at least shows the pack.
+describe('a dev server that is no longer running', () => {
+  /** A pid no process has any more */
+  const exitedPid = () => spawnSync(process.execPath, ['-e', '']).pid!;
+
+  it('is not served from, while a live one still is', () => {
+    writeDevServerMarker(userDataDir, 'demo-pack', { port: 5199, pid: process.pid });
+    expect(devServerUrl(userDataDir, 'demo-pack', '/fe.js')).toBe('http://localhost:5199/fe.js');
+
+    writeDevServerMarker(userDataDir, 'demo-pack', { port: 5199, pid: exitedPid() });
+    expect(devServerUrl(userDataDir, 'demo-pack', '/fe.js')).toBeNull();
+  });
+
+  it('refuses a marker with no pid to check, rather than trusting its port', () => {
+    fs.mkdirSync(path.dirname(devServerMarkerPath(userDataDir, 'demo-pack')), { recursive: true });
+    fs.writeFileSync(devServerMarkerPath(userDataDir, 'demo-pack'), JSON.stringify({ port: 5199 }));
+
+    expect(() => devServerUrl(userDataDir, 'demo-pack', '/fe.js')).toThrow(/pid undefined/);
   });
 });

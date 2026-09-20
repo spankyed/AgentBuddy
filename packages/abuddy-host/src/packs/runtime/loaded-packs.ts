@@ -1,5 +1,17 @@
 // The external and built-in packs the app loaded, and the loaded-packs entries the renderer loads frontends from.
 // Imports nothing else from packs/runtime: the app bus reads it (clientLoadedPacks).
+//
+// Held at module scope, unlike the registry beside it, which is an instance per app (`createPackRegistry()`,
+// with `tests/packs/registry-state.spec.ts` keeping its modules free of state). The two hold overlapping
+// answers to "which packs does this app have" and are written at the same four moments — boot, activate,
+// teardown, reload — so a divergence would be a bug in one of those paths, not a file going stale: both
+// live in memory and neither outlives the process. What the asymmetry does cost is isolation. Two registries
+// in one process share this list, so a second app, or a test harness building one per file in a shared
+// worker, sees the first's loaded packs.
+//
+// Moving it onto the registry is the consistent shape and reaches 18 call sites across nine files, the
+// migrations runner among them, for a fault nothing has yet hit. Worth doing when something does, or when
+// one of those files is being changed anyway.
 import type { AnyStateMachine } from 'xstate';
 import type { PackBootHooks, PackEARS, PackFeatureDef, PackMigration, PackRegistration } from '@abuddy/sdk/framework';
 import type { StepDefinition } from '@abuddy/sdk/steps';

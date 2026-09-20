@@ -13,6 +13,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { _writerIsRunning, _writtenAt } from '@abuddy/sdk/env';
 
 export interface DevServerMarker {
   port: number;
@@ -46,21 +47,32 @@ export function removeDevServerMarker(userDataDir: string, packId: string): void
  * server. Throws when the marker exists but doesn't name a valid port.
  */
 export function devServerUrl(userDataDir: string, packId: string, filePath: string): string | null {
+  const markerPath = devServerMarkerPath(userDataDir, packId);
   let raw: string;
   try {
-    raw = fs.readFileSync(devServerMarkerPath(userDataDir, packId), 'utf-8');
+    raw = fs.readFileSync(markerPath, 'utf-8');
   } catch (err) {
     if ((err as NodeJS.ErrnoException).code === 'ENOENT') return null;
     throw err;
   }
-  let port: number;
+  let marker: Partial<DevServerMarker>;
   try {
-    port = Number((JSON.parse(raw) as Partial<DevServerMarker>).port);
+    marker = JSON.parse(raw) as Partial<DevServerMarker>;
   } catch {
     throw new Error(`Invalid dev server marker for ${packId}: not JSON`);
   }
+  const port = Number(marker.port);
   if (!Number.isInteger(port) || port < 1 || port > 65535) {
     throw new Error(`Invalid dev server marker for ${packId}: port ${port}`);
   }
+  const pid = Number(marker.pid);
+  if (!Number.isInteger(pid) || pid < 1) {
+    throw new Error(`Invalid dev server marker for ${packId}: pid ${marker.pid}`);
+  }
+  // `abuddy dev` removes this on the way out, so one still here after it crashed names a port nothing is
+  // listening on — and from here that looks exactly like a live one. The pack's frontend would fail to
+  // load with a connection error and nothing pointing at this file. Its pid is what tells them apart.
+  const writtenAt = _writtenAt(markerPath);
+  if (writtenAt === null || !_writerIsRunning(pid, { ifUnsure: 'free', writtenAtMs: writtenAt })) return null;
   return `http://localhost:${port}${filePath}`;
 }

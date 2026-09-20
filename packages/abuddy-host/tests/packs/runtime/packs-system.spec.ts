@@ -5,9 +5,11 @@ import * as path from 'node:path';
 import { createActor, setup, type AnyEventObject } from 'xstate';
 import { bus } from '@abuddy/sdk/ids';
 import { resolveAppContext } from '@abuddy/sdk/env';
-import { takeSystemErrors } from '@abuddy/sdk/testing';
+import { resetTestData, takeSystemErrors } from '@abuddy/sdk/testing';
 import { readInstalledPacks } from '../../../src/packs/installed-packs.ts';
 import { registry } from './test-host.ts';
+import { appState } from '../../../src/app-state/index.ts';
+import { installPackFromLocal } from '../../../src/packs/pack-installer.ts';
 import { createPacksSystem, packs } from '../../../src/packs/runtime/packs-system.ts';
 import { activatePack } from '../../../src/packs/runtime/lifecycle.ts';
 import { removeLoadedPack } from '../../../src/packs/runtime/loaded-packs.ts';
@@ -251,6 +253,30 @@ describe('installing over a pack that is already running', () => {
       // One install started, not two
       expect(emitted(system.sent).filter(e => e.type === 'PACK_INSTALL_STARTED')).toHaveLength(1);
       expect(warned.join('\n')).toMatch(/Operation already in progress/);
+    } finally {
+      system.stop();
+    }
+  });
+});
+
+// What the app has done to a pack's data outlives the pack's directory, because the data does: an
+// uninstall removes packs/<id> and nothing in the database. Running a reinstalled pack's migrations
+// again over rows they have already moved is the failure this avoids.
+describe('what a reinstall does not redo', () => {
+  it('leaves the seed hash and migrated version an uninstall did not invalidate', async () => {
+    resetTestData();
+    appState.update({ packSeedHashes: { [PACK_ID]: 'the-hash' }, packVersions: { [PACK_ID]: '1.0.0' } });
+    await installPackFromLocal(packSource('1.0.0'));
+
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'UNINSTALL_PACK', packId: PACK_ID });
+      await vi.waitFor(() => {
+        expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_COMPLETE');
+      });
+
+      expect(appState.get().packSeedHashes[PACK_ID]).toBe('the-hash');
+      expect(appState.get().packVersions[PACK_ID]).toBe('1.0.0');
     } finally {
       system.stop();
     }
