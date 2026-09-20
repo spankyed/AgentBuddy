@@ -253,6 +253,7 @@ export function createPackRegistry(): PackRegistry {
 
   /** Drops what's derived from the registrations */
   function changed(): void {
+    orderedExternalPacksCache = null;
     entityTypeCache = null;
     servicesCache = null;
     eventValidationMap = null;
@@ -280,6 +281,24 @@ export function createPackRegistry(): PackRegistry {
       }
     }
   }
+
+  /**
+   * Every installed external pack in dependency order, computed once per pack set.
+   *
+   * Ordered over all of them and narrowed afterwards, so a subset's order agrees with the whole and a
+   * dependency outside the subset is one the caller isn't acting on anyway. Cached because the sort
+   * reports a dependency cycle: computing it per call had activating or reloading any pack re-logging a
+   * cycle between two others.
+   */
+  let orderedExternalPacksCache: PackOrigin[] | null = null;
+  const orderedExternalPacks = (): PackOrigin[] =>
+    orderedExternalPacksCache ??= packSeedOrder(
+      [...origins.values()]
+        .filter((o) => !o.builtIn && o.manifest)
+        // The dependencies are the manifest's, not the origin's own: spreading the origin would leave every
+        // pack looking dependency-free, and `dependencies` being optional means nothing would say so
+        .map((o) => ({ id: o.id, dependencies: o.manifest!.dependencies, origin: o })),
+    ).map(({ origin }) => origin);
 
   /** Each pack's undos, as its registration produced them */
   const packUndos = new Map<string, Array<() => void>>();
@@ -408,7 +427,9 @@ export function createPackRegistry(): PackRegistry {
 
     // The undos its registration produced, not a second reading of the registration: what comes out is
     // exactly what went in
-    for (const undo of (packUndos.get(packId) ?? []).reverse()) undo();
+    // A copy: reversing the stored list in place leaves it that way if an undo throws, and the
+    // delete below never runs, so a retry would then undo in the order the work was done
+    for (const undo of [...(packUndos.get(packId) ?? [])].reverse()) undo();
     packUndos.delete(packId);
 
     registrations.delete(packId);
@@ -542,12 +563,9 @@ export function createPackRegistry(): PackRegistry {
     externalPacks: () => [...origins.values()].filter((o) => !o.builtIn),
     externalPackTargets: (packIds) => {
       const wanted = packIds && new Set(packIds);
-      const external = [...origins.values()].filter((o) => !o.builtIn && o.manifest);
-      // Ordered over every installed external pack, then narrowed: a subset's order still has to agree
-      // with the whole, and a dependency outside the subset is one this call isn't seeding anyway
-      return packSeedOrder(external.map((o) => ({ id: o.id, dependencies: o.manifest!.dependencies, origin: o })))
-        .filter((p) => !wanted || wanted.has(p.id))
-        .map(({ origin }) => ({ manifest: origin.manifest!, dir: origin.dir, migrations: registrations.get(origin.id)?.migrations }));
+      return orderedExternalPacks()
+        .filter((o) => !wanted || wanted.has(o.id))
+        .map((o) => ({ manifest: o.manifest!, dir: o.dir, migrations: registrations.get(o.id)?.migrations }));
     },
 
     resolveSystemAddress(address) {

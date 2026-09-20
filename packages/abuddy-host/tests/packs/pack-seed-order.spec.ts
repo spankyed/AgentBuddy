@@ -2,6 +2,7 @@
 // order is readdirSync's, which is alphabetical at best and says nothing about what depends on what.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { packSeedOrder } from '../../src/packs/pack-discovery.ts';
+import { createPackRegistry } from '../../src/packs/pack-registration.ts';
 
 const pack = (id: string, ...deps: string[]) => ({
   id,
@@ -57,5 +58,44 @@ describe('the order external packs seed in', () => {
   it('is unbothered by a pack that depends on itself', () => {
     captureWarnings();
     expect(ids(packSeedOrder([pack('a', 'a')]))).toEqual(['a']);
+  });
+});
+
+// The order is only useful if the registry actually applies it. It orders every installed external pack
+// and narrows afterwards, so a subset's order agrees with the whole — and it does that once per pack set,
+// because the sort reports a dependency cycle and acting on one pack shouldn't re-log a cycle between two
+// others.
+describe('the order the registry hands out', () => {
+  const origin = (id: string, ...deps: string[]) => ({
+    id, name: id, version: '1.0.0', dir: `/packs/${id}`, builtIn: false,
+    manifest: { name: id, version: '1.0.0', ...pack(id, ...deps) } as never,
+  });
+
+  it('puts a dependency before the pack that names it, whichever order they registered in', () => {
+    const registry = createPackRegistry();
+    registry.registerPack({ id: 'dependent', systems: [] }, origin('dependent', 'provider'));
+    registry.registerPack({ id: 'provider', systems: [] }, origin('provider'));
+
+    expect(registry.externalPackTargets().map((t) => t.manifest.id)).toEqual(['provider', 'dependent']);
+
+    // ...and a pack registered after that order was worked out is in the next one
+    registry.registerPack({ id: 'later', systems: [] }, origin('later', 'dependent'));
+    expect(registry.externalPackTargets().map((t) => t.manifest.id)).toEqual(['provider', 'dependent', 'later']);
+
+    registry.unregisterPack('dependent');
+    expect(registry.externalPackTargets().map((t) => t.manifest.id)).toEqual(['provider', 'later']);
+  });
+
+  it('keeps that order in a subset, and reports a cycle once per pack set rather than per call', () => {
+    const warnings = captureWarnings();
+    const registry = createPackRegistry();
+    registry.registerPack({ id: 'a', systems: [] }, origin('a', 'b'));
+    registry.registerPack({ id: 'b', systems: [] }, origin('b', 'a'));
+    registry.registerPack({ id: 'c', systems: [] }, origin('c'));
+
+    // Acting on one pack, as activation and reload do, three times over
+    for (let i = 0; i < 3; i++) expect(registry.externalPackTargets(['c']).map((t) => t.manifest.id)).toEqual(['c']);
+
+    expect(warnings().match(/depend on each other/g) ?? []).toHaveLength(1);
   });
 });
