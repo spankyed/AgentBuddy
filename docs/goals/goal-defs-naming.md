@@ -4,7 +4,7 @@
 ```
 # Goal: `defs` names one concept
 
-Implement docs/goals/goal-defs-naming.md on a branch cut from AS/external-pack-authoring. Read Background,
+Implement docs/goals/goal-defs-naming.md on the current branch. Read Background,
 Decisions, Open decisions, Phases and Constraints first. Decisions are final: implement them, don't reopen
 them or stop to ask. Open decision 1 must be settled with the user before Phase 2; if it is still marked
 open when you reach it, stop and ask.
