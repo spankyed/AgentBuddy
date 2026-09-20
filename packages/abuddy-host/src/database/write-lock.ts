@@ -23,7 +23,15 @@ interface LockFile {
 const lockFile = (userDataDir: string) => path.join(userDataDir, 'db-write.lock');
 
 /** Signals a tool is interrupted with, which `exit` handlers never see */
-const INTERRUPTS = ['SIGINT', 'SIGTERM', 'SIGHUP'] as const satisfies readonly NodeJS.Signals[];
+/**
+ * The interruptions a release can be hung on. `SIGBREAK` is Ctrl-Break, and Windows only: registering a
+ * listener for it is harmless where it doesn't exist, and without it that key leaves the lock behind.
+ *
+ * What none of them reach is an unconditional end — `SIGKILL`, `taskkill /F`, power loss. There the file
+ * stays and the next tool takes it over, or the user removes it; an advisory lock is what would close that
+ * (docs/goals/deferred/goal-write-lock-advisory.md).
+ */
+export const INTERRUPTS = ['SIGINT', 'SIGTERM', 'SIGHUP', 'SIGBREAK'] as const satisfies readonly NodeJS.Signals[];
 
 function readLock(file: string): LockFile | null {
   try {

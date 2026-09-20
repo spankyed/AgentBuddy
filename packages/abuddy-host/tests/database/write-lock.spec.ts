@@ -6,7 +6,14 @@ import { spawn, spawnSync } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
-import { assertNoDatabaseWriter, findDatabaseWriter, holdDatabaseWriteLock } from '../../src/database/write-lock.ts';
+import { assertNoDatabaseWriter, findDatabaseWriter, holdDatabaseWriteLock, INTERRUPTS } from '../../src/database/write-lock.ts';
+
+/**
+ * The interrupts this platform can actually send. `SIGBREAK` is Windows' Ctrl-Break: the lock listens for
+ * it there, and `process.kill` refuses the name everywhere else, so it is covered by the code and not by
+ * this suite on a POSIX machine.
+ */
+const DELIVERABLE_INTERRUPTS = INTERRUPTS.filter((signal) => signal in os.constants.signals);
 import { removeTempDirs, tempDir } from './fixtures.ts';
 
 const locks: Array<{ release(): void }> = [];
@@ -131,7 +138,7 @@ describe('the database write lock', () => {
   // Node runs no `exit` handler for a signal, so without the interrupt handlers Ctrl-C on any `abuddy db`
   // command left the lock behind and the next reader had to work out that its holder was gone. Only SIGKILL
   // can still do that, and nothing can catch it.
-  it.each(['SIGINT', 'SIGTERM', 'SIGHUP'] as const)('releases the lock when the tool is interrupted with %s', async (signal) => {
+  it.each(DELIVERABLE_INTERRUPTS)('releases the lock when the tool is interrupted with %s', async (signal) => {
     const dir = tempDir('write-lock-');
     const holder = spawn(process.execPath, ['--import', pathToFileURL(TSX).href, '-e', HOLD_UNTIL_SIGNALLED, dir, SRC], {
       stdio: ['ignore', 'ignore', 'pipe'],
