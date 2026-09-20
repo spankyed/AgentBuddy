@@ -10,14 +10,14 @@ import { createAppExtensionSlots } from './app-extensions.ts';
 interface PackFEExtensions {
   /** The plugins this pack added: not those skipped because another pack or the host has the id */
   plugins: Plugin[];
-  stepTypes: string[];
-  tiptapPlugins: TiptapPlugin[];
-  appExtensionSlots: string[];
-  artifactTypes: string[];
-  blockTypes: string[];
-  dslTypes: string[];
-  /** Role → id of the plugin that plays it */
-  designations: Record<string, string>;
+  /**
+   * Everything else it added, as the way to take it back out, recorded where each one is added.
+   *
+   * It was a field per kind of contribution, which made recording one compulsory and undoing it optional:
+   * a new kind added to the register path and forgotten in the unregister path leaked, with nothing saying
+   * so. The backend registry takes its pack's contributions back out the same way.
+   */
+  undo: () => void;
 }
 
 /** The renderer's registered pack frontends */
@@ -79,40 +79,51 @@ export function createFePackRegistry(): FePackRegistry {
     }
     designations.register(roles);
 
-    tiptapPlugins.push(...registration.tiptapPlugins ?? []);
+    const undos: Array<() => void> = [() => designations.unregister(roles)];
+    const undo = (fn: () => void) => void undos.push(fn);
+
+    for (const plugin of registration.tiptapPlugins ?? []) {
+      tiptapPlugins.push(plugin);
+      undo(() => {
+        const idx = tiptapPlugins.indexOf(plugin);
+        if (idx >= 0) tiptapPlugins.splice(idx, 1);
+      });
+    }
 
     // Built-in packs register without a pack id and are never unregistered, so they share one owner
     const owner = packId ?? BUILT_IN_OWNER;
-    const appExtensionSlots: string[] = [];
     for (const [slot, component] of Object.entries(registration.appExtensions ?? {})) {
       appExtensions.register(slot, component, owner);
-      appExtensionSlots.push(slot);
+      undo(() => appExtensions.unregister(slot, owner));
     }
 
-    for (const def of registration.artifacts ?? []) artifacts.register(def, owner);
-    for (const def of registration.blocks ?? []) blocks.register(def, owner);
+    for (const def of registration.artifacts ?? []) {
+      artifacts.register(def, owner);
+      undo(() => artifacts.unregister(def.type, owner));
+    }
+    for (const def of registration.blocks ?? []) {
+      blocks.register(def, owner);
+      undo(() => blocks.unregister(def.type, owner));
+    }
 
     if (registration.steps) {
-      for (const step of registration.steps) steps.register(step, owner);
+      for (const step of registration.steps) {
+        steps.register(step, owner);
+        undo(() => steps.unregister(step.type, owner));
+      }
       // Each step's components, loaded once
       for (const def of steps.all()) {
         if (def.fe?.loadComponents && !def.fe.components) def.fe.components = def.fe.loadComponents();
       }
     }
 
-    for (const [name, config] of Object.entries(registration.dslTypes ?? {})) dslTypes.set(name, config, owner);
+    for (const [name, config] of Object.entries(registration.dslTypes ?? {})) {
+      dslTypes.set(name, config, owner);
+      undo(() => dslTypes.remove(name, owner));
+    }
 
     if (packId) {
-      packExtensions.set(packId, {
-        plugins,
-        stepTypes: (registration.steps ?? []).map(s => s.type),
-        tiptapPlugins: registration.tiptapPlugins ?? [],
-        appExtensionSlots,
-        artifactTypes: (registration.artifacts ?? []).map(a => a.type),
-        blockTypes: (registration.blocks ?? []).map(b => b.type),
-        dslTypes: Object.keys(registration.dslTypes ?? {}),
-        designations: roles,
-      });
+      packExtensions.set(packId, { plugins, undo: () => { for (const fn of undos.reverse()) fn(); } });
     }
   }
 
@@ -129,16 +140,7 @@ export function createFePackRegistry(): FePackRegistry {
       }
     }
 
-    for (const type of contrib.stepTypes) steps.unregister(type, packId);
-    for (const type of contrib.artifactTypes) artifacts.unregister(type, packId);
-    for (const type of contrib.blockTypes) blocks.unregister(type, packId);
-    for (const slot of contrib.appExtensionSlots) appExtensions.unregister(slot, packId);
-    for (const name of contrib.dslTypes) dslTypes.remove(name, packId);
-    for (const plugin of contrib.tiptapPlugins) {
-      const idx = tiptapPlugins.indexOf(plugin);
-      if (idx >= 0) tiptapPlugins.splice(idx, 1);
-    }
-    designations.unregister(contrib.designations);
+    contrib.undo();
 
     packExtensions.delete(packId);
     return removedPlugins;

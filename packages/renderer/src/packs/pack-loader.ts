@@ -22,7 +22,14 @@ export function loadPackStyles(packId: string, stylesPath: string, packBaseUrl: 
   });
 }
 
-const REGISTRATION_KEYS = ['plugins', 'steps', 'artifacts', 'blocks', 'tiptapPlugins', 'appExtensions', 'dslTypes'] as const;
+/**
+ * What a default export has to declare one of to count as a registration. `defaultPlugin` is deliberately
+ * not here: it names one of `plugins`, so an export with only that registers nothing. Tied to the type, so
+ * a renamed field is a build failure rather than a warning that stops firing.
+ */
+const REGISTRATION_KEYS = [
+  'plugins', 'steps', 'artifacts', 'blocks', 'tiptapPlugins', 'appExtensions', 'dslTypes',
+] as const satisfies readonly (keyof PackFERegistration)[];
 
 /** Imports a pack's FE entry: its registration, or null when it exports none. Throws when the import fails. */
 export async function loadPackFEEntry(

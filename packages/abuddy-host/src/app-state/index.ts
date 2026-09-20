@@ -45,7 +45,21 @@ export interface AppState {
   seedStatFingerprints: Record<string, string>;
 }
 
-const FIELDS = ['hasOnboarded', 'version', 'packVersions', 'packSeedHashes', 'packSeedDeps', 'seedHashes', 'seedStatFingerprints'] as const;
+const FIELDS = [
+  'hasOnboarded', 'version', 'packVersions', 'packSeedHashes', 'packSeedDeps', 'seedHashes', 'seedStatFingerprints',
+] as const satisfies readonly (keyof AppState)[];
+
+/**
+ * `FIELDS` is what `stored()` reads back, so a field the interface has and this list lacks is written and
+ * then always reads as its default — no type error, and only a round-trip test would notice. This makes
+ * the omission a build failure naming the field.
+ */
+type UnreadField = Exclude<keyof AppState, (typeof FIELDS)[number]>;
+const _everyFieldIsRead: [UnreadField] extends [never] ? true : UnreadField = true;
+void _everyFieldIsRead;
+
+/** The fields holding one entry per pack, from the shape rather than a list of their names */
+type PerPackField = { [K in keyof AppState]-?: AppState[K] extends Record<string, string> ? K : never }[keyof AppState];
 
 type StoredAppState = Partial<AppState>;
 
@@ -82,11 +96,7 @@ export const appState = {
   },
 
   /** Records one pack's entry in a per-pack field, or with `undefined` removes it, leaving the others' alone */
-  updatePackEntry: (
-    field: 'packVersions' | 'packSeedHashes' | 'packSeedDeps' | 'seedHashes' | 'seedStatFingerprints',
-    packId: string,
-    value: string | undefined,
-  ): void => {
+  updatePackEntry: (field: PerPackField, packId: string, value: string | undefined): void => {
     const entries = { ...appState.get()[field] };
     if (value === undefined) delete entries[packId];
     else entries[packId] = value;
