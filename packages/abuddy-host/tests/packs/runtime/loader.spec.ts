@@ -511,6 +511,18 @@ describe('seedPackData: failures', () => {
     expect(registryEntry('flaky').lastError).toBeTruthy();
   });
 
+  it('forgets what a failed seed faced once the pack has no seed data to retry', () => {
+    const pack = { ...installedPack('withdrawn'), manifest: { id: 'withdrawn', dependencies: { provider: '^1.0.0' } } };
+    writeRegistry(['withdrawn']);
+    seedPackData([pack], failingSeed);
+    expect(appState.get().packSeedDeps).toHaveProperty('withdrawn');
+
+    fs.rmSync(path.join(pack.dir, 'runtime', 'seeds'), { recursive: true });
+    seedPackData([pack], vi.fn());
+
+    expect(appState.get().packSeedDeps).toEqual({});
+  });
+
   it("clears an earlier version's lastError when the pack no longer has seed data", () => {
     const pack = installedPack('no-more-seeds');
     fs.rmSync(path.join(pack.dir, 'runtime', 'seeds'), { recursive: true });

@@ -14,6 +14,7 @@ import { installedPacks, type InstalledPack } from '../pack-discovery.ts';
 import { checkForUpdates } from '../pack-updater.ts';
 import { teardownPack, activatePack } from './lifecycle.ts';
 import { activationProblem } from './activation-outcome.ts';
+import { forgetPackSeed } from './seed.ts';
 
 export type { PackInfo };
 
@@ -188,6 +189,8 @@ export function createPacksSystem(registry: PackRegistry) {
           },
         }).then(result => {
           recordInstalled(result.id, isGitHub ? packSlug : undefined);
+          // An install is a fresh attempt at the pack's data, so what it reports is about this attempt
+          forgetPackSeed(result.id);
 
           const activated = activatePack(registry, result.id, system.get(bus));
           const problem = activationProblem(result.id, activated);
@@ -299,6 +302,7 @@ export function createPacksSystem(registry: PackRegistry) {
 
         installPackFromGitHub(target, undefined, { hostVersion: getAppVersion() }).then(result => {
           recordUpdateInstalled(packId);
+          forgetPackSeed(packId);
 
           activated = activatePack(registry, packId, system.get(bus));
           const problem = activationProblem(packId, activated);

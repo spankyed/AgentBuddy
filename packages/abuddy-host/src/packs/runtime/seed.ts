@@ -89,8 +89,9 @@ export function seedPackData(packs: Iterable<PackSeedTarget>, seed: typeof seedD
     const distDir = path.join(pack.dir, PACK_LAYOUT.seedsDir);
     const currentHash = fs.existsSync(distDir) ? computePackSeedHash(distDir) : '';
     if (!currentHash) {
-      // Nothing to seed: an error from an earlier version's seed no longer applies
+      // Nothing to seed: an earlier version's error no longer applies, and neither does what it faced
       outcomes.set(packId, undefined);
+      appState.updatePackEntry('packSeedDeps', packId, undefined);
       continue;
     }
 
@@ -126,6 +127,18 @@ export function seedPackData(packs: Iterable<PackSeedTarget>, seed: typeof seedD
 
   recordSeedOutcomes(outcomes);
   return failures;
+}
+
+/**
+ * Forgets what a pack last seeded, so the next seed runs whatever its data's hash says.
+ *
+ * Installing or updating a pack is what a user reaches for when its data didn't seed. The hash is there to
+ * skip a *boot* over data that hasn't changed, not to make a deliberate reinstall a no-op: reinstalling the
+ * same version leaves the compiled files byte for byte identical, so without this the seed is skipped, and
+ * what the install then reports is about no attempt at all.
+ */
+export function forgetPackSeed(packId: string): void {
+  appState.updatePackEntry('packSeedHashes', packId, undefined);
 }
 
 function computeManifestSeedHash(compiledDir: string, seedKeys: string[]): string {

@@ -34,8 +34,8 @@ afterEach(() => {
   fs.rmSync(tmpDir, { recursive: true, force: true });
 });
 
-/** The pack source `abuddy build` would leave, at `version` */
-function packSource(version: string): string {
+/** The pack source `abuddy build` would leave, at `version`; `seeds` gives it compiled data that won't seed */
+function packSource(version: string, { unseedable = false } = {}): string {
   const dir = path.join(tmpDir, 'source');
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(path.join(dir, 'dist', 'runtime'), { recursive: true });
@@ -43,6 +43,11 @@ function packSource(version: string): string {
   fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify({ id: PACK_ID, name: 'Reinstall Pack', version }));
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(PACK_ID)}, systems: [] } };`);
   fs.writeFileSync(path.join(dir, 'dist', 'types', 'snapshot.json'), '{}');
+  if (unseedable) {
+    // Compiled data with no seeds.json: the seeder can't tell whose records these are, so seeding fails
+    fs.mkdirSync(path.join(dir, 'dist', 'runtime', 'seeds'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'seeds', 'flows.seed.json'), '[]');
+  }
   return dir;
 }
 
@@ -277,6 +282,41 @@ describe('what a reinstall does not redo', () => {
       expect(appState.get().packVersions[PACK_ID]).toBe('1.0.0');
     } finally {
       system.stop();
+    }
+  });
+});
+
+// Installing is the remedy a user reaches for when a pack's data didn't seed, so what it reports has to be
+// about this attempt. It wasn't: recordInstalled replaces the record, which drops the lastError the earlier
+// failure left, and the seed underneath was skipped as unchanged — so reinstalling a pack whose data never
+// seeded reported that it had installed cleanly, and took away the only sign that it hadn't.
+describe('reinstalling a pack whose data did not seed', () => {
+  const outcomes = (sent: AnyEventObject[]) =>
+    emitted(sent).map(e => e.type).filter(t => t === 'PACK_INSTALL_COMPLETE' || t === 'PACK_INSTALL_FAILED');
+
+  it('says so again, rather than reporting the reinstall as clean', async () => {
+    const source = packSource('1.0.0', { unseedable: true });
+
+    const first = runPacksSystem();
+    try {
+      first.send({ type: 'INSTALL_PACK', packSlug: source, source: 'local' });
+      await vi.waitFor(() => expect(outcomes(first.sent)).toHaveLength(1));
+      expect(outcomes(first.sent)).toEqual(['PACK_INSTALL_FAILED']);
+      expect(readInstalledPacks().find(r => r.id === PACK_ID)?.lastError).toBeTruthy();
+    } finally {
+      first.stop();
+    }
+
+    // The same pack again, byte for byte: nothing about its data has changed, and it still doesn't seed
+    const second = runPacksSystem();
+    try {
+      second.send({ type: 'INSTALL_PACK', packSlug: source, source: 'local' });
+      await vi.waitFor(() => expect(outcomes(second.sent)).toHaveLength(1));
+
+      expect(outcomes(second.sent)).toEqual(['PACK_INSTALL_FAILED']);
+      expect(readInstalledPacks().find(r => r.id === PACK_ID)?.lastError).toBeTruthy();
+    } finally {
+      second.stop();
     }
   });
 });

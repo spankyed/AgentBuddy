@@ -59,10 +59,6 @@ deferred item and the only real design change in the list: it needs an ordering 
 a decision on retry semantics. It should become a goal doc.
 `packs/runtime/seed.ts:66,172`
 
-**Make reinstall report honestly.** `addInstalledPack` replaces the whole entry; `activationProblem` surfaces
-a problem, but the hash-skip underneath is the seeding item above. Follows it.
-`installed-packs.ts:91`
-
 **Implement `docs/goals/goal-defs-naming.md`.** `defs` names three things; the facade sense is the intruder
 and the repo already calls it `facade` everywhere else. Already has a goal doc. Blocked on its Open decision
 1: a renamed field would make a pre-rename dependency **silently untyped**, not rejected, because
