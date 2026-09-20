@@ -119,12 +119,24 @@ describe('the database write lock', () => {
   // can still do that, and nothing can catch it.
   it.each(['SIGINT', 'SIGTERM', 'SIGHUP'] as const)('releases the lock when the tool is interrupted with %s', async (signal) => {
     const dir = tempDir('write-lock-');
-    const holder = spawn(process.execPath, ['--import', pathToFileURL(TSX).href, '-e', HOLD_UNTIL_SIGNALLED, dir, SRC], { stdio: 'ignore' });
+    const holder = spawn(process.execPath, ['--import', pathToFileURL(TSX).href, '-e', HOLD_UNTIL_SIGNALLED, dir, SRC], {
+      stdio: ['ignore', 'ignore', 'pipe'],
+    });
+    // A holder that dies on boot would otherwise be indistinguishable from a slow one until the timeout,
+    // and its reason — an import this checkout's dist can't resolve, say — would be thrown away with it
+    let stderr = '';
+    holder.stderr.setEncoding('utf-8');
+    holder.stderr.on('data', (chunk: string) => { stderr += chunk; });
+    let died: string | null = null;
+    holder.on('exit', (code) => { died = `the holder exited with code ${code}${stderr && `:\n${stderr}`}`; });
     try {
       // The holder compiles this package's source through tsx, which takes seconds when the whole unit
       // suite is running beside it. The release it is asked for afterwards is immediate, and is the
       // thing under test, so only the boot gets the long budget.
-      await waitFor('the holder to take the lock', () => fs.existsSync(lockFile(dir)), 60_000);
+      await waitFor('the holder to take the lock', () => {
+        if (died) throw new Error(died);
+        return fs.existsSync(lockFile(dir));
+      }, 60_000);
       process.kill(holder.pid!, signal);
       await waitFor(`the ${signal} handler to release the lock`, () => !fs.existsSync(lockFile(dir)));
     } finally {

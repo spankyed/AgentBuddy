@@ -50,18 +50,16 @@ export function _inferElectronAppEnv(input: {
 }): AppEnv;
 
 // @internal
-export type _Liveness = {
-    ifUnsure: 'held';
-} | {
-    ifUnsure: 'free';
-    writtenAtMs: number;
-};
+export function _lockIsHeld(pid: number): boolean;
 
 // @public (undocumented)
 export function parseAppEnv(value: string | undefined): AppEnv | undefined;
 
 // @public
 export function readApiEndpoint(apiPortFile: string): ApiEndpoint | null;
+
+// @internal
+export function _recordIsStale(file: string, pid: number): boolean;
 
 // @public
 export type ReleaseChannel = Extract<AppEnv, 'production' | 'beta'>;
@@ -71,12 +69,6 @@ export function resolveAppContext(input?: {
     env?: AppEnv;
     userDataDir?: string;
 }): AppContext;
-
-// @internal
-export function _writerIsRunning(pid: number, policy: _Liveness): boolean;
-
-// @internal
-export function _writtenAt(file: string): number | null;
 
 // (No @packageDocumentation comment for this package)
 

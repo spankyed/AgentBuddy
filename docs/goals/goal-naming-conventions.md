@@ -194,11 +194,19 @@ unchanged. No code moves in this phase.
 
 ### Phase 2 — names that hide what absence costs
 
-> **Done, and then superseded.** The two readers were collapsed in `1d6cf3226` and the liveness
-> predicates merged in `8cbf795d9`. `goal-installed-packs-record.md` then removed the absent-case question
-> from the record entirely — the packs directory is the list, so a missing row means "nothing decided",
-> not "not installed" — which also deleted `recoverStagingDirs`'s known/not-known argument. Nothing in
-> this phase is left to do; the third bullet's target no longer exists.
+> **Done, and then superseded.** The two readers were collapsed in `1d6cf3226`, and
+> `goal-installed-packs-record.md` then removed the absent-case question from the record entirely — the
+> packs directory is the list, so a missing row means "nothing decided", not "not installed" — which also
+> deleted `recoverStagingDirs`'s known/not-known argument, so the third bullet's target no longer exists.
+>
+> The liveness predicates were merged in `8cbf795d9` and then split again. Merging them named the
+> mechanism, a pid probe, and handed the caller a flag for which failure to prefer — a question about the
+> whole system, answered at five call sites, next to prose already saying the same thing. They are
+> `_lockIsHeld` and `_recordIsStale` now: named after the two questions being asked rather than as
+> synonyms for one, different enough in shape that neither compiles where the other was meant, and `true`
+> is the cautious answer in both. What Decision 2 is against is a pair whose names don't say which to
+> pick; a pair whose names *are* the distinction is the fix, not the bug. Nothing in this phase is left
+> to do.
 
 - Collapse `readInstalledPacks` / `readInstalledPacksRecord`
   (`packages/abuddy-host/src/packs/installed-packs.ts`) into one function returning a result that

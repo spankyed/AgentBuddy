@@ -13,7 +13,7 @@
  */
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { _writerIsRunning, _writtenAt } from '@abuddy/sdk/env';
+import { _recordIsStale } from '@abuddy/sdk/env';
 
 export interface DevServerMarker {
   port: number;
@@ -72,7 +72,6 @@ export function devServerUrl(userDataDir: string, packId: string, filePath: stri
   // `abuddy dev` removes this on the way out, so one still here after it crashed names a port nothing is
   // listening on — and from here that looks exactly like a live one. The pack's frontend would fail to
   // load with a connection error and nothing pointing at this file. Its pid is what tells them apart.
-  const writtenAt = _writtenAt(markerPath);
-  if (writtenAt === null || !_writerIsRunning(pid, { ifUnsure: 'free', writtenAtMs: writtenAt })) return null;
+  if (_recordIsStale(markerPath, pid)) return null;
   return `http://localhost:${port}${filePath}`;
 }

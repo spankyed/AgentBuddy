@@ -11,9 +11,9 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { boundHost } from '../runtime/host-runtime.ts';
-import { _writerIsRunning, _writtenAt } from './process-liveness.ts';
+import { _recordIsStale } from './process-liveness.ts';
 
-export { _writerIsRunning, _writtenAt, type _Liveness } from './process-liveness.ts';
+export { _lockIsHeld, _recordIsStale } from './process-liveness.ts';
 
 export type AppEnv = 'production' | 'beta' | 'development' | 'test';
 
@@ -42,8 +42,7 @@ export function readApiEndpoint(apiPortFile: string): ApiEndpoint | null {
   const { port, pid } = published;
   if (!Number.isInteger(port) || (port as number) <= 0 || (port as number) > 65535) return null;
   if (!Number.isInteger(pid) || (pid as number) <= 0) return null;
-  const at = _writtenAt(apiPortFile);
-  if (at === null || !_writerIsRunning(pid as number, { ifUnsure: 'free', writtenAtMs: at })) return null;
+  if (_recordIsStale(apiPortFile, pid as number)) return null;
   return { port: port as number, pid: pid as number };
 }
 

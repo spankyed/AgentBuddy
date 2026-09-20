@@ -90,4 +90,11 @@ describe('findRunningApp, on a port file left by a previous boot', () => {
     expect(findRunningApp(ctx)).toBeNull();
   });
 
+  it('still counts an instance lock a live process holds, however old the lock is', () => {
+    const ctx = context();
+    lock(ctx.userDataDir, `${os.hostname()}-${process.pid}`);
+    backdateToPreviousBoot(path.join(ctx.userDataDir, 'SingletonLock'));
+
+    expect(findRunningApp(ctx)).toMatch(new RegExp(`process ${process.pid} holds .*SingletonLock`));
+  });
 });
