@@ -4,6 +4,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { loadBuiltInPacks, loadExternalPacks, type LoadedPack } from '../../../src/packs/runtime/loader.ts';
+import type { PackRegistration } from '@abuddy/sdk/framework';
 import { seedPackData, computePackSeedHash, type PackSeedTarget } from '../../../src/packs/runtime/seed.ts';
 import { appState } from '../../../src/app-state/index.ts';
 import { getLoadedPackEntries } from '../../../src/packs/pack-layout.ts';
@@ -320,6 +321,19 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const [pack] = loadExternalPacks();
     expect(pack.registration.boot?.seedManifest).toBeUndefined();
     expect(pack.registration.ears?.partitionPolicy).toBeUndefined();
+  });
+
+  // It strips them off copies. What the app refuses an external pack is the app's decision about this load,
+  // and `boot` and `ears` are the pack module's own objects: taking the keys off those would leave the pack
+  // exporting whatever the last load made of it, which a reload reusing the module would then read.
+  it('leaves the registration the pack module exports as the pack wrote it', () => {
+    const dir = makeBundledPack('intact-pack', registration('intact-pack'));
+
+    loadExternalPacks();
+
+    const exported = (require(path.join(dir, 'runtime', 'index.cjs')) as { registration: PackRegistration }).registration;
+    expect(exported.boot?.seedManifest, "the app's strip reached the pack's own object").toBeDefined();
+    expect(exported.ears?.partitionPolicy).toBeDefined();
   });
 
   it("never calls a seed function an external pack's boot hooks export; seedPackData seeds it once", async () => {
