@@ -10,6 +10,7 @@ import { discoverBuiltInPacks, discoverPacks, discoveredPackIds, enabledExternal
 import { disabledPackIds, forgetPacksExcept } from '../installed-packs.ts';
 import { PACK_LAYOUT, PACK_LAYOUT_VERSION, isPackLayout, readPackIntegrity } from '../pack-layout.ts';
 import { isHostCompatible } from '../pack-installer.ts';
+import { packLoadFailed, packRegistered } from '../load-messages.ts';
 import { findSdkVersion } from '../../build/shared-deps.ts';
 import { withHostResolution } from './bridge.ts';
 import { getBuiltInPackInfos, setBuiltInPackInfos, type LoadedPack } from './loaded-packs.ts';
@@ -334,9 +335,9 @@ export function registerExternalPacks(registry: PackRegistry, packs: LoadedPack[
         features: pack.features,
       });
       registered.push(pack);
-      logger.info(`Registered pack: ${pack.manifest.id} (${systems.length} systems)`);
+      logger.info(packRegistered(pack.manifest.id, systems.length));
     } catch (err) {
-      logger.error(`Failed to register pack ${pack.manifest.id}:`, err as Error);
+      logger.error(`${packLoadFailed(pack.manifest.id)}:`, err as Error);
     }
   }
   return registered;

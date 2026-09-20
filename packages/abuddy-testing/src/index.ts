@@ -6,7 +6,7 @@ import * as os from 'os';
 import { execFileSync } from 'child_process';
 import { createRequire } from 'module';
 import { resolveAppContext } from '@abuddy/sdk/env';
-import { installPackFromLocal } from '@abuddy/host/packs';
+import { installPackFromLocal, PACK_LOAD_MESSAGES } from '@abuddy/host/packs';
 import { appVersion } from './app-version.ts';
 import { appLaunchEnv } from './launch-env.ts';
 import { assertCheckoutPackagesFresh } from './checkout-freshness.ts';
@@ -103,6 +103,34 @@ function resolveAbuddyBin(app: AppLaunch, packDir: string): string {
   throw new Error('Could not find the abuddy CLI to build the pack. Install it in the pack (npm i -D @abuddy/cli) or run the tests with `abuddy test`.');
 }
 
+/** The newest thing under `dir`, or 0 when there is nothing there. */
+function newestMtime(dir: string): number {
+  if (!fs.existsSync(dir)) return 0;
+  return fs.readdirSync(dir, { withFileTypes: true, recursive: true })
+    .filter((entry) => entry.isFile())
+    .reduce((newest, entry) => Math.max(newest, fs.statSync(path.join(entry.parentPath, entry.name)).mtimeMs), 0);
+}
+
+/**
+ * Refuses a packed archive older than the build it was supposed to come from.
+ *
+ * `PACK_ARCHIVE` is the one way past this fixture's rule that a pack is rebuilt before it is tested, and
+ * the rule is there because a stale build tested silently is worse than no test. Installing the artifact
+ * a release ships is a good reason to skip the rebuild; installing one from before the last change is
+ * not, and the two look identical from the outside.
+ */
+function assertArchiveIsCurrent(archive: string, packDir: string): void {
+  if (!fs.existsSync(archive)) throw new Error(`PACK_ARCHIVE does not exist: ${archive}`);
+  const built = newestMtime(path.join(packDir, 'dist'));
+  if (built === 0) return; // nothing built beside it to be older than
+  if (fs.statSync(archive).mtimeMs >= built) return;
+  throw new Error(
+    `PACK_ARCHIVE is older than the pack's build, so it would be testing code that has since changed:\n` +
+    `  archive: ${archive}\n  built:   ${path.join(packDir, 'dist')}\n` +
+    'Pack it again, or unset PACK_ARCHIVE to build and install from source.',
+  );
+}
+
 let _packManifest: { id: string; pluginIds: string[] } | null | undefined;
 function getPackManifest(): { id: string; pluginIds: string[] } | null {
   if (_packManifest !== undefined) return _packManifest;
@@ -149,11 +177,13 @@ function captureOutput(app: ElectronApplication): void {
   const packLoad: PackLoad = {};
   packLoads.set(app, packLoad);
   const packId = getPackManifest()?.id;
-  // The loader logs one line per outcome for every pack it reaches (loader.ts): a registration, or a
-  // reason it was skipped or couldn't be loaded. Watched here because the tail only keeps the last
-  // few hundred lines and the app has usually logged past boot by the time a test asks.
-  const registered = packId && new RegExp(`Registered pack: ${packId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
-  const failed = packId && new RegExp(`(Skipping|Failed to load|Failed to register pack) ${packId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`);
+  // The loader logs one line per outcome for every pack it reaches, and those lines are its contract with
+  // this fixture (`PACK_LOAD_MESSAGES`, `@abuddy/host/packs`), not prose it happens to print. Watched from
+  // the launch because the tail only keeps the last few hundred lines and the app has usually logged past
+  // boot by the time a test asks.
+  const escaped = packId?.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const registered = escaped && new RegExp(`${PACK_LOAD_MESSAGES.registered} ${escaped}\\b`);
+  const failed = escaped && new RegExp(`(${PACK_LOAD_MESSAGES.notLoaded.join('|')}) ${escaped}\\b`);
   const onData = (data: Buffer) => {
     for (const line of data.toString().split('\n')) {
       if (!line.trim()) continue;
@@ -257,6 +287,7 @@ export function createTest(options: CreateTestOptions = {}) {
           // release ships rather than another build of the same source. Everything else — the plugin ids
           // the fixture waits for, the screenshot directory — still comes from PACK_DIR.
           const archive = process.env.PACK_ARCHIVE ? path.resolve(process.env.PACK_ARCHIVE) : undefined;
+          if (archive) assertArchiveIsCurrent(archive, packDir);
           if (!archive) {
             // Always rebuild: installing an existing dist would silently test stale code
             const abuddyBin = resolveAbuddyBin(appLaunch, packDir);

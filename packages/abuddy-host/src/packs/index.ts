@@ -18,6 +18,17 @@ export {
 } from './installed-packs.ts';
 export type { PackRecord } from './installed-packs.ts';
 
+/**
+ * The log lines a test harness reads to tell what became of a pack.
+ *
+ * A pack's backend leaves no other trace a test can see: an external pack with no frontend registers no
+ * plugin, and the loaded-packs the renderer is served leave out packs with no frontend files. So the log
+ * is the signal, and these are the sentences it is made of — imported by both the code that writes them
+ * and `@abuddy/testing`, so that rewording one is a change to the other and not a suite that fails
+ * somewhere else saying something untrue.
+ */
+export { PACK_LOAD_MESSAGES, packRegistered, packLoadFailed } from './load-messages.ts';
+
 // Installer
 export {
   installPack, installPackFromLocal, installPackFromGitHub,

@@ -347,9 +347,13 @@ step "8. abuddy test on the packed archive (the saved app)"
 # `if !` so the pipeline's exit status is this script's to report: under `set -e` a failure would otherwise end it
 # here, with only Playwright's own output to say why
 if ! PACK_ARCHIVE="$ARCHIVE" E2E_KEEP_DATA=1 "$ABUDDY" test 2>&1 | tee "$WORK/e2e.log"; then fail "abuddy test failed"; fi
-grep -q "Installing demo-pack from $ARCHIVE" "$WORK/e2e.log" || fail "abuddy test did not install the packed archive"
 APP_DATA="$(sed -n 's/.*\[e2e\] kept test data dir: //p' "$WORK/e2e.log" | head -n 1)"
 [ -d "$APP_DATA" ] || fail "abuddy test didn't report the data dir it kept"
+
+# What shipped is what ran: the integrity.json inside the archive against the one the app installed. A log
+# line saying it used the archive would only be the fixture agreeing with itself.
+tar -xzOf "$ARCHIVE" demo-pack/integrity.json > "$WORK/archive-integrity.json"
+diff "$WORK/archive-integrity.json" "$APP_DATA/packs/demo-pack/integrity.json" || fail "the pack the app installed is not the one in $ARCHIVE"
 if [ -z "${KEEP_WORK:-}" ]; then trap 'rm -rf "$WORK" "$APP_DATA"' EXIT; fi
 
 step "9. abuddy db on the data the app seeded (the packed CLI, offline)"
