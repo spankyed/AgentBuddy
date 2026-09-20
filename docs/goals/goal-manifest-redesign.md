@@ -4,7 +4,9 @@
 # Goal: abuddy.json has a shape, not a pile of keys
 
 Implement docs/goals/goal-manifest-redesign.md on AS/external-pack-authoring, at or after 4f24d04f7 —
-the base its Background was surveyed at.
+the base its Background was surveyed at. One decision has landed since that survey (Decision 6,
+`validate.ts`), and Background marks what it changed; everything else Background describes was still
+true at 4f24d04f7 — confirm the names a phase acts on exist before acting.
 Read Background, Decisions, Open decisions, Phases and Constraints first, and
 docs/goals/goal-manifest-redesign.example.json, which is the finished shape for the built-in pack.
 Decisions are final: implement them, don't reopen them or stop to ask. The two Open decisions must be
@@ -101,10 +103,19 @@ Two of those read a manifest through a type that is **not** `PackManifest` — `
 optional fields and `packs-system.ts`'s `Record<string, any>` — so they do not fail to compile when a
 key is removed. Decision 3 covers what that costs.
 
-Other manifests in the repo: `tests/fixtures/external-pack/abuddy.json` (89 lines),
-`tests/fixtures/bundled-ui-pack/abuddy.json` (24 lines), and the one `abuddy init` scaffolds
-(`abuddy-cli/src/commands/init.ts`). Fixtures also use `dependencies` and `permissions`, which
-default-setup does not.
+Every other manifest a phase has to change — **four hand-maintained, two generated**:
+
+| Manifest | Size | Notes |
+|---|---|---|
+| `tests/fixtures/external-pack/abuddy.json` | 89 lines | one feature, `memos` |
+| `tests/fixtures/bundled-ui-pack/abuddy.json` | 24 lines | one feature, `scribbles`, no system |
+| `packages/default-setup/tests/fixtures/dependent-pack/abuddy.json` | 22 lines | `features: []`; root keys are `$schema, id, name, version, hostVersion, dependencies, boot` — the `boot` Phase 3 renames |
+| the `abuddy init` scaffold | — | a template literal, `abuddy-cli/src/commands/init.ts:10-43` |
+| the packaged-authoring pack | — | built by `abuddy init` then edited by `tests/scripts/test-packaged-authoring.sh` in three node snippets |
+| `tests/fixtures/external-pack/.abuddy/bundle/e2e-fixture/abuddy.json` | — | a build artifact; regenerated, never edited |
+
+Fixtures also use `dependencies` and `permissions`, which default-setup does not. A phase that says
+"every manifest" means the first five rows.
 
 ### Measured problems
 
@@ -119,11 +130,14 @@ default-setup does not.
 **One concept is declared in two places.** `entities` lists 12 names; `entityShapes` types 10 of them,
 keyed by the same names. `SearchIndex` and `IndexedDoc` have no shape.
 
-**`designation` is always the feature id, because a validator says it must be.** Five features declare
-one and all five match — `validate.ts:55-57` rejects anything else, and the root `CLAUDE.md` records
-the rule. Nothing below that check requires it: `designationsOf` (`pack-registration.ts:42-47`) maps
-`[designation, systemId(id)]` as two values, and codegen carries them apart
-(`generate-entries.ts:630`, `:642`). So the redundancy is the validator's, not the field's.
+**`designation` is always the feature id, because a validator says it must be.** ~~Five features
+declare one and all five match — `validate.ts:55-57` rejects anything else.~~ **Fixed since the survey
+(Decision 6): that check is gone**, replaced by one that rejects a role claimed twice in a pack. The
+measurement is kept because it is why the field looked redundant enough to delete, and the deletion
+would have been wrong. Nothing below the check ever required the equality: `designationsOf`
+(`pack-registration.ts:42-47`) maps `[designation, systemId(id)]` as two values, and codegen carries
+them apart (`generate-entries.ts:630`, `:642`). The redundancy was the validator's, not the field's.
+All five designations still equal their ids, so no manifest changed.
 
 **Three encodings for "a module and its export".**
 
@@ -411,8 +425,9 @@ would ever remove it, because the entity it points at never returns to trigger a
 **Already done** — landed outside the phases, since it is three lines and was blocking work now; the
 rest of this decision is the record of why. A
 designation is a **role** — `settings`, `logs`, `brain`, the thing `getDesignated(role)` looks up — and
-a role is not a feature's name. Today `validate.ts:55-57` rejects any designation that differs from
-the id, so all five of default-setup's are the id repeated, which is what made the key look redundant.
+a role is not a feature's name. At the survey commit `validate.ts:55-57` rejected any designation
+differing from the id, so all five of default-setup's are the id repeated, which is what made the key
+look redundant.
 An earlier draft of this decision therefore replaced it with `"designated": true`. That was wrong: it
 deleted the ability to name a role, not a redundancy.
 
@@ -741,8 +756,14 @@ schema's own doc comment says so:
   expensive half.
 
 **16. No compatibility of any kind.** No dual-read, no alias, no deprecation warning. Every manifest in
-the repo — default-setup, both fixtures, the `abuddy init` scaffold, the packaged-authoring script's
-generated pack — changes in the same phase as the schema section it depends on.
+the repo — default-setup, all three fixtures, the `abuddy init` scaffold and the packaged-authoring
+script's generated pack (the Background's table) — changes in the same phase as the schema section it
+depends on.
+
+Note what this rule does **not** cover: a change that only *loosens* a rule breaks no manifest, and
+old files continuing to validate is not compatibility — there is no second reader, no alias and no
+translation, only a larger set of valid manifests. Decision 6 is the example. What the rule forbids is
+a renamed or removed key that keeps working through code written to accept it.
 
 ## Open decisions
 
@@ -786,7 +807,9 @@ it, then leaves the full chain green. They are ordered so the largest mechanical
   `abuddy-cli/src/commands/add/manifest.ts` and `init.ts`'s scaffold.
 - Delete `$manifestVersion`; rename `PACK_LAYOUT_VERSION` to `PACK_FORMAT_VERSION` and widen its doc
   comment to the manifest's structure. It stays at `1` (Decision 14).
-- Update default-setup, both fixtures, and the pack that `tests/scripts/test-packaged-authoring.sh` writes.
+- Update default-setup and every other manifest in the Background's table: all three fixtures
+  (`external-pack`, `bundled-ui-pack`, `dependent-pack`), the `abuddy init` scaffold, and the pack
+  `tests/scripts/test-packaged-authoring.sh` writes.
 
 **Done when:** `npm run generate:schema` is clean and `abuddy.schema.json` is committed; `abuddy build`
 for default-setup produces a `src/__generated__/ears.ts` byte-identical to the one before the change
@@ -852,7 +875,8 @@ byte-identical (`dist/*.seed.json`, `dist/seeds.json`); `tests/unit/seed-parity`
   `events` and an `entry` override, and make `validate` reject one whose name is absent from
   `provides` (Decision 8).
 - Move `defaultPlugin` onto the feature's plugin as `{ "default": true }` (Decision 12).
-- Widen `validateFeatures` (`validate.ts:42-59`) to check **every** name in `provides`, not the three
+- Widen `validateFeatures` (`validate.ts:47`, moved by Decision 6) to check **every** name in
+  `provides`, not the three
   paths it checks today (`settings`, `system.entry`, `plugin.entry`). A listed `references` or `types`
   whose file is missing must fail here, not much later. Resolve each name to its conventional path, or
   to the feature-relative `entry` when one is given, and reject a path that escapes the feature's
