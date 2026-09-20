@@ -56,7 +56,7 @@ In this folder (all exported from `index.ts`):
 | `reload.ts` | `reloadExternalPack()` / `reloadBuiltInPack()` for the API's `POST /dev/reload` (`setup/websocket.ts`) |
 | `packs-system.ts` | Every action takes an in-flight lock (install on the slug, the rest on the pack id), so two of the same never interleave. The host `packs` XState system: `INSTALL_PACK`, `UNINSTALL_PACK`, `TOGGLE_PACK_ENABLED`, `UPDATE_PACK`, `CHECK_FOR_UPDATES`, `GET_INSTALLED_PACKS`, and `PACK_CHANGED`, on which it sends the list again like any other system that reads what packs register; emits `PACKS_LIST`, `PACK_ACTIVATED`/`PACK_DEACTIVATED` and install/update/uninstall results. It lists `installedPacks()`: the packs directory, joined with what the record says about each |
 | `activation-outcome.ts` | `activationProblem()`: why a just-installed or updated pack isn't working (failed to load, or the seed error recorded on its installed-packs entry) |
-| `seed.ts` | `computePackSeedHash`, `seedPackData` (hash-checked external seeds, the hashes kept in `AppState.packSeedHashes`, which keeps a pack's hash while it's disabled; every seeder the pack registered runs; failures recorded as the installed-packs entry's `lastError`), `orchestrateDeclarativeSeed` (built-in `boot.seed`, hash-checked per pack in `AppState`, `seedPolicy.skipAfterOnboarding` read from `AppState.hasOnboarded`; the hash covers every seeded key's compiled file, `settings.seed.json` included, so changing default settings re-runs the boot seed even though `seedPolicy.skipAtBoot` keeps settings from being reset) |
+| `seed.ts` | `computePackSeedHash`, `seedPackData` (hash-checked external seeds, the hashes kept in `AppState.packSeedHashes`, which keeps a pack's hash while it's disabled; every seeder the pack registered runs; failures recorded as the installed-packs entry's `lastError`. A pack is seeded when its own compiled data changed, or when its last seed failed and a pack it depends on has seeded since — `AppState.packSeedDeps` holds what the failed attempt faced, so the retry happens when that changes rather than never, and a pack whose data and dependencies are both settled is still skipped), `orchestrateDeclarativeSeed` (built-in `boot.seed`, hash-checked per pack in `AppState`, `seedPolicy.skipAfterOnboarding` read from `AppState.hasOnboarded`; the hash covers every seeded key's compiled file, `settings.seed.json` included, so changing default settings re-runs the boot seed even though `seedPolicy.skipAtBoot` keeps settings from being reset) |
 
 In `packages/abuddy-host/src/packs/` (`@abuddy/host/packs`):
 
@@ -99,7 +99,7 @@ The API's `core/router/packs-router.ts` serves `packs.loaded` from `getLoadedPac
    runAppMigrations()              — the host's app migrations, then built-in packs', against the app version (@abuddy/host/migrations); if one fails, nothing below runs
    runPackMigrations()             — external packs' migrations, each against its pack version
    runRegisteredBootSeeds()        — built-in packs' boot.seedManifest (orchestrateDeclarativeSeed)
-   seedPackData()                  — external pack compiled seeds (hash-checked)
+   seedPackData()                  — external pack compiled seeds (hash-checked, in dependency order)
 10. start the bus actor            — createAppBus() (@abuddy/host/bus) with systemId `bus`
 ```
 
@@ -163,7 +163,7 @@ The resolver patch is restored in a `finally`; the bridged cache entries stay, s
 
 - **`earlySystem`** — Starts before hydration, and before external packs register. The manifest schema rejects `features[].earlySystem` in a pack without `builtIn`, and the loader strips it with a warning log.
 - **`partitionPolicy`** (`excludedEntityTypes`) — Controls which entities go to the volatile store vs primary LMDB. Letting external packs route data to alternative stores without sandboxing could corrupt persistence. Stripped (with a warning when it lists types); all external pack data routes to the primary partition.
-- **`seedManifest`** — The declarative boot seed is only for built-in packs (hashes recorded per pack in `AppState.seedHashes`); external packs seed through `seedPackData()`, hash-checked per pack.
+- **`seedManifest`** — The declarative boot seed is only for built-in packs (hashes recorded per pack in `AppState.seedHashes`); external packs seed through `seedPackData()`, hash-checked per pack and in dependency order.
 
 ## Runtime lifecycle
 
