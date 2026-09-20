@@ -161,6 +161,22 @@ describe('seedFormats and boot.seed entries', () => {
     expect(parseManifest({ ...pack, builtIn: true, features }).errors).toEqual([]);
   });
 
+  // Which plugin opens first is an annotation on the plugin, not a feature id at the root: an id there
+  // could name a feature the pack doesn't have, and codegen then emitted no default at all — quietly
+  // worse than leaving it out, which falls back to the pack's first plugin
+  it('takes the default plugin from the plugin that claims it, and refuses two claims', () => {
+    const plugin = (id: string, isDefault?: boolean) =>
+      ({ id, plugin: { entry: `src/${id}/fe/plugin.ts`, ...(isDefault ? { default: true } : {}) } });
+
+    expect(parseManifest({ ...pack, features: [plugin('notes'), plugin('cards', true)] }).errors).toEqual([]);
+    expect(parseManifest({ ...pack, features: [plugin('notes', true), plugin('cards', true)] }).errors)
+      .toEqual([expect.stringMatching(/"features\.1\.plugin\.default": Two features claim the default plugin: "notes" and "cards"/)]);
+  });
+
+  it('has no root defaultPlugin to name a feature that may not exist', () => {
+    expect(parseManifest({ ...pack, defaultPlugin: 'threads' }).errors).toEqual([expect.stringMatching(/Unrecognized key.*defaultPlugin/)]);
+  });
+
   it('rejects anything but a path on a specialty key', () => {
     expect(errorsFor({ actions: { path: 'src/seeds/actions', format: 'memos' } })).toEqual([expect.stringMatching(/"actions" is compiled by the SDK/)]);
   });

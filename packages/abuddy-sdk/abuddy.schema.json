@@ -225,6 +225,10 @@
               "entry": {
                 "type": "string",
                 "description": "Path to the frontend plugin module, which default-exports the Plugin (its id, label, icon and isPinned)."
+              },
+              "default": {
+                "type": "boolean",
+                "description": "Show this plugin when the app starts. At most one of a pack's features may claim it; the first pack to register one across the app wins."
               }
             },
             "required": [
@@ -266,10 +270,6 @@
         "additionalProperties": false
       },
       "description": "Feature definitions. Each feature bundles a backend system, frontend plugin, services, and settings."
-    },
-    "defaultPlugin": {
-      "type": "string",
-      "description": "ID of the feature to show by default when the app starts."
     },
     "packServices": {
       "type": "object",

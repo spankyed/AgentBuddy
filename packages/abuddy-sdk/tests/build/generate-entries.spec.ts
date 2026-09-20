@@ -365,6 +365,24 @@ describe('generated frontend entry', () => {
     expect(fe).toContain("const __plugin_settings = { ...__plugin_settings_module, designation: 'settings' }");
     expect(fe).toContain('const __plugin_notes = { ...__plugin_notes_module, designation: undefined }');
   });
+
+  it('opens the plugin that claims the default, not the pack\'s first', () => {
+    const files = generate({ features: [
+      { id: 'settings', plugin: { entry: 'src/settings/plugin' } },
+      { id: 'notes', plugin: { entry: 'src/notes/plugin', default: true } },
+    ] });
+
+    expect(files['src/__generated__/pack-entry-fe.ts']).toContain('defaultPlugin: __plugin_notes,');
+  });
+
+  it("falls back to the pack's first plugin when none claims it", () => {
+    const files = generate({ features: [
+      { id: 'settings', plugin: { entry: 'src/settings/plugin' } },
+      { id: 'notes', plugin: { entry: 'src/notes/plugin' } },
+    ] });
+
+    expect(files['src/__generated__/pack-entry-fe.ts']).toContain('defaultPlugin: __plugin_settings,');
+  });
 });
 
 describe('generated backend entry', () => {

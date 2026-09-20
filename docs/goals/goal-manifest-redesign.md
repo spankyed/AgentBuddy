@@ -874,7 +874,7 @@ byte-identical (`dist/*.seed.json`, `dist/seeds.json`); `tests/unit/seed-parity`
 - Keep `system`/`plugin` as optional sibling annotations carrying `sendsTo`, `outgoingEventsType`,
   `events` and an `entry` override, and make `validate` reject one whose name is absent from
   `provides` (Decision 8).
-- Move `defaultPlugin` onto the feature's plugin as `{ "default": true }` (Decision 12).
+- ~~Move `defaultPlugin` onto the feature's plugin as `{ "default": true }` (Decision 12).~~ **Done ahead of this goal**, on its own: the root field is gone, `PluginSchema` takes `default`, `validate` rejects two features of one pack claiming it, and codegen reads the claim. Nothing else in the redesign was touched.
 - Widen `validateFeatures` (`validate.ts:47`, moved by Decision 6) to check **every** name in
   `provides`, not the three
   paths it checks today (`settings`, `system.entry`, `plugin.entry`). A listed `references` or `types`

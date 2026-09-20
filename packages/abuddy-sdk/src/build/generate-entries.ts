@@ -732,8 +732,9 @@ ${manifest.migrations ? '  migrations,' : ''}
       .join('\n');
 
     const pluginList = pluginFeatures.map(f => pluginBinding(f.id)).join(', ');
-    const defaultId = manifest.defaultPlugin;
-    const defaultFeature = defaultId ? pluginFeatures.find(f => f.id === defaultId) : pluginFeatures[0];
+    // The feature whose plugin claims it, else the pack's first: the claim is on the plugin, so it can't
+    // name a feature that isn't there, which a root `defaultPlugin` id could and did silently
+    const defaultFeature = pluginFeatures.find(f => f.plugin?.default) ?? pluginFeatures[0];
     const defaultPluginId = defaultFeature ? pluginBinding(defaultFeature.id) : 'undefined';
 
     const fe = manifest.fe ?? {};

@@ -132,6 +132,7 @@ const SystemSchema = z.object({
 
 const PluginSchema = z.object({
   entry: z.string().describe('Path to the frontend plugin module, which default-exports the Plugin (its id, label, icon and isPinned).'),
+  default: z.boolean().describe('Show this plugin when the app starts. At most one of a pack\'s features may claim it; the first pack to register one across the app wins.').optional(),
 }).strict();
 
 /**
@@ -234,7 +235,6 @@ export const ManifestSchema = z.object({
     .describe('Maps entity type strings to their TypeScript attribute interfaces for type-safe EARS queries.').optional(),
   features: z.array(FeatureEntrySchema)
     .describe('Feature definitions. Each feature bundles a backend system, frontend plugin, services, and settings.').optional(),
-  defaultPlugin: z.string().describe('ID of the feature to show by default when the app starts.').optional(),
   packServices: ServicesSchema
     .describe('Pack-level services not tied to a specific feature. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file.').optional(),
   commands: z.array(CommandEntrySchema)
@@ -256,6 +256,17 @@ export const ManifestSchema = z.object({
       if (feature.earlySystem) ctx.addIssue({ code: 'custom', path: ['features', index, 'earlySystem'], message: 'An early system starts before EARS hydration, before external packs load, so only built-in packs allowed to have one' });
     });
   }
+  // Which plugin opens first is one plugin's annotation, so a pack naming two has said nothing
+  const claimedDefault = (manifest.features ?? []).filter((feature) => feature.plugin?.default);
+  if (claimedDefault.length > 1) {
+    const at = (manifest.features ?? []).indexOf(claimedDefault[1]!);
+    ctx.addIssue({
+      code: 'custom',
+      path: ['features', at, 'plugin', 'default'],
+      message: `Two features claim the default plugin: "${claimedDefault[0]!.id}" and "${claimedDefault[1]!.id}". Only one may.`,
+    });
+  }
+
   // A send to one of this pack's own features can only arrive at a plugin; a dependency's or a host
   // plugin isn't in this manifest, so codegen checks those against the dependencies' snapshots
   const ownFeatureIds = new Set((manifest.features ?? []).map((feature) => feature.id));

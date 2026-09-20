@@ -333,10 +333,13 @@ export const FeatureEntrySchema: z.ZodObject<{
     }>>;
     plugin: z.ZodOptional<z.ZodObject<{
         entry: z.ZodString;
+        default: z.ZodOptional<z.ZodBoolean>;
     }, "strict", z.ZodTypeAny, {
         entry: string;
+        default?: boolean | undefined;
     }, {
         entry: string;
+        default?: boolean | undefined;
     }>>;
     services: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
     repositories: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
@@ -357,6 +360,7 @@ export const FeatureEntrySchema: z.ZodObject<{
     } | undefined;
     plugin?: {
         entry: string;
+        default?: boolean | undefined;
     } | undefined;
     services?: Record<string, string> | undefined;
     repositories?: Record<string, string> | undefined;
@@ -377,6 +381,7 @@ export const FeatureEntrySchema: z.ZodObject<{
     } | undefined;
     plugin?: {
         entry: string;
+        default?: boolean | undefined;
     } | undefined;
     services?: Record<string, string> | undefined;
     repositories?: Record<string, string> | undefined;
@@ -495,10 +500,13 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }>>;
         plugin: z.ZodOptional<z.ZodObject<{
             entry: z.ZodString;
+            default: z.ZodOptional<z.ZodBoolean>;
         }, "strict", z.ZodTypeAny, {
             entry: string;
+            default?: boolean | undefined;
         }, {
             entry: string;
+            default?: boolean | undefined;
         }>>;
         services: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
         repositories: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
@@ -519,6 +527,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         } | undefined;
         plugin?: {
             entry: string;
+            default?: boolean | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
@@ -539,12 +548,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         } | undefined;
         plugin?: {
             entry: string;
+            default?: boolean | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
     }>, "many">>;
-    defaultPlugin: z.ZodOptional<z.ZodString>;
     packServices: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
     commands: z.ZodOptional<z.ZodArray<z.ZodObject<{
         name: z.ZodString;
@@ -855,12 +864,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         } | undefined;
         plugin?: {
             entry: string;
+            default?: boolean | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
     }[] | undefined;
-    defaultPlugin?: string | undefined;
     packServices?: Record<string, string> | undefined;
     commands?: {
         name: string;
@@ -962,12 +971,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         } | undefined;
         plugin?: {
             entry: string;
+            default?: boolean | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
     }[] | undefined;
-    defaultPlugin?: string | undefined;
     packServices?: Record<string, string> | undefined;
     commands?: {
         name: string;
@@ -1069,12 +1078,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         } | undefined;
         plugin?: {
             entry: string;
+            default?: boolean | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
     }[] | undefined;
-    defaultPlugin?: string | undefined;
     packServices?: Record<string, string> | undefined;
     commands?: {
         name: string;
@@ -1176,12 +1185,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         } | undefined;
         plugin?: {
             entry: string;
+            default?: boolean | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
     }[] | undefined;
-    defaultPlugin?: string | undefined;
     packServices?: Record<string, string> | undefined;
     commands?: {
         name: string;
