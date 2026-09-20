@@ -5,7 +5,7 @@ import { createLogger } from '@abuddy/sdk/logger';
 import { PACK_LAYOUT } from '../pack-layout.ts';
 import { recordSeedOutcomes } from '../installed-packs.ts';
 import type { PackSeedManifest } from '@abuddy/sdk/framework';
-import { seedPath } from '@abuddy/sdk/build';
+import { seedPath, type PackManifest } from '@abuddy/sdk/build';
 import { appState } from '../../app-state/index.ts';
 import { seedData, type SeedIncludeSet } from '@abuddy/sdk/utils';
 
@@ -45,9 +45,16 @@ function seedErrors(result: Record<string, { errors?: string[] }> | undefined): 
 }
 
 
-/** What seeding a pack needs: which pack, where its compiled seeds are, and what it depends on */
+/**
+ * What seeding a pack needs: which pack, where its compiled seeds are, and what it depends on.
+ *
+ * The manifest fields are `Pick`ed from `PackManifest` rather than restated, so this can't drift from what
+ * a manifest actually holds — `dependencies` is optional here because a pack with none declares none, not
+ * because a caller may leave it out. It is what the retry rule reads: a seed that failed is run again once
+ * one of these has seeded.
+ */
 export interface PackSeedTarget {
-  manifest: { id: string; dependencies?: Record<string, string> };
+  manifest: Pick<PackManifest, 'id' | 'dependencies'>;
   dir: string;
 }
 

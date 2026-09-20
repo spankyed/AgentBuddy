@@ -4,6 +4,7 @@
 import { getAppVersion, resolveAppContext } from '@abuddy/sdk/env';
 import { compareVersions } from '@abuddy/sdk/utils';
 import type { PackMigration } from '@abuddy/sdk/framework';
+import type { PackManifest } from '@abuddy/sdk/build';
 import { appState } from '../app-state/index.ts';
 import { appMigrations } from './app/index.ts';
 import type { PackRegistry } from '../packs/pack-registration.ts';
@@ -73,9 +74,12 @@ export function runAppMigrations(registry: PackRegistry): boolean {
  * the pack's version in AppState `packVersions` once they all ran. Run after `runAppMigrations`, which moves the
  * versions recorded before AppState. A pack that isn't loaded (disabled) keeps its recorded version.
  */
-/** What running a pack's migrations needs: which pack, at which version, and the migrations */
+/**
+ * What running a pack's migrations needs: which pack, at which version, and the migrations.
+ * The manifest fields are `Pick`ed from `PackManifest` so this can't drift from what a manifest holds.
+ */
 export interface PackMigrationTarget {
-  manifest: { id: string; version: string };
+  manifest: Pick<PackManifest, 'id' | 'version'>;
   migrations?: PackMigration[];
 }
 
