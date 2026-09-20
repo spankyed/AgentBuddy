@@ -4,13 +4,6 @@
 
 ```ts
 
-// @public
-export interface ApiEndpoint {
-    pid: number;
-    // (undocumented)
-    port: number;
-}
-
 // @public (undocumented)
 export const APP_ENVS: readonly AppEnv[];
 
@@ -49,17 +42,8 @@ export function _inferElectronAppEnv(input: {
     envVar: string | undefined;
 }): AppEnv;
 
-// @internal
-export function _lockIsHeld(pid: number): boolean;
-
 // @public (undocumented)
 export function parseAppEnv(value: string | undefined): AppEnv | undefined;
-
-// @public
-export function readApiEndpoint(apiPortFile: string): ApiEndpoint | null;
-
-// @internal
-export function _recordIsStale(file: string, pid: number): boolean;
 
 // @public
 export type ReleaseChannel = Extract<AppEnv, 'production' | 'beta'>;

@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { _inferElectronAppEnv, parseAppEnv, readApiEndpoint, resolveAppContext } from '../../src/env/index.ts';
+import { _inferElectronAppEnv, parseAppEnv, resolveAppContext } from '../../src/env/index.ts';
 
 const saved = { env: process.env.ABUDDY_ENV, userDataDir: process.env.ABUDDY_USER_DATA_DIR };
 
@@ -102,46 +102,5 @@ describe('_inferElectronAppEnv', () => {
     expect(_inferElectronAppEnv(base)).toBe('development');
     expect(_inferElectronAppEnv({ ...base, envVar: 'beta' })).toBe('beta');
     expect(() => _inferElectronAppEnv({ ...base, envVar: 'staging' })).toThrow(/Invalid app environment/);
-  });
-});
-
-describe('readApiEndpoint', () => {
-  let dir: string;
-  beforeEach(() => { dir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-endpoint-')); });
-  afterEach(() => fs.rmSync(dir, { recursive: true, force: true }));
-
-  const file = () => path.join(dir, 'api-port');
-  const write = (content: unknown) => fs.writeFileSync(file(), typeof content === 'string' ? content : JSON.stringify(content));
-  /** A process id no process has any more */
-  const exitedPid = () => spawnSync(process.execPath, ['-e', '']).pid!;
-
-  it('reads the API a running process published', () => {
-    write({ port: 3001, pid: process.pid });
-    expect(readApiEndpoint(file())).toEqual({ port: 3001, pid: process.pid });
-  });
-
-  it('reads nothing from a file a crashed run left behind', () => {
-    write({ port: 3001, pid: exitedPid() });
-    expect(readApiEndpoint(file())).toBeNull();
-  });
-
-  // Pids are recycled, so after a reboot a crashed run's file names an unrelated live process. Without the
-  // boot bound `abuddy dev` and the pack watcher believe an API is there and talk to a port nobody holds.
-  it('reads nothing from a file written before this boot, whatever pid it names', () => {
-    write({ port: 3001, pid: process.pid });
-    expect(readApiEndpoint(file())).toEqual({ port: 3001, pid: process.pid });
-
-    const before = new Date(Date.now() - os.uptime() * 1000 - 60_000);
-    fs.utimesSync(file(), before, before);
-    expect(readApiEndpoint(file())).toBeNull();
-  });
-
-  it('reads nothing from a missing file, or one that makes no sense', () => {
-    expect(readApiEndpoint(file())).toBeNull();
-    for (const content of ['', 'not json', '3001', { port: 3001 }, { pid: process.pid }, { port: 0, pid: process.pid },
-      { port: 70000, pid: process.pid }, { port: '3001', pid: process.pid }, { port: 3001, pid: -1 }]) {
-      write(content);
-      expect(readApiEndpoint(file()), JSON.stringify(content)).toBeNull();
-    }
   });
 });

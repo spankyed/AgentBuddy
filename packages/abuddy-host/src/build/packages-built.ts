@@ -214,7 +214,7 @@ interface LockHolder { pid: number; label: string; startedAt: string }
 /**
  * Whether the build that took the lock is still running: its pid exists, and it started in this boot.
  *
- * The same rule as `_recordIsStale` in `@abuddy/sdk/env`, deliberately not that function. This module is
+ * The same rule as `recordIsStale` in `@abuddy/host/process-liveness`, deliberately not that function. This module is
  * the freshness rule the package builds themselves run through, so it resolves the packages' published
  * `dist` — which, while they are being built, is the stale copy that has yet to export anything new. It
  * bounds by the lock's own `startedAt` rather than a file's mtime, which is the better of the two rules:

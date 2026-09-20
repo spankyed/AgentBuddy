@@ -43,6 +43,10 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   ['@abuddy/host/build/discover', 'build-time only'],
   ['@abuddy/host/build/source-resolution', 'host tooling only (CLI, fixture, API boot)'],
   ['@abuddy/host/build/packages-built', 'checkout build tooling: the freshness rule behind npm run packages:ensure'],
+  // What a running process published and whether it is still there: the app's own plumbing, which is why
+  // it moved out of @abuddy/sdk/env. A pack reaches a running API through the app, never by reading its
+  // port file.
+  ['@abuddy/host/process-liveness', 'app plumbing: the locks, staging dirs and port file the app itself writes'],
   // The user's API keys with their values: only the API and host services use it, packs get services.secrets (no values)
   ['@abuddy/host/secrets', 'host store of API key values, never handed to packs'],
   // The app's HostRuntime, which the API binds; packs reach its services through services (appData, traceStore, inference, secrets)

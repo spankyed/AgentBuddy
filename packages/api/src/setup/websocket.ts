@@ -9,7 +9,8 @@ import { createLogger } from '@abuddy/sdk/logger';
 import { SERVER_CONFIG, apiToken, apiTokenIsOwn, isApiToken } from '@/setup/config';
 import { appPacks, backendActor } from '@/setup/backend';
 import { reloadBuiltInPack, reloadExternalPack } from '@abuddy/host/packs/runtime';
-import { resolveAppContext, type ApiEndpoint } from '@abuddy/sdk/env';
+import { resolveAppContext } from '@abuddy/sdk/env';
+import type { ApiEndpoint } from '@abuddy/host/process-liveness';
 import { API_HOST, API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('backend');

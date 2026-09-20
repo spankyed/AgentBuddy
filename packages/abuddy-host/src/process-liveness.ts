@@ -1,6 +1,6 @@
 /**
- * Whether the process that wrote a record on disk is still running: the API's port file here, and in the
- * app the database write lock, the instance lock, staging dirs and the dev server's marker.
+ * Whether the process that wrote a record on disk is still running: the database write lock, the instance
+ * lock, staging dirs, the dev server's marker, and the API's own port file.
  *
  * A pid alone cannot answer it. Pids are recycled, so a record a crash left behind names whatever took its
  * number, and reads as live for as long as the file exists. Bounding the pid by when the record was written
@@ -23,8 +23,8 @@
  * reach every caller — Chromium writes the instance lock, and a staging dir carries its pid in its name —
  * so it would shrink this problem rather than end it.
  *
- * `@internal`: this is app plumbing, not part of the pack contract. It lives here because `readApiEndpoint`
- * does, and that is reachable from a pack's build script, which cannot import `@abuddy/host`.
+ * `readApiEndpoint` is here too: it is the one reader outside this file that needs the bound, and what a
+ * running process published belongs with whether that process is still there.
  */
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -70,9 +70,8 @@ function writtenAt(file: string): number | null {
  *
  * Pass only a lock this machine wrote. A caller that can tell whose it is — the write lock's `machine`,
  * the instance lock's hostname — checks that first, since a foreign pid means nothing here.
- * @internal
  */
-export function _lockIsHeld(pid: number): boolean {
+export function lockIsHeld(pid: number): boolean {
   return processExists(pid);
 }
 
@@ -87,10 +86,38 @@ export function _lockIsHeld(pid: number): boolean {
  * question.
  *
  * Pass only a record this machine wrote: a foreign mtime is on another clock.
- * @internal
  */
-export function _recordIsStale(file: string, pid: number): boolean {
+export function recordIsStale(file: string, pid: number): boolean {
   if (!processExists(pid)) return true;
   const at = writtenAt(file);
   return at === null || at < bootTime();
+}
+
+/** What a running API publishes about itself in `AppContext.apiPortFile`, so local tools find it */
+export interface ApiEndpoint {
+  port: number;
+  /** The API process. A file whose process is gone is one a crash left behind, not a running app */
+  pid: number;
+}
+
+/**
+ * The API running on this data dir, from the file it published, or `null` when there is none: no file, one that
+ * can't be read, or one a crashed run left behind. A process this user may not signal counts as running.
+ * Whether the API answers is the caller's to check.
+ *
+ * "Left behind" is the pid *and* the boot it was written in: pids are recycled, so after a reboot a crashed
+ * run's file names an unrelated live process and would otherwise report an API that isn't there.
+ */
+export function readApiEndpoint(apiPortFile: string): ApiEndpoint | null {
+  let published: { port?: unknown; pid?: unknown };
+  try {
+    published = JSON.parse(fs.readFileSync(apiPortFile, 'utf-8')) as { port?: unknown; pid?: unknown };
+  } catch {
+    return null;
+  }
+  const { port, pid } = published;
+  if (!Number.isInteger(port) || (port as number) <= 0 || (port as number) > 65535) return null;
+  if (!Number.isInteger(pid) || (pid as number) <= 0) return null;
+  if (recordIsStale(apiPortFile, pid as number)) return null;
+  return { port: port as number, pid: pid as number };
 }

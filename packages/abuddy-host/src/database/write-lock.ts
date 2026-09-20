@@ -4,7 +4,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { _lockIsHeld } from '@abuddy/sdk/env';
+import { lockIsHeld } from '../process-liveness.ts';
 
 /**
  * What the file holds. `pid` answers the question the lock exists to ask, "is the holder still running";
@@ -45,7 +45,7 @@ function readLock(file: string): LockFile | null {
  * exited doesn't count. Two cases can't be resolved and count as held: a lock this version can't read, and
  * one naming another machine, whose pid means nothing here.
  *
- * `_lockIsHeld` errs toward held, which here means a lock whose pid this boot reassigned keeps the app out
+ * `lockIsHeld` errs toward held, which here means a lock whose pid this boot reassigned keeps the app out
  * until someone deletes it. Releasing on interrupt makes that rare to begin with.
  */
 export function findDatabaseWriter(userDataDir: string): string | null {
@@ -54,7 +54,7 @@ export function findDatabaseWriter(userDataDir: string): string | null {
   const held = readLock(file);
   if (!held) return "a tool whose lock can't be read";
   if (held.machine !== os.hostname()) return `${held.what} on ${held.machine}`;
-  return _lockIsHeld(held.pid) ? `${held.what} (pid ${held.pid})` : null;
+  return lockIsHeld(held.pid) ? `${held.what} (pid ${held.pid})` : null;
 }
 
 /** Where the lock is, and that removing it is the way out when no tool is really running */

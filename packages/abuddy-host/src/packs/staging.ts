@@ -2,7 +2,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { recordHostVersion } from './host-info.ts';
-import { _recordIsStale } from '@abuddy/sdk/env';
+import { recordIsStale } from '../process-liveness.ts';
 
 export type StagingKind = 'installing' | 'previous' | 'publishing';
 
@@ -27,7 +27,7 @@ function parseStagingDir(dir: string, name: string): StagingEntry | null {
   const owned = OWNED_STAGING_DIR.exec(name);
   if (!owned) return null;
   const pid = Number(owned[3]);
-  const stale = pid !== process.pid && _recordIsStale(path.join(dir, name), pid);
+  const stale = pid !== process.pid && recordIsStale(path.join(dir, name), pid);
   return { name, id: owned[1], kind: owned[2] as StagingKind, stale };
 }
 

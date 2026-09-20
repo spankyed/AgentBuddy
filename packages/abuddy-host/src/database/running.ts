@@ -3,8 +3,8 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { readApiEndpoint, type AppContext } from '@abuddy/sdk/env';
-import { _lockIsHeld } from '@abuddy/sdk/env';
+import type { AppContext } from '@abuddy/sdk/env';
+import { lockIsHeld, readApiEndpoint } from '../process-liveness.ts';
 
 /** Chromium's instance lock in the data dir: a symlink to `<hostname>-<pid>` */
 const SINGLETON_LOCK = 'SingletonLock';
@@ -28,7 +28,7 @@ function liveLock(userDataDir: string): string | null {
   const [host, pid] = [target.slice(0, dash), Number(target.slice(dash + 1))];
   if (dash <= 0 || !Number.isInteger(pid) || pid <= 0) return `${lock} is held (${target})`;
   if (host !== os.hostname()) return `${lock} is held by a process on ${host}`;
-  return _lockIsHeld(pid) ? `process ${pid} holds ${lock}` : null;
+  return lockIsHeld(pid) ? `process ${pid} holds ${lock}` : null;
 }
 
 /**
