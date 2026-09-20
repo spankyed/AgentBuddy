@@ -122,19 +122,14 @@ export function createFePackRegistry(): FePackRegistry {
         undo(() => blocks.unregister(def.type, owner));
       }
 
-      const touchedSteps = new Set<string>();
       for (const step of registration.steps ?? []) {
         steps.register(step, owner);
-        touchedSteps.add(step.type);
         undo(() => steps.unregister(step.type, owner));
-      }
-      // Each step's components, loaded once — for the types this registration touched and no others. Their
-      // merged definition is the only one that changed, and `loadComponents` is the pack's own code: running
-      // another pack's here would make its failure this pack's, and a step left broken by a pack that failed
-      // would throw again for every pack registered after it.
-      for (const type of touchedSteps) {
-        const def = steps.get(type);
-        if (def?.fe?.loadComponents && !def.fe.components) def.fe.components = def.fe.loadComponents();
+        // Its components, loaded once, off the pack's own `fe` — which is the object every merged
+        // definition of the type hands out, since merging keeps the facet by reference. Loading them here
+        // rather than sweeping the registry afterwards is what keeps `loadComponents`, which is the pack's
+        // own code, from running inside another pack's registration and failing it.
+        if (step.fe?.loadComponents && !step.fe.components) step.fe.components = step.fe.loadComponents();
       }
 
       for (const [name, config] of Object.entries(registration.dslTypes ?? {})) {
