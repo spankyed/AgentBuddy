@@ -167,3 +167,45 @@ still each fail the right test from their new home.
   publish time — but check `npm run packages:check` all the same.
 - `@abuddy/testing`'s bundle must not gain a repo-root path from the move (the reason
   `build/packages-built.ts` lives where it does).
+
+## Outcome (2026-09-20)
+
+All four phases done, on `AS/external-pack-authoring`.
+
+### Per phase
+
+- **Phase 1 — `dev-build.mjs` stops discovering the API** (`2a5854631`). A `readDevPort` beside the
+  `readDevFile` it already had. `resolveAppContext` is now its only import from `@abuddy/sdk/env`.
+- **Phases 2 and 3 — the move and the tests** (`c28c9ca05`). `@abuddy/host/process-liveness` holds
+  `lockIsHeld`, `recordIsStale`, `readApiEndpoint` and `ApiEndpoint`. Seven call sites moved; the
+  predicates lost their `_` prefix and `@internal` tags (Decision 4).
+- **Phase 4 — the reports and the docs.** `etc/env.api.md` lost all four names.
+
+### Conventional choices
+
+- The export is listed in `sdk-bridge-drift.spec.ts`'s `UNBRIDGED_BY_DESIGN`, which is what caught the new
+  subpath: a pack reaches a running API through the app, never by reading its port file.
+- The root `CLAUDE.md` gained a line for the subpath beside the other `@abuddy/host/*` entries; its
+  `@abuddy/sdk/env` line already said only `resolveAppContext`, `getAppVersion` and needed no change.
+
+### Corrections to the Phases
+
+- **Phases 2, 3 and Phase 4's `api:update` landed as one commit.** The plan had them separate and each
+  landable. They are not: moving the module leaves the SDK's own tests importing names it no longer
+  exports, and `check:api-stamp` fails until the reports are regenerated. There is no commit in between
+  that builds, so splitting would have meant shipping one that doesn't.
+
+### Open items
+
+The Deferred note stands: whether `apiPortFile` and `apiTokenFile` belong on `AppContext` at all is a
+separate question about the environment contract's scope.
+
+### Final verification
+
+`npm run typecheck` ✅ · `npm run test:unit` ✅ (8/8 suites) · `npm run build` ✅ · `npm test` ✅ (13) ·
+`npm run test:external-pack` ✅ (23 + 8 + 1) · `npm run packages:check` ✅ (exit 0, findings unchanged and
+ignored by resolution).
+
+All six liveness mutations still fail the right test from the new home: `lockIsHeld` always free, EPERM
+read as gone, the boot bound dropped, a missing file read as fresh, the pid ignored, and `readApiEndpoint`
+skipping the staleness check.

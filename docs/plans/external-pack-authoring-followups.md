@@ -64,11 +64,6 @@ Blocked on a dependency decision: it needs a native module (the app already ship
 the synchronous LMDB work the lock protects, producing the exact double-writer it prevents.
 `write-lock.ts`
 
-**Move `readApiEndpoint` and `process-liveness.ts` out of the SDK into `@abuddy/host`.** App plumbing sits in
-the pack contract because `packages/default-setup/dev-build.mjs:97` calls it and default-setup cannot depend
-on host. Blocked on removing that script's need to discover the API first, which is its own change.
-`packages/abuddy-sdk/src/env/index.ts:29`
-
 ## Cannot be verified here
 
 **Create the GitHub release as a draft, upload assets, then publish.** A rerun after a failed upload gets a
