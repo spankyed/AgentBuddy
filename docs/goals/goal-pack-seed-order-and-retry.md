@@ -191,8 +191,11 @@ All four phases done, on `AS/external-pack-authoring`.
 
 ### Conventional choices
 
-- `PackSeedTarget.manifest` gained an optional `dependencies`, so the ~20 test call sites that build
-  `{ manifest: { id }, dir }` by hand were untouched, as the Constraints asked.
+- `PackSeedTarget.manifest` and `PackMigrationTarget.manifest` are `Pick<PackManifest, …>`, so the ~20
+  test call sites that build `{ manifest: { id }, dir }` by hand were untouched, as the Constraints asked.
+  They first restated the fields, with `dependencies?` written optional for exactly that reason; picking
+  them takes the optionality from the manifest, where a pack with no dependencies declares none, and makes
+  a field leaving `PackManifest` a build failure here.
 - The cycle warning names the packs in it (`a -> b -> a`), logged once per sort.
 
 ### Corrections to the Decisions
