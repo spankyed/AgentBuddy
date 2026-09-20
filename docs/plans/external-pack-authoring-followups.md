@@ -57,11 +57,20 @@ and the repo already calls it `facade` everywhere else. Already has a goal doc. 
 `generate-entries.ts:477` skips a snapshot with no facade rather than failing. Sequence after the
 `emitDepTypes` deletion.
 
-**Replace the pidfile write lock with an OS advisory lock.** 124 lines of pid/hostname/interrupt/staleness
-logic exist only because a pidfile is not released by the kernel. `flock`/`LockFileEx` deletes the class.
-Blocked on a dependency decision: it needs a native module (the app already ships `lmdb` and
-`@napi-rs/keyring`, so it is not categorically out). **Not** `proper-lockfile` — its heartbeat lapses under
-the synchronous LMDB work the lock protects, producing the exact double-writer it prevents.
+**Advisory-lock the database write lock.** Recorded here as "124 lines of pid/hostname/interrupt/staleness
+logic exist only because a pidfile is not released by the kernel", and blocked on a dependency decision.
+Both halves were wrong, and investigating it found something else:
+
+- **Acquisition wasn't atomic.** The lock checked and then wrote; six processes racing all acquired it. That
+  was the live bug, it had nothing to do with staleness, and `openSync(file, 'wx')` fixed it.
+- **The dependency isn't blocked.** `fs-native-extensions` is N-API with prebuilds for every platform that
+  matters, loads under Electron without a rebuild, and holds across Node and Electron with `SIGKILL`
+  releasing it. Measured, not assumed.
+- **About 50 lines would go, not 124**, and `flock` carries no metadata, so the file stays either way.
+
+What is left for an advisory lock is a false held (loud, one `rm`) and the take-over window `wx` can't
+close. Deferred on value rather than blocked on a dependency: see `docs/goals/deferred/goal-write-lock-advisory.md`
+for the spike and the accounting.
 `write-lock.ts`
 
 ## Cannot be verified here

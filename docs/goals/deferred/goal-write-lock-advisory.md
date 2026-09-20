@@ -1,25 +1,34 @@
+> **Deferred, and partly done.** Phase 1 shipped — taking the write lock is atomic now
+> (`openSync(file, 'wx')`), which fixed a live bug in which six processes racing all acquired it, and
+> `write-lock.spec.ts` gained the concurrent case the suite never had. Phases 2 and 3 (asking the API and
+> the dev server whether they answer, rather than inferring it from a pid) are unstarted and independent
+> of the rest. Phases 4 and 5, the advisory lock itself, are deferred **on value, not on a dependency**:
+> the spike below settles which package to use, measures it working, and records what it does not cover —
+> no musl build, so it would take `abuddy db` off Alpine, where the current pure-Node acquisition runs.
+> Read the Recommendation before picking this up.
+
 > **Written in session** `358d44db-c4f3-4dfe-89d3-40b001a63086` (Claude Code, 2026-09-20). Resume it with `claude -r 358d44db-c4f3-4dfe-89d3-40b001a63086`.
 
 ```
 # Goal: a lock the kernel releases, and liveness questions asked of the thing itself
 
-Implement docs/goals/goal-write-lock-advisory.md on AS/external-pack-authoring, at or after
+Implement docs/goals/deferred/goal-write-lock-advisory.md on AS/external-pack-authoring, at or after
 b1eaa70f4 — the base its Background was surveyed at.
 Before Phase 1, confirm the base: `packages/abuddy-host/src/database/write-lock.ts` writes a JSON lock
 file and resolves it with `lockIsHeld`, and `packages/abuddy-host/src/process-liveness.ts` exports
 `lockIsHeld`, `recordIsStale` and `readApiEndpoint`. If they don't, stop and say so — the plan was
 surveyed somewhere else.
-Read Background, Decisions, Open decisions, Phases, Tradeoffs and Constraints first.
-Phase 0 is a spike whose result decides Phase 3. Do not start Phase 3 until Open decision 1 is settled
-and recorded in this document.
+Read Background, Decisions, Spike results, Phases, Tradeoffs and Constraints first. Phase 0 is done and
+its result is recorded: Phase 3 uses `fs-native-extensions`, directly, for its synchronous `tryLock`.
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
 going. No backward compatibility in code: change signatures, move modules, migrate every in-repo caller,
 test, fixture, template and doc in the same change, and fix forward. Stored user data is the exception:
 it moves with migrations.
 
 Finished when:
-- Phases 0–2 are implemented and each meets its "Done when"; Phase 3 is implemented or recorded as
-  rejected with the spike's reason. Every new guard, helper or test is mutation-checked.
+- Phases 1–3 are implemented and each meets its "Done when". Phases 4 and 5 are deferred by the
+  recommendation below, with the spike kept so the question stays answered. Every new guard, helper or
+  test is mutation-checked.
 - `npm run typecheck`, `npm run test:unit`, `npm run build`, `npm test`, `npm run test:external-pack`
   all pass; `npm run api:update` run and `etc/` committed if a public entry changed.
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
@@ -62,6 +71,20 @@ advisory lock can replace exactly one:
 | Chromium's `SingletonLock` (`running.ts:31`) | **Chromium** | **No.** We don't write it and can't change its format |
 | staging dirs (`staging.ts:30`) | our installer | No. A record of an install that was in progress, read once at boot, not a lock |
 | dev-server marker (`dev-server.ts:75`) | `abuddy dev` | Not by a lock — but the question has a better answer (Decision 2) |
+
+**Acquisition was not atomic, and that is the bug that mattered.** `holdDatabaseWriteLock` called
+`findDatabaseWriter` and then wrote the file with `writeFileSync` + `renameSync`, which overwrites. Check,
+then act. Six processes released at the same instant all reported acquiring it:
+
+```
+results: ["ACQUIRED","ACQUIRED","ACQUIRED","ACQUIRED","ACQUIRED","ACQUIRED"]
+holders at once: 6   <-- MUTUAL EXCLUSION FAILED
+```
+
+Not a staleness problem and not a kernel-release problem: the mechanism whose only job is mutual exclusion
+provided none under concurrency, in shipped code. `openSync(file, 'wx')` makes the create the acquisition,
+and the same race then yields one holder. **This reorders the whole goal** — the deferred note pointed at
+staleness, and the thing actually broken was underneath it.
 
 **What the write lock's residual failure actually is.** The handlers are registered *before* the file is
 written, so `SIGINT`/`SIGTERM`/`SIGHUP` and normal exit all release it; `write-lock.spec.ts` pins that.
@@ -109,10 +132,85 @@ but no longer serving, which no pid check can. `dev-build.mjs` already works thi
    write is refused with an error saying why. The current scheme degrades to a pid guess; the new one
    must not degrade silently to nothing.
 
+## Spike results (Phase 0, run 2026-09-20)
+
+**Settled: `fs-native-extensions` (1.5.1), used directly.** Every bar item in the former Open decision 1
+holds, and the two that were risks turned out not to be.
+
+| Candidate | Verdict |
+|---|---|
+| `fs-ext` 2.1.1 | **Rejected** — depends on `nan`, so it needs `electron-rebuild` and a binary per Electron version |
+| `flock` 0.3.10 | **Rejected** — not a file lock; an evented key-value cache with the name |
+| `proper-lockfile` 4.1.2 | **Rejected** by Decision 5 — heartbeat |
+| `fd-lock` 2.2.0 | Works, but pulls 20 packages and wraps the lock in an async `ReadyResource` class |
+| **`fs-native-extensions` 1.5.1** | **Accepted** |
+
+What was measured, not assumed:
+
+- **N-API.** Built with `cmake-napi`, loaded by `require-addon`, no install or build script. The same
+  camp as `lmdb`, which `electron-builder.mjs:115` already relies on ("lmdb uses NAPI prebuilds, only
+  node-pty needs rebuild").
+- **Prebuilds** for 13 platforms, covering all four the bar named: `darwin-arm64`, `darwin-x64`,
+  `linux-x64`, `win32-x64`.
+- **Loads under Electron 37.2.4 (ABI 136) with no rebuild.**
+- **Mutual exclusion across runtimes, both directions.** Electron holds → Node's `tryLock` returns
+  false; Node holds → Electron's returns false. This was the case the Constraints said to test first.
+- **`SIGKILL` releases it, both directions.** The killed holder's lock is takeable immediately after,
+  which is the single thing this whole change is for and the one failure the current scheme cannot fix.
+- **The lock file survives the kill as a leftover** — which is Decision 4 arriving for free: the file is
+  information, the lock is authority.
+- **The primitive is the right one on each platform**, read from the shipped C source: macOS
+  `flock(LOCK_EX|LOCK_NB)` (`src/apple.c`), Linux `fcntl(F_OFD_SETLK)` (`src/linux.c`), Windows
+  `LockFileEx` (`src/win32.c`). Linux using **OFD** locks rather than classic `F_SETLK` is the detail worth
+  checking before depending on anything like this: `F_SETLK` drops every lock a process holds on a file as
+  soon as *any* descriptor to it closes, so the naive implementation is one whose locks silently evaporate.
+  OFD locks are tied to the descriptor and don't. Needs Linux 3.15+ (2014).
+- **Weight:** 6 packages, 1.7 MB installed across all prebuilds, 76 KB for the `darwin-arm64` binary.
+  Each platform directory carries a `.node` and a `.bare` (the Bare runtime's), so about half of the
+  1.5 MB is weight this app would never load. Nothing compiles at install.
+  `fd-lock`'s 20 packages and async wrapper buy nothing: the lower layer's `tryLock`/`unlock` are
+  **synchronous**, which is the shape `holdDatabaseWriteLock` already has.
+
+**What it does not cover, which is the finding that decided this.**
+
+- **No musl prebuild, and no build fallback.** `prebuilds/` has `linux-x64` and `linux-arm64`, both glibc;
+  there is no `linuxmusl-*`, and the package has no install script to fall back to. On Alpine,
+  `require-addon` finds no binary and throws at require time. `holdDatabaseWriteLock` is called from
+  `abuddy-cli/src/commands/db/target.ts`, so this is a hard failure in the **published** CLI, on a
+  platform Docker users reach by default — not a degradation. 32-bit Linux ARM is missing for the same
+  reason.
+- **Advisory on POSIX, mandatory on Windows.** `LockFileEx` is enforced by the OS, so a held range can
+  raise sharing violations on other handles; `flock`/OFD do not. The platforms do not behave alike, and a
+  leftover lock is a different kind of problem on each.
+- **macOS locks whole files only** — BSD `flock` has no ranges, so `offset`/`length` are ignored there.
+  Harmless here, since a whole-file lock is what this wants.
+- **Only `darwin-arm64` was run.** Load, exclusion both ways and the `SIGKILL` release were measured on
+  this machine; the other twelve prebuilds were inspected, not executed.
+
+**Windows, for both schemes.** `openSync(file, 'wx')` is atomic there (`CREATE_NEW`), and
+`process.kill(pid, 0)` answers existence there, so acquisition and take-over work. What is weaker is
+release on interruption: Windows has no real `SIGTERM`/`SIGHUP`, and `taskkill /F` ends a process with no
+handler at all. `SIGBREAK` was added to `INTERRUPTS` to cover Ctrl-Break — it registers harmlessly on
+POSIX and `process.kill` refuses the name there, so the suite exercises the three it can send and the
+fourth is covered by code alone. The unconditional-end route stays, and is the same class as `SIGKILL`:
+the case an advisory lock would close.
+
+**What the current scheme covers that this doesn't.** `openSync(file, 'wx')` is plain Node with no native
+code, so it works wherever Node does — Alpine and 32-bit ARM included. The trade is not "native lock is
+better": it exchanges a loud, recoverable failure on *every* platform for no failure on *most* and a
+require-time crash on the rest. Decision 6 (fail closed) is what keeps that crash from becoming a silent
+loss of exclusion, and it is why Decision 6 is not optional.
+
+Two risks closed rather than mitigated:
+
+- **The asar question is moot.** `electron-builder.mjs:163` sets `asar: false`, so there is no archive to
+  unpack from.
+- **The synchronous-API worry is moot.** `tryLock(fd)` and `unlock(fd)` are sync, so `holdDatabaseWriteLock`
+  keeps its signature and its callers don't become async.
+
 ## Open decisions
 
-**1. Which advisory-lock implementation — and whether one exists that clears the bar.** Settle before
-Phase 3, and record the answer here.
+None. Open decision 1 is settled above.
 
 The bar, all of which must hold:
 
@@ -131,13 +229,17 @@ the value is.
 
 ### Phase 0 — the spike
 
-Evaluate candidates against Open decision 1 on this machine and in a packaged build. Write the result
-into this document as "Spike results", including what was rejected and why.
+**Done.** See Spike results.
 
-**Done when:** Open decision 1 is settled in writing, with the candidate's package name, version, the
-platforms its prebuilds cover, and evidence it loads under Electron without a rebuild.
+### Phase 1 — acquisition is atomic
 
-### Phase 1 — `readApiEndpoint` asks the API
+**Done.** `takeLock` opens with `wx`, so the create is the acquisition. A lock a killed tool left is still
+taken over, but only after re-reading it, so the removal cannot take a lock someone else has since taken.
+`write-lock.spec.ts` gains six real processes racing for it.
+
+**Done when:** one of six racers acquires. **Mutation:** `w` in place of `wx` fails that test.
+
+### Phase 2 — `readApiEndpoint` asks the API
 
 It connects to the port it read rather than checking the publisher's pid. A file naming a port nothing
 answers on reports no API, as it does today; a file naming a port something *else* now holds stops being
@@ -147,7 +249,7 @@ reported as ours, which the pid check could not tell.
 covers a port nothing listens on and one a different process holds, and no caller passes a pid to decide
 this. **Mutation:** removing the connect check makes the "port nothing answers on" case report an API.
 
-### Phase 2 — the dev-server marker asks the dev server
+### Phase 3 — the dev-server marker asks the dev server
 
 `devServerUrl` returns the URL when the server answers. The diagnosis this preserves is the one
 `c74ef2f56` added it for: a marker a crashed `abuddy dev` left behind must not be served from, and the
@@ -156,7 +258,7 @@ reason must name the marker.
 **Done when:** `dev-server.spec.ts` covers a marker whose server answers and one whose server is gone,
 and the failure names the marker file. **Mutation:** serving from a dead marker fails the second.
 
-### Phase 3 — the advisory lock (gated on Phase 0)
+### Phase 4 — the advisory lock — **deferred, not blocked**
 
 `holdDatabaseWriteLock` takes an exclusive non-blocking lock on `db-write.lock` and holds it for the
 tool's life; `findDatabaseWriter` reads the file for *who* and tries the lock for *whether*.
@@ -168,7 +270,7 @@ lock correct.
 lock, which `write-lock.spec.ts` currently documents as impossible. **Mutation:** not holding the lock
 past acquisition lets a second holder in.
 
-### Phase 4 — the filesystem the lock is on
+### Phase 5 — the filesystem the lock is on (only with Phase 4)
 
 A data dir on a network or synced filesystem is where advisory locks are least reliable. Detect at
 acquisition whether the lock is honoured (take it, attempt to take it again from a child, expect
@@ -176,11 +278,40 @@ failure) and refuse the write with an error naming the directory when it is not 
 
 **Done when:** a directory whose locks are not honoured refuses a write rather than proceeding.
 
+## Recommendation
+
+**Phase 1 was the work. Phase 4 is deferred — because Phase 1 took most of its value, not because it is
+blocked.**
+
+Once the create is the acquisition, the pid heuristic no longer decides exclusion. It decides only whether
+a leftover may be taken over, and `lockIsHeld` is pid-only, so its single failure is a **false held**: a
+refusal naming the file, recoverable with one `rm`. There is no silent path left.
+
+What an advisory lock would still buy, exactly:
+
+- the false-held case — a leftover whose pid this boot reassigned, which needs a manual `rm` today;
+- the take-over window Phase 1 could not close: removing a leftover and creating your own are two steps,
+  because a file's existence carries no liveness;
+- about 50 lines — the interrupt and exit handlers, `pid`/`machine`, the take-over branch, the hint.
+
+Against: a permanent native dependency in the **published** CLI, which reaches fewer platforms than the
+code it would replace. The spike shows the dependency is cheaper than it was thought to be — prebuilt, no
+build tools, the right primitive on each platform, and `abuddy db` already pulls `lmdb`, a native module
+distributed the same way. But it has no musl build, so `abuddy db` would stop working on Alpine, where
+`openSync(file, 'wx')` works today. That is the decisive point: the trade is not a better lock for a worse
+one, it is a loud recoverable failure on every platform exchanged for no failure on most and a hard failure
+on the rest.
+
+So this is a judgement about value, not a blocker, and on today's evidence the value is thin. Revisit if
+the take-over window is ever observed, if a second writer path appears, or if the package gains a musl
+build — that last one would remove the only objection that isn't about size.
+
 ## Tradeoffs recorded
 
-- **A native dependency in the published CLI.** Every pack author running `abuddy db` on any platform
-  gains it. Accepted because locking must fail closed and a pure-JS lock cannot (Decision 5). The cost is
-  why Phase 3 is gated on prebuild coverage rather than assumed.
+- **A native dependency in the published CLI, narrowing which platforms it runs on.** Every pack author
+  running `abuddy db` gains 6 packages and 1.7 MB — and loses Alpine and 32-bit Linux ARM, which the
+  current pure-Node acquisition supports. Decision 6 keeps that a refusal rather than a silent loss of
+  exclusion. The spike measured this rather than assuming it, and it is why the Recommendation defers.
 - **The `rm` escape hatch narrows.** Today any stuck lock is fixable by deleting a file, and the error
   says so. With a kernel-held lock, a stuck lock means a live process — so a leaked descriptor in a
   long-lived process would be unfixable without killing it. Mitigated by keeping the file and its message,

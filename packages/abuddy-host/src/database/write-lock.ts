@@ -41,6 +41,33 @@ function readLock(file: string): LockFile | null {
 }
 
 /**
+ * Creates the lock with this process's details, or reports that the file is already there.
+ *
+ * `wx` is `O_EXCL`: the create *is* the acquisition, so two tools arriving together cannot both get it.
+ * Checking first and writing after — which is what this did — let every racer read "nothing is holding it"
+ * and then write in turn.
+ */
+function takeLock(file: string, mine: LockFile): boolean {
+  let fd: number;
+  try {
+    fd = fs.openSync(file, 'wx');
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code === 'EEXIST') return false;
+    throw err;
+  }
+  try {
+    fs.writeFileSync(fd, JSON.stringify(mine));
+  } finally {
+    fs.closeSync(fd);
+  }
+  return true;
+}
+
+/** Whether a lock is the same one, so a take-over removes the leftover it judged and not a later holder's */
+const sameLock = (a: LockFile | null, b: LockFile | null): boolean =>
+  a !== null && b !== null && a.pid === b.pid && a.machine === b.machine && a.since === b.since;
+
+/**
  * What a tool is changing in this data dir's database right now, or `null` when nothing is: a lock whose process has
  * exited doesn't count. Two cases can't be resolved and count as held: a lock this version can't read, and
  * one naming another machine, whose pid means nothing here.
@@ -72,8 +99,6 @@ export interface DatabaseWriteLock {
  */
 export function holdDatabaseWriteLock(userDataDir: string, what: string): DatabaseWriteLock {
   const file = lockFile(userDataDir);
-  const held = findDatabaseWriter(userDataDir);
-  if (held) throw new Error(`Another tool is changing the database in ${userDataDir}: ${held}. ${clearHint(userDataDir)}`);
   fs.mkdirSync(userDataDir, { recursive: true });
 
   let released = false;
@@ -102,15 +127,29 @@ export function holdDatabaseWriteLock(userDataDir: string, what: string): Databa
   process.once('exit', release);
   for (const signal of INTERRUPTS) process.once(signal, onInterrupt);
 
-  // Written aside and renamed, so no app ever reads a half-written lock
-  const temp = `${file}.${process.pid}.tmp`;
   const mine: LockFile = { pid: process.pid, machine: os.hostname(), what, since: new Date().toISOString() };
-  try {
-    fs.writeFileSync(temp, JSON.stringify(mine));
-    fs.renameSync(temp, file);
-  } catch (err) {
+  const refuse = (holder: string): never => {
     // No lock was taken, so this only drops the handlers registered above
     release();
+    throw new Error(`Another tool is changing the database in ${userDataDir}: ${holder}. ${clearHint(userDataDir)}`);
+  };
+
+  try {
+    if (!takeLock(file, mine)) {
+      const leftover = readLock(file);
+      const holder = findDatabaseWriter(userDataDir);
+      if (holder) refuse(holder);
+
+      // A lock a killed tool left behind. Removing it and creating ours are two steps, so a racer that
+      // also judged it stale can take it between them — narrow, and the one window `wx` cannot close,
+      // because a file's existence carries no liveness. An advisory lock would
+      // (docs/goals/deferred/goal-write-lock-advisory.md). Re-read first, so this removes the leftover it judged
+      // and not a lock someone else took over in the meantime.
+      if (sameLock(readLock(file), leftover)) fs.rmSync(file, { force: true });
+      if (!takeLock(file, mine)) refuse(findDatabaseWriter(userDataDir) ?? 'another tool that took it first');
+    }
+  } catch (err) {
+    if (!released) release();
     throw err;
   }
   return { release };

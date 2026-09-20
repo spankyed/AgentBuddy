@@ -43,6 +43,20 @@ async function waitFor(what: string, done: () => boolean, timeoutMs = 5_000): Pr
 /** A pid no process has any more */
 const exitedPid = () => spawnSync(process.execPath, ['-e', '']).pid!;
 
+/**
+ * Takes the lock as soon as `<dir>/GO` appears, and says whether it got it. Spinning on the file is what
+ * puts the racers at the same instant: spawning them is seconds apart, and the race is microseconds.
+ */
+const RACE_FOR_LOCK =
+  "const [, dir, start, src] = process.argv;" +
+  "const fs = require('node:fs');" +
+  "import(src).then(({ holdDatabaseWriteLock }) => {" +
+  "  while (!fs.existsSync(start)) {}" +
+  "  try { holdDatabaseWriteLock(dir, 'a racer'); process.stdout.write('ACQUIRED'); }" +
+  "  catch { process.stdout.write('refused'); }" +
+  "  setTimeout(() => {}, 500);" +
+  "});";
+
 describe('the database write lock', () => {
   it('stops listening for the process exiting once it is released', () => {
     const dir = tempDir('write-lock-');
@@ -144,6 +158,28 @@ describe('the database write lock', () => {
     }
     expect(fs.existsSync(lockFile(dir))).toBe(false);
   }, 90_000);
+
+  // The lock existed to keep two tools off one database and did not: it read "nothing holds it", then
+  // wrote, and every racer did both in turn. Six for six, before `wx` made the create the acquisition.
+  it('is taken by one of several tools that ask for it at the same moment', async () => {
+    const dir = tempDir('write-lock-');
+    const start = path.join(dir, 'GO');
+    const racers = [...Array(6)].map(() =>
+      spawn(process.execPath, ['--import', pathToFileURL(TSX).href, '-e', RACE_FOR_LOCK, dir, start, SRC], { stdio: ['ignore', 'pipe', 'ignore'] }));
+    const said: string[] = [];
+    for (const racer of racers) racer.stdout.on('data', (d: Buffer) => said.push(String(d)));
+
+    try {
+      // They boot through tsx at their own pace; the file is what lets them start together
+      await waitFor('the racers to boot', () => true, 100).then(() => new Promise((r) => setTimeout(r, 4_000)));
+      fs.writeFileSync(start, 'go');
+      await waitFor('every racer to answer', () => said.length === racers.length, 30_000);
+    } finally {
+      for (const racer of racers) racer.kill('SIGKILL');
+    }
+
+    expect(said.filter((s) => s === 'ACQUIRED')).toHaveLength(1);
+  }, 60_000);
 
   it("counts a lock from another machine, whose process it can't check", () => {
     const dir = tempDir('write-lock-');
