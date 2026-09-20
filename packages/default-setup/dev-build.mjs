@@ -4,7 +4,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { fileURLToPath } from 'url';
 // SDK source, so run with --import tsx --conditions=@abuddy/source (the build script and dev-mode.js do)
-import { readApiEndpoint, resolveAppContext } from '@abuddy/sdk/env';
+import { resolveAppContext } from '@abuddy/sdk/env';
 import { API_HOST, API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const srcDir = path.resolve(__dirname, 'src');
@@ -93,12 +93,28 @@ function readDevFile(file) {
   return null;
 }
 
-async function notifyReload() {
-  const api = readApiEndpoint(apiPortFile);
-  const token = readDevFile(apiTokenFile);
-  if (!api || !token) return;
+/**
+ * The port a running API published, or null. Not whether the process that published it is still there:
+ * the POST below is in a try that ignores a failure, so a port nothing is listening on already comes out
+ * the same way — and nothing can close the gap between the check and the request anyway.
+ */
+function readDevPort(file) {
+  const raw = readDevFile(file);
+  if (!raw) return null;
   try {
-    const res = await fetch(`http://${API_HOST}:${api.port}/dev/reload`, {
+    const { port } = JSON.parse(raw);
+    return Number.isInteger(port) ? port : null;
+  } catch {
+    return null;
+  }
+}
+
+async function notifyReload() {
+  const port = readDevPort(apiPortFile);
+  const token = readDevFile(apiTokenFile);
+  if (!port || !token) return;
+  try {
+    const res = await fetch(`http://${API_HOST}:${port}/dev/reload`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', [API_TOKEN_HEADER]: token },
       body: JSON.stringify({ packId: 'default-setup', builtIn: true }),
