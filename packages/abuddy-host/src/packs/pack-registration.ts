@@ -8,6 +8,7 @@
 
 import type { AnyStateMachine } from 'xstate';
 import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeatureDef, PackSeedManifest } from '@abuddy/sdk/framework';
+import type { PackManifest } from '@abuddy/sdk/build';
 import type { PackRegistryView } from '@abuddy/sdk/runtime';
 import type { HostServices } from '@abuddy/sdk/services';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
@@ -102,10 +103,29 @@ export interface PackInfo {
  */
 export type PluginEventTypes = Set<string> | null;
 
+/**
+ * Where the app found a pack, and what the pack says it is. The registration says what a pack contributes;
+ * this says where it came from, which only the app knows — `abuddy.json` is not something a pack's own
+ * generated registration can see, and a built-in pack has no install directory of its own to report.
+ *
+ * It is a second argument to `registerPack` rather than a field on `PackRegistration` because that type is
+ * the pack contract: `generate-entries` writes it into every pack and `etc/framework.api.md` pins it.
+ */
+export interface PackOrigin {
+  id: string;
+  name: string;
+  version: string;
+  /** Where the pack's files are: `packs/<id>` for an external pack, `host-packs/<id>` for a built-in one */
+  dir: string;
+  builtIn: boolean;
+  /** An external pack's `abuddy.json`, which its loader read to find the pack at all */
+  manifest?: PackManifest;
+}
+
 /** The registered packs, and the app's host systems and shutdown hooks */
 export interface PackRegistry extends PackRegistryView {
   /** Registers a pack; throws on a collision, registering none of it */
-  registerPack(pack: PackRegistration): void;
+  registerPack(pack: PackRegistration, origin?: PackOrigin): void;
   unregisterPack(packId: string): void;
   registerHostSystem(id: string, machine: AnyStateMachine, events: Set<string>): void;
   /**
@@ -165,6 +185,17 @@ export interface PackRegistry extends PackRegistryView {
   getPackBootHooks(packId: string): PackBootHooks | null;
   /** A registered pack's registration, as it was registered */
   getPackRegistration(packId: string): PackRegistration | null;
+  /** Where a registered pack came from, or `null` for one registered without an origin (a test's) */
+  packOrigin(packId: string): PackOrigin | null;
+  /** The built-in packs this app loaded, in registration order */
+  builtInPacks(): PackOrigin[];
+  /** The external packs this app loaded, in registration order */
+  externalPacks(): PackOrigin[];
+  /**
+   * Each registered external pack as the runtime's per-pack helpers take it: where it came from, plus the
+   * migrations it registered. One place joins the two halves, so no caller holds its own list of packs.
+   */
+  externalPackTargets(): Array<{ manifest: PackManifest; dir: string; migrations?: PackMigration[] }>;
   /**
    * Seeds each registered pack's declarative boot seed (`boot.seedManifest`, built-in packs only: the
    * loader strips it from external packs, which seed through `seedPackData`)
@@ -192,6 +223,8 @@ export function appPartitionPolicy(packExcluded: Iterable<string>): PartitionPol
 /** A new, empty registry */
 export function createPackRegistry(): PackRegistry {
   const registrations = new Map<string, PackRegistration>();
+  /** Where each registered pack came from. Same keys as `registrations`, so it comes and goes with them */
+  const origins = new Map<string, PackOrigin>();
   const hostSystems = new Map<string, { machine: AnyStateMachine; events: Set<string> }>();
   const hostPlugins = new Map<string, Set<string>>();
   /** Pack id → the plugins it owned when it was torn down to be replaced (an update's download window) */
@@ -242,7 +275,7 @@ export function createPackRegistry(): PackRegistry {
     }
   }
 
-  function registerPack(registration: PackRegistration): void {
+  function registerPack(registration: PackRegistration, origin?: PackOrigin): void {
     if (registrations.has(registration.id)) {
       throw new Error(`Pack "${registration.id}" is already registered`);
     }
@@ -295,6 +328,7 @@ export function createPackRegistry(): PackRegistry {
      * by then. It is not — it is any registration whose extensions wake a running system.
      */
     registrations.set(registration.id, registration);
+    if (origin) origins.set(registration.id, origin);
     replacingPacks.delete(registration.id);
     changed();
 
@@ -332,8 +366,10 @@ export function createPackRegistry(): PackRegistry {
       for (const type of registeredArtifacts) artifacts.unregister(type);
       for (const type of registeredBlocks) blocks.unregister(type);
       for (const name of registeredRepositories) unregisterRepository(name);
-      // Listed above, so the rollback takes it back out: a refused pack leaves nothing of itself behind
+      // Listed above, so the rollback takes it back out: a refused pack leaves nothing of itself behind,
+      // its origin included — one left here would name a pack the app never registered as one it loaded
       registrations.delete(registration.id);
+      origins.delete(registration.id);
       changed();
       throw err;
     }
@@ -357,6 +393,7 @@ export function createPackRegistry(): PackRegistry {
     designations.unregister(designationsOf(reg));
 
     registrations.delete(packId);
+    origins.delete(packId);
     changed();
   }
 
@@ -481,6 +518,13 @@ export function createPackRegistry(): PackRegistry {
     },
 
     getRegisteredPackSystemIds,
+    packOrigin: (packId) => origins.get(packId) ?? null,
+    builtInPacks: () => [...origins.values()].filter((o) => o.builtIn),
+    externalPacks: () => [...origins.values()].filter((o) => !o.builtIn),
+    externalPackTargets: () =>
+      [...origins.values()]
+        .filter((o) => !o.builtIn && o.manifest)
+        .map((o) => ({ manifest: o.manifest!, dir: o.dir, migrations: registrations.get(o.id)?.migrations })),
 
     resolveSystemAddress(address) {
       const slash = address.indexOf('/');

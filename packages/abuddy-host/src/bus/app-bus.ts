@@ -3,8 +3,8 @@
 import { _rootEvents } from '@abuddy/sdk/runtime';
 import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
 import { appState } from '../app-state/index.ts';
-import { getPacksWithClientLoadedFrontends } from '../packs/runtime/loaded-packs.ts';
 import type { PackRegistry } from '../packs/pack-registration.ts';
+import { getPacksWithClientLoadedFrontends } from '../packs/pack-layout.ts';
 import { createBusMachine } from './machine.ts';
 
 /** Sent to the application plugin after each client connection */
@@ -29,7 +29,7 @@ export function createAppBus(registry: PackRegistry) {
       return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
     },
     // Each client asks for these packs' startup data once it has tried loading their frontends (bus.packClientReady)
-    clientLoadedPacks: getPacksWithClientLoadedFrontends,
+    clientLoadedPacks: () => getPacksWithClientLoadedFrontends(registry),
     connectedEvents: (): ApplicationConnectedEvent[] => [{
       type: 'CLIENT_CONNECTED',
       hasOnboarded: appState.get().hasOnboarded,

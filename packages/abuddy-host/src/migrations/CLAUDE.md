@@ -8,7 +8,7 @@ There are two runners, both in this folder's `index.ts` (`packages/abuddy-host/s
 
 | Runner | Runs | Runs a migration when | Records |
 | --- | --- | --- | --- |
-| `runAppMigrations(registry)` | the host's own (`app/index.ts`), then the built-in packs' (`registry.getRegisteredMigrations(<built-in pack ids>)`, the ids from `getBuiltInPackInfos()`) | `stored app version < target <= app version` (`getAppVersion()`, the bound `HostRuntime`'s `appVersion`), with the exceptions below | `AppState.version` |
+| `runAppMigrations(registry)` | the host's own (`app/index.ts`), then the built-in packs' (`registry.getRegisteredMigrations(<built-in pack ids>)`, the ids from `registry.builtInPacks()`) | `stored app version < target <= app version` (`getAppVersion()`, the bound `HostRuntime`'s `appVersion`), with the exceptions below | `AppState.version` |
 | `runPackMigrations(externalPacks)` | each external pack's migrations (`LoadedPack.migrations`) | `stored pack version < target <= manifest version` | `AppState.packVersions[packId]` |
 
 Which app migrations run, besides `stored < target`:

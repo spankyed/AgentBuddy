@@ -64,8 +64,6 @@ const serviceKeysComplete: [MissingServiceKey] extends [never] ? true : MissingS
 const kebab = (key: string) => key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 
 const inRuntime = (file: string) => file.startsWith(RUNTIME + path.sep);
-/** The bus reads the loaded packs (clientLoadedPacks); that module loads nothing else of the runtime */
-const LOADED_PACKS = path.join(RUNTIME, 'loaded-packs.ts');
 
 const rel = (file: string) => path.relative(HOST_ROOT, file);
 
@@ -100,10 +98,9 @@ describe('host package boundaries', () => {
     expect(reached, 'The CLI imports @abuddy/host/packs: importing packs/runtime from it bundles the loader into @abuddy/cli').toEqual([]);
   });
 
-  it('keeps the bus clear of the pack runtime, apart from the loaded packs', () => {
+  it('keeps the bus clear of the pack runtime', () => {
     const busFiles = sourceFiles(path.join(SRC, 'bus'));
     const reached = new Set(busFiles.flatMap((file) => [...runtimeClosure(file)]).filter(inRuntime));
-    reached.delete(LOADED_PACKS);
     expect([...reached].map(rel), 'The pack test harness imports @abuddy/host/bus: it must not load the pack loader').toEqual([]);
   });
 

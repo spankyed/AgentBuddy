@@ -12,7 +12,6 @@ import { appState } from '../../../src/app-state/index.ts';
 import { installPackFromLocal } from '../../../src/packs/pack-installer.ts';
 import { createPacksSystem, packs } from '../../../src/packs/runtime/packs-system.ts';
 import { activatePack } from '../../../src/packs/runtime/lifecycle.ts';
-import { removeLoadedPack } from '../../../src/packs/runtime/loaded-packs.ts';
 
 const PACK_ID = 'reinstall-pack';
 
@@ -28,7 +27,6 @@ beforeEach(() => {
 
 afterEach(() => {
   if (registry.getPackExtensions(PACK_ID)) registry.unregisterPack(PACK_ID);
-  removeLoadedPack(PACK_ID);
   if (origEnv.env === undefined) delete process.env.ABUDDY_ENV;
   else process.env.ABUDDY_ENV = origEnv.env;
   if (origEnv.userDataDir === undefined) delete process.env.ABUDDY_USER_DATA_DIR;

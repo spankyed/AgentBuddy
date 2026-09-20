@@ -10,7 +10,6 @@ import type { OutgoingSystemEvents } from '@abuddy/sdk/events';
 import { createAppBus } from '../../src/bus/index.ts';
 import { appState, HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { createPackRegistry } from '../../src/packs/pack-registration.ts';
-import { removeLoadedPack, updateLoadedPack, type LoadedPack } from '../../src/packs/runtime/loaded-packs.ts';
 
 const registry = createPackRegistry();
 const { registerPack, unregisterPack } = registry;
@@ -47,7 +46,10 @@ beforeEach(() => {
   packDir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-bus-'));
   fs.mkdirSync(path.join(packDir, 'runtime'));
   fs.writeFileSync(path.join(packDir, 'runtime', 'fe.js'), '');
-  updateLoadedPack({ manifest: { id: 'fe-pack', name: 'fe-pack', version: '1.0.0' }, dir: packDir, systems: new Map() } as unknown as LoadedPack);
+  registry.registerPack({ id: 'fe-pack-fe', systems: [] }, {
+    id: 'fe-pack', name: 'fe-pack', version: '1.0.0', dir: packDir, builtIn: false,
+    manifest: { id: 'fe-pack', name: 'fe-pack', version: '1.0.0' } as never,
+  });
   bus = createActor(createAppBus(registry), { systemId: 'bus' }).start();
 });
 
@@ -55,7 +57,7 @@ afterEach(() => {
   bus.stop();
   stopOutgoing();
   for (const id of ['local-pack', 'fe-pack']) unregisterPack(id);
-  removeLoadedPack('fe-pack');
+  unregisterPack('fe-pack-fe');
   fs.rmSync(packDir, { recursive: true, force: true });
 });
 

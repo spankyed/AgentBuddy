@@ -1,6 +1,6 @@
 # Pack runtime (`@abuddy/host/packs/runtime`)
 
-The pack runtime the app runs: loading built-in and external packs, the SDK bridge, activation and teardown, reload, seeding, the loaded-packs list the renderer loads frontends from and the host `packs` system. It works on the registry it's given (`PackRegistry`, `createPackRegistry()` from `../pack-registration.ts`): every function that registers, unregisters or reads packs takes it as its first argument, and the host `packs` system is `createPacksSystem(registry)`. Discovery, the registered packs (`createPackRegistry()`, with the shutdown hooks), the install registry, the installer and the pack layout live one level up in `@abuddy/host/packs` (`packages/abuddy-host/src/packs/`). That barrel, which the CLI imports, never imports this folder, and `@abuddy/host/bus` imports only `loaded-packs.ts` from it (`tests/boundaries.spec.ts`).
+The pack runtime the app runs: loading built-in and external packs, the SDK bridge, activation and teardown, reload, seeding, and the host `packs` system. It works on the registry it's given (`PackRegistry`, `createPackRegistry()` from `../pack-registration.ts`): every function that registers, unregisters or reads packs takes it as its first argument, and the host `packs` system is `createPacksSystem(registry)`. Discovery, the registered packs (`createPackRegistry()`, with the shutdown hooks), the install registry, the installer and the pack layout live one level up in `@abuddy/host/packs` (`packages/abuddy-host/src/packs/`). That barrel, which the CLI imports, never imports this folder, and neither does `@abuddy/host/bus` (`tests/boundaries.spec.ts`).
 
 The API calls this runtime (`packages/api/src/setup/backend.ts`, `setup/websocket.ts`, `core/router/packs-router.ts`), and so do the db scripts. What only the API has, it reaches through the SDK's bound runtime: logging through `createLogger` (`@abuddy/sdk/logger`) and the app version through `getAppVersion()` (`@abuddy/sdk/env`). Unbound (the CLI), loggers write to the console. The partition policy the app's store routes by follows registration by itself (the registry's `partitionPolicy`), so nothing here invalidates it. Modules here import each other and the rest of host by relative `.ts` path.
 
@@ -52,7 +52,6 @@ In this folder (all exported from `index.ts`):
 | `loader.ts` | Built-in and external loading, `registerExternalPacks`, `clearPackRequireCache` |
 | `bridge.ts` | The SDK bridge map (`SDK_BRIDGE`: `shared-modules.ts`), `withHostResolution()`, `getBridgedSdkSpecifiers()` |
 | `shared-modules.ts` | Generated (`npm run shared-modules:update -w @abuddy/host`, from `../../build/shared-modules.ts`): a static import of every export of the `SHARED_INSTANCE_PACKAGES` (`@abuddy/sdk`, `@abuddy/ears`) pack runtime code can require, so the app bundle carries them |
-| `loaded-packs.ts` | `LoadedPack`, the loaded external packs list (`getLoadedPacks`, `setLoadedPacks`, `updateLoadedPack`, `removeLoadedPack`), the loaded built-in packs (`getBuiltInPackInfos`, `setBuiltInPackInfos`, which `loadBuiltInPacks` records), `getPacksWithClientLoadedFrontends()`, and the `packs.loaded` entries (`getLoadedPackEntries()`: a `LoadedPackEntry`, `{ id, name, version, builtIn?, feEntry?, feStyles? }`, per pack; built-in entries have `builtIn: true`. The type lives in `../pack-layout.ts`, so the API's router declarations import it from `@abuddy/host/packs`). Imports nothing else from this folder |
 | `lifecycle.ts` | `activatePack()` and `teardownPack()` for install, uninstall, enable/disable and update at runtime |
 | `reload.ts` | `reloadExternalPack()` / `reloadBuiltInPack()` for the API's `POST /dev/reload` (`setup/websocket.ts`) |
 | `packs-system.ts` | Every action takes an in-flight lock (install on the slug, the rest on the pack id), so two of the same never interleave. The host `packs` XState system: `INSTALL_PACK`, `UNINSTALL_PACK`, `TOGGLE_PACK_ENABLED`, `UPDATE_PACK`, `CHECK_FOR_UPDATES`, `GET_INSTALLED_PACKS`, and `PACK_CHANGED`, on which it sends the list again like any other system that reads what packs register; emits `PACKS_LIST`, `PACK_ACTIVATED`/`PACK_DEACTIVATED` and install/update/uninstall results. It lists `installedPacks()`: the packs directory, joined with what the record says about each |
@@ -90,19 +89,18 @@ The API's `core/router/packs-router.ts` serves `packs.loaded` from `getLoadedPac
 4. loadBuiltInPacks() (async)      — with the bundled loaders; started, runs while:
    loadExternalPacks()             — discover + reconcile installed packs + load enabled
    registerExternalPacks()         — registerPack() each
-   await built-in                  — the loader recorded them (setBuiltInPackInfos(), loaded-packs.ts)
+   await built-in                  — registerPack() each, with where it was found (PackOrigin)
 5. publishHostPackOutput()      — each built-in pack into host-packs/<id>
 6. earlySystem                     — logs system starts
 7. registry.registerShutdownHook() — each pack's onShutdown, keyed by pack id
 8. store.hydrate()                 — EARS policy now sees all entity types
-9. startPacks(registry, external)  — start.ts; services.appData.reset() runs it too, after the shutdown hooks:
+9. startPacks(registry)            — start.ts; services.appData.reset() runs it too, after the shutdown hooks:
    onInit hooks                    — all packs (built-in + external)
    runAppMigrations()              — the host's app migrations, then built-in packs', against the app version (@abuddy/host/migrations); if one fails, nothing below runs
    runPackMigrations()             — external packs' migrations, each against its pack version
    runRegisteredBootSeeds()        — built-in packs' boot.seedManifest (orchestrateDeclarativeSeed)
    seedPackData()                  — external pack compiled seeds (hash-checked)
-10. setLoadedPacks()               — the external packs, which a reset starts again (getLoadedPacks())
-11. start the bus actor            — createAppBus() (@abuddy/host/bus) with systemId `bus`
+10. start the bus actor            — createAppBus() (@abuddy/host/bus) with systemId `bus`
 ```
 
 Every pack registers before hydration, so its entity types are visible to the partition policy resolver.
@@ -192,7 +190,7 @@ The app's migrations run only at boot (and in an app reset). An external pack's 
 
 ## Client startup data for packs with frontends
 
-`getPacksWithClientLoadedFrontends()` (`loaded-packs.ts`) lists loaded external packs whose layout has a `runtime/fe.js` (`packFrontendFiles()`). The app bus (`createAppBus()` in `abuddy-host/src/bus/app-bus.ts`, passing it to `createBusMachine` as `clientLoadedPacks`) skips their systems when a connection's `CLIENT_CONNECTED` broadcasts, and doesn't send `CLIENT_CONNECTED` on their `ACTIVATE_PACK`.
+`getPacksWithClientLoadedFrontends(registry)` (`../pack-layout.ts`) lists registered external packs whose layout has a `runtime/fe.js` (`packFrontendFiles()`). The app bus (`createAppBus()` in `abuddy-host/src/bus/app-bus.ts`, passing it to `createBusMachine` as `clientLoadedPacks`) skips their systems when a connection's `CLIENT_CONNECTED` broadcasts, and doesn't send `CLIENT_CONNECTED` on their `ACTIVATE_PACK`.
 
 The renderer loads each such pack's frontend, then calls `trpc.bus.packClientReady({ packId })`, which sends the pack's running systems `CLIENT_CONNECTED` (`PACK_CLIENT_CONNECTED` on the bus). It calls it again for every loaded pack when its bus subscription reconnects.
 

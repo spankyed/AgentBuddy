@@ -7,7 +7,6 @@ import type { PackManifest } from '../pack-discovery.ts';
 import { loadSingleExternalPack, clearPackRequireCache, registerExternalPacks } from './loader.ts';
 import { runPackMigrations } from '../../migrations/index.ts';
 import { seedPackData } from './seed.ts';
-import { updateLoadedPack, removeLoadedPack } from './loaded-packs.ts';
 
 const logger = createLogger('pack-lifecycle');
 
@@ -44,8 +43,6 @@ export function teardownPack(
   if (fs.existsSync(packDir)) {
     clearPackRequireCache(packDir);
   }
-
-  removeLoadedPack(packId);
 
   if (systemIds.length > 0) {
     busActor.send({ type: 'TEARDOWN_PACK', systemIds });
@@ -106,7 +103,6 @@ export function activatePack(
   runPackMigrations([pack]);
   seedPackData([pack]);
 
-  updateLoadedPack(pack);
   // The running systems read what the pack registered and seeded (the chat's slash commands, say). Sent
   // before its own systems start: they send their startup data when they do
   busActor.send({ type: 'PACK_CHANGED', packId });

@@ -14,7 +14,6 @@ import { secrets } from '../../src/services/secrets.ts';
 import { filesystem } from '../../src/services/filesystem.ts';
 import { createPackRegistry } from '../../src/packs/pack-registration.ts';
 import { secretsStore } from '../../src/secrets/index.ts';
-import { setLoadedPacks, type LoadedPack } from '../../src/packs/runtime/loaded-packs.ts';
 import { startPacks } from '../../src/packs/runtime/start.ts';
 
 // What a reset does, in order; the host's migrations runners and external packs' seeding record themselves here
@@ -36,6 +35,12 @@ process.env.ABUDDY_USER_DATA_DIR = dataDir;
 afterAll(() => fs.rmSync(dataDir, { recursive: true, force: true }));
 
 const newEngine = () => createEarsEngine({ isEntityType: () => false });
+
+/** An external pack the app loaded: where it came from, as the loader records it */
+const externalOrigin = (id: string, name: string) => ({
+  id, name, version: '1.0.0', dir: '/nowhere', builtIn: false,
+  manifest: { id, name, version: '1.0.0' } as never,
+});
 
 describe('createHostRuntime', () => {
   it('holds the bus, version, engine, registered packs and host services', () => {
@@ -76,18 +81,15 @@ describe('createHostRuntime', () => {
     secretsStore.add('openai', 'Work', 'sk-proj-resetspec1234567890');
     // An external pack the app loaded, holding something open between its onInit and onShutdown
     const boot = { onInit: () => order.push(`onInit (${secretsStore.list().length} keys)`), onShutdown: () => order.push('onShutdown') };
-    const external = { manifest: { id: 'reset-pack', name: 'Reset', version: '1.0.0' }, dir: '/nowhere', systems: new Map(), boot } as unknown as LoadedPack;
-    packs.registerPack({ id: 'reset-pack', systems: [], boot });
+    packs.registerPack({ id: 'reset-pack', systems: [], boot }, externalOrigin('reset-pack', 'Reset'));
     // A built-in pack with a boot seed
     packs.registerPack({ id: 'seeded-pack', systems: [], boot: { seedManifest: { seedKeys: ['notes'], compiledDir: '/nowhere' } } });
     packs.registerShutdownHook(boot.onShutdown, 'reset-pack');
-    setLoadedPacks([external]);
     try {
       await runtime.services.appData.reset();
     } finally {
       packs.unregisterPack('reset-pack');
       packs.unregisterPack('seeded-pack');
-      setLoadedPacks([]);
     }
     expect(order).toEqual([
       'onShutdown', 'engine cleared', 'store reset', 'onInit (0 keys)',
@@ -103,12 +105,13 @@ describe('startPacks', () => {
     appMigrations.succeed = false;
     const packs = createPackRegistry();
     packs.registerPack({ id: 'late-seeded-pack', systems: [], boot: { seedManifest: { seedKeys: ['notes'], compiledDir: '/nowhere' } } });
-    const external = { manifest: { id: 'late-pack', name: 'Late', version: '1.0.0' }, dir: '/nowhere', systems: new Map() } as unknown as LoadedPack;
+    packs.registerPack({ id: 'late-pack', systems: [] }, externalOrigin('late-pack', 'Late'));
     try {
-      startPacks(packs, [external]);
+      startPacks(packs);
     } finally {
       appMigrations.succeed = true;
       packs.unregisterPack('late-seeded-pack');
+      packs.unregisterPack('late-pack');
     }
     expect(order).toEqual(['migrations']);
   });

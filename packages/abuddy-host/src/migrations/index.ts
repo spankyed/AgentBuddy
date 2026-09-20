@@ -7,7 +7,6 @@ import type { PackMigration } from '@abuddy/sdk/framework';
 import { appState } from '../app-state/index.ts';
 import { appMigrations } from './app/index.ts';
 import type { PackRegistry } from '../packs/pack-registration.ts';
-import { getBuiltInPackInfos, type LoadedPack } from '../packs/runtime/loaded-packs.ts';
 
 /** A version without its prerelease part: a beta (`0.3.15-beta.2`) runs its release's (`0.3.15`) migrations */
 const releaseOf = (version: string): string => version.replace(/[-+].*$/, '');
@@ -62,7 +61,7 @@ export function runAppMigrations(registry: PackRegistry): boolean {
   if (!runPending(appMigrations(registry), recorded ?? '0.0.0', cap, ':app')) return false;
 
   const current = appState.get().version ?? appVersion;
-  const builtInPackIds = getBuiltInPackInfos().map(pack => pack.id);
+  const builtInPackIds = registry.builtInPacks().map(pack => pack.id);
   if (!runPending(registry.getRegisteredMigrations(builtInPackIds), current, cap, '')) return false;
 
   if (appState.get().version !== appVersion) appState.update({ version: appVersion });
@@ -74,7 +73,13 @@ export function runAppMigrations(registry: PackRegistry): boolean {
  * the pack's version in AppState `packVersions` once they all ran. Run after `runAppMigrations`, which moves the
  * versions recorded before AppState. A pack that isn't loaded (disabled) keeps its recorded version.
  */
-export function runPackMigrations(packs: LoadedPack[]): void {
+/** What running a pack's migrations needs: which pack, at which version, and the migrations */
+export interface PackMigrationTarget {
+  manifest: { id: string; version: string };
+  migrations?: PackMigration[];
+}
+
+export function runPackMigrations(packs: Iterable<PackMigrationTarget>): void {
   const packVersions = { ...appState.get().packVersions };
   let changed = false;
 

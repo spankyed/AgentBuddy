@@ -7,7 +7,6 @@ import { secretsStore } from '../secrets/index.ts';
 import { _getMediaPath } from '@abuddy/sdk/utils';
 import { getAppVersion } from '@abuddy/sdk/env';
 import type { PackRegistry } from '../packs/pack-registration.ts';
-import { getLoadedPacks } from '../packs/runtime/loaded-packs.ts';
 import { startPacks } from '../packs/runtime/start.ts';
 import { runAppMigrations, runPackMigrations } from '../migrations/index.ts';
 import { appState } from '../app-state/index.ts';
@@ -27,7 +26,7 @@ export function createAppData(store: LmdbStore, engine: EarsAdmin, registry: Pac
       await store.reset();
       // Stored API keys go too, with their data keys; after the database reopens, since the settings system hears of it
       secretsStore.clearAll();
-      startPacks(registry, getLoadedPacks());
+      startPacks(registry);
     },
     hasOnboarded: () => appState.get().hasOnboarded,
     completeOnboarding: () => appState.update({ hasOnboarded: true }),
@@ -41,7 +40,7 @@ export function createAppData(store: LmdbStore, engine: EarsAdmin, registry: Pac
         await reloadMemory(databases.includes('volatileLmdb'));
         // A backup from an earlier version is migrated now, not at the next boot (one from before AppState keeps
         // the app's state in its settings)
-        if (runAppMigrations(registry)) runPackMigrations(getLoadedPacks());
+        if (runAppMigrations(registry)) runPackMigrations(registry.externalPackTargets());
         return { databases, missingDatabases: result.missingDatabases as BackupDatabase[], unknownEntityTypes: result.unknownEntityTypes };
       } catch (error) {
         // importDatabase has put the previous files back; reload them

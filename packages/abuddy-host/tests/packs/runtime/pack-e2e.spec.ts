@@ -13,7 +13,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { loadExternalPacks } from '../../../src/packs/runtime/loader.ts';
-import { setLoadedPacks, getPacksWithClientLoadedFrontends, type LoadedPack } from '../../../src/packs/runtime/loaded-packs.ts';
+import { getPacksWithClientLoadedFrontends } from '../../../src/packs/pack-layout.ts';
+import type { LoadedPack } from '../../../src/packs/runtime/loader.ts';
 
 const USER_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'pack-e2e-'));
 const TEST_PACK_ID = 'e2e-test-pack';
@@ -143,13 +144,11 @@ describe('E2E: pack loading pipeline', () => {
     expect(testPack.systems.has('dataOnly')).toBe(false);
   });
 
-  it('setLoadedPacks lists the pack as one whose frontend a client loads', () => {
+  it('lists the pack as one whose frontend a client loads', () => {
     const testPack = packs.find(p => p.manifest.id === TEST_PACK_ID)!;
+    const loaded = { externalPacks: () => [{ id: TEST_PACK_ID, name: TEST_PACK_ID, version: '1.0.0', dir: testPack.dir, builtIn: false }] };
 
-    // This populates the internal state that packsRouter.registry reads from
-    setLoadedPacks([testPack]);
-
-    expect(getPacksWithClientLoadedFrontends()).toEqual([TEST_PACK_ID]);
+    expect(getPacksWithClientLoadedFrontends(loaded)).toEqual([TEST_PACK_ID]);
   });
 
   it('xstate machine from pack is functional (can create states)', () => {

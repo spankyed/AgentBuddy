@@ -4,7 +4,6 @@ import * as crypto from 'crypto';
 import { createLogger } from '@abuddy/sdk/logger';
 import { PACK_LAYOUT } from '../pack-layout.ts';
 import { recordSeedOutcomes } from '../installed-packs.ts';
-import type { LoadedPack } from './loaded-packs.ts';
 import type { PackSeedManifest } from '@abuddy/sdk/framework';
 import { seedPath } from '@abuddy/sdk/build';
 import { appState } from '../../app-state/index.ts';
@@ -52,7 +51,13 @@ function seedErrors(result: Record<string, { errors?: string[] }> | undefined): 
  * lastError. Its hash is stored like a successful seed's, so the same failing data isn't
  * re-imported on every boot; it's retried when the pack's seed data changes.
  */
-export function seedPackData(packs: LoadedPack[], seed: typeof seedData = seedData): PackSeedFailure[] {
+/** What seeding a pack needs: which pack, and where its compiled seeds are */
+export interface PackSeedTarget {
+  manifest: { id: string };
+  dir: string;
+}
+
+export function seedPackData(packs: Iterable<PackSeedTarget>, seed: typeof seedData = seedData): PackSeedFailure[] {
   const storedHashes = appState.get().packSeedHashes;
   const failures: PackSeedFailure[] = [];
   const outcomes = new Map<string, string | undefined>();

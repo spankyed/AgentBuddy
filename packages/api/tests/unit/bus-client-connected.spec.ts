@@ -18,7 +18,6 @@ const registry = createPackRegistry();
 const { registerPack, unregisterPack } = registry;
 const { createAppBus, createBusMachine } = await import('@abuddy/host/bus');
 const { rootEvents } = await import('@/core/router/bus-emitter');
-const { updateLoadedPack, removeLoadedPack } = await import('@abuddy/host/packs/runtime');
 type LoadedPack = import('@abuddy/host/packs/runtime').LoadedPack;
 
 // The app's bus on the api's transport, as setup/backend.ts binds it (the services reach the store only when called)
@@ -48,7 +47,7 @@ function pack(id: string, label = id) {
 
 const packDirs: string[] = [];
 
-/** Marks a pack loaded, installed with the frontend files `files` names (runtime/fe.js, runtime/fe.css) */
+/** An installed pack's origin, with the frontend files `files` names (runtime/fe.js, runtime/fe.css) on disk */
 function loaded(id: string, files: string[]) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), `bus-client-connected-${id}-`));
   packDirs.push(dir);
@@ -56,7 +55,7 @@ function loaded(id: string, files: string[]) {
     fs.mkdirSync(path.dirname(path.join(dir, file)), { recursive: true });
     fs.writeFileSync(path.join(dir, file), '');
   }
-  updateLoadedPack({ manifest: { id, name: id, version: '1.0.0' }, dir, systems: new Map() } as unknown as LoadedPack);
+  return { id, name: id, version: '1.0.0', dir, builtIn: false, manifest: { id, name: id, version: '1.0.0' } as never };
 }
 
 const withFrontend = ['runtime/fe.js'];
@@ -74,7 +73,6 @@ afterEach(() => {
   bus.stop();
   for (const id of ['first-pack', 'second-pack', 'external-pack', 'notes-pack']) {
     try { unregisterPack(id); } catch { /* not registered */ }
-    removeLoadedPack(id);
   }
   for (const dir of packDirs.splice(0)) fs.rmSync(dir, { recursive: true, force: true });
 });
@@ -88,8 +86,7 @@ describe('CLIENT_CONNECTED on the bus', () => {
 
   it('reaches an external pack with plugins once, when a client has loaded its frontend after connecting', async () => {
     bus.stop();
-    registerPack(pack('external-pack'));
-    loaded('external-pack', withFrontend);
+    registerPack(pack('external-pack'), loaded('external-pack', withFrontend));
     bus = createActor(backendSystem, { systemId: 'bus' }).start();
 
     rootEvents.emitConnected();
@@ -103,8 +100,7 @@ describe('CLIENT_CONNECTED on the bus', () => {
 
   it("reaches only a pack's systems when a client has loaded that pack's frontend", async () => {
     rootEvents.emitConnected();
-    registerPack(pack('second-pack'));
-    loaded('second-pack', withFrontend);
+    registerPack(pack('second-pack'), loaded('second-pack', withFrontend));
     bus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds: ['second-pack.feature'] });
     await flush();
     received.length = 0;
@@ -122,8 +118,7 @@ describe('CLIENT_CONNECTED on the bus', () => {
     rootEvents.emitConnected();
     await flush();
     received.length = 0;
-    registerPack(pack('second-pack'));
-    loaded('second-pack', withFrontend);
+    registerPack(pack('second-pack'), loaded('second-pack', withFrontend));
     bus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds: ['second-pack.feature'] });
     await flush();
     expect(received).toEqual([]);
@@ -137,8 +132,7 @@ describe('CLIENT_CONNECTED on the bus', () => {
     rootEvents.emitConnected();
     await flush();
     received.length = 0;
-    registerPack(pack('second-pack'));
-    loaded('second-pack', ['runtime/fe.css']);
+    registerPack(pack('second-pack'), loaded('second-pack', ['runtime/fe.css']));
     bus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds: ['second-pack.feature'] });
     await flush();
     expect(received).toEqual(['second-pack']);
@@ -152,10 +146,8 @@ describe('CLIENT_CONNECTED on the bus', () => {
         { id: 'external-pack.feature', machine: recorder('with plugin'), events: new Set(['CLIENT_CONNECTED']) },
         { id: 'external-pack.background', machine: recorder('without plugin'), events: new Set(['CLIENT_CONNECTED']) },
       ],
-    });
-    registerPack(pack('second-pack'));
-    loaded('external-pack', withFrontend);
-    loaded('second-pack', withFrontend);
+    }, loaded('external-pack', withFrontend));
+    registerPack(pack('second-pack'), loaded('second-pack', withFrontend));
     bus = createActor(backendSystem, { systemId: 'bus' }).start();
 
     rootEvents.emitConnected();

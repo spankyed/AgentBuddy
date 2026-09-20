@@ -20,6 +20,7 @@ import * as path from 'node:path';
 import * as tar from 'tar';
 import type { PackManifest } from '@abuddy/sdk/build';
 import { stagingDirName } from './staging.ts';
+import type { PackRegistry } from './pack-registration.ts';
 
 export const PACK_LAYOUT_VERSION = 1;
 
@@ -95,6 +96,26 @@ export function packFrontendFiles(layoutDir: string): { entry?: string; styles?:
     entry: has(PACK_LAYOUT.feEntry) ? PACK_LAYOUT.feEntry : undefined,
     styles: has(PACK_LAYOUT.feStyles) ? PACK_LAYOUT.feStyles : undefined,
   };
+}
+
+/** The loaded packs the renderer is told about: the built-in packs, then the external packs with frontend files */
+export function getLoadedPackEntries(registry: Pick<PackRegistry, 'builtInPacks' | 'externalPacks'>): LoadedPackEntry[] {
+  return [
+    ...registry.builtInPacks().map(({ id, name, version }) => ({ id, name, version, builtIn: true })),
+    ...registry.externalPacks().flatMap(({ id, name, version, dir }) => {
+      const { entry, styles } = packFrontendFiles(dir);
+      if (!entry && !styles) return [];
+      return [{ id, name, version, feEntry: entry, feStyles: styles }];
+    }),
+  ];
+}
+
+/**
+ * The loaded external packs with frontend code: the renderer loads it after connecting, from the entries
+ * above, and their systems wait for that rather than for the client
+ */
+export function getPacksWithClientLoadedFrontends(registry: Pick<PackRegistry, 'externalPacks'>): string[] {
+  return registry.externalPacks().filter((p) => packFrontendFiles(p.dir).entry).map((p) => p.id);
 }
 
 /**

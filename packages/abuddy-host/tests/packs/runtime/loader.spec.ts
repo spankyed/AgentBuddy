@@ -6,7 +6,7 @@ import * as os from 'os';
 import { loadBuiltInPacks, loadExternalPacks } from '../../../src/packs/runtime/loader.ts';
 import { seedPackData, computePackSeedHash } from '../../../src/packs/runtime/seed.ts';
 import { appState } from '../../../src/app-state/index.ts';
-import { getLoadedPackEntries, setBuiltInPackInfos, setLoadedPacks } from '../../../src/packs/runtime/loaded-packs.ts';
+import { getLoadedPackEntries } from '../../../src/packs/pack-layout.ts';
 import { resetTestData, testRootEvents as rootEvents } from '@abuddy/sdk/testing';
 import { seedFile } from '@abuddy/sdk/build';
 
@@ -661,11 +661,6 @@ describe('computePackSeedHash', () => {
 });
 
 describe('loaded packs: the packs.loaded entries', () => {
-  afterEach(() => {
-    setLoadedPacks([]);
-    setBuiltInPackInfos([]);
-  });
-
   it('lists the built-in packs, then the loaded packs with frontend files', () => {
     const withFrontend = path.join(tmpDir, 'with-fe');
     fs.mkdirSync(path.join(withFrontend, 'runtime'), { recursive: true });
@@ -673,11 +668,13 @@ describe('loaded packs: the packs.loaded entries', () => {
     fs.writeFileSync(path.join(withFrontend, 'runtime', 'fe.css'), '');
     const backendOnly = path.join(tmpDir, 'be-only');
     fs.mkdirSync(backendOnly);
-    const loadedPack = (id: string, dir: string) => ({ manifest: { id, name: id, version: '2.0.0' }, dir, systems: new Map() });
-    setBuiltInPackInfos([{ id: 'built-in', name: 'Built-in', version: '1.0.0', dir: tmpDir }]);
-    setLoadedPacks([loadedPack('with-fe', withFrontend), loadedPack('be-only', backendOnly)]);
+    const external = (id: string, dir: string) => ({ id, name: id, version: '2.0.0', dir, builtIn: false });
+    const loaded = {
+      builtInPacks: () => [{ id: 'built-in', name: 'Built-in', version: '1.0.0', dir: tmpDir, builtIn: true }],
+      externalPacks: () => [external('with-fe', withFrontend), external('be-only', backendOnly)],
+    };
 
-    expect(getLoadedPackEntries()).toEqual([
+    expect(getLoadedPackEntries(loaded)).toEqual([
       { id: 'built-in', name: 'Built-in', version: '1.0.0', builtIn: true },
       { id: 'with-fe', name: 'with-fe', version: '2.0.0', feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css' },
     ]);

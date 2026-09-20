@@ -5,7 +5,6 @@ import type { EARS } from '@abuddy/sdk';
 import type { PackMigration } from '@abuddy/sdk/framework';
 import { appState, type AppState } from '../../app-state/index.ts';
 import type { PackRegistry } from '../../packs/pack-registration.ts';
-import { getBuiltInPackInfos } from '../../packs/runtime/loaded-packs.ts';
 
 /** The row the settings were stored in before 0.3.15 */
 const LEGACY_SETTINGS_ID = 'Settings-app' as EARS.EntityId;
@@ -29,14 +28,14 @@ function legacyInternal(): LegacyInternal | undefined {
 }
 
 /** The built-in packs with a boot seed: the ones the single seed hash stood for */
-const bootSeedPacks = (registry: Pick<PackRegistry, 'getPackRegistration'>): string[] =>
-  getBuiltInPackInfos().map(({ id }) => id).filter((id) => registry.getPackRegistration(id)?.boot?.seedManifest);
+const bootSeedPacks = (registry: Pick<PackRegistry, 'getPackRegistration' | 'builtInPacks'>): string[] =>
+  registry.builtInPacks().map(({ id }) => id).filter((id) => registry.getPackRegistration(id)?.boot?.seedManifest);
 
 /** A per-pack record with the stored one's entries it lacks */
 const withMissing = (current: Record<string, string>, legacy: Record<string, string> | undefined) => ({ ...legacy, ...current });
 
 /** The migration, over the app's registered packs */
-export const migration = (registry: Pick<PackRegistry, 'getPackRegistration'>): PackMigration => ({
+export const migration = (registry: Pick<PackRegistry, 'getPackRegistration' | 'builtInPacks'>): PackMigration => ({
   target: '0.3.15',
   description: "Move the app's state (onboarding, versions, seed hashes) from the settings' internal section to AppState",
   up: () => {

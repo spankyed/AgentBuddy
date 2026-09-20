@@ -6,6 +6,11 @@ import { resolveAppContext, getAppVersion } from '@abuddy/sdk/env';
 import type { PackSnapshot } from '@abuddy/sdk/build';
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import type { PackRegistry } from '../pack-registration.ts';
+import type { AnyStateMachine } from 'xstate';
+import type { PackBootHooks, PackEARS, PackFeatureDef, PackMigration } from '@abuddy/sdk/framework';
+import type { StepDefinition } from '@abuddy/sdk/steps';
+import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
+import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { discoverBuiltInPacks, discoverPacks, discoveredPackIds, enabledExternalPacks, type BuiltInPackInfo, type PackManifest } from '../pack-discovery.ts';
 import { disabledPackIds, forgetPacksExcept } from '../installed-packs.ts';
 import { PACK_LAYOUT, PACK_LAYOUT_VERSION, isPackLayout, readPackIntegrity } from '../pack-layout.ts';
@@ -13,11 +18,39 @@ import { isHostCompatible } from '../pack-installer.ts';
 import { packLoadFailed, packRegistered } from '../load-messages.ts';
 import { findSdkVersion } from '../../build/shared-deps.ts';
 import { withHostResolution } from './bridge.ts';
-import { getBuiltInPackInfos, setBuiltInPackInfos, type LoadedPack } from './loaded-packs.ts';
 
 // Always use createRequire — esbuild's require shim is a Proxy without .cache
 const esmRequire = Module.createRequire(import.meta.url);
 const logger = createLogger('pack-loader');
+
+/**
+ * An external pack's loaded runtime: what its bundle registered, plus the manifest and directory it was
+ * loaded from. The registry keeps those two as the pack's `PackOrigin`; this is the loader's own value,
+ * between reading the bundle and registering it.
+ */
+export interface LoadedPack {
+  manifest: PackManifest;
+  dir: string;
+  systems: Map<string, { machine: AnyStateMachine; events: Set<string> }>;
+  services?: Record<string, unknown>;
+  steps?: StepDefinition[];
+  artifacts?: ArtifactDefinition[];
+  blocks?: BlockDefinition[];
+  ears?: PackEARS;
+  repositories?: PackRegistration['repositories'];
+  boot?: PackBootHooks;
+  migrations?: PackMigration[];
+  seedHooks?: PackRegistration['seedHooks'];
+  /** The pack's seeders, which seeding its compiled seeds runs */
+  seeders?: PackRegistration['seeders'];
+  /** The slash commands the pack declares (abuddy.json `commands`) */
+  commands?: PackRegistration['commands'];
+  /** Feature definitions, with each feature's default settings */
+  features?: PackFeatureDef[];
+  /** Plugin id → the event types that plugin receives, which the bus checks the pack's sends against */
+  receivedEventTypes?: PackRegistration['receivedEventTypes'];
+}
+
 
 let _hostSdkVersion: string | undefined;
 function getHostSdkVersion(): string | undefined {
@@ -61,11 +94,13 @@ export function loadBuiltInRuntime(packDir: string): PackRegistration | undefine
   return packRegistration(withHostResolution(() => esmRequire(builtInRuntimeEntry(packDir))), packDir);
 }
 
-
-/** Re-reads a loaded built-in pack's manifest, so a name or version a rebuild changed is the one listed */
-export function refreshBuiltInPackInfo(packId: string): void {
-  const info = getBuiltInPackInfos().find(p => p.id === packId);
-  if (!info) return;
+/**
+ * Re-reads a loaded built-in pack's manifest, so a name or version a rebuild changed is the one listed.
+ * Updates the origin in place, as the list it replaced was updated in place.
+ */
+export function refreshBuiltInPackInfo(registry: PackRegistry, packId: string): void {
+  const info = registry.packOrigin(packId);
+  if (!info?.builtIn) return;
   try {
     const manifest = JSON.parse(fs.readFileSync(path.join(info.dir, PACK_LAYOUT.manifest), 'utf-8')) as { name?: string; version?: string };
     if (manifest.name) info.name = manifest.name;
@@ -112,7 +147,7 @@ export async function loadBuiltInPacks(
         try {
           const registration = loadBuiltInRuntime(pack.dir);
           if (registration) {
-            registry.registerPack(registration);
+            registry.registerPack(registration, { ...pack, builtIn: true });
             loaded.push(pack);
             logger.info(`Loaded built-in pack (dev): ${pack.id}`);
             continue;
@@ -138,19 +173,17 @@ export async function loadBuiltInPacks(
         logger.warn(`Built-in pack ${pack.id}: no 'registration' export, skipping`);
         continue;
       }
-      registry.registerPack(registration);
+      registry.registerPack(registration, { ...pack, builtIn: true });
       loaded.push(pack);
       logger.info(`Loaded built-in pack: ${pack.id}`);
     } catch (err) {
       logger.error(`Failed to load built-in pack ${pack.id}:`, err as Error);
     }
   }
-  setBuiltInPackInfos(loaded);
   return loaded;
 }
 
 // ── External pack loading ────────────────────────────────────────────
-
 
 export function loadSingleExternalPack(
   manifest: PackManifest,
@@ -271,6 +304,7 @@ function loadBundledRuntime(
     seeders: registration.seeders,
     commands: registration.commands,
     features: registration.features,
+    receivedEventTypes: registration.receivedEventTypes,
   };
 }
 
@@ -333,6 +367,14 @@ export function registerExternalPacks(registry: PackRegistry, packs: LoadedPack[
         seeders: pack.seeders,
         commands: pack.commands,
         features: pack.features,
+        receivedEventTypes: pack.receivedEventTypes,
+      }, {
+        id: pack.manifest.id,
+        name: pack.manifest.name,
+        version: pack.manifest.version,
+        dir: pack.dir,
+        builtIn: false,
+        manifest: pack.manifest,
       });
       registered.push(pack);
       logger.info(packRegistered(pack.manifest.id, systems.length));

@@ -202,6 +202,24 @@ describe('seeders', () => {
   });
 });
 
+// The rollback's rule is that a refused pack leaves nothing of itself behind. Where it came from is part of
+// itself: an origin left over would list a pack that isn't registered as one the app loaded, and the boot
+// would then migrate and seed it.
+describe('a pack whose registration is refused', () => {
+  it('leaves no origin behind either', () => {
+    add({ id: 'holder-pack', commands: [{ name: 'standup', placeholder: 'Topic' }] });
+    const origin = { id: 'refused-pack', name: 'Refused', version: '1.0.0', dir: '/packs/refused-pack', builtIn: false };
+
+    expect(() => registry.registerPack(
+      { id: 'refused-pack', systems: [], commands: [{ name: 'standup', placeholder: 'Theirs' }] },
+      origin,
+    )).toThrow('Command collision');
+
+    expect(registry.packOrigin('refused-pack')).toBeNull();
+    expect(registry.externalPacks().map((o) => o.id)).not.toContain('refused-pack');
+  });
+});
+
 describe('feature settings defaults', () => {
   const memos = { id: 'memos', hasSystem: false, hasPlugin: true, services: [], settings: { plugins: { memos: { sort: 'newest' } } } };
   const cards = { id: 'cards', hasSystem: false, hasPlugin: true, services: [], settings: { plugins: { _meta: { visibility: { cards: false } } } } };

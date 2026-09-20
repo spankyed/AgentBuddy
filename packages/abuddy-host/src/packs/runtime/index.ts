@@ -7,11 +7,7 @@ export {
 } from './loader.ts';
 export type { BuiltInRuntime, BundledPackLoaders, LoadBuiltInPacksOptions } from './loader.ts';
 export { withHostResolution, getBridgedSdkSpecifiers } from './bridge.ts';
-export {
-  getLoadedPacks, setLoadedPacks, updateLoadedPack, removeLoadedPack, getPacksWithClientLoadedFrontends,
-  getBuiltInPackInfos, setBuiltInPackInfos, getLoadedPackEntries,
-} from './loaded-packs.ts';
-export type { LoadedPack } from './loaded-packs.ts';
+export type { LoadedPack } from './loader.ts';
 export { activatePack, teardownPack } from './lifecycle.ts';
 export { reloadExternalPack, reloadBuiltInPack } from './reload.ts';
 export { computePackSeedHash, seedPackData, orchestrateDeclarativeSeed } from './seed.ts';

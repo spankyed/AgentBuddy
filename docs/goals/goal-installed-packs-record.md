@@ -147,7 +147,11 @@ already moved it aside. The state the guard defends looks unreachable without ha
   (`abuddy-cli/src/commands/dev.ts:149,152`). A crashed `abuddy dev`, or an uninstall while it runs,
   leaves a marker naming a dead port that the `pack://` handler will still try to proxy to. Deferred.
 - `_loadedPacks` (`runtime/loaded-packs.ts`) and the registry's registrations are two in-memory lists of
-  the same packs. Same mirror shape, one level up, in memory. Deferred.
+  the same packs. Same mirror shape, one level up, in memory. **Done:** `goal-loaded-packs-on-the-registry.md`
+  deleted the module; the registry keeps each pack's `PackOrigin` beside its registration.
+- The two markers above are also settled: the dev-server one is checked for liveness (`_recordIsStale`),
+  and the `AppState` maps are deliberately kept, because an uninstall removes a pack's directory and not
+  its data.
 
 ## Decisions
 

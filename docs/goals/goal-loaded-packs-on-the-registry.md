@@ -219,3 +219,72 @@ assertion fails today and must pass after.
 - `@abuddy/testing`'s harness creates a registry per test file; Phase 3 and 4 must be checked against
   `npm run test:external-pack`, not only the unit suites.
 - No `@abuddy/sdk` export should need to change. If one does, `npm run api:update` and commit `etc/`.
+
+## Outcome (2026-09-19)
+
+Implemented in one session, on `AS/external-pack-authoring`. All four phases done, plus a Phase 0 the
+survey turned up.
+
+### Per phase
+
+- **Phase 0 (unplanned) — `receivedEventTypes` was being dropped.** Measuring what the refactor would
+  delete found the round trip had already lost a field. `PackRegistration.receivedEventTypes` was added
+  after the unpack/repack copies were written, and neither was updated, so **every external pack's
+  outgoing-event validation was silently off**: `ownedPluginIds` fell back to `features[].hasPlugin`, the
+  map stored `null`, and the bus read that as "a pack too old to declare" and checked nothing. Built-in
+  packs were unaffected — they take the direct `registerPack(registration)` path.
+  `tests/packs/runtime/pack-event-declarations.spec.ts` fails without the fix.
+- **Phase 1 — `PackOrigin` on the registry.** Second argument to `registerPack`, stored in an `origins`
+  map with the same keys as `registrations`, dropped by `unregisterPack`. Reads: `packOrigin`,
+  `builtInPacks`, `externalPacks`, `externalPackTargets`.
+- **Phase 2 — the built-in readers.** Six production sites moved; `getBuiltInPackInfos`/`setBuiltInPackInfos`
+  gone. Two registration paths needed the origin, not one: the dev-mode built runtime as well as the
+  bundled loader.
+- **Phase 3 — the external readers and the parameters.** `startPacks(registry)`. `runPackMigrations` and
+  `seedPackData` now name what they need (`PackMigrationTarget`, `PackSeedTarget`) rather than taking a
+  whole `LoadedPack`, which left their 21 test call sites untouched. `packs-system`'s list scan became
+  `registry.packOrigin(id)`. `getLoadedPackEntries` and `getPacksWithClientLoadedFrontends` moved to
+  `packs/pack-layout.ts`, beside `LoadedPackEntry` and `packFrontendFiles`, and take the registry.
+- **Phase 4 — deletion.** `loaded-packs.ts` is gone; `LoadedPack` lives in `loader.ts`, which produces it.
+  `two-registries.spec.ts` covers loaded packs and its opening comment says what it now checks.
+
+### Conventional choices
+
+- `refreshBuiltInPackInfo(registry, packId)` still mutates the origin in place, as it mutated the list
+  entry before. Changing that is a separate concern from deleting the duplicate list.
+- `PackOrigin.manifest` is optional: a built-in pack has none, and a test may register without one.
+  `externalPackTargets()` filters on it rather than asserting.
+
+### Corrections to the Decisions
+
+- **Decision 3 said the module goes, not moves — `LoadedPack` still had to live somewhere.** It went to
+  `loader.ts`, the module that builds it. No behaviour rides on it; it is the loader's intermediate value.
+- **The Deferred item resolved itself.** `boundaries.spec.ts` allowed the bus one import from
+  `packs/runtime`. The bus now reads `packs/pack-layout.ts`, so the exception had no subject and was
+  removed; a mutation re-adding a loader import to the bus fails the guard.
+
+### Corrections found after the fact
+
+- **Phase 1 leaked an origin on a refused registration.** `registerPack` writes `registrations` and
+  `origins` before the try that registers a pack's extensions, and the catch deleted only the first — so a
+  pack refused for a collision stayed listed as one the app had loaded, and the next boot would have
+  migrated and seeded it. Caught by auditing the three parallel lists in this module, not by a test, which
+  is the point of the first open item below.
+
+### Open items
+
+- The unpack/repack round trip in `loader.ts` still exists — Phase 3 removed the second *list*, not the
+  field-by-field copy between `PackRegistration` and `LoadedPack`. That copy is what lost
+  `receivedEventTypes`, and it is still the shape that can lose the next field. Collapsing `LoadedPack`
+  into `{ registration, origin }` is the follow-up, and is now a local change to one file.
+- **`registerPack` keeps three hand-maintained lists of the registerable kinds** — register, roll back,
+  unregister — and nothing checks they agree. Ten kinds today; adding an eleventh means remembering three
+  places. The origin bug above is what that costs. A table of `{ register, unregister }` pairs iterated by
+  all three, or a spec asserting the three cover the same set, would make it structural.
+
+### Final verification
+
+`npm run typecheck` ✅ · `npm run test:unit` ✅ (8/8 suites) · `npm run build` ✅ · `npm test` ✅ (13) ·
+`npm run test:external-pack` ✅ (23 + 8 + 1). Mutations checked: origin ignored on register, origin kept on
+unregister, origins shared at module scope (fails both `two-registries` and `registry-state`), bus
+importing the loader, and `receivedEventTypes` dropped.

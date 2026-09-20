@@ -16,7 +16,6 @@ import {
 } from './loader.ts';
 import { runPackMigrations } from '../../migrations/index.ts';
 import { orchestrateDeclarativeSeed, seedPackData } from './seed.ts';
-import { getBuiltInPackInfos, updateLoadedPack } from './loaded-packs.ts';
 
 const logger = createLogger('pack-reload');
 
@@ -119,7 +118,6 @@ export async function reloadExternalPack(
       afterRegister: () => {
         runPackMigrations([pack]);
         seedPackData([pack]);
-        updateLoadedPack(pack);
       },
     };
   }, packDir);
@@ -130,8 +128,8 @@ export async function reloadBuiltInPack(
   packId: string,
   backendActor: import('xstate').AnyActorRef,
 ): Promise<void> {
-  const packInfo = getBuiltInPackInfos().find(p => p.id === packId);
-  if (!packInfo) throw new Error(`Built-in pack not found: ${packId}`);
+  const packInfo = registry.packOrigin(packId);
+  if (!packInfo?.builtIn) throw new Error(`Built-in pack not found: ${packId}`);
 
   const runtimeEntry = builtInRuntimeEntry(packInfo.dir);
   if (!fs.existsSync(runtimeEntry)) {
@@ -143,12 +141,14 @@ export async function reloadBuiltInPack(
     if (!registration) throw new Error(`Built runtime for ${packId} has no registration export`);
 
     return {
-      register: () => registry.registerPack(registration),
+      // The origin survives the reload: the pack is in the same place, and a re-register that dropped it
+      // would leave the next reload unable to find the pack it just reloaded
+      register: () => registry.registerPack(registration, packInfo),
       newSystemIds: (registration.systems as PackSystemDef[]).map(s => s.id),
       onShutdown: registration.boot?.onShutdown,
       onInit: registration.boot?.onInit,
       afterRegister: () => {
-        refreshBuiltInPackInfo(packId);
+        refreshBuiltInPackInfo(registry, packId);
         // A rebuild can carry new compiled seeds; the boot seed is hash-checked, so unchanged data isn't re-imported.
         // A rebuild running again mid-reload can take those files out from under it, so it doesn't stop the rest.
         const seedManifest = registry.getPackBootHooks(packId)?.seedManifest;

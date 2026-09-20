@@ -11,9 +11,9 @@ import { resolveAppContext } from '@abuddy/sdk/env';
 import * as path from 'path';
 import {
   createPacksSystem, packsEvents, PACKS_PLUGIN_EVENT_TYPES,
-  loadBuiltInPacks, getBuiltInPackInfos,
+  loadBuiltInPacks,
   loadExternalPacks, registerExternalPacks,
-  startPacks, setLoadedPacks,
+  startPacks,
 } from '@abuddy/host/packs/runtime';
 import { createAppBus } from '@abuddy/host/bus';
 import { createHostRuntime } from '@abuddy/host/services';
@@ -145,7 +145,7 @@ export async function setupBackend(): Promise<void> {
   console.log(`[app] AgentBuddy v${APP_VERSION} startupId=${process.env.AGENTBUDDY_STARTUP_ID ?? 'unknown'}`);
 
   // ── Wire shutdown hooks (keyed by pack ID for scoped reload teardown) ──
-  for (const info of getBuiltInPackInfos()) {
+  for (const info of packs.builtInPacks()) {
     const hooks = packs.getPackBootHooks(info.id);
     if (hooks?.onShutdown) {
       packs.registerShutdownHook(hooks.onShutdown, info.id);
@@ -161,8 +161,7 @@ export async function setupBackend(): Promise<void> {
   await store.hydrate();
 
   // ── Start the packs: each one's onInit, the migrations (the app's, then external packs'), the seeds
-  setLoadedPacks(externalPacks);
-  startPacks(packs, externalPacks);
+  startPacks(packs);
 
   // ── Start backend actor ──────────────────────────────────────────────
   backendActor = createActor(createAppBus(packs), {

@@ -14,7 +14,6 @@ import { installedPacks, type InstalledPack } from '../pack-discovery.ts';
 import { checkForUpdates } from '../pack-updater.ts';
 import { teardownPack, activatePack } from './lifecycle.ts';
 import { activationProblem } from './activation-outcome.ts';
-import { getBuiltInPackInfos, getLoadedPacks } from './loaded-packs.ts';
 
 export type { PackInfo };
 
@@ -121,7 +120,7 @@ function toExternalPackInfoList(registry: PackRegistry, packs: InstalledPack[]):
 }
 
 function toBuiltInPackInfoList(registry: PackRegistry): PackInfo[] {
-  return getBuiltInPackInfos().map(p => {
+  return registry.builtInPacks().map(p => {
     const manifest = readManifest(p.dir);
     const entities = manifest?.entities ?? {};
     const contrib = registry.getPackExtensions(p.id);
@@ -182,7 +181,7 @@ export function createPacksSystem(registry: PackRegistry) {
           // on a directory that has been swapped underneath it loads the new code on its next lazy
           // require. Silent (`replacing`), because the activation below announces the change.
           beforePlace: (manifest) => {
-            if (!getLoadedPacks().some(p => p.manifest.id === manifest.id)) return;
+            if (!registry.packOrigin(manifest.id)) return;
             replacedId = manifest.id;
             teardownPack(registry, manifest.id, system.get(bus), { replacing: true });
             system.get(bus).send(emit(packs, { type: 'PACK_DEACTIVATED' as const, packId: manifest.id }));

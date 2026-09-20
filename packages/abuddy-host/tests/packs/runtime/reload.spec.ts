@@ -11,7 +11,6 @@ const { publishHostPackOutput } = await import('../../../src/packs/index.ts');
 const { registerPack, unregisterPack, getPackRegistration, getPackBootHooks, registerShutdownHook, removeShutdownHooksForKey } = registry;
 const { reloadExternalPack, reloadBuiltInPack } = await import('../../../src/packs/runtime/reload.ts');
 const { loadBuiltInPacks } = await import('../../../src/packs/runtime/loader.ts');
-const { getBuiltInPackInfos } = await import('../../../src/packs/runtime/loaded-packs.ts');
 const { orchestrateDeclarativeSeed } = await import('../../../src/packs/runtime/seed.ts');
 const { resolveAppContext } = await import('@abuddy/sdk/env');
 // The test host's logger reports through its root event bus, so a test can read what the code under test logged
@@ -275,7 +274,7 @@ describe('reloading a built-in pack', () => {
     await reloadBuiltInPack(registry, BUILT_IN_ID, bus as never);
 
     expect(fs.readFileSync(path.join(hostPacksDir, BUILT_IN_ID, 'types', 'snapshot.json'), 'utf-8')).toContain('Widget');
-    expect(getBuiltInPackInfos().find(p => p.id === BUILT_IN_ID)?.version).toBe('2.0.0');
+    expect(registry.packOrigin(BUILT_IN_ID)?.version).toBe('2.0.0');
   });
 
   afterEach(() => {

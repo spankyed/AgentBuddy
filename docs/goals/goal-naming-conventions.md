@@ -114,8 +114,9 @@ six times in ten is unreliable in both directions.
 `BuiltInPackBuildInfo` (`abuddy-host/src/build/discover.ts:4`), `BuiltInPackInfo`
 (`abuddy-host/src/packs/pack-discovery.ts:14`), `PackInfo`
 (`abuddy-host/src/packs/pack-registration.ts:63`) and `LoadedPack`
-(`abuddy-host/src/packs/runtime/loaded-packs.ts:12`). The stages are real and useful; the names hide them
-behind a filler word, and only the last one names its stage.
+(`abuddy-host/src/packs/runtime/loader.ts`). The stages are real and useful; the names hide them
+behind a filler word, and only the last one names its stage. `PackOrigin`
+(`abuddy-host/src/packs/pack-registration.ts`) has since joined them, naming its own stage.
 
 **`source` is one sense in compounds and three senses bare.** ~707 occurrences. The compounds are
 consistent — `sourceHandle` (146, Vue Flow's edge endpoint), `sourceId` (56, an EARS relation's origin),

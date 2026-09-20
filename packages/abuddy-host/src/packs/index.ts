@@ -48,5 +48,6 @@ export {
   createPackArchive, extractPackArchive, packArchiveName,
   publishHostPackOutput,
   pruneHostPackOutputs,
+  getLoadedPackEntries, getPacksWithClientLoadedFrontends,
 } from './pack-layout.ts';
 export type { PackIntegrity, LoadedPackEntry } from './pack-layout.ts';
