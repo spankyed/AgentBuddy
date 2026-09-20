@@ -35,7 +35,7 @@ export interface AppContext {
   /** Build-time artifacts (types/, build/) of the app's built-in packs, for pack authors' dependency resolution. */
   hostPacksDir: string;
   installedPacksFile: string;
-  /** Where a running API publishes its port and process id (`readApiEndpoint`), so local tools find it */
+  /** Where a running API publishes its port and process id, so local tools find it (`@abuddy/host/process-liveness`) */
   apiPortFile: string;
   /** A development app's API token, for local tools calling its API (written by the API, readable only by the user) */
   apiTokenFile: string;
