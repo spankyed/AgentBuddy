@@ -18,7 +18,7 @@ import { HOST_PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
 import { makePolicy, registerRepository, unregisterRepository, type PartitionPolicy } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { packSeedOrder } from './pack-discovery.ts';
-import { createDefinitionStore, createDesignationStore, createStepStore } from './extensions.ts';
+import { createDefinitionStore, createDesignationStore, createStepStore, createUndoLog, type UndoLog } from './extensions.ts';
 import { createCommandStore, createSeedHookStore, createSeederStore, createSettingsDefaultsStore, createShutdownHooks } from './backend-extensions.ts';
 
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration };
@@ -301,7 +301,7 @@ export function createPackRegistry(): PackRegistry {
     ).map(({ origin }) => origin);
 
   /** Each pack's undos, as its registration produced them */
-  const packUndos = new Map<string, Array<() => void>>();
+  const packUndos = new Map<string, UndoLog>();
 
   /**
    * Everything a registration contributes, and how to take exactly that back out.
@@ -401,18 +401,14 @@ export function createPackRegistry(): PackRegistry {
     replacingPacks.delete(registration.id);
     changed();
 
-    const undos: Array<() => void> = [];
-    const undoAll = () => {
-      for (const undo of undos.splice(0).reverse()) undo();
-    };
+    const undos = createUndoLog();
     try {
-      const undo = (fn: () => void) => void undos.push(fn);
-      for (const add of contributions) add(registration, undo);
+      for (const add of contributions) add(registration, undos.record);
     } catch (err) {
       // Only what this call registered: a pack refused for a step collision must not unregister the step
       // it collided with. A refused pack leaves nothing of itself behind, its origin included — one left
       // here would name a pack the app never registered as one it loaded.
-      undoAll();
+      undos.undoAll();
       registrations.delete(registration.id);
       origins.delete(registration.id);
       changed();
@@ -427,17 +423,7 @@ export function createPackRegistry(): PackRegistry {
 
     // The undos its registration produced, not a second reading of the registration: what comes out is
     // exactly what went in
-    // Every undo runs and the pack goes, whatever one of them does: a contribution that can't be taken
-    // back out is a leak, and stopping here would add to it a pack that is registered and torn down at
-    // once. The copy is so a throw doesn't leave the stored list reversed.
-    const failures: string[] = [];
-    for (const undo of [...(packUndos.get(packId) ?? [])].reverse()) {
-      try {
-        undo();
-      } catch (err) {
-        failures.push(err instanceof Error ? err.message : String(err));
-      }
-    }
+    const failures = packUndos.get(packId)?.undoAll() ?? [];
     packUndos.delete(packId);
 
     registrations.delete(packId);

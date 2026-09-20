@@ -76,3 +76,42 @@ export function createDesignationStore() {
     has: (role: string): boolean => roles.has(role),
   };
 }
+
+/**
+ * The way back out of a registration, collected as it happens.
+ *
+ * Both registries add a pack's contributions one at a time and have to take back exactly what got in — when
+ * a later contribution throws, and again when the pack unregisters. Recording each undo where the thing is
+ * added is what keeps those two honest: a new kind of contribution can't be added to one path and forgotten
+ * in the other, because there is only one path.
+ *
+ * There were three of these, with two sets of semantics between them, which is the sort of drift the undos
+ * exist to prevent in the first place.
+ */
+export function createUndoLog() {
+  const undos: Array<() => void> = [];
+  return {
+    /** Records how to take back the thing just added */
+    record: (undo: () => void): void => void undos.push(undo),
+    /**
+     * Takes back everything recorded, most recent first, and forgets it — so a second call takes nothing
+     * back twice. Every undo runs whatever the ones before it did: a contribution that can't be taken back
+     * out is a leak, and stopping would add the rest of them to it. Returns what failed, for the caller to
+     * report; a rollback has nowhere to report to and ignores it.
+     */
+    undoAll: (): string[] => {
+      const failures: string[] = [];
+      for (const undo of undos.splice(0).reverse()) {
+        try {
+          undo();
+        } catch (err) {
+          failures.push(err instanceof Error ? err.message : String(err));
+        }
+      }
+      return failures;
+    },
+  };
+}
+
+/** A registration's undos, as the registry that made it holds them */
+export type UndoLog = ReturnType<typeof createUndoLog>;

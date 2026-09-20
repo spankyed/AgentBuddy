@@ -4,7 +4,7 @@ import type { Plugin, PackFERegistration, TiptapPlugin, DslTypeConfig } from '@a
 import type { FePackRegistryView } from '@abuddy/sdk/runtime';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
-import { createDefinitionStore, createDesignationStore, createOwnedStore, createStepStore } from '../packs/extensions.ts';
+import { createDefinitionStore, createDesignationStore, createOwnedStore, createStepStore, createUndoLog } from '../packs/extensions.ts';
 import { createAppExtensionSlots } from './app-extensions.ts';
 
 interface PackFEExtensions {
@@ -17,7 +17,7 @@ interface PackFEExtensions {
    * a new kind added to the register path and forgotten in the unregister path leaked, with nothing saying
    * so. The backend registry takes its pack's contributions back out the same way.
    */
-  undo: () => void;
+  undo: () => unknown;
 }
 
 /** The renderer's registered pack frontends */
@@ -53,15 +53,12 @@ export function createFePackRegistry(): FePackRegistry {
       throw new Error(`Pack "${packId}" frontend is already registered`);
     }
     const fromPack = packId ? ` from pack ${packId}` : '';
-    const undos: Array<() => void> = [];
-    const undo = (fn: () => void) => void undos.push(fn);
     // A registration is all or nothing. What a pack contributes is registered as it is read, and some of it
     // is the pack's own code — a step's `loadComponents` runs here — so a throw partway has to leave the
     // registry as it found it. Without this the pack is half-registered with nothing recording what, so it
     // can never be unregistered, and its plugins stay in the list for the life of the app.
-    const rollBack = () => {
-      for (const fn of [...undos].reverse()) fn();
-    };
+    const undos = createUndoLog();
+    const undo = undos.record;
 
     try {
       const registeredIds = new Set(allPlugins.map(p => p.id));
@@ -145,9 +142,9 @@ export function createFePackRegistry(): FePackRegistry {
         undo(() => dslTypes.remove(name, owner));
       }
 
-      if (packId) packExtensions.set(packId, { plugins, undo: rollBack });
+      if (packId) packExtensions.set(packId, { plugins, undo: undos.undoAll });
     } catch (err) {
-      rollBack();
+      undos.undoAll();
       throw err;
     }
   }
