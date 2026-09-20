@@ -51,14 +51,6 @@ machine appends to it, and nothing rotates it.
 
 ## Needs its own plan
 
-**Seed external packs in dependency order, and retry a seed that failed on a missing dependency.** No
-toposort exists anywhere in host or SDK. The hash is stored even when seeding fails, so a pack that seeded
-before its dependency is skipped on every later boot until its data changes. `lastError` is now recorded on
-the installed-packs entry, so the failure is visible — but it is never retried. This is the highest-value
-deferred item and the only real design change in the list: it needs an ordering pass over the pack graph and
-a decision on retry semantics. It should become a goal doc.
-`packs/runtime/seed.ts:66,172`
-
 **Implement `docs/goals/goal-defs-naming.md`.** `defs` names three things; the facade sense is the intruder
 and the repo already calls it `facade` everywhere else. Already has a goal doc. Blocked on its Open decision
 1: a renamed field would make a pre-rename dependency **silently untyped**, not rejected, because
