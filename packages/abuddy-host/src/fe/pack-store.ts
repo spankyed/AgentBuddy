@@ -11,7 +11,7 @@ interface PackFEExtensions {
   /** The plugins this pack added: not those skipped because another pack or the host has the id */
   plugins: Plugin[];
   /**
-   * Everything else it added, as the way to take it back out, recorded where each one is added.
+   * Everything it added, as the way to take it back out, recorded where each one is added.
    *
    * It was a field per kind of contribution, which made recording one compulsory and undoing it optional:
    * a new kind added to the register path and forgotten in the unregister path leaked, with nothing saying
@@ -49,81 +49,106 @@ export function createFePackRegistry(): FePackRegistry {
   const dslTypes = createOwnedStore<DslTypeConfig>();
 
   function registerPackFE(registration: PackFERegistration, packId?: string): void {
+    if (packId && packExtensions.has(packId)) {
+      throw new Error(`Pack "${packId}" frontend is already registered`);
+    }
     const fromPack = packId ? ` from pack ${packId}` : '';
-    const registeredIds = new Set(allPlugins.map(p => p.id));
-    const plugins: Plugin[] = [];
-    for (const plugin of registration.plugins ?? []) {
-      if (registeredIds.has(plugin.id)) {
-        console.warn(`[pack-store] Plugin "${plugin.id}"${fromPack} ignored — a plugin with that id is already registered`);
-        continue;
-      }
-      registeredIds.add(plugin.id);
-      plugins.push(plugin);
-    }
-    allPlugins.push(...plugins);
-
-    if (registration.defaultPlugin && !defaultPlugin) {
-      defaultPlugin = registration.defaultPlugin;
-    } else if (registration.defaultPlugin) {
-      console.warn(`[pack-store] defaultPlugin from pack ignored — already set`);
-    }
-
-    const roles: Record<string, string> = {};
-    for (const { id, designation } of plugins) {
-      if (!designation) continue;
-      if (designations.has(designation) || designation in roles) {
-        console.warn(`[pack-store] Designation "${designation}" of plugin "${id}"${fromPack} ignored — another plugin plays that role`);
-      } else {
-        roles[designation] = id;
-      }
-    }
-    designations.register(roles);
-
-    const undos: Array<() => void> = [() => designations.unregister(roles)];
+    const undos: Array<() => void> = [];
     const undo = (fn: () => void) => void undos.push(fn);
+    // A registration is all or nothing. What a pack contributes is registered as it is read, and some of it
+    // is the pack's own code — a step's `loadComponents` runs here — so a throw partway has to leave the
+    // registry as it found it. Without this the pack is half-registered with nothing recording what, so it
+    // can never be unregistered, and its plugins stay in the list for the life of the app.
+    const rollBack = () => {
+      for (const fn of [...undos].reverse()) fn();
+    };
 
-    for (const plugin of registration.tiptapPlugins ?? []) {
-      tiptapPlugins.push(plugin);
+    try {
+      const registeredIds = new Set(allPlugins.map(p => p.id));
+      const plugins: Plugin[] = [];
+      for (const plugin of registration.plugins ?? []) {
+        if (registeredIds.has(plugin.id)) {
+          console.warn(`[pack-store] Plugin "${plugin.id}"${fromPack} ignored — a plugin with that id is already registered`);
+          continue;
+        }
+        registeredIds.add(plugin.id);
+        plugins.push(plugin);
+      }
+      allPlugins.push(...plugins);
       undo(() => {
-        const idx = tiptapPlugins.indexOf(plugin);
-        if (idx >= 0) tiptapPlugins.splice(idx, 1);
+        for (const plugin of plugins) {
+          const idx = allPlugins.indexOf(plugin);
+          if (idx >= 0) allPlugins.splice(idx, 1);
+        }
       });
-    }
 
-    // Built-in packs register without a pack id and are never unregistered, so they share one owner
-    const owner = packId ?? BUILT_IN_OWNER;
-    for (const [slot, component] of Object.entries(registration.appExtensions ?? {})) {
-      appExtensions.register(slot, component, owner);
-      undo(() => appExtensions.unregister(slot, owner));
-    }
+      if (registration.defaultPlugin && !defaultPlugin) {
+        defaultPlugin = registration.defaultPlugin;
+        undo(() => { defaultPlugin = undefined; });
+      } else if (registration.defaultPlugin) {
+        console.warn(`[pack-store] defaultPlugin from pack ignored — already set`);
+      }
 
-    for (const def of registration.artifacts ?? []) {
-      artifacts.register(def, owner);
-      undo(() => artifacts.unregister(def.type, owner));
-    }
-    for (const def of registration.blocks ?? []) {
-      blocks.register(def, owner);
-      undo(() => blocks.unregister(def.type, owner));
-    }
+      const roles: Record<string, string> = {};
+      for (const { id, designation } of plugins) {
+        if (!designation) continue;
+        if (designations.has(designation) || designation in roles) {
+          console.warn(`[pack-store] Designation "${designation}" of plugin "${id}"${fromPack} ignored — another plugin plays that role`);
+        } else {
+          roles[designation] = id;
+        }
+      }
+      designations.register(roles);
+      undo(() => designations.unregister(roles));
 
-    if (registration.steps) {
-      for (const step of registration.steps) {
+      for (const plugin of registration.tiptapPlugins ?? []) {
+        tiptapPlugins.push(plugin);
+        undo(() => {
+          const idx = tiptapPlugins.indexOf(plugin);
+          if (idx >= 0) tiptapPlugins.splice(idx, 1);
+        });
+      }
+
+      // Built-in packs register without a pack id and are never unregistered, so they share one owner
+      const owner = packId ?? BUILT_IN_OWNER;
+      for (const [slot, component] of Object.entries(registration.appExtensions ?? {})) {
+        appExtensions.register(slot, component, owner);
+        undo(() => appExtensions.unregister(slot, owner));
+      }
+
+      for (const def of registration.artifacts ?? []) {
+        artifacts.register(def, owner);
+        undo(() => artifacts.unregister(def.type, owner));
+      }
+      for (const def of registration.blocks ?? []) {
+        blocks.register(def, owner);
+        undo(() => blocks.unregister(def.type, owner));
+      }
+
+      const touchedSteps = new Set<string>();
+      for (const step of registration.steps ?? []) {
         steps.register(step, owner);
+        touchedSteps.add(step.type);
         undo(() => steps.unregister(step.type, owner));
       }
-      // Each step's components, loaded once
-      for (const def of steps.all()) {
-        if (def.fe?.loadComponents && !def.fe.components) def.fe.components = def.fe.loadComponents();
+      // Each step's components, loaded once — for the types this registration touched and no others. Their
+      // merged definition is the only one that changed, and `loadComponents` is the pack's own code: running
+      // another pack's here would make its failure this pack's, and a step left broken by a pack that failed
+      // would throw again for every pack registered after it.
+      for (const type of touchedSteps) {
+        const def = steps.get(type);
+        if (def?.fe?.loadComponents && !def.fe.components) def.fe.components = def.fe.loadComponents();
       }
-    }
 
-    for (const [name, config] of Object.entries(registration.dslTypes ?? {})) {
-      dslTypes.set(name, config, owner);
-      undo(() => dslTypes.remove(name, owner));
-    }
+      for (const [name, config] of Object.entries(registration.dslTypes ?? {})) {
+        dslTypes.set(name, config, owner);
+        undo(() => dslTypes.remove(name, owner));
+      }
 
-    if (packId) {
-      packExtensions.set(packId, { plugins, undo: () => { for (const fn of undos.reverse()) fn(); } });
+      if (packId) packExtensions.set(packId, { plugins, undo: rollBack });
+    } catch (err) {
+      rollBack();
+      throw err;
     }
   }
 
@@ -131,19 +156,9 @@ export function createFePackRegistry(): FePackRegistry {
     const contrib = packExtensions.get(packId);
     if (!contrib) return [];
 
-    const removedPlugins: Plugin[] = [];
-    for (const plugin of contrib.plugins) {
-      const idx = allPlugins.indexOf(plugin);
-      if (idx >= 0) {
-        removedPlugins.push(plugin);
-        allPlugins.splice(idx, 1);
-      }
-    }
-
     contrib.undo();
-
     packExtensions.delete(packId);
-    return removedPlugins;
+    return contrib.plugins;
   }
 
   return {
