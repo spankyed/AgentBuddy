@@ -30,13 +30,22 @@ export interface AppState {
   packVersions: Record<string, string>;
   /** Each external pack's compiled seed data last seeded, by pack id. Kept on uninstall; see above */
   packSeedHashes: Record<string, string>;
+  /**
+   * For each external pack whose last seed failed, the seed state of the packs it depends on at that
+   * moment. A pack that seeded cleanly has no entry.
+   *
+   * It is what makes a failed seed retryable without re-importing it on every boot: the pack's own hash
+   * says its data hasn't changed, and this says whether anything it depends on has seeded since — the
+   * other thing that could change the outcome.
+   */
+  packSeedDeps: Record<string, string>;
   /** Each built-in pack's boot seed last seeded, by pack id: the hash of its compiled data */
   seedHashes: Record<string, string>;
   /** The file mtimes and sizes each built-in pack's seed hash was computed from (the fast path that skips re-hashing) */
   seedStatFingerprints: Record<string, string>;
 }
 
-const FIELDS = ['hasOnboarded', 'version', 'packVersions', 'packSeedHashes', 'seedHashes', 'seedStatFingerprints'] as const;
+const FIELDS = ['hasOnboarded', 'version', 'packVersions', 'packSeedHashes', 'packSeedDeps', 'seedHashes', 'seedStatFingerprints'] as const;
 
 type StoredAppState = Partial<AppState>;
 
@@ -56,6 +65,7 @@ export const appState = {
       ...(row.version !== undefined && { version: row.version }),
       packVersions: row.packVersions ?? {},
       packSeedHashes: row.packSeedHashes ?? {},
+      packSeedDeps: row.packSeedDeps ?? {},
       seedHashes: row.seedHashes ?? {},
       seedStatFingerprints: row.seedStatFingerprints ?? {},
     };
@@ -71,8 +81,15 @@ export const appState = {
     }
   },
 
-  /** Records one pack's entry in a per-pack field without disturbing the others' */
-  updatePackEntry: (field: 'packVersions' | 'packSeedHashes' | 'seedHashes' | 'seedStatFingerprints', packId: string, value: string): void => {
-    appState.update({ [field]: { ...appState.get()[field], [packId]: value } });
+  /** Records one pack's entry in a per-pack field, or with `undefined` removes it, leaving the others' alone */
+  updatePackEntry: (
+    field: 'packVersions' | 'packSeedHashes' | 'packSeedDeps' | 'seedHashes' | 'seedStatFingerprints',
+    packId: string,
+    value: string | undefined,
+  ): void => {
+    const entries = { ...appState.get()[field] };
+    if (value === undefined) delete entries[packId];
+    else entries[packId] = value;
+    appState.update({ [field]: entries });
   },
 };

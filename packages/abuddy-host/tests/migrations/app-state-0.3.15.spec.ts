@@ -60,6 +60,8 @@ const OLD_SETTINGS = {
 const MOVED = {
   hasOnboarded: true,
   packSeedHashes: { 'memo-pack': 'memo-hash' },
+  // Only written for a pack whose seed failed, and the move doesn't produce one
+  packSeedDeps: {},
   seedHashes: { [BUILT_IN_ID]: 'boot-hash' },
   seedStatFingerprints: { [BUILT_IN_ID]: 'actions.seed.json:1:2' },
 };
