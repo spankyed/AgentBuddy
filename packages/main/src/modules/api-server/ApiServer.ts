@@ -17,6 +17,7 @@ import {
 } from './config.js';
 import { ProcessManager, broadcastEvent } from './process-manager.js';
 import { logInfo, logError, logWarn, getLogger, logStartupBanner } from './logger.js';
+import { getAppContext } from '../../app-context.js';
 
 export class ApiServer implements AppModule {
   private processManager: ProcessManager;
@@ -215,7 +216,7 @@ export class ApiServer implements AppModule {
       env: getEnvironment(port, {
         apiToken: this.apiToken,
         startupId: this.startupId,
-        logDir: path.dirname(getLogger().getLogPath()),
+        logDir: getAppContext().logsDir,
       }),
       stdio: ['ignore', 'pipe', 'pipe'],
       detached: false,

@@ -9,7 +9,7 @@ The Electron main process. It decides the app environment, spawns the API server
 - `renderer`: `new URL(VITE_DEV_SERVER_URL)` when `MODE=development` and that variable is set (`npm start`), else `{ path: renderer/dist/index.html }`.
 - `preload`: `preload/dist/exposed.mjs`.
 
-The entry point also installs crash handling: `showAndExit` on uncaught errors in development, Playwright and CI, and `electron-log`'s `errorHandler` otherwise (EPIPE ignored).
+The entry point also installs crash handling: `showAndExit` on uncaught errors in development, Playwright and CI, and `electron-log`'s `errorHandler` otherwise (EPIPE ignored). That handler starts before `initApp()`, so a crash in the first moments of a run given its own data dir is written to the platform log directory rather than that run's — the crash handler has to be up before anything can crash.
 
 ## Module runner
 
@@ -62,7 +62,7 @@ The allowlists are populated only when `renderer` is a URL (dev server); from a 
 - On exit it broadcasts `api:stopped` (`{ error, restarting }`) and restarts after 2 s, up to 3 attempts (`API_CONFIG` in `config.ts`); the count resets once a launch has run for 5 s. After the last attempt it broadcasts `api:error` and rejects `waitForReady()`.
 - `broadcastEvent` sends `api:starting`, `api:started` (`{ port, startupId }`), `api:restarting`, `api:log` (dev only) and the events above to every window. The renderer reconnects its tRPC client on `api:started` (see `packages/renderer/CLAUDE.md`).
 - Shutdown: `before-quit` (and `window-all-closed` off macOS) sends SIGTERM, then SIGKILL after 5 s.
-- `logger.ts` mirrors `console.*` into electron-log and writes `main.jsonl`, `renderer.jsonl`, `renderer.log` and `app-events.log` next to the main log. Those four go through `appendCappedLine` (`@abuddy/host/logs`), which rotates each at 10 MB: electron-log's own `maxSize` covers only `main.log`, and without a cap of their own they grew for as long as the app was ever run. Its file path is resolved on demand from `app.getPath('logs')`, because this module is imported before `initAppContext()` can point the app at its own log directory.
+- `logger.ts` mirrors `console.*` into electron-log and writes `main.jsonl`, `renderer.jsonl`, `renderer.log` and `app-events.log` beside the main log. Those four go through `appendCappedLine` (`@abuddy/host/logs`), which rotates each at 10 MB: electron-log's own `maxSize` covers only `main.log`, and without a cap of their own they grew for as long as the app was ever run. All of them, electron-log included, are configured from `getAppContext().logsDir` — importing this module is what decides the context, so the module graph puts that before any log write.
 
 ## Windows (`src/modules/window-manager/`)
 

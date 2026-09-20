@@ -2,15 +2,15 @@ import log from 'electron-log/main';
 import { app } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
-import { appendCappedLine } from '@abuddy/host/logs';
+import { appendCappedLine, LOG_FILE_MAX_BYTES } from '@abuddy/host/logs';
+import { getAppContext } from '../../app-context.js';
 
-// Match previous 10MB rotation limit
-log.transports.file.maxSize = 10 * 1024 * 1024;
+// Asking for the context is what decides it, so electron-log is configured from the app's answer rather
+// than reaching for its own: this import is the edge that puts the decision before any log write.
+const LOGS_DIR = getAppContext().logsDir;
 
-// Resolved on demand rather than when this module is imported, which happens before `initAppContext()`
-// can point the app at its own log directory. Without this a run given its own data dir still wrote to
-// the shared ~/Library/Logs/<appName>, and every Playwright worker appended to the same files.
-log.transports.file.resolvePathFn = (variables) => path.join(app.getPath('logs'), variables.fileName ?? 'main.log');
+log.transports.file.maxSize = LOG_FILE_MAX_BYTES;
+log.transports.file.resolvePathFn = (variables) => path.join(LOGS_DIR, variables.fileName ?? 'main.log');
 
 const originalConsole = {
   log: console.log.bind(console),
@@ -92,9 +92,9 @@ function appendStructuredLog(fileName: string, level: string, args: unknown[]): 
   }) + '\n');
 }
 
-/** Where electron-log keeps its own file, which is where the app's other log files go too */
+/** Where the app's log files go, electron-log's own included */
 function logDir(): string {
-  return path.dirname(log.transports.file.getFile().path);
+  return LOGS_DIR;
 }
 
 export function getRendererLogPath(): string {
