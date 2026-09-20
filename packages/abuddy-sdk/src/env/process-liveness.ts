@@ -47,8 +47,9 @@ function bootTime(): number {
 /**
  * When `file` was last written, or `null` when it isn't there.
  *
- * `lstat`, not `stat`: Chromium's `SingletonLock` is a symlink whose target (`<host>-<pid>`) is not a path
- * and never resolves, so `stat` throws on a lock that is genuinely held.
+ * `lstat`, not `stat`, so a symlink answers for itself. No caller passes one today — the one symlink here,
+ * Chromium's `SingletonLock`, is a lock and goes to `_lockIsHeld`, which stats nothing — but its target
+ * (`<host>-<pid>`) is not a path and never resolves, so `stat` would throw on a record genuinely held.
  */
 function writtenAt(file: string): number | null {
   try {

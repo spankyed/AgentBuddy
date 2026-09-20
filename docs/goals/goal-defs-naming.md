@@ -139,7 +139,7 @@ remedy.
 - Docs: `abuddy-cli/CLAUDE.md`, `abuddy-sdk/CLAUDE.md`, `docs/public-facing/architecture.md`, and any
   sentence that uses `defs` for the facade.
 - A guard is **not** the tool here. `defs` stays a live word for the DSL sense, so a name list cannot
-  separate the senses — the same limitation written down on `_writerIsRunning` for `registry` and `bundle`.
+  separate the senses — the limitation Decision 7 of `goal-naming-conventions.md` records.
   Instead: a spec asserting `PackSnapshot` has no `defs` key and that `cacheDep` writes `facades/`. That is
   checkable and cannot fire on the DSL sense.
 

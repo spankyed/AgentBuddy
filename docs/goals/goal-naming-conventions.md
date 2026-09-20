@@ -83,8 +83,9 @@ missing or unparseable record; `readInstalledPacksRecord` returns `null`
 (`packages/abuddy-host/src/packs/installed-packs.ts:53,69`). Using the first where deletion follows
 destroys an interrupted install's only copy, which is the bug fixed in `e007d8021`. The dangerous one has
 the shorter name and is what autocomplete offers first. `_processIsRunning` and `_writerIsRunning`
-(`packages/abuddy-sdk/src/env/process-liveness.ts:19,78`) have the same shape: picking wrong means either
-two writers on the database or a refused boot, and neither name says so.
+(`packages/abuddy-sdk/src/env/process-liveness.ts`, as it stood) had the same shape: picking wrong meant
+either two writers on the database or a refused boot, and neither name said so. Phase 2's note below
+records where that one landed.
 
 **`Context` names at least three unrelated concepts.** 36 exported `*Context` types. An XState machine's
 context (`FlowsContext`, `BrainContext`, `ThreadsContext`, …), a bundle of arguments passed to a function
