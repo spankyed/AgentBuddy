@@ -45,20 +45,35 @@ function seedErrors(result: Record<string, { errors?: string[] }> | undefined): 
 }
 
 
-/**
- * Seed external packs whose compiled data changed. A pack whose seed reports errors
- * (e.g. an invalid flow) is a failed seed: the error is recorded as the installed-packs entry's
- * lastError. Its hash is stored like a successful seed's, so the same failing data isn't
- * re-imported on every boot; it's retried when the pack's seed data changes.
- */
-/** What seeding a pack needs: which pack, and where its compiled seeds are */
+/** What seeding a pack needs: which pack, where its compiled seeds are, and what it depends on */
 export interface PackSeedTarget {
-  manifest: { id: string };
+  manifest: { id: string; dependencies?: Record<string, string> };
   dir: string;
 }
 
+/**
+ * The seed state of the packs `dependencies` names, as one string.
+ *
+ * A pack's own hash says whether its data changed. This says whether anything it depends on has seeded
+ * since — the other thing that can turn a failed seed into one that would now succeed. A dependency that
+ * has never seeded reads the same as one with nothing to seed, which is what the deferred note in
+ * `goal-pack-seed-order-and-retry.md` is about.
+ */
+function dependencyState(dependencies: Record<string, string> | undefined, seeded: Record<string, string>): string {
+  return Object.keys(dependencies ?? {}).sort().map((id) => `${id}:${seeded[id] ?? ''}`).join('|');
+}
+
+/**
+ * Seed the external packs whose seed could have a different outcome than last time: their compiled data
+ * changed, or their last seed failed and something they depend on has seeded since. `packs` arrives in
+ * dependency order (`packSeedOrder`), so a pack sees what the packs it depends on seeded in this same run.
+ *
+ * A pack whose seed reports errors (an invalid flow, say) is a failed seed: the error is recorded as the
+ * installed-packs entry's `lastError`, and its hash is stored like a successful seed's, so the same failing
+ * data isn't re-imported on every boot. What is stored alongside it is the state its dependencies were in,
+ * so the retry happens when that changes rather than never.
+ */
 export function seedPackData(packs: Iterable<PackSeedTarget>, seed: typeof seedData = seedData): PackSeedFailure[] {
-  const storedHashes = appState.get().packSeedHashes;
   const failures: PackSeedFailure[] = [];
   const outcomes = new Map<string, string | undefined>();
 
@@ -72,7 +87,12 @@ export function seedPackData(packs: Iterable<PackSeedTarget>, seed: typeof seedD
       continue;
     }
 
-    if (storedHashes[packId] === currentHash) {
+    // Read per pack, not once: a pack earlier in this run may be one this pack depends on
+    const state = appState.get();
+    // Built-in packs' hashes too — a dependency may be one of them, and they seed before any of these
+    const deps = dependencyState(pack.manifest.dependencies, { ...state.seedHashes, ...state.packSeedHashes });
+    const failedAgainst = state.packSeedDeps[packId];
+    if (state.packSeedHashes[packId] === currentHash && (failedAgainst === undefined || failedAgainst === deps)) {
       logger.info(`Pack seed skipped (unchanged): ${packId}`);
       continue;
     }
@@ -87,10 +107,12 @@ export function seedPackData(packs: Iterable<PackSeedTarget>, seed: typeof seedD
     appState.updatePackEntry('packSeedHashes', packId, currentHash);
     if (errors.length > 0) {
       logger.error(`Failed to seed pack ${packId}:\n  ${errors.join('\n  ')}`);
+      appState.updatePackEntry('packSeedDeps', packId, deps);
       failures.push({ packId, errors });
       outcomes.set(packId, errors.join('\n'));
       continue;
     }
+    appState.updatePackEntry('packSeedDeps', packId, undefined);
     outcomes.set(packId, undefined);
     logger.info(`Pack seeded: ${packId}`);
   }

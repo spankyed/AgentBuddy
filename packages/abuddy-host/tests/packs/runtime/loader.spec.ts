@@ -456,6 +456,61 @@ describe('seedPackData: failures', () => {
     expect(registryEntry('rollback')).not.toHaveProperty('lastError');
   });
 
+  // What makes the retry possible without re-importing on every boot: the hash says the pack's own data is
+  // unchanged, and this says what its dependencies were when it failed. A pack that seeded cleanly has
+  // nothing to compare against, so it keeps no entry.
+  it('records what a failed seed faced, and keeps nothing once the pack seeds cleanly', () => {
+    const pack = { ...installedPack('records'), manifest: { id: 'records', dependencies: { provider: '^1.0.0' } } };
+    writeRegistry(['records']);
+
+    seedPackData([pack], failingSeed);
+    expect(appState.get().packSeedDeps).toEqual({ records: 'provider:' });
+
+    fs.writeFileSync(path.join(pack.dir, 'runtime', 'seeds', 'flows.seed.json'), '{"fixed": {}}');
+    seedPackData([pack], () => ({}));
+
+    expect(appState.get().packSeedDeps).toEqual({});
+  });
+
+  // The failure this is all for: pack B's seeds reference what pack A seeds, B seeded first and failed, and
+  // B's own data never changes again — so before this it stayed broken until it was reinstalled.
+  it('seeds a pack again once a pack it depends on has seeded since it failed', () => {
+    const dependency = installedPack('provider');
+    const dependent = { ...installedPack('consumer'), manifest: { id: 'consumer', dependencies: { provider: '^1.0.0' } } };
+    writeRegistry(['provider', 'consumer']);
+    const seedFn = vi.fn(() => ({}));
+
+    // The dependency isn't installed yet, so the dependent seeds against nothing and fails
+    seedPackData([dependent], failingSeed);
+    expect(registryEntry('consumer').lastError).toBeTruthy();
+
+    // Its own data is unchanged, so on its own it is still skipped
+    seedPackData([dependent], seedFn);
+    expect(seedFn).not.toHaveBeenCalled();
+
+    // ...until the pack it depends on seeds, which is the thing that could change the outcome
+    seedPackData([dependency, dependent], seedFn);
+
+    expect(seedFn).toHaveBeenCalledTimes(2);
+    expect(registryEntry('consumer')).not.toHaveProperty('lastError');
+  });
+
+  it('stops retrying a pack that failed once its dependencies settle again', () => {
+    const dependency = installedPack('steady');
+    const dependent = { ...installedPack('flaky'), manifest: { id: 'flaky', dependencies: { steady: '^1.0.0' } } };
+    writeRegistry(['steady', 'flaky']);
+    const seedFn = vi.fn(failingSeed);
+
+    seedPackData([dependency, dependent], seedFn);
+    const attempts = seedFn.mock.calls.length;
+
+    // Nothing has changed since: not the pack's data, and not what it failed against
+    seedPackData([dependency, dependent], seedFn);
+
+    expect(seedFn).toHaveBeenCalledTimes(attempts);
+    expect(registryEntry('flaky').lastError).toBeTruthy();
+  });
+
   it("clears an earlier version's lastError when the pack no longer has seed data", () => {
     const pack = installedPack('no-more-seeds');
     fs.rmSync(path.join(pack.dir, 'runtime', 'seeds'), { recursive: true });
