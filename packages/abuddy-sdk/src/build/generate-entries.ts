@@ -626,11 +626,9 @@ export function generatePackFiles(
       .map(f => systemBinding(f.id))
       .join(', ');
 
-    const designatedFeatures = orderedSystemFeatures.filter(f => f.designation);
-    const designations = designatedFeatures.map(f => `['${f.id}', '${f.designation}']`).join(', ');
-    const systemsExpr = designatedFeatures.length
-      ? `toPackSystemDefs([${systemEntries}]).map(s => {\n    const d = new Map([${designations}]);\n    return d.has(s.id) ? { ...s, designation: d.get(s.id) } : s;\n  })`
-      : `toPackSystemDefs([${systemEntries}])`;
+    // A designation reaches the registry once, in `features` below: it is a property of the feature, and
+    // the registry reads it there
+    const systemsExpr = `toPackSystemDefs([${systemEntries}])`;
 
     const earlyImport = earlyFeature?.system
       ? `import ${systemBinding(earlyFeature.id)} from '${toImportPath(root, earlyFeature.system.entry)}';\n`

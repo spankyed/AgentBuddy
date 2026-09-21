@@ -44,10 +44,9 @@ const appEARS = (): PackEARS => ({
 function designationsOf({ id, systems, features = [] }: PackRegistration): Record<string, string> {
   const systemId = (featureId: string) =>
     systems.find((s) => s.id === featureId || s.id === `${id}.${featureId}`)?.id ?? featureId;
-  return Object.fromEntries([
-    ...systems.filter((s) => s.designation).map((s) => [s.designation!, s.id]),
-    ...features.filter((f) => f.designation).map((f) => [f.designation!, systemId(f.id)]),
-  ]);
+  return Object.fromEntries(
+    features.flatMap((f) => (f.designation ? [[f.designation, systemId(f.id)]] : [])),
+  );
 }
 
 export interface PackExtensions {

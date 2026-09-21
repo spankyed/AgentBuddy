@@ -53,7 +53,7 @@ const tickTrigger: StepDefinition = {
   kind: 'trigger',
   trigger: { trackField: 'every' } as unknown as StepDefinition['trigger'],
 };
-const system = (id: string, designation?: string) => ({ id, machine: {} as PackSystemDef['machine'], events: new Set<string>(), designation });
+const system = (id: string) => ({ id, machine: {} as PackSystemDef['machine'], events: new Set<string>() });
 
 describe('steps', () => {
   it("are found once their pack registers, and gone once it unregisters", () => {
@@ -146,8 +146,8 @@ describe('designations', () => {
   });
 
   it("keep the role with the pack that holds it when another pack's registration is refused", () => {
-    add({ id: 'first', systems: [system('first.journal', 'journal')] });
-    expect(() => add({ id: 'second', systems: [system('second.journal', 'journal')], steps: [noteStep] })).toThrow('Designation collision');
+    add({ id: 'first', systems: [system('first.journal')], features: [journal] });
+    expect(() => add({ id: 'second', systems: [system('second.journal')], features: [journal], steps: [noteStep] })).toThrow('Designation collision');
     expect(getDesignated('journal')).toBe('first.journal');
     expect(stepRegistry.has('note')).toBe(false);
   });

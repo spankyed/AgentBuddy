@@ -94,7 +94,7 @@ describe('registerPack repositories', () => {
 });
 
 describe('registerPack designations', () => {
-  const system = (id: string, designation?: string) => ({ id, machine: {} as unknown as PackSystemDef['machine'], events: new Set<string>(), designation });
+  const system = (id: string) => ({ id, machine: {} as unknown as PackSystemDef['machine'], events: new Set<string>() });
   const journal = { id: 'journal', designation: 'journal', hasSystem: true, hasPlugin: false, services: [] };
   const registerDesignated = (id: string, systems: PackSystemDef[], extra: Partial<PackRegistration> = {}) => {
     registerPack({ id, systems, features: [journal], ...extra } as PackRegistration);
@@ -102,9 +102,8 @@ describe('registerPack designations', () => {
   };
 
   it.each([
-    ["an external pack's system", [system('ext.journal', 'journal')], 'ext.journal'],
-    ["a built-in pack's system", [system('journal', 'journal')], 'journal'],
-    ['the system the feature names, when it carries no designation', [system('ext.journal')], 'ext.journal'],
+    ["an external pack's system", [system('ext.journal')], 'ext.journal'],
+    ["a built-in pack's system", [system('journal')], 'journal'],
     ['the feature id, when no registered system plays it (the early system)', [], 'journal'],
   ])('resolves a role to %s', (_case, systems, expected) => {
     registerDesignated('ext', systems);
@@ -112,15 +111,15 @@ describe('registerPack designations', () => {
   });
 
   it('rejects a role another pack holds, registering none of the pack', () => {
-    registerDesignated('first', [system('first.journal', 'journal')]);
-    expect(() => registerDesignated('second', [system('second.journal', 'journal')], { services: { second: {} } }))
+    registerDesignated('first', [system('first.journal')]);
+    expect(() => registerDesignated('second', [system('second.journal')], { services: { second: {} } }))
       .toThrow('Designation collision: role "journal" — pack "second" vs "first"');
     expect(getDesignated('journal')).toBe('first.journal');
     expect(getRegisteredServices()).not.toHaveProperty('second');
   });
 
   it("drops a pack's roles when it unregisters", () => {
-    registerDesignated('ext', [system('ext.journal', 'journal')]);
+    registerDesignated('ext', [system('ext.journal')]);
     unregisterPack(registered.pop()!);
     expect(hasDesignation('journal')).toBe(false);
   });

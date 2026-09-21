@@ -250,9 +250,8 @@ export function loadSingleExternalPack(
 
 /**
  * The pack's own registration from its runtime bundle, with its systems completed from the manifest: the
- * bus id (`<packId>.<featureId>`), the designation its feature declares, and the incoming events the
- * manifest adds to the ones the system declared. Completed here and not again: the registry takes the
- * object as it is.
+ * bus id (`<packId>.<featureId>`) and the incoming events the manifest adds to the ones the system
+ * declared. Completed here and not again: the registry takes the object as it is.
  */
 function loadBundledRuntime(
   manifest: PackManifest,
@@ -284,7 +283,7 @@ function loadBundledRuntime(
     const events = new Set<string>(def.events);
     for (const evt of feature?.system?.events?.incoming ?? []) events.add(evt);
     logger.info(`Loaded system: ${manifest.id}/${def.id}`);
-    return { id: `${manifest.id}.${def.id}`, machine: def.machine, events, designation: feature?.designation };
+    return { id: `${manifest.id}.${def.id}`, machine: def.machine, events };
   });
 
   return { ...registration, systems };

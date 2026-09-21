@@ -11,7 +11,6 @@ export interface PackSystemDef {
   id: string;
   machine: AnyStateMachine;
   events: Set<string>;
-  designation?: string;
 }
 
 export interface PackMigration {

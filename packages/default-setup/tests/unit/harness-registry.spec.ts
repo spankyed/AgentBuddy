@@ -14,7 +14,11 @@ describe("the test file's registry", () => {
   });
 
   it('takes other packs, which the lookups then see', () => {
-    registerPack({ id: 'journal-pack', systems: [{ id: 'journal-pack.journal', machine: {} as never, events: new Set(), designation: 'journal' }] });
+    registerPack({
+      id: 'journal-pack',
+      systems: [{ id: 'journal-pack.journal', machine: {} as never, events: new Set() }],
+      features: [{ id: 'journal', designation: 'journal', hasSystem: true, hasPlugin: false, services: [] }],
+    });
     try {
       expect(getDesignated('journal')).toBe('journal-pack.journal');
     } finally {

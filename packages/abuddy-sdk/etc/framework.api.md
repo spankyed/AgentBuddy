@@ -150,8 +150,6 @@ export interface PackSettingsDefaults {
 // @public (undocumented)
 export interface PackSystemDef {
     // (undocumented)
-    designation?: string;
-    // (undocumented)
     events: Set<string>;
     // (undocumented)
     id: string;

@@ -11,10 +11,10 @@ import { createPackRegistry } from '../../src/packs/pack-registration.ts';
 
 const pack = (id: string, role: string, step: string, service: string, plugin: string): PackRegistration => ({
   id,
-  systems: [{ id: `${id}.${role}`, machine: {} as never, events: new Set(), designation: role }],
+  systems: [{ id: `${id}.${role}`, machine: {} as never, events: new Set() }],
   steps: [{ type: step, kind: 'step' } as StepDefinition],
   services: { [service]: { from: id } },
-  features: [{ id: plugin, hasSystem: false, hasPlugin: true, services: [], settings: { plugins: { [plugin]: { from: id } } } }],
+  features: [{ id: plugin, designation: role, hasSystem: false, hasPlugin: true, services: [], settings: { plugins: { [plugin]: { from: id } } } }],
 });
 
 describe('two registries in one process', () => {
