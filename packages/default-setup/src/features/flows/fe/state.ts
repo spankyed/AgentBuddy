@@ -22,6 +22,7 @@ import { computeMaxBottom, type LayoutNodeData } from '@abuddy/ui/components/nod
 import type { FlowEntity, PromptEntity, ActionEntity, EARS } from '@abuddy/sdk'
 import type { ModelCatalogEntry } from '@abuddy/sdk/models'
 import type { TNodeEntity, TrackTree } from '@abuddy/sdk/steps'
+import { flowsPlugin } from './public'
 
 const randId = () => Math.random().toString(36).slice(2, 8)
 
@@ -1160,6 +1161,7 @@ const flowsState = setup({
   },
 }).createMachine({
   id,
+  entry: ({ self }) => flowsPlugin.bind(self),
   initial: 'list',
   context: {
     selectedNodeId: undefined,

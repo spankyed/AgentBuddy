@@ -683,7 +683,8 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { ref, reactive, computed, nextTick, type Directive } from 'vue'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle, Eye, EyeOff } from 'lucide-vue-next'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
@@ -1029,7 +1030,7 @@ const removeTag = (index: number) => {
 }
 
 // Get threads actor for import/export state
-const threadsActor = actorOf(id)
+const threadsActor = usePlugin()
 
 // Import state
 const isImporting = useSelector(threadsActor, (state: any) => state.context.threadsImport.status === 'importing')

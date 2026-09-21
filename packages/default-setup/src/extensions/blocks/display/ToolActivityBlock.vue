@@ -86,13 +86,11 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem, getDesignated } from '@abuddy/sdk/fe'
+import { selectArtifact as showArtifact } from '@/features/threads/fe/public'
 import { ref, computed, watch, nextTick } from 'vue'
 import { ChevronRight, Wrench, Check, Loader2, X, AlertCircle, ArrowRight } from 'lucide-vue-next'
 import JsonHoverPopup from '@abuddy/ui/components/JsonHoverPopup'
 import { computeLabel, computeBadge } from './tool-activity-label'
-
-const actorSystem = useActorSystem()
 
 interface ToolActivityEntry {
   id: string
@@ -193,8 +191,7 @@ const artifactRef = computed(() => props.artifactRef)
 // Jump to the referenced artifact in the right panel when the link is clicked.
 function selectArtifact() {
   if (!props.artifactRef) return
-  const threadsActor = actorSystem.get(getDesignated('threads'))
-  threadsActor.send({ type: 'SELECT_ARTIFACT', artifactId: props.artifactRef.artifactId })
+  showArtifact(props.artifactRef.artifactId)
 }
 
 function formatDuration(ms: number): string {

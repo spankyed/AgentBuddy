@@ -140,15 +140,15 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
 import { ref, computed } from 'vue'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { RefreshCw, AlertTriangle, Power, CheckCircle, PlayCircle } from 'lucide-vue-next'
 import type { BrainSettings } from '@/__generated__/types'
 import { sendToSystem } from '@/__generated__/events'
 import { useSelector } from '@xstate/vue'
-import { id as brainId, type BrainState } from '@/features/brain/fe/state'
-import { id as flowsId, type FlowsState } from '@/features/flows/fe/state'
+import type { BrainState } from '@/features/brain/fe/state'
+import { useRootFlowId } from '@/features/flows/fe/public'
 
 interface Props {
   settings?: BrainSettings
@@ -161,13 +161,12 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 // Get brain state from brain state machine
-const brainActor: BrainState = actorOf(brainId);
+const brainActor: BrainState = usePlugin();
 const brainIsDead = useSelector(brainActor, (state) => state.context.brainIsDead)
 const startError = useSelector(brainActor, (state) => state.context.startError)
 const runningRootFlowId = useSelector(brainActor, (state) => state.context.runningRootFlowId)
 // The root flow is the flows plugin's (the flow with the root role)
-const flowsActor: FlowsState = actorOf(flowsId)
-const rootFlowId = useSelector(flowsActor, (state) => state.context.rootFlowId)
+const rootFlowId = useRootFlowId()
 
 // Compute if restart is needed by comparing root flow IDs
 const needsRestart = computed(() => {

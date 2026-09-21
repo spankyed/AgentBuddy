@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { ref, reactive, computed, watch } from 'vue'
 import { ArrangeableList, type MovingItem } from 'vue-arrange'
 import { useSelector } from '@xstate/vue'
@@ -9,7 +10,7 @@ import { SquarePen } from 'lucide-vue-next'
 
 // import type { ThreadsSettings } from '@/__generated__/types'
 
-const actor: ThreadsState = actorOf(id)
+const actor: ThreadsState = usePlugin()
 const threadMap = useSelector(actor, s => s.context.threadMap)
 const threadIds = useSelector(actor, s => s.context.threadIds)
 const threads = computed(() => threadsFromStore(threadMap.value, threadIds.value))

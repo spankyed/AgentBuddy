@@ -1,5 +1,4 @@
-import type { Component } from 'vue'
-import type { PluginActorSystem } from './actor-system.ts'
+import type { Component, Ref } from 'vue'
 
 type SvgElement = ['path', { d: string }] | ['rect', Record<string, string>] | ['circle', Record<string, string>]
 
@@ -10,7 +9,8 @@ export interface ReferenceTypeConfig {
   plugin: string
   icon: Component
   svgElements: SvgElement[]
-  navigate: (system: PluginActorSystem, refId: string) => void
+  /** Opens the entity a reference names */
+  navigate: (refId: string) => void
 }
 
 export interface CategoryConfig {
@@ -26,10 +26,9 @@ export interface ReferenceItem {
   type: string
 }
 
-/** Provides the items in a reference category by querying feature actor state. */
-export interface CategoryItemsProvider<TSnapshot = unknown> {
+/** Provides the items in a reference category, from the frontend state of the feature that owns them. */
+export interface CategoryItemsProvider {
   category: string
-  pluginId: string
-  /** Builds the items from the plugin actor's snapshot (undefined until the actor exists) */
-  buildItems(snapshot: TSnapshot | undefined): ReferenceItem[]
+  /** The category's items as they change: a composable, called in the setup of the component that lists them */
+  useItems(): Readonly<Ref<ReferenceItem[]>>
 }

@@ -63,12 +63,13 @@
 </template>
 
 <script setup lang="ts">
+import { usePlugin } from '@abuddy/sdk/fe'
 import { reactive } from 'vue'
 import KeyboardShortcutInput from '@abuddy/ui/components/KeyboardShortcutInput'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { HardDriveDownload } from 'lucide-vue-next'
 import type { DatabaseSettings } from '@/__generated__/types'
-import { navigateToPlugin, actorOf } from '@/__generated__/fe'
+import { navigateToPlugin } from '@/__generated__/fe'
 
 interface Props {
   settings?: DatabaseSettings
@@ -110,7 +111,7 @@ const handleResetDatabase = () => {
   )
 
   if (confirmed) {
-    const databaseActor = actorOf('database')
+    const databaseActor = usePlugin()
     databaseActor.send({ type: 'DATABASE.RESET' })
   }
 }

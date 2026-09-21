@@ -1,4 +1,3 @@
-import { actorOf } from '@/__generated__/fe'
 import { assign, setup, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
 import breadcrumb, { breadcrumbList } from '@abuddy/sdk/fe';
@@ -17,6 +16,7 @@ import {
   normalizeTNodeTree,
   type NormalizedTNodeTree,
 } from './trace-tree';
+import { brainPlugin } from './public'
 
 export const id = 'brain' as const;
 export type BrainState = ActorRefFrom<typeof brainState>
@@ -68,6 +68,8 @@ type UIEvent =
   | { type: 'PAUSE_BRAIN' }
   | { type: 'RESUME_BRAIN' }
   | { type: 'DISMISS_RUNTIME_ERROR' }
+  // The event pulse's animation ended
+  | { type: 'CLEAR_PULSE' }
 
 type PluginEvent =
   | { type: 'PLUGIN_ACTIVATED' }
@@ -366,6 +368,7 @@ const brainState = setup({
   },
 }).createMachine({
   id,
+  entry: ({ self }) => brainPlugin.bind(self),
   context: {
     possibleEvents: [],
     flowHierarchy: [],
@@ -473,10 +476,10 @@ const brainState = setup({
           actions: ['updateTNodeInTree', 'refreshNodeDetailsIfSelected']
         },
         EVENT_PULSE: {
-          actions: ['pulseEvent', ({ system, context }) => {
+          actions: ['pulseEvent', ({ self, context }) => {
             // Clear pulse after animation
             setTimeout(() => {
-              actorOf(id).send({ type: 'CLEAR_PULSE' });
+              self.send({ type: 'CLEAR_PULSE' });
             }, 400);
             // Request fresh data for the current flow to show new events
             // Pass the current flowTNodeId to maintain the current view

@@ -65,7 +65,7 @@
 import { computed } from 'vue'
 import BaseForm from '@abuddy/ui/components/BaseForm'
 import type { NodeEntity } from '@/__generated__/types'
-import type { FormResources } from '@/features/flows/fe/types/form-props'
+import type { FormResources } from '@/features/flows/fe/public'
 import { parseModelId, providerLabels, type ModelCatalogEntry, type ProviderName } from '@abuddy/sdk/models'
 import { DEFAULT_MODEL } from '../llm/model'
 import { DEFAULT_RESULT_KEY } from './result-key'

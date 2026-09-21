@@ -15,7 +15,9 @@
           @menu-action="handleMenuAction"
         />
         <div class="min-h-0 flex-1 overflow-y-auto">
-          <Router :views="activePlugin.canvas" :target="targetView" />
+          <PluginScope :plugin="activePlugin.id" :key="activePlugin.id">
+            <Router :views="activePlugin.canvas" :target="targetView" />
+          </PluginScope>
         </div>
       </div>
 
@@ -32,7 +34,9 @@
         :style="{ width: `${panelSizes.inspectionWidth}px` }"
         :label="`${activePlugin.label} Inspection`"
       >
-        <component :is="activePlugin.panel" />
+        <PluginScope :plugin="activePlugin.id" :key="activePlugin.id">
+          <component :is="activePlugin.panel" />
+        </PluginScope>
       </InspectionPanel>
     </div>
   </div>
@@ -49,7 +53,7 @@ import PopoutTitlebar from '@/core/components/layout/PopoutTitlebar.vue'
 import Router from '@/core/components/layout/router.vue'
 import ToastNotification from '@abuddy/ui/design/ToastNotification'
 import { registerGlobalToast } from '@/core/toast'
-import type { ContextMenuItem } from '@abuddy/sdk/fe'
+import { PluginScope, type ContextMenuItem } from '@abuddy/sdk/fe'
 
 const send = applicationState.send
 const toast = ref<InstanceType<typeof ToastNotification> | null>(null)

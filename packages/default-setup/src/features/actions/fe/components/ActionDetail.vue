@@ -111,6 +111,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePlugin } from '@abuddy/sdk/fe'
 import { computed } from 'vue';
 import type { Category } from '@/__generated__/types';
 import { ExternalLink } from 'lucide-vue-next';
@@ -120,9 +121,9 @@ import ActionParametersEditor from './ActionParametersEditor.vue';
 import ActionFunctionEditor from './ActionFunctionEditor.vue';
 import ActionFunctionViewer from './ActionFunctionViewer.vue';
 import JsonSchemaEditor from '@abuddy/ui/components/JsonSchemaEditor';
-import { navigateToPlugin, actorOf } from '@/__generated__/fe';
+import { navigateToPlugin } from '@/__generated__/fe'
 import { useCollapsibleState } from '@abuddy/ui/composables/useCollapsibleState';
-import { id as actionsId, type ActionsState } from '@/features/actions/fe/state';
+import type { ActionsState } from '@/features/actions/fe/state';
 import type { ActionEntity } from '@abuddy/sdk';
 import type { ActionParameter } from '@abuddy/sdk';
 
@@ -151,7 +152,7 @@ const emit = defineEmits<{
 }>();
 
 // Get the actions state machine actor
-const actor: ActionsState = actorOf(actionsId);
+const actor: ActionsState = usePlugin();
 
 // Use the composable for managing collapsible section states
 const parametersExpanded = useCollapsibleState(actor, ['formData', 'parametersExpanded'], 'TOGGLE_PARAMETERS_SECTION');

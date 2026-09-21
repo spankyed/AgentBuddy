@@ -207,7 +207,8 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { ref, computed, watch, nextTick, type Ref, type ComponentPublicInstance } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, type LibraryEvents } from '../../state'
@@ -218,7 +219,7 @@ import Button from '@abuddy/ui/design/button'
 import type { IndexSearchResult, SearchIndex } from '@/__generated__/types'
 
 type LibraryActor = ActorRefFrom<typeof librarySystem>
-const actor = actorOf(id) as LibraryActor
+const actor = usePlugin() as LibraryActor
 
 const testingIndex = useSelector(actor, (state) => state.context.testingIndex) as Ref<SearchIndex | null>
 const testQuery = useSelector(actor, (state) => state.context.testQuery) as Ref<string>

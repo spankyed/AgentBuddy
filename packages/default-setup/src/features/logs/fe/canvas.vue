@@ -340,6 +340,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePlugin } from '@abuddy/sdk/fe'
 import { computed, ref, reactive, watch, onMounted, onUnmounted } from 'vue';
 import {
   Search,
@@ -363,7 +364,8 @@ import { id } from './state';
 import type { LogsState, LogEntry } from './state';
 import { useSelector } from '@xstate/vue';
 import DataRenderer from '@abuddy/ui/components/DataRenderer';
-import { navigateToPlugin, actorOf } from '@/__generated__/fe';
+import { navigateToPlugin } from '@/__generated__/fe'
+import { updatePluginSettings } from '@/features/settings/fe/public'
 import { parseSearchTerm, searchLog, highlightSearchTerm } from './search';
 
 const logsContent = ref<HTMLElement>();
@@ -410,7 +412,7 @@ const contextMenu = reactive({
   source: ''
 });
 
-const actor: LogsState = actorOf(id)
+const actor: LogsState = usePlugin()
 const logs = useSelector(actor, (s) => (s as any).context.logs);
 const filterLevel = useSelector(actor, (s) => (s as any).context.filter.level);
 const searchTerm = useSelector(actor, (s) => (s as any).context.filter.search);
@@ -654,14 +656,7 @@ const toggleShowAppEvents = () => {
   });
 
   // Persist to settings (will round-trip back and trigger backend rebroadcast).
-  const settingsActor = actorOf('settings');
-  settingsActor.send({
-    type: 'SETTINGS.UPDATE',
-    entityType: 'plugin',
-    label: 'logs',
-    path: ['showAppEvents'],
-    value: next
-  });
+  updatePluginSettings('logs', ['showAppEvents'], next);
 };
 
 const excludeSource = (source: string) => {
@@ -682,14 +677,7 @@ const excludeSource = (source: string) => {
     });
 
     // Send update to settings (this will persist it and eventually send it back)
-    const settingsActor = actorOf('settings');
-    settingsActor.send({
-      type: 'SETTINGS.UPDATE',
-      entityType: 'plugin',
-      label: 'logs',
-      path: ['excludedSources'],
-      value: updatedSources
-    });
+    updatePluginSettings('logs', ['excludedSources'], updatedSources);
   }
 
   closeContextMenu();

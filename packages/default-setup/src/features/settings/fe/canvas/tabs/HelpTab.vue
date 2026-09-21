@@ -53,15 +53,13 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
 import { ref } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
 import { useSelector } from '@xstate/vue'
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import { DISCORD_URL, MEMORIAL_URL } from '../../../constants'
-import { openInAppBrowser } from '@abuddy/sdk/fe'
+import { openInAppBrowser, usePlugin } from '@abuddy/sdk/fe'
 import type { FAQItem } from '@/features/settings/be/types'
-import { id as settingsPluginId } from '@/features/settings/fe/state';
 
 function openDiscordLink() {
   openInAppBrowser(DISCORD_URL)
@@ -71,7 +69,7 @@ function openMemorialLink() {
   openInAppBrowser(MEMORIAL_URL)
 }
 
-const settingsActor = actorOf(settingsPluginId)
+const settingsActor = usePlugin()
 const faqItems = useSelector(settingsActor, (state: any): FAQItem[] => state.context.faqs ?? [])
 
 const expandedItems = ref<number[]>([])

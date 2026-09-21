@@ -879,8 +879,7 @@ ${addressed.map(f => `  ${f.id}: '${resolveName(f.id, manifest.id)}'`).join(',\n
     if (!own.length) return '';
     const plugins = [...own, ...Object.keys(_mergeProvenance('plugins', [...depSnapshots])).sort()].map(name => `'${name}'`);
     return `${HEADER}
-import type { AnyActorRef } from 'xstate';
-import { actorAt, navigateToAddress, type PluginEvent } from '@abuddy/sdk/fe';
+import { navigateToAddress, type PluginEvent } from '@abuddy/sdk/fe';
 import { resolveName } from '@abuddy/sdk/ids';
 
 /**
@@ -895,11 +894,6 @@ const packId = '${manifest.id}';
 /** Opens a plugin and hands its actor \`event\` once it's running; throws if no such plugin is registered */
 export function navigateToPlugin(name: PluginName, event?: PluginEvent | PluginEvent[]): void {
   navigateToAddress(resolveName(name, packId), event);
-}
-
-/** A plugin's actor, by name; undefined until the app spawns it */
-export function actorOf<T = AnyActorRef>(name: PluginName): T {
-  return actorAt<T>(resolveName(name, packId));
 }
 `;
   }

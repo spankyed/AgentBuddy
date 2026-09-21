@@ -49,7 +49,8 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { ref, computed, watch, onMounted, onUnmounted, shallowRef } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { Graph } from '@antv/g6';
@@ -74,7 +75,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 // State Management
-const actor = actorOf(id);
+const actor = usePlugin();
 const queryResult = useSelector(actor, (state: any) => state.context.queryResult);
 
 // Component State

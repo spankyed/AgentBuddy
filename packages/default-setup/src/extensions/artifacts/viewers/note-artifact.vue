@@ -29,13 +29,12 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
 import { computed } from 'vue'
 import { StickyNote } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import CopyButton from '@abuddy/ui/design/CopyButton'
-import { useSelector } from '@xstate/vue'
+import { useNotes } from '@/features/notes/fe/public'
 
 const props = defineProps<{
   artifact: ArtifactItem<string | { noteId?: string }>
@@ -48,8 +47,7 @@ const noteId = computed(() =>
     : props.artifact.content?.noteId ?? ''
 )
 
-const notesActor = actorOf('notes')
-const allNotes = useSelector(notesActor, (s: any) => s.context.notes ?? [])
+const allNotes = useNotes()
 
 const note = computed(() =>
   allNotes.value.find((n: any) => n.id === noteId.value)

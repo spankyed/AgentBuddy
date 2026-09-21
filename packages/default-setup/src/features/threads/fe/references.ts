@@ -1,5 +1,7 @@
 import { History } from 'lucide-vue-next'
+import { useSelector } from '@xstate/vue'
 import { navigateToPlugin } from '@/__generated__/fe'
+import { threadsPlugin } from './public'
 import { id as threads, threadsFromStore } from './state'
 import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider, ReferenceItem } from '@abuddy/sdk/fe/references'
 
@@ -14,7 +16,7 @@ export const referenceTypes: Record<string, ReferenceTypeConfig> = {
       ['path', { d: 'M3 3v5h5' }],
       ['path', { d: 'M12 7v5l4 2' }],
     ],
-    navigate: (_system: any, refId: string) => {
+    navigate: (refId: string) => {
       navigateToPlugin(threads, { type: 'SELECT_THREAD', id: refId })
     },
   },
@@ -26,8 +28,8 @@ export const categories: CategoryConfig[] = [
 
 export const itemsProvider: CategoryItemsProvider = {
   category: 'threads',
-  pluginId: threads,
-  buildItems: (actorState: any): ReferenceItem[] => {
+  // The plugin's state, as it changes
+  useItems: () => useSelector(threadsPlugin.get(), (actorState: any): ReferenceItem[] => {
     const threadMap = actorState?.context?.threadMap || {}
     const threadIds = actorState?.context?.threadIds || []
     const sorted = threadsFromStore(threadMap, threadIds)
@@ -37,5 +39,5 @@ export const itemsProvider: CategoryItemsProvider = {
       label: t.topic || t.shortCode || t.id,
       type: 'thread' as const,
     }))
-  },
+  }),
 }

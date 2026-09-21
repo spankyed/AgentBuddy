@@ -629,11 +629,10 @@
 
 <script setup lang="ts">
 import { codeChild } from '@/features/code/fe/utils/parent-communication'
-import { actorOf } from '@/__generated__/fe'
 import { computed, ref, nextTick, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useApplicationActor } from '@abuddy/sdk/fe'
-import { id as codeId, type CodeState } from '@/features/code/fe/state'
+import { useApplicationActor, usePlugin } from '@abuddy/sdk/fe'
+import type { CodeState } from '@/features/code/fe/state'
 import type { GitStatusFile } from '@/features/code/fe/features/commit/state'
 import { GitBranch, GitBranchPlus, GitCommit, GitFork, GitMerge, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, ArrowUpFromLine, MoreVertical, Trash2, Copy, Search, FolderSync, Lock } from 'lucide-vue-next'
 import { ContextMenuItem } from 'reka-ui'
@@ -651,7 +650,7 @@ import { useSectionVisibilityMenu } from '@/features/code/fe/composables/useSect
 
 // Get actors
 const appActor = useApplicationActor()
-const codeActor: CodeState = actorOf(codeId)
+const codeActor: CodeState = usePlugin()
 const commitActor = codeChild(codeActor, 'commit')!
 
 // Settings from code actor

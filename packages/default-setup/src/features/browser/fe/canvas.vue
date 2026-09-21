@@ -68,19 +68,18 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
+import { usePluginSettings } from '@/features/settings/fe/public'
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
-import { isAnyMenuOpen } from '@abuddy/sdk/fe';
+import { isAnyMenuOpen, usePlugin } from '@abuddy/sdk/fe';
 import { useSelector } from '@xstate/vue';
 import { id, type BrowserState } from './state.ts';
 import BrowserTabBar from './components/BrowserTabBar.vue';
 import BrowserNavBar from './components/BrowserNavBar.vue';
 import BrowserBookmarkBar from './components/BrowserBookmarkBar.vue';
-import { pluginSettings } from '@/features/settings/plugin-settings';
 
-const actor: BrowserState = actorOf(id);
-const settingsActor = actorOf('settings');
-const showBookmarksBar = useSelector(settingsActor, (state: any) => pluginSettings(state.context.settings, 'browser')?.showBookmarksBar ?? true);
+const actor: BrowserState = usePlugin();
+const browserSettings = usePluginSettings<{ showBookmarksBar?: boolean }>('browser');
+const showBookmarksBar = computed(() => browserSettings.value?.showBookmarksBar ?? true);
 
 const tabs = useSelector(actor, s => s.context.tabs);
 const activeTabId = useSelector(actor, s => s.context.activeTabId);

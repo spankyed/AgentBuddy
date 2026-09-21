@@ -266,14 +266,12 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useSelector } from '@xstate/vue'
 import { Bot, Check, Copy, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
-import { useActorSystem, getDesignated } from '@abuddy/sdk/fe'
+import { useChatStateOverrides, useCurrentThread, useThreadsSettings } from '@/features/threads/fe/public'
 import { navigateToPlugin } from '@/__generated__/fe'
 import { sendToSystem } from '@/__generated__/events'
 
-const actorSystem = useActorSystem()
 
 type ApprovalMode = 'user' | 'auto_review'
 type SandboxMode = 'read-only' | 'workspace-write' | 'danger-full-access'
@@ -304,18 +302,14 @@ defineProps<{
   artifact: ArtifactItem<CodexThreadState>
 }>()
 
-const threadsActor = actorSystem.get(getDesignated('threads'))
-const currentThread = useSelector(
-  threadsActor,
-  (state: any) => state.context.currentThread,
-)
+const currentThread = useCurrentThread()
 
 const content = computed<CodexThreadState>(() =>
   currentThread.value?.context?.codex ?? ({} as CodexThreadState)
 )
 
-const settings = useSelector(threadsActor, (state: any) => state.context.settings)
-const overrides = useSelector(threadsActor, (state: any) => state.context.chatStateOverrides)
+const settings = useThreadsSettings()
+const overrides = useChatStateOverrides()
 const stateConfig = computed(() => {
   const configs = settings.value?.chatStates
   const threadId = currentThread.value?.id ?? ''

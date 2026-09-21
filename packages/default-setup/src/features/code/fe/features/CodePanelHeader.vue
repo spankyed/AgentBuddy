@@ -77,12 +77,11 @@
 
 <script setup lang="ts">
 import { codeChild } from '@/features/code/fe/utils/parent-communication'
-import { actorOf } from '@/__generated__/fe'
 import type { Component } from 'vue'
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState } from '@/features/code/fe/state'
-import { isAnyMenuOpen } from '@abuddy/sdk/fe'
+import { isAnyMenuOpen, usePlugin } from '@abuddy/sdk/fe'
 import BaseDirectoryMenu from '@/features/code/fe/features/explorer/components/BaseDirectoryMenu.vue'
 import {
   FolderOpen,
@@ -103,7 +102,7 @@ defineEmits<{
   'title-click': []
 }>()
 
-const actor: CodeState = actorOf(id)
+const actor: CodeState = usePlugin()
 const explorerActor = codeChild(actor, 'explorer')!
 const terminalActor = codeChild(actor, 'terminal')!
 const commitActor = codeChild(actor, 'commit')!

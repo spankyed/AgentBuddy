@@ -164,7 +164,8 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { ref } from 'vue'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
@@ -172,7 +173,7 @@ import ColorPicker from '@abuddy/ui/design/ColorPicker'
 import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import type { PromptsSettings, Category } from '@/__generated__/types'
 import { useSelector } from '@xstate/vue'
-import { id, type PromptsState } from './state'
+import type { PromptsState } from './state'
 
 interface Props {
   settings?: PromptsSettings
@@ -227,7 +228,7 @@ const removeCategory = (index: number) => {
 }
 
 // Get prompts actor and state via selectors
-const promptsActor: PromptsState = actorOf(id)
+const promptsActor: PromptsState = usePlugin()
 
 // Import state
 const isImporting = useSelector(promptsActor, (state) => state.context.promptsImport.status === 'importing')

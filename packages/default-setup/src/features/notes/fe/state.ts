@@ -13,6 +13,7 @@ import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
 import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
+import { notesPlugin } from './public'
 
 export const id = 'notes' as const;
 export type NotesState = ActorRefFrom<typeof notesState>
@@ -775,6 +776,7 @@ const notesState = setup({
   guards: { targetIs },
 }).createMachine({
   id,
+  entry: ({ self }) => notesPlugin.bind(self),
   initial: 'welcome',
   context: {
     notes: [],

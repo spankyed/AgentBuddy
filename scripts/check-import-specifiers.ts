@@ -181,7 +181,7 @@ function findInFiles(files: string[], root: string, rule: Rule): string[] {
  * Address-taking helpers packs get as name-taking ones from #generated/events and #generated/fe, whichever
  * SDK module exports them
  */
-const EVENT_SENDS = ['sendToPlugin', 'sendToSystem', 'navigateToAddress', 'actorAt'];
+const EVENT_SENDS = ['sendToPlugin', 'sendToSystem', 'navigateToAddress'];
 
 /** Imports and re-exports of the untyped sends (and the engine's repository registration), or all of @abuddy/sdk/events */
 const rawPackHelper: Rule = (node) => {
@@ -454,6 +454,34 @@ const SKIPPED_DIRS = /^(?:node_modules|dist|out|coverage|\..+)$/;
 /** Files a config compiles or bundles. Declarations included: tsc resolves their imports too */
 const CODE_FILE = /\.(?:[cm]?[jt]sx?|vue)$/;
 /** The extensions a relative config import may leave out */
+/** The pack sources whose features keep their frontends to themselves */
+const PACK_SRC_ROOTS = ['packages/default-setup/src', 'tests/fixtures/external-pack/src', 'tests/fixtures/bundled-ui-pack/src'];
+
+/**
+ * `file:line: specifier` for each import of another feature's frontend other than its `fe/public` module. A feature
+ * reaches into no other feature's machine or components: what one offers the rest (its state as composables, the
+ * events it takes) is its `fe/public.ts`, so what crosses between features is written down in one place. Generated
+ * code, which registers every feature's plugin, is exempt.
+ */
+export function findCrossFeatureImports(srcRoots = PACK_SRC_ROOTS, root = repoRoot): string[] {
+  return srcRoots.flatMap((srcRoot) => {
+    const src = path.join(root, srcRoot);
+    const featureOf = (file: string) => /^features\/([^/]+)\//.exec(path.relative(src, file).split(path.sep).join('/'))?.[1];
+    return packFiles([srcRoot], root).filter((file) => !path.relative(src, file).startsWith('__generated__')).flatMap((file) => {
+      const code = fs.readFileSync(file, 'utf-8');
+      return [...code.matchAll(ANY_SPECIFIER)].flatMap((match) => {
+        const specifier = match[1];
+        const target = specifier.startsWith('@/') ? path.join(src, specifier.slice(2))
+          : specifier.startsWith('.') ? path.resolve(path.dirname(file), specifier) : undefined;
+        if (target === undefined) return [];
+        const into = /^features\/([^/]+)\/fe\/(.+)$/.exec(path.relative(src, target).split(path.sep).join('/'));
+        if (!into || into[1] === featureOf(file) || into[2].replace(/\.(ts|js)$/, '') === 'public') return [];
+        return [`${path.relative(root, file)}:${code.slice(0, match.index).split('\n').length}: ${specifier}`];
+      });
+    });
+  });
+}
+
 const CONFIG_EXTENSIONS = ['', '.ts', '.mts', '.cts', '.js', '.mjs', '.cjs'];
 /**
  * Vitest options that name files the config runs itself. A config with one of them compiles code of
@@ -984,7 +1012,7 @@ export function findCrossCheckoutResolution(root = repoRoot): string[] {
 if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])) {
   const checks: [find: () => string[], rule: string][] = [
     [findJsSpecifiers, 'Relative imports must name the TypeScript source (tsc and tsdown emit .js)'],
-    [findRawPackHelpers, 'Pack code uses the typed facades: emit, sendToPlugin and sendToSystem from #generated/events, repositories declared in abuddy.json'],
+    [findRawPackHelpers, 'Pack code uses the typed facades: sendToPlugin and sendToSystem from #generated/events, repositories declared in abuddy.json'],
     [findInternalPackageImports, "Pack code imports only the @abuddy packages' public API: an export named `_x` is @internal, the app's alone, and a pack that needs one asks for it to be made public"],
     [findRawTransport, 'Pack code sends with sendToPlugin and sendToSystem from #generated/events, and subscribes with onConnected and onIncoming from @abuddy/sdk/events'],
     [findPackBackendConsole, 'Pack backend code logs with createLogger from @abuddy/sdk/logger'],
@@ -994,6 +1022,7 @@ if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])
     [findLmdbImports, "Only @abuddy/ears/lmdb loads lmdb: the host and the API open the store through it, the engine's root and packs never load it"],
     [findSharedPackageLists, 'Derive shared-instance packages from SHARED_INSTANCE_PACKAGES (@abuddy/host/build/shared-deps) instead of naming them'],
     [findRepositoryCasts, "Call a package's repositories through its exports, not a cast of the repository registry"],
+    [findCrossFeatureImports, "A feature's frontend is its own: other features and extensions import what it offers from its fe/public.ts, never its machine or components"],
     [findCrossCheckoutResolution, 'Workspace packages resolve inside this checkout, so a worktree nested in the repository never typechecks against the parent checkout'],
     [findMissingSourceConditions, "The repo's own configs declare the @abuddy/source condition when they compile or bundle code importing @abuddy/ears, @abuddy/sdk or @abuddy/ui, so they read TypeScript source instead of a stale dist; a pack's configs declare none, because a pack resolves the published dist"],
   ];

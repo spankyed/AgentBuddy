@@ -164,7 +164,6 @@ app.config.errorHandler = (err, _instance, info) => {
   );
 };
 
-app.provide('actorSystem', applicationState.system);
 app.provide('applicationActor', applicationState);
 app.mount('#app');
 

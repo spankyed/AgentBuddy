@@ -189,14 +189,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
 import { useSelector } from '@xstate/vue';
-import { useActorSystem } from '@abuddy/sdk/fe';
+import { usePlugin } from '@abuddy/sdk/fe';
 import { Package as PackageIcon, X } from 'lucide-vue-next';
 import type { PacksState } from '../state';
-import { id } from '../state';
 import PackDetail from './PackDetail.vue';
 
-const actorSystem = useActorSystem();
-const actor: PacksState = actorSystem.get(id);
+const actor = usePlugin<PacksState>();
 
 const packs = useSelector(actor, s => s.context.packs);
 const builtInPacks = computed(() => packs.value.filter(p => p.builtIn));

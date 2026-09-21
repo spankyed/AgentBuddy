@@ -16,6 +16,7 @@ import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
 import type { PromptEntity, EARS } from '@abuddy/sdk'
+import { promptsPlugin } from './public'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
@@ -485,6 +486,7 @@ const promptsState = setup({
   guards: { targetIs },
 }).createMachine({
   id,
+  entry: ({ self }) => promptsPlugin.bind(self),
   initial: 'list',
   context: {
     selectedPromptId: undefined,

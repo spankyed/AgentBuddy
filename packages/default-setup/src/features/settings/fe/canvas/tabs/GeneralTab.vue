@@ -60,7 +60,6 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { User, Key, Settings, CheckCircle, Briefcase, FileJson } from 'lucide-vue-next'
@@ -69,10 +68,10 @@ import Secrets from '../components/GeneralSettings/Secrets.vue'
 import App from '../components/GeneralSettings/App.vue'
 import Projects from '../components/GeneralSettings/Projects.vue'
 import SettingsJsonEditor from '../components/GeneralSettings/SettingsJsonEditor.vue'
-import { useSettingsSaveStatus } from '@abuddy/sdk/fe'
-import { id as settingsPluginId } from '@/features/settings/fe/state';
+import { usePlugin } from '@abuddy/sdk/fe'
+import { useSettingsSaveStatus } from '../../public'
 
-const actor = actorOf(settingsPluginId)
+const actor = usePlugin()
 
 const generalNavItem = useSelector(actor, (state: any) => state.context.generalNavItem)
 const settings = useSelector(actor, (state: any) => state.context.settings)

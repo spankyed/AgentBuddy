@@ -245,11 +245,10 @@
 
 <script setup lang="ts">
 import { codeChild } from '@/features/code/fe/utils/parent-communication'
-import { actorOf } from '@/__generated__/fe'
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useApplicationActor } from '@abuddy/sdk/fe'
-import { id as codeId, type CodeState } from '@/features/code/fe/state'
+import { useApplicationActor, usePlugin } from '@abuddy/sdk/fe'
+import type { CodeState } from '@/features/code/fe/state'
 import {
   AlertCircle, AlertTriangle, GitBranch, GitPullRequest, RefreshCw,
   Loader2, ArrowLeft, X
@@ -268,7 +267,7 @@ import type { TreeNode } from './types'
 
 // Get actors
 const appActor = useApplicationActor()
-const codeActor: CodeState = actorOf(codeId)
+const codeActor: CodeState = usePlugin()
 const prActor = codeChild(codeActor, 'pr')!
 const commitActor = codeChild(codeActor, 'commit')!
 

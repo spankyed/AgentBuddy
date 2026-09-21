@@ -290,14 +290,13 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
 import { ref, computed, watch, provide, nextTick, onMounted } from 'vue'
 import { useExternalFileDrag } from '@abuddy/ui/composables/useExternalFileDrag'
 import { useSelector } from '@xstate/vue'
 import type { NoteDTO } from '@/__generated__/types'
 import { id, type NotesState } from './state'
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
-import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem } from '@abuddy/sdk/fe'
+import { EXTRA_BLOCK_ITEMS_KEY, type BlockItem, usePlugin } from '@abuddy/sdk/fe'
 import { NotebookText, FileText, ListChecks, CircleCheck, Search, Clock, ChevronLeft, ChevronRight, Star, Plus } from 'lucide-vue-next'
 import EmojiPicker from '@abuddy/ui/design/EmojiPicker'
 import { useDebounce } from '@abuddy/ui/composables/useDebounce'
@@ -308,7 +307,7 @@ import TaskListPanel from './components/TaskListPanel.vue'
 import ImageLightbox from '@abuddy/ui/design/ImageLightbox'
 import TiptapSearchBar from '@abuddy/ui/components/tiptap/TiptapSearchBar'
 
-const actor: NotesState = actorOf(id)
+const actor: NotesState = usePlugin()
 const state = useSelector(actor, (s) => s)
 const currentNote = useSelector(actor, (s) => s.context.currentNote)
 const notes = useSelector(actor, (s) => s.context.notes)

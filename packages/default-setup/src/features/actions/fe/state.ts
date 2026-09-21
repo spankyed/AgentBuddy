@@ -16,6 +16,7 @@ import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
 import type { ActionEntity, EARS } from '@abuddy/sdk'
+import { actionsPlugin } from './public'
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
@@ -485,6 +486,7 @@ const actionsState = setup({
   guards: { targetIs },
 }).createMachine({
   id,
+  entry: ({ self }) => actionsPlugin.bind(self),
   initial: 'list',
   context: {
     selectedActionId: undefined,

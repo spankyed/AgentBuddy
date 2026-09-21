@@ -67,12 +67,3 @@ export function openInAppBrowser(url: string) {
     window.electronAPI?.shell?.openExternal(url);
   }
 }
-
-/**
- * The actor of the plugin at `address`, as the app's actor system holds it: undefined until the plugin's
- * actor is spawned, as `system.get` is. Pack code names the plugin instead, through the `actorOf` its
- * `#generated/fe` builds over this (`check:specifiers` keeps it that way).
- */
-export function actorAt<T = AnyActorRef>(address: FeatureRef): T {
-  return getApp().system.get(address) as T;
-}

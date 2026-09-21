@@ -1,7 +1,7 @@
 import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe';
 import { targetIs, type TrailClickEvent } from '@abuddy/sdk/fe';
 import { safeEvents } from '@abuddy/sdk/fe';
-import { setup, assign, enqueueActions, fromPromise, spawnChild } from 'xstate';
+import { setup, assign, enqueueActions, fromCallback, spawnChild, type AnyEventObject } from 'xstate';
 import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
 import type { ActorRefFrom } from 'xstate';
 import type {
@@ -14,12 +14,13 @@ import { sendToSystem } from '@/__generated__/events';
 import { Archive, Copy, Pin, Trash2 } from 'lucide-vue-next';
 import { contextMenuFn } from '@abuddy/sdk/fe';
 import type { Simplify } from '@abuddy/sdk/helpers';
-import { navigateToPlugin, actorOf } from '@/__generated__/fe';
+import { navigateToPlugin } from '@/__generated__/fe';
 import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@abuddy/sdk/fe';
 import type { ThreadTabGroup, TabGroupColor } from '@/features/threads/fe/canvas/agent/tabs/types';
 import { getNextAvailableColor } from '@/features/threads/fe/canvas/agent/tabs/types';
 import { saveThreadTabGroups, loadThreadTabGroups } from '@/features/threads/fe/canvas/agent/tabs/tab-groups';
 import type { EARS } from '@abuddy/sdk';
+import { threadsPlugin } from './public'
 
 export const id = 'threads' as const;
 
@@ -372,14 +373,14 @@ function optimisticFieldUpdate(context: ThreadsContext, threadId: string, key: s
 const threadsState = setup({
   types: { context: {} as ThreadsContext, events: {} as ThreadEvents },
   actors: {
-    clearNewThreadFlag: fromPromise<void, { id: string }>(async ({ input, system }) => {
+    clearNewThreadFlag: fromCallback<AnyEventObject, { id: string }>(({ input, sendBack }) => {
       const ANIMATION_DURATION = 1000;
-      await new Promise(resolve => setTimeout(resolve, ANIMATION_DURATION));
-      actorOf(id).send({ type: 'CLEAR_NEW_THREAD_FLAG', id: input.id });
+      const timer = setTimeout(() => sendBack({ type: 'CLEAR_NEW_THREAD_FLAG', id: input.id }), ANIMATION_DURATION);
+      return () => clearTimeout(timer);
     }),
-    clearExpiredOverride: fromPromise<void, { threadId: string; durationMs: number }>(async ({ input, system }) => {
-      await new Promise(resolve => setTimeout(resolve, input.durationMs));
-      actorOf(id).send({ type: 'CLEAR_CHAT_STATE_OVERRIDE', threadId: input.threadId });
+    clearExpiredOverride: fromCallback<AnyEventObject, { threadId: string; durationMs: number }>(({ input, sendBack }) => {
+      const timer = setTimeout(() => sendBack({ type: 'CLEAR_CHAT_STATE_OVERRIDE', threadId: input.threadId }), input.durationMs);
+      return () => clearTimeout(timer);
     }),
   },
   actions: {
@@ -1532,6 +1533,7 @@ const threadsState = setup({
   }
 }).createMachine({
   id,
+  entry: ({ self }) => threadsPlugin.bind(self),
   initial: getInitialView(),
   context: () => ({
     // Thread management (normalized)

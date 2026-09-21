@@ -190,8 +190,10 @@
 </template>
 
 <script setup lang="ts">
+import { usePlugin } from '@abuddy/sdk/fe'
 import { codeChild } from '@/features/code/fe/utils/parent-communication'
-import { actorOf } from '@/__generated__/fe'
+import type { CodeSettings } from '@/__generated__/types'
+import { updatePluginSettings, usePluginSettings } from '@/features/settings/fe/public'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { ChevronRight, ChevronDown, Plus, X, Edit, Trash2, PanelTop, PanelBottom, Terminal as TerminalIcon, Ellipsis, Square, Copy, ClipboardPaste, TextSelect, Eraser, RotateCcw } from 'lucide-vue-next'
@@ -210,7 +212,7 @@ import {
 } from 'reka-ui'
 import TrackedContextMenuRoot from '@abuddy/ui/design/TrackedContextMenuRoot'
 import { MENU_ITEM_CLASS, MENU_ITEM_DANGER_CLASS, MENU_CONTENT_CLASS, MENU_SEPARATOR_CLASS } from '@/features/code/fe/features/explorer/constants'
-import { id as codeId, type CodeState } from '@/features/code/fe/state'
+import type { CodeState } from '@/features/code/fe/state'
 import type { TerminalInfo } from './state'
 import { terminalPool } from '@/features/code/fe/utils/terminal-pool'
 import { useTerminalActions } from '@/features/code/fe/composables/useTerminalActions'
@@ -221,25 +223,22 @@ import type { TerminalScript } from '@/__generated__/types'
 import type { Terminal } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { IDisposable } from '@xterm/xterm'
-import { pluginSettings } from '@/features/settings/plugin-settings';
 
 const props = withDefaults(defineProps<{ height?: number }>(), { height: 256 })
 
 // Actors
-const codeActor: CodeState = actorOf(codeId)
+const codeActor: CodeState = usePlugin()
 const terminalActor = codeChild(codeActor, 'terminal')!
-const settingsActor = actorOf('settings')
 
 // State selectors
 const panelTerminalId = useSelector(codeActor, (state) => state.context.panelTerminalId)
 const openFiles = useSelector(codeActor, (state) => state.context.openFiles)
 const terminals = useSelector(terminalActor, (state: any) => state.context.terminals as TerminalInfo[])
 
-const confirmTerminalClose = useSelector(settingsActor, (state: any) => pluginSettings(state.context.settings, 'code')?.confirmTerminalClose ?? true)
-const closeTerminalOnTabClose = useSelector(settingsActor, (state: any) => pluginSettings(state.context.settings, 'code')?.closeTerminalOnTabClose ?? true)
-const terminalScripts = useSelector(settingsActor, (state: any) =>
-  (pluginSettings(state.context.settings, 'code')?.terminalScripts ?? []) as TerminalScript[]
-)
+const storedCodeSettings = usePluginSettings<CodeSettings>('code')
+const confirmTerminalClose = computed(() => storedCodeSettings.value?.confirmTerminalClose ?? true)
+const closeTerminalOnTabClose = computed(() => storedCodeSettings.value?.closeTerminalOnTabClose ?? true)
+const terminalScripts = computed(() => (storedCodeSettings.value?.terminalScripts ?? []) as TerminalScript[])
 
 const { getTerminalDisplayName, closeTerminal: closeTerminalWithConfirm } = useTerminalActions(terminalActor, confirmTerminalClose, closeTerminalOnTabClose)
 
@@ -415,13 +414,7 @@ const runScriptInNewTerminal = (script: TerminalScript) => {
 }
 
 const updateScripts = (scripts: TerminalScript[]) => {
-  settingsActor.send({
-    type: 'SETTINGS.UPDATE',
-    entityType: 'plugin',
-    label: 'code',
-    path: ['terminalScripts'],
-    value: scripts
-  } as any)
+  updatePluginSettings('code', ['terminalScripts'], scripts)
 }
 
 const killAllTerminals = () => {

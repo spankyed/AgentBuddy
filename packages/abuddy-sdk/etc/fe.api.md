@@ -9,16 +9,21 @@ import type { AnyExtension } from '@tiptap/vue-3';
 import type { AnyStateMachine } from 'xstate';
 import type { BaseEntity } from '@abuddy/ears';
 import type { Component } from 'vue';
+import { ComponentOptionsMixin } from 'vue';
+import { ComponentProvideOptions } from 'vue';
 import { ComputedRef } from 'vue';
+import { DefineComponent } from 'vue';
 import { EARS as EARS_2 } from '@abuddy/ears';
 import type { Editor } from '@tiptap/vue-3';
 import type { EditorState } from '@tiptap/pm/state';
+import { ExtractPropTypes } from 'vue';
 import type { InjectionKey } from 'vue';
+import { PublicProps } from 'vue';
 import { Ref } from 'vue';
+import { RendererElement } from 'vue';
+import { RendererNode } from 'vue';
+import { VNode } from 'vue';
 import { z } from 'zod';
-
-// @public
-export function actorAt<T = AnyActorRef>(address: FeatureRef): T;
 
 // @public (undocumented)
 export const ALL_COLORS: TabGroupColor[];
@@ -297,12 +302,6 @@ interface Plugin_2 {
 export { Plugin_2 as Plugin }
 
 // @public
-export interface PluginActorSystem {
-    // (undocumented)
-    get(id: string): AnyActorRef;
-}
-
-// @public
 export type PluginDefinition = Omit<Plugin_2, 'id'>;
 
 // @public
@@ -318,6 +317,21 @@ export interface PluginHotkeyDefinition {
     // (undocumented)
     global?: boolean;
 }
+
+// @public
+export const PluginScope: DefineComponent<ExtractPropTypes<    {
+plugin: {
+type: StringConstructor;
+required: true;
+};
+}>, () => VNode<RendererNode, RendererElement, {
+[key: string]: any;
+}>[] | undefined, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}, string, PublicProps, Readonly<ExtractPropTypes<    {
+plugin: {
+type: StringConstructor;
+required: true;
+};
+}>> & Readonly<{}>, {}, {}, {}, {}, string, ComponentProvideOptions, true, {}, any>;
 
 // @public (undocumented)
 export function processHotkeys<const T extends Record<string, string>, H = unknown>(event: HotkeyEvent, hotkeys: H | undefined, actionMap: T): T[keyof T] | undefined;
@@ -445,23 +459,11 @@ export type TrailClickEvent<TInfo = unknown> = {
     info?: TInfo;
 };
 
-// @public (undocumented)
-export function useActorSystem(): PluginActorSystem;
-
-// @public (undocumented)
+// @public
 export function useApplicationActor(): AnyActorRef;
 
-// @public (undocumented)
-export function useSettingsSaveStatus(): {
-    saveStatus: Ref<"idle" | "saving" | "saved", "idle" | "saving" | "saved">;
-    updateSettings: (params: {
-        entityType: string;
-        label: string;
-        path: string[];
-        value: unknown;
-    }) => void;
-    setSaveStatus: (status: "saving" | "saved") => void;
-};
+// @public
+export function usePlugin<T = AnyActorRef>(): T;
 
 // @public (undocumented)
 export function useTrackedMenuOpen(menuOpen: Ref<boolean>): void;

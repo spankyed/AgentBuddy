@@ -66,8 +66,9 @@
 import { Layers } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
 import { truncatePath } from '@abuddy/ui/utils/path-truncation'
-import { navigateToPlugin, actorOf } from '@/__generated__/fe'
-import { useSelector } from '@xstate/vue'
+import { computed } from 'vue'
+import { navigateToPlugin } from '@/__generated__/fe'
+import { useGeneralSettings } from '@/features/settings/fe/public'
 
 interface Project {
   name: string
@@ -79,12 +80,9 @@ const props = defineProps<{
   artifact: ArtifactItem
 }>()
 
-// Read projects directly from settings state (single source of truth)
-const settingsActor = actorOf('settings')
-const projects = useSelector(
-  settingsActor,
-  (state: any) => state.context.settings?.general?.projects || []
-)
+// The user's projects, from the settings
+const storedProjects = useGeneralSettings('projects')
+const projects = computed(() => storedProjects.value ?? [])
 
 const getTruncatedPath = (path: string) => {
   return truncatePath(path, 4)

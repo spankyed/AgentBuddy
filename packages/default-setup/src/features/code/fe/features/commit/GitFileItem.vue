@@ -51,10 +51,11 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { id as codeId, type CodeState } from '@/features/code/fe/state'
+import type { CodeState } from '@/features/code/fe/state'
 import type { GitStatusFile } from '@/features/code/fe/features/commit/state'
 import { File, Copy } from 'lucide-vue-next'
 import { ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuPortal, ContextMenuSeparator } from 'reka-ui'
@@ -71,7 +72,7 @@ defineEmits<{
   openFile: [file: GitStatusFile]
 }>()
 
-const codeActor: CodeState = actorOf(codeId)
+const codeActor: CodeState = usePlugin()
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
 
 const fileDisplay = computed(() => {

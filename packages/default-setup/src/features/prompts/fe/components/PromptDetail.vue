@@ -104,6 +104,7 @@
 </template>
 
 <script setup lang="ts">
+import { usePlugin } from '@abuddy/sdk/fe'
 import { computed } from 'vue';
 import { ExternalLink } from 'lucide-vue-next';
 import NameSaveHeader from '@abuddy/ui/design/NameSaveHeader';
@@ -114,8 +115,8 @@ import PromptTemplateEditor from './PromptTemplateEditor.vue';
 import PromptTemplateViewer from './PromptTemplateViewer.vue';
 import JsonSchemaEditor from '@abuddy/ui/components/JsonSchemaEditor';
 import { useCollapsibleState } from '@abuddy/ui/composables/useCollapsibleState';
-import { navigateToPlugin, actorOf } from '@/__generated__/fe';
-import { id as promptsId, type PromptsState } from '@/features/prompts/fe/state';
+import { navigateToPlugin } from '@/__generated__/fe'
+import type { PromptsState } from '@/features/prompts/fe/state';
 import type { PromptEntity } from '@abuddy/sdk';
 import type { TemplateInput } from '@abuddy/sdk';
 
@@ -144,7 +145,7 @@ const emit = defineEmits<{
 }>();
 
 // Get the prompts state machine actor
-const actor: PromptsState = actorOf(promptsId);
+const actor: PromptsState = usePlugin();
 
 // Use the composable for managing collapsible section states
 const inputsExpanded = useCollapsibleState(actor, ['formData', 'inputsExpanded'], 'TOGGLE_INPUTS_SECTION');

@@ -194,14 +194,15 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+import { navigateToPlugin } from '@/__generated__/fe'
+import { useRunningRootFlowId } from '@/features/brain/fe/public'
 import { ref, computed, watch } from 'vue'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { AlertTriangle, Brain, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import type { FlowsSettings } from '@/__generated__/types'
 import { useSelector } from '@xstate/vue'
 import { id, type FlowsState } from './state'
-import { id as brainId, type BrainState } from '@/features/brain/fe/state'
 
 interface Props {
   settings?: FlowsSettings
@@ -224,7 +225,7 @@ const emit = defineEmits<{
 const enableFlowPreview = ref<boolean>(props.settings?.enableFlowPreview ?? true)
 
 // Get flows actor and state via selectors
-const flowsActor: FlowsState = actorOf(id)
+const flowsActor: FlowsState = usePlugin()
 const flows = useSelector(flowsActor, (state) => state.context.flows || [])
 // The root flow is the flows system's (the flow with the root role), not a setting
 const rootFlowId = useSelector(flowsActor, (state) => state.context.rootFlowId)
@@ -242,10 +243,7 @@ const exportErrors = useSelector(flowsActor, (state) => state.context.dslExport.
 const exportedFilePath = useSelector(flowsActor, (state) => state.context.dslExport.filePath)
 const exportedFlowCount = useSelector(flowsActor, (state) => state.context.dslExport.flowCount)
 
-// Get settings actor for navigation only
-const settingsActor = actorOf('settings')
-const brainActor: BrainState = actorOf(brainId)
-const runningRootFlowId = useSelector(brainActor, (state) => state.context.runningRootFlowId)
+const runningRootFlowId = useRunningRootFlowId()
 
 // Check if restart is needed by comparing root flow IDs
 const needsRestart = computed(() => {
@@ -288,8 +286,8 @@ const handleRootFlowChange = () => {
 }
 
 const goToBrainSettings = () => {
-  // Navigate to brain settings
-  settingsActor.send({ type: 'PLUGIN.SELECT', pluginId: 'brain' })
+  // Show the brain's settings beside these, in the settings plugin
+  navigateToPlugin('settings', { type: 'PLUGIN.SELECT', pluginId: 'brain' })
 }
 
 // DSL Import - file picker and emit to state machine

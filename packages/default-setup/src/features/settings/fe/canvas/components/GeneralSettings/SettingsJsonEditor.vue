@@ -38,12 +38,13 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { ref, onMounted, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor'
 
-const actor = actorOf('settings')
+const actor = usePlugin()
 const settings = useSelector(actor, (state: any) => state.context.settings)
 
 const jsonText = ref('')

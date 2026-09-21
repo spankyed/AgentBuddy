@@ -178,7 +178,8 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { HardDrive, PackageOpen, RotateCcw, Trash2 } from 'lucide-vue-next'
@@ -204,7 +205,7 @@ function onHotkeyUpdate(event: { path: string[]; value: any }) {
   })
 }
 
-const actor = actorOf('settings')
+const actor = usePlugin()
 
 const packSeedsImport = useSelector(actor, (state: any) => state.context.packSeedsImport)
 const resetting = useSelector(actor, (state: any) => state.context.resetting)

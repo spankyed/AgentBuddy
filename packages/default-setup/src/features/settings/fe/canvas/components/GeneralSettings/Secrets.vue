@@ -104,11 +104,10 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { ExternalLink, ShieldAlert, ShieldCheck } from 'lucide-vue-next'
-import { openInAppBrowser, secretsClient, useActorSystem } from '@abuddy/sdk/fe'
+import { openInAppBrowser, secretsClient, usePlugin } from '@abuddy/sdk/fe'
 import { providerLabels } from '@abuddy/sdk/models'
 import type { SecretInfo, SecretProvider, SecretsStatus } from '@abuddy/sdk/services'
 import { API_KEY_URLS, REQUIRED_PROVIDERS } from '../../../../constants'
@@ -116,7 +115,7 @@ import CliProviders from './CliProviders.vue'
 import SecretKeyRow from './SecretKeyRow.vue'
 import NewSecretRow from './NewSecretRow.vue'
 
-const settingsActor = actorOf('settings')
+const settingsActor = usePlugin()
 const secrets = useSelector(settingsActor, (state: any) => state.context.secrets as SecretInfo[])
 const status = useSelector(settingsActor, (state: any) => state.context.secretsStatus as SecretsStatus | null)
 const error = ref<string | null>(null)

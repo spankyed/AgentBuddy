@@ -87,11 +87,13 @@
 </template>
 
 <script setup lang="ts">
+import { usePlugin } from '@abuddy/sdk/fe'
 import { codeChild } from '@/features/code/fe/utils/parent-communication'
-import { actorOf } from '@/__generated__/fe'
+import type { CodeSettings } from '@/__generated__/types'
+import { usePluginSettings } from '@/features/settings/fe/public'
 import { ref, computed, provide, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { id as codeId, type CodeState } from '@/features/code/fe/state'
+import type { CodeState } from '@/features/code/fe/state'
 import Dialog from '@abuddy/ui/design/dialog'
 import ExplorerTreeItem from '@/features/code/fe/features/explorer/ExplorerTreeItem.vue'
 import CodePanelHeader from '@/features/code/fe/features/CodePanelHeader.vue'
@@ -101,10 +103,9 @@ import { FolderOpen, FolderPlus, RefreshCw, AlertCircle, X } from 'lucide-vue-ne
 import { useExplorerSelection } from './composables/useExplorerSelection'
 import { useExplorerDragDrop } from './composables/useExplorerDragDrop'
 import type { FileInfo } from './state'
-import { pluginSettings } from '@/features/settings/plugin-settings';
 
 // Get actors
-const codeActor: CodeState = actorOf(codeId)
+const codeActor: CodeState = usePlugin()
 const explorerActor = codeChild(codeActor, 'explorer')!
 const terminalActor = codeChild(codeActor, 'terminal')!
 
@@ -197,8 +198,8 @@ provide('explorer-open-file', (path: string, editorMode?: 'richText' | 'plainTex
   explorerActor?.send({ type: 'explorer.OPEN_FILE', path, editorMode })
 })
 
-const settingsActor = actorOf('settings')
-const mdEditorDefault = useSelector(settingsActor, (state: any) => pluginSettings(state.context.settings, 'code')?.mdEditorDefault ?? false)
+const storedCodeSettings = usePluginSettings<CodeSettings>('code')
+const mdEditorDefault = computed(() => storedCodeSettings.value?.mdEditorDefault ?? false)
 provide('explorer-md-editor-default', () => mdEditorDefault.value)
 
 provide('explorer-rename', (oldPath: string, newName: string) => {

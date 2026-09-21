@@ -42,10 +42,11 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { ref } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { id, type CodeState } from '@/features/code/fe/state'
+import type { CodeState } from '@/features/code/fe/state'
 import ExplorerPanel from '@/features/code/fe/features/explorer/ExplorerPanel.vue'
 import SearchPanel from '@/features/code/fe/features/search/SearchPanel.vue'
 import CommitPanel from '@/features/code/fe/features/commit/CommitPanel.vue'
@@ -55,7 +56,7 @@ import PromptsPanel from '@/features/code/fe/features/prompts/PromptsPanel.vue'
 import PanelTerminalSection from '@/features/code/fe/features/terminal/PanelTerminalSection.vue'
 import PanelResizer from '@abuddy/ui/layout/panel-resizer'
 
-const actor: CodeState = actorOf(id)
+const actor: CodeState = usePlugin()
 
 const selectedPanel = useSelector(actor, (state) => state.context.selectedPanel)
 const panelTerminalExpanded = useSelector(actor, (state) => state.context.panelTerminalExpanded)

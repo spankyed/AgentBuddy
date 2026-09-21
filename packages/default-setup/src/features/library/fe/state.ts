@@ -51,6 +51,7 @@ function findItemById(context: LibraryContext, id: string): LibraryItem | undefi
 export const id = 'library' as const;
 import type { SnapshotFrom } from 'xstate'
 import type { ContentSection } from '@/features/library/be/types';
+import { libraryPlugin } from './public'
 
 export type LibraryState = SnapshotFrom<typeof librarySystem>
 
@@ -800,6 +801,7 @@ export const librarySystem = setup({
   },
 }).createMachine({
   id: 'library',
+  entry: ({ self }) => libraryPlugin.bind(self),
   initial: 'browser',
   context: {
     // Core view state

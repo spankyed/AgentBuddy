@@ -193,14 +193,14 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { ref } from 'vue'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import ColorPicker, { DEFAULT_COLORS } from '@abuddy/ui/design/ColorPicker'
 import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
-import { id } from './state'
 
 interface LibraryTagOption {
   name: string
@@ -262,7 +262,7 @@ const removeTag = (index: number) => {
 }
 
 // Get library actor and state via selectors
-const libraryActor = actorOf(id)
+const libraryActor = usePlugin()
 
 // Import state
 const isImporting = useSelector(libraryActor, (state: any) => state.context.libraryImport.status === 'importing')

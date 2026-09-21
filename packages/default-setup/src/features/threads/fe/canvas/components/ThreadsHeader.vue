@@ -114,7 +114,8 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { ref, computed, watch } from 'vue'
 import { Search, Filter, List, Columns3, PanelLeft, History, Archive, X } from 'lucide-vue-next'
 import { useSelector } from '@xstate/vue'
@@ -123,7 +124,7 @@ import FilterPopover from './FilterPopover.vue'
 import { id, type ThreadsState } from '@/features/threads/fe/state'
 import type { ThreadTagOption } from '@/__generated__/types'
 
-const actor: ThreadsState = actorOf(id)
+const actor: ThreadsState = usePlugin()
 const currentState = useSelector(actor, s => s.value)
 const isDashboardView = computed(() => currentState.value === 'dashboard')
 const isListView = computed(() => currentState.value === 'list')

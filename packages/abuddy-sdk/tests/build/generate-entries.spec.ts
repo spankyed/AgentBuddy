@@ -303,7 +303,7 @@ function typedDependency(systems: Record<string, string>): PackSnapshot {
 
 describe('generated sends compile', () => {
   it('for feature ids that match generated names, beside a dependency with the same feature ids', () => {
-    const ids = ['foo', 'fooEntry', 'specs', 'incomingEvents', 'actorOf', 'registration', 'steps'];
+    const ids = ['foo', 'fooEntry', 'specs', 'incomingEvents', 'navigateToPlugin', 'registration', 'steps'];
     for (const id of ids) {
       write(`src/features/${id}/be/system.ts`, [
         "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",

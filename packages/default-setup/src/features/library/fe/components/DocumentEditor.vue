@@ -90,7 +90,8 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { ref, computed, reactive, watch, onMounted, nextTick } from 'vue'
 import { ChevronRight, Plus } from 'lucide-vue-next'
 import NameSaveHeader from '@abuddy/ui/design/NameSaveHeader'
@@ -115,7 +116,7 @@ const isSymlink = computed(() => props.document?.id?.startsWith('symlink:') ?? f
 const mediaEntityId = crypto.randomUUID()
 
 // Get settings from state
-const actor = actorOf('library')
+const actor = usePlugin()
 const settings = useSelector(actor, (state: any) => state.context.settings)
 
 const formData = reactive({

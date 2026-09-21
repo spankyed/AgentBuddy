@@ -102,7 +102,7 @@ export default ${camel}Plugin;
 
 const STATE = (name: string) => `import { setup, type ActorRefFrom } from 'xstate';
 
-// The feature's name, which this pack's code sends to and looks the plugin up by (\`actorOf\` from #generated/fe)
+// The feature's name, which this pack's code sends to and opens the plugin by (\`navigateToPlugin\` from #generated/fe)
 export const id = '${name}';
 export type ${toPascalCase(name)}State = ActorRefFrom<typeof ${toCamelCase(name)}State>;
 

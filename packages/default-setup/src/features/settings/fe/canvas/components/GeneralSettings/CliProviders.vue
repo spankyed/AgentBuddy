@@ -23,9 +23,9 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
 import { ref, watch } from 'vue'
-import { useSettingsSaveStatus } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+import { useSettingsSaveStatus } from '@/features/settings/fe/public'
 import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
 import CliProviderRow from './CliProviderRow.vue'
@@ -33,7 +33,7 @@ import { pluginSettings } from '@/features/settings/plugin-settings';
 
 const { updateSettings } = useSettingsSaveStatus()
 
-const settingsActor = actorOf('settings')
+const settingsActor = usePlugin()
 const cliTestResults = useSelector(settingsActor, (state: any) => state.context.cliTestResults)
 
 const providers = [

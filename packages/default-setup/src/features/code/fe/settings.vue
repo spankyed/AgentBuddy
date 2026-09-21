@@ -459,7 +459,8 @@ import KeyboardShortcutInput from '@abuddy/ui/components/KeyboardShortcutInput'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import DirectorySelect from '@abuddy/ui/design/DirectorySelect'
 import { X, Plus } from 'lucide-vue-next'
-import { navigateToPlugin, actorOf } from '@/__generated__/fe'
+import { navigateToPlugin } from '@/__generated__/fe'
+import { useGeneralSettings } from '@/features/settings/fe/public'
 import type { CodeSettings, TerminalScript } from '@/__generated__/types'
 
 interface Project {
@@ -512,10 +513,8 @@ const newScriptLabel = ref('')
 const newScriptCommand = ref('')
 
 // Get projects from general settings
-const settingsActor = actorOf('settings')
-const projects = computed(() => {
-  return (useSelector(settingsActor, (state: any) => state.context.settings?.general?.projects).value || []) as Project[]
-})
+const storedProjects = useGeneralSettings('projects')
+const projects = computed(() => (storedProjects.value ?? []) as Project[])
 
 // Helper functions
 const getAllProjects = (): Project[] => {

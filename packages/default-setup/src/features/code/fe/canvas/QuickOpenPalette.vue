@@ -139,11 +139,10 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useApplicationActor } from '@abuddy/sdk/fe'
-import { id as codeId, type CodeState, type QuickOpenResult } from '@/features/code/fe/state'
+import { useApplicationActor, usePlugin } from '@abuddy/sdk/fe'
+import type { CodeState, QuickOpenResult } from '@/features/code/fe/state'
 import { fuzzySearch, highlightMatches } from '@/features/code/fe/utils/fuzzy-search'
 import { getRecencyScore } from '@/features/code/fe/utils/recent-files'
 import { 
@@ -163,7 +162,7 @@ interface EnhancedSearchResult {
 
 // Get state
 const appActor = useApplicationActor()
-const codeActor: CodeState = actorOf(codeId)
+const codeActor: CodeState = usePlugin()
 
 // State selectors
 const isVisible = useSelector(codeActor, (state) => state.context.isQuickOpenVisible)

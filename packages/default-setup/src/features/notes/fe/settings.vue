@@ -192,7 +192,8 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { ref, watch } from 'vue'
 import { Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
@@ -250,7 +251,7 @@ const updatePosition = (value: 'left' | 'right') => {
 }
 
 // Get notes actor and state via selectors
-const notesActor = actorOf(id)
+const notesActor = usePlugin()
 
 // Import state
 const isImporting = useSelector(notesActor, (state: any) => state.context.notesImport.status === 'importing')

@@ -13,7 +13,7 @@ src/components/   app-level pieces: BaseForm, BaseNode + node-styles/node-dimens
                   KeyboardShortcutInput, TNodeListItem, TipSection
 src/components/tiptap/   TiptapEditor, TiptapSearchBar, internal menus (TiptapBubbleMenu, TiptapBlockMenu,
                   TiptapImageBubbleMenu, bubble-menu/*), extensions.ts + extensions/*, composables/*,
-                  editor-config.ts, editor-system.ts, tiptap-theme.css
+                  editor-config.ts, tiptap-theme.css
 src/composables/  useClickOutside, useCollapsibleState, useContextMenu, useDebounce, useExternalFileDrag, useInfiniteScroll
 src/utils/        json-detection, path-truncation (pure helpers)
 scripts/exports.ts         computes the exports map; `--check` mode (the build reads it too)
@@ -73,7 +73,7 @@ The repo's `scripts/build-ui-package.ts` (it lives there, not here, so this pack
 
 ## How packs get it at runtime
 
-- **Host copy (default).** `getUiFeModules()` (`@abuddy/host/build/shared-deps`) lists every key of this package's exports map. The renderer's `hostDepsPlugin` (`packages/renderer/vite.config.ts`) imports each module and puts it on `window.__abuddy` under its full specifier (`window.__abuddy['@abuddy/ui/design/button']`). The pack FE bundler (`abuddy-cli/src/build/fe-bundler.ts`, `packExternalsPlugin`) replaces a pack's `@abuddy/ui/*` imports with proxy modules that read that global. A proxy throws if the host lacks the module and warns once for each export an older host lacks. Stateful modules therefore have one instance app-wide: `monaco-config.ts` (registered DSL libs, initialized languages), `editor-system.ts` (`setEditorSystem`, called by `TiptapEditor.vue`). Specs: `fe-bundler-shared-ui`, `fe-bundler-proxy-exports`.
+- **Host copy (default).** `getUiFeModules()` (`@abuddy/host/build/shared-deps`) lists every key of this package's exports map. The renderer's `hostDepsPlugin` (`packages/renderer/vite.config.ts`) imports each module and puts it on `window.__abuddy` under its full specifier (`window.__abuddy['@abuddy/ui/design/button']`). The pack FE bundler (`abuddy-cli/src/build/fe-bundler.ts`, `packExternalsPlugin`) replaces a pack's `@abuddy/ui/*` imports with proxy modules that read that global. A proxy throws if the host lacks the module and warns once for each export an older host lacks. Stateful modules therefore have one instance app-wide: `monaco-config.ts` (registered DSL libs, initialized languages). Specs: `fe-bundler-shared-ui`, `fe-bundler-proxy-exports`.
 - **`fe.bundleUi: true`** in `abuddy.json` bundles all of `@abuddy/ui` into the pack's `fe.js`, so a pack never mixes its own copy with the host's. The pack's Tailwind build then also scans `@abuddy/ui` (its `src/` when linked to a checkout, else `dist/**/*.js`). Fixture: `tests/fixtures/bundled-ui-pack`.
 - **Consequences for this package:**
   - The app imports every public module at startup, so a module must do nothing when imported: no top-level listeners or registrations (`ui-import-side-effects.spec.ts`). Declarations are fine, including objects built from calls.
@@ -83,7 +83,7 @@ The repo's `scripts/build-ui-package.ts` (it lives there, not here, so this pack
 
 Contracts and host-shared state that packs need even without `@abuddy/ui` live in the SDK (`packages/abuddy-sdk/src/fe/`) and are shared through `SDK_FE_MODULES`. UI code imports them from `@abuddy/sdk/fe` and does not define its own copies:
 
-- `useActorSystem` (`TiptapEditor.vue`, `KeyboardShortcutInput.vue`)
+- `useApplicationActor` (`KeyboardShortcutInput.vue`)
 - menu state: `onMenuOpenChange` (`TrackedContextMenuRoot.vue`), `useTrackedMenuOpen` (`ContextMenuPopup.vue`, `composables/useContextMenu.ts`)
 - registries of what pack frontends registered, which read the renderer's bound registry (`bindFeHost({ packs })`): `tiptapPluginRegistry` (`TiptapEditor.vue`) and `getDslTypes` (`monaco-config.ts`; packs' frontend registrations carry them as `dslTypes`); and `EXTRA_BLOCK_ITEMS_KEY` (`TiptapBlockMenu.vue`)
 - `openInAppBrowser` (`tiptap/composables/createEditorClickHandler.ts`)
@@ -97,7 +97,7 @@ UI modules also read `stepRegistry` from `@abuddy/sdk/steps` (`node-styles.ts`, 
 - **Class passthrough**: some components take a `class?: string` prop and merge it (`button.vue`: `[baseClasses, variantClasses, props.class]`). `dialog.vue` has `contentClass`.
 - **Variants** are a string-union prop mapped to class strings in a `computed` (`button.vue` `variant`: `primary | secondary | transparent | ghost | danger`, plus disabled styles).
 - **Primitives**: dialogs, menus and popovers wrap `reka-ui` (`dialog.vue`, `ConfirmationDialog.vue`, `TrackedContextMenuRoot.vue`, `tag-input.vue`, `ImageLightbox.vue`, `JsonHoverPopup.vue`). Icons come from `lucide-vue-next`.
-- **Relative imports** name the file with its extension (`./editor-system.ts`, `./node-handles.ts`, `./button.vue`). `tsconfig.json` sets `allowImportingTsExtensions`, and `npm run check:specifiers` rejects relative `.js` specifiers.
+- **Relative imports** name the file with its extension (`./editor-config.ts`, `./node-handles.ts`, `./button.vue`). `tsconfig.json` sets `allowImportingTsExtensions`, and `npm run check:specifiers` rejects relative `.js` specifiers.
 - **Naming** (observed, not enforced):
   - Most SFCs are PascalCase (`CopyButton.vue`, `TiptapEditor.vue`). A few older primitives are kebab/lowercase (`button.vue`, `dialog.vue`, `tag-input.vue`, `panel-resizer.vue`); keep existing names, since they are export paths.
   - Non-component modules are kebab-case (`node-styles.ts`, `monaco-config.ts`). Composables are `useX.ts` (`createX.ts` for factories in `tiptap/composables`).

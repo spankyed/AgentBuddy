@@ -1,13 +1,10 @@
 import { NotebookText, CircleCheck, ListChecks } from 'lucide-vue-next'
+import { useSelector } from '@xstate/vue'
 import { navigateToPlugin } from '@/__generated__/fe'
+import { NOTE_TYPE_TO_REFERENCE_TYPE, notesPlugin } from './public'
 import { id as notes } from './state'
 import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider, ReferenceItem } from '@abuddy/sdk/fe/references'
 
-export const NOTE_TYPE_TO_REFERENCE_TYPE: Record<string, string> = {
-  document: 'note',
-  task: 'task',
-  tasklist: 'tasklist',
-}
 
 export const referenceTypes: Record<string, ReferenceTypeConfig> = {
   note: {
@@ -25,7 +22,7 @@ export const referenceTypes: Record<string, ReferenceTypeConfig> = {
       ['path', { d: 'M9.5 12H16' }],
       ['path', { d: 'M9.5 16H14' }],
     ],
-    navigate: (_system: any, refId: string) => {
+    navigate: (refId: string) => {
       navigateToPlugin(notes, { type: 'NOTE.OPEN', noteId: refId })
     },
   },
@@ -38,7 +35,7 @@ export const referenceTypes: Record<string, ReferenceTypeConfig> = {
       ['circle', { cx: '12', cy: '12', r: '10' }],
       ['path', { d: 'm9 12 2 2 4-4' }],
     ],
-    navigate: (_system: any, refId: string) => {
+    navigate: (refId: string) => {
       navigateToPlugin(notes, { type: 'NOTE.OPEN', noteId: refId })
     },
   },
@@ -54,7 +51,7 @@ export const referenceTypes: Record<string, ReferenceTypeConfig> = {
       ['path', { d: 'M13 12h8' }],
       ['path', { d: 'M13 18h8' }],
     ],
-    navigate: (_system: any, refId: string) => {
+    navigate: (refId: string) => {
       navigateToPlugin(notes, { type: 'NOTE.OPEN', noteId: refId })
     },
   },
@@ -66,8 +63,8 @@ export const categories: CategoryConfig[] = [
 
 export const itemsProvider: CategoryItemsProvider = {
   category: 'notes',
-  pluginId: notes,
-  buildItems: (actorState: any): ReferenceItem[] => {
+  // The plugin's state, as it changes
+  useItems: () => useSelector(notesPlugin.get(), (actorState: any): ReferenceItem[] => {
     const allNotes = actorState?.context?.notes || []
     return allNotes
       .filter((n: any) => n.noteType in NOTE_TYPE_TO_REFERENCE_TYPE)
@@ -77,5 +74,5 @@ export const itemsProvider: CategoryItemsProvider = {
         label: n.title || n.id,
         type: NOTE_TYPE_TO_REFERENCE_TYPE[n.noteType] as string,
       }))
-  },
+  }),
 }

@@ -30,8 +30,10 @@
             :menu-items="isOnboarding ? [] : allMenuItems"
             :label="`${toggles.canvas ? defaultPlugin.label : activePlugin.label} Canvas`"
             :header-class="toggles.canvas ? defaultPlugin.options?.headerClass : activePlugin.options?.headerClass">
-            <Router v-if="toggles.canvas" :views="defaultPlugin.canvas" :target="targetView" />
-            <Router v-else :views="activePlugin.canvas" :target="targetView" />
+            <!-- Each plugin area renders as part of its plugin, which is what usePlugin() returns there -->
+            <PluginScope :plugin="currentPluginId" :key="currentPluginId">
+              <Router :views="toggles.canvas ? defaultPlugin.canvas : activePlugin.canvas" :target="targetView" />
+            </PluginScope>
             </CanvasArea>
 
             <!-- Vertical Resizer (hidden during onboarding) -->
@@ -52,7 +54,9 @@
                     ? { flex: '1 1 0%', minHeight: 0 }
                     : { height: `calc(${100 - panelSizes.canvasHeight}% - 4px)` }"
             >
-                <component :is="defaultPlugin.chat" />
+                <PluginScope :plugin="defaultPlugin.id" :key="defaultPlugin.id">
+                  <component :is="defaultPlugin.chat" />
+                </PluginScope>
             </ChatArea>
         </div>
 
@@ -71,8 +75,12 @@
             data-onboarding-id="inspection-panel"
 :style="{ width: `${panelSizes.inspectionWidth}px` }"
             :label="`${activePlugin.panel ? activePlugin.label : 'Brain'} Inspection`">
-            <component v-if="activePlugin.panel" :is="activePlugin.panel" />
-            <component v-else-if="inspectMode && fallbackPanel" :is="fallbackPanel" />
+            <PluginScope v-if="activePlugin.panel" :plugin="activePlugin.id" :key="activePlugin.id">
+              <component :is="activePlugin.panel" />
+            </PluginScope>
+            <PluginScope v-else-if="inspectMode && fallbackPanel" :plugin="getDesignated('brain')" key="fallback-panel">
+              <component :is="fallbackPanel" />
+            </PluginScope>
         </InspectionPanel>
     </div>
     </div>
@@ -89,7 +97,7 @@ import ChatArea from '@/core/components/layout/chat-area.vue'
 import InspectionPanel from '@/core/components/layout/inspection-panel.vue'
 import PanelResizer from '@abuddy/ui/layout/panel-resizer'
 import { applicationState } from '@/main'
-import { navigateToAddress } from '@abuddy/sdk/fe'
+import { navigateToAddress, PluginScope } from '@abuddy/sdk/fe'
 import Router from '@/core/components/layout/router.vue'
 import { getDesignated, hasDesignation } from '@abuddy/sdk/fe'
 import type { ContextMenuItem } from '@abuddy/sdk/fe'

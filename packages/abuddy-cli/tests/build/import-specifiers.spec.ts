@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  findAppImportsInPackTests, findCrossCheckoutResolution, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackBackendConsole, findRawPackHelpers,
+  findAppImportsInPackTests, findCrossCheckoutResolution, findCrossFeatureImports, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackBackendConsole, findRawPackHelpers,
   findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs,
   DECLARES_SOURCE_BY_DESIGN, RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
 } from '../../../../scripts/check-import-specifiers.ts';
@@ -423,6 +423,31 @@ describe('findSharedPackageLists', () => {
   it('holds for every consumer of SHARED_INSTANCE_PACKAGES', () => {
     for (const file of SHARED_LIST_CONSUMERS) expect(fs.existsSync(path.join(REPO_ROOT, file)), file).toBe(true);
     expect(findSharedPackageLists()).toEqual([]);
+  });
+});
+
+describe('findCrossFeatureImports', () => {
+  const src = 'pack/src';
+
+  it("flags another feature's machine or component, by alias or relative path", () => {
+    writeAt(`${src}/features/code/fe/panel.vue`, "<script setup lang=\"ts\">\nimport { id } from '@/features/actions/fe/state'\n</script>");
+    writeAt(`${src}/extensions/viewer.ts`, "import List from '../features/notes/fe/canvas/list.vue';");
+    expect(findCrossFeatureImports([src], root)).toEqual([
+      `${src}/extensions/viewer.ts:1: ../features/notes/fe/canvas/list.vue`,
+      `${src}/features/code/fe/panel.vue:2: @/features/actions/fe/state`,
+    ]);
+  });
+
+  it("allows a feature's own frontend, another's public module, backend and shared modules, and generated code", () => {
+    writeAt(`${src}/features/code/fe/panel.ts`, [
+      "import { codeChild } from '@/features/code/fe/utils/parent-communication';",
+      "import { useActionsList } from '@/features/actions/fe/public';",
+      "import { pluginSettings } from '@/features/settings/plugin-settings';",
+      "import type { ActionEntity } from '@/features/actions/be/types';",
+    ].join('\n'));
+    writeAt(`${src}/features/code/fe/features/list.ts`, "import state from '../state';");
+    writeAt(`${src}/__generated__/pack-entry-fe.ts`, "import plugin from '../features/notes/fe/plugin.js';");
+    expect(findCrossFeatureImports([src], root)).toEqual([]);
   });
 });
 

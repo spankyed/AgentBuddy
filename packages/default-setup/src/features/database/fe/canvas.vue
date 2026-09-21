@@ -50,10 +50,11 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { ref, onUnmounted } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { id as databaseId, type DatabaseState } from './state'
+import type { DatabaseState } from './state'
 
 import SimpleTable from './components/simple-table/SimpleTable.vue'
 import SchemaPanel from './components/SchemaPanel.vue'
@@ -61,7 +62,7 @@ import QueryEditor from './components/QueryEditor.vue'
 import TraceHistoryViewer from './components/trace/TraceHistoryViewer.vue'
 import BackupRestore from './components/BackupRestore.vue'
 
-const databaseActor: DatabaseState = actorOf(databaseId)
+const databaseActor: DatabaseState = usePlugin()
 const viewMode = useSelector(databaseActor, (state) => state.context.viewMode)
 const isInBackupState = useSelector(databaseActor, (state) => state.matches('backup'))
 

@@ -9,14 +9,14 @@
       <div
         v-for="plugin in pluginsWithSettings"
         :key="plugin.id"
-        :data-active="selectedPluginId === plugin.id"
+        :data-active="selectedPlugin?.id === plugin.id"
         class="flex items-center gap-1 mb-0.5"
       >
         <button
           @click="selectPlugin(plugin.id)"
           :class="[
             'flex-1 flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors',
-            selectedPluginId === plugin.id
+            selectedPlugin?.id === plugin.id
               ? 'bg-blue-500/20 text-blue-400'
               : 'text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800'
           ]"
@@ -59,12 +59,15 @@
             <ExternalLink class="w-4 h-4" />
           </button>
         </div>
-        <component 
-          :is="selectedPlugin.settings"
-          :settings="currentPluginSettings"
-          :all-settings="settings"
-          @update-setting="handleUpdateSetting"
-        />
+        <!-- A plugin's settings render as part of that plugin, so usePlugin() there is the plugin's own -->
+        <PluginScope :plugin="selectedPlugin.id" :key="selectedPlugin.id">
+          <component
+            :is="selectedPlugin.settings"
+            :settings="currentPluginSettings"
+            :all-settings="settings"
+            @update-setting="handleUpdateSetting"
+          />
+        </PluginScope>
         
         <!-- Save Status Indicator -->
         <div class="mt-6 flex items-center gap-2">
@@ -89,14 +92,13 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUpdated } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useApplicationActor, getDesignated } from '@abuddy/sdk/fe'
-import { navigateToPlugin, type PluginName, actorOf } from '@/__generated__/fe'
+import { getDesignated, openPlugin, PluginScope, useApplicationActor, usePlugin } from '@abuddy/sdk/fe'
 import { Package, CheckCircle, Eye, EyeOff, ExternalLink } from 'lucide-vue-next'
-import { useSettingsSaveStatus } from '@abuddy/sdk/fe'
+import { useSettingsSaveStatus } from '../../public'
 
 const applicationActor = useApplicationActor()
 
-const actor = actorOf('settings')
+const actor = usePlugin()
 const allPlugins = useSelector(applicationActor, (state: any) => state.context.plugins)
 
 const selectedPluginId = useSelector(actor, (state: any) => state.context.selectedPluginId)
@@ -114,26 +116,26 @@ const { saveStatus, updateSettings } = useSettingsSaveStatus()
 
 // Compute current plugin settings
 const currentPluginSettings = computed(() => {
-  if (!selectedPluginId.value || !settings.value?.plugins) return null
-  return settings.value.plugins[selectedPluginId.value]
+  if (!selectedPlugin.value || !settings.value?.plugins) return null
+  return settings.value.plugins[selectedPlugin.value.id]
 })
 
 const pluginsWithSettings = computed(() => {
   return allPlugins.value.filter((plugin: any) => plugin.settings)
 })
 
-const selectedPlugin = computed(() => {
-  if (!selectedPluginId.value) return null
-  return pluginsWithSettings.value.find((p: any) => p.id === selectedPluginId.value)
-})
+// The first plugin with settings until one is picked
+const selectedPlugin = computed(() =>
+  pluginsWithSettings.value.find((p: any) => p.id === selectedPluginId.value) ?? pluginsWithSettings.value[0] ?? null
+)
 
 const selectPlugin = (pluginId: string) => {
   actor.send({ type: 'PLUGIN.SELECT', pluginId })
 }
 
-// `pluginId` is a registered plugin's id, which is its address
+// `pluginId` is a registered plugin's id: data, so it opens through the checked door
 const goToPlugin = (pluginId: string) => {
-  navigateToPlugin(pluginId as PluginName)
+  openPlugin(pluginId)
 }
 
 // Whether a plugin's tab shows: the app shell's state, which the application actor holds
@@ -153,11 +155,11 @@ const togglePluginVisibility = (pluginId: string) => {
 
 // Handle update events from child components
 const handleUpdateSetting = (event: { path: string[], value: any }) => {
-  if (!selectedPluginId.value) return
-  
+  if (!selectedPlugin.value) return
+
   updateSettings({
     entityType: 'plugin',
-    label: selectedPluginId.value,
+    label: selectedPlugin.value.id,
     path: event.path,
     value: event.value
   })

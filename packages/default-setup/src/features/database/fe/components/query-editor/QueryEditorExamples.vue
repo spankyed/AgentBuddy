@@ -14,15 +14,16 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
-import { id, type DatabaseState } from '../../state';
+import type { DatabaseState } from '../../state';
 import ExampleCard from './ExampleCard.vue';
 import { queryExamples } from './query-examples';
 import { transactionExamples } from './transaction-examples';
 
-const actor: DatabaseState = actorOf(id);
+const actor: DatabaseState = usePlugin();
 const mode = useSelector(actor, (state) => state.context.mode);
 
 const examples = computed(() => 

@@ -1,6 +1,6 @@
 import { computed } from 'vue'
-import { useSelector } from '@xstate/vue'
-import { navigateToPlugin, actorOf } from '@/__generated__/fe'
+import { navigateToPlugin } from '@/__generated__/fe'
+import { updateGeneralSettings, useGeneralSettings } from '@/features/settings/fe/public'
 export interface Project {
   name: string
   directories: string[]
@@ -8,10 +8,8 @@ export interface Project {
 }
 
 export function useProjectActions() {
-  const settingsActor = actorOf('settings')
-  const projects = useSelector(settingsActor, (state: any) =>
-    state.context.settings?.general?.projects || []
-  )
+  const stored = useGeneralSettings('projects')
+  const projects = computed(() => stored.value ?? [])
 
   // Helper to check if a directory is in a project
   const isDirectoryInProject = (projectDirectories: string[], directoryPath: string) => {
@@ -47,13 +45,7 @@ export function useProjectActions() {
     }
 
     // Update settings
-    settingsActor?.send({
-      type: 'SETTINGS.UPDATE',
-      entityType: 'general',
-      label: 'projects',
-      path: [],
-      value: updatedProjects
-    })
+    updateGeneralSettings('projects', [], updatedProjects)
   }
 
   // Remove directory from project (and delete project if it's the last directory)
@@ -73,13 +65,7 @@ export function useProjectActions() {
     }
 
     // Update settings
-    settingsActor?.send({
-      type: 'SETTINGS.UPDATE',
-      entityType: 'general',
-      label: 'projects',
-      path: [],
-      value: updatedProjects
-    })
+    updateGeneralSettings('projects', [], updatedProjects)
   }
 
   // Add directory to existing project
@@ -96,13 +82,7 @@ export function useProjectActions() {
     project.directories.push(directoryPath)
 
     // Update settings
-    settingsActor?.send({
-      type: 'SETTINGS.UPDATE',
-      entityType: 'general',
-      label: 'projects',
-      path: [],
-      value: updatedProjects
-    })
+    updateGeneralSettings('projects', [], updatedProjects)
   }
 
   // Create new project with directory
@@ -126,13 +106,7 @@ export function useProjectActions() {
     updatedProjects.push(newProject)
 
     // Update settings
-    settingsActor?.send({
-      type: 'SETTINGS.UPDATE',
-      entityType: 'general',
-      label: 'projects',
-      path: [],
-      value: updatedProjects
-    })
+    updateGeneralSettings('projects', [], updatedProjects)
   }
 
   // Navigate to projects settings

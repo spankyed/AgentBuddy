@@ -124,7 +124,8 @@ Your code names features: your own by id (`'bookmarks'`), and every other as `<p
 | send to a plugin from a system | `sendToPlugin(name, event)` (`#generated/events`) |
 | send to a system, from a plugin or from another system | `sendToSystem(name, event)` (`#generated/events`), typed with the events that system declares |
 | send to whichever system plays a role | `sendToSystem({ role }, event)`: `sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType })` fires a flow event |
-| reach a plugin's actor from frontend code | `actorOf(name)` (`#generated/fe`) |
+| reach your plugin's actor from its components | `usePlugin()` (`@abuddy/sdk/fe`): the app renders a plugin's canvas, panel, chat and settings as part of it |
+| offer another of your features your plugin's state or events | export composables and functions from the feature's `fe/public.ts`; a feature imports nothing else of another's frontend (`check:specifiers`) |
 | open a plugin, optionally handing it events | `navigateToPlugin(name, event?)` (`#generated/fe`), which takes only the names your pack can write: its own features' and its dependencies' |
 | open a plugin a piece of data names (a link's target) | `openPlugin(ref, event?)` (`@abuddy/sdk/fe`), which throws unless `ref` is a registered plugin's `<packId>/<featureId>` |
 

@@ -13,7 +13,7 @@ src/
     pack-entry-fe.ts       # FE entry — the PackFERegistration: plugins, steps, tiptap + app extensions, DSL types
     ears.ts                # EARS entity/relation registry, generated from abuddy.json
     bus-ids.ts             # packId and each feature's address; import-free, for the generated resolvers
-    fe.ts                  # actorOf(name), navigateToPlugin(name, event?), PluginName: FE lookups by name
+    fe.ts                  # navigateToPlugin(name, event?), PluginName: the plugins this pack's code can name
     events.ts              # PackEvents/PackSystemEvents + typed sendToPlugin/sendToSystem facade
     system-specs.ts        # Type-only: each system's incoming events, read by events.ts
     types.ts               # Type barrel (outgoing events + per-feature types)
@@ -51,6 +51,7 @@ Each feature lives in `src/features/<name>/` with this layout:
 - `fe/state.ts` — XState frontend state machine
 - `fe/canvas/` — Main view components
 - `fe/references.ts` — which of the feature's things are linkable from an editor, and how (if applicable)
+- `fe/public.ts` — what the feature's frontend offers other features and extensions (its state as composables, the events it takes), over a handle its machine binds as it starts (`features/plugin-handle.ts`). Its own components reach its actor with `usePlugin()`; nothing outside the feature imports its frontend except through this module (`check:specifiers`). The machine imports `public.ts` to bind the handle, so `public.ts` imports the machine and anything that imports it (`references.ts`) as types only: a runtime import back is a cycle that leaves one of them unevaluated when the renderer loads
 - `settings.ts` — Per-feature default settings
 
 The 12 features: **threads**, **code**, **notes**, **browser**, **library**, **flows**, **actions**, **prompts**, **brain**, **database**, **logs**, **settings**.

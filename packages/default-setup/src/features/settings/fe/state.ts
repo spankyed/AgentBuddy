@@ -14,6 +14,7 @@ import type { EARS } from '@abuddy/sdk'
 import type { PackSeedsPreview } from '@abuddy/sdk/build'
 import type { FAQItem } from '@/features/settings/be/types';
 import { pluginSettingsKey } from '../plugin-settings';
+import { settingsPlugin } from './public';
 import { resolveName } from '@abuddy/sdk/ids';
 import { packId } from '@/__generated__/bus-ids';
 
@@ -117,19 +118,13 @@ const settingsState = setup({
       });
     },
 
-    setSettingsData: assign(({ context, event, self }) => {
+    setSettingsData: assign(({ event }) => {
       const ev = typeOf('SETTINGS_LOADED', event);
-      const result: Record<string, any> = {
+      return {
         settings: ev.data,
         faqs: ev.faqs ?? [],
         isLoading: false,
       };
-      if (!context.selectedPluginId) {
-        const appPlugins = self.system.get('host/application')?.getSnapshot()?.context?.plugins ?? [];
-        const withSettings = appPlugins.filter((p: any) => p.settings);
-        if (withSettings.length > 0) result.selectedPluginId = withSettings[0].id;
-      }
-      return result;
     }),
 
     setSecrets: assign(({ event }) => {
@@ -386,6 +381,7 @@ const settingsState = setup({
   },
 }).createMachine({
   id,
+  entry: ({ self }) => settingsPlugin.bind(self),
   initial: 'loading',
   context: () => ({
     settings: null,

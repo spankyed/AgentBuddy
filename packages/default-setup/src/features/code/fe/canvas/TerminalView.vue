@@ -44,8 +44,8 @@
 </template>
 
 <script setup lang="ts">
+import { usePlugin } from '@abuddy/sdk/fe'
 import { codeChild } from '@/features/code/fe/utils/parent-communication'
-import { actorOf } from '@/__generated__/fe'
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import ScrollToBottomFob from '@abuddy/ui/design/ScrollToBottomFob'
 import TrackedContextMenuRoot from '@abuddy/ui/design/TrackedContextMenuRoot'
@@ -75,7 +75,7 @@ defineEmits<{
   'restart-terminal': []
 }>()
 
-const codeActor: CodeState = actorOf(id)
+const codeActor: CodeState = usePlugin()
 const terminalActor = codeChild(codeActor, 'terminal')
 
 /* --------------------------------------------------------------------------

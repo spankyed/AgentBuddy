@@ -256,7 +256,6 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
 import { computed, ref, nextTick, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, type NotesState } from './state'
@@ -271,9 +270,9 @@ import {
 } from 'reka-ui'
 import { useNoteTreeDragDrop } from './composables/useNoteTreeDragDrop'
 import type { MenuItem } from '@abuddy/ui/composables/useContextMenu'
-import { useTrackedMenuOpen } from '@abuddy/sdk/fe'
+import { useTrackedMenuOpen, usePlugin } from '@abuddy/sdk/fe'
 
-const actor: NotesState = actorOf(id)
+const actor: NotesState = usePlugin()
 
 const dropdownOpen = ref(false)
 const favoritesExpanded = ref(true)

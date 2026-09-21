@@ -264,7 +264,8 @@
 </template>
 
 <script setup lang="ts">
-import { actorOf } from '@/__generated__/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+import { useGeneralSettings } from '@/features/settings/fe/public'
 import { ref, onMounted, onUnmounted, computed, watch, nextTick, type CSSProperties } from 'vue'
 import { Archive, History, ChevronUp, ChevronRight, Plus, PanelLeft, FileText, Pin, Trash2, FolderOpen, GitBranchPlus, Pencil } from 'lucide-vue-next'
 import type { ThreadEntity } from '@/__generated__/types';
@@ -281,7 +282,7 @@ import {
   ContextMenuSubContent,
 } from 'reka-ui'
 import { useSelector } from '@xstate/vue'
-import { id as threadsId, type ThreadsState } from '@/features/threads/fe/state'
+import type { ThreadsState } from '@/features/threads/fe/state'
 import ThreadContextMenu from '@/features/threads/fe/canvas/components/thread-context-menu.vue'
 import { getThreadDotColor, isThreadBusy } from './thread-status'
 
@@ -321,7 +322,7 @@ watch(isOpen, async (open) => {
 })
 
 // Get threads from the threads plugin state
-const threadsActor: ThreadsState = actorOf(threadsId)
+const threadsActor: ThreadsState = usePlugin()
 const chatStates = useSelector(threadsActor, (state) => state.context.chatStates)
 const chatStateOverrides = useSelector(threadsActor, (state) => state.context.chatStateOverrides)
 const settings = useSelector(threadsActor, (state) => state.context.settings)
@@ -422,10 +423,8 @@ const emit = defineEmits<{
 }>()
 
 // Read projects from settings for the "New Thread in Project" submenu
-const settingsActor = actorOf('settings')
-const projects = useSelector(settingsActor, (state: any) =>
-  (state.context.settings?.general?.projects || []) as Array<{ name: string; directories: string[]; color: string }>
-)
+const storedProjects = useGeneralSettings('projects')
+const projects = computed(() => storedProjects.value ?? [])
 
 const dirName = (dir: string) => dir.split('/').filter(Boolean).pop() || dir
 
