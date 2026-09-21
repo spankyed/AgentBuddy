@@ -365,6 +365,7 @@ import { useSelector } from '@xstate/vue';
 import DataRenderer from '@abuddy/ui/components/DataRenderer';
 import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe';
 import { parseSearchTerm, searchLog, highlightSearchTerm } from './search';
+import { id as settingsActorId } from '@/features/settings/fe/state';
 
 const actorSystem = useActorSystem()
 
@@ -656,7 +657,7 @@ const toggleShowAppEvents = () => {
   });
 
   // Persist to settings (will round-trip back and trigger backend rebroadcast).
-  const settingsActor = actorSystem.get('settings');
+  const settingsActor = actorSystem.get(settingsActorId);
   settingsActor.send({
     type: 'SETTINGS.UPDATE',
     entityType: 'plugin',
@@ -684,7 +685,7 @@ const excludeSource = (source: string) => {
     });
 
     // Send update to settings (this will persist it and eventually send it back)
-    const settingsActor = actorSystem.get('settings');
+    const settingsActor = actorSystem.get(settingsActorId);
     settingsActor.send({
       type: 'SETTINGS.UPDATE',
       entityType: 'plugin',

@@ -284,6 +284,7 @@ import { useSelector } from '@xstate/vue'
 import { id as threadsId, type ThreadsState } from '@/features/threads/fe/state'
 import ThreadContextMenu from '@/features/threads/fe/canvas/components/thread-context-menu.vue'
 import { getThreadDotColor, isThreadBusy } from './thread-status'
+import { id as settingsActorId } from '@/features/settings/fe/state';
 
 const actorSystem = useActorSystem()
 
@@ -424,7 +425,7 @@ const emit = defineEmits<{
 }>()
 
 // Read projects from settings for the "New Thread in Project" submenu
-const settingsActor = actorSystem.get('settings')
+const settingsActor = actorSystem.get(settingsActorId)
 const projects = useSelector(settingsActor, (state: any) =>
   (state.context.settings?.general?.projects || []) as Array<{ name: string; directories: string[]; color: string }>
 )

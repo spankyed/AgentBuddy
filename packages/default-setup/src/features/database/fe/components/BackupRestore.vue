@@ -307,7 +307,7 @@ import {
   HardDrive,
   Image as ImageIcon
 } from 'lucide-vue-next';
-import { id, type DatabaseState } from '../state';
+import { feature, id, type DatabaseState } from '../state';
 import { sendToSystem } from '@/__generated__/events';
 import ToastNotification from '@abuddy/ui/design/ToastNotification';
 
@@ -438,7 +438,7 @@ async function selectImportDirectory() {
     // Save to localStorage for future use
     localStorage.setItem('database-backup-import-path', directoryPath);
     // Get backup info for the selected directory
-    sendToSystem(id, {
+    sendToSystem(feature, {
       type: 'GET_BACKUP_INFO',
       path: directoryPath,
     });

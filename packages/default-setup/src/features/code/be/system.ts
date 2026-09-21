@@ -57,11 +57,13 @@ export type OutgoingCodeEvents =
 
 // Import only the type needed for broadcast event
 import type { TerminalInfo, CodeConnectedData, CodeSettings } from './types'
+import { busId } from '@/__generated__/bus-ids';
 
 type CodeInternalEvents = { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
 
 export const codeSpec = defineSystem('code')<IncomingCodeEvents | CodeInternalEvents, OutgoingCodeEvents, Context>();
-export const code = codeSpec.id;
+/** The id this feature's system runs under, which is what `system.get(...)` takes */
+export const code = busId.code;
 const id = code;
 
 export interface Context {
@@ -252,7 +254,7 @@ export const systemMachine = setup({
       }
 
       // Forward settings to frontend
-      sendToPlugin(id, {
+      sendToPlugin('code', {
         type: 'CODE_SETTINGS_UPDATED',
         settings: ev.settings
       })
@@ -274,7 +276,7 @@ export const systemMachine = setup({
         settings: codeSettings
       };
 
-      sendToPlugin(id, {
+      sendToPlugin('code', {
         type: 'CODE_CONNECTED',
         data: connectedData
       })

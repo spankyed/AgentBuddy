@@ -60,6 +60,7 @@ import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import { DISCORD_URL, MEMORIAL_URL } from '../../../constants'
 import { useActorSystem, openInAppBrowser } from '@abuddy/sdk/fe'
 import type { FAQItem } from '@/features/settings/be/types'
+import { id as settingsPluginId } from '@/features/settings/fe/state';
 
 const actorSystem = useActorSystem()
 
@@ -71,7 +72,7 @@ function openMemorialLink() {
   openInAppBrowser(MEMORIAL_URL)
 }
 
-const settingsActor = actorSystem.get('settings')
+const settingsActor = actorSystem.get(settingsPluginId)
 const faqItems = useSelector(settingsActor, (state: any): FAQItem[] => state.context.faqs ?? [])
 
 const expandedItems = ref<number[]>([])

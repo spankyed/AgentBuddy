@@ -119,6 +119,7 @@ import { navigateToPlugin } from '@abuddy/sdk/fe';
 import { id as promptsId, type PromptsState } from '@/features/prompts/fe/state';
 import type { PromptEntity } from '@abuddy/sdk';
 import type { TemplateInput } from '@abuddy/sdk';
+import { id as codeActorId } from '@/features/code/fe/state';
 
 const actorSystem = useActorSystem()
 
@@ -196,7 +197,7 @@ function openInEditor() {
 
   // Child actor needs time to initialize after plugin activation
   setTimeout(() => {
-    const promptsActor = actorSystem.get('code')?.system.get('codePrompts');
+    const promptsActor = actorSystem.get(codeActorId)?.system.get('codePrompts');
     if (promptsActor) {
       promptsActor.send({ type: 'codePrompts.OPEN_PROMPT', promptId: props.prompt!.id });
     }

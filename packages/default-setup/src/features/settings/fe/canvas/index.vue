@@ -33,10 +33,11 @@ import { useSelector } from '@xstate/vue'
 import GeneralTab from './tabs/GeneralTab.vue'
 import PluginsTab from './tabs/PluginsTab.vue'
 import HelpTab from './tabs/HelpTab.vue'
+import { id as settingsPluginId } from '@/features/settings/fe/state';
 
 const actorSystem = useActorSystem()
 
-const actor = actorSystem.get('settings')
+const actor = actorSystem.get(settingsPluginId)
 
 const activeTab = useSelector(actor, (state: any) => state.context.activeTab)
 

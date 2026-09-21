@@ -86,6 +86,29 @@ describe("a pack's frontend", () => {
     expect(getDslTypes().has('memo')).toBe(false);
   });
 
+  // The renderer adds what this returns to the app. It used to add the registration's own plugin
+  // modules instead, so an external pack's plugins reached the app under their bare feature ids while
+  // the registry held them under `<packId>.<featureId>` — the app then had a plugin nothing could send to.
+  it('returns the plugins it registered, under the ids they run under', () => {
+    const notes = plugin('notes');
+    packs.push('returning-pack');
+    expect(registry.registerPackFE({ id: 'returning-pack', plugins: [notes] })).toEqual([{ id: 'returning-pack.notes' }]);
+    expect(notes.id, "the pack's own module was mutated").toBe('notes');
+  });
+
+  // A built pack's plugin module names itself through the generated `pluginId` map, so it arrives
+  // already under the id it runs as; a hand-written one names the feature. Both resolve, as a system id does.
+  it('takes a plugin that already carries its own qualified id', () => {
+    packs.push('named-pack');
+    const registered = registry.registerPackFE({
+      id: 'named-pack',
+      plugins: [plugin('named-pack.notes')],
+      designations: { notebook: 'notes' },
+    });
+    expect(registered.map((p) => p.id)).toEqual(['named-pack.notes']);
+    expect(getDesignated('notebook')).toBe('named-pack.notes');
+  });
+
   it("merges its step's frontend facet into the definition another registration gave the type", () => {
     const build = { type: 'note', kind: 'step' } as StepDefinition;
     add('build-pack', { steps: [build] });

@@ -7,7 +7,7 @@
 import { EARS as EARS_2 } from '@abuddy/ears';
 
 // @public
-export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(systemIds: Readonly<Record<string, string>>): TypedEvents<P, S>;
+export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(systemIds: Readonly<Record<string, string>>, pluginIds?: Readonly<Record<string, string>>): TypedEvents<P, S>;
 
 // @public
 export function emit<P extends string, E extends {

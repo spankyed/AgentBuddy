@@ -11,6 +11,7 @@ import { FLOW_ROLES } from './repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { FlowEntity, ActionEntity, PromptEntity } from '@abuddy/sdk';
 import { compileFlowDSL, validateFlowDSL, exportFlowsToDSL, type FlowDSL, type ValidationError } from '@abuddy/sdk/build';
+import { busId } from '@/__generated__/bus-ids';
 
 const logger = createLogger('flows');
 
@@ -97,11 +98,12 @@ export type OutgoingFlowsEvents =
   | { type: 'DSL_EXPORT_FAILED'; errors: string[] }
 
 export const flowsSpec = defineSystem('flows')<IncomingFlowsEvents, OutgoingFlowsEvents>();
-export const flows = flowsSpec.id;
+/** The id this feature's system runs under, which is what `system.get(...)` takes */
+export const flows = busId.flows;
 
 /** Sends the plugin its flows, the root flow among them (the flow with the root role), and its settings */
 function sendConnectedData(system: Parameters<typeof getActor>[0]): void {
-  getActor(system, bus).send(emit(flows, {
+  getActor(system, bus).send(emit('flows', {
     type: 'FLOWS_CONNECTED',
     data: {
       ...repository.flowsQueries.connectedData(),
@@ -121,7 +123,7 @@ export const flowsSystem = setup({
 
     selectFlow: ({ system, event }) => {
       const { flowId } = flowsSpec.typeOf('FLOW_SELECT', event);
-      const pluginId = flows;
+      const pluginId = 'flows' as const;
       
       logger.info('Selecting flow', { flowId });
       
@@ -135,7 +137,7 @@ export const flowsSystem = setup({
     },
     
     createFlow: ({ system, event }) => {
-      const pluginId = flows;
+      const pluginId = 'flows' as const;
       
       logger.info('Creating new flow');
       
@@ -161,7 +163,7 @@ export const flowsSystem = setup({
 
     deleteFlow: ({ system, event }) => {
       const { flowId } = flowsSpec.typeOf('DELETE_FLOW', event);
-      const pluginId = flows;
+      const pluginId = 'flows' as const;
 
       logger.info('Deleting flow', { flowId });
 
@@ -182,7 +184,7 @@ export const flowsSystem = setup({
     
     createNode: ({ system, event }) => {
       const { flowId, tempId, nodeData } = flowsSpec.typeOf('CREATE_NODE', event);
-      const pluginId = flows;
+      const pluginId = 'flows' as const;
       
       logger.info('Creating new node', { flowId, tempId, nodeType: nodeData.nodeType });
       
@@ -198,7 +200,7 @@ export const flowsSystem = setup({
     
     updateNode: ({ system, event }) => {
       const { flowId, nodeId, nodeData } = flowsSpec.typeOf('UPDATE_NODE', event);
-      const pluginId = flows;
+      const pluginId = 'flows' as const;
       
       logger.info('Updating node', { flowId, nodeId, updates: nodeData });
       
@@ -215,7 +217,7 @@ export const flowsSystem = setup({
     
     deleteNode: ({ system, event }) => {
       const { flowId, nodeId } = flowsSpec.typeOf('DELETE_NODE', event);
-      const pluginId = flows;
+      const pluginId = 'flows' as const;
       
       logger.info('Deleting node', { flowId, nodeId });
       
@@ -230,7 +232,7 @@ export const flowsSystem = setup({
     
     createEdge: ({ system, event }) => {
       const { flowId, sourceId, targetId, sourceHandle, targetHandle } = flowsSpec.typeOf('CREATE_EDGE', event);
-      const pluginId = flows;
+      const pluginId = 'flows' as const;
 
       logger.info('Creating edge', { flowId, sourceId, targetId, sourceHandle, targetHandle });
 
@@ -262,7 +264,7 @@ export const flowsSystem = setup({
     
     deleteEdge: ({ system, event }) => {
       const { flowId, edgeId } = flowsSpec.typeOf('DELETE_EDGE', event);
-      const pluginId = flows;
+      const pluginId = 'flows' as const;
       
       logger.info('Deleting edge', { flowId, edgeId });
       
@@ -276,7 +278,7 @@ export const flowsSystem = setup({
     
     updateEdge: ({ system, event }) => {
       const { flowId, edgeId, source, target, sourceHandle, targetHandle } = flowsSpec.typeOf('UPDATE_EDGE', event);
-      const pluginId = flows;
+      const pluginId = 'flows' as const;
 
       logger.info('Updating edge', { flowId, edgeId, source, target, sourceHandle, targetHandle });
 
@@ -323,7 +325,7 @@ export const flowsSystem = setup({
 
     importDSL: ({ system, event }) => {
       const { dsl } = flowsSpec.typeOf('IMPORT_DSL', event);
-      const pluginId = flows;
+      const pluginId = 'flows' as const;
 
       logger.info('Importing DSL flows', { flowCount: Object.keys(dsl || {}).length });
 
@@ -381,7 +383,7 @@ export const flowsSystem = setup({
 
     exportDSL: ({ system, event }) => {
       const { directory, flowId } = flowsSpec.typeOf('EXPORT_DSL', event);
-      const pluginId = flows;
+      const pluginId = 'flows' as const;
 
       logger.info('Exporting flows to DSL', { directory, flowId });
 

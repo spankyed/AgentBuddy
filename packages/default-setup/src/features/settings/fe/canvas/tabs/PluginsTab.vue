@@ -92,11 +92,12 @@ import { useSelector } from '@xstate/vue'
 import { useActorSystem, useApplicationActor, navigateToPlugin, getDesignated } from '@abuddy/sdk/fe'
 import { Package, CheckCircle, Eye, EyeOff, ExternalLink } from 'lucide-vue-next'
 import { useSettingsSaveStatus } from '@abuddy/sdk/fe'
+import { id as settingsActorId } from '@/features/settings/fe/state';
 
 const actorSystem = useActorSystem()
 const applicationActor = useApplicationActor()
 
-const actor = actorSystem.get('settings')
+const actor = actorSystem.get(settingsActorId)
 const allPlugins = useSelector(applicationActor, (state: any) => state.context.plugins)
 
 const selectedPluginId = useSelector(actor, (state: any) => state.context.selectedPluginId)

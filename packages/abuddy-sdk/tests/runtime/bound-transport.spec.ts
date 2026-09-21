@@ -41,10 +41,14 @@ function onBus(run: () => void) {
 describe('on the bound bus', () => {
   it('sendToPlugin and services.emitter.sendToPlugin go to the bus, which delivers them, not to the clients directly', () => {
     const sent = onBus(() => {
-      sendToPlugin('memos', { type: 'MEMO_ADDED' });
-      services.emitter.sendToPlugin('memos', { type: 'MEMO_REMOVED' });
+      // The untyped send takes the id a plugin runs under; the emitter takes the name an action writes
+      sendToPlugin('memo-pack.memos', { type: 'MEMO_ADDED' });
+      services.emitter.sendToPlugin('memo-pack/memos', { type: 'MEMO_REMOVED' });
     });
-    expect(sent.toPlugins).toEqual([{ type: 'MEMO_ADDED', pluginId: 'memos' }, { type: 'MEMO_REMOVED', pluginId: 'memos' }]);
+    expect(sent.toPlugins).toEqual([
+      { type: 'MEMO_ADDED', pluginId: 'memo-pack.memos' },
+      { type: 'MEMO_REMOVED', pluginId: 'memo-pack.memos' },
+    ]);
     expect(sent.outgoing).toEqual([]);
   });
 

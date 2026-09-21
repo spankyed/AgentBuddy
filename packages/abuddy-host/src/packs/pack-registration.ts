@@ -52,8 +52,9 @@ function systemIdFor(systemIds: readonly string[], packId: string, featureId: st
 function designationsOf({ id, systems, features = [] }: PackRegistration): Record<string, string> {
   const systemIds = systems.map((s) => s.id);
   return Object.fromEntries(
-    // A feature with no system is addressed by its own id: a plugin-only feature still plays its role
-    features.flatMap((f) => (f.designation ? [[f.designation, systemIdFor(systemIds, id, f.id) ?? f.id]] : [])),
+    // A feature with no system falls back to the id it would run under, so a plugin-only feature still
+    // plays its role and every designation reads as one address rule
+    features.flatMap((f) => (f.designation ? [[f.designation, systemIdFor(systemIds, id, f.id) ?? qualifiedId(id, f.id)]] : [])),
   );
 }
 

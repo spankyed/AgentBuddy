@@ -9,7 +9,7 @@ import type {
   OutgoingDatabaseEvents,
   DatabaseSettings,
 } from '@/__generated__/types'
-import { sendToSystem } from '@/__generated__/events'
+import { sendToSystem, pluginId } from '@/__generated__/events'
 import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate, transactionExampleQuery } from './constants'
 import { History, HardDriveDownload } from 'lucide-vue-next'
 import type { TNodeEntity } from '@abuddy/sdk/steps'
@@ -18,7 +18,10 @@ import type { EARS } from '@abuddy/sdk'
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
 /* ─────────────────────────────────────────────────────────── */
-export const id = 'database'
+export const id = pluginId.database
+/** This feature's name, which is how its own code addresses its system — the plugin's id is a
+ * different thing now that a plugin runs under `<packId>.<featureId>`. */
+export const feature = 'database' as const;
 export type DatabaseState = ActorRefFrom<typeof databaseState>
 
 export interface DatabaseContext {
@@ -138,7 +141,7 @@ const databaseState = setup({
     /* ── query interactions ────────────────────────────── */
     executeQuery: ({ event, context }) => {
       const ev = typeOf('QUERY.EXECUTE', event);
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'EXECUTE_QUERY',
         code: ev.code,
       });
@@ -146,7 +149,7 @@ const databaseState = setup({
 
     executeTransaction: ({ event, context }) => {
       const ev = typeOf('TRANSACTION.EXECUTE', event);
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'EXECUTE_TRANSACTION',
         code: ev.code,
       });
@@ -156,7 +159,7 @@ const databaseState = setup({
       const ev = typeOf('ENTITY.DELETE', event);
       // Use tx() to delete the entity
       const deleteCode = `tx('${ev.entityId}').destroy(); return { deleted: '${ev.entityId}' };`;
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'EXECUTE_TRANSACTION',
         code: deleteCode,
       });
@@ -165,7 +168,7 @@ const databaseState = setup({
     refreshAfterDelete: ({ context }) => {
       // Re-run the current query after successful deletion
       if (context.currentQuery) {
-        sendToSystem(id, {
+        sendToSystem(feature, {
           type: 'EXECUTE_QUERY',
           code: context.currentQuery,
         });
@@ -248,7 +251,7 @@ const databaseState = setup({
         console.error('Invalid prompt provided for AI query generation');
         return;
       }
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'GENERATE_AI_QUERY',
         prompt: ev.prompt.trim(),
         mode: ev.mode,
@@ -283,7 +286,7 @@ const databaseState = setup({
     }),
 
     refreshSchema: () => {
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'REFRESH_SCHEMA',
       });
     },
@@ -301,7 +304,7 @@ const databaseState = setup({
       const newMode = context.viewMode === 'database' ? 'trace' : 'database';
       if (newMode === 'trace' && context.traceFlows.length === 0) {
         // Request trace flows when switching to trace mode for the first time
-        sendToSystem(id, {
+        sendToSystem(feature, {
           type: 'GET_TRACE_FLOWS',
         });
       }
@@ -312,7 +315,7 @@ const databaseState = setup({
     }),
 
     requestTraceFlows: () => {
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'GET_TRACE_FLOWS',
       });
     },
@@ -337,7 +340,7 @@ const databaseState = setup({
       // Auto-select first flow if we have flows and no current selection
       if (sortedFlows.length > 0) {
         const firstFlow = sortedFlows[0];
-        sendToSystem(id, {
+        sendToSystem(feature, {
           type: 'GET_FLOW_EVENTS',
           flowId: firstFlow.id,
           offset: 0,
@@ -359,7 +362,7 @@ const databaseState = setup({
 
     selectFlow: assign(({ event }) => {
       const ev = typeOf('TRACE.SELECT_FLOW', event);
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'GET_FLOW_EVENTS',
         flowId: ev.flowId,
         offset: 0,
@@ -395,7 +398,7 @@ const databaseState = setup({
       if (!context.currentFlowId || !context.tracePagination.hasMore) return;
 
       const newOffset = context.tracePagination.offset + context.tracePagination.limit;
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'GET_FLOW_EVENTS',
         flowId: context.currentFlowId,
         offset: newOffset,
@@ -420,7 +423,7 @@ const databaseState = setup({
         newExpanded.add(ev.nodeId);
         // Request node details if not already loaded
         if (!context.nodeDetails.has(ev.nodeId)) {
-          sendToSystem(id, {
+          sendToSystem(feature, {
             type: 'GET_NODE_DETAILS',
             nodeId: ev.nodeId,
           });
@@ -454,12 +457,12 @@ const databaseState = setup({
 
     exportBackup: ({ event }) => {
       const { path, name, databases } = typeOf('BACKUP.EXPORT', event);
-      sendToSystem(id, { type: 'EXPORT_DATABASE', path, name, databases });
+      sendToSystem(feature, { type: 'EXPORT_DATABASE', path, name, databases });
     },
 
     importBackup: ({ event }) => {
       const { path, skipUnknownDatabases } = typeOf('BACKUP.IMPORT', event);
-      sendToSystem(id, { type: 'IMPORT_DATABASE', path, skipUnknownDatabases });
+      sendToSystem(feature, { type: 'IMPORT_DATABASE', path, skipUnknownDatabases });
     },
 
     exportFinished: assign(({ event }) => ({
@@ -478,7 +481,7 @@ const databaseState = setup({
 
     /* ── reset database actions ─────────────────────────── */
     resetDatabase: () => {
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'RESET_DATABASE',
       });
     },

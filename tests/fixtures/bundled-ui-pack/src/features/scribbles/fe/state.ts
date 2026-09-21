@@ -1,6 +1,7 @@
+import { pluginId } from '#generated/events';
 import { setup, type ActorRefFrom } from 'xstate';
 
-export const id = 'scribbles' as const;
+export const id = pluginId.scribbles;
 
 const scribblesState = setup({}).createMachine({ id });
 

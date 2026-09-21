@@ -29,6 +29,14 @@
         "memoQueries": "src/features/memos/be/repository.ts#memoQueries",
         "memoCommands": "src/features/memos/be/repository.ts#memoCommands"
       }
+    },
+    {
+      "id": "notes",
+      "settings": "src/features/notes/settings.ts",
+      "plugin": {
+        "entry": "src/features/notes/fe/plugin.ts"
+      },
+      "services": {}
     }
   ],
   "commands": [

@@ -10,6 +10,7 @@ import { onConnected, onIncoming, type IncomingSystemEvents } from '@abuddy/sdk/
 import { repository } from '@/__generated__/repository';
 import type { LogsSettings } from '@/__generated__/types';
 import { isSourceExcluded, filterLogsByExcludedSources } from './utils';
+import { busId } from '@/__generated__/bus-ids';
 
 // Resolve the effective exclusion list: when showAppEvents is falsy, treat 'app-events' as excluded.
 function effectiveExcludedSources(settings: LogsSettings | undefined): string[] {
@@ -41,7 +42,8 @@ export interface LogsContext {
 }
 
 export const logsSpec = defineSystem('logs')<IncomingLogEvents | LogsInternalEvents, OutgoingLogsEvents, LogsContext>();
-export const logs = logsSpec.id;
+/** The id this feature's system runs under, which is what `system.get(...)` takes */
+export const logs = busId.logs;
 
 export const logsSystem = setup({
   types: logsSpec.types,
@@ -109,7 +111,7 @@ export const logsSystem = setup({
       // Filter logs by excluded sources before sending
       const filteredLogs = filterLogsByExcludedSources(context.logs, excludedSources);
 
-      sendToPlugin(logs, {
+      sendToPlugin('logs', {
         type: 'LOGS_CONNECTED',
         logs: filteredLogs,
         settings: settings ?? { maxLogs: 1000, excludedSources: [], showAppEvents: false }
@@ -127,7 +129,7 @@ export const logsSystem = setup({
         return; // Don't broadcast excluded logs
       }
 
-      sendToPlugin(logs, {
+      sendToPlugin('logs', {
         type: 'LOG_ADDED',
         log: newLog,
       });
@@ -140,13 +142,13 @@ export const logsSystem = setup({
       // Filter logs by excluded sources before sending
       const filteredLogs = filterLogsByExcludedSources(context.logs, excludedSources);
 
-      sendToPlugin(logs, {
+      sendToPlugin('logs', {
         type: 'LOGS_UPDATE',
         logs: filteredLogs,
       });
     },
     broadcastLogsCleared: () => {
-      sendToPlugin(logs, {
+      sendToPlugin('logs', {
         type: 'LOGS_CLEARED',
       })
     },

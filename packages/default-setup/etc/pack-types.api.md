@@ -2883,11 +2883,11 @@ type OwnRepositories = {
 };
 
 /**
- * `services.emitter`, typed with this pack's events. Actions run outside any pack, so a system is
- * named `<pack>/<feature>`, this pack's own too.
+ * `services.emitter`, typed with this pack's events. Actions run outside any pack, so a system and a
+ * plugin are both named `<pack>/<feature>`, this pack's own too — a host plugin is named bare.
  */
 type PackEmitter = Omit<HostServices['emitter'], 'sendToPlugin' | 'sendToSystem'> & {
-    sendToPlugin: TypedSendToPlugin<PackEvents>;
+    sendToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;
     sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;
 };
 
@@ -3060,6 +3060,14 @@ interface PromptsConnectedData {
     totalCount: number;
     categories?: Category[];
 }
+
+/**
+ * The plugins actions send to (`services.emitter`): every pack's named `<pack>/<feature>`, this pack's
+ * own too, and a host plugin bare — bare ids are the host's namespace.
+ */
+type QualifiedPluginEvents = {
+    [K in keyof OwnPackEvents & string as `default-setup/${K}`]: OwnPackEvents[K];
+} & Pick<HostPluginEvents, 'application'>;
 
 /** The systems actions send to (`services.emitter`), all named `<pack>/<feature>`. */
 type QualifiedSystemEvents = {
@@ -4718,9 +4726,14 @@ declare const settingsCommands: {
 
 declare const settingsQueries: {
     getSettings: () => SettingsData;
+    /**
+     * Only what the user changed, without the defaults merged in — what a migration has to rewrite, since
+     * writing a merged copy back would freeze today's defaults into the user's stored settings.
+     */
+    getStoredSettings: () => Partial<SettingsData>;
     getGeneralSettings: (label?: string) => any;
     getAssistantSettings: () => AssistantSettings;
-    getPluginSettings: (pluginId: string) => any;
+    getPluginSettings: (plugin: string) => any;
 };
 
 declare const specs: {

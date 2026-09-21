@@ -1,5 +1,6 @@
 import * as path from 'path';
 import type { z } from 'zod';
+import { qualifiedId } from '../ids/addressing.ts';
 import type {
   ManifestSchema, FeatureEntrySchema, BootConfigSchema, SeedEntryConfigSchema, SeedFormatSchema,
   StepEntrySchema, StepDSLMetaSchema, DslEntrySchema, PackPermissionSchema,
@@ -70,14 +71,17 @@ export interface PackSnapshot {
 }
 
 /**
- * How each kind of declared name is read off a manifest. Adding a kind is an entry here: the reader,
- * the snapshot field and every consumer are already generic over it.
+ * How each kind of declared name is read off a manifest, given the pack it belongs to. Adding a kind is
+ * an entry here: the reader, the snapshot field and every consumer are already generic over it.
  */
 export const PROVENANCE_KINDS = {
   entities: (m: ProvenanceManifest) => Object.keys(m.entities ?? {}),
   relKinds: (m: ProvenanceManifest) => Object.keys(m.relKinds ?? {}),
   commands: (m: ProvenanceManifest) => (m.commands ?? []).map((c) => c.name),
-  plugins: (m: ProvenanceManifest) => (m.features ?? []).filter((f) => f.plugin).map((f) => f.id),
+  // Keyed by the id the plugin runs under, which is what a send names — hence the pack id. Keyed by
+  // feature id, a dependent that happens to reuse one of its dependency's feature ids recorded itself
+  // as the owner of that dependency's plugin.
+  plugins: (m: ProvenanceManifest, packId: string) => (m.features ?? []).filter((f) => f.plugin).map((f) => qualifiedId(packId, f.id)),
 } as const;
 
 export type ProvenanceKind = keyof typeof PROVENANCE_KINDS;
@@ -140,9 +144,9 @@ export function _mergeProvenance(
   for (const [depId, snapshot] of dependencies) {
     const inherited = snapshot.provenance?.[kind];
     if (inherited) for (const name of Object.keys(inherited)) declaredBy[name] = inherited[name];
-    for (const name of namesOf(snapshot.manifest)) declaredBy[name] = depId;
+    for (const name of namesOf(snapshot.manifest, depId)) declaredBy[name] = depId;
   }
-  if (own) for (const name of namesOf(own.manifest)) declaredBy[name] = own.id;
+  if (own) for (const name of namesOf(own.manifest, own.id)) declaredBy[name] = own.id;
   return declaredBy;
 }
 

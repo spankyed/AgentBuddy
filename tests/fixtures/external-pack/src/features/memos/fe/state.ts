@@ -1,11 +1,11 @@
 import { setup, assign, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
-import { sendToSystem } from '#generated/events';
+import { sendToSystem, pluginId } from '#generated/events';
 import type { OutgoingMemosEvents } from '../be/system';
 import type { MemoNoteDTO } from '../be/memo-notes';
 import type { MemoDTO } from '../be/types';
 
-export const id = 'memos' as const;
+export const id = pluginId.memos;
 
 type UIEvents = { type: 'MEMOS.ADD'; text: string } | { type: 'MEMOS.ADD_NOTE'; text: string };
 export type MemosEvents = UIEvents | OutgoingMemosEvents;

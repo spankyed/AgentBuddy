@@ -282,12 +282,21 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
 }
 
 /**
- * A pack's registration with its systems under the ids the app runs them under: an external pack's are
- * `<packId>.<featureId>` (the API's registerExternalPacks), which its `#generated/bus-ids` names.
+ * A pack's registration with its systems under the ids the app runs them under, `<packId>.<featureId>`
+ * for every pack — which its `#generated/bus-ids` names.
+ *
+ * A registration built by the current `toPackSystemDefs` already carries them, so this only covers one
+ * written by hand, as the pack loader's own prefixing does.
  */
 function asRunByApp(registration: PackRegistration, manifest: PackManifest): PackRegistration {
-  if (manifest.builtIn) return registration;
-  return { ...registration, systems: registration.systems.map((system) => ({ ...system, id: `${manifest.id}.${system.id}` })) };
+  const prefix = `${manifest.id}.`;
+  return {
+    ...registration,
+    systems: registration.systems.map((system) => ({
+      ...system,
+      id: system.id.startsWith(prefix) ? system.id : prefix + system.id,
+    })),
+  };
 }
 
 /** Registers the pack's runtime and its dependencies' (loaded from their cached runtime/index.cjs), as the app does */

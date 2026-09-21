@@ -12,7 +12,7 @@ import type {
   ActionsSettings,
 } from '@/__generated__/types'
 import type { ActionParameter } from '@abuddy/sdk'
-import { sendToSystem } from '@/__generated__/events'
+import { sendToSystem, pluginId } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
 import type { ActionEntity, EARS } from '@abuddy/sdk'
@@ -20,7 +20,10 @@ import type { ActionEntity, EARS } from '@abuddy/sdk'
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
 /* ─────────────────────────────────────────────────────────── */
-export const id = 'actions'
+export const id = pluginId.actions
+/** This feature's name, which is how its own code addresses its system — the plugin's id is a
+ * different thing now that a plugin runs under `<packId>.<featureId>`. */
+export const feature = 'actions' as const;
 export type ActionsState = ActorRefFrom<typeof actionsState>
 
 export interface ActionsContext {
@@ -126,7 +129,7 @@ const actionsState = setup({
         return
       }
       // Send event to backend to get action data
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'ACTION_SELECT',
         actionId: ev.actionId,
       });
@@ -167,13 +170,13 @@ const actionsState = setup({
       
       if (isCreating) {
         // Create new action
-        sendToSystem(id, {
+        sendToSystem(feature, {
           type: 'CREATE_ACTION',
           ...context.formData,
         })
       } else {
         // Update existing action
-        sendToSystem(id, {
+        sendToSystem(feature, {
           type: 'UPDATE_ACTION',
           actionId: context.selectedActionId!,
           ...context.formData,
@@ -183,7 +186,7 @@ const actionsState = setup({
 
     sendDeleteAction: ({ event }) => {
       const ev = typeOf('ACTION.DELETE', event);
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'DELETE_ACTION',
         actionId: ev.actionId,
       });
@@ -191,7 +194,7 @@ const actionsState = setup({
 
     updateActionInput: ({ event }) => {
       const ev = typeOf('ACTION.UPDATE_INPUT', event);
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'UPDATE_ACTION',
         actionId: ev.actionId,
         input: ev.input,
@@ -200,7 +203,7 @@ const actionsState = setup({
 
     createActionInline: ({ event }) => {
       const ev = typeOf('ACTION.CREATE_INLINE', event);
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'CREATE_ACTION',
         label: ev.label,
         actionFn: ev.actionFn,
@@ -210,7 +213,7 @@ const actionsState = setup({
 
     updateActionLabel: ({ event }) => {
       const ev = typeOf('ACTION.UPDATE_LABEL', event);
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'UPDATE_ACTION',
         actionId: ev.actionId,
         label: ev.label,
@@ -345,7 +348,7 @@ const actionsState = setup({
 
     /* ── pagination ────────────────────────────────────────── */
     requestNextPage: assign(({ context }) => {
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'FETCH_ACTIONS_PAGE',
         page: context.page + 1,
       });
@@ -363,7 +366,7 @@ const actionsState = setup({
     }),
 
     requestAllItems: assign(() => {
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'FETCH_ALL_ACTIONS',
       });
       return { loadingMore: true };
@@ -406,7 +409,7 @@ const actionsState = setup({
 
     sendImportActions: ({ event }) => {
       const ev = typeOf('ACTIONS.IMPORT', event);
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'IMPORT_ACTIONS',
         actions: ev.actions,
       });
@@ -448,7 +451,7 @@ const actionsState = setup({
 
     sendExportActions: ({ event }) => {
       const ev = typeOf('ACTIONS.EXPORT', event);
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'EXPORT_ACTIONS',
         directory: ev.directory,
       });

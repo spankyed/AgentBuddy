@@ -75,11 +75,12 @@ import { id, type BrowserState } from './state.ts';
 import BrowserTabBar from './components/BrowserTabBar.vue';
 import BrowserNavBar from './components/BrowserNavBar.vue';
 import BrowserBookmarkBar from './components/BrowserBookmarkBar.vue';
+import { id as settingsActorId } from '@/features/settings/fe/state';
 
 const actorSystem = useActorSystem()
 
 const actor: BrowserState = actorSystem.get(id);
-const settingsActor = actorSystem.get('settings');
+const settingsActor = actorSystem.get(settingsActorId);
 const showBookmarksBar = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.browser?.showBookmarksBar ?? true);
 
 const tabs = useSelector(actor, s => s.context.tabs);

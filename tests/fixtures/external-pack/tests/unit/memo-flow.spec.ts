@@ -9,7 +9,7 @@ describe('memo flow', () => {
     await seedPack({ keys: ['actions', 'flows'] });
     // A root flow hosting the pack's flow, as the app's root flow hosts long-running flows
     importFlows({ 'Root Flow': { root: true, tracks: [entry([subflow('Memo Flow')], [keepAlive()])] } });
-    const app = await startApp({ systems: ['brain', 'settings'] });
+    const app = await startApp({ systems: ['default-setup/brain', 'default-setup/settings'] });
 
     const run = await app.runFlow('Memo Flow', { event: 'memo.requested', data: { text: 'from a flow' } });
 

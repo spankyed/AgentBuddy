@@ -69,10 +69,11 @@ import App from '../components/GeneralSettings/App.vue'
 import Projects from '../components/GeneralSettings/Projects.vue'
 import SettingsJsonEditor from '../components/GeneralSettings/SettingsJsonEditor.vue'
 import { useActorSystem, useSettingsSaveStatus } from '@abuddy/sdk/fe'
+import { id as settingsPluginId } from '@/features/settings/fe/state';
 
 const actorSystem = useActorSystem()
 
-const actor = actorSystem.get('settings')
+const actor = actorSystem.get(settingsPluginId)
 
 const generalNavItem = useSelector(actor, (state: any) => state.context.generalNavItem)
 const settings = useSelector(actor, (state: any) => state.context.settings)

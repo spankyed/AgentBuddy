@@ -461,6 +461,7 @@ import DirectorySelect from '@abuddy/ui/design/DirectorySelect'
 import { X, Plus } from 'lucide-vue-next'
 import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe'
 import type { CodeSettings, TerminalScript } from '@/__generated__/types'
+import { id as settingsActorId } from '@/features/settings/fe/state';
 
 const actorSystem = useActorSystem()
 
@@ -514,7 +515,7 @@ const newScriptLabel = ref('')
 const newScriptCommand = ref('')
 
 // Get projects from general settings
-const settingsActor = actorSystem.get('settings')
+const settingsActor = actorSystem.get(settingsActorId)
 const projects = computed(() => {
   return (useSelector(settingsActor, (state: any) => state.context.settings?.general?.projects).value || []) as Project[]
 })

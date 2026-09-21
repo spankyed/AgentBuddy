@@ -1,9 +1,12 @@
 import { setup, type ActorRefFrom, assign, log } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
-import { sendToSystem } from '@/__generated__/events';
+import { sendToSystem, pluginId } from '@/__generated__/events';
 import type { OutgoingLogsEvents } from '@/__generated__/types';
 
-export const id = 'logs' as const;
+export const id = pluginId.logs;
+/** This feature's name, which is how its own code addresses its system — the plugin's id is a
+ * different thing now that a plugin runs under `<packId>.<featureId>`. */
+export const feature = 'logs' as const;
 
 export interface LogEntry {
   id: string;
@@ -66,7 +69,7 @@ const logsState = setup({
       logs: () => [],
     }),
     sendClearLogsToBackend: () => {
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'CLEAR_LOGS',
       });
     },
@@ -84,7 +87,7 @@ const logsState = setup({
     }),
     updateSettings: assign({
       settings: ({ event }) => {
-        sendToSystem(id, {
+        sendToSystem(feature, {
           type: 'REQUEST_LOGS_UPDATE',
         });
 

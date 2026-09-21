@@ -271,6 +271,7 @@ import { Bot, Check, Copy, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
 import { useActorSystem, navigateToPlugin, getDesignated } from '@abuddy/sdk/fe'
 import { sendToSystem } from '@/__generated__/events'
+import { id as codeActorId } from '@/features/code/fe/state';
 
 const actorSystem = useActorSystem()
 
@@ -449,7 +450,7 @@ async function copyThreadId() {
 }
 
 function openTerminalTab() {
-  const terminalActor = actorSystem.get('code')?.system.get('terminal') as any
+  const terminalActor = actorSystem.get(codeActorId)?.system.get('terminal') as any
   if (!terminalActor) return
 
   terminalActor.send({

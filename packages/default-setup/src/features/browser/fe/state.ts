@@ -1,11 +1,14 @@
 import { setup, assign, fromCallback, type ActorRefFrom } from 'xstate';
 import { autocomplete, recordVisit, updateHistoryMeta, displayUrl, type AutocompleteSuggestion } from './history.ts';
-import { sendToSystem } from '@/__generated__/events';
+import { sendToSystem, pluginId } from '@/__generated__/events';
 import { getNextAvailableColor, saveTabGroups, loadTabGroups, type TabGroup, type TabGroupColor } from '@abuddy/sdk/fe';
 
 export type { TabGroup, TabGroupColor };
 
-export const id = 'browser' as const;
+export const id = pluginId.browser;
+/** This feature's name, which is how its own code addresses its system — the plugin's id is a
+ * different thing now that a plugin runs under `<packId>.<featureId>`. */
+export const feature = 'browser' as const;
 
 type BrowserTabPersistedId = `BrowserTab-${string}`;
 
@@ -131,7 +134,7 @@ function syncTabsToBackend(tabs: BrowserTab[], options?: { immediate?: boolean }
         isMuted: t.isMuted,
         groupId: t.groupId,
       }));
-    sendToSystem(id, { type: 'SYNC_TABS', tabs: persistable });
+    sendToSystem(feature, { type: 'SYNC_TABS', tabs: persistable });
   };
 
   if (options?.immediate) {
@@ -196,7 +199,7 @@ function syncBookmarksToBackend(bookmarks: Bookmark[]) {
       favicon: bm.favicon,
       displayOrder: i,
     }));
-    sendToSystem(id, { type: 'SYNC_BOOKMARKS', bookmarks: persistable });
+    sendToSystem(feature, { type: 'SYNC_BOOKMARKS', bookmarks: persistable });
   }, 2000);
 }
 

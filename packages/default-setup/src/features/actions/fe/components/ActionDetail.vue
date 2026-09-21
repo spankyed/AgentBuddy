@@ -125,6 +125,7 @@ import { useCollapsibleState } from '@abuddy/ui/composables/useCollapsibleState'
 import { id as actionsId, type ActionsState } from '@/features/actions/fe/state';
 import type { ActionEntity } from '@abuddy/sdk';
 import type { ActionParameter } from '@abuddy/sdk';
+import { id as codeActorId } from '@/features/code/fe/state';
 
 const actorSystem = useActorSystem()
 
@@ -184,7 +185,7 @@ function openInEditor() {
 
   // Child actor needs time to initialize after plugin activation
   setTimeout(() => {
-    const actionsActor = actorSystem.get('code')?.system.get('codeActions');
+    const actionsActor = actorSystem.get(codeActorId)?.system.get('codeActions');
     if (actionsActor) {
       actionsActor.send({ type: 'codeActions.OPEN_ACTION', actionId: props.action!.id });
     }

@@ -7,6 +7,9 @@
 // @public (undocumented)
 export const bus: "bus";
 
+// @public
+export function qualifiedId(packId: string, featureId: string): string;
+
 // (No @packageDocumentation comment for this package)
 
 ```

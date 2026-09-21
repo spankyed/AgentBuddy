@@ -10,6 +10,7 @@ import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
 import { exportPrompts } from './repository/export-prompts';
 import type { PromptEntity } from '@abuddy/sdk';
+import { busId } from '@/__generated__/bus-ids';
 
 const logger = createLogger('prompts');
 
@@ -40,7 +41,8 @@ export type OutgoingPromptEvents =
   | { type: 'PROMPTS_EXPORT_FAILED'; errors: string[] }
 
 export const promptsSpec = defineSystem('prompts')<IncomingPromptEvents | PromptsInternalEvents, OutgoingPromptEvents>();
-export const prompts = promptsSpec.id;
+/** The id this feature's system runs under, which is what `system.get(...)` takes */
+export const prompts = busId.prompts;
 
 export const promptsSystem = setup({
   types: promptsSpec.types,
@@ -49,7 +51,7 @@ export const promptsSystem = setup({
       const connectedData = repository.promptQueries.connectedData();
       const promptsSettings = repository.settingsQueries.getPluginSettings('prompts');
       
-      system.get(bus).send(emit(prompts, { 
+      system.get(bus).send(emit('prompts', { 
         type: 'PROMPTS_CONNECTED',
         data: {
           ...connectedData,
@@ -62,7 +64,7 @@ export const promptsSystem = setup({
       const prompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId);
       
       if (prompt) {
-        system.get(bus).send(emit(prompts, {
+        system.get(bus).send(emit('prompts', {
           type: 'PROMPT_SELECTED',
           promptId: ev.promptId as EARS.EntityId,
           data: prompt
@@ -80,7 +82,7 @@ export const promptsSystem = setup({
         category: ev.category
       });
 
-      system.get(bus).send(emit(prompts, {
+      system.get(bus).send(emit('prompts', {
         type: 'PROMPT_CREATED',
         prompt: prompt,
         promptId: prompt.id,
@@ -101,7 +103,7 @@ export const promptsSystem = setup({
 
       const updatedPrompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId);
       if (updatedPrompt) {
-        system.get(bus).send(emit(prompts, {
+        system.get(bus).send(emit('prompts', {
           type: 'PROMPT_UPDATED',
           prompt: updatedPrompt,
           promptId: updatedPrompt.id,
@@ -112,7 +114,7 @@ export const promptsSystem = setup({
       const ev = promptsSpec.typeOf('DELETE_PROMPT', event);
       repository.promptCommands.delete(ev.promptId as EARS.EntityId);
       
-      system.get(bus).send(emit(prompts, {
+      system.get(bus).send(emit('prompts', {
         type: 'PROMPT_DELETED',
         promptId: ev.promptId as EARS.EntityId,
       }));
@@ -121,7 +123,7 @@ export const promptsSystem = setup({
       const ev = promptsSpec.typeOf('FETCH_PROMPTS_PAGE', event);
       const data = repository.promptQueries.connectedData(ev.page || 1);
 
-      system.get(bus).send(emit(prompts, {
+      system.get(bus).send(emit('prompts', {
         type: 'PROMPTS_PAGE_LOADED',
         data: {
           prompts: data.prompts,
@@ -132,14 +134,14 @@ export const promptsSystem = setup({
     },
     fetchAllPrompts: ({ system }) => {
       const allPrompts = repository.promptQueries.all();
-      system.get(bus).send(emit(prompts, {
+      system.get(bus).send(emit('prompts', {
         type: 'PROMPTS_ALL_LOADED',
         data: { prompts: allPrompts }
       }));
     },
     importPrompts: ({ system, event }) => {
       const { prompts: importData } = promptsSpec.typeOf('IMPORT_PROMPTS', event);
-      const pluginId = prompts;
+      const pluginId = 'prompts' as const;
 
       logger.info('Importing prompts', { count: Array.isArray(importData) ? importData.length : 0 });
 
@@ -214,7 +216,7 @@ export const promptsSystem = setup({
 
     exportPromptsToFile: ({ system, event }) => {
       const { directory } = promptsSpec.typeOf('EXPORT_PROMPTS', event);
-      const pluginId = prompts;
+      const pluginId = 'prompts' as const;
 
       logger.info('Exporting prompts', { directory });
 
@@ -264,7 +266,7 @@ export const promptsSystem = setup({
           repository.promptCommands.update(p.id, { category: nextCategory });
           const updated = repository.promptQueries.byId(p.id);
           if (updated) {
-            busSvc.send(emit(prompts, {
+            busSvc.send(emit('prompts', {
               type: 'PROMPT_UPDATED', 
               prompt: updated, 
               promptId: updated.id

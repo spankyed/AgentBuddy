@@ -88,7 +88,7 @@ import { repository } from '@abuddy/ears';
 import { services } from '@abuddy/sdk/services';
 import { startApp } from '@abuddy/testing/harness';
 it('connects to default-setup settings', async () => {
-  const app = await startApp({ systems: ['settings'] });
+  const app = await startApp({ systems: ['default-setup/settings'] });
   await app.connect();
   const loaded = await app.nextEmit('default-setup/settings', 'SETTINGS_LOADED');
   expect(loaded.data).toMatchObject({ general: expect.any(Object), plugins: expect.any(Object) });

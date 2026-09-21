@@ -17,6 +17,7 @@ import { importThreads } from './import-threads';
 import { runThreadTeardown } from './thread-teardown';
 import { generateAsideText } from './services/chat';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
+import { busId } from '@/__generated__/bus-ids';
 
 const logger = createLogger('threads');
 let birthFlowStarted = false;
@@ -95,7 +96,8 @@ export interface ThreadsContext {
 }
 
 export const threadsSpec = defineSystem('threads')<IncomingThreadsEvents | ThreadsInternalEvents, OutgoingThreadsEvents, ThreadsContext>();
-export const threads = threadsSpec.id;
+/** The id this feature's system runs under, which is what `system.get(...)` takes */
+export const threads = busId.threads;
 
 function reportThreadOperationError(
   operation: 'create' | 'update' | 'delete' | 'archive' | 'unarchive' | 'pin' | 'unpin' | 'status' | 'parent',
@@ -131,7 +133,7 @@ export const threadsSystem = setup({
       const connectedData = repository.threadQueries.connectedData();
       const threadsSettings = repository.settingsQueries.getPluginSettings('threads');
 
-      system.get(bus).send(emit(threads, {
+      system.get(bus).send(emit('threads', {
         type: 'THREAD_CONNECTED',
         data: {
           ...connectedData,
@@ -140,7 +142,7 @@ export const threadsSystem = setup({
       }));
     },
     sendArchivedThreads: ({ system }) => {
-      system.get(bus).send(emit(threads, {
+      system.get(bus).send(emit('threads', {
         type: 'ARCHIVED_THREADS_DATA',
         threads: repository.threadQueries.archivedThreads(),
       }));
@@ -167,7 +169,7 @@ export const threadsSystem = setup({
         );
       }
 
-      system.get(bus).send(emit(threads, {
+      system.get(bus).send(emit('threads', {
         type: 'THREAD_CREATED',
         id: newThreadId,
         entityType: EARS.Entity.Thread,
@@ -179,7 +181,7 @@ export const threadsSystem = setup({
 
       repository.threadCommands.markAsVisited(threadId);
 
-      system.get(bus).send(emit(threads, {
+      system.get(bus).send(emit('threads', {
         type: 'SET_VIEW_DATA',
         id: threadId,
         data: repository.threadQueries.extendedData(threadId),
@@ -201,7 +203,7 @@ export const threadsSystem = setup({
       }
 
       if (key === 'status') {
-        system.get(bus).send(emit(threads, {
+        system.get(bus).send(emit('threads', {
           type: 'THREAD_UPDATED',
           threadId,
           updates: { status: value as string },
@@ -210,7 +212,7 @@ export const threadsSystem = setup({
 
       if (key === 'archived') {
         // Refresh thread list and recent threads since thread visibility changed
-        system.get(bus).send(emit(threads, {
+        system.get(bus).send(emit('threads', {
           type: 'THREAD_CONNECTED',
           data: {
             ...repository.threadQueries.connectedData(),
@@ -218,7 +220,7 @@ export const threadsSystem = setup({
           },
         }));
         // Also refresh archived threads list so the change is visible immediately
-        system.get(bus).send(emit(threads, {
+        system.get(bus).send(emit('threads', {
           type: 'ARCHIVED_THREADS_DATA',
           threads: repository.threadQueries.archivedThreads(),
         }));
@@ -226,7 +228,7 @@ export const threadsSystem = setup({
       }
 
       if (key === 'pinned') {
-        system.get(bus).send(emit(threads, {
+        system.get(bus).send(emit('threads', {
           type: 'THREAD_UPDATED',
           threadId,
           updates: { pinned: value as boolean },
@@ -249,7 +251,7 @@ export const threadsSystem = setup({
         return;
       }
 
-      system.get(bus).send(emit(threads, {
+      system.get(bus).send(emit('threads', {
         type: 'THREAD_UPDATED',
         threadId,
         updates: { status },
@@ -306,14 +308,14 @@ export const threadsSystem = setup({
 
             if (Object.keys(patch).length) {
               repository.threadCommands.update(th.id, patch);
-              busSvc.send(emit(threads, { type: 'THREAD_UPDATED', threadId: th.id, updates: patch }));
+              busSvc.send(emit('threads', { type: 'THREAD_UPDATED', threadId: th.id, updates: patch }));
               touched = true;
             }
           }
 
           if (touched) {
             busSvc.send(
-              emit(threads, {
+              emit('threads', {
                 type: 'THREAD_CONNECTED',
                 data: {
                   ...repository.threadQueries.connectedData(),
@@ -343,7 +345,7 @@ export const threadsSystem = setup({
       }
 
       // Refresh all thread data on the frontend
-      system.get(bus).send(emit(threads, {
+      system.get(bus).send(emit('threads', {
         type: 'THREAD_CONNECTED',
         data: {
           ...repository.threadQueries.connectedData(),
@@ -365,7 +367,7 @@ export const threadsSystem = setup({
         return;
       }
 
-      system.get(bus).send(emit(threads, {
+      system.get(bus).send(emit('threads', {
         type: 'THREAD_DELETED',
         threadId,
       }));
@@ -379,14 +381,14 @@ export const threadsSystem = setup({
       try {
         const { filePath, threadCount } = exportThreads(ev.directory);
 
-        system.get(bus).send(emit(threads, {
+        system.get(bus).send(emit('threads', {
           type: 'THREADS_EXPORTED',
           filePath,
           threadCount,
         }));
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        system.get(bus).send(emit(threads, {
+        system.get(bus).send(emit('threads', {
           type: 'THREADS_EXPORT_FAILED',
           errors: [message],
         }));
@@ -399,14 +401,14 @@ export const threadsSystem = setup({
         const result = importThreads(ev.directory);
 
         if (result.created === 0 && result.errors.length > 0) {
-          system.get(bus).send(emit(threads, {
+          system.get(bus).send(emit('threads', {
             type: 'THREADS_IMPORT_FAILED',
             errors: result.errors,
           }));
           return;
         }
 
-        system.get(bus).send(emit(threads, {
+        system.get(bus).send(emit('threads', {
           type: 'THREADS_IMPORTED',
           count: result.created,
           ...(result.errors.length > 0 ? { errors: result.errors } : {}),
@@ -415,7 +417,7 @@ export const threadsSystem = setup({
         const connectedData = repository.threadQueries.connectedData();
         const threadsSettings = repository.settingsQueries.getPluginSettings('threads');
 
-        system.get(bus).send(emit(threads, {
+        system.get(bus).send(emit('threads', {
           type: 'THREAD_CONNECTED',
           data: {
             ...connectedData,
@@ -424,7 +426,7 @@ export const threadsSystem = setup({
         }));
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        system.get(bus).send(emit(threads, {
+        system.get(bus).send(emit('threads', {
           type: 'THREADS_IMPORT_FAILED',
           errors: [message],
         }));
@@ -470,12 +472,12 @@ export const threadsSystem = setup({
       const commands = services.library.commands();
       const sent = JSON.stringify(commands);
       if (sent === context.sentCommands) return {};
-      system.get(bus).send(emit(threads, { type: 'COMMANDS_UPDATED', commands }));
+      system.get(bus).send(emit('threads', { type: 'COMMANDS_UPDATED', commands }));
       return { sentCommands: sent };
     }),
     sendChatConnectedData: ({ system }) => {
       const data = repository.chatQueries.connectedData();
-      system.get(bus).send(emit(threads, {
+      system.get(bus).send(emit('threads', {
         type: 'AGENT_CONNECTED',
         data: { ...data, commands: services.library.commands() },
       }));
@@ -487,7 +489,7 @@ export const threadsSystem = setup({
         services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId, restore);
       } catch (err) {
         logger.warn('Thread not found for chat open, skipping', { threadId });
-        system.get(bus).send(emit(threads, {
+        system.get(bus).send(emit('threads', {
           type: 'THREAD_CHAT_ERROR',
           threadId: threadId as string,
           error: err instanceof Error ? err.message : String(err),
@@ -497,7 +499,7 @@ export const threadsSystem = setup({
     loadMoreMessages: ({ system, event }) => {
       const { threadId, cursor } = threadsSpec.typeOf('LOAD_MORE_MESSAGES', event);
       const result = repository.chatQueries.paginatedMessages(threadId as EARS.EntityId, cursor);
-      system.get(bus).send(emit(threads, {
+      system.get(bus).send(emit('threads', {
         type: 'OLDER_MESSAGES_LOADED',
         threadId,
         ...result,
@@ -509,7 +511,7 @@ export const threadsSystem = setup({
         services.chat.openThreadTabAndRefresh(threadId as EARS.EntityId);
       } catch (err) {
         logger.warn('Thread not found for tab open, skipping', { threadId });
-        system.get(bus).send(emit(threads, {
+        system.get(bus).send(emit('threads', {
           type: 'THREAD_CHAT_ERROR',
           threadId: threadId as string,
           error: err instanceof Error ? err.message : String(err),
@@ -556,7 +558,7 @@ export const threadsSystem = setup({
         if (threadData) {
           const fullThreadData = repository.threadQueries.byId(threadData.id);
 
-          system.get(bus).send(emit(threads, {
+          system.get(bus).send(emit('threads', {
             type: 'THREAD_CREATED',
             id: threadData.id,
             shortCode: threadData.shortCode,
@@ -567,7 +569,7 @@ export const threadsSystem = setup({
             status: fullThreadData?.status
           }));
 
-          system.get(bus).send(emit(threads, {
+          system.get(bus).send(emit('threads', {
             type: 'LOAD_CHAT_THREAD',
             data: repository.chatQueries.threadData(threadId)!
           }));
@@ -583,7 +585,7 @@ export const threadsSystem = setup({
             ...(sanitizedRefs && { references: sanitizedRefs }),
           };
 
-          system.get(bus).send(emit(threads, {
+          system.get(bus).send(emit('threads', {
             type: 'MESSAGE_ADDED',
             threadId: threadId as string,
             message: userMessage
@@ -609,7 +611,7 @@ export const threadsSystem = setup({
         });
       } catch (err) {
         logger.error('forwardUserMessage failed', { error: err });
-        system.get(bus).send(emit(threads, {
+        system.get(bus).send(emit('threads', {
           type: 'THREAD_CHAT_ERROR',
           threadId: 'threadId' in event && typeof event.threadId === 'string' ? event.threadId : '',
           error: err instanceof Error ? err.message : String(err),
@@ -660,7 +662,7 @@ export const threadsSystem = setup({
       if (threadData) {
         const fullThreadData = repository.threadQueries.byId(threadData.id);
 
-        system.get(bus).send(emit(threads, {
+        system.get(bus).send(emit('threads', {
           type: 'THREAD_CREATED',
           id: threadData.id,
           shortCode: threadData.shortCode,
@@ -671,7 +673,7 @@ export const threadsSystem = setup({
           status: fullThreadData?.status
         }));
 
-        system.get(bus).send(emit(threads, {
+        system.get(bus).send(emit('threads', {
           type: 'LOAD_CHAT_THREAD',
           data: repository.chatQueries.threadData(threadId)!
         }));
@@ -689,7 +691,7 @@ export const threadsSystem = setup({
           command,
         };
 
-        system.get(bus).send(emit(threads, {
+        system.get(bus).send(emit('threads', {
           type: 'MESSAGE_ADDED',
           threadId: threadId as string,
           message: userMessage
@@ -919,7 +921,7 @@ export const threadsSystem = setup({
         payload: { messageId, threadId, response }
       });
 
-      system.get(bus).send(emit(threads, {
+      system.get(bus).send(emit('threads', {
         type: 'UPDATE_MESSAGE_STATE',
         messageId,
         responseTimestamp: result.responseTimestamp,
@@ -943,7 +945,7 @@ export const threadsSystem = setup({
         compacted,
       );
       for (const msgId of messageIds) {
-        system.get(bus).send(emit(threads, {
+        system.get(bus).send(emit('threads', {
           type: 'UPDATE_MESSAGE_STATE',
           messageId: msgId as string,
           compacted,

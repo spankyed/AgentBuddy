@@ -200,8 +200,8 @@ export interface SystemSpec<Id extends string, TEvents extends {
     };
 }
 
-// @public (undocumented)
-export function toPackSystemDefs(entries: SystemEntry[]): PackSystemDef[];
+// @public
+export function toPackSystemDefs(entries: SystemEntry[], packId: string): PackSystemDef[];
 
 // (No @packageDocumentation comment for this package)
 

@@ -94,6 +94,7 @@ export async function loadPackFrontend(pack: PackFrontend): Promise<Plugin[] | n
 
   const registration = await loadPackFEEntry(pack.feEntry, packBaseUrl);
   if (!registration) return [];
-  fePacks.registerPackFE(registration);
-  return registration.plugins ?? [];
+  // What the registry registered, under the ids the plugins run under — not the pack's own modules,
+  // which carry the bare feature ids their author wrote
+  return fePacks.registerPackFE(registration);
 }

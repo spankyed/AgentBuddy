@@ -12,6 +12,7 @@ import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
 import { exportActions } from './repository/export-actions';
 import type { ActionEntity } from '@abuddy/sdk';
+import { busId } from '@/__generated__/bus-ids';
 
 const logger = createLogger('actions');
 
@@ -42,13 +43,14 @@ export type OutgoingActionEvents =
   | { type: 'ACTIONS_EXPORT_FAILED'; errors: string[] }
 
 export const actionsSpec = defineSystem('actions')<IncomingActionEvents | ActionsInternalEvents, OutgoingActionEvents>();
-export const actions = actionsSpec.id;
+/** The id this feature's system runs under, which is what `system.get(...)` takes */
+export const actions = busId.actions;
 
 // Broadcasts action events to both the actions and flows plugins (abuddy.json sendsTo)
 const broadcastActionEvent = (system: any, event: OutgoingActionEvents) => {
   const busSvc = system.get(bus);
-  busSvc.send(emit(actions, event));
-  busSvc.send(emit(flows, event));
+  busSvc.send(emit('actions', event));
+  busSvc.send(emit('flows', event));
 };
 
 export const actionsSystem = setup({
@@ -58,7 +60,7 @@ export const actionsSystem = setup({
       const connectedData = repository.actionQueries.connectedData();
       const actionsSettings = repository.settingsQueries.getPluginSettings('actions');
       
-      system.get(bus).send(emit(actions, { 
+      system.get(bus).send(emit('actions', { 
         type: 'ACTIONS_LISTED',
         data: {
           ...connectedData,
@@ -70,7 +72,7 @@ export const actionsSystem = setup({
       const ev = actionsSpec.typeOf('FETCH_ACTIONS_PAGE', event);
       const data = repository.actionQueries.connectedData(ev.page || 1);
 
-      system.get(bus).send(emit(actions, {
+      system.get(bus).send(emit('actions', {
         type: 'ACTIONS_PAGE_LOADED',
         data: {
           actions: data.actions,
@@ -81,7 +83,7 @@ export const actionsSystem = setup({
     },
     fetchAllActions: ({ system }) => {
       const allActions = repository.actionQueries.all();
-      system.get(bus).send(emit(actions, {
+      system.get(bus).send(emit('actions', {
         type: 'ACTIONS_ALL_LOADED',
         data: { actions: allActions }
       }));
@@ -91,7 +93,7 @@ export const actionsSystem = setup({
       const action = repository.actionQueries.byId(ev.actionId as EARS.EntityId);
       
       if (action) {
-        system.get(bus).send(emit(actions, {
+        system.get(bus).send(emit('actions', {
           type: 'ACTION_SELECTED',
           actionId: ev.actionId as EARS.EntityId,
           data: action
@@ -146,7 +148,7 @@ export const actionsSystem = setup({
     },
     importActions: ({ system, event }) => {
       const { actions: importData } = actionsSpec.typeOf('IMPORT_ACTIONS', event);
-      const pluginId = actions;
+      const pluginId = 'actions' as const;
 
       logger.info('Importing actions', { count: Array.isArray(importData) ? importData.length : 0 });
 
@@ -221,7 +223,7 @@ export const actionsSystem = setup({
 
     exportActionsToFile: ({ system, event }) => {
       const { directory } = actionsSpec.typeOf('EXPORT_ACTIONS', event);
-      const pluginId = actions;
+      const pluginId = 'actions' as const;
 
       logger.info('Exporting actions', { directory });
 

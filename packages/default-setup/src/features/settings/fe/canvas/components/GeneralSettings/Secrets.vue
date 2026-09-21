@@ -114,8 +114,9 @@ import { API_KEY_URLS, REQUIRED_PROVIDERS } from '../../../../constants'
 import CliProviders from './CliProviders.vue'
 import SecretKeyRow from './SecretKeyRow.vue'
 import NewSecretRow from './NewSecretRow.vue'
+import { id as settingsActorId } from '@/features/settings/fe/state';
 
-const settingsActor = useActorSystem().get('settings')
+const settingsActor = useActorSystem().get(settingsActorId)
 const secrets = useSelector(settingsActor, (state: any) => state.context.secrets as SecretInfo[])
 const status = useSelector(settingsActor, (state: any) => state.context.secretsStatus as SecretsStatus | null)
 const error = ref<string | null>(null)

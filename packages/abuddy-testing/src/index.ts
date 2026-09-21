@@ -140,9 +140,10 @@ function getPackManifest(): { id: string; pluginIds: string[] } | null {
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
   _packManifest = {
     id: manifest.id,
+    // The ids the plugins run under: a plugin is addressed `<packId>.<featureId>`, as a system is
     pluginIds: (manifest.features ?? [])
       .filter((f: any) => f.plugin)
-      .map((f: any) => f.plugin?.id ?? f.id),
+      .map((f: any) => `${manifest.id}.${f.plugin?.id ?? f.id}`),
   };
   return _packManifest;
 }
@@ -205,6 +206,29 @@ function captureOutput(app: ElectronApplication): void {
  * — an incompatible hostVersion, an unsupported layout, a throw in its runtime — would otherwise pass
  * its whole suite while dead, because every test it runs asks the app about something else.
  */
+/**
+ * The id a plugin name addresses in the running app, so a spec writes the short name its pack writes.
+ *
+ * A plugin runs under `<packId>.<featureId>`, and the host's own keep their bare ids. An exact id wins,
+ * then the pack under test's own feature, then a feature exactly one registered pack has. Two packs
+ * with that feature is the case the namespacing exists for, so it asks for the id rather than guessing.
+ */
+async function resolvePlugin(page: Page, name: string): Promise<string> {
+  const packId = getPackManifest()?.id;
+  const resolved = await page.evaluate(({ id, pack }) => {
+    const plugins: Array<{ id: string }> = (window as any).applicationState?.getSnapshot()?.context?.plugins ?? [];
+    if (plugins.some((p) => p.id === id)) return { id };
+    if (pack && plugins.some((p) => p.id === `${pack}.${id}`)) return { id: `${pack}.${id}` };
+    const matches = plugins.filter((p) => p.id.endsWith(`.${id}`)).map((p) => p.id);
+    return matches.length === 1 ? { id: matches[0] } : { candidates: matches };
+  }, { id: name, pack: packId ?? null });
+  if (resolved.id) return resolved.id;
+  const { candidates = [] } = resolved;
+  throw new Error(candidates.length > 1
+    ? `Plugin "${name}" is ambiguous — ${candidates.join(' and ')} both have it. Name the one you mean.`
+    : `No registered plugin is named "${name}"`);
+}
+
 async function waitForPackBackend(app: ElectronApplication, packId: string, timeoutMs = 15_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
@@ -503,9 +527,10 @@ export function createTest(options: CreateTestOptions = {}) {
         },
 
         navigate: async (pluginId) => {
+          const id0 = await resolvePlugin(page, pluginId);
           await page.evaluate((id) => {
             (window as any).applicationState.send({ type: 'SELECT_PLUGIN', pluginId: id });
-          }, pluginId);
+          }, id0);
           await page.waitForFunction((id) => {
             const snap = (window as any).applicationState?.getSnapshot();
             if (snap?.context?.activePlugin?.id !== id) return false;
@@ -513,14 +538,18 @@ export function createTest(options: CreateTestOptions = {}) {
             // test that clicks or screenshots straight after a navigate needs that flush to have happened.
             // data-active-plugin (WebApp.vue) is written in the flush that swaps the canvas.
             return document.querySelector(`[data-active-plugin="${id}"]`) !== null;
-          }, pluginId, { timeout: 10_000 });
+          }, id0, { timeout: 10_000 });
         },
 
         waitForPlugin: async (pluginId, timeout = 30_000) => {
-          await page.waitForFunction((id) => {
+          const packId = getPackManifest()?.id;
+          await page.waitForFunction(({ id, pack }) => {
             const snap = (window as any).applicationState?.getSnapshot();
-            return snap?.context?.plugins?.some((p: any) => p.id === id);
-          }, pluginId, { timeout });
+            const plugins: Array<{ id: string }> = snap?.context?.plugins ?? [];
+            if (plugins.some((p) => p.id === id)) return true;
+            if (pack && plugins.some((p) => p.id === `${pack}.${id}`)) return true;
+            return plugins.filter((p) => p.id.endsWith(`.${id}`)).length === 1;
+          }, { id: pluginId, pack: packId ?? null }, { timeout });
         },
 
         waitForState: async (check, timeout = 10_000) => {

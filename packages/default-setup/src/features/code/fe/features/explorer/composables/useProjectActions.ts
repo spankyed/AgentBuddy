@@ -1,6 +1,7 @@
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe'
+import { id as settingsActorId } from '@/features/settings/fe/state';
 export interface Project {
   name: string
   directories: string[]
@@ -9,7 +10,7 @@ export interface Project {
 
 export function useProjectActions() {
   const system = useActorSystem()
-  const settingsActor = system.get('settings')
+  const settingsActor = system.get(settingsActorId)
   const projects = useSelector(settingsActor, (state: any) =>
     state.context.settings?.general?.projects || []
   )

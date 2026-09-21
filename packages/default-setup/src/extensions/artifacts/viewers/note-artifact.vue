@@ -36,6 +36,7 @@ import type { ArtifactItem } from '@abuddy/sdk/artifacts'
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import CopyButton from '@abuddy/ui/design/CopyButton'
 import { useSelector } from '@xstate/vue'
+import { id as notesActorId } from '@/features/notes/fe/state';
 
 const actorSystem = useActorSystem()
 
@@ -50,7 +51,7 @@ const noteId = computed(() =>
     : props.artifact.content?.noteId ?? ''
 )
 
-const notesActor = actorSystem.get('notes')
+const notesActor = actorSystem.get(notesActorId)
 const allNotes = useSelector(notesActor, (s: any) => s.context.notes ?? [])
 
 const note = computed(() =>

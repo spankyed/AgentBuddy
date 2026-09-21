@@ -99,6 +99,7 @@ import TagInput from '@abuddy/ui/design/tag-input'
 import { useSelector } from '@xstate/vue'
 import type { DocumentDTO } from '@/__generated__/types'
 import type { ContentSection } from '@/features/library/be/types'
+import { id as libraryActorId } from '@/features/library/fe/state';
 
 const actorSystem = useActorSystem()
 
@@ -117,7 +118,7 @@ const isSymlink = computed(() => props.document?.id?.startsWith('symlink:') ?? f
 const mediaEntityId = crypto.randomUUID()
 
 // Get settings from state
-const actor = actorSystem.get('library')
+const actor = actorSystem.get(libraryActorId)
 const settings = useSelector(actor, (state: any) => state.context.settings)
 
 const formData = reactive({

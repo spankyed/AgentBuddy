@@ -28,12 +28,13 @@ import { useActorSystem, useSettingsSaveStatus } from '@abuddy/sdk/fe'
 import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
 import CliProviderRow from './CliProviderRow.vue'
+import { id as settingsActorId } from '@/features/settings/fe/state';
 
 const actorSystem = useActorSystem()
 
 const { updateSettings } = useSettingsSaveStatus()
 
-const settingsActor = actorSystem.get('settings')
+const settingsActor = actorSystem.get(settingsActorId)
 const cliTestResults = useSelector(settingsActor, (state: any) => state.context.cliTestResults)
 
 const providers = [

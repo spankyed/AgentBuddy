@@ -8,6 +8,7 @@ import { browserCommands } from './repository/commands';
 import type { SavedTab, SavedBookmark } from './types';
 import './repository/index'; // register repository
 import { createLogger } from '@abuddy/sdk/logger';
+import { busId } from '@/__generated__/bus-ids';
 
 const logger = createLogger('browser');
 
@@ -28,7 +29,8 @@ export const browserSpec = defineSystem('browser')<
   OutgoingBrowserEvents,
   BrowserContext
 >();
-export const browser = browserSpec.id;
+/** The id this feature's system runs under, which is what `system.get(...)` takes */
+export const browser = busId.browser;
 
 export const browserSystem = setup({
   types: browserSpec.types,
@@ -63,7 +65,7 @@ export const browserSystem = setup({
         savedTabCount: savedTabs.length,
         savedBookmarkCount: savedBookmarks.length,
       });
-      sendToPlugin(browser, {
+      sendToPlugin('browser', {
         type: 'BROWSER_CONNECTED',
         savedTabs,
         savedBookmarks,

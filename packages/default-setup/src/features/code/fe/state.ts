@@ -1,3 +1,4 @@
+import { pluginId } from '@/__generated__/events';
 import { setup, type ActorRefFrom, assign, enqueueActions } from 'xstate';
 import breadcrumb from '@abuddy/sdk/fe';
 import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@abuddy/sdk/fe';
@@ -18,7 +19,7 @@ import { actionsState, type ActionTab } from './features/actions/state';
 import { promptsState, type PromptTab } from './features/prompts/state';
 import type { KeyboardShortcut } from '@abuddy/sdk/types';
 
-export const id = 'code' as const;
+export const id = pluginId.code;
 
 // Module-level callback for getting editor selection text.
 // Set by canvas.vue so the state machine can read Monaco selection without Vue refs.

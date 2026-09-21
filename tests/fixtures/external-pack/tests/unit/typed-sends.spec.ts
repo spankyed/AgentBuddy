@@ -1,5 +1,7 @@
 // The fixture sends to its own system by feature id and to its dependency's (default-setup) as
-// default-setup/<feature>, both through the sendToSystem its #generated/events types with every system's events.
+// default-setup/<feature>, both through the sendToSystem its #generated/events types with every system's
+// events. Plugins are named the same way, so `nextEmit` takes this pack's own by feature id and a
+// dependency's as default-setup/<feature>, and reports the id the plugin runs under.
 import { describe, expect, it } from 'vitest';
 import { startApp } from '@abuddy/testing/harness';
 import { sendToSystem } from '#generated/events';
@@ -9,11 +11,12 @@ describe('typed sends to systems', () => {
   it("reaches default-setup's settings system", async () => {
     const app = await startApp({ systems: ['default-setup/settings'] });
     await app.connect();
-    await app.nextEmit('settings', 'SETTINGS_LOADED');
+    await app.nextEmit('default-setup/settings', 'SETTINGS_LOADED');
 
     sendToSystem('default-setup/settings', { type: 'GET_SETTINGS' });
 
-    expect(await app.nextEmit('settings', 'SETTINGS_LOADED')).toMatchObject({ type: 'SETTINGS_LOADED', pluginId: 'settings' });
+    expect(await app.nextEmit('default-setup/settings', 'SETTINGS_LOADED'))
+      .toMatchObject({ type: 'SETTINGS_LOADED', pluginId: 'default-setup.settings' });
   });
 
   it('reaches its own system by feature id', async () => {

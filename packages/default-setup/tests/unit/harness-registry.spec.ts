@@ -8,7 +8,7 @@ import { services } from '@/__generated__/services';
 describe("the test file's registry", () => {
   it('holds default-setup, registered once, which the lookups read', () => {
     expect(() => registerPack({ id: 'default-setup', systems: [] })).toThrow('Pack "default-setup" is already registered');
-    expect(getDesignated('brain')).toBe('brain');
+    expect(getDesignated('brain')).toBe('default-setup.brain');
     expect(stepRegistry.has('llm')).toBe(true);
     expect(typeof services.library.commands).toBe('function');
   });

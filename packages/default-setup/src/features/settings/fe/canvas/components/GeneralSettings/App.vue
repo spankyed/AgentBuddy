@@ -184,6 +184,7 @@ import { useSelector } from '@xstate/vue'
 import { HardDrive, PackageOpen, RotateCcw, Trash2 } from 'lucide-vue-next'
 import ImportPackSeedsPicker from './ImportPackSeedsPicker.vue'
 import Hotkeys from './Hotkeys.vue'
+import { id as settingsActorId } from '@/features/settings/fe/state';
 
 const actorSystem = useActorSystem()
 
@@ -206,7 +207,7 @@ function onHotkeyUpdate(event: { path: string[]; value: any }) {
   })
 }
 
-const actor = actorSystem.get('settings')
+const actor = actorSystem.get(settingsActorId)
 
 const packSeedsImport = useSelector(actor, (state: any) => state.context.packSeedsImport)
 const resetting = useSelector(actor, (state: any) => state.context.resetting)

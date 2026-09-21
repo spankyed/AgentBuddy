@@ -152,19 +152,21 @@ describe('pack plugins in the application actor', () => {
     expect(packClientReady).toHaveBeenCalledTimes(2);
   });
 
-  it('removes only the plugins the pack added, leaving a built-in plugin with an id it declared', () => {
+  // The plugins arrive under the ids they run under, so a pack with a `notes` feature of its own is a
+  // second plugin beside the built-in one rather than a clash. What this pins is that unloading the pack
+  // takes only its own.
+  it("removes only the plugins the pack added, leaving a built-in plugin whose feature it shares", () => {
     connect();
     const notesActor = app.system.get('notes');
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'ext', plugins: [plugin('notes'), plugin('pack-own')] });
-    warn.mockRestore();
+    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'ext', plugins: [plugin('ext.notes'), plugin('ext.pack-own')] });
 
     app.send({ type: 'PACK_PLUGINS_UNLOADED', packId: 'ext' });
 
     const { plugins, packPluginIds } = app.getSnapshot().context;
     expect(plugins).toEqual([builtInNotes]);
     expect(packPluginIds).toEqual({});
-    expect(app.system.get('pack-own')).toBeUndefined();
+    expect(app.system.get('ext.pack-own')).toBeUndefined();
+    expect(app.system.get('ext.notes')).toBeUndefined();
     expect(app.system.get('notes')).toBe(notesActor);
     expect(notesActor.getSnapshot().status).toBe('active');
   });

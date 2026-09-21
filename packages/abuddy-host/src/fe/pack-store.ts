@@ -24,7 +24,8 @@ interface PackFEExtensions {
 /** The renderer's registered pack frontends */
 export interface FePackRegistry extends FePackRegistryView {
   /** Registers a pack's frontend; without a pack id (the built-in packs') it can't be unregistered */
-  registerPackFE(registration: PackFERegistration): void;
+  /** Registers a pack's frontend and returns the plugins it registered, under the ids they run under */
+  registerPackFE(registration: PackFERegistration): Plugin[];
   /** Unregisters a pack's frontend; returns the plugins it had added */
   unregisterPackFE(packId: string): Plugin[];
   /** Every registered plugin, in registration order */
@@ -47,7 +48,7 @@ export function createFePackRegistry(): FePackRegistry {
   const appExtensions = createAppExtensionSlots();
   const dslTypes = createOwnedStore<DslTypeConfig>();
 
-  function registerPackFE(registration: PackFERegistration): void {
+  function registerPackFE(registration: PackFERegistration): Plugin[] {
     const packId = registration.id;
     if (packExtensions.has(packId)) {
       throw new Error(`Pack "${packId}" frontend is already registered`);
@@ -62,23 +63,29 @@ export function createFePackRegistry(): FePackRegistry {
 
     try {
       // A plugin runs under `<packId>.<featureId>`, as a system does, so two packs can each have a `notes`
-      // feature and neither shadows the other. The author's module is copied rather than changed: the
-      // qualified id is the registry's value for it, not something the pack wrote.
+      // feature and neither shadows the other. A built pack names its plugin with the generated `pluginId`
+      // map, so its module already carries that id; a hand-written one names the feature and is qualified
+      // here. Bare or prefixed both resolve, as they do for a system id.
       //
-      // Since a pack registering twice is already refused, what is left for this guard to catch is one
-      // registration naming a feature twice — which codegen cannot emit and a hand-written one can.
+      // Since a pack registering twice is already refused, what is left for the duplicate guard below to
+      // catch is one registration naming a feature twice — which codegen cannot emit and a hand-written
+      // one can.
       const registeredIds = new Set(allPlugins.map(p => p.id));
       const plugins: Plugin[] = [];
       const qualified = new Map<string, Plugin>();
+      const prefix = `${packId}.`;
+      /** The feature a name refers to, whether it is written bare or already carries this pack's prefix */
+      const featureOf = (name: string): string => (name.startsWith(prefix) ? name.slice(prefix.length) : name);
       for (const plugin of registration.plugins ?? []) {
-        const id = qualifiedId(packId, plugin.id);
+        const id = plugin.id.startsWith(prefix) ? plugin.id : qualifiedId(packId, plugin.id);
         if (registeredIds.has(id)) {
           console.warn(`[pack-store] Plugin "${id}"${fromPack} ignored — a plugin with that id is already registered`);
           continue;
         }
         registeredIds.add(id);
-        const registered = { ...plugin, id };
-        qualified.set(plugin.id, registered);
+        const registered = plugin.id === id ? plugin : { ...plugin, id };
+        // Keyed by the feature id, which is how `designations` and `defaultPlugin` name it
+        qualified.set(featureOf(id), registered);
         plugins.push(registered);
       }
       allPlugins.push(...plugins);
@@ -89,7 +96,7 @@ export function createFePackRegistry(): FePackRegistry {
         }
       });
 
-      const ownDefault = registration.defaultPlugin && qualified.get(registration.defaultPlugin.id);
+      const ownDefault = registration.defaultPlugin && qualified.get(featureOf(registration.defaultPlugin.id));
       if (ownDefault && !defaultPlugin) {
         defaultPlugin = ownDefault;
         undo(() => { defaultPlugin = undefined; });
@@ -102,7 +109,7 @@ export function createFePackRegistry(): FePackRegistry {
       // registered: a designation names a feature, and a feature it didn't register plays no role here.
       const roles: Record<string, string> = {};
       for (const [designation, featureId] of Object.entries(registration.designations ?? {})) {
-        const pluginId = qualified.get(featureId)?.id;
+        const pluginId = qualified.get(featureOf(featureId))?.id;
         if (!pluginId) continue;
         if (designations.has(designation)) {
           console.warn(`[pack-store] Designation "${designation}" of plugin "${pluginId}"${fromPack} ignored — another plugin plays that role`);
@@ -152,6 +159,9 @@ export function createFePackRegistry(): FePackRegistry {
       }
 
       packExtensions.set(packId, { plugins, undo: undos.undoAll });
+      // What was registered, not what the registration held: the caller adds these to the app, and the
+      // pack's own modules still carry the bare feature ids their author wrote.
+      return plugins;
     } catch (err) {
       undos.undoAll();
       throw err;

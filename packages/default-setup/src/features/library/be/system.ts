@@ -19,6 +19,7 @@ import { importLibrary } from './import-library'
 import type { ContentSection } from '@/features/library/be/types';
 import type { CommandItem } from '@/features/settings/be/types';
 import { threads } from '@/__generated__/system-ids';
+import { busId } from '@/__generated__/bus-ids';
 
 type IncomingLibraryEvents =
   | { type: 'CREATE_DOCUMENT'; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }
@@ -80,7 +81,8 @@ type LibraryInternalEvents =
   | { type: 'LIBRARY_SETTINGS_UPDATED'; settings: any; changes?: any }
 
 export const librarySpec = defineSystem('library')<IncomingLibraryEvents | LibraryInternalEvents, OutgoingLibraryEvents, LibrarySystemContext>();
-export const library = librarySpec.id;
+/** The id this feature's system runs under, which is what `system.get(...)` takes */
+export const library = busId.library;
 
 function resolveHomePath(inputPath: string): string {
   const trimmed = inputPath.trim()

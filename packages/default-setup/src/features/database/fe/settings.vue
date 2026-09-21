@@ -69,6 +69,7 @@ import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { HardDriveDownload } from 'lucide-vue-next'
 import type { DatabaseSettings } from '@/__generated__/types'
 import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe'
+import { id as databaseActorId } from '@/features/database/fe/state';
 
 const actorSystem = useActorSystem()
 
@@ -112,7 +113,7 @@ const handleResetDatabase = () => {
   )
 
   if (confirmed) {
-    const databaseActor = actorSystem.get('database')
+    const databaseActor = actorSystem.get(databaseActorId)
     databaseActor.send({ type: 'DATABASE.RESET' })
   }
 }

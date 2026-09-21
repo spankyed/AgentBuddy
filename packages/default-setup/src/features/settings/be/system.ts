@@ -3,7 +3,7 @@ import { createMachine, setup, sendTo, enqueueActions, fromCallback, fromPromise
 import { defineSystem, onPackSettingsDefaultsChanged, type SystemEntry } from '@abuddy/sdk/framework';
 
 import { bus } from '@abuddy/sdk/ids';
-import { threads } from '@/__generated__/system-ids';
+import { brain, threads } from '@/__generated__/system-ids';
 
 import type { SettingsData } from './types';
 import { loadFaqs } from './faqs';
@@ -18,6 +18,7 @@ import type { FAQItem } from '@/features/settings/be/types';
 import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services';
 import { REQUIRED_PROVIDERS } from '../constants';
 import { createLogger } from '@abuddy/sdk/logger';
+import { busId } from '@/__generated__/bus-ids';
 
 const logger = createLogger('settings');
 
@@ -73,7 +74,8 @@ const PLUGIN_SETTINGS_META_KEY = '_meta';
 const emitPluginSettings = emit as (pluginId: string, event: PluginSettingsUpdatedEvent) => ReturnType<typeof emit>;
 
 export const settingsSpec = defineSystem('settings')<IncomingSettingsEvents | SettingsInternalEvents, OutgoingSettingsEvents>();
-export const settings = settingsSpec.id;
+/** The id this feature's system runs under, which is what `system.get(...)` takes */
+export const settings = busId.settings;
 
 /** CLI path overrides, in the code plugin's settings */
 const cliPaths = (): Record<string, string | undefined> =>
@@ -81,7 +83,7 @@ const cliPaths = (): Record<string, string | undefined> =>
 
 /** Sends the settings plugin the stored API keys (no values) and how they're protected */
 function sendSecrets(system: { get(id: string): { send(event: unknown): void } | undefined }): void {
-  system.get(bus)?.send(emit(settings, { type: 'SECRETS_UPDATED', secrets: services.secrets.list(), status: services.secrets.status() }));
+  system.get(bus)?.send(emit('settings', { type: 'SECRETS_UPDATED', secrets: services.secrets.list(), status: services.secrets.status() }));
 }
 
 export const settingsSystem = setup({
@@ -97,7 +99,7 @@ export const settingsSystem = setup({
       const faqs = loadFaqs();
 
       // Send settings to the settings plugin
-      system.get(bus).send(emit(settings, {
+      system.get(bus).send(emit('settings', {
         type: 'SETTINGS_LOADED',
         data,
         faqs
@@ -122,13 +124,13 @@ export const settingsSystem = setup({
     
     // A pack enabled, disabled or reloaded while the app runs changes the defaults (a plugin's visibility)
     sendPackSettingsUpdate: ({ system }) => {
-      system.get(bus).send(emit(settings, { type: 'SETTINGS_UPDATED', data: settingsQueries.getSettings() }));
+      system.get(bus).send(emit('settings', { type: 'SETTINGS_UPDATED', data: settingsQueries.getSettings() }));
     },
 
     getSettings: ({ system, event }) => {
       const data = settingsQueries.getSettings();
       const faqs = loadFaqs();
-      system.get(bus).send(emit(settings, {
+      system.get(bus).send(emit('settings', {
         type: 'SETTINGS_LOADED',
         data,
         faqs
@@ -151,7 +153,7 @@ export const settingsSystem = setup({
 
       // Get all settings to send to frontend
       const data = settingsQueries.getSettings();
-      system.get(bus).send(emit(settings, {
+      system.get(bus).send(emit('settings', {
         type: 'SETTINGS_UPDATED',
         data
       }));
@@ -203,7 +205,7 @@ export const settingsSystem = setup({
       settingsCommands.replaceSettings(ev.data);
 
       const data = settingsQueries.getSettings();
-      system.get(bus).send(emit(settings, {
+      system.get(bus).send(emit('settings', {
         type: 'SETTINGS_UPDATED',
         data
       }));
@@ -220,7 +222,7 @@ export const settingsSystem = setup({
       
       // After reset, get the new settings to send to frontend
       const data = settingsQueries.getSettings();
-      system.get(bus).send(emit(settings, {
+      system.get(bus).send(emit('settings', {
         type: 'SETTINGS_RESET',
         data
       }));
@@ -242,7 +244,7 @@ export const settingsSystem = setup({
       const provider = ev.provider;
 
       if (!isCliName(provider)) {
-        system.get(bus).send(emit(settings, {
+        system.get(bus).send(emit('settings', {
           type: 'CLI_TEST_RESULT',
           provider,
           success: false,
@@ -258,12 +260,12 @@ export const settingsSystem = setup({
           settingsCommands.updateSettings('plugin', 'code', ['cliPaths'], { ...cliPaths(), [provider]: result.resolvedPath });
 
           const data = settingsQueries.getSettings();
-          system.get(bus).send(emit(settings, { type: 'SETTINGS_UPDATED', data }));
+          system.get(bus).send(emit('settings', { type: 'SETTINGS_UPDATED', data }));
         } else {
           logger.error(`CLI test failed for "${provider}"`, { error: result.error });
         }
 
-        system.get(bus).send(emit(settings, {
+        system.get(bus).send(emit('settings', {
           type: 'CLI_TEST_RESULT',
           provider,
           ...result,
@@ -275,10 +277,10 @@ export const settingsSystem = setup({
       const ev = settingsSpec.typeOf('PREVIEW_PACK_SEEDS', event);
       try {
         const preview = previewPackSeeds(ev.directory);
-        system.get(bus).send(emit(settings, { type: 'PACK_SEEDS_PREVIEW', preview }));
+        system.get(bus).send(emit('settings', { type: 'PACK_SEEDS_PREVIEW', preview }));
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        system.get(bus).send(emit(settings, { type: 'PACK_SEEDS_PREVIEW_FAILED', error: message }));
+        system.get(bus).send(emit('settings', { type: 'PACK_SEEDS_PREVIEW_FAILED', error: message }));
       }
     },
 
@@ -291,29 +293,29 @@ export const settingsSystem = setup({
         const result = seedData({ compiledDir: ev.directory, include, mode: ev.mode, verbose: true });
         // Seeders report records they couldn't seed in their counts rather than throwing
         const errors = Object.entries(result).flatMap(([key, counts]) => (counts.errors ?? []).map((error) => `${key}: ${error}`));
-        system.get(bus).send(emit(settings, { type: 'PACK_SEEDS_IMPORTED', result, errors }));
+        system.get(bus).send(emit('settings', { type: 'PACK_SEEDS_IMPORTED', result, errors }));
         // The running systems read what the seeds changed (the chat's slash commands, the library's documents)
         system.get(bus).send({ type: 'PACK_CHANGED', packId });
         if (ev.restartBrain) {
-          system.get('brain').send({ type: 'RESTART_BRAIN' });
+          system.get(brain).send({ type: 'RESTART_BRAIN' });
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        system.get(bus).send(emit(settings, { type: 'PACK_SEEDS_IMPORT_FAILED', error: message }));
+        system.get(bus).send(emit('settings', { type: 'PACK_SEEDS_IMPORT_FAILED', error: message }));
       }
     },
 
     onResetComplete: ({ system }) => {
-      system.get('brain').send({ type: 'RESTART_BRAIN' });
+      system.get(brain).send({ type: 'RESTART_BRAIN' });
       system.get(threads)?.send({ type: 'COMMANDS_CHANGED' });
-      system.get(bus).send(emit(settings, { type: 'APP_RESET_COMPLETE' }));
+      system.get(bus).send(emit('settings', { type: 'APP_RESET_COMPLETE' }));
     },
 
     onResetFailed: ({ system, event }) => {
       const err = (event as unknown as ErrorActorEvent).error;
       const message = err instanceof Error ? err.message : String(err);
       logger.error('Reset app failed', { error: err });
-      system.get(bus).send(emit(settings, { type: 'APP_RESET_FAILED', error: message }));
+      system.get(bus).send(emit('settings', { type: 'APP_RESET_FAILED', error: message }));
     },
 
   },

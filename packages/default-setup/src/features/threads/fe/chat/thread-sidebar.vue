@@ -169,7 +169,7 @@ import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, reactive, ref, watchEffect } from 'vue'
 import { X, ChevronDown, ChevronRight, ChevronLeft, Archive } from 'lucide-vue-next'
 import { useSelector } from '@xstate/vue'
-import { id, type ThreadsState, type ThreadListItem } from '@/features/threads/fe/state'
+import { feature, id, type ThreadsState, type ThreadListItem } from '@/features/threads/fe/state'
 import { getThreadDotColor, isThreadBusy } from './thread-status'
 import { ContextMenuRoot, ContextMenuTrigger } from 'reka-ui'
 import ThreadContextMenu from '@/features/threads/fe/canvas/components/thread-context-menu.vue'
@@ -389,7 +389,7 @@ function toggleArchive() {
   displayCount.value = BATCH_SIZE
   archiveDisplayCount.value = BATCH_SIZE
   if (showArchive.value) {
-    sendToSystem(id, { type: 'GET_ARCHIVED_THREADS' })
+    sendToSystem(feature, { type: 'GET_ARCHIVED_THREADS' })
   }
 }
 </script>

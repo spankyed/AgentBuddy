@@ -202,6 +202,7 @@ import type { FlowsSettings } from '@/__generated__/types'
 import { useSelector } from '@xstate/vue'
 import { id, type FlowsState } from './state'
 import { id as brainId, type BrainState } from '@/features/brain/fe/state'
+import { id as settingsActorId } from '@/features/settings/fe/state';
 
 const actorSystem = useActorSystem()
 
@@ -245,7 +246,7 @@ const exportedFilePath = useSelector(flowsActor, (state) => state.context.dslExp
 const exportedFlowCount = useSelector(flowsActor, (state) => state.context.dslExport.flowCount)
 
 // Get settings actor for navigation only
-const settingsActor = actorSystem.get('settings')
+const settingsActor = actorSystem.get(settingsActorId)
 const brainActor: BrainState = actorSystem.get(brainId)
 const runningRootFlowId = useSelector(brainActor, (state) => state.context.runningRootFlowId)
 

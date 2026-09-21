@@ -220,6 +220,7 @@ import type { TerminalScript } from '@/__generated__/types'
 import type { Terminal } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { IDisposable } from '@xterm/xterm'
+import { id as settingsActorId } from '@/features/settings/fe/state';
 
 const actorSystem = useActorSystem()
 
@@ -228,7 +229,7 @@ const props = withDefaults(defineProps<{ height?: number }>(), { height: 256 })
 // Actors
 const codeActor: CodeState = actorSystem.get(codeId)
 const terminalActor = codeActor.system.get('terminal')!
-const settingsActor = actorSystem.get('settings')
+const settingsActor = actorSystem.get(settingsActorId)
 
 // State selectors
 const panelTerminalId = useSelector(codeActor, (state) => state.context.panelTerminalId)

@@ -232,8 +232,8 @@ describe('generated system sends', () => {
     const events = files['src/__generated__/events.ts'];
     expect(events).toContain("export type PackSystemEvents = {\n  'memos': IncomingEventsOf<(typeof __specs)['memos']>;\n};");
     expect(events).toContain('export type SendableSystemEvents = PackSystemEvents & { [K in keyof __dep_base_pack_PackSystemEvents & string as `base-pack/${K}`]: __dep_base_pack_PackSystemEvents[K] } & ');
-    // Each name maps to the id its system runs under: an external dependency's is prefixed, a built-in's isn't
-    expect(events).toContain("const systemIds = {\n  ...busId,\n  'base-pack/threads': 'base-pack.threads',\n  'default-setup/memos': 'memos',\n};");
+    // Each name maps to the id its system runs under — `<packId>.<featureId>` for every pack, built-in too
+    expect(events).toContain("const systemIds = {\n  ...busId,\n  'base-pack/threads': 'base-pack.threads',\n  'default-setup/memos': 'default-setup.memos',\n};");
     expect(events).toContain('defineEvents<PackEvents, SendableSystemEvents>(systemIds, pluginId);');
     // This pack has no plugin of its own and sends to none, so it gets no plugin names at all
     expect(events).toContain('export const pluginId = {} as const;');

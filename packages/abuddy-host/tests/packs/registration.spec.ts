@@ -104,7 +104,7 @@ describe('registerPack designations', () => {
   it.each([
     ["an external pack's system", [system('ext.journal')], 'ext.journal'],
     ["a built-in pack's system", [system('journal')], 'journal'],
-    ['the feature id, when no registered system plays it (the early system)', [], 'journal'],
+    ['the id it would run under, when no registered system plays it (the early system)', [], 'ext.journal'],
   ])('resolves a role to %s', (_case, systems, expected) => {
     registerDesignated('ext', systems);
     expect(getDesignated('journal')).toBe(expected);

@@ -67,11 +67,11 @@ test('previews a compiled seeds directory by its seeds.json and imports the sele
     await app.navigate('settings');
 
     const send = (event: Record<string, unknown>) => appPage.evaluate((e) => {
-      (window as any).applicationState.system.get('settings').send(e);
+      (window as any).applicationState.system.get('default-setup.settings').send(e);
     }, event);
-    const importState = () => appPage.evaluate(() => (window as any).applicationState.system.get('settings').getSnapshot().context.packSeedsImport) as Promise<PackSeedsImport>;
+    const importState = () => appPage.evaluate(() => (window as any).applicationState.system.get('default-setup.settings').getSnapshot().context.packSeedsImport) as Promise<PackSeedsImport>;
     const waitForStatus = (status: string) => appPage.waitForFunction(
-      (s) => ['error', s].includes((window as any).applicationState.system.get('settings').getSnapshot().context.packSeedsImport.status),
+      (s) => ['error', s].includes((window as any).applicationState.system.get('default-setup.settings').getSnapshot().context.packSeedsImport.status),
       status,
       { timeout: 20_000 },
     );

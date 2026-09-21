@@ -12,7 +12,7 @@ import type {
   PromptsSettings,
 } from '@/__generated__/types'
 import type { TemplateInput } from '@abuddy/sdk'
-import { sendToSystem } from '@/__generated__/events'
+import { sendToSystem, pluginId } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
 import type { PromptEntity, EARS } from '@abuddy/sdk'
@@ -20,7 +20,10 @@ import type { PromptEntity, EARS } from '@abuddy/sdk'
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
 /* ─────────────────────────────────────────────────────────── */
-export const id = 'prompts'
+export const id = pluginId.prompts
+/** This feature's name, which is how its own code addresses its system — the plugin's id is a
+ * different thing now that a plugin runs under `<packId>.<featureId>`. */
+export const feature = 'prompts' as const;
 export type PromptsState = ActorRefFrom<typeof promptsState>
 
 export interface PromptsContext {
@@ -126,7 +129,7 @@ const promptsState = setup({
         return
       }
       // Send event to backend to get prompt data
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'PROMPT_SELECT',
         promptId: ev.promptId,
       });
@@ -167,13 +170,13 @@ const promptsState = setup({
       
       if (isCreating) {
         // Create new prompt
-        sendToSystem(id, {
+        sendToSystem(feature, {
           type: 'CREATE_PROMPT',
           ...context.formData,
         })
       } else {
         // Update existing prompt
-        sendToSystem(id, {
+        sendToSystem(feature, {
           type: 'UPDATE_PROMPT',
           promptId: context.selectedPromptId!,
           ...context.formData,
@@ -183,7 +186,7 @@ const promptsState = setup({
 
     sendDeletePrompt: ({ event }) => {
       const ev = typeOf('PROMPT.DELETE', event);
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'DELETE_PROMPT',
         promptId: ev.promptId,
       });
@@ -191,7 +194,7 @@ const promptsState = setup({
 
     updatePromptInputs: ({ event }) => {
       const ev = typeOf('PROMPT.UPDATE_INPUTS', event);
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'UPDATE_PROMPT',
         promptId: ev.promptId,
         inputs: ev.inputs,
@@ -200,7 +203,7 @@ const promptsState = setup({
 
     createPromptInline: ({ event }) => {
       const ev = typeOf('PROMPT.CREATE_INLINE', event);
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'CREATE_PROMPT',
         label: ev.label,
         templateFn: ev.templateFn,
@@ -210,7 +213,7 @@ const promptsState = setup({
 
     updatePromptLabel: ({ event }) => {
       const ev = typeOf('PROMPT.UPDATE_LABEL', event);
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'UPDATE_PROMPT',
         promptId: ev.promptId,
         label: ev.label,
@@ -353,7 +356,7 @@ const promptsState = setup({
 
     sendImportPrompts: ({ event }) => {
       const ev = typeOf('PROMPTS.IMPORT', event);
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'IMPORT_PROMPTS',
         prompts: ev.prompts,
       });
@@ -395,7 +398,7 @@ const promptsState = setup({
 
     sendExportPrompts: ({ event }) => {
       const ev = typeOf('PROMPTS.EXPORT', event);
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'EXPORT_PROMPTS',
         directory: ev.directory,
       });
@@ -431,7 +434,7 @@ const promptsState = setup({
 
     /* ── pagination ────────────────────────────────────────── */
     requestNextPage: assign(({ context }) => {
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'FETCH_PROMPTS_PAGE',
         page: context.page + 1,
       });
@@ -449,7 +452,7 @@ const promptsState = setup({
     }),
 
     requestAllItems: assign(() => {
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'FETCH_ALL_PROMPTS',
       });
       return { loadingMore: true };

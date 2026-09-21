@@ -19,7 +19,7 @@ describe('memo reminder flow', () => {
     });
     await seedPack({ keys: ['actions'] });
     importFlows({ 'Memo Reminder Flow': { root: true, tracks: memoReminderFlow['Memo Reminder Flow'] } });
-    const app = await startApp({ systems: ['brain', 'settings'] });
+    const app = await startApp({ systems: ['default-setup/brain', 'default-setup/settings'] });
     await app.connect();
     await scheduled;
 

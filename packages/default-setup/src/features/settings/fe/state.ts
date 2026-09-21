@@ -8,7 +8,7 @@ import {
 } from '@abuddy/sdk/fe'
 import type { OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, PluginSettings } from '@/__generated__/types'
 import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services'
-import { sendToSystem } from '@/__generated__/events'
+import { sendToSystem, pluginId } from '@/__generated__/events'
 import type { ApplicationHotkeys } from '@abuddy/sdk/types'
 import type { EARS } from '@abuddy/sdk'
 import type { PackSeedsPreview } from '@abuddy/sdk/build'
@@ -17,7 +17,10 @@ import type { FAQItem } from '@/features/settings/be/types';
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
 /* ─────────────────────────────────────────────────────────── */
-export const id = 'settings'
+export const id = pluginId.settings
+/** This feature's name, which is how its own code addresses its system — the plugin's id is a
+ * different thing now that a plugin runs under `<packId>.<featureId>`. */
+export const feature = 'settings' as const;
 export type SettingsState = ActorRefFrom<typeof settingsState>
 
 // Use backend types directly
@@ -109,7 +112,7 @@ const settingsState = setup({
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
     loadSettings: () => {
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'GET_SETTINGS',
       });
     },
@@ -176,7 +179,7 @@ const settingsState = setup({
     /* ── settings updates ────────────────────────────── */
     updateSettings: ({ event }) => {
       const ev = typeOf('SETTINGS.UPDATE', event);
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'UPDATE_SETTINGS',
         entityType: ev.entityType,
         label: ev.label,
@@ -187,21 +190,21 @@ const settingsState = setup({
 
     replaceSettings: ({ event }) => {
       const ev = typeOf('SETTINGS.REPLACE', event);
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'REPLACE_SETTINGS',
         data: ev.data,
       });
     },
 
     resetSettings: () => {
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'RESET_SETTINGS',
       });
     },
 
     testCliProvider: assign(({ context, event }) => {
       const ev = typeOf('CLI.TEST', event);
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'TEST_CLI_PROVIDER',
         provider: ev.provider,
       });
@@ -226,7 +229,7 @@ const settingsState = setup({
 
     previewPackSeeds: assign(({ context, event }) => {
       const ev = event as { type: 'PACK_SEEDS.PREVIEW'; directory: string };
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'PREVIEW_PACK_SEEDS',
         directory: ev.directory,
       });
@@ -337,7 +340,7 @@ const settingsState = setup({
         return selected.length === total ? null : selected;
       };
 
-      sendToSystem(id, {
+      sendToSystem(feature, {
         type: 'IMPORT_PACK_SEEDS',
         directory,
         include: Object.fromEntries(Object.keys(preview.seeds).map((key) => [key, toIncludeField(key)])),
@@ -509,7 +512,7 @@ const settingsState = setup({
           actions: [
             assign({ resetting: true }),
             () => {
-              sendToSystem(id, { type: 'RESET_APP' });
+              sendToSystem(feature, { type: 'RESET_APP' });
             },
           ],
         },

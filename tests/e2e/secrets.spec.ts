@@ -20,7 +20,7 @@ function filesUnder(dir: string): string[] {
 test('adds, selects and stores API keys without the key strings reaching logs, files or renderer state', async ({ app, appPage, electronApp }) => {
   await app.navigate('settings');
   await appPage.evaluate(() => {
-    (window as any).applicationState.system.get('settings').send({ type: 'GENERAL_NAV.SELECT', item: 'secrets' });
+    (window as any).applicationState.system.get('default-setup.settings').send({ type: 'GENERAL_NAV.SELECT', item: 'secrets' });
   });
 
   const openai = appPage.locator('[data-testid="secrets-provider-openai"]');
@@ -41,7 +41,7 @@ test('adds, selects and stores API keys without the key strings reaching logs, f
   await openai.locator('button[title="Save"]').click();
   await openai.locator('[data-testid="secret-Personal"] input[type="radio"]').check();
 
-  const secrets = () => appPage.evaluate(() => (window as any).applicationState.system.get('settings').getSnapshot().context.secrets as Array<{ label: string; provider: string; selected: boolean }>);
+  const secrets = () => appPage.evaluate(() => (window as any).applicationState.system.get('default-setup.settings').getSnapshot().context.secrets as Array<{ label: string; provider: string; selected: boolean }>);
   await expect.poll(async () => (await secrets()).map((secret) => [secret.provider, secret.label, secret.selected])).toEqual([
     ['openai', 'Work', false],
     ['openai', 'Personal', true],
@@ -49,7 +49,7 @@ test('adds, selects and stores API keys without the key strings reaching logs, f
   await expect(appPage.locator('[data-testid="secrets-error"]')).toHaveCount(0);
 
   // Nothing the renderer holds, and nothing on disk or in the logs, contains a key
-  const rendererState = await appPage.evaluate(() => JSON.stringify((window as any).applicationState.system.get('settings').getSnapshot().context));
+  const rendererState = await appPage.evaluate(() => JSON.stringify((window as any).applicationState.system.get('default-setup.settings').getSnapshot().context));
   expect(rendererState).not.toContain('E2EWORK');
   expect(rendererState).not.toContain('E2EPERSONAL');
 
