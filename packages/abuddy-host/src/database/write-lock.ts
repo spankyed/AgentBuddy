@@ -4,7 +4,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { lockIsHeld } from '../process-liveness.ts';
+import { lockIsHeld, sameWriter } from '../process-liveness.ts';
 
 /**
  * What the file holds. `pid` answers the question the lock exists to ask, "is the holder still running";
@@ -70,10 +70,6 @@ function takeLock(file: string, mine: LockFile): boolean {
   }
   return true;
 }
-
-/** Whether a lock is the same one, so a take-over removes the leftover it judged and not a later holder's */
-const sameLock = (a: LockFile | null, b: LockFile | null): boolean =>
-  a !== null && b !== null && a.pid === b.pid && a.machine === b.machine && a.since === b.since;
 
 /**
  * What a tool is changing in this data dir's database right now, or `null` when nothing is: a lock whose process has
@@ -153,7 +149,7 @@ export function holdDatabaseWriteLock(userDataDir: string, what: string): Databa
       // because a file's existence carries no liveness. An advisory lock would
       // (docs/goals/deferred/goal-write-lock-advisory.md). Re-read first, so this removes the leftover it judged
       // and not a lock someone else took over in the meantime.
-      if (sameLock(readLock(file), leftover)) fs.rmSync(file, { force: true });
+      if (sameWriter(readLock(file), leftover)) fs.rmSync(file, { force: true });
       if (!takeLock(file, mine)) refuse(findDatabaseWriter(userDataDir) ?? 'another tool that took it first');
     }
   } catch (err) {

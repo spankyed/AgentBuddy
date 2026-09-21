@@ -91,9 +91,12 @@ export async function openTarget(target: DbTarget, { write, command }: OpenOptio
   try {
     const running = findRunningApp(target);
     if (running && write) {
-      throw new Error(`AgentBuddy is running on ${target.userDataDir} (${running}): quit it first, this command changes its database`);
+      // Named only here: a refusal has to say how to get out of it, and the file is the way out when the app
+      // that wrote it is gone. The warning below must not say it — there the app really is running.
+      const clear = running.marker ? ` If it isn't running, delete ${running.marker} and try again.` : '';
+      throw new Error(`AgentBuddy is running on ${target.userDataDir} (${running.why}): quit it first, this command changes its database.${clear}`);
     }
-    if (running) io.err(`Warning: AgentBuddy is running on it (${running}); what it hasn't written yet isn't here`);
+    if (running) io.err(`Warning: AgentBuddy is running on it (${running.why}); what it hasn't written yet isn't here`);
     const db = await openAppDatabase({
       env: target.env,
       userDataDir: target.userDataDir,

@@ -100,6 +100,21 @@ export interface ApiEndpoint {
   pid: number;
 }
 
+/** What a process writes about itself in a record: enough to tell its own leftover from a later holder's */
+export interface WriterRecord {
+  pid: number;
+  machine: string;
+  since: string;
+}
+
+/**
+ * Whether two records name the same run, so a process removes the leftover it judged and not the one a
+ * later holder put in its place. The pid alone isn't enough — the OS reuses it — and neither is the pid and
+ * the machine.
+ */
+export const sameWriter = (a: WriterRecord | null, b: WriterRecord | null): boolean =>
+  a !== null && b !== null && a.pid === b.pid && a.machine === b.machine && a.since === b.since;
+
 /**
  * The API running on this data dir, from the file it published, or `null` when there is none: no file, one that
  * can't be read, or one a crashed run left behind. A process this user may not signal counts as running.

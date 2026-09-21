@@ -43,7 +43,7 @@ describe('findRunningApp', () => {
   it('counts a port file whose API process is running', () => {
     const live = context();
     publishApi(live.userDataDir, { port: 3001 });
-    expect(findRunningApp(live)).toBe(`its API is running on port 3001 (pid ${process.pid})`);
+    expect(findRunningApp(live)?.why).toBe(`its API is running on port 3001 (pid ${process.pid})`);
   });
 
   it("doesn't count a port file a crashed run left behind, or one it can't read", () => {
@@ -61,7 +61,7 @@ describe('findRunningApp', () => {
   it("counts the app's own file while its process runs, and not one a crash left", () => {
     const live = context();
     appLock(live.userDataDir, anApp());
-    expect(findRunningApp(live)).toBe(`its process is running (pid ${process.pid})`);
+    expect(findRunningApp(live)?.why).toBe(`its process is running (pid ${process.pid})`);
 
     const crashed = context();
     appLock(crashed.userDataDir, anApp(exitedPid()));
@@ -73,12 +73,12 @@ describe('findRunningApp', () => {
   it("counts one it can't check: another machine's, or one it can't read", () => {
     const remote = context();
     appLock(remote.userDataDir, anApp(process.pid, 'another-machine.local'));
-    expect(findRunningApp(remote)).toMatch(/its process is running on another-machine\.local/);
+    expect(findRunningApp(remote)?.why).toMatch(/its process is running on another-machine\.local/);
 
     for (const content of ['not json', '{}', JSON.stringify({ pid: 'x', machine: 'h' }), JSON.stringify({ machine: 'h' })]) {
       const unreadable = context();
       fs.writeFileSync(appLockFile(unreadable.userDataDir), content);
-      expect(findRunningApp(unreadable), content).toMatch(/is there and can't be read/);
+      expect(findRunningApp(unreadable)?.why, content).toMatch(/is there and can't be read/);
     }
   });
 
@@ -89,11 +89,11 @@ describe('findRunningApp', () => {
     const ctx = context();
     const stop = publishRunningApp(ctx.userDataDir);
     try {
-      expect(findRunningApp(ctx)).toBe(`its process is running (pid ${process.pid})`);
+      expect(findRunningApp(ctx)?.why).toBe(`its process is running (pid ${process.pid})`);
 
       // The API boots, then crashes: its port file names a process that has gone
       publishApi(ctx.userDataDir, { pid: exitedPid() });
-      expect(findRunningApp(ctx)).toBe(`its process is running (pid ${process.pid})`);
+      expect(findRunningApp(ctx)?.why).toBe(`its process is running (pid ${process.pid})`);
     } finally {
       stop();
     }
@@ -107,18 +107,59 @@ describe('findRunningApp', () => {
 
     stop();
 
-    expect(findRunningApp(ctx)).toBe(`its process is running (pid ${process.ppid})`);
+    expect(findRunningApp(ctx)?.why).toBe(`its process is running (pid ${process.ppid})`);
+  });
+
+  // The pid alone can't tell the runs apart: the OS reuses pids, so a crashed app's replacement can hold
+  // the one that crashed. What each run writes about itself is what makes its own marker its own.
+  it("leaves a later run's marker alone even when it holds the same pid", () => {
+    const ctx = context();
+    const stop = publishRunningApp(ctx.userDataDir);
+    const later = { pid: process.pid, machine: os.hostname(), since: new Date(Date.now() + 1000).toISOString() };
+    appLock(ctx.userDataDir, later);
+
+    stop();
+
+    expect(findRunningApp(ctx)?.why, "the earlier run removed the later one's marker").toBe(
+      `its process is running (pid ${process.pid})`,
+    );
   });
 });
 
 // `readApiEndpoint` bounds its answer by the boot that wrote the port file, where a wrong "nothing is
 // running" costs a connection error to a dead port. The app's own file does not: there a wrong answer lets
 // a tool write while the app has the database open, so its pid is taken at face value.
+// A refusal has to say how to get out of itself. The app marker survives a crash, and `lockIsHeld` takes its
+// pid at face value, so one naming a pid the OS has since reused reads as an app that is running — and
+// without the file named, the data dir is one no tool can ever write to again.
+describe('the way out of a refusal', () => {
+  it("names the app's marker, and doesn't name the port file, which clears itself", () => {
+    const ctx = context();
+    fs.writeFileSync(appLockFile(ctx.userDataDir), JSON.stringify({ pid: process.pid, machine: os.hostname(), since: '' }));
+    expect(findRunningApp(ctx)?.marker).toBe(appLockFile(ctx.userDataDir));
+
+    fs.rmSync(appLockFile(ctx.userDataDir));
+    publishApi(ctx.userDataDir);
+    expect(findRunningApp(ctx)?.why).toMatch(/its API is running/);
+    expect(findRunningApp(ctx)?.marker, 'a port file is bound by its boot, so it needs no way out').toBeUndefined();
+  });
+
+  it('names it for a marker it cannot resolve, and one from another machine', () => {
+    const unreadable = context();
+    fs.writeFileSync(appLockFile(unreadable.userDataDir), 'not json');
+    expect(findRunningApp(unreadable)?.marker).toBe(appLockFile(unreadable.userDataDir));
+
+    const remote = context();
+    fs.writeFileSync(appLockFile(remote.userDataDir), JSON.stringify({ pid: 1, machine: 'another-host.local', since: '' }));
+    expect(findRunningApp(remote)?.marker).toBe(appLockFile(remote.userDataDir));
+  });
+});
+
 describe('findRunningApp, on a port file left by a previous boot', () => {
   it('ignores a port file that predates this boot, whatever pid it names', () => {
     const ctx = context();
     publishApi(ctx.userDataDir);
-    expect(findRunningApp(ctx)).toMatch(/its API is running on port 3001/);
+    expect(findRunningApp(ctx)?.why).toMatch(/its API is running on port 3001/);
 
     backdateToPreviousBoot(ctx.apiPortFile);
     expect(findRunningApp(ctx)).toBeNull();
@@ -129,6 +170,6 @@ describe('findRunningApp, on a port file left by a previous boot', () => {
     appLock(ctx.userDataDir, anApp());
     backdateToPreviousBoot(appLockFile(ctx.userDataDir));
 
-    expect(findRunningApp(ctx)).toBe(`its process is running (pid ${process.pid})`);
+    expect(findRunningApp(ctx)?.why).toBe(`its process is running (pid ${process.pid})`);
   });
 });

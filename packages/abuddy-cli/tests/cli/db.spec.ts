@@ -382,6 +382,9 @@ describe('abuddy db exec', () => {
     holdLock(locked);
     const byLock = await run(['exec', "tx('Note-a').put('title', 'Changed')", '--data-dir', locked]);
     expect(byLock.error?.message).toMatch(/^AgentBuddy is running on .* \(its process is running \(pid \d+\)\): quit it first/);
+    // The marker outlives a crash and its pid can be one the OS has since reused, so the refusal has to
+    // name the file: without it the data dir is one no tool could ever write to again
+    expect(byLock.error?.message, 'the refusal gave no way out').toContain(`delete ${path.join(locked, 'app.lock')}`);
 
     const served = await appDataDir();
     publishApi(served);

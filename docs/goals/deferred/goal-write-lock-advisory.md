@@ -54,7 +54,8 @@ Never:
 - use `proper-lockfile` or any heartbeat-based lock. Its heartbeat lapses under the synchronous LMDB
   work the lock protects, producing the exact double-writer it prevents (Decision 5).
 - let locking fail open. If the lock cannot be taken or read, a write must be refused (Decision 6).
-- remove `lockIsHeld`. Chromium writes the instance lock and we cannot change its format (Decision 1).
+- remove `lockIsHeld`. The app's own `app.lock` marker is not a lock to take, only a statement that a
+  process is using the data dir, and a pid check is what answers that (Decision 1).
 ```
 
 ## Background
@@ -68,7 +69,7 @@ advisory lock can replace exactly one:
 | Record | Written by | Can an advisory lock replace the liveness check? |
 |---|---|---|
 | `db-write.lock` (`write-lock.ts:57`) | our tools | **Yes.** A mutual-exclusion lock held for a duration is what `flock` is |
-| Chromium's `SingletonLock` (`running.ts:31`) | **Chromium** | **No.** We don't write it and can't change its format |
+| `app.lock` (`running.ts`) | the Electron main process | **No.** Not a mutual-exclusion lock: `requestSingleInstanceLock()` is what keeps one app per data dir, and this only publishes that it is using one. Since 2026-09-20; this row read Chromium's `SingletonLock`, which we did not write |
 | staging dirs (`staging.ts:30`) | our installer | No. A record of an install that was in progress, read once at boot, not a lock |
 | dev-server marker (`dev-server.ts:75`) | `abuddy dev` | Not by a lock — but the question has a better answer (Decision 2) |
 
@@ -108,9 +109,14 @@ but no longer serving, which no pid check can. `dev-build.mjs` already works thi
 
 ## Decisions
 
-1. **`lockIsHeld` stays.** Chromium's instance lock is not ours to change, and a pid check is the only
-   thing available for it. Its `ifUnsure: 'held'`-shaped bias is still right there: missing a live app
-   lets a tool write under it.
+1. **`lockIsHeld` stays.** Its other caller is the app's own marker, `app.lock`, which the main process
+   publishes while it runs. A pid check is what is available there — the marker says a process is using the
+   data dir, not that it holds a lock we could try to take — and the `held`-shaped bias is still right:
+   missing a live app lets a tool write under it. The marker names itself in the refusal, so a leftover
+   whose pid the OS has reused is recoverable rather than permanent.
+
+   *(This read "Chromium's instance lock is not ours to change" until 2026-09-20. We write the marker now,
+   which changes the reason but not the decision.)*
 
 2. **The API port file and the dev-server marker ask the endpoint, not the pid.** `readApiEndpoint`
    becomes "the API that answers on this data dir", and the `pack://` handler's marker check becomes
