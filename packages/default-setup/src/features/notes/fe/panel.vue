@@ -271,9 +271,7 @@ import {
 } from 'reka-ui'
 import { useNoteTreeDragDrop } from './composables/useNoteTreeDragDrop'
 import type { MenuItem } from '@abuddy/ui/composables/useContextMenu'
-import { useActorSystem, useTrackedMenuOpen } from '@abuddy/sdk/fe'
-
-const actorSystem = useActorSystem()
+import { useTrackedMenuOpen } from '@abuddy/sdk/fe'
 
 const actor: NotesState = actorOf(id)
 

@@ -208,7 +208,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, watch, nextTick, type Ref, type ComponentPublicInstance } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, type LibraryEvents } from '../../state'
@@ -217,8 +216,6 @@ import { librarySystem } from '../../state'
 import { FileText, Search, Hash, Copy, ChevronRight } from 'lucide-vue-next'
 import Button from '@abuddy/ui/design/button'
 import type { IndexSearchResult, SearchIndex } from '@/__generated__/types'
-
-const actorSystem = useActorSystem()
 
 type LibraryActor = ActorRefFrom<typeof librarySystem>
 const actor = actorOf(id) as LibraryActor

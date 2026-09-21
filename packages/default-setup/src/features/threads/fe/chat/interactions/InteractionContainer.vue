@@ -18,7 +18,6 @@ import { actorOf } from '@/__generated__/fe'
 import type { BlockConfig } from '@/__generated__/types'
 import { blockRegistry } from '@abuddy/sdk/blocks'
 import { ref, computed } from 'vue'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { id as threadsId } from '@/features/threads/fe/state'
 
 interface Props {
@@ -32,7 +31,6 @@ const props = withDefaults(defineProps<Props>(), {
   isDisabled: false
 })
 
-const actorSystem = useActorSystem()
 const threadsActor = actorOf(threadsId)
 
 // ─── Block component resolution ─────────────────────────────────────

@@ -95,7 +95,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { useExternalFileDrag } from '@abuddy/ui/composables/useExternalFileDrag'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState, type OpenFile, setEditorSelectionGetter, isEditableDiff } from '../state'
@@ -104,8 +103,6 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import FileEditor from '@/features/code/fe/canvas/FileEditor.vue'
 import QuickOpenPalette from '@/features/code/fe/canvas/QuickOpenPalette.vue'
 import { reorderTabs } from '../utils/tab-management'
-
-const actorSystem = useActorSystem()
 
 const actor: CodeState = actorOf(id)
 const explorerActor = actor.system.get('explorer')

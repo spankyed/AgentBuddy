@@ -4,12 +4,7 @@
 
 ```ts
 
-import { ActionFunction } from 'xstate';
-import { AnyActorRef } from 'xstate';
-import { AnyEventObject } from 'xstate';
-import { EventObject } from 'xstate';
-import { MachineContext } from 'xstate';
-import { NonReducibleUnknown } from 'xstate';
+import type { AnyActorRef } from 'xstate';
 
 // @public
 export interface ActorLookup {
@@ -20,20 +15,10 @@ export interface ActorLookup {
 // @public (undocumented)
 export function getActor(system: ActorLookup, id: string): AnyActorRef;
 
-// @public (undocumented)
-export function getBus(system: ActorLookup): AnyActorRef;
-
 // @public
 export function safeEvents<TEvent extends {
     type: string;
 }>(): <TTypes extends TEvent["type"] | readonly TEvent["type"][]>(expected: TTypes, event: TEvent) => ExtractEvent<TEvent, TTypes extends readonly TEvent["type"][] ? TTypes[number] : TTypes>;
-
-// @public (undocumented)
-export function sendParentSafe<TEvent extends {
-    type: string;
-}>(): <Type extends TEvent["type"]>(payload: Extract<TEvent, {
-    type: Type;
-}>) => ActionFunction<MachineContext, EventObject, AnyEventObject, NonReducibleUnknown, never, never, never, never, never>;
 
 // @public (undocumented)
 export type Simplify<T> = {

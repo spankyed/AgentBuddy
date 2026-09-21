@@ -30,15 +30,12 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed } from 'vue'
 import { StickyNote } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import CopyButton from '@abuddy/ui/design/CopyButton'
 import { useSelector } from '@xstate/vue'
-
-const actorSystem = useActorSystem()
 
 const props = defineProps<{
   artifact: ArtifactItem<string | { noteId?: string }>

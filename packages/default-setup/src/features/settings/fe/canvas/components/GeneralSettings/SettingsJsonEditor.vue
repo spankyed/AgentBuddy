@@ -39,12 +39,9 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, onMounted, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor'
-
-const actorSystem = useActorSystem()
 
 const actor = actorOf('settings')
 const settings = useSelector(actor, (state: any) => state.context.settings)

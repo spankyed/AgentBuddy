@@ -95,7 +95,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, type Ref, ref, nextTick, watch, onMounted, onUnmounted } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeUpdateEvent, EdgeMouseEvent } from '@vue-flow/core'
@@ -121,8 +120,6 @@ import FlowLabelDialog from './components/FlowLabelDialog.vue'
 import ConfirmationDialog from '@abuddy/ui/design/ConfirmationDialog'
 import ToastNotification from '@abuddy/ui/design/ToastNotification'
 import type { FlowEntity, EARS } from '@abuddy/sdk'
-
-const actorSystem = useActorSystem()
 
 const { project, fitView, addSelectedEdges, getEdges } = useVueFlow()
 

@@ -166,7 +166,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, reactive, ref, watchEffect } from 'vue'
 import { X, ChevronDown, ChevronRight, ChevronLeft, Archive } from 'lucide-vue-next'
 import { useSelector } from '@xstate/vue'
@@ -176,8 +175,6 @@ import { ContextMenuRoot, ContextMenuTrigger } from 'reka-ui'
 import ThreadContextMenu from '@/features/threads/fe/canvas/components/thread-context-menu.vue'
 import SidebarThreadItem from './sidebar-thread-item.vue'
 import { sendToSystem } from '@/__generated__/events'
-
-const actorSystem = useActorSystem()
 
 const emit = defineEmits<{
   'select-thread': [threadId: string]

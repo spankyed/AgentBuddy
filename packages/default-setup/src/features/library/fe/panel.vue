@@ -243,15 +243,12 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, librarySystem, type LibraryContext, type LibraryEvents } from './state'
 import type { ActorRefFrom } from 'xstate'
 import type { ContentSection, FieldContent, ListContent, MarkdownContent, TextContent } from '@/features/library/be/types'
 // [SEARCH_INDEX_FF] import { getModelConfig } from '../embedding-models'
-
-const actorSystem = useActorSystem()
 
 type LibraryActor = ActorRefFrom<typeof librarySystem>
 const actor = actorOf(id) as LibraryActor

@@ -50,7 +50,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, watch, onMounted, onUnmounted, shallowRef } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { Graph } from '@antv/g6';
@@ -64,8 +63,6 @@ import NodeInfoPanel from './components/NodeInfoPanel.vue';
 import GraphLegend from './components/GraphLegend.vue';
 import GraphToolbar from './components/GraphToolbar.vue';
 import { id } from '../../../state';
-
-const actorSystem = useActorSystem()
 
 // Props & Emits
 interface Props {

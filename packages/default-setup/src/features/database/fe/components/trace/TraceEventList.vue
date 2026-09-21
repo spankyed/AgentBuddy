@@ -44,13 +44,10 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import { id as databaseId, type DatabaseState } from '../../state'
 import { Loader2 } from 'lucide-vue-next'
 import TNodeListItem from '@abuddy/ui/components/TNodeListItem'
-
-const actorSystem = useActorSystem()
 
 const databaseActor: DatabaseState = actorOf(databaseId)
 

@@ -247,7 +247,7 @@
 import { actorOf } from '@/__generated__/fe'
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useActorSystem, useApplicationActor } from '@abuddy/sdk/fe'
+import { useApplicationActor } from '@abuddy/sdk/fe'
 import { id as codeId, type CodeState } from '@/features/code/fe/state'
 import {
   AlertCircle, AlertTriangle, GitBranch, GitPullRequest, RefreshCw,
@@ -266,7 +266,6 @@ import type { GitStatusFile } from '@/features/code/fe/features/commit/state'
 import type { TreeNode } from './types'
 
 // Get actors
-const actorSystem = useActorSystem()
 const appActor = useApplicationActor()
 const codeActor: CodeState = actorOf(codeId)
 const prActor = codeActor.system.get('pr')!

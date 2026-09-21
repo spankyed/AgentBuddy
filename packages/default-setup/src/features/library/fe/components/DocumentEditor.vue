@@ -91,7 +91,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, reactive, watch, onMounted, nextTick } from 'vue'
 import { ChevronRight, Plus } from 'lucide-vue-next'
 import NameSaveHeader from '@abuddy/ui/design/NameSaveHeader'
@@ -100,8 +99,6 @@ import TagInput from '@abuddy/ui/design/tag-input'
 import { useSelector } from '@xstate/vue'
 import type { DocumentDTO } from '@/__generated__/types'
 import type { ContentSection } from '@/features/library/be/types'
-
-const actorSystem = useActorSystem()
 
 const props = defineProps<{
   selectedCollectionId?: string

@@ -185,7 +185,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, ref, watch, nextTick } from 'vue';
 import TabItem from './tab-item.vue';
 import GroupLabel from './group-label.vue';
@@ -194,8 +193,6 @@ import type { ThreadTabGroup, TabGroupColor } from './types';
 import { categorizeThreadTabs } from './tab-utils';
 import { useTabDragDrop } from './useTabDragDrop';
 import { id, type ThreadsState } from '@/features/threads/fe/state';
-
-const actorSystem = useActorSystem()
 
 const actor: ThreadsState = actorOf(id);
 

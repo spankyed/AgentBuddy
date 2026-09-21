@@ -66,11 +66,8 @@
 import { Layers } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
 import { truncatePath } from '@abuddy/ui/utils/path-truncation'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { navigateToPlugin, actorOf } from '@/__generated__/fe'
 import { useSelector } from '@xstate/vue'
-
-const actorSystem = useActorSystem()
 
 interface Project {
   name: string

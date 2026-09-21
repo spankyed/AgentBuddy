@@ -68,10 +68,7 @@ import KeyboardShortcutInput from '@abuddy/ui/components/KeyboardShortcutInput'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { HardDriveDownload } from 'lucide-vue-next'
 import type { DatabaseSettings } from '@/__generated__/types'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { navigateToPlugin, actorOf } from '@/__generated__/fe'
-
-const actorSystem = useActorSystem()
 
 interface Props {
   settings?: DatabaseSettings

@@ -15,15 +15,12 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { id, type DatabaseState } from '../../state';
 import ExampleCard from './ExampleCard.vue';
 import { queryExamples } from './query-examples';
 import { transactionExamples } from './transaction-examples';
-
-const actorSystem = useActorSystem()
 
 const actor: DatabaseState = actorOf(id);
 const mode = useSelector(actor, (state) => state.context.mode);

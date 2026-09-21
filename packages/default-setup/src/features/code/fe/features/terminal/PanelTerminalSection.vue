@@ -191,7 +191,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { ChevronRight, ChevronDown, Plus, X, Edit, Trash2, PanelTop, PanelBottom, Terminal as TerminalIcon, Ellipsis, Square, Copy, ClipboardPaste, TextSelect, Eraser, RotateCcw } from 'lucide-vue-next'
@@ -222,8 +221,6 @@ import type { Terminal } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { IDisposable } from '@xterm/xterm'
 import { pluginSettings } from '@/features/settings/plugin-settings';
-
-const actorSystem = useActorSystem()
 
 const props = withDefaults(defineProps<{ height?: number }>(), { height: 256 })
 

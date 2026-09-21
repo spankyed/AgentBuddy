@@ -292,7 +292,6 @@
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
 import { ref, computed, watch, provide, nextTick, onMounted } from 'vue'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { useExternalFileDrag } from '@abuddy/ui/composables/useExternalFileDrag'
 import { useSelector } from '@xstate/vue'
 import type { NoteDTO } from '@/__generated__/types'
@@ -308,8 +307,6 @@ import { useSubDocumentInsert } from './composables/useSubDocumentInsert'
 import TaskListPanel from './components/TaskListPanel.vue'
 import ImageLightbox from '@abuddy/ui/design/ImageLightbox'
 import TiptapSearchBar from '@abuddy/ui/components/tiptap/TiptapSearchBar'
-
-const actorSystem = useActorSystem()
 
 const actor: NotesState = actorOf(id)
 const state = useSelector(actor, (s) => s)

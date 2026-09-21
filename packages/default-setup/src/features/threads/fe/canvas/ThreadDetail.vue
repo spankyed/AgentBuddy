@@ -178,7 +178,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, nextTick } from 'vue'
 import { Plus, MessageSquare, Link } from 'lucide-vue-next'
 import Button from '@abuddy/ui/design/button'
@@ -192,8 +191,6 @@ import TagInput from '@abuddy/ui/design/tag-input'
 import ThreadLinkInput from '@/features/threads/fe/canvas/components/link-thread-input.vue'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
-
-const actorSystem = useActorSystem()
 
 const actor: ThreadsState = actorOf(id);
 const mediaEntityId = crypto.randomUUID();

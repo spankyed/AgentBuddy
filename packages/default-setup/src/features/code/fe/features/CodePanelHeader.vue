@@ -81,7 +81,7 @@ import type { Component } from 'vue'
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState } from '@/features/code/fe/state'
-import { useActorSystem, isAnyMenuOpen } from '@abuddy/sdk/fe'
+import { isAnyMenuOpen } from '@abuddy/sdk/fe'
 import BaseDirectoryMenu from '@/features/code/fe/features/explorer/components/BaseDirectoryMenu.vue'
 import {
   FolderOpen,
@@ -91,8 +91,6 @@ import {
   Play,
   Sparkle,
 } from 'lucide-vue-next'
-
-const actorSystem = useActorSystem()
 
 defineProps<{
   icon: Component

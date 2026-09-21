@@ -195,7 +195,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, watch } from 'vue'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { AlertTriangle, Brain, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
@@ -203,8 +202,6 @@ import type { FlowsSettings } from '@/__generated__/types'
 import { useSelector } from '@xstate/vue'
 import { id, type FlowsState } from './state'
 import { id as brainId, type BrainState } from '@/features/brain/fe/state'
-
-const actorSystem = useActorSystem()
 
 interface Props {
   settings?: FlowsSettings

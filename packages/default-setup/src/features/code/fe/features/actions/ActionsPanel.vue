@@ -236,7 +236,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { navigateToPlugin, actorOf } from '@/__generated__/fe'
 import { id as codeId, type CodeState } from '@/features/code/fe/state'
 import { id as actionsPluginId } from '@/features/actions/fe/state'
@@ -255,8 +254,6 @@ import { MENU_CONTENT_CLASS, MENU_ITEM_CLASS } from '../explorer/constants'
 import { useInfiniteScroll } from '@abuddy/ui/composables/useInfiniteScroll'
 import Button from '@abuddy/ui/design/button'
 import uFuzzy from '@leeoniya/ufuzzy'
-
-const actorSystem = useActorSystem()
 
 // Get actors - use main actions plugin for state, codeActions for tab management
 const codeActor: CodeState = actorOf(codeId)

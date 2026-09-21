@@ -363,11 +363,8 @@ import { id } from './state';
 import type { LogsState, LogEntry } from './state';
 import { useSelector } from '@xstate/vue';
 import DataRenderer from '@abuddy/ui/components/DataRenderer';
-import { useActorSystem } from '@abuddy/sdk/fe';
 import { navigateToPlugin, actorOf } from '@/__generated__/fe';
 import { parseSearchTerm, searchLog, highlightSearchTerm } from './search';
-
-const actorSystem = useActorSystem()
 
 const logsContent = ref<HTMLElement>();
 

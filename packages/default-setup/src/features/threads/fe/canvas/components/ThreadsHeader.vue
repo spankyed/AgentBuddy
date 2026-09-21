@@ -115,7 +115,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, watch } from 'vue'
 import { Search, Filter, List, Columns3, PanelLeft, History, Archive, X } from 'lucide-vue-next'
 import { useSelector } from '@xstate/vue'
@@ -123,8 +122,6 @@ import Button from '@abuddy/ui/design/button'
 import FilterPopover from './FilterPopover.vue'
 import { id, type ThreadsState } from '@/features/threads/fe/state'
 import type { ThreadTagOption } from '@/__generated__/types'
-
-const actorSystem = useActorSystem()
 
 const actor: ThreadsState = actorOf(id)
 const currentState = useSelector(actor, s => s.value)

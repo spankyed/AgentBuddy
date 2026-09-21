@@ -69,10 +69,8 @@ import Secrets from '../components/GeneralSettings/Secrets.vue'
 import App from '../components/GeneralSettings/App.vue'
 import Projects from '../components/GeneralSettings/Projects.vue'
 import SettingsJsonEditor from '../components/GeneralSettings/SettingsJsonEditor.vue'
-import { useActorSystem, useSettingsSaveStatus } from '@abuddy/sdk/fe'
+import { useSettingsSaveStatus } from '@abuddy/sdk/fe'
 import { id as settingsPluginId } from '@/features/settings/fe/state';
-
-const actorSystem = useActorSystem()
 
 const actor = actorOf(settingsPluginId)
 

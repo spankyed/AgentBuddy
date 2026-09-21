@@ -78,7 +78,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id as databaseId, type DatabaseState } from '../../state'
@@ -154,8 +153,6 @@ function formatDuration(start: number, end: number): string {
 <script lang="ts">
 // Status Indicator Component (inline for simplicity)
 import { defineComponent, h } from 'vue'
-
-const actorSystem = useActorSystem()
 
 export const StatusIndicator = defineComponent({
   props: {

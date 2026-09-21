@@ -690,7 +690,6 @@ import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import KeyboardShortcutInput from '@abuddy/ui/components/KeyboardShortcutInput'
 import ColorPicker, { DEFAULT_COLORS } from '@abuddy/ui/design/ColorPicker'
 import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipContent } from 'reka-ui'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
 import { id } from './state'
@@ -704,8 +703,6 @@ import type {
   AgentPhase,
   QuickPrompt,
 } from '@/__generated__/types'
-
-const actorSystem = useActorSystem()
 
 interface Props {
   settings?: ThreadsSettings

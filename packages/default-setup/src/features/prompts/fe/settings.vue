@@ -169,13 +169,10 @@ import { ref } from 'vue'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import ColorPicker from '@abuddy/ui/design/ColorPicker'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import type { PromptsSettings, Category } from '@/__generated__/types'
 import { useSelector } from '@xstate/vue'
 import { id, type PromptsState } from './state'
-
-const actorSystem = useActorSystem()
 
 interface Props {
   settings?: PromptsSettings

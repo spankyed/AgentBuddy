@@ -25,13 +25,11 @@
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
 import { ref, watch } from 'vue'
-import { useActorSystem, useSettingsSaveStatus } from '@abuddy/sdk/fe'
+import { useSettingsSaveStatus } from '@abuddy/sdk/fe'
 import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
 import CliProviderRow from './CliProviderRow.vue'
 import { pluginSettings } from '@/features/settings/plugin-settings';
-
-const actorSystem = useActorSystem()
 
 const { updateSettings } = useSettingsSaveStatus()
 

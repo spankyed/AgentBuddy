@@ -2,7 +2,7 @@ import { emit } from '@/__generated__/events';
 import { assign, cancel, createMachine, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
-import { getActor, sendParentSafe } from '@abuddy/sdk/helpers';
+import { getActor } from '@abuddy/sdk/helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';

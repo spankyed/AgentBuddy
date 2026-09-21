@@ -38,7 +38,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { id, type PromptsState } from './state';
@@ -46,8 +45,6 @@ import PromptsList from './components/PromptsList.vue';
 import PromptDetail from './components/PromptDetail.vue';
 import type { EARS } from '@abuddy/sdk';
 import type { TemplateInput } from '@abuddy/sdk';
-
-const actorSystem = useActorSystem()
 
 const actor: PromptsState = actorOf(id);
 const state = useSelector(actor, (state) => state);

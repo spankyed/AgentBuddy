@@ -159,11 +159,9 @@ describe('Tier 3 — System Framework delegates', () => {
     expect(wrapped.event.type).toBe('HELLO');
   });
 
-  it('getActor, sendParentSafe, getBus are exported', async () => {
-    const { getActor, sendParentSafe, getBus } = await import('@abuddy/sdk/helpers');
+  it('getActor is exported', async () => {
+    const { getActor } = await import('@abuddy/sdk/helpers');
     expect(typeof getActor).toBe('function');
-    expect(typeof sendParentSafe).toBe('function');
-    expect(typeof getBus).toBe('function');
   });
 
   it('bus constant is exported', async () => {

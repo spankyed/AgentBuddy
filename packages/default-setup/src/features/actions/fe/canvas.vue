@@ -37,7 +37,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { id, type ActionsState } from './state';
@@ -45,8 +44,6 @@ import ActionsList from './components/ActionsList.vue';
 import ActionDetail from './components/ActionDetail.vue';
 import type { EARS } from '@abuddy/sdk';
 import type { ActionParameter } from '@abuddy/sdk';
-
-const actorSystem = useActorSystem()
 
 const actor: ActionsState = actorOf(id);
 const state = useSelector(actor, (state) => state);

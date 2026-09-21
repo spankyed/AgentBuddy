@@ -52,7 +52,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { id } from '../../state';
@@ -63,8 +62,6 @@ import PrimitivesTable from './components/PrimitivesTable.vue';
 import ObjectsTable from './components/ObjectsTable.vue';
 import JsonDisplay from './components/JsonDisplay.vue';
 import PrimitiveDisplay from './components/PrimitiveDisplay.vue';
-
-const actorSystem = useActorSystem()
 
 // State Management
 const actor = actorOf(id);

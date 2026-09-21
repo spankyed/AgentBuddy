@@ -188,7 +188,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id as codeId, type CodeState } from '@/features/code/fe/state'
@@ -196,8 +195,6 @@ import { ChevronRight, ChevronsDownUp, Search } from 'lucide-vue-next'
 import CodePanelHeader from '@/features/code/fe/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/features/code/fe/features/NoDirectoryState.vue'
 import EmptyState from '@/features/code/fe/features/EmptyState.vue'
-
-const actorSystem = useActorSystem()
 
 // Get actors
 const codeActor: CodeState = actorOf(codeId)

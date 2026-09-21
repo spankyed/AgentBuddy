@@ -51,7 +51,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, onUnmounted } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id as databaseId, type DatabaseState } from './state'
@@ -61,8 +60,6 @@ import SchemaPanel from './components/SchemaPanel.vue'
 import QueryEditor from './components/QueryEditor.vue'
 import TraceHistoryViewer from './components/trace/TraceHistoryViewer.vue'
 import BackupRestore from './components/BackupRestore.vue'
-
-const actorSystem = useActorSystem()
 
 const databaseActor: DatabaseState = actorOf(databaseId)
 const viewMode = useSelector(databaseActor, (state) => state.context.viewMode)

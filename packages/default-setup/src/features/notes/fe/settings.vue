@@ -193,14 +193,11 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, watch } from 'vue'
 import { Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { useSelector } from '@xstate/vue'
 import { id } from './state'
-
-const actorSystem = useActorSystem()
 
 interface NotesSettings {
   tasklistPanelPosition: 'left' | 'right'

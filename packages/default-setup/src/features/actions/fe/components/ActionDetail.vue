@@ -120,14 +120,11 @@ import ActionParametersEditor from './ActionParametersEditor.vue';
 import ActionFunctionEditor from './ActionFunctionEditor.vue';
 import ActionFunctionViewer from './ActionFunctionViewer.vue';
 import JsonSchemaEditor from '@abuddy/ui/components/JsonSchemaEditor';
-import { useActorSystem } from '@abuddy/sdk/fe';
 import { navigateToPlugin, actorOf } from '@/__generated__/fe';
 import { useCollapsibleState } from '@abuddy/ui/composables/useCollapsibleState';
 import { id as actionsId, type ActionsState } from '@/features/actions/fe/state';
 import type { ActionEntity } from '@abuddy/sdk';
 import type { ActionParameter } from '@abuddy/sdk';
-
-const actorSystem = useActorSystem()
 
 const props = defineProps<{
   action?: ActionEntity;

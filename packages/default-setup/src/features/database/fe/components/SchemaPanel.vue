@@ -147,7 +147,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed } from 'vue';
 import { 
   ChevronRight, 
@@ -164,8 +163,6 @@ import {
 } from 'lucide-vue-next';
 import { useSelector } from '@xstate/vue';
 import { id, type DatabaseState } from '../state';
-
-const actorSystem = useActorSystem()
 
 const actor: DatabaseState = actorOf(id)
 const schema = useSelector(actor, (state) => state.context.schema);

@@ -631,7 +631,7 @@
 import { actorOf } from '@/__generated__/fe'
 import { computed, ref, nextTick, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useActorSystem, useApplicationActor } from '@abuddy/sdk/fe'
+import { useApplicationActor } from '@abuddy/sdk/fe'
 import { id as codeId, type CodeState } from '@/features/code/fe/state'
 import type { GitStatusFile } from '@/features/code/fe/features/commit/state'
 import { GitBranch, GitBranchPlus, GitCommit, GitFork, GitMerge, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, ArrowUpFromLine, MoreVertical, Trash2, Copy, Search, FolderSync, Lock } from 'lucide-vue-next'
@@ -649,7 +649,6 @@ import PanelResizer from '@abuddy/ui/layout/panel-resizer'
 import { useSectionVisibilityMenu } from '@/features/code/fe/composables/useSectionVisibilityMenu'
 
 // Get actors
-const actorSystem = useActorSystem()
 const appActor = useApplicationActor()
 const codeActor: CodeState = actorOf(codeId)
 const commitActor = codeActor.system.get('commit')!

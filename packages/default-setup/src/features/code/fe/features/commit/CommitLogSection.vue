@@ -89,7 +89,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id as codeId, type CodeState } from '@/features/code/fe/state'
@@ -97,8 +96,6 @@ import type { CommitLogEntry } from '@/features/code/fe/features/commit/state'
 import { ChevronDown, ChevronRight, RefreshCw, Undo2, RotateCw, Copy, Search, X } from 'lucide-vue-next'
 import RevertDialog from '@/features/code/fe/features/commit/RevertDialog.vue'
 import PanelResizer from '@abuddy/ui/layout/panel-resizer'
-
-const actorSystem = useActorSystem()
 
 const props = defineProps<{
   toast: { success: (title: string, message: string) => void } | undefined

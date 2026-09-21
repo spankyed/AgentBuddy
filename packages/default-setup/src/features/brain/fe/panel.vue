@@ -81,15 +81,12 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, ref, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id as brainId, type BrainState } from '@/features/brain/fe/state'
 import TNodeListItem from '@abuddy/ui/components/TNodeListItem'
 import type { TrackTree } from '@abuddy/sdk/steps'
 import { sendToSystem } from '@/__generated__/events'
-
-const actorSystem = useActorSystem()
 
 const brainActor: BrainState = actorOf(brainId);
 const normalizedTree = useSelector(brainActor, (state) => state.context.normalizedTree);

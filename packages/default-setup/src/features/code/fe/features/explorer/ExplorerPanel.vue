@@ -88,7 +88,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, provide, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id as codeId, type CodeState } from '@/features/code/fe/state'
@@ -102,8 +101,6 @@ import { useExplorerSelection } from './composables/useExplorerSelection'
 import { useExplorerDragDrop } from './composables/useExplorerDragDrop'
 import type { FileInfo } from './state'
 import { pluginSettings } from '@/features/settings/plugin-settings';
-
-const actorSystem = useActorSystem()
 
 // Get actors
 const codeActor: CodeState = actorOf(codeId)

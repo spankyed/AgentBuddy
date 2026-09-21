@@ -29,14 +29,11 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import GeneralTab from './tabs/GeneralTab.vue'
 import PluginsTab from './tabs/PluginsTab.vue'
 import HelpTab from './tabs/HelpTab.vue'
 import { id as settingsPluginId } from '@/features/settings/fe/state';
-
-const actorSystem = useActorSystem()
 
 const actor = actorOf(settingsPluginId)
 

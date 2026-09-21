@@ -124,7 +124,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed } from 'vue'
 import { Check, ChevronDown, ExternalLink } from 'lucide-vue-next'
 import {
@@ -146,8 +145,6 @@ import type { NodeEntity } from '@/__generated__/types'
 import type { FormResources } from '@/features/flows/fe/types/form-props'
 import { flowsId } from '@/features/flows/fe/state'
 import type { FlowEntity } from '@abuddy/sdk'
-
-const actorSystem = useActorSystem()
 
 const props = defineProps<{
   node: NodeEntity

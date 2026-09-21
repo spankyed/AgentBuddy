@@ -184,7 +184,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Check, ChevronDown, Code, ExternalLink, Plus } from 'lucide-vue-next'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { navigateToPlugin } from '@/__generated__/fe'
 import {
   ComboboxAnchor,
@@ -205,8 +204,6 @@ import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor'
 import type { NodeEntity } from '@/__generated__/types'
 import type { FormResources } from '@/features/flows/fe/types/form-props'
 import type { ActionEntity } from '@abuddy/sdk'
-
-const actorSystem = useActorSystem()
 
 const props = defineProps<{
   node: NodeEntity

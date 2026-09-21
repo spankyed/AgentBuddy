@@ -22,15 +22,12 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { id, type ThreadsState } from '@/features/threads/fe/state';
 import TabBar from '@/features/threads/fe/canvas/agent/tabs/tab-bar.vue';
 import ContentViewer from '@/features/threads/fe/canvas/agent/content-viewer.vue';
 import ThreadsHeader from '@/features/threads/fe/canvas/components/ThreadsHeader.vue';
-
-const actorSystem = useActorSystem()
 
 defineProps<{
   inline?: boolean;

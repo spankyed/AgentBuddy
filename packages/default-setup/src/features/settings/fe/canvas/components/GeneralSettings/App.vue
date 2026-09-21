@@ -179,14 +179,11 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { HardDrive, PackageOpen, RotateCcw, Trash2 } from 'lucide-vue-next'
 import ImportPackSeedsPicker from './ImportPackSeedsPicker.vue'
 import Hotkeys from './Hotkeys.vue'
-
-const actorSystem = useActorSystem()
 
 interface Props {
   settings?: any

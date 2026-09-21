@@ -127,7 +127,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import { onMounted, onUnmounted } from 'vue'
 import { id, type BrainState } from '@/features/brain/fe/state.ts';
@@ -135,8 +134,6 @@ import TNodeGraph from './components/TNodeGraph.vue';
 import EventsList from './components/EventsList.vue';
 import StepNodeDetails from './components/StepNodeDetails.vue';
 import { sendToSystem } from '@/__generated__/events';
-
-const actorSystem = useActorSystem()
 
 const actor: BrainState = actorOf(id);
 

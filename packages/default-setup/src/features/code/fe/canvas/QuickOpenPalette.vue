@@ -142,7 +142,7 @@
 import { actorOf } from '@/__generated__/fe'
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useActorSystem, useApplicationActor } from '@abuddy/sdk/fe'
+import { useApplicationActor } from '@abuddy/sdk/fe'
 import { id as codeId, type CodeState, type QuickOpenResult } from '@/features/code/fe/state'
 import { fuzzySearch, highlightMatches } from '@/features/code/fe/utils/fuzzy-search'
 import { getRecencyScore } from '@/features/code/fe/utils/recent-files'
@@ -162,7 +162,6 @@ interface EnhancedSearchResult {
 }
 
 // Get state
-const actorSystem = useActorSystem()
 const appActor = useApplicationActor()
 const codeActor: CodeState = actorOf(codeId)
 

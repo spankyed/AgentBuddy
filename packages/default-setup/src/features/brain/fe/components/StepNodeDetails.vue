@@ -120,10 +120,7 @@ import { computed } from 'vue';
 import { X, ExternalLink } from 'lucide-vue-next';
 import type { TNodeEntity } from '@abuddy/sdk/steps';
 import DataRenderer from '@abuddy/ui/components/DataRenderer';
-import { useActorSystem } from '@abuddy/sdk/fe';
 import { navigateToPlugin, actorOf } from '@/__generated__/fe';
-
-const actorSystem = useActorSystem()
 
 interface Props {
   node?: TNodeEntity;

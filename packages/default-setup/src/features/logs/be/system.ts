@@ -2,7 +2,6 @@ import { sendToPlugin } from '@/__generated__/events';
 import { assign, setup, sendParent, enqueueActions, fromCallback, spawnChild } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
-import { getActor } from '@abuddy/sdk/helpers';
 import type { LogsState, LogEntry } from './types';
 import { randomId } from '@abuddy/sdk/utils';
 import { onLog, type LogEvent } from '@abuddy/sdk/logger';

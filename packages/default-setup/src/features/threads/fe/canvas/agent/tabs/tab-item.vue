@@ -102,7 +102,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed } from 'vue';
 import { X, SquarePen, Pin } from 'lucide-vue-next';
 import {
@@ -114,8 +113,6 @@ import type { Tab } from '@/__generated__/types';
 import type { ThreadTabGroup } from './types';
 import { useSelector } from '@xstate/vue';
 import { id as threadsId, type ThreadsState } from '@/features/threads/fe/state';
-
-const actorSystem = useActorSystem()
 
 const props = defineProps<{
   tab: Tab;

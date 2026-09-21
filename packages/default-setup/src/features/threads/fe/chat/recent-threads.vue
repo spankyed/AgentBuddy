@@ -265,7 +265,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, onMounted, onUnmounted, computed, watch, nextTick, type CSSProperties } from 'vue'
 import { Archive, History, ChevronUp, ChevronRight, Plus, PanelLeft, FileText, Pin, Trash2, FolderOpen, GitBranchPlus, Pencil } from 'lucide-vue-next'
 import type { ThreadEntity } from '@/__generated__/types';
@@ -285,8 +284,6 @@ import { useSelector } from '@xstate/vue'
 import { id as threadsId, type ThreadsState } from '@/features/threads/fe/state'
 import ThreadContextMenu from '@/features/threads/fe/canvas/components/thread-context-menu.vue'
 import { getThreadDotColor, isThreadBusy } from './thread-status'
-
-const actorSystem = useActorSystem()
 
 export interface ThreadsProps {
   currentThread: AgentThreadData | null;

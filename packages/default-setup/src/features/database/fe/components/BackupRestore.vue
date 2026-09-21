@@ -284,7 +284,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, watch, onMounted } from 'vue';
 import { useSelector } from '@xstate/vue';
 import {
@@ -311,8 +310,6 @@ import {
 import { id, type DatabaseState } from '../state';
 import { sendToSystem } from '@/__generated__/events';
 import ToastNotification from '@abuddy/ui/design/ToastNotification';
-
-const actorSystem = useActorSystem()
 
 const actor: DatabaseState = actorOf(id);
 

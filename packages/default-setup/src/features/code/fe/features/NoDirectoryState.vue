@@ -43,12 +43,9 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { FolderOpen } from 'lucide-vue-next'
 import { id as codeId, type CodeState } from '@/features/code/fe/state'
 import { useProjectActions } from './explorer/composables/useProjectActions'
-
-const actorSystem = useActorSystem()
 
 const codeActor: CodeState = actorOf(codeId)
 const explorerActor = codeActor.system.get('explorer')!

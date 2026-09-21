@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, reactive, computed, watch } from 'vue'
 import { ArrangeableList, type MovingItem } from 'vue-arrange'
 import { useSelector } from '@xstate/vue'
@@ -8,7 +7,6 @@ import { id, threadsFromStore, type ThreadsState, type ThreadListItem } from '@/
 import ThreadsHeader from './components/ThreadsHeader.vue'
 import { SquarePen } from 'lucide-vue-next'
 
-const actorSystem = useActorSystem()
 // import type { ThreadsSettings } from '@/__generated__/types'
 
 const actor: ThreadsState = actorOf(id)

@@ -1,6 +1,5 @@
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { navigateToPlugin, actorOf } from '@/__generated__/fe'
 export interface Project {
   name: string
@@ -9,7 +8,6 @@ export interface Project {
 }
 
 export function useProjectActions() {
-  const system = useActorSystem()
   const settingsActor = actorOf('settings')
   const projects = useSelector(settingsActor, (state: any) =>
     state.context.settings?.general?.projects || []

@@ -89,12 +89,11 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUpdated } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useActorSystem, useApplicationActor, getDesignated } from '@abuddy/sdk/fe'
+import { useApplicationActor, getDesignated } from '@abuddy/sdk/fe'
 import { navigateToPlugin, type PluginName, actorOf } from '@/__generated__/fe'
 import { Package, CheckCircle, Eye, EyeOff, ExternalLink } from 'lucide-vue-next'
 import { useSettingsSaveStatus } from '@abuddy/sdk/fe'
 
-const actorSystem = useActorSystem()
 const applicationActor = useApplicationActor()
 
 const actor = actorOf('settings')

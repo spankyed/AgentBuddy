@@ -43,7 +43,6 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState } from '@/features/code/fe/state'
@@ -55,8 +54,6 @@ import ActionsPanel from '@/features/code/fe/features/actions/ActionsPanel.vue'
 import PromptsPanel from '@/features/code/fe/features/prompts/PromptsPanel.vue'
 import PanelTerminalSection from '@/features/code/fe/features/terminal/PanelTerminalSection.vue'
 import PanelResizer from '@abuddy/ui/layout/panel-resizer'
-
-const actorSystem = useActorSystem()
 
 const actor: CodeState = actorOf(id)
 

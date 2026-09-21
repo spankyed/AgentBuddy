@@ -31,13 +31,10 @@
 
 <script setup lang="ts">
 import { actorOf } from '@/__generated__/fe'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, type ThreadsState } from '@/features/threads/fe/state';
 import { useAnchorTracking } from './composables/useAnchorTracking'
-
-const actorSystem = useActorSystem()
 
 const props = defineProps<{
   anchor?: HTMLElement | null
