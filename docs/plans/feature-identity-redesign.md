@@ -188,7 +188,27 @@ interface PackRegistration {
 - About ten call sites pass data today: `LinkBlock`, the Settings plugin list, and settings' `PLUGIN.SELECT`.
 - Internal only, so it can land at any time.
 
-### What stays
+### T8. `usePlugin()` and explicitly shared state
+
+- A component reaches its own plugin through `usePlugin()`, which the host provides when it renders the
+  plugin's canvas and panel. The own-feature `actorOf(id)` lookups (about 55) and the `export const id`
+  constants that exist to serve them go away.
+- Reading another plugin's machine context goes away (about 15 reads, mostly settings). Settings get a read
+  API (`useSettings(name)`), and each remaining cross-plugin read becomes explicitly shared state or an event.
+- With T6 and T9, no pack code looks up an actor by name, so `actorOf`, `actorAt` and `useActorSystem` go.
+  Of the 79 `useActorSystem()` calls today, 73 are declared and never used.
+
+### T9. One send verb, and private child actors
+
+- `system.get(bus).send(emit(…))` (193 uses) and `sendToPlugin` (189) are one delivery spelled two ways.
+  They collapse, together with `sendToSystem` and `sendToBrainSystem` (a send to a role hard-coded for one
+  role), into one typed send whose target is a feature's system, its plugin, or a role.
+- A feature's child actors get no global `systemId`. Today the code plugin spawns `explorer`, `terminal`,
+  `search`, `commit`, `pr`, `codeActions` and `codePrompts` into the renderer's shared actor system, a bare
+  global namespace one level down, and other features reach in (`actorOf('code')?.system.get('codeActions')`).
+  Other features send the feature its public events, and it routes them to its children internally.
+- `getBus` and `sendParentSafe` have no uses and go.
+
 
 These parts of the current design are right and carry over unchanged:
 - Typed generated sends (`#generated/events`, `#generated/fe`), tightened by T6 and T7.
@@ -308,6 +328,12 @@ What they cost:
 Strict strings (T6 and T7 alone) close the same measured gaps with a much smaller change and keep strings
 as the one form. The choice isn't about safety, since both are safe; it's whether pack code should see
 identity strings at all.
+
+### What settings exposes, and the fate of each cross-plugin read
+
+T8 needs a decision per read: settings become `useSettings(name)` (which fields, and whether it's reactive
+over `SETTINGS_UPDATED`), and each other read of another plugin's context becomes shared state that plugin
+exposes, or an event it sends.
 
 ### Whether the renderer keeps a `localStorage` copy of the last-active plugin
 
