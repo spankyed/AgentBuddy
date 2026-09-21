@@ -641,7 +641,7 @@ export function generatePackFiles(
     }).join(',\n');
 
     const earlySystemLine = earlyFeature?.system
-      ? `    earlySystem: ${systemBinding(earlyFeature.id)}.machine,`
+      ? `    earlySystem: toPackSystemDefs([${systemBinding(earlyFeature.id)}], '${manifest.id}')[0],`
       : '';
 
     const settingsImports = features

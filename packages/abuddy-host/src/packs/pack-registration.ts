@@ -347,7 +347,8 @@ export function createPackRegistry(): PackRegistry {
       throw new Error(`Pack "${registration.id}" is already registered`);
     }
     // `toPackSystemDefs` addresses a pack's systems; one that isn't is a registration built by hand wrong
-    const stray = registration.systems.find((sys) => !sys.id.startsWith(`${registration.id}.`));
+    const systems = [...registration.systems, ...(registration.boot?.earlySystem ? [registration.boot.earlySystem] : [])];
+    const stray = systems.find((sys) => !sys.id.startsWith(`${registration.id}.`));
     if (stray) {
       throw new Error(`Pack "${registration.id}": system "${stray.id}" isn't addressed as "${qualifiedId(registration.id, '<featureId>')}"`);
     }
@@ -446,10 +447,7 @@ export function createPackRegistry(): PackRegistry {
       for (const sys of reg.systems) {
         map.set(sys.id, sys.events);
       }
-      if (reg.boot?.earlySystem) {
-        const m = reg.boot.earlySystem;
-        map.set(m.id, new Set(m.events));
-      }
+      if (reg.boot?.earlySystem) map.set(reg.boot.earlySystem.id, reg.boot.earlySystem.events);
     }
     return map;
   }

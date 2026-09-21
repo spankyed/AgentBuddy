@@ -29,7 +29,11 @@ export interface PackSeedManifest {
 }
 
 export interface PackBootHooks {
-  earlySystem?: AnyStateMachine;
+  /**
+   * A built-in pack's system started before hydration and outside the bus (the logs), addressed like the pack's
+   * other systems: it hears the sends to it with `onIncoming`, and the app checks them against its events
+   */
+  earlySystem?: PackSystemDef;
   onInit?: () => void;
   onShutdown?: () => void;
   seedManifest?: PackSeedManifest;

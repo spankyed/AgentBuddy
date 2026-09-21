@@ -7,6 +7,8 @@ import type { LogsState, LogEntry } from './types';
 import { randomId } from '@abuddy/sdk/utils';
 import { onLog, type LogEvent } from '@abuddy/sdk/logger';
 import { onConnected, onIncoming, type IncomingSystemEvents } from '@abuddy/sdk/events';
+import { resolveName } from '@abuddy/sdk/ids';
+import { packId } from '@/__generated__/bus-ids';
 import { repository } from '@/__generated__/repository';
 import type { LogsSettings } from '@/__generated__/types';
 import { isSourceExcluded, filterLogsByExcludedSources } from './utils';
@@ -42,6 +44,8 @@ export interface LogsContext {
 
 export const logsSpec = defineSystem('logs')<IncomingLogEvents | LogsInternalEvents, OutgoingLogsEvents, LogsContext>();
 export const logs = logsSpec.id;
+/** The early system starts outside the bus, so it picks the sends to it out of every client send by address */
+const address = resolveName(logs, { packId });
 
 export const logsSystem = setup({
   types: logsSpec.types,
@@ -55,7 +59,7 @@ export const logsSystem = setup({
       };
 
       const incomingHandler = (event: IncomingSystemEvents) => {
-        if (event.systemId === 'logs') {
+        if (event.systemId === address) {
           const { systemId, ...actualEvent } = event;
           sendBack(actualEvent);
         }

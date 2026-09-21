@@ -20,6 +20,23 @@ describe('getEventValidationMap', () => {
     expect(getEventValidationMap().has('validation-pack.feature')).toBe(false);
   });
 
+  // An early system starts outside the bus, but a client still sends to it: at its address, like any system
+  it("checks a pack's early system at its address", () => {
+    registerPack({ id: 'early-pack', systems: [], boot: { earlySystem: { id: resolveName('early-pack/logs'), machine, events: new Set(['CLEAR_LOGS']) } } });
+    try {
+      expect(getEventValidationMap().get('early-pack.logs')).toEqual(new Set(['CLEAR_LOGS']));
+      expect(getEventValidationMap().has('logs')).toBe(false);
+    } finally {
+      unregisterPack('early-pack');
+    }
+  });
+
+  it('refuses an early system that isn\'t addressed', () => {
+    const early = { id: 'logs' as never, machine, events: new Set<string>() };
+    expect(() => registerPack({ id: 'early-pack', systems: [], boot: { earlySystem: early } }))
+      .toThrow(`Pack "early-pack": system "logs" isn't addressed as "early-pack.<featureId>"`);
+  });
+
   it('follows host systems registering', () => {
     expect(getEventValidationMap().has('validation-host')).toBe(false);
     registerHostSystem('validation-host', machine, new Set(['HELLO']));

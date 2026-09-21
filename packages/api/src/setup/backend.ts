@@ -137,7 +137,7 @@ export async function setupBackend(): Promise<void> {
   // Run early boot hooks (logs system must start before anything else)
   for (const hooks of packs.getBootHooks()) {
     if (hooks.earlySystem) {
-      const logsActor = createActor(hooks.earlySystem).start();
+      const logsActor = createActor(hooks.earlySystem.machine).start();
       logsActor.subscribe(logErrors('Logs'));
     }
   }

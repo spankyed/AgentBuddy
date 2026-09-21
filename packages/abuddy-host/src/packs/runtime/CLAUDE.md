@@ -161,7 +161,7 @@ The resolver patch is restored in a `finally`; the bridged cache entries stay, s
 
 ## Blocked features for external packs
 
-- **`earlySystem`** — Starts before hydration, and before external packs register. The manifest schema rejects `features[].earlySystem` in a pack without `builtIn`, and the loader strips it with a warning log.
+- **`earlySystem`** — Starts before hydration, and before external packs register. A `PackSystemDef` at its feature's address, like the pack's other systems: it runs outside the bus and hears client sends through `onIncoming`, which the bus checks against its events. The manifest schema rejects `features[].earlySystem` in a pack without `builtIn`, and the loader strips it with a warning log.
 - **`partitionPolicy`** (`excludedEntityTypes`) — Controls which entities go to the volatile store vs primary LMDB. Letting external packs route data to alternative stores without sandboxing could corrupt persistence. Stripped (with a warning when it lists types); all external pack data routes to the primary partition.
 - **`seedManifest`** — The declarative boot seed is only for built-in packs (hashes recorded per pack in `AppState.seedHashes`); external packs seed through `seedPackData()`, hash-checked per pack and in dependency order.
 

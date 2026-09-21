@@ -43,8 +43,7 @@ export function onPackSettingsDefaultsChanged(listener: () => void): () => void;
 
 // @public (undocumented)
 export interface PackBootHooks {
-    // (undocumented)
-    earlySystem?: AnyStateMachine;
+    earlySystem?: PackSystemDef;
     // (undocumented)
     onInit?: () => void;
     // (undocumented)
