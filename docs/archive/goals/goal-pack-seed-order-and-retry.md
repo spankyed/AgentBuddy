@@ -1,9 +1,14 @@
+> **Done** (`214a720a7`, `5bb3aafdb`, `11adaa32c`, `89133cf71` on `AS/external-pack-authoring`). The text
+> below is the plan as written; the seed and migration targets were afterwards derived from
+> `PackManifest` with `Pick` rather than restating its fields (`48ead0c3e`). For the current layout, see
+> `packages/abuddy-host/src/packs/runtime/CLAUDE.md`.
+
 > **Written in session** `358d44db-c4f3-4dfe-89d3-40b001a63086` (Claude Code, 2026-09-20). Resume it with `claude -r 358d44db-c4f3-4dfe-89d3-40b001a63086`.
 
 ```
 # Goal: an external pack seeds after the packs it depends on, and a seed that failed for want of one is retried
 
-Implement docs/goals/goal-pack-seed-order-and-retry.md on AS/external-pack-authoring, at or after
+Implement docs/archive/goals/goal-pack-seed-order-and-retry.md on AS/external-pack-authoring, at or after
 ce4ff5402 — the base its Background was surveyed at.
 Before Phase 1, confirm the base: `seedPackData` in packages/abuddy-host/src/packs/runtime/seed.ts
 records `packSeedHashes` for a failed seed as well as a successful one, and

@@ -1,3 +1,8 @@
+> **Done** (`908a3b1cf` on `AS/external-pack-authoring`). The text below is the plan as written; later
+> work moved the loaded packs onto the registry too (`goal-loaded-packs-on-the-registry.md`), so the
+> deferred note about `_loadedPacks` no longer applies. For the current layout, see
+> `packages/abuddy-host/CLAUDE.md`.
+
 # Goal: the packs directory is what's installed
 
 > **Written in session** `358d44db-c4f3-4dfe-89d3-40b001a63086` (Claude Code, 2026-09-19). Resume it with
@@ -6,7 +11,7 @@
 ```
 # Goal: the packs directory is what's installed
 
-Implement docs/goals/goal-installed-packs-record.md on `AS/external-pack-authoring`.
+Implement docs/archive/goals/goal-installed-packs-record.md on `AS/external-pack-authoring`.
 
 Where a detail isn't specified, pick the conventional option following best practices, note it in the final summary, and keep
 going. No backward compatibility in code: change signatures, move modules, migrate every in-repo caller,

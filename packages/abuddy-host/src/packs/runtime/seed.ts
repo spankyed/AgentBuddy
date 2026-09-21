@@ -74,7 +74,7 @@ export interface PackSeedTarget {
  * A pack's own hash says whether its data changed. This says whether anything it depends on has seeded
  * since — the other thing that can turn a failed seed into one that would now succeed. A dependency that
  * has never seeded reads the same as one with nothing to seed, which is what the deferred note in
- * `goal-pack-seed-order-and-retry.md` is about.
+ * `docs/archive/goals/goal-pack-seed-order-and-retry.md` is about.
  */
 function dependencyState(dependencies: Record<string, string> | undefined, seeded: Record<string, string>): string {
   return Object.keys(dependencies ?? {}).sort().map((id) => `${id}:${seeded[id] ?? ''}`).join('|');

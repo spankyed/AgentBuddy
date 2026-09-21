@@ -1,9 +1,14 @@
+> **Done** (`2a5854631`..`b1eaa70f4` on `AS/external-pack-authoring`). The text below is the plan as
+> written. `@abuddy/sdk/env` no longer exports `readApiEndpoint`, `ApiEndpoint`, `lockIsHeld` or
+> `recordIsStale`; they live in `@abuddy/host/process-liveness`. For the current layout, see
+> `packages/abuddy-host/CLAUDE.md`.
+
 > **Written in session** `358d44db-c4f3-4dfe-89d3-40b001a63086` (Claude Code, 2026-09-20). Resume it with `claude -r 358d44db-c4f3-4dfe-89d3-40b001a63086`.
 
 ```
 # Goal: the app's process plumbing lives in the app, not in the pack contract
 
-Implement docs/goals/goal-api-endpoint-out-of-the-sdk.md on AS/external-pack-authoring, at or after
+Implement docs/archive/goals/goal-api-endpoint-out-of-the-sdk.md on AS/external-pack-authoring, at or after
 ef358680f — the base its Background was surveyed at.
 Before Phase 1, confirm the base: `packages/abuddy-sdk/src/env/index.ts` exports `readApiEndpoint` and
 re-exports `_lockIsHeld`/`_recordIsStale` from `./process-liveness.ts`, and

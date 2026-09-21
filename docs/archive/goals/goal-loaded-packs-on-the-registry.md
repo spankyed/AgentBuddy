@@ -1,9 +1,14 @@
+> **Done** (`5485273ac`, `ce4ff5402` on `AS/external-pack-authoring`). The text below is the plan as
+> written; later work replaced the per-kind contribution record with one undo log shared by both
+> registries (`f5bf8084c`, `ef358680f`), so `registerPack` no longer reads as the table this describes.
+> For the current layout, see `packages/abuddy-host/CLAUDE.md`.
+
 > **Written in session** `358d44db-c4f3-4dfe-89d3-40b001a63086` (Claude Code, 2026-09-19). Resume it with `claude -r 358d44db-c4f3-4dfe-89d3-40b001a63086`.
 
 ```
 # Goal: the registry is the only list of the packs this app loaded
 
-Implement docs/goals/goal-loaded-packs-on-the-registry.md on AS/external-pack-authoring, at or after
+Implement docs/archive/goals/goal-loaded-packs-on-the-registry.md on AS/external-pack-authoring, at or after
 9a8202fc3 — the base its Background was surveyed at.
 Before Phase 1, confirm the base: packages/abuddy-host/src/packs/runtime/loaded-packs.ts exports
 getLoadedPacks/setLoadedPacks/updateLoadedPack/removeLoadedPack/getBuiltInPackInfos/setBuiltInPackInfos/

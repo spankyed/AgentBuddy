@@ -197,7 +197,8 @@ unchanged. No code moves in this phase.
 ### Phase 2 — names that hide what absence costs
 
 > **Done, and then superseded.** The two readers were collapsed in `1d6cf3226`, and
-> `goal-installed-packs-record.md` then removed the absent-case question from the record entirely — the
+> `goal-installed-packs-record.md` (now in `docs/archive/goals/`) then removed the absent-case question
+> from the record entirely — the
 > packs directory is the list, so a missing row means "nothing decided", not "not installed" — which also
 > deleted `recoverStagingDirs`'s known/not-known argument, so the third bullet's target no longer exists.
 >
