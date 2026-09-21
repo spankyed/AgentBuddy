@@ -288,3 +288,34 @@ move; the spec fails.
   host's. Both are idempotent (they run on every development boot).
 - Error messages at the author boundary name the fix (the form to write, the pack to name). That is the UX
   bar for every new throw in this goal.
+
+## Outcome (2026-09-21)
+
+Every phase is done. The full chain passed at `5b38e4888`: typecheck, test:unit, build, npm test,
+test:external-pack, test:packaged-authoring, api:check and facade:check.
+
+| Phase | Commit | Evidence |
+|---|---|---|
+| 1: one strict resolver | `a49790c13` | `resolve-name.spec.ts`; the harness and E2E fixture resolve with `resolveName` and throw on an unresolvable name |
+| 2: regressions F10–F13 | `37a0a1936` | `feature-addressing.spec.ts` (E2E), settings-secrets, settings-seed; each fails with its fix reverted |
+| 3: the emitter throws | `bb873164b` | `emitter.spec.ts`: `sendToPlugin` and `sendToSystem` refuse unregistered names, with "did you mean" |
+| 4: pack code names features | `1fa30c912` | `system-ids.ts` gone; no pack source or fixture imports `busId`; `defineSystem(feature)`; feature-keyed FE registration |
+| 5: branded `FeatureAddress` | `51d44fa31` | `feature-address.spec.ts` (`@ts-expect-error`, fails with the brand removed); the renderer's `as any` is gone |
+| 6: settings keys, external packs | `bbf2d91b9` | `external-plugin-settings-0.3.15.spec.ts` (run twice), `plugin-settings-keys.spec.ts`, `address-plugin-settings.spec.ts`, `application-last-active-plugin.spec.ts`; each mutation-checked |
+
+Found and fixed along the way:
+- The logs `earlySystem` was never addressed, so the Logs plugin's Clear and refresh were refused as
+  "Unknown system" (`f6f8aa08b`). This was also broken on master.
+- Upgrading from 0.3.13, 0.3.14 wrote to the address before 0.3.15's move ran, and the rest of the
+  user's code slice was lost. The move now merges, and the address wins.
+
+Choices where the plan left details open:
+- `#generated/fe` holds `actorOf`, `navigateToPlugin` and `PluginName`, apart from `#generated/events`.
+- `navigateToAddress` and `actorAt` are public but host-only, and `check:specifiers` keeps them out of pack sources.
+- The backend `actorOf` mirrors `system.get`, so it returns undefined for a system that isn't running.
+- `busId` is no longer a reserved feature id.
+- The settings service's `updatePluginSetting` still takes a name, because stored actions call it (Decision 4).
+- The shared move leaves a bare key alone when two registered plugins share its feature id. The
+  renderer keeps an unregistered last-active id when it is an address, because its pack may load
+  later.
+- A pack that isn't loaded when the host's 0.3.15 migration runs keeps its bare keys.
