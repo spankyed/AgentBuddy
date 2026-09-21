@@ -5,7 +5,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
-import { findRunningApp } from '../../src/database/running.ts';
+import { appLockFile, findRunningApp, publishRunningApp } from '../../src/database/running.ts';
 import { removeTempDirs, tempDir } from './fixtures.ts';
 
 afterEach(removeTempDirs);
@@ -25,7 +25,9 @@ function exitedPid(): number {
   return spawnSync(process.execPath, ['-e', '']).pid!;
 }
 
-const lock = (dir: string, target: string) => fs.symlinkSync(target, path.join(dir, 'SingletonLock'));
+/** What the app process publishes while it is using a data dir */
+const appLock = (dir: string, held: Record<string, unknown>) => fs.writeFileSync(appLockFile(dir), JSON.stringify(held));
+const anApp = (pid = process.pid, machine = os.hostname()) => ({ pid, machine, since: new Date().toISOString() });
 
 /** Backdate a file to before this machine booted, as a previous boot's leftover would be */
 function backdateToPreviousBoot(file: string): void {
@@ -56,30 +58,62 @@ describe('findRunningApp', () => {
     }
   });
 
-  it('counts a lock a live process holds, and not one an exited process left', () => {
+  it("counts the app's own file while its process runs, and not one a crash left", () => {
     const live = context();
-    lock(live.userDataDir, `${os.hostname()}-${process.pid}`);
-    expect(findRunningApp(live)).toMatch(new RegExp(`process ${process.pid} holds .*SingletonLock`));
+    appLock(live.userDataDir, anApp());
+    expect(findRunningApp(live)).toBe(`its process is running (pid ${process.pid})`);
 
-    const stale = context();
-    lock(stale.userDataDir, `${os.hostname()}-${exitedPid()}`);
-    expect(findRunningApp(stale)).toBeNull();
+    const crashed = context();
+    appLock(crashed.userDataDir, anApp(exitedPid()));
+    expect(findRunningApp(crashed)).toBeNull();
   });
 
-  it("counts a lock it can't check: another host's, or one it can't read", () => {
+  // It guards a database, so a file it cannot resolve means an app may be using the dir. Chromium's lock,
+  // which this replaced, was the other way round: unreadable, or Windows, and the answer was "no app".
+  it("counts one it can't check: another machine's, or one it can't read", () => {
     const remote = context();
-    lock(remote.userDataDir, `another-host.local-${process.pid}`);
-    expect(findRunningApp(remote)).toMatch(/held by a process on another-host\.local/);
+    appLock(remote.userDataDir, anApp(process.pid, 'another-machine.local'));
+    expect(findRunningApp(remote)).toMatch(/its process is running on another-machine\.local/);
 
-    const unreadable = context();
-    lock(unreadable.userDataDir, 'garbage');
-    expect(findRunningApp(unreadable)).toMatch(/SingletonLock is held \(garbage\)/);
+    for (const content of ['not json', '{}', JSON.stringify({ pid: 'x', machine: 'h' }), JSON.stringify({ machine: 'h' })]) {
+      const unreadable = context();
+      fs.writeFileSync(appLockFile(unreadable.userDataDir), content);
+      expect(findRunningApp(unreadable), content).toMatch(/is there and can't be read/);
+    }
+  });
+
+  // The window the port file cannot cover: the app is up and its API has not published a port yet, or is
+  // being restarted after a crash. Without this a tool would take the write lock, and the API would then
+  // refuse to come back.
+  it('answers before the API has published a port, and while a crashed one is restarting', () => {
+    const ctx = context();
+    const stop = publishRunningApp(ctx.userDataDir);
+    try {
+      expect(findRunningApp(ctx)).toBe(`its process is running (pid ${process.pid})`);
+
+      // The API boots, then crashes: its port file names a process that has gone
+      publishApi(ctx.userDataDir, { pid: exitedPid() });
+      expect(findRunningApp(ctx)).toBe(`its process is running (pid ${process.pid})`);
+    } finally {
+      stop();
+    }
+    expect(findRunningApp(ctx)).toBeNull();
+  });
+
+  it('removes only its own on the way out, not one a restarted app replaced it with', () => {
+    const ctx = context();
+    const stop = publishRunningApp(ctx.userDataDir);
+    appLock(ctx.userDataDir, anApp(process.ppid));
+
+    stop();
+
+    expect(findRunningApp(ctx)).toBe(`its process is running (pid ${process.ppid})`);
   });
 });
 
 // `readApiEndpoint` bounds its answer by the boot that wrote the port file, where a wrong "nothing is
-// running" costs a connection error to a dead port. The instance lock does not: there a wrong answer lets a
-// tool write while the app has the database open, so its pid is taken at face value.
+// running" costs a connection error to a dead port. The app's own file does not: there a wrong answer lets
+// a tool write while the app has the database open, so its pid is taken at face value.
 describe('findRunningApp, on a port file left by a previous boot', () => {
   it('ignores a port file that predates this boot, whatever pid it names', () => {
     const ctx = context();
@@ -90,11 +124,11 @@ describe('findRunningApp, on a port file left by a previous boot', () => {
     expect(findRunningApp(ctx)).toBeNull();
   });
 
-  it('still counts an instance lock a live process holds, however old the lock is', () => {
+  it("still counts the app's own file a live process holds, however old it is", () => {
     const ctx = context();
-    lock(ctx.userDataDir, `${os.hostname()}-${process.pid}`);
-    backdateToPreviousBoot(path.join(ctx.userDataDir, 'SingletonLock'));
+    appLock(ctx.userDataDir, anApp());
+    backdateToPreviousBoot(appLockFile(ctx.userDataDir));
 
-    expect(findRunningApp(ctx)).toMatch(new RegExp(`process ${process.pid} holds .*SingletonLock`));
+    expect(findRunningApp(ctx)).toBe(`its process is running (pid ${process.pid})`);
   });
 });

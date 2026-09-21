@@ -47,9 +47,9 @@ function bootTime(): number {
 /**
  * When `file` was last written, or `null` when it isn't there.
  *
- * `lstat`, not `stat`, so a symlink answers for itself. No caller passes one today — the one symlink here,
- * Chromium's `SingletonLock`, is a lock and goes to `_lockIsHeld`, which stats nothing — but its target
- * (`<host>-<pid>`) is not a path and never resolves, so `stat` would throw on a record genuinely held.
+ * `lstat`, not `stat`, so a symlink answers for itself rather than for whatever it points at. No caller
+ * passes one today, and a symlink whose target isn't a path would make `stat` throw on a record that is
+ * genuinely there — which for a staleness check reads as "gone".
  */
 function writtenAt(file: string): number | null {
   try {

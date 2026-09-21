@@ -18,7 +18,7 @@ test("reads the running app's data and refuses to change it", async ({ electronA
 
   const read = abuddyDb(['query', 'return [getEntitiesOfType(EARS.Entity.Settings).length > 0, qx(EARS.Entity.Flow).count() > 0]', '--data-dir', dataDir, '-o', 'json']);
   expect(read.stderr).toContain(`Database: ${dataDir} (offline)`);
-  expect(read.stderr).toMatch(/Warning: AgentBuddy is running on it \(process \d+ holds .*SingletonLock\)/);
+  expect(read.stderr).toMatch(/Warning: AgentBuddy is running on it \(its process is running \(pid \d+\)\)/);
   expect(read.status, read.stderr).toBe(0);
   // The app's settings and seeded flows
   expect(JSON.parse(read.stdout)).toEqual([true, true]);

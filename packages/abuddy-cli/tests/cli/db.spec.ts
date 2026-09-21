@@ -128,7 +128,9 @@ async function ok(args: string[]) {
   return result;
 }
 
-const holdLock = (dir: string) => fs.symlinkSync(`${os.hostname()}-${process.pid}`, path.join(dir, 'SingletonLock'));
+/** What a running app publishes in its data dir, which `abuddy db` refuses to write under */
+const holdLock = (dir: string) =>
+  fs.writeFileSync(path.join(dir, 'app.lock'), JSON.stringify({ pid: process.pid, machine: os.hostname(), since: new Date().toISOString() }));
 
 /** What a running API publishes: its port and its process */
 function publishApi(dir: string): void {
@@ -182,7 +184,7 @@ describe('abuddy db query', () => {
     holdLock(dir);
     const { out, err } = await ok(['query', 'return getSchemaStats().entities.Note', '--data-dir', dir]);
     expect(out).toBe('2');
-    expect(err).toMatch(/Warning: AgentBuddy is running on it \(process \d+ holds/);
+    expect(err).toMatch(/Warning: AgentBuddy is running on it \(its process is running \(pid \d+\)\)/);
   });
 
   it('refuses bad arguments with its usage', async () => {
@@ -379,7 +381,7 @@ describe('abuddy db exec', () => {
     const locked = await appDataDir();
     holdLock(locked);
     const byLock = await run(['exec', "tx('Note-a').put('title', 'Changed')", '--data-dir', locked]);
-    expect(byLock.error?.message).toMatch(/^AgentBuddy is running on .* \(process \d+ holds .*\): quit it first/);
+    expect(byLock.error?.message).toMatch(/^AgentBuddy is running on .* \(its process is running \(pid \d+\)\): quit it first/);
 
     const served = await appDataDir();
     publishApi(served);
@@ -430,7 +432,7 @@ describe('abuddy db repl', () => {
     const io = { out: () => {}, err: () => {} };
     const input = Readable.from(["tx('Note-a').put('title', 'From the repl')\n"]);
     await expect(dbRepl(['--data-dir', dir, '--write'], io, input)).rejects
-      .toThrow(/^AgentBuddy is running on .* \(process \d+ holds .*\): quit it first/);
+      .toThrow(/^AgentBuddy is running on .* \(its process is running \(pid \d+\)\): quit it first/);
     const { out } = await ok(['query', "return getAttr('Note-a', 'title')", '--data-dir', dir]);
     expect(out).toBe('Alpha');
   });
