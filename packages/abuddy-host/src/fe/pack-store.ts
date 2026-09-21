@@ -23,7 +23,7 @@ interface PackFEExtensions {
 /** The renderer's registered pack frontends */
 export interface FePackRegistry extends FePackRegistryView {
   /** Registers a pack's frontend; without a pack id (the built-in packs') it can't be unregistered */
-  registerPackFE(registration: PackFERegistration, packId?: string): void;
+  registerPackFE(registration: PackFERegistration): void;
   /** Unregisters a pack's frontend; returns the plugins it had added */
   unregisterPackFE(packId: string): Plugin[];
   /** Every registered plugin, in registration order */
@@ -39,8 +39,6 @@ export function createFePackRegistry(): FePackRegistry {
   let defaultPlugin: Plugin | undefined;
   const packExtensions = new Map<string, PackFEExtensions>();
   const designations = createDesignationStore();
-  /** The owner recorded for contributions that arrive without a pack id (the built-in packs') */
-  const BUILT_IN_OWNER = '<built-in>';
   const steps = createStepStore();
   const artifacts = createDefinitionStore<ArtifactDefinition>();
   const blocks = createDefinitionStore<BlockDefinition>();
@@ -48,11 +46,12 @@ export function createFePackRegistry(): FePackRegistry {
   const appExtensions = createAppExtensionSlots();
   const dslTypes = createOwnedStore<DslTypeConfig>();
 
-  function registerPackFE(registration: PackFERegistration, packId?: string): void {
-    if (packId && packExtensions.has(packId)) {
+  function registerPackFE(registration: PackFERegistration): void {
+    const packId = registration.id;
+    if (packExtensions.has(packId)) {
       throw new Error(`Pack "${packId}" frontend is already registered`);
     }
-    const fromPack = packId ? ` from pack ${packId}` : '';
+    const fromPack = ` from pack ${packId}`;
     // A registration is all or nothing. What a pack contributes is registered as it is read, and some of it
     // is the pack's own code — a step's `loadComponents` runs here — so a throw partway has to leave the
     // registry as it found it. Without this the pack is half-registered with nothing recording what, so it
@@ -86,13 +85,16 @@ export function createFePackRegistry(): FePackRegistry {
         console.warn(`[pack-store] defaultPlugin from pack ignored — already set`);
       }
 
+      // From the registration's own map: a designation is a property of a feature, and the plugin it names
+      // may be one this pack didn't get to register, because another pack already holds that id
+      const registeredPlugins = new Set(plugins.map((p) => p.id));
       const roles: Record<string, string> = {};
-      for (const { id, designation } of plugins) {
-        if (!designation) continue;
-        if (designations.has(designation) || designation in roles) {
-          console.warn(`[pack-store] Designation "${designation}" of plugin "${id}"${fromPack} ignored — another plugin plays that role`);
+      for (const [designation, pluginId] of Object.entries(registration.designations ?? {})) {
+        if (!registeredPlugins.has(pluginId)) continue;
+        if (designations.has(designation)) {
+          console.warn(`[pack-store] Designation "${designation}" of plugin "${pluginId}"${fromPack} ignored — another plugin plays that role`);
         } else {
-          roles[designation] = id;
+          roles[designation] = pluginId;
         }
       }
       designations.register(roles);
@@ -106,8 +108,7 @@ export function createFePackRegistry(): FePackRegistry {
         });
       }
 
-      // Built-in packs register without a pack id and are never unregistered, so they share one owner
-      const owner = packId ?? BUILT_IN_OWNER;
+      const owner = packId;
       for (const [slot, component] of Object.entries(registration.appExtensions ?? {})) {
         appExtensions.register(slot, component, owner);
         undo(() => appExtensions.unregister(slot, owner));
@@ -137,7 +138,7 @@ export function createFePackRegistry(): FePackRegistry {
         undo(() => dslTypes.remove(name, owner));
       }
 
-      if (packId) packExtensions.set(packId, { plugins, undo: undos.undoAll });
+      packExtensions.set(packId, { plugins, undo: undos.undoAll });
     } catch (err) {
       undos.undoAll();
       throw err;

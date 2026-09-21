@@ -94,6 +94,6 @@ export async function loadPackFrontend(pack: PackFrontend): Promise<Plugin[] | n
 
   const registration = await loadPackFEEntry(pack.feEntry, packBaseUrl);
   if (!registration) return [];
-  fePacks.registerPackFE(registration, pack.id);
+  fePacks.registerPackFE(registration);
   return registration.plugins ?? [];
 }

@@ -13,7 +13,7 @@ import { createFePackRegistry } from '../../src/fe/index.ts';
 // How this spec registers and reads: a frontend registry it creates, bound for the SDK's lookups
 const registry = createFePackRegistry();
 bindFeHost({ application: {} as never, secrets: {} as never, transport: {} as never, packs: registry });
-const register = (registration: PackFERegistration, packId?: string) => registry.registerPackFE(registration, packId);
+const register = (packId: string, registration: Omit<PackFERegistration, 'id'>) => registry.registerPackFE({ id: packId, ...registration });
 const unregister = (packId: string) => registry.unregisterPackFE(packId);
 const plugins = () => registry.getRegisteredPlugins();
 const defaultPlugin = () => registry.getRegisteredDefaultPlugin();
@@ -24,8 +24,8 @@ afterEach(() => {
   for (const id of packs.splice(0)) unregister(id);
 });
 
-function add(packId: string, registration: PackFERegistration): void {
-  register(registration, packId);
+function add(packId: string, registration: Omit<PackFERegistration, 'id'>): void {
+  register(packId, registration);
   packs.push(packId);
 }
 
@@ -34,7 +34,7 @@ function remove(packId: string): Plugin[] {
   return unregister(packId);
 }
 
-const plugin = (id: string, designation?: string) => ({ id, designation }) as unknown as Plugin;
+const plugin = (id: string) => ({ id }) as unknown as Plugin;
 const noteStepFE = { type: 'note', fe: { nodeConfig: { label: 'Note' }, loadComponents: () => ({ node: 'NoteNode', form: 'NoteForm' }) } } as unknown as StepDefinition;
 const cardView = { type: 'card-view', fe: { icon: 'card', component: 'CardView' } };
 const choice = { type: 'choice', fe: { component: 'Choice' } };
@@ -44,8 +44,9 @@ const memoDsl = { prefix: 'memo:', schema: 'declare const memo: string', globals
 
 describe("a pack's frontend", () => {
   it('is found once it registers, and gone once it unregisters', () => {
-    const notebook = plugin('notebook-main', 'notebook');
+    const notebook = plugin('notebook-main');
     add('notebook-pack', {
+      designations: { notebook: 'notebook-main' },
       plugins: [notebook],
       steps: [noteStepFE],
       artifacts: [cardView],

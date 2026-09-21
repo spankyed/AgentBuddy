@@ -356,14 +356,24 @@ describe('generated sends compile', () => {
 });
 
 describe('generated frontend entry', () => {
-  it("sets each plugin's designation from the manifest, replacing one the plugin module sets", () => {
+  // The roles travel in `designations`, keyed by role and resolved to the plugin that plays it. On the
+  // plugin they were a binding an author could fill and this would then overwrite, silently.
+  it("names the manifest's designations beside the plugins, and passes each plugin module through untouched", () => {
     const files = generate({ features: [
       { id: 'settings', designation: 'settings', plugin: { entry: 'src/settings/plugin' } },
       { id: 'notes', plugin: { entry: 'src/notes/plugin' } },
     ] });
     const fe = files['src/__generated__/pack-entry-fe.ts'];
-    expect(fe).toContain("const __plugin_settings = { ...__plugin_settings_module, designation: 'settings' }");
-    expect(fe).toContain('const __plugin_notes = { ...__plugin_notes_module, designation: undefined }');
+
+    expect(fe).toContain("designations: { 'settings': 'settings' },");
+    expect(fe).toContain("import __plugin_settings from '../settings/plugin.js';");
+    expect(fe).not.toContain('_module');
+  });
+
+  it('names the pack the frontend registration belongs to', () => {
+    const files = generate({ features: [{ id: 'notes', plugin: { entry: 'src/notes/plugin' } }] });
+
+    expect(files['src/__generated__/pack-entry-fe.ts']).toContain("id: 'demo-pack',");
   });
 
   it('opens the plugin that claims the default, not the pack\'s first', () => {

@@ -324,7 +324,7 @@ describe('FE pack deregistration', () => {
     const { registerPackFE, unregisterPackFE } = createFePackRegistry();
 
     const testPlugin = { id: 'test-plugin', label: 'Test' } as unknown as Plugin;
-    registerPackFE({ plugins: [testPlugin] }, 'test-pack');
+    registerPackFE({ id: 'test-pack', plugins: [testPlugin] });
 
     const removed = unregisterPackFE('test-pack');
     expect(removed).toHaveLength(1);
@@ -335,6 +335,20 @@ describe('FE pack deregistration', () => {
     expect(removedAgain).toHaveLength(0);
   });
 
+  // A built-in pack's frontend used to register with no pack id, so nothing recorded what it contributed
+  // and unregistering it returned nothing. Every registration carries its pack's id now, so there is one
+  // kind of registration and one way out of it.
+  it('takes a built-in pack\'s frontend back out like any other pack\'s', async () => {
+    const { registerPackFE, unregisterPackFE, getRegisteredPlugins } = createFePackRegistry();
+    const builtIn = { id: 'built-in-main', label: 'Built-in' } as unknown as Plugin;
+
+    registerPackFE({ id: 'default-setup', plugins: [builtIn] });
+    expect(getRegisteredPlugins()).toContain(builtIn);
+
+    expect(unregisterPackFE('default-setup')).toEqual([builtIn]);
+    expect(getRegisteredPlugins()).not.toContain(builtIn);
+  });
+
   it("unregisterPackFE leaves a plugin another registration owns when the pack declared the same id", async () => {
     const { registerPackFE, unregisterPackFE, getRegisteredPlugins } = createFePackRegistry();
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
@@ -342,8 +356,8 @@ describe('FE pack deregistration', () => {
     const builtIn = { id: 'shared-id', label: 'Built-in' } as unknown as Plugin;
     const packCopy = { id: 'shared-id', label: 'Pack' } as unknown as Plugin;
     const packOwn = { id: 'pack-own', label: 'Own' } as unknown as Plugin;
-    registerPackFE({ plugins: [builtIn] });
-    registerPackFE({ plugins: [packCopy, packOwn] }, 'duplicate-pack');
+    registerPackFE({ id: 'built-in-pack', plugins: [builtIn] });
+    registerPackFE({ id: 'duplicate-pack', plugins: [packCopy, packOwn] });
 
     expect(getRegisteredPlugins().filter(p => p.id === 'shared-id')).toEqual([builtIn]);
     expect(warn).toHaveBeenCalledWith(expect.stringContaining('"shared-id" from pack duplicate-pack ignored'));

@@ -250,7 +250,9 @@ export interface PackFERegistration {
     blocks?: BlockDefinition[];
     // (undocumented)
     defaultPlugin?: Plugin_2;
+    designations?: Record<string, string>;
     dslTypes?: Record<string, DslTypeConfig>;
+    id: string;
     // (undocumented)
     plugins?: Plugin_2[];
     // (undocumented)
@@ -268,7 +270,6 @@ interface Plugin_2 {
     canvas?: Component | RouteComponents;
     // (undocumented)
     chat?: Component;
-    designation?: string;
     // (undocumented)
     hotkeys?: PluginHotkeyDefinition[];
     // (undocumented)

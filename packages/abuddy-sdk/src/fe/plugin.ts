@@ -8,8 +8,6 @@ export type RouteComponents = Record<RouteName, Component>;
 export interface Plugin {
   id: string;
   label: string;
-  /** Set from the manifest's `features[].designation` by the generated frontend entry; a value set here is replaced */
-  designation?: string;
   isPinned?: boolean;
   state: AnyStateMachine;
   icon?: Component;

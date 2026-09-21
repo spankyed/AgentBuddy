@@ -44,11 +44,13 @@ it("gives the SDK's frontend lookups the window's registered pack frontends, and
   const memoDsl = { prefix: 'memo:', schema: 'declare const memo: string', globals: {} };
   const note = { type: 'note', fe: { nodeConfig: { label: 'Note' } } };
   fePacks.registerPackFE({
-    plugins: [{ id: 'notebook-main', designation: 'notebook' } as never],
+    id: 'fe-host-pack',
+    plugins: [{ id: 'notebook-main' } as never],
+    designations: { notebook: 'notebook-main' },
     steps: [note as never],
     tiptapPlugins: [mentions],
     dslTypes: { memo: memoDsl },
-  }, 'fe-host-pack');
+  });
   try {
     bindRendererHost(() => application as never);
     expect(getDslTypes().get('memo')).toBe(memoDsl);

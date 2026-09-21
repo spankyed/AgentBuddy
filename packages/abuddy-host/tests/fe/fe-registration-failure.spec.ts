@@ -11,17 +11,14 @@ const plugin = (id: string) => ({ id, label: id, icon: 'x', state: {}, canvas: {
 /** A step whose components the pack fails to load, as a pack with a bad frontend bundle would have */
 const unloadable = (type: string): StepDefinition =>
   ({ type, kind: 'step', fe: { loadComponents: () => { throw new Error(`${type} components are broken`); } } } as unknown as StepDefinition);
-const registration = (r: Partial<PackFERegistration>) => r as PackFERegistration;
+const registration = (id: string, r: Partial<PackFERegistration>) => ({ id, ...r }) as PackFERegistration;
 
 describe('a frontend registration that throws partway', () => {
   it('leaves the registry as it found it', () => {
     const registry = createFePackRegistry();
-    registry.registerPackFE(registration({ plugins: [plugin('neighbour')] }), 'neighbour-pack');
+    registry.registerPackFE(registration('neighbour-pack', { plugins: [plugin('neighbour')] }));
 
-    expect(() => registry.registerPackFE(
-      registration({ plugins: [plugin('ghost')], artifacts: [{ type: 'ghost-view' } as never], steps: [unloadable('ghost-step')] }),
-      'partial-pack',
-    )).toThrow('ghost-step components are broken');
+    expect(() => registry.registerPackFE(registration('partial-pack', { plugins: [plugin('ghost')], artifacts: [{ type: 'ghost-view' } as never], steps: [unloadable('ghost-step')] }))).toThrow('ghost-step components are broken');
 
     expect(registry.getRegisteredPlugins().map((p) => p.id), 'its plugin stayed in the list').toEqual(['neighbour']);
     expect(registry.step('ghost-step'), 'its step stayed registered').toBeUndefined();
@@ -31,12 +28,9 @@ describe('a frontend registration that throws partway', () => {
 
   it("doesn't make its failure the next pack's", () => {
     const registry = createFePackRegistry();
-    expect(() => registry.registerPackFE(registration({ steps: [unloadable('theirs')] }), 'broken-pack')).toThrow();
+    expect(() => registry.registerPackFE(registration('broken-pack', { steps: [unloadable('theirs')] }))).toThrow();
 
-    expect(() => registry.registerPackFE(
-      registration({ plugins: [plugin('mine')], steps: [{ type: 'mine', kind: 'step' } as StepDefinition] }),
-      'later-pack',
-    )).not.toThrow();
+    expect(() => registry.registerPackFE(registration('later-pack', { plugins: [plugin('mine')], steps: [{ type: 'mine', kind: 'step' } as StepDefinition] }))).not.toThrow();
     expect(registry.getRegisteredPlugins().map((p) => p.id)).toEqual(['mine']);
   });
 
@@ -44,10 +38,7 @@ describe('a frontend registration that throws partway', () => {
     const registry = createFePackRegistry();
     const first = plugin('first');
 
-    expect(() => registry.registerPackFE(
-      registration({ plugins: [first], defaultPlugin: first, steps: [unloadable('boom')] }),
-      'default-pack',
-    )).toThrow();
+    expect(() => registry.registerPackFE(registration('default-pack', { plugins: [first], defaultPlugin: first, steps: [unloadable('boom')] }))).toThrow();
 
     expect(() => registry.getRegisteredDefaultPlugin(), 'it kept the default plugin slot').toThrow();
   });
@@ -58,9 +49,9 @@ describe('a frontend registration that throws partway', () => {
 describe('a pack registering its frontend twice', () => {
   it('is refused, as the backend registry refuses it', () => {
     const registry = createFePackRegistry();
-    registry.registerPackFE(registration({ plugins: [plugin('once')] }), 'twice-pack');
+    registry.registerPackFE(registration('twice-pack', { plugins: [plugin('once')] }));
 
-    expect(() => registry.registerPackFE(registration({ plugins: [plugin('again')] }), 'twice-pack'))
+    expect(() => registry.registerPackFE(registration('twice-pack', { plugins: [plugin('again')] })))
       .toThrow('Pack "twice-pack" frontend is already registered');
 
     expect(registry.unregisterPackFE('twice-pack').map((p) => p.id)).toEqual(['once']);

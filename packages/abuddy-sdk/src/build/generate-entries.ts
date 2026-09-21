@@ -720,14 +720,14 @@ ${manifest.migrations ? '  migrations,' : ''}
     const features = manifest.features ?? [];
     const pluginFeatures = features.filter(f => f.plugin);
 
+    // The plugin module is passed through as the author wrote it: its roles travel in `designations` below
     const pluginImports = pluginFeatures
-      .map(f => {
-        const name = pluginBinding(f.id);
-        // The manifest is the only source of a designation: one the plugin module sets itself is replaced
-        const designation = f.designation ? `'${f.designation}'` : 'undefined';
-        return `import ${name}_module from '${toImportPath(root, f.plugin!.entry)}';\nconst ${name} = { ...${name}_module, designation: ${designation} } as typeof ${name}_module;`;
-      })
+      .map(f => `import ${pluginBinding(f.id)} from '${toImportPath(root, f.plugin!.entry)}';`)
       .join('\n');
+    const designated = pluginFeatures.filter(f => f.designation);
+    const designationsProp = designated.length
+      ? `  designations: { ${designated.map(f => `'${f.designation}': '${f.id}'`).join(', ')} },\n`
+      : '';
 
     const pluginList = pluginFeatures.map(f => pluginBinding(f.id)).join(', ');
     // The feature whose plugin claims it, else the pack's first: the claim is on the plugin, so it can't
@@ -782,9 +782,10 @@ ${pluginImports}
 ${extraImports.join('\n')}
 
 export default {
+  id: '${manifest.id}',
   plugins: [${pluginList}],
   defaultPlugin: ${defaultPluginId},
-${regProps.join('\n')}
+${designationsProp}${regProps.join('\n')}
 } satisfies PackFERegistration;
 `;
   }
