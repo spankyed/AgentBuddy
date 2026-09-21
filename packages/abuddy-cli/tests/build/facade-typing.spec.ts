@@ -119,7 +119,7 @@ services.nope;
 // The memos system declares sendsTo: ['base-pack/threads', 'host/application']: a plugin of the dependency and the host's
 emit('base-pack/threads', { type: 'TAG_ADDED', name: 'x' });
 emit('memos', { type: 'MEMO_ADDED', text: 'x' });
-sendToPlugin('host/application', { type: 'APPLICATION_RESTORE_LAST_PLUGIN', lastActivePluginId: 'memos' });
+sendToPlugin('host/application', { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: { 'demo-pack/memos': false } });
 // A plugin someone else owns keeps the events its owner declares it receives: sendsTo opens the channel, it doesn't widen them
 // @ts-expect-error the threads plugin doesn't receive this event
 emit('base-pack/threads', { type: 'MEMO_ADDED', text: 'x' });

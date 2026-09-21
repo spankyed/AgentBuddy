@@ -64,6 +64,8 @@ const MOVED = {
   packSeedDeps: {},
   seedHashes: { [BUILT_IN_ID]: 'boot-hash' },
   seedStatFingerprints: { [BUILT_IN_ID]: 'actions.seed.json:1:2' },
+  // The shell's state, which 0.3.14's settings here don't hold
+  pluginVisibility: {},
 };
 
 const SETTINGS_ID = 'Settings-app' as EARS.EntityId;

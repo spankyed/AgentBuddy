@@ -7,11 +7,9 @@ import { trpc, reconnectApiClient } from '@/core/trpc';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
 import { globalToast } from '@/core/toast';
 import { getDesignated } from '@abuddy/sdk/fe';
-import { resolveName, splitRef } from '@abuddy/sdk/ids';
+import { resolveName } from '@abuddy/sdk/ids';
 import { loadPackFrontend, unloadPackFrontend } from '@/packs/pack-loader';
 
-/** This window's last active plugin, read before the backend's stored one arrives */
-const LAST_ACTIVE_PLUGIN_KEY = 'agentbuddy-last-active-plugin';
 
 declare global {
   interface Window {
@@ -105,8 +103,8 @@ export type ApplicationEvent =
   | { type: 'HOTKEYS_RECORDING_END' }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationContext['hotkeys'] }
   | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> }
-  | { type: 'APPLICATION_RESTORE_LAST_PLUGIN'; lastActivePluginId: string }
-  | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean }
+  | { type: 'SET_PLUGIN_VISIBILITY'; pluginId: string; visible: boolean }
+  | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean; pluginVisibility: Record<string, boolean>; lastActivePlugin?: string }
   | { type: 'CLOSE_DEV_LETTER' }
   | { type: 'ONBOARDING_COMPLETE' }
   | { type: 'SHOW_INSPECTION_PANEL' }
@@ -384,7 +382,7 @@ export const createApplicationState = () => setup({
           onData: (event: any) => {
             const { pluginId, ...ev } = event;
 
-            if (application === pluginId || pluginId === '_meta') {
+            if (application === pluginId) {
               sendBack(ev);
             } else {
               const pluginActor = system.get(pluginId);
@@ -614,21 +612,35 @@ export const createApplicationState = () => setup({
       };
     }),
 
-    syncLastActivePlugin: ({ event, self, context }) => {
-      if (!context.restoreLastActivePlugin) return;
-
-      const { lastActivePluginId } = typeOf('APPLICATION_RESTORE_LAST_PLUGIN', event);
-
-      // Validate plugin exists before persisting — stale IDs (e.g., removed plugins) must not overwrite localStorage
-      const targetPlugin = context.plugins.find(p => p.id === lastActivePluginId);
-      if (!targetPlugin) return;
-
-      localStorage.setItem(LAST_ACTIVE_PLUGIN_KEY, lastActivePluginId);
-
-      if (targetPlugin.id !== context.activePlugin.id) {
-        self.send({ type: 'SELECT_PLUGIN', pluginId: lastActivePluginId });
+    /**
+     * The shell's state the backend sends on each connection (the host `application` system's, in AppState): which
+     * plugins' tabs show, and the plugin the user last had open, which a main window opens on once it's registered.
+     */
+    applyShellState: enqueueActions(({ event, context, enqueue, self }) => {
+      const { pluginVisibility, lastActivePlugin } = typeOf('CLIENT_CONNECTED', event);
+      enqueue.assign({
+        pluginVisibility,
+        visiblePlugins: context.plugins.filter((plugin) => pluginVisibility[plugin.id] !== false),
+      });
+      if (!context.restoreLastActivePlugin || !lastActivePlugin || lastActivePlugin === context.activePlugin.id) return;
+      if (context.plugins.some((p) => p.id === lastActivePlugin)) {
+        enqueue(() => self.send({ type: 'SELECT_PLUGIN', pluginId: lastActivePlugin }));
       }
-    },
+    }),
+
+    /** A tab shown or hidden here: shown at once, and recorded by the host so every window and the next run agree */
+    setPluginVisibility: enqueueActions(({ event, context, enqueue }) => {
+      const { pluginId, visible } = typeOf('SET_PLUGIN_VISIBILITY', event);
+      const pluginVisibility = { ...context.pluginVisibility, [pluginId]: visible };
+      enqueue.assign({
+        pluginVisibility,
+        visiblePlugins: context.plugins.filter((plugin) => pluginVisibility[plugin.id] !== false),
+      });
+      enqueue(() => {
+        trpc.bus.send.mutate({ systemId: application, type: 'SET_PLUGIN_VISIBILITY', pluginId, visible })
+          .catch((error) => console.error('[application] Could not record the plugin visibility:', error));
+      });
+    }),
 
     processGlobalHotkey: ({ self, context, system, event }) => {
       const { hotkeyEvent, originalEvent } = typeOf('PROCESS_GLOBAL_HOTKEY', event);
@@ -759,21 +771,10 @@ export const createApplicationState = () => setup({
 
       // Persist the new active plugin if it changed
       if (context.activePlugin.id !== newPlugin.id) {
-        enqueue(({ context }) => {
-          const pluginId = newPlugin.id;
-
-          // Save to localStorage for immediate access on next load
-          localStorage.setItem(LAST_ACTIVE_PLUGIN_KEY, pluginId);
-
-          // Send to backend to persist across sessions/devices
-          trpc.bus.send.mutate({
-            systemId: getDesignated('settings'),
-            type: 'UPDATE_SETTINGS',
-            entityType: 'plugin',
-            label: '_meta',
-            path: ['lastActivePlugin'],
-            value: pluginId
-          });
+        enqueue(() => {
+          // The host records it, so the next window, and the next run, opens on it
+          trpc.bus.send.mutate({ systemId: application, type: 'SET_LAST_ACTIVE_PLUGIN', pluginId: newPlugin.id })
+            .catch((error) => console.error('[application] Could not record the last active plugin:', error));
         });
       }
     }),
@@ -906,32 +907,14 @@ export const createApplicationState = () => setup({
     };
     const panelSizes = savedSizes ? { ...defaultSizes, ...JSON.parse(savedSizes) } : defaultSizes;
 
-    // Load last active plugin from localStorage
-    const savedLastActivePlugin = localStorage.getItem(LAST_ACTIVE_PLUGIN_KEY);
-
     // Initialize with all plugins visible by default
     const pluginVisibility: Record<string, boolean> = {};
     input.plugins.forEach(plugin => {
       pluginVisibility[plugin.id] = true;
     });
 
-    // Determine initial active plugin - use an explicit window target first, then saved state
-    let initialActivePlugin = input.plugins[0];
-    if (input.initialPluginId) {
-      const initialPlugin = input.plugins.find(p => p.id === input.initialPluginId);
-      if (initialPlugin) {
-        initialActivePlugin = initialPlugin;
-      }
-    } else if (savedLastActivePlugin) {
-      const savedPlugin = input.plugins.find(p => p.id === savedLastActivePlugin);
-      if (savedPlugin) {
-        initialActivePlugin = savedPlugin;
-      } else if (!splitRef(savedLastActivePlugin)) {
-        // A plugin id from before plugins were addressed, which nothing runs under any more. An address stays:
-        // its pack's plugins register once its frontend loads, after this
-        localStorage.removeItem(LAST_ACTIVE_PLUGIN_KEY);
-      }
-    }
+    // A popout opens on its plugin; a main window on the first, until the host says which was last open
+    const initialActivePlugin = input.plugins.find((p) => p.id === input.initialPluginId) ?? input.plugins[0];
 
     return {
       plugins: input.plugins,
@@ -1043,8 +1026,9 @@ export const createApplicationState = () => setup({
               {
                 target: '#application.onboarding.letter',
                 guard: ({ event }) => (event as any).hasOnboarded === false,
+                actions: 'applyShellState',
               },
-              { target: 'connected' },
+              { target: 'connected', actions: 'applyShellState' },
             ],
           },
         },
@@ -1054,6 +1038,7 @@ export const createApplicationState = () => setup({
             CLIENT_CONNECTED: {
               target: 'connected',
               reenter: true,
+              actions: 'applyShellState',
             },
           },
         },
@@ -1090,8 +1075,8 @@ export const createApplicationState = () => setup({
     PLUGIN_VISIBILITY_UPDATED: {
       actions: 'updatePluginVisibility'
     },
-    APPLICATION_RESTORE_LAST_PLUGIN: {
-      actions: 'syncLastActivePlugin'
+    SET_PLUGIN_VISIBILITY: {
+      actions: 'setPluginVisibility'
     },
     TRAIL_UPDATE: {
       actions: ['setBreadcrumbs', 'setTargetView'],

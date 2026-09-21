@@ -10,16 +10,7 @@ let _resolved: { revision: number; data: SettingsData } | null = null;
 
 /** The app's defaults with registered packs' feature settings added; the app's own win */
 function withPackDefaults(base: SettingsData, packs: PackSettingsDefaults['settings']): SettingsData {
-  const { _meta: packMeta, ...packPlugins } = packs.plugins;
-  const baseMeta = base.plugins._meta ?? {};
-  return {
-    ...base,
-    plugins: {
-      ...packPlugins,
-      ...base.plugins,
-      _meta: { ...baseMeta, visibility: { ...packMeta?.visibility, ...baseMeta.visibility } },
-    },
-  };
+  return { ...base, plugins: { ...packs.plugins, ...base.plugins } };
 }
 
 export function getDefaultSettings(): SettingsData {

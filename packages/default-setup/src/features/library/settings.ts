@@ -1,6 +1,6 @@
 export default {
+  visible: false,
   plugins: {
-    _meta: { visibility: { library: false } },
     library: {
       tags: [
         { name: 'Reference', color: '#3B82F6' },

@@ -132,16 +132,6 @@ const settingsState = setup({
       return result;
     }),
 
-    notifyPluginVisibility: ({ event, system }) => {
-      const data = (event as any).data;
-      if (data?.plugins?._meta?.visibility) {
-        system.get('host/application')?.send({
-          type: 'PLUGIN_VISIBILITY_UPDATED',
-          pluginVisibility: data.plugins._meta.visibility,
-        });
-      }
-    },
-
     setSecrets: assign(({ event }) => {
       const ev = typeOf('SECRETS_UPDATED', event);
       return { secrets: ev.secrets, secretsStatus: ev.status };
@@ -416,7 +406,7 @@ const settingsState = setup({
       on: {
         SETTINGS_LOADED: {
           target: 'ready',
-          actions: ['setSettingsData', 'notifyPluginVisibility'],
+          actions: 'setSettingsData',
         },
       },
     },
@@ -445,10 +435,10 @@ const settingsState = setup({
           target: 'loading',
         },
         SETTINGS_UPDATED: {
-          actions: ['updateSettingsData', 'notifyPluginVisibility'],
+          actions: 'updateSettingsData',
         },
         SETTINGS_RESET: {
-          actions: ['updateSettingsData', 'notifyPluginVisibility'],
+          actions: 'updateSettingsData',
         },
         SECRETS_UPDATED: {
           actions: 'setSecrets',

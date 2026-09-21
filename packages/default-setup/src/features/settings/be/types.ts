@@ -88,11 +88,6 @@ export interface Project {
   color: string
 }
 
-// Plugin visibility settings
-export interface PluginVisibilitySettings {
-  [pluginId: string]: boolean; // true = visible in toolbar, false = hidden
-}
-
 // Database plugin settings
 export interface DatabaseSettings {
   hotkeys: {
@@ -178,12 +173,9 @@ export interface LogsSettings {
   showAppEvents?: boolean; // When false/undefined, hide `app-events` source logs from the list
 }
 
+/** Each plugin's settings, by the plugin's ref (`<packId>/<featureId>`) */
 export interface PluginSettings {
-  _meta?: {
-    visibility?: PluginVisibilitySettings;
-    lastActivePlugin?: string;
-  };
-  [pluginId: string]: any; // Plugin-specific settings
+  [pluginRef: string]: any;
 }
 
 export interface AssistantSettings {

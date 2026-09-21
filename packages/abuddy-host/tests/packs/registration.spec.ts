@@ -199,13 +199,15 @@ describe('registerPack entities', () => {
 });
 
 describe('registerPack feature settings', () => {
-  const memos = { id: 'memos', hasSystem: false, services: [], settings: { plugins: { _meta: { visibility: { memos: false } }, memos: { sort: 'newest' } } } };
+  const memos = { id: 'memos', hasSystem: false, services: [], settings: { visible: false, plugins: { memos: { sort: 'newest' } } } };
 
   it("registers a pack's feature settings as defaults and drops them when it unregisters", () => {
     registerPack({ id: 'memo-pack', systems: [], features: [memos] } as unknown as PackRegistration);
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'memo-pack/memos': { sort: 'newest' }, _meta: { visibility: { 'memo-pack/memos': false } } } });
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'memo-pack/memos': { sort: 'newest' } } });
+    expect(getPackSettingsDefaults().visibility).toEqual({ 'memo-pack/memos': false });
     unregisterPack('memo-pack');
     expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
+    expect(getPackSettingsDefaults().visibility).toEqual({});
   });
 
   it("rejects a pack whose feature settings change another plugin's, registering none of it", () => {

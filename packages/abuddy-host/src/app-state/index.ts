@@ -43,10 +43,18 @@ export interface AppState {
   seedHashes: Record<string, string>;
   /** The file mtimes and sizes each built-in pack's seed hash was computed from (the fast path that skips re-hashing) */
   seedStatFingerprints: Record<string, string>;
+  /**
+   * The plugins whose sidebar tab the user showed or hid, by ref. A plugin not here shows as its feature declares
+   * (`features[].settings`' `visible`), so a pack's default reaches everyone who never touched its tab.
+   */
+  pluginVisibility: Record<string, boolean>;
+  /** The plugin the user last had open, by ref; a window opens on it once it connects */
+  lastActivePlugin?: string;
 }
 
 const FIELDS = [
   'hasOnboarded', 'version', 'packVersions', 'packSeedHashes', 'packSeedDeps', 'seedHashes', 'seedStatFingerprints',
+  'pluginVisibility', 'lastActivePlugin',
 ] as const satisfies readonly (keyof AppState)[];
 
 /**
@@ -82,6 +90,8 @@ export const appState = {
       packSeedDeps: row.packSeedDeps ?? {},
       seedHashes: row.seedHashes ?? {},
       seedStatFingerprints: row.seedStatFingerprints ?? {},
+      pluginVisibility: row.pluginVisibility ?? {},
+      ...(row.lastActivePlugin != null && { lastActivePlugin: row.lastActivePlugin }),
     };
   },
 

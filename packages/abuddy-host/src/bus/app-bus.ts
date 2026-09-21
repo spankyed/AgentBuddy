@@ -6,9 +6,16 @@ import { appState } from '../app-state/index.ts';
 import type { PackRegistry } from '../packs/pack-registration.ts';
 import { getPacksWithClientLoadedFrontends } from '../packs/pack-layout.ts';
 import { createBusMachine } from './machine.ts';
+import { pluginVisibility } from './application-system.ts';
 
-/** Sent to the application plugin after each client connection */
-export type ApplicationConnectedEvent = { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean; pluginId: 'host/application' };
+/** Sent to the application plugin after each client connection: the app shell's state, which the window opens with */
+export type ApplicationConnectedEvent = {
+  type: 'CLIENT_CONNECTED';
+  hasOnboarded: boolean;
+  pluginVisibility: Record<string, boolean>;
+  lastActivePlugin?: string;
+  pluginId: 'host/application';
+};
 
 /** The app's bus: the systems in `registry`, clients over the root event bus on the shared bus core */
 export function createAppBus(registry: PackRegistry) {
@@ -30,10 +37,15 @@ export function createAppBus(registry: PackRegistry) {
     },
     // Each client asks for these packs' startup data once it has tried loading their frontends (bus.packClientReady)
     clientLoadedPacks: () => getPacksWithClientLoadedFrontends(registry),
-    connectedEvents: (): ApplicationConnectedEvent[] => [{
-      type: 'CLIENT_CONNECTED',
-      hasOnboarded: appState.get().hasOnboarded,
-      pluginId: 'host/application',
-    }],
+    connectedEvents: (): ApplicationConnectedEvent[] => {
+      const { hasOnboarded, lastActivePlugin } = appState.get();
+      return [{
+        type: 'CLIENT_CONNECTED',
+        hasOnboarded,
+        pluginVisibility: pluginVisibility(registry),
+        ...(lastActivePlugin !== undefined && { lastActivePlugin }),
+        pluginId: 'host/application',
+      }];
+    },
   });
 }

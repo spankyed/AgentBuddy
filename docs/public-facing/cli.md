@@ -102,7 +102,7 @@ Steps:
 1. Validates `abuddy.json` and fails on an invalid manifest
 2. Clears `dist/`
 3. Runs `generate` + `generate-entries` (skip with `--skip-generate`)
-4. Checks each feature's `settings` file exists and sets only `plugins.<id>` and `plugins._meta.visibility.<id>`
+4. Checks each feature's `settings` file exists and sets only `plugins.<id>` and `visible`
 5. Resolves every dependency (fails if one can't be), and warns when `src/__generated__` holds a dependency's types from a different version than the one the build resolved
 6. Compiles `boot.seed` into `runtime/seeds/`, validating flows against the dependencies' step build code
 7. Bundles the facade types and **gates** them: `types/pack-types.d.ts` must type-check on its own and import only `@abuddy/*` packages, `@abuddy/sdk`'s peer dependencies and Node built-ins, with declarations; otherwise dependents would read the types as `any`

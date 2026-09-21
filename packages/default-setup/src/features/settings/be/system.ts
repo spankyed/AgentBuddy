@@ -1,6 +1,6 @@
 import { emit, actorOf } from '@/__generated__/events';
 import { createMachine, setup, sendTo, enqueueActions, fromCallback, fromPromise, type ErrorActorEvent } from 'xstate';
-import { addressPluginSettings, defineSystem, onPackSettingsDefaultsChanged, type SystemEntry } from '@abuddy/sdk/framework';
+import { addressPluginKeys, defineSystem, onPackSettingsDefaultsChanged, type SystemEntry } from '@abuddy/sdk/framework';
 
 import { bus } from '@abuddy/sdk/ids';
 
@@ -18,7 +18,7 @@ import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services';
 import { REQUIRED_PROVIDERS } from '../constants';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { splitRef } from '@abuddy/sdk/ids';
-import { PLUGIN_SETTINGS_META_KEY, pluginSettingsKey } from '../plugin-settings';
+import { pluginSettingsKey } from '../plugin-settings';
 
 const logger = createLogger('settings');
 
@@ -110,17 +110,9 @@ export const settingsSystem = setup({
       }));
       
       sendSecrets(system);
-
-      // Send last active plugin to application for restoration
-      if (data.plugins?._meta?.lastActivePlugin) {
-        system.get(bus).send(emit('host/application', {
-          type: 'APPLICATION_RESTORE_LAST_PLUGIN',
-          lastActivePluginId: data.plugins._meta.lastActivePlugin
-        }));
-      }
     },
     
-    // A pack enabled, disabled or reloaded while the app runs changes the defaults (a plugin's visibility)
+    // A pack enabled, disabled or reloaded while the app runs changes the defaults (its plugins' settings)
     sendPackSettingsUpdate: ({ system }) => {
       system.get(bus).send(emit('settings', { type: 'SETTINGS_UPDATED', data: settingsQueries.getSettings() }));
     },
@@ -137,9 +129,9 @@ export const settingsSystem = setup({
     
     updateSettings: ({ system, event }) => {
       const ev = settingsSpec.typeOf('UPDATE_SETTINGS', event);
-      // A plugin's settings are keyed by its address; the frontend resolves a name before sending
-      const plugin = ev.entityType === 'plugin' && ev.label !== PLUGIN_SETTINGS_META_KEY ? splitRef(ev.label) : undefined;
-      if (ev.entityType === 'plugin' && ev.label !== PLUGIN_SETTINGS_META_KEY && !plugin) {
+      // A plugin's settings are keyed by its ref; the frontend resolves a name before sending
+      const plugin = ev.entityType === 'plugin' ? splitRef(ev.label) : undefined;
+      if (ev.entityType === 'plugin' && !plugin) {
         reportError({ error: new Error(`Settings for plugin "${ev.label}" weren't saved: a plugin's settings are keyed by its address, "<packId>/<featureId>"`), source: 'settings' });
         return;
       }
@@ -171,13 +163,7 @@ export const settingsSystem = setup({
         }));
       }
       
-      // If plugin settings were updated, forward to both backend and frontend.
-      //
-      // `_meta` is not one of them. It is the reserved key inside `plugins` holding the app's own
-      // metadata — which plugins are visible, which was last active — and `checkFeatureSettings`
-      // already excludes it from the plugins a feature may set. Treating it as a plugin id sent
-      // `_META_SETTINGS_UPDATED` to a plugin that does not exist, on every visibility toggle and
-      // every plugin switch, which the bus dropped and reported.
+      // If plugin settings were updated, forward to both backend and frontend
       if (plugin && data.plugins) {
         const pluginSettings = data.plugins[ev.label as keyof typeof data.plugins];
         if (pluginSettings) {
@@ -206,8 +192,10 @@ export const settingsSystem = setup({
     
     replaceSettings: ({ system, event }) => {
       const ev = settingsSpec.typeOf('REPLACE_SETTINGS', event);
-      // Settings exported before 0.3.15 keep each plugin's slice under its feature id
-      const plugins = ev.data.plugins && addressPluginSettings(ev.data.plugins).plugins;
+      // Settings exported before 0.3.15 keep each plugin's slice under its feature id, and the app shell's state
+      // (`_meta`), which is the host's now and isn't settings: that is dropped rather than stored
+      const { _meta, ...exported } = (ev.data.plugins ?? {}) as Record<string, unknown>;
+      const plugins = ev.data.plugins && addressPluginKeys(exported).record;
       settingsCommands.replaceSettings(plugins ? { ...ev.data, plugins } : ev.data);
 
       const data = settingsQueries.getSettings();

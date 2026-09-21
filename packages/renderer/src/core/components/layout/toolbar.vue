@@ -68,7 +68,7 @@ import { useSelector } from '@xstate/vue';
 import WindowControls from './WindowControls.vue';
 import ToolbarPluginContextMenu from './ToolbarPluginContextMenu.vue';
 import ContextMenuPopup from '@abuddy/ui/design/ContextMenuPopup';
-import { useSettingsSaveStatus, getDesignated } from '@abuddy/sdk/fe';
+import { getDesignated } from '@abuddy/sdk/fe';
 import { useContextMenu, type MenuItem } from '@abuddy/ui/composables/useContextMenu';
 import { applicationState } from '@/main';
 
@@ -84,7 +84,6 @@ const pinnedItems = computed(() => props.plugins.filter((item) => item.isPinned)
 
 // --- Right-click menu: toggle plugin visibility ---
 const { showMenu, menuPos, open } = useContextMenu();
-const { updateSettings } = useSettingsSaveStatus();
 const pluginContextMenu = ref<InstanceType<typeof ToolbarPluginContextMenu> | null>(null);
 const pluginVisibility = useSelector(
   applicationState,
@@ -95,12 +94,7 @@ const isVisible = (id: string) => pluginVisibility.value?.[id] !== false;
 
 const togglePluginVisibility = (id: string) => {
   if (id === getDesignated('settings')) return;
-  updateSettings({
-    entityType: 'plugin',
-    label: '_meta',
-    path: ['visibility', id],
-    value: !isVisible(id),
-  });
+  applicationState.send({ type: 'SET_PLUGIN_VISIBILITY', pluginId: id, visible: !isVisible(id) });
 };
 
 const allPlugins = useSelector(applicationState, (state) => state.context.plugins);

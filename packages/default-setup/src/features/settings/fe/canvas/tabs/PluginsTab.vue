@@ -136,9 +136,10 @@ const goToPlugin = (pluginId: string) => {
   navigateToPlugin(pluginId as PluginName)
 }
 
-// Check if a plugin is visible
+// Whether a plugin's tab shows: the app shell's state, which the application actor holds
+const pluginVisibility = useSelector(applicationActor, (state: any) => state.context.pluginVisibility)
 const isPluginVisible = (pluginId: string) => {
-  return settings.value?.plugins?._meta?.visibility?.[pluginId] !== false
+  return pluginVisibility.value?.[pluginId] !== false
 }
 
 // Toggle plugin visibility
@@ -147,14 +148,7 @@ const settingsPluginId = getDesignated('settings')
 const togglePluginVisibility = (pluginId: string) => {
   if (pluginId === settingsPluginId) return
   
-  const currentVisibility = isPluginVisible(pluginId)
-  
-  updateSettings({
-    entityType: 'plugin',
-    label: '_meta',
-    path: ['visibility', pluginId],
-    value: !currentVisibility
-  })
+  applicationActor.send({ type: 'SET_PLUGIN_VISIBILITY', pluginId, visible: !isPluginVisible(pluginId) })
 }
 
 // Handle update events from child components

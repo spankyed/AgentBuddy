@@ -15,7 +15,7 @@ import {
   loadExternalPacks, registerExternalPacks,
   startPacks,
 } from '@abuddy/host/packs/runtime';
-import { createAppBus } from '@abuddy/host/bus';
+import { application, APPLICATION_SYSTEM_EVENTS, createAppBus, createApplicationSystem } from '@abuddy/host/bus';
 import { createHostRuntime } from '@abuddy/host/services';
 import { forwardSecretsChanges } from '@abuddy/host/secrets';
 import { assertSourceResolution } from '@abuddy/host/build/source-resolution';
@@ -96,6 +96,8 @@ export async function setupBackend(): Promise<void> {
   packs.registerHostSystem(packsRef, createPacksSystem(packs), packsEvents);
   // The packs system's sends are checked like a pack's, so the plugin it sends to has to be declared
   packs.registerHostPlugin(packsRef, PACKS_PLUGIN_EVENT_TYPES);
+  // The app shell's own state (which tabs show, the last plugin open), which the application plugin reads
+  packs.registerHostSystem(application, createApplicationSystem(packs), new Set(APPLICATION_SYSTEM_EVENTS));
 
   // Before discovery: a pack an interrupted install left only as its moved-aside copy is restored,
   // and abuddy install learns which AgentBuddy uses this data dir

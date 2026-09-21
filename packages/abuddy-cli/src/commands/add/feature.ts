@@ -7,8 +7,8 @@ import { toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, parse
 import { readManifest, writeManifest, addFeature as addFeatureToManifest } from './manifest';
 
 const SETTINGS = (id: string) => `export default {
+  visible: true,
   plugins: {
-    _meta: { visibility: { ${id}: true } },
     ${id}: {}
   }
 }

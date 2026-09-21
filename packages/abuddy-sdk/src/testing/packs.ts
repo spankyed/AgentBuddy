@@ -60,7 +60,7 @@ function createTestPacks(): TestPacks {
 /** The in-memory stand-in for the registered packs that `startTestRuntime` binds */
 export const testPacks: TestPacks = createTestPacks();
 
-const noSettings: PackSettingsDefaults = { revision: 0, settings: { plugins: {} } };
+const noSettings: PackSettingsDefaults = { revision: 0, settings: { plugins: {} }, visibility: {} };
 
 /** Definitions of `registered` with the ones tests put in `own` in place of those of the same type, then the rest of `own` */
 function withOwn<T extends { type: string }>(registered: readonly T[] = [], own: Map<string, T>): T[] {

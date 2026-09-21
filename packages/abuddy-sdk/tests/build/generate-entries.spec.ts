@@ -362,7 +362,7 @@ describe('generated sends compile', () => {
       "import { emit, sendToPlugin } from './__generated__/events.js';",
       "emit('memos', { type: 'MEMO_ADDED', text: 'x' });",
       "emit('base-pack/threads', { type: 'TAG_ADDED', name: 'x' });",
-      "sendToPlugin('host/application', { type: 'APPLICATION_RESTORE_LAST_PLUGIN', lastActivePluginId: 'memos' });",
+      "sendToPlugin('host/application', { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: { 'demo-pack/memos': false } });",
       "// @ts-expect-error a dependency's plugin takes only the events its own pack declares for it",
       "emit('base-pack/threads', { type: 'MEMO_ADDED', text: 'x' });",
       "// @ts-expect-error a dependency's plugin is named <pack>/<feature>, as the send resolves it",

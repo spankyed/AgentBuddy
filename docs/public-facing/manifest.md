@@ -83,14 +83,14 @@ The `settings` module default-exports the feature's defaults, which the generate
 ```typescript
 // src/features/bookmarks/settings.ts
 export default {
+  visible: true,
   plugins: {
-    _meta: { visibility: { bookmarks: true } },
     bookmarks: { sortBy: 'date' },
   },
 };
 ```
 
-Any other key (a top-level key other than `plugins`, another plugin's `plugins.<id>`, or `_meta` keys other than `visibility.<feature id>` set to a boolean) fails `abuddy build`.
+Any other key (a top-level key other than `plugins` and `visible`, another plugin's `plugins.<id>`, or a `visible` that isn't a boolean) fails `abuddy build`.
 
 ## Steps
 

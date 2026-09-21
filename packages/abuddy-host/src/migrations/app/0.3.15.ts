@@ -3,8 +3,8 @@
 // plugin settings move onto their plugins' addresses, which no pack's own migration can do for them.
 import { tx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
-import { addressPluginSettings, type PackMigration } from '@abuddy/sdk/framework';
-import { HOST_PACK_ID, splitRef } from '@abuddy/sdk/ids';
+import { addressPluginKeys, pluginRefOf, type PackMigration } from '@abuddy/sdk/framework';
+import { HOST_PACK_ID, splitRef, type FeatureRef } from '@abuddy/sdk/ids';
 import { appState, type AppState } from '../../app-state/index.ts';
 import type { PackRegistry } from '../../packs/pack-registration.ts';
 
@@ -41,9 +41,10 @@ type MigrationRegistry = Pick<PackRegistry, 'getPackRegistration' | 'builtInPack
 /** The migration, over the app's registered packs */
 export const migration = (registry: MigrationRegistry): PackMigration => ({
   target: '0.3.15',
-  description: "Move the app's state (onboarding, versions, seed hashes) from the settings' internal section to AppState, and the host's and external packs' plugin settings onto their plugins' refs",
+  description: "Move the app's state (onboarding, versions, seed hashes) from the settings' internal section to AppState, the app shell's state from the settings' _meta to AppState, and the host's and external packs' plugin settings onto their plugins' refs",
   up: () => {
     moveAppState(registry);
+    moveShellState(registry);
     addressHostAndExternalPluginSettings(registry);
   },
 });
@@ -78,24 +79,60 @@ function moveAppState(registry: MigrationRegistry): void {
   if (Object.keys(changed).length > 0) appState.update(changed);
 }
 
+/** The registered plugins as refs with their pack and feature, and the feature ids a built-in pack has */
+function registeredPlugins(registry: MigrationRegistry) {
+  const external = new Set(registry.externalPacks().map(({ id }) => id));
+  const plugins = registry.pluginIds().flatMap((ref) => {
+    const parts = splitRef(ref);
+    return parts ? [{ ref, ...parts }] : [];
+  });
+  const builtInFeatures = new Set(plugins
+    .filter(({ packId }) => packId !== HOST_PACK_ID && !external.has(packId)).map(({ featureId }) => featureId));
+  // Before 0.3.15 a built-in plugin ran under its bare feature id, so a bare id a built-in pack has is its
+  const unambiguous = plugins.filter(({ packId, featureId }) => !external.has(packId) || !builtInFeatures.has(featureId));
+  return { external, unambiguous };
+}
+
+/** What the settings row held before 0.3.15 under `plugins._meta`: the app shell's state, by bare plugin id */
+interface LegacyShellState {
+  visibility?: Record<string, unknown>;
+  lastActivePlugin?: unknown;
+}
+
 /**
- * The plugin settings, sidebar visibility and last-active plugin of the host's plugins (`host/packs`) and of
- * installed external packs, stored under the features' bare ids before 0.3.15, onto their refs. The built-in
- * packs move their own in their migrations, and a bare id a built-in pack also has a feature by is theirs: the
- * built-in plugin ran under it. A pack that isn't loaded when this runs (disabled) keeps its bare keys.
+ * The app shell's state out of the built-in pack's settings (`plugins._meta`) into AppState: which plugins' tabs
+ * the user showed or hid, and the plugin last open, each onto its plugin's ref. An id naming no registered
+ * plugin (one since removed) is dropped: nothing could show it. What AppState already records wins.
+ */
+function moveShellState(registry: MigrationRegistry): void {
+  const data = (untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: { plugins?: Record<string, unknown> } } | undefined)?.data;
+  const meta = data?.plugins?._meta as LegacyShellState | undefined;
+  if (!data?.plugins || meta === undefined) return;
+  const refs = registeredPlugins(registry).unambiguous.map(({ ref }) => ref);
+
+  const visibility = Object.fromEntries(Object.entries(addressPluginKeys(meta.visibility ?? {}, refs).record)
+    .filter(([ref, visible]) => refs.includes(ref as FeatureRef) && typeof visible === 'boolean')) as Record<string, boolean>;
+  const lastActive = typeof meta.lastActivePlugin === 'string' ? pluginRefOf(meta.lastActivePlugin, refs) : undefined;
+  const current = appState.get();
+  appState.update({
+    pluginVisibility: { ...visibility, ...current.pluginVisibility },
+    ...(lastActive && current.lastActivePlugin === undefined && { lastActivePlugin: lastActive }),
+  });
+
+  const { _meta, ...plugins } = data.plugins;
+  tx(SETTINGS_ID).put('data', { ...data, plugins });
+}
+
+/**
+ * The plugin settings of the host's plugins (`host/packs`) and of installed external packs, stored under the
+ * features' bare ids before 0.3.15, onto their refs. The built-in packs move their own in their migrations. A
+ * pack that isn't loaded when this runs (disabled) keeps its bare keys.
  */
 function addressHostAndExternalPluginSettings(registry: MigrationRegistry): void {
-  const movedHere = new Set([HOST_PACK_ID, ...registry.externalPacks().map(({ id }) => id)]);
   const data = (untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: { plugins?: Record<string, unknown> } } | undefined)?.data;
   if (!data?.plugins) return;
-  const plugins = registry.pluginIds().flatMap((ref) => {
-    const parsed = splitRef(ref);
-    return parsed ? [{ ref, ...parsed }] : [];
-  });
-  const builtInFeatures = new Set(plugins.filter(({ packId }) => !movedHere.has(packId)).map(({ featureId }) => featureId));
-  const refs = plugins
-    .filter(({ packId, featureId }) => movedHere.has(packId) && !builtInFeatures.has(featureId))
-    .map(({ ref }) => ref);
-  const moved = addressPluginSettings(data.plugins, refs);
-  if (moved.moved > 0) tx(SETTINGS_ID).put('data', { ...data, plugins: moved.plugins });
+  const { external, unambiguous } = registeredPlugins(registry);
+  const refs = unambiguous.filter(({ packId }) => packId === HOST_PACK_ID || external.has(packId)).map(({ ref }) => ref);
+  const moved = addressPluginKeys(data.plugins, refs);
+  if (moved.moved > 0) tx(SETTINGS_ID).put('data', { ...data, plugins: moved.record });
 }

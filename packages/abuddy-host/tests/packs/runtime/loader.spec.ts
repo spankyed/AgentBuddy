@@ -303,14 +303,15 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const { _seedHookRegistry } = await import('@abuddy/sdk/seed');
     makeBundledPack('settings-pack', registration('settings-pack', `
       seedHooks: { Widget: { find() { return undefined; } } },
-      features: [{ id: 'widget', hasSystem: true, services: [], settings: { plugins: { _meta: { visibility: { widget: false } }, widget: { size: 3 } } } }],
+      features: [{ id: 'widget', hasSystem: true, services: [], settings: { visible: false, plugins: { widget: { size: 3 } } } }],
     `));
 
     const [pack] = loadExternalPacks();
     expect(registerExternalPacks(registry, [pack])).toEqual([pack]);
     try {
       expect(_seedHookRegistry.get('Widget')).toEqual({ find: expect.any(Function) });
-      expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'settings-pack/widget': { size: 3 }, _meta: { visibility: { 'settings-pack/widget': false } } } });
+      expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'settings-pack/widget': { size: 3 } } });
+      expect(getPackSettingsDefaults().visibility).toEqual({ 'settings-pack/widget': false });
     } finally {
       registry.unregisterPack('settings-pack');
     }

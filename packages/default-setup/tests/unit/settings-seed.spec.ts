@@ -32,23 +32,25 @@ const compile = (dir: string) =>
 
 describe('settings compiler', () => {
   it('compiles the default settings into one record', async () => {
-    const dir = packWithDefaults(`export default { general: { theme: 'dark' }, plugins: { _meta: { visibility: {} } } };`);
+    const dir = packWithDefaults(`export default { general: { theme: 'dark' }, plugins: {} };`);
     expect(await compile(dir)).toEqual([{
       name: 'default-settings',
       description: 'Application defaults',
-      settings: { general: { theme: 'dark' }, plugins: { _meta: { visibility: {} } } },
+      settings: { general: { theme: 'dark' }, plugins: {} },
     }]);
   });
 
-  it("refuses default settings that set a plugin's slice, which is its feature's to declare", async () => {
+  // The app shell's old `_meta` too: which tabs show is each feature's `visible`, and the host's state
+  it("refuses default settings that set a plugin's slice, or anything else under plugins", async () => {
+    await expect(compile(packWithDefaults(`export default { plugins: { _meta: { visibility: {} } } };`))).rejects.toThrow("sets a plugin's settings");
     const dir = packWithDefaults(`export default { plugins: { memos: { sort: 'newest' } } };`);
-    await expect(compile(dir)).rejects.toThrow("sets a plugin's settings: a feature declares its own in features[].settings");
+    await expect(compile(dir)).rejects.toThrow("sets a plugin's settings: a feature declares its own, and whether its tab shows, in features[].settings");
   });
 
   it("compiles default-setup's settings with no plugin's in them (npm run compile)", () => {
     const { records } = JSON.parse(fs.readFileSync(path.join(DIST, 'settings.seed.json'), 'utf-8'));
     expect(records).toHaveLength(1);
-    expect(Object.keys(records[0].settings.plugins)).toEqual(['_meta']);
+    expect(records[0].settings.plugins).toEqual({});
     expect(records[0].settings).not.toHaveProperty('internal');
   });
 });

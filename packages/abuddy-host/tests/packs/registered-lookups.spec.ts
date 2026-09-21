@@ -365,7 +365,7 @@ describe('a pack whose registration is refused', () => {
 
 describe('feature settings defaults', () => {
   const memos = { id: 'memos', hasSystem: false, hasPlugin: true, services: [], settings: { plugins: { memos: { sort: 'newest' } } } };
-  const cards = { id: 'cards', hasSystem: false, hasPlugin: true, services: [], settings: { plugins: { _meta: { visibility: { cards: false } } } } };
+  const cards = { id: 'cards', hasSystem: false, hasPlugin: true, services: [], settings: { visible: false } };
 
   it('appear and disappear with their pack, each change announced with a new revision', () => {
     const changed = vi.fn();
@@ -374,12 +374,14 @@ describe('feature settings defaults', () => {
 
     add({ id: 'memo-pack', features: [memos] });
     add({ id: 'card-pack', features: [cards] });
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'memo-pack/memos': { sort: 'newest' }, _meta: { visibility: { 'card-pack/cards': false } } } });
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'memo-pack/memos': { sort: 'newest' } } });
+    expect(getPackSettingsDefaults().visibility).toEqual({ 'card-pack/cards': false });
     expect(getPackSettingsDefaults().revision).toBe(before + 2);
     expect(changed).toHaveBeenCalledTimes(2);
 
     remove('memo-pack');
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { _meta: { visibility: { 'card-pack/cards': false } } } });
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
+    expect(getPackSettingsDefaults().visibility).toEqual({ 'card-pack/cards': false });
     remove('card-pack');
     expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
     expect(changed).toHaveBeenCalledTimes(4);
@@ -393,7 +395,7 @@ describe('feature settings defaults', () => {
     const revision = getPackSettingsDefaults().revision;
     const invalid = { ...memos, settings: { plugins: { threads: { hidden: true } } } };
     expect(() => add({ id: 'bad-pack', features: [invalid] })).toThrow('Feature "memos" settings set "plugins.threads"');
-    expect(getPackSettingsDefaults()).toEqual({ revision, settings: { plugins: {} } });
+    expect(getPackSettingsDefaults()).toEqual({ revision, settings: { plugins: {} }, visibility: {} });
   });
 });
 

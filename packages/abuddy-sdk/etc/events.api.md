@@ -21,7 +21,7 @@ export function emit<P extends string, E extends {
 
 // @public
 export const HOST_PLUGIN_EVENT_TYPES: {
-    readonly 'host/application': readonly ["CLIENT_CONNECTED", "APPLICATION_HOTKEYS", "APPLICATION_RESTORE_LAST_PLUGIN", "PLUGIN_VISIBILITY_UPDATED"];
+    readonly 'host/application': readonly ["CLIENT_CONNECTED", "APPLICATION_HOTKEYS", "PLUGIN_VISIBILITY_UPDATED"];
 };
 
 // @public
@@ -29,12 +29,11 @@ export type HostPluginEvents = {
     'host/application': {
         type: 'CLIENT_CONNECTED';
         hasOnboarded: boolean;
+        pluginVisibility: Record<string, boolean>;
+        lastActivePlugin?: string;
     } | {
         type: 'APPLICATION_HOTKEYS';
         hotkeys: ApplicationHotkeys;
-    } | {
-        type: 'APPLICATION_RESTORE_LAST_PLUGIN';
-        lastActivePluginId: string;
     } | {
         type: 'PLUGIN_VISIBILITY_UPDATED';
         pluginVisibility: Record<string, boolean>;

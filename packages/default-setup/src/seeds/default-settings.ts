@@ -13,11 +13,7 @@ const settings: SettingsData = {
     },
     projects: []
   },
-  plugins: {
-    _meta: {
-      visibility: {}
-    },
-  },
+  plugins: {},
   assistant: {
     name: '',
     birthdate: null

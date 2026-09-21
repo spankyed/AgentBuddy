@@ -49,7 +49,7 @@ describe('getPluginEventValidationMap', () => {
 
   it("starts with the host's own plugins, which no pack declares", () => {
     expect(registry.getPluginEventValidationMap().get('host/application')).toEqual(
-      new Set(['CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'APPLICATION_RESTORE_LAST_PLUGIN', 'PLUGIN_VISIBILITY_UPDATED']),
+      new Set(['CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED']),
     );
   });
 

@@ -1,6 +1,6 @@
 export default {
+  visible: true,
   plugins: {
-    _meta: { visibility: { threads: true } },
     threads: {
       chat: {
         defaultMode: 'Claude Code',

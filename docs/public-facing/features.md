@@ -239,8 +239,8 @@ Each feature declares its default settings slice:
 ```typescript
 // src/features/bookmarks/settings.ts
 export default {
+  visible: true,  // Show in sidebar
   plugins: {
-    _meta: { visibility: { bookmarks: true } },  // Show in sidebar
     bookmarks: {
       // Feature-specific defaults
       syncInterval: 300,
@@ -249,9 +249,9 @@ export default {
 }
 ```
 
-- `_meta.visibility` controls whether the plugin's sidebar tab is visible by default.
+- `visible` controls whether the plugin's sidebar tab shows by default (it shows when omitted). What the user shows or hides is the app's own state, kept by the host (`host/application`), and wins over it.
 - Feature-specific settings go under the plugin ID key.
-- A feature sets only its own slice: `plugins.<feature id>` and `plugins._meta.visibility.<feature id>`. `abuddy build` fails on anything else (the app's `general` settings, another plugin's), and the app refuses to register such a pack.
+- A feature sets only its own slice, `plugins.<feature id>`, and `visible`. `abuddy build` fails on anything else (the app's `general` settings, another plugin's), and the app refuses to register such a pack.
 - The settings are defaults: when your pack is enabled they join the app's defaults, and what the user changes is stored over them. Disabling the pack removes its defaults; a new version's defaults apply to every key the user didn't change.
 - Read them at runtime with default-setup's settings service, `services.settings.getPluginSettings('<feature id>')`, which returns the user's values over the defaults.
 

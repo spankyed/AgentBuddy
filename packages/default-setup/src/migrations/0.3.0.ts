@@ -36,14 +36,8 @@ export const migration: PackMigration = {
     const nextModes = modes.filter(mode => mode.id !== 'hermes');
     repository.settingsCommands.updateSettings('plugin', pluginSettingsKey('threads'), ['chat', 'modes'], nextModes);
 
+    // A hidden `hermes` tab is dropped by the host's 0.3.15 move of the tabs' visibility, as naming no plugin
     const plugins = (data.plugins as any) ?? {};
-    const visibility = plugins._meta?.visibility;
-    if (visibility && Object.prototype.hasOwnProperty.call(visibility, 'hermes')) {
-      const nextVisibility = { ...visibility };
-      delete nextVisibility.hermes;
-      repository.settingsCommands.updateSettings('plugin', '_meta', ['visibility'], nextVisibility);
-    }
-
     if (Object.prototype.hasOwnProperty.call(plugins, 'hermes')) {
       const nextPlugins = { ...plugins };
       delete nextPlugins.hermes;

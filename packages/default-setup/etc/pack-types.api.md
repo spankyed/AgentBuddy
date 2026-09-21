@@ -3006,16 +3006,9 @@ interface PersonalInfo {
     address?: Address;
 }
 
+/** Each plugin's settings, by the plugin's ref (`<packId>/<featureId>`) */
 interface PluginSettings {
-    _meta?: {
-        visibility?: PluginVisibilitySettings;
-        lastActivePlugin?: string;
-    };
-    [pluginId: string]: any;
-}
-
-interface PluginVisibilitySettings {
-    [pluginId: string]: boolean;
+    [pluginRef: string]: any;
 }
 
 type Predicate = {

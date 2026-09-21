@@ -11,8 +11,8 @@ import { EARS as EARS_2 } from '@abuddy/ears';
 import { z } from 'zod';
 
 // @public
-export function addressPluginSettings<T extends Record<string, unknown>>(plugins: T, addresses?: readonly FeatureRef[]): {
-    plugins: T;
+export function addressPluginKeys<T extends Record<string, unknown>>(record: T, refs?: readonly FeatureRef[]): {
+    record: T;
     moved: number;
 };
 
@@ -30,6 +30,8 @@ export function defineSystem<Id extends string>(feature: Id): <TEvents extends {
 export interface FeatureSettings {
     // (undocumented)
     plugins?: Record<string, unknown>;
+    // (undocumented)
+    visible?: boolean;
 }
 
 // @public
@@ -144,12 +146,10 @@ export interface PackSettingsDefaults {
     revision: number;
     // (undocumented)
     settings: {
-        plugins: Record<string, unknown> & {
-            _meta?: {
-                visibility: Record<string, boolean>;
-            };
-        };
+        plugins: Record<string, unknown>;
     };
+    // (undocumented)
+    visibility: Record<string, boolean>;
 }
 
 // @public (undocumented)
@@ -160,6 +160,9 @@ export interface PackSystemDef {
     // (undocumented)
     machine: AnyStateMachine;
 }
+
+// @public
+export function pluginRefOf(id: string, refs: readonly FeatureRef[]): FeatureRef | undefined;
 
 // @public (undocumented)
 export interface SystemEntry {

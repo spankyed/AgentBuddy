@@ -37,7 +37,7 @@ describe('emit and sendToPlugin', () => {
     expectTypeOf(() => {
       emit('flows', actionEvent);
       emit('host/application', { type: 'APPLICATION_HOTKEYS', hotkeys });
-      sendToPlugin('host/application', { type: 'APPLICATION_RESTORE_LAST_PLUGIN', lastActivePluginId: 'notes' });
+      sendToPlugin('host/application', { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: { 'default-setup/notes': false } });
     }).toBeFunction();
   });
 

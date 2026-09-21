@@ -22,8 +22,8 @@ async function defaultExport(file: string): Promise<Record<string, unknown>> {
 
 export default async function compileSettings({ path: sourcePath }: SeedCompileContext): Promise<SettingsSeedRecord[]> {
   const settings = await defaultExport(sourcePath);
-  if (isRecord(settings.plugins) && Object.keys(settings.plugins).some((key) => key !== '_meta')) {
-    throw new Error(`${sourcePath} sets a plugin's settings: a feature declares its own in features[].settings`);
+  if (isRecord(settings.plugins) && Object.keys(settings.plugins).length > 0) {
+    throw new Error(`${sourcePath} sets a plugin's settings: a feature declares its own, and whether its tab shows, in features[].settings`);
   }
   return [{ name: 'default-settings', description: 'Application defaults', settings }];
 }

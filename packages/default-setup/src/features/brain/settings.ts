@@ -1,6 +1,6 @@
 export default {
+  visible: false,
   plugins: {
-    _meta: { visibility: { brain: false } },
     brain: {
       inspectEnabled: false,
     }

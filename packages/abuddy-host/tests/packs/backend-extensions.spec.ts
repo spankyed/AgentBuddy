@@ -82,13 +82,14 @@ describe('the feature settings defaults store', () => {
     const before = getPackSettingsDefaults().revision;
 
     packSettingsRegistry.register('memo-pack', [
-      { id: 'memos', settings: { plugins: { _meta: { visibility: { memos: false } }, memos: { sort: 'newest' } } } },
+      { id: 'memos', settings: { visible: false, plugins: { memos: { sort: 'newest' } } } },
       { id: 'no-settings' },
     ]);
     packSettingsRegistry.register('todo-pack', [{ id: 'todos', settings: { plugins: { todos: { done: true } } } }]);
     expect(getPackSettingsDefaults()).toEqual({
       revision: before + 2,
-      settings: { plugins: { 'memo-pack/memos': { sort: 'newest' }, 'todo-pack/todos': { done: true }, _meta: { visibility: { 'memo-pack/memos': false } } } },
+      settings: { plugins: { 'memo-pack/memos': { sort: 'newest' }, 'todo-pack/todos': { done: true } } },
+      visibility: { 'memo-pack/memos': false },
     });
 
     packSettingsRegistry.unregister('memo-pack');

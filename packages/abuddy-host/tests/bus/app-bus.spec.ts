@@ -63,11 +63,23 @@ afterEach(() => {
 });
 
 describe('createAppBus', () => {
+  // The window opens with the shell's state: which plugins' tabs show and the plugin the user last had open
+  it("tells the application plugin, on each connection, the tabs' visibility and the plugin last open", async () => {
+    appState.update({ pluginVisibility: { 'local-pack/feature': false }, lastActivePlugin: 'local-pack/feature' });
+
+    testRootEvents.emitConnected();
+    await flush();
+
+    expect(outgoing).toContainEqual({
+      type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginVisibility: { 'local-pack/feature': false }, lastActivePlugin: 'local-pack/feature', pluginId: 'host/application',
+    });
+  });
+
   it("reaches the registered systems when a client connects, and a frontend pack's once the client loaded it", async () => {
     testRootEvents.emitConnected();
     await flush();
     expect(received).toEqual(['local-pack']);
-    expect(outgoing).toContainEqual({ type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginId: 'host/application' });
+    expect(outgoing).toContainEqual(expect.objectContaining({ type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginId: 'host/application' }));
 
     testRootEvents.emitPackClientConnected('fe-pack');
     await flush();

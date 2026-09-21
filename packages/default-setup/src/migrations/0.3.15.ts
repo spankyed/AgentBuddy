@@ -2,7 +2,7 @@ import { untypedQx } from '@abuddy/ears';
 import { markSeededRowUnedited } from '@abuddy/sdk/seed';
 import { EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
-import { addressPluginSettings, type PackMigration } from '@abuddy/sdk/framework';
+import { addressPluginKeys, type PackMigration } from '@abuddy/sdk/framework';
 import { resolveName } from '@abuddy/sdk/ids';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { SettingsData } from '@/features/settings/be/types';
@@ -15,7 +15,7 @@ const PACK_ID = 'default-setup';
 
 export const migration: PackMigration = {
   target: '0.3.15',
-  description: "Drop the app's state and the root flow copies from the settings, mark rows seeded before the seeder tracked what it wrote as unedited, keep action logs hidden for whoever hid log-service, and move the plugin settings onto namespaced plugin ids",
+  description: "Drop the app's state and the root flow copies from the settings, mark rows seeded before the seeder tracked what it wrote as unedited, keep action logs hidden for whoever hid log-service, and move the plugin settings onto their plugins' refs",
   up: () => {
     // ── The app's state (onboarding, versions, seed hashes) is the host's AppState now ──
     // The host's own 0.3.15 migration, which runs first, moved it out of `internal` (no pack migration runs when it fails).
@@ -67,18 +67,19 @@ const BARE_PLUGIN_IDS = [
 ];
 
 /**
- * Moves the user's per-plugin settings, sidebar visibility and last-active plugin onto the ids their
- * plugins now run under. Without it a user's pinned plugins and last-active plugin point at nothing:
- * the app reads the plugin's address, `<packId>.threads`, and the stored data says `plugins.threads`.
+ * Moves the user's per-plugin settings onto the refs their plugins now run under. Without it the app reads
+ * `plugins['default-setup/threads']` while the stored data says `plugins.threads`, and the user's settings
+ * come back at the defaults. The sidebar's visibility and the last-active plugin are the host's, which its own
+ * 0.3.15 migration moved into AppState before this runs.
  *
  * Idempotent, as every migration here must be — it runs again on each development boot and after a
- * reset. A key already moved is left alone, and a key the user has under the qualified id already wins.
+ * reset. A key already moved is left alone, and a key the user has under the ref already wins.
  */
 function movePluginSettingsToQualifiedIds(): void {
   const stored = repository.settingsQueries.getStoredSettings();
   if (!stored.plugins) return;
   const addresses = BARE_PLUGIN_IDS.map((id) => resolveName(id, PACK_ID));
-  const { plugins, moved } = addressPluginSettings(stored.plugins, addresses);
+  const { record: plugins, moved } = addressPluginKeys(stored.plugins, addresses);
   if (moved === 0) return;
   repository.settingsCommands.replaceSettings({ ...stored, plugins } as SettingsData);
   logger.info(`[migration 0.3.15] moved ${moved} plugin settings key(s) onto namespaced plugin ids`);

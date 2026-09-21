@@ -30,14 +30,14 @@ Every feature settings file follows this shape:
 
 ```ts
 export default {
+  visible: true | false,  // whether the plugin's sidebar tab shows by default
   plugins: {
-    _meta: { visibility: { <featureId>: true | false } },  // sidebar tab visibility
     <featureId>: { ... }  // feature-specific defaults (optional)
   }
 }
 ```
 
-- `_meta.visibility` controls whether the plugin's sidebar tab is shown by default
+- `visible` controls whether the plugin's sidebar tab is shown by default; what the user shows or hides is the host's state (`AppState`), not settings
 - Feature-specific defaults (hotkeys, modes, display preferences) go under the feature id key; the registry stores them under the plugin's address
 - Features with no settings beyond visibility still need the file (e.g., `settings/settings.ts` just sets `visibility: { settings: true }`)
 

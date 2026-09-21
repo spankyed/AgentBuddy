@@ -3,50 +3,41 @@ import { boundHost } from '../runtime/host-runtime.ts';
 
 /**
  * A feature's default settings (abuddy.json `features[].settings`): its plugin's slice under
- * `plugins.<feature id>`, and whether its sidebar tab shows by default
- * (`plugins._meta.visibility.<feature id>`).
+ * `plugins.<feature id>`, and whether its sidebar tab shows by default (`visible`, shown when omitted).
  */
 export interface FeatureSettings {
   plugins?: Record<string, unknown>;
+  visible?: boolean;
 }
 
-/** Every registered pack's feature settings, merged; `revision` changes whenever a pack registers or unregisters */
+/**
+ * Every registered pack's feature settings, merged, each under its plugin's ref: the plugin slices and the
+ * sidebar visibility the features declare. `revision` changes whenever a pack registers or unregisters.
+ */
 export interface PackSettingsDefaults {
   revision: number;
-  settings: { plugins: Record<string, unknown> & { _meta?: { visibility: Record<string, boolean> } } };
+  settings: { plugins: Record<string, unknown> };
+  visibility: Record<string, boolean>;
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   !!value && typeof value === 'object' && !Array.isArray(value);
 
 /**
- * Problems with a feature's settings: a feature sets only its own plugin's slice and visibility,
+ * Problems with a feature's settings: a feature sets only its own plugin's slice and whether its tab shows,
  * so a pack can't change the app's or another plugin's defaults.
  */
 export function checkFeatureSettings(featureId: string, settings: unknown): string[] {
   const where = `Feature "${featureId}" settings`;
   if (!isRecord(settings)) return [`${where} must default-export an object`];
-  const problems = Object.keys(settings).filter((key) => key !== 'plugins').map((key) => `${where} set "${key}"; only "plugins.${featureId}" and "plugins._meta.visibility.${featureId}" are allowed`);
+  const problems = Object.keys(settings).filter((key) => key !== 'plugins' && key !== 'visible')
+    .map((key) => `${where} set "${key}"; only "plugins.${featureId}" and "visible" are allowed`);
+  if (settings.visible !== undefined && typeof settings.visible !== 'boolean') problems.push(`${where}: "visible" must be true or false`);
   const { plugins } = settings;
   if (plugins === undefined) return problems;
   if (!isRecord(plugins)) return [...problems, `${where}: "plugins" must be an object`];
-  for (const [key, value] of Object.entries(plugins)) {
-    if (key === featureId) continue;
-    if (key !== '_meta') {
-      problems.push(`${where} set "plugins.${key}"; a feature sets only its own plugin's settings, "plugins.${featureId}"`);
-      continue;
-    }
-    if (!isRecord(value)) {
-      problems.push(`${where}: "plugins._meta" must be an object`);
-      continue;
-    }
-    for (const [metaKey, metaValue] of Object.entries(value)) {
-      if (metaKey !== 'visibility') {
-        problems.push(`${where} set "plugins._meta.${metaKey}"; only "plugins._meta.visibility.${featureId}" is allowed`);
-      } else if (!isRecord(metaValue) || Object.entries(metaValue).some(([id, visible]) => id !== featureId || typeof visible !== 'boolean')) {
-        problems.push(`${where}: "plugins._meta.visibility" may only set "${featureId}" to true or false`);
-      }
-    }
+  for (const key of Object.keys(plugins)) {
+    if (key !== featureId) problems.push(`${where} set "plugins.${key}"; a feature sets only its own plugin's settings, "plugins.${featureId}"`);
   }
   return problems;
 }
@@ -69,61 +60,49 @@ function mergeUnder(under: unknown, over: unknown): unknown {
   return merged;
 }
 
-/** The app's metadata inside the stored plugin settings, keyed by plugin address */
-interface PluginSettingsMeta {
-  visibility?: Record<string, unknown>;
-  lastActivePlugin?: unknown;
+/** Each bare feature id `refs` gives one owner for, to that owner's ref; a shared one maps to nobody */
+function ownersOf(refs: readonly FeatureRef[]): Map<string, FeatureRef | null> {
+  const owners = new Map<string, FeatureRef | null>();
+  for (const ref of refs) {
+    const parts = splitRef(ref);
+    if (!parts) continue;
+    owners.set(parts.featureId, owners.has(parts.featureId) ? null : ref);
+    // Development builds of 0.3.15 stored plugins under `<packId>.<featureId>` before the spelling settled
+    owners.set(`${parts.packId}.${parts.featureId}`, ref);
+  }
+  return owners;
 }
 
 /**
- * Stored plugin settings with every key a bare feature id stands for moved onto its plugin's ref: each
- * plugin's slice, its sidebar visibility (`_meta.visibility`) and the last-active plugin
- * (`_meta.lastActivePlugin`). Before 0.3.15 a plugin ran under its feature id, and that's how its settings
- * were stored. A bare id belongs to the plugin among `addresses` (the registered plugins by default) with that
- * feature id; one that two of them share is left where it is, since nothing says whose it was. When both a
- * bare key and its address hold settings, they merge, the address's value winning wherever both set one: the
- * older migrations that run before this one on an upgrade already write to the address. When nothing moves,
- * `plugins` comes back as it was, so a second run changes nothing.
+ * The plugin a stored id stands for among `refs`: the id itself when it is one of them, else the ref of the
+ * one plugin whose feature id it is (a plugin ran under its bare feature id before 0.3.15). Undefined when it
+ * names none of them, or a feature id two of them share, since nothing says whose it was.
  */
-export function addressPluginSettings<T extends Record<string, unknown>>(
-  plugins: T,
-  addresses: readonly FeatureRef[] = boundHost().packs.pluginIds(),
-): { plugins: T; moved: number } {
-  const owners = new Map<string, FeatureRef | null>();
-  for (const address of addresses) {
-    const parts = splitRef(address);
-    if (!parts) continue;
-    owners.set(parts.featureId, owners.has(parts.featureId) ? null : address);
-    // Development builds of 0.3.15 stored plugins under `<packId>.<featureId>` before the spelling settled
-    owners.set(`${parts.packId}.${parts.featureId}`, address);
-  }
-  const ownerOf = (key: string): FeatureRef | undefined => owners.get(key) ?? undefined;
+export function pluginRefOf(id: string, refs: readonly FeatureRef[]): FeatureRef | undefined {
+  if ((refs as readonly string[]).includes(id)) return id as FeatureRef;
+  return ownersOf(refs).get(id) ?? undefined;
+}
 
+/**
+ * A record keyed by plugin (the stored plugin settings, the sidebar visibility) with every key a bare feature id
+ * stands for moved onto its plugin's ref, among `refs` (the registered plugins by default); see `pluginRefOf`.
+ * When both a bare key and its ref hold a value, they merge, the ref's winning wherever both set one: the
+ * older migrations that run before 0.3.15's on an upgrade already write to the ref. When nothing moves,
+ * `record` comes back as it was, so a second run changes nothing.
+ */
+export function addressPluginKeys<T extends Record<string, unknown>>(
+  record: T,
+  refs: readonly FeatureRef[] = boundHost().packs.pluginIds(),
+): { record: T; moved: number } {
+  const owners = ownersOf(refs);
+  const next: Record<string, unknown> = { ...record };
   let moved = 0;
-  const addressKeys = (record: Record<string, unknown>): Record<string, unknown> => {
-    const next = { ...record };
-    for (const key of Object.keys(record)) {
-      const address = ownerOf(key);
-      if (!address) continue;
-      next[address] = address in next ? mergeUnder(record[key], next[address]) : record[key];
-      delete next[key];
-      moved++;
-    }
-    return next;
-  };
-
-  const next = addressKeys(plugins);
-  const meta = plugins._meta;
-  if (isRecord(meta)) {
-    const { visibility, lastActivePlugin } = meta as PluginSettingsMeta;
-    const nextMeta: PluginSettingsMeta = { ...meta };
-    if (isRecord(visibility)) nextMeta.visibility = addressKeys(visibility);
-    const lastActive = typeof lastActivePlugin === 'string' ? ownerOf(lastActivePlugin) : undefined;
-    if (lastActive) {
-      nextMeta.lastActivePlugin = lastActive;
-      moved++;
-    }
-    next._meta = nextMeta;
+  for (const key of Object.keys(record)) {
+    const ref = owners.get(key);
+    if (!ref) continue;
+    next[ref] = ref in next ? mergeUnder(record[key], next[ref]) : record[key];
+    delete next[key];
+    moved++;
   }
-  return moved === 0 ? { plugins, moved } : { plugins: next as T, moved };
+  return moved === 0 ? { record, moved } : { record: next as T, moved };
 }

@@ -55,10 +55,11 @@ export function incomingEvents<S extends { _incoming: unknown }>(spec: S): { _in
  */
 export type HostPluginEvents = {
   'host/application':
-    // The app's own send after each client connection (`ApplicationConnectedEvent`, @abuddy/host/bus)
-    | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean }
+    // The app's own send after each client connection (`ApplicationConnectedEvent`, @abuddy/host/bus): whether
+    // the user onboarded, which plugins' tabs show, and the plugin the user last had open
+    | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean; pluginVisibility: Record<string, boolean>; lastActivePlugin?: string }
     | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationHotkeys }
-    | { type: 'APPLICATION_RESTORE_LAST_PLUGIN'; lastActivePluginId: string }
+    // The app's own send when a plugin's tab is shown or hidden, or a pack's defaults change
     | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> };
 };
 
@@ -71,7 +72,7 @@ type SameMembers<A extends string, B extends string> = [A] extends [B] ? ([B] ex
  * fails to compile when they drift from `HostPluginEvents`.
  */
 export const HOST_PLUGIN_EVENT_TYPES = {
-  'host/application': ['CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'APPLICATION_RESTORE_LAST_PLUGIN', 'PLUGIN_VISIBILITY_UPDATED'],
+  'host/application': ['CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED'],
 } as const satisfies Record<keyof HostPluginEvents, readonly string[]>;
 
 type TypeOfEvent<T> = T extends { type: infer K extends string } ? K : never;

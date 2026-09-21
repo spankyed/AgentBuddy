@@ -113,23 +113,22 @@ describe('the 0.3.15 migration', () => {
     expect(excludedSources()).toEqual(['brain'])
   })
 
-  // A plugin is addressed `<packId>/<featureId>` now. Without this move, the app reads
-  // `plugins['default-setup/threads']` while the user's settings say `plugins.threads`: their pinned
-  // plugins come back at the defaults and the app opens on whatever the default plugin is.
-  describe('moving the plugin settings onto namespaced plugin ids', () => {
-    /** The stored settings as 0.3.14 wrote them, for a user who hid two plugins and left on Notes */
+  // A plugin runs under `<packId>/<featureId>` now. Without this move, the app reads
+  // `plugins['default-setup/threads']` while the user's settings say `plugins.threads`, and their settings come
+  // back at the defaults. The sidebar's state (`_meta`) is the host's, moved by its own 0.3.15 migration.
+  describe("moving the plugin settings onto their plugins' refs", () => {
+    /** The stored plugin settings as 0.3.14 wrote them */
     const storeBareSettings = () => {
       createDefaultSettings()
       tx('Settings-app' as SdkEARS.EntityId).update('data', {
         plugins: {
           notes: { sortBy: 'created' },
           logs: { excludedSources: ['brain'] },
-          _meta: { visibility: { browser: false, database: false }, lastActivePlugin: 'notes' },
         },
       })
     }
 
-    it("moves the user's plugin settings, visibility and last-active plugin", () => {
+    it("moves the user's plugin settings", () => {
       storeBareSettings()
 
       migration.up()
@@ -137,8 +136,7 @@ describe('the 0.3.15 migration', () => {
       const plugins = stored().plugins as Record<string, any>
       expect(plugins['default-setup/notes']).toEqual({ sortBy: 'created' })
       expect(plugins).not.toHaveProperty('notes')
-      expect(plugins._meta.visibility).toEqual({ 'default-setup/browser': false, 'default-setup/database': false })
-      expect(plugins._meta.lastActivePlugin).toBe('default-setup/notes')
+      expect(plugins).not.toHaveProperty('logs')
     })
 
     // It runs again on every development boot and after a reset
@@ -168,7 +166,7 @@ describe('the 0.3.15 migration', () => {
       expect(plugins).not.toHaveProperty('code')
     })
 
-    it("keeps what the user has under the namespaced id over the bare key, and drops the bare one", () => {
+    it("keeps what the user has under the ref over the bare key, and drops the bare one", () => {
       createDefaultSettings()
       tx('Settings-app' as SdkEARS.EntityId).update('data', {
         plugins: { notes: { sortBy: 'stale' }, 'default-setup/notes': { sortBy: 'current' } },

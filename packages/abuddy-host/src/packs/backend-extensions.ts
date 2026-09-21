@@ -44,14 +44,14 @@ export function createSeederStore() {
 }
 
 /**
- * Registered packs' feature settings, merged into the defaults: each feature's own plugin slice and visibility
- * (`checkFeatureSettings`). `revision` changes, and listeners hear, whenever a pack's settings come or go.
- * A manifest names the feature; its settings land under the plugin's address, which the renderer reads by.
+ * Registered packs' feature settings, merged into the defaults: each feature's own plugin slice and whether its
+ * tab shows (`checkFeatureSettings`). `revision` changes, and listeners hear, whenever a pack's settings come or
+ * go. A manifest names the feature; its settings land under the plugin's ref, which the renderer reads by.
  */
 export function createSettingsDefaultsStore() {
   const byPack = new Map<string, Array<{ id: string; settings: FeatureSettings }>>();
   const listeners = new Set<() => void>();
-  let current: PackSettingsDefaults = { revision: 0, settings: { plugins: {} } };
+  let current: PackSettingsDefaults = { revision: 0, settings: { plugins: {} }, visibility: {} };
 
   function rebuild(): void {
     const plugins: Record<string, unknown> = {};
@@ -61,11 +61,10 @@ export function createSettingsDefaultsStore() {
         const own = settings.plugins ?? {};
         const pluginId = resolveName(id, packId);
         if (id in own) plugins[pluginId] = own[id];
-        const visible = (own._meta as { visibility?: Record<string, boolean> } | undefined)?.visibility?.[id];
-        if (visible !== undefined) visibility[pluginId] = visible;
+        if (settings.visible !== undefined) visibility[pluginId] = settings.visible;
       }
     }
-    current = { revision: current.revision + 1, settings: { plugins: { ...plugins, ...(Object.keys(visibility).length > 0 && { _meta: { visibility } }) } } };
+    current = { revision: current.revision + 1, settings: { plugins }, visibility };
     for (const listener of listeners) listener();
   }
 
