@@ -78,7 +78,6 @@ import type { KeyboardShortcut, ApplicationHotkeys } from '@abuddy/sdk/types';
 
 export interface AppSettings {
   hotkeys: ApplicationHotkeys;
-  openLinksInApp: boolean;
 }
 
 // Project definition

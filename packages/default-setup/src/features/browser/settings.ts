@@ -3,6 +3,7 @@ export default {
   plugins: {
     browser: {
       showBookmarksBar: true,
+      openLinksInApp: true,
     }
   }
 }

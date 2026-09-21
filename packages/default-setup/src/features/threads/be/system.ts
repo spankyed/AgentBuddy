@@ -49,9 +49,7 @@ type IncomingThreadsEvents =
   | { type: 'REFRESH_THREADS' }
   | { type: 'LOAD_MORE_MESSAGES'; threadId: string; cursor: string }
 
-export type ThreadsInternalEvents =
   | { type: 'CLIENT_CONNECTED' }
-  | { type: 'THREADS_SETTINGS_UPDATED'; settings: any; changes?: any }
   | { type: 'BIRTH_FLOW_START' }
   | { type: 'THREAD_DELETED'; threadId: string }
   /** The library's commands folder changed (sent by the library system) */
@@ -93,7 +91,7 @@ export interface ThreadsContext {
   sentCommands?: string
 }
 
-export const threadsSpec = defineSystem('threads')<IncomingThreadsEvents | ThreadsInternalEvents, OutgoingThreadsEvents, ThreadsContext>();
+export const threadsSpec = defineSystem('threads')<IncomingThreadsEvents, OutgoingThreadsEvents, ThreadsContext>();
 export const threads = threadsSpec.id;
 
 function reportThreadOperationError(
@@ -265,11 +263,11 @@ export const threadsSystem = setup({
       const firstStatusLabel = (): string | undefined =>
         repository.settingsQueries.getPluginSettings(pluginSettingsKey('threads'))?.statuses?.[0]?.label;
 
-      const { changes } = threadsSpec.typeOf('THREADS_SETTINGS_UPDATED', event);
+      const { changes } = threadsSpec.typeOf('FEATURE_SETTINGS_UPDATED', event);
 
 
       if (changes) {
-        const sBlock = (changes.statuses || changes) as ChangeBlock | undefined;
+        const sBlock = changes.statuses as ChangeBlock | undefined;
         const sRenames = toMap(sBlock?.renames);
         const sRemoved = toIdentifierSet(sBlock?.removed, (item: any) => item.label);
         const statusNeedsWork = sRenames.size || sRemoved.size;
@@ -946,7 +944,7 @@ export const threadsSystem = setup({
       CLIENT_CONNECTED: {
         actions: ['sendThreadsConnectedData', 'sendChatConnectedData', 'rememberSentCommands', 'checkOnboarding'],
       },
-      THREADS_SETTINGS_UPDATED: {
+      FEATURE_SETTINGS_UPDATED: {
         actions: 'handleSettingsUpdate',
       },
       // Chat/agent global events

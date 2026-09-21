@@ -1,5 +1,6 @@
 import { setup, assign, type ActorRefFrom } from 'xstate'
-import type { DocumentDTO, CollectionDTO, LibraryIndex, OutgoingLibraryEvents, LibraryItem, DocumentItem, FolderContents, BreadcrumbItem, SearchIndex } from '@/__generated__/types'
+import type { DocumentDTO, CollectionDTO, LibraryIndex, LibraryItem, DocumentItem, FolderContents, BreadcrumbItem, SearchIndex } from '@/__generated__/types'
+import type { OutgoingLibraryEvents } from '@/features/library/be/system'
 import type { SearchIndexFormData } from './types/search-index'
 import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'

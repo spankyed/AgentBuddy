@@ -36,11 +36,49 @@ test was mutation-checked: breaking the fix fails it.
 ### Found while fixing R2
 
 - **N1. A pack's plugin with settings must declare `<FEATURE>_SETTINGS_UPDATED` or every settings change logs a
-  dropped send.** Default-setup's settings system sends it to the plugin whose settings changed; the bus checks a
-  send against what the plugin's own pack declares, so an undeclared one is dropped and reported (and fails a pack
-  test). The fixture now declares it, and `docs/public-facing/features.md` says to. A pack author has to know this;
-  moving the declaration out of the pack (the settings plugin owning the event, or the SDK declaring it for every
-  plugin with settings) is left open.
+  dropped send.** Fixed: the SDK declares the event once for every feature, `FEATURE_SETTINGS_UPDATED`
+  (`SystemEvents` for systems, with the changes; `PLUGIN_EVENT_TYPES` for plugins), so no pack declares it and the
+  bus accepts it for any plugin. The settings system remembers the settings it last applied and tells only the
+  features whose settings changed, on an update, a replace, a reset and a pack's changed defaults alike, where it
+  used to tell only an updated one. Test: `default-setup/tests/unit/feature-settings-updated.spec.ts`;
+  `tests/e2e/feature-addressing.spec.ts`.
+
+### Found while fixing N1
+
+- **N2. `openInAppBrowser` read the settings plugin's state from the SDK.** The SDK decided a setting it doesn't
+  own. `openLink(url)` (`@abuddy/sdk/fe`) now hands the link to the plugin playing the `browser` role, which
+  decides from its own settings (`openLinksInApp`, moved from the general settings to the browser's by 0.3.14),
+  or opens it outside the app when no plugin plays the role. Test: `abuddy-sdk/tests/fe/open-link.spec.ts`;
+  `tests/e2e/open-link.spec.ts`.
+- **N3. 0.3.14 overwrote a directory the user had already set.** It now moves `lastDirectoryOpened` only when
+  `baseDirectory` is unset, reading the slice under either key. Test:
+  `default-setup/tests/unit/migrations/migration-0.3.14.spec.ts`.
+- **N4. The settings plugin resolved plugin names in default-setup's context.** `PLUGIN.SELECT` takes a
+  `PluginSettingsKey`, and senders resolve the name where they write it. Test:
+  `default-setup/tests/unit/settings-plugin-select.spec.ts`.
+- **N5. A system's outgoing events were declared twice.** Codegen read them from an export named by convention or
+  by the manifest's `system.outgoingEventsType`, beside the spec's own `TOutgoing`; actions kept a stale third copy
+  in `be/types.ts`. The spec is now the one source (`OutgoingEventsOf`, read by `outgoingEventTypesOf` in
+  `module-exports.ts`), the manifest option is gone, and a spec that lost its events fails the build naming the
+  fix. Reading the spec takes the pack's `@abuddy/sdk`, so a pack whose dependencies aren't installed yet gets an
+  error coded `_TYPES_UNRESOLVED`: `abuddy add` then keeps the scaffold and says `npm install` regenerates the
+  entries, and `abuddy validate` reports it as a warning. Test: `abuddy-sdk/tests/build/generate-entries.spec.ts`;
+  `abuddy-cli/tests/cli/add-feature-validate.spec.ts`.
+- **N6. A pack's system entry couldn't be emitted once `SystemEvents` carried the settings changes.** The
+  `changes` type (`ArrayChanges`) was declared in a module no package export reaches, so `abuddy build`'s
+  declaration emit failed with TS2742 for any pack whose entry type is inferred. `@abuddy/sdk/framework` exports it
+  beside `SystemEvents`. Test: `abuddy-cli/tests/build/dependency-graph.spec.ts` and the facade specs.
+- **N7. The user's own actions called services the way 0.3.14 took them.** Bare feature names
+  (`sendToPlugin('threads')`, `getPluginSettings('code')`), `sendToBrainSystem`, and onboarding in the settings
+  all throw now. 0.3.15 rewrites exactly those forms in actions without a `sourceHash` (`rewrite-action-calls.ts`);
+  seeded actions are the seeder's, which 0.3.15 already lets replace them. Transform steps' scripts can call
+  services too and aren't rewritten. Test: `default-setup/tests/unit/migrations/rewrite-action-calls.spec.ts`;
+  `migration-0.3.15.spec.ts`.
+- **N8. Each window kept its last active plugin in `localStorage`, which nothing reads since the host keeps it.**
+  The renderer's 0.3.15 migration removes it. Test: `renderer/src/setup/migrations/__tests__/frontend-migrations.spec.ts`.
+- **N9. The browser system sent its plugin its saved tabs twice per connection.** It listened for connections
+  itself besides the `CLIENT_CONNECTED` the bus sends every system; the listener is gone, and it reaches its data
+  through `repository`. Test: `default-setup/tests/unit/browser-connected.spec.ts`.
 
 ## Regressions in the running app
 

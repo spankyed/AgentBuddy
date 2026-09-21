@@ -340,6 +340,7 @@
 </template>
 
 <script setup lang="ts">
+import { pluginSettingsKey } from '@/features/settings/plugin-settings'
 import { usePlugin } from '@abuddy/sdk/fe'
 import { computed, ref, reactive, watch, onMounted, onUnmounted } from 'vue';
 import {
@@ -504,7 +505,7 @@ const copyLogs = async () => {
 const goToExcludedSourcesSettings = () => {
   navigateToPlugin('settings', [
     { type: 'TAB.SELECT', tab: 'plugins' },
-    { type: 'PLUGIN.SELECT', pluginId: 'logs' }
+    { type: 'PLUGIN.SELECT', pluginId: pluginSettingsKey('logs') }
   ]);
 };
 
@@ -651,7 +652,7 @@ const toggleShowAppEvents = () => {
 
   // Optimistic local update so the toggle state flips immediately.
   actor.send({
-    type: 'LOGS_SETTINGS_UPDATED',
+    type: 'FEATURE_SETTINGS_UPDATED',
     settings: { ...settings.value, showAppEvents: next }
   });
 
@@ -669,7 +670,7 @@ const excludeSource = (source: string) => {
 
     // Optimistically update the local logs state
     actor.send({
-      type: 'LOGS_SETTINGS_UPDATED',
+      type: 'FEATURE_SETTINGS_UPDATED',
       settings: {
         ...settings.value,
         excludedSources: updatedSources

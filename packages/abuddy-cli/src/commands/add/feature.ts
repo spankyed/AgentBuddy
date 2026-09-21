@@ -1,7 +1,7 @@
 import { FEATURE_ID_PATTERN } from '@abuddy/sdk/build';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { generateEntries } from '../generate-entries';
+import { regenerateAfterScaffold } from '../generate-entries';
 import { scaffoldUnitTestSetup, type UnitTestSetup } from '../init';
 import { toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, parseFlag, hasFlag } from './templates';
 import { readManifest, writeManifest, addFeature as addFeatureToManifest } from './manifest';
@@ -208,11 +208,11 @@ export async function addFeature(args: string[], root: string) {
   });
   writeManifest(root, manifest);
 
-  await generateEntries([], root);
+  const regenerated = await regenerateAfterScaffold(root);
 
   console.log(`\nCreated feature "${name}":`);
   logCreated(root, [...(unitTestSetup?.created ?? []), ...created]);
-  console.log(`\n  manifest updated + __generated__/ regenerated`);
+  if (regenerated) console.log(`\n  manifest updated + __generated__/ regenerated`);
   if (unitTestSetup) logUnitTestSetup(unitTestSetup);
 }
 

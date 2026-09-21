@@ -113,6 +113,24 @@ describe('the 0.3.15 migration', () => {
     expect(excludedSources()).toEqual(['brain'])
   })
 
+  // An action of the user's own still calls services the way 0.3.14 took them, and would throw on its first run
+  it("rewrites the user's actions' calls to changed services, and leaves seeded actions to the seeder", () => {
+    createDefaultSettings()
+    const old = `services.emitter.sendToPlugin('threads', e); services.emitter.sendToBrainSystem({ eventType: 'go' });`
+    const mine = createEntityWithDefaults(EARS.Entity.Action, { label: 'Mine', input: {}, actionFn: old })
+    const seeded = createEntityWithDefaults(EARS.Entity.Action, { label: 'Seeded', input: {}, actionFn: old, sourceHash: 'seeded-v1' })
+
+    migration.up()
+    const afterFirst = attrs(mine.id).actionFn
+    migration.up()
+
+    expect(afterFirst).toBe(
+      `services.emitter.sendToPlugin('default-setup/threads', e); services.emitter.sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', ...({ eventType: 'go' }) });`,
+    )
+    expect(attrs(mine.id).actionFn).toBe(afterFirst)
+    expect(attrs(seeded.id).actionFn).toBe(old)
+  })
+
   // A plugin runs under `<packId>/<featureId>` now. Without this move, the app reads
   // `plugins['default-setup/threads']` while the user's settings say `plugins.threads`, and their settings come
   // back at the defaults. The sidebar's state (`_meta`) is the host's, moved by its own 0.3.15 migration.
@@ -162,7 +180,7 @@ describe('the 0.3.15 migration', () => {
       migration.up()
 
       const plugins = stored().plugins as Record<string, any>
-      expect(plugins['default-setup/code']).toEqual({ lastDirectoryOpened: '/work', baseDirectory: '/work', cliPaths: { gh: '/opt/bin/gh' } })
+      expect(plugins['default-setup/code']).toEqual({ baseDirectory: '/work', cliPaths: { gh: '/opt/bin/gh' } })
       expect(plugins).not.toHaveProperty('code')
     })
 

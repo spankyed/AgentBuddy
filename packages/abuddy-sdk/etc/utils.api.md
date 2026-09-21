@@ -26,6 +26,9 @@ export function _appDataPaths(userDataDir: string, input: {
     packaged: boolean;
 }): _AppDataPaths;
 
+// @public
+export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
+
 // @public (undocumented)
 export function asArr<T>(v: MaybeArr<T>): readonly T[];
 
@@ -76,7 +79,7 @@ export function copyMediaByRef(refs: MediaRef[], outputDir: string): number;
 export function createExportDir(parentDir: string, systemName: string): string;
 
 // @public (undocumented)
-export const detectAllArrayChanges: (prev: unknown, next: unknown) => Record<string, DiffResult<DiffItem>> | null;
+export const detectAllArrayChanges: (prev: unknown, next: unknown) => ArrayChanges | null;
 
 // @public (undocumented)
 export const detectChanges: <T>(prev: T[] | undefined, next: T[] | undefined, id: (x: T) => string, key: (x: T) => string) => DiffResult<T>;

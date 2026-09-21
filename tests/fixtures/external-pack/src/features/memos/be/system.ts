@@ -16,9 +16,7 @@ export type OutgoingMemosEvents =
   | { type: 'MEMOS_CONNECTED'; memos: MemoDTO[] }
   | { type: 'MEMO_ADDED'; memo: MemoDTO }
   /** `note` is null when the note written through @abuddy/ears isn't found through the SDK */
-  | { type: 'MEMO_NOTE_ADDED'; text: string; note: MemoNoteDTO | null }
-  /** Sent by default-setup's settings system when the plugin's settings change: the plugin declares it receives it */
-  | { type: 'MEMOS_SETTINGS_UPDATED'; settings: unknown };
+  | { type: 'MEMO_NOTE_ADDED'; text: string; note: MemoNoteDTO | null };
 
 export const memosSpec = defineSystem('memos')<IncomingMemosEvents, OutgoingMemosEvents>();
 export const memos = memosSpec.id;

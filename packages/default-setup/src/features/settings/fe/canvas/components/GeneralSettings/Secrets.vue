@@ -37,7 +37,7 @@
       <div v-for="provider in standardProviders" :key="provider.key" class="space-y-2" :data-testid="`secrets-provider-${provider.key}`">
         <div class="flex items-center">
           <button
-            @click="openInAppBrowser(provider.url)"
+            @click="openLink(provider.url)"
             class="flex items-center gap-1 text-sm font-medium text-gray-200 hover:text-blue-400 transition-colors group"
             :title="`Open ${provider.label} API keys page`"
           >
@@ -107,7 +107,7 @@
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { ExternalLink, ShieldAlert, ShieldCheck } from 'lucide-vue-next'
-import { openInAppBrowser, secretsClient, usePlugin } from '@abuddy/sdk/fe'
+import { openLink, secretsClient, usePlugin } from '@abuddy/sdk/fe'
 import { providerLabels } from '@abuddy/sdk/models'
 import type { SecretInfo, SecretProvider, SecretsStatus } from '@abuddy/sdk/services'
 import { API_KEY_URLS, REQUIRED_PROVIDERS } from '../../../../constants'

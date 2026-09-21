@@ -47,13 +47,13 @@ describe('settings and stored API keys', () => {
     expect(repository.settingsQueries.getPluginSettings(pluginSettingsKey('code'))).toMatchObject({ cliPaths: { gh: '/opt/bin/gh' } });
   });
 
-  // A plugin's settings change reaches that plugin, named by the feature, not by the label's address form
-  it("tells the plugin whose settings changed, with an event named after its feature", async () => {
+  // A plugin's settings change reaches that plugin, at the ref the label names
+  it('tells the plugin whose settings changed', async () => {
     const app = await startApp({ systems: ['settings'] });
     await app.connect();
-    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: ['mdEditorDefault'], value: true });
-    const updated = await app.nextEmit('code', 'CODE_SETTINGS_UPDATED');
-    expect(updated).toMatchObject({ type: 'CODE_SETTINGS_UPDATED', settings: { mdEditorDefault: true } });
+    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: ['mdEditorDefault'], value: false });
+    const updated = await app.nextEmit('code', 'FEATURE_SETTINGS_UPDATED');
+    expect(updated).toMatchObject({ type: 'FEATURE_SETTINGS_UPDATED', settings: { mdEditorDefault: false } });
   });
 
   // The frontend resolves a plugin's name to its address before sending; a bare label reaching the system

@@ -8,7 +8,7 @@ import * as _abuddy_sdk from '@abuddy/sdk';
 import { ActionEntity, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes } from '@abuddy/sdk';
 import { ArtifactItem } from '@abuddy/sdk/artifacts';
 import * as _abuddy_sdk_build from '@abuddy/sdk/build';
-import { HostPluginEvents, IncomingEventsOf, SystemOfFeature, TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
+import { HostPluginEvents, IncomingEventsOf, OutgoingEventsOf, SystemOfFeature, TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
 import { ModelCatalogEntry, ModelId } from '@abuddy/sdk/models';
 import * as _abuddy_sdk_repositories from '@abuddy/sdk/repositories';
 import { FlowEdge } from '@abuddy/sdk/repositories';
@@ -122,7 +122,6 @@ type AgentThreadData = {
 
 interface AppSettings {
     hotkeys: ApplicationHotkeys;
-    openLinksInApp: boolean;
 }
 
 type ApprovalDecision = 'accept' | 'acceptForSession' | 'cancel' | 'decline';
@@ -330,35 +329,6 @@ interface BrainEventPayload {
     payload?: any;
     targetFlowId?: string;
 }
-
-type BrainInternalEvents = {
-    type: 'TNODE_SPAWNED';
-    tNode: TNodeEntity;
-    parentId?: EARS.EntityId;
-    eventTNodeId?: EARS.EntityId;
-    flowTNodeId: EARS.EntityId;
-} | {
-    type: 'TNODE_UPDATED';
-    data: TNodeUpdate;
-} | {
-    type: 'BRAIN_SETTINGS_UPDATED';
-    settings: any;
-    changes?: any;
-} | {
-    type: 'HANDLE_BRAIN_EVENT';
-    eventType: string;
-    payload?: any;
-    targetFlowId?: string;
-} | {
-    type: 'CHILD_COMPLETED';
-    stepId?: EARS.EntityId;
-    tNodeId?: EARS.EntityId;
-    stepLabel?: string;
-    result?: any;
-    final?: boolean;
-    eventTNodeId?: EARS.EntityId;
-    isFlow?: boolean;
-};
 
 interface BreadcrumbItem {
     id: EARS.EntityId | null;
@@ -1886,18 +1856,9 @@ type OutgoingBrainEvents = {
     type: 'BRAIN_RESUMED';
 };
 
-type OutgoingBrowserEvents = {
-    type: 'BROWSER_CONNECTED';
-    savedTabs: SavedTab[];
-    savedBookmarks: SavedBookmark[];
-};
-
 type OutgoingCodeEvents = OutgoingExplorerEvents | OutgoingSearchEvents | OutgoingCommitEvents | OutgoingPullRequestEvents | OutgoingTerminalEvents | OutgoingActionsEvents | OutgoingPromptsEvents | {
     type: 'CODE_CONNECTED';
     data: CodeConnectedData;
-} | {
-    type: 'CODE_SETTINGS_UPDATED';
-    settings: CodeSettings;
 };
 
 type OutgoingCommitEvents = {
@@ -2341,9 +2302,6 @@ type OutgoingLogsEvents = {
     log: LogEntry;
 } | {
     type: 'LOGS_CLEARED';
-} | {
-    type: 'LOGS_SETTINGS_UPDATED';
-    settings: LogsSettings;
 };
 
 type OutgoingNotesEvents = {
@@ -2849,18 +2807,18 @@ type OwnEntityShapes = {
 
 /** Plugin id → the events this pack's systems send to that plugin (their own, and each `sendsTo`). */
 type OwnPackEvents = {
-    'threads': OutgoingThreadsEvents;
-    'code': OutgoingCodeEvents;
-    'notes': OutgoingNotesEvents;
-    'browser': OutgoingBrowserEvents;
-    'library': OutgoingLibraryEvents;
-    'flows': OutgoingFlowsEvents | OutgoingActionEvents;
-    'actions': OutgoingActionEvents;
-    'prompts': OutgoingPromptEvents;
-    'brain': OutgoingBrainEvents;
-    'database': OutgoingDatabaseEvents;
-    'logs': OutgoingLogsEvents;
-    'settings': OutgoingSettingsEvents;
+    'threads': __events_threads;
+    'code': __events_code;
+    'notes': __events_notes;
+    'browser': __events_browser;
+    'library': __events_library;
+    'flows': __events_flows | __events_actions;
+    'actions': __events_actions;
+    'prompts': __events_prompts;
+    'brain': __events_brain;
+    'database': __events_database;
+    'logs': __events_logs;
+    'settings': __events_settings;
 };
 
 /** The repositories this pack declares (abuddy.json features[].repositories) */
@@ -3769,23 +3727,6 @@ interface ThreadTagOption {
     color?: string;
 }
 
-type ThreadsInternalEvents = {
-    type: 'CLIENT_CONNECTED';
-} | {
-    type: 'THREADS_SETTINGS_UPDATED';
-    settings: any;
-    changes?: any;
-} | {
-    type: 'BIRTH_FLOW_START';
-} | {
-    type: 'THREAD_DELETED';
-    threadId: string;
-}
-/** The library's commands folder changed (sent by the library system) */
- | {
-    type: 'COMMANDS_CHANGED';
-};
-
 interface ThreadsSettings {
     statuses: ThreadStatusOption[];
     tags: ThreadTagOption[];
@@ -4006,6 +3947,30 @@ interface WorktreeEntry {
     isLocked: boolean;
     lockedReason?: string;
 }
+
+type __events_actions = OutgoingEventsOf<(typeof specs)['actions']>;
+
+type __events_brain = OutgoingEventsOf<(typeof specs)['brain']>;
+
+type __events_browser = OutgoingEventsOf<(typeof specs)['browser']>;
+
+type __events_code = OutgoingEventsOf<(typeof specs)['code']>;
+
+type __events_database = OutgoingEventsOf<(typeof specs)['database']>;
+
+type __events_flows = OutgoingEventsOf<(typeof specs)['flows']>;
+
+type __events_library = OutgoingEventsOf<(typeof specs)['library']>;
+
+type __events_logs = OutgoingEventsOf<(typeof specs)['logs']>;
+
+type __events_notes = OutgoingEventsOf<(typeof specs)['notes']>;
+
+type __events_prompts = OutgoingEventsOf<(typeof specs)['prompts']>;
+
+type __events_settings = OutgoingEventsOf<(typeof specs)['settings']>;
+
+type __events_threads = OutgoingEventsOf<(typeof specs)['threads']>;
 
 declare const actionCommands: {
     readonly create: (data: _abuddy_sdk_repositories.ActionInput) => ActionEntity;
@@ -4754,7 +4719,7 @@ declare const settingsQueries: {
 declare const specs: {
     threads: {
         id: "threads";
-        _incoming: ({
+        _incoming: {
             type: "CREATE_THREAD";
             topic: string;
             tags?: string[];
@@ -4899,18 +4864,26 @@ declare const specs: {
             type: "LOAD_MORE_MESSAGES";
             threadId: string;
             cursor: string;
-        }) | ThreadsInternalEvents;
+        } | {
+            type: "CLIENT_CONNECTED";
+        } | {
+            type: "BIRTH_FLOW_START";
+        } | {
+            type: "THREAD_DELETED";
+            threadId: string;
+        } | {
+            type: "COMMANDS_CHANGED";
+        };
+        _outgoing: OutgoingThreadsEvents;
     };
     code: {
         id: "code";
-        _incoming: (IncomingExplorerEvents | IncomingSearchEvents | IncomingCommitEvents | IncomingPullRequestEvents | IncomingTerminalEvents | IncomingActionsEvents | IncomingPromptsEvents | {
+        _incoming: IncomingExplorerEvents | IncomingSearchEvents | IncomingCommitEvents | IncomingPullRequestEvents | IncomingTerminalEvents | IncomingActionsEvents | IncomingPromptsEvents | {
             type: "SET_BASE_DIRECTORY";
             path: string;
             fromUserNavigation?: boolean;
-        }) | {
-            type: "CODE_SETTINGS_UPDATED";
-            settings: CodeSettings;
         };
+        _outgoing: OutgoingCodeEvents;
     };
     notes: {
         id: "notes";
@@ -4972,22 +4945,26 @@ declare const specs: {
             directory: string;
             format: "json" | "markdown";
         };
+        _outgoing: OutgoingNotesEvents;
     };
     browser: {
         id: "browser";
-        _incoming: ({
+        _incoming: {
             type: "SYNC_TABS";
             tabs: SavedTab[];
         } | {
             type: "SYNC_BOOKMARKS";
             bookmarks: SavedBookmark[];
-        }) | {
-            type: "CLIENT_CONNECTED";
+        };
+        _outgoing: {
+            type: "BROWSER_CONNECTED";
+            savedTabs: SavedTab[];
+            savedBookmarks: SavedBookmark[];
         };
     };
     library: {
         id: "library";
-        _incoming: ({
+        _incoming: {
             type: "CREATE_DOCUMENT";
             name: string;
             content: ContentSection[];
@@ -5059,11 +5036,8 @@ declare const specs: {
             type: "EXPORT_LIBRARY";
             directory: string;
             format: "json" | "markdown";
-        }) | {
-            type: "LIBRARY_SETTINGS_UPDATED";
-            settings: any;
-            changes?: any;
         };
+        _outgoing: OutgoingLibraryEvents;
     };
     flows: {
         id: "flows";
@@ -5130,10 +5104,11 @@ declare const specs: {
             type: "SET_ROOT_FLOW";
             flowId: string | null;
         };
+        _outgoing: OutgoingFlowsEvents;
     };
     actions: {
         id: "actions";
-        _incoming: ({
+        _incoming: {
             type: "ACTION_SELECT";
             actionId: string;
         } | {
@@ -5167,15 +5142,12 @@ declare const specs: {
         } | {
             type: "EXPORT_ACTIONS";
             directory: string;
-        }) | {
-            type: "ACTIONS_SETTINGS_UPDATED";
-            settings: any;
-            changes?: any;
         };
+        _outgoing: OutgoingActionEvents;
     };
     prompts: {
         id: "prompts";
-        _incoming: ({
+        _incoming: {
             type: "PROMPT_SELECT";
             promptId: string;
         } | {
@@ -5209,15 +5181,12 @@ declare const specs: {
         } | {
             type: "EXPORT_PROMPTS";
             directory: string;
-        }) | {
-            type: "PROMPTS_SETTINGS_UPDATED";
-            settings: any;
-            changes?: any;
         };
+        _outgoing: OutgoingPromptEvents;
     };
     brain: {
         id: "brain";
-        _incoming: ({
+        _incoming: {
             type: "OPEN_TNODE";
             tNodeId: string;
         } | {
@@ -5251,7 +5220,31 @@ declare const specs: {
             eventType: string;
             payload?: any;
             targetFlowId?: string;
-        }) | BrainInternalEvents;
+        } | {
+            type: "TNODE_SPAWNED";
+            tNode: _abuddy_sdk.TNodeEntity;
+            parentId?: EARS.EntityId;
+            eventTNodeId?: EARS.EntityId;
+            flowTNodeId: EARS.EntityId;
+        } | {
+            type: "TNODE_UPDATED";
+            data: TNodeUpdate;
+        } | {
+            type: "HANDLE_BRAIN_EVENT";
+            eventType: string;
+            payload?: any;
+            targetFlowId?: string;
+        } | {
+            type: "CHILD_COMPLETED";
+            stepId?: EARS.EntityId;
+            tNodeId?: EARS.EntityId;
+            stepLabel?: string;
+            result?: any;
+            final?: boolean;
+            eventTNodeId?: EARS.EntityId;
+            isFlow?: boolean;
+        };
+        _outgoing: OutgoingBrainEvents;
     };
     database: {
         id: "database";
@@ -5294,6 +5287,7 @@ declare const specs: {
         }) | {
             type: "CLIENT_CONNECTED";
         };
+        _outgoing: OutgoingDatabaseEvents;
     };
     logs: {
         id: "logs";
@@ -5306,11 +5300,8 @@ declare const specs: {
         } | {
             type: "ADD_LOG";
             log: Omit<LogEntry, "id" | "timestamp">;
-        } | {
-            type: "LOGS_SETTINGS_UPDATED";
-            settings: LogsSettings;
-            changes?: any;
         });
+        _outgoing: OutgoingLogsEvents;
     };
     settings: {
         id: "settings";
@@ -5346,6 +5337,7 @@ declare const specs: {
         } | {
             type: "SECRETS_CHANGED";
         });
+        _outgoing: OutgoingSettingsEvents;
     };
 };
 

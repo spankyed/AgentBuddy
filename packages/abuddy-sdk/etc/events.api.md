@@ -8,6 +8,12 @@
 export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S>;
 
 // @public
+export type FeatureSettingsUpdated = {
+    type: 'FEATURE_SETTINGS_UPDATED';
+    settings: unknown;
+};
+
+// @public
 export const HOST_PLUGIN_EVENT_TYPES: {
     readonly 'host/application': readonly ["CLIENT_CONNECTED", "APPLICATION_HOTKEYS", "PLUGIN_VISIBILITY_UPDATED"];
 };
@@ -37,15 +43,6 @@ export type HostSystemEvents = {
 };
 
 // @public
-export function incomingEvents<S extends {
-    id: string;
-    _incoming: unknown;
-}>(spec: S): {
-    id: S['id'];
-    _incoming: S['_incoming'];
-};
-
-// @public
 export type IncomingEventsOf<T> = T extends {
     _incoming: infer Incoming;
 } ? Incoming : T extends {
@@ -72,6 +69,18 @@ export function onConnected(callback: () => void): () => void;
 export function onIncoming(callback: (message: Message) => void): () => void;
 
 // @public
+export type OutgoingEventsOf<T> = T extends {
+    _outgoing: infer Outgoing;
+} ? Outgoing : T extends {
+    spec: {
+        _outgoing: infer Outgoing;
+    };
+} ? Outgoing : never;
+
+// @public
+export const PLUGIN_EVENT_TYPES: readonly ["FEATURE_SETTINGS_UPDATED"];
+
+// @public
 export type PluginEvents = {
     [pluginId: string]: {
         type: string;
@@ -89,6 +98,17 @@ export function sendToSystem(to: SystemTarget, event: {
     type: string;
     [key: string]: unknown;
 }): void;
+
+// @public
+export function specEvents<S extends {
+    id: string;
+    _incoming: unknown;
+    _outgoing: unknown;
+}>(spec: S): {
+    id: S['id'];
+    _incoming: S['_incoming'];
+    _outgoing: S['_outgoing'];
+};
 
 // @public
 export type SystemEventMap = {

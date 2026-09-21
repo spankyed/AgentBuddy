@@ -25,7 +25,10 @@ export const detectChanges = <T>(
 
 type DiffItem = Record<string, unknown>;
 
-export const detectAllArrayChanges = (prev: unknown, next: unknown): Record<string, DiffResult<DiffItem>> | null => {
+/** What changed in each array of a record, by the array's key (`detectAllArrayChanges`) */
+export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
+
+export const detectAllArrayChanges = (prev: unknown, next: unknown): ArrayChanges | null => {
   if (!prev || !next || typeof prev !== 'object' || typeof next !== 'object') return null;
   const changes: Record<string, DiffResult<DiffItem>> = {};
   const detectInObject = (prevObj: Record<string, unknown> | undefined, nextObj: Record<string, unknown>, path: string[] = []) => {

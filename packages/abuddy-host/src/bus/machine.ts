@@ -4,7 +4,8 @@
 import { enqueueActions, fromCallback, setup, spawnChild, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { reportError } from '@abuddy/sdk/logger';
 import { bus } from '@abuddy/sdk/ids';
-import type { Message } from '@abuddy/sdk/events';
+import { SYSTEM_EVENT_TYPES } from '@abuddy/sdk/framework';
+import { PLUGIN_EVENT_TYPES, type Message } from '@abuddy/sdk/events';
 import type { PackRegistry } from '../packs/pack-registration.ts';
 
 /** A message in for a system (INCOMING) or out for a plugin (OUTGOING) */
@@ -159,6 +160,8 @@ export function createBusMachine(options: BusOptions) {
           reportError({ source: 'bus', operation: 'sendToPlugin', severity: 'diagnostic', error: new Error(message) });
         };
         if (accepted === undefined) {
+          // An event every plugin takes (a feature's settings changing) is the feature's plugin's if it has one
+          if ((PLUGIN_EVENT_TYPES as readonly string[]).includes(type)) return;
           reportDrop(`Dropped "${type}" sent to "${pluginId}", which no registered pack declares as a plugin that receives events. Check the id, or give the plugin's own pack a system that declares what it sends there.`);
           return;
         }
@@ -173,7 +176,10 @@ export function createBusMachine(options: BusOptions) {
         const { to, event: incoming } = event.message;
         const actor = system.get(to);
         if (actor) actor.send(incoming);
-        else console.warn(`[bus] routeIncoming: system "${to}" not found (may be reloading), dropping event "${incoming.type}"`);
+        // An event every system accepts (a feature's settings changing) is the feature's system's if it runs one
+        else if (!(SYSTEM_EVENT_TYPES as readonly string[]).includes(incoming.type)) {
+          console.warn(`[bus] routeIncoming: system "${to}" not found (may be reloading), dropping event "${incoming.type}"`);
+        }
       },
       sendConnected: ({ system }) => {
         const clientLoaded = new Set<string>();

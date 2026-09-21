@@ -553,9 +553,9 @@ export function generatePackFiles(
     return moduleExports.exportOf(file, name);
   }
 
-  function eventTypesOf(file: string, name: string): string[] | undefined {
+  function outgoingEventTypesOf(file: string): string[] {
     moduleExports ??= createModuleExports(root, exportedFromFiles());
-    return moduleExports.eventTypesOf(file, name);
+    return moduleExports.outgoingEventTypesOf(file);
   }
 
   /** A `"path#exportName"` target that must export a runtime value */
@@ -588,10 +588,6 @@ export function generatePackFiles(
   /** Whether this pack has a system at all: without one it sends nothing and declares no received events */
   function hasSystemFeatures(): boolean {
     return (manifest.features ?? []).some((f) => f.system);
-  }
-
-  function outgoingEventsType(feature: PackFeatureEntry): string {
-    return feature.system?.outgoingEventsType ?? `Outgoing${toPascalCase(feature.id)}Events`;
   }
 
   function typesEntry(feature: PackFeatureEntry): string {
@@ -958,8 +954,9 @@ export function navigateToPlugin(name: PluginName, event?: PluginEvent | PluginE
       }
     }
 
-    const imports = systemFeatures
-      .map(f => `import type { ${outgoingEventsType(f)} as __events_${f.id} } from '${toImportPath(root, f.system!.entry)}';`)
+    // Each system's sent events, read from its spec: the one place they are declared
+    const outgoingAliases = systemFeatures
+      .map(f => `type __events_${f.id} = OutgoingEventsOf<(typeof __specs)['${f.id}']>;`)
       .join('\n');
     const entries = [...receivers].map(([pluginId, senders]) => `  '${pluginId}': ${senders.join(' | ')};`).join('\n');
     const systemEntries = systemFeatures.map(f => `  '${f.id}': IncomingEventsOf<SystemOfFeature<'${f.id}', (typeof __specs)['${f.id}']>>;`).join('\n');
@@ -999,20 +996,22 @@ export function navigateToPlugin(name: PluginName, event?: PluginEvent | PluginE
     const receivedTypes = [...senderFeatures].map(([pluginId, sending]) => {
       const types = new Set(sending.flatMap((feature) => {
         const file = sourceFileOf(feature.system!.entry);
-        const name = outgoingEventsType(feature);
-        const declared = file && eventTypesOf(file, name);
-        if (!declared) {
-          throw new Error(`Feature "${feature.id}": its system entry doesn't export "${name}", so the events it sends can't be read: export the union of the events its system emits, or set system.outgoingEventsType to the name it uses`);
+        if (!file) throw new Error(`Feature "${feature.id}": no system entry found at ${feature.system!.entry} (.ts or /index.ts)`);
+        try {
+          return outgoingEventTypesOf(file);
+        } catch (err) {
+          // The same error, so its code still says what kind of failure it is
+          (err as Error).message = `Feature "${feature.id}": ${(err as Error).message}`;
+          throw err;
         }
-        return declared;
       }));
       return `  '${pluginId}': [${[...types].sort().map((type) => `'${type}'`).join(', ')}],`;
     }).join('\n');
 
     return `${HEADER}
-import { defineEvents, ${hostTargets.size ? 'type HostPluginEvents, ' : ''}type HostSystemEvents, type IncomingEventsOf${hasSystems ? ', type SystemOfFeature' : ''} } from '@abuddy/sdk/events';
-${hasSystems ? `import type { specs as __specs } from './system-specs.js';\n` : ''}${imports}
-${[...depEventImports, ...depSystems.imports].join('\n')}
+import { defineEvents, ${hostTargets.size ? 'type HostPluginEvents, ' : ''}type HostSystemEvents, type IncomingEventsOf${hasSystems ? ', type OutgoingEventsOf, type SystemOfFeature' : ''} } from '@abuddy/sdk/events';
+${hasSystems ? `import type { specs as __specs } from './system-specs.js';\n` : ''}${[...depEventImports, ...depSystems.imports].join('\n')}
+${outgoingAliases}
 
 /** Plugin id → the events this pack's systems send to that plugin (their own, and each \`sendsTo\`). */
 export type OwnPackEvents = {
@@ -1061,15 +1060,15 @@ export const { sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<PackEve
 `;
   }
 
-  /** Each system's incoming events, from its spec; type-only, so facades carry no machines or contexts */
+  /** The events each system receives and sends, from its spec; type-only, so facades carry no machines or contexts */
   function generateSystemSpecs(): string {
     const systemFeatures = (manifest.features ?? []).filter(f => f.system);
     if (!systemFeatures.length) return '';
     const imports = systemFeatures.map(f => `import ${systemBinding(f.id)} from '${toImportPath(root, f.system!.entry)}';`).join('\n');
-    const specs = systemFeatures.map(f => `  '${f.id}': incomingEvents(${systemBinding(f.id)}.spec),`).join('\n');
+    const specs = systemFeatures.map(f => `  '${f.id}': specEvents(${systemBinding(f.id)}.spec),`).join('\n');
     return `${HEADER}
-// Type-only: #generated/events reads each system's incoming events from these, by feature id
-import { incomingEvents } from '@abuddy/sdk/events';
+// Type-only: #generated/events reads the events each system receives and sends from these, by feature id
+import { specEvents } from '@abuddy/sdk/events';
 ${imports}
 
 export const specs = {
@@ -1094,7 +1093,6 @@ ${specs}
 
     const perFeature = systemFeatures.map(f => {
       const lines: string[] = [];
-      lines.push(`export type { ${outgoingEventsType(f)} } from '${toImportPath(root, f.system!.entry)}';`);
       const tPath = typesEntry(f);
       const fullTypesPath = join(root, tPath) + (tPath.endsWith('.ts') ? '' : '.ts');
       if (existsSync(fullTypesPath)) {
@@ -1106,7 +1104,7 @@ ${specs}
         lines.push(`export type * from '${toImportPath(root, exportTypesPath)}';`);
       }
       return lines.join('\n');
-    }).join('\n\n');
+    }).filter(Boolean).join('\n\n');
 
     const nodeTypes = stepNodeTypes();
     const nodeEntity = nodeTypes.length

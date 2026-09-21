@@ -6,9 +6,9 @@ import {
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
 import type {
-  OutgoingNotesEvents,
   NoteDTO,
 } from '@/__generated__/types'
+import type { OutgoingNotesEvents } from '@/features/notes/be/system'
 import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
@@ -93,7 +93,7 @@ type UIEvent =
   | { type: 'NAVIGATE_FORWARD' }
 
 type SettingsEvent =
-  | { type: 'NOTES_SETTINGS_UPDATED'; settings: { tasklistPanelPosition: 'left' | 'right'; showCollapseIcon: boolean } }
+  | { type: 'FEATURE_SETTINGS_UPDATED'; settings: { tasklistPanelPosition: 'left' | 'right'; showCollapseIcon: boolean } }
 
 export type NotesEvents = UIEvent | SystemEvent | TrailClickEvent | SettingsEvent
 const typeOf = safeEvents<NotesEvents>()
@@ -722,7 +722,7 @@ const notesState = setup({
     }),
 
     handleSettingsUpdate: assign(({ event }) => {
-      const ev = typeOf('NOTES_SETTINGS_UPDATED', event)
+      const ev = typeOf('FEATURE_SETTINGS_UPDATED', event)
       return { settings: ev.settings }
     }),
 
@@ -802,7 +802,7 @@ const notesState = setup({
   },
   on: {
     NOTES_CONNECTED: { actions: 'setPluginData' },
-    NOTES_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
+    FEATURE_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
     NOTE_UPDATED: { actions: 'updateNoteInList' },
     NOTE_RESTORED: { actions: 'addRestoredNote' },
     'NOTE.SOFT_DELETE': { actions: 'sendSoftDeleteNote' },

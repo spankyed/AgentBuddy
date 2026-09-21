@@ -16,6 +16,11 @@ export function usePluginSettings<T = Record<string, any>>(name: PluginName): Re
   return useSelector(settingsPlugin.get(), (state) => pluginSettings<T>(state.context.settings, name))
 }
 
+/** A plugin's settings as they apply now, for code outside a component (a machine's action) */
+export function currentPluginSettings<T = Record<string, any>>(name: PluginName): T | undefined {
+  return pluginSettings<T>(settingsPlugin.get().getSnapshot().context.settings, name)
+}
+
 /** A section of the general settings (the user's projects, the application's) */
 export function useGeneralSettings<K extends keyof GeneralSettings>(section: K): Readonly<Ref<GeneralSettings[K] | undefined>> {
   return useSelector(settingsPlugin.get(), (state) => state.context.settings?.general?.[section] as GeneralSettings[K] | undefined)

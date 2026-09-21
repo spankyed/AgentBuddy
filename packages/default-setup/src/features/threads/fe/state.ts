@@ -5,11 +5,12 @@ import { setup, assign, enqueueActions, fromCallback, spawnChild, type AnyEventO
 import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
 import type { ActorRefFrom } from 'xstate';
 import type {
-  ThreadEntity, OutgoingThreadsEvents,
+  ThreadEntity,
   ThreadCreateData, ThreadViewData, ThreadTagOption, ThreadEditFields, ThreadsSettings,
   MessageEntity, AgentThreadData, Tab,
   AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse,
 } from '@/__generated__/types';
+import type { OutgoingThreadsEvents } from '@/features/threads/be/system';
 import { sendToSystem } from '@/__generated__/events';
 import { Archive, Copy, Pin, Trash2 } from 'lucide-vue-next';
 import { contextMenuFn } from '@abuddy/sdk/fe';
@@ -130,7 +131,7 @@ type ChatState = 'idle' | 'working' | 'paused' | 'error' | 'success';
 type SystemEvent =
   | OutgoingThreadsEvents
   | { type: 'THREAD_UPDATED'; threadId: string; updates: Partial<Pick<ThreadEntity, 'status' | 'tags' | 'context' | 'pinned' | 'topic' | 'instructions'>> }
-  | { type: 'THREADS_SETTINGS_UPDATED'; settings: ThreadsSettings }
+  | { type: 'FEATURE_SETTINGS_UPDATED'; settings: ThreadsSettings }
   | { type: 'THREAD_DELETED'; threadId: string }
   | { type: 'THREADS_EXPORTED'; filePath: string; threadCount: number }
   | { type: 'THREADS_EXPORT_FAILED'; errors: string[] }
@@ -570,7 +571,7 @@ const threadsState = setup({
       return optimisticFieldUpdate(context, threadId, 'topic', topic);
     }),
     setThreadsSettings: assign(({ event }) => {
-      const ev = typeOf('THREADS_SETTINGS_UPDATED', event);
+      const ev = typeOf('FEATURE_SETTINGS_UPDATED', event);
       const chat = (ev.settings as any)?.chat as AgentSettings | undefined;
       return {
         settings: ev.settings,
@@ -1622,7 +1623,7 @@ const threadsState = setup({
     RENAME_THREAD: {
       actions: 'renameThread',
     },
-    THREADS_SETTINGS_UPDATED: {
+    FEATURE_SETTINGS_UPDATED: {
       actions: 'setThreadsSettings',
     },
     DELETE_THREAD: {

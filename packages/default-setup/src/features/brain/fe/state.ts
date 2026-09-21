@@ -4,9 +4,7 @@ import breadcrumb, { breadcrumbList } from '@abuddy/sdk/fe';
 import { contextMenuFn } from '@abuddy/sdk/fe';
 import { Activity, Terminal, Play, RefreshCw, Power, PlayCircle, Pause } from 'lucide-vue-next';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@abuddy/sdk/fe';
-import type {
-  OutgoingBrainEvents,
-} from '@/__generated__/types'
+import type { OutgoingBrainEvents } from '@/features/brain/be/system'
 import type { EventListenerEntity, FlowTNodeData } from '@/__generated__/types';
 import { sendToSystem } from '@/__generated__/events';
 import type { StepRuntimeError, TNodeEntity, TrackTree } from '@abuddy/sdk/steps';
@@ -48,7 +46,7 @@ export interface BrainContext {
 type SystemEvent = OutgoingBrainEvents
   | { type: 'TNODE_DETAILS'; tNodeId: string; details: TNodeEntity | null }
   | { type: 'INSPECT_TOGGLED'; enabled: boolean }
-  | { type: 'BRAIN_SETTINGS_UPDATED'; settings: any }
+  | { type: 'FEATURE_SETTINGS_UPDATED'; settings: any }
   | { type: 'BRAIN_PAUSED' }
   | { type: 'BRAIN_RESUMED' }
   | { type: 'BRAIN_RUNTIME_ERROR'; error: StepRuntimeError }
@@ -291,7 +289,7 @@ const brainState = setup({
       animationsEnabled: ({ context }) => !context.animationsEnabled
     }),
     updateSettings: assign(({ event }) => {
-      const typedEv = typeOf('BRAIN_SETTINGS_UPDATED', event);
+      const typedEv = typeOf('FEATURE_SETTINGS_UPDATED', event);
       return {
         settings: typedEv.settings
       };
@@ -494,7 +492,7 @@ const brainState = setup({
         CLEAR_PULSE: {
           actions: 'clearPulse'
         },
-        BRAIN_SETTINGS_UPDATED: {
+        FEATURE_SETTINGS_UPDATED: {
           actions: 'updateSettings'
         },
         RESTART_BRAIN: {

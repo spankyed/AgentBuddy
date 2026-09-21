@@ -19,6 +19,15 @@ export interface Message {
 /** Plugin id → the events that plugin receives. Each pack's `#generated/events` defines its `PackEvents`. */
 export type PluginEvents = { [pluginId: string]: { type: string } };
 
+/**
+ * What every plugin receives when its feature's settings change, so no pack declares it: the settings as they now
+ * apply. The feature's system gets the same event, with the changes (`SystemEvents`).
+ */
+export type FeatureSettingsUpdated = { type: 'FEATURE_SETTINGS_UPDATED'; settings: unknown };
+
+/** The event types every plugin receives from the app, beside those its pack's systems declare */
+export const PLUGIN_EVENT_TYPES = ['FEATURE_SETTINGS_UPDATED'] as const satisfies readonly FeatureSettingsUpdated['type'][];
+
 /** System id → the events that system receives. Each pack's `#generated/events` defines its `PackSystemEvents`. */
 export type SystemEventMap = { [systemId: string]: { type: string } };
 
@@ -44,11 +53,18 @@ export type IncomingEventsOf<T> = T extends { _incoming: infer Incoming }
     ? Incoming
     : never;
 
+/** The events a system sends to plugins, from its spec or its entry, as `IncomingEventsOf` reads the ones it receives */
+export type OutgoingEventsOf<T> = T extends { _outgoing: infer Outgoing }
+  ? Outgoing
+  : T extends { spec: { _outgoing: infer Outgoing } }
+    ? Outgoing
+    : never;
+
 /**
- * A system spec reduced to the events the system receives. Generated code declares each system's spec
+ * A system spec reduced to the events the system receives and sends. Generated code declares each system's spec
  * with it, so the facade types dependents compile against carry no system context or internals.
  */
-export function incomingEvents<S extends { id: string; _incoming: unknown }>(spec: S): { id: S['id']; _incoming: S['_incoming'] } {
+export function specEvents<S extends { id: string; _incoming: unknown; _outgoing: unknown }>(spec: S): { id: S['id']; _incoming: S['_incoming']; _outgoing: S['_outgoing'] } {
   return spec;
 }
 

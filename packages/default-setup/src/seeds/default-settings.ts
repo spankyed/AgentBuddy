@@ -8,8 +8,7 @@ const settings: SettingsData = {
         switchPluginUp: { key: 'ArrowUp', modifiers: ['cmd', 'option'] },
         switchPluginDown: { key: 'ArrowDown', modifiers: ['cmd', 'option'] },
         toggleInspectionPanel: { key: 'b', modifiers: ['cmd'] }
-      },
-      openLinksInApp: true
+      }
     },
     projects: []
   },

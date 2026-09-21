@@ -1,6 +1,7 @@
 import { sendToSystem, sendToPlugin } from '@/__generated__/events';
-import { createMachine, setup, sendTo, enqueueActions, fromCallback, fromPromise, type ErrorActorEvent } from 'xstate';
-import { addressPluginKeys, defineSystem, onPackSettingsDefaultsChanged, type SystemEntry } from '@abuddy/sdk/framework';
+import type { FeatureSettingsUpdated } from '@abuddy/sdk/events';
+import { assign, createMachine, setup, sendTo, enqueueActions, fromCallback, fromPromise, type ErrorActorEvent } from 'xstate';
+import { addressPluginKeys, defineSystem, onPackSettingsDefaultsChanged, type SystemEntry, type SystemEvents } from '@abuddy/sdk/framework';
 
 
 import type { SettingsData } from './types';
@@ -60,17 +61,21 @@ export type OutgoingSettingsEvents =
   /** The stored API keys, without values, and how they're protected */
   | { type: 'SECRETS_UPDATED'; secrets: SecretInfo[]; status: SecretsStatus }
 
-/** What the plugin whose settings changed receives: `<PLUGIN ID>_SETTINGS_UPDATED` (`NOTES_SETTINGS_UPDATED`) */
-export type PluginSettingsUpdatedEvent = { type: `${string}_SETTINGS_UPDATED`; settings: unknown };
-
 /**
- * Send a feature's plugin and system its updated settings. Any pack's feature can have settings, so the
- * receiver isn't one this pack's event maps name.
+ * Tells a feature its settings changed, its system (with the changes) and its plugin. Any pack's feature has settings,
+ * so the receivers aren't ones this pack's event maps name; every system and plugin takes the event (`SystemEvents`,
+ * `FeatureSettingsUpdated`), and one a feature doesn't run is nobody's.
  */
-const sendPluginSettings = sendToPlugin as (pluginRef: string, event: PluginSettingsUpdatedEvent) => void;
-const sendSystemSettings = sendToSystem as (systemRef: string, event: PluginSettingsUpdatedEvent & { changes: unknown }) => void;
+const sendToAnySystem = sendToSystem as (systemRef: string, event: Extract<SystemEvents, { type: 'FEATURE_SETTINGS_UPDATED' }>) => void;
+const sendToAnyPlugin = sendToPlugin as (pluginRef: string, event: FeatureSettingsUpdated) => void;
 
-export const settingsSpec = defineSystem('settings')<IncomingSettingsEvents | SettingsInternalEvents, OutgoingSettingsEvents>();
+/** Each plugin's settings as they apply: what features were last told */
+const appliedPluginSettings = (): Record<string, unknown> => ({ ...settingsQueries.getSettings().plugins });
+
+/** What each feature was last told of its settings, by plugin ref */
+type SettingsContext = { applied: Record<string, unknown> };
+
+export const settingsSpec = defineSystem('settings')<IncomingSettingsEvents | SettingsInternalEvents, OutgoingSettingsEvents, SettingsContext>();
 export const settings = settingsSpec.id;
 
 /** CLI path overrides, in the code plugin's settings */
@@ -114,14 +119,29 @@ export const settingsSystem = setup({
     addressStoredPluginKeys: () => {
       settingsCommands.addressStoredPluginKeys();
     },
-    addressStoredPluginKeysAndTell: () => {
-      if (settingsCommands.addressStoredPluginKeys() > 0) {
-        sendToPlugin('settings', { type: 'SETTINGS_UPDATED', data: settingsQueries.getSettings() });
-      }
-    },
 
-    // A pack enabled, disabled or reloaded while the app runs changes the defaults (its plugins' settings)
-    sendPackSettingsUpdate: () => {
+    rememberAppliedSettings: assign({ applied: () => appliedPluginSettings() }),
+
+    /**
+     * Tells each feature whose settings now differ from what it was last told, whatever changed them: a setting, the
+     * settings replaced or reset, a pack's defaults coming or going, its keys moved when it registered
+     */
+    tellChangedFeatures: assign({
+      applied: ({ context }) => {
+        const now = appliedPluginSettings();
+        for (const ref of new Set([...Object.keys(context.applied), ...Object.keys(now)])) {
+          const [before, after] = [context.applied[ref], now[ref]];
+          if (!splitRef(ref) || JSON.stringify(before) === JSON.stringify(after)) continue;
+          const settings = after ?? {};
+          sendToAnySystem(ref, { type: 'FEATURE_SETTINGS_UPDATED', settings, changes: detectAllArrayChanges(before ?? {}, settings) });
+          sendToAnyPlugin(ref, { type: 'FEATURE_SETTINGS_UPDATED', settings });
+        }
+        return now;
+      },
+    }),
+
+    // The settings plugin's view of all the settings, after a change it didn't make itself
+    sendSettingsUpdate: () => {
       sendToPlugin('settings', { type: 'SETTINGS_UPDATED', data: settingsQueries.getSettings() });
     },
 
@@ -144,10 +164,7 @@ export const settingsSystem = setup({
         return;
       }
 
-      // Get previous settings for comparison
       const key = plugin ? checkedPluginSettingsKey(ev.label) : undefined;
-      const previousSettings = key ? settingsQueries.getPluginSettings(key) : null;
-
       if (key) settingsCommands.updateSettings('plugin', key, ev.path, ev.value);
       else settingsCommands.updateSettings('general', ev.label, ev.path, ev.value);
 
@@ -170,30 +187,8 @@ export const settingsSystem = setup({
           hotkeys: data.general.application.hotkeys
         });
       }
-      
-      // If plugin settings were updated, forward to both backend and frontend
-      if (plugin && data.plugins) {
-        const pluginSettings = data.plugins[ev.label as keyof typeof data.plugins];
-        if (pluginSettings) {
-          // Detect changes for all arrays in the settings generically
-          const changes = detectAllArrayChanges(previousSettings, pluginSettings);
-          
-          // Send to the feature's backend system
-          sendSystemSettings(ev.label, {
-            type: `${plugin.featureId.toUpperCase()}_SETTINGS_UPDATED`,
-            settings: pluginSettings,
-            changes
-          });
-          
-          // Send settings update event to the frontend plugin
-          sendPluginSettings(ev.label, {
-            type: `${plugin.featureId.toUpperCase()}_SETTINGS_UPDATED`,
-            settings: pluginSettings
-          });
-        }
-      }
     },
-    
+
     replaceSettings: ({ event }) => {
       const ev = settingsSpec.typeOf('REPLACE_SETTINGS', event);
       // Settings exported before 0.3.15 keep each plugin's slice under its feature id, and the app shell's state
@@ -318,12 +313,13 @@ export const settingsSystem = setup({
 }).createMachine({
   id: settings,
   initial: 'idle',
-  context: {},
-  entry: 'addressStoredPluginKeys',
+  context: { applied: {} },
+  entry: ['addressStoredPluginKeys', 'rememberAppliedSettings'],
   invoke: { src: 'packSettingsListener' },
   on: {
-    PACK_SETTINGS_CHANGED: { actions: ['addressStoredPluginKeys', 'sendPackSettingsUpdate'] },
-    PACK_CHANGED: { actions: 'addressStoredPluginKeysAndTell' },
+    // A pack registered or left: its defaults came or went, and its keys may have moved
+    PACK_SETTINGS_CHANGED: { actions: ['addressStoredPluginKeys', 'sendSettingsUpdate', 'tellChangedFeatures'] },
+    PACK_CHANGED: { actions: ['addressStoredPluginKeys', 'sendSettingsUpdate', 'tellChangedFeatures'] },
     SECRETS_CHANGED: { actions: 'secretsChanged' },
   },
   states: {
@@ -336,13 +332,13 @@ export const settingsSystem = setup({
           actions: 'getSettings',
         },
         UPDATE_SETTINGS: {
-          actions: 'updateSettings',
+          actions: ['updateSettings', 'tellChangedFeatures'],
         },
         REPLACE_SETTINGS: {
-          actions: 'replaceSettings',
+          actions: ['replaceSettings', 'tellChangedFeatures'],
         },
         RESET_SETTINGS: {
-          actions: 'resetSettings',
+          actions: ['resetSettings', 'tellChangedFeatures'],
         },
         TEST_CLI_PROVIDER: {
           actions: 'testCliProvider',

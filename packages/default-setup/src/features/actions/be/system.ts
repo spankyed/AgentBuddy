@@ -25,9 +25,6 @@ type IncomingActionEvents =
   | { type: 'IMPORT_ACTIONS'; actions: any }
   | { type: 'EXPORT_ACTIONS'; directory: string }
 
-type ActionsInternalEvents =
-  | { type: 'ACTIONS_SETTINGS_UPDATED'; settings: any; changes?: any }
-
 export type OutgoingActionEvents =
   | { type: 'ACTIONS_LISTED'; data: ActionsStartupData }
   | { type: 'ACTION_SELECTED'; actionId: EARS.EntityId; data: ActionEntity }
@@ -41,7 +38,7 @@ export type OutgoingActionEvents =
   | { type: 'ACTIONS_EXPORTED'; filePath: string; actionCount: number }
   | { type: 'ACTIONS_EXPORT_FAILED'; errors: string[] }
 
-export const actionsSpec = defineSystem('actions')<IncomingActionEvents | ActionsInternalEvents, OutgoingActionEvents>();
+export const actionsSpec = defineSystem('actions')<IncomingActionEvents, OutgoingActionEvents>();
 export const actions = actionsSpec.id;
 
 // Broadcasts action events to both the actions and flows plugins (abuddy.json sendsTo)
@@ -246,9 +243,8 @@ export const actionsSystem = setup({
     },
 
     handleSettingsUpdate: ({ system, event }) => {
-      const { changes } = actionsSpec.typeOf('ACTIONS_SETTINGS_UPDATED', event);
-      // Handle nested changes format from detectAllArrayChanges
-      const categoryChanges = changes?.categories || changes;
+      const { changes } = actionsSpec.typeOf('FEATURE_SETTINGS_UPDATED', event);
+      const categoryChanges = changes?.categories;
       
       if (!categoryChanges) return;
       
@@ -303,7 +299,7 @@ export const actionsSystem = setup({
       FETCH_ALL_ACTIONS: {
         actions: 'fetchAllActions',
       },
-      ACTIONS_SETTINGS_UPDATED: {
+      FEATURE_SETTINGS_UPDATED: {
         actions: 'handleSettingsUpdate',
       },
       IMPORT_ACTIONS: {

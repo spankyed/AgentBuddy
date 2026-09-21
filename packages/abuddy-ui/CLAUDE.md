@@ -86,7 +86,7 @@ Contracts and host-shared state that packs need even without `@abuddy/ui` live i
 - `useApplicationActor` (`KeyboardShortcutInput.vue`)
 - menu state: `onMenuOpenChange` (`TrackedContextMenuRoot.vue`), `useTrackedMenuOpen` (`ContextMenuPopup.vue`, `composables/useContextMenu.ts`)
 - registries of what pack frontends registered, which read the renderer's bound registry (`bindFeHost({ packs })`): `tiptapPluginRegistry` (`TiptapEditor.vue`) and `getDslTypes` (`monaco-config.ts`; packs' frontend registrations carry them as `dslTypes`); and `EXTRA_BLOCK_ITEMS_KEY` (`TiptapBlockMenu.vue`)
-- `openInAppBrowser` (`tiptap/composables/createEditorClickHandler.ts`)
+- `openLink` (`tiptap/composables/createEditorClickHandler.ts`)
 
 UI modules also read `stepRegistry` from `@abuddy/sdk/steps` (`node-styles.ts`, `node-dimensions.ts`) and types from `@abuddy/sdk/steps` (`TNodeListItem.vue`) and `@abuddy/sdk/types` (`KeyboardShortcutInput.vue`). The dependency goes one way only: `@abuddy/sdk` must not import `@abuddy/ui`, and the SDK's `package.json` doesn't declare it. `@abuddy/sdk` is a peer (`>=0.1.0 <1.0.0`; the range has to span the 0.x line — Changesets majors a peer dependent whose range excludes the version its peer moves to, and the fixed release group carries that major to all five packages, so `~0.1.0` or `^0.1.0` would turn the next minor into a 1.0.0 release: `abuddy-cli/tests/build/release-plan.spec.ts`), as are `vue`, `xstate`, `@xstate/vue`, `reka-ui`, `lucide-vue-next`, `@vue-flow/core`, the tiptap core packages, `monaco-editor` and `elkjs`. Tiptap extensions, `highlight.js`, `lowlight`, `tiptap-markdown` and `@guolao/vue-monaco-editor` are regular dependencies.
 

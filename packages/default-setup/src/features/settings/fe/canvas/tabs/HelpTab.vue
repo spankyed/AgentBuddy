@@ -58,15 +58,15 @@ import { ChevronDown } from 'lucide-vue-next'
 import { useSelector } from '@xstate/vue'
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import { DISCORD_URL, MEMORIAL_URL } from '../../../constants'
-import { openInAppBrowser, usePlugin } from '@abuddy/sdk/fe'
+import { openLink, usePlugin } from '@abuddy/sdk/fe'
 import type { FAQItem } from '@/features/settings/be/types'
 
 function openDiscordLink() {
-  openInAppBrowser(DISCORD_URL)
+  openLink(DISCORD_URL)
 }
 
 function openMemorialLink() {
-  openInAppBrowser(MEMORIAL_URL)
+  openLink(MEMORIAL_URL)
 }
 
 const settingsActor = usePlugin()

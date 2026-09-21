@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { generatePackFiles, validateManifest, validateFeatures } from '@abuddy/sdk/build';
+import { _TYPES_UNRESOLVED, generatePackFiles, validateManifest, validateFeatures } from '@abuddy/sdk/build';
 import { resolveDep } from './fetch-deps';
 import { resolveDeps } from './generate';
 import { findPackRoot, readManifest } from '../utils';
@@ -31,21 +31,25 @@ async function validateDeps(root: string): Promise<string[]> {
 /**
  * The checks code generation makes (seed formats' entities, dependency formats, seed hook and service
  * exports, …), run in memory without writing. Skipped while a dependency is unresolved: validateDeps
- * reports that, and these checks need the dependency's manifest.
+ * reports that, and these checks need the dependency's manifest. Types that don't resolve (the pack's
+ * `@abuddy/sdk` not installed) are a warning, not the pack's error.
  */
-async function validateCodegen(root: string): Promise<string[]> {
+async function validateCodegen(root: string): Promise<{ errors: string[]; warnings: string[] }> {
   const manifest = readManifest(root);
   let resolved: Awaited<ReturnType<typeof resolveDeps>>;
   try {
     resolved = await resolveDeps(root, manifest.dependencies);
   } catch {
-    return [];
+    return { errors: [], warnings: [] };
   }
   try {
     generatePackFiles(manifest, { packRoot: root, ...resolved });
-    return [];
+    return { errors: [], warnings: [] };
   } catch (err) {
-    return [err instanceof Error ? err.message : String(err)];
+    const message = err instanceof Error ? err.message : String(err);
+    // A pack whose dependencies aren't installed yet: nothing to fix in the pack, and the checks after it didn't run
+    if ((err as { code?: string }).code === _TYPES_UNRESOLVED) return { errors: [], warnings: [`${message}; the checks code generation makes stopped there — run "npm install"`] };
+    return { errors: [message], warnings: [] };
   }
 }
 
@@ -61,10 +65,10 @@ export async function validate(_args: string[]) {
     : { errors: [], warnings: [] };
   const depWarnings = await validateDeps(root);
   // Codegen stops at its first problem, so it runs only once the manifest and features check out
-  const codegenErrors = manifestResult.errors.length === 0 && featureResult.errors.length === 0 ? await validateCodegen(root) : [];
+  const codegen = manifestResult.errors.length === 0 && featureResult.errors.length === 0 ? await validateCodegen(root) : { errors: [], warnings: [] };
 
-  const errors = [...manifestResult.errors, ...featureResult.errors, ...codegenErrors];
-  const warnings = [...manifestResult.warnings, ...featureResult.warnings, ...depWarnings];
+  const errors = [...manifestResult.errors, ...featureResult.errors, ...codegen.errors];
+  const warnings = [...manifestResult.warnings, ...featureResult.warnings, ...depWarnings, ...codegen.warnings];
 
   if (warnings.length > 0) {
     console.log('\nWarnings:');

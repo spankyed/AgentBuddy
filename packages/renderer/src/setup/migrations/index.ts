@@ -3,7 +3,7 @@
  *
  * Runs in main.ts BEFORE the application actor is created, so it can
  * update localStorage keys that are read during actor context initialization
- * (agentbuddy-panel-sizes, agentbuddy-last-active-plugin).
+ * (agentbuddy-panel-sizes).
  *
  * Mirrors the backend migration pattern: separate versioned files,
  * imported and registered here, executed in version order.
@@ -22,9 +22,9 @@ export interface FrontendMigration {
 const VERSION_KEY = 'agentbuddy-fe-version';
 
 // Register migrations in version order
-// import { migration as m004 } from './0.0.4';
+import { migration as m0315 } from './0.3.15';
 
-const migrations: FrontendMigration[] = [];
+const migrations: FrontendMigration[] = [m0315];
 
 export function runFrontendMigrations(): void {
   const current = localStorage.getItem(VERSION_KEY) || '0.0.0';

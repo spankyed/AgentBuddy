@@ -28,15 +28,13 @@ type LogsInternalEvents =
   | {
     type: 'ADD_LOG';
     log: Omit<LogEntry, 'id' | 'timestamp'>;
-  }
-  | { type: 'LOGS_SETTINGS_UPDATED'; settings: LogsSettings; changes?: any };
+  };
 
 export type OutgoingLogsEvents =
   | { type: 'LOGS_CONNECTED'; logs: LogEntry[]; settings?: LogsSettings }
   | { type: 'LOGS_UPDATE'; logs: LogEntry[] }
   | { type: 'LOG_ADDED'; log: LogEntry }
-  | { type: 'LOGS_CLEARED' }
-  | { type: 'LOGS_SETTINGS_UPDATED'; settings: LogsSettings };
+  | { type: 'LOGS_CLEARED' };
 
 export interface LogsContext {
   logs: LogEntry[];
@@ -175,7 +173,7 @@ export const logsSystem = setup({
     CLIENT_CONNECTED: {
       actions: ['sendLogsConnected'],
     },
-    LOGS_SETTINGS_UPDATED: {
+    FEATURE_SETTINGS_UPDATED: {
       actions: ['truncateLogsIfNeeded', 'broadcastLogsUpdate'],
     },
   },

@@ -76,10 +76,7 @@ export type OutgoingLibraryEvents =
   | { type: 'LIBRARY_EXPORTED'; filePath: string; itemCount: number }
   | { type: 'LIBRARY_EXPORT_FAILED'; errors: string[] }
 
-type LibraryInternalEvents =
-  | { type: 'LIBRARY_SETTINGS_UPDATED'; settings: any; changes?: any }
-
-export const librarySpec = defineSystem('library')<IncomingLibraryEvents | LibraryInternalEvents, OutgoingLibraryEvents, LibrarySystemContext>();
+export const librarySpec = defineSystem('library')<IncomingLibraryEvents, OutgoingLibraryEvents, LibrarySystemContext>();
 export const library = librarySpec.id;
 
 function resolveHomePath(inputPath: string): string {
@@ -440,9 +437,8 @@ export const librarySystem = setup({
       }
     },
     handleSettingsUpdate: ({ system, event }) => {
-      const { changes } = librarySpec.typeOf('LIBRARY_SETTINGS_UPDATED', event)
-      // Handle nested changes format from detectAllArrayChanges
-      const tagChanges = changes?.tags || changes
+      const { changes } = librarySpec.typeOf('FEATURE_SETTINGS_UPDATED', event)
+      const tagChanges = changes?.tags
       
       if (!tagChanges) return
       
@@ -488,7 +484,7 @@ export const librarySystem = setup({
     PACK_CHANGED: {
       actions: ['sendInitialData'],
     },
-    LIBRARY_SETTINGS_UPDATED: {
+    FEATURE_SETTINGS_UPDATED: {
       actions: ['handleSettingsUpdate'],
     },
   },

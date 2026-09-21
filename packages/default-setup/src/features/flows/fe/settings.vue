@@ -194,6 +194,7 @@
 </template>
 
 <script setup lang="ts">
+import { pluginSettingsKey } from '@/features/settings/plugin-settings'
 import { usePlugin } from '@abuddy/sdk/fe'
 import { navigateToPlugin } from '@/__generated__/fe'
 import { useRunningRootFlowId } from '@/features/brain/fe/public'
@@ -287,7 +288,7 @@ const handleRootFlowChange = () => {
 
 const goToBrainSettings = () => {
   // Show the brain's settings beside these, in the settings plugin
-  navigateToPlugin('settings', { type: 'PLUGIN.SELECT', pluginId: 'brain' })
+  navigateToPlugin('settings', { type: 'PLUGIN.SELECT', pluginId: pluginSettingsKey('brain') })
 }
 
 // DSL Import - file picker and emit to state machine

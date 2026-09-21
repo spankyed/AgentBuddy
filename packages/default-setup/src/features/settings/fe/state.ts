@@ -6,7 +6,8 @@ import {
   TRAIL_CLICK,
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
-import type { OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, PluginSettings } from '@/__generated__/types'
+import type { SettingsData, GeneralSettings, PersonalInfo, PluginSettings } from '@/__generated__/types'
+import type { OutgoingSettingsEvents } from '@/features/settings/be/system'
 import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services'
 import { sendToSystem } from '@/__generated__/events'
 import type { ApplicationHotkeys } from '@abuddy/sdk/types'
@@ -15,8 +16,7 @@ import type { PackSeedsPreview } from '@abuddy/sdk/build'
 import type { FAQItem } from '@/features/settings/be/types';
 import type { PluginSettingsKey } from '../plugin-settings';
 import { settingsPlugin } from './public';
-import { resolveName } from '@abuddy/sdk/ids';
-import { packId } from '@/__generated__/bus-ids';
+import { splitRef } from '@abuddy/sdk/ids';
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
@@ -81,7 +81,8 @@ export type SettingsTarget = { entityType: 'plugin'; label: PluginSettingsKey } 
 type UIEvent =
   | { type: 'TAB.SELECT'; tab: 'general' | 'plugins' | 'help' }
   | { type: 'GENERAL_NAV.SELECT'; item: 'personal' | 'secrets' | 'projects' | 'application' | 'json' }
-  | { type: 'PLUGIN.SELECT'; pluginId: string }
+  // A plugin by its ref: other packs send it too, so a bare name would be read as this pack's
+  | { type: 'PLUGIN.SELECT'; pluginId: PluginSettingsKey }
   | ({ type: 'SETTINGS.UPDATE'; path: string[]; value: any } & SettingsTarget)
   | { type: 'SETTINGS.REPLACE'; data: SettingsData }
   | { type: 'SETTINGS.RESET' }
@@ -157,12 +158,14 @@ const settingsState = setup({
       }
     }),
 
-    selectPlugin: assign(({ event }) => {
+    selectPlugin: assign(({ context, event }) => {
       const ev = typeOf('PLUGIN.SELECT', event);
-      return {
-        // A plugin named as this pack's code names it; the plugin list it's picked from holds addresses
-        selectedPluginId: resolveName(ev.pluginId, packId),
+      // Another pack may send it, so a bad one is reported and ignored rather than stopping the settings plugin
+      if (!splitRef(ev.pluginId)) {
+        console.error(`PLUGIN.SELECT names "${ev.pluginId}", which isn't a plugin's ref, "<packId>/<featureId>"`);
+        return { selectedPluginId: context.selectedPluginId };
       }
+      return { selectedPluginId: ev.pluginId };
     }),
 
     /* ── settings updates ────────────────────────────── */

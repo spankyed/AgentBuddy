@@ -24,9 +24,6 @@ type IncomingPromptEvents =
   | { type: 'IMPORT_PROMPTS'; prompts: any }
   | { type: 'EXPORT_PROMPTS'; directory: string }
 
-type PromptsInternalEvents =
-  | { type: 'PROMPTS_SETTINGS_UPDATED'; settings: any; changes?: any }
-
 export type OutgoingPromptEvents =
   | { type: 'PROMPTS_CONNECTED'; data: PromptsConnectedData }
   | { type: 'PROMPT_SELECTED'; promptId: EARS.EntityId; data: PromptEntity }
@@ -40,7 +37,7 @@ export type OutgoingPromptEvents =
   | { type: 'PROMPTS_EXPORTED'; filePath: string; promptCount: number }
   | { type: 'PROMPTS_EXPORT_FAILED'; errors: string[] }
 
-export const promptsSpec = defineSystem('prompts')<IncomingPromptEvents | PromptsInternalEvents, OutgoingPromptEvents>();
+export const promptsSpec = defineSystem('prompts')<IncomingPromptEvents, OutgoingPromptEvents>();
 export const prompts = promptsSpec.id;
 
 export const promptsSystem = setup({
@@ -241,9 +238,8 @@ export const promptsSystem = setup({
     },
 
     handleSettingsUpdate: ({ system, event }) => {
-      const { changes } = promptsSpec.typeOf('PROMPTS_SETTINGS_UPDATED', event);
-      // Handle nested changes format from detectAllArrayChanges
-      const categoryChanges = changes?.categories || changes;
+      const { changes } = promptsSpec.typeOf('FEATURE_SETTINGS_UPDATED', event);
+      const categoryChanges = changes?.categories;
       
       if (!categoryChanges) return;
       
@@ -298,7 +294,7 @@ export const promptsSystem = setup({
       FETCH_ALL_PROMPTS: {
         actions: 'fetchAllPrompts',
       },
-      PROMPTS_SETTINGS_UPDATED: {
+      FEATURE_SETTINGS_UPDATED: {
         actions: 'handleSettingsUpdate',
       },
       IMPORT_PROMPTS: {

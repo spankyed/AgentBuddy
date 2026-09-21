@@ -59,14 +59,12 @@ export type OutgoingCodeEvents =
   | OutgoingPromptsEvents
   // Broadcast events (sent to all child systems)
   | { type: 'CODE_CONNECTED'; data: CodeConnectedData }
-  | { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
 
 // Import only the type needed for broadcast event
 import type { TerminalInfo, CodeConnectedData, CodeSettings } from './types'
 
-type CodeInternalEvents = { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
 
-export const codeSpec = defineSystem('code')<IncomingCodeEvents | CodeInternalEvents, OutgoingCodeEvents, Context>();
+export const codeSpec = defineSystem('code')<IncomingCodeEvents, OutgoingCodeEvents, Context>();
 export const code = codeSpec.id;
 const id = code;
 
@@ -229,7 +227,7 @@ export const systemMachine = setup({
     },
 
     updateSettings: ({ event, context, self }) => {
-      const ev = event as { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
+      const ev = event as { type: 'FEATURE_SETTINGS_UPDATED'; settings: CodeSettings }
 
       // Check if defaultBaseDirectory changed and apply it immediately for instant feedback
       if (ev.settings.defaultBaseDirectory &&
@@ -251,11 +249,6 @@ export const systemMachine = setup({
         )
       }
 
-      // Forward settings to frontend
-      sendToPlugin('code', {
-        type: 'CODE_SETTINGS_UPDATED',
-        settings: ev.settings
-      })
     },
     
     broadcastConnected: ({ self, context }) => {
@@ -355,7 +348,7 @@ export const systemMachine = setup({
           actions: 'broadcastConnected',
         },
         // Handle settings updates
-        CODE_SETTINGS_UPDATED: {
+        FEATURE_SETTINGS_UPDATED: {
           actions: 'updateSettings'
         },
         // Handle SET_BASE_DIRECTORY specially

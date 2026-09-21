@@ -14,7 +14,7 @@ import type { HostServices } from '@abuddy/sdk/services';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS, _reservedEntries } from '@abuddy/sdk/types';
-import { HOST_PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
+import { HOST_PLUGIN_EVENT_TYPES, PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
 import { resolveName, type FeatureRef } from '@abuddy/sdk/ids';
 import { makePolicy, registerRepository, unregisterRepository, type PartitionPolicy } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
@@ -494,7 +494,7 @@ export function createPackRegistry(): PackRegistry {
     // Each pack's plugins are under its own address, so no pack reaches another's entry or the host's
     for (const reg of registrations.values()) {
       for (const { ref, feature } of featuresOf(reg)) {
-        if (feature.plugin) map.set(ref, new Set(feature.plugin.receives));
+        if (feature.plugin) map.set(ref, new Set([...feature.plugin.receives, ...PLUGIN_EVENT_TYPES]));
       }
     }
     return map;

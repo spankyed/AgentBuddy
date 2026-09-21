@@ -14,6 +14,10 @@ import { _seedHookRegistry } from '@abuddy/sdk/seed';
 import { getPackCommands, getPackSettingsDefaults, onPackSettingsDefaultsChanged, type PackRegistration } from '@abuddy/sdk/framework';
 import { seedData, type Seeder } from '@abuddy/sdk/utils';
 import { createPackRegistry } from '../../src/packs/pack-registration.ts';
+import { PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
+
+/** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */
+const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);
 
 // How this spec registers and unregisters packs: a registry it creates, bound for the SDK's lookups
 const registry = createPackRegistry();
@@ -276,8 +280,8 @@ describe('two packs naming the same feature', () => {
     add({ ...withPlugin('second-pack', 'memos', ['SECOND_EVENT']), steps: [noteStep] });
 
     const map = registry.getPluginEventValidationMap();
-    expect(map.get('first-pack/memos')).toEqual(new Set(['FIRST_EVENT']));
-    expect(map.get('second-pack/memos')).toEqual(new Set(['SECOND_EVENT']));
+    expect(map.get('first-pack/memos')).toEqual(receives('FIRST_EVENT'));
+    expect(map.get('second-pack/memos')).toEqual(receives('SECOND_EVENT'));
     expect(map.has('memos'), 'a bare feature id is nobody\'s address').toBe(false);
     expect(stepRegistry.has('note')).toBe(true);
   });
@@ -288,7 +292,7 @@ describe('two packs naming the same feature', () => {
     add(withPlugin('impostor', 'application', ['HIJACKED']));
 
     expect(registry.getPluginEventValidationMap().get('host/application')).toEqual(host);
-    expect(registry.getPluginEventValidationMap().get('impostor/application')).toEqual(new Set(['HIJACKED']));
+    expect(registry.getPluginEventValidationMap().get('impostor/application')).toEqual(receives('HIJACKED'));
   });
 });
 

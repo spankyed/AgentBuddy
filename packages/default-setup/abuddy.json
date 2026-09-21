@@ -142,7 +142,6 @@
       "settings": "src/features/actions/settings.ts",
       "system": {
         "entry": "src/features/actions/be/system.ts",
-        "outgoingEventsType": "OutgoingActionEvents",
         "sendsTo": [
           "flows"
         ]
@@ -162,8 +161,7 @@
       "id": "prompts",
       "settings": "src/features/prompts/settings.ts",
       "system": {
-        "entry": "src/features/prompts/be/system.ts",
-        "outgoingEventsType": "OutgoingPromptEvents"
+        "entry": "src/features/prompts/be/system.ts"
       },
       "plugin": {
         "entry": "src/features/prompts/fe/plugin.ts"

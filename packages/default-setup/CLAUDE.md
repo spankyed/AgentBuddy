@@ -15,8 +15,8 @@ src/
     bus-ids.ts             # packId and each feature's address; import-free, for the generated resolvers
     fe.ts                  # navigateToPlugin(name, event?), PluginName: the plugins this pack's code can name
     events.ts              # PackEvents/PackSystemEvents + typed sendToPlugin/sendToSystem facade
-    system-specs.ts        # Type-only: each system's incoming events, read by events.ts
-    types.ts               # Type barrel (outgoing events + per-feature types)
+    system-specs.ts        # Type-only: the events each system receives and sends, read by events.ts and types.ts
+    types.ts               # Type barrel (per-feature types; a plugin imports its system's events from be/system.ts)
     services.ts            # Service aggregation (featureServices object) and the typed services proxy
     repository.ts          # repository, typed with the repositories declared in abuddy.json
     repositories.ts        # Those repositories by name, carried by pack-entry.ts's registration

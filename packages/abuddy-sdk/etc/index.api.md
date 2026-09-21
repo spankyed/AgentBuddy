@@ -222,6 +222,15 @@ export type SystemEvents = {
 | {
     type: 'PACK_CHANGED';
     packId: string;
+}
+/**
+* The feature's settings changed: `settings` as they now apply, and `changes` to what they list, when the store
+* tells them. The feature's plugin gets it too (`FeatureSettingsUpdated`).
+*/
+| {
+    type: 'FEATURE_SETTINGS_UPDATED';
+    settings: unknown;
+    changes?: ArrayChanges | null;
 };
 
 // @public
@@ -233,7 +242,7 @@ export interface SystemSpec<Id extends string, TEvents extends {
     // (undocumented)
     id: Id;
     _incoming: TEvents;
-    _outgoing: WithPlugin<Id, TOutgoing>;
+    _outgoing: TOutgoing;
     // (undocumented)
     typeOf: ReturnType<typeof safeEvents<TEvents | SystemEvents>>;
     // (undocumented)

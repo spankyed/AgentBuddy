@@ -3,6 +3,10 @@ import { describe, expect, it } from 'vitest';
 import { setup } from 'xstate';
 import type { PackFeature } from '@abuddy/sdk/framework';
 import { createPackRegistry } from '../../src/packs/pack-registration.ts';
+import { PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
+
+/** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */
+const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);
 
 const { getEventValidationMap, getRegisteredSystems, getEarlySystems, registerHostSystem, registerPack, unregisterPack } = createPackRegistry();
 
@@ -61,7 +65,7 @@ describe('getPluginEventValidationMap', () => {
     expect(registry.getPluginEventValidationMap().has('memo-pack/memos')).toBe(false);
 
     registry.registerPack({ id: 'memo-pack', features: { memos: plugin(['MEMO_ADDED', 'MEMOS_CONNECTED']) } });
-    expect(registry.getPluginEventValidationMap().get('memo-pack/memos')).toEqual(new Set(['MEMO_ADDED', 'MEMOS_CONNECTED']));
+    expect(registry.getPluginEventValidationMap().get('memo-pack/memos')).toEqual(receives('MEMO_ADDED', 'MEMOS_CONNECTED'));
 
     registry.unregisterPack('memo-pack');
     expect(registry.getPluginEventValidationMap().has('memo-pack/memos')).toBe(false);
@@ -73,10 +77,10 @@ describe('getPluginEventValidationMap', () => {
     registry.unregisterPack('silent-pack');
   });
 
-  // A plugin its pack's systems send nothing to gets an empty set: a send there is a mistake
-  it('gives a plugin with no declared events an empty set', () => {
+  // A plugin its pack's systems send nothing to gets only the app's events: any other send there is a mistake
+  it('gives a plugin with no declared events only the app\'s', () => {
     registry.registerPack({ id: 'quiet-pack', features: { quiet: plugin() } });
-    expect(registry.getPluginEventValidationMap().get('quiet-pack/quiet')).toEqual(new Set());
+    expect(registry.getPluginEventValidationMap().get('quiet-pack/quiet')).toEqual(receives());
     registry.unregisterPack('quiet-pack');
   });
 });
@@ -91,7 +95,7 @@ describe('a pack cannot widen a plugin it does not own', () => {
     registry.registerPack({ id: 'impostor-pack', features: { application: plugin(['ANYTHING']) } });
 
     expect(registry.getPluginEventValidationMap().get('host/application')).toEqual(host);
-    expect(registry.getPluginEventValidationMap().get('impostor-pack/application')).toEqual(new Set(['ANYTHING']));
+    expect(registry.getPluginEventValidationMap().get('impostor-pack/application')).toEqual(receives('ANYTHING'));
   });
 
   // Each pack's plugin has its own address, so neither can widen or shadow the other's contract
@@ -100,8 +104,8 @@ describe('a pack cannot widen a plugin it does not own', () => {
     registry.registerPack({ id: 'first-pack', features: { memos: plugin(['MEMO_ADDED']) } });
     registry.registerPack({ id: 'second-pack', features: { memos: plugin(['HIJACKED']) } });
 
-    expect(registry.getPluginEventValidationMap().get('first-pack/memos')).toEqual(new Set(['MEMO_ADDED']));
-    expect(registry.getPluginEventValidationMap().get('second-pack/memos')).toEqual(new Set(['HIJACKED']));
+    expect(registry.getPluginEventValidationMap().get('first-pack/memos')).toEqual(receives('MEMO_ADDED'));
+    expect(registry.getPluginEventValidationMap().get('second-pack/memos')).toEqual(receives('HIJACKED'));
   });
 });
 
@@ -123,7 +127,7 @@ describe('a pack registering', () => {
       features: { memos: { ...plugin(['MEMO_ADDED']), settings: { plugins: { memos: { sort: 'newest' } } } } },
     });
     stop();
-    expect(seen).toEqual(new Set(['MEMO_ADDED']));
+    expect(seen).toEqual(receives('MEMO_ADDED'));
   });
 
   // The rollback has to take it back out again, or a refused pack stays listed
@@ -153,6 +157,6 @@ describe('a host plugin', () => {
     registry.registerPack({ id: 'owner-pack', features: { packs: plugin(['NOT_THE_HOSTS']) } });
     registry.registerHostPlugin('host/packs', ['PACKS_LIST']);
     expect(registry.getPluginEventValidationMap().get('host/packs')).toEqual(new Set(['PACKS_LIST']));
-    expect(registry.getPluginEventValidationMap().get('owner-pack/packs')).toEqual(new Set(['NOT_THE_HOSTS']));
+    expect(registry.getPluginEventValidationMap().get('owner-pack/packs')).toEqual(receives('NOT_THE_HOSTS'));
   });
 });

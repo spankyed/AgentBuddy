@@ -307,7 +307,6 @@ export const FeatureEntrySchema: z.ZodObject<{
     earlySystem: z.ZodOptional<z.ZodBoolean>;
     system: z.ZodOptional<z.ZodObject<{
         entry: z.ZodString;
-        outgoingEventsType: z.ZodOptional<z.ZodString>;
         sendsTo: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
         events: z.ZodOptional<z.ZodObject<{
             incoming: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
@@ -318,14 +317,12 @@ export const FeatureEntrySchema: z.ZodObject<{
         }>>;
     }, "strict", z.ZodTypeAny, {
         entry: string;
-        outgoingEventsType?: string | undefined;
         sendsTo?: string[] | undefined;
         events?: {
             incoming?: string[] | undefined;
         } | undefined;
     }, {
         entry: string;
-        outgoingEventsType?: string | undefined;
         sendsTo?: string[] | undefined;
         events?: {
             incoming?: string[] | undefined;
@@ -352,7 +349,6 @@ export const FeatureEntrySchema: z.ZodObject<{
     earlySystem?: boolean | undefined;
     system?: {
         entry: string;
-        outgoingEventsType?: string | undefined;
         sendsTo?: string[] | undefined;
         events?: {
             incoming?: string[] | undefined;
@@ -373,7 +369,6 @@ export const FeatureEntrySchema: z.ZodObject<{
     earlySystem?: boolean | undefined;
     system?: {
         entry: string;
-        outgoingEventsType?: string | undefined;
         sendsTo?: string[] | undefined;
         events?: {
             incoming?: string[] | undefined;
@@ -474,7 +469,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         earlySystem: z.ZodOptional<z.ZodBoolean>;
         system: z.ZodOptional<z.ZodObject<{
             entry: z.ZodString;
-            outgoingEventsType: z.ZodOptional<z.ZodString>;
             sendsTo: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
             events: z.ZodOptional<z.ZodObject<{
                 incoming: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
@@ -485,14 +479,12 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             }>>;
         }, "strict", z.ZodTypeAny, {
             entry: string;
-            outgoingEventsType?: string | undefined;
             sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
         }, {
             entry: string;
-            outgoingEventsType?: string | undefined;
             sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
@@ -519,7 +511,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         earlySystem?: boolean | undefined;
         system?: {
             entry: string;
-            outgoingEventsType?: string | undefined;
             sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
@@ -540,7 +531,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         earlySystem?: boolean | undefined;
         system?: {
             entry: string;
-            outgoingEventsType?: string | undefined;
             sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
@@ -856,7 +846,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         earlySystem?: boolean | undefined;
         system?: {
             entry: string;
-            outgoingEventsType?: string | undefined;
             sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
@@ -963,7 +952,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         earlySystem?: boolean | undefined;
         system?: {
             entry: string;
-            outgoingEventsType?: string | undefined;
             sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
@@ -1070,7 +1058,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         earlySystem?: boolean | undefined;
         system?: {
             entry: string;
-            outgoingEventsType?: string | undefined;
             sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
@@ -1177,7 +1164,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         earlySystem?: boolean | undefined;
         system?: {
             entry: string;
-            outgoingEventsType?: string | undefined;
             sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
@@ -1782,6 +1768,9 @@ export interface Track {
     // (undocumented)
     schedule?: string;
 }
+
+// @internal
+export const _TYPES_UNRESOLVED = "ABUDDY_TYPES_UNRESOLVED";
 
 // @public
 export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 'features'>): ManifestValidation;

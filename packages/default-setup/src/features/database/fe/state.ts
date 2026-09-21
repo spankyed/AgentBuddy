@@ -6,9 +6,9 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@abuddy/sdk/fe'
 import type {
   DatabaseSchemaInfo,
   DatabaseStartupData,
-  OutgoingDatabaseEvents,
   DatabaseSettings,
 } from '@/__generated__/types'
+import type { OutgoingDatabaseEvents } from '@/features/database/be/system'
 import { sendToSystem } from '@/__generated__/events'
 import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate, transactionExampleQuery } from './constants'
 import { History, HardDriveDownload } from 'lucide-vue-next'
@@ -68,7 +68,7 @@ type SystemEvent = OutgoingDatabaseEvents |
   { type: 'TRANSACTION_ERROR'; error: string } |
   { type: 'AI_QUERY_LOADING' } |
   { type: 'AI_QUERY_GENERATED'; query: string } |
-  { type: 'DATABASE_SETTINGS_UPDATED'; settings: DatabaseSettings } |
+  { type: 'FEATURE_SETTINGS_UPDATED'; settings: DatabaseSettings } |
   { type: 'EXPORT_DATABASE_SUCCESS'; path: string } |
   { type: 'EXPORT_DATABASE_ERROR'; error: string } |
   { type: 'IMPORT_DATABASE_SUCCESS'; message?: string } |
@@ -129,7 +129,7 @@ const databaseState = setup({
 
     /* ── settings ─────────────────────────────────────── */
     setDatabaseSettings: assign(({ event }) => {
-      const ev = typeOf('DATABASE_SETTINGS_UPDATED', event);
+      const ev = typeOf('FEATURE_SETTINGS_UPDATED', event);
       return {
         settings: ev.settings
       }
@@ -543,7 +543,7 @@ const databaseState = setup({
     TRANSACTION_ERROR: { actions: 'setTransactionError' },
 AI_QUERY_LOADING: { actions: 'setAiQueryLoading' },
     AI_QUERY_GENERATED: { actions: 'setAiQueryResult' },
-    DATABASE_SETTINGS_UPDATED: { actions: 'setDatabaseSettings' },
+    FEATURE_SETTINGS_UPDATED: { actions: 'setDatabaseSettings' },
     // Trace viewer events
     TRACE_FLOWS_RESULT: { actions: 'setTraceFlows' },
     FLOW_EVENTS_RESULT: { actions: 'setFlowEvents' },

@@ -1,4 +1,4 @@
-import { untypedQx } from '@abuddy/ears';
+import { tx, untypedQx } from '@abuddy/ears';
 import { markSeededRowUnedited } from '@abuddy/sdk/seed';
 import { EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
@@ -7,6 +7,7 @@ import { resolveName } from '@abuddy/sdk/ids';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { SettingsData } from '@/features/settings/be/types';
 import { pluginSettingsKey } from '@/features/settings/plugin-settings';
+import { rewriteActionCalls } from './rewrite-action-calls';
 
 const logger = createLogger('migrations');
 
@@ -15,7 +16,7 @@ const PACK_ID = 'default-setup';
 
 export const migration: PackMigration = {
   target: '0.3.15',
-  description: "Drop the app's state and the root flow copies from the settings, mark rows seeded before the seeder tracked what it wrote as unedited, keep action logs hidden for whoever hid log-service, and move the plugin settings onto their plugins' refs",
+  description: "Drop the app's state and the root flow copies from the settings, mark rows seeded before the seeder tracked what it wrote as unedited, keep action logs hidden for whoever hid log-service, move the plugin settings onto their plugins' refs, and rewrite the user's actions' calls to services that changed",
   up: () => {
     // ── The app's state (onboarding, versions, seed hashes) is the host's AppState now ──
     // The host's own 0.3.15 migration, which runs first, moved it out of `internal` (no pack migration runs when it fails).
@@ -53,8 +54,27 @@ export const migration: PackMigration = {
     // Copies of both kept in the settings are no longer read or written.
     repository.settingsCommands.removeStored(['plugins', `${PACK_ID}/flows`, 'rootFlowId']);
     repository.settingsCommands.removeStored(['plugins', `${PACK_ID}/brain`, 'runningRootFlowId']);
+
+    rewriteUserActions();
   },
 };
+
+/**
+ * The user's own actions (no `sourceHash`) keep calling services the way 0.3.14 took them, and would throw on the
+ * first run: a feature named by its bare id, `sendToBrainSystem`, onboarding in the settings. Seeded actions are
+ * the seeder's to replace, and rewriting one would read as the user's edit and stop it being updated.
+ */
+function rewriteUserActions(): void {
+  let rewritten = 0;
+  for (const row of untypedQx(EARS.Entity.Action as never).pickAll() as Array<Record<string, unknown>>) {
+    if (row.sourceHash || typeof row.actionFn !== 'string') continue;
+    const actionFn = rewriteActionCalls(row.actionFn, { packId: PACK_ID, bareIds: BARE_PLUGIN_IDS });
+    if (actionFn === row.actionFn) continue;
+    tx(row.id as EARS.EntityId).update('actionFn', actionFn);
+    rewritten++;
+  }
+  if (rewritten > 0) logger.info(`[migration 0.3.15] rewrote the service calls of ${rewritten} action(s) of your own`);
+}
 
 /**
  * The plugin ids this pack's settings were stored under before plugins were namespaced. Written out

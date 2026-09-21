@@ -15,13 +15,22 @@ export interface ModuleExports {
   /** The export `name` of `file` (an absolute path the reader was created with); undefined when it has none */
   exportOf(file: string, name: string): ExportInfo | undefined;
   /**
-   * The `type` literals of an exported event union: `{ type: 'A' } | { type: 'B' }` reads as `['A', 'B']`.
-   * Undefined when `file` exports no such name. A member with no literal `type` — a union widened to
-   * `string`, or a shape that isn't an event — throws, because a map built from it would be silently
-   * short and the check over it would reject real events.
+   * The `type` literals of the events a system module's default export (its `SystemEntry`) declares it sends:
+   * its spec's outgoing union, so `{ type: 'A' } | { type: 'B' }` reads as `['A', 'B']`. Throws when the entry's
+   * spec has lost that union (an entry annotated `: SystemEntry` rather than declared with `satisfies`), or when a
+   * member has no literal `type` (a union widened to `string`, or a shape that isn't an event), because a map built
+   * from it would be silently short and the check over it would reject real events.
    */
-  eventTypesOf(file: string, name: string): string[] | undefined;
+  outgoingEventTypesOf(file: string): string[];
 }
+
+/**
+ * The `code` of the error codegen throws when a system's types don't resolve, which a pack whose dependencies
+ * aren't installed yet gets: the CLI tells that apart from a mistake in the pack.
+ *
+ * @internal Host-only: abuddy CLI build tooling.
+ */
+export const _TYPES_UNRESOLVED = 'ABUDDY_TYPES_UNRESOLVED';
 
 function loadTypeScript(): typeof TS {
   try {
@@ -63,8 +72,8 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
   });
   const checker = program.getTypeChecker();
 
-  /** The declared type of an exported name, following aliases, or undefined when there is none */
-  function exportedType(file: string, name: string): TS.Type | undefined {
+  /** The type of the value exported under `name`, following aliases, or undefined when there is none */
+  function exportedValueType(file: string, name: string): TS.Type | undefined {
     const sourceFile = program.getSourceFile(file);
     if (!sourceFile) throw new Error(`${file} is not part of the program reading pack exports`);
     const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
@@ -76,7 +85,14 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
       if (!target) return undefined;
       symbol = target;
     }
-    return checker.getDeclaredTypeOfSymbol(symbol);
+    return symbol.flags & ts.SymbolFlags.Value ? checker.getTypeOfSymbol(symbol) : undefined;
+  }
+
+  /** The type of property `name` of `type`, or undefined when it has none */
+  function propertyType(type: TS.Type, name: string): TS.Type | undefined {
+    const property = type.getProperty(name);
+    const declaration = property && (property.valueDeclaration ?? property.declarations?.[0]);
+    return property && (declaration ? checker.getTypeOfSymbolAtLocation(property, declaration) : checker.getTypeOfSymbol(property));
   }
 
   return {
@@ -105,22 +121,33 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
       return { value: callable ? 'function' : 'object', type };
     },
 
-    eventTypesOf(file, name) {
-      const declared = exportedType(file, name);
-      if (!declared) return undefined;
+    outgoingEventTypesOf(file) {
+      const entry = exportedValueType(file, 'default');
+      const spec = entry && !(entry.flags & ts.TypeFlags.Any) ? propertyType(entry, 'spec') : entry;
+      if (spec && spec.flags & ts.TypeFlags.Any) {
+        throw Object.assign(
+          new Error(`${path.basename(file)}: the events its system sends are read from its default export's spec, whose type doesn't resolve: check that its \`defineSystem\` import does, and that the pack's dependencies are installed`),
+          { code: _TYPES_UNRESOLVED },
+        );
+      }
+      const declared = spec && propertyType(spec, '_outgoing');
+      if (!declared) {
+        throw new Error(`${path.basename(file)}: the events its system sends are read from its default export's spec, and ${entry ? 'that spec carries none' : 'it has no default export'}: default-export the system entry declared with \`satisfies SystemEntry\` (an annotation \`: SystemEntry\` drops the spec's events)`);
+      }
+      // A system that sends nothing
+      if (declared.flags & ts.TypeFlags.Never) return [];
       // A single event is its own type, not a union of one
       const members = declared.isUnion() ? declared.types : [declared];
       return members.flatMap((member) => {
-        const property = member.getProperty('type');
-        const declaredType = property && checker.getTypeOfSymbolAtLocation(property, property.valueDeclaration ?? property.declarations![0]);
+        const declaredType = propertyType(member, 'type');
         // `{ type: 'A' | 'B' }` is one member covering two event types, which is a legal way to write
         // an event whose payload is the same either way. Reading only single literals rejected it, so
         // the union is expanded here and every constituent still has to be a literal.
         const literals = declaredType?.isUnion() ? declaredType.types : declaredType ? [declaredType] : [];
         if (literals.length === 0 || !literals.every((t) => t.isStringLiteral())) {
-          throw new Error(`${path.basename(file)} exports "${name}" with a member whose \`type\` is ${declaredType ? checker.typeToString(declaredType) : 'missing'}, not a string literal or a union of them: the events a plugin receives are read from these, and a member without one would leave the map short`);
+          throw new Error(`${path.basename(file)}: its system's outgoing events have a member whose \`type\` is ${declaredType ? checker.typeToString(declaredType) : 'missing'}, not a string literal or a union of them: the events a plugin receives are read from these, and a member without one would leave the map short`);
         }
-        return literals.map((t) => (t as import('typescript').StringLiteralType).value);
+        return literals.map((t) => (t as TS.StringLiteralType).value);
       });
     },
   };

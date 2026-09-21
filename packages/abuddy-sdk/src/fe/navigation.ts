@@ -1,7 +1,7 @@
 import { splitRef, type FeatureRef } from '../ids/addressing.ts';
 import { boundFeHost } from '../runtime/fe-host.ts';
 import type { AnyActorRef } from 'xstate';
-import { getDesignated } from '../designations/index.ts';
+import { getDesignated, hasDesignation } from '../designations/index.ts';
 
 /** An event for a plugin's actor */
 export type PluginEvent = { type: string; [key: string]: unknown };
@@ -56,15 +56,12 @@ export function openPlugin(ref: string, event?: PluginEvent | PluginEvent[]): vo
   navigateToAddress(ref as FeatureRef, event);
 }
 
-export function openInAppBrowser(url: string) {
-  const app = getApp();
-  const settings = app.system.get(getDesignated('settings'))?.getSnapshot();
-  const browser = getDesignated('browser');
-  const openLinksInApp = settings?.context?.settings?.plugins?.[browser]?.openLinksInApp ?? true;
-
-  if (openLinksInApp) {
-    navigateToAddress(browser, { type: 'TAB.CREATE', url });
-  } else {
-    window.electronAPI?.shell?.openExternal(url);
-  }
+/**
+ * Opens a link the way the user chose. The plugin playing the `browser` role takes `LINK.OPEN { url }` and decides,
+ * by its own settings (a tab of its own, or the system's browser); with no plugin in that role, the system's browser.
+ */
+export function openLink(url: string): void {
+  const browser = hasDesignation('browser') ? getApp().system.get(getDesignated('browser')) : undefined;
+  if (browser) browser.send({ type: 'LINK.OPEN', url });
+  else window.electronAPI?.shell?.openExternal(url);
 }

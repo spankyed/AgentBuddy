@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { generateEntries } from '../generate-entries';
+import { regenerateAfterScaffold } from '../generate-entries';
 import { validateName, toCamelCase, writeIfNotExists, logCreated, parseFlag, hasFlag } from './templates';
 import { readManifest, writeManifest, addPackService, addFeatureService } from './manifest';
 
@@ -54,9 +54,9 @@ export async function addService(args: string[], root: string) {
     writeManifest(root, manifest);
   }
 
-  await generateEntries([], root);
+  const regenerated = await regenerateAfterScaffold(root);
 
   console.log(`\nCreated service "${camel}"${feature ? ` for feature "${feature}"` : ''} (services.${camel}):`);
   logCreated(root, created);
-  console.log(`\n  manifest updated + __generated__/ regenerated`);
+  if (regenerated) console.log(`\n  manifest updated + __generated__/ regenerated`);
 }

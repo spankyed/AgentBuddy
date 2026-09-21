@@ -25,12 +25,13 @@ async function recordEvents(page: Page, pluginId: string): Promise<() => Promise
   return () => page.evaluate(() => [...(window as any).__addressingEvents] as string[]);
 }
 
-test("a plugin setting changed in Settings reaches the feature's system", async ({ appPage }) => {
+// The settings system tells the feature's system and plugin; the harness specs see the system half
+test("a plugin setting changed in Settings reaches the feature's plugin, once", async ({ appPage }) => {
   const events = await recordEvents(appPage, 'default-setup/code');
-  await updateSetting(appPage, { entityType: 'plugin', label: 'default-setup/code', path: ['mdEditorDefault'], value: true });
-  // One copy from the settings system, one the code system forwards once it has applied the change: the
-  // second only arrives if the settings system found the code system at its address
-  await expect.poll(async () => (await events()).filter((type) => type === 'CODE_SETTINGS_UPDATED').length).toBe(2);
+  await updateSetting(appPage, { entityType: 'plugin', label: 'default-setup/code', path: ['mdEditorDefault'], value: false });
+  await expect.poll(async () => (await events()).filter((type) => type === 'FEATURE_SETTINGS_UPDATED').length).toBe(1);
+  await appPage.waitForTimeout(300);
+  expect((await events()).filter((type) => type === 'FEATURE_SETTINGS_UPDATED')).toHaveLength(1);
 });
 
 // Settings → Secrets shows the code plugin's CLI path overrides, read from the settings by the plugin's name

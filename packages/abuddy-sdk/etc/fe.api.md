@@ -245,8 +245,8 @@ export function navigateToAddress(address: FeatureRef, event?: PluginEvent | Plu
 // @public (undocumented)
 export function onMenuOpenChange(open: boolean): void;
 
-// @public (undocumented)
-export function openInAppBrowser(url: string): void;
+// @public
+export function openLink(url: string): void;
 
 // @public
 export function openPlugin(ref: string, event?: PluginEvent | PluginEvent[]): void;

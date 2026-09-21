@@ -7,7 +7,8 @@ import { loadRecentFiles, addRecentFile } from './utils/recent-files';
 import { pushTabViewHistory, nextActiveFromHistory } from './utils/tab-management';
 import { saveTabGroups, loadTabGroups, getNextAvailableColor, ALL_COLORS, type TabGroupColor, type TabGroup } from '@abuddy/sdk/fe';
 import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
-import type { OutgoingCodeEvents, CodeSettings } from '@/__generated__/types';
+import type { CodeSettings } from '@/__generated__/types';
+import type { OutgoingCodeEvents } from '@/features/code/be/system';
 
 // Import child state machines
 import { explorerState } from './features/explorer/state';
@@ -115,6 +116,8 @@ export interface QuickOpenResult {
 
 export type Event =
   | OutgoingCodeEvents
+  // The app's, when the code plugin's settings change
+  | { type: 'FEATURE_SETTINGS_UPDATED'; settings: CodeSettings }
   // Generic update event for child actors to update parent state
   | { type: 'UPDATE_STATE'; updates: Partial<Context> }
   | { type: 'ADD_TAB'; tab: any; replacePreview?: boolean; extraUpdates?: Partial<Context> }
@@ -764,7 +767,7 @@ const codeState = setup({
     }),
 
     handleSettingsUpdate: assign(({ event, context }) => {
-      const ev = event as { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
+      const ev = event as { type: 'FEATURE_SETTINGS_UPDATED'; settings: CodeSettings }
 
       // Extract hotkeys from settings - filter out undefined values
       const hotkeys: HotkeysMap = {};
@@ -1340,7 +1343,7 @@ const codeState = setup({
           actions: ['handleCodeConnected', 'broadcastToAllFeatures']
         },
         // Handle settings updates
-        CODE_SETTINGS_UPDATED: {
+        FEATURE_SETTINGS_UPDATED: {
           actions: ['handleSettingsUpdate']
         },
         // Route events to child machines

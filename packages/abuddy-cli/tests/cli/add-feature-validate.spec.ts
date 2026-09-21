@@ -63,6 +63,16 @@ describe('abuddy add feature', () => {
     expect(fs.readFileSync(path.join(feature, 'fe', 'plugin.ts'), 'utf-8')).toMatch(/: PluginDefinition = \{\n  label:/);
   });
 
+  // Its system's events are read through the pack's @abuddy/sdk, which a pack just scaffolded may not have yet
+  it("keeps the scaffold of a pack whose dependencies aren't installed, and says npm install regenerates", async () => {
+    await addFeature(['notes'], pack);
+
+    expect(fs.existsSync(path.join(pack, 'src', 'features', 'notes', 'be', 'system.ts'))).toBe(true);
+    const output = vi.mocked(console.log).mock.calls.map((args) => args.join(' ')).join('\n');
+    expect(output).toMatch(/src\/__generated__\/ not regenerated: .*that the pack's dependencies are installed\. Run: npm install/);
+    expect(output).not.toContain('__generated__/ regenerated');
+  });
+
   it('writes --designation into abuddy.json and no feature.config.ts', async () => {
     await addFeature(['notes', '--designation', 'notes'], pack);
 

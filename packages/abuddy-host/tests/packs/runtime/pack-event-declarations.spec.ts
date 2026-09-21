@@ -9,6 +9,10 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { registry } from './test-host.ts';
 import { loadExternalPacks, registerExternalPacks } from '../../../src/packs/runtime/loader.ts';
+import { PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
+
+/** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */
+const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);
 
 const PACK_ID = 'declaring-pack';
 const RECEIVED = ['MEMOS_CONNECTED', 'MEMO_ADDED'];
@@ -75,6 +79,6 @@ describe('the event types an external pack declares for its plugins', () => {
 
     expect(registerExternalPacks(registry, loadExternalPacks())).toHaveLength(1);
 
-    expect(registry.getPluginEventValidationMap().get(`${PACK_ID}/memos`)).toEqual(new Set(RECEIVED));
+    expect(registry.getPluginEventValidationMap().get(`${PACK_ID}/memos`)).toEqual(receives(...RECEIVED));
   });
 });

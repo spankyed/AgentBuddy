@@ -1,6 +1,8 @@
 import { setup, assign, fromCallback, type ActorRefFrom } from 'xstate';
 import { autocomplete, recordVisit, updateHistoryMeta, displayUrl, type AutocompleteSuggestion } from './history.ts';
 import { sendToSystem } from '@/__generated__/events';
+import { navigateToPlugin } from '@/__generated__/fe';
+import { currentPluginSettings } from '@/features/settings/fe/public';
 import { getNextAvailableColor, saveTabGroups, loadTabGroups, type TabGroup, type TabGroupColor } from '@abuddy/sdk/fe';
 
 export type { TabGroup, TabGroupColor };
@@ -66,6 +68,8 @@ interface BrowserContext {
 type BrowserEvents =
   // UI events
   | { type: 'TAB.CREATE'; url?: string }
+  // A link to open, from anywhere in the app (`openLink` from @abuddy/sdk/fe): here or in the system's browser
+  | { type: 'LINK.OPEN'; url: string }
   | { type: 'TAB.CLOSE'; tabId: number }
   | { type: 'TAB.SELECT'; tabId: number }
   | { type: 'TAB.DUPLICATE'; tabId: number }
@@ -305,6 +309,16 @@ const browserState = setup({
         'TAB.CREATE': {
           actions: ({ event }) => {
             window.electronAPI?.browser.createTab(event.url);
+          },
+        },
+        'LINK.OPEN': {
+          // The user's choice, in the browser's own settings
+          actions: ({ event }) => {
+            if (currentPluginSettings<{ openLinksInApp?: boolean }>('browser')?.openLinksInApp ?? true) {
+              navigateToPlugin('browser', { type: 'TAB.CREATE', url: event.url });
+            } else {
+              window.electronAPI?.shell?.openExternal(event.url);
+            }
           },
         },
         'TAB.CLOSE': {

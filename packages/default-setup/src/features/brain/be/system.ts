@@ -28,11 +28,9 @@ type IncomingBrainEvents =
   | { type: 'HANDLE_BRAIN_EVENT'; eventType: string; payload?: any; targetFlowId?: string }
   | { type: 'TRIGGER_BRAIN_EVENT'; eventType: string; payload?: any; targetFlowId?: string }
 
-export type BrainInternalEvents =
   // | { type: 'TRACE_EVENT_RECEIVED'; data: EventReceived }
   | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId; flowTNodeId: EARS.EntityId }
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
-  | { type: 'BRAIN_SETTINGS_UPDATED'; settings: any; changes?: any }
   | { type: 'HANDLE_BRAIN_EVENT'; eventType: string; payload?: any; targetFlowId?: string }
   | { type: 'CHILD_COMPLETED'; stepId?: EARS.EntityId; tNodeId?: EARS.EntityId; stepLabel?: string; result?: any; final?: boolean; eventTNodeId?: EARS.EntityId; isFlow?: boolean }
 
@@ -66,7 +64,7 @@ export interface BrainContext {
   runningRootFlowId?: EARS.EntityId;
 }
 
-export const brainSpec = defineSystem('brain')<IncomingBrainEvents | BrainInternalEvents, OutgoingBrainEvents, BrainContext>();
+export const brainSpec = defineSystem('brain')<IncomingBrainEvents, OutgoingBrainEvents, BrainContext>();
 export const brain = brainSpec.id;
 export const brainRuntime = 'brain-runtime' as const;
 

@@ -21,6 +21,9 @@ export function addressPluginKeys<T extends Record<string, unknown>>(record: T, 
 };
 
 // @public
+export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
+
+// @public
 export function checkFeatureSettings(featureId: string, settings: unknown): string[];
 
 // @public
@@ -29,6 +32,16 @@ export function defineSystem<Id extends string>(feature: Id): <TEvents extends {
 }, TOutgoing extends {
     type: string;
 }, TContext = {}>() => SystemSpec<Id, TEvents, TOutgoing, TContext>;
+
+// @public (undocumented)
+export type DiffResult<T> = null | {
+    renames: Array<{
+        from: string;
+        to: string;
+    }>;
+    added: T[];
+    removed: T[];
+};
 
 // @public
 export interface FeatureSettings {
@@ -176,6 +189,9 @@ export interface PluginOwners {
 // @public
 export function pluginRefOf(id: string, owners?: PluginOwners): FeatureRef | undefined;
 
+// @public
+export const SYSTEM_EVENT_TYPES: readonly ["CLIENT_CONNECTED", "PACK_CHANGED", "FEATURE_SETTINGS_UPDATED"];
+
 // @public (undocumented)
 export interface SystemEntry {
     // (undocumented)
@@ -198,6 +214,15 @@ export type SystemEvents = {
 | {
     type: 'PACK_CHANGED';
     packId: string;
+}
+/**
+* The feature's settings changed: `settings` as they now apply, and `changes` to what they list, when the store
+* tells them. The feature's plugin gets it too (`FeatureSettingsUpdated`).
+*/
+| {
+    type: 'FEATURE_SETTINGS_UPDATED';
+    settings: unknown;
+    changes?: ArrayChanges | null;
 };
 
 // @public
@@ -209,7 +234,7 @@ export interface SystemSpec<Id extends string, TEvents extends {
     // (undocumented)
     id: Id;
     _incoming: TEvents;
-    _outgoing: WithPlugin<Id, TOutgoing>;
+    _outgoing: TOutgoing;
     // (undocumented)
     typeOf: ReturnType<typeof safeEvents<TEvents | SystemEvents>>;
     // (undocumented)
