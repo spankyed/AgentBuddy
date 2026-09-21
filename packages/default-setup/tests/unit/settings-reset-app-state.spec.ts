@@ -19,7 +19,7 @@ describe('resetting settings', () => {
 
     repository.settingsCommands.resetSettings();
 
-    expect(repository.settingsQueries.getPluginSettings('threads')).not.toMatchObject({ sort: 'oldest' });
+    expect(repository.settingsQueries.getPluginSettings(pluginSettingsKey('threads'))).not.toMatchObject({ sort: 'oldest' });
     expect(appState()).toMatchObject({
       hasOnboarded: true,
       packVersions: { 'memo-pack': '1.2.0' },

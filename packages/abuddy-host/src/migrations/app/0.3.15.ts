@@ -3,7 +3,7 @@
 // plugin settings move onto their plugins' addresses, which no pack's own migration can do for them.
 import { tx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
-import { addressPluginKeys, pluginRefOf, type PackMigration } from '@abuddy/sdk/framework';
+import { addressPluginKeys, pluginRefOf, type PackMigration, type PluginOwners } from '@abuddy/sdk/framework';
 import { HOST_PACK_ID, splitRef, type FeatureRef } from '@abuddy/sdk/ids';
 import { appState, type AppState } from '../../app-state/index.ts';
 import type { PackRegistry } from '../../packs/pack-registration.ts';
@@ -79,19 +79,11 @@ function moveAppState(registry: MigrationRegistry): void {
   if (Object.keys(changed).length > 0) appState.update(changed);
 }
 
-/** The registered plugins as refs with their pack and feature, and the feature ids a built-in pack has */
-function registeredPlugins(registry: MigrationRegistry) {
-  const external = new Set(registry.externalPacks().map(({ id }) => id));
-  const plugins = registry.pluginIds().flatMap((ref) => {
-    const parts = splitRef(ref);
-    return parts ? [{ ref, ...parts }] : [];
-  });
-  const builtInFeatures = new Set(plugins
-    .filter(({ packId }) => packId !== HOST_PACK_ID && !external.has(packId)).map(({ featureId }) => featureId));
-  // Before 0.3.15 a built-in plugin ran under its bare feature id, so a bare id a built-in pack has is its
-  const unambiguous = plugins.filter(({ packId, featureId }) => !external.has(packId) || !builtInFeatures.has(featureId));
-  return { external, unambiguous };
-}
+/** Whose a stored bare id is, among every registered plugin, a built-in pack's winning a shared one (`PluginOwners`) */
+const ownersIn = (registry: MigrationRegistry): PluginOwners => ({
+  refs: registry.pluginIds(),
+  builtIn: registry.builtInPacks().map(({ id }) => id),
+});
 
 /** What the settings row held before 0.3.15 under `plugins._meta`: the app shell's state, by bare plugin id */
 interface LegacyShellState {
@@ -108,11 +100,11 @@ function moveShellState(registry: MigrationRegistry): void {
   const data = (untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: { plugins?: Record<string, unknown> } } | undefined)?.data;
   const meta = data?.plugins?._meta as LegacyShellState | undefined;
   if (!data?.plugins || meta === undefined) return;
-  const refs = registeredPlugins(registry).unambiguous.map(({ ref }) => ref);
+  const owners = ownersIn(registry);
 
-  const visibility = Object.fromEntries(Object.entries(addressPluginKeys(meta.visibility ?? {}, refs).record)
-    .filter(([ref, visible]) => refs.includes(ref as FeatureRef) && typeof visible === 'boolean')) as Record<string, boolean>;
-  const lastActive = typeof meta.lastActivePlugin === 'string' ? pluginRefOf(meta.lastActivePlugin, refs) : undefined;
+  const visibility = Object.fromEntries(Object.entries(addressPluginKeys(meta.visibility ?? {}, owners).record)
+    .filter(([ref, visible]) => owners.refs!.includes(ref as FeatureRef) && typeof visible === 'boolean')) as Record<string, boolean>;
+  const lastActive = typeof meta.lastActivePlugin === 'string' ? pluginRefOf(meta.lastActivePlugin, owners) : undefined;
   const current = appState.get();
   appState.update({
     pluginVisibility: { ...visibility, ...current.pluginVisibility },
@@ -131,8 +123,7 @@ function moveShellState(registry: MigrationRegistry): void {
 function addressHostAndExternalPluginSettings(registry: MigrationRegistry): void {
   const data = (untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: { plugins?: Record<string, unknown> } } | undefined)?.data;
   if (!data?.plugins) return;
-  const { external, unambiguous } = registeredPlugins(registry);
-  const refs = unambiguous.filter(({ packId }) => packId === HOST_PACK_ID || external.has(packId)).map(({ ref }) => ref);
-  const moved = addressPluginKeys(data.plugins, refs);
+  // The built-in packs' own keys are theirs to move, in their migrations
+  const moved = addressPluginKeys(data.plugins, { ...ownersIn(registry), movesTo: (_ref, { builtIn }) => !builtIn });
   if (moved.moved > 0) tx(SETTINGS_ID).put('data', { ...data, plugins: moved.record });
 }

@@ -17,7 +17,7 @@ import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services';
 import { REQUIRED_PROVIDERS } from '../constants';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { splitRef } from '@abuddy/sdk/ids';
-import { pluginSettingsKey } from '../plugin-settings';
+import { checkedPluginSettingsKey, pluginSettingsKey } from '../plugin-settings';
 
 const logger = createLogger('settings');
 
@@ -75,7 +75,7 @@ export const settings = settingsSpec.id;
 
 /** CLI path overrides, in the code plugin's settings */
 const cliPaths = (): Record<string, string | undefined> =>
-  (settingsQueries.getPluginSettings('code') as { cliPaths?: Record<string, string | undefined> } | null)?.cliPaths ?? {};
+  (settingsQueries.getPluginSettings(pluginSettingsKey('code')) as { cliPaths?: Record<string, string | undefined> } | null)?.cliPaths ?? {};
 
 /** Sends the settings plugin the stored API keys (no values) and how they're protected */
 function sendSecrets(): void {
@@ -110,6 +110,16 @@ export const settingsSystem = setup({
       sendSecrets();
     },
     
+    // A pack registered, as the app started or since: settings its plugins had under their bare feature ids are theirs now
+    addressStoredPluginKeys: () => {
+      settingsCommands.addressStoredPluginKeys();
+    },
+    addressStoredPluginKeysAndTell: () => {
+      if (settingsCommands.addressStoredPluginKeys() > 0) {
+        sendToPlugin('settings', { type: 'SETTINGS_UPDATED', data: settingsQueries.getSettings() });
+      }
+    },
+
     // A pack enabled, disabled or reloaded while the app runs changes the defaults (its plugins' settings)
     sendPackSettingsUpdate: () => {
       sendToPlugin('settings', { type: 'SETTINGS_UPDATED', data: settingsQueries.getSettings() });
@@ -135,11 +145,11 @@ export const settingsSystem = setup({
       }
 
       // Get previous settings for comparison
-      const previousSettings = ev.entityType === 'plugin' 
-        ? settingsQueries.getPluginSettings(ev.label) 
-        : null;
-      
-      settingsCommands.updateSettings(ev.entityType, ev.label, ev.path, ev.value);
+      const key = plugin ? checkedPluginSettingsKey(ev.label) : undefined;
+      const previousSettings = key ? settingsQueries.getPluginSettings(key) : null;
+
+      if (key) settingsCommands.updateSettings('plugin', key, ev.path, ev.value);
+      else settingsCommands.updateSettings('general', ev.label, ev.path, ev.value);
 
       if (plugin && ev.label === pluginSettingsKey('code') && ev.path[0] === 'cliPaths') {
         clearCliPathCache();
@@ -309,9 +319,11 @@ export const settingsSystem = setup({
   id: settings,
   initial: 'idle',
   context: {},
+  entry: 'addressStoredPluginKeys',
   invoke: { src: 'packSettingsListener' },
   on: {
-    PACK_SETTINGS_CHANGED: { actions: 'sendPackSettingsUpdate' },
+    PACK_SETTINGS_CHANGED: { actions: ['addressStoredPluginKeys', 'sendPackSettingsUpdate'] },
+    PACK_CHANGED: { actions: 'addressStoredPluginKeysAndTell' },
     SECRETS_CHANGED: { actions: 'secretsChanged' },
   },
   states: {

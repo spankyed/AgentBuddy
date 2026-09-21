@@ -6,21 +6,24 @@ import { addressPluginKeys, pluginRefOf } from '../../src/framework/index.ts';
 import { resolveName } from '../../src/ids/index.ts';
 
 const refs = [resolveName('memo-pack/memos'), resolveName('memo-pack/board'), resolveName('host/packs')];
+/** Those plugins, with no built-in pack among them */
+const owners = { refs, builtIn: [] };
+const withOther = { refs: [...refs, resolveName('other-pack/memos')], builtIn: [] };
 
 describe('addressPluginKeys', () => {
   it("moves each key a plugin's feature id stands for onto its ref, the host's included", () => {
-    const { record, moved } = addressPluginKeys({ memos: { sort: 'newest' }, packs: false, unknown: { kept: true } }, refs);
+    const { record, moved } = addressPluginKeys({ memos: { sort: 'newest' }, packs: false, unknown: { kept: true } }, owners);
     expect(record).toEqual({ 'memo-pack/memos': { sort: 'newest' }, 'host/packs': false, unknown: { kept: true } });
     expect(moved).toBe(2);
   });
 
   it('moves a key a development build stored as <packId>.<featureId>', () => {
-    expect(addressPluginKeys({ 'memo-pack.memos': true }, refs).record).toEqual({ 'memo-pack/memos': true });
+    expect(addressPluginKeys({ 'memo-pack.memos': true }, owners).record).toEqual({ 'memo-pack/memos': true });
   });
 
   it('changes nothing the second time', () => {
-    const once = addressPluginKeys({ memos: {}, board: {} }, refs).record;
-    const twice = addressPluginKeys(once, refs);
+    const once = addressPluginKeys({ memos: {}, board: {} }, owners).record;
+    const twice = addressPluginKeys(once, owners);
     expect(twice.moved).toBe(0);
     expect(twice.record).toBe(once);
   });
@@ -31,27 +34,39 @@ describe('addressPluginKeys', () => {
     const { record } = addressPluginKeys({
       memos: { sort: 'old', view: { columns: 2, dense: true }, pinned: ['a'] },
       'memo-pack/memos': { sort: 'new', view: { columns: 3 } },
-    }, refs);
+    }, owners);
     expect(record).toEqual({ 'memo-pack/memos': { sort: 'new', view: { columns: 3, dense: true }, pinned: ['a'] } });
   });
 
   // Two packs with a feature of one name: nothing says which of them the bare key was stored for
   it('leaves a bare id two plugins share where it is', () => {
-    const { record, moved } = addressPluginKeys({ memos: { sort: 'newest' }, board: {} }, [...refs, resolveName('other-pack/memos')]);
+    const { record, moved } = addressPluginKeys({ memos: { sort: 'newest' }, board: {} }, withOther);
     expect(record).toEqual({ memos: { sort: 'newest' }, 'memo-pack/board': {} });
+    expect(moved).toBe(1);
+  });
+
+  // Before 0.3.15 a built-in pack registered first, so the plugin running under a shared bare id was the built-in one
+  it("gives a bare id a built-in pack shares with another pack to the built-in pack's plugin", () => {
+    const { record } = addressPluginKeys({ memos: { sort: 'newest' } }, { ...withOther, builtIn: ['other-pack'] });
+    expect(record).toEqual({ 'other-pack/memos': { sort: 'newest' } });
+  });
+
+  it('moves only the keys `movesTo` takes, told whether a built-in pack owns them', () => {
+    const { record, moved } = addressPluginKeys({ memos: {}, packs: false }, { refs, builtIn: ['memo-pack'], movesTo: (_ref, { builtIn }) => !builtIn });
+    expect(record).toEqual({ memos: {}, 'host/packs': false });
     expect(moved).toBe(1);
   });
 });
 
 describe('pluginRefOf', () => {
   it('is a ref among them, or the one plugin a bare or dotted id stands for', () => {
-    expect(pluginRefOf('memo-pack/memos', refs)).toBe('memo-pack/memos');
-    expect(pluginRefOf('packs', refs)).toBe('host/packs');
-    expect(pluginRefOf('memo-pack.board', refs)).toBe('memo-pack/board');
+    expect(pluginRefOf('memo-pack/memos', owners)).toBe('memo-pack/memos');
+    expect(pluginRefOf('packs', owners)).toBe('host/packs');
+    expect(pluginRefOf('memo-pack.board', owners)).toBe('memo-pack/board');
   });
 
   it('is undefined for an id naming none of them, or one two of them share', () => {
-    expect(pluginRefOf('other', refs)).toBeUndefined();
-    expect(pluginRefOf('memos', [...refs, resolveName('other-pack/memos')])).toBeUndefined();
+    expect(pluginRefOf('other', owners)).toBeUndefined();
+    expect(pluginRefOf('memos', withOther)).toBeUndefined();
   });
 });

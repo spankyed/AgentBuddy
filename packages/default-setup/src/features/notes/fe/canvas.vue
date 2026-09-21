@@ -1,5 +1,6 @@
 <template>
   <div
+    data-testid="notes-canvas"
     class="flex flex-col h-full relative"
     @dragenter="handleDragEnter"
     @dragleave="handleDragLeave"

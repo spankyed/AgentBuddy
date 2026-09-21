@@ -26,3 +26,9 @@ it('keeps a hand-written string out of the host-only navigation', () => {
   };
   expect(typeof typed).toBe('function');
 });
+
+it('refuses a name with a slash that is no ref, rather than passing it on', () => {
+  for (const name of ['a/b/c', '/notes', 'default-setup/']) {
+    expect(() => resolveName(name, 'memo-pack')).toThrow(`"${name}" isn't a feature's ref`);
+  }
+});

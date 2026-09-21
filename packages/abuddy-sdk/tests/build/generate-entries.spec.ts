@@ -146,7 +146,7 @@ describe('generated events', () => {
     expect(events).toContain("export type OwnPackEvents = {\n  'actions': __events_actions;\n  'flows': __events_flows | __events_actions;\n};");
     expect(events).not.toContain("'brain': __events_brain;");
     // Its system still receives events as a system
-    expect(events).toContain("'brain': IncomingEventsOf<(typeof __specs)['brain']>;");
+    expect(events).toContain("'brain': IncomingEventsOf<SystemOfFeature<'brain', (typeof __specs)['brain']>>;");
   });
 
   it('rejects a sendsTo target that is a feature of this pack with no plugin', () => {
@@ -238,7 +238,7 @@ describe('generated system sends', () => {
       'default-setup': dependency({ id: 'default-setup', builtIn: true, features: [system('memos')] }),
     });
     const events = files['src/__generated__/events.ts'];
-    expect(events).toContain("export type PackSystemEvents = {\n  'memos': IncomingEventsOf<(typeof __specs)['memos']>;\n};");
+    expect(events).toContain("export type PackSystemEvents = {\n  'memos': IncomingEventsOf<SystemOfFeature<'memos', (typeof __specs)['memos']>>;\n};");
     expect(events).toContain('export type SendableSystemEvents = PackSystemEvents & { [K in keyof __dep_base_pack_PackSystemEvents & string as `base-pack/${K}`]: __dep_base_pack_PackSystemEvents[K] } & ');
     // No table of names: the sends derive every address from the pack id (@abuddy/sdk/ids)
     expect(events).toContain("defineEvents<PackEvents, SendableSystemEvents>('demo-pack');");
@@ -325,6 +325,21 @@ describe('generated sends compile', () => {
       "sendToSystem('foo', { type: 'BASE_FOO_RUN', n: 1 });",
     ].join('\n'));
     expect(typecheck(files, ['src/probe.ts', 'src/__generated__/pack-entry.ts'])).toEqual([]);
+  });
+
+  // The system runs at its feature's ref and is sent to by the feature id, so defineSystem naming another feature
+  // fails the pack's types, which abuddy build checks
+  it("fails for a system defineSystem gave another feature's id", () => {
+    write('src/features/notes/be/system.ts', [
+      "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",
+      "export type OutgoingNotesEvents = { type: 'DONE' };",
+      "const spec = defineSystem('note')<{ type: 'SAVE' }, OutgoingNotesEvents>();",
+      "export default { spec, machine: undefined as unknown as SystemEntry['machine'] } satisfies SystemEntry;",
+    ].join('\n'));
+    const files = generatePackFiles(manifest({ features: [system('notes')] }), { packRoot: root });
+    expect(typecheck(files, ['src/__generated__/events.ts'])).toEqual([
+      expect.stringMatching(/^src\/__generated__\/events\.ts: .*'"note"' is not assignable to type '"notes"'/),
+    ]);
   });
 
   it("for a pack without systems, sending to its dependencies'", () => {

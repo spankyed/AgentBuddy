@@ -108,7 +108,7 @@ Actions receive a `services` object: default-setup's feature services (each is t
 | `services.brain` | Ad-hoc brain event listeners (`listen`, `unlisten`) |
 | `services.scheduler` | Cron schedules for flow triggers (`registerSchedule`, `unregisterByPrefix`, `clearAllSchedules`) |
 | `services.database` | Live-data schema and topology context for AI query generation (`buildQueryContext`) |
-| `services.settings` | Settings read and write (`getAll`, `getSettingValue`, `updateGeneralSetting`, `updatePluginSetting`, …) |
+| `services.settings` | Settings read and write (`getAll`, `getSettingValue`, `updateGeneralSetting`, `getPluginSettings` and `updatePluginSetting`, which take a plugin's ref, `'default-setup/code'`, …) |
 | `services.cli` | CLI tools: `git`, `gh`, `claudeCode`, `codex`, plus `testCli` |
 | `services.codex` | The Codex app-server (threads, turns, approvals, sessions) |
 | `services.browser` | Browser automation sessions (`createBrowser`) |

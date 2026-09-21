@@ -13,6 +13,7 @@ import { configDir } from './claude-code/sessions'
 import fs from 'fs'
 import path from 'path'
 import os from 'os'
+import { pluginSettingsKey } from '@/features/settings/plugin-settings';
 
 interface CodeSettings {
   defaultBaseDirectory?: string | null
@@ -102,7 +103,7 @@ function createCliService(): CliServiceType {
   let lastCwd: string | null = null
 
   function resolveCwd(): string {
-    const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings | undefined
+    const codeSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('code')) as CodeSettings | undefined
     let cwd = codeSettings?.defaultBaseDirectory || codeSettings?.baseDirectory || null
     if (!cwd) {
       throw new Error('No project directory configured. Open a directory in the Code panel first.')
@@ -129,7 +130,7 @@ function createCliService(): CliServiceType {
       if (!isCliName(provider)) {
         return Promise.resolve({ success: false as const, error: `Unknown CLI provider: ${provider}` });
       }
-      const storedPath = (repository.settingsQueries.getPluginSettings('code') as { cliPaths?: Record<string, string> } | null)?.cliPaths?.[provider];
+      const storedPath = (repository.settingsQueries.getPluginSettings(pluginSettingsKey('code')) as { cliPaths?: Record<string, string> } | null)?.cliPaths?.[provider];
       return testCli(provider, storedPath);
     },
     git: {

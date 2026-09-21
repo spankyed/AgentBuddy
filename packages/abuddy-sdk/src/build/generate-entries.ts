@@ -931,9 +931,9 @@ export function navigateToPlugin(name: PluginName, event?: PluginEvent | PluginE
           refuse(target, `a feature of this pack with no plugin, so nothing can receive the events: give "${target}" a plugin or remove it from sendsTo`);
         } else if (hostPlugins.includes(target)) {
           hostTargets.add(target);
-        } else if (target.includes('/')) {
+        } else if (splitRef(target)) {
           // Another pack's plugin, named as code names it: `<packId>/<featureId>`
-          const [depId, featureId] = [target.slice(0, target.indexOf('/')), target.slice(target.indexOf('/') + 1)];
+          const { packId: depId, featureId } = splitRef(target)!;
           const snap = depSnapshots.get(depId);
           if (!snap) {
             refuse(target, pluginOwners[resolveName(featureId, depId)]
@@ -962,7 +962,7 @@ export function navigateToPlugin(name: PluginName, event?: PluginEvent | PluginE
       .map(f => `import type { ${outgoingEventsType(f)} as __events_${f.id} } from '${toImportPath(root, f.system!.entry)}';`)
       .join('\n');
     const entries = [...receivers].map(([pluginId, senders]) => `  '${pluginId}': ${senders.join(' | ')};`).join('\n');
-    const systemEntries = systemFeatures.map(f => `  '${f.id}': IncomingEventsOf<(typeof __specs)['${f.id}']>;`).join('\n');
+    const systemEntries = systemFeatures.map(f => `  '${f.id}': IncomingEventsOf<SystemOfFeature<'${f.id}', (typeof __specs)['${f.id}']>>;`).join('\n');
     // Only the dependencies a sendsTo names: a plugin nothing declares a send to isn't this pack's to send to
     const eventDeps = typedDeps.filter((depId) => depTargets.has(depId));
     // `PackEvents` is imported only for these, so it is required here rather than with the rest
@@ -1010,7 +1010,7 @@ export function navigateToPlugin(name: PluginName, event?: PluginEvent | PluginE
     }).join('\n');
 
     return `${HEADER}
-import { defineEvents, ${hostTargets.size ? 'type HostPluginEvents, ' : ''}type HostSystemEvents, type IncomingEventsOf } from '@abuddy/sdk/events';
+import { defineEvents, ${hostTargets.size ? 'type HostPluginEvents, ' : ''}type HostSystemEvents, type IncomingEventsOf${hasSystems ? ', type SystemOfFeature' : ''} } from '@abuddy/sdk/events';
 ${hasSystems ? `import type { specs as __specs } from './system-specs.js';\n` : ''}${imports}
 ${[...depEventImports, ...depSystems.imports].join('\n')}
 

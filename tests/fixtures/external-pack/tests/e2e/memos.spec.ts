@@ -91,3 +91,26 @@ test('writes through @abuddy/ears and reads back through the SDK, on the app\'s 
     .find((entry) => entry.text === t), text);
   await expect.poll(noteFor, { timeout: 10_000 }).toMatchObject({ text, note: { title: text } });
 });
+
+// A pack's plugin settings are stored under the plugin's ref, whichever pack's settings plugin stores them: changed
+// in Settings, the value lands at `e2e-fixture/memos`, never at the settings plugin's own pack's `default-setup/memos`
+test("the pack's own settings, changed in Settings, are stored under its plugin's ref", async ({ appPage, app }) => {
+  await app.waitForPlugin('memos');
+  await app.navigate('default-setup/settings');
+  await appPage.evaluate(() => {
+    const settings = (window as any).applicationState.system.get('default-setup/settings');
+    settings.send({ type: 'TAB.SELECT', tab: 'plugins' });
+    settings.send({ type: 'PLUGIN.SELECT', pluginId: 'e2e-fixture/memos' });
+  });
+
+  const title = appPage.getByTestId('memos-list-title');
+  await expect(title).toHaveValue('Memos', { timeout: 10_000 });
+  await title.fill('Renamed memos');
+  await title.press('Enter');
+  await title.blur();
+
+  await expect.poll(memoSettings(appPage)).toEqual({ listTitle: 'Renamed memos' });
+  const settingsKeys = () => appPage.evaluate(() => Object.keys((window as any).applicationState.system.get('default-setup/settings')
+    .getSnapshot().context.settings?.plugins ?? {}));
+  expect(await settingsKeys()).not.toContain('default-setup/memos');
+});

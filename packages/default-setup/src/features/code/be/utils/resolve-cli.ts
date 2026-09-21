@@ -6,6 +6,7 @@ import * as fs from 'fs'
 import * as os from 'os'
 import * as path from 'path'
 import { repository } from '@/__generated__/repository'
+import { pluginSettingsKey } from '@/features/settings/plugin-settings';
 
 const execFileAsync = promisify(execFile)
 
@@ -178,6 +179,6 @@ export async function testCli(
 
 /** Convenience: read stored path from settings and resolve. Used by CLI service modules. */
 export async function resolveForService(cli: CliName): Promise<string> {
-  const storedPath = repository.settingsQueries.getPluginSettings('code')?.cliPaths?.[cli]
+  const storedPath = repository.settingsQueries.getPluginSettings(pluginSettingsKey('code'))?.cliPaths?.[cli]
   return resolveCliPath(cli, storedPath)
 }

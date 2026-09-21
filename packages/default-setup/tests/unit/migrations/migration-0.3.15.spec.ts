@@ -91,7 +91,7 @@ describe('the 0.3.15 migration', () => {
     expect(attrs(row.id).seededFields).toEqual({ fields: ['title'], hash: 'kept' })
   })
 
-  const excludedSources = () => (repository.settingsQueries.getPluginSettings('logs') as any).excludedSources
+  const excludedSources = () => (repository.settingsQueries.getPluginSettings(pluginSettingsKey('logs')) as any).excludedSources
   const setExcludedSources = (value: string[]) => repository.settingsCommands.updateSettings('plugin', pluginSettingsKey('logs'), ['excludedSources'], value)
 
   it('hides action logs for a user who hid log-service', () => {

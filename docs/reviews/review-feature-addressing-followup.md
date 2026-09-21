@@ -13,6 +13,35 @@ The goal's mechanical completion checks all hold:
 
 This review covers behaviour. Every item below is a defect. None has a test.
 
+## Status
+
+The feature identity redesign (`docs/plans/feature-identity-redesign.md`, phases 1–9) landed after this review;
+each item was re-checked against it at `c2b6c4618`, planned, and then fixed. Every fix below has a test, and each
+test was mutation-checked: breaking the fix fails it.
+
+| Item | At `c2b6c4618` | Fix | Test |
+|---|---|---|---|
+| R1 | Fixed in code (`isPluginId`), no E2E | The E2E; the popout renders its plugin in a `PluginScope` | `tests/e2e/popout.spec.ts` |
+| R2 | The SDK door gone; `services.settings` still read and wrote a bare name as default-setup's | `services.settings`, the settings repository, `UPDATE_SETTINGS` and `SETTINGS.UPDATE` take a plugin's ref and refuse a name; seed actions write `'default-setup/<feature>'` | `default-setup/tests/unit/plugin-settings-keys.spec.ts`; `external-pack/tests/e2e/memos.spec.ts` (a pack's own setting changed in Settings lands at its ref) |
+| R3 | 0.3.13 gone; 0.3.0 still replaced the default chat modes with Codex | 0.3.0 patches only modes the user stored, and drops `hermes` from the stored record | `default-setup/tests/unit/migrations/migration-0.3.0.spec.ts`, run twice |
+| L1 | Fixed at registration (`packSystem`) | Also at build: the generated `PackSystemEvents` passes each spec through `SystemOfFeature`, so a `defineSystem` id naming another feature fails the facade's type check | `abuddy-sdk/tests/build/generate-entries.spec.ts` |
+| L2 | Fixed (phase 7) | — | — |
+| L3 | Three rules | One rule, `PluginOwners` (`@abuddy/sdk/framework`): the plugin with the feature id, of several the built-in pack's. The migrations and `replaceSettings` use it; the settings system moves a pack's bare keys when it registers (built-in packs' left to their migrations) | `abuddy-sdk/tests/framework/address-plugin-keys.spec.ts`; `plugin-settings-keys.spec.ts` |
+| S1 | Open | Folded into R2: reads and writes take the same key | `plugin-settings-keys.spec.ts` |
+| S2 | One site left | `sendsTo` targets split with `splitRef` | covered by the codegen specs |
+| S3 | `resolveName` passed malformed refs | It refuses them | `abuddy-sdk/tests/ids/feature-ref.spec.ts` |
+| S4 | Open | The harness checks a plugin name is registered, and `nextEmit` rejects at once | `default-setup/tests/unit/harness-registry.spec.ts` |
+| S5 | Open, narrower | Stops waiting when the plugin is unregistered first | `abuddy-sdk/tests/fe/navigate-wait.spec.ts` |
+
+### Found while fixing R2
+
+- **N1. A pack's plugin with settings must declare `<FEATURE>_SETTINGS_UPDATED` or every settings change logs a
+  dropped send.** Default-setup's settings system sends it to the plugin whose settings changed; the bus checks a
+  send against what the plugin's own pack declares, so an undeclared one is dropped and reported (and fails a pack
+  test). The fixture now declares it, and `docs/public-facing/features.md` says to. A pack author has to know this;
+  moving the declaration out of the pack (the settings plugin owning the event, or the SDK declaring it for every
+  plugin with settings) is left open.
+
 ## Regressions in the running app
 
 ### R1. Popping out a plugin fails for every plugin

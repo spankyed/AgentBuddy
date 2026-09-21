@@ -180,9 +180,16 @@ function resolveSystemId(name: string, registered: ReadonlyMap<string, AnyStateM
   throw new Error(`No registered system is named "${name}" (it would be "${id}"). Registered: ${[...registered.keys()].join(', ') || 'none'} (name the pack's own systems by feature id and a dependency's as "<packId>/<featureId>"; pass the pack's registration to setupPackTests)`);
 }
 
-/** The id a plugin name addresses, as the pack under test's own `sendToPlugin` resolves it */
+/**
+ * The registered plugin a name addresses, as the pack under test's own `sendToPlugin` resolves it: a dependency's
+ * (or the host's) as `<packId>/<featureId>`, the pack's own by feature id. A name no plugin is registered under
+ * throws at once, rather than leaving a wait for its events to time out.
+ */
 function resolvePluginId(name: string): string {
-  return resolveName(name, packId);
+  const id = resolveName(name, packId);
+  const registered = [...packs().getPluginEventValidationMap().keys()];
+  if (registered.includes(id)) return id;
+  throw new Error(`No registered plugin is named "${name}" (it would be "${id}"). Registered: ${registered.join(', ') || 'none'} (name the pack's own plugins by feature id and another pack's as "<packId>/<featureId>")`);
 }
 
 /** One event loop turn, after zero-delay timers already queued (xstate's `raise(…, { delay: 0 })`) */
@@ -366,13 +373,15 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       const id = resolvePluginId(plugin);
       return emitted.filter((message) => message.to === id).map((message) => message.event);
     },
-    nextEmit: (plugin, type, { timeoutMs = 5000 } = {}) => call(() => waitForEmitted(() => {
+    nextEmit: (plugin, type, { timeoutMs = 5000 } = {}) => call(async () => {
       const id = resolvePluginId(plugin);
-      const index = emitted.findIndex((message, i) => !taken.has(i) && message.to === id && message.event.type === type);
-      if (index === -1) return undefined;
-      taken.add(index);
-      return emitted[index].event;
-    }, timeoutMs, () => `No ${type} sent to ${resolvePluginId(plugin)} within ${timeoutMs}ms. Sent: ${emitted.map((m) => `${m.to}:${m.event.type}`).join(', ') || 'nothing'}.`)),
+      return waitForEmitted(() => {
+        const index = emitted.findIndex((message, i) => !taken.has(i) && message.to === id && message.event.type === type);
+        if (index === -1) return undefined;
+        taken.add(index);
+        return emitted[index].event;
+      }, timeoutMs, () => `No ${type} sent to ${id} within ${timeoutMs}ms. Sent: ${emitted.map((m) => `${m.to}:${m.event.type}`).join(', ') || 'nothing'}.`);
+    }),
     settle: () => call(() => settle()),
     runFlow: (label, { event, data, timeoutMs = 10_000 } = {}) => call(async () => {
       const brainId = hasDesignation('brain') ? getDesignated('brain') : undefined;

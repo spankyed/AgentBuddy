@@ -4,9 +4,9 @@
 import type { Page } from '@playwright/test';
 import { test, expect } from './fixtures/app';
 
-type SettingsUpdate = { entityType: 'plugin'; label: string; path: string[]; value: unknown };
+type SettingsUpdate = { entityType: 'plugin'; label: `${string}/${string}`; path: string[]; value: unknown };
 
-/** Changes a setting the way the Settings UI does: through the settings plugin, naming the plugin by feature */
+/** Changes a setting the way the Settings UI does: through the settings plugin, naming the plugin by its ref */
 async function updateSetting(page: Page, update: SettingsUpdate): Promise<void> {
   await page.evaluate((u) => {
     (window as any).applicationState.system.get('default-setup/settings').send({ type: 'SETTINGS.UPDATE', ...u });
@@ -27,7 +27,7 @@ async function recordEvents(page: Page, pluginId: string): Promise<() => Promise
 
 test("a plugin setting changed in Settings reaches the feature's system", async ({ appPage }) => {
   const events = await recordEvents(appPage, 'default-setup/code');
-  await updateSetting(appPage, { entityType: 'plugin', label: 'code', path: ['mdEditorDefault'], value: true });
+  await updateSetting(appPage, { entityType: 'plugin', label: 'default-setup/code', path: ['mdEditorDefault'], value: true });
   // One copy from the settings system, one the code system forwards once it has applied the change: the
   // second only arrives if the settings system found the code system at its address
   await expect.poll(async () => (await events()).filter((type) => type === 'CODE_SETTINGS_UPDATED').length).toBe(2);
@@ -36,7 +36,7 @@ test("a plugin setting changed in Settings reaches the feature's system", async 
 // Settings → Secrets shows the code plugin's CLI path overrides, read from the settings by the plugin's name
 test('a plugin setting changed in Settings is what its canvas reads', async ({ app, appPage }) => {
   const override = `/e2e/addressing/${Date.now()}/claude`;
-  await updateSetting(appPage, { entityType: 'plugin', label: 'code', path: ['cliPaths'], value: { 'claude-code': override } });
+  await updateSetting(appPage, { entityType: 'plugin', label: 'default-setup/code', path: ['cliPaths'], value: { 'claude-code': override } });
   await app.navigate('default-setup/settings');
   await appPage.evaluate(() => {
     const settings = (window as any).applicationState.system.get('default-setup/settings');
@@ -50,7 +50,7 @@ test('a plugin setting changed in Settings is what its canvas reads', async ({ a
 
 test('a link to another plugin opens it and hands it the events', async ({ app, appPage }) => {
   // The Logs toolbar shows the link once a source is excluded; it opens Settings on the Logs plugin
-  await updateSetting(appPage, { entityType: 'plugin', label: 'logs', path: ['excludedSources'], value: ['e2e-excluded'] });
+  await updateSetting(appPage, { entityType: 'plugin', label: 'default-setup/logs', path: ['excludedSources'], value: ['e2e-excluded'] });
   await app.navigate('default-setup/logs');
   await appPage.getByTitle('Click to manage excluded sources').click();
 

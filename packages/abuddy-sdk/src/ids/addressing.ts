@@ -28,7 +28,10 @@ export function splitRef(ref: string): { packId: string; featureId: string } | u
  * name is the writing pack's own. A bare name with no pack to belong to throws.
  */
 export function resolveName(name: string, packId?: string): FeatureRef {
-  if (name.includes('/')) return name as FeatureRef;
+  if (name.includes('/')) {
+    if (!splitRef(name)) throw new Error(`"${name}" isn't a feature's ref: a feature is "<packId>/<featureId>"`);
+    return name as FeatureRef;
+  }
   if (!packId) throw new Error(`"${name}" names no pack's feature: write "<packId>/${name}"`);
   return `${packId}/${name}` as FeatureRef;
 }

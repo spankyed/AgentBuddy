@@ -328,7 +328,7 @@ export const brainSystem = setup({
       // Restore inspect state from persisted settings. Default ON in dev so
       // switch/action/flow transitions are visible out of the box; the
       // persisted setting wins once the user has toggled it.
-      const brainSettings = repository.settingsQueries.getPluginSettings('brain');
+      const brainSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('brain'));
       const inspectEnabled = brainSettings?.inspectEnabled ?? (process.env.NODE_ENV !== 'production');
       setDebugEnabled('brain', inspectEnabled);
       sendToPlugin('brain', { type: 'INSPECT_TOGGLED', enabled: inspectEnabled });

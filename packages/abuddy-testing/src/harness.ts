@@ -19,7 +19,7 @@ import { afterEach, beforeEach, inject, type RunnerTask, type RunnerTestCase } f
 import { resetTestData as resetSdkTestData, startTestRuntime, takeSystemErrors, addTestSecret, type SeedRuntime, fakeInference, type FakeInference } from '@abuddy/sdk/testing';
 import type { PackRegistryView } from '@abuddy/sdk/runtime';
 import type { PackRegistration } from '@abuddy/sdk/framework';
-import { createPackRegistry } from '@abuddy/host/packs';
+import { createPackRegistry, type PackOrigin } from '@abuddy/host/packs';
 import { appState, HOST_ENTITY_TYPES } from '@abuddy/host/app-state';
 import { loadDependencyRuntime } from './dependency-runtime.ts';
 import { assertSharedEars } from './shared-ears.ts';
@@ -193,6 +193,11 @@ function readDependencies(packDir: string, manifest: PackManifest): Map<string, 
   return dependencies;
 }
 
+/** Where a pack came from, as the app records it: whether it's built-in decides who owns a bare id (`PluginOwners`) */
+function originOf(manifest: PackManifest, dir: string): PackOrigin {
+  return { id: manifest.id, name: manifest.name, version: manifest.version, dir, builtIn: manifest.builtIn === true, manifest };
+}
+
 /** A seed runtime as a registration: its entity types, repositories and seed hooks, and the pack's seeders */
 function seedRuntimeRegistration(runtime: SeedRuntime, seeders?: Seeder[]): PackRegistration {
   return {
@@ -246,10 +251,10 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
       }
       const { seedRuntime } = await import(pathToFileURL(file).href) as { seedRuntime: SeedRuntime };
       startTestRuntime({ entityTypes: Object.values(seedRuntime.entities) });
-      registry.registerPack(seedRuntimeRegistration(seedRuntime));
+      registry.registerPack(seedRuntimeRegistration(seedRuntime), originOf(dependency.manifest, dependency.dir));
     }
     startTestRuntime({ entityTypes: Object.values(options.seedRuntime.entities) });
-    registry.registerPack(seedRuntimeRegistration(options.seedRuntime, options.seeders));
+    registry.registerPack(seedRuntimeRegistration(options.seedRuntime, options.seeders), originOf(manifest, packDir));
     setAppPacks(registry, manifest.id);
   }
 
@@ -290,10 +295,10 @@ async function registerRuntimes(packDir: string, manifest: PackManifest, depende
     const seedsDir = path.join(dependency.dir, 'runtime', 'seeds');
     const runtime = await loadDependencyRuntime(packDir, depId, runtimeEntry, fs.existsSync(seedsDir) ? seedsDir : undefined);
     startTestRuntime({ entityTypes: Object.values(runtime.registration.ears?.entities ?? {}) });
-    registry.registerPack(runtime.registration);
+    registry.registerPack(runtime.registration, originOf(dependency.manifest, dependency.dir));
   }
   startTestRuntime({ entityTypes: Object.values(registration.ears?.entities ?? {}) });
-  registry.registerPack(registration);
+  registry.registerPack(registration, originOf(manifest, packDir));
   setAppPacks(registry, manifest.id);
 }
 

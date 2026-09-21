@@ -183,7 +183,7 @@ export const systemMachine = setup({
           context.gitRepository.clearCache()
         }
         const repo = new GitRepository(ev.path)
-        const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings
+        const codeSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('code')) as CodeSettings
         repo.setFetchConfig(
           codeSettings?.autoFetchRemote ?? false,
           codeSettings?.autoFetchIntervalSeconds ?? 180
@@ -266,7 +266,7 @@ export const systemMachine = setup({
       child(self, 'codePrompts')?.send({ type: 'CODE_CONNECTED' });
 
       // Get code settings - this will create default settings if they don't exist
-      const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings;
+      const codeSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('code')) as CodeSettings;
 
       // Send initial directory state to frontend
       const connectedData: CodeConnectedData = {
@@ -327,7 +327,7 @@ export const systemMachine = setup({
   id,
   initial: 'idle',
   context: () => {
-    const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings
+    const codeSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('code')) as CodeSettings
     const projects = (repository.settingsQueries.getGeneralSettings('projects') as any) || []
 
     // Resolve initial directory using priority chain

@@ -44,7 +44,7 @@ export const migration: PackMigration = {
 
     // ── Action logs moved from the shared `log-service` source to `action:<label>` ──
     // Whoever hid `log-service` hid action logs: keep hiding them.
-    const excludedSources = repository.settingsQueries.getPluginSettings('logs')?.excludedSources;
+    const excludedSources = repository.settingsQueries.getPluginSettings(pluginSettingsKey('logs'))?.excludedSources;
     if (Array.isArray(excludedSources) && excludedSources.includes('log-service') && !excludedSources.includes('action:*')) {
       repository.settingsCommands.updateSettings('plugin', pluginSettingsKey('logs'), ['excludedSources'], [...excludedSources, 'action:*']);
     }
@@ -79,7 +79,7 @@ function movePluginSettingsToQualifiedIds(): void {
   const stored = repository.settingsQueries.getStoredSettings();
   if (!stored.plugins) return;
   const addresses = BARE_PLUGIN_IDS.map((id) => resolveName(id, PACK_ID));
-  const { record: plugins, moved } = addressPluginKeys(stored.plugins, addresses);
+  const { record: plugins, moved } = addressPluginKeys(stored.plugins, { refs: addresses });
   if (moved === 0) return;
   repository.settingsCommands.replaceSettings({ ...stored, plugins } as SettingsData);
   logger.info(`[migration 0.3.15] moved ${moved} plugin settings key(s) onto namespaced plugin ids`);

@@ -13,7 +13,7 @@ import type { ApplicationHotkeys } from '@abuddy/sdk/types'
 import type { EARS } from '@abuddy/sdk'
 import type { PackSeedsPreview } from '@abuddy/sdk/build'
 import type { FAQItem } from '@/features/settings/be/types';
-import { pluginSettingsKey } from '../plugin-settings';
+import type { PluginSettingsKey } from '../plugin-settings';
 import { settingsPlugin } from './public';
 import { resolveName } from '@abuddy/sdk/ids';
 import { packId } from '@/__generated__/bus-ids';
@@ -75,11 +75,14 @@ export interface SettingsContext {
   /** True while a RESET_APP mutation is in flight; used to disable the reset button. */
   resetting: boolean;
 }
+/** What a settings change is to: a plugin's settings by their key (its ref), or a general section */
+export type SettingsTarget = { entityType: 'plugin'; label: PluginSettingsKey } | { entityType: 'general'; label: string };
+
 type UIEvent =
   | { type: 'TAB.SELECT'; tab: 'general' | 'plugins' | 'help' }
   | { type: 'GENERAL_NAV.SELECT'; item: 'personal' | 'secrets' | 'projects' | 'application' | 'json' }
   | { type: 'PLUGIN.SELECT'; pluginId: string }
-  | { type: 'SETTINGS.UPDATE'; entityType: 'general' | 'plugin'; label: string; path: string[]; value: any }
+  | ({ type: 'SETTINGS.UPDATE'; path: string[]; value: any } & SettingsTarget)
   | { type: 'SETTINGS.REPLACE'; data: SettingsData }
   | { type: 'SETTINGS.RESET' }
   | { type: 'SETTINGS.LOAD' }
@@ -168,7 +171,7 @@ const settingsState = setup({
       sendToSystem(id, {
         type: 'UPDATE_SETTINGS',
         entityType: ev.entityType,
-        label: ev.entityType === 'plugin' ? pluginSettingsKey(ev.label) : ev.label,
+        label: ev.label,
         path: ev.path,
         value: ev.value,
       });

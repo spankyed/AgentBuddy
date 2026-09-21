@@ -48,9 +48,16 @@ export type IncomingEventsOf<T> = T extends { _incoming: infer Incoming }
  * A system spec reduced to the events the system receives. Generated code declares each system's spec
  * with it, so the facade types dependents compile against carry no system context or internals.
  */
-export function incomingEvents<S extends { _incoming: unknown }>(spec: S): { _incoming: S['_incoming'] } {
+export function incomingEvents<S extends { id: string; _incoming: unknown }>(spec: S): { id: S['id']; _incoming: S['_incoming'] } {
   return spec;
 }
+
+/**
+ * A feature's system spec, whose `defineSystem` id must be the feature's: the system runs at the feature's ref and is
+ * sent to by the feature id. Generated code passes each spec through it, so a spec defined under another id fails to
+ * compile, and `abuddy build`'s type check of the pack's facade refuses the pack.
+ */
+export type SystemOfFeature<FeatureId extends string, Spec extends { id: FeatureId }> = Spec;
 
 /**
  * Events the host app's own plugins receive from pack systems. A pack system declares a send to one

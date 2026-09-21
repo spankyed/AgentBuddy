@@ -254,7 +254,8 @@ export default {
 - Feature-specific settings go under the plugin ID key.
 - A feature sets only its own slice, `plugins.<feature id>`, and `visible`. `abuddy build` fails on anything else (the app's `general` settings, another plugin's), and the app refuses to register such a pack.
 - The settings are defaults: when your pack is enabled they join the app's defaults, and what the user changes is stored over them. Disabling the pack removes its defaults; a new version's defaults apply to every key the user didn't change.
-- Read them at runtime with default-setup's settings service, `services.settings.getPluginSettings('<feature id>')`, which returns the user's values over the defaults.
+- Read them at runtime with default-setup's settings service, `services.settings.getPluginSettings('<packId>/<feature id>')`, which returns the user's values over the defaults; `updatePluginSetting('<packId>/<feature id>', path, value)` changes one. Both take the plugin's ref and throw for a bare name, which would name default-setup's plugin.
+- Default-setup's settings plugin tells your plugin its settings changed with `<FEATURE ID>_SETTINGS_UPDATED` (`MEMOS_SETTINGS_UPDATED`) and your system the same event with the changes. Declare it in your system's outgoing events so the plugin receives it: the app drops, and reports, a send to a plugin that doesn't declare it.
 
 ## Manifest entry
 

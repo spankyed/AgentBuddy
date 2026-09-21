@@ -29,7 +29,7 @@ import { useSettingsSaveStatus } from '@/features/settings/fe/public'
 import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
 import CliProviderRow from './CliProviderRow.vue'
-import { pluginSettings } from '@/features/settings/plugin-settings';
+import { pluginSettings, pluginSettingsKey } from '@/features/settings/plugin-settings';
 
 const { updateSettings } = useSettingsSaveStatus()
 
@@ -58,7 +58,7 @@ watch(storedCliPaths, (newPaths) => {
 const { debounced: debouncedSaveCliPaths } = useDebounce(() => {
   updateSettings({
     entityType: 'plugin',
-    label: 'code',
+    label: pluginSettingsKey('code'),
     path: ['cliPaths'],
     value: { ...cliPathValues.value }
   })

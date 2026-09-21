@@ -7,6 +7,7 @@ import type { TerminalInfo, TerminalCreate } from '../types'
 import { EARS } from '@/__generated__/ears'
 import { repository } from '@/__generated__/repository';
 import { createLogger } from '@abuddy/sdk/logger';
+import { pluginSettingsKey } from '@/features/settings/plugin-settings';
 
 const logger = createLogger('terminal');
 
@@ -53,7 +54,7 @@ class TerminalService {
 
   create(options: TerminalCreate): TerminalInfo {
     // Check terminal limit (0 = no limit)
-    const codeSettings = repository.settingsQueries.getPluginSettings('code')
+    const codeSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('code'))
     const maxTerminals = codeSettings?.maxTerminals ?? 0
     if (maxTerminals > 0 && this.terminals.size >= maxTerminals) {
       throw new Error(`Maximum number of terminals (${maxTerminals}) reached`)
@@ -90,7 +91,7 @@ class TerminalService {
       })
 
       // Send shell integration setup commands based on shell type (if enabled)
-      const codeSettings = repository.settingsQueries.getPluginSettings('code')
+      const codeSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('code'))
       if (codeSettings?.enableShellIntegration !== false) {
         this.injectShellIntegration(ptyProcess, shell)
       }
@@ -344,7 +345,7 @@ class TerminalService {
     const persistedTerminals = repository.terminalQueries.active()
 
     // Check if shell integration is enabled
-    const codeSettings = repository.settingsQueries.getPluginSettings('code')
+    const codeSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('code'))
     const shellIntegrationEnabled = codeSettings?.enableShellIntegration !== false
 
     for (const persistedTerminal of persistedTerminals) {

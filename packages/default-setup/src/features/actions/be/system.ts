@@ -11,6 +11,7 @@ import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
 import { exportActions } from './repository/export-actions';
 import type { ActionEntity } from '@abuddy/sdk';
+import { pluginSettingsKey } from '@/features/settings/plugin-settings';
 
 const logger = createLogger('actions');
 
@@ -54,7 +55,7 @@ export const actionsSystem = setup({
   actions: {
     sendActionsStartupData: ({ system }) => {
       const connectedData = repository.actionQueries.connectedData();
-      const actionsSettings = repository.settingsQueries.getPluginSettings('actions');
+      const actionsSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('actions'));
       
       sendToPlugin('actions', { 
         type: 'ACTIONS_LISTED',
@@ -205,7 +206,7 @@ export const actionsSystem = setup({
 
       // Refresh the full actions list
       const connectedData = repository.actionQueries.connectedData();
-      const actionsSettings = repository.settingsQueries.getPluginSettings('actions');
+      const actionsSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('actions'));
       sendToPlugin(pluginId, {
         type: 'ACTIONS_LISTED',
         data: {
@@ -259,7 +260,7 @@ export const actionsSystem = setup({
       
       // Fallback to first available category or 'Utility'
       const firstCategoryName = (): string | undefined =>
-        repository.settingsQueries.getPluginSettings('actions')?.categories?.[0]?.name || 'Utility';
+        repository.settingsQueries.getPluginSettings(pluginSettingsKey('actions'))?.categories?.[0]?.name || 'Utility';
 
       for (const a of repository.actionQueries.all()) {
         const nextCategory = mapScalar(a.category, renames, removed, firstCategoryName);

@@ -7,7 +7,7 @@
 
 import { repository } from '@/__generated__/repository';
 import type { SettingsData } from '@/features/settings/be/types';
-import { pluginSettingsKey } from '@/features/settings/plugin-settings';
+import { checkedPluginSettingsKey, type PluginSettingsKey } from '@/features/settings/plugin-settings';
 
 export class SettingsService {
   /**
@@ -18,11 +18,12 @@ export class SettingsService {
   }
 
   /**
-   * Get settings for a specific plugin
-   * @param pluginId - The plugin identifier
+   * A plugin's settings in effect
+   * @param plugin - The plugin's ref, `<packId>/<featureId>` (`'default-setup/threads'`): whoever calls, a bare
+   * name would be read as this pack's, so it throws
    */
-  getPluginSettings<T = any>(pluginId: string): T {
-    return repository.settingsQueries.getPluginSettings(pluginId) as T;
+  getPluginSettings<T = any>(plugin: PluginSettingsKey): T {
+    return repository.settingsQueries.getPluginSettings(checkedPluginSettingsKey(plugin)) as T;
   }
 
   /**
@@ -34,12 +35,12 @@ export class SettingsService {
 
   /**
    * Update a plugin setting
-   * @param plugin - The plugin, named as this pack names it: its own feature by id, another pack's `<packId>/<featureId>`
+   * @param plugin - The plugin's ref, `<packId>/<featureId>`; a bare name throws
    * @param path - Path to the setting property (e.g., ['hotkeys', 'openTerminal'])
    * @param value - The new value
    */
-  updatePluginSetting(plugin: string, path: string[], value: any): void {
-    repository.settingsCommands.updateSettings('plugin', pluginSettingsKey(plugin), path, value);
+  updatePluginSetting(plugin: PluginSettingsKey, path: string[], value: any): void {
+    repository.settingsCommands.updateSettings('plugin', checkedPluginSettingsKey(plugin), path, value);
   }
 }
 

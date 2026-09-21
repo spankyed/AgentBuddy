@@ -90,6 +90,7 @@
 </template>
 
 <script setup lang="ts">
+import { checkedPluginSettingsKey } from '@/features/settings/plugin-settings'
 import { computed, ref, onMounted, onUpdated } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { getDesignated, openPlugin, PluginScope, useApplicationActor, usePlugin } from '@abuddy/sdk/fe'
@@ -159,7 +160,8 @@ const handleUpdateSetting = (event: { path: string[], value: any }) => {
 
   updateSettings({
     entityType: 'plugin',
-    label: selectedPlugin.value.id,
+    // A registered plugin's id is its ref
+    label: checkedPluginSettingsKey(selectedPlugin.value.id),
     path: event.path,
     value: event.value
   })

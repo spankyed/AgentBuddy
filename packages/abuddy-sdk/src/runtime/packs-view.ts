@@ -35,10 +35,12 @@ export interface PackExtensionsView {
 export interface PackRegistryView extends PackExtensionsView {
   /** Every registered pack's services, by name */
   getRegisteredServices(): Record<string, unknown>;
-  /** The addresses of every registered system, the host's (bare) included */
+  /** The refs of every registered system, the host's included */
   systemIds(): readonly FeatureRef[];
-  /** The addresses of every registered plugin, the host's (bare) included */
+  /** The refs of every registered plugin, the host's included */
   pluginIds(): readonly FeatureRef[];
+  /** The ids of the registered packs that came with the app */
+  builtInPackIds(): readonly string[];
   /** The seed hooks registered for an entity type */
   seedHooks(entity: string): SeedHooks | undefined;
   /** A registered pack's seeders */

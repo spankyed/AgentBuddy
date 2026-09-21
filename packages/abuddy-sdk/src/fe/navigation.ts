@@ -34,12 +34,13 @@ export function navigateToAddress(address: FeatureRef, event?: PluginEvent | Plu
     if (actor) {
       for (const e of events) actor.send(e);
     } else {
-      const sub = app.subscribe(() => {
+      // Until the plugin's actor spawns (a pack's frontend still loading), or the plugin is gone (its pack disabled
+      // meanwhile), when the events have nowhere to go
+      const sub = app.subscribe((next) => {
         const spawned = app.system.get(address);
-        if (spawned) {
-          sub.unsubscribe();
-          for (const e of events) spawned.send(e);
-        }
+        const stillRegistered = (next.context.plugins ?? []).some((plugin: { id: string }) => plugin.id === address);
+        if (spawned || !stillRegistered) sub.unsubscribe();
+        if (spawned) for (const e of events) spawned.send(e);
       });
     }
   }

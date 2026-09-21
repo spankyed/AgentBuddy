@@ -71,6 +71,8 @@ describe('facade gate: system entries', () => {
   it('fails an annotated system entry, naming the system as <pack>/<feature>', async () => {
     const problems = await gate('annotation');
     expect(problems).toEqual([
+      // The annotation widens the spec's id to string, which isn't the feature's id (`SystemOfFeature`)
+      expect.stringMatching(/^dist\/types\/pack-types\.d\.ts:\d+:\d+ error TS\d+: .*does not satisfy the constraint '\{ id: "tags"; \}'.*\(in PackSystemEvents/),
       expect.stringMatching(/^dist\/types\/pack-types\.d\.ts:\d+:\d+ error TS\d+: .*entry-pack\/tags.*\(in .*reached from: .*Services/),
     ]);
   }, 60_000);

@@ -13,6 +13,7 @@ import { createLogger } from '@abuddy/sdk/logger';
 import type { TNodeEntity } from '@abuddy/sdk/steps';
 import { services } from '@/__generated__/services';
 import { repository } from '@/__generated__/repository';
+import { pluginSettingsKey } from '@/features/settings/plugin-settings';
 
 const logger = createLogger('database');
 
@@ -130,7 +131,7 @@ export const databaseSystem = setup({
         return;
       }
 
-      const threadsSettings = repository.settingsQueries.getPluginSettings('threads') as any;
+      const threadsSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('threads')) as any;
       const provider = threadsSettings?.chat?.defaultMode || 'Claude Code';
 
       sendToSystem('brain', {

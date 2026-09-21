@@ -7,6 +7,7 @@ import { action, entry, on, keepAlive, schedule, subflow, transform } from '@/__
 import { repository } from '@/__generated__/repository'
 import type { Services } from '@/__generated__/services'
 import { isBrainPaused } from '@/features/brain/be/utils/brain-pause'
+import { pluginSettingsKey } from '@/features/settings/plugin-settings';
 
 const step = (label: string) => transform('return true', { label })
 const startBrain = () => startApp({ systems: ['brain', 'settings'] })
@@ -196,7 +197,7 @@ describe('brain start', () => {
     await app.connect()
     // The plugin learns which root flow the brain runs from the brain, not from the settings
     expect(await app.nextEmit('brain', 'BRAIN_STARTED')).toMatchObject({ rootFlowId })
-    expect(repository.settingsQueries.getPluginSettings('brain')).not.toHaveProperty('runningRootFlowId')
+    expect(repository.settingsQueries.getPluginSettings(pluginSettingsKey('brain'))).not.toHaveProperty('runningRootFlowId')
     repository.flowsCommands.revokeRootFlowRole(rootFlowId)
     await app.send('brain', { type: 'RESTART_BRAIN' })
 

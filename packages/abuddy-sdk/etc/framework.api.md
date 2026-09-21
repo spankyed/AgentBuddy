@@ -11,7 +11,11 @@ import { EARS as EARS_2 } from '@abuddy/ears';
 import { z } from 'zod';
 
 // @public
-export function addressPluginKeys<T extends Record<string, unknown>>(record: T, refs?: readonly FeatureRef[]): {
+export function addressPluginKeys<T extends Record<string, unknown>>(record: T, input?: PluginOwners & {
+    movesTo?: (ref: FeatureRef, owner: {
+        builtIn: boolean;
+    }) => boolean;
+}): {
     record: T;
     moved: number;
 };
@@ -164,7 +168,13 @@ export function packSystem(entry: SystemEntry, featureId: string, options?: {
 }): PackFeatureSystem;
 
 // @public
-export function pluginRefOf(id: string, refs: readonly FeatureRef[]): FeatureRef | undefined;
+export interface PluginOwners {
+    builtIn?: readonly string[];
+    refs?: readonly FeatureRef[];
+}
+
+// @public
+export function pluginRefOf(id: string, owners?: PluginOwners): FeatureRef | undefined;
 
 // @public (undocumented)
 export interface SystemEntry {

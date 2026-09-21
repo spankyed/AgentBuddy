@@ -37,7 +37,7 @@ export async function action(
     services.repository.settingsCommands.updateSettings('general', 'projects', [], projectEntries);
 
     // Set first directory as default CWD
-    services.settings.updatePluginSetting('code', ['defaultBaseDirectory'], dirs[0]);
+    services.settings.updatePluginSetting('default-setup/code', ['defaultBaseDirectory'], dirs[0]);
 
     services.emitter.sendToPlugin('default-setup/settings', {
       type: 'SETTINGS_UPDATED',

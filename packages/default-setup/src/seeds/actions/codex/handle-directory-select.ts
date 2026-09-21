@@ -29,7 +29,7 @@ export async function action(params: Record<string, any>, services: Services) {
 
   if (!selectedDir) return { success: false, error: 'No directory selected' };
 
-  services.settings.updatePluginSetting('code', ['defaultBaseDirectory'], selectedDir);
+  services.settings.updatePluginSetting('default-setup/code', ['defaultBaseDirectory'], selectedDir);
   persistCodexState(services, threadId, { pendingDirectorySelect: undefined } as any);
   services.chat.updateMessageState(pendingDirectorySelect.pickerMessageId as EntityId, { responseTimestamp: Date.now(), blockResponse: response } as any);
 

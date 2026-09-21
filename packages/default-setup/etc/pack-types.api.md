@@ -8,7 +8,7 @@ import * as _abuddy_sdk from '@abuddy/sdk';
 import { ActionEntity, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes } from '@abuddy/sdk';
 import { ArtifactItem } from '@abuddy/sdk/artifacts';
 import * as _abuddy_sdk_build from '@abuddy/sdk/build';
-import { HostPluginEvents, IncomingEventsOf, TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
+import { HostPluginEvents, IncomingEventsOf, SystemOfFeature, TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
 import { ModelCatalogEntry, ModelId } from '@abuddy/sdk/models';
 import * as _abuddy_sdk_repositories from '@abuddy/sdk/repositories';
 import { FlowEdge } from '@abuddy/sdk/repositories';
@@ -2918,18 +2918,18 @@ type PackStepNodes = NodeEntity;
 
 /** Feature id → the events this pack's system for that feature receives (dependents name it `default-setup/<feature>`). */
 type PackSystemEvents = {
-    'threads': IncomingEventsOf<(typeof specs)['threads']>;
-    'code': IncomingEventsOf<(typeof specs)['code']>;
-    'notes': IncomingEventsOf<(typeof specs)['notes']>;
-    'browser': IncomingEventsOf<(typeof specs)['browser']>;
-    'library': IncomingEventsOf<(typeof specs)['library']>;
-    'flows': IncomingEventsOf<(typeof specs)['flows']>;
-    'actions': IncomingEventsOf<(typeof specs)['actions']>;
-    'prompts': IncomingEventsOf<(typeof specs)['prompts']>;
-    'brain': IncomingEventsOf<(typeof specs)['brain']>;
-    'database': IncomingEventsOf<(typeof specs)['database']>;
-    'logs': IncomingEventsOf<(typeof specs)['logs']>;
-    'settings': IncomingEventsOf<(typeof specs)['settings']>;
+    'threads': IncomingEventsOf<SystemOfFeature<'threads', (typeof specs)['threads']>>;
+    'code': IncomingEventsOf<SystemOfFeature<'code', (typeof specs)['code']>>;
+    'notes': IncomingEventsOf<SystemOfFeature<'notes', (typeof specs)['notes']>>;
+    'browser': IncomingEventsOf<SystemOfFeature<'browser', (typeof specs)['browser']>>;
+    'library': IncomingEventsOf<SystemOfFeature<'library', (typeof specs)['library']>>;
+    'flows': IncomingEventsOf<SystemOfFeature<'flows', (typeof specs)['flows']>>;
+    'actions': IncomingEventsOf<SystemOfFeature<'actions', (typeof specs)['actions']>>;
+    'prompts': IncomingEventsOf<SystemOfFeature<'prompts', (typeof specs)['prompts']>>;
+    'brain': IncomingEventsOf<SystemOfFeature<'brain', (typeof specs)['brain']>>;
+    'database': IncomingEventsOf<SystemOfFeature<'database', (typeof specs)['database']>>;
+    'logs': IncomingEventsOf<SystemOfFeature<'logs', (typeof specs)['logs']>>;
+    'settings': IncomingEventsOf<SystemOfFeature<'settings', (typeof specs)['settings']>>;
 };
 
 /**
@@ -3017,6 +3017,13 @@ interface PersonalInfo {
 interface PluginSettings {
     [pluginRef: string]: any;
 }
+
+/**
+ * The key a plugin's settings are stored under: its ref, `<packId>/<featureId>`. The settings store and the settings
+ * service take only keys, whoever calls them, so a bare name can't be read in one pack's context and written in
+ * another's; a name resolves where it is written (`pluginSettingsKey`), and actions write the ref itself.
+ */
+type PluginSettingsKey = `${string}/${string}`;
 
 type Predicate = {
     key: string;
@@ -3442,6 +3449,9 @@ interface SettingsEntity extends BaseEntity {
     updatedAt?: number;
 }
 
+/** The sections of the stored settings other than the plugins' slices, each keyed as the data holds it */
+type SettingsSection = 'assistant' | 'general' | 'plugins';
+
 /**
  * Settings Service
  *
@@ -3455,21 +3465,22 @@ declare class SettingsService {
      */
     getAll(): SettingsData;
     /**
-     * Get settings for a specific plugin
-     * @param pluginId - The plugin identifier
+     * A plugin's settings in effect
+     * @param plugin - The plugin's ref, `<packId>/<featureId>` (`'default-setup/threads'`): whoever calls, a bare
+     * name would be read as this pack's, so it throws
      */
-    getPluginSettings<T = any>(pluginId: string): T;
+    getPluginSettings<T = any>(plugin: PluginSettingsKey): T;
     /**
      * Get all general settings
      */
     getGeneralSettings(): SettingsData['general'];
     /**
      * Update a plugin setting
-     * @param plugin - The plugin, named as this pack names it: its own feature by id, another pack's `<packId>/<featureId>`
+     * @param plugin - The plugin's ref, `<packId>/<featureId>`; a bare name throws
      * @param path - Path to the setting property (e.g., ['hotkeys', 'openTerminal'])
      * @param value - The new value
      */
-    updatePluginSetting(plugin: string, path: string[], value: any): void;
+    updatePluginSetting(plugin: PluginSettingsKey, path: string[], value: any): void;
 }
 
 type Simplify<T> = {
@@ -4713,10 +4724,17 @@ declare function sendSystemMessage(options: {
 };
 
 declare const settingsCommands: {
-    updateSettings(type: string, label: string | null, path: string[], value: any): void;
+    updateSettings: typeof updateSettings;
     replaceSettings(data: SettingsData): void;
     /** Removes a stored value (its path in the stored data), so its default applies again */
     removeStored(path: string[]): void;
+    /**
+     * Moves stored settings a bare feature id still holds onto its plugin's ref, once that plugin is registered: a pack
+     * that wasn't loaded when 0.3.15 moved the keys, or one an export from before 0.3.15 brought back. A built-in
+     * pack's keys are left to its migrations, which read some of them bare and may not have run yet. Returns how many
+     * moved.
+     */
+    addressStoredPluginKeys(): number;
     resetSettings: () => void;
 };
 
@@ -4729,11 +4747,13 @@ declare const settingsQueries: {
     getStoredSettings: () => Partial<SettingsData>;
     getGeneralSettings: (label?: string) => any;
     getAssistantSettings: () => AssistantSettings;
-    getPluginSettings: (plugin: string) => any;
+    /** A plugin's settings in effect, by its key (its ref); a bare name throws */
+    getPluginSettings: (plugin: PluginSettingsKey) => any;
 };
 
 declare const specs: {
     threads: {
+        id: "threads";
         _incoming: ({
             type: "CREATE_THREAD";
             topic: string;
@@ -4882,6 +4902,7 @@ declare const specs: {
         }) | ThreadsInternalEvents;
     };
     code: {
+        id: "code";
         _incoming: (IncomingExplorerEvents | IncomingSearchEvents | IncomingCommitEvents | IncomingPullRequestEvents | IncomingTerminalEvents | IncomingActionsEvents | IncomingPromptsEvents | {
             type: "SET_BASE_DIRECTORY";
             path: string;
@@ -4892,6 +4913,7 @@ declare const specs: {
         };
     };
     notes: {
+        id: "notes";
         _incoming: {
             type: "CREATE_NOTE";
             title: string;
@@ -4952,6 +4974,7 @@ declare const specs: {
         };
     };
     browser: {
+        id: "browser";
         _incoming: ({
             type: "SYNC_TABS";
             tabs: SavedTab[];
@@ -4963,6 +4986,7 @@ declare const specs: {
         };
     };
     library: {
+        id: "library";
         _incoming: ({
             type: "CREATE_DOCUMENT";
             name: string;
@@ -5042,6 +5066,7 @@ declare const specs: {
         };
     };
     flows: {
+        id: "flows";
         _incoming: {
             type: "FLOW_SELECT";
             flowId: string;
@@ -5107,6 +5132,7 @@ declare const specs: {
         };
     };
     actions: {
+        id: "actions";
         _incoming: ({
             type: "ACTION_SELECT";
             actionId: string;
@@ -5148,6 +5174,7 @@ declare const specs: {
         };
     };
     prompts: {
+        id: "prompts";
         _incoming: ({
             type: "PROMPT_SELECT";
             promptId: string;
@@ -5189,6 +5216,7 @@ declare const specs: {
         };
     };
     brain: {
+        id: "brain";
         _incoming: ({
             type: "OPEN_TNODE";
             tNodeId: string;
@@ -5226,6 +5254,7 @@ declare const specs: {
         }) | BrainInternalEvents;
     };
     database: {
+        id: "database";
         _incoming: ({
             type: "EXECUTE_QUERY";
             code: string;
@@ -5267,6 +5296,7 @@ declare const specs: {
         };
     };
     logs: {
+        id: "logs";
         _incoming: ({
             type: "CLEAR_LOGS";
         } | {
@@ -5283,6 +5313,7 @@ declare const specs: {
         });
     };
     settings: {
+        id: "settings";
         _incoming: ({
             type: "GET_SETTINGS";
         } | {
@@ -5464,6 +5495,10 @@ declare function updateChatState(threadId: EARS.EntityId, chatState: string): vo
  * });
  */
 declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'blockResponse' | 'blocks' | 'compacted' | 'context' | 'forkable' | 'responseTimestamp' | 'status' | 'text'>>): void;
+
+declare function updateSettings(type: 'plugin', label: PluginSettingsKey, path: string[], value: any): void;
+
+declare function updateSettings(type: SettingsSection, label: string | null, path: string[], value: any): void;
 
 /** Parse a Codex JSONL file into an array of entries. */
 declare function viewByFile(filePath: string, opts?: {

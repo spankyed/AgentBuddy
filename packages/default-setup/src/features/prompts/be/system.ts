@@ -10,6 +10,7 @@ import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
 import { exportPrompts } from './repository/export-prompts';
 import type { PromptEntity } from '@abuddy/sdk';
+import { pluginSettingsKey } from '@/features/settings/plugin-settings';
 
 const logger = createLogger('prompts');
 
@@ -47,7 +48,7 @@ export const promptsSystem = setup({
   actions: {
     sendPromptsConnectedData: ({ system }) => {
       const connectedData = repository.promptQueries.connectedData();
-      const promptsSettings = repository.settingsQueries.getPluginSettings('prompts');
+      const promptsSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('prompts'));
       
       sendToPlugin('prompts', { 
         type: 'PROMPTS_CONNECTED',
@@ -200,7 +201,7 @@ export const promptsSystem = setup({
 
       // Refresh the full prompts list
       const connectedData = repository.promptQueries.connectedData();
-      const promptsSettings = repository.settingsQueries.getPluginSettings('prompts');
+      const promptsSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('prompts'));
       sendToPlugin(pluginId, {
         type: 'PROMPTS_CONNECTED',
         data: {

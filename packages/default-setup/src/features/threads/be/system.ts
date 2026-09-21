@@ -15,6 +15,7 @@ import { importThreads } from './import-threads';
 import { runThreadTeardown } from './thread-teardown';
 import { generateAsideText } from './services/chat';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
+import { pluginSettingsKey } from '@/features/settings/plugin-settings';
 
 const logger = createLogger('threads');
 let birthFlowStarted = false;
@@ -127,7 +128,7 @@ export const threadsSystem = setup({
     // ---- Thread management actions ----
     sendThreadsConnectedData: ({ system }) => {
       const connectedData = repository.threadQueries.connectedData();
-      const threadsSettings = repository.settingsQueries.getPluginSettings('threads');
+      const threadsSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('threads'));
 
       sendToPlugin('threads', {
         type: 'THREAD_CONNECTED',
@@ -212,7 +213,7 @@ export const threadsSystem = setup({
           type: 'THREAD_CONNECTED',
           data: {
             ...repository.threadQueries.connectedData(),
-            settings: repository.settingsQueries.getPluginSettings('threads') ?? null,
+            settings: repository.settingsQueries.getPluginSettings(pluginSettingsKey('threads')) ?? null,
           },
         });
         // Also refresh archived threads list so the change is visible immediately
@@ -262,7 +263,7 @@ export const threadsSystem = setup({
     },
     handleSettingsUpdate: ({ system, event }) => {
       const firstStatusLabel = (): string | undefined =>
-        repository.settingsQueries.getPluginSettings('threads')?.statuses?.[0]?.label;
+        repository.settingsQueries.getPluginSettings(pluginSettingsKey('threads'))?.statuses?.[0]?.label;
 
       const { changes } = threadsSpec.typeOf('THREADS_SETTINGS_UPDATED', event);
 
@@ -312,7 +313,7 @@ export const threadsSystem = setup({
                 type: 'THREAD_CONNECTED',
                 data: {
                   ...repository.threadQueries.connectedData(),
-                  settings: repository.settingsQueries.getPluginSettings('threads') ?? null,
+                  settings: repository.settingsQueries.getPluginSettings(pluginSettingsKey('threads')) ?? null,
                 },
               });
           }
@@ -341,7 +342,7 @@ export const threadsSystem = setup({
         type: 'THREAD_CONNECTED',
         data: {
           ...repository.threadQueries.connectedData(),
-          settings: repository.settingsQueries.getPluginSettings('threads') ?? null,
+          settings: repository.settingsQueries.getPluginSettings(pluginSettingsKey('threads')) ?? null,
         },
       });
     },
@@ -407,7 +408,7 @@ export const threadsSystem = setup({
         });
 
         const connectedData = repository.threadQueries.connectedData();
-        const threadsSettings = repository.settingsQueries.getPluginSettings('threads');
+        const threadsSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('threads'));
 
         sendToPlugin('threads', {
           type: 'THREAD_CONNECTED',

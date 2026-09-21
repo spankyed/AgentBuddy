@@ -18,6 +18,7 @@ import { exportLibrary } from './export-library'
 import { importLibrary } from './import-library'
 import type { ContentSection } from '@/features/library/be/types';
 import type { CommandItem } from '@/features/settings/be/types';
+import { pluginSettingsKey } from '@/features/settings/plugin-settings';
 
 type IncomingLibraryEvents =
   | { type: 'CREATE_DOCUMENT'; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }
@@ -218,7 +219,7 @@ export const librarySystem = setup({
       repository.libraryCommands.migrateDocumentShortCodes()
       repository.libraryCommands.migrateDisplayOrders()
 
-      const librarySettings = repository.settingsQueries.getPluginSettings('library')
+      const librarySettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('library'))
 
       sendToPlugin('library', {
           type: 'LIBRARY_CONNECTED' as const,
@@ -400,7 +401,7 @@ export const librarySystem = setup({
           })
 
         // Refresh library data
-        const librarySettings = repository.settingsQueries.getPluginSettings('library')
+        const librarySettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('library'))
 
         sendToPlugin('library', {
             type: 'LIBRARY_CONNECTED' as const,

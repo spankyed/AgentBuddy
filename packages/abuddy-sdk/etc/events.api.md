@@ -38,8 +38,10 @@ export type HostSystemEvents = {
 
 // @public
 export function incomingEvents<S extends {
+    id: string;
     _incoming: unknown;
 }>(spec: S): {
+    id: S['id'];
     _incoming: S['_incoming'];
 };
 
@@ -94,6 +96,11 @@ export type SystemEventMap = {
         type: string;
     };
 };
+
+// @public
+export type SystemOfFeature<FeatureId extends string, Spec extends {
+    id: FeatureId;
+}> = Spec;
 
 // @public
 export type SystemTarget = string | {

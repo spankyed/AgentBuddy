@@ -557,6 +557,7 @@ export function createPackRegistry(): PackRegistry {
     getRegisteredPackSystemIds,
     packOrigin: (packId) => origins.get(packId) ?? null,
     builtInPacks: () => [...origins.values()].filter((o) => o.builtIn),
+    builtInPackIds: () => [...origins.values()].filter((o) => o.builtIn).map((o) => o.id),
     externalPacks: () => [...origins.values()].filter((o) => !o.builtIn),
     externalPackTargets: (packIds) => {
       const wanted = packIds && new Set(packIds);
