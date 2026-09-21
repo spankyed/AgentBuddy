@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, setup, type AnyActorRef } from 'xstate';
 import { startTestRuntime, takeSystemErrors, testRootEvents } from '@abuddy/sdk/testing';
 import { onLog } from '@abuddy/sdk/logger';
-import type { OutgoingSystemEvents } from '@abuddy/sdk/events';
+import type { Message } from '@abuddy/sdk/events';
 import { createAppBus } from '../../src/bus/index.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { createPackRegistry } from '../../src/packs/pack-registration.ts';
@@ -18,9 +18,9 @@ startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: registry });
 const machine = setup({}).createMachine({});
 
 let bus: AnyActorRef;
-const outgoing: OutgoingSystemEvents[] = [];
+const outgoing: Message[] = [];
 /** What reached a plugin, less the SYSTEM_ERROR events reportError sends there itself */
-const delivered = () => outgoing.filter((e) => e.type !== 'SYSTEM_ERROR' && e.type !== 'CLIENT_CONNECTED');
+const delivered = () => outgoing.filter(({ event }) => event.type !== 'SYSTEM_ERROR' && event.type !== 'CLIENT_CONNECTED');
 let stopOutgoing: () => void;
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -30,8 +30,8 @@ async function connect(): Promise<void> {
   await flush();
 }
 
-async function send(event: OutgoingSystemEvents): Promise<void> {
-  bus.send({ type: 'OUTGOING', event });
+async function send(message: Message): Promise<void> {
+  bus.send({ type: 'OUTGOING', message });
   await flush();
 }
 
@@ -64,14 +64,20 @@ afterEach(() => {
 });
 
 describe('an event a system sends to a plugin', () => {
+  // Where it goes travels beside the event, so a field of the event's own is never taken for it
+  it('reaches the client exactly as sent, a pluginId field of its own included', async () => {
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', id: 'memo-1', pluginId: 'default-setup/notes' } });
+    expect(delivered()).toEqual([{ to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', id: 'memo-1', pluginId: 'default-setup/notes' } }]);
+  });
+
   it('is delivered when the plugin declares it', async () => {
-    await send({ type: 'MEMO_ADDED', pluginId: 'memo-pack/memos', id: 'memo-1' });
-    expect(delivered().map((e) => e.type)).toEqual(['MEMO_ADDED']);
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', id: 'memo-1' } });
+    expect(delivered().map(({ event }) => event.type)).toEqual(['MEMO_ADDED']);
     expect(takeSystemErrors()).toEqual([]);
   });
 
   it('is dropped and reported when the plugin declares no such type', async () => {
-    await send({ type: 'MEMO_SHREDDED', pluginId: 'memo-pack/memos' });
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' } });
     expect(delivered()).toEqual([]);
     const [error] = takeSystemErrors();
     expect(error?.message).toContain('MEMO_SHREDDED');
@@ -85,13 +91,13 @@ describe('an event a system sends to a plugin', () => {
    * in the Logs plugin where they are looking, and the person using the app can do nothing about it.
    */
   it('is reported as a diagnostic, which is recorded and logged but not shown to the user', async () => {
-    await send({ type: 'MEMO_SHREDDED', pluginId: 'memo-pack/memos' });
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' } });
     expect(takeSystemErrors().map((e) => e.severity)).toEqual(['diagnostic']);
   });
 
   // The case the notes bug's neighbours live in: a plugin id nothing registered declares
   it('is dropped and reported when no pack declares that plugin at all', async () => {
-    await send({ type: 'MEMO_ADDED', pluginId: 'ghost' });
+    await send({ to: 'ghost', event: { type: 'MEMO_ADDED' } });
     expect(delivered()).toEqual([]);
     const [error] = takeSystemErrors();
     expect(error?.message).toContain('ghost');
@@ -99,22 +105,22 @@ describe('an event a system sends to a plugin', () => {
   });
 
   it("delivers to a host plugin, whose types the host declares and no pack widens", async () => {
-    await send({ type: 'APPLICATION_HOTKEYS', pluginId: 'host/application', hotkeys: {} });
-    expect(delivered().map((e) => e.type)).toContain('APPLICATION_HOTKEYS');
+    await send({ to: 'host/application', event: { type: 'APPLICATION_HOTKEYS', hotkeys: {} } });
+    expect(delivered().map(({ event }) => event.type)).toContain('APPLICATION_HOTKEYS');
     expect(takeSystemErrors()).toEqual([]);
   });
 
   it('drops an event a host plugin does not declare, so the host is checked like a pack', async () => {
-    await send({ type: 'APPLICATION_EXPLODE', pluginId: 'host/application' });
-    expect(delivered().map((e) => e.type)).not.toContain('APPLICATION_EXPLODE');
+    await send({ to: 'host/application', event: { type: 'APPLICATION_EXPLODE' } });
+    expect(delivered().map(({ event }) => event.type)).not.toContain('APPLICATION_EXPLODE');
     expect(takeSystemErrors()[0]?.message).toContain('APPLICATION_EXPLODE');
   });
 
   // The packs view is driven entirely by a host system's sends. Checking sends without declaring the
   // host's own plugins dropped every one of them, and the view stopped updating.
   it("delivers the packs system's sends to the packs plugin", async () => {
-    await send({ type: 'PACKS_LIST', pluginId: 'host/packs', packs: [] });
-    expect(delivered().map((e) => e.type)).toEqual(['PACKS_LIST']);
+    await send({ to: 'host/packs', event: { type: 'PACKS_LIST', packs: [] } });
+    expect(delivered().map(({ event }) => event.type)).toEqual(['PACKS_LIST']);
     expect(takeSystemErrors()).toEqual([]);
   });
 });
@@ -130,9 +136,9 @@ describe('a drop whose report produces another droppable send', () => {
   it('reports the pair once and settles, rather than feeding itself', async () => {
     // Stands in for default-setup's logs system: every log event becomes a send to the logs plugin,
     // which no pack here declares, so each send is dropped and reporting it logs again.
-    const stopRelay = onLog(() => { bus.send({ type: 'OUTGOING', event: { type: 'LOG_ADDED', pluginId: 'default-setup/logs' } }); });
+    const stopRelay = onLog(() => { bus.send({ type: 'OUTGOING', message: { to: 'default-setup/logs', event: { type: 'LOG_ADDED' } } }); });
     try {
-      await send({ type: 'LOG_ADDED', pluginId: 'default-setup/logs' });
+      await send({ to: 'default-setup/logs', event: { type: 'LOG_ADDED' } });
       for (let i = 0; i < 5; i++) await flush();
       const errors = takeSystemErrors().filter((e) => e.message?.includes('default-setup/logs'));
       expect(errors).toHaveLength(1);
@@ -142,12 +148,12 @@ describe('a drop whose report produces another droppable send', () => {
   });
 
   it('still reports a different plugin, so deduplication is per pair and not a global mute', async () => {
-    await send({ type: 'MEMO_SHREDDED', pluginId: 'memo-pack/memos' });
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' } });
     expect(takeSystemErrors().map((e) => e.message)).toHaveLength(1);
     // The same pair again is silent; a different type on the same plugin is not
-    await send({ type: 'MEMO_SHREDDED', pluginId: 'memo-pack/memos' });
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' } });
     expect(takeSystemErrors()).toEqual([]);
-    await send({ type: 'MEMO_BURNED', pluginId: 'memo-pack/memos' });
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_BURNED' } });
     expect(takeSystemErrors()).toHaveLength(1);
   });
 });
@@ -162,7 +168,7 @@ describe('a plugin whose pack is being replaced', () => {
     registry.markPackReplacing('memo-pack');
     registry.unregisterPack('memo-pack');
 
-    await send({ type: 'MEMO_ADDED', pluginId: 'memo-pack/memos', id: 'memo-1' });
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_ADDED', id: 'memo-1' } });
 
     expect(delivered()).toEqual([]);
     expect(takeSystemErrors()).toEqual([]);
@@ -189,7 +195,7 @@ describe('a plugin whose pack is being replaced', () => {
     });
     expect(registry.isPluginReplacing('memo-pack/memos')).toBe(false);
 
-    await send({ type: 'MEMO_SHREDDED', pluginId: 'memo-pack/memos' });
+    await send({ to: 'memo-pack/memos', event: { type: 'MEMO_SHREDDED' } });
     expect(takeSystemErrors()).toHaveLength(1);
   });
 
@@ -209,13 +215,13 @@ describe('a plugin whose pack is being replaced', () => {
  */
 describe('a pack that declared no event types', () => {
   it('has its sends delivered rather than dropped', async () => {
-    await send({ type: 'ANYTHING_AT_ALL', pluginId: 'older-pack/legacy' });
-    expect(delivered().map((e) => e.type)).toEqual(['ANYTHING_AT_ALL']);
+    await send({ to: 'older-pack/legacy', event: { type: 'ANYTHING_AT_ALL' } });
+    expect(delivered().map(({ event }) => event.type)).toEqual(['ANYTHING_AT_ALL']);
     expect(takeSystemErrors()).toEqual([]);
   });
 
   it('does not make an unknown plugin id pass too', async () => {
-    await send({ type: 'ANYTHING_AT_ALL', pluginId: 'not-a-plugin' });
+    await send({ to: 'not-a-plugin', event: { type: 'ANYTHING_AT_ALL' } });
     expect(delivered()).toEqual([]);
     expect(takeSystemErrors()[0]?.message).toContain('no registered pack declares');
   });

@@ -1,6 +1,6 @@
 // The frontend's port: what the SDK's frontend code reaches in the renderer, bound once per window
 import type { AnyActorRef } from 'xstate';
-import type { IncomingSystemEvents } from '../events/index.ts';
+import type { Message } from '../events/index.ts';
 import type { SecretsClient } from '../fe/secrets-client.ts';
 import type { Component } from 'vue';
 import type { Plugin } from '../fe/plugin.ts';
@@ -11,7 +11,7 @@ import type { PackExtensionsView } from './packs-view.ts';
 /** How frontend code sends to backend systems (the renderer's API client) */
 export interface FeTransport {
   /** Delivers an event to a backend system */
-  sendIncoming(event: IncomingSystemEvents): void;
+  sendIncoming(message: Message): void;
 }
 
 /** The packs whose frontends the renderer registered, read-only */

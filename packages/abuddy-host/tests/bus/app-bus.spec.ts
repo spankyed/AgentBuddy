@@ -7,7 +7,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, setup, type AnyActorRef } from 'xstate';
 import { startTestRuntime, testRootEvents } from '@abuddy/sdk/testing';
-import type { OutgoingSystemEvents } from '@abuddy/sdk/events';
+import type { Message } from '@abuddy/sdk/events';
 import { createAppBus } from '../../src/bus/index.ts';
 import { appState, HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { createPackRegistry } from '../../src/packs/pack-registration.ts';
@@ -33,7 +33,7 @@ function registerRecorderPack(id: string) {
 
 let bus: AnyActorRef;
 let packDir: string;
-const outgoing: OutgoingSystemEvents[] = [];
+const outgoing: Message[] = [];
 let stopOutgoing: () => void;
 const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -71,7 +71,8 @@ describe('createAppBus', () => {
     await flush();
 
     expect(outgoing).toContainEqual({
-      type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginVisibility: { 'local-pack/feature': false }, lastActivePlugin: 'local-pack/feature', pluginId: 'host/application',
+      to: 'host/application',
+      event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginVisibility: { 'local-pack/feature': false }, lastActivePlugin: 'local-pack/feature' },
     });
   });
 
@@ -79,7 +80,7 @@ describe('createAppBus', () => {
     testRootEvents.emitConnected();
     await flush();
     expect(received).toEqual(['local-pack']);
-    expect(outgoing).toContainEqual(expect.objectContaining({ type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginId: 'host/application' }));
+    expect(outgoing).toContainEqual({ to: 'host/application', event: expect.objectContaining({ type: 'CLIENT_CONNECTED', hasOnboarded: true }) });
 
     testRootEvents.emitPackClientConnected('fe-pack');
     await flush();
@@ -98,7 +99,7 @@ describe('createAppBus', () => {
       bus.stop();
       bus = createActor(createAppBus(registry), { systemId: 'host/bus' }).start();
       testRootEvents.emitConnected();
-      testRootEvents.emitIncoming({ type: 'PING', systemId: 'ping-pack/feature' });
+      testRootEvents.emitIncoming({ to: 'ping-pack/feature', event: { type: 'PING' } });
       await flush();
       expect(pings).toEqual(['ping']);
     } finally {
@@ -118,17 +119,17 @@ describe('createAppBus', () => {
       bus.stop();
       bus = createActor(createAppBus(registry), { systemId: 'host/bus' }).start();
       // A schedule tick or a `fire` step at boot, with no window open yet
-      testRootEvents.emitIncoming({ type: 'PING', systemId: 'ping-pack/feature' });
-      testRootEvents.emitPluginSend({ type: 'EARLY', pluginId: 'ping-pack/feature' });
+      testRootEvents.emitIncoming({ to: 'ping-pack/feature', event: { type: 'PING' } });
+      testRootEvents.emitPluginSend({ to: 'ping-pack/feature', event: { type: 'EARLY' } });
       await flush();
       expect(pings).toEqual(['ping']);
       expect(outgoing).toEqual([]);
 
       testRootEvents.emitConnected();
-      testRootEvents.emitPluginSend({ type: 'LATE', pluginId: 'ping-pack/feature' });
+      testRootEvents.emitPluginSend({ to: 'ping-pack/feature', event: { type: 'LATE' } });
       await flush();
-      expect(outgoing.map((event) => event.type)).toContain('LATE');
-      expect(outgoing.map((event) => event.type)).not.toContain('EARLY');
+      expect(outgoing.map(({ event }) => event.type)).toContain('LATE');
+      expect(outgoing.map(({ event }) => event.type)).not.toContain('EARLY');
     } finally {
       unregisterPack('ping-pack');
     }

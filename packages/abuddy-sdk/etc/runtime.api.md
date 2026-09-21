@@ -62,7 +62,7 @@ export interface FePackRegistryView extends PackExtensionsView {
 
 // @public
 export interface FeTransport {
-    sendIncoming(event: IncomingSystemEvents): void;
+    sendIncoming(message: Message): void;
 }
 
 // @public
@@ -123,22 +123,22 @@ export interface PackRegistryView extends PackExtensionsView {
 
 // @public
 export interface RootEvents {
-    emitIncoming(event: IncomingSystemEvents): void;
+    emitIncoming(message: Message): void;
     // (undocumented)
     emitLog(event: LogEvent): void;
-    emitOutgoing(event: OutgoingSystemEvents): void;
-    emitPluginSend(event: OutgoingSystemEvents): void;
+    emitOutgoing(message: Message): void;
+    emitPluginSend(message: Message): void;
     // (undocumented)
     onConnected(callback: () => void): () => void;
     // (undocumented)
-    onIncoming(callback: (event: IncomingSystemEvents) => void): () => void;
+    onIncoming(callback: (message: Message) => void): () => void;
     // (undocumented)
     onLog(callback: (event: LogEvent) => void): () => void;
     // (undocumented)
-    onOutgoing(callback: (event: OutgoingSystemEvents) => void): () => void;
+    onOutgoing(callback: (message: Message) => void): () => void;
     onPackClientConnected(callback: (packId: string) => void): () => void;
     // (undocumented)
-    onPluginSend(callback: (event: OutgoingSystemEvents) => void): () => void;
+    onPluginSend(callback: (message: Message) => void): () => void;
 }
 
 // @internal

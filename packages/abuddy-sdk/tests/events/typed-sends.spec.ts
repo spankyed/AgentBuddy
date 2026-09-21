@@ -74,7 +74,7 @@ describe('sendToPlugin and emit', () => {
       // @ts-expect-error MEMO_ADDED needs its text
       emit('memos', { type: 'MEMO_ADDED' });
     }).toBeFunction();
-    expectTypeOf(() => emit('memos', { type: 'MEMOS_CLEARED' }).event.pluginId).returns.toEqualTypeOf<'memos'>();
+    expectTypeOf(() => emit('memos', { type: 'MEMOS_CLEARED' }).message.event).returns.toEqualTypeOf<Plugins['memos']>();
   });
 
   it('reject a union plugin id', () => {

@@ -9,7 +9,7 @@ import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts';
 import { createLogger, onLog, reportError, type LogEvent } from '../../src/logger/index.ts';
 import { services } from '../../src/services/index.ts';
 import { testPacks } from '../../src/testing/packs.ts';
-import type { IncomingSystemEvents, OutgoingSystemEvents } from '../../src/events/index.ts';
+import type { Message } from '../../src/events/index.ts';
 
 process.env.ABUDDY_ENV ??= 'test';
 process.env.ABUDDY_USER_DATA_DIR ??= os.tmpdir();
@@ -24,9 +24,9 @@ afterEach(() => {
 /** Everything `run` put on the bus */
 function onBus(run: () => void) {
   const logs: LogEvent[] = [];
-  const toPlugins: OutgoingSystemEvents[] = [];
-  const outgoing: OutgoingSystemEvents[] = [];
-  const incoming: IncomingSystemEvents[] = [];
+  const toPlugins: Message[] = [];
+  const outgoing: Message[] = [];
+  const incoming: Message[] = [];
   const stop = [
     testRootEvents.onLog((e) => logs.push(e)),
     testRootEvents.onPluginSend((e) => toPlugins.push(e)),
@@ -49,17 +49,27 @@ describe('on the bound bus', () => {
       services.emitter.sendToPlugin('memo-pack/memos', { type: 'MEMO_REMOVED' });
     });
     expect(sent.toPlugins).toEqual([
-      { type: 'MEMO_ADDED', pluginId: 'memo-pack/memos' },
-      { type: 'MEMO_REMOVED', pluginId: 'memo-pack/memos' },
+      { to: 'memo-pack/memos', event: { type: 'MEMO_ADDED' } },
+      { to: 'memo-pack/memos', event: { type: 'MEMO_REMOVED' } },
     ]);
     expect(sent.outgoing).toEqual([]);
+  });
+
+  // Where a message goes is never a field of its event, so an event may carry any field of its own
+  it('delivers an event exactly as it was sent, a field named pluginId or systemId included', () => {
+    const sent = onBus(() => {
+      sendToPlugin('memo-pack/memos', { type: 'PLUGIN_PICKED', pluginId: 'default-setup/notes' });
+      sendToSystem('memo-pack/memos', { type: 'OPEN', systemId: 'kept', pluginId: 'also-kept' });
+    });
+    expect(sent.toPlugins).toEqual([{ to: 'memo-pack/memos', event: { type: 'PLUGIN_PICKED', pluginId: 'default-setup/notes' } }]);
+    expect(sent.incoming).toEqual([{ to: 'memo-pack/memos', event: { type: 'OPEN', systemId: 'kept', pluginId: 'also-kept' } }]);
   });
 
   it('sendToBrainSystem sends to the designated brain', () => {
     testPacks.designations.set('brain', 'brain-system');
     try {
       expect(onBus(() => sendToBrainSystem({ eventType: 'user.message', payload: 1 })).incoming)
-        .toEqual([{ type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message', payload: 1, systemId: 'brain-system' }]);
+        .toEqual([{ to: 'brain-system', event: { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message', payload: 1 } }]);
     } finally {
       testPacks.designations.delete('brain');
     }
@@ -69,18 +79,18 @@ describe('on the bound bus', () => {
     vi.spyOn(console, 'debug').mockImplementation(() => {});
     const heard: unknown[] = [];
     const stop = [onIncoming((e) => heard.push(e)), onLog((e) => heard.push(e))];
-    testRootEvents.emitIncoming({ type: 'ADD_MEMO', systemId: 'memos' });
+    testRootEvents.emitIncoming({ to: 'memos', event: { type: 'ADD_MEMO' } });
     testRootEvents.emitLog({ level: 'debug', message: 'x' });
     stop.forEach((unsubscribe) => unsubscribe());
-    testRootEvents.emitIncoming({ type: 'ADD_MEMO', systemId: 'memos' });
+    testRootEvents.emitIncoming({ to: 'memos', event: { type: 'ADD_MEMO' } });
     testRootEvents.emitLog({ level: 'debug', message: 'y' });
-    expect(heard).toEqual([{ type: 'ADD_MEMO', systemId: 'memos' }, { level: 'debug', message: 'x' }]);
+    expect(heard).toEqual([{ to: 'memos', event: { type: 'ADD_MEMO' } }, { level: 'debug', message: 'x' }]);
   });
 
   it('reportError logs a system error and sends it to the clients', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const sent = onBus(() => reportError({ error: new Error('boom'), source: 'memos', operation: 'save' }));
-    expect(sent.outgoing).toEqual([expect.objectContaining({ type: 'SYSTEM_ERROR', pluginId: 'host/application', source: 'memos', message: 'boom' })]);
+    expect(sent.outgoing).toEqual([{ to: 'host/application', event: expect.objectContaining({ type: 'SYSTEM_ERROR', source: 'memos', message: 'boom' }) }]);
     expect(sent.logs).toEqual([expect.objectContaining({ level: 'error', source: 'memos', message: 'boom' })]);
     expect(takeSystemErrors()).toHaveLength(1);
   });
@@ -114,11 +124,11 @@ describe('on the bound bus', () => {
 
 describe('with a frontend bound too', () => {
   it('sends to systems through the frontend, whose packs the lookups read', () => {
-    const sentByFrontend: IncomingSystemEvents[] = [];
+    const sentByFrontend: Message[] = [];
     bindFeHost({
       application: {} as never,
       secrets: {} as never,
-      transport: { sendIncoming: (event) => sentByFrontend.push(event) },
+      transport: { sendIncoming: (message) => sentByFrontend.push(message) },
       packs: { designation: (role: string) => (role === 'brain' ? 'brain-plugin' : undefined) } as never,
     });
     try {
@@ -128,8 +138,8 @@ describe('with a frontend bound too', () => {
       });
       expect(sent.incoming).toEqual([]);
       expect(sentByFrontend).toEqual([
-        { type: 'ADD_MEMO', systemId: 'memos' },
-        { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message', systemId: 'brain-plugin' },
+        { to: 'memos', event: { type: 'ADD_MEMO' } },
+        { to: 'brain-plugin', event: { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message' } },
       ]);
     } finally {
       unbindFeHost();

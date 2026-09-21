@@ -26,16 +26,16 @@ describe('the test host', () => {
       sendToPlugin('memos', { type: 'MEMO_ADDED' });
       sendToSystem('memos', { type: 'ADD_MEMO' });
       sendToBrainSystem({ eventType: 'user.message' });
-      _rootEvents.emitIncoming({ type: 'PING', systemId: 'memos' });
+      _rootEvents.emitIncoming({ to: 'memos', event: { type: 'PING' } });
     } finally {
       stop.forEach((unsubscribe) => unsubscribe());
       testPacks.designations.delete('brain');
     }
-    expect(toPlugins).toEqual([{ type: 'MEMO_ADDED', pluginId: 'memos' }]);
+    expect(toPlugins).toEqual([{ to: 'memos', event: { type: 'MEMO_ADDED' } }]);
     expect(incoming).toEqual([
-      { type: 'ADD_MEMO', systemId: 'memos' },
-      { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message', systemId: 'brain-system' },
-      { type: 'PING', systemId: 'memos' },
+      { to: 'memos', event: { type: 'ADD_MEMO' } },
+      { to: 'brain-system', event: { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message' } },
+      { to: 'memos', event: { type: 'PING' } },
     ]);
     expect(boundHost().transport.rootEvents).toBe(testRootEvents);
   });

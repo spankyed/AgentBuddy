@@ -15,7 +15,7 @@ describe('typed sends to systems', () => {
     sendToSystem('default-setup/settings', { type: 'GET_SETTINGS' });
 
     expect(await app.nextEmit('default-setup/settings', 'SETTINGS_LOADED'))
-      .toMatchObject({ type: 'SETTINGS_LOADED', pluginId: 'default-setup/settings' });
+      .toMatchObject({ type: 'SETTINGS_LOADED' });
   });
 
   it('reaches its own system by feature id', async () => {
@@ -36,7 +36,7 @@ describe('typed sends to systems', () => {
     sendToSystem('memos', { type: 'ANNOUNCE_MEMO', text: 'hello' });
 
     expect(await app.nextEmit('default-setup/logs', 'LOG_ADDED'))
-      .toMatchObject({ pluginId: 'default-setup/logs', log: { message: 'hello', source: 'memos' } });
+      .toMatchObject({ type: 'LOG_ADDED', log: { message: 'hello', source: 'memos' } });
   });
 
   it('rejects a wrong send at compile time', () => {

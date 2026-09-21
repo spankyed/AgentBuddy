@@ -5,7 +5,7 @@ import { bindHost, type HostRuntime } from '../runtime/host-runtime.ts';
 import type { PackRegistryView } from '../runtime/packs-view.ts';
 import { testPacksView } from './packs.ts';
 import type { RootEvents } from '../runtime/root-events.ts';
-import type { IncomingSystemEvents, OutgoingSystemEvents } from '../events/index.ts';
+import type { Message } from '../events/index.ts';
 import type { EarsEngine } from '@abuddy/ears';
 import type { EARS } from '../types/entities.ts';
 import type { LogEvent, SystemErrorEvent } from '../logger/index.ts';
@@ -30,15 +30,15 @@ class TestEventBus extends EventEmitter implements TestRootEvents {
   emitLog(event: LogEvent): void { this.emit('log', event); }
   emitConnected(): void { this.emit('connected'); }
   emitPackClientConnected(packId: string): void { this.emit('pack-connected', packId); }
-  emitIncoming(event: IncomingSystemEvents): void { this.emit('incoming', event); }
-  emitPluginSend(event: OutgoingSystemEvents): void { this.emit('plugin-send', event); }
-  emitOutgoing(event: OutgoingSystemEvents): void { this.emit('outgoing', event); }
+  emitIncoming(message: Message): void { this.emit('incoming', message); }
+  emitPluginSend(message: Message): void { this.emit('plugin-send', message); }
+  emitOutgoing(message: Message): void { this.emit('outgoing', message); }
   onLog(callback: (event: LogEvent) => void): () => void { return this.subscribe('log', callback); }
   onConnected(callback: () => void): () => void { return this.subscribe('connected', callback); }
   onPackClientConnected(callback: (packId: string) => void): () => void { return this.subscribe('pack-connected', callback); }
-  onIncoming(callback: (event: IncomingSystemEvents) => void): () => void { return this.subscribe('incoming', callback); }
-  onPluginSend(callback: (event: OutgoingSystemEvents) => void): () => void { return this.subscribe('plugin-send', callback); }
-  onOutgoing(callback: (event: OutgoingSystemEvents) => void): () => void { return this.subscribe('outgoing', callback); }
+  onIncoming(callback: (message: Message) => void): () => void { return this.subscribe('incoming', callback); }
+  onPluginSend(callback: (message: Message) => void): () => void { return this.subscribe('plugin-send', callback); }
+  onOutgoing(callback: (message: Message) => void): () => void { return this.subscribe('outgoing', callback); }
 }
 
 /** The in-memory app's bus (the SDK's internal `_rootEvents` once started) */
@@ -50,7 +50,7 @@ const systemErrors: SystemErrorEvent[] = [];
 testRootEvents.onLog((event) => {
   console[event.level](event.source ? `[${event.source}]` : '[test]', event.message, ...(event.meta === undefined ? [] : [event.meta]));
 });
-testRootEvents.onOutgoing((event) => {
+testRootEvents.onOutgoing(({ event }) => {
   if (event.type === 'SYSTEM_ERROR') systemErrors.push(event as unknown as SystemErrorEvent);
 });
 

@@ -69,7 +69,7 @@ function runPacksSystem() {
 
 /** The pack-scoped events the system emitted, unwrapped from the bus envelope */
 const emitted = (sent: AnyEventObject[]) => sent.flatMap(e => {
-  const inner = (e as { event?: AnyEventObject }).event;
+  const inner = (e as { message?: { event: AnyEventObject } }).message?.event;
   return inner ? [inner] : [];
 });
 

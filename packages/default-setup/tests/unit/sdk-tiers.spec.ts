@@ -155,8 +155,7 @@ describe('Tier 3 — System Framework delegates', () => {
     const { emit } = await import('@abuddy/sdk/events');
     const wrapped = emit('test-plugin', { type: 'HELLO' });
     expect(wrapped.type).toBe('OUTGOING');
-    expect(wrapped.event.pluginId).toBe('test-plugin');
-    expect(wrapped.event.type).toBe('HELLO');
+    expect(wrapped.message).toEqual({ to: 'test-plugin', event: { type: 'HELLO' } });
   });
 
   it('getActor is exported', async () => {

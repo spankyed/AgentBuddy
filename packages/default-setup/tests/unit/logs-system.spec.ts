@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createActor } from 'xstate';
 import { createLogger } from '@abuddy/sdk/logger';
 import { testRootEvents } from '@abuddy/sdk/testing';
-import type { OutgoingSystemEvents } from '@abuddy/testing/harness';
+import type { Message } from '@abuddy/testing/harness';
 import logsEntry from '@/features/logs/be/system';
 import { registration } from '@/__generated__/pack-entry';
 
@@ -19,18 +19,20 @@ afterEach(() => {
 describe('logs system', () => {
   it('receives a log entry through onLog and sends it to the logs plugin', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
-    const toPlugin: OutgoingSystemEvents[] = [];
+    const toPlugin: Message[] = [];
     cleanup.push(testRootEvents.onPluginSend((event) => toPlugin.push(event)));
     const actor = createActor(logsEntry.machine).start();
     cleanup.push(() => actor.stop());
 
     createLogger('notes').warn('Note sync is slow', { noteId: 'Note-1' });
 
-    expect(toPlugin).toEqual([expect.objectContaining({
-      type: 'LOG_ADDED',
-      pluginId: 'default-setup/logs',
-      log: expect.objectContaining({ level: 'warn', source: 'notes', message: 'Note sync is slow', meta: { noteId: 'Note-1' } }),
-    })]);
+    expect(toPlugin).toEqual([{
+      to: 'default-setup/logs',
+      event: expect.objectContaining({
+        type: 'LOG_ADDED',
+        log: expect.objectContaining({ level: 'warn', source: 'notes', message: 'Note sync is slow', meta: { noteId: 'Note-1' } }),
+      }),
+    }]);
     expect(actor.getSnapshot().context.logs).toEqual([expect.objectContaining({ source: 'notes', message: 'Note sync is slow' })]);
   });
 
@@ -42,10 +44,10 @@ describe('logs system', () => {
     cleanup.push(() => actor.stop());
     createLogger('notes').warn('Note sync is slow');
 
-    testRootEvents.emitIncoming({ type: 'CLEAR_LOGS', systemId: 'logs' });
+    testRootEvents.emitIncoming({ to: 'logs', event: { type: 'CLEAR_LOGS' } });
     expect(actor.getSnapshot().context.logs).toHaveLength(1);
 
-    testRootEvents.emitIncoming({ type: 'CLEAR_LOGS', systemId: 'default-setup/logs' });
+    testRootEvents.emitIncoming({ to: 'default-setup/logs', event: { type: 'CLEAR_LOGS' } });
     expect(actor.getSnapshot().context.logs).toEqual([]);
   });
 

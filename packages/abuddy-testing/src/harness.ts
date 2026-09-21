@@ -50,7 +50,7 @@ export function resetTestData(): void {
   resetSdkTestData();
   fs.rmSync(testMediaPath(), { recursive: true, force: true });
 }
-export { startApp, type StartAppOptions, type TestApp, type OutgoingSystemEvents, type FlowRun, type FlowStepTrace, type RunFlowOptions } from './app.ts';
+export { startApp, type StartAppOptions, type TestApp, type Message, type PluginEvent, type FlowRun, type FlowStepTrace, type RunFlowOptions } from './app.ts';
 
 const serviceMocks = new Map<string, unknown>();
 /**

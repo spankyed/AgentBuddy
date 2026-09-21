@@ -7,6 +7,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createActor, setup, type AnyActorRef } from 'xstate';
+import type { Message } from '@abuddy/sdk/events';
 
 vi.mock('@abuddy/host/app-state', () => ({
   appState: { get: () => ({ hasOnboarded: true }) },
@@ -214,8 +215,8 @@ describe('sendToPlugin on the bus', () => {
   });
 
   it('reaches clients only once one has connected', async () => {
-    const outgoing: Array<{ type: string }> = [];
-    const stop = rootEvents.onOutgoing((event) => { outgoing.push(event); });
+    const outgoing: Message[] = [];
+    const stop = rootEvents.onOutgoing((message) => { outgoing.push(message); });
     try {
       sendToPlugin('notes-pack/notes', { type: 'BEFORE_CONNECT' });
       await flush();
@@ -225,7 +226,7 @@ describe('sendToPlugin on the bus', () => {
       await flush();
       sendToPlugin('notes-pack/notes', { type: 'AFTER_CONNECT' });
       await flush();
-      expect(outgoing.filter((event) => event.type !== 'CLIENT_CONNECTED')).toEqual([{ type: 'AFTER_CONNECT', pluginId: 'notes-pack/notes' }]);
+      expect(outgoing.filter(({ event }) => event.type !== 'CLIENT_CONNECTED')).toEqual([{ to: 'notes-pack/notes', event: { type: 'AFTER_CONNECT' } }]);
     } finally {
       stop();
     }

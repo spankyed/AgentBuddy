@@ -55,7 +55,7 @@ describe('a real schedule', () => {
     app.stop()
 
     const ticks: unknown[] = []
-    const unsubscribe = testRootEvents.onIncoming((event) => {
+    const unsubscribe = testRootEvents.onIncoming(({ event }) => {
       if (event.type === 'TRIGGER_BRAIN_EVENT') ticks.push(event)
     })
     try {

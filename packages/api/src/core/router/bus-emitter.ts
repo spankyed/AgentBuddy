@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 import { appendCappedLine } from '@abuddy/host/logs';
-import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/core/router/events';
+import type { Message } from '@abuddy/sdk/events';
 import type { LogEvent } from '@abuddy/sdk/logger';
 import type { RootEvents } from '@abuddy/sdk/runtime';
 
@@ -36,17 +36,17 @@ class RootEventEmitter extends EventEmitter implements RootEvents {
   }
 
   // System bus events
-  emitIncoming(event: IncomingSystemEvents) {
-    this.emit('incoming', event);
+  emitIncoming(message: Message) {
+    this.emit('incoming', message);
   }
 
   /** A send to a plugin from outside a system, which the bus delivers once a client is connected */
-  emitPluginSend(event: OutgoingSystemEvents) {
-    this.emit('plugin-send', event);
+  emitPluginSend(message: Message) {
+    this.emit('plugin-send', message);
   }
 
-  emitOutgoing(event: OutgoingSystemEvents) {
-    this.emit('outgoing', event);
+  emitOutgoing(message: Message) {
+    this.emit('outgoing', message);
   }
 
   onLog(callback: (event: LogEvent) => void) {
@@ -64,19 +64,19 @@ class RootEventEmitter extends EventEmitter implements RootEvents {
     return () => this.off('pack-connected', callback);
   }
 
-  onPluginSend(callback: (event: OutgoingSystemEvents) => void) {
+  onPluginSend(callback: (message: Message) => void) {
     this.on('plugin-send', callback);
     return () => this.off('plugin-send', callback);
   }
 
   // Subscribe to outgoing events
-  onOutgoing(callback: (event: OutgoingSystemEvents) => void) {
+  onOutgoing(callback: (message: Message) => void) {
     this.on('outgoing', callback);
     return () => this.off('outgoing', callback);
   }
 
   // Subscribe to incoming events
-  onIncoming(callback: (event: IncomingSystemEvents) => void) {
+  onIncoming(callback: (message: Message) => void) {
     this.on('incoming', callback);
     return () => this.off('incoming', callback);
   }

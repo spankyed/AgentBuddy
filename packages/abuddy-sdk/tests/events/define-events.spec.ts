@@ -27,12 +27,12 @@ describe('defineEvents', () => {
 
   it("sends to the pack's own system at its address", () => {
     expect(incoming(() => events.sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' })))
-      .toEqual([{ type: 'ADD_MEMO', text: 'x', systemId: 'memo-pack/memos' }]);
+      .toEqual([{ to: 'memo-pack/memos', event: { type: 'ADD_MEMO', text: 'x' } }]);
   });
 
   it("sends to another pack's system, named <pack>/<feature>, at its address", () => {
     expect(incoming(() => events.sendToSystem('default-setup/settings', { type: 'GET_SETTINGS' })))
-      .toEqual([{ type: 'GET_SETTINGS', systemId: 'default-setup/settings' }]);
+      .toEqual([{ to: 'default-setup/settings', event: { type: 'GET_SETTINGS' } }]);
   });
 
   it('sends to a plugin at its address, and wraps an event for the bus with emit', () => {
@@ -43,14 +43,14 @@ describe('defineEvents', () => {
     } finally {
       stop();
     }
-    expect(outgoing).toEqual([{ type: 'MEMO_ADDED', pluginId: 'memo-pack/memos' }]);
+    expect(outgoing).toEqual([{ to: 'memo-pack/memos', event: { type: 'MEMO_ADDED' } }]);
     expect(events.emit('memos', { type: 'MEMO_ADDED' })).toEqual(emit('memo-pack/memos', { type: 'MEMO_ADDED' }));
   });
 
   // The host is a pack: its plugins are named by ref, and a bare name is always this pack's own feature
   it("sends to a host plugin by its ref, and takes a bare name as this pack's own", () => {
-    const untyped = events.emit as unknown as (name: string, event: { type: string }) => { event: { pluginId: string } };
-    expect(untyped('host/application', { type: 'APPLICATION_HOTKEYS' }).event.pluginId).toBe('host/application');
-    expect(untyped('application', { type: 'APPLICATION_HOTKEYS' }).event.pluginId).toBe('memo-pack/application');
+    const untyped = events.emit as unknown as (name: string, event: { type: string }) => { message: { to: string } };
+    expect(untyped('host/application', { type: 'APPLICATION_HOTKEYS' }).message.to).toBe('host/application');
+    expect(untyped('application', { type: 'APPLICATION_HOTKEYS' }).message.to).toBe('memo-pack/application');
   });
 });

@@ -9,11 +9,11 @@ import { secretsClient } from '@/core/secrets-client';
 
 /** How `@abuddy/sdk/events` sends in the renderer: events for systems go over the API client */
 export const feTransport: FeTransport = {
-  sendIncoming: (event) => {
+  sendIncoming: (outgoing) => {
     // Caught, since an unhandled rejection shows the error page. The report leaves out the payload, and goes to
     // the app's log (and so diagnostics) as well as the console
-    trpc.bus.send.mutate(event).catch((error: unknown) => {
-      const message = `Couldn't send ${event.type} to ${event.systemId}: ${error instanceof Error ? error.message : String(error)}`;
+    trpc.bus.send.mutate(outgoing).catch((error: unknown) => {
+      const message = `Couldn't send ${outgoing.event.type} to ${outgoing.to}: ${error instanceof Error ? error.message : String(error)}`;
       console.error(`[fe-host] ${message}`);
       window.electronAPI?.rendererLog?.write({ level: 'error', source: 'fe-host', message }).catch(() => {});
       globalToast.error(message);

@@ -3,7 +3,7 @@ import type {} from '@trpc/server/unstable-core-do-not-import';
 import { observable } from '@trpc/server/observable';
 import { TRPCError } from '@trpc/server';
 import { z } from 'zod';
-import type { IncomingSystemEvents, OutgoingSystemEvents } from '@/core/router/events';
+import type { Message } from '@abuddy/sdk/events';
 import { receiveClientEvent, UnknownClientEventError } from '@abuddy/host/bus';
 import { procedure, router } from './trpc';
 import { createLogger } from '@abuddy/sdk/logger';
@@ -14,9 +14,7 @@ const logger = createLogger('app-events');
 
 export const systemBusRouter = router({
   send: procedure
-    .input(z.custom<IncomingSystemEvents>((val) =>
-      typeof val === 'object' && val !== null && 'type' in val && 'systemId' in val
-    ))
+    .input(z.object({ to: z.string().min(1), event: z.object({ type: z.string().min(1) }).passthrough() }))
     .mutation(({ input }) => {
       try {
         receiveClientEvent(appPacks, input);
@@ -39,9 +37,9 @@ export const systemBusRouter = router({
     }),
   sub: procedure
     .subscription(() =>
-      observable<OutgoingSystemEvents>((emit) => {
-        const unsubscribe = rootEvents.onOutgoing((event) => {
-          emit.next(event);
+      observable<Message>((emit) => {
+        const unsubscribe = rootEvents.onOutgoing((message) => {
+          emit.next(message);
         });
 
         rootEvents.emitConnected();

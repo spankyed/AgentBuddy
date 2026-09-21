@@ -42,7 +42,7 @@ afterEach(() => app.stop());
 
 const connect = (shell: { pluginVisibility?: Record<string, boolean>; lastActivePlugin?: string }) => {
   subscription.handlers!.onStarted();
-  subscription.handlers!.onData({ pluginId: 'host/application', type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginVisibility: {}, ...shell });
+  subscription.handlers!.onData({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginVisibility: {}, ...shell } });
 };
 const context = () => app.getSnapshot().context;
 
@@ -70,11 +70,11 @@ it('hides a tab at once, and sends the host the choice to record', () => {
   app.send({ type: 'SET_PLUGIN_VISIBILITY', pluginId: 'default-setup/threads', visible: false });
 
   expect(context().visiblePlugins.map((p) => p.id)).toEqual(['default-setup/notes']);
-  expect(mutate).toHaveBeenCalledWith({ systemId: 'host/application', type: 'SET_PLUGIN_VISIBILITY', pluginId: 'default-setup/threads', visible: false });
+  expect(mutate).toHaveBeenCalledWith({ to: 'host/application', event: { type: 'SET_PLUGIN_VISIBILITY', pluginId: 'default-setup/threads', visible: false } });
 });
 
 it('sends the host the plugin opened, to open on next time', () => {
   app.send({ type: 'SELECT_PLUGIN', pluginId: 'default-setup/threads' });
 
-  expect(mutate).toHaveBeenCalledWith({ systemId: 'host/application', type: 'SET_LAST_ACTIVE_PLUGIN', pluginId: 'default-setup/threads' });
+  expect(mutate).toHaveBeenCalledWith({ to: 'host/application', event: { type: 'SET_LAST_ACTIVE_PLUGIN', pluginId: 'default-setup/threads' } });
 });

@@ -99,7 +99,7 @@ const packsState = setup({
 
     sendInstall: ({ event }) => {
       const ev = typeOf('UI.INSTALL', event);
-      trpc.bus.send.mutate({ systemId: id, type: 'INSTALL_PACK', packSlug: ev.packSlug, source: ev.source });
+      trpc.bus.send.mutate({ to: id, event: { type: 'INSTALL_PACK', packSlug: ev.packSlug, source: ev.source } });
     },
 
     promptUninstall: assign({
@@ -112,7 +112,7 @@ const packsState = setup({
 
     sendUninstall: ({ event }) => {
       const ev = typeOf('UI.UNINSTALL', event);
-      trpc.bus.send.mutate({ systemId: id, type: 'UNINSTALL_PACK', packId: ev.packId });
+      trpc.bus.send.mutate({ to: id, event: { type: 'UNINSTALL_PACK', packId: ev.packId } });
     },
 
     clearUninstallPrompt: assign({
@@ -121,7 +121,7 @@ const packsState = setup({
 
     sendToggleEnabled: ({ event }) => {
       const ev = typeOf('UI.TOGGLE_ENABLED', event);
-      trpc.bus.send.mutate({ systemId: id, type: 'TOGGLE_PACK_ENABLED', packId: ev.packId });
+      trpc.bus.send.mutate({ to: id, event: { type: 'TOGGLE_PACK_ENABLED', packId: ev.packId } });
     },
 
     selectPack: assign({
@@ -151,15 +151,15 @@ const packsState = setup({
 
     sendUpdate: ({ event }) => {
       const ev = typeOf('UI.UPDATE', event);
-      trpc.bus.send.mutate({ systemId: id, type: 'UPDATE_PACK', packId: ev.packId });
+      trpc.bus.send.mutate({ to: id, event: { type: 'UPDATE_PACK', packId: ev.packId } });
     },
 
     sendCheckUpdates: () => {
-      trpc.bus.send.mutate({ systemId: id, type: 'CHECK_FOR_UPDATES' });
+      trpc.bus.send.mutate({ to: id, event: { type: 'CHECK_FOR_UPDATES' } });
     },
 
     sendRefresh: () => {
-      trpc.bus.send.mutate({ systemId: id, type: 'GET_INSTALLED_PACKS' });
+      trpc.bus.send.mutate({ to: id, event: { type: 'GET_INSTALLED_PACKS' } });
     },
   },
 }).createMachine({

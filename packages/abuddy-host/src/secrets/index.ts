@@ -59,7 +59,7 @@ export function secretsSnapshot(): SecretsSnapshot {
 export function forwardSecretsChanges(registry: Pick<PackRegistry, 'getRegisteredSystems'>): () => void {
   return secretsStore.onChange(() => {
     if (!hasDesignation('settings')) return;
-    const systemId = getDesignated('settings');
-    if (registry.getRegisteredSystems().has(systemId)) _rootEvents.emitIncoming({ type: 'SECRETS_CHANGED', systemId });
+    const to = getDesignated('settings');
+    if (registry.getRegisteredSystems().has(to)) _rootEvents.emitIncoming({ to, event: { type: 'SECRETS_CHANGED' } });
   });
 }

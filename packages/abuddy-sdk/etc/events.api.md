@@ -12,10 +12,11 @@ export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(p
 // @public
 export function emit<P extends string, E extends {
     type: string;
-}>(pluginId: P, event: E): {
+}>(to: P, event: E): {
     type: 'OUTGOING';
-    event: E & {
-        pluginId: P;
+    message: {
+        to: P;
+        event: E;
     };
 };
 
@@ -57,24 +58,21 @@ export type IncomingEventsOf<T> = T extends {
 } ? Incoming : never;
 
 // @public
-export type IncomingSystemEvents = {
-    type: string;
-    systemId: string;
-    [key: string]: unknown;
-};
+export interface Message {
+    // (undocumented)
+    event: {
+        type: string;
+        [key: string]: unknown;
+    };
+    // (undocumented)
+    to: string;
+}
 
 // @public
 export function onConnected(callback: () => void): () => void;
 
 // @public
-export function onIncoming(callback: (event: IncomingSystemEvents) => void): () => void;
-
-// @public
-export type OutgoingSystemEvents = {
-    type: string;
-    pluginId: string;
-    [key: string]: unknown;
-};
+export function onIncoming(callback: (message: Message) => void): () => void;
 
 // @public
 export type PluginEvents = {
@@ -91,13 +89,13 @@ export function sendToBrainSystem(event: {
 }): void;
 
 // @public
-export function sendToPlugin(pluginId: string, event: {
+export function sendToPlugin(to: string, event: {
     type: string;
     [key: string]: unknown;
 }): void;
 
 // @public
-export function sendToSystem(systemId: string, event: {
+export function sendToSystem(to: string, event: {
     type: string;
     [key: string]: unknown;
 }): void;
@@ -112,8 +110,9 @@ export type SystemEventMap = {
 // @public
 export type TypedEmit<M extends PluginEvents> = <P extends keyof M & string>(pluginId: P, event: OneSend<IsUnion<P>, M[P]['type'], M[P]>) => {
     type: 'OUTGOING';
-    event: M[P] & {
-        pluginId: P;
+    message: {
+        to: string;
+        event: M[P];
     };
 };
 

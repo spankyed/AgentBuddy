@@ -52,7 +52,7 @@ async function incomingDuring(run: () => Promise<unknown> | unknown): Promise<Ar
   }
   return incoming;
 }
-const CHANGED = { type: 'SECRETS_CHANGED', systemId: 'test/settings' };
+const CHANGED = { to: 'test/settings', event: { type: 'SECRETS_CHANGED' } };
 
 afterAll(() => {
   store.close();

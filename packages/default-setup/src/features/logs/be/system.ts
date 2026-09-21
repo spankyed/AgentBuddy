@@ -5,7 +5,7 @@ import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import type { LogsState, LogEntry } from './types';
 import { randomId } from '@abuddy/sdk/utils';
 import { onLog, type LogEvent } from '@abuddy/sdk/logger';
-import { onConnected, onIncoming, type IncomingSystemEvents } from '@abuddy/sdk/events';
+import { onConnected, onIncoming, type Message } from '@abuddy/sdk/events';
 import { resolveName } from '@abuddy/sdk/ids';
 import { packId } from '@/__generated__/bus-ids';
 import { repository } from '@/__generated__/repository';
@@ -57,11 +57,8 @@ export const logsSystem = setup({
         });
       };
 
-      const incomingHandler = (event: IncomingSystemEvents) => {
-        if (event.systemId === address) {
-          const { systemId, ...actualEvent } = event;
-          sendBack(actualEvent);
-        }
+      const incomingHandler = ({ to, event }: Message) => {
+        if (to === address) sendBack(event as IncomingLogEvents);
       };
 
       const connectedHandler = () => {

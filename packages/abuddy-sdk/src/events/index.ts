@@ -7,11 +7,15 @@ import { resolveName } from '../ids/addressing.ts';
 import type { EARS } from '../types/entities.ts';
 import type { ApplicationHotkeys } from '../types/index.ts';
 
-/** An event for a backend system, as the bus receives it */
-export type IncomingSystemEvents = { type: string; systemId: string; [key: string]: unknown };
-
-/** An event for a frontend plugin, as the bus sends it */
-export type OutgoingSystemEvents = { type: string; pluginId: string; [key: string]: unknown };
+/**
+ * A message on the bus: the ref of the system or plugin it goes to, and the event exactly as the sender wrote it.
+ * Where it goes is never a field of the event, so an event may carry any field (a `pluginId` of its own included).
+ * Messages sent in (`sendToSystem`) go to systems, and messages sent out (`emit`, `sendToPlugin`) to plugins.
+ */
+export interface Message {
+  to: string;
+  event: { type: string; [key: string]: unknown };
+}
 
 /** Plugin id → the events that plugin receives. Each pack's `#generated/events` defines its `PackEvents`. */
 export type PluginEvents = { [pluginId: string]: { type: string } };
@@ -85,9 +89,9 @@ void _hostPluginEventTypesMatch;
  * Delivers an event to a backend system: in the renderer over its API client, elsewhere onto the bound app's bus.
  * A bound frontend wins, as it does for the registered packs' lookups (`_boundPackExtensions`).
  */
-function sendIncoming(event: IncomingSystemEvents): void {
-  if (_isFeHostBound()) boundFeHost().transport.sendIncoming(event);
-  else if (_isHostBound()) boundHost().transport.rootEvents.emitIncoming(event);
+function sendIncoming(message: Message): void {
+  if (_isFeHostBound()) boundFeHost().transport.sendIncoming(message);
+  else if (_isHostBound()) boundHost().transport.rootEvents.emitIncoming(message);
   else throw new Error('No host is bound to send events through: call bindHost(runtime) (backend) or bindFeHost(runtime) (frontend) from @abuddy/sdk/runtime first');
 }
 
@@ -95,26 +99,26 @@ function sendIncoming(event: IncomingSystemEvents): void {
  * Wraps an event for a plugin, for a system to send to the bus (`system.get(bus).send(emit(…))`).
  * Untyped: packs use the `emit` from their `#generated/events`.
  */
-export function emit<P extends string, E extends { type: string }>(pluginId: P, event: E): { type: 'OUTGOING'; event: E & { pluginId: P } } {
-  return { type: 'OUTGOING', event: { ...event, pluginId } };
+export function emit<P extends string, E extends { type: string }>(to: P, event: E): { type: 'OUTGOING'; message: { to: P; event: E } } {
+  return { type: 'OUTGOING', message: { to, event } };
 }
 
 /**
  * Sends an event to a frontend plugin through the bus, which delivers it once a client is connected (as `emit` in a
  * system). Backend only. Untyped: packs use the `sendToPlugin` from their `#generated/events`.
  */
-export function sendToPlugin(pluginId: string, event: { type: string; [key: string]: unknown }): void {
-  boundHost().transport.rootEvents.emitPluginSend({ ...event, pluginId });
+export function sendToPlugin(to: string, event: { type: string; [key: string]: unknown }): void {
+  boundHost().transport.rootEvents.emitPluginSend({ to, event });
 }
 
 /** Sends an event to a backend system. Untyped: packs use the `sendToSystem` from their `#generated/events`. */
-export function sendToSystem(systemId: string, event: { type: string; [key: string]: unknown }): void {
-  sendIncoming({ ...event, systemId });
+export function sendToSystem(to: string, event: { type: string; [key: string]: unknown }): void {
+  sendIncoming({ to, event });
 }
 
 /** Fires an event at every running flow, through the designated brain system */
 export function sendToBrainSystem(event: { eventType: string; payload?: unknown; targetFlowId?: EARS.EntityId }): void {
-  sendIncoming({ ...event, type: 'TRIGGER_BRAIN_EVENT', systemId: getDesignated('brain') });
+  sendIncoming({ to: getDesignated('brain'), event: { ...event, type: 'TRIGGER_BRAIN_EVENT' } });
 }
 
 /** Calls `callback` each time a client connects; returns the unsubscribe (backend only) */
@@ -122,8 +126,8 @@ export function onConnected(callback: () => void): () => void {
   return boundHost().transport.rootEvents.onConnected(callback);
 }
 
-/** Calls `callback` with each event sent to a backend system; returns the unsubscribe (backend only) */
-export function onIncoming(callback: (event: IncomingSystemEvents) => void): () => void {
+/** Calls `callback` with each message sent to a backend system; returns the unsubscribe (backend only) */
+export function onIncoming(callback: (message: Message) => void): () => void {
   return boundHost().transport.rootEvents.onIncoming(callback);
 }
 
@@ -131,7 +135,7 @@ export function onIncoming(callback: (event: IncomingSystemEvents) => void): () 
 export type TypedEmit<M extends PluginEvents> = <P extends keyof M & string>(
   pluginId: P,
   event: OneSend<IsUnion<P>, M[P]['type'], M[P]>,
-) => { type: 'OUTGOING'; event: M[P] & { pluginId: P } };
+) => { type: 'OUTGOING'; message: { to: string; event: M[P] } };
 
 /** `sendToPlugin` typed against a plugin event map */
 export type TypedSendToPlugin<M extends PluginEvents> = <P extends keyof M & string>(

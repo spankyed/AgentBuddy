@@ -22,10 +22,8 @@ export function handleProtocolInstall(params: Record<string, string>): PackInsta
 export async function requestPackInstall(request: PackInstallRequest): Promise<void> {
   try {
     await trpc.bus.send.mutate({
-      systemId: id,
-      type: 'INSTALL_PACK',
-      packSlug: request.packSlug,
-      source: request.source,
+      to: id,
+      event: { type: 'INSTALL_PACK', packSlug: request.packSlug, source: request.source },
     });
   } catch (err) {
     console.error('[pack-install] Failed to send install request:', err);

@@ -3,7 +3,7 @@
 import { _rootEvents } from '@abuddy/sdk/runtime';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { PackRegistry } from '../packs/pack-registration.ts';
-import type { IncomingSystemEvents } from './machine.ts';
+import type { Message } from '@abuddy/sdk/events';
 
 const logger = createLogger('app-events');
 
@@ -16,7 +16,7 @@ export class UnknownClientEventError extends Error {
 }
 
 /** The event as logged: arrays over 5 items become their count and first 5 */
-function summarizeEventForLog(event: IncomingSystemEvents) {
+function summarizeEventForLog(event: Message['event']) {
   const MAX_ARRAY_LOG_SIZE = 5;
   const summary: Record<string, unknown> = {};
   let truncated = false;
@@ -34,18 +34,19 @@ function summarizeEventForLog(event: IncomingSystemEvents) {
 }
 
 /**
- * Checks a client's event against the systems in `registry` (`getEventValidationMap()`; a `*` entry accepts any type),
+ * Checks a client's message against the systems in `registry` (`getEventValidationMap()`; a `*` entry accepts any type),
  * logs it and emits it on the root event bus. Throws `UnknownClientEventError` for an unknown system or event type.
  */
-export function receiveClientEvent(registry: Pick<PackRegistry, 'getEventValidationMap'>, event: IncomingSystemEvents): void {
-  const validTypes = registry.getEventValidationMap().get(event.systemId);
+export function receiveClientEvent(registry: Pick<PackRegistry, 'getEventValidationMap'>, message: Message): void {
+  const { to, event } = message;
+  const validTypes = registry.getEventValidationMap().get(to);
   if (!validTypes) {
-    throw new UnknownClientEventError(`Unknown system: "${event.systemId}"`);
+    throw new UnknownClientEventError(`Unknown system: "${to}"`);
   }
   if (!validTypes.has('*') && !validTypes.has(event.type)) {
-    throw new UnknownClientEventError(`Unknown event "${event.type}" for system "${event.systemId}"`);
+    throw new UnknownClientEventError(`Unknown event "${event.type}" for system "${to}"`);
   }
 
-  logger.info(`→ Incoming: "${event.type}"`, { event: summarizeEventForLog(event) });
-  _rootEvents.emitIncoming(event);
+  logger.info(`→ Incoming: "${event.type}"`, { to, event: summarizeEventForLog(event) });
+  _rootEvents.emitIncoming(message);
 }

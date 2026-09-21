@@ -53,7 +53,7 @@ afterEach(() => app.stop());
 
 /** The server's CLIENT_CONNECTED broadcast, which any window's connection sends every window */
 const broadcastConnected = (hasOnboarded = true) =>
-  subscription.handlers!.onData({ pluginId: 'host/application', type: 'CLIENT_CONNECTED', hasOnboarded, pluginVisibility: {} });
+  subscription.handlers!.onData({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded, pluginVisibility: {} } });
 /** This window's subscription is established: the server broadcasts its CLIENT_CONNECTED */
 const connect = (hasOnboarded = true) => {
   subscription.handlers!.onStarted();

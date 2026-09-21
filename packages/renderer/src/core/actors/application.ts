@@ -1,6 +1,7 @@
 import { assign, setup, enqueueActions, fromCallback, spawnChild, sendTo, type ActorRefFrom } from 'xstate';
 import type { Plugin } from '@/core/types';
 import type { HotkeyEvent, ContextMenuItem } from '@abuddy/sdk/fe';
+import type { Message } from '@abuddy/sdk/events';
 import { processHotkeys, safeEvents } from '@abuddy/sdk/fe';
 import type { ApplicationHotkeys } from '@abuddy/sdk/types';
 import { trpc, reconnectApiClient } from '@/core/trpc';
@@ -379,17 +380,16 @@ export const createApplicationState = () => setup({
             console.error('Error in subscription:', error);
             sendBack({ type: 'BACKEND_ERROR', error: String(error) });
           },
-          onData: (event: any) => {
-            const { pluginId, ...ev } = event;
-
-            if (application === pluginId) {
-              sendBack(ev);
+          // Each message says which plugin it is for; the event is delivered exactly as the system sent it
+          onData: ({ to, event }: Message) => {
+            if (to === application) {
+              sendBack(event as ApplicationEvent);
             } else {
-              const pluginActor = system.get(pluginId);
+              const pluginActor = system.get(to);
               if (pluginActor) {
-                pluginActor.send(ev);
+                pluginActor.send(event);
               } else {
-                console.warn(`[Backend] Plugin actor not found for ID: ${pluginId}`, ev);
+                console.warn(`[Backend] Plugin actor not found for ID: ${to}`, event);
               }
             }
           },
@@ -637,7 +637,7 @@ export const createApplicationState = () => setup({
         visiblePlugins: context.plugins.filter((plugin) => pluginVisibility[plugin.id] !== false),
       });
       enqueue(() => {
-        trpc.bus.send.mutate({ systemId: application, type: 'SET_PLUGIN_VISIBILITY', pluginId, visible })
+        trpc.bus.send.mutate({ to: application, event: { type: 'SET_PLUGIN_VISIBILITY', pluginId, visible } })
           .catch((error) => console.error('[application] Could not record the plugin visibility:', error));
       });
     }),
@@ -773,7 +773,7 @@ export const createApplicationState = () => setup({
       if (context.activePlugin.id !== newPlugin.id) {
         enqueue(() => {
           // The host records it, so the next window, and the next run, opens on it
-          trpc.bus.send.mutate({ systemId: application, type: 'SET_LAST_ACTIVE_PLUGIN', pluginId: newPlugin.id })
+          trpc.bus.send.mutate({ to: application, event: { type: 'SET_LAST_ACTIVE_PLUGIN', pluginId: newPlugin.id } })
             .catch((error) => console.error('[application] Could not record the last active plugin:', error));
         });
       }

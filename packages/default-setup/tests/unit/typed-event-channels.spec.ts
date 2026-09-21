@@ -33,7 +33,7 @@ describe('emit and sendToPlugin', () => {
   // Wrapped in functions that never run: only their types are checked
   it('accept an event the plugin receives', () => {
     const wrapped = emit('threads', { type: 'THREAD_CREATED', id: 't1' as EARS.EntityId, shortCode: 'T1', entityType: 'Thread' as EARS.Entity, timestamp: 0 });
-    expectTypeOf(wrapped.event.pluginId).toEqualTypeOf<'threads'>();
+    expectTypeOf(wrapped.message.event).toEqualTypeOf<PackEvents['threads']>();
     expectTypeOf(() => {
       emit('flows', actionEvent);
       emit('host/application', { type: 'APPLICATION_HOTKEYS', hotkeys });

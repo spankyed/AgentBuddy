@@ -46,7 +46,6 @@ export type ReportSystemErrorInput = Omit<ReportErrorInput, 'step'>;
 /** What the app shows for a system error: sent to the `host/application` plugin */
 export type SystemErrorEvent = {
   type: 'SYSTEM_ERROR';
-  pluginId: 'host/application';
   errorId: string;
   message: string;
   title?: string;
@@ -102,7 +101,6 @@ function reportSystemError(input: ReportSystemErrorInput): void {
   const severity = input.severity ?? 'error';
   const event: SystemErrorEvent = {
     type: 'SYSTEM_ERROR',
-    pluginId: 'host/application',
     errorId: randomId({ prefix: 'err_', counterSafe: true }),
     title: input.title,
     message,
@@ -120,7 +118,7 @@ function reportSystemError(input: ReportSystemErrorInput): void {
     stack: normalized.stack,
     meta: { errorId: event.errorId, operation: input.operation, entityId: input.entityId, severity, error: normalized },
   });
-  _rootEvents.emitOutgoing(event);
+  _rootEvents.emitOutgoing({ to: 'host/application', event });
 }
 
 function reportStepError(input: ReportSystemErrorInput, step: StepErrorContext): StepRuntimeError {

@@ -185,7 +185,7 @@ it('summarizes a note', async () => {
 `@abuddy/testing/harness`:
 
 - **Setup and data:** `setupPackTests` (`PackTestOptions`), `seedPack` (`SeedPackOptions`), `importFlows`, `resetTestData`, `testMediaPath`, `SeedRuntime`, and `registerPack`/`unregisterPack` (another pack in the test file's registry).
-- **Apps:** `startApp` and its types `StartAppOptions`, `TestApp`, `FlowRun`, `FlowStepTrace`, `RunFlowOptions` and `OutgoingSystemEvents` (what `emitted` and `nextEmit` return).
+- **Apps:** `startApp` and its types `StartAppOptions`, `TestApp`, `FlowRun`, `FlowStepTrace`, `RunFlowOptions` and `PluginEvent` (what `emitted` and `nextEmit` return: the event exactly as sent) and `Message` (`{ to, event }`, what the test bus carries).
 - **Mocks and host state:** `mockService`, `mockInference`, `addTestSecret`, `takeSystemErrors`.
 
 `@abuddy/testing/vitest`: `isolatedDataDir` (`IsolatedDataDir`).

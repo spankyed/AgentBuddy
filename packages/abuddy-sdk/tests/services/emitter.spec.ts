@@ -34,7 +34,7 @@ describe('services.emitter', () => {
     expect(sent(() => {
       services.emitter.sendToSystem('default-setup/notes', { type: 'GET_NOTES' });
       services.emitter.sendToSystem('ext/notes', { type: 'GET_NOTES' });
-    })).toEqual([{ type: 'GET_NOTES', systemId: 'default-setup/notes' }, { type: 'GET_NOTES', systemId: 'ext/notes' }]);
+    })).toEqual([{ to: 'default-setup/notes', event: { type: 'GET_NOTES' } }, { to: 'ext/notes', event: { type: 'GET_NOTES' } }]);
   });
 
   it("sends to the plugin a <packId>/<featureId> name is, the host's included", () => {
@@ -42,8 +42,8 @@ describe('services.emitter', () => {
       services.emitter.sendToPlugin('default-setup/threads', { type: 'SET_PHASE', phase: 'Edit' });
       services.emitter.sendToPlugin('host/application', { type: 'APPLICATION_HOTKEYS', hotkeys: {} });
     })).toEqual([
-      { type: 'SET_PHASE', phase: 'Edit', pluginId: 'default-setup/threads' },
-      { type: 'APPLICATION_HOTKEYS', hotkeys: {}, pluginId: 'host/application' },
+      { to: 'default-setup/threads', event: { type: 'SET_PHASE', phase: 'Edit' } },
+      { to: 'host/application', event: { type: 'APPLICATION_HOTKEYS', hotkeys: {} } },
     ]);
   });
 

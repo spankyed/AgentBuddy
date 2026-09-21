@@ -100,7 +100,7 @@ it("sends to systems over the API client, reporting a rejected send to the conso
   sendToSystem('notes', { type: 'SAVE_NOTE', body: 'secret text' });
   await new Promise(resolve => setTimeout(resolve, 0));
 
-  expect(mutate).toHaveBeenCalledWith({ type: 'SAVE_NOTE', body: 'secret text', systemId: 'notes' });
+  expect(mutate).toHaveBeenCalledWith({ to: 'notes', event: { type: 'SAVE_NOTE', body: 'secret text' } });
   expect(unhandled).not.toHaveBeenCalled();
   const message = "Couldn't send SAVE_NOTE to notes: socket closed";
   expect(consoleError).toHaveBeenCalledWith(`[fe-host] ${message}`);

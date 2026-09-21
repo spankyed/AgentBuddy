@@ -2,7 +2,7 @@ import { sendToPlugin } from '@/__generated__/events';
 import { setup, fromCallback, spawnChild } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
-import { onConnected, onIncoming, type IncomingSystemEvents } from '@abuddy/sdk/events';
+import { onConnected } from '@abuddy/sdk/events';
 import { browserQueries } from './repository/queries';
 import { browserCommands } from './repository/commands';
 import type { SavedTab, SavedBookmark } from './types';
@@ -38,19 +38,10 @@ export const browserSystem = setup({
         sendBack({ type: 'CLIENT_CONNECTED' });
       };
 
-      const incomingHandler = (event: IncomingSystemEvents) => {
-        if (event.systemId === 'browser') {
-          const { systemId, ...actualEvent } = event;
-          sendBack(actualEvent);
-        }
-      };
-
       const onConnectedUnsub = onConnected(connectedHandler);
-      const onIncomingUnsub = onIncoming(incomingHandler);
 
       return () => {
         onConnectedUnsub();
-        onIncomingUnsub();
       };
     }),
   },
