@@ -2,6 +2,7 @@
 import * as os from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { startTestRuntime, takeSystemErrors, testRootEvents } from '../../src/testing/index.ts';
+import { testPacksView } from '../../src/testing/packs.ts';
 import { onIncoming, sendToBrainSystem, sendToPlugin, sendToSystem } from '../../src/events/index.ts';
 import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts';
 import { createLogger, onLog, reportError, type LogEvent } from '../../src/logger/index.ts';
@@ -11,7 +12,8 @@ import type { IncomingSystemEvents, OutgoingSystemEvents } from '../../src/event
 
 process.env.ABUDDY_ENV ??= 'test';
 process.env.ABUDDY_USER_DATA_DIR ??= os.tmpdir();
-startTestRuntime();
+// services.emitter sends only to a registered plugin
+startTestRuntime({ packs: { ...testPacksView(), pluginIds: () => ['memo-pack.memos'] } });
 
 afterEach(() => {
   takeSystemErrors();

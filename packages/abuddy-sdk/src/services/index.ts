@@ -1,7 +1,7 @@
 import type { repository } from '@abuddy/ears';
 import { boundHost, type HostRuntimeServices } from '../runtime/host-runtime.ts';
 import { sendToPlugin, sendToSystem, sendToBrainSystem } from '../events/index.ts';
-import { addressOf } from '../ids/addressing.ts';
+import { parseAddress, resolveName } from '../ids/addressing.ts';
 import { createLogger, type Logger } from '../logger/logger.ts';
 import type { AppDataService } from './app-data.ts';
 import type { TraceStore } from './trace-store.ts';
@@ -51,20 +51,30 @@ export interface HostServices {
   filesystem: FilesystemService;
 }
 
-/** Sends to the system a `<packId>/<featureId>` name addresses, whatever id it runs under */
-function sendToAddressedSystem(address: string, event: { type: string; [key: string]: unknown }): void {
-  const systemId = boundHost().packs.resolveSystemAddress(address);
-  if (!systemId) {
-    throw new Error(`No running system is named "${address}": services.emitter.sendToSystem takes "<packId>/<featureId>"`);
+/**
+ * The address an action's name for a system or plugin refers to, among those registered. Actions run
+ * outside any pack, so they name every feature `<packId>/<featureId>`, their own pack's too; a bare name
+ * is the host's. A name nothing is registered under throws, naming the form to write.
+ */
+function registeredAddress(kind: 'system' | 'plugin', name: string, registered: readonly string[]): string {
+  const hostIds = registered.filter((id) => !parseAddress(id));
+  let address: string | undefined;
+  try {
+    address = resolveName(name, { hostIds });
+  } catch {
+    address = undefined;
   }
-  sendToSystem(systemId, event);
+  if (address && registered.includes(address)) return address;
+  const meant = registered.filter((id) => parseAddress(id)?.featureId === name).map((id) => id.replace('.', '/'));
+  const hint = meant.length === 1 ? ` — did you mean "${meant[0]}"?` : '';
+  throw new Error(`No registered ${kind} is named "${name}": actions name a ${kind} "<packId>/<featureId>"${hint}`);
 }
 
-/** An action names a plugin `<packId>/<featureId>`; the app reports a send to one nobody registered */
-const sendToAddressedPlugin = (address: string, event: { type: string; [key: string]: unknown }): void =>
-  sendToPlugin(addressOf(address), event);
-
-const emitter: HostServices['emitter'] = { sendToPlugin: sendToAddressedPlugin, sendToSystem: sendToAddressedSystem, sendToBrainSystem };
+const emitter: HostServices['emitter'] = {
+  sendToPlugin: (name, event) => sendToPlugin(registeredAddress('plugin', name, boundHost().packs.pluginIds()), event),
+  sendToSystem: (name, event) => sendToSystem(registeredAddress('system', name, boundHost().packs.systemIds()), event),
+  sendToBrainSystem,
+};
 
 /** The bound app's implementation of a service; each call reads the binding */
 const app = <K extends keyof HostRuntimeServices>(name: K): HostRuntimeServices[K] => boundHost().services[name];

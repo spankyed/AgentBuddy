@@ -114,10 +114,11 @@ export interface PackRegistryView extends PackExtensionsView {
     earsNames(): EarsNames;
     getRegisteredServices(): Record<string, unknown>;
     onSettingsDefaultsChanged(listener: () => void): () => void;
-    resolveSystemAddress(address: string): string | undefined;
+    pluginIds(): readonly string[];
     seeders(packId: string): readonly Seeder[];
     seedHooks(entity: string): SeedHooks | undefined;
     settingsDefaults(): PackSettingsDefaults;
+    systemIds(): readonly string[];
 }
 
 // @public

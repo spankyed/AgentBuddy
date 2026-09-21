@@ -13,7 +13,7 @@ const registry = createPackRegistry();
 startTestRuntime({ packs: registry });
 const {
   getPackExtensions, getRegisteredEARSPolicy, getRegisteredEntityTypes, getRegisteredServices,
-  registerPack, resolveSystemAddress, runRegisteredBootSeeds, unregisterPack,
+  registerPack, systemIds, pluginIds, runRegisteredBootSeeds, unregisterPack,
 } = registry;
 
 const registered: string[] = [];
@@ -132,25 +132,21 @@ describe('registerPack designations', () => {
   });
 });
 
-describe('resolveSystemAddress', () => {
+describe('registered addresses', () => {
   const systemDef = (id: string) => ({ id, machine: {} as unknown as PackSystemDef['machine'], events: new Set<string>() });
-  const registerSystems = (id: string, systemIds: string[]) => {
-    registerPack({ id, systems: systemIds.map(systemDef) } as unknown as PackRegistration);
-    registered.push(id);
-  };
 
-  it("resolves <packId>/<featureId> to the id the pack's system runs under", () => {
-    registerSystems('default-setup', ['default-setup.notes']);
-    registerSystems('ext', ['ext.notes']);
-    expect(resolveSystemAddress('default-setup/notes')).toBe('default-setup.notes');
-    expect(resolveSystemAddress('ext/notes')).toBe('ext.notes');
-  });
+  it("lists every pack's systems and plugins at their addresses, the host's bare", () => {
+    registerPack({
+      id: 'ext', systems: [systemDef('ext.notes')],
+      features: [{ id: 'notes', hasSystem: true, hasPlugin: true, services: [] }],
+    } as unknown as PackRegistration);
+    registered.push('ext');
+    expect(systemIds()).toContain('ext.notes');
+    expect(pluginIds()).toEqual(expect.arrayContaining(['ext.notes', 'application']));
 
-  it('resolves nothing for an unregistered pack or feature, or a name without a pack', () => {
-    registerSystems('ext', ['ext.notes']);
-    for (const address of ['ext/tasks', 'other/notes', 'notes', 'ext.notes', '/notes']) {
-      expect(resolveSystemAddress(address)).toBeUndefined();
-    }
+    unregisterPack(registered.pop()!);
+    expect(systemIds()).not.toContain('ext.notes');
+    expect(pluginIds()).not.toContain('ext.notes');
   });
 });
 

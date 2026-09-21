@@ -64,7 +64,7 @@ describe('createHostRuntime', () => {
     packs.registerPack({ id: 'runtime-pack', systems: [{ id: 'runtime-pack.memos', machine: {} as never, events: new Set() }], services: { memoService: service } });
     try {
       expect(runtime.packs.getRegisteredServices().memoService).toBe(service);
-      expect(runtime.packs.resolveSystemAddress('runtime-pack/memos')).toBe('runtime-pack.memos');
+      expect(runtime.packs.systemIds()).toContain('runtime-pack.memos');
     } finally {
       packs.unregisterPack('runtime-pack');
     }

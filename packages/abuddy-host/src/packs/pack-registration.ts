@@ -15,7 +15,7 @@ import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS, _reservedEntries } from '@abuddy/sdk/types';
 import { HOST_PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
-import { addressOf, qualifiedId } from '@abuddy/sdk/ids';
+import { qualifiedId } from '@abuddy/sdk/ids';
 import { makePolicy, registerRepository, unregisterRepository, type PartitionPolicy } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { packSeedOrder } from './pack-discovery.ts';
@@ -552,12 +552,8 @@ export function createPackRegistry(): PackRegistry {
         .map((o) => ({ manifest: o.manifest!, dir: o.dir, migrations: registrations.get(o.id)?.migrations }));
     },
 
-    resolveSystemAddress(address) {
-      const slash = address.indexOf('/');
-      if (slash <= 0) return undefined;
-      const id = addressOf(address);
-      return getRegisteredPackSystemIds(address.slice(0, slash)).includes(id) ? id : undefined;
-    },
+    systemIds: () => [...(eventValidationMap ??= buildEventValidationMap()).keys()],
+    pluginIds: () => [...(pluginEventValidationMap ??= buildPluginEventValidationMap()).keys()],
 
     getEventValidationMap: () => eventValidationMap ??= buildEventValidationMap(),
     getPluginEventValidationMap: () => pluginEventValidationMap ??= buildPluginEventValidationMap(),
