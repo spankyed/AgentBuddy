@@ -1,4 +1,4 @@
-import { emit, actorOf } from '@/__generated__/events';
+import { emit, sendToSystem } from '@/__generated__/events';
 import { createMachine, setup, sendTo, enqueueActions, fromCallback, fromPromise, type ErrorActorEvent } from 'xstate';
 import { addressPluginKeys, defineSystem, onPackSettingsDefaultsChanged, type SystemEntry } from '@abuddy/sdk/framework';
 
@@ -225,11 +225,9 @@ export const settingsSystem = setup({
     // The stored keys changed: refresh the plugin, and start the birth flow once a required provider has a key
     secretsChanged: ({ system }) => {
       sendSecrets(system);
-      const threadsActor = actorOf(system, 'threads');
-      if (!threadsActor) return;
       const hasRequiredKey = services.secrets.list().some((secret) => secret.selected && (REQUIRED_PROVIDERS as readonly string[]).includes(secret.provider));
       if (hasRequiredKey && !settingsQueries.getAssistantSettings().birthdate) {
-        threadsActor.send({ type: 'BIRTH_FLOW_START' });
+        sendToSystem('threads', { type: 'BIRTH_FLOW_START' });
       }
     },
 
@@ -291,7 +289,7 @@ export const settingsSystem = setup({
         // The running systems read what the seeds changed (the chat's slash commands, the library's documents)
         system.get(bus).send({ type: 'PACK_CHANGED', packId });
         if (ev.restartBrain) {
-          actorOf(system, 'brain').send({ type: 'RESTART_BRAIN' });
+          sendToSystem('brain', { type: 'RESTART_BRAIN' });
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -300,8 +298,8 @@ export const settingsSystem = setup({
     },
 
     onResetComplete: ({ system }) => {
-      actorOf(system, 'brain').send({ type: 'RESTART_BRAIN' });
-      actorOf(system, 'threads')?.send({ type: 'COMMANDS_CHANGED' });
+      sendToSystem('brain', { type: 'RESTART_BRAIN' });
+      sendToSystem('threads', { type: 'COMMANDS_CHANGED' });
       system.get(bus).send(emit('settings', { type: 'APP_RESET_COMPLETE' }));
     },
 

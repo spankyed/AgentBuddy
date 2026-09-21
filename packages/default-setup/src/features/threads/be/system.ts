@@ -1,4 +1,4 @@
-import { emit, actorOf } from '@/__generated__/events';
+import { emit, sendToSystem } from '@/__generated__/events';
 import { services } from '@/__generated__/services';
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
@@ -254,8 +254,7 @@ export const threadsSystem = setup({
       }));
 
       // Notify flows — all logic lives in the flow layer
-      const brainActor = actorOf(system, 'brain');
-      brainActor.send({
+      sendToSystem('brain', {
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'thread.status.changed',
         payload: { threadId, status, userInduced: true },
@@ -439,8 +438,7 @@ export const threadsSystem = setup({
           repository.settingsCommands.updateSettings('assistant', null, ['birthdate'], birthdate);
           logger.info('Assistant birthdate set', { birthdate });
         }
-        const brainActor = actorOf(system, 'brain');
-        brainActor.send({
+        sendToSystem('brain', {
           type: 'TRIGGER_BRAIN_EVENT',
           eventType: 'onboarding.start',
           payload: {},
@@ -456,8 +454,7 @@ export const threadsSystem = setup({
         logger.info('Assistant birthdate set', { birthdate });
       }
 
-      const brainActor = actorOf(system, 'brain');
-      brainActor.send({
+      sendToSystem('brain', {
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'onboarding.start',
         payload: {},
@@ -590,8 +587,7 @@ export const threadsSystem = setup({
 
         services.chat.sendRecentThreadsRefresh();
 
-        const brainActor = actorOf(system, 'brain');
-        brainActor.send({
+        sendToSystem('brain', {
           type: 'TRIGGER_BRAIN_EVENT',
           eventType: 'user.message',
           payload: {
@@ -696,8 +692,7 @@ export const threadsSystem = setup({
 
       services.chat.sendRecentThreadsRefresh();
 
-      const brainActor = actorOf(system, 'brain');
-      brainActor.send({
+      sendToSystem('brain', {
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'user.command',
         payload: {
@@ -759,8 +754,7 @@ export const threadsSystem = setup({
 
         services.chat.openThreadChatAndRefreshRecent(result.id);
 
-        const brainActor = actorOf(system, 'brain');
-        brainActor.send({
+        sendToSystem('brain', {
           type: 'TRIGGER_BRAIN_EVENT',
           eventType: 'thread.fork',
           payload: {
@@ -816,8 +810,7 @@ export const threadsSystem = setup({
 
       // Unified `thread.revert` brain event — the `kind` discriminator
       // tells the claude-code flow which variant to run.
-      const brainActor = actorOf(system, 'brain');
-      brainActor.send({
+      sendToSystem('brain', {
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'thread.revert',
         payload: {
@@ -868,8 +861,7 @@ export const threadsSystem = setup({
 
       services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId);
 
-      const brainActor = actorOf(system, 'brain');
-      brainActor.send({
+      sendToSystem('brain', {
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'thread.revert',
         payload: { threadId, messageId, kind: 'summarize', deletedMessageIds: deletion.deletedIds, deletedUserMessageCount, agents, codexDeletedUserMessageCount },
@@ -880,8 +872,7 @@ export const threadsSystem = setup({
     },
     pauseTurn: ({ system, event }) => {
       const { threadId } = threadsSpec.typeOf('PAUSE_TURN', event);
-      const brainActor = actorOf(system, 'brain');
-      brainActor.send({
+      sendToSystem('brain', {
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'user.thread.pause',
         payload: { threadId },
@@ -889,8 +880,7 @@ export const threadsSystem = setup({
     },
     forwardBrainEvent: ({ system, event }) => {
       const { eventType, payload } = threadsSpec.typeOf('FORWARD_BRAIN_EVENT', event);
-      const brainActor = actorOf(system, 'brain');
-      brainActor.send({ type: 'TRIGGER_BRAIN_EVENT', eventType, payload });
+      sendToSystem('brain', { type: 'TRIGGER_BRAIN_EVENT', eventType, payload });
     },
     forwardInteractiveMessageResponse: ({ system, event }) => {
       try {
@@ -911,7 +901,7 @@ export const threadsSystem = setup({
         tx(messageId as EARS.EntityId).put('asideText', asideText);
       }
 
-      actorOf(system, 'brain').send({
+      sendToSystem('brain', {
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'interactive.message.response',
         payload: { messageId, threadId, response }

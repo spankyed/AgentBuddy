@@ -1,8 +1,7 @@
-import { actorOf } from '@/__generated__/events';
 import { qx } from '@/__generated__/ears';
 import { untypedQx } from '@abuddy/ears';
 import { services as appServices } from '@/__generated__/services';
-import { setup, sendParent, enqueueActions, raise, type AnyStateMachine } from 'xstate';
+import { setup, sendParent, enqueueActions, raise, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import type { NodeEntity } from '@/__generated__/types';
 import { repository } from '@/__generated__/repository';
 
@@ -132,6 +131,7 @@ const typeOf = safeEvents<ChildCompletedEvent>();
  * @returns Tuple of [machine, systemId, tNode]
  */
 function createChildNode(
+  brain: AnyActorRef,
   stepOrFlowNode: NodeEntity,
   eventTNodeId: EARS.EntityId,
   executionContext?: ExecutionContext,
@@ -145,8 +145,8 @@ function createChildNode(
   const stepDef = stepRegistry.get(stepOrFlowNode.nodeType);
   const spawnsSubflow = stepDef?.runtime?.spawnsSubflow ?? false;
   const { machine, tNodeId, tNode } = spawnsSubflow
-    ? createFlowNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext, true, spawnParent)
-    : createStepNodeSystem(stepOrFlowNode.id, eventTNodeId, executionContext, spawnParent);
+    ? createFlowNodeSystem(brain, stepOrFlowNode.id, eventTNodeId, executionContext, true, spawnParent)
+    : createStepNodeSystem(brain, stepOrFlowNode.id, eventTNodeId, executionContext, spawnParent);
 
   const systemId = `${spawnsSubflow ? 'flow' : 'step'}-tnode-${tNodeId}`;
 
@@ -192,9 +192,12 @@ function subflowEntry(
 }
 
 /**
- * Create a dynamic state machine for a flow that listens to its events
+ * Create a dynamic state machine for a flow that listens to its events. `brain` is the brain system that runs it,
+ * which its steps and subflows report to directly: a parent flow finishing on a child's report stops before a
+ * report routed through the bus would reach it.
  */
 export function createFlowNodeSystem(
+  brain: AnyActorRef,
   flowId?: EARS.EntityId,
   eventTNodeId?: EARS.EntityId,
   executionContext?: ExecutionContext,
@@ -341,7 +344,7 @@ export function createFlowNodeSystem(
             repository.brainCommands.updateTNodeAttributes(eventTNode.id, payloadToStore);
 
             // Emit TNODE_SPAWNED event for UI to display event TNode
-            actorOf(system, 'brain').send({
+            brain.send({
               type: 'TNODE_SPAWNED',
               tNode: eventTNode,
               parentId: flowTNodeId,
@@ -368,6 +371,7 @@ export function createFlowNodeSystem(
             for (const step of allSteps) {
               try {
                 const [machine, systemId, childTNode] = createChildNode(
+                  brain,
                   step,
                   eventTNode.id,
                   eventTrackContext
@@ -377,7 +381,7 @@ export function createFlowNodeSystem(
                 spawnFlowChild(enqueue, machine, systemId);
 
                 // Emit TNODE_SPAWNED event for the UI to display child node
-                actorOf(system, 'brain').send({
+                brain.send({
                   type: 'TNODE_SPAWNED',
                   tNode: childTNode,
                   parentId: eventTNode.id,
@@ -497,7 +501,7 @@ export function createFlowNodeSystem(
           // same TNODE_UPDATED pipeline that step/flow completions flow through.
           if (eventTrackCompleted) {
             repository.brainCommands.updateTNodeStatus(typedEv.eventTNodeId, 'completed');
-            actorOf(system, 'brain').send({
+            brain.send({
               type: 'TNODE_UPDATED',
               data: {
                 tNodeId: typedEv.eventTNodeId,
@@ -527,6 +531,7 @@ export function createFlowNodeSystem(
             // Spawn next node - already computed above, no duplicate query needed
             try {
               const [nextMachine, nextSystemId, nextTNode] = createChildNode(
+                brain,
                 nextNode,
                 typedEv.eventTNodeId,
                 updatedContext,
@@ -537,7 +542,7 @@ export function createFlowNodeSystem(
               spawnFlowChild(enqueue, nextMachine, nextSystemId);
 
               // Emit TNODE_SPAWNED event for the next node
-              actorOf(system, 'brain').send({
+              brain.send({
                 type: 'TNODE_SPAWNED',
                 tNode: nextTNode,
                 parentId: typedEv.tNodeId,
@@ -572,7 +577,7 @@ export function createFlowNodeSystem(
           }
 
           // Emit TNODE_UPDATED event
-          actorOf(system, 'brain').send({
+          brain.send({
             type: 'TNODE_UPDATED',
             data: {
               tNodeId: flowTNodeId,
@@ -603,6 +608,7 @@ export function createFlowNodeSystem(
           for (const pending of context.pendingNextSteps) {
             try {
               const [machine, systemId, tNode] = createChildNode(
+                brain,
                 pending.nextNode,
                 pending.eventTNodeId,
                 pending.executionContext,
@@ -611,7 +617,7 @@ export function createFlowNodeSystem(
 
               spawnFlowChild(enqueue, machine, systemId);
 
-              actorOf(system, 'brain').send({
+              brain.send({
                 type: 'TNODE_SPAWNED',
                 tNode,
                 parentId: pending.parentTNodeId ?? pending.eventTNodeId,

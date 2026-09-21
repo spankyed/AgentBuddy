@@ -1,8 +1,7 @@
-import { emit } from '@/__generated__/events';
+import { emit, sendToPlugin } from '@/__generated__/events';
 import { assign, cancel, createMachine, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
-import { getActor } from '@abuddy/sdk/helpers';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
@@ -100,14 +99,14 @@ export const flowsSpec = defineSystem('flows')<IncomingFlowsEvents, OutgoingFlow
 export const flows = flowsSpec.id;
 
 /** Sends the plugin its flows, the root flow among them (the flow with the root role), and its settings */
-function sendConnectedData(system: Parameters<typeof getActor>[0]): void {
-  getActor(system, bus).send(emit('flows', {
+function sendConnectedData(): void {
+  sendToPlugin('flows', {
     type: 'FLOWS_CONNECTED',
     data: {
       ...repository.flowsQueries.connectedData(),
       settings: repository.settingsQueries.getPluginSettings('flows') || {},
     },
-  }));
+  });
 }
 
 export const flowsSystem = setup({
@@ -116,7 +115,7 @@ export const flowsSystem = setup({
   actions: {
     handleClientConnection: ({ system }) => {
       logger.info('Sending flows connected data to client');
-      sendConnectedData(system);
+      sendConnectedData();
     },
 
     selectFlow: ({ system, event }) => {
@@ -318,7 +317,7 @@ export const flowsSystem = setup({
       logger.info('Changing the root flow', { previousRootFlowId: previous, rootFlowId: flowId });
       if (flowId) repository.flowsCommands.grantRootFlowRole(flowId as EARS.EntityId);
       else if (previous) repository.flowsCommands.revokeRootFlowRole(previous);
-      sendConnectedData(system);
+      sendConnectedData();
     },
 
     importDSL: ({ system, event }) => {
@@ -369,7 +368,7 @@ export const flowsSystem = setup({
         flowIds,
       }));
       // The flows, and the root flow if the import brought one
-      sendConnectedData(system);
+      sendConnectedData();
 
       logger.info('DSL import complete', { flowIds });
     },

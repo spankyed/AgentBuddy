@@ -1,5 +1,4 @@
-import { actorOf } from '@/__generated__/events';
-import { setup, assign, sendParent, enqueueActions } from 'xstate';
+import { setup, assign, sendParent, enqueueActions, type AnyActorRef } from 'xstate';
 import { EARS } from '@/__generated__/ears';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import type { NodeEntity } from '@/__generated__/types';
@@ -27,6 +26,7 @@ type StepMachineInput = {};
  * Create a step execution machine
  */
 export function createStepNodeSystem(
+  brain: AnyActorRef,
   stepId: EARS.EntityId,
   eventTNodeId: EARS.EntityId,
   executionContext = {} as ExecutionContext,
@@ -70,8 +70,8 @@ export function createStepNodeSystem(
             // stops before a forwarded update would reach it
             const tNodeId = context.tNodeId;
             const eventTNodeId = context.eventTNodeId;
-            enqueue(({ system }) => {
-              actorOf(system, 'brain')?.send({ type: 'TNODE_UPDATED', data: { tNodeId, status: 'completed', eventTNodeId } });
+            enqueue(() => {
+              brain.send({ type: 'TNODE_UPDATED', data: { tNodeId, status: 'completed', eventTNodeId } });
             });
           }
         }),
@@ -83,8 +83,8 @@ export function createStepNodeSystem(
             // stops before a forwarded update would reach it
             const tNodeId = context.tNodeId;
             const eventTNodeId = context.eventTNodeId;
-            enqueue(({ system }) => {
-              actorOf(system, 'brain')?.send({ type: 'TNODE_UPDATED', data: { tNodeId, status: 'failed', eventTNodeId } });
+            enqueue(() => {
+              brain.send({ type: 'TNODE_UPDATED', data: { tNodeId, status: 'failed', eventTNodeId } });
             });
           }
         }),

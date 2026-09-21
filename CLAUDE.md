@@ -158,7 +158,7 @@ Every backend **system** and frontend **plugin** is an XState state machine. The
 
 - **Backend → Frontend**: `system.get(bus).send(emit(pluginId, event))` inside a system's actions, `sendToPlugin(pluginId, event)` elsewhere; actions use `services.emitter.sendToPlugin`
 - **Frontend or backend → System**: `sendToSystem(systemId, event)`, typed with the events each system declares (own systems by feature id, a dependency's as `<dependency>/<feature>`; actions name every system `<pack>/<feature>`)
-- **System → System**: `system.get(otherSystemId).send({ type })`
+- **System → System**: `sendToSystem(name, event)`, the same typed send a plugin uses; no pack code looks up another system's actor
 - Pack code takes `emit`/`sendToPlugin`/`sendToSystem` from `#generated/events`; `onConnected`/`onIncoming` come from `@abuddy/sdk/events`. `check:specifiers` rejects the host's raw event paths (its root event bus and API client) and the untyped sends in pack sources
 - **Addressing is an envelope**: a send is a message, `{ to, event }`, and `event` arrives exactly as the sender wrote it, so an event may carry any field, `pluginId` or `systemId` included. The bus, the API's `bus.send` and its subscription, and the renderer route on `to`; messages sent in go to systems, messages sent out to plugins.
 

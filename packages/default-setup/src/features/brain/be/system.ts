@@ -1,9 +1,8 @@
-import { emit } from '@/__generated__/events';
+import { emit, sendToPlugin } from '@/__generated__/events';
 import { assign, setup, enqueueActions, raise } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
 import { bus } from '@abuddy/sdk/ids';
-import { getActor } from '@abuddy/sdk/helpers';
 import { EARS } from '@/__generated__/ears';
 import type { FlowTNodeData, TNodeUpdate } from './types';
 import { repository } from '@/__generated__/repository';
@@ -91,18 +90,16 @@ function reportStartError(error: Error) {
   reportError({ error, title: 'Could not start the brain', source: 'brain', operation: 'start' });
 }
 
-type BrainActorSystem = Parameters<typeof getActor>[0];
-
 /**
  * A start found no flow to run: clears the running root flow and tells clients the brain is stopped, and why when
  * flows exist but none is the root. That error is reported now if a client is connected, else when one connects.
  * Returns the context the brain stays stopped with.
  */
-function stopWithoutRootFlow(system: BrainActorSystem, { clientConnected }: BrainContext): Partial<BrainContext> {
+function stopWithoutRootFlow({ clientConnected }: BrainContext): Partial<BrainContext> {
   const startError = noRootFlowError();
   if (!startError) logger.warn('No flow to run; start the brain once a flow exists');
   else if (clientConnected) reportStartError(startError);
-  getActor(system, bus).send(emit('brain', { type: 'BRAIN_KILLED', startError: startError?.message }));
+  sendToPlugin('brain', { type: 'BRAIN_KILLED', startError: startError?.message });
   return { brainActor: undefined, runningRootFlowId: undefined, startError, startErrorReported: clientConnected };
 }
 
@@ -129,14 +126,14 @@ export const brainSystem = setup({
       const currentRootFlowId = rootFlowToRun();
       // Nothing to run: `running` leaves for `stopped` without a brain actor
       if (!currentRootFlowId) {
-        enqueue.assign(stopWithoutRootFlow(system, context));
+        enqueue.assign(stopWithoutRootFlow(context));
         return;
       }
 
 
       // Start new brain and assign to context
-      enqueue.assign(({ spawn, system }) => {
-        const { machine, tNodeId } = createFlowNodeSystem()
+      enqueue.assign(({ spawn, system, self }) => {
+        const { machine, tNodeId } = createFlowNodeSystem(self)
         const actor = spawn(machine, {
           systemId: brainRuntime, // aka root flow
           input: {}
@@ -255,14 +252,14 @@ export const brainSystem = setup({
       const currentRootFlowId = rootFlowToRun();
       // Nothing to run: `running` leaves for `stopped` without a brain actor
       if (!currentRootFlowId) {
-        enqueue.assign(stopWithoutRootFlow(system, context));
+        enqueue.assign(stopWithoutRootFlow(context));
         return;
       }
 
       
       // Start new brain and assign to context
-      enqueue.assign(({ spawn, system }) => {
-        const { machine, tNodeId } = createFlowNodeSystem(undefined, undefined, undefined)
+      enqueue.assign(({ spawn, system, self }) => {
+        const { machine, tNodeId } = createFlowNodeSystem(self)
         const actor = spawn(machine, {
           systemId: brainRuntime,
           input: {}

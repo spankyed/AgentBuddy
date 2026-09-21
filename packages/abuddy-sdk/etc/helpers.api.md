@@ -4,17 +4,6 @@
 
 ```ts
 
-import type { AnyActorRef } from 'xstate';
-
-// @public
-export interface ActorLookup {
-    // (undocumented)
-    get(id: string): AnyActorRef | undefined;
-}
-
-// @public (undocumented)
-export function getActor(system: ActorLookup, id: string): AnyActorRef;
-
 // @public
 export function safeEvents<TEvent extends {
     type: string;

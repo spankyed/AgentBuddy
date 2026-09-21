@@ -123,19 +123,18 @@ Your code names features: your own by id (`'bookmarks'`), and every other as `<p
 | To | Use |
 |---|---|
 | send to a plugin from a system | `emit(name, event)` in a machine's actions, `sendToPlugin(name, event)` elsewhere (`#generated/events`) |
-| send to a system | `sendToSystem(name, event)` (`#generated/events`) |
-| reach another system's actor from a system | `actorOf(system, name)` (`#generated/events`), given the `system` an action receives |
+| send to a system, from a plugin or from another system | `sendToSystem(name, event)` (`#generated/events`), typed with the events that system declares |
 | reach a plugin's actor from frontend code | `actorOf(name)` (`#generated/fe`) |
 | open a plugin, optionally handing it events | `navigateToPlugin(name, event?)` (`#generated/fe`) |
 
 ```typescript
-import { emit, actorOf } from '#generated/events';
+import { emit, sendToSystem } from '#generated/events';
 
 // System -> Plugin (via bus)
 system.get(bus).send(emit('bookmarks', { type: 'BOOKMARK_CREATED', bookmark }));
 
-// System -> System (direct)
-actorOf(system, 'tags').send({ type: 'SOME_EVENT' });
+// System -> System (via bus), checked against what the tags system declares it receives
+sendToSystem('tags', { type: 'SOME_EVENT' });
 ```
 
 Frontend code (and backend code) sends events to systems with `sendToSystem` from `#generated/events`:

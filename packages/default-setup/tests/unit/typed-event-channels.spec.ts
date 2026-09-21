@@ -59,6 +59,9 @@ describe('sendToSystem', () => {
     expectTypeOf(() => {
       sendToSystem('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'notes', path: ['sort'], value: 'title' });
       sendToSystem('notes', { type: 'DELETE_NOTE', id: 'Note-1' });
+      // System to system, as a backend system sends another: the same typed send
+      sendToSystem('brain', { type: 'TRIGGER_BRAIN_EVENT', eventType: 'thread.fork' });
+      sendToSystem('threads', { type: 'BIRTH_FLOW_START' });
     }).toBeFunction();
   });
 
@@ -68,6 +71,8 @@ describe('sendToSystem', () => {
       sendToSystem('unknown-system', { type: 'GET_SETTINGS' });
       // @ts-expect-error the settings system doesn't receive this event
       sendToSystem('settings', { type: 'DELETE_NOTE', id: 'Note-1' });
+      // @ts-expect-error the brain doesn't receive what threads does, so a system can't send it one
+      sendToSystem('brain', { type: 'BIRTH_FLOW_START' });
       // @ts-expect-error DELETE_NOTE needs an id
       sendToSystem('notes', { type: 'DELETE_NOTE' });
       // @ts-expect-error one system per send

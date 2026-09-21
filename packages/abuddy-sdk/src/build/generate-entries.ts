@@ -1032,8 +1032,6 @@ export function actorOf<T = AnyActorRef>(name: PluginName): T {
 
     return `${HEADER}
 import { defineEvents, ${hostTargets.size ? 'type HostPluginEvents, ' : ''}type IncomingEventsOf } from '@abuddy/sdk/events';
-import { resolveName } from '@abuddy/sdk/ids';
-import type { ActorLookup } from '@abuddy/sdk/helpers';
 ${hasSystems ? `import type { specs as __specs } from './system-specs.js';\n` : ''}${imports}
 ${[...depEventImports, ...depSystems.imports].join('\n')}
 
@@ -1078,16 +1076,6 @@ export type QualifiedSystemEvents = ${[qualified(manifest.id, 'PackSystemEvents'
 export type QualifiedPluginEvents = ${qualifiedPluginEvents};
 
 export const { emit, sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<PackEvents, SendableSystemEvents>('${manifest.id}');
-
-/**
- * A system's actor, by the name this pack's code writes for it: its own by feature id, a dependency's as
- * \`<dependency>/<feature>\`. Pass the actor system a machine's actions receive. Like \`system.get\` (and
- * the frontend's \`actorOf\`), it is undefined at runtime while no such system runs, so a caller that
- * tolerates that checks for it.
- */
-export function actorOf(system: ActorLookup, name: keyof SendableSystemEvents & string): NonNullable<ReturnType<ActorLookup['get']>> {
-  return system.get(resolveName(name, '${manifest.id}'))!;
-}
 `;
   }
 
