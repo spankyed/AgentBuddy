@@ -178,7 +178,8 @@ Two throwaway worktrees. They may have been removed by the time this goal is pic
   - **`orderBy`/`pickAll` over a whole type:** 4×.
   - **Values come back as copies:** pack code that mutates a returned array would silently stop persisting.
   - **Attribute kinds:** the memory engine registers a kind when it's merely read; the disk engine doesn't. No spec pins this.
-  - **Partitions, backup, `LmdbQuery` and multi-process access** were not covered.
+  - **Partitions, backup and `LmdbQuery`** were not covered. **Multi-process access was covered later
+    (2026-09-20), and is written up under "What this does to the two locks" below.**
 
 ### Write path: what "synchronous" can mean (lmdb-js 3.5.3, macOS, Node 23.11)
 
@@ -230,6 +231,52 @@ These are the ones settled by the spikes. The ones below them need the user.
 8. **Backups** use LMDB's copy API (lmdb-js `backup`/`copy`, or `mdb_env_copy` with compaction) for a consistent snapshot, not `fs.copy` on live files. Import still closes, replaces and reopens.
 9. **App code fixes are part of the goal:** the hot paths listed in Background, the trace session filter, and `clearVolatileData`.
 
+## What this does to the two locks
+
+A data dir carries two markers that exist only because the app keeps a second copy of the data in memory.
+`abuddy db`'s refusal says so outright (`abuddy-cli/src/commands/db/target.ts`):
+
+> refused while an app runs on that data dir, **which holds the database in memory and would overwrite the
+> change or lose it**
+
+LMDB is already multi-process-safe — one writer, many readers, MVCC, the writer lock held in `lock.mdb` by
+the kernel — so two processes writing *through* LMDB serialise correctly today. What cannot be protected is
+the app's second copy: a tool changes the store, the app's memory is stale, and the app's next write puts
+the stale version back. Decision 1 deletes that copy, and with it the reason.
+
+**It does not delete the locks, because of Decision 8.** Import closes the env, replaces the files and
+reopens; `reset` closes the envs, deletes the directories and opens again (`abuddy-ears/src/lmdb/store.ts`,
+`reset()`). Those are file-level operations outside LMDB's model — the data files cannot be swapped under a
+live env, and no transaction discipline covers it. So the commands split:
+
+| `abuddy db` command | After this goal |
+|---|---|
+| `exec`, `repl --write`, `clear-settings --force` | **No lock needed.** Ordinary transactions; LMDB serialises them against the app's |
+| `import --force`, `reset --force` | **Lock still needed.** They close the env and replace its files |
+
+So `db-write.lock` shrinks from "any write" to "an operation that replaces the store", and `app.lock` —
+whose only job is telling a tool that an app is using the data dir — shrinks to serving those same two
+commands. Both survive, with a fraction of the surface.
+
+### Measured, 2026-09-20
+
+- **`lmdb-js`'s `tryLock`/`hasLock` are not a cross-process lock.** Two processes both got `tryLock: true`
+  on one env. It coordinates `overlappingSync` within a process. It does **not** remove the native
+  dependency that `goal-write-lock-advisory.md`'s Phase 0 settled on.
+- **LMDB's reader table does track cross-process liveness.** `readerCheck()` returned `1` after a holder was
+  `SIGKILL`ed — LMDB detects and clears slots belonging to dead processes, which is the mechanism `app.lock`
+  reimplements by hand. `lmdb-js` exposes it as a printing `readerList()` plus a stale-slot count rather than
+  a queryable API, so it isn't usable as-is; if that changes, "ask LMDB who has the env open" is the right
+  long-term answer for `app.lock`, not a marker file.
+
+### What it means for the advisory-lock goal
+
+`docs/goals/deferred/goal-write-lock-advisory.md` weighs a native dependency (`fs-native-extensions`)
+against the lock's correctness. It was surveyed while the lock guards every write. **If this goal lands
+first, that lock guards two commands**, and the case for adding a cross-platform native dependency to an app
+that also ships an npm-installed CLI gets much weaker. Neither goal should be decided on the other's stale
+assumptions: settle the sequencing before either Phase 3.
+
 ## Open decisions (settle with the user before Phase 2)
 
 1. **Durability.** Is Decision 3's guarantee acceptable: committed synchronously, safe from app crashes, synced to disk within about 1 s? The alternative is an fsync at each `transaction()` boundary (about 4–8 ms per boundary on macOS), with the same per-call commit outside boundaries. — *open*
@@ -242,7 +289,18 @@ These are the ones settled by the spikes. The ones below them need the user.
    - Disk everywhere: a temp env per test file, reset with `clearSync` per test, so there's one implementation.
    - Or keep the memory storage as a test-only stand-in behind the same seam: faster tests, but two implementations to keep equivalent (the contract suite would run on both).
    — *open*
-4. **Value index scope.**
+4. **What the two locks narrow to.** "What this does to the two locks" establishes that `db-write.lock`
+   and `app.lock` are left protecting `import` and `reset` alone. Narrow them as part of this goal, or land
+   the storage change first and narrow them after?
+   - **Narrow here:** the reason is deleted in the same change that deletes its cause, so nothing is left
+     guarding writes it no longer needs to. It widens this goal into `abuddy db` and the Electron main
+     process.
+   - **Narrow after:** this goal stays about storage. The locks keep guarding every write for a while,
+     which costs nothing but a refusal the user didn't need.
+   Either way, `goal-write-lock-advisory.md` must not be started before this is settled: it is sized
+   against a lock that guards every write. — *open*
+
+5. **Value index scope.**
    - Index every short scalar automatically: simple, about 12% more disk, 2–6 key writes per put.
    - Or index only fields packs declare (a new `abuddy.json` entity-field option, with the facade and schema updated), plus the SDK's roles and labels.
    — *open*

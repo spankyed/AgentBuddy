@@ -58,6 +58,24 @@ Never:
   process is using the data dir, and a pid check is what answers that (Decision 1).
 ```
 
+## Sequencing: read `goal-lmdb-only.md` first
+
+This was surveyed while `db-write.lock` guards every write of `abuddy db`. It does so because the app keeps
+the database in memory, and a tool's change would be overwritten by the app's next write from its stale
+copy. `goal-lmdb-only.md` deletes that copy.
+
+After it, the lock guards `import` and `reset` alone — the two commands that close the env and replace its
+files, which is the one thing LMDB's own multi-process locking cannot cover (its Decision 8). `app.lock`
+narrows the same way. That is a much smaller thing to protect, and the case for adding a cross-platform
+native dependency to an app that also ships an npm-installed CLI is correspondingly weaker.
+
+So: **settle `goal-lmdb-only.md`'s open decision on the locks before starting Phase 3 here.** Phases 1 and 2
+are unaffected — they replace pid checks with asking the endpoint, which is right either way.
+
+Measured 2026-09-20, in case it looks like a shortcut: `lmdb-js`'s `tryLock`/`hasLock` are **not** a
+cross-process lock — two processes both take one on the same env — so the dependency Phase 0 settled on is
+not already in the tree.
+
 ## Background
 
 Surveyed at `b1eaa70f4` on `AS/external-pack-authoring`.
@@ -253,7 +271,8 @@ reported as ours, which the pid check could not tell.
 
 **Done when:** `findRunningApp` and `abuddy dev` still report a running app, `process-liveness.spec.ts`
 covers a port nothing listens on and one a different process holds, and no caller passes a pid to decide
-this. **Mutation:** removing the connect check makes the "port nothing answers on" case report an API.
+this. `running-app.spec.ts` keeps its case for a wedged API, which `app.lock` answers and the port alone
+would not. **Mutation:** removing the connect check makes the "port nothing answers on" case report an API.
 
 ### Phase 3 — the dev-server marker asks the dev server
 
@@ -324,12 +343,16 @@ build — that last one would remove the only objection that isn't about size.
   and by the lock being held only for the duration of a `abuddy db` command.
 - **A new silent-failure mode on network filesystems**, where today the scheme merely degrades to a
   guess. Phase 4 exists only because of this, and Decision 6 makes the failure loud.
-- **Phase 1 changes what "an API is running" means** — from "the process that wrote this is alive" to
+- **Phase 2 changes what "an API is running" means** — from "the process that wrote this is alive" to
   "something answers on this port". A different process that has taken the port now reads as *not* our
-  API, which is more correct; but an API that is alive and wedged now reads as not running, where the pid
-  check called it running. For `findRunningApp`, whose job is to stop a tool writing under a live app,
-  that is the wrong direction. Phase 1 must therefore treat *anything answering* as an app, and only a
+  API, which is more correct; but an API that is alive and wedged reads as not running, where the pid
+  check called it running, and for `findRunningApp` — whose job is to stop a tool writing under a live
+  app — that is the wrong direction. It must therefore treat *anything answering* as an app, and only a
   refused connection as none.
+
+  **`app.lock` has since softened this.** `findRunningApp` asks the app's own marker first, and the main
+  process publishes that for as long as it runs, so a wedged API no longer takes the answer to "no app"
+  on its own. The direction still matters for `abuddy dev`, which reads the endpoint alone.
 
 ## Deferred
 
