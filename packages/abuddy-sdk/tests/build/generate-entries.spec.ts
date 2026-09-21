@@ -244,7 +244,8 @@ describe('generated system sends', () => {
     expect(events).toContain("defineEvents<PackEvents, SendableSystemEvents>('demo-pack');");
     expect(events).not.toContain('systemIds');
     expect(files['src/__generated__/system-specs.ts']).toContain("export const specs = {\n  'memos': incomingEvents(__system_memos.spec),\n};");
-    expect(files['src/__generated__/system-ids.ts']).toContain("export const threads = 'base-pack.threads';");
+    // Pack code names systems; it gets no module of addresses
+    expect(files['src/__generated__/system-ids.ts']).toBeUndefined();
     expect(files['src/__generated__/pack-types.ts']).toContain("export type { PackEvents, PackSystemEvents } from './events.js';");
   });
 
@@ -302,7 +303,7 @@ function typedDependency(systems: Record<string, string>): PackSnapshot {
 
 describe('generated sends compile', () => {
   it('for feature ids that match generated names, beside a dependency with the same feature ids', () => {
-    const ids = ['foo', 'fooEntry', 'specs', 'incomingEvents', 'systemIds', 'registration', 'steps'];
+    const ids = ['foo', 'fooEntry', 'specs', 'incomingEvents', 'actorOf', 'registration', 'steps'];
     for (const id of ids) {
       write(`src/features/${id}/be/system.ts`, [
         "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",
@@ -318,8 +319,6 @@ describe('generated sends compile', () => {
     });
     write('src/probe.ts', [
       "import { sendToSystem } from './__generated__/events.js';",
-      "import { specs, systemIds, threads } from './__generated__/system-ids.js';",
-      'export const ids: string[] = [specs, systemIds, threads];',
       ...ids.map((id) => `sendToSystem('${id}', { type: '${id.toUpperCase()}_RUN', n: 1 });`),
       "sendToSystem('base-pack/foo', { type: 'BASE_FOO_RUN', n: 1 });",
       '// @ts-expect-error the own foo system receives FOO_RUN',
@@ -386,7 +385,8 @@ describe('generated frontend entry', () => {
     ] });
     const fe = files['src/__generated__/pack-entry-fe.ts'];
 
-    expect(fe).toContain("designations: { 'settings': 'demo-pack.settings' },");
+    expect(fe).toContain("designations: { 'settings': 'settings' },");
+    expect(fe).toContain("plugins: { 'settings': __plugin_settings, 'notes': __plugin_notes },");
     expect(fe).toContain("import __plugin_settings from '../settings/plugin.js';");
     expect(fe).not.toContain('_module');
   });
@@ -403,7 +403,7 @@ describe('generated frontend entry', () => {
       { id: 'notes', plugin: { entry: 'src/notes/plugin', default: true } },
     ] });
 
-    expect(files['src/__generated__/pack-entry-fe.ts']).toContain('defaultPlugin: __plugin_notes,');
+    expect(files['src/__generated__/pack-entry-fe.ts']).toContain("defaultPlugin: 'notes',");
   });
 
   it("falls back to the pack's first plugin when none claims it", () => {
@@ -412,7 +412,7 @@ describe('generated frontend entry', () => {
       { id: 'notes', plugin: { entry: 'src/notes/plugin' } },
     ] });
 
-    expect(files['src/__generated__/pack-entry-fe.ts']).toContain('defaultPlugin: __plugin_settings,');
+    expect(files['src/__generated__/pack-entry-fe.ts']).toContain("defaultPlugin: 'settings',");
   });
 });
 

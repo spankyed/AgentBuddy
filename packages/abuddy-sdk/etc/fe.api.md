@@ -17,6 +17,9 @@ import type { InjectionKey } from 'vue';
 import { Ref } from 'vue';
 import { z } from 'zod';
 
+// @public
+export function actorAt<T = AnyActorRef>(address: string): T;
+
 // @public (undocumented)
 export const ALL_COLORS: TabGroupColor[];
 
@@ -248,13 +251,11 @@ export interface PackFERegistration {
     artifacts?: ArtifactDefinition[];
     // (undocumented)
     blocks?: BlockDefinition[];
-    // (undocumented)
-    defaultPlugin?: Plugin_2;
+    defaultPlugin?: string;
     designations?: Record<string, string>;
     dslTypes?: Record<string, DslTypeConfig>;
     id: string;
-    // (undocumented)
-    plugins?: Plugin_2[];
+    plugins?: Record<string, PluginDefinition>;
     // (undocumented)
     steps?: StepDefinition[];
     // (undocumented)
@@ -264,7 +265,7 @@ export interface PackFERegistration {
 // @public (undocumented)
 export function pasteIntoElement(el: HTMLElement, text: string): void;
 
-// @public (undocumented)
+// @public
 interface Plugin_2 {
     // (undocumented)
     canvas?: Component | RouteComponents;
@@ -274,7 +275,6 @@ interface Plugin_2 {
     hotkeys?: PluginHotkeyDefinition[];
     // (undocumented)
     icon?: Component;
-    // (undocumented)
     id: string;
     // (undocumented)
     isPinned?: boolean;
@@ -298,6 +298,9 @@ export interface PluginActorSystem {
     // (undocumented)
     get(id: string): AnyActorRef;
 }
+
+// @public
+export type PluginDefinition = Omit<Plugin_2, 'id'>;
 
 // @public
 export type PluginEvent = {
@@ -456,9 +459,6 @@ export function useSettingsSaveStatus(): {
     }) => void;
     setSaveStatus: (status: "saving" | "saved") => void;
 };
-
-// @public (undocumented)
-export function useState<T = AnyActorRef>(pluginId: string): T;
 
 // @public (undocumented)
 export function useTrackedMenuOpen(menuOpen: Ref<boolean>): void;

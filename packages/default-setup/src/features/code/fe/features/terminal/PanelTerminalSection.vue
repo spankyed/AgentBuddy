@@ -190,6 +190,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -220,7 +221,6 @@ import type { TerminalScript } from '@/__generated__/types'
 import type { Terminal } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { IDisposable } from '@xterm/xterm'
-import { id as settingsActorId } from '@/features/settings/fe/state';
 import { pluginSettings } from '@/features/settings/plugin-settings';
 
 const actorSystem = useActorSystem()
@@ -228,9 +228,9 @@ const actorSystem = useActorSystem()
 const props = withDefaults(defineProps<{ height?: number }>(), { height: 256 })
 
 // Actors
-const codeActor: CodeState = actorSystem.get(codeId)
+const codeActor: CodeState = actorOf(codeId)
 const terminalActor = codeActor.system.get('terminal')!
-const settingsActor = actorSystem.get(settingsActorId)
+const settingsActor = actorOf('settings')
 
 // State selectors
 const panelTerminalId = useSelector(codeActor, (state) => state.context.panelTerminalId)

@@ -187,6 +187,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -199,7 +200,7 @@ import EmptyState from '@/features/code/fe/features/EmptyState.vue'
 const actorSystem = useActorSystem()
 
 // Get actors
-const codeActor: CodeState = actorSystem.get(codeId)
+const codeActor: CodeState = actorOf(codeId)
 const searchActor = codeActor.system.get('search')!
 
 // State selectors

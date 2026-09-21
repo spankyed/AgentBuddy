@@ -94,6 +94,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { useExternalFileDrag } from '@abuddy/ui/composables/useExternalFileDrag'
 import { useSelector } from '@xstate/vue'
@@ -106,7 +107,7 @@ import { reorderTabs } from '../utils/tab-management'
 
 const actorSystem = useActorSystem()
 
-const actor: CodeState = actorSystem.get(id)
+const actor: CodeState = actorOf(id)
 const explorerActor = actor.system.get('explorer')
 const terminalActor = actor.system.get('terminal')
 

@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import type { Plugin } from '@abuddy/sdk/fe';
+import type { Plugin, PluginDefinition } from '@abuddy/sdk/fe';
 
 import { resetTestData } from '@abuddy/sdk/testing';
 import { registry } from './test-host.ts';
@@ -323,12 +323,12 @@ describe('FE pack deregistration', () => {
   it('unregisterPackFE removes extensions and returns removed plugins', async () => {
     const { registerPackFE, unregisterPackFE } = createFePackRegistry();
 
-    const testPlugin = { id: 'test-pack.test-plugin', label: 'Test' } as unknown as Plugin;
-    registerPackFE({ id: 'test-pack', plugins: [testPlugin] });
+    const testPlugin = { label: 'Test' } as unknown as PluginDefinition;
+    registerPackFE({ id: 'test-pack', plugins: { testPlugin } });
 
     const removed = unregisterPackFE('test-pack');
     expect(removed).toHaveLength(1);
-    expect(removed[0].id).toBe('test-pack.test-plugin');
+    expect(removed[0].id).toBe('test-pack.testPlugin');
 
     // Calling again should return empty
     const removedAgain = unregisterPackFE('test-pack');
@@ -338,9 +338,9 @@ describe('FE pack deregistration', () => {
   // A built-in pack's registration carries its id like any other, so it comes out the same way
   it('takes a built-in pack\'s frontend back out like any other pack\'s', async () => {
     const { registerPackFE, unregisterPackFE, getRegisteredPlugins } = createFePackRegistry();
-    const builtIn = { id: 'default-setup.built-in-main', label: 'Built-in' } as unknown as Plugin;
+    const builtIn = { label: 'Built-in', id: 'default-setup.main' } as unknown as Plugin;
 
-    registerPackFE({ id: 'default-setup', plugins: [builtIn] });
+    registerPackFE({ id: 'default-setup', plugins: { main: { label: 'Built-in' } as PluginDefinition } });
     expect(getRegisteredPlugins()).toEqual([builtIn]);
 
     expect(unregisterPackFE('default-setup')).toEqual([builtIn]);
@@ -351,11 +351,12 @@ describe('FE pack deregistration', () => {
   it("unregisterPackFE leaves a plugin another pack declared under the same feature id", async () => {
     const { registerPackFE, unregisterPackFE, getRegisteredPlugins } = createFePackRegistry();
 
-    const builtIn = { id: 'built-in-pack.shared', label: 'Built-in' } as unknown as Plugin;
-    const packCopy = { id: 'duplicate-pack.shared', label: 'Pack' } as unknown as Plugin;
-    const packOwn = { id: 'duplicate-pack.own', label: 'Own' } as unknown as Plugin;
-    registerPackFE({ id: 'built-in-pack', plugins: [builtIn] });
-    registerPackFE({ id: 'duplicate-pack', plugins: [packCopy, packOwn] });
+    const definition = (label: string) => ({ label }) as unknown as PluginDefinition;
+    const builtIn = { label: 'Built-in', id: 'built-in-pack.shared' };
+    const packCopy = { label: 'Pack', id: 'duplicate-pack.shared' };
+    const packOwn = { label: 'Own', id: 'duplicate-pack.own' };
+    registerPackFE({ id: 'built-in-pack', plugins: { shared: definition('Built-in') } });
+    registerPackFE({ id: 'duplicate-pack', plugins: { shared: definition('Pack'), own: definition('Own') } });
 
     expect(getRegisteredPlugins()).toEqual([builtIn, packCopy, packOwn]);
     expect(unregisterPackFE('duplicate-pack')).toEqual([packCopy, packOwn]);

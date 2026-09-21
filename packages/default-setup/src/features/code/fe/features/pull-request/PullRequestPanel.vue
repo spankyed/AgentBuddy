@@ -244,6 +244,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { useActorSystem, useApplicationActor } from '@abuddy/sdk/fe'
@@ -267,7 +268,7 @@ import type { TreeNode } from './types'
 // Get actors
 const actorSystem = useActorSystem()
 const appActor = useApplicationActor()
-const codeActor: CodeState = actorSystem.get(codeId)
+const codeActor: CodeState = actorOf(codeId)
 const prActor = codeActor.system.get('pr')!
 const commitActor = codeActor.system.get('commit')!
 

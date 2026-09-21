@@ -53,6 +53,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { ref } from 'vue'
 import { ChevronDown } from 'lucide-vue-next'
 import { useSelector } from '@xstate/vue'
@@ -72,7 +73,7 @@ function openMemorialLink() {
   openInAppBrowser(MEMORIAL_URL)
 }
 
-const settingsActor = actorSystem.get(settingsPluginId)
+const settingsActor = actorOf(settingsPluginId)
 const faqItems = useSelector(settingsActor, (state: any): FAQItem[] => state.context.faqs ?? [])
 
 const expandedItems = ref<number[]>([])

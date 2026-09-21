@@ -60,6 +60,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { User, Key, Settings, CheckCircle, Briefcase, FileJson } from 'lucide-vue-next'
@@ -73,7 +74,7 @@ import { id as settingsPluginId } from '@/features/settings/fe/state';
 
 const actorSystem = useActorSystem()
 
-const actor = actorSystem.get(settingsPluginId)
+const actor = actorOf(settingsPluginId)
 
 const generalNavItem = useSelector(actor, (state: any) => state.context.generalNavItem)
 const settings = useSelector(actor, (state: any) => state.context.settings)

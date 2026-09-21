@@ -1,4 +1,3 @@
-import { busId } from '@/__generated__/bus-ids';
 import { untypedQx } from '@abuddy/ears';
 import { markSeededRowUnedited } from '@abuddy/sdk/seed';
 import { EARS } from '@/__generated__/ears';
@@ -50,8 +49,8 @@ export const migration: PackMigration = {
 
     // ── The root flow is the flow with the root role, and the brain says which one it runs ──
     // Copies of both kept in the settings are no longer read or written.
-    repository.settingsCommands.removeStored(['plugins', busId.flows, 'rootFlowId']);
-    repository.settingsCommands.removeStored(['plugins', busId.brain, 'runningRootFlowId']);
+    repository.settingsCommands.removeStored(['plugins', `${PACK_ID}.flows`, 'rootFlowId']);
+    repository.settingsCommands.removeStored(['plugins', `${PACK_ID}.brain`, 'runningRootFlowId']);
   },
 };
 
@@ -68,7 +67,7 @@ const BARE_PLUGIN_IDS = [
 /**
  * Moves the user's per-plugin settings, sidebar visibility and last-active plugin onto the ids their
  * plugins now run under. Without it a user's pinned plugins and last-active plugin point at nothing:
- * the app reads `plugins['default-setup.threads']` and the stored data says `plugins.threads`.
+ * the app reads the plugin's address, `<packId>.threads`, and the stored data says `plugins.threads`.
  *
  * Idempotent, as every migration here must be — it runs again on each development boot and after a
  * reset. A key already moved is left alone, and a key the user has under the qualified id already wins.

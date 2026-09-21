@@ -14,7 +14,7 @@ abuddy add feature bookmarks --label "Bookmarks" --icon "Bookmark"
 | `--icon <LucideIcon>` | `Box` | The icon the plugin module imports and sets as its `icon` |
 | `--designation <role>` | none | Writes `"designation"`; must equal the feature name |
 
-The feature name is the feature id: it must match `^[a-z][a-zA-Z0-9]*$` (a lowercase letter, then letters and digits: `notes`, `calendarEvents`), because it becomes an identifier in generated code (system exports, `busId` keys, settings keys, emit targets).
+The feature name is the feature id: it must match `^[a-z][a-zA-Z0-9]*$` (a lowercase letter, then letters and digits: `notes`, `calendarEvents`), because it becomes an identifier in generated code, and part of the feature's address, `<packId>.<featureId>`.
 
 This creates:
 
@@ -113,21 +113,29 @@ export default bookmarksEntry;
 - **Default-export the `SystemEntry`, declared with `satisfies SystemEntry`** — an annotated entry (`const entry: SystemEntry = …`) loses the system's events. `abuddy build` then fails on the pack's types, with a type error that names the system (`my-pack/bookmarks`). The fix is `satisfies SystemEntry`. Every module the manifest points at (`system.ts`, `fe/plugin.ts`, `fe/state.ts`, `settings.ts`) default-exports its single definition. Named exports alongside it are fine; the default is what gets loaded.
 - **Always handle `CLIENT_CONNECTED`** — this event fires when the frontend connects. An installed pack with frontend code (an FE entry or plugins) gets it instead once each window has tried loading that frontend, at startup, on activation and when the window reconnects, whether the load added plugins or failed; every system of the pack gets it, those without a plugin too. A pack without frontend code gets it on activation as well. A reloaded pack's systems get it too. Every open window receives the data sent in reply, not only the one that asked. Send the full initial state back to the plugin via the bus each time; the plugin doesn't need to ask for it.
 - **Handle `PACK_CHANGED` when you list what packs register or seed** — every running system gets it once a pack is installed, updated, enabled, disabled, uninstalled or rebuilt while the app runs, or its seeds are imported from Settings. default-setup's library, notes, flows, actions and prompts systems send their startup data again, and threads sends the slash commands when they changed.
-- **Use `emit()` or `sendToPlugin()` to send to the frontend** — inside a system's actions, `system.get(bus).send(emit(pluginId, event))` routes the event through the bus to the matching frontend plugin; elsewhere (services, callbacks), `sendToPlugin(pluginId, event)` sends it through the bus too. Either is dropped while no client is connected, so send startup data when a system receives `CLIENT_CONNECTED`. Both come from `#generated/events` and accept only the events that plugin receives. Don't import them from `@abuddy/sdk/events`, whose untyped versions accept any event. Only features that have a `plugin` are named there: a feature with a system and no plugin has nothing to receive events, so it gets no key. To send to another plugin, list it in the system's `sendsTo` in `abuddy.json`, named as code names it: another feature of this pack by id, a dependency's as `<packId>/<featureId>`, or the app's `application`. Without that the plugin isn't a key of `PackEvents` and the send doesn't compile; with it, `emit` and `sendToPlugin` take the same name (`emit('default-setup/logs', …)`). What the target then accepts depends on who owns it: **another feature of this pack** gains this system's outgoing events, because the pack owns that plugin's machine and can handle them; **a dependency's plugin or a host plugin** keeps the events its owner declares it receives (the dependency's own systems' outgoing events, or the host's `HostPluginEvents`), since only the pack that owns a plugin can handle a new event — `sendsTo` opens the channel there, it doesn't widen the type. `sendsTo` naming one of the pack's own features that has no plugin is a manifest error, and naming a dependency's plugin its own pack declares no events for is a build error: nothing could receive the events either way.
+- **Use `emit()` or `sendToPlugin()` to send to the frontend** — inside a system's actions, `system.get(bus).send(emit(name, event))` routes the event through the bus to the plugin that name stands for; elsewhere (services, callbacks), `sendToPlugin(name, event)` sends it through the bus too. Either is dropped while no client is connected, so send startup data when a system receives `CLIENT_CONNECTED`. Both come from `#generated/events` and accept only the events that plugin receives. Don't import them from `@abuddy/sdk/events`, whose untyped versions accept any event. Only features that have a `plugin` are named there: a feature with a system and no plugin has nothing to receive events, so it gets no key. To send to another plugin, list it in the system's `sendsTo` in `abuddy.json`, named as code names it: another feature of this pack by id, a dependency's as `<packId>/<featureId>`, or the app's `application`. Without that the plugin isn't a key of `PackEvents` and the send doesn't compile; with it, `emit` and `sendToPlugin` take the same name (`emit('default-setup/logs', …)`). What the target then accepts depends on who owns it: **another feature of this pack** gains this system's outgoing events, because the pack owns that plugin's machine and can handle them; **a dependency's plugin or a host plugin** keeps the events its owner declares it receives (the dependency's own systems' outgoing events, or the host's `HostPluginEvents`), since only the pack that owns a plugin can handle a new event — `sendsTo` opens the channel there, it doesn't widen the type. `sendsTo` naming one of the pack's own features that has no plugin is a manifest error, and naming a dependency's plugin its own pack declares no events for is a build error: nothing could receive the events either way.
 - **Never use `pluginId` as a field name in outgoing events** — the transport layer overwrites it. Use `targetId` or similar instead.
 
 ### Communication patterns
 
-A feature's system and plugin both run under its address, `<packId>.<featureId>` (`my-pack.bookmarks`); bare ids are the app's own. The rule of thumb: **you send to a name, you look up an address.** Sends (`emit`, `sendToPlugin`, `sendToSystem`) take your features by id and another pack's as `<packId>/<featureId>`. Lookups (`system.get(...)`, `useActorSystem().get(...)`, a plugin's `id`) take the address, which you never write by hand: `busId` from `#generated/bus-ids` maps each of your features to it (the module has no imports, so frontend code can use it), and `#generated/system-ids` exports your dependencies' systems' too. Actions name systems and plugins `<packId>/<featureId>`, their own pack's included (see [`services.emitter`](services-and-data.md#host-services)).
+Your code names features: your own by id (`'bookmarks'`), another pack's as `<packId>/<featureId>` (`'default-setup/logs'`), and the app's own plugin bare (`'application'`). Every API that reaches a system or plugin takes that name. The app runs each feature's system and plugin at its address, `<packId>.<featureId>`, and resolves the name for you, so your code never holds an address. Actions name systems and plugins `<packId>/<featureId>`, their own pack's included (see [`services.emitter`](services-and-data.md#host-services)).
+
+| To | Use |
+|---|---|
+| send to a plugin from a system | `emit(name, event)` in a machine's actions, `sendToPlugin(name, event)` elsewhere (`#generated/events`) |
+| send to a system | `sendToSystem(name, event)` (`#generated/events`) |
+| reach another system's actor from a system | `actorOf(system, name)` (`#generated/events`), given the `system` an action receives |
+| reach a plugin's actor from frontend code | `actorOf(name)` (`#generated/fe`) |
+| open a plugin, optionally handing it events | `navigateToPlugin(name, event?)` (`#generated/fe`) |
 
 ```typescript
-import { busId } from '#generated/bus-ids';
+import { emit, actorOf } from '#generated/events';
 
-// System -> Plugin (via bus): emit takes the name
-system.get(bus).send(emit(bookmarks, { type: 'BOOKMARK_CREATED', bookmark }));
+// System -> Plugin (via bus)
+system.get(bus).send(emit('bookmarks', { type: 'BOOKMARK_CREATED', bookmark }));
 
-// System -> System (direct): system.get takes the address
-system.get(busId.tags).send({ type: 'SOME_EVENT' });
+// System -> System (direct)
+actorOf(system, 'tags').send({ type: 'SOME_EVENT' });
 ```
 
 Frontend code (and backend code) sends events to systems with `sendToSystem` from `#generated/events`:
@@ -140,7 +148,7 @@ sendToSystem('bookmarks', { type: 'CREATE_BOOKMARK', url, title });
 sendToSystem('default-setup/settings', { type: 'GET_SETTINGS' });
 ```
 
-`sendToSystem` accepts only systems of your pack and its dependencies, and only the events each one declares (`defineSystem(id)<Incoming>()`); a missing field is reported against the event its `type` names. Each send names one system and one event type: a `systemId` or `type` typed as a union is rejected. It sends to the address the name stands for (`my-pack.bookmarks` for your own, `default-setup.settings` for default-setup's), so pass `'bookmarks'`, not `busId.bookmarks`. A dependency's system is always named with the dependency's id, so a feature of yours may share its name: `'notes'` is your own, `'default-setup/notes'` default-setup's. The app rejects an unknown `systemId`, and an event `type` none of the machine's transitions names unless the feature lists it in `system.events.incoming`.
+`sendToSystem` accepts only systems of your pack and its dependencies, and only the events each one declares (`defineSystem(id)<Incoming>()`); a missing field is reported against the event its `type` names. Each send names one system and one event type: a `systemId` or `type` typed as a union is rejected. It sends to the address the name stands for (`my-pack.bookmarks` for your own, `default-setup.settings` for default-setup's). A dependency's system is always named with the dependency's id, so a feature of yours may share its name: `'notes'` is your own, `'default-setup/notes'` default-setup's. The app rejects an unknown `systemId`, and an event `type` none of the machine's transitions names unless the feature lists it in `system.events.incoming`.
 
 Backend code that needs the connection or every incoming event subscribes with `onConnected(callback)` and `onIncoming(callback)` from `@abuddy/sdk/events`; each returns an unsubscribe function. Log entries arrive through `onLog(callback)` from `@abuddy/sdk/logger`.
 
@@ -155,13 +163,13 @@ Backend code that needs the connection or every incoming event subscribes with `
 
 ```typescript
 // src/features/bookmarks/fe/plugin.ts
-import type { Plugin } from '@abuddy/sdk/fe';
+import type { PluginDefinition } from '@abuddy/sdk/fe';
 import { Bookmark } from 'lucide-vue-next';
-import state, { id } from './state';
+import state from './state';
 import canvas from './canvas/list.vue';
 
-const bookmarksPlugin: Plugin = {
-  id,
+// No id: the app registers the plugin at its feature's address, `<packId>.bookmarks`
+const bookmarksPlugin: PluginDefinition = {
   label: 'Bookmarks',
   icon: Bookmark,        // Lucide component, not a string
   state,                 // XState machine definition
@@ -176,7 +184,6 @@ export default bookmarksPlugin;
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `id` | `string` | yes | Matches the feature ID |
 | `label` | `string` | yes | Sidebar tab label |
 | `state` | `AnyStateMachine` | yes | XState machine definition |
 | `icon` | `Component` | no | Lucide Vue component. The toolbar lists only plugins with an icon |
@@ -193,10 +200,9 @@ export default bookmarksPlugin;
 ```typescript
 // src/features/bookmarks/fe/state.ts
 import { setup, type ActorRefFrom } from 'xstate';
-import { busId } from '#generated/bus-ids';
 
-// The plugin's address: what the app registers it under, and what useActorSystem().get(id) finds
-export const id = busId.bookmarks;
+// The feature's name: the machine's id, and how the pack's code sends to and looks up this plugin
+export const id = 'bookmarks';
 export type BookmarksState = ActorRefFrom<typeof bookmarksState>;
 
 const bookmarksState = setup({
@@ -271,7 +277,7 @@ export default {
 }
 ```
 
-A feature can omit `system` (frontend-only) or `plugin` (backend-only). `services` and `repositories` are optional. The plugin's `label`, `icon` and `isPinned` live on the `Plugin` the entry module default-exports; the manifest names only the module. Each service entry names the service object a module exports, `"bookmarks": "src/features/bookmarks/be/services/bookmarks.ts#bookmarksService"` (see [Services](services-and-data.md#services)); repositories work the same way (see [Repository pattern](services-and-data.md#repository-pattern)).
+A feature can omit `system` (frontend-only) or `plugin` (backend-only). `services` and `repositories` are optional. The plugin's `label`, `icon` and `isPinned` live on the `PluginDefinition` the entry module default-exports; the manifest names only the module. Each service entry names the service object a module exports, `"bookmarks": "src/features/bookmarks/be/services/bookmarks.ts#bookmarksService"` (see [Services](services-and-data.md#services)); repositories work the same way (see [Repository pattern](services-and-data.md#repository-pattern)).
 
 Other feature fields:
 

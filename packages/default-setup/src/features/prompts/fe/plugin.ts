@@ -1,11 +1,10 @@
-import type { Plugin } from "@abuddy/sdk/fe";
+import type { PluginDefinition } from "@abuddy/sdk/fe";
 import { Sparkle } from 'lucide-vue-next';
-import state, { id } from './state.ts';
+import state from './state.ts';
 import canvas from './canvas.vue';
 import settings from './settings.vue';
 
-const promptsPlugin: Plugin = {
-  id,
+const promptsPlugin: PluginDefinition = {
   label: 'Prompts',
   icon: Sparkle,
   state,

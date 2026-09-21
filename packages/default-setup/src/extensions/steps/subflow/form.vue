@@ -123,6 +123,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed } from 'vue'
 import { Check, ChevronDown, ExternalLink } from 'lucide-vue-next'
@@ -220,7 +221,7 @@ const updateEntryPayload = (source: string) => {
 const openFlow = () => {
   if (selectedFlow.value) {
     // Navigate to the flow in flows plugin
-    const flowsActor = actorSystem.get(flowsId);
+    const flowsActor = actorOf(flowsId);
     flowsActor.send({ type: 'FLOW.SELECT', flowId: selectedFlow.value.id });
   }
 }

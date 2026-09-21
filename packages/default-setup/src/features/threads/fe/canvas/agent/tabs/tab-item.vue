@@ -101,6 +101,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed } from 'vue';
 import { X, SquarePen, Pin } from 'lucide-vue-next';
@@ -140,7 +141,7 @@ defineEmits<{
   'create-group': [];
 }>();
 
-const threadsActor: ThreadsState = actorSystem.get(threadsId);
+const threadsActor: ThreadsState = actorOf(threadsId);
 const chatStates = useSelector(threadsActor, (state) => state.context.chatStates);
 const chatStateOverrides = useSelector(threadsActor, (state) => state.context.chatStateOverrides);
 const settings = useSelector(threadsActor, (state) => state.context.settings);

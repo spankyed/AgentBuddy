@@ -1,11 +1,10 @@
-import { emit } from '@/__generated__/events';
+import { emit, actorOf } from '@/__generated__/events';
 import { setup } from 'xstate';
 import { performance } from 'node:perf_hooks';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { getActor } from '@abuddy/sdk/helpers';
 import { bus } from '@abuddy/sdk/ids';
 import { UnknownBackupDatabasesError } from '@abuddy/sdk/services';
-import { brain } from '@/__generated__/system-ids';
 import type { DatabaseStartupData } from './types';
 import { executeQuery } from './execute/query';
 import { executeTransaction } from './execute/transaction';
@@ -135,7 +134,7 @@ export const databaseSystem = setup({
       const threadsSettings = repository.settingsQueries.getPluginSettings('threads') as any;
       const provider = threadsSettings?.chat?.defaultMode || 'Claude Code';
 
-      getActor(system, brain).send({
+      actorOf(system, 'brain').send({
         type: 'HANDLE_BRAIN_EVENT',
         eventType: 'db.query',
         payload: { prompt: prompt.trim(), mode: mode ?? 'query', provider },
@@ -229,7 +228,7 @@ export const databaseSystem = setup({
       services.appData.importBackup(path, { skipUnknownDatabases }).then(
         ({ missingDatabases, unknownEntityTypes }) => {
           // Stop brain and notify success
-          getActor(system, brain).send({ type: 'KILL_BRAIN' });
+          actorOf(system, 'brain').send({ type: 'KILL_BRAIN' });
           // A store the backup listed but didn't hold came back empty: said, not silently dropped
           const nothingToRestore = missingDatabases.length > 0
             ? ` The backup listed ${missingDatabases.join(', ')} but held nothing for it, so it is now empty.`
@@ -286,7 +285,7 @@ export const databaseSystem = setup({
         await services.appData.reset();
 
         // Restart the brain with the new root flow
-        getActor(system, brain).send({ type: 'RESTART_BRAIN' });
+        actorOf(system, 'brain').send({ type: 'RESTART_BRAIN' });
 
         logger.info('Database reset completed', { flowId: repository.flowsQueries.rootFlow() });
 

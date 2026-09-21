@@ -87,6 +87,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, provide, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -100,13 +101,12 @@ import { FolderOpen, FolderPlus, RefreshCw, AlertCircle, X } from 'lucide-vue-ne
 import { useExplorerSelection } from './composables/useExplorerSelection'
 import { useExplorerDragDrop } from './composables/useExplorerDragDrop'
 import type { FileInfo } from './state'
-import { id as settingsActorId } from '@/features/settings/fe/state';
 import { pluginSettings } from '@/features/settings/plugin-settings';
 
 const actorSystem = useActorSystem()
 
 // Get actors
-const codeActor: CodeState = actorSystem.get(codeId)
+const codeActor: CodeState = actorOf(codeId)
 const explorerActor = codeActor.system.get('explorer')!
 const terminalActor = codeActor.system.get('terminal')!
 
@@ -199,7 +199,7 @@ provide('explorer-open-file', (path: string, editorMode?: 'richText' | 'plainTex
   explorerActor?.send({ type: 'explorer.OPEN_FILE', path, editorMode })
 })
 
-const settingsActor = actorSystem.get(settingsActorId)
+const settingsActor = actorOf('settings')
 const mdEditorDefault = useSelector(settingsActor, (state: any) => pluginSettings(state.context.settings, 'code')?.mdEditorDefault ?? false)
 provide('explorer-md-editor-default', () => mdEditorDefault.value)
 

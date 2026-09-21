@@ -1,9 +1,10 @@
 <script setup lang="ts">
+import { actorOf } from '#generated/fe'
 import { useSelector } from '@xstate/vue';
 import { useActorSystem } from '@abuddy/sdk/fe';
 import { id, type NotesState } from '../state';
 
-const actor: NotesState = useActorSystem().get(id);
+const actor: NotesState = actorOf(id);
 const label = useSelector(actor, (state) => state.context.label);
 </script>
 

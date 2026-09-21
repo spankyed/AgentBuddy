@@ -51,6 +51,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
@@ -66,7 +67,7 @@ import PrimitiveDisplay from './components/PrimitiveDisplay.vue';
 const actorSystem = useActorSystem()
 
 // State Management
-const actor = actorSystem.get(id);
+const actor = actorOf(id);
 const queryResult = useSelector(actor, (state: any) => state.context.queryResult);
 const isLoading = useSelector(actor, (state: any) => state.context.isLoading);
 const error = useSelector(actor, (state: any) => state.context.error);

@@ -178,13 +178,13 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { HardDrive, PackageOpen, RotateCcw, Trash2 } from 'lucide-vue-next'
 import ImportPackSeedsPicker from './ImportPackSeedsPicker.vue'
 import Hotkeys from './Hotkeys.vue'
-import { id as settingsActorId } from '@/features/settings/fe/state';
 
 const actorSystem = useActorSystem()
 
@@ -207,7 +207,7 @@ function onHotkeyUpdate(event: { path: string[]; value: any }) {
   })
 }
 
-const actor = actorSystem.get(settingsActorId)
+const actor = actorOf('settings')
 
 const packSeedsImport = useSelector(actor, (state: any) => state.context.packSeedsImport)
 const resetting = useSelector(actor, (state: any) => state.context.resetting)

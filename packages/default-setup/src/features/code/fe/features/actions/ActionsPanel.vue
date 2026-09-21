@@ -237,7 +237,7 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { useActorSystem } from '@abuddy/sdk/fe'
-import { navigateToPlugin } from '@/__generated__/fe'
+import { navigateToPlugin, actorOf } from '@/__generated__/fe'
 import { id as codeId, type CodeState } from '@/features/code/fe/state'
 import { id as actionsPluginId } from '@/features/actions/fe/state'
 import { ExternalLink, Plus, X, Pencil, Trash2, Play, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
@@ -259,9 +259,9 @@ import uFuzzy from '@leeoniya/ufuzzy'
 const actorSystem = useActorSystem()
 
 // Get actors - use main actions plugin for state, codeActions for tab management
-const codeActor: CodeState = actorSystem.get(codeId)
+const codeActor: CodeState = actorOf(codeId)
 const codeActionsActor = codeActor.system.get('codeActions')!
-const actionsPluginActor = actorSystem.get(actionsPluginId)!
+const actionsPluginActor = actorOf(actionsPluginId)!
 
 // State selectors - read from main actions plugin (single source of truth)
 const actions = useSelector(actionsPluginActor, (state: any) => state.context.actions)

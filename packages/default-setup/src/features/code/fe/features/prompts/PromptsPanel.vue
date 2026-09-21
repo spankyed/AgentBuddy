@@ -237,7 +237,7 @@
 import { ref, computed, watch, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { useActorSystem } from '@abuddy/sdk/fe'
-import { navigateToPlugin } from '@/__generated__/fe'
+import { navigateToPlugin, actorOf } from '@/__generated__/fe'
 import { id as codeId, type CodeState } from '@/features/code/fe/state'
 import { id as promptsPluginId } from '@/features/prompts/fe/state'
 import { ExternalLink, Plus, X, Pencil, Trash2, Sparkle, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
@@ -259,9 +259,9 @@ import uFuzzy from '@leeoniya/ufuzzy'
 const actorSystem = useActorSystem()
 
 // Get actors - use main prompts plugin for state, codePrompts for tab management
-const codeActor: CodeState = actorSystem.get(codeId)
+const codeActor: CodeState = actorOf(codeId)
 const codePromptsActor = codeActor.system.get('codePrompts')!
-const promptsPluginActor = actorSystem.get(promptsPluginId)!
+const promptsPluginActor = actorOf(promptsPluginId)!
 
 // State selectors - read from main prompts plugin (single source of truth)
 const prompts = useSelector(promptsPluginActor, (state: any) => state.context.prompts)

@@ -14,6 +14,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import type { BlockConfig } from '@/__generated__/types'
 import { blockRegistry } from '@abuddy/sdk/blocks'
 import { ref, computed } from 'vue'
@@ -32,7 +33,7 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 const actorSystem = useActorSystem()
-const threadsActor = actorSystem.get(threadsId)
+const threadsActor = actorOf(threadsId)
 
 // ─── Block component resolution ─────────────────────────────────────
 const getBlockComponent = (type: string) => blockRegistry.getComponent(type)

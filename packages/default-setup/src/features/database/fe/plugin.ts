@@ -1,11 +1,10 @@
-import type { Plugin } from "@abuddy/sdk/fe";
+import type { PluginDefinition } from "@abuddy/sdk/fe";
 import { Database } from 'lucide-vue-next';
-import state, { id } from './state.ts';
+import state from './state.ts';
 import canvas from './canvas.vue';
 import settings from './settings.vue';
 
-const databasePlugin: Plugin = {
-  id,
+const databasePlugin: PluginDefinition = {
   label: 'Database',
   icon: Database,
   state,

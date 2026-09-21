@@ -256,6 +256,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { computed, ref, nextTick, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, type NotesState } from './state'
@@ -274,7 +275,7 @@ import { useActorSystem, useTrackedMenuOpen } from '@abuddy/sdk/fe'
 
 const actorSystem = useActorSystem()
 
-const actor: NotesState = actorSystem.get(id)
+const actor: NotesState = actorOf(id)
 
 const dropdownOpen = ref(false)
 const favoritesExpanded = ref(true)

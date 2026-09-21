@@ -242,6 +242,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -253,7 +254,7 @@ import type { ContentSection, FieldContent, ListContent, MarkdownContent, TextCo
 const actorSystem = useActorSystem()
 
 type LibraryActor = ActorRefFrom<typeof librarySystem>
-const actor = actorSystem.get(id) as LibraryActor
+const actor = actorOf(id) as LibraryActor
 
 // Individual selectors for each context property
 const index = useSelector(actor, (state) => state.context.index)

@@ -70,9 +70,9 @@ describe('parseManifest', () => {
     expect(result.errors[0]).toContain('id');
   });
 
-  it('rejects feature ids generated code reserves: reserved words and busId', () => {
+  it('rejects feature ids generated code reserves: reserved words', () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-    for (const id of ['default', 'export', 'busId']) {
+    for (const id of ['default', 'export', 'eval']) {
       expect(parseManifest({ ...pack, features: [{ id }] }).errors).toEqual([expect.stringContaining(`"${id}" is reserved in generated code`)]);
     }
     expect(parseManifest({ ...pack, features: [{ id: 'defaults' }, { id: 'specs' }] }).errors).toEqual([]);

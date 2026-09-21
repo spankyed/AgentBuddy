@@ -43,6 +43,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import { id as databaseId, type DatabaseState } from '../../state'
@@ -51,7 +52,7 @@ import TNodeListItem from '@abuddy/ui/components/TNodeListItem'
 
 const actorSystem = useActorSystem()
 
-const databaseActor: DatabaseState = actorSystem.get(databaseId)
+const databaseActor: DatabaseState = actorOf(databaseId)
 
 // State selectors
 const flowEvents = useSelector(databaseActor, (state) => state.context.flowEvents)

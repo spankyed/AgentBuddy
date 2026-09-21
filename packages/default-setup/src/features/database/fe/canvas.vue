@@ -50,6 +50,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, onUnmounted } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -63,7 +64,7 @@ import BackupRestore from './components/BackupRestore.vue'
 
 const actorSystem = useActorSystem()
 
-const databaseActor: DatabaseState = actorSystem.get(databaseId)
+const databaseActor: DatabaseState = actorOf(databaseId)
 const viewMode = useSelector(databaseActor, (state) => state.context.viewMode)
 const isInBackupState = useSelector(databaseActor, (state) => state.matches('backup'))
 

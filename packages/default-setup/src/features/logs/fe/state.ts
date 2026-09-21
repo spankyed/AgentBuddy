@@ -1,12 +1,9 @@
-import { busId } from '@/__generated__/bus-ids';
 import { setup, type ActorRefFrom, assign, log } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
 import { sendToSystem } from '@/__generated__/events';
 import type { OutgoingLogsEvents } from '@/__generated__/types';
 
-export const id = busId.logs;
-/** What this feature's code calls its system (`sendToSystem`); `id` is the plugin's address */
-export const feature = 'logs' as const;
+export const id = 'logs' as const;
 
 export interface LogEntry {
   id: string;
@@ -69,7 +66,7 @@ const logsState = setup({
       logs: () => [],
     }),
     sendClearLogsToBackend: () => {
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'CLEAR_LOGS',
       });
     },
@@ -87,7 +84,7 @@ const logsState = setup({
     }),
     updateSettings: assign({
       settings: ({ event }) => {
-        sendToSystem(feature, {
+        sendToSystem(id, {
           type: 'REQUEST_LOGS_UPDATE',
         });
 

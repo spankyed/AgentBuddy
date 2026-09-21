@@ -140,6 +140,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed } from 'vue'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
@@ -163,12 +164,12 @@ const props = withDefaults(defineProps<Props>(), {
 })
 
 // Get brain state from brain state machine
-const brainActor: BrainState = actorSystem.get(brainId);
+const brainActor: BrainState = actorOf(brainId);
 const brainIsDead = useSelector(brainActor, (state) => state.context.brainIsDead)
 const startError = useSelector(brainActor, (state) => state.context.startError)
 const runningRootFlowId = useSelector(brainActor, (state) => state.context.runningRootFlowId)
 // The root flow is the flows plugin's (the flow with the root role)
-const flowsActor: FlowsState = actorSystem.get(flowsId)
+const flowsActor: FlowsState = actorOf(flowsId)
 const rootFlowId = useSelector(flowsActor, (state) => state.context.rootFlowId)
 
 // Compute if restart is needed by comparing root flow IDs

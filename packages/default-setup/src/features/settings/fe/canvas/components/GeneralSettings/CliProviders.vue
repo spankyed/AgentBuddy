@@ -23,19 +23,19 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { ref, watch } from 'vue'
 import { useActorSystem, useSettingsSaveStatus } from '@abuddy/sdk/fe'
 import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
 import CliProviderRow from './CliProviderRow.vue'
-import { id as settingsActorId } from '@/features/settings/fe/state';
 import { pluginSettings } from '@/features/settings/plugin-settings';
 
 const actorSystem = useActorSystem()
 
 const { updateSettings } = useSettingsSaveStatus()
 
-const settingsActor = actorSystem.get(settingsActorId)
+const settingsActor = actorOf('settings')
 const cliTestResults = useSelector(settingsActor, (state: any) => state.context.cliTestResults)
 
 const providers = [

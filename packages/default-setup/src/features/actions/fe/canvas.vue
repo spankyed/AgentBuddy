@@ -36,6 +36,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
@@ -47,7 +48,7 @@ import type { ActionParameter } from '@abuddy/sdk';
 
 const actorSystem = useActorSystem()
 
-const actor: ActionsState = actorSystem.get(id);
+const actor: ActionsState = actorOf(id);
 const state = useSelector(actor, (state) => state);
 const actions = useSelector(actor, (state) => state.context.actions);
 const selectedAction = useSelector(actor, (state) => state.context.selectedAction);

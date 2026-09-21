@@ -115,11 +115,10 @@ import PromptTemplateViewer from './PromptTemplateViewer.vue';
 import JsonSchemaEditor from '@abuddy/ui/components/JsonSchemaEditor';
 import { useActorSystem } from '@abuddy/sdk/fe';
 import { useCollapsibleState } from '@abuddy/ui/composables/useCollapsibleState';
-import { navigateToPlugin } from '@/__generated__/fe';
+import { navigateToPlugin, actorOf } from '@/__generated__/fe';
 import { id as promptsId, type PromptsState } from '@/features/prompts/fe/state';
 import type { PromptEntity } from '@abuddy/sdk';
 import type { TemplateInput } from '@abuddy/sdk';
-import { id as codeActorId } from '@/features/code/fe/state';
 
 const actorSystem = useActorSystem()
 
@@ -148,7 +147,7 @@ const emit = defineEmits<{
 }>();
 
 // Get the prompts state machine actor
-const actor: PromptsState = actorSystem.get(promptsId);
+const actor: PromptsState = actorOf(promptsId);
 
 // Use the composable for managing collapsible section states
 const inputsExpanded = useCollapsibleState(actor, ['formData', 'inputsExpanded'], 'TOGGLE_INPUTS_SECTION');
@@ -197,7 +196,7 @@ function openInEditor() {
 
   // Child actor needs time to initialize after plugin activation
   setTimeout(() => {
-    const promptsActor = actorSystem.get(codeActorId)?.system.get('codePrompts');
+    const promptsActor = actorOf('code')?.system.get('codePrompts');
     if (promptsActor) {
       promptsActor.send({ type: 'codePrompts.OPEN_PROMPT', promptId: props.prompt!.id });
     }

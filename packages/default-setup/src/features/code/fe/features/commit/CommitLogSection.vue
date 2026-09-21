@@ -88,6 +88,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -103,7 +104,7 @@ const props = defineProps<{
   toast: { success: (title: string, message: string) => void } | undefined
 }>()
 
-const codeActor: CodeState = actorSystem.get(codeId)
+const codeActor: CodeState = actorOf(codeId)
 const commitActor = codeActor.system.get('commit')!
 
 const commitLog = useSelector(commitActor, (state: any) => state.context.commitLog) as import('vue').Ref<CommitLogEntry[]>

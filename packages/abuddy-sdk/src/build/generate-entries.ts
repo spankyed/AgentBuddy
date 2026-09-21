@@ -716,20 +716,21 @@ ${manifest.migrations ? '  migrations,' : ''}
     const features = manifest.features ?? [];
     const pluginFeatures = features.filter(f => f.plugin);
 
-    // The plugin module is passed through as the author wrote it: its roles travel in `designations` below
+    // The plugin module is passed through as the author wrote it, keyed by its feature: the host registers it
+    // at the feature's address, and its roles travel in `designations` below
     const pluginImports = pluginFeatures
       .map(f => `import ${pluginBinding(f.id)} from '${toImportPath(root, f.plugin!.entry)}';`)
       .join('\n');
     const designated = pluginFeatures.filter(f => f.designation);
     const designationsProp = designated.length
-      ? `  designations: { ${designated.map(f => `'${f.designation}': '${qualifiedId(manifest.id, f.id)}'`).join(', ')} },\n`
+      ? `  designations: { ${designated.map(f => `'${f.designation}': '${f.id}'`).join(', ')} },\n`
       : '';
 
-    const pluginList = pluginFeatures.map(f => pluginBinding(f.id)).join(', ');
+    const pluginList = pluginFeatures.map(f => `'${f.id}': ${pluginBinding(f.id)}`).join(', ');
     // The feature whose plugin claims it, else the pack's first: the claim is on the plugin, so it can't
     // name a feature that isn't there, which a root `defaultPlugin` id could and did silently
     const defaultFeature = pluginFeatures.find(f => f.plugin?.default) ?? pluginFeatures[0];
-    const defaultPluginId = defaultFeature ? pluginBinding(defaultFeature.id) : 'undefined';
+    const defaultPluginId = defaultFeature ? `'${defaultFeature.id}'` : 'undefined';
 
     const fe = manifest.fe ?? {};
 
@@ -779,7 +780,7 @@ ${extraImports.join('\n')}
 
 export default {
   id: '${manifest.id}',
-  plugins: [${pluginList}],
+  plugins: { ${pluginList} },
   defaultPlugin: ${defaultPluginId},
 ${designationsProp}${regProps.join('\n')}
 } satisfies PackFERegistration;
@@ -855,41 +856,8 @@ export const {
 `;
   }
 
-  function generateSystemIds(): string {
-    const features = manifest.features ?? [];
-    const systemFeatures = features.filter(f => f.system);
-
-    // Addresses, for `system.get(...)`: this pack's from `busId`, a dependency's written out. A feature
-    // module's own `defineSystem` id is its name, which the sends take.
-    const ownExports = systemFeatures
-      .map(f => `export const ${f.id} = busId.${f.id};`)
-      .join('\n');
-
-    const depExports: string[] = [];
-    const seenIds = new Set(systemFeatures.map(f => f.id));
-    for (const [depId, snap] of depSnapshots) {
-      const depFeatures = (snap.manifest.features ?? []).filter(f => f.system);
-      const lines = depFeatures
-        .filter(f => !seenIds.has(f.id))
-        .map(f => { seenIds.add(f.id); return `export const ${f.id} = '${qualifiedId(depId, f.id)}';`; });
-      if (lines.length) {
-        depExports.push(`// ${depId}`, ...lines);
-      }
-    }
-
-    const busIdBlock = systemFeatures.length
-      ? `\nexport { busId } from './bus-ids.js';\n`
-      : '';
-
-    const busIdImport = systemFeatures.length ? `import { busId } from './bus-ids.js';\n\n` : '';
-
-    return `${HEADER}
-${busIdImport}${ownExports}
-${depExports.length ? '\n' + depExports.join('\n') + '\n' : ''}${busIdBlock}`;
-  }
-
-  // Each feature's address, which its system and its plugin share. Import-free so frontend code can use
-  // it: reaching it through system-ids.ts would pull every backend system into the pack's FE bundle.
+  // Each feature's address, which its system and its plugin share, and the pack's id: for the generated
+  // code that resolves names, not for pack code, which names features. Import-free, so frontend code can load it.
   function generateBusIds(): string {
     const addressed = (manifest.features ?? []).filter(f => f.system || f.plugin);
     if (!addressed.length) return '';
@@ -910,7 +878,8 @@ ${addressed.map(f => `  ${f.id}: '${qualifiedId(manifest.id, f.id)}'`).join(',\n
     const plugins = (manifest.features ?? []).filter(f => f.plugin).map(f => `'${f.id}'`);
     if (!plugins.length) return '';
     return `${HEADER}
-import { navigateToAddress, type PluginEvent } from '@abuddy/sdk/fe';
+import type { AnyActorRef } from 'xstate';
+import { actorAt, navigateToAddress, type PluginEvent } from '@abuddy/sdk/fe';
 import { HOST_PLUGIN_IDS } from '@abuddy/sdk/events';
 import { resolveName } from '@abuddy/sdk/ids';
 
@@ -925,6 +894,11 @@ const context = { packId: '${manifest.id}', hostIds: HOST_PLUGIN_IDS };
 /** Opens a plugin and hands its actor \`event\` once it's running; throws if no such plugin is registered */
 export function navigateToPlugin(name: PluginName, event?: PluginEvent | PluginEvent[]): void {
   navigateToAddress(resolveName(name, context), event);
+}
+
+/** A plugin's actor, by name; undefined until the app spawns it */
+export function actorOf<T = AnyActorRef>(name: PluginName): T {
+  return actorAt<T>(resolveName(name, context));
 }
 `;
   }
@@ -1059,6 +1033,8 @@ export function navigateToPlugin(name: PluginName, event?: PluginEvent | PluginE
 
     return `${HEADER}
 import { defineEvents, ${hostTargets.size ? 'type HostPluginEvents, ' : ''}type IncomingEventsOf } from '@abuddy/sdk/events';
+import { resolveName } from '@abuddy/sdk/ids';
+import type { ActorLookup } from '@abuddy/sdk/helpers';
 ${hasSystems ? `import type { specs as __specs } from './system-specs.js';\n` : ''}${imports}
 ${[...depEventImports, ...depSystems.imports].join('\n')}
 
@@ -1103,6 +1079,16 @@ export type QualifiedSystemEvents = ${[qualified(manifest.id, 'PackSystemEvents'
 export type QualifiedPluginEvents = ${qualifiedPluginEvents};
 
 export const { emit, sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<PackEvents, SendableSystemEvents>('${manifest.id}');
+
+/**
+ * A system's actor, by the name this pack's code writes for it: its own by feature id, a dependency's as
+ * \`<dependency>/<feature>\`. Pass the actor system a machine's actions receive. Like \`system.get\` (and
+ * the frontend's \`actorOf\`), it is undefined at runtime while no such system runs, so a caller that
+ * tolerates that checks for it.
+ */
+export function actorOf(system: ActorLookup, name: keyof SendableSystemEvents & string): NonNullable<ReturnType<ActorLookup['get']>> {
+  return system.get(resolveName(name, { packId: '${manifest.id}' }))!;
+}
 `;
   }
 
@@ -1643,7 +1629,6 @@ ${entries.join('\n')}
     ['src/__generated__/pack-entry.ts', generateBackendEntry()],
     ['src/__generated__/pack-entry-fe.ts', generateFrontendEntry()],
     ['src/__generated__/ears.ts', generateEars()],
-    ['src/__generated__/system-ids.ts', generateSystemIds()],
     ['src/__generated__/bus-ids.ts', generateBusIds()],
     ['src/__generated__/fe.ts', generateFe()],
     ['src/__generated__/system-specs.ts', generateSystemSpecs()],

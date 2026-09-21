@@ -1,11 +1,12 @@
 // [SEARCH_INDEX_FF] The search index is dormant: ./search-index/README.md lists its call sites and how to turn it on
+import type { ActorLookup } from '@abuddy/sdk/helpers'
 import { setup } from 'xstate'
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
 import type { EARS } from '@/__generated__/ears'
 import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryIndex, LibraryItem, FolderContents } from './types'
 // [SEARCH_INDEX_FF] import type { SearchIndex } from './search-index/types/search-index'
 import { bus } from '@abuddy/sdk/ids'
-import { emit } from '@/__generated__/events'
+import { emit, actorOf } from '@/__generated__/events'
 import { repository } from '@/__generated__/repository';
 import * as path from 'path'
 import * as os from 'os'
@@ -18,7 +19,6 @@ import { exportLibrary } from './export-library'
 import { importLibrary } from './import-library'
 import type { ContentSection } from '@/features/library/be/types';
 import type { CommandItem } from '@/features/settings/be/types';
-import { threads } from '@/__generated__/system-ids';
 
 type IncomingLibraryEvents =
   | { type: 'CREATE_DOCUMENT'; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }
@@ -94,9 +94,9 @@ function resolveHomePath(inputPath: string): string {
  * commands folder, or the folder, was created, edited, moved, renamed, deleted or imported. `before` is the list from
  * before the change.
  */
-function notifyIfCommandsChanged(system: { get(id: string): { send(event: unknown): void } | undefined }, before: CommandItem[]): void {
+function notifyIfCommandsChanged(system: ActorLookup, before: CommandItem[]): void {
   if (JSON.stringify(libraryService.commands()) === JSON.stringify(before)) return
-  system.get(threads)?.send({ type: 'COMMANDS_CHANGED' })
+  actorOf(system, 'threads')?.send({ type: 'COMMANDS_CHANGED' })
 }
 
 export const librarySystem = setup({

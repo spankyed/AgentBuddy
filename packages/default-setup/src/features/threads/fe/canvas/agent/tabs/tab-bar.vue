@@ -184,6 +184,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, ref, watch, nextTick } from 'vue';
 import TabItem from './tab-item.vue';
@@ -196,7 +197,7 @@ import { id, type ThreadsState } from '@/features/threads/fe/state';
 
 const actorSystem = useActorSystem()
 
-const actor: ThreadsState = actorSystem.get(id);
+const actor: ThreadsState = actorOf(id);
 
 const props = defineProps<{
   tabs: Tab[];

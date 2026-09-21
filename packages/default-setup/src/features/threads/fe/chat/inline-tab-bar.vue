@@ -18,6 +18,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { X } from 'lucide-vue-next';
 import { useSelector } from '@xstate/vue';
@@ -34,7 +35,7 @@ defineEmits<{
   close: [];
 }>();
 
-const actor: ThreadsState = actorSystem.get(id);
+const actor: ThreadsState = actorOf(id);
 
 const tabs = useSelector(actor, (state) => state.context.tabs);
 const activeTabId = useSelector(actor, (state) => state.context.activeTabId);

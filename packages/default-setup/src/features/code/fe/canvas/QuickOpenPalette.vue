@@ -139,6 +139,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { useActorSystem, useApplicationActor } from '@abuddy/sdk/fe'
@@ -163,7 +164,7 @@ interface EnhancedSearchResult {
 // Get state
 const actorSystem = useActorSystem()
 const appActor = useApplicationActor()
-const codeActor: CodeState = actorSystem.get(codeId)
+const codeActor: CodeState = actorOf(codeId)
 
 // State selectors
 const isVisible = useSelector(codeActor, (state) => state.context.isQuickOpenVisible)

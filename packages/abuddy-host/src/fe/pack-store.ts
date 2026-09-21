@@ -5,6 +5,7 @@ import type { FePackRegistryView } from '@abuddy/sdk/runtime';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { createDefinitionStore, createDesignationStore, createOwnedStore, createStepStore, createUndoLog } from '../packs/extensions.ts';
+import { qualifiedId } from '@abuddy/sdk/ids';
 import { createAppExtensionSlots } from './app-extensions.ts';
 
 interface PackFEExtensions {
@@ -23,7 +24,8 @@ interface PackFEExtensions {
 /** The renderer's registered pack frontends */
 export interface FePackRegistry extends FePackRegistryView {
   /** Registers a pack's frontend; without a pack id (the built-in packs') it can't be unregistered */
-  registerPackFE(registration: PackFERegistration): void;
+  /** Registers a pack's frontend, and returns its plugins as registered: each at its feature's address */
+  registerPackFE(registration: PackFERegistration): Plugin[];
   /** Unregisters a pack's frontend; returns the plugins it had added */
   unregisterPackFE(packId: string): Plugin[];
   /** Every registered plugin, in registration order */
@@ -46,7 +48,7 @@ export function createFePackRegistry(): FePackRegistry {
   const appExtensions = createAppExtensionSlots();
   const dslTypes = createOwnedStore<DslTypeConfig>();
 
-  function registerPackFE(registration: PackFERegistration): void {
+  function registerPackFE(registration: PackFERegistration): Plugin[] {
     const packId = registration.id;
     if (packExtensions.has(packId)) {
       throw new Error(`Pack "${packId}" frontend is already registered`);
@@ -60,36 +62,33 @@ export function createFePackRegistry(): FePackRegistry {
     const undo = undos.record;
 
     try {
-      // A plugin carries its address, `<packId>.<featureId>` (codegen names it from `busId`), so plugins of
-      // different packs never share an id and there is nothing here to qualify or arbitrate
-      const plugins = [...(registration.plugins ?? [])];
-      const ids = new Set<string>();
-      for (const { id } of plugins) {
-        if (!id.startsWith(`${packId}.`)) throw new Error(`Plugin "${id}"${fromPack} isn't addressed as "${packId}.<featureId>"`);
-        if (ids.has(id)) throw new Error(`Plugin "${id}"${fromPack} is registered twice`);
-        ids.add(id);
-      }
+      // The registration names features; each plugin is registered at its feature's address, as
+      // `registerPack` addresses `features`, so no pack's plugin can land in another's namespace
+      const byFeature = new Map(Object.entries(registration.plugins ?? {})
+        .map(([featureId, definition]) => [featureId, { ...definition, id: qualifiedId(packId, featureId) } as Plugin]));
+      const plugins = [...byFeature.values()];
       allPlugins.push(...plugins);
       undo(() => {
         for (const plugin of plugins) allPlugins.splice(allPlugins.indexOf(plugin), 1);
       });
 
-      const ownDefault = registration.defaultPlugin && plugins.find((p) => p.id === registration.defaultPlugin!.id);
+      const ownDefault = registration.defaultPlugin === undefined ? undefined : byFeature.get(registration.defaultPlugin);
       if (ownDefault && !defaultPlugin) {
         defaultPlugin = ownDefault;
         undo(() => { defaultPlugin = undefined; });
-      } else if (registration.defaultPlugin) {
+      } else if (registration.defaultPlugin !== undefined) {
         const reason = ownDefault ? 'another pack is already the default' : "it isn't one of this pack's plugins";
-        console.warn(`[pack-store] defaultPlugin "${registration.defaultPlugin.id}"${fromPack} ignored — ${reason}`);
+        console.warn(`[pack-store] defaultPlugin "${registration.defaultPlugin}"${fromPack} ignored — ${reason}`);
       }
 
       const roles: Record<string, string> = {};
-      for (const [designation, pluginId] of Object.entries(registration.designations ?? {})) {
-        if (!ids.has(pluginId)) continue;
+      for (const [designation, featureId] of Object.entries(registration.designations ?? {})) {
+        const plugin = byFeature.get(featureId);
+        if (!plugin) continue;
         if (designations.has(designation)) {
-          console.warn(`[pack-store] Designation "${designation}" of plugin "${pluginId}"${fromPack} ignored — another plugin plays that role`);
+          console.warn(`[pack-store] Designation "${designation}" of plugin "${plugin.id}"${fromPack} ignored — another plugin plays that role`);
         } else {
-          roles[designation] = pluginId;
+          roles[designation] = plugin.id;
         }
       }
       designations.register(roles);
@@ -134,6 +133,7 @@ export function createFePackRegistry(): FePackRegistry {
       }
 
       packExtensions.set(packId, { plugins, undo: undos.undoAll });
+      return plugins;
     } catch (err) {
       undos.undoAll();
       throw err;

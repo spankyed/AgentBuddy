@@ -51,6 +51,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -73,7 +74,7 @@ defineEmits<{
   openFile: [file: GitStatusFile]
 }>()
 
-const codeActor: CodeState = actorSystem.get(codeId)
+const codeActor: CodeState = actorOf(codeId)
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
 
 const fileDisplay = computed(() => {

@@ -3,7 +3,7 @@
 
 // Declares window.electronAPI; a type-only re-export survives in the emitted declarations
 export type {} from './electron-api.ts';
-export type { Plugin, RouteComponents } from './plugin.ts'
+export type { Plugin, PluginDefinition, RouteComponents } from './plugin.ts'
 export type { PackFERegistration } from './pack-fe-registration.ts'
 export { pasteIntoElement } from './input-paste.ts'
 export { useActorSystem, useApplicationActor, type PluginActorSystem } from './actor-system.ts'
@@ -26,6 +26,6 @@ export { secretsClient, type SecretsClient, type SecretsSnapshot } from './secre
 export {
   navigateToAddress,
   openInAppBrowser,
-  useState,
+  actorAt,
   type PluginEvent,
 } from './navigation.ts'

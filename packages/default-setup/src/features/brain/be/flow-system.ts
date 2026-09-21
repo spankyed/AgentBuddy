@@ -1,3 +1,4 @@
+import { actorOf } from '@/__generated__/events';
 import { qx } from '@/__generated__/ears';
 import { untypedQx } from '@abuddy/ears';
 import { services as appServices } from '@/__generated__/services';
@@ -11,7 +12,6 @@ import { EARS } from '@/__generated__/ears';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { safeEvents } from '@abuddy/sdk/helpers';
 import { brainRuntime } from './system';
-import { brain } from '@/__generated__/system-ids';
 import { brainLogger } from './utils/brain-inspect';
 import { isBrainPaused } from './utils/brain-pause';
 import { sendToBrainSystem } from '@abuddy/sdk/events';
@@ -341,7 +341,7 @@ export function createFlowNodeSystem(
             repository.brainCommands.updateTNodeAttributes(eventTNode.id, payloadToStore);
 
             // Emit TNODE_SPAWNED event for UI to display event TNode
-            system.get(brain).send({
+            actorOf(system, 'brain').send({
               type: 'TNODE_SPAWNED',
               tNode: eventTNode,
               parentId: flowTNodeId,
@@ -377,7 +377,7 @@ export function createFlowNodeSystem(
                 spawnFlowChild(enqueue, machine, systemId);
 
                 // Emit TNODE_SPAWNED event for the UI to display child node
-                system.get(brain).send({
+                actorOf(system, 'brain').send({
                   type: 'TNODE_SPAWNED',
                   tNode: childTNode,
                   parentId: eventTNode.id,
@@ -497,7 +497,7 @@ export function createFlowNodeSystem(
           // same TNODE_UPDATED pipeline that step/flow completions flow through.
           if (eventTrackCompleted) {
             repository.brainCommands.updateTNodeStatus(typedEv.eventTNodeId, 'completed');
-            system.get(brain).send({
+            actorOf(system, 'brain').send({
               type: 'TNODE_UPDATED',
               data: {
                 tNodeId: typedEv.eventTNodeId,
@@ -537,7 +537,7 @@ export function createFlowNodeSystem(
               spawnFlowChild(enqueue, nextMachine, nextSystemId);
 
               // Emit TNODE_SPAWNED event for the next node
-              system.get(brain).send({
+              actorOf(system, 'brain').send({
                 type: 'TNODE_SPAWNED',
                 tNode: nextTNode,
                 parentId: typedEv.tNodeId,
@@ -572,7 +572,7 @@ export function createFlowNodeSystem(
           }
 
           // Emit TNODE_UPDATED event
-          system.get(brain).send({
+          actorOf(system, 'brain').send({
             type: 'TNODE_UPDATED',
             data: {
               tNodeId: flowTNodeId,
@@ -611,7 +611,7 @@ export function createFlowNodeSystem(
 
               spawnFlowChild(enqueue, machine, systemId);
 
-              system.get(brain).send({
+              actorOf(system, 'brain').send({
                 type: 'TNODE_SPAWNED',
                 tNode,
                 parentId: pending.parentTNodeId ?? pending.eventTNodeId,

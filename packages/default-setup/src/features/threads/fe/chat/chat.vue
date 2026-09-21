@@ -186,7 +186,7 @@ import ImageLightbox from '@abuddy/ui/design/ImageLightbox'
 import ConfirmationDialog from '@abuddy/ui/design/ConfirmationDialog'
 import ScrollToBottomFob from '@abuddy/ui/design/ScrollToBottomFob'
 import { useActorSystem, useApplicationActor } from '@abuddy/sdk/fe'
-import { navigateToPlugin } from '@/__generated__/fe'
+import { navigateToPlugin, actorOf } from '@/__generated__/fe'
 import { useSelector } from '@xstate/vue'
 import { id, threadsFromStore, type ThreadsState } from '@/features/threads/fe/state';
 import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, QuickPrompt, AgentSettings } from '@/__generated__/types'
@@ -195,7 +195,7 @@ import { pluginSettingsKey } from '@/features/settings/plugin-settings';
 
 const actorSystem = useActorSystem()
 const appActor = useApplicationActor()
-const actor: ThreadsState = actorSystem.get(id);
+const actor: ThreadsState = actorOf(id);
 const isOnboarding = useSelector(appActor, (s: any) => s.hasTag('onboarding'));
 const allMessages = useSelector(actor, (state) => (state.context.currentThread?.messages || []) as MessageEntity[]);
 const visibleMessages = computed(() => allMessages.value.filter(m => !(m as any).compacted));

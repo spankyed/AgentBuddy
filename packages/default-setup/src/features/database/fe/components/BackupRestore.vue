@@ -283,6 +283,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, watch, onMounted } from 'vue';
 import { useSelector } from '@xstate/vue';
@@ -307,13 +308,13 @@ import {
   HardDrive,
   Image as ImageIcon
 } from 'lucide-vue-next';
-import { feature, id, type DatabaseState } from '../state';
+import { id, type DatabaseState } from '../state';
 import { sendToSystem } from '@/__generated__/events';
 import ToastNotification from '@abuddy/ui/design/ToastNotification';
 
 const actorSystem = useActorSystem()
 
-const actor: DatabaseState = actorSystem.get(id);
+const actor: DatabaseState = actorOf(id);
 
 // Get backup info from state
 const storedBackupInfo = useSelector(actor, (state) => state.context.backupInfo);
@@ -438,7 +439,7 @@ async function selectImportDirectory() {
     // Save to localStorage for future use
     localStorage.setItem('database-backup-import-path', directoryPath);
     // Get backup info for the selected directory
-    sendToSystem(feature, {
+    sendToSystem(id, {
       type: 'GET_BACKUP_INFO',
       path: directoryPath,
     });

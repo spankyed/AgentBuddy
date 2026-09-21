@@ -1,4 +1,4 @@
-import { busId } from '@/__generated__/bus-ids';
+import { actorOf } from '@/__generated__/fe'
 import { assign, setup, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
 import breadcrumb, { breadcrumbList } from '@abuddy/sdk/fe';
@@ -18,9 +18,7 @@ import {
   type NormalizedTNodeTree,
 } from './trace-tree';
 
-export const id = busId.brain;
-/** What this feature's code calls its system (`sendToSystem`); `id` is the plugin's address */
-export const feature = 'brain' as const;
+export const id = 'brain' as const;
 export type BrainState = ActorRefFrom<typeof brainState>
 
 export interface BrainContext {
@@ -182,7 +180,7 @@ const brainState = setup({
 
       // If this is the currently selected step node, refresh its details
       if (context.selectedStepNode?.id === tNodeId) {
-        sendToSystem(feature, {
+        sendToSystem(id, {
           type: 'GET_TNODE_DETAILS',
           tNodeId,
         });
@@ -200,19 +198,19 @@ const brainState = setup({
     navigateToFlow: ({ event }) => {
       if (event.type !== 'FLOW.NAVIGATE') return;
 
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'OPEN_TNODE',
         tNodeId: event.tNodeId,
       });
     },
     goBack: ({ context }) => {
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'GO_BACK_TNODE',
         currentFlowTNodeId: context.flowTNodeId,
       });
     },
     requestPluginData: ({ context }) => {
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'REQUEST_PLUGIN_DATA',
         ...(context.flowTNodeId && { flowTNodeId: context.flowTNodeId }),
       });
@@ -223,7 +221,7 @@ const brainState = setup({
     requestNodeDetails: assign(({ event }) => {
       if (event.type !== 'NODE.CLICK') return {};
 
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'GET_TNODE_DETAILS',
         tNodeId: event.nodeId,
       });
@@ -255,7 +253,7 @@ const brainState = setup({
       }
 
       // Request details for this node
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'GET_TNODE_DETAILS',
         tNodeId: firstNodeId,
       });
@@ -277,7 +275,7 @@ const brainState = setup({
       selectedStepNode: undefined
     }),
     toggleInspect: () => {
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'TOGGLE_INSPECT',
       });
     },
@@ -329,21 +327,21 @@ const brainState = setup({
       latestRuntimeError: undefined,
     }),
     pauseBrain: () => {
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'PAUSE_BRAIN',
       });
     },
     resumeBrain: () => {
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'RESUME_BRAIN',
       });
     },
     restartBrain: ({ context }) => {
-      if (context.brainIsDead) sendToSystem(feature, { type: 'START_BRAIN' });
-      else sendToSystem(feature, { type: 'RESTART_BRAIN' });
+      if (context.brainIsDead) sendToSystem(id, { type: 'START_BRAIN' });
+      else sendToSystem(id, { type: 'RESTART_BRAIN' });
     },
     killBrain: () => {
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'KILL_BRAIN',
       });
     },
@@ -351,11 +349,11 @@ const brainState = setup({
       const target = (event as TrailClickEvent).target;
 
       if (target === 'root') {
-        sendToSystem(feature, { type: 'GO_BACK_TNODE' });
+        sendToSystem(id, { type: 'GO_BACK_TNODE' });
       } else if (target.startsWith('flow:')) {
         const flowTNodeId = target.substring(5);
         if (flowTNodeId !== context.flowTNodeId) {
-          sendToSystem(feature, { type: 'OPEN_TNODE', tNodeId: flowTNodeId });
+          sendToSystem(id, { type: 'OPEN_TNODE', tNodeId: flowTNodeId });
         }
       }
     },
@@ -478,12 +476,12 @@ const brainState = setup({
           actions: ['pulseEvent', ({ system, context }) => {
             // Clear pulse after animation
             setTimeout(() => {
-              system.get(id).send({ type: 'CLEAR_PULSE' });
+              actorOf(id).send({ type: 'CLEAR_PULSE' });
             }, 400);
             // Request fresh data for the current flow to show new events
             // Pass the current flowTNodeId to maintain the current view
             setTimeout(() => {
-              sendToSystem(feature, {
+              sendToSystem(id, {
                 type: 'REQUEST_PLUGIN_DATA',
                 ...(context.flowTNodeId && { flowTNodeId: context.flowTNodeId }),
               });
@@ -523,7 +521,7 @@ const brainState = setup({
         BRAIN_RUNTIME_ERROR: {
           actions: ['addRuntimeError', ({ event }) => {
             if (event.type !== 'BRAIN_RUNTIME_ERROR' || !event.error.tNodeId) return;
-            sendToSystem(feature, {
+            sendToSystem(id, {
               type: 'GET_TNODE_DETAILS',
               tNodeId: event.error.tNodeId,
             });

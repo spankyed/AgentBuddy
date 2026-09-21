@@ -1,7 +1,7 @@
-import type { Plugin } from "@abuddy/sdk/fe";
+import type { PluginDefinition } from "@abuddy/sdk/fe";
 
 import { BotMessageSquare } from 'lucide-vue-next';
-import state, { id } from './state.ts';
+import state from './state.ts';
 import list from './canvas/list.vue';
 import kanban from './canvas/kanban.vue';
 import ThreadDetail from './canvas/ThreadDetail.vue';
@@ -9,8 +9,7 @@ import AgentCanvas from './canvas/agent/canvas.vue';
 import chat from './chat/chat.vue';
 import settings from './settings.vue';
 
-const threadsPlugin: Plugin = {
-  id,
+const threadsPlugin: PluginDefinition = {
   label: 'Threads',
 
   icon: BotMessageSquare,

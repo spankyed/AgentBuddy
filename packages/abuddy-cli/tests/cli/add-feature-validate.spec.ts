@@ -53,6 +53,16 @@ async function runValidate(): Promise<{ exitCode: number | undefined; output: st
 }
 
 describe('abuddy add feature', () => {
+  // Pack code names features and the host addresses them, so what the scaffold writes never holds an address
+  it('writes a feature whose code names it and never holds its address', async () => {
+    await addFeature(['notes'], pack);
+    const feature = path.join(pack, 'src', 'features', 'notes');
+    const sources = ['fe/state.ts', 'fe/plugin.ts', 'be/system.ts'].map((file) => fs.readFileSync(path.join(feature, file), 'utf-8')).join('\n');
+    expect(sources).not.toMatch(/busId|system-ids|demo-pack\./);
+    expect(fs.readFileSync(path.join(feature, 'fe', 'state.ts'), 'utf-8')).toContain("export const id = 'notes';");
+    expect(fs.readFileSync(path.join(feature, 'fe', 'plugin.ts'), 'utf-8')).toMatch(/: PluginDefinition = \{\n  label:/);
+  });
+
   it('writes --designation into abuddy.json and no feature.config.ts', async () => {
     await addFeature(['notes', '--designation', 'notes'], pack);
 

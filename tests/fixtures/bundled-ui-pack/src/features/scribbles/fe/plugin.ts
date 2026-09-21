@@ -1,10 +1,9 @@
-import type { Plugin } from '@abuddy/sdk/fe';
+import type { PluginDefinition } from '@abuddy/sdk/fe';
 import { NotebookPen } from 'lucide-vue-next';
-import state, { id } from './state';
+import state from './state';
 import canvas from './canvas/editor.vue';
 
-const scribblesPlugin: Plugin = {
-  id,
+const scribblesPlugin: PluginDefinition = {
   label: 'Scribbles',
   icon: NotebookPen,
   state,

@@ -12,8 +12,8 @@ src/
     pack-entry.ts          # BE entry — exports PackRegistration (repositories and seeders included)
     pack-entry-fe.ts       # FE entry — the PackFERegistration: plugins, steps, tiptap + app extensions, DSL types
     ears.ts                # EARS entity/relation registry, generated from abuddy.json
-    system-ids.ts          # System ID re-exports from each system
-    bus-ids.ts             # busId map (bus-routable system IDs); import-free, safe for FE code
+    bus-ids.ts             # packId and each feature's address; import-free, for the generated resolvers
+    fe.ts                  # actorOf(name), navigateToPlugin(name, event?), PluginName: FE lookups by name
     events.ts              # PackEvents/PackSystemEvents + typed emit/sendToPlugin/sendToSystem facade
     system-specs.ts        # Type-only: each system's incoming events, read by events.ts
     types.ts               # Type barrel (outgoing events + per-feature types)
@@ -63,7 +63,7 @@ Frontend components don't render untrusted text as markup: script injected into 
 
 Backend systems wired via `__generated__/pack-entry.ts` using `toPackSystemDefs()` from the SDK. Each system file default-exports a `SystemEntry` (the manifest names only the path, not an export name). The logs system is special: `features[].earlySystem: true` makes it the registration's `boot.earlySystem`, which the API starts before EARS hydration (for log capture during boot).
 
-System IDs re-exported from `__generated__/system-ids.ts`. System specs (identity + types) defined via `defineSystem()` in each system file. A feature's designation comes only from `abuddy.json` `features[].designation`. It is a role, not a name: it need not equal the feature id, and every one default-setup declares happens to.
+Code names a system by feature id; `actorOf(system, name)` from `__generated__/events` reaches another system's actor. System specs (identity + types) defined via `defineSystem()` in each system file. A feature's designation comes only from `abuddy.json` `features[].designation`. It is a role, not a name: it need not equal the feature id, and every one default-setup declares happens to.
 
 ## Services
 

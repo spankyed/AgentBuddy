@@ -628,6 +628,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { computed, ref, nextTick, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { useActorSystem, useApplicationActor } from '@abuddy/sdk/fe'
@@ -650,7 +651,7 @@ import { useSectionVisibilityMenu } from '@/features/code/fe/composables/useSect
 // Get actors
 const actorSystem = useActorSystem()
 const appActor = useApplicationActor()
-const codeActor: CodeState = actorSystem.get(codeId)
+const codeActor: CodeState = actorOf(codeId)
 const commitActor = codeActor.system.get('commit')!
 
 // Settings from code actor

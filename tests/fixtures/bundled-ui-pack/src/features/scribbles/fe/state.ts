@@ -1,7 +1,6 @@
-import { busId } from '#generated/bus-ids';
 import { setup, type ActorRefFrom } from 'xstate';
 
-export const id = busId.scribbles;
+export const id = 'scribbles' as const;
 
 const scribblesState = setup({}).createMachine({ id });
 

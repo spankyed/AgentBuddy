@@ -14,7 +14,7 @@ import { z } from 'zod';
 export function checkFeatureSettings(featureId: string, settings: unknown): string[];
 
 // @public
-export function defineSystem<Id extends string>(id: Id): <TEvents extends {
+export function defineSystem<Id extends string>(feature: Id): <TEvents extends {
     type: string;
 }, TOutgoing extends {
     type: string;

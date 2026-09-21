@@ -1,4 +1,3 @@
-import { busId } from '@/__generated__/bus-ids';
 import { assign, enqueueActions, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb from '@abuddy/sdk/fe'
 import { contextMenu } from '@abuddy/sdk/fe'
@@ -19,9 +18,7 @@ import type { EARS } from '@abuddy/sdk'
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
 /* ─────────────────────────────────────────────────────────── */
-export const id = busId.database
-/** What this feature's code calls its system (`sendToSystem`); `id` is the plugin's address */
-export const feature = 'database' as const;
+export const id = 'database' as const;
 export type DatabaseState = ActorRefFrom<typeof databaseState>
 
 export interface DatabaseContext {
@@ -141,7 +138,7 @@ const databaseState = setup({
     /* ── query interactions ────────────────────────────── */
     executeQuery: ({ event, context }) => {
       const ev = typeOf('QUERY.EXECUTE', event);
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'EXECUTE_QUERY',
         code: ev.code,
       });
@@ -149,7 +146,7 @@ const databaseState = setup({
 
     executeTransaction: ({ event, context }) => {
       const ev = typeOf('TRANSACTION.EXECUTE', event);
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'EXECUTE_TRANSACTION',
         code: ev.code,
       });
@@ -159,7 +156,7 @@ const databaseState = setup({
       const ev = typeOf('ENTITY.DELETE', event);
       // Use tx() to delete the entity
       const deleteCode = `tx('${ev.entityId}').destroy(); return { deleted: '${ev.entityId}' };`;
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'EXECUTE_TRANSACTION',
         code: deleteCode,
       });
@@ -168,7 +165,7 @@ const databaseState = setup({
     refreshAfterDelete: ({ context }) => {
       // Re-run the current query after successful deletion
       if (context.currentQuery) {
-        sendToSystem(feature, {
+        sendToSystem(id, {
           type: 'EXECUTE_QUERY',
           code: context.currentQuery,
         });
@@ -251,7 +248,7 @@ const databaseState = setup({
         console.error('Invalid prompt provided for AI query generation');
         return;
       }
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'GENERATE_AI_QUERY',
         prompt: ev.prompt.trim(),
         mode: ev.mode,
@@ -286,7 +283,7 @@ const databaseState = setup({
     }),
 
     refreshSchema: () => {
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'REFRESH_SCHEMA',
       });
     },
@@ -304,7 +301,7 @@ const databaseState = setup({
       const newMode = context.viewMode === 'database' ? 'trace' : 'database';
       if (newMode === 'trace' && context.traceFlows.length === 0) {
         // Request trace flows when switching to trace mode for the first time
-        sendToSystem(feature, {
+        sendToSystem(id, {
           type: 'GET_TRACE_FLOWS',
         });
       }
@@ -315,7 +312,7 @@ const databaseState = setup({
     }),
 
     requestTraceFlows: () => {
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'GET_TRACE_FLOWS',
       });
     },
@@ -340,7 +337,7 @@ const databaseState = setup({
       // Auto-select first flow if we have flows and no current selection
       if (sortedFlows.length > 0) {
         const firstFlow = sortedFlows[0];
-        sendToSystem(feature, {
+        sendToSystem(id, {
           type: 'GET_FLOW_EVENTS',
           flowId: firstFlow.id,
           offset: 0,
@@ -362,7 +359,7 @@ const databaseState = setup({
 
     selectFlow: assign(({ event }) => {
       const ev = typeOf('TRACE.SELECT_FLOW', event);
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'GET_FLOW_EVENTS',
         flowId: ev.flowId,
         offset: 0,
@@ -398,7 +395,7 @@ const databaseState = setup({
       if (!context.currentFlowId || !context.tracePagination.hasMore) return;
 
       const newOffset = context.tracePagination.offset + context.tracePagination.limit;
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'GET_FLOW_EVENTS',
         flowId: context.currentFlowId,
         offset: newOffset,
@@ -423,7 +420,7 @@ const databaseState = setup({
         newExpanded.add(ev.nodeId);
         // Request node details if not already loaded
         if (!context.nodeDetails.has(ev.nodeId)) {
-          sendToSystem(feature, {
+          sendToSystem(id, {
             type: 'GET_NODE_DETAILS',
             nodeId: ev.nodeId,
           });
@@ -457,12 +454,12 @@ const databaseState = setup({
 
     exportBackup: ({ event }) => {
       const { path, name, databases } = typeOf('BACKUP.EXPORT', event);
-      sendToSystem(feature, { type: 'EXPORT_DATABASE', path, name, databases });
+      sendToSystem(id, { type: 'EXPORT_DATABASE', path, name, databases });
     },
 
     importBackup: ({ event }) => {
       const { path, skipUnknownDatabases } = typeOf('BACKUP.IMPORT', event);
-      sendToSystem(feature, { type: 'IMPORT_DATABASE', path, skipUnknownDatabases });
+      sendToSystem(id, { type: 'IMPORT_DATABASE', path, skipUnknownDatabases });
     },
 
     exportFinished: assign(({ event }) => ({
@@ -481,7 +478,7 @@ const databaseState = setup({
 
     /* ── reset database actions ─────────────────────────── */
     resetDatabase: () => {
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'RESET_DATABASE',
       });
     },

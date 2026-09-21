@@ -142,13 +142,13 @@ const PluginSchema = z.object({
  */
 export const FEATURE_ID_PATTERN = /^[a-z][a-zA-Z0-9]*$/;
 
-/** Names a feature id can't take: reserved words, and `busId`, which `#generated/system-ids` exports */
+/** Names a feature id can't take: reserved words, since a feature id becomes an identifier in generated code */
 const RESERVED_FEATURE_IDS = new Set([
   'await', 'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger', 'default', 'delete', 'do', 'else',
   'enum', 'export', 'extends', 'false', 'finally', 'for', 'function', 'if', 'implements', 'import', 'in',
   'instanceof', 'interface', 'let', 'new', 'null', 'package', 'private', 'protected', 'public', 'return', 'static',
   'super', 'switch', 'this', 'throw', 'true', 'try', 'typeof', 'var', 'void', 'while', 'with', 'yield',
-  'arguments', 'eval', 'busId',
+  'arguments', 'eval',
 ]);
 
 const IdentifierSchema = z.string().regex(/^[A-Za-z_$][\w$]*$/, 'Must be an identifier');

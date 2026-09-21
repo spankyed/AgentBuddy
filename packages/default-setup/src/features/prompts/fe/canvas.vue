@@ -37,6 +37,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed } from 'vue';
 import { useSelector } from '@xstate/vue';
@@ -48,7 +49,7 @@ import type { TemplateInput } from '@abuddy/sdk';
 
 const actorSystem = useActorSystem()
 
-const actor: PromptsState = actorSystem.get(id);
+const actor: PromptsState = actorOf(id);
 const state = useSelector(actor, (state) => state);
 const prompts = useSelector(actor, (state) => state.context.prompts);
 const selectedPrompt = useSelector(actor, (state) => state.context.selectedPrompt);

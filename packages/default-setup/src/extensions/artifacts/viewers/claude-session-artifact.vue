@@ -263,9 +263,8 @@ import { useSelector } from '@xstate/vue'
 import { Wrench, Copy, Check, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
 import { useActorSystem, getDesignated } from '@abuddy/sdk/fe'
-import { navigateToPlugin } from '@/__generated__/fe'
+import { navigateToPlugin, actorOf } from '@/__generated__/fe'
 import { sendToSystem } from '@/__generated__/events'
-import { id as codeActorId } from '@/features/code/fe/state';
 
 const actorSystem = useActorSystem()
 
@@ -412,7 +411,7 @@ async function copySessionId() {
 }
 
 function openTerminalTab() {
-  const terminalActor = actorSystem.get(codeActorId)?.system.get('terminal') as any
+  const terminalActor = actorOf('code')?.system.get('terminal') as any
   if (!terminalActor) return
 
   terminalActor.send({

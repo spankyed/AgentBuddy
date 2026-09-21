@@ -290,6 +290,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { ref, computed, watch, provide, nextTick, onMounted } from 'vue'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { useExternalFileDrag } from '@abuddy/ui/composables/useExternalFileDrag'
@@ -310,7 +311,7 @@ import TiptapSearchBar from '@abuddy/ui/components/tiptap/TiptapSearchBar'
 
 const actorSystem = useActorSystem()
 
-const actor: NotesState = actorSystem.get(id)
+const actor: NotesState = actorOf(id)
 const state = useSelector(actor, (s) => s)
 const currentNote = useSelector(actor, (s) => s.context.currentNote)
 const notes = useSelector(actor, (s) => s.context.notes)

@@ -146,6 +146,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed } from 'vue';
 import { 
@@ -166,7 +167,7 @@ import { id, type DatabaseState } from '../state';
 
 const actorSystem = useActorSystem()
 
-const actor: DatabaseState = actorSystem.get(id)
+const actor: DatabaseState = actorOf(id)
 const schema = useSelector(actor, (state) => state.context.schema);
 const isRefreshing = useSelector(actor, (state) => state.context.isRefreshing || false);
 

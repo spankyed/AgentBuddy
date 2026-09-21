@@ -192,6 +192,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, watch } from 'vue'
 import { Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
@@ -252,7 +253,7 @@ const updatePosition = (value: 'left' | 'right') => {
 }
 
 // Get notes actor and state via selectors
-const notesActor = actorSystem.get(id)
+const notesActor = actorOf(id)
 
 // Import state
 const isImporting = useSelector(notesActor, (state: any) => state.context.notesImport.status === 'importing')

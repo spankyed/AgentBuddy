@@ -67,6 +67,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -77,7 +78,7 @@ import TraceEventList from './TraceEventList.vue'
 
 const actorSystem = useActorSystem()
 
-const databaseActor: DatabaseState = actorSystem.get(databaseId)
+const databaseActor: DatabaseState = actorOf(databaseId)
 
 // State selectors
 const currentFlowId = useSelector(databaseActor, (state) => state.context.currentFlowId)

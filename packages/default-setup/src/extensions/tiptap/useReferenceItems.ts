@@ -1,3 +1,4 @@
+import { actorOf, type PluginName } from '@/__generated__/fe'
 import { computed, type Ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { getEditorSystem } from '@abuddy/ui/components/tiptap/editor-system'
@@ -15,7 +16,7 @@ const providerMap = new Map<string, CategoryItemsProvider>(
 export function useReferenceItems(category: Ref<string | null>, query: Ref<string>) {
   const actorStates = new Map<string, any>()
   for (const provider of ITEMS_PROVIDERS) {
-    const actor = getEditorSystem().get(provider.pluginId)
+    const actor = actorOf(provider.pluginId as PluginName)
     const state = useSelector(actor, (s: any) => s)
     actorStates.set(provider.category, state)
   }

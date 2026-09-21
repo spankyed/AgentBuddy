@@ -460,9 +460,8 @@ import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import DirectorySelect from '@abuddy/ui/design/DirectorySelect'
 import { X, Plus } from 'lucide-vue-next'
 import { useActorSystem } from '@abuddy/sdk/fe'
-import { navigateToPlugin } from '@/__generated__/fe'
+import { navigateToPlugin, actorOf } from '@/__generated__/fe'
 import type { CodeSettings, TerminalScript } from '@/__generated__/types'
-import { id as settingsActorId } from '@/features/settings/fe/state';
 
 const actorSystem = useActorSystem()
 
@@ -516,7 +515,7 @@ const newScriptLabel = ref('')
 const newScriptCommand = ref('')
 
 // Get projects from general settings
-const settingsActor = actorSystem.get(settingsActorId)
+const settingsActor = actorOf('settings')
 const projects = computed(() => {
   return (useSelector(settingsActor, (state: any) => state.context.settings?.general?.projects).value || []) as Project[]
 })

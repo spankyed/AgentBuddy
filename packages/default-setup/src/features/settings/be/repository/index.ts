@@ -2,7 +2,7 @@ import { tx, qx } from '@/__generated__/ears';
 
 import { EARS } from '@/__generated__/ears';
 
-import { busId } from '@/__generated__/bus-ids';
+import { pluginSettingsKey } from '../../plugin-settings';
 import type { SettingsData } from '../types';
 import { getDefaultSettings } from '../defaults';
 import { mergeSettings } from '../../merge-settings';
@@ -27,12 +27,6 @@ const getSettingsEntity = (): { id: EARS.EntityId; data: SettingsData } => ({
   id: SETTINGS_ID,
   data: mergeSettings(getDefaultSettings(), getStoredSettings()),
 });
-
-/**
- * The key a plugin's settings are stored under: its address, which the renderer reads them by. This
- * pack's backend names its own features by id; anything else (an id the frontend sent, `_meta`) is a key.
- */
-const settingsKeyFor = (label: string): string => (busId as Record<string, string>)[label] ?? label;
 
 // Helper to update nested values
 const setNestedValue = (obj: any, path: string[], value: any): any => {
@@ -76,7 +70,7 @@ export const settingsQueries = {
   getAssistantSettings: () => getSettingsEntity().data.assistant,
 
   getPluginSettings: (plugin: string) => {
-    const key = settingsKeyFor(plugin);
+    const key = pluginSettingsKey(plugin);
     const data = getSettingsEntity().data;
     return data.plugins?.[key] || (getDefaultSettings().plugins as any)[key] || {};
   },
@@ -96,7 +90,7 @@ export const settingsCommands = {
 
     // Build path matching the data structure (note: 'plugin' type maps to 'plugins' in data)
     const dataKey = type === 'plugin' ? 'plugins' : type;
-    const key = type === 'plugin' && label ? settingsKeyFor(label) : label;
+    const key = type === 'plugin' && label ? pluginSettingsKey(label) : label;
     const fullPath = needsLabel
       ? [dataKey, key!, ...path]
       : [dataKey, ...path];

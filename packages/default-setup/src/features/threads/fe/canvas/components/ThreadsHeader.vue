@@ -114,6 +114,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, watch } from 'vue'
 import { Search, Filter, List, Columns3, PanelLeft, History, Archive, X } from 'lucide-vue-next'
@@ -125,7 +126,7 @@ import type { ThreadTagOption } from '@/__generated__/types'
 
 const actorSystem = useActorSystem()
 
-const actor: ThreadsState = actorSystem.get(id)
+const actor: ThreadsState = actorOf(id)
 const currentState = useSelector(actor, s => s.value)
 const isDashboardView = computed(() => currentState.value === 'dashboard')
 const isListView = computed(() => currentState.value === 'list')

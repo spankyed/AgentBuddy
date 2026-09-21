@@ -1,13 +1,12 @@
 import { Library } from 'lucide-vue-next'
-import type { Plugin } from "@abuddy/sdk/fe"
+import type { PluginDefinition } from "@abuddy/sdk/fe"
 import { librarySystem } from './state'
 import LibraryCanvas from './canvas.vue'
 import LibraryPanel from './panel.vue'
 import settings from './settings.vue'
 import { id } from './state'
 
-const library: Plugin = {
-  id,
+const library: PluginDefinition = {
   label: 'Library',
   icon: Library,
   state: librarySystem,

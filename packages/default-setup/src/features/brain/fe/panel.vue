@@ -80,6 +80,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { computed, ref, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -90,7 +91,7 @@ import { sendToSystem } from '@/__generated__/events'
 
 const actorSystem = useActorSystem()
 
-const brainActor: BrainState = actorSystem.get(brainId);
+const brainActor: BrainState = actorOf(brainId);
 const normalizedTree = useSelector(brainActor, (state) => state.context.normalizedTree);
 const brainIsDead = useSelector(brainActor, (state) => state.context.brainIsDead);
 const startError = useSelector(brainActor, (state) => state.context.startError);

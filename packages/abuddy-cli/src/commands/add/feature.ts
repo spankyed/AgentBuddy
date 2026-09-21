@@ -85,13 +85,13 @@ export const ${camel}Queries = {};
 export const ${camel}Commands = {};
 `;
 
-const PLUGIN = (camel: string, label: string, icon: string) => `import type { Plugin } from '@abuddy/sdk/fe';
+const PLUGIN = (camel: string, label: string, icon: string) => `import type { PluginDefinition } from '@abuddy/sdk/fe';
 import { ${icon} } from 'lucide-vue-next';
-import state, { id } from './state';
+import state from './state';
 import canvas from './canvas/list.vue';
 
-const ${camel}Plugin: Plugin = {
-  id,
+// Registered at the feature's address by the host, so the module carries no id
+const ${camel}Plugin: PluginDefinition = {
   label: '${label}',
   icon: ${icon},
   state,
@@ -102,10 +102,9 @@ export default ${camel}Plugin;
 `;
 
 const STATE = (name: string) => `import { setup, type ActorRefFrom } from 'xstate';
-import { busId } from '#generated/bus-ids';
 
-// The plugin's address, \`<packId>.${name}\`: what the app registers it under and \`useActorSystem().get\` finds
-export const id = busId.${name};
+// The feature's name, which this pack's code sends to and looks the plugin up by (\`actorOf\` from #generated/fe)
+export const id = '${name}';
 export type ${toPascalCase(name)}State = ActorRefFrom<typeof ${toCamelCase(name)}State>;
 
 const ${toCamelCase(name)}State = setup({

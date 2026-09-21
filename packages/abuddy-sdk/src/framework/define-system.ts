@@ -33,7 +33,8 @@ export interface SystemSpec<
 }
 
 /**
- * Define a backend system's identity and event types.
+ * Define a backend system's identity and event types. `feature` is the feature's id, which is how the pack's
+ * code names the system; it runs at the feature's address, `<packId>.<featureId>` (`toPackSystemDefs`).
  *
  * ```ts
  * export const logsSpec = defineSystem('logs')<
@@ -43,13 +44,13 @@ export interface SystemSpec<
  * >();
  * ```
  */
-export function defineSystem<Id extends string>(id: Id) {
+export function defineSystem<Id extends string>(feature: Id) {
   return <
     TEvents extends { type: string },
     TOutgoing extends { type: string },
     TContext = {},
   >(): SystemSpec<Id, TEvents, TOutgoing, TContext> => ({
-    id,
+    id: feature,
     types: {
       context: {} as TContext,
       events: {} as TEvents | SystemEvents,

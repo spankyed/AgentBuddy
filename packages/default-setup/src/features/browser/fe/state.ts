@@ -1,4 +1,3 @@
-import { busId } from '@/__generated__/bus-ids';
 import { setup, assign, fromCallback, type ActorRefFrom } from 'xstate';
 import { autocomplete, recordVisit, updateHistoryMeta, displayUrl, type AutocompleteSuggestion } from './history.ts';
 import { sendToSystem } from '@/__generated__/events';
@@ -6,9 +5,7 @@ import { getNextAvailableColor, saveTabGroups, loadTabGroups, type TabGroup, typ
 
 export type { TabGroup, TabGroupColor };
 
-export const id = busId.browser;
-/** What this feature's code calls its system (`sendToSystem`); `id` is the plugin's address */
-export const feature = 'browser' as const;
+export const id = 'browser' as const;
 
 type BrowserTabPersistedId = `BrowserTab-${string}`;
 
@@ -134,7 +131,7 @@ function syncTabsToBackend(tabs: BrowserTab[], options?: { immediate?: boolean }
         isMuted: t.isMuted,
         groupId: t.groupId,
       }));
-    sendToSystem(feature, { type: 'SYNC_TABS', tabs: persistable });
+    sendToSystem(id, { type: 'SYNC_TABS', tabs: persistable });
   };
 
   if (options?.immediate) {
@@ -199,7 +196,7 @@ function syncBookmarksToBackend(bookmarks: Bookmark[]) {
       favicon: bm.favicon,
       displayOrder: i,
     }));
-    sendToSystem(feature, { type: 'SYNC_BOOKMARKS', bookmarks: persistable });
+    sendToSystem(id, { type: 'SYNC_BOOKMARKS', bookmarks: persistable });
   }, 2000);
 }
 

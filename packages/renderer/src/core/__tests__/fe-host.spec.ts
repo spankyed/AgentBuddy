@@ -47,8 +47,8 @@ it("gives the SDK's frontend lookups the window's registered pack frontends, and
   const note = { type: 'note', fe: { nodeConfig: { label: 'Note' } } };
   fePacks.registerPackFE({
     id: 'fe-host-pack',
-    plugins: [{ id: 'fe-host-pack.notebook-main' } as never],
-    designations: { notebook: 'fe-host-pack.notebook-main' },
+    plugins: { notebookMain: { label: 'Notebook' } as never },
+    designations: { notebook: 'notebookMain' },
     steps: [note as never],
     tiptapPlugins: [mentions],
     dslTypes: { memo: memoDsl },
@@ -58,7 +58,7 @@ it("gives the SDK's frontend lookups the window's registered pack frontends, and
     expect(getDslTypes().get('memo')).toBe(memoDsl);
     expect(tiptapPluginRegistry.getAll()).toEqual([mentions]);
     expect(stepRegistry.get('note')).toBe(note);
-    expect(getDesignated('notebook')).toBe('fe-host-pack.notebook-main');
+    expect(getDesignated('notebook')).toBe('fe-host-pack.notebookMain');
   } finally {
     fePacks.unregisterPackFE('fe-host-pack');
   }

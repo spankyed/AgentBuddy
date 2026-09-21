@@ -164,6 +164,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { ref } from 'vue'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
@@ -229,7 +230,7 @@ const removeCategory = (index: number) => {
 }
 
 // Get prompts actor and state via selectors
-const promptsActor: PromptsState = actorSystem.get(id)
+const promptsActor: PromptsState = actorOf(id)
 
 // Import state
 const isImporting = useSelector(promptsActor, (state) => state.context.promptsImport.status === 'importing')

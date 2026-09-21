@@ -3,7 +3,6 @@ import { emit } from '@/__generated__/events';
 import { assign, createMachine, setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
-import { flows } from '@/__generated__/system-ids';
 
 import { EARS } from '@/__generated__/ears';
 import type { ActionsStartupData } from './types';

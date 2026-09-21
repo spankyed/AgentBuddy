@@ -1,9 +1,8 @@
-import { emit } from '@/__generated__/events';
+import { emit, actorOf } from '@/__generated__/events';
 import { createMachine, setup, sendTo, enqueueActions, fromCallback, fromPromise, type ErrorActorEvent } from 'xstate';
 import { defineSystem, onPackSettingsDefaultsChanged, type SystemEntry } from '@abuddy/sdk/framework';
 
 import { bus } from '@abuddy/sdk/ids';
-import { brain, threads } from '@/__generated__/system-ids';
 
 import type { SettingsData } from './types';
 import { loadFaqs } from './faqs';
@@ -236,7 +235,7 @@ export const settingsSystem = setup({
     // The stored keys changed: refresh the plugin, and start the birth flow once a required provider has a key
     secretsChanged: ({ system }) => {
       sendSecrets(system);
-      const threadsActor = system.get(threads);
+      const threadsActor = actorOf(system, 'threads');
       if (!threadsActor) return;
       const hasRequiredKey = services.secrets.list().some((secret) => secret.selected && (REQUIRED_PROVIDERS as readonly string[]).includes(secret.provider));
       if (hasRequiredKey && !settingsQueries.getAssistantSettings().birthdate) {
@@ -302,7 +301,7 @@ export const settingsSystem = setup({
         // The running systems read what the seeds changed (the chat's slash commands, the library's documents)
         system.get(bus).send({ type: 'PACK_CHANGED', packId });
         if (ev.restartBrain) {
-          system.get(brain).send({ type: 'RESTART_BRAIN' });
+          actorOf(system, 'brain').send({ type: 'RESTART_BRAIN' });
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -311,8 +310,8 @@ export const settingsSystem = setup({
     },
 
     onResetComplete: ({ system }) => {
-      system.get(brain).send({ type: 'RESTART_BRAIN' });
-      system.get(threads)?.send({ type: 'COMMANDS_CHANGED' });
+      actorOf(system, 'brain').send({ type: 'RESTART_BRAIN' });
+      actorOf(system, 'threads')?.send({ type: 'COMMANDS_CHANGED' });
       system.get(bus).send(emit('settings', { type: 'APP_RESET_COMPLETE' }));
     },
 

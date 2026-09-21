@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { actorOf } from '#generated/fe'
 import { ref } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { useActorSystem } from '@abuddy/sdk/fe';
@@ -6,7 +7,7 @@ import { useActorSystem } from '@abuddy/sdk/fe';
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor';
 import { id, type MemosState } from '../state';
 
-const actor: MemosState = useActorSystem().get(id);
+const actor: MemosState = actorOf(id);
 const memos = useSelector(actor, (state) => state.context.memos);
 const draft = ref('');
 

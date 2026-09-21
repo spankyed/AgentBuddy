@@ -1,6 +1,6 @@
 // The renderer resolves each role to the plugin that plays it; a role another plugin plays stays with it.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { Plugin } from '@abuddy/sdk/fe';
+import type { PluginDefinition } from '@abuddy/sdk/fe';
 import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
 import { bindFeHost } from '@abuddy/sdk/runtime';
 import { createFePackRegistry } from '../../src/fe/pack-store.ts';
@@ -8,7 +8,7 @@ import { createFePackRegistry } from '../../src/fe/pack-store.ts';
 const { registerPackFE, unregisterPackFE, ...registry } = createFePackRegistry();
 bindFeHost({ application: {} as never, secrets: {} as never, transport: {} as never, packs: registry });
 
-const plugin = (id: string) => ({ id }) as unknown as Plugin;
+const plugin = (label: string) => ({ label }) as unknown as PluginDefinition;
 
 const packs: string[] = [];
 afterEach(() => {
@@ -20,8 +20,8 @@ afterEach(() => {
 function register(packId: string, roles: Array<[featureId: string, role: string]>): void {
   registerPackFE({
     id: packId,
-    plugins: roles.map(([id]) => plugin(`${packId}.${id}`)),
-    designations: Object.fromEntries(roles.map(([id, role]) => [role, `${packId}.${id}`])),
+    plugins: Object.fromEntries(roles.map(([featureId]) => [featureId, plugin(featureId)])),
+    designations: Object.fromEntries(roles.map(([featureId, role]) => [role, featureId])),
   });
   packs.push(packId);
 }

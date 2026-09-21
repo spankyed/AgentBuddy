@@ -44,6 +44,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import ScrollToBottomFob from '@abuddy/ui/design/ScrollToBottomFob'
@@ -76,7 +77,7 @@ defineEmits<{
   'restart-terminal': []
 }>()
 
-const codeActor: CodeState = actorSystem.get(id)
+const codeActor: CodeState = actorOf(id)
 const terminalActor = codeActor.system.get('terminal')
 
 /* --------------------------------------------------------------------------

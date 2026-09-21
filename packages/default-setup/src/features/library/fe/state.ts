@@ -1,4 +1,3 @@
-import { busId } from '@/__generated__/bus-ids';
 import { setup, assign, type ActorRefFrom } from 'xstate'
 import type { DocumentDTO, CollectionDTO, LibraryIndex, OutgoingLibraryEvents, LibraryItem, DocumentItem, FolderContents, BreadcrumbItem, SearchIndex } from '@/__generated__/types'
 import type { SearchIndexFormData } from './types/search-index'
@@ -49,9 +48,7 @@ function findItemById(context: LibraryContext, id: string): LibraryItem | undefi
   return undefined
 }
 
-export const id = busId.library
-/** What this feature's code calls its system (`sendToSystem`); `id` is the plugin's address */
-export const feature = 'library' as const;
+export const id = 'library' as const;
 import type { SnapshotFrom } from 'xstate'
 import type { ContentSection } from '@/features/library/be/types';
 
@@ -187,14 +184,14 @@ export const librarySystem = setup({
   actions: {
     // File browser actions
     requestFolderContents: ({ context }) => {
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'GET_FOLDER_CONTENTS',
         folderId: context.currentFolderId,
       })
     },
     navigateToFolder: ({ event }) => {
       if (event.type === 'NAVIGATE_TO_FOLDER' || event.type === 'BREADCRUMB_CLICK') {
-        sendToSystem(feature, {
+        sendToSystem(id, {
           type: 'NAVIGATE_TO_FOLDER',
           folderId: event.folderId,
         })
@@ -203,7 +200,7 @@ export const librarySystem = setup({
     handleDoubleClick: ({ context, event, self }) => {
       if (event.type === 'DOUBLE_CLICK_ITEM') {
         if (event.item.type === 'folder') {
-          sendToSystem(feature, {
+          sendToSystem(id, {
             type: 'NAVIGATE_TO_FOLDER',
             folderId: event.item.id,
           })
@@ -211,7 +208,7 @@ export const librarySystem = setup({
           const docItem = event.item as DocumentItem
           // Symlink documents: fetch from backend (routes to filesystem)
           if (docItem.isSymlinked || event.item.id.startsWith('symlink:')) {
-            sendToSystem(feature, {
+            sendToSystem(id, {
               type: 'GET_DOCUMENT',
               id: event.item.id,
             })
@@ -228,7 +225,7 @@ export const librarySystem = setup({
 
         if (event.tags?.length) tagStorage.addTags(event.tags)
 
-        sendToSystem(feature, {
+        sendToSystem(id, {
           type: 'CREATE_DOCUMENT',
           name: event.name,
           content: event.content,
@@ -239,7 +236,7 @@ export const librarySystem = setup({
     },
     createFolder: ({ context, event }) => {
       if (event.type === 'CREATE_FOLDER') {
-        sendToSystem(feature, {
+        sendToSystem(id, {
           type: 'CREATE_COLLECTION',
           name: event.name,
           parentId: context.currentFolderId || undefined,
@@ -248,7 +245,7 @@ export const librarySystem = setup({
     },
     deleteSelectedItems: ({ context }) => {
       if (context.selectedItems.length > 0) {
-        sendToSystem(feature, {
+        sendToSystem(id, {
           type: 'DELETE_ITEMS',
           ids: context.selectedItems,
         })
@@ -256,7 +253,7 @@ export const librarySystem = setup({
     },
     moveItems: ({ event }) => {
       if (event.type === 'MOVE_ITEMS') {
-        sendToSystem(feature, {
+        sendToSystem(id, {
           type: 'MOVE_ITEMS',
           ids: event.itemIds,
           targetFolderId: event.targetFolderId,
@@ -279,7 +276,7 @@ export const librarySystem = setup({
     requestTreeChildren: ({ context, event }) => {
       const folderId = (event as any).folderId as string
       if (folderId in context.expandedFolderChildren) return
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'GET_FOLDER_CONTENTS',
         folderId,
       })
@@ -302,7 +299,7 @@ export const librarySystem = setup({
     })),
     refetchExpandedFolders: ({ context }) => {
       for (const folderId of context.expandedFolderIds) {
-        sendToSystem(feature, {
+        sendToSystem(id, {
           type: 'GET_FOLDER_CONTENTS',
           folderId,
         })
@@ -314,7 +311,7 @@ export const librarySystem = setup({
         const item = context.items.find(i => i.id === event.itemId)
         const itemType = item?.type === 'folder' ? 'folder' : 'document'
 
-        sendToSystem(feature, {
+        sendToSystem(id, {
           type: 'RENAME_ITEM',
           id: event.itemId,
           name: event.name,
@@ -435,7 +432,7 @@ export const librarySystem = setup({
     }),
 
     requestIndex: () => {
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'GET_LIBRARY_INDEX',
       })
     },
@@ -451,7 +448,7 @@ export const librarySystem = setup({
         if (removed.length) tagStorage.removeTags(removed)
         if (added.length) tagStorage.addTags(added)
 
-        sendToSystem(feature, {
+        sendToSystem(id, {
           type: 'UPDATE_DOCUMENT',
           id: context.editingDocument.id,
           name: event.name,
@@ -489,7 +486,7 @@ export const librarySystem = setup({
       if (event.type !== 'EDIT_DOCUMENT') return
       const item = findItemById(context, event.documentId)
       if (item?.type === 'document') return
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'GET_DOCUMENT',
         id: event.documentId,
       })
@@ -499,7 +496,7 @@ export const librarySystem = setup({
     }),
     sendDeleteDocument: ({ event }) => {
       const ev = event as { type: 'DELETE_DOCUMENT'; documentId: string };
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'DELETE_ITEMS',
         ids: [ev.documentId],
       });
@@ -515,7 +512,7 @@ export const librarySystem = setup({
 
     // [SEARCH_INDEX_FF] Search index actions — commented out
     // requestSearchIndices: ({ context }) => {
-    //   sendToSystem(feature, {
+    //   sendToSystem(id, {
     //     type: 'LIST_SEARCH_INDICES',
     //     folderId: context.currentFolderId,
     //   })
@@ -530,7 +527,7 @@ export const librarySystem = setup({
     // }),
     // saveSearchIndex: ({ context, event }) => {
     //   if (event.type === 'SAVE_SEARCH_INDEX') {
-    //     sendToSystem(feature, {
+    //     sendToSystem(id, {
     //       type: 'CREATE_SEARCH_INDEX',
     //       config: event.config,
     //       folderId: context.currentFolderId,
@@ -539,7 +536,7 @@ export const librarySystem = setup({
     // },
     // updateSearchIndex: ({ event }) => {
     //   if (event.type === 'UPDATE_SEARCH_INDEX') {
-    //     sendToSystem(feature, {
+    //     sendToSystem(id, {
     //       type: 'UPDATE_SEARCH_INDEX',
     //       id: event.indexId,
     //       config: event.config,
@@ -548,7 +545,7 @@ export const librarySystem = setup({
     // },
     // deleteSearchIndex: ({ event }) => {
     //   if (event.type === 'DELETE_SEARCH_INDEX') {
-    //     sendToSystem(feature, {
+    //     sendToSystem(id, {
     //       type: 'DELETE_SEARCH_INDEX',
     //       id: event.indexId,
     //     })
@@ -601,7 +598,7 @@ export const librarySystem = setup({
     // }),
     // executeTestSearch: ({ context }) => {
     //   if (context.testingIndexId && context.testQuery) {
-    //     sendToSystem(feature, {
+    //     sendToSystem(id, {
     //       type: 'SEARCH_IN_INDEX',
     //       indexId: context.testingIndexId,
     //       query: context.testQuery,
@@ -639,7 +636,7 @@ export const librarySystem = setup({
     }),
     requestRefreshFolder: ({ event }) => {
       const folderId = (event as any).folderId as string
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'GET_FOLDER_CONTENTS',
         folderId,
       })
@@ -650,7 +647,7 @@ export const librarySystem = setup({
       if (event.type === 'CREATE_SYMLINK') {
         const pathParts = event.symlinkPath.split(/[/\\]/).filter(Boolean)
         const folderName = pathParts[pathParts.length - 1] || 'Symlink'
-        sendToSystem(feature, {
+        sendToSystem(id, {
           type: 'CREATE_SYMLINK_COLLECTION',
           name: folderName,
           symlinkPath: event.symlinkPath,
@@ -660,7 +657,7 @@ export const librarySystem = setup({
     },
     relinkSymlink: ({ event }) => {
       if (event.type === 'RELINK_SYMLINK') {
-        sendToSystem(feature, {
+        sendToSystem(id, {
           type: 'UPDATE_SYMLINK_PATH',
           collectionId: event.collectionId,
           newPath: event.newPath,
@@ -669,7 +666,7 @@ export const librarySystem = setup({
     },
     removeBrokenSymlink: ({ event }) => {
       if (event.type === 'REMOVE_BROKEN_SYMLINK') {
-        sendToSystem(feature, {
+        sendToSystem(id, {
           type: 'DELETE_ITEMS',
           ids: [event.collectionId],
         })
@@ -685,7 +682,7 @@ export const librarySystem = setup({
 
     sendImportLibrary: ({ event }) => {
       if (event.type === 'LIBRARY.IMPORT') {
-        sendToSystem(feature, {
+        sendToSystem(id, {
           type: 'IMPORT_LIBRARY',
           directory: event.directory,
         })
@@ -732,7 +729,7 @@ export const librarySystem = setup({
 
     sendExportLibrary: ({ event }) => {
       if (event.type === 'LIBRARY.EXPORT') {
-        sendToSystem(feature, {
+        sendToSystem(id, {
           type: 'EXPORT_LIBRARY',
           directory: event.directory,
           format: event.format,
@@ -895,7 +892,7 @@ export const librarySystem = setup({
           return { navHistory: result.history, currentFolderId: result.entry };
         }),
         ({ context }) => {
-          sendToSystem(feature, { type: 'NAVIGATE_TO_FOLDER', folderId: context.currentFolderId });
+          sendToSystem(id, { type: 'NAVIGATE_TO_FOLDER', folderId: context.currentFolderId });
         },
         'clearSelection',
       ],
@@ -908,7 +905,7 @@ export const librarySystem = setup({
           return { navHistory: result.history, currentFolderId: result.entry };
         }),
         ({ context }) => {
-          sendToSystem(feature, { type: 'NAVIGATE_TO_FOLDER', folderId: context.currentFolderId });
+          sendToSystem(id, { type: 'NAVIGATE_TO_FOLDER', folderId: context.currentFolderId });
         },
         'clearSelection',
       ],
@@ -1063,7 +1060,7 @@ export const librarySystem = setup({
             // Stay in browser, create file inline via unified event
             actions: ({ context }) => {
               if (context.currentFolderId) {
-                sendToSystem(feature, {
+                sendToSystem(id, {
                   type: 'CREATE_DOCUMENT',
                   name: 'New Document.txt',
                   content: [],

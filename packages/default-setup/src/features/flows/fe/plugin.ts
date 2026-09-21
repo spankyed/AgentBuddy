@@ -1,12 +1,11 @@
 import { defineAsyncComponent } from 'vue';
-import type { Plugin } from "@abuddy/sdk/fe";
+import type { PluginDefinition } from "@abuddy/sdk/fe";
 import { Network } from 'lucide-vue-next';
-import state, { id } from './state.ts';
+import state from './state.ts';
 import settings from './settings.vue';
 
 const canvas = defineAsyncComponent(() => import('./canvas/flow-canvas.vue'));
-const flowsPlugin: Plugin = {
-  id,
+const flowsPlugin: PluginDefinition = {
   label: 'Flows',
   icon: Network,
   state,

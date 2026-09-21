@@ -10,16 +10,16 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useState } from '@abuddy/sdk/fe'
 import { id, type librarySystem, type LibraryEvents } from './state'
 import DocumentEditor from './components/DocumentEditor.vue'
 // [SEARCH_INDEX_FF] import CreateIndexView from './components/search-index/CreateIndexView.vue'
 // [SEARCH_INDEX_FF] import TestIndexView from './components/search-index/TestIndexView.vue'
 import FileSystemBrowser from './components/FileSystemBrowser.vue'
 
-const actor = useState(id)
+const actor = actorOf(id)
 const context = useSelector(actor, (state: any) => state.context)
 const send = (event: LibraryEvents) => actor.send(event)
 

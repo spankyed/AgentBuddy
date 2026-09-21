@@ -1,14 +1,13 @@
 import { defineAsyncComponent } from 'vue';
-import type { Plugin } from "@abuddy/sdk/fe";
+import type { PluginDefinition } from "@abuddy/sdk/fe";
 import { Code2 } from 'lucide-vue-next';
-import state, { id } from './state.ts';
+import state from './state.ts';
 import settings from './settings.vue';
 
 const canvas = defineAsyncComponent(() => import('./canvas/canvas.vue'));
 const panel = defineAsyncComponent(() => import('./features/panel.vue'));
 
-const codePlugin: Plugin = {
-  id,
+const codePlugin: PluginDefinition = {
   label: 'Code',
   icon: Code2,
   state,

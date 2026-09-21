@@ -1,4 +1,3 @@
-import { busId } from '@/__generated__/bus-ids';
 import { assign, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe'
 import { safeEvents } from '@abuddy/sdk/fe'
@@ -21,9 +20,7 @@ import type { ActionEntity, EARS } from '@abuddy/sdk'
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
 /* ─────────────────────────────────────────────────────────── */
-export const id = busId.actions
-/** What this feature's code calls its system (`sendToSystem`); `id` is the plugin's address */
-export const feature = 'actions' as const;
+export const id = 'actions' as const;
 export type ActionsState = ActorRefFrom<typeof actionsState>
 
 export interface ActionsContext {
@@ -129,7 +126,7 @@ const actionsState = setup({
         return
       }
       // Send event to backend to get action data
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'ACTION_SELECT',
         actionId: ev.actionId,
       });
@@ -170,13 +167,13 @@ const actionsState = setup({
       
       if (isCreating) {
         // Create new action
-        sendToSystem(feature, {
+        sendToSystem(id, {
           type: 'CREATE_ACTION',
           ...context.formData,
         })
       } else {
         // Update existing action
-        sendToSystem(feature, {
+        sendToSystem(id, {
           type: 'UPDATE_ACTION',
           actionId: context.selectedActionId!,
           ...context.formData,
@@ -186,7 +183,7 @@ const actionsState = setup({
 
     sendDeleteAction: ({ event }) => {
       const ev = typeOf('ACTION.DELETE', event);
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'DELETE_ACTION',
         actionId: ev.actionId,
       });
@@ -194,7 +191,7 @@ const actionsState = setup({
 
     updateActionInput: ({ event }) => {
       const ev = typeOf('ACTION.UPDATE_INPUT', event);
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'UPDATE_ACTION',
         actionId: ev.actionId,
         input: ev.input,
@@ -203,7 +200,7 @@ const actionsState = setup({
 
     createActionInline: ({ event }) => {
       const ev = typeOf('ACTION.CREATE_INLINE', event);
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'CREATE_ACTION',
         label: ev.label,
         actionFn: ev.actionFn,
@@ -213,7 +210,7 @@ const actionsState = setup({
 
     updateActionLabel: ({ event }) => {
       const ev = typeOf('ACTION.UPDATE_LABEL', event);
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'UPDATE_ACTION',
         actionId: ev.actionId,
         label: ev.label,
@@ -348,7 +345,7 @@ const actionsState = setup({
 
     /* ── pagination ────────────────────────────────────────── */
     requestNextPage: assign(({ context }) => {
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'FETCH_ACTIONS_PAGE',
         page: context.page + 1,
       });
@@ -366,7 +363,7 @@ const actionsState = setup({
     }),
 
     requestAllItems: assign(() => {
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'FETCH_ALL_ACTIONS',
       });
       return { loadingMore: true };
@@ -409,7 +406,7 @@ const actionsState = setup({
 
     sendImportActions: ({ event }) => {
       const ev = typeOf('ACTIONS.IMPORT', event);
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'IMPORT_ACTIONS',
         actions: ev.actions,
       });
@@ -451,7 +448,7 @@ const actionsState = setup({
 
     sendExportActions: ({ event }) => {
       const ev = typeOf('ACTIONS.EXPORT', event);
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'EXPORT_ACTIONS',
         directory: ev.directory,
       });

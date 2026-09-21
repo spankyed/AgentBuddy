@@ -51,7 +51,7 @@ export interface ActionParameter {
 export const bus: "bus";
 
 // @public
-export function defineSystem<Id extends string>(id: Id): <TEvents extends {
+export function defineSystem<Id extends string>(feature: Id): <TEvents extends {
     type: string;
 }, TOutgoing extends {
     type: string;

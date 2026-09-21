@@ -1,3 +1,4 @@
+import { actorOf } from '@/__generated__/events';
 import { setup, assign, sendParent, enqueueActions } from 'xstate';
 import { EARS } from '@/__generated__/ears';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
@@ -5,7 +6,6 @@ import type { NodeEntity } from '@/__generated__/types';
 import { executeNode } from './node-handlers';
 import { repository } from '@/__generated__/repository';
 import { brainLogger } from './utils/brain-inspect';
-import { brain } from '@/__generated__/system-ids';
 
 type StepMachineContext = {
   tNodeId?: EARS.EntityId;
@@ -71,7 +71,7 @@ export function createStepNodeSystem(
             const tNodeId = context.tNodeId;
             const eventTNodeId = context.eventTNodeId;
             enqueue(({ system }) => {
-              system.get(brain)?.send({ type: 'TNODE_UPDATED', data: { tNodeId, status: 'completed', eventTNodeId } });
+              actorOf(system, 'brain')?.send({ type: 'TNODE_UPDATED', data: { tNodeId, status: 'completed', eventTNodeId } });
             });
           }
         }),
@@ -84,7 +84,7 @@ export function createStepNodeSystem(
             const tNodeId = context.tNodeId;
             const eventTNodeId = context.eventTNodeId;
             enqueue(({ system }) => {
-              system.get(brain)?.send({ type: 'TNODE_UPDATED', data: { tNodeId, status: 'failed', eventTNodeId } });
+              actorOf(system, 'brain')?.send({ type: 'TNODE_UPDATED', data: { tNodeId, status: 'failed', eventTNodeId } });
             });
           }
         }),

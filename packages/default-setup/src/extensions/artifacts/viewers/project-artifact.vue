@@ -67,9 +67,8 @@ import { Layers } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
 import { truncatePath } from '@abuddy/ui/utils/path-truncation'
 import { useActorSystem } from '@abuddy/sdk/fe'
-import { navigateToPlugin } from '@/__generated__/fe'
+import { navigateToPlugin, actorOf } from '@/__generated__/fe'
 import { useSelector } from '@xstate/vue'
-import { id as settingsActorId } from '@/features/settings/fe/state';
 
 const actorSystem = useActorSystem()
 
@@ -84,7 +83,7 @@ const props = defineProps<{
 }>()
 
 // Read projects directly from settings state (single source of truth)
-const settingsActor = actorSystem.get(settingsActorId)
+const settingsActor = actorOf('settings')
 const projects = useSelector(
   settingsActor,
   (state: any) => state.context.settings?.general?.projects || []

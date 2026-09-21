@@ -89,6 +89,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { useSelector } from '@xstate/vue';
@@ -99,7 +100,7 @@ import QueryEditorExamples from './query-editor/QueryEditorExamples.vue';
 
 const actorSystem = useActorSystem()
 
-const actor: DatabaseState = actorSystem.get(id);
+const actor: DatabaseState = actorOf(id);
 const currentQuery = useSelector(actor, (state) => state.context.currentQuery);
 const isLoading = useSelector(actor, (state) => state.context.isLoading);
 const error = useSelector(actor, (state) => state.context.error);

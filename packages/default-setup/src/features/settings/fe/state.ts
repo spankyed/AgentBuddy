@@ -1,4 +1,3 @@
-import { busId } from '@/__generated__/bus-ids';
 import { assign, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe'
 import { safeEvents } from '@abuddy/sdk/fe'
@@ -21,9 +20,7 @@ import { packId } from '@/__generated__/bus-ids';
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
 /* ─────────────────────────────────────────────────────────── */
-export const id = busId.settings
-/** What this feature's code calls its system (`sendToSystem`); `id` is the plugin's address */
-export const feature = 'settings' as const;
+export const id = 'settings' as const;
 export type SettingsState = ActorRefFrom<typeof settingsState>
 
 // Use backend types directly
@@ -115,7 +112,7 @@ const settingsState = setup({
   actions: {
     /* ── bootstrap ─────────────────────────────────────── */
     loadSettings: () => {
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'GET_SETTINGS',
       });
     },
@@ -183,7 +180,7 @@ const settingsState = setup({
     /* ── settings updates ────────────────────────────── */
     updateSettings: ({ event }) => {
       const ev = typeOf('SETTINGS.UPDATE', event);
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'UPDATE_SETTINGS',
         entityType: ev.entityType,
         label: ev.entityType === 'plugin' ? pluginSettingsKey(ev.label) : ev.label,
@@ -194,21 +191,21 @@ const settingsState = setup({
 
     replaceSettings: ({ event }) => {
       const ev = typeOf('SETTINGS.REPLACE', event);
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'REPLACE_SETTINGS',
         data: ev.data,
       });
     },
 
     resetSettings: () => {
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'RESET_SETTINGS',
       });
     },
 
     testCliProvider: assign(({ context, event }) => {
       const ev = typeOf('CLI.TEST', event);
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'TEST_CLI_PROVIDER',
         provider: ev.provider,
       });
@@ -233,7 +230,7 @@ const settingsState = setup({
 
     previewPackSeeds: assign(({ context, event }) => {
       const ev = event as { type: 'PACK_SEEDS.PREVIEW'; directory: string };
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'PREVIEW_PACK_SEEDS',
         directory: ev.directory,
       });
@@ -344,7 +341,7 @@ const settingsState = setup({
         return selected.length === total ? null : selected;
       };
 
-      sendToSystem(feature, {
+      sendToSystem(id, {
         type: 'IMPORT_PACK_SEEDS',
         directory,
         include: Object.fromEntries(Object.keys(preview.seeds).map((key) => [key, toIncludeField(key)])),
@@ -516,7 +513,7 @@ const settingsState = setup({
           actions: [
             assign({ resetting: true }),
             () => {
-              sendToSystem(feature, { type: 'RESET_APP' });
+              sendToSystem(id, { type: 'RESET_APP' });
             },
           ],
         },

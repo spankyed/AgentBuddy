@@ -194,6 +194,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed, watch } from 'vue'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
@@ -202,7 +203,6 @@ import type { FlowsSettings } from '@/__generated__/types'
 import { useSelector } from '@xstate/vue'
 import { id, type FlowsState } from './state'
 import { id as brainId, type BrainState } from '@/features/brain/fe/state'
-import { id as settingsActorId } from '@/features/settings/fe/state';
 
 const actorSystem = useActorSystem()
 
@@ -227,7 +227,7 @@ const emit = defineEmits<{
 const enableFlowPreview = ref<boolean>(props.settings?.enableFlowPreview ?? true)
 
 // Get flows actor and state via selectors
-const flowsActor: FlowsState = actorSystem.get(id)
+const flowsActor: FlowsState = actorOf(id)
 const flows = useSelector(flowsActor, (state) => state.context.flows || [])
 // The root flow is the flows system's (the flow with the root role), not a setting
 const rootFlowId = useSelector(flowsActor, (state) => state.context.rootFlowId)
@@ -246,8 +246,8 @@ const exportedFilePath = useSelector(flowsActor, (state) => state.context.dslExp
 const exportedFlowCount = useSelector(flowsActor, (state) => state.context.dslExport.flowCount)
 
 // Get settings actor for navigation only
-const settingsActor = actorSystem.get(settingsActorId)
-const brainActor: BrainState = actorSystem.get(brainId)
+const settingsActor = actorOf('settings')
+const brainActor: BrainState = actorOf(brainId)
 const runningRootFlowId = useSelector(brainActor, (state) => state.context.runningRootFlowId)
 
 // Check if restart is needed by comparing root flow IDs

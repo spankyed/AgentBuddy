@@ -42,6 +42,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -57,7 +58,7 @@ import PanelResizer from '@abuddy/ui/layout/panel-resizer'
 
 const actorSystem = useActorSystem()
 
-const actor: CodeState = actorSystem.get(id)
+const actor: CodeState = actorOf(id)
 
 const selectedPanel = useSelector(actor, (state) => state.context.selectedPanel)
 const panelTerminalExpanded = useSelector(actor, (state) => state.context.panelTerminalExpanded)

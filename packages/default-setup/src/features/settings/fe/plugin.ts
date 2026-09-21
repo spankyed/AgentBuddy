@@ -1,11 +1,10 @@
-import type { Plugin } from "@abuddy/sdk/fe"
+import type { PluginDefinition } from "@abuddy/sdk/fe"
 
 import { Settings } from 'lucide-vue-next'
 import state, { id } from './state'
 import canvas from './canvas/index.vue'
 
-export const settingsPlugin: Plugin = {
-  id,
+export const settingsPlugin: PluginDefinition = {
   label: 'Settings',
 
   icon: Settings,

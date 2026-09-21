@@ -346,8 +346,8 @@ export const FeatureEntrySchema: z.ZodObject<{
     references: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
     id: string;
-    designation?: string | undefined;
     settings?: string | undefined;
+    designation?: string | undefined;
     typesEntry?: string | undefined;
     earlySystem?: boolean | undefined;
     system?: {
@@ -367,8 +367,8 @@ export const FeatureEntrySchema: z.ZodObject<{
     references?: string | undefined;
 }, {
     id: string;
-    designation?: string | undefined;
     settings?: string | undefined;
+    designation?: string | undefined;
     typesEntry?: string | undefined;
     earlySystem?: boolean | undefined;
     system?: {
@@ -513,8 +513,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         references: z.ZodOptional<z.ZodString>;
     }, "strict", z.ZodTypeAny, {
         id: string;
-        designation?: string | undefined;
         settings?: string | undefined;
+        designation?: string | undefined;
         typesEntry?: string | undefined;
         earlySystem?: boolean | undefined;
         system?: {
@@ -534,8 +534,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         references?: string | undefined;
     }, {
         id: string;
-        designation?: string | undefined;
         settings?: string | undefined;
+        designation?: string | undefined;
         typesEntry?: string | undefined;
         earlySystem?: boolean | undefined;
         system?: {
@@ -821,8 +821,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }>>>;
     seedHooks: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
 }, "strict", z.ZodTypeAny, {
-    name: string;
     id: string;
+    name: string;
     version: string;
     dsl?: Record<string, {
         entry: string;
@@ -850,8 +850,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     features?: {
         id: string;
-        designation?: string | undefined;
         settings?: string | undefined;
+        designation?: string | undefined;
         typesEntry?: string | undefined;
         earlySystem?: boolean | undefined;
         system?: {
@@ -928,8 +928,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     seedHooks?: Record<string, string> | undefined;
 }, {
-    name: string;
     id: string;
+    name: string;
     version: string;
     dsl?: Record<string, {
         entry: string;
@@ -957,8 +957,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     features?: {
         id: string;
-        designation?: string | undefined;
         settings?: string | undefined;
+        designation?: string | undefined;
         typesEntry?: string | undefined;
         earlySystem?: boolean | undefined;
         system?: {
@@ -1035,8 +1035,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     seedHooks?: Record<string, string> | undefined;
 }>, {
-    name: string;
     id: string;
+    name: string;
     version: string;
     dsl?: Record<string, {
         entry: string;
@@ -1064,8 +1064,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     features?: {
         id: string;
-        designation?: string | undefined;
         settings?: string | undefined;
+        designation?: string | undefined;
         typesEntry?: string | undefined;
         earlySystem?: boolean | undefined;
         system?: {
@@ -1142,8 +1142,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     seedHooks?: Record<string, string> | undefined;
 }, {
-    name: string;
     id: string;
+    name: string;
     version: string;
     dsl?: Record<string, {
         entry: string;
@@ -1171,8 +1171,8 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     features?: {
         id: string;
-        designation?: string | undefined;
         settings?: string | undefined;
+        designation?: string | undefined;
         typesEntry?: string | undefined;
         earlySystem?: boolean | undefined;
         system?: {

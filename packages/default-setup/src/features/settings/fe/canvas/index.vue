@@ -28,6 +28,7 @@
 </template>
 
 <script setup lang="ts">
+import { actorOf } from '@/__generated__/fe'
 import { useActorSystem } from '@abuddy/sdk/fe'
 import { useSelector } from '@xstate/vue'
 import GeneralTab from './tabs/GeneralTab.vue'
@@ -37,7 +38,7 @@ import { id as settingsPluginId } from '@/features/settings/fe/state';
 
 const actorSystem = useActorSystem()
 
-const actor = actorSystem.get(settingsPluginId)
+const actor = actorOf(settingsPluginId)
 
 const activeTab = useSelector(actor, (state: any) => state.context.activeTab)
 

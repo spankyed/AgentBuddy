@@ -57,10 +57,11 @@ export function openInAppBrowser(url: string) {
   }
 }
 
-export function useState<T = AnyActorRef>(pluginId: string): T {
-  const actor = getApp().system.get(pluginId) as T;
-  if (!actor) {
-    throw new Error(`Plugin actor not found: ${pluginId}`);
-  }
-  return actor;
+/**
+ * The actor of the plugin at `address`, as the app's actor system holds it: undefined until the plugin's
+ * actor is spawned, as `system.get` is. Pack code names the plugin instead, through the `actorOf` its
+ * `#generated/fe` builds over this (`check:specifiers` keeps it that way).
+ */
+export function actorAt<T = AnyActorRef>(address: string): T {
+  return getApp().system.get(address) as T;
 }
