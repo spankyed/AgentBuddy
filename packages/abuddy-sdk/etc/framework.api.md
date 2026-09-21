@@ -11,6 +11,12 @@ import { EARS as EARS_2 } from '@abuddy/ears';
 import { z } from 'zod';
 
 // @public
+export function addressPluginSettings<T extends Record<string, unknown>>(plugins: T, addresses?: readonly FeatureAddress[]): {
+    plugins: T;
+    moved: number;
+};
+
+// @public
 export function checkFeatureSettings(featureId: string, settings: unknown): string[];
 
 // @public

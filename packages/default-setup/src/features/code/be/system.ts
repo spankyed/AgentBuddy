@@ -21,6 +21,7 @@ import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
 import { GitRepository } from './services/git'
 import { GitWatcherService } from './services/gitwatcher'
 import { repository } from '@/__generated__/repository';
+import { pluginSettingsKey } from '@/features/settings/plugin-settings';
 
 // child systems
 import { explorerSystem, type IncomingExplorerEvents, type OutgoingExplorerEvents } from './features/explorer'
@@ -172,7 +173,7 @@ export const systemMachine = setup({
         // Save to navigation history only when triggered by user navigation
         // (not when applying settings like defaultBaseDirectory)
         if (ev.fromUserNavigation !== false) {
-          repository.settingsCommands.updateSettings('plugin', 'code', ['baseDirectory'], ev.path)
+          repository.settingsCommands.updateSettings('plugin', pluginSettingsKey('code'), ['baseDirectory'], ev.path)
         }
         return ev.path
       },

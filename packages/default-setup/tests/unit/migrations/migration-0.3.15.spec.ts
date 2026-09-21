@@ -10,6 +10,7 @@ import { migrations } from '../../../src/migrations/index'
 import { repository } from '@/__generated__/repository'
 import { createDefaultSettings } from '@/features/settings/be/repository'
 import { EARS, createEntityWithDefaults } from '@/__generated__/ears'
+import { pluginSettingsKey } from '@/features/settings/plugin-settings'
 
 /** The migration as the pack registers it, so this fails too if it was never listed */
 const migration = migrations.find((m) => m.target === '0.3.15')!
@@ -91,7 +92,7 @@ describe('the 0.3.15 migration', () => {
   })
 
   const excludedSources = () => (repository.settingsQueries.getPluginSettings('logs') as any).excludedSources
-  const setExcludedSources = (value: string[]) => repository.settingsCommands.updateSettings('plugin', 'logs', ['excludedSources'], value)
+  const setExcludedSources = (value: string[]) => repository.settingsCommands.updateSettings('plugin', pluginSettingsKey('logs'), ['excludedSources'], value)
 
   it('hides action logs for a user who hid log-service', () => {
     createDefaultSettings()
@@ -151,7 +152,23 @@ describe('the 0.3.15 migration', () => {
       expect(stored()).toEqual(afterFirst)
     })
 
-    it("leaves a key the user already has under the namespaced id, and drops the stale one", () => {
+    // Upgrading from 0.3.13, 0.3.14 runs first and writes `baseDirectory` to the address, while the rest of the
+    // user's code settings are still under `code`: both have to survive the move
+    it('keeps the rest of a slice an older migration already wrote to the address', () => {
+      createDefaultSettings()
+      tx('Settings-app' as SdkEARS.EntityId).update('data', {
+        plugins: { code: { lastDirectoryOpened: '/work', cliPaths: { gh: '/opt/bin/gh' } } },
+      })
+
+      migrations.find((m) => m.target === '0.3.14')!.up()
+      migration.up()
+
+      const plugins = stored().plugins as Record<string, any>
+      expect(plugins['default-setup.code']).toEqual({ lastDirectoryOpened: '/work', baseDirectory: '/work', cliPaths: { gh: '/opt/bin/gh' } })
+      expect(plugins).not.toHaveProperty('code')
+    })
+
+    it("keeps what the user has under the namespaced id over the bare key, and drops the bare one", () => {
       createDefaultSettings()
       tx('Settings-app' as SdkEARS.EntityId).update('data', {
         plugins: { notes: { sortBy: 'stale' }, 'default-setup.notes': { sortBy: 'current' } },
@@ -161,7 +178,7 @@ describe('the 0.3.15 migration', () => {
 
       const plugins = stored().plugins as Record<string, any>
       expect(plugins['default-setup.notes']).toEqual({ sortBy: 'current' })
-      expect(plugins).toHaveProperty('notes')
+      expect(plugins).not.toHaveProperty('notes')
     })
 
     it('does nothing for a user who changed no plugin settings', () => {

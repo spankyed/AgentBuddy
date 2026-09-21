@@ -13,6 +13,7 @@ import { setBrainPausedState } from './utils/brain-pause';
 import { notify as notifyAdHocListeners, removeAllListeners as removeAllAdHocListeners } from './services/brain';
 import { services } from '@/__generated__/services';
 import type { StepRuntimeError, TNodeEntity } from '@abuddy/sdk/steps';
+import { pluginSettingsKey } from '@/features/settings/plugin-settings';
 
 type IncomingBrainEvents =
   | { type: 'OPEN_TNODE'; tNodeId: string }
@@ -390,7 +391,7 @@ export const brainSystem = setup({
       setDebugEnabled('brain', newState);
 
       // Persist to settings DB
-      repository.settingsCommands.updateSettings('plugin', 'brain', ['inspectEnabled'], newState);
+      repository.settingsCommands.updateSettings('plugin', pluginSettingsKey('brain'), ['inspectEnabled'], newState);
 
       // Send confirmation back to frontend
       system.get(bus).send(emit('brain', {

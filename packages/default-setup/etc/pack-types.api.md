@@ -3465,11 +3465,11 @@ declare class SettingsService {
     getGeneralSettings(): SettingsData['general'];
     /**
      * Update a plugin setting
-     * @param pluginId - The plugin identifier
+     * @param plugin - The plugin, named as this pack names it: its own feature by id, another pack's `<packId>/<featureId>`
      * @param path - Path to the setting property (e.g., ['hotkeys', 'openTerminal'])
      * @param value - The new value
      */
-    updatePluginSetting(pluginId: string, path: string[], value: any): void;
+    updatePluginSetting(plugin: string, path: string[], value: any): void;
 }
 
 type Simplify<T> = {

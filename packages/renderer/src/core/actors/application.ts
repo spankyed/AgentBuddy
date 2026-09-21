@@ -7,7 +7,11 @@ import { trpc, reconnectApiClient } from '@/core/trpc';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
 import { globalToast } from '@/core/toast';
 import { getDesignated } from '@abuddy/sdk/fe';
+import { parseAddress } from '@abuddy/sdk/ids';
 import { loadPackFrontend, unloadPackFrontend } from '@/packs/pack-loader';
+
+/** This window's last active plugin, read before the backend's stored one arrives */
+const LAST_ACTIVE_PLUGIN_KEY = 'agentbuddy-last-active-plugin';
 
 declare global {
   interface Window {
@@ -618,7 +622,7 @@ export const createApplicationState = () => setup({
       const targetPlugin = context.plugins.find(p => p.id === lastActivePluginId);
       if (!targetPlugin) return;
 
-      localStorage.setItem('agentbuddy-last-active-plugin', lastActivePluginId);
+      localStorage.setItem(LAST_ACTIVE_PLUGIN_KEY, lastActivePluginId);
 
       if (targetPlugin.id !== context.activePlugin.id) {
         self.send({ type: 'SELECT_PLUGIN', pluginId: lastActivePluginId });
@@ -758,7 +762,7 @@ export const createApplicationState = () => setup({
           const pluginId = newPlugin.id;
 
           // Save to localStorage for immediate access on next load
-          localStorage.setItem('agentbuddy-last-active-plugin', pluginId);
+          localStorage.setItem(LAST_ACTIVE_PLUGIN_KEY, pluginId);
 
           // Send to backend to persist across sessions/devices
           trpc.bus.send.mutate({
@@ -902,7 +906,7 @@ export const createApplicationState = () => setup({
     const panelSizes = savedSizes ? { ...defaultSizes, ...JSON.parse(savedSizes) } : defaultSizes;
 
     // Load last active plugin from localStorage
-    const savedLastActivePlugin = localStorage.getItem('agentbuddy-last-active-plugin');
+    const savedLastActivePlugin = localStorage.getItem(LAST_ACTIVE_PLUGIN_KEY);
 
     // Initialize with all plugins visible by default
     const pluginVisibility: Record<string, boolean> = {};
@@ -921,6 +925,10 @@ export const createApplicationState = () => setup({
       const savedPlugin = input.plugins.find(p => p.id === savedLastActivePlugin);
       if (savedPlugin) {
         initialActivePlugin = savedPlugin;
+      } else if (!parseAddress(savedLastActivePlugin)) {
+        // A plugin id from before plugins were addressed, which nothing runs under any more. An address stays:
+        // its pack's plugins register once its frontend loads, after this
+        localStorage.removeItem(LAST_ACTIVE_PLUGIN_KEY);
       }
     }
 

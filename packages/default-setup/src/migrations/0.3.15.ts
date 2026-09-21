@@ -2,9 +2,11 @@ import { untypedQx } from '@abuddy/ears';
 import { markSeededRowUnedited } from '@abuddy/sdk/seed';
 import { EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
-import type { PackMigration } from '@abuddy/sdk/framework';
+import { addressPluginSettings, type PackMigration } from '@abuddy/sdk/framework';
+import { resolveName } from '@abuddy/sdk/ids';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { SettingsData } from '@/features/settings/be/types';
+import { pluginSettingsKey } from '@/features/settings/plugin-settings';
 
 const logger = createLogger('migrations');
 
@@ -44,7 +46,7 @@ export const migration: PackMigration = {
     // Whoever hid `log-service` hid action logs: keep hiding them.
     const excludedSources = repository.settingsQueries.getPluginSettings('logs')?.excludedSources;
     if (Array.isArray(excludedSources) && excludedSources.includes('log-service') && !excludedSources.includes('action:*')) {
-      repository.settingsCommands.updateSettings('plugin', 'logs', ['excludedSources'], [...excludedSources, 'action:*']);
+      repository.settingsCommands.updateSettings('plugin', pluginSettingsKey('logs'), ['excludedSources'], [...excludedSources, 'action:*']);
     }
 
     // ── The root flow is the flow with the root role, and the brain says which one it runs ──
@@ -74,38 +76,10 @@ const BARE_PLUGIN_IDS = [
  */
 function movePluginSettingsToQualifiedIds(): void {
   const stored = repository.settingsQueries.getStoredSettings();
-  const plugins = stored.plugins as Record<string, unknown> | undefined;
-  if (!plugins) return;
-
-  const next = { ...plugins };
-  let moved = 0;
-  /** Moves `bare` to `<packId>.<bare>` in `record`, unless it's gone or the qualified key is taken */
-  const move = (record: Record<string, unknown>, bare: string): void => {
-    const qualified = `${PACK_ID}.${bare}`;
-    if (!(bare in record) || qualified in record) return;
-    record[qualified] = record[bare];
-    delete record[bare];
-    moved++;
-  };
-
-  for (const id of BARE_PLUGIN_IDS) move(next, id);
-
-  const meta = next._meta as { visibility?: Record<string, boolean>; lastActivePlugin?: string } | undefined;
-  if (meta) {
-    const nextMeta = { ...meta };
-    if (nextMeta.visibility) {
-      const visibility = { ...nextMeta.visibility };
-      for (const id of BARE_PLUGIN_IDS) move(visibility as Record<string, unknown>, id);
-      nextMeta.visibility = visibility;
-    }
-    if (nextMeta.lastActivePlugin && BARE_PLUGIN_IDS.includes(nextMeta.lastActivePlugin)) {
-      nextMeta.lastActivePlugin = `${PACK_ID}.${nextMeta.lastActivePlugin}`;
-      moved++;
-    }
-    next._meta = nextMeta;
-  }
-
+  if (!stored.plugins) return;
+  const addresses = BARE_PLUGIN_IDS.map((id) => resolveName(id, { packId: PACK_ID }));
+  const { plugins, moved } = addressPluginSettings(stored.plugins, addresses);
   if (moved === 0) return;
-  repository.settingsCommands.replaceSettings({ ...stored, plugins: next } as SettingsData);
+  repository.settingsCommands.replaceSettings({ ...stored, plugins } as SettingsData);
   logger.info(`[migration 0.3.15] moved ${moved} plugin settings key(s) onto namespaced plugin ids`);
 }

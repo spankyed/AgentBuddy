@@ -10,6 +10,7 @@ import type { SeedCompileContext } from '@abuddy/sdk/build';
 import { seedData } from '@abuddy/sdk/utils';
 import compileSettings from '../../src/seeds/_compilers/settings';
 import { repository } from '@/__generated__/repository';
+import { pluginSettingsKey } from '@/features/settings/plugin-settings';
 
 const PACK_DIR = path.resolve(import.meta.dirname, '../..');
 const DIST = path.join(PACK_DIR, 'dist');
@@ -53,7 +54,7 @@ describe('settings compiler', () => {
 });
 
 describe('settings seeder', () => {
-  const changeASetting = () => repository.settingsCommands.updateSettings('plugin', 'threads', ['sort'], 'oldest');
+  const changeASetting = () => repository.settingsCommands.updateSettings('plugin', pluginSettingsKey('threads'), ['sort'], 'oldest');
   const changed = () => repository.settingsQueries.getPluginSettings('threads')?.sort === 'oldest';
 
   it("resets the user's settings when the seed is imported, and keeps them when existing data is kept", () => {

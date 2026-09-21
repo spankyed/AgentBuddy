@@ -7,6 +7,7 @@
 
 import { repository } from '@/__generated__/repository';
 import type { SettingsData } from '@/features/settings/be/types';
+import { pluginSettingsKey } from '@/features/settings/plugin-settings';
 
 export class SettingsService {
   /**
@@ -33,12 +34,12 @@ export class SettingsService {
 
   /**
    * Update a plugin setting
-   * @param pluginId - The plugin identifier
+   * @param plugin - The plugin, named as this pack names it: its own feature by id, another pack's `<packId>/<featureId>`
    * @param path - Path to the setting property (e.g., ['hotkeys', 'openTerminal'])
    * @param value - The new value
    */
-  updatePluginSetting(pluginId: string, path: string[], value: any): void {
-    repository.settingsCommands.updateSettings('plugin', pluginId, path, value);
+  updatePluginSetting(plugin: string, path: string[], value: any): void {
+    repository.settingsCommands.updateSettings('plugin', pluginSettingsKey(plugin), path, value);
   }
 }
 

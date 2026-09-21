@@ -2,7 +2,7 @@ import { tx, qx } from '@/__generated__/ears';
 
 import { EARS } from '@/__generated__/ears';
 
-import { pluginSettingsKey } from '../../plugin-settings';
+import { checkedPluginSettingsKey, pluginSettingsKey } from '../../plugin-settings';
 import type { SettingsData } from '../types';
 import { getDefaultSettings } from '../defaults';
 import { mergeSettings } from '../../merge-settings';
@@ -90,7 +90,7 @@ export const settingsCommands = {
 
     // Build path matching the data structure (note: 'plugin' type maps to 'plugins' in data)
     const dataKey = type === 'plugin' ? 'plugins' : type;
-    const key = type === 'plugin' && label ? pluginSettingsKey(label) : label;
+    const key = type === 'plugin' && label ? checkedPluginSettingsKey(label) : label;
     const fullPath = needsLabel
       ? [dataKey, key!, ...path]
       : [dataKey, ...path];

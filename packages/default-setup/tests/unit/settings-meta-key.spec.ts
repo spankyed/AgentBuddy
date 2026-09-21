@@ -4,7 +4,7 @@
 import { describe, expect, it } from 'vitest';
 import { startApp } from '@abuddy/testing/harness';
 
-const hidePlugin = { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: '_meta', path: ['visibility', 'notes'], value: false } as const;
+const hidePlugin = { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: '_meta', path: ['visibility', 'default-setup.notes'], value: false } as const;
 
 describe('the _meta settings key', () => {
   // Before this was excluded the system sent `_META_SETTINGS_UPDATED` to a plugin called `_meta`,
@@ -27,6 +27,6 @@ describe('the _meta settings key', () => {
 
     const updates = app.emitted('settings').filter((e) => e.type === 'SETTINGS_UPDATED');
     const last = updates.at(-1) as { data?: { plugins?: { _meta?: { visibility?: Record<string, boolean> } } } } | undefined;
-    expect(last?.data?.plugins?._meta?.visibility?.notes).toBe(false);
+    expect(last?.data?.plugins?._meta?.visibility?.['default-setup.notes']).toBe(false);
   });
 });

@@ -1,5 +1,6 @@
 import { repository } from '@/__generated__/repository';
 import type { PackMigration } from '@abuddy/sdk/framework';
+import { pluginSettingsKey } from '@/features/settings/plugin-settings';
 
 export const migration: PackMigration = {
   target: '0.3.0',
@@ -33,7 +34,7 @@ export const migration: PackMigration = {
     }
 
     const nextModes = modes.filter(mode => mode.id !== 'hermes');
-    repository.settingsCommands.updateSettings('plugin', 'threads', ['chat', 'modes'], nextModes);
+    repository.settingsCommands.updateSettings('plugin', pluginSettingsKey('threads'), ['chat', 'modes'], nextModes);
 
     const plugins = (data.plugins as any) ?? {};
     const visibility = plugins._meta?.visibility;

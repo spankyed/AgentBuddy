@@ -1,6 +1,6 @@
 import { emit, actorOf } from '@/__generated__/events';
 import { createMachine, setup, sendTo, enqueueActions, fromCallback, fromPromise, type ErrorActorEvent } from 'xstate';
-import { defineSystem, onPackSettingsDefaultsChanged, type SystemEntry } from '@abuddy/sdk/framework';
+import { addressPluginSettings, defineSystem, onPackSettingsDefaultsChanged, type SystemEntry } from '@abuddy/sdk/framework';
 
 import { bus } from '@abuddy/sdk/ids';
 
@@ -206,7 +206,9 @@ export const settingsSystem = setup({
     
     replaceSettings: ({ system, event }) => {
       const ev = settingsSpec.typeOf('REPLACE_SETTINGS', event);
-      settingsCommands.replaceSettings(ev.data);
+      // Settings exported before 0.3.15 keep each plugin's slice under its feature id
+      const plugins = ev.data.plugins && addressPluginSettings(ev.data.plugins).plugins;
+      settingsCommands.replaceSettings(plugins ? { ...ev.data, plugins } : ev.data);
 
       const data = settingsQueries.getSettings();
       system.get(bus).send(emit('settings', {
@@ -261,7 +263,7 @@ export const settingsSystem = setup({
 
       testCli(provider, storedPath).then((result: any) => {
         if (result.success) {
-          settingsCommands.updateSettings('plugin', 'code', ['cliPaths'], { ...cliPaths(), [provider]: result.resolvedPath });
+          settingsCommands.updateSettings('plugin', pluginSettingsKey('code'), ['cliPaths'], { ...cliPaths(), [provider]: result.resolvedPath });
 
           const data = settingsQueries.getSettings();
           system.get(bus).send(emit('settings', { type: 'SETTINGS_UPDATED', data }));
