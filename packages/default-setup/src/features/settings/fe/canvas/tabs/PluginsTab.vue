@@ -89,7 +89,8 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUpdated } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useActorSystem, useApplicationActor, navigateToPlugin, getDesignated } from '@abuddy/sdk/fe'
+import { useActorSystem, useApplicationActor, getDesignated } from '@abuddy/sdk/fe'
+import { navigateToPlugin, type PluginName } from '@/__generated__/fe'
 import { Package, CheckCircle, Eye, EyeOff, ExternalLink } from 'lucide-vue-next'
 import { useSettingsSaveStatus } from '@abuddy/sdk/fe'
 import { id as settingsActorId } from '@/features/settings/fe/state';
@@ -132,8 +133,9 @@ const selectPlugin = (pluginId: string) => {
   actor.send({ type: 'PLUGIN.SELECT', pluginId })
 }
 
+// `pluginId` is a registered plugin's id, which is its address
 const goToPlugin = (pluginId: string) => {
-  navigateToPlugin(pluginId)
+  navigateToPlugin(pluginId as PluginName)
 }
 
 // Check if a plugin is visible

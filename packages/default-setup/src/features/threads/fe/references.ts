@@ -1,5 +1,5 @@
 import { History } from 'lucide-vue-next'
-import { navigateToPlugin } from '@abuddy/sdk/fe'
+import { navigateToPlugin } from '@/__generated__/fe'
 import { id as threads, threadsFromStore } from './state'
 import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider, ReferenceItem } from '@abuddy/sdk/fe/references'
 

@@ -24,21 +24,21 @@ Seed sources `abuddy build` compiles to JSON, as `abuddy.json` `seedFormats` and
 
 ## Settings
 
-Each feature has a `settings.ts` (`src/features/<name>/settings.ts`) that declares its slice of the default settings. The pack's `settings` seed format (`_compilers/settings.ts`) deep-merges the base settings (`src/seeds/default-settings.ts`) with all 12 per-feature files (`features[].settings` in `abuddy.json`) into one record (`{ name: 'default-settings', settings }` in `settings.seed.json`). Its seeder (`settings/seeder.ts`) resets the user's settings when the seed is imported without keeping existing data; `boot.seedPolicy.skipAtBoot` keeps it out of boot seeding. The settings hold the user's settings only: the app's own state (onboarding, versions, seed hashes) is the host's `AppState`. At runtime `settings/be/defaults.ts` adds every registered pack's feature settings (`getPackSettingsDefaults` from `@abuddy/sdk/framework`; the app's own win), and the settings entity stores only the user's changes over those defaults, so a pack's defaults come and go with the pack. The settings system resends settings (`SETTINGS_UPDATED`) when a pack's feature settings register or unregister.
+Each feature has a `settings.ts` (`src/features/<name>/settings.ts`, `features[].settings` in `abuddy.json`) that declares its slice of the default settings; the pack registry holds it under the plugin's address (`default-setup.<name>`), as it does every pack's. The pack's `settings` seed format (`_compilers/settings.ts`) compiles only the app's base settings (`src/seeds/default-settings.ts`) into one record (`{ name: 'default-settings', settings }` in `settings.seed.json`), and refuses a base file that sets a plugin's slice. Its seeder (`settings/seeder.ts`) resets the user's settings when the seed is imported without keeping existing data; `boot.seedPolicy.skipAtBoot` keeps it out of boot seeding. The settings hold the user's settings only: the app's own state (onboarding, versions, seed hashes) is the host's `AppState`. At runtime `settings/be/defaults.ts` adds every registered pack's feature settings (`getPackSettingsDefaults` from `@abuddy/sdk/framework`; the app's own win), and the settings entity stores only the user's changes over those defaults, so a pack's defaults come and go with the pack. The settings system resends settings (`SETTINGS_UPDATED`) when a pack's feature settings register or unregister.
 
 Every feature settings file follows this shape:
 
 ```ts
 export default {
   plugins: {
-    _meta: { visibility: { <pluginId>: true | false } },  // sidebar tab visibility
-    <pluginId>: { ... }  // feature-specific defaults (optional)
+    _meta: { visibility: { <featureId>: true | false } },  // sidebar tab visibility
+    <featureId>: { ... }  // feature-specific defaults (optional)
   }
 }
 ```
 
 - `_meta.visibility` controls whether the plugin's sidebar tab is shown by default
-- Feature-specific defaults (hotkeys, modes, display preferences) go under the plugin id key
+- Feature-specific defaults (hotkeys, modes, display preferences) go under the feature id key; the registry stores them under the plugin's address
 - Features with no settings beyond visibility still need the file (e.g., `settings/settings.ts` just sets `visibility: { settings: true }`)
 
 ## Notes

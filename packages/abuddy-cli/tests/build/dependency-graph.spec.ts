@@ -170,7 +170,7 @@ describe.skipIf(!PACKAGES_BUILT)("a dependency whose facade lacks an export", ()
   it("fails a dependent whose sendsTo names one of its plugins", () => {
     const sender = {
       ...pack('app-pack', { App: 'App' }, on(DEEP), {
-        features: [{ id: 'relay', system: { entry: 'src/system.ts', sendsTo: ['notifier'] }, plugin: { entry: 'src/plugin.ts' } }],
+        features: [{ id: 'relay', system: { entry: 'src/system.ts', sendsTo: ['deep-pack/notifier'] }, plugin: { entry: 'src/plugin.ts' } }],
       }),
       'src/system.ts': [
         "import { setup } from 'xstate';",

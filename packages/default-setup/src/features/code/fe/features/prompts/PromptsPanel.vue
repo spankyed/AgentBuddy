@@ -236,7 +236,8 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe'
+import { useActorSystem } from '@abuddy/sdk/fe'
+import { navigateToPlugin } from '@/__generated__/fe'
 import { id as codeId, type CodeState } from '@/features/code/fe/state'
 import { id as promptsPluginId } from '@/features/prompts/fe/state'
 import { ExternalLink, Plus, X, Pencil, Trash2, Sparkle, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'

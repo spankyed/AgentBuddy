@@ -120,7 +120,8 @@ import { computed } from 'vue';
 import { X, ExternalLink } from 'lucide-vue-next';
 import type { TNodeEntity } from '@abuddy/sdk/steps';
 import DataRenderer from '@abuddy/ui/components/DataRenderer';
-import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe';
+import { useActorSystem } from '@abuddy/sdk/fe';
+import { navigateToPlugin } from '@/__generated__/fe';
 import { id as flowsActorId } from '@/features/flows/fe/state';
 
 const actorSystem = useActorSystem()

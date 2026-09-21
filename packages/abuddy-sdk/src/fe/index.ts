@@ -24,7 +24,7 @@ export { useSettingsSaveStatus } from './settings-save-status.ts'
 export { secretsClient, type SecretsClient, type SecretsSnapshot } from './secrets-client.ts'
 
 export {
-  navigateToPlugin,
+  navigateToAddress,
   openInAppBrowser,
   useState,
   type PluginEvent,

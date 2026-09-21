@@ -221,6 +221,7 @@ import type { Terminal } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { IDisposable } from '@xterm/xterm'
 import { id as settingsActorId } from '@/features/settings/fe/state';
+import { pluginSettings } from '@/features/settings/plugin-settings';
 
 const actorSystem = useActorSystem()
 
@@ -236,10 +237,10 @@ const panelTerminalId = useSelector(codeActor, (state) => state.context.panelTer
 const openFiles = useSelector(codeActor, (state) => state.context.openFiles)
 const terminals = useSelector(terminalActor, (state: any) => state.context.terminals as TerminalInfo[])
 
-const confirmTerminalClose = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.confirmTerminalClose ?? true)
-const closeTerminalOnTabClose = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.closeTerminalOnTabClose ?? true)
+const confirmTerminalClose = useSelector(settingsActor, (state: any) => pluginSettings(state.context.settings, 'code')?.confirmTerminalClose ?? true)
+const closeTerminalOnTabClose = useSelector(settingsActor, (state: any) => pluginSettings(state.context.settings, 'code')?.closeTerminalOnTabClose ?? true)
 const terminalScripts = useSelector(settingsActor, (state: any) =>
-  (state.context.settings?.plugins?.code?.terminalScripts ?? []) as TerminalScript[]
+  (pluginSettings(state.context.settings, 'code')?.terminalScripts ?? []) as TerminalScript[]
 )
 
 const { getTerminalDisplayName, closeTerminal: closeTerminalWithConfirm } = useTerminalActions(terminalActor, confirmTerminalClose, closeTerminalOnTabClose)

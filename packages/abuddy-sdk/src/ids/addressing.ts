@@ -13,6 +13,13 @@ export function qualifiedId(packId: string, featureId: string): string {
   return `${packId}.${featureId}`;
 }
 
+/** The pack and feature an address names, or undefined for a string that isn't one (a bare host id, a name) */
+export function parseAddress(address: string): { packId: string; featureId: string } | undefined {
+  const dot = address.indexOf('.');
+  if (dot <= 0 || dot === address.length - 1) return undefined;
+  return { packId: address.slice(0, dot), featureId: address.slice(dot + 1) };
+}
+
 /** The address a `<packId>/<featureId>` name refers to; any other name is already an address */
 export function addressOf(name: string): string {
   const slash = name.indexOf('/');

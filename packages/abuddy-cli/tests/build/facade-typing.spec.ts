@@ -70,7 +70,7 @@ const APP_PACK = {
     entities: { Memo: 'Memo' },
     // Same type name as the dependency's Item shape
     entityShapes: { Memo: { source: 'src/types.ts', type: 'ItemEntity' } },
-    features: [{ id: 'memos', system: { entry: 'src/system.ts', sendsTo: ['threads', 'application'] }, plugin: { entry: 'src/plugin.ts' } }],
+    features: [{ id: 'memos', system: { entry: 'src/system.ts', sendsTo: ['base-pack/threads', 'application'] }, plugin: { entry: 'src/plugin.ts' } }],
   }),
   'src/types.ts': 'export interface ItemEntity { text: string; pinned: boolean }\n',
   'src/plugin.ts': "import type { Plugin } from '@abuddy/sdk/fe';\nexport default { id: 'memos' } as unknown as Plugin;\n",
@@ -116,17 +116,19 @@ export type RepositoryService = Expect<Equal<typeof services.repository, typeof 
 // @ts-expect-error not a service of this pack or its dependency
 services.nope;
 
-// The memos system declares sendsTo: ['threads', 'application']: a plugin of the dependency and the host's
-emit('threads', { type: 'TAG_ADDED', name: 'x' });
+// The memos system declares sendsTo: ['base-pack/threads', 'application']: a plugin of the dependency and the host's
+emit('base-pack/threads', { type: 'TAG_ADDED', name: 'x' });
 emit('memos', { type: 'MEMO_ADDED', text: 'x' });
 sendToPlugin('application', { type: 'APPLICATION_RESTORE_LAST_PLUGIN', lastActivePluginId: 'memos' });
 // A plugin someone else owns keeps the events its owner declares it receives: sendsTo opens the channel, it doesn't widen them
 // @ts-expect-error the threads plugin doesn't receive this event
-emit('threads', { type: 'MEMO_ADDED', text: 'x' });
+emit('base-pack/threads', { type: 'MEMO_ADDED', text: 'x' });
+// @ts-expect-error a dependency's plugin is named <dependency>/<feature>
+emit('threads', { type: 'TAG_ADDED', name: 'x' });
 // @ts-expect-error the host declares what its application plugin receives
 sendToPlugin('application', { type: 'MEMO_ADDED', text: 'x' });
 // @ts-expect-error no sendsTo names the dependency's inbox plugin
-emit('inbox', { type: 'MAIL_ARRIVED', from: 'x' });
+emit('base-pack/inbox', { type: 'MAIL_ARRIVED', from: 'x' });
 
 // Systems: this pack's by feature id, the dependency's as <dependency>/<feature>
 sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });

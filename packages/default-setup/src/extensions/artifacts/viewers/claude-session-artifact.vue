@@ -262,7 +262,8 @@ import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { Wrench, Copy, Check, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
-import { useActorSystem, navigateToPlugin, getDesignated } from '@abuddy/sdk/fe'
+import { useActorSystem, getDesignated } from '@abuddy/sdk/fe'
+import { navigateToPlugin } from '@/__generated__/fe'
 import { sendToSystem } from '@/__generated__/events'
 import { id as codeActorId } from '@/features/code/fe/state';
 

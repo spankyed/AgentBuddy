@@ -17,7 +17,9 @@ import { services } from '@/__generated__/services';
 import type { FAQItem } from '@/features/settings/be/types';
 import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services';
 import { REQUIRED_PROVIDERS } from '../constants';
-import { createLogger } from '@abuddy/sdk/logger';
+import { createLogger, reportError } from '@abuddy/sdk/logger';
+import { parseAddress } from '@abuddy/sdk/ids';
+import { PLUGIN_SETTINGS_META_KEY, pluginSettingsKey } from '../plugin-settings';
 
 const logger = createLogger('settings');
 
@@ -68,7 +70,6 @@ export type PluginSettingsUpdatedEvent = { type: `${string}_SETTINGS_UPDATED`; s
  * this pack's event maps name.
  */
 /** The reserved key inside `plugins` for the app's own metadata (visibility, last active) — not a plugin */
-const PLUGIN_SETTINGS_META_KEY = '_meta';
 
 const emitPluginSettings = emit as (pluginId: string, event: PluginSettingsUpdatedEvent) => ReturnType<typeof emit>;
 
@@ -137,7 +138,13 @@ export const settingsSystem = setup({
     
     updateSettings: ({ system, event }) => {
       const ev = settingsSpec.typeOf('UPDATE_SETTINGS', event);
-      
+      // A plugin's settings are keyed by its address; the frontend resolves a name before sending
+      const plugin = ev.entityType === 'plugin' && ev.label !== PLUGIN_SETTINGS_META_KEY ? parseAddress(ev.label) : undefined;
+      if (ev.entityType === 'plugin' && ev.label !== PLUGIN_SETTINGS_META_KEY && !plugin) {
+        reportError({ error: new Error(`Settings for plugin "${ev.label}" weren't saved: a plugin's settings are keyed by its address, "<packId>.<featureId>"`), source: 'settings' });
+        return;
+      }
+
       // Get previous settings for comparison
       const previousSettings = ev.entityType === 'plugin' 
         ? settingsQueries.getPluginSettings(ev.label) 
@@ -145,7 +152,7 @@ export const settingsSystem = setup({
       
       settingsCommands.updateSettings(ev.entityType, ev.label, ev.path, ev.value);
 
-      if (ev.entityType === 'plugin' && ev.label === 'code' && ev.path[0] === 'cliPaths') {
+      if (plugin && ev.label === pluginSettingsKey('code') && ev.path[0] === 'cliPaths') {
         clearCliPathCache();
       }
 
@@ -172,7 +179,7 @@ export const settingsSystem = setup({
       // already excludes it from the plugins a feature may set. Treating it as a plugin id sent
       // `_META_SETTINGS_UPDATED` to a plugin that does not exist, on every visibility toggle and
       // every plugin switch, which the bus dropped and reported.
-      if (ev.entityType === 'plugin' && ev.label !== PLUGIN_SETTINGS_META_KEY && data.plugins) {
+      if (plugin && data.plugins) {
         const pluginSettings = data.plugins[ev.label as keyof typeof data.plugins];
         if (pluginSettings) {
           // Detect changes for all arrays in the settings generically
@@ -181,7 +188,7 @@ export const settingsSystem = setup({
           // Send to backend system (if it exists)
           const backendActor = system.get(ev.label as any);
           if (backendActor) {
-            const eventType = `${ev.label.toUpperCase()}_SETTINGS_UPDATED`;
+            const eventType = `${plugin.featureId.toUpperCase()}_SETTINGS_UPDATED`;
             backendActor.send({
               type: eventType,
               settings: pluginSettings,
@@ -191,7 +198,7 @@ export const settingsSystem = setup({
           
           // Send settings update event to the frontend plugin
           system.get(bus).send(emitPluginSettings(ev.label, {
-            type: `${ev.label.toUpperCase()}_SETTINGS_UPDATED`,
+            type: `${plugin.featureId.toUpperCase()}_SETTINGS_UPDATED`,
             settings: pluginSettings
           }));
         }

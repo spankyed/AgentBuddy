@@ -363,7 +363,8 @@ import { id } from './state';
 import type { LogsState, LogEntry } from './state';
 import { useSelector } from '@xstate/vue';
 import DataRenderer from '@abuddy/ui/components/DataRenderer';
-import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe';
+import { useActorSystem } from '@abuddy/sdk/fe';
+import { navigateToPlugin } from '@/__generated__/fe';
 import { parseSearchTerm, searchLog, highlightSearchTerm } from './search';
 import { id as settingsActorId } from '@/features/settings/fe/state';
 

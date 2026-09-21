@@ -459,7 +459,8 @@ import KeyboardShortcutInput from '@abuddy/ui/components/KeyboardShortcutInput'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import DirectorySelect from '@abuddy/ui/design/DirectorySelect'
 import { X, Plus } from 'lucide-vue-next'
-import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe'
+import { useActorSystem } from '@abuddy/sdk/fe'
+import { navigateToPlugin } from '@/__generated__/fe'
 import type { CodeSettings, TerminalScript } from '@/__generated__/types'
 import { id as settingsActorId } from '@/features/settings/fe/state';
 

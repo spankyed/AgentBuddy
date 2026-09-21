@@ -22,6 +22,12 @@ export interface NameContext {
 }
 
 // @public
+export function parseAddress(address: string): {
+    packId: string;
+    featureId: string;
+} | undefined;
+
+// @public
 export function qualifiedId(packId: string, featureId: string): string;
 
 // @public

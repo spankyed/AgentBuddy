@@ -231,8 +231,8 @@ export interface NavHistory<T> {
     stack: T[];
 }
 
-// @public (undocumented)
-export function navigateToPlugin(pluginId: string, event?: PluginEvent | PluginEvent[]): void;
+// @public
+export function navigateToAddress(address: string, event?: PluginEvent | PluginEvent[]): void;
 
 // @public (undocumented)
 export function onMenuOpenChange(open: boolean): void;

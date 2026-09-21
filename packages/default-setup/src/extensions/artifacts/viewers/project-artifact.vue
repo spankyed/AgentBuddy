@@ -66,7 +66,8 @@
 import { Layers } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
 import { truncatePath } from '@abuddy/ui/utils/path-truncation'
-import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe'
+import { useActorSystem } from '@abuddy/sdk/fe'
+import { navigateToPlugin } from '@/__generated__/fe'
 import { useSelector } from '@xstate/vue'
 import { id as settingsActorId } from '@/features/settings/fe/state';
 

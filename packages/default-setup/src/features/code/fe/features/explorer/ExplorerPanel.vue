@@ -101,6 +101,7 @@ import { useExplorerSelection } from './composables/useExplorerSelection'
 import { useExplorerDragDrop } from './composables/useExplorerDragDrop'
 import type { FileInfo } from './state'
 import { id as settingsActorId } from '@/features/settings/fe/state';
+import { pluginSettings } from '@/features/settings/plugin-settings';
 
 const actorSystem = useActorSystem()
 
@@ -199,7 +200,7 @@ provide('explorer-open-file', (path: string, editorMode?: 'richText' | 'plainTex
 })
 
 const settingsActor = actorSystem.get(settingsActorId)
-const mdEditorDefault = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.mdEditorDefault ?? false)
+const mdEditorDefault = useSelector(settingsActor, (state: any) => pluginSettings(state.context.settings, 'code')?.mdEditorDefault ?? false)
 provide('explorer-md-editor-default', () => mdEditorDefault.value)
 
 provide('explorer-rename', (oldPath: string, newName: string) => {

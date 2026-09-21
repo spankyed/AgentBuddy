@@ -177,8 +177,11 @@ function findInFiles(files: string[], root: string, rule: Rule): string[] {
   });
 }
 
-/** Sends packs get typed from #generated/events, whichever SDK module exports them untyped */
-const EVENT_SENDS = ['emit', 'sendToPlugin', 'sendToSystem'];
+/**
+ * Address-taking helpers packs get as name-taking ones from #generated/events and #generated/fe, whichever
+ * SDK module exports them
+ */
+const EVENT_SENDS = ['emit', 'sendToPlugin', 'sendToSystem', 'navigateToAddress'];
 
 /** Imports and re-exports of the untyped sends (and the engine's repository registration), or all of @abuddy/sdk/events */
 const rawPackHelper: Rule = (node) => {

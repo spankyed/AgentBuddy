@@ -14,6 +14,9 @@ import type { ApplicationHotkeys } from '@abuddy/sdk/types'
 import type { EARS } from '@abuddy/sdk'
 import type { PackSeedsPreview } from '@abuddy/sdk/build'
 import type { FAQItem } from '@/features/settings/be/types';
+import { pluginSettingsKey } from '../plugin-settings';
+import { resolveName } from '@abuddy/sdk/ids';
+import { packId } from '@/__generated__/bus-ids';
 
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
@@ -172,7 +175,8 @@ const settingsState = setup({
     selectPlugin: assign(({ event }) => {
       const ev = typeOf('PLUGIN.SELECT', event);
       return {
-        selectedPluginId: ev.pluginId,
+        // A plugin named as this pack's code names it; the plugin list it's picked from holds addresses
+        selectedPluginId: resolveName(ev.pluginId, { packId }),
       }
     }),
 
@@ -182,7 +186,7 @@ const settingsState = setup({
       sendToSystem(feature, {
         type: 'UPDATE_SETTINGS',
         entityType: ev.entityType,
-        label: ev.label,
+        label: ev.entityType === 'plugin' ? pluginSettingsKey(ev.label) : ev.label,
         path: ev.path,
         value: ev.value,
       });

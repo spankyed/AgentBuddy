@@ -3,7 +3,7 @@ import { sendToSystem } from '@/__generated__/events';
 import type { GitStatusFile, GitDiff } from '../commit/state';
 import type { GhPullRequest, GhPRComment, GhReviewThread } from '@/__generated__/types';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
-import { navigateToPlugin } from '@abuddy/sdk/fe';
+import { navigateToPlugin } from '@/__generated__/fe';
 import { getCommentDatabaseId } from './comment-id';
 
 export type { GhPullRequest, GhPRComment }

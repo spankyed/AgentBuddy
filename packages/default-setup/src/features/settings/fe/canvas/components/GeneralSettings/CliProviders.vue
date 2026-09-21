@@ -29,6 +29,7 @@ import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
 import CliProviderRow from './CliProviderRow.vue'
 import { id as settingsActorId } from '@/features/settings/fe/state';
+import { pluginSettings } from '@/features/settings/plugin-settings';
 
 const actorSystem = useActorSystem()
 
@@ -49,7 +50,7 @@ const testCliProvider = (provider: string) => {
 }
 
 // CLI path overrides live in the code plugin's settings
-const storedCliPaths = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.cliPaths as Record<string, string> | undefined)
+const storedCliPaths = useSelector(settingsActor, (state: any) => pluginSettings(state.context.settings, 'code')?.cliPaths as Record<string, string> | undefined)
 const cliPathValues = ref<Record<string, string>>({})
 
 watch(storedCliPaths, (newPaths) => {

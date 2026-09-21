@@ -1,6 +1,7 @@
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe'
+import { useActorSystem } from '@abuddy/sdk/fe'
+import { navigateToPlugin } from '@/__generated__/fe'
 import { id as settingsActorId } from '@/features/settings/fe/state';
 export interface Project {
   name: string

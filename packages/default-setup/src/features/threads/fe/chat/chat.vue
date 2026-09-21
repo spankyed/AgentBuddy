@@ -185,11 +185,13 @@ import PanelResizer from '@abuddy/ui/layout/panel-resizer'
 import ImageLightbox from '@abuddy/ui/design/ImageLightbox'
 import ConfirmationDialog from '@abuddy/ui/design/ConfirmationDialog'
 import ScrollToBottomFob from '@abuddy/ui/design/ScrollToBottomFob'
-import { useActorSystem, useApplicationActor, navigateToPlugin } from '@abuddy/sdk/fe'
+import { useActorSystem, useApplicationActor } from '@abuddy/sdk/fe'
+import { navigateToPlugin } from '@/__generated__/fe'
 import { useSelector } from '@xstate/vue'
 import { id, threadsFromStore, type ThreadsState } from '@/features/threads/fe/state';
 import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, QuickPrompt, AgentSettings } from '@/__generated__/types'
 import { sendToSystem } from '@/__generated__/events'
+import { pluginSettingsKey } from '@/features/settings/plugin-settings';
 
 const actorSystem = useActorSystem()
 const appActor = useApplicationActor()
@@ -362,7 +364,7 @@ function updateThreadsSetting(path: string[], value: unknown) {
   sendToSystem('settings', {
     type: 'UPDATE_SETTINGS',
     entityType: 'plugin',
-    label: 'threads',
+    label: pluginSettingsKey('threads'),
     path,
     value,
   })
@@ -491,7 +493,7 @@ function confirmRevert() {
     sendToSystem('settings', {
       type: 'UPDATE_SETTINGS',
       entityType: 'plugin',
-      label: 'threads',
+      label: pluginSettingsKey('threads'),
       path: ['chat', 'skipRevertConfirm'],
       value: true,
     })

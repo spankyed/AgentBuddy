@@ -1,5 +1,5 @@
 import { NotebookText, CircleCheck, ListChecks } from 'lucide-vue-next'
-import { navigateToPlugin } from '@abuddy/sdk/fe'
+import { navigateToPlugin } from '@/__generated__/fe'
 import { id as notes } from './state'
 import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider, ReferenceItem } from '@abuddy/sdk/fe/references'
 

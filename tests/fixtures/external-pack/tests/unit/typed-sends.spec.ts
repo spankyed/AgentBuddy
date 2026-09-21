@@ -28,6 +28,18 @@ describe('typed sends to systems', () => {
     expect(await app.nextEmit('memos', 'MEMO_ADDED')).toMatchObject({ memo: { text: 'typed' } });
   });
 
+  // The name `emit` takes for a dependency's plugin is the one the send resolves: it arrives at that
+  // pack's address, not at one in this pack's namespace
+  it("reaches a dependency's plugin named <dependency>/<feature>", async () => {
+    const app = await startApp({ systems: ['memos'] });
+    await app.connect();
+
+    sendToSystem('memos', { type: 'ANNOUNCE_MEMO', text: 'hello' });
+
+    expect(await app.nextEmit('default-setup/logs', 'LOG_ADDED'))
+      .toMatchObject({ pluginId: 'default-setup.logs', log: { message: 'hello', source: 'memos' } });
+  });
+
   it('rejects a wrong send at compile time', () => {
     // Never called: tsc checks these lines when it runs over the pack's tests
     const wrongSends = () => {

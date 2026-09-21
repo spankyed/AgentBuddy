@@ -115,7 +115,7 @@ import PromptTemplateViewer from './PromptTemplateViewer.vue';
 import JsonSchemaEditor from '@abuddy/ui/components/JsonSchemaEditor';
 import { useActorSystem } from '@abuddy/sdk/fe';
 import { useCollapsibleState } from '@abuddy/ui/composables/useCollapsibleState';
-import { navigateToPlugin } from '@abuddy/sdk/fe';
+import { navigateToPlugin } from '@/__generated__/fe';
 import { id as promptsId, type PromptsState } from '@/features/prompts/fe/state';
 import type { PromptEntity } from '@abuddy/sdk';
 import type { TemplateInput } from '@abuddy/sdk';

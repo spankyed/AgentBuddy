@@ -894,9 +894,38 @@ ${depExports.length ? '\n' + depExports.join('\n') + '\n' : ''}${busIdBlock}`;
     const addressed = (manifest.features ?? []).filter(f => f.system || f.plugin);
     if (!addressed.length) return '';
     return `${HEADER}
+/** This pack's id, the context its code's names resolve in */
+export const packId = '${manifest.id}';
+
 export const busId = {
 ${addressed.map(f => `  ${f.id}: '${qualifiedId(manifest.id, f.id)}'`).join(',\n')},
 } as const;
+`;
+  }
+
+  // Frontend helpers that take the names this pack's code writes: its own plugins by feature id, another
+  // pack's as `<packId>/<featureId>`. Kept apart from events.ts, which backend systems import, because these
+  // reach the frontend SDK.
+  function generateFe(): string {
+    const plugins = (manifest.features ?? []).filter(f => f.plugin).map(f => `'${f.id}'`);
+    if (!plugins.length) return '';
+    return `${HEADER}
+import { navigateToAddress, type PluginEvent } from '@abuddy/sdk/fe';
+import { HOST_PLUGIN_IDS } from '@abuddy/sdk/events';
+import { resolveName } from '@abuddy/sdk/ids';
+
+/**
+ * A plugin as this pack's code names it: its own by feature id, another pack's as \`<packId>/<featureId>\`, a
+ * host plugin bare, or an address the app handed over (a registered plugin's \`id\`)
+ */
+export type PluginName = ${plugins.join(' | ')} | \`\${string}/\${string}\` | \`\${string}.\${string}\` | (typeof HOST_PLUGIN_IDS)[number];
+
+const context = { packId: '${manifest.id}', hostIds: HOST_PLUGIN_IDS };
+
+/** Opens a plugin and hands its actor \`event\` once it's running; throws if no such plugin is registered */
+export function navigateToPlugin(name: PluginName, event?: PluginEvent | PluginEvent[]): void {
+  navigateToAddress(resolveName(name, context), event);
+}
 `;
   }
 
@@ -918,15 +947,8 @@ ${addressed.map(f => `  ${f.id}: '${qualifiedId(manifest.id, f.id)}'`).join(',\n
     const depPluginIds = new Set([...depSnapshots.values()].flatMap(snap => (snap.manifest.features ?? []).filter(f => f.plugin).map(f => f.id)));
     /** Dependency id → the plugins its own `PackEvents` keys, the only ones a send to it can be typed against */
     const depReceivers = new Map([...depSnapshots].map(([depId, snap]) => [depId, receivingPlugins(snap.manifest)] as const));
-    /**
-     * Feature id → the pack owning that plugin, for plugins this pack reaches only through a dependency.
-     * Keyed by feature id because `sendsTo` names features; it only names a pack in a diagnostic.
-     */
-    const transitivePluginOwners = new Map(
-      Object.entries(_mergeProvenance('plugins', [...depSnapshots]))
-        .map(([id, owner]) => [id.slice(id.indexOf('.') + 1), owner] as const)
-        .filter(([featureId]) => !depPluginIds.has(featureId)),
-    );
+    /** Every plugin reachable through the dependencies, by address → the pack that declares it */
+    const pluginOwners = _mergeProvenance('plugins', [...depSnapshots]);
 
     const receivers = new Map<string, string[]>();
     /** Own plugin id → the features whose systems send to it, for reading their declared event types */
@@ -947,29 +969,39 @@ ${addressed.map(f => `  ${f.id}: '${qualifiedId(manifest.id, f.id)}'`).join(',\n
     const depTargets = new Map<string, Set<string>>();
     const hostTargets = new Set<string>();
     for (const feature of systemFeatures) {
+      const refuse = (target: string, why: string) => {
+        throw new Error(`Feature "${feature.id}": system.sendsTo names "${target}", ${why}`);
+      };
       for (const target of feature.system!.sendsTo ?? []) {
-        if (ownPluginIds.has(target)) addSender(target, feature);
-        else if (ownIds.has(target)) {
-          throw new Error(`Feature "${feature.id}": system.sendsTo names "${target}", a feature of this pack with no plugin, so nothing can receive the events: give "${target}" a plugin or remove it from sendsTo`);
-        } else if (depPluginIds.has(target)) {
-          const owners = typedDeps.filter((depId) => depReceivers.get(depId)!.has(target));
-          if (!owners.length) {
-            const untyped = [...depSnapshots].find(([depId, snap]) => !typedDeps.includes(depId) && (snap.manifest.features ?? []).some(f => f.plugin && f.id === target));
-            throw new Error(untyped
-              ? `Feature "${feature.id}": system.sendsTo names "${target}", a plugin of "${untyped[0]}", which was built without facade types, so no send to it can be typed: rebuild that dependency with a current CLI, or remove "${target}" from sendsTo`
-              : `Feature "${feature.id}": system.sendsTo names "${target}", a plugin of a dependency that declares no events for it, so there is nothing this pack could send there: only the pack that owns a plugin declares what it receives`);
-          }
-          for (const depId of owners) depTargets.set(depId, (depTargets.get(depId) ?? new Set()).add(target));
+        if (ownPluginIds.has(target)) {
+          addSender(target, feature);
+        } else if (ownIds.has(target)) {
+          refuse(target, `a feature of this pack with no plugin, so nothing can receive the events: give "${target}" a plugin or remove it from sendsTo`);
         } else if (HOST_PLUGIN_IDS.includes(target)) {
           hostTargets.add(target);
+        } else if (target.includes('/')) {
+          // Another pack's plugin, named as code names it: `<packId>/<featureId>`
+          const [depId, featureId] = [target.slice(0, target.indexOf('/')), target.slice(target.indexOf('/') + 1)];
+          const snap = depSnapshots.get(depId);
+          if (!snap) {
+            refuse(target, pluginOwners[qualifiedId(depId, featureId)]
+              ? `a plugin of "${depId}", which this pack depends on only through another pack, so no send to it can be typed: add "${depId}" to this pack's dependencies, or remove "${target}" from sendsTo`
+              : `which is no plugin of this pack's dependencies`);
+          } else if (!(snap.manifest.features ?? []).some((f) => f.plugin && f.id === featureId)) {
+            refuse(target, `but "${depId}" has no plugin "${featureId}"`);
+          } else if (!typedDeps.includes(depId)) {
+            refuse(target, `a plugin of "${depId}", which was built without facade types, so no send to it can be typed: rebuild that dependency with a current CLI, or remove "${target}" from sendsTo`);
+          } else if (!depReceivers.get(depId)!.has(featureId)) {
+            refuse(target, `a plugin of a dependency that declares no events for it, so there is nothing this pack could send there: only the pack that owns a plugin declares what it receives`);
+          } else {
+            depTargets.set(depId, (depTargets.get(depId) ?? new Set()).add(featureId));
+          }
         } else {
-          // A plugin further down the tree is real, but a send to it is typed against its owner's
-          // PackEvents, and only a direct dependency has a facade to name that. Say which pack to
-          // depend on: reporting it as unknown sends the author looking for a typo that isn't there.
-          const owner = transitivePluginOwners.get(target);
-          throw new Error(owner
-            ? `Feature "${feature.id}": system.sendsTo names "${target}", a plugin of "${owner}", which this pack depends on only through another pack, so no send to it can be typed: add "${owner}" to this pack's dependencies, or remove "${target}" from sendsTo`
-            : `Feature "${feature.id}": system.sendsTo names "${target}", which is neither a feature of this pack, a plugin of its dependencies, nor a host plugin (${HOST_PLUGIN_IDS.join(', ')})`);
+          // A bare name is this pack's own feature; say which dependency's plugin it probably meant
+          const owners = Object.keys(pluginOwners).filter((address) => address.endsWith(`.${target}`)).map((address) => address.slice(0, address.indexOf('.')));
+          refuse(target, owners.length
+            ? `which is no feature of this pack: another pack's plugin is named "<packId>/${target}" (${owners.map((o) => `"${o}/${target}"`).join(' or ')})`
+            : `which is neither a feature of this pack, another pack's plugin ("<packId>/<featureId>"), nor a host plugin (${HOST_PLUGIN_IDS.join(', ')})`);
         }
       }
     }
@@ -988,19 +1020,19 @@ ${addressed.map(f => `  ${f.id}: '${qualifiedId(manifest.id, f.id)}'`).join(',\n
         source: depSources.get(depId),
       });
     }
+    // A map keyed `<packId>/<feature>`
+    const qualified = (packId: string, events: string) =>
+      `{ [K in keyof ${events} & string as \`${packId}/\${K}\`]: ${events}[K] }`;
+    const depQualified = typedDeps.map((depId) => qualified(depId, depAlias(depId, 'PackSystemEvents')));
     const quoted = (ids: Iterable<string>) => [...ids].map((id) => `'${id}'`).join(' | ');
     const externalReceivers = [
-      ...eventDeps.map((depId) => ` & Omit<Pick<${depAlias(depId, 'PackEvents')}, ${quoted(depTargets.get(depId)!)}>, keyof OwnPackEvents>`),
+      ...eventDeps.map((depId) => ` & ${qualified(depId, `Pick<${depAlias(depId, 'PackEvents')}, ${quoted(depTargets.get(depId)!)}>`)}`),
       ...(hostTargets.size ? [` & Omit<Pick<HostPluginEvents, ${quoted(hostTargets)}>, keyof OwnPackEvents>`] : []),
     ].join('');
     const depEventImports = eventDeps.map((depId) => `import type { PackEvents as ${depAlias(depId, 'PackEvents')} } from './deps/${depId}.js';`);
     const depSystems = depTypeImports('PackSystemEvents');
     const hasSystems = systemFeatures.length > 0;
 
-    // A system map keyed `<packId>/<feature>`
-    const qualified = (packId: string, events: string) =>
-      `{ [K in keyof ${events} & string as \`${packId}/\${K}\`]: ${events}[K] }`;
-    const depQualified = typedDeps.map((depId) => qualified(depId, depAlias(depId, 'PackSystemEvents')));
     // The plugin counterpart: this pack's own plugins, each dependency's that a sendsTo named, and the
     // host's — the first two qualified, the host's bare.
     const qualifiedPluginEvents = [
@@ -1613,6 +1645,7 @@ ${entries.join('\n')}
     ['src/__generated__/ears.ts', generateEars()],
     ['src/__generated__/system-ids.ts', generateSystemIds()],
     ['src/__generated__/bus-ids.ts', generateBusIds()],
+    ['src/__generated__/fe.ts', generateFe()],
     ['src/__generated__/system-specs.ts', generateSystemSpecs()],
     ['src/__generated__/events.ts', generateEvents()],
     ['src/__generated__/types.ts', generateTypes()],

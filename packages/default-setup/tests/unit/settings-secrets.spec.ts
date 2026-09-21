@@ -2,7 +2,7 @@
 // (never with values) and starts the assistant's birth flow once a required provider has a key, CLI paths live in
 // the code plugin.
 import { describe, expect, it, vi } from 'vitest';
-import { addTestSecret, startApp } from '@abuddy/testing/harness';
+import { addTestSecret, startApp, takeSystemErrors } from '@abuddy/testing/harness';
 import { repository } from '@/__generated__/repository';
 
 describe('settings and stored API keys', () => {
@@ -42,7 +42,26 @@ describe('settings and stored API keys', () => {
   it('keeps CLI path overrides in the code plugin settings, cleared from the cache when they change', async () => {
     const app = await startApp({ systems: ['settings'] });
     await app.connect();
-    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'code', path: ['cliPaths'], value: { gh: '/opt/bin/gh' } });
+    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup.code', path: ['cliPaths'], value: { gh: '/opt/bin/gh' } });
     expect(repository.settingsQueries.getPluginSettings('code')).toMatchObject({ cliPaths: { gh: '/opt/bin/gh' } });
+  });
+
+  // A plugin's settings change reaches that plugin, named by the feature, not by the label's address form
+  it("tells the plugin whose settings changed, with an event named after its feature", async () => {
+    const app = await startApp({ systems: ['settings'] });
+    await app.connect();
+    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup.code', path: ['mdEditorDefault'], value: true });
+    const updated = await app.nextEmit('code', 'CODE_SETTINGS_UPDATED');
+    expect(updated).toMatchObject({ pluginId: 'default-setup.code', settings: { mdEditorDefault: true } });
+  });
+
+  // The frontend resolves a plugin's name to its address before sending; a bare label reaching the system
+  // would be written under a key no plugin reads, so it is reported and nothing is saved
+  it('refuses plugin settings labelled with a bare name, saving nothing', async () => {
+    const app = await startApp({ systems: ['settings'] });
+    await app.connect();
+    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'code', path: ['cliPaths'], value: { gh: '/elsewhere/gh' } });
+    expect(takeSystemErrors().map((e) => e.message)).toEqual([expect.stringContaining('Settings for plugin "code" weren\'t saved')]);
+    expect(repository.settingsQueries.getPluginSettings('code')).not.toMatchObject({ cliPaths: { gh: '/elsewhere/gh' } });
   });
 });

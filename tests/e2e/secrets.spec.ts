@@ -20,7 +20,10 @@ function filesUnder(dir: string): string[] {
 test('adds, selects and stores API keys without the key strings reaching logs, files or renderer state', async ({ app, appPage, electronApp }) => {
   await app.navigate('default-setup/settings');
   await appPage.evaluate(() => {
-    (window as any).applicationState.system.get('default-setup.settings').send({ type: 'GENERAL_NAV.SELECT', item: 'secrets' });
+    // The app is shared by the worker's specs, so the tab may be another one left it on
+    const settings = (window as any).applicationState.system.get('default-setup.settings');
+    settings.send({ type: 'TAB.SELECT', tab: 'general' });
+    settings.send({ type: 'GENERAL_NAV.SELECT', item: 'secrets' });
   });
 
   const openai = appPage.locator('[data-testid="secrets-provider-openai"]');

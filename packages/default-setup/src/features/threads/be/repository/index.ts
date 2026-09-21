@@ -553,8 +553,7 @@ export const chatQueries = {
       });
     }
 
-    const allSettings = repository.settingsQueries.getSettings();
-    const chatSettings = allSettings?.plugins?.threads?.chat ?? allSettings?.plugins?.agent;
+    const chatSettings = (repository.settingsQueries.getPluginSettings('threads') as ThreadsSettings).chat;
 
     return {
       currentThread,

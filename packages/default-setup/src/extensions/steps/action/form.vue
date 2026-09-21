@@ -184,7 +184,8 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Check, ChevronDown, Code, ExternalLink, Plus } from 'lucide-vue-next'
-import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe'
+import { useActorSystem } from '@abuddy/sdk/fe'
+import { navigateToPlugin } from '@/__generated__/fe'
 import {
   ComboboxAnchor,
   ComboboxContent,
