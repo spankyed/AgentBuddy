@@ -183,7 +183,7 @@ const usStates = [
 ]
 
 /** The address with every field filled in, so each input is bound to a string */
-const parseAddress = (value: Address): Address => {
+const normalizeAddress = (value: Address): Address => {
   return {
     street: value.street || '',
     street2: value.street2 || '',
@@ -195,7 +195,7 @@ const parseAddress = (value: Address): Address => {
 }
 
 // Local address data
-const localAddress = reactive<Address>(parseAddress(props.modelValue))
+const localAddress = reactive<Address>(normalizeAddress(props.modelValue))
 
 // Handle ZIP code input with auto-formatting
 const handleZipInput = (event: Event) => {
@@ -218,7 +218,7 @@ watch(localAddress, (newAddress) => {
 
 // Watch for external changes to modelValue
 watch(() => props.modelValue, (newValue) => {
-  const parsed = parseAddress(newValue)
+  const parsed = normalizeAddress(newValue)
   Object.assign(localAddress, parsed)
 }, { deep: true })
 </script>
