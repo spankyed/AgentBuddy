@@ -3,8 +3,7 @@
 ```
 # Goal: a running dev app keeps the @abuddy packages' dist current
 
-Implement docs/goals/goal-dev-loop-freshness.md on a branch cut from master once
-AS/single-mode-packs (#192) lands. Read Background, Decisions, Phases and Constraints first.
+Implement docs/goals/goal-dev-loop-freshness.md, it may be outdated so first verify all claims. Read Background, Decisions, Phases and Constraints first.
 Decisions are final: implement them, don't reopen them or stop to ask. Where a detail isn't
 specified, pick the conventional option, note it in the final summary, and keep going. No backward
 compatibility in code: change signatures, move modules, migrate every in-repo caller, test, fixture,
