@@ -158,15 +158,15 @@ describe('pack plugins in the application actor', () => {
   it("removes only the plugins the pack added, leaving a built-in plugin whose feature it shares", () => {
     connect();
     const notesActor = app.system.get('notes');
-    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'ext', plugins: [plugin('ext.notes'), plugin('ext.pack-own')] });
+    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'ext', plugins: [plugin('ext/notes'), plugin('ext/pack-own')] });
 
     app.send({ type: 'PACK_PLUGINS_UNLOADED', packId: 'ext' });
 
     const { plugins, packPluginIds } = app.getSnapshot().context;
     expect(plugins).toEqual([builtInNotes]);
     expect(packPluginIds).toEqual({});
-    expect(app.system.get('ext.pack-own')).toBeUndefined();
-    expect(app.system.get('ext.notes')).toBeUndefined();
+    expect(app.system.get('ext/pack-own')).toBeUndefined();
+    expect(app.system.get('ext/notes')).toBeUndefined();
     expect(app.system.get('notes')).toBe(notesActor);
     expect(notesActor.getSnapshot().status).toBe('active');
   });

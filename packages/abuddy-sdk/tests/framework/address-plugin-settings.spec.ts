@@ -17,16 +17,21 @@ describe('addressPluginSettings', () => {
   it("moves a plugin's slice, its visibility and the last-active plugin onto its address", () => {
     const { plugins, moved } = addressPluginSettings(STORED, addresses);
     expect(plugins).toEqual({
-      'memo-pack.memos': { sort: 'newest' },
-      'memo-pack.board': { columns: 3 },
+      'memo-pack/memos': { sort: 'newest' },
+      'memo-pack/board': { columns: 3 },
       unknown: { kept: true },
       _meta: {
-        visibility: { 'memo-pack.memos': false, 'memo-pack.board': true, unknown: false },
-        lastActivePlugin: 'memo-pack.memos',
+        visibility: { 'memo-pack/memos': false, 'memo-pack/board': true, unknown: false },
+        lastActivePlugin: 'memo-pack/memos',
         other: 1,
       },
     });
     expect(moved).toBe(5);
+  });
+
+  it('moves a key a development build stored as <packId>.<featureId>', () => {
+    const { plugins } = addressPluginSettings({ 'memo-pack.memos': { sort: 'newest' }, _meta: { lastActivePlugin: 'memo-pack.board' } }, addresses);
+    expect(plugins).toEqual({ 'memo-pack/memos': { sort: 'newest' }, _meta: { lastActivePlugin: 'memo-pack/board' } });
   });
 
   it('changes nothing the second time', () => {
@@ -41,12 +46,12 @@ describe('addressPluginSettings', () => {
   it('merges a bare slice under what is already stored at the address', () => {
     const { plugins } = addressPluginSettings({
       memos: { sort: 'old', view: { columns: 2, dense: true }, pinned: ['a'] },
-      'memo-pack.memos': { sort: 'new', view: { columns: 3 } },
-      _meta: { visibility: { memos: false, 'memo-pack.memos': true } },
+      'memo-pack/memos': { sort: 'new', view: { columns: 3 } },
+      _meta: { visibility: { memos: false, 'memo-pack/memos': true } },
     }, addresses);
     expect(plugins).toEqual({
-      'memo-pack.memos': { sort: 'new', view: { columns: 3, dense: true }, pinned: ['a'] },
-      _meta: { visibility: { 'memo-pack.memos': true } },
+      'memo-pack/memos': { sort: 'new', view: { columns: 3, dense: true }, pinned: ['a'] },
+      _meta: { visibility: { 'memo-pack/memos': true } },
     });
   });
 
@@ -54,7 +59,7 @@ describe('addressPluginSettings', () => {
   it('leaves a bare id two plugins share where it is', () => {
     const shared = [...addresses, resolveName('other-pack/memos')];
     const { plugins, moved } = addressPluginSettings({ memos: { sort: 'newest' }, board: {} }, shared);
-    expect(plugins).toEqual({ memos: { sort: 'newest' }, 'memo-pack.board': {} });
+    expect(plugins).toEqual({ memos: { sort: 'newest' }, 'memo-pack/board': {} });
     expect(moved).toBe(1);
   });
 

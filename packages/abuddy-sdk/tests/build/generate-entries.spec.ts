@@ -213,14 +213,14 @@ describe('generated events', () => {
   // A send is typed against the owning pack's PackEvents, which only a direct dependency's facade
   // names, so this stays rejected — but as the dependency it is, not as a plugin nobody has.
   it("names the owning pack for a plugin reached only through a dependency, from the snapshot's provenance", () => {
-    const mid = { 'mid-pack': { ...dependency({ id: 'mid-pack' }), provenance: { plugins: { 'deep-pack.threads': 'deep-pack' } } } };
+    const mid = { 'mid-pack': { ...dependency({ id: 'mid-pack' }), provenance: { plugins: { 'deep-pack/threads': 'deep-pack' } } } };
     expect(() => generate({ features: [system('memos', { sendsTo: ['deep-pack/threads'] })] }, mid))
       .toThrow('a plugin of "deep-pack", which this pack depends on only through another pack');
   });
 
   it('still sends to a direct dependency\'s plugin when a transitive record names the same id', () => {
     const base = {
-      'base-pack': { ...dependency({ features: [withPlugin(system('threads'))] }), provenance: { plugins: { 'deep-pack.threads': 'deep-pack' } } },
+      'base-pack': { ...dependency({ features: [withPlugin(system('threads'))] }), provenance: { plugins: { 'deep-pack/threads': 'deep-pack' } } },
     };
     const files = generate({ features: [system('memos', { sendsTo: ['base-pack/threads'] })] }, base);
     expect(files['src/__generated__/events.ts']).toContain("Pick<__dep_base_pack_PackEvents, 'threads'>");
@@ -252,7 +252,7 @@ describe('generated system sends', () => {
   // One map of addresses for pack code, which a plugin-only feature needs as much as one with a system
   it('gives every feature an address in busId, a plugin-only one too', () => {
     const files = generate({ features: [system('memos'), { id: 'sidebar', plugin: { entry: 'x' } }] });
-    expect(files['src/__generated__/bus-ids.ts']).toContain("export const busId = {\n  memos: 'demo-pack.memos',\n  sidebar: 'demo-pack.sidebar',\n} as const;");
+    expect(files['src/__generated__/bus-ids.ts']).toContain("export const busId = {\n  memos: 'demo-pack/memos',\n  sidebar: 'demo-pack/sidebar',\n} as const;");
   });
 
   it("gives a pack without systems a sendToSystem for its dependencies' systems", () => {
@@ -654,7 +654,7 @@ describe('a diamond dependency', () => {
   });
 
   it("names the deeper pack once for a plugin both sides surface", () => {
-    const owners = { 'deep-pack.threads': 'deep-pack' };
+    const owners = { 'deep-pack/threads': 'deep-pack' };
     expect(() => generate({ features: [system('memos', { sendsTo: ['deep-pack/threads'] })] }, {
       'left-pack': { ...dep('left-pack'), provenance: { plugins: owners } } as PackSnapshot,
       'right-pack': { ...dep('right-pack'), provenance: { plugins: owners } } as PackSnapshot,

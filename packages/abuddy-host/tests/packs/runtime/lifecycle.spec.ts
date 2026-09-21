@@ -132,7 +132,7 @@ describe('activating and tearing down a pack at runtime', () => {
     writeBuild(
       sourceDir,
       PACK_ID,
-      `[{ id: '${PACK_ID}.main', machine: { id: 'activate-pack-system' }, events: [] }], commands: [{ name: 'activate-memo', placeholder: 'Text' }], `
+      `[{ id: '${PACK_ID}/main', machine: { id: 'activate-pack-system' }, events: [] }], commands: [{ name: 'activate-memo', placeholder: 'Text' }], `
         + "seeders: [{ key: 'memos', seed: () => { globalThis.activatePackRuns.push('seed'); return { created: 1, updated: 0, skipped: 0 }; } }], "
         + "migrations: [{ target: '1.0.0', description: 'memos', up: () => { globalThis.activatePackRuns.push('migration'); } }]",
       {
@@ -328,7 +328,7 @@ describe('FE pack deregistration', () => {
 
     const removed = unregisterPackFE('test-pack');
     expect(removed).toHaveLength(1);
-    expect(removed[0].id).toBe('test-pack.testPlugin');
+    expect(removed[0].id).toBe('test-pack/testPlugin');
 
     // Calling again should return empty
     const removedAgain = unregisterPackFE('test-pack');
@@ -338,7 +338,7 @@ describe('FE pack deregistration', () => {
   // A built-in pack's registration carries its id like any other, so it comes out the same way
   it('takes a built-in pack\'s frontend back out like any other pack\'s', async () => {
     const { registerPackFE, unregisterPackFE, getRegisteredPlugins } = createFePackRegistry();
-    const builtIn = { label: 'Built-in', id: 'default-setup.main' } as unknown as Plugin;
+    const builtIn = { label: 'Built-in', id: 'default-setup/main' } as unknown as Plugin;
 
     registerPackFE({ id: 'default-setup', plugins: { main: { label: 'Built-in' } as PluginDefinition } });
     expect(getRegisteredPlugins()).toEqual([builtIn]);
@@ -352,9 +352,9 @@ describe('FE pack deregistration', () => {
     const { registerPackFE, unregisterPackFE, getRegisteredPlugins } = createFePackRegistry();
 
     const definition = (label: string) => ({ label }) as unknown as PluginDefinition;
-    const builtIn = { label: 'Built-in', id: 'built-in-pack.shared' };
-    const packCopy = { label: 'Pack', id: 'duplicate-pack.shared' };
-    const packOwn = { label: 'Own', id: 'duplicate-pack.own' };
+    const builtIn = { label: 'Built-in', id: 'built-in-pack/shared' };
+    const packCopy = { label: 'Pack', id: 'duplicate-pack/shared' };
+    const packOwn = { label: 'Own', id: 'duplicate-pack/own' };
     registerPackFE({ id: 'built-in-pack', plugins: { shared: definition('Built-in') } });
     registerPackFE({ id: 'duplicate-pack', plugins: { shared: definition('Pack'), own: definition('Own') } });
 

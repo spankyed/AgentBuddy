@@ -20,7 +20,7 @@ const { unbindFeHost } = await import('@abuddy/sdk/runtime/internals');
 
 const application = {
   getSnapshot: () => ({
-    context: { plugins: [{ id: 'default-setup.notes' }, { id: 'default-setup.settings' }], activePlugin: { id: 'default-setup.notes' }, defaultToggles: { canvas: false } },
+    context: { plugins: [{ id: 'default-setup/notes' }, { id: 'default-setup/settings' }], activePlugin: { id: 'default-setup/notes' }, defaultToggles: { canvas: false } },
   }),
   send: vi.fn(),
   system: { get: () => undefined },
@@ -61,7 +61,7 @@ it("gives the SDK's frontend lookups the window's registered pack frontends, and
     expect(getDslTypes().get('memo')).toBe(memoDsl);
     expect(tiptapPluginRegistry.getAll()).toEqual([mentions]);
     expect(stepRegistry.get('note')).toBe(note);
-    expect(getDesignated('notebook')).toBe('fe-host-pack.notebookMain');
+    expect(getDesignated('notebook')).toBe('fe-host-pack/notebookMain');
   } finally {
     fePacks.unregisterPackFE('fe-host-pack');
   }
@@ -74,7 +74,7 @@ it('binds before the application actor exists, naming it when SDK code reaches t
   expect(() => navigateToAddress(settingsAddress)).toThrow("The application actor isn't created yet");
   created = application;
   navigateToAddress(settingsAddress);
-  expect(application.send).toHaveBeenCalledWith({ type: 'SELECT_PLUGIN', pluginId: 'default-setup.settings' });
+  expect(application.send).toHaveBeenCalledWith({ type: 'SELECT_PLUGIN', pluginId: 'default-setup/settings' });
 });
 
 it('gives secretsClient the API client and navigateToAddress the application actor', async () => {
@@ -82,7 +82,7 @@ it('gives secretsClient the API client and navigateToAddress the application act
   await expect(secretsClient.list()).resolves.toMatchObject({ secrets: [] });
   expect(secretsList).toHaveBeenCalledTimes(1);
   navigateToAddress(settingsAddress);
-  expect(application.send).toHaveBeenCalledWith({ type: 'SELECT_PLUGIN', pluginId: 'default-setup.settings' });
+  expect(application.send).toHaveBeenCalledWith({ type: 'SELECT_PLUGIN', pluginId: 'default-setup/settings' });
 });
 
 // A link to a plugin that isn't there used to select nothing and, with an event, wait forever for an actor

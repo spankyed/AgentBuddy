@@ -41,7 +41,7 @@ Hidden `.<id>.installing-*`, `.<id>.previous-*` and `.<id>.publishing-*` dirs ar
    - `runtime/index.cjs` through `withHostResolution()`; the registration id must match the manifest. A directory without a `integrity.json` and a `runtime/index.cjs` isn't an installed pack: it's skipped with a warning pointing at `abuddy install` or `abuddy dev`
    - strips `boot.earlySystem`, `boot.seedManifest` (external seeds go through `seedPackData`) and `ears.partitionPolicy`
 
-`registerExternalPacks(registry, packs)` registers each pack with its systems as `<packId>.<featureId>` (its seeders, commands and the rest of its registration with it) and returns the packs whose registration succeeded.
+`registerExternalPacks(registry, packs)` registers each pack with its systems as `<packId>/<featureId>` (its seeders, commands and the rest of its registration with it) and returns the packs whose registration succeeded.
 
 ## Modules
 
@@ -112,7 +112,7 @@ A pack's `__generated__/pack-entry.ts` (built-in, and bundled into an external p
 ```typescript
 export const registration: PackRegistration = {
   id: string;
-  systems: PackSystemDef[];  // { id, machine, events }; id is `<packId>.<featureId>`, from toPackSystemDefs
+  systems: PackSystemDef[];  // { id, machine, events }; id is `<packId>/<featureId>`, from toPackSystemDefs
   services?: Record<string, unknown>;
   ears?: PackEARS;           // entities + relKinds + partitionPolicy?
   repositories?: Record<string, unknown>;  // features[].repositories, registered with the app's engine
@@ -128,7 +128,7 @@ export const registration: PackRegistration = {
 };
 ```
 
-Designations come from the manifest's `features[].designation`: generate-entries sets them on the pack's system and plugin definitions, and `registerPack()` maps each role to the id of the system that plays it (`<packId>.<featureId>` for an external pack; the feature id when no registered system does, as for the early logs system). A designation is a role, not a name, and need not equal the feature id: both registries map the role to the id of the system or plugin that plays it. `abuddy validate` rejects one role claimed by two features of a pack; across packs `registerPack` throws.
+Designations come from the manifest's `features[].designation`: generate-entries sets them on the pack's system and plugin definitions, and `registerPack()` maps each role to the id of the system that plays it (`<packId>/<featureId>` for an external pack; the feature id when no registered system does, as for the early logs system). A designation is a role, not a name, and need not equal the feature id: both registries map the role to the id of the system or plugin that plays it. `abuddy validate` rejects one role claimed by two features of a pack; across packs `registerPack` throws.
 
 ## Collision detection
 
@@ -169,7 +169,7 @@ The resolver patch is restored in a `finally`; the bridged cache entries stay, s
 
 ### Activate and teardown (`lifecycle.ts`)
 
-`activatePack(registry, packId, bus)` — reads `packs/<id>/abuddy.json`, `loadSingleExternalPack()`, `registerExternalPacks()`, registers `onShutdown`, then starts it as a boot does: `onInit`, `runPackMigrations()`, `seedPackData()` (hash-checked, so enabling a pack whose seeds didn't change imports nothing), then `updateLoadedPack()`, sends the bus `PACK_CHANGED`, then `ACTIVATE_PACK` with the `<packId>.<featureId>` system ids. Returns `false` when the pack can't be read, loaded or registered. The packs system then emits `PACK_ACTIVATED`, or, after install/update, `PACK_INSTALL_FAILED`/`PACK_UPDATE_FAILED` when `activationProblem()` reports one.
+`activatePack(registry, packId, bus)` — reads `packs/<id>/abuddy.json`, `loadSingleExternalPack()`, `registerExternalPacks()`, registers `onShutdown`, then starts it as a boot does: `onInit`, `runPackMigrations()`, `seedPackData()` (hash-checked, so enabling a pack whose seeds didn't change imports nothing), then `updateLoadedPack()`, sends the bus `PACK_CHANGED`, then `ACTIVATE_PACK` with the `<packId>/<featureId>` system ids. Returns `false` when the pack can't be read, loaded or registered. The packs system then emits `PACK_ACTIVATED`, or, after install/update, `PACK_INSTALL_FAILED`/`PACK_UPDATE_FAILED` when `activationProblem()` reports one.
 
 `teardownPack(registry, packId, bus, { replacing? })` — runs the pack's shutdown hooks, `unregisterPack()` (which drops everything the pack registered, its seeders included, and the cached event validation map and partition policy), clears the pack's require cache, `removeLoadedPack()`, sends the bus `TEARDOWN_PACK` to stop its systems, then `PACK_CHANGED` unless `replacing` is set. The packs system emits `PACK_DEACTIVATED`.
 

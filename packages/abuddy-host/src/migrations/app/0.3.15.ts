@@ -4,7 +4,7 @@
 import { tx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
 import { addressPluginSettings, type PackMigration } from '@abuddy/sdk/framework';
-import { parseAddress } from '@abuddy/sdk/ids';
+import { splitRef } from '@abuddy/sdk/ids';
 import { appState, type AppState } from '../../app-state/index.ts';
 import type { PackRegistry } from '../../packs/pack-registration.ts';
 
@@ -90,7 +90,7 @@ function addressExternalPluginSettings(registry: MigrationRegistry): void {
   const data = (untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: { plugins?: Record<string, unknown> } } | undefined)?.data;
   if (!data?.plugins) return;
   const plugins = registry.pluginIds().flatMap((address) => {
-    const parsed = parseAddress(address);
+    const parsed = splitRef(address);
     return parsed ? [{ address, ...parsed }] : [];
   });
   const builtInFeatures = new Set(plugins.filter(({ packId }) => !external.has(packId)).map(({ featureId }) => featureId));

@@ -11,20 +11,20 @@ const machine = setup({}).createMachine({});
 describe('getEventValidationMap', () => {
   it('follows packs registering and unregistering, with no manual invalidation', () => {
     // Cached before the change
-    expect(getEventValidationMap().has('validation-pack.feature')).toBe(false);
+    expect(getEventValidationMap().has('validation-pack/feature')).toBe(false);
 
     registerPack({ id: 'validation-pack', systems: [{ id: resolveName('validation-pack/feature'), machine, events: new Set(['PING']) }] });
-    expect(getEventValidationMap().get('validation-pack.feature')).toEqual(new Set(['PING']));
+    expect(getEventValidationMap().get('validation-pack/feature')).toEqual(new Set(['PING']));
 
     unregisterPack('validation-pack');
-    expect(getEventValidationMap().has('validation-pack.feature')).toBe(false);
+    expect(getEventValidationMap().has('validation-pack/feature')).toBe(false);
   });
 
   // An early system starts outside the bus, but a client still sends to it: at its address, like any system
   it("checks a pack's early system at its address", () => {
     registerPack({ id: 'early-pack', systems: [], boot: { earlySystem: { id: resolveName('early-pack/logs'), machine, events: new Set(['CLEAR_LOGS']) } } });
     try {
-      expect(getEventValidationMap().get('early-pack.logs')).toEqual(new Set(['CLEAR_LOGS']));
+      expect(getEventValidationMap().get('early-pack/logs')).toEqual(new Set(['CLEAR_LOGS']));
       expect(getEventValidationMap().has('logs')).toBe(false);
     } finally {
       unregisterPack('early-pack');
@@ -34,7 +34,7 @@ describe('getEventValidationMap', () => {
   it('refuses an early system that isn\'t addressed', () => {
     const early = { id: 'logs' as never, machine, events: new Set<string>() };
     expect(() => registerPack({ id: 'early-pack', systems: [], boot: { earlySystem: early } }))
-      .toThrow(`Pack "early-pack": system "logs" isn't addressed as "early-pack.<featureId>"`);
+      .toThrow(`Pack "early-pack": system "logs" isn't addressed as "early-pack/<featureId>"`);
   });
 
   it('follows host systems registering', () => {
@@ -54,13 +54,13 @@ describe('getPluginEventValidationMap', () => {
   });
 
   it('follows packs registering and unregistering, with no manual invalidation', () => {
-    expect(registry.getPluginEventValidationMap().has('memo-pack.memos')).toBe(false);
+    expect(registry.getPluginEventValidationMap().has('memo-pack/memos')).toBe(false);
 
     registry.registerPack({ id: 'memo-pack', systems: [], receivedEventTypes: { memos: ['MEMO_ADDED', 'MEMOS_CONNECTED'] } });
-    expect(registry.getPluginEventValidationMap().get('memo-pack.memos')).toEqual(new Set(['MEMO_ADDED', 'MEMOS_CONNECTED']));
+    expect(registry.getPluginEventValidationMap().get('memo-pack/memos')).toEqual(new Set(['MEMO_ADDED', 'MEMOS_CONNECTED']));
 
     registry.unregisterPack('memo-pack');
-    expect(registry.getPluginEventValidationMap().has('memo-pack.memos')).toBe(false);
+    expect(registry.getPluginEventValidationMap().has('memo-pack/memos')).toBe(false);
   });
 
   // A pack built before receivedEventTypes existed still says which plugins are its own, through the
@@ -71,14 +71,14 @@ describe('getPluginEventValidationMap', () => {
       systems: [{ id: resolveName('older-pack/notes'), machine, events: new Set(['PING']) }],
       features: [{ id: 'notes', hasSystem: true, hasPlugin: true, services: [] }],
     });
-    expect(registry.getPluginEventValidationMap().has('older-pack.notes')).toBe(true);
-    expect(registry.getPluginEventValidationMap().get('older-pack.notes')).toBeNull();
+    expect(registry.getPluginEventValidationMap().has('older-pack/notes')).toBe(true);
+    expect(registry.getPluginEventValidationMap().get('older-pack/notes')).toBeNull();
     registry.unregisterPack('older-pack');
   });
 
   it('leaves a plugin no registered pack owns absent, so a wrong id is still caught', () => {
     registry.registerPack({ id: 'silent-pack', systems: [] });
-    expect(registry.getPluginEventValidationMap().has('silent-pack.silent')).toBe(false);
+    expect(registry.getPluginEventValidationMap().has('silent-pack/silent')).toBe(false);
     registry.unregisterPack('silent-pack');
   });
 
@@ -91,7 +91,7 @@ describe('getPluginEventValidationMap', () => {
       features: [{ id: 'quiet', hasSystem: false, hasPlugin: true, services: [] }],
       receivedEventTypes: {},
     });
-    expect(registry.getPluginEventValidationMap().get('quiet-pack.quiet')).toEqual(new Set());
+    expect(registry.getPluginEventValidationMap().get('quiet-pack/quiet')).toEqual(new Set());
     registry.unregisterPack('quiet-pack');
   });
 });
@@ -112,8 +112,8 @@ describe('a pack cannot widen a plugin it does not own', () => {
       receivedEventTypes: { fromEvents: ['AN_EVENT'] },
     });
     const map = registry.getPluginEventValidationMap();
-    expect(map.get('both-pack.fromEvents')).toEqual(new Set(['AN_EVENT']));
-    expect(map.get('both-pack.fromFeatures')).toEqual(new Set());
+    expect(map.get('both-pack/fromEvents')).toEqual(new Set(['AN_EVENT']));
+    expect(map.get('both-pack/fromFeatures')).toEqual(new Set());
   });
 
   // A pack names its own features, and the registry is what says how one is addressed, so `application`
@@ -130,7 +130,7 @@ describe('a pack cannot widen a plugin it does not own', () => {
     });
 
     expect(registry.getPluginEventValidationMap().get('application')).toEqual(host);
-    expect(registry.getPluginEventValidationMap().get('impostor-pack.application')).toEqual(new Set(['ANYTHING']));
+    expect(registry.getPluginEventValidationMap().get('impostor-pack/application')).toEqual(new Set(['ANYTHING']));
   });
 
   // Each pack's plugin has its own address, so neither can widen or shadow the other's contract
@@ -143,8 +143,8 @@ describe('a pack cannot widen a plugin it does not own', () => {
       id: 'second-pack', systems: [], features: [plugin('memos')], receivedEventTypes: { memos: ['HIJACKED'] },
     });
 
-    expect(registry.getPluginEventValidationMap().get('first-pack.memos')).toEqual(new Set(['MEMO_ADDED']));
-    expect(registry.getPluginEventValidationMap().get('second-pack.memos')).toEqual(new Set(['HIJACKED']));
+    expect(registry.getPluginEventValidationMap().get('first-pack/memos')).toEqual(new Set(['MEMO_ADDED']));
+    expect(registry.getPluginEventValidationMap().get('second-pack/memos')).toEqual(new Set(['HIJACKED']));
   });
 });
 
@@ -161,7 +161,7 @@ describe('a pack registering', () => {
     const registry = createPackRegistry();
     let seen: Set<string> | null | undefined = 'unset' as never;
     const stop = registry.onSettingsDefaultsChanged(() => {
-      seen = registry.getPluginEventValidationMap().get('memo-pack.memos');
+      seen = registry.getPluginEventValidationMap().get('memo-pack/memos');
     });
     registry.registerPack({
       id: 'memo-pack',
@@ -184,7 +184,7 @@ describe('a pack registering', () => {
       receivedEventTypes: { memos: ['MEMO_ADDED'] },
       seeders: [{ key: 'notes' } as never, { key: 'notes' } as never],
     })).toThrow('two seeders');
-    expect(registry.getPluginEventValidationMap().has('clumsy-pack.memos')).toBe(false);
+    expect(registry.getPluginEventValidationMap().has('clumsy-pack/memos')).toBe(false);
     expect(registry.getRegisteredPackSystemIds('clumsy-pack')).toEqual([]);
   });
 });
@@ -206,6 +206,6 @@ describe('a host plugin', () => {
     });
     registry.registerHostPlugin('packs', ['PACKS_LIST']);
     expect(registry.getPluginEventValidationMap().get('packs')).toEqual(new Set(['PACKS_LIST']));
-    expect(registry.getPluginEventValidationMap().get('owner-pack.packs')).toEqual(new Set(['NOT_THE_HOSTS']));
+    expect(registry.getPluginEventValidationMap().get('owner-pack/packs')).toEqual(new Set(['NOT_THE_HOSTS']));
   });
 });

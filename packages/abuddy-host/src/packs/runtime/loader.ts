@@ -250,7 +250,7 @@ export function loadSingleExternalPack(
 
 /**
  * The pack's own registration from its runtime bundle, with its systems completed from the manifest: the
- * bus id (`<packId>.<featureId>`) and the incoming events the manifest adds to the ones the system
+ * bus id (`<packId>/<featureId>`) and the incoming events the manifest adds to the ones the system
  * declared. Completed here and not again: the registry takes the object as it is.
  */
 function loadBundledRuntime(
@@ -278,9 +278,9 @@ function loadBundledRuntime(
     return null;
   }
 
-  const stray = registration.systems?.find((def) => !def.id.startsWith(`${manifest.id}.`));
+  const stray = registration.systems?.find((def) => !def.id.startsWith(`${manifest.id}/`));
   if (stray) {
-    logger.error(`Pack ${manifest.id}: system "${stray.id}" isn't addressed as "${manifest.id}.<featureId>": rebuild the pack`);
+    logger.error(`Pack ${manifest.id}: system "${stray.id}" isn't addressed as "${manifest.id}/<featureId>": rebuild the pack`);
     return null;
   }
 
@@ -325,7 +325,7 @@ export function loadExternalPacks(): LoadedPack[] {
   return loaded;
 }
 
-/** Registers each loaded external pack in `registry`, its systems as `<packId>.<featureId>`; returns those registered */
+/** Registers each loaded external pack in `registry`, its systems as `<packId>/<featureId>`; returns those registered */
 export function registerExternalPacks(registry: PackRegistry, packs: LoadedPack[]): LoadedPack[] {
   const registered: LoadedPack[] = [];
   for (const pack of packs) {

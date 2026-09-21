@@ -16,9 +16,9 @@ import { loadExternalPacks } from '../../../src/packs/runtime/loader.ts';
 import { getPacksWithClientLoadedFrontends } from '../../../src/packs/pack-layout.ts';
 import type { LoadedPack } from '../../../src/packs/runtime/loader.ts';
 
-/** A loaded pack's system by feature id: the loader now completes each system's bus id (`<packId>.<featureId>`) */
+/** A loaded pack's system by feature id: the loader now completes each system's bus id (`<packId>/<featureId>`) */
 const systemOf = (pack: LoadedPack, featureId: string) =>
-  pack.registration.systems.find((s) => s.id === `${pack.origin.id}.${featureId}`)!;
+  pack.registration.systems.find((s) => s.id === `${pack.origin.id}/${featureId}`)!;
 
 
 const USER_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'pack-e2e-'));
@@ -85,7 +85,7 @@ function installTestPack() {
     module.exports = {
       registration: {
         id: '${TEST_PACK_ID}',
-        systems: [{ id: '${TEST_PACK_ID}.hello', machine: helloMachine, events: new Set(['CLIENT_CONNECTED']) }],
+        systems: [{ id: '${TEST_PACK_ID}/hello', machine: helloMachine, events: new Set(['CLIENT_CONNECTED']) }],
         features: [{ id: 'hello', hasSystem: true, hasPlugin: true, services: [] }, { id: 'dataOnly', hasSystem: false, hasPlugin: true, services: [] }],
       },
     };

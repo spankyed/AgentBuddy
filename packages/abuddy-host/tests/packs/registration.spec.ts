@@ -1,4 +1,4 @@
-import type { FeatureAddress } from '@abuddy/sdk/ids';
+import type { FeatureRef } from '@abuddy/sdk/ids';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createEarsEngine, installEngine, installedEngine, repository } from '@abuddy/ears';
 import { getPackCommands, getPackSettingsDefaults, type PackRegistration, type PackSystemDef } from '@abuddy/sdk/framework';
@@ -95,7 +95,7 @@ describe('registerPack repositories', () => {
 });
 
 describe('registerPack designations', () => {
-  const system = (id: string) => ({ id: id as FeatureAddress, machine: {} as unknown as PackSystemDef['machine'], events: new Set<string>() });
+  const system = (id: string) => ({ id: id as FeatureRef, machine: {} as unknown as PackSystemDef['machine'], events: new Set<string>() });
   const journal = { id: 'journal', designation: 'journal', hasSystem: true, hasPlugin: false, services: [] };
   const registerDesignated = (id: string, systems: PackSystemDef[], extra: Partial<PackRegistration> = {}) => {
     registerPack({ id, systems, features: [journal], ...extra } as PackRegistration);
@@ -104,50 +104,50 @@ describe('registerPack designations', () => {
 
   // Its system and plugin share the feature's address, so the role resolves to it with or without a system
   it.each([
-    ['with a system', [system('ext.journal')]],
+    ['with a system', [system('ext/journal')]],
     ['without one (the early system)', []],
   ])("resolves a role to the feature's address, %s", (_case, systems) => {
     registerDesignated('ext', systems);
-    expect(getDesignated('journal')).toBe('ext.journal');
+    expect(getDesignated('journal')).toBe('ext/journal');
   });
 
   // `toPackSystemDefs` addresses a pack's systems; a hand-built one without its address is refused by name
   it("refuses a system that isn't addressed under its pack", () => {
     expect(() => registerDesignated('ext', [system('journal')]))
-      .toThrow('Pack "ext": system "journal" isn\'t addressed as "ext.<featureId>"');
+      .toThrow('Pack "ext": system "journal" isn\'t addressed as "ext/<featureId>"');
     expect(hasDesignation('journal')).toBe(false);
   });
 
   it('rejects a role another pack holds, registering none of the pack', () => {
-    registerDesignated('first', [system('first.journal')]);
-    expect(() => registerDesignated('second', [system('second.journal')], { services: { second: {} } }))
+    registerDesignated('first', [system('first/journal')]);
+    expect(() => registerDesignated('second', [system('second/journal')], { services: { second: {} } }))
       .toThrow('Designation collision: role "journal" — pack "second" vs "first"');
-    expect(getDesignated('journal')).toBe('first.journal');
+    expect(getDesignated('journal')).toBe('first/journal');
     expect(getRegisteredServices()).not.toHaveProperty('second');
   });
 
   it("drops a pack's roles when it unregisters", () => {
-    registerDesignated('ext', [system('ext.journal')]);
+    registerDesignated('ext', [system('ext/journal')]);
     unregisterPack(registered.pop()!);
     expect(hasDesignation('journal')).toBe(false);
   });
 });
 
 describe('registered addresses', () => {
-  const systemDef = (id: string) => ({ id: id as FeatureAddress, machine: {} as unknown as PackSystemDef['machine'], events: new Set<string>() });
+  const systemDef = (id: string) => ({ id: id as FeatureRef, machine: {} as unknown as PackSystemDef['machine'], events: new Set<string>() });
 
   it("lists every pack's systems and plugins at their addresses, the host's bare", () => {
     registerPack({
-      id: 'ext', systems: [systemDef('ext.notes')],
+      id: 'ext', systems: [systemDef('ext/notes')],
       features: [{ id: 'notes', hasSystem: true, hasPlugin: true, services: [] }],
     } as unknown as PackRegistration);
     registered.push('ext');
-    expect(systemIds()).toContain('ext.notes');
-    expect(pluginIds()).toEqual(expect.arrayContaining(['ext.notes', 'application']));
+    expect(systemIds()).toContain('ext/notes');
+    expect(pluginIds()).toEqual(expect.arrayContaining(['ext/notes', 'application']));
 
     unregisterPack(registered.pop()!);
-    expect(systemIds()).not.toContain('ext.notes');
-    expect(pluginIds()).not.toContain('ext.notes');
+    expect(systemIds()).not.toContain('ext/notes');
+    expect(pluginIds()).not.toContain('ext/notes');
   });
 });
 
@@ -203,7 +203,7 @@ describe('registerPack feature settings', () => {
 
   it("registers a pack's feature settings as defaults and drops them when it unregisters", () => {
     registerPack({ id: 'memo-pack', systems: [], features: [memos] } as unknown as PackRegistration);
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'memo-pack.memos': { sort: 'newest' }, _meta: { visibility: { 'memo-pack.memos': false } } } });
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'memo-pack/memos': { sort: 'newest' }, _meta: { visibility: { 'memo-pack/memos': false } } } });
     unregisterPack('memo-pack');
     expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
   });

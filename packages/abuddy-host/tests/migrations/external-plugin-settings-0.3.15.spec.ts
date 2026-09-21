@@ -50,10 +50,10 @@ describe("the 0.3.15 app migration, for an external pack's plugins", () => {
     expect(settings()).toEqual({
       general: { application: { openLinksInApp: false } },
       plugins: {
-        'memo-pack.memos': { sort: 'newest' },
+        'memo-pack/memos': { sort: 'newest' },
         // A built-in pack's keys are its own migration's to move, even when an external pack has the feature id too
         notes: { fontSize: 14 },
-        _meta: { visibility: { 'memo-pack.memos': true, 'memo-pack.board': false, notes: false }, lastActivePlugin: 'memo-pack.memos' },
+        _meta: { visibility: { 'memo-pack/memos': true, 'memo-pack/board': false, notes: false }, lastActivePlugin: 'memo-pack/memos' },
       },
     });
   });

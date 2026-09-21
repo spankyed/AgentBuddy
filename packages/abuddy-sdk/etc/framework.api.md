@@ -11,7 +11,7 @@ import { EARS as EARS_2 } from '@abuddy/ears';
 import { z } from 'zod';
 
 // @public
-export function addressPluginSettings<T extends Record<string, unknown>>(plugins: T, addresses?: readonly FeatureAddress[]): {
+export function addressPluginSettings<T extends Record<string, unknown>>(plugins: T, addresses?: readonly FeatureRef[]): {
     plugins: T;
     moved: number;
 };
@@ -156,7 +156,7 @@ export interface PackSettingsDefaults {
 export interface PackSystemDef {
     // (undocumented)
     events: Set<string>;
-    id: FeatureAddress;
+    id: FeatureRef;
     // (undocumented)
     machine: AnyStateMachine;
 }

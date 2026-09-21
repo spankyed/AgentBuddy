@@ -86,7 +86,7 @@ describe('createAppBus', () => {
       bus.stop();
       bus = createActor(createAppBus(registry), { systemId: 'bus' }).start();
       testRootEvents.emitConnected();
-      testRootEvents.emitIncoming({ type: 'PING', systemId: 'ping-pack.feature' });
+      testRootEvents.emitIncoming({ type: 'PING', systemId: 'ping-pack/feature' });
       await flush();
       expect(pings).toEqual(['ping']);
     } finally {
@@ -106,14 +106,14 @@ describe('createAppBus', () => {
       bus.stop();
       bus = createActor(createAppBus(registry), { systemId: 'bus' }).start();
       // A schedule tick or a `fire` step at boot, with no window open yet
-      testRootEvents.emitIncoming({ type: 'PING', systemId: 'ping-pack.feature' });
-      testRootEvents.emitPluginSend({ type: 'EARLY', pluginId: 'ping-pack.feature' });
+      testRootEvents.emitIncoming({ type: 'PING', systemId: 'ping-pack/feature' });
+      testRootEvents.emitPluginSend({ type: 'EARLY', pluginId: 'ping-pack/feature' });
       await flush();
       expect(pings).toEqual(['ping']);
       expect(outgoing).toEqual([]);
 
       testRootEvents.emitConnected();
-      testRootEvents.emitPluginSend({ type: 'LATE', pluginId: 'ping-pack.feature' });
+      testRootEvents.emitPluginSend({ type: 'LATE', pluginId: 'ping-pack/feature' });
       await flush();
       expect(outgoing.map((event) => event.type)).toContain('LATE');
       expect(outgoing.map((event) => event.type)).not.toContain('EARLY');

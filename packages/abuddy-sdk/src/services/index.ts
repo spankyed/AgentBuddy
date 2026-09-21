@@ -1,7 +1,7 @@
 import type { repository } from '@abuddy/ears';
 import { boundHost, type HostRuntimeServices } from '../runtime/host-runtime.ts';
 import { sendToPlugin, sendToSystem, sendToBrainSystem } from '../events/index.ts';
-import { parseAddress, resolveName } from '../ids/addressing.ts';
+import { splitRef, resolveName } from '../ids/addressing.ts';
 import { createLogger, type Logger } from '../logger/logger.ts';
 import type { AppDataService } from './app-data.ts';
 import type { TraceStore } from './trace-store.ts';
@@ -57,7 +57,7 @@ export interface HostServices {
  * is the host's. A name nothing is registered under throws, naming the form to write.
  */
 function registeredAddress(kind: 'system' | 'plugin', name: string, registered: readonly string[]): string {
-  const hostIds = registered.filter((id) => !parseAddress(id));
+  const hostIds = registered.filter((id) => !splitRef(id));
   let address: string | undefined;
   try {
     address = resolveName(name, { hostIds });
@@ -65,7 +65,7 @@ function registeredAddress(kind: 'system' | 'plugin', name: string, registered: 
     address = undefined;
   }
   if (address && registered.includes(address)) return address;
-  const meant = registered.filter((id) => parseAddress(id)?.featureId === name).map((id) => id.replace('.', '/'));
+  const meant = registered.filter((id) => splitRef(id)?.featureId === name);
   const hint = meant.length === 1 ? ` — did you mean "${meant[0]}"?` : '';
   throw new Error(`No registered ${kind} is named "${name}": actions name a ${kind} "<packId>/<featureId>"${hint}`);
 }

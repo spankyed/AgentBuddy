@@ -18,7 +18,7 @@ import { Ref } from 'vue';
 import { z } from 'zod';
 
 // @public
-export function actorAt<T = AnyActorRef>(address: FeatureAddress): T;
+export function actorAt<T = AnyActorRef>(address: FeatureRef): T;
 
 // @public (undocumented)
 export const ALL_COLORS: TabGroupColor[];
@@ -159,7 +159,7 @@ export type ExtractEvent<TEvent extends {
 }>;
 
 // @public (undocumented)
-export function getDesignated(role: string): FeatureAddress;
+export function getDesignated(role: string): FeatureRef;
 
 // @public (undocumented)
 export function getDslTypes(): ReadonlyMap<string, DslTypeConfig>;
@@ -235,7 +235,7 @@ export interface NavHistory<T> {
 }
 
 // @public
-export function navigateToAddress(address: FeatureAddress, event?: PluginEvent | PluginEvent[]): void;
+export function navigateToAddress(address: FeatureRef, event?: PluginEvent | PluginEvent[]): void;
 
 // @public (undocumented)
 export function onMenuOpenChange(open: boolean): void;
@@ -275,7 +275,7 @@ interface Plugin_2 {
     hotkeys?: PluginHotkeyDefinition[];
     // (undocumented)
     icon?: Component;
-    id: FeatureAddress;
+    id: FeatureRef;
     // (undocumented)
     isPinned?: boolean;
     // (undocumented)

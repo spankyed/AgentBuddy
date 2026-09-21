@@ -14,7 +14,7 @@ abuddy add feature bookmarks --label "Bookmarks" --icon "Bookmark"
 | `--icon <LucideIcon>` | `Box` | The icon the plugin module imports and sets as its `icon` |
 | `--designation <role>` | none | Writes `"designation"`; must equal the feature name |
 
-The feature name is the feature id: it must match `^[a-z][a-zA-Z0-9]*$` (a lowercase letter, then letters and digits: `notes`, `calendarEvents`), because it becomes an identifier in generated code, and part of the feature's address, `<packId>.<featureId>`.
+The feature name is the feature id: it must match `^[a-z][a-zA-Z0-9]*$` (a lowercase letter, then letters and digits: `notes`, `calendarEvents`), because it becomes an identifier in generated code, and part of the feature's ref, `<packId>/<featureId>`.
 
 This creates:
 
@@ -104,7 +104,7 @@ export default bookmarksEntry;
 
 | Member | What it is |
 |---|---|
-| `id` | The literal id you passed: the feature id, which is the name code sends to (`emit`, `sendToSystem`). It isn't the id the system runs under, its address (see below) |
+| `id` | The literal id you passed: the feature id, which is the name code sends to (`emit`, `sendToSystem`). The system runs under the feature's ref, `<packId>/<featureId>` (see below) |
 | `types` | `{ context: TContext; events: TEvents \| SystemEvents }`, for `setup({ types })`. `SystemEvents` is `CLIENT_CONNECTED` and `PACK_CHANGED { packId }`, so incoming unions needn't list them |
 | `typeOf` | `safeEvents` over the same events, to narrow an event by type in actions |
 
@@ -118,7 +118,7 @@ export default bookmarksEntry;
 
 ### Communication patterns
 
-Your code names features: your own by id (`'bookmarks'`), another pack's as `<packId>/<featureId>` (`'default-setup/logs'`), and the app's own plugin bare (`'application'`). Every API that reaches a system or plugin takes that name. The app runs each feature's system and plugin at its address, `<packId>.<featureId>`, and resolves the name for you, so your code never holds an address. Actions name systems and plugins `<packId>/<featureId>`, their own pack's included (see [`services.emitter`](services-and-data.md#host-services)).
+Your code names features: your own by id (`'bookmarks'`), another pack's as `<packId>/<featureId>` (`'default-setup/logs'`), and the app's own plugin bare (`'application'`). Every API that reaches a system or plugin takes that name. A feature's system and plugin both run under its ref, `<packId>/<featureId>`, the same spelling you write for another pack's features: a bare name is only short for your own pack's. Actions name systems and plugins `<packId>/<featureId>`, their own pack's included (see [`services.emitter`](services-and-data.md#host-services)).
 
 | To | Use |
 |---|---|
@@ -148,7 +148,7 @@ sendToSystem('bookmarks', { type: 'CREATE_BOOKMARK', url, title });
 sendToSystem('default-setup/settings', { type: 'GET_SETTINGS' });
 ```
 
-`sendToSystem` accepts only systems of your pack and its dependencies, and only the events each one declares (`defineSystem(id)<Incoming>()`); a missing field is reported against the event its `type` names. Each send names one system and one event type: a `systemId` or `type` typed as a union is rejected. It sends to the address the name stands for (`my-pack.bookmarks` for your own, `default-setup.settings` for default-setup's). A dependency's system is always named with the dependency's id, so a feature of yours may share its name: `'notes'` is your own, `'default-setup/notes'` default-setup's. The app rejects an unknown `systemId`, and an event `type` none of the machine's transitions names unless the feature lists it in `system.events.incoming`.
+`sendToSystem` accepts only systems of your pack and its dependencies, and only the events each one declares (`defineSystem(id)<Incoming>()`); a missing field is reported against the event its `type` names. Each send names one system and one event type: a `systemId` or `type` typed as a union is rejected. A bare name is your own feature (`'bookmarks'` is `my-pack/bookmarks`). A dependency's system is always named with the dependency's id, so a feature of yours may share its name: `'notes'` is your own, `'default-setup/notes'` default-setup's. The app rejects an unknown `systemId`, and an event `type` none of the machine's transitions names unless the feature lists it in `system.events.incoming`.
 
 Backend code that needs the connection or every incoming event subscribes with `onConnected(callback)` and `onIncoming(callback)` from `@abuddy/sdk/events`; each returns an unsubscribe function. Log entries arrive through `onLog(callback)` from `@abuddy/sdk/logger`.
 
@@ -168,7 +168,7 @@ import { Bookmark } from 'lucide-vue-next';
 import state from './state';
 import canvas from './canvas/list.vue';
 
-// No id: the app registers the plugin at its feature's address, `<packId>.bookmarks`
+// No id: the app registers the plugin at its feature's ref, `<packId>/bookmarks`
 const bookmarksPlugin: PluginDefinition = {
   label: 'Bookmarks',
   icon: Bookmark,        // Lucide component, not a string

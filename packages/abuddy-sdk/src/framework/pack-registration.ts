@@ -5,12 +5,12 @@
  * The host (API) owns the mutable registry; packs only reference these types.
  */
 
-import type { FeatureAddress } from '../ids/addressing.ts';
+import type { FeatureRef } from '../ids/addressing.ts';
 import type { AnyStateMachine } from 'xstate';
 
 export interface PackSystemDef {
-  /** The system's address, `<packId>.<featureId>` (`toPackSystemDefs` gives it) */
-  id: FeatureAddress;
+  /** The system's address, `<packId>/<featureId>` (`toPackSystemDefs` gives it) */
+  id: FeatureRef;
   machine: AnyStateMachine;
   events: Set<string>;
 }
@@ -81,7 +81,7 @@ export interface PackRegistration {
    * outgoing unions (`receivedEventTypes` in `#generated/events`). The app checks a send against it, as it
    * checks an incoming client event against what a system accepts. Only this pack's own plugins: a
    * dependency's and the host's are declared by whoever owns them, and the key is a feature id rather than
-   * a plugin id for the same reason — the app addresses a plugin `<packId>.<featureId>` and qualifies these
+   * a plugin id for the same reason — the app addresses a plugin `<packId>/<featureId>` and qualifies these
    * keys itself, so naming another pack's plugin here isn't expressible.
    */
   receivedEventTypes?: Record<string, readonly string[]>;

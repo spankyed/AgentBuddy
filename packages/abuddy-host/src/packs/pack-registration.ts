@@ -15,7 +15,7 @@ import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS, _reservedEntries } from '@abuddy/sdk/types';
 import { HOST_PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
-import { qualifiedId, type FeatureAddress } from '@abuddy/sdk/ids';
+import { resolveName, type FeatureRef } from '@abuddy/sdk/ids';
 import { makePolicy, registerRepository, unregisterRepository, type PartitionPolicy } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { packSeedOrder } from './pack-discovery.ts';
@@ -39,8 +39,8 @@ const appEARS = (): PackEARS => ({
 });
 
 /** Role → the address of the feature playing it: its system and its plugin share it */
-function designationsOf({ id, features = [] }: PackRegistration): Record<string, FeatureAddress> {
-  return Object.fromEntries(features.flatMap((f) => (f.designation ? [[f.designation, qualifiedId(id, f.id)]] : [])));
+function designationsOf({ id, features = [] }: PackRegistration): Record<string, FeatureRef> {
+  return Object.fromEntries(features.flatMap((f) => (f.designation ? [[f.designation, resolveName(f.id, { packId: id })]] : [])));
 }
 
 export interface PackExtensions {
@@ -142,7 +142,7 @@ export interface PackRegistry extends PackRegistryView {
   clearPackReplacing(packId: string): void;
   /** Host systems and every registered pack's, by id */
   getRegisteredSystems(): Map<string, AnyStateMachine>;
-  /** The addresses of a registered pack's systems, `<packId>.<featureId>` */
+  /** The addresses of a registered pack's systems, `<packId>/<featureId>` */
   getRegisteredPackSystemIds(packId: string): string[];
   /**
    * Each registered system's id → the incoming event types it accepts (`*` accepts any). Cached until a
@@ -348,9 +348,9 @@ export function createPackRegistry(): PackRegistry {
     }
     // `toPackSystemDefs` addresses a pack's systems; one that isn't is a registration built by hand wrong
     const systems = [...registration.systems, ...(registration.boot?.earlySystem ? [registration.boot.earlySystem] : [])];
-    const stray = systems.find((sys) => !sys.id.startsWith(`${registration.id}.`));
+    const stray = systems.find((sys) => !sys.id.startsWith(`${registration.id}/`));
     if (stray) {
-      throw new Error(`Pack "${registration.id}": system "${stray.id}" isn't addressed as "${qualifiedId(registration.id, '<featureId>')}"`);
+      throw new Error(`Pack "${registration.id}": system "${stray.id}" isn't addressed as "${registration.id}/<featureId>"`);
     }
 
     checkEARS(registration);
@@ -464,7 +464,7 @@ export function createPackRegistry(): PackRegistry {
   }
 
   function ownedPluginIds(reg: PackRegistration): string[] {
-    return pluginFeatures(reg).map((featureId) => qualifiedId(reg.id, featureId));
+    return pluginFeatures(reg).map((featureId) => resolveName(featureId, { packId: reg.id }));
   }
 
   /** Every plugin the host owns: those a pack may `sendsTo`, and those only the host sends to */
@@ -482,7 +482,7 @@ export function createPackRegistry(): PackRegistry {
     for (const reg of registrations.values()) {
       const declared = reg.receivedEventTypes;
       for (const featureId of pluginFeatures(reg)) {
-        map.set(qualifiedId(reg.id, featureId), declared ? new Set(declared[featureId] ?? []) : null);
+        map.set(resolveName(featureId, { packId: reg.id }), declared ? new Set(declared[featureId] ?? []) : null);
       }
     }
     return map;
@@ -551,8 +551,8 @@ export function createPackRegistry(): PackRegistry {
     },
 
     // Both maps are keyed by what the registry registered: pack features' addresses and the host's bare ids
-    systemIds: () => [...(eventValidationMap ??= buildEventValidationMap()).keys()] as FeatureAddress[],
-    pluginIds: () => [...(pluginEventValidationMap ??= buildPluginEventValidationMap()).keys()] as FeatureAddress[],
+    systemIds: () => [...(eventValidationMap ??= buildEventValidationMap()).keys()] as FeatureRef[],
+    pluginIds: () => [...(pluginEventValidationMap ??= buildPluginEventValidationMap()).keys()] as FeatureRef[],
 
     getEventValidationMap: () => eventValidationMap ??= buildEventValidationMap(),
     getPluginEventValidationMap: () => pluginEventValidationMap ??= buildPluginEventValidationMap(),

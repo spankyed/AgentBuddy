@@ -56,7 +56,7 @@ describe('pack full lifecycle: init → install → load', () => {
       plugin: { entry: 'src/features/main/fe/plugin.ts' },
     }];
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify(manifest, null, 2));
-    writeBuild(packDir, manifest.id, "[{ id: 'my-test-pack.main', machine: { id: 'my-test-pack-system' }, events: [] }]");
+    writeBuild(packDir, manifest.id, "[{ id: 'my-test-pack/main', machine: { id: 'my-test-pack-system' }, events: [] }]");
 
     const packsDir = path.join(tmpDir, 'packs');
     await installPackFromLocal(packDir, packsDir);
@@ -71,7 +71,7 @@ describe('pack full lifecycle: init → install → load', () => {
     expect(packs).toHaveLength(1);
     expect(packs[0].origin.id).toBe('my-test-pack');
     expect(packs[0].origin.name).toBe('My Test Pack');
-    const main = packs[0].registration.systems.find((s) => s.id === 'my-test-pack.main')!;
+    const main = packs[0].registration.systems.find((s) => s.id === 'my-test-pack/main')!;
     expect(main).toBeDefined();
     expect(main.events.has('TEST_EVENT')).toBe(true);
   });

@@ -21,7 +21,7 @@ type RecordingWindow = {
  * The id a built-in feature's system and plugin run under. This spec drives the app the way pack code
  * can't — the raw `sendToSystem` and the actor ids — so it writes the ids rather than the names.
  */
-const builtIn = (feature: string) => `default-setup.${feature}`;
+const builtIn = (feature: string) => `default-setup/${feature}`;
 
 /** Records every event the code and browser plugin actors receive from here on */
 async function recordPluginEvents(appPage: Page): Promise<void> {

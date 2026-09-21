@@ -5,17 +5,14 @@
 ```ts
 
 // @public
-export function addressOf(name: string): FeatureAddress;
-
-// @public
-export function asHostAddress(id: string): FeatureAddress;
+export function asHostAddress(id: string): FeatureRef;
 
 // @public (undocumented)
 export const bus: "bus";
 
 // @public
-export type FeatureAddress = string & {
-    readonly [featureAddress]: true;
+export type FeatureRef = string & {
+    readonly [featureRef]: true;
 };
 
 // @public
@@ -27,16 +24,13 @@ export interface NameContext {
 }
 
 // @public
-export function parseAddress(address: string): {
+export function resolveName(name: string, input?: NameContext): FeatureRef;
+
+// @public
+export function splitRef(ref: string): {
     packId: string;
     featureId: string;
 } | undefined;
-
-// @public (undocumented)
-export function qualifiedId(packId: string, featureId: string): FeatureAddress;
-
-// @public
-export function resolveName(name: string, input?: NameContext): FeatureAddress;
 
 // (No @packageDocumentation comment for this package)
 

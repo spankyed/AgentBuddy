@@ -102,7 +102,7 @@ export interface PackExtensionsView {
     block(type: string): BlockDefinition | undefined;
     // (undocumented)
     blocks(): BlockDefinition[];
-    designation(role: string): FeatureAddress | undefined;
+    designation(role: string): FeatureRef | undefined;
     // (undocumented)
     step(type: string): StepDefinition | undefined;
     steps(): StepDefinition[];
@@ -114,11 +114,11 @@ export interface PackRegistryView extends PackExtensionsView {
     earsNames(): EarsNames;
     getRegisteredServices(): Record<string, unknown>;
     onSettingsDefaultsChanged(listener: () => void): () => void;
-    pluginIds(): readonly FeatureAddress[];
+    pluginIds(): readonly FeatureRef[];
     seeders(packId: string): readonly Seeder[];
     seedHooks(entity: string): SeedHooks | undefined;
     settingsDefaults(): PackSettingsDefaults;
-    systemIds(): readonly FeatureAddress[];
+    systemIds(): readonly FeatureRef[];
 }
 
 // @public

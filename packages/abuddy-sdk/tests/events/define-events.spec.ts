@@ -27,12 +27,12 @@ describe('defineEvents', () => {
 
   it("sends to the pack's own system at its address", () => {
     expect(incoming(() => events.sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' })))
-      .toEqual([{ type: 'ADD_MEMO', text: 'x', systemId: 'memo-pack.memos' }]);
+      .toEqual([{ type: 'ADD_MEMO', text: 'x', systemId: 'memo-pack/memos' }]);
   });
 
   it("sends to another pack's system, named <pack>/<feature>, at its address", () => {
     expect(incoming(() => events.sendToSystem('default-setup/settings', { type: 'GET_SETTINGS' })))
-      .toEqual([{ type: 'GET_SETTINGS', systemId: 'default-setup.settings' }]);
+      .toEqual([{ type: 'GET_SETTINGS', systemId: 'default-setup/settings' }]);
   });
 
   it('sends to a plugin at its address, and wraps an event for the bus with emit', () => {
@@ -43,8 +43,8 @@ describe('defineEvents', () => {
     } finally {
       stop();
     }
-    expect(outgoing).toEqual([{ type: 'MEMO_ADDED', pluginId: 'memo-pack.memos' }]);
-    expect(events.emit('memos', { type: 'MEMO_ADDED' })).toEqual(emit('memo-pack.memos', { type: 'MEMO_ADDED' }));
+    expect(outgoing).toEqual([{ type: 'MEMO_ADDED', pluginId: 'memo-pack/memos' }]);
+    expect(events.emit('memos', { type: 'MEMO_ADDED' })).toEqual(emit('memo-pack/memos', { type: 'MEMO_ADDED' }));
   });
 
   // Bare ids are the host's namespace, so a host plugin is never taken for one of this pack's features

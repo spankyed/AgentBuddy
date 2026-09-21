@@ -28,7 +28,7 @@ describe('logs system', () => {
 
     expect(toPlugin).toEqual([expect.objectContaining({
       type: 'LOG_ADDED',
-      pluginId: 'default-setup.logs',
+      pluginId: 'default-setup/logs',
       log: expect.objectContaining({ level: 'warn', source: 'notes', message: 'Note sync is slow', meta: { noteId: 'Note-1' } }),
     })]);
     expect(actor.getSnapshot().context.logs).toEqual([expect.objectContaining({ source: 'notes', message: 'Note sync is slow' })]);
@@ -45,12 +45,12 @@ describe('logs system', () => {
     testRootEvents.emitIncoming({ type: 'CLEAR_LOGS', systemId: 'logs' });
     expect(actor.getSnapshot().context.logs).toHaveLength(1);
 
-    testRootEvents.emitIncoming({ type: 'CLEAR_LOGS', systemId: 'default-setup.logs' });
+    testRootEvents.emitIncoming({ type: 'CLEAR_LOGS', systemId: 'default-setup/logs' });
     expect(actor.getSnapshot().context.logs).toEqual([]);
   });
 
   it('is registered at its address', () => {
-    expect(registration.boot?.earlySystem?.id).toBe('default-setup.logs');
+    expect(registration.boot?.earlySystem?.id).toBe('default-setup/logs');
     expect(registration.boot?.earlySystem?.events).toContain('CLEAR_LOGS');
   });
 });

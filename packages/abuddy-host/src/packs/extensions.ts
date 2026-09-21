@@ -1,6 +1,6 @@
 // The lookups the backend's and the renderer's registries both keep of what registered packs contributed, each
 // owned by the registry that creates it (createPackRegistry, createFePackRegistry)
-import type { FeatureAddress } from '@abuddy/sdk/ids';
+import type { FeatureRef } from '@abuddy/sdk/ids';
 import { _mergeStepDefinitions, type StepDefinition } from '@abuddy/sdk/steps';
 
 /**
@@ -65,15 +65,15 @@ export function createStepStore() {
 
 /** Role → id of the system or plugin that plays it */
 export function createDesignationStore() {
-  const roles = new Map<string, FeatureAddress>();
+  const roles = new Map<string, FeatureRef>();
   return {
-    register(designations: Record<string, FeatureAddress>): void {
+    register(designations: Record<string, FeatureRef>): void {
       for (const [role, id] of Object.entries(designations)) roles.set(role, id);
     },
-    unregister(designations: Record<string, FeatureAddress>): void {
+    unregister(designations: Record<string, FeatureRef>): void {
       for (const role of Object.keys(designations)) roles.delete(role);
     },
-    get: (role: string): FeatureAddress | undefined => roles.get(role),
+    get: (role: string): FeatureRef | undefined => roles.get(role),
     has: (role: string): boolean => roles.has(role),
   };
 }

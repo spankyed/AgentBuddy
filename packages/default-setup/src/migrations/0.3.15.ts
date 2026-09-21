@@ -21,7 +21,7 @@ export const migration: PackMigration = {
     // The host's own 0.3.15 migration, which runs first, moved it out of `internal` (no pack migration runs when it fails).
     repository.settingsCommands.removeStored(['internal']);
 
-    // ── A plugin is addressed `<packId>.<featureId>` ──
+    // ── A plugin is addressed `<packId>/<featureId>` ──
     // First among the plugin-settings work below, so the rest reads and writes the keys this leaves.
     movePluginSettingsToQualifiedIds();
 
@@ -51,8 +51,8 @@ export const migration: PackMigration = {
 
     // ── The root flow is the flow with the root role, and the brain says which one it runs ──
     // Copies of both kept in the settings are no longer read or written.
-    repository.settingsCommands.removeStored(['plugins', `${PACK_ID}.flows`, 'rootFlowId']);
-    repository.settingsCommands.removeStored(['plugins', `${PACK_ID}.brain`, 'runningRootFlowId']);
+    repository.settingsCommands.removeStored(['plugins', `${PACK_ID}/flows`, 'rootFlowId']);
+    repository.settingsCommands.removeStored(['plugins', `${PACK_ID}/brain`, 'runningRootFlowId']);
   },
 };
 

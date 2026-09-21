@@ -42,7 +42,7 @@ describe('settings and stored API keys', () => {
   it('keeps CLI path overrides in the code plugin settings, cleared from the cache when they change', async () => {
     const app = await startApp({ systems: ['settings'] });
     await app.connect();
-    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup.code', path: ['cliPaths'], value: { gh: '/opt/bin/gh' } });
+    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: ['cliPaths'], value: { gh: '/opt/bin/gh' } });
     expect(repository.settingsQueries.getPluginSettings('code')).toMatchObject({ cliPaths: { gh: '/opt/bin/gh' } });
   });
 
@@ -50,9 +50,9 @@ describe('settings and stored API keys', () => {
   it("tells the plugin whose settings changed, with an event named after its feature", async () => {
     const app = await startApp({ systems: ['settings'] });
     await app.connect();
-    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup.code', path: ['mdEditorDefault'], value: true });
+    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: ['mdEditorDefault'], value: true });
     const updated = await app.nextEmit('code', 'CODE_SETTINGS_UPDATED');
-    expect(updated).toMatchObject({ pluginId: 'default-setup.code', settings: { mdEditorDefault: true } });
+    expect(updated).toMatchObject({ pluginId: 'default-setup/code', settings: { mdEditorDefault: true } });
   });
 
   // The frontend resolves a plugin's name to its address before sending; a bare label reaching the system

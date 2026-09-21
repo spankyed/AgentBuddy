@@ -7,7 +7,7 @@ import { trpc, reconnectApiClient } from '@/core/trpc';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
 import { globalToast } from '@/core/toast';
 import { getDesignated } from '@abuddy/sdk/fe';
-import { parseAddress } from '@abuddy/sdk/ids';
+import { splitRef } from '@abuddy/sdk/ids';
 import { loadPackFrontend, unloadPackFrontend } from '@/packs/pack-loader';
 
 /** This window's last active plugin, read before the backend's stored one arrives */
@@ -925,7 +925,7 @@ export const createApplicationState = () => setup({
       const savedPlugin = input.plugins.find(p => p.id === savedLastActivePlugin);
       if (savedPlugin) {
         initialActivePlugin = savedPlugin;
-      } else if (!parseAddress(savedLastActivePlugin)) {
+      } else if (!splitRef(savedLastActivePlugin)) {
         // A plugin id from before plugins were addressed, which nothing runs under any more. An address stays:
         // its pack's plugins register once its frontend loads, after this
         localStorage.removeItem(LAST_ACTIVE_PLUGIN_KEY);

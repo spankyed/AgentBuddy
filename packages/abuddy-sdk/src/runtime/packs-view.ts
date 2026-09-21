@@ -1,7 +1,7 @@
 // What the registered packs contributed, as the SDK reads it. The app that registers them owns the data (host's
 // createPackRegistry and createFePackRegistry) and binds read-only views: HostRuntime.packs in a backend process,
 // FeHostRuntime.packs (FePackRegistryView, fe-host.ts) in the renderer.
-import type { FeatureAddress } from '../ids/addressing.ts';
+import type { FeatureRef } from '../ids/addressing.ts';
 import type { StepDefinition } from '../steps/types.ts';
 import type { ArtifactDefinition } from '../artifacts/types.ts';
 import type { BlockDefinition } from '../blocks/types.ts';
@@ -21,7 +21,7 @@ import { _isFeHostBound, boundFeHost } from './fe-host.ts';
 /** What backend and frontend code both look up in the registered packs */
 export interface PackExtensionsView {
   /** The id of the system (backend) or plugin (frontend) that plays a role */
-  designation(role: string): FeatureAddress | undefined;
+  designation(role: string): FeatureRef | undefined;
   step(type: string): StepDefinition | undefined;
   /** Every registered step definition, in registration order */
   steps(): StepDefinition[];
@@ -36,9 +36,9 @@ export interface PackRegistryView extends PackExtensionsView {
   /** Every registered pack's services, by name */
   getRegisteredServices(): Record<string, unknown>;
   /** The addresses of every registered system, the host's (bare) included */
-  systemIds(): readonly FeatureAddress[];
+  systemIds(): readonly FeatureRef[];
   /** The addresses of every registered plugin, the host's (bare) included */
-  pluginIds(): readonly FeatureAddress[];
+  pluginIds(): readonly FeatureRef[];
   /** The seed hooks registered for an entity type */
   seedHooks(entity: string): SeedHooks | undefined;
   /** A registered pack's seeders */

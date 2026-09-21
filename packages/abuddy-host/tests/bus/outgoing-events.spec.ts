@@ -65,17 +65,17 @@ afterEach(() => {
 
 describe('an event a system sends to a plugin', () => {
   it('is delivered when the plugin declares it', async () => {
-    await send({ type: 'MEMO_ADDED', pluginId: 'memo-pack.memos', id: 'memo-1' });
+    await send({ type: 'MEMO_ADDED', pluginId: 'memo-pack/memos', id: 'memo-1' });
     expect(delivered().map((e) => e.type)).toEqual(['MEMO_ADDED']);
     expect(takeSystemErrors()).toEqual([]);
   });
 
   it('is dropped and reported when the plugin declares no such type', async () => {
-    await send({ type: 'MEMO_SHREDDED', pluginId: 'memo-pack.memos' });
+    await send({ type: 'MEMO_SHREDDED', pluginId: 'memo-pack/memos' });
     expect(delivered()).toEqual([]);
     const [error] = takeSystemErrors();
     expect(error?.message).toContain('MEMO_SHREDDED');
-    expect(error?.message).toContain('memo-pack.memos');
+    expect(error?.message).toContain('memo-pack/memos');
     expect(error?.message).toContain('declares no such event');
   });
 
@@ -85,7 +85,7 @@ describe('an event a system sends to a plugin', () => {
    * in the Logs plugin where they are looking, and the person using the app can do nothing about it.
    */
   it('is reported as a diagnostic, which is recorded and logged but not shown to the user', async () => {
-    await send({ type: 'MEMO_SHREDDED', pluginId: 'memo-pack.memos' });
+    await send({ type: 'MEMO_SHREDDED', pluginId: 'memo-pack/memos' });
     expect(takeSystemErrors().map((e) => e.severity)).toEqual(['diagnostic']);
   });
 
@@ -130,11 +130,11 @@ describe('a drop whose report produces another droppable send', () => {
   it('reports the pair once and settles, rather than feeding itself', async () => {
     // Stands in for default-setup's logs system: every log event becomes a send to the logs plugin,
     // which no pack here declares, so each send is dropped and reporting it logs again.
-    const stopRelay = onLog(() => { bus.send({ type: 'OUTGOING', event: { type: 'LOG_ADDED', pluginId: 'default-setup.logs' } }); });
+    const stopRelay = onLog(() => { bus.send({ type: 'OUTGOING', event: { type: 'LOG_ADDED', pluginId: 'default-setup/logs' } }); });
     try {
-      await send({ type: 'LOG_ADDED', pluginId: 'default-setup.logs' });
+      await send({ type: 'LOG_ADDED', pluginId: 'default-setup/logs' });
       for (let i = 0; i < 5; i++) await flush();
-      const errors = takeSystemErrors().filter((e) => e.message?.includes('default-setup.logs'));
+      const errors = takeSystemErrors().filter((e) => e.message?.includes('default-setup/logs'));
       expect(errors).toHaveLength(1);
     } finally {
       stopRelay();
@@ -142,12 +142,12 @@ describe('a drop whose report produces another droppable send', () => {
   });
 
   it('still reports a different plugin, so deduplication is per pair and not a global mute', async () => {
-    await send({ type: 'MEMO_SHREDDED', pluginId: 'memo-pack.memos' });
+    await send({ type: 'MEMO_SHREDDED', pluginId: 'memo-pack/memos' });
     expect(takeSystemErrors().map((e) => e.message)).toHaveLength(1);
     // The same pair again is silent; a different type on the same plugin is not
-    await send({ type: 'MEMO_SHREDDED', pluginId: 'memo-pack.memos' });
+    await send({ type: 'MEMO_SHREDDED', pluginId: 'memo-pack/memos' });
     expect(takeSystemErrors()).toEqual([]);
-    await send({ type: 'MEMO_BURNED', pluginId: 'memo-pack.memos' });
+    await send({ type: 'MEMO_BURNED', pluginId: 'memo-pack/memos' });
     expect(takeSystemErrors()).toHaveLength(1);
   });
 });
@@ -162,7 +162,7 @@ describe('a plugin whose pack is being replaced', () => {
     registry.markPackReplacing('memo-pack');
     registry.unregisterPack('memo-pack');
 
-    await send({ type: 'MEMO_ADDED', pluginId: 'memo-pack.memos', id: 'memo-1' });
+    await send({ type: 'MEMO_ADDED', pluginId: 'memo-pack/memos', id: 'memo-1' });
 
     expect(delivered()).toEqual([]);
     expect(takeSystemErrors()).toEqual([]);
@@ -177,7 +177,7 @@ describe('a plugin whose pack is being replaced', () => {
 
   it('reports again once the replacement registers', async () => {
     registry.markPackReplacing('memo-pack');
-    expect(registry.isPluginReplacing('memo-pack.memos')).toBe(true);
+    expect(registry.isPluginReplacing('memo-pack/memos')).toBe(true);
 
     // Re-registering is what closes the window, so the same registration is enough to reopen reporting
     registry.unregisterPack('memo-pack');
@@ -187,18 +187,18 @@ describe('a plugin whose pack is being replaced', () => {
       features: [{ id: 'memos', hasSystem: true, hasPlugin: true, services: [] }],
       receivedEventTypes: { memos: ['MEMOS_CONNECTED', 'MEMO_ADDED'] },
     });
-    expect(registry.isPluginReplacing('memo-pack.memos')).toBe(false);
+    expect(registry.isPluginReplacing('memo-pack/memos')).toBe(false);
 
-    await send({ type: 'MEMO_SHREDDED', pluginId: 'memo-pack.memos' });
+    await send({ type: 'MEMO_SHREDDED', pluginId: 'memo-pack/memos' });
     expect(takeSystemErrors()).toHaveLength(1);
   });
 
   // An update whose activation also fails would otherwise leave the window open for the rest of the run
   it('stops being expected when the window is closed with nothing in its place', () => {
     registry.markPackReplacing('memo-pack');
-    expect(registry.isPluginReplacing('memo-pack.memos')).toBe(true);
+    expect(registry.isPluginReplacing('memo-pack/memos')).toBe(true);
     registry.clearPackReplacing('memo-pack');
-    expect(registry.isPluginReplacing('memo-pack.memos')).toBe(false);
+    expect(registry.isPluginReplacing('memo-pack/memos')).toBe(false);
   });
 });
 
@@ -209,7 +209,7 @@ describe('a plugin whose pack is being replaced', () => {
  */
 describe('a pack that declared no event types', () => {
   it('has its sends delivered rather than dropped', async () => {
-    await send({ type: 'ANYTHING_AT_ALL', pluginId: 'older-pack.legacy' });
+    await send({ type: 'ANYTHING_AT_ALL', pluginId: 'older-pack/legacy' });
     expect(delivered().map((e) => e.type)).toEqual(['ANYTHING_AT_ALL']);
     expect(takeSystemErrors()).toEqual([]);
   });

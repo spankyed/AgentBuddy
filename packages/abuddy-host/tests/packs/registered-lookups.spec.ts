@@ -1,6 +1,6 @@
 // What a registered pack contributes, read through the functions packs call: each lookup sees a pack once it
 // registers, loses it when it unregisters, and sees nothing of a registration that was refused.
-import type { FeatureAddress } from '@abuddy/sdk/ids';
+import type { FeatureRef } from '@abuddy/sdk/ids';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -54,7 +54,7 @@ const tickTrigger: StepDefinition = {
   kind: 'trigger',
   trigger: { trackField: 'every' } as unknown as StepDefinition['trigger'],
 };
-const system = (id: string) => ({ id: id as FeatureAddress, machine: {} as PackSystemDef['machine'], events: new Set<string>() });
+const system = (id: string) => ({ id: id as FeatureRef, machine: {} as PackSystemDef['machine'], events: new Set<string>() });
 
 describe('steps', () => {
   it("are found once their pack registers, and gone once it unregisters", () => {
@@ -137,9 +137,9 @@ describe('designations', () => {
   const journal = { id: 'journal', designation: 'journal', hasSystem: true, hasPlugin: false, services: [] };
 
   it('resolve to the system that plays the role while its pack is registered', () => {
-    add({ id: 'ext', systems: [system('ext.journal')], features: [journal] });
+    add({ id: 'ext', systems: [system('ext/journal')], features: [journal] });
     expect(hasDesignation('journal')).toBe(true);
-    expect(getDesignated('journal')).toBe('ext.journal');
+    expect(getDesignated('journal')).toBe('ext/journal');
 
     remove('ext');
     expect(hasDesignation('journal')).toBe(false);
@@ -147,9 +147,9 @@ describe('designations', () => {
   });
 
   it("keep the role with the pack that holds it when another pack's registration is refused", () => {
-    add({ id: 'first', systems: [system('first.journal')], features: [journal] });
-    expect(() => add({ id: 'second', systems: [system('second.journal')], features: [journal], steps: [noteStep] })).toThrow('Designation collision');
-    expect(getDesignated('journal')).toBe('first.journal');
+    add({ id: 'first', systems: [system('first/journal')], features: [journal] });
+    expect(() => add({ id: 'second', systems: [system('second/journal')], features: [journal], steps: [noteStep] })).toThrow('Designation collision');
+    expect(getDesignated('journal')).toBe('first/journal');
     expect(stepRegistry.has('note')).toBe(false);
   });
 });
@@ -269,7 +269,7 @@ describe('a type two packs contribute facets of', () => {
   });
 });
 
-// A plugin is addressed `<packId>.<featureId>`, so two packs with a `memos` feature have a plugin each and
+// A plugin is addressed `<packId>/<featureId>`, so two packs with a `memos` feature have a plugin each and
 // neither shadows the other.
 describe('two packs naming the same feature', () => {
   const withPlugin = (id: string, pluginId: string) =>
@@ -280,8 +280,8 @@ describe('two packs naming the same feature', () => {
     add({ ...withPlugin('second-pack', 'memos'), receivedEventTypes: { memos: ['SECOND_EVENT'] }, steps: [noteStep] });
 
     const map = registry.getPluginEventValidationMap();
-    expect(map.get('first-pack.memos')).toEqual(new Set(['FIRST_EVENT']));
-    expect(map.get('second-pack.memos')).toEqual(new Set(['SECOND_EVENT']));
+    expect(map.get('first-pack/memos')).toEqual(new Set(['FIRST_EVENT']));
+    expect(map.get('second-pack/memos')).toEqual(new Set(['SECOND_EVENT']));
     expect(map.has('memos'), 'a bare feature id is nobody\'s address').toBe(false);
     expect(stepRegistry.has('note')).toBe(true);
   });
@@ -292,7 +292,7 @@ describe('two packs naming the same feature', () => {
     add({ ...withPlugin('impostor', 'application'), receivedEventTypes: { application: ['HIJACKED'] } });
 
     expect(registry.getPluginEventValidationMap().get('application')).toEqual(host);
-    expect(registry.getPluginEventValidationMap().get('impostor.application')).toEqual(new Set(['HIJACKED']));
+    expect(registry.getPluginEventValidationMap().get('impostor/application')).toEqual(new Set(['HIJACKED']));
   });
 });
 
@@ -338,7 +338,7 @@ describe('a pack whose registration is refused', () => {
     expect(blockRegistry.has('card-block')).toBe(false);
     expect(_seedHookRegistry.get('Card')).toBeUndefined();
     expect(seedData({ compiledDir: seedsOf('refused') })).toEqual({});
-    expect(getPackSettingsDefaults().settings.plugins).not.toHaveProperty('refused.cards');
+    expect(getPackSettingsDefaults().settings.plugins).not.toHaveProperty('refused/cards');
 
     // ...and nothing of the incumbent's was taken with it
     expect(stepRegistry.has('note')).toBe(true);
@@ -346,7 +346,7 @@ describe('a pack whose registration is refused', () => {
     expect(blockRegistry.has('note-block')).toBe(true);
     expect(_seedHookRegistry.get('Note')).toBeDefined();
     expect(getPackCommands().map((c) => c.name)).toEqual(['standup']);
-    expect(getPackSettingsDefaults().settings.plugins).toHaveProperty('incumbent.notes');
+    expect(getPackSettingsDefaults().settings.plugins).toHaveProperty('incumbent/notes');
   });
 
   it('leaves no origin behind either', () => {
@@ -374,12 +374,12 @@ describe('feature settings defaults', () => {
 
     add({ id: 'memo-pack', features: [memos] });
     add({ id: 'card-pack', features: [cards] });
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'memo-pack.memos': { sort: 'newest' }, _meta: { visibility: { 'card-pack.cards': false } } } });
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'memo-pack/memos': { sort: 'newest' }, _meta: { visibility: { 'card-pack/cards': false } } } });
     expect(getPackSettingsDefaults().revision).toBe(before + 2);
     expect(changed).toHaveBeenCalledTimes(2);
 
     remove('memo-pack');
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { _meta: { visibility: { 'card-pack.cards': false } } } });
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { _meta: { visibility: { 'card-pack/cards': false } } } });
     remove('card-pack');
     expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
     expect(changed).toHaveBeenCalledTimes(4);

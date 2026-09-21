@@ -10,7 +10,7 @@ import type { StepDefinition } from '../steps/types.ts';
 export interface PackFERegistration {
   /** The pack this is the frontend of, as `PackRegistration.id` is for its backend */
   id: string;
-  /** Feature id → its plugin. The host registers each at the feature's address, `<packId>.<featureId>` */
+  /** Feature id → its plugin. The host registers each at the feature's address, `<packId>/<featureId>` */
   plugins?: Record<string, PluginDefinition>;
   /** The feature whose plugin opens by default, unless another pack's already does */
   defaultPlugin?: string;

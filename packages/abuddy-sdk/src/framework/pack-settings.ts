@@ -1,4 +1,4 @@
-import { parseAddress, type FeatureAddress } from '../ids/addressing.ts';
+import { splitRef, type FeatureRef } from '../ids/addressing.ts';
 import { boundHost } from '../runtime/host-runtime.ts';
 
 /**
@@ -76,7 +76,7 @@ interface PluginSettingsMeta {
 }
 
 /**
- * Stored plugin settings with every key a bare feature id stands for moved onto its plugin's address: each
+ * Stored plugin settings with every key a bare feature id stands for moved onto its plugin's ref: each
  * plugin's slice, its sidebar visibility (`_meta.visibility`) and the last-active plugin
  * (`_meta.lastActivePlugin`). Before 0.3.15 a plugin ran under its feature id, and that's how its settings
  * were stored. A bare id belongs to the plugin among `addresses` (the registered plugins by default) with that
@@ -87,14 +87,17 @@ interface PluginSettingsMeta {
  */
 export function addressPluginSettings<T extends Record<string, unknown>>(
   plugins: T,
-  addresses: readonly FeatureAddress[] = boundHost().packs.pluginIds(),
+  addresses: readonly FeatureRef[] = boundHost().packs.pluginIds(),
 ): { plugins: T; moved: number } {
-  const owners = new Map<string, FeatureAddress | null>();
+  const owners = new Map<string, FeatureRef | null>();
   for (const address of addresses) {
-    const featureId = parseAddress(address)?.featureId;
-    if (featureId) owners.set(featureId, owners.has(featureId) ? null : address);
+    const parts = splitRef(address);
+    if (!parts) continue;
+    owners.set(parts.featureId, owners.has(parts.featureId) ? null : address);
+    // Development builds of 0.3.15 stored plugins under `<packId>.<featureId>` before the spelling settled
+    owners.set(`${parts.packId}.${parts.featureId}`, address);
   }
-  const ownerOf = (key: string): FeatureAddress | undefined => owners.get(key) ?? undefined;
+  const ownerOf = (key: string): FeatureRef | undefined => owners.get(key) ?? undefined;
 
   let moved = 0;
   const addressKeys = (record: Record<string, unknown>): Record<string, unknown> => {

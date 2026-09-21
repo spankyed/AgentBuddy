@@ -12,9 +12,9 @@ import { resetTestData, testRootEvents as rootEvents } from '@abuddy/sdk/testing
 import { seedFile } from '@abuddy/sdk/build';
 
 
-/** A loaded pack's system by feature id: the loader now completes each system's bus id (`<packId>.<featureId>`) */
+/** A loaded pack's system by feature id: the loader now completes each system's bus id (`<packId>/<featureId>`) */
 const systemOf = (pack: LoadedPack, featureId: string) =>
-  pack.registration.systems.find((s) => s.id === `${pack.origin.id}.${featureId}`)!;
+  pack.registration.systems.find((s) => s.id === `${pack.origin.id}/${featureId}`)!;
 
 
 let tmpDir: string;
@@ -76,13 +76,13 @@ describe('pack-loader', () => {
           id: 'myFeature',
           system: { entry: 'src/features/myFeature/be/system.ts', events: { incoming: ['DO_THING'] } },
         }],
-      }, "[{ id: 'test-pack.myFeature', machine: { id: 'test-system' }, events: [] }]");
+      }, "[{ id: 'test-pack/myFeature', machine: { id: 'test-system' }, events: [] }]");
 
       const result = loadExternalPacks();
 
       expect(result).toHaveLength(1);
       expect(result[0].origin.id).toBe('test-pack');
-      expect(result[0].registration.systems.map((sys) => sys.id)).toEqual(['test-pack.myFeature']);
+      expect(result[0].registration.systems.map((sys) => sys.id)).toEqual(['test-pack/myFeature']);
       expect(systemOf(result[0], 'myFeature').events.has('DO_THING')).toBe(true);
     });
 
@@ -263,7 +263,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
       setCompiledDir(dir) { compiledDir = dir; module.exports.compiledDirSeen = dir; },
       registration: {
         id: '${id}',
-        systems: [{ id: '${id}.widget', machine, events: new Set(['PING']) }],
+        systems: [{ id: '${id}/widget', machine, events: new Set(['PING']) }],
         services: { hello: () => 'hi' },
         ears: {
           entities: { Widget: 'Widget' },
@@ -286,7 +286,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
 
     const [pack] = loadExternalPacks();
     expect(pack.origin.id).toBe('bundled-pack');
-    expect(pack.registration.systems.map((sys) => sys.id)).toEqual(['bundled-pack.widget']);
+    expect(pack.registration.systems.map((sys) => sys.id)).toEqual(['bundled-pack/widget']);
     expect([...systemOf(pack, 'widget').events].sort()).toEqual(['EXTRA', 'PING']);
     expect(Object.keys(pack.registration.services ?? {})).toEqual(['hello']);
     expect(pack.registration.ears?.entities).toEqual({ Widget: 'Widget' });
@@ -310,7 +310,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     expect(registerExternalPacks(registry, [pack])).toEqual([pack]);
     try {
       expect(_seedHookRegistry.get('Widget')).toEqual({ find: expect.any(Function) });
-      expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'settings-pack.widget': { size: 3 }, _meta: { visibility: { 'settings-pack.widget': false } } } });
+      expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'settings-pack/widget': { size: 3 }, _meta: { visibility: { 'settings-pack/widget': false } } } });
     } finally {
       registry.unregisterPack('settings-pack');
     }

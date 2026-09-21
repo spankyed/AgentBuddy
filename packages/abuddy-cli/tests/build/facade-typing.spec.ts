@@ -134,8 +134,6 @@ emit('base-pack/inbox', { type: 'MAIL_ARRIVED', from: 'x' });
 sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });
 sendToSystem('memos', { type: 'UNPIN_MEMO', id: 'm1' });
 sendToSystem('base-pack/threads', { type: 'ADD_TAG', name: 'x' });
-// @ts-expect-error the dependency's system isn't named by the id it runs under
-sendToSystem('base-pack.threads', { type: 'ADD_TAG', name: 'x' });
 // @ts-expect-error the memos system doesn't receive this event
 sendToSystem('memos', { type: 'ADD_TAG', name: 'x' });
 // @ts-expect-error PIN_MEMO needs its id

@@ -48,17 +48,17 @@ describe('the bound app', () => {
 
   it("reads the registered packs' services and systems", () => {
     const memoService = { ping: () => 'pong' };
-    registerPack({ id: 'bound-pack', systems: [{ id: 'bound-pack.memos', machine: {} as never, events: new Set(['PING']) }], services: { memoService } });
+    registerPack({ id: 'bound-pack', systems: [{ id: 'bound-pack/memos', machine: {} as never, events: new Set(['PING']) }], services: { memoService } });
     const incoming: unknown[] = [];
     const stop = rootEvents.onIncoming((event) => { incoming.push(event); });
     try {
       expect(services.memoService).toBe(memoService);
       services.emitter.sendToSystem('bound-pack/memos', { type: 'PING' });
-      sendToSystem('bound-pack.memos', { type: 'PING' });
+      sendToSystem('bound-pack/memos', { type: 'PING' });
     } finally {
       stop();
       unregisterPack('bound-pack');
     }
-    expect(incoming).toEqual([{ type: 'PING', systemId: 'bound-pack.memos' }, { type: 'PING', systemId: 'bound-pack.memos' }]);
+    expect(incoming).toEqual([{ type: 'PING', systemId: 'bound-pack/memos' }, { type: 'PING', systemId: 'bound-pack/memos' }]);
   });
 });

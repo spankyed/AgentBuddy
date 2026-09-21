@@ -20,8 +20,8 @@ function plugin(id: string): Plugin {
   return { id, label: id, icon: 'Zap', state: setup({}).createMachine({}), canvas: {} } as unknown as Plugin;
 }
 
-const notes = plugin('default-setup.notes');
-const threads = plugin('default-setup.threads');
+const notes = plugin('default-setup/notes');
+const threads = plugin('default-setup/threads');
 let app: Actor<ReturnType<typeof createApplicationState>> | undefined;
 
 const open = () => {
@@ -36,19 +36,19 @@ beforeEach(() => localStorage.clear());
 afterEach(() => app?.stop());
 
 it('opens on the plugin it last showed', () => {
-  localStorage.setItem(KEY, 'default-setup.threads');
-  expect(open()).toBe('default-setup.threads');
-  expect(localStorage.getItem(KEY)).toBe('default-setup.threads');
+  localStorage.setItem(KEY, 'default-setup/threads');
+  expect(open()).toBe('default-setup/threads');
+  expect(localStorage.getItem(KEY)).toBe('default-setup/threads');
 });
 
 it('drops a plugin id from before plugins were addressed', () => {
   localStorage.setItem(KEY, 'threads');
-  expect(open()).toBe('default-setup.notes');
+  expect(open()).toBe('default-setup/notes');
   expect(localStorage.getItem(KEY)).toBeNull();
 });
 
 it("keeps an address no plugin has yet: its pack's frontend hasn't loaded", () => {
-  localStorage.setItem(KEY, 'memo-pack.memos');
-  expect(open()).toBe('default-setup.notes');
-  expect(localStorage.getItem(KEY)).toBe('memo-pack.memos');
+  localStorage.setItem(KEY, 'memo-pack/memos');
+  expect(open()).toBe('default-setup/notes');
+  expect(localStorage.getItem(KEY)).toBe('memo-pack/memos');
 });

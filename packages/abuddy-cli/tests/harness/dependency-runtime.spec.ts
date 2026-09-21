@@ -49,7 +49,7 @@ await setupPackTests({
   seedRuntime: { id: 'dependent-pack', entities: {}, relKinds: {}, repositories: {}, seedHooks: {} },
   registration: {
     id: 'dependent-pack',
-    systems: [{ id: 'dependent-pack.memos', machine: memos, events: new Set(['SAVE', 'NOTIFY']) }],
+    systems: [{ id: 'dependent-pack/memos', machine: memos, events: new Set(['SAVE', 'NOTIFY']) }],
     // A hand-written registration declares what its plugin receives, as a generated one does: the bus
     // drops a send to a plugin nothing declares
     receivedEventTypes: { memos: ['MEMOS_STARTED', 'MEMOS_NOTIFIED'] },
@@ -64,9 +64,9 @@ import { setup } from 'xstate';
 import { sendToPlugin } from '@abuddy/sdk/events';
 import { reportError } from '@abuddy/sdk/logger';
 export const memos = setup({}).createMachine({
-  entry: () => sendToPlugin('dependent-pack.memos', { type: 'MEMOS_STARTED' }),
+  entry: () => sendToPlugin('dependent-pack/memos', { type: 'MEMOS_STARTED' }),
   on: {
-    NOTIFY: { actions: () => sendToPlugin('dependent-pack.memos', { type: 'MEMOS_NOTIFIED' }) },
+    NOTIFY: { actions: () => sendToPlugin('dependent-pack/memos', { type: 'MEMOS_NOTIFIED' }) },
     SAVE: { actions: () => reportError({ error: new Error('lost memo'), source: 'memos' }) },
   },
 });`);
@@ -96,7 +96,7 @@ it('connects to default-setup settings', async () => {
   // One SDK and one engine: this pack's feature settings (registered by the harness) reach default-setup's
   // settings, and the repositories default-setup's runtime registered are the test's, through
   // @abuddy/ears and services.repository alike
-  expect((loaded.data as { plugins: Record<string, unknown> }).plugins['dependent-pack.widgets']).toEqual({ size: 3 });
+  expect((loaded.data as { plugins: Record<string, unknown> }).plugins['dependent-pack/widgets']).toEqual({ size: 3 });
   const settingsQueries = Reflect.get(repository, 'settingsQueries');
   expect(settingsQueries).toBeDefined();
   expect(Reflect.get(services.repository, 'settingsQueries')).toBe(settingsQueries);

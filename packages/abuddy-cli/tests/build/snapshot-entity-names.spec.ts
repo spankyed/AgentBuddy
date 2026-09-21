@@ -63,7 +63,7 @@ describe('a built pack\'s snapshot', () => {
     // Recorded under the id each plugin runs under, so a pack that reuses one of its dependency's
     // feature ids has both recorded, each to its owner
     const owned = (dependency.features ?? []).filter((f: { plugin?: unknown }) => f.plugin)
-      .map((f: { id: string }) => `default-setup.${f.id}`);
+      .map((f: { id: string }) => `default-setup/${f.id}`);
     const recorded = JSON.parse(fs.readFileSync(snapshotFile(fixture)!, 'utf-8')).provenance?.plugins ?? {};
     expect(owned.length).toBeGreaterThan(0);
     for (const id of owned) {

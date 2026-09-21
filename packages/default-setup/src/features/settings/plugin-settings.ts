@@ -1,7 +1,7 @@
 // A plugin's slice of the settings, by the name code writes for it: this pack's features by id, another
 // pack's as `<packId>/<featureId>`. The settings hold each slice under the plugin's address, which this
 // resolves the way a send does, so no reader indexes `settings.plugins` by hand.
-import { parseAddress, resolveName } from '@abuddy/sdk/ids';
+import { splitRef, resolveName } from '@abuddy/sdk/ids';
 import { packId } from '@/__generated__/bus-ids';
 
 type WithPlugins = { plugins?: Record<string, unknown> } | null | undefined;
@@ -26,6 +26,6 @@ export function pluginSettingsKey(name: string): string {
  * store unresolved would write a slice no reader looks at, so it throws instead.
  */
 export function checkedPluginSettingsKey(key: string): string {
-  if (key === PLUGIN_SETTINGS_META_KEY || parseAddress(key)) return key;
-  throw new Error(`"${key}" isn't a plugin settings key: a plugin's settings are stored under its address, "<packId>.<featureId>" (pluginSettingsKey resolves a name), or "${PLUGIN_SETTINGS_META_KEY}"`);
+  if (key === PLUGIN_SETTINGS_META_KEY || splitRef(key)) return key;
+  throw new Error(`"${key}" isn't a plugin settings key: a plugin's settings are stored under its address, "<packId>/<featureId>" (pluginSettingsKey resolves a name), or "${PLUGIN_SETTINGS_META_KEY}"`);
 }

@@ -2,7 +2,7 @@
 import type { SeedHooks } from '@abuddy/sdk/seed';
 import type { Seeder } from '@abuddy/sdk/utils';
 import { checkFeatureSettings, type FeatureSettings, type PackCommand, type PackSettingsDefaults } from '@abuddy/sdk/framework';
-import { qualifiedId } from '@abuddy/sdk/ids';
+import { resolveName } from '@abuddy/sdk/ids';
 
 /** Seed hooks per entity type, each type's owned by the pack that registered it */
 export function createSeedHookStore() {
@@ -59,7 +59,7 @@ export function createSettingsDefaultsStore() {
     for (const [packId, features] of byPack) {
       for (const { id, settings } of features) {
         const own = settings.plugins ?? {};
-        const pluginId = qualifiedId(packId, id);
+        const pluginId = resolveName(id, { packId });
         if (id in own) plugins[pluginId] = own[id];
         const visible = (own._meta as { visibility?: Record<string, boolean> } | undefined)?.visibility?.[id];
         if (visible !== undefined) visibility[pluginId] = visible;

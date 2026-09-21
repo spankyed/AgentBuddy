@@ -17,7 +17,7 @@ import type { FAQItem } from '@/features/settings/be/types';
 import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services';
 import { REQUIRED_PROVIDERS } from '../constants';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
-import { parseAddress } from '@abuddy/sdk/ids';
+import { splitRef } from '@abuddy/sdk/ids';
 import { PLUGIN_SETTINGS_META_KEY, pluginSettingsKey } from '../plugin-settings';
 
 const logger = createLogger('settings');
@@ -138,9 +138,9 @@ export const settingsSystem = setup({
     updateSettings: ({ system, event }) => {
       const ev = settingsSpec.typeOf('UPDATE_SETTINGS', event);
       // A plugin's settings are keyed by its address; the frontend resolves a name before sending
-      const plugin = ev.entityType === 'plugin' && ev.label !== PLUGIN_SETTINGS_META_KEY ? parseAddress(ev.label) : undefined;
+      const plugin = ev.entityType === 'plugin' && ev.label !== PLUGIN_SETTINGS_META_KEY ? splitRef(ev.label) : undefined;
       if (ev.entityType === 'plugin' && ev.label !== PLUGIN_SETTINGS_META_KEY && !plugin) {
-        reportError({ error: new Error(`Settings for plugin "${ev.label}" weren't saved: a plugin's settings are keyed by its address, "<packId>.<featureId>"`), source: 'settings' });
+        reportError({ error: new Error(`Settings for plugin "${ev.label}" weren't saved: a plugin's settings are keyed by its address, "<packId>/<featureId>"`), source: 'settings' });
         return;
       }
 

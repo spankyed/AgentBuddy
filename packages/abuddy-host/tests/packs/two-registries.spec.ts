@@ -26,9 +26,9 @@ describe('two registries in one process', () => {
   other.registerPack(pack('card-pack', 'cards', 'card_step', 'cardService', 'cards'));
 
   it("keep their own packs' designations, steps, services and settings defaults", () => {
-    expect(bound.designation('memos')).toBe('memo-pack.memos');
+    expect(bound.designation('memos')).toBe('memo-pack/memos');
     expect(bound.designation('cards')).toBeUndefined();
-    expect(other.designation('cards')).toBe('card-pack.cards');
+    expect(other.designation('cards')).toBe('card-pack/cards');
     expect(other.designation('memos')).toBeUndefined();
 
     expect(bound.steps().map((s) => s.type)).toEqual(['memo_step']);
@@ -37,18 +37,18 @@ describe('two registries in one process', () => {
     expect(Object.keys(bound.getRegisteredServices())).toEqual(['memoService']);
     expect(Object.keys(other.getRegisteredServices())).toEqual(['cardService']);
 
-    expect(bound.settingsDefaults().settings).toEqual({ plugins: { 'memo-pack.memos': { from: 'memo-pack' } } });
-    expect(other.settingsDefaults().settings).toEqual({ plugins: { 'card-pack.cards': { from: 'card-pack' } } });
+    expect(bound.settingsDefaults().settings).toEqual({ plugins: { 'memo-pack/memos': { from: 'memo-pack' } } });
+    expect(other.settingsDefaults().settings).toEqual({ plugins: { 'card-pack/cards': { from: 'card-pack' } } });
   });
 
   it('let the SDK read only the bound one', () => {
-    expect(getDesignated('memos')).toBe('memo-pack.memos');
+    expect(getDesignated('memos')).toBe('memo-pack/memos');
     expect(hasDesignation('cards')).toBe(false);
     expect(stepRegistry.has('memo_step')).toBe(true);
     expect(stepRegistry.has('card_step')).toBe(false);
     expect(services.memoService).toEqual({ from: 'memo-pack' });
     expect(services.cardService).toBeUndefined();
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'memo-pack.memos': { from: 'memo-pack' } } });
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'memo-pack/memos': { from: 'memo-pack' } } });
   });
 
   it("hold their own loaded packs, not one list between them", () => {
@@ -64,9 +64,9 @@ describe('two registries in one process', () => {
 
   it("don't see each other's registrations, so the same pack registers in both", () => {
     other.registerPack(pack('memo-pack', 'memos', 'memo_step', 'memoService', 'memos'));
-    expect(other.designation('memos')).toBe('memo-pack.memos');
+    expect(other.designation('memos')).toBe('memo-pack/memos');
     other.unregisterPack('memo-pack');
-    expect(bound.designation('memos')).toBe('memo-pack.memos');
+    expect(bound.designation('memos')).toBe('memo-pack/memos');
     expect(stepRegistry.has('memo_step')).toBe(true);
   });
 });

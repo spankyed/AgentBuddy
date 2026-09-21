@@ -13,6 +13,7 @@ import crypto from 'node:crypto';
 import os from 'node:os';
 import {getMediaBasePath} from '../media-protocol/paths.js';
 import {logRenderer, logRendererFatal} from '../api-server/logger.js';
+import {isPluginId} from './plugin-id.js';
 
 class WindowManager implements AppModule {
   readonly #preload: {path: string};
@@ -141,7 +142,7 @@ class WindowManager implements AppModule {
     });
 
     ipcMain.handle('plugin:popout', async (event, pluginId: string, title?: string) => {
-      if (!/^[a-zA-Z0-9_-]+$/.test(pluginId)) {
+      if (!isPluginId(pluginId)) {
         throw new Error('Invalid plugin id');
       }
 

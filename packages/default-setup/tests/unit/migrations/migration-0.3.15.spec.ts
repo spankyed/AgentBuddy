@@ -55,10 +55,10 @@ describe('the 0.3.15 migration', () => {
     })
 
     migration.up()
-    expect(stored()).toEqual({ plugins: { 'default-setup.flows': { enableFlowPreview: false }, 'default-setup.brain': { inspectEnabled: true } } })
+    expect(stored()).toEqual({ plugins: { 'default-setup/flows': { enableFlowPreview: false }, 'default-setup/brain': { inspectEnabled: true } } })
 
     migration.up()
-    expect(stored()).toEqual({ plugins: { 'default-setup.flows': { enableFlowPreview: false }, 'default-setup.brain': { inspectEnabled: true } } })
+    expect(stored()).toEqual({ plugins: { 'default-setup/flows': { enableFlowPreview: false }, 'default-setup/brain': { inspectEnabled: true } } })
   })
 
   it('marks a row seeded before the seeder tracked its values as unedited', () => {
@@ -113,8 +113,8 @@ describe('the 0.3.15 migration', () => {
     expect(excludedSources()).toEqual(['brain'])
   })
 
-  // A plugin is addressed `<packId>.<featureId>` now. Without this move, the app reads
-  // `plugins['default-setup.threads']` while the user's settings say `plugins.threads`: their pinned
+  // A plugin is addressed `<packId>/<featureId>` now. Without this move, the app reads
+  // `plugins['default-setup/threads']` while the user's settings say `plugins.threads`: their pinned
   // plugins come back at the defaults and the app opens on whatever the default plugin is.
   describe('moving the plugin settings onto namespaced plugin ids', () => {
     /** The stored settings as 0.3.14 wrote them, for a user who hid two plugins and left on Notes */
@@ -135,10 +135,10 @@ describe('the 0.3.15 migration', () => {
       migration.up()
 
       const plugins = stored().plugins as Record<string, any>
-      expect(plugins['default-setup.notes']).toEqual({ sortBy: 'created' })
+      expect(plugins['default-setup/notes']).toEqual({ sortBy: 'created' })
       expect(plugins).not.toHaveProperty('notes')
-      expect(plugins._meta.visibility).toEqual({ 'default-setup.browser': false, 'default-setup.database': false })
-      expect(plugins._meta.lastActivePlugin).toBe('default-setup.notes')
+      expect(plugins._meta.visibility).toEqual({ 'default-setup/browser': false, 'default-setup/database': false })
+      expect(plugins._meta.lastActivePlugin).toBe('default-setup/notes')
     })
 
     // It runs again on every development boot and after a reset
@@ -164,20 +164,20 @@ describe('the 0.3.15 migration', () => {
       migration.up()
 
       const plugins = stored().plugins as Record<string, any>
-      expect(plugins['default-setup.code']).toEqual({ lastDirectoryOpened: '/work', baseDirectory: '/work', cliPaths: { gh: '/opt/bin/gh' } })
+      expect(plugins['default-setup/code']).toEqual({ lastDirectoryOpened: '/work', baseDirectory: '/work', cliPaths: { gh: '/opt/bin/gh' } })
       expect(plugins).not.toHaveProperty('code')
     })
 
     it("keeps what the user has under the namespaced id over the bare key, and drops the bare one", () => {
       createDefaultSettings()
       tx('Settings-app' as SdkEARS.EntityId).update('data', {
-        plugins: { notes: { sortBy: 'stale' }, 'default-setup.notes': { sortBy: 'current' } },
+        plugins: { notes: { sortBy: 'stale' }, 'default-setup/notes': { sortBy: 'current' } },
       })
 
       migration.up()
 
       const plugins = stored().plugins as Record<string, any>
-      expect(plugins['default-setup.notes']).toEqual({ sortBy: 'current' })
+      expect(plugins['default-setup/notes']).toEqual({ sortBy: 'current' })
       expect(plugins).not.toHaveProperty('notes')
     })
 

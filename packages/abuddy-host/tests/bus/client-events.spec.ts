@@ -38,8 +38,8 @@ describe('receiveClientEvent', () => {
   });
 
   it('accepts any type for a system that lists *', () => {
-    const { incoming } = during(() => receiveClientEvent(registry, { type: 'ANYTHING', systemId: 'client-events-pack.any' }));
-    expect(incoming).toEqual([{ type: 'ANYTHING', systemId: 'client-events-pack.any' }]);
+    const { incoming } = during(() => receiveClientEvent(registry, { type: 'ANYTHING', systemId: 'client-events-pack/any' }));
+    expect(incoming).toEqual([{ type: 'ANYTHING', systemId: 'client-events-pack/any' }]);
   });
 
   it('logs arrays over 5 items as their count and first 5', () => {

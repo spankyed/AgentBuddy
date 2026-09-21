@@ -6,7 +6,7 @@ import * as os from 'os';
 import { execFileSync } from 'child_process';
 import { createRequire } from 'module';
 import { resolveAppContext } from '@abuddy/sdk/env';
-import { resolveName } from '@abuddy/sdk/ids';
+import { resolveName, splitRef } from '@abuddy/sdk/ids';
 import { installPackFromLocal, PACK_LOAD_MESSAGES } from '@abuddy/host/packs';
 import { appVersion } from './app-version.ts';
 import { appLaunchEnv } from './launch-env.ts';
@@ -141,7 +141,7 @@ function getPackManifest(): { id: string; pluginIds: string[] } | null {
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
   _packManifest = {
     id: manifest.id,
-    // The ids the plugins run under: a plugin is addressed `<packId>.<featureId>`, as a system is
+    // The ids the plugins run under: a plugin is addressed `<packId>/<featureId>`, as a system is
     pluginIds: (manifest.features ?? [])
       .filter((f: any) => f.plugin)
       .map((f: any) => resolveName(f.id, { packId: manifest.id })),
@@ -211,7 +211,7 @@ function captureOutput(app: ElectronApplication): void {
 async function registeredPlugins(page: Page): Promise<{ ids: string[]; hostIds: string[] }> {
   const ids: string[] = await page.evaluate(() =>
     ((window as any).applicationState?.getSnapshot()?.context?.plugins ?? []).map((p: { id: string }) => p.id));
-  return { ids, hostIds: ids.filter((id) => !id.includes('.')) };
+  return { ids, hostIds: ids.filter((id) => !splitRef(id)) };
 }
 
 /**

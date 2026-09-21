@@ -15,7 +15,7 @@ describe('typed sends to systems', () => {
     sendToSystem('default-setup/settings', { type: 'GET_SETTINGS' });
 
     expect(await app.nextEmit('default-setup/settings', 'SETTINGS_LOADED'))
-      .toMatchObject({ type: 'SETTINGS_LOADED', pluginId: 'default-setup.settings' });
+      .toMatchObject({ type: 'SETTINGS_LOADED', pluginId: 'default-setup/settings' });
   });
 
   it('reaches its own system by feature id', async () => {
@@ -36,7 +36,7 @@ describe('typed sends to systems', () => {
     sendToSystem('memos', { type: 'ANNOUNCE_MEMO', text: 'hello' });
 
     expect(await app.nextEmit('default-setup/logs', 'LOG_ADDED'))
-      .toMatchObject({ pluginId: 'default-setup.logs', log: { message: 'hello', source: 'memos' } });
+      .toMatchObject({ pluginId: 'default-setup/logs', log: { message: 'hello', source: 'memos' } });
   });
 
   it('rejects a wrong send at compile time', () => {
@@ -48,8 +48,8 @@ describe('typed sends to systems', () => {
       sendToSystem('settings', { type: 'GET_SETTINGS' });
       // @ts-expect-error ADD_MEMO needs its text
       sendToSystem('memos', { type: 'ADD_MEMO' });
-      // @ts-expect-error pack code names its own systems by feature id, never by the address sendToSystem maps it to
-      sendToSystem('e2e-fixture.memos', { type: 'ADD_MEMO', text: 'x' });
+      // @ts-expect-error pack code names its own features by feature id; `<pack>/<feature>` is for another pack
+      sendToSystem('e2e-fixture/memos', { type: 'ADD_MEMO', text: 'x' });
     };
     expect(wrongSends).toBeTypeOf('function');
   });
