@@ -268,6 +268,29 @@ describe('a type two packs contribute facets of', () => {
   });
 });
 
+// A plugin id another pack holds used to shadow: the second pack installed with no UI, its declared event
+// types never registered, and every send to that id reached the first pack.
+describe('a pack claiming a plugin id that is taken', () => {
+  const withPlugin = (id: string, pluginId: string) =>
+    ({ id, systems: [], features: [{ id: pluginId, hasSystem: false, hasPlugin: true, services: [] }] });
+
+  it('is refused by name, and the pack that holds it is left whole', () => {
+    add(withPlugin('first-pack', 'memos'));
+
+    expect(() => add({ ...withPlugin('second-pack', 'memos'), steps: [noteStep] }))
+      .toThrow('Plugin collision: id "memos" — pack "second-pack" vs "first-pack"');
+
+    expect(registry.getPackExtensions('second-pack'), 'the refused pack registered something').toBeNull();
+    expect(stepRegistry.has('note'), 'the refused pack left a step behind').toBe(false);
+    expect(registry.getPluginEventValidationMap().has('memos')).toBe(true);
+  });
+
+  it("is refused when the id is the host's own", () => {
+    expect(() => add(withPlugin('impostor', 'application')))
+      .toThrow('Plugin collision: id "application" — pack "impostor" vs the host\'s own "application" plugin');
+  });
+});
+
 describe('a pack whose registration is refused', () => {
   const scratch: string[] = [];
   afterEach(() => { for (const dir of scratch.splice(0)) fs.rmSync(dir, { recursive: true, force: true }); });

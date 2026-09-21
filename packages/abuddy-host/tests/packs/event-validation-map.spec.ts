@@ -98,30 +98,33 @@ describe('a pack cannot widen a plugin it does not own', () => {
     expect(map.get('fromFeatures')).toEqual(new Set());
   });
 
-  it("cannot add event types to the host's plugin by owning its id", () => {
+  it("cannot add event types to the host's plugin, because claiming its id is refused", () => {
     const registry = createPackRegistry();
     const host = registry.getPluginEventValidationMap().get('application');
-    registry.registerPack({
+
+    expect(() => registry.registerPack({
       id: 'impostor-pack',
       systems: [],
       features: [plugin('application')],
       receivedEventTypes: { application: ['ANYTHING'] },
-    });
+    })).toThrow('Plugin collision: id "application" — pack "impostor-pack" vs the host\'s own "application" plugin');
+
     expect(registry.getPluginEventValidationMap().get('application')).toEqual(host);
-    expect(registry.getPluginEventValidationMap().get('application')?.has('ANYTHING')).toBe(false);
   });
 
-  // A pack feature may share an id with another pack's plugin, which the app tolerates (default-setup's
-  // settings defaults resolve it in the app's favour). The first owner keeps the id here, so the second
+  // Shadowing used to be tolerated: the second pack installed with no UI and every send to the id reached
+  // the first. The id is refused now, so what this pins is that the first owner's contract is untouched
   // cannot widen what the first declared.
-  it('leaves a shadowed plugin with the first owner\'s event types', () => {
+  it("refuses a second pack claiming the id, leaving the first owner's event types", () => {
     const registry = createPackRegistry();
     registry.registerPack({
       id: 'first-pack', systems: [], features: [plugin('memos')], receivedEventTypes: { memos: ['MEMO_ADDED'] },
     });
-    registry.registerPack({
+
+    expect(() => registry.registerPack({
       id: 'second-pack', systems: [], features: [plugin('memos')], receivedEventTypes: { memos: ['HIJACKED'] },
-    });
+    })).toThrow('Plugin collision: id "memos" — pack "second-pack" vs "first-pack"');
+
     expect(registry.getPluginEventValidationMap().get('memos')).toEqual(new Set(['MEMO_ADDED']));
   });
 });

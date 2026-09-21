@@ -14,7 +14,7 @@ import type { HostServices } from '@abuddy/sdk/services';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS, _reservedEntries } from '@abuddy/sdk/types';
-import { HOST_PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
+import { HOST_PLUGIN_EVENT_TYPES, HOST_PLUGIN_IDS } from '@abuddy/sdk/events';
 import { makePolicy, registerRepository, unregisterRepository, type PartitionPolicy } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { packSeedOrder } from './pack-discovery.ts';
@@ -394,6 +394,20 @@ export function createPackRegistry(): PackRegistry {
       if (name) throw new Error(`Repository collision: "${name}" — pack "${registration.id}" vs "${existingId}"`);
     }
 
+    // A plugin id another pack holds used to shadow: the second pack installed "successfully" with no UI,
+    // its receivedEventTypes never registered, and every send to that id reached the first pack. That is an
+    // install result, so it is refused like a service, a command, a repository or a designation.
+    const claimed = ownedPluginIds(registration);
+    for (const hostId of HOST_PLUGIN_IDS) {
+      if (claimed.includes(hostId)) {
+        throw new Error(`Plugin collision: id "${hostId}" — pack "${registration.id}" vs the host's own "${hostId}" plugin`);
+      }
+    }
+    for (const [existingId, existing] of registrations) {
+      const taken = claimed.find((id) => ownedPluginIds(existing).includes(id));
+      if (taken) throw new Error(`Plugin collision: id "${taken}" — pack "${registration.id}" vs "${existingId}"`);
+    }
+
     /**
      * The pack is listed before its extensions are registered, because registering them is
      * observable: `settingsDefaults.register` notifies its listeners, the settings system reacts by
@@ -500,9 +514,8 @@ export function createPackRegistry(): PackRegistry {
      * key into one set per plugin id, so any pack could add event types to any plugin, `application`
      * included, whatever the comment above it claimed.
      *
-     * A pack shadowing another's plugin id isn't refused, because a pack feature may share an id with
-     * another pack's plugin (default-setup's settings defaults resolve that in the app's favour). Here
-     * the first owner simply keeps the id, so shadowing can't widen what the owner declared.
+     * `registerPack` refuses a pack claiming an id the host or another pack holds, so the `map.has` skip
+     * below is the host's own ids winning, not a pack shadowing another's.
      */
     for (const reg of registrations.values()) {
       const declared = reg.receivedEventTypes;

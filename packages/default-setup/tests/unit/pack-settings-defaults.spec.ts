@@ -50,10 +50,15 @@ describe("packs' feature settings as defaults", () => {
     expect(repository.settingsQueries.getSettings().plugins._meta?.visibility?.memos).toBe(true);
   });
 
-  it("keeps the app's own defaults over a pack feature with a host plugin's id", () => {
-    const hostCode = getDefaultSettings().plugins.code;
-    register('shadow-pack', [feature('code', { plugins: { _meta: { visibility: { code: false } }, code: { shadowed: true } } })]);
-    expect(getDefaultSettings().plugins.code).toEqual(hostCode);
+  // Such a pack used to register with its plugin silently dropped, leaving its settings slice behind for a
+  // plugin the user never saw. Claiming an id another pack holds is refused now, so nothing of it lands.
+  it("refuses a pack feature that claims a plugin id this pack holds, leaving its defaults", () => {
+    const appCode = getDefaultSettings().plugins.code;
+
+    expect(() => register('shadow-pack', [feature('code', { plugins: { _meta: { visibility: { code: false } }, code: { shadowed: true } } })]))
+      .toThrow('Plugin collision: id "code"');
+
+    expect(getDefaultSettings().plugins.code).toEqual(appCode);
     expect(getDefaultSettings().plugins._meta?.visibility?.code).toBe(true);
   });
 });

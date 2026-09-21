@@ -60,6 +60,9 @@ export function createFePackRegistry(): FePackRegistry {
     const undo = undos.record;
 
     try {
+      // `registerPack` refuses a pack claiming an id the host or another pack holds, so by the time a
+      // frontend registers there is nothing left to collide with. Kept as a guard rather than dropped: the
+      // renderer registers built-in packs itself, without going through the backend registry first.
       const registeredIds = new Set(allPlugins.map(p => p.id));
       const plugins: Plugin[] = [];
       for (const plugin of registration.plugins ?? []) {
