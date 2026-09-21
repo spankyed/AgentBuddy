@@ -82,7 +82,7 @@ describe('services.emitter in actions', () => {
   // Wrapped in functions that never run: only their types are checked
   it('accepts an event the plugin or system receives', () => {
     expectTypeOf(() => {
-      services.emitter.sendToPlugin('database', { type: 'AI_QUERY_LOADING' });
+      services.emitter.sendToPlugin('default-setup/database', { type: 'AI_QUERY_LOADING' });
       services.emitter.sendToSystem('default-setup/notes', { type: 'DELETE_NOTE', id: 'Note-1' });
       services.emitter.sendToBrainSystem({ eventType: 'user.message' });
     }).toBeFunction();
@@ -91,9 +91,11 @@ describe('services.emitter in actions', () => {
   it('rejects an event the plugin or system does not receive', () => {
     expectTypeOf(() => {
       // @ts-expect-error the database plugin doesn't receive this event
-      services.emitter.sendToPlugin('database', { type: 'SET_PHASE', phase: 'Edit' });
+      services.emitter.sendToPlugin('default-setup/database', { type: 'SET_PHASE', phase: 'Edit' });
       // @ts-expect-error unknown plugin
       services.emitter.sendToPlugin('unknown-plugin', { type: 'ANYTHING' });
+      // @ts-expect-error actions name every pack plugin <pack>/<feature>, this pack's own too
+      services.emitter.sendToPlugin('database', { type: 'AI_QUERY_LOADING' });
       // @ts-expect-error DELETE_NOTE needs an id
       services.emitter.sendToSystem('default-setup/notes', { type: 'DELETE_NOTE' });
       // @ts-expect-error actions name every system <pack>/<feature>

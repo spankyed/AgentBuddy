@@ -2,6 +2,7 @@ import { tx, qx } from '@/__generated__/ears';
 
 import { EARS } from '@/__generated__/ears';
 
+import { pluginId } from '@/__generated__/events';
 import type { SettingsData } from '../types';
 import { getDefaultSettings } from '../defaults';
 import { mergeSettings } from '../../merge-settings';
@@ -26,6 +27,16 @@ const getSettingsEntity = (): { id: EARS.EntityId; data: SettingsData } => ({
   id: SETTINGS_ID,
   data: mergeSettings(getDefaultSettings(), getStoredSettings()),
 });
+
+/**
+ * The key a plugin's settings are stored under: the id the plugin runs under (`<packId>.<featureId>`),
+ * which is what the renderer reads them by. This pack's backend code names its own features by id, so
+ * those are resolved through the generated name map — the same one `emit` and `sendToPlugin` use.
+ *
+ * Anything the map doesn't name is already a key: an id the frontend sent, or `_meta`, which is the
+ * plugins map's own metadata and not a plugin at all.
+ */
+const settingsKeyFor = (label: string): string => (pluginId as Record<string, string>)[label] ?? label;
 
 // Helper to update nested values
 const setNestedValue = (obj: any, path: string[], value: any): any => {
@@ -52,6 +63,12 @@ export const createDefaultSettings = (): void => {
 export const settingsQueries = {
   getSettings: (): SettingsData => getSettingsEntity().data,
 
+  /**
+   * Only what the user changed, without the defaults merged in — what a migration has to rewrite, since
+   * writing a merged copy back would freeze today's defaults into the user's stored settings.
+   */
+  getStoredSettings: (): Partial<SettingsData> => getStoredSettings(),
+
   getGeneralSettings: (label?: string) => {
     const general = getSettingsEntity().data.general;
     if (label) {
@@ -62,9 +79,10 @@ export const settingsQueries = {
 
   getAssistantSettings: () => getSettingsEntity().data.assistant,
 
-  getPluginSettings: (pluginId: string) => {
+  getPluginSettings: (plugin: string) => {
+    const key = settingsKeyFor(plugin);
     const data = getSettingsEntity().data;
-    return data.plugins?.[pluginId] || (getDefaultSettings().plugins as any)[pluginId] || {};
+    return data.plugins?.[key] || (getDefaultSettings().plugins as any)[key] || {};
   },
 };
 
@@ -82,8 +100,9 @@ export const settingsCommands = {
 
     // Build path matching the data structure (note: 'plugin' type maps to 'plugins' in data)
     const dataKey = type === 'plugin' ? 'plugins' : type;
+    const key = type === 'plugin' && label ? settingsKeyFor(label) : label;
     const fullPath = needsLabel
-      ? [dataKey, label!, ...path]
+      ? [dataKey, key!, ...path]
       : [dataKey, ...path];
 
     const newData = setNestedValue(stored, fullPath, value);

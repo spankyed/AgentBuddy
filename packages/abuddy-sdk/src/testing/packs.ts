@@ -90,6 +90,7 @@ export function testPacksView(registered?: PackRegistryView): PackRegistryView {
     blocks: () => withOwn(registered?.blocks(), testPacks.blocks),
     getRegisteredServices: () => ({ ...registered?.getRegisteredServices(), ...Object.fromEntries(testPacks.services) }),
     resolveSystemAddress: (address) => registered?.resolveSystemAddress(address),
+    resolvePluginAddress: (address) => registered?.resolvePluginAddress(address),
     seedHooks: (entity) => testPacks.seedHooks.get(entity) ?? registered?.seedHooks(entity),
     seeders: (packId) => testPacks.seeders.get(packId) ?? registered?.seeders(packId) ?? [],
     settingsDefaults: () => registered?.settingsDefaults() ?? noSettings,

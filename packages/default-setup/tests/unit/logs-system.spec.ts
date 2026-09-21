@@ -27,7 +27,7 @@ describe('logs system', () => {
 
     expect(toPlugin).toEqual([expect.objectContaining({
       type: 'LOG_ADDED',
-      pluginId: 'logs',
+      pluginId: 'default-setup.logs',
       log: expect.objectContaining({ level: 'warn', source: 'notes', message: 'Note sync is slow', meta: { noteId: 'Note-1' } }),
     })]);
     expect(actor.getSnapshot().context.logs).toEqual([expect.objectContaining({ source: 'notes', message: 'Note sync is slow' })]);

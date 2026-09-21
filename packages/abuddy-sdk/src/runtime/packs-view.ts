@@ -36,6 +36,12 @@ export interface PackRegistryView extends PackExtensionsView {
   getRegisteredServices(): Record<string, unknown>;
   /** The id of the running system a `<packId>/<featureId>` name addresses, if any */
   resolveSystemAddress(address: string): string | undefined;
+  /**
+   * The id of the plugin a `<packId>/<featureId>` name addresses, if a registered pack owns it — or a
+   * bare name, if the host does. The plugin half of `resolveSystemAddress`, for code that runs outside
+   * any pack and so has no generated name map of its own.
+   */
+  resolvePluginAddress(address: string): string | undefined;
   /** The seed hooks registered for an entity type */
   seedHooks(entity: string): SeedHooks | undefined;
   /** A registered pack's seeders */

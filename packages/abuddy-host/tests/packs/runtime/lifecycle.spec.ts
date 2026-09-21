@@ -328,7 +328,7 @@ describe('FE pack deregistration', () => {
 
     const removed = unregisterPackFE('test-pack');
     expect(removed).toHaveLength(1);
-    expect(removed[0].id).toBe('test-plugin');
+    expect(removed[0].id).toBe('test-pack.test-plugin');
 
     // Calling again should return empty
     const removedAgain = unregisterPackFE('test-pack');
@@ -343,15 +343,16 @@ describe('FE pack deregistration', () => {
     const builtIn = { id: 'built-in-main', label: 'Built-in' } as unknown as Plugin;
 
     registerPackFE({ id: 'default-setup', plugins: [builtIn] });
-    expect(getRegisteredPlugins()).toContain(builtIn);
+    expect(getRegisteredPlugins().map((p) => p.id)).toEqual(['default-setup.built-in-main']);
 
-    expect(unregisterPackFE('default-setup')).toEqual([builtIn]);
-    expect(getRegisteredPlugins()).not.toContain(builtIn);
+    expect(unregisterPackFE('default-setup').map((p) => p.id)).toEqual(['default-setup.built-in-main']);
+    expect(getRegisteredPlugins()).toEqual([]);
   });
 
-  it("unregisterPackFE leaves a plugin another registration owns when the pack declared the same id", async () => {
+  // Two packs declaring the same feature id is no longer a conflict: each gets its own plugin, and
+  // unregistering one leaves the other's alone.
+  it("unregisterPackFE leaves a plugin another pack declared under the same feature id", async () => {
     const { registerPackFE, unregisterPackFE, getRegisteredPlugins } = createFePackRegistry();
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const builtIn = { id: 'shared-id', label: 'Built-in' } as unknown as Plugin;
     const packCopy = { id: 'shared-id', label: 'Pack' } as unknown as Plugin;
@@ -359,13 +360,12 @@ describe('FE pack deregistration', () => {
     registerPackFE({ id: 'built-in-pack', plugins: [builtIn] });
     registerPackFE({ id: 'duplicate-pack', plugins: [packCopy, packOwn] });
 
-    expect(getRegisteredPlugins().filter(p => p.id === 'shared-id')).toEqual([builtIn]);
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('"shared-id" from pack duplicate-pack ignored'));
-    warn.mockRestore();
+    expect(getRegisteredPlugins().map((p) => p.id))
+      .toEqual(['built-in-pack.shared-id', 'duplicate-pack.shared-id', 'duplicate-pack.pack-own']);
 
-    expect(unregisterPackFE('duplicate-pack')).toEqual([packOwn]);
-    expect(getRegisteredPlugins()).toContain(builtIn);
-    expect(getRegisteredPlugins()).not.toContain(packOwn);
+    expect(unregisterPackFE('duplicate-pack').map((p) => p.id))
+      .toEqual(['duplicate-pack.shared-id', 'duplicate-pack.pack-own']);
+    expect(getRegisteredPlugins().map((p) => p.id)).toEqual(['built-in-pack.shared-id']);
   });
 
   it('unregisterPackFE handles pack with no extensions gracefully', async () => {

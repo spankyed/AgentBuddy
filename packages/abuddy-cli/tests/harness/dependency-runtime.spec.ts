@@ -56,15 +56,17 @@ await setupPackTests({
     features: [{ id: 'widgets', hasSystem: false, services: [], settings: { plugins: { widgets: { size: 3 } } } }],
   },
 });`);
-  // A system that sends to its plugin as it starts (before a client connects) and on NOTIFY, and reports an error on SAVE
+  // A system that sends to its plugin as it starts (before a client connects) and on NOTIFY, and reports an
+  // error on SAVE. Hand-written, so it has no generated name map and names its plugin by the id it runs
+  // under; a built pack writes `sendToPlugin('memos', …)` and its `#generated/events` resolves it.
   write(root, 'tests/memos-system.ts', `
 import { setup } from 'xstate';
 import { sendToPlugin } from '@abuddy/sdk/events';
 import { reportError } from '@abuddy/sdk/logger';
 export const memos = setup({}).createMachine({
-  entry: () => sendToPlugin('memos', { type: 'MEMOS_STARTED' }),
+  entry: () => sendToPlugin('dependent-pack.memos', { type: 'MEMOS_STARTED' }),
   on: {
-    NOTIFY: { actions: () => sendToPlugin('memos', { type: 'MEMOS_NOTIFIED' }) },
+    NOTIFY: { actions: () => sendToPlugin('dependent-pack.memos', { type: 'MEMOS_NOTIFIED' }) },
     SAVE: { actions: () => reportError({ error: new Error('lost memo'), source: 'memos' }) },
   },
 });`);
@@ -88,13 +90,13 @@ import { startApp } from '@abuddy/testing/harness';
 it('connects to default-setup settings', async () => {
   const app = await startApp({ systems: ['settings'] });
   await app.connect();
-  const loaded = await app.nextEmit('settings', 'SETTINGS_LOADED');
+  const loaded = await app.nextEmit('default-setup/settings', 'SETTINGS_LOADED');
   expect(loaded.data).toMatchObject({ general: expect.any(Object), plugins: expect.any(Object) });
   expect(app.emitted('application').map((e) => e.type)).toContain('APPLICATION_HOTKEYS');
   // One SDK and one engine: this pack's feature settings (registered by the harness) reach default-setup's
   // settings, and the repositories default-setup's runtime registered are the test's, through
   // @abuddy/ears and services.repository alike
-  expect((loaded.data as { plugins: Record<string, unknown> }).plugins.widgets).toEqual({ size: 3 });
+  expect((loaded.data as { plugins: Record<string, unknown> }).plugins['dependent-pack.widgets']).toEqual({ size: 3 });
   const settingsQueries = Reflect.get(repository, 'settingsQueries');
   expect(settingsQueries).toBeDefined();
   expect(Reflect.get(services.repository, 'settingsQueries')).toBe(settingsQueries);

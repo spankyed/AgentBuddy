@@ -270,24 +270,32 @@ describe('a type two packs contribute facets of', () => {
 
 // A plugin id another pack holds used to shadow: the second pack installed with no UI, its declared event
 // types never registered, and every send to that id reached the first pack.
-describe('a pack claiming a plugin id that is taken', () => {
+// Two packs naming the same feature used to mean the second installed with no UI and every send to the
+// id reached the first. A plugin is addressed `<packId>.<featureId>` now, so the case isn't a conflict to
+// refuse — it's two packs with a `memos` plugin each.
+describe('two packs naming the same feature', () => {
   const withPlugin = (id: string, pluginId: string) =>
     ({ id, systems: [], features: [{ id: pluginId, hasSystem: false, hasPlugin: true, services: [] }] });
 
-  it('is refused by name, and the pack that holds it is left whole', () => {
-    add(withPlugin('first-pack', 'memos'));
+  it('both register, each addressing its own plugin', () => {
+    add({ ...withPlugin('first-pack', 'memos'), receivedEventTypes: { memos: ['FIRST_EVENT'] } });
+    add({ ...withPlugin('second-pack', 'memos'), receivedEventTypes: { memos: ['SECOND_EVENT'] }, steps: [noteStep] });
 
-    expect(() => add({ ...withPlugin('second-pack', 'memos'), steps: [noteStep] }))
-      .toThrow('Plugin collision: id "memos" — pack "second-pack" vs "first-pack"');
-
-    expect(registry.getPackExtensions('second-pack'), 'the refused pack registered something').toBeNull();
-    expect(stepRegistry.has('note'), 'the refused pack left a step behind').toBe(false);
-    expect(registry.getPluginEventValidationMap().has('memos')).toBe(true);
+    const map = registry.getPluginEventValidationMap();
+    expect(map.get('first-pack.memos')).toEqual(new Set(['FIRST_EVENT']));
+    expect(map.get('second-pack.memos')).toEqual(new Set(['SECOND_EVENT']));
+    expect(map.has('memos'), 'a bare feature id is nobody\'s address').toBe(false);
+    expect(stepRegistry.has('note')).toBe(true);
   });
 
-  it("is refused when the id is the host's own", () => {
-    expect(() => add(withPlugin('impostor', 'application')))
-      .toThrow('Plugin collision: id "application" — pack "impostor" vs the host\'s own "application" plugin');
+  // Bare ids are the host's namespace. A pack can't reach it by naming a feature after one, because the
+  // id it gets is its own — this is the structural half of what a collision check used to refuse.
+  it("leaves the host's own plugin alone when a feature is named after it", () => {
+    const host = registry.getPluginEventValidationMap().get('application');
+    add({ ...withPlugin('impostor', 'application'), receivedEventTypes: { application: ['HIJACKED'] } });
+
+    expect(registry.getPluginEventValidationMap().get('application')).toEqual(host);
+    expect(registry.getPluginEventValidationMap().get('impostor.application')).toEqual(new Set(['HIJACKED']));
   });
 });
 
@@ -333,7 +341,7 @@ describe('a pack whose registration is refused', () => {
     expect(blockRegistry.has('card-block')).toBe(false);
     expect(_seedHookRegistry.get('Card')).toBeUndefined();
     expect(seedData({ compiledDir: seedsOf('refused') })).toEqual({});
-    expect(getPackSettingsDefaults().settings.plugins).not.toHaveProperty('cards');
+    expect(getPackSettingsDefaults().settings.plugins).not.toHaveProperty('refused.cards');
 
     // ...and nothing of the incumbent's was taken with it
     expect(stepRegistry.has('note')).toBe(true);
@@ -341,7 +349,7 @@ describe('a pack whose registration is refused', () => {
     expect(blockRegistry.has('note-block')).toBe(true);
     expect(_seedHookRegistry.get('Note')).toBeDefined();
     expect(getPackCommands().map((c) => c.name)).toEqual(['standup']);
-    expect(getPackSettingsDefaults().settings.plugins).toHaveProperty('notes');
+    expect(getPackSettingsDefaults().settings.plugins).toHaveProperty('incumbent.notes');
   });
 
   it('leaves no origin behind either', () => {
@@ -369,12 +377,12 @@ describe('feature settings defaults', () => {
 
     add({ id: 'memo-pack', features: [memos] });
     add({ id: 'card-pack', features: [cards] });
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { memos: { sort: 'newest' }, _meta: { visibility: { cards: false } } } });
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'memo-pack.memos': { sort: 'newest' }, _meta: { visibility: { 'card-pack.cards': false } } } });
     expect(getPackSettingsDefaults().revision).toBe(before + 2);
     expect(changed).toHaveBeenCalledTimes(2);
 
     remove('memo-pack');
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { _meta: { visibility: { cards: false } } } });
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { _meta: { visibility: { 'card-pack.cards': false } } } });
     remove('card-pack');
     expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
     expect(changed).toHaveBeenCalledTimes(4);

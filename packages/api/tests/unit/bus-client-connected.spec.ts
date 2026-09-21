@@ -217,15 +217,15 @@ describe('sendToPlugin on the bus', () => {
     const outgoing: Array<{ type: string }> = [];
     const stop = rootEvents.onOutgoing((event) => { outgoing.push(event); });
     try {
-      sendToPlugin('notes', { type: 'BEFORE_CONNECT' });
+      sendToPlugin('notes-pack.notes', { type: 'BEFORE_CONNECT' });
       await flush();
       expect(outgoing).toEqual([]);
 
       rootEvents.emitConnected();
       await flush();
-      sendToPlugin('notes', { type: 'AFTER_CONNECT' });
+      sendToPlugin('notes-pack.notes', { type: 'AFTER_CONNECT' });
       await flush();
-      expect(outgoing.filter((event) => event.type !== 'CLIENT_CONNECTED')).toEqual([{ type: 'AFTER_CONNECT', pluginId: 'notes' }]);
+      expect(outgoing.filter((event) => event.type !== 'CLIENT_CONNECTED')).toEqual([{ type: 'AFTER_CONNECT', pluginId: 'notes-pack.notes' }]);
     } finally {
       stop();
     }

@@ -56,7 +56,7 @@ it("gives the SDK's frontend lookups the window's registered pack frontends, and
     expect(getDslTypes().get('memo')).toBe(memoDsl);
     expect(tiptapPluginRegistry.getAll()).toEqual([mentions]);
     expect(stepRegistry.get('note')).toBe(note);
-    expect(getDesignated('notebook')).toBe('notebook-main');
+    expect(getDesignated('notebook')).toBe('fe-host-pack.notebook-main');
   } finally {
     fePacks.unregisterPackFE('fe-host-pack');
   }

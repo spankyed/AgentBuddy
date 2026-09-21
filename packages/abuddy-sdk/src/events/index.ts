@@ -160,15 +160,25 @@ export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
 }
 
 /**
- * The sends `#generated/events` builds. `systemIds` maps each name the pack sends to (its own feature ids and
- * `<dependency>/<feature>`) to the id that system runs under.
+ * The sends `#generated/events` builds.
+ *
+ * Both maps take each name the pack writes — its own features by id, a dependency's as
+ * `<dependency>/<feature>` — to the id that system or plugin runs under. A pack writes the short name for
+ * its own and never the qualified id, so the identity rule can change without touching pack code.
  */
-export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(systemIds: Readonly<Record<string, string>>): TypedEvents<P, S> {
-  const send = (name: string, event: { type: string }) => {
-    if (!Object.prototype.hasOwnProperty.call(systemIds, name)) {
-      throw new Error(`No system is named "${name}": send to one of this pack's features, or a dependency's as "<dependency>/<feature>"`);
+export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(
+  systemIds: Readonly<Record<string, string>>,
+  pluginIds: Readonly<Record<string, string>> = {},
+): TypedEvents<P, S> {
+  const idFor = (kind: 'system' | 'plugin', ids: Readonly<Record<string, string>>, name: string): string => {
+    if (!Object.prototype.hasOwnProperty.call(ids, name)) {
+      throw new Error(`No ${kind} is named "${name}": send to one of this pack's features, or a dependency's as "<dependency>/<feature>"`);
     }
-    sendToSystem(systemIds[name], event);
+    return ids[name];
   };
-  return { emit, sendToPlugin, sendToSystem: send } as unknown as TypedEvents<P, S>;
+  return {
+    emit: (name: string, event: { type: string }) => emit(idFor('plugin', pluginIds, name), event),
+    sendToPlugin: (name: string, event: { type: string }) => sendToPlugin(idFor('plugin', pluginIds, name), event),
+    sendToSystem: (name: string, event: { type: string }) => sendToSystem(idFor('system', systemIds, name), event),
+  } as unknown as TypedEvents<P, S>;
 }

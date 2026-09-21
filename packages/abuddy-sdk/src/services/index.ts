@@ -28,8 +28,9 @@ const logger = createLogger('log-service');
 export interface HostServices {
   logger: Logger;
   /**
-   * Sends to plugins, systems and running flows. Actions run outside any pack, so `sendToSystem` names a
-   * system `<packId>/<featureId>`. A pack's `Services` types it with its own and its dependencies' events.
+   * Sends to plugins, systems and running flows. Actions run outside any pack, so both `sendToSystem` and
+   * `sendToPlugin` name a feature `<packId>/<featureId>` — a host plugin, whose namespace is the bare ids,
+   * is named bare. A pack's `Services` types them with its own and its dependencies' events.
    */
   emitter: {
     sendToPlugin: typeof sendToPlugin;
@@ -58,7 +59,20 @@ function sendToAddressedSystem(address: string, event: { type: string; [key: str
   sendToSystem(systemId, event);
 }
 
-const emitter: HostServices['emitter'] = { sendToPlugin, sendToSystem: sendToAddressedSystem, sendToBrainSystem };
+/**
+ * Sends to the plugin a `<packId>/<featureId>` name addresses, whatever id it runs under — the plugin
+ * half of the above. A pack's own code has a generated name map for this; an action doesn't run inside
+ * any pack, so it names the pack it means and the registry resolves it.
+ */
+function sendToAddressedPlugin(address: string, event: { type: string; [key: string]: unknown }): void {
+  const pluginId = boundHost().packs.resolvePluginAddress(address);
+  if (!pluginId) {
+    throw new Error(`No registered plugin is named "${address}": services.emitter.sendToPlugin takes "<packId>/<featureId>"`);
+  }
+  sendToPlugin(pluginId, event);
+}
+
+const emitter: HostServices['emitter'] = { sendToPlugin: sendToAddressedPlugin, sendToSystem: sendToAddressedSystem, sendToBrainSystem };
 
 /** The bound app's implementation of a service; each call reads the binding */
 const app = <K extends keyof HostRuntimeServices>(name: K): HostRuntimeServices[K] => boundHost().services[name];

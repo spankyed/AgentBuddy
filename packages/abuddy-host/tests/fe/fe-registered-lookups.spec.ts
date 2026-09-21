@@ -56,8 +56,10 @@ describe("a pack's frontend", () => {
       dslTypes: { memo: memoDsl },
     });
 
-    expect(plugins()).toContain(notebook);
-    expect(getDesignated('notebook')).toBe('notebook-main');
+    // Registered under `<packId>.<featureId>`, from a copy: the author's module is untouched
+    expect(plugins().map((p) => p.id)).toEqual(['notebook-pack.notebook-main']);
+    expect(notebook.id, "the pack's own module was mutated").toBe('notebook-main');
+    expect(getDesignated('notebook')).toBe('notebook-pack.notebook-main');
     expect(stepRegistry.getFE('note')?.nodeConfig.label).toBe('Note');
     expect(stepRegistry.all().map((s) => s.type)).toEqual(['note']);
     expect(artifactRegistry.all()).toEqual([cardView]);
@@ -71,8 +73,8 @@ describe("a pack's frontend", () => {
     expect(appExtension('welcome')).toBe(Welcome);
     expect(getDslTypes().get('memo')).toBe(memoDsl);
 
-    expect(remove('notebook-pack')).toEqual([notebook]);
-    expect(plugins()).not.toContain(notebook);
+    expect(remove('notebook-pack').map((p) => p.id)).toEqual(['notebook-pack.notebook-main']);
+    expect(plugins()).toEqual([]);
     expect(hasDesignation('notebook')).toBe(false);
     expect(stepRegistry.get('note')).toBeUndefined();
     expect(stepRegistry.all()).toEqual([]);
@@ -109,13 +111,15 @@ describe("a pack's frontend", () => {
     expect(getDslTypes().get('memo')).toBe(memoDsl);
   });
 
-  it("keeps the first plugin with an id, and the first default plugin", () => {
+  // Two packs with a `notes` feature each get a plugin, because a plugin is addressed by its pack. Only
+  // the default is a single slot, and the first registration keeps it.
+  it("gives each pack its own plugin, and keeps the first default plugin", () => {
     const first = plugin('notes');
     add('first-pack', { plugins: [first], defaultPlugin: first });
     add('second-pack', { plugins: [plugin('notes'), plugin('cards')], defaultPlugin: plugin('cards') });
-    expect(plugins().map((p) => p.id)).toEqual(['notes', 'cards']);
-    expect(plugins()[0]).toBe(first);
-    expect(defaultPlugin()).toBe(first);
-    expect(remove('second-pack').map((p) => p.id)).toEqual(['cards']);
+    expect(plugins().map((p) => p.id)).toEqual(['first-pack.notes', 'second-pack.notes', 'second-pack.cards']);
+    expect(defaultPlugin()?.id).toBe('first-pack.notes');
+    expect(remove('second-pack').map((p) => p.id)).toEqual(['second-pack.notes', 'second-pack.cards']);
+    expect(defaultPlugin()?.id, "the first pack's default left with the second").toBe('first-pack.notes');
   });
 });

@@ -14,7 +14,8 @@ import type { HostServices } from '@abuddy/sdk/services';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS, _reservedEntries } from '@abuddy/sdk/types';
-import { HOST_PLUGIN_EVENT_TYPES, HOST_PLUGIN_IDS } from '@abuddy/sdk/events';
+import { HOST_PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
+import { qualifiedId } from '@abuddy/sdk/ids';
 import { makePolicy, registerRepository, unregisterRepository, type PartitionPolicy } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { packSeedOrder } from './pack-discovery.ts';
@@ -38,10 +39,6 @@ const appEARS = (): PackEARS => ({
 });
 
 /**
- * Role → id of the system that plays it (`<packId>.<featureId>` for an external pack). A designated
- * feature with no registered system (the early system) resolves to its feature id.
- */
-/**
  * The id of the system `featureId` names, among `systemIds`, or undefined when none of them is it.
  *
  * A system id is `<packId>.<featureId>`, and a built-in pack's used to be the bare feature id, so both
@@ -49,7 +46,7 @@ const appEARS = (): PackEARS => ({
  * same question of the same ids and must not answer it differently.
  */
 function systemIdFor(systemIds: readonly string[], packId: string, featureId: string): string | undefined {
-  return systemIds.find((id) => id === featureId || id === `${packId}.${featureId}`);
+  return systemIds.find((id) => id === featureId || id === qualifiedId(packId, featureId));
 }
 
 function designationsOf({ id, systems, features = [] }: PackRegistration): Record<string, string> {
@@ -394,20 +391,6 @@ export function createPackRegistry(): PackRegistry {
       if (name) throw new Error(`Repository collision: "${name}" — pack "${registration.id}" vs "${existingId}"`);
     }
 
-    // A plugin id another pack holds used to shadow: the second pack installed "successfully" with no UI,
-    // its receivedEventTypes never registered, and every send to that id reached the first pack. That is an
-    // install result, so it is refused like a service, a command, a repository or a designation.
-    const claimed = ownedPluginIds(registration);
-    for (const hostId of HOST_PLUGIN_IDS) {
-      if (claimed.includes(hostId)) {
-        throw new Error(`Plugin collision: id "${hostId}" — pack "${registration.id}" vs the host's own "${hostId}" plugin`);
-      }
-    }
-    for (const [existingId, existing] of registrations) {
-      const taken = claimed.find((id) => ownedPluginIds(existing).includes(id));
-      if (taken) throw new Error(`Plugin collision: id "${taken}" — pack "${registration.id}" vs "${existingId}"`);
-    }
-
     /**
      * The pack is listed before its extensions are registered, because registering them is
      * observable: `settingsDefaults.register` notifies its listeners, the settings system reacts by
@@ -492,8 +475,14 @@ export function createPackRegistry(): PackRegistry {
    * Owning an id is not claiming one: the map below gives it to whoever had it first, the host included.
    */
   function ownedPluginIds(reg: PackRegistration): string[] {
-    const ids = new Set<string>(Object.keys(reg.receivedEventTypes ?? {}));
-    for (const feature of reg.features ?? []) if (feature.hasPlugin) ids.add(feature.id);
+    // Both halves name a feature of this pack, so both are qualified here: a plugin runs under
+    // `<packId>.<featureId>`, as a system does. Qualifying on this side rather than taking the ids as
+    // given is what makes ownership structural — pack ids are unique and neither id may contain a dot,
+    // so a pack's plugins can't reach another pack's namespace or the host's bare ids, and there is no
+    // shadowing left for a collision check to refuse.
+    const ids = new Set<string>();
+    for (const featureId of Object.keys(reg.receivedEventTypes ?? {})) ids.add(qualifiedId(reg.id, featureId));
+    for (const feature of reg.features ?? []) if (feature.hasPlugin) ids.add(qualifiedId(reg.id, feature.id));
     return [...ids];
   }
 
@@ -509,19 +498,19 @@ export function createPackRegistry(): PackRegistry {
   function buildPluginEventValidationMap(): Map<string, PluginEventTypes> {
     const map = new Map<string, PluginEventTypes>(hostPluginEventTypes());
     /**
-     * Each pack contributes only the plugins it owns, and never one already claimed — the host's are in
-     * first, then packs in registration order. The merge this replaced unioned every `receivedEventTypes`
-     * key into one set per plugin id, so any pack could add event types to any plugin, `application`
-     * included, whatever the comment above it claimed.
+     * Each pack contributes its own plugins under its own namespace, so no pack can reach another's
+     * entry or the host's. The merge this replaced unioned every `receivedEventTypes` key into one set
+     * per plugin id, so any pack could add event types to any plugin, `application` included, whatever
+     * the comment above it claimed.
      *
-     * `registerPack` refuses a pack claiming an id the host or another pack holds, so the `map.has` skip
-     * below is the host's own ids winning, not a pack shadowing another's.
+     * The keys are feature ids on both sides; `ownedPluginIds` is what says how a feature is addressed,
+     * so the qualification happens there and once.
      */
     for (const reg of registrations.values()) {
       const declared = reg.receivedEventTypes;
-      for (const pluginId of ownedPluginIds(reg)) {
-        if (map.has(pluginId)) continue;
-        map.set(pluginId, declared ? new Set(declared[pluginId] ?? []) : null);
+      const owned = new Set([...Object.keys(declared ?? {}), ...(reg.features ?? []).filter((f) => f.hasPlugin).map((f) => f.id)]);
+      for (const featureId of owned) {
+        map.set(qualifiedId(reg.id, featureId), declared ? new Set(declared[featureId] ?? []) : null);
       }
     }
     return map;
@@ -594,6 +583,15 @@ export function createPackRegistry(): PackRegistry {
       if (slash <= 0) return undefined;
       const packId = address.slice(0, slash);
       return systemIdFor(getRegisteredPackSystemIds(packId), packId, address.slice(slash + 1));
+    },
+
+    resolvePluginAddress(address) {
+      // A bare name is the host's namespace, so it resolves only if the host owns it; anything else is
+      // `<packId>/<featureId>`. The validation map is the ownership record, so this asks it rather than
+      // deciding for itself which pack owns what.
+      const slash = address.indexOf('/');
+      const id = slash <= 0 ? address : qualifiedId(address.slice(0, slash), address.slice(slash + 1));
+      return (pluginEventValidationMap ??= buildPluginEventValidationMap()).has(id) ? id : undefined;
     },
 
     getEventValidationMap: () => eventValidationMap ??= buildEventValidationMap(),

@@ -199,7 +199,7 @@ describe('registerPack feature settings', () => {
 
   it("registers a pack's feature settings as defaults and drops them when it unregisters", () => {
     registerPack({ id: 'memo-pack', systems: [], features: [memos] } as unknown as PackRegistration);
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { memos: { sort: 'newest' }, _meta: { visibility: { memos: false } } } });
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'memo-pack.memos': { sort: 'newest' }, _meta: { visibility: { 'memo-pack.memos': false } } } });
     unregisterPack('memo-pack');
     expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
   });

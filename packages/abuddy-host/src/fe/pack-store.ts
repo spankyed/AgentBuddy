@@ -5,6 +5,7 @@ import type { FePackRegistryView } from '@abuddy/sdk/runtime';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { createDefinitionStore, createDesignationStore, createOwnedStore, createStepStore, createUndoLog } from '../packs/extensions.ts';
+import { qualifiedId } from '@abuddy/sdk/ids';
 import { createAppExtensionSlots } from './app-extensions.ts';
 
 interface PackFEExtensions {
@@ -60,18 +61,25 @@ export function createFePackRegistry(): FePackRegistry {
     const undo = undos.record;
 
     try {
-      // `registerPack` refuses a pack claiming an id the host or another pack holds, so by the time a
-      // frontend registers there is nothing left to collide with. Kept as a guard rather than dropped: the
-      // renderer registers built-in packs itself, without going through the backend registry first.
+      // A plugin runs under `<packId>.<featureId>`, as a system does, so two packs can each have a `notes`
+      // feature and neither shadows the other. The author's module is copied rather than changed: the
+      // qualified id is the registry's value for it, not something the pack wrote.
+      //
+      // Since a pack registering twice is already refused, what is left for this guard to catch is one
+      // registration naming a feature twice — which codegen cannot emit and a hand-written one can.
       const registeredIds = new Set(allPlugins.map(p => p.id));
       const plugins: Plugin[] = [];
+      const qualified = new Map<string, Plugin>();
       for (const plugin of registration.plugins ?? []) {
-        if (registeredIds.has(plugin.id)) {
-          console.warn(`[pack-store] Plugin "${plugin.id}"${fromPack} ignored — a plugin with that id is already registered`);
+        const id = qualifiedId(packId, plugin.id);
+        if (registeredIds.has(id)) {
+          console.warn(`[pack-store] Plugin "${id}"${fromPack} ignored — a plugin with that id is already registered`);
           continue;
         }
-        registeredIds.add(plugin.id);
-        plugins.push(plugin);
+        registeredIds.add(id);
+        const registered = { ...plugin, id };
+        qualified.set(plugin.id, registered);
+        plugins.push(registered);
       }
       allPlugins.push(...plugins);
       undo(() => {
@@ -81,19 +89,21 @@ export function createFePackRegistry(): FePackRegistry {
         }
       });
 
-      if (registration.defaultPlugin && !defaultPlugin) {
-        defaultPlugin = registration.defaultPlugin;
+      const ownDefault = registration.defaultPlugin && qualified.get(registration.defaultPlugin.id);
+      if (ownDefault && !defaultPlugin) {
+        defaultPlugin = ownDefault;
         undo(() => { defaultPlugin = undefined; });
       } else if (registration.defaultPlugin) {
-        console.warn(`[pack-store] defaultPlugin from pack ignored — already set`);
+        const reason = ownDefault ? 'another pack is already the default' : "it isn't one of this pack's plugins";
+        console.warn(`[pack-store] defaultPlugin "${registration.defaultPlugin.id}"${fromPack} ignored — ${reason}`);
       }
 
-      // From the registration's own map: a designation is a property of a feature, and the plugin it names
-      // may be one this pack didn't get to register, because another pack already holds that id
-      const registeredPlugins = new Set(plugins.map((p) => p.id));
+      // From the registration's own map, and resolved through the plugins this registration actually
+      // registered: a designation names a feature, and a feature it didn't register plays no role here.
       const roles: Record<string, string> = {};
-      for (const [designation, pluginId] of Object.entries(registration.designations ?? {})) {
-        if (!registeredPlugins.has(pluginId)) continue;
+      for (const [designation, featureId] of Object.entries(registration.designations ?? {})) {
+        const pluginId = qualified.get(featureId)?.id;
+        if (!pluginId) continue;
         if (designations.has(designation)) {
           console.warn(`[pack-store] Designation "${designation}" of plugin "${pluginId}"${fromPack} ignored — another plugin plays that role`);
         } else {

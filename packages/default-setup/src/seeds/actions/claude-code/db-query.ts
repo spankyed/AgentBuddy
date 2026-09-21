@@ -26,14 +26,14 @@ export async function action(
   const { prompt: userPrompt } = params;
 
   if (!userPrompt?.trim()) {
-    services.emitter.sendToPlugin('database', {
+    services.emitter.sendToPlugin('default-setup/database', {
       type: 'QUERY_ERROR',
       error: 'Please provide a valid prompt',
     });
     return { success: false, error: 'Empty prompt' };
   }
 
-  services.emitter.sendToPlugin('database', { type: 'AI_QUERY_LOADING' });
+  services.emitter.sendToPlugin('default-setup/database', { type: 'AI_QUERY_LOADING' });
 
   try {
     const { schema, topology } = services.database.buildQueryContext();
@@ -41,7 +41,7 @@ export async function action(
     const systemPrompt = services.prompt.usePrompt('DB Query System', { schema, topology });
 
     if (!systemPrompt) {
-      services.emitter.sendToPlugin('database', {
+      services.emitter.sendToPlugin('default-setup/database', {
         type: 'QUERY_ERROR',
         error: 'DB Query prompt template not found. Run seed import.',
       });
@@ -56,14 +56,14 @@ export async function action(
     const query = result.stdout.trim().replace(/^```(?:typescript|ts|javascript|js)?\n?/, '').replace(/\n?```$/, '').trim();
 
     if (!query) {
-      services.emitter.sendToPlugin('database', {
+      services.emitter.sendToPlugin('default-setup/database', {
         type: 'QUERY_ERROR',
         error: 'Claude returned an empty response.',
       });
       return { success: false, error: 'Empty response' };
     }
 
-    services.emitter.sendToPlugin('database', {
+    services.emitter.sendToPlugin('default-setup/database', {
       type: 'AI_QUERY_GENERATED',
       query,
     });
@@ -71,7 +71,7 @@ export async function action(
     return { success: true };
   } catch (error: any) {
     const message = formatProviderError(error, 'Claude Code');
-    services.emitter.sendToPlugin('database', {
+    services.emitter.sendToPlugin('default-setup/database', {
       type: 'QUERY_ERROR',
       error: message,
     });

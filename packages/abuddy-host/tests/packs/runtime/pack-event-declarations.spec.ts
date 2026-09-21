@@ -77,7 +77,7 @@ describe('the event types an external pack declares for its plugins', () => {
 
     expect(registerExternalPacks(registry, loadExternalPacks())).toHaveLength(1);
 
-    expect(registry.getPluginEventValidationMap().get('memos')).toEqual(new Set(RECEIVED));
+    expect(registry.getPluginEventValidationMap().get(`${PACK_ID}.memos`)).toEqual(new Set(RECEIVED));
   });
 
   // The fallback that hides a lost declaration: `features` says which plugins are the pack's own, so the id
@@ -88,7 +88,7 @@ describe('the event types an external pack declares for its plugins', () => {
     expect(registerExternalPacks(registry, loadExternalPacks())).toHaveLength(1);
 
     const map = registry.getPluginEventValidationMap();
-    expect(map.has('memos')).toBe(true);
-    expect(map.get('memos')).toBeNull();
+    expect(map.has(`${PACK_ID}.memos`)).toBe(true);
+    expect(map.get(`${PACK_ID}.memos`)).toBeNull();
   });
 });

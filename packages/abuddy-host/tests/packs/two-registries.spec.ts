@@ -36,8 +36,8 @@ describe('two registries in one process', () => {
     expect(Object.keys(bound.getRegisteredServices())).toEqual(['memoService']);
     expect(Object.keys(other.getRegisteredServices())).toEqual(['cardService']);
 
-    expect(bound.settingsDefaults().settings).toEqual({ plugins: { memos: { from: 'memo-pack' } } });
-    expect(other.settingsDefaults().settings).toEqual({ plugins: { cards: { from: 'card-pack' } } });
+    expect(bound.settingsDefaults().settings).toEqual({ plugins: { 'memo-pack.memos': { from: 'memo-pack' } } });
+    expect(other.settingsDefaults().settings).toEqual({ plugins: { 'card-pack.cards': { from: 'card-pack' } } });
   });
 
   it('let the SDK read only the bound one', () => {
@@ -47,7 +47,7 @@ describe('two registries in one process', () => {
     expect(stepRegistry.has('card_step')).toBe(false);
     expect(services.memoService).toEqual({ from: 'memo-pack' });
     expect(services.cardService).toBeUndefined();
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { memos: { from: 'memo-pack' } } });
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'memo-pack.memos': { from: 'memo-pack' } } });
   });
 
   it("hold their own loaded packs, not one list between them", () => {

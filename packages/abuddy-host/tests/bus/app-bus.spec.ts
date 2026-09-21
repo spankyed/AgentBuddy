@@ -79,7 +79,7 @@ describe('createAppBus', () => {
       id: 'ping-pack',
       systems: [{ id: 'ping-pack.feature', machine: setup({}).createMachine({ on: { PING: { actions: () => pings.push('ping') } } }), events: new Set(['PING']) }],
       // The bus drops a send to a plugin that declares no such event, so this case declares the two it sends
-      receivedEventTypes: { 'ping-pack': ['EARLY', 'LATE'] },
+      receivedEventTypes: { feature: ['EARLY', 'LATE'] },
     });
     try {
       bus.stop();
@@ -99,20 +99,20 @@ describe('createAppBus', () => {
       id: 'ping-pack',
       systems: [{ id: 'ping-pack.feature', machine: setup({}).createMachine({ on: { PING: { actions: () => pings.push('ping') } } }), events: new Set(['PING']) }],
       // The bus drops a send to a plugin that declares no such event, so this case declares the two it sends
-      receivedEventTypes: { 'ping-pack': ['EARLY', 'LATE'] },
+      receivedEventTypes: { feature: ['EARLY', 'LATE'] },
     });
     try {
       bus.stop();
       bus = createActor(createAppBus(registry), { systemId: 'bus' }).start();
       // A schedule tick or a `fire` step at boot, with no window open yet
       testRootEvents.emitIncoming({ type: 'PING', systemId: 'ping-pack.feature' });
-      testRootEvents.emitPluginSend({ type: 'EARLY', pluginId: 'ping-pack' });
+      testRootEvents.emitPluginSend({ type: 'EARLY', pluginId: 'ping-pack.feature' });
       await flush();
       expect(pings).toEqual(['ping']);
       expect(outgoing).toEqual([]);
 
       testRootEvents.emitConnected();
-      testRootEvents.emitPluginSend({ type: 'LATE', pluginId: 'ping-pack' });
+      testRootEvents.emitPluginSend({ type: 'LATE', pluginId: 'ping-pack.feature' });
       await flush();
       expect(outgoing.map((event) => event.type)).toContain('LATE');
       expect(outgoing.map((event) => event.type)).not.toContain('EARLY');

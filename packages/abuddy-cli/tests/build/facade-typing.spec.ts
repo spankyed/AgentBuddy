@@ -145,12 +145,14 @@ declare const systemId: 'memos' | 'base-pack/threads';
 // @ts-expect-error one system per send
 sendToSystem(systemId, { type: 'ADD_TAG', name: 'x' });
 
-// Actions get services.emitter, which names every system <pack>/<feature>, this pack's own too
+// Actions get services.emitter, which names every system and plugin <pack>/<feature>, this pack's own too
 services.emitter.sendToSystem('app-pack/memos', { type: 'ADD_MEMO', text: 'x' });
 services.emitter.sendToSystem('base-pack/threads', { type: 'ADD_TAG', name: 'x' });
-services.emitter.sendToPlugin('threads', { type: 'TAG_ADDED', name: 'x' });
+services.emitter.sendToPlugin('base-pack/threads', { type: 'TAG_ADDED', name: 'x' });
 // @ts-expect-error actions run outside any pack, so this pack's systems are named too
 services.emitter.sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });
+// @ts-expect-error and its plugins, so a bare feature id isn't one of them either
+services.emitter.sendToPlugin('threads', { type: 'TAG_ADDED', name: 'x' });
 // @ts-expect-error ADD_MEMO needs its text
 services.emitter.sendToSystem('app-pack/memos', { type: 'ADD_MEMO' });
 

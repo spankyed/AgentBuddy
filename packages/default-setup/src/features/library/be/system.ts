@@ -5,6 +5,7 @@ import type { EARS } from '@/__generated__/ears'
 import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryIndex, LibraryItem, FolderContents } from './types'
 // [SEARCH_INDEX_FF] import type { SearchIndex } from './search-index/types/search-index'
 import { bus } from '@abuddy/sdk/ids'
+import { emit } from '@/__generated__/events'
 import { repository } from '@/__generated__/repository';
 import * as path from 'path'
 import * as os from 'os'
@@ -112,15 +113,9 @@ export const librarySystem = setup({
       })
       if (ev.collectionId && symlink.resolveSymlinkPath(ev.collectionId)) {
         const folderContents = await repository.libraryQueries.getFolderContents(ev.collectionId as EARS.EntityId)
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: { type: 'FOLDER_CONTENTS_LOADED' as const, pluginId: 'library', data: folderContents },
-        })
+        system.get(bus).send(emit('library', { type: 'FOLDER_CONTENTS_LOADED' as const, data: folderContents }))
       } else {
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: { type: 'DOCUMENT_CREATED' as const, pluginId: 'library', data: { document } },
-        })
+        system.get(bus).send(emit('library', { type: 'DOCUMENT_CREATED' as const, data: { document } }))
       }
 
       notifyIfCommandsChanged(system, commandsBefore)
@@ -134,10 +129,7 @@ export const librarySystem = setup({
         content: ev.content,
         tags: ev.tags,
       })
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: { type: 'DOCUMENT_UPDATED' as const, pluginId: 'library', data: { document } },
-      })
+      system.get(bus).send(emit('library', { type: 'DOCUMENT_UPDATED' as const, data: { document } }))
 
       notifyIfCommandsChanged(system, commandsBefore)
     },
@@ -145,40 +137,26 @@ export const librarySystem = setup({
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'DELETE_DOCUMENT'; id: string }
       repository.libraryCommands.deleteDocument(ev.id as EARS.EntityId)
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
+      system.get(bus).send(emit('library', {
           type: 'DOCUMENT_DELETED' as const,
-          pluginId: 'library',
           data: { documentId: ev.id },
-        },
-      })
+        }))
       notifyIfCommandsChanged(system, commandsBefore)
     },
     getDocument: async ({ system, event }) => {
       const ev = event as { type: 'GET_DOCUMENT'; id: string }
       const document = await libraryService.get(ev.id as EARS.EntityId)
       if (document) {
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: { type: 'DOCUMENT_LOADED' as const, pluginId: 'library', data: { document } },
-        })
+        system.get(bus).send(emit('library', { type: 'DOCUMENT_LOADED' as const, data: { document } }))
       } else {
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: { type: 'LIBRARY_ERROR' as const, pluginId: 'library', data: { error: 'Document not found' } },
-        })
+        system.get(bus).send(emit('library', { type: 'LIBRARY_ERROR' as const, data: { error: 'Document not found' } }))
       }
     },
     sendIndex: ({ system }) => {
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
+      system.get(bus).send(emit('library', {
           type: 'LIBRARY_INDEX_LOADED' as const,
-          pluginId: 'library',
           data: { index: repository.libraryQueries.getIndex() },
-        },
-      })
+        }))
     },
     createCollection: async ({ system, event }) => {
       const ev = event as { type: 'CREATE_COLLECTION'; name: string; description?: string; parentId?: string }
@@ -189,20 +167,14 @@ export const librarySystem = setup({
           parentId: ev.parentId,
         })
         const folderContents = await repository.libraryQueries.getFolderContents(ev.parentId as EARS.EntityId)
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: { type: 'FOLDER_CONTENTS_LOADED' as const, pluginId: 'library', data: folderContents },
-        })
+        system.get(bus).send(emit('library', { type: 'FOLDER_CONTENTS_LOADED' as const, data: folderContents }))
       } else {
         const collection = repository.libraryCommands.createCollection(
           ev.name,
           ev.description,
           ev.parentId ? ev.parentId as EARS.EntityId : undefined
         )
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: { type: 'COLLECTION_CREATED' as const, pluginId: 'library', data: { collection } },
-        })
+        system.get(bus).send(emit('library', { type: 'COLLECTION_CREATED' as const, data: { collection } }))
       }
     },
     updateCollection: async ({ system, event }) => {
@@ -213,28 +185,20 @@ export const librarySystem = setup({
         ev.name,
         ev.description
       )
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
+      system.get(bus).send(emit('library', {
           type: 'COLLECTION_UPDATED' as const,
-          pluginId: 'library',
           data: { collection },
-        },
-      })
+        }))
       notifyIfCommandsChanged(system, commandsBefore)
     },
     deleteCollection: async ({ system, event }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'DELETE_COLLECTION'; id: string }
       repository.libraryCommands.deleteCollection(ev.id as EARS.EntityId)
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
+      system.get(bus).send(emit('library', {
           type: 'COLLECTION_DELETED' as const,
-          pluginId: 'library',
           data: { collectionId: ev.id },
-        },
-      })
+        }))
       notifyIfCommandsChanged(system, commandsBefore)
     },
     moveDocument: async ({ system, event }) => {
@@ -244,14 +208,10 @@ export const librarySystem = setup({
         ev.documentId as EARS.EntityId,
         ev.collectionId ? ev.collectionId as EARS.EntityId : undefined
       )
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
+      system.get(bus).send(emit('library', {
           type: 'DOCUMENT_UPDATED' as const,
-          pluginId: 'library',
           data: { document },
-        },
-      })
+        }))
       notifyIfCommandsChanged(system, commandsBefore)
     },
     sendInitialData: async ({ system }) => {
@@ -261,50 +221,34 @@ export const librarySystem = setup({
 
       const librarySettings = repository.settingsQueries.getPluginSettings('library')
 
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
+      system.get(bus).send(emit('library', {
           type: 'LIBRARY_CONNECTED' as const,
-          pluginId: 'library',
           data: {
             index: repository.libraryQueries.getIndex(),
             settings: librarySettings || null
           },
-        },
-      })
+        }))
     },
     // File browser actions
     getFolderContents: async ({ system, event }) => {
       const ev = event as { type: 'GET_FOLDER_CONTENTS'; folderId: string | null }
       const folderContents = await repository.libraryQueries.getFolderContents(ev.folderId ? ev.folderId as EARS.EntityId : null)
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
+      system.get(bus).send(emit('library', {
           type: 'FOLDER_CONTENTS_LOADED' as const,
-          pluginId: 'library',
           data: folderContents,
-        },
-      })
+        }))
     },
     navigateToFolder: async ({ system, event }) => {
       const ev = event as { type: 'NAVIGATE_TO_FOLDER'; folderId: string | null }
       const folderContents = await repository.libraryQueries.getFolderContents(ev.folderId ? ev.folderId as EARS.EntityId : null)
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
+      system.get(bus).send(emit('library', {
           type: 'FOLDER_CONTENTS_LOADED' as const,
-          pluginId: 'library',
           data: folderContents,
-        },
-      })
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
+        }))
+      system.get(bus).send(emit('library', {
           type: 'NAVIGATION_CHANGED' as const,
-          pluginId: 'library',
           data: { folderId: ev.folderId, path: folderContents.currentPath },
-        },
-      })
+        }))
     },
     renameItem: async ({ system, event }) => {
       const commandsBefore = libraryService.commands()
@@ -329,16 +273,10 @@ export const librarySystem = setup({
         const folderContents = await repository.libraryQueries.getFolderContents(
           parentFolderId ? parentFolderId as EARS.EntityId : null
         )
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: { type: 'FOLDER_CONTENTS_LOADED' as const, pluginId: 'library', data: folderContents },
-        })
+        system.get(bus).send(emit('library', { type: 'FOLDER_CONTENTS_LOADED' as const, data: folderContents }))
       } else {
         const item = repository.libraryCommands.renameItem(ev.id as EARS.EntityId, ev.name, ev.itemType)
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: { type: 'ITEM_RENAMED' as const, pluginId: 'library', data: { item } },
-        })
+        system.get(bus).send(emit('library', { type: 'ITEM_RENAMED' as const, data: { item } }))
       }
       notifyIfCommandsChanged(system, commandsBefore)
     },
@@ -346,20 +284,14 @@ export const librarySystem = setup({
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'DELETE_ITEMS'; ids: string[] }
       await libraryService.remove(ev.ids)
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: { type: 'ITEMS_DELETED' as const, pluginId: 'library', data: { ids: ev.ids } },
-      })
+      system.get(bus).send(emit('library', { type: 'ITEMS_DELETED' as const, data: { ids: ev.ids } }))
       notifyIfCommandsChanged(system, commandsBefore)
     },
     moveItems: async ({ system, event }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'MOVE_ITEMS'; ids: string[]; targetFolderId: string | null }
       await libraryService.move(ev.ids, ev.targetFolderId)
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: { type: 'ITEMS_MOVED' as const, pluginId: 'library', data: { ids: ev.ids, targetFolderId: ev.targetFolderId } },
-      })
+      system.get(bus).send(emit('library', { type: 'ITEMS_MOVED' as const, data: { ids: ev.ids, targetFolderId: ev.targetFolderId } }))
       notifyIfCommandsChanged(system, commandsBefore)
     },
     // [SEARCH_INDEX_FF] Search index actions — commented out
@@ -449,14 +381,10 @@ export const librarySystem = setup({
         resolvedPath,
         ev.parentId ? ev.parentId as EARS.EntityId : undefined
       )
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
+      system.get(bus).send(emit('library', {
           type: 'COLLECTION_CREATED' as const,
-          pluginId: 'library',
           data: { collection },
-        },
-      })
+        }))
 
     },
     updateSymlinkPath: async ({ system, event }) => {
@@ -468,14 +396,10 @@ export const librarySystem = setup({
         const stat = await fs.stat(resolvedPath)
         if (!stat.isDirectory()) throw new Error('Not a directory')
       } catch {
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: {
+        system.get(bus).send(emit('library', {
             type: 'LIBRARY_ERROR' as const,
-            pluginId: 'library',
             data: { error: `Path does not exist: ${resolvedPath}` },
-          },
-        })
+          }))
         return
       }
 
@@ -484,100 +408,70 @@ export const librarySystem = setup({
         resolvedPath
       )
 
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
+      system.get(bus).send(emit('library', {
           type: 'SYMLINK_UPDATED' as const,
-          pluginId: 'library',
           data: { collection },
-        },
-      })
+        }))
     },
     // Import/Export actions
     importLibraryItems: async ({ system, event }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'IMPORT_LIBRARY'; directory: string }
-      const pluginId = library
 
       try {
         const result = importLibrary(ev.directory)
 
         if (result.created === 0 && result.errors.length > 0) {
-          system.get(bus).send({
-            type: 'OUTGOING' as const,
-            event: {
+          system.get(bus).send(emit('library', {
               type: 'LIBRARY_IMPORT_FAILED' as const,
-              pluginId,
               errors: result.errors,
-            },
-          })
+            }))
           return
         }
 
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: {
+        system.get(bus).send(emit('library', {
             type: 'LIBRARY_IMPORTED' as const,
-            pluginId,
             count: result.created,
             ...(result.errors.length > 0 ? { errors: result.errors } : {}),
-          },
-        })
+          }))
 
         // Refresh library data
         const librarySettings = repository.settingsQueries.getPluginSettings('library')
 
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: {
+        system.get(bus).send(emit('library', {
             type: 'LIBRARY_CONNECTED' as const,
-            pluginId,
             data: {
               index: repository.libraryQueries.getIndex(),
               settings: librarySettings || null,
             },
-          },
-        })
+          }))
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: {
+        system.get(bus).send(emit('library', {
             type: 'LIBRARY_IMPORT_FAILED' as const,
-            pluginId,
             errors: [message],
-          },
-        })
+          }))
       }
       // An import can fail part way, after creating documents
       notifyIfCommandsChanged(system, commandsBefore)
     },
     exportLibraryToFile: async ({ system, event }) => {
       const ev = event as { type: 'EXPORT_LIBRARY'; directory: string; format: 'markdown' | 'json' }
-      const pluginId = library
 
       try {
         const { filePath, itemCount } = exportLibrary(ev.directory, ev.format)
 
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: {
+        system.get(bus).send(emit('library', {
             type: 'LIBRARY_EXPORTED' as const,
-            pluginId,
             filePath,
             itemCount,
-          },
-        })
+          }))
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err)
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: {
+        system.get(bus).send(emit('library', {
             type: 'LIBRARY_EXPORT_FAILED' as const,
-            pluginId,
             errors: [message],
-          },
-        })
+          }))
       }
     },
     handleSettingsUpdate: ({ system, event }) => {
@@ -603,14 +497,10 @@ export const librarySystem = setup({
           repository.libraryCommands.updateDocumentTags(doc.id, nextTags)
           const updated = repository.libraryQueries.getDocument(doc.id)
           if (updated) {
-            busSvc.send({
-              type: 'OUTGOING' as const,
-              event: {
+            busSvc.send(emit('library', {
                 type: 'DOCUMENT_UPDATED' as const,
-                pluginId: 'library',
                 data: { document: updated },
-              },
-            })
+              }))
           }
         }
       }

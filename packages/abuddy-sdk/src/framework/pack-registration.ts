@@ -71,10 +71,12 @@ export interface PackRegistration {
   commands?: import('./pack-commands.ts').PackCommand[];
   features?: PackFeatureDef[];
   /**
-   * Plugin id → the event types that plugin receives, generated from the systems' declared outgoing
-   * unions (`receivedEventTypes` in `#generated/events`). The app checks a send against it, as it checks
-   * an incoming client event against what a system accepts. Only this pack's own plugins: a dependency's
-   * and the host's are declared by whoever owns them.
+   * Feature id → the event types that feature's plugin receives, generated from the systems' declared
+   * outgoing unions (`receivedEventTypes` in `#generated/events`). The app checks a send against it, as it
+   * checks an incoming client event against what a system accepts. Only this pack's own plugins: a
+   * dependency's and the host's are declared by whoever owns them, and the key is a feature id rather than
+   * a plugin id for the same reason — the app addresses a plugin `<packId>.<featureId>` and qualifies these
+   * keys itself, so naming another pack's plugin here isn't expressible.
    */
   receivedEventTypes?: Record<string, readonly string[]>;
 }

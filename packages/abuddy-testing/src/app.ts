@@ -52,9 +52,13 @@ export interface TestApp {
   connect(): Promise<void>;
   /** Sends a system an event, as a client's `sendToSystem` does (the pack's own by feature id, a dependency's as `<packId>/<featureId>`); the bus routes it whether or not a client connected */
   send(systemId: string, event: { type: string; [key: string]: unknown }): Promise<void>;
-  /** Events delivered to frontend plugins (by `emit` or `sendToPlugin`, once connected), in order; optionally one plugin's. Readable after `stop` */
+  /**
+   * Events delivered to frontend plugins (by `emit` or `sendToPlugin`, once connected), in order;
+   * optionally one plugin's, named as the pack names it (its own by feature id, another pack's as
+   * `<packId>/<featureId>`, a host plugin bare). Readable after `stop`
+   */
   emitted(pluginId?: string): OutgoingSystemEvents[];
-  /** The next event of `type` sent to `pluginId` that no earlier `nextEmit` returned, waiting for it if needed */
+  /** The next event of `type` sent to `pluginId` (named as in `emitted`) that no earlier `nextEmit` returned, waiting for it if needed */
   nextEmit(pluginId: string, type: string, options?: { timeoutMs?: number }): Promise<OutgoingSystemEvents>;
   /** Resolves once the actors have no queued work left (zero-delay raises and settled promises included) */
   settle(): Promise<void>;
@@ -87,6 +91,7 @@ export interface TestApp {
 interface AppPacks {
   getBootHooks(): PackBootHooks[];
   resolveSystemAddress(address: string): string | undefined;
+  resolvePluginAddress(address: string): string | undefined;
   getRegisteredSystems(): Map<string, AnyStateMachine>;
   getRegisteredPackSystemIds(packId: string): string[];
   /**
@@ -175,6 +180,21 @@ function resolveSystemId(id: string, registered: ReadonlyMap<string, AnyStateMac
   if (addressed && registered.has(addressed)) return addressed;
   if (registered.has(id)) return id;
   throw new Error(`No registered system is named "${id}". Registered: ${[...registered.keys()].join(', ') || 'none'} (name the pack's own systems by feature id and a dependency's as "<packId>/<featureId>"; pass the pack's registration to setupPackTests)`);
+}
+
+/**
+ * The id a plugin name addresses, the same way a pack's generated `emit` resolves one: the pack under
+ * test's own features by id, another pack's as `<packId>/<featureId>`, and a host plugin by its bare id
+ * — which is why the pack's own is tried first and a bare id only stands when the host owns it.
+ *
+ * A test names plugins as the pack it tests does, so it never writes the qualified id itself.
+ */
+function resolvePluginId(id: string): string {
+  const owned = (candidate: string) => packs().getPluginEventValidationMap().has(candidate);
+  if (id.includes('/')) return packs().resolvePluginAddress(id) ?? id;
+  const own = packId && `${packId}.${id}`;
+  if (own && owned(own)) return own;
+  return owned(id) ? id : own || id;
 }
 
 /** One event loop turn, after zero-delay timers already queued (xstate's `raise(…, { delay: 0 })`) */
@@ -355,14 +375,17 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       await settle();
     }),
     emitted(pluginId) {
-      return pluginId === undefined ? [...emitted] : emitted.filter((event) => event.pluginId === pluginId);
+      if (pluginId === undefined) return [...emitted];
+      const id = resolvePluginId(pluginId);
+      return emitted.filter((event) => event.pluginId === id);
     },
     nextEmit: (pluginId, type, { timeoutMs = 5000 } = {}) => call(() => waitForEmitted(() => {
-      const index = emitted.findIndex((event, i) => !taken.has(i) && event.pluginId === pluginId && event.type === type);
+      const id = resolvePluginId(pluginId);
+      const index = emitted.findIndex((event, i) => !taken.has(i) && event.pluginId === id && event.type === type);
       if (index === -1) return undefined;
       taken.add(index);
       return emitted[index];
-    }, timeoutMs, () => `No ${type} sent to ${pluginId} within ${timeoutMs}ms. Sent: ${emitted.map((e) => `${e.pluginId}:${e.type}`).join(', ') || 'nothing'}.`)),
+    }, timeoutMs, () => `No ${type} sent to ${resolvePluginId(pluginId)} within ${timeoutMs}ms. Sent: ${emitted.map((e) => `${e.pluginId}:${e.type}`).join(', ') || 'nothing'}.`)),
     settle: () => call(() => settle()),
     runFlow: (label, { event, data, timeoutMs = 10_000 } = {}) => call(async () => {
       const brainId = hasDesignation('brain') ? getDesignated('brain') : undefined;

@@ -2,6 +2,7 @@
 import type { SeedHooks } from '@abuddy/sdk/seed';
 import type { Seeder } from '@abuddy/sdk/utils';
 import { checkFeatureSettings, type FeatureSettings, type PackCommand, type PackSettingsDefaults } from '@abuddy/sdk/framework';
+import { qualifiedId } from '@abuddy/sdk/ids';
 
 /** Seed hooks per entity type, each type's owned by the pack that registered it */
 export function createSeedHookStore() {
@@ -45,6 +46,10 @@ export function createSeederStore() {
 /**
  * Registered packs' feature settings, merged into the defaults: each feature's own plugin slice and visibility
  * (`checkFeatureSettings`). `revision` changes, and listeners hear, whenever a pack's settings come or go.
+ *
+ * A manifest names the feature, and the settings land under the id its plugin runs under
+ * (`<packId>.<featureId>`) — the key the renderer reads a plugin's settings and visibility by. Keyed by the
+ * bare feature id, two packs with a `notes` feature each wrote the same slice and the second won.
  */
 export function createSettingsDefaultsStore() {
   const byPack = new Map<string, Array<{ id: string; settings: FeatureSettings }>>();
@@ -54,12 +59,13 @@ export function createSettingsDefaultsStore() {
   function rebuild(): void {
     const plugins: Record<string, unknown> = {};
     const visibility: Record<string, boolean> = {};
-    for (const features of byPack.values()) {
+    for (const [packId, features] of byPack) {
       for (const { id, settings } of features) {
         const own = settings.plugins ?? {};
-        if (id in own) plugins[id] = own[id];
+        const pluginId = qualifiedId(packId, id);
+        if (id in own) plugins[pluginId] = own[id];
         const visible = (own._meta as { visibility?: Record<string, boolean> } | undefined)?.visibility?.[id];
-        if (visible !== undefined) visibility[id] = visible;
+        if (visible !== undefined) visibility[pluginId] = visible;
       }
     }
     current = { revision: current.revision + 1, settings: { plugins: { ...plugins, ...(Object.keys(visibility).length > 0 && { _meta: { visibility } }) } } };

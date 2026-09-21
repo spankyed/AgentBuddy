@@ -23,7 +23,10 @@ function incoming(send: () => void): unknown[] {
 }
 
 describe('defineEvents', () => {
-  const events = defineEvents<Plugins, Systems>({ memos: 'memo-pack.memos', 'default-setup/settings': 'settings' });
+  const events = defineEvents<Plugins, Systems>(
+    { memos: 'memo-pack.memos', 'default-setup/settings': 'settings' },
+    { memos: 'memo-pack.memos' },
+  );
 
   it("sends to the pack's own system under the id it runs under", () => {
     expect(incoming(() => events.sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' })))
@@ -42,7 +45,8 @@ describe('defineEvents', () => {
     }
   });
 
-  it('sends to a plugin, and wraps an event for the bus with emit', () => {
+  // A plugin is named like a system: the short name here, the id it runs under on the wire
+  it('sends to a plugin under the id it runs under, and wraps an event for the bus with emit', () => {
     const outgoing: unknown[] = [];
     const stop = testRootEvents.onPluginSend((event) => outgoing.push(event));
     try {
@@ -50,7 +54,14 @@ describe('defineEvents', () => {
     } finally {
       stop();
     }
-    expect(outgoing).toEqual([{ type: 'MEMO_ADDED', pluginId: 'memos' }]);
-    expect(events.emit('memos', { type: 'MEMO_ADDED' })).toEqual(emit('memos', { type: 'MEMO_ADDED' }));
+    expect(outgoing).toEqual([{ type: 'MEMO_ADDED', pluginId: 'memo-pack.memos' }]);
+    expect(events.emit('memos', { type: 'MEMO_ADDED' })).toEqual(emit('memo-pack.memos', { type: 'MEMO_ADDED' }));
+  });
+
+  it("throws for a plugin name the pack's map doesn't have", () => {
+    const untyped = events.sendToPlugin as unknown as (name: string, event: { type: string }) => void;
+    for (const name of ['memo-pack.memos', 'toString']) {
+      expect(() => untyped(name, { type: 'MEMO_ADDED' })).toThrow(`No plugin is named "${name}"`);
+    }
   });
 });

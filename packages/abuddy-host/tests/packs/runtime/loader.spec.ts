@@ -310,7 +310,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     expect(registerExternalPacks(registry, [pack])).toEqual([pack]);
     try {
       expect(_seedHookRegistry.get('Widget')).toEqual({ find: expect.any(Function) });
-      expect(getPackSettingsDefaults().settings).toEqual({ plugins: { widget: { size: 3 }, _meta: { visibility: { widget: false } } } });
+      expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'settings-pack.widget': { size: 3 }, _meta: { visibility: { 'settings-pack.widget': false } } } });
     } finally {
       registry.unregisterPack('settings-pack');
     }

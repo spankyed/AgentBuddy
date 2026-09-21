@@ -54,10 +54,10 @@ describe('the 0.3.15 migration', () => {
     })
 
     migration.up()
-    expect(stored()).toEqual({ plugins: { flows: { enableFlowPreview: false }, brain: { inspectEnabled: true } } })
+    expect(stored()).toEqual({ plugins: { 'default-setup.flows': { enableFlowPreview: false }, 'default-setup.brain': { inspectEnabled: true } } })
 
     migration.up()
-    expect(stored()).toEqual({ plugins: { flows: { enableFlowPreview: false }, brain: { inspectEnabled: true } } })
+    expect(stored()).toEqual({ plugins: { 'default-setup.flows': { enableFlowPreview: false }, 'default-setup.brain': { inspectEnabled: true } } })
   })
 
   it('marks a row seeded before the seeder tracked its values as unedited', () => {
@@ -90,7 +90,7 @@ describe('the 0.3.15 migration', () => {
     expect(attrs(row.id).seededFields).toEqual({ fields: ['title'], hash: 'kept' })
   })
 
-  const excludedSources = () => (repository.settingsQueries.getSettings().plugins as any).logs.excludedSources
+  const excludedSources = () => (repository.settingsQueries.getPluginSettings('logs') as any).excludedSources
   const setExcludedSources = (value: string[]) => repository.settingsCommands.updateSettings('plugin', 'logs', ['excludedSources'], value)
 
   it('hides action logs for a user who hid log-service', () => {
@@ -110,5 +110,67 @@ describe('the 0.3.15 migration', () => {
     migration.up()
 
     expect(excludedSources()).toEqual(['brain'])
+  })
+
+  // A plugin is addressed `<packId>.<featureId>` now. Without this move, the app reads
+  // `plugins['default-setup.threads']` while the user's settings say `plugins.threads`: their pinned
+  // plugins come back at the defaults and the app opens on whatever the default plugin is.
+  describe('moving the plugin settings onto namespaced plugin ids', () => {
+    /** The stored settings as 0.3.14 wrote them, for a user who hid two plugins and left on Notes */
+    const storeBareSettings = () => {
+      createDefaultSettings()
+      tx('Settings-app' as SdkEARS.EntityId).update('data', {
+        plugins: {
+          notes: { sortBy: 'created' },
+          logs: { excludedSources: ['brain'] },
+          _meta: { visibility: { browser: false, database: false }, lastActivePlugin: 'notes' },
+        },
+      })
+    }
+
+    it("moves the user's plugin settings, visibility and last-active plugin", () => {
+      storeBareSettings()
+
+      migration.up()
+
+      const plugins = stored().plugins as Record<string, any>
+      expect(plugins['default-setup.notes']).toEqual({ sortBy: 'created' })
+      expect(plugins).not.toHaveProperty('notes')
+      expect(plugins._meta.visibility).toEqual({ 'default-setup.browser': false, 'default-setup.database': false })
+      expect(plugins._meta.lastActivePlugin).toBe('default-setup.notes')
+    })
+
+    // It runs again on every development boot and after a reset
+    it('is idempotent: a second run moves nothing and changes nothing', () => {
+      storeBareSettings()
+
+      migration.up()
+      const afterFirst = structuredClone(stored())
+      migration.up()
+
+      expect(stored()).toEqual(afterFirst)
+    })
+
+    it("leaves a key the user already has under the namespaced id, and drops the stale one", () => {
+      createDefaultSettings()
+      tx('Settings-app' as SdkEARS.EntityId).update('data', {
+        plugins: { notes: { sortBy: 'stale' }, 'default-setup.notes': { sortBy: 'current' } },
+      })
+
+      migration.up()
+
+      const plugins = stored().plugins as Record<string, any>
+      expect(plugins['default-setup.notes']).toEqual({ sortBy: 'current' })
+      expect(plugins).toHaveProperty('notes')
+    })
+
+    it('does nothing for a user who changed no plugin settings', () => {
+      createDefaultSettings()
+      tx('Settings-app' as SdkEARS.EntityId).update('data', { general: { application: { openLinksInApp: false } } })
+
+      migration.up()
+
+      expect(stored()).not.toHaveProperty('plugins')
+    })
   })
 })

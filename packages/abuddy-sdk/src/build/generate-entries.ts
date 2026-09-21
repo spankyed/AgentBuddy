@@ -1,5 +1,6 @@
 import { readFileSync, existsSync, statSync } from 'fs';
 import { HOST_PLUGIN_IDS as SDK_HOST_PLUGIN_IDS } from '../events/index.ts';
+import { qualifiedId } from '../ids/addressing.ts';
 import { extname, join } from 'path';
 import { _mergeProvenance, PACK_TYPES_FORMAT, type PackManifest, type PackFeatureEntry, type PackProvenance, type PackTypeManifest, type PackSnapshot, type ProvenanceKind, type StepEntry } from './manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
@@ -390,8 +391,12 @@ const systemBinding = (id: string) => `__system_${id}`;
 const pluginBinding = (id: string) => `__plugin_${id}`;
 
 /** The id a dependency's system runs under: its feature id for a built-in pack, else `<packId>.<featureId>` */
+/**
+ * The id a feature's system or plugin runs under. One rule for every pack: what a pack writes is the name,
+ * and the name layer (`systemIds`, `pluginIds`) is what turns it into this.
+ */
 function runningSystemId(depId: string, snap: PackSnapshot, featureId: string): string {
-  return snap.manifest.builtIn ? featureId : `${depId}.${featureId}`;
+  return snap.manifest.builtIn ? featureId : qualifiedId(depId, featureId);
 }
 
 export interface GenerateEntriesOptions {
@@ -1004,7 +1009,21 @@ ${busIdEntries},
     const qualified = (packId: string, events: string) =>
       `{ [K in keyof ${events} & string as \`${packId}/\${K}\`]: ${events}[K] }`;
     const depQualified = typedDeps.map((depId) => qualified(depId, depAlias(depId, 'PackSystemEvents')));
+    // The plugin counterpart: this pack's own plugins, each dependency's that a sendsTo named, and the
+    // host's — the first two qualified, the host's bare.
+    const qualifiedPluginEvents = [
+      qualified(manifest.id, 'OwnPackEvents'),
+      ...eventDeps.map((depId) => qualified(depId, `Pick<${depAlias(depId, 'PackEvents')}, ${quoted(depTargets.get(depId)!)}>`)),
+      ...(hostTargets.size ? [`Pick<HostPluginEvents, ${quoted(hostTargets)}>`] : []),
+    ].join(' & ');
     // Every pack gets sendToSystem: its own systems (busId), and each dependency's
+    // Its own plugins by feature id, each dependency's as the `sendsTo` named it, and the host's bare —
+    // bare ids are the host's reserved namespace, which registerPack keeps by refusing a pack claiming one
+    const pluginIds = [
+      ...[...ownPluginIds].map((id) => `  '${id}': '${qualifiedId(manifest.id, id)}',`),
+      ...[...depTargets].flatMap(([depId, targets]) => [...targets].map((t) => `  '${t}': '${qualifiedId(depId, t)}',`)),
+      ...[...hostTargets].map((id) => `  '${id}': '${id}',`),
+    ];
     const systemIds = [
       ...(hasSystems ? ['  ...busId,'] : []),
       ...[...depSnapshots].flatMap(([depId, snap]) => (snap.manifest.features ?? [])
@@ -1047,9 +1066,11 @@ ${entries}
 export type PackEvents = OwnPackEvents${externalReceivers};
 
 /**
- * Plugin id → the event types that plugin receives, the runtime half of \`OwnPackEvents\`. The app checks
- * a system's send against it and drops what no one declared. Only this pack's own plugins: a dependency's
- * and the host's come from their own packs.
+ * Feature id → the event types that feature's plugin receives, the runtime half of \`OwnPackEvents\`. The
+ * app checks a system's send against it and drops what no one declared, addressing each plugin
+ * \`<packId>.<featureId>\` — it qualifies these keys itself, so a pack names only its own features here and
+ * cannot claim an id outside its namespace. Only this pack's own plugins: a dependency's and the host's
+ * come from their own packs.
  */
 export const receivedEventTypes: Record<string, readonly string[]> = {
 ${receivedTypes}
@@ -1066,10 +1087,22 @@ export type SendableSystemEvents = PackSystemEvents${depQualified.map(q => ` & $
 /** The systems actions send to (\`services.emitter\`), all named \`<pack>/<feature>\`. */
 export type QualifiedSystemEvents = ${[qualified(manifest.id, 'PackSystemEvents'), ...depQualified].join(' & ')};
 
+/**
+ * The plugins actions send to (\`services.emitter\`): every pack's named \`<pack>/<feature>\`, this pack's
+ * own too, and a host plugin bare — bare ids are the host's namespace.
+ */
+export type QualifiedPluginEvents = ${qualifiedPluginEvents};
+
 /** Each system name \`sendToSystem\` takes → the id that system runs under */
 const systemIds = {${systemIds.length ? `\n${systemIds.join('\n')}\n` : ''}};
 
-export const { emit, sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<PackEvents, SendableSystemEvents>(systemIds);
+/**
+ * Each plugin name \`emit\` and \`sendToPlugin\` take → the id that plugin runs under. Exported for code
+ * that keys data by a plugin — settings, say — so it writes the name and stores the id, as a send does.
+ */
+export const pluginId = {${pluginIds.length ? `\n${pluginIds.join('\n')}\n` : ''}} as const;
+
+export const { emit, sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<PackEvents, SendableSystemEvents>(systemIds, pluginId);
 `;
   }
 
@@ -1165,7 +1198,7 @@ import type { EARS } from '@abuddy/ears';
 import { services as sdkServices, type HostServices } from '@abuddy/sdk/services';
 import type { TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
 import type { Repositories } from './repository.js';
-import type { PackEvents, QualifiedSystemEvents } from './events.js';
+import type { QualifiedPluginEvents, QualifiedSystemEvents } from './events.js';
 ${imports.join('\n')}
 ${deps.imports.join('\n')}
 
@@ -1174,11 +1207,11 @@ ${entries.join('\n')}
 };
 
 /**
- * \`services.emitter\`, typed with this pack's events. Actions run outside any pack, so a system is
- * named \`<pack>/<feature>\`, this pack's own too.
+ * \`services.emitter\`, typed with this pack's events. Actions run outside any pack, so a system and a
+ * plugin are both named \`<pack>/<feature>\`, this pack's own too — a host plugin is named bare.
  */
 export type PackEmitter = Omit<HostServices['emitter'], 'sendToPlugin' | 'sendToSystem'> & {
-  sendToPlugin: TypedSendToPlugin<PackEvents>;
+  sendToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;
   sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;
 };
 

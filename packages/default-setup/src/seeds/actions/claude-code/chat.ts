@@ -478,7 +478,7 @@ export async function action(
       (services.cli as any).claudeCode.clearHandle(threadId);
       setRunning(services, threadId, false);
       updateChatState(services, threadId, 'idle');
-      services.emitter.sendToPlugin('threads', {
+      services.emitter.sendToPlugin('default-setup/threads', {
         type: 'FLASH_CHAT_STATE', threadId, stateId: 'error', durationMs: 3000,
       });
     });
@@ -505,7 +505,7 @@ export async function action(
 
     // ─── Generic error ───────────────────────────────────────────────────
     updateChatState(services, threadId, 'idle');
-    services.emitter.sendToPlugin('threads', {
+    services.emitter.sendToPlugin('default-setup/threads', {
       type: 'FLASH_CHAT_STATE', threadId, stateId: 'error', durationMs: 3000,
     });
     writer.finalize(`⚠️ ${message}`);

@@ -274,7 +274,7 @@ async function handleRename(
   });
 
   services.repository.threadCommands.update(threadId as any, { topic: newTitle });
-  services.emitter.sendToPlugin('threads', {
+  services.emitter.sendToPlugin('default-setup/threads', {
     type: 'THREAD_UPDATED',
     threadId,
     updates: { topic: newTitle },

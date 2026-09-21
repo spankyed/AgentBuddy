@@ -77,6 +77,12 @@ const system = (id: string, extra: Record<string, unknown> = {}) => {
 };
 const withPlugin = (feature: Record<string, unknown>) => ({ ...feature, plugin: { entry: `src/features/${feature.id}/fe/index.ts` } });
 
+/** The `receivedEventTypes` object literal alone: the ids after it are the name map, a different question */
+function receivedTypesBlock(events: string): string {
+  const start = events.indexOf('export const receivedEventTypes');
+  return events.slice(start, events.indexOf('};', start));
+}
+
 describe('generated events', () => {
   it('keys each plugin by the systems that send to it', () => {
     const files = generate({ features: [withPlugin(system('actions', { sendsTo: ['flows', 'application'] })), withPlugin(system('flows'))] });
@@ -114,17 +120,18 @@ describe('generated events', () => {
 
   it('records nothing for a plugin no system sends to, so a send there is rejected', () => {
     const events = generate({ features: [withPlugin(system('actions')), withPlugin({ id: 'viewer', plugin: { entry: 'src/features/viewer/fe/index.ts' } })] })['src/__generated__/events.ts'];
-    expect(events).toContain("'actions': ['ACTIONS_CONNECTED', 'ACTIONS_UPDATED'],");
-    expect(events).not.toContain("'viewer':");
+    const declared = receivedTypesBlock(events);
+    expect(declared).toContain("'actions': ['ACTIONS_CONNECTED', 'ACTIONS_UPDATED'],");
+    expect(declared).not.toContain("'viewer':");
   });
 
   it('records only this pack\'s own plugins: a dependency\'s and the host\'s are their owners\' to declare', () => {
     const deps = { 'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { entry: 'y' } }] }, facade({ PackEvents: "{ memos: { type: 'MEMO_ADDED' } }" })) };
     const events = generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions', { sendsTo: ['memos', 'application'] }))] }, deps)['src/__generated__/events.ts'];
-    const runtime = events.slice(events.indexOf('receivedEventTypes'));
-    expect(runtime).toContain("'actions':");
-    expect(runtime).not.toContain("'memos':");
-    expect(runtime).not.toContain("'application':");
+    const declared = receivedTypesBlock(events);
+    expect(declared).toContain("'actions':");
+    expect(declared).not.toContain("'memos':");
+    expect(declared).not.toContain("'application':");
   });
 
   it('leaves out a host plugin no sendsTo names', () => {
@@ -227,10 +234,23 @@ describe('generated system sends', () => {
     expect(events).toContain('export type SendableSystemEvents = PackSystemEvents & { [K in keyof __dep_base_pack_PackSystemEvents & string as `base-pack/${K}`]: __dep_base_pack_PackSystemEvents[K] } & ');
     // Each name maps to the id its system runs under: an external dependency's is prefixed, a built-in's isn't
     expect(events).toContain("const systemIds = {\n  ...busId,\n  'base-pack/threads': 'base-pack.threads',\n  'default-setup/memos': 'memos',\n};");
-    expect(events).toContain('defineEvents<PackEvents, SendableSystemEvents>(systemIds);');
+    expect(events).toContain('defineEvents<PackEvents, SendableSystemEvents>(systemIds, pluginId);');
+    // This pack has no plugin of its own and sends to none, so it gets no plugin names at all
+    expect(events).toContain('export const pluginId = {} as const;');
     expect(files['src/__generated__/system-specs.ts']).toContain("export const specs = {\n  'memos': incomingEvents(__system_memos.spec),\n};");
     expect(files['src/__generated__/system-ids.ts']).toContain("export const threads = 'base-pack.threads';");
     expect(files['src/__generated__/pack-types.ts']).toContain("export type { PackEvents, PackSystemEvents } from './events.js';");
+  });
+
+  // The plugin half of the same name layer: a pack writes the short name and the map holds the id
+  it("names the pack's own plugins by feature id and the ones it sends to as <pack>/<feature>", () => {
+    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { entry: 'y' } }] }, facade({ PackEvents: "{ memos: { type: 'MEMO_ADDED' } }" })) };
+    const events = generate({
+      dependencies: { 'base-pack': '1.0.0' },
+      features: [withPlugin(system('actions', { sendsTo: ['memos', 'application'] }))],
+    }, deps)['src/__generated__/events.ts'];
+
+    expect(events).toContain("export const pluginId = {\n  'actions': 'demo-pack.actions',\n  'memos': 'base-pack.memos',\n  'application': 'application',\n} as const;");
   });
 
   it("gives a pack without systems a sendToSystem for its dependencies' systems", () => {
@@ -862,8 +882,8 @@ describe('generated services', () => {
     const files = generate({ features: [system('memos')] }, { 'base-pack': dependency({ features: [system('threads')] }, facade()) });
     expect(files['src/__generated__/events.ts']).toContain('export type QualifiedSystemEvents = { [K in keyof PackSystemEvents & string as `demo-pack/${K}`]: PackSystemEvents[K] } & { [K in keyof __dep_base_pack_PackSystemEvents & string as `base-pack/${K}`]: __dep_base_pack_PackSystemEvents[K] };');
     const services = files['src/__generated__/services.ts'];
-    expect(services).toContain("import type { PackEvents, QualifiedSystemEvents } from './events.js';");
-    expect(services).toContain('  sendToPlugin: TypedSendToPlugin<PackEvents>;\n  sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;');
+    expect(services).toContain("import type { QualifiedPluginEvents, QualifiedSystemEvents } from './events.js';");
+    expect(services).toContain('  sendToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;\n  sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;');
   });
 });
 
