@@ -33,7 +33,8 @@ const move = () => {
 
 beforeAll(() => {
   const origin = (id: string, builtIn: boolean) => ({ id, name: id, version: '1.0.0', dir: `packs/${id}`, builtIn });
-  registry.registerPack({ id: 'memo-pack', systems: [], features: [withPlugin('memos'), withPlugin('board')] }, origin('memo-pack', false));
+  // `notes` is the built-in pack's feature too: before 0.3.15 the built-in plugin ran under it
+  registry.registerPack({ id: 'memo-pack', systems: [], features: [withPlugin('memos'), withPlugin('board'), withPlugin('notes')] }, origin('memo-pack', false));
   registry.registerPack({ id: 'built-in', systems: [], features: [withPlugin('notes')] }, origin('built-in', true));
 });
 
@@ -50,7 +51,7 @@ describe("the 0.3.15 app migration, for an external pack's plugins", () => {
       general: { application: { openLinksInApp: false } },
       plugins: {
         'memo-pack.memos': { sort: 'newest' },
-        // A built-in pack's keys are its own migration's to move
+        // A built-in pack's keys are its own migration's to move, even when an external pack has the feature id too
         notes: { fontSize: 14 },
         _meta: { visibility: { 'memo-pack.memos': true, 'memo-pack.board': false, notes: false }, lastActivePlugin: 'memo-pack.memos' },
       },

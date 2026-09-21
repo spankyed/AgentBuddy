@@ -318,4 +318,6 @@ Choices where the plan left details open:
 - The shared move leaves a bare key alone when two registered plugins share its feature id. The
   renderer keeps an unregistered last-active id when it is an address, because its pack may load
   later.
-- A pack that isn't loaded when the host's 0.3.15 migration runs keeps its bare keys.
+- A pack that isn't loaded when the host's 0.3.15 migration runs keeps its bare keys. The host's migration leaves
+  a bare id that a built-in pack also has a feature by to that pack's own migration, because the built-in
+  plugin ran under it.

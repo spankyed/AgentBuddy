@@ -81,14 +81,22 @@ function moveAppState(registry: MigrationRegistry): void {
 /**
  * An installed external pack's plugin settings, sidebar visibility and last-active plugin, stored under its
  * features' bare ids before 0.3.15, onto its plugins' addresses. The built-in packs move their own in their
- * migrations. A pack that isn't loaded when this runs (disabled) keeps its bare keys.
+ * migrations, and a bare id a built-in pack also has a feature by is theirs: the built-in plugin ran under it.
+ * A pack that isn't loaded when this runs (disabled) keeps its bare keys.
  */
 function addressExternalPluginSettings(registry: MigrationRegistry): void {
   const external = new Set(registry.externalPacks().map(({ id }) => id));
   if (external.size === 0) return;
   const data = (untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: { plugins?: Record<string, unknown> } } | undefined)?.data;
   if (!data?.plugins) return;
-  const addresses = registry.pluginIds().filter((address) => external.has(parseAddress(address)?.packId ?? ''));
-  const { plugins, moved } = addressPluginSettings(data.plugins, addresses);
-  if (moved > 0) tx(SETTINGS_ID).put('data', { ...data, plugins });
+  const plugins = registry.pluginIds().flatMap((address) => {
+    const parsed = parseAddress(address);
+    return parsed ? [{ address, ...parsed }] : [];
+  });
+  const builtInFeatures = new Set(plugins.filter(({ packId }) => !external.has(packId)).map(({ featureId }) => featureId));
+  const addresses = plugins
+    .filter(({ packId, featureId }) => external.has(packId) && !builtInFeatures.has(featureId))
+    .map(({ address }) => address);
+  const moved = addressPluginSettings(data.plugins, addresses);
+  if (moved.moved > 0) tx(SETTINGS_ID).put('data', { ...data, plugins: moved.plugins });
 }
