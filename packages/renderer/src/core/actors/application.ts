@@ -7,7 +7,7 @@ import { trpc, reconnectApiClient } from '@/core/trpc';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
 import { globalToast } from '@/core/toast';
 import { getDesignated } from '@abuddy/sdk/fe';
-import { splitRef } from '@abuddy/sdk/ids';
+import { resolveName, splitRef } from '@abuddy/sdk/ids';
 import { loadPackFrontend, unloadPackFrontend } from '@/packs/pack-loader';
 
 /** This window's last active plugin, read before the backend's stored one arrives */
@@ -78,7 +78,8 @@ export interface ApplicationContext {
   loadedPacksRead: boolean;
 }
 
-export const application = 'application' as const;
+/** The application actor's system id: the host's `application` plugin, which pack systems send to */
+export const application = 'host/application' as const;
 
 type AppActor = ReturnType<typeof createApplicationState>;
 
@@ -474,7 +475,7 @@ export const createApplicationState = () => setup({
       if (newPlugins.length === 0) {
         enqueue.assign({ packPluginIds, packFrontendsLoaded });
       } else {
-        const packsIdx = context.plugins.findIndex(p => p.id === 'packs');
+        const packsIdx = context.plugins.findIndex(p => p.id === resolveName('host/packs'));
         const allPlugins = packsIdx >= 0
           ? [...context.plugins.slice(0, packsIdx), ...newPlugins, ...context.plugins.slice(packsIdx)]
           : [...context.plugins, ...newPlugins];
@@ -894,7 +895,7 @@ export const createApplicationState = () => setup({
     areHotkeysEnabled: ({ context }) => !context.hotkeysDisabled,
   },
 }).createMachine({
-  id: application,
+  id: 'application',
   context: ({ input }) => {
     // Load saved panel sizes from localStorage or use defaults
     const savedSizes = localStorage.getItem('agentbuddy-panel-sizes');

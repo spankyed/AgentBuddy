@@ -2,9 +2,9 @@
 // bare key a plugin's feature id stands for onto that plugin's address, and leaves everything else alone.
 import { describe, expect, it } from 'vitest';
 import { addressPluginSettings } from '../../src/framework/index.ts';
-import { asHostAddress, resolveName } from '../../src/ids/index.ts';
+import { resolveName } from '../../src/ids/index.ts';
 
-const addresses = [resolveName('memo-pack/memos'), resolveName('memo-pack/board'), asHostAddress('application')];
+const addresses = [resolveName('memo-pack/memos'), resolveName('memo-pack/board'), resolveName('host/application')];
 
 const STORED = {
   memos: { sort: 'newest' },
@@ -63,8 +63,8 @@ describe('addressPluginSettings', () => {
     expect(moved).toBe(1);
   });
 
-  it('leaves a host plugin, and the last-active plugin when it names none of them, bare', () => {
-    const stored = { application: { a: 1 }, _meta: { lastActivePlugin: 'application' } };
+  it('leaves a key, and the last-active plugin, that names none of the plugins where it is', () => {
+    const stored = { other: { a: 1 }, _meta: { lastActivePlugin: 'other' } };
     expect(addressPluginSettings(stored, addresses)).toEqual({ plugins: stored, moved: 0 });
   });
 });

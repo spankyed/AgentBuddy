@@ -1,2 +1,2 @@
-export { bus } from './system-ids.ts';
-export { asHostAddress, resolveName, splitRef, type FeatureRef, type NameContext } from './addressing.ts';
+export { bus, HOST_PACK_ID } from './system-ids.ts';
+export { resolveName, splitRef, type FeatureRef } from './addressing.ts';

@@ -47,9 +47,10 @@ describe('defineEvents', () => {
     expect(events.emit('memos', { type: 'MEMO_ADDED' })).toEqual(emit('memo-pack/memos', { type: 'MEMO_ADDED' }));
   });
 
-  // Bare ids are the host's namespace, so a host plugin is never taken for one of this pack's features
-  it("sends to a host plugin at its bare id", () => {
+  // The host is a pack: its plugins are named by ref, and a bare name is always this pack's own feature
+  it("sends to a host plugin by its ref, and takes a bare name as this pack's own", () => {
     const untyped = events.emit as unknown as (name: string, event: { type: string }) => { event: { pluginId: string } };
-    expect(untyped('application', { type: 'APPLICATION_HOTKEYS' }).event.pluginId).toBe('application');
+    expect(untyped('host/application', { type: 'APPLICATION_HOTKEYS' }).event.pluginId).toBe('host/application');
+    expect(untyped('application', { type: 'APPLICATION_HOTKEYS' }).event.pluginId).toBe('memo-pack/application');
   });
 });

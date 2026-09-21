@@ -14,6 +14,7 @@ import { installedPacks, type InstalledPack } from '../pack-discovery.ts';
 import { checkForUpdates } from '../pack-updater.ts';
 import { teardownPack, activatePack } from './lifecycle.ts';
 import { activationProblem } from './activation-outcome.ts';
+import { HOST_PACK_ID, resolveName } from '@abuddy/sdk/ids';
 
 export type { PackInfo };
 
@@ -39,7 +40,8 @@ type OutgoingPacksEvents =
   | { type: 'PACK_UPDATE_FAILED'; packId: string; error: string }
 
 export const packsSpec = defineSystem('packs')<IncomingPacksEvents, OutgoingPacksEvents>();
-export const packs = packsSpec.id;
+/** The host `packs` feature's ref, which its system and plugin both run under */
+export const packs = resolveName(packsSpec.id, HOST_PACK_ID);
 
 /**
  * The event types the `packs` plugin receives, as a value the app can check a send against — the same

@@ -48,7 +48,7 @@ describe('getPluginEventValidationMap', () => {
   const registry = createPackRegistry();
 
   it("starts with the host's own plugins, which no pack declares", () => {
-    expect(registry.getPluginEventValidationMap().get('application')).toEqual(
+    expect(registry.getPluginEventValidationMap().get('host/application')).toEqual(
       new Set(['CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'APPLICATION_RESTORE_LAST_PLUGIN', 'PLUGIN_VISIBILITY_UPDATED']),
     );
   });
@@ -116,11 +116,11 @@ describe('a pack cannot widen a plugin it does not own', () => {
     expect(map.get('both-pack/fromFeatures')).toEqual(new Set());
   });
 
-  // A pack names its own features, and the registry is what says how one is addressed, so `application`
-  // in a manifest is this pack's `application` feature and never the host's plugin.
-  it("cannot add event types to the host's plugin, because its own id is namespaced", () => {
+  // A pack names its own features, and the host is the pack `host`, so `application` in a manifest is this
+  // pack's `application` feature and never the host's plugin.
+  it("cannot add event types to the host's plugin, because a pack's feature is under its own pack", () => {
     const registry = createPackRegistry();
-    const host = registry.getPluginEventValidationMap().get('application');
+    const host = registry.getPluginEventValidationMap().get('host/application');
 
     registry.registerPack({
       id: 'impostor-pack',
@@ -129,7 +129,7 @@ describe('a pack cannot widen a plugin it does not own', () => {
       receivedEventTypes: { application: ['ANYTHING'] },
     });
 
-    expect(registry.getPluginEventValidationMap().get('application')).toEqual(host);
+    expect(registry.getPluginEventValidationMap().get('host/application')).toEqual(host);
     expect(registry.getPluginEventValidationMap().get('impostor-pack/application')).toEqual(new Set(['ANYTHING']));
   });
 
@@ -192,20 +192,20 @@ describe('a pack registering', () => {
 describe('a host plugin', () => {
   it('is checked with the event types the host registers for it', () => {
     const registry = createPackRegistry();
-    registry.registerHostPlugin('packs', ['PACKS_LIST', 'PACK_ACTIVATED']);
-    expect(registry.getPluginEventValidationMap().get('packs')).toEqual(new Set(['PACKS_LIST', 'PACK_ACTIVATED']));
+    registry.registerHostPlugin('host/packs', ['PACKS_LIST', 'PACK_ACTIVATED']);
+    expect(registry.getPluginEventValidationMap().get('host/packs')).toEqual(new Set(['PACKS_LIST', 'PACK_ACTIVATED']));
   });
 
-  // Bare ids are the host's namespace, so a pack with a `packs` feature of its own is not a contest
-  it("keeps its bare id whatever a pack names its own feature", () => {
+  // The host is the pack `host`, so a pack with a `packs` feature of its own is not a contest
+  it("keeps its ref whatever a pack names its own feature", () => {
     const registry = createPackRegistry();
     registry.registerPack({
       id: 'owner-pack', systems: [],
       features: [{ id: 'packs', hasSystem: false, hasPlugin: true, services: [] }],
       receivedEventTypes: { packs: ['NOT_THE_HOSTS'] },
     });
-    registry.registerHostPlugin('packs', ['PACKS_LIST']);
-    expect(registry.getPluginEventValidationMap().get('packs')).toEqual(new Set(['PACKS_LIST']));
+    registry.registerHostPlugin('host/packs', ['PACKS_LIST']);
+    expect(registry.getPluginEventValidationMap().get('host/packs')).toEqual(new Set(['PACKS_LIST']));
     expect(registry.getPluginEventValidationMap().get('owner-pack/packs')).toEqual(new Set(['NOT_THE_HOSTS']));
   });
 });

@@ -44,7 +44,7 @@ export interface LogsContext {
 export const logsSpec = defineSystem('logs')<IncomingLogEvents | LogsInternalEvents, OutgoingLogsEvents, LogsContext>();
 export const logs = logsSpec.id;
 /** The early system starts outside the bus, so it picks the sends to it out of every client send by address */
-const address = resolveName(logs, { packId });
+const address = resolveName(logs, packId);
 
 export const logsSystem = setup({
   types: logsSpec.types,

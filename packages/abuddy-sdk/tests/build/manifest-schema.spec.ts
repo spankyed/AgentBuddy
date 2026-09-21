@@ -99,6 +99,15 @@ describe('parseManifest', () => {
   });
 });
 
+describe('the pack id', () => {
+  // The app is the pack `host`: its features are `host/<feature>`, so a pack of that id would share them
+  it("refuses the host's own", () => {
+    expect(parseManifest({ id: 'host', name: 'Host', version: '0.1.0' }).errors)
+      .toEqual([expect.stringContaining('"host" is the app\'s own pack id')]);
+    expect(parseManifest({ id: 'hosted', name: 'Hosted', version: '0.1.0' }).errors).toEqual([]);
+  });
+});
+
 describe('seedFormats and boot.seed entries', () => {
   const pack = { id: 'test-pack', name: 'Test', version: '0.1.0', entities: { Memo: 'Memo' }, dependencies: { 'base-pack': '*' } };
   const memos = {

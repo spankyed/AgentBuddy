@@ -43,10 +43,10 @@ export interface ReportErrorInput {
 /** A system error's report, without a step */
 export type ReportSystemErrorInput = Omit<ReportErrorInput, 'step'>;
 
-/** What the app shows for a system error: sent to the `application` plugin */
+/** What the app shows for a system error: sent to the `host/application` plugin */
 export type SystemErrorEvent = {
   type: 'SYSTEM_ERROR';
-  pluginId: 'application';
+  pluginId: 'host/application';
   errorId: string;
   message: string;
   title?: string;
@@ -102,7 +102,7 @@ function reportSystemError(input: ReportSystemErrorInput): void {
   const severity = input.severity ?? 'error';
   const event: SystemErrorEvent = {
     type: 'SYSTEM_ERROR',
-    pluginId: 'application',
+    pluginId: 'host/application',
     errorId: randomId({ prefix: 'err_', counterSafe: true }),
     title: input.title,
     message,

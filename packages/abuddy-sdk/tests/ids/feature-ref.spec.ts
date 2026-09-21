@@ -1,13 +1,13 @@
 // A FeatureRef comes only from the resolver or a registry, so a string pack code wrote by hand can't reach
 // a call that takes one. The expectations below are checked by `npm run typecheck`, not at run time.
 import { expect, it } from 'vitest';
-import { asHostAddress, resolveName, type FeatureRef } from '../../src/ids/index.ts';
+import { resolveName, type FeatureRef } from '../../src/ids/index.ts';
 import { navigateToAddress } from '../../src/fe/navigation.ts';
 
 it('is a string at run time, and only the resolver or a registry makes one', () => {
-  const resolved: FeatureRef = resolveName('memos', { packId: 'memo-pack' });
-  const host: FeatureRef = asHostAddress('application');
-  expect([resolved, host]).toEqual(['memo-pack/memos', 'application']);
+  const resolved: FeatureRef = resolveName('memos', 'memo-pack');
+  const host: FeatureRef = resolveName('host/application');
+  expect([resolved, host]).toEqual(['memo-pack/memos', 'host/application']);
 
   // @ts-expect-error a hand-written ref isn't one
   const written: FeatureRef = 'memo-pack/memos';

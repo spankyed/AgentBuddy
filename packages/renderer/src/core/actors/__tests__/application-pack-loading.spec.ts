@@ -57,7 +57,7 @@ beforeEach(() => {
   warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
   const notes = plugin('notes');
   app = createActor(createApplicationState(), {
-    systemId: 'application',
+    systemId: 'host/application',
     input: { plugins: [notes], defaultPlugin: notes, restoreLastActivePlugin: false },
   }).start();
 });

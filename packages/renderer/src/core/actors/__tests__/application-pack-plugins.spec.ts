@@ -44,7 +44,7 @@ beforeEach(() => {
   packClientReady.mockResolvedValue(undefined);
   builtInNotes = plugin('notes');
   app = createActor(createApplicationState(), {
-    systemId: 'application',
+    systemId: 'host/application',
     input: { plugins: [builtInNotes], defaultPlugin: builtInNotes, restoreLastActivePlugin: false },
   }).start();
 });
@@ -53,7 +53,7 @@ afterEach(() => app.stop());
 
 /** The server's CLIENT_CONNECTED broadcast, which any window's connection sends every window */
 const broadcastConnected = (hasOnboarded = true) =>
-  subscription.handlers!.onData({ pluginId: 'application', type: 'CLIENT_CONNECTED', hasOnboarded });
+  subscription.handlers!.onData({ pluginId: 'host/application', type: 'CLIENT_CONNECTED', hasOnboarded });
 /** This window's subscription is established: the server broadcasts its CLIENT_CONNECTED */
 const connect = (hasOnboarded = true) => {
   subscription.handlers!.onStarted();

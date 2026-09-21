@@ -50,8 +50,8 @@ beforeEach(async () => {
     systems: [{ id: resolveName('older-pack/legacy'), machine, events: new Set(['PING']) }],
     features: [{ id: 'legacy', hasSystem: true, hasPlugin: true, services: [] }],
   });
-  registry.registerHostPlugin('packs', PACKS_PLUGIN_EVENT_TYPES);
-  bus = createActor(createAppBus(registry), { systemId: 'bus' }).start();
+  registry.registerHostPlugin('host/packs', PACKS_PLUGIN_EVENT_TYPES);
+  bus = createActor(createAppBus(registry), { systemId: 'host/bus' }).start();
   await connect();
 });
 
@@ -99,13 +99,13 @@ describe('an event a system sends to a plugin', () => {
   });
 
   it("delivers to a host plugin, whose types the host declares and no pack widens", async () => {
-    await send({ type: 'APPLICATION_HOTKEYS', pluginId: 'application', hotkeys: {} });
+    await send({ type: 'APPLICATION_HOTKEYS', pluginId: 'host/application', hotkeys: {} });
     expect(delivered().map((e) => e.type)).toContain('APPLICATION_HOTKEYS');
     expect(takeSystemErrors()).toEqual([]);
   });
 
   it('drops an event a host plugin does not declare, so the host is checked like a pack', async () => {
-    await send({ type: 'APPLICATION_EXPLODE', pluginId: 'application' });
+    await send({ type: 'APPLICATION_EXPLODE', pluginId: 'host/application' });
     expect(delivered().map((e) => e.type)).not.toContain('APPLICATION_EXPLODE');
     expect(takeSystemErrors()[0]?.message).toContain('APPLICATION_EXPLODE');
   });
@@ -113,7 +113,7 @@ describe('an event a system sends to a plugin', () => {
   // The packs view is driven entirely by a host system's sends. Checking sends without declaring the
   // host's own plugins dropped every one of them, and the view stopped updating.
   it("delivers the packs system's sends to the packs plugin", async () => {
-    await send({ type: 'PACKS_LIST', pluginId: 'packs', packs: [] });
+    await send({ type: 'PACKS_LIST', pluginId: 'host/packs', packs: [] });
     expect(delivered().map((e) => e.type)).toEqual(['PACKS_LIST']);
     expect(takeSystemErrors()).toEqual([]);
   });

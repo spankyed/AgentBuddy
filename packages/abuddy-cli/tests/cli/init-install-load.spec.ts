@@ -4,6 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { startTestRuntime } from '@abuddy/sdk/testing';
+import { resolveName } from '@abuddy/sdk/ids';
 import { installPackFromLocal } from '@abuddy/host/packs';
 import { loadExternalPacks } from '@abuddy/host/packs/runtime';
 import { init } from '../../src/commands/init';
@@ -71,7 +72,7 @@ describe('pack full lifecycle: init → install → load', () => {
     expect(packs).toHaveLength(1);
     expect(packs[0].origin.id).toBe('my-test-pack');
     expect(packs[0].origin.name).toBe('My Test Pack');
-    const main = packs[0].registration.systems.find((s) => s.id === 'my-test-pack/main')!;
+    const main = packs[0].registration.systems.find((s) => s.id === resolveName('my-test-pack/main'))!;
     expect(main).toBeDefined();
     expect(main.events.has('TEST_EVENT')).toBe(true);
   });

@@ -3,26 +3,23 @@
 import { describe, expect, it } from 'vitest';
 import { resolveName, splitRef } from '../../src/ids/index.ts';
 
-const inPack = { packId: 'memo-pack', hostIds: ['application'] };
-
 describe('resolveName', () => {
   it("resolves a pack's own feature to its ref", () => {
-    expect(resolveName('memos', inPack)).toBe('memo-pack/memos');
+    expect(resolveName('memos', 'memo-pack')).toBe('memo-pack/memos');
   });
 
-  it("takes another pack's feature, named <pack>/<feature>, as it is", () => {
-    expect(resolveName('default-setup/notes', inPack)).toBe('default-setup/notes');
+  it('takes any other feature, the host\'s too, named <pack>/<feature>, as it is', () => {
+    expect(resolveName('default-setup/notes', 'memo-pack')).toBe('default-setup/notes');
+    expect(resolveName('host/application', 'memo-pack')).toBe('host/application');
   });
 
-  // A pack could have a feature named after a host plugin; the bare id is the host's all the same
-  it("leaves a host id bare, whatever pack is asking", () => {
-    expect(resolveName('application', inPack)).toBe('application');
+  // The host is a pack like any other, so a bare name is always the writing pack's own
+  it("resolves a bare name that is also a host feature's to the writing pack's own", () => {
+    expect(resolveName('application', 'memo-pack')).toBe('memo-pack/application');
   });
 
   it('throws for a bare name with no pack to belong to, naming the form to write', () => {
-    expect(() => resolveName('notes', { hostIds: ['application'] }))
-      .toThrow('"notes" names no pack\'s feature: write "<packId>/notes"');
-    expect(() => resolveName('notes')).toThrow('names no pack');
+    expect(() => resolveName('notes')).toThrow('"notes" names no pack\'s feature: write "<packId>/notes"');
   });
 });
 
@@ -31,7 +28,7 @@ describe('splitRef', () => {
     expect(splitRef('default-setup/notes')).toEqual({ packId: 'default-setup', featureId: 'notes' });
   });
 
-  it("returns undefined for what isn't a ref: a bare id, or a malformed one", () => {
+  it("returns undefined for what isn't a ref: a bare name, or a malformed one", () => {
     expect(splitRef('application')).toBeUndefined();
     expect(splitRef('/notes')).toBeUndefined();
     expect(splitRef('default-setup/')).toBeUndefined();

@@ -12,7 +12,7 @@ const logWrite = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 (window as unknown as { electronAPI: unknown }).electronAPI = { rendererLog: { write: logWrite } };
 
 const { bindRendererHost, fePacks } = await import('@/core/fe-host');
-const { asHostAddress, resolveName } = await import('@abuddy/sdk/ids');
+const { resolveName } = await import('@abuddy/sdk/ids');
 const { secretsClient, navigateToAddress, getDslTypes, getDesignated, tiptapPluginRegistry } = await import('@abuddy/sdk/fe');
 const { stepRegistry } = await import('@abuddy/sdk/steps');
 const { sendToSystem } = await import('@abuddy/sdk/events');
@@ -88,7 +88,7 @@ it('gives secretsClient the API client and navigateToAddress the application act
 // A link to a plugin that isn't there used to select nothing and, with an event, wait forever for an actor
 it('refuses to navigate to an address no plugin is registered at', () => {
   bindRendererHost(() => application as never);
-  expect(() => navigateToAddress(asHostAddress('code'))).toThrow('No plugin is registered at "code"');
+  expect(() => navigateToAddress(resolveName('default-setup/code'))).toThrow('No plugin is registered at "default-setup/code"');
 });
 
 it("sends to systems over the API client, reporting a rejected send to the console, the app's log and a toast, without an unhandled rejection or the payload", async () => {

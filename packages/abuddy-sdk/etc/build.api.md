@@ -438,7 +438,7 @@ export function loadFlowsFromDir(flowsDir: string): Promise<{
 export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     $schema: z.ZodOptional<z.ZodString>;
     $manifestVersion: z.ZodOptional<z.ZodLiteral<1>>;
-    id: z.ZodString;
+    id: z.ZodEffects<z.ZodString, string, string>;
     name: z.ZodString;
     version: z.ZodString;
     builtIn: z.ZodOptional<z.ZodBoolean>;

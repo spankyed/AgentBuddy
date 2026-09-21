@@ -64,7 +64,7 @@ test("the pack's feature settings are defaults in the app", async ({ appPage, ap
 test("a re-enabled pack's plugin gets its startup data again", async ({ appPage, app }) => {
   await app.waitForPlugin('memos');
   const pluginIds = () => appPage.evaluate(() => (window as any).applicationState.getSnapshot().context.plugins.map((p: { id: string }) => p.id) as string[]);
-  const toggle = () => appPage.evaluate(() => (window as any).applicationState.system.get('packs').send({ type: 'UI.TOGGLE_ENABLED', packId: 'e2e-fixture' }));
+  const toggle = () => appPage.evaluate(() => (window as any).applicationState.system.get('host/packs').send({ type: 'UI.TOGGLE_ENABLED', packId: 'e2e-fixture' }));
 
   // Disabled while active: its plugin actor must stop, or re-enabling can't spawn it again
   await app.navigate('memos');

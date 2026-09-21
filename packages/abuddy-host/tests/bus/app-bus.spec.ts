@@ -51,7 +51,7 @@ beforeEach(() => {
     id: 'fe-pack', name: 'fe-pack', version: '1.0.0', dir: packDir, builtIn: false,
     manifest: { id: 'fe-pack', name: 'fe-pack', version: '1.0.0' } as never,
   });
-  bus = createActor(createAppBus(registry), { systemId: 'bus' }).start();
+  bus = createActor(createAppBus(registry), { systemId: 'host/bus' }).start();
 });
 
 afterEach(() => {
@@ -67,7 +67,7 @@ describe('createAppBus', () => {
     testRootEvents.emitConnected();
     await flush();
     expect(received).toEqual(['local-pack']);
-    expect(outgoing).toContainEqual({ type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginId: 'application' });
+    expect(outgoing).toContainEqual({ type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginId: 'host/application' });
 
     testRootEvents.emitPackClientConnected('fe-pack');
     await flush();
@@ -84,7 +84,7 @@ describe('createAppBus', () => {
     });
     try {
       bus.stop();
-      bus = createActor(createAppBus(registry), { systemId: 'bus' }).start();
+      bus = createActor(createAppBus(registry), { systemId: 'host/bus' }).start();
       testRootEvents.emitConnected();
       testRootEvents.emitIncoming({ type: 'PING', systemId: 'ping-pack/feature' });
       await flush();
@@ -104,7 +104,7 @@ describe('createAppBus', () => {
     });
     try {
       bus.stop();
-      bus = createActor(createAppBus(registry), { systemId: 'bus' }).start();
+      bus = createActor(createAppBus(registry), { systemId: 'host/bus' }).start();
       // A schedule tick or a `fire` step at boot, with no window open yet
       testRootEvents.emitIncoming({ type: 'PING', systemId: 'ping-pack/feature' });
       testRootEvents.emitPluginSend({ type: 'EARLY', pluginId: 'ping-pack/feature' });

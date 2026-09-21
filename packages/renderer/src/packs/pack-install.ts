@@ -1,4 +1,5 @@
 import { trpc } from '@/core/trpc';
+import { id } from './state';
 
 export interface PackInstallRequest {
   packSlug: string;
@@ -21,7 +22,7 @@ export function handleProtocolInstall(params: Record<string, string>): PackInsta
 export async function requestPackInstall(request: PackInstallRequest): Promise<void> {
   try {
     await trpc.bus.send.mutate({
-      systemId: 'packs',
+      systemId: id,
       type: 'INSTALL_PACK',
       packSlug: request.packSlug,
       source: request.source,

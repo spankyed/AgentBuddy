@@ -4,7 +4,7 @@
 import { tx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
 import { addressPluginSettings, type PackMigration } from '@abuddy/sdk/framework';
-import { splitRef } from '@abuddy/sdk/ids';
+import { HOST_PACK_ID, splitRef } from '@abuddy/sdk/ids';
 import { appState, type AppState } from '../../app-state/index.ts';
 import type { PackRegistry } from '../../packs/pack-registration.ts';
 
@@ -41,10 +41,10 @@ type MigrationRegistry = Pick<PackRegistry, 'getPackRegistration' | 'builtInPack
 /** The migration, over the app's registered packs */
 export const migration = (registry: MigrationRegistry): PackMigration => ({
   target: '0.3.15',
-  description: "Move the app's state (onboarding, versions, seed hashes) from the settings' internal section to AppState, and external packs' plugin settings onto their plugins' addresses",
+  description: "Move the app's state (onboarding, versions, seed hashes) from the settings' internal section to AppState, and the host's and external packs' plugin settings onto their plugins' refs",
   up: () => {
     moveAppState(registry);
-    addressExternalPluginSettings(registry);
+    addressHostAndExternalPluginSettings(registry);
   },
 });
 
@@ -79,24 +79,23 @@ function moveAppState(registry: MigrationRegistry): void {
 }
 
 /**
- * An installed external pack's plugin settings, sidebar visibility and last-active plugin, stored under its
- * features' bare ids before 0.3.15, onto its plugins' addresses. The built-in packs move their own in their
- * migrations, and a bare id a built-in pack also has a feature by is theirs: the built-in plugin ran under it.
- * A pack that isn't loaded when this runs (disabled) keeps its bare keys.
+ * The plugin settings, sidebar visibility and last-active plugin of the host's plugins (`host/packs`) and of
+ * installed external packs, stored under the features' bare ids before 0.3.15, onto their refs. The built-in
+ * packs move their own in their migrations, and a bare id a built-in pack also has a feature by is theirs: the
+ * built-in plugin ran under it. A pack that isn't loaded when this runs (disabled) keeps its bare keys.
  */
-function addressExternalPluginSettings(registry: MigrationRegistry): void {
-  const external = new Set(registry.externalPacks().map(({ id }) => id));
-  if (external.size === 0) return;
+function addressHostAndExternalPluginSettings(registry: MigrationRegistry): void {
+  const movedHere = new Set([HOST_PACK_ID, ...registry.externalPacks().map(({ id }) => id)]);
   const data = (untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: { plugins?: Record<string, unknown> } } | undefined)?.data;
   if (!data?.plugins) return;
-  const plugins = registry.pluginIds().flatMap((address) => {
-    const parsed = splitRef(address);
-    return parsed ? [{ address, ...parsed }] : [];
+  const plugins = registry.pluginIds().flatMap((ref) => {
+    const parsed = splitRef(ref);
+    return parsed ? [{ ref, ...parsed }] : [];
   });
-  const builtInFeatures = new Set(plugins.filter(({ packId }) => !external.has(packId)).map(({ featureId }) => featureId));
-  const addresses = plugins
-    .filter(({ packId, featureId }) => external.has(packId) && !builtInFeatures.has(featureId))
-    .map(({ address }) => address);
-  const moved = addressPluginSettings(data.plugins, addresses);
+  const builtInFeatures = new Set(plugins.filter(({ packId }) => !movedHere.has(packId)).map(({ featureId }) => featureId));
+  const refs = plugins
+    .filter(({ packId, featureId }) => movedHere.has(packId) && !builtInFeatures.has(featureId))
+    .map(({ ref }) => ref);
+  const moved = addressPluginSettings(data.plugins, refs);
   if (moved.moved > 0) tx(SETTINGS_ID).put('data', { ...data, plugins: moved.plugins });
 }

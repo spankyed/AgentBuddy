@@ -20,7 +20,7 @@ describe('PackEvents', () => {
     expectTypeOf<PackEvents['threads']>().toEqualTypeOf<OutgoingThreadsEvents>();
     // The flows plugin receives its own system's events and the actions system's (sendsTo)
     expectTypeOf<PackEvents['flows']>().toEqualTypeOf<OutgoingFlowsEvents | OutgoingActionEvents>();
-    expectTypeOf<PackEvents['application']>().toEqualTypeOf<HostPluginEvents['application']>();
+    expectTypeOf<PackEvents['host/application']>().toEqualTypeOf<HostPluginEvents['host/application']>();
   });
 
   it('has no entry for a plugin nothing sends to', () => {
@@ -36,8 +36,8 @@ describe('emit and sendToPlugin', () => {
     expectTypeOf(wrapped.event.pluginId).toEqualTypeOf<'threads'>();
     expectTypeOf(() => {
       emit('flows', actionEvent);
-      emit('application', { type: 'APPLICATION_HOTKEYS', hotkeys });
-      sendToPlugin('application', { type: 'APPLICATION_RESTORE_LAST_PLUGIN', lastActivePluginId: 'notes' });
+      emit('host/application', { type: 'APPLICATION_HOTKEYS', hotkeys });
+      sendToPlugin('host/application', { type: 'APPLICATION_RESTORE_LAST_PLUGIN', lastActivePluginId: 'notes' });
     }).toBeFunction();
   });
 
@@ -46,7 +46,7 @@ describe('emit and sendToPlugin', () => {
       // @ts-expect-error the threads plugin doesn't receive action events
       emit('threads', actionEvent);
       // @ts-expect-error not an application event
-      emit('application', { type: 'SETTINGS_LOADED' });
+      emit('host/application', { type: 'SETTINGS_LOADED' });
       // @ts-expect-error unknown plugin
       sendToPlugin('unknown-plugin', { type: 'ANYTHING' });
     }).toBeFunction();

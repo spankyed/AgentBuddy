@@ -2896,7 +2896,7 @@ type PackEmitter = Omit<HostServices['emitter'], 'sendToPlugin' | 'sendToSystem'
  * `sendsTo` names. Those keep the events their owner declares they receive — a pack widens only its
  * own plugins. A plugin id this pack also uses types as its own plugin.
  */
-type PackEvents = OwnPackEvents & Omit<Pick<HostPluginEvents, 'application'>, keyof OwnPackEvents>;
+type PackEvents = OwnPackEvents & Pick<HostPluginEvents, 'host/application'>;
 
 /**
  * Every entity shape this pack can read: the SDK's, its own and its dependencies'. Node is the union of
@@ -3063,11 +3063,11 @@ interface PromptsConnectedData {
 
 /**
  * The plugins actions send to (`services.emitter`): every pack's named `<pack>/<feature>`, this pack's
- * own too, and a host plugin bare — bare ids are the host's namespace.
+ * own and the host's (`host/<feature>`) too.
  */
 type QualifiedPluginEvents = {
     [K in keyof OwnPackEvents & string as `default-setup/${K}`]: OwnPackEvents[K];
-} & Pick<HostPluginEvents, 'application'>;
+} & Pick<HostPluginEvents, 'host/application'>;
 
 /** The systems actions send to (`services.emitter`), all named `<pack>/<feature>`. */
 type QualifiedSystemEvents = {

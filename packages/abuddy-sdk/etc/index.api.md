@@ -47,8 +47,8 @@ export interface ActionParameter {
     type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
 }
 
-// @public (undocumented)
-export const bus: "bus";
+// @public
+export const bus: "host/bus";
 
 // @public
 export function defineSystem<Id extends string>(feature: Id): <TEvents extends {

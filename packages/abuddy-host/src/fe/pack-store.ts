@@ -65,7 +65,7 @@ export function createFePackRegistry(): FePackRegistry {
       // The registration names features; each plugin is registered at its feature's address, as
       // `registerPack` addresses `features`, so no pack's plugin can land in another's namespace
       const byFeature = new Map(Object.entries(registration.plugins ?? {})
-        .map(([featureId, definition]) => [featureId, { ...definition, id: resolveName(featureId, { packId }) } as Plugin]));
+        .map(([featureId, definition]) => [featureId, { ...definition, id: resolveName(featureId, packId) } as Plugin]));
       const plugins = [...byFeature.values()];
       allPlugins.push(...plugins);
       undo(() => {

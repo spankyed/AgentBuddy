@@ -228,7 +228,7 @@
       "system": {
         "entry": "src/features/settings/be/system.ts",
         "sendsTo": [
-          "application"
+          "host/application"
         ]
       },
       "plugin": {

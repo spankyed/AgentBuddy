@@ -21,15 +21,12 @@ export function emit<P extends string, E extends {
 
 // @public
 export const HOST_PLUGIN_EVENT_TYPES: {
-    readonly application: readonly ["CLIENT_CONNECTED", "APPLICATION_HOTKEYS", "APPLICATION_RESTORE_LAST_PLUGIN", "PLUGIN_VISIBILITY_UPDATED"];
+    readonly 'host/application': readonly ["CLIENT_CONNECTED", "APPLICATION_HOTKEYS", "APPLICATION_RESTORE_LAST_PLUGIN", "PLUGIN_VISIBILITY_UPDATED"];
 };
 
 // @public
-export const HOST_PLUGIN_IDS: readonly ["application"];
-
-// @public
 export type HostPluginEvents = {
-    application: {
+    'host/application': {
         type: 'CLIENT_CONNECTED';
         hasOnboarded: boolean;
     } | {

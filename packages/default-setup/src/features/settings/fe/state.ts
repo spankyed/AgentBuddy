@@ -125,7 +125,7 @@ const settingsState = setup({
         isLoading: false,
       };
       if (!context.selectedPluginId) {
-        const appPlugins = self.system.get('application')?.getSnapshot()?.context?.plugins ?? [];
+        const appPlugins = self.system.get('host/application')?.getSnapshot()?.context?.plugins ?? [];
         const withSettings = appPlugins.filter((p: any) => p.settings);
         if (withSettings.length > 0) result.selectedPluginId = withSettings[0].id;
       }
@@ -135,7 +135,7 @@ const settingsState = setup({
     notifyPluginVisibility: ({ event, system }) => {
       const data = (event as any).data;
       if (data?.plugins?._meta?.visibility) {
-        system.get('application')?.send({
+        system.get('host/application')?.send({
           type: 'PLUGIN_VISIBILITY_UPDATED',
           pluginVisibility: data.plugins._meta.visibility,
         });
@@ -173,7 +173,7 @@ const settingsState = setup({
       const ev = typeOf('PLUGIN.SELECT', event);
       return {
         // A plugin named as this pack's code names it; the plugin list it's picked from holds addresses
-        selectedPluginId: resolveName(ev.pluginId, { packId }),
+        selectedPluginId: resolveName(ev.pluginId, packId),
       }
     }),
 

@@ -1,6 +1,7 @@
 // Before 0.3.15 every plugin ran under its bare feature id, and the settings stored an installed external pack's
-// plugin settings, sidebar visibility and last-active plugin under it. The host's 0.3.15 app migration moves them
-// onto the pack's plugins' addresses; the built-in packs' keys are left to their own migrations.
+// plugin settings, sidebar visibility and last-active plugin under it, and the host's own (`packs`). The host's
+// 0.3.15 app migration moves them onto the plugins' refs; the built-in packs' keys are left to their own
+// migrations.
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { tx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
@@ -19,7 +20,7 @@ const OLD_SETTINGS = {
   plugins: {
     memos: { sort: 'newest' },
     notes: { fontSize: 14 },
-    _meta: { visibility: { memos: true, board: false, notes: false }, lastActivePlugin: 'memos' },
+    _meta: { visibility: { memos: true, board: false, notes: false, packs: false }, lastActivePlugin: 'memos' },
   },
 };
 
@@ -36,6 +37,8 @@ beforeAll(() => {
   // `notes` is the built-in pack's feature too: before 0.3.15 the built-in plugin ran under it
   registry.registerPack({ id: 'memo-pack', systems: [], features: [withPlugin('memos'), withPlugin('board'), withPlugin('notes')] }, origin('memo-pack', false));
   registry.registerPack({ id: 'built-in', systems: [], features: [withPlugin('notes')] }, origin('built-in', true));
+  // The host's packs plugin, as the API registers it
+  registry.registerHostPlugin('host/packs', []);
 });
 
 beforeEach(() => {
@@ -53,9 +56,17 @@ describe("the 0.3.15 app migration, for an external pack's plugins", () => {
         'memo-pack/memos': { sort: 'newest' },
         // A built-in pack's keys are its own migration's to move, even when an external pack has the feature id too
         notes: { fontSize: 14 },
-        _meta: { visibility: { 'memo-pack/memos': true, 'memo-pack/board': false, notes: false }, lastActivePlugin: 'memo-pack/memos' },
+        _meta: { visibility: { 'memo-pack/memos': true, 'memo-pack/board': false, notes: false, 'host/packs': false }, lastActivePlugin: 'memo-pack/memos' },
       },
     });
+  });
+
+  it("moves a last-active host plugin onto the host's ref", () => {
+    tx(SETTINGS_ID).put('data', { plugins: { _meta: { lastActivePlugin: 'packs' } } });
+
+    move();
+
+    expect(settings()).toEqual({ plugins: { _meta: { lastActivePlugin: 'host/packs' } } });
   });
 
   it('changes nothing when it runs again', () => {

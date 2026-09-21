@@ -28,7 +28,7 @@ import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor';
 import { DISCORD_URL } from '../../features/settings/constants';
 
 const system = useActorSystem();
-const applicationActor = system.get('application');
+const applicationActor = system.get('host/application');
 
 const letterContent = `Hello Testers,
 

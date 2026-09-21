@@ -77,7 +77,7 @@ const BARE_PLUGIN_IDS = [
 function movePluginSettingsToQualifiedIds(): void {
   const stored = repository.settingsQueries.getStoredSettings();
   if (!stored.plugins) return;
-  const addresses = BARE_PLUGIN_IDS.map((id) => resolveName(id, { packId: PACK_ID }));
+  const addresses = BARE_PLUGIN_IDS.map((id) => resolveName(id, PACK_ID));
   const { plugins, moved } = addressPluginSettings(stored.plugins, addresses);
   if (moved === 0) return;
   repository.settingsCommands.replaceSettings({ ...stored, plugins } as SettingsData);

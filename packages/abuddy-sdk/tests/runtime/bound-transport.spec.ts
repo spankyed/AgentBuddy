@@ -80,7 +80,7 @@ describe('on the bound bus', () => {
   it('reportError logs a system error and sends it to the clients', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const sent = onBus(() => reportError({ error: new Error('boom'), source: 'memos', operation: 'save' }));
-    expect(sent.outgoing).toEqual([expect.objectContaining({ type: 'SYSTEM_ERROR', pluginId: 'application', source: 'memos', message: 'boom' })]);
+    expect(sent.outgoing).toEqual([expect.objectContaining({ type: 'SYSTEM_ERROR', pluginId: 'host/application', source: 'memos', message: 'boom' })]);
     expect(sent.logs).toEqual([expect.objectContaining({ level: 'error', source: 'memos', message: 'boom' })]);
     expect(takeSystemErrors()).toHaveLength(1);
   });

@@ -358,14 +358,14 @@
       "Action:Handle Choose Mode Step": {
         "label": "Handle Choose Mode Step",
         "description": "Sets the default mode based on user choice and finishes onboarding",
-        "sourceHash": "996baad6b4915570",
-        "rowSha256": "5c2a86e234b88cafd1ac71bd4862387217ba524104bdeddced25c24b86aff847"
+        "sourceHash": "b04472a4d6464e66",
+        "rowSha256": "04079680d56e7ec9a02c44a11998c3563e1ddf4e2cc25846531831314b75b29b"
       },
       "Action:Handle Import Threads Step": {
         "label": "Handle Import Threads Step",
         "description": "Imports sessions from Claude Code and Codex as threads",
-        "sourceHash": "9c78a5e7a39b6b62",
-        "rowSha256": "25c86d0c48a12d6c91279e677a12c67140e6da8e9392cd4794dfde9b35d3128c"
+        "sourceHash": "0ec0a41877ac4b6f",
+        "rowSha256": "1c3aaed4ade0d5a50221cdd82bd6d9d58ed391d2f2aac3d21ab5a6c9515d9012"
       },
       "Action:Handle Onboarding Response": {
         "label": "Handle Onboarding Response",
@@ -376,14 +376,14 @@
       "Action:Handle Pick Thread Step": {
         "label": "Handle Pick Thread Step",
         "description": "Opens a selected thread, then advances to mode chooser or finishes",
-        "sourceHash": "a57be0fb1b88cda3",
-        "rowSha256": "a8b98ca8c7d06f5c77c4abd8cdfc82bf90e0891676aff2fe6c48ed3fdef8fdd1"
+        "sourceHash": "b73e7450161a98f6",
+        "rowSha256": "3e3d92c8a4d2d137cdfd471b544caf19cdc8ab6ec7d2533349d5b7c62fb7aa60"
       },
       "Action:Handle Projects Step": {
         "label": "Handle Projects Step",
         "description": "Saves selected project directories and offers per-provider import",
-        "sourceHash": "300cd4b46802355f",
-        "rowSha256": "8401e7f4e4025ba8fa57a1e1c294d55bd428fdc5c2aa2455cdab00f6c8a9327e"
+        "sourceHash": "d6389d643c864e8c",
+        "rowSha256": "8c7ce70401215f0a84a648f9b19e1faed0dc23ac3f3328b4dbe9e1a6e8c33294"
       },
       "Action:Handle Welcome Step": {
         "label": "Handle Welcome Step",

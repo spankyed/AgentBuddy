@@ -1,7 +1,7 @@
 import type { repository } from '@abuddy/ears';
 import { boundHost, type HostRuntimeServices } from '../runtime/host-runtime.ts';
 import { sendToPlugin, sendToSystem, sendToBrainSystem } from '../events/index.ts';
-import { splitRef, resolveName } from '../ids/addressing.ts';
+import { splitRef } from '../ids/addressing.ts';
 import { createLogger, type Logger } from '../logger/logger.ts';
 import type { AppDataService } from './app-data.ts';
 import type { TraceStore } from './trace-store.ts';
@@ -52,27 +52,20 @@ export interface HostServices {
 }
 
 /**
- * The address an action's name for a system or plugin refers to, among those registered. Actions run
- * outside any pack, so they name every feature `<packId>/<featureId>`, their own pack's too; a bare name
- * is the host's. A name nothing is registered under throws, naming the form to write.
+ * The ref an action's name for a system or plugin refers to, among those registered. Actions run outside any
+ * pack, so they name every feature `<packId>/<featureId>`, their own pack's and the host's too. A name nothing
+ * is registered under throws, naming the form to write.
  */
-function registeredAddress(kind: 'system' | 'plugin', name: string, registered: readonly string[]): string {
-  const hostIds = registered.filter((id) => !splitRef(id));
-  let address: string | undefined;
-  try {
-    address = resolveName(name, { hostIds });
-  } catch {
-    address = undefined;
-  }
-  if (address && registered.includes(address)) return address;
-  const meant = registered.filter((id) => splitRef(id)?.featureId === name);
+function registeredRef(kind: 'system' | 'plugin', name: string, registered: readonly string[]): string {
+  if (registered.includes(name)) return name;
+  const meant = registered.filter((ref) => splitRef(ref)?.featureId === name);
   const hint = meant.length === 1 ? ` — did you mean "${meant[0]}"?` : '';
   throw new Error(`No registered ${kind} is named "${name}": actions name a ${kind} "<packId>/<featureId>"${hint}`);
 }
 
 const emitter: HostServices['emitter'] = {
-  sendToPlugin: (name, event) => sendToPlugin(registeredAddress('plugin', name, boundHost().packs.pluginIds()), event),
-  sendToSystem: (name, event) => sendToSystem(registeredAddress('system', name, boundHost().packs.systemIds()), event),
+  sendToPlugin: (name, event) => sendToPlugin(registeredRef('plugin', name, boundHost().packs.pluginIds()), event),
+  sendToSystem: (name, event) => sendToSystem(registeredRef('system', name, boundHost().packs.systemIds()), event),
   sendToBrainSystem,
 };
 

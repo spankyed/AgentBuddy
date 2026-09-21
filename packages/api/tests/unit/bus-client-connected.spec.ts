@@ -66,7 +66,7 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 beforeEach(() => {
   received.length = 0;
   registerPack(pack('first-pack'));
-  bus = createActor(backendSystem, { systemId: 'bus' }).start();
+  bus = createActor(backendSystem, { systemId: 'host/bus' }).start();
 });
 
 afterEach(() => {
@@ -87,7 +87,7 @@ describe('CLIENT_CONNECTED on the bus', () => {
   it('reaches an external pack with plugins once, when a client has loaded its frontend after connecting', async () => {
     bus.stop();
     registerPack(pack('external-pack'), loaded('external-pack', withFrontend));
-    bus = createActor(backendSystem, { systemId: 'bus' }).start();
+    bus = createActor(backendSystem, { systemId: 'host/bus' }).start();
 
     rootEvents.emitConnected();
     await flush();
@@ -148,7 +148,7 @@ describe('CLIENT_CONNECTED on the bus', () => {
       ],
     }, loaded('external-pack', withFrontend));
     registerPack(pack('second-pack'), loaded('second-pack', withFrontend));
-    bus = createActor(backendSystem, { systemId: 'bus' }).start();
+    bus = createActor(backendSystem, { systemId: 'host/bus' }).start();
 
     rootEvents.emitConnected();
     await flush();
@@ -182,7 +182,7 @@ describe('CLIENT_CONNECTED on the bus', () => {
       ],
     });
     bus.stop();
-    bus = createActor(backendSystem, { systemId: 'bus' }).start();
+    bus = createActor(backendSystem, { systemId: 'host/bus' }).start();
     rootEvents.emitConnected();
     await flush();
     received.length = 0;
@@ -256,7 +256,7 @@ describe('a bus given a subset of the registered systems', () => {
         packConnect = (packId) => send({ type: 'PACK_CLIENT_CONNECTED', packId });
         return () => {};
       },
-    }), { systemId: 'bus' }).start();
+    }), { systemId: 'host/bus' }).start();
     connect();
     received.length = 0;
   });

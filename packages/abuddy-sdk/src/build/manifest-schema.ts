@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
+import { HOST_PACK_ID } from '../ids/system-ids.ts';
 
 /** Rejects a pack's entries that use a name or value the SDK owns, naming each */
 const notSdkOwned = (owned: Record<string, string>) => (declared: Record<string, string>, ctx: z.RefinementCtx) => {
@@ -212,6 +213,7 @@ export const ManifestSchema = z.object({
   $manifestVersion: z.literal(1).optional()
     .describe('Schema version. Enables future format evolution.'),
   id: z.string().regex(/^[a-z][a-z0-9-]*$/, 'Must be lowercase alphanumeric with hyphens')
+    .refine((id) => id !== HOST_PACK_ID, { message: `"${HOST_PACK_ID}" is the app's own pack id: pick another` })
     .describe('Unique pack identifier. Lowercase, alphanumeric with hyphens.'),
   name: z.string().min(1).describe('Human-readable pack name.'),
   version: z.string().regex(/^\d+\.\d+\.\d+/, 'Must be a semver version string')

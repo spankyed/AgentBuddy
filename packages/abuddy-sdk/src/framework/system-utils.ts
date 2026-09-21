@@ -12,7 +12,7 @@ export interface SystemEntry {
 /** A pack's systems, each under its address `<packId>/<featureId>`; `defineSystem` gave it the feature id */
 export function toPackSystemDefs(entries: SystemEntry[], packId: string): PackSystemDef[] {
   return entries.map(({ spec, machine }) => ({
-    id: resolveName(spec.id, { packId }),
+    id: resolveName(spec.id, packId),
     machine,
     events: new Set(machine.events),
   }));

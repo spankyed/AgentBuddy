@@ -104,7 +104,7 @@ export const settingsSystem = setup({
       }));
       
       // Send hotkeys to the application
-      system.get(bus).send(emit('application', {
+      system.get(bus).send(emit('host/application', {
         type: 'APPLICATION_HOTKEYS' as const,
         hotkeys: data.general.application.hotkeys
       }));
@@ -113,7 +113,7 @@ export const settingsSystem = setup({
 
       // Send last active plugin to application for restoration
       if (data.plugins?._meta?.lastActivePlugin) {
-        system.get(bus).send(emit('application', {
+        system.get(bus).send(emit('host/application', {
           type: 'APPLICATION_RESTORE_LAST_PLUGIN',
           lastActivePluginId: data.plugins._meta.lastActivePlugin
         }));
@@ -165,7 +165,7 @@ export const settingsSystem = setup({
       // If hotkeys were updated, send them to the application
       // Check if updating entire hotkeys object (label === 'hotkeys') or a specific property
       if (ev.entityType === 'general' && (ev.label === 'hotkeys' || ev.path[0] === 'hotkeys')) {
-        system.get(bus).send(emit('application', {
+        system.get(bus).send(emit('host/application', {
           type: 'APPLICATION_HOTKEYS',
           hotkeys: data.general.application.hotkeys
         }));
@@ -217,7 +217,7 @@ export const settingsSystem = setup({
       }));
 
       // Re-send hotkeys in case they changed
-      system.get(bus).send(emit('application', {
+      system.get(bus).send(emit('host/application', {
         type: 'APPLICATION_HOTKEYS',
         hotkeys: data.general.application.hotkeys
       }));

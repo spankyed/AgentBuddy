@@ -143,7 +143,7 @@ describe('registered addresses', () => {
     } as unknown as PackRegistration);
     registered.push('ext');
     expect(systemIds()).toContain('ext/notes');
-    expect(pluginIds()).toEqual(expect.arrayContaining(['ext/notes', 'application']));
+    expect(pluginIds()).toEqual(expect.arrayContaining(['ext/notes', 'host/application']));
 
     unregisterPack(registered.pop()!);
     expect(systemIds()).not.toContain('ext/notes');

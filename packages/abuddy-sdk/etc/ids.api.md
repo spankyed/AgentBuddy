@@ -5,26 +5,18 @@
 ```ts
 
 // @public
-export function asHostAddress(id: string): FeatureRef;
-
-// @public (undocumented)
-export const bus: "bus";
+export const bus: "host/bus";
 
 // @public
-export type FeatureRef = string & {
+export type FeatureRef = `${string}/${string}` & {
     readonly [featureRef]: true;
 };
 
 // @public
-export interface NameContext {
-    // (undocumented)
-    hostIds?: readonly string[];
-    // (undocumented)
-    packId?: string;
-}
+export const HOST_PACK_ID = "host";
 
 // @public
-export function resolveName(name: string, input?: NameContext): FeatureRef;
+export function resolveName(name: string, packId?: string): FeatureRef;
 
 // @public
 export function splitRef(ref: string): {

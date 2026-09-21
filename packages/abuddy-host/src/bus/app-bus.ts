@@ -8,7 +8,7 @@ import { getPacksWithClientLoadedFrontends } from '../packs/pack-layout.ts';
 import { createBusMachine } from './machine.ts';
 
 /** Sent to the application plugin after each client connection */
-export type ApplicationConnectedEvent = { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean; pluginId: 'application' };
+export type ApplicationConnectedEvent = { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean; pluginId: 'host/application' };
 
 /** The app's bus: the systems in `registry`, clients over the root event bus on the shared bus core */
 export function createAppBus(registry: PackRegistry) {
@@ -33,7 +33,7 @@ export function createAppBus(registry: PackRegistry) {
     connectedEvents: (): ApplicationConnectedEvent[] => [{
       type: 'CLIENT_CONNECTED',
       hasOnboarded: appState.get().hasOnboarded,
-      pluginId: 'application',
+      pluginId: 'host/application',
     }],
   });
 }

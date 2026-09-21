@@ -6,15 +6,15 @@ import { describe, expect, it } from 'vitest';
 import { services } from '../../src/services/index.ts';
 import { startTestRuntime, testRootEvents } from '../../src/testing/index.ts';
 import { testPacksView } from '../../src/testing/packs.ts';
-import { asHostAddress, resolveName } from '../../src/ids/index.ts';
+import { resolveName } from '../../src/ids/index.ts';
 
 process.env.ABUDDY_ENV ??= 'test';
 process.env.ABUDDY_USER_DATA_DIR ??= os.tmpdir();
 startTestRuntime({
   packs: {
     ...testPacksView(),
-    systemIds: () => [resolveName('default-setup/notes'), resolveName('ext/notes'), asHostAddress('packs')],
-    pluginIds: () => [resolveName('default-setup/threads'), asHostAddress('application')],
+    systemIds: () => [resolveName('default-setup/notes'), resolveName('ext/notes'), resolveName('host/packs')],
+    pluginIds: () => [resolveName('default-setup/threads'), resolveName('host/application')],
   },
 });
 
@@ -37,14 +37,20 @@ describe('services.emitter', () => {
     })).toEqual([{ type: 'GET_NOTES', systemId: 'default-setup/notes' }, { type: 'GET_NOTES', systemId: 'ext/notes' }]);
   });
 
-  it('sends to the plugin a <packId>/<featureId> name resolves to, and to a host plugin by its bare id', () => {
+  it("sends to the plugin a <packId>/<featureId> name is, the host's included", () => {
     expect(sent(() => {
       services.emitter.sendToPlugin('default-setup/threads', { type: 'SET_PHASE', phase: 'Edit' });
-      services.emitter.sendToPlugin('application', { type: 'APPLICATION_HOTKEYS', hotkeys: {} });
+      services.emitter.sendToPlugin('host/application', { type: 'APPLICATION_HOTKEYS', hotkeys: {} });
     })).toEqual([
       { type: 'SET_PHASE', phase: 'Edit', pluginId: 'default-setup/threads' },
-      { type: 'APPLICATION_HOTKEYS', hotkeys: {}, pluginId: 'application' },
+      { type: 'APPLICATION_HOTKEYS', hotkeys: {}, pluginId: 'host/application' },
     ]);
+  });
+
+  // The host is a pack: its plugins are named like any other's
+  it("throws for a host plugin's bare id, naming its ref", () => {
+    expect(() => services.emitter.sendToPlugin('application', { type: 'APPLICATION_HOTKEYS', hotkeys: {} }))
+      .toThrow('No registered plugin is named "application": actions name a plugin "<packId>/<featureId>" — did you mean "host/application"?');
   });
 
   // The documented form before plugins were addressed per pack: an action a user wrote then still says this

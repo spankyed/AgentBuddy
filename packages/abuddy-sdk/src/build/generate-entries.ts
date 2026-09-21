@@ -1,5 +1,5 @@
 import { readFileSync, existsSync, statSync } from 'fs';
-import { HOST_PLUGIN_IDS as SDK_HOST_PLUGIN_IDS } from '../events/index.ts';
+import { HOST_PLUGIN_EVENT_TYPES } from '../events/index.ts';
 import { resolveName, splitRef } from '../ids/addressing.ts';
 import { extname, join } from 'path';
 import { _mergeProvenance, PACK_TYPES_FORMAT, type PackManifest, type PackFeatureEntry, type PackProvenance, type PackTypeManifest, type PackSnapshot, type ProvenanceKind, type StepEntry } from './manifest.ts';
@@ -310,8 +310,8 @@ function toImportPath(root: string, manifestPath: string): string {
   return `${rel}.js`;
 }
 
-/** Host plugins pack systems can send to. Declared beside `HostPluginEvents`, which pins the two together. */
-const HOST_PLUGIN_IDS: readonly string[] = SDK_HOST_PLUGIN_IDS;
+/** The host's plugins pack systems can send to, `host/<featureId>`, read from `HOST_PLUGIN_EVENT_TYPES` */
+const hostPlugins: readonly string[] = Object.keys(HOST_PLUGIN_EVENT_TYPES);
 
 /**
  * The plugins a pack's own `PackEvents` keys, from its manifest: a feature that has both a system and
@@ -866,7 +866,7 @@ export const {
 export const packId = '${manifest.id}';
 
 export const busId = {
-${addressed.map(f => `  ${f.id}: '${resolveName(f.id, { packId: manifest.id })}'`).join(',\n')},
+${addressed.map(f => `  ${f.id}: '${resolveName(f.id, manifest.id)}'`).join(',\n')},
 } as const;
 `;
   }
@@ -880,25 +880,24 @@ ${addressed.map(f => `  ${f.id}: '${resolveName(f.id, { packId: manifest.id })}'
     return `${HEADER}
 import type { AnyActorRef } from 'xstate';
 import { actorAt, navigateToAddress, type PluginEvent } from '@abuddy/sdk/fe';
-import { HOST_PLUGIN_IDS } from '@abuddy/sdk/events';
 import { resolveName } from '@abuddy/sdk/ids';
 
 /**
- * A plugin as this pack's code names it: its own by feature id, another pack's as \`<packId>/<featureId>\`
- * (a registered plugin's \`id\` too), or a host plugin bare
+ * A plugin as this pack's code names it: its own by feature id, any other (the host's too) as
+ * \`<packId>/<featureId>\`, which a registered plugin's \`id\` is
  */
-export type PluginName = ${plugins.join(' | ')} | \`\${string}/\${string}\` | (typeof HOST_PLUGIN_IDS)[number];
+export type PluginName = ${plugins.join(' | ')} | \`\${string}/\${string}\`;
 
-const context = { packId: '${manifest.id}', hostIds: HOST_PLUGIN_IDS };
+const packId = '${manifest.id}';
 
 /** Opens a plugin and hands its actor \`event\` once it's running; throws if no such plugin is registered */
 export function navigateToPlugin(name: PluginName, event?: PluginEvent | PluginEvent[]): void {
-  navigateToAddress(resolveName(name, context), event);
+  navigateToAddress(resolveName(name, packId), event);
 }
 
 /** A plugin's actor, by name; undefined until the app spawns it */
 export function actorOf<T = AnyActorRef>(name: PluginName): T {
-  return actorAt<T>(resolveName(name, context));
+  return actorAt<T>(resolveName(name, packId));
 }
 `;
   }
@@ -951,14 +950,14 @@ export function actorOf<T = AnyActorRef>(name: PluginName): T {
           addSender(target, feature);
         } else if (ownIds.has(target)) {
           refuse(target, `a feature of this pack with no plugin, so nothing can receive the events: give "${target}" a plugin or remove it from sendsTo`);
-        } else if (HOST_PLUGIN_IDS.includes(target)) {
+        } else if (hostPlugins.includes(target)) {
           hostTargets.add(target);
         } else if (target.includes('/')) {
           // Another pack's plugin, named as code names it: `<packId>/<featureId>`
           const [depId, featureId] = [target.slice(0, target.indexOf('/')), target.slice(target.indexOf('/') + 1)];
           const snap = depSnapshots.get(depId);
           if (!snap) {
-            refuse(target, pluginOwners[resolveName(featureId, { packId: depId })]
+            refuse(target, pluginOwners[resolveName(featureId, depId)]
               ? `a plugin of "${depId}", which this pack depends on only through another pack, so no send to it can be typed: add "${depId}" to this pack's dependencies, or remove "${target}" from sendsTo`
               : `which is no plugin of this pack's dependencies`);
           } else if (!(snap.manifest.features ?? []).some((f) => f.plugin && f.id === featureId)) {
@@ -975,7 +974,7 @@ export function actorOf<T = AnyActorRef>(name: PluginName): T {
           const owners = Object.keys(pluginOwners).flatMap((ref) => (splitRef(ref)?.featureId === target ? [splitRef(ref)!.packId] : []));
           refuse(target, owners.length
             ? `which is no feature of this pack: another pack's plugin is named "<packId>/${target}" (${owners.map((o) => `"${o}/${target}"`).join(' or ')})`
-            : `which is neither a feature of this pack, another pack's plugin ("<packId>/<featureId>"), nor a host plugin (${HOST_PLUGIN_IDS.join(', ')})`);
+            : `which is neither a feature of this pack, another pack's plugin ("<packId>/<featureId>"), nor a host plugin (${hostPlugins.join(', ')})`);
         }
       }
     }
@@ -1001,14 +1000,14 @@ export function actorOf<T = AnyActorRef>(name: PluginName): T {
     const quoted = (ids: Iterable<string>) => [...ids].map((id) => `'${id}'`).join(' | ');
     const externalReceivers = [
       ...eventDeps.map((depId) => ` & ${qualified(depId, `Pick<${depAlias(depId, 'PackEvents')}, ${quoted(depTargets.get(depId)!)}>`)}`),
-      ...(hostTargets.size ? [` & Omit<Pick<HostPluginEvents, ${quoted(hostTargets)}>, keyof OwnPackEvents>`] : []),
+      ...(hostTargets.size ? [` & Pick<HostPluginEvents, ${quoted(hostTargets)}>`] : []),
     ].join('');
     const depEventImports = eventDeps.map((depId) => `import type { PackEvents as ${depAlias(depId, 'PackEvents')} } from './deps/${depId}.js';`);
     const depSystems = depTypeImports('PackSystemEvents');
     const hasSystems = systemFeatures.length > 0;
 
     // The plugin counterpart: this pack's own plugins, each dependency's that a sendsTo named, and the
-    // host's — the first two qualified, the host's bare.
+    // host's, all by ref.
     const qualifiedPluginEvents = [
       qualified(manifest.id, 'OwnPackEvents'),
       ...eventDeps.map((depId) => qualified(depId, `Pick<${depAlias(depId, 'PackEvents')}, ${quoted(depTargets.get(depId)!)}>`)),
@@ -1074,7 +1073,7 @@ export type QualifiedSystemEvents = ${[qualified(manifest.id, 'PackSystemEvents'
 
 /**
  * The plugins actions send to (\`services.emitter\`): every pack's named \`<pack>/<feature>\`, this pack's
- * own too, and a host plugin bare — bare ids are the host's namespace.
+ * own and the host's (\`host/<feature>\`) too.
  */
 export type QualifiedPluginEvents = ${qualifiedPluginEvents};
 
@@ -1087,7 +1086,7 @@ export const { emit, sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<P
  * tolerates that checks for it.
  */
 export function actorOf(system: ActorLookup, name: keyof SendableSystemEvents & string): NonNullable<ReturnType<ActorLookup['get']>> {
-  return system.get(resolveName(name, { packId: '${manifest.id}' }))!;
+  return system.get(resolveName(name, '${manifest.id}'))!;
 }
 `;
   }

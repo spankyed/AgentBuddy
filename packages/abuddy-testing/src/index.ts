@@ -6,7 +6,7 @@ import * as os from 'os';
 import { execFileSync } from 'child_process';
 import { createRequire } from 'module';
 import { resolveAppContext } from '@abuddy/sdk/env';
-import { resolveName, splitRef } from '@abuddy/sdk/ids';
+import { resolveName } from '@abuddy/sdk/ids';
 import { installPackFromLocal, PACK_LOAD_MESSAGES } from '@abuddy/host/packs';
 import { appVersion } from './app-version.ts';
 import { appLaunchEnv } from './launch-env.ts';
@@ -144,7 +144,7 @@ function getPackManifest(): { id: string; pluginIds: string[] } | null {
     // The ids the plugins run under: a plugin is addressed `<packId>/<featureId>`, as a system is
     pluginIds: (manifest.features ?? [])
       .filter((f: any) => f.plugin)
-      .map((f: any) => resolveName(f.id, { packId: manifest.id })),
+      .map((f: any) => resolveName(f.id, manifest.id)),
   };
   return _packManifest;
 }
@@ -207,20 +207,12 @@ function captureOutput(app: ElectronApplication): void {
  * — an incompatible hostVersion, an unsupported layout, a throw in its runtime — would otherwise pass
  * its whole suite while dead, because every test it runs asks the app about something else.
  */
-/** The registered plugin ids, and among them the host's (the bare ones) */
-async function registeredPlugins(page: Page): Promise<{ ids: string[]; hostIds: string[] }> {
-  const ids: string[] = await page.evaluate(() =>
-    ((window as any).applicationState?.getSnapshot()?.context?.plugins ?? []).map((p: { id: string }) => p.id));
-  return { ids, hostIds: ids.filter((id) => !splitRef(id)) };
-}
-
 /**
- * The id a spec's plugin name addresses, as the pack under test's own code names plugins: its features by
- * id, another pack's as `<packId>/<featureId>`, a host plugin bare.
+ * The ref a spec's plugin name is, as the pack under test's own code names plugins: its features by id, any
+ * other (the host's too) as `<packId>/<featureId>`.
  */
-async function resolvePlugin(page: Page, name: string): Promise<string> {
-  const { hostIds } = await registeredPlugins(page);
-  return resolveName(name, { packId: getPackManifest()?.id, hostIds });
+function resolvePlugin(name: string): string {
+  return resolveName(name, getPackManifest()?.id);
 }
 
 async function waitForPackBackend(app: ElectronApplication, packId: string, timeoutMs = 15_000): Promise<void> {
@@ -521,7 +513,7 @@ export function createTest(options: CreateTestOptions = {}) {
         },
 
         navigate: async (pluginId) => {
-          const id0 = await resolvePlugin(page, pluginId);
+          const id0 = resolvePlugin(pluginId);
           await page.evaluate((id) => {
             (window as any).applicationState.send({ type: 'SELECT_PLUGIN', pluginId: id });
           }, id0);
@@ -538,7 +530,7 @@ export function createTest(options: CreateTestOptions = {}) {
         waitForPlugin: async (pluginId, timeout = 30_000) => {
           // A host plugin is known once the app has any; a pack's registers later, at its address
           await page.waitForFunction(() => ((window as any).applicationState?.getSnapshot()?.context?.plugins ?? []).length > 0, null, { timeout });
-          const id = await resolvePlugin(page, pluginId);
+          const id = resolvePlugin(pluginId);
           await page.waitForFunction((target) =>
             ((window as any).applicationState?.getSnapshot()?.context?.plugins ?? []).some((p: { id: string }) => p.id === target), id, { timeout });
         },

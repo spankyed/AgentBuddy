@@ -79,7 +79,7 @@ export const PROVENANCE_KINDS = {
   relKinds: (m: ProvenanceManifest) => Object.keys(m.relKinds ?? {}),
   commands: (m: ProvenanceManifest) => (m.commands ?? []).map((c) => c.name),
   // Keyed by address, so a dependent reusing one of its dependency's feature ids keeps both apart
-  plugins: (m: ProvenanceManifest, packId: string) => (m.features ?? []).filter((f) => f.plugin).map((f) => resolveName(f.id, { packId })),
+  plugins: (m: ProvenanceManifest, packId: string) => (m.features ?? []).filter((f) => f.plugin).map((f) => resolveName(f.id, packId)),
 } as const;
 
 export type ProvenanceKind = keyof typeof PROVENANCE_KINDS;

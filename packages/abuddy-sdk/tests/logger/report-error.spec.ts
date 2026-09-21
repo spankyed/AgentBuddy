@@ -82,7 +82,7 @@ describe('reportError', () => {
       expect(reportError({ error, source: 'notes', title: 'Could not save', operation: 'save' })).toBeUndefined();
     });
     const event = {
-      type: 'SYSTEM_ERROR', pluginId: 'application', errorId: expect.stringMatching(/^err_/), title: 'Could not save',
+      type: 'SYSTEM_ERROR', pluginId: 'host/application', errorId: expect.stringMatching(/^err_/), title: 'Could not save',
       message: 'boom', source: 'notes', operation: 'save', entityId: undefined, severity: 'error', stack: error.stack,
       timestamp: expect.any(Number),
     };

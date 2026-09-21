@@ -166,7 +166,7 @@ describe('Tier 3 — System Framework delegates', () => {
 
   it('bus constant is exported', async () => {
     const { bus } = await import('@abuddy/sdk/ids');
-    expect(bus).toBe('bus');
+    expect(bus).toBe('host/bus');
   });
 });
 

@@ -40,7 +40,7 @@ const appEARS = (): PackEARS => ({
 
 /** Role → the address of the feature playing it: its system and its plugin share it */
 function designationsOf({ id, features = [] }: PackRegistration): Record<string, FeatureRef> {
-  return Object.fromEntries(features.flatMap((f) => (f.designation ? [[f.designation, resolveName(f.id, { packId: id })]] : [])));
+  return Object.fromEntries(features.flatMap((f) => (f.designation ? [[f.designation, resolveName(f.id, id)]] : [])));
 }
 
 export interface PackExtensions {
@@ -464,7 +464,7 @@ export function createPackRegistry(): PackRegistry {
   }
 
   function ownedPluginIds(reg: PackRegistration): string[] {
-    return pluginFeatures(reg).map((featureId) => resolveName(featureId, { packId: reg.id }));
+    return pluginFeatures(reg).map((featureId) => resolveName(featureId, reg.id));
   }
 
   /** Every plugin the host owns: those a pack may `sendsTo`, and those only the host sends to */
@@ -482,7 +482,7 @@ export function createPackRegistry(): PackRegistry {
     for (const reg of registrations.values()) {
       const declared = reg.receivedEventTypes;
       for (const featureId of pluginFeatures(reg)) {
-        map.set(resolveName(featureId, { packId: reg.id }), declared ? new Set(declared[featureId] ?? []) : null);
+        map.set(resolveName(featureId, reg.id), declared ? new Set(declared[featureId] ?? []) : null);
       }
     }
     return map;

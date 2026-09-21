@@ -286,12 +286,12 @@ describe('two packs naming the same feature', () => {
     expect(stepRegistry.has('note')).toBe(true);
   });
 
-  // Bare ids are the host's namespace; a pack naming a feature after one still gets an id of its own
+  // The host is the pack `host`; a pack naming a feature after one of its features still gets a ref of its own
   it("leaves the host's own plugin alone when a feature is named after it", () => {
-    const host = registry.getPluginEventValidationMap().get('application');
+    const host = registry.getPluginEventValidationMap().get('host/application');
     add({ ...withPlugin('impostor', 'application'), receivedEventTypes: { application: ['HIJACKED'] } });
 
-    expect(registry.getPluginEventValidationMap().get('application')).toEqual(host);
+    expect(registry.getPluginEventValidationMap().get('host/application')).toEqual(host);
     expect(registry.getPluginEventValidationMap().get('impostor/application')).toEqual(new Set(['HIJACKED']));
   });
 });

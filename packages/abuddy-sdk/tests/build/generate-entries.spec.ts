@@ -85,13 +85,13 @@ function receivedTypesBlock(events: string): string {
 
 describe('generated events', () => {
   it('keys each plugin by the systems that send to it', () => {
-    const files = generate({ features: [withPlugin(system('actions', { sendsTo: ['flows', 'application'] })), withPlugin(system('flows'))] });
+    const files = generate({ features: [withPlugin(system('actions', { sendsTo: ['flows', 'host/application'] })), withPlugin(system('flows'))] });
     const events = files['src/__generated__/events.ts'];
     expect(events).toContain("'actions': __events_actions;");
     expect(events).toContain("'flows': __events_flows | __events_actions;");
     // A host plugin keeps the events the host declares it receives: a pack widens only its own plugins
-    expect(events).toContain("export type PackEvents = OwnPackEvents & Omit<Pick<HostPluginEvents, 'application'>, keyof OwnPackEvents>;");
-    expect(events).not.toContain("'application': __events_actions");
+    expect(events).toContain("export type PackEvents = OwnPackEvents & Pick<HostPluginEvents, 'host/application'>;");
+    expect(events).not.toContain("'host/application': __events_actions");
   });
 
   // The runtime half of OwnPackEvents: the app checks a system's send against it, so it has to say the
@@ -127,11 +127,11 @@ describe('generated events', () => {
 
   it('records only this pack\'s own plugins: a dependency\'s and the host\'s are their owners\' to declare', () => {
     const deps = { 'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { entry: 'y' } }] }, facade({ PackEvents: "{ memos: { type: 'MEMO_ADDED' } }" })) };
-    const events = generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions', { sendsTo: ['base-pack/memos', 'application'] }))] }, deps)['src/__generated__/events.ts'];
+    const events = generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions', { sendsTo: ['base-pack/memos', 'host/application'] }))] }, deps)['src/__generated__/events.ts'];
     const declared = receivedTypesBlock(events);
     expect(declared).toContain("'actions':");
     expect(declared).not.toContain("'memos':");
-    expect(declared).not.toContain("'application':");
+    expect(declared).not.toContain("'host/application':");
   });
 
   it('leaves out a host plugin no sendsTo names', () => {
@@ -355,20 +355,20 @@ describe('generated sends compile', () => {
       facade({ PackEvents: "{ 'threads': { type: 'TAG_ADDED'; name: string }; 'code': { type: 'FILE_OPENED'; path: string } }" }),
     );
     const files = generatePackFiles(
-      manifest({ features: [withPlugin(system('memos', { sendsTo: ['base-pack/threads', 'application'] }))] }),
+      manifest({ features: [withPlugin(system('memos', { sendsTo: ['base-pack/threads', 'host/application'] }))] }),
       { packRoot: root, depSnapshots: new Map([['base-pack', base]]) },
     );
     write('src/probe.ts', [
       "import { emit, sendToPlugin } from './__generated__/events.js';",
       "emit('memos', { type: 'MEMO_ADDED', text: 'x' });",
       "emit('base-pack/threads', { type: 'TAG_ADDED', name: 'x' });",
-      "sendToPlugin('application', { type: 'APPLICATION_RESTORE_LAST_PLUGIN', lastActivePluginId: 'memos' });",
+      "sendToPlugin('host/application', { type: 'APPLICATION_RESTORE_LAST_PLUGIN', lastActivePluginId: 'memos' });",
       "// @ts-expect-error a dependency's plugin takes only the events its own pack declares for it",
       "emit('base-pack/threads', { type: 'MEMO_ADDED', text: 'x' });",
       "// @ts-expect-error a dependency's plugin is named <pack>/<feature>, as the send resolves it",
       "emit('threads', { type: 'TAG_ADDED', name: 'x' });",
       '// @ts-expect-error the host declares what its application plugin receives',
-      "sendToPlugin('application', { type: 'MEMO_ADDED', text: 'x' });",
+      "sendToPlugin('host/application', { type: 'MEMO_ADDED', text: 'x' });",
       "// @ts-expect-error no sendsTo names the dependency's code plugin",
       "emit('base-pack/code', { type: 'FILE_OPENED', path: 'x' });",
     ].join('\n'));

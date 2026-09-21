@@ -92,7 +92,7 @@ it('connects to default-setup settings', async () => {
   await app.connect();
   const loaded = await app.nextEmit('default-setup/settings', 'SETTINGS_LOADED');
   expect(loaded.data).toMatchObject({ general: expect.any(Object), plugins: expect.any(Object) });
-  expect(app.emitted('application').map((e) => e.type)).toContain('APPLICATION_HOTKEYS');
+  expect(app.emitted('host/application').map((e) => e.type)).toContain('APPLICATION_HOTKEYS');
   // One SDK and one engine: this pack's feature settings (registered by the harness) reach default-setup's
   // settings, and the repositories default-setup's runtime registered are the test's, through
   // @abuddy/ears and services.repository alike

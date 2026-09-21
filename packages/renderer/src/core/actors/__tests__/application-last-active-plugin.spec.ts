@@ -26,7 +26,7 @@ let app: Actor<ReturnType<typeof createApplicationState>> | undefined;
 
 const open = () => {
   app = createActor(createApplicationState(), {
-    systemId: 'application',
+    systemId: 'host/application',
     input: { plugins: [notes, threads], defaultPlugin: notes, restoreLastActivePlugin: false },
   }).start();
   return app.getSnapshot().context.activePlugin.id;

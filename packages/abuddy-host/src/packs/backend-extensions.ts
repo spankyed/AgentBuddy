@@ -59,7 +59,7 @@ export function createSettingsDefaultsStore() {
     for (const [packId, features] of byPack) {
       for (const { id, settings } of features) {
         const own = settings.plugins ?? {};
-        const pluginId = resolveName(id, { packId });
+        const pluginId = resolveName(id, packId);
         if (id in own) plugins[pluginId] = own[id];
         const visible = (own._meta as { visibility?: Record<string, boolean> } | undefined)?.visibility?.[id];
         if (visible !== undefined) visibility[pluginId] = visible;
