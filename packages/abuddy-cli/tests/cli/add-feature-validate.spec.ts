@@ -61,10 +61,14 @@ describe('abuddy add feature', () => {
     expect((await runValidate()).exitCode).toBeUndefined();
   }, 60_000);
 
-  it('rejects a designation that is not the feature name, writing nothing', async () => {
-    await expect(addFeature(['notes', '--designation', 'memos'], pack)).rejects.toThrow(/must equal the feature name/);
-    expect(readManifest().features ?? []).toEqual([]);
-  });
+  // A designation is a role, not a name. The CLI refused one that differed from the feature name, which
+  // `validate` has always accepted and the manifest schema has always allowed.
+  it('writes a designation that differs from the feature name', async () => {
+    await addFeature(['notes', '--designation', 'inbox'], pack);
+
+    expect(readManifest().features).toEqual([expect.objectContaining({ id: 'notes', designation: 'inbox' })]);
+    expect((await runValidate()).exitCode).toBeUndefined();
+  }, 60_000);
 });
 
 describe('abuddy validate', () => {

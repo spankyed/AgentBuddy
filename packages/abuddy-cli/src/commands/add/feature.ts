@@ -149,7 +149,7 @@ Usage: abuddy add feature <name> [options]
 Options:
   --label <Label>          Display label (default: derived from name)
   --icon <LucideIcon>      Lucide icon name (default: Box)
-  --designation <role>     EARS designation (must equal the feature name)
+  --designation <role>     The role this feature plays, for getDesignated(role); need not be the feature name
 
 Example:
   abuddy add feature bookmarks --label "Bookmarks" --icon Bookmark
@@ -170,9 +170,6 @@ export async function addFeature(args: string[], root: string) {
   const label = parseFlag(args, '--label') || toLabel(name);
   const icon = parseFlag(args, '--icon') || 'Box';
   const designation = parseFlag(args, '--designation');
-  if (designation !== undefined && designation !== name) {
-    throw new Error(`Designation "${designation}" must equal the feature name "${name}": a designation routes to the feature of the same id`);
-  }
   const camel = toCamelCase(name);
   const pascal = toPascalCase(name);
   const featureDir = path.join(root, 'src', 'features', name);

@@ -41,11 +41,22 @@ const appEARS = (): PackEARS => ({
  * Role → id of the system that plays it (`<packId>.<featureId>` for an external pack). A designated
  * feature with no registered system (the early system) resolves to its feature id.
  */
+/**
+ * The id of the system `featureId` names, among `systemIds`, or undefined when none of them is it.
+ *
+ * A system id is `<packId>.<featureId>`, and a built-in pack's used to be the bare feature id, so both
+ * spellings resolve. One finder, because a designation and a `<pack>/<feature>` address are asking the
+ * same question of the same ids and must not answer it differently.
+ */
+function systemIdFor(systemIds: readonly string[], packId: string, featureId: string): string | undefined {
+  return systemIds.find((id) => id === featureId || id === `${packId}.${featureId}`);
+}
+
 function designationsOf({ id, systems, features = [] }: PackRegistration): Record<string, string> {
-  const systemId = (featureId: string) =>
-    systems.find((s) => s.id === featureId || s.id === `${id}.${featureId}`)?.id ?? featureId;
+  const systemIds = systems.map((s) => s.id);
   return Object.fromEntries(
-    features.flatMap((f) => (f.designation ? [[f.designation, systemId(f.id)]] : [])),
+    // A feature with no system is addressed by its own id: a plugin-only feature still plays its role
+    features.flatMap((f) => (f.designation ? [[f.designation, systemIdFor(systemIds, id, f.id) ?? f.id]] : [])),
   );
 }
 
@@ -569,8 +580,7 @@ export function createPackRegistry(): PackRegistry {
       const slash = address.indexOf('/');
       if (slash <= 0) return undefined;
       const packId = address.slice(0, slash);
-      const featureId = address.slice(slash + 1);
-      return getRegisteredPackSystemIds(packId).find((id) => id === featureId || id === `${packId}.${featureId}`);
+      return systemIdFor(getRegisteredPackSystemIds(packId), packId, address.slice(slash + 1));
     },
 
     getEventValidationMap: () => eventValidationMap ??= buildEventValidationMap(),
