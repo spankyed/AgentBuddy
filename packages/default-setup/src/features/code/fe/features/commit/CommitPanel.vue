@@ -628,6 +628,7 @@
 </template>
 
 <script setup lang="ts">
+import { codeChild } from '@/features/code/fe/utils/parent-communication'
 import { actorOf } from '@/__generated__/fe'
 import { computed, ref, nextTick, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -651,7 +652,7 @@ import { useSectionVisibilityMenu } from '@/features/code/fe/composables/useSect
 // Get actors
 const appActor = useApplicationActor()
 const codeActor: CodeState = actorOf(codeId)
-const commitActor = codeActor.system.get('commit')!
+const commitActor = codeChild(codeActor, 'commit')!
 
 // Settings from code actor
 const codeSettings = useSelector(codeActor, (state) => state.context.settings)

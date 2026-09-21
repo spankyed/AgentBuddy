@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import { createActor, setup, type AnyEventObject } from 'xstate';
 import { bus } from '@abuddy/sdk/ids';
 import { resolveAppContext } from '@abuddy/sdk/env';
-import { resetTestData, takeSystemErrors } from '@abuddy/sdk/testing';
+import { resetTestData, takeSystemErrors, testRootEvents } from '@abuddy/sdk/testing';
 import { readInstalledPacks } from '../../../src/packs/installed-packs.ts';
 import { registry } from './test-host.ts';
 import { appState } from '../../../src/app-state/index.ts';
@@ -51,12 +51,13 @@ function packSource(version: string, { unseedable = false } = {}): string {
   return dir;
 }
 
-/** The packs system running next to a bus that records what it is sent. */
+/** The packs system running next to a bus that records what it is sent, and what it sends its plugin. */
 function runPacksSystem() {
   const sent: AnyEventObject[] = [];
   const busStub = setup({ types: {} as { events: AnyEventObject } }).createMachine({
     on: { '*': { actions: ({ event }) => void sent.push(event) } },
   });
+  const stopListening = testRootEvents.onPluginSend((message) => void sent.push({ type: 'OUTGOING', message }));
   const root = setup({ actors: { bus: busStub, packs: createPacksSystem(registry) } }).createMachine({
     invoke: [
       { src: 'bus', systemId: bus },
@@ -64,7 +65,11 @@ function runPacksSystem() {
     ],
   });
   const actor = createActor(root).start();
-  return { sent, send: (event: AnyEventObject) => actor.system.get(packs).send(event), stop: () => actor.stop() };
+  const stop = () => {
+    actor.stop();
+    stopListening();
+  };
+  return { sent, send: (event: AnyEventObject) => actor.system.get(packs).send(event), stop };
 }
 
 /** The pack-scoped events the system emitted, unwrapped from the bus envelope */

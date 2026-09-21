@@ -1,6 +1,6 @@
 // Compile-time checks of the typed sends, run by `tsc --noEmit`: the sends sit in functions that never run.
 import { describe, expectTypeOf, it } from 'vitest';
-import type { TypedEmit, TypedSendToPlugin, TypedSendToSystem } from '../../src/events/index.ts';
+import type { TypedSendToPlugin, TypedSendToSystem } from '../../src/events/index.ts';
 
 type Systems = {
   memos:
@@ -19,7 +19,6 @@ type Plugins = {
 
 declare const sendToSystem: TypedSendToSystem<Systems>;
 declare const sendToPlugin: TypedSendToPlugin<Plugins>;
-declare const emit: TypedEmit<Plugins>;
 
 describe('sendToSystem', () => {
   it('checks the event its type names', () => {
@@ -27,6 +26,8 @@ describe('sendToSystem', () => {
       sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });
       sendToSystem('memos', { type: 'CLEAR_MEMOS' });
       sendToSystem('tags', { type: 'ADD_TAG', name: 'x' });
+      // A role names whichever system plays it, which the build can't know, so its event isn't checked
+      sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType: 'x' });
       // @ts-expect-error ADD_MEMO needs its text
       sendToSystem('memos', { type: 'ADD_MEMO' });
       // @ts-expect-error the memos system doesn't receive ADD_TAG
@@ -65,24 +66,21 @@ describe('sendToSystem', () => {
   });
 });
 
-describe('sendToPlugin and emit', () => {
+describe('sendToPlugin', () => {
   it("check the plugin's events", () => {
     expectTypeOf(() => {
       sendToPlugin('memos', { type: 'MEMO_ADDED', text: 'x' });
       // @ts-expect-error the memos plugin doesn't receive TAG_ADDED
       sendToPlugin('memos', { type: 'TAG_ADDED', name: 'x' });
       // @ts-expect-error MEMO_ADDED needs its text
-      emit('memos', { type: 'MEMO_ADDED' });
+      sendToPlugin('memos', { type: 'MEMO_ADDED' });
     }).toBeFunction();
-    expectTypeOf(() => emit('memos', { type: 'MEMOS_CLEARED' }).message.event).returns.toEqualTypeOf<Plugins['memos']>();
   });
 
   it('reject a union plugin id', () => {
     expectTypeOf((pluginId: 'memos' | 'tags') => {
       // @ts-expect-error one plugin per send
       sendToPlugin(pluginId, { type: 'TAG_ADDED', name: 'x' });
-      // @ts-expect-error one plugin per send
-      emit(pluginId, { type: 'TAG_ADDED', name: 'x' });
     }).toBeFunction();
   });
 });

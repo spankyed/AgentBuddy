@@ -1,4 +1,4 @@
-import { emit, sendToSystem } from '@/__generated__/events';
+import { sendToSystem, sendToPlugin } from '@/__generated__/events';
 import { setup } from 'xstate';
 import { performance } from 'node:perf_hooks';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
@@ -61,10 +61,10 @@ export const databaseSystem = setup({
   actions: {
     sendDatabaseRefresh: ({ system }) => {
       const schema = generateSchemaInfo();
-      system.get(bus).send(emit('database', { 
+      sendToPlugin('database', { 
         type: 'DATABASE_REFRESH',
         data: { schema }
-      }));
+      });
     },
     executeQuery: async ({ system, event }) => {
       const { code } = databaseSpec.typeOf('EXECUTE_QUERY', event);
@@ -74,18 +74,18 @@ export const databaseSystem = setup({
         const result = await executeQuery(code);
         const executionTime = performance.now() - startTime;
         
-        system.get(bus).send(emit('database', { 
+        sendToPlugin('database', { 
           type: 'QUERY_RESULT',
           result,
           executionTime
-        }));
+        });
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger.error('Query execution failed:', { error: errorMessage });
-        system.get(bus).send(emit('database', { 
+        sendToPlugin('database', { 
           type: 'QUERY_ERROR',
           error: errorMessage
-        }));
+        });
       }
     },
     executeTransaction: async ({ system, event }) => {
@@ -96,26 +96,26 @@ export const databaseSystem = setup({
         const result = await executeTransaction(code);
         const executionTime = performance.now() - startTime;
         
-        system.get(bus).send(emit('database', { 
+        sendToPlugin('database', { 
           type: 'TRANSACTION_RESULT',
           result,
           executionTime
-        }));
+        });
         
         // Send refresh event with updated schema
         logger.info('Transaction completed successfully, sending database refresh');
         const schema = generateSchemaInfo();
-        system.get(bus).send(emit('database', { 
+        sendToPlugin('database', { 
           type: 'DATABASE_REFRESH',
           data: { schema }
-        }));
+        });
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger.error('Transaction execution failed:', { error: errorMessage });
-        system.get(bus).send(emit('database', { 
+        sendToPlugin('database', { 
           type: 'TRANSACTION_ERROR',
           error: errorMessage
-        }));
+        });
       }
     },
     handleAiQuery: ({ system, event }) => {
@@ -123,10 +123,10 @@ export const databaseSystem = setup({
 
       if (!prompt?.trim()) {
         logger.error('Invalid prompt provided for AI query generation');
-        system.get(bus).send(emit('database', {
+        sendToPlugin('database', {
           type: 'QUERY_ERROR',
           error: 'Please provide a valid prompt'
-        }));
+        });
         return;
       }
 
@@ -143,17 +143,17 @@ export const databaseSystem = setup({
       try {
         const flows = getTraceFlows(100);
         logger.info('Retrieved trace flows', { count: flows.length });
-        system.get(bus).send(emit('database', { 
+        sendToPlugin('database', { 
           type: 'TRACE_FLOWS_RESULT',
           flows
-        }));
+        });
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger.error('Failed to get trace flows:', { error: errorMessage });
-        system.get(bus).send(emit('database', { 
+        sendToPlugin('database', { 
           type: 'TRACE_FLOWS_RESULT',
           flows: []
-        }));
+        });
       }
     },
     getFlowEvents: ({ system, event }) => {
@@ -162,21 +162,21 @@ export const databaseSystem = setup({
       try {
         const result = getFlowEvents(flowId, offset, limit);
         logger.info('Retrieved events for flow', { count: result.events.length, flowId });
-        system.get(bus).send(emit('database', { 
+        sendToPlugin('database', { 
           type: 'FLOW_EVENTS_RESULT',
           flowId,
           events: result.events,
           hasMore: result.hasMore
-        }));
+        });
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger.error('Failed to get flow events:', { error: errorMessage, flowId });
-        system.get(bus).send(emit('database', { 
+        sendToPlugin('database', { 
           type: 'FLOW_EVENTS_RESULT',
           flowId,
           events: [],
           hasMore: false
-        }));
+        });
       }
     },
     getNodeDetails: ({ system, event }) => {
@@ -185,19 +185,19 @@ export const databaseSystem = setup({
       try {
         const details = getNodeDetails(nodeId);
         logger.info('Retrieved node details', { nodeId });
-        system.get(bus).send(emit('database', { 
+        sendToPlugin('database', { 
           type: 'NODE_DETAILS_RESULT',
           nodeId,
           details
-        }));
+        });
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger.error('Failed to get node details:', { error: errorMessage, nodeId });
-        system.get(bus).send(emit('database', { 
+        sendToPlugin('database', { 
           type: 'NODE_DETAILS_RESULT',
           nodeId,
           details: null
-        }));
+        });
       }
     },
     exportDatabase: ({ system, event }) => {
@@ -205,18 +205,18 @@ export const databaseSystem = setup({
       
       services.appData.exportBackup(path, name, databases).then(
         (resultPath) => {
-          system.get(bus).send(emit('database', { 
+          sendToPlugin('database', { 
             type: 'EXPORT_DATABASE_SUCCESS',
             path: resultPath
-          }));
+          });
         },
         (error: unknown) => {
           const errorMessage = error instanceof Error ? error.message : String(error);
           logger.error('Failed to export database:', { error: errorMessage });
-          system.get(bus).send(emit('database', { 
+          sendToPlugin('database', { 
             type: 'EXPORT_DATABASE_ERROR',
             error: errorMessage
-          }));
+          });
         }
       );
     },
@@ -237,24 +237,24 @@ export const databaseSystem = setup({
             ? ` It also holds ${unknownEntityTypes.map(([type, count]) => `${count} ${type}`).join(', ')} that no installed pack declares;`
               + ' those stay until the pack that declared them is installed again.'
             : '';
-          system.get(bus).send(emit('database', {
+          sendToPlugin('database', {
             type: 'IMPORT_DATABASE_SUCCESS',
             message: `Import successful.${nothingToRestore}${fromMissingPacks} Please restart the brain manually.`
-          }));
-          system.get(bus).send(emit('database', { 
+          });
+          sendToPlugin('database', { 
             type: 'DATABASE_REFRESH',
             data: { schema: generateSchemaInfo() }
-          }));
+          });
         },
         (error: unknown) => {
           const errorMessage = error instanceof Error ? error.message : String(error);
           logger.error('Failed to import database:', { error: errorMessage });
-          system.get(bus).send(emit('database', {
+          sendToPlugin('database', {
             type: 'IMPORT_DATABASE_ERROR',
             error: errorMessage,
             // The user decides whether to import a newer AgentBuddy's backup without what this one can't hold
             ...(error instanceof UnknownBackupDatabasesError && { unknownDatabases: error.databases }),
-          }));
+          });
         }
       );
     },
@@ -263,17 +263,17 @@ export const databaseSystem = setup({
 
       try {
         const info = await services.appData.backupInfo(path);
-        system.get(bus).send(emit('database', {
+        sendToPlugin('database', {
           type: 'BACKUP_INFO_RESULT',
           info
-        }));
+        });
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger.error('Failed to get backup info:', { error: errorMessage });
-        system.get(bus).send(emit('database', {
+        sendToPlugin('database', {
           type: 'BACKUP_INFO_RESULT',
           info: null
-        }));
+        });
       }
     },
     resetDatabase: async ({ system }) => {
@@ -289,23 +289,23 @@ export const databaseSystem = setup({
         logger.info('Database reset completed', { flowId: repository.flowsQueries.rootFlow() });
 
         // Send success response and refresh
-        system.get(bus).send(emit('database', {
+        sendToPlugin('database', {
           type: 'RESET_DATABASE_SUCCESS',
           message: 'Database reset successfully. New root flow created.'
-        }));
+        });
 
-        system.get(bus).send(emit('database', {
+        sendToPlugin('database', {
           type: 'DATABASE_REFRESH',
           data: { schema: generateSchemaInfo() }
-        }));
+        });
       } catch (error: unknown) {
         const errorMessage = error instanceof Error ? error.message : String(error);
         logger.error('Database reset failed:', { error: errorMessage });
 
-        system.get(bus).send(emit('database', {
+        sendToPlugin('database', {
           type: 'RESET_DATABASE_ERROR',
           error: errorMessage
-        }));
+        });
       }
     },
   },

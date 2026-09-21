@@ -1,7 +1,7 @@
 // A pack's typed sends go through the bound app's bus, each system under the id it runs under.
 import * as os from 'node:os';
 import { describe, expect, it } from 'vitest';
-import { defineEvents, emit, type PluginEvents, type SystemEventMap } from '../../src/events/index.ts';
+import { defineEvents, type PluginEvents, type SystemEventMap } from '../../src/events/index.ts';
 import { startTestRuntime, testRootEvents } from '../../src/testing/index.ts';
 
 process.env.ABUDDY_ENV ??= 'test';
@@ -35,7 +35,7 @@ describe('defineEvents', () => {
       .toEqual([{ to: 'default-setup/settings', event: { type: 'GET_SETTINGS' } }]);
   });
 
-  it('sends to a plugin at its address, and wraps an event for the bus with emit', () => {
+  it('sends to a plugin at its ref', () => {
     const outgoing: unknown[] = [];
     const stop = testRootEvents.onPluginSend((event) => outgoing.push(event));
     try {
@@ -44,13 +44,19 @@ describe('defineEvents', () => {
       stop();
     }
     expect(outgoing).toEqual([{ to: 'memo-pack/memos', event: { type: 'MEMO_ADDED' } }]);
-    expect(events.emit('memos', { type: 'MEMO_ADDED' })).toEqual(emit('memo-pack/memos', { type: 'MEMO_ADDED' }));
   });
 
   // The host is a pack: its plugins are named by ref, and a bare name is always this pack's own feature
   it("sends to a host plugin by its ref, and takes a bare name as this pack's own", () => {
-    const untyped = events.emit as unknown as (name: string, event: { type: string }) => { message: { to: string } };
-    expect(untyped('host/application', { type: 'APPLICATION_HOTKEYS' }).message.to).toBe('host/application');
-    expect(untyped('application', { type: 'APPLICATION_HOTKEYS' }).message.to).toBe('memo-pack/application');
+    const untyped = events.sendToPlugin as unknown as (name: string, event: { type: string }) => void;
+    const sent: Array<{ to: string }> = [];
+    const stop = testRootEvents.onPluginSend((message) => sent.push(message));
+    try {
+      untyped('host/application', { type: 'APPLICATION_HOTKEYS' });
+      untyped('application', { type: 'APPLICATION_HOTKEYS' });
+    } finally {
+      stop();
+    }
+    expect(sent.map(({ to }) => to)).toEqual(['host/application', 'memo-pack/application']);
   });
 });

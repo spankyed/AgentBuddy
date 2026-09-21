@@ -17,8 +17,7 @@
 <script setup lang="ts">
 import { ExternalLink, FileText, MessageSquare, Settings, Link as LinkIcon } from 'lucide-vue-next'
 import type { Component } from 'vue'
-import { useApplicationActor } from '@abuddy/sdk/fe'
-import { navigateToPlugin, type PluginName } from '@/__generated__/fe'
+import { openPlugin, useApplicationActor } from '@abuddy/sdk/fe'
 
 export type SupportedLinkIcon =
   | 'external-link'
@@ -51,8 +50,8 @@ const handleLinkClick = (link: Link) => {
   } else if (target === 'external') {
     window.open(data.url, '_blank')
   } else {
-    // A link's target is a plugin named as this pack names it, from the block's data
-    navigateToPlugin(target as PluginName, data)
+    // A link's target is data, so it's checked when the link opens: a registered plugin's `<packId>/<featureId>`
+    openPlugin(target, data)
   }
 }
 

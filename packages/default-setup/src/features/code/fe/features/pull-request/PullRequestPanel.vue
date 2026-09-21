@@ -244,6 +244,7 @@
 </template>
 
 <script setup lang="ts">
+import { codeChild } from '@/features/code/fe/utils/parent-communication'
 import { actorOf } from '@/__generated__/fe'
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -268,8 +269,8 @@ import type { TreeNode } from './types'
 // Get actors
 const appActor = useApplicationActor()
 const codeActor: CodeState = actorOf(codeId)
-const prActor = codeActor.system.get('pr')!
-const commitActor = codeActor.system.get('commit')!
+const prActor = codeChild(codeActor, 'pr')!
+const commitActor = codeChild(codeActor, 'commit')!
 
 // State selectors
 const prFiles = useSelector(prActor, (state: any) => state.context.prFiles)

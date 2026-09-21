@@ -244,6 +244,9 @@ export function onMenuOpenChange(open: boolean): void;
 export function openInAppBrowser(url: string): void;
 
 // @public
+export function openPlugin(ref: string, event?: PluginEvent | PluginEvent[]): void;
+
+// @public
 export interface PackFERegistration {
     // (undocumented)
     appExtensions?: Record<string, Component>;

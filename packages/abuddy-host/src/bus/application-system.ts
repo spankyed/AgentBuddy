@@ -2,7 +2,7 @@
 // the plugin the user last had open. It lives in AppState because no pack owns the shell; the renderer's
 // application actor is its plugin.
 import { setup } from 'xstate';
-import { emit } from '@abuddy/sdk/events';
+import { sendToPlugin } from '@abuddy/sdk/events';
 import { bus, HOST_PACK_ID, resolveName, splitRef } from '@abuddy/sdk/ids';
 import { appState } from '../app-state/index.ts';
 import type { PackRegistry } from '../packs/pack-registration.ts';
@@ -33,7 +33,7 @@ export function createApplicationSystem(registry: Pick<PackRegistry, 'settingsDe
     types: { events: {} as ApplicationEvent },
     actions: {
       sendVisibility: ({ system }) => {
-        system.get(bus).send(emit(application, { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: pluginVisibility(registry) }));
+        sendToPlugin(application, { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: pluginVisibility(registry) });
       },
     },
   }).createMachine({

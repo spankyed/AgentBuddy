@@ -88,6 +88,7 @@
 </template>
 
 <script setup lang="ts">
+import { codeChild } from '@/features/code/fe/utils/parent-communication'
 import { actorOf } from '@/__generated__/fe'
 import { ref, computed, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -102,7 +103,7 @@ const props = defineProps<{
 }>()
 
 const codeActor: CodeState = actorOf(codeId)
-const commitActor = codeActor.system.get('commit')!
+const commitActor = codeChild(codeActor, 'commit')!
 
 const commitLog = useSelector(commitActor, (state: any) => state.context.commitLog) as import('vue').Ref<CommitLogEntry[]>
 

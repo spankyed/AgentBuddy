@@ -234,7 +234,9 @@ export function createBusMachine(options: BusOptions) {
     // reconnecting client connects again and gets the startup data), so `clientSeen` means "a client has
     // connected since the bus started", not "one is connected now".
     initial: 'awaitingClient',
-    entry: ['spawnActors', 'listen'],
+    // Listening first: a system sends as it starts (a plugin's report, another system's event), and what it sends
+    // before the bus hears the root events is lost
+    entry: ['listen', 'spawnActors'],
     // A pack can be installed, uninstalled or rebuilt before any client connects (`abuddy dev` against a
     // running backend, a headless boot), so these apply in both states: handled only once a client connected,
     // the pack's systems would be left as they were with nothing reported. Events for systems don't wait for a

@@ -2,7 +2,7 @@ import { setup, assign, enqueueActions } from 'xstate';
 import { sendToSystem } from '@/__generated__/events';
 import type { GitStatusFile, GitDiff } from '../commit/state';
 import type { GhPullRequest, GhPRComment, GhReviewThread } from '@/__generated__/types';
-import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
+import { updateParentState, getParentContext, addTabToParent, sendEventToParent } from '../../utils/parent-communication';
 import { navigateToPlugin } from '@/__generated__/fe';
 import { getCommentDatabaseId } from './comment-id';
 
@@ -292,7 +292,7 @@ export const pullRequestState = setup({
       })
     }),
 
-    openFile: ({ event, self, system }) => {
+    openFile: ({ event, self }) => {
       const ev = event as { type: 'pr.OPEN_FILE'; file: GitStatusFile }
       const parentContext = getParentContext(self)
       const baseDirectory = parentContext?.baseDirectory || ''
@@ -302,7 +302,7 @@ export const pullRequestState = setup({
           ? baseDirectory + ev.file.path
           : baseDirectory + '/' + ev.file.path
       updateParentState(self, { selectedPanel: 'explorer' })
-      system.get('explorer')?.send({
+      sendEventToParent(self, {
         type: 'explorer.OPEN_FILE',
         path: fullPath
       })

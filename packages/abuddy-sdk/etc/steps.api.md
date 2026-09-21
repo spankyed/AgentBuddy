@@ -371,11 +371,11 @@ export interface TriggerFacet {
 export interface TriggerRuntimeContext {
     // (undocumented)
     flowTNodeId: EARS.EntityId;
-    // (undocumented)
-    sendToBrainSystem: (event: {
-        eventType: string;
-        payload?: unknown;
-        targetFlowId?: EARS.EntityId;
+    sendToSystem: (target: {
+        role: string;
+    }, event: {
+        type: string;
+        [key: string]: unknown;
     }) => void;
 }
 

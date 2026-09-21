@@ -44,6 +44,7 @@
 </template>
 
 <script setup lang="ts">
+import { codeChild } from '@/features/code/fe/utils/parent-communication'
 import { actorOf } from '@/__generated__/fe'
 import { ref, onMounted, onBeforeUnmount, computed } from 'vue'
 import ScrollToBottomFob from '@abuddy/ui/design/ScrollToBottomFob'
@@ -75,7 +76,7 @@ defineEmits<{
 }>()
 
 const codeActor: CodeState = actorOf(id)
-const terminalActor = codeActor.system.get('terminal')
+const terminalActor = codeChild(codeActor, 'terminal')
 
 /* --------------------------------------------------------------------------
  * Refs --------------------------------------------------------------------- */

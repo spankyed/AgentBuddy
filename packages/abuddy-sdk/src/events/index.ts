@@ -4,7 +4,6 @@ import { boundHost, _isHostBound } from '../runtime/host-runtime.ts';
 import { _isFeHostBound, boundFeHost } from '../runtime/fe-host.ts';
 import { getDesignated } from '../designations/index.ts';
 import { resolveName } from '../ids/addressing.ts';
-import type { EARS } from '../types/entities.ts';
 import type { ApplicationHotkeys } from '../types/index.ts';
 
 /**
@@ -67,6 +66,12 @@ export type HostPluginEvents = {
     | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> };
 };
 
+/** Events the host app's own systems receive from pack code, which names them `host/<feature>` */
+export type HostSystemEvents = {
+  // A pack whose data changed outside a pack change (its seeds imported) has the running systems read it again
+  'host/bus': { type: 'PACK_CHANGED'; packId: string };
+};
+
 type SameMembers<A extends string, B extends string> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
 
 /**
@@ -96,14 +101,6 @@ function sendIncoming(message: Message): void {
 }
 
 /**
- * Wraps an event for a plugin, for a system to send to the bus (`system.get(bus).send(emit(…))`).
- * Untyped: packs use the `emit` from their `#generated/events`.
- */
-export function emit<P extends string, E extends { type: string }>(to: P, event: E): { type: 'OUTGOING'; message: { to: P; event: E } } {
-  return { type: 'OUTGOING', message: { to, event } };
-}
-
-/**
  * Sends an event to a frontend plugin through the bus, which delivers it once a client is connected (as `emit` in a
  * system). Backend only. Untyped: packs use the `sendToPlugin` from their `#generated/events`.
  */
@@ -111,14 +108,15 @@ export function sendToPlugin(to: string, event: { type: string; [key: string]: u
   boundHost().transport.rootEvents.emitPluginSend({ to, event });
 }
 
-/** Sends an event to a backend system. Untyped: packs use the `sendToSystem` from their `#generated/events`. */
-export function sendToSystem(to: string, event: { type: string; [key: string]: unknown }): void {
-  sendIncoming({ to, event });
-}
+/** A system: its ref, or the role a system plays (`{ role: 'brain' }`), found when the message is sent */
+export type SystemTarget = string | { role: string };
 
-/** Fires an event at every running flow, through the designated brain system */
-export function sendToBrainSystem(event: { eventType: string; payload?: unknown; targetFlowId?: EARS.EntityId }): void {
-  sendIncoming({ to: getDesignated('brain'), event: { ...event, type: 'TRIGGER_BRAIN_EVENT' } });
+/**
+ * Sends an event to a backend system, by ref or by the role it plays. Untyped: packs use the `sendToSystem` from
+ * their `#generated/events`, which takes names and checks the event against what the system declares.
+ */
+export function sendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }): void {
+  sendIncoming({ to: typeof to === 'string' ? to : getDesignated(to.role), event });
 }
 
 /** Calls `callback` each time a client connects; returns the unsubscribe (backend only) */
@@ -131,27 +129,23 @@ export function onIncoming(callback: (message: Message) => void): () => void {
   return boundHost().transport.rootEvents.onIncoming(callback);
 }
 
-/** `emit` typed against a plugin event map */
-export type TypedEmit<M extends PluginEvents> = <P extends keyof M & string>(
-  pluginId: P,
-  event: OneSend<IsUnion<P>, M[P]['type'], M[P]>,
-) => { type: 'OUTGOING'; message: { to: string; event: M[P] } };
-
 /** `sendToPlugin` typed against a plugin event map */
 export type TypedSendToPlugin<M extends PluginEvents> = <P extends keyof M & string>(
   pluginId: P,
   event: OneSend<IsUnion<P>, M[P]['type'], M[P]>,
 ) => void;
 
-/** `sendToSystem` typed against a system event map; `type` picks the event, so a missing field names it */
-export type TypedSendToSystem<S extends SystemEventMap> = <Id extends keyof S & string, Type extends S[Id]['type']>(
+/**
+ * `sendToSystem` typed against a system event map; `type` picks the event, so a missing field names it. A role
+ * (`{ role: 'brain' }`) names whichever system plays it, which the build can't know, so its event is unchecked.
+ */
+export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S & string, Type extends S[Id]['type']>(
   systemId: Id,
   event: OneSend<IsUnion<Id> | IsUnion<Type>, Type, { type: Type } & WithoutType<EventsOfType<S[Id], Type>>>,
-) => void;
+) => void) & ((target: { role: string }, event: { type: string; [key: string]: unknown }) => void);
 
 /** A pack's typed sends */
 export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
-  emit: TypedEmit<P>;
   sendToPlugin: TypedSendToPlugin<P>;
   sendToSystem: TypedSendToSystem<S>;
 }
@@ -164,8 +158,7 @@ export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
 export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S> {
   const address = (name: string): string => resolveName(name, packId);
   return {
-    emit: (name: string, event: { type: string }) => emit(address(name), event),
     sendToPlugin: (name: string, event: { type: string }) => sendToPlugin(address(name), event),
-    sendToSystem: (name: string, event: { type: string }) => sendToSystem(address(name), event),
+    sendToSystem: (to: SystemTarget, event: { type: string }) => sendToSystem(typeof to === 'string' ? address(to) : to, event),
   } as unknown as TypedEvents<P, S>;
 }

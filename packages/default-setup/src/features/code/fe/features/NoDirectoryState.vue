@@ -42,13 +42,14 @@
 </template>
 
 <script setup lang="ts">
+import { codeChild } from '@/features/code/fe/utils/parent-communication'
 import { actorOf } from '@/__generated__/fe'
 import { FolderOpen } from 'lucide-vue-next'
 import { id as codeId, type CodeState } from '@/features/code/fe/state'
 import { useProjectActions } from './explorer/composables/useProjectActions'
 
 const codeActor: CodeState = actorOf(codeId)
-const explorerActor = codeActor.system.get('explorer')!
+const explorerActor = codeChild(codeActor, 'explorer')!
 
 const { allProjects } = useProjectActions()
 

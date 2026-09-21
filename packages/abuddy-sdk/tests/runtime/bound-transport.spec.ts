@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { startTestRuntime, takeSystemErrors, testRootEvents } from '../../src/testing/index.ts';
 import { testPacksView } from '../../src/testing/packs.ts';
 import { resolveName } from '../../src/ids/index.ts';
-import { onIncoming, sendToBrainSystem, sendToPlugin, sendToSystem } from '../../src/events/index.ts';
+import { onIncoming, sendToPlugin, sendToSystem } from '../../src/events/index.ts';
 import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts';
 import { createLogger, onLog, reportError, type LogEvent } from '../../src/logger/index.ts';
 import { services } from '../../src/services/index.ts';
@@ -65,10 +65,10 @@ describe('on the bound bus', () => {
     expect(sent.incoming).toEqual([{ to: 'memo-pack/memos', event: { type: 'OPEN', systemId: 'kept', pluginId: 'also-kept' } }]);
   });
 
-  it('sendToBrainSystem sends to the designated brain', () => {
+  it('sendToSystem sends to the system that plays a role', () => {
     testPacks.designations.set('brain', 'brain-system');
     try {
-      expect(onBus(() => sendToBrainSystem({ eventType: 'user.message', payload: 1 })).incoming)
+      expect(onBus(() => sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message', payload: 1 })).incoming)
         .toEqual([{ to: 'brain-system', event: { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message', payload: 1 } }]);
     } finally {
       testPacks.designations.delete('brain');
@@ -134,7 +134,7 @@ describe('with a frontend bound too', () => {
     try {
       const sent = onBus(() => {
         sendToSystem('memos', { type: 'ADD_MEMO' });
-        sendToBrainSystem({ eventType: 'user.message' });
+        sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message' });
       });
       expect(sent.incoming).toEqual([]);
       expect(sentByFrontend).toEqual([

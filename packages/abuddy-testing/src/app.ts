@@ -57,7 +57,7 @@ export interface TestApp {
   /** Sends a system an event, as a client's `sendToSystem` does (the pack's own by feature id, a dependency's as `<packId>/<featureId>`); the bus routes it whether or not a client connected */
   send(systemId: string, event: { type: string; [key: string]: unknown }): Promise<void>;
   /**
-   * The events delivered to one frontend plugin (by `emit` or `sendToPlugin`, once connected), in order, exactly as
+   * The events delivered to one frontend plugin (by `sendToPlugin`, once connected), in order, exactly as
    * sent; the plugin named as the pack names it (its own by feature id, any other as `<packId>/<featureId>`).
    * Readable after `stop`
    */
@@ -74,7 +74,7 @@ export interface TestApp {
    * left only waiting. Without `event`, resolves with the entry tracks the flow ran when it started.
    *
    * It returns the tracks the event itself triggered. Tracks started by events those tracks send (a `fire` step,
-   * `sendToBrainSystem`) aren't in the result: `settle()` after it, then read them with `flowTrace`. It doesn't
+   * a `TRIGGER_BRAIN_EVENT` sent to the brain's role) aren't in the result: `settle()` after it, then read them with `flowTrace`. It doesn't
    * connect the app: flows run and report without a client, as they do in the app.
    */
   runFlow(label: string, options?: RunFlowOptions): Promise<FlowRun>;
@@ -183,7 +183,7 @@ function resolveSystemId(name: string, registered: ReadonlyMap<string, AnyStateM
   throw new Error(`No registered system is named "${name}" (it would be "${id}"). Registered: ${[...registered.keys()].join(', ') || 'none'} (name the pack's own systems by feature id and a dependency's as "<packId>/<featureId>"; pass the pack's registration to setupPackTests)`);
 }
 
-/** The id a plugin name addresses, as the pack under test's own `emit` resolves it */
+/** The id a plugin name addresses, as the pack under test's own `sendToPlugin` resolves it */
 function resolvePluginId(name: string): string {
   return resolveName(name, packId);
 }

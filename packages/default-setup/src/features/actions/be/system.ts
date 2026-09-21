@@ -1,4 +1,4 @@
-import { emit } from '@/__generated__/events';
+import { sendToPlugin } from '@/__generated__/events';
 // Cross-plugin send: the flows plugin also receives action events
 import { assign, createMachine, setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
@@ -45,9 +45,8 @@ export const actions = actionsSpec.id;
 
 // Broadcasts action events to both the actions and flows plugins (abuddy.json sendsTo)
 const broadcastActionEvent = (system: any, event: OutgoingActionEvents) => {
-  const busSvc = system.get(bus);
-  busSvc.send(emit('actions', event));
-  busSvc.send(emit('flows', event));
+  sendToPlugin('actions', event);
+  sendToPlugin('flows', event);
 };
 
 export const actionsSystem = setup({
@@ -57,44 +56,44 @@ export const actionsSystem = setup({
       const connectedData = repository.actionQueries.connectedData();
       const actionsSettings = repository.settingsQueries.getPluginSettings('actions');
       
-      system.get(bus).send(emit('actions', { 
+      sendToPlugin('actions', { 
         type: 'ACTIONS_LISTED',
         data: {
           ...connectedData,
           categories: actionsSettings?.categories || []
         }
-      }));
+      });
     },
     fetchActionsPage: ({ system, event }) => {
       const ev = actionsSpec.typeOf('FETCH_ACTIONS_PAGE', event);
       const data = repository.actionQueries.connectedData(ev.page || 1);
 
-      system.get(bus).send(emit('actions', {
+      sendToPlugin('actions', {
         type: 'ACTIONS_PAGE_LOADED',
         data: {
           actions: data.actions,
           page: data.page,
           totalPages: data.totalPages
         }
-      }));
+      });
     },
     fetchAllActions: ({ system }) => {
       const allActions = repository.actionQueries.all();
-      system.get(bus).send(emit('actions', {
+      sendToPlugin('actions', {
         type: 'ACTIONS_ALL_LOADED',
         data: { actions: allActions }
-      }));
+      });
     },
     sendActionData: ({ system, event }) => {
       const ev = actionsSpec.typeOf('ACTION_SELECT', event);
       const action = repository.actionQueries.byId(ev.actionId as EARS.EntityId);
       
       if (action) {
-        system.get(bus).send(emit('actions', {
+        sendToPlugin('actions', {
           type: 'ACTION_SELECTED',
           actionId: ev.actionId as EARS.EntityId,
           data: action
-        }));
+        });
       }
     },
     createAction: ({ system, event }) => {
@@ -150,10 +149,10 @@ export const actionsSystem = setup({
       logger.info('Importing actions', { count: Array.isArray(importData) ? importData.length : 0 });
 
       if (!Array.isArray(importData)) {
-        system.get(bus).send(emit(pluginId, {
+        sendToPlugin(pluginId, {
           type: 'ACTIONS_IMPORT_FAILED',
           errors: ['Invalid import data: expected an array of actions'],
-        }));
+        });
         return;
       }
 
@@ -191,29 +190,29 @@ export const actionsSystem = setup({
       }
 
       if (count === 0 && errors.length > 0) {
-        system.get(bus).send(emit(pluginId, {
+        sendToPlugin(pluginId, {
           type: 'ACTIONS_IMPORT_FAILED',
           errors,
-        }));
+        });
         return;
       }
 
-      system.get(bus).send(emit(pluginId, {
+      sendToPlugin(pluginId, {
         type: 'ACTIONS_IMPORTED',
         count,
         ...(errors.length > 0 ? { errors } : {}),
-      }));
+      });
 
       // Refresh the full actions list
       const connectedData = repository.actionQueries.connectedData();
       const actionsSettings = repository.settingsQueries.getPluginSettings('actions');
-      system.get(bus).send(emit(pluginId, {
+      sendToPlugin(pluginId, {
         type: 'ACTIONS_LISTED',
         data: {
           ...connectedData,
           categories: actionsSettings?.categories || [],
         },
-      }));
+      });
 
       logger.info('Actions import complete', { count, errors: errors.length });
     },
@@ -227,21 +226,21 @@ export const actionsSystem = setup({
       try {
         const { filePath, actionCount } = exportActions(directory);
 
-        system.get(bus).send(emit(pluginId, {
+        sendToPlugin(pluginId, {
           type: 'ACTIONS_EXPORTED',
           filePath,
           actionCount,
-        }));
+        });
 
         logger.info('Actions export complete', { filePath, actionCount });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         logger.error('Actions export failed', { error: message });
 
-        system.get(bus).send(emit(pluginId, {
+        sendToPlugin(pluginId, {
           type: 'ACTIONS_EXPORT_FAILED',
           errors: [message],
-        }));
+        });
       }
     },
 

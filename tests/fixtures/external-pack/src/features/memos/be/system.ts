@@ -1,4 +1,4 @@
-import { emit } from '#generated/events';
+import { sendToPlugin } from '#generated/events';
 import { setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
@@ -25,23 +25,23 @@ export const memosSystem = setup({
   types: memosSpec.types,
   actions: {
     sendConnectedData: ({ system }) => {
-      system.get(bus).send(emit(memos, { type: 'MEMOS_CONNECTED', memos: repository.memoQueries.all() }));
+      sendToPlugin(memos, { type: 'MEMOS_CONNECTED', memos: repository.memoQueries.all() });
     },
     addMemo: ({ system, event }) => {
       const { text } = memosSpec.typeOf('ADD_MEMO', event);
-      system.get(bus).send(emit(memos, { type: 'MEMO_ADDED', memo: repository.memoCommands.add(text) }));
+      sendToPlugin(memos, { type: 'MEMO_ADDED', memo: repository.memoCommands.add(text) });
     },
     // A send to a dependency's plugin (abuddy.json sendsTo), named as code names another pack's feature
     announceMemo: ({ system, event }) => {
       const { text } = memosSpec.typeOf('ANNOUNCE_MEMO', event);
-      system.get(bus).send(emit('default-setup/logs', {
+      sendToPlugin('default-setup/logs', {
         type: 'LOG_ADDED',
         log: { id: `memo-${Date.now()}`, timestamp: Date.now(), level: 'info', message: text, source: 'memos' },
-      }));
+      });
     },
     addMemoNote: ({ system, event }) => {
       const { text } = memosSpec.typeOf('ADD_MEMO_NOTE', event);
-      system.get(bus).send(emit(memos, { type: 'MEMO_NOTE_ADDED', text, note: addMemoNote(text) }));
+      sendToPlugin(memos, { type: 'MEMO_NOTE_ADDED', text, note: addMemoNote(text) });
     },
   },
 }).createMachine({

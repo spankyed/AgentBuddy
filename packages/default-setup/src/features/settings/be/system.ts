@@ -1,8 +1,7 @@
-import { emit, sendToSystem } from '@/__generated__/events';
+import { sendToSystem, sendToPlugin } from '@/__generated__/events';
 import { createMachine, setup, sendTo, enqueueActions, fromCallback, fromPromise, type ErrorActorEvent } from 'xstate';
 import { addressPluginKeys, defineSystem, onPackSettingsDefaultsChanged, type SystemEntry } from '@abuddy/sdk/framework';
 
-import { bus } from '@abuddy/sdk/ids';
 
 import type { SettingsData } from './types';
 import { loadFaqs } from './faqs';
@@ -65,12 +64,11 @@ export type OutgoingSettingsEvents =
 export type PluginSettingsUpdatedEvent = { type: `${string}_SETTINGS_UPDATED`; settings: unknown };
 
 /**
- * Sends a plugin its updated settings. Any pack's plugin can have settings, so the receiver isn't one
- * this pack's event maps name.
+ * Send a feature's plugin and system its updated settings. Any pack's feature can have settings, so the
+ * receiver isn't one this pack's event maps name.
  */
-/** The reserved key inside `plugins` for the app's own metadata (visibility, last active) — not a plugin */
-
-const emitPluginSettings = emit as (pluginId: string, event: PluginSettingsUpdatedEvent) => ReturnType<typeof emit>;
+const sendPluginSettings = sendToPlugin as (pluginRef: string, event: PluginSettingsUpdatedEvent) => void;
+const sendSystemSettings = sendToSystem as (systemRef: string, event: PluginSettingsUpdatedEvent & { changes: unknown }) => void;
 
 export const settingsSpec = defineSystem('settings')<IncomingSettingsEvents | SettingsInternalEvents, OutgoingSettingsEvents>();
 export const settings = settingsSpec.id;
@@ -80,8 +78,8 @@ const cliPaths = (): Record<string, string | undefined> =>
   (settingsQueries.getPluginSettings('code') as { cliPaths?: Record<string, string | undefined> } | null)?.cliPaths ?? {};
 
 /** Sends the settings plugin the stored API keys (no values) and how they're protected */
-function sendSecrets(system: { get(id: string): { send(event: unknown): void } | undefined }): void {
-  system.get(bus)?.send(emit('settings', { type: 'SECRETS_UPDATED', secrets: services.secrets.list(), status: services.secrets.status() }));
+function sendSecrets(): void {
+  sendToPlugin('settings', { type: 'SECRETS_UPDATED', secrets: services.secrets.list(), status: services.secrets.status() });
 }
 
 export const settingsSystem = setup({
@@ -92,42 +90,42 @@ export const settingsSystem = setup({
     resetAppActor: fromPromise(() => services.appData.reset()),
   },
   actions: {
-    sendSettingsStartupData: ({ system }) => {
+    sendSettingsStartupData: () => {
       const data = settingsQueries.getSettings();
       const faqs = loadFaqs();
 
       // Send settings to the settings plugin
-      system.get(bus).send(emit('settings', {
+      sendToPlugin('settings', {
         type: 'SETTINGS_LOADED',
         data,
         faqs
-      }));
+      });
       
       // Send hotkeys to the application
-      system.get(bus).send(emit('host/application', {
+      sendToPlugin('host/application', {
         type: 'APPLICATION_HOTKEYS' as const,
         hotkeys: data.general.application.hotkeys
-      }));
+      });
       
-      sendSecrets(system);
+      sendSecrets();
     },
     
     // A pack enabled, disabled or reloaded while the app runs changes the defaults (its plugins' settings)
-    sendPackSettingsUpdate: ({ system }) => {
-      system.get(bus).send(emit('settings', { type: 'SETTINGS_UPDATED', data: settingsQueries.getSettings() }));
+    sendPackSettingsUpdate: () => {
+      sendToPlugin('settings', { type: 'SETTINGS_UPDATED', data: settingsQueries.getSettings() });
     },
 
-    getSettings: ({ system, event }) => {
+    getSettings: ({ event }) => {
       const data = settingsQueries.getSettings();
       const faqs = loadFaqs();
-      system.get(bus).send(emit('settings', {
+      sendToPlugin('settings', {
         type: 'SETTINGS_LOADED',
         data,
         faqs
-      }));
+      });
     },
     
-    updateSettings: ({ system, event }) => {
+    updateSettings: ({ event }) => {
       const ev = settingsSpec.typeOf('UPDATE_SETTINGS', event);
       // A plugin's settings are keyed by its ref; the frontend resolves a name before sending
       const plugin = ev.entityType === 'plugin' ? splitRef(ev.label) : undefined;
@@ -149,18 +147,18 @@ export const settingsSystem = setup({
 
       // Get all settings to send to frontend
       const data = settingsQueries.getSettings();
-      system.get(bus).send(emit('settings', {
+      sendToPlugin('settings', {
         type: 'SETTINGS_UPDATED',
         data
-      }));
+      });
       
       // If hotkeys were updated, send them to the application
       // Check if updating entire hotkeys object (label === 'hotkeys') or a specific property
       if (ev.entityType === 'general' && (ev.label === 'hotkeys' || ev.path[0] === 'hotkeys')) {
-        system.get(bus).send(emit('host/application', {
+        sendToPlugin('host/application', {
           type: 'APPLICATION_HOTKEYS',
           hotkeys: data.general.application.hotkeys
-        }));
+        });
       }
       
       // If plugin settings were updated, forward to both backend and frontend
@@ -170,27 +168,23 @@ export const settingsSystem = setup({
           // Detect changes for all arrays in the settings generically
           const changes = detectAllArrayChanges(previousSettings, pluginSettings);
           
-          // Send to backend system (if it exists)
-          const backendActor = system.get(ev.label as any);
-          if (backendActor) {
-            const eventType = `${plugin.featureId.toUpperCase()}_SETTINGS_UPDATED`;
-            backendActor.send({
-              type: eventType,
-              settings: pluginSettings,
-              changes
-            });
-          }
+          // Send to the feature's backend system
+          sendSystemSettings(ev.label, {
+            type: `${plugin.featureId.toUpperCase()}_SETTINGS_UPDATED`,
+            settings: pluginSettings,
+            changes
+          });
           
           // Send settings update event to the frontend plugin
-          system.get(bus).send(emitPluginSettings(ev.label, {
+          sendPluginSettings(ev.label, {
             type: `${plugin.featureId.toUpperCase()}_SETTINGS_UPDATED`,
             settings: pluginSettings
-          }));
+          });
         }
       }
     },
     
-    replaceSettings: ({ system, event }) => {
+    replaceSettings: ({ event }) => {
       const ev = settingsSpec.typeOf('REPLACE_SETTINGS', event);
       // Settings exported before 0.3.15 keep each plugin's slice under its feature id, and the app shell's state
       // (`_meta`), which is the host's now and isn't settings: that is dropped rather than stored
@@ -199,49 +193,49 @@ export const settingsSystem = setup({
       settingsCommands.replaceSettings(plugins ? { ...ev.data, plugins } : ev.data);
 
       const data = settingsQueries.getSettings();
-      system.get(bus).send(emit('settings', {
+      sendToPlugin('settings', {
         type: 'SETTINGS_UPDATED',
         data
-      }));
+      });
 
       // Re-send hotkeys in case they changed
-      system.get(bus).send(emit('host/application', {
+      sendToPlugin('host/application', {
         type: 'APPLICATION_HOTKEYS',
         hotkeys: data.general.application.hotkeys
-      }));
+      });
     },
 
-    resetSettings: ({ system, event }) => {
+    resetSettings: ({ event }) => {
       settingsCommands.resetSettings();
       
       // After reset, get the new settings to send to frontend
       const data = settingsQueries.getSettings();
-      system.get(bus).send(emit('settings', {
+      sendToPlugin('settings', {
         type: 'SETTINGS_RESET',
         data
-      }));
+      });
     },
     
     // The stored keys changed: refresh the plugin, and start the birth flow once a required provider has a key
-    secretsChanged: ({ system }) => {
-      sendSecrets(system);
+    secretsChanged: () => {
+      sendSecrets();
       const hasRequiredKey = services.secrets.list().some((secret) => secret.selected && (REQUIRED_PROVIDERS as readonly string[]).includes(secret.provider));
       if (hasRequiredKey && !settingsQueries.getAssistantSettings().birthdate) {
         sendToSystem('threads', { type: 'BIRTH_FLOW_START' });
       }
     },
 
-    testCliProvider: ({ system, event }) => {
+    testCliProvider: ({ event }) => {
       const ev = settingsSpec.typeOf('TEST_CLI_PROVIDER', event);
       const provider = ev.provider;
 
       if (!isCliName(provider)) {
-        system.get(bus).send(emit('settings', {
+        sendToPlugin('settings', {
           type: 'CLI_TEST_RESULT',
           provider,
           success: false,
           error: `Unknown CLI provider: ${provider}`,
-        }));
+        });
         return;
       }
 
@@ -252,31 +246,31 @@ export const settingsSystem = setup({
           settingsCommands.updateSettings('plugin', pluginSettingsKey('code'), ['cliPaths'], { ...cliPaths(), [provider]: result.resolvedPath });
 
           const data = settingsQueries.getSettings();
-          system.get(bus).send(emit('settings', { type: 'SETTINGS_UPDATED', data }));
+          sendToPlugin('settings', { type: 'SETTINGS_UPDATED', data });
         } else {
           logger.error(`CLI test failed for "${provider}"`, { error: result.error });
         }
 
-        system.get(bus).send(emit('settings', {
+        sendToPlugin('settings', {
           type: 'CLI_TEST_RESULT',
           provider,
           ...result,
-        }));
+        });
       });
     },
 
-    previewPackSeeds: ({ system, event }) => {
+    previewPackSeeds: ({ event }) => {
       const ev = settingsSpec.typeOf('PREVIEW_PACK_SEEDS', event);
       try {
         const preview = previewPackSeeds(ev.directory);
-        system.get(bus).send(emit('settings', { type: 'PACK_SEEDS_PREVIEW', preview }));
+        sendToPlugin('settings', { type: 'PACK_SEEDS_PREVIEW', preview });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        system.get(bus).send(emit('settings', { type: 'PACK_SEEDS_PREVIEW_FAILED', error: message }));
+        sendToPlugin('settings', { type: 'PACK_SEEDS_PREVIEW_FAILED', error: message });
       }
     },
 
-    importPackSeeds: ({ system, event }) => {
+    importPackSeeds: ({ event }) => {
       const ev = settingsSpec.typeOf('IMPORT_PACK_SEEDS', event);
       try {
         const include = ev.include ? toSeedInclude(ev.include) : undefined;
@@ -285,29 +279,29 @@ export const settingsSystem = setup({
         const result = seedData({ compiledDir: ev.directory, include, mode: ev.mode, verbose: true });
         // Seeders report records they couldn't seed in their counts rather than throwing
         const errors = Object.entries(result).flatMap(([key, counts]) => (counts.errors ?? []).map((error) => `${key}: ${error}`));
-        system.get(bus).send(emit('settings', { type: 'PACK_SEEDS_IMPORTED', result, errors }));
+        sendToPlugin('settings', { type: 'PACK_SEEDS_IMPORTED', result, errors });
         // The running systems read what the seeds changed (the chat's slash commands, the library's documents)
-        system.get(bus).send({ type: 'PACK_CHANGED', packId });
+        sendToSystem('host/bus', { type: 'PACK_CHANGED', packId });
         if (ev.restartBrain) {
           sendToSystem('brain', { type: 'RESTART_BRAIN' });
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        system.get(bus).send(emit('settings', { type: 'PACK_SEEDS_IMPORT_FAILED', error: message }));
+        sendToPlugin('settings', { type: 'PACK_SEEDS_IMPORT_FAILED', error: message });
       }
     },
 
-    onResetComplete: ({ system }) => {
+    onResetComplete: () => {
       sendToSystem('brain', { type: 'RESTART_BRAIN' });
       sendToSystem('threads', { type: 'COMMANDS_CHANGED' });
-      system.get(bus).send(emit('settings', { type: 'APP_RESET_COMPLETE' }));
+      sendToPlugin('settings', { type: 'APP_RESET_COMPLETE' });
     },
 
-    onResetFailed: ({ system, event }) => {
+    onResetFailed: ({ event }) => {
       const err = (event as unknown as ErrorActorEvent).error;
       const message = err instanceof Error ? err.message : String(err);
       logger.error('Reset app failed', { error: err });
-      system.get(bus).send(emit('settings', { type: 'APP_RESET_FAILED', error: message }));
+      sendToPlugin('settings', { type: 'APP_RESET_FAILED', error: message });
     },
 
   },

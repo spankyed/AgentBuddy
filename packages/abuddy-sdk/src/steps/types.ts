@@ -259,7 +259,8 @@ export interface TriggerRuntimeNode {
 
 export interface TriggerRuntimeContext {
   flowTNodeId: EARS.EntityId;
-  sendToBrainSystem: (event: { eventType: string; payload?: unknown; targetFlowId?: EARS.EntityId }) => void;
+  /** Fires a flow event at the brain: `sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType, … })` */
+  sendToSystem: (target: { role: string }, event: { type: string; [key: string]: unknown }) => void;
 }
 
 /*─────────────────────────────────────────────────────────────────

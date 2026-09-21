@@ -1,11 +1,10 @@
-import { sendToPlugin } from '@/__generated__/events';
-import { assign, setup } from 'xstate'
+import { sendToPlugin, sendToSystem } from '@/__generated__/events';
+import { assign, setup, type AnyActorRef } from 'xstate'
 
 import { GitRepository, StashConflictError } from '../services/git'
 import { GitWatcherService } from '../services/gitwatcher'
 import type { GitStatusFile, GitDiff, StashEntry, WorktreeEntry, CommitLogEntry } from '../types'
 import { requireGitRepository } from '../utils/git-helpers'
-import { sendToBrainSystem } from '@abuddy/sdk/events'
 import { repository } from '@/__generated__/repository';
 
 const pluginId = 'code' as const
@@ -73,6 +72,8 @@ export type OutgoingCommitEvents =
 export interface Context {
   gitRepository: GitRepository | null
   gitWatcher: GitWatcherService | null
+  /** The code system, which routes a `pr.*` event to its pull request child */
+  code?: AnyActorRef
   _statusRefreshTimer?: ReturnType<typeof setTimeout>
 }
 
@@ -114,10 +115,10 @@ export const commitSystem = setup({
   types: {
     context: {} as Context,
     events: {} as Event,
-    input: {} as { baseDirectory: string | null; gitRepository?: GitRepository | null; gitWatcher?: GitWatcherService | null }
+    input: {} as { baseDirectory: string | null; gitRepository?: GitRepository | null; gitWatcher?: GitWatcherService | null; code?: AnyActorRef }
   },
   actions: {
-    handleGitStatusChanged: ({ context, self, system }) => {
+    handleGitStatusChanged: ({ context, self }) => {
       // Debounce: collapse rapid status-change notifications into one refresh.
       // This prevents double-refresh from write-action + watcher both triggering.
       if (context._statusRefreshTimer) {
@@ -129,11 +130,8 @@ export const commitSystem = setup({
         self.send({ type: 'commit.LOG_LIST' })
       }, 150)
 
-      // Also notify the PR system to refresh if it exists
-      const prSystem = system.get('pr')
-      if (prSystem) {
-        prSystem.send({ type: 'pr.GIT_STATUS_CHANGED' })
-      }
+      // Also notify the PR system to refresh
+      context.code?.send({ type: 'pr.GIT_STATUS_CHANGED' })
     },
 
     getGitStatus: ({ context }) => {
@@ -487,10 +485,7 @@ export const commitSystem = setup({
 
         self.send({ type: 'commit.GIT_STATUS_CHANGED' })
 
-        const prSystem = self.system.get('pr')
-        if (prSystem) {
-          prSystem.send({ type: 'pr.GIT_STATUS_CHANGED' })
-        }
+        context.code?.send({ type: 'pr.GIT_STATUS_CHANGED' })
       }).catch((error: any) => {
         sendToPlugin(pluginId, {
           type: 'commit.ERROR_RECEIVED',
@@ -544,7 +539,7 @@ export const commitSystem = setup({
         const threadsSettings = repository.settingsQueries.getPluginSettings('threads') as any
         const provider = threadsSettings?.chat?.defaultMode || 'Claude Code'
 
-        sendToBrainSystem({
+        sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', 
           eventType: 'commit.generate',
           payload: { diff: truncatedDiff, branch, repoName, provider },
         })
@@ -829,7 +824,8 @@ export const commitSystem = setup({
     const baseDir = input?.baseDirectory
     return {
       gitRepository: input?.gitRepository || (baseDir ? new GitRepository(baseDir) : null),
-      gitWatcher: input?.gitWatcher || (baseDir ? new GitWatcherService(baseDir) : null)
+      gitWatcher: input?.gitWatcher || (baseDir ? new GitWatcherService(baseDir) : null),
+      code: input?.code
     }
   },
   states: {

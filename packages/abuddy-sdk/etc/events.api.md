@@ -4,21 +4,8 @@
 
 ```ts
 
-import { EARS as EARS_2 } from '@abuddy/ears';
-
 // @public
 export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S>;
-
-// @public
-export function emit<P extends string, E extends {
-    type: string;
-}>(to: P, event: E): {
-    type: 'OUTGOING';
-    message: {
-        to: P;
-        event: E;
-    };
-};
 
 // @public
 export const HOST_PLUGIN_EVENT_TYPES: {
@@ -38,6 +25,14 @@ export type HostPluginEvents = {
     } | {
         type: 'PLUGIN_VISIBILITY_UPDATED';
         pluginVisibility: Record<string, boolean>;
+    };
+};
+
+// @public
+export type HostSystemEvents = {
+    'host/bus': {
+        type: 'PACK_CHANGED';
+        packId: string;
     };
 };
 
@@ -82,20 +77,13 @@ export type PluginEvents = {
 };
 
 // @public
-export function sendToBrainSystem(event: {
-    eventType: string;
-    payload?: unknown;
-    targetFlowId?: EARS.EntityId;
-}): void;
-
-// @public
 export function sendToPlugin(to: string, event: {
     type: string;
     [key: string]: unknown;
 }): void;
 
 // @public
-export function sendToSystem(to: string, event: {
+export function sendToSystem(to: SystemTarget, event: {
     type: string;
     [key: string]: unknown;
 }): void;
@@ -108,18 +96,12 @@ export type SystemEventMap = {
 };
 
 // @public
-export type TypedEmit<M extends PluginEvents> = <P extends keyof M & string>(pluginId: P, event: OneSend<IsUnion<P>, M[P]['type'], M[P]>) => {
-    type: 'OUTGOING';
-    message: {
-        to: string;
-        event: M[P];
-    };
+export type SystemTarget = string | {
+    role: string;
 };
 
 // @public
 export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
-    // (undocumented)
-    emit: TypedEmit<P>;
     // (undocumented)
     sendToPlugin: TypedSendToPlugin<P>;
     // (undocumented)
@@ -130,9 +112,14 @@ export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
 export type TypedSendToPlugin<M extends PluginEvents> = <P extends keyof M & string>(pluginId: P, event: OneSend<IsUnion<P>, M[P]['type'], M[P]>) => void;
 
 // @public
-export type TypedSendToSystem<S extends SystemEventMap> = <Id extends keyof S & string, Type extends S[Id]['type']>(systemId: Id, event: OneSend<IsUnion<Id> | IsUnion<Type>, Type, {
+export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S & string, Type extends S[Id]['type']>(systemId: Id, event: OneSend<IsUnion<Id> | IsUnion<Type>, Type, {
     type: Type;
-} & WithoutType<EventsOfType<S[Id], Type>>>) => void;
+} & WithoutType<EventsOfType<S[Id], Type>>>) => void) & ((target: {
+    role: string;
+}, event: {
+    type: string;
+    [key: string]: unknown;
+}) => void);
 
 // (No @packageDocumentation comment for this package)
 

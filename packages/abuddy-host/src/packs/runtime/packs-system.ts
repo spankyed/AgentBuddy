@@ -3,7 +3,7 @@ import * as path from 'path';
 import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
-import { emit } from '@abuddy/sdk/events';
+import { sendToPlugin } from '@abuddy/sdk/events';
 import { getAppVersion } from '@abuddy/sdk/env';
 import { forgetPack, packRecord, recordInstalled, recordUpdateInstalled, setPackEnabled } from '../installed-packs.ts';
 import { reportError } from '@abuddy/sdk/logger';
@@ -144,7 +144,7 @@ function toBuiltInPackInfoList(registry: PackRegistry): PackInfo[] {
 function emitPacksList(registry: PackRegistry, system: any) {
   const external = toExternalPackInfoList(registry, installedPacks());
   const builtIn = toBuiltInPackInfoList(registry);
-  system.get(bus).send(emit(packs, { type: 'PACKS_LIST' as const, packs: [...builtIn, ...external] }));
+  sendToPlugin(packs, { type: 'PACKS_LIST' as const, packs: [...builtIn, ...external] });
 }
 
 /** The host `packs` system, installing, updating and toggling the packs in `registry` */
@@ -170,7 +170,7 @@ export function createPacksSystem(registry: PackRegistry) {
         _inFlightOps.add(packSlug);
         console.log(`[packs] Install requested: ${packSlug} (source: ${ev.source ?? 'default'})`);
 
-        system.get(bus).send(emit(packs, { type: 'PACK_INSTALL_STARTED' as const, packSlug }));
+        sendToPlugin(packs, { type: 'PACK_INSTALL_STARTED' as const, packSlug });
 
         const isGitHub = !ev.source && !packSlug.startsWith('http') && packSlug.includes('/');
         // The id of the running pack this install tore down, which a slug or a URL doesn't carry
@@ -186,7 +186,7 @@ export function createPacksSystem(registry: PackRegistry) {
             if (!registry.packOrigin(manifest.id)) return;
             replacedId = manifest.id;
             teardownPack(registry, manifest.id, system.get(bus), { replacing: true });
-            system.get(bus).send(emit(packs, { type: 'PACK_DEACTIVATED' as const, packId: manifest.id }));
+            sendToPlugin(packs, { type: 'PACK_DEACTIVATED' as const, packId: manifest.id });
           },
         }).then(result => {
           recordInstalled(result.id, isGitHub ? packSlug : undefined);
@@ -199,23 +199,23 @@ export function createPacksSystem(registry: PackRegistry) {
               registry.clearPackReplacing(result.id);
               system.get(bus).send({ type: 'PACK_CHANGED', packId: result.id });
             }
-            system.get(bus).send(emit(packs, {
+            sendToPlugin(packs, {
               type: 'PACK_INSTALL_FAILED' as const,
               packSlug,
               error: `${result.name} was installed but ${problem}`,
-            }));
+            });
             emitPacksList(registry, system);
             return;
           }
 
-          system.get(bus).send(emit(packs, {
+          sendToPlugin(packs, {
             type: 'PACK_INSTALL_COMPLETE' as const,
             packSlug,
             packId: result.id,
             packName: result.name,
             version: result.version,
-          }));
-          system.get(bus).send(emit(packs, { type: 'PACK_ACTIVATED' as const, packId: result.id }));
+          });
+          sendToPlugin(packs, { type: 'PACK_ACTIVATED' as const, packId: result.id });
           emitPacksList(registry, system);
         }).catch(err => {
           const message = err instanceof Error ? err.message : String(err);
@@ -225,11 +225,11 @@ export function createPacksSystem(registry: PackRegistry) {
             registry.clearPackReplacing(replacedId);
             system.get(bus).send({ type: 'PACK_CHANGED', packId: replacedId });
           }
-          system.get(bus).send(emit(packs, {
+          sendToPlugin(packs, {
             type: 'PACK_INSTALL_FAILED' as const,
             packSlug,
             error: message,
-          }));
+          });
         }).finally(() => {
           _inFlightOps.delete(packSlug);
         });
@@ -247,24 +247,24 @@ export function createPacksSystem(registry: PackRegistry) {
         console.log(`[packs] Uninstall requested: ${packId}`);
 
         teardownPack(registry, packId, system.get(bus));
-        system.get(bus).send(emit(packs, { type: 'PACK_DEACTIVATED' as const, packId }));
+        sendToPlugin(packs, { type: 'PACK_DEACTIVATED' as const, packId });
 
         runUninstall(packId).then(() => {
           forgetPack(packId);
 
-          system.get(bus).send(emit(packs, {
+          sendToPlugin(packs, {
             type: 'PACK_UNINSTALL_COMPLETE' as const,
             packId,
-          }));
+          });
           emitPacksList(registry, system);
         }).catch(err => {
           const message = err instanceof Error ? err.message : String(err);
           console.error(`[packs] Uninstall failed for ${packId}:`, message);
-          system.get(bus).send(emit(packs, {
+          sendToPlugin(packs, {
             type: 'PACK_UNINSTALL_FAILED' as const,
             packId,
             error: message,
-          }));
+          });
         }).finally(() => {
           _inFlightOps.delete(packId);
         });
@@ -275,11 +275,11 @@ export function createPacksSystem(registry: PackRegistry) {
         const packId = ev.packId;
         const entry = packRecord(packId);
         if (!entry.installedFrom) {
-          system.get(bus).send(emit(packs, {
+          sendToPlugin(packs, {
             type: 'PACK_UPDATE_FAILED' as const,
             packId,
             error: 'Pack has no update source',
-          }));
+          });
           return;
         }
 
@@ -296,7 +296,7 @@ export function createPacksSystem(registry: PackRegistry) {
 
         // Silent teardown: activation announces the change, or the finally below does when nothing activates
         teardownPack(registry, packId, system.get(bus), { replacing: true });
-        system.get(bus).send(emit(packs, { type: 'PACK_DEACTIVATED' as const, packId }));
+        sendToPlugin(packs, { type: 'PACK_DEACTIVATED' as const, packId });
         let activated = false;
 
         installPackFromGitHub(target, undefined, { hostVersion: getAppVersion() }).then(result => {
@@ -305,34 +305,34 @@ export function createPacksSystem(registry: PackRegistry) {
           activated = activatePack(registry, packId, system.get(bus));
           const problem = activationProblem(packId, activated);
           if (problem) {
-            system.get(bus).send(emit(packs, {
+            sendToPlugin(packs, {
               type: 'PACK_UPDATE_FAILED' as const,
               packId,
               error: `Updated to ${result.version} but ${problem}`,
-            }));
+            });
             emitPacksList(registry, system);
             return;
           }
 
-          system.get(bus).send(emit(packs, {
+          sendToPlugin(packs, {
             type: 'PACK_UPDATE_COMPLETE' as const,
             packId,
             version: result.version,
-          }));
-          system.get(bus).send(emit(packs, { type: 'PACK_ACTIVATED' as const, packId }));
+          });
+          sendToPlugin(packs, { type: 'PACK_ACTIVATED' as const, packId });
           emitPacksList(registry, system);
         }).catch(err => {
           const message = err instanceof Error ? err.message : String(err);
           console.error(`[packs] Update failed for ${packId}:`, message);
           activated = activatePack(registry, packId, system.get(bus));
           if (activated) {
-            system.get(bus).send(emit(packs, { type: 'PACK_ACTIVATED' as const, packId }));
+            sendToPlugin(packs, { type: 'PACK_ACTIVATED' as const, packId });
           }
-          system.get(bus).send(emit(packs, {
+          sendToPlugin(packs, {
             type: 'PACK_UPDATE_FAILED' as const,
             packId,
             error: message,
-          }));
+          });
           emitPacksList(registry, system);
         }).finally(() => {
           // Registering the replacement clears this; if nothing registered, the window ends here rather
@@ -371,10 +371,10 @@ export function createPacksSystem(registry: PackRegistry) {
 
         if (!newEnabled) {
           teardownPack(registry, packId, system.get(bus));
-          system.get(bus).send(emit(packs, { type: 'PACK_DEACTIVATED' as const, packId }));
+          sendToPlugin(packs, { type: 'PACK_DEACTIVATED' as const, packId });
         } else {
           activatePack(registry, packId, system.get(bus));
-          system.get(bus).send(emit(packs, { type: 'PACK_ACTIVATED' as const, packId }));
+          sendToPlugin(packs, { type: 'PACK_ACTIVATED' as const, packId });
         }
 
         // The pack has already been torn down or activated; what may not have survived is the choice
@@ -388,11 +388,11 @@ export function createPacksSystem(registry: PackRegistry) {
             error: new Error(`Couldn't save that ${packId} is ${newEnabled ? 'enabled' : 'disabled'}: it will be ${newEnabled ? 'disabled' : 'enabled'} again the next time AgentBuddy starts.`),
           });
         }
-        system.get(bus).send(emit(packs, {
+        sendToPlugin(packs, {
           type: 'PACK_ENABLED_CHANGED' as const,
           packId,
           enabled: newEnabled,
-        }));
+        });
         emitPacksList(registry, system);
       },
     },

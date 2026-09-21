@@ -25,6 +25,7 @@ export { secretsClient, type SecretsClient, type SecretsSnapshot } from './secre
 
 export {
   navigateToAddress,
+  openPlugin,
   openInAppBrowser,
   actorAt,
   type PluginEvent,

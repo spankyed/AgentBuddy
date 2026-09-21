@@ -496,7 +496,7 @@ export async function action(
       // Emit cc.stream.completed so CC: Turn Completed can run bookkeeping
       // (turn counts, cost tracking). Without this, the turn is "lost" from
       // the flow's perspective.
-      services.emitter.sendToBrainSystem({
+      services.emitter.sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', 
         eventType: 'cc.stream.completed',
         payload: { threadId, hadErrors: true, error: message },
       });

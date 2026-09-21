@@ -189,14 +189,10 @@ function formatDate(timestamp?: number) {
 function openInEditor() {
   if (!props.prompt) return;
 
-  navigateToPlugin('code', { type: 'UPDATE_STATE', updates: { selectedPanel: 'prompts' } });
-
-  // Child actor needs time to initialize after plugin activation
-  setTimeout(() => {
-    const promptsActor = actorOf('code')?.system.get('codePrompts');
-    if (promptsActor) {
-      promptsActor.send({ type: 'codePrompts.OPEN_PROMPT', promptId: props.prompt!.id });
-    }
-  }, 10);
+  // The code plugin routes a codePrompts.* event to its prompts panel
+  navigateToPlugin('code', [
+    { type: 'UPDATE_STATE', updates: { selectedPanel: 'prompts' } },
+    { type: 'codePrompts.OPEN_PROMPT', promptId: props.prompt.id },
+  ]);
 }
 </script>

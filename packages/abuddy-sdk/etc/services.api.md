@@ -99,7 +99,6 @@ export interface HostServices {
     emitter: {
         sendToPlugin: typeof sendToPlugin;
         sendToSystem: typeof sendToSystem;
-        sendToBrainSystem: typeof sendToBrainSystem;
     };
     filesystem: FilesystemService;
     inference: InferenceService;

@@ -94,6 +94,7 @@
 </template>
 
 <script setup lang="ts">
+import { codeChild } from '@/features/code/fe/utils/parent-communication'
 import { actorOf } from '@/__generated__/fe'
 import { useExternalFileDrag } from '@abuddy/ui/composables/useExternalFileDrag'
 import { useSelector } from '@xstate/vue'
@@ -105,8 +106,8 @@ import QuickOpenPalette from '@/features/code/fe/canvas/QuickOpenPalette.vue'
 import { reorderTabs } from '../utils/tab-management'
 
 const actor: CodeState = actorOf(id)
-const explorerActor = actor.system.get('explorer')
-const terminalActor = actor.system.get('terminal')
+const explorerActor = codeChild(actor, 'explorer')
+const terminalActor = codeChild(actor, 'terminal')
 
 // State selectors
 const openFiles = useSelector(actor, (state) => state.context.openFiles)
@@ -277,7 +278,7 @@ const restartTerminal = (path: string) => {
   if (!file?.isTerminal) return
   const { cwd, shell } = file.terminalInfo
   actor.send({ type: 'KILL_TERMINAL', path })
-  terminalActor.send({ type: 'terminal.CREATE', cwd, shell, target: 'tab' })
+  terminalActor?.send({ type: 'terminal.CREATE', cwd, shell, target: 'tab' })
 }
 
 const closeFile = (path: string) => actor.send({ type: 'CLOSE_TAB', path })
@@ -399,7 +400,7 @@ const renameGroup = (groupId: string, name: string) => {
 
 const renameTerminal = (path: string, customTitle: string) => {
   const terminalId = path.replace('terminal:', '')
-  terminalActor.send({ type: 'terminal.RENAME', terminalId, customTitle })
+  terminalActor?.send({ type: 'terminal.RENAME', terminalId, customTitle })
 }
 
 const changeGroupColor = (groupId: string, color: string) => {

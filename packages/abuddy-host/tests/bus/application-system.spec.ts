@@ -2,12 +2,12 @@
 // the plugin last open. It stores them in AppState, and tells the application plugin the visibility again whenever
 // a choice or a pack's defaults change, so every window agrees.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createActor, setup, type AnyEventObject } from 'xstate';
-import { bus } from '@abuddy/sdk/ids';
-import { resetTestData } from '@abuddy/sdk/testing';
+import { createActor, type EventFromLogic } from 'xstate';
+import type { Message } from '@abuddy/sdk/events';
+import { resetTestData, testRootEvents } from '@abuddy/sdk/testing';
 import '../packs/runtime/test-host.ts';
 import { appState } from '../../src/app-state/index.ts';
-import { application, createApplicationSystem } from '../../src/bus/application-system.ts';
+import { createApplicationSystem } from '../../src/bus/application-system.ts';
 
 /** A registry whose features declare `defaults` as their tabs' visibility */
 const withDefaults = (visibility: Record<string, boolean>) => ({
@@ -16,19 +16,18 @@ const withDefaults = (visibility: Record<string, boolean>) => ({
 
 let stop: (() => void) | undefined;
 
-/** The application system next to a bus that records what it is sent */
+/** The application system, and what it sends to plugins */
 function runApplicationSystem(defaults: Record<string, boolean> = {}) {
-  const sent: AnyEventObject[] = [];
-  const busStub = setup({ types: {} as { events: AnyEventObject } }).createMachine({
-    on: { '*': { actions: ({ event }) => void sent.push(event) } },
-  });
-  const root = setup({ actors: { bus: busStub, application: createApplicationSystem(withDefaults(defaults)) } }).createMachine({
-    invoke: [{ src: 'bus', systemId: bus }, { src: 'application', systemId: application }],
-  });
-  const actor = createActor(root).start();
-  stop = () => actor.stop();
-  const visibilitySent = () => sent.flatMap((e) => (e.type === 'OUTGOING' && e.message.event.type === 'PLUGIN_VISIBILITY_UPDATED' ? [e.message] : []));
-  return { send: (event: AnyEventObject) => actor.system.get(application).send(event), visibilitySent };
+  const sent: Message[] = [];
+  const stopListening = testRootEvents.onPluginSend((message) => void sent.push(message));
+  const machine = createApplicationSystem(withDefaults(defaults));
+  const actor = createActor(machine).start();
+  stop = () => {
+    actor.stop();
+    stopListening();
+  };
+  const visibilitySent = () => sent.filter((message) => message.event.type === 'PLUGIN_VISIBILITY_UPDATED');
+  return { send: (event: EventFromLogic<typeof machine>) => actor.send(event), visibilitySent };
 }
 
 beforeEach(() => resetTestData());

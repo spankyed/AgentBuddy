@@ -871,22 +871,24 @@ ${addressed.map(f => `  ${f.id}: '${resolveName(f.id, manifest.id)}'`).join(',\n
 `;
   }
 
-  // Frontend helpers that take the names this pack's code writes: its own plugins by feature id, another
-  // pack's as `<packId>/<featureId>`. Kept apart from events.ts, which backend systems import, because these
-  // reach the frontend SDK.
+  // Frontend helpers that take the names this pack's code writes: its own plugins by feature id, those its
+  // dependencies declare as `<packId>/<featureId>`. Kept apart from events.ts, which backend systems import,
+  // because these reach the frontend SDK.
   function generateFe(): string {
-    const plugins = (manifest.features ?? []).filter(f => f.plugin).map(f => `'${f.id}'`);
-    if (!plugins.length) return '';
+    const own = (manifest.features ?? []).filter(f => f.plugin).map(f => f.id);
+    if (!own.length) return '';
+    const plugins = [...own, ...Object.keys(_mergeProvenance('plugins', [...depSnapshots])).sort()].map(name => `'${name}'`);
     return `${HEADER}
 import type { AnyActorRef } from 'xstate';
 import { actorAt, navigateToAddress, type PluginEvent } from '@abuddy/sdk/fe';
 import { resolveName } from '@abuddy/sdk/ids';
 
 /**
- * A plugin as this pack's code names it: its own by feature id, any other (the host's too) as
- * \`<packId>/<featureId>\`, which a registered plugin's \`id\` is
+ * A plugin as this pack's code names it: its own by feature id, a dependency's as \`<packId>/<featureId>\`.
+ * A plugin named by data (a link's target, a registered plugin's \`id\`) opens through \`openPlugin\`
+ * from \`@abuddy/sdk/fe\`, which checks it at runtime instead.
  */
-export type PluginName = ${plugins.join(' | ')} | \`\${string}/\${string}\`;
+export type PluginName = ${plugins.join(' | ')};
 
 const packId = '${manifest.id}';
 
@@ -1031,7 +1033,7 @@ export function actorOf<T = AnyActorRef>(name: PluginName): T {
     }).join('\n');
 
     return `${HEADER}
-import { defineEvents, ${hostTargets.size ? 'type HostPluginEvents, ' : ''}type IncomingEventsOf } from '@abuddy/sdk/events';
+import { defineEvents, ${hostTargets.size ? 'type HostPluginEvents, ' : ''}type HostSystemEvents, type IncomingEventsOf } from '@abuddy/sdk/events';
 ${hasSystems ? `import type { specs as __specs } from './system-specs.js';\n` : ''}${imports}
 ${[...depEventImports, ...depSystems.imports].join('\n')}
 
@@ -1063,8 +1065,11 @@ export type PackSystemEvents = {
 ${systemEntries}
 };
 
-/** The systems this pack's code sends to: its own by feature id, each dependency's as \`<dependency>/<feature>\`. */
-export type SendableSystemEvents = PackSystemEvents${depQualified.map(q => ` & ${q}`).join('')};
+/**
+ * The systems this pack's code sends to: its own by feature id, each dependency's as \`<dependency>/<feature>\`,
+ * and the host's as \`host/<feature>\`.
+ */
+export type SendableSystemEvents = PackSystemEvents${depQualified.map(q => ` & ${q}`).join('')} & HostSystemEvents;
 
 /** The systems actions send to (\`services.emitter\`), all named \`<pack>/<feature>\`. */
 export type QualifiedSystemEvents = ${[qualified(manifest.id, 'PackSystemEvents'), ...depQualified].join(' & ')};
@@ -1075,7 +1080,7 @@ export type QualifiedSystemEvents = ${[qualified(manifest.id, 'PackSystemEvents'
  */
 export type QualifiedPluginEvents = ${qualifiedPluginEvents};
 
-export const { emit, sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<PackEvents, SendableSystemEvents>('${manifest.id}');
+export const { sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<PackEvents, SendableSystemEvents>('${manifest.id}');
 `;
   }
 
@@ -1181,7 +1186,7 @@ ${entries.join('\n')}
 
 /**
  * \`services.emitter\`, typed with this pack's events. Actions run outside any pack, so a system and a
- * plugin are both named \`<pack>/<feature>\`, this pack's own too — a host plugin is named bare.
+ * plugin are both named \`<pack>/<feature>\`, this pack's own and the host's too; a system may also be a role.
  */
 export type PackEmitter = Omit<HostServices['emitter'], 'sendToPlugin' | 'sendToSystem'> & {
   sendToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;

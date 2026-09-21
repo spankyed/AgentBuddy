@@ -1,6 +1,6 @@
 import type { repository } from '@abuddy/ears';
 import { boundHost, type HostRuntimeServices } from '../runtime/host-runtime.ts';
-import { sendToPlugin, sendToSystem, sendToBrainSystem } from '../events/index.ts';
+import { sendToPlugin, sendToSystem } from '../events/index.ts';
 import { splitRef } from '../ids/addressing.ts';
 import { createLogger, type Logger } from '../logger/logger.ts';
 import type { AppDataService } from './app-data.ts';
@@ -29,14 +29,14 @@ const logger = createLogger('log-service');
 export interface HostServices {
   logger: Logger;
   /**
-   * Sends to plugins, systems and running flows. Actions run outside any pack, so both `sendToSystem` and
-   * `sendToPlugin` name a feature `<packId>/<featureId>` — a host plugin, whose namespace is the bare ids,
-   * is named bare. A pack's `Services` types them with its own and its dependencies' events.
+   * Sends to plugins and systems. Actions run outside any pack, so both name a feature `<packId>/<featureId>`, the
+   * host's included (`host/application`); `sendToSystem` also takes a role (`{ role: 'brain' }`), which reaches
+   * whichever system plays it — a flow event goes to the brain as `TRIGGER_BRAIN_EVENT`. A pack's `Services`
+   * types them with its own and its dependencies' events.
    */
   emitter: {
     sendToPlugin: typeof sendToPlugin;
     sendToSystem: typeof sendToSystem;
-    sendToBrainSystem: typeof sendToBrainSystem;
   };
   repository: typeof repository;
   /** Reset, back up and restore the app's stored data; whether the user finished onboarding */
@@ -65,8 +65,7 @@ function registeredRef(kind: 'system' | 'plugin', name: string, registered: read
 
 const emitter: HostServices['emitter'] = {
   sendToPlugin: (name, event) => sendToPlugin(registeredRef('plugin', name, boundHost().packs.pluginIds()), event),
-  sendToSystem: (name, event) => sendToSystem(registeredRef('system', name, boundHost().packs.systemIds()), event),
-  sendToBrainSystem,
+  sendToSystem: (to, event) => sendToSystem(typeof to === 'string' ? registeredRef('system', to, boundHost().packs.systemIds()) : to, event),
 };
 
 /** The bound app's implementation of a service; each call reads the binding */

@@ -16,9 +16,8 @@ const SETTINGS = (id: string) => `export default {
 
 const SYSTEM = (name: string, camel: string, pascal: string) => `import { setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
-import { bus } from '@abuddy/sdk/ids';
-// emit is typed with the events each of this pack's plugins receives
-import { emit } from '#generated/events';
+// sendToPlugin is typed with the events each of this pack's plugins receives
+import { sendToPlugin } from '#generated/events';
 
 type Incoming${pascal}Events =
   | { type: 'CLIENT_CONNECTED' };
@@ -32,11 +31,11 @@ export const ${camel} = ${camel}Spec.id;
 export const ${camel}System = setup({
   types: ${camel}Spec.types,
   actions: {
-    sendConnectedData: ({ system }) => {
-      system.get(bus).send(emit(${camel}, {
+    sendConnectedData: () => {
+      sendToPlugin(${camel}, {
         type: '${name.toUpperCase().replace(/-/g, '_')}_CONNECTED',
         data: {},
-      }));
+      });
     },
   },
 }).createMachine({

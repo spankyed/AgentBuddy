@@ -1629,6 +1629,13 @@ interface ListContent {
     items: string[];
 }
 
+/** A page of the app server's MCP server statuses */
+type ListMcpServersParams = {
+    cursor?: string | null;
+    limit?: number | null;
+    detail?: 'full' | 'toolsAndAuthOnly' | null;
+};
+
 interface ListenOptions {
     /** Named ID for cross-action cleanup via unlisten(). If omitted, an auto-incremented ID is used. */
     id?: string;
@@ -2884,7 +2891,7 @@ type OwnRepositories = {
 
 /**
  * `services.emitter`, typed with this pack's events. Actions run outside any pack, so a system and a
- * plugin are both named `<pack>/<feature>`, this pack's own too — a host plugin is named bare.
+ * plugin are both named `<pack>/<feature>`, this pack's own and the host's too; a system may also be a role.
  */
 type PackEmitter = Omit<HostServices['emitter'], 'sendToPlugin' | 'sendToSystem'> & {
     sendToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;
@@ -4358,11 +4365,7 @@ declare const featureServices: {
             cwds?: string[];
             forceReload?: boolean;
         }) => Promise<any>;
-        listMcpServers: (params?: {
-            cursor?: string | null;
-            limit?: number | null;
-            detail?: "full" | "toolsAndAuthOnly" | null;
-        }) => Promise<any>;
+        listMcpServers: (params?: ListMcpServersParams) => Promise<any>;
         startTurn: (params: TurnStartParams) => Promise<{
             turnId: string;
         }>;

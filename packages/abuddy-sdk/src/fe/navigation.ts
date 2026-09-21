@@ -1,4 +1,4 @@
-import type { FeatureRef } from '../ids/addressing.ts';
+import { splitRef, type FeatureRef } from '../ids/addressing.ts';
 import { boundFeHost } from '../runtime/fe-host.ts';
 import type { AnyActorRef } from 'xstate';
 import { getDesignated } from '../designations/index.ts';
@@ -43,6 +43,16 @@ export function navigateToAddress(address: FeatureRef, event?: PluginEvent | Plu
       });
     }
   }
+}
+
+/**
+ * Opens the plugin a ref names and hands it `event`, for a ref that arrives as data (a link's target, a registered
+ * plugin's `id`) rather than one the pack's code writes, which its generated `navigateToPlugin` checks at compile
+ * time. Throws for anything but a registered plugin's `<packId>/<featureId>`.
+ */
+export function openPlugin(ref: string, event?: PluginEvent | PluginEvent[]): void {
+  if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a plugin: a plugin is named "<packId>/<featureId>"`);
+  navigateToAddress(ref as FeatureRef, event);
 }
 
 export function openInAppBrowser(url: string) {

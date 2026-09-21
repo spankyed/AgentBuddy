@@ -1,6 +1,6 @@
 import { setup, assign, enqueueActions } from 'xstate';
 import { sendToSystem } from '@/__generated__/events';
-import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
+import { updateParentState, getParentContext, addTabToParent, sendEventToParent } from '../../utils/parent-communication';
 
 
 // Git types
@@ -236,7 +236,7 @@ export const commitState = setup({
       gitDiff: null
     }),
 
-    openFile: ({ event, self, system }) => {
+    openFile: ({ event, self }) => {
       const ev = event as { type: 'commit.OPEN_FILE'; file: GitStatusFile }
       const parentContext = getParentContext(self)
       const baseDirectory = parentContext?.baseDirectory || ''
@@ -268,7 +268,7 @@ export const commitState = setup({
       // Send events to parent to switch to explorer panel and open file
       updateParentState(self, { selectedPanel: 'explorer' })
 
-      system.get('explorer')?.send({
+      sendEventToParent(self, {
         type: 'explorer.OPEN_FILE',
         path: fullPath
       })

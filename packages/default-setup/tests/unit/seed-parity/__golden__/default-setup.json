@@ -250,8 +250,8 @@
       "Action:CDX: Handle Summarize": {
         "label": "CDX: Handle Summarize",
         "description": "Rolls back Codex history and starts Codex app-server compaction.",
-        "sourceHash": "8383fdf2f6c8e42c",
-        "rowSha256": "06957754ad5ef8ee76c0f4bd90e16af65413703af763f646f027f312d0453266"
+        "sourceHash": "2e3813a631b5bf5c",
+        "rowSha256": "3a8e58f88db5956112a651fe87aa86c45c4308a29fbbe9abf2454f48bd1ff15e"
       },
       "Action:CDX: Pause Turn": {
         "label": "CDX: Pause Turn",
@@ -328,8 +328,8 @@
       "Action:Claude Code Chat": {
         "label": "Claude Code Chat",
         "description": "Drives Claude Code in streaming mode for the current thread, resuming prior sessions and prompting the user for tool permissions.",
-        "sourceHash": "4025fcef47f6a44c",
-        "rowSha256": "33a364307bb9529bee7bb37951fa90fc3ddbadf5039b031470490a08c7797280"
+        "sourceHash": "8e903e3cd83159b9",
+        "rowSha256": "b5c6bbacd519c99a2af68463a00ea511a8a3321f0beeffd4a7a877d0c30cde4c"
       },
       "Action:Claude Code List Sessions": {
         "label": "Claude Code List Sessions",
@@ -352,8 +352,8 @@
       "Action:Codex Chat": {
         "label": "Codex Chat",
         "description": "Drives Codex via app-server for the current thread.",
-        "sourceHash": "5d867541ec4f61ed",
-        "rowSha256": "50dc7483e3cffbfedcde9a15c61384dbc00581522d971eea9b47b99be1cc338b"
+        "sourceHash": "d1f6f5c5c340ff5f",
+        "rowSha256": "f273221529066d55640ff051dad7aeba8469cbbd4c739cf03158289922826fa3"
       },
       "Action:Handle Choose Mode Step": {
         "label": "Handle Choose Mode Step",

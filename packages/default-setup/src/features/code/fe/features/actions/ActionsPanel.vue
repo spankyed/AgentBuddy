@@ -234,6 +234,7 @@
 </template>
 
 <script setup lang="ts">
+import { codeChild } from '@/features/code/fe/utils/parent-communication'
 import { ref, computed, watch, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { navigateToPlugin, actorOf } from '@/__generated__/fe'
@@ -257,7 +258,7 @@ import uFuzzy from '@leeoniya/ufuzzy'
 
 // Get actors - use main actions plugin for state, codeActions for tab management
 const codeActor: CodeState = actorOf(codeId)
-const codeActionsActor = codeActor.system.get('codeActions')!
+const codeActionsActor = codeChild(codeActor, 'codeActions')!
 const actionsPluginActor = actorOf(actionsPluginId)!
 
 // State selectors - read from main actions plugin (single source of truth)

@@ -190,6 +190,7 @@
 </template>
 
 <script setup lang="ts">
+import { codeChild } from '@/features/code/fe/utils/parent-communication'
 import { actorOf } from '@/__generated__/fe'
 import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -226,7 +227,7 @@ const props = withDefaults(defineProps<{ height?: number }>(), { height: 256 })
 
 // Actors
 const codeActor: CodeState = actorOf(codeId)
-const terminalActor = codeActor.system.get('terminal')!
+const terminalActor = codeChild(codeActor, 'terminal')!
 const settingsActor = actorOf('settings')
 
 // State selectors

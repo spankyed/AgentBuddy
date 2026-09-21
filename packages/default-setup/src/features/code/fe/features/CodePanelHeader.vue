@@ -76,6 +76,7 @@
 </template>
 
 <script setup lang="ts">
+import { codeChild } from '@/features/code/fe/utils/parent-communication'
 import { actorOf } from '@/__generated__/fe'
 import type { Component } from 'vue'
 import { computed } from 'vue'
@@ -103,9 +104,9 @@ defineEmits<{
 }>()
 
 const actor: CodeState = actorOf(id)
-const explorerActor = actor.system.get('explorer')!
-const terminalActor = actor.system.get('terminal')!
-const commitActor = actor.system.get('commit')!
+const explorerActor = codeChild(actor, 'explorer')!
+const terminalActor = codeChild(actor, 'terminal')!
+const commitActor = codeChild(actor, 'commit')!
 
 const changeCount = useSelector(commitActor, (state: any) => state.context.gitStatus?.length ?? 0)
 

@@ -3,7 +3,7 @@ import { installedEngine as ears } from '@abuddy/ears';
 import * as os from 'node:os';
 import { describe, expect, it, vi } from 'vitest';
 import { entityIds, dropAttribute, resetTestData, startTestRuntime, takeSystemErrors, testRootEvents } from '../../src/testing/index.ts';
-import { sendToPlugin, sendToSystem, sendToBrainSystem } from '../../src/events/index.ts';
+import { sendToPlugin, sendToSystem } from '../../src/events/index.ts';
 import { services } from '../../src/services/index.ts';
 import { testPacks, testPacksView } from '../../src/testing/packs.ts';
 import { getAppVersion } from '../../src/env/index.ts';
@@ -25,7 +25,7 @@ describe('the test host', () => {
     try {
       sendToPlugin('memos', { type: 'MEMO_ADDED' });
       sendToSystem('memos', { type: 'ADD_MEMO' });
-      sendToBrainSystem({ eventType: 'user.message' });
+      sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message' });
       _rootEvents.emitIncoming({ to: 'memos', event: { type: 'PING' } });
     } finally {
       stop.forEach((unsubscribe) => unsubscribe());

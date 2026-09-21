@@ -1,4 +1,4 @@
-import { emit, sendToPlugin } from '@/__generated__/events';
+import { sendToPlugin } from '@/__generated__/events';
 import { assign, cancel, createMachine, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import { bus } from '@abuddy/sdk/ids';
@@ -126,11 +126,11 @@ export const flowsSystem = setup({
       
       const data = repository.flowsQueries.extendedData(flowId as EARS.EntityId);
       
-      system.get(bus).send(emit(pluginId, {
+      sendToPlugin(pluginId, {
         type: 'FLOW_SELECTED',
         flowId: flowId as EARS.EntityId,
         data,
-      }));
+      });
     },
     
     createFlow: ({ system, event }) => {
@@ -142,12 +142,12 @@ export const flowsSystem = setup({
       
       const data = repository.flowsQueries.extendedData(flow.id);
       
-      system.get(bus).send(emit(pluginId, {
+      sendToPlugin(pluginId, {
         type: 'FLOW_CREATED',
         flow,
         flowId: flow.id,
         data,
-      }));
+      });
     },
     
     updateFlowLabel: ({ system, event }) => {
@@ -167,10 +167,10 @@ export const flowsSystem = setup({
       try {
         repository.flowsCommands.deleteFlow(flowId as EARS.EntityId);
 
-        system.get(bus).send(emit(pluginId, {
+        sendToPlugin(pluginId, {
           type: 'FLOW_DELETED',
           flowId: flowId as EARS.EntityId,
-        }));
+        });
 
         logger.info('Flow deleted successfully', { flowId });
       } catch (error) {
@@ -187,12 +187,12 @@ export const flowsSystem = setup({
       
       const node = repository.flowsCommands.createNode(flowId as EARS.EntityId, nodeData);
       
-      system.get(bus).send(emit(pluginId, {
+      sendToPlugin(pluginId, {
         type: 'NODE_CREATED',
         tempId,
         nodeId: node.id,
         node,
-      }));
+      });
     },
     
     updateNode: ({ system, event }) => {
@@ -205,11 +205,11 @@ export const flowsSystem = setup({
       
       const node = repository.flowsQueries.node(nodeId as EARS.EntityId);
       
-      system.get(bus).send(emit(pluginId, {
+      sendToPlugin(pluginId, {
         type: 'NODE_UPDATED',
         nodeId: nodeId as EARS.EntityId,
         node,
-      }));
+      });
     },
     
     deleteNode: ({ system, event }) => {
@@ -221,10 +221,10 @@ export const flowsSystem = setup({
       repository.flowsCommands.deleteNode(nodeId as EARS.EntityId);
       
       // Send confirmation back to frontend
-      system.get(bus).send(emit(pluginId, {
+      sendToPlugin(pluginId, {
         type: 'NODE_DELETED',
         nodeId,
-      }));
+      });
     },
     
     createEdge: ({ system, event }) => {
@@ -240,22 +240,22 @@ export const flowsSystem = setup({
           { sourceHandle, targetHandle }
         );
 
-        system.get(bus).send(emit(pluginId, {
+        sendToPlugin(pluginId, {
           type: 'EDGE_CREATED',
           sourceId: sourceId as EARS.EntityId,
           targetId: targetId as EARS.EntityId,
           relId,
           sourceHandle,
           targetHandle,
-        }));
+        });
       } catch (err: any) {
         logger.warn('Edge creation failed', { sourceId, targetId, error: err.message });
-        system.get(bus).send(emit(pluginId, {
+        sendToPlugin(pluginId, {
           type: 'EDGE_CREATE_FAILED',
           sourceId,
           targetId,
           error: err.message || 'Edge creation failed',
-        }));
+        });
       }
     },
     
@@ -267,10 +267,10 @@ export const flowsSystem = setup({
       
       repository.flowsCommands.deleteEdge(edgeId as EARS.EntityId);
       
-      system.get(bus).send(emit(pluginId, {
+      sendToPlugin(pluginId, {
         type: 'EDGE_DELETED',
         edgeId,
-      }));
+      });
     },
     
     updateEdge: ({ system, event }) => {
@@ -286,27 +286,27 @@ export const flowsSystem = setup({
           sourceHandle,
           targetHandle,
         });
-        system.get(bus).send(emit(pluginId, {
+        sendToPlugin(pluginId, {
           type: 'EDGE_UPDATED',
           edgeId: edgeId as EARS.EntityId,
           source: source as EARS.EntityId,
           target: target as EARS.EntityId,
           sourceHandle,
           targetHandle,
-        }));
+        });
       } catch (err: any) {
         logger.warn('Edge update failed', { edgeId, source, target, error: err.message });
         // The canvas already moved the edge: send the flow as stored, and the reason
-        system.get(bus).send(emit(pluginId, {
+        sendToPlugin(pluginId, {
           type: 'FLOW_SELECTED',
           flowId: flowId as EARS.EntityId,
           data: repository.flowsQueries.extendedData(flowId as EARS.EntityId),
-        }));
-        system.get(bus).send(emit(pluginId, {
+        });
+        sendToPlugin(pluginId, {
           type: 'EDGE_UPDATE_FAILED',
           edgeId,
           error: err.message || 'Edge update failed',
-        }));
+        });
       }
     },
     
@@ -343,10 +343,10 @@ export const flowsSystem = setup({
         });
         logger.warn('DSL validation failed', { errors });
 
-        system.get(bus).send(emit(pluginId, {
+        sendToPlugin(pluginId, {
           type: 'DSL_IMPORT_FAILED',
           errors,
-        }));
+        });
         return;
       }
 
@@ -363,10 +363,10 @@ export const flowsSystem = setup({
       // Import into EARS
       const { flowIds } = repository.flowsCommands.importFromDSL(compiled);
 
-      system.get(bus).send(emit(pluginId, {
+      sendToPlugin(pluginId, {
         type: 'DSL_IMPORTED',
         flowIds,
-      }));
+      });
       // The flows, and the root flow if the import brought one
       sendConnectedData();
 
@@ -390,21 +390,21 @@ export const flowsSystem = setup({
           flowIds: flowId ? [flowId] : undefined,
         });
 
-        system.get(bus).send(emit(pluginId, {
+        sendToPlugin(pluginId, {
           type: 'DSL_EXPORTED',
           filePath,
           flowCount,
-        }));
+        });
 
         logger.info('DSL export complete', { filePath, flowCount });
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         logger.error('DSL export failed', { error: message });
 
-        system.get(bus).send(emit(pluginId, {
+        sendToPlugin(pluginId, {
           type: 'DSL_EXPORT_FAILED',
           errors: [message],
-        }));
+        });
       }
     },
   },

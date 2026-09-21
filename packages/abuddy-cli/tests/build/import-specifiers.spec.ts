@@ -97,13 +97,13 @@ function writeTemplateSource(content: string): string {
 
 /** Code none of the pack rules flag: comments, string text and the allowed imports */
 const ALLOWED = [
-  "// import { emit } from '@abuddy/sdk/events'; _rootEvents; trpc.bus; console.log('x')",
+  "// import { sendToPlugin } from '@abuddy/sdk/events'; _rootEvents; trpc.bus; console.log('x')",
   "/* import * as events from '@abuddy/sdk/events'; console.log('x') */",
   "const url = 'https://console.anthropic.com/settings/keys';",
   "const prompt = `_rootEvents.emitOutgoing(event); console.log(ev.type)`;",
-  "import { emit, sendToSystem } from '#generated/events';",
+  "import { sendToPlugin, sendToSystem } from '#generated/events';",
   "import { sendToPlugin } from '@/__generated__/events';",
-  "import { sendToBrainSystem, onIncoming } from '@abuddy/sdk/events';",
+  "import { onConnected, onIncoming } from '@abuddy/sdk/events';",
   "import { emit as emitEvent } from 'xstate';",
   "import * as ears from '@abuddy/ears';",
   "import { x } from '@abuddy/sdk/rpcx';",
@@ -145,12 +145,12 @@ describe('findInternalPackageImports', () => {
 
 describe('findRawPackHelpers', () => {
   it.each([
-    ["import { emit as emitToPlugin } from '@abuddy/sdk/events';", 'emit from @abuddy/sdk/events'],
+    ["import { sendToPlugin as toPlugin } from '@abuddy/sdk/events';", 'sendToPlugin from @abuddy/sdk/events'],
     ["import onConnected, { sendToSystem } from '@abuddy/sdk/events';", 'sendToSystem from @abuddy/sdk/events'],
     ["import { sendToPlugin, services } from '@abuddy/sdk/services';", 'sendToPlugin from @abuddy/sdk/services'],
     ["import { registerRepository, tx } from '@abuddy/ears';", 'registerRepository from @abuddy/ears'],
     ["import { unregisterRepository } from '@abuddy/ears';", 'unregisterRepository from @abuddy/ears'],
-    ["export type { emit } from '@abuddy/sdk/events';", 'emit from @abuddy/sdk/events'],
+    ["export type { sendToPlugin } from '@abuddy/sdk/events';", 'sendToPlugin from @abuddy/sdk/events'],
     ["import * as events from '@abuddy/sdk/events';", '* from @abuddy/sdk/events (import the names)'],
     ["export * from '@abuddy/sdk/events';", '* from @abuddy/sdk/events (import the names)'],
   ])('flags %s', (code, problem) => {
@@ -165,13 +165,13 @@ describe('findRawPackHelpers', () => {
   });
 
   it('checks .vue script blocks with their line numbers', () => {
-    write('pack/Widget.vue', "<template><pre>import { emit } from '@abuddy/sdk/events'</pre></template>\n<script setup lang=\"ts\">\n\nimport { emit } from '@abuddy/sdk/events';\n</script>\n");
-    expect(findRawPackHelpers(['src/pack'], root)).toEqual(['src/pack/Widget.vue:4: emit from @abuddy/sdk/events']);
+    write('pack/Widget.vue', "<template><pre>import { sendToPlugin } from '@abuddy/sdk/events'</pre></template>\n<script setup lang=\"ts\">\n\nimport { sendToPlugin } from '@abuddy/sdk/events';\n</script>\n");
+    expect(findRawPackHelpers(['src/pack'], root)).toEqual(['src/pack/Widget.vue:4: sendToPlugin from @abuddy/sdk/events']);
   });
 
   it("checks the pack code in the CLI's templates, with its line", () => {
-    const dir = writeTemplateSource("const name = 'x';\nexport const SYSTEM = `// ${name}\nconst label = \\`${name}\\`;\nimport { ${name}, emit } from '@abuddy/sdk/events';\n`;\n");
-    expect(findRawPackHelpers([dir], root)).toEqual([`${dir}/feature.ts:4: emit from @abuddy/sdk/events`]);
+    const dir = writeTemplateSource("const name = 'x';\nexport const SYSTEM = `// ${name}\nconst label = \\`${name}\\`;\nimport { ${name}, sendToPlugin } from '@abuddy/sdk/events';\n`;\n");
+    expect(findRawPackHelpers([dir], root)).toEqual([`${dir}/feature.ts:4: sendToPlugin from @abuddy/sdk/events`]);
   });
 });
 

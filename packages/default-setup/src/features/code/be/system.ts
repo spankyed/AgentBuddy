@@ -15,7 +15,7 @@
  *   baseDirectory > defaultBaseDirectory > first workspace project > null
  */
 import { sendToPlugin } from '@/__generated__/events';
-import { setup, enqueueActions, assign } from 'xstate'
+import { setup, enqueueActions, assign, type AnyActorRef } from 'xstate'
 
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
 import { GitRepository } from './services/git'
@@ -31,6 +31,11 @@ import { pullRequestSystem, type IncomingPullRequestEvents, type OutgoingPullReq
 import { terminalSystem, type IncomingTerminalEvents, type OutgoingTerminalEvents } from './features/terminal'
 import { actionsSystem, type IncomingActionsEvents, type OutgoingActionsEvents } from './features/actions'
 import { promptsSystem, type IncomingPromptsEvents, type OutgoingPromptsEvents } from './features/prompts'
+
+/** One of this system's children, by the id it was spawned under */
+function child(self: AnyActorRef, id: string): AnyActorRef | undefined {
+  return self.getSnapshot().children[id];
+}
 
 // Union all incoming events from child systems
 type IncomingCodeEvents =
@@ -111,12 +116,10 @@ export const systemMachine = setup({
     promptsSystem
   },
   actions: {
-    spawnFeatureActors: enqueueActions(({ enqueue, context }) => {
-      // Each child is spawned under its own id as well as its system id: the parent tracks its children by
-      // id, so without one they share a key, and stopping this system leaves the others' system ids taken
+    spawnFeatureActors: enqueueActions(({ enqueue, context, self }) => {
+      // The children are this system's own: nothing outside it looks them up, so none has a system id
       enqueue.spawnChild('explorerSystem', {
         id: 'explorer',
-        systemId: 'explorer',
         input: {
           baseDirectory: context.baseDirectory,
           gitWatcher: context.gitWatcher
@@ -124,46 +127,42 @@ export const systemMachine = setup({
       });
       enqueue.spawnChild('searchSystem', {
         id: 'search',
-        systemId: 'search',
         input: {
           baseDirectory: context.baseDirectory
         }
       });
       enqueue.spawnChild('commitSystem', {
         id: 'commit',
-        systemId: 'commit',
         input: {
           baseDirectory: context.baseDirectory,
           gitRepository: context.gitRepository,
-          gitWatcher: context.gitWatcher
+          gitWatcher: context.gitWatcher,
+          code: self
         }
       });
       enqueue.spawnChild('pullRequestSystem', {
         id: 'pr',
-        systemId: 'pr',
         input: {
           baseDirectory: context.baseDirectory,
-          gitRepository: context.gitRepository
+          gitRepository: context.gitRepository,
+          code: self
         }
       });
       enqueue.spawnChild('terminalSystem', {
         id: 'terminal',
-        systemId: 'terminal',
         input: {
           baseDirectory: context.baseDirectory
         }
       });
-      enqueue.spawnChild('actionsSystem', { id: 'codeActions', systemId: 'codeActions' });
-      enqueue.spawnChild('promptsSystem', { id: 'codePrompts', systemId: 'codePrompts' });
+      enqueue.spawnChild('actionsSystem', { id: 'codeActions' });
+      enqueue.spawnChild('promptsSystem', { id: 'codePrompts' });
     }),
 
-    routeEvent: ({ event, system }) => {
-      const eventType = event.type;
-      
-      // Route based on prefix - prefix matches system ID
-      const [prefix] = eventType.split('.');
+    routeEvent: ({ event, self }) => {
+      // An event's prefix names the child that handles it
+      const [prefix] = event.type.split('.');
       if (prefix) {
-        system.get(prefix)?.send(event);
+        child(self, prefix)?.send(event);
       }
     },
 
@@ -201,32 +200,32 @@ export const systemMachine = setup({
       }
     }),
 
-    notifyChildSystemsOfBaseChange: ({ event, system, context }) => {
+    notifyChildSystemsOfBaseChange: ({ event, self, context }) => {
       const ev = codeSpec.typeOf('SET_BASE_DIRECTORY', event)
       const newPath = ev.path
 
       // Update child systems
-      system.get('explorer')?.send({
+      child(self, 'explorer')?.send({
         type: 'explorer.UPDATE_BASE_DIRECTORY',
         path: newPath,
         gitWatcher: context.gitWatcher
       });
-      system.get('search')?.send({ type: 'search.UPDATE_BASE_DIRECTORY', path: newPath });
+      child(self, 'search')?.send({ type: 'search.UPDATE_BASE_DIRECTORY', path: newPath });
       // Pass the new git services to systems that need them
-      system.get('commit')?.send({
+      child(self, 'commit')?.send({
         type: 'commit.UPDATE_BASE_DIRECTORY',
         path: newPath,
         gitRepository: context.gitRepository,
         gitWatcher: context.gitWatcher
       });
-      system.get('pr')?.send({
+      child(self, 'pr')?.send({
         type: 'pr.UPDATE_BASE_DIRECTORY',
         path: newPath,
         gitRepository: context.gitRepository
       });
       // Note: Updates terminal's base directory for new terminal creation.
       // Individual terminal processes track their own cwd independently.
-      system.get('terminal')?.send({ type: 'terminal.UPDATE_BASE_DIRECTORY', path: newPath });
+      child(self, 'terminal')?.send({ type: 'terminal.UPDATE_BASE_DIRECTORY', path: newPath });
     },
 
     updateSettings: ({ event, context, self }) => {
@@ -259,12 +258,12 @@ export const systemMachine = setup({
       })
     },
     
-    broadcastConnected: ({ system, context }) => {
+    broadcastConnected: ({ self, context }) => {
       // Send CODE_CONNECTED to all children that need it
-      system.get('explorer')?.send({ type: 'CODE_CONNECTED' });
-      system.get('terminal')?.send({ type: 'CODE_CONNECTED' });
-      system.get('codeActions')?.send({ type: 'CODE_CONNECTED' });
-      system.get('codePrompts')?.send({ type: 'CODE_CONNECTED' });
+      child(self, 'explorer')?.send({ type: 'CODE_CONNECTED' });
+      child(self, 'terminal')?.send({ type: 'CODE_CONNECTED' });
+      child(self, 'codeActions')?.send({ type: 'CODE_CONNECTED' });
+      child(self, 'codePrompts')?.send({ type: 'CODE_CONNECTED' });
 
       // Get code settings - this will create default settings if they don't exist
       const codeSettings = repository.settingsQueries.getPluginSettings('code') as CodeSettings;
@@ -281,7 +280,7 @@ export const systemMachine = setup({
       })
     },
     
-    setupGitWatcher: async ({ context, system }) => {
+    setupGitWatcher: async ({ context, self }) => {
       if (!context.gitWatcher || !context.gitRepository) {
         // No directory selected yet
         return
@@ -296,14 +295,14 @@ export const systemMachine = setup({
         context.gitRepository?.clearCache()
 
         // Notify commit system of changes (commit system forwards to PR system)
-        system.get('commit')?.send({ type: 'commit.GIT_STATUS_CHANGED' })
+        child(self, 'commit')?.send({ type: 'commit.GIT_STATUS_CHANGED' })
       })
 
       // Start watching git changes
       await context.gitWatcher.startWatching()
     },
 
-    restartGitWatcher: async ({ context, system }) => {
+    restartGitWatcher: async ({ context, self }) => {
       if (!context.gitWatcher || !context.gitRepository) {
         return
       }
@@ -317,7 +316,7 @@ export const systemMachine = setup({
         context.gitRepository?.clearCache()
 
         // Notify commit system of changes (commit system forwards to PR system)
-        system.get('commit')?.send({ type: 'commit.GIT_STATUS_CHANGED' })
+        child(self, 'commit')?.send({ type: 'commit.GIT_STATUS_CHANGED' })
       })
 
       // Start watching git changes

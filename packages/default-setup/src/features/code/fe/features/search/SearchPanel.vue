@@ -187,6 +187,7 @@
 </template>
 
 <script setup lang="ts">
+import { codeChild } from '@/features/code/fe/utils/parent-communication'
 import { actorOf } from '@/__generated__/fe'
 import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -198,7 +199,7 @@ import EmptyState from '@/features/code/fe/features/EmptyState.vue'
 
 // Get actors
 const codeActor: CodeState = actorOf(codeId)
-const searchActor = codeActor.system.get('search')!
+const searchActor = codeChild(codeActor, 'search')!
 
 // State selectors
 const searchQuery = ref('')
@@ -348,7 +349,7 @@ const toggleResultExpanded = (path: string) => {
 
 const openMatch = (result: typeof searchResults.value[0], match: typeof result.matches[0]) => {
   // Open file through explorer
-  const explorerActor = codeActor.system.get('explorer')
+  const explorerActor = codeChild(codeActor, 'explorer')
   explorerActor?.send({
     type: 'explorer.OPEN_FILE',
     path: result.path

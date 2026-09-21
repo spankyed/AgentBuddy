@@ -87,6 +87,7 @@
 </template>
 
 <script setup lang="ts">
+import { codeChild } from '@/features/code/fe/utils/parent-communication'
 import { actorOf } from '@/__generated__/fe'
 import { ref, computed, provide, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -104,8 +105,8 @@ import { pluginSettings } from '@/features/settings/plugin-settings';
 
 // Get actors
 const codeActor: CodeState = actorOf(codeId)
-const explorerActor = codeActor.system.get('explorer')!
-const terminalActor = codeActor.system.get('terminal')!
+const explorerActor = codeChild(codeActor, 'explorer')!
+const terminalActor = codeChild(codeActor, 'terminal')!
 
 // State selectors
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)

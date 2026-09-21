@@ -178,15 +178,11 @@ function handleKeydown(event: KeyboardEvent) {
 function openInEditor() {
   if (!props.action) return;
 
-  navigateToPlugin('code', { type: 'UPDATE_STATE', updates: { selectedPanel: 'actions' } });
-
-  // Child actor needs time to initialize after plugin activation
-  setTimeout(() => {
-    const actionsActor = actorOf('code')?.system.get('codeActions');
-    if (actionsActor) {
-      actionsActor.send({ type: 'codeActions.OPEN_ACTION', actionId: props.action!.id });
-    }
-  }, 10);
+  // The code plugin routes a codeActions.* event to its actions panel
+  navigateToPlugin('code', [
+    { type: 'UPDATE_STATE', updates: { selectedPanel: 'actions' } },
+    { type: 'codeActions.OPEN_ACTION', actionId: props.action.id },
+  ]);
 }
 
 function formatDate(timestamp?: number) {

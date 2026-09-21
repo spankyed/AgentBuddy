@@ -359,20 +359,32 @@ describe('generated sends compile', () => {
       { packRoot: root, depSnapshots: new Map([['base-pack', base]]) },
     );
     write('src/probe.ts', [
-      "import { emit, sendToPlugin } from './__generated__/events.js';",
-      "emit('memos', { type: 'MEMO_ADDED', text: 'x' });",
-      "emit('base-pack/threads', { type: 'TAG_ADDED', name: 'x' });",
+      "import { sendToPlugin } from './__generated__/events.js';",
+      "sendToPlugin('memos', { type: 'MEMO_ADDED', text: 'x' });",
+      "sendToPlugin('base-pack/threads', { type: 'TAG_ADDED', name: 'x' });",
       "sendToPlugin('host/application', { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: { 'demo-pack/memos': false } });",
       "// @ts-expect-error a dependency's plugin takes only the events its own pack declares for it",
-      "emit('base-pack/threads', { type: 'MEMO_ADDED', text: 'x' });",
+      "sendToPlugin('base-pack/threads', { type: 'MEMO_ADDED', text: 'x' });",
       "// @ts-expect-error a dependency's plugin is named <pack>/<feature>, as the send resolves it",
-      "emit('threads', { type: 'TAG_ADDED', name: 'x' });",
+      "sendToPlugin('threads', { type: 'TAG_ADDED', name: 'x' });",
       '// @ts-expect-error the host declares what its application plugin receives',
       "sendToPlugin('host/application', { type: 'MEMO_ADDED', text: 'x' });",
       "// @ts-expect-error no sendsTo names the dependency's code plugin",
-      "emit('base-pack/code', { type: 'FILE_OPENED', path: 'x' });",
+      "sendToPlugin('base-pack/code', { type: 'FILE_OPENED', path: 'x' });",
     ].join('\n'));
     expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
+  });
+});
+
+describe('generated frontend names', () => {
+  // A name nothing declares fails to compile: a plugin named by data opens through `openPlugin` instead
+  it("lists this pack's plugins by feature id and its dependencies' by ref, with no open-ended member", () => {
+    const files = generate(
+      { features: [{ id: 'notes', plugin: { entry: 'src/notes/plugin' } }, { id: 'jobs', system: { entry: 'src/jobs/system' } }] },
+      { 'base-pack': dependency({ features: [{ id: 'threads', plugin: { entry: 'src/threads/plugin' } }, { id: 'worker', system: { entry: 'src/worker/system' } }] }) },
+    );
+
+    expect(files['src/__generated__/fe.ts']).toContain("export type PluginName = 'notes' | 'base-pack/threads';");
   });
 });
 

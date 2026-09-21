@@ -87,7 +87,7 @@ const APP_PACK = {
 
 const CONSUMER = `
 import { EARS as PackEARS, qx, tx, findById, findAll, createEntity, type EntityShape, type EntityName } from '#generated/ears.js';
-import { emit, sendToPlugin, sendToSystem } from '#generated/events.js';
+import { sendToPlugin, sendToSystem } from '#generated/events.js';
 import { services } from '#generated/services.js';
 import { repository } from '#generated/repository.js';
 import type { EARS } from '@abuddy/sdk';
@@ -117,18 +117,18 @@ export type RepositoryService = Expect<Equal<typeof services.repository, typeof 
 services.nope;
 
 // The memos system declares sendsTo: ['base-pack/threads', 'host/application']: a plugin of the dependency and the host's
-emit('base-pack/threads', { type: 'TAG_ADDED', name: 'x' });
-emit('memos', { type: 'MEMO_ADDED', text: 'x' });
+sendToPlugin('base-pack/threads', { type: 'TAG_ADDED', name: 'x' });
+sendToPlugin('memos', { type: 'MEMO_ADDED', text: 'x' });
 sendToPlugin('host/application', { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: { 'demo-pack/memos': false } });
 // A plugin someone else owns keeps the events its owner declares it receives: sendsTo opens the channel, it doesn't widen them
 // @ts-expect-error the threads plugin doesn't receive this event
-emit('base-pack/threads', { type: 'MEMO_ADDED', text: 'x' });
+sendToPlugin('base-pack/threads', { type: 'MEMO_ADDED', text: 'x' });
 // @ts-expect-error a dependency's plugin is named <dependency>/<feature>
-emit('threads', { type: 'TAG_ADDED', name: 'x' });
+sendToPlugin('threads', { type: 'TAG_ADDED', name: 'x' });
 // @ts-expect-error the host declares what its application plugin receives
 sendToPlugin('host/application', { type: 'MEMO_ADDED', text: 'x' });
 // @ts-expect-error no sendsTo names the dependency's inbox plugin
-emit('base-pack/inbox', { type: 'MAIL_ARRIVED', from: 'x' });
+sendToPlugin('base-pack/inbox', { type: 'MAIL_ARRIVED', from: 'x' });
 
 // Systems: this pack's by feature id, the dependency's as <dependency>/<feature>
 sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });

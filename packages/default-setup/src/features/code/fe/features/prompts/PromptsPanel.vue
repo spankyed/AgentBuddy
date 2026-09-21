@@ -234,6 +234,7 @@
 </template>
 
 <script setup lang="ts">
+import { codeChild } from '@/features/code/fe/utils/parent-communication'
 import { ref, computed, watch, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { navigateToPlugin, actorOf } from '@/__generated__/fe'
@@ -257,7 +258,7 @@ import uFuzzy from '@leeoniya/ufuzzy'
 
 // Get actors - use main prompts plugin for state, codePrompts for tab management
 const codeActor: CodeState = actorOf(codeId)
-const codePromptsActor = codeActor.system.get('codePrompts')!
+const codePromptsActor = codeChild(codeActor, 'codePrompts')!
 const promptsPluginActor = actorOf(promptsPluginId)!
 
 // State selectors - read from main prompts plugin (single source of truth)
