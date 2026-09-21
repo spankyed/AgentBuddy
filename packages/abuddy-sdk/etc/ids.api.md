@@ -11,7 +11,21 @@ export function addressOf(name: string): string;
 export const bus: "bus";
 
 // @public
+export type FeatureAddress = string;
+
+// @public
+export interface NameContext {
+    // (undocumented)
+    hostIds?: readonly string[];
+    // (undocumented)
+    packId?: string;
+}
+
+// @public
 export function qualifiedId(packId: string, featureId: string): string;
+
+// @public
+export function resolveName(name: string, input?: NameContext): FeatureAddress;
 
 // (No @packageDocumentation comment for this package)
 

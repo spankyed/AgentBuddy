@@ -3,7 +3,7 @@
 import { boundHost, _isHostBound } from '../runtime/host-runtime.ts';
 import { _isFeHostBound, boundFeHost } from '../runtime/fe-host.ts';
 import { getDesignated } from '../designations/index.ts';
-import { addressOf, qualifiedId } from '../ids/addressing.ts';
+import { resolveName } from '../ids/addressing.ts';
 import type { EARS } from '../types/entities.ts';
 import type { ApplicationHotkeys } from '../types/index.ts';
 
@@ -167,9 +167,8 @@ export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
  * send it has no receiver for.
  */
 export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S> {
-  const hostPlugins: readonly string[] = HOST_PLUGIN_IDS;
-  const address = (name: string): string =>
-    name.includes('/') || hostPlugins.includes(name) ? addressOf(name) : qualifiedId(packId, name);
+  const context = { packId, hostIds: HOST_PLUGIN_IDS };
+  const address = (name: string): string => resolveName(name, context);
   return {
     emit: (name: string, event: { type: string }) => emit(address(name), event),
     sendToPlugin: (name: string, event: { type: string }) => sendToPlugin(address(name), event),

@@ -6,7 +6,7 @@ import * as os from 'os';
 import { execFileSync } from 'child_process';
 import { createRequire } from 'module';
 import { resolveAppContext } from '@abuddy/sdk/env';
-import { addressOf, qualifiedId } from '@abuddy/sdk/ids';
+import { resolveName } from '@abuddy/sdk/ids';
 import { installPackFromLocal, PACK_LOAD_MESSAGES } from '@abuddy/host/packs';
 import { appVersion } from './app-version.ts';
 import { appLaunchEnv } from './launch-env.ts';
@@ -144,7 +144,7 @@ function getPackManifest(): { id: string; pluginIds: string[] } | null {
     // The ids the plugins run under: a plugin is addressed `<packId>.<featureId>`, as a system is
     pluginIds: (manifest.features ?? [])
       .filter((f: any) => f.plugin)
-      .map((f: any) => qualifiedId(manifest.id, f.id)),
+      .map((f: any) => resolveName(f.id, { packId: manifest.id })),
   };
   return _packManifest;
 }
@@ -207,21 +207,20 @@ function captureOutput(app: ElectronApplication): void {
  * — an incompatible hostVersion, an unsupported layout, a throw in its runtime — would otherwise pass
  * its whole suite while dead, because every test it runs asks the app about something else.
  */
-/**
- * The id a spec's plugin name addresses, as the pack under test's own code names plugins: its features by
- * id, another pack's as `<packId>/<featureId>`. Without a pack under test a bare name is an id as given —
- * a host plugin's, or a built-in pack's written in full.
- */
-function pluginAddress(name: string): string {
-  const packId = getPackManifest()?.id;
-  return name.includes('/') || !packId ? addressOf(name) : qualifiedId(packId, name);
+/** The registered plugin ids, and among them the host's (the bare ones) */
+async function registeredPlugins(page: Page): Promise<{ ids: string[]; hostIds: string[] }> {
+  const ids: string[] = await page.evaluate(() =>
+    ((window as any).applicationState?.getSnapshot()?.context?.plugins ?? []).map((p: { id: string }) => p.id));
+  return { ids, hostIds: ids.filter((id) => !id.includes('.')) };
 }
 
-/** `pluginAddress`, unless the name is itself a registered id (a host plugin, with a pack under test) */
+/**
+ * The id a spec's plugin name addresses, as the pack under test's own code names plugins: its features by
+ * id, another pack's as `<packId>/<featureId>`, a host plugin bare.
+ */
 async function resolvePlugin(page: Page, name: string): Promise<string> {
-  const exact = await page.evaluate((id) =>
-    ((window as any).applicationState?.getSnapshot()?.context?.plugins ?? []).some((p: { id: string }) => p.id === id), name);
-  return exact ? name : pluginAddress(name);
+  const { hostIds } = await registeredPlugins(page);
+  return resolveName(name, { packId: getPackManifest()?.id, hostIds });
 }
 
 async function waitForPackBackend(app: ElectronApplication, packId: string, timeoutMs = 15_000): Promise<void> {
@@ -537,10 +536,11 @@ export function createTest(options: CreateTestOptions = {}) {
         },
 
         waitForPlugin: async (pluginId, timeout = 30_000) => {
-          await page.waitForFunction((ids) => {
-            const plugins: Array<{ id: string }> = (window as any).applicationState?.getSnapshot()?.context?.plugins ?? [];
-            return plugins.some((p) => ids.includes(p.id));
-          }, [pluginId, pluginAddress(pluginId)], { timeout });
+          // A host plugin is known once the app has any; a pack's registers later, at its address
+          await page.waitForFunction(() => ((window as any).applicationState?.getSnapshot()?.context?.plugins ?? []).length > 0, null, { timeout });
+          const id = await resolvePlugin(page, pluginId);
+          await page.waitForFunction((target) =>
+            ((window as any).applicationState?.getSnapshot()?.context?.plugins ?? []).some((p: { id: string }) => p.id === target), id, { timeout });
         },
 
         waitForState: async (check, timeout = 10_000) => {

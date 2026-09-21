@@ -1,7 +1,7 @@
 // A test app: the pack's registered systems under the app's bus core, with a client the test drives.
 import { createActor, type Actor, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { createBusMachine } from '@abuddy/host/bus';
-import { addressOf, qualifiedId } from '@abuddy/sdk/ids';
+import { resolveName } from '@abuddy/sdk/ids';
 import type { PackBootHooks } from '@abuddy/sdk/framework';
 import type { OutgoingSystemEvents } from '@abuddy/sdk/events';
 import { testRootEvents } from '@abuddy/sdk/testing';
@@ -174,21 +174,17 @@ function shutDownPacks(): void {
  * The registered system a name addresses, as `sendToSystem` names it: a dependency's (or any pack's) system as
  * `<packId>/<featureId>`, the pack's own by feature id. A full bus id is accepted too.
  */
-function resolveSystemId(id: string, registered: ReadonlyMap<string, AnyStateMachine>): string {
-  const addressed = id.includes('/') || !packId ? addressOf(id) : qualifiedId(packId, id);
-  if (addressed && registered.has(addressed)) return addressed;
+function resolveSystemId(name: string, registered: ReadonlyMap<string, AnyStateMachine>): string {
+  const hostIds = [...registered.keys()].filter((id) => !id.includes('.'));
+  const id = resolveName(name, { packId, hostIds });
   if (registered.has(id)) return id;
-  throw new Error(`No registered system is named "${id}". Registered: ${[...registered.keys()].join(', ') || 'none'} (name the pack's own systems by feature id and a dependency's as "<packId>/<featureId>"; pass the pack's registration to setupPackTests)`);
+  throw new Error(`No registered system is named "${name}" (it would be "${id}"). Registered: ${[...registered.keys()].join(', ') || 'none'} (name the pack's own systems by feature id and a dependency's as "<packId>/<featureId>"; pass the pack's registration to setupPackTests)`);
 }
 
-/**
- * The id a plugin name addresses, as a pack's own `emit` resolves it: the pack under test's features by
- * id, another pack's as `<packId>/<featureId>`, a host plugin bare.
- */
+/** The id a plugin name addresses, as the pack under test's own `emit` resolves it */
 function resolvePluginId(name: string): string {
-  if (name.includes('/') || !packId) return addressOf(name);
-  const own = qualifiedId(packId, name);
-  return packs().getPluginEventValidationMap().has(own) ? own : name;
+  const hostIds = [...packs().getPluginEventValidationMap().keys()].filter((id) => !id.includes('.'));
+  return resolveName(name, { packId, hostIds });
 }
 
 /** One event loop turn, after zero-delay timers already queued (xstate's `raise(…, { delay: 0 })`) */

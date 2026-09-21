@@ -18,3 +18,30 @@ export function addressOf(name: string): string {
   const slash = name.indexOf('/');
   return slash < 0 ? name : qualifiedId(name.slice(0, slash), name.slice(slash + 1));
 }
+
+/** A feature's address, `<packId>.<featureId>`, or a bare id the host owns */
+export type FeatureAddress = string;
+
+/** Where a name is being resolved: the pack whose code wrote it, and the bare ids the host owns there */
+export interface NameContext {
+  packId?: string;
+  hostIds?: readonly string[];
+}
+
+/**
+ * The address a name refers to, in the context of the pack that wrote it:
+ * - an address (it holds a `.`, which no name can) is itself;
+ * - `<packId>/<featureId>` is that pack's feature;
+ * - a host id is the host's, bare;
+ * - any other bare name is the writing pack's own feature.
+ * A bare name with no pack to belong to throws, rather than being taken for an address.
+ */
+export function resolveName(name: string, { packId, hostIds = [] }: NameContext = {}): FeatureAddress {
+  if (name.includes('.')) return name;
+  if (name.includes('/')) return addressOf(name);
+  if (hostIds.includes(name)) return name;
+  if (!packId) {
+    throw new Error(`"${name}" names no pack's feature: write "<packId>/${name}", or the address "<packId>.${name}"`);
+  }
+  return qualifiedId(packId, name);
+}
