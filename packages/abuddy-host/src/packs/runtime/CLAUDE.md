@@ -112,7 +112,7 @@ A pack's `__generated__/pack-entry.ts` (built-in, and bundled into an external p
 ```typescript
 export const registration: PackRegistration = {
   id: string;
-  systems: PackSystemDef[];  // { id, machine, events, designation? }
+  systems: PackSystemDef[];  // { id, machine, events }; id is `<packId>.<featureId>`, from toPackSystemDefs
   services?: Record<string, unknown>;
   ears?: PackEARS;           // entities + relKinds + partitionPolicy?
   repositories?: Record<string, unknown>;  // features[].repositories, registered with the app's engine
