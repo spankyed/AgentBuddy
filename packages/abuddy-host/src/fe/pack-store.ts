@@ -5,7 +5,7 @@ import type { FePackRegistryView } from '@abuddy/sdk/runtime';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { createDefinitionStore, createDesignationStore, createOwnedStore, createStepStore, createUndoLog } from '../packs/extensions.ts';
-import { qualifiedId } from '@abuddy/sdk/ids';
+import { qualifiedId, type FeatureAddress } from '@abuddy/sdk/ids';
 import { createAppExtensionSlots } from './app-extensions.ts';
 
 interface PackFEExtensions {
@@ -81,7 +81,7 @@ export function createFePackRegistry(): FePackRegistry {
         console.warn(`[pack-store] defaultPlugin "${registration.defaultPlugin}"${fromPack} ignored — ${reason}`);
       }
 
-      const roles: Record<string, string> = {};
+      const roles: Record<string, FeatureAddress> = {};
       for (const [designation, featureId] of Object.entries(registration.designations ?? {})) {
         const plugin = byFeature.get(featureId);
         if (!plugin) continue;

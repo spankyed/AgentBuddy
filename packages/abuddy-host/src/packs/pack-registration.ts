@@ -15,7 +15,7 @@ import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS, _reservedEntries } from '@abuddy/sdk/types';
 import { HOST_PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
-import { qualifiedId } from '@abuddy/sdk/ids';
+import { qualifiedId, type FeatureAddress } from '@abuddy/sdk/ids';
 import { makePolicy, registerRepository, unregisterRepository, type PartitionPolicy } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { packSeedOrder } from './pack-discovery.ts';
@@ -39,7 +39,7 @@ const appEARS = (): PackEARS => ({
 });
 
 /** Role → the address of the feature playing it: its system and its plugin share it */
-function designationsOf({ id, features = [] }: PackRegistration): Record<string, string> {
+function designationsOf({ id, features = [] }: PackRegistration): Record<string, FeatureAddress> {
   return Object.fromEntries(features.flatMap((f) => (f.designation ? [[f.designation, qualifiedId(id, f.id)]] : [])));
 }
 
@@ -552,8 +552,9 @@ export function createPackRegistry(): PackRegistry {
         .map((o) => ({ manifest: o.manifest!, dir: o.dir, migrations: registrations.get(o.id)?.migrations }));
     },
 
-    systemIds: () => [...(eventValidationMap ??= buildEventValidationMap()).keys()],
-    pluginIds: () => [...(pluginEventValidationMap ??= buildPluginEventValidationMap()).keys()],
+    // Both maps are keyed by what the registry registered: pack features' addresses and the host's bare ids
+    systemIds: () => [...(eventValidationMap ??= buildEventValidationMap()).keys()] as FeatureAddress[],
+    pluginIds: () => [...(pluginEventValidationMap ??= buildPluginEventValidationMap()).keys()] as FeatureAddress[],
 
     getEventValidationMap: () => eventValidationMap ??= buildEventValidationMap(),
     getPluginEventValidationMap: () => pluginEventValidationMap ??= buildPluginEventValidationMap(),

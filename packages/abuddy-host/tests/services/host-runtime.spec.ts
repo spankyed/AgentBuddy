@@ -1,5 +1,6 @@
 // createHostRuntime assembles the app the SDK binds: the given bus and version, the engine, the registered packs,
 // and the host's services over the store. A reset leaves the app as a fresh boot does.
+import { resolveName } from '@abuddy/sdk/ids';
 import { secretRedaction } from '../../src/secrets/redaction.ts';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -61,7 +62,7 @@ describe('createHostRuntime', () => {
     expect(runtime.services.filesystem).toBe(filesystem);
 
     const service = { ping: () => 'pong' };
-    packs.registerPack({ id: 'runtime-pack', systems: [{ id: 'runtime-pack.memos', machine: {} as never, events: new Set() }], services: { memoService: service } });
+    packs.registerPack({ id: 'runtime-pack', systems: [{ id: resolveName('runtime-pack/memos'), machine: {} as never, events: new Set() }], services: { memoService: service } });
     try {
       expect(runtime.packs.getRegisteredServices().memoService).toBe(service);
       expect(runtime.packs.systemIds()).toContain('runtime-pack.memos');

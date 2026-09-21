@@ -108,7 +108,7 @@ So installing an external pack today means trusting it as much as the app itself
 ### Phase 2 — the SDK bridge
 
 - A message bridge carries what Open decision 3 allows, in both directions. The pack side implements `@abuddy/sdk/events`, the frontend lookups and `secretsClient` over it; the host side answers from its registry and transport. Pack code keeps importing `@abuddy/sdk` unchanged.
-- The host validates every message: a pack can only send to systems it may address (`resolveSystemAddress` rules), and only the calls the bridge defines.
+- The host validates every message: a pack can only send to systems it may address (`resolveName` rules), and only the calls the bridge defines.
 - `@abuddy/ui` and styles load inside the isolated context. The FE bundler's `window.__abuddy` proxying is replaced for isolated packs: they bundle UI or load a host-provided copy into their context.
 
 **Done when:**

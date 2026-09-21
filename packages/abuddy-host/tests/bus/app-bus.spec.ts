@@ -1,5 +1,6 @@
 // The app's bus on the SDK's bound root event bus (the test host's here): a connecting client reaches the
 // registered systems, except those of a loaded pack with frontend code, which wait for the client to load it.
+import { resolveName } from '@abuddy/sdk/ids';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -27,7 +28,7 @@ function recorder(label: string) {
 }
 
 function registerRecorderPack(id: string) {
-  registerPack({ id, systems: [{ id: `${id}.feature`, machine: recorder(id), events: new Set(['CLIENT_CONNECTED']) }] });
+  registerPack({ id, systems: [{ id: resolveName(`${id}/feature`), machine: recorder(id), events: new Set(['CLIENT_CONNECTED']) }] });
 }
 
 let bus: AnyActorRef;
@@ -77,7 +78,7 @@ describe('createAppBus', () => {
     const pings: string[] = [];
     registerPack({
       id: 'ping-pack',
-      systems: [{ id: 'ping-pack.feature', machine: setup({}).createMachine({ on: { PING: { actions: () => pings.push('ping') } } }), events: new Set(['PING']) }],
+      systems: [{ id: resolveName('ping-pack/feature'), machine: setup({}).createMachine({ on: { PING: { actions: () => pings.push('ping') } } }), events: new Set(['PING']) }],
       // The bus drops a send to a plugin that declares no such event, so this case declares the two it sends
       receivedEventTypes: { feature: ['EARLY', 'LATE'] },
     });
@@ -97,7 +98,7 @@ describe('createAppBus', () => {
     const pings: string[] = [];
     registerPack({
       id: 'ping-pack',
-      systems: [{ id: 'ping-pack.feature', machine: setup({}).createMachine({ on: { PING: { actions: () => pings.push('ping') } } }), events: new Set(['PING']) }],
+      systems: [{ id: resolveName('ping-pack/feature'), machine: setup({}).createMachine({ on: { PING: { actions: () => pings.push('ping') } } }), events: new Set(['PING']) }],
       // The bus drops a send to a plugin that declares no such event, so this case declares the two it sends
       receivedEventTypes: { feature: ['EARLY', 'LATE'] },
     });

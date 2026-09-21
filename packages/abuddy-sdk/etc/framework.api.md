@@ -151,8 +151,7 @@ export interface PackSettingsDefaults {
 export interface PackSystemDef {
     // (undocumented)
     events: Set<string>;
-    // (undocumented)
-    id: string;
+    id: FeatureAddress;
     // (undocumented)
     machine: AnyStateMachine;
 }

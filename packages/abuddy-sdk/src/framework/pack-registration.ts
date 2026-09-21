@@ -5,10 +5,12 @@
  * The host (API) owns the mutable registry; packs only reference these types.
  */
 
+import type { FeatureAddress } from '../ids/addressing.ts';
 import type { AnyStateMachine } from 'xstate';
 
 export interface PackSystemDef {
-  id: string;
+  /** The system's address, `<packId>.<featureId>` (`toPackSystemDefs` gives it) */
+  id: FeatureAddress;
   machine: AnyStateMachine;
   events: Set<string>;
 }

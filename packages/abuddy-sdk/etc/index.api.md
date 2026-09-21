@@ -137,7 +137,7 @@ export interface FlowEntity extends BaseEntity {
 }
 
 // @public (undocumented)
-export function getDesignated(role: string): string;
+export function getDesignated(role: string): FeatureAddress;
 
 // @public (undocumented)
 export function hasDesignation(role: string): boolean;

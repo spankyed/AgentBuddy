@@ -1,3 +1,4 @@
+import type { FeatureAddress } from '../ids/addressing.ts';
 import { boundFeHost } from '../runtime/fe-host.ts';
 import type { AnyActorRef } from 'xstate';
 import { getDesignated } from '../designations/index.ts';
@@ -14,7 +15,7 @@ function getApp(): AnyActorRef {
  * instead, through the `navigateToPlugin` its `#generated/fe` builds over this (`check:specifiers` keeps it
  * that way); this is for the host, and for that generated code.
  */
-export function navigateToAddress(address: string, event?: PluginEvent | PluginEvent[]): void {
+export function navigateToAddress(address: FeatureAddress, event?: PluginEvent | PluginEvent[]): void {
   const app = getApp();
   const snapshot = app.getSnapshot();
   const registered: Array<{ id: string }> = snapshot.context.plugins ?? [];
@@ -62,6 +63,6 @@ export function openInAppBrowser(url: string) {
  * actor is spawned, as `system.get` is. Pack code names the plugin instead, through the `actorOf` its
  * `#generated/fe` builds over this (`check:specifiers` keeps it that way).
  */
-export function actorAt<T = AnyActorRef>(address: string): T {
+export function actorAt<T = AnyActorRef>(address: FeatureAddress): T {
   return getApp().system.get(address) as T;
 }

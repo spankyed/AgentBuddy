@@ -762,7 +762,7 @@ export const createApplicationState = () => setup({
 
           // Send to backend to persist across sessions/devices
           trpc.bus.send.mutate({
-            systemId: getDesignated('settings') as any,
+            systemId: getDesignated('settings'),
             type: 'UPDATE_SETTINGS',
             entityType: 'plugin',
             label: '_meta',

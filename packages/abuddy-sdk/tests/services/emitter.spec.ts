@@ -6,14 +6,15 @@ import { describe, expect, it } from 'vitest';
 import { services } from '../../src/services/index.ts';
 import { startTestRuntime, testRootEvents } from '../../src/testing/index.ts';
 import { testPacksView } from '../../src/testing/packs.ts';
+import { asHostAddress, resolveName } from '../../src/ids/index.ts';
 
 process.env.ABUDDY_ENV ??= 'test';
 process.env.ABUDDY_USER_DATA_DIR ??= os.tmpdir();
 startTestRuntime({
   packs: {
     ...testPacksView(),
-    systemIds: () => ['default-setup.notes', 'ext.notes', 'packs'],
-    pluginIds: () => ['default-setup.threads', 'application'],
+    systemIds: () => [resolveName('default-setup/notes'), resolveName('ext/notes'), asHostAddress('packs')],
+    pluginIds: () => [resolveName('default-setup/threads'), asHostAddress('application')],
   },
 });
 

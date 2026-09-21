@@ -5,13 +5,18 @@
 ```ts
 
 // @public
-export function addressOf(name: string): string;
+export function addressOf(name: string): FeatureAddress;
+
+// @public
+export function asHostAddress(id: string): FeatureAddress;
 
 // @public (undocumented)
 export const bus: "bus";
 
 // @public
-export type FeatureAddress = string;
+export type FeatureAddress = string & {
+    readonly [featureAddress]: true;
+};
 
 // @public
 export interface NameContext {
@@ -27,8 +32,8 @@ export function parseAddress(address: string): {
     featureId: string;
 } | undefined;
 
-// @public
-export function qualifiedId(packId: string, featureId: string): string;
+// @public (undocumented)
+export function qualifiedId(packId: string, featureId: string): FeatureAddress;
 
 // @public
 export function resolveName(name: string, input?: NameContext): FeatureAddress;

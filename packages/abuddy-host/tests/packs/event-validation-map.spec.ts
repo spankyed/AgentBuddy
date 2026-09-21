@@ -1,4 +1,5 @@
 // What bus.send accepts: each registered system's incoming events, kept current by registration itself.
+import { resolveName } from '@abuddy/sdk/ids';
 import { describe, expect, it } from 'vitest';
 import { setup } from 'xstate';
 import { createPackRegistry } from '../../src/packs/pack-registration.ts';
@@ -12,7 +13,7 @@ describe('getEventValidationMap', () => {
     // Cached before the change
     expect(getEventValidationMap().has('validation-pack.feature')).toBe(false);
 
-    registerPack({ id: 'validation-pack', systems: [{ id: 'validation-pack.feature', machine, events: new Set(['PING']) }] });
+    registerPack({ id: 'validation-pack', systems: [{ id: resolveName('validation-pack/feature'), machine, events: new Set(['PING']) }] });
     expect(getEventValidationMap().get('validation-pack.feature')).toEqual(new Set(['PING']));
 
     unregisterPack('validation-pack');
@@ -50,7 +51,7 @@ describe('getPluginEventValidationMap', () => {
   it('maps a plugin of a pack that declared no event types to null, not to absent', () => {
     registry.registerPack({
       id: 'older-pack',
-      systems: [{ id: 'older-pack.notes', machine, events: new Set(['PING']) }],
+      systems: [{ id: resolveName('older-pack/notes'), machine, events: new Set(['PING']) }],
       features: [{ id: 'notes', hasSystem: true, hasPlugin: true, services: [] }],
     });
     expect(registry.getPluginEventValidationMap().has('older-pack.notes')).toBe(true);

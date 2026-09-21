@@ -1,6 +1,7 @@
 // The counterpart of client-events.spec.ts: a client's event is checked against what a system accepts,
 // and a system's event against what the plugin declares it receives. A send nobody declared is reported
 // as a system error and dropped, rather than thrown — the caller is a running system.
+import { resolveName } from '@abuddy/sdk/ids';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, setup, type AnyActorRef } from 'xstate';
 import { startTestRuntime, takeSystemErrors, testRootEvents } from '@abuddy/sdk/testing';
@@ -39,14 +40,14 @@ beforeEach(async () => {
   stopOutgoing = testRootEvents.onOutgoing((event) => { outgoing.push(event); });
   registry.registerPack({
     id: 'memo-pack',
-    systems: [{ id: 'memo-pack.memos', machine, events: new Set(['PING']) }],
+    systems: [{ id: resolveName('memo-pack/memos'), machine, events: new Set(['PING']) }],
     features: [{ id: 'memos', hasSystem: true, hasPlugin: true, services: [] }],
     receivedEventTypes: { memos: ['MEMOS_CONNECTED', 'MEMO_ADDED'] },
   });
   // A pack from before receivedEventTypes existed: it still names its plugins, through `features`
   registry.registerPack({
     id: 'older-pack',
-    systems: [{ id: 'older-pack.legacy', machine, events: new Set(['PING']) }],
+    systems: [{ id: resolveName('older-pack/legacy'), machine, events: new Set(['PING']) }],
     features: [{ id: 'legacy', hasSystem: true, hasPlugin: true, services: [] }],
   });
   registry.registerHostPlugin('packs', PACKS_PLUGIN_EVENT_TYPES);
@@ -168,7 +169,7 @@ describe('a plugin whose pack is being replaced', () => {
     // Put it back so afterEach's unregister finds it
     registry.registerPack({
       id: 'memo-pack',
-      systems: [{ id: 'memo-pack.memos', machine, events: new Set(['PING']) }],
+      systems: [{ id: resolveName('memo-pack/memos'), machine, events: new Set(['PING']) }],
       features: [{ id: 'memos', hasSystem: true, hasPlugin: true, services: [] }],
       receivedEventTypes: { memos: ['MEMOS_CONNECTED', 'MEMO_ADDED'] },
     });
@@ -182,7 +183,7 @@ describe('a plugin whose pack is being replaced', () => {
     registry.unregisterPack('memo-pack');
     registry.registerPack({
       id: 'memo-pack',
-      systems: [{ id: 'memo-pack.memos', machine, events: new Set(['PING']) }],
+      systems: [{ id: resolveName('memo-pack/memos'), machine, events: new Set(['PING']) }],
       features: [{ id: 'memos', hasSystem: true, hasPlugin: true, services: [] }],
       receivedEventTypes: { memos: ['MEMOS_CONNECTED', 'MEMO_ADDED'] },
     });

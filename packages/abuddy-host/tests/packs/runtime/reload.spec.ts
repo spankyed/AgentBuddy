@@ -1,5 +1,6 @@
 // Reloading a pack loads and registers its rebuilt runtime before the running one shuts down: a rebuild that
 // fails to load, or whose registration is refused, leaves the running pack as it was.
+import { resolveName } from '@abuddy/sdk/ids';
 import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'node:fs';
@@ -22,7 +23,7 @@ const PACK_ID = 'reload-pack';
 
 let tmpDir: string;
 let origEnv: { env?: string; userDataDir?: string };
-const running = { id: PACK_ID, systems: [{ id: `${PACK_ID}.widget`, machine: { id: 'widget', config: {} } as never, events: new Set(['PING']) }] };
+const running = { id: PACK_ID, systems: [{ id: resolveName(`${PACK_ID}/widget`), machine: { id: 'widget', config: {} } as never, events: new Set(['PING']) }] };
 const bus = { send: vi.fn() };
 const shutdown = vi.fn();
 

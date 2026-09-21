@@ -1,4 +1,5 @@
 // The partition policy the app's LMDB store is opened with: one object, following the packs registered at each call
+import { resolveName } from '@abuddy/sdk/ids';
 import { describe, expect, it } from 'vitest';
 import { setup } from 'xstate';
 import { createPackRegistry } from '../../src/packs/pack-registration.ts';
@@ -16,7 +17,7 @@ describe("a registry's partitionPolicy", () => {
 
     registerPack({
       id: 'policy-pack',
-      systems: [{ id: 'policy-pack.feature', machine, events: new Set() }],
+      systems: [{ id: resolveName('policy-pack/feature'), machine, events: new Set() }],
       ears: { entities: { Memo }, relKinds: {}, partitionPolicy: { excludedEntityTypes: [Memo] } },
     });
     expect(registeredPartitionPolicy.routeEntity(`${Memo}-1`)).toBe('volatileBackup');

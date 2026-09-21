@@ -9,8 +9,22 @@
  * Code names a feature two ways: its own by feature id, another pack's as `<packId>/<featureId>`. The
  * address is always derived from the name, never looked up, so nothing needs a table of them.
  */
-export function qualifiedId(packId: string, featureId: string): string {
-  return `${packId}.${featureId}`;
+declare const featureAddress: unique symbol;
+
+/**
+ * A feature's address, `<packId>.<featureId>`, or a bare id the host owns. Branded, so a name can't be
+ * passed where an address belongs: one is made only by `qualifiedId` or `resolveName` (or `asHostAddress`
+ * for the host's own bare ids).
+ */
+export type FeatureAddress = string & { readonly [featureAddress]: true };
+
+export function qualifiedId(packId: string, featureId: string): FeatureAddress {
+  return `${packId}.${featureId}` as FeatureAddress;
+}
+
+/** A bare id the host owns (`application`, `packs`, `bus`), as the address it is */
+export function asHostAddress(id: string): FeatureAddress {
+  return id as FeatureAddress;
 }
 
 /** The pack and feature an address names, or undefined for a string that isn't one (a bare host id, a name) */
@@ -21,13 +35,10 @@ export function parseAddress(address: string): { packId: string; featureId: stri
 }
 
 /** The address a `<packId>/<featureId>` name refers to; any other name is already an address */
-export function addressOf(name: string): string {
+export function addressOf(name: string): FeatureAddress {
   const slash = name.indexOf('/');
-  return slash < 0 ? name : qualifiedId(name.slice(0, slash), name.slice(slash + 1));
+  return slash < 0 ? name as FeatureAddress : qualifiedId(name.slice(0, slash), name.slice(slash + 1));
 }
-
-/** A feature's address, `<packId>.<featureId>`, or a bare id the host owns */
-export type FeatureAddress = string;
 
 /** Where a name is being resolved: the pack whose code wrote it, and the bare ids the host owns there */
 export interface NameContext {
@@ -44,9 +55,9 @@ export interface NameContext {
  * A bare name with no pack to belong to throws, rather than being taken for an address.
  */
 export function resolveName(name: string, { packId, hostIds = [] }: NameContext = {}): FeatureAddress {
-  if (name.includes('.')) return name;
+  if (name.includes('.')) return name as FeatureAddress;
   if (name.includes('/')) return addressOf(name);
-  if (hostIds.includes(name)) return name;
+  if (hostIds.includes(name)) return name as FeatureAddress;
   if (!packId) {
     throw new Error(`"${name}" names no pack's feature: write "<packId>/${name}", or the address "<packId>.${name}"`);
   }

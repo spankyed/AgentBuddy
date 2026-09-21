@@ -1,3 +1,4 @@
+import type { FeatureAddress } from '@abuddy/sdk/ids';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createEarsEngine, installEngine, installedEngine, repository } from '@abuddy/ears';
 import { getPackCommands, getPackSettingsDefaults, type PackRegistration, type PackSystemDef } from '@abuddy/sdk/framework';
@@ -94,7 +95,7 @@ describe('registerPack repositories', () => {
 });
 
 describe('registerPack designations', () => {
-  const system = (id: string) => ({ id, machine: {} as unknown as PackSystemDef['machine'], events: new Set<string>() });
+  const system = (id: string) => ({ id: id as FeatureAddress, machine: {} as unknown as PackSystemDef['machine'], events: new Set<string>() });
   const journal = { id: 'journal', designation: 'journal', hasSystem: true, hasPlugin: false, services: [] };
   const registerDesignated = (id: string, systems: PackSystemDef[], extra: Partial<PackRegistration> = {}) => {
     registerPack({ id, systems, features: [journal], ...extra } as PackRegistration);
@@ -133,7 +134,7 @@ describe('registerPack designations', () => {
 });
 
 describe('registered addresses', () => {
-  const systemDef = (id: string) => ({ id, machine: {} as unknown as PackSystemDef['machine'], events: new Set<string>() });
+  const systemDef = (id: string) => ({ id: id as FeatureAddress, machine: {} as unknown as PackSystemDef['machine'], events: new Set<string>() });
 
   it("lists every pack's systems and plugins at their addresses, the host's bare", () => {
     registerPack({

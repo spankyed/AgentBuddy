@@ -1421,7 +1421,7 @@ export const PROVENANCE_KINDS: {
     readonly entities: (m: ProvenanceManifest) => string[];
     readonly relKinds: (m: ProvenanceManifest) => string[];
     readonly commands: (m: ProvenanceManifest) => string[];
-    readonly plugins: (m: ProvenanceManifest, packId: string) => string[];
+    readonly plugins: (m: ProvenanceManifest, packId: string) => FeatureAddress[];
 };
 
 // @public (undocumented)

@@ -1,5 +1,6 @@
 // A client's event reaches the root event bus only when a registered system accepts its type, and is logged
 // with long arrays summarized
+import { resolveName } from '@abuddy/sdk/ids';
 import { afterAll, describe, expect, it } from 'vitest';
 import { setup } from 'xstate';
 import { testRootEvents } from '@abuddy/sdk/testing';
@@ -12,7 +13,7 @@ const machine = setup({}).createMachine({});
 const registry = createPackRegistry();
 const { registerHostSystem, registerPack, unregisterPack } = registry;
 registerHostSystem('client-events.host', machine, new Set(['PING']));
-registerPack({ id: 'client-events-pack', systems: [{ id: 'client-events-pack.any', machine, events: new Set(['*']) }] });
+registerPack({ id: 'client-events-pack', systems: [{ id: resolveName('client-events-pack/any'), machine, events: new Set(['*']) }] });
 afterAll(() => unregisterPack('client-events-pack'));
 
 /** The incoming events and log events `run` produces */

@@ -1,5 +1,6 @@
 // What a registered pack contributes, read through the functions packs call: each lookup sees a pack once it
 // registers, loses it when it unregisters, and sees nothing of a registration that was refused.
+import type { FeatureAddress } from '@abuddy/sdk/ids';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -53,7 +54,7 @@ const tickTrigger: StepDefinition = {
   kind: 'trigger',
   trigger: { trackField: 'every' } as unknown as StepDefinition['trigger'],
 };
-const system = (id: string) => ({ id, machine: {} as PackSystemDef['machine'], events: new Set<string>() });
+const system = (id: string) => ({ id: id as FeatureAddress, machine: {} as PackSystemDef['machine'], events: new Set<string>() });
 
 describe('steps', () => {
   it("are found once their pack registers, and gone once it unregisters", () => {

@@ -1,5 +1,6 @@
 // The test runtime's stand-in for the registered packs: what a test puts in testPacks is found first, then what the
 // registry the runtime was started with holds
+import { asHostAddress } from '../../src/ids/index.ts';
 import { afterEach, describe, expect, it } from 'vitest';
 import { testPacks, testPacksView } from '../../src/testing/packs.ts';
 import type { PackRegistryView } from '../../src/runtime/packs-view.ts';
@@ -9,7 +10,7 @@ const step = (type: string, label: string) => ({ type, fe: { nodeConfig: { label
 const registeredNote = step('note', 'Registered');
 const registered: PackRegistryView = {
   ...testPacksView(),
-  designation: (role) => (role === 'brain' ? 'brain-system' : undefined),
+  designation: (role) => (role === 'brain' ? asHostAddress('brain-system') : undefined),
   step: (type) => (type === 'note' ? registeredNote : undefined),
   steps: () => [registeredNote],
   getRegisteredServices: () => ({ memos: 'registered' }),

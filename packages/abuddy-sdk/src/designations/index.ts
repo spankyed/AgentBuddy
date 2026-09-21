@@ -7,11 +7,12 @@
 // A designation is a role, not a name: `features[].designation` in abuddy.json need not equal the feature
 // id, and a pack may name one feature `inbox` and have it play `notes`.
 import { _boundPackExtensions } from '../runtime/packs-view.ts';
+import type { FeatureAddress } from '../ids/addressing.ts';
 
-/** Role → id of the system or plugin that plays it */
-export type Designations = Record<string, string>;
+/** Role → the address of the feature that plays it */
+export type Designations = Record<string, FeatureAddress>;
 
-export function getDesignated(role: string): string {
+export function getDesignated(role: string): FeatureAddress {
   const id = _boundPackExtensions().designation(role);
   if (!id) throw new Error(`No feature designated for "${role}". Ensure a pack declares this designation.`);
   return id;

@@ -1,6 +1,7 @@
 // Registries are instances: two in one process hold their own packs, and the SDK's lookups read the bound one.
 // "Their own packs" covers which packs are loaded, not only what those packs contributed: the loaded list used
 // to sit at module scope beside the registry, where a second registry in the process saw the first's.
+import { resolveName } from '@abuddy/sdk/ids';
 import { describe, expect, it } from 'vitest';
 import { startTestRuntime } from '@abuddy/sdk/testing';
 import { services } from '@abuddy/sdk/services';
@@ -11,7 +12,7 @@ import { createPackRegistry } from '../../src/packs/pack-registration.ts';
 
 const pack = (id: string, role: string, step: string, service: string, plugin: string): PackRegistration => ({
   id,
-  systems: [{ id: `${id}.${role}`, machine: {} as never, events: new Set() }],
+  systems: [{ id: resolveName(`${id}/${role}`), machine: {} as never, events: new Set() }],
   steps: [{ type: step, kind: 'step' } as StepDefinition],
   services: { [service]: { from: id } },
   features: [{ id: plugin, designation: role, hasSystem: false, hasPlugin: true, services: [], settings: { plugins: { [plugin]: { from: id } } } }],

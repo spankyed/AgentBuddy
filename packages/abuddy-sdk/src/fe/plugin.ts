@@ -1,3 +1,4 @@
+import type { FeatureAddress } from '../ids/addressing.ts';
 import type { Component } from 'vue';
 import type { AnyStateMachine } from 'xstate';
 import type { PluginHotkeyDefinition } from './hotkeys.ts';
@@ -15,7 +16,7 @@ export type PluginDefinition = Omit<Plugin, 'id'>;
 /** A registered plugin: its definition, at its address */
 export interface Plugin {
   /** The plugin's address, `<packId>.<featureId>`, or a bare id for the host's own */
-  id: string;
+  id: FeatureAddress;
   label: string;
   isPinned?: boolean;
   state: AnyStateMachine;

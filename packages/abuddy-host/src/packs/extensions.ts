@@ -1,5 +1,6 @@
 // The lookups the backend's and the renderer's registries both keep of what registered packs contributed, each
 // owned by the registry that creates it (createPackRegistry, createFePackRegistry)
+import type { FeatureAddress } from '@abuddy/sdk/ids';
 import { _mergeStepDefinitions, type StepDefinition } from '@abuddy/sdk/steps';
 
 /**
@@ -64,15 +65,15 @@ export function createStepStore() {
 
 /** Role → id of the system or plugin that plays it */
 export function createDesignationStore() {
-  const roles = new Map<string, string>();
+  const roles = new Map<string, FeatureAddress>();
   return {
-    register(designations: Record<string, string>): void {
+    register(designations: Record<string, FeatureAddress>): void {
       for (const [role, id] of Object.entries(designations)) roles.set(role, id);
     },
-    unregister(designations: Record<string, string>): void {
+    unregister(designations: Record<string, FeatureAddress>): void {
       for (const role of Object.keys(designations)) roles.delete(role);
     },
-    get: (role: string): string | undefined => roles.get(role),
+    get: (role: string): FeatureAddress | undefined => roles.get(role),
     has: (role: string): boolean => roles.has(role),
   };
 }
@@ -84,9 +85,6 @@ export function createDesignationStore() {
  * a later contribution throws, and again when the pack unregisters. Recording each undo where the thing is
  * added is what keeps those two honest: a new kind of contribution can't be added to one path and forgotten
  * in the other, because there is only one path.
- *
- * There were three of these, with two sets of semantics between them, which is the sort of drift the undos
- * exist to prevent in the first place.
  */
 export function createUndoLog() {
   const undos: Array<() => void> = [];
