@@ -10,9 +10,8 @@ Before Phase 1, confirm the base: `designation?: string` exists on PackSystemDef
 (packages/abuddy-sdk/src/fe/plugin.ts), and `designationsOf` in
 packages/abuddy-host/src/packs/pack-registration.ts still reads both `systems` and `features`. If it
 doesn't, stop and say so — the plan was surveyed somewhere else.
-Read Background, Decisions, Open decisions, Phases and Constraints first. Decisions are final:
-implement them, don't reopen them or stop to ask. The Open decisions must be settled with the user
-before Phase 5; if either is still marked open, stop and ask.
+Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
+reopen them or stop to ask.
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
 going. No backward compatibility in code: change signatures, move modules, migrate every in-repo caller,
 test, fixture, template and doc in the same change, and fix forward. Stored user data is the exception:
@@ -239,19 +238,27 @@ Final.
 11. **The settings migration targets 0.3.15**, the latest unreleased version, per `migrations/CLAUDE.md`.
     No new version file.
 
-## Open decisions
+12. **A role resolves to one feature, and the signature stays singular.** `designation(role)` keeps
+    returning one id, `registerPack`'s cross-pack designation throw and `validateFeatures`'s in-pack
+    duplicate error both stay, and a role-addressed send takes the single resolved id.
 
-Settle both with the user before Phase 5.
+    The five roles are read singularly everywhere and by their nature, not by accident of the current
+    shape: `system.get(getDesignated('brain'))` is one actor, `navigateToPlugin(getDesignated('settings'),
+    …)` is one destination, and `plugin.id === getDesignated('settings')` is an identity comparison. A list
+    has no meaning at any of them — there is no answer to "navigate to which settings plugin".
 
-- **A. Does a role-addressed send fan out?** Decision 5 allows roles to go many-to-one. If several features
-  may play one role, `designation(role): string | undefined` and `Record<string, string>` both have to
-  become lists, and `registerPack`'s cross-pack designation throw plus `validateFeatures`'s in-pack
-  duplicate error — which exist to keep it one-to-one — become wrong. This sets the signature of the new
-  send now rather than after it has callers. **One-to-one for now, shaped so widening is additive** is the
-  cheapest answer if many-to-one is not imminent.
-- **B. Do Phases 5 and 6 land in this goal, or split into their own?** They carry the only user-data
-  migration and the only wide caller churn (16 test assertions, 4 renderer sends, the `busId` generator and
-  `runningSystemId`). Phases 1–4 are landable without them and are pure deletion plus one guard.
+    The fan-out that does exist sits below the role and belongs there: `sendToBrainSystem` fires "at every
+    running flow, through the designated brain system" — one system, broadcasting internally. A many-to-one
+    role would want the same shape, so widening stays additive without being built for now.
+
+13. **Phases 5 and 6 land in this goal.** They are the reason for Phases 1–4, not a follow-on.
+
+    Phase 4 refuses a duplicate plugin id; Phase 5's "Done when" requires two packs declaring the same
+    feature id to both register with working plugins. Landing 1–4 alone therefore ships a restriction that
+    Phase 5 exists to lift, and refuses a pack ecosystem case that today only shadows silently — worse for
+    a pack author than either end state. Splitting was considered for risk (5 and 6 carry the only user
+    data migration and the only wide caller churn) and rejected: the contract is one contract, and the risk
+    is handled by committing phase by phase, which this repo's goal-doc convention already requires.
 
 ## Phases
 
@@ -342,9 +349,9 @@ spec fails.
 ## Deferred
 
 - **A role-addressed send** (`sendToRole(role, event)` on `@abuddy/sdk/events` and `services.emitter`,
-  replacing `sendToBrainSystem`). It is what issue A asks for and it is blocked on Open decision A: its
-  signature depends on whether a role may resolve to several features. Worth its own change once the
-  fan-out question is settled, since it has 175 potential call sites and only 5 roles to aim at.
+  replacing `sendToBrainSystem`). It is what issue A asks for. Decision 12 settles its signature — one id
+  in, no list — so what is left is the migration: 175 potential call sites and only 5 roles to aim at,
+  which is worth its own change rather than a sweep inside this one.
 - **Migrating existing sends to roles.** Follows the above. Most sends address a feature with no role, so
   this is a judgement call per call site, not a sweep.
 

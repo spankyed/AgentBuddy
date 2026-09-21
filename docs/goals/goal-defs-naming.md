@@ -5,9 +5,8 @@
 # Goal: `defs` names one concept
 
 Implement docs/goals/goal-defs-naming.md on the current branch. Read Background,
-Decisions, Open decisions, Phases and Constraints first. Decisions are final: implement them, don't reopen
-them or stop to ask. Open decision 1 must be settled with the user before Phase 2; if it is still marked
-open when you reach it, stop and ask.
+Decisions, Phases and Constraints first. Decisions are final: implement them, don't reopen them or stop
+to ask.
 
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep going.
 No backward compatibility in code: change signatures, move modules, migrate every in-repo caller, test,
@@ -76,35 +75,26 @@ the answer was not obvious from the names. That is the cost the rename removes.
 4. **The cache directory follows the field.** `.abuddy/deps/<id>/defs/` -> `facades/`. It is a cache, not a
    format: `cacheDep` rewrites it and `abuddy clean` removes it.
 
-## Open decisions (settle with the user)
+5. **A snapshot with no facade is malformed, and is rejected.** The gate today is the facade's exports,
+   not `typesFormat` — deliberately, and pinned by two tests ("accepts a capable facade whose recorded
+   format this CLI does not generate", "accepts a capable facade that records no format at all"). That
+   stays: capability gates, and the recorded format and SDK version remain diagnostic context.
 
-1. **What a pre-rename dependency does to a dependent's build.** Today a snapshot without
-   `defs[PACK_TYPES_DEF]` is *skipped*, not rejected:
+   What the rename changes is the *container*, not the exports. A snapshot in the old shape reaches
+   `generate-entries.ts`'s `if (!snap.facades?.[PACK_TYPES_DEF]) continue` and falls through, so the
+   dependency is dropped from `typedDeps` and silently loses its types — the failure this repo has already
+   been bitten by ("Packs with looser code get no error at all, just silently lost typing").
 
-   ```ts
-   if (!snap.defs?.[PACK_TYPES_DEF]) continue;
-   const typedDeps = [...].filter(([, snap]) => snap.defs?.[PACK_TYPES_DEF])
-   // "Dependencies built with facade types (older snapshots have none, so their types stay untyped)"
-   ```
+   So the `continue` goes: a dependency whose snapshot carries no facade is rejected by name, with the
+   rebuild remedy. Every snapshot `abuddy build` writes has one — a facade that fails the gate throws
+   before the snapshot is written — so "no facade" only ever means "built by a CLI older than this one",
+   which is exactly the case that must not pass silently. The untyped-dependency concept goes with it,
+   and the comment allowing it ("older snapshots have none, so their types stay untyped").
 
-   After the rename every old snapshot takes that path, so a stale sibling or `.abuddy/deps` cache makes a
-   dependency **silently untyped** rather than failing. That is the failure mode this repo has already been
-   bitten by once, recorded in the rollup spike: "Packs with looser code get no error at all, just silently
-   lost typing."
-
-   The existing comment argues deliberately that the gate should be the exports, not `typesFormat`, because
-   a format number is a bad proxy for export drift. That argument holds for drift and does not cover a
-   container rename, where nothing is missing — the whole field moved.
-
-   - **A. Bump `PACK_TYPES_FORMAT` to 2 and gate on it.** A dependency whose `typesFormat` is absent or
-     lower fails with the existing rebuild remedy. Costs: the "older snapshots stay untyped" allowance goes,
-     which is only reachable for packs built before facades existed — none outside a checkout.
-   - **B. Leave the gate on exports and accept silent untyping** for a stale dependency until it is rebuilt.
-     Cheapest, and consistent with the recorded rationale; the cost is a dev-loop footgun with no message.
-   - **C. Require the field.** Treat a snapshot with neither `facades` nor a recorded format as malformed
-     and throw. Strictest, and it removes the untyped-dependency concept entirely.
-
-   This must be settled before Phase 2.
+   **Nothing reads the old field to say so**, per Decision 3: the message names what was observed — no
+   facade types — and the remedy, not what the author's CLI used to write. Bumping `PACK_TYPES_FORMAT` and
+   gating on it was the alternative and is not taken: it would reverse both tested behaviours above to
+   catch a case this rejection already catches.
 
 ## Phases
 
@@ -124,14 +114,17 @@ the answer was not obvious from the names. That is the cost the rename removes.
 **Done when:** `git grep -n "\.defs\b\|PACK_TYPES_DEF" -- 'packages/**/src/**' 'packages/**/tests/**'` finds
 only the DSL sense; `npm run typecheck` and `npm run test:unit` pass.
 
-### Phase 2 — a pre-rename dependency fails loudly
+### Phase 2 — a dependency with no facade fails loudly
 
-Implement Open decision 1. Whichever option is chosen, the end state is a test that builds a dependent
-against a snapshot in the old shape and asserts the outcome the decision names — a named failure under A or
-C, a recorded and asserted silence under B.
+Drop the `continue` that skips a dependency whose snapshot carries no facade (`generate-entries.ts`), and
+the `typedDeps` filter and comment that let it through untyped. Reject it by name with the rebuild remedy,
+alongside `requireFacadeExports`'s message for a facade that is present but incapable.
 
-**Done when:** that test exists and is mutation-checked; the message (under A or C) names the pack and the
-remedy.
+**Done when:** a test builds a dependent against a snapshot in the old shape and asserts the named failure;
+the message names the pack and the remedy and does not mention the old field. The two tests pinning
+`typesFormat` as diagnostics ("accepts a capable facade whose recorded format this CLI does not generate",
+"accepts a capable facade that records no format at all") still pass unchanged.
+**Mutation:** restore the `continue` and the new test fails.
 
 ### Phase 3 — the cache directory, the docs, and keeping it retired
 
