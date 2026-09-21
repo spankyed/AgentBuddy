@@ -2,8 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createLogger } from '@abuddy/sdk/logger';
 import { resolveAppContext } from '@abuddy/sdk/env';
-import type { PackSystemDef } from '@abuddy/sdk/framework';
-import type { PackRegistry } from '../pack-registration.ts';
+import { packSystemIds, type PackRegistry } from '../pack-registration.ts';
 import { publishHostPackOutput } from '../pack-layout.ts';
 import type { PackManifest } from '../pack-discovery.ts';
 import {
@@ -42,7 +41,7 @@ async function reloadPack(
   cacheDir: string,
 ): Promise<void> {
   const previous = registry.getPackRegistration(packId);
-  const oldSystemIds = previous?.systems.map(s => s.id) ?? [];
+  const oldSystemIds = previous ? packSystemIds(previous) : [];
 
   logger.info(`Reloading pack: ${packId}`);
 
@@ -112,7 +111,7 @@ export async function reloadExternalPack(
         // registerExternalPacks logs why a registration was refused
         if (registerExternalPacks(registry, [pack]).length === 0) throw new Error(`Failed to register pack ${packId}`);
       },
-      newSystemIds: pack.registration.systems.map((s) => s.id),
+      newSystemIds: packSystemIds(pack.registration),
       onShutdown: pack.registration.boot?.onShutdown,
       onInit: pack.registration.boot?.onInit,
       afterRegister: () => {
@@ -145,7 +144,7 @@ export async function reloadBuiltInPack(
       // The origin survives the reload: the pack is in the same place, and a re-register that dropped it
       // would leave the next reload unable to find the pack it just reloaded
       register: () => registry.registerPack(registration, packInfo),
-      newSystemIds: (registration.systems as PackSystemDef[]).map(s => s.id),
+      newSystemIds: packSystemIds(registration),
       onShutdown: registration.boot?.onShutdown,
       onInit: registration.boot?.onInit,
       afterRegister: () => {

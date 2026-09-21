@@ -16,6 +16,10 @@ const registry = createPackRegistry();
 startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: registry });
 
 const machine = setup({}).createMachine({});
+/** The memos feature: a system that takes PING, and a plugin receiving what the system sends it */
+const memoFeatures = {
+  memos: { system: { machine, receives: ['PING'] }, plugin: { receives: ['MEMOS_CONNECTED', 'MEMO_ADDED'] } },
+};
 
 let bus: AnyActorRef;
 const outgoing: Message[] = [];
@@ -38,18 +42,7 @@ async function send(message: Message): Promise<void> {
 beforeEach(async () => {
   outgoing.length = 0;
   stopOutgoing = testRootEvents.onOutgoing((event) => { outgoing.push(event); });
-  registry.registerPack({
-    id: 'memo-pack',
-    systems: [{ id: resolveName('memo-pack/memos'), machine, events: new Set(['PING']) }],
-    features: [{ id: 'memos', hasSystem: true, hasPlugin: true, services: [] }],
-    receivedEventTypes: { memos: ['MEMOS_CONNECTED', 'MEMO_ADDED'] },
-  });
-  // A pack from before receivedEventTypes existed: it still names its plugins, through `features`
-  registry.registerPack({
-    id: 'older-pack',
-    systems: [{ id: resolveName('older-pack/legacy'), machine, events: new Set(['PING']) }],
-    features: [{ id: 'legacy', hasSystem: true, hasPlugin: true, services: [] }],
-  });
+  registry.registerPack({ id: 'memo-pack', features: memoFeatures });
   registry.registerHostPlugin('host/packs', PACKS_PLUGIN_EVENT_TYPES);
   bus = createActor(createAppBus(registry), { systemId: 'host/bus' }).start();
   await connect();
@@ -59,7 +52,6 @@ afterEach(() => {
   bus.stop();
   stopOutgoing();
   registry.unregisterPack('memo-pack');
-  registry.unregisterPack('older-pack');
   takeSystemErrors();
 });
 
@@ -175,9 +167,7 @@ describe('a plugin whose pack is being replaced', () => {
     // Put it back so afterEach's unregister finds it
     registry.registerPack({
       id: 'memo-pack',
-      systems: [{ id: resolveName('memo-pack/memos'), machine, events: new Set(['PING']) }],
-      features: [{ id: 'memos', hasSystem: true, hasPlugin: true, services: [] }],
-      receivedEventTypes: { memos: ['MEMOS_CONNECTED', 'MEMO_ADDED'] },
+      features: memoFeatures,
     });
   });
 
@@ -189,9 +179,7 @@ describe('a plugin whose pack is being replaced', () => {
     registry.unregisterPack('memo-pack');
     registry.registerPack({
       id: 'memo-pack',
-      systems: [{ id: resolveName('memo-pack/memos'), machine, events: new Set(['PING']) }],
-      features: [{ id: 'memos', hasSystem: true, hasPlugin: true, services: [] }],
-      receivedEventTypes: { memos: ['MEMOS_CONNECTED', 'MEMO_ADDED'] },
+      features: memoFeatures,
     });
     expect(registry.isPluginReplacing('memo-pack/memos')).toBe(false);
 
@@ -208,19 +196,8 @@ describe('a plugin whose pack is being replaced', () => {
   });
 });
 
-/**
- * A pack built before `receivedEventTypes` existed declares none, and the app can't check its sends
- * against anything. Dropping them would leave the pack installed and inert, and its user can't rebuild
- * it — so its sends pass, and only packs that declare are checked.
- */
-describe('a pack that declared no event types', () => {
-  it('has its sends delivered rather than dropped', async () => {
-    await send({ to: 'older-pack/legacy', event: { type: 'ANYTHING_AT_ALL' } });
-    expect(delivered().map(({ event }) => event.type)).toEqual(['ANYTHING_AT_ALL']);
-    expect(takeSystemErrors()).toEqual([]);
-  });
-
-  it('does not make an unknown plugin id pass too', async () => {
+describe('a plugin no pack declares', () => {
+  it('has its sends dropped and reported', async () => {
     await send({ to: 'not-a-plugin', event: { type: 'ANYTHING_AT_ALL' } });
     expect(delivered()).toEqual([]);
     expect(takeSystemErrors()[0]?.message).toContain('no registered pack declares');

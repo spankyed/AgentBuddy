@@ -39,7 +39,7 @@ function builtPack(overrides: Record<string, unknown> = {}): string {
     hostVersion: '>=0.3.0',
     ...overrides,
   }));
-  write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack", systems: [] } };');
+  write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack" } };');
   write('dist/runtime/index.cjs.map', '{}');
   write('dist/runtime/fe.js', 'export default {};');
   write('dist/runtime/seeds/actions.seed.json', '[]');

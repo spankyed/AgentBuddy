@@ -7,11 +7,12 @@ import { registerPack, resetTestData, unregisterPack } from '@abuddy/testing/har
 import { getDefaultSettings } from '@/features/settings/be/defaults';
 import { repository } from '@/__generated__/repository';
 
-const feature = (id: string, settings: Record<string, unknown>) => ({ id, hasSystem: false, hasPlugin: true, services: [], settings });
+/** A feature with a plugin and the given settings */
+const feature = (id: string, settings: Record<string, unknown>) => [id, { plugin: { receives: [] }, settings }] as const;
 const registered: string[] = [];
 /** Another pack, registered as the app registers an installed one */
 function register(id: string, features: ReturnType<typeof feature>[]): void {
-  registerPack({ id, systems: [], features });
+  registerPack({ id, features: Object.fromEntries(features) });
   registered.push(id);
 }
 afterEach(() => {

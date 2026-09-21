@@ -31,7 +31,7 @@ describe('what the loader says about a pack', () => {
   it('registers with the sentence the harness watches for', () => {
     const manifest = { id: PACK_ID, name: PACK_ID, version: '1.0.0' };
     const pack = {
-      registration: { id: PACK_ID, systems: [] },
+      registration: { id: PACK_ID },
       origin: { ...manifest, dir: tmpDir, builtIn: false, manifest },
     };
 

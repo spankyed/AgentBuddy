@@ -146,9 +146,6 @@ export function createBusMachine(options: BusOptions) {
         // takeSystemErrors fails any pack test that leaves one, so this is loud where it should be.
         const { to: pluginId, event: { type } } = event.message;
         const accepted = options.registry.getPluginEventValidationMap().get(pluginId);
-        // Three cases, and only the first two are wrong. `null` is a plugin whose pack declared no event
-        // types at all — built before they existed — so there is nothing to check the send against and
-        // dropping it would break the pack outright rather than catch a mistake.
         const reportDrop = (message: string) => {
           // A pack mid-replacement has no systems running and no plugins registered until its
           // replacement lands. Dropping is right; saying something went wrong is not.
@@ -165,7 +162,7 @@ export function createBusMachine(options: BusOptions) {
           reportDrop(`Dropped "${type}" sent to "${pluginId}", which no registered pack declares as a plugin that receives events. Check the id, or give the plugin's own pack a system that declares what it sends there.`);
           return;
         }
-        if (accepted !== null && !accepted.has(type)) {
+        if (!accepted.has(type)) {
           reportDrop(`Dropped "${type}" sent to the "${pluginId}" plugin, which declares no such event. A plugin receives what its own pack's systems declare they emit: add it to that system's outgoing events, or send an event the plugin handles.`);
           return;
         }

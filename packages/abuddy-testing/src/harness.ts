@@ -197,7 +197,6 @@ function readDependencies(packDir: string, manifest: PackManifest): Map<string, 
 function seedRuntimeRegistration(runtime: SeedRuntime, seeders?: Seeder[]): PackRegistration {
   return {
     id: runtime.id,
-    systems: [],
     ears: { entities: runtime.entities, relKinds: runtime.relKinds },
     repositories: runtime.repositories,
     seedHooks: runtime.seedHooks,

@@ -49,11 +49,12 @@ await setupPackTests({
   seedRuntime: { id: 'dependent-pack', entities: {}, relKinds: {}, repositories: {}, seedHooks: {} },
   registration: {
     id: 'dependent-pack',
-    systems: [{ id: 'dependent-pack/memos', machine: memos, events: new Set(['SAVE', 'NOTIFY']) }],
-    // A hand-written registration declares what its plugin receives, as a generated one does: the bus
-    // drops a send to a plugin nothing declares
-    receivedEventTypes: { memos: ['MEMOS_STARTED', 'MEMOS_NOTIFIED'] },
-    features: [{ id: 'widgets', hasSystem: false, services: [], settings: { plugins: { widgets: { size: 3 } } } }],
+    features: {
+      // A hand-written registration declares what its plugin receives, as a generated one does: the bus
+      // drops a send to a plugin nothing declares
+      memos: { system: { machine: memos, receives: ['SAVE', 'NOTIFY'] }, plugin: { receives: ['MEMOS_STARTED', 'MEMOS_NOTIFIED'] } },
+      widgets: { settings: { plugins: { widgets: { size: 3 } } } },
+    },
   },
 });`);
   // A system that sends to its plugin as it starts (before a client connects) and on NOTIFY, and reports an

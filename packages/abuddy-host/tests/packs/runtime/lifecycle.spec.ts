@@ -32,13 +32,13 @@ function restoreEnv(key: string, value: string | undefined) {
 
 const packsDir = () => path.join(tmpDir, 'packs');
 
-/** Writes what `abuddy build` leaves in a pack's dist/: a runtime registering `systemsSource`, and a snapshot */
-function writeBuild(packDir: string, id: string, systemsSource = '[]', extraFiles: Record<string, string> = {}) {
+/** Writes what `abuddy build` leaves in a pack's dist/: a runtime registering `featuresSource`, and a snapshot */
+function writeBuild(packDir: string, id: string, featuresSource = '{}', extraFiles: Record<string, string> = {}) {
   const write = (rel: string, content: string) => {
     fs.mkdirSync(path.dirname(path.join(packDir, 'dist', rel)), { recursive: true });
     fs.writeFileSync(path.join(packDir, 'dist', rel), content);
   };
-  write('runtime/index.cjs', `module.exports = { registration: { id: ${JSON.stringify(id)}, systems: ${systemsSource} } };`);
+  write('runtime/index.cjs', `module.exports = { registration: { id: ${JSON.stringify(id)}, features: ${featuresSource} } };`);
   write('types/snapshot.json', '{}');
   for (const [rel, content] of Object.entries(extraFiles)) write(rel, content);
 }
@@ -56,7 +56,7 @@ describe('pack full lifecycle: install → discover', () => {
 
     // v1
     writeManifest(sourceDir, { id: 'update-pack', name: 'Update Pack', version: '1.0.0' });
-    writeBuild(sourceDir, 'update-pack', '[]', { 'runtime/seeds/v1.seed.json': '[]' });
+    writeBuild(sourceDir, 'update-pack', '{}', { 'runtime/seeds/v1.seed.json': '[]' });
 
     await installPackFromLocal(sourceDir, packsDir());
 
@@ -66,7 +66,7 @@ describe('pack full lifecycle: install → discover', () => {
     // v2: new file, old one removed
     writeManifest(sourceDir, { id: 'update-pack', name: 'Update Pack', version: '2.0.0' });
     fs.rmSync(path.join(sourceDir, 'dist'), { recursive: true });
-    writeBuild(sourceDir, 'update-pack', '[]', { 'runtime/seeds/v2.seed.json': '[]' });
+    writeBuild(sourceDir, 'update-pack', '{}', { 'runtime/seeds/v2.seed.json': '[]' });
 
     await installPackFromLocal(sourceDir, packsDir());
 
@@ -132,7 +132,7 @@ describe('activating and tearing down a pack at runtime', () => {
     writeBuild(
       sourceDir,
       PACK_ID,
-      `[{ id: '${PACK_ID}/main', machine: { id: 'activate-pack-system' }, events: [] }], commands: [{ name: 'activate-memo', placeholder: 'Text' }], `
+      `{ main: { system: { machine: { id: 'activate-pack-system' }, receives: [] } } }, commands: [{ name: 'activate-memo', placeholder: 'Text' }], `
         + "seeders: [{ key: 'memos', seed: () => { globalThis.activatePackRuns.push('seed'); return { created: 1, updated: 0, skipped: 0 }; } }], "
         + "migrations: [{ target: '1.0.0', description: 'memos', up: () => { globalThis.activatePackRuns.push('migration'); } }]",
       {
@@ -213,8 +213,7 @@ describe('activating and tearing down a pack at runtime', () => {
 
     registry.registerPack({
       id: 'stuck-pack',
-      systems: [],
-      features: [{ id: 'stuck', hasSystem: false, hasPlugin: true, services: [], settings: { plugins: { stuck: { a: 1 } } } }],
+      features: { stuck: { plugin: { receives: [] }, settings: { plugins: { stuck: { a: 1 } } } } },
     });
     const stopListening = onPackSettingsDefaultsChanged(() => { throw new Error('a settings listener threw'); });
 
@@ -378,7 +377,6 @@ describe('pack-registration teardown', () => {
     const packId = 'teardown-test-pack';
     registerPack({
       id: packId,
-      systems: [],
       steps: [],
       artifacts: [],
       blocks: [],

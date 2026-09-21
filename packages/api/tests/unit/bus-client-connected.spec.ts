@@ -43,7 +43,7 @@ function recorder(label: string) {
 }
 
 function pack(id: string, label = id) {
-  return { id, systems: [{ id: `${id}/feature`, machine: recorder(label), events: new Set(['CLIENT_CONNECTED']) }] };
+  return { id, features: { feature: { system: { machine: recorder(label), receives: ['CLIENT_CONNECTED'] } } } };
 }
 
 const packDirs: string[] = [];
@@ -143,10 +143,10 @@ describe('CLIENT_CONNECTED on the bus', () => {
     bus.stop();
     registerPack({
       id: 'external-pack',
-      systems: [
-        { id: 'external-pack/feature', machine: recorder('with plugin'), events: new Set(['CLIENT_CONNECTED']) },
-        { id: 'external-pack/background', machine: recorder('without plugin'), events: new Set(['CLIENT_CONNECTED']) },
-      ],
+      features: {
+        feature: { system: { machine: recorder('with plugin'), receives: ['CLIENT_CONNECTED'] } },
+        background: { system: { machine: recorder('without plugin'), receives: ['CLIENT_CONNECTED'] } },
+      },
     }, loaded('external-pack', withFrontend));
     registerPack(pack('second-pack'), loaded('second-pack', withFrontend));
     bus = createActor(backendSystem, { systemId: 'host/bus' }).start();
@@ -177,10 +177,10 @@ describe('CLIENT_CONNECTED on the bus', () => {
     unregisterPack('first-pack');
     registerPack({
       id: 'first-pack',
-      systems: [
-        { id: 'first-pack/feature', machine: recorder('feature'), events: new Set(['CLIENT_CONNECTED']) },
-        { id: 'first-pack/dropped', machine: recorder('dropped'), events: new Set(['CLIENT_CONNECTED']) },
-      ],
+      features: {
+        feature: { system: { machine: recorder('feature'), receives: ['CLIENT_CONNECTED'] } },
+        dropped: { system: { machine: recorder('dropped'), receives: ['CLIENT_CONNECTED'] } },
+      },
     });
     bus.stop();
     bus = createActor(backendSystem, { systemId: 'host/bus' }).start();
@@ -208,9 +208,7 @@ describe('sendToPlugin on the bus', () => {
   beforeEach(() => {
     registerPack({
       id: 'notes-pack',
-      systems: [],
-      features: [{ id: 'notes', hasSystem: false, hasPlugin: true, services: [] }],
-      receivedEventTypes: { notes: ['BEFORE_CONNECT', 'AFTER_CONNECT'] },
+      features: { notes: { plugin: { receives: ['BEFORE_CONNECT', 'AFTER_CONNECT'] } } },
     });
   });
 
@@ -241,10 +239,10 @@ describe('a bus given a subset of the registered systems', () => {
   beforeEach(() => {
     registerPack({
       id: 'second-pack',
-      systems: [
-        { id: 'second-pack/feature', machine: recorder('second-pack'), events: new Set(['CLIENT_CONNECTED']) },
-        { id: 'second-pack/outside', machine: recorder('outside'), events: new Set(['CLIENT_CONNECTED']) },
-      ],
+      features: {
+        feature: { system: { machine: recorder('second-pack'), receives: ['CLIENT_CONNECTED'] } },
+        outside: { system: { machine: recorder('outside'), receives: ['CLIENT_CONNECTED'] } },
+      },
     });
     const subset = new Map([['second-pack/feature', recorder('second-pack')]]);
     bus.stop();

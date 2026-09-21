@@ -27,7 +27,7 @@ function builtPack(hostVersion: string): string {
     fs.writeFileSync(path.join(root, rel), content);
   };
   write('abuddy.json', JSON.stringify({ id: 'demo-pack', name: 'Demo Pack', version: '1.0.0', hostVersion }));
-  write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack", systems: [] } };');
+  write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack" } };');
   write('dist/types/snapshot.json', '{"types":{}}');
   return root;
 }

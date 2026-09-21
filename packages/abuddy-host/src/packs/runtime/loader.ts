@@ -5,11 +5,7 @@ import { createLogger } from '@abuddy/sdk/logger';
 import { resolveAppContext, getAppVersion } from '@abuddy/sdk/env';
 import type { PackSnapshot } from '@abuddy/sdk/build';
 import type { PackRegistration } from '@abuddy/sdk/framework';
-import type { PackRegistry, PackOrigin } from '../pack-registration.ts';
-import type { AnyStateMachine } from 'xstate';
-import type { PackBootHooks, PackEARS, PackFeatureDef, PackMigration } from '@abuddy/sdk/framework';
-import type { StepDefinition } from '@abuddy/sdk/steps';
-import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
+import { packSystemIds, type PackRegistry, type PackOrigin } from '../pack-registration.ts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { discoverBuiltInPacks, discoverPacks, discoveredPackIds, enabledExternalPacks, type BuiltInPackInfo, type PackManifest } from '../pack-discovery.ts';
 import { disabledPackIds, forgetPacksExcept } from '../installed-packs.ts';
@@ -26,9 +22,8 @@ const logger = createLogger('pack-loader');
 /**
  * An external pack the loader read: what its bundle registered, and where the app found it.
  *
- * The registration is the pack's own object, passed to the registry as it is. It used to be flattened into
- * this type field by field and reassembled on the way out; the two hand-written field lists silently lost
- * `receivedEventTypes` when it was added to `PackRegistration`.
+ * The registration is the pack's own object, passed to the registry as it is, never flattened into this type
+ * field by field: a hand-written copy of its fields drops whichever one it was written before.
  */
 export interface LoadedPack {
   registration: PackRegistration;
@@ -220,15 +215,20 @@ export function loadSingleExternalPack(
     registration.ears = { entities: manifest.entities ?? {}, relKinds: manifest.relKinds ?? {} };
   }
 
-  // `boot` and `ears` are the pack module's own objects; what the app refuses an external pack is taken off
-  // a copy, so a reload that reuses the module sees what the pack exported rather than what the last load
-  // left of it
-  if (registration.boot?.earlySystem || registration.boot?.seedManifest) {
+  // `features`, `boot` and `ears` are the pack module's own objects; what the app refuses an external pack is
+  // taken off a copy, so a reload that reuses the module sees what the pack exported rather than what the last
+  // load left of it
+  const early = Object.entries(registration.features ?? {}).filter(([, feature]) => feature.system?.early);
+  if (early.length > 0) {
+    logger.warn(`Pack ${manifest.id}: early systems blocked for external packs (${early.map(([featureId]) => featureId).join(', ')})`);
+    registration.features = Object.fromEntries(Object.entries(registration.features!).map(([featureId, feature]) => {
+      if (!feature.system?.early) return [featureId, feature];
+      const { system: _early, ...rest } = feature;
+      return [featureId, rest];
+    }));
+  }
+  if (registration.boot?.seedManifest) {
     registration.boot = { ...registration.boot };
-    if (registration.boot.earlySystem) {
-      logger.warn(`Pack ${manifest.id}: earlySystem blocked for external packs`);
-      delete registration.boot.earlySystem;
-    }
     // External pack seeds are hash-checked per pack by seedPackData(); the declarative
     // boot seed path tracks a single global hash and is reserved for built-in packs
     delete registration.boot.seedManifest;
@@ -249,9 +249,8 @@ export function loadSingleExternalPack(
 }
 
 /**
- * The pack's own registration from its runtime bundle, with its systems completed from the manifest: the
- * bus id (`<packId>/<featureId>`) and the incoming events the manifest adds to the ones the system
- * declared. Completed here and not again: the registry takes the object as it is.
+ * The pack's own registration from its runtime bundle, as the pack built it: `abuddy build` already put the
+ * events the manifest adds into each system's `receives`, and the registry derives every ref from the feature ids.
  */
 function loadBundledRuntime(
   manifest: PackManifest,
@@ -278,22 +277,13 @@ function loadBundledRuntime(
     return null;
   }
 
-  const stray = registration.systems?.find((def) => !def.id.startsWith(`${manifest.id}/`));
-  if (stray) {
-    logger.error(`Pack ${manifest.id}: system "${stray.id}" isn't addressed as "${manifest.id}/<featureId>": rebuild the pack`);
+  // A pack built before registrations were keyed by feature lists its systems apart, which this app can't run
+  if (registration.features !== undefined && (Array.isArray(registration.features) || typeof registration.features !== 'object')) {
+    logger.error(`Pack ${manifest.id}: its registration lists its features the way an older abuddy built them: rebuild the pack with this app's abuddy`);
     return null;
   }
 
-  // The manifest can add incoming events a system's machine doesn't list
-  const systems = (registration.systems ?? []).map((def) => {
-    const featureId = def.id.slice(manifest.id.length + 1);
-    const events = new Set<string>(def.events);
-    for (const evt of manifest.features?.find((f) => f.id === featureId)?.system?.events?.incoming ?? []) events.add(evt);
-    logger.info(`Loaded system: ${def.id}`);
-    return { ...def, events };
-  });
-
-  return { ...registration, systems };
+  return { ...registration };
 }
 
 export function clearPackRequireCache(packDir: string): void {
@@ -332,7 +322,7 @@ export function registerExternalPacks(registry: PackRegistry, packs: LoadedPack[
     try {
       registry.registerPack(pack.registration, pack.origin);
       registered.push(pack);
-      logger.info(packRegistered(pack.origin.id, pack.registration.systems.length));
+      logger.info(packRegistered(pack.origin.id, packSystemIds(pack.registration).length));
     } catch (err) {
       logger.error(`${packLoadFailed(pack.origin.id)}:`, err as Error);
     }

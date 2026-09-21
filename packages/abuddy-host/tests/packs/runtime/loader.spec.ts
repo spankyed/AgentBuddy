@@ -12,26 +12,26 @@ import { resetTestData, testRootEvents as rootEvents } from '@abuddy/sdk/testing
 import { seedFile } from '@abuddy/sdk/build';
 
 
-/** A loaded pack's system by feature id: the loader now completes each system's bus id (`<packId>/<featureId>`) */
-const systemOf = (pack: LoadedPack, featureId: string) =>
-  pack.registration.systems.find((s) => s.id === `${pack.origin.id}/${featureId}`)!;
+/** The features of a loaded pack that have a system */
+const systemFeatures = (pack: LoadedPack) =>
+  Object.entries(pack.registration.features ?? {}).filter(([, feature]) => feature.system).map(([featureId]) => featureId);
 
 
 let tmpDir: string;
 let origEnv: { env?: string; userDataDir?: string };
 
-/** An installed pack: its manifest, integrity.json and a runtime/index.cjs registering `systemsSource` */
+/** An installed pack: its manifest, integrity.json and a runtime/index.cjs registering `featuresSource` */
 function makePack(
   packsDir: string,
   id: string,
   manifest: Record<string, unknown>,
-  systemsSource = '[]',
+  featuresSource = '{}',
 ) {
   const packDir = path.join(packsDir, id);
   fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify(manifest));
   fs.writeFileSync(path.join(packDir, 'integrity.json'), JSON.stringify({ formatVersion: 1, id, version: '1.0.0', files: {} }));
-  fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(manifest.id)}, systems: ${systemsSource} } };`);
+  fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(manifest.id)}, features: ${featuresSource} } };`);
   return packDir;
 }
 
@@ -76,14 +76,35 @@ describe('pack-loader', () => {
           id: 'myFeature',
           system: { entry: 'src/features/myFeature/be/system.ts', events: { incoming: ['DO_THING'] } },
         }],
-      }, "[{ id: 'test-pack/myFeature', machine: { id: 'test-system' }, events: [] }]");
+      }, "{ myFeature: { system: { machine: { id: 'test-system' }, receives: ['DO_THING'] } } }");
 
       const result = loadExternalPacks();
 
       expect(result).toHaveLength(1);
       expect(result[0].origin.id).toBe('test-pack');
-      expect(result[0].registration.systems.map((sys) => sys.id)).toEqual(['test-pack/myFeature']);
-      expect(systemOf(result[0], 'myFeature').events.has('DO_THING')).toBe(true);
+      expect(systemFeatures(result[0])).toEqual(['myFeature']);
+    });
+
+    // A registration from before features were keyed lists them in an array, beside its systems
+    it('refuses a pack an older abuddy built, naming the rebuild', () => {
+      makePack(path.join(tmpDir, 'packs'), 'old-pack', { id: 'old-pack', name: 'Old', version: '1.0.0' },
+        "[{ id: 'notes', hasSystem: true, hasPlugin: true, services: [] }], systems: []");
+      const errors: string[] = [];
+      const unsubscribe = rootEvents.onLog((event) => { if (event.level === 'error') errors.push(event.message); });
+      try {
+        expect(loadExternalPacks()).toEqual([]);
+      } finally {
+        unsubscribe();
+      }
+      expect(errors).toEqual([expect.stringContaining('Pack old-pack: its registration lists its features the way an older abuddy built them')]);
+    });
+
+    // The schema refuses an early system outside a built-in pack; the loader doesn't start one either way
+    it("drops an external pack's early system", () => {
+      makePack(path.join(tmpDir, 'packs'), 'early-pack', { id: 'early-pack', name: 'Early', version: '1.0.0' },
+        "{ logs: { system: { machine: { id: 'logs' }, receives: [], early: true }, plugin: { receives: [] } } }");
+      const [pack] = loadExternalPacks();
+      expect(pack.registration.features).toEqual({ logs: { plugin: { receives: [] } } });
     });
 
     it("skips a pack directory that isn't an installed pack, naming how to install it", () => {
@@ -163,7 +184,7 @@ describe('pack-loader', () => {
         "const { z } = require('zod/v4');",
         "const { createMachine } = require('xstate');",
         "const { and } = require('xstate/guards');",
-        "module.exports = { registration: { id: 'zod-pack', systems: [] }, parsed: z.string().parse('ok'),",
+        "module.exports = { registration: { id: 'zod-pack' }, parsed: z.string().parse('ok'),",
         "  sameZod: require('zod/v4') === require('zod/v4'), hostZod: zod === require('zod'),",
         "  machine: typeof createMachine, guard: typeof and };",
       ].join('\n'));
@@ -184,7 +205,7 @@ describe('pack-loader', () => {
       });
       const result = loadExternalPacks();
       expect(result).toHaveLength(1);
-      expect(result[0].registration.systems).toEqual([]);
+      expect(systemFeatures(result[0])).toEqual([]);
     });
 
     it('handles features without system entry', () => {
@@ -199,7 +220,7 @@ describe('pack-loader', () => {
       });
       const result = loadExternalPacks();
       expect(result).toHaveLength(1);
-      expect(result[0].registration.systems).toEqual([]);
+      expect(systemFeatures(result[0])).toEqual([]);
     });
 
   });
@@ -213,7 +234,7 @@ describe('loadBuiltInPacks: the bundled loaders', () => {
     const packDir = path.join(packagesDir, id);
     fs.mkdirSync(path.join(packDir, 'dist', 'runtime'), { recursive: true });
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id, name: id, version: '1.0.0', builtIn: true }));
-    if (built) fs.writeFileSync(path.join(packDir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: '${id}', systems: [] } };`);
+    if (built) fs.writeFileSync(path.join(packDir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: '${id}' } };`);
     return packagesDir;
   }
 
@@ -238,7 +259,7 @@ describe('loadBuiltInPacks: the bundled loaders', () => {
     const packagesDir = writeBuiltIn('bundled-only', false);
     const loaded = await loadBuiltInPacks(registry, packagesDir, {
       runtimeEntry: 'never',
-      bundledLoaders: async () => ({ 'bundled-only': async () => ({ registration: { id: 'bundled-only', systems: [] } }) }),
+      bundledLoaders: async () => ({ 'bundled-only': async () => ({ registration: { id: 'bundled-only' } }) }),
     });
     expect(loaded.map(p => p.id)).toEqual(['bundled-only']);
   });
@@ -263,7 +284,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
       setCompiledDir(dir) { compiledDir = dir; module.exports.compiledDirSeen = dir; },
       registration: {
         id: '${id}',
-        systems: [{ id: '${id}/widget', machine, events: new Set(['PING']) }],
+        ${extra.includes('features:') ? '' : "features: { widget: { system: { machine, receives: ['PING', 'EXTRA'] } } },"}
         services: { hello: () => 'hi' },
         ears: {
           entities: { Widget: 'Widget' },
@@ -286,8 +307,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
 
     const [pack] = loadExternalPacks();
     expect(pack.origin.id).toBe('bundled-pack');
-    expect(pack.registration.systems.map((sys) => sys.id)).toEqual(['bundled-pack/widget']);
-    expect([...systemOf(pack, 'widget').events].sort()).toEqual(['EXTRA', 'PING']);
+    expect(systemFeatures(pack)).toEqual(['widget']);
     expect(Object.keys(pack.registration.services ?? {})).toEqual(['hello']);
     expect(pack.registration.ears?.entities).toEqual({ Widget: 'Widget' });
     expect(pack.registration.boot?.onInit).toBeTypeOf('function');
@@ -303,7 +323,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const { _seedHookRegistry } = await import('@abuddy/sdk/seed');
     makeBundledPack('settings-pack', registration('settings-pack', `
       seedHooks: { Widget: { find() { return undefined; } } },
-      features: [{ id: 'widget', hasSystem: true, services: [], settings: { visible: false, plugins: { widget: { size: 3 } } } }],
+      features: { widget: { system: { machine, receives: ['PING'] }, settings: { visible: false, plugins: { widget: { size: 3 } } } } },
     `));
 
     const [pack] = loadExternalPacks();

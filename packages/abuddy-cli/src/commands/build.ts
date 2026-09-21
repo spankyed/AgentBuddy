@@ -146,7 +146,7 @@ export async function build(args: string[]) {
     // What the seeds compile with (the dependencies' steps and the pack's), in this build's own registry: a registry
     // the process has bound (an app's, a test's) is never touched
     const registry = createPackRegistry();
-    registry.registerPack({ id: manifest.id, systems: [], ...await packConfig.loadDefinitions?.() });
+    registry.registerPack({ id: manifest.id, ...await packConfig.loadDefinitions?.() });
     const options: CompilePackOptions = {
       packDir,
       outputDir: seedsOutputDir,

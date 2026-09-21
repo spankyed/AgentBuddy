@@ -45,7 +45,6 @@ export function onPackSettingsDefaultsChanged(listener: () => void): () => void;
 
 // @public (undocumented)
 export interface PackBootHooks {
-    earlySystem?: PackSystemDef;
     // (undocumented)
     onInit?: () => void;
     // (undocumented)
@@ -74,19 +73,29 @@ export interface PackEARS {
     relKinds: Record<string, string>;
 }
 
-// @public (undocumented)
-export interface PackFeatureDef {
+// @public
+export interface PackFeature {
     // (undocumented)
     designation?: string;
     // (undocumented)
-    hasPlugin: boolean;
-    // (undocumented)
-    hasSystem: boolean;
-    // (undocumented)
-    id: string;
-    // (undocumented)
-    services: string[];
+    plugin?: PackFeaturePlugin;
+    services?: readonly string[];
     settings?: FeatureSettings;
+    // (undocumented)
+    system?: PackFeatureSystem;
+}
+
+// @public
+export interface PackFeaturePlugin {
+    receives: readonly string[];
+}
+
+// @public
+export interface PackFeatureSystem {
+    early?: true;
+    // (undocumented)
+    machine: AnyStateMachine;
+    receives: readonly string[];
 }
 
 // @public (undocumented)
@@ -110,13 +119,11 @@ export interface PackRegistration {
     commands?: PackCommand[];
     // (undocumented)
     ears?: PackEARS;
-    // (undocumented)
-    features?: PackFeatureDef[];
+    features?: Record<string, PackFeature>;
     // (undocumented)
     id: string;
     // (undocumented)
     migrations?: PackMigration[];
-    receivedEventTypes?: Record<string, readonly string[]>;
     repositories?: Record<string, unknown>;
     seeders?: Seeder[];
     seedHooks?: Record<string, SeedHooks>;
@@ -124,8 +131,6 @@ export interface PackRegistration {
     services?: Record<string, unknown>;
     // (undocumented)
     steps?: StepDefinition[];
-    // (undocumented)
-    systems: PackSystemDef[];
 }
 
 // @public (undocumented)
@@ -152,14 +157,11 @@ export interface PackSettingsDefaults {
     visibility: Record<string, boolean>;
 }
 
-// @public (undocumented)
-export interface PackSystemDef {
-    // (undocumented)
-    events: Set<string>;
-    id: FeatureRef;
-    // (undocumented)
-    machine: AnyStateMachine;
-}
+// @public
+export function packSystem(entry: SystemEntry, featureId: string, options?: {
+    incoming?: readonly string[];
+    early?: true;
+}): PackFeatureSystem;
 
 // @public
 export function pluginRefOf(id: string, refs: readonly FeatureRef[]): FeatureRef | undefined;
@@ -206,9 +208,6 @@ export interface SystemSpec<Id extends string, TEvents extends {
         events: TEvents | SystemEvents;
     };
 }
-
-// @public
-export function toPackSystemDefs(entries: SystemEntry[], packId: string): PackSystemDef[];
 
 // (No @packageDocumentation comment for this package)
 

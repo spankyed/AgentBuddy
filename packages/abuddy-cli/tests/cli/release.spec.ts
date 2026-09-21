@@ -30,7 +30,7 @@ function builtPack(version = '1.2.3'): string {
   write('.gitignore', '.abuddy/\n');
   write('package.json', JSON.stringify({ name: 'demo-pack', version }));
   write('package-lock.json', JSON.stringify({ name: 'demo-pack', version, lockfileVersion: 3, packages: { '': { name: 'demo-pack', version } } }));
-  write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack", systems: [] } };');
+  write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack" } };');
   write('dist/types/snapshot.json', '{}');
   return root;
 }

@@ -136,12 +136,10 @@ export async function setupBackend(): Promise<void> {
     if (stale.length > 0) console.log(`[packs] Removed build output of built-in pack(s) this app no longer has: ${stale.join(', ')}`);
   }
 
-  // Run early boot hooks (logs system must start before anything else)
-  for (const hooks of packs.getBootHooks()) {
-    if (hooks.earlySystem) {
-      const logsActor = createActor(hooks.earlySystem.machine).start();
-      logsActor.subscribe(logErrors('Logs'));
-    }
+  // Start the early systems (the logs system must start before anything else)
+  for (const { machine } of packs.getEarlySystems()) {
+    const logsActor = createActor(machine).start();
+    logsActor.subscribe(logErrors('Logs'));
   }
 
   console.log(`[app] AgentBuddy v${APP_VERSION} startupId=${process.env.AGENTBUDDY_STARTUP_ID ?? 'unknown'}`);

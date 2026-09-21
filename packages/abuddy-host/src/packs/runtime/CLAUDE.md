@@ -39,9 +39,9 @@ Hidden `.<id>.installing-*`, `.<id>.previous-*` and `.<id>.publishing-*` dirs ar
 3. Loads each enabled pack with `loadSingleExternalPack()`:
    - `hostVersion` check (`isHostCompatible`), pack layout format check, warning on an SDK major version mismatch
    - `runtime/index.cjs` through `withHostResolution()`; the registration id must match the manifest. A directory without a `integrity.json` and a `runtime/index.cjs` isn't an installed pack: it's skipped with a warning pointing at `abuddy install` or `abuddy dev`
-   - strips `boot.earlySystem`, `boot.seedManifest` (external seeds go through `seedPackData`) and `ears.partitionPolicy`
+   - refuses a registration an older abuddy built (features listed in an array), naming the rebuild; drops early systems, and strips `boot.seedManifest` (external seeds go through `seedPackData`) and `ears.partitionPolicy`
 
-`registerExternalPacks(registry, packs)` registers each pack with its systems as `<packId>/<featureId>` (its seeders, commands and the rest of its registration with it) and returns the packs whose registration succeeded.
+`registerExternalPacks(registry, packs)` registers each pack, whose features the registry runs at `<packId>/<featureId>` (its seeders, commands and the rest of its registration with it), and returns the packs whose registration succeeded.
 
 ## Modules
 
@@ -91,7 +91,7 @@ The API's `core/router/packs-router.ts` serves `packs.loaded` from `getLoadedPac
    registerExternalPacks()         — registerPack() each
    await built-in                  — registerPack() each, with where it was found (PackOrigin)
 5. publishHostPackOutput()      — each built-in pack into host-packs/<id>
-6. earlySystem                     — logs system starts
+6. registry.getEarlySystems()      — the logs system starts
 7. registry.registerShutdownHook() — each pack's onShutdown, keyed by pack id
 8. store.hydrate()                 — EARS policy now sees all entity types
 9. startPacks(registry)            — start.ts; services.appData.reset() runs it too, after the shutdown hooks:
@@ -112,11 +112,11 @@ A pack's `__generated__/pack-entry.ts` (built-in, and bundled into an external p
 ```typescript
 export const registration: PackRegistration = {
   id: string;
-  systems: PackSystemDef[];  // { id, machine, events }; id is `<packId>/<featureId>`, from toPackSystemDefs
+  features?: Record<string, PackFeature>;  // by feature id: designation?, system?: { machine, receives, early? } (packSystem), plugin?: { receives }, services?, settings?
   services?: Record<string, unknown>;
   ears?: PackEARS;           // entities + relKinds + partitionPolicy?
   repositories?: Record<string, unknown>;  // features[].repositories, registered with the app's engine
-  boot?: PackBootHooks;      // earlySystem (features[].earlySystem), onInit/onShutdown (boot.hooks), seedManifest (boot.seed)
+  boot?: PackBootHooks;      // onInit/onShutdown (boot.hooks), seedManifest (boot.seed)
   migrations?: PackMigration[];
   steps?: StepDefinition[];
   artifacts?: ArtifactDefinition[];
@@ -124,11 +124,10 @@ export const registration: PackRegistration = {
   seedHooks?: Record<string, SeedHooks>;  // abuddy.json seedHooks
   seeders?: Seeder[];                     // one per seeded key (abuddy.json boot.seed), run by seedData
   commands?: PackCommand[];               // abuddy.json commands
-  features?: PackFeatureDef[];            // id, designation, hasSystem, hasPlugin, services, settings
 };
 ```
 
-Designations come from the manifest's `features[].designation`: generate-entries sets them on the pack's system and plugin definitions, and `registerPack()` maps each role to the id of the system that plays it (`<packId>/<featureId>` for an external pack; the feature id when no registered system does, as for the early logs system). A designation is a role, not a name, and need not equal the feature id: both registries map the role to the id of the system or plugin that plays it. `abuddy validate` rejects one role claimed by two features of a pack; across packs `registerPack` throws.
+Designations come from the manifest's `features[].designation`, which generate-entries puts on the feature, and `registerPack()` maps each role to the feature's ref, `<packId>/<featureId>`, whether it has a system, an early one or none. A designation is a role, not a name, and need not equal the feature id: both registries map the role to the id of the system or plugin that plays it. `abuddy validate` rejects one role claimed by two features of a pack; across packs `registerPack` throws.
 
 ## Collision detection
 
@@ -161,7 +160,7 @@ The resolver patch is restored in a `finally`; the bridged cache entries stay, s
 
 ## Blocked features for external packs
 
-- **`earlySystem`** — Starts before hydration, and before external packs register. A `PackSystemDef` at its feature's address, like the pack's other systems: it runs outside the bus and hears client sends through `onIncoming`, which the bus checks against its events. The manifest schema rejects `features[].earlySystem` in a pack without `builtIn`, and the loader strips it with a warning log.
+- **Early systems** (`system.early`, from `features[].earlySystem`) — Start before hydration, and before external packs register, at their feature's address like the pack's other systems: they run outside the bus and hear client sends through `onIncoming`, which the bus checks against their `receives`. The manifest schema rejects `features[].earlySystem` in a pack without `builtIn`, and the loader drops such a system with a warning log.
 - **`partitionPolicy`** (`excludedEntityTypes`) — Controls which entities go to the volatile store vs primary LMDB. Letting external packs route data to alternative stores without sandboxing could corrupt persistence. Stripped (with a warning when it lists types); all external pack data routes to the primary partition.
 - **`seedManifest`** — The declarative boot seed is only for built-in packs (hashes recorded per pack in `AppState.seedHashes`); external packs seed through `seedPackData()`, hash-checked per pack and in dependency order.
 

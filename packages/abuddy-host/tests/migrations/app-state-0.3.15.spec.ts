@@ -88,7 +88,6 @@ beforeAll(async () => {
   fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: BUILT_IN_ID, name: 'Built-in', version: TEST_APP_VERSION, builtIn: true }));
   const registration = {
     id: BUILT_IN_ID,
-    systems: [],
     // A boot seed: the single seed hash of 0.3.14 was this pack's
     boot: { seedManifest: { seedKeys: ['actions'], compiledDir: packDir } },
     migrations: ['0.3.14', '0.3.16'].map((target) => ({ target, description: target, up: () => { ran.push(target); } })),

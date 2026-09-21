@@ -7,7 +7,7 @@
  */
 
 import type { AnyStateMachine } from 'xstate';
-import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeatureDef, PackSeedManifest } from '@abuddy/sdk/framework';
+import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeature, PackFeatureSystem, PackSeedManifest } from '@abuddy/sdk/framework';
 import type { PackManifest } from '@abuddy/sdk/build';
 import type { PackRegistryView } from '@abuddy/sdk/runtime';
 import type { HostServices } from '@abuddy/sdk/services';
@@ -38,9 +38,43 @@ const appEARS = (): PackEARS => ({
   relKinds: SDK_REL_KINDS,
 });
 
+/** A registration's features, each with the ref it runs at, `<packId>/<featureId>` */
+function featuresOf({ id, features = {} }: PackRegistration): Array<{ featureId: string; ref: FeatureRef; feature: PackFeature }> {
+  return Object.entries(features).map(([featureId, feature]) => ({ featureId, ref: resolveName(featureId, id), feature }));
+}
+
+/** A registration's systems at their refs; `early` ones too, which the app starts itself, outside the bus */
+function systemsOf(reg: PackRegistration): Array<{ ref: FeatureRef; system: PackFeatureSystem }> {
+  return featuresOf(reg).flatMap(({ ref, feature }) => (feature.system ? [{ ref, system: feature.system }] : []));
+}
+
+/** The refs of the systems the bus runs for a registration (all but the early ones), before or after it registers */
+export function packSystemIds(reg: PackRegistration): FeatureRef[] {
+  return systemsOf(reg).filter(({ system }) => !system.early).map(({ ref }) => ref);
+}
+
 /** Role → the address of the feature playing it: its system and its plugin share it */
-function designationsOf({ id, features = [] }: PackRegistration): Record<string, FeatureRef> {
-  return Object.fromEntries(features.flatMap((f) => (f.designation ? [[f.designation, resolveName(f.id, id)]] : [])));
+function designationsOf(reg: PackRegistration): Record<string, FeatureRef> {
+  return Object.fromEntries(featuresOf(reg).flatMap(({ ref, feature }) => (feature.designation ? [[feature.designation, ref]] : [])));
+}
+
+/** What the app lists of a pack's feature (the Packs plugin shows it) */
+export interface PackFeatureInfo {
+  id: string;
+  designation?: string;
+  hasSystem: boolean;
+  hasPlugin: boolean;
+  services: readonly string[];
+}
+
+function featureInfo(reg: PackRegistration): PackFeatureInfo[] {
+  return featuresOf(reg).map(({ featureId, feature }) => ({
+    id: featureId,
+    ...(feature.designation ? { designation: feature.designation } : {}),
+    hasSystem: !!feature.system,
+    hasPlugin: !!feature.plugin,
+    services: feature.services ?? [],
+  }));
 }
 
 export interface PackExtensions {
@@ -52,7 +86,7 @@ export interface PackExtensions {
   relKinds: Record<string, string>;
   migrationCount: number;
   bootHooks: string[];
-  features: PackFeatureDef[];
+  features: PackFeatureInfo[];
 }
 
 export interface PackInfo {
@@ -76,7 +110,7 @@ export interface PackInfo {
   blocks: string[];
   migrationCount: number;
   bootHooks: string[];
-  features: PackFeatureDef[];
+  features: PackFeatureInfo[];
   dir?: string;
   installedAt?: string;
   installedFrom?: string;
@@ -85,17 +119,8 @@ export interface PackInfo {
   updateCheckError?: string;
 }
 
-/**
- * What a plugin's sends are checked against: the event types it receives, or `null` for a plugin whose
- * pack declared none.
- *
- * `null` is a pack built before `receivedEventTypes` existed. Its plugin ids are still known, because
- * codegen has always emitted `features`, so the app can tell "this pack declared nothing" from "nobody
- * owns this id" and pass the first through instead of dropping every event the pack sends. Rejecting
- * such a pack instead would be a worse trade: at runtime the user can't rebuild it, so the pack would
- * simply be lost.
- */
-export type PluginEventTypes = Set<string> | null;
+/** What a plugin's sends are checked against: the event types it receives */
+export type PluginEventTypes = Set<string>;
 
 /**
  * Where the app found a pack, and what the pack says it is. The registration says what a pack contributes;
@@ -140,8 +165,10 @@ export interface PackRegistry extends PackRegistryView {
   isPluginReplacing(pluginId: string): boolean;
   /** Ends a replacement window, whether or not anything took the pack's place */
   clearPackReplacing(packId: string): void;
-  /** Host systems and every registered pack's, by id */
+  /** Host systems and every registered pack's that the bus runs, by id: all but the early ones */
   getRegisteredSystems(): Map<string, AnyStateMachine>;
+  /** The registered packs' early systems (`system.early`), which the app starts before hydration and outside the bus */
+  getEarlySystems(): Array<{ id: FeatureRef; machine: AnyStateMachine }>;
   /** The addresses of a registered pack's systems, `<packId>/<featureId>` */
   getRegisteredPackSystemIds(packId: string): string[];
   /**
@@ -151,12 +178,9 @@ export interface PackRegistry extends PackRegistryView {
   getEventValidationMap(): Map<string, Set<string>>;
   /**
    * Each plugin's id → the event types it receives, the outgoing counterpart of `getEventValidationMap`.
-   * A pack declares its own plugins' (`PackRegistration.receivedEventTypes`, generated from its systems'
-   * outgoing unions) and the host declares its own. Cached on the same terms as the incoming map.
-   *
-   * A plugin absent from the map is one no registered pack owns. `null` is different: the plugin's pack
-   * owns it but declared no event types, which is a pack built before they existed — there is nothing to
-   * check it against, so its sends pass. See `PluginEventTypes`.
+   * A pack declares its own plugins' (`plugin.receives`, generated from its systems' outgoing unions) and the
+   * host declares its own. A plugin absent from the map is one no registered pack owns. Cached on the same
+   * terms as the incoming map.
    */
   getPluginEventValidationMap(): Map<string, PluginEventTypes>;
   /** The SDK's entity types, the host's and the registered packs' */
@@ -333,7 +357,10 @@ export function createPackRegistry(): PackRegistry {
     },
     (reg, undo) => { undo(() => seeders.unregister(reg.id)); seeders.register(reg.id, reg.seeders ?? []); },
     (reg, undo) => { undo(() => commands.unregister(reg.id)); commands.register(reg.id, reg.commands ?? []); },
-    (reg, undo) => { undo(() => settingsDefaults.unregister(reg.id)); settingsDefaults.register(reg.id, reg.features ?? []); },
+    (reg, undo) => {
+      undo(() => settingsDefaults.unregister(reg.id));
+      settingsDefaults.register(reg.id, featuresOf(reg).map(({ featureId, feature }) => ({ id: featureId, settings: feature.settings })));
+    },
     // Last, and collision-checked before any of the above ran, so nothing after it can refuse the pack
     (reg, undo) => {
       const roles = designationsOf(reg);
@@ -346,11 +373,10 @@ export function createPackRegistry(): PackRegistry {
     if (registrations.has(registration.id)) {
       throw new Error(`Pack "${registration.id}" is already registered`);
     }
-    // `toPackSystemDefs` addresses a pack's systems; one that isn't is a registration built by hand wrong
-    const systems = [...registration.systems, ...(registration.boot?.earlySystem ? [registration.boot.earlySystem] : [])];
-    const stray = systems.find((sys) => !sys.id.startsWith(`${registration.id}/`));
+    // A feature id is one segment of its ref: one with a `/` would name a feature of another pack
+    const stray = Object.keys(registration.features ?? {}).find((featureId) => featureId.includes('/'));
     if (stray) {
-      throw new Error(`Pack "${registration.id}": system "${stray.id}" isn't addressed as "${registration.id}/<featureId>"`);
+      throw new Error(`Pack "${registration.id}": feature "${stray}" isn't a feature id; the app runs it at "${registration.id}/<featureId>"`);
     }
 
     checkEARS(registration);
@@ -435,7 +461,8 @@ export function createPackRegistry(): PackRegistry {
   }
 
   function getRegisteredPackSystemIds(packId: string): string[] {
-    return (registrations.get(packId)?.systems ?? []).map((sys) => sys.id);
+    const reg = registrations.get(packId);
+    return reg ? packSystemIds(reg) : [];
   }
 
   function buildEventValidationMap(): Map<string, Set<string>> {
@@ -444,27 +471,13 @@ export function createPackRegistry(): PackRegistry {
       map.set(id, entry.events);
     }
     for (const reg of registrations.values()) {
-      for (const sys of reg.systems) {
-        map.set(sys.id, sys.events);
-      }
-      if (reg.boot?.earlySystem) map.set(reg.boot.earlySystem.id, reg.boot.earlySystem.events);
+      for (const { ref, system } of systemsOf(reg)) map.set(ref, new Set(system.receives));
     }
     return map;
   }
 
-  /**
-   * The features a pack owns a plugin for: those its `features` give one, and those it declares events
-   * for. A pack built before event declarations existed still names its plugins through `features`,
-   * which is how the app tells "declared nothing" from "nobody owns this id"; a hand-written registration
-   * may give only one of the two.
-   */
-  function pluginFeatures(reg: PackRegistration): string[] {
-    const withPlugin = (reg.features ?? []).filter((f) => f.hasPlugin).map((f) => f.id);
-    return [...new Set([...withPlugin, ...Object.keys(reg.receivedEventTypes ?? {})])];
-  }
-
   function ownedPluginIds(reg: PackRegistration): string[] {
-    return pluginFeatures(reg).map((featureId) => resolveName(featureId, reg.id));
+    return featuresOf(reg).filter(({ feature }) => feature.plugin).map(({ ref }) => ref);
   }
 
   /** Every plugin the host owns: those a pack may `sendsTo`, and those only the host sends to */
@@ -480,9 +493,8 @@ export function createPackRegistry(): PackRegistry {
     const map = new Map<string, PluginEventTypes>(hostPluginEventTypes());
     // Each pack's plugins are under its own address, so no pack reaches another's entry or the host's
     for (const reg of registrations.values()) {
-      const declared = reg.receivedEventTypes;
-      for (const featureId of pluginFeatures(reg)) {
-        map.set(resolveName(featureId, reg.id), declared ? new Set(declared[featureId] ?? []) : null);
+      for (const { ref, feature } of featuresOf(reg)) {
+        if (feature.plugin) map.set(ref, new Set(feature.plugin.receives));
       }
     }
     return map;
@@ -534,10 +546,13 @@ export function createPackRegistry(): PackRegistry {
       const systems = new Map<string, AnyStateMachine>();
       for (const [id, entry] of hostSystems) systems.set(id, entry.machine);
       for (const reg of registrations.values()) {
-        for (const sys of reg.systems) systems.set(sys.id, sys.machine);
+        for (const { ref, system } of systemsOf(reg)) if (!system.early) systems.set(ref, system.machine);
       }
       return systems;
     },
+
+    getEarlySystems: () => [...registrations.values()].flatMap((reg) =>
+      systemsOf(reg).flatMap(({ ref, system }) => (system.early ? [{ id: ref, machine: system.machine }] : []))),
 
     getRegisteredPackSystemIds,
     packOrigin: (packId) => origins.get(packId) ?? null,
@@ -619,13 +634,12 @@ export function createPackRegistry(): PackRegistry {
       if (!reg) return null;
 
       const bootHooks: string[] = [];
-      if (reg.boot?.earlySystem) bootHooks.push('earlySystem');
       if (reg.boot?.onInit) bootHooks.push('onInit');
       if (reg.boot?.seedManifest) bootHooks.push('seedManifest');
       if (reg.boot?.onShutdown) bootHooks.push('onShutdown');
 
       return {
-        systems: reg.systems.map(s => s.id),
+        systems: systemsOf(reg).map(({ ref }) => ref),
         services: reg.services ? Object.keys(reg.services) : [],
         steps: (reg.steps ?? []).map(s => s.type),
         artifacts: (reg.artifacts ?? []).map(a => a.type),
@@ -633,7 +647,7 @@ export function createPackRegistry(): PackRegistry {
         relKinds: reg.ears?.relKinds ?? {},
         migrationCount: reg.migrations?.length ?? 0,
         bootHooks,
-        features: reg.features ?? [],
+        features: featureInfo(reg),
       };
     },
 

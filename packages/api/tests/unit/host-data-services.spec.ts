@@ -167,7 +167,7 @@ describe('services.appData', () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-data-old-backup-'));
     dirs.push(dir);
     // The built-in pack's settings, as 0.3.14 stored them: the app's state in `internal`, and no AppState
-    packs.registerPack({ id: 'settings-pack', systems: [], ears: { entities: { Settings: 'Settings' }, relKinds: {} } });
+    packs.registerPack({ id: 'settings-pack', ears: { entities: { Settings: 'Settings' }, relKinds: {} } });
     engine.admin.clear();
     tx('Settings-app' as never, true).put('entityType', 'Settings').put('data', { internal: { hasOnboarded: true, version: '0.3.14' } });
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -191,7 +191,6 @@ describe('services.appData', () => {
     // Backed up while the pack that declares Bookmark was installed
     packs.registerPack({
       id: 'bookmarks',
-      systems: [],
       ears: { entities: { Bookmark: 'Bookmark', Tag: 'Tag' }, relKinds: {} },
     });
     const bookmark = tx('Bookmark' as never).put('url', 'https://example.com').id();
@@ -200,7 +199,7 @@ describe('services.appData', () => {
     const backup = await services.appData.exportBackup(dir, 'with-pack', ['lmdb']);
     packs.unregisterPack('bookmarks');
     // Still installed, so its rows are not reported: only what nothing declares is
-    packs.registerPack({ id: 'tags', systems: [], ears: { entities: { Tag: 'Tag' }, relKinds: {} } });
+    packs.registerPack({ id: 'tags', ears: { entities: { Tag: 'Tag' }, relKinds: {} } });
 
     try {
       // Restored without the other pack: the rows come back, and the app is told so it can say why nothing shows them

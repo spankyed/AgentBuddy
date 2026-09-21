@@ -51,8 +51,9 @@ describe('logs system', () => {
     expect(actor.getSnapshot().context.logs).toEqual([]);
   });
 
-  it('is registered at its address', () => {
-    expect(registration.boot?.earlySystem?.id).toBe('default-setup/logs');
-    expect(registration.boot?.earlySystem?.events).toContain('CLEAR_LOGS');
+  // The app starts it before hydration, outside the bus, and checks the sends to it like any system's
+  it('is registered as the logs feature\'s early system', () => {
+    expect(registration.features?.logs?.system?.early).toBe(true);
+    expect(registration.features?.logs?.system?.receives).toContain('CLEAR_LOGS');
   });
 });

@@ -606,43 +606,31 @@ export function generatePackFiles(
 
   function generateBackendEntry(): string {
     const features = manifest.features ?? [];
-    const regularFeatures = features.filter(f => !f.earlySystem);
-    const earlyFeature = features.find(f => f.earlySystem);
+    // The settings system starts first: the others read the settings as they start
+    const orderedFeatures = [...features.filter(f => f.designation === 'settings'), ...features.filter(f => f.designation !== 'settings')];
+    const systemFeatures = orderedFeatures.filter(f => f.system);
 
-    const systemFeatures = regularFeatures.filter(f => f.system);
-    const settingsFirst = systemFeatures.filter(f => f.designation === 'settings');
-    const rest = systemFeatures.filter(f => f.designation !== 'settings');
-    const orderedSystemFeatures = [...settingsFirst, ...rest];
-
-    const systemImports = orderedSystemFeatures
+    const systemImports = systemFeatures
       .map(f => `import ${systemBinding(f.id)} from '${toImportPath(root, f.system!.entry)}';`)
       .join('\n');
 
-    const systemEntries = orderedSystemFeatures
-      .map(f => systemBinding(f.id))
-      .join(', ');
+    const systemExpr = (f: PackFeatureEntry): string => {
+      const options = [
+        ...(f.system!.events?.incoming?.length ? [`incoming: ${JSON.stringify(f.system!.events.incoming)}`] : []),
+        ...(f.earlySystem ? ['early: true'] : []),
+      ];
+      return `packSystem(${systemBinding(f.id)}, '${f.id}'${options.length ? `, { ${options.join(', ')} }` : ''})`;
+    };
 
-    // A designation reaches the registry once, in `features` below: it is a property of the feature, and
-    // the registry reads it there
-    const systemsExpr = `toPackSystemDefs([${systemEntries}], '${manifest.id}')`;
-
-    const earlyImport = earlyFeature?.system
-      ? `import ${systemBinding(earlyFeature.id)} from '${toImportPath(root, earlyFeature.system.entry)}';\n`
-      : '';
-
-    const featuresLiteral = features.map(f => {
-      const parts = [`    id: '${f.id}'`];
-      parts.push(`    hasSystem: ${!!f.system}`);
-      if (f.designation) parts.push(`    designation: '${f.designation}'`);
-      parts.push(`    hasPlugin: ${!!f.plugin}`);
-      parts.push(`    services: [${Object.keys(f.services ?? {}).map(s => `'${s}'`).join(', ')}]`);
-      if (f.settings) parts.push(`    settings: ${settingsBinding(f.id)}`);
-      return `  {\n${parts.join(',\n')},\n  }`;
+    const featuresLiteral = orderedFeatures.map(f => {
+      const parts: string[] = [];
+      if (f.designation) parts.push(`      designation: '${f.designation}'`);
+      if (f.system) parts.push(`      system: ${systemExpr(f)}`);
+      if (f.plugin) parts.push(`      plugin: { receives: ${hasSystemFeatures() ? `receivedEventTypes['${f.id}'] ?? []` : '[]'} }`);
+      parts.push(`      services: [${Object.keys(f.services ?? {}).map(s => `'${s}'`).join(', ')}]`);
+      if (f.settings) parts.push(`      settings: ${settingsBinding(f.id)}`);
+      return `    '${f.id}': {\n${parts.join(',\n')},\n    }`;
     }).join(',\n');
-
-    const earlySystemLine = earlyFeature?.system
-      ? `    earlySystem: toPackSystemDefs([${systemBinding(earlyFeature.id)}], '${manifest.id}')[0],`
-      : '';
 
     const settingsImports = features
       .filter(f => f.settings)
@@ -660,10 +648,8 @@ export function generatePackFiles(
 
     return `${HEADER}
 import type { PackRegistration } from '@abuddy/sdk/framework';
-import { toPackSystemDefs } from '@abuddy/sdk/framework';
-${hasRepositories() ? "import { repositories } from './repositories.js';\n" : ''}
+${systemFeatures.length ? "import { packSystem } from '@abuddy/sdk/framework';\n" : ''}${hasRepositories() ? "import { repositories } from './repositories.js';\n" : ''}
 ${systemImports}
-${earlyImport}
 import { featureServices } from './services.js';
 import { EARS } from './ears.js';
 ${hooksImport}
@@ -678,7 +664,7 @@ ${hasSystemFeatures() ? "import { receivedEventTypes } from './events.js';\n" : 
 
 export const registration: PackRegistration = {
   id: '${manifest.id}',
-  systems: ${systemsExpr},
+  features: {${featuresLiteral ? `\n${featuresLiteral},\n  ` : ''}},
   services: featureServices,
 ${hasRepositories() ? '  repositories,' : ''}
 ${stepsRegister ? '  steps,' : ''}
@@ -686,7 +672,6 @@ ${manifest.artifacts ? '  artifacts,' : ''}
 ${manifest.blocks ? '  blocks,' : ''}
 ${hookEntries.length > 0 ? `  seedHooks: { ${hookEntries.map(([entity], i) => `${JSON.stringify(entity)}: __seedHooks_${i}`).join(', ')} },` : ''}
   seeders,
-${hasSystemFeatures() ? '  receivedEventTypes,' : ''}
 ${commands.length ? `  commands: ${JSON.stringify(commands)},` : ''}
   ears: {
     // Only this pack's own: EARS also names its dependencies' and the SDK's, which they register
@@ -697,7 +682,6 @@ ${commands.length ? `  commands: ${JSON.stringify(commands)},` : ''}
     },
   },
   boot: {
-${earlySystemLine}
 ${manifest.boot?.hooks ? '    ..._hooks,' : ''}
     seedManifest: {
       seedKeys: [${seedKeysList}],
@@ -705,7 +689,6 @@ ${manifest.boot?.hooks ? '    ..._hooks,' : ''}
     },
   },
 ${manifest.migrations ? '  migrations,' : ''}
-  features: [${featuresLiteral ? `\n${featuresLiteral},\n  ` : ''}],
 };
 `;
   }

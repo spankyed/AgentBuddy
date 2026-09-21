@@ -1,6 +1,5 @@
 // Reloading a pack loads and registers its rebuilt runtime before the running one shuts down: a rebuild that
 // fails to load, or whose registration is refused, leaves the running pack as it was.
-import { resolveName } from '@abuddy/sdk/ids';
 import { createHash } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import * as fs from 'node:fs';
@@ -23,7 +22,7 @@ const PACK_ID = 'reload-pack';
 
 let tmpDir: string;
 let origEnv: { env?: string; userDataDir?: string };
-const running = { id: PACK_ID, systems: [{ id: resolveName(`${PACK_ID}/widget`), machine: { id: 'widget', config: {} } as never, events: new Set(['PING']) }] };
+const running = { id: PACK_ID, features: { widget: { system: { machine: { id: 'widget', config: {} } as never, receives: ['PING'] } } } };
 const bus = { send: vi.fn() };
 const shutdown = vi.fn();
 
@@ -42,14 +41,14 @@ const runtime = (services = '') => `
   module.exports = {
     registration: {
       id: '${PACK_ID}',
-      systems: [{ id: '${PACK_ID}/widget', machine: { id: 'widget', config: {} }, events: new Set(['PING']) }],
+      features: { widget: { system: { machine: { id: 'widget', config: {} }, receives: ['PING'] } } },
       ${services}
     },
   };
 `;
 
 function expectRunningPackIntact() {
-  expect(getPackRegistration(PACK_ID)?.systems).toBe(running.systems);
+  expect(getPackRegistration(PACK_ID)?.features).toBe(running.features);
   expect(shutdown).not.toHaveBeenCalled();
   expect(bus.send).not.toHaveBeenCalled();
 }
@@ -109,7 +108,7 @@ describe('reloading a built-in pack', () => {
         },
         registration: {
           id: '${BUILT_IN_ID}',
-          systems: [{ id: '${BUILT_IN_ID}/widget', machine: { id: 'widget', config: {} }, events: new Set(['PING']) }],
+          features: { widget: { system: { machine: { id: 'widget', config: {} }, receives: ['PING'] } } },
           boot: {
             onInit() { module.exports.compiledDirAtInit = module.exports.getCompiledDir(); },
             seedManifest: { seedKeys: ['actions'], get compiledDir() { return module.exports.getCompiledDir(); } },
@@ -299,7 +298,7 @@ describe('reloading a pack', () => {
   });
 
   it('restores the running registration when the rebuilt one is refused', async () => {
-    registerPack({ id: 'service-owner', systems: [], services: { taken: {} } });
+    registerPack({ id: 'service-owner', services: { taken: {} } });
     writeRebuild(runtime(`services: { taken: {} },`));
     await expect(reloadExternalPack(registry, PACK_ID, bus as never)).rejects.toThrow(`Failed to register pack ${PACK_ID}`);
     expectRunningPackIntact();
@@ -338,7 +337,7 @@ describe('reloading a pack', () => {
     writeRebuild(runtime());
     await reloadExternalPack(registry, PACK_ID, bus as never);
 
-    expect(getPackRegistration(PACK_ID)?.systems).not.toBe(running.systems);
+    expect(getPackRegistration(PACK_ID)?.features).not.toBe(running.features);
     expect(shutdown).toHaveBeenCalledTimes(1);
     expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: PACK_ID, systemIds: [`${PACK_ID}/widget`] });
   });
@@ -362,7 +361,7 @@ describe('reloading a pack', () => {
     writeRebuild(runtime());
     const registrationWhenSent: unknown[] = [];
     bus.send.mockImplementation((event: { type: string }) => {
-      if (event.type === 'PACK_CHANGED') registrationWhenSent.push(getPackRegistration(PACK_ID)?.systems);
+      if (event.type === 'PACK_CHANGED') registrationWhenSent.push(getPackRegistration(PACK_ID)?.features);
     });
     await reloadExternalPack(registry, PACK_ID, bus as never);
 
@@ -370,6 +369,6 @@ describe('reloading a pack', () => {
     expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
     expect(registrationWhenSent).toHaveLength(1);
     expect(registrationWhenSent[0]).toBeDefined();
-    expect(registrationWhenSent[0]).not.toBe(running.systems);
+    expect(registrationWhenSent[0]).not.toBe(running.features);
   });
 });

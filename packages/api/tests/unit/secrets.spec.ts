@@ -37,7 +37,7 @@ const caller = secretsRouter.createCaller({});
 // What the API's boot registers; the settings system is registered in the first test, once it checks changes made before
 forwardSecretsChanges(packs);
 // A pack designating its settings feature, whose system isn't running yet
-packs.registerPack({ id: 'test', systems: [], features: [{ id: 'settings', designation: 'settings', hasSystem: true, hasPlugin: false, services: [] }] });
+packs.registerPack({ id: 'test', features: { settings: { designation: 'settings' } } });
 // Registered under the id the designation resolves to — a feature's system runs as `<packId>/<featureId>`
 const registerSettingsSystem = () => packs.registerHostSystem('test/settings', setup({}).createMachine({}), new Set(['SECRETS_CHANGED']));
 

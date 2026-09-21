@@ -1,6 +1,5 @@
 // The app's bus on the SDK's bound root event bus (the test host's here): a connecting client reaches the
 // registered systems, except those of a loaded pack with frontend code, which wait for the client to load it.
-import { resolveName } from '@abuddy/sdk/ids';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
@@ -28,7 +27,7 @@ function recorder(label: string) {
 }
 
 function registerRecorderPack(id: string) {
-  registerPack({ id, systems: [{ id: resolveName(`${id}/feature`), machine: recorder(id), events: new Set(['CLIENT_CONNECTED']) }] });
+  registerPack({ id, features: { feature: { system: { machine: recorder(id), receives: ['CLIENT_CONNECTED'] } } } });
 }
 
 let bus: AnyActorRef;
@@ -47,7 +46,7 @@ beforeEach(() => {
   packDir = fs.mkdtempSync(path.join(os.tmpdir(), 'app-bus-'));
   fs.mkdirSync(path.join(packDir, 'runtime'));
   fs.writeFileSync(path.join(packDir, 'runtime', 'fe.js'), '');
-  registry.registerPack({ id: 'fe-pack-fe', systems: [] }, {
+  registry.registerPack({ id: 'fe-pack-fe' }, {
     id: 'fe-pack', name: 'fe-pack', version: '1.0.0', dir: packDir, builtIn: false,
     manifest: { id: 'fe-pack', name: 'fe-pack', version: '1.0.0' } as never,
   });
@@ -91,9 +90,13 @@ describe('createAppBus', () => {
     const pings: string[] = [];
     registerPack({
       id: 'ping-pack',
-      systems: [{ id: resolveName('ping-pack/feature'), machine: setup({}).createMachine({ on: { PING: { actions: () => pings.push('ping') } } }), events: new Set(['PING']) }],
-      // The bus drops a send to a plugin that declares no such event, so this case declares the two it sends
-      receivedEventTypes: { feature: ['EARLY', 'LATE'] },
+      features: {
+        feature: {
+          system: { machine: setup({}).createMachine({ on: { PING: { actions: () => pings.push('ping') } } }), receives: ['PING'] },
+          // The bus drops a send to a plugin that declares no such event, so this case declares the two it sends
+          plugin: { receives: ['EARLY', 'LATE'] },
+        },
+      },
     });
     try {
       bus.stop();
@@ -111,9 +114,13 @@ describe('createAppBus', () => {
     const pings: string[] = [];
     registerPack({
       id: 'ping-pack',
-      systems: [{ id: resolveName('ping-pack/feature'), machine: setup({}).createMachine({ on: { PING: { actions: () => pings.push('ping') } } }), events: new Set(['PING']) }],
-      // The bus drops a send to a plugin that declares no such event, so this case declares the two it sends
-      receivedEventTypes: { feature: ['EARLY', 'LATE'] },
+      features: {
+        feature: {
+          system: { machine: setup({}).createMachine({ on: { PING: { actions: () => pings.push('ping') } } }), receives: ['PING'] },
+          // The bus drops a send to a plugin that declares no such event, so this case declares the two it sends
+          plugin: { receives: ['EARLY', 'LATE'] },
+        },
+      },
     });
     try {
       bus.stop();

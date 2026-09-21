@@ -48,7 +48,7 @@ describe('the bound app', () => {
 
   it("reads the registered packs' services and systems", () => {
     const memoService = { ping: () => 'pong' };
-    registerPack({ id: 'bound-pack', systems: [{ id: 'bound-pack/memos', machine: {} as never, events: new Set(['PING']) }], services: { memoService } });
+    registerPack({ id: 'bound-pack', features: { memos: { system: { machine: {} as never, receives: ['PING'] } } }, services: { memoService } });
     const incoming: unknown[] = [];
     const stop = rootEvents.onIncoming((event) => { incoming.push(event); });
     try {

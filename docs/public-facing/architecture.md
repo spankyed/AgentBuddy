@@ -78,7 +78,7 @@ The source directory must be built first: installing a directory with neither a 
    - **External:** discovered in `packs/` and reconciled with `installed-packs.json` (new packs added enabled, missing ones removed). For each enabled pack: `hostVersion` check, pack layout format check, a warning on an SDK major version mismatch, `runtime/index.cjs` loaded through the module bridge, and `earlySystem`, `seedManifest` and `partitionPolicy` stripped. Each pack's systems register as `<packId>/<featureId>`.
    - The registry's `registerPack()` stores each registration (see [Collision detection](#collision-detection)). A pack contributes only through its registration: nothing registers when its modules are imported.
 5. Publishes each built-in pack's build output into `host-packs/<id>/`.
-6. Starts the `earlySystem` (default-setup's logs system).
+6. Starts the early systems (`system.early`: default-setup's logs system).
 7. Wires each pack's `onShutdown` hook, keyed by pack id.
 8. Hydrates the app's engine from LMDB. Every pack's entity types are registered by now, so the partition policy sees them all.
 9. Runs every pack's `onInit`.
@@ -119,10 +119,10 @@ Your `__generated__/pack-entry.ts` exports a registration object (`@abuddy/sdk/f
 ```typescript
 export const registration: PackRegistration = {
   id: string;
-  systems: PackSystemDef[];        // { id, machine, events, designation? }
+  features?: Record<string, PackFeature>;  // by feature id: { designation?, system?: { machine, receives, early? }, plugin?: { receives }, services?, settings? }
   services?: Record<string, unknown>;
   ears?: PackEARS;                 // entities, relKinds, partitionPolicy?
-  boot?: PackBootHooks;            // earlySystem (features[].earlySystem), onInit/onShutdown (boot.hooks), seedManifest (boot.seed, stripped from external packs)
+  boot?: PackBootHooks;            // onInit/onShutdown (boot.hooks), seedManifest (boot.seed, stripped from external packs)
   migrations?: PackMigration[];    // { target, description, up }
   repositories?: Record<string, unknown>;  // features[].repositories, registered with the app's engine
   steps?: StepDefinition[];
@@ -131,9 +131,10 @@ export const registration: PackRegistration = {
   seedHooks?: Record<string, SeedHooks>;  // abuddy.json `seedHooks`, keyed by entity type
   seeders?: Seeder[];              // one per seeded boot.seed key, which seeding the pack's compiled seeds runs
   commands?: PackCommand[];        // abuddy.json `commands`
-  features?: PackFeatureDef[];     // { id, designation?, hasSystem, hasPlugin, services, settings? }
 };
 ```
+
+The app runs each feature at `<packId>/<featureId>` and derives everything else from `features`: the systems it starts (an `early` one before hydration, outside the bus), the events each system accepts (`receives`: its machine's, plus the manifest's `system.events.incoming`, put there by `packSystem` when `abuddy build` generates the entry), the plugins and the events each receives, and the roles.
 
 The runtime bundle also exports `setCompiledDir(dir)`, which the host calls with the directory of the pack's compiled seeds.
 

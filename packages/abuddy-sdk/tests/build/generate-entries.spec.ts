@@ -435,9 +435,22 @@ describe('generated backend entry', () => {
       system('brain'),
     ] });
     const entry = files['src/__generated__/pack-entry.ts'];
-    expect(entry).toContain("id: 'notes',\n    hasSystem: false,\n    hasPlugin: true,");
-    expect(entry).toContain("id: 'brain',\n    hasSystem: true,\n    hasPlugin: false,");
+    expect(entry).toContain("    'notes': {\n      plugin: { receives: receivedEventTypes['notes'] ?? [] },\n      services: [],\n    }");
+    expect(entry).toContain("    'brain': {\n      system: packSystem(__system_brain, 'brain'),\n      services: [],\n    }");
     expect(entry).not.toMatch(/label|icon|isPinned/);
+  });
+
+  // One record, keyed by feature: the app derives every ref, system and plugin from it
+  it('registers each feature once, the settings feature first, with its early system and the events the manifest adds', () => {
+    const entry = generate({ features: [
+      { ...system('logs'), earlySystem: true },
+      { ...system('inbox'), system: { entry: 'src/features/inbox/be/system.ts', events: { incoming: ['MAIL_ARRIVED'] } } },
+      { ...system('config'), designation: 'settings' },
+    ] })['src/__generated__/pack-entry.ts'];
+    expect(entry).toContain("system: packSystem(__system_logs, 'logs', { early: true }),");
+    expect(entry).toContain(`system: packSystem(__system_inbox, 'inbox', { incoming: ["MAIL_ARRIVED"] }),`);
+    expect(entry.indexOf("'config': {")).toBeLessThan(entry.indexOf("'logs': {"));
+    expect(entry).not.toMatch(/systems:|earlySystem|receivedEventTypes,|toPackSystemDefs/);
   });
 
   it("carries the pack's declared slash commands, so registering it registers them", () => {
@@ -534,8 +547,8 @@ describe('generated feature settings', () => {
     write('src/features/memos/settings.ts', 'export default { plugins: { memos: {} } };\n');
     const entry = generate({ features: [{ ...system('memos'), settings: 'src/features/memos/settings.ts' }, system('todos')] })['src/__generated__/pack-entry.ts'];
     expect(entry).toContain("import __settings_Memos from '../features/memos/settings.js';");
-    expect(entry).toMatch(/id: 'memos',[^}]*services: \[\],\n {4}settings: __settings_Memos,\n {2}\}/);
-    expect(entry).toMatch(/id: 'todos',[^}]*services: \[\],\n {2}\}/);
+    expect(entry).toContain("    'memos': {\n      system: packSystem(__system_memos, 'memos'),\n      services: [],\n      settings: __settings_Memos,\n    }");
+    expect(entry).toContain("    'todos': {\n      system: packSystem(__system_todos, 'todos'),\n      services: [],\n    }");
   });
 
   it('fails on a settings module that is missing or has no default export', () => {

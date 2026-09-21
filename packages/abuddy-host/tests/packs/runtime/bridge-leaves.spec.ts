@@ -25,7 +25,7 @@ describe('external pack runtime', () => {
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `
       const { cronToHuman } = require('@abuddy/sdk/cron');
       const { compareVersions } = require('@abuddy/sdk/utils/compare-versions');
-      exports.registration = { id: 'bridge-pack', systems: [], services: { leaves: { cron: cronToHuman('0 * * * *'), newer: compareVersions('1.1.0', '1.0.0') } } };
+      exports.registration = { id: 'bridge-pack', services: { leaves: { cron: cronToHuman('0 * * * *'), newer: compareVersions('1.1.0', '1.0.0') } } };
     `);
     const { loadSingleExternalPack } = await import('../../../src/packs/runtime/loader.ts');
 

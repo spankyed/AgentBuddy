@@ -29,7 +29,6 @@ const documentNamed = (name: string) => repository.libraryQueries.getDocuments()
 function registerTeamNotes(commands: PackCommand[] = []): void {
   registerPack({
     id: 'team-notes',
-    systems: [],
     seeders: [
       createSeeder({ key: 'library', entities: ['Collection', 'Document'], identity: ['name'], media: true }),
       createSeeder({ key: 'notes', entities: ['Note'], identity: ['title', 'parent'], relKind: 'contains' }),

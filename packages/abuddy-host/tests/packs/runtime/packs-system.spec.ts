@@ -41,7 +41,7 @@ function packSource(version: string, { unseedable = false } = {}): string {
   fs.mkdirSync(path.join(dir, 'dist', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'dist', 'types'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify({ id: PACK_ID, name: 'Reinstall Pack', version }));
-  fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(PACK_ID)}, systems: [] } };`);
+  fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(PACK_ID)} } };`);
   fs.writeFileSync(path.join(dir, 'dist', 'types', 'snapshot.json'), '{}');
   if (unseedable) {
     // Compiled data with no seeds.json: the seeder can't tell whose records these are, so seeding fails

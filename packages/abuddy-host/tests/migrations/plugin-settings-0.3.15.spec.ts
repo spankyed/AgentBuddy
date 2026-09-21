@@ -5,7 +5,7 @@
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { tx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
-import type { PackFeatureDef } from '@abuddy/sdk/framework';
+import type { PackFeature } from '@abuddy/sdk/framework';
 import { resetTestData } from '@abuddy/sdk/testing';
 import { registry } from '../packs/runtime/test-host.ts';
 import { appState } from '../../src/app-state/index.ts';
@@ -13,7 +13,8 @@ import { appMigrations } from '../../src/migrations/app/index.ts';
 
 const SETTINGS_ID = 'Settings-app' as EARS.EntityId;
 
-const withPlugin = (id: string): PackFeatureDef => ({ id, hasSystem: false, hasPlugin: true, services: [] });
+/** Features with a plugin each, by id */
+const withPlugins = (...ids: string[]): Record<string, PackFeature> => Object.fromEntries(ids.map((id) => [id, { plugin: { receives: [] } }]));
 
 /** The settings as 0.3.14 stored them: every plugin under its feature id */
 const OLD_SETTINGS = {
@@ -36,8 +37,8 @@ const move = () => {
 beforeAll(() => {
   const origin = (id: string, builtIn: boolean) => ({ id, name: id, version: '1.0.0', dir: `packs/${id}`, builtIn });
   // `notes` is the built-in pack's feature too: before 0.3.15 the built-in plugin ran under it
-  registry.registerPack({ id: 'memo-pack', systems: [], features: [withPlugin('memos'), withPlugin('board'), withPlugin('notes')] }, origin('memo-pack', false));
-  registry.registerPack({ id: 'built-in', systems: [], features: [withPlugin('notes')] }, origin('built-in', true));
+  registry.registerPack({ id: 'memo-pack', features: withPlugins('memos', 'board', 'notes') }, origin('memo-pack', false));
+  registry.registerPack({ id: 'built-in', features: withPlugins('notes') }, origin('built-in', true));
   // The host's packs plugin, as the API registers it
   registry.registerHostPlugin('host/packs', []);
 });

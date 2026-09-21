@@ -62,7 +62,7 @@ Frontend components don't render untrusted text as markup: script injected into 
 
 ## Systems
 
-Backend systems wired via `__generated__/pack-entry.ts` using `toPackSystemDefs()` from the SDK. Each system file default-exports a `SystemEntry` (the manifest names only the path, not an export name). The logs system is special: `features[].earlySystem: true` makes it the registration's `boot.earlySystem`, which the API starts before EARS hydration (for log capture during boot).
+Backend systems wired via `__generated__/pack-entry.ts`, each feature's with `packSystem()` from the SDK. Each system file default-exports a `SystemEntry` (the manifest names only the path, not an export name). The logs system is special: `features[].earlySystem: true` makes it an early system (`system.early`), which the API starts before EARS hydration (for log capture during boot).
 
 Code names a system by feature id, and reaches another system with the typed `sendToSystem(name, event)` from `__generated__/events`, never its actor. System specs (identity + types) defined via `defineSystem()` in each system file. A feature's designation comes only from `abuddy.json` `features[].designation`. It is a role, not a name: it need not equal the feature id, and every one default-setup declares happens to.
 
@@ -160,7 +160,6 @@ Version-targeted migrations in `src/migrations/`, one file per target version. R
 ## Boot sequence extensions
 
 The pack registers boot hooks via `__generated__/pack-entry.ts`:
-- `earlySystem` — the logs system, from `features[].earlySystem` (starts before hydration)
 - `onInit` — from `boot.hooks` (`src/features/hooks.ts`): `createDefaultSettings()` ensures the Settings entity exists (it stores only the user's changes to the defaults)
 - `onShutdown` — from `boot.hooks`: kills terminal processes, clears brain schedules, removes ad-hoc listeners and clears the flow actor registry
 - `seedManifest` — from `boot.seed` and `boot.seedPolicy`: its `seedKeys` are the compiled seeds the host seeds (hash-checked)

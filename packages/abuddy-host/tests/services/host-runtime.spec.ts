@@ -1,6 +1,5 @@
 // createHostRuntime assembles the app the SDK binds: the given bus and version, the engine, the registered packs,
 // and the host's services over the store. A reset leaves the app as a fresh boot does.
-import { resolveName } from '@abuddy/sdk/ids';
 import { secretRedaction } from '../../src/secrets/redaction.ts';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
@@ -62,7 +61,7 @@ describe('createHostRuntime', () => {
     expect(runtime.services.filesystem).toBe(filesystem);
 
     const service = { ping: () => 'pong' };
-    packs.registerPack({ id: 'runtime-pack', systems: [{ id: resolveName('runtime-pack/memos'), machine: {} as never, events: new Set() }], services: { memoService: service } });
+    packs.registerPack({ id: 'runtime-pack', features: { memos: { system: { machine: {} as never, receives: [] } } }, services: { memoService: service } });
     try {
       expect(runtime.packs.getRegisteredServices().memoService).toBe(service);
       expect(runtime.packs.systemIds()).toContain('runtime-pack/memos');
@@ -82,9 +81,9 @@ describe('createHostRuntime', () => {
     secretsStore.add('openai', 'Work', 'sk-proj-resetspec1234567890');
     // An external pack the app loaded, holding something open between its onInit and onShutdown
     const boot = { onInit: () => order.push(`onInit (${secretsStore.list().length} keys)`), onShutdown: () => order.push('onShutdown') };
-    packs.registerPack({ id: 'reset-pack', systems: [], boot }, externalOrigin('reset-pack', 'Reset'));
+    packs.registerPack({ id: 'reset-pack', boot }, externalOrigin('reset-pack', 'Reset'));
     // A built-in pack with a boot seed
-    packs.registerPack({ id: 'seeded-pack', systems: [], boot: { seedManifest: { seedKeys: ['notes'], compiledDir: '/nowhere' } } });
+    packs.registerPack({ id: 'seeded-pack', boot: { seedManifest: { seedKeys: ['notes'], compiledDir: '/nowhere' } } });
     packs.registerShutdownHook(boot.onShutdown, 'reset-pack');
     try {
       await runtime.services.appData.reset();
@@ -105,8 +104,8 @@ describe('startPacks', () => {
     order.length = 0;
     appMigrations.succeed = false;
     const packs = createPackRegistry();
-    packs.registerPack({ id: 'late-seeded-pack', systems: [], boot: { seedManifest: { seedKeys: ['notes'], compiledDir: '/nowhere' } } });
-    packs.registerPack({ id: 'late-pack', systems: [] }, externalOrigin('late-pack', 'Late'));
+    packs.registerPack({ id: 'late-seeded-pack', boot: { seedManifest: { seedKeys: ['notes'], compiledDir: '/nowhere' } } });
+    packs.registerPack({ id: 'late-pack' }, externalOrigin('late-pack', 'Late'));
     try {
       startPacks(packs);
     } finally {

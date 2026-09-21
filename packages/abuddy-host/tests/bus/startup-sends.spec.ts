@@ -1,6 +1,5 @@
 // A system sends as it starts — to another system, or its plugin's first report — and the bus hears the root
 // events before it starts any system, so nothing a system sends while starting is lost.
-import { resolveName } from '@abuddy/sdk/ids';
 import { afterEach, expect, it } from 'vitest';
 import { assign, createActor, setup, type AnyActorRef } from 'xstate';
 import { sendToSystem } from '@abuddy/sdk/events';
@@ -29,14 +28,10 @@ it("delivers what a system sends as it starts to the system it's for", async () 
   registry.registerPack({
     id: 'boot-pack',
     // The receiver starts first, so the send has somewhere to go once the bus hears it
-    systems: [
-      { id: resolveName('boot-pack/receiver'), machine: receiver, events: new Set(['PING']) },
-      { id: resolveName('boot-pack/sender'), machine: sender, events: new Set() },
-    ],
-    features: [
-      { id: 'receiver', hasSystem: true, hasPlugin: false, services: [] },
-      { id: 'sender', hasSystem: true, hasPlugin: false, services: [] },
-    ],
+    features: {
+      receiver: { system: { machine: receiver, receives: ['PING'] } },
+      sender: { system: { machine: sender, receives: [] } },
+    },
   });
   bus = createActor(createAppBus(registry), { systemId: 'host/bus' }).start();
   await new Promise((resolve) => setTimeout(resolve, 0));
