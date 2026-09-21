@@ -32,16 +32,16 @@ describe('the 0.3.15 migration', () => {
     createDefaultSettings()
     // As 0.3.14 stored it
     tx('Settings-app' as SdkEARS.EntityId).update('data', {
-      general: { application: { openLinksInApp: false } },
+      general: { personal: { name: 'Ada' } },
       internal: { hasOnboarded: true, version: '0.3.14', seedHash: 'abc123' },
     })
 
     migration.up()
-    expect(stored()).toEqual({ general: { application: { openLinksInApp: false } } })
+    expect(stored()).toEqual({ general: { personal: { name: 'Ada' } } })
 
     // Running again changes nothing
     migration.up()
-    expect(stored()).toEqual({ general: { application: { openLinksInApp: false } } })
+    expect(stored()).toEqual({ general: { personal: { name: 'Ada' } } })
   })
 
   it("drops the settings' root flow copies, keeping the plugins' other settings", () => {
@@ -113,24 +113,6 @@ describe('the 0.3.15 migration', () => {
     expect(excludedSources()).toEqual(['brain'])
   })
 
-  // An action of the user's own still calls services the way 0.3.14 took them, and would throw on its first run
-  it("rewrites the user's actions' calls to changed services, and leaves seeded actions to the seeder", () => {
-    createDefaultSettings()
-    const old = `services.emitter.sendToPlugin('threads', e); services.emitter.sendToBrainSystem({ eventType: 'go' });`
-    const mine = createEntityWithDefaults(EARS.Entity.Action, { label: 'Mine', input: {}, actionFn: old })
-    const seeded = createEntityWithDefaults(EARS.Entity.Action, { label: 'Seeded', input: {}, actionFn: old, sourceHash: 'seeded-v1' })
-
-    migration.up()
-    const afterFirst = attrs(mine.id).actionFn
-    migration.up()
-
-    expect(afterFirst).toBe(
-      `services.emitter.sendToPlugin('default-setup/threads', e); services.emitter.sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', ...({ eventType: 'go' }) });`,
-    )
-    expect(attrs(mine.id).actionFn).toBe(afterFirst)
-    expect(attrs(seeded.id).actionFn).toBe(old)
-  })
-
   // A plugin runs under `<packId>/<featureId>` now. Without this move, the app reads
   // `plugins['default-setup/threads']` while the user's settings say `plugins.threads`, and their settings come
   // back at the defaults. The sidebar's state (`_meta`) is the host's, moved by its own 0.3.15 migration.
@@ -199,11 +181,56 @@ describe('the 0.3.15 migration', () => {
 
     it('does nothing for a user who changed no plugin settings', () => {
       createDefaultSettings()
-      tx('Settings-app' as SdkEARS.EntityId).update('data', { general: { application: { openLinksInApp: false } } })
+      tx('Settings-app' as SdkEARS.EntityId).update('data', { general: { personal: { name: 'Ada' } } })
 
       migration.up()
 
       expect(stored()).not.toHaveProperty('plugins')
+    })
+  })
+
+  // 0.3.14 copied both settings to their new keys but left the old ones stored
+  describe('the keys 0.3.14 moved but left behind', () => {
+    it("drops the code plugin's lastDirectoryOpened, keeping the baseDirectory the user has", () => {
+      createDefaultSettings()
+      tx('Settings-app' as SdkEARS.EntityId).update('data', {
+        plugins: { code: { lastDirectoryOpened: '/old', baseDirectory: '/chosen' } },
+      })
+
+      migration.up()
+      migration.up()
+
+      expect((stored().plugins as Record<string, any>)['default-setup/code']).toEqual({ baseDirectory: '/chosen' })
+    })
+
+    it('copies lastDirectoryOpened to baseDirectory when the user has none stored', () => {
+      createDefaultSettings()
+      tx('Settings-app' as SdkEARS.EntityId).update('data', { plugins: { code: { lastDirectoryOpened: '/work' } } })
+
+      migration.up()
+
+      expect((stored().plugins as Record<string, any>)['default-setup/code']).toEqual({ baseDirectory: '/work' })
+    })
+
+    it("moves openLinksInApp to the browser plugin's settings unless the user set it there", () => {
+      createDefaultSettings()
+      tx('Settings-app' as SdkEARS.EntityId).update('data', { general: { application: { openLinksInApp: false } } })
+
+      migration.up()
+      migration.up()
+
+      expect(stored()).toEqual({ general: { application: {} }, plugins: { 'default-setup/browser': { openLinksInApp: false } } })
+
+      createDefaultSettings()
+      tx('Settings-app' as SdkEARS.EntityId).update('data', {
+        general: { application: { openLinksInApp: false } },
+        plugins: { browser: { openLinksInApp: true } },
+      })
+
+      migration.up()
+
+      expect((stored().plugins as Record<string, any>)['default-setup/browser']).toEqual({ openLinksInApp: true })
+      expect((stored().general as any).application).not.toHaveProperty('openLinksInApp')
     })
   })
 })

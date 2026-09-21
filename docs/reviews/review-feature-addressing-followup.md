@@ -50,9 +50,10 @@ test was mutation-checked: breaking the fix fails it.
   decides from its own settings (`openLinksInApp`, moved from the general settings to the browser's by 0.3.14),
   or opens it outside the app when no plugin plays the role. Test: `abuddy-sdk/tests/fe/open-link.spec.ts`;
   `tests/e2e/open-link.spec.ts`.
-- **N3. 0.3.14 overwrote a directory the user had already set.** It now moves `lastDirectoryOpened` only when
-  `baseDirectory` is unset, reading the slice under either key. Test:
-  `default-setup/tests/unit/migrations/migration-0.3.14.spec.ts`.
+- **N3. 0.3.14 left the keys it moved behind.** It copied `lastDirectoryOpened` to `baseDirectory` and
+  `openLinksInApp` to the browser plugin but kept the old keys stored. 0.3.14 has shipped, so it stays as it is:
+  0.3.15 drops both keys, copying the value first when the user has nothing stored under the new key. Test:
+  `default-setup/tests/unit/migrations/migration-0.3.15.spec.ts`.
 - **N4. The settings plugin resolved plugin names in default-setup's context.** `PLUGIN.SELECT` takes a
   `PluginSettingsKey`, and senders resolve the name where they write it. Test:
   `default-setup/tests/unit/settings-plugin-select.spec.ts`.
@@ -68,12 +69,9 @@ test was mutation-checked: breaking the fix fails it.
   `changes` type (`ArrayChanges`) was declared in a module no package export reaches, so `abuddy build`'s
   declaration emit failed with TS2742 for any pack whose entry type is inferred. `@abuddy/sdk/framework` exports it
   beside `SystemEvents`. Test: `abuddy-cli/tests/build/dependency-graph.spec.ts` and the facade specs.
-- **N7. The user's own actions called services the way 0.3.14 took them.** Bare feature names
-  (`sendToPlugin('threads')`, `getPluginSettings('code')`), `sendToBrainSystem`, and onboarding in the settings
-  all throw now. 0.3.15 rewrites exactly those forms in actions without a `sourceHash` (`rewrite-action-calls.ts`);
-  seeded actions are the seeder's, which 0.3.15 already lets replace them. Transform steps' scripts can call
-  services too and aren't rewritten. Test: `default-setup/tests/unit/migrations/rewrite-action-calls.spec.ts`;
-  `migration-0.3.15.spec.ts`.
+- **N7. The user's own actions may still call services the way 0.3.14 took them.** Left alone on purpose: seeded
+  actions are replaced by the seeder (0.3.15 marks them unedited), and an action the user wrote is theirs to fix.
+  An old bare name fails naming the ref to write; a removed call (`sendToBrainSystem`) fails as undefined.
 - **N8. Each window kept its last active plugin in `localStorage`, which nothing reads since the host keeps it.**
   The renderer's 0.3.15 migration removes it. Test: `renderer/src/setup/migrations/__tests__/frontend-migrations.spec.ts`.
 - **N9. The browser system sent its plugin its saved tabs twice per connection.** It listened for connections
