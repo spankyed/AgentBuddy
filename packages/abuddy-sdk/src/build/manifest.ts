@@ -78,9 +78,7 @@ export const PROVENANCE_KINDS = {
   entities: (m: ProvenanceManifest) => Object.keys(m.entities ?? {}),
   relKinds: (m: ProvenanceManifest) => Object.keys(m.relKinds ?? {}),
   commands: (m: ProvenanceManifest) => (m.commands ?? []).map((c) => c.name),
-  // Keyed by the id the plugin runs under, which is what a send names — hence the pack id. Keyed by
-  // feature id, a dependent that happens to reuse one of its dependency's feature ids recorded itself
-  // as the owner of that dependency's plugin.
+  // Keyed by address, so a dependent reusing one of its dependency's feature ids keeps both apart
   plugins: (m: ProvenanceManifest, packId: string) => (m.features ?? []).filter((f) => f.plugin).map((f) => qualifiedId(packId, f.id)),
 } as const;
 

@@ -52,7 +52,7 @@ test('a rebuilt built-in pack reloads with the seed data the rebuild changed', a
   expect(apiPort, 'the renderer knows the API port').toBeTruthy();
   expect(apiToken, 'the renderer knows the API token').toBeTruthy();
 
-  await app.navigate('library');
+  await app.navigate('default-setup/library');
   await expect.poll(() => libraryDocuments(appPage)).toContain(SEEDED_DOCUMENT);
 
   originalSeedFile = fs.readFileSync(SEED_FILE);

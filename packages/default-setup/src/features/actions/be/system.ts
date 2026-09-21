@@ -12,7 +12,6 @@ import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
 import { exportActions } from './repository/export-actions';
 import type { ActionEntity } from '@abuddy/sdk';
-import { busId } from '@/__generated__/bus-ids';
 
 const logger = createLogger('actions');
 
@@ -43,8 +42,7 @@ export type OutgoingActionEvents =
   | { type: 'ACTIONS_EXPORT_FAILED'; errors: string[] }
 
 export const actionsSpec = defineSystem('actions')<IncomingActionEvents | ActionsInternalEvents, OutgoingActionEvents>();
-/** The id this feature's system runs under, which is what `system.get(...)` takes */
-export const actions = busId.actions;
+export const actions = actionsSpec.id;
 
 // Broadcasts action events to both the actions and flows plugins (abuddy.json sendsTo)
 const broadcastActionEvent = (system: any, event: OutgoingActionEvents) => {

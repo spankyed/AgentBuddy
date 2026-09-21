@@ -64,7 +64,7 @@ test('previews a compiled seeds directory by its seeds.json and imports the sele
   const work = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-import-seeds-'));
   try {
     const directory = await compileSeeds(work);
-    await app.navigate('settings');
+    await app.navigate('default-setup/settings');
 
     const send = (event: Record<string, unknown>) => appPage.evaluate((e) => {
       (window as any).applicationState.system.get('default-setup.settings').send(e);

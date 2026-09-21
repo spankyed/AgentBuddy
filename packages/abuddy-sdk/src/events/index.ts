@@ -3,6 +3,7 @@
 import { boundHost, _isHostBound } from '../runtime/host-runtime.ts';
 import { _isFeHostBound, boundFeHost } from '../runtime/fe-host.ts';
 import { getDesignated } from '../designations/index.ts';
+import { addressOf, qualifiedId } from '../ids/addressing.ts';
 import type { EARS } from '../types/entities.ts';
 import type { ApplicationHotkeys } from '../types/index.ts';
 
@@ -160,25 +161,18 @@ export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
 }
 
 /**
- * The sends `#generated/events` builds.
- *
- * Both maps take each name the pack writes — its own features by id, a dependency's as
- * `<dependency>/<feature>` — to the id that system or plugin runs under. A pack writes the short name for
- * its own and never the qualified id, so the identity rule can change without touching pack code.
+ * The sends `#generated/events` builds for pack `packId`. A pack names its own features by id and another
+ * pack's as `<packId>/<featureId>`, and a host plugin by its bare id; each send goes to the address that
+ * name derives to (`@abuddy/sdk/ids`). The types reject a name nothing declares, and the app reports a
+ * send it has no receiver for.
  */
-export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(
-  systemIds: Readonly<Record<string, string>>,
-  pluginIds: Readonly<Record<string, string>> = {},
-): TypedEvents<P, S> {
-  const idFor = (kind: 'system' | 'plugin', ids: Readonly<Record<string, string>>, name: string): string => {
-    if (!Object.prototype.hasOwnProperty.call(ids, name)) {
-      throw new Error(`No ${kind} is named "${name}": send to one of this pack's features, or a dependency's as "<dependency>/<feature>"`);
-    }
-    return ids[name];
-  };
+export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S> {
+  const hostPlugins: readonly string[] = HOST_PLUGIN_IDS;
+  const address = (name: string): string =>
+    name.includes('/') || hostPlugins.includes(name) ? addressOf(name) : qualifiedId(packId, name);
   return {
-    emit: (name: string, event: { type: string }) => emit(idFor('plugin', pluginIds, name), event),
-    sendToPlugin: (name: string, event: { type: string }) => sendToPlugin(idFor('plugin', pluginIds, name), event),
-    sendToSystem: (name: string, event: { type: string }) => sendToSystem(idFor('system', systemIds, name), event),
+    emit: (name: string, event: { type: string }) => emit(address(name), event),
+    sendToPlugin: (name: string, event: { type: string }) => sendToPlugin(address(name), event),
+    sendToSystem: (name: string, event: { type: string }) => sendToSystem(address(name), event),
   } as unknown as TypedEvents<P, S>;
 }

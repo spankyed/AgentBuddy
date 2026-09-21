@@ -6,6 +6,7 @@ import * as os from 'os';
 import { execFileSync } from 'child_process';
 import { createRequire } from 'module';
 import { resolveAppContext } from '@abuddy/sdk/env';
+import { addressOf, qualifiedId } from '@abuddy/sdk/ids';
 import { installPackFromLocal, PACK_LOAD_MESSAGES } from '@abuddy/host/packs';
 import { appVersion } from './app-version.ts';
 import { appLaunchEnv } from './launch-env.ts';
@@ -143,7 +144,7 @@ function getPackManifest(): { id: string; pluginIds: string[] } | null {
     // The ids the plugins run under: a plugin is addressed `<packId>.<featureId>`, as a system is
     pluginIds: (manifest.features ?? [])
       .filter((f: any) => f.plugin)
-      .map((f: any) => `${manifest.id}.${f.plugin?.id ?? f.id}`),
+      .map((f: any) => qualifiedId(manifest.id, f.id)),
   };
   return _packManifest;
 }
@@ -207,26 +208,20 @@ function captureOutput(app: ElectronApplication): void {
  * its whole suite while dead, because every test it runs asks the app about something else.
  */
 /**
- * The id a plugin name addresses in the running app, so a spec writes the short name its pack writes.
- *
- * A plugin runs under `<packId>.<featureId>`, and the host's own keep their bare ids. An exact id wins,
- * then the pack under test's own feature, then a feature exactly one registered pack has. Two packs
- * with that feature is the case the namespacing exists for, so it asks for the id rather than guessing.
+ * The id a spec's plugin name addresses, as the pack under test's own code names plugins: its features by
+ * id, another pack's as `<packId>/<featureId>`. Without a pack under test a bare name is an id as given —
+ * a host plugin's, or a built-in pack's written in full.
  */
-async function resolvePlugin(page: Page, name: string): Promise<string> {
+function pluginAddress(name: string): string {
   const packId = getPackManifest()?.id;
-  const resolved = await page.evaluate(({ id, pack }) => {
-    const plugins: Array<{ id: string }> = (window as any).applicationState?.getSnapshot()?.context?.plugins ?? [];
-    if (plugins.some((p) => p.id === id)) return { id };
-    if (pack && plugins.some((p) => p.id === `${pack}.${id}`)) return { id: `${pack}.${id}` };
-    const matches = plugins.filter((p) => p.id.endsWith(`.${id}`)).map((p) => p.id);
-    return matches.length === 1 ? { id: matches[0] } : { candidates: matches };
-  }, { id: name, pack: packId ?? null });
-  if (resolved.id) return resolved.id;
-  const { candidates = [] } = resolved;
-  throw new Error(candidates.length > 1
-    ? `Plugin "${name}" is ambiguous — ${candidates.join(' and ')} both have it. Name the one you mean.`
-    : `No registered plugin is named "${name}"`);
+  return name.includes('/') || !packId ? addressOf(name) : qualifiedId(packId, name);
+}
+
+/** `pluginAddress`, unless the name is itself a registered id (a host plugin, with a pack under test) */
+async function resolvePlugin(page: Page, name: string): Promise<string> {
+  const exact = await page.evaluate((id) =>
+    ((window as any).applicationState?.getSnapshot()?.context?.plugins ?? []).some((p: { id: string }) => p.id === id), name);
+  return exact ? name : pluginAddress(name);
 }
 
 async function waitForPackBackend(app: ElectronApplication, packId: string, timeoutMs = 15_000): Promise<void> {
@@ -542,14 +537,10 @@ export function createTest(options: CreateTestOptions = {}) {
         },
 
         waitForPlugin: async (pluginId, timeout = 30_000) => {
-          const packId = getPackManifest()?.id;
-          await page.waitForFunction(({ id, pack }) => {
-            const snap = (window as any).applicationState?.getSnapshot();
-            const plugins: Array<{ id: string }> = snap?.context?.plugins ?? [];
-            if (plugins.some((p) => p.id === id)) return true;
-            if (pack && plugins.some((p) => p.id === `${pack}.${id}`)) return true;
-            return plugins.filter((p) => p.id.endsWith(`.${id}`)).length === 1;
-          }, { id: pluginId, pack: packId ?? null }, { timeout });
+          await page.waitForFunction((ids) => {
+            const plugins: Array<{ id: string }> = (window as any).applicationState?.getSnapshot()?.context?.plugins ?? [];
+            return plugins.some((p) => ids.includes(p.id));
+          }, [pluginId, pluginAddress(pluginId)], { timeout });
         },
 
         waitForState: async (check, timeout = 10_000) => {

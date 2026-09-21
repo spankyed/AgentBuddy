@@ -390,18 +390,6 @@ const settingsBinding = (id: string) => `__settings_${toPascalCase(id)}`;
 const systemBinding = (id: string) => `__system_${id}`;
 const pluginBinding = (id: string) => `__plugin_${id}`;
 
-/**
- * The id a feature's system or plugin runs under. One rule for every pack, built-in included: what a pack
- * writes is the name, and the name layer (`systemIds`, `pluginIds`, `busId`) is what turns it into this.
- *
- * A built-in pack's systems ran under bare feature ids until the plugins were namespaced. Keeping that
- * would have left the inconsistency rather than removed it — plugins namespaced for every pack, systems
- * only for external ones — and bare ids are the host's namespace (`bus`, `HOST_PLUGIN_IDS`).
- */
-function runningSystemId(packId: string, featureId: string): string {
-  return qualifiedId(packId, featureId);
-}
-
 export interface GenerateEntriesOptions {
   packRoot: string;
   depTypes?: Map<string, PackTypeManifest>;
@@ -734,7 +722,7 @@ ${manifest.migrations ? '  migrations,' : ''}
       .join('\n');
     const designated = pluginFeatures.filter(f => f.designation);
     const designationsProp = designated.length
-      ? `  designations: { ${designated.map(f => `'${f.designation}': '${f.id}'`).join(', ')} },\n`
+      ? `  designations: { ${designated.map(f => `'${f.designation}': '${qualifiedId(manifest.id, f.id)}'`).join(', ')} },\n`
       : '';
 
     const pluginList = pluginFeatures.map(f => pluginBinding(f.id)).join(', ');
@@ -871,11 +859,10 @@ export const {
     const features = manifest.features ?? [];
     const systemFeatures = features.filter(f => f.system);
 
-    // The id each system runs under, not the name `defineSystem` gave the feature: this module is what
-    // `system.get(...)` is called with. A feature's own module is where that constant lives (it reads
-    // `busId`), so this re-exports rather than defining a second copy.
+    // Addresses, for `system.get(...)`: this pack's from `busId`, a dependency's written out. A feature
+    // module's own `defineSystem` id is its name, which the sends take.
     const ownExports = systemFeatures
-      .map(f => `export { ${f.id} } from '${toImportPath(root, f.system!.entry)}';`)
+      .map(f => `export const ${f.id} = busId.${f.id};`)
       .join('\n');
 
     const depExports: string[] = [];
@@ -884,38 +871,31 @@ export const {
       const depFeatures = (snap.manifest.features ?? []).filter(f => f.system);
       const lines = depFeatures
         .filter(f => !seenIds.has(f.id))
-        .map(f => { seenIds.add(f.id); return `export const ${f.id} = '${runningSystemId(depId, f.id)}';`; });
+        .map(f => { seenIds.add(f.id); return `export const ${f.id} = '${qualifiedId(depId, f.id)}';`; });
       if (lines.length) {
         depExports.push(`// ${depId}`, ...lines);
       }
     }
 
-    const busIdImport = '';
     const busIdBlock = systemFeatures.length
       ? `\nexport { busId } from './bus-ids.js';\n`
       : '';
+
+    const busIdImport = systemFeatures.length ? `import { busId } from './bus-ids.js';\n\n` : '';
 
     return `${HEADER}
 ${busIdImport}${ownExports}
 ${depExports.length ? '\n' + depExports.join('\n') + '\n' : ''}${busIdBlock}`;
   }
 
-  // Kept import-free so frontend code can use it: importing busId via system-ids.ts
-  // would pull every backend system module into the pack's FE bundle.
+  // Each feature's address, which its system and its plugin share. Import-free so frontend code can use
+  // it: reaching it through system-ids.ts would pull every backend system into the pack's FE bundle.
   function generateBusIds(): string {
-    const systemFeatures = (manifest.features ?? []).filter(f => f.system);
-    if (!systemFeatures.length) return '';
-
-    const busIdEntries = systemFeatures
-      .map(f => {
-        const value = runningSystemId(manifest.id, f.id);
-        return `  ${f.id}: '${value}'`;
-      })
-      .join(',\n');
-
+    const addressed = (manifest.features ?? []).filter(f => f.system || f.plugin);
+    if (!addressed.length) return '';
     return `${HEADER}
 export const busId = {
-${busIdEntries},
+${addressed.map(f => `  ${f.id}: '${qualifiedId(manifest.id, f.id)}'`).join(',\n')},
 } as const;
 `;
   }
@@ -940,10 +920,7 @@ ${busIdEntries},
     const depReceivers = new Map([...depSnapshots].map(([depId, snap]) => [depId, receivingPlugins(snap.manifest)] as const));
     /**
      * Feature id → the pack owning that plugin, for plugins this pack reaches only through a dependency.
-     *
-     * Keyed by the feature id rather than the plugin's own, because `sendsTo` names a feature and this
-     * only feeds the diagnostic below. Two transitive packs sharing a feature id leave one of them named,
-     * which is still the pack the author most likely wants and far better than "no such plugin".
+     * Keyed by feature id because `sendsTo` names features; it only names a pack in a diagnostic.
      */
     const transitivePluginOwners = new Map(
       Object.entries(_mergeProvenance('plugins', [...depSnapshots]))
@@ -1031,21 +1008,6 @@ ${busIdEntries},
       ...eventDeps.map((depId) => qualified(depId, `Pick<${depAlias(depId, 'PackEvents')}, ${quoted(depTargets.get(depId)!)}>`)),
       ...(hostTargets.size ? [`Pick<HostPluginEvents, ${quoted(hostTargets)}>`] : []),
     ].join(' & ');
-    // Every pack gets sendToSystem: its own systems (busId), and each dependency's
-    // Its own plugins by feature id, each dependency's as the `sendsTo` named it, and the host's bare —
-    // bare ids are the host's reserved namespace, which registerPack keeps by refusing a pack claiming one
-    const pluginIds = [
-      ...[...ownPluginIds].map((id) => `  '${id}': '${qualifiedId(manifest.id, id)}',`),
-      ...[...depTargets].flatMap(([depId, targets]) => [...targets].map((t) => `  '${t}': '${qualifiedId(depId, t)}',`)),
-      ...[...hostTargets].map((id) => `  '${id}': '${id}',`),
-    ];
-    const systemIds = [
-      ...(hasSystems ? ['  ...busId,'] : []),
-      ...[...depSnapshots].flatMap(([depId, snap]) => (snap.manifest.features ?? [])
-        .filter((f) => f.system)
-        .map((f) => `  '${depId}/${f.id}': '${runningSystemId(depId, f.id)}',`)),
-    ];
-
     // The event types each own plugin receives, read from the senders' declared outgoing unions. Only this
     // pack's own plugins: a dependency's and the host's are declared by whoever owns them, and the app
     // merges every registered pack's map, so declaring them here would be a second opinion on someone
@@ -1065,7 +1027,7 @@ ${busIdEntries},
 
     return `${HEADER}
 import { defineEvents, ${hostTargets.size ? 'type HostPluginEvents, ' : ''}type IncomingEventsOf } from '@abuddy/sdk/events';
-${hasSystems ? `import { busId } from './bus-ids.js';\nimport type { specs as __specs } from './system-specs.js';\n` : ''}${imports}
+${hasSystems ? `import type { specs as __specs } from './system-specs.js';\n` : ''}${imports}
 ${[...depEventImports, ...depSystems.imports].join('\n')}
 
 /** Plugin id → the events this pack's systems send to that plugin (their own, and each \`sendsTo\`). */
@@ -1108,16 +1070,7 @@ export type QualifiedSystemEvents = ${[qualified(manifest.id, 'PackSystemEvents'
  */
 export type QualifiedPluginEvents = ${qualifiedPluginEvents};
 
-/** Each system name \`sendToSystem\` takes → the id that system runs under */
-const systemIds = {${systemIds.length ? `\n${systemIds.join('\n')}\n` : ''}};
-
-/**
- * Each plugin name \`emit\` and \`sendToPlugin\` take → the id that plugin runs under. Exported for code
- * that keys data by a plugin — settings, say — so it writes the name and stores the id, as a send does.
- */
-export const pluginId = {${pluginIds.length ? `\n${pluginIds.join('\n')}\n` : ''}} as const;
-
-export const { emit, sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<PackEvents, SendableSystemEvents>(systemIds, pluginId);
+export const { emit, sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<PackEvents, SendableSystemEvents>('${manifest.id}');
 `;
   }
 

@@ -41,7 +41,7 @@ const runtime = (services = '') => `
   module.exports = {
     registration: {
       id: '${PACK_ID}',
-      systems: [{ id: 'widget', machine: { id: 'widget', config: {} }, events: new Set(['PING']) }],
+      systems: [{ id: '${PACK_ID}.widget', machine: { id: 'widget', config: {} }, events: new Set(['PING']) }],
       ${services}
     },
   };
@@ -108,7 +108,7 @@ describe('reloading a built-in pack', () => {
         },
         registration: {
           id: '${BUILT_IN_ID}',
-          systems: [{ id: 'widget', machine: { id: 'widget', config: {} }, events: new Set(['PING']) }],
+          systems: [{ id: '${BUILT_IN_ID}.widget', machine: { id: 'widget', config: {} }, events: new Set(['PING']) }],
           boot: {
             onInit() { module.exports.compiledDirAtInit = module.exports.getCompiledDir(); },
             seedManifest: { seedKeys: ['actions'], get compiledDir() { return module.exports.getCompiledDir(); } },
@@ -165,7 +165,7 @@ describe('reloading a built-in pack', () => {
     const packDir = path.join(packagesDir, BUILT_IN_ID);
     const reloaded = require(path.join(packDir, 'dist', 'runtime', 'index.cjs'));
     expect(reloaded.compiledDirAtInit).toBe(path.join(packDir, 'dist'));
-    expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: BUILT_IN_ID, systemIds: ['widget'] });
+    expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: BUILT_IN_ID, systemIds: [`${BUILT_IN_ID}.widget`] });
   });
 
   // Only the reloaded pack's own systems restart; other packs' systems read what it registers and seeds
@@ -254,7 +254,7 @@ describe('reloading a built-in pack', () => {
     await reloadBuiltInPack(registry, BUILT_IN_ID, bus as never);
 
     // The swap already happened, so the systems have to be restarted whatever the seed did
-    expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: BUILT_IN_ID, systemIds: ['widget'] });
+    expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: BUILT_IN_ID, systemIds: [`${BUILT_IN_ID}.widget`] });
     expect(loggedErrors.join('\n')).toContain('ENOENT');
     // ...and the artifacts are still published, which the seed used to skip on its way out
     const { hostPacksDir } = resolveAppContext();

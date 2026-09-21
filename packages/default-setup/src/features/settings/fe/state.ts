@@ -1,3 +1,4 @@
+import { busId } from '@/__generated__/bus-ids';
 import { assign, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe'
 import { safeEvents } from '@abuddy/sdk/fe'
@@ -8,7 +9,7 @@ import {
 } from '@abuddy/sdk/fe'
 import type { OutgoingSettingsEvents, SettingsData, GeneralSettings, PersonalInfo, PluginSettings } from '@/__generated__/types'
 import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services'
-import { sendToSystem, pluginId } from '@/__generated__/events'
+import { sendToSystem } from '@/__generated__/events'
 import type { ApplicationHotkeys } from '@abuddy/sdk/types'
 import type { EARS } from '@abuddy/sdk'
 import type { PackSeedsPreview } from '@abuddy/sdk/build'
@@ -17,9 +18,8 @@ import type { FAQItem } from '@/features/settings/be/types';
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
 /* ─────────────────────────────────────────────────────────── */
-export const id = pluginId.settings
-/** This feature's name, which is how its own code addresses its system — the plugin's id is a
- * different thing now that a plugin runs under `<packId>.<featureId>`. */
+export const id = busId.settings
+/** What this feature's code calls its system (`sendToSystem`); `id` is the plugin's address */
 export const feature = 'settings' as const;
 export type SettingsState = ActorRefFrom<typeof settingsState>
 

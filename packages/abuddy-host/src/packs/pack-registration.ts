@@ -15,7 +15,7 @@ import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS, _reservedEntries } from '@abuddy/sdk/types';
 import { HOST_PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
-import { qualifiedId } from '@abuddy/sdk/ids';
+import { addressOf, qualifiedId } from '@abuddy/sdk/ids';
 import { makePolicy, registerRepository, unregisterRepository, type PartitionPolicy } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { packSeedOrder } from './pack-discovery.ts';
@@ -38,24 +38,9 @@ const appEARS = (): PackEARS => ({
   relKinds: SDK_REL_KINDS,
 });
 
-/**
- * The id of the system `featureId` names, among `systemIds`, or undefined when none of them is it.
- *
- * A system id is `<packId>.<featureId>`, and a built-in pack's used to be the bare feature id, so both
- * spellings resolve. One finder, because a designation and a `<pack>/<feature>` address are asking the
- * same question of the same ids and must not answer it differently.
- */
-function systemIdFor(systemIds: readonly string[], packId: string, featureId: string): string | undefined {
-  return systemIds.find((id) => id === featureId || id === qualifiedId(packId, featureId));
-}
-
-function designationsOf({ id, systems, features = [] }: PackRegistration): Record<string, string> {
-  const systemIds = systems.map((s) => s.id);
-  return Object.fromEntries(
-    // A feature with no system falls back to the id it would run under, so a plugin-only feature still
-    // plays its role and every designation reads as one address rule
-    features.flatMap((f) => (f.designation ? [[f.designation, systemIdFor(systemIds, id, f.id) ?? qualifiedId(id, f.id)]] : [])),
-  );
+/** Role → the address of the feature playing it: its system and its plugin share it */
+function designationsOf({ id, features = [] }: PackRegistration): Record<string, string> {
+  return Object.fromEntries(features.flatMap((f) => (f.designation ? [[f.designation, qualifiedId(id, f.id)]] : [])));
 }
 
 export interface PackExtensions {
@@ -157,7 +142,7 @@ export interface PackRegistry extends PackRegistryView {
   clearPackReplacing(packId: string): void;
   /** Host systems and every registered pack's, by id */
   getRegisteredSystems(): Map<string, AnyStateMachine>;
-  /** The bus ids of a registered pack's systems (external packs' are `<packId>.<featureId>`) */
+  /** The addresses of a registered pack's systems, `<packId>.<featureId>` */
   getRegisteredPackSystemIds(packId: string): string[];
   /**
    * Each registered system's id → the incoming event types it accepts (`*` accepts any). Cached until a
@@ -361,6 +346,11 @@ export function createPackRegistry(): PackRegistry {
     if (registrations.has(registration.id)) {
       throw new Error(`Pack "${registration.id}" is already registered`);
     }
+    // `toPackSystemDefs` addresses a pack's systems; one that isn't is a registration built by hand wrong
+    const stray = registration.systems.find((sys) => !sys.id.startsWith(`${registration.id}.`));
+    if (stray) {
+      throw new Error(`Pack "${registration.id}": system "${stray.id}" isn't addressed as "${qualifiedId(registration.id, '<featureId>')}"`);
+    }
 
     checkEARS(registration);
 
@@ -465,26 +455,18 @@ export function createPackRegistry(): PackRegistry {
   }
 
   /**
-   * The plugins a pack owns: the ones it declares events for, and the ones its `features` name.
-   *
-   * `features` is what makes the second half matter. Codegen has always emitted it, and it predates
-   * `receivedEventTypes`, so a pack built before event declarations existed still says which plugins are
-   * its own — which is how the app tells "this pack declared nothing" from "nobody owns this id" instead
-   * of dropping every event such a pack sends. A hand-written registration may name only one of the two,
-   * so neither is required to be the complete record.
-   *
-   * Owning an id is not claiming one: the map below gives it to whoever had it first, the host included.
+   * The features a pack owns a plugin for: those its `features` give one, and those it declares events
+   * for. A pack built before event declarations existed still names its plugins through `features`,
+   * which is how the app tells "declared nothing" from "nobody owns this id"; a hand-written registration
+   * may give only one of the two.
    */
+  function pluginFeatures(reg: PackRegistration): string[] {
+    const withPlugin = (reg.features ?? []).filter((f) => f.hasPlugin).map((f) => f.id);
+    return [...new Set([...withPlugin, ...Object.keys(reg.receivedEventTypes ?? {})])];
+  }
+
   function ownedPluginIds(reg: PackRegistration): string[] {
-    // Both halves name a feature of this pack, so both are qualified here: a plugin runs under
-    // `<packId>.<featureId>`, as a system does. Qualifying on this side rather than taking the ids as
-    // given is what makes ownership structural — pack ids are unique and neither id may contain a dot,
-    // so a pack's plugins can't reach another pack's namespace or the host's bare ids, and there is no
-    // shadowing left for a collision check to refuse.
-    const ids = new Set<string>();
-    for (const featureId of Object.keys(reg.receivedEventTypes ?? {})) ids.add(qualifiedId(reg.id, featureId));
-    for (const feature of reg.features ?? []) if (feature.hasPlugin) ids.add(qualifiedId(reg.id, feature.id));
-    return [...ids];
+    return pluginFeatures(reg).map((featureId) => qualifiedId(reg.id, featureId));
   }
 
   /** Every plugin the host owns: those a pack may `sendsTo`, and those only the host sends to */
@@ -498,19 +480,10 @@ export function createPackRegistry(): PackRegistry {
 
   function buildPluginEventValidationMap(): Map<string, PluginEventTypes> {
     const map = new Map<string, PluginEventTypes>(hostPluginEventTypes());
-    /**
-     * Each pack contributes its own plugins under its own namespace, so no pack can reach another's
-     * entry or the host's. The merge this replaced unioned every `receivedEventTypes` key into one set
-     * per plugin id, so any pack could add event types to any plugin, `application` included, whatever
-     * the comment above it claimed.
-     *
-     * The keys are feature ids on both sides; `ownedPluginIds` is what says how a feature is addressed,
-     * so the qualification happens there and once.
-     */
+    // Each pack's plugins are under its own address, so no pack reaches another's entry or the host's
     for (const reg of registrations.values()) {
       const declared = reg.receivedEventTypes;
-      const owned = new Set([...Object.keys(declared ?? {}), ...(reg.features ?? []).filter((f) => f.hasPlugin).map((f) => f.id)]);
-      for (const featureId of owned) {
+      for (const featureId of pluginFeatures(reg)) {
         map.set(qualifiedId(reg.id, featureId), declared ? new Set(declared[featureId] ?? []) : null);
       }
     }
@@ -582,17 +555,8 @@ export function createPackRegistry(): PackRegistry {
     resolveSystemAddress(address) {
       const slash = address.indexOf('/');
       if (slash <= 0) return undefined;
-      const packId = address.slice(0, slash);
-      return systemIdFor(getRegisteredPackSystemIds(packId), packId, address.slice(slash + 1));
-    },
-
-    resolvePluginAddress(address) {
-      // A bare name is the host's namespace, so it resolves only if the host owns it; anything else is
-      // `<packId>/<featureId>`. The validation map is the ownership record, so this asks it rather than
-      // deciding for itself which pack owns what.
-      const slash = address.indexOf('/');
-      const id = slash <= 0 ? address : qualifiedId(address.slice(0, slash), address.slice(slash + 1));
-      return (pluginEventValidationMap ??= buildPluginEventValidationMap()).has(id) ? id : undefined;
+      const id = addressOf(address);
+      return getRegisteredPackSystemIds(address.slice(0, slash)).includes(id) ? id : undefined;
     },
 
     getEventValidationMap: () => eventValidationMap ??= buildEventValidationMap(),

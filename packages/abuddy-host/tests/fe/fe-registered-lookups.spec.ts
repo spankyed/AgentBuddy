@@ -44,9 +44,9 @@ const memoDsl = { prefix: 'memo:', schema: 'declare const memo: string', globals
 
 describe("a pack's frontend", () => {
   it('is found once it registers, and gone once it unregisters', () => {
-    const notebook = plugin('notebook-main');
+    const notebook = plugin('notebook-pack.notebook-main');
     add('notebook-pack', {
-      designations: { notebook: 'notebook-main' },
+      designations: { notebook: 'notebook-pack.notebook-main' },
       plugins: [notebook],
       steps: [noteStepFE],
       artifacts: [cardView],
@@ -56,9 +56,7 @@ describe("a pack's frontend", () => {
       dslTypes: { memo: memoDsl },
     });
 
-    // Registered under `<packId>.<featureId>`, from a copy: the author's module is untouched
-    expect(plugins().map((p) => p.id)).toEqual(['notebook-pack.notebook-main']);
-    expect(notebook.id, "the pack's own module was mutated").toBe('notebook-main');
+    expect(plugins()).toEqual([notebook]);
     expect(getDesignated('notebook')).toBe('notebook-pack.notebook-main');
     expect(stepRegistry.getFE('note')?.nodeConfig.label).toBe('Note');
     expect(stepRegistry.all().map((s) => s.type)).toEqual(['note']);
@@ -73,7 +71,7 @@ describe("a pack's frontend", () => {
     expect(appExtension('welcome')).toBe(Welcome);
     expect(getDslTypes().get('memo')).toBe(memoDsl);
 
-    expect(remove('notebook-pack').map((p) => p.id)).toEqual(['notebook-pack.notebook-main']);
+    expect(remove('notebook-pack')).toEqual([notebook]);
     expect(plugins()).toEqual([]);
     expect(hasDesignation('notebook')).toBe(false);
     expect(stepRegistry.get('note')).toBeUndefined();
@@ -84,29 +82,6 @@ describe("a pack's frontend", () => {
     expect(tiptapPluginRegistry.getAll()).not.toContain(mentions);
     expect(appExtension('welcome')).toBeUndefined();
     expect(getDslTypes().has('memo')).toBe(false);
-  });
-
-  // The renderer adds what this returns to the app. It used to add the registration's own plugin
-  // modules instead, so an external pack's plugins reached the app under their bare feature ids while
-  // the registry held them under `<packId>.<featureId>` — the app then had a plugin nothing could send to.
-  it('returns the plugins it registered, under the ids they run under', () => {
-    const notes = plugin('notes');
-    packs.push('returning-pack');
-    expect(registry.registerPackFE({ id: 'returning-pack', plugins: [notes] })).toEqual([{ id: 'returning-pack.notes' }]);
-    expect(notes.id, "the pack's own module was mutated").toBe('notes');
-  });
-
-  // A built pack's plugin module names itself through the generated `pluginId` map, so it arrives
-  // already under the id it runs as; a hand-written one names the feature. Both resolve, as a system id does.
-  it('takes a plugin that already carries its own qualified id', () => {
-    packs.push('named-pack');
-    const registered = registry.registerPackFE({
-      id: 'named-pack',
-      plugins: [plugin('named-pack.notes')],
-      designations: { notebook: 'notes' },
-    });
-    expect(registered.map((p) => p.id)).toEqual(['named-pack.notes']);
-    expect(getDesignated('notebook')).toBe('named-pack.notes');
   });
 
   it("merges its step's frontend facet into the definition another registration gave the type", () => {
@@ -137,9 +112,10 @@ describe("a pack's frontend", () => {
   // Two packs with a `notes` feature each get a plugin, because a plugin is addressed by its pack. Only
   // the default is a single slot, and the first registration keeps it.
   it("gives each pack its own plugin, and keeps the first default plugin", () => {
-    const first = plugin('notes');
+    const first = plugin('first-pack.notes');
+    const cards = plugin('second-pack.cards');
     add('first-pack', { plugins: [first], defaultPlugin: first });
-    add('second-pack', { plugins: [plugin('notes'), plugin('cards')], defaultPlugin: plugin('cards') });
+    add('second-pack', { plugins: [plugin('second-pack.notes'), cards], defaultPlugin: cards });
     expect(plugins().map((p) => p.id)).toEqual(['first-pack.notes', 'second-pack.notes', 'second-pack.cards']);
     expect(defaultPlugin()?.id).toBe('first-pack.notes');
     expect(remove('second-pack').map((p) => p.id)).toEqual(['second-pack.notes', 'second-pack.cards']);

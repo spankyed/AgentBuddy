@@ -102,8 +102,10 @@ export default ${camel}Plugin;
 `;
 
 const STATE = (name: string) => `import { setup, type ActorRefFrom } from 'xstate';
+import { busId } from '#generated/bus-ids';
 
-export const id = '${name}';
+// The plugin's address, \`<packId>.${name}\`: what the app registers it under and \`useActorSystem().get\` finds
+export const id = busId.${name};
 export type ${toPascalCase(name)}State = ActorRefFrom<typeof ${toCamelCase(name)}State>;
 
 const ${toCamelCase(name)}State = setup({

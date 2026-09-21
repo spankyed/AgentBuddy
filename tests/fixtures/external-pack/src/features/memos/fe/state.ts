@@ -1,11 +1,12 @@
+import { busId } from '#generated/bus-ids';
 import { setup, assign, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
-import { sendToSystem, pluginId } from '#generated/events';
+import { sendToSystem } from '#generated/events';
 import type { OutgoingMemosEvents } from '../be/system';
 import type { MemoNoteDTO } from '../be/memo-notes';
 import type { MemoDTO } from '../be/types';
 
-export const id = pluginId.memos;
+export const id = busId.memos;
 
 type UIEvents = { type: 'MEMOS.ADD'; text: string } | { type: 'MEMOS.ADD_NOTE'; text: string };
 export type MemosEvents = UIEvents | OutgoingMemosEvents;

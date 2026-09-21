@@ -1,3 +1,4 @@
+import { busId } from '@/__generated__/bus-ids';
 import { assign, setup, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
 import breadcrumb, { breadcrumbList } from '@abuddy/sdk/fe';
@@ -8,7 +9,7 @@ import type {
   OutgoingBrainEvents,
 } from '@/__generated__/types'
 import type { EventListenerEntity, FlowTNodeData } from '@/__generated__/types';
-import { sendToSystem, pluginId } from '@/__generated__/events';
+import { sendToSystem } from '@/__generated__/events';
 import type { StepRuntimeError, TNodeEntity, TrackTree } from '@abuddy/sdk/steps';
 import {
   applyTNodeSpawn,
@@ -17,9 +18,8 @@ import {
   type NormalizedTNodeTree,
 } from './trace-tree';
 
-export const id = pluginId.brain;
-/** This feature's name, which is how its own code addresses its system — the plugin's id is a
- * different thing now that a plugin runs under `<packId>.<featureId>`. */
+export const id = busId.brain;
+/** What this feature's code calls its system (`sendToSystem`); `id` is the plugin's address */
 export const feature = 'brain' as const;
 export type BrainState = ActorRefFrom<typeof brainState>
 

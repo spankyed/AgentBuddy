@@ -268,11 +268,8 @@ describe('a type two packs contribute facets of', () => {
   });
 });
 
-// A plugin id another pack holds used to shadow: the second pack installed with no UI, its declared event
-// types never registered, and every send to that id reached the first pack.
-// Two packs naming the same feature used to mean the second installed with no UI and every send to the
-// id reached the first. A plugin is addressed `<packId>.<featureId>` now, so the case isn't a conflict to
-// refuse — it's two packs with a `memos` plugin each.
+// A plugin is addressed `<packId>.<featureId>`, so two packs with a `memos` feature have a plugin each and
+// neither shadows the other.
 describe('two packs naming the same feature', () => {
   const withPlugin = (id: string, pluginId: string) =>
     ({ id, systems: [], features: [{ id: pluginId, hasSystem: false, hasPlugin: true, services: [] }] });
@@ -288,8 +285,7 @@ describe('two packs naming the same feature', () => {
     expect(stepRegistry.has('note')).toBe(true);
   });
 
-  // Bare ids are the host's namespace. A pack can't reach it by naming a feature after one, because the
-  // id it gets is its own — this is the structural half of what a collision check used to refuse.
+  // Bare ids are the host's namespace; a pack naming a feature after one still gets an id of its own
   it("leaves the host's own plugin alone when a feature is named after it", () => {
     const host = registry.getPluginEventValidationMap().get('application');
     add({ ...withPlugin('impostor', 'application'), receivedEventTypes: { application: ['HIJACKED'] } });

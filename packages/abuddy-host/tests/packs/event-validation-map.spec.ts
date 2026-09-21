@@ -115,8 +115,7 @@ describe('a pack cannot widen a plugin it does not own', () => {
     expect(registry.getPluginEventValidationMap().get('impostor-pack.application')).toEqual(new Set(['ANYTHING']));
   });
 
-  // Shadowing used to be tolerated: the second pack installed with no UI and every send to the id reached
-  // the first. Both packs get their own plugin now, so neither can widen or shadow the other's contract.
+  // Each pack's plugin has its own address, so neither can widen or shadow the other's contract
   it("gives a second pack naming the same feature its own entry, leaving the first's", () => {
     const registry = createPackRegistry();
     registry.registerPack({

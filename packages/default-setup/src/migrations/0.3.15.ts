@@ -1,10 +1,10 @@
+import { busId } from '@/__generated__/bus-ids';
 import { untypedQx } from '@abuddy/ears';
 import { markSeededRowUnedited } from '@abuddy/sdk/seed';
 import { EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
 import type { PackMigration } from '@abuddy/sdk/framework';
 import { createLogger } from '@abuddy/sdk/logger';
-import { pluginId } from '@/__generated__/events';
 import type { SettingsData } from '@/features/settings/be/types';
 
 const logger = createLogger('migrations');
@@ -50,8 +50,8 @@ export const migration: PackMigration = {
 
     // ── The root flow is the flow with the root role, and the brain says which one it runs ──
     // Copies of both kept in the settings are no longer read or written.
-    repository.settingsCommands.removeStored(['plugins', pluginId.flows, 'rootFlowId']);
-    repository.settingsCommands.removeStored(['plugins', pluginId.brain, 'runningRootFlowId']);
+    repository.settingsCommands.removeStored(['plugins', busId.flows, 'rootFlowId']);
+    repository.settingsCommands.removeStored(['plugins', busId.brain, 'runningRootFlowId']);
   },
 };
 

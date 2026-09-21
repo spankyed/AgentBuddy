@@ -10,7 +10,6 @@ import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
 import { exportPrompts } from './repository/export-prompts';
 import type { PromptEntity } from '@abuddy/sdk';
-import { busId } from '@/__generated__/bus-ids';
 
 const logger = createLogger('prompts');
 
@@ -41,8 +40,7 @@ export type OutgoingPromptEvents =
   | { type: 'PROMPTS_EXPORT_FAILED'; errors: string[] }
 
 export const promptsSpec = defineSystem('prompts')<IncomingPromptEvents | PromptsInternalEvents, OutgoingPromptEvents>();
-/** The id this feature's system runs under, which is what `system.get(...)` takes */
-export const prompts = busId.prompts;
+export const prompts = promptsSpec.id;
 
 export const promptsSystem = setup({
   types: promptsSpec.types,

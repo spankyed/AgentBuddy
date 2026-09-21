@@ -17,7 +17,6 @@ import { importThreads } from './import-threads';
 import { runThreadTeardown } from './thread-teardown';
 import { generateAsideText } from './services/chat';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
-import { busId } from '@/__generated__/bus-ids';
 
 const logger = createLogger('threads');
 let birthFlowStarted = false;
@@ -96,8 +95,7 @@ export interface ThreadsContext {
 }
 
 export const threadsSpec = defineSystem('threads')<IncomingThreadsEvents | ThreadsInternalEvents, OutgoingThreadsEvents, ThreadsContext>();
-/** The id this feature's system runs under, which is what `system.get(...)` takes */
-export const threads = busId.threads;
+export const threads = threadsSpec.id;
 
 function reportThreadOperationError(
   operation: 'create' | 'update' | 'delete' | 'archive' | 'unarchive' | 'pin' | 'unpin' | 'status' | 'parent',

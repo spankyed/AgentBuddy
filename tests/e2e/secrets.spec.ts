@@ -18,7 +18,7 @@ function filesUnder(dir: string): string[] {
 
 
 test('adds, selects and stores API keys without the key strings reaching logs, files or renderer state', async ({ app, appPage, electronApp }) => {
-  await app.navigate('settings');
+  await app.navigate('default-setup/settings');
   await appPage.evaluate(() => {
     (window as any).applicationState.system.get('default-setup.settings').send({ type: 'GENERAL_NAV.SELECT', item: 'secrets' });
   });

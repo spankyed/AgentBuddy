@@ -4,6 +4,9 @@
 
 ```ts
 
+// @public
+export function addressOf(name: string): string;
+
 // @public (undocumented)
 export const bus: "bus";
 

@@ -281,24 +281,6 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
   });
 }
 
-/**
- * A pack's registration with its systems under the ids the app runs them under, `<packId>.<featureId>`
- * for every pack — which its `#generated/bus-ids` names.
- *
- * A registration built by the current `toPackSystemDefs` already carries them, so this only covers one
- * written by hand, as the pack loader's own prefixing does.
- */
-function asRunByApp(registration: PackRegistration, manifest: PackManifest): PackRegistration {
-  const prefix = `${manifest.id}.`;
-  return {
-    ...registration,
-    systems: registration.systems.map((system) => ({
-      ...system,
-      id: system.id.startsWith(prefix) ? system.id : prefix + system.id,
-    })),
-  };
-}
-
 /** Registers the pack's runtime and its dependencies' (loaded from their cached runtime/index.cjs), as the app does */
 async function registerRuntimes(packDir: string, manifest: PackManifest, dependencies: ReadonlyMap<string, CachedDependency>, registration: PackRegistration): Promise<void> {
   for (const [depId, dependency] of dependencies) {
@@ -309,10 +291,10 @@ async function registerRuntimes(packDir: string, manifest: PackManifest, depende
     const seedsDir = path.join(dependency.dir, 'runtime', 'seeds');
     const runtime = await loadDependencyRuntime(packDir, depId, runtimeEntry, fs.existsSync(seedsDir) ? seedsDir : undefined);
     startTestRuntime({ entityTypes: Object.values(runtime.registration.ears?.entities ?? {}) });
-    registry.registerPack(asRunByApp(runtime.registration, dependency.manifest));
+    registry.registerPack(runtime.registration);
   }
   startTestRuntime({ entityTypes: Object.values(registration.ears?.entities ?? {}) });
-  registry.registerPack(asRunByApp(registration, manifest));
+  registry.registerPack(registration);
   setAppPacks(registry, manifest.id);
 }
 

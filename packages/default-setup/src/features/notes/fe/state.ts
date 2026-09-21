@@ -1,3 +1,4 @@
+import { busId } from '@/__generated__/bus-ids';
 import { assign, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb, { breadcrumbList } from '@abuddy/sdk/fe'
 import { safeEvents } from '@abuddy/sdk/fe'
@@ -9,14 +10,13 @@ import type {
   OutgoingNotesEvents,
   NoteDTO,
 } from '@/__generated__/types'
-import { sendToSystem, pluginId } from '@/__generated__/events'
+import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
 import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
 
-export const id = pluginId.notes
-/** This feature's name, which is how its own code addresses its system — the plugin's id is a
- * different thing now that a plugin runs under `<packId>.<featureId>`. */
+export const id = busId.notes
+/** What this feature's code calls its system (`sendToSystem`); `id` is the plugin's address */
 export const feature = 'notes' as const;
 export type NotesState = ActorRefFrom<typeof notesState>
 

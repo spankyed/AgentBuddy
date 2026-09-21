@@ -104,7 +104,7 @@ export default bookmarksEntry;
 
 | Member | What it is |
 |---|---|
-| `id` | The literal id you passed (the feature id). The example uses it as the machine id and as the plugin id `emit` targets; it isn't the bus id of an external pack's system (see below) |
+| `id` | The literal id you passed: the feature id, which is the name code sends to (`emit`, `sendToSystem`). It isn't the id the system runs under, its address (see below) |
 | `types` | `{ context: TContext; events: TEvents \| SystemEvents }`, for `setup({ types })`. `SystemEvents` is `CLIENT_CONNECTED` and `PACK_CHANGED { packId }`, so incoming unions needn't list them |
 | `typeOf` | `safeEvents` over the same events, to narrow an event by type in actions |
 
@@ -118,15 +118,15 @@ export default bookmarksEntry;
 
 ### Communication patterns
 
-A system's bus id is the feature id in a built-in pack, and `<packId>.<featureId>` in an external pack (`my-pack.bookmarks`). Plugin ids stay the feature id. Don't write bus ids by hand: `busId` from `#generated/bus-ids` maps each of your features that has a system to its bus id. The module has no imports, so frontend code can use it. Actions don't need it: they name a system `<packId>/<featureId>` (see [`services.emitter`](services-and-data.md#host-services)).
+A feature's system and plugin both run under its address, `<packId>.<featureId>` (`my-pack.bookmarks`); bare ids are the app's own. The rule of thumb: **you send to a name, you look up an address.** Sends (`emit`, `sendToPlugin`, `sendToSystem`) take your features by id and another pack's as `<packId>/<featureId>`. Lookups (`system.get(...)`, `useActorSystem().get(...)`, a plugin's `id`) take the address, which you never write by hand: `busId` from `#generated/bus-ids` maps each of your features to it (the module has no imports, so frontend code can use it), and `#generated/system-ids` exports your dependencies' systems' too. Actions name systems and plugins `<packId>/<featureId>`, their own pack's included (see [`services.emitter`](services-and-data.md#host-services)).
 
 ```typescript
 import { busId } from '#generated/bus-ids';
 
-// System -> Plugin (via bus): emit takes the plugin id
+// System -> Plugin (via bus): emit takes the name
 system.get(bus).send(emit(bookmarks, { type: 'BOOKMARK_CREATED', bookmark }));
 
-// System -> System (direct)
+// System -> System (direct): system.get takes the address
 system.get(busId.tags).send({ type: 'SOME_EVENT' });
 ```
 
@@ -140,7 +140,7 @@ sendToSystem('bookmarks', { type: 'CREATE_BOOKMARK', url, title });
 sendToSystem('default-setup/settings', { type: 'GET_SETTINGS' });
 ```
 
-`sendToSystem` accepts only systems of your pack and its dependencies, and only the events each one declares (`defineSystem(id)<Incoming>()`); a missing field is reported against the event its `type` names. Each send names one system and one event type: a `systemId` or `type` typed as a union is rejected. It maps each name to the id that system runs under (`my-pack.bookmarks` for your own, `settings` for default-setup's), so pass `'bookmarks'`, not `busId.bookmarks`. A dependency's system is always named with the dependency's id, so a feature of yours may share its name: `'notes'` is your own, `'default-setup/notes'` default-setup's. The app rejects an unknown `systemId`, and an event `type` none of the machine's transitions names unless the feature lists it in `system.events.incoming`.
+`sendToSystem` accepts only systems of your pack and its dependencies, and only the events each one declares (`defineSystem(id)<Incoming>()`); a missing field is reported against the event its `type` names. Each send names one system and one event type: a `systemId` or `type` typed as a union is rejected. It sends to the address the name stands for (`my-pack.bookmarks` for your own, `default-setup.settings` for default-setup's), so pass `'bookmarks'`, not `busId.bookmarks`. A dependency's system is always named with the dependency's id, so a feature of yours may share its name: `'notes'` is your own, `'default-setup/notes'` default-setup's. The app rejects an unknown `systemId`, and an event `type` none of the machine's transitions names unless the feature lists it in `system.events.incoming`.
 
 Backend code that needs the connection or every incoming event subscribes with `onConnected(callback)` and `onIncoming(callback)` from `@abuddy/sdk/events`; each returns an unsubscribe function. Log entries arrive through `onLog(callback)` from `@abuddy/sdk/logger`.
 
@@ -187,15 +187,16 @@ export default bookmarksPlugin;
 | `isPinned` | `boolean` | no | Lists the plugin in the toolbar's pinned group |
 | `hotkeys` | `PluginHotkeyDefinition[]` | no | `{ action, global? }` per hotkey action. The active plugin's machine gets every hotkey event; other plugins' machines get only their `global` actions |
 | `options` | `{ headerClass?: string }` | no | Class for the canvas header |
-| `designation` | `string` | no | Set from the manifest's `features[].designation` by the generated entry; declare it there, not in the module |
 
 ### Frontend state machine
 
 ```typescript
 // src/features/bookmarks/fe/state.ts
 import { setup, type ActorRefFrom } from 'xstate';
+import { busId } from '#generated/bus-ids';
 
-export const id = 'bookmarks';
+// The plugin's address: what the app registers it under, and what useActorSystem().get(id) finds
+export const id = busId.bookmarks;
 export type BookmarksState = ActorRefFrom<typeof bookmarksState>;
 
 const bookmarksState = setup({

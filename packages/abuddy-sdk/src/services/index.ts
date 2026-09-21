@@ -1,6 +1,7 @@
 import type { repository } from '@abuddy/ears';
 import { boundHost, type HostRuntimeServices } from '../runtime/host-runtime.ts';
 import { sendToPlugin, sendToSystem, sendToBrainSystem } from '../events/index.ts';
+import { addressOf } from '../ids/addressing.ts';
 import { createLogger, type Logger } from '../logger/logger.ts';
 import type { AppDataService } from './app-data.ts';
 import type { TraceStore } from './trace-store.ts';
@@ -59,18 +60,9 @@ function sendToAddressedSystem(address: string, event: { type: string; [key: str
   sendToSystem(systemId, event);
 }
 
-/**
- * Sends to the plugin a `<packId>/<featureId>` name addresses, whatever id it runs under — the plugin
- * half of the above. A pack's own code has a generated name map for this; an action doesn't run inside
- * any pack, so it names the pack it means and the registry resolves it.
- */
-function sendToAddressedPlugin(address: string, event: { type: string; [key: string]: unknown }): void {
-  const pluginId = boundHost().packs.resolvePluginAddress(address);
-  if (!pluginId) {
-    throw new Error(`No registered plugin is named "${address}": services.emitter.sendToPlugin takes "<packId>/<featureId>"`);
-  }
-  sendToPlugin(pluginId, event);
-}
+/** An action names a plugin `<packId>/<featureId>`; the app reports a send to one nobody registered */
+const sendToAddressedPlugin = (address: string, event: { type: string; [key: string]: unknown }): void =>
+  sendToPlugin(addressOf(address), event);
 
 const emitter: HostServices['emitter'] = { sendToPlugin: sendToAddressedPlugin, sendToSystem: sendToAddressedSystem, sendToBrainSystem };
 

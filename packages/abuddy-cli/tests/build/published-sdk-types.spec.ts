@@ -36,7 +36,7 @@ function typecheck(tsc: TscVersion, moduleResolution: 'node16' | 'bundler') {
     "const memo = findById(memoId)!;",
     "export const text: string = memo.text;",
     "export const textNotAny: IsAny<typeof memo.text> = false;",
-    "const { emit, sendToSystem } = defineEvents<{ memos: { type: 'MEMO_ADDED'; id: string } }, { memos: { type: 'ADD_MEMO'; text: string } }>({ memos: 'demo.memos' });",
+    "const { emit, sendToSystem } = defineEvents<{ memos: { type: 'MEMO_ADDED'; id: string } }, { memos: { type: 'ADD_MEMO'; text: string } }>('demo');",
     "sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' });",
     "// @ts-expect-error ADD_MEMO needs its text",
     "sendToSystem('memos', { type: 'ADD_MEMO' });",

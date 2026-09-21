@@ -13,7 +13,6 @@ import { exportNotes } from './export-notes';
 import { importNotes } from './import-notes';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { NoteEntity } from '@/features/notes/be/types';
-import { busId } from '@/__generated__/bus-ids';
 
 const logger = createLogger('notes');
 
@@ -56,8 +55,7 @@ export type OutgoingNotesEvents =
   | { type: 'NOTES_EXPORT_FAILED'; errors: string[] }
 
 export const notesSpec = defineSystem('notes')<IncomingNoteEvents, OutgoingNotesEvents>();
-/** The id this feature's system runs under, which is what `system.get(...)` takes */
-export const notes = busId.notes;
+export const notes = notesSpec.id;
 
 export const notesSystem = setup({
   types: notesSpec.types,

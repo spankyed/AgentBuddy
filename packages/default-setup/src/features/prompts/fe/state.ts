@@ -1,3 +1,4 @@
+import { busId } from '@/__generated__/bus-ids';
 import { assign, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe'
 import { safeEvents } from '@abuddy/sdk/fe'
@@ -12,7 +13,7 @@ import type {
   PromptsSettings,
 } from '@/__generated__/types'
 import type { TemplateInput } from '@abuddy/sdk'
-import { sendToSystem, pluginId } from '@/__generated__/events'
+import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
 import type { PromptEntity, EARS } from '@abuddy/sdk'
@@ -20,9 +21,8 @@ import type { PromptEntity, EARS } from '@abuddy/sdk'
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
 /* ─────────────────────────────────────────────────────────── */
-export const id = pluginId.prompts
-/** This feature's name, which is how its own code addresses its system — the plugin's id is a
- * different thing now that a plugin runs under `<packId>.<featureId>`. */
+export const id = busId.prompts
+/** What this feature's code calls its system (`sendToSystem`); `id` is the plugin's address */
 export const feature = 'prompts' as const;
 export type PromptsState = ActorRefFrom<typeof promptsState>
 

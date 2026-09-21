@@ -15,7 +15,6 @@ import { createLogger } from '@abuddy/sdk/logger';
 import type { TNodeEntity } from '@abuddy/sdk/steps';
 import { services } from '@/__generated__/services';
 import { repository } from '@/__generated__/repository';
-import { busId } from '@/__generated__/bus-ids';
 
 const logger = createLogger('database');
 
@@ -57,8 +56,7 @@ export type OutgoingDatabaseEvents =
 export interface DatabaseContext { }
 
 export const databaseSpec = defineSystem('database')<IncomingDatabaseEvents | DatabaseInternalEvents, OutgoingDatabaseEvents>();
-/** The id this feature's system runs under, which is what `system.get(...)` takes */
-export const database = busId.database;
+export const database = databaseSpec.id;
 
 export const databaseSystem = setup({
   types: databaseSpec.types,

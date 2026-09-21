@@ -76,7 +76,7 @@ describe('pack-loader', () => {
           id: 'myFeature',
           system: { entry: 'src/features/myFeature/be/system.ts', events: { incoming: ['DO_THING'] } },
         }],
-      }, "[{ id: 'myFeature', machine: { id: 'test-system' }, events: [] }]");
+      }, "[{ id: 'test-pack.myFeature', machine: { id: 'test-system' }, events: [] }]");
 
       const result = loadExternalPacks();
 
@@ -263,7 +263,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
       setCompiledDir(dir) { compiledDir = dir; module.exports.compiledDirSeen = dir; },
       registration: {
         id: '${id}',
-        systems: [{ id: 'widget', machine, events: new Set(['PING']) }],
+        systems: [{ id: '${id}.widget', machine, events: new Set(['PING']) }],
         services: { hello: () => 'hi' },
         ears: {
           entities: { Widget: 'Widget' },

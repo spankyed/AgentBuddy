@@ -101,13 +101,20 @@ describe('registerPack designations', () => {
     registered.push(id);
   };
 
+  // Its system and plugin share the feature's address, so the role resolves to it with or without a system
   it.each([
-    ["an external pack's system", [system('ext.journal')], 'ext.journal'],
-    ["a built-in pack's system", [system('journal')], 'journal'],
-    ['the id it would run under, when no registered system plays it (the early system)', [], 'ext.journal'],
-  ])('resolves a role to %s', (_case, systems, expected) => {
+    ['with a system', [system('ext.journal')]],
+    ['without one (the early system)', []],
+  ])("resolves a role to the feature's address, %s", (_case, systems) => {
     registerDesignated('ext', systems);
-    expect(getDesignated('journal')).toBe(expected);
+    expect(getDesignated('journal')).toBe('ext.journal');
+  });
+
+  // `toPackSystemDefs` addresses a pack's systems; a hand-built one without its address is refused by name
+  it("refuses a system that isn't addressed under its pack", () => {
+    expect(() => registerDesignated('ext', [system('journal')]))
+      .toThrow('Pack "ext": system "journal" isn\'t addressed as "ext.<featureId>"');
+    expect(hasDesignation('journal')).toBe(false);
   });
 
   it('rejects a role another pack holds, registering none of the pack', () => {
@@ -133,9 +140,9 @@ describe('resolveSystemAddress', () => {
   };
 
   it("resolves <packId>/<featureId> to the id the pack's system runs under", () => {
-    registerSystems('default-setup', ['notes']);
+    registerSystems('default-setup', ['default-setup.notes']);
     registerSystems('ext', ['ext.notes']);
-    expect(resolveSystemAddress('default-setup/notes')).toBe('notes');
+    expect(resolveSystemAddress('default-setup/notes')).toBe('default-setup.notes');
     expect(resolveSystemAddress('ext/notes')).toBe('ext.notes');
   });
 

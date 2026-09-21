@@ -46,10 +46,7 @@ export function createSeederStore() {
 /**
  * Registered packs' feature settings, merged into the defaults: each feature's own plugin slice and visibility
  * (`checkFeatureSettings`). `revision` changes, and listeners hear, whenever a pack's settings come or go.
- *
- * A manifest names the feature, and the settings land under the id its plugin runs under
- * (`<packId>.<featureId>`) — the key the renderer reads a plugin's settings and visibility by. Keyed by the
- * bare feature id, two packs with a `notes` feature each wrote the same slice and the second won.
+ * A manifest names the feature; its settings land under the plugin's address, which the renderer reads by.
  */
 export function createSettingsDefaultsStore() {
   const byPack = new Map<string, Array<{ id: string; settings: FeatureSettings }>>();

@@ -1,3 +1,4 @@
+import { busId } from '@/__generated__/bus-ids';
 import { assign, log, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe'
 import { contextMenuFn } from '@abuddy/sdk/fe'
@@ -14,7 +15,7 @@ import type {
   EdgeEntity,
   OutgoingBrainEvents,
 } from '@/__generated__/types'
-import { sendToSystem, pluginId } from '@/__generated__/events'
+import { sendToSystem } from '@/__generated__/events'
 import { getNodeConfig, isTriggerNode } from '@abuddy/ui/components/node-styles'
 import { stepRegistry } from '@abuddy/sdk/steps'
 import { calculateLayoutAsync, allNodesHavePositions, LAYOUT_CONFIG, layoutComponentAroundSource, type LayoutPositions } from './canvas/layout-utils'
@@ -88,10 +89,9 @@ function applyNodeTypeDefaults(nodeData: Record<string, any>): void {
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
 /* ─────────────────────────────────────────────────────────── */
-export const flowsId = pluginId.flows
+export const flowsId = busId.flows
 export const id = flowsId
-/** This feature's name, which is how its own code addresses its system — the plugin's id is a
- * different thing now that a plugin runs under `<packId>.<featureId>`. */
+/** What this feature's code calls its system (`sendToSystem`); `id` is the plugin's address */
 export const feature = 'flows' as const;
 export type FlowsState = ActorRefFrom<typeof flowsState>
 

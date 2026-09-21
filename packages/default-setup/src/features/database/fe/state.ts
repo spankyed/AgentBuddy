@@ -1,3 +1,4 @@
+import { busId } from '@/__generated__/bus-ids';
 import { assign, enqueueActions, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb from '@abuddy/sdk/fe'
 import { contextMenu } from '@abuddy/sdk/fe'
@@ -9,7 +10,7 @@ import type {
   OutgoingDatabaseEvents,
   DatabaseSettings,
 } from '@/__generated__/types'
-import { sendToSystem, pluginId } from '@/__generated__/events'
+import { sendToSystem } from '@/__generated__/events'
 import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate, transactionExampleQuery } from './constants'
 import { History, HardDriveDownload } from 'lucide-vue-next'
 import type { TNodeEntity } from '@abuddy/sdk/steps'
@@ -18,9 +19,8 @@ import type { EARS } from '@abuddy/sdk'
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
 /* ─────────────────────────────────────────────────────────── */
-export const id = pluginId.database
-/** This feature's name, which is how its own code addresses its system — the plugin's id is a
- * different thing now that a plugin runs under `<packId>.<featureId>`. */
+export const id = busId.database
+/** What this feature's code calls its system (`sendToSystem`); `id` is the plugin's address */
 export const feature = 'database' as const;
 export type DatabaseState = ActorRefFrom<typeof databaseState>
 

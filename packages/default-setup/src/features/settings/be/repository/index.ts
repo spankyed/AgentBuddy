@@ -2,7 +2,7 @@ import { tx, qx } from '@/__generated__/ears';
 
 import { EARS } from '@/__generated__/ears';
 
-import { pluginId } from '@/__generated__/events';
+import { busId } from '@/__generated__/bus-ids';
 import type { SettingsData } from '../types';
 import { getDefaultSettings } from '../defaults';
 import { mergeSettings } from '../../merge-settings';
@@ -29,14 +29,10 @@ const getSettingsEntity = (): { id: EARS.EntityId; data: SettingsData } => ({
 });
 
 /**
- * The key a plugin's settings are stored under: the id the plugin runs under (`<packId>.<featureId>`),
- * which is what the renderer reads them by. This pack's backend code names its own features by id, so
- * those are resolved through the generated name map — the same one `emit` and `sendToPlugin` use.
- *
- * Anything the map doesn't name is already a key: an id the frontend sent, or `_meta`, which is the
- * plugins map's own metadata and not a plugin at all.
+ * The key a plugin's settings are stored under: its address, which the renderer reads them by. This
+ * pack's backend names its own features by id; anything else (an id the frontend sent, `_meta`) is a key.
  */
-const settingsKeyFor = (label: string): string => (pluginId as Record<string, string>)[label] ?? label;
+const settingsKeyFor = (label: string): string => (busId as Record<string, string>)[label] ?? label;
 
 // Helper to update nested values
 const setNestedValue = (obj: any, path: string[], value: any): any => {

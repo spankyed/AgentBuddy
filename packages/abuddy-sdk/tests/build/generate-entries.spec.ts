@@ -232,25 +232,18 @@ describe('generated system sends', () => {
     const events = files['src/__generated__/events.ts'];
     expect(events).toContain("export type PackSystemEvents = {\n  'memos': IncomingEventsOf<(typeof __specs)['memos']>;\n};");
     expect(events).toContain('export type SendableSystemEvents = PackSystemEvents & { [K in keyof __dep_base_pack_PackSystemEvents & string as `base-pack/${K}`]: __dep_base_pack_PackSystemEvents[K] } & ');
-    // Each name maps to the id its system runs under — `<packId>.<featureId>` for every pack, built-in too
-    expect(events).toContain("const systemIds = {\n  ...busId,\n  'base-pack/threads': 'base-pack.threads',\n  'default-setup/memos': 'default-setup.memos',\n};");
-    expect(events).toContain('defineEvents<PackEvents, SendableSystemEvents>(systemIds, pluginId);');
-    // This pack has no plugin of its own and sends to none, so it gets no plugin names at all
-    expect(events).toContain('export const pluginId = {} as const;');
+    // No table of names: the sends derive every address from the pack id (@abuddy/sdk/ids)
+    expect(events).toContain("defineEvents<PackEvents, SendableSystemEvents>('demo-pack');");
+    expect(events).not.toContain('systemIds');
     expect(files['src/__generated__/system-specs.ts']).toContain("export const specs = {\n  'memos': incomingEvents(__system_memos.spec),\n};");
     expect(files['src/__generated__/system-ids.ts']).toContain("export const threads = 'base-pack.threads';");
     expect(files['src/__generated__/pack-types.ts']).toContain("export type { PackEvents, PackSystemEvents } from './events.js';");
   });
 
-  // The plugin half of the same name layer: a pack writes the short name and the map holds the id
-  it("names the pack's own plugins by feature id and the ones it sends to as <pack>/<feature>", () => {
-    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { entry: 'y' } }] }, facade({ PackEvents: "{ memos: { type: 'MEMO_ADDED' } }" })) };
-    const events = generate({
-      dependencies: { 'base-pack': '1.0.0' },
-      features: [withPlugin(system('actions', { sendsTo: ['memos', 'application'] }))],
-    }, deps)['src/__generated__/events.ts'];
-
-    expect(events).toContain("export const pluginId = {\n  'actions': 'demo-pack.actions',\n  'memos': 'base-pack.memos',\n  'application': 'application',\n} as const;");
+  // One map of addresses for pack code, which a plugin-only feature needs as much as one with a system
+  it('gives every feature an address in busId, a plugin-only one too', () => {
+    const files = generate({ features: [system('memos'), { id: 'sidebar', plugin: { entry: 'x' } }] });
+    expect(files['src/__generated__/bus-ids.ts']).toContain("export const busId = {\n  memos: 'demo-pack.memos',\n  sidebar: 'demo-pack.sidebar',\n} as const;");
   });
 
   it("gives a pack without systems a sendToSystem for its dependencies' systems", () => {
@@ -258,9 +251,8 @@ describe('generated system sends', () => {
     const events = files['src/__generated__/events.ts'];
     expect(events).not.toContain('bus-ids');
     expect(events).not.toContain('system-specs');
-    expect(events).toContain("const systemIds = {\n  'base-pack/threads': 'base-pack.threads',\n};");
+    expect(events).toContain("defineEvents<PackEvents, SendableSystemEvents>('demo-pack');");
     expect(files['src/__generated__/system-specs.ts']).toBeUndefined();
-    expect(files['src/__generated__/bus-ids.ts']).toBeUndefined();
   });
 });
 
@@ -376,8 +368,7 @@ describe('generated sends compile', () => {
 });
 
 describe('generated frontend entry', () => {
-  // The roles travel in `designations`, keyed by role and resolved to the plugin that plays it. On the
-  // plugin they were a binding an author could fill and this would then overwrite, silently.
+  // The roles travel in `designations`, each resolved to the address of the plugin that plays it
   it("names the manifest's designations beside the plugins, and passes each plugin module through untouched", () => {
     const files = generate({ features: [
       { id: 'settings', designation: 'settings', plugin: { entry: 'src/settings/plugin' } },
@@ -385,7 +376,7 @@ describe('generated frontend entry', () => {
     ] });
     const fe = files['src/__generated__/pack-entry-fe.ts'];
 
-    expect(fe).toContain("designations: { 'settings': 'settings' },");
+    expect(fe).toContain("designations: { 'settings': 'demo-pack.settings' },");
     expect(fe).toContain("import __plugin_settings from '../settings/plugin.js';");
     expect(fe).not.toContain('_module');
   });

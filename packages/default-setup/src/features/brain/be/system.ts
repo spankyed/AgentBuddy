@@ -13,7 +13,6 @@ import { setBrainPausedState } from './utils/brain-pause';
 import { notify as notifyAdHocListeners, removeAllListeners as removeAllAdHocListeners } from './services/brain';
 import { services } from '@/__generated__/services';
 import type { StepRuntimeError, TNodeEntity } from '@abuddy/sdk/steps';
-import { busId } from '@/__generated__/bus-ids';
 
 type IncomingBrainEvents =
   | { type: 'OPEN_TNODE'; tNodeId: string }
@@ -68,8 +67,7 @@ export interface BrainContext {
 }
 
 export const brainSpec = defineSystem('brain')<IncomingBrainEvents | BrainInternalEvents, OutgoingBrainEvents, BrainContext>();
-/** The id this feature's system runs under, which is what `system.get(...)` takes */
-export const brain = busId.brain;
+export const brain = brainSpec.id;
 export const brainRuntime = 'brain-runtime' as const;
 
 const logger = createLogger('brain');

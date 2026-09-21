@@ -11,7 +11,6 @@ import { FLOW_ROLES } from './repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { FlowEntity, ActionEntity, PromptEntity } from '@abuddy/sdk';
 import { compileFlowDSL, validateFlowDSL, exportFlowsToDSL, type FlowDSL, type ValidationError } from '@abuddy/sdk/build';
-import { busId } from '@/__generated__/bus-ids';
 
 const logger = createLogger('flows');
 
@@ -98,8 +97,7 @@ export type OutgoingFlowsEvents =
   | { type: 'DSL_EXPORT_FAILED'; errors: string[] }
 
 export const flowsSpec = defineSystem('flows')<IncomingFlowsEvents, OutgoingFlowsEvents>();
-/** The id this feature's system runs under, which is what `system.get(...)` takes */
-export const flows = busId.flows;
+export const flows = flowsSpec.id;
 
 /** Sends the plugin its flows, the root flow among them (the flow with the root role), and its settings */
 function sendConnectedData(system: Parameters<typeof getActor>[0]): void {

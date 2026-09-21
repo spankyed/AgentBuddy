@@ -90,11 +90,6 @@ export function testPacksView(registered?: PackRegistryView): PackRegistryView {
     blocks: () => withOwn(registered?.blocks(), testPacks.blocks),
     getRegisteredServices: () => ({ ...registered?.getRegisteredServices(), ...Object.fromEntries(testPacks.services) }),
     resolveSystemAddress: (address) => registered?.resolveSystemAddress(address),
-    // With no registry there is nothing to check an address against, so a `<packId>/<featureId>` name
-    // resolves by the rule alone. A test with a registry gets the registry's answer, which also refuses
-    // a plugin no pack owns.
-    resolvePluginAddress: (address) => registered?.resolvePluginAddress(address)
-      ?? (address.includes('/') ? address.replace('/', '.') : undefined),
     seedHooks: (entity) => testPacks.seedHooks.get(entity) ?? registered?.seedHooks(entity),
     seeders: (packId) => testPacks.seeders.get(packId) ?? registered?.seeders(packId) ?? [],
     settingsDefaults: () => registered?.settingsDefaults() ?? noSettings,

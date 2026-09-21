@@ -1,3 +1,4 @@
+import { busId } from '@/__generated__/bus-ids';
 import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe';
 import { targetIs, type TrailClickEvent } from '@abuddy/sdk/fe';
 import { safeEvents } from '@abuddy/sdk/fe';
@@ -10,7 +11,7 @@ import type {
   MessageEntity, AgentThreadData, Tab,
   AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse,
 } from '@/__generated__/types';
-import { sendToSystem, pluginId } from '@/__generated__/events';
+import { sendToSystem } from '@/__generated__/events';
 import { Archive, Copy, Pin, Trash2 } from 'lucide-vue-next';
 import { contextMenuFn } from '@abuddy/sdk/fe';
 import type { Simplify } from '@abuddy/sdk/helpers';
@@ -21,9 +22,8 @@ import { getNextAvailableColor } from '@/features/threads/fe/canvas/agent/tabs/t
 import { saveThreadTabGroups, loadThreadTabGroups } from '@/features/threads/fe/canvas/agent/tabs/tab-groups';
 import type { EARS } from '@abuddy/sdk';
 
-export const id = pluginId.threads;
-/** This feature's name, which is how its own code addresses its system — the plugin's id is a
- * different thing now that a plugin runs under `<packId>.<featureId>`. */
+export const id = busId.threads;
+/** What this feature's code calls its system (`sendToSystem`); `id` is the plugin's address */
 export const feature = 'threads' as const;
 
 // Module-level mouse position tracker (read when hotkey fires)

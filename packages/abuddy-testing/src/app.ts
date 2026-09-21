@@ -1,6 +1,7 @@
 // A test app: the pack's registered systems under the app's bus core, with a client the test drives.
 import { createActor, type Actor, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { createBusMachine } from '@abuddy/host/bus';
+import { addressOf, qualifiedId } from '@abuddy/sdk/ids';
 import type { PackBootHooks } from '@abuddy/sdk/framework';
 import type { OutgoingSystemEvents } from '@abuddy/sdk/events';
 import { testRootEvents } from '@abuddy/sdk/testing';
@@ -90,8 +91,6 @@ export interface TestApp {
 /** What test apps read of the test file's registered packs (host's PackRegistry, which the published declarations can't name) */
 interface AppPacks {
   getBootHooks(): PackBootHooks[];
-  resolveSystemAddress(address: string): string | undefined;
-  resolvePluginAddress(address: string): string | undefined;
   getRegisteredSystems(): Map<string, AnyStateMachine>;
   getRegisteredPackSystemIds(packId: string): string[];
   /**
@@ -176,25 +175,20 @@ function shutDownPacks(): void {
  * `<packId>/<featureId>`, the pack's own by feature id. A full bus id is accepted too.
  */
 function resolveSystemId(id: string, registered: ReadonlyMap<string, AnyStateMachine>): string {
-  const addressed = id.includes('/') ? packs().resolveSystemAddress(id) : packId && `${packId}.${id}`;
+  const addressed = id.includes('/') || !packId ? addressOf(id) : qualifiedId(packId, id);
   if (addressed && registered.has(addressed)) return addressed;
   if (registered.has(id)) return id;
   throw new Error(`No registered system is named "${id}". Registered: ${[...registered.keys()].join(', ') || 'none'} (name the pack's own systems by feature id and a dependency's as "<packId>/<featureId>"; pass the pack's registration to setupPackTests)`);
 }
 
 /**
- * The id a plugin name addresses, the same way a pack's generated `emit` resolves one: the pack under
- * test's own features by id, another pack's as `<packId>/<featureId>`, and a host plugin by its bare id
- * — which is why the pack's own is tried first and a bare id only stands when the host owns it.
- *
- * A test names plugins as the pack it tests does, so it never writes the qualified id itself.
+ * The id a plugin name addresses, as a pack's own `emit` resolves it: the pack under test's features by
+ * id, another pack's as `<packId>/<featureId>`, a host plugin bare.
  */
-function resolvePluginId(id: string): string {
-  const owned = (candidate: string) => packs().getPluginEventValidationMap().has(candidate);
-  if (id.includes('/')) return packs().resolvePluginAddress(id) ?? id;
-  const own = packId && `${packId}.${id}`;
-  if (own && owned(own)) return own;
-  return owned(id) ? id : own || id;
+function resolvePluginId(name: string): string {
+  if (name.includes('/') || !packId) return addressOf(name);
+  const own = qualifiedId(packId, name);
+  return packs().getPluginEventValidationMap().has(own) ? own : name;
 }
 
 /** One event loop turn, after zero-delay timers already queued (xstate's `raise(…, { delay: 0 })`) */

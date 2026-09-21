@@ -23,30 +23,19 @@ function incoming(send: () => void): unknown[] {
 }
 
 describe('defineEvents', () => {
-  const events = defineEvents<Plugins, Systems>(
-    { memos: 'memo-pack.memos', 'default-setup/settings': 'settings' },
-    { memos: 'memo-pack.memos' },
-  );
+  const events = defineEvents<Plugins, Systems>('memo-pack');
 
-  it("sends to the pack's own system under the id it runs under", () => {
+  it("sends to the pack's own system at its address", () => {
     expect(incoming(() => events.sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' })))
       .toEqual([{ type: 'ADD_MEMO', text: 'x', systemId: 'memo-pack.memos' }]);
   });
 
-  it("sends to a dependency's system, named <dependency>/<feature>, under the id it runs under", () => {
+  it("sends to another pack's system, named <pack>/<feature>, at its address", () => {
     expect(incoming(() => events.sendToSystem('default-setup/settings', { type: 'GET_SETTINGS' })))
-      .toEqual([{ type: 'GET_SETTINGS', systemId: 'settings' }]);
+      .toEqual([{ type: 'GET_SETTINGS', systemId: 'default-setup.settings' }]);
   });
 
-  it("throws for a name the pack's map doesn't have, including Object.prototype members", () => {
-    const untyped = events.sendToSystem as unknown as (name: string, event: { type: string }) => void;
-    for (const name of ['settings', 'toString', 'constructor']) {
-      expect(() => untyped(name, { type: 'PING' })).toThrow(`No system is named "${name}"`);
-    }
-  });
-
-  // A plugin is named like a system: the short name here, the id it runs under on the wire
-  it('sends to a plugin under the id it runs under, and wraps an event for the bus with emit', () => {
+  it('sends to a plugin at its address, and wraps an event for the bus with emit', () => {
     const outgoing: unknown[] = [];
     const stop = testRootEvents.onPluginSend((event) => outgoing.push(event));
     try {
@@ -58,10 +47,9 @@ describe('defineEvents', () => {
     expect(events.emit('memos', { type: 'MEMO_ADDED' })).toEqual(emit('memo-pack.memos', { type: 'MEMO_ADDED' }));
   });
 
-  it("throws for a plugin name the pack's map doesn't have", () => {
-    const untyped = events.sendToPlugin as unknown as (name: string, event: { type: string }) => void;
-    for (const name of ['memo-pack.memos', 'toString']) {
-      expect(() => untyped(name, { type: 'MEMO_ADDED' })).toThrow(`No plugin is named "${name}"`);
-    }
+  // Bare ids are the host's namespace, so a host plugin is never taken for one of this pack's features
+  it("sends to a host plugin at its bare id", () => {
+    const untyped = events.emit as unknown as (name: string, event: { type: string }) => { event: { pluginId: string } };
+    expect(untyped('application', { type: 'APPLICATION_HOTKEYS' }).event.pluginId).toBe('application');
   });
 });

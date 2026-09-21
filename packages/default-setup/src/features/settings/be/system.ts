@@ -18,7 +18,6 @@ import type { FAQItem } from '@/features/settings/be/types';
 import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services';
 import { REQUIRED_PROVIDERS } from '../constants';
 import { createLogger } from '@abuddy/sdk/logger';
-import { busId } from '@/__generated__/bus-ids';
 
 const logger = createLogger('settings');
 
@@ -74,8 +73,7 @@ const PLUGIN_SETTINGS_META_KEY = '_meta';
 const emitPluginSettings = emit as (pluginId: string, event: PluginSettingsUpdatedEvent) => ReturnType<typeof emit>;
 
 export const settingsSpec = defineSystem('settings')<IncomingSettingsEvents | SettingsInternalEvents, OutgoingSettingsEvents>();
-/** The id this feature's system runs under, which is what `system.get(...)` takes */
-export const settings = busId.settings;
+export const settings = settingsSpec.id;
 
 /** CLI path overrides, in the code plugin's settings */
 const cliPaths = (): Record<string, string | undefined> =>

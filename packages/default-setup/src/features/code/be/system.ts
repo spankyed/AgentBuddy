@@ -57,13 +57,11 @@ export type OutgoingCodeEvents =
 
 // Import only the type needed for broadcast event
 import type { TerminalInfo, CodeConnectedData, CodeSettings } from './types'
-import { busId } from '@/__generated__/bus-ids';
 
 type CodeInternalEvents = { type: 'CODE_SETTINGS_UPDATED'; settings: CodeSettings }
 
 export const codeSpec = defineSystem('code')<IncomingCodeEvents | CodeInternalEvents, OutgoingCodeEvents, Context>();
-/** The id this feature's system runs under, which is what `system.get(...)` takes */
-export const code = busId.code;
+export const code = codeSpec.id;
 const id = code;
 
 export interface Context {

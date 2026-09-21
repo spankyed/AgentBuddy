@@ -1,11 +1,11 @@
+import { busId } from '@/__generated__/bus-ids';
 import { setup, type ActorRefFrom, assign, log } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
-import { sendToSystem, pluginId } from '@/__generated__/events';
+import { sendToSystem } from '@/__generated__/events';
 import type { OutgoingLogsEvents } from '@/__generated__/types';
 
-export const id = pluginId.logs;
-/** This feature's name, which is how its own code addresses its system — the plugin's id is a
- * different thing now that a plugin runs under `<packId>.<featureId>`. */
+export const id = busId.logs;
+/** What this feature's code calls its system (`sendToSystem`); `id` is the plugin's address */
 export const feature = 'logs' as const;
 
 export interface LogEntry {

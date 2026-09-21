@@ -278,16 +278,19 @@ function loadBundledRuntime(
     return null;
   }
 
-  // `toPackSystemDefs` already gives each system the id it runs under, so this only adds the manifest's
-  // declared incoming events. A registration built before that did the qualifying is prefixed here.
-  const prefix = `${manifest.id}.`;
+  const stray = registration.systems?.find((def) => !def.id.startsWith(`${manifest.id}.`));
+  if (stray) {
+    logger.error(`Pack ${manifest.id}: system "${stray.id}" isn't addressed as "${manifest.id}.<featureId>": rebuild the pack`);
+    return null;
+  }
+
+  // The manifest can add incoming events a system's machine doesn't list
   const systems = (registration.systems ?? []).map((def) => {
-    const featureId = def.id.startsWith(prefix) ? def.id.slice(prefix.length) : def.id;
-    const feature = manifest.features?.find((f) => f.id === featureId);
+    const featureId = def.id.slice(manifest.id.length + 1);
     const events = new Set<string>(def.events);
-    for (const evt of feature?.system?.events?.incoming ?? []) events.add(evt);
-    logger.info(`Loaded system: ${manifest.id}/${featureId}`);
-    return { id: prefix + featureId, machine: def.machine, events };
+    for (const evt of manifest.features?.find((f) => f.id === featureId)?.system?.events?.incoming ?? []) events.add(evt);
+    logger.info(`Loaded system: ${def.id}`);
+    return { ...def, events };
   });
 
   return { ...registration, systems };

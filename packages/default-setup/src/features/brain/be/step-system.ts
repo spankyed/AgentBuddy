@@ -5,7 +5,7 @@ import type { NodeEntity } from '@/__generated__/types';
 import { executeNode } from './node-handlers';
 import { repository } from '@/__generated__/repository';
 import { brainLogger } from './utils/brain-inspect';
-import { brain } from './system';
+import { brain } from '@/__generated__/system-ids';
 
 type StepMachineContext = {
   tNodeId?: EARS.EntityId;

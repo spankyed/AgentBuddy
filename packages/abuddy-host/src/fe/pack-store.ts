@@ -5,7 +5,6 @@ import type { FePackRegistryView } from '@abuddy/sdk/runtime';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { createDefinitionStore, createDesignationStore, createOwnedStore, createStepStore, createUndoLog } from '../packs/extensions.ts';
-import { qualifiedId } from '@abuddy/sdk/ids';
 import { createAppExtensionSlots } from './app-extensions.ts';
 
 interface PackFEExtensions {
@@ -24,8 +23,7 @@ interface PackFEExtensions {
 /** The renderer's registered pack frontends */
 export interface FePackRegistry extends FePackRegistryView {
   /** Registers a pack's frontend; without a pack id (the built-in packs') it can't be unregistered */
-  /** Registers a pack's frontend and returns the plugins it registered, under the ids they run under */
-  registerPackFE(registration: PackFERegistration): Plugin[];
+  registerPackFE(registration: PackFERegistration): void;
   /** Unregisters a pack's frontend; returns the plugins it had added */
   unregisterPackFE(packId: string): Plugin[];
   /** Every registered plugin, in registration order */
@@ -48,7 +46,7 @@ export function createFePackRegistry(): FePackRegistry {
   const appExtensions = createAppExtensionSlots();
   const dslTypes = createOwnedStore<DslTypeConfig>();
 
-  function registerPackFE(registration: PackFERegistration): Plugin[] {
+  function registerPackFE(registration: PackFERegistration): void {
     const packId = registration.id;
     if (packExtensions.has(packId)) {
       throw new Error(`Pack "${packId}" frontend is already registered`);
@@ -62,41 +60,21 @@ export function createFePackRegistry(): FePackRegistry {
     const undo = undos.record;
 
     try {
-      // A plugin runs under `<packId>.<featureId>`, as a system does, so two packs can each have a `notes`
-      // feature and neither shadows the other. A built pack names its plugin with the generated `pluginId`
-      // map, so its module already carries that id; a hand-written one names the feature and is qualified
-      // here. Bare or prefixed both resolve, as they do for a system id.
-      //
-      // Since a pack registering twice is already refused, what is left for the duplicate guard below to
-      // catch is one registration naming a feature twice — which codegen cannot emit and a hand-written
-      // one can.
-      const registeredIds = new Set(allPlugins.map(p => p.id));
-      const plugins: Plugin[] = [];
-      const qualified = new Map<string, Plugin>();
-      const prefix = `${packId}.`;
-      /** The feature a name refers to, whether it is written bare or already carries this pack's prefix */
-      const featureOf = (name: string): string => (name.startsWith(prefix) ? name.slice(prefix.length) : name);
-      for (const plugin of registration.plugins ?? []) {
-        const id = plugin.id.startsWith(prefix) ? plugin.id : qualifiedId(packId, plugin.id);
-        if (registeredIds.has(id)) {
-          console.warn(`[pack-store] Plugin "${id}"${fromPack} ignored — a plugin with that id is already registered`);
-          continue;
-        }
-        registeredIds.add(id);
-        const registered = plugin.id === id ? plugin : { ...plugin, id };
-        // Keyed by the feature id, which is how `designations` and `defaultPlugin` name it
-        qualified.set(featureOf(id), registered);
-        plugins.push(registered);
+      // A plugin carries its address, `<packId>.<featureId>` (codegen names it from `busId`), so plugins of
+      // different packs never share an id and there is nothing here to qualify or arbitrate
+      const plugins = [...(registration.plugins ?? [])];
+      const ids = new Set<string>();
+      for (const { id } of plugins) {
+        if (!id.startsWith(`${packId}.`)) throw new Error(`Plugin "${id}"${fromPack} isn't addressed as "${packId}.<featureId>"`);
+        if (ids.has(id)) throw new Error(`Plugin "${id}"${fromPack} is registered twice`);
+        ids.add(id);
       }
       allPlugins.push(...plugins);
       undo(() => {
-        for (const plugin of plugins) {
-          const idx = allPlugins.indexOf(plugin);
-          if (idx >= 0) allPlugins.splice(idx, 1);
-        }
+        for (const plugin of plugins) allPlugins.splice(allPlugins.indexOf(plugin), 1);
       });
 
-      const ownDefault = registration.defaultPlugin && qualified.get(featureOf(registration.defaultPlugin.id));
+      const ownDefault = registration.defaultPlugin && plugins.find((p) => p.id === registration.defaultPlugin!.id);
       if (ownDefault && !defaultPlugin) {
         defaultPlugin = ownDefault;
         undo(() => { defaultPlugin = undefined; });
@@ -105,12 +83,9 @@ export function createFePackRegistry(): FePackRegistry {
         console.warn(`[pack-store] defaultPlugin "${registration.defaultPlugin.id}"${fromPack} ignored — ${reason}`);
       }
 
-      // From the registration's own map, and resolved through the plugins this registration actually
-      // registered: a designation names a feature, and a feature it didn't register plays no role here.
       const roles: Record<string, string> = {};
-      for (const [designation, featureId] of Object.entries(registration.designations ?? {})) {
-        const pluginId = qualified.get(featureOf(featureId))?.id;
-        if (!pluginId) continue;
+      for (const [designation, pluginId] of Object.entries(registration.designations ?? {})) {
+        if (!ids.has(pluginId)) continue;
         if (designations.has(designation)) {
           console.warn(`[pack-store] Designation "${designation}" of plugin "${pluginId}"${fromPack} ignored — another plugin plays that role`);
         } else {
@@ -159,9 +134,6 @@ export function createFePackRegistry(): FePackRegistry {
       }
 
       packExtensions.set(packId, { plugins, undo: undos.undoAll });
-      // What was registered, not what the registration held: the caller adds these to the app, and the
-      // pack's own modules still carry the bare feature ids their author wrote.
-      return plugins;
     } catch (err) {
       undos.undoAll();
       throw err;

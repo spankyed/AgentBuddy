@@ -9,16 +9,10 @@ export interface SystemEntry {
   machine: AnyStateMachine;
 }
 
-/**
- * A pack's systems, each under the id it runs as: `<packId>.<featureId>`, the same rule a plugin follows.
- *
- * `defineSystem` names the feature, and this is where that name becomes an address — so a pack's code
- * keeps writing the short name and nothing in it repeats the rule. A spec that already carries the
- * prefix is left alone, which is what lets a registration be qualified once whoever built it.
- */
+/** A pack's systems, each under its address `<packId>.<featureId>`; `defineSystem` gave it the feature id */
 export function toPackSystemDefs(entries: SystemEntry[], packId: string): PackSystemDef[] {
   return entries.map(({ spec, machine }) => ({
-    id: spec.id.startsWith(`${packId}.`) ? spec.id : qualifiedId(packId, spec.id),
+    id: qualifiedId(packId, spec.id),
     machine,
     events: new Set(machine.events),
   }));

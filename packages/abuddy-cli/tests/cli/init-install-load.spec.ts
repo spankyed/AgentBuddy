@@ -56,7 +56,7 @@ describe('pack full lifecycle: init → install → load', () => {
       plugin: { entry: 'src/features/main/fe/plugin.ts' },
     }];
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify(manifest, null, 2));
-    writeBuild(packDir, manifest.id, "[{ id: 'main', machine: { id: 'my-test-pack-system' }, events: [] }]");
+    writeBuild(packDir, manifest.id, "[{ id: 'my-test-pack.main', machine: { id: 'my-test-pack-system' }, events: [] }]");
 
     const packsDir = path.join(tmpDir, 'packs');
     await installPackFromLocal(packDir, packsDir);

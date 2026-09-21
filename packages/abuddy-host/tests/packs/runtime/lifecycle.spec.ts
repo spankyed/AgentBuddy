@@ -132,7 +132,7 @@ describe('activating and tearing down a pack at runtime', () => {
     writeBuild(
       sourceDir,
       PACK_ID,
-      "[{ id: 'main', machine: { id: 'activate-pack-system' }, events: [] }], commands: [{ name: 'activate-memo', placeholder: 'Text' }], "
+      `[{ id: '${PACK_ID}.main', machine: { id: 'activate-pack-system' }, events: [] }], commands: [{ name: 'activate-memo', placeholder: 'Text' }], `
         + "seeders: [{ key: 'memos', seed: () => { globalThis.activatePackRuns.push('seed'); return { created: 1, updated: 0, skipped: 0 }; } }], "
         + "migrations: [{ target: '1.0.0', description: 'memos', up: () => { globalThis.activatePackRuns.push('migration'); } }]",
       {
@@ -323,7 +323,7 @@ describe('FE pack deregistration', () => {
   it('unregisterPackFE removes extensions and returns removed plugins', async () => {
     const { registerPackFE, unregisterPackFE } = createFePackRegistry();
 
-    const testPlugin = { id: 'test-plugin', label: 'Test' } as unknown as Plugin;
+    const testPlugin = { id: 'test-pack.test-plugin', label: 'Test' } as unknown as Plugin;
     registerPackFE({ id: 'test-pack', plugins: [testPlugin] });
 
     const removed = unregisterPackFE('test-pack');
@@ -335,37 +335,31 @@ describe('FE pack deregistration', () => {
     expect(removedAgain).toHaveLength(0);
   });
 
-  // A built-in pack's frontend used to register with no pack id, so nothing recorded what it contributed
-  // and unregistering it returned nothing. Every registration carries its pack's id now, so there is one
-  // kind of registration and one way out of it.
+  // A built-in pack's registration carries its id like any other, so it comes out the same way
   it('takes a built-in pack\'s frontend back out like any other pack\'s', async () => {
     const { registerPackFE, unregisterPackFE, getRegisteredPlugins } = createFePackRegistry();
-    const builtIn = { id: 'built-in-main', label: 'Built-in' } as unknown as Plugin;
+    const builtIn = { id: 'default-setup.built-in-main', label: 'Built-in' } as unknown as Plugin;
 
     registerPackFE({ id: 'default-setup', plugins: [builtIn] });
-    expect(getRegisteredPlugins().map((p) => p.id)).toEqual(['default-setup.built-in-main']);
+    expect(getRegisteredPlugins()).toEqual([builtIn]);
 
-    expect(unregisterPackFE('default-setup').map((p) => p.id)).toEqual(['default-setup.built-in-main']);
+    expect(unregisterPackFE('default-setup')).toEqual([builtIn]);
     expect(getRegisteredPlugins()).toEqual([]);
   });
 
-  // Two packs declaring the same feature id is no longer a conflict: each gets its own plugin, and
-  // unregistering one leaves the other's alone.
+  // Two packs with the same feature each have their own plugin; unregistering one leaves the other's
   it("unregisterPackFE leaves a plugin another pack declared under the same feature id", async () => {
     const { registerPackFE, unregisterPackFE, getRegisteredPlugins } = createFePackRegistry();
 
-    const builtIn = { id: 'shared-id', label: 'Built-in' } as unknown as Plugin;
-    const packCopy = { id: 'shared-id', label: 'Pack' } as unknown as Plugin;
-    const packOwn = { id: 'pack-own', label: 'Own' } as unknown as Plugin;
+    const builtIn = { id: 'built-in-pack.shared', label: 'Built-in' } as unknown as Plugin;
+    const packCopy = { id: 'duplicate-pack.shared', label: 'Pack' } as unknown as Plugin;
+    const packOwn = { id: 'duplicate-pack.own', label: 'Own' } as unknown as Plugin;
     registerPackFE({ id: 'built-in-pack', plugins: [builtIn] });
     registerPackFE({ id: 'duplicate-pack', plugins: [packCopy, packOwn] });
 
-    expect(getRegisteredPlugins().map((p) => p.id))
-      .toEqual(['built-in-pack.shared-id', 'duplicate-pack.shared-id', 'duplicate-pack.pack-own']);
-
-    expect(unregisterPackFE('duplicate-pack').map((p) => p.id))
-      .toEqual(['duplicate-pack.shared-id', 'duplicate-pack.pack-own']);
-    expect(getRegisteredPlugins().map((p) => p.id)).toEqual(['built-in-pack.shared-id']);
+    expect(getRegisteredPlugins()).toEqual([builtIn, packCopy, packOwn]);
+    expect(unregisterPackFE('duplicate-pack')).toEqual([packCopy, packOwn]);
+    expect(getRegisteredPlugins()).toEqual([builtIn]);
   });
 
   it('unregisterPackFE handles pack with no extensions gracefully', async () => {

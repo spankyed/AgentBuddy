@@ -16,12 +16,12 @@ afterEach(() => {
   for (const id of packs.splice(0)) unregisterPackFE(id);
 });
 
-/** A pack whose plugins each play the role named after them: `register('p', ['main', 'notebook'])` */
-function register(packId: string, roles: Array<[pluginId: string, role: string]>): void {
+/** A pack whose features each play a role: `register('p', [['main', 'notebook']])` */
+function register(packId: string, roles: Array<[featureId: string, role: string]>): void {
   registerPackFE({
     id: packId,
-    plugins: roles.map(([id]) => plugin(id)),
-    designations: Object.fromEntries(roles.map(([id, role]) => [role, id])),
+    plugins: roles.map(([id]) => plugin(`${packId}.${id}`)),
+    designations: Object.fromEntries(roles.map(([id, role]) => [role, `${packId}.${id}`])),
   });
   packs.push(packId);
 }

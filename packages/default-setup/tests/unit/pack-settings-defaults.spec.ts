@@ -50,9 +50,7 @@ describe("packs' feature settings as defaults", () => {
     expect(repository.settingsQueries.getSettings().plugins._meta?.visibility?.['memo-pack.memos']).toBe(true);
   });
 
-  // Such a pack used to register with its plugin silently dropped, leaving its settings slice behind for a
-  // plugin the user never saw. A plugin is addressed `<packId>.<featureId>` now, so the pack gets its own
-  // `code` plugin and this pack's settings for its own are untouched.
+  // Settings are keyed by the plugin's address, so another pack's `code` feature has its own slice
   it("gives a pack naming a feature after this pack's its own settings slice", () => {
     const appCode = getDefaultSettings().plugins['default-setup.code'];
 

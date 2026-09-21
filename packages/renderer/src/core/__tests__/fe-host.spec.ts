@@ -45,8 +45,8 @@ it("gives the SDK's frontend lookups the window's registered pack frontends, and
   const note = { type: 'note', fe: { nodeConfig: { label: 'Note' } } };
   fePacks.registerPackFE({
     id: 'fe-host-pack',
-    plugins: [{ id: 'notebook-main' } as never],
-    designations: { notebook: 'notebook-main' },
+    plugins: [{ id: 'fe-host-pack.notebook-main' } as never],
+    designations: { notebook: 'fe-host-pack.notebook-main' },
     steps: [note as never],
     tiptapPlugins: [mentions],
     dslTypes: { memo: memoDsl },

@@ -1,2 +1,2 @@
 export { bus } from './system-ids.ts';
-export { qualifiedId } from './addressing.ts';
+export { addressOf, qualifiedId } from './addressing.ts';

@@ -1,13 +1,13 @@
+import { busId } from '@/__generated__/bus-ids';
 import { setup, assign, fromCallback, type ActorRefFrom } from 'xstate';
 import { autocomplete, recordVisit, updateHistoryMeta, displayUrl, type AutocompleteSuggestion } from './history.ts';
-import { sendToSystem, pluginId } from '@/__generated__/events';
+import { sendToSystem } from '@/__generated__/events';
 import { getNextAvailableColor, saveTabGroups, loadTabGroups, type TabGroup, type TabGroupColor } from '@abuddy/sdk/fe';
 
 export type { TabGroup, TabGroupColor };
 
-export const id = pluginId.browser;
-/** This feature's name, which is how its own code addresses its system — the plugin's id is a
- * different thing now that a plugin runs under `<packId>.<featureId>`. */
+export const id = busId.browser;
+/** What this feature's code calls its system (`sendToSystem`); `id` is the plugin's address */
 export const feature = 'browser' as const;
 
 type BrowserTabPersistedId = `BrowserTab-${string}`;

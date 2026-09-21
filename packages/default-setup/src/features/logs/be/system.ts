@@ -10,7 +10,6 @@ import { onConnected, onIncoming, type IncomingSystemEvents } from '@abuddy/sdk/
 import { repository } from '@/__generated__/repository';
 import type { LogsSettings } from '@/__generated__/types';
 import { isSourceExcluded, filterLogsByExcludedSources } from './utils';
-import { busId } from '@/__generated__/bus-ids';
 
 // Resolve the effective exclusion list: when showAppEvents is falsy, treat 'app-events' as excluded.
 function effectiveExcludedSources(settings: LogsSettings | undefined): string[] {
@@ -42,8 +41,7 @@ export interface LogsContext {
 }
 
 export const logsSpec = defineSystem('logs')<IncomingLogEvents | LogsInternalEvents, OutgoingLogsEvents, LogsContext>();
-/** The id this feature's system runs under, which is what `system.get(...)` takes */
-export const logs = busId.logs;
+export const logs = logsSpec.id;
 
 export const logsSystem = setup({
   types: logsSpec.types,

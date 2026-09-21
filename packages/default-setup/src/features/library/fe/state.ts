@@ -1,7 +1,8 @@
+import { busId } from '@/__generated__/bus-ids';
 import { setup, assign, type ActorRefFrom } from 'xstate'
 import type { DocumentDTO, CollectionDTO, LibraryIndex, OutgoingLibraryEvents, LibraryItem, DocumentItem, FolderContents, BreadcrumbItem, SearchIndex } from '@/__generated__/types'
 import type { SearchIndexFormData } from './types/search-index'
-import { sendToSystem, pluginId } from '@/__generated__/events'
+import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'
 import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe'
@@ -48,9 +49,8 @@ function findItemById(context: LibraryContext, id: string): LibraryItem | undefi
   return undefined
 }
 
-export const id = pluginId.library
-/** This feature's name, which is how its own code addresses its system — the plugin's id is a
- * different thing now that a plugin runs under `<packId>.<featureId>`. */
+export const id = busId.library
+/** What this feature's code calls its system (`sendToSystem`); `id` is the plugin's address */
 export const feature = 'library' as const;
 import type { SnapshotFrom } from 'xstate'
 import type { ContentSection } from '@/features/library/be/types';

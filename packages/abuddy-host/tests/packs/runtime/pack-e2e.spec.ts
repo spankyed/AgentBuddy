@@ -85,7 +85,7 @@ function installTestPack() {
     module.exports = {
       registration: {
         id: '${TEST_PACK_ID}',
-        systems: [{ id: 'hello', machine: helloMachine, events: new Set(['CLIENT_CONNECTED']) }],
+        systems: [{ id: '${TEST_PACK_ID}.hello', machine: helloMachine, events: new Set(['CLIENT_CONNECTED']) }],
         features: [{ id: 'hello', hasSystem: true, hasPlugin: true, services: [] }, { id: 'dataOnly', hasSystem: false, hasPlugin: true, services: [] }],
       },
     };
