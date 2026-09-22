@@ -333,6 +333,17 @@ Final.
     the map would silently come up short. `definePlugin<Incoming>()` inherits that trap exactly. Mirror the
     error text, and mirror `packages/abuddy-cli/tests/build/facade-gate-system-entry.spec.ts` for plugins.
 
+    **Every plugin entry in the repo is in the annotation form today** — 15 of 15, in `default-setup` and
+    both fixture packs:
+    ```ts
+    const notesPlugin: PluginDefinition = { label, icon, state, canvas, panel, settings };
+    export default notesPlugin;
+    ```
+    So Phase 3 rewrites all 15, not only the ones that gain an inbox. The two that gain one (the plugins
+    `actions` and `settings` reach today through `sendsTo`, plus whichever Phase 5 migrates) differ from
+    the rest only by a type argument. `abuddy add feature`'s scaffold and `docs/public-facing/features.md`
+    emit the annotation form and change with them.
+
 13. **A declaration composes with the SDK-wide plugin events, it doesn't repeat them.**
     `PLUGIN_EVENT_TYPES` (`FEATURE_SETTINGS_UPDATED`) is taken by every plugin, and the bus already falls
     through to it (`bus/machine.ts`, the `accepted === undefined` branch). A feature's declaration names
@@ -360,6 +371,16 @@ Final.
     (`packages/abuddy-sdk/src/services/index.ts:38`) and `Services` is a facade export, so the rename moves
     `etc/build.api.md` and every `deps/<id>.d.ts`: run `api:update` and `facade:update` and commit the
     reports as part of the phase.
+
+17. **`navigateToPlugin`'s event is typed from the same inbox; `openPlugin`'s stays untyped.**
+    `navigateToPlugin(name, event?)` (`#generated/fe`) takes a compile-time-checked `PluginName` and hands
+    the events to that plugin's actor — the same delivery the renderer `sendToPlugin` does, so it takes the
+    same types. Today its payload is the SDK's open `PluginEvent` (`{ type: string; [key: string]: unknown }`),
+    which leaves a typed channel beside an untyped one doing the same thing.
+
+    `openPlugin(ref, event?)` (`@abuddy/sdk/fe`) keeps `PluginEvent`: its target arrives as data — a link
+    block's, a registered plugin's `id` — so there is no name to type against. It is the escape hatch, the
+    way `untypedQx` is for a query whose entity isn't known at compile time.
 
 ## Open decisions (settle with the user before Phase 6)
 
@@ -418,6 +439,12 @@ The root change. After Phase 1.
 
 - `definePlugin<Incoming>()` in `packages/abuddy-sdk/src/fe/plugin.ts`, with the default of Decision 1,
   the `satisfies` guard of Decision 12 and the SDK-wide union of Decision 13.
+- Rewrite **all 15 plugin entries** out of the `const x: PluginDefinition = {…}` annotation form into
+  `definePlugin(…)` (Decision 12) — 12 in `packages/default-setup/src/features/*/fe/plugin.ts`, 3 in
+  `tests/fixtures/*/src/features/*/fe/plugin.ts`. Only the ones other plugins send to take a type
+  argument; the rest change shape alone. Update `abuddy add feature`'s scaffold
+  (`packages/abuddy-cli/src/commands/add/feature.ts`) and `docs/public-facing/features.md`, which emit the
+  annotation form today.
 - `generate-entries.ts`: read the declaration the way `sentEventTypes` reads a system spec; delete
   `receivedEventTypes` and the `sendsTo` target loop; emit `PackPluginEvents`; drop the `Pick<>` from
   `QualifiedPluginEvents` (Decision 3); swap `SendablePluginEvents` for `PackPluginEvents` in
@@ -464,6 +491,10 @@ thought is the facade consequence and the new renderer branch.
   `tests/e2e/plugin-sends.spec.ts`.
 - Add the renderer `sendToPlugin`, delivering to `boundFeHost().application.system.get(ref)` and reusing the
   shell's not-yet-loaded policy (Decision 6).
+- Type `navigateToPlugin`'s event parameter from the same inbox in `#generated/fe` (Decision 17), and
+  leave `openPlugin`'s as `PluginEvent`. Check the ~22 `@/__generated__/fe` call sites still compile:
+  a payload that was accepted as an open `PluginEvent` and isn't in the target's inbox now fails, which
+  is the point.
 - Document the delivery scopes on both functions and in `packages/abuddy-sdk`'s docs (Decision 7).
 
 **Done when:** `npm run typecheck`; `npm run api:update` in `packages/abuddy-sdk` and
