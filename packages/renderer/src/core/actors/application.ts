@@ -1,7 +1,7 @@
 import { assign, setup, enqueueActions, fromCallback, spawnChild, sendTo, type ActorRefFrom } from 'xstate';
 import type { Plugin } from '@/core/types';
 import type { HotkeyEvent, ContextMenuItem } from '@abuddy/sdk/fe';
-import type { Message } from '@abuddy/sdk/events';
+import type { HostPluginEvents, Message } from '@abuddy/sdk/events';
 import { processHotkeys, safeEvents } from '@abuddy/sdk/fe';
 import type { ApplicationHotkeys } from '@abuddy/sdk/types';
 import { trpc, reconnectApiClient } from '@/core/trpc';
@@ -94,10 +94,20 @@ export function visiblePluginsOf(context: Pick<ApplicationContext, 'plugins' | '
   return context.plugins.filter((plugin) => context.pluginVisibility[plugin.id] !== false);
 }
 
-/** The application actor's system id: the host's `application` plugin, which pack systems send to */
-export const application = HOST.application;
-
 type AppActor = ReturnType<typeof createApplicationState>;
+
+/** Where the panel sizes the user set are kept, so the next window opens with them */
+const PANEL_SIZES_KEY = 'agentbuddy-panel-sizes';
+
+/**
+ * Saves panel sizes the user chose and returns them: what a resize, toggle or reset assigns goes through here. Sizes
+ * a plugin or onboarding sets for the moment (showing or hiding the inspection panel, the maximized chat while
+ * onboarding) are assigned without it, so they don't outlive the window.
+ */
+function savedPanelSizes(sizes: ApplicationContext['panelSizes']): ApplicationContext['panelSizes'] {
+  localStorage.setItem(PANEL_SIZES_KEY, JSON.stringify(sizes));
+  return sizes;
+}
 
 export type AppState = ActorRefFrom<AppActor>;
 
@@ -119,10 +129,9 @@ export type ApplicationEvent =
   | { type: 'PROCESS_GLOBAL_HOTKEY'; hotkeyEvent: HotkeyEvent; originalEvent?: KeyboardEvent }
   | { type: 'HOTKEYS_RECORDING_START' }
   | { type: 'HOTKEYS_RECORDING_END' }
-  | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationContext['hotkeys'] }
-  | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> }
+  // What the host's application system and pack systems send this plugin
+  | HostPluginEvents['host/application']
   | { type: 'SET_PLUGIN_VISIBILITY'; plugin: string; visible: boolean }
-  | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean; pluginVisibility: Record<string, boolean>; lastActivePlugin?: string }
   | { type: 'CLOSE_DEV_LETTER' }
   | { type: 'ONBOARDING_COMPLETE' }
   | { type: 'SHOW_INSPECTION_PANEL' }
@@ -258,7 +267,7 @@ export const createApplicationState = () => setup({
         // Cmd+B both bolding text in the editor AND toggling the inspection panel.
         if (e.defaultPrevented) return;
 
-        const appActor = system.get(application);
+        const appActor = system.get(HOST.application);
         const hotkeyEvent: HotkeyEvent = {
           type: 'HOTKEY_PRESSED',
           key: e.key,
@@ -336,7 +345,7 @@ export const createApplicationState = () => setup({
 
     mouseListener: fromCallback(({ system }) => {
       const handleMouseDown = (e: MouseEvent) => {
-        const appActor = system.get(application);
+        const appActor = system.get(HOST.application);
 
         // Mouse button 3 = back, mouse button 4 = forward
         if (e.button === 3) {
@@ -357,7 +366,7 @@ export const createApplicationState = () => setup({
 
     pluginTrailer: fromCallback<{ type: 'TRAIL_NEW_PLUGIN'; id: string }, string>(({ system, receive, input: id }) => {
       const onStateChange = ({ crumbs, target, menuItems }: UpdateData) =>
-        system.get(application).send({ type: 'TRAIL_UPDATE', crumbs, target, menuItems });
+        system.get(HOST.application).send({ type: 'TRAIL_UPDATE', crumbs, target, menuItems });
 
       const initial = system.get(id);
       let unsubscribe = initial ? trailActor(initial, onStateChange) : () => {};
@@ -399,7 +408,7 @@ export const createApplicationState = () => setup({
           },
           // Each message says which plugin it is for; the event is delivered exactly as the system sent it
           onData: ({ to, event }: Message) => {
-            if (to === application) {
+            if (to === HOST.application) {
               sendBack(event as ApplicationEvent);
             } else {
               const pluginActor = system.get(to);
@@ -637,7 +646,7 @@ export const createApplicationState = () => setup({
       const pluginVisibility = { ...context.pluginVisibility, [plugin]: visible };
       enqueue.assign({ pluginVisibility });
       enqueue(() => {
-        trpc.bus.send.mutate({ to: application, event: { type: 'SET_PLUGIN_VISIBILITY', plugin, visible } })
+        trpc.bus.send.mutate({ to: HOST.application, event: { type: 'SET_PLUGIN_VISIBILITY', plugin, visible } })
           .catch((error) => console.error('[application] Could not record the plugin visibility:', error));
       });
     }),
@@ -732,11 +741,7 @@ export const createApplicationState = () => setup({
 
       // Un-expand chat when navigating to a plugin
       if (context.panelSizes.chatMaximized) {
-        enqueue.assign(({ context }) => {
-          const newSizes = { ...context.panelSizes, chatMaximized: false };
-          localStorage.setItem('agentbuddy-panel-sizes', JSON.stringify(newSizes));
-          return { panelSizes: newSizes };
-        });
+        enqueue.assign(({ context }) => ({ panelSizes: savedPanelSizes({ ...context.panelSizes, chatMaximized: false }) }));
       }
 
       // Send plugin activation events
@@ -774,7 +779,7 @@ export const createApplicationState = () => setup({
       if (context.activePlugin.id !== newPlugin.id) {
         enqueue(() => {
           // The host records it, so the next window, and the next run, opens on it
-          trpc.bus.send.mutate({ to: application, event: { type: 'SET_LAST_ACTIVE_PLUGIN', plugin: newPlugin.id } })
+          trpc.bus.send.mutate({ to: HOST.application, event: { type: 'SET_LAST_ACTIVE_PLUGIN', plugin: newPlugin.id } })
             .catch((error) => console.error('[application] Could not record the last active plugin:', error));
         });
       }
@@ -825,13 +830,7 @@ export const createApplicationState = () => setup({
           : { inspectionWidth: Math.max(300, Math.min(800, size)) } // 300-800px bounds
         )
       };
-
-      // Save to localStorage
-      localStorage.setItem('agentbuddy-panel-sizes', JSON.stringify(newSizes));
-
-      return {
-        panelSizes: newSizes
-      };
+      return { panelSizes: savedPanelSizes(newSizes) };
     }),
     maximizeChat: assign(({ context }) => {
       const isCollapsed = context.panelSizes.canvasHeight >= 93;
@@ -840,14 +839,9 @@ export const createApplicationState = () => setup({
         chatMaximized: true,
         ...(isCollapsed ? { canvasHeight: 50 } : {}),
       };
-      localStorage.setItem('agentbuddy-panel-sizes', JSON.stringify(newSizes));
-      return { panelSizes: newSizes };
+      return { panelSizes: savedPanelSizes(newSizes) };
     }),
-    restoreChat: assign(({ context }) => {
-      const newSizes = { ...context.panelSizes, chatMaximized: false };
-      localStorage.setItem('agentbuddy-panel-sizes', JSON.stringify(newSizes));
-      return { panelSizes: newSizes };
-    }),
+    restoreChat: assign(({ context }) => ({ panelSizes: savedPanelSizes({ ...context.panelSizes, chatMaximized: false }) })),
     toggleInspectionPanel: assign(({ context }) => {
       const isCollapsed = context.panelSizes.inspectionWidth === 0;
       const newSizes = {
@@ -859,13 +853,7 @@ export const createApplicationState = () => setup({
           ? context.panelSizes.previousInspectionWidth
           : context.panelSizes.inspectionWidth
       };
-
-      // Save to localStorage
-      localStorage.setItem('agentbuddy-panel-sizes', JSON.stringify(newSizes));
-
-      return {
-        panelSizes: newSizes
-      };
+      return { panelSizes: savedPanelSizes(newSizes) };
     }),
     closeDevLetter: ({ self }) => {
       self.send({ type: 'SELECT_PLUGIN', plugin: getDesignated('threads') });
@@ -886,9 +874,7 @@ export const createApplicationState = () => setup({
     }),
     resetChatHeight: assign(({ context }) => {
       const defaultCanvasHeight = 50;
-      const newSizes = { ...context.panelSizes, canvasHeight: defaultCanvasHeight };
-      localStorage.setItem('agentbuddy-panel-sizes', JSON.stringify(newSizes));
-      return { panelSizes: newSizes };
+      return { panelSizes: savedPanelSizes({ ...context.panelSizes, canvasHeight: defaultCanvasHeight }) };
     }),
   },
   guards: {
@@ -899,7 +885,7 @@ export const createApplicationState = () => setup({
   id: 'application',
   context: ({ input }) => {
     // Load saved panel sizes from localStorage or use defaults
-    const savedSizes = localStorage.getItem('agentbuddy-panel-sizes');
+    const savedSizes = localStorage.getItem(PANEL_SIZES_KEY);
     const defaultSizes = {
       canvasHeight: 50, // 50% of main area
       inspectionWidth: 448, // 28rem = 448px (16px base),

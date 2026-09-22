@@ -1,4 +1,3 @@
-import { splitRef, type FeatureRef } from '../ids/refs.ts';
 import { boundFeHost } from '../runtime/fe-host.ts';
 import type { AnyActorRef } from 'xstate';
 import { getDesignated, hasDesignation } from '../designations/index.ts';
@@ -11,11 +10,12 @@ function getApp(): AnyActorRef {
 }
 
 /**
- * Opens the plugin at `ref` and hands it `event`, once its actor is running. Pack code names the plugin
- * instead, through the `navigateToPlugin` its `#generated/fe` builds over this (`check:specifiers` keeps it
- * that way); this is for the host, and for that generated code.
+ * Opens the plugin at `ref` and hands it `event`, once its actor is running. Throws unless `ref` is a registered
+ * plugin's `<packId>/<featureId>`, so a ref that arrives as data (a link's target, a registered plugin's `id`) is
+ * checked here; pack code naming a plugin itself uses the `navigateToPlugin` its `#generated/fe` builds over this,
+ * which checks the name at compile time too.
  */
-export function openRef(ref: FeatureRef, event?: PluginEvent | PluginEvent[]): void {
+export function openPlugin(ref: string, event?: PluginEvent | PluginEvent[]): void {
   const app = getApp();
   const snapshot = app.getSnapshot();
   const registered: Array<{ id: string }> = snapshot.context.plugins ?? [];
@@ -44,16 +44,6 @@ export function openRef(ref: FeatureRef, event?: PluginEvent | PluginEvent[]): v
       });
     }
   }
-}
-
-/**
- * Opens the plugin a ref names and hands it `event`, for a ref that arrives as data (a link's target, a registered
- * plugin's `id`) rather than one the pack's code writes, which its generated `navigateToPlugin` checks at compile
- * time. Throws for anything but a registered plugin's `<packId>/<featureId>`.
- */
-export function openPlugin(ref: string, event?: PluginEvent | PluginEvent[]): void {
-  if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a plugin: a plugin is named "<packId>/<featureId>"`);
-  openRef(ref as FeatureRef, event);
 }
 
 /**

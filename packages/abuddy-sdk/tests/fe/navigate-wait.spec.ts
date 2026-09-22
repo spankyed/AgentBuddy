@@ -1,7 +1,7 @@
 // Opening a registered plugin whose actor hasn't spawned yet (a pack's frontend still loading) hands it its events once
 // it spawns, and stops waiting if the plugin goes away first (its pack disabled meanwhile).
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { openRef } from '../../src/fe/navigation.ts';
+import { openPlugin } from '../../src/fe/navigation.ts';
 import { resolveName } from '../../src/ids/index.ts';
 import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts';
 
@@ -46,9 +46,9 @@ beforeEach(() => {
 
 afterEach(() => unbindFeHost());
 
-describe('openRef to a plugin not yet spawned', () => {
+describe('openPlugin to a plugin not yet spawned', () => {
   it('hands the actor its events once it spawns, then stops listening', () => {
-    openRef(memos, { type: 'OPEN_MEMO' });
+    openPlugin(memos, { type: 'OPEN_MEMO' });
     expect(app.listeners.size).toBe(1);
 
     const actor = app.spawn(memos);
@@ -58,7 +58,7 @@ describe('openRef to a plugin not yet spawned', () => {
   });
 
   it('stops waiting when the plugin is unregistered first, and hands nothing on', () => {
-    openRef(memos, { type: 'OPEN_MEMO' });
+    openPlugin(memos, { type: 'OPEN_MEMO' });
 
     app.unregister(memos);
     expect(app.listeners.size).toBe(0);

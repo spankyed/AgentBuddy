@@ -111,7 +111,6 @@ export interface PackExtensionsView {
 
 // @public
 export interface PackRegistryView extends PackExtensionsView {
-    builtInPackIds(): readonly string[];
     commands(): PackCommand[];
     earsNames(): EarsNames;
     getRegisteredServices(): Record<string, unknown>;

@@ -5,7 +5,7 @@ import { EARS } from '@/__generated__/ears';
 import { checkedSettingsRef } from '../../plugin-settings';
 import type { SettingsData } from '../types';
 import { getDefaultSettings } from '../defaults';
-import { mergeSettings } from '../../merge-settings';
+import { deepMerge } from '@abuddy/sdk/utils/pure';
 
 // Use a fixed ID without hyphen to avoid LMDB persistence issues
 // The ID "Settings-app" has a bug where updates don't persist
@@ -25,7 +25,7 @@ const getStoredSettings = (): Partial<SettingsData> => {
 // The settings in effect: the defaults with the stored changes over them
 const getSettingsEntity = (): { id: EARS.EntityId; data: SettingsData } => ({
   id: SETTINGS_ID,
-  data: mergeSettings(getDefaultSettings(), getStoredSettings()),
+  data: deepMerge(getDefaultSettings(), getStoredSettings()),
 });
 
 // Helper to update nested values
@@ -80,9 +80,7 @@ export const settingsQueries = {
 /** The sections of the stored settings other than the plugins' slices, each keyed as the data holds it */
 type SettingsSection = 'general' | 'assistant' | 'plugins';
 
-/** A plugin's settings are keyed by its ref, which is checked here: actions call this with a string */
-function updateSettings(type: 'plugin', label: `${string}/${string}`, path: string[], value: any): void;
-function updateSettings(type: SettingsSection, label: string | null, path: string[], value: any): void;
+/** A plugin's settings are keyed by its ref, which is checked here: clients and actions pass it as a string */
 function updateSettings(type: SettingsSection | 'plugin', label: string | null, path: string[], value: any): void {
   const stored = getStoredSettings();
 

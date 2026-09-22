@@ -13,7 +13,7 @@ import { computed, ref } from 'vue';
 import { ExternalLink, EyeOff, Settings as SettingsIcon } from 'lucide-vue-next';
 import type { Plugin } from '@/core/types';
 import ContextMenuPopup from '@abuddy/ui/design/ContextMenuPopup';
-import { useApplicationActor, openRef, getDesignated } from '@abuddy/sdk/fe';
+import { useApplicationActor, openPlugin, getDesignated } from '@abuddy/sdk/fe';
 import { useContextMenu, type MenuItem } from '@abuddy/ui/composables/useContextMenu';
 
 const { showMenu, menuPos, open: openMenu } = useContextMenu();
@@ -56,7 +56,7 @@ const menuItems = computed<MenuItem[]>(() => {
       icon: SettingsIcon,
       class: 'text-neutral-200',
       iconClass: 'text-neutral-500',
-      action: () => openRef(getDesignated('settings'), [
+      action: () => openPlugin(getDesignated('settings'), [
         { type: 'TAB.SELECT', tab: 'plugins' },
         { type: 'PLUGIN.SELECT', pluginId: plugin.id },
       ]),

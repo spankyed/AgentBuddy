@@ -20,7 +20,7 @@ export interface Message {
   event: { type: string; [key: string]: unknown };
 }
 
-/** Plugin id → the events that plugin receives. Each pack's `#generated/events` defines its `PackEvents`. */
+/** Plugin id → the events that plugin receives. Each pack's `#generated/events` defines its `SendablePluginEvents`. */
 export type PluginEvents = { [pluginId: string]: { type: string } };
 
 /**

@@ -326,6 +326,12 @@ export function createPackRegistry(): PackRegistry {
    * not unregister the step it collided with.
    */
   const contributions: ReadonlyArray<Contribution<PackRegistration>> = [
+    // First, so a role another pack plays refuses the pack before any contribution a running system observes
+    (reg, undo) => {
+      const roles = designationsOf(reg);
+      designations.register(roles);
+      undo(() => designations.unregister(roles));
+    },
     // Into the installed engine (the app's), before anything that may use them
     (reg, undo) => {
       for (const [name, repo] of Object.entries(reg.repositories ?? {})) {
@@ -347,13 +353,17 @@ export function createPackRegistry(): PackRegistry {
       undo(() => settingsDefaults.unregister(reg.id));
       settingsDefaults.register(reg.id, featuresOf(reg).map(({ featureId, feature }) => ({ id: featureId, settings: feature.settings })));
     },
-    // Last, and collision-checked before any of the above ran, so nothing after it can refuse the pack
-    (reg, undo) => {
-      const roles = designationsOf(reg);
-      designations.register(roles);
-      undo(() => designations.unregister(roles));
-    },
   ];
+
+  /** The first of `keys` a registered pack already holds in what `held` reads off it, and that pack */
+  function firstTaken(keys: readonly string[], held: (reg: PackRegistration) => object | undefined): { key: string; holder: string } | undefined {
+    for (const [holder, existing] of registrations) {
+      const holds = held(existing) ?? {};
+      const key = keys.find((k) => k in holds);
+      if (key) return { key, holder };
+    }
+    return undefined;
+  }
 
   function registerPack(registration: PackRegistration, origin?: PackOrigin): void {
     if (registrations.has(registration.id)) {
@@ -363,33 +373,13 @@ export function createPackRegistry(): PackRegistry {
 
     checkEARS(registration);
 
-    const roles = designationsOf(registration);
-    for (const [existingId, existing] of registrations) {
-      const held = designationsOf(existing);
-      const role = Object.keys(roles).find((r) => r in held);
-      if (role) throw new Error(`Designation collision: role "${role}" — pack "${registration.id}" vs "${existingId}"`);
-    }
-
-    if (registration.services) {
-      for (const key of Object.keys(registration.services)) {
-        if ((HOST_SERVICE_NAMES as readonly string[]).includes(key)) {
-          throw new Error(`Service collision: key "${key}" — pack "${registration.id}" vs the host's own "${key}" service`);
-        }
-      }
-      for (const [existingId, existing] of registrations) {
-        if (!existing.services) continue;
-        for (const key of Object.keys(registration.services)) {
-          if (key in existing.services) {
-            throw new Error(`Service collision: key "${key}" — pack "${registration.id}" vs "${existingId}"`);
-          }
-        }
-      }
-    }
-
-    for (const [existingId, existing] of registrations) {
-      const name = Object.keys(registration.repositories ?? {}).find((n) => n in (existing.repositories ?? {}));
-      if (name) throw new Error(`Repository collision: "${name}" — pack "${registration.id}" vs "${existingId}"`);
-    }
+    const services = Object.keys(registration.services ?? {});
+    const hostService = services.find((key) => (HOST_SERVICE_NAMES as readonly string[]).includes(key));
+    if (hostService) throw new Error(`Service collision: key "${hostService}" — pack "${registration.id}" vs the host's own "${hostService}" service`);
+    const service = firstTaken(services, (reg) => reg.services);
+    if (service) throw new Error(`Service collision: key "${service.key}" — pack "${registration.id}" vs "${service.holder}"`);
+    const repository = firstTaken(Object.keys(registration.repositories ?? {}), (reg) => reg.repositories);
+    if (repository) throw new Error(`Repository collision: "${repository.key}" — pack "${registration.id}" vs "${repository.holder}"`);
 
     /**
      * The pack is listed before its extensions are registered, because registering them is
@@ -513,7 +503,6 @@ export function createPackRegistry(): PackRegistry {
     getRegisteredPackSystemIds,
     packOrigin: (packId) => origins.get(packId) ?? null,
     builtInPacks: () => [...origins.values()].filter((o) => o.builtIn),
-    builtInPackIds: () => [...origins.values()].filter((o) => o.builtIn).map((o) => o.id),
     externalPacks: () => [...origins.values()].filter((o) => !o.builtIn),
     externalPackTargets: (packIds) => {
       const wanted = packIds && new Set(packIds);

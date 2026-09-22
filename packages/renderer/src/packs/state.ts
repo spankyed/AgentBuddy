@@ -2,14 +2,10 @@ import { assign, setup, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
 import { trpc } from '@/core/trpc';
 import type { PackInfo } from '@abuddy/host/packs';
-import { application } from '@/core/actors/application';
 import { unloadPackFrontend } from './pack-loader';
 import { HOST } from '@abuddy/host/fe';
 
 export type { PackInfo };
-
-/** The host `packs` feature's ref: this plugin's, and its system's */
-export const id = HOST.packs;
 
 export interface PacksContext {
   packs: PackInfo[];
@@ -88,18 +84,18 @@ const packsState = setup({
     onPackDeactivated: ({ system, event }) => {
       const ev = typeOf('PACK_DEACTIVATED', event);
       unloadPackFrontend(ev.packId);
-      system.get(application).send({ type: 'PACK_PLUGINS_UNLOADED', packId: ev.packId });
+      system.get(HOST.application).send({ type: 'PACK_PLUGINS_UNLOADED', packId: ev.packId });
     },
 
     // The application actor owns pack frontend loading — it loads the packs it hasn't yet, this one
     // included, and reports a failure the same way wherever the load was asked for
     onPackActivated: ({ system }) => {
-      system.get(application).send({ type: 'LOAD_PACK_FRONTENDS' });
+      system.get(HOST.application).send({ type: 'LOAD_PACK_FRONTENDS' });
     },
 
     sendInstall: ({ event }) => {
       const ev = typeOf('UI.INSTALL', event);
-      trpc.bus.send.mutate({ to: id, event: { type: 'INSTALL_PACK', packSlug: ev.packSlug, source: ev.source } });
+      trpc.bus.send.mutate({ to: HOST.packs, event: { type: 'INSTALL_PACK', packSlug: ev.packSlug, source: ev.source } });
     },
 
     promptUninstall: assign({
@@ -112,7 +108,7 @@ const packsState = setup({
 
     sendUninstall: ({ event }) => {
       const ev = typeOf('UI.UNINSTALL', event);
-      trpc.bus.send.mutate({ to: id, event: { type: 'UNINSTALL_PACK', packId: ev.packId } });
+      trpc.bus.send.mutate({ to: HOST.packs, event: { type: 'UNINSTALL_PACK', packId: ev.packId } });
     },
 
     clearUninstallPrompt: assign({
@@ -121,7 +117,7 @@ const packsState = setup({
 
     sendToggleEnabled: ({ event }) => {
       const ev = typeOf('UI.TOGGLE_ENABLED', event);
-      trpc.bus.send.mutate({ to: id, event: { type: 'TOGGLE_PACK_ENABLED', packId: ev.packId } });
+      trpc.bus.send.mutate({ to: HOST.packs, event: { type: 'TOGGLE_PACK_ENABLED', packId: ev.packId } });
     },
 
     selectPack: assign({
@@ -151,19 +147,19 @@ const packsState = setup({
 
     sendUpdate: ({ event }) => {
       const ev = typeOf('UI.UPDATE', event);
-      trpc.bus.send.mutate({ to: id, event: { type: 'UPDATE_PACK', packId: ev.packId } });
+      trpc.bus.send.mutate({ to: HOST.packs, event: { type: 'UPDATE_PACK', packId: ev.packId } });
     },
 
     sendCheckUpdates: () => {
-      trpc.bus.send.mutate({ to: id, event: { type: 'CHECK_FOR_UPDATES' } });
+      trpc.bus.send.mutate({ to: HOST.packs, event: { type: 'CHECK_FOR_UPDATES' } });
     },
 
     sendRefresh: () => {
-      trpc.bus.send.mutate({ to: id, event: { type: 'GET_INSTALLED_PACKS' } });
+      trpc.bus.send.mutate({ to: HOST.packs, event: { type: 'GET_INSTALLED_PACKS' } });
     },
   },
 }).createMachine({
-  id,
+  id: HOST.packs,
   initial: 'idle',
   context: {
     packs: [],

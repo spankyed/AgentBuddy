@@ -18,7 +18,7 @@ afterEach(() => {
 function generateDepTypes(version: string): void {
   const manifest = { id: 'app-pack', name: 'App', version: '1.0.0' } as PackManifest;
   // The exports generation imports from every dependency's facade
-  const facade = ['PackEntityShapes', 'PackStepNodes', 'PackEvents', 'PackSystemEvents', 'Services', 'Repositories']
+  const facade = ['PackEntityShapes', 'PackStepNodes', 'SendablePluginEvents', 'PackSystemEvents', 'Services', 'Repositories']
     .map((name) => `export type ${name} = {};`).join('\n');
   const snapshot = { types: { entities: {}, relKinds: {} }, defs: { [PACK_TYPES_DEF]: facade }, manifest: { id: 'base-pack', name: 'Base', version }, format: PACK_SNAPSHOT_FORMAT } as PackSnapshot;
   for (const [file, content] of Object.entries(generatePackFiles(manifest, { packRoot: root, depSnapshots: new Map([['base-pack', snapshot]]) }))) {

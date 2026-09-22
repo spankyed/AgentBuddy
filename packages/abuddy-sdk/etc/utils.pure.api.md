@@ -53,6 +53,9 @@ export type ChangeBlock<T = unknown> = {
 // @public (undocumented)
 export function compareVersions(a: string, b: string): number;
 
+// @public
+export function deepMerge<T>(base: T, over: unknown): T;
+
 // @public (undocumented)
 export const detectAllArrayChanges: (prev: unknown, next: unknown) => ArrayChanges | null;
 

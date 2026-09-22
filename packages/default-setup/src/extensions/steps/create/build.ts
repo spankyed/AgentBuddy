@@ -1,6 +1,7 @@
 import type { StepDefinition, StepCompileResult, StepValidationError, StepValidationContext, StepCompileContext, StepDecompileContext } from '@abuddy/sdk/steps';
 import { EARS } from '@abuddy/sdk';
 import { expandRecord, collapseRecord } from '@abuddy/sdk/steps';
+import { isPlainObject } from '@abuddy/sdk/utils/pure';
 
 function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx: StepCompileContext): StepCompileResult {
   return {
@@ -24,11 +25,10 @@ function compile(node: Record<string, unknown>, nodeId: string, ts: number, _ctx
 /** Errors for a step's `map` and `params` fields, shared with the update step */
 export function validateFields(s: Record<string, unknown>, path: string): StepValidationError[] {
   const errors: StepValidationError[] = [];
-  const isRecord = (value: unknown) => typeof value === 'object' && value !== null && !Array.isArray(value);
-  if (s.map !== undefined && !isRecord(s.map)) {
+  if (s.map !== undefined && !isPlainObject(s.map)) {
     errors.push({ path: `${path}.map`, message: '"map" must be an object { field: source }' });
   }
-  if (s.params !== undefined && !isRecord(s.params)) {
+  if (s.params !== undefined && !isPlainObject(s.params)) {
     errors.push({ path: `${path}.params`, message: '"params" must be an object { field: value }' });
   }
   return errors;

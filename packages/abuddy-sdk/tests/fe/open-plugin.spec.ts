@@ -33,7 +33,7 @@ describe('openPlugin', () => {
   });
 
   it('refuses a name that is not a ref, rather than resolving it against some pack', () => {
-    expect(() => openPlugin('memos')).toThrow(`"memos" doesn't name a plugin`);
+    expect(() => openPlugin('memos')).toThrow('No plugin is registered at "memos"');
     expect(sent).toEqual([]);
   });
 });

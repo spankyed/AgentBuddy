@@ -2806,7 +2806,7 @@ type OwnEntityShapes = {
 };
 
 /** Plugin id → the events this pack's systems send to that plugin (their own, and each `sendsTo`). */
-type OwnPackEvents = {
+type OwnPluginEvents = {
     'threads': __events_threads;
     'code': __events_code;
     'notes': __events_notes;
@@ -2855,9 +2855,6 @@ type PackEmitter = Omit<HostServices['emitter'], 'sendToPlugin' | 'sendToSystem'
     sendToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;
     sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;
 };
-
-/** The plugins this pack's code sends to: `QualifiedPluginEvents`, its own also by feature id */
-type PackEvents = WithOwnNames<'default-setup', QualifiedPluginEvents>;
 
 /**
  * Every entity shape this pack can read: the SDK's, its own and its dependencies'. Node is the union of
@@ -3020,7 +3017,7 @@ interface PromptsConnectedData {
  * names. Those keep the events their owner declares they receive — a pack widens only its own plugins. Actions
  * (`services.emitter`) send with it.
  */
-type QualifiedPluginEvents = Qualified<'default-setup', OwnPackEvents> & Pick<HostPluginEvents, 'host/application'>;
+type QualifiedPluginEvents = Qualified<'default-setup', OwnPluginEvents> & Pick<HostPluginEvents, 'host/application'>;
 
 /** Every system this pack's code can send to, by ref: its own, its dependencies' and the host's. */
 type QualifiedSystemEvents = Qualified<'default-setup', PackSystemEvents> & HostSystemEvents;
@@ -3323,6 +3320,9 @@ interface SearchResult {
     matches: SearchMatch[];
     fileSize?: number;
 }
+
+/** The plugins this pack's code sends to: `QualifiedPluginEvents`, with its own named by feature id instead of ref */
+type SendablePluginEvents = WithOwnNames<'default-setup', QualifiedPluginEvents>;
 
 /**
  * Type definitions for the Codex app-server integration.
@@ -5453,10 +5453,8 @@ declare function updateChatState(threadId: EARS.EntityId, chatState: string): vo
  */
 declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'blockResponse' | 'blocks' | 'compacted' | 'context' | 'forkable' | 'responseTimestamp' | 'status' | 'text'>>): void;
 
-/** A plugin's settings are keyed by its ref, which is checked here: actions call this with a string */
-declare function updateSettings(type: 'plugin', label: `${string}/${string}`, path: string[], value: any): void;
-
-declare function updateSettings(type: SettingsSection, label: string | null, path: string[], value: any): void;
+/** A plugin's settings are keyed by its ref, which is checked here: clients and actions pass it as a string */
+declare function updateSettings(type: SettingsSection | 'plugin', label: string | null, path: string[], value: any): void;
 
 /** Parse a Codex JSONL file into an array of entries. */
 declare function viewByFile(filePath: string, opts?: {
@@ -5464,5 +5462,5 @@ declare function viewByFile(filePath: string, opts?: {
     offset?: number;
 }): Promise<any[]>;
 
-export type { PackShapes as PackEntityShapes, PackEvents, PackStepNodes, PackSystemEvents, Repositories, Services };
+export type { PackShapes as PackEntityShapes, PackStepNodes, PackSystemEvents, Repositories, SendablePluginEvents, Services };
 ```

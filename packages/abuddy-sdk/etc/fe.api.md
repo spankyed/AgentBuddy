@@ -250,9 +250,6 @@ export function openLink(url: string): void;
 export function openPlugin(ref: string, event?: PluginEvent | PluginEvent[]): void;
 
 // @public
-export function openRef(ref: FeatureRef, event?: PluginEvent | PluginEvent[]): void;
-
-// @public
 export interface PackFEFeature {
     default?: true;
     designation?: string;

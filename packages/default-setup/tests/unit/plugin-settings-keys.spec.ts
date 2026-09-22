@@ -20,7 +20,6 @@ describe('the plugin settings keys', () => {
   it('refuses a name, and writes nothing', async () => {
     await startApp({ systems: [] });
 
-    // @ts-expect-error a plugin's settings are keyed by its ref
     expect(() => repository.settingsCommands.updateSettings('plugin', 'threads', ['sort'], 'oldest'))
       .toThrow(`"threads" isn't a plugin settings key`);
     expect(stored()).toBeUndefined();

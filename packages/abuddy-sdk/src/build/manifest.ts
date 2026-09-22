@@ -39,7 +39,7 @@ export type PackPluginEntry = NonNullable<PackFeatureEntry['plugin']>;
  * kind removed, renamed or reshaped, or keys that now mean something else. `snapshot-format.spec.ts`
  * lists what it covers, and fails when that list changes so the change is decided rather than missed.
  */
-export const PACK_SNAPSHOT_FORMAT = 1;
+export const PACK_SNAPSHOT_FORMAT = 2;
 
 export interface PackTypeManifest {
   entities: Record<string, string>;

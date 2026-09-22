@@ -1,5 +1,5 @@
 import { trpc } from '@/core/trpc';
-import { id } from './state';
+import { HOST } from '@abuddy/host/fe';
 
 export interface PackInstallRequest {
   packSlug: string;
@@ -22,7 +22,7 @@ export function handleProtocolInstall(params: Record<string, string>): PackInsta
 export async function requestPackInstall(request: PackInstallRequest): Promise<void> {
   try {
     await trpc.bus.send.mutate({
-      to: id,
+      to: HOST.packs,
       event: { type: 'INSTALL_PACK', packSlug: request.packSlug, source: request.source },
     });
   } catch (err) {

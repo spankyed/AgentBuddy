@@ -23,7 +23,6 @@ export { getDesignated, hasDesignation } from '../designations/index.ts'
 export { secretsClient, type SecretsClient, type SecretsSnapshot } from './secrets-client.ts'
 
 export {
-  openRef,
   openPlugin,
   openLink,
   type PluginEvent,

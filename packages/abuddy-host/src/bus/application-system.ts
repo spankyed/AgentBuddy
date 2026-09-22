@@ -2,27 +2,27 @@
 // the plugin the user last had open. It lives in AppState because no pack owns the shell; the renderer's
 // application actor is its plugin.
 import { setup } from 'xstate';
-import { sendToPlugin } from '@abuddy/sdk/events';
+import { eventTypes, sendToPlugin } from '@abuddy/sdk/events';
 import { splitRef } from '@abuddy/sdk/ids';
 import { HOST } from '../host-refs.ts';
 import { appState } from '../app-state/index.ts';
 import type { PackRegistry } from '../packs/pack-registration.ts';
-
-/** The host `application` feature's ref, which this system and the renderer's application actor run under */
-export const application = HOST.application;
 
 /** Which plugins' tabs show, by ref: each feature's declared default, with the user's own choices over it */
 export function pluginVisibility(registry: Pick<PackRegistry, 'settingsDefaults'>): Record<string, boolean> {
   return { ...registry.settingsDefaults().visibility, ...appState.get().pluginVisibility };
 }
 
-type ApplicationEvent =
-  | { type: 'SET_PLUGIN_VISIBILITY'; plugin: string; visible: boolean }
-  | { type: 'SET_LAST_ACTIVE_PLUGIN'; plugin: string }
-  | { type: 'PACK_CHANGED'; packId: string };
-
 /** The events a client may send this system */
-export const APPLICATION_SYSTEM_EVENTS = ['SET_PLUGIN_VISIBILITY', 'SET_LAST_ACTIVE_PLUGIN'] as const;
+type ApplicationClientEvent =
+  | { type: 'SET_PLUGIN_VISIBILITY'; plugin: string; visible: boolean }
+  | { type: 'SET_LAST_ACTIVE_PLUGIN'; plugin: string };
+
+/** What the system handles: a client's events, and the bus's news of a pack */
+type ApplicationEvent = ApplicationClientEvent | { type: 'PACK_CHANGED'; packId: string };
+
+/** The events a client may send this system, which the bus checks a client's send against */
+export const APPLICATION_SYSTEM_EVENTS = eventTypes<ApplicationClientEvent>()('SET_PLUGIN_VISIBILITY', 'SET_LAST_ACTIVE_PLUGIN');
 
 /**
  * The host `application` system over the packs in `registry`. It records the user's choices, and sends the
@@ -33,7 +33,7 @@ export function createApplicationSystem(registry: Pick<PackRegistry, 'settingsDe
     types: { events: {} as ApplicationEvent },
     actions: {
       sendVisibility: () => {
-        sendToPlugin(application, { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: pluginVisibility(registry) });
+        sendToPlugin(HOST.application, { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: pluginVisibility(registry) });
       },
     },
   }).createMachine({

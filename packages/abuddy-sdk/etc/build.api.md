@@ -1281,7 +1281,7 @@ depProvenance?: Map<string, PackProvenance>): {
 export function on(event: string, exits: DSLStepNode[][], label?: string): Track;
 
 // @public
-export const PACK_SNAPSHOT_FORMAT = 1;
+export const PACK_SNAPSHOT_FORMAT = 2;
 
 // @public
 export const PACK_TYPES_DEF = "pack-types";

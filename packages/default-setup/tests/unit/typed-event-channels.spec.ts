@@ -5,7 +5,7 @@ import type { HostPluginEvents } from '@abuddy/sdk/events';
 import type { ApplicationHotkeys } from '@abuddy/sdk/types';
 import type { EARS } from '@/__generated__/ears';
 import type { Services } from '@/__generated__/services';
-import { sendToPlugin, sendToSystem, type PackEvents } from '@/__generated__/events';
+import { sendToPlugin, sendToSystem, type SendablePluginEvents } from '@/__generated__/events';
 import { navigateToPlugin } from '@/__generated__/fe';
 import type { OutgoingActionEvents } from '@/features/actions/be/system';
 import type { OutgoingFlowsEvents } from '@/features/flows/be/system';
@@ -16,17 +16,17 @@ declare const hotkeys: ApplicationHotkeys;
 // What a seed action receives
 declare const services: Services;
 
-describe('PackEvents', () => {
+describe('SendablePluginEvents', () => {
   it('maps each plugin to exactly the events it receives', () => {
-    expectTypeOf<PackEvents['threads']>().toEqualTypeOf<OutgoingThreadsEvents>();
+    expectTypeOf<SendablePluginEvents['threads']>().toEqualTypeOf<OutgoingThreadsEvents>();
     // The flows plugin receives its own system's events and the actions system's (sendsTo)
-    expectTypeOf<PackEvents['flows']>().toEqualTypeOf<OutgoingFlowsEvents | OutgoingActionEvents>();
-    expectTypeOf<PackEvents['host/application']>().toEqualTypeOf<HostPluginEvents['host/application']>();
+    expectTypeOf<SendablePluginEvents['flows']>().toEqualTypeOf<OutgoingFlowsEvents | OutgoingActionEvents>();
+    expectTypeOf<SendablePluginEvents['host/application']>().toEqualTypeOf<HostPluginEvents['host/application']>();
   });
 
   it('has no entry for a plugin nothing sends to', () => {
     // @ts-expect-error not a plugin of this pack, its dependencies or the host
-    expectTypeOf<PackEvents['unknown-plugin']>().toBeNever();
+    expectTypeOf<SendablePluginEvents['unknown-plugin']>().toBeNever();
   });
 });
 

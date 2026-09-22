@@ -37,7 +37,7 @@ describe('frontend designations', () => {
 
   it('refuse a pack claiming a role another plays, leaving nothing of it registered', () => {
     register('first-pack', [['firstNotebook', 'notebook']]);
-    expect(() => register('second-pack', [['secondNotebook', 'notebook']])).toThrow('Designation collision: role "notebook" — pack "second-pack"');
+    expect(() => register('second-pack', [['secondNotebook', 'notebook']])).toThrow('Designation collision: role "notebook" — pack "second-pack" vs "first-pack"');
 
     expect(getDesignated('notebook')).toBe('first-pack/firstNotebook');
     expect(registry.getRegisteredPlugins().map((p) => p.id)).toEqual(['first-pack/firstNotebook']);

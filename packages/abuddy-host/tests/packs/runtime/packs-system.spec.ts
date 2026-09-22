@@ -3,14 +3,14 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { createActor, setup, type AnyEventObject } from 'xstate';
-import { bus } from '../../../src/bus/machine.ts';
+import { HOST } from '../../../src/host-refs.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { resetTestData, takeSystemErrors, testRootEvents } from '@abuddy/sdk/testing';
 import { readInstalledPacks } from '../../../src/packs/installed-packs.ts';
 import { registry } from './test-host.ts';
 import { appState } from '../../../src/app-state/index.ts';
 import { installPackFromLocal } from '../../../src/packs/pack-installer.ts';
-import { createPacksSystem, packs } from '../../../src/packs/runtime/packs-system.ts';
+import { createPacksSystem } from '../../../src/packs/runtime/packs-system.ts';
 import { activatePack } from '../../../src/packs/runtime/lifecycle.ts';
 
 const PACK_ID = 'reinstall-pack';
@@ -60,8 +60,8 @@ function runPacksSystem() {
   const stopListening = testRootEvents.onPluginSend((message) => void sent.push({ type: 'OUTGOING', message }));
   const root = setup({ actors: { bus: busStub, packs: createPacksSystem(registry) } }).createMachine({
     invoke: [
-      { src: 'bus', systemId: bus },
-      { src: 'packs', systemId: packs },
+      { src: 'bus', systemId: HOST.bus },
+      { src: 'packs', systemId: HOST.packs },
     ],
   });
   const actor = createActor(root).start();
@@ -69,7 +69,7 @@ function runPacksSystem() {
     actor.stop();
     stopListening();
   };
-  return { sent, send: (event: AnyEventObject) => actor.system.get(packs).send(event), stop };
+  return { sent, send: (event: AnyEventObject) => actor.system.get(HOST.packs).send(event), stop };
 }
 
 /** The pack-scoped events the system emitted, unwrapped from the bus envelope */

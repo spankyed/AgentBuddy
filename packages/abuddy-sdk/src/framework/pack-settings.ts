@@ -1,4 +1,5 @@
 import { boundHost } from '../runtime/host-runtime.ts';
+import { isPlainObject } from '../utils/shared.ts';
 
 /**
  * A feature's default settings (abuddy.json `features[].settings`): its plugin's slice under
@@ -19,22 +20,19 @@ export interface PackSettingsDefaults {
   visibility: Record<string, boolean>;
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  !!value && typeof value === 'object' && !Array.isArray(value);
-
 /**
  * Problems with a feature's settings: a feature sets only its own plugin's slice and whether its tab shows,
  * so a pack can't change the app's or another plugin's defaults.
  */
 export function checkFeatureSettings(featureId: string, settings: unknown): string[] {
   const where = `Feature "${featureId}" settings`;
-  if (!isRecord(settings)) return [`${where} must default-export an object`];
+  if (!isPlainObject(settings)) return [`${where} must default-export an object`];
   const problems = Object.keys(settings).filter((key) => key !== 'plugins' && key !== 'visible')
     .map((key) => `${where} set "${key}"; only "plugins.${featureId}" and "visible" are allowed`);
   if (settings.visible !== undefined && typeof settings.visible !== 'boolean') problems.push(`${where}: "visible" must be true or false`);
   const { plugins } = settings;
   if (plugins === undefined) return problems;
-  if (!isRecord(plugins)) return [...problems, `${where}: "plugins" must be an object`];
+  if (!isPlainObject(plugins)) return [...problems, `${where}: "plugins" must be an object`];
   for (const key of Object.keys(plugins)) {
     if (key !== featureId) problems.push(`${where} set "plugins.${key}"; a feature sets only its own plugin's settings, "plugins.${featureId}"`);
   }

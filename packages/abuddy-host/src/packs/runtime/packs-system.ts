@@ -2,7 +2,6 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
-import { bus } from '../../bus/machine.ts';
 import { sendToPlugin } from '@abuddy/sdk/events';
 import { getAppVersion } from '@abuddy/sdk/env';
 import { forgetPack, packRecord, recordInstalled, recordUpdateInstalled, setPackEnabled } from '../installed-packs.ts';
@@ -28,8 +27,6 @@ type IncomingPacksEvents =
   | { type: 'GET_INSTALLED_PACKS' }
 
 export const packsSpec = defineSystem<IncomingPacksEvents, OutgoingPacksEvents>();
-/** The host `packs` feature's ref, which its system and plugin both run under */
-export const packs = HOST.packs;
 
 function readManifest(dir: string): Record<string, any> | null {
   try {
@@ -104,7 +101,7 @@ function toBuiltInPackInfoList(registry: PackRegistry): PackInfo[] {
 function emitPacksList(registry: PackRegistry, system: any) {
   const external = toExternalPackInfoList(registry, installedPacks());
   const builtIn = toBuiltInPackInfoList(registry);
-  sendToPlugin(packs, { type: 'PACKS_LIST' as const, packs: [...builtIn, ...external] });
+  sendToPlugin(HOST.packs, { type: 'PACKS_LIST' as const, packs: [...builtIn, ...external] });
 }
 
 /** The host `packs` system, installing, updating and toggling the packs in `registry` */
@@ -130,7 +127,7 @@ export function createPacksSystem(registry: PackRegistry) {
         _inFlightOps.add(packSlug);
         console.log(`[packs] Install requested: ${packSlug} (source: ${ev.source ?? 'default'})`);
 
-        sendToPlugin(packs, { type: 'PACK_INSTALL_STARTED' as const, packSlug });
+        sendToPlugin(HOST.packs, { type: 'PACK_INSTALL_STARTED' as const, packSlug });
 
         const isGitHub = !ev.source && !packSlug.startsWith('http') && packSlug.includes('/');
         // The id of the running pack this install tore down, which a slug or a URL doesn't carry
@@ -145,21 +142,21 @@ export function createPacksSystem(registry: PackRegistry) {
           beforePlace: (manifest) => {
             if (!registry.packOrigin(manifest.id)) return;
             replacedId = manifest.id;
-            teardownPack(registry, manifest.id, system.get(bus), { replacing: true });
-            sendToPlugin(packs, { type: 'PACK_DEACTIVATED' as const, packId: manifest.id });
+            teardownPack(registry, manifest.id, system.get(HOST.bus), { replacing: true });
+            sendToPlugin(HOST.packs, { type: 'PACK_DEACTIVATED' as const, packId: manifest.id });
           },
         }).then(result => {
           recordInstalled(result.id, isGitHub ? packSlug : undefined);
 
-          const activated = activatePack(registry, result.id, system.get(bus));
+          const activated = activatePack(registry, result.id, system.get(HOST.bus));
           const problem = activationProblem(result.id, activated);
           if (problem) {
             if (replacedId && !activated) {
               // The replacement never registered: end the window, and tell the running systems the pack is gone
               registry.clearPackReplacing(result.id);
-              system.get(bus).send({ type: 'PACK_CHANGED', packId: result.id });
+              system.get(HOST.bus).send({ type: 'PACK_CHANGED', packId: result.id });
             }
-            sendToPlugin(packs, {
+            sendToPlugin(HOST.packs, {
               type: 'PACK_INSTALL_FAILED' as const,
               packSlug,
               error: `${result.name} was installed but ${problem}`,
@@ -168,14 +165,14 @@ export function createPacksSystem(registry: PackRegistry) {
             return;
           }
 
-          sendToPlugin(packs, {
+          sendToPlugin(HOST.packs, {
             type: 'PACK_INSTALL_COMPLETE' as const,
             packSlug,
             packId: result.id,
             packName: result.name,
             version: result.version,
           });
-          sendToPlugin(packs, { type: 'PACK_ACTIVATED' as const, packId: result.id });
+          sendToPlugin(HOST.packs, { type: 'PACK_ACTIVATED' as const, packId: result.id });
           emitPacksList(registry, system);
         }).catch(err => {
           const message = err instanceof Error ? err.message : String(err);
@@ -183,9 +180,9 @@ export function createPacksSystem(registry: PackRegistry) {
           // The pack was torn down for a replacement that never arrived: end the window and say it is gone
           if (replacedId) {
             registry.clearPackReplacing(replacedId);
-            system.get(bus).send({ type: 'PACK_CHANGED', packId: replacedId });
+            system.get(HOST.bus).send({ type: 'PACK_CHANGED', packId: replacedId });
           }
-          sendToPlugin(packs, {
+          sendToPlugin(HOST.packs, {
             type: 'PACK_INSTALL_FAILED' as const,
             packSlug,
             error: message,
@@ -206,13 +203,13 @@ export function createPacksSystem(registry: PackRegistry) {
         _inFlightOps.add(packId);
         console.log(`[packs] Uninstall requested: ${packId}`);
 
-        teardownPack(registry, packId, system.get(bus));
-        sendToPlugin(packs, { type: 'PACK_DEACTIVATED' as const, packId });
+        teardownPack(registry, packId, system.get(HOST.bus));
+        sendToPlugin(HOST.packs, { type: 'PACK_DEACTIVATED' as const, packId });
 
         runUninstall(packId).then(() => {
           forgetPack(packId);
 
-          sendToPlugin(packs, {
+          sendToPlugin(HOST.packs, {
             type: 'PACK_UNINSTALL_COMPLETE' as const,
             packId,
           });
@@ -220,7 +217,7 @@ export function createPacksSystem(registry: PackRegistry) {
         }).catch(err => {
           const message = err instanceof Error ? err.message : String(err);
           console.error(`[packs] Uninstall failed for ${packId}:`, message);
-          sendToPlugin(packs, {
+          sendToPlugin(HOST.packs, {
             type: 'PACK_UNINSTALL_FAILED' as const,
             packId,
             error: message,
@@ -235,7 +232,7 @@ export function createPacksSystem(registry: PackRegistry) {
         const packId = ev.packId;
         const entry = packRecord(packId);
         if (!entry.installedFrom) {
-          sendToPlugin(packs, {
+          sendToPlugin(HOST.packs, {
             type: 'PACK_UPDATE_FAILED' as const,
             packId,
             error: 'Pack has no update source',
@@ -255,17 +252,17 @@ export function createPacksSystem(registry: PackRegistry) {
         console.log(`[packs] Update requested: ${packId} from ${target}`);
 
         // Silent teardown: activation announces the change, or the finally below does when nothing activates
-        teardownPack(registry, packId, system.get(bus), { replacing: true });
-        sendToPlugin(packs, { type: 'PACK_DEACTIVATED' as const, packId });
+        teardownPack(registry, packId, system.get(HOST.bus), { replacing: true });
+        sendToPlugin(HOST.packs, { type: 'PACK_DEACTIVATED' as const, packId });
         let activated = false;
 
         installPackFromGitHub(target, undefined, { hostVersion: getAppVersion() }).then(result => {
           recordUpdateInstalled(packId);
 
-          activated = activatePack(registry, packId, system.get(bus));
+          activated = activatePack(registry, packId, system.get(HOST.bus));
           const problem = activationProblem(packId, activated);
           if (problem) {
-            sendToPlugin(packs, {
+            sendToPlugin(HOST.packs, {
               type: 'PACK_UPDATE_FAILED' as const,
               packId,
               error: `Updated to ${result.version} but ${problem}`,
@@ -274,21 +271,21 @@ export function createPacksSystem(registry: PackRegistry) {
             return;
           }
 
-          sendToPlugin(packs, {
+          sendToPlugin(HOST.packs, {
             type: 'PACK_UPDATE_COMPLETE' as const,
             packId,
             version: result.version,
           });
-          sendToPlugin(packs, { type: 'PACK_ACTIVATED' as const, packId });
+          sendToPlugin(HOST.packs, { type: 'PACK_ACTIVATED' as const, packId });
           emitPacksList(registry, system);
         }).catch(err => {
           const message = err instanceof Error ? err.message : String(err);
           console.error(`[packs] Update failed for ${packId}:`, message);
-          activated = activatePack(registry, packId, system.get(bus));
+          activated = activatePack(registry, packId, system.get(HOST.bus));
           if (activated) {
-            sendToPlugin(packs, { type: 'PACK_ACTIVATED' as const, packId });
+            sendToPlugin(HOST.packs, { type: 'PACK_ACTIVATED' as const, packId });
           }
-          sendToPlugin(packs, {
+          sendToPlugin(HOST.packs, {
             type: 'PACK_UPDATE_FAILED' as const,
             packId,
             error: message,
@@ -299,7 +296,7 @@ export function createPacksSystem(registry: PackRegistry) {
           // than leaving the pack's plugins marked as expected-to-be-missing for the rest of the run
           registry.clearPackReplacing(packId);
           // Activation sends PACK_CHANGED itself; without it the pack is gone, which running systems must hear
-          if (!activated) system.get(bus).send({ type: 'PACK_CHANGED', packId });
+          if (!activated) system.get(HOST.bus).send({ type: 'PACK_CHANGED', packId });
           _inFlightOps.delete(packId);
         });
       },
@@ -330,11 +327,11 @@ export function createPacksSystem(registry: PackRegistry) {
         const newEnabled = !entry.enabled;
 
         if (!newEnabled) {
-          teardownPack(registry, packId, system.get(bus));
-          sendToPlugin(packs, { type: 'PACK_DEACTIVATED' as const, packId });
+          teardownPack(registry, packId, system.get(HOST.bus));
+          sendToPlugin(HOST.packs, { type: 'PACK_DEACTIVATED' as const, packId });
         } else {
-          activatePack(registry, packId, system.get(bus));
-          sendToPlugin(packs, { type: 'PACK_ACTIVATED' as const, packId });
+          activatePack(registry, packId, system.get(HOST.bus));
+          sendToPlugin(HOST.packs, { type: 'PACK_ACTIVATED' as const, packId });
         }
 
         // The pack has already been torn down or activated; what may not have survived is the choice
@@ -348,7 +345,7 @@ export function createPacksSystem(registry: PackRegistry) {
             error: new Error(`Couldn't save that ${packId} is ${newEnabled ? 'enabled' : 'disabled'}: it will be ${newEnabled ? 'disabled' : 'enabled'} again the next time AgentBuddy starts.`),
           });
         }
-        sendToPlugin(packs, {
+        sendToPlugin(HOST.packs, {
           type: 'PACK_ENABLED_CHANGED' as const,
           packId,
           enabled: newEnabled,
@@ -357,7 +354,7 @@ export function createPacksSystem(registry: PackRegistry) {
       },
     },
   }).createMachine({
-    id: packs,
+    id: HOST.packs,
     initial: 'idle',
     context: {},
     states: {

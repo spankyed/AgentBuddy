@@ -78,6 +78,9 @@ export function copyMediaByRef(refs: MediaRef[], outputDir: string): number;
 // @public (undocumented)
 export function createExportDir(parentDir: string, systemName: string): string;
 
+// @public
+export function deepMerge<T>(base: T, over: unknown): T;
+
 // @public (undocumented)
 export const detectAllArrayChanges: (prev: unknown, next: unknown) => ArrayChanges | null;
 

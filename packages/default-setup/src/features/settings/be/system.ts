@@ -16,7 +16,7 @@ import type { FAQItem } from '@/features/settings/be/types';
 import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services';
 import { REQUIRED_PROVIDERS } from '../constants';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
-import { resolveName, splitRef } from '@abuddy/sdk/ids';
+import { splitRef, type FeatureRef } from '@abuddy/sdk/ids';
 import { ref } from '@/__generated__/ref';
 
 const logger = createLogger('settings');
@@ -115,7 +115,7 @@ export const settingsSystem = setup({
           if (!splitRef(feature) || JSON.stringify(before) === JSON.stringify(after)) continue;
           // Any pack's feature has settings: its system gets the changes too, and one it doesn't run is nobody's
           const settings = after ?? {};
-          const to = resolveName(feature);
+          const to = feature as FeatureRef;
           sendToSystem(to, { type: 'FEATURE_SETTINGS_UPDATED', settings, changes: detectAllArrayChanges(before ?? {}, settings) });
           sendToPlugin(to, { type: 'FEATURE_SETTINGS_UPDATED', settings });
         }
@@ -132,7 +132,7 @@ export const settingsSystem = setup({
       const ev = settingsSpec.typeOf('UPDATE_SETTINGS', event);
       // A plugin's settings are keyed by its ref, which the frontend resolves before sending and the store checks
       try {
-        if (ev.entityType === 'plugin') settingsCommands.updateSettings('plugin', ev.label as `${string}/${string}`, ev.path, ev.value);
+        if (ev.entityType === 'plugin') settingsCommands.updateSettings('plugin', ev.label, ev.path, ev.value);
         else settingsCommands.updateSettings('general', ev.label, ev.path, ev.value);
       } catch (error) {
         reportError({ error: new Error(`Settings for ${ev.entityType} "${ev.label}" weren't saved: ${(error as Error).message}`), source: 'settings' });

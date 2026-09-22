@@ -1,6 +1,6 @@
 // The lookups the backend's and the renderer's registries both keep of what registered packs contributed, each
 // owned by the registry that creates it (createPackRegistry, createFePackRegistry)
-import type { FeatureRef } from '@abuddy/sdk/ids';
+import { splitRef, type FeatureRef } from '@abuddy/sdk/ids';
 import { _mergeStepDefinitions, type StepDefinition } from '@abuddy/sdk/steps';
 
 /**
@@ -63,12 +63,17 @@ export function createStepStore() {
   return createDefinitionStore<StepDefinition>(_mergeStepDefinitions);
 }
 
-/** Role → id of the system or plugin that plays it */
+/** Role → id of the system or plugin that plays it; one feature plays a role, so a taken role is refused */
 export function createDesignationStore() {
   const roles = new Map<string, FeatureRef>();
   return {
+    /** Registers every role or none: throws naming both packs when one is already played */
     register(designations: Record<string, FeatureRef>): void {
-      for (const [role, id] of Object.entries(designations)) roles.set(role, id);
+      for (const [role, ref] of Object.entries(designations)) {
+        const held = roles.get(role);
+        if (held) throw new Error(`Designation collision: role "${role}" — pack "${splitRef(ref)?.packId}" vs "${splitRef(held)?.packId}"`);
+      }
+      for (const [role, ref] of Object.entries(designations)) roles.set(role, ref);
     },
     unregister(designations: Record<string, FeatureRef>): void {
       for (const role of Object.keys(designations)) roles.delete(role);

@@ -14,7 +14,7 @@ import {
   loadExternalPacks, registerExternalPacks,
   startPacks,
 } from '@abuddy/host/packs/runtime';
-import { APPLICATION_SYSTEM_EVENTS, bus, createAppBus, createApplicationSystem, startEarlySystems } from '@abuddy/host/bus';
+import { APPLICATION_SYSTEM_EVENTS, createAppBus, HOST, createApplicationSystem, startEarlySystems } from '@abuddy/host/bus';
 import { createHostRuntime } from '@abuddy/host/services';
 import { forwardSecretsChanges } from '@abuddy/host/secrets';
 import { assertSourceResolution } from '@abuddy/host/build/source-resolution';
@@ -136,7 +136,8 @@ export async function setupBackend(): Promise<void> {
   }
 
   // Start the early systems (the logs system must start before anything else)
-  for (const { id, actor } of startEarlySystems(packs).actors) actor.subscribe(logErrors(id));
+  const early = startEarlySystems(packs);
+  for (const { id, actor } of early.actors) actor.subscribe(logErrors(id));
 
   console.log(`[app] AgentBuddy v${APP_VERSION} startupId=${process.env.AGENTBUDDY_STARTUP_ID ?? 'unknown'}`);
 
@@ -160,8 +161,8 @@ export async function setupBackend(): Promise<void> {
   startPacks(packs);
 
   // ── Start backend actor ──────────────────────────────────────────────
-  backendActor = createActor(createAppBus(packs), {
-    systemId: bus,
+  backendActor = createActor(createAppBus(packs, early.refs), {
+    systemId: HOST.bus,
   }).start();
 
   backendActor.subscribe(logErrors('Backend'));

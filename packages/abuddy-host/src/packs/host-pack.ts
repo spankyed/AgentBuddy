@@ -3,7 +3,8 @@
 // the caller runs them (the app does; the test harness runs no Packs system).
 import { eventTypes, HOST_PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
 import type { PackFeatureSystem, PackRegistration } from '@abuddy/sdk/framework';
-import { HOST_PACK_ID } from '@abuddy/sdk/ids';
+import { HOST_PACK_ID, splitRef, type FeatureRef } from '@abuddy/sdk/ids';
+import { HOST } from '../host-refs.ts';
 import type { PackInfo } from './pack-registration.ts';
 
 /** What the host `packs` system sends its plugin */
@@ -38,13 +39,16 @@ export const PACKS_PLUGIN_EVENT_TYPES = eventTypes<OutgoingPacksEvents>()(
   'PACK_UPDATE_FAILED',
 );
 
+/** A host feature's id, which its registration is keyed by */
+const featureIdOf = (ref: FeatureRef) => splitRef(ref)!.featureId;
+
 /** The host's registration: its plugins, and the systems in `systems` */
 export function hostRegistration(systems: { application?: PackFeatureSystem; packs?: PackFeatureSystem } = {}): PackRegistration {
   return {
     id: HOST_PACK_ID,
     features: {
-      application: { ...(systems.application && { system: systems.application }), plugin: { receives: HOST_PLUGIN_EVENT_TYPES['host/application'] } },
-      packs: { ...(systems.packs && { system: systems.packs }), plugin: { receives: PACKS_PLUGIN_EVENT_TYPES } },
+      [featureIdOf(HOST.application)]: { ...(systems.application && { system: systems.application }), plugin: { receives: HOST_PLUGIN_EVENT_TYPES['host/application'] } },
+      [featureIdOf(HOST.packs)]: { ...(systems.packs && { system: systems.packs }), plugin: { receives: PACKS_PLUGIN_EVENT_TYPES } },
     },
   };
 }

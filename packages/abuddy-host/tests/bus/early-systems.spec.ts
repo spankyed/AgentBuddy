@@ -27,7 +27,7 @@ beforeEach(() => {
     },
   });
   early = startEarlySystems(registry);
-  bus = createActor(createAppBus(registry), { systemId: 'host/bus' }).start();
+  bus = createActor(createAppBus(registry, early.refs), { systemId: 'host/bus' }).start();
 });
 
 afterEach(() => {

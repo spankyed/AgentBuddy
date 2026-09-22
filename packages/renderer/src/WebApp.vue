@@ -99,7 +99,7 @@ import InspectionPanel from '@/core/components/layout/inspection-panel.vue'
 import PanelResizer from '@abuddy/ui/layout/panel-resizer'
 import { applicationState } from '@/main'
 import { visiblePluginsOf } from '@/core/actors/application'
-import { openRef, PluginScope } from '@abuddy/sdk/fe'
+import { openPlugin, PluginScope } from '@abuddy/sdk/fe'
 import Router from '@/core/components/layout/router.vue'
 import { getDesignated, hasDesignation } from '@abuddy/sdk/fe'
 import type { ContextMenuItem } from '@abuddy/sdk/fe'
@@ -200,7 +200,7 @@ const handleMenuAction = (event: { type: string; [key: string]: any }) => {
   if (event.type === 'APP_OPEN_PLUGIN_SETTINGS') {
     // The settings live with whichever plugin plays the role, if any does
     if (!hasDesignation('settings')) return
-    openRef(getDesignated('settings'), [
+    openPlugin(getDesignated('settings'), [
       { type: 'TAB.SELECT', tab: 'plugins' },
       { type: 'PLUGIN.SELECT', pluginId: event.pluginId }
     ])

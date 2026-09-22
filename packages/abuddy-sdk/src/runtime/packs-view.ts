@@ -39,8 +39,6 @@ export interface PackRegistryView extends PackExtensionsView {
   systemIds(): readonly FeatureRef[];
   /** The refs of every registered plugin, the host's included */
   pluginIds(): readonly FeatureRef[];
-  /** The ids of the registered packs that came with the app */
-  builtInPackIds(): readonly string[];
   /** The seed hooks registered for an entity type */
   seedHooks(entity: string): SeedHooks | undefined;
   /** A registered pack's seeders */

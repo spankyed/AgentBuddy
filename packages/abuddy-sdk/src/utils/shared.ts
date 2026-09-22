@@ -2,6 +2,15 @@
 export const isPlainObject = (val: unknown): val is Record<string, unknown> =>
   typeof val === 'object' && val !== null && !Array.isArray(val);
 
+/** `over` on `base`: plain objects merge key by key, an undefined value keeps the base's, anything else replaces it */
+export function deepMerge<T>(base: T, over: unknown): T {
+  if (over === undefined) return base;
+  if (!isPlainObject(base) || !isPlainObject(over)) return over as T;
+  const result: Record<string, unknown> = { ...base };
+  for (const [key, value] of Object.entries(over)) result[key] = deepMerge(base[key], value);
+  return result as T;
+}
+
 export type MaybeArr<T> = T | readonly T[];
 export function asArr<T>(v: MaybeArr<T>): readonly T[] {
   return (Array.isArray(v) ? v : [v]) as readonly T[];

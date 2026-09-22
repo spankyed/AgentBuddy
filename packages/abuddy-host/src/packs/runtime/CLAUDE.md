@@ -91,7 +91,7 @@ The API's `core/router/packs-router.ts` serves `packs.loaded` from `getLoadedPac
    registerExternalPacks()         — registerPack() each
    await built-in                  — registerPack() each, with where it was found (PackOrigin)
 5. publishHostPackOutput()      — each built-in pack into host-packs/<id>
-6. registry.getEarlySystems()      — the logs system starts
+6. startEarlySystems(registry)     — the logs system starts (@abuddy/host/bus)
 7. registry.registerShutdownHook() — each pack's onShutdown, keyed by pack id
 8. store.hydrate()                 — EARS policy now sees all entity types
 9. startPacks(registry)            — start.ts; services.appData.reset() runs it too, after the shutdown hooks:
@@ -100,7 +100,7 @@ The API's `core/router/packs-router.ts` serves `packs.loaded` from `getLoadedPac
    runPackMigrations()             — external packs' migrations, each against its pack version
    runRegisteredBootSeeds()        — built-in packs' boot.seedManifest (orchestrateDeclarativeSeed)
    seedPackData()                  — external pack compiled seeds (hash-checked, in dependency order)
-10. start the bus actor            — createAppBus() (@abuddy/host/bus) with systemId `bus`
+10. start the bus actor            — createAppBus(registry, early.refs) (@abuddy/host/bus) with systemId `HOST.bus`, leaving the early systems' messages to them
 ```
 
 Every pack registers before hydration, so its entity types are visible to the partition policy resolver.

@@ -7,6 +7,7 @@ import type { PackMigration } from '@abuddy/sdk/framework';
 import { splitRef, type FeatureRef } from '@abuddy/sdk/ids';
 import { appState, type AppState } from '../../app-state/index.ts';
 import type { PackRegistry } from '../../packs/pack-registration.ts';
+import { deepMerge, isPlainObject } from '@abuddy/sdk/utils/pure';
 
 /** The settings row: where the app's state was stored before 0.3.15, and where the plugin settings still are */
 const SETTINGS_ID = 'Settings-app' as EARS.EntityId;
@@ -119,17 +120,6 @@ export function pluginRefOf(id: string, owners: PluginOwners): FeatureRef | unde
   return ownersOf(owners).get(id) ?? undefined;
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-/** `over` laid on `under`: nested objects merge, and anywhere else `over` wins */
-function mergeUnder(under: unknown, over: unknown): unknown {
-  if (!isRecord(under) || !isRecord(over)) return over;
-  const merged: Record<string, unknown> = { ...under };
-  for (const [key, value] of Object.entries(over)) merged[key] = key in under ? mergeUnder(under[key], value) : value;
-  return merged;
-}
-
 /**
  * A record keyed by plugin with every key a bare feature id stands for moved onto its owner's ref; a key no plugin
  * owns stays. A bare key and its ref both holding a value merge, the ref's winning wherever both set one. When nothing
@@ -142,7 +132,7 @@ export function addressPluginKeys<T extends Record<string, unknown>>(record: T, 
   for (const key of Object.keys(record)) {
     const ref = ownerOf.get(key);
     if (!ref) continue;
-    next[ref] = ref in next ? mergeUnder(record[key], next[ref]) : record[key];
+    next[ref] = ref in next ? deepMerge(record[key], next[ref]) : record[key];
     delete next[key];
     moved++;
   }

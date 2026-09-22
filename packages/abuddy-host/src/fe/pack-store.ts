@@ -5,7 +5,7 @@ import type { FePackRegistryView } from '@abuddy/sdk/runtime';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { addContributions, createDefinitionStore, createDesignationStore, createOwnedStore, createStepStore, definitions, type Contribution } from '../packs/extensions.ts';
-import { resolveName, splitRef, type FeatureRef } from '@abuddy/sdk/ids';
+import { resolveName, type FeatureRef } from '@abuddy/sdk/ids';
 import { createAppExtensionSlots } from './app-extensions.ts';
 import { checkFeatureIds } from '../packs/feature-ids.ts';
 
@@ -29,13 +29,31 @@ export interface FePackRegistry extends FePackRegistryView {
   getAppExtension(slot: string): ReturnType<FePackRegistryView['appExtension']>;
 }
 
-/** A registration's plugins, each at its feature's ref, with the feature's role and default claim */
-function pluginsOf(registration: PackFERegistration): Array<{ plugin: Plugin; designation?: string; default?: true }> {
-  return Object.entries(registration.features ?? {}).map(([featureId, feature]) => ({
-    plugin: { ...feature.plugin, id: resolveName(featureId, registration.id) } as Plugin,
-    designation: feature.designation,
-    default: feature.default,
-  }));
+/** A registration with its plugins addressed once: each at its feature's ref, with the feature's role and default claim */
+type AddressedRegistration = PackFERegistration & {
+  addressed: Array<{ plugin: Plugin; designation?: string; default?: true }>;
+};
+
+function addressed(registration: PackFERegistration): AddressedRegistration {
+  return {
+    ...registration,
+    addressed: Object.entries(registration.features ?? {}).map(([featureId, feature]) => ({
+      plugin: { ...feature.plugin, id: resolveName(featureId, registration.id) } as Plugin,
+      designation: feature.designation,
+      default: feature.default,
+    })),
+  };
+}
+
+/** Pushes each of `items` onto `list`, recording how to take that item back out */
+function listed<T>(list: T[], items: readonly T[] | undefined, undo: (fn: () => void) => void): void {
+  for (const item of items ?? []) {
+    list.push(item);
+    undo(() => {
+      const idx = list.indexOf(item);
+      if (idx >= 0) list.splice(idx, 1);
+    });
+  }
 }
 
 /** A new, empty frontend registry */
@@ -52,43 +70,22 @@ export function createFePackRegistry(): FePackRegistry {
   const dslTypes = createOwnedStore<DslTypeConfig>();
 
   /** What a pack's frontend contributes, each kind recording how to take it back out (as the backend registry does) */
-  const contributions: ReadonlyArray<Contribution<PackFERegistration>> = [
+  const contributions: ReadonlyArray<Contribution<AddressedRegistration>> = [
+    // First, so a role another pack plays refuses the pack before anything else of it is in, as the backend's does
     (reg, undo) => {
-      for (const { plugin } of pluginsOf(reg)) {
-        allPlugins.push(plugin);
-        undo(() => {
-          const idx = allPlugins.indexOf(plugin);
-          if (idx >= 0) allPlugins.splice(idx, 1);
-        });
-      }
-    },
-    // The first pack to claim the default keeps it
-    (reg, undo) => {
-      const claim = pluginsOf(reg).find((feature) => feature.default);
-      if (!claim || defaultPlugin) return;
-      defaultPlugin = allPlugins.find((plugin) => plugin.id === claim.plugin.id);
-      undo(() => { defaultPlugin = undefined; });
-    },
-    // A role another pack plays refuses the pack, as the backend registry does
-    (reg, undo) => {
-      const roles: Record<string, FeatureRef> = {};
-      for (const { plugin, designation } of pluginsOf(reg)) {
-        if (!designation) continue;
-        if (designations.has(designation)) throw new Error(`Designation collision: role "${designation}" — pack "${reg.id}" vs the plugin that plays it`);
-        roles[designation] = plugin.id;
-      }
+      const roles = Object.fromEntries(reg.addressed.flatMap(({ plugin, designation }) => (designation ? [[designation, plugin.id as FeatureRef]] : [])));
       designations.register(roles);
       undo(() => designations.unregister(roles));
     },
+    (reg, undo) => listed(allPlugins, reg.addressed.map(({ plugin }) => plugin), undo),
+    // The first pack to claim the default keeps it
     (reg, undo) => {
-      for (const plugin of reg.tiptapPlugins ?? []) {
-        tiptapPlugins.push(plugin);
-        undo(() => {
-          const idx = tiptapPlugins.indexOf(plugin);
-          if (idx >= 0) tiptapPlugins.splice(idx, 1);
-        });
-      }
+      const claim = reg.addressed.find((feature) => feature.default);
+      if (!claim || defaultPlugin) return;
+      defaultPlugin = claim.plugin;
+      undo(() => { defaultPlugin = undefined; });
     },
+    (reg, undo) => listed(tiptapPlugins, reg.tiptapPlugins, undo),
     (reg, undo) => {
       for (const [slot, component] of Object.entries(reg.appExtensions ?? {})) {
         appExtensions.register(slot, component, reg.id);
@@ -118,8 +115,9 @@ export function createFePackRegistry(): FePackRegistry {
     }
     checkFeatureIds(packId, Object.keys(registration.features ?? {}));
     // All or nothing: a throw partway (a step's `loadComponents`, a role collision) leaves the registry as it was
-    const undos = addContributions(registration, contributions);
-    const plugins = allPlugins.filter((plugin) => splitRef(plugin.id)?.packId === packId);
+    const reg = addressed(registration);
+    const undos = addContributions(reg, contributions);
+    const plugins = reg.addressed.map(({ plugin }) => plugin);
     packExtensions.set(packId, { plugins, undo: undos.undoAll });
     return plugins;
   }

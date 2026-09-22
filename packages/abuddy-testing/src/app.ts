@@ -1,6 +1,6 @@
 // A test app: the pack's registered systems under the app's bus core, with a client the test drives.
 import { createActor, type Actor, type AnyActorRef, type AnyStateMachine } from 'xstate';
-import { bus as busRef, createBusMachine } from '@abuddy/host/bus';
+import { createBusMachine, HOST } from '@abuddy/host/bus';
 import { resolveRegistered } from '@abuddy/sdk/ids';
 import type { PackBootHooks } from '@abuddy/sdk/framework';
 import type { Message } from '@abuddy/sdk/events';
@@ -290,11 +290,11 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
     },
   }), {
-    systemId: busRef,
+    systemId: HOST.bus,
     inspect: (inspection) => {
       activity++;
       // What systems send the bus for clients, connected or not
-      if (inspection.type === '@xstate.event' && inspection.event.type === 'OUTGOING' && inspection.actorRef === (inspection.actorRef as AnyActorRef).system.get(busRef)) {
+      if (inspection.type === '@xstate.event' && inspection.event.type === 'OUTGOING' && inspection.actorRef === (inspection.actorRef as AnyActorRef).system.get(HOST.bus)) {
         record((inspection.event as unknown as { message: Message }).message.event);
       }
     },

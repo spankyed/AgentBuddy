@@ -4,6 +4,7 @@
 // (features[].settings) aren't in it: the pack registry holds them, under each plugin's ref, for every pack.
 import { pathToFileURL } from 'node:url';
 import type { SeedCompileContext, SeedRecord } from '@abuddy/sdk/build';
+import { isPlainObject } from '@abuddy/sdk/utils/pure';
 
 /** The record the settings seed holds */
 export interface SettingsSeedRecord extends SeedRecord {
@@ -11,18 +12,15 @@ export interface SettingsSeedRecord extends SeedRecord {
   settings: Record<string, unknown>;
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> =>
-  !!value && typeof value === 'object' && !Array.isArray(value);
-
 async function defaultExport(file: string): Promise<Record<string, unknown>> {
   const mod = await import(pathToFileURL(file).href) as { default?: unknown };
-  if (!isRecord(mod.default)) throw new Error(`${file} has no default export of a settings object`);
+  if (!isPlainObject(mod.default)) throw new Error(`${file} has no default export of a settings object`);
   return mod.default;
 }
 
 export default async function compileSettings({ path: sourcePath }: SeedCompileContext): Promise<SettingsSeedRecord[]> {
   const settings = await defaultExport(sourcePath);
-  if (isRecord(settings.plugins) && Object.keys(settings.plugins).length > 0) {
+  if (isPlainObject(settings.plugins) && Object.keys(settings.plugins).length > 0) {
     throw new Error(`${sourcePath} sets a plugin's settings: a feature declares its own, and whether its tab shows, in features[].settings`);
   }
   return [{ name: 'default-settings', description: 'Application defaults', settings }];
