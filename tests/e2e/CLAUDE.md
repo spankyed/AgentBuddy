@@ -139,7 +139,7 @@ unless you rebuild first:
 | `packages/abuddy-host/src/**`, `packages/abuddy-sdk/src/**`, `packages/api/src/**` | `npm run build:be` (bundles them into the API) |
 | `packages/renderer/src/**` | `npm run build -w @app/renderer` |
 | `packages/main/src/**`, `packages/preload/src/**` | `npm run build -w @app/main`, `-w @app/preload` |
-| a built-in pack (`packages/default-setup/**`) | `npm run compile` |
+| a built-in pack (`packages/default-setup/**`) | `npm run compile` (its seeds and snapshot), and `npm run build:be` for its runtime code: a test app loads the built-in packs from the API's bundle, as a packaged app does |
 
 A first instrumented run that prints nothing usually means this, not that the line wasn't reached.
 

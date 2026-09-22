@@ -23,8 +23,8 @@ Hidden `.<id>.installing-*`, `.<id>.previous-*` and `.<id>.publishing-*` dirs ar
 `loadBuiltInPacks(registry, BUILT_IN_PACKS_DIR, { runtimeEntry, bundledLoaders })` in `loader.ts`:
 - **Discovery** (`discoverBuiltInPacks()`) — scans the directory for `abuddy.json` with `builtIn: true`. Returns `BuiltInPackInfo[]` (id, name, version, dir).
 - **Loading** — the `runtimeEntry` option picks the code:
-  - `prefer` (default when `NODE_ENV=development`): each pack's built runtime `dist/runtime/index.cjs` (written by the pack's `dev-build.mjs`) when it exists, loaded with `withHostResolution()`; if it's missing or fails, the bundled loader. Falling back without `bundledLoaders` throws, naming the option.
-  - `never` (default otherwise): the bundled loader. Without `bundledLoaders` it throws, naming the option.
+  - `prefer` (what the API passes in a development app, `ABUDDY_ENV=development`; a test or packaged app gets `never`, the default, so the E2E suite loads the built-in packs as users do): each pack's built runtime `dist/runtime/index.cjs` (written by the pack's `dev-build.mjs`) when it exists, loaded with `withHostResolution()`; if it's missing or fails, the bundled loader. Falling back without `bundledLoaders` throws, naming the option.
+  - `never` (the default): the bundled loader. Without `bundledLoaders` it throws, naming the option.
   - `only`: the built runtime, required. For unbundled tools (db scripts) that have no bundled loaders.
 - **Bundled loaders** — `bundledLoaders` imports the app bundle's loader map when first needed. The API passes `() => import('virtual:built-in-pack-loaders').then(m => m.default)` from `setup/backend.ts`.
 - Each loaded module's `setCompiledDir(<pack>/dist)` is called, then `registry.registerPack(mod.registration)`.
