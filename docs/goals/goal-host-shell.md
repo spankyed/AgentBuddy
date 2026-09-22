@@ -103,7 +103,7 @@ The shell is a de facto public API, and it is untyped:
 
 - **`useApplicationActor(): AnyActorRef`** (`packages/abuddy-sdk/src/fe/actor-system.ts:9`) returns `inject('applicationActor')!`, which `main.ts:169` provides.
 - **The SDK port** is a second path to the same actor: `FeHostRuntime.application: AnyActorRef` (`packages/abuddy-sdk/src/runtime/fe-host.ts:33`).
-- **`openPlugin`** (`packages/abuddy-sdk/src/fe/navigation.ts`) reads `snapshot.context.plugins`, `activePlugin.id` and `defaultToggles.canvas` untyped, and sends `SELECT_PLUGIN` and `DEFAULT_TOGGLE`.
+- **`openPlugin`** (`packages/abuddy-sdk/src/fe/navigation.ts`) reads `snapshot.context.plugins`, `activePlugin.id` and `defaultToggles.canvas` untyped, and sends `SELECT_PLUGIN` and `DEFAULT_TOGGLE`. It throws for a ref no plugin is registered at, so a link to an external pack's plugin clicked before that pack's frontend has loaded throws rather than opening once it loads (PR #196 review, item 11). The SDK can't tell a pack still loading from a mistyped ref; only the shell knows which pack frontends are still loading, and it already waits for a plugin that way for a popout and for the plugin last open (`pendingPluginId`).
 - **`pluginActor`** (`actor-system.ts:27`) reads `application.system.get(ref)`.
 
 Pack call sites, all with `state: any` selectors and unchecked sends:
@@ -188,8 +188,14 @@ Final.
    - `window.applicationState`, which the E2E fixture reads
    - the machine id `application`, which `#application.*` targets use
    - the Packs plugin's frontend (Vue, `renderer/src/packs`); only its tRPC sends move onto `FeClient`
-7. **`LinkBlock.vue`'s `target === 'application'` branch is deleted.** A link's target is a plugin's ref or `'external'`.
+7. **`LinkBlock.vue`'s `target === 'application'` branch is deleted.** A link's target is a plugin's ref or `'external'`. Done in `abb036161`, with default-setup's 0.3.15 migration pointing stored bare targets at `default-setup/<id>`.
 8. **`@abuddy/testing` runs the real shell for pack frontend tests,** over the in-memory bus `startApp` uses. It runs without a DOM (no `target`), so it works in default-setup's `node` environment. `startFeTestRuntime` no longer defaults the shell to `{} as never`.
+9. **Opening a plugin is the shell's command, and it waits for a pack still loading.**
+   - `openPlugin(ref, event?)` sends the shell `OPEN_PLUGIN { plugin, events }` (part of `HostShell`) instead of reading its context and sending it `SELECT_PLUGIN` and `DEFAULT_TOGGLE` itself.
+   - The shell opens a registered plugin and hands its actor the events, as `openPlugin` does today.
+   - For a ref that isn't registered while external pack frontends are still loading (the loaded packs not yet read, or a load running or queued), it parks the request, as it parks `pendingPluginId`, and opens it when that pack's plugins arrive.
+   - Once every pack frontend has settled and the ref still names no plugin, the request is refused through `notify`, naming the ref. A request whose pack is unloaded while it waits is dropped.
+   - `openPlugin` no longer throws for an unregistered ref, since the answer only exists after loading; a ref that isn't `<packId>/<featureId>` at all is still refused at the call.
 
 ## Phases
 
@@ -225,20 +231,22 @@ Final.
 
 **Mutation:** make the fake client drop sends, and a shell spec fails.
 
-### Phase 3 — move, inject and split (Decisions 1, 4, 5 and 6), after Phase 2
+### Phase 3 — move, inject and split (Decisions 1, 4, 5, 6 and 9), after Phase 2
 
 - Build `createShellMachine({ packs, client, packFrontends, storage, notify, target })` in `packages/abuddy-host/src/fe/shell/`, split per Decision 5, and export it from `@abuddy/host/fe`.
 - The renderer's `createAppShell` composes it with the real implementations, and `main.ts` creates and binds it.
 - Move the four specs to `packages/abuddy-host/tests/fe/shell/`, running on fakes.
+- Opening a plugin moves into the shell (Decision 9): `OPEN_PLUGIN` joins `HostShell`, `openPlugin` sends it, and the shell parks a request for a plugin whose pack frontend is still loading. Specs, on the fake `packFrontends`: a request made while a pack loads opens its plugin with the events once it arrives; one for a ref no pack provides is refused through `notify` once loading settles; one whose pack unloads while it waits is dropped.
 - Update `packages/renderer/CLAUDE.md`, `packages/abuddy-host/CLAUDE.md` and the root CLAUDE.md's layer table.
 
 **Done when:**
 - `packages/renderer/src/core/actors/application.ts` holds no machine.
 - `git grep -E "from ['\"](vue|@/)|window\.|localStorage" packages/abuddy-host/src/fe` matches nothing, with a boundary spec in `packages/abuddy-host/tests` enforcing it.
 - The host shell specs pass with no `vi.mock`.
+- A link to an external pack's plugin clicked before that pack's frontend loads opens it once it loads (the host shell spec above, and the E2E link case with the pack's load delayed).
 - The full E2E suite passes.
 
-**Mutation:** import `localStorage` from a shell module and the boundary spec fails.
+**Mutation:** import `localStorage` from a shell module and the boundary spec fails. Make the shell refuse an unregistered ref at once instead of parking it, and the waiting spec fails.
 
 ### Phase 4 — the shell in pack tests (Decision 8), after Phase 3
 
