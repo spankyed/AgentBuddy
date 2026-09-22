@@ -34,6 +34,18 @@ describe('packages/api/src', () => {
     expect(files).toEqual([...ROOT_FILES].sort());
   });
 
+  it('names no folder for a layer, at any depth', () => {
+    const dirs = fs.readdirSync(SRC, { recursive: true, withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .map((e) => ({ name: e.name, path: path.relative(SRC, path.join(e.parentPath ?? e.path, e.name)) }));
+
+    // `core/shared/debug/` was three of these deep: the rule is only worth anything below the top level too
+    const LAYER_NAMES = ['core', 'shared', 'lib', 'libs', 'utils', 'util', 'common', 'helpers', 'misc'];
+    const named = dirs.filter((d) => LAYER_NAMES.includes(d.name)).map((d) => d.path);
+
+    expect(named, 'name a folder for what is in it, not for the layer it sits in').toEqual([]);
+  });
+
   it('keeps its tests in tests/, as every other package does', () => {
     const inSrc = fs.readdirSync(SRC, { recursive: true })
       .map(String)
