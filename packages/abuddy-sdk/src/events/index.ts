@@ -95,7 +95,10 @@ export type HostPluginEvents = {
     // The app's own send when a plugin's tab is shown or hidden, or a pack's defaults change
     | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> }
     // The user finished onboarding: the shell leaves its onboarding layout
-    | { type: 'ONBOARDING_COMPLETE' };
+    | { type: 'ONBOARDING_COMPLETE' }
+    // Opens a plugin, by its ref, in the app's main windows (a popout keeps the plugin it shows) and hands its actor
+    // `events`; the shell waits for a plugin whose pack's frontend is still loading
+    | { type: 'OPEN_PLUGIN'; plugin: string; events?: Array<{ type: string; [key: string]: unknown }> };
 };
 
 /** Events the host app's own systems receive from pack code, which names them `host/<feature>` */
@@ -117,7 +120,7 @@ export const HOST_SYSTEM_EVENT_TYPES = {
  * read the host's plugins from. A pack's own plugins get this generated from their systems' specs.
  */
 export const HOST_PLUGIN_EVENT_TYPES = {
-  'host/application': eventTypes<HostPluginEvents['host/application']>()('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED', 'ONBOARDING_COMPLETE'),
+  'host/application': eventTypes<HostPluginEvents['host/application']>()('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED', 'ONBOARDING_COMPLETE', 'OPEN_PLUGIN'),
 } satisfies Record<keyof HostPluginEvents, readonly string[]>;
 
 /**

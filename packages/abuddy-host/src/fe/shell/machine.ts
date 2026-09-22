@@ -1,7 +1,7 @@
 // The app shell: the host `application` feature's plugin, which runs every plugin's actor, holds which one is open,
 // lays out the panels and loads external packs' frontends. Its I/O arrives as options (types.ts); the renderer
 // composes it with the API client and the window, a pack's tests with fakes.
-import { assign, enqueueActions, setup, sendTo, spawnChild } from 'xstate';
+import { assign, enqueueActions, raise, setup, sendTo, spawnChild } from 'xstate';
 import { getDesignated, processHotkeys, safeEvents } from '@abuddy/sdk/fe';
 import { splitRef } from '@abuddy/sdk/ids';
 import type { HostShellEvent, HostShellState, ShellPanelSizes } from '@abuddy/sdk/fe';
@@ -259,6 +259,11 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         if (events.length > 0) enqueue(({ self }) => self.send({ type: 'DELIVER_PLUGIN_EVENTS', plugin, events }));
       }),
 
+      openPluginFromApp: raise(({ event }) => {
+        const { plugin, events } = typeOf('OPEN_PLUGIN_FROM_APP', event);
+        return { type: 'OPEN_PLUGIN' as const, plugin, events: events ?? [] };
+      }),
+
       deliverPluginEvents: ({ event, system }) => {
         const { plugin, events } = typeOf('DELIVER_PLUGIN_EVENTS', event);
         // A registered plugin's actor is running: the shell spawns it in the same step that registers the plugin
@@ -384,6 +389,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
     guards: {
       isCanvasToggle: ({ event }) => typeOf('DEFAULT_TOGGLE', event).area === 'canvas',
       areHotkeysEnabled: ({ context }) => !context.hotkeysDisabled,
+      isMainWindow: ({ context }) => context.ownsLastActivePlugin,
     },
   }).createMachine({
     // `#application.*` targets name this id; the actor runs as HOST.application
@@ -513,6 +519,8 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       PLUGIN_VISIBILITY_UPDATED: { actions: 'updatePluginVisibility' },
       SET_PLUGIN_VISIBILITY: { actions: 'setPluginVisibility' },
       OPEN_PLUGIN: { actions: 'openPlugin' },
+      // A backend's request: a main window opens the plugin, a popout keeps the one it shows
+      OPEN_PLUGIN_FROM_APP: { guard: 'isMainWindow', actions: 'openPluginFromApp' },
       DELIVER_PLUGIN_EVENTS: { actions: 'deliverPluginEvents' },
       TRAIL_UPDATE: { actions: ['setBreadcrumbs', 'setTargetView'] },
       TRAIL_CLICK: { actions: ['setTargetView', 'sendRouteClick'] },

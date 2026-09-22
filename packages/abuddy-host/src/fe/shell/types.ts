@@ -121,8 +121,10 @@ export type ShellEvent =
   | { type: 'PROCESS_GLOBAL_HOTKEY'; hotkeyEvent: HotkeyEvent; originalEvent?: { preventDefault(): void } }
   | { type: 'HOTKEYS_RECORDING_START' }
   | { type: 'HOTKEYS_RECORDING_END' }
-  // What the host's application system and pack systems send this plugin
-  | HostPluginEvents['host/application']
+  // What the host's application system and pack systems send this plugin; their OPEN_PLUGIN arrives as
+  // OPEN_PLUGIN_FROM_APP, which only a main window acts on
+  | Exclude<HostPluginEvents['host/application'], { type: 'OPEN_PLUGIN' }>
+  | { type: 'OPEN_PLUGIN_FROM_APP'; plugin: string; events?: PluginEvent[] }
   | { type: 'SET_PLUGIN_VISIBILITY'; plugin: string; visible: boolean }
   | { type: 'CLOSE_DEV_LETTER' }
   | { type: 'SHOW_INSPECTION_PANEL' }

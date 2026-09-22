@@ -1,7 +1,7 @@
 // Opening a plugin is the shell's command (OPEN_PLUGIN), because only the shell knows which pack frontends are still
 // loading: a plugin asked for while its pack loads opens once it arrives, one no pack provides is refused once
 // loading settles, and one whose pack goes away meanwhile is dropped.
-import { afterEach, beforeEach, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, setup, type Actor } from 'xstate';
 import type { Plugin } from '@abuddy/sdk/fe';
 import { createShellMachine, type ShellMachine } from '../../../src/fe/index.ts';
@@ -111,3 +111,34 @@ it('drops a request whose pack is unloaded while it waits', async () => {
   expect(eventsOf('memo-pack/memos')).toEqual([]);
   expect(shell.notify.error).not.toHaveBeenCalled();
 });
+
+// A pack's system or action asks the app to open a plugin with sendToPlugin('host/application', …); every window
+// hears it, and only a main window acts: a popout shows its own plugin
+describe('a request from the app to open a plugin', () => {
+  it('opens the plugin in a main window, with the events', async () => {
+    // The fake client holds one window's subscription: this test's window is a main one
+    app.stop();
+    app = createActor(createShellMachine(shell.options), { systemId: 'host/application', input: { ownsLastActivePlugin: true } }).start();
+    shell.client.connect();
+    shell.client.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginVisibility: {} } });
+    await settle();
+
+    shell.client.receive({ to: 'host/application', event: { type: 'OPEN_PLUGIN', plugin: 'default-setup/settings', events: [{ type: 'PLUGIN.SELECT', pluginId: 'default-setup/logs' }] } });
+    await settle();
+
+    expect(opened()).toBe('default-setup/settings');
+    expect(eventsOf('default-setup/settings')).toEqual([{ plugin: 'default-setup/settings', type: 'PLUGIN.SELECT', open: true }]);
+  });
+
+  it('leaves a popout on the plugin it shows', async () => {
+    await connectLoading([]);
+    await settle();
+
+    shell.client.receive({ to: 'host/application', event: { type: 'OPEN_PLUGIN', plugin: 'default-setup/settings', events: [{ type: 'PLUGIN.SELECT', pluginId: 'default-setup/logs' }] } });
+    await settle();
+
+    expect(opened()).toBe('default-setup/notes');
+    expect(eventsOf('default-setup/settings')).toEqual([]);
+  });
+});
+

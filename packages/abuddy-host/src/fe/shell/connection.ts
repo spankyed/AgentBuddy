@@ -13,7 +13,8 @@ export function connectionListener(client: ShellClient) {
     // The event arrives exactly as the system sent it
     onMessage: ({ to, event }) => {
       if (to === HOST.application) {
-        sendBack(event as ShellEvent);
+        // Every window hears it; the shell tells a backend's request to open a plugin from its own window's
+        sendBack((event.type === 'OPEN_PLUGIN' ? { ...event, type: 'OPEN_PLUGIN_FROM_APP' } : event) as ShellEvent);
         return;
       }
       const plugin = system.get(to);
