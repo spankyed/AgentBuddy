@@ -1,5 +1,5 @@
 import { assign, setup, type ActorRefFrom } from 'xstate';
-import { safeEvents } from '@abuddy/sdk/fe';
+import { breadcrumb, safeEvents } from '@abuddy/sdk/fe';
 import { sendToSystem } from '@abuddy/sdk/events';
 import type { PackInfo } from '@abuddy/host/packs';
 import { unloadPackFrontend } from './pack-loader';
@@ -171,6 +171,7 @@ const packsState = setup({
   },
   states: {
     idle: {
+      meta: breadcrumb('idle', 'Packs', true),
       on: {
         CLIENT_CONNECTED: {},
         PACKS_LIST: { actions: 'setPacksList' },
