@@ -28,24 +28,27 @@ afterEach(() => {
 });
 
 describe('abuddy dev', () => {
-  it("installs with the version of the dev app that last used the data dir, so hostVersion is checked", async () => {
-    const { recordHostVersion } = await import('@abuddy/host/packs');
-    recordHostVersion(userDataDir, '0.9.1');
+  it("installs with the version and pack format of the dev app that last used the data dir, so both are checked", async () => {
+    const { recordHostInfo } = await import('@abuddy/host/packs');
+    recordHostInfo(userDataDir, { version: '0.9.1', packFormat: 3 });
     const { installToDev } = await import('../../src/commands/dev');
 
     await installToDev('/pack');
 
-    expect(installPackFromLocal).toHaveBeenCalledWith('/pack', path.join(userDataDir, 'packs'), { hostVersion: '0.9.1' });
+    expect(installPackFromLocal).toHaveBeenCalledWith('/pack', path.join(userDataDir, 'packs'), { hostVersion: '0.9.1', packFormat: 3 });
   });
 
   it('reads the version at each install, as the dev app may start in between', async () => {
-    const { recordHostVersion } = await import('@abuddy/host/packs');
+    const { recordHostInfo } = await import('@abuddy/host/packs');
     const { installToDev } = await import('../../src/commands/dev');
     await installToDev('/pack');
-    recordHostVersion(userDataDir, '1.0.0');
+    recordHostInfo(userDataDir, { version: '1.0.0', packFormat: 1 });
     await installToDev('/pack');
 
-    expect(installPackFromLocal.mock.calls.map((call) => (call as unknown[])[2])).toEqual([{ hostVersion: undefined }, { hostVersion: '1.0.0' }]);
+    expect(installPackFromLocal.mock.calls.map((call) => (call as unknown[])[2])).toEqual([
+      { hostVersion: undefined, packFormat: undefined },
+      { hostVersion: '1.0.0', packFormat: 1 },
+    ]);
   });
 });
 

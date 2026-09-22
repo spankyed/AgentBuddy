@@ -42,8 +42,11 @@
 
       <!-- Status / Controls -->
       <section v-if="!pack.builtIn" class="flex items-center justify-between px-4 py-3 bg-neutral-800/50 border border-neutral-700/50 rounded-lg">
-        <span class="text-sm text-neutral-300">{{ pack.enabled ? 'Enabled' : 'Disabled' }}</span>
-        <div class="flex items-center gap-3">
+        <span v-if="pack.loadProblem" class="text-sm text-red-400 min-w-0 mr-3 break-words" data-testid="pack-load-problem">
+          Failed to load: {{ pack.loadProblem }}
+        </span>
+        <span v-else class="text-sm text-neutral-300">{{ pack.enabled ? 'Enabled' : 'Disabled' }}</span>
+        <div class="flex items-center gap-3 flex-shrink-0">
           <button
             class="relative w-9 h-5 rounded-full transition-colors"
             :class="pack.enabled ? 'bg-primary-600' : 'bg-neutral-600'"

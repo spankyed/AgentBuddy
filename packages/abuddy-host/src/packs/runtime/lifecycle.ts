@@ -26,6 +26,8 @@ export function teardownPack(
   logger.info(`Tearing down pack: ${packId}`);
 
   registry.runShutdownHooksForKey(packId);
+  // Whatever stopped it loading is no longer the pack's state: it is disabled, gone, or about to be activated again
+  registry.clearLoadProblem(packId);
 
   // An update tears the pack down, downloads the new release, then activates it — so its plugins are
   // missing for as long as the download takes, and a send to one of them in that window is expected
@@ -62,7 +64,8 @@ export function teardownPack(
 
 /**
  * Loads, registers and starts an installed pack as a boot starts it: its onInit, its migrations, then its seeds
- * (hash-checked, so unchanged data isn't imported again). Returns false when it can't be read, loaded or registered.
+ * (hash-checked, so unchanged data isn't imported again). Returns false when it can't be read, loaded or registered,
+ * with why recorded as the pack's load problem in `registry`.
  */
 export function activatePack(
   registry: PackRegistry,
@@ -72,31 +75,28 @@ export function activatePack(
   const { packsDir } = resolveAppContext();
   const packDir = path.join(packsDir, packId);
 
-  if (!fs.existsSync(packDir)) {
-    logger.error(`Pack directory not found: ${packDir}`);
+  const failed = (problem: string, err?: Error): false => {
+    logger.error(`Failed to load pack ${packId}: ${problem}`, err);
+    registry.recordLoadProblem(packId, problem);
     return false;
-  }
+  };
+
+  if (!fs.existsSync(packDir)) return failed(`pack directory not found: ${packDir}`);
 
   const manifestPath = path.join(packDir, 'abuddy.json');
-  if (!fs.existsSync(manifestPath)) {
-    logger.error(`No abuddy.json found in ${packDir}`);
-    return false;
-  }
+  if (!fs.existsSync(manifestPath)) return failed(`no abuddy.json found in ${packDir}`);
 
   let manifest: PackManifest;
   try {
     manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
   } catch (err) {
-    logger.error(`Failed to parse manifest for ${packId}:`, err as Error);
-    return false;
+    return failed(`its abuddy.json could not be read: ${(err as Error).message}`, err as Error);
   }
 
   const pack = loadSingleExternalPack(manifest, packDir);
-  if (!pack) {
-    logger.error(`Failed to load pack ${packId}`);
-    return false;
-  }
+  if ('problem' in pack) return failed(pack.problem);
 
+  // A refused registration is recorded as the load problem by registerExternalPacks
   const registered = registerExternalPacks(registry, [pack]);
   if (registered.length === 0) {
     logger.error(`Failed to register pack ${packId}`);

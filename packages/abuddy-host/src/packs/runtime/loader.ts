@@ -164,39 +164,47 @@ export async function loadBuiltInPacks(
 
 // ── External pack loading ────────────────────────────────────────────
 
+/** Why the loader didn't load an installed pack, said as the Packs view shows it after "Failed to load:" */
+export interface PackLoadProblem {
+  problem: string;
+}
+
+/** Where the loader records why it skipped a pack: the app's registry, which the Packs view reads it from */
+export type LoadProblemSink = Pick<PackRegistry, 'recordLoadProblem'>;
+
+function skipped(manifest: PackManifest, problem: string): PackLoadProblem {
+  logger.warn(`Skipping ${manifest.id}: ${problem}`);
+  return { problem };
+}
+
+/** Reads an installed pack and its runtime, or says why it can't be loaded */
 export function loadSingleExternalPack(
   manifest: PackManifest,
   dir: string,
-): LoadedPack | null {
+): LoadedPack | PackLoadProblem {
   // The same semver check the installer applies, so any range a pack declares is honored
   const appVersion = getAppVersion();
   if (!isHostCompatible(manifest.hostVersion, appVersion)) {
-    logger.warn(`Skipping ${manifest.id}: requires host ${manifest.hostVersion}, running ${appVersion}`);
-    return null;
+    return skipped(manifest, `requires host ${manifest.hostVersion}, running ${appVersion}`);
   }
 
   const runtimeEntry = path.join(dir, PACK_LAYOUT.runtimeEntry);
   if (!isPackLayout(dir) || !fs.existsSync(runtimeEntry)) {
-    logger.warn(`Skipping ${manifest.id}: ${dir} isn't an installed pack (no ${PACK_LAYOUT.integrity} or ${PACK_LAYOUT.runtimeEntry}). Install it with abuddy install or abuddy dev`);
-    return null;
+    return skipped(manifest, `${dir} isn't an installed pack (no ${PACK_LAYOUT.integrity} or ${PACK_LAYOUT.runtimeEntry}). Install it with abuddy install or abuddy dev`);
   }
   try {
     const integrity = readPackIntegrity(dir);
     if (Math.floor(integrity.formatVersion) !== PACK_LAYOUT_VERSION) {
-      logger.warn(`Skipping ${manifest.id}: pack layout format ${integrity.formatVersion} is not supported (host supports ${PACK_LAYOUT_VERSION})`);
-      return null;
+      return skipped(manifest, `pack layout format ${integrity.formatVersion} is not supported (host supports ${PACK_LAYOUT_VERSION})`);
     }
   } catch (err) {
     logger.warn(`Skipping ${manifest.id}: unreadable ${PACK_LAYOUT.integrity}`, err as Error);
-    return null;
+    return { problem: `unreadable ${PACK_LAYOUT.integrity}: ${(err as Error).message}` };
   }
 
   // Before its runtime is loaded: a registration another abuddy built fails in ways that name nothing the author can act on
   const formatProblem = buildFormatProblem(dir);
-  if (formatProblem) {
-    logger.warn(`Skipping ${manifest.id}: ${formatProblem}`);
-    return null;
-  }
+  if (formatProblem) return skipped(manifest, formatProblem);
 
   const snapshotPath = path.join(dir, PACK_LAYOUT.snapshot);
   if (fs.existsSync(snapshotPath)) {
@@ -216,7 +224,7 @@ export function loadSingleExternalPack(
   }
 
   const registration = loadBundledRuntime(manifest, dir, runtimeEntry);
-  if (!registration) return null;
+  if ('problem' in registration) return registration;
 
   if (!registration.ears && (manifest.entities || manifest.relKinds)) {
     registration.ears = { entities: manifest.entities ?? {}, relKinds: manifest.relKinds ?? {} };
@@ -263,7 +271,7 @@ function loadBundledRuntime(
   manifest: PackManifest,
   dir: string,
   runtimeEntry: string,
-): PackRegistration | null {
+): PackRegistration | PackLoadProblem {
   let registration: PackRegistration;
   try {
     registration = withHostResolution(() => {
@@ -273,15 +281,17 @@ function loadBundledRuntime(
     });
   } catch (err) {
     logger.error(`Failed to load ${manifest.id} runtime (${PACK_LAYOUT.runtimeEntry}): ${(err as Error).message}`, err as Error);
-    return null;
+    return { problem: `its runtime (${PACK_LAYOUT.runtimeEntry}) threw: ${(err as Error).message}` };
   }
   if (!registration) {
-    logger.error(`Pack ${manifest.id}: ${PACK_LAYOUT.runtimeEntry} does not export \`registration\``);
-    return null;
+    const problem = `${PACK_LAYOUT.runtimeEntry} does not export \`registration\``;
+    logger.error(`Pack ${manifest.id}: ${problem}`);
+    return { problem };
   }
   if (registration.id !== manifest.id) {
-    logger.error(`Pack ${manifest.id}: runtime registration id "${registration.id}" does not match its manifest`);
-    return null;
+    const problem = `runtime registration id "${registration.id}" does not match its manifest`;
+    logger.error(`Pack ${manifest.id}: ${problem}`);
+    return { problem };
   }
 
   return { ...registration };
@@ -296,7 +306,11 @@ export function clearPackRequireCache(packDir: string): void {
   }
 }
 
-export function loadExternalPacks(): LoadedPack[] {
+/**
+ * Reads every enabled installed pack. Why each one it skips was skipped goes to `problems` when given: the app passes
+ * its registry, so the Packs view can say why an enabled pack isn't running.
+ */
+export function loadExternalPacks(problems?: LoadProblemSink): LoadedPack[] {
   const { packsDir } = resolveAppContext();
   const discovered = discoverPacks(packsDir);
   // Boot is where what is installed is settled, so it is where rows for packs that are gone are dropped
@@ -310,13 +324,17 @@ export function loadExternalPacks(): LoadedPack[] {
 
   for (const { manifest, dir } of enabled) {
     const pack = loadSingleExternalPack(manifest, dir);
-    if (pack) loaded.push(pack);
+    if ('problem' in pack) problems?.recordLoadProblem(manifest.id, pack.problem);
+    else loaded.push(pack);
   }
 
   return loaded;
 }
 
-/** Registers each loaded external pack in `registry`, its systems as `<packId>/<featureId>`; returns those registered */
+/**
+ * Registers each loaded external pack in `registry`, its systems as `<packId>/<featureId>`; returns those registered.
+ * A pack the registry refuses has why recorded there as its load problem.
+ */
 export function registerExternalPacks(registry: PackRegistry, packs: LoadedPack[]): LoadedPack[] {
   const registered: LoadedPack[] = [];
   for (const pack of packs) {
@@ -326,7 +344,24 @@ export function registerExternalPacks(registry: PackRegistry, packs: LoadedPack[
       logger.info(packRegistered(pack.origin.id, packSystemIds(pack.registration).length));
     } catch (err) {
       logger.error(`${packLoadFailed(pack.origin.id)}:`, err as Error);
+      registry.recordLoadProblem(pack.origin.id, `its registration was refused: ${(err as Error).message}`);
     }
   }
   return registered;
+}
+
+/**
+ * Loads the app's packs into `registry`: the built-in packs in `builtInDir`, then the enabled external packs.
+ * Every built-in pack registers before any external one, so a role a built-in pack designates can't be taken by an
+ * installed pack that designates it too — the built-in would then fail to register at all. The external packs'
+ * runtimes are read while the built-in packs load; only their registration waits.
+ */
+export async function loadAppPacks(
+  registry: PackRegistry,
+  { builtInDir, bundledLoaders }: { builtInDir?: string; bundledLoaders?: () => Promise<BundledPackLoaders> },
+): Promise<{ builtIn: BuiltInPackInfo[]; external: LoadedPack[] }> {
+  const builtInPromise = builtInDir ? loadBuiltInPacks(registry, builtInDir, { bundledLoaders }) : Promise.resolve([]);
+  const loaded = loadExternalPacks(registry);
+  const builtIn = await builtInPromise;
+  return { builtIn, external: loaded.length > 0 ? registerExternalPacks(registry, loaded) : [] };
 }

@@ -4,7 +4,8 @@ import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 import { sendToPlugin } from '@abuddy/sdk/events';
 import { getAppVersion } from '@abuddy/sdk/env';
-import { HOST_PACK_ID } from '@abuddy/sdk/ids';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
+import { HOST_PACK_ID, PACK_ID_PATTERN } from '@abuddy/sdk/ids';
 import { forgetPack, packRecord, recordInstalled, recordUpdateInstalled, setPackEnabled } from '../installed-packs.ts';
 import { reportError } from '@abuddy/sdk/logger';
 import { installPack as runInstall, uninstallPack as runUninstall, installPackFromGitHub } from '../pack-installer.ts';
@@ -75,6 +76,7 @@ function toExternalPackInfoList(registry: PackRegistry, packs: InstalledPack[]):
       installedFrom: record.installedFrom,
       availableVersion: record.availableVersion,
       updateCheckError: record.updateCheckError,
+      loadProblem: registry.loadProblem(record.id),
     }, contrib);
   });
 }
@@ -139,6 +141,7 @@ export function createPacksSystem(registry: PackRegistry) {
 
         runInstall(packSlug, ev.source, undefined, {
           hostVersion: getAppVersion(),
+          packFormat: PACK_SNAPSHOT_FORMAT,
           // Installing over a pack that is already running is a reinstall, or the same pack from another
           // source. It is torn down before its files are replaced rather than after: a pack left running
           // on a directory that has been swapped underneath it loads the new code on its next lazy
@@ -156,7 +159,7 @@ export function createPacksSystem(registry: PackRegistry) {
           recordInstalled(result.id, isGitHub ? packSlug : undefined);
 
           const activated = activatePack(registry, result.id, system.get(HOST.bus));
-          const problem = activationProblem(result.id, activated);
+          const problem = activationProblem(registry, result.id, activated);
           if (problem) {
             if (replacedId && !activated) {
               // The replacement never registered: end the window, and tell the running systems the pack is gone
@@ -204,6 +207,11 @@ export function createPacksSystem(registry: PackRegistry) {
         const packId = ev.packId;
         if (shippedWithApp(packId)) {
           sendToPlugin(HOST.packs, { type: 'PACK_UNINSTALL_FAILED' as const, packId, error: `"${packId}" is part of AgentBuddy, so it can't be uninstalled` });
+          return;
+        }
+        // The id names the directory the uninstall deletes, so only an installed pack's own is taken
+        if (!PACK_ID_PATTERN.test(packId) || !installedPacks().some(p => p.record.id === packId && path.basename(p.dir) === packId)) {
+          sendToPlugin(HOST.packs, { type: 'PACK_UNINSTALL_FAILED' as const, packId, error: `"${packId}" is not an installed pack` });
           return;
         }
 
@@ -267,11 +275,19 @@ export function createPacksSystem(registry: PackRegistry) {
         sendToPlugin(HOST.packs, { type: 'PACK_DEACTIVATED' as const, packId });
         let activated = false;
 
-        installPackFromGitHub(target, undefined, { hostVersion: getAppVersion() }).then(result => {
+        installPackFromGitHub(target, undefined, {
+          hostVersion: getAppVersion(),
+          packFormat: PACK_SNAPSHOT_FORMAT,
+          // Refused before the files are replaced, so the failure below reactivates the copy still in place
+          beforePlace: (manifest) => {
+            if (shippedWithApp(manifest.id)) throw new Error(`"${manifest.id}" is a pack AgentBuddy ships, so an installed pack can't take its id`);
+            if (manifest.id !== packId) throw new Error(`${target} holds the pack "${manifest.id}", not "${packId}"`);
+          },
+        }).then(result => {
           recordUpdateInstalled(packId);
 
           activated = activatePack(registry, packId, system.get(HOST.bus));
-          const problem = activationProblem(packId, activated);
+          const problem = activationProblem(registry, packId, activated);
           if (problem) {
             sendToPlugin(HOST.packs, {
               type: 'PACK_UPDATE_FAILED' as const,

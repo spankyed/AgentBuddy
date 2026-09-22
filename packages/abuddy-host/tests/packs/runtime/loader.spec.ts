@@ -3,7 +3,7 @@ import { registry } from './test-host.ts';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { loadBuiltInPacks, loadExternalPacks, type LoadedPack } from '../../../src/packs/runtime/loader.ts';
+import { loadAppPacks, loadBuiltInPacks, loadExternalPacks, type LoadedPack } from '../../../src/packs/runtime/loader.ts';
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import { seedPackData, computePackSeedHash, type PackSeedTarget } from '../../../src/packs/runtime/seed.ts';
 import { appState } from '../../../src/app-state/index.ts';
@@ -250,6 +250,34 @@ describe('loadBuiltInPacks: the bundled loaders', () => {
       bundledLoaders: async () => ({ 'bundled-only': async () => ({ registration: { id: 'bundled-only' } }) }),
     });
     expect(loaded.map(p => p.id)).toEqual(['bundled-only']);
+  });
+});
+
+// A packaged app's built-in packs load through the bundle's loaders, which are imported asynchronously: an
+// installed pack registering meanwhile took any role a built-in pack designates, and the built-in then failed
+describe('loadAppPacks', () => {
+  afterEach(() => {
+    for (const id of ['role-builtin', 'role-taker']) if (registry.getPackExtensions(id)) registry.unregisterPack(id);
+  });
+
+  it('registers every built-in pack before any external one, however long the bundled loaders take', async () => {
+    const builtInDir = path.join(tmpDir, 'packages');
+    fs.mkdirSync(path.join(builtInDir, 'role-builtin'), { recursive: true });
+    fs.writeFileSync(path.join(builtInDir, 'role-builtin', 'abuddy.json'), JSON.stringify({ id: 'role-builtin', name: 'Built-in', version: '1.0.0', builtIn: true }));
+    makePack(path.join(tmpDir, 'packs'), 'role-taker', { id: 'role-taker', name: 'Taker', version: '1.0.0' }, "{ taker: { designation: 'loader-spec-role' } }");
+
+    const { builtIn, external } = await loadAppPacks(registry, {
+      builtInDir,
+      bundledLoaders: async () => {
+        await new Promise(resolve => setTimeout(resolve, 20));
+        return { 'role-builtin': async () => ({ registration: { id: 'role-builtin', features: { owner: { designation: 'loader-spec-role' } } } }) };
+      },
+    });
+
+    expect(builtIn.map(p => p.id)).toEqual(['role-builtin']);
+    expect(registry.designation('loader-spec-role')).toBe('role-builtin/owner');
+    // The external pack's claim on the role is what fails, not the built-in pack
+    expect(external).toEqual([]);
   });
 });
 

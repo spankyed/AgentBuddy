@@ -125,6 +125,9 @@
                     <span class="text-xs text-neutral-500">requires {{ pack.hostVersion }}</span>
                   </template>
                 </div>
+                <p v-if="pack.loadProblem" class="text-xs text-red-400 mt-1 break-words" data-testid="pack-load-problem">
+                  Failed to load: {{ pack.loadProblem }}
+                </p>
               </div>
               <div class="flex items-center gap-3 flex-shrink-0" @click.stop>
                 <button

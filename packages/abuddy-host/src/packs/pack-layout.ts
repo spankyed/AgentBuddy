@@ -197,11 +197,12 @@ export function readPackIntegrity(dir: string): PackIntegrity {
 }
 
 /**
- * Why this AgentBuddy can't load the pack built into `dir` (a pack layout), or undefined when it can: its snapshot
- * records the format of the build (`PACK_SNAPSHOT_FORMAT`), which covers the registration its runtime exports as well
- * as what dependents read. `integrity.json`'s format can't say this: whoever stages a pack writes it, not whoever built it.
+ * Why the AgentBuddy reading pack snapshot format `appFormat` (this process's by default, which in the app is the
+ * app's) can't load the pack built into `dir` (a pack layout), or undefined when it can: its snapshot records the
+ * format of the build (`PACK_SNAPSHOT_FORMAT`), which covers the registration its runtime exports as well as what
+ * dependents read. `integrity.json`'s format can't say this: whoever stages a pack writes it, not whoever built it.
  */
-export function buildFormatProblem(dir: string): string | undefined {
+export function buildFormatProblem(dir: string, appFormat: number = PACK_SNAPSHOT_FORMAT): string | undefined {
   const snapshotFile = path.join(dir, PACK_LAYOUT.snapshot);
   let snapshot: { format?: unknown; sdkVersion?: string };
   try {
@@ -209,9 +210,9 @@ export function buildFormatProblem(dir: string): string | undefined {
   } catch {
     return `${PACK_LAYOUT.snapshot} is missing or unreadable, so nothing says which abuddy built it: rebuild it with the abuddy CLI that matches this AgentBuddy`;
   }
-  const mismatch = _snapshotFormatMismatch(snapshot);
+  const mismatch = _snapshotFormatMismatch(snapshot, appFormat);
   if (!mismatch) return undefined;
-  return `${mismatch.problem}; this AgentBuddy reads format ${PACK_SNAPSHOT_FORMAT}. `
+  return `${mismatch.problem}; this AgentBuddy reads format ${appFormat}. `
     + (mismatch.newer ? 'Update AgentBuddy to use it' : 'Rebuild it with the abuddy CLI that matches this AgentBuddy');
 }
 

@@ -89,14 +89,18 @@ export interface SnapshotFormatMismatch {
 }
 
 /**
- * The build's mismatch with this abuddy's snapshot format, or undefined when they agree.
+ * The build's mismatch with the snapshot format its reader reads, or undefined when they agree. The reader is this
+ * abuddy unless `readerFormat` names another: the installed app's, which the CLI reads from the app's data dir.
  *
- * @internal Host-only: the abuddy CLI, the pack test harness and the app's pack loader.
+ * @internal Host-only: the abuddy CLI, the pack test harness, the pack installer and the app's pack loader.
  */
-export function _snapshotFormatMismatch(snapshot: { format?: unknown; sdkVersion?: string }): SnapshotFormatMismatch | undefined {
+export function _snapshotFormatMismatch(
+  snapshot: { format?: unknown; sdkVersion?: string },
+  readerFormat: number = PACK_SNAPSHOT_FORMAT,
+): SnapshotFormatMismatch | undefined {
   const { format } = snapshot;
-  if (format === PACK_SNAPSHOT_FORMAT) return undefined;
-  const newer = typeof format === 'number' && format > PACK_SNAPSHOT_FORMAT;
+  if (format === readerFormat) return undefined;
+  const newer = typeof format === 'number' && format > readerFormat;
   const builtWith = snapshot.sdkVersion ? ` (SDK ${snapshot.sdkVersion})` : '';
   return {
     newer,

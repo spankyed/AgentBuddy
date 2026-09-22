@@ -10,8 +10,7 @@ import { resolveAppContext } from '@abuddy/sdk/env';
 import * as path from 'path';
 import {
   createPacksSystem, packsEvents,
-  loadBuiltInPacks,
-  loadExternalPacks, registerExternalPacks,
+  loadAppPacks,
   startPacks,
 } from '@abuddy/host/packs/runtime';
 import { APPLICATION_SYSTEM_EVENTS, createAppBus, HOST, createApplicationSystem, startEarlySystems } from '@abuddy/host/bus';
@@ -105,21 +104,15 @@ export async function setupBackend(): Promise<void> {
   // API keys: the settings system hears of every change to them
   forwardSecretsChanges(packs);
 
-  // ── Load packs (built-in async + external sync overlap) ────────────
+  // ── Load packs (every built-in pack registers before any external one) ────────────
   const builtInDir = process.env.BUILT_IN_PACKS_DIR;
-  const builtInPromise = builtInDir
-    ? loadBuiltInPacks(packs, builtInDir, { bundledLoaders: () => import('virtual:built-in-pack-loaders').then(m => m.default) })
-    : null;
+  const { builtIn: builtInInfos, external: externalPacks } = await loadAppPacks(packs, {
+    builtInDir,
+    bundledLoaders: () => import('virtual:built-in-pack-loaders').then(m => m.default),
+  });
 
-  // External pack work is sync — runs while built-in loading is in flight
-  let externalPacks = loadExternalPacks();
-  if (externalPacks.length > 0) {
-    externalPacks = registerExternalPacks(packs, externalPacks);
-  }
-
-  if (builtInPromise) {
+  if (builtInDir) {
     // Pack authors resolve built-in dependencies (types, step build code) from the installed app
-    const builtInInfos = await builtInPromise;
     for (const info of builtInInfos) {
       try {
         if (publishHostPackOutput(info.dir, path.join(appContext.hostPacksDir, info.id))) {
@@ -131,7 +124,7 @@ export async function setupBackend(): Promise<void> {
     }
     // A pack this release no longer has leaves its build output behind, which tools would still read as the app's.
     // Kept by what this build ships, not by what loaded: a pack whose runtime failed this boot still has its own.
-    const stale = pruneHostPackOutputs(appContext.hostPacksDir, discoverBuiltInPacks(builtInDir!).map((pack) => pack.id));
+    const stale = pruneHostPackOutputs(appContext.hostPacksDir, discoverBuiltInPacks(builtInDir).map((pack) => pack.id));
     if (stale.length > 0) console.log(`[packs] Removed build output of built-in pack(s) this app no longer has: ${stale.join(', ')}`);
   }
 

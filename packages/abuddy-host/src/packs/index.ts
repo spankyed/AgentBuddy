@@ -35,7 +35,7 @@ export {
   installPack, installPackFromLocal, installPackFromGitHub,
   uninstallPack, isHostCompatible,
 } from './pack-installer.ts';
-export { recordHostVersion, readHostVersion } from './host-info.ts';
+export { recordHostInfo, readHostInfo, type HostInfo } from './host-info.ts';
 export { prepareHostDataDirs } from './staging.ts';
 
 // Updater

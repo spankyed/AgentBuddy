@@ -1,6 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { installPack, installPackFromLocal, readHostVersion } from '@abuddy/host/packs';
+import { installPack, installPackFromLocal, readHostInfo } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { parseTargetEnv, envLabel, TARGET_ENV_USAGE } from '../utils';
 
@@ -43,7 +43,7 @@ Options:
 
   const { packsDir, hostPacksDir, userDataDir } = resolveAppContext({ env });
   // Recorded by the app when it starts with this data dir
-  const hostVersion = readHostVersion(userDataDir);
+  const { version: hostVersion, packFormat } = readHostInfo(userDataDir);
   const kind = detectSource(source);
 
   let resolvedSource = source;
@@ -52,8 +52,8 @@ Options:
   }
 
   const result = kind === 'local'
-    ? await installPackFromLocal(resolvedSource, packsDir, { hostVersion })
-    : await installPack(resolvedSource, kind === 'registry' ? 'url' : kind, packsDir, { hostVersion });
+    ? await installPackFromLocal(resolvedSource, packsDir, { hostVersion, packFormat })
+    : await installPack(resolvedSource, kind === 'registry' ? 'url' : kind, packsDir, { hostVersion, packFormat });
 
   if (result.missingDependencies.length > 0) {
     if (fs.existsSync(hostPacksDir)) {

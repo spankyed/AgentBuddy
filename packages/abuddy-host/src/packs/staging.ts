@@ -1,7 +1,8 @@
 import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { recordHostVersion } from './host-info.ts';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
+import { recordHostInfo } from './host-info.ts';
 import { recordIsStale } from '../process-liveness.ts';
 
 export type StagingKind = 'installing' | 'previous' | 'publishing';
@@ -97,15 +98,15 @@ export function recoverStagingDirs(dir: string): StagingRecovery {
 }
 
 /**
- * Boot-time data dir upkeep, before packs are discovered: records the AgentBuddy version for
- * `abuddy install` and recovers staging in each packs dir. Failures are logged; boot continues.
+ * Boot-time data dir upkeep, before packs are discovered: records the AgentBuddy version and the pack format it
+ * reads for `abuddy install` and `abuddy dev`, and recovers staging in each packs dir. Failures are logged; boot continues.
  */
 export function prepareHostDataDirs(
   options: { userDataDir: string; packsDir: string; hostPacksDir?: string; version: string },
   log: Pick<Console, 'info' | 'warn'> = console,
 ): void {
   try {
-    recordHostVersion(options.userDataDir, options.version);
+    recordHostInfo(options.userDataDir, { version: options.version, packFormat: PACK_SNAPSHOT_FORMAT });
   } catch (err) {
     log.warn(`[packs] Could not record the host version in ${options.userDataDir}: ${err}`);
   }

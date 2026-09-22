@@ -107,7 +107,11 @@ export async function reloadExternalPack(
   await reloadPack(registry, packId, backendActor, () => {
     const manifest: PackManifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
     const pack = loadSingleExternalPack(manifest, packDir);
-    if (!pack) throw new Error(`Failed to load pack ${packId} after rebuild`);
+    if ('problem' in pack) {
+      // A pack still running keeps its previous runtime, so only one that isn't has a load problem to show
+      if (!registry.getPackRegistration(packId)) registry.recordLoadProblem(packId, pack.problem);
+      throw new Error(`Failed to load pack ${packId} after rebuild: ${pack.problem}`);
+    }
 
     return {
       register: () => {

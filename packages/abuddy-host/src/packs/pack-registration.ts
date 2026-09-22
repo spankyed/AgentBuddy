@@ -110,6 +110,8 @@ export interface PackInfo extends PackExtensions {
   availableVersion?: string;
   /** Why the last update check couldn't finish or confirm compatibility */
   updateCheckError?: string;
+  /** Why this installed pack isn't running although it is enabled: the app skipped it or failed to load it */
+  loadProblem?: string;
 }
 
 /** What a plugin's sends are checked against: the event types it receives */
@@ -151,6 +153,14 @@ export interface PackRegistry extends PackRegistryView {
   isPluginReplacing(pluginId: string): boolean;
   /** Ends a replacement window, whether or not anything took the pack's place */
   clearPackReplacing(packId: string): void;
+  /**
+   * Notes why an installed pack isn't running: the loader skipped it, or its registration was refused. The Packs
+   * view shows it in place of the pack's enabled state. Cleared when the pack registers or is torn down.
+   */
+  recordLoadProblem(packId: string, problem: string): void;
+  /** Why an installed pack failed to load, while it hasn't since registered or been torn down */
+  loadProblem(packId: string): string | undefined;
+  clearLoadProblem(packId: string): void;
   /** Host systems and every registered pack's that the bus runs, by id: all but the early ones */
   getRegisteredSystems(): Map<string, AnyStateMachine>;
   /** The registered packs' early systems (`system.early`), which the app starts before hydration and outside the bus */
@@ -228,6 +238,8 @@ export function createPackRegistry(): PackRegistry {
   const origins = new Map<string, PackOrigin>();
   /** Pack id → the plugins it owned when it was torn down to be replaced (an update's download window) */
   const replacingPacks = new Map<string, Set<string>>();
+  /** Pack id → why it failed to load. Only for packs not in `registrations`: registering one removes its entry */
+  const loadProblems = new Map<string, string>();
   const designations = createDesignationStore();
   const steps = createStepStore();
   const artifacts = createDefinitionStore<ArtifactDefinition>();
@@ -391,6 +403,7 @@ export function createPackRegistry(): PackRegistry {
       throw err;
     }
     packUndos.set(registration.id, undos);
+    loadProblems.delete(registration.id);
     changed();
   }
 
@@ -478,6 +491,14 @@ export function createPackRegistry(): PackRegistry {
 
     clearPackReplacing(packId) {
       replacingPacks.delete(packId);
+    },
+
+    recordLoadProblem(packId, problem) {
+      loadProblems.set(packId, problem);
+    },
+    loadProblem: (packId) => loadProblems.get(packId),
+    clearLoadProblem(packId) {
+      loadProblems.delete(packId);
     },
 
     getRegisteredSystems() {

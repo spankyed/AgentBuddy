@@ -10,9 +10,12 @@ import { readInstalledPacks } from '../../../src/packs/installed-packs.ts';
 import { registry } from './test-host.ts';
 import { appState } from '../../../src/app-state/index.ts';
 import { installPackFromLocal } from '../../../src/packs/pack-installer.ts';
-import { createPacksSystem } from '../../../src/packs/runtime/packs-system.ts';
+import { createPacksSystem, type PackInfo } from '../../../src/packs/runtime/packs-system.ts';
 import { activatePack } from '../../../src/packs/runtime/lifecycle.ts';
+import { loadAppPacks } from '../../../src/packs/runtime/loader.ts';
+import { reloadExternalPack } from '../../../src/packs/runtime/reload.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
+import { createPackArchive, stagePack } from '../../../src/packs/pack-layout.ts';
 
 const PACK_ID = 'reinstall-pack';
 
@@ -28,6 +31,7 @@ beforeEach(() => {
 
 afterEach(() => {
   if (registry.getPackExtensions(PACK_ID)) registry.unregisterPack(PACK_ID);
+  registry.clearLoadProblem(PACK_ID);
   if (origEnv.env === undefined) delete process.env.ABUDDY_ENV;
   else process.env.ABUDDY_ENV = origEnv.env;
   if (origEnv.userDataDir === undefined) delete process.env.ABUDDY_USER_DATA_DIR;
@@ -36,13 +40,13 @@ afterEach(() => {
 });
 
 /** The pack source `abuddy build` would leave, at `version`; `seeds` gives it compiled data that won't seed */
-function packSource(version: string, { unseedable = false } = {}): string {
+function packSource(version: string, { unseedable = false, id = PACK_ID } = {}): string {
   const dir = path.join(tmpDir, 'source');
   fs.rmSync(dir, { recursive: true, force: true });
   fs.mkdirSync(path.join(dir, 'dist', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(dir, 'dist', 'types'), { recursive: true });
-  fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify({ id: PACK_ID, name: 'Reinstall Pack', version }));
-  fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(PACK_ID)} } };`);
+  fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify({ id, name: 'Reinstall Pack', version }));
+  fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(id)} } };`);
   fs.writeFileSync(path.join(dir, 'dist', 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
   if (unseedable) {
     // Compiled data with no seeds.json: the seeder can't tell whose records these are, so seeding fails
@@ -50,6 +54,24 @@ function packSource(version: string, { unseedable = false } = {}): string {
     fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'seeds', 'flows.seed.json'), '[]');
   }
   return dir;
+}
+
+/** A GitHub release of `source`, served to `fetch` from memory, with its published checksum */
+async function stubRelease(source: string) {
+  const stage = path.join(tmpDir, 'stage');
+  fs.rmSync(stage, { recursive: true, force: true });
+  stagePack(source, stage);
+  const { file, sha256 } = await createPackArchive(stage, path.join(tmpDir, 'release'));
+  const name = path.basename(file);
+  const assets = [
+    { name, browser_download_url: `https://example.test/${name}` },
+    { name: `${name}.sha256`, browser_download_url: `https://example.test/${name}.sha256` },
+  ];
+  vi.stubGlobal('fetch', vi.fn(async (url: string) => {
+    if (url.startsWith('https://api.github.com/')) return new Response(JSON.stringify({ assets }), { status: 200 });
+    if (url.endsWith('.sha256')) return new Response(`${sha256}  ${name}\n`, { status: 200 });
+    return new Response(fs.readFileSync(file), { status: 200 });
+  }));
 }
 
 /** The packs system running next to a bus that records what it is sent, and what it sends its plugin. */
@@ -170,6 +192,59 @@ describe('a pack with nothing recorded about it', () => {
       expect(list?.packs).toContainEqual(
         expect.objectContaining({ id: PACK_ID, version: '1.0.0', enabled: true, builtIn: false }),
       );
+    } finally {
+      system.stop();
+    }
+  });
+});
+
+// The app skips an installed pack it can't load and boots on. The pack is still installed and enabled, so the Packs
+// view lists it, and has to say why it isn't running rather than show it as enabled.
+describe('an installed pack the app could not load', () => {
+  const listed = (system: ReturnType<typeof runPacksSystem>) => {
+    system.sent.length = 0;
+    system.send({ type: 'GET_INSTALLED_PACKS' });
+    const list = emitted(system.sent).find(e => e.type === 'PACKS_LIST');
+    return (list?.packs as PackInfo[]).find(p => p.id === PACK_ID);
+  };
+  const snapshotFile = () => path.join(resolveAppContext().packsDir, PACK_ID, 'types', 'snapshot.json');
+
+  it('is listed with why, until a load of it succeeds', async () => {
+    await installPackFromLocal(packSource('1.0.0'));
+    // A build another abuddy made: what an app update leaves an installed pack as
+    fs.writeFileSync(snapshotFile(), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT + 1 }));
+    await loadAppPacks(registry, {});
+    expect(registry.getPackRegistration(PACK_ID)).toBeNull();
+
+    const system = runPacksSystem();
+    try {
+      expect(listed(system)).toMatchObject({
+        enabled: true,
+        loadProblem: `its snapshot is format ${PACK_SNAPSHOT_FORMAT + 1}, written by a newer abuddy CLI; this AgentBuddy reads format ${PACK_SNAPSHOT_FORMAT}. Update AgentBuddy to use it`,
+      });
+
+      fs.writeFileSync(snapshotFile(), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+      await reloadExternalPack(registry, PACK_ID, { send: () => {} } as never);
+
+      expect(registry.getPackRegistration(PACK_ID)).not.toBeNull();
+      expect(listed(system)?.loadProblem).toBeUndefined();
+    } finally {
+      system.stop();
+    }
+  });
+
+  it('is listed with why its activation failed, and not once it is disabled', async () => {
+    await installPackFromLocal(packSource('1.0.0'));
+    fs.writeFileSync(snapshotFile(), JSON.stringify({}));
+    expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(false);
+
+    const system = runPacksSystem();
+    try {
+      expect(listed(system)?.loadProblem).toMatch(/^its snapshot is format \(none\), written by an older abuddy CLI/);
+
+      system.send({ type: 'TOGGLE_PACK_ENABLED', packId: PACK_ID });
+
+      expect(listed(system)).toMatchObject({ enabled: false, loadProblem: undefined });
     } finally {
       system.stop();
     }
@@ -359,5 +434,70 @@ describe('reinstalling a pack whose data did not seed', () => {
     } finally {
       second.stop();
     }
+  });
+});
+
+// The id an uninstall is given names the directory it deletes, recursively
+describe('uninstalling by an id that is not an installed pack', () => {
+  it.each([['..'], [''], ['a/../..'], ['not-installed']])('is refused before anything stops or is deleted: %j', async (packId) => {
+    await installPackFromLocal(packSource('1.0.0'));
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'UNINSTALL_PACK', packId });
+
+      await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_FAILED'));
+      expect(emitted(system.sent).find(e => e.type === 'PACK_UNINSTALL_FAILED')).toMatchObject({ error: `"${packId}" is not an installed pack` });
+      expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_DEACTIVATED');
+      expect(fs.existsSync(path.join(tmpDir, 'packs', PACK_ID, 'abuddy.json'))).toBe(true);
+    } finally {
+      system.stop();
+    }
+  });
+});
+
+// An update takes whatever the release holds, which its source decides and the app doesn't
+describe('updating to a release that holds another pack', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    if (registry.getPackExtensions('shipped-pack')) registry.unregisterPack('shipped-pack');
+  });
+
+  async function updateTo(releaseId: string) {
+    await installPackFromLocal(packSource('1.0.0'));
+    const { recordInstalled } = await import('../../../src/packs/installed-packs.ts');
+    recordInstalled(PACK_ID, 'acme/reinstall-pack');
+    expect(activatePack(registry, PACK_ID, { send: () => {} } as never)).toBe(true);
+    await stubRelease(packSource('2.0.0', { id: releaseId }));
+
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'UPDATE_PACK', packId: PACK_ID });
+      await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UPDATE_FAILED'));
+      return emitted(system.sent);
+    } finally {
+      system.stop();
+    }
+  }
+
+  const installedVersion = () => JSON.parse(fs.readFileSync(path.join(tmpDir, 'packs', PACK_ID, 'abuddy.json'), 'utf-8')).version;
+
+  it("is refused when that pack is one the app ships, and the installed copy runs again", async () => {
+    registry.registerPack({ id: 'shipped-pack' }, { id: 'shipped-pack', name: 'Shipped', version: '1.0.0', dir: 'host-packs/shipped-pack', builtIn: true });
+
+    const sent = await updateTo('shipped-pack');
+
+    expect(sent.find(e => e.type === 'PACK_UPDATE_FAILED')).toMatchObject({ error: expect.stringContaining('"shipped-pack" is a pack AgentBuddy ships') });
+    expect(fs.existsSync(path.join(tmpDir, 'packs', 'shipped-pack'))).toBe(false);
+    expect(installedVersion()).toBe('1.0.0');
+    expect(sent.map(e => e.type)).toContain('PACK_ACTIVATED');
+  });
+
+  it('is refused when that pack is any other, and the installed copy runs again', async () => {
+    const sent = await updateTo('other-pack');
+
+    expect(sent.find(e => e.type === 'PACK_UPDATE_FAILED')).toMatchObject({ error: expect.stringContaining('holds the pack "other-pack", not "reinstall-pack"') });
+    expect(fs.existsSync(path.join(tmpDir, 'packs', 'other-pack'))).toBe(false);
+    expect(installedVersion()).toBe('1.0.0');
+    expect(sent.map(e => e.type)).toContain('PACK_ACTIVATED');
   });
 });

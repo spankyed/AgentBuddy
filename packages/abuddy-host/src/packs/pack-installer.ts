@@ -7,7 +7,8 @@ import { discoverBuiltInPacks } from './pack-discovery.ts';
 import { stagingDirName } from './staging.ts';
 import { DOWNLOAD_TIMEOUT_MS, fetchReleaseAsset, githubFetch, type GitHubReleaseAsset } from './github.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
-import { parseManifest } from '@abuddy/sdk/build';
+import { PACK_ID_PATTERN } from '@abuddy/sdk/ids';
+import { PACK_SNAPSHOT_FORMAT, parseManifest } from '@abuddy/sdk/build';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { PackManifest } from '@abuddy/sdk/build';
 import {
@@ -46,6 +47,13 @@ export interface InstallOptions {
    * The pack's id isn't known before this — a GitHub slug or a URL doesn't carry one.
    */
   beforePlace?: (manifest: PackManifest) => void;
+  /**
+   * The pack snapshot format the app that will load the pack reads, so a build in any other is refused: the app
+   * passes its own (`PACK_SNAPSHOT_FORMAT`), `abuddy install` and `abuddy dev` the one the app recorded in the data
+   * dir (`readHostInfo`). Without it — no AgentBuddy that records it has started with the data dir — a build this
+   * process can't read is only warned about, and the app's loader decides at its next start.
+   */
+  packFormat?: number;
 }
 
 /** Reports a download's failure with its URL: a timeout, a refused connection, a body that stopped mid-way. */
@@ -222,9 +230,13 @@ async function installFromDirectory(dir: string, packsDir: string, options: Inst
       throw new Error(`Pack ${manifestSource.id} is not built: ${dir} has no ${PACK_LAYOUT.integrity} and no dist/${PACK_LAYOUT.runtimeEntry} with dist/${PACK_LAYOUT.snapshot}. Run "abuddy build" first.`);
     }
     const integrity = verifyPack(layoutDir);
-    // Refused here rather than at the next boot, where the loader would skip it
-    const formatProblem = buildFormatProblem(layoutDir);
-    if (formatProblem) throw new Error(`Pack "${integrity.id}" can't be installed: ${formatProblem}`);
+    // Refused here rather than at the app's next start, where the loader would skip it
+    if (options.packFormat !== undefined) {
+      const formatProblem = buildFormatProblem(layoutDir, options.packFormat);
+      if (formatProblem) throw new Error(`Pack "${integrity.id}" can't be installed: ${formatProblem}`);
+    } else if (buildFormatProblem(layoutDir)) {
+      log.warn(`Pack "${integrity.id}" may not load: its build format isn't the one this abuddy reads (${PACK_SNAPSHOT_FORMAT}), and which one AgentBuddy reads isn't recorded in its data dir. AgentBuddy loads it only if it reads the pack's format, and otherwise skips it at startup, saying why in its Packs view`);
+    }
 
     const manifest = readValidManifest(layoutDir);
     options.beforePlace?.(manifest);
@@ -347,8 +359,11 @@ export async function installPack(packSlug: string, source?: string, targetPacks
 }
 
 export async function uninstallPack(packId: string, targetPacksDir?: string): Promise<void> {
-  const packsDir = targetPacksDir ?? resolveAppContext().packsDir;
-  const packDir = path.join(packsDir, packId);
+  // The id becomes a path that is deleted recursively: `..` would be the data dir, and `''` every pack
+  if (!PACK_ID_PATTERN.test(packId)) throw new Error(`"${packId}" is not a pack id`);
+  const packsDir = path.resolve(targetPacksDir ?? resolveAppContext().packsDir);
+  const packDir = path.resolve(packsDir, packId);
+  if (path.dirname(packDir) !== packsDir) throw new Error(`"${packId}" is not a pack in ${packsDir}`);
 
   if (!fs.existsSync(packDir)) {
     throw new Error(`Pack "${packId}" is not installed`);

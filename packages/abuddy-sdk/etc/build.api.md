@@ -1683,7 +1683,7 @@ export interface SnapshotFormatMismatch {
 export function _snapshotFormatMismatch(snapshot: {
     format?: unknown;
     sdkVersion?: string;
-}): SnapshotFormatMismatch | undefined;
+}, readerFormat?: number): SnapshotFormatMismatch | undefined;
 
 // @public (undocumented)
 export function sourceHash(data: object): string;
