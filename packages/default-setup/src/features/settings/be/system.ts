@@ -75,8 +75,7 @@ const appliedPluginSettings = (): Record<string, unknown> => ({ ...settingsQueri
 /** What each feature was last told of its settings, by plugin ref */
 type SettingsContext = { applied: Record<string, unknown> };
 
-export const settingsSpec = defineSystem('settings')<IncomingSettingsEvents | SettingsInternalEvents, OutgoingSettingsEvents, SettingsContext>();
-export const settings = settingsSpec.id;
+export const settingsSpec = defineSystem<IncomingSettingsEvents | SettingsInternalEvents, OutgoingSettingsEvents, SettingsContext>();
 
 /** CLI path overrides, in the code plugin's settings */
 const cliPaths = (): Record<string, string | undefined> =>
@@ -311,7 +310,7 @@ export const settingsSystem = setup({
 
   },
 }).createMachine({
-  id: settings,
+  id: 'settings',
   initial: 'idle',
   context: { applied: {} },
   entry: ['addressStoredPluginKeys', 'rememberAppliedSettings'],

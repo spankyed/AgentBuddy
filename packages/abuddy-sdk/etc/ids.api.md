@@ -5,7 +5,7 @@
 ```ts
 
 // @public
-export const bus: "host/bus";
+export const FEATURE_ID_PATTERN: RegExp;
 
 // @public
 export type FeatureRef = `${string}/${string}` & {
@@ -14,6 +14,9 @@ export type FeatureRef = `${string}/${string}` & {
 
 // @public
 export const HOST_PACK_ID = "host";
+
+// @public
+export const PACK_ID_PATTERN: RegExp;
 
 // @public
 export function resolveName(name: string, packId?: string): FeatureRef;

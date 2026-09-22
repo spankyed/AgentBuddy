@@ -17,10 +17,6 @@ describe('addressPluginKeys', () => {
     expect(moved).toBe(2);
   });
 
-  it('moves a key a development build stored as <packId>.<featureId>', () => {
-    expect(addressPluginKeys({ 'memo-pack.memos': true }, owners).record).toEqual({ 'memo-pack/memos': true });
-  });
-
   it('changes nothing the second time', () => {
     const once = addressPluginKeys({ memos: {}, board: {} }, owners).record;
     const twice = addressPluginKeys(once, owners);
@@ -59,10 +55,9 @@ describe('addressPluginKeys', () => {
 });
 
 describe('pluginRefOf', () => {
-  it('is a ref among them, or the one plugin a bare or dotted id stands for', () => {
+  it('is a ref among them, or the one plugin a bare id stands for', () => {
     expect(pluginRefOf('memo-pack/memos', owners)).toBe('memo-pack/memos');
     expect(pluginRefOf('packs', owners)).toBe('host/packs');
-    expect(pluginRefOf('memo-pack.board', owners)).toBe('memo-pack/board');
   });
 
   it('is undefined for an id naming none of them, or one two of them share', () => {

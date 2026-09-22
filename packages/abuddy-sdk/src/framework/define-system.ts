@@ -25,12 +25,10 @@ void _systemEventTypesMatch;
 
 /** The definition object returned by `defineSystem()`. */
 export interface SystemSpec<
-  Id extends string,
   TEvents extends { type: string },
   TOutgoing extends { type: string },
   TContext = {},
 > {
-  id: Id;
   types: { context: TContext; events: TEvents | SystemEvents };
   typeOf: ReturnType<typeof safeEvents<TEvents | SystemEvents>>;
   /** Phantom: the events the system receives, as a sender writes them */
@@ -40,24 +38,24 @@ export interface SystemSpec<
 }
 
 /**
- * Define a backend system's identity and event types. `feature` is the feature's id, which is how the pack's
- * code names the system; it runs at the feature's address, `<packId>/<featureId>` (`packSystem`).
+ * Define a backend system's event types: those it receives, those it sends to plugins, and its context. Its
+ * identity is its feature's: the manifest names the system module under the feature, which runs it at
+ * `<packId>/<featureId>`, and the pack's code names it by the feature id.
  *
  * ```ts
- * export const logsSpec = defineSystem('logs')<
+ * export const logsSpec = defineSystem<
  *   IncomingLogEvents | LogsInternalEvents,
  *   OutgoingLogsEvents,
  *   LogsContext
  * >();
  * ```
  */
-export function defineSystem<Id extends string>(feature: Id) {
-  return <
-    TEvents extends { type: string },
-    TOutgoing extends { type: string },
-    TContext = {},
-  >(): SystemSpec<Id, TEvents, TOutgoing, TContext> => ({
-    id: feature,
+export function defineSystem<
+  TEvents extends { type: string },
+  TOutgoing extends { type: string },
+  TContext = {},
+>(): SystemSpec<TEvents, TOutgoing, TContext> {
+  return {
     types: {
       context: {} as TContext,
       events: {} as TEvents | SystemEvents,
@@ -65,5 +63,5 @@ export function defineSystem<Id extends string>(feature: Id) {
     typeOf: safeEvents<TEvents | SystemEvents>(),
     _incoming: undefined as any,
     _outgoing: undefined as any,
-  });
+  };
 }

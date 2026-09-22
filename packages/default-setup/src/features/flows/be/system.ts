@@ -1,7 +1,6 @@
 import { sendToPlugin } from '@/__generated__/events';
 import { assign, cancel, createMachine, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
-import { bus } from '@abuddy/sdk/ids';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
@@ -96,8 +95,7 @@ export type OutgoingFlowsEvents =
   | { type: 'DSL_EXPORTED'; filePath: string; flowCount: number }
   | { type: 'DSL_EXPORT_FAILED'; errors: string[] }
 
-export const flowsSpec = defineSystem('flows')<IncomingFlowsEvents, OutgoingFlowsEvents>();
-export const flows = flowsSpec.id;
+export const flowsSpec = defineSystem<IncomingFlowsEvents, OutgoingFlowsEvents>();
 
 /** Sends the plugin its flows, the root flow among them (the flow with the root role), and its settings */
 function sendConnectedData(): void {
@@ -412,7 +410,7 @@ export const flowsSystem = setup({
   guards: {},
   delays: {}
 }).createMachine({
-  id: flows,
+  id: 'flows',
   initial: 'idle',
   context: {},
   states: {

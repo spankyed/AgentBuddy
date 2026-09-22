@@ -12,7 +12,7 @@ src/
     pack-entry.ts          # BE entry — exports PackRegistration (repositories and seeders included)
     pack-entry-fe.ts       # FE entry — the PackFERegistration: plugins, steps, tiptap + app extensions, DSL types
     ears.ts                # EARS entity/relation registry, generated from abuddy.json
-    bus-ids.ts             # packId and each feature's address; import-free, for the generated resolvers
+    ref.ts                 # ref(name): the ref a name in this pack's code stands for, bound to the pack
     fe.ts                  # navigateToPlugin(name, event?), PluginName: the plugins this pack's code can name
     events.ts              # PackEvents/PackSystemEvents + typed sendToPlugin/sendToSystem facade
     system-specs.ts        # Type-only: the events each system receives and sends, read by events.ts and types.ts
@@ -62,9 +62,9 @@ Frontend components don't render untrusted text as markup: script injected into 
 
 ## Systems
 
-Backend systems wired via `__generated__/pack-entry.ts`, each feature's with `packSystem()` from the SDK. Each system file default-exports a `SystemEntry` (the manifest names only the path, not an export name). The logs system is special: `features[].earlySystem: true` makes it an early system (`system.early`), which the API starts before EARS hydration (for log capture during boot).
+Backend systems wired via `__generated__/pack-entry.ts`, each feature's with `packSystem()` from the SDK. Each system file default-exports a `SystemEntry` (the manifest names only the path, not an export name). The logs system is special: `features[].earlySystem: true` makes it an early system (`system.early`), which the API starts before EARS hydration (for log capture during boot) and delivers its messages to like any system's.
 
-Code names a system by feature id, and reaches another system with the typed `sendToSystem(name, event)` from `__generated__/events`, never its actor. System specs (identity + types) defined via `defineSystem()` in each system file. A feature's designation comes only from `abuddy.json` `features[].designation`. It is a role, not a name: it need not equal the feature id, and every one default-setup declares happens to.
+Code names a system by feature id, and reaches another system with the typed `sendToSystem(name, event)` from `__generated__/events`, never its actor. Each system file defines its events with `defineSystem()`; its identity is its feature's, from `abuddy.json`. A feature's designation comes only from `abuddy.json` `features[].designation`. It is a role, not a name: it need not equal the feature id, and every one default-setup declares happens to.
 
 ## Services
 

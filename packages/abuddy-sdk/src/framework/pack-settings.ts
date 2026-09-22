@@ -83,8 +83,6 @@ function ownersOf({ refs = boundHost().packs.pluginIds(), builtIn = boundHost().
     const parts = splitRef(ref);
     if (!parts) continue;
     byFeature.set(parts.featureId, [...(byFeature.get(parts.featureId) ?? []), ref]);
-    // Development builds of 0.3.15 stored plugins under `<packId>.<featureId>` before the spelling settled
-    owners.set(`${parts.packId}.${parts.featureId}`, ref);
   }
   for (const [featureId, candidates] of byFeature) {
     const builtInOnes = candidates.filter((ref) => builtIn.includes(splitRef(ref)!.packId));

@@ -9,7 +9,7 @@ import type { ApplicationHotkeys } from '../types/index.ts';
 /**
  * A message on the bus: the ref of the system or plugin it goes to, and the event exactly as the sender wrote it.
  * Where it goes is never a field of the event, so an event may carry any field (a `pluginId` of its own included).
- * Messages sent in (`sendToSystem`) go to systems, and messages sent out (`emit`, `sendToPlugin`) to plugins.
+ * Messages sent in (`sendToSystem`) go to systems, and messages sent out (`sendToPlugin`) to plugins.
  */
 export interface Message {
   to: string;
@@ -64,16 +64,9 @@ export type OutgoingEventsOf<T> = T extends { _outgoing: infer Outgoing }
  * A system spec reduced to the events the system receives and sends. Generated code declares each system's spec
  * with it, so the facade types dependents compile against carry no system context or internals.
  */
-export function specEvents<S extends { id: string; _incoming: unknown; _outgoing: unknown }>(spec: S): { id: S['id']; _incoming: S['_incoming']; _outgoing: S['_outgoing'] } {
+export function specEvents<S extends { _incoming: unknown; _outgoing: unknown }>(spec: S): { _incoming: S['_incoming']; _outgoing: S['_outgoing'] } {
   return spec;
 }
-
-/**
- * A feature's system spec, whose `defineSystem` id must be the feature's: the system runs at the feature's ref and is
- * sent to by the feature id. Generated code passes each spec through it, so a spec defined under another id fails to
- * compile, and `abuddy build`'s type check of the pack's facade refuses the pack.
- */
-export type SystemOfFeature<FeatureId extends string, Spec extends { id: FeatureId }> = Spec;
 
 /**
  * Events the host app's own plugins receive from pack systems. A pack system declares a send to one
@@ -124,8 +117,8 @@ function sendIncoming(message: Message): void {
 }
 
 /**
- * Sends an event to a frontend plugin through the bus, which delivers it once a client is connected (as `emit` in a
- * system). Backend only. Untyped: packs use the `sendToPlugin` from their `#generated/events`.
+ * Sends an event to a frontend plugin through the bus, which delivers it once a client is connected. Backend only.
+ * Untyped: packs use the `sendToPlugin` from their `#generated/events`.
  */
 export function sendToPlugin(to: string, event: { type: string; [key: string]: unknown }): void {
   boundHost().transport.rootEvents.emitPluginSend({ to, event });

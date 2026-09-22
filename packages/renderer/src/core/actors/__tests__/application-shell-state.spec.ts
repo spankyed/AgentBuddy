@@ -60,6 +60,37 @@ it('stays where it is when the plugin last open is not one it has', () => {
   expect(context().activePlugin.id).toBe('default-setup/notes');
 });
 
+// An external pack's frontend loads after the window connects, so its plugin arrives later
+const memos = plugin('memo-pack/memos');
+const loadMemoPack = (target = app) => target.send({ type: 'PACK_FRONTEND_LOADED', packId: 'memo-pack', plugins: [memos] });
+
+it("opens on the plugin last open once its pack's frontend adds it", () => {
+  connect({ lastActivePlugin: 'memo-pack/memos' });
+  loadMemoPack();
+
+  expect(context().activePlugin.id).toBe('memo-pack/memos');
+});
+
+it('keeps the plugin the user opened while that pack was loading', () => {
+  connect({ lastActivePlugin: 'memo-pack/memos' });
+  app.send({ type: 'SELECT_PLUGIN', pluginId: 'default-setup/threads' });
+  loadMemoPack();
+
+  expect(context().activePlugin.id).toBe('default-setup/threads');
+});
+
+it("opens a popout on an external pack's plugin once that pack's frontend adds it", () => {
+  const popout = createActor(createApplicationState(), {
+    systemId: 'host/application',
+    input: { plugins: [notes, threads], defaultPlugin: notes, initialPluginId: 'memo-pack/memos', restoreLastActivePlugin: false },
+  }).start();
+
+  loadMemoPack(popout);
+
+  expect(popout.getSnapshot().context.activePlugin.id).toBe('memo-pack/memos');
+  popout.stop();
+});
+
 it("shows the tabs the host's state says to", () => {
   connect({ pluginVisibility: { 'default-setup/threads': false } });
 

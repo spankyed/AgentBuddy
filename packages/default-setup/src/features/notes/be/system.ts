@@ -2,7 +2,6 @@ import { qx } from '@/__generated__/ears';
 import { sendToPlugin } from '@/__generated__/events';
 import { setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
-import { bus } from '@abuddy/sdk/ids';
 
 import { EARS } from '@/__generated__/ears';
 import type { NoteDTO, NotesConnectedData, OutgoingNotesSearchEvent } from './types';
@@ -55,8 +54,7 @@ export type OutgoingNotesEvents =
   | { type: 'NOTES_EXPORTED'; filePath: string; itemCount: number }
   | { type: 'NOTES_EXPORT_FAILED'; errors: string[] }
 
-export const notesSpec = defineSystem('notes')<IncomingNoteEvents, OutgoingNotesEvents>();
-export const notes = notesSpec.id;
+export const notesSpec = defineSystem<IncomingNoteEvents, OutgoingNotesEvents>();
 
 export const notesSystem = setup({
   types: notesSpec.types,
@@ -588,7 +586,7 @@ export const notesSystem = setup({
     },
   },
 }).createMachine({
-  id: notes,
+  id: 'notes',
   initial: 'idle',
   context: ({}) => ({}),
   on: {

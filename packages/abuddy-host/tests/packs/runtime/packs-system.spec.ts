@@ -3,7 +3,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { createActor, setup, type AnyEventObject } from 'xstate';
-import { bus } from '@abuddy/sdk/ids';
+import { bus } from '../../../src/bus/machine.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { resetTestData, takeSystemErrors, testRootEvents } from '@abuddy/sdk/testing';
 import { readInstalledPacks } from '../../../src/packs/installed-packs.ts';

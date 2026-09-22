@@ -385,7 +385,7 @@ function toPascalCase(id: string): string {
 }
 
 // Local bindings for a feature's default exports start with `__`, which a feature id can't, so they don't
-// collide with generated names (`specs`, `busId`, `<feature>Entry`).
+// collide with generated names (`specs`, `ref`, `<feature>Entry`).
 const settingsBinding = (id: string) => `__settings_${toPascalCase(id)}`;
 const systemBinding = (id: string) => `__system_${id}`;
 const pluginBinding = (id: string) => `__plugin_${id}`;
@@ -558,6 +558,28 @@ export function generatePackFiles(
     return moduleExports.outgoingEventTypesOf(file);
   }
 
+  /** The event types a feature's system sends, read from its spec */
+  function sentEventTypes(feature: PackFeatureEntry): string[] {
+    const file = sourceFileOf(feature.system!.entry);
+    if (!file) throw new Error(`Feature "${feature.id}": no system entry found at ${feature.system!.entry} (.ts or /index.ts)`);
+    try {
+      return outgoingEventTypesOf(file);
+    } catch (err) {
+      // The same error, so its code still says what kind of failure it is
+      (err as Error).message = `Feature "${feature.id}": ${(err as Error).message}`;
+      throw err;
+    }
+  }
+
+  /**
+   * The event types one of this pack's plugins receives: what its own feature's system sends, and every system whose
+   * `sendsTo` names it. Only this pack's own plugins: a dependency's and the host's are declared by whoever owns them.
+   */
+  function receivedEventTypes(pluginId: string): string[] {
+    const senders = (manifest.features ?? []).filter((f) => f.system && (f.id === pluginId || f.system.sendsTo?.includes(pluginId)));
+    return [...new Set(senders.flatMap(sentEventTypes))].sort();
+  }
+
   /** A `"path#exportName"` target that must export a runtime value */
   function valueExport(label: string, target: string): { source: string; exportName: string; value: NonNullable<ExportInfo['value']> } {
     const { source, exportName, file } = exportTarget(label, target);
@@ -605,6 +627,9 @@ export function generatePackFiles(
     // The settings system starts first: the others read the settings as they start
     const orderedFeatures = [...features.filter(f => f.designation === 'settings'), ...features.filter(f => f.designation !== 'settings')];
     const systemFeatures = orderedFeatures.filter(f => f.system);
+    // Every system's events are read, a system without a plugin's too: an entry that lost them (annotated
+    // `: SystemEntry`) would give the facade types nothing but `{ type: string }`
+    for (const feature of systemFeatures) sentEventTypes(feature);
 
     const systemImports = systemFeatures
       .map(f => `import ${systemBinding(f.id)} from '${toImportPath(root, f.system!.entry)}';`)
@@ -615,14 +640,14 @@ export function generatePackFiles(
         ...(f.system!.events?.incoming?.length ? [`incoming: ${JSON.stringify(f.system!.events.incoming)}`] : []),
         ...(f.earlySystem ? ['early: true'] : []),
       ];
-      return `packSystem(${systemBinding(f.id)}, '${f.id}'${options.length ? `, { ${options.join(', ')} }` : ''})`;
+      return `packSystem(${systemBinding(f.id)}${options.length ? `, { ${options.join(', ')} }` : ''})`;
     };
 
     const featuresLiteral = orderedFeatures.map(f => {
       const parts: string[] = [];
       if (f.designation) parts.push(`      designation: '${f.designation}'`);
       if (f.system) parts.push(`      system: ${systemExpr(f)}`);
-      if (f.plugin) parts.push(`      plugin: { receives: ${hasSystemFeatures() ? `receivedEventTypes['${f.id}'] ?? []` : '[]'} }`);
+      if (f.plugin) parts.push(`      plugin: { receives: [${receivedEventTypes(f.id).map((type) => `'${type}'`).join(', ')}] }`);
       parts.push(`      services: [${Object.keys(f.services ?? {}).map(s => `'${s}'`).join(', ')}]`);
       if (f.settings) parts.push(`      settings: ${settingsBinding(f.id)}`);
       return `    '${f.id}': {\n${parts.join(',\n')},\n    }`;
@@ -656,7 +681,7 @@ ${stepsRegister ? `import { steps } from '${toImportPath(root, stepsRegister)}';
 ${manifest.artifacts ? `import { artifacts } from '${toImportPath(root, manifest.artifacts)}';` : ''}
 ${manifest.blocks ? `import { blocks } from '${toImportPath(root, manifest.blocks)}';` : ''}
 import { getCompiledDir, seeders } from './seeders.js';
-${hasSystemFeatures() ? "import { receivedEventTypes } from './events.js';\n" : ''}export { setCompiledDir } from './seeders.js';
+export { setCompiledDir } from './seeders.js';
 
 export const registration: PackRegistration = {
   id: '${manifest.id}',
@@ -835,18 +860,14 @@ export const {
 `;
   }
 
-  // Each feature's address, which its system and its plugin share, and the pack's id: for the generated
-  // code that resolves names, not for pack code, which names features. Import-free, so frontend code can load it.
-  function generateBusIds(): string {
-    const addressed = (manifest.features ?? []).filter(f => f.system || f.plugin);
-    if (!addressed.length) return '';
+  // `ref(name)`, the ref a name in this pack's code stands for, bound to the pack as the generated sends are, so
+  // pack code never supplies its own pack id. Frontend-safe: it imports only `@abuddy/sdk/ids`.
+  function generateRef(): string {
     return `${HEADER}
-/** This pack's id, the context its code's names resolve in */
-export const packId = '${manifest.id}';
+import { resolveName, type FeatureRef } from '@abuddy/sdk/ids';
 
-export const busId = {
-${addressed.map(f => `  ${f.id}: '${resolveName(f.id, manifest.id)}'`).join(',\n')},
-} as const;
+/** The ref of a feature this pack's code names: its own by feature id, any other as \`<packId>/<featureId>\` */
+export const ref = (name: string): FeatureRef => resolveName(name, '${manifest.id}');
 `;
   }
 
@@ -899,16 +920,11 @@ export function navigateToPlugin(name: PluginName, event?: PluginEvent | PluginE
     const pluginOwners = _mergeProvenance('plugins', [...depSnapshots]);
 
     const receivers = new Map<string, string[]>();
-    /** Own plugin id → the features whose systems send to it, for reading their declared event types */
-    const senderFeatures = new Map<string, PackFeatureEntry[]>();
     const addSender = (pluginId: string, feature: PackFeatureEntry) => {
       const alias = `__events_${feature.id}`;
       const senders = receivers.get(pluginId) ?? [];
       if (!senders.includes(alias)) senders.push(alias);
       receivers.set(pluginId, senders);
-      const sending = senderFeatures.get(pluginId) ?? [];
-      if (!sending.includes(feature)) sending.push(feature);
-      senderFeatures.set(pluginId, sending);
     };
     for (const feature of systemFeatures) {
       if (feature.plugin) addSender(feature.id, feature);
@@ -959,7 +975,7 @@ export function navigateToPlugin(name: PluginName, event?: PluginEvent | PluginE
       .map(f => `type __events_${f.id} = OutgoingEventsOf<(typeof __specs)['${f.id}']>;`)
       .join('\n');
     const entries = [...receivers].map(([pluginId, senders]) => `  '${pluginId}': ${senders.join(' | ')};`).join('\n');
-    const systemEntries = systemFeatures.map(f => `  '${f.id}': IncomingEventsOf<SystemOfFeature<'${f.id}', (typeof __specs)['${f.id}']>>;`).join('\n');
+    const systemEntries = systemFeatures.map(f => `  '${f.id}': IncomingEventsOf<(typeof __specs)['${f.id}']>;`).join('\n');
     // Only the dependencies a sendsTo names: a plugin nothing declares a send to isn't this pack's to send to
     const eventDeps = typedDeps.filter((depId) => depTargets.has(depId));
     // `PackEvents` is imported only for these, so it is required here rather than with the rest
@@ -989,27 +1005,8 @@ export function navigateToPlugin(name: PluginName, event?: PluginEvent | PluginE
       ...eventDeps.map((depId) => qualified(depId, `Pick<${depAlias(depId, 'PackEvents')}, ${quoted(depTargets.get(depId)!)}>`)),
       ...(hostTargets.size ? [`Pick<HostPluginEvents, ${quoted(hostTargets)}>`] : []),
     ].join(' & ');
-    // The event types each own plugin receives, read from the senders' declared outgoing unions. Only this
-    // pack's own plugins: a dependency's and the host's are declared by whoever owns them, and the app
-    // merges every registered pack's map, so declaring them here would be a second opinion on someone
-    // else's contract.
-    const receivedTypes = [...senderFeatures].map(([pluginId, sending]) => {
-      const types = new Set(sending.flatMap((feature) => {
-        const file = sourceFileOf(feature.system!.entry);
-        if (!file) throw new Error(`Feature "${feature.id}": no system entry found at ${feature.system!.entry} (.ts or /index.ts)`);
-        try {
-          return outgoingEventTypesOf(file);
-        } catch (err) {
-          // The same error, so its code still says what kind of failure it is
-          (err as Error).message = `Feature "${feature.id}": ${(err as Error).message}`;
-          throw err;
-        }
-      }));
-      return `  '${pluginId}': [${[...types].sort().map((type) => `'${type}'`).join(', ')}],`;
-    }).join('\n');
-
     return `${HEADER}
-import { defineEvents, ${hostTargets.size ? 'type HostPluginEvents, ' : ''}type HostSystemEvents, type IncomingEventsOf${hasSystems ? ', type OutgoingEventsOf, type SystemOfFeature' : ''} } from '@abuddy/sdk/events';
+import { defineEvents, ${hostTargets.size ? 'type HostPluginEvents, ' : ''}type HostSystemEvents, type IncomingEventsOf${hasSystems ? ', type OutgoingEventsOf' : ''} } from '@abuddy/sdk/events';
 ${hasSystems ? `import type { specs as __specs } from './system-specs.js';\n` : ''}${[...depEventImports, ...depSystems.imports].join('\n')}
 ${outgoingAliases}
 
@@ -1024,17 +1021,6 @@ ${entries}
  * own plugins. A plugin id this pack also uses types as its own plugin.
  */
 export type PackEvents = OwnPackEvents${externalReceivers};
-
-/**
- * Feature id → the event types that feature's plugin receives, the runtime half of \`OwnPackEvents\`. The
- * app checks a system's send against it and drops what no one declared, addressing each plugin
- * \`<packId>/<featureId>\` — it qualifies these keys itself, so a pack names only its own features here and
- * cannot claim an id outside its namespace. Only this pack's own plugins: a dependency's and the host's
- * come from their own packs.
- */
-export const receivedEventTypes: Record<string, readonly string[]> = {
-${receivedTypes}
-};
 
 /** Feature id → the events this pack's system for that feature receives (dependents name it \`${manifest.id}/<feature>\`). */
 export type PackSystemEvents = {
@@ -1596,7 +1582,7 @@ ${entries.join('\n')}
     ['src/__generated__/pack-entry.ts', generateBackendEntry()],
     ['src/__generated__/pack-entry-fe.ts', generateFrontendEntry()],
     ['src/__generated__/ears.ts', generateEars()],
-    ['src/__generated__/bus-ids.ts', generateBusIds()],
+    ['src/__generated__/ref.ts', generateRef()],
     ['src/__generated__/fe.ts', generateFe()],
     ['src/__generated__/system-specs.ts', generateSystemSpecs()],
     ['src/__generated__/events.ts', generateEvents()],

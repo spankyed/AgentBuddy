@@ -74,12 +74,12 @@
             v-if="canShowPanel && panelSizes.inspectionWidth > 0 && !isOnboarding"
             data-onboarding-id="inspection-panel"
 :style="{ width: `${panelSizes.inspectionWidth}px` }"
-            :label="`${activePlugin.panel ? activePlugin.label : 'Brain'} Inspection`">
+            :label="`${activePlugin.panel ? activePlugin.label : fallbackPlugin?.label} Inspection`">
             <PluginScope v-if="activePlugin.panel" :plugin="activePlugin.id" :key="activePlugin.id">
               <component :is="activePlugin.panel" />
             </PluginScope>
-            <PluginScope v-else-if="inspectMode && fallbackPanel" :plugin="getDesignated('brain')" key="fallback-panel">
-              <component :is="fallbackPanel" />
+            <PluginScope v-else-if="fallbackShown && fallbackPlugin" :plugin="fallbackPlugin.id" key="fallback-panel">
+              <component :is="fallbackPlugin.panel" />
             </PluginScope>
         </InspectionPanel>
     </div>
@@ -90,6 +90,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
+import type { ActorRefFrom, AnyStateMachine } from 'xstate'
 import { Settings as SettingsIcon, ExternalLink, PanelRight, PanelTop, Terminal } from 'lucide-vue-next'
 import Toolbar from '@/core/components/layout/toolbar.vue'
 import CanvasArea from '@/core/components/layout/canvas-area.vue'
@@ -122,20 +123,17 @@ const chatMaximized = useSelector(applicationState, (state) => state.context.pan
 const isOnboarding = useSelector(applicationState, (s) => s.hasTag('onboarding'))
 
 const allPlugins = useSelector(applicationState, (state) => state.context.plugins)
-const brainActor = applicationState.system.get(getDesignated('brain'))
-const inspectMode = useSelector(brainActor, (state: any) =>
-  state.context.inspectEnabled ?? false
-)
-const fallbackPanel = computed(() => {
-  if (!hasDesignation('brain')) return null
-  return allPlugins.value.find(p => p.id === getDesignated('brain'))?.panel
-})
+/** The plugin offering its panel for plugins without one (`fallbackPanel`), which says itself when it shows */
+const fallbackPlugin = computed(() => allPlugins.value.find((p) => p.fallbackPanel && p.panel))
+const fallbackActor = computed(() => fallbackPlugin.value && applicationState.system.get(fallbackPlugin.value.id) as ActorRefFrom<AnyStateMachine> | undefined)
+const fallbackShown = useSelector(fallbackActor, (snapshot) =>
+  !!snapshot && !!fallbackPlugin.value?.fallbackPanel?.isShown(snapshot))
 
 const currentPluginId = computed(() =>
   toggles.value.canvas ? defaultPlugin.value.id : activePlugin.value.id
 )
 
-const canShowPanel = computed(() => inspectMode.value || !!activePlugin.value.panel)
+const canShowPanel = computed(() => fallbackShown.value || !!activePlugin.value.panel)
 const isPanelOpen = computed(() => panelSizes.value.inspectionWidth > 0)
 
 const allMenuItems = computed<ContextMenuItem[]>(() => {
@@ -165,12 +163,12 @@ const allMenuItems = computed<ContextMenuItem[]>(() => {
       event: { type: 'APP_TOGGLE_INSPECTION_PANEL' },
       isActive: isPanelOpen.value,
     }] : []),
-    {
-      label: 'Inspect Mode',
+    ...(fallbackPlugin.value ? [{
+      label: fallbackPlugin.value.fallbackPanel!.label,
       icon: Terminal,
-      event: { type: 'APP_TOGGLE_INSPECT' },
-      isActive: inspectMode.value,
-    },
+      event: { type: 'APP_TOGGLE_FALLBACK_PANEL' },
+      isActive: fallbackShown.value,
+    }] : []),
   ]
 
   return [...pluginItems, ...defaultItems]
@@ -192,12 +190,15 @@ const handleMenuAction = (event: { type: string; [key: string]: any }) => {
     return
   }
 
-  if (event.type === 'APP_TOGGLE_INSPECT') {
-    brainActor.send({ type: 'TOGGLE_INSPECT' })
+  if (event.type === 'APP_TOGGLE_FALLBACK_PANEL') {
+    const plugin = fallbackPlugin.value
+    if (plugin?.fallbackPanel) fallbackActor.value?.send(plugin.fallbackPanel.toggle)
     return
   }
 
   if (event.type === 'APP_OPEN_PLUGIN_SETTINGS') {
+    // The settings live with whichever plugin plays the role, if any does
+    if (!hasDesignation('settings')) return
     navigateToAddress(getDesignated('settings'), [
       { type: 'TAB.SELECT', tab: 'plugins' },
       { type: 'PLUGIN.SELECT', pluginId: event.pluginId }

@@ -25,21 +25,20 @@ type Incoming${pascal}Events =
 export type Outgoing${pascal}Events =
   | { type: '${name.toUpperCase().replace(/-/g, '_')}_CONNECTED'; data: Record<string, unknown> };
 
-export const ${camel}Spec = defineSystem('${name}')<Incoming${pascal}Events, Outgoing${pascal}Events>();
-export const ${camel} = ${camel}Spec.id;
+export const ${camel}Spec = defineSystem<Incoming${pascal}Events, Outgoing${pascal}Events>();
 
 export const ${camel}System = setup({
   types: ${camel}Spec.types,
   actions: {
     sendConnectedData: () => {
-      sendToPlugin(${camel}, {
+      sendToPlugin('${name}', {
         type: '${name.toUpperCase().replace(/-/g, '_')}_CONNECTED',
         data: {},
       });
     },
   },
 }).createMachine({
-  id: ${camel},
+  id: '${name}',
   initial: 'idle',
   states: {
     idle: {

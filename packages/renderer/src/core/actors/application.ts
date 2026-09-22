@@ -40,7 +40,7 @@ export interface ApplicationContext {
   defaultPlugin: Plugin;
   plugins: Plugin[];
   visiblePlugins: Plugin[]; // Filtered list of visible plugins
-  pluginVisibility: Record<string, boolean>; // Plugin visibility settings
+  pluginVisibility: Record<string, boolean>; // Which tabs show, the host's (AppState)
   pluginHistory: string[]; // History of plugin IDs for back/forward navigation
   historyIndex: number; // Current position in history
   breadcrumbs: BreadcrumbItem[];
@@ -55,6 +55,12 @@ export interface ApplicationContext {
   hotkeysDisabled: boolean;
   hotkeys: ApplicationHotkeys;
   restoreLastActivePlugin: boolean;
+  /**
+   * A plugin to open that isn't registered yet: the one a popout opens on, or the one last open, when an external
+   * pack's frontend adds it after this window starts. Opened when its pack's plugins arrive, unless the user has
+   * opened another plugin by then.
+   */
+  pendingPluginId: string | null;
   /**
    * Each external pack whose frontend load finished, by pack id, with the plugins it added: not those
    * skipped because a plugin had the id already, and none when its frontend exported none or failed to load
@@ -477,7 +483,7 @@ export const createApplicationState = () => setup({
         const allPlugins = packsIdx >= 0
           ? [...context.plugins.slice(0, packsIdx), ...newPlugins, ...context.plugins.slice(packsIdx)]
           : [...context.plugins, ...newPlugins];
-        // Visibility comes from settings (the user's choice, else the feature's default); unset shows the plugin
+        // Visibility is the host's (AppState, sent on each connection); unset shows the plugin
         enqueue.assign({
           plugins: allPlugins,
           visiblePlugins: allPlugins.filter(p => context.pluginVisibility[p.id] !== false),
@@ -486,6 +492,10 @@ export const createApplicationState = () => setup({
         });
         for (const plugin of newPlugins) {
           spawnPluginActor(enqueue, plugin);
+        }
+        const pending = context.pendingPluginId;
+        if (pending && newPlugins.some((p) => p.id === pending)) {
+          enqueue.raise({ type: 'SELECT_PLUGIN', pluginId: pending });
         }
       }
       // The pack's plugin actors, if any, now exist: its systems send their startup data. Before this
@@ -625,6 +635,8 @@ export const createApplicationState = () => setup({
       if (!context.restoreLastActivePlugin || !lastActivePlugin || lastActivePlugin === context.activePlugin.id) return;
       if (context.plugins.some((p) => p.id === lastActivePlugin)) {
         enqueue(() => self.send({ type: 'SELECT_PLUGIN', pluginId: lastActivePlugin }));
+      } else {
+        enqueue.assign({ pendingPluginId: lastActivePlugin });
       }
     }),
 
@@ -728,6 +740,8 @@ export const createApplicationState = () => setup({
       const { pluginId, targetId, historyIndex } = typeOf('SELECT_PLUGIN', event) as any;
       const resolvedId = pluginId || targetId;
       const newPlugin = context.plugins.find(p => p.id === resolvedId) || context.activePlugin;
+      // Opening a plugin settles which one this window shows
+      if (context.pendingPluginId) enqueue.assign({ pendingPluginId: null });
 
       // Un-expand chat when navigating to a plugin
       if (context.panelSizes.chatMaximized) {
@@ -913,8 +927,10 @@ export const createApplicationState = () => setup({
       pluginVisibility[plugin.id] = true;
     });
 
-    // A popout opens on its plugin; a main window on the first, until the host says which was last open
-    const initialActivePlugin = input.plugins.find((p) => p.id === input.initialPluginId) ?? input.plugins[0];
+    // A popout opens on its plugin (once its pack's frontend adds it, if an external pack's); a main window on the
+    // first, until the host says which was last open
+    const initialPlugin = input.plugins.find((p) => p.id === input.initialPluginId);
+    const initialActivePlugin = initialPlugin ?? input.plugins[0];
 
     return {
       plugins: input.plugins,
@@ -934,6 +950,7 @@ export const createApplicationState = () => setup({
       hotkeysDisabled: false,
       hotkeys: {}, // Start with empty hotkeys until loaded from backend
       restoreLastActivePlugin: input.restoreLastActivePlugin ?? true,
+      pendingPluginId: initialPlugin ? null : input.initialPluginId ?? null,
       packPluginIds: {},
       busSubscribed: false,
       packLoadRunning: false,

@@ -78,7 +78,7 @@ The source directory must be built first: installing a directory with neither a 
    - **External:** discovered in `packs/` and reconciled with `installed-packs.json` (new packs added enabled, missing ones removed). For each enabled pack: `hostVersion` check, pack layout format check, a warning on an SDK major version mismatch, `runtime/index.cjs` loaded through the module bridge, and `earlySystem`, `seedManifest` and `partitionPolicy` stripped. Each pack's systems register as `<packId>/<featureId>`.
    - The registry's `registerPack()` stores each registration (see [Collision detection](#collision-detection)). A pack contributes only through its registration: nothing registers when its modules are imported.
 5. Publishes each built-in pack's build output into `host-packs/<id>/`.
-6. Starts the early systems (`system.early`: default-setup's logs system).
+6. Starts the early systems (`system.early`: default-setup's logs system), outside the bus; the host delivers them the messages sent to their refs and each client connection, as the bus does for the others.
 7. Wires each pack's `onShutdown` hook, keyed by pack id.
 8. Hydrates the app's engine from LMDB. Every pack's entity types are registered by now, so the partition policy sees them all.
 9. Runs every pack's `onInit`.
@@ -290,7 +290,7 @@ The policy (the app's registry's `partitionPolicy`) is the union of the SDK's ex
 | `pack-entry.ts` | BE registration: systems, services, repositories, steps, artifacts, blocks, EARS, boot hooks, migrations, seed hooks, seeders, commands, features |
 | `pack-entry-fe.ts` | FE registration: plugins keyed by feature (the host registers each at its address), the default plugin and designations by feature, step/artifact/block FE, tiptap, app extensions, DSL types |
 | `ears.ts` | Typed EARS namespace (Entity, RelKind constants + types), `PackShapes`, and the typed `qx`/`find*`/`createEntity` facade |
-| `bus-ids.ts` | `packId` and `busId`, each feature's address (`<packId>/<featureId>`), for the generated code that resolves names. Import-free. Pack code names features and doesn't import it |
+| `ref.ts` | `ref(name)`: the ref (`<packId>/<featureId>`) a name in this pack's code stands for, its own features by id and any other by ref, bound to the pack so its code never passes its own pack id |
 | `fe.ts` | `navigateToPlugin(name, event?)`, taking the names pack code writes, and the `PluginName` type, which lists exactly those names (the pack's own plugins by feature id, its dependencies' by `<packId>/<featureId>`). Only packs with plugins get it |
 | `system-specs.ts` | Type-only: `specs`, the events each system receives and sends, keyed by feature id, read from its entry's spec. `events.ts` imports it; only packs with systems get it |
 | `events.ts` | `PackEvents` (plugin ID -> the events it receives from this pack's systems, its dependencies' and the host's plugins), `PackSystemEvents` (this pack's systems by feature ID -> the events each receives; dependents name them `<packId>/<feature>`), `SendableSystemEvents` (own systems by feature ID, plus each dependency's as `<dependency>/<feature>`) and `QualifiedSystemEvents` (every system as `<pack>/<feature>`, for `services.emitter`), and the typed `sendToPlugin`/`sendToSystem` sends, which resolve each name to the address it stands for (a pack without systems sends to its dependencies') |

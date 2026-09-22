@@ -22,6 +22,7 @@ import { PublicProps } from 'vue';
 import { Ref } from 'vue';
 import { RendererElement } from 'vue';
 import { RendererNode } from 'vue';
+import type { SnapshotFrom } from 'xstate';
 import { VNode } from 'vue';
 import { z } from 'zod';
 
@@ -279,6 +280,13 @@ interface Plugin_2 {
     canvas?: Component | RouteComponents;
     // (undocumented)
     chat?: Component;
+    fallbackPanel?: {
+        label: string;
+        isShown: (snapshot: SnapshotFrom<AnyStateMachine>) => boolean;
+        toggle: {
+            type: string;
+        };
+    };
     // (undocumented)
     hotkeys?: PluginHotkeyDefinition[];
     // (undocumented)

@@ -2,7 +2,6 @@ import { sendToSystem, sendToPlugin } from '@/__generated__/events';
 import { setup } from 'xstate';
 import { performance } from 'node:perf_hooks';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
-import { bus } from '@abuddy/sdk/ids';
 import { UnknownBackupDatabasesError } from '@abuddy/sdk/services';
 import type { DatabaseStartupData } from './types';
 import { executeQuery } from './execute/query';
@@ -54,8 +53,7 @@ export type OutgoingDatabaseEvents =
 
 export interface DatabaseContext { }
 
-export const databaseSpec = defineSystem('database')<IncomingDatabaseEvents | DatabaseInternalEvents, OutgoingDatabaseEvents>();
-export const database = databaseSpec.id;
+export const databaseSpec = defineSystem<IncomingDatabaseEvents | DatabaseInternalEvents, OutgoingDatabaseEvents>();
 
 export const databaseSystem = setup({
   types: databaseSpec.types,
@@ -311,7 +309,7 @@ export const databaseSystem = setup({
     },
   },
 }).createMachine({
-  id: database,
+  id: 'database',
   initial: 'idle',
   context: ({ input }) => ({}),
   on: {

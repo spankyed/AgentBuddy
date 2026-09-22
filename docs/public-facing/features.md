@@ -59,26 +59,25 @@ export type OutgoingBookmarksEvents =
   | { type: 'BOOKMARKS_CONNECTED'; data: BookmarkDTO[] }
   | { type: 'BOOKMARK_CREATED'; bookmark: BookmarkDTO };
 
-// Create the system spec (identity + types)
-export const bookmarksSpec = defineSystem('bookmarks')<
+// Create the system spec: the events it receives and sends. Its identity is its feature's, from abuddy.json
+export const bookmarksSpec = defineSystem<
   IncomingBookmarksEvents,
   OutgoingBookmarksEvents
 >();
-export const bookmarks = bookmarksSpec.id;
 
 // Build the machine
 export const bookmarksSystem = setup({
   types: bookmarksSpec.types,
   actions: {
     sendConnectedData: () => {
-      sendToPlugin(bookmarks, {
+      sendToPlugin('bookmarks', {
         type: 'BOOKMARKS_CONNECTED',
         data: [],
       });
     },
   },
 }).createMachine({
-  id: bookmarks,
+  id: 'bookmarks',
   initial: 'idle',
   states: {
     idle: {
@@ -99,11 +98,10 @@ const bookmarksEntry = {
 export default bookmarksEntry;
 ```
 
-`defineSystem(id)<TEvents, TOutgoing, TContext = {}>()` returns the spec:
+`defineSystem<TEvents, TOutgoing, TContext = {}>()` returns the spec. It takes no id: the system is its feature's, which the manifest names it under, and runs at the feature's ref, `<packId>/<featureId>`; code names it by the feature id (see below).
 
 | Member | What it is |
 |---|---|
-| `id` | The literal id you passed: the feature id, which is the name code sends to (`sendToPlugin`, `sendToSystem`). The system runs under the feature's ref, `<packId>/<featureId>` (see below) |
 | `types` | `{ context: TContext; events: TEvents \| SystemEvents }`, for `setup({ types })`. `SystemEvents` is `CLIENT_CONNECTED`, `PACK_CHANGED { packId }` and `FEATURE_SETTINGS_UPDATED { settings, changes }`, so incoming unions needn't list them |
 | `typeOf` | `safeEvents` over the same events, to narrow an event by type in actions |
 
@@ -151,7 +149,7 @@ sendToSystem('bookmarks', { type: 'CREATE_BOOKMARK', url, title });
 sendToSystem('default-setup/settings', { type: 'GET_SETTINGS' });
 ```
 
-`sendToSystem` accepts only systems of your pack and its dependencies, and only the events each one declares (`defineSystem(id)<Incoming>()`); a missing field is reported against the event its `type` names. Each send names one system and one event type: a `systemId` or `type` typed as a union is rejected. A bare name is your own feature (`'bookmarks'` is `my-pack/bookmarks`). A dependency's system is always named with the dependency's id, so a feature of yours may share its name: `'notes'` is your own, `'default-setup/notes'` default-setup's. The app rejects an unknown `systemId`, and an event `type` none of the machine's transitions names unless the feature lists it in `system.events.incoming`.
+`sendToSystem` accepts only systems of your pack and its dependencies, and only the events each one declares (`defineSystem<Incoming>()`); a missing field is reported against the event its `type` names. Each send names one system and one event type: a `systemId` or `type` typed as a union is rejected. A bare name is your own feature (`'bookmarks'` is `my-pack/bookmarks`). A dependency's system is always named with the dependency's id, so a feature of yours may share its name: `'notes'` is your own, `'default-setup/notes'` default-setup's. The app rejects an unknown `systemId`, and an event `type` none of the machine's transitions names unless the feature lists it in `system.events.incoming`.
 
 Backend code that needs the connection or every incoming event subscribes with `onConnected(callback)` and `onIncoming(callback)` from `@abuddy/sdk/events`; each returns an unsubscribe function. Log entries arrive through `onLog(callback)` from `@abuddy/sdk/logger`.
 

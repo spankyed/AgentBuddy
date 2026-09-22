@@ -1,7 +1,6 @@
 import { sendToPlugin } from '@/__generated__/events';
 import { setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
-import { bus } from '@abuddy/sdk/ids';
 
 import { EARS } from '@/__generated__/ears';
 import type { PromptsConnectedData } from './types';
@@ -37,8 +36,7 @@ export type OutgoingPromptEvents =
   | { type: 'PROMPTS_EXPORTED'; filePath: string; promptCount: number }
   | { type: 'PROMPTS_EXPORT_FAILED'; errors: string[] }
 
-export const promptsSpec = defineSystem('prompts')<IncomingPromptEvents, OutgoingPromptEvents>();
-export const prompts = promptsSpec.id;
+export const promptsSpec = defineSystem<IncomingPromptEvents, OutgoingPromptEvents>();
 
 export const promptsSystem = setup({
   types: promptsSpec.types,
@@ -272,7 +270,7 @@ export const promptsSystem = setup({
   },
 }).createMachine(
   {
-    id: prompts,
+    id: 'prompts',
     initial: 'idle',
     context: ({ input }) => ({}),
     on: {

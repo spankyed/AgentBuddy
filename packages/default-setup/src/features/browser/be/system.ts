@@ -16,12 +16,11 @@ export type OutgoingBrowserEvents =
 
 export interface BrowserContext {}
 
-export const browserSpec = defineSystem('browser')<
+export const browserSpec = defineSystem<
   IncomingBrowserEvents,
   OutgoingBrowserEvents,
   BrowserContext
 >();
-export const browser = browserSpec.id;
 
 export const browserSystem = setup({
   types: browserSpec.types,
@@ -49,7 +48,7 @@ export const browserSystem = setup({
     },
   },
 }).createMachine({
-  id: browser,
+  id: 'browser',
   initial: 'active',
   context: {},
   on: {

@@ -1,7 +1,7 @@
 // A test app: the pack's registered systems under the app's bus core, with a client the test drives.
 import { createActor, type Actor, type AnyActorRef, type AnyStateMachine } from 'xstate';
-import { createBusMachine } from '@abuddy/host/bus';
-import { bus as busRef, resolveName } from '@abuddy/sdk/ids';
+import { bus as busRef, createBusMachine } from '@abuddy/host/bus';
+import { resolveName } from '@abuddy/sdk/ids';
 import type { PackBootHooks } from '@abuddy/sdk/framework';
 import type { Message } from '@abuddy/sdk/events';
 import { testRootEvents } from '@abuddy/sdk/testing';

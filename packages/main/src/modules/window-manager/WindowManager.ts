@@ -13,7 +13,7 @@ import crypto from 'node:crypto';
 import os from 'node:os';
 import {getMediaBasePath} from '../media-protocol/paths.js';
 import {logRenderer, logRendererFatal} from '../api-server/logger.js';
-import {isPluginId} from './plugin-id.js';
+import {splitRef} from '@abuddy/sdk/ids';
 
 class WindowManager implements AppModule {
   readonly #preload: {path: string};
@@ -142,7 +142,8 @@ class WindowManager implements AppModule {
     });
 
     ipcMain.handle('plugin:popout', async (event, pluginId: string, title?: string) => {
-      if (!isPluginId(pluginId)) {
+      // It reaches the popout's URL, so only a plugin's ref gets a window
+      if (!splitRef(pluginId)) {
         throw new Error('Invalid plugin id');
       }
 

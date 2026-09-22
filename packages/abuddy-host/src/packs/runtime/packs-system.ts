@@ -2,7 +2,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
-import { bus } from '@abuddy/sdk/ids';
+import { bus } from '../../bus/machine.ts';
 import { sendToPlugin } from '@abuddy/sdk/events';
 import { getAppVersion } from '@abuddy/sdk/env';
 import { forgetPack, packRecord, recordInstalled, recordUpdateInstalled, setPackEnabled } from '../installed-packs.ts';
@@ -39,9 +39,9 @@ type OutgoingPacksEvents =
   | { type: 'PACK_UPDATE_COMPLETE'; packId: string; version: string }
   | { type: 'PACK_UPDATE_FAILED'; packId: string; error: string }
 
-export const packsSpec = defineSystem('packs')<IncomingPacksEvents, OutgoingPacksEvents>();
+export const packsSpec = defineSystem<IncomingPacksEvents, OutgoingPacksEvents>();
 /** The host `packs` feature's ref, which its system and plugin both run under */
-export const packs = resolveName(packsSpec.id, HOST_PACK_ID);
+export const packs = resolveName('packs', HOST_PACK_ID);
 
 /**
  * The event types the `packs` plugin receives, as a value the app can check a send against — the same

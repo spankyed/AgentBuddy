@@ -1,7 +1,6 @@
 import { sendToPlugin } from '#generated/events';
 import { setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
-import { bus } from '@abuddy/sdk/ids';
 
 import { repository } from '#generated/repository';
 import { addMemoNote, type MemoNoteDTO } from './memo-notes';
@@ -18,18 +17,17 @@ export type OutgoingMemosEvents =
   /** `note` is null when the note written through @abuddy/ears isn't found through the SDK */
   | { type: 'MEMO_NOTE_ADDED'; text: string; note: MemoNoteDTO | null };
 
-export const memosSpec = defineSystem('memos')<IncomingMemosEvents, OutgoingMemosEvents>();
-export const memos = memosSpec.id;
+export const memosSpec = defineSystem<IncomingMemosEvents, OutgoingMemosEvents>();
 
 export const memosSystem = setup({
   types: memosSpec.types,
   actions: {
     sendConnectedData: ({ system }) => {
-      sendToPlugin(memos, { type: 'MEMOS_CONNECTED', memos: repository.memoQueries.all() });
+      sendToPlugin('memos', { type: 'MEMOS_CONNECTED', memos: repository.memoQueries.all() });
     },
     addMemo: ({ system, event }) => {
       const { text } = memosSpec.typeOf('ADD_MEMO', event);
-      sendToPlugin(memos, { type: 'MEMO_ADDED', memo: repository.memoCommands.add(text) });
+      sendToPlugin('memos', { type: 'MEMO_ADDED', memo: repository.memoCommands.add(text) });
     },
     // A send to a dependency's plugin (abuddy.json sendsTo), named as code names another pack's feature
     announceMemo: ({ system, event }) => {
@@ -41,11 +39,11 @@ export const memosSystem = setup({
     },
     addMemoNote: ({ system, event }) => {
       const { text } = memosSpec.typeOf('ADD_MEMO_NOTE', event);
-      sendToPlugin(memos, { type: 'MEMO_NOTE_ADDED', text, note: addMemoNote(text) });
+      sendToPlugin('memos', { type: 'MEMO_NOTE_ADDED', text, note: addMemoNote(text) });
     },
   },
 }).createMachine({
-  id: memos,
+  id: 'memos',
   initial: 'idle',
   on: {
     ADD_MEMO: { actions: 'addMemo' },

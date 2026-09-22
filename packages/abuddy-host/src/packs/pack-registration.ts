@@ -21,6 +21,7 @@ import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { packSeedOrder } from './pack-discovery.ts';
 import { createDefinitionStore, createDesignationStore, createStepStore, createUndoLog, type UndoLog } from './extensions.ts';
 import { createCommandStore, createSeedHookStore, createSeederStore, createSettingsDefaultsStore, createShutdownHooks } from './backend-extensions.ts';
+import { checkFeatureIds } from './feature-ids.ts';
 
 export type { PackRegistration, PackBootHooks, PackEARS, PackMigration };
 
@@ -373,11 +374,7 @@ export function createPackRegistry(): PackRegistry {
     if (registrations.has(registration.id)) {
       throw new Error(`Pack "${registration.id}" is already registered`);
     }
-    // A feature id is one segment of its ref: one with a `/` would name a feature of another pack
-    const stray = Object.keys(registration.features ?? {}).find((featureId) => featureId.includes('/'));
-    if (stray) {
-      throw new Error(`Pack "${registration.id}": feature "${stray}" isn't a feature id; the app runs it at "${registration.id}/<featureId>"`);
-    }
+    checkFeatureIds(registration.id, Object.keys(registration.features ?? {}));
 
     checkEARS(registration);
 

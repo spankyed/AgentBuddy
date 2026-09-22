@@ -21,6 +21,16 @@ describe('a plugin', () => {
     registry.registerPackFE(registration('memo-pack', { plugins: { memos: plugin('Memos') } }));
     expect(registry.getRegisteredPlugins().map((p) => p.id)).toEqual(['memo-pack/memos']);
   });
+
+  // As the backend registry refuses them: a key with a `/` would land at another pack's ref, and `x` beside
+  // `memo-pack/x` would register one plugin twice
+  it('is refused when its key is no feature id, and nothing of the pack is registered', () => {
+    const registry = createFePackRegistry();
+    expect(() => registry.registerPackFE(registration('memo-pack', { plugins: { memos: plugin('Memos'), 'other-pack/notes': plugin('Notes') } })))
+      .toThrow('Pack "memo-pack": feature "other-pack/notes" isn\'t a feature id');
+    expect(registry.getRegisteredPlugins()).toEqual([]);
+    expect(registry.unregisterPackFE('memo-pack')).toEqual([]);
+  });
 });
 
 describe('a frontend registration that throws partway', () => {

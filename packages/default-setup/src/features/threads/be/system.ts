@@ -3,7 +3,6 @@ import { services } from '@/__generated__/services';
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
-import { bus } from '@abuddy/sdk/ids';
 import { tx, EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
 import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadConnectedData, MessageEntity, BlockConfig, AgentThreadData, AgentConnectedData, RecentThreadRefreshData } from './types';
@@ -91,8 +90,7 @@ export interface ThreadsContext {
   sentCommands?: string
 }
 
-export const threadsSpec = defineSystem('threads')<IncomingThreadsEvents, OutgoingThreadsEvents, ThreadsContext>();
-export const threads = threadsSpec.id;
+export const threadsSpec = defineSystem<IncomingThreadsEvents, OutgoingThreadsEvents, ThreadsContext>();
 
 function reportThreadOperationError(
   operation: 'create' | 'update' | 'delete' | 'archive' | 'unarchive' | 'pin' | 'unpin' | 'status' | 'parent',
@@ -937,7 +935,7 @@ export const threadsSystem = setup({
   },
 }).createMachine(
   {
-    id: threads,
+    id: 'threads',
     initial: 'idle',
     context: ({ input }) => ({}),
     on: {

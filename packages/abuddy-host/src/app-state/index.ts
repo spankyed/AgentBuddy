@@ -45,10 +45,11 @@ export interface AppState {
   seedStatFingerprints: Record<string, string>;
   /**
    * The plugins whose sidebar tab the user showed or hid, by ref. A plugin not here shows as its feature declares
-   * (`features[].settings`' `visible`), so a pack's default reaches everyone who never touched its tab.
+   * (`features[].settings`' `visible`), so a pack's default reaches everyone who never touched its tab. A choice
+   * made before 0.3.15 for a pack not registered since keeps its bare feature id until the pack registers.
    */
   pluginVisibility: Record<string, boolean>;
-  /** The plugin the user last had open, by ref; a window opens on it once it connects */
+  /** The plugin the user last had open, by ref (or bare, as `pluginVisibility`); a window opens on it once it connects */
   lastActivePlugin?: string;
 }
 

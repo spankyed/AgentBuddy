@@ -8,7 +8,7 @@ import * as _abuddy_sdk from '@abuddy/sdk';
 import { ActionEntity, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes } from '@abuddy/sdk';
 import { ArtifactItem } from '@abuddy/sdk/artifacts';
 import * as _abuddy_sdk_build from '@abuddy/sdk/build';
-import { HostPluginEvents, IncomingEventsOf, OutgoingEventsOf, SystemOfFeature, TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
+import { HostPluginEvents, IncomingEventsOf, OutgoingEventsOf, TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
 import { ModelCatalogEntry, ModelId } from '@abuddy/sdk/models';
 import * as _abuddy_sdk_repositories from '@abuddy/sdk/repositories';
 import { FlowEdge } from '@abuddy/sdk/repositories';
@@ -2876,18 +2876,18 @@ type PackStepNodes = NodeEntity;
 
 /** Feature id → the events this pack's system for that feature receives (dependents name it `default-setup/<feature>`). */
 type PackSystemEvents = {
-    'threads': IncomingEventsOf<SystemOfFeature<'threads', (typeof specs)['threads']>>;
-    'code': IncomingEventsOf<SystemOfFeature<'code', (typeof specs)['code']>>;
-    'notes': IncomingEventsOf<SystemOfFeature<'notes', (typeof specs)['notes']>>;
-    'browser': IncomingEventsOf<SystemOfFeature<'browser', (typeof specs)['browser']>>;
-    'library': IncomingEventsOf<SystemOfFeature<'library', (typeof specs)['library']>>;
-    'flows': IncomingEventsOf<SystemOfFeature<'flows', (typeof specs)['flows']>>;
-    'actions': IncomingEventsOf<SystemOfFeature<'actions', (typeof specs)['actions']>>;
-    'prompts': IncomingEventsOf<SystemOfFeature<'prompts', (typeof specs)['prompts']>>;
-    'brain': IncomingEventsOf<SystemOfFeature<'brain', (typeof specs)['brain']>>;
-    'database': IncomingEventsOf<SystemOfFeature<'database', (typeof specs)['database']>>;
-    'logs': IncomingEventsOf<SystemOfFeature<'logs', (typeof specs)['logs']>>;
-    'settings': IncomingEventsOf<SystemOfFeature<'settings', (typeof specs)['settings']>>;
+    'threads': IncomingEventsOf<(typeof specs)['threads']>;
+    'code': IncomingEventsOf<(typeof specs)['code']>;
+    'notes': IncomingEventsOf<(typeof specs)['notes']>;
+    'browser': IncomingEventsOf<(typeof specs)['browser']>;
+    'library': IncomingEventsOf<(typeof specs)['library']>;
+    'flows': IncomingEventsOf<(typeof specs)['flows']>;
+    'actions': IncomingEventsOf<(typeof specs)['actions']>;
+    'prompts': IncomingEventsOf<(typeof specs)['prompts']>;
+    'brain': IncomingEventsOf<(typeof specs)['brain']>;
+    'database': IncomingEventsOf<(typeof specs)['database']>;
+    'logs': IncomingEventsOf<(typeof specs)['logs']>;
+    'settings': IncomingEventsOf<(typeof specs)['settings']>;
 };
 
 /**
@@ -4718,7 +4718,6 @@ declare const settingsQueries: {
 
 declare const specs: {
     threads: {
-        id: "threads";
         _incoming: {
             type: "CREATE_THREAD";
             topic: string;
@@ -4877,7 +4876,6 @@ declare const specs: {
         _outgoing: OutgoingThreadsEvents;
     };
     code: {
-        id: "code";
         _incoming: IncomingExplorerEvents | IncomingSearchEvents | IncomingCommitEvents | IncomingPullRequestEvents | IncomingTerminalEvents | IncomingActionsEvents | IncomingPromptsEvents | {
             type: "SET_BASE_DIRECTORY";
             path: string;
@@ -4886,7 +4884,6 @@ declare const specs: {
         _outgoing: OutgoingCodeEvents;
     };
     notes: {
-        id: "notes";
         _incoming: {
             type: "CREATE_NOTE";
             title: string;
@@ -4948,7 +4945,6 @@ declare const specs: {
         _outgoing: OutgoingNotesEvents;
     };
     browser: {
-        id: "browser";
         _incoming: {
             type: "SYNC_TABS";
             tabs: SavedTab[];
@@ -4963,7 +4959,6 @@ declare const specs: {
         };
     };
     library: {
-        id: "library";
         _incoming: {
             type: "CREATE_DOCUMENT";
             name: string;
@@ -5040,7 +5035,6 @@ declare const specs: {
         _outgoing: OutgoingLibraryEvents;
     };
     flows: {
-        id: "flows";
         _incoming: {
             type: "FLOW_SELECT";
             flowId: string;
@@ -5107,7 +5101,6 @@ declare const specs: {
         _outgoing: OutgoingFlowsEvents;
     };
     actions: {
-        id: "actions";
         _incoming: {
             type: "ACTION_SELECT";
             actionId: string;
@@ -5146,7 +5139,6 @@ declare const specs: {
         _outgoing: OutgoingActionEvents;
     };
     prompts: {
-        id: "prompts";
         _incoming: {
             type: "PROMPT_SELECT";
             promptId: string;
@@ -5185,7 +5177,6 @@ declare const specs: {
         _outgoing: OutgoingPromptEvents;
     };
     brain: {
-        id: "brain";
         _incoming: {
             type: "OPEN_TNODE";
             tNodeId: string;
@@ -5247,7 +5238,6 @@ declare const specs: {
         _outgoing: OutgoingBrainEvents;
     };
     database: {
-        id: "database";
         _incoming: ({
             type: "EXECUTE_QUERY";
             code: string;
@@ -5290,21 +5280,17 @@ declare const specs: {
         _outgoing: OutgoingDatabaseEvents;
     };
     logs: {
-        id: "logs";
         _incoming: ({
             type: "CLEAR_LOGS";
         } | {
             type: "REQUEST_LOGS_UPDATE";
-        }) | ({
-            type: "REQUEST_LOGS_UPDATE";
-        } | {
+        }) | {
             type: "ADD_LOG";
             log: Omit<LogEntry, "id" | "timestamp">;
-        });
+        };
         _outgoing: OutgoingLogsEvents;
     };
     settings: {
-        id: "settings";
         _incoming: ({
             type: "GET_SETTINGS";
         } | {

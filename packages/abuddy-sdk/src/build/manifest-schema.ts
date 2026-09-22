@@ -2,6 +2,9 @@ import { z } from 'zod';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
 import { HOST_PACK_ID } from '../ids/system-ids.ts';
+import { FEATURE_ID_PATTERN, PACK_ID_PATTERN } from '../ids/addressing.ts';
+
+export { FEATURE_ID_PATTERN };
 
 /** Rejects a pack's entries that use a name or value the SDK owns, naming each */
 const notSdkOwned = (owned: Record<string, string>) => (declared: Record<string, string>, ctx: z.RefinementCtx) => {
@@ -135,12 +138,6 @@ const PluginSchema = z.object({
   default: z.boolean().describe('Show this plugin when the app starts. At most one of a pack\'s features may claim it; the first pack to register one across the app wins.').optional(),
 }).strict();
 
-/**
- * Feature IDs become identifiers in generated code (system exports, busId keys,
- * settings keys, emit targets), so they must be valid identifiers. Pack IDs only
- * appear as strings and stay kebab-case.
- */
-export const FEATURE_ID_PATTERN = /^[a-z][a-zA-Z0-9]*$/;
 
 /** Names a feature id can't take: reserved words, since a feature id becomes an identifier in generated code */
 const RESERVED_FEATURE_IDS = new Set([
@@ -168,7 +165,7 @@ export const CommandEntrySchema = z.object({
 export const FeatureEntrySchema = z.object({
   id: z.string().regex(FEATURE_ID_PATTERN, 'Must start with a lowercase letter and contain only letters and digits (e.g. "notes", "calendarEvents")')
     .refine((id) => !RESERVED_FEATURE_IDS.has(id), (id) => ({ message: `"${id}" is reserved in generated code: pick another feature id` }))
-    .describe('Unique feature identifier. A lowercase-first identifier (letters and digits), used as a name in generated code; not a reserved word or "busId".'),
+    .describe('Unique feature identifier. A lowercase-first identifier (letters and digits), used as a name in generated code; not a reserved word.'),
   designation: z.string().describe('Links the system to an EARS designation.').optional(),
   settings: z.string().describe('Path to default settings file.').optional(),
   typesEntry: z.string().describe('Additional types to include in the generated type barrel.').optional(),
@@ -211,7 +208,7 @@ export const ManifestSchema = z.object({
   $schema: z.string().describe('JSON Schema reference for editor validation.').optional(),
   $manifestVersion: z.literal(1).optional()
     .describe('Schema version. Enables future format evolution.'),
-  id: z.string().regex(/^[a-z][a-z0-9-]*$/, 'Must be lowercase alphanumeric with hyphens')
+  id: z.string().regex(PACK_ID_PATTERN, 'Must be lowercase alphanumeric with hyphens')
     .refine((id) => id !== HOST_PACK_ID, { message: `"${HOST_PACK_ID}" is the app's own pack id: pick another` })
     .describe('Unique pack identifier. Lowercase, alphanumeric with hyphens.'),
   name: z.string().min(1).describe('Human-readable pack name.'),

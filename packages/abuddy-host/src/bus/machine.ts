@@ -3,10 +3,13 @@
 // test harness runs the same machine with a recording sink.
 import { enqueueActions, fromCallback, setup, spawnChild, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { reportError } from '@abuddy/sdk/logger';
-import { bus } from '@abuddy/sdk/ids';
+import { HOST_PACK_ID, resolveName } from '@abuddy/sdk/ids';
 import { SYSTEM_EVENT_TYPES } from '@abuddy/sdk/framework';
 import { PLUGIN_EVENT_TYPES, type Message } from '@abuddy/sdk/events';
 import type { PackRegistry } from '../packs/pack-registration.ts';
+
+/** The host's bus feature, `host/bus`: the systemId the app and the harness start the bus under */
+export const bus = resolveName('bus', HOST_PACK_ID);
 
 /** A message in for a system (INCOMING) or out for a plugin (OUTGOING) */
 export type BusEvent =
@@ -107,7 +110,7 @@ function stopSystems(
   }
 }
 
-/** A bus machine; start it with systemId `bus` so systems reach it with `system.get(bus)` */
+/** A bus machine; start it with systemId `bus`, which the host's own systems reach it by (the `packs` system) */
 export function createBusMachine(options: BusOptions) {
   // Every lookup of what the bus runs goes through this, so a bus given a subset never reaches past it
   const { registry } = options;

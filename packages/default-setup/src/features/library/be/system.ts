@@ -4,7 +4,6 @@ import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
 import type { EARS } from '@/__generated__/ears'
 import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryIndex, LibraryItem, FolderContents } from './types'
 // [SEARCH_INDEX_FF] import type { SearchIndex } from './search-index/types/search-index'
-import { bus } from '@abuddy/sdk/ids'
 import { sendToSystem, sendToPlugin } from '@/__generated__/events'
 import { repository } from '@/__generated__/repository';
 import * as path from 'path'
@@ -76,8 +75,7 @@ export type OutgoingLibraryEvents =
   | { type: 'LIBRARY_EXPORTED'; filePath: string; itemCount: number }
   | { type: 'LIBRARY_EXPORT_FAILED'; errors: string[] }
 
-export const librarySpec = defineSystem('library')<IncomingLibraryEvents, OutgoingLibraryEvents, LibrarySystemContext>();
-export const library = librarySpec.id;
+export const librarySpec = defineSystem<IncomingLibraryEvents, OutgoingLibraryEvents, LibrarySystemContext>();
 
 function resolveHomePath(inputPath: string): string {
   const trimmed = inputPath.trim()
@@ -467,7 +465,7 @@ export const librarySystem = setup({
     },
   },
 }).createMachine({
-  id: library,
+  id: 'library',
   initial: 'idle',
   context: ({ input }) => ({
     documents: [],

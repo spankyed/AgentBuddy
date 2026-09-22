@@ -10,17 +10,19 @@ import { appState } from '../../src/app-state/index.ts';
 import { createApplicationSystem } from '../../src/bus/application-system.ts';
 
 /** A registry whose features declare `defaults` as their tabs' visibility */
-const withDefaults = (visibility: Record<string, boolean>) => ({
+const withDefaults = (visibility: Record<string, boolean>, pluginIds: string[] = []) => ({
   settingsDefaults: () => ({ revision: 1, settings: { plugins: {} }, visibility }),
+  pluginIds: () => pluginIds as never,
+  builtInPacks: () => [],
 });
 
 let stop: (() => void) | undefined;
 
 /** The application system, and what it sends to plugins */
-function runApplicationSystem(defaults: Record<string, boolean> = {}) {
+function runApplicationSystem(defaults: Record<string, boolean> = {}, pluginIds: string[] = []) {
   const sent: Message[] = [];
   const stopListening = testRootEvents.onPluginSend((message) => void sent.push(message));
-  const machine = createApplicationSystem(withDefaults(defaults));
+  const machine = createApplicationSystem(withDefaults(defaults, pluginIds));
   const actor = createActor(machine).start();
   stop = () => {
     actor.stop();
@@ -72,5 +74,15 @@ describe('the host application system', () => {
     system.send({ type: 'PACK_CHANGED', packId: 'memo-pack' });
 
     expect(system.visibilitySent()).toEqual([{ to: 'host/application', event: expect.objectContaining({ pluginVisibility: { 'memo-pack/memos': false } }) }]);
+  });
+  // 0.3.15 keeps a choice under its bare id while no registered plugin owns it (a disabled pack's)
+  it("moves a choice kept under a bare id onto the plugin of the pack that registers, and sends it", () => {
+    appState.update({ pluginVisibility: { memos: false }, lastActivePlugin: 'memos' });
+    const system = runApplicationSystem({}, ['memo-pack/memos']);
+
+    system.send({ type: 'PACK_CHANGED', packId: 'memo-pack' });
+
+    expect(appState.get()).toMatchObject({ pluginVisibility: { 'memo-pack/memos': false }, lastActivePlugin: 'memo-pack/memos' });
+    expect(system.visibilitySent().at(-1)?.event).toEqual({ type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: { 'memo-pack/memos': false } });
   });
 });

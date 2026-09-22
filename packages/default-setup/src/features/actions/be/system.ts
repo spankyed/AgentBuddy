@@ -2,7 +2,6 @@ import { sendToPlugin } from '@/__generated__/events';
 // Cross-plugin send: the flows plugin also receives action events
 import { assign, createMachine, setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
-import { bus } from '@abuddy/sdk/ids';
 
 import { EARS } from '@/__generated__/ears';
 import type { ActionsStartupData } from './types';
@@ -38,8 +37,7 @@ export type OutgoingActionEvents =
   | { type: 'ACTIONS_EXPORTED'; filePath: string; actionCount: number }
   | { type: 'ACTIONS_EXPORT_FAILED'; errors: string[] }
 
-export const actionsSpec = defineSystem('actions')<IncomingActionEvents, OutgoingActionEvents>();
-export const actions = actionsSpec.id;
+export const actionsSpec = defineSystem<IncomingActionEvents, OutgoingActionEvents>();
 
 // Broadcasts action events to both the actions and flows plugins (abuddy.json sendsTo)
 const broadcastActionEvent = (system: any, event: OutgoingActionEvents) => {
@@ -277,7 +275,7 @@ export const actionsSystem = setup({
   },
 }).createMachine(
   {
-    id: actions,
+    id: 'actions',
     initial: 'idle',
     context: ({ input }) => ({}),
     on: {

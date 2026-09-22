@@ -28,8 +28,8 @@ function register(packId: string, roles: Array<[featureId: string, role: string]
 
 describe('frontend designations', () => {
   it('resolve a role to the plugin that plays it, and drop it when the pack unregisters', () => {
-    register('notebook-pack', [['notebook-main', 'notebook']]);
-    expect(getDesignated('notebook')).toBe('notebook-pack/notebook-main');
+    register('notebook-pack', [['notebookMain', 'notebook']]);
+    expect(getDesignated('notebook')).toBe('notebook-pack/notebookMain');
 
     unregisterPackFE(packs.pop()!);
     expect(hasDesignation('notebook')).toBe(false);
@@ -37,11 +37,11 @@ describe('frontend designations', () => {
 
   it('keep a role with the plugin that played it first', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    register('first-pack', [['first-notebook', 'notebook']]);
-    register('second-pack', [['second-notebook', 'notebook']]);
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('Designation "notebook" of plugin "second-pack/second-notebook" from pack second-pack ignored'));
+    register('first-pack', [['firstNotebook', 'notebook']]);
+    register('second-pack', [['secondNotebook', 'notebook']]);
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('Designation "notebook" of plugin "second-pack/secondNotebook" from pack second-pack ignored'));
 
     unregisterPackFE(packs.pop()!);
-    expect(getDesignated('notebook')).toBe('first-pack/first-notebook');
+    expect(getDesignated('notebook')).toBe('first-pack/firstNotebook');
   });
 });

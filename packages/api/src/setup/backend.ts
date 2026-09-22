@@ -1,7 +1,6 @@
 import { createActor } from 'xstate';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { bindHost } from '@abuddy/sdk/runtime';
-import { bus } from '@abuddy/sdk/ids';
 import { _getLmdbPath, _getVolatileLmdbPath } from '@abuddy/sdk/utils';
 import type { EarsEngine } from '@abuddy/ears';
 import type { LmdbStore } from '@abuddy/ears/lmdb';
@@ -15,7 +14,7 @@ import {
   loadExternalPacks, registerExternalPacks,
   startPacks,
 } from '@abuddy/host/packs/runtime';
-import { application, APPLICATION_SYSTEM_EVENTS, createAppBus, createApplicationSystem } from '@abuddy/host/bus';
+import { application, APPLICATION_SYSTEM_EVENTS, bus, createAppBus, createApplicationSystem, startEarlySystems } from '@abuddy/host/bus';
 import { createHostRuntime } from '@abuddy/host/services';
 import { forwardSecretsChanges } from '@abuddy/host/secrets';
 import { assertSourceResolution } from '@abuddy/host/build/source-resolution';
@@ -137,10 +136,7 @@ export async function setupBackend(): Promise<void> {
   }
 
   // Start the early systems (the logs system must start before anything else)
-  for (const { machine } of packs.getEarlySystems()) {
-    const logsActor = createActor(machine).start();
-    logsActor.subscribe(logErrors('Logs'));
-  }
+  for (const { id, actor } of startEarlySystems(packs).actors) actor.subscribe(logErrors(id));
 
   console.log(`[app] AgentBuddy v${APP_VERSION} startupId=${process.env.AGENTBUDDY_STARTUP_ID ?? 'unknown'}`);
 

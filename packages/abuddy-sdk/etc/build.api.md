@@ -814,6 +814,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     id: string;
     name: string;
     version: string;
+    description?: string | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -824,7 +825,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
-    description?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -920,6 +920,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     id: string;
     name: string;
     version: string;
+    description?: string | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -930,7 +931,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
-    description?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -1026,6 +1026,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     id: string;
     name: string;
     version: string;
+    description?: string | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -1036,7 +1037,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
-    description?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -1132,6 +1132,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     id: string;
     name: string;
     version: string;
+    description?: string | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -1142,7 +1143,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
-    description?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;

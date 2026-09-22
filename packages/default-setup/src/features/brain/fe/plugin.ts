@@ -2,7 +2,7 @@ import { defineAsyncComponent } from 'vue';
 import type { PluginDefinition } from "@abuddy/sdk/fe";
 
 import { Brain } from 'lucide-vue-next';
-import state from './state';
+import state, { type BrainContext } from './state';
 import settings from './settings.vue';
 
 const canvas = defineAsyncComponent(() => import('./canvas.vue'));
@@ -16,6 +16,12 @@ const brainPlugin: PluginDefinition = {
   canvas,
   settings,
   panel,
+  // Inspect mode shows the brain's panel beside plugins that have none of their own
+  fallbackPanel: {
+    label: 'Inspect Mode',
+    isShown: (snapshot) => (snapshot.context as BrainContext).inspectEnabled,
+    toggle: { type: 'TOGGLE_INSPECT' },
+  },
   isPinned: true,
 
 };

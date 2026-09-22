@@ -3,8 +3,8 @@
 // plugin settings move onto their plugins' addresses, which no pack's own migration can do for them.
 import { tx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
-import { addressPluginKeys, pluginRefOf, type PackMigration, type PluginOwners } from '@abuddy/sdk/framework';
-import { HOST_PACK_ID, splitRef, type FeatureRef } from '@abuddy/sdk/ids';
+import { addressPluginKeys, type PackMigration } from '@abuddy/sdk/framework';
+import { addressShellState, pluginOwners } from '../../bus/application-system.ts';
 import { appState, type AppState } from '../../app-state/index.ts';
 import type { PackRegistry } from '../../packs/pack-registration.ts';
 
@@ -79,12 +79,6 @@ function moveAppState(registry: MigrationRegistry): void {
   if (Object.keys(changed).length > 0) appState.update(changed);
 }
 
-/** Whose a stored bare id is, among every registered plugin, a built-in pack's winning a shared one (`PluginOwners`) */
-const ownersIn = (registry: MigrationRegistry): PluginOwners => ({
-  refs: registry.pluginIds(),
-  builtIn: registry.builtInPacks().map(({ id }) => id),
-});
-
 /** What the settings row held before 0.3.15 under `plugins._meta`: the app shell's state, by bare plugin id */
 interface LegacyShellState {
   visibility?: Record<string, unknown>;
@@ -93,23 +87,22 @@ interface LegacyShellState {
 
 /**
  * The app shell's state out of the built-in pack's settings (`plugins._meta`) into AppState: which plugins' tabs
- * the user showed or hid, and the plugin last open, each onto its plugin's ref. An id naming no registered
- * plugin (one since removed) is dropped: nothing could show it. What AppState already records wins.
+ * the user showed or hid, and the plugin last open, each onto its plugin's ref. An id no registered plugin owns
+ * keeps its bare feature id, which the host `application` system moves when a pack owning it registers (a pack
+ * disabled while this runs). What AppState already records wins.
  */
 function moveShellState(registry: MigrationRegistry): void {
   const data = (untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: { plugins?: Record<string, unknown> } } | undefined)?.data;
   const meta = data?.plugins?._meta as LegacyShellState | undefined;
   if (!data?.plugins || meta === undefined) return;
-  const owners = ownersIn(registry);
 
-  const visibility = Object.fromEntries(Object.entries(addressPluginKeys(meta.visibility ?? {}, owners).record)
-    .filter(([ref, visible]) => owners.refs!.includes(ref as FeatureRef) && typeof visible === 'boolean')) as Record<string, boolean>;
-  const lastActive = typeof meta.lastActivePlugin === 'string' ? pluginRefOf(meta.lastActivePlugin, owners) : undefined;
+  const visibility = Object.fromEntries(Object.entries(meta.visibility ?? {}).filter(([, visible]) => typeof visible === 'boolean')) as Record<string, boolean>;
   const current = appState.get();
   appState.update({
     pluginVisibility: { ...visibility, ...current.pluginVisibility },
-    ...(lastActive && current.lastActivePlugin === undefined && { lastActivePlugin: lastActive }),
+    ...(typeof meta.lastActivePlugin === 'string' && current.lastActivePlugin === undefined && { lastActivePlugin: meta.lastActivePlugin }),
   });
+  addressShellState(pluginOwners(registry));
 
   const { _meta, ...plugins } = data.plugins;
   tx(SETTINGS_ID).put('data', { ...data, plugins });
@@ -124,6 +117,6 @@ function addressHostAndExternalPluginSettings(registry: MigrationRegistry): void
   const data = (untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: { plugins?: Record<string, unknown> } } | undefined)?.data;
   if (!data?.plugins) return;
   // The built-in packs' own keys are theirs to move, in their migrations
-  const moved = addressPluginKeys(data.plugins, { ...ownersIn(registry), movesTo: (_ref, { builtIn }) => !builtIn });
+  const moved = addressPluginKeys(data.plugins, { ...pluginOwners(registry), movesTo: (_ref, { builtIn }) => !builtIn });
   if (moved.moved > 0) tx(SETTINGS_ID).put('data', { ...data, plugins: moved.record });
 }

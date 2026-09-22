@@ -21,6 +21,13 @@ describe('resolveName', () => {
   it('throws for a bare name with no pack to belong to, naming the form to write', () => {
     expect(() => resolveName('notes')).toThrow('"notes" names no pack\'s feature: write "<packId>/notes"');
   });
+
+  // What it makes is a ref splitRef reads back, or nothing
+  it('throws for a name or pack id that makes no ref', () => {
+    for (const [name, packId] of [['', 'memo-pack'], ['a.b', 'memo-pack'], ['my-feature', 'memo-pack'], ['notes', 'Memo_Pack']]) {
+      expect(() => resolveName(name, packId), `${packId}/${name}`).toThrow("isn't a feature's ref");
+    }
+  });
 });
 
 describe('splitRef', () => {
@@ -34,5 +41,9 @@ describe('splitRef', () => {
     expect(splitRef('default-setup/')).toBeUndefined();
     expect(splitRef('a/b/c')).toBeUndefined();
     expect(splitRef('default-setup.notes')).toBeUndefined();
+    expect(splitRef('default-setup/a.b')).toBeUndefined();
+    expect(splitRef('Default_Setup/notes')).toBeUndefined();
+    // A popout's URL carries a plugin's ref, which main checks with this
+    for (const ref of ['', '../x', 'a b/notes', 'default-setup/notes?x=1']) expect(splitRef(ref), ref).toBeUndefined();
   });
 });

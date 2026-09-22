@@ -48,14 +48,11 @@ export interface ActionParameter {
 }
 
 // @public
-export const bus: "host/bus";
-
-// @public
-export function defineSystem<Id extends string>(feature: Id): <TEvents extends {
+export function defineSystem<TEvents extends {
     type: string;
 }, TOutgoing extends {
     type: string;
-}, TContext = {}>() => SystemSpec<Id, TEvents, TOutgoing, TContext>;
+}, TContext = {}>(): SystemSpec<TEvents, TOutgoing, TContext>;
 
 // @public (undocumented)
 export namespace EARS {
@@ -234,13 +231,11 @@ export type SystemEvents = {
 };
 
 // @public
-export interface SystemSpec<Id extends string, TEvents extends {
+export interface SystemSpec<TEvents extends {
     type: string;
 }, TOutgoing extends {
     type: string;
 }, TContext = {}> {
-    // (undocumented)
-    id: Id;
     _incoming: TEvents;
     _outgoing: TOutgoing;
     // (undocumented)

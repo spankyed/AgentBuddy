@@ -5,9 +5,6 @@ import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 import type { LogsState, LogEntry } from './types';
 import { randomId } from '@abuddy/sdk/utils';
 import { onLog, type LogEvent } from '@abuddy/sdk/logger';
-import { onConnected, onIncoming, type Message } from '@abuddy/sdk/events';
-import { resolveName } from '@abuddy/sdk/ids';
-import { packId } from '@/__generated__/bus-ids';
 import { repository } from '@/__generated__/repository';
 import type { LogsSettings } from '@/__generated__/types';
 import { isSourceExcluded, filterLogsByExcludedSources } from './utils';
@@ -24,7 +21,6 @@ type IncomingLogEvents =
   | { type: 'REQUEST_LOGS_UPDATE' };
 
 type LogsInternalEvents =
-  | { type: 'REQUEST_LOGS_UPDATE' }
   | {
     type: 'ADD_LOG';
     log: Omit<LogEntry, 'id' | 'timestamp'>;
@@ -40,10 +36,7 @@ export interface LogsContext {
   logs: LogEntry[];
 }
 
-export const logsSpec = defineSystem('logs')<IncomingLogEvents | LogsInternalEvents, OutgoingLogsEvents, LogsContext>();
-export const logs = logsSpec.id;
-/** The early system starts outside the bus, so it picks the sends to it out of every client send by address */
-const address = resolveName(logs, packId);
+export const logsSpec = defineSystem<IncomingLogEvents | LogsInternalEvents, OutgoingLogsEvents, LogsContext>();
 
 export const logsSystem = setup({
   types: logsSpec.types,
@@ -56,23 +49,8 @@ export const logsSystem = setup({
         });
       };
 
-      const incomingHandler = ({ to, event }: Message) => {
-        if (to === address) sendBack(event as IncomingLogEvents);
-      };
-
-      const connectedHandler = () => {
-        sendBack({ type: 'CLIENT_CONNECTED' });
-      };
-
-      const onLogUnsub = onLog(logHandler)
-      const onIncomingUnsub = onIncoming(incomingHandler)
-      const onConnectedUnsub = onConnected(connectedHandler)
-
-      return () => {
-        onLogUnsub();
-        onIncomingUnsub();
-        onConnectedUnsub();
-      };
+      // The app delivers this early system its messages and client connections as the bus does the others'
+      return onLog(logHandler);
     }),
   },
   actions: {
@@ -161,7 +139,7 @@ export const logsSystem = setup({
     }),
   },
 }).createMachine({
-  id: logs,
+  id: 'logs',
   initial: 'active',
   context: () => {
     return {

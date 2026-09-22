@@ -7,6 +7,7 @@ import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { createDefinitionStore, createDesignationStore, createOwnedStore, createStepStore, createUndoLog } from '../packs/extensions.ts';
 import { resolveName, type FeatureRef } from '@abuddy/sdk/ids';
 import { createAppExtensionSlots } from './app-extensions.ts';
+import { checkFeatureIds } from '../packs/feature-ids.ts';
 
 interface PackFEExtensions {
   /** The plugins this pack added: not those skipped because another pack or the host has the id */
@@ -53,6 +54,7 @@ export function createFePackRegistry(): FePackRegistry {
     if (packExtensions.has(packId)) {
       throw new Error(`Pack "${packId}" frontend is already registered`);
     }
+    checkFeatureIds(packId, Object.keys(registration.plugins ?? {}));
     const fromPack = ` from pack ${packId}`;
     // A registration is all or nothing. What a pack contributes is registered as it is read, and some of it
     // is the pack's own code — a step's `loadComponents` runs here — so a throw partway has to leave the
@@ -69,7 +71,10 @@ export function createFePackRegistry(): FePackRegistry {
       const plugins = [...byFeature.values()];
       allPlugins.push(...plugins);
       undo(() => {
-        for (const plugin of plugins) allPlugins.splice(allPlugins.indexOf(plugin), 1);
+        for (const plugin of plugins) {
+          const idx = allPlugins.indexOf(plugin);
+          if (idx >= 0) allPlugins.splice(idx, 1);
+        }
       });
 
       const ownDefault = registration.defaultPlugin === undefined ? undefined : byFeature.get(registration.defaultPlugin);

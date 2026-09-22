@@ -64,9 +64,7 @@ export type OutgoingCodeEvents =
 import type { TerminalInfo, CodeConnectedData, CodeSettings } from './types'
 
 
-export const codeSpec = defineSystem('code')<IncomingCodeEvents, OutgoingCodeEvents, Context>();
-export const code = codeSpec.id;
-const id = code;
+export const codeSpec = defineSystem<IncomingCodeEvents, OutgoingCodeEvents, Context>();
 
 export interface Context {
   baseDirectory: string | null
@@ -317,7 +315,7 @@ export const systemMachine = setup({
     }
   }
 }).createMachine({
-  id,
+  id: 'code',
   initial: 'idle',
   context: () => {
     const codeSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('code')) as CodeSettings

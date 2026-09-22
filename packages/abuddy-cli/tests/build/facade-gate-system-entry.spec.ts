@@ -8,8 +8,8 @@ import { bundlePackTypes } from '../../src/build/types-bundler';
 
 /**
  * A system entry declared with `satisfies SystemEntry` keeps its spec's events, which the facade
- * types read. An annotated entry (`const entry: SystemEntry = …`) loses them, and the build's facade
- * gate refuses the pack's types, naming the system.
+ * types read. An annotated entry (`const entry: SystemEntry = …`) loses them, and generating the pack's
+ * entries refuses it, naming the feature and the fix, before its facade could publish them widened.
  */
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..');
 const parent = fs.mkdtempSync(path.join(os.tmpdir(), 'facade-gate-system-entry-'));
@@ -23,12 +23,12 @@ const MANIFEST: PackManifest = {
 } as PackManifest;
 
 function systemSource(declaration: 'satisfies' | 'annotation'): string {
-  const machine = "{ spec: tagsSpec, machine: setup({ types: tagsSpec.types }).createMachine({ id: tagsSpec.id }) }";
+  const machine = "{ spec: tagsSpec, machine: setup({ types: tagsSpec.types }).createMachine({ id: 'tags' }) }";
   return [
     "import { setup } from 'xstate';",
     "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",
     "export type OutgoingTagsEvents = { type: 'TAG_ADDED'; name: string };",
-    "export const tagsSpec = defineSystem('tags')<{ type: 'ADD_TAG'; name: string }, OutgoingTagsEvents>();",
+    "export const tagsSpec = defineSystem<{ type: 'ADD_TAG'; name: string }, OutgoingTagsEvents>();",
     declaration === 'satisfies'
       ? `const entry = ${machine} satisfies SystemEntry;`
       : `const entry: SystemEntry = ${machine};`,
@@ -68,12 +68,7 @@ describe('facade gate: system entries', () => {
     expect(await gate('satisfies')).toEqual([]);
   }, 60_000);
 
-  it('fails an annotated system entry, naming the system as <pack>/<feature>', async () => {
-    const problems = await gate('annotation');
-    expect(problems).toEqual([
-      // The annotation widens the spec's id to string, which isn't the feature's id (`SystemOfFeature`)
-      expect.stringMatching(/^dist\/types\/pack-types\.d\.ts:\d+:\d+ error TS\d+: .*does not satisfy the constraint '\{ id: "tags"; \}'.*\(in PackSystemEvents/),
-      expect.stringMatching(/^dist\/types\/pack-types\.d\.ts:\d+:\d+ error TS\d+: .*entry-pack\/tags.*\(in .*reached from: .*Services/),
-    ]);
+  it('refuses an annotated system entry, naming the feature and the fix', async () => {
+    await expect(gate('annotation')).rejects.toThrow(/Feature "tags": .*default-export it declared with `satisfies SystemEntry`/);
   }, 60_000);
 });

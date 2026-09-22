@@ -1,8 +1,8 @@
 // A plugin's slice of the settings, by the name code writes for it: this pack's features by id, another
 // pack's as `<packId>/<featureId>`. The settings hold each slice under the plugin's ref, which this resolves
 // the way a send does, so no reader indexes `settings.plugins` by hand.
-import { splitRef, resolveName } from '@abuddy/sdk/ids';
-import { packId } from '@/__generated__/bus-ids';
+import { splitRef } from '@abuddy/sdk/ids';
+import { ref } from '@/__generated__/ref';
 
 type WithPlugins = { plugins?: Record<string, unknown> } | null | undefined;
 
@@ -14,7 +14,7 @@ type WithPlugins = { plugins?: Record<string, unknown> } | null | undefined;
 export type PluginSettingsKey = `${string}/${string}`;
 
 export function pluginSettings<T = Record<string, any>>(settings: WithPlugins, name: string): T | undefined {
-  return settings?.plugins?.[resolveName(name, packId)] as T | undefined;
+  return settings?.plugins?.[ref(name)] as T | undefined;
 }
 
 /**
@@ -22,7 +22,7 @@ export function pluginSettings<T = Record<string, any>>(settings: WithPlugins, n
  * only keys, so every plugin label is resolved here before it is sent.
  */
 export function pluginSettingsKey(name: string): PluginSettingsKey {
-  return resolveName(name, packId);
+  return ref(name);
 }
 
 /**

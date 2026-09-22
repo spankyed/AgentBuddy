@@ -2,7 +2,6 @@ import { sendToPlugin } from '@/__generated__/events';
 import { assign, setup, enqueueActions, raise } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
-import { bus } from '@abuddy/sdk/ids';
 import { EARS } from '@/__generated__/ears';
 import type { FlowTNodeData, TNodeUpdate } from './types';
 import { repository } from '@/__generated__/repository';
@@ -64,8 +63,7 @@ export interface BrainContext {
   runningRootFlowId?: EARS.EntityId;
 }
 
-export const brainSpec = defineSystem('brain')<IncomingBrainEvents, OutgoingBrainEvents, BrainContext>();
-export const brain = brainSpec.id;
+export const brainSpec = defineSystem<IncomingBrainEvents, OutgoingBrainEvents, BrainContext>();
 export const brainRuntime = 'brain-runtime' as const;
 
 const logger = createLogger('brain');
@@ -466,7 +464,7 @@ export const brainSystem = setup({
   },
 }).createMachine(
   {
-    id: brain,
+    id: 'brain',
     initial: 'running',
     context: ({ input }) => ({
       brainActor: undefined,

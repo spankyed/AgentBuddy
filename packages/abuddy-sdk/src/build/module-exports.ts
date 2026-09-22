@@ -145,7 +145,11 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
         // the union is expanded here and every constituent still has to be a literal.
         const literals = declaredType?.isUnion() ? declaredType.types : declaredType ? [declaredType] : [];
         if (literals.length === 0 || !literals.every((t) => t.isStringLiteral())) {
-          throw new Error(`${path.basename(file)}: its system's outgoing events have a member whose \`type\` is ${declaredType ? checker.typeToString(declaredType) : 'missing'}, not a string literal or a union of them: the events a plugin receives are read from these, and a member without one would leave the map short`);
+          // What an entry annotated `: SystemEntry` leaves: the contract's own `{ type: string }`
+          const widened = declaredType !== undefined && (declaredType.flags & ts.TypeFlags.String) !== 0
+            ? ' (an entry annotated `: SystemEntry` has these: default-export it declared with `satisfies SystemEntry`)'
+            : '';
+          throw new Error(`${path.basename(file)}: its system's outgoing events have a member whose \`type\` is ${declaredType ? checker.typeToString(declaredType) : 'missing'}, not a string literal or a union of them: the events a plugin receives are read from these, and a member without one would leave the map short${widened}`);
         }
         return literals.map((t) => (t as TS.StringLiteralType).value);
       });

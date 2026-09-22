@@ -101,11 +101,9 @@ export function sendToSystem(to: SystemTarget, event: {
 
 // @public
 export function specEvents<S extends {
-    id: string;
     _incoming: unknown;
     _outgoing: unknown;
 }>(spec: S): {
-    id: S['id'];
     _incoming: S['_incoming'];
     _outgoing: S['_outgoing'];
 };
@@ -116,11 +114,6 @@ export type SystemEventMap = {
         type: string;
     };
 };
-
-// @public
-export type SystemOfFeature<FeatureId extends string, Spec extends {
-    id: FeatureId;
-}> = Spec;
 
 // @public
 export type SystemTarget = string | {

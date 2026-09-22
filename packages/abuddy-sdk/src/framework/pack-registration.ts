@@ -48,7 +48,7 @@ export interface PackFeatureSystem {
 
 /** What the backend knows of a feature's plugin: the event types it receives, which the app checks a send against */
 export interface PackFeaturePlugin {
-  /** Generated from the outgoing unions of the systems that send to it (`receivedEventTypes` in `#generated/events`) */
+  /** Generated from the outgoing events of the systems that send to it: its own feature's, and each `sendsTo` naming it */
   receives: readonly string[];
 }
 

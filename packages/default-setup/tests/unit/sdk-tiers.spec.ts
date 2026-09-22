@@ -154,9 +154,10 @@ describe('Tier 3 — System Framework delegates', () => {
     expect(typeof safeEvents).toBe('function');
   });
 
-  it('bus constant is exported', async () => {
-    const { bus } = await import('@abuddy/sdk/ids');
-    expect(bus).toBe('host/bus');
+  it('the id grammar is exported', async () => {
+    const { FEATURE_ID_PATTERN, PACK_ID_PATTERN } = await import('@abuddy/sdk/ids');
+    expect(PACK_ID_PATTERN.test('default-setup')).toBe(true);
+    expect(FEATURE_ID_PATTERN.test('notes')).toBe(true);
   });
 });
 

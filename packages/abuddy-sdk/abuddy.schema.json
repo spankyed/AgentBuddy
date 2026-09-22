@@ -162,7 +162,7 @@
           "id": {
             "type": "string",
             "pattern": "^[a-z][a-zA-Z0-9]*$",
-            "description": "Unique feature identifier. A lowercase-first identifier (letters and digits), used as a name in generated code; not a reserved word or \"busId\"."
+            "description": "Unique feature identifier. A lowercase-first identifier (letters and digits), used as a name in generated code; not a reserved word."
           },
           "designation": {
             "type": "string",
