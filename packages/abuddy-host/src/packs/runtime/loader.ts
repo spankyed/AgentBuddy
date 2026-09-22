@@ -277,12 +277,6 @@ function loadBundledRuntime(
     return null;
   }
 
-  // A pack built before registrations were keyed by feature lists its systems apart, which this app can't run
-  if (registration.features !== undefined && (Array.isArray(registration.features) || typeof registration.features !== 'object')) {
-    logger.error(`Pack ${manifest.id}: its registration lists its features the way an older abuddy built them: rebuild the pack with this app's abuddy`);
-    return null;
-  }
-
   return { ...registration };
 }
 

@@ -8,7 +8,6 @@ import {
   entitiesWithoutShapes,
   SEED_COMPILERS_FILE,
   _buildProvenance,
-  PACK_TYPES_FORMAT,
   type CompilePackOptions, type PackConfig, type PackSnapshot, type PackTypeManifest, type SeedDependency,
 } from '@abuddy/sdk/build';
 import { findFEEntry, bundlePackFE } from '../build/fe-bundler';
@@ -95,8 +94,8 @@ export async function build(args: string[]) {
   clearBuildOutput(outputDir, { builtIn: !external });
 
   if (!args.includes('--skip-generate')) {
-    const { depTypes, depSnapshots, depSources } = await resolveDeps(root, manifest.dependencies);
-    await generateEntries([], undefined, depTypes, depSnapshots, depSources);
+    const { depTypes, depSnapshots } = await resolveDeps(root, manifest.dependencies);
+    await generateEntries([], undefined, depTypes, depSnapshots);
   }
 
   const settingsProblems = await featureSettingsProblems(root, manifest.features ?? []);
@@ -216,7 +215,7 @@ export async function build(args: string[]) {
    */
   const provenance = _buildProvenance([...depSnapshots], { id: manifest.id, manifest });
   const snapshot: PackSnapshot = {
-    types, defs, manifest, sdkVersion: sdkVersion(), typesFormat: PACK_TYPES_FORMAT,
+    types, defs, manifest, sdkVersion: sdkVersion(),
     ...(Object.keys(provenance).length > 0 && { provenance }),
     ...(flowHelpers.success && { flowHelpers: flowHelpers.flowHelpers }),
   };

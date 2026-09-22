@@ -41,10 +41,6 @@ describe('loadPackFEEntry', () => {
     expect(warnings).toEqual([]);
   });
 
-  it('refuses a registration an older abuddy built, naming the rebuild, rather than registering none of its plugins', async () => {
-    await expect(load('fe.mjs', 'export default { plugins: { memos: {} } };')).rejects.toThrow("the way an older abuddy built them: rebuild the pack");
-  });
-
   it('accepts a registration that contributes plugins without warning', async () => {
     const { registration, warnings } = await load('fe.mjs', 'export default { features: { x: { plugin: {} } } };');
     expect(Object.keys((registration as any).features)).toEqual(["x"]);
@@ -55,10 +51,9 @@ describe('loadPackFEEntry', () => {
 // A pack with frontend code is reported to the application actor once its load finished, whatever it added:
 // the bus holds back its systems' startup data until then
 describe('loadPackFrontend', () => {
-  it('throws, saying to rebuild the pack, when the FE entry fails to import', async () => {
+  it('throws when the FE entry fails to import, logging which entry', async () => {
     const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
-    await expect(loadPackFrontend({ id: 'broken', feEntry: 'runtime/fe.js' }))
-      .rejects.toThrow(/\. If the pack was built for another AgentBuddy version, rebuild it with the current @abuddy\/cli$/);
+    await expect(loadPackFrontend({ id: 'broken', feEntry: 'runtime/fe.js' })).rejects.toThrow();
     expect(logged).toHaveBeenCalledWith(expect.stringContaining('[pack-loader] Failed to load FE entry pack://broken/runtime/fe.js'), expect.anything());
   });
 

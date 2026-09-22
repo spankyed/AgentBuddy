@@ -4,7 +4,7 @@
 import { tx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
 import type { PackMigration } from '@abuddy/sdk/framework';
-import { addressShellState, addressStoredPluginKeys, pluginOwners } from '../../packs/plugin-keys.ts';
+import { splitRef, type FeatureRef } from '@abuddy/sdk/ids';
 import { appState, type AppState } from '../../app-state/index.ts';
 import type { PackRegistry } from '../../packs/pack-registration.ts';
 
@@ -46,7 +46,7 @@ export const migration = (registry: MigrationRegistry): PackMigration => ({
     moveAppState(registry);
     moveShellState(registry);
     // Every pack's plugin settings too, the built-in packs' included, before any pack's migration reads them
-    addressStoredPluginKeys(registry);
+    movePluginSettings(registry);
   },
 });
 
@@ -86,25 +86,97 @@ interface LegacyShellState {
   lastActivePlugin?: unknown;
 }
 
+/** Among which plugins a stored bare id is looked up, and whose plugin wins a feature id several share */
+export interface PluginOwners {
+  refs: readonly FeatureRef[];
+  /** The built-in packs, which registered first: a bare id a built-in plugin shares with another pack's was its */
+  builtIn: readonly string[];
+}
+
+const ownersIn = (registry: MigrationRegistry): PluginOwners => ({
+  refs: registry.pluginIds(),
+  builtIn: registry.builtInPacks().map(({ id }) => id),
+});
+
+/** Each bare feature id to its owner's ref, or null when no single one owns it (two external packs share it) */
+function ownersOf({ refs, builtIn }: PluginOwners): Map<string, FeatureRef | null> {
+  const byFeature = new Map<string, FeatureRef[]>();
+  for (const ref of refs) {
+    const parts = splitRef(ref);
+    if (parts) byFeature.set(parts.featureId, [...(byFeature.get(parts.featureId) ?? []), ref]);
+  }
+  const owners = new Map<string, FeatureRef | null>();
+  for (const [featureId, candidates] of byFeature) {
+    const builtInOnes = candidates.filter((ref) => builtIn.includes(splitRef(ref)!.packId));
+    owners.set(featureId, candidates.length === 1 ? candidates[0] : builtInOnes.length === 1 ? builtInOnes[0] : null);
+  }
+  return owners;
+}
+
+/** The plugin a stored id stands for: itself when it is one, else the owner of the bare feature id */
+export function pluginRefOf(id: string, owners: PluginOwners): FeatureRef | undefined {
+  if ((owners.refs as readonly string[]).includes(id)) return id as FeatureRef;
+  return ownersOf(owners).get(id) ?? undefined;
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value);
+
+/** `over` laid on `under`: nested objects merge, and anywhere else `over` wins */
+function mergeUnder(under: unknown, over: unknown): unknown {
+  if (!isRecord(under) || !isRecord(over)) return over;
+  const merged: Record<string, unknown> = { ...under };
+  for (const [key, value] of Object.entries(over)) merged[key] = key in under ? mergeUnder(under[key], value) : value;
+  return merged;
+}
+
+/**
+ * A record keyed by plugin with every key a bare feature id stands for moved onto its owner's ref; a key no plugin
+ * owns stays. A bare key and its ref both holding a value merge, the ref's winning wherever both set one. When nothing
+ * moves, `record` comes back as it was, so a second run changes nothing.
+ */
+export function addressPluginKeys<T extends Record<string, unknown>>(record: T, owners: PluginOwners): { record: T; moved: number } {
+  const ownerOf = ownersOf(owners);
+  const next: Record<string, unknown> = { ...record };
+  let moved = 0;
+  for (const key of Object.keys(record)) {
+    const ref = ownerOf.get(key);
+    if (!ref) continue;
+    next[ref] = ref in next ? mergeUnder(record[key], next[ref]) : record[key];
+    delete next[key];
+    moved++;
+  }
+  return moved === 0 ? { record, moved } : { record: next as T, moved };
+}
+
 /**
  * The app shell's state out of the built-in pack's settings (`plugins._meta`) into AppState: which plugins' tabs
- * the user showed or hid, and the plugin last open, each onto its plugin's ref. An id no registered plugin owns
- * keeps its bare feature id, which the host `application` system moves when a pack owning it registers (a pack
- * disabled while this runs). What AppState already records wins.
+ * the user showed or hid, and the plugin last open, each onto its plugin's ref; an id no registered plugin owns is
+ * dropped. What AppState already records wins.
  */
 function moveShellState(registry: MigrationRegistry): void {
   const data = (untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: { plugins?: Record<string, unknown> } } | undefined)?.data;
   const meta = data?.plugins?._meta as LegacyShellState | undefined;
   if (!data?.plugins || meta === undefined) return;
+  const owners = ownersIn(registry);
 
-  const visibility = Object.fromEntries(Object.entries(meta.visibility ?? {}).filter(([, visible]) => typeof visible === 'boolean')) as Record<string, boolean>;
+  const visibility = Object.fromEntries(Object.entries(addressPluginKeys(meta.visibility ?? {}, owners).record)
+    .filter(([ref, visible]) => owners.refs.includes(ref as FeatureRef) && typeof visible === 'boolean')) as Record<string, boolean>;
+  const lastActive = typeof meta.lastActivePlugin === 'string' ? pluginRefOf(meta.lastActivePlugin, owners) : undefined;
   const current = appState.get();
   appState.update({
     pluginVisibility: { ...visibility, ...current.pluginVisibility },
-    ...(typeof meta.lastActivePlugin === 'string' && current.lastActivePlugin === undefined && { lastActivePlugin: meta.lastActivePlugin }),
+    ...(lastActive && current.lastActivePlugin === undefined && { lastActivePlugin: lastActive }),
   });
-  addressShellState(pluginOwners(registry));
 
   const { _meta, ...plugins } = data.plugins;
   tx(SETTINGS_ID).put('data', { ...data, plugins });
+}
+
+/** Every pack's plugin settings, stored under their features' bare ids before 0.3.15, onto their refs */
+function movePluginSettings(registry: MigrationRegistry): void {
+  const data = (untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: { plugins?: Record<string, unknown> } } | undefined)?.data;
+  if (!data?.plugins) return;
+  const { record: plugins, moved } = addressPluginKeys(data.plugins, ownersIn(registry));
+  if (moved > 0) tx(SETTINGS_ID).put('data', { ...data, plugins });
 }

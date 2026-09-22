@@ -11,7 +11,6 @@ import { registry } from '../packs/runtime/test-host.ts';
 import { appState } from '../../src/app-state/index.ts';
 import { appMigrations } from '../../src/migrations/app/index.ts';
 import { hostRegistration } from '../../src/packs/host-pack.ts';
-import { addressShellState, pluginOwners } from '../../src/packs/plugin-keys.ts';
 
 const SETTINGS_ID = 'Settings-app' as EARS.EntityId;
 
@@ -61,35 +60,9 @@ describe('the 0.3.15 app migration, for plugins', () => {
     });
   });
 
-  // A disabled pack isn't registered while migrations run: its tab and last-open plugin wait for it
-  it('keeps an id no registered plugin owns under its bare id, for the pack that registers it later', () => {
+  it('drops a tab choice no registered plugin owns', () => {
     move();
-    expect(appState.get().pluginVisibility).toMatchObject({ hermes: false });
-
-    registry.registerPack({ id: 'hermes-pack', features: withPlugins('hermes') }, { id: 'hermes-pack', name: 'hermes-pack', version: '1.0.0', dir: 'packs/hermes-pack', builtIn: false });
-    try {
-      addressShellState(pluginOwners(registry));
-
-      expect(appState.get().pluginVisibility).toMatchObject({ 'hermes-pack/hermes': false });
-      expect(appState.get().pluginVisibility).not.toHaveProperty('hermes');
-    } finally {
-      registry.unregisterPack('hermes-pack');
-    }
-  });
-
-  it('keeps a last-open plugin no registered plugin owns, and moves it when its pack registers', () => {
-    tx(SETTINGS_ID).put('data', { plugins: { _meta: { lastActivePlugin: 'hermes' } } });
-
-    move();
-    expect(appState.get().lastActivePlugin).toBe('hermes');
-
-    registry.registerPack({ id: 'hermes-pack', features: withPlugins('hermes') }, { id: 'hermes-pack', name: 'hermes-pack', version: '1.0.0', dir: 'packs/hermes-pack', builtIn: false });
-    try {
-      addressShellState(pluginOwners(registry));
-      expect(appState.get().lastActivePlugin).toBe('hermes-pack/hermes');
-    } finally {
-      registry.unregisterPack('hermes-pack');
-    }
+    expect(appState.get().pluginVisibility).not.toHaveProperty('hermes');
   });
 
   // Before any pack's migration reads them: the built-in pack's migrations run after the host's

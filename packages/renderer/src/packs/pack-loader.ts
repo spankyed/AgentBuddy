@@ -42,17 +42,12 @@ export async function loadPackFEEntry(
   } catch (err) {
     // The pack:// URL names the pack; the E2E fixture matches on it
     console.error(`[pack-loader] Failed to load FE entry ${url}:`, err);
-    const reason = err instanceof Error ? err.message : String(err);
-    throw new Error(`${reason}. If the pack was built for another AgentBuddy version, rebuild it with the current @abuddy/cli`);
+    throw err;
   }
   const registration = mod.default || mod;
   if (!registration || typeof registration !== 'object') {
     console.warn(`[pack-loader] FE entry at ${entry} did not export a valid registration`);
     return null;
-  }
-  // A pack built before registrations were keyed by feature lists its plugins apart: none of them would register
-  if (mod.default && 'plugins' in registration) {
-    throw new Error(`${url} lists its plugins the way an older abuddy built them: rebuild the pack with this app's abuddy`);
   }
   // A module without a default export falls back to its namespace object, which registers
   // nothing; say so instead of loading a pack whose plugins silently never appear. A default

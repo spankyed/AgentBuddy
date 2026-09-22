@@ -21,7 +21,6 @@ import type { PackRegistryView } from '@abuddy/sdk/runtime';
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import { createPackRegistry, hostRegistration, type PackOrigin } from '@abuddy/host/packs';
 import { appState, HOST_ENTITY_TYPES } from '@abuddy/host/app-state';
-import { APPLICATION_SYSTEM_EVENTS, createApplicationSystem } from '@abuddy/host/bus';
 import { loadDependencyRuntime } from './dependency-runtime.ts';
 import { assertSharedEars } from './shared-ears.ts';
 import { setAppPacks, stopRunningApps } from './app.ts';
@@ -62,11 +61,9 @@ let inTest = false;
 
 /** The test file's registered packs: the pack under test and its dependencies, and any other pack a test registers */
 const registry = createPackRegistry();
-// The app's own features, which a pack's systems may send to: the shell's plugin and system (which keeps the tabs'
-// state and moves keys stored before 0.3.15), and the Packs tab, whose system the harness doesn't run
-registry.registerPack(hostRegistration({
-  application: { machine: createApplicationSystem(registry), receives: APPLICATION_SYSTEM_EVENTS },
-}));
+// The app's own plugins (the shell, the Packs tab), which a pack's systems may send to; the harness runs none of the
+// host's systems
+registry.registerPack(hostRegistration());
 setAppPacks(registry);
 
 /** The registered packs the harness binds, with the current test's mocked services over the registered ones */
@@ -199,7 +196,7 @@ function readDependencies(packDir: string, manifest: PackManifest): Map<string, 
   return dependencies;
 }
 
-/** Where a pack came from, as the app records it: whether it's built-in decides who owns a bare id (`PluginOwners`) */
+/** Where a pack came from, as the app records it */
 function originOf(manifest: PackManifest, dir: string): PackOrigin {
   return { id: manifest.id, name: manifest.name, version: manifest.version, dir, builtIn: manifest.builtIn === true, manifest };
 }

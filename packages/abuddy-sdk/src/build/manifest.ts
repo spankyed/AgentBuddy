@@ -29,29 +29,11 @@ export interface PackTypeManifest {
   relKinds: Record<string, string>;
 }
 
-/**
- * The shape of the facade types a pack publishes for its dependents (`dist/types/pack-types.d.ts`
- * and the snapshot's `defs`), recorded so a build can say how a dependency's facade was produced.
- *
- * This is diagnostic context, not a compatibility gate. Whether a dependency's facade can be built
- * against is decided by `requireFacadeExports` in `generate-entries.ts`, which checks for the exports
- * the generated code actually imports. A format number is only a proxy for that: it fails a
- * dependency whose facade changed in ways the dependent never touches, and it names a number rather
- * than the missing export. Bumping this changes no build's outcome — it only makes a real failure's
- * message more useful, so bump it when the generated facade's shape changes.
- *
- * A dependency built before facades existed has no `defs[PACK_TYPES_DEF]` at all; that is a separate
- * path, reported where a `sendsTo` names one of its plugins.
- */
-export const PACK_TYPES_FORMAT = 1;
-
 export interface PackSnapshot {
   types: PackTypeManifest;
   defs: Record<string, string>;
   manifest: PackManifest;
   sdkVersion?: string;
-  /** The facade shape this pack's `defs` are in (`PACK_TYPES_FORMAT` when it was built) */
-  typesFormat?: number;
   /**
    * What everything this pack's tree declares is declared by: kind → name → the pack declaring it.
    *

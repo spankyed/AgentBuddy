@@ -85,20 +85,6 @@ describe('pack-loader', () => {
       expect(systemFeatures(result[0])).toEqual(['myFeature']);
     });
 
-    // A registration from before features were keyed lists them in an array, beside its systems
-    it('refuses a pack an older abuddy built, naming the rebuild', () => {
-      makePack(path.join(tmpDir, 'packs'), 'old-pack', { id: 'old-pack', name: 'Old', version: '1.0.0' },
-        "[{ id: 'notes', hasSystem: true, hasPlugin: true, services: [] }], systems: []");
-      const errors: string[] = [];
-      const unsubscribe = rootEvents.onLog((event) => { if (event.level === 'error') errors.push(event.message); });
-      try {
-        expect(loadExternalPacks()).toEqual([]);
-      } finally {
-        unsubscribe();
-      }
-      expect(errors).toEqual([expect.stringContaining('Pack old-pack: its registration lists its features the way an older abuddy built them')]);
-    });
-
     // The schema refuses an early system outside a built-in pack; the loader doesn't start one either way
     it("drops an external pack's early system", () => {
       makePack(path.join(tmpDir, 'packs'), 'early-pack', { id: 'early-pack', name: 'Early', version: '1.0.0' },

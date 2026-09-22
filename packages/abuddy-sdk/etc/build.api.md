@@ -406,7 +406,6 @@ export function formatEntities(format: SeedFormatConfig): string[];
 export interface GenerateEntriesOptions {
     // (undocumented)
     depSnapshots?: Map<string, PackSnapshot>;
-    depSources?: Map<string, string>;
     // (undocumented)
     depTypes?: Map<string, PackTypeManifest>;
     // (undocumented)
@@ -1284,9 +1283,6 @@ export function on(event: string, exits: DSLStepNode[][], label?: string): Track
 // @public
 export const PACK_TYPES_DEF = "pack-types";
 
-// @public
-export const PACK_TYPES_FORMAT = 1;
-
 // @public (undocumented)
 export type PackBootConfig = z.infer<typeof BootConfigSchema>;
 
@@ -1362,7 +1358,6 @@ export interface PackSnapshot {
     sdkVersion?: string;
     // (undocumented)
     types: PackTypeManifest;
-    typesFormat?: number;
 }
 
 // @public (undocumented)

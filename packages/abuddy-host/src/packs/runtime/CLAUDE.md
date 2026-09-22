@@ -39,7 +39,7 @@ Hidden `.<id>.installing-*`, `.<id>.previous-*` and `.<id>.publishing-*` dirs ar
 3. Loads each enabled pack with `loadSingleExternalPack()`:
    - `hostVersion` check (`isHostCompatible`), pack layout format check, warning on an SDK major version mismatch
    - `runtime/index.cjs` through `withHostResolution()`; the registration id must match the manifest. A directory without a `integrity.json` and a `runtime/index.cjs` isn't an installed pack: it's skipped with a warning pointing at `abuddy install` or `abuddy dev`
-   - refuses a registration an older abuddy built (features listed in an array), naming the rebuild; drops early systems, and strips `boot.seedManifest` (external seeds go through `seedPackData`) and `ears.partitionPolicy`
+   - drops early systems, and strips `boot.seedManifest` (external seeds go through `seedPackData`) and `ears.partitionPolicy`
 
 `registerExternalPacks(registry, packs)` registers each pack, whose features the registry runs at `<packId>/<featureId>` (its seeders, commands and the rest of its registration with it), and returns the packs whose registration succeeded.
 

@@ -77,10 +77,10 @@ The application actor owns loading; `src/packs/pack-loader.ts` does the work. Th
    - `loadPackStyles` adds a `<link data-pack-id>` for `pack://<id>/<feStyles>`, once per href.
    - It then `import()`s `pack://<id>/<feEntry>` and calls `fePacks.registerPackFE(registration, packId)`.
    - It returns the plugins, or `null` when the pack has no `feEntry`. It throws when the entry fails to import or register, so the loader lists the pack in `failedPacks` (a toast).
-   - `loadPackFEEntry` warns when the module has no default export or declares none of `plugins/steps/artifacts/blocks/tiptapPlugins/appExtensions/dslTypes`. On an import failure it logs `[pack-loader] Failed to load FE entry pack://…:` with the error (the E2E fixture matches the prefix) and throws the reason, adding that a pack built for another AgentBuddy version needs rebuilding.
+   - `loadPackFEEntry` warns when the module has no default export or declares none of `features/steps/artifacts/blocks/tiptapPlugins/appExtensions/dslTypes`. On an import failure it logs `[pack-loader] Failed to load FE entry pack://…:` with the error (the E2E fixture matches the prefix) and rethrows it.
 5. **`mergePackPlugins`:**
    - `null` records the pack as loaded and asks nothing, because the connection's `CLIENT_CONNECTED` already reached its systems.
-   - Otherwise it skips plugin ids already present, inserts the new plugins before `packs`, spawns their actors, records them in `packPluginIds`, and, if `busSubscribed`, calls `packClientReady` so the pack's systems send their startup data.
+   - Otherwise it skips plugin ids already present, keeps the host's plugins (the Packs tab) last (`withHostLast`), spawns their actors, records them in `packPluginIds`, and, if `busSubscribed`, calls `packClientReady` so the pack's systems send their startup data.
    - A pack that was unloaded while its load ran (`packsUnloadedWhileLoading`) is instead unloaded again and dropped.
 6. **`onPackFrontendsSettled`:** a failed read is shown as a toast only until one read has succeeded; the next connection retries. Failed packs are shown as a toast and not retried.
 7. **Teardown:** on `PACK_DEACTIVATED` the Packs plugin (`src/packs/state.ts`) calls `unloadPackFrontend` (`fePacks.unregisterPackFE` and removing the stylesheets) and sends `PACK_PLUGINS_UNLOADED`. `removePackPlugins` stops those plugin actors, navigates away if one was active, and clears the pack from `packFrontendsLoaded` so it loads again if it comes back.

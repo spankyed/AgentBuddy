@@ -44,7 +44,7 @@ export type {
   PackFeatureEntry, PackBootConfig, SeedEntryConfig, SeedFormatConfig,
   StepEntry, StepDSLMeta,
 } from './manifest.ts';
-export { seedFile, seedPath, SEED_COMPILERS_FILE, PACK_TYPES_FORMAT, PROVENANCE_KINDS, _mergeProvenance, _buildProvenance, _provenanceRecord } from './manifest.ts';
+export { seedFile, seedPath, SEED_COMPILERS_FILE, PROVENANCE_KINDS, _mergeProvenance, _buildProvenance, _provenanceRecord } from './manifest.ts';
 
 // Flow DSL helpers (track builders)
 export { entry, on } from './flow-helpers.ts';

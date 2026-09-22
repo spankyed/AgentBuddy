@@ -428,8 +428,7 @@ export function createTest(options: CreateTestOptions = {}) {
        * A send to a plugin nobody declares is the failure the outgoing check exists to catch, and it is
        * reported quietly (`diagnostic`, so it raises no toast) — which means without this it would sit
        * in the log and fail nothing. `takeSystemErrors()` does the same job for unit tests; this is its
-       * counterpart for a running app, and it found a real one the first time it ran: the settings
-       * system treated `_meta`, the reserved key for plugin visibility, as a plugin id.
+       * counterpart for a running app.
        */
       await page.evaluate(() => {
         const win = window as any;

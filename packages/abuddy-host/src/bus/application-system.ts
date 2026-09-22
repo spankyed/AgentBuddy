@@ -7,7 +7,6 @@ import { splitRef } from '@abuddy/sdk/ids';
 import { HOST } from '../host-refs.ts';
 import { appState } from '../app-state/index.ts';
 import type { PackRegistry } from '../packs/pack-registration.ts';
-import { addressStoredPluginKeys } from '../packs/plugin-keys.ts';
 
 /** The host `application` feature's ref, which this system and the renderer's application actor run under */
 export const application = HOST.application;
@@ -29,11 +28,10 @@ export const APPLICATION_SYSTEM_EVENTS = ['SET_PLUGIN_VISIBILITY', 'SET_LAST_ACT
  * The host `application` system over the packs in `registry`. It records the user's choices, and sends the
  * application plugin the visibility again when a choice or a pack's defaults change, so every window agrees.
  */
-export function createApplicationSystem(registry: Pick<PackRegistry, 'settingsDefaults' | 'pluginIds' | 'builtInPacks'>) {
+export function createApplicationSystem(registry: Pick<PackRegistry, 'settingsDefaults'>) {
   return setup({
     types: { events: {} as ApplicationEvent },
     actions: {
-      addressStoredPluginKeys: () => addressStoredPluginKeys(registry),
       sendVisibility: () => {
         sendToPlugin(application, { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: pluginVisibility(registry) });
       },
@@ -53,9 +51,8 @@ export function createApplicationSystem(registry: Pick<PackRegistry, 'settingsDe
         guard: ({ event }) => splitRef(event.plugin) !== undefined,
         actions: ({ event }) => appState.update({ lastActivePlugin: event.plugin }),
       },
-      // A pack coming or going brings or takes its features' defaults, and a pack coming owns what was stored under its
-      // features' bare ids before 0.3.15
-      PACK_CHANGED: { actions: ['addressStoredPluginKeys', 'sendVisibility'] },
+      // A pack coming or going brings or takes its features' defaults
+      PACK_CHANGED: { actions: 'sendVisibility' },
     },
   });
 }

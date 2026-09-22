@@ -385,8 +385,7 @@ async function resolveFromUpstream(root: string, depId: string, depValue: string
  * The label is the one `abuddy fetch-deps` prints (`workspace`, `file:<path>`, `installed app (env)`,
  * `github:<owner>/<repo>@<version>`). It is per-resolution, not a property of the artifact — the same
  * bundle is a workspace sibling to its author and a GitHub release to everyone else — so it is not
- * recorded in the snapshot, which ships inside the pack. It exists so a build failure can name a
- * remedy the reader can actually carry out.
+ * recorded in the snapshot, which ships inside the pack.
  */
 export type ResolvedDepFiles = DepFiles & { resolvedFrom?: string };
 

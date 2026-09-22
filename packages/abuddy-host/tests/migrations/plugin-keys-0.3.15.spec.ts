@@ -3,7 +3,7 @@
 // plugin's ref, and leaves everything else alone.
 import { describe, expect, it } from 'vitest';
 import { resolveName } from '@abuddy/sdk/ids';
-import { addressPluginKeys, pluginRefOf } from '../../src/packs/plugin-keys.ts';
+import { addressPluginKeys, pluginRefOf } from '../../src/migrations/app/0.3.15.ts';
 
 const refs = [resolveName('memo-pack/memos'), resolveName('memo-pack/board'), resolveName('host/packs')];
 /** Those plugins, with no built-in pack among them */

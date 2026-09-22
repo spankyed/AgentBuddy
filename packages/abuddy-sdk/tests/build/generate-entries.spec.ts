@@ -6,7 +6,7 @@ import { transformSync } from 'esbuild';
 import ts from 'typescript';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { _depTypesFile, _depTypesVersion, entitiesWithoutShapes, generatePackFiles, PACK_TYPES_DEF } from '../../src/build/generate-entries.ts';
-import { PACK_TYPES_FORMAT, _buildProvenance } from '../../src/build/manifest.ts';
+import { _buildProvenance } from '../../src/build/manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../../src/types/sdk-entities.ts';
 import type { PackManifest, PackSnapshot } from '../../src/build/manifest.ts';
 
@@ -39,8 +39,7 @@ const FACADE_DEFAULTS = {
 
 /**
  * A dependency's facade as `abuddy build` bundles one, with `overrides` replacing a named export's
- * declaration. Generated code imports these from every typed dependency, so a fixture publishing
- * fewer stands for a pack built by a CLI too old to build against — not for a smaller pack.
+ * declaration. Generated code imports these from every dependency.
  */
 function facade(overrides: Partial<Record<keyof typeof FACADE_DEFAULTS, string>> = {}): Record<string, string> {
   const body = Object.entries({ ...FACADE_DEFAULTS, ...overrides })
@@ -50,9 +49,7 @@ function facade(overrides: Partial<Record<keyof typeof FACADE_DEFAULTS, string>>
 }
 
 function dependency(fields: Record<string, unknown>, defs: Record<string, string> = facade()): PackSnapshot {
-  // A dependency built by this CLI records the facade shape it publishes; one that doesn't is the
-  // stale-facade case, covered on its own below
-  return { types: { entities: {}, relKinds: {} }, defs, typesFormat: PACK_TYPES_FORMAT, manifest: manifest({ id: 'base-pack', ...fields }) };
+  return { types: { entities: {}, relKinds: {} }, defs, manifest: manifest({ id: 'base-pack', ...fields }) };
 }
 
 function generate(fields: Record<string, unknown>, deps: Record<string, PackSnapshot> = {}): Record<string, string> {
@@ -241,13 +238,6 @@ describe('generated events', () => {
       { features: [system('memos', { sendsTo: ['base-pack/threads'] })] },
       { 'base-pack': dependency({ features: [{ id: 'threads', plugin: { entry: 'x' } }] }) },
     )).toThrow('system.sendsTo names "base-pack/threads", a plugin of a dependency that declares no events for it');
-  });
-
-  it("rejects a sendsTo naming a plugin of a dependency built without facade types", () => {
-    expect(() => generate(
-      { features: [system('memos', { sendsTo: ['base-pack/threads'] })] },
-      { 'base-pack': dependency({ features: [withPlugin(system('threads'))] }, {}) },
-    )).toThrow('a plugin of "base-pack", which was built without facade types');
   });
 
   // A bare name is this pack's own feature, as it is in code; the error names the form to write instead
@@ -656,7 +646,6 @@ describe('a diamond dependency', () => {
   const surfacing = (id: string, owner: string) => ({
     types: { entities: { Memo: 'Memo' }, relKinds: {} },
     defs: facade(),
-    typesFormat: PACK_TYPES_FORMAT,
     provenance: { entities: { Memo: owner } },
     manifest: manifest({ id }),
   }) as PackSnapshot;
@@ -699,8 +688,7 @@ describe('a diamond dependency', () => {
     const side = (id: string) => ({
       types: { entities: { ['__proto__']: '__proto__' }, relKinds: {} },
       defs: facade(),
-      typesFormat: PACK_TYPES_FORMAT,
-      provenance: JSON.parse(JSON.stringify(_buildProvenance(
+        provenance: JSON.parse(JSON.stringify(_buildProvenance(
         [['deep-pack', { manifest: { entities: { ['__proto__']: '__proto__' } } }] as const],
         { id, manifest: {} },
       ))),
@@ -726,132 +714,6 @@ describe('a diamond dependency', () => {
       'left-pack': { ...dep('left-pack'), provenance: { plugins: owners } } as PackSnapshot,
       'right-pack': { ...dep('right-pack'), provenance: { plugins: owners } } as PackSnapshot,
     })).toThrow('a plugin of "deep-pack"');
-  });
-});
-
-describe("a dependency's facade", () => {
-  /** A snapshot whose facade publishes only `names`, standing for one an older CLI produced */
-  const publishing = (names: string[], fields: Record<string, unknown> = {}) => ({
-    types: { entities: {}, relKinds: {} },
-    defs: { [PACK_TYPES_DEF]: names.map((n) => `export type ${n} = {};`).join('\n') },
-    typesFormat: PACK_TYPES_FORMAT,
-    manifest: manifest({ id: 'base-pack' }),
-    ...fields,
-  }) as PackSnapshot;
-
-  const ALL = Object.keys(FACADE_DEFAULTS);
-
-  // Presence used to be the whole check, so a facade whose shape had changed was consumed and blew up
-  // later as TS2305 inside generated code, naming nothing the author could act on. The check is on the
-  // exports the generated code imports, so the message names those instead.
-  it('fails naming each export the generated code imports and the facade lacks', () => {
-    expect(() => generate({ features: [system('brain')] }, {
-      'base-pack': publishing(ALL.filter((n) => n !== 'Services' && n !== 'Repositories')),
-    })).toThrow(/publishes facade types without `Services`, `Repositories`.*Rebuild "base-pack"/s);
-  });
-
-  it('names how the facade was built, as context for the missing exports', () => {
-    expect(() => generate({ features: [system('brain')] }, {
-      'base-pack': publishing(['PackEvents'], { sdkVersion: '0.2.1', typesFormat: PACK_TYPES_FORMAT + 1 }),
-    })).toThrow(`(Built with SDK 0.2.1, facade format ${PACK_TYPES_FORMAT + 1}; this CLI generates facade format ${PACK_TYPES_FORMAT}.)`);
-  });
-
-  // The format number is a proxy for the exports, and a worse one: it fails a dependency whose facade
-  // changed in ways this pack never touches. Capability is the check; the format is only context.
-  it('accepts a capable facade whose recorded format this CLI does not generate', () => {
-    expect(() => generate({ features: [system('brain')] }, {
-      'base-pack': publishing(ALL, { typesFormat: PACK_TYPES_FORMAT + 1 }),
-    })).not.toThrow();
-  });
-
-  it('accepts a capable facade that records no format at all', () => {
-    expect(() => generate({ features: [system('brain')] }, {
-      'base-pack': publishing(ALL, { typesFormat: undefined }),
-    })).not.toThrow();
-  });
-
-  // PackEvents is imported only for a dependency a sendsTo names, so requiring it of every dependency
-  // would fail builds over a type they never import.
-  it('does not require PackEvents of a dependency no sendsTo names', () => {
-    expect(() => generate({ features: [system('brain')] }, {
-      'base-pack': publishing(ALL.filter((n) => n !== 'PackEvents')),
-    })).not.toThrow();
-  });
-
-  it('requires PackEvents of a dependency whose plugin a sendsTo names', () => {
-    expect(() => generate(
-      { features: [withPlugin(system('memos', { sendsTo: ['base-pack/threads'] }))] },
-      {
-        'base-pack': publishing(ALL.filter((n) => n !== 'PackEvents'), {
-          manifest: manifest({ id: 'base-pack', features: [withPlugin(system('threads'))] }),
-        }),
-      },
-    )).toThrow(/without `PackEvents`, which is needed because this pack's system.sendsTo names one of its plugins/);
-  });
-
-  // The remedy has to be one the reader can carry out. "Rebuild it" is right for a workspace sibling
-  // and impossible for a release someone else published — there is no source tree to build.
-  describe('names a remedy that fits where the dependency came from', () => {
-    const incapable = () => ({ 'base-pack': publishing(ALL.filter((n) => n !== 'Services')) });
-    const failure = (sources?: Record<string, string>) => {
-      try {
-        generatePackFiles(manifest({ features: [system('brain')] }), {
-          packRoot: root,
-          depSnapshots: new Map(Object.entries(incapable())),
-          depSources: sources && new Map(Object.entries(sources)),
-        });
-      } catch (err) {
-        return (err as Error).message;
-      }
-      throw new Error('expected the facade check to fail');
-    };
-
-    it('tells the author to rebuild a workspace dependency, and says where it came from', () => {
-      const message = failure({ 'base-pack': 'workspace' });
-      expect(message).toContain('(from workspace)');
-      expect(message).toContain('Rebuild "base-pack"');
-      expect(message).not.toContain("can't rebuild it yourself");
-    });
-
-    it('tells the author to rebuild a file: dependency', () => {
-      const message = failure({ 'base-pack': 'file:/packs/base-pack' });
-      expect(message).toContain('(from file:/packs/base-pack)');
-      expect(message).toContain('Rebuild "base-pack"');
-    });
-
-    it('does not tell the author to rebuild a downloaded release', () => {
-      const message = failure({ 'base-pack': 'github:acme/base-pack@1.4.0' });
-      expect(message).toContain('(from github:acme/base-pack@1.4.0)');
-      expect(message).toContain("You can't rebuild it yourself");
-      expect(message).toContain('ask its author for a release built with a current abuddy CLI');
-      expect(message).not.toMatch(/Rebuild "base-pack"/);
-    });
-
-    // Taken out of an installed app, so there is no source tree here — and no author to ask either:
-    // the copy came with AgentBuddy and moves when AgentBuddy does
-    it('tells the author to update AgentBuddy for a pack from an installed app', () => {
-      const message = failure({ 'base-pack': 'installed app (production)' });
-      expect(message).toContain('(from installed app (production))');
-      expect(message).toContain('update AgentBuddy');
-      expect(message).not.toContain('ask its author');
-      expect(message).not.toMatch(/Rebuild "base-pack"/);
-    });
-
-    // A cache hit records no source, so the message offers both and names neither situation
-    it('offers both options when the dependency came from the cache', () => {
-      const message = failure();
-      expect(message).not.toContain('(from ');
-      expect(message).toContain('Rebuild "base-pack"');
-      expect(message).toContain("if it isn't yours to build");
-    });
-  });
-
-  // A pack built before facades existed has no facade at all. That stays a silent downgrade to
-  // untyped, which is what `typedDeps` is for — the check is only about a facade that exists.
-  it('accepts a dependency with no facade at all, which stays untyped', () => {
-    expect(() => generate({ features: [system('brain')] }, {
-      'base-pack': { types: { entities: {}, relKinds: {} }, defs: {}, manifest: manifest({ id: 'base-pack' }) } as PackSnapshot,
-    })).not.toThrow();
   });
 });
 

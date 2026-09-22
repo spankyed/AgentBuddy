@@ -3,7 +3,6 @@
 // a choice or a pack's defaults change, so every window agrees.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createActor, type EventFromLogic } from 'xstate';
-import { tx, untypedQx } from '@abuddy/ears';
 import type { Message } from '@abuddy/sdk/events';
 import { resetTestData, testRootEvents } from '@abuddy/sdk/testing';
 import '../packs/runtime/test-host.ts';
@@ -75,25 +74,5 @@ describe('the host application system', () => {
     system.send({ type: 'PACK_CHANGED', packId: 'memo-pack' });
 
     expect(system.visibilitySent()).toEqual([{ to: 'host/application', event: expect.objectContaining({ pluginVisibility: { 'memo-pack/memos': false } }) }]);
-  });
-  // 0.3.15 keeps a choice under its bare id while no registered plugin owns it (a disabled pack's)
-  it("moves a choice kept under a bare id onto the plugin of the pack that registers, and sends it", () => {
-    appState.update({ pluginVisibility: { memos: false }, lastActivePlugin: 'memos' });
-    const system = runApplicationSystem({}, ['memo-pack/memos']);
-
-    system.send({ type: 'PACK_CHANGED', packId: 'memo-pack' });
-
-    expect(appState.get()).toMatchObject({ pluginVisibility: { 'memo-pack/memos': false }, lastActivePlugin: 'memo-pack/memos' });
-    expect(system.visibilitySent().at(-1)?.event).toEqual({ type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: { 'memo-pack/memos': false } });
-  });
-  // The settings row too: a pack disabled when 0.3.15 moved the keys gets its settings when it comes back
-  it("moves the settings a returning pack's plugins kept under their bare ids", () => {
-    tx('Settings-app' as never, true).put('entityType', 'Settings').put('data', { plugins: { memos: { sort: 'oldest' }, other: { kept: true } } });
-    const system = runApplicationSystem({}, ['memo-pack/memos']);
-
-    system.send({ type: 'PACK_CHANGED', packId: 'memo-pack' });
-
-    expect((untypedQx('Settings-app' as never).pickOne(['data']) as unknown as { data: unknown }).data)
-      .toEqual({ plugins: { 'memo-pack/memos': { sort: 'oldest' }, other: { kept: true } } });
   });
 });

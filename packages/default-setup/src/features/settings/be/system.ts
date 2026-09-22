@@ -148,14 +148,8 @@ export const settingsSystem = setup({
 
     replaceSettings: ({ event }) => {
       const ev = settingsSpec.typeOf('REPLACE_SETTINGS', event);
-      // Settings exported before 0.3.15 hold the app shell's state (`_meta`), which is the host's now and isn't
-      // settings: that is dropped rather than stored
-      const { _meta, ...plugins } = (ev.data.plugins ?? {}) as Record<string, unknown>;
-      settingsCommands.replaceSettings(ev.data.plugins ? { ...ev.data, plugins } : ev.data);
+      settingsCommands.replaceSettings(ev.data);
       broadcastSettings('SETTINGS_UPDATED');
-      // They keep each plugin's slice under its bare feature id too: the host moves those onto the plugins' refs when
-      // told the data changed, and every system reads its settings again then
-      if (Object.keys(plugins).some((key) => !splitRef(key))) sendToSystem('host/bus', { type: 'PACK_CHANGED', packId: splitRef(ref('settings'))!.packId });
     },
 
     resetSettings: () => {
