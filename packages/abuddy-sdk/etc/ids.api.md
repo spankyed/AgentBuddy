@@ -19,14 +19,21 @@ export const HOST_PACK_ID = "host";
 export const PACK_ID_PATTERN: RegExp;
 
 // @public
+export interface RefLookup {
+    among?: string;
+    form?: string;
+    packId?: string;
+    registered: readonly string[];
+}
+
+// @public
+export function refProblem(kind: string, name: string, input: RefLookup): string | undefined;
+
+// @public
 export function resolveName(name: string, packId?: string): FeatureRef;
 
 // @public
-export function resolveRegistered(kind: 'system' | 'plugin', name: string, input: {
-    packId?: string;
-    registered: readonly string[];
-    form?: string;
-}): FeatureRef;
+export function resolveRegistered(kind: string, name: string, lookup: RefLookup): FeatureRef;
 
 // @public
 export function splitRef(ref: string): {

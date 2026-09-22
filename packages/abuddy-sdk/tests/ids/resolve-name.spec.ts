@@ -1,7 +1,7 @@
 // How a name in pack code becomes the ref a system or plugin runs under. Every conversion calls this,
 // so a name that belongs to no pack fails here, at the call, rather than as a send nobody receives.
 import { describe, expect, it } from 'vitest';
-import { resolveName, resolveRegistered, splitRef } from '../../src/ids/index.ts';
+import { refProblem, resolveName, resolveRegistered, splitRef } from '../../src/ids/index.ts';
 
 describe('resolveName', () => {
   it("resolves a pack's own feature to its ref", () => {
@@ -65,3 +65,25 @@ describe('resolveRegistered', () => {
       .toThrow('No registered system is named "threads": actions name a system "<packId>/<featureId>" — did you mean "default-setup/threads"?');
   });
 });
+
+// The same lookup, reported rather than thrown, for code that collects every problem (a settings document's keys)
+describe('refProblem', () => {
+  const installed = ['memo-pack/memos', 'default-setup/threads'];
+
+  it('is undefined for a name that stands for one of the refs', () => {
+    expect(refProblem('plugin', 'memos', { packId: 'memo-pack', registered: installed })).toBeUndefined();
+    expect(refProblem('plugin', 'default-setup/threads', { registered: installed })).toBeUndefined();
+  });
+
+  it('names the refs by what they are among, and the one a name probably meant', () => {
+    expect(refProblem('feature with settings', 'threads', { registered: installed, among: 'installed' })).toBe(
+      'No installed feature with settings is named "threads": name a feature with settings as "<packId>/<featureId>"'
+      + ' — did you mean "default-setup/threads"? Installed: memo-pack/memos, default-setup/threads',
+    );
+  });
+
+  it("reports a name that can't be a ref, rather than throwing", () => {
+    expect(refProblem('plugin', 'Not An Id', { packId: 'memo-pack', registered: installed })).toContain(`isn't a feature's ref`);
+  });
+});
+

@@ -346,6 +346,14 @@ export const FeatureEntrySchema: z.ZodObject<{
     references: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
     id: string;
+    settings?: string | undefined;
+    plugin?: {
+        entry: string;
+        default?: boolean | undefined;
+    } | undefined;
+    designation?: string | undefined;
+    typesEntry?: string | undefined;
+    earlySystem?: boolean | undefined;
     system?: {
         entry: string;
         events?: {
@@ -353,19 +361,19 @@ export const FeatureEntrySchema: z.ZodObject<{
         } | undefined;
         sendsTo?: string[] | undefined;
     } | undefined;
-    plugin?: {
-        entry: string;
-        default?: boolean | undefined;
-    } | undefined;
-    settings?: string | undefined;
-    designation?: string | undefined;
-    typesEntry?: string | undefined;
-    earlySystem?: boolean | undefined;
     services?: Record<string, string> | undefined;
     repositories?: Record<string, string> | undefined;
     references?: string | undefined;
 }, {
     id: string;
+    settings?: string | undefined;
+    plugin?: {
+        entry: string;
+        default?: boolean | undefined;
+    } | undefined;
+    designation?: string | undefined;
+    typesEntry?: string | undefined;
+    earlySystem?: boolean | undefined;
     system?: {
         entry: string;
         events?: {
@@ -373,14 +381,6 @@ export const FeatureEntrySchema: z.ZodObject<{
         } | undefined;
         sendsTo?: string[] | undefined;
     } | undefined;
-    plugin?: {
-        entry: string;
-        default?: boolean | undefined;
-    } | undefined;
-    settings?: string | undefined;
-    designation?: string | undefined;
-    typesEntry?: string | undefined;
-    earlySystem?: boolean | undefined;
     services?: Record<string, string> | undefined;
     repositories?: Record<string, string> | undefined;
     references?: string | undefined;
@@ -507,6 +507,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         references: z.ZodOptional<z.ZodString>;
     }, "strict", z.ZodTypeAny, {
         id: string;
+        settings?: string | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
+        } | undefined;
+        designation?: string | undefined;
+        typesEntry?: string | undefined;
+        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             events?: {
@@ -514,19 +522,19 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             } | undefined;
             sendsTo?: string[] | undefined;
         } | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
-        } | undefined;
-        settings?: string | undefined;
-        designation?: string | undefined;
-        typesEntry?: string | undefined;
-        earlySystem?: boolean | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
     }, {
         id: string;
+        settings?: string | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
+        } | undefined;
+        designation?: string | undefined;
+        typesEntry?: string | undefined;
+        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             events?: {
@@ -534,14 +542,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             } | undefined;
             sendsTo?: string[] | undefined;
         } | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
-        } | undefined;
-        settings?: string | undefined;
-        designation?: string | undefined;
-        typesEntry?: string | undefined;
-        earlySystem?: boolean | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
@@ -842,6 +842,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     features?: {
         id: string;
+        settings?: string | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
+        } | undefined;
+        designation?: string | undefined;
+        typesEntry?: string | undefined;
+        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             events?: {
@@ -849,14 +857,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             } | undefined;
             sendsTo?: string[] | undefined;
         } | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
-        } | undefined;
-        settings?: string | undefined;
-        designation?: string | undefined;
-        typesEntry?: string | undefined;
-        earlySystem?: boolean | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
@@ -948,6 +948,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     features?: {
         id: string;
+        settings?: string | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
+        } | undefined;
+        designation?: string | undefined;
+        typesEntry?: string | undefined;
+        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             events?: {
@@ -955,14 +963,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             } | undefined;
             sendsTo?: string[] | undefined;
         } | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
-        } | undefined;
-        settings?: string | undefined;
-        designation?: string | undefined;
-        typesEntry?: string | undefined;
-        earlySystem?: boolean | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
@@ -1054,6 +1054,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     features?: {
         id: string;
+        settings?: string | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
+        } | undefined;
+        designation?: string | undefined;
+        typesEntry?: string | undefined;
+        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             events?: {
@@ -1061,14 +1069,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             } | undefined;
             sendsTo?: string[] | undefined;
         } | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
-        } | undefined;
-        settings?: string | undefined;
-        designation?: string | undefined;
-        typesEntry?: string | undefined;
-        earlySystem?: boolean | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
@@ -1160,6 +1160,14 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     features?: {
         id: string;
+        settings?: string | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
+        } | undefined;
+        designation?: string | undefined;
+        typesEntry?: string | undefined;
+        earlySystem?: boolean | undefined;
         system?: {
             entry: string;
             events?: {
@@ -1167,14 +1175,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             } | undefined;
             sendsTo?: string[] | undefined;
         } | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
-        } | undefined;
-        settings?: string | undefined;
-        designation?: string | undefined;
-        typesEntry?: string | undefined;
-        earlySystem?: boolean | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
