@@ -10,7 +10,7 @@ import { HOST } from '../../../refs.ts';
 import { connectionListener } from './connection.ts';
 import { hotkeyListener, mouseListener } from './input.ts';
 import {
-  canvasReset, chatMaximized, chatRestored, initialPanelSizes, inspectionHidden, inspectionShown, inspectionToggled, resized,
+  chatMaximized, chatRestored, initialPanelSizes, inspectionToggled, resized,
 } from './layout.ts';
 import { announcePackClientReady, PACK_FRONTEND_LOADER_ID, packFrontendLoader } from './pack-frontends.ts';
 import { historyAfter, neighbourOf, spawnPluginActor, withHostLast } from './plugins.ts';
@@ -322,11 +322,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         system.get(context.activePlugin.id).send(hotkeyEvent);
       },
 
-      setTargetView: assign(({ event, system }, params?: string) => ({
-        targetView: params
-          ? computeCrumbs(system.get(params).getSnapshot()).target ?? ''
-          : (event as { target: string }).target,
-      })),
+      setTargetView: assign(({ event }) => ({ targetView: (event as { target: string }).target })),
       sendRouteClick: sendTo(
         ({ system, context }) => system.get(context.defaultToggles.canvas ? context.defaultPlugin.id : context.activePlugin.id),
         ({ event }) => event,
@@ -364,9 +360,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           enqueue(() => client.send({ to: HOST.application, event: { type: 'SET_LAST_ACTIVE_PLUGIN', plugin: newPlugin.id } }));
         }
       }),
-      handleDefaultToggle: assign(({ context }, params: 'canvas') => ({
-        defaultToggles: { ...context.defaultToggles, [params]: !context.defaultToggles[params] },
-      })),
+      toggleCanvas: assign(({ context }) => ({ defaultToggles: { canvas: !context.defaultToggles.canvas } })),
       trailActivePlugin: spawnChild('pluginTrailer', { id: 'pluginTrailer', input: ({ context }) => context.activePlugin.id }),
       trailNewPlugin: enqueueActions(({ enqueue, context, event }) => {
         const pluginId = event.type === 'DEFAULT_TOGGLE'
@@ -389,17 +383,12 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       maximizeChat: assign(({ context }) => ({ panelSizes: saved(chatMaximized(context.panelSizes)) })),
       restoreChat: assign(({ context }) => ({ panelSizes: saved(chatRestored(context.panelSizes)) })),
       toggleInspectionPanel: assign(({ context }) => ({ panelSizes: saved(inspectionToggled(context.panelSizes)) })),
-      // Set by a plugin for the moment, so not saved
-      showInspectionPanel: assign(({ context }) => ({ panelSizes: inspectionShown(context.panelSizes) })),
-      hideInspectionPanel: assign(({ context }) => ({ panelSizes: inspectionHidden(context.panelSizes) })),
-      resetChatHeight: assign(({ context }) => ({ panelSizes: saved(canvasReset(context.panelSizes)) })),
 
       closeDevLetter: ({ self }) => {
         self.send({ type: 'SELECT_PLUGIN', plugin: getDesignated('threads') });
       },
     },
     guards: {
-      isCanvasToggle: ({ event }) => typeOf('DEFAULT_TOGGLE', event).area === 'canvas',
       areHotkeysEnabled: ({ context }) => !context.hotkeysDisabled,
       isMainWindow: ({ context }) => context.ownsLastActivePlugin,
     },
@@ -513,7 +502,6 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
               },
             },
           },
-          'disconnected': {},
         },
       },
       'error': {},
@@ -536,10 +524,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       DELIVER_PLUGIN_EVENTS: { actions: 'deliverPluginEvents' },
       TRAIL_UPDATE: { actions: ['setBreadcrumbs', 'setTargetView'] },
       TRAIL_CLICK: { actions: ['setTargetView', 'sendRouteClick'] },
-      DEFAULT_TOGGLE: {
-        guard: 'isCanvasToggle',
-        actions: ['trailNewPlugin', { type: 'handleDefaultToggle', params: ({ event }) => event.area }],
-      },
+      DEFAULT_TOGGLE: { actions: ['trailNewPlugin', 'toggleCanvas'] },
       SELECT_PLUGIN: { actions: ['setActivePlugin', 'trailNewPlugin'] },
       RESIZE_PANEL: { actions: 'resizePanel' },
       TOGGLE_INSPECTION_PANEL: { actions: 'toggleInspectionPanel' },
@@ -553,9 +538,6 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       PROCESS_GLOBAL_HOTKEY: { guard: 'areHotkeysEnabled', actions: 'processGlobalHotkey' },
       HOTKEYS_RECORDING_START: { actions: { type: 'setHotkeysDisabled', params: true } },
       HOTKEYS_RECORDING_END: { actions: { type: 'setHotkeysDisabled', params: false } },
-      SHOW_INSPECTION_PANEL: { actions: 'showInspectionPanel' },
-      HIDE_INSPECTION_PANEL: { actions: 'hideInspectionPanel' },
-      RESET_CHAT_HEIGHT: { actions: 'resetChatHeight' },
       BACKEND_ERROR: {
         target: '.error',
         actions: ({ event }) => notify.errorPage('Something went wrong', typeOf('BACKEND_ERROR', event).error),

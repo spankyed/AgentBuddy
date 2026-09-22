@@ -1,5 +1,5 @@
 // How the window's panels are laid out, as pure changes to the sizes. Which of them are saved is the machine's call:
-// sizes the user chose are, sizes a plugin or onboarding sets for the moment aren't.
+// sizes the user chose are; the chat onboarding maximizes for the moment isn't.
 import type { ShellPanelSizes } from '@abuddy/sdk/fe';
 import type { ShellStorage } from './types.ts';
 
@@ -38,16 +38,4 @@ export function inspectionToggled(sizes: ShellPanelSizes): ShellPanelSizes {
     inspectionWidth: collapsed ? (sizes.previousInspectionWidth || DEFAULT_SIZES.inspectionWidth) : 0,
     previousInspectionWidth: collapsed ? sizes.previousInspectionWidth : sizes.inspectionWidth,
   };
-}
-
-export function inspectionShown(sizes: ShellPanelSizes): ShellPanelSizes {
-  return { ...sizes, inspectionWidth: sizes.previousInspectionWidth || 400, previousInspectionWidth: undefined };
-}
-
-export function inspectionHidden(sizes: ShellPanelSizes): ShellPanelSizes {
-  return { ...sizes, previousInspectionWidth: sizes.inspectionWidth, inspectionWidth: 0 };
-}
-
-export function canvasReset(sizes: ShellPanelSizes): ShellPanelSizes {
-  return { ...sizes, canvasHeight: DEFAULT_SIZES.canvasHeight };
 }

@@ -182,7 +182,7 @@ Modules, one concern each; a concern that owns a listener or subscription is a c
 
 - `plugins.ts`: `withHostLast` (the host's plugins, the Packs tab, after every pack's), `visiblePluginsOf`, spawning a plugin's actor with `id` and `systemId` its ref, moving between visible plugins, and the back/forward history.
 - `trail.ts`: `computeCrumbs` reads the breadcrumbs and context menu off the open plugin's state `meta.breadcrumb` / `meta.contextMenu`; the `pluginTrailer` child follows whichever plugin is open.
-- `layout.ts`: the panel sizes as pure changes. What the user resizes, toggles or resets is saved through `storage`; what a plugin or onboarding sets for the moment (showing or hiding the inspection panel, the maximized chat while onboarding) isn't.
+- `layout.ts`: the panel sizes as pure changes. What the user resizes or toggles is saved through `storage`; the chat onboarding maximizes for the moment isn't.
 - `input.ts`: the `hotkeyListener` (modifier tracking ported from VueUse `useMagicKeys`) and `mouseListener` (back/forward buttons) children, on `target`; with none, neither listens.
 - `connection.ts`: the `connectionListener` child over `client.subscribe`: `onConnected` → `BUS_SUBSCRIBED`, `onDisconnected` → `BUS_CONNECTION_LOST`, `onFailed` → `BACKEND_ERROR`, and each message to `host/application` or to the plugin it names.
 - `pack-frontends.ts`: the `packFrontendLoader` child and `announcePackClientReady`.

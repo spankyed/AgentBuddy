@@ -127,9 +127,6 @@ export type ShellEvent =
   | { type: 'OPEN_PLUGIN_FROM_APP'; plugin: string; events?: PluginEvent[] }
   | { type: 'SET_PLUGIN_VISIBILITY'; plugin: string; visible: boolean }
   | { type: 'CLOSE_DEV_LETTER' }
-  | { type: 'SHOW_INSPECTION_PANEL' }
-  | { type: 'HIDE_INSPECTION_PANEL' }
-  | { type: 'RESET_CHAT_HEIGHT' }
   | { type: 'SYSTEM_ERROR'; errorId?: string; title?: string; message: string; source?: string; operation?: string; entityId?: string; severity?: 'diagnostic' | 'error' | 'fatal'; stack?: string; timestamp?: number }
   | { type: 'BACKEND_ERROR'; error: ShellFailure }
   | { type: 'BUS_SUBSCRIBED' }
@@ -146,5 +143,4 @@ export type ShellEvent =
    * for a pack without frontend code, which is recorded as loaded and asked for nothing
    */
   | { type: 'PACK_FRONTEND_LOADED'; packId: string; plugins: Plugin[] | null }
-  | { type: 'PACK_PLUGINS_UNLOADED'; packId: string }
-  | { type: 'NOOP' };
+  | { type: 'PACK_PLUGINS_UNLOADED'; packId: string };
