@@ -105,6 +105,17 @@ interface LegacyShellState {
   lastActivePlugin?: unknown;
 }
 
+/**
+ * The tab visibility 0.3.14 shipped as its defaults, by bare plugin id. 0.3.14 stored the whole default settings
+ * with the user's changes merged in, so every row holds all of these whether or not the user chose them; an entry
+ * still at its default is no choice, and moving it would pin today's default for good. 0.3.14 stored no default
+ * `lastActivePlugin`: one stored is the plugin the user last opened.
+ */
+const DEFAULT_VISIBILITY_0314: Readonly<Record<string, boolean>> = {
+  threads: true, code: true, library: false, flows: false, actions: false, prompts: false, brain: false,
+  database: false, logs: false, browser: false, notes: false, settings: true,
+};
+
 /** Among which features a stored bare id is looked up, and whose feature wins an id several share */
 export interface PluginOwners {
   refs: readonly FeatureRef[];
@@ -181,14 +192,15 @@ export function addressPluginKeys<T extends Record<string, unknown>>(record: T, 
 /**
  * The app shell's state out of the built-in pack's settings (`plugins._meta`) into AppState: which plugins' tabs
  * the user showed or hid, and the plugin last open, each onto its plugin's ref; an id no installed pack has is
- * dropped. What AppState already records wins.
+ * dropped, as is a tab still at 0.3.14's default. What AppState already records wins.
  */
 function moveShellState(owners: PluginOwners): void {
   const data = storedSettings();
   const meta = data?.plugins?._meta as LegacyShellState | undefined;
   if (!data?.plugins || meta === undefined) return;
 
-  const visibility = Object.fromEntries(Object.entries(addressPluginKeys(meta.visibility ?? {}, owners).record)
+  const chosen = Object.fromEntries(Object.entries(meta.visibility ?? {}).filter(([id, visible]) => DEFAULT_VISIBILITY_0314[id] !== visible));
+  const visibility = Object.fromEntries(Object.entries(addressPluginKeys(chosen, owners).record)
     .filter(([ref, visible]) => owners.refs.includes(ref as FeatureRef) && typeof visible === 'boolean')) as Record<string, boolean>;
   const lastActive = typeof meta.lastActivePlugin === 'string' ? pluginRefOf(meta.lastActivePlugin, owners) : undefined;
   const current = appState.get();
@@ -201,10 +213,17 @@ function moveShellState(owners: PluginOwners): void {
   tx(SETTINGS_ID).put('data', { ...data, plugins });
 }
 
-/** Every pack's plugin settings, stored under their features' bare ids before 0.3.15, onto their refs */
+/**
+ * Every pack's plugin settings, stored under their features' bare ids before 0.3.15, onto their refs. A bare key no
+ * installed pack owns, or that two external packs share, is dropped: the app reads plugin settings only by ref, so it
+ * would sit where nothing reads it and fail every save of the settings that carried it back.
+ */
 function movePluginSettings(owners: PluginOwners): void {
   const data = storedSettings();
   if (!data?.plugins) return;
-  const { record: plugins, moved } = addressPluginKeys(data.plugins, owners);
-  if (moved > 0) tx(SETTINGS_ID).put('data', { ...data, plugins });
+  const addressed = addressPluginKeys(data.plugins, owners).record;
+  const plugins = Object.fromEntries(Object.entries(addressed).filter(([key]) => splitRef(key)));
+  if (addressed !== data.plugins || Object.keys(plugins).length !== Object.keys(addressed).length) {
+    tx(SETTINGS_ID).put('data', { ...data, plugins });
+  }
 }
