@@ -1,14 +1,19 @@
-import type { AnyActor, AnyMachineSnapshot } from "xstate";
-const capitalizeFirstLetter = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+// The breadcrumbs and context menu of the plugin open: read off its state machine's `meta` (`breadcrumb`,
+// `contextMenu`) each time its state changes, by a child actor that follows whichever plugin is open.
+import { fromCallback, type AnyActorRef, type AnyMachineSnapshot } from 'xstate';
 import type { ContextMenuItem, ContextMenuMeta } from '@abuddy/sdk/fe';
+import { HOST } from '../../host-refs.ts';
+
+const capitalizeFirstLetter = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export interface BreadcrumbItem {
   label: string;
   target: string;
-  info?: any; // Optional info property for additional data
+  /** What a click on the crumb hands the plugin with its target */
+  info?: unknown;
 }
 
-export type BreadcrumbMeta = BreadcrumbItem | BreadcrumbItem[] | ((context: any) => BreadcrumbItem | BreadcrumbItem[]);
+export type BreadcrumbMeta = BreadcrumbItem | BreadcrumbItem[] | ((context: unknown) => BreadcrumbItem | BreadcrumbItem[]);
 
 export type UpdateData = {
   crumbs: BreadcrumbItem[];
@@ -96,18 +101,32 @@ export function computeCrumbs(state: AnyMachineSnapshot): UpdateData {
   return { crumbs: allCrumbs, target: lastTarget, menuItems };
 }
 
-// biome-ignore lint/suspicious/noExplicitAny: <explanation>
-export default function trailActor(actor: AnyActor, onStateChange: (data: UpdateData) => any) {
+/** Reports `actor`'s breadcrumbs now and on each change of its state; returns the unsubscribe */
+function trail(actor: AnyActorRef, onStateChange: (data: UpdateData) => void): () => void {
   let prevSnapshot: AnyMachineSnapshot | undefined;
-
   onStateChange(computeCrumbs(actor.getSnapshot()));
-
   return actor.subscribe((snapshot: AnyMachineSnapshot) => {
-    if (snapshot === prevSnapshot) {
-      return;
-    }
-
+    if (snapshot === prevSnapshot) return;
     onStateChange(computeCrumbs(snapshot));
     prevSnapshot = snapshot;
   }).unsubscribe;
 }
+
+/** Follows the plugin at the ref it starts with, and the one each `TRAIL_NEW_PLUGIN` names, sending the shell its crumbs */
+export const pluginTrailer = fromCallback<{ type: 'TRAIL_NEW_PLUGIN'; id: string }, string>(({ system, receive, input: id }) => {
+  const onStateChange = ({ crumbs, target, menuItems }: UpdateData) =>
+    system.get(HOST.application).send({ type: 'TRAIL_UPDATE', crumbs, target, menuItems });
+
+  const initial = system.get(id);
+  let unsubscribe = initial ? trail(initial, onStateChange) : () => {};
+
+  receive((event) => {
+    if (event.type === 'TRAIL_NEW_PLUGIN') {
+      unsubscribe();
+      const plugin = system.get(event.id);
+      unsubscribe = plugin ? trail(plugin, onStateChange) : () => {};
+    }
+  });
+
+  return () => unsubscribe();
+});

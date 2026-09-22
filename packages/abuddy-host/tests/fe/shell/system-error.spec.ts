@@ -3,35 +3,25 @@
 // fails, but it does not interrupt someone who can do nothing about it — a send to a plugin no pack
 // declares is for whoever wrote the send, and it is already in the Logs plugin.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createActor, setup, type Actor } from 'xstate';
-import type { Plugin } from '@/core/types';
+import { createActor, type Actor } from 'xstate';
+import { createShellMachine, type ShellMachine } from '../../../src/fe/index.ts';
+import { fakeShell, plugin } from './fakes.ts';
 
-const toast = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn(), info: vi.fn() }));
-vi.mock('@/core/toast', () => ({ globalToast: toast, registerGlobalToast: () => {} }));
-import { fakeClient } from './fake-client';
-
-const { createApplicationState } = await import('@/core/actors/application');
-
-const plugin = (id: string): Plugin =>
-  ({ id, label: id, icon: 'Zap', state: setup({}).createMachine({}), canvas: {} } as unknown as Plugin);
-
-let app: Actor<ReturnType<typeof createApplicationState>>;
-let showErrorPage: ReturnType<typeof vi.fn>;
+let app: Actor<ShellMachine>;
+let toast: ReturnType<typeof fakeShell>['notify'];
+// The error page, which replaces the window
+let showErrorPage: ReturnType<typeof fakeShell>['notify']['errorPage'];
 
 beforeEach(() => {
-  toast.error.mockReset();
-  showErrorPage = vi.fn();
-  (window as unknown as { __showErrorPage?: unknown }).__showErrorPage = showErrorPage;
-  const notes = plugin('notes');
-  app = createActor(createApplicationState(fakeClient().client), {
+  const shell = fakeShell({ plugins: [plugin('notes')] });
+  toast = shell.notify;
+  showErrorPage = shell.notify.errorPage;
+  app = createActor(createShellMachine(shell.options), {
     systemId: 'host/application',
-    input: { plugins: [notes], defaultPlugin: notes, ownsLastActivePlugin: false },
+    input: { ownsLastActivePlugin: false },
   }).start();
 });
-afterEach(() => {
-  app.stop();
-  delete (window as unknown as { __showErrorPage?: unknown }).__showErrorPage;
-});
+afterEach(() => app.stop());
 
 const systemError = (severity: 'diagnostic' | 'error' | 'fatal') =>
   app.send({ type: 'SYSTEM_ERROR', message: `a ${severity}`, severity } as never);

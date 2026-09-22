@@ -74,7 +74,7 @@ it('binds before the application actor exists, naming it when SDK code reaches t
   expect(() => openPlugin(settingsAddress)).toThrow("The application actor isn't created yet");
   created = application;
   openPlugin(settingsAddress);
-  expect(application.send).toHaveBeenCalledWith({ type: 'SELECT_PLUGIN', plugin: 'default-setup/settings' });
+  expect(application.send).toHaveBeenCalledWith({ type: 'OPEN_PLUGIN', plugin: 'default-setup/settings', events: [] });
 });
 
 it('gives secretsClient the API client and openPlugin the application actor', async () => {
@@ -82,13 +82,15 @@ it('gives secretsClient the API client and openPlugin the application actor', as
   await expect(secretsClient.list()).resolves.toMatchObject({ secrets: [] });
   expect(secretsList).toHaveBeenCalledTimes(1);
   openPlugin(settingsAddress);
-  expect(application.send).toHaveBeenCalledWith({ type: 'SELECT_PLUGIN', plugin: 'default-setup/settings' });
+  expect(application.send).toHaveBeenCalledWith({ type: 'OPEN_PLUGIN', plugin: 'default-setup/settings', events: [] });
 });
 
-// A link to a plugin that isn't there used to select nothing and, with an event, wait forever for an actor
-it('refuses to open a ref no plugin is registered at', () => {
+// Whether a ref names a registered plugin is the shell's to answer, once pack frontends have loaded; a string that
+// isn't a ref at all never reaches it
+it('refuses a string that is not a ref, rather than asking the shell to open it', () => {
   bindRendererHost(() => application as never);
-  expect(() => openPlugin(resolveName('default-setup/code'))).toThrow('No plugin is registered at "default-setup/code"');
+  expect(() => openPlugin('code')).toThrow(`"code" doesn't name a plugin`);
+  expect(application.send).not.toHaveBeenCalled();
 });
 
 it("sends to systems over the API client, reporting a rejected send to the console, the app's log and a toast, without an unhandled rejection or the payload", async () => {

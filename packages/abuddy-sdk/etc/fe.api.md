@@ -204,12 +204,15 @@ export interface HostShell {
 }
 
 // @public
-export type HostShellEvent = {
-    type: 'SELECT_PLUGIN';
+export type HostShellEvent =
+/**
+* Opens the plugin at a ref and hands its actor `events`. The shell waits for a plugin whose pack's frontend is
+* still loading, and reports a ref no pack provides once loading has settled.
+*/
+    {
+    type: 'OPEN_PLUGIN';
     plugin: string;
-} | {
-    type: 'DEFAULT_TOGGLE';
-    area: 'canvas';
+    events: PluginEvent[];
 } | {
     type: 'RESIZE_PANEL';
     panel: 'canvas' | 'inspection';
@@ -238,9 +241,6 @@ export interface HostShellSnapshot {
 // @public
 export interface HostShellState {
     activePlugin: Plugin_2;
-    defaultToggles: {
-        canvas: boolean;
-    };
     // (undocumented)
     panelSizes: ShellPanelSizes;
     plugins: readonly Plugin_2[];

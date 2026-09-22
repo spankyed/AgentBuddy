@@ -2,31 +2,23 @@
 // feature, which keeps it in AppState. A window opens on its first plugin, and each connection's CLIENT_CONNECTED
 // brings the stored state; what the user changes here is sent back to be recorded, so every window agrees.
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
-import { createActor, setup, type Actor } from 'xstate';
-import type { Plugin } from '@/core/types';
-
-import { fakeClient } from './fake-client';
-
-const { createApplicationState, visiblePluginsOf, withHostLast } = await import('@/core/actors/application');
-const { bindFeHost } = await import('@abuddy/sdk/runtime');
-// What the shell sends the host goes through the SDK's sendToSystem, over this window's client: the fake's `send`
-const fake = fakeClient();
-const mutate = fake.send;
-bindFeHost({ application: {} as never, secrets: {} as never, packs: {} as never, client: fake.client });
-
-function plugin(id: string): Plugin {
-  return { id, label: id, icon: 'Zap', state: setup({}).createMachine({}), canvas: {} } as unknown as Plugin;
-}
+import { createActor, type Actor } from 'xstate';
+import { createShellMachine, visiblePluginsOf, withHostLast, type ShellMachine } from '../../../src/fe/index.ts';
+import { fakeShell, plugin } from './fakes.ts';
 
 const notes = plugin('default-setup/notes');
 const threads = plugin('default-setup/threads');
-let app: Actor<ReturnType<typeof createApplicationState>>;
+// What the shell sends the host goes over this window's client: the fake's `send`
+const shell = fakeShell({ plugins: [notes, threads] });
+const fake = shell.client;
+const mutate = fake.send;
+let app: Actor<ShellMachine>;
 
 beforeEach(() => {
   mutate.mockClear();
-  app = createActor(createApplicationState(fake.client), {
+  app = createActor(createShellMachine(shell.options), {
     systemId: 'host/application',
-    input: { plugins: [notes, threads], defaultPlugin: notes, ownsLastActivePlugin: true },
+    input: { ownsLastActivePlugin: true },
   }).start();
 });
 
@@ -72,9 +64,9 @@ it('keeps the plugin the user opened while that pack was loading', () => {
 });
 
 it("opens a popout on an external pack's plugin once that pack's frontend adds it, without recording it as the app's", () => {
-  const popout = createActor(createApplicationState(fake.client), {
+  const popout = createActor(createShellMachine(shell.options), {
     systemId: 'host/application',
-    input: { plugins: [notes, threads], defaultPlugin: notes, initialPluginId: 'memo-pack/memos', ownsLastActivePlugin: false },
+    input: { initialPluginId: 'memo-pack/memos', ownsLastActivePlugin: false },
   }).start();
 
   loadMemoPack(popout);

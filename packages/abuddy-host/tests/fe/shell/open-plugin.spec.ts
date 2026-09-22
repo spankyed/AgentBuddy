@@ -1,0 +1,113 @@
+// Opening a plugin is the shell's command (OPEN_PLUGIN), because only the shell knows which pack frontends are still
+// loading: a plugin asked for while its pack loads opens once it arrives, one no pack provides is refused once
+// loading settles, and one whose pack goes away meanwhile is dropped.
+import { afterEach, beforeEach, expect, it } from 'vitest';
+import { createActor, setup, type Actor } from 'xstate';
+import type { Plugin } from '@abuddy/sdk/fe';
+import { createShellMachine, type ShellMachine } from '../../../src/fe/index.ts';
+import { fakeShell, settle } from './fakes.ts';
+
+/** What reached each plugin, in order, and whether it was open then */
+let heard: Array<{ plugin: string; type: string; open: boolean }>;
+let app: Actor<ShellMachine>;
+let shell: ReturnType<typeof fakeShell>;
+
+/** A plugin whose actor records every event it receives, and whether the shell had it open */
+function recording(id: string): Plugin {
+  const state = setup({}).createMachine({
+    on: {
+      '*': {
+        actions: ({ event }) => {
+          heard.push({ plugin: id, type: event.type, open: app?.getSnapshot().context.activePlugin.id === id });
+        },
+      },
+    },
+  });
+  return { id, label: id, icon: 'Zap', state, canvas: {} } as unknown as Plugin;
+}
+
+const opened = () => app.getSnapshot().context.activePlugin.id;
+const eventsOf = (plugin: string) => heard.filter((h) => h.plugin === plugin && !h.type.startsWith('PLUGIN_'));
+
+beforeEach(() => {
+  heard = [];
+  shell = fakeShell({ plugins: [recording('default-setup/notes'), recording('default-setup/settings')] });
+  app = createActor(createShellMachine(shell.options), { systemId: 'host/application', input: { ownsLastActivePlugin: false } }).start();
+});
+
+afterEach(() => app.stop());
+
+/** The window connects and its pack frontend loader reads the loaded packs, loading `packs` */
+async function connectLoading(packs: Array<{ id: string; plugins: Plugin[] }>, release?: Promise<void>) {
+  shell.client.loadedPacks.mockResolvedValue(packs.map(({ id }) => ({ id, feEntry: 'runtime/fe.js' })));
+  shell.packFrontends.load.mockImplementation(async (pack) => {
+    await release;
+    return packs.find((p) => p.id === pack.id)?.plugins ?? null;
+  });
+  shell.client.connect();
+}
+
+it('opens a registered plugin and hands it the events, once it is open', async () => {
+  await connectLoading([]);
+  await settle();
+
+  app.send({ type: 'OPEN_PLUGIN', plugin: 'default-setup/settings', events: [{ type: 'PLUGIN.SELECT', pluginId: 'default-setup/logs' }] });
+
+  expect(opened()).toBe('default-setup/settings');
+  expect(eventsOf('default-setup/settings')).toEqual([{ plugin: 'default-setup/settings', type: 'PLUGIN.SELECT', open: true }]);
+});
+
+it("waits for a plugin whose pack's frontend is still loading, and opens it with the events once it arrives", async () => {
+  let loaded!: () => void;
+  const release = new Promise<void>((resolve) => { loaded = resolve; });
+  await connectLoading([{ id: 'memo-pack', plugins: [recording('memo-pack/memos')] }], release);
+
+  app.send({ type: 'OPEN_PLUGIN', plugin: 'memo-pack/memos', events: [{ type: 'MEMO.OPEN', id: 'm1' }] });
+  expect(opened()).toBe('default-setup/notes');
+  expect(shell.notify.error).not.toHaveBeenCalled();
+
+  loaded();
+  await settle();
+
+  expect(opened()).toBe('memo-pack/memos');
+  expect(eventsOf('memo-pack/memos')).toEqual([{ plugin: 'memo-pack/memos', type: 'MEMO.OPEN', open: true }]);
+  expect(shell.notify.error).not.toHaveBeenCalled();
+});
+
+it('refuses a plugin no pack provides once loading settles, naming it', async () => {
+  let loaded!: () => void;
+  const release = new Promise<void>((resolve) => { loaded = resolve; });
+  await connectLoading([{ id: 'memo-pack', plugins: [recording('memo-pack/memos')] }], release);
+
+  app.send({ type: 'OPEN_PLUGIN', plugin: 'memo-pack/memoz', events: [] });
+  loaded();
+  await settle();
+
+  expect(opened()).toBe('default-setup/notes');
+  expect(shell.notify.error).toHaveBeenCalledWith("Couldn't open memo-pack/memoz", 'No plugin is registered at "memo-pack/memoz"');
+});
+
+it('refuses at once a plugin no pack provides when no pack frontend is loading', async () => {
+  await connectLoading([]);
+  await settle();
+
+  app.send({ type: 'OPEN_PLUGIN', plugin: 'memo-pack/memos', events: [] });
+
+  expect(shell.notify.error).toHaveBeenCalledWith("Couldn't open memo-pack/memos", 'No plugin is registered at "memo-pack/memos"');
+});
+
+it('drops a request whose pack is unloaded while it waits', async () => {
+  let loaded!: () => void;
+  const release = new Promise<void>((resolve) => { loaded = resolve; });
+  await connectLoading([{ id: 'memo-pack', plugins: [recording('memo-pack/memos')] }], release);
+
+  app.send({ type: 'OPEN_PLUGIN', plugin: 'memo-pack/memos', events: [{ type: 'MEMO.OPEN', id: 'm1' }] });
+  app.send({ type: 'PACK_PLUGINS_UNLOADED', packId: 'memo-pack' });
+  loaded();
+  await settle();
+
+  expect(app.getSnapshot().context.pendingOpens).toEqual([]);
+  expect(opened()).toBe('default-setup/notes');
+  expect(eventsOf('memo-pack/memos')).toEqual([]);
+  expect(shell.notify.error).not.toHaveBeenCalled();
+});

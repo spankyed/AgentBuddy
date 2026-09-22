@@ -6,6 +6,9 @@ import type { AnyActorRef } from 'xstate'
 import type { Plugin } from './plugin.ts'
 import { boundFeHost } from '../runtime/fe-host.ts'
 
+/** An event for a plugin's actor */
+export type PluginEvent = { type: string; [key: string]: unknown };
+
 /** How the window's panels are laid out */
 export interface ShellPanelSizes {
   /** The canvas's share of the main area's height, in percent */
@@ -27,14 +30,15 @@ export interface HostShellState {
   /** Which plugins' tabs show, by ref; a plugin absent from it shows */
   pluginVisibility: Readonly<Record<string, boolean>>;
   panelSizes: ShellPanelSizes;
-  /** Whether the canvas shows the default plugin in place of the one open */
-  defaultToggles: { canvas: boolean };
 }
 
 /** The events frontend code may send the shell */
 export type HostShellEvent =
-  | { type: 'SELECT_PLUGIN'; plugin: string }
-  | { type: 'DEFAULT_TOGGLE'; area: 'canvas' }
+  /**
+   * Opens the plugin at a ref and hands its actor `events`. The shell waits for a plugin whose pack's frontend is
+   * still loading, and reports a ref no pack provides once loading has settled.
+   */
+  | { type: 'OPEN_PLUGIN'; plugin: string; events: PluginEvent[] }
   | { type: 'RESIZE_PANEL'; panel: 'canvas' | 'inspection'; size: number }
   | { type: 'RESTORE_CHAT' }
   | { type: 'SET_PLUGIN_VISIBILITY'; plugin: string; visible: boolean }

@@ -104,6 +104,17 @@ describe('host package boundaries', () => {
     expect([...reached].map(rel), 'The pack test harness imports @abuddy/host/bus: it must not load the pack loader').toEqual([]);
   });
 
+  // The shell and the frontend registry run in the renderer and in a pack's tests alike, so what differs between
+  // those (the framework, the API client, the window) arrives as options rather than imports
+  it("keeps the frontend runtime free of Vue, tRPC, the renderer's modules and the browser's globals", () => {
+    const found = sourceFiles(path.join(SRC, 'fe')).flatMap((file) => {
+      const imports = importsOf(file).map((i) => i.specifier).filter((s) => s === 'vue' || s.startsWith('@/') || s.startsWith('@trpc/'));
+      const globals = [...fs.readFileSync(file, 'utf8').matchAll(/\b(?:window|document|localStorage)\./g)].map((m) => m[0]);
+      return [...imports, ...globals].map((what) => `${path.relative(HOST_ROOT, file)}: ${what}`);
+    });
+    expect(found).toEqual([]);
+  });
+
   it("holds only the app-implemented services in src/services, one file each, and the runtime's index", () => {
     expect(serviceKeysComplete).toBe(true);
     const files = fs.readdirSync(path.join(SRC, 'services')).sort();

@@ -9,13 +9,12 @@ import './style.css'
 import 'highlight.js/styles/github-dark.css'
 import builtInPacks from 'virtual:built-in-packs';
 import { hostFrontend } from '@/packs/plugin';
-import { createApplicationState, withHostLast } from '@/core/actors/application';
+import { createAppShell } from '@/core/actors/application';
 import { HOST } from '@abuddy/host/fe';
 import { runFrontendMigrations } from '@/setup/migrations';
 import { handleProtocolInstall, requestPackInstall } from '@/packs/pack-install';
 import 'virtual:host-deps';
 import { bindRendererHost } from '@/core/fe-host';
-import { feClient } from '@/core/fe-client';
 import { fePacks } from '@/core/fe-packs';
 import { installMonacoErrorFilters } from '@abuddy/ui/components/monaco-error-filters';
 
@@ -23,7 +22,7 @@ declare const __APP_VERSION__: string;
 
 declare global {
   interface Window {
-    applicationState: Actor<ReturnType<typeof createApplicationState>>;
+    applicationState: Actor<ReturnType<typeof createAppShell>>;
     __disableOnboardingUI?: () => void;
     appVersion: string;
   }
@@ -106,8 +105,6 @@ for (const mod of loadedMods) {
 // const { inspect } = createBrowserInspector();
 
 fePacks.registerPackFE(hostFrontend);
-const plugins = withHostLast(fePacks.getRegisteredPlugins());
-const defaultPlugin = fePacks.getRegisteredDefaultPlugin();
 
 // The SDK's frontend code (lookups, navigation, sends, the secrets client) reaches this window's app from here on:
 // bound before the application actor is created, since creating it builds its plugins' state, and before any
@@ -115,12 +112,11 @@ const defaultPlugin = fePacks.getRegisteredDefaultPlugin();
 let createdApplication: typeof applicationState | undefined;
 bindRendererHost(() => createdApplication);
 
-export const applicationState = createActor(createApplicationState(feClient), {
+// The shell starts with the plugins registered above, its default the one a pack claims
+export const applicationState = createActor(createAppShell(), {
   systemId: HOST.application,
   // inspect,
   input: {
-    defaultPlugin,
-    plugins,
     initialPluginId,
     ownsLastActivePlugin: !isPluginPopout,
   }

@@ -1,46 +1,32 @@
-// The application actor loads external packs' frontends from the loaded-packs list whenever this window's bus
+// The shell loads external packs' frontends from the loaded-packs list whenever this window's bus
 // subscription is established: a query that fails leaves the packs unloaded until the next connection,
 // which loads them and announces them so their systems send their startup data. A pack already loaded
 // isn't loaded again.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createActor, setup, type Actor } from 'xstate';
-import type { Plugin } from '@/core/types';
+import { createActor, type Actor } from 'xstate';
+import type { Plugin } from '@abuddy/sdk/fe';
+import { createShellMachine, type ShellMachine } from '../../../src/fe/index.ts';
+import { fakeShell, plugin, settle } from './fakes.ts';
 
-import { fakeClient } from './fake-client';
-
-const loadPackFrontend = vi.hoisted(() => vi.fn<(pack: { id: string }) => Promise<Plugin[] | null>>());
-const unloadPackFrontend = vi.hoisted(() => vi.fn<(packId: string) => void>());
-const toastError = vi.hoisted(() => vi.fn<(message: string, description?: string) => void>());
-
-vi.mock('@/packs/pack-loader', () => ({ loadPackFrontend, unloadPackFrontend }));
-vi.mock('@/core/toast', () => ({ globalToast: { error: toastError, success: vi.fn(), info: vi.fn() } }));
-
-const { createApplicationState } = await import('@/core/actors/application');
-
-function plugin(id: string): Plugin {
-  return { id, label: id, icon: 'Zap', state: setup({}).createMachine({}), canvas: {} } as unknown as Plugin;
-}
-
-/** Lets the loader's query for the loaded packs and its frontend loads settle */
-const settle = () => new Promise(resolve => setTimeout(resolve, 0));
-
-let app: Actor<ReturnType<typeof createApplicationState>>;
+let app: Actor<ShellMachine>;
 let warn: ReturnType<typeof vi.spyOn>;
-let fake: ReturnType<typeof fakeClient>;
-let packClientReady: ReturnType<typeof fakeClient>['packClientReady'];
-let loadedPacksQuery: ReturnType<typeof fakeClient>['loadedPacks'];
+let fake: ReturnType<typeof fakeShell>['client'];
+let packClientReady: typeof fake.packClientReady;
+let loadedPacksQuery: typeof fake.loadedPacks;
+let loadPackFrontend: ReturnType<typeof fakeShell>['packFrontends']['load'];
+let unloadPackFrontend: ReturnType<typeof fakeShell>['packFrontends']['unload'];
+let toastError: ReturnType<typeof fakeShell>['notify']['error'];
 
 beforeEach(() => {
-  fake = fakeClient();
+  const shell = fakeShell({ plugins: [plugin('notes')] });
+  fake = shell.client;
   ({ packClientReady, loadedPacks: loadedPacksQuery } = fake);
-  loadPackFrontend.mockReset();
-  unloadPackFrontend.mockReset();
-  toastError.mockReset();
+  ({ load: loadPackFrontend, unload: unloadPackFrontend } = shell.packFrontends);
+  toastError = shell.notify.error;
   warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-  const notes = plugin('notes');
-  app = createActor(createApplicationState(fake.client), {
+  app = createActor(createShellMachine(shell.options), {
     systemId: 'host/application',
-    input: { plugins: [notes], defaultPlugin: notes, ownsLastActivePlugin: false },
+    input: { ownsLastActivePlugin: false },
   }).start();
 });
 
@@ -61,7 +47,7 @@ describe('loading pack frontends from the loaded packs', () => {
     await settle();
 
     expect(loadPackFrontend).not.toHaveBeenCalled();
-    expect(warn).toHaveBeenCalledWith('[pack-loader] Failed to read the loaded packs:', 'connection closed');
+    expect(warn).toHaveBeenCalledWith('[shell] Failed to read the loaded packs:', 'connection closed');
 
     loadedPacksQuery.mockResolvedValue([{ id: 'ext', feEntry: 'runtime/fe.js' }]);
     loadPackFrontend.mockResolvedValue([plugin('pack-own')]);
@@ -164,7 +150,7 @@ describe('loading pack frontends from the loaded packs', () => {
     // The failure names the pack, not the read, which succeeded
     expect(toastError).toHaveBeenCalledWith("Couldn't load bad", 'styles blew up');
     expect(toastError).toHaveBeenCalledTimes(1);
-    expect(warn).not.toHaveBeenCalledWith('[pack-loader] Failed to read the loaded packs:', expect.anything());
+    expect(warn).not.toHaveBeenCalledWith('[shell] Failed to read the loaded packs:', expect.anything());
   });
 
   it('tells the user about a failed read only while no read has succeeded', async () => {
@@ -186,7 +172,7 @@ describe('loading pack frontends from the loaded packs', () => {
     await settle();
 
     expect(toastError).not.toHaveBeenCalled();
-    expect(warn).toHaveBeenCalledWith('[pack-loader] Failed to read the loaded packs:', 'connection closed');
+    expect(warn).toHaveBeenCalledWith('[shell] Failed to read the loaded packs:', 'connection closed');
   });
 
   it("records a pack whose frontend is styles alone, and doesn't load it again", async () => {

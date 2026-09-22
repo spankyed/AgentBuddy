@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { createActor } from 'xstate';
-import { computeCrumbs } from '../../core/actors/route-trailer';
+import { computeCrumbs } from '@abuddy/host/fe';
 import packsState from '../state';
 
 // Without a breadcrumb of its own, the trail falls back to the machine's id, which is the ref `host/packs`

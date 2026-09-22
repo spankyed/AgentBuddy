@@ -4,3 +4,4 @@ export { HOST } from '../host-refs.ts';
 export type { PackFERegistration } from '@abuddy/sdk/fe';
 export type { ShellClient, ShellConnection } from './client.ts';
 export type { LoadedPackEntry } from '../packs/pack-layout.ts';
+export * from './shell/index.ts';

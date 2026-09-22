@@ -1,32 +1,27 @@
-// A pack's plugins join the application actor when its frontend loads, and leave when the pack is
+// A pack's plugins join the shell when its frontend loads, and leave when the pack is
 // deactivated. Only the plugins the pack added are its own: a plugin whose id the app already has stays.
 // Each pack whose frontend load finished is announced once per establishment of this window's bus
 // subscription, so its systems send their startup data.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createActor, setup, type Actor } from 'xstate';
-import type { Plugin } from '@/core/types';
+import { createActor, type Actor } from 'xstate';
+import type { Plugin } from '@abuddy/sdk/fe';
+import { createShellMachine, type ShellMachine } from '../../../src/fe/index.ts';
+import { fakeShell, plugin } from './fakes.ts';
 
-import { fakeClient } from './fake-client';
-
-const { createApplicationState } = await import('@/core/actors/application');
-
-function plugin(id: string): Plugin {
-  return { id, label: id, icon: 'Zap', state: setup({}).createMachine({}), canvas: {} } as unknown as Plugin;
-}
-
-let app: Actor<ReturnType<typeof createApplicationState>>;
+let app: Actor<ShellMachine>;
 let builtInNotes: Plugin;
-// This window's pack frontend loader has nothing to load here; application-pack-loading.spec covers it
-let fake: ReturnType<typeof fakeClient>;
-let packClientReady: ReturnType<typeof fakeClient>['packClientReady'];
+// This window's pack frontend loader has nothing to load here; pack-loading.spec covers it
+let fake: ReturnType<typeof fakeShell>['client'];
+let packClientReady: typeof fake.packClientReady;
 
 beforeEach(() => {
-  fake = fakeClient();
-  packClientReady = fake.packClientReady;
   builtInNotes = plugin('notes');
-  app = createActor(createApplicationState(fake.client), {
+  const shell = fakeShell({ plugins: [builtInNotes] });
+  fake = shell.client;
+  packClientReady = fake.packClientReady;
+  app = createActor(createShellMachine(shell.options), {
     systemId: 'host/application',
-    input: { plugins: [builtInNotes], defaultPlugin: builtInNotes, ownsLastActivePlugin: false },
+    input: { ownsLastActivePlugin: false },
   }).start();
 });
 

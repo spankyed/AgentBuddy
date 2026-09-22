@@ -320,16 +320,16 @@ export const FeatureEntrySchema: z.ZodObject<{
         }>>;
     }, "strict", z.ZodTypeAny, {
         entry: string;
-        sendsTo?: string[] | undefined;
         events?: {
             incoming?: string[] | undefined;
         } | undefined;
+        sendsTo?: string[] | undefined;
     }, {
         entry: string;
-        sendsTo?: string[] | undefined;
         events?: {
             incoming?: string[] | undefined;
         } | undefined;
+        sendsTo?: string[] | undefined;
     }>>;
     plugin: z.ZodOptional<z.ZodObject<{
         entry: z.ZodString;
@@ -348,10 +348,10 @@ export const FeatureEntrySchema: z.ZodObject<{
     id: string;
     system?: {
         entry: string;
-        sendsTo?: string[] | undefined;
         events?: {
             incoming?: string[] | undefined;
         } | undefined;
+        sendsTo?: string[] | undefined;
     } | undefined;
     plugin?: {
         entry: string;
@@ -368,10 +368,10 @@ export const FeatureEntrySchema: z.ZodObject<{
     id: string;
     system?: {
         entry: string;
-        sendsTo?: string[] | undefined;
         events?: {
             incoming?: string[] | undefined;
         } | undefined;
+        sendsTo?: string[] | undefined;
     } | undefined;
     plugin?: {
         entry: string;
@@ -481,16 +481,16 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             }>>;
         }, "strict", z.ZodTypeAny, {
             entry: string;
-            sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
+            sendsTo?: string[] | undefined;
         }, {
             entry: string;
-            sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
+            sendsTo?: string[] | undefined;
         }>>;
         plugin: z.ZodOptional<z.ZodObject<{
             entry: z.ZodString;
@@ -509,10 +509,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         id: string;
         system?: {
             entry: string;
-            sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
+            sendsTo?: string[] | undefined;
         } | undefined;
         plugin?: {
             entry: string;
@@ -529,10 +529,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         id: string;
         system?: {
             entry: string;
-            sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
+            sendsTo?: string[] | undefined;
         } | undefined;
         plugin?: {
             entry: string;
@@ -844,10 +844,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         id: string;
         system?: {
             entry: string;
-            sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
+            sendsTo?: string[] | undefined;
         } | undefined;
         plugin?: {
             entry: string;
@@ -950,10 +950,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         id: string;
         system?: {
             entry: string;
-            sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
+            sendsTo?: string[] | undefined;
         } | undefined;
         plugin?: {
             entry: string;
@@ -1056,10 +1056,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         id: string;
         system?: {
             entry: string;
-            sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
+            sendsTo?: string[] | undefined;
         } | undefined;
         plugin?: {
             entry: string;
@@ -1162,10 +1162,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         id: string;
         system?: {
             entry: string;
-            sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
+            sendsTo?: string[] | undefined;
         } | undefined;
         plugin?: {
             entry: string;
