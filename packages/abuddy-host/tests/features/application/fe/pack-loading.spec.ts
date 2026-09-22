@@ -57,7 +57,7 @@ describe('loading pack frontends from the loaded packs', () => {
     await settle();
 
     expect(loadPackFrontend).toHaveBeenCalledTimes(1);
-    expect(app.getSnapshot().context.packPluginIds).toEqual({ ext: ['pack-own'] });
+    expect(app.getSnapshot().context.plugins.map(p => p.id)).toContain('pack-own');
     expect(app.system.get('pack-own')).toBeDefined();
     expect(packClientReady).toHaveBeenCalledWith('ext');
   });
@@ -79,7 +79,7 @@ describe('loading pack frontends from the loaded packs', () => {
     await settle();
 
     expect(loadPackFrontend).toHaveBeenCalledTimes(1);
-    expect(app.getSnapshot().context.packPluginIds).toEqual({ ext: ['pack-own'] });
+    expect(app.getSnapshot().context.plugins.map(p => p.id)).toContain('pack-own');
   });
 
   it('loads a pack activated while a load is running, whose read predates it', async () => {
@@ -99,7 +99,7 @@ describe('loading pack frontends from the loaded packs', () => {
     await settle();
 
     expect(loadPackFrontend.mock.calls.map(([pack]) => pack.id)).toEqual(['ext', 'installed']);
-    expect(app.getSnapshot().context.packPluginIds).toEqual({ ext: ['ext-plugin'], installed: ['installed-plugin'] });
+    expect(app.getSnapshot().context.plugins.map(p => p.id)).toEqual(expect.arrayContaining(['ext-plugin', 'installed-plugin']));
   });
 
   it("drops the result of a load for a pack unloaded while it was running", async () => {
@@ -116,9 +116,8 @@ describe('loading pack frontends from the loaded packs', () => {
     releaseLoad([plugin('pack-own')]);
     await settle();
 
-    const { plugins, packPluginIds, packFrontendsLoaded } = app.getSnapshot().context;
+    const { plugins, packFrontendsLoaded } = app.getSnapshot().context;
     expect(plugins.map(p => p.id)).toEqual(['notes']);
-    expect(packPluginIds).toEqual({});
     expect(packFrontendsLoaded).toEqual([]);
     expect(app.system.get('pack-own')).toBeUndefined();
     expect(packClientReady).not.toHaveBeenCalled();
@@ -145,7 +144,7 @@ describe('loading pack frontends from the loaded packs', () => {
     connect();
     await settle();
 
-    expect(app.getSnapshot().context.packPluginIds).toEqual({ bad: [], good: ['good-plugin'] });
+    expect(app.getSnapshot().context.packsWithFrontend).toEqual(['bad', 'good']);
     expect(app.system.get('good-plugin')).toBeDefined();
     // The failure names the pack, not the read, which succeeded
     expect(toastError).toHaveBeenCalledWith("Couldn't load bad", 'styles blew up');
@@ -182,10 +181,10 @@ describe('loading pack frontends from the loaded packs', () => {
     connect();
     await settle();
 
-    const { packFrontendsLoaded, packPluginIds } = app.getSnapshot().context;
+    const { packFrontendsLoaded, packsWithFrontend } = app.getSnapshot().context;
     expect(packFrontendsLoaded).toEqual(['styles-only']);
     // It has no systems waiting on a frontend, so it's neither merged nor announced
-    expect(packPluginIds).toEqual({});
+    expect(packsWithFrontend).toEqual([]);
     expect(packClientReady).not.toHaveBeenCalled();
 
     dropConnection();

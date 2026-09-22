@@ -78,11 +78,6 @@ export interface ShellContext {
   pendingPluginId: string | null;
   /** Plugins asked to open (OPEN_PLUGIN) that aren't registered while pack frontends are still loading */
   pendingOpens: Array<{ plugin: string; events: PluginEvent[] }>;
-  /**
-   * Each external pack whose frontend load finished, by pack id, with the plugins it added: not those
-   * skipped because a plugin had the id already, and none when its frontend exported none or failed to load
-   */
-  packPluginIds: Record<string, string[]>;
   /** Whether this window's bus subscription is established; it reconnects after the connection drops */
   busSubscribed: boolean;
   /** Whether the pack frontend loader is running: one run at a time, so a pack is never loaded twice */
@@ -92,8 +87,17 @@ export interface ShellContext {
   /**
    * Every pack the loader has finished with, whatever its frontend added — plugins, styles alone, or
    * nothing — so it's never loaded twice. A pack unloaded drops out and loads again when it comes back.
+   *
+   * Not the registered packs: one whose frontend is styles alone, exported nothing, or failed to load
+   * registers nothing and is still finished with.
    */
   packFrontendsLoaded: string[];
+  /**
+   * Of those, the packs whose frontend entry loaded — so their systems are waiting for the startup data this
+   * window's CLIENT_CONNECTED held back. A pack with no frontend code isn't one: the bus sent its systems that
+   * already. Which plugins each contributed isn't kept: a plugin's id names its pack.
+   */
+  packsWithFrontend: string[];
   /** Packs unloaded while the loader was running: a result that arrives for one of them is dropped */
   packsUnloadedWhileLoading: string[];
   /** Whether the loaded packs were ever read: until it is, a failed read is worth telling the user about */

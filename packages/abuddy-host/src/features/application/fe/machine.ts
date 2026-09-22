@@ -80,21 +80,17 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           return;
         }
 
-        const existingIds = new Set(context.plugins.map(p => p.id));
-        const skipped = packPlugins.filter(p => existingIds.has(p.id));
-        if (skipped.length > 0) {
-          console.warn(`[shell] Skipping plugins with duplicate IDs: ${skipped.map(p => p.id).join(', ')}`);
-        }
-        const newPlugins = packPlugins.filter(p => !existingIds.has(p.id));
-        const packPluginIds = {
-          ...context.packPluginIds,
-          [packId]: [...(context.packPluginIds[packId] ?? []), ...newPlugins.map(p => p.id)],
-        };
+        // A plugin's id is its feature's ref, `<packId>/<featureId>`: a pack can't name a plugin in another pack's
+        // namespace, and a pack the loader finished is in `packFrontendsLoaded`, so these ids are this window's first
+        const newPlugins = packPlugins;
+        const packsWithFrontend = context.packsWithFrontend.includes(packId)
+          ? context.packsWithFrontend
+          : [...context.packsWithFrontend, packId];
         if (newPlugins.length === 0) {
-          enqueue.assign({ packPluginIds, packFrontendsLoaded });
+          enqueue.assign({ packFrontendsLoaded, packsWithFrontend });
         } else {
           // Visibility is the host's (AppState, sent on each connection); unset shows the plugin
-          enqueue.assign({ plugins: withHostLast([...context.plugins, ...newPlugins]), packPluginIds, packFrontendsLoaded });
+          enqueue.assign({ plugins: withHostLast([...context.plugins, ...newPlugins]), packFrontendsLoaded, packsWithFrontend });
           for (const plugin of newPlugins) spawnPluginActor(enqueue, plugin);
           const added = new Set<string>(newPlugins.map((p) => p.id));
           const pending = context.pendingPluginId;
@@ -111,9 +107,10 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         if (context.busSubscribed) enqueue(() => announcePackClientReady(client, packId));
       }),
 
-      // This window's subscription (re)connected: its CLIENT_CONNECTED skipped the packs whose frontends load after it
+      // This window's subscription (re)connected: its CLIENT_CONNECTED skipped the packs whose frontends load after
+      // it, whatever the frontend turned out to add — a pack that exported no plugin has systems waiting too
       announceLoadedPacks: ({ context }) => {
-        for (const packId of Object.keys(context.packPluginIds)) announcePackClientReady(client, packId);
+        for (const packId of context.packsWithFrontend) announcePackClientReady(client, packId);
       },
 
       /** Runs the pack frontend loader, or queues a run when one is under way */
@@ -175,13 +172,20 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
 
       removePackPlugins: enqueueActions(({ event, context, system, enqueue }) => {
         const { packId } = typeOf('PACK_PLUGINS_UNLOADED', event);
-        const pluginIds = context.packPluginIds[packId];
+        // A plugin runs under its feature's ref, `<packId>/<featureId>`, and a pack id holds no `/`, so the pack's
+        // plugins are the ones this window has under that prefix. Matched rather than parsed: a plugin left here
+        // because its id didn't parse would stay with nothing to take it out. Nothing else records them either — a
+        // second copy could disagree with the plugins actually here, and miss the same way.
+        const pluginIds = context.plugins.filter((p) => p.id.startsWith(`${packId}/`)).map((p) => p.id);
 
         // The shell loads a pack's frontend and it unloads it: the Packs plugin says the pack is gone, and what
         // that means for this window — the registrations, the stylesheets, the plugins below — is decided here
         enqueue(() => packFrontends.unload(packId));
 
         // The pack loads again when it comes back
+        if (context.packsWithFrontend.includes(packId)) {
+          enqueue.assign({ packsWithFrontend: context.packsWithFrontend.filter(id => id !== packId) });
+        }
         if (context.packFrontendsLoaded.includes(packId)) {
           enqueue.assign({ packFrontendsLoaded: context.packFrontendsLoaded.filter(id => id !== packId) });
         } else if (context.packLoadRunning && !context.packsUnloadedWhileLoading.includes(packId)) {
@@ -193,7 +197,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           enqueue.assign({ pendingOpens: context.pendingOpens.filter((open) => splitRef(open.plugin)?.packId !== packId) });
         }
 
-        if (!pluginIds) return;
+        if (pluginIds.length === 0) return;
         const removeSet = new Set(pluginIds);
         const remaining = context.plugins.filter(p => !removeSet.has(p.id));
         const pluginVisibility = { ...context.pluginVisibility };
@@ -208,9 +212,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           if (plugin) enqueue.stopChild(plugin);
         }
 
-        const packPluginIds = { ...context.packPluginIds };
-        delete packPluginIds[packId];
-        enqueue.assign({ plugins: remaining, pluginVisibility, activePlugin, packPluginIds });
+        enqueue.assign({ plugins: remaining, pluginVisibility, activePlugin });
 
         if (needsNavigate) {
           enqueue(({ system }) => {
@@ -419,11 +421,11 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         ownsLastActivePlugin: input.ownsLastActivePlugin ?? true,
         pendingPluginId: initialPlugin ? null : input.initialPluginId ?? null,
         pendingOpens: [],
-        packPluginIds: {},
         busSubscribed: false,
         packLoadRunning: false,
         packLoadQueued: false,
         packFrontendsLoaded: [],
+        packsWithFrontend: [],
         packsUnloadedWhileLoading: [],
         loadedPacksRead: false,
       };

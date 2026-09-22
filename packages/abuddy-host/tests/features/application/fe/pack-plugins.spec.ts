@@ -91,20 +91,19 @@ describe('pack plugins in the application actor', () => {
     expect(packClientReady).not.toHaveBeenCalled();
   });
 
-  it('asks for a pack whose frontend added no plugin: all ids taken, none exported, or failed to load', () => {
+  // Its systems are waiting for their startup data whatever its frontend turned out to hold
+  it('asks for a pack whose frontend added no plugin: none exported, or failed to load', () => {
     connect();
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'taken', plugins: [plugin('notes')] });
-    warn.mockRestore();
+    app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'exported-none', plugins: [] });
     app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'failed', plugins: [] });
 
-    const { plugins, packPluginIds } = app.getSnapshot().context;
+    const { plugins, packsWithFrontend } = app.getSnapshot().context;
     expect(plugins).toEqual([builtInNotes]);
-    expect(packPluginIds).toEqual({ taken: [], failed: [] });
-    expect(packClientReady.mock.calls).toEqual([['taken'], ['failed']]);
+    expect(packsWithFrontend).toEqual(['exported-none', 'failed']);
+    expect(packClientReady.mock.calls).toEqual([['exported-none'], ['failed']]);
 
     app.send({ type: 'PACK_PLUGINS_UNLOADED', packId: 'failed' });
-    expect(app.getSnapshot().context.packPluginIds).toEqual({ taken: [] });
+    expect(app.getSnapshot().context.packsWithFrontend).toEqual(['exported-none']);
   });
 
   it('asks on connecting during onboarding and on the error page, and not again when onboarding completes', () => {
@@ -138,9 +137,9 @@ describe('pack plugins in the application actor', () => {
 
     app.send({ type: 'PACK_PLUGINS_UNLOADED', packId: 'ext' });
 
-    const { plugins, packPluginIds } = app.getSnapshot().context;
+    const { plugins, packsWithFrontend } = app.getSnapshot().context;
     expect(plugins).toEqual([builtInNotes]);
-    expect(packPluginIds).toEqual({});
+    expect(packsWithFrontend).toEqual([]);
     expect(app.system.get('ext/pack-own')).toBeUndefined();
     expect(app.system.get('ext/notes')).toBeUndefined();
     expect(app.system.get('notes')).toBe(notesActor);
