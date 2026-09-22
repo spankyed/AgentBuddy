@@ -43,3 +43,26 @@ export function resolveName(name: string, packId?: string): FeatureRef {
   }
   return ref as FeatureRef;
 }
+
+/**
+ * The registered system or plugin a name stands for: the name resolved in pack `packId` (with none, only a ref
+ * resolves), which must be among `registered`. Throws naming the form to write, the one registered feature it
+ * probably meant, and what is registered.
+ */
+export function resolveRegistered(
+  kind: 'system' | 'plugin',
+  name: string,
+  { packId, registered: refs, form }: { packId?: string; registered: readonly string[]; form?: string },
+): FeatureRef {
+  const ref = packId || splitRef(name) ? resolveName(name, packId) : undefined;
+  if (ref && refs.includes(ref)) return ref;
+  const featureId = splitRef(name)?.featureId ?? name;
+  const meant = refs.filter((candidate) => candidate !== ref && splitRef(candidate)?.featureId === featureId);
+  throw new Error([
+    `No registered ${kind} is named "${name}"`,
+    ref && ref !== name ? ` (it would be "${ref}")` : '',
+    `: ${form ?? `name ${packId ? `this pack's own ${kind}s by feature id and another pack's` : `a ${kind}`} as "<packId>/<featureId>"`}`,
+    meant.length === 1 ? ` — did you mean "${meant[0]}"?` : '',
+    ` Registered: ${refs.join(', ') || 'none'}`,
+  ].join(''));
+}

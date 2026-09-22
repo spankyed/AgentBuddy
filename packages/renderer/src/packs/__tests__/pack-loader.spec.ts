@@ -37,13 +37,13 @@ describe('loadPackFEEntry', () => {
   });
 
   it("doesn't warn for the generated entry of a pack without FE extensions", async () => {
-    const { warnings } = await load('fe.mjs', 'export default { plugins: [], defaultPlugin: undefined };');
+    const { warnings } = await load('fe.mjs', 'export default { features: {} };');
     expect(warnings).toEqual([]);
   });
 
   it('accepts a registration that contributes plugins without warning', async () => {
-    const { registration, warnings } = await load('fe.mjs', 'export default { plugins: [{ id: "x" }] };');
-    expect((registration as any).plugins).toHaveLength(1);
+    const { registration, warnings } = await load('fe.mjs', 'export default { features: { x: { plugin: {} } } };');
+    expect(Object.keys((registration as any).features)).toEqual(["x"]);
     expect(warnings).toEqual([]);
   });
 });

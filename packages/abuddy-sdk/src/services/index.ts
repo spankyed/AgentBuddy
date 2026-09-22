@@ -1,7 +1,7 @@
 import type { repository } from '@abuddy/ears';
 import { boundHost, type HostRuntimeServices } from '../runtime/host-runtime.ts';
 import { sendToPlugin, sendToSystem } from '../events/index.ts';
-import { splitRef } from '../ids/addressing.ts';
+import { resolveRegistered } from '../ids/refs.ts';
 import { createLogger, type Logger } from '../logger/logger.ts';
 import type { AppDataService } from './app-data.ts';
 import type { TraceStore } from './trace-store.ts';
@@ -51,21 +51,13 @@ export interface HostServices {
   filesystem: FilesystemService;
 }
 
-/**
- * The ref an action's name for a system or plugin refers to, among those registered. Actions run outside any
- * pack, so they name every feature `<packId>/<featureId>`, their own pack's and the host's too. A name nothing
- * is registered under throws, naming the form to write.
- */
-function registeredRef(kind: 'system' | 'plugin', name: string, registered: readonly string[]): string {
-  if (registered.includes(name)) return name;
-  const meant = registered.filter((ref) => splitRef(ref)?.featureId === name);
-  const hint = meant.length === 1 ? ` — did you mean "${meant[0]}"?` : '';
-  throw new Error(`No registered ${kind} is named "${name}": actions name a ${kind} "<packId>/<featureId>"${hint}`);
-}
+/** Actions run outside any pack, so they name every feature by its ref, which must be a registered one */
+const actionRef = (kind: 'system' | 'plugin', name: string, registered: readonly string[]) =>
+  resolveRegistered(kind, name, { registered, form: `actions name a ${kind} "<packId>/<featureId>"` });
 
 const emitter: HostServices['emitter'] = {
-  sendToPlugin: (name, event) => sendToPlugin(registeredRef('plugin', name, boundHost().packs.pluginIds()), event),
-  sendToSystem: (to, event) => sendToSystem(typeof to === 'string' ? registeredRef('system', to, boundHost().packs.systemIds()) : to, event),
+  sendToPlugin: (name, event) => sendToPlugin(actionRef('plugin', name, boundHost().packs.pluginIds()), event),
+  sendToSystem: (to, event) => sendToSystem(typeof to === 'string' ? actionRef('system', to, boundHost().packs.systemIds()) : to, event),
 };
 
 /** The bound app's implementation of a service; each call reads the binding */

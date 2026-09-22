@@ -8,8 +8,8 @@ import './style.css'
 // @abuddy/ui it would ship again inside every fe.bundleUi pack and restyle code everywhere.
 import 'highlight.js/styles/github-dark.css'
 import builtInPacks from 'virtual:built-in-packs';
-import { packsPlugin } from '@/packs/plugin';
-import { application, createApplicationState } from '@/core/actors/application';
+import { hostFrontend } from '@/packs/plugin';
+import { application, createApplicationState, withHostLast } from '@/core/actors/application';
 import { runFrontendMigrations } from '@/setup/migrations';
 import { handleProtocolInstall, requestPackInstall } from '@/packs/pack-install';
 import 'virtual:host-deps';
@@ -102,7 +102,8 @@ for (const mod of loadedMods) {
 
 // const { inspect } = createBrowserInspector();
 
-const plugins = [...fePacks.getRegisteredPlugins(), packsPlugin];
+fePacks.registerPackFE(hostFrontend);
+const plugins = withHostLast(fePacks.getRegisteredPlugins());
 const defaultPlugin = fePacks.getRegisteredDefaultPlugin();
 
 // The SDK's frontend code (lookups, navigation, sends, the secrets client) reaches this window's app from here on:

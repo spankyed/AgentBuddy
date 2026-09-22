@@ -8,7 +8,8 @@ import { trpc, reconnectApiClient } from '@/core/trpc';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
 import { globalToast } from '@/core/toast';
 import { getDesignated } from '@abuddy/sdk/fe';
-import { resolveName } from '@abuddy/sdk/ids';
+import { HOST_PACK_ID, splitRef } from '@abuddy/sdk/ids';
+import { HOST } from '@abuddy/host/fe';
 import { loadPackFrontend, unloadPackFrontend } from '@/packs/pack-loader';
 
 
@@ -39,7 +40,6 @@ export interface ApplicationContext {
   activePlugin: Plugin;
   defaultPlugin: Plugin;
   plugins: Plugin[];
-  visiblePlugins: Plugin[]; // Filtered list of visible plugins
   pluginVisibility: Record<string, boolean>; // Which tabs show, the host's (AppState)
   pluginHistory: string[]; // History of plugin IDs for back/forward navigation
   historyIndex: number; // Current position in history
@@ -83,15 +83,26 @@ export interface ApplicationContext {
   loadedPacksRead: boolean;
 }
 
+/** `plugins` with the app's own (the host's: the Packs tab) after every pack's, each group in its order */
+export function withHostLast(plugins: Plugin[]): Plugin[] {
+  const isHost = (plugin: Plugin) => splitRef(plugin.id)?.packId === HOST_PACK_ID;
+  return [...plugins.filter((plugin) => !isHost(plugin)), ...plugins.filter(isHost)];
+}
+
+/** The plugins whose tab shows: every plugin but those the host's visibility hides (unset shows it) */
+export function visiblePluginsOf(context: Pick<ApplicationContext, 'plugins' | 'pluginVisibility'>): Plugin[] {
+  return context.plugins.filter((plugin) => context.pluginVisibility[plugin.id] !== false);
+}
+
 /** The application actor's system id: the host's `application` plugin, which pack systems send to */
-export const application = 'host/application' as const;
+export const application = HOST.application;
 
 type AppActor = ReturnType<typeof createApplicationState>;
 
 export type AppState = ActorRefFrom<AppActor>;
 
 export type ApplicationEvent =
-  | { type: 'SELECT_PLUGIN'; pluginId: string; historyIndex?: number }
+  | { type: 'SELECT_PLUGIN'; plugin: string; historyIndex?: number }
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' }
   | { type: 'TRAIL_UPDATE'; crumbs: BreadcrumbItem[]; target: string; menuItems: ContextMenuItem[] }
   | { type: 'TRAIL_CLICK'; target: string; info?: any }
@@ -110,7 +121,7 @@ export type ApplicationEvent =
   | { type: 'HOTKEYS_RECORDING_END' }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationContext['hotkeys'] }
   | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> }
-  | { type: 'SET_PLUGIN_VISIBILITY'; pluginId: string; visible: boolean }
+  | { type: 'SET_PLUGIN_VISIBILITY'; plugin: string; visible: boolean }
   | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean; pluginVisibility: Record<string, boolean>; lastActivePlugin?: string }
   | { type: 'CLOSE_DEV_LETTER' }
   | { type: 'ONBOARDING_COMPLETE' }
@@ -479,14 +490,10 @@ export const createApplicationState = () => setup({
       if (newPlugins.length === 0) {
         enqueue.assign({ packPluginIds, packFrontendsLoaded });
       } else {
-        const packsIdx = context.plugins.findIndex(p => p.id === resolveName('host/packs'));
-        const allPlugins = packsIdx >= 0
-          ? [...context.plugins.slice(0, packsIdx), ...newPlugins, ...context.plugins.slice(packsIdx)]
-          : [...context.plugins, ...newPlugins];
+        const allPlugins = withHostLast([...context.plugins, ...newPlugins]);
         // Visibility is the host's (AppState, sent on each connection); unset shows the plugin
         enqueue.assign({
           plugins: allPlugins,
-          visiblePlugins: allPlugins.filter(p => context.pluginVisibility[p.id] !== false),
           packPluginIds,
           packFrontendsLoaded,
         });
@@ -495,7 +502,7 @@ export const createApplicationState = () => setup({
         }
         const pending = context.pendingPluginId;
         if (pending && newPlugins.some((p) => p.id === pending)) {
-          enqueue.raise({ type: 'SELECT_PLUGIN', pluginId: pending });
+          enqueue.raise({ type: 'SELECT_PLUGIN', plugin: pending });
         }
       }
       // The pack's plugin actors, if any, now exist: its systems send their startup data. Before this
@@ -595,7 +602,6 @@ export const createApplicationState = () => setup({
       delete packPluginIds[packId];
       enqueue.assign({
         plugins: remaining,
-        visiblePlugins: remaining.filter(p => pluginVisibility[p.id] !== false),
         pluginVisibility,
         activePlugin,
         packPluginIds,
@@ -608,19 +614,7 @@ export const createApplicationState = () => setup({
       }
     }),
 
-    updatePluginVisibility: assign(({ event, context }) => {
-      const { pluginVisibility } = typeOf('PLUGIN_VISIBILITY_UPDATED', event);
-
-      // Filter plugins based on visibility
-      const visiblePlugins = context.plugins.filter(plugin =>
-        pluginVisibility[plugin.id] !== false
-      );
-
-      return {
-        pluginVisibility,
-        visiblePlugins
-      };
-    }),
+    updatePluginVisibility: assign(({ event }) => ({ pluginVisibility: typeOf('PLUGIN_VISIBILITY_UPDATED', event).pluginVisibility })),
 
     /**
      * The shell's state the backend sends on each connection (the host `application` system's, in AppState): which
@@ -628,13 +622,10 @@ export const createApplicationState = () => setup({
      */
     applyShellState: enqueueActions(({ event, context, enqueue, self }) => {
       const { pluginVisibility, lastActivePlugin } = typeOf('CLIENT_CONNECTED', event);
-      enqueue.assign({
-        pluginVisibility,
-        visiblePlugins: context.plugins.filter((plugin) => pluginVisibility[plugin.id] !== false),
-      });
+      enqueue.assign({ pluginVisibility });
       if (!context.restoreLastActivePlugin || !lastActivePlugin || lastActivePlugin === context.activePlugin.id) return;
       if (context.plugins.some((p) => p.id === lastActivePlugin)) {
-        enqueue(() => self.send({ type: 'SELECT_PLUGIN', pluginId: lastActivePlugin }));
+        enqueue(() => self.send({ type: 'SELECT_PLUGIN', plugin: lastActivePlugin }));
       } else {
         enqueue.assign({ pendingPluginId: lastActivePlugin });
       }
@@ -642,14 +633,11 @@ export const createApplicationState = () => setup({
 
     /** A tab shown or hidden here: shown at once, and recorded by the host so every window and the next run agree */
     setPluginVisibility: enqueueActions(({ event, context, enqueue }) => {
-      const { pluginId, visible } = typeOf('SET_PLUGIN_VISIBILITY', event);
-      const pluginVisibility = { ...context.pluginVisibility, [pluginId]: visible };
-      enqueue.assign({
-        pluginVisibility,
-        visiblePlugins: context.plugins.filter((plugin) => pluginVisibility[plugin.id] !== false),
-      });
+      const { plugin, visible } = typeOf('SET_PLUGIN_VISIBILITY', event);
+      const pluginVisibility = { ...context.pluginVisibility, [plugin]: visible };
+      enqueue.assign({ pluginVisibility });
       enqueue(() => {
-        trpc.bus.send.mutate({ to: application, event: { type: 'SET_PLUGIN_VISIBILITY', pluginId, visible } })
+        trpc.bus.send.mutate({ to: application, event: { type: 'SET_PLUGIN_VISIBILITY', plugin, visible } })
           .catch((error) => console.error('[application] Could not record the plugin visibility:', error));
       });
     }),
@@ -688,7 +676,7 @@ export const createApplicationState = () => setup({
 
     switchPluginByDirection: ({ context, event, self }) => {
       // Use only visible plugins for switching
-      const visiblePlugins = context.visiblePlugins;
+      const visiblePlugins = visiblePluginsOf(context);
 
       if (visiblePlugins.length === 0) return;
 
@@ -706,7 +694,7 @@ export const createApplicationState = () => setup({
 
       self.send({
         type: 'SELECT_PLUGIN',
-        pluginId: newPluginId
+        plugin: newPluginId
       });
     },
 
@@ -737,9 +725,8 @@ export const createApplicationState = () => setup({
       contextMenuItems: typeOf('TRAIL_UPDATE', event).menuItems,
     })),
     setActivePlugin: enqueueActions(({ context, event, enqueue, system }) => {
-      const { pluginId, targetId, historyIndex } = typeOf('SELECT_PLUGIN', event) as any;
-      const resolvedId = pluginId || targetId;
-      const newPlugin = context.plugins.find(p => p.id === resolvedId) || context.activePlugin;
+      const { plugin, historyIndex } = typeOf('SELECT_PLUGIN', event);
+      const newPlugin = context.plugins.find(p => p.id === plugin) || context.activePlugin;
       // Opening a plugin settles which one this window shows
       if (context.pendingPluginId) enqueue.assign({ pendingPluginId: null });
 
@@ -774,8 +761,8 @@ export const createApplicationState = () => setup({
         } else {
           // Manual selection: truncate and add
           const history = context.pluginHistory.slice(0, context.historyIndex + 1);
-          if (history[history.length - 1] !== pluginId) {
-            updates.pluginHistory = [...history, pluginId];
+          if (history[history.length - 1] !== plugin) {
+            updates.pluginHistory = [...history, plugin];
             updates.historyIndex = history.length;
           }
         }
@@ -787,7 +774,7 @@ export const createApplicationState = () => setup({
       if (context.activePlugin.id !== newPlugin.id) {
         enqueue(() => {
           // The host records it, so the next window, and the next run, opens on it
-          trpc.bus.send.mutate({ to: application, event: { type: 'SET_LAST_ACTIVE_PLUGIN', pluginId: newPlugin.id } })
+          trpc.bus.send.mutate({ to: application, event: { type: 'SET_LAST_ACTIVE_PLUGIN', plugin: newPlugin.id } })
             .catch((error) => console.error('[application] Could not record the last active plugin:', error));
         });
       }
@@ -804,8 +791,7 @@ export const createApplicationState = () => setup({
       if (event.type === 'DEFAULT_TOGGLE') {
         pluginId = !context.defaultToggles.canvas ? context.defaultPlugin.id : context.activePlugin.id;
       } else {
-        const sel = typeOf('SELECT_PLUGIN', event) as any;
-        pluginId = sel.pluginId || sel.targetId;
+        pluginId = typeOf('SELECT_PLUGIN', event).plugin;
       }
 
       enqueue.sendTo('pluginTrailer', {
@@ -882,7 +868,7 @@ export const createApplicationState = () => setup({
       };
     }),
     closeDevLetter: ({ self }) => {
-      self.send({ type: 'SELECT_PLUGIN', pluginId: getDesignated('threads') });
+      self.send({ type: 'SELECT_PLUGIN', plugin: getDesignated('threads') });
     },
     showInspectionPanel: assign({
       panelSizes: ({ context }) => ({
@@ -934,7 +920,6 @@ export const createApplicationState = () => setup({
 
     return {
       plugins: input.plugins,
-      visiblePlugins: input.plugins, // Initially all plugins are visible
       pluginVisibility,
       activePlugin: initialActivePlugin,
       defaultPlugin: input.defaultPlugin,

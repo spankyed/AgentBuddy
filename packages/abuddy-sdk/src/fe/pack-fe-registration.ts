@@ -6,14 +6,21 @@ import type { ArtifactDefinition } from '../artifacts/types.ts';
 import type { BlockDefinition } from '../blocks/types.ts';
 import type { StepDefinition } from '../steps/types.ts';
 
+/** A feature's frontend: its plugin, the role it plays and whether it's the plugin to open by default */
+export interface PackFEFeature {
+  plugin: PluginDefinition;
+  /** The role the feature plays (abuddy.json `features[].designation`) */
+  designation?: string;
+  /** This pack's plugin to open when the app starts */
+  default?: true;
+}
+
 /** What a pack's generated FE entry registers with the host. */
 export interface PackFERegistration {
   /** The pack this is the frontend of, as `PackRegistration.id` is for its backend */
   id: string;
-  /** Feature id → its plugin. The host registers each at the feature's address, `<packId>/<featureId>` */
-  plugins?: Record<string, PluginDefinition>;
-  /** The feature whose plugin opens by default, unless another pack's already does */
-  defaultPlugin?: string;
+  /** Feature id → its frontend, as `PackRegistration.features` is its backend. Each plugin runs at `<packId>/<featureId>` */
+  features?: Record<string, PackFEFeature>;
   steps?: StepDefinition[];
   tiptapPlugins?: TiptapPlugin[];
   appExtensions?: Record<string, Component>;
@@ -21,6 +28,4 @@ export interface PackFERegistration {
   blocks?: BlockDefinition[];
   /** DSL types for the host's code editors, by name (abuddy.json `dsl` entries with a `monaco` target) */
   dslTypes?: Record<string, DslTypeConfig>;
-  /** Role → the feature playing it (abuddy.json `features[].designation`); the host resolves it to the plugin */
-  designations?: Record<string, string>;
 }

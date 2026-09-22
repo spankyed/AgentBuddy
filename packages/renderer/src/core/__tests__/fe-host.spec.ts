@@ -13,7 +13,7 @@ const logWrite = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 
 const { bindRendererHost, fePacks } = await import('@/core/fe-host');
 const { resolveName } = await import('@abuddy/sdk/ids');
-const { secretsClient, navigateToAddress, getDslTypes, getDesignated, tiptapPluginRegistry } = await import('@abuddy/sdk/fe');
+const { secretsClient, openRef, getDslTypes, getDesignated, tiptapPluginRegistry } = await import('@abuddy/sdk/fe');
 const { stepRegistry } = await import('@abuddy/sdk/steps');
 const { sendToSystem } = await import('@abuddy/sdk/events');
 const { unbindFeHost } = await import('@abuddy/sdk/runtime/internals');
@@ -37,7 +37,7 @@ const settingsAddress = resolveName('default-setup/settings');
 
 it('throws, naming bindFeHost, before the renderer binds it', () => {
   expect(() => secretsClient.list()).toThrow('bindFeHost');
-  expect(() => navigateToAddress(settingsAddress)).toThrow('bindFeHost');
+  expect(() => openRef(settingsAddress)).toThrow('bindFeHost');
   expect(() => sendToSystem('notes', { type: 'SAVE_NOTE' })).toThrow('bindFeHost');
 });
 
@@ -50,8 +50,7 @@ it("gives the SDK's frontend lookups the window's registered pack frontends, and
   const note = { type: 'note', fe: { nodeConfig: { label: 'Note' } } };
   fePacks.registerPackFE({
     id: 'fe-host-pack',
-    plugins: { notebookMain: { label: 'Notebook' } as never },
-    designations: { notebook: 'notebookMain' },
+    features: { notebookMain: { plugin: { label: 'Notebook' } as never, designation: 'notebook' } },
     steps: [note as never],
     tiptapPlugins: [mentions],
     dslTypes: { memo: memoDsl },
@@ -71,24 +70,24 @@ it("gives the SDK's frontend lookups the window's registered pack frontends, and
 it('binds before the application actor exists, naming it when SDK code reaches the actor too early', () => {
   let created: typeof application | undefined;
   bindRendererHost(() => created as never);
-  expect(() => navigateToAddress(settingsAddress)).toThrow("The application actor isn't created yet");
+  expect(() => openRef(settingsAddress)).toThrow("The application actor isn't created yet");
   created = application;
-  navigateToAddress(settingsAddress);
-  expect(application.send).toHaveBeenCalledWith({ type: 'SELECT_PLUGIN', pluginId: 'default-setup/settings' });
+  openRef(settingsAddress);
+  expect(application.send).toHaveBeenCalledWith({ type: 'SELECT_PLUGIN', plugin: 'default-setup/settings' });
 });
 
-it('gives secretsClient the API client and navigateToAddress the application actor', async () => {
+it('gives secretsClient the API client and openRef the application actor', async () => {
   bindRendererHost(() => application as never);
   await expect(secretsClient.list()).resolves.toMatchObject({ secrets: [] });
   expect(secretsList).toHaveBeenCalledTimes(1);
-  navigateToAddress(settingsAddress);
-  expect(application.send).toHaveBeenCalledWith({ type: 'SELECT_PLUGIN', pluginId: 'default-setup/settings' });
+  openRef(settingsAddress);
+  expect(application.send).toHaveBeenCalledWith({ type: 'SELECT_PLUGIN', plugin: 'default-setup/settings' });
 });
 
 // A link to a plugin that isn't there used to select nothing and, with an event, wait forever for an actor
-it('refuses to navigate to an address no plugin is registered at', () => {
+it('refuses to open a ref no plugin is registered at', () => {
   bindRendererHost(() => application as never);
-  expect(() => navigateToAddress(resolveName('default-setup/code'))).toThrow('No plugin is registered at "default-setup/code"');
+  expect(() => openRef(resolveName('default-setup/code'))).toThrow('No plugin is registered at "default-setup/code"');
 });
 
 it("sends to systems over the API client, reporting a rejected send to the console, the app's log and a toast, without an unhandled rejection or the payload", async () => {

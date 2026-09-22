@@ -5,6 +5,7 @@ import { afterAll, afterEach, expect, it, vi } from 'vitest'
 import { createActor } from 'xstate'
 import { startFeTestRuntime } from '@abuddy/sdk/testing'
 import settingsState from '@/features/settings/fe/state'
+import { resolveName } from '@abuddy/sdk/ids'
 
 afterAll(startFeTestRuntime({ transport: { sendIncoming() {} } }))
 afterEach(() => vi.restoreAllMocks())
@@ -17,14 +18,14 @@ function readySettingsPlugin() {
 
 it('selects the plugin a ref names', () => {
   const actor = readySettingsPlugin()
-  actor.send({ type: 'PLUGIN.SELECT', pluginId: 'e2e-fixture/memos' })
+  actor.send({ type: 'PLUGIN.SELECT', pluginId: resolveName('e2e-fixture/memos') })
   expect(actor.getSnapshot().context.selectedPluginId).toBe('e2e-fixture/memos')
 })
 
 it('ignores and reports a bare name, keeping what was selected and running on', () => {
   const reported = vi.spyOn(console, 'error').mockImplementation(() => {})
   const actor = readySettingsPlugin()
-  actor.send({ type: 'PLUGIN.SELECT', pluginId: 'default-setup/logs' })
+  actor.send({ type: 'PLUGIN.SELECT', pluginId: resolveName('default-setup/logs') })
 
   actor.send({ type: 'PLUGIN.SELECT', pluginId: 'memos' as never })
 

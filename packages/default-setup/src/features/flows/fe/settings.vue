@@ -194,7 +194,6 @@
 </template>
 
 <script setup lang="ts">
-import { pluginSettingsKey } from '@/features/settings/plugin-settings'
 import { usePlugin } from '@abuddy/sdk/fe'
 import { navigateToPlugin } from '@/__generated__/fe'
 import { useRunningRootFlowId } from '@/features/brain/fe/public'
@@ -204,6 +203,7 @@ import { AlertTriangle, Brain, Upload, Download, FolderOpen, CheckCircle, XCircl
 import type { FlowsSettings } from '@/__generated__/types'
 import { useSelector } from '@xstate/vue'
 import { id, type FlowsState } from './state'
+import { ref as featureRef } from '@/__generated__/ref'
 
 interface Props {
   settings?: FlowsSettings
@@ -288,7 +288,7 @@ const handleRootFlowChange = () => {
 
 const goToBrainSettings = () => {
   // Show the brain's settings beside these, in the settings plugin
-  navigateToPlugin('settings', { type: 'PLUGIN.SELECT', pluginId: pluginSettingsKey('brain') })
+  navigateToPlugin('settings', { type: 'PLUGIN.SELECT', pluginId: featureRef('brain') })
 }
 
 // DSL Import - file picker and emit to state machine

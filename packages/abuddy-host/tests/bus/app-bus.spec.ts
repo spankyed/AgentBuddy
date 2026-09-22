@@ -10,6 +10,7 @@ import type { Message } from '@abuddy/sdk/events';
 import { createAppBus } from '../../src/bus/index.ts';
 import { appState, HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { createPackRegistry } from '../../src/packs/pack-registration.ts';
+import { hostRegistration } from '../../src/packs/host-pack.ts';
 
 const registry = createPackRegistry();
 const { registerPack, unregisterPack } = registry;
@@ -40,6 +41,8 @@ beforeEach(() => {
   received.length = 0;
   outgoing.length = 0;
   stopOutgoing = testRootEvents.onOutgoing((event) => { outgoing.push(event); });
+  // The app's own plugins, as the API registers them: the application plugin gets the shell's state
+  registerPack(hostRegistration());
   registerRecorderPack('local-pack');
   registerRecorderPack('fe-pack');
   // fe-pack is a loaded external pack whose bundle has frontend code
@@ -58,6 +61,7 @@ afterEach(() => {
   stopOutgoing();
   for (const id of ['local-pack', 'fe-pack']) unregisterPack(id);
   unregisterPack('fe-pack-fe');
+  unregisterPack('host');
   fs.rmSync(packDir, { recursive: true, force: true });
 });
 

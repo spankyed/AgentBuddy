@@ -323,7 +323,7 @@ describe('FE pack deregistration', () => {
     const { registerPackFE, unregisterPackFE } = createFePackRegistry();
 
     const testPlugin = { label: 'Test' } as unknown as PluginDefinition;
-    registerPackFE({ id: 'test-pack', plugins: { testPlugin } });
+    registerPackFE({ id: 'test-pack', features: { testPlugin: { plugin: testPlugin } } });
 
     const removed = unregisterPackFE('test-pack');
     expect(removed).toHaveLength(1);
@@ -339,7 +339,7 @@ describe('FE pack deregistration', () => {
     const { registerPackFE, unregisterPackFE, getRegisteredPlugins } = createFePackRegistry();
     const builtIn = { label: 'Built-in', id: 'default-setup/main' } as unknown as Plugin;
 
-    registerPackFE({ id: 'default-setup', plugins: { main: { label: 'Built-in' } as PluginDefinition } });
+    registerPackFE({ id: 'default-setup', features: { main: { plugin: { label: 'Built-in' } as PluginDefinition } } });
     expect(getRegisteredPlugins()).toEqual([builtIn]);
 
     expect(unregisterPackFE('default-setup')).toEqual([builtIn]);
@@ -354,8 +354,8 @@ describe('FE pack deregistration', () => {
     const builtIn = { label: 'Built-in', id: 'built-in-pack/shared' };
     const packCopy = { label: 'Pack', id: 'duplicate-pack/shared' };
     const packOwn = { label: 'Own', id: 'duplicate-pack/own' };
-    registerPackFE({ id: 'built-in-pack', plugins: { shared: definition('Built-in') } });
-    registerPackFE({ id: 'duplicate-pack', plugins: { shared: definition('Pack'), own: definition('Own') } });
+    registerPackFE({ id: 'built-in-pack', features: { shared: { plugin: definition('Built-in') } } });
+    registerPackFE({ id: 'duplicate-pack', features: { shared: { plugin: definition('Pack') }, own: { plugin: definition('Own') } } });
 
     expect(getRegisteredPlugins()).toEqual([builtIn, packCopy, packOwn]);
     expect(unregisterPackFE('duplicate-pack')).toEqual([packCopy, packOwn]);

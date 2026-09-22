@@ -11,16 +11,6 @@ import { EARS as EARS_2 } from '@abuddy/ears';
 import { z } from 'zod';
 
 // @public
-export function addressPluginKeys<T extends Record<string, unknown>>(record: T, input?: PluginOwners & {
-    movesTo?: (ref: FeatureRef, owner: {
-        builtIn: boolean;
-    }) => boolean;
-}): {
-    record: T;
-    moved: number;
-};
-
-// @public
 export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
 
 // @public
@@ -179,15 +169,6 @@ export function packSystem(entry: SystemEntry, options?: {
     incoming?: readonly string[];
     early?: true;
 }): PackFeatureSystem;
-
-// @public
-export interface PluginOwners {
-    builtIn?: readonly string[];
-    refs?: readonly FeatureRef[];
-}
-
-// @public
-export function pluginRefOf(id: string, owners?: PluginOwners): FeatureRef | undefined;
 
 // @public
 export const SYSTEM_EVENT_TYPES: readonly ["CLIENT_CONNECTED", "PACK_CHANGED", "FEATURE_SETTINGS_UPDATED"];

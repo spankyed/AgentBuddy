@@ -2,11 +2,10 @@ import { tx, qx } from '@/__generated__/ears';
 
 import { EARS } from '@/__generated__/ears';
 
-import { checkedPluginSettingsKey, type PluginSettingsKey } from '../../plugin-settings';
+import { checkedSettingsRef } from '../../plugin-settings';
 import type { SettingsData } from '../types';
 import { getDefaultSettings } from '../defaults';
 import { mergeSettings } from '../../merge-settings';
-import { addressPluginKeys } from '@abuddy/sdk/framework';
 
 // Use a fixed ID without hyphen to avoid LMDB persistence issues
 // The ID "Settings-app" has a bug where updates don't persist
@@ -70,9 +69,9 @@ export const settingsQueries = {
 
   getAssistantSettings: () => getSettingsEntity().data.assistant,
 
-  /** A plugin's settings in effect, by its key (its ref); a bare name throws */
-  getPluginSettings: (plugin: PluginSettingsKey) => {
-    const key = checkedPluginSettingsKey(plugin);
+  /** A plugin's settings in effect, by its ref; actions pass it as a string, so a bare name throws */
+  getPluginSettings: (plugin: `${string}/${string}`) => {
+    const key = checkedSettingsRef(plugin);
     const data = getSettingsEntity().data;
     return data.plugins?.[key] || (getDefaultSettings().plugins as any)[key] || {};
   },
@@ -81,7 +80,8 @@ export const settingsQueries = {
 /** The sections of the stored settings other than the plugins' slices, each keyed as the data holds it */
 type SettingsSection = 'general' | 'assistant' | 'plugins';
 
-function updateSettings(type: 'plugin', label: PluginSettingsKey, path: string[], value: any): void;
+/** A plugin's settings are keyed by its ref, which is checked here: actions call this with a string */
+function updateSettings(type: 'plugin', label: `${string}/${string}`, path: string[], value: any): void;
 function updateSettings(type: SettingsSection, label: string | null, path: string[], value: any): void;
 function updateSettings(type: SettingsSection | 'plugin', label: string | null, path: string[], value: any): void {
   const stored = getStoredSettings();
@@ -95,7 +95,7 @@ function updateSettings(type: SettingsSection | 'plugin', label: string | null, 
 
   // Build path matching the data structure (note: 'plugin' type maps to 'plugins' in data)
   const dataKey = type === 'plugin' ? 'plugins' : type;
-  const key = type === 'plugin' && label ? checkedPluginSettingsKey(label) : label;
+  const key = type === 'plugin' ? checkedSettingsRef(label!) : label;
   const fullPath = needsLabel
     ? [dataKey, key!, ...path]
     : [dataKey, ...path];
@@ -128,24 +128,6 @@ export const settingsCommands = {
     tx(SETTINGS_ID)
       .put('data', newData)
       .put('updatedAt', Date.now());
-  },
-
-  /**
-   * Moves stored settings a bare feature id still holds onto its plugin's ref, once that plugin is registered: a pack
-   * that wasn't loaded when 0.3.15 moved the keys, or one an export from before 0.3.15 brought back. A built-in
-   * pack's keys are left to its migrations, which read some of them bare and may not have run yet. Returns how many
-   * moved.
-   */
-  addressStoredPluginKeys(): number {
-    const stored = getStoredSettings();
-    if (!stored.plugins) return 0;
-    const { record, moved } = addressPluginKeys(stored.plugins as Record<string, unknown>, { movesTo: (_ref, { builtIn }) => !builtIn });
-    if (moved > 0) {
-      tx(SETTINGS_ID)
-        .put('data', { ...stored, plugins: record } as SettingsData)
-        .put('updatedAt', Date.now());
-    }
-    return moved;
   },
 
   resetSettings: () => {

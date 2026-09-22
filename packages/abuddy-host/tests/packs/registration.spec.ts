@@ -127,11 +127,11 @@ describe('registerPack designations', () => {
 });
 
 describe('registered addresses', () => {
-  it("lists every pack's systems and plugins at their addresses, the host's bare", () => {
+  it("lists every pack's systems and plugins at their refs", () => {
     registerPack({ id: 'ext', features: { notes: { system: { machine: {} as PackFeatureSystem['machine'], receives: [] }, plugin: { receives: [] } } } });
     registered.push('ext');
     expect(systemIds()).toContain('ext/notes');
-    expect(pluginIds()).toEqual(expect.arrayContaining(['ext/notes', 'host/application']));
+    expect(pluginIds()).toContain('ext/notes');
 
     unregisterPack(registered.pop()!);
     expect(systemIds()).not.toContain('ext/notes');

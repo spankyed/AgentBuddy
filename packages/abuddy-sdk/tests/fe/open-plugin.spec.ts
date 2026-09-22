@@ -24,7 +24,7 @@ afterEach(() => unbindFeHost());
 describe('openPlugin', () => {
   it('opens a registered plugin by its ref', () => {
     openPlugin('memo-pack/memos');
-    expect(sent).toEqual([{ type: 'SELECT_PLUGIN', pluginId: 'memo-pack/memos' }]);
+    expect(sent).toEqual([{ type: 'SELECT_PLUGIN', plugin: 'memo-pack/memos' }]);
   });
 
   it('refuses a ref no plugin is registered at', () => {

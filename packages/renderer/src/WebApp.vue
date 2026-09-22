@@ -9,7 +9,7 @@
         v-if="!isOnboarding"
         :plugins="plugins"
         :active-plugin="activePlugin"
-        @select-plugin="(id: string) => send({ type: 'SELECT_PLUGIN', pluginId: id })"
+        @select-plugin="(id: string) => send({ type: 'SELECT_PLUGIN', plugin: id })"
     />
 
     <!-- Main Area -->
@@ -98,7 +98,8 @@ import ChatArea from '@/core/components/layout/chat-area.vue'
 import InspectionPanel from '@/core/components/layout/inspection-panel.vue'
 import PanelResizer from '@abuddy/ui/layout/panel-resizer'
 import { applicationState } from '@/main'
-import { navigateToAddress, PluginScope } from '@abuddy/sdk/fe'
+import { visiblePluginsOf } from '@/core/actors/application'
+import { openRef, PluginScope } from '@abuddy/sdk/fe'
 import Router from '@/core/components/layout/router.vue'
 import { getDesignated, hasDesignation } from '@abuddy/sdk/fe'
 import type { ContextMenuItem } from '@abuddy/sdk/fe'
@@ -114,7 +115,7 @@ onUnmounted(() => registerGlobalToast(null))
 const activePlugin = useSelector(applicationState, (state) => state.context.activePlugin)
 const defaultPlugin = useSelector(applicationState, (state) => state.context.defaultPlugin)
 const toggles = useSelector(applicationState, (state) => state.context.defaultToggles)
-const plugins = useSelector(applicationState, (state) => state.context.visiblePlugins) // Use visible plugins
+const plugins = useSelector(applicationState, (state) => visiblePluginsOf(state.context))
 const breadcrumbs = useSelector(applicationState, (state) => state.context.breadcrumbs)
 const contextMenuItems = useSelector(applicationState, (state) => state.context.contextMenuItems)
 const targetView = useSelector(applicationState, (state) => state.context.targetView)
@@ -199,7 +200,7 @@ const handleMenuAction = (event: { type: string; [key: string]: any }) => {
   if (event.type === 'APP_OPEN_PLUGIN_SETTINGS') {
     // The settings live with whichever plugin plays the role, if any does
     if (!hasDesignation('settings')) return
-    navigateToAddress(getDesignated('settings'), [
+    openRef(getDesignated('settings'), [
       { type: 'TAB.SELECT', tab: 'plugins' },
       { type: 'PLUGIN.SELECT', pluginId: event.pluginId }
     ])

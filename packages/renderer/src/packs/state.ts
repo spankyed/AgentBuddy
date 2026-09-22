@@ -1,15 +1,15 @@
 import { assign, setup, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
-import { HOST_PACK_ID, resolveName } from '@abuddy/sdk/ids';
 import { trpc } from '@/core/trpc';
 import type { PackInfo } from '@abuddy/host/packs';
 import { application } from '@/core/actors/application';
 import { unloadPackFrontend } from './pack-loader';
+import { HOST } from '@abuddy/host/fe';
 
 export type { PackInfo };
 
 /** The host `packs` feature's ref: this plugin's, and its system's */
-export const id = resolveName('packs', HOST_PACK_ID);
+export const id = HOST.packs;
 
 export interface PacksContext {
   packs: PackInfo[];

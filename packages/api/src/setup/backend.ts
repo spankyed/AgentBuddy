@@ -5,16 +5,16 @@ import { _getLmdbPath, _getVolatileLmdbPath } from '@abuddy/sdk/utils';
 import type { EarsEngine } from '@abuddy/ears';
 import type { LmdbStore } from '@abuddy/ears/lmdb';
 import { assertNoDatabaseWriter, openDatabaseStore } from '@abuddy/host/database';
-import { createPackRegistry, discoverBuiltInPacks, publishHostPackOutput, pruneHostPackOutputs, prepareHostDataDirs, type PackRegistry } from '@abuddy/host/packs';
+import { createPackRegistry, discoverBuiltInPacks, hostRegistration, publishHostPackOutput, pruneHostPackOutputs, prepareHostDataDirs, type PackRegistry } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import * as path from 'path';
 import {
-  createPacksSystem, packsEvents, PACKS_PLUGIN_EVENT_TYPES, packs as packsRef,
+  createPacksSystem, packsEvents,
   loadBuiltInPacks,
   loadExternalPacks, registerExternalPacks,
   startPacks,
 } from '@abuddy/host/packs/runtime';
-import { application, APPLICATION_SYSTEM_EVENTS, bus, createAppBus, createApplicationSystem, startEarlySystems } from '@abuddy/host/bus';
+import { APPLICATION_SYSTEM_EVENTS, bus, createAppBus, createApplicationSystem, startEarlySystems } from '@abuddy/host/bus';
 import { createHostRuntime } from '@abuddy/host/services';
 import { forwardSecretsChanges } from '@abuddy/host/secrets';
 import { assertSourceResolution } from '@abuddy/host/build/source-resolution';
@@ -91,12 +91,12 @@ export async function setupBackend(): Promise<void> {
     assertSourceResolution(createRequire(import.meta.url).resolve, 'The API server');
   }
 
-  // ── Register host-level systems (before any pack loading) ──────────
-  packs.registerHostSystem(packsRef, createPacksSystem(packs), packsEvents);
-  // The packs system's sends are checked like a pack's, so the plugin it sends to has to be declared
-  packs.registerHostPlugin(packsRef, PACKS_PLUGIN_EVENT_TYPES);
-  // The app shell's own state (which tabs show, the last plugin open), which the application plugin reads
-  packs.registerHostSystem(application, createApplicationSystem(packs), new Set(APPLICATION_SYSTEM_EVENTS));
+  // ── The app's own features, as the pack `host` (before any pack loading) ──────────
+  packs.registerPack(hostRegistration({
+    // The app shell's own state (which tabs show, the last plugin open), which the application plugin reads
+    application: { machine: createApplicationSystem(packs), receives: APPLICATION_SYSTEM_EVENTS },
+    packs: { machine: createPacksSystem(packs), receives: [...packsEvents] },
+  }));
 
   // Before discovery: a pack an interrupted install left only as its moved-aside copy is restored,
   // and abuddy install learns which AgentBuddy uses this data dir

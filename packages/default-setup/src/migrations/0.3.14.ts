@@ -1,6 +1,6 @@
 import { repository } from '@/__generated__/repository';
 import type { PackMigration } from '@abuddy/sdk/framework';
-import { pluginSettingsKey } from '@/features/settings/plugin-settings';
+import { ref } from '@/__generated__/ref';
 
 export const migration: PackMigration = {
   target: '0.3.14',
@@ -11,13 +11,13 @@ export const migration: PackMigration = {
 
     // Copy the old key to the new key if it exists and the new key isn't already set
     if (code.lastDirectoryOpened && !code.baseDirectory) {
-      repository.settingsCommands.updateSettings('plugin', pluginSettingsKey('code'), ['baseDirectory'], code.lastDirectoryOpened);
+      repository.settingsCommands.updateSettings('plugin', ref('code'), ['baseDirectory'], code.lastDirectoryOpened);
     }
 
     // Move openLinksInApp from general.application to plugins.browser
     const openLinksInApp = (data.general as any)?.application?.openLinksInApp;
     if (openLinksInApp !== undefined && !(data.plugins as any)?.browser?.openLinksInApp) {
-      repository.settingsCommands.updateSettings('plugin', pluginSettingsKey('browser'), ['openLinksInApp'], openLinksInApp);
+      repository.settingsCommands.updateSettings('plugin', ref('browser'), ['openLinksInApp'], openLinksInApp);
     }
   },
 };

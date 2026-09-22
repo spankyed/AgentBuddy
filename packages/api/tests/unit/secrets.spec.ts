@@ -38,8 +38,11 @@ const caller = secretsRouter.createCaller({});
 forwardSecretsChanges(packs);
 // A pack designating its settings feature, whose system isn't running yet
 packs.registerPack({ id: 'test', features: { settings: { designation: 'settings' } } });
-// Registered under the id the designation resolves to — a feature's system runs as `<packId>/<featureId>`
-const registerSettingsSystem = () => packs.registerHostSystem('test/settings', setup({}).createMachine({}), new Set(['SECRETS_CHANGED']));
+// The same pack again, now running its settings feature's system (at `test/settings`, where the designation resolves)
+const registerSettingsSystem = () => {
+  packs.unregisterPack('test');
+  packs.registerPack({ id: 'test', features: { settings: { designation: 'settings', system: { machine: setup({}).createMachine({}), receives: ['SECRETS_CHANGED'] } } } });
+};
 
 /** The incoming events `run` sends */
 async function incomingDuring(run: () => Promise<unknown> | unknown): Promise<Array<Record<string, unknown>>> {

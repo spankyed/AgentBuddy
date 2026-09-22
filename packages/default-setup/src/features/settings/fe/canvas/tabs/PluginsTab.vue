@@ -90,7 +90,7 @@
 </template>
 
 <script setup lang="ts">
-import { checkedPluginSettingsKey } from '@/features/settings/plugin-settings'
+import { checkedSettingsRef } from '@/features/settings/plugin-settings'
 import { computed, ref, onMounted, onUpdated } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { getDesignated, openPlugin, PluginScope, useApplicationActor, usePlugin } from '@abuddy/sdk/fe'
@@ -151,7 +151,7 @@ const settingsPluginId = getDesignated('settings')
 const togglePluginVisibility = (pluginId: string) => {
   if (pluginId === settingsPluginId) return
   
-  applicationActor.send({ type: 'SET_PLUGIN_VISIBILITY', pluginId, visible: !isPluginVisible(pluginId) })
+  applicationActor.send({ type: 'SET_PLUGIN_VISIBILITY', plugin: pluginId, visible: !isPluginVisible(pluginId) })
 }
 
 // Handle update events from child components
@@ -161,7 +161,7 @@ const handleUpdateSetting = (event: { path: string[], value: any }) => {
   updateSettings({
     entityType: 'plugin',
     // A registered plugin's id is its ref
-    label: checkedPluginSettingsKey(selectedPlugin.value.id),
+    label: checkedSettingsRef(selectedPlugin.value.id),
     path: event.path,
     value: event.value
   })

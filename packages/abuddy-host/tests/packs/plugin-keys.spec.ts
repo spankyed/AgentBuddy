@@ -2,8 +2,8 @@
 // visibility) were stored under it. The move puts each bare key a plugin's feature id stands for onto that
 // plugin's ref, and leaves everything else alone.
 import { describe, expect, it } from 'vitest';
-import { addressPluginKeys, pluginRefOf } from '../../src/framework/index.ts';
-import { resolveName } from '../../src/ids/index.ts';
+import { resolveName } from '@abuddy/sdk/ids';
+import { addressPluginKeys, pluginRefOf } from '../../src/packs/plugin-keys.ts';
 
 const refs = [resolveName('memo-pack/memos'), resolveName('memo-pack/board'), resolveName('host/packs')];
 /** Those plugins, with no built-in pack among them */
@@ -45,12 +45,6 @@ describe('addressPluginKeys', () => {
   it("gives a bare id a built-in pack shares with another pack to the built-in pack's plugin", () => {
     const { record } = addressPluginKeys({ memos: { sort: 'newest' } }, { ...withOther, builtIn: ['other-pack'] });
     expect(record).toEqual({ 'other-pack/memos': { sort: 'newest' } });
-  });
-
-  it('moves only the keys `movesTo` takes, told whether a built-in pack owns them', () => {
-    const { record, moved } = addressPluginKeys({ memos: {}, packs: false }, { refs, builtIn: ['memo-pack'], movesTo: (_ref, { builtIn }) => !builtIn });
-    expect(record).toEqual({ memos: {}, 'host/packs': false });
-    expect(moved).toBe(1);
   });
 });
 

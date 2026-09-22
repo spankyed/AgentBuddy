@@ -10,7 +10,7 @@ import type { Message } from '@abuddy/sdk/events';
 import { createAppBus } from '../../src/bus/index.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { createPackRegistry } from '../../src/packs/pack-registration.ts';
-import { PACKS_PLUGIN_EVENT_TYPES } from '../../src/packs/runtime/packs-system.ts';
+import { hostRegistration } from '../../src/packs/host-pack.ts';
 
 const registry = createPackRegistry();
 startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: registry });
@@ -43,7 +43,7 @@ beforeEach(async () => {
   outgoing.length = 0;
   stopOutgoing = testRootEvents.onOutgoing((event) => { outgoing.push(event); });
   registry.registerPack({ id: 'memo-pack', features: memoFeatures });
-  registry.registerHostPlugin('host/packs', PACKS_PLUGIN_EVENT_TYPES);
+  registry.registerPack(hostRegistration());
   bus = createActor(createAppBus(registry), { systemId: 'host/bus' }).start();
   await connect();
 });
@@ -52,6 +52,7 @@ afterEach(() => {
   bus.stop();
   stopOutgoing();
   registry.unregisterPack('memo-pack');
+  registry.unregisterPack('host');
   takeSystemErrors();
 });
 

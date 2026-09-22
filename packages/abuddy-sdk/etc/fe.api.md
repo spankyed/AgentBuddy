@@ -240,9 +240,6 @@ export interface NavHistory<T> {
     stack: T[];
 }
 
-// @public
-export function navigateToAddress(address: FeatureRef, event?: PluginEvent | PluginEvent[]): void;
-
 // @public (undocumented)
 export function onMenuOpenChange(open: boolean): void;
 
@@ -253,6 +250,17 @@ export function openLink(url: string): void;
 export function openPlugin(ref: string, event?: PluginEvent | PluginEvent[]): void;
 
 // @public
+export function openRef(ref: FeatureRef, event?: PluginEvent | PluginEvent[]): void;
+
+// @public
+export interface PackFEFeature {
+    default?: true;
+    designation?: string;
+    // (undocumented)
+    plugin: PluginDefinition;
+}
+
+// @public
 export interface PackFERegistration {
     // (undocumented)
     appExtensions?: Record<string, Component>;
@@ -260,11 +268,9 @@ export interface PackFERegistration {
     artifacts?: ArtifactDefinition[];
     // (undocumented)
     blocks?: BlockDefinition[];
-    defaultPlugin?: string;
-    designations?: Record<string, string>;
     dslTypes?: Record<string, DslTypeConfig>;
+    features?: Record<string, PackFEFeature>;
     id: string;
-    plugins?: Record<string, PluginDefinition>;
     // (undocumented)
     steps?: StepDefinition[];
     // (undocumented)

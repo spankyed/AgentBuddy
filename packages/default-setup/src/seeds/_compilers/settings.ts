@@ -1,7 +1,7 @@
 // Compiles the `settings` seed entry in abuddy.json: the app's default settings (src/seeds/default-settings.ts),
 // as one record. The settings seeder (../settings/seeder.ts) seeds it by resetting the user's settings, and the
 // settings repository reads it as the defaults (features/settings/be/defaults.ts). A feature's own settings
-// (features[].settings) aren't in it: the pack registry holds them, under each plugin's address, for every pack.
+// (features[].settings) aren't in it: the pack registry holds them, under each plugin's ref, for every pack.
 import { pathToFileURL } from 'node:url';
 import type { SeedCompileContext, SeedRecord } from '@abuddy/sdk/build';
 

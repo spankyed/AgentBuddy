@@ -2,11 +2,9 @@ import { untypedQx } from '@abuddy/ears';
 import { markSeededRowUnedited } from '@abuddy/sdk/seed';
 import { EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
-import { addressPluginKeys, type PackMigration } from '@abuddy/sdk/framework';
-import { resolveName } from '@abuddy/sdk/ids';
+import type { PackMigration } from '@abuddy/sdk/framework';
 import { createLogger } from '@abuddy/sdk/logger';
-import type { SettingsData } from '@/features/settings/be/types';
-import { pluginSettingsKey } from '@/features/settings/plugin-settings';
+import { ref } from '@/__generated__/ref';
 
 const logger = createLogger('migrations');
 
@@ -15,15 +13,14 @@ const PACK_ID = 'default-setup';
 
 export const migration: PackMigration = {
   target: '0.3.15',
-  description: "Drop the app's state and the root flow copies from the settings, mark rows seeded before the seeder tracked what it wrote as unedited, keep action logs hidden for whoever hid log-service, move the plugin settings onto their plugins' refs, and drop the keys 0.3.14 moved but left behind",
+  description: "Drop the app's state and the root flow copies from the settings, mark rows seeded before the seeder tracked what it wrote as unedited, keep action logs hidden for whoever hid log-service, and drop the keys 0.3.14 moved but left behind",
   up: () => {
     // ── The app's state (onboarding, versions, seed hashes) is the host's AppState now ──
     // The host's own 0.3.15 migration, which runs first, moved it out of `internal` (no pack migration runs when it fails).
     repository.settingsCommands.removeStored(['internal']);
 
-    // ── A plugin is addressed `<packId>/<featureId>` ──
-    // First among the plugin-settings work below, so the rest reads and writes the keys this leaves.
-    movePluginSettingsToQualifiedIds();
+    // ── A plugin's ref is `<packId>/<featureId>` ──
+    // The host's own 0.3.15 migration, which runs before any pack's, moved every stored key onto its plugin's ref.
     dropKeysMovedBy0314();
 
     // ── Rows seeded before the seeder recorded the values it wrote ──
@@ -45,9 +42,9 @@ export const migration: PackMigration = {
 
     // ── Action logs moved from the shared `log-service` source to `action:<label>` ──
     // Whoever hid `log-service` hid action logs: keep hiding them.
-    const excludedSources = repository.settingsQueries.getPluginSettings(pluginSettingsKey('logs'))?.excludedSources;
+    const excludedSources = repository.settingsQueries.getPluginSettings(ref('logs'))?.excludedSources;
     if (Array.isArray(excludedSources) && excludedSources.includes('log-service') && !excludedSources.includes('action:*')) {
-      repository.settingsCommands.updateSettings('plugin', pluginSettingsKey('logs'), ['excludedSources'], [...excludedSources, 'action:*']);
+      repository.settingsCommands.updateSettings('plugin', ref('logs'), ['excludedSources'], [...excludedSources, 'action:*']);
     }
 
     // ── The root flow is the flow with the root role, and the brain says which one it runs ──
@@ -60,54 +57,25 @@ export const migration: PackMigration = {
 /**
  * 0.3.14 copied the code plugin's `lastDirectoryOpened` to `baseDirectory` and the app's `openLinksInApp` to the
  * browser plugin, but left the old keys stored, where nothing reads them. Each is dropped, copied first when the
- * user has nothing stored under the new key. Runs after the move onto refs, so only the refs hold plugin settings.
+ * user has nothing stored under the new key. The host's 0.3.15 migration ran first, so only the refs hold plugin settings.
  */
 function dropKeysMovedBy0314(): void {
   const stored = repository.settingsQueries.getStoredSettings();
-  const slice = (feature: string) => (stored.plugins?.[pluginSettingsKey(feature)] ?? {}) as Record<string, unknown>;
+  const slice = (feature: string) => (stored.plugins?.[ref(feature)] ?? {}) as Record<string, unknown>;
 
   const code = slice('code');
   if (code.lastDirectoryOpened !== undefined) {
     if (code.baseDirectory === undefined) {
-      repository.settingsCommands.updateSettings('plugin', pluginSettingsKey('code'), ['baseDirectory'], code.lastDirectoryOpened);
+      repository.settingsCommands.updateSettings('plugin', ref('code'), ['baseDirectory'], code.lastDirectoryOpened);
     }
-    repository.settingsCommands.removeStored(['plugins', pluginSettingsKey('code'), 'lastDirectoryOpened']);
+    repository.settingsCommands.removeStored(['plugins', ref('code'), 'lastDirectoryOpened']);
   }
 
   const openLinksInApp = (stored.general?.application as Record<string, unknown> | undefined)?.openLinksInApp;
   if (openLinksInApp !== undefined) {
     if (slice('browser').openLinksInApp === undefined) {
-      repository.settingsCommands.updateSettings('plugin', pluginSettingsKey('browser'), ['openLinksInApp'], openLinksInApp);
+      repository.settingsCommands.updateSettings('plugin', ref('browser'), ['openLinksInApp'], openLinksInApp);
     }
     repository.settingsCommands.removeStored(['general', 'application', 'openLinksInApp']);
   }
-}
-
-/**
- * The plugin ids this pack's settings were stored under before plugins were namespaced. Written out
- * rather than read from the pack's features on purpose: a migration moves the data one release left
- * behind, so it has to keep meaning what it meant then, even after a feature is added or removed.
- */
-const BARE_PLUGIN_IDS = [
-  'threads', 'code', 'notes', 'browser', 'library', 'flows',
-  'actions', 'prompts', 'brain', 'database', 'logs', 'settings',
-];
-
-/**
- * Moves the user's per-plugin settings onto the refs their plugins now run under. Without it the app reads
- * `plugins['default-setup/threads']` while the stored data says `plugins.threads`, and the user's settings
- * come back at the defaults. The sidebar's visibility and the last-active plugin are the host's, which its own
- * 0.3.15 migration moved into AppState before this runs.
- *
- * Idempotent, as every migration here must be — it runs again on each development boot and after a
- * reset. A key already moved is left alone, and a key the user has under the ref already wins.
- */
-function movePluginSettingsToQualifiedIds(): void {
-  const stored = repository.settingsQueries.getStoredSettings();
-  if (!stored.plugins) return;
-  const addresses = BARE_PLUGIN_IDS.map((id) => resolveName(id, PACK_ID));
-  const { record: plugins, moved } = addressPluginKeys(stored.plugins, { refs: addresses });
-  if (moved === 0) return;
-  repository.settingsCommands.replaceSettings({ ...stored, plugins } as SettingsData);
-  logger.info(`[migration 0.3.15] moved ${moved} plugin settings key(s) onto namespaced plugin ids`);
 }

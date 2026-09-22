@@ -20,7 +20,7 @@ vi.mock('@/core/trpc', () => ({
   },
 }));
 
-const { createApplicationState } = await import('@/core/actors/application');
+const { createApplicationState, visiblePluginsOf, withHostLast } = await import('@/core/actors/application');
 
 function plugin(id: string): Plugin {
   return { id, label: id, icon: 'Zap', state: setup({}).createMachine({}), canvas: {} } as unknown as Plugin;
@@ -73,7 +73,7 @@ it("opens on the plugin last open once its pack's frontend adds it", () => {
 
 it('keeps the plugin the user opened while that pack was loading', () => {
   connect({ lastActivePlugin: 'memo-pack/memos' });
-  app.send({ type: 'SELECT_PLUGIN', pluginId: 'default-setup/threads' });
+  app.send({ type: 'SELECT_PLUGIN', plugin: 'default-setup/threads' });
   loadMemoPack();
 
   expect(context().activePlugin.id).toBe('default-setup/threads');
@@ -94,18 +94,25 @@ it("opens a popout on an external pack's plugin once that pack's frontend adds i
 it("shows the tabs the host's state says to", () => {
   connect({ pluginVisibility: { 'default-setup/threads': false } });
 
-  expect(context().visiblePlugins.map((p) => p.id)).toEqual(['default-setup/notes']);
+  expect(visiblePluginsOf(context()).map((p) => p.id)).toEqual(['default-setup/notes']);
 });
 
 it('hides a tab at once, and sends the host the choice to record', () => {
-  app.send({ type: 'SET_PLUGIN_VISIBILITY', pluginId: 'default-setup/threads', visible: false });
+  app.send({ type: 'SET_PLUGIN_VISIBILITY', plugin: 'default-setup/threads', visible: false });
 
-  expect(context().visiblePlugins.map((p) => p.id)).toEqual(['default-setup/notes']);
-  expect(mutate).toHaveBeenCalledWith({ to: 'host/application', event: { type: 'SET_PLUGIN_VISIBILITY', pluginId: 'default-setup/threads', visible: false } });
+  expect(visiblePluginsOf(context()).map((p) => p.id)).toEqual(['default-setup/notes']);
+  expect(mutate).toHaveBeenCalledWith({ to: 'host/application', event: { type: 'SET_PLUGIN_VISIBILITY', plugin: 'default-setup/threads', visible: false } });
 });
 
 it('sends the host the plugin opened, to open on next time', () => {
-  app.send({ type: 'SELECT_PLUGIN', pluginId: 'default-setup/threads' });
+  app.send({ type: 'SELECT_PLUGIN', plugin: 'default-setup/threads' });
 
-  expect(mutate).toHaveBeenCalledWith({ to: 'host/application', event: { type: 'SET_LAST_ACTIVE_PLUGIN', pluginId: 'default-setup/threads' } });
+  expect(mutate).toHaveBeenCalledWith({ to: 'host/application', event: { type: 'SET_LAST_ACTIVE_PLUGIN', plugin: 'default-setup/threads' } });
+});
+
+// A pack's frontend loads after the window starts, and its plugins join before the app's own (the Packs tab)
+it("keeps the host's plugins after every pack's, each group in its order", () => {
+  const packsTab = plugin('host/packs');
+  expect(withHostLast([notes, packsTab, threads, plugin('memo-pack/memos')]).map((p) => p.id))
+    .toEqual(['default-setup/notes', 'default-setup/threads', 'memo-pack/memos', 'host/packs']);
 });

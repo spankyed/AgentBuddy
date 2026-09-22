@@ -6,7 +6,7 @@ import { compileFlowDSL } from '@abuddy/sdk/build'
 import { flowRepository } from '@abuddy/sdk/repositories'
 import { startApp } from '@abuddy/testing/harness'
 import { repository } from '@/__generated__/repository'
-import { pluginSettingsKey } from '@/features/settings/plugin-settings';
+import { ref } from '@/__generated__/ref'
 
 const DIST = path.resolve(import.meta.dirname, '../../dist')
 const importRoot = (label: string) =>
@@ -20,7 +20,7 @@ describe('the root flow', () => {
     await app.connect()
 
     expect(reportedRoot(await app.nextEmit('flows', 'FLOWS_CONNECTED'))).toBe(rootId)
-    expect(repository.settingsQueries.getPluginSettings(pluginSettingsKey('flows'))).not.toHaveProperty('rootFlowId')
+    expect(repository.settingsQueries.getPluginSettings(ref('flows'))).not.toHaveProperty('rootFlowId')
   })
 
   it('changes with SET_ROOT_FLOW, taking the role from the previous root, and null leaves none', async () => {

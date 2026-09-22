@@ -1,7 +1,7 @@
 // How a name in pack code becomes the ref a system or plugin runs under. Every conversion calls this,
 // so a name that belongs to no pack fails here, at the call, rather than as a send nobody receives.
 import { describe, expect, it } from 'vitest';
-import { resolveName, splitRef } from '../../src/ids/index.ts';
+import { resolveName, resolveRegistered, splitRef } from '../../src/ids/index.ts';
 
 describe('resolveName', () => {
   it("resolves a pack's own feature to its ref", () => {
@@ -45,5 +45,23 @@ describe('splitRef', () => {
     expect(splitRef('Default_Setup/notes')).toBeUndefined();
     // A popout's URL carries a plugin's ref, which main checks with this
     for (const ref of ['', '../x', 'a b/notes', 'default-setup/notes?x=1']) expect(splitRef(ref), ref).toBeUndefined();
+  });
+});
+
+// The harness and services.emitter both turn a name into a registered feature through this, so a mistake reads the
+// same everywhere: the form to write, the feature it probably meant, and what is registered
+describe('resolveRegistered', () => {
+  const registered = ['memo-pack/memos', 'default-setup/threads', 'host/application'];
+
+  it('resolves a name in its pack, or a ref with none, to a registered feature', () => {
+    expect(resolveRegistered('plugin', 'memos', { packId: 'memo-pack', registered })).toBe('memo-pack/memos');
+    expect(resolveRegistered('plugin', 'host/application', { registered })).toBe('host/application');
+  });
+
+  it("throws for what isn't registered, naming the ref it would be and the feature it probably meant", () => {
+    expect(() => resolveRegistered('plugin', 'threads', { packId: 'memo-pack', registered }))
+      .toThrow('No registered plugin is named "threads" (it would be "memo-pack/threads"): name this pack\'s own plugins by feature id and another pack\'s as "<packId>/<featureId>" — did you mean "default-setup/threads"? Registered: memo-pack/memos, default-setup/threads, host/application');
+    expect(() => resolveRegistered('system', 'threads', { registered, form: 'actions name a system "<packId>/<featureId>"' }))
+      .toThrow('No registered system is named "threads": actions name a system "<packId>/<featureId>" — did you mean "default-setup/threads"?');
   });
 });

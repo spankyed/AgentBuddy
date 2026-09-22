@@ -9,7 +9,7 @@ import { FLOW_ROLES } from './repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { FlowEntity, ActionEntity, PromptEntity } from '@abuddy/sdk';
 import { compileFlowDSL, validateFlowDSL, exportFlowsToDSL, type FlowDSL, type ValidationError } from '@abuddy/sdk/build';
-import { pluginSettingsKey } from '@/features/settings/plugin-settings';
+import { ref } from '@/__generated__/ref';
 
 const logger = createLogger('flows');
 
@@ -103,7 +103,7 @@ function sendConnectedData(): void {
     type: 'FLOWS_CONNECTED',
     data: {
       ...repository.flowsQueries.connectedData(),
-      settings: repository.settingsQueries.getPluginSettings(pluginSettingsKey('flows')) || {},
+      settings: repository.settingsQueries.getPluginSettings(ref('flows')) || {},
     },
   });
 }

@@ -11,7 +11,7 @@ import { setBrainPausedState } from './utils/brain-pause';
 import { notify as notifyAdHocListeners, removeAllListeners as removeAllAdHocListeners } from './services/brain';
 import { services } from '@/__generated__/services';
 import type { StepRuntimeError, TNodeEntity } from '@abuddy/sdk/steps';
-import { pluginSettingsKey } from '@/features/settings/plugin-settings';
+import { ref } from '@/__generated__/ref';
 
 type IncomingBrainEvents =
   | { type: 'OPEN_TNODE'; tNodeId: string }
@@ -324,7 +324,7 @@ export const brainSystem = setup({
       // Restore inspect state from persisted settings. Default ON in dev so
       // switch/action/flow transitions are visible out of the box; the
       // persisted setting wins once the user has toggled it.
-      const brainSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('brain'));
+      const brainSettings = repository.settingsQueries.getPluginSettings(ref('brain'));
       const inspectEnabled = brainSettings?.inspectEnabled ?? (process.env.NODE_ENV !== 'production');
       setDebugEnabled('brain', inspectEnabled);
       sendToPlugin('brain', { type: 'INSPECT_TOGGLED', enabled: inspectEnabled });
@@ -382,7 +382,7 @@ export const brainSystem = setup({
       setDebugEnabled('brain', newState);
 
       // Persist to settings DB
-      repository.settingsCommands.updateSettings('plugin', pluginSettingsKey('brain'), ['inspectEnabled'], newState);
+      repository.settingsCommands.updateSettings('plugin', ref('brain'), ['inspectEnabled'], newState);
 
       // Send confirmation back to frontend
       sendToPlugin('brain', {

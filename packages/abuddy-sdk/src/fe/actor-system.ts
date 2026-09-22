@@ -1,6 +1,6 @@
 import { computed, defineComponent, inject, provide, type ComputedRef, type InjectionKey } from 'vue'
 import type { AnyActorRef } from 'xstate'
-import { splitRef } from '../ids/addressing.ts'
+import { splitRef } from '../ids/refs.ts'
 import { boundFeHost } from '../runtime/fe-host.ts'
 
 const PLUGIN: InjectionKey<ComputedRef<AnyActorRef>> = Symbol('plugin')

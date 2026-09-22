@@ -1,7 +1,7 @@
 // What the registered packs contributed, as the SDK reads it. The app that registers them owns the data (host's
 // createPackRegistry and createFePackRegistry) and binds read-only views: HostRuntime.packs in a backend process,
 // FeHostRuntime.packs (FePackRegistryView, fe-host.ts) in the renderer.
-import type { FeatureRef } from '../ids/addressing.ts';
+import type { FeatureRef } from '../ids/refs.ts';
 import type { StepDefinition } from '../steps/types.ts';
 import type { ArtifactDefinition } from '../artifacts/types.ts';
 import type { BlockDefinition } from '../blocks/types.ts';

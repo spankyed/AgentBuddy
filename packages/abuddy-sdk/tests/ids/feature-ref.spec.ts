@@ -2,7 +2,7 @@
 // a call that takes one. The expectations below are checked by `npm run typecheck`, not at run time.
 import { expect, it } from 'vitest';
 import { resolveName, type FeatureRef } from '../../src/ids/index.ts';
-import { navigateToAddress } from '../../src/fe/navigation.ts';
+import { openRef } from '../../src/fe/navigation.ts';
 
 it('is a string at run time, and only the resolver or a registry makes one', () => {
   const resolved: FeatureRef = resolveName('memos', 'memo-pack');
@@ -22,7 +22,7 @@ it('keeps a hand-written string out of the host-only navigation', () => {
   // Typed only: calling it needs a bound frontend host
   const typed = (): void => {
     // @ts-expect-error navigation takes a resolved ref, not a string
-    navigateToAddress('memo-pack/memos');
+    openRef('memo-pack/memos');
   };
   expect(typeof typed).toBe('function');
 });

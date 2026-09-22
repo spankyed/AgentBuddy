@@ -45,8 +45,7 @@ const memoDsl = { prefix: 'memo:', schema: 'declare const memo: string', globals
 describe("a pack's frontend", () => {
   it('is found once it registers, and gone once it unregisters', () => {
     add('notebook-pack', {
-      designations: { notebook: 'notebookMain' },
-      plugins: { notebookMain: plugin('Notebook') },
+      features: { notebookMain: { plugin: plugin('Notebook'), designation: 'notebook' } },
       steps: [noteStepFE],
       artifacts: [cardView],
       blocks: [choice],
@@ -112,8 +111,8 @@ describe("a pack's frontend", () => {
   // Two packs with a `notes` feature each get a plugin, because a plugin is addressed by its pack. Only
   // the default is a single slot, and the first registration keeps it.
   it("gives each pack its own plugin, and keeps the first default plugin", () => {
-    add('first-pack', { plugins: { notes: plugin('First notes') }, defaultPlugin: 'notes' });
-    add('second-pack', { plugins: { notes: plugin('Second notes'), cards: plugin('Cards') }, defaultPlugin: 'cards' });
+    add('first-pack', { features: { notes: { plugin: plugin('First notes'), default: true } } });
+    add('second-pack', { features: { notes: { plugin: plugin('Second notes') }, cards: { plugin: plugin('Cards'), default: true } } });
     expect(plugins().map((p) => p.id)).toEqual(['first-pack/notes', 'second-pack/notes', 'second-pack/cards']);
     expect(defaultPlugin()?.id).toBe('first-pack/notes');
     expect(remove('second-pack').map((p) => p.id)).toEqual(['second-pack/notes', 'second-pack/cards']);

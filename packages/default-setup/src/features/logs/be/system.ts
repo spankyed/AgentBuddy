@@ -8,7 +8,7 @@ import { onLog, type LogEvent } from '@abuddy/sdk/logger';
 import { repository } from '@/__generated__/repository';
 import type { LogsSettings } from '@/__generated__/types';
 import { isSourceExcluded, filterLogsByExcludedSources } from './utils';
-import { pluginSettingsKey } from '@/features/settings/plugin-settings';
+import { ref } from '@/__generated__/ref';
 
 // Resolve the effective exclusion list: when showAppEvents is falsy, treat 'app-events' as excluded.
 function effectiveExcludedSources(settings: LogsSettings | undefined): string[] {
@@ -69,7 +69,7 @@ export const logsSystem = setup({
         const updatedLogs = [newLog, ...context.logs];
         
         // Keep only the last maxLogs entries
-        const settings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('logs')) as LogsSettings | undefined;
+        const settings = repository.settingsQueries.getPluginSettings(ref('logs')) as LogsSettings | undefined;
 
         if (updatedLogs.length > (settings?.maxLogs || 1000)) {
           return updatedLogs.slice(0, settings?.maxLogs || 1000);
@@ -80,7 +80,7 @@ export const logsSystem = setup({
     }),
     sendLogsConnected: ({ context }) => {
       // Get current settings
-      const settings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('logs')) as LogsSettings | undefined;
+      const settings = repository.settingsQueries.getPluginSettings(ref('logs')) as LogsSettings | undefined;
       const excludedSources = effectiveExcludedSources(settings);
 
       // Filter logs by excluded sources before sending
@@ -96,7 +96,7 @@ export const logsSystem = setup({
       const newLog = context.logs[0];
 
       // Get current settings from repository
-      const settings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('logs')) as LogsSettings | undefined;
+      const settings = repository.settingsQueries.getPluginSettings(ref('logs')) as LogsSettings | undefined;
       const excludedSources = effectiveExcludedSources(settings);
 
       // Check if new log should be excluded
@@ -111,7 +111,7 @@ export const logsSystem = setup({
     },
     broadcastLogsUpdate: ({ context }) => {
       // Get current settings from repository
-      const settings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('logs')) as LogsSettings | undefined;
+      const settings = repository.settingsQueries.getPluginSettings(ref('logs')) as LogsSettings | undefined;
       const excludedSources = effectiveExcludedSources(settings);
 
       // Filter logs by excluded sources before sending
@@ -130,7 +130,7 @@ export const logsSystem = setup({
     truncateLogsIfNeeded: assign({
       logs: ({ context }) => {
         // If logs exceed new maxLogs, truncate
-        const settings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('logs')) as LogsSettings | undefined;
+        const settings = repository.settingsQueries.getPluginSettings(ref('logs')) as LogsSettings | undefined;
         if (context.logs.length > (settings?.maxLogs || 1000)) {
           return context.logs.slice(context.logs.length - (settings?.maxLogs || 1000));
         }

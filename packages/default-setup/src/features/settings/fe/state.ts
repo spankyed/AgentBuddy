@@ -14,7 +14,7 @@ import type { ApplicationHotkeys } from '@abuddy/sdk/types'
 import type { EARS } from '@abuddy/sdk'
 import type { PackSeedsPreview } from '@abuddy/sdk/build'
 import type { FAQItem } from '@/features/settings/be/types';
-import type { PluginSettingsKey } from '../plugin-settings';
+import type { FeatureRef } from '@abuddy/sdk/ids';
 import { settingsPlugin } from './public';
 import { splitRef } from '@abuddy/sdk/ids';
 
@@ -76,13 +76,13 @@ export interface SettingsContext {
   resetting: boolean;
 }
 /** What a settings change is to: a plugin's settings by their key (its ref), or a general section */
-export type SettingsTarget = { entityType: 'plugin'; label: PluginSettingsKey } | { entityType: 'general'; label: string };
+export type SettingsTarget = { entityType: 'plugin'; label: FeatureRef } | { entityType: 'general'; label: string };
 
 type UIEvent =
   | { type: 'TAB.SELECT'; tab: 'general' | 'plugins' | 'help' }
   | { type: 'GENERAL_NAV.SELECT'; item: 'personal' | 'secrets' | 'projects' | 'application' | 'json' }
   // A plugin by its ref: other packs send it too, so a bare name would be read as this pack's
-  | { type: 'PLUGIN.SELECT'; pluginId: PluginSettingsKey }
+  | { type: 'PLUGIN.SELECT'; pluginId: FeatureRef }
   | ({ type: 'SETTINGS.UPDATE'; path: string[]; value: any } & SettingsTarget)
   | { type: 'SETTINGS.REPLACE'; data: SettingsData }
   | { type: 'SETTINGS.RESET' }

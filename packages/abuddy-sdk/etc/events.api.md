@@ -8,6 +8,13 @@
 export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S>;
 
 // @public
+export const eventTypes: <E extends {
+    type: string;
+}>() => <const T extends readonly TypeOfEvent<E>[]>(...types: T & ([Missing<E, T>] extends [never] ? unknown : {
+    missing: Missing<E, T>;
+})) => T;
+
+// @public
 export type FeatureSettingsUpdated = {
     type: 'FEATURE_SETTINGS_UPDATED';
     settings: unknown;
@@ -15,7 +22,7 @@ export type FeatureSettingsUpdated = {
 
 // @public
 export const HOST_PLUGIN_EVENT_TYPES: {
-    readonly 'host/application': readonly ["CLIENT_CONNECTED", "APPLICATION_HOTKEYS", "PLUGIN_VISIBILITY_UPDATED"];
+    'host/application': readonly ["CLIENT_CONNECTED", "APPLICATION_HOTKEYS", "PLUGIN_VISIBILITY_UPDATED"];
 };
 
 // @public
@@ -88,6 +95,11 @@ export type PluginEvents = {
 };
 
 // @public
+export type Qualified<PackId extends string, M> = {
+    [K in keyof M & string as `${PackId}/${K}`]: M[K];
+};
+
+// @public
 export function sendToPlugin(to: string, event: {
     type: string;
     [key: string]: unknown;
@@ -129,7 +141,7 @@ export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
 }
 
 // @public
-export type TypedSendToPlugin<M extends PluginEvents> = <P extends keyof M & string>(pluginId: P, event: OneSend<IsUnion<P>, M[P]['type'], M[P]>) => void;
+export type TypedSendToPlugin<M extends PluginEvents> = (<P extends keyof M & string>(pluginId: P, event: OneSend<IsUnion<P>, M[P]['type'], M[P]>) => void) & ((plugin: FeatureRef, event: FeatureSettingsUpdated) => void);
 
 // @public
 export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S & string, Type extends S[Id]['type']>(systemId: Id, event: OneSend<IsUnion<Id> | IsUnion<Type>, Type, {
@@ -139,7 +151,17 @@ export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S &
 }, event: {
     type: string;
     [key: string]: unknown;
-}) => void);
+}) => void) & ((system: FeatureRef, event: SystemEvents) => void);
+
+// @public
+export type TypeOfEvent<E> = E extends {
+    type: infer K extends string;
+} ? K : never;
+
+// @public
+export type WithOwnNames<PackId extends string, M> = {
+    [K in keyof M & string as K extends `${PackId}/${infer FeatureId}` ? FeatureId : K]: M[K];
+};
 
 // (No @packageDocumentation comment for this package)
 

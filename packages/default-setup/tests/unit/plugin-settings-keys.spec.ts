@@ -7,14 +7,15 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { tx } from '@abuddy/ears';
 import { registerPack, startApp, unregisterPack } from '@abuddy/testing/harness';
 import { repository } from '@/__generated__/repository';
-import { pluginSettingsKey } from '@/features/settings/plugin-settings';
 import { services } from '@/__generated__/services';
+import { ref } from '@/__generated__/ref';
 
 const stored = () => repository.settingsQueries.getStoredSettings().plugins as Record<string, any>;
 
 describe('replacing the settings', () => {
+  // The host moves the bare keys, told the data changed
   it("lands settings exported before 0.3.15 under their plugins' refs, without the shell's state", async () => {
-    const app = await startApp({ systems: ['settings'] });
+    const app = await startApp({ systems: ['settings', 'host/application'] });
     await app.connect();
 
     await app.send('settings', {
@@ -27,9 +28,10 @@ describe('replacing the settings', () => {
         },
       },
     });
+    await app.settle();
 
     expect(stored()).toEqual({ 'default-setup/threads': { sort: 'oldest' } });
-    expect(repository.settingsQueries.getPluginSettings(pluginSettingsKey('threads'))).toMatchObject({ sort: 'oldest' });
+    expect(repository.settingsQueries.getPluginSettings(ref('threads'))).toMatchObject({ sort: 'oldest' });
   });
 });
 
@@ -37,7 +39,7 @@ describe('the plugin settings keys', () => {
   it("takes a plugin's ref", async () => {
     await startApp({ systems: [] });
 
-    repository.settingsCommands.updateSettings('plugin', pluginSettingsKey('threads'), ['sort'], 'oldest');
+    repository.settingsCommands.updateSettings('plugin', ref('threads'), ['sort'], 'oldest');
 
     expect(stored()).toEqual({ 'default-setup/threads': { sort: 'oldest' } });
   });
@@ -102,29 +104,31 @@ describe('a bare id another pack shares', () => {
 
   it("goes to default-setup's plugin when settings from before 0.3.15 are pasted back", async () => {
     registerPack(notesPack);
-    const app = await startApp({ systems: ['settings'] });
+    const app = await startApp({ systems: ['settings', 'host/application'] });
     await app.connect();
 
     await app.send('settings', { type: 'REPLACE_SETTINGS', data: { general: {}, plugins: { notes: { sort: 'title' } } } });
+    await app.settle();
 
     expect(stored()).toEqual({ 'default-setup/notes': { sort: 'title' } });
   });
 });
 
-// A pack that wasn't loaded when 0.3.15 moved the keys (disabled then), or one an old export brought back, gets its
-// bare keys moved when it registers. A built-in pack's are left to its migrations, which read some of them bare.
+// A pack that wasn't loaded when 0.3.15 moved the keys (disabled then) gets its bare keys moved when it comes back:
+// the app tells the running systems a pack changed, and the host moves whatever a registered plugin now owns.
 describe('a pack registering', () => {
   const memoPack = { id: 'memo-pack', features: { memos: { plugin: { receives: [] }, settings: { plugins: { memos: { sort: 'newest' } } } } } };
   afterEach(() => {
     try { unregisterPack('memo-pack'); } catch { /* not registered */ }
   });
 
-  it('gets the settings its plugins kept under their bare feature ids, and leaves the built-in keys bare', async () => {
-    await startApp({ systems: ['settings'] });
-    tx('Settings-app' as never).update('data', { plugins: { memos: { sort: 'oldest' }, threads: { sort: 'oldest' } } });
+  it('gets the settings its plugins kept under their bare feature ids', async () => {
+    const app = await startApp({ systems: ['settings', 'host/application'] });
+    tx('Settings-app' as never).update('data', { plugins: { memos: { sort: 'oldest' }, unknown: { kept: true } } });
 
     registerPack(memoPack);
+    await app.send('host/application', { type: 'PACK_CHANGED', packId: 'memo-pack' });
 
-    expect(stored()).toEqual({ 'memo-pack/memos': { sort: 'oldest' }, threads: { sort: 'oldest' } });
+    expect(stored()).toEqual({ 'memo-pack/memos': { sort: 'oldest' }, unknown: { kept: true } });
   });
 });

@@ -1,6 +1,6 @@
 import * as path from 'path';
 import type { z } from 'zod';
-import { resolveName } from '../ids/addressing.ts';
+import { resolveName } from '../ids/refs.ts';
 import type {
   ManifestSchema, FeatureEntrySchema, BootConfigSchema, SeedEntryConfigSchema, SeedFormatSchema,
   StepEntrySchema, StepDSLMetaSchema, DslEntrySchema, PackPermissionSchema,
@@ -78,7 +78,7 @@ export const PROVENANCE_KINDS = {
   entities: (m: ProvenanceManifest) => Object.keys(m.entities ?? {}),
   relKinds: (m: ProvenanceManifest) => Object.keys(m.relKinds ?? {}),
   commands: (m: ProvenanceManifest) => (m.commands ?? []).map((c) => c.name),
-  // Keyed by address, so a dependent reusing one of its dependency's feature ids keeps both apart
+  // Keyed by ref, so a dependent reusing one of its dependency's feature ids keeps both apart
   plugins: (m: ProvenanceManifest, packId: string) => (m.features ?? []).filter((f) => f.plugin).map((f) => resolveName(f.id, packId)),
 } as const;
 

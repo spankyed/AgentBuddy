@@ -562,8 +562,7 @@ The generated FE entry (`__generated__/pack-entry-fe.ts`) default-exports a `Pac
 
 | Field | Source |
 |---|---|
-| `plugins` | Each `features[].plugin.entry` (with `designation` from the manifest) |
-| `defaultPlugin` | The feature whose `plugin` sets `default: true`, or the first with a plugin |
+| `features` | Each feature with a `plugin`: its `plugin.entry`, its `designation`, and `default: true` on the one whose `plugin` sets `default` (else the first). The first pack registered with a default opens by default; a role another pack's plugin plays refuses the pack |
 | `steps` | `stepsFE` from `register-fe.ts` next to `steps.register` |
 | `artifacts` / `blocks` | `artifactsFE` / `blocksFE` from the `-fe.ts` siblings |
 | `tiptapPlugins` | `fe.tiptapPlugins` |

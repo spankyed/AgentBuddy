@@ -17,7 +17,7 @@ import type {
 import type { ThreadsSettings, ThreadTagOption } from '@/__generated__/types';
 import { repository } from '@/__generated__/repository';
 import type { ArtifactItem } from '@abuddy/sdk/artifacts';
-import { pluginSettingsKey } from '@/features/settings/plugin-settings';
+import { ref } from '@/__generated__/ref';
 
 /**
  * Threads Repository
@@ -119,7 +119,7 @@ export const threadQueries = {
     });
 
     // Get tags from settings
-    const threadsSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('threads')) as ThreadsSettings | undefined;
+    const threadsSettings = repository.settingsQueries.getPluginSettings(ref('threads')) as ThreadsSettings | undefined;
     const availableTags: ThreadTagOption[] = threadsSettings?.tags || [];
 
     // Build chat states map from thread entities directly
@@ -160,7 +160,7 @@ export const threadCommands = {
       ? tx(input.id as EARS.EntityId, true).id()
       : tx(EARS.Entity.Thread).id();
 
-    const status = input.status || repository.settingsQueries.getPluginSettings(pluginSettingsKey('threads'))?.statuses[0]?.label || '';
+    const status = input.status || repository.settingsQueries.getPluginSettings(ref('threads'))?.statuses[0]?.label || '';
     tx(id).updateBatch({
       status,
       shortCode: shortCode,
@@ -333,14 +333,14 @@ const THREAD_TOPIC_MAX_LENGTH = 40;
 const RECENT_THREADS_FALLBACK_LIMIT = 7;
 
 function getConfiguredRecentThreadsLimit(): number {
-  const configured = repository.settingsQueries.getPluginSettings(pluginSettingsKey('threads'))?.recentThreadsLimit;
+  const configured = repository.settingsQueries.getPluginSettings(ref('threads'))?.recentThreadsLimit;
   return typeof configured === 'number' && configured > 0
     ? configured
     : RECENT_THREADS_FALLBACK_LIMIT;
 }
 
 function getConfiguredSortOrder(): 'created' | 'visited' | 'message' {
-  const configured = repository.settingsQueries.getPluginSettings(pluginSettingsKey('threads'))?.recentThreadsSortOrder;
+  const configured = repository.settingsQueries.getPluginSettings(ref('threads'))?.recentThreadsSortOrder;
   return configured === 'visited' || configured === 'message' ? configured : 'created';
 }
 
@@ -554,7 +554,7 @@ export const chatQueries = {
       });
     }
 
-    const chatSettings = (repository.settingsQueries.getPluginSettings(pluginSettingsKey('threads')) as ThreadsSettings).chat;
+    const chatSettings = (repository.settingsQueries.getPluginSettings(ref('threads')) as ThreadsSettings).chat;
 
     return {
       currentThread,

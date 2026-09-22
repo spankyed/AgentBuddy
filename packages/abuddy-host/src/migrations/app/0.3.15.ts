@@ -1,10 +1,10 @@
 // The app's own state moves out of the built-in pack's settings: before 0.3.15 it was stored in the
-// Settings row's `internal` section, which resetting settings erased. And installed external packs' stored
-// plugin settings move onto their plugins' addresses, which no pack's own migration can do for them.
+// Settings row's `internal` section, which resetting settings erased. And every pack's stored plugin settings move
+// onto their plugins' refs, before any pack's own migration reads them.
 import { tx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
-import { addressPluginKeys, type PackMigration } from '@abuddy/sdk/framework';
-import { addressShellState, pluginOwners } from '../../bus/application-system.ts';
+import type { PackMigration } from '@abuddy/sdk/framework';
+import { addressShellState, addressStoredPluginKeys, pluginOwners } from '../../packs/plugin-keys.ts';
 import { appState, type AppState } from '../../app-state/index.ts';
 import type { PackRegistry } from '../../packs/pack-registration.ts';
 
@@ -41,11 +41,12 @@ type MigrationRegistry = Pick<PackRegistry, 'getPackRegistration' | 'builtInPack
 /** The migration, over the app's registered packs */
 export const migration = (registry: MigrationRegistry): PackMigration => ({
   target: '0.3.15',
-  description: "Move the app's state (onboarding, versions, seed hashes) from the settings' internal section to AppState, the app shell's state from the settings' _meta to AppState, and the host's and external packs' plugin settings onto their plugins' refs",
+  description: "Move the app's state (onboarding, versions, seed hashes) from the settings' internal section to AppState, the app shell's state from the settings' _meta to AppState, and every pack's plugin settings onto their plugins' refs",
   up: () => {
     moveAppState(registry);
     moveShellState(registry);
-    addressHostAndExternalPluginSettings(registry);
+    // Every pack's plugin settings too, the built-in packs' included, before any pack's migration reads them
+    addressStoredPluginKeys(registry);
   },
 });
 
@@ -106,17 +107,4 @@ function moveShellState(registry: MigrationRegistry): void {
 
   const { _meta, ...plugins } = data.plugins;
   tx(SETTINGS_ID).put('data', { ...data, plugins });
-}
-
-/**
- * The plugin settings of the host's plugins (`host/packs`) and of installed external packs, stored under the
- * features' bare ids before 0.3.15, onto their refs. The built-in packs move their own in their migrations. A
- * pack that isn't loaded when this runs (disabled) keeps its bare keys.
- */
-function addressHostAndExternalPluginSettings(registry: MigrationRegistry): void {
-  const data = (untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: { plugins?: Record<string, unknown> } } | undefined)?.data;
-  if (!data?.plugins) return;
-  // The built-in packs' own keys are theirs to move, in their migrations
-  const moved = addressPluginKeys(data.plugins, { ...pluginOwners(registry), movesTo: (_ref, { builtIn }) => !builtIn });
-  if (moved.moved > 0) tx(SETTINGS_ID).put('data', { ...data, plugins: moved.record });
 }

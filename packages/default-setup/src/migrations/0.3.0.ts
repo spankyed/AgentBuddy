@@ -1,6 +1,6 @@
 import { repository } from '@/__generated__/repository';
 import type { PackMigration } from '@abuddy/sdk/framework';
-import { pluginSettingsKey } from '@/features/settings/plugin-settings';
+import { ref } from '@/__generated__/ref';
 
 export const migration: PackMigration = {
   target: '0.3.0',
@@ -9,7 +9,7 @@ export const migration: PackMigration = {
     // The user's own modes, if they stored any: the defaults already have Codex, and patching a merged copy would
     // write every default mode into the user's stored settings. Under the feature id before 0.3.15 moved the key.
     const stored = (repository.settingsQueries.getStoredSettings().plugins ?? {}) as Record<string, any>;
-    const storedModes = stored[pluginSettingsKey('threads')]?.chat?.modes ?? stored.threads?.chat?.modes;
+    const storedModes = stored[ref('threads')]?.chat?.modes ?? stored.threads?.chat?.modes;
     const modes: Array<{ id: string; name?: string; description?: string; [k: string]: any }> | undefined =
       storedModes && structuredClone(storedModes);
     if (modes) patchModes(modes);
@@ -45,5 +45,5 @@ function patchModes(modes: Array<{ id: string; name?: string; description?: stri
   }
 
   const nextModes = modes.filter(mode => mode.id !== 'hermes');
-  repository.settingsCommands.updateSettings('plugin', pluginSettingsKey('threads'), ['chat', 'modes'], nextModes);
+  repository.settingsCommands.updateSettings('plugin', ref('threads'), ['chat', 'modes'], nextModes);
 }

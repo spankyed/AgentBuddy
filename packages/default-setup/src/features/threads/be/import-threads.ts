@@ -14,7 +14,7 @@ import { hasIdCollision } from '@abuddy/ears';
 import { restoreJsonMediaRefs } from '@abuddy/sdk/utils'
 import { repository } from '@/__generated__/repository';
 import type { ExportedThreadsData } from './export-types'
-import { pluginSettingsKey } from '@/features/settings/plugin-settings';
+import { ref } from '@/__generated__/ref';
 
 interface ImportResult {
   created: number
@@ -56,7 +56,7 @@ export function importThreads(importDir: string): ImportResult {
   const hasMedia = fs.existsSync(path.join(importDir, 'media'))
 
   // Get valid statuses and tags from settings
-  const threadsSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('threads'))
+  const threadsSettings = repository.settingsQueries.getPluginSettings(ref('threads'))
   const validStatuses = new Set(threadsSettings?.statuses?.map((s: any) => s.label) || [])
   const validTags = new Set(threadsSettings?.tags?.map((t: any) => t.name) || [])
   const fallbackStatus = threadsSettings?.statuses?.[0]?.label || 'Backlog'

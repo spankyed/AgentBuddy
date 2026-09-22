@@ -191,7 +191,7 @@ import { useSelector } from '@xstate/vue'
 import { id, threadsFromStore, type ThreadsState } from '@/features/threads/fe/state';
 import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, QuickPrompt, AgentSettings } from '@/__generated__/types'
 import { sendToSystem } from '@/__generated__/events'
-import { pluginSettingsKey } from '@/features/settings/plugin-settings';
+import { ref as featureRef } from '@/__generated__/ref';
 
 const appActor = useApplicationActor()
 const actor: ThreadsState = usePlugin();
@@ -363,7 +363,7 @@ function updateThreadsSetting(path: string[], value: unknown) {
   sendToSystem('settings', {
     type: 'UPDATE_SETTINGS',
     entityType: 'plugin',
-    label: pluginSettingsKey('threads'),
+    label: featureRef('threads'),
     path,
     value,
   })
@@ -492,7 +492,7 @@ function confirmRevert() {
     sendToSystem('settings', {
       type: 'UPDATE_SETTINGS',
       entityType: 'plugin',
-      label: pluginSettingsKey('threads'),
+      label: featureRef('threads'),
       path: ['chat', 'skipRevertConfirm'],
       value: true,
     })

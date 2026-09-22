@@ -56,7 +56,10 @@ test("the pack's feature settings are defaults in the app", async ({ appPage, ap
   await app.waitForPlugin('memos');
   await expect.poll(memoSettings(appPage)).toEqual({ listTitle: 'Memos' });
   // Its settings hide its sidebar tab by default; the plugin is still there to open
-  const visibleIds = () => appPage.evaluate(() => (window as any).applicationState.getSnapshot().context.visiblePlugins.map((p: { id: string }) => p.id) as string[]);
+  const visibleIds = () => appPage.evaluate(() => {
+    const { plugins, pluginVisibility } = (window as any).applicationState.getSnapshot().context;
+    return (plugins as Array<{ id: string }>).filter((p) => pluginVisibility[p.id] !== false).map((p) => p.id);
+  });
   await expect.poll(visibleIds).toContain('default-setup/threads');
   await expect.poll(visibleIds).not.toContain('e2e-fixture/memos');
 });

@@ -1,4 +1,4 @@
-import type { FeatureRef } from '../ids/addressing.ts';
+import type { FeatureRef } from '../ids/refs.ts';
 import type { Component } from 'vue';
 import type { AnyStateMachine, SnapshotFrom } from 'xstate';
 import type { PluginHotkeyDefinition } from './hotkeys.ts';
@@ -8,14 +8,14 @@ export type RouteComponents = Record<RouteName, Component>;
 
 /**
  * A pack's plugin module, as its author writes it. It has no id: the plugin is registered at its
- * feature's address, `<packId>/<featureId>`; pack code opens it by name (`navigateToPlugin` from `#generated/fe`),
+ * feature's ref, `<packId>/<featureId>`; pack code opens it by name (`navigateToPlugin` from `#generated/fe`),
  * and its components reach its actor with `usePlugin()`.
  */
 export type PluginDefinition = Omit<Plugin, 'id'>;
 
-/** A registered plugin: its definition, at its address */
+/** A registered plugin: its definition, at its ref */
 export interface Plugin {
-  /** The plugin's address, `<packId>/<featureId>` (the host's own under `host`) */
+  /** The plugin's ref, `<packId>/<featureId>` (the host's own under `host`) */
   id: FeatureRef;
   label: string;
   isPinned?: boolean;

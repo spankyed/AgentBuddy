@@ -1,7 +1,7 @@
 // A test app: the pack's registered systems under the app's bus core, with a client the test drives.
 import { createActor, type Actor, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { bus as busRef, createBusMachine } from '@abuddy/host/bus';
-import { resolveName } from '@abuddy/sdk/ids';
+import { resolveRegistered } from '@abuddy/sdk/ids';
 import type { PackBootHooks } from '@abuddy/sdk/framework';
 import type { Message } from '@abuddy/sdk/events';
 import { testRootEvents } from '@abuddy/sdk/testing';
@@ -170,27 +170,16 @@ function shutDownPacks(): void {
   if (failures.length > 0) throw new Error(`A pack's boot.onShutdown failed when the test app stopped:\n  ${failures.join('\n  ')}`);
 }
 
-/**
- * The registered system a name addresses, as `sendToSystem` names it: a dependency's (or any pack's) system as
- * `<packId>/<featureId>`, the pack's own by feature id.
- */
-function resolveSystemId(name: string, registered: ReadonlyMap<string, AnyStateMachine>): string {
-  const id = resolveName(name, packId);
-  if (registered.has(id)) return id;
-  throw new Error(`No registered system is named "${name}" (it would be "${id}"). Registered: ${[...registered.keys()].join(', ') || 'none'} (name the pack's own systems by feature id and a dependency's as "<packId>/<featureId>"; pass the pack's registration to setupPackTests)`);
-}
+/** The registered system a name stands for, as the pack under test's `sendToSystem` resolves it */
+const resolveSystemId = (name: string, registered: ReadonlyMap<string, AnyStateMachine>): string =>
+  resolveRegistered('system', name, { packId, registered: [...registered.keys()] });
 
 /**
- * The registered plugin a name addresses, as the pack under test's own `sendToPlugin` resolves it: a dependency's
- * (or the host's) as `<packId>/<featureId>`, the pack's own by feature id. A name no plugin is registered under
- * throws at once, rather than leaving a wait for its events to time out.
+ * The registered plugin a name stands for, as the pack under test's own `sendToPlugin` resolves it. A name no
+ * plugin is registered under throws at once, rather than leaving a wait for its events to time out.
  */
-function resolvePluginId(name: string): string {
-  const id = resolveName(name, packId);
-  const registered = [...packs().getPluginEventValidationMap().keys()];
-  if (registered.includes(id)) return id;
-  throw new Error(`No registered plugin is named "${name}" (it would be "${id}"). Registered: ${registered.join(', ') || 'none'} (name the pack's own plugins by feature id and another pack's as "<packId>/<featureId>")`);
-}
+const resolvePluginId = (name: string): string =>
+  resolveRegistered('plugin', name, { packId, registered: [...packs().getPluginEventValidationMap().keys()] });
 
 /** One event loop turn, after zero-delay timers already queued (xstate's `raise(…, { delay: 0 })`) */
 const macrotask = () => new Promise<void>((resolve) => setTimeout(resolve, 0));

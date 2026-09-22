@@ -10,8 +10,8 @@ import { createPackRegistry } from '../../src/packs/pack-registration.ts';
 
 const machine = setup({}).createMachine({});
 const registry = createPackRegistry();
-const { registerHostSystem, registerPack, unregisterPack } = registry;
-registerHostSystem('client-events.host', machine, new Set(['PING']));
+const { registerPack, unregisterPack } = registry;
+registerPack({ id: 'host', features: { ping: { system: { machine, receives: ['PING'] } } } });
 registerPack({ id: 'client-events-pack', features: { any: { system: { machine, receives: ['*'] } } } });
 afterAll(() => unregisterPack('client-events-pack'));
 
@@ -30,7 +30,7 @@ function during(run: () => void): { incoming: unknown[]; logs: LogEvent[] } {
 
 describe('receiveClientEvent', () => {
   it('puts an accepted event on the bus and logs it', () => {
-    const message = { to: 'client-events.host', event: { type: 'PING', note: 'hi' } };
+    const message = { to: 'host/ping', event: { type: 'PING', note: 'hi' } };
     const { incoming, logs } = during(() => receiveClientEvent(registry, message));
     expect(incoming).toEqual([message]);
     expect(logs).toEqual([expect.objectContaining({ level: 'info', source: 'app-events', message: '→ Incoming: "PING"', meta: message })]);
@@ -43,13 +43,13 @@ describe('receiveClientEvent', () => {
 
   it('logs arrays over 5 items as their count and first 5', () => {
     const items = [1, 2, 3, 4, 5, 6, 7];
-    const { logs } = during(() => receiveClientEvent(registry, { to: 'client-events.host', event: { type: 'PING', items } }));
-    expect(logs[0].meta).toEqual({ to: 'client-events.host', event: { type: 'PING', items: { count: 7, sample: [1, 2, 3, 4, 5] } } });
+    const { logs } = during(() => receiveClientEvent(registry, { to: 'host/ping', event: { type: 'PING', items } }));
+    expect(logs[0].meta).toEqual({ to: 'host/ping', event: { type: 'PING', items: { count: 7, sample: [1, 2, 3, 4, 5] } } });
   });
 
   it.each([
     [{ to: 'client-events.missing', event: { type: 'PING' } }, 'Unknown system: "client-events.missing"'],
-    [{ to: 'client-events.host', event: { type: 'PONG' } }, 'Unknown event "PONG" for system "client-events.host"'],
+    [{ to: 'host/ping', event: { type: 'PONG' } }, 'Unknown event "PONG" for system "host/ping"'],
   ])('rejects %o, sending and logging nothing', (event, message) => {
     const { incoming, logs } = during(() => {
       expect(() => receiveClientEvent(registry, event)).toThrow(new UnknownClientEventError(message));

@@ -1,4 +1,5 @@
-// The renderer resolves each role to the plugin that plays it; a role another plugin plays stays with it.
+// The renderer resolves each role to the plugin that plays it; a pack claiming a role another plays is refused, as
+// the backend registry refuses it.
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { PluginDefinition } from '@abuddy/sdk/fe';
 import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
@@ -20,8 +21,7 @@ afterEach(() => {
 function register(packId: string, roles: Array<[featureId: string, role: string]>): void {
   registerPackFE({
     id: packId,
-    plugins: Object.fromEntries(roles.map(([featureId]) => [featureId, plugin(featureId)])),
-    designations: Object.fromEntries(roles.map(([featureId, role]) => [role, featureId])),
+    features: Object.fromEntries(roles.map(([featureId, designation]) => [featureId, { plugin: plugin(featureId), designation }])),
   });
   packs.push(packId);
 }
@@ -35,13 +35,11 @@ describe('frontend designations', () => {
     expect(hasDesignation('notebook')).toBe(false);
   });
 
-  it('keep a role with the plugin that played it first', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+  it('refuse a pack claiming a role another plays, leaving nothing of it registered', () => {
     register('first-pack', [['firstNotebook', 'notebook']]);
-    register('second-pack', [['secondNotebook', 'notebook']]);
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('Designation "notebook" of plugin "second-pack/secondNotebook" from pack second-pack ignored'));
+    expect(() => register('second-pack', [['secondNotebook', 'notebook']])).toThrow('Designation collision: role "notebook" — pack "second-pack"');
 
-    unregisterPackFE(packs.pop()!);
     expect(getDesignated('notebook')).toBe('first-pack/firstNotebook');
+    expect(registry.getRegisteredPlugins().map((p) => p.id)).toEqual(['first-pack/firstNotebook']);
   });
 });

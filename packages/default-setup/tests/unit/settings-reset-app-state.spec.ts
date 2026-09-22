@@ -6,7 +6,7 @@ import { tx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
 import { repository } from '@/__generated__/repository';
 import { services } from '@/__generated__/services';
-import { pluginSettingsKey } from '@/features/settings/plugin-settings';
+import { ref } from '@/__generated__/ref';
 
 const APP_STATE_ID = 'AppState-app' as EARS.EntityId;
 const appState = () => untypedQx(APP_STATE_ID).pickOne(['hasOnboarded', 'packVersions', 'packSeedHashes']);
@@ -15,11 +15,11 @@ describe('resetting settings', () => {
   it("keeps the app's own state", () => {
     services.appData.completeOnboarding();
     tx(APP_STATE_ID).update('packVersions', { 'memo-pack': '1.2.0' }).update('packSeedHashes', { 'memo-pack': 'hash-1' });
-    repository.settingsCommands.updateSettings('plugin', pluginSettingsKey('threads'), ['sort'], 'oldest');
+    repository.settingsCommands.updateSettings('plugin', ref('threads'), ['sort'], 'oldest');
 
     repository.settingsCommands.resetSettings();
 
-    expect(repository.settingsQueries.getPluginSettings(pluginSettingsKey('threads'))).not.toMatchObject({ sort: 'oldest' });
+    expect(repository.settingsQueries.getPluginSettings(ref('threads'))).not.toMatchObject({ sort: 'oldest' });
     expect(appState()).toMatchObject({
       hasOnboarded: true,
       packVersions: { 'memo-pack': '1.2.0' },

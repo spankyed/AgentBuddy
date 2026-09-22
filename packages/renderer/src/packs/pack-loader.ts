@@ -23,12 +23,11 @@ export function loadPackStyles(packId: string, stylesPath: string, packBaseUrl: 
 }
 
 /**
- * What a default export has to declare one of to count as a registration. `defaultPlugin` is deliberately
- * not here: it names one of `plugins`, so an export with only that registers nothing. Tied to the type, so
- * a renamed field is a build failure rather than a warning that stops firing.
+ * What a default export has to declare one of to count as a registration. Tied to the type, so a renamed field is
+ * a build failure rather than a warning that stops firing.
  */
 const REGISTRATION_KEYS = [
-  'plugins', 'steps', 'artifacts', 'blocks', 'tiptapPlugins', 'appExtensions', 'dslTypes',
+  'features', 'steps', 'artifacts', 'blocks', 'tiptapPlugins', 'appExtensions', 'dslTypes',
 ] as const satisfies readonly (keyof PackFERegistration)[];
 
 /** Imports a pack's FE entry: its registration, or null when it exports none. Throws when the import fails. */
@@ -54,7 +53,7 @@ export async function loadPackFEEntry(
   // A module without a default export falls back to its namespace object, which registers
   // nothing; say so instead of loading a pack whose plugins silently never appear. A default
   // export that declares registration fields, even empty ones, is deliberate: the generated
-  // entry of a pack without FE extensions is { plugins: [], defaultPlugin: undefined }.
+  // entry of a pack without FE extensions is { features: {} }.
   const declaresRegistration = REGISTRATION_KEYS.some(key => key in registration);
   if (!mod.default || !declaresRegistration) {
     console.warn(

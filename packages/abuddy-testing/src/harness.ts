@@ -19,8 +19,9 @@ import { afterEach, beforeEach, inject, type RunnerTask, type RunnerTestCase } f
 import { resetTestData as resetSdkTestData, startTestRuntime, takeSystemErrors, addTestSecret, type SeedRuntime, fakeInference, type FakeInference } from '@abuddy/sdk/testing';
 import type { PackRegistryView } from '@abuddy/sdk/runtime';
 import type { PackRegistration } from '@abuddy/sdk/framework';
-import { createPackRegistry, type PackOrigin } from '@abuddy/host/packs';
+import { createPackRegistry, hostRegistration, type PackOrigin } from '@abuddy/host/packs';
 import { appState, HOST_ENTITY_TYPES } from '@abuddy/host/app-state';
+import { APPLICATION_SYSTEM_EVENTS, createApplicationSystem } from '@abuddy/host/bus';
 import { loadDependencyRuntime } from './dependency-runtime.ts';
 import { assertSharedEars } from './shared-ears.ts';
 import { setAppPacks, stopRunningApps } from './app.ts';
@@ -61,6 +62,11 @@ let inTest = false;
 
 /** The test file's registered packs: the pack under test and its dependencies, and any other pack a test registers */
 const registry = createPackRegistry();
+// The app's own features, which a pack's systems may send to: the shell's plugin and system (which keeps the tabs'
+// state and moves keys stored before 0.3.15), and the Packs tab, whose system the harness doesn't run
+registry.registerPack(hostRegistration({
+  application: { machine: createApplicationSystem(registry), receives: APPLICATION_SYSTEM_EVENTS },
+}));
 setAppPacks(registry);
 
 /** The registered packs the harness binds, with the current test's mocked services over the registered ones */

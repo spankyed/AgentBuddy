@@ -14,7 +14,8 @@ import { installedPacks, type InstalledPack } from '../pack-discovery.ts';
 import { checkForUpdates } from '../pack-updater.ts';
 import { teardownPack, activatePack } from './lifecycle.ts';
 import { activationProblem } from './activation-outcome.ts';
-import { HOST_PACK_ID, resolveName } from '@abuddy/sdk/ids';
+import { HOST } from '../../host-refs.ts';
+import { type OutgoingPacksEvents } from '../host-pack.ts';
 
 export type { PackInfo };
 
@@ -26,50 +27,9 @@ type IncomingPacksEvents =
   | { type: 'CHECK_FOR_UPDATES' }
   | { type: 'GET_INSTALLED_PACKS' }
 
-type OutgoingPacksEvents =
-  | { type: 'PACKS_LIST'; packs: PackInfo[] }
-  | { type: 'PACK_INSTALL_STARTED'; packSlug: string }
-  | { type: 'PACK_INSTALL_COMPLETE'; packSlug: string; packId: string; packName: string; version: string }
-  | { type: 'PACK_INSTALL_FAILED'; packSlug: string; error: string }
-  | { type: 'PACK_UNINSTALL_COMPLETE'; packId: string }
-  | { type: 'PACK_UNINSTALL_FAILED'; packId: string; error: string }
-  | { type: 'PACK_ENABLED_CHANGED'; packId: string; enabled: boolean }
-  | { type: 'PACK_ACTIVATED'; packId: string }
-  | { type: 'PACK_DEACTIVATED'; packId: string }
-  | { type: 'PACK_UPDATE_COMPLETE'; packId: string; version: string }
-  | { type: 'PACK_UPDATE_FAILED'; packId: string; error: string }
-
 export const packsSpec = defineSystem<IncomingPacksEvents, OutgoingPacksEvents>();
 /** The host `packs` feature's ref, which its system and plugin both run under */
-export const packs = resolveName('packs', HOST_PACK_ID);
-
-/**
- * The event types the `packs` plugin receives, as a value the app can check a send against — the same
- * problem `HOST_PLUGIN_EVENT_TYPES` solves for `application`, and solved here because the union lives
- * here. It is registered with `registerHostPlugin`, not added to `HostPluginEvents`, because that map
- * is what a pack may name in `sendsTo`: these are the host's to send, and no pack's.
- *
- * The check below fails to compile when the two drift, so adding an outgoing event without listing it
- * here is not possible.
- */
-export const PACKS_PLUGIN_EVENT_TYPES = [
-  'PACKS_LIST',
-  'PACK_INSTALL_STARTED',
-  'PACK_INSTALL_COMPLETE',
-  'PACK_INSTALL_FAILED',
-  'PACK_UNINSTALL_COMPLETE',
-  'PACK_UNINSTALL_FAILED',
-  'PACK_ENABLED_CHANGED',
-  'PACK_ACTIVATED',
-  'PACK_DEACTIVATED',
-  'PACK_UPDATE_COMPLETE',
-  'PACK_UPDATE_FAILED',
-] as const;
-
-type SameMembers<A extends string, B extends string> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
-type TypeOfEvent<T> = T extends { type: infer K extends string } ? K : never;
-const _packsPluginEventTypesMatch: SameMembers<(typeof PACKS_PLUGIN_EVENT_TYPES)[number], TypeOfEvent<OutgoingPacksEvents>> = true;
-void _packsPluginEventTypesMatch;
+export const packs = HOST.packs;
 
 function readManifest(dir: string): Record<string, any> | null {
   try {

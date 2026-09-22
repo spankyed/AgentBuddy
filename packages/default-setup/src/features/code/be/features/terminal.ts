@@ -5,7 +5,7 @@ import { terminalService } from '../services/terminal'
 import type { TerminalInfo, CodeSettings } from '../types'
 import { repository } from '@/__generated__/repository';
 import { createLogger } from '@abuddy/sdk/logger';
-import { pluginSettingsKey } from '@/features/settings/plugin-settings';
+import { ref } from '@/__generated__/ref';
 
 const logger = createLogger('terminal');
 
@@ -107,7 +107,7 @@ export const terminalSystem = setup({
   },
   actors: {
     restoreTerminalsActor: fromPromise(async () => {
-      const codeSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('code')) as CodeSettings
+      const codeSettings = repository.settingsQueries.getPluginSettings(ref('code')) as CodeSettings
       if (codeSettings?.restoreTerminals === false) {
         logger.info('Terminal restoration disabled by settings')
         return

@@ -14,12 +14,12 @@ import type { HostServices } from '@abuddy/sdk/services';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS, _reservedEntries } from '@abuddy/sdk/types';
-import { HOST_PLUGIN_EVENT_TYPES, PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
+import { PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
 import { resolveName, type FeatureRef } from '@abuddy/sdk/ids';
 import { makePolicy, registerRepository, unregisterRepository, type PartitionPolicy } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { packSeedOrder } from './pack-discovery.ts';
-import { createDefinitionStore, createDesignationStore, createStepStore, createUndoLog, type UndoLog } from './extensions.ts';
+import { addContributions, createDefinitionStore, createDesignationStore, createStepStore, definitions, type Contribution, type UndoLog } from './extensions.ts';
 import { createCommandStore, createSeedHookStore, createSeederStore, createSettingsDefaultsStore, createShutdownHooks } from './backend-extensions.ts';
 import { checkFeatureIds } from './feature-ids.ts';
 
@@ -54,7 +54,7 @@ export function packSystemIds(reg: PackRegistration): FeatureRef[] {
   return systemsOf(reg).filter(({ system }) => !system.early).map(({ ref }) => ref);
 }
 
-/** Role → the address of the feature playing it: its system and its plugin share it */
+/** Role → the ref of the feature playing it: its system and its plugin share it */
 function designationsOf(reg: PackRegistration): Record<string, FeatureRef> {
   return Object.fromEntries(featuresOf(reg).flatMap(({ ref, feature }) => (feature.designation ? [[feature.designation, ref]] : [])));
 }
@@ -142,18 +142,11 @@ export interface PackOrigin {
   manifest?: PackManifest;
 }
 
-/** The registered packs, and the app's host systems and shutdown hooks */
+/** The registered packs, the host's own (`hostRegistration`) among them, and their shutdown hooks */
 export interface PackRegistry extends PackRegistryView {
   /** Registers a pack; throws on a collision, registering none of it */
   registerPack(pack: PackRegistration, origin?: PackOrigin): void;
   unregisterPack(packId: string): void;
-  registerHostSystem(id: string, machine: AnyStateMachine, events: Set<string>): void;
-  /**
-   * Declares a plugin the host owns and the event types it receives, so the host's own systems are
-   * checked like a pack's. Separate from `HOST_PLUGIN_EVENT_TYPES`, which is the subset a pack may
-   * name in `sendsTo`: a plugin registered here is the host's to send to and no pack's.
-   */
-  registerHostPlugin(pluginId: string, types: Iterable<string>): void;
   /**
    * Notes that a pack is being replaced, so the plugins it owns are expected to be missing until its
    * replacement registers. Cleared when the pack registers again, or is torn down for good.
@@ -170,7 +163,7 @@ export interface PackRegistry extends PackRegistryView {
   getRegisteredSystems(): Map<string, AnyStateMachine>;
   /** The registered packs' early systems (`system.early`), which the app starts before hydration and outside the bus */
   getEarlySystems(): Array<{ id: FeatureRef; machine: AnyStateMachine }>;
-  /** The addresses of a registered pack's systems, `<packId>/<featureId>` */
+  /** The refs of a registered pack's systems, `<packId>/<featureId>` */
   getRegisteredPackSystemIds(packId: string): string[];
   /**
    * Each registered system's id → the incoming event types it accepts (`*` accepts any). Cached until a
@@ -249,8 +242,6 @@ export function createPackRegistry(): PackRegistry {
   const registrations = new Map<string, PackRegistration>();
   /** Where each registered pack came from. Same keys as `registrations`, so it comes and goes with them */
   const origins = new Map<string, PackOrigin>();
-  const hostSystems = new Map<string, { machine: AnyStateMachine; events: Set<string> }>();
-  const hostPlugins = new Map<string, Set<string>>();
   /** Pack id → the plugins it owned when it was torn down to be replaced (an update's download window) */
   const replacingPacks = new Map<string, Set<string>>();
   const designations = createDesignationStore();
@@ -334,7 +325,7 @@ export function createPackRegistry(): PackRegistry {
    * the `add` did rather than re-reading the registration, because a pack refused for a step collision must
    * not unregister the step it collided with.
    */
-  const contributions: ReadonlyArray<(reg: PackRegistration, undo: (fn: () => void) => void) => void> = [
+  const contributions: ReadonlyArray<Contribution<PackRegistration>> = [
     // Into the installed engine (the app's), before anything that may use them
     (reg, undo) => {
       for (const [name, repo] of Object.entries(reg.repositories ?? {})) {
@@ -342,15 +333,9 @@ export function createPackRegistry(): PackRegistry {
         undo(() => unregisterRepository(name));
       }
     },
-    (reg, undo) => {
-      for (const step of reg.steps ?? []) { steps.register(step, reg.id); undo(() => steps.unregister(step.type, reg.id)); }
-    },
-    (reg, undo) => {
-      for (const art of reg.artifacts ?? []) { artifacts.register(art, reg.id); undo(() => artifacts.unregister(art.type, reg.id)); }
-    },
-    (reg, undo) => {
-      for (const block of reg.blocks ?? []) { blocks.register(block, reg.id); undo(() => blocks.unregister(block.type, reg.id)); }
-    },
+    definitions(steps, (reg) => reg.steps),
+    definitions(artifacts, (reg) => reg.artifacts),
+    definitions(blocks, (reg) => reg.blocks),
     (reg, undo) => {
       // Registered one entity at a time and refused the same way, so the undo is in place before the first
       undo(() => seedHooks.unregisterAll(reg.id));
@@ -423,14 +408,14 @@ export function createPackRegistry(): PackRegistry {
     replacingPacks.delete(registration.id);
     changed();
 
-    const undos = createUndoLog();
+    let undos: UndoLog;
     try {
-      for (const add of contributions) add(registration, undos.record);
+      // Only what this call registered comes back out: a pack refused for a step collision must not unregister the
+      // step it collided with
+      undos = addContributions(registration, contributions);
     } catch (err) {
-      // Only what this call registered: a pack refused for a step collision must not unregister the step
-      // it collided with. A refused pack leaves nothing of itself behind, its origin included — one left
-      // here would name a pack the app never registered as one it loaded.
-      undos.undoAll();
+      // A refused pack leaves nothing of itself behind, its origin included — one left here would name a pack the
+      // app never registered as one it loaded
       registrations.delete(registration.id);
       origins.delete(registration.id);
       changed();
@@ -464,9 +449,6 @@ export function createPackRegistry(): PackRegistry {
 
   function buildEventValidationMap(): Map<string, Set<string>> {
     const map = new Map<string, Set<string>>();
-    for (const [id, entry] of hostSystems) {
-      map.set(id, entry.events);
-    }
     for (const reg of registrations.values()) {
       for (const { ref, system } of systemsOf(reg)) map.set(ref, new Set(system.receives));
     }
@@ -477,18 +459,9 @@ export function createPackRegistry(): PackRegistry {
     return featuresOf(reg).filter(({ feature }) => feature.plugin).map(({ ref }) => ref);
   }
 
-  /** Every plugin the host owns: those a pack may `sendsTo`, and those only the host sends to */
-  function hostPluginEventTypes(): Map<string, Set<string>> {
-    const map = new Map<string, Set<string>>();
-    // Pinned to HostPluginEvents by a compile-time check in @abuddy/sdk/events
-    for (const [pluginId, types] of Object.entries(HOST_PLUGIN_EVENT_TYPES)) map.set(pluginId, new Set<string>(types));
-    for (const [pluginId, types] of hostPlugins) map.set(pluginId, new Set(types));
-    return map;
-  }
-
   function buildPluginEventValidationMap(): Map<string, PluginEventTypes> {
-    const map = new Map<string, PluginEventTypes>(hostPluginEventTypes());
-    // Each pack's plugins are under its own address, so no pack reaches another's entry or the host's
+    const map = new Map<string, PluginEventTypes>();
+    // Each pack's plugins are under its own refs, the host's included, so no pack reaches another's entry
     for (const reg of registrations.values()) {
       for (const { ref, feature } of featuresOf(reg)) {
         if (feature.plugin) map.set(ref, new Set([...feature.plugin.receives, ...PLUGIN_EVENT_TYPES]));
@@ -512,19 +485,6 @@ export function createPackRegistry(): PackRegistry {
     registerPack,
     unregisterPack,
 
-    registerHostSystem(id, machine, events) {
-      if (hostSystems.has(id)) {
-        throw new Error(`Host system "${id}" is already registered`);
-      }
-      hostSystems.set(id, { machine, events });
-      eventValidationMap = null;
-    },
-
-    registerHostPlugin(pluginId, types) {
-      hostPlugins.set(pluginId, new Set(types));
-      pluginEventValidationMap = null;
-    },
-
     markPackReplacing(packId) {
       const reg = registrations.get(packId);
       if (reg) replacingPacks.set(packId, new Set(ownedPluginIds(reg)));
@@ -541,7 +501,6 @@ export function createPackRegistry(): PackRegistry {
 
     getRegisteredSystems() {
       const systems = new Map<string, AnyStateMachine>();
-      for (const [id, entry] of hostSystems) systems.set(id, entry.machine);
       for (const reg of registrations.values()) {
         for (const { ref, system } of systemsOf(reg)) if (!system.early) systems.set(ref, system.machine);
       }
@@ -563,7 +522,7 @@ export function createPackRegistry(): PackRegistry {
         .map((o) => ({ manifest: o.manifest!, dir: o.dir, migrations: registrations.get(o.id)?.migrations }));
     },
 
-    // Both maps are keyed by what the registry registered: pack features' addresses and the host's bare ids
+    // Both maps are keyed by the registered features' refs, the host's included
     systemIds: () => [...(eventValidationMap ??= buildEventValidationMap()).keys()] as FeatureRef[],
     pluginIds: () => [...(pluginEventValidationMap ??= buildPluginEventValidationMap()).keys()] as FeatureRef[],
 

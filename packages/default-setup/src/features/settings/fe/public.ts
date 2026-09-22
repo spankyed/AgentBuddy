@@ -3,10 +3,11 @@
 import { onUnmounted, ref, type Ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { pluginHandle } from '@/features/plugin-handle'
-import { pluginSettings, pluginSettingsKey } from '@/features/settings/plugin-settings'
+import { pluginSettings } from '@/features/settings/plugin-settings'
 import type { GeneralSettings } from '@/__generated__/types'
 import type { PluginName } from '@/__generated__/fe'
 import type { SettingsState, SettingsTarget } from './state'
+import { ref as featureRef } from '@/__generated__/ref'
 
 /** The settings plugin's actor, which its machine binds as it starts */
 export const settingsPlugin = pluginHandle<SettingsState>('settings')
@@ -28,7 +29,7 @@ export function useGeneralSettings<K extends keyof GeneralSettings>(section: K):
 
 /** Changes a plugin's setting at `path` (the whole slice with an empty path) */
 export function updatePluginSettings(name: PluginName, path: string[], value: unknown): void {
-  settingsPlugin.get().send({ type: 'SETTINGS.UPDATE', entityType: 'plugin', label: pluginSettingsKey(name), path, value })
+  settingsPlugin.get().send({ type: 'SETTINGS.UPDATE', entityType: 'plugin', label: featureRef(name), path, value })
 }
 
 /** Changes a general setting at `path` in `section` (the whole section with an empty path) */
@@ -51,7 +52,7 @@ export function useSettingsSaveStatus() {
     }
   }
 
-  /** A plugin's settings are named by their key (`pluginSettingsKey(name)`, or a registered plugin's ref) */
+  /** A plugin's settings are named by their key (`featureRef(name)`, or a registered plugin's ref) */
   const updateSettings = (params: SettingsTarget & { path: string[]; value: unknown }) => {
     setSaveStatus('saving')
     settingsPlugin.get().send({ type: 'SETTINGS.UPDATE', ...params })

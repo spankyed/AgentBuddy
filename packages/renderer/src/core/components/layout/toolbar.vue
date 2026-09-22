@@ -94,7 +94,7 @@ const isVisible = (id: string) => pluginVisibility.value?.[id] !== false;
 
 const togglePluginVisibility = (id: string) => {
   if (id === getDesignated('settings')) return;
-  applicationState.send({ type: 'SET_PLUGIN_VISIBILITY', pluginId: id, visible: !isVisible(id) });
+  applicationState.send({ type: 'SET_PLUGIN_VISIBILITY', plugin: id, visible: !isVisible(id) });
 };
 
 const allPlugins = useSelector(applicationState, (state) => state.context.plugins);

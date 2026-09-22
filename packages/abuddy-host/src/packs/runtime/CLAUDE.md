@@ -63,7 +63,7 @@ In `packages/abuddy-host/src/packs/` (`@abuddy/host/packs`):
 | File | Purpose |
 |------|---------|
 | `pack-discovery.ts` | `discoverBuiltInPacks`, `discoverPacks`, `enabledExternalPacks`, `installedPacks` |
-| `pack-registration.ts` | `createPackRegistry()`, the registered packs as an instance: `registerPack`/`unregisterPack`, `registerHostSystem`, boot hooks, migrations, EARS policy, extensions, shutdown hooks (`registerShutdownHook`, `runShutdownHooks`, `runShutdownHooksForKey`, `removeShutdownHooksForKey`), `getEventValidationMap()` (what `bus.send` accepts, cached until a registration changes), and the lookups the SDK reads once it's bound (`PackRegistryView`). Collision detection with rollback |
+| `pack-registration.ts` | `createPackRegistry()`, the registered packs as an instance: `registerPack`/`unregisterPack` (the host's own features too, `hostRegistration`), boot hooks, migrations, EARS policy, extensions, shutdown hooks (`registerShutdownHook`, `runShutdownHooks`, `runShutdownHooksForKey`, `removeShutdownHooksForKey`), `getEventValidationMap()` (what `bus.send` accepts, cached until a registration changes), and the lookups the SDK reads once it's bound (`PackRegistryView`). Collision detection with rollback |
 | `extensions.ts`, `backend-extensions.ts` | The stores a registry keeps: definitions by type (steps merge facet by facet), designations, seed hooks, seeders, feature settings defaults, commands, shutdown hooks |
 | `installed-packs.ts` | `installed-packs.json` CRUD |
 | `module-bridge.ts` | `withModuleBridge()` |
@@ -83,7 +83,7 @@ The API's `core/router/packs-router.ts` serves `packs.loaded` from `getLoadedPac
                                      (@abuddy/ears/lmdb) with its partitionPolicy, createEarsEngine({ persistence: store.sink }),
                                      bindHost(createHostRuntime({ ..., packs })), which installs the engine's query face
                                      and binds the registry for the SDK's lookups; every step below works on it
-1. registerHostSystem('packs')     — the host packs system, createPacksSystem(registry)
+1. registerPack(hostRegistration) — the app's own features as the pack `host`: the application and packs systems and plugins
 2. prepareHostDataDirs()           — record host version; recover staging in packs/ and host-packs/
 3. forwardSecretsChanges()         — settings system hears of API key changes (@abuddy/host/secrets)
 4. loadBuiltInPacks() (async)      — with the bundled loaders; started, runs while:

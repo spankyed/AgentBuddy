@@ -22,6 +22,13 @@ export const PACK_ID_PATTERN: RegExp;
 export function resolveName(name: string, packId?: string): FeatureRef;
 
 // @public
+export function resolveRegistered(kind: 'system' | 'plugin', name: string, input: {
+    packId?: string;
+    registered: readonly string[];
+    form?: string;
+}): FeatureRef;
+
+// @public
 export function splitRef(ref: string): {
     packId: string;
     featureId: string;

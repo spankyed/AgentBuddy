@@ -3,12 +3,13 @@ import { describe, expect, it } from 'vitest';
 import { setup } from 'xstate';
 import type { PackFeature } from '@abuddy/sdk/framework';
 import { createPackRegistry } from '../../src/packs/pack-registration.ts';
+import { hostRegistration, PACKS_PLUGIN_EVENT_TYPES } from '../../src/packs/host-pack.ts';
 import { PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
 
 /** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */
 const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);
 
-const { getEventValidationMap, getRegisteredSystems, getEarlySystems, registerHostSystem, registerPack, unregisterPack } = createPackRegistry();
+const { getEventValidationMap, getRegisteredSystems, getEarlySystems, registerPack, unregisterPack } = createPackRegistry();
 
 const machine = setup({}).createMachine({});
 
@@ -45,21 +46,17 @@ describe('getEventValidationMap', () => {
       .toThrow(`Pack "stray-pack": feature "other-pack/logs" isn't a feature id`);
   });
 
-  it('follows host systems registering', () => {
-    expect(getEventValidationMap().has('validation-host')).toBe(false);
-    registerHostSystem('validation-host', machine, new Set(['HELLO']));
-    expect(getEventValidationMap().get('validation-host')).toEqual(new Set(['HELLO']));
+  // The host is a pack like any other: its features' systems are checked the same way
+  it("lists the host's systems once it registers", () => {
+    expect(getEventValidationMap().has('host/application')).toBe(false);
+    registerPack(hostRegistration({ application: { machine, receives: ['HELLO'] } }));
+    expect(getEventValidationMap().get('host/application')).toEqual(new Set(['HELLO']));
+    unregisterPack('host');
   });
 });
 
 describe('getPluginEventValidationMap', () => {
   const registry = createPackRegistry();
-
-  it("starts with the host's own plugins, which no pack declares", () => {
-    expect(registry.getPluginEventValidationMap().get('host/application')).toEqual(
-      new Set(['CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED']),
-    );
-  });
 
   it('follows packs registering and unregistering, with no manual invalidation', () => {
     expect(registry.getPluginEventValidationMap().has('memo-pack/memos')).toBe(false);
@@ -145,18 +142,19 @@ describe('a pack registering', () => {
 });
 
 describe('a host plugin', () => {
-  it('is checked with the event types the host registers for it', () => {
+  it('is checked with the event types its registration declares', () => {
     const registry = createPackRegistry();
-    registry.registerHostPlugin('host/packs', ['PACKS_LIST', 'PACK_ACTIVATED']);
-    expect(registry.getPluginEventValidationMap().get('host/packs')).toEqual(new Set(['PACKS_LIST', 'PACK_ACTIVATED']));
+    registry.registerPack(hostRegistration());
+    expect(registry.getPluginEventValidationMap().get('host/packs')).toEqual(receives(...PACKS_PLUGIN_EVENT_TYPES));
+    expect(registry.getPluginEventValidationMap().get('host/application')).toEqual(receives('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED'));
   });
 
   // The host is the pack `host`, so a pack with a `packs` feature of its own is not a contest
   it("keeps its ref whatever a pack names its own feature", () => {
     const registry = createPackRegistry();
     registry.registerPack({ id: 'owner-pack', features: { packs: plugin(['NOT_THE_HOSTS']) } });
-    registry.registerHostPlugin('host/packs', ['PACKS_LIST']);
-    expect(registry.getPluginEventValidationMap().get('host/packs')).toEqual(new Set(['PACKS_LIST']));
+    registry.registerPack(hostRegistration());
+    expect(registry.getPluginEventValidationMap().get('host/packs')).toEqual(receives(...PACKS_PLUGIN_EVENT_TYPES));
     expect(registry.getPluginEventValidationMap().get('owner-pack/packs')).toEqual(receives('NOT_THE_HOSTS'));
   });
 });

@@ -1,7 +1,7 @@
 // Before 0.3.15 every plugin ran under its bare feature id, and the built-in pack's settings row stored, under it,
 // each plugin's settings and, in `plugins._meta`, the app shell's state: which plugins' tabs show and the plugin last
 // open. The host's 0.3.15 app migration moves the shell's state into AppState, each id onto its plugin's ref, and
-// the host's and external packs' plugin settings onto their refs; the built-in packs' slices are theirs to move.
+// every pack's plugin settings onto their refs.
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { tx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
@@ -10,7 +10,8 @@ import { resetTestData } from '@abuddy/sdk/testing';
 import { registry } from '../packs/runtime/test-host.ts';
 import { appState } from '../../src/app-state/index.ts';
 import { appMigrations } from '../../src/migrations/app/index.ts';
-import { addressShellState, pluginOwners } from '../../src/bus/application-system.ts';
+import { hostRegistration } from '../../src/packs/host-pack.ts';
+import { addressShellState, pluginOwners } from '../../src/packs/plugin-keys.ts';
 
 const SETTINGS_ID = 'Settings-app' as EARS.EntityId;
 
@@ -41,7 +42,7 @@ beforeAll(() => {
   registry.registerPack({ id: 'memo-pack', features: withPlugins('memos', 'board', 'notes') }, origin('memo-pack', false));
   registry.registerPack({ id: 'built-in', features: withPlugins('notes') }, origin('built-in', true));
   // The host's packs plugin, as the API registers it
-  registry.registerHostPlugin('host/packs', []);
+  registry.registerPack(hostRegistration());
 });
 
 beforeEach(() => {
@@ -91,12 +92,13 @@ describe('the 0.3.15 app migration, for plugins', () => {
     }
   });
 
-  it("moves external packs' plugin settings onto their refs, leaves the built-in pack's, and leaves no _meta", () => {
+  // Before any pack's migration reads them: the built-in pack's migrations run after the host's
+  it("moves every pack's plugin settings onto their refs, the built-in pack's included, and leaves no _meta", () => {
     move();
 
     expect(settings()).toEqual({
       general: { application: { openLinksInApp: false } },
-      plugins: { 'memo-pack/memos': { sort: 'newest' }, notes: { fontSize: 14 } },
+      plugins: { 'memo-pack/memos': { sort: 'newest' }, 'built-in/notes': { fontSize: 14 } },
     });
   });
 

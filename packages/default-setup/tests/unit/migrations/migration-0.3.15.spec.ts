@@ -10,7 +10,7 @@ import { migrations } from '../../../src/migrations/index'
 import { repository } from '@/__generated__/repository'
 import { createDefaultSettings } from '@/features/settings/be/repository'
 import { EARS, createEntityWithDefaults } from '@/__generated__/ears'
-import { pluginSettingsKey } from '@/features/settings/plugin-settings'
+import { ref } from '@/__generated__/ref'
 
 /** The migration as the pack registers it, so this fails too if it was never listed */
 const migration = migrations.find((m) => m.target === '0.3.15')!
@@ -46,11 +46,11 @@ describe('the 0.3.15 migration', () => {
 
   it("drops the settings' root flow copies, keeping the plugins' other settings", () => {
     createDefaultSettings()
-    // As 0.3.14 stored them
+    // As 0.3.14 stored them, once the host's 0.3.15 migration moved them onto the plugins' refs
     tx('Settings-app' as SdkEARS.EntityId).update('data', {
       plugins: {
-        flows: { rootFlowId: 'Flow-1', enableFlowPreview: false },
-        brain: { runningRootFlowId: 'Flow-1', inspectEnabled: true },
+        'default-setup/flows': { rootFlowId: 'Flow-1', enableFlowPreview: false },
+        'default-setup/brain': { runningRootFlowId: 'Flow-1', inspectEnabled: true },
       },
     })
 
@@ -91,8 +91,8 @@ describe('the 0.3.15 migration', () => {
     expect(attrs(row.id).seededFields).toEqual({ fields: ['title'], hash: 'kept' })
   })
 
-  const excludedSources = () => (repository.settingsQueries.getPluginSettings(pluginSettingsKey('logs')) as any).excludedSources
-  const setExcludedSources = (value: string[]) => repository.settingsCommands.updateSettings('plugin', pluginSettingsKey('logs'), ['excludedSources'], value)
+  const excludedSources = () => (repository.settingsQueries.getPluginSettings(ref('logs')) as any).excludedSources
+  const setExcludedSources = (value: string[]) => repository.settingsCommands.updateSettings('plugin', ref('logs'), ['excludedSources'], value)
 
   it('hides action logs for a user who hid log-service', () => {
     createDefaultSettings()
@@ -113,88 +113,12 @@ describe('the 0.3.15 migration', () => {
     expect(excludedSources()).toEqual(['brain'])
   })
 
-  // A plugin runs under `<packId>/<featureId>` now. Without this move, the app reads
-  // `plugins['default-setup/threads']` while the user's settings say `plugins.threads`, and their settings come
-  // back at the defaults. The sidebar's state (`_meta`) is the host's, moved by its own 0.3.15 migration.
-  describe("moving the plugin settings onto their plugins' refs", () => {
-    /** The stored plugin settings as 0.3.14 wrote them */
-    const storeBareSettings = () => {
-      createDefaultSettings()
-      tx('Settings-app' as SdkEARS.EntityId).update('data', {
-        plugins: {
-          notes: { sortBy: 'created' },
-          logs: { excludedSources: ['brain'] },
-        },
-      })
-    }
-
-    it("moves the user's plugin settings", () => {
-      storeBareSettings()
-
-      migration.up()
-
-      const plugins = stored().plugins as Record<string, any>
-      expect(plugins['default-setup/notes']).toEqual({ sortBy: 'created' })
-      expect(plugins).not.toHaveProperty('notes')
-      expect(plugins).not.toHaveProperty('logs')
-    })
-
-    // It runs again on every development boot and after a reset
-    it('is idempotent: a second run moves nothing and changes nothing', () => {
-      storeBareSettings()
-
-      migration.up()
-      const afterFirst = structuredClone(stored())
-      migration.up()
-
-      expect(stored()).toEqual(afterFirst)
-    })
-
-    // Upgrading from 0.3.13, 0.3.14 runs first and writes `baseDirectory` to the address, while the rest of the
-    // user's code settings are still under `code`: both have to survive the move
-    it('keeps the rest of a slice an older migration already wrote to the address', () => {
-      createDefaultSettings()
-      tx('Settings-app' as SdkEARS.EntityId).update('data', {
-        plugins: { code: { lastDirectoryOpened: '/work', cliPaths: { gh: '/opt/bin/gh' } } },
-      })
-
-      migrations.find((m) => m.target === '0.3.14')!.up()
-      migration.up()
-
-      const plugins = stored().plugins as Record<string, any>
-      expect(plugins['default-setup/code']).toEqual({ baseDirectory: '/work', cliPaths: { gh: '/opt/bin/gh' } })
-      expect(plugins).not.toHaveProperty('code')
-    })
-
-    it("keeps what the user has under the ref over the bare key, and drops the bare one", () => {
-      createDefaultSettings()
-      tx('Settings-app' as SdkEARS.EntityId).update('data', {
-        plugins: { notes: { sortBy: 'stale' }, 'default-setup/notes': { sortBy: 'current' } },
-      })
-
-      migration.up()
-
-      const plugins = stored().plugins as Record<string, any>
-      expect(plugins['default-setup/notes']).toEqual({ sortBy: 'current' })
-      expect(plugins).not.toHaveProperty('notes')
-    })
-
-    it('does nothing for a user who changed no plugin settings', () => {
-      createDefaultSettings()
-      tx('Settings-app' as SdkEARS.EntityId).update('data', { general: { personal: { name: 'Ada' } } })
-
-      migration.up()
-
-      expect(stored()).not.toHaveProperty('plugins')
-    })
-  })
-
   // 0.3.14 copied both settings to their new keys but left the old ones stored
   describe('the keys 0.3.14 moved but left behind', () => {
     it("drops the code plugin's lastDirectoryOpened, keeping the baseDirectory the user has", () => {
       createDefaultSettings()
       tx('Settings-app' as SdkEARS.EntityId).update('data', {
-        plugins: { code: { lastDirectoryOpened: '/old', baseDirectory: '/chosen' } },
+        plugins: { 'default-setup/code': { lastDirectoryOpened: '/old', baseDirectory: '/chosen' } },
       })
 
       migration.up()
@@ -205,7 +129,7 @@ describe('the 0.3.15 migration', () => {
 
     it('copies lastDirectoryOpened to baseDirectory when the user has none stored', () => {
       createDefaultSettings()
-      tx('Settings-app' as SdkEARS.EntityId).update('data', { plugins: { code: { lastDirectoryOpened: '/work' } } })
+      tx('Settings-app' as SdkEARS.EntityId).update('data', { plugins: { 'default-setup/code': { lastDirectoryOpened: '/work' } } })
 
       migration.up()
 
@@ -224,7 +148,7 @@ describe('the 0.3.15 migration', () => {
       createDefaultSettings()
       tx('Settings-app' as SdkEARS.EntityId).update('data', {
         general: { application: { openLinksInApp: false } },
-        plugins: { browser: { openLinksInApp: true } },
+        plugins: { 'default-setup/browser': { openLinksInApp: true } },
       })
 
       migration.up()

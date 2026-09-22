@@ -1,7 +1,7 @@
 // The registered packs in unit tests that run without an app: a plain in-memory stand-in tests fill directly.
 // startTestRuntime binds it over the registry it's given (the harness's), so what a test puts here is found first.
 import type { PackRegistryView } from '../runtime/packs-view.ts';
-import type { FeatureRef } from '../ids/addressing.ts';
+import type { FeatureRef } from '../ids/refs.ts';
 import type { StepDefinition } from '../steps/types.ts';
 import { _mergeStepDefinitions } from '../steps/merge.ts';
 import type { ArtifactDefinition } from '../artifacts/types.ts';
@@ -78,7 +78,7 @@ function stepsWithOwn(registered: readonly StepDefinition[] = []): StepDefinitio
 /** The view `startTestRuntime` binds: `testPacks`, then the registry it was given */
 export function testPacksView(registered?: PackRegistryView): PackRegistryView {
   return {
-    // A test names a role's id as it likes; it stands for an address here
+    // A test names a role's id as it likes; it stands for a ref here
     designation: (role) => (testPacks.designations.get(role) as FeatureRef | undefined) ?? registered?.designation(role),
     step: (type) => {
       const own = testPacks.steps.get(type);

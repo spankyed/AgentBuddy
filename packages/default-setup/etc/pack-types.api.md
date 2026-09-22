@@ -8,7 +8,7 @@ import * as _abuddy_sdk from '@abuddy/sdk';
 import { ActionEntity, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes } from '@abuddy/sdk';
 import { ArtifactItem } from '@abuddy/sdk/artifacts';
 import * as _abuddy_sdk_build from '@abuddy/sdk/build';
-import { HostPluginEvents, IncomingEventsOf, OutgoingEventsOf, TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
+import { HostPluginEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, Qualified, TypedSendToPlugin, TypedSendToSystem, WithOwnNames } from '@abuddy/sdk/events';
 import { ModelCatalogEntry, ModelId } from '@abuddy/sdk/models';
 import * as _abuddy_sdk_repositories from '@abuddy/sdk/repositories';
 import { FlowEdge } from '@abuddy/sdk/repositories';
@@ -2856,12 +2856,8 @@ type PackEmitter = Omit<HostServices['emitter'], 'sendToPlugin' | 'sendToSystem'
     sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;
 };
 
-/**
- * Every plugin this pack's systems can send to: its own, and the dependency and host plugins a
- * `sendsTo` names. Those keep the events their owner declares they receive — a pack widens only its
- * own plugins. A plugin id this pack also uses types as its own plugin.
- */
-type PackEvents = OwnPackEvents & Pick<HostPluginEvents, 'host/application'>;
+/** The plugins this pack's code sends to: `QualifiedPluginEvents`, its own also by feature id */
+type PackEvents = WithOwnNames<'default-setup', QualifiedPluginEvents>;
 
 /**
  * Every entity shape this pack can read: the SDK's, its own and its dependencies'. Node is the union of
@@ -2976,13 +2972,6 @@ interface PluginSettings {
     [pluginRef: string]: any;
 }
 
-/**
- * The key a plugin's settings are stored under: its ref, `<packId>/<featureId>`. The settings store and the settings
- * service take only keys, whoever calls them, so a bare name can't be read in one pack's context and written in
- * another's; a name resolves where it is written (`pluginSettingsKey`), and actions write the ref itself.
- */
-type PluginSettingsKey = `${string}/${string}`;
-
 type Predicate = {
     key: string;
     operator: BinaryOperator;
@@ -3027,17 +3016,14 @@ interface PromptsConnectedData {
 }
 
 /**
- * The plugins actions send to (`services.emitter`): every pack's named `<pack>/<feature>`, this pack's
- * own and the host's (`host/<feature>`) too.
+ * Every plugin this pack's systems can send to, by ref: its own, and the dependency and host plugins a `sendsTo`
+ * names. Those keep the events their owner declares they receive — a pack widens only its own plugins. Actions
+ * (`services.emitter`) send with it.
  */
-type QualifiedPluginEvents = {
-    [K in keyof OwnPackEvents & string as `default-setup/${K}`]: OwnPackEvents[K];
-} & Pick<HostPluginEvents, 'host/application'>;
+type QualifiedPluginEvents = Qualified<'default-setup', OwnPackEvents> & Pick<HostPluginEvents, 'host/application'>;
 
-/** The systems actions send to (`services.emitter`), all named `<pack>/<feature>`. */
-type QualifiedSystemEvents = {
-    [K in keyof PackSystemEvents & string as `default-setup/${K}`]: PackSystemEvents[K];
-};
+/** Every system this pack's code can send to, by ref: its own, its dependencies' and the host's. */
+type QualifiedSystemEvents = Qualified<'default-setup', PackSystemEvents> & HostSystemEvents;
 
 /**
  * High-level streaming conversation API.
@@ -3427,7 +3413,7 @@ declare class SettingsService {
      * @param plugin - The plugin's ref, `<packId>/<featureId>` (`'default-setup/threads'`): whoever calls, a bare
      * name would be read as this pack's, so it throws
      */
-    getPluginSettings<T = any>(plugin: PluginSettingsKey): T;
+    getPluginSettings<T = any>(plugin: `${string}/${string}`): T;
     /**
      * Get all general settings
      */
@@ -3438,7 +3424,7 @@ declare class SettingsService {
      * @param path - Path to the setting property (e.g., ['hotkeys', 'openTerminal'])
      * @param value - The new value
      */
-    updatePluginSetting(plugin: PluginSettingsKey, path: string[], value: any): void;
+    updatePluginSetting(plugin: `${string}/${string}`, path: string[], value: any): void;
 }
 
 type Simplify<T> = {
@@ -4693,13 +4679,6 @@ declare const settingsCommands: {
     replaceSettings(data: SettingsData): void;
     /** Removes a stored value (its path in the stored data), so its default applies again */
     removeStored(path: string[]): void;
-    /**
-     * Moves stored settings a bare feature id still holds onto its plugin's ref, once that plugin is registered: a pack
-     * that wasn't loaded when 0.3.15 moved the keys, or one an export from before 0.3.15 brought back. A built-in
-     * pack's keys are left to its migrations, which read some of them bare and may not have run yet. Returns how many
-     * moved.
-     */
-    addressStoredPluginKeys(): number;
     resetSettings: () => void;
 };
 
@@ -4712,8 +4691,8 @@ declare const settingsQueries: {
     getStoredSettings: () => Partial<SettingsData>;
     getGeneralSettings: (label?: string) => any;
     getAssistantSettings: () => AssistantSettings;
-    /** A plugin's settings in effect, by its key (its ref); a bare name throws */
-    getPluginSettings: (plugin: PluginSettingsKey) => any;
+    /** A plugin's settings in effect, by its ref; actions pass it as a string, so a bare name throws */
+    getPluginSettings: (plugin: `${string}/${string}`) => any;
 };
 
 declare const specs: {
@@ -5474,7 +5453,8 @@ declare function updateChatState(threadId: EARS.EntityId, chatState: string): vo
  */
 declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'blockResponse' | 'blocks' | 'compacted' | 'context' | 'forkable' | 'responseTimestamp' | 'status' | 'text'>>): void;
 
-declare function updateSettings(type: 'plugin', label: PluginSettingsKey, path: string[], value: any): void;
+/** A plugin's settings are keyed by its ref, which is checked here: actions call this with a string */
+declare function updateSettings(type: 'plugin', label: `${string}/${string}`, path: string[], value: any): void;
 
 declare function updateSettings(type: SettingsSection, label: string | null, path: string[], value: any): void;
 

@@ -12,7 +12,7 @@ import { exportNotes } from './export-notes';
 import { importNotes } from './import-notes';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { NoteEntity } from '@/features/notes/be/types';
-import { pluginSettingsKey } from '@/features/settings/plugin-settings';
+import { ref } from '@/__generated__/ref';
 
 const logger = createLogger('notes');
 
@@ -61,7 +61,7 @@ export const notesSystem = setup({
   actions: {
     sendNotesConnectedData: ({ system }) => {
       const connectedData = repository.noteQueries.connectedData();
-      const settings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('notes'));
+      const settings = repository.settingsQueries.getPluginSettings(ref('notes'));
       sendToPlugin('notes', {
         type: 'NOTES_CONNECTED',
         data: { ...connectedData, settings },
@@ -404,7 +404,7 @@ export const notesSystem = setup({
 
         // Refresh notes data
         const connectedData = repository.noteQueries.connectedData();
-        const settings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('notes'));
+        const settings = repository.settingsQueries.getPluginSettings(ref('notes'));
         sendToPlugin('notes', {
           type: 'NOTES_CONNECTED',
           data: { ...connectedData, settings },

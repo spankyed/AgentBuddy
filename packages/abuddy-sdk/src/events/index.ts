@@ -3,8 +3,12 @@
 import { boundHost, _isHostBound } from '../runtime/host-runtime.ts';
 import { _isFeHostBound, boundFeHost } from '../runtime/fe-host.ts';
 import { getDesignated } from '../designations/index.ts';
-import { resolveName } from '../ids/addressing.ts';
+import { resolveName, type FeatureRef } from '../ids/refs.ts';
 import type { ApplicationHotkeys } from '../types/index.ts';
+import { eventTypes } from './event-types.ts';
+import type { SystemEvents } from '../framework/define-system.ts';
+
+export { eventTypes, type TypeOfEvent } from './event-types.ts';
 
 /**
  * A message on the bus: the ref of the system or plugin it goes to, and the event exactly as the sender wrote it.
@@ -26,7 +30,18 @@ export type PluginEvents = { [pluginId: string]: { type: string } };
 export type FeatureSettingsUpdated = { type: 'FEATURE_SETTINGS_UPDATED'; settings: unknown };
 
 /** The event types every plugin receives from the app, beside those its pack's systems declare */
-export const PLUGIN_EVENT_TYPES = ['FEATURE_SETTINGS_UPDATED'] as const satisfies readonly FeatureSettingsUpdated['type'][];
+export const PLUGIN_EVENT_TYPES = eventTypes<FeatureSettingsUpdated>()('FEATURE_SETTINGS_UPDATED');
+
+/** `M` keyed `<PackId>/<key>`: a pack's features by their refs */
+export type Qualified<PackId extends string, M> = { [K in keyof M & string as `${PackId}/${K}`]: M[K] };
+
+/**
+ * `M`, keyed by refs, as pack `PackId`'s code names its keys: its own features by feature id (their refs are for
+ * other packs), every other feature by ref
+ */
+export type WithOwnNames<PackId extends string, M> = {
+  [K in keyof M & string as K extends `${PackId}/${infer FeatureId}` ? FeatureId : K]: M[K]
+};
 
 /** System id → the events that system receives. Each pack's `#generated/events` defines its `PackSystemEvents`. */
 export type SystemEventMap = { [systemId: string]: { type: string } };
@@ -88,23 +103,13 @@ export type HostSystemEvents = {
   'host/bus': { type: 'PACK_CHANGED'; packId: string };
 };
 
-type SameMembers<A extends string, B extends string> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
-
 /**
  * The event types each host plugin receives, as a value the app can check a send against and the build can
- * read the host's plugins from: a union of event shapes cannot be enumerated at runtime. A pack's own plugins
- * get this generated from their systems' declared unions; the host's are written here, and the check below
- * fails to compile when they drift from `HostPluginEvents`.
+ * read the host's plugins from. A pack's own plugins get this generated from their systems' specs.
  */
 export const HOST_PLUGIN_EVENT_TYPES = {
-  'host/application': ['CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED'],
-} as const satisfies Record<keyof HostPluginEvents, readonly string[]>;
-
-type TypeOfEvent<T> = T extends { type: infer K extends string } ? K : never;
-const _hostPluginEventTypesMatch: {
-  [K in keyof HostPluginEvents]: SameMembers<(typeof HOST_PLUGIN_EVENT_TYPES)[K][number], TypeOfEvent<HostPluginEvents[K]>>
-} = { 'host/application': true };
-void _hostPluginEventTypesMatch;
+  'host/application': eventTypes<HostPluginEvents['host/application']>()('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED'),
+} satisfies Record<keyof HostPluginEvents, readonly string[]>;
 
 /**
  * Delivers an event to a backend system: in the renderer over its API client, elsewhere onto the bound app's bus.
@@ -145,20 +150,21 @@ export function onIncoming(callback: (message: Message) => void): () => void {
   return boundHost().transport.rootEvents.onIncoming(callback);
 }
 
-/** `sendToPlugin` typed against a plugin event map */
-export type TypedSendToPlugin<M extends PluginEvents> = <P extends keyof M & string>(
+/** `sendToPlugin` typed against a plugin event map; any feature's plugin, by its ref, takes what every plugin does */
+export type TypedSendToPlugin<M extends PluginEvents> = (<P extends keyof M & string>(
   pluginId: P,
   event: OneSend<IsUnion<P>, M[P]['type'], M[P]>,
-) => void;
+) => void) & ((plugin: FeatureRef, event: FeatureSettingsUpdated) => void);
 
 /**
  * `sendToSystem` typed against a system event map; `type` picks the event, so a missing field names it. A role
- * (`{ role: 'brain' }`) names whichever system plays it, which the build can't know, so its event is unchecked.
+ * (`{ role: 'brain' }`) names whichever system plays it, which the build can't know, so its event is unchecked. Any
+ * feature's system, named by its ref, takes the events every system does (`SystemEvents`).
  */
 export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S & string, Type extends S[Id]['type']>(
   systemId: Id,
   event: OneSend<IsUnion<Id> | IsUnion<Type>, Type, { type: Type } & WithoutType<EventsOfType<S[Id], Type>>>,
-) => void) & ((target: { role: string }, event: { type: string; [key: string]: unknown }) => void);
+) => void) & ((target: { role: string }, event: { type: string; [key: string]: unknown }) => void) & ((system: FeatureRef, event: SystemEvents) => void);
 
 /** A pack's typed sends */
 export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
@@ -172,9 +178,9 @@ export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
  * send it has no receiver for.
  */
 export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S> {
-  const address = (name: string): string => resolveName(name, packId);
+  const refOf = (name: string): string => resolveName(name, packId);
   return {
-    sendToPlugin: (name: string, event: { type: string }) => sendToPlugin(address(name), event),
-    sendToSystem: (to: SystemTarget, event: { type: string }) => sendToSystem(typeof to === 'string' ? address(to) : to, event),
+    sendToPlugin: (name: string, event: { type: string }) => sendToPlugin(refOf(name), event),
+    sendToSystem: (to: SystemTarget, event: { type: string }) => sendToSystem(typeof to === 'string' ? refOf(to) : to, event),
   } as unknown as TypedEvents<P, S>;
 }

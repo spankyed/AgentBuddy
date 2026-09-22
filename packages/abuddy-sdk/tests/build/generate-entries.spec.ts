@@ -102,7 +102,8 @@ describe('generated events', () => {
     expect(events).toContain("'actions': __events_actions;");
     expect(events).toContain("'flows': __events_flows | __events_actions;");
     // A host plugin keeps the events the host declares it receives: a pack widens only its own plugins
-    expect(events).toContain("export type PackEvents = OwnPackEvents & Pick<HostPluginEvents, 'host/application'>;");
+    expect(events).toContain("export type QualifiedPluginEvents = Qualified<'demo-pack', OwnPackEvents> & Pick<HostPluginEvents, 'host/application'>;");
+    expect(events).toContain("export type PackEvents = WithOwnNames<'demo-pack', QualifiedPluginEvents>;");
     expect(events).not.toContain("'host/application': __events_actions");
   });
 
@@ -188,7 +189,7 @@ describe('generated events', () => {
 
   it('leaves out a host plugin no sendsTo names', () => {
     const events = generate({ features: [withPlugin(system('actions'))] })['src/__generated__/events.ts'];
-    expect(events).toContain('export type PackEvents = OwnPackEvents;');
+    expect(events).toContain("export type QualifiedPluginEvents = Qualified<'demo-pack', OwnPackEvents>;");
     expect(events).not.toContain('HostPluginEvents');
   });
 
@@ -219,7 +220,7 @@ describe('generated events', () => {
     const events = files['src/__generated__/events.ts'];
     expect(events).toContain("import type { PackEvents as __dep_base_pack_PackEvents } from './deps/base-pack.js';");
     // Only the plugin named, keyed as code names it, with only the events its own pack declares for it
-    expect(events).toContain("export type PackEvents = OwnPackEvents & { [K in keyof Pick<__dep_base_pack_PackEvents, 'threads'> & string as `base-pack/${K}`]: Pick<__dep_base_pack_PackEvents, 'threads'>[K] };");
+    expect(events).toContain("export type QualifiedPluginEvents = Qualified<'demo-pack', OwnPackEvents> & Qualified<'base-pack', Pick<__dep_base_pack_PackEvents, 'threads'>>;");
     expect(files['src/__generated__/deps/base-pack.d.ts']).toContain('export type PackEvents = {};');
     expect(files['src/__generated__/deps/base-pack.d.ts']).toContain('// base-pack@1.0.0 facade types\n');
     expect(_depTypesVersion(files[_depTypesFile('base-pack')], 'base-pack')).toBe('1.0.0');
@@ -231,7 +232,7 @@ describe('generated events', () => {
       { 'base-pack': dependency({ features: [withPlugin(system('threads'))] }) },
     );
     const events = files['src/__generated__/events.ts'];
-    expect(events).toContain('export type PackEvents = OwnPackEvents;');
+    expect(events).toContain("export type QualifiedPluginEvents = Qualified<'demo-pack', OwnPackEvents>;");
     expect(events).not.toContain("import type { PackEvents as __dep_base_pack_PackEvents }");
   });
 
@@ -291,7 +292,8 @@ describe('generated system sends', () => {
     });
     const events = files['src/__generated__/events.ts'];
     expect(events).toContain("export type PackSystemEvents = {\n  'memos': IncomingEventsOf<(typeof __specs)['memos']>;\n};");
-    expect(events).toContain('export type SendableSystemEvents = PackSystemEvents & { [K in keyof __dep_base_pack_PackSystemEvents & string as `base-pack/${K}`]: __dep_base_pack_PackSystemEvents[K] } & ');
+    expect(events).toContain("export type QualifiedSystemEvents = Qualified<'demo-pack', PackSystemEvents> & Qualified<'base-pack', __dep_base_pack_PackSystemEvents> & ");
+    expect(events).toContain("export type SendableSystemEvents = WithOwnNames<'demo-pack', QualifiedSystemEvents>;");
     // No table of names: the sends derive every address from the pack id (@abuddy/sdk/ids)
     expect(events).toContain("defineEvents<PackEvents, SendableSystemEvents>('demo-pack');");
     expect(events).not.toContain('systemIds');
@@ -428,16 +430,15 @@ describe('generated frontend names', () => {
 });
 
 describe('generated frontend entry', () => {
-  // The roles travel in `designations`, each resolved to the address of the plugin that plays it
-  it("names the manifest's designations beside the plugins, and passes each plugin module through untouched", () => {
+  // Keyed by feature, as the backend entry is: each plugin with its feature's role
+  it("keys each plugin by its feature, with the feature's role, passing the plugin module through untouched", () => {
     const files = generate({ features: [
       { id: 'settings', designation: 'settings', plugin: { entry: 'src/settings/plugin' } },
       { id: 'notes', plugin: { entry: 'src/notes/plugin' } },
     ] });
     const fe = files['src/__generated__/pack-entry-fe.ts'];
 
-    expect(fe).toContain("designations: { 'settings': 'settings' },");
-    expect(fe).toContain("plugins: { 'settings': __plugin_settings, 'notes': __plugin_notes },");
+    expect(fe).toContain("  features: {\n    'settings': { plugin: __plugin_settings, designation: 'settings', default: true },\n    'notes': { plugin: __plugin_notes },\n  },");
     expect(fe).toContain("import __plugin_settings from '../settings/plugin.js';");
     expect(fe).not.toContain('_module');
   });
@@ -454,7 +455,9 @@ describe('generated frontend entry', () => {
       { id: 'notes', plugin: { entry: 'src/notes/plugin', default: true } },
     ] });
 
-    expect(files['src/__generated__/pack-entry-fe.ts']).toContain("defaultPlugin: 'notes',");
+    const fe = files['src/__generated__/pack-entry-fe.ts'];
+    expect(fe).toContain("'notes': { plugin: __plugin_notes, default: true },");
+    expect(fe).toContain("'settings': { plugin: __plugin_settings },");
   });
 
   it("falls back to the pack's first plugin when none claims it", () => {
@@ -463,7 +466,7 @@ describe('generated frontend entry', () => {
       { id: 'notes', plugin: { entry: 'src/notes/plugin' } },
     ] });
 
-    expect(files['src/__generated__/pack-entry-fe.ts']).toContain("defaultPlugin: 'settings',");
+    expect(files['src/__generated__/pack-entry-fe.ts']).toContain("'settings': { plugin: __plugin_settings, default: true },");
   });
 });
 
@@ -945,7 +948,7 @@ describe('generated services', () => {
 
   it("types the emitter with the pack's events, naming every system <pack>/<feature>", () => {
     const files = generate({ features: [system('memos')] }, { 'base-pack': dependency({ features: [system('threads')] }, facade()) });
-    expect(files['src/__generated__/events.ts']).toContain('export type QualifiedSystemEvents = { [K in keyof PackSystemEvents & string as `demo-pack/${K}`]: PackSystemEvents[K] } & { [K in keyof __dep_base_pack_PackSystemEvents & string as `base-pack/${K}`]: __dep_base_pack_PackSystemEvents[K] };');
+    expect(files['src/__generated__/events.ts']).toContain("export type QualifiedSystemEvents = Qualified<'demo-pack', PackSystemEvents> & Qualified<'base-pack', __dep_base_pack_PackSystemEvents> & HostSystemEvents;");
     const services = files['src/__generated__/services.ts'];
     expect(services).toContain("import type { QualifiedPluginEvents, QualifiedSystemEvents } from './events.js';");
     expect(services).toContain('  sendToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;\n  sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;');

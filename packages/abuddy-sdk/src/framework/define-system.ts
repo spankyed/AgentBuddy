@@ -1,5 +1,6 @@
 import { safeEvents } from '../helpers/actor-helpers.ts';
 import type { ArrayChanges } from '../utils/change-detection.ts';
+import { eventTypes } from '../events/event-types.ts';
 
 /** The events every system accepts: the app sends them, so no system declares them */
 export type SystemEvents =
@@ -17,11 +18,9 @@ export type SystemEvents =
 
 /**
  * The event types every system accepts, as a value: a send of one to a feature that runs no system is nobody's, and
- * dropped without a warning. The check below fails to compile when it drifts from `SystemEvents`.
+ * dropped without a warning.
  */
-export const SYSTEM_EVENT_TYPES = ['CLIENT_CONNECTED', 'PACK_CHANGED', 'FEATURE_SETTINGS_UPDATED'] as const;
-const _systemEventTypesMatch: [SystemEvents['type']] extends [(typeof SYSTEM_EVENT_TYPES)[number]] ? true : never = true;
-void _systemEventTypesMatch;
+export const SYSTEM_EVENT_TYPES = eventTypes<SystemEvents>()('CLIENT_CONNECTED', 'PACK_CHANGED', 'FEATURE_SETTINGS_UPDATED');
 
 /** The definition object returned by `defineSystem()`. */
 export interface SystemSpec<

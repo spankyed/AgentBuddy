@@ -34,7 +34,7 @@ export interface PackEARS {
   };
 }
 
-/** A feature's backend system, which the app runs at the feature's address, `<packId>/<featureId>` */
+/** A feature's backend system, which the app runs at the feature's ref, `<packId>/<featureId>` */
 export interface PackFeatureSystem {
   machine: AnyStateMachine;
   /** The event types it accepts: its machine's, and those abuddy.json `system.events.incoming` adds (`packSystem`) */

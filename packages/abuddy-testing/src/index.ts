@@ -141,7 +141,7 @@ function getPackManifest(): { id: string; pluginIds: string[] } | null {
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
   _packManifest = {
     id: manifest.id,
-    // The ids the plugins run under: a plugin is addressed `<packId>/<featureId>`, as a system is
+    // The ids the plugins run under: a plugin runs at `<packId>/<featureId>`, as a system does
     pluginIds: (manifest.features ?? [])
       .filter((f: any) => f.plugin)
       .map((f: any) => resolveName(f.id, manifest.id)),
@@ -515,7 +515,7 @@ export function createTest(options: CreateTestOptions = {}) {
         navigate: async (pluginId) => {
           const id0 = resolvePlugin(pluginId);
           await page.evaluate((id) => {
-            (window as any).applicationState.send({ type: 'SELECT_PLUGIN', pluginId: id });
+            (window as any).applicationState.send({ type: 'SELECT_PLUGIN', plugin: id });
           }, id0);
           await page.waitForFunction((id) => {
             const snap = (window as any).applicationState?.getSnapshot();
@@ -528,7 +528,7 @@ export function createTest(options: CreateTestOptions = {}) {
         },
 
         waitForPlugin: async (pluginId, timeout = 30_000) => {
-          // A host plugin is known once the app has any; a pack's registers later, at its address
+          // A host plugin is known once the app has any; a pack's registers later, at its ref
           await page.waitForFunction(() => ((window as any).applicationState?.getSnapshot()?.context?.plugins ?? []).length > 0, null, { timeout });
           const id = resolvePlugin(pluginId);
           await page.waitForFunction((target) =>

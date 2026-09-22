@@ -21,7 +21,6 @@ import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
 import { GitRepository } from './services/git'
 import { GitWatcherService } from './services/gitwatcher'
 import { repository } from '@/__generated__/repository';
-import { pluginSettingsKey } from '@/features/settings/plugin-settings';
 
 // child systems
 import { explorerSystem, type IncomingExplorerEvents, type OutgoingExplorerEvents } from './features/explorer'
@@ -62,6 +61,7 @@ export type OutgoingCodeEvents =
 
 // Import only the type needed for broadcast event
 import type { TerminalInfo, CodeConnectedData, CodeSettings } from './types'
+import { ref } from '@/__generated__/ref';
 
 
 export const codeSpec = defineSystem<IncomingCodeEvents, OutgoingCodeEvents, Context>();
@@ -168,7 +168,7 @@ export const systemMachine = setup({
         // Save to navigation history only when triggered by user navigation
         // (not when applying settings like defaultBaseDirectory)
         if (ev.fromUserNavigation !== false) {
-          repository.settingsCommands.updateSettings('plugin', pluginSettingsKey('code'), ['baseDirectory'], ev.path)
+          repository.settingsCommands.updateSettings('plugin', ref('code'), ['baseDirectory'], ev.path)
         }
         return ev.path
       },
@@ -179,7 +179,7 @@ export const systemMachine = setup({
           context.gitRepository.clearCache()
         }
         const repo = new GitRepository(ev.path)
-        const codeSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('code')) as CodeSettings
+        const codeSettings = repository.settingsQueries.getPluginSettings(ref('code')) as CodeSettings
         repo.setFetchConfig(
           codeSettings?.autoFetchRemote ?? false,
           codeSettings?.autoFetchIntervalSeconds ?? 180
@@ -257,7 +257,7 @@ export const systemMachine = setup({
       child(self, 'codePrompts')?.send({ type: 'CODE_CONNECTED' });
 
       // Get code settings - this will create default settings if they don't exist
-      const codeSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('code')) as CodeSettings;
+      const codeSettings = repository.settingsQueries.getPluginSettings(ref('code')) as CodeSettings;
 
       // Send initial directory state to frontend
       const connectedData: CodeConnectedData = {
@@ -318,7 +318,7 @@ export const systemMachine = setup({
   id: 'code',
   initial: 'idle',
   context: () => {
-    const codeSettings = repository.settingsQueries.getPluginSettings(pluginSettingsKey('code')) as CodeSettings
+    const codeSettings = repository.settingsQueries.getPluginSettings(ref('code')) as CodeSettings
     const projects = (repository.settingsQueries.getGeneralSettings('projects') as any) || []
 
     // Resolve initial directory using priority chain

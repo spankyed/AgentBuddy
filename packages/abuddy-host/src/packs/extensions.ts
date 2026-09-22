@@ -113,3 +113,39 @@ export function createUndoLog() {
 
 /** A registration's undos, as the registry that made it holds them */
 export type UndoLog = ReturnType<typeof createUndoLog>;
+
+/** One kind of what a pack's registration contributes: adds it, recording how to take each part back out */
+export type Contribution<R> = (registration: R, undo: (fn: () => void) => void) => void;
+
+/**
+ * A registration's definitions of one kind (steps, artifacts, blocks) in `store`, owned by its pack; `added` runs
+ * after each one is in.
+ */
+export function definitions<R extends { id: string }, T extends { type: string }>(
+  store: { register(def: T, owner: string): void; unregister(type: string, owner: string): void },
+  of: (registration: R) => readonly T[] | undefined,
+  added?: (def: T) => void,
+): Contribution<R> {
+  return (reg, undo) => {
+    for (const def of of(reg) ?? []) {
+      store.register(def, reg.id);
+      undo(() => store.unregister(def.type, reg.id));
+      added?.(def);
+    }
+  };
+}
+
+/**
+ * Adds everything a registration contributes, all or nothing: some of it is the pack's own code, so a contribution
+ * that throws takes back what went in before it, and the error goes on. Returns the log that takes it all back out.
+ */
+export function addContributions<R>(registration: R, contributions: readonly Contribution<R>[]): UndoLog {
+  const undos = createUndoLog();
+  try {
+    for (const add of contributions) add(registration, undos.record);
+  } catch (err) {
+    undos.undoAll();
+    throw err;
+  }
+  return undos;
+}

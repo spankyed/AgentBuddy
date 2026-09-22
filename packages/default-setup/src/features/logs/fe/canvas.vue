@@ -340,7 +340,6 @@
 </template>
 
 <script setup lang="ts">
-import { pluginSettingsKey } from '@/features/settings/plugin-settings'
 import { usePlugin } from '@abuddy/sdk/fe'
 import { computed, ref, reactive, watch, onMounted, onUnmounted } from 'vue';
 import {
@@ -368,6 +367,7 @@ import DataRenderer from '@abuddy/ui/components/DataRenderer';
 import { navigateToPlugin } from '@/__generated__/fe'
 import { updatePluginSettings } from '@/features/settings/fe/public'
 import { parseSearchTerm, searchLog, highlightSearchTerm } from './search';
+import { ref as featureRef } from '@/__generated__/ref';
 
 const logsContent = ref<HTMLElement>();
 
@@ -505,7 +505,7 @@ const copyLogs = async () => {
 const goToExcludedSourcesSettings = () => {
   navigateToPlugin('settings', [
     { type: 'TAB.SELECT', tab: 'plugins' },
-    { type: 'PLUGIN.SELECT', pluginId: pluginSettingsKey('logs') }
+    { type: 'PLUGIN.SELECT', pluginId: featureRef('logs') }
   ]);
 };
 

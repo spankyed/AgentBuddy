@@ -4,7 +4,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { addTestSecret, startApp, takeSystemErrors } from '@abuddy/testing/harness';
 import { repository } from '@/__generated__/repository';
-import { pluginSettingsKey } from '@/features/settings/plugin-settings';
+import { ref } from '@/__generated__/ref';
 
 describe('settings and stored API keys', () => {
   it('sends its plugin the keys without values when the stored keys change', async () => {
@@ -44,7 +44,7 @@ describe('settings and stored API keys', () => {
     const app = await startApp({ systems: ['settings'] });
     await app.connect();
     await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: ['cliPaths'], value: { gh: '/opt/bin/gh' } });
-    expect(repository.settingsQueries.getPluginSettings(pluginSettingsKey('code'))).toMatchObject({ cliPaths: { gh: '/opt/bin/gh' } });
+    expect(repository.settingsQueries.getPluginSettings(ref('code'))).toMatchObject({ cliPaths: { gh: '/opt/bin/gh' } });
   });
 
   // A plugin's settings change reaches that plugin, at the ref the label names
@@ -63,6 +63,6 @@ describe('settings and stored API keys', () => {
     await app.connect();
     await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'code', path: ['cliPaths'], value: { gh: '/elsewhere/gh' } });
     expect(takeSystemErrors().map((e) => e.message)).toEqual([expect.stringContaining('Settings for plugin "code" weren\'t saved')]);
-    expect(repository.settingsQueries.getPluginSettings(pluginSettingsKey('code'))).not.toMatchObject({ cliPaths: { gh: '/elsewhere/gh' } });
+    expect(repository.settingsQueries.getPluginSettings(ref('code'))).not.toMatchObject({ cliPaths: { gh: '/elsewhere/gh' } });
   });
 });
