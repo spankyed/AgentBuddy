@@ -18,6 +18,7 @@ import {
 import { ProcessManager, broadcastEvent } from './process-manager.js';
 import { logInfo, logError, logWarn, getLogger, logStartupBanner } from './logger.js';
 import { getAppContext } from '../../app-context.js';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 export class ApiServer implements AppModule {
   private processManager: ProcessManager;
@@ -166,7 +167,7 @@ export class ApiServer implements AppModule {
         logWarn('[MAIN] Failed to kill orphaned API child before startup', {
           pid,
           ppid,
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMessage(error),
         });
       }
     }
@@ -218,7 +219,9 @@ export class ApiServer implements AppModule {
         startupId: this.startupId,
         logDir: getAppContext().logsDir,
       }),
-      stdio: ['ignore', 'pipe', 'pipe'],
+      // The fourth entry is an IPC channel the app never sends on: it closes when this process dies, which is how
+      // the API hears that its parent is gone (`process.on('disconnect')`) instead of polling for it
+      stdio: ['ignore', 'pipe', 'pipe', 'ipc'],
       detached: false,
       // windowsHide: false
     });

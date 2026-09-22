@@ -172,26 +172,14 @@ export function createWebSocketServer() {
     process.exit(0);
   });
 
-  // Detect parent process death (e.g. Electron crashed) and trigger graceful shutdown
-  if (process.platform !== 'win32') {
-    const originalPpid = process.ppid;
-    const parentCheck = setInterval(() => {
-      let parentGone = process.ppid === 1 || process.ppid !== originalPpid;
-      if (!parentGone) {
-        try {
-          process.kill(originalPpid, 0);
-        } catch {
-          parentGone = true;
-        }
-      }
-
-      if (parentGone) {
-        console.log('[API] Parent process died, shutting down');
-        clearInterval(parentCheck);
-        process.kill(process.pid, 'SIGTERM');
-      }
-    }, 2000);
-    parentCheck.unref();
+  // The parent died (Electron crashed, or was killed): its end of the IPC channel closed, so this process is
+  // orphaned and shuts down the way a SIGTERM would. An API started without a channel — a manual boot, a test —
+  // has no parent to outlive, so there is nothing to watch.
+  if (process.connected) {
+    process.on('disconnect', () => {
+      console.log('[API] Parent process died, shutting down');
+      process.kill(process.pid, 'SIGTERM');
+    });
   }
 
   return { wss, handler, port };
