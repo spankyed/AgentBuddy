@@ -1,5 +1,6 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 /** A package specifier (`vue`, `@abuddy/ears`), not a relative path or a tsconfig/imports alias */
 export function isPackageSpecifier(id: string): boolean {
@@ -68,6 +69,6 @@ export async function bundleDeclarations(
     fs.writeFileSync(outFile, content);
     return { success: true, content };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    return { success: false, error: errorMessage(err) };
   }
 }

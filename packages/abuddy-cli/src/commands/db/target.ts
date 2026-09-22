@@ -4,6 +4,7 @@ import { parseArgs, type ParseArgsConfig } from 'node:util';
 import { appDataDirFor, resolveAppContext, type AppContext, type AppEnv } from '@abuddy/sdk/env';
 import { findRunningApp, holdDatabaseWriteLock, openAppDatabase, type AppDatabase } from '@abuddy/host/database';
 import { consoleEars, type ConsoleScope } from '@abuddy/sdk/database-console';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 /** Where a command's lines go: results on stdout, what it targets and warnings on stderr */
 export interface DbIo {
@@ -112,7 +113,7 @@ export async function openTarget(target: DbTarget, { write, command }: OpenOptio
 }
 
 /** The message of whatever a command threw */
-const reason = (error: unknown) => (error instanceof Error ? error.message : String(error));
+const reason = (error: unknown) => (errorMessage(error));
 
 /**
  * Runs `use` with the database and closes it after, whatever happens. Closing flushes what the command wrote and

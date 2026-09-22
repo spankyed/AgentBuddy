@@ -15,6 +15,7 @@ import { runThreadTeardown } from './thread-teardown';
 import { generateAsideText } from './services/chat';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { ref } from '@/__generated__/ref';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('threads');
 let birthFlowStarted = false;
@@ -376,7 +377,7 @@ export const threadsSystem = setup({
           threadCount,
         });
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = errorMessage(err);
         sendToPlugin('threads', {
           type: 'THREADS_EXPORT_FAILED',
           errors: [message],
@@ -414,7 +415,7 @@ export const threadsSystem = setup({
           },
         });
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = errorMessage(err);
         sendToPlugin('threads', {
           type: 'THREADS_IMPORT_FAILED',
           errors: [message],
@@ -479,7 +480,7 @@ export const threadsSystem = setup({
         sendToPlugin('threads', {
           type: 'THREAD_CHAT_ERROR',
           threadId: threadId as string,
-          error: err instanceof Error ? err.message : String(err),
+          error: errorMessage(err),
         });
       }
     },
@@ -501,7 +502,7 @@ export const threadsSystem = setup({
         sendToPlugin('threads', {
           type: 'THREAD_CHAT_ERROR',
           threadId: threadId as string,
-          error: err instanceof Error ? err.message : String(err),
+          error: errorMessage(err),
         });
       }
     },
@@ -600,7 +601,7 @@ export const threadsSystem = setup({
         sendToPlugin('threads', {
           type: 'THREAD_CHAT_ERROR',
           threadId: 'threadId' in event && typeof event.threadId === 'string' ? event.threadId : '',
-          error: err instanceof Error ? err.message : String(err),
+          error: errorMessage(err),
         });
       }
     },

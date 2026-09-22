@@ -13,6 +13,7 @@ import { importNotes } from './import-notes';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { NoteEntity } from '@/features/notes/be/types';
 import { ref } from '@/__generated__/ref';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('notes');
 
@@ -410,7 +411,7 @@ export const notesSystem = setup({
           data: { ...connectedData, settings },
         });
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = errorMessage(err);
         sendToPlugin('notes', {
           type: 'NOTES_IMPORT_FAILED',
           errors: [message],
@@ -429,7 +430,7 @@ export const notesSystem = setup({
           itemCount,
         });
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = errorMessage(err);
         sendToPlugin('notes', {
           type: 'NOTES_EXPORT_FAILED',
           errors: [message],

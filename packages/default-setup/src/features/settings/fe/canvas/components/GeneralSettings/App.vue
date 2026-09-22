@@ -185,6 +185,7 @@ import { useSelector } from '@xstate/vue'
 import { HardDrive, PackageOpen, RotateCcw, Trash2 } from 'lucide-vue-next'
 import ImportPackSeedsPicker from './ImportPackSeedsPicker.vue'
 import Hotkeys from './Hotkeys.vue'
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 interface Props {
   settings?: any
@@ -230,7 +231,7 @@ function onClearAppCache() {
   } catch (error) {
     appCacheStatus.value = {
       kind: 'error',
-      message: `Failed to clear app cache: ${error instanceof Error ? error.message : String(error)}`
+      message: `Failed to clear app cache: ${errorMessage(error)}`
     }
   } finally {
     confirmingClearAppCache.value = false

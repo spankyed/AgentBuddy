@@ -21,7 +21,7 @@ import { resetTestData } from '@abuddy/sdk/testing';
 import { createLogger, type Logger } from '@abuddy/sdk/logger';
 import {
   loadJSON,
-  seedCollection, detectChanges,
+  detectChanges,
   toIdentifierSet,
   type SeedCounts, type DiffResult,
   type ChangeBlock,
@@ -336,20 +336,6 @@ describe('Generic flow — runtime verification', () => {
     expect(result).toBeNull();
   });
 
-  it('seedCollection<T> accepts typed options', () => {
-    type Item = { name: string; value: number };
-    expect(() => {
-      seedCollection<Item>({
-        file: '/nonexistent.json',
-        label: 'test',
-        getKey: (item) => item.name,
-        findExisting: () => undefined,
-        create: (item) => { void item.value; },
-        update: (_id, item) => { void item.name; },
-        log: () => {},
-      });
-    }).not.toThrow();
-  });
 
   it('filterSystemFields<T> returns Partial<T>', () => {
     type Entity = { label: string; status: string; entityType: string };

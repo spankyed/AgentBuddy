@@ -9,6 +9,7 @@ import { untypedQx } from '@abuddy/ears';
 import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
 import { ROOT_FLOW_ROLE } from '@abuddy/sdk/types';
 import { stepRegistry } from '@abuddy/sdk/steps';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 export type { Message };
 
@@ -133,7 +134,7 @@ export function stopRunningApps(): void {
   if (failures.length > 0) throw failures.length === 1 ? failures[0] : new AggregateError(failures, 'Stopping the test apps failed');
 }
 
-const describeError = (error: unknown) => error instanceof Error ? error.message : String(error);
+const describeError = (error: unknown) => errorMessage(error);
 
 /**
  * Runs each registered pack's `boot.onInit` in registration order (dependencies first), as the API does at boot

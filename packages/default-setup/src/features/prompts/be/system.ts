@@ -10,6 +10,7 @@ import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
 import { exportPrompts } from './repository/export-prompts';
 import type { PromptEntity } from '@abuddy/sdk';
 import { ref } from '@/__generated__/ref';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('prompts');
 
@@ -175,7 +176,7 @@ export const promptsSystem = setup({
 
           count++;
         } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
+          const message = errorMessage(err);
           errors.push(`Failed to create prompt "${item.label}": ${message}`);
         }
       }
@@ -225,7 +226,7 @@ export const promptsSystem = setup({
 
         logger.info('Prompts export complete', { filePath, promptCount });
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message = errorMessage(error);
         logger.error('Prompts export failed', { error: message });
 
         sendToPlugin(pluginId, {

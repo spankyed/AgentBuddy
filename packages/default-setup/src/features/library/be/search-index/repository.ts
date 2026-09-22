@@ -18,6 +18,7 @@ import type {
 import type { DocumentDTO } from '../types'
 import * as searchService from './service'
 import { libraryQueries, libraryCommands } from '../repository'
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('search-index')
 
@@ -162,11 +163,11 @@ async function indexDocumentsBatch(
     )
   } catch (error) {
     logger.error('Failed to generate embeddings for documents', {
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage(error),
       modelId: searchIndex.embeddingModel,
       chunkCount: chunks.length
     })
-    throw new Error(`Failed to generate embeddings: ${error instanceof Error ? error.message : String(error)}`)
+    throw new Error(`Failed to generate embeddings: ${errorMessage(error)}`)
   }
 
   // Prepare batch insertion arrays
@@ -514,11 +515,11 @@ export async function searchInIndex(
     queryEmbedding = await searchService.embedText(query, searchIndex.embeddingModel)
   } catch (error) {
     logger.error('Failed to generate embedding for search query', {
-      error: error instanceof Error ? error.message : String(error),
+      error: errorMessage(error),
       modelId: searchIndex.embeddingModel,
       query
     })
-    throw new Error(`Failed to generate search query embedding: ${error instanceof Error ? error.message : String(error)}`)
+    throw new Error(`Failed to generate search query embedding: ${errorMessage(error)}`)
   }
 
   // Search

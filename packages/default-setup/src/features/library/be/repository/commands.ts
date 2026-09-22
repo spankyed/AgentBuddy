@@ -15,6 +15,7 @@ import {
   getContentLength,
 } from './helpers'
 import type { ContentSection, DocumentShortCode } from '@/features/library/be/types';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('library')
 
@@ -61,7 +62,7 @@ export const libraryCommands = {
     // searchIndexRepo.autoIndexNewDocument(documentId).catch(error => {
     //   logger.error('Failed to auto-index new document', {
     //     documentId,
-    //     error: error instanceof Error ? error.message : String(error)
+    //     error: errorMessage(error)
     //   })
     // })
 
@@ -119,7 +120,7 @@ export const libraryCommands = {
     // searchIndexRepo.autoIndexNewDocument(documentId).catch(error => {
     //   logger.error('Failed to re-index updated document', {
     //     documentId,
-    //     error: error instanceof Error ? error.message : String(error)
+    //     error: errorMessage(error)
     //   })
     // })
 

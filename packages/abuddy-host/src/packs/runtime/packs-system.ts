@@ -17,6 +17,7 @@ import { teardownPack, activatePack } from './lifecycle.ts';
 import { activationProblem } from './activation-outcome.ts';
 import { HOST } from '../../host-refs.ts';
 import { type OutgoingPacksEvents } from '../host-pack.ts';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 export type { PackInfo };
 
@@ -185,7 +186,7 @@ export function createPacksSystem(registry: PackRegistry) {
           sendToPlugin(HOST.packs, { type: 'PACK_ACTIVATED' as const, packId: result.id });
           emitPacksList(registry, system);
         }).catch(err => {
-          const message = err instanceof Error ? err.message : String(err);
+          const message = errorMessage(err);
           console.error(`[packs] Install failed for ${packSlug}:`, message);
           // The pack was torn down for a replacement that never arrived: end the window and say it is gone
           if (replacedId) {
@@ -234,7 +235,7 @@ export function createPacksSystem(registry: PackRegistry) {
           });
           emitPacksList(registry, system);
         }).catch(err => {
-          const message = err instanceof Error ? err.message : String(err);
+          const message = errorMessage(err);
           console.error(`[packs] Uninstall failed for ${packId}:`, message);
           sendToPlugin(HOST.packs, {
             type: 'PACK_UNINSTALL_FAILED' as const,
@@ -306,7 +307,7 @@ export function createPacksSystem(registry: PackRegistry) {
           sendToPlugin(HOST.packs, { type: 'PACK_ACTIVATED' as const, packId });
           emitPacksList(registry, system);
         }).catch(err => {
-          const message = err instanceof Error ? err.message : String(err);
+          const message = errorMessage(err);
           console.error(`[packs] Update failed for ${packId}:`, message);
           activated = activatePack(registry, packId, system.get(HOST.bus));
           if (activated) {

@@ -9,6 +9,7 @@ import { addressLinkBlocks, refOf0314Feature } from './bare-feature-ids';
 import { DEFAULT_SETTINGS_0314 } from './defaults-0.3.14';
 import { isDeepStrictEqual } from 'node:util';
 import { isPlainObject } from '@abuddy/sdk/utils/pure';
+import { hasOwn } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('migrations');
 
@@ -110,7 +111,7 @@ function withoutDefaults(stored: unknown, defaults: unknown): unknown {
   if (!isPlainObject(stored) || !isPlainObject(defaults)) return stored;
   const kept: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(stored)) {
-    const rest = Object.prototype.hasOwnProperty.call(defaults, key) ? withoutDefaults(value, defaults[key]) : value;
+    const rest = hasOwn(defaults, key) ? withoutDefaults(value, defaults[key]) : value;
     if (rest !== undefined) kept[key] = rest;
   }
   return Object.keys(kept).length > 0 ? kept : undefined;

@@ -11,6 +11,7 @@ import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
 import { exportActions } from './repository/export-actions';
 import type { ActionEntity } from '@abuddy/sdk';
 import { ref } from '@/__generated__/ref';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('actions');
 
@@ -180,7 +181,7 @@ export const actionsSystem = setup({
 
           count++;
         } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
+          const message = errorMessage(err);
           errors.push(`Failed to create action "${item.label}": ${message}`);
         }
       }
@@ -230,7 +231,7 @@ export const actionsSystem = setup({
 
         logger.info('Actions export complete', { filePath, actionCount });
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message = errorMessage(error);
         logger.error('Actions export failed', { error: message });
 
         sendToPlugin(pluginId, {

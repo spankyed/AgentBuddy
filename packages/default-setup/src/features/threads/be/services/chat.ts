@@ -7,6 +7,7 @@ import { readMediaBuffer } from '@abuddy/sdk/utils';
 import * as threadsService from './threads';
 import { blockRegistry } from '@abuddy/sdk/blocks';
 import { createLogger } from '@abuddy/sdk/logger';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('chat');
 
@@ -261,7 +262,7 @@ export function updateMessageState(
       updates
     });
   } catch (err) {
-    logger.error(`updateMessageState failed for ${messageId}`, { error: err instanceof Error ? err.message : String(err) });
+    logger.error(`updateMessageState failed for ${messageId}`, { error: errorMessage(err) });
     return;
   }
 

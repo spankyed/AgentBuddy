@@ -13,6 +13,7 @@ import type { TNodeEntity } from '@abuddy/sdk/steps';
 import { services } from '@/__generated__/services';
 import { repository } from '@/__generated__/repository';
 import { ref } from '@/__generated__/ref';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('database');
 
@@ -79,11 +80,10 @@ export const databaseSystem = setup({
           executionTime
         });
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.error('Query execution failed:', { error: errorMessage });
+        logger.error('Query execution failed:', { error: errorMessage(error) });
         sendToPlugin('database', { 
           type: 'QUERY_ERROR',
-          error: errorMessage
+          error: errorMessage(error)
         });
       }
     },
@@ -109,11 +109,10 @@ export const databaseSystem = setup({
           data: { schema }
         });
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.error('Transaction execution failed:', { error: errorMessage });
+        logger.error('Transaction execution failed:', { error: errorMessage(error) });
         sendToPlugin('database', { 
           type: 'TRANSACTION_ERROR',
-          error: errorMessage
+          error: errorMessage(error)
         });
       }
     },
@@ -147,8 +146,7 @@ export const databaseSystem = setup({
           flows
         });
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.error('Failed to get trace flows:', { error: errorMessage });
+        logger.error('Failed to get trace flows:', { error: errorMessage(error) });
         sendToPlugin('database', { 
           type: 'TRACE_FLOWS_RESULT',
           flows: []
@@ -168,8 +166,7 @@ export const databaseSystem = setup({
           hasMore: result.hasMore
         });
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.error('Failed to get flow events:', { error: errorMessage, flowId });
+        logger.error('Failed to get flow events:', { error: errorMessage(error), flowId });
         sendToPlugin('database', { 
           type: 'FLOW_EVENTS_RESULT',
           flowId,
@@ -190,8 +187,7 @@ export const databaseSystem = setup({
           details
         });
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.error('Failed to get node details:', { error: errorMessage, nodeId });
+        logger.error('Failed to get node details:', { error: errorMessage(error), nodeId });
         sendToPlugin('database', { 
           type: 'NODE_DETAILS_RESULT',
           nodeId,
@@ -210,11 +206,10 @@ export const databaseSystem = setup({
           });
         },
         (error: unknown) => {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          logger.error('Failed to export database:', { error: errorMessage });
+          logger.error('Failed to export database:', { error: errorMessage(error) });
           sendToPlugin('database', { 
             type: 'EXPORT_DATABASE_ERROR',
-            error: errorMessage
+            error: errorMessage(error)
           });
         }
       );
@@ -248,11 +243,10 @@ export const databaseSystem = setup({
           });
         },
         (error: unknown) => {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          logger.error('Failed to import database:', { error: errorMessage });
+          logger.error('Failed to import database:', { error: errorMessage(error) });
           sendToPlugin('database', {
             type: 'IMPORT_DATABASE_ERROR',
-            error: errorMessage,
+            error: errorMessage(error),
             // The user decides whether to import a newer AgentBuddy's backup without what this one can't hold
             ...(error instanceof UnknownBackupDatabasesError && { unknownDatabases: error.databases }),
           });
@@ -269,8 +263,7 @@ export const databaseSystem = setup({
           info
         });
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.error('Failed to get backup info:', { error: errorMessage });
+        logger.error('Failed to get backup info:', { error: errorMessage(error) });
         sendToPlugin('database', {
           type: 'BACKUP_INFO_RESULT',
           info: null
@@ -300,12 +293,11 @@ export const databaseSystem = setup({
           data: { schema: generateSchemaInfo() }
         });
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        logger.error('Database reset failed:', { error: errorMessage });
+        logger.error('Database reset failed:', { error: errorMessage(error) });
 
         sendToPlugin('database', {
           type: 'RESET_DATABASE_ERROR',
-          error: errorMessage
+          error: errorMessage(error)
         });
       }
     },

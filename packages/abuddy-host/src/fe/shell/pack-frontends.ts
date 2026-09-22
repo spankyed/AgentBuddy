@@ -3,11 +3,12 @@
 import { fromCallback } from 'xstate';
 import type { ShellClient } from '../client.ts';
 import type { ShellEvent, ShellPackFrontends } from './types.ts';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 export const PACK_FRONTEND_LOADER_ID = 'packFrontendLoader';
 
 function messageOf(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
+  return errorMessage(err);
 }
 
 /**

@@ -4,6 +4,7 @@ import { formatWithOptions, type InspectOptions } from 'node:util';
 import type { LogEvent, LogLevel } from '@abuddy/sdk/logger';
 import { rootEvents } from '../../router/bus-emitter';
 import { redactSecretText } from '@abuddy/sdk/utils/pure';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 // Store original console methods
 export const originalConsole = {
@@ -29,7 +30,7 @@ function formatArgs(args: unknown[]): string {
     return redactSecretText(formatWithOptions(INSPECT_OPTIONS, ...args));
   } catch (error) {
     // A getter or custom inspect that throws, say
-    return `[console arguments that couldn't be formatted: ${redactSecretText(error instanceof Error ? error.message : String(error))}]`;
+    return `[console arguments that couldn't be formatted: ${redactSecretText(errorMessage(error))}]`;
   }
 }
 

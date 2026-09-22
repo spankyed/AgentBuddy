@@ -2,6 +2,7 @@ import * as fs from 'node:fs';
 import { createRequire, isBuiltin } from 'node:module';
 import * as path from 'node:path';
 import ts from 'typescript';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 /** Declaration extensions an import of the facade must resolve to; anything else reads as `any` */
 const DECLARATION_EXTENSIONS: readonly string[] = [ts.Extension.Dts, ts.Extension.Dmts, ts.Extension.Dcts, ts.Extension.Ts, ts.Extension.Mts, ts.Extension.Cts, ts.Extension.Tsx];
@@ -200,7 +201,7 @@ export function facadeProblems(packDir: string, bundleFile: string): string[] {
   try {
     allowed = allowedPackages(packDir);
   } catch (err) {
-    return [`${rel} can't be checked: @abuddy/sdk doesn't resolve from ${packDir} (install the pack's dependencies). ${err instanceof Error ? err.message : String(err)}`];
+    return [`${rel} can't be checked: @abuddy/sdk doesn't resolve from ${packDir} (install the pack's dependencies). ${errorMessage(err)}`];
   }
 
   const options = checkOptions(packDir);

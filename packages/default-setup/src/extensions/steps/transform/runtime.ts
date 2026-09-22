@@ -2,6 +2,7 @@ import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import { reportError, createLogger } from '@abuddy/sdk/logger';
 import { services } from '@/__generated__/services';
 import type { TransformNode, TransformOutputType } from './types';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const brainLogger = createLogger('brain', { debug: true });
 
@@ -17,7 +18,7 @@ function toOutput(value: unknown, outputType: TransformOutputType): unknown {
       try {
         json = JSON.stringify(value);
       } catch (error) {
-        throw new Error(`the script's return value isn't JSON-serializable (${error instanceof Error ? error.message : String(error)}); use outputType "custom" to keep it as returned`);
+        throw new Error(`the script's return value isn't JSON-serializable (${errorMessage(error)}); use outputType "custom" to keep it as returned`);
       }
       if (json === undefined) {
         throw new Error(`the script returned ${typeof value === 'undefined' ? 'undefined' : `a ${typeof value}`}, which isn't JSON-serializable; return a JSON value or use outputType "custom"`);
@@ -49,14 +50,14 @@ export async function handler(t: TNodeEntity, node: unknown, ctx: ExecutionConte
     } catch (error) {
       // The script's own error, not the action service's wrapper around it
       const cause = error instanceof Error && error.cause !== undefined ? error.cause : error;
-      throw new Error(`Transform step "${n.label}" script failed: ${cause instanceof Error ? cause.message : String(cause)}`);
+      throw new Error(`Transform step "${n.label}" script failed: ${errorMessage(cause)}`);
     }
 
     let output: unknown;
     try {
       output = toOutput(value, outputType);
     } catch (error) {
-      throw new Error(`Transform step "${n.label}": ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Transform step "${n.label}": ${errorMessage(error)}`);
     }
 
     a.send({ type: 'COMPLETE', result: output });

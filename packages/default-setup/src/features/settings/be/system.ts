@@ -19,6 +19,7 @@ import { REQUIRED_PROVIDERS } from '../constants';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { splitRef, type FeatureRef } from '@abuddy/sdk/ids';
 import { ref } from '@/__generated__/ref';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('settings');
 
@@ -275,7 +276,7 @@ export const settingsSystem = setup({
         const preview = previewPackSeeds(ev.directory);
         sendToPlugin('settings', { type: 'PACK_SEEDS_PREVIEW', preview });
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = errorMessage(err);
         sendToPlugin('settings', { type: 'PACK_SEEDS_PREVIEW_FAILED', error: message });
       }
     },
@@ -296,7 +297,7 @@ export const settingsSystem = setup({
           sendToSystem('brain', { type: 'RESTART_BRAIN' });
         }
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
+        const message = errorMessage(err);
         sendToPlugin('settings', { type: 'PACK_SEEDS_IMPORT_FAILED', error: message });
       }
     },
@@ -309,7 +310,7 @@ export const settingsSystem = setup({
 
     onResetFailed: ({ event }) => {
       const err = (event as unknown as ErrorActorEvent).error;
-      const message = err instanceof Error ? err.message : String(err);
+      const message = errorMessage(err);
       logger.error('Reset app failed', { error: err });
       sendToPlugin('settings', { type: 'APP_RESET_FAILED', error: message });
     },

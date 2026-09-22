@@ -4,6 +4,7 @@ import ts from 'typescript';
 import { APP_ONLY_EXPORTS, SHARED_DEPS, sharedInstanceExternals } from '@abuddy/host/build/shared-deps';
 import { SEED_COMPILERS_FILE } from '@abuddy/sdk/build';
 import { checkSeedRuntimeLoads } from './seed-runtime-check';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 export interface BundleRuntimeOptions {
   /** Minify for release bundles; dev builds keep readable output with source maps. */
@@ -51,7 +52,7 @@ async function bundlePackSource<T extends EsbuildOptions>(
 }
 
 function bundleError(err: unknown): { success: false; error: string } {
-  return { success: false, error: err instanceof Error ? err.message : String(err) };
+  return { success: false, error: errorMessage(err) };
 }
 
 /**

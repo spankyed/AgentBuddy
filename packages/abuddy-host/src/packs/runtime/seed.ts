@@ -8,6 +8,7 @@ import type { PackSeedManifest } from '@abuddy/sdk/framework';
 import { seedPath, type PackManifest } from '@abuddy/sdk/build';
 import { appState } from '../../app-state/index.ts';
 import { seedData, type SeedIncludeSet } from '@abuddy/sdk/utils';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('pack-seed');
 
@@ -120,7 +121,7 @@ export function seedPackData(packs: Iterable<PackSeedTarget>, seed: typeof seedD
     try {
       errors = seedErrors(seed({ compiledDir: distDir, mode: 'replace-on-collision' }));
     } catch (err) {
-      errors = [err instanceof Error ? err.message : String(err)];
+      errors = [errorMessage(err)];
     }
     appState.updatePackEntry('packSeedHashes', packId, currentHash);
     if (errors.length > 0) {

@@ -1,5 +1,6 @@
 import { Cron } from 'croner';
 import { createLogger } from '@abuddy/sdk/logger';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('scheduler');
 
@@ -18,13 +19,13 @@ export function registerSchedule(key: string, cronExpression: string, callback: 
       try {
         callback();
       } catch (err) {
-        logger.error(`Schedule ${key} tick failed: ${err instanceof Error ? err.message : String(err)}`);
+        logger.error(`Schedule ${key} tick failed: ${errorMessage(err)}`);
       }
     });
     activeJobs.set(key, job);
     logger.info(`Registered schedule: ${key} (${cronExpression})`);
   } catch (err) {
-    logger.error(`Failed to register schedule ${key}: ${err instanceof Error ? err.message : String(err)}`);
+    logger.error(`Failed to register schedule ${key}: ${errorMessage(err)}`);
   }
 }
 

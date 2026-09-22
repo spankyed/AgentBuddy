@@ -1,3 +1,13 @@
+/** A thrown value's message: an Error's own, anything else as text */
+export function errorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+/** Whether `object` has `key` itself, not by inheritance: a key such as `__proto__` read as data */
+export function hasOwn(object: object, key: PropertyKey): boolean {
+  return Object.prototype.hasOwnProperty.call(object, key);
+}
+
 /** A non-null object that isn't an array */
 export const isPlainObject = (val: unknown): val is Record<string, unknown> =>
   typeof val === 'object' && val !== null && !Array.isArray(val);
@@ -16,7 +26,7 @@ export function deepMerge<T>(base: T, over: unknown): T {
 
 /** `object[key]` when `object` has `key` itself, never an inherited value */
 function ownValue(object: Record<string, unknown>, key: string): unknown {
-  return Object.prototype.hasOwnProperty.call(object, key) ? object[key] : undefined;
+  return hasOwn(object, key) ? object[key] : undefined;
 }
 
 export type MaybeArr<T> = T | readonly T[];

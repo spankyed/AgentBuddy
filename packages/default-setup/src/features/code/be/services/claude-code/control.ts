@@ -35,6 +35,7 @@ import type {
   PermissionDecision,
   PermissionHandler,
 } from './types'
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('claude-code-control')
 
@@ -76,7 +77,7 @@ export function createControlRouter(opts: ControlRouterOptions = {}): ControlRou
         const response = await dispatch(subtype, line.request, opts)
         return success(requestId, response)
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
+        const message = errorMessage(err)
         return error(requestId, message)
       }
     },

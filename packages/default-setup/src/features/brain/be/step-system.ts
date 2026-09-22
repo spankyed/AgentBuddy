@@ -5,6 +5,7 @@ import type { NodeEntity } from '@/__generated__/types';
 import { executeNode } from './node-handlers';
 import { repository } from '@/__generated__/repository';
 import { brainLogger } from './utils/brain-inspect';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 type StepMachineContext = {
   tNodeId?: EARS.EntityId;
@@ -52,7 +53,7 @@ export function createStepNodeSystem(
             // Delegate to step executor with TNode
             executeNode(context.tNode, context.step, executionContext, self);
           } catch (error) {
-            self.send({ type: 'ERROR', error: error instanceof Error ? error.message : String(error) });
+            self.send({ type: 'ERROR', error: errorMessage(error) });
           }
         },
         storeResult: ({ context, event }) => {

@@ -5,6 +5,7 @@ import * as semver from 'semver';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { isHostCompatible } from './pack-installer.ts';
 import { fetchReleaseAsset, fetchRepoFile, githubFetch, type GitHubReleaseAsset } from './github.ts';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('pack-updater');
 
@@ -73,7 +74,7 @@ export async function findLatestRelease(
         const { hostVersion } = await (await source()).json() as { hostVersion?: unknown };
         return { range: typeof hostVersion === 'string' ? hostVersion : undefined };
       } catch (err) {
-        unread = err instanceof Error ? err.message : String(err);
+        unread = errorMessage(err);
       }
     }
     return { unread };
@@ -116,7 +117,7 @@ export async function checkForUpdates(options: { hostVersion?: string } = {}): P
       latest = await findLatestRelease(entry.installedFrom!, { includePrerelease, hostVersion: options.hostVersion, installedVersion });
     } catch (err) {
       // Not checked: kept out of the cache so the next check tries again
-      const message = err instanceof Error ? err.message : String(err);
+      const message = errorMessage(err);
       logger.warn(`Update check for ${entry.id} failed: ${message}`);
       updatedEntries.set(entry.id, { updateCheckError: message });
       continue;

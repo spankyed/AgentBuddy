@@ -15,6 +15,7 @@ import { restoreJsonMediaRefs } from '@abuddy/sdk/utils'
 import { repository } from '@/__generated__/repository';
 import type { ExportedThreadsData } from './export-types'
 import { ref } from '@/__generated__/ref';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 interface ImportResult {
   created: number
@@ -191,7 +192,7 @@ export function importThreads(importDir: string): ImportResult {
             })
             result.artifactsCreated++
           } catch (err) {
-            const message = err instanceof Error ? err.message : String(err)
+            const message = errorMessage(err)
             result.errors.push(`Failed to create artifact "${artifact.title}" for thread "${thread.topic}": ${message}`)
           }
         }
@@ -199,7 +200,7 @@ export function importThreads(importDir: string): ImportResult {
 
       result.created++
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
+      const message = errorMessage(err)
       result.errors.push(`Failed to create thread "${thread.topic}": ${message}`)
       result.skipped++
     }
@@ -228,7 +229,7 @@ export function importThreads(importDir: string): ImportResult {
       try {
         repository.threadCommands.update(sourceId, { linkedThreads })
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
+        const message = errorMessage(err)
         result.errors.push(`Failed to restore relations for "${thread.topic}": ${message}`)
       }
     }
@@ -248,7 +249,7 @@ export function importThreads(importDir: string): ImportResult {
         repository.threadCommands.linkFork(sourceId, forkedId)
         result.relationsCreated++
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
+        const message = errorMessage(err)
         result.errors.push(`Failed to restore fork relation for "${thread.topic}": ${message}`)
       }
     }

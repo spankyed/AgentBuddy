@@ -10,6 +10,7 @@ import { createLogger } from '@abuddy/sdk/logger';
 import type { FlowEntity, ActionEntity, PromptEntity } from '@abuddy/sdk';
 import { compileFlowDSL, validateFlowDSL, exportFlowsToDSL, type FlowDSL, type ValidationError } from '@abuddy/sdk/build';
 import { ref } from '@/__generated__/ref';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('flows');
 
@@ -397,7 +398,7 @@ export const flowsSystem = setup({
 
         logger.info('DSL export complete', { filePath, flowCount });
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const message = errorMessage(error);
         logger.error('DSL export failed', { error: message });
 
         sendToPlugin(pluginId, {

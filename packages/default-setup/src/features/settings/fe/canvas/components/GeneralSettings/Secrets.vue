@@ -114,6 +114,7 @@ import { API_KEY_URLS, REQUIRED_PROVIDERS } from '../../../../constants'
 import CliProviders from './CliProviders.vue'
 import SecretKeyRow from './SecretKeyRow.vue'
 import NewSecretRow from './NewSecretRow.vue'
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const settingsActor = usePlugin()
 const secrets = useSelector(settingsActor, (state: any) => state.context.secrets as SecretInfo[])
@@ -150,7 +151,7 @@ async function run(call: () => Promise<unknown>): Promise<boolean> {
     await call()
     return true
   } catch (err) {
-    error.value = err instanceof Error ? err.message : String(err)
+    error.value = errorMessage(err)
     return false
   }
 }

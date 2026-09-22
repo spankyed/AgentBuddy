@@ -8,6 +8,7 @@ import { _reservedEntries } from '../types/reserved-names.ts';
 import { formatEntities } from './seeds/records.ts';
 import { resolveSeeds, type ResolvedSeed } from './seeds/resolve.ts';
 import { createModuleExports, type ExportInfo, type ModuleExports } from './module-exports.ts';
+import { hasOwn } from '../utils/shared.ts';
 
 const HEADER = `// @generated from abuddy.json — do not edit by hand
 // Regenerate: abuddy generate-entries\n`;
@@ -65,7 +66,7 @@ export function mergeRegistries(
     const declaringPack = (via: string, key: string): string => {
       if (via === ownId) return ownId;
       const declared = depProvenance.get(via)?.[provenanceKind];
-      return declared && Object.prototype.hasOwnProperty.call(declared, key) ? declared[key] : via;
+      return declared && hasOwn(declared, key) ? declared[key] : via;
     };
     for (const [via, entries] of sources) {
       for (const [key, value] of Object.entries(entries)) {

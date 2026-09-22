@@ -3,14 +3,13 @@
 // checks with it before saving, so both refuse the same document. The operations build new objects from own keys
 // (spreads and `Object.fromEntries`, never assignment), so a key such as `__proto__` is data and reaches no prototype.
 import { splitRef } from '@abuddy/sdk/ids';
-import { isPlainObject } from '@abuddy/sdk/utils/pure';
+import { hasOwn, isPlainObject } from '@abuddy/sdk/utils/pure';
 
 type Json = Record<string, unknown>;
 
 /** The sections the settings hold */
 const SECTIONS = ['general', 'plugins', 'assistant'];
 
-const hasOwn = (object: Json, key: string): boolean => Object.prototype.hasOwnProperty.call(object, key);
 const ownValue = (object: unknown, key: string): unknown =>
   isPlainObject(object) && hasOwn(object, key) ? object[key] : undefined;
 

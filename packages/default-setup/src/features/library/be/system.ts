@@ -18,6 +18,7 @@ import { importLibrary } from './import-library'
 import type { ContentSection } from '@/features/library/be/types';
 import type { CommandItem } from '@/features/settings/be/types';
 import { ref } from '@/__generated__/ref';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 type IncomingLibraryEvents =
   | { type: 'CREATE_DOCUMENT'; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }
@@ -406,7 +407,7 @@ export const librarySystem = setup({
             },
           })
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
+        const message = errorMessage(err)
         sendToPlugin('library', {
             type: 'LIBRARY_IMPORT_FAILED' as const,
             errors: [message],
@@ -427,7 +428,7 @@ export const librarySystem = setup({
             itemCount,
           })
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
+        const message = errorMessage(err)
         sendToPlugin('library', {
             type: 'LIBRARY_EXPORT_FAILED' as const,
             errors: [message],

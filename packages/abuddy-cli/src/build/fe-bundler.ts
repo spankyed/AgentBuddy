@@ -5,12 +5,9 @@ import { pathToFileURL } from 'node:url';
 import type { Plugin as VitePlugin, Rollup } from 'vite';
 import { init as initModuleLexer, parse as parseModule } from 'es-module-lexer';
 import { getSharedFeDeps, unresolvedSubpathPackages, getSdkFeModules, getUiFeModules, sharedInstancePackage } from '@abuddy/host/build/shared-deps';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const EXTERNAL_PREFIX = '\0pack-external:';
-
-function errorMessage(err: unknown): string {
-  return err instanceof Error ? err.message : String(err);
-}
 
 /**
  * A module that re-exports a host global. The host may be older than the pack's @abuddy/* packages:
@@ -511,7 +508,7 @@ export async function bundlePackFE(options: BundleFEOptions): Promise<{ success:
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : String(err),
+      error: errorMessage(err),
     };
   }
 }

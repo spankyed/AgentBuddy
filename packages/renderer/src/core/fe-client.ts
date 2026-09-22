@@ -3,6 +3,7 @@
 import type { ShellClient, ShellFailure } from '@abuddy/host/fe';
 import { trpc, reconnectApiClient } from '@/core/trpc';
 import { globalToast } from '@/core/toast';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 /** What the Electron main process reports about the API process */
 type ApiStatusEvent = { type: string; port?: number; restarting?: boolean; error?: unknown; message?: string; stack?: string; source?: string };
@@ -20,7 +21,7 @@ export const feClient: ShellClient = {
     // Caught, since an unhandled rejection shows the error page. The report leaves out the payload, and goes to
     // the app's log (and so diagnostics) as well as the console
     trpc.bus.send.mutate(message).catch((error: unknown) => {
-      const report = `Couldn't send ${message.event.type} to ${message.to}: ${error instanceof Error ? error.message : String(error)}`;
+      const report = `Couldn't send ${message.event.type} to ${message.to}: ${errorMessage(error)}`;
       console.error(`[fe-client] ${report}`);
       window.electronAPI?.rendererLog?.write({ level: 'error', source: 'fe-client', message: report }).catch(() => {});
       globalToast.error(report);
