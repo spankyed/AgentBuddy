@@ -103,6 +103,13 @@ describe('an event a system sends to a plugin', () => {
     expect(takeSystemErrors()).toEqual([]);
   });
 
+  // Onboarding's last action tells the shell to leave its onboarding layout; dropped, the shell waited for a reconnect
+  it('delivers ONBOARDING_COMPLETE to the application plugin', async () => {
+    await send({ to: 'host/application', event: { type: 'ONBOARDING_COMPLETE' } });
+    expect(delivered().map(({ event }) => event.type)).toContain('ONBOARDING_COMPLETE');
+    expect(takeSystemErrors()).toEqual([]);
+  });
+
   it('drops an event a host plugin does not declare, so the host is checked like a pack', async () => {
     await send({ to: 'host/application', event: { type: 'APPLICATION_EXPLODE' } });
     expect(delivered().map(({ event }) => event.type)).not.toContain('APPLICATION_EXPLODE');

@@ -157,4 +157,25 @@ describe('the 0.3.15 migration', () => {
       expect((stored().general as any).application).not.toHaveProperty('openLinksInApp')
     })
   })
+
+  // Link blocks opened a plugin by its bare id, which this pack's plugin ran under before 0.3.15
+  it("points a stored link block's bare target at this pack's plugin, and leaves the rest", () => {
+    createDefaultSettings()
+    const link = (target: string) => ({ label: target, event: { target, data: { type: 'OPEN' } } })
+    const message = createEntityWithDefaults(EARS.Entity.Message, { text: 'see' } as never)
+    const blocks = [
+      { type: 'link', props: { links: [link('settings'), link('external'), link('application'), link('memo-pack/memos')] } },
+      { type: 'text', props: { text: 'unchanged' } },
+    ]
+    tx(message.id as never).put('blocks', blocks as never)
+
+    migration.up()
+    const moved = attrs(message.id).blocks as typeof blocks
+    expect(moved[0].props.links!.map((l) => l.event.target)).toEqual(['default-setup/settings', 'external', 'application', 'memo-pack/memos'])
+    expect(moved[1]).toEqual(blocks[1])
+
+    // Running again changes nothing
+    migration.up()
+    expect(attrs(message.id).blocks).toEqual(moved)
+  })
 })

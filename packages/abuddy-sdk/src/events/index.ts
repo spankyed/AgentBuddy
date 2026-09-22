@@ -94,7 +94,9 @@ export type HostPluginEvents = {
     | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean; pluginVisibility: Record<string, boolean>; lastActivePlugin?: string }
     | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationHotkeys }
     // The app's own send when a plugin's tab is shown or hidden, or a pack's defaults change
-    | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> };
+    | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> }
+    // The user finished onboarding: the shell leaves its onboarding layout
+    | { type: 'ONBOARDING_COMPLETE' };
 };
 
 /** Events the host app's own systems receive from pack code, which names them `host/<feature>` */
@@ -108,7 +110,7 @@ export type HostSystemEvents = {
  * read the host's plugins from. A pack's own plugins get this generated from their systems' specs.
  */
 export const HOST_PLUGIN_EVENT_TYPES = {
-  'host/application': eventTypes<HostPluginEvents['host/application']>()('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED'),
+  'host/application': eventTypes<HostPluginEvents['host/application']>()('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED', 'ONBOARDING_COMPLETE'),
 } satisfies Record<keyof HostPluginEvents, readonly string[]>;
 
 /**

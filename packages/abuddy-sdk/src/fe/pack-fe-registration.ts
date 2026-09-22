@@ -6,12 +6,15 @@ import type { ArtifactDefinition } from '../artifacts/types.ts';
 import type { BlockDefinition } from '../blocks/types.ts';
 import type { StepDefinition } from '../steps/types.ts';
 
-/** A feature's frontend: its plugin, the role it plays and whether it's the plugin to open by default */
+/**
+ * A feature's frontend: its plugin, the role it plays and whether it's the plugin to open by default. A feature with
+ * no plugin is listed for its role alone, so the frontend resolves every role the backend does
+ */
 export interface PackFEFeature {
-  plugin: PluginDefinition;
+  plugin?: PluginDefinition;
   /** The role the feature plays (abuddy.json `features[].designation`) */
   designation?: string;
-  /** This pack's plugin to open when the app starts */
+  /** This pack's plugin to open when the app starts; only a feature with a plugin claims it */
   default?: true;
 }
 

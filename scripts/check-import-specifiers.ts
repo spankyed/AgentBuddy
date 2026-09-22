@@ -454,25 +454,37 @@ const CODE_FILE = /\.(?:[cm]?[jt]sx?|vue)$/;
 /** The pack sources whose features keep their frontends to themselves */
 const PACK_SRC_ROOTS = ['packages/default-setup/src', 'tests/fixtures/external-pack/src', 'tests/fixtures/bundled-ui-pack/src'];
 
+/** `export … from '…'`: a module passing another's exports on */
+const EXPORT_FROM = /\bexport\s+(?:type\s+)?(?:\*(?:\s+as\s+\w+)?|\{[^}]*\})\s*from\s*['"][^'"]+['"]/g;
+
 /**
  * `file:line: specifier` for each import of another feature's frontend other than its `fe/public` module. A feature
  * reaches into no other feature's machine or components: what one offers the rest (its state as composables, the
- * events it takes) is its `fe/public.ts`, so what crosses between features is written down in one place. Generated
- * code, which registers every feature's plugin, is exempt.
+ * events it takes) is its `fe/public.ts`, so what crosses between features is written down in one place. A feature's
+ * modules outside its `fe/` may use its frontend but not pass it on (`export … from './fe/state'`), which would be a
+ * second door. Generated code, which registers every feature's plugin, is exempt.
  */
 export function findCrossFeatureImports(srcRoots = PACK_SRC_ROOTS, root = repoRoot): string[] {
   return srcRoots.flatMap((srcRoot) => {
     const src = path.join(root, srcRoot);
-    const featureOf = (file: string) => /^features\/([^/]+)\//.exec(path.relative(src, file).split(path.sep).join('/'))?.[1];
-    return packFiles([srcRoot], root).filter((file) => !path.relative(src, file).startsWith('__generated__')).flatMap((file) => {
+    const relative = (file: string) => path.relative(src, file).split(path.sep).join('/');
+    const featureOf = (file: string) => /^features\/([^/]+)\//.exec(relative(file))?.[1];
+    return packFiles([srcRoot], root).filter((file) => !relative(file).startsWith('__generated__')).flatMap((file) => {
       const code = fs.readFileSync(file, 'utf-8');
+      // Where each `from` of a re-export starts, which is where ANY_SPECIFIER's match for it starts
+      const reExports = new Set([...code.matchAll(EXPORT_FROM)].map((m) => m.index + m[0].search(/from\s*['"][^'"]+['"]$/)));
+      const inOwnFrontend = /^features\/[^/]+\/fe\//.test(relative(file));
       return [...code.matchAll(ANY_SPECIFIER)].flatMap((match) => {
         const specifier = match[1];
         const target = specifier.startsWith('@/') ? path.join(src, specifier.slice(2))
           : specifier.startsWith('.') ? path.resolve(path.dirname(file), specifier) : undefined;
         if (target === undefined) return [];
-        const into = /^features\/([^/]+)\/fe\/(.+)$/.exec(path.relative(src, target).split(path.sep).join('/'));
-        if (!into || into[1] === featureOf(file) || into[2].replace(/\.(ts|js)$/, '') === 'public') return [];
+        // The fe folder itself names its index, and `public` may be a file or a folder with an index
+        const into = /^features\/([^/]+)\/fe(?:\/(.+))?$/.exec(relative(target));
+        if (!into) return [];
+        const module = (into[2] ?? '').replace(/\.(ts|js)$/, '').replace(/(?:^|\/)index$/, '');
+        if (module === 'public') return [];
+        if (into[1] === featureOf(file) && (inOwnFrontend || !reExports.has(match.index))) return [];
         return [`${path.relative(root, file)}:${code.slice(0, match.index).split('\n').length}: ${specifier}`];
       });
     });

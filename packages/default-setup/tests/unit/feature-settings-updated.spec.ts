@@ -3,7 +3,9 @@
 // settings. A feature with no system, or no plugin, just doesn't get that half.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { assign, setup } from 'xstate';
-import { registerPack, startApp, unregisterPack } from '@abuddy/testing/harness';
+import { registerPack, startApp, takeSystemErrors, unregisterPack } from '@abuddy/testing/harness';
+import { settingsCommands } from '@/features/settings/be/repository';
+import { services } from '@/__generated__/services';
 
 /** A system that keeps each FEATURE_SETTINGS_UPDATED it gets */
 const recorder = setup({ types: { context: {} as { heard: unknown[] } } }).createMachine({
@@ -57,6 +59,43 @@ describe('a feature whose settings change', () => {
     expect(heardBy(app)).toEqual([]);
     // The board runs no system: its half of the event is nobody's, and nothing warns of a missing system
     expect(warned.mock.calls.flat().join(' ')).not.toContain('not found');
+  });
+
+  // A system's own write (the code system's browsed directory, the brain's inspect toggle), an action's or a seed's goes
+  // straight to the repository. It reaches the feature once, and a later unrelated change doesn't send it again: told
+  // late, a stale difference had the code explorer jump back to its default directory.
+  it('tells the feature once when its settings are written outside the settings system, and not again later', async () => {
+    const app = await startApp({ systems: ['settings', 'memo-pack/memos'] });
+    await app.connect();
+
+    settingsCommands.updateSettings('plugin', 'memo-pack/memos', ['tags'], [{ name: 'c' }]);
+    await app.settle();
+    expect(heardBy(app).map((e) => e.settings)).toEqual([{ tags: [{ name: 'c' }] }]);
+
+    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/board', path: ['columns'], value: 4 });
+    expect(heardBy(app)).toHaveLength(1);
+  });
+
+  it("tells the feature when an action writes its settings through services.settings", async () => {
+    const app = await startApp({ systems: ['settings', 'memo-pack/memos'] });
+    await app.connect();
+
+    (services.settings as { updatePluginSetting(plugin: string, path: string[], value: unknown): void })
+      .updatePluginSetting('memo-pack/memos', ['tags'], [{ name: 'd' }]);
+    await app.settle();
+
+    expect(heardBy(app).map((e) => e.settings)).toEqual([{ tags: [{ name: 'd' }] }]);
+  });
+
+  // A bare key would be stored where nothing reads it, for good
+  it('refuses replaced settings holding a plugin key that is not a ref, storing none of them', async () => {
+    const app = await startApp({ systems: ['settings', 'memo-pack/memos'] });
+    await app.connect();
+
+    await app.send('settings', { type: 'REPLACE_SETTINGS', data: { general: {}, plugins: { memos: { tags: [] } } } as never });
+
+    expect(takeSystemErrors()).toEqual([expect.objectContaining({ message: expect.stringContaining(`"memos" isn't a plugin settings key`) })]);
+    expect(heardBy(app)).toEqual([]);
   });
 
   // Its defaults leave with the pack, so the settings of its features change; their system and plugin are gone,

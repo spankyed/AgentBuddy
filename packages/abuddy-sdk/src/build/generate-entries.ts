@@ -618,8 +618,9 @@ ${manifest.migrations ? '  migrations,' : ''}
       .join('\n');
     // The feature whose plugin claims it, else the pack's first
     const defaultFeature = pluginFeatures.find(f => f.plugin?.default) ?? pluginFeatures[0];
-    const featureEntries = pluginFeatures.map((f) => {
-      const parts = [`plugin: ${pluginBinding(f.id)}`];
+    // A designated feature with no plugin is listed for its role, so a frontend send to that role resolves
+    const featureEntries = features.filter((f) => f.plugin || f.designation).map((f) => {
+      const parts = f.plugin ? [`plugin: ${pluginBinding(f.id)}`] : [];
       if (f.designation) parts.push(`designation: '${f.designation}'`);
       if (f === defaultFeature) parts.push('default: true');
       return `    '${f.id}': { ${parts.join(', ')} },\n`;

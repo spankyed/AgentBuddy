@@ -27,6 +27,15 @@ function register(packId: string, roles: Array<[featureId: string, role: string]
 }
 
 describe('frontend designations', () => {
+  // The backend resolves a role its feature plays with no plugin; the frontend has to agree
+  it('resolve a role played by a feature with no plugin to its ref, adding no plugin', () => {
+    registerPackFE({ id: 'clock-pack', features: { scheduler: { designation: 'clock' } } });
+    packs.push('clock-pack');
+
+    expect(getDesignated('clock')).toBe('clock-pack/scheduler');
+    expect(registry.getRegisteredPlugins().map((p) => p.id)).not.toContain('clock-pack/scheduler');
+  });
+
   it('resolve a role to the plugin that plays it, and drop it when the pack unregisters', () => {
     register('notebook-pack', [['notebookMain', 'notebook']]);
     expect(getDesignated('notebook')).toBe('notebook-pack/notebookMain');

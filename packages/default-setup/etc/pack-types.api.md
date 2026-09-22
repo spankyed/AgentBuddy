@@ -4676,6 +4676,7 @@ declare function sendSystemMessage(options: {
 
 declare const settingsCommands: {
     updateSettings: typeof updateSettings;
+    /** Stores `data` as given, once every plugin key in it is a ref: a bare key would be stored where nothing reads it */
     replaceSettings(data: SettingsData): void;
     /** Removes a stored value (its path in the stored data), so its default applies again */
     removeStored(path: string[]): void;
@@ -5301,6 +5302,8 @@ declare const specs: {
             type: "PACK_SETTINGS_CHANGED";
         } | {
             type: "SECRETS_CHANGED";
+        } | {
+            type: "SETTINGS_WRITTEN";
         });
         _outgoing: OutgoingSettingsEvents;
     };

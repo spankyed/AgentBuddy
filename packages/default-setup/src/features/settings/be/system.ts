@@ -5,7 +5,7 @@ import { defineSystem, onPackSettingsDefaultsChanged, type SystemEntry } from '@
 
 import type { SettingsData } from './types';
 import { loadFaqs } from './faqs';
-import { settingsQueries, settingsCommands } from './repository';
+import { onSettingsWritten, settingsQueries, settingsCommands } from './repository';
 import { repository } from '@/__generated__/repository';
 import { detectAllArrayChanges } from '@abuddy/sdk/utils/pure';
 import { seedData, type SeedCounts, type SeedIncludeSet } from '@/__generated__/seeders';
@@ -43,6 +43,7 @@ type IncomingSettingsEvents =
 type SettingsInternalEvents =
   | { type: 'PACK_SETTINGS_CHANGED' } // A pack's feature settings (defaults) registered or unregistered
   | { type: 'SECRETS_CHANGED' } // The host's stored keys or their protection changed (no values)
+  | { type: 'SETTINGS_WRITTEN' } // Something wrote the stored settings: this system, a feature's system, an action or a seed
 
 export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_LOADED'; data: SettingsData; faqs: FAQItem[] }
@@ -92,6 +93,7 @@ export const settingsSystem = setup({
   types: settingsSpec.types,
   actors: {
     packSettingsListener: fromCallback(({ sendBack }) => onPackSettingsDefaultsChanged(() => sendBack({ type: 'PACK_SETTINGS_CHANGED' }))),
+    settingsWriteListener: fromCallback(({ sendBack }) => onSettingsWritten(() => sendBack({ type: 'SETTINGS_WRITTEN' }))),
     // The host resets the whole app: stores, each pack's onInit and boot seed, migrations
     resetAppActor: fromPromise(() => services.appData.reset()),
   },
@@ -123,6 +125,23 @@ export const settingsSystem = setup({
       },
     }),
 
+    /**
+     * After the app was reset, tells every feature its settings with no changes: its data was reset with them, so a
+     * diff across the reset (a tag renamed away, a mode removed) would have it rewrite rows that are already gone
+     */
+    tellEveryFeature: assign({
+      applied: () => {
+        const now = appliedPluginSettings();
+        for (const [feature, settings] of Object.entries(now)) {
+          if (!splitRef(feature)) continue;
+          const to = feature as FeatureRef;
+          sendToSystem(to, { type: 'FEATURE_SETTINGS_UPDATED', settings: settings ?? {}, changes: null });
+          sendToPlugin(to, { type: 'FEATURE_SETTINGS_UPDATED', settings: settings ?? {} });
+        }
+        return now;
+      },
+    }),
+
     // The settings plugin's view of all the settings, after a change it didn't make itself
     sendSettingsUpdate: () => broadcastSettings('SETTINGS_UPDATED'),
 
@@ -148,7 +167,12 @@ export const settingsSystem = setup({
 
     replaceSettings: ({ event }) => {
       const ev = settingsSpec.typeOf('REPLACE_SETTINGS', event);
-      settingsCommands.replaceSettings(ev.data);
+      try {
+        settingsCommands.replaceSettings(ev.data);
+      } catch (error) {
+        reportError({ error: new Error(`The settings weren't replaced: ${(error as Error).message}`), source: 'settings' });
+      }
+      // Sent either way: a refused replacement leaves the plugin showing what is still stored
       broadcastSettings('SETTINGS_UPDATED');
     },
 
@@ -249,11 +273,8 @@ export const settingsSystem = setup({
   initial: 'idle',
   context: { applied: {} },
   entry: 'rememberAppliedSettings',
-  invoke: { src: 'packSettingsListener' },
+  invoke: [{ src: 'packSettingsListener' }, { src: 'settingsWriteListener' }],
   on: {
-    // A pack registered or left: its defaults came or went, and the host may have moved its keys
-    PACK_SETTINGS_CHANGED: { actions: ['sendSettingsUpdate', 'tellChangedFeatures'] },
-    PACK_CHANGED: { actions: ['sendSettingsUpdate', 'tellChangedFeatures'] },
     SECRETS_CHANGED: { actions: 'secretsChanged' },
   },
   states: {
@@ -265,14 +286,19 @@ export const settingsSystem = setup({
         GET_SETTINGS: {
           actions: 'getSettings',
         },
+        // Every write reaches the features it changed through here, whoever made it
+        SETTINGS_WRITTEN: { actions: 'tellChangedFeatures' },
+        // A pack registered or left: its defaults came or went
+        PACK_SETTINGS_CHANGED: { actions: ['sendSettingsUpdate', 'tellChangedFeatures'] },
+        PACK_CHANGED: { actions: ['sendSettingsUpdate', 'tellChangedFeatures'] },
         UPDATE_SETTINGS: {
-          actions: ['updateSettings', 'tellChangedFeatures'],
+          actions: 'updateSettings',
         },
         REPLACE_SETTINGS: {
-          actions: ['replaceSettings', 'tellChangedFeatures'],
+          actions: 'replaceSettings',
         },
         RESET_SETTINGS: {
-          actions: ['resetSettings', 'tellChangedFeatures'],
+          actions: 'resetSettings',
         },
         TEST_CLI_PROVIDER: {
           actions: 'testCliProvider',
@@ -294,9 +320,10 @@ export const settingsSystem = setup({
       tags: ['resetting'],
       invoke: {
         src: 'resetAppActor',
+        // Writes and pack changes made by the reset aren't told as changes: tellEveryFeature re-baselines once it's done
         onDone: {
           target: 'idle',
-          actions: 'onResetComplete',
+          actions: ['tellEveryFeature', 'onResetComplete'],
         },
         onError: {
           target: 'idle',

@@ -447,7 +447,20 @@ describe('findCrossFeatureImports', () => {
     ].join('\n'));
     writeAt(`${src}/features/code/fe/features/list.ts`, "import state from '../state';");
     writeAt(`${src}/__generated__/pack-entry-fe.ts`, "import plugin from '../features/notes/fe/plugin.js';");
+    // `public` as a folder, by the folder or its index
+    writeAt(`${src}/features/threads/fe/chat.ts`, "import { a } from '@/features/actions/fe/public';\nimport { b } from '@/features/notes/fe/public/index';");
+    // A feature's own modules outside fe/ may use its frontend
+    writeAt(`${src}/features/code/settings.ts`, "import { id } from './fe/state';");
     expect(findCrossFeatureImports([src], root)).toEqual([]);
+  });
+
+  it("flags another feature's fe folder itself, and a feature passing its frontend on from outside fe/", () => {
+    writeAt(`${src}/features/code/fe/panel.ts`, "import notes from '@/features/notes/fe';");
+    writeAt(`${src}/features/notes/index.ts`, "export { id, notesMachine } from './fe/state';\nexport * from './fe/public';");
+    expect(findCrossFeatureImports([src], root)).toEqual([
+      `${src}/features/code/fe/panel.ts:1: @/features/notes/fe`,
+      `${src}/features/notes/index.ts:1: ./fe/state`,
+    ]);
   });
 });
 

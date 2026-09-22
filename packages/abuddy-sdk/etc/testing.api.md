@@ -160,10 +160,12 @@ export interface TestPacks {
     readonly designations: Map<string, string>;
     readonly earsEntities: Map<string, string>;
     readonly earsRelKinds: Map<string, string>;
+    readonly plugins: Set<string>;
     readonly seeders: Map<string, Seeder[]>;
     readonly seedHooks: Map<string, SeedHooks>;
     readonly services: Map<string, unknown>;
     readonly steps: Map<string, StepDefinition>;
+    readonly systems: Set<string>;
 }
 
 // @public

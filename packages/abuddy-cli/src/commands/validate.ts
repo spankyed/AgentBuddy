@@ -20,9 +20,12 @@ async function validateDeps(root: string): Promise<string[]> {
 
   const warnings: string[] = [];
   for (const [depId, depValue] of Object.entries(deps)) {
-    const resolved = await resolveDep(root, depId, depValue);
-    if (!resolved) {
-      warnings.push(`Dependency "${depId}" could not be resolved — run "abuddy fetch-deps"`);
+    try {
+      const resolved = await resolveDep(root, depId, depValue);
+      if (!resolved) warnings.push(`Dependency "${depId}" could not be resolved — run "abuddy fetch-deps"`);
+    } catch (err) {
+      // Found only in builds this CLI can't use: the message names each one and why
+      warnings.push(err instanceof Error ? err.message : String(err));
     }
   }
   return warnings;

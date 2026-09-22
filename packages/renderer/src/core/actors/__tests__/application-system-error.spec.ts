@@ -30,7 +30,7 @@ beforeEach(() => {
   const notes = plugin('notes');
   app = createActor(createApplicationState(), {
     systemId: 'host/application',
-    input: { plugins: [notes], defaultPlugin: notes, restoreLastActivePlugin: false },
+    input: { plugins: [notes], defaultPlugin: notes, ownsLastActivePlugin: false },
   }).start();
 });
 afterEach(() => {

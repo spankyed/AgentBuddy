@@ -5,18 +5,14 @@ import * as os from 'node:os';
 import { describe, expect, it } from 'vitest';
 import { services } from '../../src/services/index.ts';
 import { startTestRuntime, testRootEvents } from '../../src/testing/index.ts';
-import { testPacksView } from '../../src/testing/packs.ts';
-import { resolveName } from '../../src/ids/index.ts';
+import { testPacks } from '../../src/testing/packs.ts';
 
 process.env.ABUDDY_ENV ??= 'test';
 process.env.ABUDDY_USER_DATA_DIR ??= os.tmpdir();
-startTestRuntime({
-  packs: {
-    ...testPacksView(),
-    systemIds: () => [resolveName('default-setup/notes'), resolveName('ext/notes'), resolveName('host/packs')],
-    pluginIds: () => [resolveName('default-setup/threads'), resolveName('host/application')],
-  },
-});
+// No registry: the refs a test declares are what the sends resolve against
+startTestRuntime();
+for (const ref of ['default-setup/notes', 'ext/notes', 'host/packs']) testPacks.systems.add(ref);
+for (const ref of ['default-setup/threads', 'host/application']) testPacks.plugins.add(ref);
 
 function sent(send: () => void): unknown[] {
   const received: unknown[] = [];

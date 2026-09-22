@@ -34,7 +34,7 @@ beforeEach(() => {
   mutate.mockClear();
   app = createActor(createApplicationState(), {
     systemId: 'host/application',
-    input: { plugins: [notes, threads], defaultPlugin: notes, restoreLastActivePlugin: true },
+    input: { plugins: [notes, threads], defaultPlugin: notes, ownsLastActivePlugin: true },
   }).start();
 });
 
@@ -79,15 +79,19 @@ it('keeps the plugin the user opened while that pack was loading', () => {
   expect(context().activePlugin.id).toBe('default-setup/threads');
 });
 
-it("opens a popout on an external pack's plugin once that pack's frontend adds it", () => {
+it("opens a popout on an external pack's plugin once that pack's frontend adds it, without recording it as the app's", () => {
   const popout = createActor(createApplicationState(), {
     systemId: 'host/application',
-    input: { plugins: [notes, threads], defaultPlugin: notes, initialPluginId: 'memo-pack/memos', restoreLastActivePlugin: false },
+    input: { plugins: [notes, threads], defaultPlugin: notes, initialPluginId: 'memo-pack/memos', ownsLastActivePlugin: false },
   }).start();
 
   loadMemoPack(popout);
+  popout.send({ type: 'SELECT_PLUGIN', plugin: 'default-setup/threads' });
 
-  expect(popout.getSnapshot().context.activePlugin.id).toBe('memo-pack/memos');
+  expect(popout.getSnapshot().context.activePlugin.id).toBe('default-setup/threads');
+  // The main window opens on the plugin last open there, never on one a popout showed
+  const recorded = mutate.mock.calls.filter(([message]) => (message as { event: { type: string } }).event.type === 'SET_LAST_ACTIVE_PLUGIN');
+  expect(recorded).toEqual([]);
   popout.stop();
 });
 

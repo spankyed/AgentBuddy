@@ -77,6 +77,27 @@ export const settingsQueries = {
   },
 };
 
+const writeListeners = new Set<() => void>();
+
+/**
+ * Calls `listener` after each write to the stored settings, whoever made it; returns the unsubscribe. The settings
+ * system tells each feature whose settings changed from here, so a write made anywhere (a system, an action, a seed)
+ * reaches the features it changed, and none is told a change twice.
+ */
+export function onSettingsWritten(listener: () => void): () => void {
+  writeListeners.add(listener);
+  return () => writeListeners.delete(listener);
+}
+
+/** Stores `data` as the user's changes, and tells the listeners */
+function write(data: Partial<SettingsData>): void {
+  getStoredSettings();
+  tx(SETTINGS_ID)
+    .put('data', data)
+    .put('updatedAt', Date.now());
+  for (const listener of writeListeners) listener();
+}
+
 /** The sections of the stored settings other than the plugins' slices, each keyed as the data holds it */
 type SettingsSection = 'general' | 'assistant' | 'plugins';
 
@@ -98,22 +119,17 @@ function updateSettings(type: SettingsSection | 'plugin', label: string | null, 
     ? [dataKey, key!, ...path]
     : [dataKey, ...path];
 
-  const newData = setNestedValue(stored, fullPath, value);
-
-  tx(SETTINGS_ID)
-    .put('data', newData)
-    .put('updatedAt', Date.now());
+  write(setNestedValue(stored, fullPath, value));
 }
 
 // COMMANDS
 export const settingsCommands = {
   updateSettings,
 
+  /** Stores `data` as given, once every plugin key in it is a ref: a bare key would be stored where nothing reads it */
   replaceSettings(data: SettingsData): void {
-    const entity = getSettingsEntity();
-    tx(entity.id)
-      .put('data', data)
-      .put('updatedAt', Date.now());
+    for (const key of Object.keys(data.plugins ?? {})) checkedSettingsRef(key);
+    write(data);
   },
 
   /** Removes a stored value (its path in the stored data), so its default applies again */
@@ -123,15 +139,10 @@ export const settingsCommands = {
     const key = path[path.length - 1];
     if (!parent || typeof parent !== 'object' || !(key in parent)) return;
     delete parent[key];
-    tx(SETTINGS_ID)
-      .put('data', newData)
-      .put('updatedAt', Date.now());
+    write(newData);
   },
 
-  resetSettings: () => {
-    getStoredSettings();
-    tx(SETTINGS_ID).put('data', {});
-  }
+  resetSettings: () => write({}),
 };
 
 

@@ -18,6 +18,7 @@ import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, inject, type RunnerTask, type RunnerTestCase } from 'vitest';
 import { resetTestData as resetSdkTestData, startTestRuntime, takeSystemErrors, addTestSecret, type SeedRuntime, fakeInference, type FakeInference } from '@abuddy/sdk/testing';
 import type { PackRegistryView } from '@abuddy/sdk/runtime';
+import type { FeatureRef } from '@abuddy/sdk/ids';
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import { createPackRegistry, hostRegistration, type PackOrigin } from '@abuddy/host/packs';
 import { appState, HOST_ENTITY_TYPES } from '@abuddy/host/app-state';
@@ -66,10 +67,26 @@ const registry = createPackRegistry();
 registry.registerPack(hostRegistration());
 setAppPacks(registry);
 
+/**
+ * The systems and plugins the packs' manifests declare, when the harness registers seed runtimes, which carry no
+ * features: an action a test runs sends to them through `services.emitter`, which resolves against these
+ */
+const declaredRefs = { systems: new Set<string>(), plugins: new Set<string>() };
+
+/** Records the refs of the features `manifest` declares */
+function declareFeatures(manifest: Pick<PackManifest, 'id' | 'features'>): void {
+  for (const feature of manifest.features ?? []) {
+    if (feature.system) declaredRefs.systems.add(`${manifest.id}/${feature.id}`);
+    if (feature.plugin) declaredRefs.plugins.add(`${manifest.id}/${feature.id}`);
+  }
+}
+
 /** The registered packs the harness binds, with the current test's mocked services over the registered ones */
 const packsWithMocks: PackRegistryView = {
   ...registry,
   getRegisteredServices: () => ({ ...registry.getRegisteredServices(), ...Object.fromEntries(serviceMocks) }),
+  systemIds: () => [...new Set([...registry.systemIds(), ...declaredRefs.systems])] as FeatureRef[],
+  pluginIds: () => [...new Set([...registry.pluginIds(), ...declaredRefs.plugins])] as FeatureRef[],
 };
 
 /**
@@ -257,9 +274,11 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
       const { seedRuntime } = await import(pathToFileURL(file).href) as { seedRuntime: SeedRuntime };
       startTestRuntime({ entityTypes: Object.values(seedRuntime.entities) });
       registry.registerPack(seedRuntimeRegistration(seedRuntime), originOf(dependency.manifest, dependency.dir));
+      declareFeatures(dependency.manifest);
     }
     startTestRuntime({ entityTypes: Object.values(options.seedRuntime.entities) });
     registry.registerPack(seedRuntimeRegistration(options.seedRuntime, options.seeders), originOf(manifest, packDir));
+    declareFeatures(manifest);
     setAppPacks(registry, manifest.id);
   }
 

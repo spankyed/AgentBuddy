@@ -10,7 +10,7 @@ function getApp(): AnyActorRef {
 }
 
 /**
- * Opens the plugin at `ref` and hands it `event`, once its actor is running. Throws unless `ref` is a registered
+ * Opens the plugin at `ref` and hands its actor `event`. Throws unless `ref` is a registered
  * plugin's `<packId>/<featureId>`, so a ref that arrives as data (a link's target, a registered plugin's `id`) is
  * checked here; pack code naming a plugin itself uses the `navigateToPlugin` its `#generated/fe` builds over this,
  * which checks the name at compile time too.
@@ -28,22 +28,8 @@ export function openPlugin(ref: string, event?: PluginEvent | PluginEvent[]): vo
   if (snapshot.context.defaultToggles.canvas) {
     app.send({ type: 'DEFAULT_TOGGLE', area: 'canvas' });
   }
-  if (event) {
-    const events = Array.isArray(event) ? event : [event];
-    const actor = app.system.get(ref);
-    if (actor) {
-      for (const e of events) actor.send(e);
-    } else {
-      // Until the plugin's actor spawns (a pack's frontend still loading), or the plugin is gone (its pack disabled
-      // meanwhile), when the events have nowhere to go
-      const sub = app.subscribe((next) => {
-        const spawned = app.system.get(ref);
-        const stillRegistered = (next.context.plugins ?? []).some((plugin: { id: string }) => plugin.id === ref);
-        if (spawned || !stillRegistered) sub.unsubscribe();
-        if (spawned) for (const e of events) spawned.send(e);
-      });
-    }
-  }
+  // A registered plugin's actor is running: the shell spawns it in the same step that registers the plugin
+  if (event) for (const e of Array.isArray(event) ? event : [event]) app.system.get(ref)?.send(e);
 }
 
 /**

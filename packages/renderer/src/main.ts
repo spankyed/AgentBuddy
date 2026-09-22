@@ -120,7 +120,7 @@ export const applicationState = createActor(createApplicationState(), {
     defaultPlugin,
     plugins,
     initialPluginId,
-    restoreLastActivePlugin: !isPluginPopout,
+    ownsLastActivePlugin: !isPluginPopout,
   }
 });
 

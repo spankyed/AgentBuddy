@@ -16,6 +16,10 @@ import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
 export interface TestPacks {
   /** Role → id of the system that plays it */
   readonly designations: Map<string, string>;
+  /** Refs of systems a test says run, besides the registered packs': what `services.emitter` resolves a send against */
+  readonly systems: Set<string>;
+  /** Refs of plugins a test says are there, besides the registered packs' */
+  readonly plugins: Set<string>;
   /** Step definitions by type */
   readonly steps: Map<string, StepDefinition>;
   /** Artifact definitions by type */
@@ -41,6 +45,8 @@ export interface TestPacks {
 function createTestPacks(): TestPacks {
   const lookups = {
     designations: new Map<string, string>(),
+    systems: new Set<string>(),
+    plugins: new Set<string>(),
     steps: new Map<string, StepDefinition>(),
     artifacts: new Map<string, ArtifactDefinition>(),
     blocks: new Map<string, BlockDefinition>(),
@@ -91,8 +97,9 @@ export function testPacksView(registered?: PackRegistryView): PackRegistryView {
     block: (type) => testPacks.blocks.get(type) ?? registered?.block(type),
     blocks: () => withOwn(registered?.blocks(), testPacks.blocks),
     getRegisteredServices: () => ({ ...registered?.getRegisteredServices(), ...Object.fromEntries(testPacks.services) }),
-    systemIds: () => registered?.systemIds() ?? [],
-    pluginIds: () => registered?.pluginIds() ?? [],
+    // A test names a ref as it likes, as it does a role's
+    systemIds: () => [...new Set([...(registered?.systemIds() ?? []), ...testPacks.systems])] as FeatureRef[],
+    pluginIds: () => [...new Set([...(registered?.pluginIds() ?? []), ...testPacks.plugins])] as FeatureRef[],
     seedHooks: (entity) => testPacks.seedHooks.get(entity) ?? registered?.seedHooks(entity),
     seeders: (packId) => testPacks.seeders.get(packId) ?? registered?.seeders(packId) ?? [],
     settingsDefaults: () => registered?.settingsDefaults() ?? noSettings,

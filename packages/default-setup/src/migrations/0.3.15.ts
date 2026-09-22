@@ -1,6 +1,6 @@
 import { untypedQx } from '@abuddy/ears';
 import { markSeededRowUnedited } from '@abuddy/sdk/seed';
-import { EARS } from '@/__generated__/ears';
+import { EARS, tx } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
 import type { PackMigration } from '@abuddy/sdk/framework';
 import { createLogger } from '@abuddy/sdk/logger';
@@ -13,7 +13,7 @@ const PACK_ID = 'default-setup';
 
 export const migration: PackMigration = {
   target: '0.3.15',
-  description: "Drop the app's state and the root flow copies from the settings, mark rows seeded before the seeder tracked what it wrote as unedited, keep action logs hidden for whoever hid log-service, and drop the keys 0.3.14 moved but left behind",
+  description: "Drop the app's state and the root flow copies from the settings, mark rows seeded before the seeder tracked what it wrote as unedited, keep action logs hidden for whoever hid log-service, drop the keys 0.3.14 moved but left behind, and point stored link blocks at plugins' refs",
   up: () => {
     // ── The app's state (onboarding, versions, seed hashes) is the host's AppState now ──
     // The host's own 0.3.15 migration, which runs first, moved it out of `internal` (no pack migration runs when it fails).
@@ -51,8 +51,44 @@ export const migration: PackMigration = {
     // Copies of both kept in the settings are no longer read or written.
     repository.settingsCommands.removeStored(['plugins', `${PACK_ID}/flows`, 'rootFlowId']);
     repository.settingsCommands.removeStored(['plugins', `${PACK_ID}/brain`, 'runningRootFlowId']);
+
+    // ── A link block opens a plugin by its ref ──
+    const relinked = addressLinkTargets();
+    if (relinked > 0) logger.info(`[migration 0.3.15] pointed ${relinked} message(s)' link blocks at plugins' refs`);
   },
 };
+
+/** A link block's target, as a message stores it */
+interface StoredLink { event?: { target?: unknown } }
+
+/**
+ * Link blocks stored before 0.3.15 name the plugin they open by its bare feature id, which this pack's plugin ran
+ * under: a feature id this pack and another shared was this pack's, as the host's migration settles it for settings.
+ * Each becomes this pack's ref. `external` stays, as does `application`, which sent the app shell an event rather than
+ * naming a plugin, and a ref is left as it is, so a second run changes nothing.
+ */
+function addressLinkTargets(): number {
+  let changed = 0;
+  // Untyped: the blocks are data in the shape a message stored them, whatever produced them
+  for (const row of untypedQx(EARS.Entity.Message as never).pickAll() as Array<{ id: string; blocks?: unknown }>) {
+    if (!Array.isArray(row.blocks)) continue;
+    let moved = false;
+    const blocks = row.blocks.map((block: { type?: unknown; props?: { links?: unknown } }) => {
+      if (block?.type !== 'link' || !Array.isArray(block.props?.links)) return block;
+      const links = (block.props.links as StoredLink[]).map((link) => {
+        const target = link?.event?.target;
+        if (typeof target !== 'string' || target === 'external' || target === 'application' || target.includes('/')) return link;
+        moved = true;
+        return { ...link, event: { ...link.event, target: `${PACK_ID}/${target}` } };
+      });
+      return { ...block, props: { ...block.props, links } };
+    });
+    if (!moved) continue;
+    tx(row.id as EARS.EntityId).put('blocks', blocks as never);
+    changed++;
+  }
+  return changed;
+}
 
 /**
  * 0.3.14 copied the code plugin's `lastDirectoryOpened` to `baseDirectory` and the app's `openLinksInApp` to the

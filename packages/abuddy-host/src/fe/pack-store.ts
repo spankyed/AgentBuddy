@@ -29,19 +29,24 @@ export interface FePackRegistry extends FePackRegistryView {
   getAppExtension(slot: string): ReturnType<FePackRegistryView['appExtension']>;
 }
 
-/** A registration with its plugins addressed once: each at its feature's ref, with the feature's role and default claim */
+/**
+ * A registration addressed once: each plugin at its feature's ref, with its default claim, and each role at the ref of
+ * the feature that plays it, that feature's plugin or not
+ */
 type AddressedRegistration = PackFERegistration & {
-  addressed: Array<{ plugin: Plugin; designation?: string; default?: true }>;
+  addressed: Array<{ plugin: Plugin; default?: true }>;
+  roles: Record<string, FeatureRef>;
 };
 
 function addressed(registration: PackFERegistration): AddressedRegistration {
+  const features = Object.entries(registration.features ?? {});
   return {
     ...registration,
-    addressed: Object.entries(registration.features ?? {}).map(([featureId, feature]) => ({
-      plugin: { ...feature.plugin, id: resolveName(featureId, registration.id) } as Plugin,
-      designation: feature.designation,
-      default: feature.default,
-    })),
+    addressed: features.flatMap(([featureId, feature]) => feature.plugin
+      ? [{ plugin: { ...feature.plugin, id: resolveName(featureId, registration.id) } as Plugin, default: feature.default }]
+      : []),
+    roles: Object.fromEntries(features.flatMap(([featureId, { designation }]) =>
+      designation ? [[designation, resolveName(featureId, registration.id)]] : [])),
   };
 }
 
@@ -73,9 +78,8 @@ export function createFePackRegistry(): FePackRegistry {
   const contributions: ReadonlyArray<Contribution<AddressedRegistration>> = [
     // First, so a role another pack plays refuses the pack before anything else of it is in, as the backend's does
     (reg, undo) => {
-      const roles = Object.fromEntries(reg.addressed.flatMap(({ plugin, designation }) => (designation ? [[designation, plugin.id as FeatureRef]] : [])));
-      designations.register(roles);
-      undo(() => designations.unregister(roles));
+      designations.register(reg.roles);
+      undo(() => designations.unregister(reg.roles));
     },
     (reg, undo) => listed(allPlugins, reg.addressed.map(({ plugin }) => plugin), undo),
     // The first pack to claim the default keeps it

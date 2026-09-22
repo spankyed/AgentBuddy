@@ -458,6 +458,20 @@ describe('generated frontend entry', () => {
 
     expect(files['src/__generated__/pack-entry-fe.ts']).toContain("'settings': { plugin: __plugin_settings, default: true },");
   });
+
+  // So a frontend send to that role resolves, as it does on the backend
+  it('lists a designated feature with no plugin for its role, and leaves out an undesignated one', () => {
+    const files = generate({ features: [
+      { id: 'notes', plugin: { entry: 'src/notes/plugin' } },
+      system('scheduler', {}),
+      system('worker'),
+    ].map((f) => (f.id === 'scheduler' ? { ...f, designation: 'clock' } : f)) });
+
+    const fe = files['src/__generated__/pack-entry-fe.ts'];
+    expect(fe).toContain("'scheduler': { designation: 'clock' },");
+    expect(fe).not.toContain("'worker'");
+    expect(fe).toContain("'notes': { plugin: __plugin_notes, default: true },");
+  });
 });
 
 describe('generated backend entry', () => {

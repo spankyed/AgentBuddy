@@ -5,8 +5,11 @@ import { tx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
 import type { PackMigration } from '@abuddy/sdk/framework';
 import { splitRef, type FeatureRef } from '@abuddy/sdk/ids';
+import { resolveAppContext } from '@abuddy/sdk/env';
+import type { PackManifest } from '@abuddy/sdk/build';
 import { appState, type AppState } from '../../app-state/index.ts';
 import type { PackRegistry } from '../../packs/pack-registration.ts';
+import { discoverPacks } from '../../packs/pack-discovery.ts';
 import { deepMerge, isPlainObject } from '@abuddy/sdk/utils/pure';
 
 /** The settings row: where the app's state was stored before 0.3.15, and where the plugin settings still are */
@@ -37,17 +40,27 @@ const bootSeedPacks = (registry: Pick<PackRegistry, 'getPackRegistration' | 'bui
 /** A per-pack record with the stored one's entries it lacks */
 const withMissing = (current: Record<string, string>, legacy: Record<string, string> | undefined) => ({ ...legacy, ...current });
 
-type MigrationRegistry = Pick<PackRegistry, 'getPackRegistration' | 'builtInPacks' | 'externalPacks' | 'pluginIds'>;
+type MigrationRegistry = Pick<PackRegistry, 'getPackRegistration' | 'builtInPacks' | 'externalPacks' | 'pluginIds' | 'systemIds'>;
 
-/** The migration, over the app's registered packs */
-export const migration = (registry: MigrationRegistry): PackMigration => ({
+/** The manifests of the external packs installed on disk, whether or not they loaded this boot */
+export type InstalledManifests = () => ReadonlyArray<Pick<PackManifest, 'id' | 'features'>>;
+
+const installedOnDisk: InstalledManifests = () => discoverPacks(resolveAppContext().packsDir).map(({ manifest }) => manifest);
+
+/**
+ * The migration, over the app's registered packs and the external packs installed on disk. The installed ones count
+ * because it runs once: a pack disabled at that boot, or one whose old build doesn't load, would otherwise keep its
+ * keys bare for good, where nothing reads them.
+ */
+export const migration = (registry: MigrationRegistry, installed: InstalledManifests = installedOnDisk): PackMigration => ({
   target: '0.3.15',
   description: "Move the app's state (onboarding, versions, seed hashes) from the settings' internal section to AppState, the app shell's state from the settings' _meta to AppState, and every pack's plugin settings onto their plugins' refs",
   up: () => {
     moveAppState(registry);
-    moveShellState(registry);
+    const owners = ownersIn(registry, installed());
+    moveShellState(owners);
     // Every pack's plugin settings too, the built-in packs' included, before any pack's migration reads them
-    movePluginSettings(registry);
+    movePluginSettings(owners);
   },
 });
 
@@ -87,17 +100,22 @@ interface LegacyShellState {
   lastActivePlugin?: unknown;
 }
 
-/** Among which plugins a stored bare id is looked up, and whose plugin wins a feature id several share */
+/** Among which features a stored bare id is looked up, and whose feature wins an id several share */
 export interface PluginOwners {
   refs: readonly FeatureRef[];
   /** The built-in packs, which registered first: a bare id a built-in plugin shares with another pack's was its */
   builtIn: readonly string[];
 }
 
-const ownersIn = (registry: MigrationRegistry): PluginOwners => ({
-  refs: registry.pluginIds(),
-  builtIn: registry.builtInPacks().map(({ id }) => id),
-});
+/**
+ * Every feature a stored key could belong to: each registered system and plugin, the host's included, and every
+ * feature an installed pack's manifest lists. A feature with settings and no plugin kept them under its id too.
+ */
+function ownersIn(registry: MigrationRegistry, installed: ReturnType<InstalledManifests>): PluginOwners {
+  const declared = installed.flatMap((manifest) => (manifest.features ?? []).map((feature) => `${manifest.id}/${feature.id}`));
+  const refs = [...new Set<string>([...registry.pluginIds(), ...registry.systemIds(), ...declared])].filter((ref) => splitRef(ref));
+  return { refs: refs as FeatureRef[], builtIn: registry.builtInPacks().map(({ id }) => id) };
+}
 
 /** Each bare feature id to its owner's ref, or null when no single one owns it (two external packs share it) */
 function ownersOf({ refs, builtIn }: PluginOwners): Map<string, FeatureRef | null> {
@@ -141,14 +159,13 @@ export function addressPluginKeys<T extends Record<string, unknown>>(record: T, 
 
 /**
  * The app shell's state out of the built-in pack's settings (`plugins._meta`) into AppState: which plugins' tabs
- * the user showed or hid, and the plugin last open, each onto its plugin's ref; an id no registered plugin owns is
+ * the user showed or hid, and the plugin last open, each onto its plugin's ref; an id no installed pack has is
  * dropped. What AppState already records wins.
  */
-function moveShellState(registry: MigrationRegistry): void {
+function moveShellState(owners: PluginOwners): void {
   const data = (untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: { plugins?: Record<string, unknown> } } | undefined)?.data;
   const meta = data?.plugins?._meta as LegacyShellState | undefined;
   if (!data?.plugins || meta === undefined) return;
-  const owners = ownersIn(registry);
 
   const visibility = Object.fromEntries(Object.entries(addressPluginKeys(meta.visibility ?? {}, owners).record)
     .filter(([ref, visible]) => owners.refs.includes(ref as FeatureRef) && typeof visible === 'boolean')) as Record<string, boolean>;
@@ -164,9 +181,9 @@ function moveShellState(registry: MigrationRegistry): void {
 }
 
 /** Every pack's plugin settings, stored under their features' bare ids before 0.3.15, onto their refs */
-function movePluginSettings(registry: MigrationRegistry): void {
+function movePluginSettings(owners: PluginOwners): void {
   const data = (untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: { plugins?: Record<string, unknown> } } | undefined)?.data;
   if (!data?.plugins) return;
-  const { record: plugins, moved } = addressPluginKeys(data.plugins, ownersIn(registry));
+  const { record: plugins, moved } = addressPluginKeys(data.plugins, owners);
   if (moved > 0) tx(SETTINGS_ID).put('data', { ...data, plugins });
 }

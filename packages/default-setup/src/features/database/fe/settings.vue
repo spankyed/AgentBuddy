@@ -104,15 +104,15 @@ const openBackupRestore = () => {
   navigateToPlugin('database', { type: 'VIEW_BACKUP' })
 }
 
+// Resolved during setup: usePlugin reads the PluginScope this settings panel renders in, which a click handler can't reach
+const databaseActor = usePlugin()
+
 // Reset database function
 const handleResetDatabase = () => {
   const confirmed = window.confirm(
     'Are you sure you want to reset the database? This will permanently delete all data and create a new root flow. This action cannot be undone.'
   )
 
-  if (confirmed) {
-    const databaseActor = usePlugin()
-    databaseActor.send({ type: 'DATABASE.RESET' })
-  }
+  if (confirmed) databaseActor.send({ type: 'DATABASE.RESET' })
 }
 </script>

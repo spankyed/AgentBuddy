@@ -138,5 +138,5 @@ export function finishOnboarding(
     mode: defaultMode,
   });
 
-  (services.emitter as any).sendToPlugin('host/application', { type: 'ONBOARDING_COMPLETE' });
+  services.emitter.sendToPlugin('host/application', { type: 'ONBOARDING_COMPLETE' });
 }

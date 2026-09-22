@@ -3,6 +3,7 @@
 // open. The host's 0.3.15 app migration moves the shell's state into AppState, each id onto its plugin's ref, and
 // every pack's plugin settings onto their refs.
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { setup } from 'xstate';
 import { tx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
 import type { PackFeature } from '@abuddy/sdk/framework';
@@ -10,6 +11,7 @@ import { resetTestData } from '@abuddy/sdk/testing';
 import { registry } from '../packs/runtime/test-host.ts';
 import { appState } from '../../src/app-state/index.ts';
 import { appMigrations } from '../../src/migrations/app/index.ts';
+import type { InstalledManifests } from '../../src/migrations/app/0.3.15.ts';
 import { hostRegistration } from '../../src/packs/host-pack.ts';
 
 const SETTINGS_ID = 'Settings-app' as EARS.EntityId;
@@ -29,8 +31,9 @@ const OLD_SETTINGS = {
 
 const settings = () => untypedQx(SETTINGS_ID).pickOne(['data'])?.data;
 
-const move = () => {
-  const migration = appMigrations(registry).find((m) => m.target === '0.3.15');
+/** Runs the migration; `installed` stands for the packs installed on disk, none unless a test says */
+const move = (installed: InstalledManifests = () => []) => {
+  const migration = appMigrations(registry, installed).find((m) => m.target === '0.3.15');
   if (!migration) throw new Error('no 0.3.15 app migration');
   migration.up();
 };
@@ -40,6 +43,8 @@ beforeAll(() => {
   // `notes` is the built-in pack's feature too: before 0.3.15 the built-in plugin ran under it
   registry.registerPack({ id: 'memo-pack', features: withPlugins('memos', 'board', 'notes') }, origin('memo-pack', false));
   registry.registerPack({ id: 'built-in', features: withPlugins('notes') }, origin('built-in', true));
+  // A feature with settings and a system but no plugin
+  registry.registerPack({ id: 'sync-pack', features: { sync: { system: { machine: setup({}).createMachine({}), receives: [] } } } }, origin('sync-pack', false));
   // The host's packs plugin, as the API registers it
   registry.registerPack(hostRegistration());
 });
@@ -60,9 +65,28 @@ describe('the 0.3.15 app migration, for plugins', () => {
     });
   });
 
-  it('drops a tab choice no registered plugin owns', () => {
+  it('drops a tab choice no installed pack has', () => {
     move();
     expect(appState.get().pluginVisibility).not.toHaveProperty('hermes');
+  });
+
+  // It runs once, so a pack that isn't loaded at that boot (disabled, or an old build that no longer loads) would
+  // otherwise keep its keys bare for good, where nothing reads them
+  it("moves an installed pack's keys when the pack isn't registered, from its manifest", () => {
+    tx(SETTINGS_ID).put('data', { plugins: { drafts: { wrap: true }, _meta: { visibility: { drafts: false } } } });
+
+    move(() => [{ id: 'draft-pack', features: [{ id: 'drafts' }] }]);
+
+    expect(settings()).toEqual({ plugins: { 'draft-pack/drafts': { wrap: true } } });
+    expect(appState.get().pluginVisibility).toEqual({ 'draft-pack/drafts': false });
+  });
+
+  it('moves the settings of a feature with no plugin', () => {
+    tx(SETTINGS_ID).put('data', { plugins: { sync: { interval: 5 } } });
+
+    move();
+
+    expect(settings()).toEqual({ plugins: { 'sync-pack/sync': { interval: 5 } } });
   });
 
   // Before any pack's migration reads them: the built-in pack's migrations run after the host's

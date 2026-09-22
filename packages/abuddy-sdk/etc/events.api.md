@@ -22,7 +22,7 @@ export type FeatureSettingsUpdated = {
 
 // @public
 export const HOST_PLUGIN_EVENT_TYPES: {
-    'host/application': readonly ["CLIENT_CONNECTED", "APPLICATION_HOTKEYS", "PLUGIN_VISIBILITY_UPDATED"];
+    'host/application': readonly ["CLIENT_CONNECTED", "APPLICATION_HOTKEYS", "PLUGIN_VISIBILITY_UPDATED", "ONBOARDING_COMPLETE"];
 };
 
 // @public
@@ -38,6 +38,8 @@ export type HostPluginEvents = {
     } | {
         type: 'PLUGIN_VISIBILITY_UPDATED';
         pluginVisibility: Record<string, boolean>;
+    } | {
+        type: 'ONBOARDING_COMPLETE';
     };
 };
 

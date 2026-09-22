@@ -106,6 +106,22 @@ describe('abuddy validate', () => {
     expect(output).not.toContain('designation');
   }, 60_000);
 
+  // A dependency found only in a build this CLI can't read is a warning, like one that isn't found: the rest still runs
+  it('warns about a dependency built in another snapshot format, and still runs its other checks', async () => {
+    const old = path.join(tmp, 'old-pack');
+    fs.mkdirSync(path.join(old, 'dist'), { recursive: true });
+    fs.writeFileSync(path.join(old, 'dist', 'snapshot.json'), JSON.stringify({ types: { entities: {}, relKinds: {} }, defs: {}, manifest: { id: 'old-pack', version: '1.0.0' } }));
+    const manifest = readManifest();
+    manifest.dependencies = { 'old-pack': `file:${old}` };
+    fs.writeFileSync(path.join(pack, 'abuddy.json'), JSON.stringify(manifest, null, 2));
+
+    const { output } = await runValidate();
+
+    expect(output).toContain('Warnings:');
+    expect(output).toContain('Dependency "old-pack" has no build this CLI can use');
+    expect(output).toContain('its snapshot is format (none), written by an older abuddy CLI');
+  }, 60_000);
+
   describe('seed entries (the checks code generation makes)', () => {
     const DEFAULT_SETUP = path.resolve(import.meta.dirname, '../../../default-setup');
     function editManifest(edit: (manifest: any) => void) {

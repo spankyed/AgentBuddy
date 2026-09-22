@@ -254,7 +254,7 @@ export interface PackFEFeature {
     default?: true;
     designation?: string;
     // (undocumented)
-    plugin: PluginDefinition;
+    plugin?: PluginDefinition;
 }
 
 // @public

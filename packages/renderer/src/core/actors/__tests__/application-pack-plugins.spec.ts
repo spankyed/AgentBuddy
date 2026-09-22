@@ -45,7 +45,7 @@ beforeEach(() => {
   builtInNotes = plugin('notes');
   app = createActor(createApplicationState(), {
     systemId: 'host/application',
-    input: { plugins: [builtInNotes], defaultPlugin: builtInNotes, restoreLastActivePlugin: false },
+    input: { plugins: [builtInNotes], defaultPlugin: builtInNotes, ownsLastActivePlugin: false },
   }).start();
 });
 

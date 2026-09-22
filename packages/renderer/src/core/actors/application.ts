@@ -30,7 +30,8 @@ export interface ApplicationParams {
   plugins: Plugin[];
   defaultPlugin: Plugin;
   initialPluginId?: string;
-  restoreLastActivePlugin?: boolean;
+  /** Whether this is a main window, which opens on the plugin last open and records the one it opens; a popout does neither */
+  ownsLastActivePlugin?: boolean;
 }
 
 export interface ApplicationContext {
@@ -54,7 +55,8 @@ export interface ApplicationContext {
   };
   hotkeysDisabled: boolean;
   hotkeys: ApplicationHotkeys;
-  restoreLastActivePlugin: boolean;
+  /** A main window's: it opens on the plugin last open and records the one it opens. A popout's plugin isn't the app's */
+  ownsLastActivePlugin: boolean;
   /**
    * A plugin to open that isn't registered yet: the one a popout opens on, or the one last open, when an external
    * pack's frontend adds it after this window starts. Opened when its pack's plugins arrive, unless the user has
@@ -133,7 +135,6 @@ export type ApplicationEvent =
   | HostPluginEvents['host/application']
   | { type: 'SET_PLUGIN_VISIBILITY'; plugin: string; visible: boolean }
   | { type: 'CLOSE_DEV_LETTER' }
-  | { type: 'ONBOARDING_COMPLETE' }
   | { type: 'SHOW_INSPECTION_PANEL' }
   | { type: 'HIDE_INSPECTION_PANEL' }
   | { type: 'RESET_CHAT_HEIGHT' }
@@ -632,7 +633,7 @@ export const createApplicationState = () => setup({
     applyShellState: enqueueActions(({ event, context, enqueue, self }) => {
       const { pluginVisibility, lastActivePlugin } = typeOf('CLIENT_CONNECTED', event);
       enqueue.assign({ pluginVisibility });
-      if (!context.restoreLastActivePlugin || !lastActivePlugin || lastActivePlugin === context.activePlugin.id) return;
+      if (!context.ownsLastActivePlugin || !lastActivePlugin || lastActivePlugin === context.activePlugin.id) return;
       if (context.plugins.some((p) => p.id === lastActivePlugin)) {
         enqueue(() => self.send({ type: 'SELECT_PLUGIN', plugin: lastActivePlugin }));
       } else {
@@ -775,8 +776,8 @@ export const createApplicationState = () => setup({
         return updates;
       });
 
-      // Persist the new active plugin if it changed
-      if (context.activePlugin.id !== newPlugin.id) {
+      // Persist the new active plugin if it changed, from a main window only
+      if (context.ownsLastActivePlugin && context.activePlugin.id !== newPlugin.id) {
         enqueue(() => {
           // The host records it, so the next window, and the next run, opens on it
           trpc.bus.send.mutate({ to: HOST.application, event: { type: 'SET_LAST_ACTIVE_PLUGIN', plugin: newPlugin.id } })
@@ -920,7 +921,7 @@ export const createApplicationState = () => setup({
       panelSizes,
       hotkeysDisabled: false,
       hotkeys: {}, // Start with empty hotkeys until loaded from backend
-      restoreLastActivePlugin: input.restoreLastActivePlugin ?? true,
+      ownsLastActivePlugin: input.ownsLastActivePlugin ?? true,
       pendingPluginId: initialPlugin ? null : input.initialPluginId ?? null,
       packPluginIds: {},
       busSubscribed: false,

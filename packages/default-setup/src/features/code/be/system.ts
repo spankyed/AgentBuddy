@@ -68,6 +68,11 @@ export const codeSpec = defineSystem<IncomingCodeEvents, OutgoingCodeEvents, Con
 
 export interface Context {
   baseDirectory: string | null
+  /**
+   * The default directory the settings named when this system last heard them. The settings arrive whenever any of
+   * the code settings change, the browsed `baseDirectory` included, so only a new default moves the explorer.
+   */
+  defaultBaseDirectory: string | null
   gitRepository: GitRepository | null
   gitWatcher: GitWatcherService | null
 }
@@ -227,8 +232,9 @@ export const systemMachine = setup({
     updateSettings: ({ event, context, self }) => {
       const ev = event as { type: 'FEATURE_SETTINGS_UPDATED'; settings: CodeSettings }
 
-      // Check if defaultBaseDirectory changed and apply it immediately for instant feedback
+      // A new default moves the explorer there at once; the same default arriving again leaves the user's browsing alone
       if (ev.settings.defaultBaseDirectory &&
+          ev.settings.defaultBaseDirectory !== context.defaultBaseDirectory &&
           ev.settings.defaultBaseDirectory !== context.baseDirectory) {
         // Apply the new default base directory
         // Mark as non-navigation so it doesn't overwrite baseDirectory
@@ -334,6 +340,7 @@ export const systemMachine = setup({
 
     return {
       baseDirectory: baseDir,
+      defaultBaseDirectory: codeSettings?.defaultBaseDirectory ?? null,
       gitRepository: gitRepo,
       gitWatcher: baseDir ? new GitWatcherService(baseDir) : null
     }
@@ -347,7 +354,10 @@ export const systemMachine = setup({
         },
         // Handle settings updates
         FEATURE_SETTINGS_UPDATED: {
-          actions: 'updateSettings'
+          actions: [
+            'updateSettings',
+            assign({ defaultBaseDirectory: ({ event }) => (event as { settings: CodeSettings }).settings.defaultBaseDirectory ?? null }),
+          ]
         },
         // Handle SET_BASE_DIRECTORY specially
         SET_BASE_DIRECTORY: {
