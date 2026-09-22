@@ -315,6 +315,11 @@ export function createTest(options: CreateTestOptions = {}) {
           // Install through the same bundle path users get (stage → verify → place)
           const { packsDir } = resolveAppContext({ env: 'test', userDataDir });
           console.log(`[pack] Installing ${manifest.id} from ${archive ?? packDir} into an isolated test data dir...`);
+          // `hostVersion` is the launched app's own (its package.json), so this is that app's answer rather than a
+          // second opinion. No `packFormat`: whether this app can read the pack's build is the app's to decide, and
+          // it does, at boot, naming which side is older. Nothing here can tell — the CLI that runs the fixture
+          // needn't be the app's, and inferring the app's format from an artifact it ships refuses good packs
+          // whenever that artifact is the stale one. `waitForPackBackend` reports the app's verdict within 15s.
           await installPackFromLocal(archive ?? packDir, packsDir, { hostVersion: appVersion(appLaunch) });
         }
 
