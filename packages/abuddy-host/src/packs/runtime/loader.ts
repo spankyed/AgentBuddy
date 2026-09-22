@@ -358,9 +358,9 @@ export function registerExternalPacks(registry: PackRegistry, packs: LoadedPack[
  */
 export async function loadAppPacks(
   registry: PackRegistry,
-  { builtInDir, bundledLoaders }: { builtInDir?: string; bundledLoaders?: () => Promise<BundledPackLoaders> },
+  { builtInDir, ...builtInOptions }: { builtInDir?: string } & LoadBuiltInPacksOptions,
 ): Promise<{ builtIn: BuiltInPackInfo[]; external: LoadedPack[] }> {
-  const builtInPromise = builtInDir ? loadBuiltInPacks(registry, builtInDir, { bundledLoaders }) : Promise.resolve([]);
+  const builtInPromise = builtInDir ? loadBuiltInPacks(registry, builtInDir, builtInOptions) : Promise.resolve([]);
   const loaded = loadExternalPacks(registry);
   const builtIn = await builtInPromise;
   return { builtIn, external: loaded.length > 0 ? registerExternalPacks(registry, loaded) : [] };

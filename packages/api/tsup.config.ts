@@ -2,7 +2,7 @@ import { defineConfig } from 'tsup';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { discoverBuiltInPacksForBuild } from '@abuddy/host/build/discover';
+import { builtInPackLoadersModule, discoverBuiltInPacksForBuild } from '@abuddy/host/build/discover';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packagesRoot = path.resolve(__dirname, '..');
@@ -68,21 +68,11 @@ export default defineConfig((options) => {
           namespace: NAMESPACE,
         }));
 
-        build.onLoad({ filter: /.*/, namespace: NAMESPACE }, () => {
-          const packsWithEntry = builtInPacks.filter(p => p.entryPath);
-          if (packsWithEntry.length === 0) {
-            throw new Error('[built-in-pack-loaders] No built-in packs found — production bundle would have no packs to load');
-          }
-          const lines = packsWithEntry.map(p => {
-            const relPath = path.relative(packLoaderDir, p.entryPath!).replace(/\\/g, '/');
-            return `  ${JSON.stringify(p.id)}: () => import('${relPath}'),`;
-          });
-          return {
-            contents: `export default {\n${lines.join('\n')}\n};\n`,
-            loader: 'ts',
-            resolveDir: packLoaderDir,
-          };
-        });
+        build.onLoad({ filter: /.*/, namespace: NAMESPACE }, () => ({
+          contents: builtInPackLoadersModule(builtInPacks, packLoaderDir),
+          loader: 'ts',
+          resolveDir: packLoaderDir,
+        }));
       },
     },
     {
