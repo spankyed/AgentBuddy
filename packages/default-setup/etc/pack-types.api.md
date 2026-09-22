@@ -2587,11 +2587,11 @@ type OutgoingSettingsEvents = {
     type: 'SETTINGS_UPDATED';
     data: SettingsData;
 }
-/** A replacement (`REPLACE_SETTINGS`) was stored */
+/** A change (`UPDATE_SETTINGS`, `REPLACE_SETTINGS`) was stored */
  | {
     type: 'SETTINGS_SAVED';
 }
-/** A replacement was refused, and stored nothing */
+/** A change was refused, and stored nothing */
  | {
     type: 'SETTINGS_REFUSED';
     problems: string[];
@@ -4699,11 +4699,11 @@ declare const settingsCommands: {
     removeStored(path: string[]): void;
     resetSettings: () => void;
     /**
-     * Runs `replace`, which replaces the stored data wholesale (a backup import), telling the listeners of no write made
-     * until it settles: the settings arrive past this writer, and the migrations the import runs write through it, so a
-     * diff against what features were told before would have them rewrite rows that came in with it. Held here, at the
-     * writer, it holds whenever those writes happen. The caller tells every feature its settings once it settles
-     * (`DATA_REPLACED`), done or failed, since a failed import may have migrated some of the data already.
+     * Runs `replace`, which replaces the stored data wholesale (a backup import), telling the listeners it is running
+     * and, once it settles, that it ended — done or failed, since a failed import may have migrated some of the data
+     * already. The settings arrive past this writer, and the migrations the import runs write through it, so the
+     * listeners know a write made in between from one of the user's. Said here, at the writer, they can't arrive out of
+     * order with the writes they bracket.
      */
     whileReplacingData<T>(replace: () => Promise<T>): Promise<T>;
 };
@@ -5329,14 +5329,16 @@ declare const specs: {
             data: unknown;
         } | {
             type: "RESET_APP";
-        } | {
-            type: "DATA_REPLACED";
         }) | ({
             type: "PACK_SETTINGS_CHANGED";
         } | {
             type: "SECRETS_CHANGED";
         } | {
             type: "SETTINGS_WRITTEN";
+        } | {
+            type: "DATA_REPLACING";
+        } | {
+            type: "DATA_REPLACED";
         });
         _outgoing: OutgoingSettingsEvents;
     };
