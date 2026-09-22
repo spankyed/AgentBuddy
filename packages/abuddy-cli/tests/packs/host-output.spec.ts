@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { publishHostPackOutput } from '@abuddy/host/packs';
 import { resolveDepFiles } from '../../src/commands/fetch-deps';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 
 let tmp: string;
 const saved = { env: process.env.ABUDDY_ENV, dir: process.env.ABUDDY_USER_DATA_DIR, root: process.env.ABUDDY_ROOT };
@@ -23,7 +24,7 @@ afterEach(() => {
   fs.rmSync(tmp, { recursive: true, force: true });
 });
 
-function builtInPack(snapshot = { types: { entities: {}, relKinds: {} }, defs: {}, manifest: { id: 'base-pack', version: '1.0.0' } }) {
+function builtInPack(snapshot: object = { types: { entities: {}, relKinds: {} }, defs: {}, manifest: { id: 'base-pack', version: '1.0.0' }, format: PACK_SNAPSHOT_FORMAT }) {
   // Deliberately not a sibling/workspace path of the author pack, so only the installed-app source can find it
   const dir = path.join(tmp, 'app-bundle', 'resources', 'default-pack-source');
   fs.mkdirSync(path.join(dir, 'dist', 'build'), { recursive: true });
@@ -113,8 +114,6 @@ describe('dependency resolution from an installed app', () => {
     expect(fs.readdirSync(artifacts!.seedsDir!).sort()).toEqual(['media', 'seeds.json', 'settings.seed.json']);
   });
 
-  // The label reaches the facade check, which uses it to pick a remedy the reader can carry out: a
-  // pack taken out of an installed app has no source tree to rebuild.
   it('reports where the dependency resolved from, and reports nothing for a later cache hit', async () => {
     const hostPacks = path.join(tmp, 'userdata', 'host-packs');
     publishHostPackOutput(builtInPack(), path.join(hostPacks, 'base-pack'));
@@ -162,8 +161,12 @@ describe('dependency resolution from an installed app', () => {
     expect(fs.readFileSync(artifacts!.runtimeEntry!, 'utf-8')).toContain('registration');
   });
 
-  function publishInstalled(version: string, steps = 'export const steps = [];') {
-    const src = builtInPack({ types: { entities: {}, relKinds: {} }, defs: {}, manifest: { id: 'base-pack', version } } as any);
+  /** A built-in pack's snapshot; `fields` overrides any of it, `format: undefined` included */
+  const snapshotOf = (version: string, fields: object = {}) =>
+    ({ types: { entities: {}, relKinds: {} }, defs: {}, manifest: { id: 'base-pack', version }, format: PACK_SNAPSHOT_FORMAT, ...fields });
+
+  function publishInstalled(version: string, steps = 'export const steps = [];', fields: object = {}) {
+    const src = builtInPack(snapshotOf(version, fields));
     fs.writeFileSync(path.join(src, 'dist', 'build', 'steps.build.mjs'), steps);
     publishHostPackOutput(src, path.join(tmp, 'userdata', 'host-packs', 'base-pack'));
   }
@@ -199,7 +202,7 @@ describe('dependency resolution from an installed app', () => {
     const checkout = path.join(tmp, 'AgentBuddy');
     fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
     fs.renameSync(
-      builtInPack({ types: { entities: {}, relKinds: {} }, defs: {}, manifest: { id: 'base-pack', version: '3.0.0' } } as any),
+      builtInPack(snapshotOf('3.0.0')),
       path.join(checkout, 'packages', 'base-pack'),
     );
     process.env.ABUDDY_ROOT = checkout;
@@ -212,7 +215,7 @@ describe('dependency resolution from an installed app', () => {
     const checkout = path.join(tmp, 'AgentBuddy');
     fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
     fs.renameSync(
-      builtInPack({ types: { entities: {}, relKinds: {} }, defs: {}, manifest: { id: 'base-pack', version: '4.0.0' } } as any),
+      builtInPack(snapshotOf('4.0.0')),
       path.join(checkout, 'packages', 'base-pack'),
     );
     // Three levels down, like tests/fixtures/external-pack
@@ -220,6 +223,44 @@ describe('dependency resolution from an installed app', () => {
     fs.mkdirSync(fixture, { recursive: true });
 
     expect((await resolveDepFiles(fixture, 'base-pack', '*'))?.snapshot.manifest.version).toBe('4.0.0');
+  });
+
+  /**
+   * A snapshot in another format is misread rather than refused by whatever reads it, so the format is
+   * checked where a build is chosen, beside the version range.
+   */
+  describe('the snapshot format', () => {
+    it('passes over a nearer build in another format for one in the format this CLI reads', async () => {
+      publishInstalled('1.0.0');
+      const checkout = path.join(tmp, 'AgentBuddy');
+      fs.mkdirSync(path.join(checkout, 'packages'), { recursive: true });
+      fs.renameSync(builtInPack(snapshotOf('3.0.0', { format: undefined })), path.join(checkout, 'packages', 'base-pack'));
+      process.env.ABUDDY_ROOT = checkout;
+
+      expect((await resolveDepFiles(authorPack(), 'base-pack', '*'))?.snapshot.manifest.version).toBe('1.0.0');
+    });
+
+    it('refuses a dependency found only in another format, naming where and which side is older', async () => {
+      publishInstalled('1.0.0', undefined, { format: undefined, sdkVersion: '0.3.14' });
+      await expect(resolveDepFiles(authorPack(), 'base-pack', '*')).rejects.toThrow(
+        `Dependency "base-pack" has no build this CLI can use:\n  - installed app (production): its snapshot is format (none), written by an older abuddy CLI (SDK 0.3.14); this CLI reads format ${PACK_SNAPSHOT_FORMAT}`,
+      );
+
+      publishInstalled('1.0.0', undefined, { format: PACK_SNAPSHOT_FORMAT + 1 });
+      await expect(resolveDepFiles(authorPack(), 'base-pack', '*')).rejects.toThrow(
+        `its snapshot is format ${PACK_SNAPSHOT_FORMAT + 1}, written by a newer abuddy CLI; this CLI reads format ${PACK_SNAPSHOT_FORMAT}`,
+      );
+    });
+
+    it('never serves a cached snapshot in another format', async () => {
+      const packRoot = authorPack();
+      publishInstalled('1.0.0');
+      expect(await resolveDepFiles(packRoot, 'base-pack', '*')).not.toBeNull(); // now cached
+      fs.rmSync(path.join(tmp, 'userdata', 'host-packs', 'base-pack'), { recursive: true });
+      fs.writeFileSync(path.join(packRoot, '.abuddy', 'deps', 'base-pack', 'snapshot.json'), JSON.stringify(snapshotOf('1.0.0', { format: undefined })));
+
+      await expect(resolveDepFiles(packRoot, 'base-pack', '*')).rejects.toThrow('the .abuddy/deps cache: its snapshot is format (none)');
+    });
   });
 
   it("refuses a GitHub release without the dependency's own archive checksum", async () => {

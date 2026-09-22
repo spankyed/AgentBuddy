@@ -25,7 +25,7 @@ import { loadDependencyRuntime } from './dependency-runtime.ts';
 import { assertSharedEars } from './shared-ears.ts';
 import { setAppPacks, stopRunningApps } from './app.ts';
 import { PROJECT_ROOT_KEY } from './vitest-teardown.ts';
-import { compileFlowDSL, compilePack, resolveSeeds, SEED_INDEX_FILE, type FlowDSL, type PackManifest, type PackSnapshot, type SeedDependency, type SeedIndex } from '@abuddy/sdk/build';
+import { compileFlowDSL, compilePack, resolveSeeds, SEED_INDEX_FILE, _snapshotFormatMismatch, type FlowDSL, type PackManifest, type PackSnapshot, type SeedDependency, type SeedIndex } from '@abuddy/sdk/build';
 import { actionRepository, flowRepository, promptRepository } from '@abuddy/sdk/repositories';
 import { untypedQx } from '@abuddy/ears';
 import { _getMediaPath, seedData, type ImportMode, type SeedCounts, type Seeder } from '@abuddy/sdk/utils';
@@ -190,6 +190,8 @@ function readDependencies(packDir: string, manifest: PackManifest): Map<string, 
       throw new Error(`Dependency "${depId}" isn't in ${path.join(DEPS_DIR, depId)}. Run \`abuddy build\` once to fetch dependencies.`);
     }
     const snapshot = JSON.parse(fs.readFileSync(snapshotFile, 'utf-8')) as PackSnapshot;
+    const mismatch = _snapshotFormatMismatch(snapshot);
+    if (mismatch) throw new Error(`Dependency "${depId}" in ${path.join(DEPS_DIR, depId)}: ${mismatch}. Run \`abuddy build\` to fetch it again.`);
     const buildDir = path.join(dir, 'build');
     dependencies.set(depId, { snapshot, dir, manifest: snapshot.manifest, ...(fs.existsSync(buildDir) && { buildDir }) });
   }

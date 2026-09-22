@@ -5,6 +5,7 @@ import {
   compilePack,
   buildPackConfigFromManifest,
   PACK_TYPES_DEF,
+  PACK_SNAPSHOT_FORMAT,
   entitiesWithoutShapes,
   SEED_COMPILERS_FILE,
   _buildProvenance,
@@ -215,7 +216,7 @@ export async function build(args: string[]) {
    */
   const provenance = _buildProvenance([...depSnapshots], { id: manifest.id, manifest });
   const snapshot: PackSnapshot = {
-    types, defs, manifest, sdkVersion: sdkVersion(),
+    types, defs, manifest, format: PACK_SNAPSHOT_FORMAT, sdkVersion: sdkVersion(),
     ...(Object.keys(provenance).length > 0 && { provenance }),
     ...(flowHelpers.success && { flowHelpers: flowHelpers.flowHelpers }),
   };

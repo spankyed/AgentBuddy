@@ -24,6 +24,23 @@ export type PackSystemEntry = NonNullable<PackFeatureEntry['system']>;
 export type PackPluginEntry = NonNullable<PackFeatureEntry['plugin']>;
 
 // Not part of abuddy.json — used for dist/snapshot.json and build-time type exchange.
+
+/**
+ * The format of a pack's snapshot: everything a dependent's codegen reads from it — the facade types in
+ * `defs['pack-types']` and the exports generated code imports from them, `types`, `provenance` and its
+ * kinds, `flowHelpers`, and the manifest fields codegen follows.
+ *
+ * A snapshot and the CLI generating a dependent against it are often different versions: an installed
+ * AgentBuddy publishes its built-in packs' snapshots, and a GitHub release carries the snapshot its
+ * author's CLI wrote. The two must agree exactly, because a disagreement doesn't fail where it happens —
+ * a reshaped field is read as absent, a renamed facade export surfaces as TS2305 inside generated code.
+ *
+ * Bump it with any change a CLI on the other side would misread: a field, facade export or provenance
+ * kind removed, renamed or reshaped, or keys that now mean something else. `snapshot-format.spec.ts`
+ * lists what it covers, and fails when that list changes so the change is decided rather than missed.
+ */
+export const PACK_SNAPSHOT_FORMAT = 1;
+
 export interface PackTypeManifest {
   entities: Record<string, string>;
   relKinds: Record<string, string>;
@@ -33,6 +50,8 @@ export interface PackSnapshot {
   types: PackTypeManifest;
   defs: Record<string, string>;
   manifest: PackManifest;
+  /** The `PACK_SNAPSHOT_FORMAT` of the CLI that wrote it; a snapshot without one predates the format */
+  format: number;
   sdkVersion?: string;
   /**
    * What everything this pack's tree declares is declared by: kind → name → the pack declaring it.
@@ -50,6 +69,21 @@ export interface PackSnapshot {
   provenance?: PackProvenance;
   /** The pack's flow helpers, which dependents' generated flow helpers re-export */
   flowHelpers?: PackFlowHelpers;
+}
+
+/**
+ * Why this CLI can't generate against a snapshot, or undefined when it can: the snapshot's format
+ * differs from `PACK_SNAPSHOT_FORMAT`. Says which side is older, since that decides which one moves.
+ *
+ * @internal Host-only: abuddy CLI build tooling and the pack test harness.
+ */
+export function _snapshotFormatMismatch(snapshot: { format?: unknown; sdkVersion?: string }): string | undefined {
+  const { format } = snapshot;
+  if (format === PACK_SNAPSHOT_FORMAT) return undefined;
+  const builtBy = typeof format === 'number' && format > PACK_SNAPSHOT_FORMAT ? 'a newer' : 'an older';
+  const builtWith = snapshot.sdkVersion ? ` (SDK ${snapshot.sdkVersion})` : '';
+  return `its snapshot is format ${typeof format === 'number' ? format : '(none)'}, written by ${builtBy} abuddy CLI${builtWith}; `
+    + `this CLI reads format ${PACK_SNAPSHOT_FORMAT}. Build it and this pack with the same abuddy version`;
 }
 
 /**

@@ -3,7 +3,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import ts from 'typescript';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { generatePackFiles, type PackManifest, type PackSnapshot } from '@abuddy/sdk/build';
+import { generatePackFiles, PACK_SNAPSHOT_FORMAT, type PackManifest, type PackSnapshot } from '@abuddy/sdk/build';
 import { bundlePackFlowHelpers } from '../../src/build/flow-helpers-bundler';
 
 /**
@@ -84,7 +84,7 @@ beforeAll(async () => {
   }
   const bundled = await bundlePackFlowHelpers(base, path.join(base, 'dist', 'types'));
   if (!bundled.success) throw new Error(bundled.error);
-  snapshot = { types: { entities: {}, relKinds: {} }, defs: {}, manifest: baseManifest, flowHelpers: bundled.flowHelpers };
+  snapshot = { types: { entities: {}, relKinds: {} }, defs: {}, manifest: baseManifest, format: PACK_SNAPSHOT_FORMAT, flowHelpers: bundled.flowHelpers };
 
   app = writePack('app-pack', { 'src/consumer.ts': CONSUMER });
   for (const [file, content] of Object.entries(generatePackFiles(appManifest, { packRoot: app, depSnapshots: new Map([['base-pack', snapshot]]) }))) {

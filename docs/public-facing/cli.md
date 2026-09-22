@@ -76,7 +76,7 @@ Resolve every dependency and cache its snapshot, build code and backend runtime 
 4. Installed AgentBuddy apps' built-in packs (production, beta, development, test data dirs)
 5. GitHub releases, for `github:owner/repo` values (the `<id>-<version>.tgz` asset and its `.sha256`)
 
-Sources 2–5 must satisfy the declared range. `abuddy build` resolves the same way but uses the `.abuddy/deps` cache, while it satisfies the range, before going to GitHub. See [Manifest Reference — Dependencies](manifest.md#dependencies) for the value formats.
+Sources 2–5 must satisfy the declared range, and every source must carry a snapshot in the format this CLI reads; a build in another format is passed over, and reported if nothing else resolves. `abuddy build` resolves the same way but uses the `.abuddy/deps` cache, while it satisfies the range, before going to GitHub. See [Manifest Reference — Dependencies](manifest.md#dependencies) for the value formats.
 
 ### Building
 

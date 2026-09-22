@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { generatePackFiles, PACK_TYPES_DEF, type PackManifest, type PackSnapshot } from '@abuddy/sdk/build';
+import { generatePackFiles, PACK_SNAPSHOT_FORMAT, PACK_TYPES_DEF, type PackManifest, type PackSnapshot } from '@abuddy/sdk/build';
 import { warnStaleDepTypes } from '../../src/commands/generate-entries';
 
 let root: string;
@@ -20,7 +20,7 @@ function generateDepTypes(version: string): void {
   // The exports generation imports from every dependency's facade
   const facade = ['PackEntityShapes', 'PackStepNodes', 'PackEvents', 'PackSystemEvents', 'Services', 'Repositories']
     .map((name) => `export type ${name} = {};`).join('\n');
-  const snapshot = { types: { entities: {}, relKinds: {} }, defs: { [PACK_TYPES_DEF]: facade }, manifest: { id: 'base-pack', name: 'Base', version } } as PackSnapshot;
+  const snapshot = { types: { entities: {}, relKinds: {} }, defs: { [PACK_TYPES_DEF]: facade }, manifest: { id: 'base-pack', name: 'Base', version }, format: PACK_SNAPSHOT_FORMAT } as PackSnapshot;
   for (const [file, content] of Object.entries(generatePackFiles(manifest, { packRoot: root, depSnapshots: new Map([['base-pack', snapshot]]) }))) {
     fs.mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
     fs.writeFileSync(path.join(root, file), content);

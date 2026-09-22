@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { generateEntries } from '../../src/commands/generate-entries';
-import type { PackSnapshot, PackTypeManifest } from '@abuddy/sdk/build';
+import { PACK_SNAPSHOT_FORMAT, type PackSnapshot, type PackTypeManifest } from '@abuddy/sdk/build';
 
 let tmpDir: string;
 
@@ -156,6 +156,7 @@ describe('abuddy generate-entries', () => {
     });
 
     const snapshot: PackSnapshot = {
+      format: PACK_SNAPSHOT_FORMAT,
       types: {
         entities: { DepWidget: 'DepWidget' },
         relKinds: { DEP_REL: 'dep_rel' },

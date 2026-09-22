@@ -1281,6 +1281,9 @@ depProvenance?: Map<string, PackProvenance>): {
 export function on(event: string, exits: DSLStepNode[][], label?: string): Track;
 
 // @public
+export const PACK_SNAPSHOT_FORMAT = 1;
+
+// @public
 export const PACK_TYPES_DEF = "pack-types";
 
 // @public (undocumented)
@@ -1351,6 +1354,7 @@ export interface PackSnapshot {
     // (undocumented)
     defs: Record<string, string>;
     flowHelpers?: PackFlowHelpers;
+    format: number;
     // (undocumented)
     manifest: PackManifest;
     provenance?: PackProvenance;
@@ -1663,6 +1667,12 @@ export interface SeedRecord {
 
 // @public (undocumented)
 export type SeedTreeSpec = NonNullable<SeedFormatConfig['tree']>;
+
+// @internal
+export function _snapshotFormatMismatch(snapshot: {
+    format?: unknown;
+    sdkVersion?: string;
+}): string | undefined;
 
 // @public (undocumented)
 export function sourceHash(data: object): string;

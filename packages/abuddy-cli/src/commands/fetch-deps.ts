@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { satisfies, rcompare, clean } from 'semver';
-import { SEED_INDEX_FILE, type PackSnapshot } from '@abuddy/sdk/build';
+import { SEED_INDEX_FILE, _snapshotFormatMismatch, type PackSnapshot } from '@abuddy/sdk/build';
 import { findPackRoot, readManifest } from '../utils';
 import { PACK_LAYOUT, extractPackArchive, verifyPack } from '@abuddy/host/packs';
 import { resolveAppContext, type AppEnv } from '@abuddy/sdk/env';
@@ -126,11 +126,36 @@ function inRange(artifacts: DepFiles, range: string): boolean {
   return version !== null && satisfies(version, range, { includePrerelease: true });
 }
 
+/**
+ * Each build that was found but that this CLI can't generate against, with why. A dependency that exists
+ * and still fails to resolve says so with these, rather than as not found.
+ */
+type Rejected = string[];
+
+/**
+ * Whether a found build is one this pack can use: in the declared range, and in the snapshot format this
+ * CLI reads. The format is a selection criterion like the range, so a mismatched installed channel or
+ * cache entry gives way to one that matches instead of being generated against.
+ */
+function usable(found: DepFiles | null, range: string, where: string, rejected: Rejected): found is DepFiles {
+  if (!found) return false;
+  const mismatch = _snapshotFormatMismatch(found.snapshot);
+  if (mismatch) {
+    rejected.push(`${where}: ${mismatch}`);
+    return false;
+  }
+  return inRange(found, range);
+}
+
+function unusable(depId: string, rejected: Rejected): Error {
+  return new Error(`Dependency "${depId}" has no build this CLI can use:\n${rejected.map((r) => `  - ${r}`).join('\n')}`);
+}
+
 /** Built-in packs published by an installed AgentBuddy (any channel) into its data dir at boot. */
-function resolveFromInstalledApp(depId: string, range: string): (DepFiles & { env: AppEnv }) | null {
+function resolveFromInstalledApp(depId: string, range: string, rejected: Rejected): (DepFiles & { env: AppEnv }) | null {
   for (const env of ['production', 'beta', 'development', 'test'] as const) {
     const found = findDepFiles(path.join(resolveAppContext({ env }).hostPacksDir, depId));
-    if (found && inRange(found, range)) return { ...found, env };
+    if (usable(found, range, `installed app (${env})`, rejected)) return { ...found, env };
   }
   return null;
 }
@@ -189,7 +214,7 @@ function tagToVersion(tag: string): string | null {
   return clean(tag.replace(/^v/, ''));
 }
 
-async function resolveFromGitHub(root: string, depId: string, repo: string, range: string): Promise<DepFiles | null> {
+async function resolveFromGitHub(root: string, depId: string, repo: string, range: string, rejected: Rejected): Promise<DepFiles | null> {
   const url = `https://api.github.com/repos/${repo}/releases?per_page=100`;
 
   const res = await fetch(url, { headers: githubHeaders() });
@@ -218,7 +243,7 @@ async function resolveFromGitHub(root: string, depId: string, repo: string, rang
     return null;
   }
 
-  return downloadAndExtract(root, asset, checksumAsset, depId, version);
+  return downloadAndExtract(root, asset, checksumAsset, depId, version, rejected);
 }
 
 async function downloadAsset(assetUrl: string, dest: string): Promise<boolean> {
@@ -239,6 +264,7 @@ async function downloadAndExtract(
   checksumAsset: { name: string; url: string },
   depId: string,
   version: string,
+  rejected: Rejected,
 ): Promise<DepFiles | null> {
   const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abuddy-fetch-'));
   try {
@@ -260,6 +286,8 @@ async function downloadAndExtract(
       console.warn(`  No snapshot found in ${asset.name} for ${depId}@${version}`);
       return null;
     }
+    // Checked before caching, so a release this CLI can't read never replaces a cached one it can
+    if (!usable(artifacts, '*', `github release ${version}`, rejected)) return null;
     // The temp dir is removed below; persist into the cache first
     cacheDep(root, depId, artifacts);
     return resolveFromLocal(root, depId);
@@ -335,17 +363,17 @@ function copySeeds(from: string, to: string): void {
  * (ABUDDY_APP, ABUDDY_ROOT or the saved choice), then installed apps. Each must satisfy the
  * declared range. They're cheap, so they're re-read on every build instead of trusting the cache.
  */
-async function resolveFromMachine(root: string, depId: string, range: string): Promise<(DepFiles & { resolvedFrom: string }) | null> {
+async function resolveFromMachine(root: string, depId: string, range: string, rejected: Rejected): Promise<(DepFiles & { resolvedFrom: string }) | null> {
   const workspace = resolveFromWorkspace(root, depId);
-  if (workspace && inRange(workspace, range)) return { ...workspace, resolvedFrom: 'workspace' };
+  if (usable(workspace, range, 'workspace', rejected)) return { ...workspace, resolvedFrom: 'workspace' };
 
   const configured = await resolveFromConfiguredApp(root, depId);
-  if (configured && inRange(configured, range)) {
+  if (configured && usable(configured, range, configured.label, rejected)) {
     const { label, ...artifacts } = configured;
     return { ...artifacts, resolvedFrom: label };
   }
 
-  const installed = resolveFromInstalledApp(depId, range);
+  const installed = resolveFromInstalledApp(depId, range, rejected);
   if (installed) {
     const { env, ...artifacts } = installed;
     return { ...artifacts, resolvedFrom: `installed app (${env})` };
@@ -353,30 +381,31 @@ async function resolveFromMachine(root: string, depId: string, range: string): P
   return null;
 }
 
-async function resolveFromNetwork(root: string, depId: string, github: string | null, range: string): Promise<(DepFiles & { resolvedFrom: string }) | null> {
+async function resolveFromNetwork(root: string, depId: string, github: string | null, range: string, rejected: Rejected): Promise<(DepFiles & { resolvedFrom: string }) | null> {
   if (github) {
-    const found = await resolveFromGitHub(root, depId, github, range);
+    const found = await resolveFromGitHub(root, depId, github, range, rejected);
     return found && { ...found, resolvedFrom: `github:${github}@${found.snapshot.manifest.version}` };
   }
   const registrySource = await lookupRegistry(depId);
   if (registrySource) {
-    const found = await resolveFromGitHub(root, depId, registrySource, range);
+    const found = await resolveFromGitHub(root, depId, registrySource, range, rejected);
     if (found) return { ...found, resolvedFrom: `registry → github:${registrySource}@${found.snapshot.manifest.version}` };
   }
   return null;
 }
 
-async function resolveFromUpstream(root: string, depId: string, depValue: string): Promise<(DepFiles & { resolvedFrom: string }) | null> {
+async function resolveFromUpstream(root: string, depId: string, depValue: string, rejected: Rejected): Promise<(DepFiles & { resolvedFrom: string }) | null> {
   const { github, filePath, range } = parseDepValue(depValue);
 
   if (filePath) {
     const found = resolveFromFile(root, filePath);
-    if (found) return { ...found, resolvedFrom: `file:${path.resolve(root, filePath)}` };
-    console.warn(`  Warning: no snapshot in ${path.resolve(root, filePath)} (build it first)`);
+    const where = `file:${path.resolve(root, filePath)}`;
+    if (usable(found, range, where, rejected)) return { ...found, resolvedFrom: where };
+    if (!found) console.warn(`  Warning: no snapshot in ${path.resolve(root, filePath)} (build it first)`);
     return null;
   }
 
-  return (await resolveFromMachine(root, depId, range)) ?? resolveFromNetwork(root, depId, github, range);
+  return (await resolveFromMachine(root, depId, range, rejected)) ?? resolveFromNetwork(root, depId, github, range, rejected);
 }
 
 /**
@@ -395,16 +424,19 @@ const withSource = (artifacts: DepFiles | null, resolvedFrom: string): ResolvedD
 /**
  * Resolve a dependency's artifacts (snapshot, plus build code and backend runtime when it ships them). Sources on this machine
  * win and refresh the .abuddy/deps cache; the cache only stands in for a network source, and
- * only while it satisfies the declared range.
+ * only while it satisfies the declared range. A dependency found only in builds this CLI can't use throws,
+ * naming each one and why.
  */
 export async function resolveDepFiles(root: string, depId: string, depValue: string, skipCache = false): Promise<ResolvedDepFiles | null> {
   const { github, filePath, range } = parseDepValue(depValue);
+  const rejected: Rejected = [];
   if (filePath) {
-    const found = await resolveFromUpstream(root, depId, depValue);
+    const found = await resolveFromUpstream(root, depId, depValue, rejected);
+    if (!found && rejected.length > 0) throw unusable(depId, rejected);
     return found ?? null;
   }
 
-  const local = await resolveFromMachine(root, depId, range);
+  const local = await resolveFromMachine(root, depId, range, rejected);
   if (local) {
     cacheDep(root, depId, local);
     return withSource(resolveFromLocal(root, depId), local.resolvedFrom);
@@ -415,10 +447,11 @@ export async function resolveDepFiles(root: string, depId: string, depValue: str
   // isn't worth a new cache artifact until a hedged message proves annoying in practice.
   if (!skipCache) {
     const cached = resolveFromLocal(root, depId);
-    if (cached && inRange(cached, range)) return cached;
+    if (usable(cached, range, 'the .abuddy/deps cache', rejected)) return cached;
   }
 
-  const fetched = await resolveFromNetwork(root, depId, github, range);
+  const fetched = await resolveFromNetwork(root, depId, github, range, rejected);
+  if (!fetched && rejected.length > 0) throw unusable(depId, rejected);
   if (!fetched) return null;
   cacheDep(root, depId, fetched);
   return withSource(resolveFromLocal(root, depId), fetched.resolvedFrom);
@@ -449,7 +482,8 @@ export async function fetchDeps(_args: string[]) {
 
   for (const depId of depIds) {
     const depValue = deps[depId];
-    const result = await resolveFromUpstream(root, depId, depValue);
+    const rejected: Rejected = [];
+    const result = await resolveFromUpstream(root, depId, depValue, rejected);
     if (result) {
       if (!depValue.startsWith('file:')) cacheDep(root, depId, result);
       const entityCount = Object.keys(result.snapshot.types.entities).length;
@@ -459,6 +493,7 @@ export async function fetchDeps(_args: string[]) {
       resolved++;
     } else {
       failed.push(depId);
+      if (rejected.length > 0) console.warn(unusable(depId, rejected).message);
     }
   }
 

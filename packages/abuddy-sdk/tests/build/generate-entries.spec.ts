@@ -6,7 +6,7 @@ import { transformSync } from 'esbuild';
 import ts from 'typescript';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { _depTypesFile, _depTypesVersion, entitiesWithoutShapes, generatePackFiles, PACK_TYPES_DEF } from '../../src/build/generate-entries.ts';
-import { _buildProvenance } from '../../src/build/manifest.ts';
+import { _buildProvenance, PACK_SNAPSHOT_FORMAT, PROVENANCE_KINDS } from '../../src/build/manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../../src/types/sdk-entities.ts';
 import type { PackManifest, PackSnapshot } from '../../src/build/manifest.ts';
 
@@ -49,7 +49,7 @@ function facade(overrides: Partial<Record<keyof typeof FACADE_DEFAULTS, string>>
 }
 
 function dependency(fields: Record<string, unknown>, defs: Record<string, string> = facade()): PackSnapshot {
-  return { types: { entities: {}, relKinds: {} }, defs, manifest: manifest({ id: 'base-pack', ...fields }) };
+  return { types: { entities: {}, relKinds: {} }, defs, manifest: manifest({ id: 'base-pack', ...fields }), format: PACK_SNAPSHOT_FORMAT };
 }
 
 function generate(fields: Record<string, unknown>, deps: Record<string, PackSnapshot> = {}): Record<string, string> {
@@ -648,6 +648,7 @@ describe('a diamond dependency', () => {
     defs: facade(),
     provenance: { entities: { Memo: owner } },
     manifest: manifest({ id }),
+    format: PACK_SNAPSHOT_FORMAT,
   }) as PackSnapshot;
 
   // Both sides surface deep-pack's Memo, because a snapshot carries its dependencies' names so a
@@ -693,6 +694,7 @@ describe('a diamond dependency', () => {
         { id, manifest: {} },
       ))),
       manifest: manifest({ id }),
+      format: PACK_SNAPSHOT_FORMAT,
     }) as PackSnapshot;
 
     expect(() => generate({ features: [system('brain')] }, {
@@ -1073,5 +1075,40 @@ describe('generated flow helpers', () => {
     expect(flowHelpers).not.toContain('Record<string, unknown>');
     expect(files['src/__generated__/deps/base-pack.flow-helpers.js']).toContain('// base-pack module');
     expect(files['src/__generated__/deps/base-pack.flow-helpers.d.ts']).toContain('// base-pack types');
+  });
+});
+
+/**
+ * What `PACK_SNAPSHOT_FORMAT` covers: the snapshot's fields, the provenance kinds, and the facade exports
+ * a dependent's generated code imports. When this fails, the snapshot's contract changed. Bump the format
+ * if a CLI on the other side would misread the change (anything removed, renamed or reshaped), then update
+ * the expectation. A pure addition every reader ignores needs only the expectation.
+ */
+describe('the snapshot format', () => {
+  // Typed against PackSnapshot, so adding or removing a field fails the typecheck until it is listed
+  const SNAPSHOT_FIELDS: Record<keyof PackSnapshot, true> = {
+    types: true, defs: true, manifest: true, format: true, sdkVersion: true, provenance: true, flowHelpers: true,
+  };
+
+  /** Every name generated code imports from a dependency's facade, with a send to one of its plugins */
+  function facadeImports(): string[] {
+    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { entry: 'y' } }] }) };
+    const files = generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions', { sendsTo: ['base-pack/memos'] }))] }, deps);
+    const names = Object.values(files).flatMap((file) => [...file.matchAll(/import type \{ (\w+) as \w+ \} from '\.\/deps\/base-pack\.js'/g)].map((m) => m[1]));
+    return [...new Set(names)].sort();
+  }
+
+  it('covers exactly what dependents read', () => {
+    expect({
+      format: PACK_SNAPSHOT_FORMAT,
+      fields: Object.keys(SNAPSHOT_FIELDS).sort(),
+      provenanceKinds: Object.keys(PROVENANCE_KINDS).sort(),
+      facadeImports: facadeImports(),
+    }).toEqual({
+      format: 1,
+      fields: ['defs', 'flowHelpers', 'format', 'manifest', 'provenance', 'sdkVersion', 'types'],
+      provenanceKinds: ['commands', 'entities', 'plugins', 'relKinds'],
+      facadeImports: ['PackEntityShapes', 'PackEvents', 'PackStepNodes', 'PackSystemEvents', 'Repositories', 'Services'],
+    });
   });
 });
