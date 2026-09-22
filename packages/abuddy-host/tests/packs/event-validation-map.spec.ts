@@ -146,7 +146,7 @@ describe('a host plugin', () => {
     const registry = createPackRegistry();
     registry.registerPack(hostRegistration());
     expect(registry.getPluginEventValidationMap().get('host/packs')).toEqual(receives(...PACKS_PLUGIN_EVENT_TYPES));
-    expect(registry.getPluginEventValidationMap().get('host/application')).toEqual(receives('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED'));
+    expect(registry.getPluginEventValidationMap().get('host/application')).toEqual(receives('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED', 'ONBOARDING_COMPLETE'));
   });
 
   // The host is the pack `host`, so a pack with a `packs` feature of its own is not a contest
