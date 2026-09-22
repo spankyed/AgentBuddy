@@ -2,13 +2,21 @@
 export const isPlainObject = (val: unknown): val is Record<string, unknown> =>
   typeof val === 'object' && val !== null && !Array.isArray(val);
 
-/** `over` on `base`: plain objects merge key by key, an undefined value keeps the base's, anything else replaces it */
+/**
+ * `over` on `base`: plain objects merge key by key, an undefined value keeps the base's, anything else replaces it.
+ * Only own keys are read and the result is built from entries, so a key such as `__proto__` stays data: it can't
+ * reach an inherited object, or set the result's prototype.
+ */
 export function deepMerge<T>(base: T, over: unknown): T {
   if (over === undefined) return base;
   if (!isPlainObject(base) || !isPlainObject(over)) return over as T;
-  const result: Record<string, unknown> = { ...base };
-  for (const [key, value] of Object.entries(over)) result[key] = deepMerge(base[key], value);
-  return result as T;
+  const merged = Object.entries(over).map(([key, value]) => [key, deepMerge(ownValue(base, key), value)]);
+  return Object.fromEntries([...Object.entries(base), ...merged]) as T;
+}
+
+/** `object[key]` when `object` has `key` itself, never an inherited value */
+function ownValue(object: Record<string, unknown>, key: string): unknown {
+  return Object.prototype.hasOwnProperty.call(object, key) ? object[key] : undefined;
 }
 
 export type MaybeArr<T> = T | readonly T[];

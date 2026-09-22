@@ -21,4 +21,14 @@ describe('deepMerge', () => {
     expect(deepMerge({ a: 1 }, undefined)).toEqual({ a: 1 });
     expect(deepMerge({ a: 1 }, 'plain')).toBe('plain');
   });
+
+  it('keeps a __proto__ key as data, reaching no prototype', () => {
+    const over = JSON.parse('{ "__proto__": { "polluted": true }, "nested": { "__proto__": { "polluted": true } } }');
+    const merged = deepMerge({ nested: {} } as Record<string, unknown>, over);
+
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    expect(Object.getPrototypeOf(merged)).toBe(Object.prototype);
+    expect(Object.prototype.hasOwnProperty.call(merged, '__proto__')).toBe(true);
+    expect(Object.getPrototypeOf(merged.nested)).toBe(Object.prototype);
+  });
 });
