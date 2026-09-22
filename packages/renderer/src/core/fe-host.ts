@@ -1,31 +1,10 @@
-// The renderer's side of the SDK's frontend port (bindFeHost): the application actor, the secrets client, sends to
-// backend systems over the API client, and the window's registered pack frontends
-import { bindFeHost, type FeTransport } from '@abuddy/sdk/runtime';
+// The renderer's side of the SDK's frontend port (bindFeHost): the app shell, the secrets client, the window's client
+// to the API, and the window's registered pack frontends
+import { bindFeHost } from '@abuddy/sdk/runtime';
 import type { HostShell } from '@abuddy/sdk/fe';
-import { createFePackRegistry } from '@abuddy/host/fe';
-import { trpc } from '@/core/trpc';
-import { globalToast } from '@/core/toast';
+import { feClient } from '@/core/fe-client';
+import { fePacks } from '@/core/fe-packs';
 import { secretsClient } from '@/core/secrets-client';
-
-/** How `@abuddy/sdk/events` sends in the renderer: events for systems go over the API client */
-export const feTransport: FeTransport = {
-  sendIncoming: (outgoing) => {
-    // Caught, since an unhandled rejection shows the error page. The report leaves out the payload, and goes to
-    // the app's log (and so diagnostics) as well as the console
-    trpc.bus.send.mutate(outgoing).catch((error: unknown) => {
-      const message = `Couldn't send ${outgoing.event.type} to ${outgoing.to}: ${error instanceof Error ? error.message : String(error)}`;
-      console.error(`[fe-host] ${message}`);
-      window.electronAPI?.rendererLog?.write({ level: 'error', source: 'fe-host', message }).catch(() => {});
-      globalToast.error(message);
-    });
-  },
-};
-
-/**
- * This window's registered pack frontends: the built-in packs' (main.ts) and the external packs' the pack loader
- * loads. The SDK's frontend lookups (steps, designations, tiptap plugins, DSL types) read it once bound.
- */
-export const fePacks = createFePackRegistry();
 
 /**
  * Binds the SDK's frontend port to this window's app, before the application actor is created (creating it already
@@ -39,7 +18,7 @@ export function bindRendererHost(application: () => HostShell | undefined): void
       return actor;
     },
     secrets: secretsClient,
-    transport: feTransport,
+    client: feClient,
     packs: fePacks,
   });
 }

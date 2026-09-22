@@ -8,10 +8,13 @@ import type { TiptapPlugin } from '../fe/tiptap-plugins.ts';
 import type { DslTypeConfig } from '../fe/dsl-types.ts';
 import type { PackExtensionsView } from './packs-view.ts';
 
-/** How frontend code sends to backend systems (the renderer's API client) */
-export interface FeTransport {
-  /** Delivers an event to a backend system */
-  sendIncoming(message: Message): void;
+/**
+ * The window's client to the API, as SDK code uses it: sending to backend systems. The host's shell extends it with
+ * what only the host reads (the bus subscription, the loaded packs), in `@abuddy/host/fe`.
+ */
+export interface FeClient {
+  /** Delivers a message to a backend system */
+  send(message: Message): void;
 }
 
 /** The packs whose frontends the renderer registered, read-only */
@@ -33,8 +36,8 @@ export interface FeHostRuntime {
   application: HostShell;
   /** The API's secrets procedures */
   secrets: SecretsClient;
-  /** Sends to backend systems */
-  transport: FeTransport;
+  /** The window's client to the API */
+  client: FeClient;
   /** The packs whose frontends the renderer registered */
   packs: FePackRegistryView;
 }

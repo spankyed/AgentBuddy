@@ -4,12 +4,11 @@ import type { HotkeyEvent, ContextMenuItem, HostShellEvent, HostShellState } fro
 import { sendToSystem, type HostPluginEvents, type Message } from '@abuddy/sdk/events';
 import { processHotkeys, safeEvents } from '@abuddy/sdk/fe';
 import type { ApplicationHotkeys } from '@abuddy/sdk/types';
-import { trpc, reconnectApiClient } from '@/core/trpc';
 import trailActor, { computeCrumbs, type UpdateData } from '@/core/actors/route-trailer';
 import { globalToast } from '@/core/toast';
 import { getDesignated } from '@abuddy/sdk/fe';
 import { HOST_PACK_ID, splitRef } from '@abuddy/sdk/ids';
-import { HOST } from '@abuddy/host/fe';
+import { HOST, type ShellClient } from '@abuddy/host/fe';
 import { loadPackFrontend, unloadPackFrontend } from '@/packs/pack-loader';
 
 
@@ -187,8 +186,8 @@ function spawnPluginActor(enqueue: unknown, plugin: Plugin): void {
  * external packs with frontend code, which loads after it; each is asked for once its load finished,
  * whether it added plugins or not, so its systems without plugins get it too.
  */
-function announcePackClientReady(packId: string) {
-  trpc.bus.packClientReady.mutate({ packId }).catch((err: unknown) => {
+function announcePackClientReady(client: ShellClient, packId: string) {
+  client.packClientReady(packId).catch((err: unknown) => {
     console.warn(`[pack-loader] Couldn't request startup data for pack ${packId}:`, err);
   });
 }
@@ -199,7 +198,8 @@ function messageOf(err: unknown): string {
   return err instanceof Error ? err.message : String(err);
 }
 
-export const createApplicationState = () => setup({
+/** The app shell over `client`, the window's client to the API */
+export const createApplicationState = (client: ShellClient) => setup({
   types: {
     context: {} as ApplicationContext,
     events: {} as ApplicationEvent,
@@ -329,7 +329,7 @@ export const createApplicationState = () => setup({
       let stopped = false;
       const failedPacks: { packId: string; error: string }[] = [];
 
-      trpc.packs.loaded.query().then(async (loadedPacks) => {
+      client.loadedPacks().then(async (loadedPacks) => {
         for (const pack of loadedPacks) {
           if (stopped) return;
           if (pack.builtIn || input.loadedPackIds.includes(pack.id)) continue;
@@ -393,81 +393,21 @@ export const createApplicationState = () => setup({
       return () => unsubscribe();
     }),
 
-    backendListener: fromCallback(({ system, sendBack }) => {
-      console.log('connecting to backend');
-
-      // Check if backend already failed before we started listening (race condition fix)
-      window.electronAPI?.apiStatus?.getStatus().then((status) => {
-        if (status.error && !status.running && status.restartAttempts >= 3) {
-          sendBack({ type: 'BACKEND_ERROR', error: status.error });
+    backendListener: fromCallback(({ system, sendBack }) => client.subscribe({
+      onConnected: () => sendBack({ type: 'BUS_SUBSCRIBED' }),
+      onDisconnected: () => sendBack({ type: 'BUS_CONNECTION_LOST' }),
+      onFailed: (error) => sendBack({ type: 'BACKEND_ERROR', error }),
+      // Each message says which plugin it is for; the event is delivered exactly as the system sent it
+      onMessage: ({ to, event }: Message) => {
+        if (to === HOST.application) {
+          sendBack(event as ApplicationEvent);
+        } else {
+          const pluginActor = system.get(to);
+          if (pluginActor) pluginActor.send(event);
+          else console.warn(`[Backend] Plugin actor not found for ID: ${to}`, event);
         }
-      });
-
-      const subscribeToBus = () => trpc.bus.sub.subscribe(
-        undefined,
-        {
-          // Each time this window's subscription is established: the server has sent this connection's
-          // CLIENT_CONNECTED. Another window connecting broadcasts CLIENT_CONNECTED too, but not this.
-          onStarted: () => sendBack({ type: 'BUS_SUBSCRIBED' }),
-          // The socket dropped: the subscription is established again when it reconnects
-          onConnectionStateChange: ({ state }) => {
-            if (state === 'connecting') sendBack({ type: 'BUS_CONNECTION_LOST' });
-          },
-          onError: (error: any) => {
-            console.error('Error in subscription:', error);
-            sendBack({ type: 'BACKEND_ERROR', error: String(error) });
-          },
-          // Each message says which plugin it is for; the event is delivered exactly as the system sent it
-          onData: ({ to, event }: Message) => {
-            if (to === HOST.application) {
-              sendBack(event as ApplicationEvent);
-            } else {
-              const pluginActor = system.get(to);
-              if (pluginActor) {
-                pluginActor.send(event);
-              } else {
-                console.warn(`[Backend] Plugin actor not found for ID: ${to}`, event);
-              }
-            }
-          },
-        }
-      );
-
-      let subscription = subscribeToBus();
-
-      // Listen for Electron IPC crash notifications (instant detection)
-      const cleanupApiStatus = window.electronAPI?.apiStatus?.onEvent((event) => {
-        if (event.type === 'api:stopped' && (event as any).restarting) return; // Restart in progress
-        if (event.type === 'api:started') {
-          // A restart can land on a different port; the old subscription died with the old socket
-          if (event.port && reconnectApiClient(event.port)) {
-            subscription.unsubscribe();
-            subscription = subscribeToBus();
-          }
-          return;
-        }
-        if (event.type === 'api:fatal') {
-          const { message, stack, source } = event as any;
-          sendBack({
-            type: 'BACKEND_ERROR',
-            error: stack ? `[${source}] ${message}\n\n${stack}` : `[${source}] ${message}`,
-          });
-        } else if (event.type === 'api:stopped' || event.type === 'api:error') {
-          const err = event.error as any;
-          const errorDetail = err?.message || err || 'The backend process stopped unexpectedly.';
-          const errorStack = err?.stack;
-          sendBack({
-            type: 'BACKEND_ERROR',
-            error: errorStack ? `${errorDetail}\n\n${errorStack}` : errorDetail,
-          });
-        }
-      });
-
-      return () => {
-        subscription.unsubscribe();
-        cleanupApiStatus?.();
-      };
-    }),
+      },
+    })),
   },
   actions: {
     updateHotkeys: assign(({ event }) => {
@@ -527,12 +467,12 @@ export const createApplicationState = () => setup({
       }
       // The pack's plugin actors, if any, now exist: its systems send their startup data. Before this
       // window's subscription is established, announceLoadedPacks asks for it once it is.
-      if (context.busSubscribed) enqueue(() => announcePackClientReady(packId));
+      if (context.busSubscribed) enqueue(() => announcePackClientReady(client, packId));
     }),
 
     // This window's subscription (re)connected: its CLIENT_CONNECTED skipped the packs whose frontends load after it
     announceLoadedPacks: ({ context }) => {
-      for (const packId of Object.keys(context.packPluginIds)) announcePackClientReady(packId);
+      for (const packId of Object.keys(context.packPluginIds)) announcePackClientReady(client, packId);
     },
 
     /** Runs the pack frontend loader, or queues a run when one is under way */
@@ -991,30 +931,7 @@ export const createApplicationState = () => setup({
             30000: {
               target: '#application.error',
               actions: () => {
-                window.electronAPI?.apiStatus?.getStatus()
-                  .then((status) => {
-                    const details = [
-                      'The backend did not respond within 30 seconds.',
-                      '',
-                      `Startup ID: ${status.startupId || window.electronAPI?.startupId || 'unknown'}`,
-                      `API running: ${status.running ? 'yes' : 'no'}`,
-                      `API port: ${status.port ?? 'unknown'}`,
-                      `Restart attempts: ${status.restartAttempts}`,
-                      status.error ? `Last backend error: ${typeof status.error === 'string' ? status.error : status.error.message}` : undefined,
-                      '',
-                      `Main log: ${status.logPath}`,
-                      `Renderer log: ${status.rendererLogPath}`,
-                      `App events log: ${status.appEventsLogPath}`,
-                    ].filter(Boolean).join('\n');
-
-                    window.__showErrorPage?.('Unable to connect', details);
-                  })
-                  .catch(() => {
-                    window.__showErrorPage?.(
-                      'Unable to connect',
-                      'The backend did not respond within 30 seconds and API status could not be read.'
-                    );
-                  });
+                client.describeConnection().then((details) => window.__showErrorPage?.('Unable to connect', details));
               }
             }
           },

@@ -8,7 +8,7 @@ import threadsState from '@/features/threads/fe/state'
 // The plugin's module tracks the mouse for its hotkeys as it loads; the test setup's window is a bare stand-in
 vi.hoisted(() => { (globalThis as { addEventListener?: unknown }).addEventListener ??= () => {} })
 
-afterAll(startFeTestRuntime({ transport: { sendIncoming() {} } }))
+afterAll(startFeTestRuntime({ client: { send() {} } }))
 beforeEach(() => vi.useFakeTimers())
 afterEach(() => vi.useRealTimers())
 

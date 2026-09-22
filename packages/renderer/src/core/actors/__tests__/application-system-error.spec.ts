@@ -8,12 +8,7 @@ import type { Plugin } from '@/core/types';
 
 const toast = vi.hoisted(() => ({ error: vi.fn(), success: vi.fn(), info: vi.fn() }));
 vi.mock('@/core/toast', () => ({ globalToast: toast, registerGlobalToast: () => {} }));
-vi.mock('@/core/trpc', () => ({
-  trpc: {
-    bus: { sub: { subscribe: () => ({ unsubscribe: () => {} }) }, packClientReady: { mutate: () => Promise.resolve() } },
-    packs: { loaded: { query: () => Promise.resolve([]) } },
-  },
-}));
+import { fakeClient } from './fake-client';
 
 const { createApplicationState } = await import('@/core/actors/application');
 
@@ -28,7 +23,7 @@ beforeEach(() => {
   showErrorPage = vi.fn();
   (window as unknown as { __showErrorPage?: unknown }).__showErrorPage = showErrorPage;
   const notes = plugin('notes');
-  app = createActor(createApplicationState(), {
+  app = createActor(createApplicationState(fakeClient().client), {
     systemId: 'host/application',
     input: { plugins: [notes], defaultPlugin: notes, ownsLastActivePlugin: false },
   }).start();

@@ -5,25 +5,14 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createActor, setup, type Actor } from 'xstate';
 import type { Plugin } from '@/core/types';
 
-type SubscriptionHandlers = { onData(event: unknown): void; onStarted(): void };
-const subscription = vi.hoisted(() => ({ handlers: undefined as SubscriptionHandlers | undefined }));
-const mutate = vi.hoisted(() => vi.fn((_event: unknown) => Promise.resolve()));
-
-vi.mock('@/core/trpc', () => ({
-  trpc: {
-    bus: {
-      sub: { subscribe: (_input: unknown, handlers: SubscriptionHandlers) => { subscription.handlers = handlers; return { unsubscribe: () => {} }; } },
-      send: { mutate },
-      packClientReady: { mutate: () => Promise.resolve() },
-    },
-    packs: { loaded: { query: () => Promise.resolve([]) } },
-  },
-}));
+import { fakeClient } from './fake-client';
 
 const { createApplicationState, visiblePluginsOf, withHostLast } = await import('@/core/actors/application');
 const { bindFeHost } = await import('@abuddy/sdk/runtime');
-// What the shell sends the host goes through the SDK's sendToSystem, over this window's transport
-bindFeHost({ application: {} as never, secrets: {} as never, packs: {} as never, transport: { sendIncoming: mutate } });
+// What the shell sends the host goes through the SDK's sendToSystem, over this window's client: the fake's `send`
+const fake = fakeClient();
+const mutate = fake.send;
+bindFeHost({ application: {} as never, secrets: {} as never, packs: {} as never, client: fake.client });
 
 function plugin(id: string): Plugin {
   return { id, label: id, icon: 'Zap', state: setup({}).createMachine({}), canvas: {} } as unknown as Plugin;
@@ -35,7 +24,7 @@ let app: Actor<ReturnType<typeof createApplicationState>>;
 
 beforeEach(() => {
   mutate.mockClear();
-  app = createActor(createApplicationState(), {
+  app = createActor(createApplicationState(fake.client), {
     systemId: 'host/application',
     input: { plugins: [notes, threads], defaultPlugin: notes, ownsLastActivePlugin: true },
   }).start();
@@ -44,8 +33,8 @@ beforeEach(() => {
 afterEach(() => app.stop());
 
 const connect = (shell: { pluginVisibility?: Record<string, boolean>; lastActivePlugin?: string }) => {
-  subscription.handlers!.onStarted();
-  subscription.handlers!.onData({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginVisibility: {}, ...shell } });
+  fake.connect();
+  fake.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginVisibility: {}, ...shell } });
 };
 const context = () => app.getSnapshot().context;
 
@@ -83,7 +72,7 @@ it('keeps the plugin the user opened while that pack was loading', () => {
 });
 
 it("opens a popout on an external pack's plugin once that pack's frontend adds it, without recording it as the app's", () => {
-  const popout = createActor(createApplicationState(), {
+  const popout = createActor(createApplicationState(fake.client), {
     systemId: 'host/application',
     input: { plugins: [notes, threads], defaultPlugin: notes, initialPluginId: 'memo-pack/memos', ownsLastActivePlugin: false },
   }).start();

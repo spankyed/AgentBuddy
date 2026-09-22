@@ -6,29 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createActor, setup, type Actor } from 'xstate';
 import type { Plugin } from '@/core/types';
 
-type SubscriptionHandlers = {
-  onData(event: unknown): void;
-  onStarted(): void;
-  onConnectionStateChange(state: { state: string }): void;
-};
-const subscription = vi.hoisted(() => ({ handlers: undefined as SubscriptionHandlers | undefined }));
-const packClientReady = vi.hoisted(() => vi.fn<(input: { packId: string }) => Promise<void>>());
-
-vi.mock('@/core/trpc', () => ({
-  trpc: {
-    bus: {
-      sub: {
-        subscribe: (_input: unknown, handlers: SubscriptionHandlers) => {
-          subscription.handlers = handlers;
-          return { unsubscribe: () => {} };
-        },
-      },
-      packClientReady: { mutate: packClientReady },
-    },
-    // This window's pack frontend loader has nothing to load here; application-pack-loading.spec covers it
-    packs: { loaded: { query: () => Promise.resolve([]) } },
-  },
-}));
+import { fakeClient } from './fake-client';
 
 const { createApplicationState } = await import('@/core/actors/application');
 
@@ -38,12 +16,15 @@ function plugin(id: string): Plugin {
 
 let app: Actor<ReturnType<typeof createApplicationState>>;
 let builtInNotes: Plugin;
+// This window's pack frontend loader has nothing to load here; application-pack-loading.spec covers it
+let fake: ReturnType<typeof fakeClient>;
+let packClientReady: ReturnType<typeof fakeClient>['packClientReady'];
 
 beforeEach(() => {
-  packClientReady.mockReset();
-  packClientReady.mockResolvedValue(undefined);
+  fake = fakeClient();
+  packClientReady = fake.packClientReady;
   builtInNotes = plugin('notes');
-  app = createActor(createApplicationState(), {
+  app = createActor(createApplicationState(fake.client), {
     systemId: 'host/application',
     input: { plugins: [builtInNotes], defaultPlugin: builtInNotes, ownsLastActivePlugin: false },
   }).start();
@@ -53,13 +34,13 @@ afterEach(() => app.stop());
 
 /** The server's CLIENT_CONNECTED broadcast, which any window's connection sends every window */
 const broadcastConnected = (hasOnboarded = true) =>
-  subscription.handlers!.onData({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded, pluginVisibility: {} } });
+  fake.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded, pluginVisibility: {} } });
 /** This window's subscription is established: the server broadcasts its CLIENT_CONNECTED */
 const connect = (hasOnboarded = true) => {
-  subscription.handlers!.onStarted();
+  fake.connect();
   broadcastConnected(hasOnboarded);
 };
-const dropConnection = () => subscription.handlers!.onConnectionStateChange({ state: 'connecting' });
+const dropConnection = () => fake.dropConnection();
 
 describe('pack plugins in the application actor', () => {
   it("asks for a pack's startup data once its plugin actors exist, after the connection", () => {
@@ -70,7 +51,7 @@ describe('pack plugins in the application actor', () => {
     app.send({ type: 'PACK_FRONTEND_LOADED', packId: 'ext', plugins: [plugin('pack-own')] });
 
     expect(packClientReady).toHaveBeenCalledTimes(1);
-    expect(packClientReady).toHaveBeenCalledWith({ packId: 'ext' });
+    expect(packClientReady).toHaveBeenCalledWith('ext');
     expect(spawnedWhenAsked).toBe(true);
   });
 
@@ -81,7 +62,7 @@ describe('pack plugins in the application actor', () => {
 
     connect();
     expect(packClientReady).toHaveBeenCalledTimes(1);
-    expect(packClientReady).toHaveBeenCalledWith({ packId: 'ext' });
+    expect(packClientReady).toHaveBeenCalledWith('ext');
   });
 
   it('asks again on reconnecting, for each pack whose frontend loaded', () => {
@@ -92,7 +73,7 @@ describe('pack plugins in the application actor', () => {
 
     dropConnection();
     connect();
-    expect(packClientReady.mock.calls).toEqual([[{ packId: 'ext' }], [{ packId: 'failed' }]]);
+    expect(packClientReady.mock.calls).toEqual([['ext'], ['failed']]);
   });
 
   it('asks once, when the subscription is established again, for a pack loaded while the connection was down', () => {
@@ -125,7 +106,7 @@ describe('pack plugins in the application actor', () => {
     const { plugins, packPluginIds } = app.getSnapshot().context;
     expect(plugins).toEqual([builtInNotes]);
     expect(packPluginIds).toEqual({ taken: [], failed: [] });
-    expect(packClientReady.mock.calls).toEqual([[{ packId: 'taken' }], [{ packId: 'failed' }]]);
+    expect(packClientReady.mock.calls).toEqual([['taken'], ['failed']]);
 
     app.send({ type: 'PACK_PLUGINS_UNLOADED', packId: 'failed' });
     expect(app.getSnapshot().context.packPluginIds).toEqual({ taken: [] });
@@ -148,7 +129,7 @@ describe('pack plugins in the application actor', () => {
     app.send({ type: 'BACKEND_ERROR', error: 'crashed' });
     expect(app.getSnapshot().matches('error')).toBe(true);
     dropConnection();
-    subscription.handlers!.onStarted();
+    fake.connect();
     expect(packClientReady).toHaveBeenCalledTimes(2);
   });
 

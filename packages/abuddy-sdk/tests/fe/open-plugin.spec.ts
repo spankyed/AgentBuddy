@@ -19,7 +19,7 @@ beforeEach(() => {
     system: { get: (id: string) => (id === 'memo-pack/memos' ? { send: (event: unknown) => received.push(event) } : undefined) },
     subscribe: () => ({ unsubscribe() {} }),
   };
-  bindFeHost({ application: application as never, secrets: {} as never, transport: { sendIncoming() {} }, packs: {} as never });
+  bindFeHost({ application: application as never, secrets: {} as never, client: { send() {} }, packs: {} as never });
 });
 
 afterEach(() => unbindFeHost());

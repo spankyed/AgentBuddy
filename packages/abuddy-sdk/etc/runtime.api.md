@@ -44,11 +44,16 @@ export function _boundPackExtensions(): PackExtensionsView;
 export { EarsQuery }
 
 // @public
+export interface FeClient {
+    send(message: Message): void;
+}
+
+// @public
 export interface FeHostRuntime {
     application: HostShell;
+    client: FeClient;
     packs: FePackRegistryView;
     secrets: SecretsClient;
-    transport: FeTransport;
 }
 
 // @public
@@ -59,11 +64,6 @@ export interface FePackRegistryView extends PackExtensionsView {
     plugins(): Plugin_2[];
     // (undocumented)
     tiptapPlugins(): TiptapPlugin[];
-}
-
-// @public
-export interface FeTransport {
-    sendIncoming(message: Message): void;
 }
 
 // @public

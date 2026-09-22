@@ -1,6 +1,6 @@
 import type { Plugin } from '@/core/types';
 import type { PackFERegistration } from '@abuddy/host/fe';
-import { fePacks } from '@/core/fe-host';
+import { fePacks } from '@/core/fe-packs';
 
 /** A pack file's URL, carrying the frontend's revision: a browser caches a module or stylesheet by its URL */
 function packFileUrl(packBaseUrl: string, file: string, revision?: string): string {

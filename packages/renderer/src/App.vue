@@ -3,7 +3,7 @@ import WebApp from './WebApp.vue';
 import PluginPopoutApp from './PluginPopoutApp.vue';
 import { applicationState } from '@/main'
 import { useSelector } from '@xstate/vue';
-import { fePacks } from '@/core/fe-host';
+import { fePacks } from '@/core/fe-packs';
 
 const WelcomeComponent = fePacks.getAppExtension('welcome');
 const isWelcome = useSelector(applicationState, (s) => s.hasTag('welcome'));

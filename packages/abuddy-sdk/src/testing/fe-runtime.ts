@@ -35,7 +35,7 @@ export function startFeTestRuntime(options: FeTestRuntimeOptions = {}): () => vo
   bindFeHost({
     application: options.application ?? ({} as never),
     secrets: options.secrets ?? ({} as never),
-    transport: options.transport ?? ({} as never),
+    client: options.client ?? ({} as never),
     packs: options.packs ?? noFrontends,
   });
   return stopFeTestRuntime;

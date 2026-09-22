@@ -1,4 +1,4 @@
-import { trpc } from '@/core/trpc';
+import { sendToSystem } from '@abuddy/sdk/events';
 import { HOST } from '@abuddy/host/fe';
 
 export interface PackInstallRequest {
@@ -19,13 +19,7 @@ export function handleProtocolInstall(params: Record<string, string>): PackInsta
   };
 }
 
-export async function requestPackInstall(request: PackInstallRequest): Promise<void> {
-  try {
-    await trpc.bus.send.mutate({
-      to: HOST.packs,
-      event: { type: 'INSTALL_PACK', packSlug: request.packSlug, source: request.source },
-    });
-  } catch (err) {
-    console.error('[pack-install] Failed to send install request:', err);
-  }
+/** Asks the host's Packs system to install a pack; a send that fails is reported by the window's client */
+export function requestPackInstall(request: PackInstallRequest): void {
+  sendToSystem(HOST.packs, { type: 'INSTALL_PACK', packSlug: request.packSlug, source: request.source });
 }

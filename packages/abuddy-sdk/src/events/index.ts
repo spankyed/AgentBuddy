@@ -125,7 +125,7 @@ export const HOST_PLUGIN_EVENT_TYPES = {
  * A bound frontend wins, as it does for the registered packs' lookups (`_boundPackExtensions`).
  */
 function sendIncoming(message: Message): void {
-  if (_isFeHostBound()) boundFeHost().transport.sendIncoming(message);
+  if (_isFeHostBound()) boundFeHost().client.send(message);
   else if (_isHostBound()) boundHost().transport.rootEvents.emitIncoming(message);
   else throw new Error('No host is bound to send events through: call bindHost(runtime) (backend) or bindFeHost(runtime) (frontend) from @abuddy/sdk/runtime first');
 }

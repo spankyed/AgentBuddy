@@ -8,12 +8,12 @@ Its static imports are evaluated first: `virtual:built-in-packs` loads every bui
 
 1. Installs `window.error` / `unhandledrejection` reporters (`electronAPI.rendererLog.write`, `fatal: true`). Reads `?popout=plugin&pluginId=…` (set by main's `plugin:popout`).
 2. Sets `window.appVersion` (`__APP_VERSION__`, the root `package.json` version) and runs `runFrontendMigrations()` (`src/setup/migrations/index.ts`: localStorage migrations run before the actor reads its keys; the version is stored under `agentbuddy-fe-version`).
-3. Built-in packs: calls each loader in `virtual:built-in-packs` and `fePacks.registerPackFE(mod.default)`, without a pack id, so they can't be unregistered. `fePacks` (`src/core/fe-host.ts`) is this window's registered pack frontends, `createFePackRegistry()` from `@abuddy/host/fe`: the pack loader registers external packs' in it, `App.vue` reads the `welcome` app extension from it, and the SDK's frontend registries (steps, designations, tiptap plugins, DSL types) read it once bound.
+3. Built-in packs: calls each loader in `virtual:built-in-packs` and `fePacks.registerPackFE(mod.default)`, without a pack id, so they can't be unregistered. `fePacks` (`src/core/fe-packs.ts`) is this window's registered pack frontends, `createFePackRegistry()` from `@abuddy/host/fe`: the pack loader registers external packs' in it, `App.vue` reads the `welcome` app extension from it, and the SDK's frontend registries (steps, designations, tiptap plugins, DSL types) read it once bound.
 4. Creates the application actor with `systemId: 'host/application'` (its machine id stays `application`, which its `#application.…` targets name) and input `{ plugins: [...fePacks.getRegisteredPlugins(), packsPlugin], defaultPlugin: fePacks.getRegisteredDefaultPlugin(), initialPluginId, ownsLastActivePlugin: !popout }` (a main window opens on the plugin last open and records the one it opens; a popout does neither). It is exported as `applicationState`.
-5. Binds the SDK's frontend port, `bindRendererHost(applicationState)` (`src/core/fe-host.ts`: `bindFeHost({ application, secrets, transport, packs: fePacks })`), then starts the actor, so the binding is in place before any plugin runs or any external pack frontend loads:
+5. Binds the SDK's frontend port, `bindRendererHost(applicationState)` (`src/core/fe-host.ts`: `bindFeHost({ application, secrets, client: feClient, packs: fePacks })`), then starts the actor, so the binding is in place before any plugin runs or any external pack frontend loads:
    - `application` backs `@abuddy/sdk/fe`'s `navigateToPlugin` and its neighbours;
    - `secrets` is `src/core/secrets-client.ts`, the API's secrets procedures behind `secretsClient` (the only ones pack frontends call directly);
-   - `transport.sendIncoming` is how `@abuddy/sdk/events`' `sendToSystem` sends here: over the API client (`bus.send`), reporting a rejected send to the console, the app's log (`fe-host` source) and a toast, without the payload. Plugin sends and subscriptions throw (no backend app is bound in the renderer).
+   - `client` is `feClient` (`src/core/fe-client.ts`), the window's one client to the API: the `ShellClient` from `@abuddy/host/fe`. Its `send` is how `@abuddy/sdk/events`' `sendToSystem` sends here, over `bus.send`, reporting a rejected send to the console, the app's log (`fe-client` source) and a toast, without the payload. The shell (`createApplicationState(feClient)`) subscribes through it, and reads the loaded packs and asks for packs' startup data through it; it follows the API across a restart on a new port (Electron's API status). No other renderer module calls `trpc.bus` or `trpc.packs`. Plugin sends and subscriptions throw (no backend app is bound in the renderer).
 6. Sets the globals:
    - `window.applicationState` is the actor. The E2E fixture (`@abuddy/testing`) finds the main window by it and drives it.
    - `window.__disableOnboardingUI()` sends `ONBOARDING_COMPLETE`.
@@ -46,7 +46,7 @@ Its static imports are evaluated first: `virtual:built-in-packs` loads every bui
 
 ## Application actor (`src/core/actors/application.ts`)
 
-`createApplicationState()` returns the root machine (`id: 'application'`).
+`createApplicationState(client)` returns the root machine (`id: 'application'`) over `client`, the window's `ShellClient`; its specs pass `fakeClient()` (`src/core/actors/__tests__/fake-client.ts`).
 
 - **States:**
   - `running.connecting` (tag `connecting`): after 30 s it goes to `error` and shows the error page with `apiStatus.getStatus()` details.

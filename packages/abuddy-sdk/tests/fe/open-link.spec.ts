@@ -12,7 +12,7 @@ function bindWith(browserRole: string | undefined) {
   bindFeHost({
     application: { system: { get: (id: string) => (id === browserRole ? browser : undefined) } } as never,
     secrets: {} as never,
-    transport: { sendIncoming() {} },
+    client: { send() {} },
     packs: { designation: (role: string) => (role === 'browser' ? browserRole : undefined) } as never,
   });
   return { received, openExternal };

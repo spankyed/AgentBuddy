@@ -7,7 +7,7 @@ import { startFeTestRuntime } from '@abuddy/sdk/testing'
 import settingsState from '@/features/settings/fe/state'
 import { resolveName } from '@abuddy/sdk/ids'
 
-afterAll(startFeTestRuntime({ transport: { sendIncoming() {} } }))
+afterAll(startFeTestRuntime({ client: { send() {} } }))
 afterEach(() => vi.restoreAllMocks())
 
 function readySettingsPlugin() {

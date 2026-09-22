@@ -14,7 +14,9 @@ import { HOST } from '@abuddy/host/fe';
 import { runFrontendMigrations } from '@/setup/migrations';
 import { handleProtocolInstall, requestPackInstall } from '@/packs/pack-install';
 import 'virtual:host-deps';
-import { bindRendererHost, fePacks } from '@/core/fe-host';
+import { bindRendererHost } from '@/core/fe-host';
+import { feClient } from '@/core/fe-client';
+import { fePacks } from '@/core/fe-packs';
 import { installMonacoErrorFilters } from '@abuddy/ui/components/monaco-error-filters';
 
 declare const __APP_VERSION__: string;
@@ -113,7 +115,7 @@ const defaultPlugin = fePacks.getRegisteredDefaultPlugin();
 let createdApplication: typeof applicationState | undefined;
 bindRendererHost(() => createdApplication);
 
-export const applicationState = createActor(createApplicationState(), {
+export const applicationState = createActor(createApplicationState(feClient), {
   systemId: HOST.application,
   // inspect,
   input: {

@@ -12,7 +12,7 @@ import { createFePackRegistry } from '../../src/fe/index.ts';
 
 // How this spec registers and reads: a frontend registry it creates, bound for the SDK's lookups
 const registry = createFePackRegistry();
-bindFeHost({ application: {} as never, secrets: {} as never, transport: {} as never, packs: registry });
+bindFeHost({ application: {} as never, secrets: {} as never, client: {} as never, packs: registry });
 const register = (packId: string, registration: Omit<PackFERegistration, 'id'>) => registry.registerPackFE({ id: packId, ...registration });
 const unregister = (packId: string) => registry.unregisterPackFE(packId);
 const plugins = () => registry.getRegisteredPlugins();

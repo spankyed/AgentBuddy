@@ -11,7 +11,8 @@ vi.mock('@/core/toast', () => ({ globalToast: { error: toastError } }));
 const logWrite = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 (window as unknown as { electronAPI: unknown }).electronAPI = { rendererLog: { write: logWrite } };
 
-const { bindRendererHost, fePacks } = await import('@/core/fe-host');
+const { bindRendererHost } = await import('@/core/fe-host');
+const { fePacks } = await import('@/core/fe-packs');
 const { resolveName } = await import('@abuddy/sdk/ids');
 const { secretsClient, openPlugin, getDslTypes, getDesignated, tiptapPluginRegistry } = await import('@abuddy/sdk/fe');
 const { stepRegistry } = await import('@abuddy/sdk/steps');
@@ -102,8 +103,8 @@ it("sends to systems over the API client, reporting a rejected send to the conso
   expect(mutate).toHaveBeenCalledWith({ to: 'notes', event: { type: 'SAVE_NOTE', body: 'secret text' } });
   expect(unhandled).not.toHaveBeenCalled();
   const message = "Couldn't send SAVE_NOTE to notes: socket closed";
-  expect(consoleError).toHaveBeenCalledWith(`[fe-host] ${message}`);
-  expect(logWrite).toHaveBeenCalledWith({ level: 'error', source: 'fe-host', message });
+  expect(consoleError).toHaveBeenCalledWith(`[fe-client] ${message}`);
+  expect(logWrite).toHaveBeenCalledWith({ level: 'error', source: 'fe-client', message });
   expect(toastError).toHaveBeenCalledWith(message);
   expect(JSON.stringify([consoleError.mock.calls, logWrite.mock.calls, toastError.mock.calls])).not.toContain('secret text');
 });

@@ -128,7 +128,7 @@ describe('with a frontend bound too', () => {
     bindFeHost({
       application: {} as never,
       secrets: {} as never,
-      transport: { sendIncoming: (message) => sentByFrontend.push(message) },
+      client: { send: (message) => sentByFrontend.push(message) },
       packs: { designation: (role: string) => (role === 'brain' ? 'brain-plugin' : undefined) } as never,
     });
     try {

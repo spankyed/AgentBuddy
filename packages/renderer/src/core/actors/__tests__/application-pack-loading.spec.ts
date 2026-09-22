@@ -6,32 +6,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createActor, setup, type Actor } from 'xstate';
 import type { Plugin } from '@/core/types';
 
-type SubscriptionHandlers = {
-  onData(event: unknown): void;
-  onStarted(): void;
-  onConnectionStateChange(state: { state: string }): void;
-};
-const subscription = vi.hoisted(() => ({ handlers: undefined as SubscriptionHandlers | undefined }));
-const packClientReady = vi.hoisted(() => vi.fn<(input: { packId: string }) => Promise<void>>());
-const loadedPacksQuery = vi.hoisted(() => vi.fn<() => Promise<unknown[]>>());
+import { fakeClient } from './fake-client';
+
 const loadPackFrontend = vi.hoisted(() => vi.fn<(pack: { id: string }) => Promise<Plugin[] | null>>());
 const unloadPackFrontend = vi.hoisted(() => vi.fn<(packId: string) => void>());
 const toastError = vi.hoisted(() => vi.fn<(message: string, description?: string) => void>());
-
-vi.mock('@/core/trpc', () => ({
-  trpc: {
-    bus: {
-      sub: {
-        subscribe: (_input: unknown, handlers: SubscriptionHandlers) => {
-          subscription.handlers = handlers;
-          return { unsubscribe: () => {} };
-        },
-      },
-      packClientReady: { mutate: packClientReady },
-    },
-    packs: { loaded: { query: loadedPacksQuery } },
-  },
-}));
 
 vi.mock('@/packs/pack-loader', () => ({ loadPackFrontend, unloadPackFrontend }));
 vi.mock('@/core/toast', () => ({ globalToast: { error: toastError, success: vi.fn(), info: vi.fn() } }));
@@ -47,16 +26,19 @@ const settle = () => new Promise(resolve => setTimeout(resolve, 0));
 
 let app: Actor<ReturnType<typeof createApplicationState>>;
 let warn: ReturnType<typeof vi.spyOn>;
+let fake: ReturnType<typeof fakeClient>;
+let packClientReady: ReturnType<typeof fakeClient>['packClientReady'];
+let loadedPacksQuery: ReturnType<typeof fakeClient>['loadedPacks'];
 
 beforeEach(() => {
-  packClientReady.mockReset().mockResolvedValue(undefined);
-  loadedPacksQuery.mockReset();
+  fake = fakeClient();
+  ({ packClientReady, loadedPacks: loadedPacksQuery } = fake);
   loadPackFrontend.mockReset();
   unloadPackFrontend.mockReset();
   toastError.mockReset();
   warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
   const notes = plugin('notes');
-  app = createActor(createApplicationState(), {
+  app = createActor(createApplicationState(fake.client), {
     systemId: 'host/application',
     input: { plugins: [notes], defaultPlugin: notes, ownsLastActivePlugin: false },
   }).start();
@@ -68,8 +50,8 @@ afterEach(() => {
 });
 
 /** This window's subscription is established */
-const connect = () => subscription.handlers!.onStarted();
-const dropConnection = () => subscription.handlers!.onConnectionStateChange({ state: 'connecting' });
+const connect = () => fake.connect();
+const dropConnection = () => fake.dropConnection();
 
 describe('loading pack frontends from the loaded packs', () => {
   it('loads the packs on a later connection when the first query fails', async () => {
@@ -91,7 +73,7 @@ describe('loading pack frontends from the loaded packs', () => {
     expect(loadPackFrontend).toHaveBeenCalledTimes(1);
     expect(app.getSnapshot().context.packPluginIds).toEqual({ ext: ['pack-own'] });
     expect(app.system.get('pack-own')).toBeDefined();
-    expect(packClientReady).toHaveBeenCalledWith({ packId: 'ext' });
+    expect(packClientReady).toHaveBeenCalledWith('ext');
   });
 
   it("doesn't load a pack again once its frontend is loaded, and never loads a built-in pack", async () => {
@@ -115,8 +97,8 @@ describe('loading pack frontends from the loaded packs', () => {
   });
 
   it('loads a pack activated while a load is running, whose read predates it', async () => {
-    let releaseFirstQuery: (packs: unknown[]) => void = () => {};
-    loadedPacksQuery.mockReturnValueOnce(new Promise<unknown[]>(resolve => { releaseFirstQuery = resolve; }));
+    let releaseFirstQuery: (packs: Array<{ id: string; feEntry?: string }>) => void = () => {};
+    loadedPacksQuery.mockReturnValueOnce(new Promise<Array<{ id: string; feEntry?: string }>>(resolve => { releaseFirstQuery = resolve; }));
 
     connect();
     app.send({ type: 'LOAD_PACK_FRONTENDS' });
