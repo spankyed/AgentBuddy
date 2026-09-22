@@ -1,7 +1,7 @@
 import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe';
 import { targetIs, type TrailClickEvent } from '@abuddy/sdk/fe';
 import { safeEvents } from '@abuddy/sdk/fe';
-import { setup, assign, enqueueActions, fromCallback, spawnChild, type AnyEventObject } from 'xstate';
+import { setup, assign, enqueueActions, fromCallback, spawnChild, stopChild, type AnyEventObject } from 'xstate';
 import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
 import type { ActorRefFrom } from 'xstate';
 import type {
@@ -370,6 +370,15 @@ function optimisticFieldUpdate(context: ThreadsContext, threadId: string, key: s
 }
 
 // ---- State machine ----
+
+/*
+ * The timers below are callback actors, which never finish on their own: the handler of the event a timer sends
+ * stops it, or it would stay among the plugin's children for the session. Spawning one stops the thread's
+ * earlier timer first, since a spawn under an id already taken replaces the entry without stopping the actor,
+ * which would then fire early.
+ */
+const newThreadFlagTimer = (threadId: string) => `clear-new-thread-flag-${threadId}`;
+const chatStateOverrideTimer = (threadId: string) => `clear-expired-override-${threadId}`;
 
 const threadsState = setup({
   types: { context: {} as ThreadsContext, events: {} as ThreadEvents },
@@ -1597,13 +1606,14 @@ const threadsState = setup({
       actions: 'openThreadChat'
     },
     CLEAR_NEW_THREAD_FLAG: {
-      actions: 'clearNewThreadFlag'
+      actions: ['clearNewThreadFlag', stopChild(({ event }) => newThreadFlagTimer(typeOf('CLEAR_NEW_THREAD_FLAG', event).id))]
     },
     THREAD_CREATED: {
       actions: [
         'addThenResetCreateForm',
+        stopChild(({ event }) => newThreadFlagTimer(typeOf('THREAD_CREATED', event).id)),
         spawnChild('clearNewThreadFlag', {
-          id: ({ event }) => `clear-new-thread-flag-${typeOf('THREAD_CREATED', event).id}`,
+          id: ({ event }) => newThreadFlagTimer(typeOf('THREAD_CREATED', event).id),
           input: ({ event }) => ({ id: typeOf('THREAD_CREATED', event).id })
         })
       ]
@@ -1851,9 +1861,10 @@ const threadsState = setup({
     FLASH_CHAT_STATE: {
       actions: [
         'flashChatState',
+        stopChild(({ event }) => chatStateOverrideTimer(typeOf('FLASH_CHAT_STATE', event).threadId)),
         spawnChild('clearExpiredOverride', {
           // Per thread: without an id two flashes at once share a key and the first is left untracked
-          id: ({ event }: any) => `clear-expired-override-${event.threadId}`,
+          id: ({ event }: any) => chatStateOverrideTimer(event.threadId),
           input: ({ event }: any) => ({
             threadId: event.threadId,
             durationMs: event.durationMs ?? 3000,
@@ -1862,11 +1873,14 @@ const threadsState = setup({
       ],
     },
     CLEAR_CHAT_STATE_OVERRIDE: {
-      actions: assign(({ context, event }) => {
-        const { threadId } = typeOf('CLEAR_CHAT_STATE_OVERRIDE', event);
-        const { [threadId]: _, ...rest } = context.chatStateOverrides;
-        return { chatStateOverrides: rest };
-      }),
+      actions: [
+        assign(({ context, event }) => {
+          const { threadId } = typeOf('CLEAR_CHAT_STATE_OVERRIDE', event);
+          const { [threadId]: _, ...rest } = context.chatStateOverrides;
+          return { chatStateOverrides: rest };
+        }),
+        stopChild(({ event }) => chatStateOverrideTimer(typeOf('CLEAR_CHAT_STATE_OVERRIDE', event).threadId)),
+      ],
     },
     SET_MODE: { actions: 'setMode' },
     SET_PHASE: { actions: 'setPhase' },
