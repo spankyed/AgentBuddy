@@ -1,4 +1,4 @@
-import type { FrontendMigration } from './index';
+import type { FrontendMigration } from './index.ts';
 
 /**
  * The plugin a window last had open is the host's (`AppState`, `SET_LAST_ACTIVE_PLUGIN`), stored under the
@@ -7,5 +7,5 @@ import type { FrontendMigration } from './index';
 export const migration: FrontendMigration = {
   target: '0.3.15',
   description: 'Drop the last active plugin this window stored, which the host now keeps',
-  up: () => localStorage.removeItem('agentbuddy-last-active-plugin'),
+  up: (storage) => storage.removeItem('agentbuddy-last-active-plugin'),
 };

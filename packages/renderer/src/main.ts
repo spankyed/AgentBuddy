@@ -10,8 +10,7 @@ import 'highlight.js/styles/github-dark.css'
 import builtInPacks from 'virtual:built-in-packs';
 import { hostFrontend } from '@/packs/plugin';
 import { createAppShell } from '@/core/app-shell';
-import { HOST, installFromProtocol } from '@abuddy/host/fe';
-import { runFrontendMigrations } from '@/setup/migrations';
+import { HOST, installFromProtocol, runFrontendMigrations } from '@abuddy/host/fe';
 import 'virtual:host-deps';
 import { bindRendererHost } from '@/core/fe-host';
 import { fePacks } from '@/core/fe-packs';
@@ -36,7 +35,7 @@ const initialPluginId = isPluginPopout ? query.get('pluginId') ?? undefined : un
 // --- Pre-actor initialization ---
 window.appVersion = __APP_VERSION__;
 console.log(`AgentBuddy v${__APP_VERSION__}`);
-runFrontendMigrations();
+runFrontendMigrations(localStorage, __APP_VERSION__);
 
 const packEntries = Object.entries(builtInPacks);
 const loadedMods = await Promise.all(
