@@ -1,3 +1,5 @@
+> **Done** (on `AS/designations-and-addressing`, `9d6721a0c`, `9875869e2`, `224291e0e` and `b368a26d5`). The text below is the plan as written; the Outcome records where the implementation differed. For the current layout, see `packages/abuddy-host/CLAUDE.md` (App shell) and `packages/renderer/CLAUDE.md` (App shell).
+
 > **Written in session** `739e73df-2842-4e0f-9c86-4a88dd07ac62` (Claude Code, 2026-09-22). Resume it with `claude -r 739e73df-2842-4e0f-9c86-4a88dd07ac62`.
 
 ```
@@ -262,6 +264,39 @@ Final.
 - A unit test on the harness covers link navigation, and fails when `openPlugin` stops handing the plugin its events.
 
 **Mutation:** make the harness skip spawning plugin actors, and the fixture test fails.
+
+## Outcome (2026-09-22)
+
+All four phases landed, each its own commit, with the full check list passing at the end.
+
+### Per phase
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 1. Typed shell contract | done, `9d6721a0c` | `HostShell`/`useShell()` in `@abuddy/sdk/fe`; the 8 call sites and the toolbar's context menu migrated; `useApplicationActor` and the `'applicationActor'` provide gone; the shell checked against the contract where it's defined (mutation: dropping `RESTORE_CHAT` fails `satisfiesHostShell`) |
+| 2. One frontend client port | done, `9875869e2` | `FeClient` (`send`) on the SDK port, `ShellClient` in `@abuddy/host/fe`, the renderer's `core/fe-client.ts` the only module calling `trpc.bus`/`trpc.packs`; shell specs on a fake client (mutation: a client dropping sends fails two); `tests/e2e/api-reconnect.spec.ts` kills the API and sees the window resubscribe (mutation: reporting only the first connection fails it) |
+| 3. Move, inject, split | done, `224291e0e` | `createShellMachine` in `packages/abuddy-host/src/fe/shell/`; `application.ts` holds only `createAppShell`; the four specs in `packages/abuddy-host/tests/fe/shell/` with no `vi.mock`; `tests/boundaries.spec.ts` guards `src/fe` (mutation: a `localStorage` use fails it); `OPEN_PLUGIN` parks requests (`open-plugin.spec.ts`; mutation: refusing at once fails it) and the fixture pack's `open-while-loading` E2E (mutation: same) |
+| 4. The shell in pack tests | done, `b368a26d5` | `startShell` in `@abuddy/testing/harness`; the fixture's `tests/unit/shell.spec.ts` (mutation: registering plugins without their machines fails two); default-setup's `link-navigation.spec.ts` (mutation: dropping `DELIVER_PLUGIN_EVENTS` fails it) |
+
+### Conventional choices
+
+- **Phase 1:** `useShell()` gives the state as read-only refs kept current while the calling scope lives; `HostShellEvent` held `SELECT_PLUGIN` and `DEFAULT_TOGGLE` until Phase 3 replaced them with `OPEN_PLUGIN`, and `defaultToggles` left the readable state with them. `PluginEvent` moved into `shell.ts`, so the contract doesn't pull in `navigation.ts` (and its `window.electronAPI`) wherever the SDK port is typed.
+- **Phase 2:** `FeClient` in the SDK has only `send`; what only the shell reads (`subscribe`, `packClientReady`, `loadedPacks`, `describeConnection`) is `ShellClient` in `@abuddy/host/fe`, because the loaded packs are a host type (`LoadedPackEntry`) and packs never read them. `fePacks` moved to `core/fe-packs.ts`, so importing the shell or the pack loader no longer opens the API client. Pack install sends with the SDK's `sendToSystem`, as the Packs plugin already did.
+- **Phase 3:** the machine takes `packs` (the window's registry) for the plugins it starts with and its default, so its input keeps only `initialPluginId` and `ownsLastActivePlugin`. `OPEN_PLUGIN` delivers the plugin's events with a send to itself rather than a raise, so they arrive after the selection has settled, as `openPlugin`'s did. Once loading settles the shell refuses a parked request whether or not the read of the loaded packs succeeded. `app-extensions.ts` takes its component type from the SDK instead of `vue`, so `src/fe` names no Vue at all.
+- **Phase 4:** `startShell` takes plugins as state machines by feature id, connects at once, loads no external pack frontends, stores nothing, and records what it would tell the user as `notices`; messages sent while it starts are held until it subscribes. `TestShell.actor` is typed `HostShell`, because published declarations name no `@abuddy/host` type. The delayed-load E2E uses disabling and re-enabling the pack: `/dev/reload` replaces only a pack's backend, so its frontend never unloads.
+
+### Corrections to the Decisions
+
+- **Decision 8, "`startFeTestRuntime` binds a working shell by default":** `startFeTestRuntime` is `@abuddy/sdk/testing`'s, and the SDK can't import the host's shell. Its default is instead a stand-in that fails naming `startShell`, which binds the real shell (through `startFeTestRuntime`, with `application` passed).
+- **Phase 1's "Done when" E2E specs:** the repo has no E2E spec for the commit, pull-request or welcome flows; the full suite passed, which is what exists for them.
+
+### Open items
+
+- The E2E link case (`tests/e2e/feature-addressing.spec.ts`) stays: it checks that the Logs canvas renders the link and that clicking it navigates, which the unit spec can't.
+
+### Final verification
+
+`npm run typecheck`, `npm run test:unit`, `npm run build`, `npm test` (20 passed), `npm run test:external-pack`, `npm run test:packaged-authoring`, `npm run api:check` and `npm run facade:check -w @app/default-setup` all passed on `b368a26d5`.
 
 ## Deferred
 
