@@ -8,7 +8,7 @@ import { loadFaqs } from './faqs';
 import { onSettingsChange, settingsQueries, settingsCommands } from './repository';
 import { SettingsRefusedError } from '../document';
 import { repository } from '@/__generated__/repository';
-import { detectAllArrayChanges } from '@abuddy/sdk/utils/pure';
+import { detectAllArrayChanges, errorMessage } from '@abuddy/sdk/utils/pure';
 import { seedData, type SeedCounts, type SeedIncludeSet } from '@/__generated__/seeders';
 import { previewPackSeeds, type PackSeedsPreview } from '@abuddy/sdk/seed';
 import { testCli, isCliName, clearCliPathCache } from '@/features/code/be/utils/resolve-cli';
@@ -19,7 +19,6 @@ import { REQUIRED_PROVIDERS } from '../constants';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
 import { splitRef, type FeatureRef } from '@abuddy/sdk/ids';
 import { ref } from '@/__generated__/ref';
-import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('settings');
 

@@ -8,8 +8,7 @@ import { ref, type FeatureName } from '@/__generated__/ref';
 import { addressLinkBlocks, refOf0314Feature } from './bare-feature-ids';
 import { DEFAULT_SETTINGS_0314 } from './defaults-0.3.14';
 import { isDeepStrictEqual } from 'node:util';
-import { isPlainObject } from '@abuddy/sdk/utils/pure';
-import { hasOwn } from '@abuddy/sdk/utils/pure';
+import { hasOwn, isPlainObject } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('migrations');
 
