@@ -16,7 +16,7 @@ import { handleProtocolInstall, requestPackInstall } from '@/packs/pack-install'
 import 'virtual:host-deps';
 import { bindRendererHost } from '@/core/fe-host';
 import { fePacks } from '@/core/fe-packs';
-import { installMonacoErrorFilters } from '@abuddy/ui/components/monaco-error-filters';
+import { installGlobalErrorHandling, reportRendererError } from '@/core/error-reporting';
 
 declare const __APP_VERSION__: string;
 
@@ -28,59 +28,7 @@ declare global {
   }
 }
 
-function serializeRendererError(error: unknown): { message: string; stack?: string; meta?: unknown } {
-  if (error instanceof Error) {
-    return {
-      message: error.message || error.toString(),
-      stack: error.stack,
-    };
-  }
-
-  if (typeof error === 'string') {
-    return { message: error };
-  }
-
-  try {
-    return {
-      message: JSON.stringify(error),
-      meta: error,
-    };
-  } catch {
-    return { message: String(error) };
-  }
-}
-
-function reportRendererError(source: string, error: unknown, meta?: unknown) {
-  const serialized = serializeRendererError(error);
-  window.electronAPI?.rendererLog?.write({
-    level: 'error',
-    source,
-    message: serialized.message,
-    stack: serialized.stack,
-    meta: {
-      startupId: window.electronAPI?.startupId,
-      detail: meta ?? serialized.meta,
-    },
-    fatal: true,
-  }).catch(() => {});
-}
-
-// Before the listener below: Monaco's diff view throws a recoverable range error that this would
-// otherwise report as fatal, and listeners on one target run in the order they were added.
-installMonacoErrorFilters();
-
-window.addEventListener('error', (event) => {
-  reportRendererError('window.error', event.error ?? event.message, {
-    message: event.message,
-    filename: event.filename,
-    lineno: event.lineno,
-    colno: event.colno,
-  });
-});
-
-window.addEventListener('unhandledrejection', (event) => {
-  reportRendererError('window.unhandledrejection', event.reason);
-});
+installGlobalErrorHandling();
 
 const query = new URLSearchParams(window.location.search);
 const isPluginPopout = query.get('popout') === 'plugin';
