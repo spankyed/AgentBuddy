@@ -11,13 +11,13 @@ export const migration: PackMigration = {
 
     // Copy the old key to the new key if it exists and the new key isn't already set
     if (code.lastDirectoryOpened && !code.baseDirectory) {
-      repository.settingsCommands.updateSettings('plugin', ref('code'), ['baseDirectory'], code.lastDirectoryOpened);
+      repository.settingsCommands.updatePluginSetting(ref('code'), ['baseDirectory'], code.lastDirectoryOpened);
     }
 
     // Move openLinksInApp from general.application to plugins.browser
     const openLinksInApp = (data.general as any)?.application?.openLinksInApp;
     if (openLinksInApp !== undefined && !(data.plugins as any)?.browser?.openLinksInApp) {
-      repository.settingsCommands.updateSettings('plugin', ref('browser'), ['openLinksInApp'], openLinksInApp);
+      repository.settingsCommands.updatePluginSetting(ref('browser'), ['openLinksInApp'], openLinksInApp);
     }
   },
 };

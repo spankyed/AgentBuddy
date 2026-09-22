@@ -15,7 +15,7 @@ describe('resetting settings', () => {
   it("keeps the app's own state", () => {
     services.appData.completeOnboarding();
     tx(APP_STATE_ID).update('packVersions', { 'memo-pack': '1.2.0' }).update('packSeedHashes', { 'memo-pack': 'hash-1' });
-    repository.settingsCommands.updateSettings('plugin', ref('threads'), ['sort'], 'oldest');
+    repository.settingsCommands.updatePluginSetting(ref('threads'), ['sort'], 'oldest');
 
     repository.settingsCommands.resetSettings();
 

@@ -8,6 +8,7 @@ import { tx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
 import { settingsCommands, settingsQueries } from '@/features/settings/be/repository';
 import { services } from '@/__generated__/services';
+import { resolveName } from '@abuddy/sdk/ids';
 
 /** A system that keeps each FEATURE_SETTINGS_UPDATED it gets */
 const recorder = setup({ types: { context: {} as { heard: unknown[] } } }).createMachine({
@@ -70,7 +71,7 @@ describe('a feature whose settings change', () => {
     const app = await startApp({ systems: ['settings', 'memo-pack/memos'] });
     await app.connect();
 
-    settingsCommands.updateSettings('plugin', 'memo-pack/memos', ['tags'], [{ name: 'c' }]);
+    settingsCommands.updatePluginSetting(resolveName('memo-pack/memos'), ['tags'], [{ name: 'c' }]);
     await app.settle();
     expect(heardBy(app).map((e) => e.settings)).toEqual([{ tags: [{ name: 'c' }] }]);
 
@@ -95,7 +96,7 @@ describe('a feature whose settings change', () => {
     /** A reset that writes the settings as the real one does, then succeeds or throws */
     const resetWriting = (tags: unknown[], outcome: 'succeeds' | 'fails') => mockService('appData', {
       reset: async () => {
-        settingsCommands.updateSettings('plugin', 'memo-pack/memos', ['tags'], tags);
+        settingsCommands.updatePluginSetting(resolveName('memo-pack/memos'), ['tags'], tags);
         if (outcome === 'fails') throw new Error('store could not reopen');
       },
     });
@@ -142,7 +143,7 @@ describe('a feature whose settings change', () => {
         // As the real import, which reads the backup's files before anything reaches memory
         await Promise.resolve();
         tx('Settings-app' as EARS.EntityId).put('data', { plugins: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } });
-        settingsCommands.updateSettings('plugin', 'memo-pack/memos', ['tags'], [{ name: 'migrated' }]);
+        settingsCommands.updatePluginSetting(resolveName('memo-pack/memos'), ['tags'], [{ name: 'migrated' }]);
         if (outcome === 'fails') throw new Error('backup unreadable');
         return { databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] };
       },
@@ -172,7 +173,7 @@ describe('a feature whose settings change', () => {
 
     expect(app.emitted('default-setup/settings')).toContainEqual({
       type: 'SETTINGS_REFUSED',
-      problems: [`"memos" isn't a plugin settings key: a plugin's settings are stored under its ref, "<packId>/<featureId>"; did you mean "memo-pack/memos"?`],
+      problems: [expect.stringMatching(/^No installed feature with settings is named "memos": .* did you mean "memo-pack\/memos"\?/)],
     });
     expect(app.emitted('default-setup/settings').map((e) => e.type)).not.toContain('SETTINGS_SAVED');
     expect(settingsQueries.getStoredSettings()).toEqual({});
@@ -233,7 +234,7 @@ describe('a feature whose settings change', () => {
     await app.send('settings', { type: 'REPLACE_SETTINGS', data: { plugins: { 'gone-pack/journal': { font: 'serif' }, 'memo-pack/memo': { tags: [] } } } });
     expect(app.emitted('default-setup/settings')).toContainEqual({
       type: 'SETTINGS_REFUSED',
-      problems: [`No installed feature with settings is "memo-pack/memo"`],
+      problems: [expect.stringContaining('No installed feature with settings is named "memo-pack/memo"')],
     });
 
     await app.send('settings', { type: 'REPLACE_SETTINGS', data: { plugins: { 'gone-pack/journal': { font: 'serif' }, 'memo-pack/board': { columns: 9 } } } });
@@ -269,7 +270,7 @@ describe('settings naming prototype machinery', () => {
     const data = JSON.parse('{ "general": {}, "plugins": { "memo-pack/memos": { "__proto__": { "polluted": "yes" } } } }');
     await app.send('settings', { type: 'REPLACE_SETTINGS', data });
 
-    const memos = settingsQueries.getPluginSettings('memo-pack/memos') as Record<string, unknown>;
+    const memos = settingsQueries.getPluginSettings(resolveName('memo-pack/memos')) as Record<string, unknown>;
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
     expect(memos.polluted).toBeUndefined();
     expect(Object.getPrototypeOf(memos)).toBe(Object.prototype);

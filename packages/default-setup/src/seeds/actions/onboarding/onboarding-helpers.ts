@@ -126,7 +126,7 @@ export function finishOnboarding(
     || ((!state.data.cliFound && state.data.codexFound) ? 'Codex' : 'Claude Code');
   services.settings.updatePluginSetting('default-setup/threads', ['chat', 'defaultMode'], defaultMode);
   // Push the updated chat settings to the frontend so resolveDefaultModePhase picks up the new default
-  const chatSettings = services.repository.settingsQueries.getPluginSettings('default-setup/threads')?.chat;
+  const chatSettings = services.settings.getPluginSettings('default-setup/threads')?.chat;
   if (chatSettings) {
     services.emitter.sendToPlugin('default-setup/threads', {
       type: 'AGENT_SETTINGS_UPDATED',

@@ -71,7 +71,7 @@ async function ensureServer(services: Services): Promise<any> {
 
 function effectiveCwd(services: Services, threadId?: string, cwdOverride?: string): string | undefined {
   const prior = threadId ? getCodexState(services, threadId) : undefined;
-  const codeSettings = services.repository.settingsQueries.getPluginSettings('default-setup/code') as any;
+  const codeSettings = services.settings.getPluginSettings('default-setup/code') as any;
   return cwdOverride
     || prior?.cwdOverride
     || prior?.cwd

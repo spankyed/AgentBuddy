@@ -130,14 +130,14 @@
       "Action:CC: Run Command": {
         "label": "CC: Run Command",
         "description": "Unified dispatcher for cc- prefixed chat commands",
-        "sourceHash": "1266935c10493054",
-        "rowSha256": "9e7e59934e7e8061bd72343f56a0780fdffc63cbe6bfb45b0b83af666f3c0b92"
+        "sourceHash": "aed9e98554d1be8c",
+        "rowSha256": "32df310278f4eef34cab2081d69e98bd22a22bef763360ded61aa39fa22113a4"
       },
       "Action:CC: Session Ops": {
         "label": "CC: Session Ops",
         "description": "Dispatcher for session-heavy cc- commands (resume, import)",
-        "sourceHash": "0024f592172a63aa",
-        "rowSha256": "846e38afbc5f918adc42016feec7f8e86a4bfb4c492bccfab2416a4a903e1aa5"
+        "sourceHash": "813ad8eefd9fa312",
+        "rowSha256": "f9bc134bf17a62184ed2979694b2ac49413f4c54652be2fd95607528404429b9"
       },
       "Action:CC: Stream Paused": {
         "label": "CC: Stream Paused",
@@ -280,14 +280,14 @@
       "Action:CDX: Run Command": {
         "label": "CDX: Run Command",
         "description": "Unified dispatcher for cdx- prefixed chat commands.",
-        "sourceHash": "877fae2571d4393e",
-        "rowSha256": "461e1a2e3ec5205cef7d4da5069f67d58ea9430d50c64cf0aecf55ffe00a70c2"
+        "sourceHash": "06fa0a4f11f048c3",
+        "rowSha256": "158527585acc234dd31e7eb2aaf2f351d61ffcbb1d36a7ec226b8b051a2a078e"
       },
       "Action:CDX: Session Ops": {
         "label": "CDX: Session Ops",
         "description": "Dispatcher for session-heavy cdx- commands.",
-        "sourceHash": "8bf883aaefba78d1",
-        "rowSha256": "2117e6aa154012958a33cbca3dc29f803ca318f482f6f95011d8418188898233"
+        "sourceHash": "79e25f52e912f3a4",
+        "rowSha256": "386c5de4a8ebd79e8148254da12217e9d483f14d57c353dc47642a1ab31cbf58"
       },
       "Action:CDX: Start Server": {
         "label": "CDX: Start Server",
@@ -328,8 +328,8 @@
       "Action:Claude Code Chat": {
         "label": "Claude Code Chat",
         "description": "Drives Claude Code in streaming mode for the current thread, resuming prior sessions and prompting the user for tool permissions.",
-        "sourceHash": "0c896b1634b808fa",
-        "rowSha256": "af6928bfac1048e95e38589926e42ad27277d97a21ae6a1028e5bb285395e1d0"
+        "sourceHash": "59c4ae447b442003",
+        "rowSha256": "2104cb1a3831f1499fef0b5f7f7ce8a2e1f7689b1eb2a6672701664189c7c6ed"
       },
       "Action:Claude Code List Sessions": {
         "label": "Claude Code List Sessions",
@@ -352,20 +352,20 @@
       "Action:Codex Chat": {
         "label": "Codex Chat",
         "description": "Drives Codex via app-server for the current thread.",
-        "sourceHash": "df558a222a6a4907",
-        "rowSha256": "acf2dabfab45fa2f5137f6118dd0d0c540cdd4fe3a4d842b658b71702a52fd36"
+        "sourceHash": "74662610fea17a1d",
+        "rowSha256": "51310a0a8359271f16e9c1486594bbc46db7e425c1b95d6dfb6a8ccbb201177b"
       },
       "Action:Handle Choose Mode Step": {
         "label": "Handle Choose Mode Step",
         "description": "Sets the default mode based on user choice and finishes onboarding",
-        "sourceHash": "7960448f63d7f80b",
-        "rowSha256": "a316a253b711e30eff47b241286b4874e1c357f229d89049f126091c0e0c2f0f"
+        "sourceHash": "08e9d594262adfb9",
+        "rowSha256": "6e062d8aac844c9d436bb58f5d5789c54109dae5f8d1940198952f6ad8bceb35"
       },
       "Action:Handle Import Threads Step": {
         "label": "Handle Import Threads Step",
         "description": "Imports sessions from Claude Code and Codex as threads",
-        "sourceHash": "8dcb9047eb792edc",
-        "rowSha256": "b9250a9d468e3ad908b2d0a54b5ba26a8c5f243bd34702132a77584705c1a4e3"
+        "sourceHash": "250c4508e5c0a90b",
+        "rowSha256": "a5514e255db0410d1a9c70fac0b35ca1d9e52ffd1b1372b3e579a04ba3455edc"
       },
       "Action:Handle Onboarding Response": {
         "label": "Handle Onboarding Response",
@@ -376,14 +376,14 @@
       "Action:Handle Pick Thread Step": {
         "label": "Handle Pick Thread Step",
         "description": "Opens a selected thread, then advances to mode chooser or finishes",
-        "sourceHash": "70d7c1bbee630ab0",
-        "rowSha256": "62e17b23a3f94e50e1b82d6b893b62886b4252fd8b0038ac768b14512c89215d"
+        "sourceHash": "ca0d82f71376e982",
+        "rowSha256": "b59bf7a5a86840b9502d3f815ef878c3252c8df0abf1a4acb2cb1dcd3bcd8c4d"
       },
       "Action:Handle Projects Step": {
         "label": "Handle Projects Step",
         "description": "Saves selected project directories and offers per-provider import",
-        "sourceHash": "f07a2794c7f59873",
-        "rowSha256": "728d698f67aea5636bc7ab75e1ed3a00167da64244d4b3322f9f015ad73c5cec"
+        "sourceHash": "8f4e34cce2f41145",
+        "rowSha256": "af254ddb26287941eed4262f786722942cea4bf5b1b86605fb22ccf3fc9e060d"
       },
       "Action:Handle Welcome Step": {
         "label": "Handle Welcome Step",

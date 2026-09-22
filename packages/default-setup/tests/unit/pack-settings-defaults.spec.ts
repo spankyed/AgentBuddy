@@ -6,6 +6,7 @@ import { getPackSettingsDefaults } from '@abuddy/sdk/framework';
 import { registerPack, resetTestData, unregisterPack } from '@abuddy/testing/harness';
 import { getDefaultSettings } from '@/features/settings/be/defaults';
 import { repository } from '@/__generated__/repository';
+import { resolveName } from '@abuddy/sdk/ids';
 
 /** A feature with a plugin and the given settings */
 const feature = (id: string, settings: Record<string, unknown>) => [id, { plugin: { receives: [] }, settings }] as const;
@@ -24,7 +25,7 @@ describe("packs' feature settings as defaults", () => {
   it("adds a registered pack's plugin settings and visibility, and drops them when it unregisters", () => {
     register('memo-pack', [feature('memos', { visible: false, plugins: { memos: { sort: 'newest' } } })]);
     expect(getDefaultSettings().plugins['memo-pack/memos']).toEqual({ sort: 'newest' });
-    expect(repository.settingsQueries.getPluginSettings('memo-pack/memos')).toEqual({ sort: 'newest' });
+    expect(repository.settingsQueries.getPluginSettings(resolveName('memo-pack/memos'))).toEqual({ sort: 'newest' });
     expect(getPackSettingsDefaults().visibility).toMatchObject({ 'memo-pack/memos': false, 'default-setup/threads': true });
 
     unregisterPack('memo-pack');
@@ -35,7 +36,7 @@ describe("packs' feature settings as defaults", () => {
 
   it("stores only the user's changes, so a pack's defaults still leave with it after a settings update", () => {
     register('memo-pack', [feature('memos', { plugins: { memos: { sort: 'newest' } } })]);
-    repository.settingsCommands.updateSettings('plugin', 'default-setup/threads', ['sort'], 'oldest');
+    repository.settingsCommands.updatePluginSetting(resolveName('default-setup/threads'), ['sort'], 'oldest');
     unregisterPack('memo-pack');
     registered.splice(0);
     expect(repository.settingsQueries.getSettings().plugins).not.toHaveProperty('memo-pack/memos');
@@ -43,8 +44,8 @@ describe("packs' feature settings as defaults", () => {
 
   it("keeps the user's stored settings over a pack's defaults", () => {
     register('memo-pack', [feature('memos', { plugins: { memos: { sort: 'newest' } } })]);
-    repository.settingsCommands.updateSettings('plugin', 'memo-pack/memos', ['sort'], 'oldest');
-    expect(repository.settingsQueries.getPluginSettings('memo-pack/memos')).toEqual({ sort: 'oldest' });
+    repository.settingsCommands.updatePluginSetting(resolveName('memo-pack/memos'), ['sort'], 'oldest');
+    expect(repository.settingsQueries.getPluginSettings(resolveName('memo-pack/memos'))).toEqual({ sort: 'oldest' });
   });
 
   // Settings are keyed by the plugin's ref, so another pack's `code` feature has its own slice

@@ -18,11 +18,11 @@ export class SettingsService {
 
   /**
    * A plugin's settings in effect
-   * @param plugin - The plugin's ref, `<packId>/<featureId>` (`'default-setup/threads'`): whoever calls, a bare
-   * name would be read as this pack's, so it throws
+   * @param plugin - The ref of an installed feature with settings, `<packId>/<featureId>` (`'default-setup/threads'`):
+   * whoever calls, a bare name would be read as this pack's, so it throws, naming the ref it likely meant
    */
   getPluginSettings<T = any>(plugin: `${string}/${string}`): T {
-    return repository.settingsQueries.getPluginSettings(plugin) as T;
+    return repository.settingsQueries.getPluginSettings(repository.settingsQueries.pluginSettingsRef(plugin)) as T;
   }
 
   /**
@@ -34,12 +34,12 @@ export class SettingsService {
 
   /**
    * Update a plugin setting
-   * @param plugin - The plugin's ref, `<packId>/<featureId>`; a bare name throws
+   * @param plugin - The ref of an installed feature with settings, `<packId>/<featureId>`; anything else throws
    * @param path - Path to the setting property (e.g., ['hotkeys', 'openTerminal'])
    * @param value - The new value
    */
   updatePluginSetting(plugin: `${string}/${string}`, path: string[], value: any): void {
-    repository.settingsCommands.updateSettings('plugin', plugin, path, value);
+    repository.settingsCommands.updatePluginSetting(repository.settingsQueries.pluginSettingsRef(plugin), path, value);
   }
 }
 

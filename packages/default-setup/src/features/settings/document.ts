@@ -2,7 +2,7 @@
 // the next document from the last. The repository checks every write with `settingsProblems`, and the settings editor
 // checks with it before saving, so both refuse the same document. The operations build new objects from own keys
 // (spreads and `Object.fromEntries`, never assignment), so a key such as `__proto__` is data and reaches no prototype.
-import { splitRef } from '@abuddy/sdk/ids';
+import { refProblem, splitRef, type FeatureRef } from '@abuddy/sdk/ids';
 import { isPlainObject } from '@abuddy/sdk/utils/pure';
 
 type Json = Record<string, unknown>;
@@ -55,41 +55,25 @@ export function changesFrom(defaults: unknown, settings: unknown): unknown {
   return changed.length > 0 ? Object.fromEntries(changed) : undefined;
 }
 
-/** The one ref in `refs` for the feature id `name` stands for, when exactly one has it */
-function meantRef(name: string, refs: Iterable<string>): string | undefined {
-  const featureId = splitRef(name)?.featureId ?? name;
-  const meant = [...refs].filter((ref) => ref !== name && splitRef(ref)?.featureId === featureId);
-  return meant.length === 1 ? meant[0] : undefined;
-}
-
-const hint = (meant: string | undefined) => (meant ? `; did you mean "${meant}"?` : '');
-
-/**
- * Why `key` can't name a plugin's settings, or undefined when it can: a plugin's settings are stored under its ref.
- * `settable` (the refs of the installed features with settings), when given, names the ref a bare name likely meant.
- */
-export function pluginKeyProblem(key: string, settable: Iterable<string> = []): string | undefined {
-  if (splitRef(key)) return undefined;
-  return `"${key}" isn't a plugin settings key: a plugin's settings are stored under its ref, "<packId>/<featureId>"`
-    + hint(meantRef(key, settable));
-}
+/** How a plugin settings key is looked up among the installed features with settings (`refProblem`) */
+export const SETTINGS_KIND = 'feature with settings';
 
 export interface SettingsCheck {
   /** The document `next` replaces: a section or plugin slice equal to its value there isn't a change */
   before: unknown;
   /**
    * The refs of the installed features that declare settings, a disabled pack's included. When given, a plugin slice
-   * that changes must be one of theirs; read only then. The settings editor, which can't know them, leaves the rule to
-   * the store, whose refusal it shows.
+   * that changes must be one of theirs; read only then. Given by the edge that takes whole documents
+   * (`REPLACE_SETTINGS`); every other write names its plugin by a ref its caller already parsed.
    */
-  settable?: () => ReadonlySet<string>;
+  settable?: () => ReadonlySet<FeatureRef>;
 }
 
 /**
  * What's wrong with `next` as the stored settings, nothing when it may be stored: it must be an object; a section that
- * changes must be one of the settings' sections, and an object; every plugin's settings are keyed by its ref, and a
- * slice that changes must be an installed feature's with settings. A slice left as it was stays: an uninstalled
- * pack's settings are there for its reinstall.
+ * changes must be one of the settings' sections, and an object; every plugin's settings are keyed by a ref, and with
+ * `settable`, a slice that changes must be an installed feature's with settings. A slice left as it was stays: an
+ * uninstalled pack's settings are there for its reinstall.
  */
 export function settingsProblems(next: unknown, { before, settable }: SettingsCheck): string[] {
   if (!isPlainObject(next)) return ['The settings must be a JSON object'];
@@ -102,14 +86,13 @@ export function settingsProblems(next: unknown, { before, settable }: SettingsCh
   const plugins = ownValue(next, 'plugins');
   if (!isPlainObject(plugins)) return problems;
   const previous = ownValue(before, 'plugins');
-  let refs: ReadonlySet<string> | undefined;
-  const settableRefs = (): ReadonlySet<string> => (refs ??= settable?.() ?? new Set<string>());
+  let refs: FeatureRef[] | undefined;
   for (const [key, slice] of Object.entries(plugins)) {
     const changed = !isEqual(slice, ownValue(previous, key));
-    if (!splitRef(key)) problems.push(pluginKeyProblem(key, settableRefs())!);
-    else if (changed && settable && !settableRefs().has(key)) {
-      problems.push(`No installed feature with settings is "${key}"${hint(meantRef(key, settableRefs()))}`);
-    }
+    const problem = changed && settable
+      ? refProblem(SETTINGS_KIND, key, { registered: (refs ??= [...settable()]), among: 'installed' })
+      : splitRef(key) ? undefined : `"${key}" isn't a ref: a plugin's settings are stored under "<packId>/<featureId>"`;
+    if (problem) problems.push(problem);
   }
   return problems;
 }

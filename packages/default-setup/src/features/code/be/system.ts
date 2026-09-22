@@ -173,7 +173,7 @@ export const systemMachine = setup({
         // Save to navigation history only when triggered by user navigation
         // (not when applying settings like defaultBaseDirectory)
         if (ev.fromUserNavigation !== false) {
-          repository.settingsCommands.updateSettings('plugin', ref('code'), ['baseDirectory'], ev.path)
+          repository.settingsCommands.updatePluginSetting(ref('code'), ['baseDirectory'], ev.path)
         }
         return ev.path
       },

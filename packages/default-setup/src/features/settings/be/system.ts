@@ -161,7 +161,7 @@ export const settingsSystem = setup({
       const ev = settingsSpec.typeOf('UPDATE_SETTINGS', event);
       // A plugin's settings are keyed by its ref, which the frontend resolves before sending and the store checks
       try {
-        if (ev.entityType === 'plugin') settingsCommands.updateSettings('plugin', ev.label, ev.path, ev.value);
+        if (ev.entityType === 'plugin') settingsCommands.updatePluginSetting(settingsQueries.pluginSettingsRef(ev.label), ev.path, ev.value);
         else settingsCommands.updateSettings('general', ev.label, ev.path, ev.value);
       } catch (error) {
         reportError({ error: new Error(`Settings for ${ev.entityType} "${ev.label}" weren't saved: ${(error as Error).message}`), source: 'settings' });
@@ -224,7 +224,7 @@ export const settingsSystem = setup({
 
       testCli(provider, storedPath).then((result: any) => {
         if (result.success) {
-          settingsCommands.updateSettings('plugin', ref('code'), ['cliPaths'], { ...cliPaths(), [provider]: result.resolvedPath });
+          settingsCommands.updatePluginSetting(ref('code'), ['cliPaths'], { ...cliPaths(), [provider]: result.resolvedPath });
           broadcastSettings('SETTINGS_UPDATED');
         } else {
           logger.error(`CLI test failed for "${provider}"`, { error: result.error });

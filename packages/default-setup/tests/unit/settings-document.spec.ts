@@ -1,7 +1,8 @@
 // The stored settings as a document: the check every write passes, shared by the store and the settings editor, and
 // the pure operations that make the next document, which take a key such as `__proto__` as data
 import { afterEach, describe, expect, it } from 'vitest';
-import { changesFrom, isEqual, pluginKeyProblem, removeIn, setIn, settingsProblems } from '@/features/settings/document';
+import { resolveName } from '@abuddy/sdk/ids';
+import { changesFrom, isEqual, removeIn, setIn, settingsProblems } from '@/features/settings/document';
 
 afterEach(() => { delete (Object.prototype as Record<string, unknown>).polluted; });
 
@@ -59,29 +60,34 @@ describe('settingsProblems', () => {
     expect(settingsProblems({ extra: 1 }, { before: { extra: 1 } })).toEqual([]);
   });
 
-  it('refuses a bare plugin key, naming the ref it likely meant', () => {
-    const settable = () => new Set(['memo-pack/memos', 'x/y']);
-    expect(settingsProblems({ plugins: { memos: {} } }, { before: {}, settable })).toEqual([
-      `"memos" isn't a plugin settings key: a plugin's settings are stored under its ref, "<packId>/<featureId>"; did you mean "memo-pack/memos"?`,
-    ]);
-    expect(pluginKeyProblem('memos', ['a/memos', 'b/memos'])).not.toContain('did you mean');
-    expect(pluginKeyProblem('a/memos')).toBeUndefined();
+  /** The installed features with settings, as the store reads them */
+  const installed = (...refs: string[]) => () => new Set(refs.map((ref) => resolveName(ref)));
+
+  it("refuses a key that isn't a ref, whatever else is known", () => {
+    expect(settingsProblems({ plugins: { memos: {} } }, { before: {} }))
+      .toEqual([`"memos" isn't a ref: a plugin's settings are stored under "<packId>/<featureId>"`]);
   });
 
-  it("refuses a changed slice no installed feature with settings has, and keeps an unchanged one", () => {
-    const settable = () => new Set(['memo-pack/memos']);
-    expect(settingsProblems({ plugins: { 'memo-pack/memo': { sort: 'new' } } }, { before: {}, settable }))
-      .toEqual([`No installed feature with settings is "memo-pack/memo"`]);
-    expect(settingsProblems({ plugins: { 'other-pack/memos': { sort: 'new' } } }, { before: {}, settable }))
-      .toEqual([`No installed feature with settings is "other-pack/memos"; did you mean "memo-pack/memos"?`]);
-    // An uninstalled pack's settings wait for its reinstall
+  it('refuses a changed slice no installed feature with settings has, naming the one it likely meant', () => {
+    const settable = installed('memo-pack/memos', 'x/y');
+    expect(settingsProblems({ plugins: { memos: {} } }, { before: {}, settable })).toEqual([
+      'No installed feature with settings is named "memos": name a feature with settings as "<packId>/<featureId>"'
+      + ' — did you mean "memo-pack/memos"? Installed: memo-pack/memos, x/y',
+    ]);
+    expect(settingsProblems({ plugins: { 'other-pack/memos': { sort: 'new' } } }, { before: {}, settable })[0])
+      .toContain('did you mean "memo-pack/memos"?');
+    expect(settingsProblems({ plugins: { 'memo-pack/memos': { sort: 'new' } } }, { before: {}, settable })).toEqual([]);
+  });
+
+  // An uninstalled pack's settings wait for its reinstall
+  it('keeps an unchanged slice whose feature is no longer installed', () => {
     const gone = { plugins: { 'gone-pack/board': { columns: 2 } } };
-    expect(settingsProblems(gone, { before: gone, settable })).toEqual([]);
+    expect(settingsProblems(gone, { before: gone, settable: installed('memo-pack/memos') })).toEqual([]);
   });
 
   it('reads the installed features only when a plugin slice changes', () => {
     let reads = 0;
-    const settable = () => { reads++; return new Set(['a/b']); };
+    const settable = () => { reads++; return installed('a/b')(); };
     settingsProblems({ general: { zoom: 2 }, plugins: { 'a/b': { on: true } } }, { before: { plugins: { 'a/b': { on: true } } }, settable });
     expect(reads).toBe(0);
     settingsProblems({ plugins: { 'a/b': { on: false }, 'a/c': {} } }, { before: {}, settable });

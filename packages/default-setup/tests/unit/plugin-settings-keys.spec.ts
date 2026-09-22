@@ -1,7 +1,10 @@
-// A plugin's settings are stored under its ref, `<packId>/<featureId>`, and nothing else is stored there. A name
-// that reaches the store unresolved throws rather than writing a slice no reader looks at.
+// A plugin's settings are stored under its ref, `<packId>/<featureId>`, and nothing else is stored there. The store
+// takes a `FeatureRef`; a name that arrives as a string (a client's send, an action's `services.settings` call) is
+// parsed once where it arrives, and one that isn't an installed feature's with settings throws, naming the ref it
+// likely meant, rather than writing a slice no reader looks at.
 import { describe, expect, it, onTestFinished } from 'vitest';
-import { registerPack, startApp, unregisterPack } from '@abuddy/testing/harness';
+import { registerPack, startApp, takeSystemErrors, unregisterPack } from '@abuddy/testing/harness';
+import type { FeatureRef } from '@abuddy/sdk/ids';
 import { repository } from '@/__generated__/repository';
 import { services } from '@/__generated__/services';
 import { ref } from '@/__generated__/ref';
@@ -12,24 +15,37 @@ describe('the plugin settings keys', () => {
   it("takes a plugin's ref", async () => {
     await startApp({ systems: [] });
 
-    repository.settingsCommands.updateSettings('plugin', ref('threads'), ['sort'], 'oldest');
+    repository.settingsCommands.updatePluginSetting(ref('threads'), ['sort'], 'oldest');
 
     expect(stored()).toEqual({ 'default-setup/threads': { sort: 'oldest' } });
   });
 
-  it('refuses a name, and writes nothing', async () => {
+  it('parses a name to the ref of an installed feature with settings, and refuses one that is none', async () => {
     await startApp({ systems: [] });
 
-    expect(() => repository.settingsCommands.updateSettings('plugin', 'threads', ['sort'], 'oldest'))
-      .toThrow(`"threads" isn't a plugin settings key`);
+    expect(repository.settingsQueries.pluginSettingsRef('default-setup/threads')).toBe('default-setup/threads');
+    expect(() => repository.settingsQueries.pluginSettingsRef('threads'))
+      .toThrow('No installed feature with settings is named "threads": name a feature with settings as "<packId>/<featureId>" — did you mean "default-setup/threads"?');
+    expect(() => repository.settingsQueries.pluginSettingsRef('default-setup/thread')).toThrow('No installed feature with settings is named "default-setup/thread"');
+  });
+
+  // An action can still reach the repository through services.repository: the one writer keeps the document's shape
+  it("refuses to store a key that isn't a ref, whoever writes it", async () => {
+    await startApp({ systems: [] });
+
+    expect(() => repository.settingsCommands.updatePluginSetting('threads' as FeatureRef, ['sort'], 'oldest'))
+      .toThrow(`"threads" isn't a ref`);
     expect(stored()).toBeUndefined();
   });
 
-  // Read and written by the same key: a name would be read in the settings plugin's pack, whoever asked
-  it('refuses a name when reading too', async () => {
-    await startApp({ systems: [] });
+  it("reports a client's update naming a plugin by a bare name, and writes nothing", async () => {
+    const app = await startApp({ systems: ['settings'] });
+    await app.connect();
 
-    expect(() => repository.settingsQueries.getPluginSettings('threads')).toThrow(`"threads" isn't a plugin settings key`);
+    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'threads', path: ['sort'], value: 'oldest' });
+
+    expect(takeSystemErrors()).toEqual([expect.objectContaining({ message: expect.stringContaining('did you mean "default-setup/threads"?') })]);
+    expect(stored()).toBeUndefined();
   });
 });
 
@@ -52,9 +68,9 @@ describe('services.settings', () => {
     await startApp({ systems: [] });
 
     // @ts-expect-error a plugin's settings are keyed by its ref
-    expect(() => services.settings.updatePluginSetting('memos', ['sort'], 'oldest')).toThrow(`"memos" isn't a plugin settings key`);
+    expect(() => services.settings.updatePluginSetting('threads', ['sort'], 'oldest')).toThrow('did you mean "default-setup/threads"?');
     // @ts-expect-error a plugin's settings are keyed by its ref
-    expect(() => services.settings.getPluginSettings('memos')).toThrow(`"memos" isn't a plugin settings key`);
+    expect(() => services.settings.getPluginSettings('threads')).toThrow('did you mean "default-setup/threads"?');
     expect(stored()).toBeUndefined();
   });
 });

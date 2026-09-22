@@ -9,6 +9,7 @@ import { ActionEntity, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEn
 import { ArtifactItem } from '@abuddy/sdk/artifacts';
 import * as _abuddy_sdk_build from '@abuddy/sdk/build';
 import { HostPluginEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, Qualified, TypedSendToPlugin, TypedSendToSystem, WithOwnNames } from '@abuddy/sdk/events';
+import { FeatureRef } from '@abuddy/sdk/ids';
 import { ModelCatalogEntry, ModelId } from '@abuddy/sdk/models';
 import * as _abuddy_sdk_repositories from '@abuddy/sdk/repositories';
 import { FlowEdge } from '@abuddy/sdk/repositories';
@@ -3402,9 +3403,6 @@ interface SettingsEntity extends BaseEntity {
     updatedAt?: number;
 }
 
-/** The sections of the stored settings other than the plugins' slices, each keyed as the data holds it */
-type SettingsSection = 'assistant' | 'general' | 'plugins';
-
 /**
  * Settings Service
  *
@@ -3419,8 +3417,8 @@ declare class SettingsService {
     getAll(): SettingsData;
     /**
      * A plugin's settings in effect
-     * @param plugin - The plugin's ref, `<packId>/<featureId>` (`'default-setup/threads'`): whoever calls, a bare
-     * name would be read as this pack's, so it throws
+     * @param plugin - The ref of an installed feature with settings, `<packId>/<featureId>` (`'default-setup/threads'`):
+     * whoever calls, a bare name would be read as this pack's, so it throws, naming the ref it likely meant
      */
     getPluginSettings<T = any>(plugin: `${string}/${string}`): T;
     /**
@@ -3429,7 +3427,7 @@ declare class SettingsService {
     getGeneralSettings(): SettingsData['general'];
     /**
      * Update a plugin setting
-     * @param plugin - The plugin's ref, `<packId>/<featureId>`; a bare name throws
+     * @param plugin - The ref of an installed feature with settings, `<packId>/<featureId>`; anything else throws
      * @param path - Path to the setting property (e.g., ['hotkeys', 'openTerminal'])
      * @param value - The new value
      */
@@ -4685,6 +4683,8 @@ declare function sendSystemMessage(options: {
 
 declare const settingsCommands: {
     updateSettings: typeof updateSettings;
+    /** Sets `value` at `path` in a plugin's settings, by its ref */
+    updatePluginSetting(plugin: FeatureRef, path: string[], value: unknown): void;
     /**
      * Makes `settings` the settings in effect: stores what they set that the defaults don't. A default they leave out
      * keeps applying, since stored settings only set values.
@@ -4704,8 +4704,14 @@ declare const settingsQueries: {
     getStoredSettings: () => Partial<SettingsData>;
     getGeneralSettings: (label?: string) => any;
     getAssistantSettings: () => AssistantSettings;
-    /** A plugin's settings in effect, by its ref; a bare name throws, naming the ref it likely meant */
-    getPluginSettings: (plugin: string) => any;
+    /** A plugin's settings in effect, by its ref */
+    getPluginSettings: (plugin: FeatureRef) => any;
+    /**
+     * The ref of the installed feature with settings `name` stands for: where a plugin's name arrives as a string (a
+     * client's send, an action's `services.settings` call), it is parsed here once, and throws naming the ref it likely
+     * meant. What the store's commands and queries take is a `FeatureRef`.
+     */
+    pluginSettingsRef: (name: string) => FeatureRef;
 };
 
 declare const specs: {
@@ -5473,10 +5479,10 @@ declare function updateChatState(threadId: EARS.EntityId, chatState: string): vo
 declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'blockResponse' | 'blocks' | 'compacted' | 'context' | 'forkable' | 'responseTimestamp' | 'status' | 'text'>>): void;
 
 /**
- * Sets `value` at `path` in a section: a general setting under its label (`general.application`), a plugin's under its
- * ref (`plugins['default-setup/flows']`), an assistant setting under no label
+ * Sets `value` at `path` in a section other than the plugins': a general setting under its label
+ * (`general.application`), an assistant setting under none
  */
-declare function updateSettings(type: SettingsSection | 'plugin', label: string | null, path: string[], value: unknown): void;
+declare function updateSettings(section: 'assistant' | 'general', label: string | null, path: string[], value: unknown): void;
 
 /** Parse a Codex JSONL file into an array of entries. */
 declare function viewByFile(filePath: string, opts?: {

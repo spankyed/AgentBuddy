@@ -382,7 +382,7 @@ export const brainSystem = setup({
       setDebugEnabled('brain', newState);
 
       // Persist to settings DB
-      repository.settingsCommands.updateSettings('plugin', ref('brain'), ['inspectEnabled'], newState);
+      repository.settingsCommands.updatePluginSetting(ref('brain'), ['inspectEnabled'], newState);
 
       // Send confirmation back to frontend
       sendToPlugin('brain', {

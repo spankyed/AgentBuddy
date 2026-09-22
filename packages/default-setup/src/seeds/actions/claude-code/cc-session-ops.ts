@@ -145,7 +145,7 @@ async function handleResume(
   // project directory (e.g. when the thread was created via "+ new thread"
   // on a specific project in the sidebar).
   const prior = threadId ? getClaudeState(services, threadId) : undefined;
-  const codeSettings = services.repository.settingsQueries.getPluginSettings('default-setup/code') as any;
+  const codeSettings = services.settings.getPluginSettings('default-setup/code') as any;
   const effectiveCwd = cwdOverride
     || prior?.cwdOverride
     || prior?.cwd
@@ -367,7 +367,7 @@ async function handleImport(
   // Full refresh: update the entire thread list, tags, and chat states.
   // sendRecentThreadsRefresh() only updates the sidebar (recent 7 threads).
   const connectedData = services.repository.threadQueries.connectedData();
-  const threadsSettings = services.repository.settingsQueries.getPluginSettings('default-setup/threads');
+  const threadsSettings = services.settings.getPluginSettings('default-setup/threads');
   services.emitter.sendToPlugin('default-setup/threads', {
     type: 'THREAD_CONNECTED',
     data: { ...connectedData, settings: threadsSettings || null },

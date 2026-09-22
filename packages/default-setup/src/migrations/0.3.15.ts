@@ -48,7 +48,7 @@ export const migration: PackMigration = {
     // Whoever hid `log-service` hid action logs: keep hiding them.
     const excludedSources = repository.settingsQueries.getPluginSettings(ref('logs'))?.excludedSources;
     if (Array.isArray(excludedSources) && excludedSources.includes('log-service') && !excludedSources.includes('action:*')) {
-      repository.settingsCommands.updateSettings('plugin', ref('logs'), ['excludedSources'], [...excludedSources, 'action:*']);
+      repository.settingsCommands.updatePluginSetting(ref('logs'), ['excludedSources'], [...excludedSources, 'action:*']);
     }
 
     // ── The root flow is the flow with the root role, and the brain says which one it runs ──
@@ -142,7 +142,7 @@ function dropKeysMovedBy0314(): void {
   const code = slice('code');
   if (code.lastDirectoryOpened !== undefined) {
     if (code.baseDirectory === undefined) {
-      repository.settingsCommands.updateSettings('plugin', ref('code'), ['baseDirectory'], code.lastDirectoryOpened);
+      repository.settingsCommands.updatePluginSetting(ref('code'), ['baseDirectory'], code.lastDirectoryOpened);
     }
     repository.settingsCommands.removeStored(['plugins', ref('code'), 'lastDirectoryOpened']);
   }
@@ -152,7 +152,7 @@ function dropKeysMovedBy0314(): void {
     // 0.3.14's default is no choice of the user's (`dropDefaultsOf0314`): copied, it would pin that default for good
     const default0314 = (DEFAULT_SETTINGS_0314.general.application as Record<string, unknown>).openLinksInApp;
     if (slice('browser').openLinksInApp === undefined && openLinksInApp !== default0314) {
-      repository.settingsCommands.updateSettings('plugin', ref('browser'), ['openLinksInApp'], openLinksInApp);
+      repository.settingsCommands.updatePluginSetting(ref('browser'), ['openLinksInApp'], openLinksInApp);
     }
     repository.settingsCommands.removeStored(['general', 'application', 'openLinksInApp']);
   }

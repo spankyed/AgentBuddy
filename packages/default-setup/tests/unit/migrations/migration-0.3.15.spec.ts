@@ -96,7 +96,7 @@ describe('the 0.3.15 migration', () => {
   })
 
   const excludedSources = () => (repository.settingsQueries.getPluginSettings(ref('logs')) as any).excludedSources
-  const setExcludedSources = (value: string[]) => repository.settingsCommands.updateSettings('plugin', ref('logs'), ['excludedSources'], value)
+  const setExcludedSources = (value: string[]) => repository.settingsCommands.updatePluginSetting(ref('logs'), ['excludedSources'], value)
 
   it('hides action logs for a user who hid log-service', () => {
     createDefaultSettings()

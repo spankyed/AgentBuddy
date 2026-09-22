@@ -2,11 +2,11 @@ import { tx, qx } from '@/__generated__/ears';
 
 import { EARS } from '@/__generated__/ears';
 
-import { changesFrom, pluginKeyProblem, removeIn, setIn, settingsProblems, SettingsRefusedError } from '../../document';
+import { changesFrom, removeIn, setIn, SETTINGS_KIND, settingsProblems, SettingsRefusedError } from '../../document';
 import type { SettingsData } from '../types';
 import { getDefaultSettings } from '../defaults';
 import { deepMerge } from '@abuddy/sdk/utils/pure';
-import { splitRef } from '@abuddy/sdk/ids';
+import { resolveRegistered, type FeatureRef } from '@abuddy/sdk/ids';
 import { getFeaturesWithSettings } from '@abuddy/sdk/framework';
 
 // Use a fixed ID without hyphen to avoid LMDB persistence issues
@@ -31,7 +31,7 @@ const getSettingsEntity = (): { id: EARS.EntityId; data: SettingsData } => ({
 });
 
 /** The refs of the installed features that declare settings, a disabled pack's included: a changed slice must be one */
-const settableRefs = (): ReadonlySet<string> => new Set(getFeaturesWithSettings());
+const settableRefs = (): ReadonlySet<FeatureRef> => new Set(getFeaturesWithSettings());
 
 // Initialize default settings (called on startup)
 export const createDefaultSettings = (): void => {
@@ -58,11 +58,16 @@ export const settingsQueries = {
 
   getAssistantSettings: () => getSettingsEntity().data.assistant,
 
-  /** A plugin's settings in effect, by its ref; a bare name throws, naming the ref it likely meant */
-  getPluginSettings: (plugin: string) => {
-    if (!splitRef(plugin)) throw new Error(pluginKeyProblem(plugin, settableRefs()));
-    return getSettingsEntity().data.plugins[plugin] ?? {};
-  },
+  /** A plugin's settings in effect, by its ref */
+  getPluginSettings: (plugin: FeatureRef) => getSettingsEntity().data.plugins[plugin] ?? {},
+
+  /**
+   * The ref of the installed feature with settings `name` stands for: where a plugin's name arrives as a string (a
+   * client's send, an action's `services.settings` call), it is parsed here once, and throws naming the ref it likely
+   * meant. What the store's commands and queries take is a `FeatureRef`.
+   */
+  pluginSettingsRef: (name: string): FeatureRef =>
+    resolveRegistered(SETTINGS_KIND, name, { registered: [...settableRefs()], among: 'installed' }),
 };
 
 const writeListeners = new Set<() => void>();
@@ -79,10 +84,10 @@ export function onSettingsWritten(listener: () => void): () => void {
 
 /**
  * Stores `next` as the user's changes and tells the listeners, once it passes `settingsProblems` against what is
- * stored: every write goes through here, so none stores a document the settings refuse.
+ * stored: every write goes through here, so none stores a document of the wrong shape.
  */
 function write(next: unknown): void {
-  const problems = settingsProblems(next, { before: getStoredSettings(), settable: settableRefs });
+  const problems = settingsProblems(next, { before: getStoredSettings() });
   if (problems.length > 0) throw new SettingsRefusedError(problems);
   tx(SETTINGS_ID)
     .put('data', next as Partial<SettingsData>)
@@ -90,23 +95,23 @@ function write(next: unknown): void {
   for (const listener of writeListeners) listener();
 }
 
-/** The sections of the stored settings other than the plugins' slices, each keyed as the data holds it */
-type SettingsSection = 'general' | 'assistant' | 'plugins';
-
 /**
- * Sets `value` at `path` in a section: a general setting under its label (`general.application`), a plugin's under its
- * ref (`plugins['default-setup/flows']`), an assistant setting under no label
+ * Sets `value` at `path` in a section other than the plugins': a general setting under its label
+ * (`general.application`), an assistant setting under none
  */
-function updateSettings(type: SettingsSection | 'plugin', label: string | null, path: string[], value: unknown): void {
-  const needsLabel = type === 'general' || type === 'plugin';
-  if (needsLabel && !label) throw new Error(`Setting type '${type}' requires a label`);
-  const section = type === 'plugin' ? 'plugins' : type;
-  write(setIn(getStoredSettings(), needsLabel ? [section, label!, ...path] : [section, ...path], value));
+function updateSettings(section: 'general' | 'assistant', label: string | null, path: string[], value: unknown): void {
+  if (section === 'general' && !label) throw new Error("General settings are set under a label (e.g. 'application')");
+  write(setIn(getStoredSettings(), section === 'general' ? [section, label!, ...path] : [section, ...path], value));
 }
 
 // COMMANDS
 export const settingsCommands = {
   updateSettings,
+
+  /** Sets `value` at `path` in a plugin's settings, by its ref */
+  updatePluginSetting(plugin: FeatureRef, path: string[], value: unknown): void {
+    write(setIn(getStoredSettings(), ['plugins', plugin, ...path], value));
+  },
 
   /**
    * Makes `settings` the settings in effect: stores what they set that the defaults don't. A default they leave out

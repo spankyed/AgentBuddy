@@ -56,7 +56,7 @@ describe('settings compiler', () => {
 });
 
 describe('settings seeder', () => {
-  const changeASetting = () => repository.settingsCommands.updateSettings('plugin', ref('threads'), ['sort'], 'oldest');
+  const changeASetting = () => repository.settingsCommands.updatePluginSetting(ref('threads'), ['sort'], 'oldest');
   const changed = () => repository.settingsQueries.getPluginSettings(ref('threads'))?.sort === 'oldest';
 
   it("resets the user's settings when the seed is imported, and keeps them when existing data is kept", () => {

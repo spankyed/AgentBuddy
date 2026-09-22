@@ -43,5 +43,5 @@ function patchModes(modes: Array<{ id: string; name?: string; description?: stri
   }
 
   const nextModes = modes.filter(mode => mode.id !== 'hermes');
-  repository.settingsCommands.updateSettings('plugin', ref('threads'), ['chat', 'modes'], nextModes);
+  repository.settingsCommands.updatePluginSetting(ref('threads'), ['chat', 'modes'], nextModes);
 }
