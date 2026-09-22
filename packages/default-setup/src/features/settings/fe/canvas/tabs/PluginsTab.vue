@@ -51,7 +51,7 @@
         <div class="flex items-center gap-3 mb-6">
           <h2 class="text-xl font-semibold text-white">{{ selectedPlugin.label }} Settings</h2>
           <button
-            v-if="selectedPlugin.id !== 'settings'"
+            v-if="selectedPlugin.id !== settingsPluginId"
             @click="goToPlugin(selectedPlugin.id)"
             title="Go to plugin"
             class="p-1 rounded text-neutral-500 hover:text-neutral-200 hover:bg-neutral-800 transition-colors"

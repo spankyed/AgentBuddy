@@ -8,7 +8,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { _depTypesFile, _depTypesVersion, entitiesWithoutShapes, generatePackFiles, PACK_TYPES_DEF } from '../../src/build/generate-entries.ts';
 import { _buildProvenance, PACK_SNAPSHOT_FORMAT, PROVENANCE_KINDS } from '../../src/build/manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../../src/types/sdk-entities.ts';
-import type { PackManifest, PackSnapshot } from '../../src/build/manifest.ts';
+import type { PackFeatureEntry, PackManifest, PackSnapshot } from '../../src/build/manifest.ts';
+import type { PackFeature, PackRegistration } from '../../src/framework/index.ts';
 
 let root: string;
 beforeEach(() => {
@@ -296,7 +297,7 @@ describe('generated system sends', () => {
   // Pack code resolves a name with `ref`, which is bound to its pack as the sends are
   it('binds ref to the pack, so pack code never passes its own pack id', () => {
     const files = generate({ features: [{ id: 'sidebar', plugin: { entry: 'x' } }] });
-    expect(files['src/__generated__/ref.ts']).toContain("export const ref = (name: string): FeatureRef => resolveName(name, 'demo-pack');");
+    expect(files['src/__generated__/ref.ts']).toContain("export const ref = (name: FeatureName): FeatureRef => resolveName(name, 'demo-pack');");
     expect(files['src/__generated__/bus-ids.ts']).toBeUndefined();
   });
 
@@ -404,6 +405,20 @@ describe('generated sends compile', () => {
       "sendToPlugin('base-pack/code', { type: 'FILE_OPENED', path: 'x' });",
     ].join('\n'));
     expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
+  });
+});
+
+describe('generated ref', () => {
+  // A FeatureRef is accepted wherever a send takes one, so the names ref() takes are what keep a misspelling out
+  it("takes this pack's features, its dependencies' and the host's, and nothing else", () => {
+    const files = generate(
+      { dependencies: { 'base-pack': '1.0.0' }, features: [{ id: 'notes', plugin: { entry: 'src/notes/plugin' } }, system('jobs')] },
+      { 'base-pack': dependency({ features: [{ id: 'threads', plugin: { entry: 'x' } }, { id: 'worker', system: { entry: 'y' } }] }) },
+    );
+    expect(files['src/__generated__/ref.ts']).toContain(
+      "export type FeatureName = 'notes' | 'jobs' | 'base-pack/threads' | 'base-pack/worker' | 'host/application' | 'host/bus';",
+    );
+    expect(files['src/__generated__/ref.ts']).toContain('export const ref = (name: FeatureName): FeatureRef');
   });
 });
 
@@ -1094,16 +1109,35 @@ describe('generated flow helpers', () => {
 });
 
 /**
- * What `PACK_SNAPSHOT_FORMAT` covers: the snapshot's fields, the provenance kinds, and the facade exports
- * a dependent's generated code imports. When this fails, the snapshot's contract changed. If a CLI on the
+ * What `PACK_SNAPSHOT_FORMAT` covers: the snapshot's fields, the manifest's, the provenance kinds, the facade exports
+ * a dependent's generated code imports, and the registration the app loads. When this fails, the snapshot's contract changed. If a CLI on the
  * other side would misread the change (anything removed, renamed or reshaped) and the last release shipped
  * this format number, bump it; then update the expectation. A pure addition every reader ignores needs only
  * the expectation.
  */
 describe('the snapshot format', () => {
-  // Typed against PackSnapshot, so adding or removing a field fails the typecheck until it is listed
+  // Each typed against its interface, so adding, renaming or removing a field fails the typecheck until it is listed
   const SNAPSHOT_FIELDS: Record<keyof PackSnapshot, true> = {
     types: true, defs: true, manifest: true, format: true, sdkVersion: true, provenance: true, flowHelpers: true,
+  };
+  /** The snapshot's manifest, which a dependent's codegen reads (features, services, seed formats, version…) */
+  const MANIFEST_FIELDS: Record<keyof PackManifest, true> = {
+    $manifestVersion: true, $schema: true, artifacts: true, blocks: true, boot: true, builtIn: true, commands: true,
+    dependencies: true, description: true, dsl: true, entities: true, entityShapes: true, fe: true, features: true,
+    hostVersion: true, id: true, license: true, migrations: true, name: true, packServices: true, partitionPolicy: true,
+    permissions: true, relKinds: true, seedFormats: true, seedHooks: true, steps: true, version: true,
+  };
+  const MANIFEST_FEATURE_FIELDS: Record<keyof PackFeatureEntry, true> = {
+    designation: true, earlySystem: true, id: true, plugin: true, references: true, repositories: true, services: true,
+    settings: true, system: true, typesEntry: true,
+  };
+  /** The registration the runtime bundle exports, which the app loads */
+  const REGISTRATION_FIELDS: Record<keyof PackRegistration, true> = {
+    id: true, features: true, services: true, ears: true, repositories: true, boot: true, migrations: true, steps: true,
+    artifacts: true, blocks: true, seedHooks: true, seeders: true, commands: true,
+  };
+  const REGISTRATION_FEATURE_FIELDS: Record<keyof PackFeature, true> = {
+    designation: true, system: true, plugin: true, services: true, settings: true,
   };
 
   /** Every name generated code imports from a dependency's facade, with a send to one of its plugins */
@@ -1118,11 +1152,18 @@ describe('the snapshot format', () => {
     expect({
       format: PACK_SNAPSHOT_FORMAT,
       fields: Object.keys(SNAPSHOT_FIELDS).sort(),
+      manifest: [Object.keys(MANIFEST_FIELDS).length, Object.keys(MANIFEST_FEATURE_FIELDS).sort()],
+      registration: [Object.keys(REGISTRATION_FIELDS).sort(), Object.keys(REGISTRATION_FEATURE_FIELDS).sort()],
       provenanceKinds: Object.keys(PROVENANCE_KINDS).sort(),
       facadeImports: facadeImports(),
     }).toEqual({
       format: 1,
       fields: ['defs', 'flowHelpers', 'format', 'manifest', 'provenance', 'sdkVersion', 'types'],
+      manifest: [27, ['designation', 'earlySystem', 'id', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry']],
+      registration: [
+        ['artifacts', 'blocks', 'boot', 'commands', 'ears', 'features', 'id', 'migrations', 'repositories', 'seedHooks', 'seeders', 'services', 'steps'],
+        ['designation', 'plugin', 'services', 'settings', 'system'],
+      ],
       provenanceKinds: ['commands', 'entities', 'plugins', 'relKinds'],
       facadeImports: ['PackEntityShapes', 'PackStepNodes', 'PackSystemEvents', 'Repositories', 'SendablePluginEvents', 'Services'],
     });

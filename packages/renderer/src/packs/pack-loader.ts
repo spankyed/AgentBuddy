@@ -2,8 +2,13 @@ import type { Plugin } from '@/core/types';
 import type { PackFERegistration } from '@abuddy/host/fe';
 import { fePacks } from '@/core/fe-host';
 
-export function loadPackStyles(packId: string, stylesPath: string, packBaseUrl: string): Promise<void> {
-  const href = `${packBaseUrl}/${stylesPath}`;
+/** A pack file's URL, carrying the frontend's revision: a browser caches a module or stylesheet by its URL */
+function packFileUrl(packBaseUrl: string, file: string, revision?: string): string {
+  return `${packBaseUrl}/${file}${revision ? `?v=${revision}` : ''}`;
+}
+
+export function loadPackStyles(packId: string, stylesPath: string, packBaseUrl: string, revision?: string): Promise<void> {
+  const href = packFileUrl(packBaseUrl, stylesPath, revision);
   // A pack whose frontend is only styles reports no plugins, so a later load reaches it again; its
   // stylesheet is already here, and deactivating the pack removes it
   if (document.querySelector(`link[data-pack-id="${packId}"][href="${href}"]`)) return Promise.resolve();
@@ -34,8 +39,9 @@ const REGISTRATION_KEYS = [
 export async function loadPackFEEntry(
   entry: string,
   packBaseUrl: string,
+  revision?: string,
 ): Promise<PackFERegistration | null> {
-  const url = `${packBaseUrl}/${entry}`;
+  const url = packFileUrl(packBaseUrl, entry, revision);
   let mod: { default?: unknown };
   try {
     mod = await import(/* @vite-ignore */ url);
@@ -73,6 +79,8 @@ export interface PackFrontend {
   id: string;
   feEntry?: string;
   feStyles?: string;
+  /** Changes whenever those files do, so an updated pack's frontend isn't served from the cache */
+  feRevision?: string;
 }
 
 /**
@@ -83,10 +91,10 @@ export interface PackFrontend {
  */
 export async function loadPackFrontend(pack: PackFrontend): Promise<Plugin[] | null> {
   const packBaseUrl = `pack://${pack.id}`;
-  if (pack.feStyles) await loadPackStyles(pack.id, pack.feStyles, packBaseUrl);
+  if (pack.feStyles) await loadPackStyles(pack.id, pack.feStyles, packBaseUrl, pack.feRevision);
   if (!pack.feEntry) return null;
 
-  const registration = await loadPackFEEntry(pack.feEntry, packBaseUrl);
+  const registration = await loadPackFEEntry(pack.feEntry, packBaseUrl, pack.feRevision);
   if (!registration) return [];
   return fePacks.registerPackFE(registration);
 }

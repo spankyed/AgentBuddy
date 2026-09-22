@@ -4,6 +4,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { assign, setup } from 'xstate';
 import { mockService, registerPack, startApp, takeSystemErrors, unregisterPack } from '@abuddy/testing/harness';
+import { tx } from '@abuddy/ears';
+import type { EARS } from '@abuddy/sdk';
 import { settingsCommands } from '@/features/settings/be/repository';
 import { services } from '@/__generated__/services';
 
@@ -111,6 +113,25 @@ describe('a feature whose settings change', () => {
       expect(heardBy(app)).toHaveLength(1);
       if (outcome === 'fails') takeSystemErrors();
     });
+  });
+
+  // An import replaces the stored rows past the settings' writer, so nothing else tells the features
+  it('tells each feature its settings with no changes after a backup import, and not a diff across it later', async () => {
+    mockService('appData', {
+      importBackup: async () => {
+        tx('Settings-app' as EARS.EntityId).put('data', { plugins: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } })
+        return { databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] }
+      },
+    });
+    const app = await startApp({ systems: ['settings', 'database', 'memo-pack/memos'] });
+    await app.connect();
+
+    await app.send('database', { type: 'IMPORT_DATABASE', path: '/backups/1' } as never);
+    await app.settle();
+
+    expect(heardBy(app)).toEqual([{ type: 'FEATURE_SETTINGS_UPDATED', settings: { tags: [{ name: 'imported' }] }, changes: null }]);
+    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/board', path: ['columns'], value: 6 });
+    expect(heardBy(app)).toHaveLength(1);
   });
 
   // A bare key would be stored where nothing reads it, for good

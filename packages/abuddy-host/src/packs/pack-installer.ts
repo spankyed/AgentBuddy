@@ -18,6 +18,7 @@ import {
   isPackLayout,
   stagePack,
   verifyPack,
+  buildFormatProblem,
   type PackIntegrity,
 } from './pack-layout.ts';
 
@@ -221,6 +222,9 @@ async function installFromDirectory(dir: string, packsDir: string, options: Inst
       throw new Error(`Pack ${manifestSource.id} is not built: ${dir} has no ${PACK_LAYOUT.integrity} and no dist/${PACK_LAYOUT.runtimeEntry} with dist/${PACK_LAYOUT.snapshot}. Run "abuddy build" first.`);
     }
     const integrity = verifyPack(layoutDir);
+    // Refused here rather than at the next boot, where the loader would skip it
+    const formatProblem = buildFormatProblem(layoutDir);
+    if (formatProblem) throw new Error(`Pack "${integrity.id}" can't be installed: ${formatProblem}`);
 
     const manifest = readValidManifest(layoutDir);
     options.beforePlace?.(manifest);

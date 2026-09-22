@@ -9,7 +9,7 @@ import { seedPackData, computePackSeedHash, type PackSeedTarget } from '../../..
 import { appState } from '../../../src/app-state/index.ts';
 import { getLoadedPackEntries } from '../../../src/packs/pack-layout.ts';
 import { resetTestData, testRootEvents as rootEvents } from '@abuddy/sdk/testing';
-import { seedFile } from '@abuddy/sdk/build';
+import { PACK_SNAPSHOT_FORMAT, seedFile } from '@abuddy/sdk/build';
 
 
 /** The features of a loaded pack that have a system */
@@ -31,6 +31,8 @@ function makePack(
   fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify(manifest));
   fs.writeFileSync(path.join(packDir, 'integrity.json'), JSON.stringify({ formatVersion: 1, id, version: '1.0.0', files: {} }));
+  fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
+  fs.writeFileSync(path.join(packDir, 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(manifest.id)}, features: ${featuresSource} } };`);
   return packDir;
 }
@@ -258,7 +260,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id, name: id, version: '1.0.0', ...manifestExtra }));
     fs.writeFileSync(path.join(packDir, 'integrity.json'), JSON.stringify({ formatVersion: 1, id, version: '1.0.0', files: {} }));
-    fs.writeFileSync(path.join(packDir, 'types', 'snapshot.json'), '{}');
+    fs.writeFileSync(path.join(packDir, 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), registrationSource);
     return packDir;
   }
@@ -393,6 +395,24 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const dir = makeBundledPack('future-format', registration('future-format'));
     fs.writeFileSync(path.join(dir, 'integrity.json'), JSON.stringify({ formatVersion: 2, id: 'future-format', version: '1.0.0', files: {} }));
     expect(loadExternalPacks()).toEqual([]);
+  });
+
+  // The layout's format is written by whoever staged the pack; the snapshot's by the CLI that built its runtime, whose
+  // registration the loader is about to load. A pack an older CLI built fails in ways that name nothing to act on.
+  it.each([
+    ['an older', undefined, `its snapshot is format (none), written by an older abuddy CLI (SDK 0.1.0); this AgentBuddy reads format ${PACK_SNAPSHOT_FORMAT}. Rebuild it with the abuddy CLI that matches this AgentBuddy`],
+    ['a newer', PACK_SNAPSHOT_FORMAT + 1, `its snapshot is format ${PACK_SNAPSHOT_FORMAT + 1}, written by a newer abuddy CLI (SDK 0.1.0); this AgentBuddy reads format ${PACK_SNAPSHOT_FORMAT}. Update AgentBuddy to use it`],
+  ])('skips a pack %s abuddy CLI built, before loading its runtime, saying which side to move', (_side, format, reason) => {
+    const dir = makeBundledPack('other-build', 'throw new Error("its runtime was loaded")');
+    fs.writeFileSync(path.join(dir, 'types', 'snapshot.json'), JSON.stringify({ format, sdkVersion: '0.1.0' }));
+    const warnings: string[] = [];
+    const unsubscribe = rootEvents.onLog((event) => { if (event.level === 'warn') warnings.push(event.message); });
+    try {
+      expect(loadExternalPacks()).toEqual([]);
+      expect(warnings).toContain(`Skipping other-build: ${reason}`);
+    } finally {
+      unsubscribe();
+    }
   });
 
   it('seeds from runtime/seeds', () => {
@@ -748,7 +768,7 @@ describe('computePackSeedHash', () => {
     fs.writeFileSync(path.join(source, 'abuddy.json'), JSON.stringify({ id: 'reinstalled', name: 'R', version: '1.0.0' }));
     fs.writeFileSync(path.join(source, 'dist', 'runtime', 'index.cjs'), 'module.exports = {};');
     fs.mkdirSync(path.join(source, 'dist', 'types'), { recursive: true });
-    fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), '{}');
+    fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
     fs.writeFileSync(path.join(source, 'dist', 'runtime', 'seeds', seedFile('actions')), '[{"label":"same"}]');
 
     const packsDir = path.join(tmpDir, 'packs');
@@ -810,7 +830,22 @@ describe('loaded packs: the packs.loaded entries', () => {
 
     expect(getLoadedPackEntries(loaded)).toEqual([
       { id: 'built-in', name: 'Built-in', version: '1.0.0', builtIn: true },
-      { id: 'with-fe', name: 'with-fe', version: '2.0.0', feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css' },
+      { id: 'with-fe', name: 'with-fe', version: '2.0.0', feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css', feRevision: expect.stringMatching(/^[0-9a-f]{16}$/) },
     ]);
+  });
+
+  // The renderer loads the frontend from URLs carrying it, which the browser caches by: an update or an `abuddy dev`
+  // rebuild keeps its version, so the revision follows the files
+  it("gives a frontend a revision that changes with its files, and only with them", () => {
+    const dir = path.join(tmpDir, 'with-fe');
+    fs.mkdirSync(path.join(dir, 'runtime'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'runtime', 'fe.js'), 'export default {};');
+    const loaded = { builtInPacks: () => [], externalPacks: () => [{ id: 'with-fe', name: 'with-fe', version: '2.0.0', dir, builtIn: false }] };
+    const revision = () => getLoadedPackEntries(loaded)[0].feRevision;
+
+    const first = revision();
+    expect(revision()).toBe(first);
+    fs.writeFileSync(path.join(dir, 'runtime', 'fe.js'), 'export default { features: {} };');
+    expect(revision()).not.toBe(first);
   });
 });

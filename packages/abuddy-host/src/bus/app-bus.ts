@@ -14,22 +14,34 @@ import { HOST } from '../host-refs.ts';
 /** Sent to the application plugin after each client connection: the app shell's state, which the window opens with */
 export type ApplicationConnectedEvent = Extract<HostPluginEvents['host/application'], { type: 'CLIENT_CONNECTED' }>;
 
-/**
- * The app's bus: the systems in `registry`, clients over the root event bus on the shared bus core. `early` is
- * the refs `startEarlySystems` delivers to itself, whose messages the bus leaves alone.
- */
-export function createAppBus(registry: PackRegistry, early: ReadonlySet<string> = new Set()) {
+/** What `startEarlySystems` started, as the app's bus needs it */
+export interface EarlySystems {
+  /** Their refs: the bus leaves messages sent to them to `startEarlySystems` */
+  refs: ReadonlySet<string>;
+  /** Tells them a client connected; the bus calls it once it has taken the connection itself */
+  connected(): void;
+}
+
+const NO_EARLY_SYSTEMS: EarlySystems = { refs: new Set(), connected: () => {} };
+
+/** The app's bus: the systems in `registry`, clients over the root event bus on the shared bus core, and `early`'s connections */
+export function createAppBus(registry: PackRegistry, early: EarlySystems = NO_EARLY_SYSTEMS) {
   return createBusMachine({
     registry,
     onOutgoing: (message) => _rootEvents.emitOutgoing(message),
     listen: (send) => {
       const unsubscribes = [
-        _rootEvents.onConnected(() => send({ type: 'CLIENT_CONNECTED' })),
+        // The bus first, so what an early system sends in answer (the logs system's startup data) finds a client
+        // connected: told before the bus, it arrived while the bus still dropped sends to plugins
+        _rootEvents.onConnected(() => {
+          send({ type: 'CLIENT_CONNECTED' });
+          early.connected();
+        }),
         _rootEvents.onPackClientConnected((packId) => send({ type: 'PACK_CLIENT_CONNECTED', packId })),
         // Sends to plugins from outside a system go through the bus, which drops them until a client connects
         _rootEvents.onPluginSend((message) => send({ type: 'OUTGOING', message })),
         _rootEvents.onIncoming((message) => {
-          if (!early.has(message.to)) send({ type: 'INCOMING', message });
+          if (!early.refs.has(message.to)) send({ type: 'INCOMING', message });
         }),
       ];
       return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
@@ -51,23 +63,22 @@ export function createAppBus(registry: PackRegistry, early: ReadonlySet<string> 
 
 /**
  * Starts the registered early systems (`system.early`), which the app runs before hydration and outside the bus,
- * and delivers them what the bus delivers every other system: the messages sent to their refs, which the app's bus
- * skips, and CLIENT_CONNECTED on each client connection. Returns each one's actor, their refs for `createAppBus`
- * to leave alone, and the stop for all of them.
+ * and delivers them the messages sent to their refs, which the app's bus skips. Returns each one's actor, what
+ * `createAppBus` needs (their refs, and `connected`, which it calls on each client connection once it has taken it),
+ * and the stop for all of them.
  */
 export function startEarlySystems(registry: Pick<PackRegistry, 'getEarlySystems'>): {
   actors: Array<{ id: FeatureRef; actor: AnyActorRef }>;
-  refs: ReadonlySet<string>;
   stop(): void;
-} {
+} & EarlySystems {
   const actors = registry.getEarlySystems().map(({ id, machine }) => ({ id, actor: createActor(machine).start() as AnyActorRef }));
   const unsubscribes = [
     _rootEvents.onIncoming(({ to, event }) => actors.find(({ id }) => id === to)?.actor.send(event)),
-    _rootEvents.onConnected(() => actors.forEach(({ actor }) => actor.send({ type: 'CLIENT_CONNECTED' }))),
   ];
   return {
     actors,
     refs: new Set(actors.map(({ id }) => id)),
+    connected: () => actors.forEach(({ actor }) => actor.send({ type: 'CLIENT_CONNECTED' })),
     stop: () => {
       unsubscribes.forEach((unsubscribe) => unsubscribe());
       actors.forEach(({ actor }) => actor.stop());

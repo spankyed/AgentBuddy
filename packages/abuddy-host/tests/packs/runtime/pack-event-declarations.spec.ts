@@ -10,6 +10,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { registry } from './test-host.ts';
 import { loadExternalPacks, registerExternalPacks } from '../../../src/packs/runtime/loader.ts';
 import { PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 
 /** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */
 const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);
@@ -29,6 +30,8 @@ function installDeclaringPack(received: string[]) {
     features: [{ id: 'memos', plugin: { entry: 'fe/plugin.ts' } }],
   }));
   fs.writeFileSync(path.join(packDir, 'integrity.json'), JSON.stringify({ formatVersion: 1, id: PACK_ID, version: '1.0.0', files: {} }));
+  fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
+  fs.writeFileSync(path.join(packDir, 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `module.exports = { registration: ${JSON.stringify({
     id: PACK_ID,
     features: { memos: { plugin: { receives: received } } },

@@ -161,7 +161,7 @@ export async function setupBackend(): Promise<void> {
   startPacks(packs);
 
   // ── Start backend actor ──────────────────────────────────────────────
-  backendActor = createActor(createAppBus(packs, early.refs), {
+  backendActor = createActor(createAppBus(packs, early), {
     systemId: HOST.bus,
   }).start();
 

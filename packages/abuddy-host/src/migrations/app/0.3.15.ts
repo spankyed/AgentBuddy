@@ -4,7 +4,8 @@
 import { tx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
 import type { PackMigration } from '@abuddy/sdk/framework';
-import { splitRef, type FeatureRef } from '@abuddy/sdk/ids';
+import { HOST_PACK_ID, splitRef, type FeatureRef } from '@abuddy/sdk/ids';
+import { HOST } from '../../host-refs.ts';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import type { PackManifest } from '@abuddy/sdk/build';
 import { appState, type AppState } from '../../app-state/index.ts';
@@ -107,7 +108,10 @@ interface LegacyShellState {
 /** Among which features a stored bare id is looked up, and whose feature wins an id several share */
 export interface PluginOwners {
   refs: readonly FeatureRef[];
-  /** The built-in packs, which registered first: a bare id a built-in plugin shares with another pack's was its */
+  /**
+   * The host and the built-in packs, whose plugins registered first under bare ids: a bare id one of them shares with
+   * an external pack's feature was its
+   */
   builtIn: readonly string[];
 }
 
@@ -117,8 +121,10 @@ export interface PluginOwners {
  */
 function ownersIn(registry: MigrationRegistry, installed: ReturnType<InstalledManifests>): PluginOwners {
   const declared = installed.flatMap(declaredFeatureRefs);
-  const refs = [...new Set<string>([...registry.pluginIds(), ...registry.systemIds(), ...declared])].filter((ref) => splitRef(ref));
-  return { refs: refs as FeatureRef[], builtIn: registry.builtInPacks().map(({ id }) => id) };
+  // The bus is listed among the systems but is no feature: it never had settings or a plugin, so it owns no key
+  const refs = [...new Set<string>([...registry.pluginIds(), ...registry.systemIds(), ...declared])]
+    .filter((ref) => splitRef(ref) && ref !== HOST.bus);
+  return { refs: refs as FeatureRef[], builtIn: [HOST_PACK_ID, ...registry.builtInPacks().map(({ id }) => id)] };
 }
 
 /**

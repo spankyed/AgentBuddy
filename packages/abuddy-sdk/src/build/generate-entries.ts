@@ -1,5 +1,5 @@
 import { readFileSync, existsSync, statSync } from 'fs';
-import { HOST_PLUGIN_EVENT_TYPES } from '../events/index.ts';
+import { HOST_PLUGIN_EVENT_TYPES, HOST_SYSTEM_EVENT_TYPES } from '../events/index.ts';
 import { resolveName, splitRef } from '../ids/refs.ts';
 import { extname, join } from 'path';
 import { _mergeProvenance, type PackManifest, type PackFeatureEntry, type PackProvenance, type PackTypeManifest, type PackSnapshot, type ProvenanceKind, type StepEntry } from './manifest.ts';
@@ -748,13 +748,24 @@ export const {
   }
 
   // `ref(name)`, the ref a name in this pack's code stands for, bound to the pack as the generated sends are, so
-  // pack code never supplies its own pack id. Frontend-safe: it imports only `@abuddy/sdk/ids`.
+  // pack code never supplies its own pack id. It takes only the names the pack can write, so a misspelled one doesn't
+  // compile (a FeatureRef is accepted wherever a send takes one). Frontend-safe: it imports only `@abuddy/sdk/ids`.
   function generateRef(): string {
+    const names = [...new Set([
+      ...(manifest.features ?? []).map((f) => f.id),
+      ...[...depSnapshots].flatMap(([depId, snap]) => (snap.manifest.features ?? []).map((f) => `${depId}/${f.id}`)),
+      ...Object.keys(_mergeProvenance('plugins', [...depSnapshots])),
+      ...Object.keys(HOST_PLUGIN_EVENT_TYPES),
+      ...Object.keys(HOST_SYSTEM_EVENT_TYPES),
+    ])];
     return `${HEADER}
 import { resolveName, type FeatureRef } from '@abuddy/sdk/ids';
 
-/** The ref of a feature this pack's code names: its own by feature id, any other as \`<packId>/<featureId>\` */
-export const ref = (name: string): FeatureRef => resolveName(name, '${manifest.id}');
+/** A feature this pack's code can name: its own by feature id, its dependencies' and the host's as \`<packId>/<featureId>\` */
+export type FeatureName = ${names.map((name) => `'${name}'`).join(' | ')};
+
+/** The ref of a feature this pack's code names */
+export const ref = (name: FeatureName): FeatureRef => resolveName(name, '${manifest.id}');
 `;
   }
 

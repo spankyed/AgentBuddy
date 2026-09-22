@@ -12,7 +12,7 @@ abuddy add feature bookmarks --label "Bookmarks" --icon "Bookmark"
 |---|---|---|
 | `--label <Label>` | derived from the name | The plugin module's `label` |
 | `--icon <LucideIcon>` | `Box` | The icon the plugin module imports and sets as its `icon` |
-| `--designation <role>` | none | Writes `"designation"`; must equal the feature name |
+| `--designation <role>` | none | Writes `"designation"`: the role the feature plays, which need not be its name |
 
 The feature name is the feature id: it must match `^[a-z][a-zA-Z0-9]*$` (a lowercase letter, then letters and digits: `notes`, `calendarEvents`), because it becomes an identifier in generated code, and part of the feature's ref, `<packId>/<featureId>`.
 
@@ -291,7 +291,7 @@ Other feature fields:
 | `earlySystem` | Built-in packs only |
 | `references` | Built-in packs only; ignored for external packs |
 
-A feature that fills a role other packs look up (`getDesignated('<role>')`) sets `"designation"` to its own id; `abuddy add feature bookmarks --designation bookmarks` writes it. `abuddy validate` reports a designation that differs from the feature id, and a `settings`, `system.entry` or `plugin.entry` file that doesn't exist.
+A feature that fills a role other packs look up (`getDesignated('<role>')`, or `sendToSystem({ role }, event)`) sets `"designation"` to that role. A role is not a name: a feature `inbox` can play `notes`. `abuddy add feature bookmarks --designation bookmarks` writes it. One feature plays a role: `abuddy validate` reports two features of a pack claiming the same one, and the app refuses a pack claiming a role another pack plays. `abuddy validate` also reports a `settings`, `system.entry` or `plugin.entry` file that doesn't exist.
 
 ## Types dependents see
 

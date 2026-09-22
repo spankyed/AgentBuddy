@@ -26,20 +26,22 @@ export type PackPluginEntry = NonNullable<PackFeatureEntry['plugin']>;
 // Not part of abuddy.json — used for dist/snapshot.json and build-time type exchange.
 
 /**
- * The format of a pack's snapshot: everything a dependent's codegen reads from it — the facade types in
- * `defs['pack-types']` and the exports generated code imports from them, `types`, `provenance` and its
- * kinds, `flowHelpers`, and the manifest fields codegen follows.
+ * The format of a pack's build, recorded in its snapshot: everything another abuddy reads from what `abuddy build`
+ * wrote. A dependent's codegen reads the facade types in `defs['pack-types']` and the exports generated code imports
+ * from them, `types`, `provenance` and its kinds, `flowHelpers`, and the manifest's fields. The app loads the
+ * registration the runtime bundle exports, and refuses to install or load a build in another format.
  *
- * A snapshot and the CLI generating a dependent against it are often different versions: an installed
- * AgentBuddy publishes its built-in packs' snapshots, and a GitHub release carries the snapshot its
- * author's CLI wrote. The two must agree exactly, because a disagreement doesn't fail where it happens —
- * a reshaped field is read as absent, a renamed facade export surfaces as TS2305 inside generated code.
+ * A build and the abuddy reading it are often different versions: an installed AgentBuddy publishes its built-in
+ * packs' snapshots, a GitHub release carries the snapshot its author's CLI wrote, and an installed pack runs in whatever
+ * AgentBuddy the user updates to. The two must agree exactly, because a disagreement doesn't fail where it happens: a
+ * reshaped field is read as absent, a renamed facade export surfaces as TS2305 inside generated code, a reshaped
+ * registration as a feature id nobody wrote.
  *
- * Bump it with any change a CLI on the other side would misread: a field, facade export or provenance
- * kind removed, renamed or reshaped, or keys that now mean something else. Bump it once per release that
- * changes the contract, not per change: only a released CLI's snapshots can meet another version's, so
- * changes made since the last release share its next number. The codegen spec's "the snapshot format"
- * case lists what it covers, and fails when that list changes so the change is decided rather than missed.
+ * Bump it with any change the other side would misread: a field, facade export, provenance kind, manifest or
+ * registration field removed, renamed or reshaped, or keys that now mean something else. Bump it once per release
+ * that changes the contract, not per change: only a released abuddy's builds can meet another version's, so changes
+ * made since the last release share its next number. The codegen spec's "the snapshot format" case lists what it
+ * covers, and fails when that list changes so the change is decided rather than missed.
  */
 export const PACK_SNAPSHOT_FORMAT = 1;
 
@@ -74,18 +76,41 @@ export interface PackSnapshot {
 }
 
 /**
- * Why this CLI can't generate against a snapshot, or undefined when it can: the snapshot's format
- * differs from `PACK_SNAPSHOT_FORMAT`. Says which side is older, since that decides which one moves.
+ * A build whose snapshot is in another format than `PACK_SNAPSHOT_FORMAT`: what's wrong, and which side is older, since
+ * that decides which one moves. Each reader adds its own remedy.
  *
- * @internal Host-only: abuddy CLI build tooling and the pack test harness.
+ * @internal Host-only: the abuddy CLI, the pack test harness and the app's pack loader.
  */
-export function _snapshotFormatMismatch(snapshot: { format?: unknown; sdkVersion?: string }): string | undefined {
+export interface SnapshotFormatMismatch {
+  /** Written by a newer abuddy than the reader: only then can an older build of the same pack still match */
+  newer: boolean;
+  /** `its snapshot is format 2, written by a newer abuddy CLI (SDK 0.4.0)` */
+  problem: string;
+}
+
+/**
+ * The build's mismatch with this abuddy's snapshot format, or undefined when they agree.
+ *
+ * @internal Host-only: the abuddy CLI, the pack test harness and the app's pack loader.
+ */
+export function _snapshotFormatMismatch(snapshot: { format?: unknown; sdkVersion?: string }): SnapshotFormatMismatch | undefined {
   const { format } = snapshot;
   if (format === PACK_SNAPSHOT_FORMAT) return undefined;
-  const builtBy = typeof format === 'number' && format > PACK_SNAPSHOT_FORMAT ? 'a newer' : 'an older';
+  const newer = typeof format === 'number' && format > PACK_SNAPSHOT_FORMAT;
   const builtWith = snapshot.sdkVersion ? ` (SDK ${snapshot.sdkVersion})` : '';
-  return `its snapshot is format ${typeof format === 'number' ? format : '(none)'}, written by ${builtBy} abuddy CLI${builtWith}; `
-    + `this CLI reads format ${PACK_SNAPSHOT_FORMAT}. Build it and this pack with the same abuddy version`;
+  return {
+    newer,
+    problem: `its snapshot is format ${typeof format === 'number' ? format : '(none)'}, written by ${newer ? 'a newer' : 'an older'} abuddy CLI${builtWith}`,
+  };
+}
+
+/**
+ * A mismatch as a CLI reading a dependency states it
+ *
+ * @internal Host-only: the abuddy CLI and the pack test harness.
+ */
+export function _cliFormatMismatchMessage({ problem }: SnapshotFormatMismatch): string {
+  return `${problem}; this CLI reads format ${PACK_SNAPSHOT_FORMAT}. Build it and this pack with the same abuddy version`;
 }
 
 /**

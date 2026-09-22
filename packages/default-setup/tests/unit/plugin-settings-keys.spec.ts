@@ -57,4 +57,12 @@ describe('services.settings', () => {
   });
 });
 
-
+// Checked by `npm run typecheck:pack`: ref() takes only the names this pack's code can write
+it("doesn't compile a misspelled feature name", () => {
+  const typed = (): void => {
+    // @ts-expect-error `nots` names no feature this pack, a dependency or the host has
+    ref('nots');
+  };
+  expect(ref('notes')).toBe('default-setup/notes');
+  expect(typeof typed).toBe('function');
+});

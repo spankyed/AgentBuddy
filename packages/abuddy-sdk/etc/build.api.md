@@ -103,6 +103,9 @@ export function checkRecordEntities(key: string, format: SeedFormatConfig, recor
 // @internal
 export function _clearCompiledSeeds(outputDir: string): void;
 
+// @internal
+export function _cliFormatMismatchMessage(input: SnapshotFormatMismatch): string;
+
 // @public (undocumented)
 export interface CompilationContext {
     getCompiled<T = unknown>(key: string): T | undefined;
@@ -1668,11 +1671,19 @@ export interface SeedRecord {
 // @public (undocumented)
 export type SeedTreeSpec = NonNullable<SeedFormatConfig['tree']>;
 
+// Warning: (ae-internal-missing-underscore) The name "SnapshotFormatMismatch" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
+export interface SnapshotFormatMismatch {
+    newer: boolean;
+    problem: string;
+}
+
 // @internal
 export function _snapshotFormatMismatch(snapshot: {
     format?: unknown;
     sdkVersion?: string;
-}): string | undefined;
+}): SnapshotFormatMismatch | undefined;
 
 // @public (undocumented)
 export function sourceHash(data: object): string;

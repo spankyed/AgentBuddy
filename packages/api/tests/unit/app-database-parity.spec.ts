@@ -6,6 +6,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import type { EarsQuery } from '@abuddy/ears';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-database-parity-'));
 process.env.ABUDDY_ENV = 'test';
@@ -53,7 +54,7 @@ async function installExternalPack(id: string, entityType: string): Promise<void
   fs.writeFileSync(path.join(source, 'abuddy.json'), JSON.stringify({ id, name: id, version: '1.0.0', ...ears }));
   fs.mkdirSync(path.join(source, 'dist', 'runtime'), { recursive: true });
   fs.mkdirSync(path.join(source, 'dist', 'types'), { recursive: true });
-  fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), '{}');
+  fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
   fs.writeFileSync(
     path.join(source, 'dist', 'runtime', 'index.cjs'),
     `module.exports = { registration: { id: ${JSON.stringify(id)}, ears: ${JSON.stringify(ears)} } };`,

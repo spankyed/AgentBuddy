@@ -3,6 +3,7 @@ import './test-host.ts';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 
 /**
  * An installed pack's runtime has no node_modules: every @abuddy/sdk subpath it requires must come
@@ -21,6 +22,8 @@ describe('external pack runtime', () => {
   it('requires @abuddy/sdk/cron and @abuddy/sdk/utils/compare-versions through the bridge', async () => {
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: 'bridge-pack', name: 'Bridge', version: '1.0.0' }));
     fs.writeFileSync(path.join(packDir, 'integrity.json'), JSON.stringify({ formatVersion: 1, id: 'bridge-pack', version: '1.0.0', files: {} }));
+    fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
+    fs.writeFileSync(path.join(packDir, 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
     fs.mkdirSync(path.join(packDir, 'runtime'));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `
       const { cronToHuman } = require('@abuddy/sdk/cron');

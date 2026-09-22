@@ -7,6 +7,7 @@ import { startTestRuntime } from '@abuddy/sdk/testing';
 import { installPackFromLocal } from '@abuddy/host/packs';
 import { loadExternalPacks } from '@abuddy/host/packs/runtime';
 import { init } from '../../src/commands/init';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 
 // The loader checks each pack's hostVersion against the app version
 startTestRuntime({ appVersion: '1.0.0' });
@@ -36,7 +37,7 @@ function writeBuild(packDir: string, id: string, featuresSource: string) {
     fs.writeFileSync(path.join(packDir, 'dist', rel), content);
   };
   write('runtime/index.cjs', `module.exports = { registration: { id: ${JSON.stringify(id)}, features: ${featuresSource} } };`);
-  write('types/snapshot.json', '{}');
+  write('types/snapshot.json', JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
 }
 
 describe('pack full lifecycle: init → install → load', () => {

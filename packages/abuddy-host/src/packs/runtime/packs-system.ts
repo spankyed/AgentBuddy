@@ -4,6 +4,7 @@ import { setup } from 'xstate';
 import { defineSystem } from '@abuddy/sdk/framework';
 import { sendToPlugin } from '@abuddy/sdk/events';
 import { getAppVersion } from '@abuddy/sdk/env';
+import { HOST_PACK_ID } from '@abuddy/sdk/ids';
 import { forgetPack, packRecord, recordInstalled, recordUpdateInstalled, setPackEnabled } from '../installed-packs.ts';
 import { reportError } from '@abuddy/sdk/logger';
 import { installPack as runInstall, uninstallPack as runUninstall, installPackFromGitHub } from '../pack-installer.ts';
@@ -106,6 +107,9 @@ function emitPacksList(registry: PackRegistry, system: any) {
 
 /** The host `packs` system, installing, updating and toggling the packs in `registry` */
 export function createPacksSystem(registry: PackRegistry) {
+  /** The host, or a built-in pack: part of the app, which no install or uninstall replaces */
+  const shippedWithApp = (packId: string) => packId === HOST_PACK_ID || registry.packOrigin(packId)?.builtIn === true;
+
   const _inFlightOps = new Set<string>();
   return setup({
     types: packsSpec.types,
@@ -140,6 +144,9 @@ export function createPacksSystem(registry: PackRegistry) {
           // on a directory that has been swapped underneath it loads the new code on its next lazy
           // require. Silent (`replacing`), because the activation below announces the change.
           beforePlace: (manifest) => {
+            // Refused before anything is torn down or placed: the running built-in would stop, and the renderer
+            // refuses a second frontend for its id
+            if (shippedWithApp(manifest.id)) throw new Error(`"${manifest.id}" is a pack AgentBuddy ships, so an installed pack can't take its id`);
             if (!registry.packOrigin(manifest.id)) return;
             replacedId = manifest.id;
             teardownPack(registry, manifest.id, system.get(HOST.bus), { replacing: true });
@@ -195,6 +202,10 @@ export function createPacksSystem(registry: PackRegistry) {
       uninstallPack: ({ system, event }) => {
         const ev = packsSpec.typeOf('UNINSTALL_PACK', event);
         const packId = ev.packId;
+        if (shippedWithApp(packId)) {
+          sendToPlugin(HOST.packs, { type: 'PACK_UNINSTALL_FAILED' as const, packId, error: `"${packId}" is part of AgentBuddy, so it can't be uninstalled` });
+          return;
+        }
 
         if (_inFlightOps.has(packId)) {
           console.warn(`[packs] Operation already in progress for ${packId}, skipping uninstall`);

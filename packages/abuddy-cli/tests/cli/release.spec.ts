@@ -9,6 +9,7 @@ import { readPackIntegrity } from '@abuddy/host/packs';
 // runRelease verifies with a release build; these tests use prebuilt packs
 vi.mock('../../src/commands/build', () => ({ build: vi.fn(async () => {}) }));
 import { buildPackArchive } from '../../src/commands/pack';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 
 let tmp: string;
 
@@ -31,7 +32,7 @@ function builtPack(version = '1.2.3'): string {
   write('package.json', JSON.stringify({ name: 'demo-pack', version }));
   write('package-lock.json', JSON.stringify({ name: 'demo-pack', version, lockfileVersion: 3, packages: { '': { name: 'demo-pack', version } } }));
   write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack" } };');
-  write('dist/types/snapshot.json', '{}');
+  write('dist/types/snapshot.json', JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
   return root;
 }
 

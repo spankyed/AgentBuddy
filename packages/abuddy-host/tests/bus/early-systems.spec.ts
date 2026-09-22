@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { createActor, setup, type AnyActorRef } from 'xstate';
 import { startTestRuntime, testRootEvents } from '@abuddy/sdk/testing';
+import { sendToPlugin } from '@abuddy/sdk/events';
 import { createAppBus, startEarlySystems } from '../../src/bus/index.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { createPackRegistry } from '../../src/packs/pack-registration.ts';
@@ -27,7 +28,7 @@ beforeEach(() => {
     },
   });
   early = startEarlySystems(registry);
-  bus = createActor(createAppBus(registry, early.refs), { systemId: 'host/bus' }).start();
+  bus = createActor(createAppBus(registry, early), { systemId: 'host/bus' }).start();
 });
 
 afterEach(() => {
@@ -51,4 +52,26 @@ it('tells an early system each client connection, as the bus tells the others', 
   testRootEvents.emitConnected();
 
   expect(heard.filter(({ type }) => type === 'CLIENT_CONNECTED').map(({ system }) => system).sort()).toEqual(['journal', 'notes']);
+});
+
+// The logs system answers each connection with its plugin's startup data. Told before the bus took the connection,
+// the answer reached a bus still dropping sends to plugins, and the first window showed no boot logs.
+it("delivers what an early system sends in answer to the first client connection", () => {
+  const answering = setup({}).createMachine({ on: { CLIENT_CONNECTED: { actions: () => sendToPlugin('boot-pack/boot', { type: 'BOOT_LOGS' }) } } });
+  bus.stop();
+  early.stop();
+  registry.registerPack({ id: 'boot-pack', features: { boot: { system: { machine: answering, receives: [], early: true }, plugin: { receives: ['BOOT_LOGS'] } } } });
+  try {
+    early = startEarlySystems(registry);
+    bus = createActor(createAppBus(registry, early), { systemId: 'host/bus' }).start();
+    const outgoing: Array<{ to: string; event: { type: string } }> = [];
+    const stop = testRootEvents.onOutgoing((message) => { outgoing.push(message as never); });
+
+    testRootEvents.emitConnected();
+
+    stop();
+    expect(outgoing).toContainEqual({ to: 'boot-pack/boot', event: { type: 'BOOT_LOGS' } });
+  } finally {
+    registry.unregisterPack('boot-pack');
+  }
 });

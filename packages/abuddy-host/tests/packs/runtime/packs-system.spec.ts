@@ -12,6 +12,7 @@ import { appState } from '../../../src/app-state/index.ts';
 import { installPackFromLocal } from '../../../src/packs/pack-installer.ts';
 import { createPacksSystem } from '../../../src/packs/runtime/packs-system.ts';
 import { activatePack } from '../../../src/packs/runtime/lifecycle.ts';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 
 const PACK_ID = 'reinstall-pack';
 
@@ -42,7 +43,7 @@ function packSource(version: string, { unseedable = false } = {}): string {
   fs.mkdirSync(path.join(dir, 'dist', 'types'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'abuddy.json'), JSON.stringify({ id: PACK_ID, name: 'Reinstall Pack', version }));
   fs.writeFileSync(path.join(dir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(PACK_ID)} } };`);
-  fs.writeFileSync(path.join(dir, 'dist', 'types', 'snapshot.json'), '{}');
+  fs.writeFileSync(path.join(dir, 'dist', 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
   if (unseedable) {
     // Compiled data with no seeds.json: the seeder can't tell whose records these are, so seeding fails
     fs.mkdirSync(path.join(dir, 'dist', 'runtime', 'seeds'), { recursive: true });
@@ -96,6 +97,41 @@ describe('installing over a pack that is already running', () => {
       // Registered once, by the copy that was just installed
       expect(registry.getPackExtensions(PACK_ID)).not.toBeNull();
       expect(emitted(system.sent).find(e => e.type === 'PACK_INSTALL_COMPLETE')).toMatchObject({ version: '2.0.0' });
+    } finally {
+      system.stop();
+    }
+  });
+});
+
+// The host and the built-in packs come with the app: no uninstall removes them, and no installed pack takes their id
+describe('a pack that ships with the app', () => {
+  const shipped = { id: PACK_ID, name: 'Shipped', version: '1.0.0', dir: 'host-packs/shipped', builtIn: true };
+
+  it.each([['a built-in pack', PACK_ID], ['the host', 'host']])("can't be uninstalled: %s", async (_what, packId) => {
+    registry.registerPack({ id: PACK_ID }, shipped);
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'UNINSTALL_PACK', packId });
+
+      await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_UNINSTALL_FAILED'));
+      expect(emitted(system.sent).find(e => e.type === 'PACK_UNINSTALL_FAILED')).toMatchObject({ error: `"${packId}" is part of AgentBuddy, so it can't be uninstalled` });
+      expect(emitted(system.sent).map(e => e.type)).not.toContain('PACK_DEACTIVATED');
+      expect(registry.packOrigin(PACK_ID)).toEqual(shipped);
+    } finally {
+      system.stop();
+    }
+  });
+
+  it("can't have its id taken by an installed pack, which is refused before the built-in stops", async () => {
+    registry.registerPack({ id: PACK_ID }, shipped);
+    const system = runPacksSystem();
+    try {
+      system.send({ type: 'INSTALL_PACK', packSlug: packSource('2.0.0'), source: 'local' });
+
+      await vi.waitFor(() => expect(emitted(system.sent).map(e => e.type)).toContain('PACK_INSTALL_FAILED'));
+      expect(emitted(system.sent).find(e => e.type === 'PACK_INSTALL_FAILED')).toMatchObject({ error: expect.stringContaining(`"${PACK_ID}" is a pack AgentBuddy ships`) });
+      expect(registry.packOrigin(PACK_ID)).toEqual(shipped);
+      expect(fs.existsSync(path.join(tmpDir, 'packs', PACK_ID))).toBe(false);
     } finally {
       system.stop();
     }

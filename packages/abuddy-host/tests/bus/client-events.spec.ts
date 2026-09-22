@@ -41,6 +41,15 @@ describe('receiveClientEvent', () => {
     expect(incoming).toEqual([{ to: 'client-events-pack/any', event: { type: 'ANYTHING' } }]);
   });
 
+  // Pack code may send the bus what HostSystemEvents declares, from a frontend as from a backend: typed for both, so
+  // refused here, a send that compiled failed only on the client path
+  it("accepts what the host's bus takes, and only that", () => {
+    const message = { to: 'host/bus', event: { type: 'PACK_CHANGED', packId: 'client-events-pack' } };
+    expect(during(() => receiveClientEvent(registry, message)).incoming).toEqual([message]);
+    expect(() => receiveClientEvent(registry, { to: 'host/bus', event: { type: 'RELOAD_PACK' } }))
+      .toThrow('Unknown event "RELOAD_PACK" for system "host/bus"');
+  });
+
   it('logs arrays over 5 items as their count and first 5', () => {
     const items = [1, 2, 3, 4, 5, 6, 7];
     const { logs } = during(() => receiveClientEvent(registry, { to: 'host/ping', event: { type: 'PING', items } }));

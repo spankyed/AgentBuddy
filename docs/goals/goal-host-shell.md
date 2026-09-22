@@ -188,7 +188,7 @@ Final.
    - `window.applicationState`, which the E2E fixture reads
    - the machine id `application`, which `#application.*` targets use
    - the Packs plugin's frontend (Vue, `renderer/src/packs`); only its tRPC sends move onto `FeClient`
-7. **`LinkBlock.vue`'s `target === 'application'` branch is deleted.** A link's target is a plugin's ref or `'external'`. Done in `abb036161`, with default-setup's 0.3.15 migration pointing stored bare targets at `default-setup/<id>`.
+7. **`LinkBlock.vue`'s `target === 'application'` branch is deleted.** A link's target is a plugin's ref or `'external'`. Done in `abb036161`. No migration rewrites stored targets: the only code that made link blocks was removed before the first release, so no released data holds one.
 8. **`@abuddy/testing` runs the real shell for pack frontend tests,** over the in-memory bus `startApp` uses. It runs without a DOM (no `target`), so it works in default-setup's `node` environment. `startFeTestRuntime` no longer defaults the shell to `{} as never`.
 9. **Opening a plugin is the shell's command, and it waits for a pack still loading.**
    - `openPlugin(ref, event?)` sends the shell `OPEN_PLUGIN { plugin, events }` (part of `HostShell`) instead of reading its context and sending it `SELECT_PLUGIN` and `DEFAULT_TOGGLE` itself.

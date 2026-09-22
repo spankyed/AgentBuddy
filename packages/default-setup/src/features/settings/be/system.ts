@@ -39,6 +39,8 @@ type IncomingSettingsEvents =
   | { type: 'IMPORT_PACK_SEEDS'; directory: string; include?: Record<string, string[] | null>; mode?: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'; restartBrain?: boolean }
   | { type: 'REPLACE_SETTINGS'; data: SettingsData }
   | { type: 'RESET_APP' }
+  // The stored data was replaced wholesale, not written (a backup imported): what each feature was told is stale
+  | { type: 'DATA_REPLACED' }
 
 type SettingsInternalEvents =
   | { type: 'PACK_SETTINGS_CHANGED' } // A pack's feature settings (defaults) registered or unregistered
@@ -126,8 +128,9 @@ export const settingsSystem = setup({
     }),
 
     /**
-     * After an app reset, tells every feature its settings with no changes: its data was reset with them, so a diff
-     * across the reset (a tag renamed away, a mode removed) would have it rewrite rows that are already gone
+     * After the data was reset or replaced (an app reset, a backup imported), tells every feature its settings with no
+     * changes: its data changed with them, so a diff across it (a tag renamed away, a mode removed) would have it
+     * rewrite rows that are already gone
      */
     tellEveryFeature: assign({
       applied: () => {
@@ -291,6 +294,7 @@ export const settingsSystem = setup({
         // A pack registered or left: its defaults came or went
         PACK_SETTINGS_CHANGED: { actions: ['sendSettingsUpdate', 'tellChangedFeatures'] },
         PACK_CHANGED: { actions: ['sendSettingsUpdate', 'tellChangedFeatures'] },
+        DATA_REPLACED: { actions: ['sendSettingsUpdate', 'tellEveryFeature'] },
         UPDATE_SETTINGS: {
           actions: 'updateSettings',
         },

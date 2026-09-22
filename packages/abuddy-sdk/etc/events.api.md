@@ -26,6 +26,11 @@ export const HOST_PLUGIN_EVENT_TYPES: {
 };
 
 // @public
+export const HOST_SYSTEM_EVENT_TYPES: {
+    'host/bus': readonly ["PACK_CHANGED"];
+};
+
+// @public
 export type HostPluginEvents = {
     'host/application': {
         type: 'CLIENT_CONNECTED';

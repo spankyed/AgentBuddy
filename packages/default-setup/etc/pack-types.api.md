@@ -5298,6 +5298,8 @@ declare const specs: {
             data: SettingsData;
         } | {
             type: "RESET_APP";
+        } | {
+            type: "DATA_REPLACED";
         }) | ({
             type: "PACK_SETTINGS_CHANGED";
         } | {

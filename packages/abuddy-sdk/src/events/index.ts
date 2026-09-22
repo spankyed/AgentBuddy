@@ -105,6 +105,14 @@ export type HostSystemEvents = {
 };
 
 /**
+ * The event types the host's systems accept from pack code, which the app checks a client's send against as it checks
+ * a pack system's: from a frontend as from a backend
+ */
+export const HOST_SYSTEM_EVENT_TYPES = {
+  'host/bus': eventTypes<HostSystemEvents['host/bus']>()('PACK_CHANGED'),
+} satisfies Record<keyof HostSystemEvents, readonly string[]>;
+
+/**
  * The event types each host plugin receives, as a value the app can check a send against and the build can
  * read the host's plugins from. A pack's own plugins get this generated from their systems' specs.
  */

@@ -41,6 +41,9 @@ async function reloadPack(
   cacheDir: string,
 ): Promise<void> {
   const previous = registry.getPackRegistration(packId);
+  // Restored with the registration if the fresh one is refused: without it the registry forgets where the pack came
+  // from, and a built-in pack's next reload can't find it
+  const previousOrigin = registry.packOrigin(packId) ?? undefined;
   const oldSystemIds = previous ? packSystemIds(previous) : [];
 
   logger.info(`Reloading pack: ${packId}`);
@@ -54,7 +57,7 @@ async function reloadPack(
   try {
     fresh.register();
   } catch (err) {
-    if (previous) registry.registerPack(previous);
+    if (previous) registry.registerPack(previous, previousOrigin);
     throw err;
   }
 

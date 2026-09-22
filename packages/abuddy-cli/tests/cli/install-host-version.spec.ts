@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { recordHostVersion } from '@abuddy/host/packs';
 import { install } from '../../src/commands/install';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 
 let tmp: string;
 beforeEach(() => {
@@ -28,7 +29,7 @@ function builtPack(hostVersion: string): string {
   };
   write('abuddy.json', JSON.stringify({ id: 'demo-pack', name: 'Demo Pack', version: '1.0.0', hostVersion }));
   write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack" } };');
-  write('dist/types/snapshot.json', '{"types":{}}');
+  write('dist/types/snapshot.json', JSON.stringify({ types: {}, format: PACK_SNAPSHOT_FORMAT }));
   return root;
 }
 

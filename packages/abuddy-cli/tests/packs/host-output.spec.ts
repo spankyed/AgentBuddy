@@ -263,38 +263,61 @@ describe('dependency resolution from an installed app', () => {
     });
   });
 
-  // A GitHub dependency picks among releases as the local sources pick among builds: a newer release this CLI can't
-  // read gives way to an older one in range that it can
-  it('falls back to an older GitHub release in range when the newest is in another snapshot format', async () => {
-    /** An archived release of dep-pack, and its checksum, as `abuddy release` publishes them */
-    async function published(version: string, format: number | undefined) {
-      const src = path.join(tmp, `dep-pack-${version}`);
-      fs.mkdirSync(path.join(src, 'dist', 'types'), { recursive: true });
-      fs.mkdirSync(path.join(src, 'dist', 'runtime'), { recursive: true });
-      const manifest = { id: 'dep-pack', name: 'Dep', version };
-      fs.writeFileSync(path.join(src, 'abuddy.json'), JSON.stringify(manifest));
-      fs.writeFileSync(path.join(src, 'dist', 'runtime', 'index.cjs'), 'exports.registration = { id: "dep-pack" };');
-      fs.writeFileSync(path.join(src, 'dist', 'types', 'snapshot.json'), JSON.stringify({ types: { entities: {}, relKinds: {} }, defs: {}, manifest, format }));
-      const stage = path.join(tmp, `stage-${version}`);
-      stagePack(src, stage);
-      return createPackArchive(stage, path.join(tmp, 'releases'));
-    }
-    const newest = await published('1.4.0', PACK_SNAPSHOT_FORMAT + 1);
-    const older = await published('1.3.0', PACK_SNAPSHOT_FORMAT);
-    const assets = (version: string, archive: { file: string; checksumFile: string }) => [
-      { name: `dep-pack-${version}.tgz`, url: `https://example.test/${path.basename(archive.file)}` },
-      { name: `dep-pack-${version}.tgz.sha256`, url: `https://example.test/${path.basename(archive.checksumFile)}` },
-    ];
+  /** An archived release of dep-pack in snapshot `format`, and its checksum, as `abuddy release` publishes them */
+  async function publishedRelease(version: string, format: number | undefined) {
+    const src = path.join(tmp, `dep-pack-${version}`);
+    fs.mkdirSync(path.join(src, 'dist', 'types'), { recursive: true });
+    fs.mkdirSync(path.join(src, 'dist', 'runtime'), { recursive: true });
+    const manifest = { id: 'dep-pack', name: 'Dep', version };
+    fs.writeFileSync(path.join(src, 'abuddy.json'), JSON.stringify(manifest));
+    fs.writeFileSync(path.join(src, 'dist', 'runtime', 'index.cjs'), 'exports.registration = { id: "dep-pack" };');
+    fs.writeFileSync(path.join(src, 'dist', 'types', 'snapshot.json'), JSON.stringify({ types: { entities: {}, relKinds: {} }, defs: {}, manifest, format }));
+    const stage = path.join(tmp, `stage-${version}`);
+    stagePack(src, stage);
+    const archive = await createPackArchive(stage, path.join(tmp, 'releases'));
+    return {
+      tag_name: `v${version}`,
+      assets: [
+        { name: `dep-pack-${version}.tgz`, url: `https://example.test/${path.basename(archive.file)}` },
+        { name: `dep-pack-${version}.tgz.sha256`, url: `https://example.test/${path.basename(archive.checksumFile)}` },
+      ],
+    };
+  }
+
+  /** Serves `releases` from GitHub, recording each archive downloaded */
+  function serveReleases(releases: unknown[]): string[] {
+    const downloaded: string[] = [];
     vi.stubGlobal('fetch', vi.fn(async (url: string) => {
-      if (url.includes('/releases?')) {
-        return new Response(JSON.stringify([{ tag_name: 'v1.4.0', assets: assets('1.4.0', newest) }, { tag_name: 'v1.3.0', assets: assets('1.3.0', older) }]));
-      }
+      if (url.includes('/releases?')) return new Response(JSON.stringify(releases));
+      if (url.endsWith('.tgz')) downloaded.push(path.basename(url));
       return new Response(fs.readFileSync(path.join(tmp, 'releases', path.basename(url))));
     }));
+    return downloaded;
+  }
+
+  // A GitHub dependency picks among releases as the local sources pick among builds: a newer release this CLI can't
+  // read gives way to an older one in range that it can
+  it('falls back to an older GitHub release in range when a newer CLI wrote the newest', async () => {
+    const releases = [await publishedRelease('1.4.0', PACK_SNAPSHOT_FORMAT + 1), await publishedRelease('1.3.0', PACK_SNAPSHOT_FORMAT)];
+    const downloaded = serveReleases(releases);
     try {
       const found = await resolveDepFiles(authorPack(), 'dep-pack', 'github:acme/dep-pack ^1.0.0');
       expect(found?.snapshot.manifest.version).toBe('1.3.0');
       expect(found?.resolvedFrom).toBe('github:acme/dep-pack@1.3.0');
+      expect(downloaded).toEqual(['dep-pack-1.4.0.tgz', 'dep-pack-1.3.0.tgz']);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  // Every release below one an older CLI wrote is older still: trying them would only spend downloads and rate limit
+  it('stops at the newest GitHub release in range when an older CLI wrote it', async () => {
+    const releases = [await publishedRelease('1.4.0', undefined), await publishedRelease('1.3.0', undefined)];
+    const downloaded = serveReleases(releases);
+    try {
+      await expect(resolveDepFiles(authorPack(), 'dep-pack', 'github:acme/dep-pack ^1.0.0'))
+        .rejects.toThrow(/github release 1\.4\.0: its snapshot is format \(none\), written by an older abuddy CLI/);
+      expect(downloaded).toEqual(['dep-pack-1.4.0.tgz']);
     } finally {
       vi.unstubAllGlobals();
     }

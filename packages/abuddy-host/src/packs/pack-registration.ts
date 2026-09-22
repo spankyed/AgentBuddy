@@ -14,8 +14,8 @@ import type { HostServices } from '@abuddy/sdk/services';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS, _reservedEntries } from '@abuddy/sdk/types';
-import { PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
-import { resolveName, type FeatureRef } from '@abuddy/sdk/ids';
+import { HOST_SYSTEM_EVENT_TYPES, PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
+import { HOST_PACK_ID, resolveName, type FeatureRef } from '@abuddy/sdk/ids';
 import { makePolicy, registerRepository, unregisterRepository, type PartitionPolicy } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
 import { packSeedOrder } from './pack-discovery.ts';
@@ -420,6 +420,11 @@ export function createPackRegistry(): PackRegistry {
     const map = new Map<string, Set<string>>();
     for (const reg of registrations.values()) {
       for (const { ref, system } of systemsOf(reg)) map.set(ref, new Set(system.receives));
+    }
+    // The bus isn't a feature's system, but pack code sends it events (HostSystemEvents): from a frontend too, so the
+    // client path checks them as the backend's does. It runs where the host is registered.
+    if (registrations.has(HOST_PACK_ID)) {
+      for (const [ref, types] of Object.entries(HOST_SYSTEM_EVENT_TYPES)) map.set(ref, new Set(types));
     }
     return map;
   }

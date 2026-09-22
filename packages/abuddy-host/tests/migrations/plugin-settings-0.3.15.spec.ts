@@ -94,6 +94,16 @@ describe('the 0.3.15 app migration, for plugins', () => {
     expect(settings()).toEqual({ plugins: { 'draft-pack/drafts': { wrap: true }, 'memo-pack/memos': { sort: 'oldest' } } });
   });
 
+  // Before 0.3.15 the host's plugins ran under bare ids too, so a bare id it shares with an external feature was its;
+  // the bus is no feature and owns no key
+  it("gives a bare id the host shares to the host, and none to the bus", () => {
+    tx(SETTINGS_ID).put('data', { plugins: { packs: { sort: 'name' }, bus: { mode: 'x' } } });
+
+    move(() => [{ id: 'ext-pack', features: [{ id: 'packs' }, { id: 'bus' }] }]);
+
+    expect(settings()).toEqual({ plugins: { 'host/packs': { sort: 'name' }, 'ext-pack/bus': { mode: 'x' } } });
+  });
+
   it('moves the settings of a feature with no plugin', () => {
     tx(SETTINGS_ID).put('data', { plugins: { sync: { interval: 5 } } });
 

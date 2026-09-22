@@ -4,7 +4,7 @@ import * as path from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { satisfies, rcompare, clean } from 'semver';
-import { SEED_INDEX_FILE, _snapshotFormatMismatch, type PackSnapshot } from '@abuddy/sdk/build';
+import { SEED_INDEX_FILE, _cliFormatMismatchMessage, _snapshotFormatMismatch, type PackSnapshot } from '@abuddy/sdk/build';
 import { findPackRoot, readManifest } from '../utils';
 import { PACK_LAYOUT, extractPackArchive, verifyPack } from '@abuddy/host/packs';
 import { resolveAppContext, type AppEnv } from '@abuddy/sdk/env';
@@ -127,10 +127,10 @@ function inRange(artifacts: DepFiles, range: string): boolean {
 }
 
 /**
- * Each build that was found but that this CLI can't generate against, with why. A dependency that exists
- * and still fails to resolve says so with these, rather than as not found.
+ * Each build that was found but that this CLI can't generate against: where, why, and whether a newer CLI wrote it.
+ * A dependency that exists and still fails to resolve says so with these, rather than as not found.
  */
-type Rejected = string[];
+type Rejected = Array<{ where: string; message: string; newer: boolean }>;
 
 /**
  * Whether a found build is one this pack can use: in the declared range, and in the snapshot format this
@@ -141,14 +141,14 @@ function usable(found: DepFiles | null, range: string, where: string, rejected: 
   if (!found) return false;
   const mismatch = _snapshotFormatMismatch(found.snapshot);
   if (mismatch) {
-    rejected.push(`${where}: ${mismatch}`);
+    rejected.push({ where, message: _cliFormatMismatchMessage(mismatch), newer: mismatch.newer });
     return false;
   }
   return inRange(found, range);
 }
 
 function unusable(depId: string, rejected: Rejected): Error {
-  return new Error(`Dependency "${depId}" has no build this CLI can use:\n${rejected.map((r) => `  - ${r}`).join('\n')}`);
+  return new Error(`Dependency "${depId}" has no build this CLI can use:\n${rejected.map((r) => `  - ${r.where}: ${r.message}`).join('\n')}`);
 }
 
 /** Built-in packs published by an installed AgentBuddy (any channel) into its data dir at boot. */
@@ -229,8 +229,9 @@ async function resolveFromGitHub(root: string, depId: string, repo: string, rang
     return null;
   }
 
-  // Newest first. A release built in another snapshot format gives way to the next older one in range, as a mismatched
-  // build on this machine does; any other problem with a release stops here rather than quietly settling for an older one
+  // Newest first. A release a newer CLI wrote gives way to the next older one in range, as a mismatched build on this
+  // machine does. One an older CLI wrote stops here: every release below it is older still, so trying them would only
+  // spend downloads (and GitHub's rate limit). Any other problem stops here too, rather than quietly settling for less
   for (const { release, version } of candidates) {
     // abuddy pack names the archive <id>-<version>.tgz and publishes its .sha256 next to it
     const asset = release.assets.find(a => a.name === `${depId}-${version}.tgz`);
@@ -246,7 +247,8 @@ async function resolveFromGitHub(root: string, depId: string, repo: string, rang
 
     const refusedBefore = rejected.length;
     const found = await downloadAndExtract(root, asset, checksumAsset, depId, version, rejected);
-    if (found || rejected.length === refusedBefore) return found;
+    const refused = rejected.length > refusedBefore ? rejected[rejected.length - 1] : undefined;
+    if (found || !refused?.newer) return found;
   }
   return null;
 }

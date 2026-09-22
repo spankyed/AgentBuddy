@@ -26,6 +26,17 @@ async function load(file: string, source: string) {
 }
 
 describe('loadPackFEEntry', () => {
+  // A module is cached by its URL: an updated pack's frontend under the same URL is the old one until the window reloads
+  it('imports the rebuilt entry when its revision changes', async () => {
+    const entry = path.join(dir, 'fe.mjs');
+    fs.writeFileSync(entry, 'export default { features: {}, steps: ["first"] };');
+    expect((await loadPackFEEntry('fe.mjs', pathToFileURL(dir).href, 'a'))?.steps).toEqual(['first']);
+
+    fs.writeFileSync(entry, 'export default { features: {}, steps: ["second"] };');
+    expect((await loadPackFEEntry('fe.mjs', pathToFileURL(dir).href, 'a'))?.steps).toEqual(['first']);
+    expect((await loadPackFEEntry('fe.mjs', pathToFileURL(dir).href, 'b'))?.steps).toEqual(['second']);
+  });
+
   it('warns when the entry has no default export and so registers nothing', async () => {
     const { registration, warnings } = await load('fe.mjs', 'export const plugins = [];');
     expect(warnings).toEqual([expect.stringMatching(/registers nothing[\s\S]*no default export/)]);

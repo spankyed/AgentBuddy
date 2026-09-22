@@ -39,6 +39,8 @@
 
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
+import { checkedSettingsRef } from '@/features/settings/plugin-settings'
+import type { SettingsData } from '@/__generated__/types'
 
 import { ref, onMounted, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
@@ -68,11 +70,21 @@ watch(settings, () => {
   if (!isDirty.value) loadSettings()
 })
 
+/**
+ * Parses the text and checks it as the store will: a plugin's settings are keyed by its ref, and the store refuses any
+ * other key. Checked here too so a refused save never shows as saved and the user's text stays
+ */
+function parsedSettings(text: string): SettingsData {
+  const data = JSON.parse(text) as SettingsData
+  for (const key of Object.keys(data?.plugins ?? {})) checkedSettingsRef(key)
+  return data
+}
+
 function onEditorChange(value: string) {
   jsonText.value = value
   isDirty.value = value !== originalText.value
   try {
-    JSON.parse(value)
+    parsedSettings(value)
     parseError.value = null
   } catch (e) {
     parseError.value = (e as Error).message
@@ -86,7 +98,7 @@ function onReset() {
 function onSave() {
   if (parseError.value || !isDirty.value) return
   try {
-    const data = JSON.parse(jsonText.value)
+    const data = parsedSettings(jsonText.value)
     actor.send({ type: 'SETTINGS.REPLACE', data })
     originalText.value = jsonText.value
     isDirty.value = false

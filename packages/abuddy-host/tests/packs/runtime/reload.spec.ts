@@ -6,6 +6,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { registry } from './test-host.ts';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 
 const { publishHostPackOutput } = await import('../../../src/packs/index.ts');
 const { registerPack, unregisterPack, getPackRegistration, registerShutdownHook, removeShutdownHooksForKey } = registry;
@@ -33,7 +34,7 @@ function writeRebuild(runtimeSource: string) {
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: PACK_ID, name: PACK_ID, version: '1.0.1' }));
   fs.writeFileSync(path.join(packDir, 'integrity.json'), JSON.stringify({ formatVersion: 1, id: PACK_ID, version: '1.0.1', files: {} }));
-  fs.writeFileSync(path.join(packDir, 'types', 'snapshot.json'), '{}');
+  fs.writeFileSync(path.join(packDir, 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), runtimeSource);
 }
 
@@ -297,11 +298,16 @@ describe('reloading a pack', () => {
     expectRunningPackIntact();
   });
 
-  it('restores the running registration when the rebuilt one is refused', async () => {
+  // Its origin too: without it the registry forgets where the pack came from, and a built-in's next reload can't find it
+  it('restores the running registration, and where it came from, when the rebuilt one is refused', async () => {
+    const origin = { id: PACK_ID, name: PACK_ID, version: '1.0.0', dir: path.join(tmpDir, 'packs', PACK_ID), builtIn: false };
+    unregisterPack(PACK_ID);
+    registerPack(running, origin);
     registerPack({ id: 'service-owner', services: { taken: {} } });
     writeRebuild(runtime(`services: { taken: {} },`));
     await expect(reloadExternalPack(registry, PACK_ID, bus as never)).rejects.toThrow(`Failed to register pack ${PACK_ID}`);
     expectRunningPackIntact();
+    expect(registry.packOrigin(PACK_ID)).toEqual(origin);
   });
 
   // A pack the app is the first to load has no row in installed-packs.json, and a seed failure still has

@@ -14,6 +14,7 @@ import {
   verifyPack,
 } from '../../src/packs/pack-layout.ts';
 import { installPackFromGitHub, installPackFromLocal, installPackFromUrl } from '../../src/packs/pack-installer.ts';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 
 let tmp: string;
 
@@ -43,7 +44,7 @@ function builtPack(overrides: Record<string, unknown> = {}): string {
   write('dist/runtime/index.cjs.map', '{}');
   write('dist/runtime/fe.js', 'export default {};');
   write('dist/runtime/seeds/actions.seed.json', '[]');
-  write('dist/types/snapshot.json', '{"types":{}}');
+  write('dist/types/snapshot.json', JSON.stringify({ types: {}, format: PACK_SNAPSHOT_FORMAT }));
   write('src/ignored.ts', 'not part of the pack');
   return root;
 }
@@ -170,6 +171,18 @@ describe('installPackFromLocal (pack layout path)', () => {
     expect(verifyPack(result.dir).version).toBe('1.2.3');
     // no staging or replacement leftovers in the packs dir
     expect(fs.readdirSync(packsDir)).toEqual(['demo-pack']);
+  });
+
+  // At install, rather than skipped at the next boot with nothing on screen
+  it('refuses a pack an older abuddy CLI built, leaving nothing installed', async () => {
+    const packsDir = path.join(tmp, 'packs');
+    const source = builtPack();
+    fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), JSON.stringify({ types: {} }));
+
+    await expect(installPackFromLocal(source, packsDir)).rejects.toThrow(
+      `Pack "demo-pack" can't be installed: its snapshot is format (none), written by an older abuddy CLI; this AgentBuddy reads format ${PACK_SNAPSHOT_FORMAT}. Rebuild it with the abuddy CLI that matches this AgentBuddy`,
+    );
+    expect(fs.existsSync(path.join(packsDir, 'demo-pack'))).toBe(false);
   });
 
   it('installs a verified archive and replaces the previous version', async () => {

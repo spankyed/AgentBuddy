@@ -457,6 +457,36 @@ const PACK_SRC_ROOTS = ['packages/default-setup/src', 'tests/fixtures/external-p
 /** `export … from '…'`: a module passing another's exports on */
 const EXPORT_FROM = /\bexport\s+(?:type\s+)?(?:\*(?:\s+as\s+\w+)?|\{[^}]*\})\s*from\s*['"][^'"]+['"]/g;
 
+/** The local names an import statement binds (`import a, { b as c } from`, `import * as d from`) */
+function importedNames(statement: string): string[] {
+  const clause = /\bimport\s+(?:type\s+)?([\s\S]*?)\s*from\s*['"]/.exec(statement)?.[1] ?? '';
+  const names: string[] = [];
+  const braces = /\{([^}]*)\}/.exec(clause)?.[1];
+  for (const part of braces?.split(',') ?? []) {
+    const local = part.trim().replace(/^type\s+/, '').split(/\s+as\s+/).pop()?.trim();
+    if (local) names.push(local);
+  }
+  const outside = clause.replace(/\{[^}]*\}/, '');
+  const namespace = /\*\s+as\s+(\w+)/.exec(outside)?.[1];
+  if (namespace) names.push(namespace);
+  const fallback = /^\s*(\w+)/.exec(outside.replace(/\*\s+as\s+\w+/, ''))?.[1];
+  if (fallback && fallback !== 'type') names.push(fallback);
+  return names;
+}
+
+/** The local names a module exports without re-exporting from another (`export { a, b as c }`, `export default a`) */
+function exportedLocalNames(code: string): Set<string> {
+  const names = new Set<string>();
+  for (const m of code.matchAll(/\bexport\s+(?:type\s+)?\{([^}]*)\}(?!\s*from)/g)) {
+    for (const part of m[1].split(',')) {
+      const local = part.trim().replace(/^type\s+/, '').split(/\s+as\s+/)[0]?.trim();
+      if (local) names.add(local);
+    }
+  }
+  for (const m of code.matchAll(/\bexport\s+default\s+(\w+)\s*;?\s*$/gm)) names.add(m[1]);
+  return names;
+}
+
 /**
  * `file:line: specifier` for each import of another feature's frontend other than its `fe/public` module. A feature
  * reaches into no other feature's machine or components: what one offers the rest (its state as composables, the
@@ -474,6 +504,13 @@ export function findCrossFeatureImports(srcRoots = PACK_SRC_ROOTS, root = repoRo
       // Where each `from` of a re-export starts, which is where ANY_SPECIFIER's match for it starts
       const reExports = new Set([...code.matchAll(EXPORT_FROM)].map((m) => m.index + m[0].search(/from\s*['"][^'"]+['"]$/)));
       const inOwnFrontend = /^features\/[^/]+\/fe\//.test(relative(file));
+      const exportedLocals = inOwnFrontend ? new Set<string>() : exportedLocalNames(code);
+      /** Whether the import whose specifier `match` is binds a name this module exports again: a re-export in two steps */
+      const passedOn = (match: RegExpMatchArray) => {
+        const end = match.index! + match[0].length + 1;
+        const statement = code.slice(code.lastIndexOf('import', match.index), end);
+        return importedNames(statement).some((name) => exportedLocals.has(name));
+      };
       return [...code.matchAll(ANY_SPECIFIER)].flatMap((match) => {
         const specifier = match[1];
         const target = specifier.startsWith('@/') ? path.join(src, specifier.slice(2))
@@ -484,7 +521,7 @@ export function findCrossFeatureImports(srcRoots = PACK_SRC_ROOTS, root = repoRo
         if (!into) return [];
         const module = (into[2] ?? '').replace(/\.(ts|js)$/, '').replace(/(?:^|\/)index$/, '');
         if (module === 'public') return [];
-        if (into[1] === featureOf(file) && (inOwnFrontend || !reExports.has(match.index))) return [];
+        if (into[1] === featureOf(file) && (inOwnFrontend || (!reExports.has(match.index) && !passedOn(match)))) return [];
         return [`${path.relative(root, file)}:${code.slice(0, match.index).split('\n').length}: ${specifier}`];
       });
     });

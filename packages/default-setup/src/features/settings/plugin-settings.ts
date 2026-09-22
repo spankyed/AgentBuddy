@@ -2,11 +2,11 @@
 // pack's as `<packId>/<featureId>`. The settings hold each slice under the plugin's ref, which `ref(name)` resolves
 // the way a send does, so no reader indexes `settings.plugins` by hand.
 import { splitRef, type FeatureRef } from '@abuddy/sdk/ids';
-import { ref } from '@/__generated__/ref';
+import { ref, type FeatureName } from '@/__generated__/ref';
 
 type WithPlugins = { plugins?: Record<string, unknown> } | null | undefined;
 
-export function pluginSettings<T = Record<string, any>>(settings: WithPlugins, name: string): T | undefined {
+export function pluginSettings<T = Record<string, any>>(settings: WithPlugins, name: FeatureName): T | undefined {
   return settings?.plugins?.[ref(name)] as T | undefined;
 }
 

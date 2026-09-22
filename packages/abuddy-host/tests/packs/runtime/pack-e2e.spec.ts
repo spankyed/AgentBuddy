@@ -15,6 +15,7 @@ import * as os from 'os';
 import { loadExternalPacks } from '../../../src/packs/runtime/loader.ts';
 import { getPacksWithClientLoadedFrontends } from '../../../src/packs/pack-layout.ts';
 import type { LoadedPack } from '../../../src/packs/runtime/loader.ts';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 
 /** A loaded pack's system, by feature id */
 const systemOf = (pack: LoadedPack, featureId: string) => pack.registration.features?.[featureId]?.system;
@@ -51,6 +52,8 @@ function installTestPack() {
   fs.writeFileSync(path.join(TEST_PACK_DIR, 'integrity.json'), JSON.stringify({
     formatVersion: 1, id: TEST_PACK_ID, version: '1.0.0', files: {},
   }));
+  fs.mkdirSync(path.join(TEST_PACK_DIR, 'types'), { recursive: true });
+  fs.writeFileSync(path.join(TEST_PACK_DIR, 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
 
   // The pack's frontend, which the renderer loads from the installed pack
   fs.writeFileSync(path.join(TEST_PACK_DIR, 'runtime', 'fe.js'), 'export default { plugins: [] };');

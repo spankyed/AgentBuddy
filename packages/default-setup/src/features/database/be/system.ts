@@ -227,6 +227,8 @@ export const databaseSystem = setup({
         ({ missingDatabases, unknownEntityTypes }) => {
           // Stop brain and notify success
           sendToSystem('brain', { type: 'KILL_BRAIN' });
+          // The settings came in with the rest, past the settings' writer: every feature hears its settings again
+          sendToSystem('settings', { type: 'DATA_REPLACED' });
           // A store the backup listed but didn't hold came back empty: said, not silently dropped
           const nothingToRestore = missingDatabases.length > 0
             ? ` The backup listed ${missingDatabases.join(', ')} but held nothing for it, so it is now empty.`

@@ -449,17 +449,21 @@ describe('findCrossFeatureImports', () => {
     writeAt(`${src}/__generated__/pack-entry-fe.ts`, "import plugin from '../features/notes/fe/plugin.js';");
     // `public` as a folder, by the folder or its index
     writeAt(`${src}/features/threads/fe/chat.ts`, "import { a } from '@/features/actions/fe/public';\nimport { b } from '@/features/notes/fe/public/index';");
-    // A feature's own modules outside fe/ may use its frontend
-    writeAt(`${src}/features/code/settings.ts`, "import { id } from './fe/state';");
+    // A feature's own modules outside fe/ may use its frontend, exporting what they make of it
+    writeAt(`${src}/features/code/settings.ts`, "import { id } from './fe/state';\nconst label = `${id}!`;\nexport { label };");
     expect(findCrossFeatureImports([src], root)).toEqual([]);
   });
 
   it("flags another feature's fe folder itself, and a feature passing its frontend on from outside fe/", () => {
     writeAt(`${src}/features/code/fe/panel.ts`, "import notes from '@/features/notes/fe';");
     writeAt(`${src}/features/notes/index.ts`, "export { id, notesMachine } from './fe/state';\nexport * from './fe/public';");
+    // In two steps: imported, then exported
+    writeAt(`${src}/features/threads/door.ts`, "import { threadsMachine as machine } from './fe/state';\nimport * as ui from './fe/canvas';\nexport { machine };\nexport default ui;");
     expect(findCrossFeatureImports([src], root)).toEqual([
       `${src}/features/code/fe/panel.ts:1: @/features/notes/fe`,
       `${src}/features/notes/index.ts:1: ./fe/state`,
+      `${src}/features/threads/door.ts:1: ./fe/state`,
+      `${src}/features/threads/door.ts:2: ./fe/canvas`,
     ]);
   });
 });

@@ -13,6 +13,7 @@ import {
   removeDevServerMarker,
   writeDevServerMarker,
 } from '../../src/packs/dev-server.ts';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 
 let tmp: string;
 let userDataDir: string;
@@ -37,7 +38,7 @@ function builtPack(): string {
   write('abuddy.json', JSON.stringify({ id: 'demo-pack', name: 'Demo Pack', version: '1.2.3' }));
   write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack" } };');
   write('dist/runtime/fe.js', 'export default {};');
-  write('dist/types/snapshot.json', '{"types":{}}');
+  write('dist/types/snapshot.json', JSON.stringify({ types: {}, format: PACK_SNAPSHOT_FORMAT }));
   return root;
 }
 

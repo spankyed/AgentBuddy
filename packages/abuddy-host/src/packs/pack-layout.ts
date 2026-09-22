@@ -18,7 +18,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as tar from 'tar';
-import type { PackManifest } from '@abuddy/sdk/build';
+import { _snapshotFormatMismatch, PACK_SNAPSHOT_FORMAT, type PackManifest } from '@abuddy/sdk/build';
 import { stagingDirName } from './staging.ts';
 import type { PackRegistry } from './pack-registration.ts';
 
@@ -87,6 +87,11 @@ export interface LoadedPackEntry {
   feEntry?: string;
   /** The pack's runtime/fe.css, when it has one */
   feStyles?: string;
+  /**
+   * Changes whenever those files do. The renderer puts it in the URLs it loads them from: a module or stylesheet is
+   * cached by URL, so without it an updated pack kept its old frontend until the window reloaded
+   */
+  feRevision?: string;
 }
 
 /** A pack's frontend files, pack-relative: its FE entry and stylesheet when `abuddy build` wrote them */
@@ -105,7 +110,10 @@ export function getLoadedPackEntries(registry: Pick<PackRegistry, 'builtInPacks'
     ...registry.externalPacks().flatMap(({ id, name, version, dir }) => {
       const { entry, styles } = packFrontendFiles(dir);
       if (!entry && !styles) return [];
-      return [{ id, name, version, feEntry: entry, feStyles: styles }];
+      const feRevision = crypto.createHash('sha256')
+        .update([entry, styles].flatMap((file) => (file ? [sha256File(path.join(dir, file))] : [])).join(':'))
+        .digest('hex').slice(0, 16);
+      return [{ id, name, version, feEntry: entry, feStyles: styles, feRevision }];
     }),
   ];
 }
@@ -186,6 +194,25 @@ export function readPackIntegrity(dir: string): PackIntegrity {
   const integrityPath = path.join(dir, PACK_LAYOUT.integrity);
   if (!fs.existsSync(integrityPath)) throw new Error(`Not a pack layout: no ${PACK_LAYOUT.integrity} in ${dir}`);
   return JSON.parse(fs.readFileSync(integrityPath, 'utf-8'));
+}
+
+/**
+ * Why this AgentBuddy can't load the pack built into `dir` (a pack layout), or undefined when it can: its snapshot
+ * records the format of the build (`PACK_SNAPSHOT_FORMAT`), which covers the registration its runtime exports as well
+ * as what dependents read. `integrity.json`'s format can't say this: whoever stages a pack writes it, not whoever built it.
+ */
+export function buildFormatProblem(dir: string): string | undefined {
+  const snapshotFile = path.join(dir, PACK_LAYOUT.snapshot);
+  let snapshot: { format?: unknown; sdkVersion?: string };
+  try {
+    snapshot = JSON.parse(fs.readFileSync(snapshotFile, 'utf-8'));
+  } catch {
+    return `${PACK_LAYOUT.snapshot} is missing or unreadable, so nothing says which abuddy built it: rebuild it with the abuddy CLI that matches this AgentBuddy`;
+  }
+  const mismatch = _snapshotFormatMismatch(snapshot);
+  if (!mismatch) return undefined;
+  return `${mismatch.problem}; this AgentBuddy reads format ${PACK_SNAPSHOT_FORMAT}. `
+    + (mismatch.newer ? 'Update AgentBuddy to use it' : 'Rebuild it with the abuddy CLI that matches this AgentBuddy');
 }
 
 /** Check format version and that the files on disk are exactly the ones recorded. */

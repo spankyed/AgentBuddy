@@ -9,7 +9,7 @@ import { packSystemIds, type PackRegistry, type PackOrigin } from '../pack-regis
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { discoverBuiltInPacks, discoverPacks, discoveredPackIds, enabledExternalPacks, type BuiltInPackInfo, type PackManifest } from '../pack-discovery.ts';
 import { disabledPackIds, forgetPacksExcept } from '../installed-packs.ts';
-import { PACK_LAYOUT, PACK_LAYOUT_VERSION, isPackLayout, readPackIntegrity } from '../pack-layout.ts';
+import { PACK_LAYOUT, PACK_LAYOUT_VERSION, buildFormatProblem, isPackLayout, readPackIntegrity } from '../pack-layout.ts';
 import { isHostCompatible } from '../pack-installer.ts';
 import { packLoadFailed, packRegistered } from '../load-messages.ts';
 import { findSdkVersion } from '../../build/shared-deps.ts';
@@ -188,6 +188,13 @@ export function loadSingleExternalPack(
     }
   } catch (err) {
     logger.warn(`Skipping ${manifest.id}: unreadable ${PACK_LAYOUT.integrity}`, err as Error);
+    return null;
+  }
+
+  // Before its runtime is loaded: a registration another abuddy built fails in ways that name nothing the author can act on
+  const formatProblem = buildFormatProblem(dir);
+  if (formatProblem) {
+    logger.warn(`Skipping ${manifest.id}: ${formatProblem}`);
     return null;
   }
 
