@@ -145,12 +145,6 @@
         "plugin",
         "settings"
       ],
-      "system": {
-        "outgoingEventsType": "OutgoingActionEvents",
-        "sendsTo": [
-          "flows"
-        ]
-      },
       "services": {
         "action": "be/services/action.ts#actionService"
       },
@@ -167,9 +161,6 @@
         "plugin",
         "settings"
       ],
-      "system": {
-        "outgoingEventsType": "OutgoingPromptEvents"
-      },
       "services": {
         "prompt": "be/services/prompt.ts#promptService"
       },
@@ -228,11 +219,6 @@
         "plugin",
         "settings"
       ],
-      "system": {
-        "sendsTo": [
-          "application"
-        ]
-      },
       "entities": {
         "Settings": "be/types.ts#SettingsEntity"
       },
