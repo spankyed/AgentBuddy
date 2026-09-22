@@ -8,8 +8,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { _depTypesFile, _depTypesVersion, entitiesWithoutShapes, generatePackFiles, PACK_TYPES_DEF } from '../../src/build/generate-entries.ts';
 import { _buildProvenance, PACK_SNAPSHOT_FORMAT, PROVENANCE_KINDS } from '../../src/build/manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../../src/types/sdk-entities.ts';
-import type { PackFeatureEntry, PackManifest, PackSnapshot } from '../../src/build/manifest.ts';
-import type { PackFeature, PackRegistration } from '../../src/framework/index.ts';
+import type { PackFeatureEntry, PackManifest, PackPluginEntry, PackSnapshot, PackSystemEntry, SeedFormatConfig } from '../../src/build/manifest.ts';
+import type { PackFeature, PackFeaturePlugin, PackFeatureSystem, PackRegistration } from '../../src/framework/index.ts';
 
 let root: string;
 beforeEach(() => {
@@ -1131,6 +1131,16 @@ describe('the snapshot format', () => {
     designation: true, earlySystem: true, id: true, plugin: true, references: true, repositories: true, services: true,
     settings: true, system: true, typesEntry: true,
   };
+  /** A dependency's `sendsTo` decides which of its plugins a dependent can send to */
+  const MANIFEST_SYSTEM_FIELDS: Record<keyof PackSystemEntry, true> = { entry: true, events: true, sendsTo: true };
+  const MANIFEST_SYSTEM_EVENTS_FIELDS: Record<keyof NonNullable<PackSystemEntry['events']>, true> = { incoming: true };
+  const MANIFEST_PLUGIN_FIELDS: Record<keyof PackPluginEntry, true> = { default: true, entry: true };
+  /** A dependency's seed formats, which a dependent's `boot.seed` compiles its own sources with */
+  const SEED_FORMAT_FIELDS: Record<keyof SeedFormatConfig, true> = {
+    compiler: true, entity: true, fields: true, format: true, identity: true, media: true, tree: true,
+  };
+  const SEED_TREE_FIELDS: Record<keyof NonNullable<SeedFormatConfig['tree']>, true> = { branch: true, branchEntity: true, relKind: true };
+  const SEED_FIELD_FIELDS: Record<keyof NonNullable<SeedFormatConfig['fields']>[string], true> = { default: true, from: true, type: true };
   /** The registration the runtime bundle exports, which the app loads */
   const REGISTRATION_FIELDS: Record<keyof PackRegistration, true> = {
     id: true, features: true, services: true, ears: true, repositories: true, boot: true, migrations: true, steps: true,
@@ -1139,6 +1149,8 @@ describe('the snapshot format', () => {
   const REGISTRATION_FEATURE_FIELDS: Record<keyof PackFeature, true> = {
     designation: true, system: true, plugin: true, services: true, settings: true,
   };
+  const REGISTRATION_SYSTEM_FIELDS: Record<keyof PackFeatureSystem, true> = { early: true, machine: true, receives: true };
+  const REGISTRATION_PLUGIN_FIELDS: Record<keyof PackFeaturePlugin, true> = { receives: true };
 
   /** Every name generated code imports from a dependency's facade, with a send to one of its plugins */
   function facadeImports(): string[] {
@@ -1152,18 +1164,47 @@ describe('the snapshot format', () => {
     expect({
       format: PACK_SNAPSHOT_FORMAT,
       fields: Object.keys(SNAPSHOT_FIELDS).sort(),
-      manifest: [Object.keys(MANIFEST_FIELDS).length, Object.keys(MANIFEST_FEATURE_FIELDS).sort()],
-      registration: [Object.keys(REGISTRATION_FIELDS).sort(), Object.keys(REGISTRATION_FEATURE_FIELDS).sort()],
+      manifest: {
+        fields: Object.keys(MANIFEST_FIELDS).sort(),
+        feature: Object.keys(MANIFEST_FEATURE_FIELDS).sort(),
+        system: Object.keys(MANIFEST_SYSTEM_FIELDS).sort(),
+        systemEvents: Object.keys(MANIFEST_SYSTEM_EVENTS_FIELDS).sort(),
+        plugin: Object.keys(MANIFEST_PLUGIN_FIELDS).sort(),
+        seedFormat: Object.keys(SEED_FORMAT_FIELDS).sort(),
+        seedTree: Object.keys(SEED_TREE_FIELDS).sort(),
+        seedField: Object.keys(SEED_FIELD_FIELDS).sort(),
+      },
+      registration: {
+        fields: Object.keys(REGISTRATION_FIELDS).sort(),
+        feature: Object.keys(REGISTRATION_FEATURE_FIELDS).sort(),
+        system: Object.keys(REGISTRATION_SYSTEM_FIELDS).sort(),
+        plugin: Object.keys(REGISTRATION_PLUGIN_FIELDS).sort(),
+      },
       provenanceKinds: Object.keys(PROVENANCE_KINDS).sort(),
       facadeImports: facadeImports(),
     }).toEqual({
       format: 1,
       fields: ['defs', 'flowHelpers', 'format', 'manifest', 'provenance', 'sdkVersion', 'types'],
-      manifest: [27, ['designation', 'earlySystem', 'id', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry']],
-      registration: [
-        ['artifacts', 'blocks', 'boot', 'commands', 'ears', 'features', 'id', 'migrations', 'repositories', 'seedHooks', 'seeders', 'services', 'steps'],
-        ['designation', 'plugin', 'services', 'settings', 'system'],
-      ],
+      manifest: {
+        fields: [
+          '$manifestVersion', '$schema', 'artifacts', 'blocks', 'boot', 'builtIn', 'commands', 'dependencies', 'description', 'dsl',
+          'entities', 'entityShapes', 'fe', 'features', 'hostVersion', 'id', 'license', 'migrations', 'name', 'packServices',
+          'partitionPolicy', 'permissions', 'relKinds', 'seedFormats', 'seedHooks', 'steps', 'version',
+        ],
+        feature: ['designation', 'earlySystem', 'id', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
+        system: ['entry', 'events', 'sendsTo'],
+        systemEvents: ['incoming'],
+        plugin: ['default', 'entry'],
+        seedFormat: ['compiler', 'entity', 'fields', 'format', 'identity', 'media', 'tree'],
+        seedTree: ['branch', 'branchEntity', 'relKind'],
+        seedField: ['default', 'from', 'type'],
+      },
+      registration: {
+        fields: ['artifacts', 'blocks', 'boot', 'commands', 'ears', 'features', 'id', 'migrations', 'repositories', 'seedHooks', 'seeders', 'services', 'steps'],
+        feature: ['designation', 'plugin', 'services', 'settings', 'system'],
+        system: ['early', 'machine', 'receives'],
+        plugin: ['receives'],
+      },
       provenanceKinds: ['commands', 'entities', 'plugins', 'relKinds'],
       facadeImports: ['PackEntityShapes', 'PackStepNodes', 'PackSystemEvents', 'Repositories', 'SendablePluginEvents', 'Services'],
     });
