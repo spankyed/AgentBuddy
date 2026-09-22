@@ -36,9 +36,30 @@ Modules, in order (`src/modules/`):
 | `createBrowserModule` | `browser/` | The browser plugin's tabs: `WebContentsView`s in the `persist:browser` session, driven by `browser:*` IPC (`BrowserTabManager.ts`) |
 | `createMacOSAppMenu` | `MacOSAppMenu.ts` | macOS menu: Cmd+Q hides, Cmd+Shift+Q quits; packaged builds add "Install 'abuddy' command in PATH" (`cli-command.ts`, symlinks `Resources/cli/abuddy` into `/usr/local/bin`, `abuddy-beta` for beta, via `osascript` on EACCES) |
 | `allowInternalOrigins` | `BlockNotAllowdOrigins.ts` | Blocks `will-navigate` to origins other than the dev server's |
-| `allowExternalUrls` | `ExternalUrls.ts` | `setWindowOpenHandler` always denies; opens allowlisted origins (API provider consoles, docs) in the system browser |
+| `allowExternalUrls` | `ExternalUrls.ts` | `setWindowOpenHandler` always denies, and sends the URL to the system browser through `shell-access.ts` (see Shell access) |
 
-The allowlists are populated only when `renderer` is a URL (dev server); from a file build both sets are empty. The last two skip `persist:browser` web contents. `AutoUpdater` is commented out in `src/index.ts`.
+`allowInternalOrigins` is populated only when `renderer` is a URL (dev server); from a file build the set is empty, so a window navigates nowhere. The last two skip `persist:browser` web contents. `AutoUpdater` is commented out in `src/index.ts`.
+
+## Shell access (`src/modules/shell-access.ts`)
+
+What this process hands to the OS on a window's word: a URL for the user's browser, a file for its default app. A
+window renders what the user wrote, what a model answered and what a pack's frontend built, so a request arriving here
+is untrusted whoever asked, and the two rules live in one module rather than at each call
+([Electron security #14](https://www.electronjs.org/docs/latest/tutorial/security#14-do-not-use-openexternal-with-untrusted-content)).
+
+- `externalUrlProblem(url)` / `openExternalUrl(url)`: the URL must parse, its scheme must be `http:` or `https:`
+  (`http:` stays, because the terminal links what a dev server prints), and it may carry no credentials —
+  `https://apple.com@evil.example` is a link to evil.example that reads as one to apple.com. Both doors go through it:
+  the `shell:openExternal` IPC and `setWindowOpenHandler` (`ExternalUrls.ts`), which still opens no window.
+- `openablePathProblem(path)` / `openFilePath(path)`: the file must exist, and its extension must not be one the
+  system runs rather than opens (`.app`, `.command`, `.exe`, `.msi`, `.vbs`, …). Behind the `shell:openPath` IPC and
+  the temp file `shell:openImageExternal` writes.
+- A refusal is logged with the URL's origin and path (never its query, which may carry a token) or the file's path,
+  in every environment, and nothing is opened. `shell:showItemInFolder` reveals rather than opens, so it takes the
+  path as given.
+- There is no list of approved sites: the app opens links the user wrote, in notes, chats, terminals and packs' UIs,
+  so a list would either block what people open or grow until it approves everything. `tests/shell-access.spec.ts`
+  covers both rules, with the app's own links among the accepted ones.
 
 ## App context (`src/app-context.ts`)
 

@@ -7,9 +7,9 @@ import type { PackManifest, PackSnapshot } from '@abuddy/sdk/build';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '@abuddy/sdk/types';
 import type { PartitionPolicy } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
-import { PACK_LAYOUT } from '../packs/pack-layout.ts';
-import { discoverPacks, enabledExternalPacks } from '../packs/pack-discovery.ts';
-import { appPartitionPolicy } from '../packs/pack-registration.ts';
+import { PACK_LAYOUT } from '../packs/layout.ts';
+import { discoverPacks, enabledExternalPacks } from '../packs/discovery.ts';
+import { appPartitionPolicy } from '../packs/registry.ts';
 
 /** What opening a database needs from the packs: which names are entity types, and where each type is stored */
 export interface DatabaseSchema {

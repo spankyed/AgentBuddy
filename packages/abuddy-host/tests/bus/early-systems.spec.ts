@@ -6,7 +6,7 @@ import { startTestRuntime, testRootEvents } from '@abuddy/sdk/testing';
 import { sendToPlugin } from '@abuddy/sdk/events';
 import { createAppBus, startEarlySystems } from '../../src/bus/index.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
-import { createPackRegistry } from '../../src/packs/pack-registration.ts';
+import { createPackRegistry } from '../../src/packs/registry.ts';
 
 const registry = createPackRegistry();
 startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: registry });

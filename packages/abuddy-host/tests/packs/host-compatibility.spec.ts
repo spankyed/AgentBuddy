@@ -2,7 +2,7 @@
 // counts as the release it precedes, so the beta of 0.3.15 installs the packs that ask for 0.3.15 —
 // the same rule the migrations runner states, where 0.3.15-beta.2 runs the 0.3.15 migrations.
 import { describe, expect, it } from 'vitest';
-import { isHostCompatible } from '../../src/packs/pack-installer.ts';
+import { isHostCompatible } from '../../src/packs/installer.ts';
 
 describe('a pack\'s hostVersion against the running app', () => {
   it('takes any app when the pack names no range', () => {

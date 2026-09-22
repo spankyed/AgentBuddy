@@ -2,8 +2,8 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { checkForUpdates, findLatestRelease } from '../../src/packs/pack-updater.ts';
-import { readInstalledPacks, writeInstalledPacks } from '../../src/packs/installed-packs.ts';
+import { checkForUpdates, findLatestRelease } from '../../src/packs/updater.ts';
+import { readInstalledPacks, writeInstalledPacks } from '../../src/packs/installed.ts';
 
 const recordedPacks = () => readInstalledPacks();
 

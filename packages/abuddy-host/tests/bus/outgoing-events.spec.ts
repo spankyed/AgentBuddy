@@ -9,8 +9,8 @@ import { onLog } from '@abuddy/sdk/logger';
 import type { Message } from '@abuddy/sdk/events';
 import { createAppBus } from '../../src/bus/index.ts';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
-import { createPackRegistry } from '../../src/packs/pack-registration.ts';
-import { hostRegistration } from '../../src/packs/host-pack.ts';
+import { createPackRegistry } from '../../src/packs/registry.ts';
+import { hostRegistration } from '../../src/features/registration.ts';
 
 const registry = createPackRegistry();
 startTestRuntime({ entityTypes: HOST_ENTITY_TYPES, packs: registry });

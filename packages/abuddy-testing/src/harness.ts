@@ -20,7 +20,8 @@ import { resetTestData as resetSdkTestData, startTestRuntime, takeSystemErrors, 
 import type { PackRegistryView } from '@abuddy/sdk/runtime';
 import type { FeatureRef } from '@abuddy/sdk/ids';
 import type { PackRegistration } from '@abuddy/sdk/framework';
-import { createPackRegistry, hostRegistration, type PackOrigin } from '@abuddy/host/packs';
+import { createPackRegistry, type PackOrigin } from '@abuddy/host/packs';
+import { hostRegistration } from '@abuddy/host/features';
 import { appState, HOST_ENTITY_TYPES } from '@abuddy/host/app-state';
 import { loadDependencyRuntime } from './dependency-runtime.ts';
 import { assertSharedEars } from './shared-ears.ts';

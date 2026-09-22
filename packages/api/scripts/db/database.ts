@@ -4,7 +4,7 @@
 // Database work that runs no pack code goes through `abuddy db` instead.
 import * as path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { openAppStore } from '@/setup/backend';
+import { openAppStore } from '@/runtime';
 import { loadBuiltInPacks } from '@abuddy/host/packs/runtime';
 
 export const packagesDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..');

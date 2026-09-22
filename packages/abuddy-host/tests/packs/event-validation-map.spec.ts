@@ -2,8 +2,8 @@
 import { describe, expect, it } from 'vitest';
 import { setup } from 'xstate';
 import type { PackFeature } from '@abuddy/sdk/framework';
-import { createPackRegistry } from '../../src/packs/pack-registration.ts';
-import { hostRegistration, PACKS_PLUGIN_EVENT_TYPES } from '../../src/packs/host-pack.ts';
+import { createPackRegistry } from '../../src/packs/registry.ts';
+import { hostRegistration, PACKS_PLUGIN_EVENT_TYPES } from '../../src/features/registration.ts';
 import { PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
 
 /** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */

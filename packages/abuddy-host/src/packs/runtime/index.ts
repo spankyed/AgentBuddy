@@ -13,5 +13,4 @@ export { reloadExternalPack, reloadBuiltInPack } from './reload.ts';
 export { computePackSeedHash, seedPackData, orchestrateDeclarativeSeed } from './seed.ts';
 export type { PackSeedFailure } from './seed.ts';
 export { startPacks } from './start.ts';
-export { createPacksSystem, packsEvents, packsSpec } from './packs-system.ts';
 export { activationProblem } from './activation-outcome.ts';

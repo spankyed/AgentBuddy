@@ -1,5 +1,5 @@
-import { packRecord } from '../installed-packs.ts';
-import type { PackRegistry } from '../pack-registration.ts';
+import { packRecord } from '../installed.ts';
+import type { PackRegistry } from '../registry.ts';
 
 /**
  * Why a just-installed or updated pack isn't working, or undefined when it activated and

@@ -11,7 +11,7 @@ import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-database-parity-'));
 process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
-const { openAppStore } = await import('@/setup/backend');
+const { openAppStore } = await import('@/runtime');
 const { loadBuiltInPacks, loadExternalPacks, registerExternalPacks, startPacks } = await import('@abuddy/host/packs/runtime');
 const { installPackFromLocal, publishHostPackOutput } = await import('@abuddy/host/packs');
 const { openAppDatabase } = await import('@abuddy/host/database');

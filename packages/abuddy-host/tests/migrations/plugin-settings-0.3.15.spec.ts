@@ -15,8 +15,8 @@ import { registry } from '../packs/runtime/test-host.ts';
 import { appState } from '../../src/app-state/index.ts';
 import { appMigrations } from '../../src/migrations/app/index.ts';
 import type { InstalledManifests } from '../../src/migrations/app/0.3.15.ts';
-import { hostRegistration } from '../../src/packs/host-pack.ts';
-import { writeInstalledPacks } from '../../src/packs/installed-packs.ts';
+import { hostRegistration } from '../../src/features/registration.ts';
+import { writeInstalledPacks } from '../../src/packs/installed.ts';
 
 const SETTINGS_ID = 'Settings-app' as EARS.EntityId;
 

@@ -13,7 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { loadExternalPacks } from '../../../src/packs/runtime/loader.ts';
-import { getPacksWithClientLoadedFrontends } from '../../../src/packs/pack-layout.ts';
+import { getPacksWithClientLoadedFrontends } from '../../../src/packs/layout.ts';
 import type { LoadedPack } from '../../../src/packs/runtime/loader.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 

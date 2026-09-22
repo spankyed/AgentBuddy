@@ -4,7 +4,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { APP_ONLY_EXPORTS, SHARED_DEPS, getSharedBeDeps, getSharedFeDeps, unresolvedSubpathPackages, sharedInstanceExports, sharedInstanceSpecifiers } from '../../src/build/shared-deps.ts';
-import { appBridgedSpecifiers } from '../../src/build/shared-modules.ts';
+import { appBridgedSpecifiers } from '../../src/build/render-sdk-modules.ts';
 
 const REPO_ROOT = path.resolve(import.meta.dirname, '..', '..', '..', '..');
 

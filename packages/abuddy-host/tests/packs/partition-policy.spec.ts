@@ -1,7 +1,7 @@
 // The partition policy the app's LMDB store is opened with: one object, following the packs registered at each call
 import { describe, expect, it } from 'vitest';
 import { setup } from 'xstate';
-import { createPackRegistry } from '../../src/packs/pack-registration.ts';
+import { createPackRegistry } from '../../src/packs/registry.ts';
 
 const { registerPack, partitionPolicy: registeredPartitionPolicy, unregisterPack } = createPackRegistry();
 

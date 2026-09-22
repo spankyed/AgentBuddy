@@ -1,4 +1,4 @@
-export type { AppRouter } from '@/core/router';
+export type { AppRouter } from '@/transport';
 export { EARS } from '@abuddy/sdk';
 export type { BaseEntity } from '@abuddy/ears';
 

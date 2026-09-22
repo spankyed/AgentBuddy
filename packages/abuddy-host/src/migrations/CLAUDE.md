@@ -2,6 +2,8 @@
 
 Data migrations that run on app startup when a stored version is behind the version being booted. The app's migrations runners live here, with the host's own migrations (`app/`, which move the app's state); the other migrations live with their packs. Host-only: packs never import this module, and the pack bridge doesn't provide it. The versions they ran to are recorded in `AppState` (`../app-state`).
 
+A window's own storage has its counterpart, `src/fe/migrations/` (`runFrontendMigrations`, exported from `@abuddy/host/fe`): the same shape — versioned files, listed in order, each idempotent — over the storage a window passes in, recorded under `agentbuddy-fe-version` rather than in `AppState`, since no app is bound when they run. They are not hooked up to packs.
+
 ## Who runs what
 
 There are two runners, both in this folder's `index.ts` (`packages/abuddy-host/src/migrations/index.ts`). The API's boot and `services.appData.reset()` call them in this order through `startPacks()` (`../packs/runtime/start.ts`), after each pack's `onInit`; activating (install, update, enable) and reloading an external pack run `runPackMigrations` for it too:

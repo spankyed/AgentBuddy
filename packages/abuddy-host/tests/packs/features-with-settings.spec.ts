@@ -8,7 +8,7 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { setup } from 'xstate';
 import type { PackRegistration } from '@abuddy/sdk/framework';
-import { createPackRegistry } from '../../src/packs/pack-registration.ts';
+import { createPackRegistry } from '../../src/packs/registry.ts';
 
 const memoPack: PackRegistration = {
   id: 'memo-pack',

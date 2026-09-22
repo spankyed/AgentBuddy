@@ -144,6 +144,34 @@ The standing rules, as prose bullets (the prompt's "Never" list in fuller form),
 - investigate failing tests, mutation-check new guards;
 - external packs are first-class: keep the fixture packs, the example pack and `test:packaged-authoring` passing.
 
+## Keeping the loop fast
+
+A goal is carried out in edit-check cycles, and the check is where the time goes. In this repo the
+narrow checks cost seconds — one spec file, one package's `tsc --noEmit`, one folder of specs,
+`packages:ensure` when nothing is stale — while the full chain costs minutes, most of it in
+`test:unit`, `build`, `api:check` and the E2E, external-pack and packaged-authoring suites. Running
+the chain after every edit is the single easiest way to make a goal take days, and it finds nothing
+the narrow check wouldn't.
+
+So a goal doc plans its own checks:
+
+- **Each phase's "Done when" names the narrow commands** that cover that phase — the spec files, the
+  package's typecheck, the guard and its mutation check. That is what runs during the work.
+- **The full chain runs once per phase, at its end**, and in the background while the diff is
+  reviewed. The root `CLAUDE.md` table ("What to run after a change") says which command covers which
+  kind of change; the phase cites it rather than repeating it.
+- **Slow steps run last, and only when their input changed.** The published API reports, the app
+  build and the E2E, external-pack and packaged-authoring suites each have a trigger; a phase that
+  doesn't touch that input doesn't run them.
+- **Suites don't run concurrently.** They share the package build lock and the build stamps, so two
+  at once produce failures that are about the race rather than the code.
+- **A stale build looks like a bug.** When a failure makes no sense, check what the run loads before
+  reading the code: a test run against a package's `dist`, or an E2E run against the built app, tests
+  what was last built, not what was last edited.
+
+If a goal's phases genuinely need a slow check every time (a build format, a packaged app), say so in
+the phase, with the reason, so the cost is a decision rather than a habit.
+
 ## Finishing a goal
 
 When the work is done, move the doc to `docs/archive/goals/` and add a status blockquote as its first line, above the session note. Move it when the work is done, not when it merges: a goal whose phases are all finished is history, and leaving it in `docs/goals/` reads as a plan and keeps describing code that no longer exists. Name wherever the work is — a PR, a branch, a commit — or nothing at all if there's nothing useful to name.

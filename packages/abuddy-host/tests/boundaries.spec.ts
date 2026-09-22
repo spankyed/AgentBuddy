@@ -8,7 +8,7 @@ import { createEarsEngine } from '@abuddy/ears';
 import type { LmdbStore } from '@abuddy/ears/lmdb';
 import { testRootEvents } from '@abuddy/sdk/testing';
 import { createHostRuntime } from '../src/services/index.ts';
-import { createPackRegistry } from '../src/packs/pack-registration.ts';
+import { createPackRegistry } from '../src/packs/registry.ts';
 
 const HOST_ROOT = path.resolve(__dirname, '..');
 const SRC = path.join(HOST_ROOT, 'src');
@@ -71,8 +71,8 @@ describe('host package boundaries', () => {
   // The record's shape is one module's business. Every write outside it is a named intention — an
   // install, a choice, a check's findings — so no call site merges rows, and none can silently write
   // nothing because the row it was looking for wasn't there.
-  it('keeps the installed-packs file shape inside installed-packs.ts', () => {
-    const owner = path.join(SRC, 'packs', 'installed-packs.ts');
+  it('keeps the installed-packs file shape inside installed.ts', () => {
+    const owner = path.join(SRC, 'packs', 'installed.ts');
     const offenders = sourceFiles(SRC)
       .filter((file) => file !== owner)
       .filter((file) => /\b(addInstalledPack|removeInstalledPack|updateInstalledPacks)\b/.test(fs.readFileSync(file, 'utf-8')));
@@ -105,9 +105,37 @@ describe('host package boundaries', () => {
   });
 
   // The shell and the frontend registry run in the renderer and in a pack's tests alike, so what differs between
-  // those (the framework, the API client, the window) arrives as options rather than imports
+  // those (the framework, the API client, the window) arrives as options rather than imports. Frontend code is
+  // `src/fe` (the plumbing) and each host feature's `fe` (the shell, the Packs plugin), so the rule follows both.
+  // The app is the pack `host`, so its own features are laid out as a pack's. Before that, one feature's system
+  // lived in `bus/` and the other's in `packs/runtime/`, with both frontends in `fe/`, which is how `bus/` came to
+  // export a feature's system and `packs/` to run both other packs and one of the host's own.
+  it("lays the host pack's features out as a pack's: <feature>/{be,fe}", () => {
+    const features = fs.readdirSync(path.join(SRC, 'features'), { withFileTypes: true }).filter((e) => e.isDirectory());
+    const halves = features.flatMap((f) => fs.readdirSync(path.join(SRC, 'features', f.name)).map((half) => `${f.name}/${half}`));
+
+    expect(features.map((f) => f.name).sort()).toEqual(['application', 'packs']);
+    expect(halves.filter((h) => !/\/(be|fe)$/.test(h)), "a feature holds be/ and fe/, as a pack's does").toEqual([]);
+  });
+
+  // `core/shared/debug/` held the log output three such words deep before it was taken out: a folder named for a
+  // layer rather than for what is in it takes whatever nobody placed, so the name is refused at any depth
+  it('names no folder for a layer', () => {
+    const LAYER_NAMES = ['core', 'shared', 'lib', 'libs', 'utils', 'util', 'common', 'helpers', 'misc'];
+    const named = fs.readdirSync(SRC, { recursive: true, withFileTypes: true })
+      .filter((e) => e.isDirectory() && LAYER_NAMES.includes(e.name))
+      .map((e) => path.relative(SRC, path.join(e.parentPath, e.name)));
+
+    expect(named, 'name a folder for what is in it, not for the layer it sits in').toEqual([]);
+  });
+
   it("keeps the frontend runtime free of Vue, tRPC, the renderer's modules and the browser's globals", () => {
-    const found = sourceFiles(path.join(SRC, 'fe')).flatMap((file) => {
+    const frontendDirs = [path.join(SRC, 'fe'), ...fs.readdirSync(path.join(SRC, 'features'), { withFileTypes: true })
+      .filter((e) => e.isDirectory())
+      .map((e) => path.join(SRC, 'features', e.name, 'fe'))
+      .filter((dir) => fs.existsSync(dir))];
+
+    const found = frontendDirs.flatMap(sourceFiles).flatMap((file) => {
       const imports = importsOf(file).map((i) => i.specifier).filter((s) => s === 'vue' || s.startsWith('@/') || s.startsWith('@trpc/'));
       const globals = [...fs.readFileSync(file, 'utf8').matchAll(/\b(?:window|document|localStorage)\./g)].map((m) => m[0]);
       return [...imports, ...globals].map((what) => `${path.relative(HOST_ROOT, file)}: ${what}`);

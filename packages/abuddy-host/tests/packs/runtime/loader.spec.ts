@@ -7,7 +7,7 @@ import { loadAppPacks, loadBuiltInPacks, loadExternalPacks, type LoadedPack } fr
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import { seedPackData, computePackSeedHash, type PackSeedTarget } from '../../../src/packs/runtime/seed.ts';
 import { appState } from '../../../src/app-state/index.ts';
-import { getLoadedPackEntries } from '../../../src/packs/pack-layout.ts';
+import { getLoadedPackEntries } from '../../../src/packs/layout.ts';
 import { resetTestData, testRootEvents as rootEvents } from '@abuddy/sdk/testing';
 import { PACK_SNAPSHOT_FORMAT, seedFile } from '@abuddy/sdk/build';
 
@@ -790,7 +790,7 @@ describe('computePackSeedHash', () => {
   // The claim the rest of this rests on: an install really does leave new files, so `abuddy install` gets a
   // re-seed without the CLI reaching into the app's database the way the in-app install once did
   it('changes after installing the same pack source over itself', async () => {
-    const { installPackFromLocal } = await import('../../../src/packs/pack-installer.ts');
+    const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
     const source = path.join(tmpDir, 'reinstall-source');
     fs.mkdirSync(path.join(source, 'dist', 'runtime', 'seeds'), { recursive: true });
     fs.writeFileSync(path.join(source, 'abuddy.json'), JSON.stringify({ id: 'reinstalled', name: 'R', version: '1.0.0' }));
