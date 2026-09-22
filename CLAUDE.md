@@ -34,6 +34,12 @@ edit — running it after every change costs minutes and finds nothing the narro
 | a public export of `@abuddy/ears`, `/sdk` or `/ui` | `npm run api:update`, and commit `etc/` — `typecheck` fails until you do |
 | anything, before you ask for a merge | the full chain, once |
 
+What that costs, measured on this machine (2026-09-22, M-series, warm): one spec file 1–3s, one
+package's `tsc --noEmit` 3s, a package's specs folder ~1s, `packages:ensure` 1s when nothing is stale.
+The chain is ~8 minutes: `compile` 16s, `typecheck` 53s, `test:unit` 108s, `api:check` 55s, `build` 60s,
+`test:external-pack` 41s, `npm test` (E2E) 27s, `test:packaged-authoring` 75s. So the narrow check is
+two to three orders of magnitude cheaper than the chain, and covers the edit.
+
 That last row is the whole gate: **CI does not run, on purpose.** `.github/workflows/ci.yml` has its `push`
 and `pull_request` triggers commented out while this is a single-contributor repo, so `gh run list` is empty
 and always will be. That is not a failure to report, and CI is not a check to cite — the local chain is the

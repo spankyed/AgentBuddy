@@ -3,22 +3,49 @@
 ```
 # Goal: the renderer renders — pack management is the host's, as it is on the backend
 
-Implement docs/goals/goal-frontend-host-boundary.md on a branch cut from the current
-AS/shell-owned-plugins head. Read Background, Decisions, Phases, Keeping the loop fast and
-Constraints first. Where a detail isn't specified, pick the conventional option, note it in the final
-summary, and keep going. No backward compatibility: move modules, update every in-repo caller, test
-and doc in the same change, and fix forward.
+Implement docs/goals/goal-frontend-host-boundary.md on AS/shell-owned-plugins, at or after 90f45841d —
+the base its Background was surveyed at.
+Before Phase 1, confirm the base: packages/renderer/src/packs/{state,pack-loader,pack-install,plugin}.ts
+and packages/abuddy-host/src/fe/shell/ exist at HEAD. If they don't, stop and say so — the plan was
+surveyed somewhere else.
+Read Background, Decisions, Phases, Keeping the loop fast and Constraints first. Decisions are final:
+implement them, don't reopen them or stop to ask.
+Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
+going. No backward compatibility in code: move modules, migrate every in-repo caller, test and doc in
+the same change, and fix forward.
 
 Finished when:
 - Phases 1–3 are implemented and each meets its "Done when"; every new guard or helper is
   mutation-checked.
-- packages/renderer/src/packs holds the Packs view's components and one composition module, and
-  nothing that decides anything about packs; the rest of renderer/src keeps Vue components, the
-  window's I/O and the composition that ties them together.
-- @abuddy/host/fe owns the packs machine, pack-frontend loading and the install request, and still
-  imports no Vue, no tRPC and no browser global (boundaries.spec.ts unchanged).
-- The full chain passes once, at the end: typecheck, test:unit, build, test, test:external-pack,
-  test:packaged-authoring, api:check, facade:check.
+- packages/renderer/src/packs holds the Vue components and one composition module, and nothing that
+  decides anything about packs.
+- @abuddy/host/fe owns the packs machine, pack-frontend loading and the install request, and imports no
+  Vue, no tRPC and no browser global: packages/abuddy-host/tests/boundaries.spec.ts is unchanged and
+  passes.
+- The check list passes once at the end: npm run typecheck, npm run test:unit, npm run build, npm test,
+  npm run test:external-pack, npm run test:packaged-authoring. api:check and facade:check only if a
+  published export moved (this goal moves host-internal code, so they shouldn't be needed).
+- A final summary: phase → done/deferred, evidence, and the conventional choices made.
+
+Commit as you go:
+- Commit each phase when its "Done when" holds and the checks are green — not once at the end.
+  Conventional message, no Co-Authored-By or session lines, `git commit -- <paths>` naming only that
+  phase's files.
+- Check `git diff --cached` first: something outside the session stages files, and a pathspec commit
+  leaves the rest of the index alone.
+- Don't push, tag, or open a PR unless the user asks.
+
+Never:
+- push, tag or open a PR unless the user asks in this session.
+- npm publish, create GitHub releases, or trigger workflows (dry runs only).
+- open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
+- pkill/killall Electron or node; launch the app outside the test env without an isolated
+  ABUDDY_USER_DATA_DIR.
+- run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release metadata.
+- change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
+- add backward-compat shims or loosen a failing assertion instead of investigating.
+- import Vue, tRPC or a browser global in @abuddy/host, or move the Packs view's .vue files (Decision 1).
+- run the full chain per edit: each phase's "Done when" names the narrow checks (Keeping the loop fast).
 ```
 
 # Goal: the renderer renders — pack management is the host's
