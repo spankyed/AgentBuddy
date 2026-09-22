@@ -8,7 +8,7 @@ There are two runners, both in this folder's `index.ts` (`packages/abuddy-host/s
 
 | Runner | Runs | Runs a migration when | Records |
 | --- | --- | --- | --- |
-| `runAppMigrations(registry)` | the host's own (`app/index.ts`), then the built-in packs' (`registry.getRegisteredMigrations(<built-in pack ids>)`, the ids from `registry.builtInPacks()`) | `stored app version < target <= app version` (`getAppVersion()`, the bound `HostRuntime`'s `appVersion`), with the exceptions below | `AppState.version` |
+| `runAppMigrations(registry)` | the host's own (`app/index.ts`), then the built-in packs' (each of `registry.builtInPacks()`'s registration's `migrations`, through `registry.getPackRegistration(id)`) | `stored app version < target <= app version` (`getAppVersion()`, the bound `HostRuntime`'s `appVersion`), with the exceptions below | `AppState.version` |
 | `runPackMigrations(externalPacks)` | each external pack's migrations (`LoadedPack.migrations`) | `stored pack version < target <= manifest version` | `AppState.packVersions[packId]` |
 
 Which app migrations run, besides `stored < target`:
@@ -20,7 +20,7 @@ Data with no recorded version runs the host's migrations (the 0.3.15 one moves t
 
 A migration that throws is logged (`[migration] FAILED ...`) and stops the rest: `runAppMigrations` records no version and returns `false`, and `startPacks()` then runs no external pack migration and no seed, since the versions and seed hashes they read may not be in place yet (the host's 0.3.15 moves them, and default-setup's 0.3.15 drops their old copy). The next boot retries from the failed migration. `runPackMigrations` stops a pack's migrations at a failure and doesn't record its version, so they run again the next time the pack starts. A pack that isn't loaded (disabled) keeps its recorded version.
 
-An external pack's registration still carries its migrations (the Packs view counts them), but `getRegisteredMigrations` returns only the packs it's asked for, and `runAppMigrations` asks for the built-in ones, so a migration never runs in both.
+An external pack's registration still carries its migrations (the Packs view counts them), but `runAppMigrations` reads only the built-in packs' registrations, so a migration never runs in both.
 
 Resetting app data runs both again: `services.appData.reset()` (`../services/app-data.ts`) runs the packs' shutdown hooks, empties the stores, then `startPacks()`. The reset emptied `AppState`, so the data counts as new: nothing is pending and the app version is recorded. Importing a backup runs them after reloading the data.
 
