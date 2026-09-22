@@ -25,7 +25,7 @@ const REGISTRY_MODULES = [
     'runtime/packs-view.ts',
   ].map((file) => path.join(SDK_SRC, file)),
   ...[
-    'packs/pack-registration.ts',
+    'packs/registry.ts',
     'packs/extensions.ts',
     'packs/backend-extensions.ts',
     'fe/pack-store.ts',

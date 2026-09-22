@@ -1,5 +1,4 @@
 export * from './machine.ts';
-export { createAppBus, startEarlySystems, type ApplicationConnectedEvent } from './app-bus.ts';
+export { createAppBus, startEarlySystems, type ApplicationConnectedEvent } from './app.ts';
 export { receiveClientEvent, UnknownClientEventError } from './client-events.ts';
-export { APPLICATION_SYSTEM_EVENTS, createApplicationSystem, pluginVisibility } from './application-system.ts';
-export { HOST } from '../host-refs.ts';
+export { HOST } from '../refs.ts';

@@ -3,7 +3,7 @@
 // the runtime registers packs in, bound for the SDK's lookups. Import it before the modules under test.
 import { startTestRuntime } from '@abuddy/sdk/testing';
 import { HOST_ENTITY_TYPES } from '../../../src/app-state/index.ts';
-import { createPackRegistry } from '../../../src/packs/pack-registration.ts';
+import { createPackRegistry } from '../../../src/packs/registry.ts';
 
 /** The app version packs' hostVersion ranges are checked against */
 export const TEST_APP_VERSION = '1.0.0';

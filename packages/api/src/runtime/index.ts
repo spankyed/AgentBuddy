@@ -5,15 +5,15 @@ import { _getLmdbPath, _getVolatileLmdbPath } from '@abuddy/sdk/utils';
 import type { EarsEngine } from '@abuddy/ears';
 import type { LmdbStore } from '@abuddy/ears/lmdb';
 import { assertNoDatabaseWriter, openDatabaseStore } from '@abuddy/host/database';
-import { createPackRegistry, discoverBuiltInPacks, hostRegistration, publishHostPackOutput, pruneHostPackOutputs, prepareHostDataDirs, type PackRegistry } from '@abuddy/host/packs';
+import { createPackRegistry, discoverBuiltInPacks, publishHostPackOutput, pruneHostPackOutputs, prepareHostDataDirs, type PackRegistry } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import * as path from 'path';
+import { loadAppPacks, startPacks } from '@abuddy/host/packs/runtime';
+// The app's own features: its registration, and the systems it runs for them
 import {
-  createPacksSystem, packsEvents,
-  loadAppPacks,
-  startPacks,
-} from '@abuddy/host/packs/runtime';
-import { APPLICATION_SYSTEM_EVENTS, createAppBus, HOST, createApplicationSystem, startEarlySystems } from '@abuddy/host/bus';
+  APPLICATION_SYSTEM_EVENTS, createApplicationSystem, createPacksSystem, hostRegistration, packsEvents,
+} from '@abuddy/host/features';
+import { createAppBus, HOST, startEarlySystems } from '@abuddy/host/bus';
 import { createHostRuntime } from '@abuddy/host/services';
 import { forwardSecretsChanges } from '@abuddy/host/secrets';
 import { assertSourceResolution } from '@abuddy/host/build/source-resolution';

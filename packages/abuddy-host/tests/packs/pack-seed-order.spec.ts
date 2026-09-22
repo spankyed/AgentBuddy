@@ -1,8 +1,8 @@
 // A pack's seeds may reference what a pack it depends on seeded, so it has to seed after it. Discovery
 // order is readdirSync's, which is alphabetical at best and says nothing about what depends on what.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { packSeedOrder } from '../../src/packs/pack-discovery.ts';
-import { createPackRegistry } from '../../src/packs/pack-registration.ts';
+import { packSeedOrder } from '../../src/packs/discovery.ts';
+import { createPackRegistry } from '../../src/packs/registry.ts';
 
 const pack = (id: string, ...deps: string[]) => ({
   id,

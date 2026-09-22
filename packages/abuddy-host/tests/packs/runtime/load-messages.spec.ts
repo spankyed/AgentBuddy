@@ -8,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { registry } from './test-host.ts';
 import { PACK_LOAD_MESSAGES, packRegistered } from '../../../src/packs/load-messages.ts';
 import { loadSingleExternalPack, registerExternalPacks } from '../../../src/packs/runtime/loader.ts';
-import { PACK_LAYOUT, PACK_LAYOUT_VERSION } from '../../../src/packs/pack-layout.ts';
+import { PACK_LAYOUT, PACK_LAYOUT_VERSION } from '../../../src/packs/layout.ts';
 import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 import { testRootEvents } from '@abuddy/sdk/testing';
 

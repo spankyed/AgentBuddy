@@ -7,7 +7,7 @@ import { services } from '@abuddy/sdk/services';
 import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
 import { stepRegistry, type StepDefinition } from '@abuddy/sdk/steps';
 import { getPackSettingsDefaults, type PackRegistration } from '@abuddy/sdk/framework';
-import { createPackRegistry } from '../../src/packs/pack-registration.ts';
+import { createPackRegistry } from '../../src/packs/registry.ts';
 
 /** A pack whose feature `featureId` plays `role`, with a system and a plugin with settings */
 const pack = (id: string, role: string, step: string, service: string, featureId: string): PackRegistration => ({

@@ -5,8 +5,8 @@ import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resolveAppContext } from '@abuddy/sdk/env';
-import { verifyPack } from '../../src/packs/pack-layout.ts';
-import { installPackFromLocal } from '../../src/packs/pack-installer.ts';
+import { verifyPack } from '../../src/packs/layout.ts';
+import { installPackFromLocal } from '../../src/packs/installer.ts';
 import {
   devServerMarkerPath,
   devServerUrl,

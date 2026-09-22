@@ -6,7 +6,7 @@ import { testRootEvents } from '@abuddy/sdk/testing';
 import type { LogEvent } from '@abuddy/sdk/logger';
 import '../packs/runtime/test-host.ts';
 import { receiveClientEvent, UnknownClientEventError } from '../../src/bus/client-events.ts';
-import { createPackRegistry } from '../../src/packs/pack-registration.ts';
+import { createPackRegistry } from '../../src/packs/registry.ts';
 
 const machine = setup({}).createMachine({});
 const registry = createPackRegistry();

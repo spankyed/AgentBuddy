@@ -2,7 +2,7 @@
 // logged and put on the root event bus the app bus listens to (the SDK's bound transport).
 import { _rootEvents } from '@abuddy/sdk/runtime';
 import { createLogger } from '@abuddy/sdk/logger';
-import type { PackRegistry } from '../packs/pack-registration.ts';
+import type { PackRegistry } from '../packs/registry.ts';
 import type { Message } from '@abuddy/sdk/events';
 
 const logger = createLogger('app-events');

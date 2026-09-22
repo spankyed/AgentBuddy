@@ -15,7 +15,7 @@ vi.mock('node:fs', async importOriginal => {
 });
 
 const fs = await import('node:fs');
-const { publishHostPackOutput } = await import('../../src/packs/pack-layout.ts');
+const { publishHostPackOutput } = await import('../../src/packs/layout.ts');
 
 let tmp: string;
 

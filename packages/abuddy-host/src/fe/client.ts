@@ -2,7 +2,7 @@
 // the shell reads. The renderer implements it over its API client; tests pass a fake.
 import type { Message } from '@abuddy/sdk/events';
 import type { FeClient } from '@abuddy/sdk/runtime';
-import type { LoadedPackEntry } from '../packs/pack-layout.ts';
+import type { LoadedPackEntry } from '../packs/layout.ts';
 
 /**
  * Why the backend failed: a message, or an error with its stack, which the error page shows as a message over the

@@ -4,7 +4,7 @@ import { secretRedaction } from '../secrets/redaction.ts';
 import type { HostRuntime, RootEvents } from '@abuddy/sdk/runtime';
 import type { EarsEngine } from '@abuddy/ears';
 import type { LmdbStore } from '@abuddy/ears/lmdb';
-import type { PackRegistry } from '../packs/pack-registration.ts';
+import type { PackRegistry } from '../packs/registry.ts';
 import { createAppData } from './app-data.ts';
 import { filesystem } from './filesystem.ts';
 import { inference } from './inference.ts';

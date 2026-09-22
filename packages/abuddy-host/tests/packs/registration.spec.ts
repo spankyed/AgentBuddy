@@ -7,7 +7,7 @@ import { SDK_ENTITIES } from '@abuddy/sdk/types';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
 import { startTestRuntime } from '@abuddy/sdk/testing';
-import { createPackRegistry } from '../../src/packs/pack-registration.ts';
+import { createPackRegistry } from '../../src/packs/registry.ts';
 
 const registry = createPackRegistry();
 startTestRuntime({ packs: registry });

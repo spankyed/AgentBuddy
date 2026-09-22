@@ -8,7 +8,7 @@ import { _getSecretsFilePath } from '@abuddy/sdk/utils';
 import type { SecretsSnapshot } from '@abuddy/sdk/services';
 import { createSecretsStore, type SecretsStore } from './store.ts';
 import { fileKeyVault, osKeyVault } from './vault.ts';
-import type { PackRegistry } from '../packs/pack-registration.ts';
+import type { PackRegistry } from '../packs/registry.ts';
 
 export { createSecretsStore } from './store.ts';
 export { fileKeyVault, memoryKeyVault, KeyVaultUnavailableError, type KeyVault } from './vault.ts';

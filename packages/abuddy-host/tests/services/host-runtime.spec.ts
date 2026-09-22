@@ -12,7 +12,7 @@ import { createHostRuntime } from '../../src/services/index.ts';
 import { inference } from '../../src/services/inference.ts';
 import { secrets } from '../../src/services/secrets.ts';
 import { filesystem } from '../../src/services/filesystem.ts';
-import { createPackRegistry } from '../../src/packs/pack-registration.ts';
+import { createPackRegistry } from '../../src/packs/registry.ts';
 import { secretsStore } from '../../src/secrets/index.ts';
 import { startPacks } from '../../src/packs/runtime/start.ts';
 

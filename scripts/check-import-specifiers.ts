@@ -451,8 +451,15 @@ const SKIPPED_DIRS = /^(?:node_modules|dist|out|coverage|\..+)$/;
 /** Files a config compiles or bundles. Declarations included: tsc resolves their imports too */
 const CODE_FILE = /\.(?:[cm]?[jt]sx?|vue)$/;
 /** The extensions a relative config import may leave out */
-/** The pack sources whose features keep their frontends to themselves */
-const PACK_SRC_ROOTS = ['packages/default-setup/src', 'tests/fixtures/external-pack/src', 'tests/fixtures/bundled-ui-pack/src'];
+/**
+ * The pack sources whose features keep their frontends to themselves. `@abuddy/host` is one of them: the app is the
+ * pack `host`, its features are laid out as a pack's (`features/<id>/{be,fe}`), so its frontends answer to the same
+ * rule — the shell and the Packs feature reach each other through `fe/public.ts`, as a pack's features do.
+ */
+const PACK_SRC_ROOTS = [
+  'packages/default-setup/src', 'packages/abuddy-host/src',
+  'tests/fixtures/external-pack/src', 'tests/fixtures/bundled-ui-pack/src',
+];
 
 /** `export … from '…'`: a module passing another's exports on */
 const EXPORT_FROM = /\bexport\s+(?:type\s+)?(?:\*(?:\s+as\s+\w+)?|\{[^}]*\})\s*from\s*['"][^'"]+['"]/g;

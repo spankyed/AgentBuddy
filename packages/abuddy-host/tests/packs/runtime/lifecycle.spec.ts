@@ -51,7 +51,7 @@ function writeManifest(dir: string, manifest: Record<string, unknown>) {
 
 describe('pack full lifecycle: install → discover', () => {
   it('update flow: reinstalling overwrites the previous version', async () => {
-    const { installPackFromLocal } = await import('../../../src/packs/pack-installer.ts');
+    const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
 
     const sourceDir = path.join(tmpDir, 'update-pack');
 
@@ -80,7 +80,7 @@ describe('pack full lifecycle: install → discover', () => {
   });
 
   it('hostVersion gating prevents loading incompatible packs', async () => {
-    const { installPackFromLocal } = await import('../../../src/packs/pack-installer.ts');
+    const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
 
     const sourceDir = path.join(tmpDir, 'future-pack');
     writeManifest(sourceDir, { id: 'future-pack', name: 'Future Pack', version: '1.0.0', hostVersion: '>=99.0.0' });
@@ -96,7 +96,7 @@ describe('pack full lifecycle: install → discover', () => {
   });
 
   it('multiple packs coexist and all get discovered', async () => {
-    const { installPackFromLocal } = await import('../../../src/packs/pack-installer.ts');
+    const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
 
     for (const id of ['pack-alpha', 'pack-beta', 'pack-gamma']) {
       const dir = path.join(tmpDir, id);
@@ -120,7 +120,7 @@ describe('activating and tearing down a pack at runtime', () => {
 
   /** Installs a pack with one system that declares a slash command in its manifest, a 1.0.0 migration and seeds */
   async function install() {
-    const { installPackFromLocal } = await import('../../../src/packs/pack-installer.ts');
+    const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
     const sourceDir = path.join(tmpDir, PACK_ID);
     writeManifest(sourceDir, {
       id: PACK_ID,
@@ -280,7 +280,7 @@ describe('registry source and update tracking', () => {
   }
 
   it('records where an install came from', async () => {
-    const { packRecord, recordInstalled } = await import('../../../src/packs/installed-packs.ts');
+    const { packRecord, recordInstalled } = await import('../../../src/packs/installed.ts');
 
     recordInstalled('github-pack', 'owner/repo');
 
@@ -289,7 +289,7 @@ describe('registry source and update tracking', () => {
   });
 
   it('records what an update check found, and forgets it once that update is installed', async () => {
-    const { packRecord, recordInstalled, recordUpdateCheck, recordUpdateInstalled } = await import('../../../src/packs/installed-packs.ts');
+    const { packRecord, recordInstalled, recordUpdateCheck, recordUpdateInstalled } = await import('../../../src/packs/installed.ts');
     recordInstalled('versioned-pack', 'owner/versioned');
 
     recordUpdateCheck('versioned-pack', { availableVersion: '2.0.0', availableTag: 'v2.0.0', updateCheckError: undefined });
@@ -301,8 +301,8 @@ describe('registry source and update tracking', () => {
   });
 
   it('getAvailableUpdates returns packs with newer versions', async () => {
-    const { recordInstalled, recordUpdateCheck } = await import('../../../src/packs/installed-packs.ts');
-    const { getAvailableUpdates } = await import('../../../src/packs/pack-updater.ts');
+    const { recordInstalled, recordUpdateCheck } = await import('../../../src/packs/installed.ts');
+    const { getAvailableUpdates } = await import('../../../src/packs/updater.ts');
     installed('has-update');
     installed('no-update');
 
