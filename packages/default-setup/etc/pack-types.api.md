@@ -4691,8 +4691,8 @@ declare const settingsQueries: {
     getStoredSettings: () => Partial<SettingsData>;
     getGeneralSettings: (label?: string) => any;
     getAssistantSettings: () => AssistantSettings;
-    /** A plugin's settings in effect, by its ref; actions pass it as a string, so a bare name throws */
-    getPluginSettings: (plugin: `${string}/${string}`) => any;
+    /** A plugin's settings in effect, by its ref, which is checked here as `updateSettings` checks it: a bare name throws */
+    getPluginSettings: (plugin: string) => any;
 };
 
 declare const specs: {
