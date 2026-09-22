@@ -1,6 +1,6 @@
 import { assign, setup, type ActorRefFrom } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
-import { trpc } from '@/core/trpc';
+import { sendToSystem } from '@abuddy/sdk/events';
 import type { PackInfo } from '@abuddy/host/packs';
 import { unloadPackFrontend } from './pack-loader';
 import { HOST } from '@abuddy/host/fe';
@@ -95,7 +95,7 @@ const packsState = setup({
 
     sendInstall: ({ event }) => {
       const ev = typeOf('UI.INSTALL', event);
-      trpc.bus.send.mutate({ to: HOST.packs, event: { type: 'INSTALL_PACK', packSlug: ev.packSlug, source: ev.source } });
+      sendToSystem(HOST.packs, { type: 'INSTALL_PACK', packSlug: ev.packSlug, source: ev.source });
     },
 
     promptUninstall: assign({
@@ -108,7 +108,7 @@ const packsState = setup({
 
     sendUninstall: ({ event }) => {
       const ev = typeOf('UI.UNINSTALL', event);
-      trpc.bus.send.mutate({ to: HOST.packs, event: { type: 'UNINSTALL_PACK', packId: ev.packId } });
+      sendToSystem(HOST.packs, { type: 'UNINSTALL_PACK', packId: ev.packId });
     },
 
     clearUninstallPrompt: assign({
@@ -117,7 +117,7 @@ const packsState = setup({
 
     sendToggleEnabled: ({ event }) => {
       const ev = typeOf('UI.TOGGLE_ENABLED', event);
-      trpc.bus.send.mutate({ to: HOST.packs, event: { type: 'TOGGLE_PACK_ENABLED', packId: ev.packId } });
+      sendToSystem(HOST.packs, { type: 'TOGGLE_PACK_ENABLED', packId: ev.packId });
     },
 
     selectPack: assign({
@@ -147,15 +147,15 @@ const packsState = setup({
 
     sendUpdate: ({ event }) => {
       const ev = typeOf('UI.UPDATE', event);
-      trpc.bus.send.mutate({ to: HOST.packs, event: { type: 'UPDATE_PACK', packId: ev.packId } });
+      sendToSystem(HOST.packs, { type: 'UPDATE_PACK', packId: ev.packId });
     },
 
     sendCheckUpdates: () => {
-      trpc.bus.send.mutate({ to: HOST.packs, event: { type: 'CHECK_FOR_UPDATES' } });
+      sendToSystem(HOST.packs, { type: 'CHECK_FOR_UPDATES' });
     },
 
     sendRefresh: () => {
-      trpc.bus.send.mutate({ to: HOST.packs, event: { type: 'GET_INSTALLED_PACKS' } });
+      sendToSystem(HOST.packs, { type: 'GET_INSTALLED_PACKS' });
     },
   },
 }).createMachine({

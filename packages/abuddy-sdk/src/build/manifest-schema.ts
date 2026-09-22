@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
-import { HOST_PACK_ID } from '../ids/system-ids.ts';
+import { HOST_PACK_ID } from '../ids/refs.ts';
 import { FEATURE_ID_PATTERN, PACK_ID_PATTERN } from '../ids/refs.ts';
 
 export { FEATURE_ID_PATTERN };

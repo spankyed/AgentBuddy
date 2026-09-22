@@ -52,13 +52,7 @@ export type HostSystemEvents = {
 };
 
 // @public
-export type IncomingEventsOf<T> = T extends {
-    _incoming: infer Incoming;
-} ? Incoming : T extends {
-    spec: {
-        _incoming: infer Incoming;
-    };
-} ? Incoming : never;
+export type IncomingEventsOf<T> = SpecEvents<T, '_incoming'>;
 
 // @public
 export interface Message {
@@ -78,20 +72,14 @@ export function onConnected(callback: () => void): () => void;
 export function onIncoming(callback: (message: Message) => void): () => void;
 
 // @public
-export type OutgoingEventsOf<T> = T extends {
-    _outgoing: infer Outgoing;
-} ? Outgoing : T extends {
-    spec: {
-        _outgoing: infer Outgoing;
-    };
-} ? Outgoing : never;
+export type OutgoingEventsOf<T> = SpecEvents<T, '_outgoing'>;
 
 // @public
 export const PLUGIN_EVENT_TYPES: readonly ["FEATURE_SETTINGS_UPDATED"];
 
 // @public
 export type PluginEvents = {
-    [pluginId: string]: {
+    [plugin: string]: {
         type: string;
     };
 };
@@ -124,7 +112,7 @@ export function specEvents<S extends {
 
 // @public
 export type SystemEventMap = {
-    [systemId: string]: {
+    [system: string]: {
         type: string;
     };
 };
@@ -143,10 +131,10 @@ export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
 }
 
 // @public
-export type TypedSendToPlugin<M extends PluginEvents> = (<P extends keyof M & string>(pluginId: P, event: OneSend<IsUnion<P>, M[P]['type'], M[P]>) => void) & ((plugin: FeatureRef, event: FeatureSettingsUpdated) => void);
+export type TypedSendToPlugin<M extends PluginEvents> = (<P extends keyof M & string>(plugin: P, event: OneSend<IsUnion<P>, M[P]['type'], M[P]>) => void) & ((plugin: FeatureRef, event: FeatureSettingsUpdated) => void);
 
 // @public
-export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S & string, Type extends S[Id]['type']>(systemId: Id, event: OneSend<IsUnion<Id> | IsUnion<Type>, Type, {
+export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S & string, Type extends S[Id]['type']>(system: Id, event: OneSend<IsUnion<Id> | IsUnion<Type>, Type, {
     type: Type;
 } & WithoutType<EventsOfType<S[Id], Type>>>) => void) & ((target: {
     role: string;

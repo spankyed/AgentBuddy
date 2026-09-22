@@ -8,7 +8,7 @@ import * as path from 'node:path';
 import { registry } from './test-host.ts';
 
 const { publishHostPackOutput } = await import('../../../src/packs/index.ts');
-const { registerPack, unregisterPack, getPackRegistration, getPackBootHooks, registerShutdownHook, removeShutdownHooksForKey } = registry;
+const { registerPack, unregisterPack, getPackRegistration, registerShutdownHook, removeShutdownHooksForKey } = registry;
 const { reloadExternalPack, reloadBuiltInPack } = await import('../../../src/packs/runtime/reload.ts');
 const { loadBuiltInPacks } = await import('../../../src/packs/runtime/loader.ts');
 const { orchestrateDeclarativeSeed } = await import('../../../src/packs/runtime/seed.ts');
@@ -183,7 +183,7 @@ describe('reloading a built-in pack', () => {
     const packagesDir = writeBuiltIn();
     await loadBuiltInPacks(registry, packagesDir, { runtimeEntry: 'only' });
     // Boot's own seeding, which the reload picks up from
-    const { seedManifest } = getPackBootHooks(BUILT_IN_ID)!;
+    const { seedManifest } = getPackRegistration(BUILT_IN_ID)!.boot!;
     orchestrateDeclarativeSeed(seedManifest!, BUILT_IN_ID);
     expect(seeded).toEqual([path.join(packagesDir, BUILT_IN_ID, 'dist')]);
 
@@ -201,7 +201,7 @@ describe('reloading a built-in pack', () => {
   it("records what it seeded per pack, so a second built-in pack's boot seed doesn't re-run this one", async () => {
     const packagesDir = writeBuiltIn();
     await loadBuiltInPacks(registry, packagesDir, { runtimeEntry: 'only' });
-    const { seedManifest } = getPackBootHooks(BUILT_IN_ID)!;
+    const { seedManifest } = getPackRegistration(BUILT_IN_ID)!.boot!;
 
     orchestrateDeclarativeSeed(seedManifest!, BUILT_IN_ID);
     expect(seeded).toEqual([path.join(packagesDir, BUILT_IN_ID, 'dist')]);
@@ -220,7 +220,7 @@ describe('reloading a built-in pack', () => {
   it('reports the records a seeder could not seed, and still records the hash so they are retried on the next change', async () => {
     const packagesDir = writeBuiltIn();
     await loadBuiltInPacks(registry, packagesDir, { runtimeEntry: 'only' });
-    const { seedManifest } = getPackBootHooks(BUILT_IN_ID)!;
+    const { seedManifest } = getPackRegistration(BUILT_IN_ID)!.boot!;
 
     recordsThatFail = ['Flow "Broken": step 2 names no action'];
     orchestrateDeclarativeSeed(seedManifest!, BUILT_IN_ID);

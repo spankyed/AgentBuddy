@@ -151,7 +151,7 @@ export async function reloadBuiltInPack(
         refreshBuiltInPackInfo(registry, packId);
         // A rebuild can carry new compiled seeds; the boot seed is hash-checked, so unchanged data isn't re-imported.
         // A rebuild running again mid-reload can take those files out from under it, so it doesn't stop the rest.
-        const seedManifest = registry.getPackBootHooks(packId)?.seedManifest;
+        const seedManifest = registry.getPackRegistration(packId)?.boot?.seedManifest;
         try {
           if (seedManifest) orchestrateDeclarativeSeed(seedManifest, packId);
         } catch (err) {

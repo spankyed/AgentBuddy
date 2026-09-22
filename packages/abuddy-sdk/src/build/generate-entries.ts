@@ -515,9 +515,7 @@ export function generatePackFiles(
 
   function generateBackendEntry(): string {
     const features = manifest.features ?? [];
-    // The settings system starts first: the others read the settings as they start
-    const orderedFeatures = [...features.filter(f => f.designation === 'settings'), ...features.filter(f => f.designation !== 'settings')];
-    const systemFeatures = orderedFeatures.filter(f => f.system);
+    const systemFeatures = features.filter(f => f.system);
     // Every system's events are read, a system without a plugin's too: an entry that lost them (annotated
     // `: SystemEntry`) would give the facade types nothing but `{ type: string }`
     for (const feature of systemFeatures) sentEventTypes(feature);
@@ -534,7 +532,7 @@ export function generatePackFiles(
       return `packSystem(${systemBinding(f.id)}${options.length ? `, { ${options.join(', ')} }` : ''})`;
     };
 
-    const featuresLiteral = orderedFeatures.map(f => {
+    const featuresLiteral = features.map(f => {
       const parts: string[] = [];
       if (f.designation) parts.push(`      designation: '${f.designation}'`);
       if (f.system) parts.push(`      system: ${systemExpr(f)}`);

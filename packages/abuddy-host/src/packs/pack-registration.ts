@@ -90,7 +90,7 @@ export interface PackExtensions {
   features: PackFeatureInfo[];
 }
 
-export interface PackInfo {
+export interface PackInfo extends PackExtensions {
   id: string;
   name: string;
   version: string;
@@ -104,14 +104,6 @@ export interface PackInfo {
   entities: Record<string, string>;
   relKinds: Record<string, string>;
   permissions: string[];
-  systems: string[];
-  services: string[];
-  steps: string[];
-  artifacts: string[];
-  blocks: string[];
-  migrationCount: number;
-  bootHooks: string[];
-  features: PackFeatureInfo[];
   dir?: string;
   installedAt?: string;
   installedFrom?: string;
@@ -179,7 +171,6 @@ export interface PackRegistry extends PackRegistryView {
   getPluginEventValidationMap(): Map<string, PluginEventTypes>;
   /** The SDK's entity types, the host's and the registered packs' */
   getRegisteredEntityTypes(): ReadonlySet<string>;
-  getRegisteredEARSPolicy(): { excludedEntityTypes: string[] };
   /**
    * The app's partition policy, from the registered packs' EARS policies: an entity type any of them
    * excludes lives in the volatile partition. It's one object for the registry's lifetime, which the LMDB store
@@ -187,14 +178,7 @@ export interface PackRegistry extends PackRegistryView {
    * registers or unregisters).
    */
   readonly partitionPolicy: PartitionPolicy;
-  /**
-   * The migrations of the named registered packs. The host runner asks for the built-in packs',
-   * checked against the app version; an external pack's migrations are checked against its own
-   * pack version by `runPackMigrations`, so asking for every registered pack would run them twice.
-   */
-  getRegisteredMigrations(packIds: Iterable<string>): PackMigration[];
   getBootHooks(): PackBootHooks[];
-  getPackBootHooks(packId: string): PackBootHooks | null;
   /** A registered pack's registration, as it was registered */
   getPackRegistration(packId: string): PackRegistration | null;
   /** Where a registered pack came from, or `null` for one registered without an origin (a test's) */
@@ -254,20 +238,22 @@ export function createPackRegistry(): PackRegistry {
   const commands = createCommandStore();
   const shutdownHooks = createShutdownHooks();
 
-  let entityTypeCache: Set<string> | null = null;
-  let servicesCache: Record<string, unknown> | null = null;
-  let eventValidationMap: Map<string, Set<string>> | null = null;
-  let pluginEventValidationMap: Map<string, PluginEventTypes> | null = null;
-  let policyCache: PartitionPolicy | null = null;
-
-  /** Drops what's derived from the registrations */
+  /** Bumped by every write, so whatever is derived from the registrations is rebuilt on its next read */
+  let revision = 0;
   function changed(): void {
-    orderedExternalPacksCache = null;
-    entityTypeCache = null;
-    servicesCache = null;
-    eventValidationMap = null;
-    pluginEventValidationMap = null;
-    policyCache = null;
+    revision++;
+  }
+  /** `build`'s result, rebuilt only when the registrations changed since it last ran */
+  function derived<T>(build: () => T): () => T {
+    let builtAt = -1;
+    let value: T;
+    return () => {
+      if (builtAt !== revision) {
+        value = build();
+        builtAt = revision;
+      }
+      return value;
+    };
   }
 
   /**
@@ -299,15 +285,14 @@ export function createPackRegistry(): PackRegistry {
    * reports a dependency cycle: computing it per call had activating or reloading any pack re-logging a
    * cycle between two others.
    */
-  let orderedExternalPacksCache: PackOrigin[] | null = null;
-  const orderedExternalPacks = (): PackOrigin[] =>
-    orderedExternalPacksCache ??= packSeedOrder(
+  const orderedExternalPacks = derived((): PackOrigin[] =>
+    packSeedOrder(
       [...origins.values()]
         .filter((o) => !o.builtIn && o.manifest)
         // The dependencies are the manifest's, not the origin's own: spreading the origin would leave every
         // pack looking dependency-free, and `dependencies` being optional means nothing would say so
         .map((o) => ({ id: o.id, dependencies: o.manifest!.dependencies, origin: o })),
-    ).map(({ origin }) => origin);
+    ).map(({ origin }) => origin));
 
   /** Each pack's undos, as its registration produced them */
   const packUndos = new Map<string, UndoLog>();
@@ -382,16 +367,10 @@ export function createPackRegistry(): PackRegistry {
     if (repository) throw new Error(`Repository collision: "${repository.key}" — pack "${registration.id}" vs "${repository.holder}"`);
 
     /**
-     * The pack is listed before its extensions are registered, because registering them is
-     * observable: `settingsDefaults.register` notifies its listeners, the settings system reacts by
-     * sending `SETTINGS_UPDATED` to its plugin, and a send reaches the bus while it is idle, so the
-     * bus processes it synchronously — inside this call. Listed after them, that send is checked
-     * against a registry that does not yet contain the pack sending it, and is dropped as belonging
-     * to no plugin. Reporting that drop logs, and a log event is itself a send to the logs plugin,
-     * so the same moment drops that too.
-     *
-     * It reads as a reload bug because reload is where it shows: the listeners are already subscribed
-     * by then. It is not — it is any registration whose extensions wake a running system.
+     * Listed before its extensions are registered, because registering them is observable: a running system
+     * that reacts (the settings system, to new feature settings) sends inside this call, and the bus checks
+     * that send against the registry synchronously. Listed after, the send would belong to no registered
+     * pack and be dropped.
      */
     registrations.set(registration.id, registration);
     if (origin) origins.set(registration.id, origin);
@@ -468,8 +447,15 @@ export function createPackRegistry(): PackRegistry {
     return { excludedEntityTypes: excluded };
   }
 
-  const policy = (): PartitionPolicy =>
-    policyCache ??= appPartitionPolicy(getRegisteredEARSPolicy().excludedEntityTypes);
+  const policy = derived((): PartitionPolicy => appPartitionPolicy(getRegisteredEARSPolicy().excludedEntityTypes));
+  const eventValidationMap = derived(buildEventValidationMap);
+  const pluginEventValidationMap = derived(buildPluginEventValidationMap);
+  const entityTypes = derived((): ReadonlySet<string> => new Set<string>([
+    ...RESERVED_ENTITIES,
+    ...[...registrations.values()].flatMap((reg) => Object.values(reg.ears?.entities ?? {})),
+  ]));
+  const services = derived((): Record<string, unknown> =>
+    Object.assign({}, ...[...registrations.values()].map((reg) => reg.services ?? {})));
 
   return {
     registerPack,
@@ -512,11 +498,11 @@ export function createPackRegistry(): PackRegistry {
     },
 
     // Both maps are keyed by the registered features' refs, the host's included
-    systemIds: () => [...(eventValidationMap ??= buildEventValidationMap()).keys()] as FeatureRef[],
-    pluginIds: () => [...(pluginEventValidationMap ??= buildPluginEventValidationMap()).keys()] as FeatureRef[],
+    systemIds: () => [...eventValidationMap().keys()] as FeatureRef[],
+    pluginIds: () => [...pluginEventValidationMap().keys()] as FeatureRef[],
 
-    getEventValidationMap: () => eventValidationMap ??= buildEventValidationMap(),
-    getPluginEventValidationMap: () => pluginEventValidationMap ??= buildPluginEventValidationMap(),
+    getEventValidationMap: eventValidationMap,
+    getPluginEventValidationMap: pluginEventValidationMap,
 
     earsNames() {
       const { entities, relKinds } = appEARS();
@@ -528,27 +514,8 @@ export function createPackRegistry(): PackRegistry {
       return names;
     },
 
-    getRegisteredEntityTypes() {
-      if (!entityTypeCache) {
-        entityTypeCache = new Set<string>(RESERVED_ENTITIES);
-        for (const reg of registrations.values()) {
-          for (const val of Object.values(reg.ears?.entities ?? {})) entityTypeCache.add(val);
-        }
-      }
-      return entityTypeCache;
-    },
-
-    getRegisteredServices() {
-      if (!servicesCache) {
-        servicesCache = {};
-        for (const reg of registrations.values()) {
-          if (reg.services) Object.assign(servicesCache, reg.services);
-        }
-      }
-      return servicesCache;
-    },
-
-    getRegisteredEARSPolicy,
+    getRegisteredEntityTypes: entityTypes,
+    getRegisteredServices: services,
 
     partitionPolicy: {
       routeEntity: (...args) => policy().routeEntity(...args),
@@ -556,17 +523,7 @@ export function createPackRegistry(): PackRegistry {
       get hydrate() { return policy().hydrate; },
     },
 
-    getRegisteredMigrations(packIds) {
-      const migrations: PackMigration[] = [];
-      for (const id of packIds) {
-        const reg = registrations.get(id);
-        if (reg?.migrations) migrations.push(...reg.migrations);
-      }
-      return migrations;
-    },
-
     getBootHooks: () => [...registrations.values()].flatMap((reg) => (reg.boot ? [reg.boot] : [])),
-    getPackBootHooks: (packId) => registrations.get(packId)?.boot ?? null,
     getPackRegistration: (packId) => registrations.get(packId) ?? null,
 
     runRegisteredBootSeeds(orchestrateSeed) {

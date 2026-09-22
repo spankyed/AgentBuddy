@@ -21,6 +21,9 @@ vi.mock('@/core/trpc', () => ({
 }));
 
 const { createApplicationState, visiblePluginsOf, withHostLast } = await import('@/core/actors/application');
+const { bindFeHost } = await import('@abuddy/sdk/runtime');
+// What the shell sends the host goes through the SDK's sendToSystem, over this window's transport
+bindFeHost({ application: {} as never, secrets: {} as never, packs: {} as never, transport: { sendIncoming: mutate } });
 
 function plugin(id: string): Plugin {
   return { id, label: id, icon: 'Zap', state: setup({}).createMachine({}), canvas: {} } as unknown as Plugin;

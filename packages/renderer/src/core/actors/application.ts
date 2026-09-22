@@ -1,7 +1,7 @@
 import { assign, setup, enqueueActions, fromCallback, spawnChild, sendTo, type ActorRefFrom } from 'xstate';
 import type { Plugin } from '@/core/types';
 import type { HotkeyEvent, ContextMenuItem } from '@abuddy/sdk/fe';
-import type { HostPluginEvents, Message } from '@abuddy/sdk/events';
+import { sendToSystem, type HostPluginEvents, type Message } from '@abuddy/sdk/events';
 import { processHotkeys, safeEvents } from '@abuddy/sdk/fe';
 import type { ApplicationHotkeys } from '@abuddy/sdk/types';
 import { trpc, reconnectApiClient } from '@/core/trpc';
@@ -647,8 +647,7 @@ export const createApplicationState = () => setup({
       const pluginVisibility = { ...context.pluginVisibility, [plugin]: visible };
       enqueue.assign({ pluginVisibility });
       enqueue(() => {
-        trpc.bus.send.mutate({ to: HOST.application, event: { type: 'SET_PLUGIN_VISIBILITY', plugin, visible } })
-          .catch((error) => console.error('[application] Could not record the plugin visibility:', error));
+        sendToSystem(HOST.application, { type: 'SET_PLUGIN_VISIBILITY', plugin, visible });
       });
     }),
 
@@ -780,8 +779,7 @@ export const createApplicationState = () => setup({
       if (context.ownsLastActivePlugin && context.activePlugin.id !== newPlugin.id) {
         enqueue(() => {
           // The host records it, so the next window, and the next run, opens on it
-          trpc.bus.send.mutate({ to: HOST.application, event: { type: 'SET_LAST_ACTIVE_PLUGIN', plugin: newPlugin.id } })
-            .catch((error) => console.error('[application] Could not record the last active plugin:', error));
+          sendToSystem(HOST.application, { type: 'SET_LAST_ACTIVE_PLUGIN', plugin: newPlugin.id });
         });
       }
     }),

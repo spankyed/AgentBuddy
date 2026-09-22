@@ -62,8 +62,8 @@ export function runAppMigrations(registry: PackRegistry): boolean {
   if (!runPending(appMigrations(registry), recorded ?? '0.0.0', cap, ':app')) return false;
 
   const current = appState.get().version ?? appVersion;
-  const builtInPackIds = registry.builtInPacks().map(pack => pack.id);
-  if (!runPending(registry.getRegisteredMigrations(builtInPackIds), current, cap, '')) return false;
+  const builtInMigrations = registry.builtInPacks().flatMap((pack) => registry.getPackRegistration(pack.id)?.migrations ?? []);
+  if (!runPending(builtInMigrations, current, cap, '')) return false;
 
   if (appState.get().version !== appVersion) appState.update({ version: appVersion });
   return true;

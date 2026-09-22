@@ -27,8 +27,10 @@ async function load(file: string, source: string) {
 
 describe('loadPackFEEntry', () => {
   it('warns when the entry has no default export and so registers nothing', async () => {
-    const { warnings } = await load('fe.mjs', 'export const plugins = [];');
+    const { registration, warnings } = await load('fe.mjs', 'export const plugins = [];');
     expect(warnings).toEqual([expect.stringMatching(/registers nothing[\s\S]*no default export/)]);
+    // Loaded with nothing, rather than its module namespace registered as a pack with no id
+    expect(registration).toBeNull();
   });
 
   it('warns when the default export declares no registration fields', async () => {

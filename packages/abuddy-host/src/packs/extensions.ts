@@ -9,9 +9,8 @@ import { _mergeStepDefinitions, type StepDefinition } from '@abuddy/sdk/steps';
  * Each contribution is kept with the pack that made it, so removing a pack re-folds what is left rather
  * than dropping the key. Two packs may hold one key between them — a step's build and frontend facets
  * routinely arrive from different packs, and an app-extension slot or a DSL type name is simply taken by
- * whoever registered last — so dropping the key when one of them unregisters takes the other's
- * contribution with it, until the app restarts. Reload is where that shows, being a teardown and a
- * registration.
+ * whoever registered last — so dropping the key when one of them unregisters would take the other's
+ * contribution with it.
  *
  * `fold` defaults to last-wins. Pass one that combines when a key is meant to be shared.
  */

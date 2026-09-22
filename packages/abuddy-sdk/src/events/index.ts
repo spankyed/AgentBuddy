@@ -20,8 +20,8 @@ export interface Message {
   event: { type: string; [key: string]: unknown };
 }
 
-/** Plugin id → the events that plugin receives. Each pack's `#generated/events` defines its `SendablePluginEvents`. */
-export type PluginEvents = { [pluginId: string]: { type: string } };
+/** A plugin's name → the events that plugin receives. Each pack's `#generated/events` defines its `SendablePluginEvents`. */
+export type PluginEvents = { [plugin: string]: { type: string } };
 
 /**
  * What every plugin receives when its feature's settings change, so no pack declares it: the settings as they now
@@ -43,8 +43,8 @@ export type WithOwnNames<PackId extends string, M> = {
   [K in keyof M & string as K extends `${PackId}/${infer FeatureId}` ? FeatureId : K]: M[K]
 };
 
-/** System id → the events that system receives. Each pack's `#generated/events` defines its `PackSystemEvents`. */
-export type SystemEventMap = { [systemId: string]: { type: string } };
+/** A system's name → the events that system receives. Each pack's `#generated/events` defines its `PackSystemEvents`. */
+export type SystemEventMap = { [system: string]: { type: string } };
 
 /** Whether `T` is a union of several types */
 type IsUnion<T, U = T> = T extends unknown ? ([U] extends [T] ? false : true) : false;
@@ -58,22 +58,21 @@ type EventsOfType<E, Type> = E extends { type: infer T } ? (Type extends T ? E :
 /** Each member of `E` without `type`, keeping named fields beside an index signature (which `Omit` drops) */
 type WithoutType<E> = E extends unknown ? { [K in keyof E as K extends 'type' ? never : K]: E[K] } : never;
 
+/** The events under `Key` of a system's spec (`defineSystem`), or of its entry's spec (`satisfies SystemEntry`) */
+type SpecEvents<T, Key extends '_incoming' | '_outgoing'> = T extends { [K in Key]: infer Events }
+  ? Events
+  : T extends { spec: { [K in Key]: infer Events } }
+    ? Events
+    : never;
+
 /**
  * The events a system receives, from its spec (`defineSystem`) or its entry (a system module's default
  * export, declared with `satisfies SystemEntry` so the spec keeps its events).
  */
-export type IncomingEventsOf<T> = T extends { _incoming: infer Incoming }
-  ? Incoming
-  : T extends { spec: { _incoming: infer Incoming } }
-    ? Incoming
-    : never;
+export type IncomingEventsOf<T> = SpecEvents<T, '_incoming'>;
 
-/** The events a system sends to plugins, from its spec or its entry, as `IncomingEventsOf` reads the ones it receives */
-export type OutgoingEventsOf<T> = T extends { _outgoing: infer Outgoing }
-  ? Outgoing
-  : T extends { spec: { _outgoing: infer Outgoing } }
-    ? Outgoing
-    : never;
+/** The events a system sends to plugins, from its spec or its entry */
+export type OutgoingEventsOf<T> = SpecEvents<T, '_outgoing'>;
 
 /**
  * A system spec reduced to the events the system receives and sends. Generated code declares each system's spec
@@ -154,7 +153,7 @@ export function onIncoming(callback: (message: Message) => void): () => void {
 
 /** `sendToPlugin` typed against a plugin event map; any feature's plugin, by its ref, takes what every plugin does */
 export type TypedSendToPlugin<M extends PluginEvents> = (<P extends keyof M & string>(
-  pluginId: P,
+  plugin: P,
   event: OneSend<IsUnion<P>, M[P]['type'], M[P]>,
 ) => void) & ((plugin: FeatureRef, event: FeatureSettingsUpdated) => void);
 
@@ -164,7 +163,7 @@ export type TypedSendToPlugin<M extends PluginEvents> = (<P extends keyof M & st
  * feature's system, named by its ref, takes the events every system does (`SystemEvents`).
  */
 export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S & string, Type extends S[Id]['type']>(
-  systemId: Id,
+  system: Id,
   event: OneSend<IsUnion<Id> | IsUnion<Type>, Type, { type: Type } & WithoutType<EventsOfType<S[Id], Type>>>,
 ) => void) & ((target: { role: string }, event: { type: string; [key: string]: unknown }) => void) & ((system: FeatureRef, event: SystemEvents) => void);
 

@@ -28,9 +28,13 @@ interface LegacyInternal {
   seedStatFingerprints?: Record<string, string>;
 }
 
+/** The settings row's data as stored, read untyped: it's in the shape from before 0.3.15 */
+function storedSettings(): { internal?: LegacyInternal; plugins?: Record<string, unknown> } | undefined {
+  return (untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: ReturnType<typeof storedSettings> } | undefined)?.data;
+}
+
 function legacyInternal(): LegacyInternal | undefined {
-  const row = untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: { internal?: LegacyInternal } } | undefined;
-  return row?.data?.internal;
+  return storedSettings()?.internal;
 }
 
 /** The built-in packs with a boot seed: the ones the single seed hash stood for */
@@ -163,7 +167,7 @@ export function addressPluginKeys<T extends Record<string, unknown>>(record: T, 
  * dropped. What AppState already records wins.
  */
 function moveShellState(owners: PluginOwners): void {
-  const data = (untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: { plugins?: Record<string, unknown> } } | undefined)?.data;
+  const data = storedSettings();
   const meta = data?.plugins?._meta as LegacyShellState | undefined;
   if (!data?.plugins || meta === undefined) return;
 
@@ -182,7 +186,7 @@ function moveShellState(owners: PluginOwners): void {
 
 /** Every pack's plugin settings, stored under their features' bare ids before 0.3.15, onto their refs */
 function movePluginSettings(owners: PluginOwners): void {
-  const data = (untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: { plugins?: Record<string, unknown> } } | undefined)?.data;
+  const data = storedSettings();
   if (!data?.plugins) return;
   const { record: plugins, moved } = addressPluginKeys(data.plugins, owners);
   if (moved > 0) tx(SETTINGS_ID).put('data', { ...data, plugins });

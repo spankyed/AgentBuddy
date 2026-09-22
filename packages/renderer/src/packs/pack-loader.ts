@@ -44,21 +44,17 @@ export async function loadPackFEEntry(
     console.error(`[pack-loader] Failed to load FE entry ${url}:`, err);
     throw err;
   }
-  const registration = mod.default || mod;
+  const registration = mod.default;
   if (!registration || typeof registration !== 'object') {
-    console.warn(`[pack-loader] FE entry at ${entry} did not export a valid registration`);
+    console.warn(`[pack-loader] FE entry ${url} registers nothing: ${registration === undefined
+      ? 'it has no default export — export the registration as default'
+      : 'its default export is not a registration'}.`);
     return null;
   }
-  // A module without a default export falls back to its namespace object, which registers
-  // nothing; say so instead of loading a pack whose plugins silently never appear. A default
-  // export that declares registration fields, even empty ones, is deliberate: the generated
-  // entry of a pack without FE extensions is { features: {} }.
-  const declaresRegistration = REGISTRATION_KEYS.some(key => key in registration);
-  if (!mod.default || !declaresRegistration) {
-    console.warn(
-      `[pack-loader] FE entry ${url} registers nothing (no ${REGISTRATION_KEYS.join('/')}). ` +
-      (mod.default ? 'Its default export declares none of them.' : 'It has no default export — export the registration as default.'),
-    );
+  // A default export declaring registration fields, even empty ones, is deliberate: the generated entry of a pack
+  // without FE extensions is { features: {} }
+  if (!REGISTRATION_KEYS.some((key) => key in registration)) {
+    console.warn(`[pack-loader] FE entry ${url} registers nothing (no ${REGISTRATION_KEYS.join('/')}): its default export declares none of them.`);
   }
   return registration as PackFERegistration;
 }

@@ -12,7 +12,7 @@ import { createPackRegistry } from '../../src/packs/pack-registration.ts';
 const registry = createPackRegistry();
 startTestRuntime({ packs: registry });
 const {
-  getPackExtensions, getRegisteredEARSPolicy, getRegisteredEntityTypes, getRegisteredServices,
+  getPackExtensions, partitionPolicy, getRegisteredEntityTypes, getRegisteredServices,
   registerPack, systemIds, pluginIds, runRegisteredBootSeeds, unregisterPack,
 } = registry;
 
@@ -182,7 +182,8 @@ describe('registerPack entities', () => {
   });
 
   it('keeps TNode out of persistence without any pack asking', () => {
-    expect(getRegisteredEARSPolicy()).toEqual({ excludedEntityTypes: ['TNode'] });
+    expect(partitionPolicy.routeEntity('TNode-1', 'TNode')).toBe('volatileBackup');
+    expect(partitionPolicy.routeEntity('Note-1', 'Note')).toBe('primary');
   });
 });
 

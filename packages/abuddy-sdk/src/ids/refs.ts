@@ -10,6 +10,9 @@
  */
 declare const featureRef: unique symbol;
 
+/** The app itself is the pack `host`: its features are spelled like any pack's, and no pack may take its id */
+export const HOST_PACK_ID = 'host';
+
 /** A pack's id: a lowercase letter, then lowercase letters, digits and hyphens */
 export const PACK_ID_PATTERN = /^[a-z][a-z0-9-]*$/;
 
