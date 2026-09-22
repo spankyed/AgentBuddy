@@ -1080,9 +1080,10 @@ describe('generated flow helpers', () => {
 
 /**
  * What `PACK_SNAPSHOT_FORMAT` covers: the snapshot's fields, the provenance kinds, and the facade exports
- * a dependent's generated code imports. When this fails, the snapshot's contract changed. Bump the format
- * if a CLI on the other side would misread the change (anything removed, renamed or reshaped), then update
- * the expectation. A pure addition every reader ignores needs only the expectation.
+ * a dependent's generated code imports. When this fails, the snapshot's contract changed. If a CLI on the
+ * other side would misread the change (anything removed, renamed or reshaped) and the last release shipped
+ * this format number, bump it; then update the expectation. A pure addition every reader ignores needs only
+ * the expectation.
  */
 describe('the snapshot format', () => {
   // Typed against PackSnapshot, so adding or removing a field fails the typecheck until it is listed
@@ -1105,7 +1106,7 @@ describe('the snapshot format', () => {
       provenanceKinds: Object.keys(PROVENANCE_KINDS).sort(),
       facadeImports: facadeImports(),
     }).toEqual({
-      format: 2,
+      format: 1,
       fields: ['defs', 'flowHelpers', 'format', 'manifest', 'provenance', 'sdkVersion', 'types'],
       provenanceKinds: ['commands', 'entities', 'plugins', 'relKinds'],
       facadeImports: ['PackEntityShapes', 'PackStepNodes', 'PackSystemEvents', 'Repositories', 'SendablePluginEvents', 'Services'],

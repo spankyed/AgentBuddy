@@ -36,10 +36,12 @@ export type PackPluginEntry = NonNullable<PackFeatureEntry['plugin']>;
  * a reshaped field is read as absent, a renamed facade export surfaces as TS2305 inside generated code.
  *
  * Bump it with any change a CLI on the other side would misread: a field, facade export or provenance
- * kind removed, renamed or reshaped, or keys that now mean something else. `snapshot-format.spec.ts`
- * lists what it covers, and fails when that list changes so the change is decided rather than missed.
+ * kind removed, renamed or reshaped, or keys that now mean something else. Bump it once per release that
+ * changes the contract, not per change: only a released CLI's snapshots can meet another version's, so
+ * changes made since the last release share its next number. The codegen spec's "the snapshot format"
+ * case lists what it covers, and fails when that list changes so the change is decided rather than missed.
  */
-export const PACK_SNAPSHOT_FORMAT = 2;
+export const PACK_SNAPSHOT_FORMAT = 1;
 
 export interface PackTypeManifest {
   entities: Record<string, string>;
