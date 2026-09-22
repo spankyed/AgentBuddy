@@ -57,7 +57,7 @@ The shell's machine is the host's: `createShellMachine` in `@abuddy/host/fe` (`p
 | `notify` | `globalToast` (`src/core/toast.ts`, which queues until `WebApp` registers the toast component) and `window.__showErrorPage` |
 | `target` | `window`, which the hotkey and mouse listeners attach to |
 
-It re-exports `visiblePluginsOf` and `withHostLast`, and names the shell's types `ApplicationContext` and `ApplicationEvent` for the renderer's components.
+It re-exports `visiblePluginsOf` (for `WebApp.vue`) and `withHostLast`. Saved panel sizes that aren't JSON fall back to the defaults rather than failing the window's shell (`src/core/__tests__/app-shell.spec.ts`).
 
 ## External pack frontends
 
