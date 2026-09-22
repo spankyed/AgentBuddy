@@ -109,9 +109,6 @@ export async function setupBackend(): Promise<void> {
   const builtInDir = process.env.BUILT_IN_PACKS_DIR;
   const { builtIn: builtInInfos, external: externalPacks } = await loadAppPacks(packs, {
     builtInDir,
-    // A development app runs a built-in pack's rebuilt runtime; a test app loads them as a packaged one does, so the
-    // E2E suite boots the path users get
-    runtimeEntry: appContext.env === 'development' ? 'prefer' : 'never',
     bundledLoaders: () => import('virtual:built-in-pack-loaders').then(m => m.default),
   });
 

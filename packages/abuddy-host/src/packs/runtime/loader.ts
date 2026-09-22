@@ -91,9 +91,9 @@ export function refreshBuiltInPackInfo(registry: PackRegistry, packId: string): 
 
 export interface LoadBuiltInPacksOptions {
   /**
-   * `never` (the default) uses only the bundled loaders, as a packaged app does; `prefer` loads each pack's built
-   * runtime (dist/runtime/index.cjs) when it exists and falls back to the bundled loaders, so a development app picks
-   * up a rebuilt pack; `only` requires the built runtime (unbundled tools, which have no bundled loaders).
+   * `prefer` (default in development) loads each pack's built runtime (dist/runtime/index.cjs) when it
+   * exists and falls back to the bundled loaders; `never` (default otherwise) uses only the bundled
+   * loaders; `only` requires the built runtime (unbundled tools, which have no bundled loaders).
    */
   runtimeEntry?: 'prefer' | 'only' | 'never';
   /** The app bundle's loaders, imported when first needed: required for `never`, and for `prefer` once it falls back */
@@ -104,7 +104,7 @@ export interface LoadBuiltInPacksOptions {
 export async function loadBuiltInPacks(
   registry: PackRegistry,
   packagesDir: string,
-  { runtimeEntry = 'never', bundledLoaders }: LoadBuiltInPacksOptions = {},
+  { runtimeEntry = process.env.NODE_ENV === 'development' ? 'prefer' : 'never', bundledLoaders }: LoadBuiltInPacksOptions = {},
 ): Promise<BuiltInPackInfo[]> {
   const missingLoaders = () => new Error(`loadBuiltInPacks: runtimeEntry '${runtimeEntry}' needs the bundledLoaders option to load ${runtimeEntry === 'never' ? 'packs' : 'a pack without a built runtime'}`);
   if (runtimeEntry === 'never' && !bundledLoaders) throw missingLoaders();
@@ -358,9 +358,9 @@ export function registerExternalPacks(registry: PackRegistry, packs: LoadedPack[
  */
 export async function loadAppPacks(
   registry: PackRegistry,
-  { builtInDir, ...builtInOptions }: { builtInDir?: string } & LoadBuiltInPacksOptions,
+  { builtInDir, bundledLoaders }: { builtInDir?: string; bundledLoaders?: () => Promise<BundledPackLoaders> },
 ): Promise<{ builtIn: BuiltInPackInfo[]; external: LoadedPack[] }> {
-  const builtInPromise = builtInDir ? loadBuiltInPacks(registry, builtInDir, builtInOptions) : Promise.resolve([]);
+  const builtInPromise = builtInDir ? loadBuiltInPacks(registry, builtInDir, { bundledLoaders }) : Promise.resolve([]);
   const loaded = loadExternalPacks(registry);
   const builtIn = await builtInPromise;
   return { builtIn, external: loaded.length > 0 ? registerExternalPacks(registry, loaded) : [] };
