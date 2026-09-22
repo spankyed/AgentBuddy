@@ -3,7 +3,7 @@
 import type { ContextMenuItem, HotkeyEvent, Plugin, PluginEvent, ShellPanelSizes } from '@abuddy/sdk/fe';
 import type { HostPluginEvents } from '@abuddy/sdk/events';
 import type { ApplicationHotkeys } from '@abuddy/sdk/types';
-import type { ShellClient } from '../client.ts';
+import type { ShellClient, ShellFailure } from '../client.ts';
 import type { FePackRegistry } from '../pack-store.ts';
 import type { LoadedPackEntry } from '../../packs/pack-layout.ts';
 import type { BreadcrumbItem } from './trail.ts';
@@ -27,7 +27,7 @@ export interface ShellNotify {
   /** A toast */
   error(title: string, detail?: string): void;
   /** Replaces the window with the error page */
-  errorPage(title: string, detail: string): void;
+  errorPage(title: string, detail: ShellFailure): void;
 }
 
 /** The I/O the shell is given */
@@ -129,7 +129,7 @@ export type ShellEvent =
   | { type: 'HIDE_INSPECTION_PANEL' }
   | { type: 'RESET_CHAT_HEIGHT' }
   | { type: 'SYSTEM_ERROR'; errorId?: string; title?: string; message: string; source?: string; operation?: string; entityId?: string; severity?: 'diagnostic' | 'error' | 'fatal'; stack?: string; timestamp?: number }
-  | { type: 'BACKEND_ERROR'; error: string | { message: string; stack?: string } }
+  | { type: 'BACKEND_ERROR'; error: ShellFailure }
   | { type: 'BUS_SUBSCRIBED' }
   | { type: 'BUS_CONNECTION_LOST' }
   /** Load the frontends of the external packs this window hasn't loaded: on connecting, and when a pack activates */

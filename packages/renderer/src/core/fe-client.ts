@@ -33,7 +33,8 @@ export const feClient: ShellClient = {
   subscribe: (connection) => {
     // The backend may have failed for good before this window started listening
     window.electronAPI?.apiStatus?.getStatus().then((status) => {
-      if (status.error && !status.running && status.restartAttempts >= 3) connection.onFailed(String(status.error));
+      // The error as main recorded it, its stack included, for the error page to lay out
+      if (status.error && !status.running && status.restartAttempts >= 3) connection.onFailed(status.error);
     });
 
     const subscribeToBus = () => trpc.bus.sub.subscribe(undefined, {

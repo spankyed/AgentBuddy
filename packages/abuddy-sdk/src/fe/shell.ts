@@ -87,9 +87,13 @@ export interface Shell {
 
 /**
  * The app shell. Its refs follow the shell for as long as the calling scope lives (a component's setup, or an
- * effect scope), and stop following it when that scope is disposed.
+ * effect scope), and stop following it when that scope is disposed. Outside a scope it throws: nothing would ever
+ * stop the refs following the shell.
  */
 export function useShell(): Shell {
+  if (!getCurrentScope()) {
+    throw new Error("useShell() runs in a component's setup or an effect scope (effectScope().run(() => useShell())): its refs follow the shell until that scope is disposed")
+  }
   const shell = boundFeHost().application
   const read = (snapshot: HostShellSnapshot) => ({
     plugins: snapshot.context.plugins,
@@ -113,7 +117,7 @@ export function useShell(): Shell {
       if (refs[key].value !== next[key]) (refs[key] as Ref<unknown>).value = next[key]
     }
   })
-  if (getCurrentScope()) onScopeDispose(() => subscription.unsubscribe())
+  onScopeDispose(() => subscription.unsubscribe())
 
   return {
     plugins: shallowReadonly(refs.plugins),

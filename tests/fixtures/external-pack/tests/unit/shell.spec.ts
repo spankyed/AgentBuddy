@@ -44,3 +44,9 @@ it("reaches its system and hears back over the harness's bus", async () => {
 
   expect(shell.plugin('memos').getSnapshot().context.memos.map((m: { text: string }) => m.text)).toContain('added from the plugin');
 });
+
+it('refuses a second frontend host in one test, naming what to do', async () => {
+  await startShell({ plugins: { memos: { state: memosState } } });
+
+  await expect(startShell({ plugins: { memos: { state: memosState } } })).rejects.toThrow('startShell() binds its own');
+});

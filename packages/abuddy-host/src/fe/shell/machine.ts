@@ -538,10 +538,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
       RESET_CHAT_HEIGHT: { actions: 'resetChatHeight' },
       BACKEND_ERROR: {
         target: '.error',
-        actions: ({ event }) => {
-          const { error } = typeOf('BACKEND_ERROR', event);
-          notify.errorPage('Something went wrong', typeof error === 'string' ? error : error.stack ? `${error.message}\n\n${error.stack}` : error.message);
-        },
+        actions: ({ event }) => notify.errorPage('Something went wrong', typeOf('BACKEND_ERROR', event).error),
       },
       SYSTEM_ERROR: {
         actions: ({ event }) => {

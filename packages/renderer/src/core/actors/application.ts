@@ -8,8 +8,8 @@ import { loadPackFrontend, unloadPackFrontend } from '@/packs/pack-loader';
 
 declare global {
   interface Window {
-    /** Shows the error page index.html defines */
-    __showErrorPage?: (title: string, detail: string) => void;
+    /** Shows the error page index.html defines: an error's message over its stack, or a message */
+    __showErrorPage?: (title: string, detail: string | { message: string; stack?: string }) => void;
   }
 }
 

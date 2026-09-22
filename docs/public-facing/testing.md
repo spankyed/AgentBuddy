@@ -140,6 +140,8 @@ it('reaches its system and hears back', async () => {
 | `actor` | The shell's actor |
 | `stop()` | Stops the shell and unbinds the frontend host; the harness stops shells after each test |
 
+Start one shell per test, in place of `startFeTestRuntime`: it binds the frontend host itself, and refuses when one is already bound. Your systems' lookups (roles, steps) still see everything your pack registered while it runs. `useShell()` runs in a component's setup or an effect scope (`effectScope().run(() => useShell())` in a test).
+
 ## Services
 
 `services` (from `#generated/services`) holds your services and your dependencies'. `mockService` replaces one for the current test:

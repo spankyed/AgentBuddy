@@ -4,7 +4,7 @@ import { vi } from 'vitest';
 import { setup } from 'xstate';
 import type { Message } from '@abuddy/sdk/events';
 import type { Plugin, ShellPanelSizes } from '@abuddy/sdk/fe';
-import type { LoadedPackEntry, ShellClient, ShellConnection, ShellOptions } from '../../../src/fe/index.ts';
+import type { LoadedPackEntry, ShellClient, ShellConnection, ShellFailure, ShellOptions } from '../../../src/fe/index.ts';
 
 /** A plugin with an empty machine */
 export function plugin(id: string): Plugin {
@@ -43,7 +43,7 @@ export function fakeClient() {
     /** A backend system sent a plugin `message` */
     receive: (message: Message) => current().onMessage(message),
     /** The backend failed for good */
-    fail: (error: string) => current().onFailed(error),
+    fail: (error: ShellFailure) => current().onFailed(error),
   };
 }
 
@@ -56,7 +56,7 @@ export function fakeShell(start: { plugins: Plugin[]; defaultPlugin?: Plugin }) 
   };
   const notify = {
     error: vi.fn<(title: string, detail?: string) => void>(),
-    errorPage: vi.fn<(title: string, detail: string) => void>(),
+    errorPage: vi.fn<(title: string, detail: ShellFailure) => void>(),
   };
   let savedSizes: ShellPanelSizes | undefined;
   const storage = {

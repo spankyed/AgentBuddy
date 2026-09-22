@@ -7,6 +7,7 @@ import type { Message } from '@abuddy/sdk/events';
 import { resolveName } from '@abuddy/sdk/ids';
 import type { HostShell, PluginDefinition } from '@abuddy/sdk/fe';
 import { startFeTestRuntime, testRootEvents } from '@abuddy/sdk/testing';
+import { _isFeHostBound, type FePackRegistryView, type PackExtensionsView } from '@abuddy/sdk/runtime';
 
 /** One of the pack's plugins, as a test registers it: its state machine, and whatever else of its definition it needs */
 export type TestPlugin = { state: AnyStateMachine } & Partial<Omit<PluginDefinition, 'state'>>;
@@ -41,6 +42,29 @@ export interface TestShell {
 
 const running = new Set<TestShell>();
 
+/**
+ * `frontend`, with the lookups it shares with the backend (roles, steps, artifacts, blocks) answered by `backend`
+ * first. The SDK reads those through a bound frontend host whenever one is bound, which in the renderer is right; in
+ * a test that also runs the pack's systems, it would hide from them every role and step the pack registered, the
+ * brain and the `llm` step included. The frontend's own come second, for a role only a plugin in this test plays.
+ */
+function backendFirst(frontend: FePackRegistryView, backend: PackExtensionsView): FePackRegistryView {
+  return {
+    plugins: () => frontend.plugins(),
+    defaultPlugin: () => frontend.defaultPlugin(),
+    tiptapPlugins: () => frontend.tiptapPlugins(),
+    appExtension: (slot) => frontend.appExtension(slot),
+    dslTypes: () => frontend.dslTypes(),
+    designation: (role) => backend.designation(role) ?? frontend.designation(role),
+    step: (type) => backend.step(type) ?? frontend.step(type),
+    steps: () => backend.steps(),
+    artifact: (type) => backend.artifact(type) ?? frontend.artifact(type),
+    artifacts: () => backend.artifacts(),
+    block: (type) => backend.block(type) ?? frontend.block(type),
+    blocks: () => backend.blocks(),
+  };
+}
+
 /** Stops every shell a test started; the harness calls it after each test */
 export function stopRunningShells(): void {
   for (const shell of [...running]) shell.stop();
@@ -50,9 +74,16 @@ export function stopRunningShells(): void {
  * Starts the app shell with `options.plugins` registered as `packId`'s and binds the frontend host to it, so
  * `navigateToPlugin`, `openPlugin` and `useShell()` reach it. Its client is the harness's bus: what the shell and
  * `sendToSystem` send reaches a test app's systems, and what those systems send plugins reaches the plugins' actors.
- * Resolves once the shell is connected and has read the (empty) loaded packs, as a window is once the app is up.
+ * Lookups the backend shares with it (roles, steps, artifacts, blocks) read `backend` first. Resolves once the shell
+ * is connected and has read the (empty) loaded packs, as a window is once the app is up.
  */
-export async function startShell(packId: string, options: StartShellOptions): Promise<TestShell> {
+export async function startShell(packId: string, options: StartShellOptions, backend: PackExtensionsView): Promise<TestShell> {
+  if (_isFeHostBound()) {
+    throw new Error(
+      'A frontend host is already bound in this test file: startShell() binds its own, so use it in place of '
+      + 'startFeTestRuntime(), and start one shell per test (the harness stops it after each)',
+    );
+  }
   const ids = Object.keys(options.plugins);
   if (ids.length === 0) throw new Error('startShell() needs at least one plugin: the shell opens one when it starts');
   const defaultPlugin = options.defaultPlugin ?? ids[0];
@@ -103,11 +134,13 @@ export async function startShell(packId: string, options: StartShellOptions): Pr
     storage: { loadPanelSizes: () => undefined, savePanelSizes: () => {} },
     notify: {
       error: (title, detail) => { notices.push({ title, detail }); },
-      errorPage: (title, detail) => { notices.push({ title, detail }); },
+      errorPage: (title, detail) => {
+        notices.push({ title, detail: typeof detail === 'string' ? detail : detail.stack ? `${detail.message}\n\n${detail.stack}` : detail.message });
+      },
     },
   }), { systemId: HOST.application, input: { ownsLastActivePlugin: false } });
   // Bound before the shell starts: starting it spawns the plugins' actors, which may reach the frontend host
-  stops.push(startFeTestRuntime({ application: actor, client, packs }));
+  stops.push(startFeTestRuntime({ application: actor, client, packs: backendFirst(packs, backend) }));
   const started = actor.start();
   stops.unshift(() => started.stop());
 

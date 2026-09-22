@@ -4,6 +4,12 @@ import type { Message } from '@abuddy/sdk/events';
 import type { FeClient } from '@abuddy/sdk/runtime';
 import type { LoadedPackEntry } from '../packs/pack-layout.ts';
 
+/**
+ * Why the backend failed: a message, or an error with its stack, which the error page shows as a message over the
+ * stack it can expand
+ */
+export type ShellFailure = string | { message: string; stack?: string };
+
 /** What the shell hears from its subscription to the bus */
 export interface ShellConnection {
   /**
@@ -16,7 +22,7 @@ export interface ShellConnection {
   /** A message a backend system sent a plugin, exactly as sent */
   onMessage(message: Message): void;
   /** The backend failed and won't recover by itself: why, for the error page */
-  onFailed(error: string): void;
+  onFailed(error: ShellFailure): void;
 }
 
 export interface ShellClient extends FeClient {

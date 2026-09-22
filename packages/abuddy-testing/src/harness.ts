@@ -321,7 +321,7 @@ export type { StartShellOptions, TestShell, TestPlugin } from './shell.ts';
  */
 export async function startShell(options: StartShellOptions): Promise<TestShell> {
   if (!context) throw new Error('startShell() runs in a test: call setupPackTests() from a vitest setup file first');
-  return startShellFor(context.manifest.id, options);
+  return startShellFor(context.manifest.id, options, packsWithMocks);
 }
 
 /** Registers the pack's runtime and its dependencies' (loaded from their cached runtime/index.cjs), as the app does */

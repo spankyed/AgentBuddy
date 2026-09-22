@@ -127,7 +127,7 @@ Your code names features: your own by id (`'bookmarks'`), and every other as `<p
 | reach your plugin's actor from its components | `usePlugin()` (`@abuddy/sdk/fe`): the app renders a plugin's canvas, panel, chat and settings as part of it |
 | offer another of your features your plugin's state or events | export composables and functions from the feature's `fe/public.ts`; a feature imports nothing else of another's frontend (`check:specifiers`) |
 | open a plugin, optionally handing it events | `navigateToPlugin(name, event?)` (`#generated/fe`), which takes only the names your pack can write: its own features' and its dependencies' |
-| open a plugin a piece of data names (a link's target) | `openPlugin(ref, event?)` (`@abuddy/sdk/fe`), which throws unless `ref` is a registered plugin's `<packId>/<featureId>` |
+| open a plugin a piece of data names (a link's target) | `openPlugin(ref, event?)` (`@abuddy/sdk/fe`). It throws for a string that isn't a `<packId>/<featureId>`; otherwise the app opens the plugin, waiting while the pack that provides it is still loading, and tells the user if no installed pack provides it |
 
 ```typescript
 import { sendToPlugin, sendToSystem } from '#generated/events';

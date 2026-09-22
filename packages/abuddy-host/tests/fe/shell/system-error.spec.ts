@@ -8,12 +8,13 @@ import { createShellMachine, type ShellMachine } from '../../../src/fe/index.ts'
 import { fakeShell, plugin } from './fakes.ts';
 
 let app: Actor<ShellMachine>;
+let shell: ReturnType<typeof fakeShell>;
 let toast: ReturnType<typeof fakeShell>['notify'];
 // The error page, which replaces the window
 let showErrorPage: ReturnType<typeof fakeShell>['notify']['errorPage'];
 
 beforeEach(() => {
-  const shell = fakeShell({ plugins: [plugin('notes')] });
+  shell = fakeShell({ plugins: [plugin('notes')] });
   toast = shell.notify;
   showErrorPage = shell.notify.errorPage;
   app = createActor(createShellMachine(shell.options), {
@@ -44,5 +45,16 @@ describe('SYSTEM_ERROR', () => {
     systemError('diagnostic');
     expect(toast.error).not.toHaveBeenCalled();
     expect(showErrorPage).not.toHaveBeenCalled();
+  });
+});
+
+// The error page lays out an error as its message over the stack it can expand: a failure keeps both on its way there
+describe('BACKEND_ERROR', () => {
+  it('shows the error page with the failure as the backend reported it, message and stack apart', () => {
+    const failure = { message: 'Max restart attempts reached', stack: 'Error: Max restart attempts reached\n    at ApiServer' };
+    shell.client.fail(failure);
+
+    expect(showErrorPage).toHaveBeenCalledWith('Something went wrong', failure);
+    expect(app.getSnapshot().matches('error')).toBe(true);
   });
 });
