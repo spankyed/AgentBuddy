@@ -45,9 +45,6 @@ export interface FeatureSettings {
 export function getFeaturesWithSettings(): readonly FeatureRef[];
 
 // @public
-export function getInstalledFeaturesWithSettings(): readonly FeatureRef[];
-
-// @public
 export function getPackCommands(): PackCommand[];
 
 // @public

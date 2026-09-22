@@ -2,12 +2,12 @@ import { tx, qx } from '@/__generated__/ears';
 
 import { EARS } from '@/__generated__/ears';
 
-import { changesFrom, pluginSettingsRef, pluginSettingsRefProblem, removeIn, setIn, settingsProblems, SettingsRefusedError } from '../../document';
+import { changesFrom, removeIn, setIn, SETTINGS_KIND, settingsProblems, SettingsRefusedError } from '../../document';
 import type { GeneralSettings, SettingsData } from '../types';
 import { getDefaultSettings } from '../defaults';
 import { deepMerge } from '@abuddy/sdk/utils/pure';
-import type { FeatureRef } from '@abuddy/sdk/ids';
-import { getFeaturesWithSettings, getInstalledFeaturesWithSettings } from '@abuddy/sdk/framework';
+import { refProblem, resolveRegistered, type FeatureRef, type RefLookup } from '@abuddy/sdk/ids';
+import { getFeaturesWithSettings } from '@abuddy/sdk/framework';
 
 // Use a fixed ID without hyphen to avoid LMDB persistence issues
 // The ID "Settings-app" has a bug where updates don't persist
@@ -30,14 +30,8 @@ const getSettingsEntity = (): { id: EARS.EntityId; data: SettingsData } => ({
   data: deepMerge(getDefaultSettings(), getStoredSettings()),
 });
 
-/**
- * The features with settings a plugin's name is resolved against: the running ones, from memory, and the installed
- * ones, a disabled pack's included, which read the packs on disk: at most once, and only when a name needs them
- */
-function settingsFeatures(): { running: readonly FeatureRef[]; installed: () => readonly FeatureRef[] } {
-  let installed: readonly FeatureRef[] | undefined;
-  return { running: getFeaturesWithSettings(), installed: () => (installed ??= getInstalledFeaturesWithSettings()) };
-}
+/** How a plugin's name is looked up: among the installed features with settings, a disabled pack's included */
+const settingsLookup = (): RefLookup => ({ registered: getFeaturesWithSettings(), among: 'installed' });
 
 // Initialize default settings (called on startup)
 export const createDefaultSettings = (): void => {
@@ -74,10 +68,7 @@ export const settingsQueries = {
    * client's send, an action's `services.settings` call), it is parsed here once, and throws naming the ref it likely
    * meant. What the store's commands and queries take is a `FeatureRef`.
    */
-  pluginSettingsRef: (name: string): FeatureRef => {
-    const { running, installed } = settingsFeatures();
-    return pluginSettingsRef(name, running, installed);
-  },
+  pluginSettingsRef: (name: string): FeatureRef => resolveRegistered(SETTINGS_KIND, name, settingsLookup()),
 };
 
 const writeListeners = new Set<() => void>();
@@ -131,10 +122,10 @@ export const settingsCommands = {
    * keeps applying, since stored settings only set values.
    */
   replaceSettings(settings: unknown): void {
-    const { running, installed } = settingsFeatures();
+    const lookup = settingsLookup();
     const problems = settingsProblems(settings, {
       before: getSettingsEntity().data,
-      keyProblem: (key) => pluginSettingsRefProblem(key, running, installed),
+      keyProblem: (key) => refProblem(SETTINGS_KIND, key, lookup),
     });
     if (problems.length > 0) throw new SettingsRefusedError(problems);
     write(changesFrom(getDefaultSettings(), settings) ?? {});

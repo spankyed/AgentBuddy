@@ -105,7 +105,6 @@ export function testPacksView(registered?: PackRegistryView): PackRegistryView {
     settingsDefaults: () => registered?.settingsDefaults() ?? noSettings,
     onSettingsDefaultsChanged: (listener) => registered?.onSettingsDefaultsChanged(listener) ?? (() => {}),
     featuresWithSettings: () => registered?.featuresWithSettings() ?? [],
-    installedFeaturesWithSettings: () => registered?.installedFeaturesWithSettings() ?? [],
     commands: () => [...(registered?.commands() ?? []), ...[...testPacks.commands.values()].flat()],
     earsNames: () => {
       const base = registered?.earsNames() ?? { entities: { ...SDK_ENTITIES }, relKinds: { ...SDK_REL_KINDS } };

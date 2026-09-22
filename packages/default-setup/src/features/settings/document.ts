@@ -2,7 +2,7 @@
 // the next document from the last. The repository checks every write with `settingsProblems`, and the settings editor
 // checks with it before saving, so both refuse the same document. The operations build new objects from own keys
 // (spreads and `Object.fromEntries`, never assignment), so a key such as `__proto__` is data and reaches no prototype.
-import { refProblem, resolveName, splitRef, type FeatureRef } from '@abuddy/sdk/ids';
+import { splitRef } from '@abuddy/sdk/ids';
 import { isPlainObject } from '@abuddy/sdk/utils/pure';
 
 type Json = Record<string, unknown>;
@@ -58,30 +58,13 @@ export function changesFrom(defaults: unknown, settings: unknown): unknown {
 /** How a plugin settings key is looked up among the installed features with settings (`refProblem`) */
 export const SETTINGS_KIND = 'feature with settings';
 
-/**
- * Why `name` stands for no feature with settings, or undefined when it does: one of `running` (the registered
- * features', in memory), or else one of `installed()`, a disabled pack's included, which reads the packs on disk and so
- * is called only for a name no running feature has. Names the ref it likely meant.
- */
-export function pluginSettingsRefProblem(name: string, running: readonly string[], installed: () => Iterable<FeatureRef>): string | undefined {
-  if (!refProblem(SETTINGS_KIND, name, { registered: running })) return undefined;
-  return refProblem(SETTINGS_KIND, name, { registered: [...installed()], among: 'installed' });
-}
-
-/** The ref of the feature with settings `name` stands for (`pluginSettingsRefProblem`), or a throw saying why none is */
-export function pluginSettingsRef(name: string, running: readonly string[], installed: () => Iterable<FeatureRef>): FeatureRef {
-  const problem = pluginSettingsRefProblem(name, running, installed);
-  if (problem) throw new Error(problem);
-  return resolveName(name);
-}
-
 export interface SettingsCheck {
   /** The document `next` replaces: a section or plugin slice equal to its value there isn't a change */
   before: unknown;
   /**
-   * Why a plugin key whose slice changes can't be written (`pluginSettingsRefProblem`), where the installed features
-   * are known: the store gives it for a replacement, the one edge with arbitrary keys; every other write names its
-   * plugin by a ref its caller already parsed. Without it, a key only has to be a ref.
+   * Why a plugin key whose slice changes can't be written, where the installed features with settings are known: the
+   * store gives it for a replacement, the one edge with arbitrary keys; every other write names its plugin by a ref its
+   * caller already parsed. Without it, a key only has to be a ref.
    */
   keyProblem?: (key: string) => string | undefined;
 }

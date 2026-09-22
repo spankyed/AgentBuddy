@@ -1,8 +1,8 @@
 // The stored settings as a document: the check every write passes, shared by the store and the settings editor, and
 // the pure operations that make the next document, which take a key such as `__proto__` as data
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import { resolveName } from '@abuddy/sdk/ids';
-import { changesFrom, isEqual, pluginSettingsRef, pluginSettingsRefProblem, removeIn, setIn, settingsProblems } from '@/features/settings/document';
+import { afterEach, describe, expect, it } from 'vitest';
+import { refProblem } from '@abuddy/sdk/ids';
+import { changesFrom, isEqual, removeIn, setIn, SETTINGS_KIND, settingsProblems } from '@/features/settings/document';
 
 afterEach(() => { delete (Object.prototype as Record<string, unknown>).polluted; });
 
@@ -60,16 +60,9 @@ describe('settingsProblems', () => {
     expect(settingsProblems({ extra: 1 }, { before: { extra: 1 } })).toEqual([]);
   });
 
-  /** The installed features with settings, as the store reads them */
-  /** The store's key check over `running` features and `installed` ones, counting each read of the installed */
-  function lookup(running: string[], installed: string[]) {
-    const reads = { installed: 0 };
-    const keyProblem = (key: string) => pluginSettingsRefProblem(key, running, () => {
-      reads.installed++;
-      return installed.map((ref) => resolveName(ref));
-    });
-    return { keyProblem, reads };
-  }
+  /** The store's key check over the installed features with settings `installed` */
+  const keyProblem = (...installed: string[]) => (key: string) =>
+    refProblem(SETTINGS_KIND, key, { registered: installed, among: 'installed' });
 
   it("refuses a key that isn't a ref, whatever else is known", () => {
     expect(settingsProblems({ plugins: { memos: {} } }, { before: {} }))
@@ -77,47 +70,25 @@ describe('settingsProblems', () => {
   });
 
   it('refuses a changed slice no installed feature with settings has, naming the one it likely meant', () => {
-    const { keyProblem } = lookup([], ['memo-pack/memos', 'x/y']);
-    expect(settingsProblems({ plugins: { memos: {} } }, { before: {}, keyProblem })).toEqual([
+    const check = { before: {}, keyProblem: keyProblem('memo-pack/memos', 'x/y') };
+    expect(settingsProblems({ plugins: { memos: {} } }, check)).toEqual([
       'No installed feature with settings is named "memos": name a feature with settings as "<packId>/<featureId>"'
       + ' — did you mean "memo-pack/memos"? Installed: memo-pack/memos, x/y',
     ]);
-    expect(settingsProblems({ plugins: { 'other-pack/memos': { sort: 'new' } } }, { before: {}, keyProblem })[0])
-      .toContain('did you mean "memo-pack/memos"?');
-    expect(settingsProblems({ plugins: { 'memo-pack/memos': { sort: 'new' } } }, { before: {}, keyProblem })).toEqual([]);
+    expect(settingsProblems({ plugins: { 'other-pack/memos': { sort: 'new' } } }, check)[0]).toContain('did you mean "memo-pack/memos"?');
+    expect(settingsProblems({ plugins: { 'memo-pack/memos': { sort: 'new' } } }, check)).toEqual([]);
   });
 
   // An uninstalled pack's settings wait for its reinstall
   it('keeps an unchanged slice whose feature is no longer installed', () => {
     const gone = { plugins: { 'gone-pack/board': { columns: 2 } } };
-    expect(settingsProblems(gone, { before: gone, keyProblem: lookup([], ['memo-pack/memos']).keyProblem })).toEqual([]);
+    expect(settingsProblems(gone, { before: gone, keyProblem: keyProblem('memo-pack/memos') })).toEqual([]);
   });
 
-  it('reads the installed features only for a changed slice no running feature has', () => {
-    const { keyProblem, reads } = lookup(['a/b'], ['a/b', 'a/c']);
-    settingsProblems({ general: { zoom: 2 }, plugins: { 'a/b': { on: false } } }, { before: { plugins: { 'a/b': { on: true } } }, keyProblem });
-    expect(reads.installed).toBe(0);
-    settingsProblems({ plugins: { 'a/c': {} } }, { before: {}, keyProblem });
-    expect(reads.installed).toBe(1);
-  });
-});
-
-// Actions read settings through services.settings on every chat message, and the installed features read the packs
-// on disk: a running feature's ref is answered from memory, and only another name reads them
-describe('pluginSettingsRef', () => {
-  const running = ['default-setup/code', 'default-setup/threads'];
-
-  it("answers a running feature's ref without reading the installed packs", () => {
-    const installed = vi.fn(() => [resolveName('default-setup/code')]);
-    expect(pluginSettingsRef('default-setup/code', running, installed)).toBe('default-setup/code');
-    expect(installed).not.toHaveBeenCalled();
-  });
-
-  it("reads them for another name: a disabled pack's feature, or a mistake to diagnose", () => {
-    const installed = vi.fn(() => [...running, 'off-pack/journal'].map((ref) => resolveName(ref)));
-    expect(pluginSettingsRef('off-pack/journal', running, installed)).toBe('off-pack/journal');
-    expect(() => pluginSettingsRef('threads', running, installed)).toThrow('did you mean "default-setup/threads"?');
-    expect(installed).toHaveBeenCalledTimes(2);
+  it('checks only the keys whose slice changes', () => {
+    const checked: string[] = [];
+    const record = (key: string) => { checked.push(key); return undefined; };
+    settingsProblems({ plugins: { 'a/b': { on: true }, 'a/c': { on: false } } }, { before: { plugins: { 'a/b': { on: true } } }, keyProblem: record });
+    expect(checked).toEqual(['a/c']);
   });
 });
-

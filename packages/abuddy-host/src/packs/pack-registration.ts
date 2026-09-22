@@ -6,6 +6,7 @@
  * view the SDK's lookups read once it's bound (`HostRuntime.packs`).
  */
 
+import * as fs from 'node:fs';
 import type { AnyStateMachine } from 'xstate';
 import type { PackRegistration, PackBootHooks, PackEARS, PackMigration, PackFeature, PackFeatureSystem, PackSeedManifest } from '@abuddy/sdk/framework';
 import type { PackManifest } from '@abuddy/sdk/build';
@@ -15,10 +16,10 @@ import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
 import { SDK_ENTITIES, SDK_EXCLUDED_ENTITY_TYPES, SDK_REL_KINDS, _reservedEntries } from '@abuddy/sdk/types';
 import { HOST_SYSTEM_EVENT_TYPES, PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
-import { HOST_PACK_ID, resolveName, type FeatureRef } from '@abuddy/sdk/ids';
+import { HOST_PACK_ID, resolveName, splitRef, type FeatureRef } from '@abuddy/sdk/ids';
 import { makePolicy, registerRepository, unregisterRepository, type PartitionPolicy } from '@abuddy/ears';
 import { HOST_ENTITY_TYPES } from '../app-state/index.ts';
-import { packSeedOrder } from './pack-discovery.ts';
+import { discoverPacks, packSeedOrder } from './pack-discovery.ts';
 import { addContributions, createDefinitionStore, createDesignationStore, createStepStore, definitions, type Contribution, type UndoLog } from './extensions.ts';
 import { createCommandStore, createSeedHookStore, createSeederStore, createSettingsDefaultsStore, createShutdownHooks } from './backend-extensions.ts';
 import { checkFeatureIds } from './feature-ids.ts';
@@ -232,25 +233,34 @@ export function appPartitionPolicy(packExcluded: Iterable<string>): PartitionPol
 }
 
 /** A new, empty registry */
-/** What the registry reads of an installed pack's manifest: read as data, since a manifest on disk may be malformed */
-export type InstalledManifest = { id?: unknown; features?: unknown };
-
 export interface PackRegistryOptions {
   /**
-   * The manifests of the packs installed on disk, running or not (the app's packs dir). Only the features of a pack
-   * that isn't registered come from here: a disabled one, or one that didn't load. None when omitted (a build, a test).
+   * The app's packs dir: the installed packs, running or not. A pack there that isn't registered (disabled, or one that
+   * didn't load) keeps its settings, so its features count among the features with settings. None when omitted (a
+   * build, a test).
    */
-  installedManifests?: () => readonly InstalledManifest[];
+  installedPacksDir?: () => string;
 }
 
 /** The refs of an installed manifest's features that declare settings; a malformed manifest declares none */
-function manifestSettingsRefs({ id, features }: InstalledManifest): FeatureRef[] {
+function manifestSettingsRefs({ id, features }: { id?: unknown; features?: unknown }): FeatureRef[] {
   if (typeof id !== 'string' || !Array.isArray(features)) return [];
-  return features.flatMap((feature: { id?: unknown; settings?: unknown } | null) =>
-    typeof feature?.id === 'string' && feature.settings ? [`${id}/${feature.id}` as FeatureRef] : []);
+  return features.flatMap((feature: { id?: unknown; settings?: unknown } | null) => {
+    const ref = typeof feature?.id === 'string' && feature.settings ? `${id}/${feature.id}` : undefined;
+    return ref && splitRef(ref) ? [ref as FeatureRef] : [];
+  });
 }
 
-export function createPackRegistry({ installedManifests = () => [] }: PackRegistryOptions = {}): PackRegistry {
+/** When the packs dir's entries last changed: an install, update or uninstall renames an entry in or out */
+function packsDirStamp(dir: string): number {
+  try {
+    return fs.statSync(dir).mtimeMs;
+  } catch {
+    return -1;
+  }
+}
+
+export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = {}): PackRegistry {
   const registrations = new Map<string, PackRegistration>();
   /** Where each registered pack came from. Same keys as `registrations`, so it comes and goes with them */
   const origins = new Map<string, PackOrigin>();
@@ -273,14 +283,15 @@ export function createPackRegistry({ installedManifests = () => [] }: PackRegist
   function changed(): void {
     revision++;
   }
-  /** `build`'s result, rebuilt only when the registrations changed since it last ran */
-  function derived<T>(build: () => T): () => T {
-    let builtAt = -1;
+  /** `build`'s result, rebuilt only when `stamp` changed since it last ran: by default, when the registrations changed */
+  function derived<T>(build: () => T, stamp: () => number = () => revision): () => T {
+    let builtAt = NaN;
     let value: T;
     return () => {
-      if (builtAt !== revision) {
+      const now = stamp();
+      if (builtAt !== now) {
         value = build();
-        builtAt = revision;
+        builtAt = now;
       }
       return value;
     };
@@ -484,8 +495,21 @@ export function createPackRegistry({ installedManifests = () => [] }: PackRegist
   }
 
   /** The refs of the registered features that declare settings */
-  const registeredSettingsRefs = (): FeatureRef[] =>
-    [...registrations.values()].flatMap((reg) => featuresOf(reg).filter(({ feature }) => feature.settings).map(({ ref }) => ref));
+  const registeredSettingsRefs = derived(() =>
+    [...registrations.values()].flatMap((reg) => featuresOf(reg).filter(({ feature }) => feature.settings).map(({ ref }) => ref)));
+  /** The same of every pack in the packs dir, from its manifest: read again only when the dir's entries change */
+  const installedSettingsRefs = derived(
+    () => {
+      const dir = installedPacksDir?.();
+      return dir ? discoverPacks(dir).flatMap(({ manifest }) => manifestSettingsRefs(manifest)) : [];
+    },
+    () => {
+      const dir = installedPacksDir?.();
+      return dir ? packsDirStamp(dir) : -1;
+    },
+  );
+  /** Every installed feature that declares settings: a registered pack's, and one in the packs dir that isn't running */
+  const featuresWithSettings = (): readonly FeatureRef[] => [...new Set([...registeredSettingsRefs(), ...installedSettingsRefs()])];
   const policy = derived((): PartitionPolicy => appPartitionPolicy(getRegisteredEARSPolicy().excludedEntityTypes));
   const eventValidationMap = derived(buildEventValidationMap);
   const pluginEventValidationMap = derived(buildPluginEventValidationMap);
@@ -615,12 +639,7 @@ export function createPackRegistry({ installedManifests = () => [] }: PackRegist
     seeders: seeders.get,
     settingsDefaults: settingsDefaults.get,
     onSettingsDefaultsChanged: settingsDefaults.onChanged,
-    featuresWithSettings: registeredSettingsRefs,
-    // Read from disk on each call: a pack installed or uninstalled while disabled changes nothing the registry holds
-    installedFeaturesWithSettings: () => [...new Set([
-      ...registeredSettingsRefs(),
-      ...installedManifests().filter(({ id }) => typeof id === 'string' && !registrations.has(id)).flatMap(manifestSettingsRefs),
-    ])],
+    featuresWithSettings,
     commands: commands.all,
   };
 }
