@@ -10,9 +10,8 @@ import 'highlight.js/styles/github-dark.css'
 import builtInPacks from 'virtual:built-in-packs';
 import { hostFrontend } from '@/packs/plugin';
 import { createAppShell } from '@/core/app-shell';
-import { HOST } from '@abuddy/host/fe';
+import { HOST, installFromProtocol } from '@abuddy/host/fe';
 import { runFrontendMigrations } from '@/setup/migrations';
-import { handleProtocolInstall, requestPackInstall } from '@/packs/pack-install';
 import 'virtual:host-deps';
 import { bindRendererHost } from '@/core/fe-host';
 import { fePacks } from '@/core/fe-packs';
@@ -93,12 +92,7 @@ applicationState.subscribe({
 
 // Listen for deep link protocol actions (abuddy://install?pack=...)
 window.electronAPI?.protocolAction?.onAction(({ action, params }) => {
-  if (action === 'install') {
-    const request = handleProtocolInstall(params);
-    if (request) {
-      requestPackInstall(request);
-    }
-  }
+  if (action === 'install') installFromProtocol(params);
 });
 
 const app = createApp(App);

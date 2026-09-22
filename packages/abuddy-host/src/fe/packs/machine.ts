@@ -1,9 +1,11 @@
+// The Packs plugin's machine: what the Packs view shows and what it asks the `host/packs` system for. It runs in
+// the renderer, which pairs it with the view's components, and lives here beside that system and the shell for the
+// same reason the system doesn't live in the API — it decides things, and deciding isn't rendering.
 import { assign, setup, type ActorRefFrom } from 'xstate';
 import { breadcrumb, safeEvents } from '@abuddy/sdk/fe';
 import { sendToSystem } from '@abuddy/sdk/events';
-import type { PackInfo } from '@abuddy/host/packs';
-import { unloadPackFrontend } from './pack-loader';
-import { HOST } from '@abuddy/host/fe';
+import type { PackInfo } from '../../packs/pack-registration.ts';
+import { HOST } from '../../host-refs.ts';
 
 export type { PackInfo };
 
@@ -81,9 +83,9 @@ const packsState = setup({
       },
     }),
 
+    // The shell owns pack frontends: it unloads this one's and drops its plugins, as it loads them on activation
     onPackDeactivated: ({ system, event }) => {
       const ev = typeOf('PACK_DEACTIVATED', event);
-      unloadPackFrontend(ev.packId);
       system.get(HOST.application).send({ type: 'PACK_PLUGINS_UNLOADED', packId: ev.packId });
     },
 

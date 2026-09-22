@@ -1,10 +1,10 @@
 // This window's app shell: the host's shell machine (`createShellMachine`, @abuddy/host/fe) composed with the
 // window's I/O — the API client, the pack loader, localStorage, the toast and error page, and the window itself.
-import { createShellMachine, type ShellNotify, type ShellPackFrontends, type ShellStorage } from '@abuddy/host/fe';
+import { createPackFrontends, createShellMachine, type ShellNotify, type ShellStorage } from '@abuddy/host/fe';
 import { feClient } from '@/core/fe-client';
 import { fePacks } from '@/core/fe-packs';
 import { globalToast } from '@/core/toast';
-import { loadPackFrontend, unloadPackFrontend } from '@/packs/pack-loader';
+import { packFrontendIO } from '@/core/pack-frontend-io';
 
 declare global {
   interface Window {
@@ -12,8 +12,6 @@ declare global {
     __showErrorPage?: (title: string, detail: string | { message: string; stack?: string }) => void;
   }
 }
-
-export { visiblePluginsOf, withHostLast } from '@abuddy/host/fe';
 
 /** Where the panel sizes the user set are kept, so the next window opens with them */
 const PANEL_SIZES_KEY = 'agentbuddy-panel-sizes';
@@ -38,7 +36,7 @@ const notify: ShellNotify = {
   errorPage: (title, detail) => window.__showErrorPage?.(title, detail),
 };
 
-const packFrontends: ShellPackFrontends = { load: loadPackFrontend, unload: unloadPackFrontend };
+const packFrontends = createPackFrontends(packFrontendIO, fePacks);
 
 /** The app shell over this window's I/O; started by main.ts under `HOST.application` */
 export function createAppShell() {

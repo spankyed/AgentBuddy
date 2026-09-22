@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { createActor } from 'xstate';
-import { computeCrumbs } from '@abuddy/host/fe';
-import packsState from '../state';
+import { computeCrumbs } from '../../../src/fe/shell/index.ts';
+import packsState from '../../../src/fe/packs/machine.ts';
 
 // Without a breadcrumb of its own, the trail falls back to the machine's id, which is the ref `host/packs`
 describe('the Packs tab', () => {

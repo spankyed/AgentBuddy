@@ -260,7 +260,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
 import { ArrowLeft, Shield } from 'lucide-vue-next';
-import type { PackInfo } from '../state';
+import type { PackInfo } from '@abuddy/host/fe';
 import SectionHeader from './SectionHeader.vue';
 
 const props = defineProps<{ pack: PackInfo; updating?: boolean }>();

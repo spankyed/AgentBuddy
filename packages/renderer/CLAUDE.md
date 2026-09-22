@@ -1,6 +1,6 @@
 # @app/renderer
 
-The Vue 3 app every AgentBuddy window runs. It hosts plugins; it doesn't implement them. Built-in plugins come from `packages/default-setup` (compiled in), and external packs' plugins load at runtime from `pack://`. The renderer owns the application actor, the tRPC client, the pack frontend loader, the shared-dependency globals packs import through, the layout shell and the Packs view. The root `CLAUDE.md` covers the plugin model; `docs/public-facing/architecture.md` ("Frontend boot", "Host dependency sharing") covers pack loading from a pack author's side, and `packages/abuddy-host/src/packs/runtime/CLAUDE.md` covers the backend half.
+The Vue 3 app every AgentBuddy window runs. It hosts plugins; it doesn't implement them. Built-in plugins come from `packages/default-setup` (compiled in), and external packs' plugins load at runtime from `pack://`. The renderer owns the window: the tRPC client, the shared-dependency globals packs import through, the layout components and the Packs view, and the composition that ties them to the host's machines. What decides anything — the app shell, the Packs plugin's machine, pack-frontend loading, the install a deep link asks for — is `@abuddy/host/fe`, as the app runtime behind the API is `@abuddy/host`. The root `CLAUDE.md` covers the plugin model; `docs/public-facing/architecture.md` ("Frontend boot", "Host dependency sharing") covers pack loading from a pack author's side, and `packages/abuddy-host/src/packs/runtime/CLAUDE.md` covers the backend half.
 
 ## Boot (`src/main.ts`)
 
@@ -17,7 +17,7 @@ Its static imports are evaluated first: `virtual:built-in-packs` loads every bui
 6. Sets the globals:
    - `window.applicationState` is the actor. The E2E fixture (`@abuddy/testing`) finds the main window by it and drives it.
    - `window.__disableOnboardingUI()` sends `ONBOARDING_COMPLETE`.
-7. Subscribes to `protocolAction`: `abuddy://install?pack=…&source=…` → `requestPackInstall` (`src/packs/pack-install.ts`), which sends `INSTALL_PACK` to the `packs` system.
+7. Subscribes to `protocolAction`: `abuddy://install?pack=…&source=…` → `installFromProtocol` (`@abuddy/host/fe`), which reads the parameters and sends `INSTALL_PACK` to the `packs` system.
 8. Mounts `App.vue`, sets a Vue `errorHandler`, then calls `electronAPI.rendererReady()`, which tells main to show the window.
 
 `App.vue` renders `PluginPopoutApp.vue` (one plugin, `PopoutTitlebar`) for popouts, else `WebApp.vue` (toolbar, canvas and chat areas, inspection panel), plus the `welcome` app extension while the actor has the `welcome` tag, and an overlay while it has `connecting`. `index.html` defines `window.__showErrorPage(title, detail)`, the static error page, whose buttons call `electronAPI.apiStatus.reload/relaunch/openLogFile`.
@@ -52,29 +52,36 @@ The shell's machine is the host's: `createShellMachine` in `@abuddy/host/fe` (`p
 |---|---|
 | `packs` | `fePacks` (`src/core/fe-packs.ts`): the plugins the shell starts with, and its default |
 | `client` | `feClient` (`src/core/fe-client.ts`): the bus subscription, sends, the loaded packs, `packClientReady`, and the connection's description for the error page (Electron's `apiStatus`) |
-| `packFrontends` | `loadPackFrontend` / `unloadPackFrontend` (`src/packs/pack-loader.ts`) |
+| `packFrontends` | `createPackFrontends(packFrontendIO, fePacks)` (`@abuddy/host/fe`), over this window's `import()` and stylesheets (`src/core/pack-frontend-io.ts`) |
 | `storage` | `localStorage`, under `agentbuddy-panel-sizes` |
 | `notify` | `globalToast` (`src/core/toast.ts`, which queues until `WebApp` registers the toast component) and `window.__showErrorPage` |
 | `target` | `window`, which the hotkey and mouse listeners attach to |
 
-It re-exports `visiblePluginsOf` (for `WebApp.vue`) and `withHostLast`. Saved panel sizes that aren't JSON fall back to the defaults rather than failing the window's shell (`src/core/__tests__/app-shell.spec.ts`).
+It re-exports nothing: `WebApp.vue` takes `visiblePluginsOf` from `@abuddy/host/fe`. Saved panel sizes that aren't JSON fall back to the defaults rather than failing the window's shell (`src/core/__tests__/app-shell.spec.ts`).
 
 ## External pack frontends
 
-The shell owns loading (see the host doc); `src/packs/pack-loader.ts` does the work for one pack:
+The shell owns loading (see the host doc), and the rules are the host's too (`@abuddy/host/fe`, `fe/packs/frontends.ts`):
+a pack's file URLs, what counts as a registration, and what unloading undoes. This window supplies the two things only
+a browser can do, as `PackFrontendIO` (`src/core/pack-frontend-io.ts`):
 
-- `loadPackStyles` adds a `<link data-pack-id>` for `pack://<id>/<feStyles>`, once per href.
-- `loadPackFrontend` then `import()`s `pack://<id>/<feEntry>` and calls `fePacks.registerPackFE(registration)`. It returns the plugins, or `null` when the pack has no `feEntry`. It throws when the entry fails to import or register, so the shell lists the pack as failed (a toast).
-- `loadPackFEEntry` warns when the module has no default export or declares none of `features/steps/artifacts/blocks/tiptapPlugins/appExtensions/dslTypes`. On an import failure it logs `[pack-loader] Failed to load FE entry pack://…:` with the error (the E2E fixture matches the prefix) and rethrows it.
-- On `PACK_DEACTIVATED` the Packs plugin (`src/packs/state.ts`) calls `unloadPackFrontend` (`fePacks.unregisterPackFE` and removing the stylesheets) and sends the shell `PACK_PLUGINS_UNLOADED`; on `PACK_ACTIVATED` it sends `LOAD_PACK_FRONTENDS`.
+- `importModule(url)` is the dynamic `import()` of `pack://<id>/<feEntry>`.
+- `styles.add(packId, href)` adds a `<link data-pack-id>` once per href and resolves when it has loaded or failed;
+  `styles.remove(packId)` takes that pack's stylesheets out.
 
-## Packs plugin (`src/packs/`)
+On `PACK_DEACTIVATED` the Packs machine tells the shell `PACK_PLUGINS_UNLOADED`, and the shell unloads the pack's
+frontend and drops its plugins — it loads them, so it takes them out.
 
-The one plugin the renderer defines (`plugin.ts`: id `packs`, `isPinned`). Its machine (`state.ts`) mirrors the `packs` backend system's events (`PACKS_LIST`, `PACK_INSTALL_*`, `PACK_UPDATE_*`, …) and sends `INSTALL_PACK`, `UNINSTALL_PACK`, `TOGGLE_PACK_ENABLED`, `UPDATE_PACK`, `CHECK_FOR_UPDATES` and `GET_INSTALLED_PACKS` with `sendToSystem`, over the window's client. `canvas/` holds the list and `PackDetail.vue`.
+## Packs view (`src/packs/`)
+
+The Packs tab's components, and the one module that composes them: `plugin.ts` pairs the host's `packsMachine`
+(`@abuddy/host/fe`) with `canvas/` (the list and `PackDetail.vue`) and registers it as the `host` pack's frontend.
+Nothing here decides anything about packs — `src/packs/__tests__/layout.spec.ts` says so, the way
+`packages/api/tests/unit/source-layout.spec.ts` says it for the API.
 
 ## Tests and checks
 
 - `npm run test:unit -w @app/renderer -- --run` runs vitest in jsdom (`vitest.config.ts` merges `vite.config.ts`); without `--run` it starts watch mode. Root `npm run test:unit` runs it too, as CI does.
-  - `src/packs/__tests__/pack-loader.spec.ts` covers entry validation, a failed or missing entry, and stylesheet de-duplication.
-  - The shell's own specs live with it, in `packages/abuddy-host/tests/fe/shell/`.
+  - `src/packs/__tests__/layout.spec.ts` keeps the Packs view a view; `pack-detail.spec.ts` covers its detail component.
+  - The shell's specs, the Packs machine's and the pack-frontend loader's live with them, in `packages/abuddy-host/tests/fe/`.
 - `npm run typecheck:fe` (root) runs `vue-tsc --build`. `npm run build -w @app/renderer` type-checks and runs `vite build` in parallel. `lint` runs oxlint and then eslint, both with `--fix`.

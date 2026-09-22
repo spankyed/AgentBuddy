@@ -25,7 +25,7 @@ Host-only modules shared by the API, the renderer, the Electron main process, th
 | `./process-liveness` | `process-liveness.ts` | `lockIsHeld`, `recordIsStale`, `readApiEndpoint` and `ApiEndpoint`: what a running process left on disk, and whether it is still there |
 | `./logs` | `logs.ts` | `appendCappedLine(dir, name, line)` and `LOG_FILE_MAX_BYTES`: the app's log files, rotated to `<name>.old` at 10 MB. electron-log caps only its own `main.log`; the four files the app appends beside it go through this |
 | `./app-state` | `app-state/index.ts` | `appState` (the one `AppState` row: `get`, `update`, `updatePackEntry`, the pack seed hash accessors), `HOST_ENTITY_TYPES`, `APP_STATE_ENTITY` |
-| `./fe` | `fe/pack-store.ts`, `fe/app-extensions.ts`, `fe/client.ts`, `fe/shell/` | `createFePackRegistry()`: the renderer's registered pack frontends (`registerPackFE`, `unregisterPackFE`, `getRegisteredPlugins`, `getRegisteredDefaultPlugin`, `getAppExtension`, and the `FePackRegistryView` the SDK reads); `ShellClient`, the window's client to the API as the shell uses it; `createShellMachine`, the app shell (see App shell). No Vue, tRPC, renderer module or browser global (`tests/boundaries.spec.ts`) |
+| `./fe` | `fe/pack-store.ts`, `fe/app-extensions.ts`, `fe/client.ts`, `fe/shell/`, `fe/packs/` | `createFePackRegistry()`: the renderer's registered pack frontends (`registerPackFE`, `unregisterPackFE`, `getRegisteredPlugins`, `getRegisteredDefaultPlugin`, `getAppExtension`, and the `FePackRegistryView` the SDK reads); `ShellClient`, the window's client to the API as the shell uses it; `createShellMachine`, the app shell (see App shell); the `host/packs` frontend (see Packs frontend). No Vue, tRPC, renderer module or browser global (`tests/boundaries.spec.ts`) |
 | `./build/discover` | `build/discover.ts` | `discoverBuiltInPacksForBuild`, used by the API tsup config and the renderer's Vite and Tailwind configs |
 | `./build/shared-deps` | `build/shared-deps.ts` | `SHARED_INSTANCE_PACKAGES` (and `APP_ONLY_EXPORTS`, `sharedInstanceSpecifiers`, `sharedInstanceExports`, `sharedInstanceExternals`, `sharedInstancePackage`), `SHARED_DEPS`, `SDK_FE_MODULES`, `getSharedFeDeps`, `getUiFeModules`, `getSharedBeDeps`, `findSdkVersion` |
 | `./build/source-resolution` | `build/source-resolution.ts` | `assertSourceResolution`, `withoutSourceCondition` |
@@ -134,6 +134,26 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
 - The app's composition is `createAppBus(registry)` (`bus/app-bus.ts`), which the API starts in `setup/backend.ts`. It uses the SDK's bound `rootEvents` (`@abuddy/sdk/runtime`: the bound `HostRuntime`'s transport, the API's `bus-emitter`) for outgoing events, `CLIENT_CONNECTED`, `PACK_CLIENT_CONNECTED`, sends to plugins from outside a system (`onPluginSend`, fed to the bus as `OUTGOING`, so they're dropped until a client connects) and incoming events (except those for an early system, which `startEarlySystems(registry)` starts before hydration and delivers its messages to; `createAppBus(registry, early)` tells the early systems each `CLIENT_CONNECTED` once it has taken the connection itself, so what they send in answer finds a client connected; `tests/bus/early-systems.spec.ts`), `getPacksWithClientLoadedFrontends(registry)` (`packs/pack-layout.ts`) as `clientLoadedPacks`, and sends the `host/application` plugin `CLIENT_CONNECTED` with `hasOnboarded`, `pluginVisibility` (each feature's declared `visible`, with the user's choices over it) and `lastActivePlugin` (`ApplicationConnectedEvent`, read from `AppState`) after each connection. The API registers the backend `host/application` system beside the `packs` one. The harness composition is `packages/abuddy-testing/src/app.ts`. Behaviour tests live in `tests/bus/app-bus.spec.ts`, `tests/packs/runtime/reload.spec.ts` and `packages/api/tests/unit/bus-client-connected.spec.ts`.
 
 - `receiveClientEvent(registry, event)` (`bus/client-events.ts`) is what the API's `bus.send` procedure delegates to: it checks the event's `systemId` and `type` against the registry's `getEventValidationMap()` (a `*` entry accepts any type) and throws `UnknownClientEventError` otherwise, logs it through the `app-events` logger (arrays over 5 items become `{ count, sample }`), and emits it on the SDK's bound `rootEvents` (`tests/bus/client-events.spec.ts`).
+
+## Packs frontend (`fe/packs/`)
+
+The host `packs` feature's frontend, beside the system that answers it (`packs/runtime/packs-system.ts`), for the
+reason that system isn't in the API: installing, updating and loading packs is what the app does, and a window only
+renders it. The renderer pairs these with the Packs view's components (`packages/renderer/src/packs/plugin.ts`),
+which is all that is left there.
+
+- `machine.ts` — the Packs plugin's machine: the system's events (`PACKS_LIST`, `PACK_INSTALL_*`, `PACK_UPDATE_*`, …)
+  and what the view asks for (`INSTALL_PACK`, `UNINSTALL_PACK`, `TOGGLE_PACK_ENABLED`, `UPDATE_PACK`,
+  `CHECK_FOR_UPDATES`, `GET_INSTALLED_PACKS`). On `PACK_DEACTIVATED` it tells the shell `PACK_PLUGINS_UNLOADED` and
+  unloads nothing itself: the shell loads a pack's frontend and the shell unloads it, so there is one owner.
+- `frontends.ts` — `createPackFrontends(io, packs)`, the shell's `packFrontends`: a pack's file URLs (with the
+  revision, so an updated pack isn't served from the cache), what a default export must declare to count as a
+  registration, and what unloading takes back. The window's two acts arrive as `PackFrontendIO`
+  (`importModule`, `styles.add`/`remove`), so no browser global is reached here. Its failure log,
+  `[pack-loader] Failed to load FE entry pack://<id>/…`, is matched by the E2E fixture to fail a pack under test
+  fast: its text is a contract, not a message.
+- `install-url.ts` — `installFromProtocol(params)`, what `abuddy://install?pack=…&source=…` asks for; a window
+  subscribes to the protocol and passes on the parameters.
 
 ## App shell (`fe/shell/`)
 

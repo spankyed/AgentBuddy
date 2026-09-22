@@ -194,7 +194,7 @@ import { ref, computed } from 'vue';
 import { useSelector } from '@xstate/vue';
 import { usePlugin } from '@abuddy/sdk/fe';
 import { Package as PackageIcon, X } from 'lucide-vue-next';
-import type { PacksState } from '../state';
+import type { PacksState } from '@abuddy/host/fe';
 import PackDetail from './PackDetail.vue';
 
 const actor = usePlugin<PacksState>();

@@ -13,7 +13,7 @@ vi.mock('@/core/fe-client', () => ({
   },
 }));
 vi.mock('@/core/toast', () => ({ globalToast: { error: vi.fn() } }));
-vi.mock('@/packs/pack-loader', () => ({ loadPackFrontend: vi.fn(), unloadPackFrontend: vi.fn() }));
+vi.mock('@/core/pack-frontend-io', () => ({ packFrontendIO: { importModule: vi.fn(), styles: { add: vi.fn(), remove: vi.fn() } } }));
 
 const { createAppShell } = await import('@/core/app-shell');
 const { fePacks } = await import('@/core/fe-packs');

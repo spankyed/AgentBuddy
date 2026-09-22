@@ -177,6 +177,10 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         const { packId } = typeOf('PACK_PLUGINS_UNLOADED', event);
         const pluginIds = context.packPluginIds[packId];
 
+        // The shell loads a pack's frontend and it unloads it: the Packs plugin says the pack is gone, and what
+        // that means for this window — the registrations, the stylesheets, the plugins below — is decided here
+        enqueue(() => packFrontends.unload(packId));
+
         // The pack loads again when it comes back
         if (context.packFrontendsLoaded.includes(packId)) {
           enqueue.assign({ packFrontendsLoaded: context.packFrontendsLoaded.filter(id => id !== packId) });
