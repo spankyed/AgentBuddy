@@ -60,10 +60,31 @@ describe('settingsProblems', () => {
   });
 
   it('refuses a bare plugin key, naming the ref it likely meant', () => {
-    expect(settingsProblems({ plugins: { memos: {} } }, { before: {}, known: ['memo-pack/memos', 'x/y'] })).toEqual([
+    const settable = () => new Set(['memo-pack/memos', 'x/y']);
+    expect(settingsProblems({ plugins: { memos: {} } }, { before: {}, settable })).toEqual([
       `"memos" isn't a plugin settings key: a plugin's settings are stored under its ref, "<packId>/<featureId>"; did you mean "memo-pack/memos"?`,
     ]);
     expect(pluginKeyProblem('memos', ['a/memos', 'b/memos'])).not.toContain('did you mean');
     expect(pluginKeyProblem('a/memos')).toBeUndefined();
+  });
+
+  it("refuses a changed slice no installed feature with settings has, and keeps an unchanged one", () => {
+    const settable = () => new Set(['memo-pack/memos']);
+    expect(settingsProblems({ plugins: { 'memo-pack/memo': { sort: 'new' } } }, { before: {}, settable }))
+      .toEqual([`No installed feature with settings is "memo-pack/memo"`]);
+    expect(settingsProblems({ plugins: { 'other-pack/memos': { sort: 'new' } } }, { before: {}, settable }))
+      .toEqual([`No installed feature with settings is "other-pack/memos"; did you mean "memo-pack/memos"?`]);
+    // An uninstalled pack's settings wait for its reinstall
+    const gone = { plugins: { 'gone-pack/board': { columns: 2 } } };
+    expect(settingsProblems(gone, { before: gone, settable })).toEqual([]);
+  });
+
+  it('reads the installed features only when a plugin slice changes', () => {
+    let reads = 0;
+    const settable = () => { reads++; return new Set(['a/b']); };
+    settingsProblems({ general: { zoom: 2 }, plugins: { 'a/b': { on: true } } }, { before: { plugins: { 'a/b': { on: true } } }, settable });
+    expect(reads).toBe(0);
+    settingsProblems({ plugins: { 'a/b': { on: false }, 'a/c': {} } }, { before: {}, settable });
+    expect(reads).toBe(1);
   });
 });

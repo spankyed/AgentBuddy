@@ -1,7 +1,7 @@
 // A plugin's settings are stored under its ref, `<packId>/<featureId>`, and nothing else is stored there. A name
 // that reaches the store unresolved throws rather than writing a slice no reader looks at.
-import { describe, expect, it } from 'vitest';
-import { startApp } from '@abuddy/testing/harness';
+import { describe, expect, it, onTestFinished } from 'vitest';
+import { registerPack, startApp, unregisterPack } from '@abuddy/testing/harness';
 import { repository } from '@/__generated__/repository';
 import { services } from '@/__generated__/services';
 import { ref } from '@/__generated__/ref';
@@ -38,6 +38,8 @@ describe('the plugin settings keys', () => {
 // `default-setup/memos`. So it takes the ref and refuses a name.
 describe('services.settings', () => {
   it("reads and writes another pack's plugin at its ref", async () => {
+    registerPack({ id: 'memo-pack', features: { memos: { plugin: { receives: [] }, settings: { plugins: { memos: {} } } } } });
+    onTestFinished(() => unregisterPack('memo-pack'));
     await startApp({ systems: [] });
 
     services.settings.updatePluginSetting('memo-pack/memos', ['sort'], 'oldest');

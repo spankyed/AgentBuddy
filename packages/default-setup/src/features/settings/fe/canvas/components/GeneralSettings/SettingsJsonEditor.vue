@@ -71,7 +71,10 @@ watch(settings, () => {
   if (!isDirty.value) loadSettings()
 })
 
-/** Why the text can't be saved: it isn't JSON, or the store's own check refuses it */
+/**
+ * Why the text can't be saved: it isn't JSON, or the store's own check refuses it. Which features are installed only
+ * the store knows, so it can still refuse a changed plugin's settings, and says why
+ */
 function problemsIn(text: string): string[] {
   let data: unknown
   try {
@@ -79,7 +82,7 @@ function problemsIn(text: string): string[] {
   } catch (e) {
     return [(e as Error).message]
   }
-  return settingsProblems(data, { before: settings.value, known: Object.keys(settings.value?.plugins ?? {}) })
+  return settingsProblems(data, { before: settings.value })
 }
 
 function onEditorChange(value: string) {

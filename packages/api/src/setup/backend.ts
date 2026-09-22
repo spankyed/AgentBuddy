@@ -5,7 +5,7 @@ import { _getLmdbPath, _getVolatileLmdbPath } from '@abuddy/sdk/utils';
 import type { EarsEngine } from '@abuddy/ears';
 import type { LmdbStore } from '@abuddy/ears/lmdb';
 import { assertNoDatabaseWriter, openDatabaseStore } from '@abuddy/host/database';
-import { createPackRegistry, discoverBuiltInPacks, hostRegistration, publishHostPackOutput, pruneHostPackOutputs, prepareHostDataDirs, type PackRegistry } from '@abuddy/host/packs';
+import { createPackRegistry, discoverBuiltInPacks, discoverPacks, hostRegistration, publishHostPackOutput, pruneHostPackOutputs, prepareHostDataDirs, type PackRegistry } from '@abuddy/host/packs';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import * as path from 'path';
 import {
@@ -58,7 +58,8 @@ export let appPacks: PackRegistry;
  * services over the store and the engine's admin face. The caller hydrates the store once the packs are registered.
  */
 export function openAppStore(): AppStore {
-  const packs = createPackRegistry();
+  // Installed packs that aren't running keep their settings: the settings take writes for their features too
+  const packs = createPackRegistry({ installedManifests: () => discoverPacks(resolveAppContext().packsDir).map(({ manifest }) => manifest) });
   const { store, engine } = openDatabaseStore({
     paths: { primary: _getLmdbPath(), volatileBackup: _getVolatileLmdbPath() },
     schema: packs,

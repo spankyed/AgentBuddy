@@ -232,7 +232,25 @@ export function appPartitionPolicy(packExcluded: Iterable<string>): PartitionPol
 }
 
 /** A new, empty registry */
-export function createPackRegistry(): PackRegistry {
+/** What the registry reads of an installed pack's manifest: read as data, since a manifest on disk may be malformed */
+export type InstalledManifest = { id?: unknown; features?: unknown };
+
+export interface PackRegistryOptions {
+  /**
+   * The manifests of the packs installed on disk, running or not (the app's packs dir). Only the features of a pack
+   * that isn't registered come from here: a disabled one, or one that didn't load. None when omitted (a build, a test).
+   */
+  installedManifests?: () => readonly InstalledManifest[];
+}
+
+/** The refs of an installed manifest's features that declare settings; a malformed manifest declares none */
+function manifestSettingsRefs({ id, features }: InstalledManifest): FeatureRef[] {
+  if (typeof id !== 'string' || !Array.isArray(features)) return [];
+  return features.flatMap((feature: { id?: unknown; settings?: unknown } | null) =>
+    typeof feature?.id === 'string' && feature.settings ? [`${id}/${feature.id}` as FeatureRef] : []);
+}
+
+export function createPackRegistry({ installedManifests = () => [] }: PackRegistryOptions = {}): PackRegistry {
   const registrations = new Map<string, PackRegistration>();
   /** Where each registered pack came from. Same keys as `registrations`, so it comes and goes with them */
   const origins = new Map<string, PackOrigin>();
@@ -594,6 +612,11 @@ export function createPackRegistry(): PackRegistry {
     seeders: seeders.get,
     settingsDefaults: settingsDefaults.get,
     onSettingsDefaultsChanged: settingsDefaults.onChanged,
+    // Read on each call: a pack installed or uninstalled while disabled changes nothing the registry holds
+    featuresWithSettings: () => [...new Set([
+      ...[...registrations.values()].flatMap((reg) => featuresOf(reg).filter(({ feature }) => feature.settings).map(({ ref }) => ref)),
+      ...installedManifests().filter(({ id }) => typeof id === 'string' && !registrations.has(id)).flatMap(manifestSettingsRefs),
+    ])],
     commands: commands.all,
   };
 }

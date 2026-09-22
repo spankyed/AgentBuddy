@@ -7,6 +7,7 @@ import type { SettingsData } from '../types';
 import { getDefaultSettings } from '../defaults';
 import { deepMerge } from '@abuddy/sdk/utils/pure';
 import { splitRef } from '@abuddy/sdk/ids';
+import { getFeaturesWithSettings } from '@abuddy/sdk/framework';
 
 // Use a fixed ID without hyphen to avoid LMDB persistence issues
 // The ID "Settings-app" has a bug where updates don't persist
@@ -29,8 +30,8 @@ const getSettingsEntity = (): { id: EARS.EntityId; data: SettingsData } => ({
   data: deepMerge(getDefaultSettings(), getStoredSettings()),
 });
 
-/** The refs of the registered features that declare settings, which name the ref a bare name likely meant */
-const knownRefs = (): string[] => Object.keys(getDefaultSettings().plugins);
+/** The refs of the installed features that declare settings, a disabled pack's included: a changed slice must be one */
+const settableRefs = (): ReadonlySet<string> => new Set(getFeaturesWithSettings());
 
 // Initialize default settings (called on startup)
 export const createDefaultSettings = (): void => {
@@ -59,7 +60,7 @@ export const settingsQueries = {
 
   /** A plugin's settings in effect, by its ref; a bare name throws, naming the ref it likely meant */
   getPluginSettings: (plugin: string) => {
-    if (!splitRef(plugin)) throw new Error(pluginKeyProblem(plugin, knownRefs()));
+    if (!splitRef(plugin)) throw new Error(pluginKeyProblem(plugin, settableRefs()));
     return getSettingsEntity().data.plugins[plugin] ?? {};
   },
 };
@@ -81,7 +82,7 @@ export function onSettingsWritten(listener: () => void): () => void {
  * stored: every write goes through here, so none stores a document the settings refuse.
  */
 function write(next: unknown): void {
-  const problems = settingsProblems(next, { before: getStoredSettings(), known: knownRefs() });
+  const problems = settingsProblems(next, { before: getStoredSettings(), settable: settableRefs });
   if (problems.length > 0) throw new SettingsRefusedError(problems);
   tx(SETTINGS_ID)
     .put('data', next as Partial<SettingsData>)
@@ -112,7 +113,7 @@ export const settingsCommands = {
    * keeps applying, since stored settings only set values.
    */
   replaceSettings(settings: unknown): void {
-    const problems = settingsProblems(settings, { before: getSettingsEntity().data, known: knownRefs() });
+    const problems = settingsProblems(settings, { before: getSettingsEntity().data, settable: settableRefs });
     if (problems.length > 0) throw new SettingsRefusedError(problems);
     write(changesFrom(getDefaultSettings(), settings) ?? {});
   },

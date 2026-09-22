@@ -47,6 +47,11 @@ export interface PackRegistryView extends PackExtensionsView {
   settingsDefaults(): PackSettingsDefaults;
   /** Calls `listener` whenever the feature settings defaults change; returns the unsubscribe */
   onSettingsDefaultsChanged(listener: () => void): () => void;
+  /**
+   * The refs of every installed feature that declares settings: the registered packs', and those of installed packs
+   * that aren't running (disabled, or failed to load), whose settings stay theirs
+   */
+  featuresWithSettings(): readonly FeatureRef[];
   /** Every registered pack's declared commands, in the order the packs were first registered */
   commands(): PackCommand[];
   /** The app's own entity types and relation kinds and every registered pack's, by the name each declares them under */

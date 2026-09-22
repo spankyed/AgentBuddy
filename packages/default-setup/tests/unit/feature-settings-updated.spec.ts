@@ -222,14 +222,22 @@ describe('a feature whose settings change', () => {
     expect(app.emitted('default-setup/settings').map((e) => e.type)).toContain('SETTINGS_UPDATED');
   });
 
-  // A disabled pack keeps its stored settings; they can change (replaced, reset) while nothing of it runs
-  it("reports nothing when settings of a plugin no pack registers change", async () => {
+  // A pack installed but not running (disabled) keeps its settings, which can change (the host's registry lists its
+  // features from its manifest, host/tests/packs); one no installed pack has is refused, and one of an uninstalled
+  // pack stays as it was, for its reinstall
+  it('refuses changed settings of a feature no installed pack has, and keeps an uninstalled pack\'s unchanged', async () => {
+    tx('Settings-app' as EARS.EntityId, true).put('entityType', 'Settings').put('data', { plugins: { 'gone-pack/journal': { font: 'serif' } } });
     const app = await startApp({ systems: ['settings'] });
     await app.connect();
 
-    await app.send('settings', { type: 'REPLACE_SETTINGS', data: { general: {}, plugins: { 'disabled-pack/journal': { font: 'serif' } } } as never });
+    await app.send('settings', { type: 'REPLACE_SETTINGS', data: { plugins: { 'gone-pack/journal': { font: 'serif' }, 'memo-pack/memo': { tags: [] } } } });
+    expect(app.emitted('default-setup/settings')).toContainEqual({
+      type: 'SETTINGS_REFUSED',
+      problems: [`No installed feature with settings is "memo-pack/memo"`],
+    });
 
-    expect(app.emitted('default-setup/settings').map((e) => e.type)).toContain('SETTINGS_UPDATED');
+    await app.send('settings', { type: 'REPLACE_SETTINGS', data: { plugins: { 'gone-pack/journal': { font: 'serif' }, 'memo-pack/board': { columns: 9 } } } });
+    expect(settingsQueries.getStoredSettings().plugins).toEqual({ 'gone-pack/journal': { font: 'serif' }, 'memo-pack/board': { columns: 9 } });
   });
 });
 

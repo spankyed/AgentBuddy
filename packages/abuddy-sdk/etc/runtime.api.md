@@ -113,6 +113,7 @@ export interface PackExtensionsView {
 export interface PackRegistryView extends PackExtensionsView {
     commands(): PackCommand[];
     earsNames(): EarsNames;
+    featuresWithSettings(): readonly FeatureRef[];
     getRegisteredServices(): Record<string, unknown>;
     onSettingsDefaultsChanged(listener: () => void): () => void;
     pluginIds(): readonly FeatureRef[];

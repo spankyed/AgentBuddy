@@ -1,7 +1,7 @@
 // Registration: the registered packs, an instance per app (the composition root), test file or build
 export { createPackRegistry } from './pack-registration.ts';
 export { hostRegistration, PACKS_PLUGIN_EVENT_TYPES, type OutgoingPacksEvents } from './host-pack.ts';
-export type { PackRegistry, PackRegistration, PackBootHooks, PackEARS, PackMigration, PackExtensions, PackInfo, PackOrigin } from './pack-registration.ts';
+export type { InstalledManifest, PackRegistry, PackRegistryOptions, PackRegistration, PackBootHooks, PackEARS, PackMigration, PackExtensions, PackInfo, PackOrigin } from './pack-registration.ts';
 
 // Loading pack runtime code on the loader's own @abuddy/sdk
 export { withModuleBridge } from './module-bridge.ts';
