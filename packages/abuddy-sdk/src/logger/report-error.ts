@@ -1,5 +1,6 @@
 import { _rootEvents } from '../runtime/root-events.ts';
 import { sendToPlugin } from '../events/index.ts';
+import { getDesignated, hasDesignation } from '../designations/index.ts';
 // Import directly — not from '../utils' barrel which pulls in Node-only modules (fs, child_process)
 import { randomId } from '../utils/random-id.ts';
 import { RepositoryError, RepositoryErrorCode } from '@abuddy/ears';
@@ -59,8 +60,8 @@ export type SystemErrorEvent = {
 
 /**
  * Reports an error: logs it and shows it to the user. Without `step` the app shows it as a system error.
- * With `step` it's a flow step's error: it's also recorded on the step's TNode, sent to the brain plugin
- * (`BRAIN_RUNTIME_ERROR`) and returned.
+ * With `step` it's a flow step's error: it's also recorded on the step's TNode, sent to the plugin playing the
+ * `brain` role (`BRAIN_RUNTIME_ERROR`) and returned.
  */
 export function reportError(input: ReportErrorInput & { step: StepErrorContext }): StepRuntimeError;
 export function reportError(input: ReportErrorInput): StepRuntimeError | undefined;
@@ -159,6 +160,7 @@ function reportStepError(input: ReportSystemErrorInput, step: StepErrorContext):
     }
   }
 
-  sendToPlugin('brain', { type: 'BRAIN_RUNTIME_ERROR', error: runtimeError });
+  // The flow shows it in the plugin playing the brain role, if any does
+  if (hasDesignation('brain')) sendToPlugin(getDesignated('brain'), { type: 'BRAIN_RUNTIME_ERROR', error: runtimeError });
   return runtimeError;
 }

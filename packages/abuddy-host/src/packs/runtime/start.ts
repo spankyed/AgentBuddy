@@ -2,10 +2,14 @@
 import { runAppMigrations, runPackMigrations } from '../../migrations/index.ts';
 import type { PackRegistry } from '../pack-registration.ts';
 import { orchestrateDeclarativeSeed, seedPackData } from './seed.ts';
+import { addressStoredPluginKeys } from '../plugin-keys.ts';
 
 /** Each registered pack's onInit, then the app's and the external packs' migrations, then the built-in and external packs' seeds, unless the app's migrations failed */
 export function startPacks(registry: PackRegistry): void {
   for (const hooks of registry.getBootHooks()) hooks.onInit?.();
+  // A pack enabled again while the app was closed registers at boot, not through PACK_CHANGED: what it stored before
+  // 0.3.15 under its bare feature ids is moved here, before any migration reads it
+  addressStoredPluginKeys(registry);
 
   // The versions and seed hashes the packs' migrations and seeds read may only be in place once the app's migrations
   // ran: when one failed, nothing else runs, and the next boot retries

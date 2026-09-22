@@ -41,6 +41,10 @@ describe('loadPackFEEntry', () => {
     expect(warnings).toEqual([]);
   });
 
+  it('refuses a registration an older abuddy built, naming the rebuild, rather than registering none of its plugins', async () => {
+    await expect(load('fe.mjs', 'export default { plugins: { memos: {} } };')).rejects.toThrow("the way an older abuddy built them: rebuild the pack");
+  });
+
   it('accepts a registration that contributes plugins without warning', async () => {
     const { registration, warnings } = await load('fe.mjs', 'export default { features: { x: { plugin: {} } } };');
     expect(Object.keys((registration as any).features)).toEqual(["x"]);

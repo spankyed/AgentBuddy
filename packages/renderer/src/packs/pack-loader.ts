@@ -50,6 +50,10 @@ export async function loadPackFEEntry(
     console.warn(`[pack-loader] FE entry at ${entry} did not export a valid registration`);
     return null;
   }
+  // A pack built before registrations were keyed by feature lists its plugins apart: none of them would register
+  if (mod.default && 'plugins' in registration) {
+    throw new Error(`${url} lists its plugins the way an older abuddy built them: rebuild the pack with this app's abuddy`);
+  }
   // A module without a default export falls back to its namespace object, which registers
   // nothing; say so instead of loading a pack whose plugins silently never appear. A default
   // export that declares registration fields, even empty ones, is deliberate: the generated

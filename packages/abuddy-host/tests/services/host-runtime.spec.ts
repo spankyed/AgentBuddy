@@ -23,6 +23,9 @@ vi.mock('../../src/migrations/index.ts', () => ({
   runAppMigrations: () => { order.push('migrations'); return appMigrations.succeed; },
   runPackMigrations: (packs: Array<{ manifest: { id: string } }>) => { order.push(`pack migrations (${packs.map((p) => p.manifest.id)})`); },
 }));
+vi.mock('../../src/packs/plugin-keys.ts', () => ({
+  addressStoredPluginKeys: () => { order.push('plugin keys'); },
+}));
 vi.mock('../../src/packs/runtime/seed.ts', async (importOriginal) => ({
   ...await importOriginal<typeof import('../../src/packs/runtime/seed.ts')>(),
   orchestrateDeclarativeSeed: (_manifest: unknown, packId: string) => { order.push(`boot seed (${packId})`); },
@@ -93,7 +96,8 @@ describe('createHostRuntime', () => {
     }
     expect(order).toEqual([
       'onShutdown', 'engine cleared', 'store reset', 'onInit (0 keys)',
-      'migrations', 'pack migrations (reset-pack)', 'boot seed (seeded-pack)', 'pack seeds (reset-pack)',
+      // Keys stored before 0.3.15 move before any migration reads them
+      'plugin keys', 'migrations', 'pack migrations (reset-pack)', 'boot seed (seeded-pack)', 'pack seeds (reset-pack)',
     ]);
     expect(engine.query.getAttr(id, 'title')).toBeNull();
   });
@@ -113,6 +117,6 @@ describe('startPacks', () => {
       packs.unregisterPack('late-seeded-pack');
       packs.unregisterPack('late-pack');
     }
-    expect(order).toEqual(['migrations']);
+    expect(order).toEqual(['plugin keys', 'migrations']);
   });
 });
