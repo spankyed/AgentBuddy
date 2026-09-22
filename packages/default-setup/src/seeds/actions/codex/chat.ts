@@ -91,7 +91,7 @@ export async function action(params: Record<string, any>, services: Services, _z
   const hasCwd = codeSettings?.defaultBaseDirectory || codeSettings?.baseDirectory || prior?.cwd;
 
   if (forceDirectoryPicker || (!hasCwd && !cwdOverride)) {
-    const projects = (services.repository.settingsQueries.getGeneralSettings('projects') as any[]) || [];
+    const projects = services.repository.settingsQueries.getGeneralSettings('projects');
     const picker = services.chat.sendBlockMessage({
       threadId, text: 'Which project directory should I work in?',
       blocks: [

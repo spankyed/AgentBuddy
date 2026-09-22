@@ -4430,6 +4430,11 @@ declare const flowsQueries: {
     readonly connectedData: () => FlowsConnectedData;
 };
 
+/** The general settings in effect, or one section of them by its label (the defaults are merged in already) */
+declare function getGeneralSettings(): GeneralSettings;
+
+declare function getGeneralSettings<K extends keyof GeneralSettings>(label: K): GeneralSettings[K];
+
 declare function getHandle(key: string): CodexTurnHandle | undefined;
 
 declare const libraryCommands: {
@@ -4710,7 +4715,7 @@ declare const settingsQueries: {
      * writing a merged copy back would freeze today's defaults into the user's stored settings.
      */
     getStoredSettings: () => Partial<SettingsData>;
-    getGeneralSettings: (label?: string) => any;
+    getGeneralSettings: typeof getGeneralSettings;
     getAssistantSettings: () => AssistantSettings;
     /** A plugin's settings in effect, by its ref */
     getPluginSettings: (plugin: FeatureRef) => any;

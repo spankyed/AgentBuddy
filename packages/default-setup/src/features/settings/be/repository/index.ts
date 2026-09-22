@@ -2,12 +2,12 @@ import { tx, qx } from '@/__generated__/ears';
 
 import { EARS } from '@/__generated__/ears';
 
-import { changesFrom, removeIn, setIn, SETTINGS_KIND, settingsProblems, SettingsRefusedError } from '../../document';
-import type { SettingsData } from '../types';
+import { changesFrom, pluginSettingsRef, pluginSettingsRefProblem, removeIn, setIn, settingsProblems, SettingsRefusedError } from '../../document';
+import type { GeneralSettings, SettingsData } from '../types';
 import { getDefaultSettings } from '../defaults';
 import { deepMerge } from '@abuddy/sdk/utils/pure';
-import { resolveRegistered, type FeatureRef } from '@abuddy/sdk/ids';
-import { getFeaturesWithSettings } from '@abuddy/sdk/framework';
+import type { FeatureRef } from '@abuddy/sdk/ids';
+import { getFeaturesWithSettings, getInstalledFeaturesWithSettings } from '@abuddy/sdk/framework';
 
 // Use a fixed ID without hyphen to avoid LMDB persistence issues
 // The ID "Settings-app" has a bug where updates don't persist
@@ -30,13 +30,27 @@ const getSettingsEntity = (): { id: EARS.EntityId; data: SettingsData } => ({
   data: deepMerge(getDefaultSettings(), getStoredSettings()),
 });
 
-/** The refs of the installed features that declare settings, a disabled pack's included: a changed slice must be one */
-const settableRefs = (): ReadonlySet<FeatureRef> => new Set(getFeaturesWithSettings());
+/**
+ * The features with settings a plugin's name is resolved against: the running ones, from memory, and the installed
+ * ones, a disabled pack's included, which read the packs on disk: at most once, and only when a name needs them
+ */
+function settingsFeatures(): { running: readonly FeatureRef[]; installed: () => readonly FeatureRef[] } {
+  let installed: readonly FeatureRef[] | undefined;
+  return { running: getFeaturesWithSettings(), installed: () => (installed ??= getInstalledFeaturesWithSettings()) };
+}
 
 // Initialize default settings (called on startup)
 export const createDefaultSettings = (): void => {
   getSettingsEntity(); // Ensure entity exists
 };
+
+/** The general settings in effect, or one section of them by its label (the defaults are merged in already) */
+function getGeneralSettings(): GeneralSettings;
+function getGeneralSettings<K extends keyof GeneralSettings>(label: K): GeneralSettings[K];
+function getGeneralSettings(label?: keyof GeneralSettings): GeneralSettings | GeneralSettings[keyof GeneralSettings] {
+  const general = getSettingsEntity().data.general;
+  return label ? general[label] : general;
+}
 
 // QUERIES
 export const settingsQueries = {
@@ -48,13 +62,7 @@ export const settingsQueries = {
    */
   getStoredSettings: (): Partial<SettingsData> => getStoredSettings(),
 
-  getGeneralSettings: (label?: string) => {
-    const general = getSettingsEntity().data.general;
-    if (label) {
-      return (general as any)[label] || (getDefaultSettings().general as any)[label] || {};
-    }
-    return general;
-  },
+  getGeneralSettings,
 
   getAssistantSettings: () => getSettingsEntity().data.assistant,
 
@@ -66,8 +74,10 @@ export const settingsQueries = {
    * client's send, an action's `services.settings` call), it is parsed here once, and throws naming the ref it likely
    * meant. What the store's commands and queries take is a `FeatureRef`.
    */
-  pluginSettingsRef: (name: string): FeatureRef =>
-    resolveRegistered(SETTINGS_KIND, name, { registered: [...settableRefs()], among: 'installed' }),
+  pluginSettingsRef: (name: string): FeatureRef => {
+    const { running, installed } = settingsFeatures();
+    return pluginSettingsRef(name, running, installed);
+  },
 };
 
 const writeListeners = new Set<() => void>();
@@ -121,7 +131,11 @@ export const settingsCommands = {
    * keeps applying, since stored settings only set values.
    */
   replaceSettings(settings: unknown): void {
-    const problems = settingsProblems(settings, { before: getSettingsEntity().data, settable: settableRefs });
+    const { running, installed } = settingsFeatures();
+    const problems = settingsProblems(settings, {
+      before: getSettingsEntity().data,
+      keyProblem: (key) => pluginSettingsRefProblem(key, running, installed),
+    });
     if (problems.length > 0) throw new SettingsRefusedError(problems);
     write(changesFrom(getDefaultSettings(), settings) ?? {});
   },

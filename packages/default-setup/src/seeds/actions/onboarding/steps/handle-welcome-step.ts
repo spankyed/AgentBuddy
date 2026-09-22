@@ -99,7 +99,7 @@ export async function action(
     state.pendingMessageId = messageId;
   } else {
     // No sessions found — show file-picker as fallback
-    const projects = (services.repository.settingsQueries.getGeneralSettings('projects') as any[]) || [];
+    const projects = services.repository.settingsQueries.getGeneralSettings('projects');
     const { messageId } = services.chat.sendBlockMessage({
       threadId,
       text: 'No existing sessions found. Pick a project directory to get started, or skip to set one up later.',

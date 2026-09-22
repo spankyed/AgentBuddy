@@ -328,8 +328,8 @@
       "Action:Claude Code Chat": {
         "label": "Claude Code Chat",
         "description": "Drives Claude Code in streaming mode for the current thread, resuming prior sessions and prompting the user for tool permissions.",
-        "sourceHash": "59c4ae447b442003",
-        "rowSha256": "2104cb1a3831f1499fef0b5f7f7ce8a2e1f7689b1eb2a6672701664189c7c6ed"
+        "sourceHash": "f07510eacbece8ea",
+        "rowSha256": "ec097ff6c8f1b7a3d1715bd687707c187e31931198adaada97efb02795fcfe5a"
       },
       "Action:Claude Code List Sessions": {
         "label": "Claude Code List Sessions",
@@ -352,8 +352,8 @@
       "Action:Codex Chat": {
         "label": "Codex Chat",
         "description": "Drives Codex via app-server for the current thread.",
-        "sourceHash": "74662610fea17a1d",
-        "rowSha256": "51310a0a8359271f16e9c1486594bbc46db7e425c1b95d6dfb6a8ccbb201177b"
+        "sourceHash": "4fcde398fad65536",
+        "rowSha256": "2b4bcea0fbf62dc7245f4d97d88509586510d9cb95fb15244907ba99706d85f7"
       },
       "Action:Handle Choose Mode Step": {
         "label": "Handle Choose Mode Step",
@@ -388,8 +388,8 @@
       "Action:Handle Welcome Step": {
         "label": "Handle Welcome Step",
         "description": "Detects CLIs, discovers sessions, and presents project directory selection",
-        "sourceHash": "b04285d5f01d495b",
-        "rowSha256": "83553f02daa136c67b8bd5af52e66609c90d706fadb34a53e1438ea166cdd5c0"
+        "sourceHash": "25369ca46131b6ea",
+        "rowSha256": "e6034e4327ee58ac017e75c3a6dcd3dd7d882263198b297d8431d5c56ddd6b1f"
       },
       "Action:Ignore Onboarding Message": {
         "label": "Ignore Onboarding Message",

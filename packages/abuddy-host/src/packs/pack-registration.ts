@@ -483,6 +483,9 @@ export function createPackRegistry({ installedManifests = () => [] }: PackRegist
     return { excludedEntityTypes: excluded };
   }
 
+  /** The refs of the registered features that declare settings */
+  const registeredSettingsRefs = (): FeatureRef[] =>
+    [...registrations.values()].flatMap((reg) => featuresOf(reg).filter(({ feature }) => feature.settings).map(({ ref }) => ref));
   const policy = derived((): PartitionPolicy => appPartitionPolicy(getRegisteredEARSPolicy().excludedEntityTypes));
   const eventValidationMap = derived(buildEventValidationMap);
   const pluginEventValidationMap = derived(buildPluginEventValidationMap);
@@ -612,9 +615,10 @@ export function createPackRegistry({ installedManifests = () => [] }: PackRegist
     seeders: seeders.get,
     settingsDefaults: settingsDefaults.get,
     onSettingsDefaultsChanged: settingsDefaults.onChanged,
-    // Read on each call: a pack installed or uninstalled while disabled changes nothing the registry holds
-    featuresWithSettings: () => [...new Set([
-      ...[...registrations.values()].flatMap((reg) => featuresOf(reg).filter(({ feature }) => feature.settings).map(({ ref }) => ref)),
+    featuresWithSettings: registeredSettingsRefs,
+    // Read from disk on each call: a pack installed or uninstalled while disabled changes nothing the registry holds
+    installedFeaturesWithSettings: () => [...new Set([
+      ...registeredSettingsRefs(),
       ...installedManifests().filter(({ id }) => typeof id === 'string' && !registrations.has(id)).flatMap(manifestSettingsRefs),
     ])],
     commands: commands.all,

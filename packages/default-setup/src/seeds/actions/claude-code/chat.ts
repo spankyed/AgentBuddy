@@ -228,7 +228,7 @@ export async function action(
   const codeSettings = services.settings.getPluginSettings('default-setup/code') as any;
   const hasCwd = codeSettings?.defaultBaseDirectory || codeSettings?.baseDirectory || prior?.cwd;
   if (forceDirectoryPicker || (!hasCwd && !cwdOverride)) {
-    const projects = (services.repository.settingsQueries.getGeneralSettings('projects') as any[]) || [];
+    const projects = services.repository.settingsQueries.getGeneralSettings('projects');
     const blocks: any[] = [
       { type: 'prompt', props: { content: 'Select a project directory' } },
     ];

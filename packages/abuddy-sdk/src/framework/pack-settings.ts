@@ -50,11 +50,17 @@ export function onPackSettingsDefaultsChanged(listener: () => void): () => void 
   return boundHost().packs.onSettingsDefaultsChanged(listener);
 }
 
+/** The refs of the registered features that declare settings (the bound app's), read from memory */
+export function getFeaturesWithSettings(): readonly FeatureRef[] {
+  return boundHost().packs.featuresWithSettings();
+}
+
 /**
- * The refs of every installed feature that declares settings, a disabled pack's included (the bound app's). A plugin's
+ * The refs of every installed feature that declares settings, a disabled pack's included (the bound app's): it reads
+ * the installed packs on disk, so a caller asks it only for what the registered features can't answer. A plugin's
  * settings may be written only under one of them; the settings of a pack since uninstalled stay while nothing
  * changes them.
  */
-export function getFeaturesWithSettings(): readonly FeatureRef[] {
-  return boundHost().packs.featuresWithSettings();
+export function getInstalledFeaturesWithSettings(): readonly FeatureRef[] {
+  return boundHost().packs.installedFeaturesWithSettings();
 }

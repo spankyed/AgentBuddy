@@ -325,7 +325,7 @@ export const systemMachine = setup({
   initial: 'idle',
   context: () => {
     const codeSettings = repository.settingsQueries.getPluginSettings(ref('code')) as CodeSettings
-    const projects = (repository.settingsQueries.getGeneralSettings('projects') as any) || []
+    const projects = repository.settingsQueries.getGeneralSettings('projects')
 
     // Resolve initial directory using priority chain
     const baseDir = resolveInitialDirectory(codeSettings, projects)
