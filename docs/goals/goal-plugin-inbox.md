@@ -71,6 +71,9 @@ Never:
 
 ## Background (2026-09-22, at 6d0633ad4 on AS/frontend-host-boundary)
 
+> Line numbers in `features/application/fe/machine.ts` were re-checked at `c947ed32b`, which changed that file
+> after this was surveyed. Every other citation here still points where it says.
+
 ### A system declares its contract; a plugin declares nothing
 
 A backend system says what it accepts and what it sends:
@@ -165,7 +168,7 @@ A backend `sendToPlugin` reaches **every** window. The app already pays for this
 ```ts
 // packages/abuddy-host/src/features/application/fe/connection.ts:17
 sendBack((event.type === 'OPEN_PLUGIN' ? { ...event, type: 'OPEN_PLUGIN_FROM_APP' } : event))
-// packages/abuddy-host/src/features/application/fe/machine.ts:523
+// packages/abuddy-host/src/features/application/fe/machine.ts:525
 OPEN_PLUGIN_FROM_APP: { guard: 'isMainWindow', actions: 'openPluginFromApp' },
 ```
 
@@ -220,7 +223,7 @@ The 13 feature→feature edges, sorted by what they want:
 - **Phase 5 is scope-neutral.** Each window is its own renderer with its own module graph, so
   `pluginHandle`'s module-scope actor is already window-local. A renderer `sendToPlugin` preserves today's
   delivery exactly rather than changing it. `spawnPluginActors` loops `context.plugins`
-  (`features/application/fe/machine.ts:375`), so a popout spawns every registered plugin and there is no
+  (`features/application/fe/machine.ts:377`), so a popout spawns every registered plugin and there is no
   "target not spawned" hole; `ownsLastActivePlugin` only decides who records and acts on navigation.
 - **Every `usePluginSettings`/`currentPluginSettings` call site targets its own feature** — three call
   sites, all self. See Decision 8.
