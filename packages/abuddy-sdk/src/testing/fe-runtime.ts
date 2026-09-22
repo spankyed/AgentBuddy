@@ -2,6 +2,7 @@
 // and never taken back; a test binds and unbinds per file, so that lifecycle lives here, next to
 // startTestRuntime, rather than a pack reaching for the host's own unbind.
 import { bindFeHost, unbindFeHost, type FeHostRuntime, type FePackRegistryView } from '../runtime/fe-host.ts';
+import type { HostShell } from '../fe/shell.ts';
 
 /** A frontend with nothing registered: what a test sees before its own pack's frontend is bound */
 const noFrontends: FePackRegistryView = {
@@ -19,6 +20,16 @@ const noFrontends: FePackRegistryView = {
   dslTypes: () => new Map(),
 };
 
+/**
+ * The shell a test gets when it passes none. The shell is the host's, which the SDK doesn't carry, so reaching this
+ * one says where the real one is: `startShell()` from `@abuddy/testing/harness` binds it
+ */
+const noShell = new Proxy({} as HostShell, {
+  get: (_target, member) => {
+    throw new Error(`This test has no app shell (it reached for its ${String(member)}): start one with startShell() from @abuddy/testing/harness, which binds the frontend host itself`);
+  },
+});
+
 /** What a test overrides of the frontend host; everything else stands in as unusable, since a test that reaches it means the test is wrong */
 export interface FeTestRuntimeOptions extends Partial<FeHostRuntime> {}
 
@@ -33,7 +44,7 @@ export interface FeTestRuntimeOptions extends Partial<FeHostRuntime> {}
  */
 export function startFeTestRuntime(options: FeTestRuntimeOptions = {}): () => void {
   bindFeHost({
-    application: options.application ?? ({} as never),
+    application: options.application ?? noShell,
     secrets: options.secrets ?? ({} as never),
     client: options.client ?? ({} as never),
     packs: options.packs ?? noFrontends,

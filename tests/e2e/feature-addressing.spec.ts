@@ -49,6 +49,8 @@ test('a plugin setting changed in Settings is what its canvas reads', async ({ a
   await expect.poll(() => inputs.evaluateAll((els) => els.map((el) => (el as HTMLInputElement).value))).toContain(override);
 });
 
+// default-setup's link-navigation unit spec covers the navigation itself on the harness's shell; this case keeps what
+// only the running app shows: the Logs canvas renders the link once a source is excluded, and clicking it navigates
 test('a link to another plugin opens it and hands it the events', async ({ app, appPage }) => {
   // The Logs toolbar shows the link once a source is excluded; it opens Settings on the Logs plugin
   await updateSetting(appPage, { entityType: 'plugin', label: 'default-setup/logs', path: ['excludedSources'], value: ['e2e-excluded'] });
