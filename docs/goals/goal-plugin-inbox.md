@@ -31,6 +31,8 @@ Finished when:
   with no `Pick<>`, matching the systems line; `SendablePluginEvents` is gone from the facade barrel.
 - `broadcastToPlugin` is the backend send and `sendToPlugin` the renderer one; no module exports both
   meanings under one name; the delivery-scope difference is documented in @abuddy/sdk and pinned by a spec.
+- The renderer send checks the target's declared inbox and reports a miss at `diagnostic` as the bus does;
+  PackFEFeature carries `receives` and the FE registry builds the map from it.
 - `usePluginSettings` and `currentPluginSettings` no longer exist.
 - packages/default-setup/src/features/plugin-handle.ts is deleted, or the doc records under Outcome why
   it survived and what still binds it.
@@ -212,6 +214,19 @@ The 13 feature→feature edges, sorted by what they want:
 
 `settings` is 8 of the 13 and mostly is not communication at all.
 
+### What is actually enforced, and what isn't
+
+| path | typed | checked at runtime |
+|---|---|---|
+| backend send → bus → plugin | yes | **yes** — `getPluginEventValidationMap()`, drop + `diagnostic` (`bus/machine.ts:150`) |
+| renderer `system.get(ref).send(…)` | no | **no** — nothing observes it |
+| renderer `sendToPlugin` (this goal) | yes | yes, once Decision 18 lands; nothing today |
+
+The middle row is XState's own API, not a hole this goal opens: `system` is a property of every `ActorRef`
+and a member of `UnifiedArg`, which `ActionArgs` extends, so it is reachable from any action and from
+anything `usePlugin()` returns. `useShell().plugins` enumerates every registered plugin's ref. Neither the
+old `sendsTo` nor the new declaration changes that; see Decision 2.
+
 ### Checked before planning (2026-09-22)
 
 - **`definePlugin<Incoming>()` is feasible by the same mechanism systems use.** `outgoingEventTypesOf`
@@ -265,13 +280,28 @@ Final.
    from the declaration.
 
 2. **`sendsTo` is deleted from the manifest**, both jobs with it. No widening: a plugin's inbox is its own.
-   No grant: the declaration *is* the permission, exactly as it already is for systems, which take the whole
-   `PackSystemEvents` of a dependency with no gate. Do not add `plugin.sendsTo` or hoist `sendsTo` to the
-   feature — both keep the inverse index alive.
+   No grant: the declaration takes over what `sendsTo` governed, exactly as it already does for systems,
+   which take the whole `PackSystemEvents` of a dependency with no gate. Do not add `plugin.sendsTo` or
+   hoist `sendsTo` to the feature — both keep the inverse index alive.
 
-   What this gives up is the coarse audit trail in `abuddy.json` ("this feature talks to that one"). That
-   list was never complete — every plugin→plugin edge was already invisible to it — and the bus still
-   validates every send at runtime, against a tighter map than before.
+   **What the declaration governs is types and the validation maps — not access.** It is not a boundary
+   and `sendsTo` never was one: XState puts `system` on every `ActorRef` and in every action's arguments
+   (`UnifiedArg`, which `ActionArgs` extends), so any pack has always been able to write
+
+   ```ts
+   const mine = usePlugin()                        // @abuddy/sdk/fe
+   const ref  = useShell().plugins[0].id           // every registered plugin, by ref
+   mine.system.get(ref)?.send({ type: 'ANYTHING' })
+   ```
+
+   with no cast and nothing to block, because `system` is the actor's own property rather than something
+   the SDK hands out. Deleting `sendsTo` therefore gives up no access control, because it had none to
+   give. Real isolation is `docs/goals/deferred/goal-pack-frontend-isolation.md`'s problem, the same class
+   as keeping a pack frontend away from `window.electronAPI`; don't attempt it here.
+
+   What this does give up is the coarse audit trail in `abuddy.json` ("this feature talks to that one").
+   That list was never complete — every plugin→plugin edge was already invisible to it — and both buses
+   still validate every send they carry, against a tighter map than before (Decision 18).
 
 3. **`PackPluginEvents` mirrors `PackSystemEvents`.** Codegen emits it from the declarations, and
    `QualifiedPluginEvents` becomes `Qualified<'<dep>', __dep_<dep>_PackPluginEvents>` — no `Pick`, the same
@@ -385,6 +415,22 @@ Final.
     block's, a registered plugin's `id` — so there is no name to type against. It is the escape hatch, the
     way `untypedQx` is for a query whose entity isn't known at compile time.
 
+18. **The renderer send is checked at runtime too, against the same declaration.** The backend path
+    already is: `bus/machine.ts:150` looks the target up in `getPluginEventValidationMap()` and drops a
+    miss with a `diagnostic` report. The frontend cannot do that today — `PackFEFeature`
+    (`packages/abuddy-sdk/src/fe/pack-fe-registration.ts`) carries `plugin?: PluginDefinition`,
+    `designation` and `default`, and nothing about what a plugin accepts — so the FE registry doesn't know.
+
+    So: `PackFEFeature` gains the plugin's `receives`, codegen emits it into `pack-entry-fe.ts` beside the
+    backend entry's copy, `createFePackRegistry()` builds the equivalent map, and the renderer
+    `sendToPlugin` checks and reports through it. One declaration, the same meaning on both sides.
+
+    **This catches mistakes, not misuse.** `mine.system.get(ref)?.send(…)` bypasses it, as it bypasses the
+    bus (Decision 2). It is worth the field for the same reason the bus's `diagnostic` report is worth
+    having: a send to a plugin that doesn't handle it is a bug, and silence is the worst way to learn.
+    Match the bus's behaviour rather than inventing another — report and drop, never throw, since the
+    caller is a running plugin.
+
 ## Open decisions (settle with the user before Phase 6)
 
 1. **Whether to build a declared read channel at all.** After Phases 2–5 the residue is the reads that are
@@ -494,6 +540,12 @@ thought is the facade consequence and the new renderer branch.
   `tests/e2e/plugin-sends.spec.ts`.
 - Add the renderer `sendToPlugin`, delivering to `boundFeHost().application.system.get(ref)` and reusing the
   shell's not-yet-loaded policy (Decision 6).
+- Carry the inbox to the frontend so that send can be checked (Decision 18): add `receives` to
+  `PackFEFeature` (`packages/abuddy-sdk/src/fe/pack-fe-registration.ts`), emit it from
+  `generateFrontendEntry()` into `pack-entry-fe.ts`, build the map in `createFePackRegistry()`
+  (`packages/abuddy-host/src/fe/pack-store.ts`), and have the renderer send report and drop a miss the way
+  `bus/machine.ts` does — same `diagnostic` severity, never a throw. The host's own two plugins already
+  have their `receives` (`features/registration.ts`), so they fill it without new work.
 - Type `navigateToPlugin`'s event parameter from the same inbox in `#generated/fe` (Decision 17), and
   leave `openPlugin`'s as `PluginEvent`. Check the ~22 `@/__generated__/fe` call sites still compile:
   a payload that was accepted as an open `PluginEvent` and isn't in the target's inbox now fails, which
@@ -505,8 +557,11 @@ thought is the facade consequence and the new renderer branch.
 export, so the rename moves `etc/build.api.md` and every `deps/<id>.d.ts` (Decision 16);
 `npm run test:unit` and `npm test` (E2E) pass; a spec pins that a backend send reaches every window and a
 renderer send reaches only its own (two windows in one E2E, or the shell fakes in
-`packages/abuddy-host/tests/fe/shell/`). Mutation: routing the renderer send through the bus fails that
-spec.
+`packages/abuddy-host/tests/fe/shell/`); a spec pins that a renderer send of an event outside the target's
+`receives` is dropped and reported at `diagnostic`, as the bus does (Decision 18), and that
+`getRegisteredPlugins()` carries `receives` for a pack's plugins and the host's. Mutations: routing the
+renderer send through the bus fails the scope spec; dropping `receives` from `pack-entry-fe.ts` fails the
+validation spec.
 
 ### Phase 5 — Migrate `fe/public.ts`, drop the handle
 
