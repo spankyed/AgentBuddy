@@ -8,7 +8,7 @@ import { afterAll, afterEach, describe, expect, it } from 'vitest';
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-db-write-lock-'));
 process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
-const { setupBackend } = await import('@/setup/backend');
+const { setupBackend } = await import('@/runtime');
 const { holdDatabaseWriteLock } = await import('@abuddy/host/database');
 
 const locks: Array<{ release(): void }> = [];

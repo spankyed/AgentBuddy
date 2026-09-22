@@ -3,7 +3,7 @@ import type {} from '@trpc/server/unstable-core-do-not-import';
 // The entry type comes from the packs barrel: AppRouter's declarations then don't reference the pack runtime
 import type { LoadedPackEntry } from '@abuddy/host/packs';
 import { getLoadedPackEntries } from '@abuddy/host/packs';
-import { appPacks } from '@/setup/backend';
+import { appPacks } from '@/runtime';
 import { router, procedure } from './trpc';
 
 export const packsRouter = router({

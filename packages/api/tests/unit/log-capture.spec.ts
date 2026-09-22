@@ -8,11 +8,11 @@ import { afterAll, describe, expect, it, vi } from 'vitest';
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-log-capture-'));
 process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
-const { openAppStore } = await import('@/setup/backend');
+const { openAppStore } = await import('@/runtime');
 const { store } = openAppStore();
 const { createLogger, reportError } = await import('@abuddy/sdk/logger');
-const { rootEvents } = await import('@/core/router/bus-emitter');
-const { originalConsole, initializeLogCapture, restoreConsole } = await import('@/core/shared/debug/log-capture');
+const { rootEvents } = await import('@/transport/emitter');
+const { originalConsole, initializeLogCapture, restoreConsole } = await import('@/adapters/logging');
 
 afterAll(() => {
   store.close();

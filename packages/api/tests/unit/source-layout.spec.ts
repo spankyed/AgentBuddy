@@ -1,47 +1,50 @@
-// The API holds transport, process boot and composition only; app runtime lives in @abuddy/host
+// The API is a shell around @abuddy/host, and its folders are the jobs it does: `boot/` starts the process,
+// `runtime/` opens this process's resources and binds the app, `transport/` is the wire to the renderer, and
+// `adapters/` implements what the host's code is given. The renderer's tree says the same of itself
+// (`packages/renderer/tests/source-layout.spec.ts`), with `views/` added, so the two read alike and a concept found
+// in one is looked for in the same place in the other.
+//
+// A folder named for a layer rather than a job — core, shared, lib, utils, common, helpers — takes whatever nobody
+// placed: `core/shared/debug/` held the log output, three words deep, for one importer. This says a new file belongs
+// to one of the jobs, and that app runtime belongs in @abuddy/host rather than here at all.
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const SRC = path.resolve(__dirname, '..', '..', 'src');
 
-/** Every file allowed under src/ */
-const ALLOWED = [
-  // Process entry and the types entry
-  'server.ts',
-  'types.ts',
-  // The declaration of the bundle's built-in pack loaders, which setup/backend.ts passes to the pack loader
-  'env.d.ts',
-  // Boot and composition
-  'setup/backend.ts',
-  'setup/config.ts',
-  'setup/websocket.ts',
-  // tRPC, and the root event bus the app binds as its transport
-  'core/router/bus-emitter.ts',
-  'core/router/bus-router.ts',
-  'core/router/context.ts',
-  'core/router/events.ts',
-  'core/router/index.ts',
-  'core/router/packs-router.ts',
-  'core/router/secrets-router.ts',
-  'core/router/trpc.ts',
-  // Log output to the console and the client
-  'core/shared/debug/log-capture.ts',
-];
+/** The jobs this package does, one folder each */
+const JOBS = ['adapters', 'boot', 'runtime', 'transport'];
 
-/** Code and docs; anything else under src is left alone */
-const SOURCE_FILE = /\.(ts|tsx|mts|cts|js|mjs|cjs|vue|json|md)$/;
+/** What may sit at the root of src/: the entry node runs, the types entry, and the virtual modules' declarations */
+const ROOT_FILES = ['server.ts', 'types.ts', 'env.d.ts'];
 
-function sourceFiles(dir: string): string[] {
-  return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
-    const full = path.join(dir, entry.name);
-    if (entry.isDirectory()) return sourceFiles(full);
-    return SOURCE_FILE.test(entry.name) ? [path.relative(SRC, full).split(path.sep).join('/')] : [];
-  });
-}
+const entries = () => fs.readdirSync(SRC, { withFileTypes: true }).filter((e) => !e.name.startsWith('.'));
 
 describe('packages/api/src', () => {
-  it('holds only transport, boot and composition', () => {
-    expect(sourceFiles(SRC).sort(), 'App runtime belongs in @abuddy/host (a module named by its concern), not the API').toEqual([...ALLOWED].sort());
+  it('holds one folder per job, and no folder named for a layer', () => {
+    const folders = entries().filter((e) => e.isDirectory()).map((e) => e.name).sort();
+
+    expect(folders, 'app runtime belongs in @abuddy/host; a new folder here is a new job').toEqual(JOBS);
+  });
+
+  it('keeps at its root only the entry, the types entry and the virtual modules it declares', () => {
+    const files = entries().filter((e) => e.isFile()).map((e) => e.name).sort();
+
+    expect(files).toEqual([...ROOT_FILES].sort());
+  });
+
+  it('keeps its tests in tests/, as every other package does', () => {
+    const inSrc = fs.readdirSync(SRC, { recursive: true })
+      .map(String)
+      .filter((f) => f.includes('__tests__') || /\.(spec|test)\.[cm]?[jt]sx?$/.test(f));
+
+    expect(inSrc).toEqual([]);
+  });
+
+  it('renders nothing: no .vue here', () => {
+    const vue = fs.readdirSync(SRC, { recursive: true }).map(String).filter((f) => f.endsWith('.vue'));
+
+    expect(vue, 'views are the renderer\'s').toEqual([]);
   });
 });

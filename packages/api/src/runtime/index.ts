@@ -17,8 +17,8 @@ import { APPLICATION_SYSTEM_EVENTS, createAppBus, HOST, createApplicationSystem,
 import { createHostRuntime } from '@abuddy/host/services';
 import { forwardSecretsChanges } from '@abuddy/host/secrets';
 import { assertSourceResolution } from '@abuddy/host/build/source-resolution';
-import { rootEvents } from '@/core/router/bus-emitter';
-import { initializeLogCapture, printLogEvents } from '@/core/shared/debug/log-capture';
+import { rootEvents } from '@/transport/emitter';
+import { initializeLogCapture, printLogEvents } from '@/adapters/logging';
 import { createRequire } from 'module';
 import pkg from '../../../../package.json';
 

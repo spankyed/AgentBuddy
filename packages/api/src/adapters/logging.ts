@@ -2,7 +2,7 @@
 // console calls) is printed once to the original console, and streamed to the client by the logs system
 import { formatWithOptions, type InspectOptions } from 'node:util';
 import type { LogEvent, LogLevel } from '@abuddy/sdk/logger';
-import { rootEvents } from '../../router/bus-emitter';
+import { rootEvents } from '@/transport/emitter';
 import { errorMessage, redactSecretText } from '@abuddy/sdk/utils/pure';
 
 // Store original console methods

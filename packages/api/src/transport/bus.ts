@@ -7,8 +7,8 @@ import type { Message } from '@abuddy/sdk/events';
 import { receiveClientEvent, UnknownClientEventError } from '@abuddy/host/bus';
 import { procedure, router } from './trpc';
 import { createLogger } from '@abuddy/sdk/logger';
-import { rootEvents } from '@/core/router/bus-emitter';
-import { appPacks } from '@/setup/backend';
+import { rootEvents } from '@/transport/emitter';
+import { appPacks } from '@/runtime';
 
 const logger = createLogger('app-events');
 
