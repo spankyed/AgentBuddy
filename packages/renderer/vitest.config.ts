@@ -7,6 +7,8 @@ export default mergeConfig(
   defineConfig({
     test: {
       environment: 'jsdom',
+      // Specs live in tests/, mirroring src/ (tests/source-layout.spec.ts)
+      include: ['tests/**/*.spec.ts'],
       exclude: [...configDefaults.exclude, 'e2e/**'],
       root: fileURLToPath(new URL('./', import.meta.url)),
     },

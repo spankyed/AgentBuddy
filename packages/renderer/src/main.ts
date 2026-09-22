@@ -2,19 +2,19 @@ import { createApp } from 'vue'
 import { createActor } from 'xstate';
 // import { createBrowserInspector } from '@statelyai/inspect';
 import type { Actor } from 'xstate';
-import App from './App.vue'
+import App from './views/App.vue'
 import './style.css'
 // highlight.js's stylesheet is global (.hljs, pre code.hljs), so the app owns it: imported from
 // @abuddy/ui it would ship again inside every fe.bundleUi pack and restyle code everywhere.
 import 'highlight.js/styles/github-dark.css'
 import builtInPacks from 'virtual:built-in-packs';
-import { hostFrontend } from '@/packs/plugin';
-import { createAppShell } from '@/core/app-shell';
+import { hostFrontend } from '@/views/packs/plugin';
+import { createAppShell } from '@/runtime/shell';
 import { HOST, installFromProtocol, runFrontendMigrations } from '@abuddy/host/fe';
 import 'virtual:host-deps';
-import { bindRendererHost } from '@/core/fe-host';
-import { fePacks } from '@/core/fe-packs';
-import { installGlobalErrorHandling, reportRendererError } from '@/core/error-reporting';
+import { bindRendererHost } from '@/runtime';
+import { fePacks } from '@/runtime/packs';
+import { installGlobalErrorHandling, reportRendererError } from '@/boot/errors';
 
 declare const __APP_VERSION__: string;
 
