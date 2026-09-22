@@ -34,9 +34,9 @@ describe('SYSTEM_ERROR', () => {
     expect(showErrorPage).not.toHaveBeenCalled();
   });
 
-  it('replaces the window for a fatal one', () => {
-    systemError('fatal');
-    expect(showErrorPage).toHaveBeenCalledTimes(1);
+  it('replaces the window for a fatal one, its message and stack apart', () => {
+    app.send({ type: 'SYSTEM_ERROR', message: 'a fatal', stack: 'Error: a fatal\n    at boot', severity: 'fatal' } as never);
+    expect(showErrorPage).toHaveBeenCalledWith('Something went wrong', { message: 'a fatal', stack: 'Error: a fatal\n    at boot' });
     expect(toast.error).not.toHaveBeenCalled();
   });
 

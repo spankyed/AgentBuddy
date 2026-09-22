@@ -9,7 +9,7 @@ Its static imports are evaluated first: `virtual:built-in-packs` loads every bui
 1. Installs `window.error` / `unhandledrejection` reporters (`electronAPI.rendererLog.write`, `fatal: true`). Reads `?popout=plugin&pluginId=…` (set by main's `plugin:popout`).
 2. Sets `window.appVersion` (`__APP_VERSION__`, the root `package.json` version) and runs `runFrontendMigrations()` (`src/setup/migrations/index.ts`: localStorage migrations run before the actor reads its keys; the version is stored under `agentbuddy-fe-version`).
 3. Built-in packs: calls each loader in `virtual:built-in-packs` and `fePacks.registerPackFE(mod.default)`, without a pack id, so they can't be unregistered. `fePacks` (`src/core/fe-packs.ts`) is this window's registered pack frontends, `createFePackRegistry()` from `@abuddy/host/fe`: the pack loader registers external packs' in it, `App.vue` reads the `welcome` app extension from it, and the SDK's frontend registries (steps, designations, tiptap plugins, DSL types) read it once bound.
-4. Creates the app shell, `createAppShell()` (`src/core/actors/application.ts`), with `systemId: 'host/application'` (its machine id stays `application`, which its `#application.…` targets name) and input `{ initialPluginId, ownsLastActivePlugin: !popout }` (a main window opens on the plugin last open and records the one it opens; a popout does neither). It starts with the plugins registered in `fePacks` and the default a pack claims. It is exported as `applicationState`.
+4. Creates the app shell, `createAppShell()` (`src/core/app-shell.ts`), with `systemId: 'host/application'` (its machine id stays `application`, which its `#application.…` targets name) and input `{ initialPluginId, ownsLastActivePlugin: !popout }` (a main window opens on the plugin last open and records the one it opens; a popout does neither). It starts with the plugins registered in `fePacks` and the default a pack claims. It is exported as `applicationState`.
 5. Binds the SDK's frontend port, `bindRendererHost(applicationState)` (`src/core/fe-host.ts`: `bindFeHost({ application, secrets, client: feClient, packs: fePacks })`), then starts the actor, so the binding is in place before any plugin runs or any external pack frontend loads:
    - `application` backs `@abuddy/sdk/fe`'s `navigateToPlugin` and its neighbours;
    - `secrets` is `src/core/secrets-client.ts`, the API's secrets procedures behind `secretsClient` (the only ones pack frontends call directly);
@@ -44,7 +44,7 @@ Its static imports are evaluated first: `virtual:built-in-packs` loads every bui
 - `trpc` is a `Proxy` over the current connection, so importers keep one binding across reconnects.
 - `reconnectApiClient(port)` closes the socket and reconnects only when the port changed, returning whether it did. A restart on the same port keeps the socket; the ws client reconnects on its own.
 
-## App shell (`src/core/actors/application.ts`)
+## App shell (`src/core/app-shell.ts`)
 
 The shell's machine is the host's: `createShellMachine` in `@abuddy/host/fe` (`packages/abuddy-host/src/fe/shell/`, described in `packages/abuddy-host/CLAUDE.md`). This file only composes it with the window's I/O, as `createAppShell()`:
 

@@ -2,7 +2,7 @@
 // apps use, with the test pack's plugins registered, so a pack's frontend (navigation, the shell's state, sends to
 // its systems) is tested as the app runs it rather than against a stand-in.
 import { createActor, type AnyActorRef, type AnyStateMachine } from 'xstate';
-import { createFePackRegistry, createShellMachine, HOST, type ShellClient, type ShellConnection } from '@abuddy/host/fe';
+import { createFePackRegistry, createShellMachine, describeFailure, HOST, type ShellClient, type ShellConnection } from '@abuddy/host/fe';
 import type { Message } from '@abuddy/sdk/events';
 import { resolveName } from '@abuddy/sdk/ids';
 import type { HostShell, PluginDefinition } from '@abuddy/sdk/fe';
@@ -134,9 +134,7 @@ export async function startShell(packId: string, options: StartShellOptions, bac
     storage: { loadPanelSizes: () => undefined, savePanelSizes: () => {} },
     notify: {
       error: (title, detail) => { notices.push({ title, detail }); },
-      errorPage: (title, detail) => {
-        notices.push({ title, detail: typeof detail === 'string' ? detail : detail.stack ? `${detail.message}\n\n${detail.stack}` : detail.message });
-      },
+      errorPage: (title, detail) => { notices.push({ title, detail: describeFailure(detail) }); },
     },
   }), { systemId: HOST.application, input: { ownsLastActivePlugin: false } });
   // Bound before the shell starts: starting it spawns the plugins' actors, which may reach the frontend host

@@ -261,6 +261,7 @@ The renderer exposes on `window`:
 
 ```ts
 { type: 'SELECT_PLUGIN', plugin: string }     // Switch active plugin (its ref)
+{ type: 'OPEN_PLUGIN', plugin: string, events: object[] }  // What openPlugin sends: open a plugin by ref and hand it events; waits for a pack still loading
 { type: 'NAVIGATE_BACK' }                     // History back
 { type: 'NAVIGATE_FORWARD' }                  // History forward
 { type: 'DEFAULT_TOGGLE', area: 'canvas' }    // Toggle canvas visibility

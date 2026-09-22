@@ -2,8 +2,7 @@
 // the seeder recorded what it wrote as unedited — without that every row an older version seeded stays frozen. Action
 // logs moved from `log-service` to `action:<label>`, so whoever hid `log-service` gets `action:*` hidden too. The
 // settings' copies of the root flow and of the flow the brain runs are dropped: the role and the brain own them. Link
-// blocks and the service calls in users' code, which named this pack's plugins (and the app shell) by bare id, name their
-// refs, and a link to a plugin since removed is dropped. And 0.3.14 stored every default as if the user had chosen it:
+// blocks, which named this pack's plugins by bare id, name their refs, and a link to a plugin since removed is dropped. And 0.3.14 stored every default as if the user had chosen it:
 // what still equals 0.3.14's default is dropped, so today's defaults apply.
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { tx, untypedQx } from '@abuddy/ears'
@@ -334,58 +333,6 @@ describe('the 0.3.15 migration', () => {
       const blocks = [{ type: 'link', props: { links: [link('default-setup/notes'), link('external')] } }, { type: 'text' }]
       expect(addressLinkBlocks(blocks)).toBe(blocks)
       expect(addressLinkBlocks(undefined)).toBeUndefined()
-    })
-  })
-
-  // Code a user wrote against 0.3.14 named plugins and systems by bare id, which the services now refuse
-  describe("the service calls in users' code", () => {
-    const OLD_CODE = [
-      "services.emitter.sendToPlugin('threads', { type: 'X' })",
-      'services.emitter.sendToSystem("brain", { type: "Y" })',
-      "const s = services.settings.getPluginSettings(`code`)",
-      "services.settings.updatePluginSetting( 'logs', ['a'], 1)",
-      // 0.3.14's app shell, which is the host's plugin now
-      "services.emitter.sendToPlugin('application', { type: 'ONBOARDING_COMPLETE' })",
-      // It was never a system and had no settings, so those calls stay; as do another pack's feature, a ref, a name
-      // built at run time, and a method that takes no name
-      "services.emitter.sendToSystem('application', {})",
-      "services.settings.getPluginSettings('application')",
-      "services.emitter.sendToPlugin('memos', {})",
-      "services.emitter.sendToPlugin('default-setup/notes', {})",
-      'services.emitter.sendToPlugin(name, {})',
-      "services.logger.info('threads')",
-    ].join('\n')
-    const NEW_CODE = [
-      "services.emitter.sendToPlugin('default-setup/threads', { type: 'X' })",
-      'services.emitter.sendToSystem("default-setup/brain", { type: "Y" })',
-      "const s = services.settings.getPluginSettings(`default-setup/code`)",
-      "services.settings.updatePluginSetting( 'default-setup/logs', ['a'], 1)",
-      "services.emitter.sendToPlugin('host/application', { type: 'ONBOARDING_COMPLETE' })",
-      "services.emitter.sendToSystem('application', {})",
-      "services.settings.getPluginSettings('application')",
-      "services.emitter.sendToPlugin('memos', {})",
-      "services.emitter.sendToPlugin('default-setup/notes', {})",
-      'services.emitter.sendToPlugin(name, {})',
-      "services.logger.info('threads')",
-    ].join('\n')
-
-    it("rewrites a user's action, and the code an action or transform step runs, and not a seeded action", () => {
-      createDefaultSettings()
-      const mine = createEntityWithDefaults(EARS.Entity.Action, { label: 'Mine', actionFn: OLD_CODE } as never)
-      const seeded = createEntityWithDefaults(EARS.Entity.Action, { label: 'Seeded', actionFn: OLD_CODE, sourceHash: 'v1' } as never)
-      const inline = createEntityWithDefaults(EARS.Entity.Node, { label: 'Inline', nodeType: 'action', mode: 'code', actionFn: OLD_CODE } as never)
-      const transform = createEntityWithDefaults(EARS.Entity.Node, { label: 'Shape', nodeType: 'transform', script: OLD_CODE } as never)
-
-      migration.up()
-
-      expect(attrs(mine.id).actionFn).toBe(NEW_CODE)
-      expect(attrs(inline.id).actionFn).toBe(NEW_CODE)
-      expect(attrs(transform.id).script).toBe(NEW_CODE)
-      // The seeder replaces it from a source that names refs
-      expect(attrs(seeded.id).actionFn).toBe(OLD_CODE)
-
-      migration.up()
-      expect(attrs(mine.id).actionFn).toBe(NEW_CODE)
     })
   })
 })

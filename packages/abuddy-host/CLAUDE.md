@@ -137,7 +137,7 @@ All paths come from `resolveAppContext()` (`@abuddy/sdk/env`). The context gives
 
 ## App shell (`fe/shell/`)
 
-The host `application` feature's plugin: the frontend half of the feature whose backend half is `bus/application-system.ts`. `createShellMachine({ packs, client, packFrontends, storage, notify, target })` builds it over the I/O it's given (`fe/shell/types.ts`); the renderer composes it with the window's (`createAppShell`, `packages/renderer/src/core/actors/application.ts`), and tests with fakes. Its machine id is `application`, which its `#application.…` targets name; it runs as `HOST.application`. It's checked against the SDK's `HostShell` contract where it's defined (`satisfiesHostShell`, `machine.ts`), so a change to what frontend code may send or read fails the typecheck on one side or the other.
+The host `application` feature's plugin: the frontend half of the feature whose backend half is `bus/application-system.ts`. `createShellMachine({ packs, client, packFrontends, storage, notify, target })` builds it over the I/O it's given (`fe/shell/types.ts`); the renderer composes it with the window's (`createAppShell`, `packages/renderer/src/core/app-shell.ts`), and tests with fakes. Its machine id is `application`, which its `#application.…` targets name; it runs as `HOST.application`. It's checked against the SDK's `HostShell` contract where it's defined (`satisfiesHostShell`, `machine.ts`), so a change to what frontend code may send or read fails the typecheck on one side or the other.
 
 Modules, one concern each; a concern that owns a listener or subscription is a child actor:
 

@@ -10,6 +10,12 @@ import type { LoadedPackEntry } from '../packs/pack-layout.ts';
  */
 export type ShellFailure = string | { message: string; stack?: string };
 
+/** A failure as one text, its stack under its message: for a log or a test, where the error page's layout isn't */
+export function describeFailure(failure: ShellFailure): string {
+  if (typeof failure === 'string') return failure;
+  return failure.stack ? `${failure.message}\n\n${failure.stack}` : failure.message;
+}
+
 /** What the shell hears from its subscription to the bus */
 export interface ShellConnection {
   /**

@@ -1,6 +1,6 @@
 // This window's app shell: the host's shell machine (`createShellMachine`, @abuddy/host/fe) composed with the
 // window's I/O — the API client, the pack loader, localStorage, the toast and error page, and the window itself.
-import { createShellMachine, type ShellContext, type ShellEvent, type ShellNotify, type ShellPackFrontends, type ShellStorage } from '@abuddy/host/fe';
+import { createShellMachine, type ShellNotify, type ShellPackFrontends, type ShellStorage } from '@abuddy/host/fe';
 import { feClient } from '@/core/fe-client';
 import { fePacks } from '@/core/fe-packs';
 import { globalToast } from '@/core/toast';
@@ -14,8 +14,6 @@ declare global {
 }
 
 export { visiblePluginsOf, withHostLast } from '@abuddy/host/fe';
-export type ApplicationContext = ShellContext;
-export type ApplicationEvent = ShellEvent;
 
 /** Where the panel sizes the user set are kept, so the next window opens with them */
 const PANEL_SIZES_KEY = 'agentbuddy-panel-sizes';
@@ -23,7 +21,14 @@ const PANEL_SIZES_KEY = 'agentbuddy-panel-sizes';
 const storage: ShellStorage = {
   loadPanelSizes: () => {
     const saved = localStorage.getItem(PANEL_SIZES_KEY);
-    return saved ? JSON.parse(saved) : undefined;
+    if (!saved) return undefined;
+    try {
+      return JSON.parse(saved);
+    } catch {
+      // A value that isn't JSON would otherwise fail the shell's creation, and the window with it: the defaults apply
+      console.warn(`[app-shell] Ignoring unreadable panel sizes saved under ${PANEL_SIZES_KEY}`);
+      return undefined;
+    }
   },
   savePanelSizes: (sizes) => localStorage.setItem(PANEL_SIZES_KEY, JSON.stringify(sizes)),
 };

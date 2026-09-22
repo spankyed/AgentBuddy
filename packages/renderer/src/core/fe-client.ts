@@ -1,21 +1,18 @@
 // The window's client to the API: the SDK's sends and the shell's subscription, over tRPC and the Electron main
 // process's report of the API's status. Nothing else in the renderer calls the bus or reads the loaded packs.
-import type { ShellClient } from '@abuddy/host/fe';
+import type { ShellClient, ShellFailure } from '@abuddy/host/fe';
 import { trpc, reconnectApiClient } from '@/core/trpc';
 import { globalToast } from '@/core/toast';
 
 /** What the Electron main process reports about the API process */
 type ApiStatusEvent = { type: string; port?: number; restarting?: boolean; error?: unknown; message?: string; stack?: string; source?: string };
 
-/** Why the API process stopped or failed, as the error page shows it */
-function failureOf(event: ApiStatusEvent): string {
-  if (event.type === 'api:fatal') {
-    return event.stack ? `[${event.source}] ${event.message}\n\n${event.stack}` : `[${event.source}] ${event.message}`;
-  }
+/** Why the API process stopped or failed: its message and stack apart, which the error page lays out */
+function failureOf(event: ApiStatusEvent): ShellFailure {
+  if (event.type === 'api:fatal') return { message: `[${event.source}] ${event.message}`, stack: event.stack };
   const error = event.error as { message?: string; stack?: string } | string | undefined;
-  const detail = (typeof error === 'object' ? error?.message : error) || 'The backend process stopped unexpectedly.';
-  const stack = typeof error === 'object' ? error?.stack : undefined;
-  return stack ? `${detail}\n\n${stack}` : detail;
+  const message = (typeof error === 'object' ? error?.message : error) || 'The backend process stopped unexpectedly.';
+  return { message, stack: typeof error === 'object' ? error?.stack : undefined };
 }
 
 export const feClient: ShellClient = {

@@ -30,3 +30,20 @@ it('reports a backend that already gave up with the error main recorded, not its
 
   expect(onFailed).toHaveBeenCalledWith(error);
 });
+
+it('reports an API process that stopped, message and stack apart', async () => {
+  let report: ((event: { type: string; error?: unknown }) => void) | undefined;
+  (window as unknown as { electronAPI: unknown }).electronAPI = {
+    apiStatus: {
+      getStatus: () => Promise.resolve({ running: true, restartAttempts: 0 }),
+      onEvent: (callback: typeof report) => { report = callback; return () => {}; },
+    },
+  };
+  const onFailed = vi.fn();
+
+  const stop = feClient.subscribe({ onConnected: () => {}, onDisconnected: () => {}, onMessage: () => {}, onFailed });
+  report!({ type: 'api:stopped', error: { message: 'Backend process exited unexpectedly (code 1)', stack: 'at api' } });
+  stop();
+
+  expect(onFailed).toHaveBeenCalledWith({ message: 'Backend process exited unexpectedly (code 1)', stack: 'at api' });
+});

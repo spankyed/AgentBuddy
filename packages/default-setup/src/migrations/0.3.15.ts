@@ -5,7 +5,7 @@ import { repository } from '@/__generated__/repository';
 import type { PackMigration } from '@abuddy/sdk/framework';
 import { createLogger } from '@abuddy/sdk/logger';
 import { ref, type FeatureName } from '@/__generated__/ref';
-import { addressLinkBlocks, addressServiceCalls, refOf0314Feature } from './bare-feature-ids';
+import { addressLinkBlocks, refOf0314Feature } from './bare-feature-ids';
 import { DEFAULT_SETTINGS_0314 } from './defaults-0.3.14';
 import { isDeepStrictEqual } from 'node:util';
 import { isPlainObject } from '@abuddy/sdk/utils/pure';
@@ -17,7 +17,7 @@ const PACK_ID = 'default-setup';
 
 export const migration: PackMigration = {
   target: '0.3.15',
-  description: "Drop the app's state, the root flow copies and 0.3.14's stored copies of its defaults from the settings, mark rows seeded before the seeder tracked what it wrote as unedited, keep action logs hidden for whoever hid log-service, drop the keys 0.3.14 moved but left behind, and point stored link blocks and the service calls in users' code at plugins' refs",
+  description: "Drop the app's state, the root flow copies and 0.3.14's stored copies of its defaults from the settings, mark rows seeded before the seeder tracked what it wrote as unedited, keep action logs hidden for whoever hid log-service, drop the keys 0.3.14 moved but left behind, and point stored link blocks at plugins' refs",
   up: () => {
     // ── The app's state (onboarding, versions, seed hashes) is the host's AppState now ──
     // The host's own 0.3.15 migration, which runs first, moved it out of `internal` (no pack migration runs when it fails).
@@ -56,11 +56,9 @@ export const migration: PackMigration = {
     repository.settingsCommands.removeStored(['plugins', `${PACK_ID}/flows`, 'rootFlowId']);
     repository.settingsCommands.removeStored(['plugins', `${PACK_ID}/brain`, 'runningRootFlowId']);
 
-    // ── Link blocks and actions name a plugin or system by its ref ──
+    // ── Link blocks name a plugin by its ref ──
     const relinked = addressStoredLinkBlocks();
     if (relinked > 0) logger.info(`[migration 0.3.15] pointed ${relinked} message(s)' link blocks at plugins' refs`);
-    const readdressed = addressUserCode();
-    if (readdressed > 0) logger.info(`[migration 0.3.15] pointed the service calls in ${readdressed} action(s) and step(s) at plugins' refs`);
 
     // ── 0.3.14 stored every default as if the user had chosen it ──
     // Last, once the steps above moved and dropped keys: pruning first would drop a value the user set under a moved
@@ -127,31 +125,6 @@ function addressStoredLinkBlocks(): number {
     if (blocks === row.blocks) continue;
     tx(row.id).put('blocks', blocks as never);
     changed++;
-  }
-  return changed;
-}
-
-/**
- * The service calls in code the user wrote, pointed at this pack's refs (`addressServiceCalls`): actions without a
- * source hash, and the code an action step (in code mode) or a transform step runs. A seeded action is left to the
- * seeder, whose source names refs and which replaces every action an older version seeded.
- */
-function addressUserCode(): number {
-  let changed = 0;
-  const rewrite = (id: EARS.EntityId, field: string, code: unknown) => {
-    if (typeof code !== 'string') return;
-    const next = addressServiceCalls(code);
-    if (next === code) return;
-    tx(id).put(field as never, next as never);
-    changed++;
-  };
-  // Untyped: the code is read and written as the rows store it
-  for (const action of untypedQx(EARS.Entity.Action as never).pickAll() as Array<{ id: EARS.EntityId; actionFn?: unknown; sourceHash?: unknown }>) {
-    if (!action.sourceHash) rewrite(action.id, 'actionFn', action.actionFn);
-  }
-  for (const node of untypedQx(EARS.Entity.Node as never).pickAll() as Array<{ id: EARS.EntityId; nodeType?: unknown; actionFn?: unknown; script?: unknown }>) {
-    if (node.nodeType === 'action') rewrite(node.id, 'actionFn', node.actionFn);
-    if (node.nodeType === 'transform') rewrite(node.id, 'script', node.script);
   }
   return changed;
 }

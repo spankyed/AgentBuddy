@@ -9,7 +9,7 @@ import './style.css'
 import 'highlight.js/styles/github-dark.css'
 import builtInPacks from 'virtual:built-in-packs';
 import { hostFrontend } from '@/packs/plugin';
-import { createAppShell } from '@/core/actors/application';
+import { createAppShell } from '@/core/app-shell';
 import { HOST } from '@abuddy/host/fe';
 import { runFrontendMigrations } from '@/setup/migrations';
 import { handleProtocolInstall, requestPackInstall } from '@/packs/pack-install';

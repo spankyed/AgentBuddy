@@ -547,7 +547,7 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
           // Interrupting the person using the app with it tells them nothing they can act on.
           if (ev.severity === 'diagnostic') return;
           if (ev.severity === 'fatal') {
-            notify.errorPage(ev.title ?? 'Something went wrong', ev.stack ? `${ev.message}\n\n${ev.stack}` : ev.message);
+            notify.errorPage(ev.title ?? 'Something went wrong', { message: ev.message, stack: ev.stack });
             return;
           }
           notify.error(ev.title ?? 'Something went wrong', ev.message);
