@@ -4,18 +4,16 @@ import { ref } from '@/__generated__/ref';
 
 export const migration: PackMigration = {
   target: '0.3.0',
-  description: 'Add codex agent mode if missing; remove Hermes settings',
+  description: 'Add codex agent mode if missing; remove the Hermes mode',
   up: () => {
     // The user's own modes, if they stored any: the defaults already have Codex, and patching a merged copy would
-    // write every default mode into the user's stored settings. Under the feature id before 0.3.15 moved the key.
+    // write every default mode into the user's stored settings. The host's 0.3.15 migration, which runs before every
+    // pack migration, has moved them onto the threads plugin's ref, and dropped Hermes's settings, which no plugin owns.
     const stored = (repository.settingsQueries.getStoredSettings().plugins ?? {}) as Record<string, any>;
-    const storedModes = stored[ref('threads')]?.chat?.modes ?? stored.threads?.chat?.modes;
+    const storedModes = stored[ref('threads')]?.chat?.modes;
     const modes: Array<{ id: string; name?: string; description?: string; [k: string]: any }> | undefined =
       storedModes && structuredClone(storedModes);
     if (modes) patchModes(modes);
-
-    // A hidden `hermes` tab is dropped by the host's 0.3.15 move of the tabs' visibility, as naming no plugin
-    repository.settingsCommands.removeStored(['plugins', 'hermes']);
   },
 };
 

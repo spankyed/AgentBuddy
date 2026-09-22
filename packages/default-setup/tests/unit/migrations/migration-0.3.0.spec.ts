@@ -29,13 +29,13 @@ describe('the 0.3.0 migration', () => {
     expect(stored()).toEqual({ general: { application: { openLinksInApp: false } } })
   })
 
-  it("adds Codex to the modes a user stored, after Hermes, and drops Hermes and its settings", () => {
+  it("adds Codex to the modes a user stored, after Hermes, and drops Hermes", () => {
     createDefaultSettings()
-    // As a pre-0.3.0 user stored them: under the feature id
+    // As a pre-0.3.0 user stored them, once the host's 0.3.15 migration, which runs before any pack's, moved them onto
+    // the plugins' refs and dropped `hermes`, which no pack has
     storeAsBefore({
       plugins: {
-        threads: { chat: { modes: [{ id: 'claude-code', name: 'Claude Code' }, { id: 'hermes', name: 'Hermes' }, { id: 'manager', name: 'Manager' }] } },
-        hermes: { url: 'http://localhost' },
+        [ref('threads')]: { chat: { modes: [{ id: 'claude-code', name: 'Claude Code' }, { id: 'hermes', name: 'Hermes' }, { id: 'manager', name: 'Manager' }] } },
       },
     })
 
@@ -45,8 +45,7 @@ describe('the 0.3.0 migration', () => {
     const modes = (stored().plugins as any)[ref('threads')].chat.modes
     expect(modes.map((m: { id: string }) => m.id)).toEqual(['claude-code', 'codex', 'manager'])
     expect(modes[1].phases.map((p: { id: string }) => p.id)).toEqual(['plan', 'default'])
-    expect(stored().plugins).not.toHaveProperty('hermes')
     // Only what the user had and what the migration changed: no default is written into the stored settings
-    expect(Object.keys(stored().plugins as object).sort()).toEqual([ref('threads'), 'threads'])
+    expect(Object.keys(stored().plugins as object)).toEqual([ref('threads')])
   })
 })
