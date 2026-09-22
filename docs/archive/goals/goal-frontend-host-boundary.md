@@ -1,3 +1,8 @@
+> **Done** (on `AS/frontend-host-boundary`, `d18ce9eb5`, with `50e6bd80c` covering what it left untested and
+> `6d0633ad4` removing the shell code the move showed to be dead). The text below is the plan as written; the
+> Outcome records where the implementation differed. For the current layout, see `packages/abuddy-host/CLAUDE.md`
+> (Packs frontend, App shell) and `packages/renderer/CLAUDE.md` (Packs view).
+
 > **Written in session** `c9f31de2-e94c-46ea-a2ac-2898390dc27d` (Claude Code, 2026-09-22). Resume it with `claude -r c9f31de2-e94c-46ea-a2ac-2898390dc27d`.
 
 ```
@@ -220,6 +225,26 @@ edit. The rules that keep this goal from stalling:
   it, not the shell itself.
 - `@abuddy/host/fe` must keep working in a pack's unit tests (`startShell` from
   `@abuddy/testing/harness`), so anything that needs the window arrives as an option.
+
+## Outcome
+
+Phases 1–3 landed as planned. Three things differed, or were decided while implementing:
+
+- **The window's `PackFrontendIO` lives in the renderer's `core/`** (now `adapters/`), not in `src/packs/`. That is what
+  let the packs folder be the view plus one composition module, which the plan's finished-when asked for.
+- **The loader is a factory**, `createPackFrontends(io, packs)`, so the registry arrives as an argument like the shell's
+  other I/O rather than being imported.
+- **The renderer's layout guard went to its own suite** (`packages/renderer/tests/source-layout.spec.ts`), not into the
+  host's `boundaries.spec.ts`, per Decision 8's revision: each package states what it may hold, and neither reaches into
+  the other's tree.
+
+The fast-fail this goal's Phase 2 called a contract was verified rather than assumed: making the fixture pack's FE entry
+throw produced `[pack-loader] Failed to load FE entry pack://e2e-fixture/runtime/fe.js…` and failed the run, instead of
+timing out on a plugin that never registered.
+
+Since then the host itself was restructured (`06978cf72`): what this goal put in `fe/packs/` and `fe/shell/` now lives in
+`features/packs/fe/` and `features/application/fe/`, laid out as any pack's features are. The paths below are the ones
+this plan named, not the current ones.
 
 ## Deferred
 
