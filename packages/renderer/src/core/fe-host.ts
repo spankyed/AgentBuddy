@@ -1,7 +1,7 @@
 // The renderer's side of the SDK's frontend port (bindFeHost): the application actor, the secrets client, sends to
 // backend systems over the API client, and the window's registered pack frontends
-import type { AnyActorRef } from 'xstate';
 import { bindFeHost, type FeTransport } from '@abuddy/sdk/runtime';
+import type { HostShell } from '@abuddy/sdk/fe';
 import { createFePackRegistry } from '@abuddy/host/fe';
 import { trpc } from '@/core/trpc';
 import { globalToast } from '@/core/toast';
@@ -31,7 +31,7 @@ export const fePacks = createFePackRegistry();
  * Binds the SDK's frontend port to this window's app, before the application actor is created (creating it already
  * builds its plugins' state) and before any pack frontend runs. `application` gives the actor once it exists.
  */
-export function bindRendererHost(application: () => AnyActorRef | undefined): void {
+export function bindRendererHost(application: () => HostShell | undefined): void {
   bindFeHost({
     get application() {
       const actor = application();

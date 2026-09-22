@@ -1,9 +1,9 @@
 // The frontend's port: what the SDK's frontend code reaches in the renderer, bound once per window
-import type { AnyActorRef } from 'xstate';
 import type { Message } from '../events/index.ts';
 import type { SecretsClient } from '../fe/secrets-client.ts';
 import type { Component } from 'vue';
 import type { Plugin } from '../fe/plugin.ts';
+import type { HostShell } from '../fe/shell.ts';
 import type { TiptapPlugin } from '../fe/tiptap-plugins.ts';
 import type { DslTypeConfig } from '../fe/dsl-types.ts';
 import type { PackExtensionsView } from './packs-view.ts';
@@ -29,8 +29,8 @@ export interface FePackRegistryView extends PackExtensionsView {
 
 /** The running app, as the SDK reaches it in the renderer */
 export interface FeHostRuntime {
-  /** The application actor, which spawns and selects plugins */
-  application: AnyActorRef;
+  /** The app shell, which spawns the plugins, holds which is open and lays out the panels */
+  application: HostShell;
   /** The API's secrets procedures */
   secrets: SecretsClient;
   /** Sends to backend systems */

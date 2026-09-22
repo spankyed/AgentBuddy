@@ -166,7 +166,6 @@ app.config.errorHandler = (err, _instance, info) => {
   );
 };
 
-app.provide('applicationActor', applicationState);
 app.mount('#app');
 
 window.electronAPI?.rendererReady?.();

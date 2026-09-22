@@ -1,11 +1,11 @@
 import { boundFeHost } from '../runtime/fe-host.ts';
-import type { AnyActorRef } from 'xstate';
 import { getDesignated, hasDesignation } from '../designations/index.ts';
+import type { HostShell } from './shell.ts';
 
 /** An event for a plugin's actor */
 export type PluginEvent = { type: string; [key: string]: unknown };
 
-function getApp(): AnyActorRef {
+function getApp(): HostShell {
   return boundFeHost().application;
 }
 
@@ -18,8 +18,7 @@ function getApp(): AnyActorRef {
 export function openPlugin(ref: string, event?: PluginEvent | PluginEvent[]): void {
   const app = getApp();
   const snapshot = app.getSnapshot();
-  const registered: Array<{ id: string }> = snapshot.context.plugins ?? [];
-  if (!registered.some((plugin) => plugin.id === ref)) {
+  if (!snapshot.context.plugins.some((plugin) => plugin.id === ref)) {
     throw new Error(`No plugin is registered at "${ref}"`);
   }
   if (snapshot.context.activePlugin.id !== ref) {

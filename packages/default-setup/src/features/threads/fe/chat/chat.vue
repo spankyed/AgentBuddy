@@ -185,7 +185,7 @@ import PanelResizer from '@abuddy/ui/layout/panel-resizer'
 import ImageLightbox from '@abuddy/ui/design/ImageLightbox'
 import ConfirmationDialog from '@abuddy/ui/design/ConfirmationDialog'
 import ScrollToBottomFob from '@abuddy/ui/design/ScrollToBottomFob'
-import { useApplicationActor, usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin, useShell } from '@abuddy/sdk/fe'
 import { navigateToPlugin } from '@/__generated__/fe'
 import { useSelector } from '@xstate/vue'
 import { id, threadsFromStore, type ThreadsState } from '@/features/threads/fe/state';
@@ -193,9 +193,9 @@ import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, Q
 import { sendToSystem } from '@/__generated__/events'
 import { ref as featureRef } from '@/__generated__/ref';
 
-const appActor = useApplicationActor()
+const shell = useShell()
 const actor: ThreadsState = usePlugin();
-const isOnboarding = useSelector(appActor, (s: any) => s.hasTag('onboarding'));
+const isOnboarding = shell.isOnboarding;
 const allMessages = useSelector(actor, (state) => (state.context.currentThread?.messages || []) as MessageEntity[]);
 const visibleMessages = computed(() => allMessages.value.filter(m => !(m as any).compacted));
 const messagePagination = useSelector(actor, (state) => state.context.messagePagination);
@@ -285,7 +285,7 @@ function handleDashboardResize(delta: number) {
   dashboardWidth.value = newPercent
 }
 
-const canvasHeight = useSelector(appActor, (state: any) => state.context.panelSizes.canvasHeight)
+const canvasHeight = computed(() => shell.panelSizes.value.canvasHeight)
 
 watch(canvasHeight, (height) => {
   if (height >= 93) {
@@ -375,10 +375,7 @@ function openLightbox(src: string) {
 }
 
 function expandChatIfCollapsed() {
-  const snapshot = appActor.getSnapshot();
-  if (snapshot.context.panelSizes.canvasHeight >= 93) {
-    appActor.send({ type: 'RESIZE_PANEL', panel: 'canvas', size: 50 });
-  }
+  if (shell.panelSizes.value.canvasHeight >= 93) shell.resizeCanvas(50);
 }
 
 function handleToggleInlineTabs() {
@@ -421,9 +418,7 @@ function handleToggleThreadSidebar() {
 function handleViewDashboard() {
   navigateToPlugin('threads', { type: 'VIEW_DASHBOARD' });
   // If canvas is collapsed (chat dominant), give it room to show the dashboard
-  if (appActor.getSnapshot().context.panelSizes.canvasHeight < 20) {
-    appActor.send({ type: 'RESIZE_PANEL', panel: 'canvas', size: 50 });
-  }
+  if (shell.panelSizes.value.canvasHeight < 20) shell.resizeCanvas(50);
 }
 
 function handleViewArtifacts(threadId: string) {

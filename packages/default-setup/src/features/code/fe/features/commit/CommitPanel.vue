@@ -631,7 +631,7 @@
 import { codeChild } from '@/features/code/fe/utils/parent-communication'
 import { computed, ref, nextTick, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useApplicationActor, usePlugin } from '@abuddy/sdk/fe'
+import { usePlugin, useShell } from '@abuddy/sdk/fe'
 import type { CodeState } from '@/features/code/fe/state'
 import type { GitStatusFile } from '@/features/code/fe/features/commit/state'
 import { GitBranch, GitBranchPlus, GitCommit, GitFork, GitMerge, RefreshCw, Plus, Minus, RotateCcw, File, ChevronDown, ChevronRight, CheckCircle, Check, X, Sparkles, Loader2, ArrowDownToLine, ArrowUpFromLine, MoreVertical, Trash2, Copy, Search, FolderSync, Lock } from 'lucide-vue-next'
@@ -649,7 +649,7 @@ import PanelResizer from '@abuddy/ui/layout/panel-resizer'
 import { useSectionVisibilityMenu } from '@/features/code/fe/composables/useSectionVisibilityMenu'
 
 // Get actors
-const appActor = useApplicationActor()
+const shell = useShell()
 const codeActor: CodeState = usePlugin()
 const commitActor = codeChild(codeActor, 'commit')!
 
@@ -846,7 +846,7 @@ const refreshStatus = () => {
 }
 
 const selectFile = (file: GitStatusFile) => {
-  appActor.send({ type: 'RESTORE_CHAT' })
+  shell.restoreChat()
   commitActor?.send({ type: 'commit.SELECT_FILE', file })
   commitActor?.send({ type: 'commit.VIEW_DIFF', path: file.path, staged: file.staged })
 }
@@ -939,7 +939,7 @@ const cancelRevert = () => {
 }
 
 const openFile = (file: GitStatusFile) => {
-  appActor.send({ type: 'RESTORE_CHAT' })
+  shell.restoreChat()
   commitActor?.send({ type: 'commit.OPEN_FILE', file })
 }
 

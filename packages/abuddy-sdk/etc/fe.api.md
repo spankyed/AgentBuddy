@@ -188,6 +188,65 @@ export function goForward<T>(history: NavHistory<T>): {
 // @public (undocumented)
 export function hasDesignation(role: string): boolean;
 
+// @public
+export interface HostShell {
+    // (undocumented)
+    getSnapshot(): HostShellSnapshot;
+    // (undocumented)
+    send(event: HostShellEvent): void;
+    // (undocumented)
+    subscribe(observer: (snapshot: HostShellSnapshot) => void): {
+        unsubscribe(): void;
+    };
+    system: {
+        get(id: string): AnyActorRef | undefined;
+    };
+}
+
+// @public
+export type HostShellEvent = {
+    type: 'SELECT_PLUGIN';
+    plugin: string;
+} | {
+    type: 'DEFAULT_TOGGLE';
+    area: 'canvas';
+} | {
+    type: 'RESIZE_PANEL';
+    panel: 'canvas' | 'inspection';
+    size: number;
+} | {
+    type: 'RESTORE_CHAT';
+} | {
+    type: 'SET_PLUGIN_VISIBILITY';
+    plugin: string;
+    visible: boolean;
+} | {
+    type: 'CLOSE_DEV_LETTER';
+} | {
+    type: 'HOTKEYS_RECORDING_START';
+} | {
+    type: 'HOTKEYS_RECORDING_END';
+};
+
+// @public
+export interface HostShellSnapshot {
+    // (undocumented)
+    context: HostShellState;
+    hasTag(tag: string): boolean;
+}
+
+// @public
+export interface HostShellState {
+    activePlugin: Plugin_2;
+    defaultToggles: {
+        canvas: boolean;
+    };
+    // (undocumented)
+    panelSizes: ShellPanelSizes;
+    plugins: readonly Plugin_2[];
+    pluginVisibility: Readonly<Record<string, boolean>>;
+}
+
 // @public (undocumented)
 export interface HotkeyEvent {
     // (undocumented)
@@ -391,6 +450,35 @@ export interface SecretsSnapshot {
     status: SecretsStatus;
 }
 
+// @public
+export interface Shell {
+    // (undocumented)
+    activePlugin: Readonly<Ref<Plugin_2>>;
+    closeDevLetter(): void;
+    // (undocumented)
+    endHotkeyRecording(): void;
+    // (undocumented)
+    isOnboarding: Readonly<Ref<boolean>>;
+    // (undocumented)
+    panelSizes: Readonly<Ref<ShellPanelSizes>>;
+    // (undocumented)
+    plugins: Readonly<Ref<readonly Plugin_2[]>>;
+    // (undocumented)
+    pluginVisibility: Readonly<Ref<Readonly<Record<string, boolean>>>>;
+    resizeCanvas(size: number): void;
+    restoreChat(): void;
+    setPluginVisible(ref: string, visible: boolean): void;
+    startHotkeyRecording(): void;
+}
+
+// @public
+export interface ShellPanelSizes {
+    canvasHeight: number;
+    chatMaximized?: boolean;
+    inspectionWidth: number;
+    previousInspectionWidth?: number;
+}
+
 // @public (undocumented)
 export function staticBreadcrumbList(crumbs: Array<{
     label: string;
@@ -471,10 +559,10 @@ export type TrailClickEvent<TInfo = unknown> = {
 };
 
 // @public
-export function useApplicationActor(): AnyActorRef;
+export function usePlugin<T = AnyActorRef>(): T;
 
 // @public
-export function usePlugin<T = AnyActorRef>(): T;
+export function useShell(): Shell;
 
 // @public (undocumented)
 export function useTrackedMenuOpen(menuOpen: Ref<boolean>): void;

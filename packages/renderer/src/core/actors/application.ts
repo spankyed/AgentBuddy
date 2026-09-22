@@ -1,6 +1,6 @@
 import { assign, setup, enqueueActions, fromCallback, spawnChild, sendTo, type ActorRefFrom } from 'xstate';
 import type { Plugin } from '@/core/types';
-import type { HotkeyEvent, ContextMenuItem } from '@abuddy/sdk/fe';
+import type { HotkeyEvent, ContextMenuItem, HostShellEvent, HostShellState } from '@abuddy/sdk/fe';
 import { sendToSystem, type HostPluginEvents, type Message } from '@abuddy/sdk/events';
 import { processHotkeys, safeEvents } from '@abuddy/sdk/fe';
 import type { ApplicationHotkeys } from '@abuddy/sdk/types';
@@ -158,6 +158,16 @@ export type ApplicationEvent =
   | { type: 'NOOP' }
 
 const typeOf = safeEvents<ApplicationEvent>();
+
+/**
+ * Compiles only while the shell accepts every event the SDK's `HostShell` lets frontend code send, and holds the
+ * state it lets frontend code read: a change to either side fails the typecheck here, not a pack at runtime.
+ */
+function satisfiesHostShell<_Contract extends [true, true]>(): void {}
+satisfiesHostShell<[
+  [HostShellEvent] extends [ApplicationEvent] ? true : false,
+  ApplicationContext extends HostShellState ? true : false,
+]>();
 
 /**
  * Spawns a plugin's state machine under its own id as well as its system id. The id is the key this actor

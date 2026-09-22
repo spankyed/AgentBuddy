@@ -45,7 +45,7 @@ export { EarsQuery }
 
 // @public
 export interface FeHostRuntime {
-    application: AnyActorRef;
+    application: HostShell;
     packs: FePackRegistryView;
     secrets: SecretsClient;
     transport: FeTransport;

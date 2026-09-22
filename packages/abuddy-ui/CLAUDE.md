@@ -83,7 +83,7 @@ The repo's `scripts/build-ui-package.ts` (it lives there, not here, so this pack
 
 Contracts and host-shared state that packs need even without `@abuddy/ui` live in the SDK (`packages/abuddy-sdk/src/fe/`) and are shared through `SDK_FE_MODULES`. UI code imports them from `@abuddy/sdk/fe` and does not define its own copies:
 
-- `useApplicationActor` (`KeyboardShortcutInput.vue`)
+- `useShell` (`KeyboardShortcutInput.vue`)
 - menu state: `onMenuOpenChange` (`TrackedContextMenuRoot.vue`), `useTrackedMenuOpen` (`ContextMenuPopup.vue`, `composables/useContextMenu.ts`)
 - registries of what pack frontends registered, which read the renderer's bound registry (`bindFeHost({ packs })`): `tiptapPluginRegistry` (`TiptapEditor.vue`) and `getDslTypes` (`monaco-config.ts`; packs' frontend registrations carry them as `dslTypes`); and `EXTRA_BLOCK_ITEMS_KEY` (`TiptapBlockMenu.vue`)
 - `openLink` (`tiptap/composables/createEditorClickHandler.ts`)

@@ -93,14 +93,14 @@
 import { checkedSettingsRef } from '@/features/settings/plugin-settings'
 import { computed, ref, onMounted, onUpdated } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { getDesignated, openPlugin, PluginScope, useApplicationActor, usePlugin } from '@abuddy/sdk/fe'
+import { getDesignated, openPlugin, PluginScope, usePlugin, useShell } from '@abuddy/sdk/fe'
 import { Package, CheckCircle, Eye, EyeOff, ExternalLink } from 'lucide-vue-next'
 import { useSettingsSaveStatus } from '../../public'
 
-const applicationActor = useApplicationActor()
+const shell = useShell()
 
 const actor = usePlugin()
-const allPlugins = useSelector(applicationActor, (state: any) => state.context.plugins)
+const allPlugins = shell.plugins
 
 const selectedPluginId = useSelector(actor, (state: any) => state.context.selectedPluginId)
 const settings = useSelector(actor, (state: any) => state.context.settings)
@@ -122,7 +122,7 @@ const currentPluginSettings = computed(() => {
 })
 
 const pluginsWithSettings = computed(() => {
-  return allPlugins.value.filter((plugin: any) => plugin.settings)
+  return allPlugins.value.filter((plugin) => plugin.settings)
 })
 
 // The first plugin with settings until one is picked
@@ -139,10 +139,9 @@ const goToPlugin = (pluginId: string) => {
   openPlugin(pluginId)
 }
 
-// Whether a plugin's tab shows: the app shell's state, which the application actor holds
-const pluginVisibility = useSelector(applicationActor, (state: any) => state.context.pluginVisibility)
+// Whether a plugin's tab shows: the app shell's state
 const isPluginVisible = (pluginId: string) => {
-  return pluginVisibility.value?.[pluginId] !== false
+  return shell.pluginVisibility.value[pluginId] !== false
 }
 
 // Toggle plugin visibility
@@ -151,7 +150,7 @@ const settingsPluginId = getDesignated('settings')
 const togglePluginVisibility = (pluginId: string) => {
   if (pluginId === settingsPluginId) return
   
-  applicationActor.send({ type: 'SET_PLUGIN_VISIBILITY', plugin: pluginId, visible: !isPluginVisible(pluginId) })
+  shell.setPluginVisible(pluginId, !isPluginVisible(pluginId))
 }
 
 // Handle update events from child components

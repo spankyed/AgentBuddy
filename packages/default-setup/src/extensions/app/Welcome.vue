@@ -23,11 +23,11 @@
 
 <script setup lang="ts">
 import { onMounted, onUnmounted } from 'vue';
-import { useApplicationActor } from '@abuddy/sdk/fe';
+import { useShell } from '@abuddy/sdk/fe';
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor';
 import { DISCORD_URL } from '../../features/settings/constants';
 
-const applicationActor = useApplicationActor();
+const shell = useShell();
 
 const letterContent = `Hello Testers,
 
@@ -52,7 +52,7 @@ Thanks for taking a chance on this.
 *— The Developer*`;
 
 const closeDevLetter = () => {
-  applicationActor.send({ type: 'CLOSE_DEV_LETTER' });
+  shell.closeDevLetter();
 };
 
 const handleKeydown = (event: KeyboardEvent) => {

@@ -5,11 +5,6 @@ import { boundFeHost } from '../runtime/fe-host.ts'
 
 const PLUGIN: InjectionKey<ComputedRef<AnyActorRef>> = Symbol('plugin')
 
-/** The application actor: the app shell, which lists the plugins and holds which is open */
-export function useApplicationActor(): AnyActorRef {
-  return inject<AnyActorRef>('applicationActor')!
-}
-
 /**
  * The actor of the plugin this component belongs to. The host provides it where it renders a plugin's canvas,
  * panel and chat, and `PluginScope` where a plugin's component is rendered elsewhere (its settings, in the settings
@@ -24,7 +19,7 @@ export function usePlugin<T = AnyActorRef>(): T {
 /** The running actor of the plugin at `ref`, a registered plugin's `<packId>/<featureId>` */
 function pluginActor(ref: string): AnyActorRef {
   if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a plugin: a plugin is named "<packId>/<featureId>"`)
-  const actor = boundFeHost().application.system.get(ref) as AnyActorRef | undefined
+  const actor = boundFeHost().application.system.get(ref)
   if (!actor) throw new Error(`No plugin is running at "${ref}"`)
   return actor
 }
