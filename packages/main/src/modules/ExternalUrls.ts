@@ -1,15 +1,16 @@
 import {AppModule} from '../AppModule.js';
 import {ModuleContext} from '../ModuleContext.js';
-import {shell, session} from 'electron';
-import {URL} from 'node:url';
+import {session} from 'electron';
+import {openExternalUrl} from './shell-access.js';
 
+/**
+ * A window opens no window of its own: what asks for one (a link with `target="_blank"`, `window.open`) is a link,
+ * so it goes to the user's browser under the rule every external open follows (`shell-access.ts`), and the window
+ * itself is refused.
+ *
+ * @see https://www.electronjs.org/docs/latest/tutorial/security#13-disable-or-limit-creation-of-new-windows
+ */
 export class ExternalUrls implements AppModule {
-
-  readonly #externalUrls: Set<string>;
-
-  constructor(externalUrls: Set<string>) {
-    this.#externalUrls = externalUrls;
-  }
 
   enable({app}: ModuleContext): Promise<void> | void {
     app.on('web-contents-created', (_, contents) => {
@@ -17,15 +18,7 @@ export class ExternalUrls implements AppModule {
       if (contents.session === session.fromPartition('persist:browser')) return;
 
       contents.setWindowOpenHandler(({url}) => {
-        const {origin} = new URL(url);
-
-        if (this.#externalUrls.has(origin)) {
-          shell.openExternal(url).catch(console.error);
-        } else if (import.meta.env.DEV) {
-          console.warn(`Blocked the opening of a disallowed external origin: ${origin}`);
-        }
-
-        // Prevent creating a new window.
+        void openExternalUrl(url);
         return {action: 'deny'};
       });
     });
@@ -33,6 +26,6 @@ export class ExternalUrls implements AppModule {
 }
 
 
-export function allowExternalUrls(...args: ConstructorParameters<typeof ExternalUrls>) {
-  return new ExternalUrls(...args);
+export function allowExternalUrls() {
+  return new ExternalUrls();
 }
