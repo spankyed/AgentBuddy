@@ -18,7 +18,8 @@ function fakeIO(modules: Record<string, unknown> = {}) {
       return { default: (url in modules ? modules[url] : modules[bare]) };
     },
     styles: {
-      add: async (packId, href) => { if (!styles.some(s => s.href === href)) styles.push({ packId, href }); },
+      // As the window's does: one stylesheet per pack and href, so two packs may share an href
+      add: async (packId, href) => { if (!styles.some(s => s.packId === packId && s.href === href)) styles.push({ packId, href }); },
       remove: (packId) => { for (let i = styles.length - 1; i >= 0; i--) if (styles[i].packId === packId) styles.splice(i, 1); },
     },
   };
@@ -112,11 +113,13 @@ describe("a pack's frontend", () => {
     const { io, styles } = fakeIO({ 'pack://ext/runtime/fe.js': { features: {} } });
     const { registry, unregistered } = fakeRegistry();
     const frontends = createPackFrontends(io, registry);
-    const pack = { id: 'ext', name: 'Ext', version: '1.0.0', feStyles: 'runtime/fe.css', feEntry: 'runtime/fe.js' };
+    // Its revision is in the stylesheet's URL too: a browser caches a stylesheet by URL, so an updated pack's
+    // styles would be served from the cache without it
+    const pack = { id: 'ext', name: 'Ext', version: '1.0.0', feStyles: 'runtime/fe.css', feEntry: 'runtime/fe.js', feRevision: 'abc123' };
 
     await frontends.load(pack);
     await frontends.load(pack);
-    expect(styles).toEqual([{ packId: 'ext', href: 'pack://ext/runtime/fe.css' }]);
+    expect(styles).toEqual([{ packId: 'ext', href: 'pack://ext/runtime/fe.css?v=abc123' }]);
 
     frontends.unload('ext');
     expect(styles).toEqual([]);

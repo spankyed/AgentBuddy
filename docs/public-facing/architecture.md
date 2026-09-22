@@ -91,11 +91,11 @@ The source directory must be built first: installing a directory with neither a 
 Built-in packs' frontends are compiled into the renderer (`virtual:built-in-packs` imports each pack's `__generated__/pack-entry-fe.ts`). External packs load at runtime:
 
 1. Each time this window's bus subscription is established, the application actor queries the loaded packs (`trpc.packs.loaded`), which lists each loaded external pack's `feEntry` and `feStyles` — the pack's `runtime/fe.js` and `runtime/fe.css`, when it has them. It loads only the packs it hasn't loaded yet, so a query that fails leaves them to the next connection and a pack is never loaded twice.
-2. For each external pack, `loadPackFrontend(pack)`:
+2. For each external pack, the shell loads its frontend (`createPackFrontends(io, packs).load` in `@abuddy/host/fe`, over the window's `importModule` and stylesheet I/O):
    - loads `pack://<id>/runtime/fe.css` as a `<link>` when the pack has styles;
    - imports `pack://<id>/runtime/fe.js` and registers its default export, a `PackFERegistration`, in the renderer's frontend registry (`createFePackRegistry()` from `@abuddy/host/fe`, bound with `bindFeHost`);
    - returns the plugins it exports, `[]` when the load failed, or `null` for a pack without frontend code.
-3. When it returns plugins (even none), the loader reports `PACK_FRONTEND_LOADED` to the application actor, which spawns the plugins whose ids aren't taken and calls `trpc.bus.packClientReady({ packId })`.
+3. When it returns plugins (even none), the shell handles `PACK_FRONTEND_LOADED`, which spawns the plugins whose ids aren't taken and calls `trpc.bus.packClientReady({ packId })`.
 4. `packClientReady` sends the pack's systems `CLIENT_CONNECTED`, so they send their startup data once the plugin actors exist.
 
 A connection's own `CLIENT_CONNECTED` skips the systems of external packs with frontend code (the bus asks `getPacksWithClientLoadedFrontends()`). When the renderer's bus subscription (re)connects, `BUS_SUBSCRIBED` calls `packClientReady` again for every pack whose frontend it loaded. Systems of packs without frontend code get the connection's `CLIENT_CONNECTED` directly.

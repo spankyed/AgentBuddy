@@ -42,6 +42,16 @@ describe('packages/renderer/src', () => {
     expect(inSrc, 'a spec goes in tests/, under the path of what it tests').toEqual([]);
   });
 
+  // A view reads a machine's state (useSelector) and sends it events; the machine itself is the host's, so the app's
+  // own behaviour can't drift back here one component at a time
+  it('defines no state machine in views/', () => {
+    const defined = fs.readdirSync(path.join(SRC, 'views'), { recursive: true }).map(String)
+      .filter((f) => /\.(vue|ts)$/.test(f))
+      .filter((f) => /createMachine|\bsetup\(\{/.test(fs.readFileSync(path.join(SRC, 'views', f), 'utf8')));
+
+    expect(defined, "a view renders: its machine belongs in @abuddy/host/fe, which every frontend gets").toEqual([]);
+  });
+
   it('renders in views/ only: no .vue outside it', () => {
     const vue = fs.readdirSync(SRC, { recursive: true }).map(String).filter((f) => f.endsWith('.vue'));
 
