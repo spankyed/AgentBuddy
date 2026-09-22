@@ -6,6 +6,7 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { setup } from 'xstate';
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import { createPackRegistry } from '../../src/packs/pack-registration.ts';
 
@@ -15,8 +16,8 @@ const memoPack: PackRegistration = {
     memos: { plugin: { receives: [] }, settings: { plugins: { memos: { sort: 'new' } } } },
     // A plugin with no declared defaults: its settings form may still write its slice
     board: { plugin: { receives: [] } },
-    // Neither: nothing may be written for it
-    sync: { system: { machine: {} as never, receives: [] } },
+    // No settings file and no plugin, so nothing may be written for it
+    systemOnly: { system: { machine: setup({}).createMachine({}), receives: [] } },
   },
 };
 
@@ -44,7 +45,7 @@ describe('featuresWithSettings', () => {
   });
 
   it("adds an installed pack's features from its manifest while it isn't registered, and reads a malformed one as none", () => {
-    install('memo-pack', manifest('memo-pack', [{ id: 'memos', settings: 'src/memos/settings.ts' }, { id: 'board', plugin: { entry: 'src/board/fe.ts' } }, { id: 'sync', system: { entry: 'x' } }]));
+    install('memo-pack', manifest('memo-pack', [{ id: 'memos', settings: 'src/memos/settings.ts' }, { id: 'board', plugin: { entry: 'src/board/fe.ts' } }, { id: 'systemOnly', system: { entry: 'x' } }]));
     install('idle-pack', manifest('idle-pack', [{ id: 'idle', settings: 'src/settings.ts' }]));
     install('broken-pack', manifest('broken-pack', { idle: {} }));
     install('odd-pack', manifest('odd-pack', [{ id: 'Not An Id', settings: 'x' }]));
