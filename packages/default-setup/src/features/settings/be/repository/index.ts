@@ -69,8 +69,8 @@ export const settingsQueries = {
 
   getAssistantSettings: () => getSettingsEntity().data.assistant,
 
-  /** A plugin's settings in effect, by its ref; actions pass it as a string, so a bare name throws */
-  getPluginSettings: (plugin: `${string}/${string}`) => {
+  /** A plugin's settings in effect, by its ref, which is checked here as `updateSettings` checks it: a bare name throws */
+  getPluginSettings: (plugin: string) => {
     const key = checkedSettingsRef(plugin);
     const data = getSettingsEntity().data;
     return data.plugins?.[key] || (getDefaultSettings().plugins as any)[key] || {};

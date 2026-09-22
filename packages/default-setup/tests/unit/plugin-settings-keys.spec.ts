@@ -29,7 +29,6 @@ describe('the plugin settings keys', () => {
   it('refuses a name when reading too', async () => {
     await startApp({ systems: [] });
 
-    // @ts-expect-error a plugin's settings are keyed by its ref
     expect(() => repository.settingsQueries.getPluginSettings('threads')).toThrow(`"threads" isn't a plugin settings key`);
   });
 });
