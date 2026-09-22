@@ -85,6 +85,20 @@ const appliedPluginSettings = (): Record<string, unknown> => ({ ...settingsQueri
 /** What each feature was last told of its settings, by plugin ref */
 type SettingsContext = { applied: Record<string, unknown> };
 
+/**
+ * What the settings system takes while the stored data is being replaced or reset. A read is served, since it only
+ * reports what is stored; a write is refused with `reason`, because storing it would either be lost with the data or
+ * be taken for a change the user made. A settings form waits for the store's answer before it says "Saved", and the
+ * settings page for a read before it renders, so dropping either leaves the user waiting for good.
+ */
+const whileBusy = (reason: string) => ({
+  CLIENT_CONNECTED: { actions: 'sendSettingsStartupData' as const },
+  GET_SETTINGS: { actions: 'getSettings' as const },
+  UPDATE_SETTINGS: { actions: { type: 'refuseChange' as const, params: { reason } } },
+  REPLACE_SETTINGS: { actions: { type: 'refuseChange' as const, params: { reason } } },
+  RESET_SETTINGS: { actions: { type: 'refuseChange' as const, params: { reason } } },
+});
+
 export const settingsSpec = defineSystem<IncomingSettingsEvents | SettingsInternalEvents, OutgoingSettingsEvents, SettingsContext>();
 
 /**
@@ -170,6 +184,10 @@ export const settingsSystem = setup({
       type: 'APP_RESET_FAILED',
       error: 'A backup is being imported. Reset the app once it has finished.',
     }),
+
+    // A change the store can't take now (`whileBusy`), with the reason the state gives
+    refuseChange: (_: unknown, { reason }: { reason: string }) =>
+      sendToPlugin('settings', { type: 'SETTINGS_REFUSED', problems: [reason] }),
 
     getSettings: () => broadcastSettings('SETTINGS_LOADED'),
     
@@ -350,6 +368,7 @@ export const settingsSystem = setup({
     // import over the same stores, so it is refused while one runs rather than started.
     replacingData: {
       on: {
+        ...whileBusy('A backup is being imported. Change the settings once it has finished.'),
         DATA_REPLACED: { target: 'idle', actions: ['sendSettingsUpdate', 'tellEveryFeature'] },
         RESET_APP: { actions: 'refuseResetWhileReplacing' },
       },
@@ -358,6 +377,7 @@ export const settingsSystem = setup({
     // ignored here; the frontend is about to full-reload on APP_RESET_COMPLETE.
     resetting: {
       tags: ['resetting'],
+      on: whileBusy('The app is being reset. Change the settings once it has finished.'),
       invoke: {
         src: 'resetAppActor',
         // Writes and pack changes made by the reset aren't told as changes: tellEveryFeature re-baselines once it ends,

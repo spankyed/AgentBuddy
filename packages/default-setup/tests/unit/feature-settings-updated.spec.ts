@@ -219,6 +219,39 @@ describe('a feature whose settings change', () => {
       await app.settle();
       expect(heardBy(app).slice(heardBefore)).toEqual([{ type: 'FEATURE_SETTINGS_UPDATED', settings: { tags: [{ name: 'imported' }] }, changes: null }]);
     });
+
+    // A settings form waits for the store's answer before it says "Saved", so a change taken and never answered
+    // leaves it saying "Saving" for good
+    it('refuses a change sent while it runs, rather than leaving the form waiting for an answer', async () => {
+      const app = await startApp({ systems: ['settings', 'database', 'memo-pack/memos'] });
+      await app.connect();
+      const { finish } = await importing(app);
+
+      await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/memos', path: ['tags'], value: [] } as never);
+
+      expect(app.emitted('default-setup/settings')).toContainEqual({
+        type: 'SETTINGS_REFUSED',
+        problems: [expect.stringContaining('backup is being imported')],
+      });
+      finish();
+      await app.settle();
+    });
+
+    // A read only reports what is stored, and the settings page waits for one before it renders
+    it('serves a read, so opening the settings page while it runs still loads', async () => {
+      const app = await startApp({ systems: ['settings', 'database', 'memo-pack/memos'] });
+      await app.connect();
+      const { finish } = await importing(app);
+      const before = app.emitted('default-setup/settings').length;
+
+      await app.send('settings', { type: 'GET_SETTINGS' } as never);
+
+      expect(app.emitted('default-setup/settings').slice(before)).toContainEqual(
+        expect.objectContaining({ type: 'SETTINGS_LOADED' }),
+      );
+      finish();
+      await app.settle();
+    });
   });
 
   // A bare key would be stored where nothing reads it, for good. A refusal is the user's to fix, not the system's
