@@ -92,8 +92,11 @@ function write(next: unknown): void {
   tx(SETTINGS_ID)
     .put('data', next as Partial<SettingsData>)
     .put('updatedAt', Date.now());
-  for (const listener of writeListeners) listener();
+  if (replacingData === 0) for (const listener of writeListeners) listener();
 }
+
+/** How many data replacements are running (`whileReplacingData`): while any is, writes tell no listener */
+let replacingData = 0;
 
 /**
  * Sets `value` at `path` in a section other than the plugins': a general setting under its label
@@ -131,4 +134,20 @@ export const settingsCommands = {
   },
 
   resetSettings: () => write({}),
+
+  /**
+   * Runs `replace`, which replaces the stored data wholesale (a backup import), telling the listeners of no write made
+   * until it settles: the settings arrive past this writer, and the migrations the import runs write through it, so a
+   * diff against what features were told before would have them rewrite rows that came in with it. Held here, at the
+   * writer, it holds whenever those writes happen. The caller tells every feature its settings once it settles
+   * (`DATA_REPLACED`), done or failed, since a failed import may have migrated some of the data already.
+   */
+  async whileReplacingData<T>(replace: () => Promise<T>): Promise<T> {
+    replacingData++;
+    try {
+      return await replace();
+    } finally {
+      replacingData--;
+    }
+  },
 };

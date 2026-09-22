@@ -40,8 +40,6 @@ type IncomingSettingsEvents =
   | { type: 'IMPORT_PACK_SEEDS'; directory: string; include?: Record<string, string[] | null>; mode?: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'; restartBrain?: boolean }
   | { type: 'REPLACE_SETTINGS'; data: unknown }
   | { type: 'RESET_APP' }
-  // The stored data is about to be replaced wholesale (a backup imported): writes until DATA_REPLACED aren't changes
-  | { type: 'DATA_REPLACING' }
   // The replacement ended, done or failed: what each feature was told is stale either way
   | { type: 'DATA_REPLACED' }
 
@@ -328,21 +326,6 @@ export const settingsSystem = setup({
         },
         RESET_APP: {
           target: 'resetting',
-        },
-        DATA_REPLACING: {
-          target: 'replacingData',
-        },
-      },
-    },
-    // A backup is being imported. Its data arrives past the settings' writer, and the migrations run on it write
-    // through it: a diff against what features were told before the import would have them rewrite imported rows.
-    // Nothing is told until it ends, then every feature hears its settings with no changes, since a failed import
-    // may have migrated some of the data already
-    replacingData: {
-      on: {
-        DATA_REPLACED: {
-          target: 'idle',
-          actions: ['sendSettingsUpdate', 'tellEveryFeature'],
         },
       },
     },

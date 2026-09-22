@@ -140,7 +140,8 @@ describe('a feature whose settings change', () => {
   describe('a backup import whose migrations write the settings', () => {
     const importWriting = (outcome: 'succeeds' | 'fails') => mockService('appData', {
       importBackup: async () => {
-        // As the real import, which reads the backup's files before anything reaches memory
+        // Before the import's first await, and after it: the writes tell nothing whenever they happen
+        settingsCommands.updatePluginSetting(resolveName('memo-pack/memos'), ['tags'], [{ name: 'early' }]);
         await Promise.resolve();
         tx('Settings-app' as EARS.EntityId).put('data', { plugins: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } });
         settingsCommands.updatePluginSetting(resolveName('memo-pack/memos'), ['tags'], [{ name: 'migrated' }]);
