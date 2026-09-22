@@ -1,3 +1,8 @@
+> **Done** (on `AS/designations-and-addressing`, `6eb47edc7`, `b753a99dc`, `7af49d2c7`, `59e610eee` and the
+> reviews that followed). The text below is the plan as written; the Outcome records where the implementation
+> differed. For the current model, see the root `CLAUDE.md` (Event-driven actor system) and
+> `packages/abuddy-host/CLAUDE.md` (Packs).
+
 > **Written in session** `e6511a0f-3632-4fff-9504-43d61f8c4bba` (Claude Code, 2026-09-20). Resume it with `claude -r e6511a0f-3632-4fff-9504-43d61f8c4bba`.
 
 ```
@@ -345,6 +350,22 @@ unaffected: own systems keep the short **name**.
 pack; the full chain passes.
 **Mutation:** a system id built by hand as a bare feature id no longer resolves — `resolveSystemAddress`'s
 spec fails.
+
+## Outcome
+
+The goal holds: `designation` is a feature's, declared once in `abuddy.json` and carried on `PackFeature`, not grafted
+onto a system def or a plugin module; `BUILT_IN_OWNER` is gone and `registerPackFE` takes one argument; and a role is
+addressed through the designations rather than by a bare name.
+
+Two things ended up different from the plan:
+
+- **A feature is addressed `<packId>/<featureId>`, not `<packId>.<featureId>`.** The separator became a slash when the
+  ref grew a grammar of its own (`resolveName`, `splitRef`, `FEATURE_ID_PATTERN` in `@abuddy/sdk/ids`), so that neither
+  half can contain it and a ref splits one way.
+- **Plugin id collisions are no longer refused at registration, because they can no longer happen.** The plan wanted
+  registration to reject a second pack declaring a plugin id another had registered. Ownership became structural
+  instead: every plugin runs under its pack's ref, pack ids are unique, and neither id may hold a `/`, so no pack can
+  produce a ref in another's namespace and there is nothing left to refuse.
 
 ## Deferred
 
