@@ -5,7 +5,7 @@ import { defineSystem, onPackSettingsDefaultsChanged, type SystemEntry } from '@
 
 import type { SettingsData } from './types';
 import { loadFaqs } from './faqs';
-import { onSettingsWritten, settingsQueries, settingsCommands } from './repository';
+import { onSettingsChange, settingsQueries, settingsCommands } from './repository';
 import { SettingsRefusedError } from '../document';
 import { repository } from '@/__generated__/repository';
 import { detectAllArrayChanges } from '@abuddy/sdk/utils/pure';
@@ -40,20 +40,22 @@ type IncomingSettingsEvents =
   | { type: 'IMPORT_PACK_SEEDS'; directory: string; include?: Record<string, string[] | null>; mode?: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'; restartBrain?: boolean }
   | { type: 'REPLACE_SETTINGS'; data: unknown }
   | { type: 'RESET_APP' }
-  // The replacement ended, done or failed: what each feature was told is stale either way
-  | { type: 'DATA_REPLACED' }
 
 type SettingsInternalEvents =
   | { type: 'PACK_SETTINGS_CHANGED' } // A pack's feature settings (defaults) registered or unregistered
   | { type: 'SECRETS_CHANGED' } // The host's stored keys or their protection changed (no values)
   | { type: 'SETTINGS_WRITTEN' } // Something wrote the stored settings: this system, a feature's system, an action or a seed
+  // The stored data is being replaced wholesale (a backup import), and has been: what each feature was told is then
+  // stale either way, since a failed import may have migrated some of the data already
+  | { type: 'DATA_REPLACING' }
+  | { type: 'DATA_REPLACED' }
 
 export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_LOADED'; data: SettingsData; faqs: FAQItem[] }
   | { type: 'SETTINGS_UPDATED'; data: SettingsData }
-  /** A replacement (`REPLACE_SETTINGS`) was stored */
+  /** A change (`UPDATE_SETTINGS`, `REPLACE_SETTINGS`) was stored */
   | { type: 'SETTINGS_SAVED' }
-  /** A replacement was refused, and stored nothing */
+  /** A change was refused, and stored nothing */
   | { type: 'SETTINGS_REFUSED'; problems: string[] }
   | { type: 'SETTINGS_RESET'; data: SettingsData }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: SettingsData['general']['application']['hotkeys'] }
@@ -67,6 +69,15 @@ export type OutgoingSettingsEvents =
   | { type: 'APP_RESET_FAILED'; error: string }
   /** The stored API keys, without values, and how they're protected */
   | { type: 'SECRETS_UPDATED'; secrets: SecretInfo[]; status: SecretsStatus }
+
+/**
+ * Tells the settings plugin a change wasn't stored, with the store's reasons: a refusal is the user's to fix, not a
+ * system error, so only what the store didn't refuse (a bug here) is reported as one
+ */
+function refuseSettings(error: unknown, what: string): void {
+  if (!(error instanceof SettingsRefusedError)) reportError({ error: new Error(`${what}: ${(error as Error).message}`), source: 'settings' });
+  sendToPlugin('settings', { type: 'SETTINGS_REFUSED', problems: error instanceof SettingsRefusedError ? error.problems : [(error as Error).message] });
+}
 
 /** Each plugin's settings as they apply: what features were last told */
 const appliedPluginSettings = (): Record<string, unknown> => ({ ...settingsQueries.getSettings().plugins });
@@ -100,7 +111,9 @@ export const settingsSystem = setup({
   types: settingsSpec.types,
   actors: {
     packSettingsListener: fromCallback(({ sendBack }) => onPackSettingsDefaultsChanged(() => sendBack({ type: 'PACK_SETTINGS_CHANGED' }))),
-    settingsWriteListener: fromCallback(({ sendBack }) => onSettingsWritten(() => sendBack({ type: 'SETTINGS_WRITTEN' }))),
+    settingsWriteListener: fromCallback(({ sendBack }) => onSettingsChange((change) => sendBack({
+      type: change === 'written' ? 'SETTINGS_WRITTEN' : change === 'replacing' ? 'DATA_REPLACING' : 'DATA_REPLACED',
+    }))),
     // The host resets the whole app: stores, each pack's onInit and boot seed, migrations
     resetAppActor: fromPromise(() => services.appData.reset()),
   },
@@ -153,8 +166,14 @@ export const settingsSystem = setup({
     // The settings plugin's view of all the settings, after a change it didn't make itself
     sendSettingsUpdate: () => broadcastSettings('SETTINGS_UPDATED'),
 
+    refuseResetWhileReplacing: () => sendToPlugin('settings', {
+      type: 'APP_RESET_FAILED',
+      error: 'A backup is being imported. Reset the app once it has finished.',
+    }),
+
     getSettings: () => broadcastSettings('SETTINGS_LOADED'),
     
+    // The plugin hears whether the change was stored, and why not: a settings form says "Saved" only then
     updateSettings: ({ event }) => {
       const ev = settingsSpec.typeOf('UPDATE_SETTINGS', event);
       // A plugin's settings are keyed by its ref, which the frontend resolves before sending and the store checks
@@ -162,7 +181,7 @@ export const settingsSystem = setup({
         if (ev.entityType === 'plugin') settingsCommands.updatePluginSetting(settingsQueries.pluginSettingsRef(ev.label), ev.path, ev.value);
         else settingsCommands.updateSettings('general', ev.label, ev.path, ev.value);
       } catch (error) {
-        reportError({ error: new Error(`Settings for ${ev.entityType} "${ev.label}" weren't saved: ${(error as Error).message}`), source: 'settings' });
+        refuseSettings(error, `Settings for ${ev.entityType} "${ev.label}" weren't saved`);
         return;
       }
 
@@ -171,19 +190,15 @@ export const settingsSystem = setup({
       }
 
       broadcastSettings('SETTINGS_UPDATED');
+      sendToPlugin('settings', { type: 'SETTINGS_SAVED' });
     },
 
-    // The plugin hears whether its replacement was stored, and why not: the settings editor says "Saved" only then
     replaceSettings: ({ event }) => {
       const ev = settingsSpec.typeOf('REPLACE_SETTINGS', event);
       try {
         settingsCommands.replaceSettings(ev.data);
       } catch (error) {
-        if (!(error instanceof SettingsRefusedError)) {
-          reportError({ error: new Error(`The settings weren't replaced: ${(error as Error).message}`), source: 'settings' });
-        }
-        const problems = error instanceof SettingsRefusedError ? error.problems : [(error as Error).message];
-        sendToPlugin('settings', { type: 'SETTINGS_REFUSED', problems });
+        refuseSettings(error, "The settings weren't replaced");
         return;
       }
       broadcastSettings('SETTINGS_UPDATED');
@@ -305,7 +320,7 @@ export const settingsSystem = setup({
         // A pack registered or left: its defaults came or went
         PACK_SETTINGS_CHANGED: { actions: ['sendSettingsUpdate', 'tellChangedFeatures'] },
         PACK_CHANGED: { actions: ['sendSettingsUpdate', 'tellChangedFeatures'] },
-        DATA_REPLACED: { actions: ['sendSettingsUpdate', 'tellEveryFeature'] },
+        DATA_REPLACING: { target: 'replacingData' },
         UPDATE_SETTINGS: {
           actions: 'updateSettings',
         },
@@ -327,6 +342,16 @@ export const settingsSystem = setup({
         RESET_APP: {
           target: 'resetting',
         },
+      },
+    },
+    // A backup import is replacing the stored data. Its settings arrive past this system's writer and the migrations it
+    // runs write through it, so a diff against what features were told would have them rewrite rows that came in with
+    // it: nothing is told until it ends, when every feature hears its settings with no changes. A reset would race the
+    // import over the same stores, so it is refused while one runs rather than started.
+    replacingData: {
+      on: {
+        DATA_REPLACED: { target: 'idle', actions: ['sendSettingsUpdate', 'tellEveryFeature'] },
+        RESET_APP: { actions: 'refuseResetWhileReplacing' },
       },
     },
     // Serialized single-in-flight reset. Any further RESET_APP events are

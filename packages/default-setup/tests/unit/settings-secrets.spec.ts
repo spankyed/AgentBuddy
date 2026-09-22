@@ -62,7 +62,12 @@ describe('settings and stored API keys', () => {
     const app = await startApp({ systems: ['settings'] });
     await app.connect();
     await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'code', path: ['cliPaths'], value: { gh: '/elsewhere/gh' } });
-    expect(takeSystemErrors().map((e) => e.message)).toEqual([expect.stringContaining('Settings for plugin "code" weren\'t saved')]);
+    // The sender's mistake to fix, which its form shows: not a system error
+    expect(app.emitted('default-setup/settings')).toContainEqual({
+      type: 'SETTINGS_REFUSED',
+      problems: [expect.stringContaining('did you mean "default-setup/code"?')],
+    });
+    expect(takeSystemErrors()).toEqual([]);
     expect(repository.settingsQueries.getPluginSettings(ref('code'))).not.toMatchObject({ cliPaths: { gh: '/elsewhere/gh' } });
   });
 });

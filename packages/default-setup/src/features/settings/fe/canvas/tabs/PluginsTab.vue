@@ -79,6 +79,7 @@
             <CheckCircle class="w-3 h-3" />
             Settings saved
           </div>
+          <div v-else-if="saveStatus === 'refused'" class="flex items-center gap-2 text-xs text-red-400">{{ problems.join('; ') }}</div>
         </div>
       </div>
       <div v-else class="flex flex-col items-center justify-center h-full">
@@ -112,7 +113,7 @@ onMounted(scrollToActive)
 onUpdated(scrollToActive)
 
 // Use the settings save status composable
-const { saveStatus, updateSettings } = useSettingsSaveStatus()
+const { saveStatus, problems, updateSettings } = useSettingsSaveStatus()
 
 // Compute current plugin settings
 const currentPluginSettings = computed(() => {

@@ -242,11 +242,11 @@ export interface PackRegistryOptions {
   installedPacksDir?: () => string;
 }
 
-/** The refs of an installed manifest's features that declare settings; a malformed manifest declares none */
+/** The refs of an installed manifest's features that can have settings; a malformed manifest has none */
 function manifestSettingsRefs({ id, features }: { id?: unknown; features?: unknown }): FeatureRef[] {
   if (typeof id !== 'string' || !Array.isArray(features)) return [];
-  return features.flatMap((feature: { id?: unknown; settings?: unknown } | null) => {
-    const ref = typeof feature?.id === 'string' && feature.settings ? `${id}/${feature.id}` : undefined;
+  return features.flatMap((feature: { id?: unknown; settings?: unknown; plugin?: unknown } | null) => {
+    const ref = typeof feature?.id === 'string' && (feature.settings || feature.plugin) ? `${id}/${feature.id}` : undefined;
     return ref && splitRef(ref) ? [ref as FeatureRef] : [];
   });
 }
@@ -494,9 +494,9 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
     return { excludedEntityTypes: excluded };
   }
 
-  /** The refs of the registered features that declare settings */
+  /** The refs of the registered features that can have settings: those declaring defaults, and those with a plugin */
   const registeredSettingsRefs = derived(() =>
-    [...registrations.values()].flatMap((reg) => featuresOf(reg).filter(({ feature }) => feature.settings).map(({ ref }) => ref)));
+    [...registrations.values()].flatMap((reg) => featuresOf(reg).filter(({ feature }) => feature.settings || feature.plugin).map(({ ref }) => ref)));
   /** The same of every pack in the packs dir, from its manifest: read again only when the dir's entries change */
   const installedSettingsRefs = derived(
     () => {
@@ -508,7 +508,7 @@ export function createPackRegistry({ installedPacksDir }: PackRegistryOptions = 
       return dir ? packsDirStamp(dir) : -1;
     },
   );
-  /** Every installed feature that declares settings: a registered pack's, and one in the packs dir that isn't running */
+  /** Every installed feature that can have settings: a registered pack's, and one in the packs dir that isn't running */
   const featuresWithSettings = (): readonly FeatureRef[] => [...new Set([...registeredSettingsRefs(), ...installedSettingsRefs()])];
   const policy = derived((): PartitionPolicy => appPartitionPolicy(getRegisteredEARSPolicy().excludedEntityTypes));
   const eventValidationMap = derived(buildEventValidationMap);

@@ -164,6 +164,63 @@ describe('a feature whose settings change', () => {
     });
   });
 
+  // A settings form says "Saved" on the store's answer, so every change it sends gets one
+  it('answers a change with what the store did: stored, or refused with its reasons', async () => {
+    const app = await startApp({ systems: ['settings', 'memo-pack/memos'] });
+    await app.connect();
+
+    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/memos', path: ['tags'], value: [] });
+    expect(app.emitted('default-setup/settings')).toContainEqual({ type: 'SETTINGS_SAVED' });
+
+    await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memos', path: ['tags'], value: [] });
+    expect(app.emitted('default-setup/settings')).toContainEqual({
+      type: 'SETTINGS_REFUSED',
+      problems: [expect.stringContaining('did you mean "memo-pack/memos"?')],
+    });
+  });
+
+  // The import replaces the same stores a reset does, and a pack's defaults coming or going while it runs would be
+  // diffed against what features were told before it
+  describe('while a backup import runs', () => {
+    /** Starts an import that settles when `finish` is called, and waits until the settings system has heard it start */
+    async function importing(app: Awaited<ReturnType<typeof startApp>>) {
+      let finish!: () => void;
+      const done = new Promise<void>((resolve) => { finish = resolve; });
+      mockService('appData', { importBackup: async () => { await done; return { databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] }; } });
+      await app.send('database', { type: 'IMPORT_DATABASE', path: '/backups/1' } as never);
+      return { finish };
+    }
+
+    it('refuses an app reset, which would race it over the same stores', async () => {
+      const app = await startApp({ systems: ['settings', 'database', 'memo-pack/memos'] });
+      await app.connect();
+      const { finish } = await importing(app);
+
+      await app.send('settings', { type: 'RESET_APP' });
+
+      expect(app.emitted('default-setup/settings')).toContainEqual({ type: 'APP_RESET_FAILED', error: expect.stringContaining('backup is being imported') });
+      finish();
+      await app.settle();
+    });
+
+    it("tells no feature a pack's settings changed until it ends", async () => {
+      const app = await startApp({ systems: ['settings', 'database', 'memo-pack/memos'] });
+      await app.connect();
+      settingsCommands.updatePluginSetting(resolveName('memo-pack/memos'), ['tags'], [{ name: 'before' }]);
+      await app.settle();
+      const heardBefore = heardBy(app).length;
+      const { finish } = await importing(app);
+
+      tx('Settings-app' as EARS.EntityId).put('data', { plugins: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } });
+      await app.send('settings', { type: 'PACK_CHANGED', packId: 'memo-pack' } as never);
+      expect(heardBy(app)).toHaveLength(heardBefore);
+
+      finish();
+      await app.settle();
+      expect(heardBy(app).slice(heardBefore)).toEqual([{ type: 'FEATURE_SETTINGS_UPDATED', settings: { tags: [{ name: 'imported' }] }, changes: null }]);
+    });
+  });
+
   // A bare key would be stored where nothing reads it, for good. A refusal is the user's to fix, not the system's
   // error: the settings plugin hears it with the reasons
   it('refuses replaced settings holding a plugin key that is not a ref, naming the ref it likely meant', async () => {

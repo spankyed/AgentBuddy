@@ -54,6 +54,7 @@
           <CheckCircle class="w-3 h-3" />
           Settings saved
         </div>
+        <div v-else-if="saveStatus === 'refused'" class="flex items-center gap-2 text-xs text-red-400">{{ problems.join('; ') }}</div>
       </div>
     </div>
   </div>
@@ -77,7 +78,7 @@ const generalNavItem = useSelector(actor, (state: any) => state.context.generalN
 const settings = useSelector(actor, (state: any) => state.context.settings)
 
 // Use the settings save status composable
-const { saveStatus, updateSettings } = useSettingsSaveStatus()
+const { saveStatus, problems, updateSettings } = useSettingsSaveStatus()
 
 // Compute current settings based on selected nav item
 const currentSettings = computed(() => {

@@ -13,8 +13,10 @@ const memoPack: PackRegistration = {
   id: 'memo-pack',
   features: {
     memos: { plugin: { receives: [] }, settings: { plugins: { memos: { sort: 'new' } } } },
-    // No settings: nothing may be written for it
+    // A plugin with no declared defaults: its settings form may still write its slice
     board: { plugin: { receives: [] } },
+    // Neither: nothing may be written for it
+    sync: { system: { machine: {} as never, receives: [] } },
   },
 };
 
@@ -35,22 +37,22 @@ describe('featuresWithSettings', () => {
     const registry = createPackRegistry();
     registry.registerPack(memoPack);
 
-    expect(registry.featuresWithSettings()).toEqual(['memo-pack/memos']);
+    expect(registry.featuresWithSettings()).toEqual(['memo-pack/memos', 'memo-pack/board']);
 
     registry.unregisterPack('memo-pack');
     expect(registry.featuresWithSettings()).toEqual([]);
   });
 
   it("adds an installed pack's features from its manifest while it isn't registered, and reads a malformed one as none", () => {
-    install('memo-pack', manifest('memo-pack', [{ id: 'memos', settings: 'src/memos/settings.ts' }, { id: 'board' }]));
+    install('memo-pack', manifest('memo-pack', [{ id: 'memos', settings: 'src/memos/settings.ts' }, { id: 'board', plugin: { entry: 'src/board/fe.ts' } }, { id: 'sync', system: { entry: 'x' } }]));
     install('idle-pack', manifest('idle-pack', [{ id: 'idle', settings: 'src/settings.ts' }]));
     install('broken-pack', manifest('broken-pack', { idle: {} }));
     install('odd-pack', manifest('odd-pack', [{ id: 'Not An Id', settings: 'x' }]));
     install('garbled-pack', '{ not json');
     const registry = createPackRegistry({ installedPacksDir: () => packsDir });
 
-    expect(registry.featuresWithSettings()).toEqual(expect.arrayContaining(['memo-pack/memos', 'idle-pack/idle']));
-    expect(registry.featuresWithSettings()).toHaveLength(2);
+    expect(registry.featuresWithSettings()).toEqual(expect.arrayContaining(['memo-pack/memos', 'memo-pack/board', 'idle-pack/idle']));
+    expect(registry.featuresWithSettings()).toHaveLength(3);
 
     // Registered, its registration counts too, and a feature both name is listed once
     registry.registerPack({ ...memoPack, features: { memos: memoPack.features!.memos, board: { plugin: { receives: [] }, settings: {} } } });

@@ -6,7 +6,7 @@ import { changesFrom, removeIn, setIn, SETTINGS_KIND, settingsProblems, Settings
 import type { GeneralSettings, SettingsData } from '../types';
 import { getDefaultSettings } from '../defaults';
 import { deepMerge } from '@abuddy/sdk/utils/pure';
-import { refProblem, resolveRegistered, type FeatureRef, type RefLookup } from '@abuddy/sdk/ids';
+import { refProblem, resolveName, type FeatureRef, type RefLookup } from '@abuddy/sdk/ids';
 import { getFeaturesWithSettings } from '@abuddy/sdk/framework';
 
 // Use a fixed ID without hyphen to avoid LMDB persistence issues
@@ -68,20 +68,32 @@ export const settingsQueries = {
    * client's send, an action's `services.settings` call), it is parsed here once, and throws naming the ref it likely
    * meant. What the store's commands and queries take is a `FeatureRef`.
    */
-  pluginSettingsRef: (name: string): FeatureRef => resolveRegistered(SETTINGS_KIND, name, settingsLookup()),
+  pluginSettingsRef: (name: string): FeatureRef => {
+    const problem = refProblem(SETTINGS_KIND, name, settingsLookup());
+    if (problem) throw new SettingsRefusedError([problem]);
+    return resolveName(name);
+  },
 };
 
-const writeListeners = new Set<() => void>();
+/** What happened to the stored settings: a write, or a wholesale replacement (a backup import) starting and ending */
+export type SettingsChange = 'written' | 'replacing' | 'replaced';
+
+const listeners = new Set<(change: SettingsChange) => void>();
 
 /**
- * Calls `listener` after each write to the stored settings, whoever made it; returns the unsubscribe. The settings
+ * Calls `listener` on each change to the stored settings, whoever made it; returns the unsubscribe. The settings
  * system tells each feature whose settings changed from here, so a write made anywhere (a system, an action, a seed)
- * reaches the features it changed, and none is told a change twice.
+ * reaches the features it changed, and none is told a change twice. The changes arrive in the order they happened, so
+ * a write a replacement makes can't be taken for one of its own.
  */
-export function onSettingsWritten(listener: () => void): () => void {
-  writeListeners.add(listener);
-  return () => writeListeners.delete(listener);
+export function onSettingsChange(listener: (change: SettingsChange) => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
 }
+
+const tell = (change: SettingsChange): void => {
+  for (const listener of listeners) listener(change);
+};
 
 /**
  * Stores `next` as the user's changes and tells the listeners, once it passes `settingsProblems` against what is
@@ -93,10 +105,10 @@ function write(next: unknown): void {
   tx(SETTINGS_ID)
     .put('data', next as Partial<SettingsData>)
     .put('updatedAt', Date.now());
-  if (replacingData === 0) for (const listener of writeListeners) listener();
+  tell('written');
 }
 
-/** How many data replacements are running (`whileReplacingData`): while any is, writes tell no listener */
+/** How many data replacements are running (`whileReplacingData`) */
 let replacingData = 0;
 
 /**
@@ -141,18 +153,18 @@ export const settingsCommands = {
   resetSettings: () => write({}),
 
   /**
-   * Runs `replace`, which replaces the stored data wholesale (a backup import), telling the listeners of no write made
-   * until it settles: the settings arrive past this writer, and the migrations the import runs write through it, so a
-   * diff against what features were told before would have them rewrite rows that came in with it. Held here, at the
-   * writer, it holds whenever those writes happen. The caller tells every feature its settings once it settles
-   * (`DATA_REPLACED`), done or failed, since a failed import may have migrated some of the data already.
+   * Runs `replace`, which replaces the stored data wholesale (a backup import), telling the listeners it is running
+   * and, once it settles, that it ended — done or failed, since a failed import may have migrated some of the data
+   * already. The settings arrive past this writer, and the migrations the import runs write through it, so the
+   * listeners know a write made in between from one of the user's. Said here, at the writer, they can't arrive out of
+   * order with the writes they bracket.
    */
   async whileReplacingData<T>(replace: () => Promise<T>): Promise<T> {
-    replacingData++;
+    if (replacingData++ === 0) tell('replacing');
     try {
       return await replace();
     } finally {
-      replacingData--;
+      if (--replacingData === 0) tell('replaced');
     }
   },
 };

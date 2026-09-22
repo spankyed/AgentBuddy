@@ -1,10 +1,11 @@
 // The app shell: the host `application` feature's plugin, which runs every plugin's actor, holds which one is open,
 // lays out the panels and loads external packs' frontends. Its I/O arrives as options (types.ts); the renderer
 // composes it with the API client and the window, a pack's tests with fakes.
-import { assign, enqueueActions, raise, setup, sendTo, spawnChild } from 'xstate';
+import { assign, enqueueActions, setup, sendTo, spawnChild } from 'xstate';
 import { getDesignated, processHotkeys, safeEvents } from '@abuddy/sdk/fe';
 import { splitRef } from '@abuddy/sdk/ids';
-import type { HostShellEvent, HostShellState, ShellPanelSizes } from '@abuddy/sdk/fe';
+import { isPlainObject } from '@abuddy/sdk/utils/pure';
+import type { HostShellEvent, HostShellState, PluginEvent, ShellPanelSizes } from '@abuddy/sdk/fe';
 import { HOST } from '../../host-refs.ts';
 import { connectionListener } from './connection.ts';
 import { hotkeyListener, mouseListener } from './input.ts';
@@ -259,9 +260,16 @@ export function createShellMachine({ packs, client, packFrontends, storage, noti
         if (events.length > 0) enqueue(({ self }) => self.send({ type: 'DELIVER_PLUGIN_EVENTS', plugin, events }));
       }),
 
-      openPluginFromApp: raise(({ event }) => {
-        const { plugin, events } = typeOf('OPEN_PLUGIN_FROM_APP', event);
-        return { type: 'OPEN_PLUGIN' as const, plugin, events: events ?? [] };
+      // A backend's request carries whatever the sending pack built: a payload that isn't a plugin and its events
+      // would crash the plugin's actor, or this one, so it is refused here rather than delivered
+      openPluginFromApp: enqueueActions(({ event, enqueue }) => {
+        const { plugin, events = [] } = typeOf('OPEN_PLUGIN_FROM_APP', event);
+        const deliverable = Array.isArray(events) && events.every((e) => isPlainObject(e) && typeof e.type === 'string');
+        if (typeof plugin !== 'string' || !deliverable) {
+          enqueue(() => notify.error("Couldn't open a plugin", `A pack asked the app to open "${String(plugin)}" with events it can't deliver`));
+          return;
+        }
+        enqueue.raise({ type: 'OPEN_PLUGIN' as const, plugin, events: events as PluginEvent[] });
       }),
 
       deliverPluginEvents: ({ event, system }) => {

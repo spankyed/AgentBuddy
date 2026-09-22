@@ -130,6 +130,28 @@ describe('a request from the app to open a plugin', () => {
     expect(eventsOf('default-setup/settings')).toEqual([{ plugin: 'default-setup/settings', type: 'PLUGIN.SELECT', open: true }]);
   });
 
+  // A pack builds the payload at runtime (an action, a flow), where its types don't reach: events that aren't
+  // deliverable would crash the plugin's actor, or the shell's
+  it.each([
+    ['events that are not an array', 'two'],
+    ['an event that is not an object', [null]],
+    ['an event without a type', [{ id: 'm1' }]],
+  ])('refuses %s, and opens nothing', async (_, events) => {
+    app.stop();
+    app = createActor(createShellMachine(shell.options), { systemId: 'host/application', input: { ownsLastActivePlugin: true } }).start();
+    shell.client.connect();
+    shell.client.receive({ to: 'host/application', event: { type: 'CLIENT_CONNECTED', hasOnboarded: true, pluginVisibility: {} } });
+    await settle();
+
+    shell.client.receive({ to: 'host/application', event: { type: 'OPEN_PLUGIN', plugin: 'default-setup/settings', events } });
+    await settle();
+
+    expect(opened()).toBe('default-setup/notes');
+    expect(eventsOf('default-setup/settings')).toEqual([]);
+    expect(shell.notify.error).toHaveBeenCalledWith("Couldn't open a plugin", expect.stringContaining('default-setup/settings'));
+    expect(app.getSnapshot().status).toBe('active');
+  });
+
   it('leaves a popout on the plugin it shows', async () => {
     await connectLoading([]);
     await settle();

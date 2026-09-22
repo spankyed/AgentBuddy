@@ -38,13 +38,18 @@ describe('the plugin settings keys', () => {
     expect(stored()).toBeUndefined();
   });
 
-  it("reports a client's update naming a plugin by a bare name, and writes nothing", async () => {
+  it("refuses a client's update naming a plugin by a bare name, and writes nothing", async () => {
     const app = await startApp({ systems: ['settings'] });
     await app.connect();
 
     await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'threads', path: ['sort'], value: 'oldest' });
 
-    expect(takeSystemErrors()).toEqual([expect.objectContaining({ message: expect.stringContaining('did you mean "default-setup/threads"?') })]);
+    // The sender's mistake to fix, which its form shows: not a system error
+    expect(app.emitted('default-setup/settings')).toContainEqual({
+      type: 'SETTINGS_REFUSED',
+      problems: [expect.stringContaining('did you mean "default-setup/threads"?')],
+    });
+    expect(takeSystemErrors()).toEqual([]);
     expect(stored()).toBeUndefined();
   });
 });

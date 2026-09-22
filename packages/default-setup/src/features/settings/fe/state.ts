@@ -60,6 +60,12 @@ function freshPackSeeds(): PackSeedsImport {
   };
 }
 
+/** The store's answer to the last settings change sent */
+export interface SettingsSave {
+  status: 'idle' | 'saving' | 'saved' | 'refused'
+  problems: string[]
+}
+
 export interface SettingsContext {
   settings: SettingsData | null;
   faqs: FAQItem[];
@@ -74,8 +80,8 @@ export interface SettingsContext {
   isLoading: boolean;
   /** True while a RESET_APP mutation is in flight; used to disable the reset button. */
   resetting: boolean;
-  /** The last replacement the settings editor sent: in flight, stored, or refused with why */
-  replacement: { status: 'idle' | 'saving' | 'saved' | 'refused'; problems: string[] };
+  /** The last change sent to the store: in flight, stored, or refused with why */
+  save: SettingsSave;
 }
 /** What a settings change is to: a plugin's settings by their key (its ref), or a general section */
 export type SettingsTarget = { entityType: 'plugin'; label: FeatureRef } | { entityType: 'general'; label: string };
@@ -171,7 +177,12 @@ const settingsState = setup({
     }),
 
     /* ── settings updates ────────────────────────────── */
-    updateSettings: ({ event }) => {
+    updateSettings: enqueueActions(({ event, enqueue }) => {
+      enqueue.assign({ save: { status: 'saving', problems: [] } })
+      enqueue('sendUpdate')
+    }),
+
+    sendUpdate: ({ event }) => {
       const ev = typeOf('SETTINGS.UPDATE', event);
       sendToSystem(id, {
         type: 'UPDATE_SETTINGS',
@@ -184,14 +195,14 @@ const settingsState = setup({
 
     replaceSettings: enqueueActions(({ event, enqueue }) => {
       const { data } = typeOf('SETTINGS.REPLACE', event)
-      enqueue.assign({ replacement: { status: 'saving', problems: [] } })
+      enqueue.assign({ save: { status: 'saving', problems: [] } })
       enqueue(() => sendToSystem(id, { type: 'REPLACE_SETTINGS', data }))
     }),
 
-    settingsSaved: assign({ replacement: { status: 'saved', problems: [] } }),
+    settingsSaved: assign({ save: { status: 'saved', problems: [] } }),
 
     settingsRefused: assign(({ event }) => ({
-      replacement: { status: 'refused' as const, problems: typeOf('SETTINGS_REFUSED', event).problems },
+      save: { status: 'refused' as const, problems: typeOf('SETTINGS_REFUSED', event).problems },
     })),
 
     resetSettings: () => {
@@ -407,7 +418,7 @@ const settingsState = setup({
     selectedPluginId: null as string | null,
     isLoading: true,
     resetting: false,
-    replacement: { status: 'idle', problems: [] },
+    save: { status: 'idle', problems: [] },
   }),
   states: {
     loading: {
