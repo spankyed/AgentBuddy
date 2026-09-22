@@ -6,6 +6,7 @@ import { defineSystem, onPackSettingsDefaultsChanged, type SystemEntry } from '@
 import type { SettingsData } from './types';
 import { loadFaqs } from './faqs';
 import { onSettingsWritten, settingsQueries, settingsCommands } from './repository';
+import { SettingsRefusedError } from '../document';
 import { repository } from '@/__generated__/repository';
 import { detectAllArrayChanges } from '@abuddy/sdk/utils/pure';
 import { seedData, type SeedCounts, type SeedIncludeSet } from '@/__generated__/seeders';
@@ -37,9 +38,11 @@ type IncomingSettingsEvents =
   | { type: 'TEST_CLI_PROVIDER'; provider: string }
   | { type: 'PREVIEW_PACK_SEEDS'; directory: string }
   | { type: 'IMPORT_PACK_SEEDS'; directory: string; include?: Record<string, string[] | null>; mode?: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'; restartBrain?: boolean }
-  | { type: 'REPLACE_SETTINGS'; data: SettingsData }
+  | { type: 'REPLACE_SETTINGS'; data: unknown }
   | { type: 'RESET_APP' }
-  // The stored data was replaced wholesale, not written (a backup imported): what each feature was told is stale
+  // The stored data is about to be replaced wholesale (a backup imported): writes until DATA_REPLACED aren't changes
+  | { type: 'DATA_REPLACING' }
+  // The replacement ended, done or failed: what each feature was told is stale either way
   | { type: 'DATA_REPLACED' }
 
 type SettingsInternalEvents =
@@ -50,6 +53,10 @@ type SettingsInternalEvents =
 export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_LOADED'; data: SettingsData; faqs: FAQItem[] }
   | { type: 'SETTINGS_UPDATED'; data: SettingsData }
+  /** A replacement (`REPLACE_SETTINGS`) was stored */
+  | { type: 'SETTINGS_SAVED' }
+  /** A replacement was refused, and stored nothing */
+  | { type: 'SETTINGS_REFUSED'; problems: string[] }
   | { type: 'SETTINGS_RESET'; data: SettingsData }
   | { type: 'APPLICATION_HOTKEYS'; hotkeys: SettingsData['general']['application']['hotkeys'] }
   | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string }
@@ -168,15 +175,21 @@ export const settingsSystem = setup({
       broadcastSettings('SETTINGS_UPDATED');
     },
 
+    // The plugin hears whether its replacement was stored, and why not: the settings editor says "Saved" only then
     replaceSettings: ({ event }) => {
       const ev = settingsSpec.typeOf('REPLACE_SETTINGS', event);
       try {
         settingsCommands.replaceSettings(ev.data);
       } catch (error) {
-        reportError({ error: new Error(`The settings weren't replaced: ${(error as Error).message}`), source: 'settings' });
+        if (!(error instanceof SettingsRefusedError)) {
+          reportError({ error: new Error(`The settings weren't replaced: ${(error as Error).message}`), source: 'settings' });
+        }
+        const problems = error instanceof SettingsRefusedError ? error.problems : [(error as Error).message];
+        sendToPlugin('settings', { type: 'SETTINGS_REFUSED', problems });
+        return;
       }
-      // Sent either way: a refused replacement leaves the plugin showing what is still stored
       broadcastSettings('SETTINGS_UPDATED');
+      sendToPlugin('settings', { type: 'SETTINGS_SAVED' });
     },
 
     resetSettings: () => {
@@ -315,6 +328,21 @@ export const settingsSystem = setup({
         },
         RESET_APP: {
           target: 'resetting',
+        },
+        DATA_REPLACING: {
+          target: 'replacingData',
+        },
+      },
+    },
+    // A backup is being imported. Its data arrives past the settings' writer, and the migrations run on it write
+    // through it: a diff against what features were told before the import would have them rewrite imported rows.
+    // Nothing is told until it ends, then every feature hears its settings with no changes, since a failed import
+    // may have migrated some of the data already
+    replacingData: {
+      on: {
+        DATA_REPLACED: {
+          target: 'idle',
+          actions: ['sendSettingsUpdate', 'tellEveryFeature'],
         },
       },
     },

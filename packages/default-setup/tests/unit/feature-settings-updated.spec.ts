@@ -6,7 +6,7 @@ import { assign, setup } from 'xstate';
 import { mockService, registerPack, startApp, takeSystemErrors, unregisterPack } from '@abuddy/testing/harness';
 import { tx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
-import { settingsCommands } from '@/features/settings/be/repository';
+import { settingsCommands, settingsQueries } from '@/features/settings/be/repository';
 import { services } from '@/__generated__/services';
 
 /** A system that keeps each FEATURE_SETTINGS_UPDATED it gets */
@@ -134,15 +134,80 @@ describe('a feature whose settings change', () => {
     expect(heardBy(app)).toHaveLength(1);
   });
 
-  // A bare key would be stored where nothing reads it, for good
-  it('refuses replaced settings holding a plugin key that is not a ref, storing none of them', async () => {
+  // The import's migrations write the settings through the repository before the imported data is announced: a diff
+  // against what features heard before the import would have them rewrite rows that came in with it
+  describe('a backup import whose migrations write the settings', () => {
+    const importWriting = (outcome: 'succeeds' | 'fails') => mockService('appData', {
+      importBackup: async () => {
+        // As the real import, which reads the backup's files before anything reaches memory
+        await Promise.resolve();
+        tx('Settings-app' as EARS.EntityId).put('data', { plugins: { 'memo-pack/memos': { tags: [{ name: 'imported' }] } } });
+        settingsCommands.updateSettings('plugin', 'memo-pack/memos', ['tags'], [{ name: 'migrated' }]);
+        if (outcome === 'fails') throw new Error('backup unreadable');
+        return { databases: ['lmdb'], missingDatabases: [], unknownEntityTypes: [] };
+      },
+    });
+
+    it.each(['succeeds', 'fails'] as const)('tells each feature no changes when it %s', async (outcome) => {
+      importWriting(outcome);
+      const app = await startApp({ systems: ['settings', 'database', 'memo-pack/memos'] });
+      await app.connect();
+
+      await app.send('database', { type: 'IMPORT_DATABASE', path: '/backups/1' } as never);
+      await app.settle();
+
+      expect(heardBy(app)).toEqual([{ type: 'FEATURE_SETTINGS_UPDATED', settings: { tags: [{ name: 'migrated' }] }, changes: null }]);
+      await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/board', path: ['columns'], value: 7 });
+      expect(heardBy(app)).toHaveLength(1);
+    });
+  });
+
+  // A bare key would be stored where nothing reads it, for good. A refusal is the user's to fix, not the system's
+  // error: the settings plugin hears it with the reasons
+  it('refuses replaced settings holding a plugin key that is not a ref, naming the ref it likely meant', async () => {
     const app = await startApp({ systems: ['settings', 'memo-pack/memos'] });
     await app.connect();
 
-    await app.send('settings', { type: 'REPLACE_SETTINGS', data: { general: {}, plugins: { memos: { tags: [] } } } as never });
+    await app.send('settings', { type: 'REPLACE_SETTINGS', data: { general: {}, plugins: { memos: { tags: [] } } } });
 
-    expect(takeSystemErrors()).toEqual([expect.objectContaining({ message: expect.stringContaining(`"memos" isn't a plugin settings key`) })]);
+    expect(app.emitted('default-setup/settings')).toContainEqual({
+      type: 'SETTINGS_REFUSED',
+      problems: [`"memos" isn't a plugin settings key: a plugin's settings are stored under its ref, "<packId>/<featureId>"; did you mean "memo-pack/memos"?`],
+    });
+    expect(app.emitted('default-setup/settings').map((e) => e.type)).not.toContain('SETTINGS_SAVED');
+    expect(settingsQueries.getStoredSettings()).toEqual({});
     expect(heardBy(app)).toEqual([]);
+  });
+
+  it.each([
+    ['null', null, 'The settings must be a JSON object'],
+    ['an array', [], 'The settings must be a JSON object'],
+    ['a section that is not an object', { general: {}, plugins: null }, '"plugins" must be an object'],
+    ['a section the settings do not hold', { general: {}, extra: {} }, `"extra" isn't a settings section`],
+  ])('refuses replaced settings that are %s, storing nothing', async (_, data, problem) => {
+    const app = await startApp({ systems: ['settings', 'memo-pack/memos'] });
+    await app.connect();
+
+    await app.send('settings', { type: 'REPLACE_SETTINGS', data });
+
+    expect(app.emitted('default-setup/settings')).toContainEqual({ type: 'SETTINGS_REFUSED', problems: [expect.stringContaining(problem)] });
+    expect(settingsQueries.getStoredSettings()).toEqual({});
+  });
+
+  // The editor sends the settings in effect, defaults included: storing them as given would freeze today's defaults
+  // into the user's settings, where a later default change never reaches them
+  it('stores what replaced settings change from the defaults, and says it saved them', async () => {
+    const app = await startApp({ systems: ['settings', 'memo-pack/memos'] });
+    await app.connect();
+    const inEffect = settingsQueries.getSettings();
+
+    await app.send('settings', {
+      type: 'REPLACE_SETTINGS',
+      data: { ...inEffect, plugins: { ...inEffect.plugins, 'memo-pack/board': { columns: 5 } } },
+    });
+
+    expect(settingsQueries.getStoredSettings()).toEqual({ plugins: { 'memo-pack/board': { columns: 5 } } });
+    expect(app.emitted('default-setup/settings')).toContainEqual({ type: 'SETTINGS_SAVED' });
   });
 
   // Its defaults leave with the pack, so the settings of its features change; their system and plugin are gone,
@@ -165,5 +230,40 @@ describe('a feature whose settings change', () => {
     await app.send('settings', { type: 'REPLACE_SETTINGS', data: { general: {}, plugins: { 'disabled-pack/journal': { font: 'serif' } } } as never });
 
     expect(app.emitted('default-setup/settings').map((e) => e.type)).toContain('SETTINGS_UPDATED');
+  });
+});
+
+// A key such as `__proto__` in a path or in replaced settings is data: it's stored as an own key and reaches no
+// prototype, in the API process or in the settings merged from the defaults
+describe('settings naming prototype machinery', () => {
+  afterEach(() => { delete (Object.prototype as Record<string, unknown>).polluted; });
+
+  it.each([
+    ['a path segment', { entityType: 'general', label: 'application', path: ['__proto__', 'polluted'] }],
+    ['a label', { entityType: 'general', label: '__proto__', path: ['polluted'] }],
+    ['a constructor path', { entityType: 'general', label: 'application', path: ['constructor', 'prototype', 'polluted'] }],
+    ["a plugin's path", { entityType: 'plugin', label: 'memo-pack/memos', path: ['__proto__', 'polluted'] }],
+  ])('keeps %s as data, and pollutes nothing', async (_, update) => {
+    const app = await startApp({ systems: ['settings'] });
+    await app.connect();
+
+    await app.send('settings', { type: 'UPDATE_SETTINGS', ...update, value: 'yes' } as never);
+
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    expect(Object.getPrototypeOf(settingsQueries.getSettings().general)).toBe(Object.prototype);
+  });
+
+  it('keeps such a key in replaced settings as data, and pollutes nothing', async () => {
+    const app = await startApp({ systems: ['settings'] });
+    await app.connect();
+
+    // As a client's JSON arrives: "__proto__" an own key
+    const data = JSON.parse('{ "general": {}, "plugins": { "memo-pack/memos": { "__proto__": { "polluted": "yes" } } } }');
+    await app.send('settings', { type: 'REPLACE_SETTINGS', data });
+
+    const memos = settingsQueries.getPluginSettings('memo-pack/memos') as Record<string, unknown>;
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    expect(memos.polluted).toBeUndefined();
+    expect(Object.getPrototypeOf(memos)).toBe(Object.prototype);
   });
 });

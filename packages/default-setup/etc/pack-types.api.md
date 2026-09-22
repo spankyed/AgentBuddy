@@ -2585,6 +2585,15 @@ type OutgoingSettingsEvents = {
 } | {
     type: 'SETTINGS_UPDATED';
     data: SettingsData;
+}
+/** A replacement (`REPLACE_SETTINGS`) was stored */
+ | {
+    type: 'SETTINGS_SAVED';
+}
+/** A replacement was refused, and stored nothing */
+ | {
+    type: 'SETTINGS_REFUSED';
+    problems: string[];
 } | {
     type: 'SETTINGS_RESET';
     data: SettingsData;
@@ -4676,8 +4685,11 @@ declare function sendSystemMessage(options: {
 
 declare const settingsCommands: {
     updateSettings: typeof updateSettings;
-    /** Stores `data` as given, once every plugin key in it is a ref: a bare key would be stored where nothing reads it */
-    replaceSettings(data: SettingsData): void;
+    /**
+     * Makes `settings` the settings in effect: stores what they set that the defaults don't. A default they leave out
+     * keeps applying, since stored settings only set values.
+     */
+    replaceSettings(settings: unknown): void;
     /** Removes a stored value (its path in the stored data), so its default applies again */
     removeStored(path: string[]): void;
     resetSettings: () => void;
@@ -4692,7 +4704,7 @@ declare const settingsQueries: {
     getStoredSettings: () => Partial<SettingsData>;
     getGeneralSettings: (label?: string) => any;
     getAssistantSettings: () => AssistantSettings;
-    /** A plugin's settings in effect, by its ref, which is checked here as `updateSettings` checks it: a bare name throws */
+    /** A plugin's settings in effect, by its ref; a bare name throws, naming the ref it likely meant */
     getPluginSettings: (plugin: string) => any;
 };
 
@@ -5295,9 +5307,11 @@ declare const specs: {
             restartBrain?: boolean;
         } | {
             type: "REPLACE_SETTINGS";
-            data: SettingsData;
+            data: unknown;
         } | {
             type: "RESET_APP";
+        } | {
+            type: "DATA_REPLACING";
         } | {
             type: "DATA_REPLACED";
         }) | ({
@@ -5458,8 +5472,11 @@ declare function updateChatState(threadId: EARS.EntityId, chatState: string): vo
  */
 declare function updateMessageState(messageId: EARS.EntityId, updates: Partial<Pick<MessageEntity, 'blockResponse' | 'blocks' | 'compacted' | 'context' | 'forkable' | 'responseTimestamp' | 'status' | 'text'>>): void;
 
-/** A plugin's settings are keyed by its ref, which is checked here: clients and actions pass it as a string */
-declare function updateSettings(type: SettingsSection | 'plugin', label: string | null, path: string[], value: any): void;
+/**
+ * Sets `value` at `path` in a section: a general setting under its label (`general.application`), a plugin's under its
+ * ref (`plugins['default-setup/flows']`), an assistant setting under no label
+ */
+declare function updateSettings(type: SettingsSection | 'plugin', label: string | null, path: string[], value: unknown): void;
 
 /** Parse a Codex JSONL file into an array of entries. */
 declare function viewByFile(filePath: string, opts?: {

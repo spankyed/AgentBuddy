@@ -222,12 +222,15 @@ export const databaseSystem = setup({
     importDatabase: ({ system, event }) => {
       const { path, skipUnknownDatabases } = databaseSpec.typeOf('IMPORT_DATABASE', event);
 
+      // The settings come in with the rest, past the settings' writer, and the import's migrations write them: the
+      // settings system tells no changes until the import ends, then every feature hears its settings again. The import
+      // writes nothing before it has read the backup's files, by which time the settings system has this
+      sendToSystem('settings', { type: 'DATA_REPLACING' });
       // Replaces stored data and reloads memory from it; on failure the previous data is restored and reloaded
       services.appData.importBackup(path, { skipUnknownDatabases }).then(
         ({ missingDatabases, unknownEntityTypes }) => {
           // Stop brain and notify success
           sendToSystem('brain', { type: 'KILL_BRAIN' });
-          // The settings came in with the rest, past the settings' writer: every feature hears its settings again
           sendToSystem('settings', { type: 'DATA_REPLACED' });
           // A store the backup listed but didn't hold came back empty: said, not silently dropped
           const nothingToRestore = missingDatabases.length > 0
@@ -248,6 +251,7 @@ export const databaseSystem = setup({
           });
         },
         (error: unknown) => {
+          sendToSystem('settings', { type: 'DATA_REPLACED' });
           const errorMessage = error instanceof Error ? error.message : String(error);
           logger.error('Failed to import database:', { error: errorMessage });
           sendToPlugin('database', {

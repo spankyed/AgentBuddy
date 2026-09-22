@@ -1,4 +1,4 @@
-import { assign, setup, type ActorRefFrom } from 'xstate'
+import { assign, enqueueActions, setup, type ActorRefFrom } from 'xstate'
 import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe'
 import { safeEvents } from '@abuddy/sdk/fe'
 import {
@@ -74,6 +74,8 @@ export interface SettingsContext {
   isLoading: boolean;
   /** True while a RESET_APP mutation is in flight; used to disable the reset button. */
   resetting: boolean;
+  /** The last replacement the settings editor sent: in flight, stored, or refused with why */
+  replacement: { status: 'idle' | 'saving' | 'saved' | 'refused'; problems: string[] };
 }
 /** What a settings change is to: a plugin's settings by their key (its ref), or a general section */
 export type SettingsTarget = { entityType: 'plugin'; label: FeatureRef } | { entityType: 'general'; label: string };
@@ -84,7 +86,7 @@ type UIEvent =
   // A plugin by its ref: other packs send it too, so a bare name would be read as this pack's
   | { type: 'PLUGIN.SELECT'; pluginId: FeatureRef }
   | ({ type: 'SETTINGS.UPDATE'; path: string[]; value: any } & SettingsTarget)
-  | { type: 'SETTINGS.REPLACE'; data: SettingsData }
+  | { type: 'SETTINGS.REPLACE'; data: unknown }
   | { type: 'SETTINGS.RESET' }
   | { type: 'SETTINGS.LOAD' }
   | { type: 'CLI.TEST'; provider: string }
@@ -180,13 +182,17 @@ const settingsState = setup({
       });
     },
 
-    replaceSettings: ({ event }) => {
-      const ev = typeOf('SETTINGS.REPLACE', event);
-      sendToSystem(id, {
-        type: 'REPLACE_SETTINGS',
-        data: ev.data,
-      });
-    },
+    replaceSettings: enqueueActions(({ event, enqueue }) => {
+      const { data } = typeOf('SETTINGS.REPLACE', event)
+      enqueue.assign({ replacement: { status: 'saving', problems: [] } })
+      enqueue(() => sendToSystem(id, { type: 'REPLACE_SETTINGS', data }))
+    }),
+
+    settingsSaved: assign({ replacement: { status: 'saved', problems: [] } }),
+
+    settingsRefused: assign(({ event }) => ({
+      replacement: { status: 'refused' as const, problems: typeOf('SETTINGS_REFUSED', event).problems },
+    })),
 
     resetSettings: () => {
       sendToSystem(id, {
@@ -401,6 +407,7 @@ const settingsState = setup({
     selectedPluginId: null as string | null,
     isLoading: true,
     resetting: false,
+    replacement: { status: 'idle', problems: [] },
   }),
   states: {
     loading: {
@@ -429,6 +436,12 @@ const settingsState = setup({
         },
         'SETTINGS.REPLACE': {
           actions: 'replaceSettings',
+        },
+        SETTINGS_SAVED: {
+          actions: 'settingsSaved',
+        },
+        SETTINGS_REFUSED: {
+          actions: 'settingsRefused',
         },
         'SETTINGS.RESET': {
           actions: 'resetSettings',

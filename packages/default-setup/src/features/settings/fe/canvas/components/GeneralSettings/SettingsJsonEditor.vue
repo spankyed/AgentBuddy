@@ -3,7 +3,7 @@
     <div class="flex items-center justify-between mb-4">
       <div>
         <h2 class="text-xl font-semibold text-white">Settings JSON</h2>
-        <span v-if="parseError" class="text-xs text-red-400">{{ parseError }}</span>
+        <span v-if="problems.length" class="text-xs text-red-400">{{ problems.join('; ') }}</span>
         <span v-else-if="saved" class="text-xs text-green-500">Saved</span>
       </div>
       <div class="flex items-center gap-2">
@@ -15,10 +15,10 @@
         </button>
         <button
           @click="onSave"
-          :disabled="!!parseError || !isDirty"
+          :disabled="!canSave"
           :class="[
             'px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
-            parseError || !isDirty
+            !canSave
               ? 'bg-neutral-700 text-neutral-500 cursor-not-allowed'
               : 'bg-blue-600 hover:bg-blue-500 text-white'
           ]"
@@ -39,29 +39,30 @@
 
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
-import { checkedSettingsRef } from '@/features/settings/plugin-settings'
-import type { SettingsData } from '@/__generated__/types'
-
-import { ref, onMounted, watch } from 'vue'
+import { settingsProblems } from '@/features/settings/document'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor'
 
 const actor = usePlugin()
 const settings = useSelector(actor, (state: any) => state.context.settings)
+const replacement = useSelector(actor, (state: any) => state.context.replacement)
 
 const jsonText = ref('')
 const originalText = ref('')
-const parseError = ref<string | null>(null)
+const problems = ref<string[]>([])
 const isDirty = ref(false)
 const saved = ref(false)
 let savedTimeout: ReturnType<typeof setTimeout> | null = null
+
+const canSave = computed(() => isDirty.value && problems.value.length === 0 && replacement.value.status !== 'saving')
 
 function loadSettings() {
   const text = JSON.stringify(settings.value, null, 2)
   jsonText.value = text
   originalText.value = text
   isDirty.value = false
-  parseError.value = null
+  problems.value = []
 }
 
 onMounted(loadSettings)
@@ -70,25 +71,21 @@ watch(settings, () => {
   if (!isDirty.value) loadSettings()
 })
 
-/**
- * Parses the text and checks it as the store will: a plugin's settings are keyed by its ref, and the store refuses any
- * other key. Checked here too so a refused save never shows as saved and the user's text stays
- */
-function parsedSettings(text: string): SettingsData {
-  const data = JSON.parse(text) as SettingsData
-  for (const key of Object.keys(data?.plugins ?? {})) checkedSettingsRef(key)
-  return data
+/** Why the text can't be saved: it isn't JSON, or the store's own check refuses it */
+function problemsIn(text: string): string[] {
+  let data: unknown
+  try {
+    data = JSON.parse(text)
+  } catch (e) {
+    return [(e as Error).message]
+  }
+  return settingsProblems(data, { before: settings.value, known: Object.keys(settings.value?.plugins ?? {}) })
 }
 
 function onEditorChange(value: string) {
   jsonText.value = value
   isDirty.value = value !== originalText.value
-  try {
-    parsedSettings(value)
-    parseError.value = null
-  } catch (e) {
-    parseError.value = (e as Error).message
-  }
+  problems.value = problemsIn(value)
 }
 
 function onReset() {
@@ -96,17 +93,19 @@ function onReset() {
 }
 
 function onSave() {
-  if (parseError.value || !isDirty.value) return
-  try {
-    const data = parsedSettings(jsonText.value)
-    actor.send({ type: 'SETTINGS.REPLACE', data })
-    originalText.value = jsonText.value
-    isDirty.value = false
+  if (!canSave.value) return
+  actor.send({ type: 'SETTINGS.REPLACE', data: JSON.parse(jsonText.value) })
+}
+
+// The store's answer to a save: stored, the text becomes the settings shown; refused, the text stays with the reasons
+watch(replacement, (answer) => {
+  if (answer.status === 'saved') {
+    loadSettings()
     saved.value = true
     if (savedTimeout) clearTimeout(savedTimeout)
     savedTimeout = setTimeout(() => { saved.value = false }, 2000)
-  } catch (e) {
-    parseError.value = (e as Error).message
+  } else if (answer.status === 'refused') {
+    problems.value = answer.problems
   }
-}
+})
 </script>

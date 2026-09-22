@@ -2,10 +2,11 @@ import { tx, qx } from '@/__generated__/ears';
 
 import { EARS } from '@/__generated__/ears';
 
-import { checkedSettingsRef } from '../../plugin-settings';
+import { changesFrom, pluginKeyProblem, removeIn, setIn, settingsProblems, SettingsRefusedError } from '../../document';
 import type { SettingsData } from '../types';
 import { getDefaultSettings } from '../defaults';
 import { deepMerge } from '@abuddy/sdk/utils/pure';
+import { splitRef } from '@abuddy/sdk/ids';
 
 // Use a fixed ID without hyphen to avoid LMDB persistence issues
 // The ID "Settings-app" has a bug where updates don't persist
@@ -28,21 +29,8 @@ const getSettingsEntity = (): { id: EARS.EntityId; data: SettingsData } => ({
   data: deepMerge(getDefaultSettings(), getStoredSettings()),
 });
 
-// Helper to update nested values
-const setNestedValue = (obj: any, path: string[], value: any): any => {
-  if (path.length === 0) return value;
-
-  const newObj = JSON.parse(JSON.stringify(obj)); // Deep clone
-  let current = newObj;
-
-  for (let i = 0; i < path.length - 1; i++) {
-    current[path[i]] = current[path[i]] || {};
-    current = current[path[i]];
-  }
-
-  current[path[path.length - 1]] = value;
-  return newObj;
-};
+/** The refs of the registered features that declare settings, which name the ref a bare name likely meant */
+const knownRefs = (): string[] => Object.keys(getDefaultSettings().plugins);
 
 // Initialize default settings (called on startup)
 export const createDefaultSettings = (): void => {
@@ -69,11 +57,10 @@ export const settingsQueries = {
 
   getAssistantSettings: () => getSettingsEntity().data.assistant,
 
-  /** A plugin's settings in effect, by its ref, which is checked here as `updateSettings` checks it: a bare name throws */
+  /** A plugin's settings in effect, by its ref; a bare name throws, naming the ref it likely meant */
   getPluginSettings: (plugin: string) => {
-    const key = checkedSettingsRef(plugin);
-    const data = getSettingsEntity().data;
-    return data.plugins?.[key] || (getDefaultSettings().plugins as any)[key] || {};
+    if (!splitRef(plugin)) throw new Error(pluginKeyProblem(plugin, knownRefs()));
+    return getSettingsEntity().data.plugins[plugin] ?? {};
   },
 };
 
@@ -89,11 +76,15 @@ export function onSettingsWritten(listener: () => void): () => void {
   return () => writeListeners.delete(listener);
 }
 
-/** Stores `data` as the user's changes, and tells the listeners */
-function write(data: Partial<SettingsData>): void {
-  getStoredSettings();
+/**
+ * Stores `next` as the user's changes and tells the listeners, once it passes `settingsProblems` against what is
+ * stored: every write goes through here, so none stores a document the settings refuse.
+ */
+function write(next: unknown): void {
+  const problems = settingsProblems(next, { before: getStoredSettings(), known: knownRefs() });
+  if (problems.length > 0) throw new SettingsRefusedError(problems);
   tx(SETTINGS_ID)
-    .put('data', data)
+    .put('data', next as Partial<SettingsData>)
     .put('updatedAt', Date.now());
   for (const listener of writeListeners) listener();
 }
@@ -101,48 +92,37 @@ function write(data: Partial<SettingsData>): void {
 /** The sections of the stored settings other than the plugins' slices, each keyed as the data holds it */
 type SettingsSection = 'general' | 'assistant' | 'plugins';
 
-/** A plugin's settings are keyed by its ref, which is checked here: clients and actions pass it as a string */
-function updateSettings(type: SettingsSection | 'plugin', label: string | null, path: string[], value: any): void {
-  const stored = getStoredSettings();
-
-  // General & plugin settings are grouped by label (e.g., general.application, plugin.flows)
-  // Assistant settings don't use labels
+/**
+ * Sets `value` at `path` in a section: a general setting under its label (`general.application`), a plugin's under its
+ * ref (`plugins['default-setup/flows']`), an assistant setting under no label
+ */
+function updateSettings(type: SettingsSection | 'plugin', label: string | null, path: string[], value: unknown): void {
   const needsLabel = type === 'general' || type === 'plugin';
-  if (needsLabel && !label) {
-    throw new Error(`Setting type '${type}' requires a label`);
-  }
-
-  // Build path matching the data structure (note: 'plugin' type maps to 'plugins' in data)
-  const dataKey = type === 'plugin' ? 'plugins' : type;
-  const key = type === 'plugin' ? checkedSettingsRef(label!) : label;
-  const fullPath = needsLabel
-    ? [dataKey, key!, ...path]
-    : [dataKey, ...path];
-
-  write(setNestedValue(stored, fullPath, value));
+  if (needsLabel && !label) throw new Error(`Setting type '${type}' requires a label`);
+  const section = type === 'plugin' ? 'plugins' : type;
+  write(setIn(getStoredSettings(), needsLabel ? [section, label!, ...path] : [section, ...path], value));
 }
 
 // COMMANDS
 export const settingsCommands = {
   updateSettings,
 
-  /** Stores `data` as given, once every plugin key in it is a ref: a bare key would be stored where nothing reads it */
-  replaceSettings(data: SettingsData): void {
-    for (const key of Object.keys(data.plugins ?? {})) checkedSettingsRef(key);
-    write(data);
+  /**
+   * Makes `settings` the settings in effect: stores what they set that the defaults don't. A default they leave out
+   * keeps applying, since stored settings only set values.
+   */
+  replaceSettings(settings: unknown): void {
+    const problems = settingsProblems(settings, { before: getSettingsEntity().data, known: knownRefs() });
+    if (problems.length > 0) throw new SettingsRefusedError(problems);
+    write(changesFrom(getDefaultSettings(), settings) ?? {});
   },
 
   /** Removes a stored value (its path in the stored data), so its default applies again */
   removeStored(path: string[]): void {
-    const newData = structuredClone(getStoredSettings());
-    const parent = path.slice(0, -1).reduce<any>((node, key) => node?.[key], newData);
-    const key = path[path.length - 1];
-    if (!parent || typeof parent !== 'object' || !(key in parent)) return;
-    delete parent[key];
-    write(newData);
+    const stored = getStoredSettings();
+    const next = removeIn(stored, path);
+    if (next !== stored) write(next);
   },
 
   resetSettings: () => write({}),
 };
-
-
