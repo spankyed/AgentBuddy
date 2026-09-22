@@ -26,7 +26,7 @@ const isPluginPopout = new URLSearchParams(window.location.search).get('popout')
 
 <style>
 /* Import web app styles */
-@import './style.css';
+@import '../style.css';
 
 /* Loading overlay */
 .loading-overlay {
