@@ -116,9 +116,20 @@ export interface PluginOwners {
  * feature an installed pack's manifest lists. A feature with settings and no plugin kept them under its id too.
  */
 function ownersIn(registry: MigrationRegistry, installed: ReturnType<InstalledManifests>): PluginOwners {
-  const declared = installed.flatMap((manifest) => (manifest.features ?? []).map((feature) => `${manifest.id}/${feature.id}`));
+  const declared = installed.flatMap(declaredFeatureRefs);
   const refs = [...new Set<string>([...registry.pluginIds(), ...registry.systemIds(), ...declared])].filter((ref) => splitRef(ref));
   return { refs: refs as FeatureRef[], builtIn: registry.builtInPacks().map(({ id }) => id) };
+}
+
+/**
+ * The refs of the features a manifest on disk lists. Read as data, not trusted as a manifest: a malformed one lists
+ * none rather than throwing, because a thrown migration stops every boot's migrations and seeds until it is fixed, and
+ * one broken pack on disk mustn't do that to the app. Its keys stay as they are.
+ */
+function declaredFeatureRefs(manifest: { id?: unknown; features?: unknown }): string[] {
+  if (typeof manifest.id !== 'string' || !Array.isArray(manifest.features)) return [];
+  return manifest.features.flatMap((feature: { id?: unknown } | null) =>
+    typeof feature?.id === 'string' ? [`${manifest.id}/${feature.id}`] : []);
 }
 
 /** Each bare feature id to its owner's ref, or null when no single one owns it (two external packs share it) */

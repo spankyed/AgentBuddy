@@ -126,8 +126,8 @@ export const settingsSystem = setup({
     }),
 
     /**
-     * After the app was reset, tells every feature its settings with no changes: its data was reset with them, so a
-     * diff across the reset (a tag renamed away, a mode removed) would have it rewrite rows that are already gone
+     * After an app reset, tells every feature its settings with no changes: its data was reset with them, so a diff
+     * across the reset (a tag renamed away, a mode removed) would have it rewrite rows that are already gone
      */
     tellEveryFeature: assign({
       applied: () => {
@@ -320,14 +320,15 @@ export const settingsSystem = setup({
       tags: ['resetting'],
       invoke: {
         src: 'resetAppActor',
-        // Writes and pack changes made by the reset aren't told as changes: tellEveryFeature re-baselines once it's done
+        // Writes and pack changes made by the reset aren't told as changes: tellEveryFeature re-baselines once it ends,
+        // however it ends, since a reset that failed partway changed some of the data and settings already
         onDone: {
           target: 'idle',
           actions: ['tellEveryFeature', 'onResetComplete'],
         },
         onError: {
           target: 'idle',
-          actions: 'onResetFailed',
+          actions: ['tellEveryFeature', 'onResetFailed'],
         },
       },
     },

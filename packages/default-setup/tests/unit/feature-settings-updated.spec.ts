@@ -3,7 +3,7 @@
 // settings. A feature with no system, or no plugin, just doesn't get that half.
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { assign, setup } from 'xstate';
-import { registerPack, startApp, takeSystemErrors, unregisterPack } from '@abuddy/testing/harness';
+import { mockService, registerPack, startApp, takeSystemErrors, unregisterPack } from '@abuddy/testing/harness';
 import { settingsCommands } from '@/features/settings/be/repository';
 import { services } from '@/__generated__/services';
 
@@ -85,6 +85,32 @@ describe('a feature whose settings change', () => {
     await app.settle();
 
     expect(heardBy(app).map((e) => e.settings)).toEqual([{ tags: [{ name: 'd' }] }]);
+  });
+
+  // A reset rewrites the settings with the rest of the data. Each feature is told its settings with no changes once it
+  // ends, however it ends, and a later change isn't told as a difference across the reset.
+  describe('an app reset', () => {
+    /** A reset that writes the settings as the real one does, then succeeds or throws */
+    const resetWriting = (tags: unknown[], outcome: 'succeeds' | 'fails') => mockService('appData', {
+      reset: async () => {
+        settingsCommands.updateSettings('plugin', 'memo-pack/memos', ['tags'], tags);
+        if (outcome === 'fails') throw new Error('store could not reopen');
+      },
+    });
+
+    it.each(['succeeds', 'fails'] as const)('tells each feature its settings with no changes once it %s', async (outcome) => {
+      resetWriting([{ name: 'fresh' }], outcome);
+      const app = await startApp({ systems: ['settings', 'memo-pack/memos'] });
+      await app.connect();
+
+      await app.send('settings', { type: 'RESET_APP' });
+      await app.settle();
+
+      expect(heardBy(app)).toEqual([{ type: 'FEATURE_SETTINGS_UPDATED', settings: { tags: [{ name: 'fresh' }] }, changes: null }]);
+      await app.send('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'memo-pack/board', path: ['columns'], value: 5 });
+      expect(heardBy(app)).toHaveLength(1);
+      if (outcome === 'fails') takeSystemErrors();
+    });
   });
 
   // A bare key would be stored where nothing reads it, for good
