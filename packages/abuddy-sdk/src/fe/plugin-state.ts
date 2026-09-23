@@ -12,7 +12,13 @@
 // The actor comes from the shell's registry, the app's one list of running plugins: a plugin is spawned with its
 // ref as its XState `systemId`. Nothing here keeps its own.
 import { getCurrentScope, onScopeDispose, shallowReadonly, shallowRef, type Ref } from 'vue'
+import { boundFeHost } from '../runtime/fe-host.ts'
 import { pluginActorIfRunning } from './actor-system.ts'
+
+/** Whether a plugin is running at `ref` in this window. What a reader hands back is `undefined` until it is. */
+export function pluginIsRunning(ref: string): boolean {
+  return pluginActorIfRunning(ref) !== undefined
+}
 
 /**
  * A value from the state of the plugin at `ref`, following it until the calling scope is disposed. So it runs in a
@@ -23,6 +29,10 @@ import { pluginActorIfRunning } from './actor-system.ts'
  * ```ts
  * useUntypedPluginState(ref('notes'), (s: SnapshotFrom<NotesState>) => s.context.notes)
  * ```
+ *
+ * It follows the plugin *arriving* as well as changing: a read made while another pack's frontend is still loading
+ * starts `undefined` and fills in once that pack registers its plugins, and one whose pack reloads follows the new
+ * actor. Both are the shell's doing, so the shell's own snapshot is what says to look again.
  */
 export function useUntypedPluginState<TSnapshot, TSelected>(
   ref: string,
@@ -31,21 +41,41 @@ export function useUntypedPluginState<TSnapshot, TSelected>(
   if (!getCurrentScope()) {
     throw new Error(`useUntypedPluginState("${ref}") runs in a component's setup or an effect scope: its ref follows the plugin until that scope is disposed. Outside one, read it once with readUntypedPluginState()`)
   }
-  const actor = pluginActorIfRunning(ref)
-  const selected = shallowRef(actor ? selector(actor.getSnapshot() as TSnapshot) : undefined)
-  if (!actor) return shallowReadonly(selected) as Readonly<Ref<TSelected | undefined>>
   // A `shallowRef` triggers only when the value it is given actually changed, so a component reading one field
   // isn't re-rendered because another moved. Comparing here first would only repeat that.
-  const subscription = actor.subscribe((snapshot: unknown) => {
-    selected.value = selector(snapshot as TSnapshot)
+  const selected = shallowRef<TSelected | undefined>(undefined)
+  let followed: ReturnType<typeof pluginActorIfRunning>
+  let subscription: { unsubscribe(): void } | undefined
+
+  /** Follow whatever is running at `ref` now; cheap and idempotent while that is the same actor */
+  const follow = () => {
+    const actor = pluginActorIfRunning(ref)
+    if (actor === followed) return
+    subscription?.unsubscribe()
+    followed = actor
+    if (!actor) {
+      subscription = undefined
+      selected.value = undefined
+      return
+    }
+    selected.value = selector(actor.getSnapshot() as TSnapshot)
+    subscription = actor.subscribe((snapshot: unknown) => {
+      selected.value = selector(snapshot as TSnapshot)
+    })
+  }
+
+  follow()
+  const shell = boundFeHost().application.subscribe(() => follow())
+  onScopeDispose(() => {
+    shell.unsubscribe()
+    subscription?.unsubscribe()
   })
-  onScopeDispose(() => subscription.unsubscribe())
   return shallowReadonly(selected) as Readonly<Ref<TSelected | undefined>>
 }
 
 /**
  * The same read, once, for code outside a reactive scope — a machine's action, an event handler. It takes the value
- * as it is now and never follows it.
+ * as it is now and never follows it, so a plugin that isn't running yet reads as `undefined` rather than later.
  */
 export function readUntypedPluginState<TSnapshot, TSelected>(
   ref: string,

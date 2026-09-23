@@ -54,7 +54,6 @@ Each feature lives in `src/features/<name>/` with this layout:
 - `fe/types.ts` — the feature's frontend leaf: its plugin's context, the events its `Contract` opens an inbox to, and the `Contract` itself. It imports no machine, no other feature and nothing from `#generated/*` but `types` and `ears`, which is what lets codegen read the contract without resolving the machine (`check:specifiers`); `abuddy.json` names it at `features[].plugin.contract`. `flows` and `library` keep theirs at `fe/types/index.ts`, beside the other types they already had there
 - `fe/canvas/` — Main view components
 - `fe/references.ts` — which of the feature's things are linkable from an editor, and how (if applicable)
-- `fe/public.ts` — what the feature's frontend offers other features and extensions: its state as composables over `usePluginState`/`readPluginState` (`@abuddy/sdk/fe`), which read the plugin at a ref from the shell's registry of running plugins and hand back a value, never the actor. Its own components reach its actor with `usePlugin()`; nothing outside the feature imports its frontend except through this module (`check:specifiers`). What other features may *send* it isn't here: that is the `inbox` half of the feature's `Contract` (`fe/types.ts`, named in `abuddy.json` at `features[].plugin.contract`), which codegen reads to type `sendToPlugin`
 - `settings.ts` — Per-feature default settings
 
 The 11 features: **threads**, **code**, **notes**, **browser**, **library**, **flows**, **actions**, **prompts**, **brain**, **database**, **logs**.

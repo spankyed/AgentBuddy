@@ -415,6 +415,9 @@ export interface PluginInboxAudiences {
 }
 
 // @public
+export function pluginIsRunning(ref: string): boolean;
+
+// @public
 export const PluginScope: DefineComponent<ExtractPropTypes<    {
 plugin: {
 type: StringConstructor;

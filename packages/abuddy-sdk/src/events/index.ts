@@ -3,7 +3,7 @@
 import { boundHost, _isHostBound } from '../runtime/host-runtime.ts';
 import { _isFeHostBound, boundFeHost } from '../runtime/fe-host.ts';
 import { getDesignated } from '../designations/index.ts';
-import { resolveName, type FeatureRef } from '../ids/refs.ts';
+import { resolveName, splitRef, type FeatureRef } from '../ids/refs.ts';
 import type { ApplicationHotkeys } from '../types/index.ts';
 import { eventTypes } from './event-types.ts';
 import type { SystemEvents } from '../framework/define-system.ts';
@@ -196,6 +196,7 @@ export function _sendToLocalPlugin(ref: string, event: { type: string; [key: str
   if (!_isFeHostBound() && _isHostBound()) {
     throw new Error(`sendToPlugin("${ref}") is the renderer's, to this window's plugin. On the backend, send over the bus with broadcastToPlugin from #generated/events`);
   }
+  if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a plugin: a plugin is named "<packId>/<featureId>"`);
   boundFeHost().application.send({ type: 'SEND_TO_PLUGIN', plugin: ref, events: [event] });
 }
 

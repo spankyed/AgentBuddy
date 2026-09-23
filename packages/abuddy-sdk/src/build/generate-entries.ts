@@ -826,7 +826,7 @@ export const ref = (name: FeatureName): FeatureRef => resolveName(name, '${manif
     const qualifiedState = depIds.map((depId) => `Qualified<'${depId}', ${depAlias(depId, 'PackPluginState')}>`);
 
     return `${HEADER}
-import { openPlugin, readUntypedPluginState, useUntypedPluginState, type PluginStateOf } from '@abuddy/sdk/fe';
+import { openPlugin, pluginIsRunning, readUntypedPluginState, useUntypedPluginState, type PluginStateOf } from '@abuddy/sdk/fe';
 import type { Qualified } from '@abuddy/sdk/events';
 import type { Ref } from 'vue';
 import type { SendablePluginEvents } from './events.js';
@@ -868,6 +868,22 @@ export function navigateToPlugin<Name extends PluginName>(
   openPlugin(ref(name), event);
 }
 
+const OWN_PLUGINS = new Set<string>([${own.map(id => `'${id}'`).join(', ')}]);
+
+/**
+ * The ref to read at, checked where this pack's own plugins are concerned. Their overloads say the value is never
+ * \`undefined\` — a plugin of this pack is spawned in the step that registers it, so one that isn't running is a bug
+ * rather than a state — and this is what keeps that true, instead of handing back an \`undefined\` the type denies.
+ * A dependency's may legitimately not be running yet, and reads as \`undefined\` until its frontend loads.
+ */
+function ownPlugin(name: PluginName): string {
+  const target = ref(name);
+  if (OWN_PLUGINS.has(name) && !pluginIsRunning(target)) {
+    throw new Error(\`No plugin is running at "\${target}", which is this pack's own: its frontend registers it, so this is a bug rather than a state to render\`);
+  }
+  return target;
+}
+
 /**
  * A value from the state a plugin publishes, followed until the calling scope is disposed — so it runs in a
  * component's setup or an effect scope, never inside a \`computed\`. The selector takes that plugin's published
@@ -882,14 +898,14 @@ export function navigateToPlugin<Name extends PluginName>(
 export function usePluginState<Name extends OwnPluginName, TSelected>(name: Name, selector: (state: PackPluginState[Name]) => TSelected): Readonly<Ref<TSelected>>;${qualifiedState.length > 0 ? `
 export function usePluginState<Name extends DependencyPluginName, TSelected>(name: Name, selector: (state: DependencyPluginState[Name]) => TSelected): Readonly<Ref<TSelected | undefined>>;` : ''}
 export function usePluginState(name: PluginName, selector: (state: never) => unknown): Readonly<Ref<unknown>> {
-  return useUntypedPluginState(ref(name), (snapshot: { context: never }) => selector(snapshot.context));
+  return useUntypedPluginState(ownPlugin(name), (snapshot: { context: never }) => selector(snapshot.context));
 }
 
 /** The same read, once, for code outside a reactive scope — a machine's action, an event handler. */
 export function readPluginState<Name extends OwnPluginName, TSelected>(name: Name, selector: (state: PackPluginState[Name]) => TSelected): TSelected;${qualifiedState.length > 0 ? `
 export function readPluginState<Name extends DependencyPluginName, TSelected>(name: Name, selector: (state: DependencyPluginState[Name]) => TSelected): TSelected | undefined;` : ''}
 export function readPluginState(name: PluginName, selector: (state: never) => unknown): unknown {
-  return readUntypedPluginState(ref(name), (snapshot: { context: never }) => selector(snapshot.context));
+  return readUntypedPluginState(ownPlugin(name), (snapshot: { context: never }) => selector(snapshot.context));
 }
 `;
   }

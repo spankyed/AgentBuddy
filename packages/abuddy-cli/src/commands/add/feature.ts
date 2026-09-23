@@ -88,10 +88,7 @@ import { ${icon} } from 'lucide-vue-next';
 import state from './state';
 import canvas from './canvas/list.vue';
 
-// What this plugin publishes — its state, and what another feature may send it — is its contract, a declared type
-// in a leaf module beside it that abuddy.json names at features[].plugin.contract:
-//   export type Contract = { state: MyContext; inbox: PluginInbox<{ pack: { type: 'SOMETHING'; id: string } }> };
-// Its own feature's system needs no declaration — codegen reads that system's outgoing events.
+// What this plugin publishes is its contract, in fe/types.ts beside it
 
 // Registered at the feature's address by the host, so the module carries no id
 const ${camel}Plugin = definePlugin({
@@ -104,7 +101,32 @@ const ${camel}Plugin = definePlugin({
 export default ${camel}Plugin;
 `;
 
+const FE_TYPES = (pascal: string) => `import type { PluginInbox } from '@abuddy/sdk/fe';
+
+// This plugin's contract: the state it publishes, and what another plugin may send it. A leaf — it imports no
+// machine, no other feature and nothing from #generated/* but \`types\` and \`ears\`, which is what lets codegen read
+// the contract without resolving the machine, whose own imports cycle back through #generated/events.
+// abuddy.json names it at features[].plugin.contract.
+
+export interface ${pascal}Context {
+  ready: boolean;
+}
+
+/**
+ * What another feature may send this plugin, by audience: \`pack\` is your own pack's features, \`public\` is what a
+ * pack depending on yours may send. Its own feature's system needs no declaration — codegen reads that system's
+ * outgoing events. Delete \`inbox\` for a plugin nothing else sends to.
+ */
+export type ${pascal}Inbox = { type: 'SOMETHING'; id: string };
+
+export type Contract = {
+  state: ${pascal}Context;
+  inbox: PluginInbox<{ pack: ${pascal}Inbox }>;
+};
+`;
+
 const STATE = (name: string) => `import { setup, type ActorRefFrom } from 'xstate';
+import type { ${toPascalCase(name)}Context, ${toPascalCase(name)}Inbox } from './types';
 
 // The feature's name, which this pack's code sends to and opens the plugin by (\`navigateToPlugin\` from #generated/fe)
 export const id = '${name}';
@@ -112,13 +134,13 @@ export type ${toPascalCase(name)}State = ActorRefFrom<typeof ${toCamelCase(name)
 
 const ${toCamelCase(name)}State = setup({
   types: {
-    context: {} as Record<string, unknown>,
-    events: {} as { type: string },
+    context: {} as ${toPascalCase(name)}Context,
+    events: {} as ${toPascalCase(name)}Inbox | { type: string },
   },
 }).createMachine({
   id,
   initial: 'idle',
-  context: {},
+  context: { ready: false },
   states: {
     idle: {},
   },
@@ -187,6 +209,7 @@ export async function addFeature(args: string[], root: string) {
     [path.join(featureDir, 'be', 'types.ts'), TYPES(pascal)],
     [path.join(featureDir, 'be', 'repository', 'index.ts'), REPOSITORY(camel)],
     [path.join(featureDir, 'fe', 'plugin.ts'), PLUGIN(camel, label, icon)],
+    [path.join(featureDir, 'fe', 'types.ts'), FE_TYPES(pascal)],
     [path.join(featureDir, 'fe', 'state.ts'), STATE(name)],
     [path.join(featureDir, 'fe', 'canvas', 'list.vue'), LIST_VUE(label)],
     [path.join(featureDir, 'fe', 'settings.vue'), SETTINGS_VUE()],
@@ -203,7 +226,7 @@ export async function addFeature(args: string[], root: string) {
     ...(designation !== undefined && { designation }),
     settings: `src/features/${name}/settings.ts`,
     system: { entry: `src/features/${name}/be/system.ts` },
-    plugin: { entry: `src/features/${name}/fe/plugin.ts` },
+    plugin: { entry: `src/features/${name}/fe/plugin.ts`, contract: `src/features/${name}/fe/types.ts#Contract` },
     services: {},
     repositories: {
       [`${camel}Queries`]: `src/features/${name}/be/repository/index.ts#${camel}Queries`,
