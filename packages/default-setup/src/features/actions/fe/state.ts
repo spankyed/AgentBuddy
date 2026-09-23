@@ -10,8 +10,8 @@ import type {
   Category,
   ActionsSettings,
 } from '@/__generated__/types'
-import type { ActionsContext, ActionsInboxEvent } from './types.ts'
-import type { OutgoingActionEvents } from '@/features/actions/be/system'
+import type { ActionsContext, ActionsInboxEvent } from './contract.ts'
+import type { OutgoingActionEvents } from '@/features/actions/be/types'
 import type { ActionParameter } from '@abuddy/sdk'
 import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'

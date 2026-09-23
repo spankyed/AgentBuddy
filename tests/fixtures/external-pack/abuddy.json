@@ -19,11 +19,12 @@
       "id": "memos",
       "settings": "src/features/memos/settings.ts",
       "system": {
-        "entry": "src/features/memos/be/system.ts"
+        "entry": "src/features/memos/be/system.ts",
+        "contract": "src/features/memos/be/contract.ts#Contract"
       },
       "plugin": {
         "entry": "src/features/memos/fe/plugin.ts",
-        "contract": "src/features/memos/fe/types.ts#Contract"
+        "contract": "src/features/memos/fe/contract.ts#Contract"
       },
       "services": {},
       "repositories": {

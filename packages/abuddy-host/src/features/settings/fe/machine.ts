@@ -8,7 +8,7 @@ import {
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
 import type { SettingsDocument } from '../be/store.ts'
-import type { OutgoingSettingsEvents } from '../be/system.ts'
+import type { OutgoingSettingsEvents } from '../be/types.ts'
 import type { SecretInfo, SecretsStatus } from '@abuddy/sdk/services'
 import { sendToSystem } from '@abuddy/sdk/events'
 import type { ApplicationHotkeys } from '@abuddy/sdk/types'

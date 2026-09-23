@@ -1,3 +1,5 @@
+import type { GitRepository } from './services/git';
+import type { GitWatcherService } from './services/gitwatcher';
 import { EARS } from '@/__generated__/ears'
 import type { KeyboardShortcut } from '@abuddy/sdk/types'
 
@@ -290,3 +292,14 @@ export type CodeConnectedData = {
   baseDirectory: string | null;
   settings?: CodeSettings;
 };
+
+export interface Context {
+  baseDirectory: string | null
+  /**
+   * The default directory the settings named when this system last heard them. The settings arrive whenever any of
+   * the code settings change, the browsed `baseDirectory` included, so only a new default moves the explorer.
+   */
+  defaultBaseDirectory: string | null
+  gitRepository: GitRepository | null
+  gitWatcher: GitWatcherService | null
+}

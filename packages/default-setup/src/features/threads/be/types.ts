@@ -494,3 +494,76 @@ export interface AgentSettings {
 }
 
 // System-private entity type
+
+export type IncomingThreadsEvents =
+  // Thread management events
+  | { type: 'CREATE_THREAD'; topic: string; tags?: string[]; instructions: string; linkedThreads?: { id: string; relation: 'parent_of' | 'blocks' | 'blocked_by' | 'duplicates' }[]; parentThreadId?: string }
+  | { type: 'VIEW_THREAD'; threadId: string }
+  | { type: 'UPDATE_THREAD_STATUS'; threadId: string; status: string }
+  | { type: 'UPDATE_THREAD_FIELD'; threadId: string; key: string; value: any }
+  | { type: 'DELETE_THREAD'; threadId: string }
+  | { type: 'SET_THREAD_PARENT'; childIds: string[]; parentId: string }
+  | { type: 'EXPORT_THREADS'; directory: string }
+  | { type: 'IMPORT_THREADS'; directory: string }
+  // Chat/agent events (merged from agent system)
+  | { type: 'USER_MSG'; text: string; mode?: string; phase?: string; threadId?: string; references?: { images?: { url: string; name: string }[]; files?: { name: string; path: string; typeLabel: string; isImage: boolean }[]; context?: { refType: 'thread' | 'document' | 'note' | 'task' | 'tasklist' | 'folder'; refId: string; shortCode: string; label: string }[] }; cwdOverride?: string; forceDirectoryPicker?: boolean }
+  | { type: 'OPEN_THREAD_CHAT'; threadId: string; restore?: boolean }
+  | { type: 'OPEN_THREAD_TAB'; threadId: string; label: string; pinned?: boolean }
+  | { type: 'PAUSE_TURN'; threadId: string }
+  | { type: 'APPROVE_TODO_LIST'; artifactId: string; tasks: any[] }
+  | { type: 'REJECT_TODO_LIST'; artifactId: string }
+  | { type: 'INTERACTIVE_MSG_RESPONSE'; messageId: string; threadId: string; response: any }
+  | { type: 'FORK_THREAD'; messageId: string; threadId?: string; threadTopic?: string }
+  | { type: 'REVERT_THREAD'; messageId: string; threadId: string; restoreFiles?: boolean; userCliUuid?: string }
+  | { type: 'SUMMARIZE_THREAD'; messageId: string; threadId: string }
+  | { type: 'USER_COMMAND'; command: string; text: string; mode?: string; phase?: string; threadId?: string; references?: { images?: { url: string; name: string }[]; files?: { name: string; path: string; typeLabel: string; isImage: boolean }[]; context?: { refType: 'thread' | 'document' | 'note' | 'task' | 'tasklist' | 'folder'; refId: string; shortCode: string; label: string }[] }; cwdOverride?: string }
+  | { type: 'TOGGLE_COMPACTED'; markerId: string; compacted: boolean }
+  | { type: 'DELETE_MESSAGE'; messageId: string }
+  | { type: 'FORWARD_BRAIN_EVENT'; eventType: string; payload?: any }
+  | { type: 'GET_ARCHIVED_THREADS' }
+  | { type: 'REFRESH_THREADS' }
+  | { type: 'LOAD_MORE_MESSAGES'; threadId: string; cursor: string }
+
+  | { type: 'CLIENT_CONNECTED' }
+  | { type: 'BIRTH_FLOW_START' }
+  /** The user's stored API keys changed (no values). The assistant's first flow waits on one it can call a model with */
+  | { type: 'SECRETS_CHANGED' }
+  | { type: 'THREAD_DELETED'; threadId: string }
+  /** The library's commands folder changed (sent by the library system) */
+  | { type: 'COMMANDS_CHANGED' }
+
+export type OutgoingThreadsEvents =
+  // Thread management events
+  | { type: 'THREAD_CONNECTED'; data: ThreadConnectedData }
+  | { type: 'SET_VIEW_DATA', id: EARS.EntityId, data: ThreadExtendedData }
+  | { type: 'THREAD_CREATED', id: EARS.EntityId, shortCode: string, entityType: EARS.Entity, timestamp: number, topic?: string, instructions?: string, status?: string }
+  | { type: 'THREAD_UPDATED', threadId: string, updates: Partial<Pick<ThreadEntity, 'status' | 'tags' | 'context' | 'pinned' | 'topic' | 'instructions'>> }
+  | { type: 'THREAD_DELETED', threadId: string }
+  | { type: 'THREADS_EXPORTED'; filePath: string; threadCount: number }
+  | { type: 'THREADS_EXPORT_FAILED'; errors: string[] }
+  | { type: 'THREADS_IMPORTED'; count: number; errors?: string[] }
+  | { type: 'THREADS_IMPORT_FAILED'; errors: string[] }
+  | { type: 'ARCHIVED_THREADS_DATA'; threads: Partial<ThreadEntity>[] }
+  // Chat/agent events (merged from agent system)
+  | { type: 'AGENT_CONNECTED'; data: AgentConnectedData }
+  | { type: 'LOAD_CHAT_THREAD', data: AgentThreadData, restore?: boolean }
+  | { type: 'REFRESH_RECENT_THREADS'; data: RecentThreadRefreshData }
+  | { type: 'ARTIFACT_ADDED'; tabId: string; artifact: any }
+  | { type: 'ARTIFACT_UPDATED'; tabId: string; artifact: any }
+  | { type: 'THREAD_TAB_REQUESTED'; threadId: string; topic: string; artifacts: any[]; pinned?: boolean }
+  | { type: 'AGENT_SETTINGS_UPDATED'; settings: AgentSettings }
+  | { type: 'UPDATE_MESSAGE_STATE'; messageId: string; text?: string; blocks?: BlockConfig[]; responseTimestamp?: number; blockResponse?: BlockResponse; forkable?: boolean; status?: 'queued' | 'cancelled' | null; context?: Record<string, unknown>; asideText?: string; asideContext?: string; compacted?: boolean }
+  | { type: 'MESSAGE_ADDED'; threadId: string; message: MessageEntity }
+  | { type: 'UPDATE_TODO_TASK'; artifactId: string; taskId: string; completed: boolean }
+  | { type: 'SET_MODE'; mode: string }
+  | { type: 'SET_PHASE'; phase: string }
+  | { type: 'SET_CHAT_STATE'; threadId: string; chatState: string }
+  | { type: 'FLASH_CHAT_STATE'; threadId: string; stateId: string; durationMs?: number }
+  | { type: 'COMMANDS_UPDATED'; commands: CommandItem[] }
+  | { type: 'THREAD_CHAT_ERROR'; threadId: string; error: string }
+  | { type: 'OLDER_MESSAGES_LOADED'; threadId: string; messages: Partial<MessageEntity>[]; hasMore: boolean; nextCursor: string | null }
+
+export interface ThreadsContext {
+  /** The slash commands the chat was last sent, serialized, so an unchanged list isn't sent again */
+  sentCommands?: string
+}

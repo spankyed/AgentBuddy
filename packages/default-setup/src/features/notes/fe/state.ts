@@ -8,8 +8,8 @@ import {
 import type {
   NoteDTO,
 } from '@/__generated__/types'
-import type { NotesContext, NotesInboxEvent } from './types.ts'
-import type { OutgoingNotesEvents } from '@/features/notes/be/system'
+import type { NotesContext, NotesInboxEvent } from './contract.ts'
+import type { OutgoingNotesEvents } from '@/features/notes/be/types'
 import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
 import { contextMenuFn } from '@abuddy/sdk/fe'

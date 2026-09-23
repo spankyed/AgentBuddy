@@ -1,5 +1,5 @@
-import type { PromptTab } from '../../types.ts';
-export type { PromptTab } from '../../types.ts';
+import type { PromptTab } from '../../contract.ts';
+export type { PromptTab } from '../../contract.ts';
 import { setup , type ActorRefFrom } from 'xstate';
 import { sendToSystem } from '@/__generated__/events';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';

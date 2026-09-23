@@ -1,3 +1,4 @@
+import type { Contract } from './contract.ts';
 import * as fs from 'fs';
 import * as path from 'path';
 import { setup } from 'xstate';
@@ -21,15 +22,7 @@ import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 export type { PackInfo };
 
-type IncomingPacksEvents =
-  | { type: 'INSTALL_PACK'; packSlug: string; source?: string }
-  | { type: 'UNINSTALL_PACK'; packId: string }
-  | { type: 'TOGGLE_PACK_ENABLED'; packId: string }
-  | { type: 'UPDATE_PACK'; packId: string }
-  | { type: 'CHECK_FOR_UPDATES' }
-  | { type: 'GET_INSTALLED_PACKS' }
-
-export const packsSpec = defineSystem<IncomingPacksEvents, OutgoingPacksEvents>();
+export const packsSpec = defineSystem<Contract>();
 
 function readManifest(dir: string): Record<string, any> | null {
   try {

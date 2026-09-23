@@ -10,11 +10,11 @@ import type { Services } from '@/__generated__/services';
 import type { PluginInboxOf } from '@abuddy/sdk/events';
 import { broadcastToPlugin, sendToSystem, type SendablePluginEvents } from '@/__generated__/events';
 import { navigateToPlugin } from '@/__generated__/fe';
-import type { OutgoingActionEvents } from '@/features/actions/be/system';
-import type { OutgoingFlowsEvents } from '@/features/flows/be/system';
-import type { OutgoingThreadsEvents } from '@/features/threads/be/system';
-import type { Contract as ThreadsContract } from '@/features/threads/fe/types';
-import type { Contract as FlowsContract } from '@/features/flows/fe/types';
+import type { OutgoingActionEvents } from '@/features/actions/be/types';
+import type { OutgoingFlowsEvents } from '@/features/flows/be/types';
+import type { OutgoingThreadsEvents } from '@/features/threads/be/types';
+import type { Contract as ThreadsContract } from '@/features/threads/fe/contract';
+import type { Contract as FlowsContract } from '@/features/flows/fe/contract';
 
 // The inbox each plugin's contract declares, as codegen reads it
 type ThreadsAccepts = PluginInboxOf<ThreadsContract>;

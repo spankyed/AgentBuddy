@@ -10,8 +10,8 @@ import type {
   Category,
   PromptsSettings,
 } from '@/__generated__/types'
-import type { PromptsContext, PromptsInboxEvent } from './types.ts'
-import type { OutgoingPromptEvents } from '@/features/prompts/be/system'
+import type { PromptsContext, PromptsInboxEvent } from './contract.ts'
+import type { OutgoingPromptEvents } from '@/features/prompts/be/types'
 import type { TemplateInput } from '@abuddy/sdk'
 import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'

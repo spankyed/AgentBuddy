@@ -1,9 +1,10 @@
 import { services } from '@/__generated__/services';
 import { broadcastToPlugin } from '@/__generated__/events';
 import { assign, setup, sendParent, enqueueActions, fromCallback, spawnChild } from 'xstate';
-import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
+import { defineSystem } from '@abuddy/sdk/framework';
 
-import type { LogsState, LogEntry } from './types';
+import type { Contract } from './contract.ts';
+import type { LogEntry, LogsState } from './types.ts';
 import { randomId } from '@abuddy/sdk/utils';
 import { onLog, type LogEvent } from '@abuddy/sdk/logger';
 import { repository } from '@/__generated__/repository';
@@ -17,27 +18,8 @@ function effectiveExcludedSources(settings: LogsSettings | undefined): string[] 
   return settings?.showAppEvents ? base : [...base, 'app-events'];
 }
 
-type IncomingLogEvents =
-  | { type: 'CLEAR_LOGS' }
-  | { type: 'REQUEST_LOGS_UPDATE' };
 
-type LogsInternalEvents =
-  | {
-    type: 'ADD_LOG';
-    log: Omit<LogEntry, 'id' | 'timestamp'>;
-  };
-
-export type OutgoingLogsEvents =
-  | { type: 'LOGS_CONNECTED'; logs: LogEntry[]; settings?: LogsSettings }
-  | { type: 'LOGS_UPDATE'; logs: LogEntry[] }
-  | { type: 'LOG_ADDED'; log: LogEntry }
-  | { type: 'LOGS_CLEARED' };
-
-export interface LogsContext {
-  logs: LogEntry[];
-}
-
-export const logsSpec = defineSystem<IncomingLogEvents | LogsInternalEvents, OutgoingLogsEvents, LogsContext>();
+export const logsSpec = defineSystem<Contract>();
 
 export const logsSystem = setup({
   types: logsSpec.types,
@@ -173,6 +155,6 @@ export const logsSystem = setup({
   },
 });
 
-const logsEntry = { spec: logsSpec, machine: logsSystem } satisfies SystemEntry;
+const logsEntry = { spec: logsSpec, machine: logsSystem };
 
 export default logsEntry;

@@ -14,6 +14,7 @@
  * Priority on startup:
  *   baseDirectory > defaultBaseDirectory > first workspace project > null
  */
+import type { Contract } from './contract.ts';
 import type { GeneralSettings } from '@/app-settings/types';
 import { services } from '@/__generated__/services';
 import { broadcastToPlugin } from '@/__generated__/events';
@@ -43,49 +44,14 @@ function child(self: AnyActorRef, id: string): AnyActorRef | undefined {
 }
 
 // Union all incoming events from child systems
-type IncomingCodeEvents =
-  | IncomingExplorerEvents
-  | IncomingSearchEvents
-  | IncomingCommitEvents
-  | IncomingPullRequestEvents
-  | IncomingTerminalEvents
-  | IncomingActionsEvents
-  | IncomingPromptsEvents
-  | { type: 'SET_BASE_DIRECTORY'; path: string; fromUserNavigation?: boolean }
-  /** Settings → Providers: resolve a CLI and store where it was found, in this feature's own settings */
-  | { type: 'TEST_CLI_PROVIDER'; provider: string }
-
 // Union all outgoing events from child systems  
-export type OutgoingCodeEvents =
-  | OutgoingExplorerEvents
-  | OutgoingSearchEvents
-  | OutgoingCommitEvents
-  | OutgoingPullRequestEvents
-  | OutgoingTerminalEvents
-  | OutgoingActionsEvents
-  | OutgoingPromptsEvents
-  // Broadcast events (sent to all child systems)
-  | { type: 'CODE_CONNECTED'; data: CodeConnectedData }
-  /** What testing a CLI found, for the Settings view that asked (the host declares its plugin takes it) */
-  | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string }
-
 // Import only the type needed for broadcast event
 import type { TerminalInfo, CodeConnectedData, CodeSettings } from './types'
 import { ref } from '@/__generated__/ref';
 
 
-export const codeSpec = defineSystem<IncomingCodeEvents, OutgoingCodeEvents, Context>();
+export const codeSpec = defineSystem<Contract>();
 
-export interface Context {
-  baseDirectory: string | null
-  /**
-   * The default directory the settings named when this system last heard them. The settings arrive whenever any of
-   * the code settings change, the browsed `baseDirectory` included, so only a new default moves the explorer.
-   */
-  defaultBaseDirectory: string | null
-  gitRepository: GitRepository | null
-  gitWatcher: GitWatcherService | null
-}
 
 /**
  * Resolves the initial base directory on system startup.
@@ -412,6 +378,6 @@ export const systemMachine = setup({
   }
 })
 
-const codeEntry = { spec: codeSpec, machine: systemMachine } satisfies SystemEntry;
+const codeEntry = { spec: codeSpec, machine: systemMachine };
 
 export default codeEntry;

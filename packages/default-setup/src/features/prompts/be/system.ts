@@ -2,10 +2,11 @@ import type { PromptsSettings } from '@/__generated__/types';
 import { services } from '@/__generated__/services';
 import { broadcastToPlugin } from '@/__generated__/events';
 import { setup } from 'xstate';
-import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
+import { defineSystem } from '@abuddy/sdk/framework';
 
 import { EARS } from '@/__generated__/ears';
-import type { PromptsConnectedData } from './types';
+import type { Contract } from './contract.ts';
+import type { PromptsConnectedData } from './types.ts';
 import { repository } from '@/__generated__/repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import { toMap, toIdentifierSet, mapScalar } from '@abuddy/sdk/utils';
@@ -16,30 +17,7 @@ import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('prompts');
 
-type IncomingPromptEvents =
-  | { type: 'PROMPT_SELECT'; promptId: string }
-  | { type: 'CREATE_PROMPT'; label: string; inputs: Record<string, any>; templateFn: string; outputSchema?: any; description?: string; category?: string }
-  | { type: 'UPDATE_PROMPT'; promptId: string; label?: string; inputs?: Record<string, any>; templateFn?: string; outputSchema?: any; description?: string; category?: string }
-  | { type: 'DELETE_PROMPT'; promptId: string }
-  | { type: 'FETCH_PROMPTS_PAGE'; page?: number }
-  | { type: 'FETCH_ALL_PROMPTS' }
-  | { type: 'IMPORT_PROMPTS'; prompts: any }
-  | { type: 'EXPORT_PROMPTS'; directory: string }
-
-export type OutgoingPromptEvents =
-  | { type: 'PROMPTS_CONNECTED'; data: PromptsConnectedData }
-  | { type: 'PROMPT_SELECTED'; promptId: EARS.EntityId; data: PromptEntity }
-  | { type: 'PROMPT_CREATED'; prompt: PromptEntity; promptId: EARS.EntityId }
-  | { type: 'PROMPT_UPDATED'; prompt: PromptEntity; promptId: EARS.EntityId }
-  | { type: 'PROMPT_DELETED'; promptId: EARS.EntityId }
-  | { type: 'PROMPTS_PAGE_LOADED'; data: { prompts: PromptEntity[]; page: number; totalPages: number } }
-  | { type: 'PROMPTS_ALL_LOADED'; data: { prompts: PromptEntity[] } }
-  | { type: 'PROMPTS_IMPORTED'; count: number; errors?: string[] }
-  | { type: 'PROMPTS_IMPORT_FAILED'; errors: string[] }
-  | { type: 'PROMPTS_EXPORTED'; filePath: string; promptCount: number }
-  | { type: 'PROMPTS_EXPORT_FAILED'; errors: string[] }
-
-export const promptsSpec = defineSystem<IncomingPromptEvents, OutgoingPromptEvents>();
+export const promptsSpec = defineSystem<Contract>();
 
 export const promptsSystem = setup({
   types: promptsSpec.types,
@@ -321,6 +299,6 @@ export const promptsSystem = setup({
   }
 );
 
-const promptsEntry = { spec: promptsSpec, machine: promptsSystem } satisfies SystemEntry;
+const promptsEntry = { spec: promptsSpec, machine: promptsSystem };
 
 export default promptsEntry;

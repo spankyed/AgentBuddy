@@ -2,11 +2,12 @@ import type { FlowsSettings } from '@/__generated__/types';
 import { services } from '@/__generated__/services';
 import { broadcastToPlugin } from '@/__generated__/events';
 import { assign, cancel, createMachine, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
-import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
+import { defineSystem } from '@abuddy/sdk/framework';
 // import { addMessageToLatestThread, getLatestMessage } from './accessors';
 import { EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
-import type { FlowsConnectedData, NodeEntity } from './types';
+import type { Contract } from './contract.ts';
+import type { FlowsConnectedData, NodeEntity } from './types.ts';
 import { FLOW_ROLES } from './repository';
 import { createLogger } from '@abuddy/sdk/logger';
 import type { FlowEntity, ActionEntity, PromptEntity } from '@abuddy/sdk';
@@ -60,45 +61,7 @@ function formatValidationErrors(
   return result;
 }
 
-type IncomingFlowsEvents =
-  | { type: 'FLOW_SELECT'; flowId: string }
-  | { type: 'CREATE_FLOW' }
-  | { type: 'DELETE_FLOW'; flowId: string }
-  | { type: 'UPDATE_FLOW_LABEL'; flowId: string; label: string }
-  | { type: 'CREATE_NODE'; flowId: string; tempId: string; nodeData: any }
-  | { type: 'UPDATE_NODE'; flowId: string; nodeId: string; nodeData: any }
-  | { type: 'DELETE_NODE'; flowId: string; nodeId: string }
-  | { type: 'CREATE_EDGE'; flowId: string; sourceId: string; targetId: string; sourceHandle?: string; targetHandle?: string }
-  | { type: 'DELETE_EDGE'; flowId: string; edgeId: string }
-  | { type: 'UPDATE_EDGE'; flowId: string; edgeId: string; source: string; target: string; sourceHandle?: string; targetHandle?: string }
-  | { type: 'IMPORT_DSL'; dsl: any }
-  | { type: 'EXPORT_DSL'; directory: string; flowId?: string }
-  | { type: 'REINDEX_HANDLES'; flowId: string; nodeId: string; prefix: string; index: number; direction: 1 | -1 }
-  /** Makes a flow the root flow the brain runs (its root role), or, with null, leaves no flow the root */
-  | { type: 'SET_ROOT_FLOW'; flowId: string | null }
-
-export type OutgoingFlowsEvents =
-  | { type: 'FLOWS_CONNECTED'; data: FlowsConnectedData }
-  | { type: 'FLOW_SELECTED'; flowId: EARS.EntityId; data: { nodes: any[]; edges: any[] } }
-  | { type: 'FLOW_CREATED'; flow: FlowEntity; flowId: EARS.EntityId; data: { nodes: any[]; edges: any[] } }
-  | { type: 'FLOW_DELETED'; flowId: EARS.EntityId }
-  | { type: 'NODE_CREATED'; tempId: string; nodeId: EARS.EntityId; node: any }
-  | { type: 'NODE_UPDATED'; nodeId: EARS.EntityId; node: any }
-  | { type: 'NODE_DELETED'; nodeId: string }
-  | { type: 'EDGE_CREATED'; sourceId: EARS.EntityId; targetId: EARS.EntityId; relId: EARS.EntityId; sourceHandle?: string; targetHandle?: string }
-  | { type: 'EDGE_CREATE_FAILED'; sourceId: string; targetId: string; error: string }
-  | { type: 'EDGE_DELETED'; edgeId: string }
-  | { type: 'EDGE_UPDATED'; edgeId: EARS.EntityId; source: EARS.EntityId; target: EARS.EntityId; sourceHandle?: string; targetHandle?: string }
-  | { type: 'EDGE_UPDATE_FAILED'; edgeId: string; error: string }
-  | { type: 'ACTION_CREATED'; action: ActionEntity; actionId: EARS.EntityId }
-  | { type: 'ACTION_UPDATED'; action: ActionEntity; actionId: EARS.EntityId }
-  | { type: 'ACTION_DELETED'; actionId: EARS.EntityId }
-  | { type: 'DSL_IMPORTED'; flowIds: EARS.EntityId[]; errors?: string[] }
-  | { type: 'DSL_IMPORT_FAILED'; errors: string[] }
-  | { type: 'DSL_EXPORTED'; filePath: string; flowCount: number }
-  | { type: 'DSL_EXPORT_FAILED'; errors: string[] }
-
-export const flowsSpec = defineSystem<IncomingFlowsEvents, OutgoingFlowsEvents>();
+export const flowsSpec = defineSystem<Contract>();
 
 /** Sends the plugin its flows, the root flow among them (the flow with the root role), and its settings */
 function sendConnectedData(): void {
@@ -473,6 +436,6 @@ export const flowsSystem = setup({
   }
 });
 
-const flowsEntry = { spec: flowsSpec, machine: flowsSystem } satisfies SystemEntry;
+const flowsEntry = { spec: flowsSpec, machine: flowsSystem };
 
 export default flowsEntry;

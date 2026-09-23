@@ -1,3 +1,5 @@
+import type { Contract } from './contract.ts';
+import type { OutgoingSettingsEvents } from './types.ts';
 import { eventTypes, sendToSystem, broadcastToPlugin } from '@abuddy/sdk/events';
 import { assign, createMachine, setup, sendTo, enqueueActions, fromCallback, fromPromise, type ErrorActorEvent } from 'xstate';
 import { defineSystem, getPackHelp, onPackSettingsDefaultsChanged, type HelpEntry, type SystemEntry } from '@abuddy/sdk/framework';
@@ -39,45 +41,6 @@ function toSeedInclude(include: Record<string, string[] | null>): Record<string,
   return Object.fromEntries(Object.entries(include).map(([key, items]) => [key, items === null ? true : new Set(items)]));
 }
 
-type IncomingSettingsEvents =
-  | { type: 'GET_SETTINGS' }
-  | { type: 'UPDATE_SETTINGS'; entityType: 'section' | 'plugin'; label: string; path: string[]; value: any }
-  | { type: 'RESET_SETTINGS' }
-  | { type: 'PREVIEW_PACK_SEEDS'; directory: string }
-  | { type: 'IMPORT_PACK_SEEDS'; directory: string; include?: Record<string, string[] | null>; mode?: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'; restartBrain?: boolean }
-  | { type: 'REPLACE_SETTINGS'; data: unknown }
-  | { type: 'RESET_APP' }
-
-type SettingsInternalEvents =
-  | { type: 'PACK_SETTINGS_CHANGED' } // A pack's feature settings (defaults) registered or unregistered
-  | { type: 'SECRETS_CHANGED' } // The host's stored keys or their protection changed (no values)
-  | { type: 'SETTINGS_WRITTEN' } // Something wrote the stored settings: this system, a feature's system, an action or a seed
-  // The stored data is being replaced wholesale (a backup import), and has been: what each feature was told is then
-  // stale either way, since a failed import may have migrated some of the data already
-  | { type: 'DATA_REPLACING' }
-  | { type: 'DATA_REPLACED' }
-
-export type OutgoingSettingsEvents =
-  | { type: 'SETTINGS_LOADED'; data: SettingsDocument; help: HelpEntry[] }
-  /** The installed packs changed, so what they answer with in Help has too */
-  | { type: 'HELP_UPDATED'; help: HelpEntry[] }
-  | { type: 'SETTINGS_UPDATED'; data: SettingsDocument }
-  /** A change (`UPDATE_SETTINGS`, `REPLACE_SETTINGS`) was stored */
-  | { type: 'SETTINGS_SAVED' }
-  /** A change was refused, and stored nothing */
-  | { type: 'SETTINGS_REFUSED'; problems: string[] }
-  | { type: 'SETTINGS_RESET'; data: SettingsDocument }
-  | { type: 'APPLICATION_HOTKEYS'; hotkeys: unknown }
-  /** `errors` lists the records that couldn't be seeded (`<key>: <error>`); the rest were imported */
-  | { type: 'PACK_SEEDS_IMPORTED'; result: Record<string, SeedCounts>; errors: string[] }
-  | { type: 'PACK_SEEDS_IMPORT_FAILED'; error: string }
-  | { type: 'PACK_SEEDS_PREVIEW'; preview: PackSeedsPreview }
-  | { type: 'PACK_SEEDS_PREVIEW_FAILED'; error: string }
-  | { type: 'APP_RESET_COMPLETE' }
-  | { type: 'APP_RESET_FAILED'; error: string }
-  /** The stored API keys, without values, and how they're protected */
-  | { type: 'SECRETS_UPDATED'; secrets: SecretInfo[]; status: SecretsStatus }
-
 /**
  * Tells the settings plugin a change wasn't stored, with the store's reasons: a refusal is the user's to fix, not a
  * system error, so only what the store didn't refuse (a bug here) is reported as one
@@ -91,8 +54,6 @@ function refuseSettings(error: unknown, what: string): void {
 const appliedPluginSettings = (): Record<string, unknown> => ({ ...(services.settings.getAll<SettingsDocument>().plugins ?? {}) });
 
 /** What each feature was last told of its settings, by plugin ref */
-type SettingsContext = { applied: Record<string, unknown> };
-
 /**
  * What the settings system takes while the stored data is being replaced or reset. A read is served, since it only
  * reports what is stored; a write is refused with `reason`, because storing it would either be lost with the data or
@@ -107,7 +68,7 @@ const whileBusy = (reason: string) => ({
   RESET_SETTINGS: { actions: { type: 'refuseChange' as const, params: { reason } } },
 });
 
-export const settingsSpec = defineSystem<IncomingSettingsEvents | SettingsInternalEvents, OutgoingSettingsEvents, SettingsContext>();
+export const settingsSpec = defineSystem<Contract>();
 
 /**
  * Sends the settings plugin all the settings, as `type` (on first load with the FAQs), and the app shell the hotkeys
@@ -362,7 +323,7 @@ export const settingsSystem = setup({
   },
 });
 
-export const settingsEntry = { spec: settingsSpec, machine: settingsSystem } satisfies SystemEntry;
+export const settingsEntry = { spec: settingsSpec, machine: settingsSystem };
 
 /** The host `settings` system, as the app registers it */
 export const createSettingsSystem = () => settingsSystem;
