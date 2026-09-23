@@ -23,10 +23,11 @@ export interface ModuleExports {
    */
   outgoingEventTypesOf(file: string): string[];
   /**
-   * The `type` literals of the events a plugin module's default export (its `definePlugin()` call) declares that
-   * *other* plugins may send it. A plugin that declares none reads as `[]`: what its own feature's system sends it
-   * is that system's outgoing union, which codegen adds. Throws on a member with no literal `type`, as the system
-   * reader does, and when the default export carries no phantom at all (it was annotated, which drops it).
+   * The `type` literals of the events a plugin module's `accepts` export (its `pluginAccepts()` call) declares
+   * that *other* plugins may send it. A plugin with no `accepts` export reads as `[]`: what its own feature's
+   * system sends it is that system's outgoing union, which codegen adds. Throws on a member with no literal
+   * `type`, as the system reader does, and when an `accepts` export carries no events — an annotation
+   * (`: PluginAccepts`) drops them, and an inbox declared as nothing is a mistake rather than a contract.
    */
   acceptedEventTypesOf(file: string): string[];
 }
@@ -157,7 +158,13 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
       if (!declared) {
         throw new Error(`${path.basename(file)}: its \`accepts\` export carries no events: declare it with \`pluginAccepts<…>()\`, whose type codegen reads`);
       }
-      return eventTypeLiterals(declared, path.basename(file), 'the events it accepts', ' (an entry annotated `: PluginDefinition` has these: default-export the `definePlugin()` call itself)');
+      // A declared inbox that resolves to `never` is the annotation mistake: `PluginAccepts`'s own type parameter
+      // defaults to `never`, so `const accepts: PluginAccepts = pluginAccepts<Foo>()` silently drops `Foo`. It is
+      // self-consistent — no sender compiles either — but the author is told nothing at the declaration.
+      if (declared.flags & ts.TypeFlags.Never) {
+        throw new Error(`${path.basename(file)}: its \`accepts\` export declares no events: write \`export const accepts = pluginAccepts<…>()\` without a type annotation, which would drop them, or remove the export if nothing else sends to this plugin`);
+      }
+      return eventTypeLiterals(declared, path.basename(file), 'the events it accepts', ' (an `accepts` annotated `: PluginAccepts` has these: declare it as `pluginAccepts<…>()` alone)');
     },
   };
 

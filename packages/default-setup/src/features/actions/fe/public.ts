@@ -20,6 +20,6 @@ export function useActionsList() {
 
 /** The events another feature may send the actions plugin: paging, and editing an action */
 export type ActionsListEvent = Extract<ActionsEvents, {
-  type: 'ACTIONS.LOAD_ALL' | 'ACTIONS.LOAD_MORE' | 'ACTION.UPDATE_INPUT' | 'ACTION.UPDATE_LABEL' | 'ACTION.DELETE' | 'ACTION.CREATE_INLINE'
+  type: 'ACTIONS.LOAD_ALL' | 'ACTIONS.LOAD_MORE' | 'ACTION.UPDATE_INPUT' | 'ACTION.UPDATE_LABEL' | 'ACTION.DELETE' | 'ACTION.CREATE_INLINE' | 'ACTION.CREATE' | 'ACTION.SELECT'
 }>
 

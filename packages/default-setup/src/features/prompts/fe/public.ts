@@ -20,6 +20,6 @@ export function usePromptsList() {
 
 /** The events another feature may send the prompts plugin: paging, and editing a prompt */
 export type PromptsListEvent = Extract<PromptsEvents, {
-  type: 'PROMPTS.LOAD_ALL' | 'PROMPTS.LOAD_MORE' | 'PROMPT.UPDATE_INPUTS' | 'PROMPT.UPDATE_LABEL' | 'PROMPT.DELETE' | 'PROMPT.CREATE_INLINE'
+  type: 'PROMPTS.LOAD_ALL' | 'PROMPTS.LOAD_MORE' | 'PROMPT.UPDATE_INPUTS' | 'PROMPT.UPDATE_LABEL' | 'PROMPT.DELETE' | 'PROMPT.CREATE_INLINE' | 'PROMPT.SELECT'
 }>
 

@@ -1,6 +1,5 @@
 import { readFileSync, existsSync, statSync } from 'fs';
 import { HOST_PLUGIN_EVENT_TYPES, HOST_SYSTEM_EVENT_TYPES } from '../events/index.ts';
-import { resolveName, splitRef } from '../ids/refs.ts';
 import { extname, join } from 'path';
 import { _mergeProvenance, type PackManifest, type PackFeatureEntry, type PackProvenance, type PackTypeManifest, type PackSnapshot, type ProvenanceKind, type StepEntry } from './manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS, SDK_SHAPED_ENTITIES } from '../types/sdk-entities.ts';
@@ -225,9 +224,6 @@ function toImportPath(root: string, manifestPath: string): string {
   return `${rel}.js`;
 }
 
-/** The host's plugins pack systems can send to, `host/<featureId>`, read from `HOST_PLUGIN_EVENT_TYPES` */
-const hostPlugins: readonly string[] = Object.keys(HOST_PLUGIN_EVENT_TYPES);
-
 
 /** This pack's entities with no shape (in entityShapes or the SDK's), whose fields read as unknown values */
 export function entitiesWithoutShapes(manifest: Pick<PackManifest, 'entities' | 'entityShapes'>): string[] {
@@ -420,7 +416,7 @@ export function generatePackFiles(
       ...targets,
       ...Object.values(manifest.entityShapes ?? {}).map((shape) => shape.source),
       ...features.flatMap((f) => (f.settings ? [f.settings] : [])),
-      // The systems' entries: their outgoing unions are where the event types a plugin receives are read from
+      // The systems' entries: their outgoing unions are one of the two sources of a plugin's inbox
       ...features.flatMap((f) => (f.system ? [f.system.entry] : [])),
       // The plugins' entries: each declares the inbox anyone else may send it
       ...features.flatMap((f) => (f.plugin ? [f.plugin.entry] : [])),
@@ -457,10 +453,16 @@ export function generatePackFiles(
     }
   }
 
-  /** Whether a feature's plugin module declares an inbox at all (an `accepts` export) */
+  /**
+   * Whether a feature's plugin module declares an inbox at all (an `accepts` export).
+   *
+   * It must be a value: the generated module reads `(typeof accepts)['_accepts']`, which needs a runtime binding
+   * to take `typeof` of. An `accepts` exported only as a type (`export type accepts = …`, or a type-only
+   * re-export) would emit a generated file that doesn't compile, naming a file its author never wrote.
+   */
   function declaresAccepts(feature: PackFeatureEntry): boolean {
     const file = sourceFileOf(feature.plugin!.entry);
-    return file !== undefined && exportOf(file, 'accepts') !== undefined;
+    return file !== undefined && exportOf(file, 'accepts')?.value !== undefined;
   }
 
   /** The event types a plugin declares that any other plugin or system may send it, read from its `accepts` export */
@@ -510,11 +512,6 @@ export function generatePackFiles(
     if (!file) throw new Error(`${label}: no settings file found at ${feature.settings} (.ts or /index.ts)`);
     if (!exportOf(file, 'default')?.value) throw new Error(`${label}: settings ${feature.settings} has no default export of the settings object`);
     return feature.settings!;
-  }
-
-  /** Whether this pack has a system at all: without one it sends nothing and declares no received events */
-  function hasSystemFeatures(): boolean {
-    return (manifest.features ?? []).some((f) => f.system);
   }
 
   function typesEntry(feature: PackFeatureEntry): string {
@@ -801,7 +798,8 @@ export const ref = (name: FeatureName): FeatureRef => resolveName(name, '${manif
     if (!own.length) return '';
     const plugins = [...own, ...Object.keys(_mergeProvenance('plugins', [...depSnapshots])).sort()].map(name => `'${name}'`);
     return `${HEADER}
-import { openPlugin, type PluginEvent } from '@abuddy/sdk/fe';
+import { openPlugin } from '@abuddy/sdk/fe';
+import type { SendablePluginEvents } from './events.js';
 import { ref } from './ref.js';
 
 /**
@@ -814,32 +812,35 @@ export type PluginName = ${plugins.join(' | ')};
 /**
  * Opens a plugin and hands its actor \`event\` once it's running; throws if no such plugin is registered.
  *
- * The event stays open (\`PluginEvent\`) rather than typed from the plugin's inbox: what travels here is a UI
- * command its own machine handles (\`FLOW.SELECT\`, \`TAB.CREATE\`), not what its system sends it, and declaring
- * those as its inbox would publish a plugin's internal commands to every dependent pack.
+ * The events are the target's inbox, the same one \`sendToPlugin\` takes — this delivers to that plugin's actor
+ * too, so leaving it open would be a second, unchecked door to what the inbox exists to declare. A pack's own
+ * plugins take their own feature's system's events as well, so a UI command a machine handles
+ * (\`FLOW.SELECT\`, \`TAB.CREATE\`) needs declaring only where another pack sends it.
  */
-export function navigateToPlugin(name: PluginName, event?: PluginEvent | PluginEvent[]): void {
+export function navigateToPlugin<Name extends PluginName>(
+  name: Name,
+  event?: SendablePluginEvents[Name] | SendablePluginEvents[Name][],
+): void {
   openPlugin(ref(name), event);
 }
 `;
   }
 
   /**
-   * Plugin id → the events that plugin receives from this pack's systems: its own feature's plugin
-   * and every plugin whose id a system's `sendsTo` names. Only features that have a plugin get a key:
-   * nothing can receive an event sent to a feature that has none.
+   * Plugin id → the events that plugin receives: what its own feature's system sends it, plus the inbox the
+   * plugin declares beside itself (`pluginAccepts()`). Only features that have a plugin get a key: nothing can
+   * receive an event sent to a feature that has none.
    *
-   * A `sendsTo` naming a dependency's plugin or a host plugin opens that channel — without it this
-   * pack can't send there at all — but the events that plugin takes stay the ones its owner declares
-   * it receives (the dependency's facade `SendablePluginEvents`, or `HostPluginEvents`): only the pack that
-   * owns a plugin widens what it receives, since only it can handle a new event.
+   * Every dependency's plugins and the host's are addressable with no declaration on this side — the receiver's
+   * own `PackPluginEvents` says what it takes, as a system's `PackSystemEvents` does. Only the pack that owns a
+   * plugin widens what it receives, since only it can handle a new event, and only the declared half crosses:
+   * what passes between a feature's own two halves is nobody else's to send.
    */
   function generateEvents(): string {
     const features = manifest.features ?? [];
     const systemFeatures = features.filter(f => f.system);
     const pluginFeatures = features.filter(f => f.plugin);
     const hasSystems = systemFeatures.length > 0;
-    const hasPlugins = pluginFeatures.length > 0;
 
     // Each system's sent events, read from its spec: the one place they are declared
     const outgoingAliases = systemFeatures

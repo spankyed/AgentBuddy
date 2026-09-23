@@ -10,7 +10,7 @@ import { ArtifactItem } from '@abuddy/sdk/artifacts';
 import * as _abuddy_sdk_build from '@abuddy/sdk/build';
 import { HostPluginEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, Qualified, TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
 import * as _abuddy_sdk_fe from '@abuddy/sdk/fe';
-import { TrailClickEvent } from '@abuddy/sdk/fe';
+import { HotkeysMap, NavHistory, TabGroup, TrailClickEvent } from '@abuddy/sdk/fe';
 import { ModelCatalogEntry, ModelId } from '@abuddy/sdk/models';
 import * as _abuddy_sdk_repositories from '@abuddy/sdk/repositories';
 import { FlowEdge } from '@abuddy/sdk/repositories';
@@ -42,11 +42,26 @@ declare class ActionService {
     getAndExecute(label: string, params?: Record<string, any>): Promise<any | undefined>;
 }
 
+interface ActionTab {
+    path: string;
+    content: string;
+    modified: boolean;
+    isAction: true;
+    actionEntity: ActionEntity;
+    isDiff?: boolean;
+    externallyModified?: boolean;
+    externalModificationTime?: Date;
+    pendingSaveConflict?: boolean;
+    isPinned?: boolean;
+    groupId?: string;
+    isPreview?: boolean;
+}
+
 type ActionsEvents = UIEvent$1 | SystemEvent$1 | TrailClickEvent;
 
 /** The events another feature may send the actions plugin: paging, and editing an action */
 type ActionsListEvent = Extract<ActionsEvents, {
-    type: 'ACTION.CREATE_INLINE' | 'ACTION.DELETE' | 'ACTION.UPDATE_INPUT' | 'ACTION.UPDATE_LABEL' | 'ACTIONS.LOAD_ALL' | 'ACTIONS.LOAD_MORE';
+    type: 'ACTION.CREATE' | 'ACTION.CREATE_INLINE' | 'ACTION.DELETE' | 'ACTION.SELECT' | 'ACTION.UPDATE_INPUT' | 'ACTION.UPDATE_LABEL' | 'ACTIONS.LOAD_ALL' | 'ACTIONS.LOAD_MORE';
 }>;
 
 interface ActionsSettings {
@@ -384,7 +399,7 @@ interface ChatStateConfig {
 interface CliServiceType {
     git: {
         commit(message: string): Promise<void>;
-        getStatus(): Promise<GitStatusFile[]>;
+        getStatus(): Promise<GitStatusFile$1[]>;
         getCurrentBranch(): Promise<string>;
         getWorkingDir(): string;
         /**
@@ -654,6 +669,47 @@ interface ConsumerHandlers {
 
 /** A section of a document's content, as the library compiler parses it from markdown */
 type ContentSection = FieldContent | ListContent | MarkdownContent | TextContent | CodeContent;
+
+type Context = {
+    baseDirectory: string;
+    openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[];
+    activeFilePath: string | null;
+    isLoading: boolean;
+    error: string | null;
+    selectedPanel: PanelType;
+    tabsRestored?: boolean;
+    pendingTabOrder?: Array<{
+        path: string;
+        order: number;
+    }>;
+    pendingPersistedMetadata?: Map<string, {
+        groupId?: string;
+        isPinned?: boolean;
+        isPreview?: boolean;
+    }>;
+    tabGroups: TabGroup[];
+    isQuickOpenVisible: boolean;
+    quickOpenQuery: string;
+    quickOpenResults: QuickOpenResult[];
+    quickOpenSelectedIndex: number;
+    quickOpenLoading: boolean;
+    recentlyOpenedFiles: string[];
+    tabViewHistory: string[];
+    hotkeys: HotkeysMap;
+    settings?: CodeSettings;
+    pendingRevealLine: {
+        filePath: string;
+        line: number;
+        column: number;
+        lineText?: string;
+    } | null;
+    searchFocusTrigger: number;
+    searchPrefillText: string;
+    panelTerminalId: string | null;
+    panelTerminalExpanded: boolean;
+    pendingTerminalTabIds?: string[];
+    panelNavHistory: NavHistory<PanelType>;
+};
 
 interface ContextReference {
     refType: ContextReferenceType;
@@ -1192,7 +1248,24 @@ interface GitDiff {
     isImage?: boolean;
 }
 
+interface GitDiff$1 {
+    path: string;
+    diff: string;
+    staged: boolean;
+    originalContent?: string;
+    modifiedContent?: string;
+    isImage?: boolean;
+}
+
 interface GitStatusFile {
+    path: string;
+    status: 'added' | 'copied' | 'deleted' | 'modified' | 'renamed' | 'typechange' | 'unmerged' | 'untracked';
+    staged: boolean;
+    originalPath?: string;
+    score?: number;
+}
+
+interface GitStatusFile$1 {
     path: string;
     status: 'added' | 'copied' | 'deleted' | 'modified' | 'renamed' | 'typechange' | 'unmerged' | 'untracked';
     staged: boolean;
@@ -1725,6 +1798,28 @@ interface NotesSettings {
     showCollapseIcon: boolean;
 }
 
+interface OpenFile {
+    path: string;
+    content: string;
+    originalContent: string;
+    modified: boolean;
+    isDiff?: boolean;
+    gitDiff?: GitDiff;
+    gitFile?: GitStatusFile;
+    externallyModified?: boolean;
+    externalModificationTime?: Date;
+    pendingSaveConflict?: boolean;
+    isImage?: boolean;
+    isVideo?: boolean;
+    isBinary?: boolean;
+    isRichText?: boolean;
+    _richTextBaselineSet?: boolean;
+    isPrDiff?: boolean;
+    isPinned?: boolean;
+    groupId?: string;
+    isPreview?: boolean;
+}
+
 type OutgoingActionEvents = {
     type: 'ACTIONS_LISTED';
     data: ActionsStartupData;
@@ -1849,7 +1944,7 @@ type OutgoingCodeEvents = OutgoingExplorerEvents | OutgoingSearchEvents | Outgoi
 type OutgoingCommitEvents = {
     type: 'commit.STATUS_RECEIVED';
     data: {
-        files: GitStatusFile[];
+        files: GitStatusFile$1[];
         branch: string;
         hasUpstream: boolean;
         commitsAhead: number;
@@ -1857,7 +1952,7 @@ type OutgoingCommitEvents = {
     };
 } | {
     type: 'commit.DIFF_RECEIVED';
-    data: GitDiff;
+    data: GitDiff$1;
 } | {
     type: 'commit.FILES_STAGED';
     data: {
@@ -2076,7 +2171,7 @@ type OutgoingExplorerEvents = {
     data: FileChangeInfo;
 } | {
     type: 'explorer.QUICK_OPEN_RESULTS';
-    data: QuickOpenResult[];
+    data: QuickOpenResult$1[];
 } | {
     type: 'explorer.FILES_MOVED';
     data: {
@@ -2399,13 +2494,13 @@ type OutgoingPullRequestEvents = {
 } | {
     type: 'pr.BRANCH_DIFF_RECEIVED';
     data: {
-        files: GitStatusFile[];
+        files: GitStatusFile$1[];
         baseBranch: string;
         headBranch?: string;
     };
 } | {
     type: 'pr.FILE_DIFF_RECEIVED';
-    data: GitDiff & {
+    data: GitDiff$1 & {
         baseBranch: string;
         headBranch?: string;
     };
@@ -2565,7 +2660,7 @@ type OutgoingSearchEvents = {
 
 type OutgoingTerminalEvents = {
     type: 'terminal.CREATED';
-    data: TerminalInfo;
+    data: TerminalInfo$1;
 } | {
     type: 'terminal.OUTPUT';
     data: {
@@ -2604,10 +2699,10 @@ type OutgoingTerminalEvents = {
     };
 } | {
     type: 'terminal.TERMINALS_LISTED';
-    data: TerminalInfo[];
+    data: TerminalInfo$1[];
 } | {
     type: 'terminal.TERMINAL_TAB_OPENED';
-    data: TerminalInfo;
+    data: TerminalInfo$1;
 };
 
 type OutgoingThreadsEvents = {
@@ -2835,6 +2930,8 @@ type PackSystemEvents = {
     'logs': IncomingEventsOf<(typeof specs)['logs']>;
 };
 
+type PanelType = 'actions' | 'commit' | 'explorer' | 'pr' | 'prompts' | 'search';
+
 /**
  * Every line type we explicitly recognise. Each variant has a literal
  * `type` discriminator so a `switch(line.type)` narrows exhaustively
@@ -2932,6 +3029,21 @@ declare class PromptService {
     usePrompt(label: string, templateParams: Record<string, any>): string | undefined;
 }
 
+interface PromptTab {
+    path: string;
+    content: string;
+    modified: boolean;
+    isPrompt: true;
+    promptEntity: PromptEntity;
+    isDiff?: boolean;
+    externallyModified?: boolean;
+    externalModificationTime?: Date;
+    pendingSaveConflict?: boolean;
+    isPinned?: boolean;
+    groupId?: string;
+    isPreview?: boolean;
+}
+
 /**
  * Prompt template types and definitions
  */
@@ -2951,7 +3063,7 @@ type PromptsEvents = UIEvent | SystemEvent | TrailClickEvent;
 
 /** The events another feature may send the prompts plugin: paging, and editing a prompt */
 type PromptsListEvent = Extract<PromptsEvents, {
-    type: 'PROMPT.CREATE_INLINE' | 'PROMPT.DELETE' | 'PROMPT.UPDATE_INPUTS' | 'PROMPT.UPDATE_LABEL' | 'PROMPTS.LOAD_ALL' | 'PROMPTS.LOAD_MORE';
+    type: 'PROMPT.CREATE_INLINE' | 'PROMPT.DELETE' | 'PROMPT.SELECT' | 'PROMPT.UPDATE_INPUTS' | 'PROMPT.UPDATE_LABEL' | 'PROMPTS.LOAD_ALL' | 'PROMPTS.LOAD_MORE';
 }>;
 
 interface PromptsSettings {
@@ -3123,6 +3235,16 @@ interface QueryResult {
 }
 
 interface QuickOpenResult {
+    path: string;
+    relativePath: string;
+    name: string;
+    type: 'directory' | 'file';
+    extension?: string;
+    score?: number;
+    matchRanges?: Array<[number, number]>;
+}
+
+interface QuickOpenResult$1 {
     path: string;
     relativePath: string;
     name: string;
@@ -3501,6 +3623,18 @@ interface TerminalEntity {
 }
 
 interface TerminalInfo {
+    id: string;
+    title: string;
+    customTitle?: string;
+    pid: number;
+    shell?: string;
+    cwd: string;
+    active: boolean;
+    cols: number;
+    rows: number;
+}
+
+interface TerminalInfo$1 {
     id: EARS.EntityId;
     title: string;
     customTitle?: string;
@@ -3516,6 +3650,11 @@ interface TerminalScript {
     id: string;
     label: string;
     command: string;
+}
+
+interface TerminalTab extends OpenFile {
+    isTerminal: true;
+    terminalInfo: TerminalInfo;
 }
 
 interface TextContent {
@@ -4037,27 +4176,27 @@ interface WorktreeEntry {
     lockedReason?: string;
 }
 
-type __accepts_actions = (typeof accepts$2)['_accepts'];
+type __accepts_actions = (typeof accepts$3)['_accepts'];
 
 type __accepts_brain = never;
 
-type __accepts_browser = never;
+type __accepts_browser = (typeof accepts$6)['_accepts'];
 
-type __accepts_code = never;
+type __accepts_code = (typeof accepts$8)['_accepts'];
 
-type __accepts_database = never;
+type __accepts_database = (typeof accepts$1)['_accepts'];
 
-type __accepts_flows = (typeof accepts$3)['_accepts'];
+type __accepts_flows = (typeof accepts$4)['_accepts'];
 
-type __accepts_library = never;
+type __accepts_library = (typeof accepts$5)['_accepts'];
 
 type __accepts_logs = (typeof accepts)['_accepts'];
 
-type __accepts_notes = never;
+type __accepts_notes = (typeof accepts$7)['_accepts'];
 
-type __accepts_prompts = (typeof accepts$1)['_accepts'];
+type __accepts_prompts = (typeof accepts$2)['_accepts'];
 
-type __accepts_threads = (typeof accepts$4)['_accepts'];
+type __accepts_threads = (typeof accepts$9)['_accepts'];
 
 type __events_actions = OutgoingEventsOf<(typeof specs)['actions']>;
 
@@ -4087,20 +4226,74 @@ declare const accepts: _abuddy_sdk_fe.PluginAccepts<{
     log: LogEntry;
 }>;
 
+/** The pages the Database settings open */
+declare const accepts$1: _abuddy_sdk_fe.PluginAccepts<{
+    type: "VIEW_BACKUP";
+}>;
+
 /** Paging and editing, which the code plugin's prompts panel asks of it */
-declare const accepts$1: _abuddy_sdk_fe.PluginAccepts<PromptsListEvent>;
+declare const accepts$2: _abuddy_sdk_fe.PluginAccepts<PromptsListEvent>;
 
 /** Paging and editing, which the code plugin's actions panel asks of it */
-declare const accepts$2: _abuddy_sdk_fe.PluginAccepts<ActionsListEvent>;
+declare const accepts$3: _abuddy_sdk_fe.PluginAccepts<ActionsListEvent>;
 
 /** The actions system keeps the flows editor's action list current; the receiver declares what it takes */
-declare const accepts$3: _abuddy_sdk_fe.PluginAccepts<OutgoingActionEvents | {
+declare const accepts$4: _abuddy_sdk_fe.PluginAccepts<OutgoingActionEvents | {
     type: "FLOW.SELECT";
     flowId: EARS.EntityId;
+} | {
+    type: "NODE.DOUBLE_CLICK";
+    nodeId: EARS.EntityId;
+}>;
+
+/** Where an editor link into the library lands */
+declare const accepts$5: _abuddy_sdk_fe.PluginAccepts<{
+    type: "EDIT_DOCUMENT";
+    documentId: string;
+} | {
+    type: "NAVIGATE_TO_FOLDER";
+    folderId: string | null;
+}>;
+
+/** A link the user chose to open in the app rather than the OS browser */
+declare const accepts$6: _abuddy_sdk_fe.PluginAccepts<{
+    type: "TAB.CREATE";
+    url: string;
+}>;
+
+/** Where an editor link to a note, task or task list lands */
+declare const accepts$7: _abuddy_sdk_fe.PluginAccepts<{
+    type: "NOTE.OPEN";
+    noteId: string;
+}>;
+
+/**
+ * What other features ask of the code plugin: which panel to show, and a job for one of its children.
+ *
+ * The `<child>.*` events aren't in this machine's own union — it routes them to its child actors by prefix — so
+ * they are spelled out rather than extracted, and each names the child that handles it.
+ */
+declare const accepts$8: _abuddy_sdk_fe.PluginAccepts<{
+    type: "UPDATE_STATE";
+    updates: Partial<Context>;
+} | {
+    type: "terminal.CREATE";
+    target: string;
+    command: string;
+    cwd?: string;
+} | {
+    type: "explorer.SET_BASE_DIRECTORY";
+    path: string;
+} | {
+    type: "codeActions.OPEN_ACTION";
+    actionId: EARS.EntityId;
+} | {
+    type: "codePrompts.OPEN_PROMPT";
+    promptId: EARS.EntityId;
 }>;
 
 /** What a thread's own views ask of it: showing an artifact, and answering a to-do list */
-declare const accepts$4: _abuddy_sdk_fe.PluginAccepts<{
+declare const accepts$9: _abuddy_sdk_fe.PluginAccepts<{
     type: "SELECT_ARTIFACT";
     artifactId: string;
 } | {
@@ -4110,6 +4303,17 @@ declare const accepts$4: _abuddy_sdk_fe.PluginAccepts<{
 } | {
     type: "REJECT_TODO_LIST";
     artifactId: string;
+} | {
+    type: "OPEN_THREAD_CHAT";
+    threadId: string;
+} | {
+    type: "VIEW_THREAD";
+    threadId: string;
+} | {
+    type: "SELECT_THREAD";
+    id: string;
+} | {
+    type: "VIEW_DASHBOARD";
 }>;
 
 declare const actionCommands: {
@@ -5411,7 +5615,7 @@ declare const specs: {
 declare function storeHandle(key: string, handle: CodexTurnHandle): void;
 
 declare const terminalCommands: {
-    create: (terminalInfo: Partial<TerminalInfo> & {
+    create: (terminalInfo: Partial<TerminalInfo$1> & {
         id: EARS.EntityId;
     }) => EARS.EntityId;
     resize: (id: EARS.EntityId, cols: number, rows: number) => void;

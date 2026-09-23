@@ -8,7 +8,11 @@ import settings from './settings.vue';
 
 const canvas = defineAsyncComponent(() => import('./canvas/flow-canvas.vue'));
 /** The actions system keeps the flows editor's action list current; the receiver declares what it takes */
-export const accepts = pluginAccepts<OutgoingActionEvents | { type: 'FLOW.SELECT'; flowId: EARS.EntityId }>();
+export const accepts = pluginAccepts<
+  | OutgoingActionEvents
+  | { type: 'FLOW.SELECT'; flowId: EARS.EntityId }
+  | { type: 'NODE.DOUBLE_CLICK'; nodeId: EARS.EntityId }
+>();
 
 const flowsPlugin = definePlugin({
   label: 'Flows',
