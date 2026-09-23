@@ -96,14 +96,16 @@ import { useSelector } from '@xstate/vue'
 import { getDesignated, openPlugin, PluginScope, usePlugin, useShell } from '@abuddy/sdk/fe'
 import { Package, CheckCircle, Eye, EyeOff, ExternalLink } from 'lucide-vue-next'
 import { useSettingsSaveStatus } from '@/views/settings/save'
+import type { SettingsState } from '@abuddy/host/fe'
+import type { FeatureRef } from '@abuddy/sdk/ids'
 
 const shell = useShell()
 
-const actor = usePlugin()
+const actor: SettingsState = usePlugin()
 const allPlugins = shell.plugins
 
-const selectedPluginId = useSelector(actor, (state: any) => state.context.selectedPluginId)
-const settings = useSelector(actor, (state: any) => state.context.settings)
+const selectedPluginId = useSelector(actor, (state) => state.context.selectedPluginId)
+const settings = useSelector(actor, (state) => state.context.settings)
 
 const sidebarRef = ref<HTMLElement | null>(null)
 function scrollToActive() {
@@ -127,10 +129,10 @@ const pluginsWithSettings = computed(() => {
 
 // The first plugin with settings until one is picked
 const selectedPlugin = computed(() =>
-  pluginsWithSettings.value.find((p: any) => p.id === selectedPluginId.value) ?? pluginsWithSettings.value[0] ?? null
+  pluginsWithSettings.value.find((p) => p.id === selectedPluginId.value) ?? pluginsWithSettings.value[0] ?? null
 )
 
-const selectPlugin = (pluginId: string) => {
+const selectPlugin = (pluginId: FeatureRef) => {
   actor.send({ type: 'PLUGIN.SELECT', pluginId })
 }
 

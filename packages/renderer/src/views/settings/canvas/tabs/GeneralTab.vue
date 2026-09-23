@@ -71,23 +71,27 @@ import Projects from '../components/GeneralSettings/Projects.vue'
 import SettingsJsonEditor from '../components/GeneralSettings/SettingsJsonEditor.vue'
 import { usePlugin } from '@abuddy/sdk/fe'
 import { useSettingsSaveStatus } from '@/views/settings/save'
+import type { SettingsState } from '@abuddy/host/fe'
+import type { GeneralSection } from '@/views/settings/types'
 
-const actor = usePlugin()
+const actor: SettingsState = usePlugin()
 
-const generalNavItem = useSelector(actor, (state: any) => state.context.generalNavItem)
-const settings = useSelector(actor, (state: any) => state.context.settings)
+const generalNavItem = useSelector(actor, (state) => state.context.generalNavItem)
+const settings = useSelector(actor, (state) => state.context.settings)
 
 // Use the settings save status composable
 const { saveStatus, problems, updateSettings } = useSettingsSaveStatus()
 
 // Compute current settings based on selected nav item
 const currentSettings = computed(() => {
-  if (!settings.value?.general) return null
+  // The one place this view says what it draws of a section the host stores opaquely
+  const general = settings.value?.general as GeneralSection | undefined
+  if (!general) return null
 
   const settingsMap = {
-    personal: settings.value.general.personal,
-    projects: settings.value.general.projects,
-    application: settings.value.general.application
+    personal: general.personal,
+    projects: general.projects,
+    application: general.application
   }
 
   return settingsMap[generalNavItem.value as keyof typeof settingsMap]

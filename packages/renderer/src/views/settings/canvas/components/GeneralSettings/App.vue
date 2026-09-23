@@ -186,6 +186,7 @@ import { HardDrive, PackageOpen, RotateCcw, Trash2 } from 'lucide-vue-next'
 import ImportPackSeedsPicker from './ImportPackSeedsPicker.vue'
 import Hotkeys from './Hotkeys.vue'
 import { errorMessage } from '@abuddy/sdk/utils/pure';
+import type { SettingsState } from '@abuddy/host/fe'
 
 interface Props {
   settings?: any
@@ -206,10 +207,10 @@ function onHotkeyUpdate(event: { path: string[]; value: any }) {
   })
 }
 
-const actor = usePlugin()
+const actor: SettingsState = usePlugin()
 
-const packSeedsImport = useSelector(actor, (state: any) => state.context.packSeedsImport)
-const resetting = useSelector(actor, (state: any) => state.context.resetting)
+const packSeedsImport = useSelector(actor, (state) => state.context.packSeedsImport)
+const resetting = useSelector(actor, (state) => state.context.resetting)
 
 const status = computed(() => packSeedsImport.value?.status ?? 'idle')
 const preview = computed(() => packSeedsImport.value?.preview ?? null)

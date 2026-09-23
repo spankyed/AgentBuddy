@@ -43,10 +43,12 @@ import { settingsProblems } from '@abuddy/host/settings'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import SimpleMonacoEditor from '@abuddy/ui/components/SimpleMonacoEditor'
+import type { SettingsState } from '@abuddy/host/fe'
 
-const actor = usePlugin()
-const settings = useSelector(actor, (state: any) => state.context.settings)
-const replacement = useSelector(actor, (state: any) => state.context.replacement)
+const actor: SettingsState = usePlugin()
+const settings = useSelector(actor, (state) => state.context.settings)
+// The store's answer to the last change, which for this editor is the whole document it replaced
+const replacement = useSelector(actor, (state) => state.context.save)
 
 const jsonText = ref('')
 const originalText = ref('')

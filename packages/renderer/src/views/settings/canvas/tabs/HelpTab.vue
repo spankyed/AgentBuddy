@@ -60,6 +60,7 @@ import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import { DISCORD_URL, MEMORIAL_URL } from '@/views/settings/constants'
 import { openLink, usePlugin } from '@abuddy/sdk/fe'
 import type { HelpEntry } from '@abuddy/sdk/framework'
+import type { SettingsState } from '@abuddy/host/fe'
 
 function openDiscordLink() {
   openLink(DISCORD_URL)
@@ -69,8 +70,8 @@ function openMemorialLink() {
   openLink(MEMORIAL_URL)
 }
 
-const settingsActor = usePlugin()
-const faqItems = useSelector(settingsActor, (state: any): HelpEntry[] => state.context.faqs ?? [])
+const settingsActor: SettingsState = usePlugin()
+const faqItems = useSelector(settingsActor, (state) => state.context.help)
 
 const expandedItems = ref<number[]>([])
 

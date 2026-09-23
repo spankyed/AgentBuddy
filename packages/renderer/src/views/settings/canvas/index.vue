@@ -34,10 +34,11 @@ import { useSelector } from '@xstate/vue'
 import GeneralTab from './tabs/GeneralTab.vue'
 import PluginsTab from './tabs/PluginsTab.vue'
 import HelpTab from './tabs/HelpTab.vue'
+import type { SettingsState } from '@abuddy/host/fe'
 
-const actor = usePlugin()
+const actor: SettingsState = usePlugin()
 
-const activeTab = useSelector(actor, (state: any) => state.context.activeTab)
+const activeTab = useSelector(actor, (state) => state.context.activeTab)
 
 const tabs = [
   { id: 'general', label: 'General' },

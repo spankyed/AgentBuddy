@@ -31,11 +31,12 @@ import { useSelector } from '@xstate/vue'
 import CliProviderRow from './CliProviderRow.vue'
 import { pluginSettings } from '@/views/settings/plugin-settings';
 import { resolveName } from '@abuddy/sdk/ids';
+import type { SettingsState } from '@abuddy/host/fe'
 
 const { updateSettings } = useSettingsSaveStatus()
 
-const settingsActor = usePlugin()
-const cliTestResults = useSelector(settingsActor, (state: any) => state.context.cliTestResults)
+const settingsActor: SettingsState = usePlugin()
+const cliTestResults = useSelector(settingsActor, (state) => state.context.cliTestResults)
 
 const providers = [
   { key: 'copilot', label: 'Copilot CLI', installHint: 'Install via npm', installCmd: 'npm install -g @github/copilot' },
@@ -49,7 +50,7 @@ const testCliProvider = (provider: string) => {
 }
 
 // CLI path overrides live in the code plugin's settings
-const storedCliPaths = useSelector(settingsActor, (state: any) => pluginSettings(state.context.settings, resolveName('code', 'default-setup'))?.cliPaths as Record<string, string> | undefined)
+const storedCliPaths = useSelector(settingsActor, (state) => pluginSettings(state.context.settings, resolveName('code', 'default-setup'))?.cliPaths as Record<string, string> | undefined)
 const cliPathValues = ref<Record<string, string>>({})
 
 watch(storedCliPaths, (newPaths) => {
