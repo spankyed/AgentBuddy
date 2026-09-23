@@ -418,8 +418,10 @@ export function generatePackFiles(
       ...features.flatMap((f) => (f.settings ? [f.settings] : [])),
       // The systems' entries: their outgoing unions are one of the two sources of a plugin's inbox
       ...features.flatMap((f) => (f.system ? [f.system.entry] : [])),
-      // The plugins' entries: each declares the inbox anyone else may send it
+      // The plugins' entries, and the contract leaves beside them: a plugin's inbox is read from its contract,
+      // which lives in a module the plugin's own machine never imports
       ...features.flatMap((f) => (f.plugin ? [f.plugin.entry] : [])),
+      ...features.flatMap((f) => (f.plugin?.contract ? [f.plugin.contract.split('#')[0]!] : [])),
     ];
     return [...new Set(sources.map(sourceFileOf).filter((file): file is string => file !== undefined))];
   }
@@ -435,9 +437,9 @@ export function generatePackFiles(
     return moduleExports.outgoingEventTypesOf(file);
   }
 
-  function acceptedEventTypesOf(file: string): string[] {
+  function inboxEventTypesOf(file: string, name: string): string[] {
     moduleExports ??= createModuleExports(root, exportedFromFiles());
-    return moduleExports.acceptedEventTypesOf(file);
+    return moduleExports.inboxEventTypesOf(file, name);
   }
 
   /** The event types a feature's system sends, read from its spec */
@@ -454,23 +456,28 @@ export function generatePackFiles(
   }
 
   /**
-   * Whether a feature's plugin module declares an inbox at all (an `accepts` export).
+   * A feature's declared contract, as `abuddy.json` names it at `features[].plugin.contract` — the module and the
+   * type in it. A feature that names none publishes nothing: its plugin still receives its own system's events.
    *
-   * It must be a value: the generated module reads `(typeof accepts)['_accepts']`, which needs a runtime binding
-   * to take `typeof` of. An `accepts` exported only as a type (`export type accepts = …`, or a type-only
-   * re-export) would emit a generated file that doesn't compile, naming a file its author never wrote.
+   * The contract is a *type*, so the check is that the module declares one: a name that is only a value is the
+   * mistake worth catching, since reading it would silently yield an empty inbox.
    */
-  function declaresAccepts(feature: PackFeatureEntry): boolean {
-    const file = sourceFileOf(feature.plugin!.entry);
-    return file !== undefined && exportOf(file, 'accepts')?.value !== undefined;
+  function contractOf(feature: PackFeatureEntry): { source: string; exportName: string; file: string } | undefined {
+    if (!feature.plugin?.contract) return undefined;
+    const label = `Feature "${feature.id}": plugin.contract`;
+    const target = exportTarget(label, feature.plugin.contract);
+    const info = exportOf(target.file, target.exportName);
+    if (!info) throw new Error(`${label}: ${target.source} doesn't export "${target.exportName}"`);
+    if (!info.type) throw new Error(`${label}: ${target.source} exports "${target.exportName}" only as a value, not a type. A plugin's contract is a declared type codegen reads without running anything`);
+    return target;
   }
 
-  /** The event types a plugin declares that any other plugin or system may send it, read from its `accepts` export */
+  /** The event types a plugin's contract declares that any other plugin or system may send it */
   function acceptedEventTypes(feature: PackFeatureEntry): string[] {
-    const file = sourceFileOf(feature.plugin!.entry);
-    if (!file) throw new Error(`Feature "${feature.id}": no plugin entry found at ${feature.plugin!.entry} (.ts or /index.ts)`);
+    const contract = contractOf(feature);
+    if (!contract) return [];
     try {
-      return acceptedEventTypesOf(file);
+      return inboxEventTypesOf(contract.file, contract.exportName);
     } catch (err) {
       // The same error, so its code still says what kind of failure it is
       (err as Error).message = `Feature "${feature.id}": ${(err as Error).message}`;
@@ -479,8 +486,13 @@ export function generatePackFiles(
   }
 
   /**
-   * The event types one of this pack's plugins receives: what its own feature's system sends it, and the inbox it
-   * declares for everyone else. The bus checks each send against this (`getPluginEventValidationMap`).
+   * The event types one of this pack's plugins receives: what its own feature's system sends it, and every audience
+   * of the inbox its contract declares. The bus checks each send against this (`getPluginEventValidationMap`).
+   *
+   * One flat list, deliberately: the audiences are a type-level split, and a passing check here means the event's
+   * **shape** was accepted, not that this sender was allowed to send it. `Message` carries no sender today, so the
+   * bus has nothing to compare an audience against — see the goal's Deferred item, which has the trigger for
+   * stamping one.
    */
   function receivedEventTypes(feature: PackFeatureEntry): string[] {
     const own = feature.system ? sentEventTypes(feature) : [];
@@ -794,13 +806,33 @@ export const ref = (name: FeatureName): FeatureRef => resolveName(name, '${manif
   // dependencies declare as `<packId>/<featureId>`. Kept apart from events.ts, which backend systems import,
   // because these reach the frontend SDK.
   function generateFe(): string {
-    const own = (manifest.features ?? []).filter(f => f.plugin).map(f => f.id);
+    const features = manifest.features ?? [];
+    const pluginFeatures = features.filter(f => f.plugin);
+    const own = pluginFeatures.map(f => f.id);
     if (!own.length) return '';
     const plugins = [...own, ...Object.keys(_mergeProvenance('plugins', [...depSnapshots])).sort()].map(name => `'${name}'`);
+
+    // Each own plugin's published state, from the same contract the inbox is read from. A feature that declares no
+    // contract publishes nothing, and `never` is what a selector for it gets.
+    const declaring = pluginFeatures.map(f => ({ feature: f, contract: contractOf(f) })).filter(c => c.contract);
+    const stateImports = declaring
+      .map(({ feature, contract }) => `import type { ${contract!.exportName} as __state_contract_${feature.id} } from '${toImportPath(root, contract!.source)}';`)
+      .join('\n');
+    const declaredIds = new Set(declaring.map(c => c.feature.id));
+    const ownState = pluginFeatures
+      .map(f => `  '${f.id}': ${declaredIds.has(f.id) ? `PluginStateOf<__state_contract_${f.id}>` : 'never'};`)
+      .join('\n');
+    const depState = depTypeImports('PackPluginState');
+    const qualifiedState = depIds.map((depId) => `Qualified<'${depId}', ${depAlias(depId, 'PackPluginState')}>`);
+
     return `${HEADER}
-import { openPlugin } from '@abuddy/sdk/fe';
+import { openPlugin, readUntypedPluginState, useUntypedPluginState, type PluginStateOf } from '@abuddy/sdk/fe';
+import type { Qualified } from '@abuddy/sdk/events';
+import type { Ref } from 'vue';
 import type { SendablePluginEvents } from './events.js';
 import { ref } from './ref.js';
+${stateImports}
+${depState.imports.join('\n')}
 
 /**
  * A plugin as this pack's code names it: its own by feature id, a dependency's as \`<packId>/<featureId>\`.
@@ -809,6 +841,18 @@ import { ref } from './ref.js';
  */
 export type PluginName = ${plugins.join(' | ')};
 
+/** Feature id → the state this pack's plugin for that feature publishes (dependents name it \`${manifest.id}/<feature>\`). */
+export type PackPluginState = {
+${ownState}
+};
+
+/** A plugin of this pack, whose actor is running whenever this pack's frontend is */
+export type OwnPluginName = keyof PackPluginState & string;
+${qualifiedState.length > 0 ? `
+/** A dependency's plugin, whose frontend may still be loading */
+type DependencyPluginState = ${qualifiedState.join(' & ')};
+export type DependencyPluginName = keyof DependencyPluginState & string;
+` : ''}
 /**
  * Opens a plugin and hands its actor \`event\` once it's running; throws if no such plugin is registered.
  *
@@ -823,12 +867,37 @@ export function navigateToPlugin<Name extends PluginName>(
 ): void {
   openPlugin(ref(name), event);
 }
+
+/**
+ * A value from the state a plugin publishes, followed until the calling scope is disposed — so it runs in a
+ * component's setup or an effect scope, never inside a \`computed\`. The selector takes that plugin's published
+ * state, not an XState snapshot.
+ *
+ * This pack's own plugins are spawned in the step that registers them, so one of those is always running and the
+ * value is never \`undefined\`. A dependency's frontend may still be loading, so reading one of its plugins gives
+ * \`undefined\` until it arrives — that is a state to render, not an error.
+ *
+ * \`useUntypedPluginState\` from \`@abuddy/sdk/fe\` is the escape hatch, for a ref that arrives as data.
+ */
+export function usePluginState<Name extends OwnPluginName, TSelected>(name: Name, selector: (state: PackPluginState[Name]) => TSelected): Readonly<Ref<TSelected>>;${qualifiedState.length > 0 ? `
+export function usePluginState<Name extends DependencyPluginName, TSelected>(name: Name, selector: (state: DependencyPluginState[Name]) => TSelected): Readonly<Ref<TSelected | undefined>>;` : ''}
+export function usePluginState(name: PluginName, selector: (state: never) => unknown): Readonly<Ref<unknown>> {
+  return useUntypedPluginState(ref(name), (snapshot: { context: never }) => selector(snapshot.context));
+}
+
+/** The same read, once, for code outside a reactive scope — a machine's action, an event handler. */
+export function readPluginState<Name extends OwnPluginName, TSelected>(name: Name, selector: (state: PackPluginState[Name]) => TSelected): TSelected;${qualifiedState.length > 0 ? `
+export function readPluginState<Name extends DependencyPluginName, TSelected>(name: Name, selector: (state: DependencyPluginState[Name]) => TSelected): TSelected | undefined;` : ''}
+export function readPluginState(name: PluginName, selector: (state: never) => unknown): unknown {
+  return readUntypedPluginState(ref(name), (snapshot: { context: never }) => selector(snapshot.context));
+}
 `;
   }
 
+
   /**
    * Plugin id → the events that plugin receives: what its own feature's system sends it, plus the inbox the
-   * plugin declares beside itself (`pluginAccepts()`). Only features that have a plugin get a key: nothing can
+   * plugin's `Contract` declares (`features[].plugin.contract`). Only features that have a plugin get a key: nothing can
    * receive an event sent to a feature that has none.
    *
    * Every dependency's plugins and the host's are addressable with no declaration on this side — the receiver's
@@ -846,15 +915,17 @@ export function navigateToPlugin<Name extends PluginName>(
     const outgoingAliases = systemFeatures
       .map(f => `type __events_${f.id} = OutgoingEventsOf<(typeof __specs)['${f.id}']>;`)
       .join('\n');
-    // Each plugin's declared inbox, read from its `definePlugin()` call
-    const declaring = pluginFeatures.filter(declaresAccepts);
-    // Each plugin's `accepts` export by name, never the plugin itself: its machine's own imports would cycle back here
+    // Each plugin's declared contract, from the leaf module abuddy.json names — never the plugin module itself,
+    // whose machine imports cycle back through this file
+    const declaring = pluginFeatures.map(f => ({ feature: f, contract: contractOf(f) })).filter(c => c.contract);
     const acceptsImports = declaring
-      .map(f => `import type { accepts as __declared_${f.id} } from '${toImportPath(root, f.plugin!.entry)}';`)
+      .map(({ feature, contract }) => `import type { ${contract!.exportName} as __contract_${feature.id} } from '${toImportPath(root, contract!.source)}';`)
       .join('\n');
-    const declaredIds = new Set(declaring.map(f => f.id));
+    const declaredIds = new Set(declaring.map(c => c.feature.id));
     const acceptsAliases = pluginFeatures
-      .map(f => `type __accepts_${f.id} = ${declaredIds.has(f.id) ? `(typeof __declared_${f.id})['_accepts']` : 'never'};`)
+      .flatMap(f => declaredIds.has(f.id)
+        ? [`type __accepts_${f.id} = PluginInboxOf<__contract_${f.id}>;`, `type __public_${f.id} = PublicPluginInboxOf<__contract_${f.id}>;`]
+        : [`type __accepts_${f.id} = never;`, `type __public_${f.id} = never;`])
       .join('\n');
     // A plugin receives what its own feature's system sends it, and whatever it declares anyone else may send
     const entries = pluginFeatures.map((f) => {
@@ -877,22 +948,26 @@ export function navigateToPlugin<Name extends PluginName>(
       'HostSystemEvents',
     ].join(' & ');
     return `${HEADER}
-import { defineEvents, type HostPluginEvents, type HostSystemEvents, type IncomingEventsOf${hasSystems ? ', type OutgoingEventsOf' : ''}, type Qualified, type WithOwnNames } from '@abuddy/sdk/events';
+import { defineEvents, type HostPluginEvents, type HostSystemEvents, type IncomingEventsOf${hasSystems ? ', type OutgoingEventsOf' : ''}${declaring.length > 0 ? ', type PluginInboxOf, type PublicPluginInboxOf' : ''}, type Qualified, type WithOwnNames } from '@abuddy/sdk/events';
 ${hasSystems ? `import type { specs as __specs } from './system-specs.js';\n` : ''}${acceptsImports ? `${acceptsImports}\n` : ''}${[...depPlugins.imports, ...depSystems.imports].join('\n')}
 ${[outgoingAliases, acceptsAliases].filter(Boolean).join('\n')}
 
-/** Plugin id → the events that plugin receives: its own feature's system's, and the inbox it declares. */
+/**
+ * Plugin id → the events that plugin receives: its own feature's system's, and every audience of the inbox its
+ * contract declares. This pack's own sends are checked against it, so a sibling may send the \`pack\` half.
+ */
 export type OwnPluginEvents = {
 ${entries}
 };
 
 /**
- * Feature id → the inbox this pack's plugin for that feature declares (dependents name it \`${manifest.id}/<feature>\`).
- * Its own system's events aren't here: they are between the two halves of one feature, not a contract anyone else
- * may send. This is what a dependent pack may send it, and it mirrors \`PackSystemEvents\`.
+ * Feature id → the \`public\` half of the inbox this pack's plugin declares (dependents name it
+ * \`${manifest.id}/<feature>\`). Neither its own system's events nor its \`pack\` audience are here: the first is
+ * between the two halves of one feature, the second between this pack's features. What is left is what a dependent
+ * pack may send, and it mirrors \`PackSystemEvents\`.
  */
 export type PackPluginEvents = {
-${pluginFeatures.map(f => `  '${f.id}': __accepts_${f.id};`).join('\n')}
+${pluginFeatures.map(f => `  '${f.id}': __public_${f.id};`).join('\n')}
 };
 
 /** Feature id → the events this pack's system for that feature receives (dependents name it \`${manifest.id}/<feature>\`). */
@@ -1120,10 +1195,13 @@ export const seedRuntime: SeedRuntime = {
 
   /** The facade types dependents import, bundled into dist/types/pack-types.d.ts by \`abuddy build\` */
   function generatePackTypes(): string {
+    // `fe.ts` is generated only for a pack with plugins, and `PackPluginState` lives there: a pack with none has no
+    // plugin state to publish, and naming the module anyway leaves the facade bundle unable to resolve it.
+    const hasPlugins = (manifest.features ?? []).some(f => f.plugin);
     return `${HEADER}
 export type { PackShapes as PackEntityShapes, PackStepNodes } from './ears.js';
 export type { PackPluginEvents, PackSystemEvents } from './events.js';
-export type { Services } from './services.js';
+${hasPlugins ? "export type { PackPluginState } from './fe.js';\n" : ''}export type { Services } from './services.js';
 export type { Repositories } from './repository.js';
 `;
   }

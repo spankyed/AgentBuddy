@@ -34,7 +34,7 @@ import { StickyNote } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 import CopyButton from '@abuddy/ui/design/CopyButton'
-import { useNotes } from '@/features/notes/fe/public'
+import { usePluginState } from '@/__generated__/fe'
 
 const props = defineProps<{
   artifact: ArtifactItem<string | { noteId?: string }>
@@ -47,7 +47,7 @@ const noteId = computed(() =>
     : props.artifact.content?.noteId ?? ''
 )
 
-const allNotes = useNotes()
+const allNotes = usePluginState('notes', (s) => s.notes)
 
 const note = computed(() =>
   allNotes.value.find((n: any) => n.id === noteId.value)

@@ -27,7 +27,7 @@ it('opens its plugin by name, hands it the events, and the shell reads it as ope
 });
 
 // `sendToPlugin` is the renderer's half: it reaches this window's actor directly, without opening the plugin.
-// What it may carry is the inbox `fe/plugin.ts` declares with `pluginAccepts()` — this is the only place an
+// What it may carry is the inbox the plugin's `Contract` declares (`fe/types.ts`) — this is the only place an
 // external pack's declared inbox is exercised, the app's own packs being built by the same codegen.
 it('sends a declared event to a plugin in this window without opening it', async () => {
   const shell = await startShell({ plugins: { notes: { state: notesState }, memos: { state: memosState } } });

@@ -1,37 +1,20 @@
 import { setup, assign, fromCallback, type ActorRefFrom } from 'xstate';
 import type { BrowserSettings } from '@/__generated__/types';
+import type { Bookmark, BrowserContext, BrowserInboxEvent, BrowserTab, BrowserTabPersistedId } from './types.ts';
 import { autocomplete, recordVisit, updateHistoryMeta, displayUrl, type AutocompleteSuggestion } from './history.ts';
 import { sendToSystem } from '@/__generated__/events';
 import { navigateToPlugin } from '@/__generated__/fe';
 import { getNextAvailableColor, saveTabGroups, loadTabGroups, type TabGroup, type TabGroupColor } from '@abuddy/sdk/fe';
 
 export type { TabGroup, TabGroupColor };
+export type { Bookmark, BrowserTab, BrowserTabPersistedId } from './types.ts';
 
 export const id = 'browser' as const;
 
-type BrowserTabPersistedId = `BrowserTab-${string}`;
 
-export interface BrowserTab {
-  id: number;
-  persistedId?: BrowserTabPersistedId;
-  url: string;
-  title: string;
-  favicon: string;
-  isLoading: boolean;
-  canGoBack: boolean;
-  canGoForward: boolean;
-  isMuted: boolean;
-  groupId?: string;
-}
 
 export type { AutocompleteSuggestion };
 
-export interface Bookmark {
-  url: string;
-  title: string;
-  favicon: string;
-  displayOrder: number;
-}
 
 interface SavedTab {
   id: BrowserTabPersistedId;
@@ -48,28 +31,10 @@ interface NormalizeTabsResult {
   invalidCount: number;
 }
 
-interface BrowserContext {
-  tabs: BrowserTab[];
-  activeTabId: number | null;
-  addressBarValue: string;
-  isAddressBarFocused: boolean;
-  // Tab groups
-  tabGroups: TabGroup[];
-  // Autocomplete
-  suggestions: AutocompleteSuggestion[];
-  selectedSuggestionIndex: number; // -1 = user's own input
-  inlineCompletion: string | null;
-  preAutocompleteValue: string;
-  _lastNavWasTyped: boolean;
-  // Bookmarks
-  bookmarks: Bookmark[];
-  /** This feature's own settings, as the app sends them (`FEATURE_SETTINGS_UPDATED`) */
-  settings: BrowserSettings;
-}
 
 type BrowserEvents =
   // UI events
-  | { type: 'TAB.CREATE'; url?: string }
+  | BrowserInboxEvent
   // A link to open, from anywhere in the app (`openLink` from @abuddy/sdk/fe): here or in the system's browser
   | { type: 'LINK.OPEN'; url: string }
   // The app's, when this feature's settings change

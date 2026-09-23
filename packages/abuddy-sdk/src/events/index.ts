@@ -75,6 +75,27 @@ export type IncomingEventsOf<T> = SpecEvents<T, '_incoming'>;
 export type OutgoingEventsOf<T> = SpecEvents<T, '_outgoing'>;
 
 /**
+ * Every event a plugin's `Contract` says another plugin may send it, across audiences. Generated code builds each
+ * plugin's inbox with it, as it builds a system's with `OutgoingEventsOf`. A contract with no `inbox` publishes
+ * state only and receives nothing but its own system's events.
+ */
+export type PluginInboxOf<C> = C extends { inbox: infer Audiences }
+  ? Extract<Audiences[keyof Audiences], { type: string }>
+  : never;
+
+/**
+ * The half of a plugin's inbox a *dependent pack* may send: its `public` audience alone. The `pack` audience is
+ * what this pack's own features send it — a sibling asking for a panel, a link opening a note — and publishing it
+ * would make every dependent's completions carry commands only the owning pack can meaningfully send.
+ *
+ * Generated code builds `PackPluginEvents` with this and `OwnPluginEvents` with `PluginInboxOf`, which is the
+ * whole of the split: one contract, two readers.
+ */
+export type PublicPluginInboxOf<C> = C extends { inbox: { public: infer Events } }
+  ? Extract<Events, { type: string }>
+  : never;
+
+/**
  * A system spec reduced to the events the system receives and sends. Generated code declares each system's spec
  * with it, so the facade types dependents compile against carry no system context or internals.
  */
@@ -84,7 +105,7 @@ export function specEvents<S extends { _incoming: unknown; _outgoing: unknown }>
 
 /**
  * Events the host app's own plugins receive from packs. The host declares them here, as a pack's plugin declares
- * its own with `pluginAccepts()`; `#generated/events` includes this map, so any pack may send them.
+ * its own in its `Contract`; `#generated/events` includes this map, so any pack may send them.
  */
 export type HostPluginEvents = {
   'host/application':
@@ -159,25 +180,23 @@ export function broadcastToPlugin(to: string, event: { type: string; [key: strin
 }
 
 /**
- * @internal Sends an event to the plugin at `ref` in **this window**, straight to its actor — no bus, no other
- * window. The renderer half of `sendToPlugin`, which `defineEvents` types per receiving plugin.
+ * @internal Sends an event to the plugin at `ref` in **this window**, through the shell — no bus, no other window.
+ * The renderer half of `sendToPlugin`, which `defineEvents` types per receiving plugin.
  *
  * A plugin runs once per window, so this is what UI coordination wants: the artifact opens where the user clicked.
  *
- * A send to a plugin that isn't running throws, where the bus's half reports a `diagnostic` and drops
- * (`createBusMachine`'s `notify`). The asymmetry is the channel, not a choice: `reportError` sends its
- * `SYSTEM_ERROR` over the backend bus, which no window has, so there is nothing here to report on. Throwing is
- * what the renderer's other reads do (`pluginActor`, `usePluginState`). A ref that may legitimately be absent —
- * another pack's, which may not be installed — is checked with `hasDesignation` before sending.
+ * It goes through the shell rather than to the actor directly, because "is that plugin here yet" is the shell's
+ * question and it already answers it for `OPEN_PLUGIN`: a plugin whose pack's frontend is still loading is waited
+ * for, and one no pack provides is reported to the user once loading settles. Reaching past the shell meant two
+ * owners of that question giving different answers — this one threw. It is a send, not a navigation, so the plugin
+ * the user has open doesn't change.
  */
 export function _sendToLocalPlugin(ref: string, event: { type: string; [key: string]: unknown }): void {
   // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it is.
   if (!_isFeHostBound() && _isHostBound()) {
     throw new Error(`sendToPlugin("${ref}") is the renderer's, to this window's plugin. On the backend, send over the bus with broadcastToPlugin from #generated/events`);
   }
-  const actor = boundFeHost().application.system.get(ref);
-  if (!actor) throw new Error(`No plugin is running at "${ref}" to send ${event.type} to`);
-  actor.send(event);
+  boundFeHost().application.send({ type: 'SEND_TO_PLUGIN', plugin: ref, events: [event] });
 }
 
 /** A system: its ref, or the role a system plays (`{ role: 'brain' }`), found when the message is sent */

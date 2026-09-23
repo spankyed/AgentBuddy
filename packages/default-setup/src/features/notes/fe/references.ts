@@ -1,7 +1,7 @@
 import { NotebookText, CircleCheck, ListChecks } from 'lucide-vue-next'
-import { usePluginState } from '@abuddy/sdk/fe'
-import { navigateToPlugin } from '@/__generated__/fe'
-import { NOTE_TYPE_TO_REFERENCE_TYPE, NOTES } from './public'
+
+import { navigateToPlugin, usePluginState } from '@/__generated__/fe'
+import { NOTE_TYPE_TO_REFERENCE_TYPE } from '@/extensions/tiptap/reference-config'
 import { id as notes } from './state'
 import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider, ReferenceItem } from '@abuddy/sdk/fe/references'
 
@@ -64,8 +64,8 @@ export const categories: CategoryConfig[] = [
 export const itemsProvider: CategoryItemsProvider = {
   category: 'notes',
   // The plugin's state, as it changes
-  useItems: () => usePluginState(NOTES, (actorState: any): ReferenceItem[] => {
-    const allNotes = actorState?.context?.notes || []
+  useItems: () => usePluginState('notes', (state): ReferenceItem[] => {
+    const allNotes = state.notes
     return allNotes
       .filter((n: any) => n.noteType in NOTE_TYPE_TO_REFERENCE_TYPE)
       .map((n: any) => ({

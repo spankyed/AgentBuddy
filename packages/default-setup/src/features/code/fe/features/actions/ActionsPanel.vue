@@ -240,7 +240,7 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { navigateToPlugin } from '@/__generated__/fe'
 import type { CodeState } from '@/features/code/fe/state'
-import { useActionsList } from '@/features/actions/fe/public'
+import { usePluginState } from '@/__generated__/fe'
 import { sendToPlugin } from '@/__generated__/events'
 import { ExternalLink, Plus, X, Pencil, Trash2, Play, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import CodePanelHeader from '@/features/code/fe/features/CodePanelHeader.vue'
@@ -264,7 +264,10 @@ const codeActor: CodeState = usePlugin()
 const codeActionsActor = codeChild(codeActor, 'codeActions')!
 
 // State - the actions plugin's list (single source of truth)
-const { actions, page, totalPages, loadingMore } = useActionsList()
+const actions = usePluginState('actions', (s) => s.actions)
+const page = usePluginState('actions', (s) => s.page)
+const totalPages = usePluginState('actions', (s) => s.totalPages)
+const loadingMore = usePluginState('actions', (s) => s.loadingMore)
 const hasMore = computed(() => page.value < totalPages.value)
 const isLoading = ref(false)
 const error = ref<string | null>(null)

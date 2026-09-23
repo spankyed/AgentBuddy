@@ -88,8 +88,9 @@ import { ${icon} } from 'lucide-vue-next';
 import state from './state';
 import canvas from './canvas/list.vue';
 
-// What another feature may send this plugin goes beside it, and only then:
-//   export const accepts = pluginAccepts<{ type: 'SOMETHING'; id: string }>();
+// What this plugin publishes — its state, and what another feature may send it — is its contract, a declared type
+// in a leaf module beside it that abuddy.json names at features[].plugin.contract:
+//   export type Contract = { state: MyContext; inbox: PluginInbox<{ pack: { type: 'SOMETHING'; id: string } }> };
 // Its own feature's system needs no declaration — codegen reads that system's outgoing events.
 
 // Registered at the feature's address by the host, so the module carries no id

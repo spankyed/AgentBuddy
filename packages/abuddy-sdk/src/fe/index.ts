@@ -3,12 +3,12 @@
 
 // Declares window.electronAPI; a type-only re-export survives in the emitted declarations
 export type {} from './electron-api.ts';
-export type { Plugin, PluginAccepts, PluginDefinition, RouteComponents } from './plugin.ts'
-export { definePlugin, pluginAccepts } from './plugin.ts'
+export type { Plugin, PluginDefinition, PluginInbox, PluginInboxAudiences, PluginStateOf, RouteComponents } from './plugin.ts'
+export { definePlugin } from './plugin.ts'
 export type { PackFEFeature, PackFERegistration } from './pack-fe-registration.ts'
 export { pasteIntoElement } from './input-paste.ts'
 export { PluginScope, usePlugin } from './actor-system.ts'
-export { readPluginState, usePluginState } from './plugin-state.ts'
+export { readUntypedPluginState, useUntypedPluginState } from './plugin-state.ts'
 export { useShell, type Shell, type HostShell, type HostShellEvent, type HostShellSnapshot, type HostShellState, type ShellPanelSizes } from './shell.ts'
 export { isAnyMenuOpen, onMenuOpenChange, useTrackedMenuOpen } from './menu-state.ts'
 export { getDslTypes, type DslTypeConfig } from './dsl-types.ts'

@@ -42,10 +42,16 @@ export type OutgoingActionEvents =
 
 export const actionsSpec = defineSystem<IncomingActionEvents, OutgoingActionEvents>();
 
-// Broadcasts action events to both the actions and flows plugins; the flows plugin declares it accepts them
+/**
+ * Broadcasts an action event to the actions plugin, and to the flows plugin the three it declares it takes: the
+ * flows editor keeps its action list current from these. The other eight are between this system and its own
+ * plugin, so narrowing here is what the contract asks for rather than a special case.
+ */
+const FLOWS_TAKES = ['ACTION_CREATED', 'ACTION_UPDATED', 'ACTION_DELETED'] as const;
+type FlowsAction = Extract<OutgoingActionEvents, { type: (typeof FLOWS_TAKES)[number] }>;
 const broadcastActionEvent = (system: any, event: OutgoingActionEvents) => {
   broadcastToPlugin('actions', event);
-  broadcastToPlugin('flows', event);
+  if ((FLOWS_TAKES as readonly string[]).includes(event.type)) broadcastToPlugin('flows', event as FlowsAction);
 };
 
 export const actionsSystem = setup({

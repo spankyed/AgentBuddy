@@ -10,6 +10,7 @@ import type {
   MessageEntity, AgentThreadData, Tab,
   AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse,
 } from '@/__generated__/types';
+import type { ChatState, ThreadListItem, ThreadsContext } from './types.ts';
 import type { OutgoingThreadsEvents } from '@/features/threads/be/system';
 import { sendToSystem } from '@/__generated__/events';
 import { Archive, Copy, Pin, Trash2 } from 'lucide-vue-next';
@@ -126,7 +127,6 @@ const defaultChatThread: AgentThreadData = {
   artifacts: [],
 };
 
-type ChatState = 'idle' | 'working' | 'paused' | 'error' | 'success';
 
 // ---- Event types ----
 
@@ -245,63 +245,11 @@ type ThreadEvents =
 
 const typeOf = safeEvents<ThreadEvents>();
 
-export type ThreadListItem = Simplify<ThreadEntity & {
-  tags?: string[];
-  isNew?: boolean;
-  parentId?: string;
-}>;
+export type { ChatState, ThreadListItem } from './types.ts';
+
 
 // ---- Context ----
 
-interface ThreadsContext {
-  // Thread management (normalized)
-  threadMap: Record<string, ThreadListItem>;
-  threadIds: string[];
-  selectedThreadIds: string[];
-  selectedThreadCode?: string;
-  view: ThreadViewData;
-  create: ThreadCreateData & {
-    parentThreadId?: string;
-    parentThread?: ThreadListItem;
-    tagsExpanded?: boolean;
-    linkedExpanded?: boolean;
-  };
-  availableTags: ThreadTagOption[];
-  settings: ThreadsSettings | null;
-  showArchived: boolean;
-  filters: {
-    statuses: string[];
-    tags: string[];
-    chatStates: string[];
-    search: string;
-    showRootOnly: boolean;
-  };
-  threadsImport: { status: 'idle' | 'importing' | 'success' | 'error'; errors: string[]; importedCount: number };
-  threadsExport: { status: 'idle' | 'exporting' | 'success' | 'error'; errors: string[]; filePath: string; threadCount: number };
-  // Chat/agent
-  currentThread: AgentThreadData | null;
-  recentThreadIds: string[];
-  messageInput: string;
-  pendingActionId?: string;
-  chatStates: Record<string, ChatState>;
-  chatStateOverrides: Record<string, { id: string; expiresAt: number }>;
-  tabs: Tab[];
-  activeTabId: string;
-  tabGroups: ThreadTabGroup[];
-  mode: string;
-  phase: string;
-  phaseByModeName: Record<string, string | undefined>;
-  modes: AgentModeConfig[];
-  hotkeys: HotkeysMap;
-  chatSettings: AgentSettings;
-  commands: CommandItem[];
-  quickPromptCursor: { x: number; y: number } | null;
-  pendingThreadCwd?: string;
-  pendingForceDirectoryPicker?: boolean;
-  navHistory: NavHistory<string>;
-  messagePagination: { hasMore: boolean; nextCursor: string | null; isLoading: boolean };
-  sidebarArchivedThreads: ThreadListItem[];
-}
 
 // ---- Helpers ----
 

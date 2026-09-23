@@ -39,6 +39,12 @@ export type HostShellEvent =
    * still loading, and reports a ref no pack provides once loading has settled.
    */
   | { type: 'OPEN_PLUGIN'; plugin: string; events: PluginEvent[] }
+  /**
+   * Hands a plugin's actor `events` without opening it. The same wait as `OPEN_PLUGIN` — a plugin whose pack's
+   * frontend is still loading is waited for, and one no pack provides is reported once loading settles — but the
+   * plugin the user has open doesn't change: a send is not a navigation.
+   */
+  | { type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[] }
   | { type: 'RESIZE_PANEL'; panel: 'canvas' | 'inspection'; size: number }
   | { type: 'RESTORE_CHAT' }
   | { type: 'SET_PLUGIN_VISIBILITY'; plugin: string; visible: boolean }

@@ -38,7 +38,8 @@
       },
       "plugin": {
         "entry": "src/features/threads/fe/plugin.ts",
-        "default": true
+        "default": true,
+        "contract": "src/features/threads/fe/types.ts#Contract"
       },
       "references": "src/features/threads/fe/references",
       "services": {
@@ -60,7 +61,8 @@
         "entry": "src/features/code/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/code/fe/plugin.ts"
+        "entry": "src/features/code/fe/plugin.ts",
+        "contract": "src/features/code/fe/types.ts#Contract"
       },
       "services": {
         "cli": "src/features/code/be/services/cli.ts#cliService",
@@ -78,7 +80,8 @@
         "entry": "src/features/notes/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/notes/fe/plugin.ts"
+        "entry": "src/features/notes/fe/plugin.ts",
+        "contract": "src/features/notes/fe/types.ts#Contract"
       },
       "references": "src/features/notes/fe/references",
       "services": {},
@@ -95,7 +98,8 @@
         "entry": "src/features/browser/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/browser/fe/plugin.ts"
+        "entry": "src/features/browser/fe/plugin.ts",
+        "contract": "src/features/browser/fe/types.ts#Contract"
       },
       "repositories": {
         "browserQueries": "src/features/browser/be/repository/index.ts#browserQueries",
@@ -109,7 +113,8 @@
         "entry": "src/features/library/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/library/fe/plugin.ts"
+        "entry": "src/features/library/fe/plugin.ts",
+        "contract": "src/features/library/fe/types/index.ts#Contract"
       },
       "references": "src/features/library/fe/references",
       "services": {
@@ -128,7 +133,8 @@
         "entry": "src/features/flows/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/flows/fe/plugin.ts"
+        "entry": "src/features/flows/fe/plugin.ts",
+        "contract": "src/features/flows/fe/types/index.ts#Contract"
       },
       "services": {},
       "repositories": {
@@ -143,7 +149,8 @@
         "entry": "src/features/actions/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/actions/fe/plugin.ts"
+        "entry": "src/features/actions/fe/plugin.ts",
+        "contract": "src/features/actions/fe/types.ts#Contract"
       },
       "services": {
         "action": "src/features/actions/be/services/action.ts#actionService"
@@ -160,7 +167,8 @@
         "entry": "src/features/prompts/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/prompts/fe/plugin.ts"
+        "entry": "src/features/prompts/fe/plugin.ts",
+        "contract": "src/features/prompts/fe/types.ts#Contract"
       },
       "services": {
         "prompt": "src/features/prompts/be/services/prompt.ts#promptService"
@@ -178,7 +186,8 @@
         "entry": "src/features/brain/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/brain/fe/plugin.ts"
+        "entry": "src/features/brain/fe/plugin.ts",
+        "contract": "src/features/brain/fe/types.ts#Contract"
       },
       "services": {
         "brain": "src/features/brain/be/services/brain.ts#brainService",
@@ -196,7 +205,8 @@
         "entry": "src/features/database/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/database/fe/plugin.ts"
+        "entry": "src/features/database/fe/plugin.ts",
+        "contract": "src/features/database/fe/types.ts#Contract"
       },
       "services": {
         "database": "src/features/database/be/services/database.ts#databaseService"
@@ -210,7 +220,8 @@
         "entry": "src/features/logs/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/logs/fe/plugin.ts"
+        "entry": "src/features/logs/fe/plugin.ts",
+        "contract": "src/features/logs/fe/types.ts#Contract"
       },
       "services": {},
       "earlySystem": true

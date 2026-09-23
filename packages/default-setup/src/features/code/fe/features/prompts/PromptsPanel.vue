@@ -240,7 +240,7 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { navigateToPlugin } from '@/__generated__/fe'
 import type { CodeState } from '@/features/code/fe/state'
-import { usePromptsList } from '@/features/prompts/fe/public'
+import { usePluginState } from '@/__generated__/fe'
 import { sendToPlugin } from '@/__generated__/events'
 import { ExternalLink, Plus, X, Pencil, Trash2, Sparkle, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import CodePanelHeader from '@/features/code/fe/features/CodePanelHeader.vue'
@@ -264,7 +264,10 @@ const codeActor: CodeState = usePlugin()
 const codePromptsActor = codeChild(codeActor, 'codePrompts')!
 
 // State - the prompts plugin's list (single source of truth)
-const { prompts, page, totalPages, loadingMore } = usePromptsList()
+const prompts = usePluginState('prompts', (s) => s.prompts)
+const page = usePluginState('prompts', (s) => s.page)
+const totalPages = usePluginState('prompts', (s) => s.totalPages)
+const loadingMore = usePluginState('prompts', (s) => s.loadingMore)
 const hasMore = computed(() => page.value < totalPages.value)
 const isLoading = ref(false)
 const error = ref<string | null>(null)

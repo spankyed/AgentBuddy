@@ -10,6 +10,7 @@ import type {
   Category,
   PromptsSettings,
 } from '@/__generated__/types'
+import type { PromptsContext, PromptsInboxEvent } from './types.ts'
 import type { OutgoingPromptEvents } from '@/features/prompts/be/system'
 import type { TemplateInput } from '@abuddy/sdk'
 import { sendToSystem } from '@/__generated__/events'
@@ -23,43 +24,6 @@ import type { PromptEntity, EARS } from '@abuddy/sdk'
 export const id = 'prompts' as const;
 export type PromptsState = ActorRefFrom<typeof promptsState>
 
-export interface PromptsContext {
-  selectedPromptId?: EARS.EntityId;
-  prompts: PromptEntity[];
-  selectedPrompt?: PromptEntity;
-  totalCount: number;
-  page: number;
-  totalPages: number;
-  loadingMore: boolean;
-  categories: Category[]; // Categories from settings
-  selectedCategories: string[]; // Filter state
-
-  // Import/Export state
-  promptsImport: {
-    status: 'idle' | 'importing' | 'success' | 'error';
-    errors: string[];
-    importedCount: number;
-  };
-  promptsExport: {
-    status: 'idle' | 'exporting' | 'success' | 'error';
-    errors: string[];
-    filePath: string;
-    promptCount: number;
-  };
-
-  // Form data for create/edit
-  formData: {
-    label: string;
-    description?: string;
-    category?: string;
-    inputs: Record<string, TemplateInput>;
-    templateFn: string;
-    outputSchema?: any;
-    inputsExpanded?: boolean;
-    outputExpanded?: boolean;
-    metadataExpanded?: boolean;
-  };
-}
 
 type SystemEvent = OutgoingPromptEvents
   | { type: 'PROMPTS_PAGE_LOADED'; data: { prompts: PromptEntity[]; page: number; totalPages: number } }
@@ -70,13 +34,9 @@ type SystemEvent = OutgoingPromptEvents
   | { type: 'PROMPTS_EXPORT_FAILED'; errors: string[] }
 
 type UIEvent =
-  | { type: 'PROMPT.SELECT'; promptId: EARS.EntityId }
+  | PromptsInboxEvent
   | { type: 'PROMPT.CREATE' }
   | { type: 'PROMPT.SAVE' }
-  | { type: 'PROMPT.DELETE'; promptId: EARS.EntityId }
-  | { type: 'PROMPT.UPDATE_INPUTS'; promptId: string; inputs: Record<string, any> }
-  | { type: 'PROMPT.CREATE_INLINE'; label: string; templateFn: string; inputs: Record<string, any> }
-  | { type: 'PROMPT.UPDATE_LABEL'; promptId: string; label: string }
   | { type: 'FORM.UPDATE_CATEGORY'; category: string }
   | { type: 'FORM.UPDATE_LABEL'; label: string }
   | { type: 'FORM.UPDATE_DESCRIPTION'; description: string }
@@ -88,8 +48,6 @@ type UIEvent =
   | { type: 'TOGGLE_OUTPUT_SECTION'; show: boolean }
   | { type: 'TOGGLE_METADATA_SECTION'; show: boolean }
   | { type: 'FEATURE_SETTINGS_UPDATED'; settings: PromptsSettings }
-  | { type: 'PROMPTS.LOAD_MORE' }
-  | { type: 'PROMPTS.LOAD_ALL' }
   | { type: 'FILTER.TOGGLE_CATEGORY'; categoryName: string }
   | { type: 'FILTER.CLEAR' }
   // Import/Export events

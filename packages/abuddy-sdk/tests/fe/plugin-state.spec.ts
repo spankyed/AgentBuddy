@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { effectScope, watchSyncEffect, type Ref } from 'vue';
 import type { AnyActorRef } from 'xstate';
 import { _sendToLocalPlugin, broadcastToPlugin } from '../../src/events/index.ts';
-import { readPluginState, usePluginState } from '../../src/fe/plugin-state.ts';
+import { readUntypedPluginState, useUntypedPluginState } from '../../src/fe/plugin-state.ts';
 import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts';
 import { bindHost, unbindHost } from '../../src/runtime/host-runtime.ts';
 
@@ -48,11 +48,11 @@ afterEach(() => unbindFeHost());
 
 const read = (s: Snapshot) => s.context.notes;
 
-describe('usePluginState', () => {
+describe('useUntypedPluginState', () => {
   it('follows the plugin until the scope is disposed, and unsubscribes with it', () => {
     const scope = effectScope();
-    let selected!: Readonly<Ref<string[]>>;
-    scope.run(() => { selected = usePluginState('default-setup/notes', read); });
+    let selected!: Readonly<Ref<string[] | undefined>>;
+    scope.run(() => { selected = useUntypedPluginState('default-setup/notes', read); });
 
     expect(selected.value).toEqual(['a']);
     expect(notes.subscribers).toBe(1);
@@ -65,15 +65,18 @@ describe('usePluginState', () => {
   });
 
   it('runs only in a reactive scope, so its subscription is always released', () => {
-    expect(() => usePluginState('default-setup/notes', read))
+    expect(() => useUntypedPluginState('default-setup/notes', read))
       .toThrow(/runs in a component's setup or an effect scope/);
   });
 
-  it('refuses a plugin that is not running, and a name that is not a ref', () => {
+  // A ref names a plugin; nothing about a name says it is running. Another pack's frontend may still be loading,
+  // so absence is a value to render, not a throw — the generated readers narrow it away where the pack ships the
+  // plugin itself. A name that isn't a ref is still a mistake, and still throws.
+  it('reads a plugin that is not running as undefined, and refuses a name that is not a ref', () => {
     const scope = effectScope();
-    expect(() => scope.run(() => usePluginState('default-setup/memos', read)))
-      .toThrow('No plugin is running at "default-setup/memos"');
-    expect(() => scope.run(() => usePluginState('notes', read)))
+    expect(scope.run(() => useUntypedPluginState('default-setup/memos', read)?.value)).toBeUndefined();
+    expect(readUntypedPluginState('default-setup/memos', read)).toBeUndefined();
+    expect(() => scope.run(() => useUntypedPluginState('notes', read)))
       .toThrow(`"notes" doesn't name a plugin`);
     scope.stop();
   });
@@ -84,7 +87,7 @@ describe('usePluginState', () => {
     const scope = effectScope();
     let writes = 0;
     scope.run(() => {
-      const selected = usePluginState('default-setup/notes', read) as Ref<string[]>;
+      const selected = useUntypedPluginState('default-setup/notes', read) as Ref<string[]>;
       // A dependency on the ref, counted each time it is written
       const stop = watchSyncEffect(() => { void selected.value; writes += 1; });
       expect(writes).toBe(1);
@@ -98,11 +101,11 @@ describe('usePluginState', () => {
     scope.stop();
   });
 });
-describe('readPluginState', () => {
+describe('readUntypedPluginState', () => {
   it('takes the value once, outside any scope, and never follows it', () => {
-    expect(readPluginState('default-setup/notes', read)).toEqual(['a']);
+    expect(readUntypedPluginState('default-setup/notes', read)).toEqual(['a']);
     notes.change(['c']);
-    expect(readPluginState('default-setup/notes', read)).toEqual(['c']);
+    expect(readUntypedPluginState('default-setup/notes', read)).toEqual(['c']);
     expect(notes.subscribers).toBe(0);
   });
 });
@@ -110,11 +113,13 @@ describe('readPluginState', () => {
 // The renderer half of sending: straight to this window's actor, with no bus between. A backend `broadcastToPlugin`
 // reaches every window showing the plugin, which is why the two have different names.
 describe('_sendToLocalPlugin', () => {
-  it("delivers to this window's actor for that plugin", () => {
+  // It asks the shell rather than the actor: the shell owns whether that plugin is here yet, and answers the same
+  // question for `OPEN_PLUGIN`. What it must not do is open the plugin — a send is not a navigation.
+  it("asks the shell to hand this window's plugin the event, without opening it", () => {
     const sent: unknown[] = [];
     unbindFeHost();
     bindFeHost({
-      application: { system: { get: () => ({ send: (event: unknown) => sent.push(event) }) } } as never,
+      application: { send: (event: unknown) => sent.push(event), system: { get: () => undefined } } as never,
       secrets: {} as never,
       settings: {} as never,
       client: { send() {} },
@@ -123,7 +128,7 @@ describe('_sendToLocalPlugin', () => {
 
     _sendToLocalPlugin('default-setup/threads', { type: 'SELECT_ARTIFACT', artifactId: 'a1' });
 
-    expect(sent).toEqual([{ type: 'SELECT_ARTIFACT', artifactId: 'a1' }]);
+    expect(sent).toEqual([{ type: 'SEND_TO_PLUGIN', plugin: 'default-setup/threads', events: [{ type: 'SELECT_ARTIFACT', artifactId: 'a1' }] }]);
   });
 
   // The two sends share a signature, so picking the wrong one compiles. Worse, a pack test that starts both an
@@ -147,8 +152,19 @@ describe('_sendToLocalPlugin', () => {
       .toThrow(/broadcastToPlugin.*is the backend's.*sendToPlugin/s);
   });
 
-  it('says which plugin is not running, rather than dropping the event', () => {
-    expect(() => _sendToLocalPlugin('default-setup/memos', { type: 'X' }))
-      .toThrow('No plugin is running at "default-setup/memos" to send X to');
+  // A plugin that isn't here yet is the shell's to wait for and, once loading settles, to report through `notify`
+  // (`abuddy-host/tests/features/application/fe/open-plugin.spec.ts`). Nothing throws here any more: this half
+  // knows only that it asked.
+  it('hands the shell a ref no pack provides, rather than throwing on the caller', () => {
+    const sent: unknown[] = [];
+    unbindFeHost();
+    bindFeHost({
+      application: { send: (event: unknown) => sent.push(event), system: { get: () => undefined } } as never,
+      secrets: {} as never, settings: {} as never, client: { send() {} }, packs: {} as never,
+    });
+
+    _sendToLocalPlugin('default-setup/memos', { type: 'X' });
+
+    expect(sent).toEqual([{ type: 'SEND_TO_PLUGIN', plugin: 'default-setup/memos', events: [{ type: 'X' }] }]);
   });
 });

@@ -22,7 +22,8 @@
         "entry": "src/features/memos/be/system.ts"
       },
       "plugin": {
-        "entry": "src/features/memos/fe/plugin.ts"
+        "entry": "src/features/memos/fe/plugin.ts",
+        "contract": "src/features/memos/fe/types.ts#Contract"
       },
       "services": {},
       "repositories": {

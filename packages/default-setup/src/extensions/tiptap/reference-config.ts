@@ -5,7 +5,12 @@ export {
   ALL_PROTOCOLS,
   categoryOfType,
 } from '@/__generated__/references'
-export { NOTE_TYPE_TO_REFERENCE_TYPE } from '@/features/notes/fe/public'
+/** The reference type a note links as, by its note type */
+export const NOTE_TYPE_TO_REFERENCE_TYPE: Record<string, string> = {
+  document: 'note',
+  task: 'task',
+  tasklist: 'tasklist',
+}
 
 export type ReferenceType = string
 export type ReferenceCategory = string

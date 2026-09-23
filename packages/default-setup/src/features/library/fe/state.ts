@@ -1,5 +1,6 @@
 import { setup, assign, type ActorRefFrom } from 'xstate'
 import type { DocumentDTO, CollectionDTO, LibraryIndex, LibraryItem, DocumentItem, FolderContents, BreadcrumbItem, SearchIndex } from '@/__generated__/types'
+import type { LibraryContext, LibraryInboxEvent } from './types'
 import type { OutgoingLibraryEvents } from '@/features/library/be/system'
 import type { SearchIndexFormData } from './types/search-index'
 import { sendToSystem } from '@/__generated__/events'
@@ -56,60 +57,6 @@ import type { ContentSection } from '@/features/library/be/types';
 /** The library plugin's actor, as its own components reach it with `usePlugin<LibraryActor>()` */
 export type LibraryActor = ActorRefFrom<typeof librarySystem>
 
-export interface LibraryContext {
-  // Core view state
-  currentView: 'browser' | 'create' | 'edit' | 'create-index' | 'edit-index' | 'test-index'
-  editingDocument?: DocumentDTO
-
-  // File browser fields
-  items: LibraryItem[]
-  currentFolderId: string | null
-  currentPath: string[]
-  selectedItems: string[]
-  selectedDocument: DocumentDTO | null
-  sortBy: 'name' | 'modified' | 'size' | 'kind'
-  sortDirection: 'asc' | 'desc'
-  breadcrumbs: BreadcrumbItem[]
-  editingItem?: LibraryItem
-  itemToEdit?: string | null
-  newItemId?: string | null
-
-  // Tree view fields
-  expandedFolderIds: string[]
-  expandedFolderChildren: Record<string, LibraryItem[]>
-  loadingFolderIds: string[]
-
-  // Every document and folder by name: the panel's stats and the reference picker read it
-  index: LibraryIndex
-
-  // Search index fields
-  searchIndices: SearchIndex[]
-  editingIndexId?: string
-  editingIndex?: SearchIndex
-
-  // Search test fields
-  testingIndexId?: string
-  testingIndex?: SearchIndex
-  testQuery: string
-  testResults: any[]
-  isSearching: boolean
-
-  // Symlink context
-  isInSymlinkContext: boolean
-  currentSymlinkRootId: string | null
-  symlinkBasePath: string | null
-  isBroken: boolean
-  lastKnownPath: string | null
-
-  // Settings
-  settings?: any
-
-  // Import/Export
-  libraryImport: { status: 'idle' | 'importing' | 'success' | 'error'; errors: string[]; importedCount: number }
-  libraryExport: { status: 'idle' | 'exporting' | 'success' | 'error'; errors: string[]; filePath: string; itemCount: number }
-
-  navHistory: NavHistory<string | null>
-}
 
 export type LibraryEvents =
   | { type: 'PLUGIN_ACTIVATED' }
@@ -118,7 +65,7 @@ export type LibraryEvents =
 
   // Document events
   | { type: 'CREATE_DOCUMENT' }
-  | { type: 'EDIT_DOCUMENT'; documentId: string }
+  | LibraryInboxEvent
   | { type: 'DELETE_DOCUMENT'; documentId: string }
   | { type: 'SAVE_DOCUMENT'; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }
   | { type: 'CANCEL_EDIT' }
@@ -147,7 +94,6 @@ export type LibraryEvents =
   | { type: 'COLLAPSE_FOLDER'; folderId: string }
 
   // File browser events
-  | { type: 'NAVIGATE_TO_FOLDER'; folderId: string | null }
   | { type: 'DOUBLE_CLICK_ITEM'; item: LibraryItem }
   | { type: 'SELECT_ITEMS'; itemIds: string[] }
   | { type: 'RENAME_ITEM'; itemId: string; name: string }

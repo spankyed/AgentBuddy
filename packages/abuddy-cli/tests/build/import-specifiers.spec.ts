@@ -438,30 +438,32 @@ describe('findCrossFeatureImports', () => {
     ]);
   });
 
-  it("allows a feature's own frontend, another's public module, backend and shared modules, and generated code", () => {
+  it("allows a feature's own frontend, another's backend and shared modules, and generated code", () => {
     writeAt(`${src}/features/code/fe/panel.ts`, [
       "import { codeChild } from '@/features/code/fe/utils/parent-communication';",
-      "import { useActionsList } from '@/features/actions/fe/public';",
+      "import { usePluginState } from '@/__generated__/fe';",
       "import { pluginSettings } from '@/features/settings/plugin-settings';",
       "import type { ActionEntity } from '@/features/actions/be/types';",
     ].join('\n'));
     writeAt(`${src}/features/code/fe/features/list.ts`, "import state from '../state';");
     writeAt(`${src}/__generated__/pack-entry-fe.ts`, "import plugin from '../features/notes/fe/plugin.js';");
-    // `public` as a folder, by the folder or its index
-    writeAt(`${src}/features/threads/fe/chat.ts`, "import { a } from '@/features/actions/fe/public';\nimport { b } from '@/features/notes/fe/public/index';");
     // A feature's own modules outside fe/ may use its frontend, exporting what they make of it
     writeAt(`${src}/features/code/settings.ts`, "import { id } from './fe/state';\nconst label = `${id}!`;\nexport { label };");
     expect(findCrossFeatureImports([src], root)).toEqual([]);
   });
 
-  it("flags another feature's fe folder itself, and a feature passing its frontend on from outside fe/", () => {
-    writeAt(`${src}/features/code/fe/panel.ts`, "import notes from '@/features/notes/fe';");
+  // `fe/public.ts` used to be excepted — a module per feature for exactly this crossing. The generated readers
+  // replaced it, so another feature's frontend is now out of bounds whatever the module is called.
+  it("flags another feature's frontend, its old public module included, and a feature passing its frontend on", () => {
+    writeAt(`${src}/features/code/fe/panel.ts`, "import notes from '@/features/notes/fe';\nimport { useNotes } from '@/features/notes/fe/public';");
     writeAt(`${src}/features/notes/index.ts`, "export { id, notesMachine } from './fe/state';\nexport * from './fe/public';");
     // In two steps: imported, then exported
     writeAt(`${src}/features/threads/door.ts`, "import { threadsMachine as machine } from './fe/state';\nimport * as ui from './fe/canvas';\nexport { machine };\nexport default ui;");
     expect(findCrossFeatureImports([src], root)).toEqual([
       `${src}/features/code/fe/panel.ts:1: @/features/notes/fe`,
+      `${src}/features/code/fe/panel.ts:2: @/features/notes/fe/public`,
       `${src}/features/notes/index.ts:1: ./fe/state`,
+      `${src}/features/notes/index.ts:2: ./fe/public`,
       `${src}/features/threads/door.ts:1: ./fe/state`,
       `${src}/features/threads/door.ts:2: ./fe/canvas`,
     ]);

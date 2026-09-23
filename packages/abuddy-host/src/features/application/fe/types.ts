@@ -76,8 +76,12 @@ export interface ShellContext {
    * opened another plugin by then.
    */
   pendingPluginId: string | null;
-  /** Plugins asked to open (OPEN_PLUGIN) that aren't registered while pack frontends are still loading */
-  pendingOpens: Array<{ plugin: string; events: PluginEvent[] }>;
+  /**
+   * Work waiting on a plugin that isn't registered while pack frontends are still loading: an `OPEN_PLUGIN`
+   * (`select: true`) or a `SEND_TO_PLUGIN`. One queue, because the wait is the same question — has that pack's
+   * frontend arrived — and `select` is the only thing that differs once it has.
+   */
+  awaitingPlugin: Array<{ plugin: string; events: PluginEvent[]; select: boolean }>;
   /** Whether this window's bus subscription is established; it reconnects after the connection drops */
   busSubscribed: boolean;
   /** Whether the pack frontend loader is running: one run at a time, so a pack is never loaded twice */
@@ -107,6 +111,7 @@ export interface ShellContext {
 export type ShellEvent =
   | { type: 'SELECT_PLUGIN'; plugin: string; historyIndex?: number }
   | { type: 'OPEN_PLUGIN'; plugin: string; events: PluginEvent[] }
+  | { type: 'SEND_TO_PLUGIN'; plugin: string; events: PluginEvent[] }
   /** Hands an opened plugin its events, once the shell has selected it */
   | { type: 'DELIVER_PLUGIN_EVENTS'; plugin: string; events: PluginEvent[] }
   | { type: 'DEFAULT_TOGGLE'; area: 'canvas' }

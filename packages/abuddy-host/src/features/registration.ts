@@ -24,7 +24,7 @@ export type OutgoingPacksEvents =
 
 /**
  * The event types the `packs` plugin receives. Not part of `HostPluginEvents`, which is the host's published
- * inbox — what any pack may send it, as a pack's plugin publishes its own with `pluginAccepts()`. These are the
+ * inbox — what any pack may send it, as a pack's plugin publishes its own in its `Contract`. These are the
  * host's to send itself, and no pack's.
  */
 export const PACKS_PLUGIN_EVENT_TYPES = eventTypes<OutgoingPacksEvents>()(

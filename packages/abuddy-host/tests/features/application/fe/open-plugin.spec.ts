@@ -106,10 +106,52 @@ it('drops a request whose pack is unloaded while it waits', async () => {
   loaded();
   await settle();
 
-  expect(app.getSnapshot().context.pendingOpens).toEqual([]);
+  expect(app.getSnapshot().context.awaitingPlugin).toEqual([]);
   expect(opened()).toBe('default-setup/notes');
   expect(eventsOf('memo-pack/memos')).toEqual([]);
   expect(shell.notify.error).not.toHaveBeenCalled();
+});
+
+// SEND_TO_PLUGIN is the same wait with a different ending: the renderer's `sendToPlugin` (`_sendToLocalPlugin`)
+// routes through here rather than reaching into the plugin's actor, so one owner answers "is that plugin here yet"
+// for both channels. What it must not do is open the plugin — a cross-feature command is not a navigation.
+it('hands a registered plugin its events without opening it', async () => {
+  await connectLoading([]);
+  await settle();
+
+  app.send({ type: 'SEND_TO_PLUGIN', plugin: 'default-setup/settings', events: [{ type: 'PLUGIN.SELECT', pluginId: 'default-setup/logs' }] });
+  await settle();
+
+  expect(opened()).toBe('default-setup/notes');
+  expect(eventsOf('default-setup/settings')).toEqual([{ plugin: 'default-setup/settings', type: 'PLUGIN.SELECT', open: false }]);
+});
+
+it("waits for a plugin whose pack's frontend is still loading, and delivers once it arrives, still without opening it", async () => {
+  let loaded!: () => void;
+  const release = new Promise<void>((resolve) => { loaded = resolve; });
+  await connectLoading([{ id: 'memo-pack', plugins: [recording('memo-pack/memos')] }], release);
+
+  app.send({ type: 'SEND_TO_PLUGIN', plugin: 'memo-pack/memos', events: [{ type: 'MEMO.HIGHLIGHT', memoId: 'm1' }] });
+  expect(eventsOf('memo-pack/memos')).toEqual([]);
+
+  loaded();
+  await settle();
+
+  expect(eventsOf('memo-pack/memos')).toEqual([{ plugin: 'memo-pack/memos', type: 'MEMO.HIGHLIGHT', open: false }]);
+  expect(opened()).toBe('default-setup/notes');
+  expect(shell.notify.error).not.toHaveBeenCalled();
+});
+
+it('reports a send to a plugin no pack provides once loading settles, saying it could not reach it', async () => {
+  let loaded!: () => void;
+  const release = new Promise<void>((resolve) => { loaded = resolve; });
+  await connectLoading([{ id: 'memo-pack', plugins: [recording('memo-pack/memos')] }], release);
+
+  app.send({ type: 'SEND_TO_PLUGIN', plugin: 'memo-pack/memoz', events: [{ type: 'X' }] });
+  loaded();
+  await settle();
+
+  expect(shell.notify.error).toHaveBeenCalledWith("Couldn't reach memo-pack/memoz", 'No plugin is registered at "memo-pack/memoz"');
 });
 
 // A pack's system or action asks the app to open a plugin with broadcastToPlugin('host/application', …); every window

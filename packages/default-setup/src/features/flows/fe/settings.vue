@@ -199,7 +199,7 @@ import { openPlugin } from '@abuddy/sdk/fe'
 import { resolveName } from '@abuddy/sdk/ids'
 
 const HOST_SETTINGS = resolveName('settings', 'host')
-import { useRunningRootFlowId } from '@/features/brain/fe/public'
+import { usePluginState } from '@/__generated__/fe'
 import { ref, computed, watch } from 'vue'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { AlertTriangle, Brain, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
@@ -247,7 +247,7 @@ const exportErrors = useSelector(flowsActor, (state) => state.context.dslExport.
 const exportedFilePath = useSelector(flowsActor, (state) => state.context.dslExport.filePath)
 const exportedFlowCount = useSelector(flowsActor, (state) => state.context.dslExport.flowCount)
 
-const runningRootFlowId = useRunningRootFlowId()
+const runningRootFlowId = usePluginState('brain', (s) => s.runningRootFlowId)
 
 // Check if restart is needed by comparing root flow IDs
 const needsRestart = computed(() => {

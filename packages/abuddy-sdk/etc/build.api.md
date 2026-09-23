@@ -330,13 +330,16 @@ export const FeatureEntrySchema: z.ZodObject<{
     }>>;
     plugin: z.ZodOptional<z.ZodObject<{
         entry: z.ZodString;
+        contract: z.ZodOptional<z.ZodString>;
         default: z.ZodOptional<z.ZodBoolean>;
     }, "strict", z.ZodTypeAny, {
         entry: string;
         default?: boolean | undefined;
+        contract?: string | undefined;
     }, {
         entry: string;
         default?: boolean | undefined;
+        contract?: string | undefined;
     }>>;
     services: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
     repositories: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
@@ -347,6 +350,7 @@ export const FeatureEntrySchema: z.ZodObject<{
     plugin?: {
         entry: string;
         default?: boolean | undefined;
+        contract?: string | undefined;
     } | undefined;
     designation?: string | undefined;
     typesEntry?: string | undefined;
@@ -366,6 +370,7 @@ export const FeatureEntrySchema: z.ZodObject<{
     plugin?: {
         entry: string;
         default?: boolean | undefined;
+        contract?: string | undefined;
     } | undefined;
     designation?: string | undefined;
     typesEntry?: string | undefined;
@@ -486,13 +491,16 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         }>>;
         plugin: z.ZodOptional<z.ZodObject<{
             entry: z.ZodString;
+            contract: z.ZodOptional<z.ZodString>;
             default: z.ZodOptional<z.ZodBoolean>;
         }, "strict", z.ZodTypeAny, {
             entry: string;
             default?: boolean | undefined;
+            contract?: string | undefined;
         }, {
             entry: string;
             default?: boolean | undefined;
+            contract?: string | undefined;
         }>>;
         services: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
         repositories: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
@@ -503,6 +511,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         plugin?: {
             entry: string;
             default?: boolean | undefined;
+            contract?: string | undefined;
         } | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;
@@ -522,6 +531,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         plugin?: {
             entry: string;
             default?: boolean | undefined;
+            contract?: string | undefined;
         } | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;
@@ -838,6 +848,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         plugin?: {
             entry: string;
             default?: boolean | undefined;
+            contract?: string | undefined;
         } | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;
@@ -945,6 +956,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         plugin?: {
             entry: string;
             default?: boolean | undefined;
+            contract?: string | undefined;
         } | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;
@@ -1052,6 +1064,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         plugin?: {
             entry: string;
             default?: boolean | undefined;
+            contract?: string | undefined;
         } | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;
@@ -1159,6 +1172,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         plugin?: {
             entry: string;
             default?: boolean | undefined;
+            contract?: string | undefined;
         } | undefined;
         designation?: string | undefined;
         typesEntry?: string | undefined;

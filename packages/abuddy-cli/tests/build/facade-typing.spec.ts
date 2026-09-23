@@ -24,7 +24,7 @@ const BASE_PACK = {
     features: [{
       id: 'threads',
       system: { entry: 'src/system.ts' },
-      plugin: { entry: 'src/plugin.ts' },
+      plugin: { entry: 'src/plugin.ts', contract: 'src/plugin.types.ts#Contract' },
       services: { search: 'src/search.ts#searchService' },
       repositories: { tagQueries: 'src/repository.ts#tagQueries' },
     }, {
@@ -44,10 +44,12 @@ const BASE_PACK = {
     'export default entry;',
   ].join('\n'),
   'src/plugin.ts': [
-    "import { pluginAccepts, type Plugin } from '@abuddy/sdk/fe';",
-    "export const accepts = pluginAccepts<{ type: 'TAG_ADDED'; name: string }>();",
+    "import type { Plugin } from '@abuddy/sdk/fe';",
     "export default { id: 'threads' } as unknown as Plugin;",
   ].join('\n') + '\n',
+  // The plugin's contract: a declared type in a leaf the plugin's own module never imports, which is what the
+  // dependent's facade carries as this plugin's published inbox
+  'src/plugin.types.ts': "export type Contract = { state: { tags: string[] }; inbox: { public: { type: 'TAG_ADDED'; name: string } } };\n",
   'src/inbox.ts': [
     "import { setup } from 'xstate';",
     "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",

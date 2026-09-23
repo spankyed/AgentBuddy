@@ -23,13 +23,18 @@ export interface ModuleExports {
    */
   outgoingEventTypesOf(file: string): string[];
   /**
-   * The `type` literals of the events a plugin module's `accepts` export (its `pluginAccepts()` call) declares
-   * that *other* plugins may send it. A plugin with no `accepts` export reads as `[]`: what its own feature's
-   * system sends it is that system's outgoing union, which codegen adds. Throws on a member with no literal
-   * `type`, as the system reader does, and when an `accepts` export carries no events — an annotation
-   * (`: PluginAccepts`) drops them, and an inbox declared as nothing is a mistake rather than a contract.
+   * The `type` literals of the events a plugin's contract says *other* plugins may send it, read from the type
+   * `name` that `file` declares (`abuddy.json`'s `features[].plugin.contract`) — its `inbox`, across audiences.
+   *
+   * A contract with no `inbox` reads as `[]`: it publishes state only, and what its own feature's system sends it
+   * is that system's outgoing union, which codegen adds. Throws when the module declares no such type, when the
+   * inbox names an audience that doesn't exist, and on a member with no literal `type`, as the system reader does.
+   *
+   * It reads a *declared* type, never a value, which is what lets the contract live in a leaf module the plugin's
+   * machine doesn't reach: reading it off `fe/plugin.ts` would pull in the machine, whose imports cycle back
+   * through the generated events module this feeds.
    */
-  acceptedEventTypesOf(file: string): string[];
+  inboxEventTypesOf(file: string, name: string): string[];
 }
 
 /**
@@ -39,6 +44,9 @@ export interface ModuleExports {
  * @internal Host-only: abuddy CLI build tooling.
  */
 export const _TYPES_UNRESOLVED = 'ABUDDY_TYPES_UNRESOLVED';
+
+/** The audiences a plugin's inbox may open to, in the order an error lists them (`PluginInbox`, @abuddy/sdk/fe) */
+const INBOX_AUDIENCES = ['pack', 'public'];
 
 function loadTypeScript(): typeof TS {
   try {
@@ -96,6 +104,26 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
     return symbol.flags & ts.SymbolFlags.Value ? checker.getTypeOfSymbol(symbol) : undefined;
   }
 
+  /**
+   * The type a module *declares* under `name` — a type alias or an interface — following aliases, or undefined
+   * when it declares none. The counterpart of `exportedValueType`, which resolves values only: this is what lets
+   * codegen read a contract that has no runtime value to hang a phantom property off.
+   */
+  function declaredTypeOf(file: string, name: string): TS.Type | undefined {
+    const sourceFile = program.getSourceFile(file);
+    if (!sourceFile) throw new Error(`${file} is not part of the program reading pack exports`);
+    const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
+    const exported = moduleSymbol && checker.getExportsOfModule(moduleSymbol).find((symbol) => symbol.name === name);
+    if (!exported) return undefined;
+    let symbol = exported;
+    while (symbol.flags & ts.SymbolFlags.Alias) {
+      const target = checker.getImmediateAliasedSymbol(symbol);
+      if (!target) return undefined;
+      symbol = target;
+    }
+    return symbol.flags & ts.SymbolFlags.Type ? checker.getDeclaredTypeOfSymbol(symbol) : undefined;
+  }
+
   /** The type of property `name` of `type`, or undefined when it has none */
   function propertyType(type: TS.Type, name: string): TS.Type | undefined {
     const property = type.getProperty(name);
@@ -144,27 +172,23 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
       }
       return eventTypeLiterals(declared, path.basename(file), "its system's outgoing events", ' (an entry annotated `: SystemEntry` has these: default-export it declared with `satisfies SystemEntry`)');
     },
-    acceptedEventTypesOf(file) {
-      const entry = exportedValueType(file, 'accepts');
-      // A plugin that declares no inbox takes only what its own feature's system sends it
-      if (!entry) return [];
-      if (entry.flags & ts.TypeFlags.Any) {
-        throw Object.assign(
-          new Error(`${path.basename(file)}: the events other plugins may send it are read from its \`accepts\` export, whose type doesn't resolve: check that its \`pluginAccepts\` import does, and that the pack's dependencies are installed`),
-          { code: _TYPES_UNRESOLVED },
-        );
+    inboxEventTypesOf(file, name) {
+      const contract = declaredTypeOf(file, name);
+      if (!contract) {
+        throw new Error(`${path.basename(file)}: it declares no type "${name}". A plugin's contract is a declared type — \`export type ${name} = { state: …; inbox: … }\` — named in abuddy.json at features[].plugin.contract`);
       }
-      const declared = propertyType(entry, '_accepts');
-      if (!declared) {
-        throw new Error(`${path.basename(file)}: its \`accepts\` export carries no events: declare it with \`pluginAccepts<…>()\`, whose type codegen reads`);
+      const inbox = propertyType(contract, 'inbox');
+      // A contract may publish state alone; its own system's events still reach it
+      if (!inbox) return [];
+      const audiences = inbox.getProperties();
+      const unknown = audiences.filter((audience) => !INBOX_AUDIENCES.includes(audience.name));
+      if (unknown.length > 0) {
+        throw new Error(`${path.basename(file)}: ${name}'s inbox names ${unknown.map((a) => `"${a.name}"`).join(', ')}, which ${unknown.length > 1 ? 'are not audiences' : 'is not an audience'}: an inbox opens to ${INBOX_AUDIENCES.map((a) => `\`${a}\``).join(' or ')}. Declaring it with \`PluginInbox<…>\` would have caught this at the declaration`);
       }
-      // A declared inbox that resolves to `never` is the annotation mistake: `PluginAccepts`'s own type parameter
-      // defaults to `never`, so `const accepts: PluginAccepts = pluginAccepts<Foo>()` silently drops `Foo`. It is
-      // self-consistent — no sender compiles either — but the author is told nothing at the declaration.
-      if (declared.flags & ts.TypeFlags.Never) {
-        throw new Error(`${path.basename(file)}: its \`accepts\` export declares no events: write \`export const accepts = pluginAccepts<…>()\` without a type annotation, which would drop them, or remove the export if nothing else sends to this plugin`);
-      }
-      return eventTypeLiterals(declared, path.basename(file), 'the events it accepts', ' (an `accepts` annotated `: PluginAccepts` has these: declare it as `pluginAccepts<…>()` alone)');
+      return audiences.flatMap((audience) => {
+        const declared = propertyType(inbox, audience.name);
+        return declared ? eventTypeLiterals(declared, path.basename(file), `the events it accepts from \`${audience.name}\``, '') : [];
+      });
     },
   };
 

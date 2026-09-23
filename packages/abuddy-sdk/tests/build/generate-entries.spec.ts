@@ -62,21 +62,27 @@ function generate(fields: Record<string, unknown>, deps: Record<string, PackSnap
  * them, with no import: codegen reads the sent events from the default export's spec.
  */
 /**
- * A plugin entry, with the `accepts` export beside it when the plugin declares an inbox.
- *
- * The shape is written out rather than imported: these fixtures are bare temp dirs with no `@abuddy/sdk` to
- * resolve, so a `PluginAccepts` import here reads as `any`. That the phantom `fe/plugin.ts` declares is the one
- * `module-exports.ts` reads is checked where real packs are built instead — renaming it fails
- * `abuddy generate-entries` on default-setup, which `npm run compile` and `typecheck:pack` both run.
+ * A plugin entry, and beside it the contract leaf when the plugin declares one. The contract is a plain declared
+ * type: these fixtures are bare temp dirs with no `@abuddy/sdk` to resolve, and a declared type needs no import to
+ * read — which is the point of reading one rather than a value's phantom property.
  */
-function writePluginEntry(file: string, accepts?: string): string {
-  write(file.endsWith('.ts') ? file : `${file}.ts`, [
-    ...(accepts ? [`export declare const accepts: { _accepts: ${accepts} };`] : []),
-    'declare const plugin: { label: string };',
-    'export default plugin;',
-  ].join('\n') + '\n');
+function writePluginEntry(file: string, inbox?: string): string {
+  write(file.endsWith('.ts') ? file : `${file}.ts`, ['declare const plugin: { label: string };', 'export default plugin;'].join('\n') + '\n');
+  if (inbox !== undefined) writeContract(`${file.replace(/(\.ts)?$/, '')}.types.ts`, inbox);
   return file;
 }
+
+/** A contract leaf: the state the plugin publishes, and the inbox it opens */
+function writeContract(file: string, inbox?: string, state = '{ ready: boolean }'): string {
+  write(file, `export type Contract = { state: ${state}${inbox === undefined ? '' : `; inbox: { public: ${inbox} }`} };\n`);
+  return `${file}#Contract`;
+}
+
+/** The manifest `plugin` object for a feature whose contract sits beside its entry */
+const pluginWithContract = (entry: string, inbox?: string) => ({
+  entry: writePluginEntry(entry, inbox),
+  ...(inbox === undefined ? {} : { contract: `${entry.replace(/(\.ts)?$/, '')}.types.ts#Contract` }),
+});
 
 function writeSystemEntry(id: string, outgoing: string, incoming = `{ type: '${id.toUpperCase()}_RUN' }`): string {
   const entry = `src/features/${id}/be/system.ts`;
@@ -100,7 +106,7 @@ const system = (id: string, extra: Record<string, unknown> = {}) => {
   }
   return { id, system: { entry, ...extra } };
 };
-const withPlugin = (feature: Record<string, unknown>, accepts?: string) => ({ ...feature, plugin: { entry: writePluginEntry(`src/features/${feature.id}/fe/index.ts`, accepts) } });
+const withPlugin = (feature: Record<string, unknown>, inbox?: string) => ({ ...feature, plugin: pluginWithContract(`src/features/${feature.id}/fe/index.ts`, inbox) });
 
 /** The event types the generated pack entry says a feature's plugin receives, or undefined when it has no plugin */
 function receives(files: Record<string, string>, featureId: string): string[] | undefined {
@@ -117,9 +123,10 @@ describe('generated events', () => {
     // A plugin that declares nothing takes only what its own feature's system sends it
     expect(events).toContain("'actions': __events_actions | __accepts_actions;");
     expect(events).toContain("'flows': __events_flows | __accepts_flows;");
-    // What a dependent may send is the declared inbox alone, never the events between a feature's own halves
+    // What a dependent may send is the `public` audience alone: not the events between a feature's own halves, and
+    // not the `pack` audience either, which is what this pack's features send each other
     expect(events).toContain("export type PackPluginEvents = {");
-    expect(events).toContain("  'flows': __accepts_flows;");
+    expect(events).toContain("  'flows': __public_flows;");
     // Every host plugin is sendable, as every dependency's system already is: the owner's declaration is the contract
     expect(events).toContain("export type QualifiedPluginEvents = Qualified<'demo-pack', OwnPluginEvents> & HostPluginEvents;");
     expect(events).toContain("export type SendablePluginEvents = WithOwnNames<'demo-pack', QualifiedPluginEvents>;");
@@ -213,34 +220,41 @@ describe('generated events', () => {
 
 
   it('keys a plugin-only feature by the inbox it declares, with no system of its own', () => {
-    writePluginEntry('src/features/sidebar/fe/index.ts', "{ type: 'SIDEBAR.TOGGLE' }");
-    const files = generate({ features: [system('notes'), { id: 'sidebar', plugin: { entry: 'src/features/sidebar/fe/index.ts' } }] });
+    const plugin = pluginWithContract('src/features/sidebar/fe/index.ts', "{ type: 'SIDEBAR.TOGGLE' }");
+    const files = generate({ features: [system('notes'), { id: 'sidebar', plugin }] });
     expect(files['src/__generated__/events.ts']).toContain("'sidebar': __accepts_sidebar;");
     expect(receives(files, 'sidebar')).toEqual(['SIDEBAR.TOGGLE']);
   });
 
-  // An `accepts` export must be a value: the generated module reads `(typeof accepts)['_accepts']`, which needs a
-  // runtime binding. Declared only as a type it once passed the check and emitted a generated file that didn't
-  // compile, naming a file its author never wrote.
-  it('passes over an `accepts` exported only as a type, rather than emitting `typeof` on it', () => {
-    write('src/features/sidebar/fe/index.ts', [
-      "export type accepts = { _accepts: { type: 'SIDEBAR.TOGGLE' } };",
-      'declare const plugin: { label: string };',
-      'export default plugin;',
-    ].join('\n') + '\n');
-    const files = generate({ features: [system('notes'), { id: 'sidebar', plugin: { entry: 'src/features/sidebar/fe/index.ts' } }] });
-    const events = files['src/__generated__/events.ts'];
-    expect(events).not.toContain('__declared_sidebar');
-    expect(events).toContain('type __accepts_sidebar = never;');
-    expect(receives(files, 'sidebar')).toEqual([]);
+  // The contract is read as a declared type. A name exported only as a value is the mistake worth catching: the
+  // old reader's opposite check — an `accepts` exported only as a type — went with the phantom it read.
+  it('refuses a contract the module exports only as a value', () => {
+    const entry = writePluginEntry('src/features/sidebar/fe/index.ts');
+    write('src/features/sidebar/fe/types.ts', 'export const Contract = { state: {} };\n');
+    expect(() => generate({ features: [system('notes'), { id: 'sidebar', plugin: { entry, contract: 'src/features/sidebar/fe/types.ts#Contract' } }] }))
+      .toThrow(/only as a value, not a type/);
   });
 
-  // `PluginAccepts`'s own type parameter defaults to `never`, so an annotation drops what was declared. The
-  // result is self-consistent — no sender compiles either — so nothing else would say it happened.
-  it('refuses an `accepts` that declares no events, naming the annotation that drops them', () => {
-    writePluginEntry('src/features/sidebar/fe/index.ts', 'never');
-    expect(() => generate({ features: [system('notes'), { id: 'sidebar', plugin: { entry: 'src/features/sidebar/fe/index.ts' } }] }))
-      .toThrow(/declares no events/);
+  it('refuses a contract the module does not declare, naming the type it looked for', () => {
+    const entry = writePluginEntry('src/features/sidebar/fe/index.ts');
+    write('src/features/sidebar/fe/types.ts', 'export type Other = { state: {} };\n');
+    expect(() => generate({ features: [system('notes'), { id: 'sidebar', plugin: { entry, contract: 'src/features/sidebar/fe/types.ts#Contract' } }] }))
+      .toThrow(/doesn't export "Contract"/);
+  });
+
+  it('refuses an inbox opened to an audience that does not exist', () => {
+    const entry = writePluginEntry('src/features/sidebar/fe/index.ts');
+    write('src/features/sidebar/fe/types.ts', "export type Contract = { state: {}; inbox: { publik: { type: 'X' } } };\n");
+    expect(() => generate({ features: [system('notes'), { id: 'sidebar', plugin: { entry, contract: 'src/features/sidebar/fe/types.ts#Contract' } }] }))
+      .toThrow(/is not an audience/);
+  });
+
+  // A plugin may publish state and take nothing: its own system's events still reach it
+  it('reads a contract with no inbox as receiving only its own system events', () => {
+    const entry = writePluginEntry('src/features/sidebar/fe/index.ts');
+    const contract = writeContract('src/features/sidebar/fe/types.ts');
+    const files = generate({ features: [{ ...system('sidebar'), plugin: { entry, contract } }] });
+    expect(receives(files, 'sidebar')).toEqual(['SIDEBAR_CONNECTED', 'SIDEBAR_UPDATED']);
   });
 
   it("keys a dependency's plugin that declares nothing to never, so no send to it compiles", () => {
@@ -1113,7 +1127,7 @@ describe('the snapshot format', () => {
   };
     const MANIFEST_SYSTEM_FIELDS: Record<keyof PackSystemEntry, true> = { entry: true, events: true };
   const MANIFEST_SYSTEM_EVENTS_FIELDS: Record<keyof NonNullable<PackSystemEntry['events']>, true> = { incoming: true };
-  const MANIFEST_PLUGIN_FIELDS: Record<keyof PackPluginEntry, true> = { default: true, entry: true };
+  const MANIFEST_PLUGIN_FIELDS: Record<keyof PackPluginEntry, true> = { contract: true, default: true, entry: true };
   /** A dependency's seed formats, which a dependent's `boot.seed` compiles its own sources with */
   const SEED_FORMAT_FIELDS: Record<keyof SeedFormatConfig, true> = {
     compiler: true, entity: true, fields: true, format: true, identity: true, media: true, tree: true,
@@ -1173,7 +1187,7 @@ describe('the snapshot format', () => {
         feature: ['designation', 'earlySystem', 'id', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
         system: ['entry', 'events'],
         systemEvents: ['incoming'],
-        plugin: ['default', 'entry'],
+        plugin: ['contract', 'default', 'entry'],
         seedFormat: ['compiler', 'entity', 'fields', 'format', 'identity', 'media', 'tree'],
         seedTree: ['branch', 'branchEntity', 'relKind'],
         seedField: ['default', 'from', 'type'],
@@ -1185,7 +1199,7 @@ describe('the snapshot format', () => {
         plugin: ['receives'],
       },
       provenanceKinds: ['commands', 'entities', 'plugins', 'relKinds'],
-      facadeImports: ['PackEntityShapes', 'PackPluginEvents', 'PackStepNodes', 'PackSystemEvents', 'Repositories', 'Services'],
+      facadeImports: ['PackEntityShapes', 'PackPluginEvents', 'PackPluginState', 'PackStepNodes', 'PackSystemEvents', 'Repositories', 'Services'],
     });
   });
 });

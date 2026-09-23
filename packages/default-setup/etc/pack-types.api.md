@@ -5,13 +5,13 @@
 ```ts
 import * as _abuddy_ears from '@abuddy/ears';
 import * as _abuddy_sdk from '@abuddy/sdk';
-import { ActionEntity, ActionParameter, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes, TemplateInput } from '@abuddy/sdk';
+import { ActionEntity, ActionParameter, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes, TNodeEntity as TNodeEntity$1, TemplateInput } from '@abuddy/sdk';
 import { ArtifactItem } from '@abuddy/sdk/artifacts';
 import * as _abuddy_sdk_build from '@abuddy/sdk/build';
-import { HostPluginEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, Qualified, TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
-import * as _abuddy_sdk_fe from '@abuddy/sdk/fe';
-import { HotkeysMap, NavHistory, TabGroup, TrailClickEvent } from '@abuddy/sdk/fe';
-import { ModelCatalogEntry, ModelId } from '@abuddy/sdk/models';
+import { HostPluginEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, PluginInboxOf, PublicPluginInboxOf, Qualified, TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
+import { HotkeysMap, NavHistory, PluginInbox, PluginStateOf, TabGroup } from '@abuddy/sdk/fe';
+import { Simplify as Simplify$1 } from '@abuddy/sdk/helpers';
+import { EmbeddingModelId, ModelCatalogEntry, ModelId } from '@abuddy/sdk/models';
 import * as _abuddy_sdk_repositories from '@abuddy/sdk/repositories';
 import { FlowEdge } from '@abuddy/sdk/repositories';
 import { HostServices } from '@abuddy/sdk/services';
@@ -57,16 +57,67 @@ interface ActionTab {
     isPreview?: boolean;
 }
 
-type ActionsEvents = UIEvent$1 | SystemEvent$1 | TrailClickEvent;
-
-/** The events another feature may send the actions plugin: paging, and editing an action */
-type ActionsListEvent = Extract<ActionsEvents, {
-    type: 'ACTION.CREATE' | 'ACTION.CREATE_INLINE' | 'ACTION.DELETE' | 'ACTION.SELECT' | 'ACTION.UPDATE_INPUT' | 'ACTION.UPDATE_LABEL' | 'ACTIONS.LOAD_ALL' | 'ACTIONS.LOAD_MORE';
-}>;
-
-interface ActionsSettings {
+interface ActionsContext {
+    selectedActionId?: EARS.EntityId;
+    actions: ActionEntity[];
+    selectedAction?: ActionEntity;
+    totalCount: number;
+    page: number;
+    totalPages: number;
+    loadingMore: boolean;
     categories: Category[];
+    selectedCategories: string[];
+    actionsImport: {
+        status: 'error' | 'idle' | 'importing' | 'success';
+        errors: string[];
+        importedCount: number;
+    };
+    actionsExport: {
+        status: 'error' | 'exporting' | 'idle' | 'success';
+        errors: string[];
+        filePath: string;
+        actionCount: number;
+    };
+    formData: {
+        label: string;
+        description?: string;
+        category?: string;
+        input: Record<string, ActionParameter>;
+        actionFn: string;
+        output?: any;
+        parametersExpanded?: boolean;
+        outputExpanded?: boolean;
+        metadataExpanded?: boolean;
+    };
 }
+
+/** Paging and editing, which the code plugin's actions panel asks of it */
+type ActionsInboxEvent = {
+    type: 'ACTION.SELECT';
+    actionId: EARS.EntityId;
+} | {
+    type: 'ACTION.CREATE';
+} | {
+    type: 'ACTION.DELETE';
+    actionId: EARS.EntityId;
+} | {
+    type: 'ACTION.UPDATE_INPUT';
+    actionId: string;
+    input: Record<string, any>;
+} | {
+    type: 'ACTION.CREATE_INLINE';
+    label: string;
+    actionFn: string;
+    input: Record<string, any>;
+} | {
+    type: 'ACTION.UPDATE_LABEL';
+    actionId: string;
+    label: string;
+} | {
+    type: 'ACTIONS.LOAD_MORE';
+} | {
+    type: 'ACTIONS.LOAD_ALL';
+};
 
 interface ActionsStartupData {
     actions: ActionEntity[];
@@ -264,6 +315,13 @@ type AutoHideOptions = {
     asideContext?: undefined;
 };
 
+interface AutocompleteSuggestion {
+    url: string;
+    title: string;
+    favicon: string;
+    matchType: 'title' | 'url';
+}
+
 type BaseEntity = _abuddy_ears.BaseEntity;
 
 interface BlockConfig {
@@ -331,6 +389,38 @@ type BlockResponse =
 /** Multi-select choice emits a raw string array (of choice ids). */
  | string[];
 
+interface Bookmark {
+    url: string;
+    title: string;
+    favicon: string;
+    displayOrder: number;
+}
+
+interface BrainContext {
+    flowTNodeId?: string;
+    tNodeTree?: TrackTree[];
+    normalizedTree?: NormalizedTNodeTree;
+    possibleEvents: EventListenerEntity[];
+    flowHierarchy: Array<{
+        flowTNodeId: string;
+        label: string;
+    }>;
+    pulsingEventType?: string;
+    showLeftPanel: boolean;
+    selectedStepNode?: TNodeEntity;
+    inspectEnabled: boolean;
+    animationsEnabled: boolean;
+    brainIsDead: boolean;
+    /** Why the brain couldn't start, while it stays stopped for that reason */
+    startError?: string;
+    /** The root flow the running brain started with; the flows plugin's root flow differing from it takes a restart */
+    runningRootFlowId?: string;
+    brainIsPaused: boolean;
+    latestRuntimeError?: StepRuntimeError;
+    runtimeErrors: StepRuntimeError[];
+    settings?: any;
+}
+
 type BrainEventCallback = (event: BrainEventPayload) => void | Promise<void>;
 
 interface BrainEventPayload {
@@ -356,6 +446,47 @@ interface BrowserBookmarkEntity {
     updatedAt: number;
 }
 
+interface BrowserContext {
+    tabs: BrowserTab[];
+    activeTabId: number | null;
+    addressBarValue: string;
+    isAddressBarFocused: boolean;
+    tabGroups: TabGroup[];
+    suggestions: AutocompleteSuggestion[];
+    selectedSuggestionIndex: number;
+    inlineCompletion: string | null;
+    preAutocompleteValue: string;
+    _lastNavWasTyped: boolean;
+    bookmarks: Bookmark[];
+    /** This feature's own settings, as the app sends them (`FEATURE_SETTINGS_UPDATED`) */
+    settings: BrowserSettings;
+}
+
+/** A link the user chose to open in the app rather than the OS browser */
+type BrowserInboxEvent = {
+    type: 'TAB.CREATE';
+    url?: string;
+};
+
+interface BrowserSettings {
+    showBookmarksBar: boolean;
+    /** Whether a link opens in the browser plugin rather than the user's own browser; defaults to true */
+    openLinksInApp?: boolean;
+}
+
+interface BrowserTab {
+    id: number;
+    persistedId?: BrowserTabPersistedId;
+    url: string;
+    title: string;
+    favicon: string;
+    isLoading: boolean;
+    canGoBack: boolean;
+    canGoForward: boolean;
+    isMuted: boolean;
+    groupId?: string;
+}
+
 interface BrowserTabEntity {
     id: BrowserTabId;
     entityType: EARS.Entity.BrowserTab;
@@ -370,6 +501,8 @@ interface BrowserTabEntity {
 }
 
 type BrowserTabId = `${EARS.Entity.BrowserTab}-${string}`;
+
+type BrowserTabPersistedId = `BrowserTab-${string}`;
 
 /** `control_request` subtype=`can_use_tool` — the permission prompt. */
 interface CanUseToolRequest {
@@ -389,6 +522,8 @@ interface Category {
     color: string;
 }
 
+type ChatState = 'error' | 'idle' | 'paused' | 'success' | 'working';
+
 interface ChatStateConfig {
     id: string;
     label: string;
@@ -399,7 +534,7 @@ interface ChatStateConfig {
 interface CliServiceType {
     git: {
         commit(message: string): Promise<void>;
-        getStatus(): Promise<GitStatusFile$1[]>;
+        getStatus(): Promise<GitStatusFile[]>;
         getCurrentBranch(): Promise<string>;
         getWorkingDir(): string;
         /**
@@ -523,6 +658,71 @@ interface CodeContent {
     text: string;
     language: string;
 }
+
+type CodeContext = {
+    baseDirectory: string;
+    openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[];
+    activeFilePath: string | null;
+    isLoading: boolean;
+    error: string | null;
+    selectedPanel: PanelType;
+    tabsRestored?: boolean;
+    pendingTabOrder?: Array<{
+        path: string;
+        order: number;
+    }>;
+    pendingPersistedMetadata?: Map<string, {
+        groupId?: string;
+        isPinned?: boolean;
+        isPreview?: boolean;
+    }>;
+    tabGroups: TabGroup[];
+    isQuickOpenVisible: boolean;
+    quickOpenQuery: string;
+    quickOpenResults: QuickOpenResult[];
+    quickOpenSelectedIndex: number;
+    quickOpenLoading: boolean;
+    recentlyOpenedFiles: string[];
+    tabViewHistory: string[];
+    hotkeys: HotkeysMap;
+    settings?: CodeSettings;
+    pendingRevealLine: {
+        filePath: string;
+        line: number;
+        column: number;
+        lineText?: string;
+    } | null;
+    searchFocusTrigger: number;
+    searchPrefillText: string;
+    panelTerminalId: string | null;
+    panelTerminalExpanded: boolean;
+    pendingTerminalTabIds?: string[];
+    panelNavHistory: NavHistory<PanelType>;
+};
+
+/**
+ * What other features ask of the code plugin: which panel to show, a write to its state, and a job for one of its
+ * children. The `<child>.*` events aren't in this machine's own union — it routes them to its child actors by
+ * prefix — so they are spelled out, and each names the child that handles it.
+ */
+type CodeInboxEvent = {
+    type: 'UPDATE_STATE';
+    updates: Partial<CodeContext>;
+} | {
+    type: 'terminal.CREATE';
+    target: string;
+    command: string;
+    cwd?: string;
+} | {
+    type: 'explorer.SET_BASE_DIRECTORY';
+    path: string;
+} | {
+    type: 'codeActions.OPEN_ACTION';
+    actionId: EARS.EntityId;
+} | {
+    type: 'codePrompts.OPEN_PROMPT';
+    promptId: EARS.EntityId;
+};
 
 interface CodeSettings {
     hotkeys: {
@@ -670,47 +870,6 @@ interface ConsumerHandlers {
 /** A section of a document's content, as the library compiler parses it from markdown */
 type ContentSection = FieldContent | ListContent | MarkdownContent | TextContent | CodeContent;
 
-type Context = {
-    baseDirectory: string;
-    openFiles: (OpenFile | TerminalTab | ActionTab | PromptTab)[];
-    activeFilePath: string | null;
-    isLoading: boolean;
-    error: string | null;
-    selectedPanel: PanelType;
-    tabsRestored?: boolean;
-    pendingTabOrder?: Array<{
-        path: string;
-        order: number;
-    }>;
-    pendingPersistedMetadata?: Map<string, {
-        groupId?: string;
-        isPinned?: boolean;
-        isPreview?: boolean;
-    }>;
-    tabGroups: TabGroup[];
-    isQuickOpenVisible: boolean;
-    quickOpenQuery: string;
-    quickOpenResults: QuickOpenResult[];
-    quickOpenSelectedIndex: number;
-    quickOpenLoading: boolean;
-    recentlyOpenedFiles: string[];
-    tabViewHistory: string[];
-    hotkeys: HotkeysMap;
-    settings?: CodeSettings;
-    pendingRevealLine: {
-        filePath: string;
-        line: number;
-        column: number;
-        lineText?: string;
-    } | null;
-    searchFocusTrigger: number;
-    searchPrefillText: string;
-    panelTerminalId: string | null;
-    panelTerminalExpanded: boolean;
-    pendingTerminalTabIds?: string[];
-    panelNavHistory: NavHistory<PanelType>;
-};
-
 interface ContextReference {
     refType: ContextReferenceType;
     refId: string;
@@ -719,6 +878,80 @@ interface ContextReference {
 }
 
 type ContextReferenceType = 'document' | 'folder' | 'note' | 'task' | 'tasklist' | 'thread';
+
+type Contract = {
+    state: LogsContext;
+    inbox: PluginInbox<{
+        public: LogsInboxEvent;
+    }>;
+};
+
+type Contract$1 = {
+    state: DatabaseContext;
+    inbox: PluginInbox<{
+        pack: DatabaseInboxEvent;
+    }>;
+};
+
+type Contract$2 = {
+    state: BrainContext;
+};
+
+type Contract$3 = {
+    state: PromptsContext;
+    inbox: PluginInbox<{
+        pack: PromptsInboxEvent;
+    }>;
+};
+
+type Contract$4 = {
+    state: ActionsContext;
+    inbox: PluginInbox<{
+        pack: ActionsInboxEvent;
+    }>;
+};
+
+type Contract$5 = {
+    state: FlowsContext;
+    inbox: PluginInbox<{
+        pack: FlowsInboxEvent;
+    }>;
+};
+
+type Contract$6 = {
+    state: LibraryContext;
+    inbox: PluginInbox<{
+        pack: LibraryInboxEvent;
+    }>;
+};
+
+type Contract$7 = {
+    state: BrowserContext;
+    inbox: PluginInbox<{
+        pack: BrowserInboxEvent;
+    }>;
+};
+
+type Contract$8 = {
+    state: NotesContext;
+    inbox: PluginInbox<{
+        pack: NotesInboxEvent;
+    }>;
+};
+
+type Contract$9 = {
+    state: CodeContext;
+    inbox: PluginInbox<{
+        pack: CodeInboxEvent;
+    }>;
+};
+
+type Contract$a = {
+    state: ThreadsContext;
+    inbox: PluginInbox<{
+        pack: ThreadsInboxEvent;
+    }>;
+};
 
 type ControlCancelLine = z.infer<typeof ControlCancelLineSchema>;
 
@@ -842,6 +1075,59 @@ interface CreateNode extends NodeBase {
     inferLabel?: boolean;
 }
 
+interface DatabaseContext {
+    schema: DatabaseSchemaInfo;
+    currentQuery: string;
+    queryResult: any;
+    isLoading: boolean;
+    error: string | null;
+    executionTime: number | null;
+    selectedSchemaItem: {
+        type: 'attribute' | 'entity' | 'relation';
+        value: string;
+    } | null;
+    mode: 'query' | 'transaction';
+    isAiQueryLoading: boolean;
+    isRefreshing: boolean;
+    settings: DatabaseSettings | null;
+    viewMode: 'database' | 'trace';
+    traceFlows: TNodeEntity$1[];
+    currentFlowId: string | null;
+    flowEvents: TNodeEntity$1[];
+    expandedNodes: Set<string>;
+    nodeDetails: Map<string, TNodeEntity$1>;
+    isLoadingTrace: boolean;
+    tracePagination: {
+        offset: number;
+        limit: number;
+        hasMore: boolean;
+    };
+    backupInfo: {
+        timestamp: number;
+        databases: string[];
+        size: number;
+        hasMedia?: boolean;
+    } | null;
+    exporting: boolean;
+    importing: boolean;
+    /** The last export or import to finish, a new object each time */
+    backupResult: {
+        operation: 'export' | 'import';
+        error?: string;
+        /** The backup holds these stores, which this AgentBuddy doesn't have: importing it leaves them out */
+        unknownDatabases?: string[];
+    } | null;
+}
+
+/**
+ * The page the Database settings open. Spelled out rather than extracted from the machine's union: the contract is
+ * read from this module alone, and an `Extract<>` over `./state` would pull the machine back in. The extracted form
+ * also named `VIEW_DASHBOARD`, which that union never had, so it silently declared one event where it meant two.
+ */
+type DatabaseInboxEvent = {
+    type: 'VIEW_BACKUP';
+};
+
 interface DatabaseSchemaInfo {
     entities: Array<{
         type: EARS.Entity;
@@ -852,6 +1138,12 @@ interface DatabaseSchemaInfo {
     relations: Array<{
         kind: EARS.RelKind;
     }>;
+}
+
+interface DatabaseSettings {
+    hotkeys: {
+        executeQuery?: KeyboardShortcut;
+    };
 }
 
 interface DatabaseStartupData {
@@ -997,6 +1289,17 @@ type Effort = z.infer<typeof EffortSchema>;
 
 declare const EffortSchema: z.ZodEnum<["low", "medium", "high", "max"]>;
 
+type EmbeddingModel = SearchEmbeddingModelId;
+
+interface EmbeddingModelInfo {
+    displayName: string;
+    description: string;
+    dimensions: number;
+    maxTokens?: number;
+    speed: 'fast' | 'medium' | 'slow';
+    quality: 'best' | 'better' | 'good';
+}
+
 /** ── Brain-local types ──────────────────────────────────────────────────── */
 interface EventListenerEntity {
     id: EARS.EntityId;
@@ -1138,6 +1441,67 @@ interface FlowsConnectedData {
     settings?: any;
 }
 
+interface FlowsContext {
+    selectedNodeId?: EARS.EntityId;
+    editingNodeId?: EARS.EntityId;
+    selectedFlowId?: EARS.EntityId;
+    selectedHandle?: {
+        nodeId: string;
+        handleId?: string;
+    };
+    graph: {
+        nodes: NodeEntity[];
+        edges: EdgeEntity[];
+        positions: Record<string, {
+            x: number;
+            y: number;
+        }>;
+    };
+    flows: FlowEntity[];
+    prompts: PromptEntity[];
+    models: ModelCatalogEntry[];
+    actions: ActionEntity[];
+    tempIdMap: Record<string, string>;
+    /** The root flow the brain runs (the flow with the root role), as the flows system last sent it */
+    rootFlowId?: string;
+    settings?: any;
+    showEditLabelDialog?: boolean;
+    showDeleteFlowDialog?: boolean;
+    canvasError?: string;
+    dslImport: {
+        status: 'error' | 'idle' | 'importing' | 'success';
+        errors: string[];
+        importedFlowNames: string[];
+    };
+    dslExport: {
+        status: 'error' | 'exporting' | 'idle' | 'success';
+        errors: string[];
+        filePath: string;
+        flowCount: number;
+    };
+    navHistory: NavHistory<string | null>;
+}
+
+/** The actions system keeps the flows editor's action list current, and the brain opens a flow or a node in it */
+type FlowsInboxEvent = {
+    type: 'ACTION_CREATED';
+    action: ActionEntity;
+    actionId: EARS.EntityId;
+} | {
+    type: 'ACTION_UPDATED';
+    action: ActionEntity;
+    actionId: EARS.EntityId;
+} | {
+    type: 'ACTION_DELETED';
+    actionId: EARS.EntityId;
+} | {
+    type: 'FLOW.SELECT';
+    flowId: EARS.EntityId;
+} | {
+    type: 'NODE.DOUBLE_CLICK';
+    nodeId: string;
+};
+
 interface FolderContents {
     items: LibraryItem[];
     currentPath: string[];
@@ -1248,24 +1612,7 @@ interface GitDiff {
     isImage?: boolean;
 }
 
-interface GitDiff$1 {
-    path: string;
-    diff: string;
-    staged: boolean;
-    originalContent?: string;
-    modifiedContent?: string;
-    isImage?: boolean;
-}
-
 interface GitStatusFile {
-    path: string;
-    status: 'added' | 'copied' | 'deleted' | 'modified' | 'renamed' | 'typechange' | 'unmerged' | 'untracked';
-    staged: boolean;
-    originalPath?: string;
-    score?: number;
-}
-
-interface GitStatusFile$1 {
     path: string;
     status: 'added' | 'copied' | 'deleted' | 'modified' | 'renamed' | 'typechange' | 'unmerged' | 'untracked';
     staged: boolean;
@@ -1555,6 +1902,14 @@ type IncomingTerminalEvents = {
     terminalId: string;
 };
 
+type IndexMetric = 'cosine' | 'dot_product';
+
+/** A model services.inference runs, named by its provider:model id */
+interface InferenceEmbeddingModel extends EmbeddingModelInfo {
+    kind: 'inference';
+    id: EmbeddingModelId;
+}
+
 type KeepAliveLine = z.infer<typeof KeepAliveLineSchema>;
 
 /** `keep_alive` — NDJSON heartbeat, silently ignored by readers. */
@@ -1590,6 +1945,70 @@ interface LLMNode extends NodeBase {
     maxTokens?: number;
     systemPrompt?: string;
 }
+
+declare const LOCAL_EMBEDDING_MODELS: {
+    readonly MINILM_L6_V2: "minilm-l6-v2";
+    readonly BGE_SMALL_EN: "bge-small-en";
+    readonly BGE_SMALL_EN_V15: "bge-small-en-v1.5";
+    readonly BGE_BASE_EN: "bge-base-en";
+    readonly BGE_BASE_EN_V15: "bge-base-en-v1.5";
+    readonly E5_LARGE_MULTILINGUAL: "e5-large-multilingual";
+};
+
+interface LibraryContext {
+    currentView: 'browser' | 'create' | 'create-index' | 'edit' | 'edit-index' | 'test-index';
+    editingDocument?: DocumentDTO;
+    items: LibraryItem[];
+    currentFolderId: string | null;
+    currentPath: string[];
+    selectedItems: string[];
+    selectedDocument: DocumentDTO | null;
+    sortBy: 'kind' | 'modified' | 'name' | 'size';
+    sortDirection: 'asc' | 'desc';
+    breadcrumbs: BreadcrumbItem[];
+    editingItem?: LibraryItem;
+    itemToEdit?: string | null;
+    newItemId?: string | null;
+    expandedFolderIds: string[];
+    expandedFolderChildren: Record<string, LibraryItem[]>;
+    loadingFolderIds: string[];
+    index: LibraryIndex;
+    searchIndices: SearchIndex[];
+    editingIndexId?: string;
+    editingIndex?: SearchIndex;
+    testingIndexId?: string;
+    testingIndex?: SearchIndex;
+    testQuery: string;
+    testResults: any[];
+    isSearching: boolean;
+    isInSymlinkContext: boolean;
+    currentSymlinkRootId: string | null;
+    symlinkBasePath: string | null;
+    isBroken: boolean;
+    lastKnownPath: string | null;
+    settings?: any;
+    libraryImport: {
+        status: 'error' | 'idle' | 'importing' | 'success';
+        errors: string[];
+        importedCount: number;
+    };
+    libraryExport: {
+        status: 'error' | 'exporting' | 'idle' | 'success';
+        errors: string[];
+        filePath: string;
+        itemCount: number;
+    };
+    navHistory: NavHistory<string | null>;
+}
+
+/** Where an editor link into the library lands */
+type LibraryInboxEvent = {
+    type: 'EDIT_DOCUMENT';
+    documentId: string;
+} | {
+    type: 'NAVIGATE_TO_FOLDER';
+    folderId: string | null;
+};
 
 /**
  * Every document and folder in the library, by name: what the reference picker offers and the
@@ -1669,6 +2088,16 @@ interface ListenerNode extends NodeBase {
     debounceMs?: number;
 }
 
+/** A model FastEmbed runs in the app; its weights download to the models cache on first use */
+interface LocalEmbeddingModel extends EmbeddingModelInfo {
+    kind: 'local';
+    id: LocalEmbeddingModelId;
+    /** FastEmbed's name for the model */
+    fastEmbedModel: string;
+}
+
+type LocalEmbeddingModelId = (typeof LOCAL_EMBEDDING_MODELS)[keyof typeof LOCAL_EMBEDDING_MODELS];
+
 interface LogEntry {
     id: string;
     timestamp: number;
@@ -1680,6 +2109,25 @@ interface LogEntry {
 }
 
 type LogLevel = 'debug' | 'error' | 'info' | 'warn';
+
+interface LogsContext {
+    logs: LogEntry[];
+    filter: {
+        level: 'all' | 'debug' | 'error' | 'info' | 'warn';
+        search: string;
+    };
+    settings: {
+        maxLogs: number;
+        excludedSources: string[];
+        showAppEvents?: boolean;
+    };
+}
+
+/** A log line any pack's system may hand the logs plugin */
+type LogsInboxEvent = {
+    type: 'LOG_ADDED';
+    log: LogEntry;
+};
 
 interface LogsSettings {
     maxLogs: number;
@@ -1745,6 +2193,12 @@ type NodeCreateInput = Partial<NodeEntity> & {
 /** Discriminated union (on `nodeType`) of this pack's step node entities. */
 type NodeEntity = ActionNode | LLMNode | FireNode | FlowNode | QueryNode | CreateNode | UpdateNode | TransformNode | KeepAliveNode | KillNode | SwitchNode | ScheduleNode | ListenerNode;
 
+interface NormalizedTNodeTree {
+    byId: Record<string, TNodeEntity>;
+    rootIds: string[];
+    childrenById: Record<string, string[]>;
+}
+
 interface NoteDTO {
     id: string;
     title: string;
@@ -1792,6 +2246,49 @@ interface NotesConnectedData {
     notes: NoteDTO[];
     settings?: NotesSettings;
 }
+
+interface NotesContext {
+    notes: NoteDTO[];
+    currentNoteId: string | null;
+    currentNote: NoteDTO | null;
+    expandedNodeIds: string[];
+    taskExpandedNodeIds: string[];
+    pendingSubDocumentInsert: {
+        cursorPos: number;
+    } | null;
+    lastSubDocumentInsertChildId: string | null;
+    searchResults: NoteDTO[];
+    selectedNoteIds: string[];
+    selectedTaskId: string | null;
+    selectedTask: NoteDTO | null;
+    settings: {
+        tasklistPanelPosition: 'left' | 'right';
+        showCollapseIcon: boolean;
+    };
+    notesImport: {
+        status: 'error' | 'idle' | 'importing' | 'success';
+        errors: string[];
+        importedCount: number;
+    };
+    notesExport: {
+        status: 'error' | 'exporting' | 'idle' | 'success';
+        errors: string[];
+        filePath: string;
+        itemCount: number;
+    };
+    showTrash: boolean;
+    trashedNotes: NoteDTO[];
+    noteScrollPositions: Record<string, number>;
+    panelSearchActive: boolean;
+    navHistory: NavHistory<string | null>;
+    viewedNoteId: string | null;
+}
+
+/** Where an editor link to a note, task or task list lands */
+type NotesInboxEvent = {
+    type: 'NOTE.OPEN';
+    noteId: string;
+};
 
 interface NotesSettings {
     tasklistPanelPosition: 'left' | 'right';
@@ -1944,7 +2441,7 @@ type OutgoingCodeEvents = OutgoingExplorerEvents | OutgoingSearchEvents | Outgoi
 type OutgoingCommitEvents = {
     type: 'commit.STATUS_RECEIVED';
     data: {
-        files: GitStatusFile$1[];
+        files: GitStatusFile[];
         branch: string;
         hasUpstream: boolean;
         commitsAhead: number;
@@ -1952,7 +2449,7 @@ type OutgoingCommitEvents = {
     };
 } | {
     type: 'commit.DIFF_RECEIVED';
-    data: GitDiff$1;
+    data: GitDiff;
 } | {
     type: 'commit.FILES_STAGED';
     data: {
@@ -2494,13 +2991,13 @@ type OutgoingPullRequestEvents = {
 } | {
     type: 'pr.BRANCH_DIFF_RECEIVED';
     data: {
-        files: GitStatusFile$1[];
+        files: GitStatusFile[];
         baseBranch: string;
         headBranch?: string;
     };
 } | {
     type: 'pr.FILE_DIFF_RECEIVED';
-    data: GitDiff$1 & {
+    data: GitDiff & {
         baseBranch: string;
         headBranch?: string;
     };
@@ -2660,7 +3157,7 @@ type OutgoingSearchEvents = {
 
 type OutgoingTerminalEvents = {
     type: 'terminal.CREATED';
-    data: TerminalInfo$1;
+    data: TerminalInfo;
 } | {
     type: 'terminal.OUTPUT';
     data: {
@@ -2699,10 +3196,10 @@ type OutgoingTerminalEvents = {
     };
 } | {
     type: 'terminal.TERMINALS_LISTED';
-    data: TerminalInfo$1[];
+    data: TerminalInfo[];
 } | {
     type: 'terminal.TERMINAL_TAB_OPENED';
-    data: TerminalInfo$1;
+    data: TerminalInfo;
 };
 
 type OutgoingThreadsEvents = {
@@ -2837,7 +3334,10 @@ type OwnEntityShapes = {
     'Note': NoteEntity;
 };
 
-/** Plugin id → the events that plugin receives: its own feature's system's, and the inbox it declares. */
+/**
+ * Plugin id → the events that plugin receives: its own feature's system's, and every audience of the inbox its
+ * contract declares. This pack's own sends are checked against it, so a sibling may send the `pack` half.
+ */
 type OwnPluginEvents = {
     'threads': __events_threads | __accepts_threads;
     'code': __events_code | __accepts_code;
@@ -2886,22 +3386,38 @@ type PackEmitter = Omit<HostServices['emitter'], 'broadcastToPlugin' | 'sendToSy
 };
 
 /**
- * Feature id → the inbox this pack's plugin for that feature declares (dependents name it `default-setup/<feature>`).
- * Its own system's events aren't here: they are between the two halves of one feature, not a contract anyone else
- * may send. This is what a dependent pack may send it, and it mirrors `PackSystemEvents`.
+ * Feature id → the `public` half of the inbox this pack's plugin declares (dependents name it
+ * `default-setup/<feature>`). Neither its own system's events nor its `pack` audience are here: the first is
+ * between the two halves of one feature, the second between this pack's features. What is left is what a dependent
+ * pack may send, and it mirrors `PackSystemEvents`.
  */
 type PackPluginEvents = {
-    'threads': __accepts_threads;
-    'code': __accepts_code;
-    'notes': __accepts_notes;
-    'browser': __accepts_browser;
-    'library': __accepts_library;
-    'flows': __accepts_flows;
-    'actions': __accepts_actions;
-    'prompts': __accepts_prompts;
-    'brain': __accepts_brain;
-    'database': __accepts_database;
-    'logs': __accepts_logs;
+    'threads': __public_threads;
+    'code': __public_code;
+    'notes': __public_notes;
+    'browser': __public_browser;
+    'library': __public_library;
+    'flows': __public_flows;
+    'actions': __public_actions;
+    'prompts': __public_prompts;
+    'brain': __public_brain;
+    'database': __public_database;
+    'logs': __public_logs;
+};
+
+/** Feature id → the state this pack's plugin for that feature publishes (dependents name it `default-setup/<feature>`). */
+type PackPluginState = {
+    'threads': PluginStateOf<Contract$a>;
+    'code': PluginStateOf<Contract$9>;
+    'notes': PluginStateOf<Contract$8>;
+    'browser': PluginStateOf<Contract$7>;
+    'library': PluginStateOf<Contract$6>;
+    'flows': PluginStateOf<Contract$5>;
+    'actions': PluginStateOf<Contract$4>;
+    'prompts': PluginStateOf<Contract$3>;
+    'brain': PluginStateOf<Contract$2>;
+    'database': PluginStateOf<Contract$1>;
+    'logs': PluginStateOf<Contract>;
 };
 
 /**
@@ -3059,16 +3575,65 @@ interface PromptsConnectedData {
     categories?: Category[];
 }
 
-type PromptsEvents = UIEvent | SystemEvent | TrailClickEvent;
-
-/** The events another feature may send the prompts plugin: paging, and editing a prompt */
-type PromptsListEvent = Extract<PromptsEvents, {
-    type: 'PROMPT.CREATE_INLINE' | 'PROMPT.DELETE' | 'PROMPT.SELECT' | 'PROMPT.UPDATE_INPUTS' | 'PROMPT.UPDATE_LABEL' | 'PROMPTS.LOAD_ALL' | 'PROMPTS.LOAD_MORE';
-}>;
-
-interface PromptsSettings {
+interface PromptsContext {
+    selectedPromptId?: EARS.EntityId;
+    prompts: PromptEntity[];
+    selectedPrompt?: PromptEntity;
+    totalCount: number;
+    page: number;
+    totalPages: number;
+    loadingMore: boolean;
     categories: Category[];
+    selectedCategories: string[];
+    promptsImport: {
+        status: 'error' | 'idle' | 'importing' | 'success';
+        errors: string[];
+        importedCount: number;
+    };
+    promptsExport: {
+        status: 'error' | 'exporting' | 'idle' | 'success';
+        errors: string[];
+        filePath: string;
+        promptCount: number;
+    };
+    formData: {
+        label: string;
+        description?: string;
+        category?: string;
+        inputs: Record<string, TemplateInput>;
+        templateFn: string;
+        outputSchema?: any;
+        inputsExpanded?: boolean;
+        outputExpanded?: boolean;
+        metadataExpanded?: boolean;
+    };
 }
+
+/** Paging and editing, which the code plugin's prompts panel asks of it */
+type PromptsInboxEvent = {
+    type: 'PROMPTS.LOAD_ALL';
+} | {
+    type: 'PROMPTS.LOAD_MORE';
+} | {
+    type: 'PROMPT.UPDATE_INPUTS';
+    promptId: string;
+    inputs: Record<string, any>;
+} | {
+    type: 'PROMPT.UPDATE_LABEL';
+    promptId: string;
+    label: string;
+} | {
+    type: 'PROMPT.DELETE';
+    promptId: EARS.EntityId;
+} | {
+    type: 'PROMPT.CREATE_INLINE';
+    label: string;
+    templateFn: string;
+    inputs: Record<string, any>;
+} | {
+    type: 'PROMPT.SELECT';
+    promptId: EARS.EntityId;
+};
 
 /**
  * Every plugin this pack's code can send to, by ref: its own, its dependencies' and the host's. A plugin owned
@@ -3369,6 +3934,33 @@ interface ScheduleNode extends NodeBase {
     cronExpression: string;
 }
 
+type SearchEmbeddingModel = LocalEmbeddingModel | InferenceEmbeddingModel;
+
+type SearchEmbeddingModelId = SearchEmbeddingModel['id'];
+
+interface SearchIndex extends SearchIndexConfig {
+    id: EARS.EntityId;
+    folderId: EARS.EntityId | null;
+    documentCount: number;
+    vectorDimensions: number;
+    createdAt: number;
+    updatedAt: number;
+}
+
+interface SearchIndexConfig {
+    name: string;
+    description: string;
+    embeddingModel: EmbeddingModel;
+    indexMetric: IndexMetric;
+    connectors: number;
+    excludeAllSubfolders: boolean;
+    excludedFolderIds: EARS.EntityId[];
+    excludedDocumentIds: EARS.EntityId[];
+    enableSectionIndexing: boolean;
+    segmentRules: SegmentRule[];
+    constructTemplate: string;
+}
+
 interface SearchMatch {
     line: number;
     column: number;
@@ -3387,6 +3979,14 @@ interface SearchResult {
     path: string;
     matches: SearchMatch[];
     fileSize?: number;
+}
+
+interface SegmentRule {
+    id: string;
+    type: 'field' | 'list' | 'text';
+    occurrence: string;
+    key?: string;
+    indexMode: 'combined' | 'separate';
 }
 
 /**
@@ -3512,62 +4112,6 @@ interface SwitchNode extends NodeBase {
     elseLabel?: string;
 }
 
-type SystemEvent = OutgoingPromptEvents | {
-    type: 'PROMPTS_PAGE_LOADED';
-    data: {
-        prompts: PromptEntity[];
-        page: number;
-        totalPages: number;
-    };
-} | {
-    type: 'PROMPTS_ALL_LOADED';
-    data: {
-        prompts: PromptEntity[];
-    };
-} | {
-    type: 'PROMPTS_IMPORTED';
-    count: number;
-    errors?: string[];
-} | {
-    type: 'PROMPTS_IMPORT_FAILED';
-    errors: string[];
-} | {
-    type: 'PROMPTS_EXPORTED';
-    filePath: string;
-    promptCount: number;
-} | {
-    type: 'PROMPTS_EXPORT_FAILED';
-    errors: string[];
-};
-
-type SystemEvent$1 = OutgoingActionEvents | {
-    type: 'ACTIONS_PAGE_LOADED';
-    data: {
-        actions: ActionEntity[];
-        page: number;
-        totalPages: number;
-    };
-} | {
-    type: 'ACTIONS_ALL_LOADED';
-    data: {
-        actions: ActionEntity[];
-    };
-} | {
-    type: 'ACTIONS_IMPORTED';
-    count: number;
-    errors?: string[];
-} | {
-    type: 'ACTIONS_IMPORT_FAILED';
-    errors: string[];
-} | {
-    type: 'ACTIONS_EXPORTED';
-    filePath: string;
-    actionCount: number;
-} | {
-    type: 'ACTIONS_EXPORT_FAILED';
-    errors: string[];
-};
-
 type SystemLine = z.infer<typeof SystemLineSchema>;
 
 /** System lines — many subtypes, all passthrough. */
@@ -3606,6 +4150,8 @@ interface Tab {
     groupId?: string;
 }
 
+type TabGroupColor = 'blue' | 'gray' | 'green' | 'orange' | 'pink' | 'purple' | 'red' | 'teal' | 'yellow';
+
 interface TerminalEntity {
     id: EARS.EntityId;
     entityType: EARS.Entity.Terminal;
@@ -3623,18 +4169,6 @@ interface TerminalEntity {
 }
 
 interface TerminalInfo {
-    id: string;
-    title: string;
-    customTitle?: string;
-    pid: number;
-    shell?: string;
-    cwd: string;
-    active: boolean;
-    cols: number;
-    rows: number;
-}
-
-interface TerminalInfo$1 {
     id: EARS.EntityId;
     title: string;
     customTitle?: string;
@@ -3762,6 +4296,12 @@ type ThreadLinkedFields = {
     linkedThreads?: ThreadLinkItem[];
 };
 
+type ThreadListItem = Simplify$1<ThreadEntity & {
+    tags?: string[];
+    isNew?: boolean;
+    parentId?: string;
+}>;
+
 interface ThreadListParams {
     cursor?: string | null;
     limit?: number | null;
@@ -3798,10 +4338,120 @@ interface ThreadStatusOption {
     color: string;
 }
 
+interface ThreadTabGroup {
+    id: string;
+    name: string;
+    color: TabGroupColor;
+    isCollapsed: boolean;
+    order: number;
+    isPinned?: boolean;
+}
+
 interface ThreadTagOption {
     name: string;
     color?: string;
 }
+
+type ThreadViewData = Simplify<ThreadCreateData & {
+    id: ThreadEntity['id'];
+    shortCode: ThreadEntity['shortCode'];
+    status: ThreadEntity['status'];
+    timestamp: ThreadEntity['timestamp'];
+    archived?: ThreadEntity['archived'];
+    lastMessageTimestamp?: ThreadEntity['lastMessageTimestamp'];
+    messages?: ThreadExtendedData['messages'];
+}>;
+
+interface ThreadsContext {
+    threadMap: Record<string, ThreadListItem>;
+    threadIds: string[];
+    selectedThreadIds: string[];
+    selectedThreadCode?: string;
+    view: ThreadViewData;
+    create: ThreadCreateData & {
+        parentThreadId?: string;
+        parentThread?: ThreadListItem;
+        tagsExpanded?: boolean;
+        linkedExpanded?: boolean;
+    };
+    availableTags: ThreadTagOption[];
+    settings: ThreadsSettings | null;
+    showArchived: boolean;
+    filters: {
+        statuses: string[];
+        tags: string[];
+        chatStates: string[];
+        search: string;
+        showRootOnly: boolean;
+    };
+    threadsImport: {
+        status: 'error' | 'idle' | 'importing' | 'success';
+        errors: string[];
+        importedCount: number;
+    };
+    threadsExport: {
+        status: 'error' | 'exporting' | 'idle' | 'success';
+        errors: string[];
+        filePath: string;
+        threadCount: number;
+    };
+    currentThread: AgentThreadData | null;
+    recentThreadIds: string[];
+    messageInput: string;
+    pendingActionId?: string;
+    chatStates: Record<string, ChatState>;
+    chatStateOverrides: Record<string, {
+        id: string;
+        expiresAt: number;
+    }>;
+    tabs: Tab[];
+    activeTabId: string;
+    tabGroups: ThreadTabGroup[];
+    mode: string;
+    phase: string;
+    phaseByModeName: Record<string, string | undefined>;
+    modes: AgentMode[];
+    hotkeys: HotkeysMap;
+    chatSettings: AgentSettings;
+    commands: CommandItem[];
+    quickPromptCursor: {
+        x: number;
+        y: number;
+    } | null;
+    pendingThreadCwd?: string;
+    pendingForceDirectoryPicker?: boolean;
+    navHistory: NavHistory<string>;
+    messagePagination: {
+        hasMore: boolean;
+        nextCursor: string | null;
+        isLoading: boolean;
+    };
+    sidebarArchivedThreads: ThreadListItem[];
+}
+
+/** What the artifact viewers, the dashboard and the tiptap command items ask of the threads plugin */
+type ThreadsInboxEvent = {
+    type: 'SELECT_ARTIFACT';
+    artifactId: string;
+} | {
+    type: 'APPROVE_TODO_LIST';
+    artifactId: string;
+    tasks: unknown[];
+} | {
+    type: 'REJECT_TODO_LIST';
+    artifactId: string;
+} | {
+    type: 'OPEN_THREAD_CHAT';
+    threadId: string;
+} | {
+    type: 'VIEW_THREAD';
+    threadId: string;
+} | {
+    type: 'SELECT_THREAD';
+    id: string;
+} | {
+    type: 'VIEW_DASHBOARD';
+};
 
 interface ThreadsSettings {
     statuses: ThreadStatusOption[];
@@ -3909,158 +4559,6 @@ interface TurnStartParams {
     approvalsReviewer?: 'auto_review' | 'user';
     model?: string;
 }
-
-type UIEvent = {
-    type: 'PROMPT.SELECT';
-    promptId: EARS$1.EntityId;
-} | {
-    type: 'PROMPT.CREATE';
-} | {
-    type: 'PROMPT.SAVE';
-} | {
-    type: 'PROMPT.DELETE';
-    promptId: EARS$1.EntityId;
-} | {
-    type: 'PROMPT.UPDATE_INPUTS';
-    promptId: string;
-    inputs: Record<string, any>;
-} | {
-    type: 'PROMPT.CREATE_INLINE';
-    label: string;
-    templateFn: string;
-    inputs: Record<string, any>;
-} | {
-    type: 'PROMPT.UPDATE_LABEL';
-    promptId: string;
-    label: string;
-} | {
-    type: 'FORM.UPDATE_CATEGORY';
-    category: string;
-} | {
-    type: 'FORM.UPDATE_LABEL';
-    label: string;
-} | {
-    type: 'FORM.UPDATE_DESCRIPTION';
-    description: string;
-} | {
-    type: 'FORM.UPDATE_INPUTS';
-    inputs: Record<string, TemplateInput>;
-} | {
-    type: 'FORM.UPDATE_TEMPLATE';
-    templateFn: string;
-} | {
-    type: 'FORM.UPDATE_OUTPUT_SCHEMA';
-    outputSchema: any;
-} | {
-    type: 'VIEW_LIST';
-} | {
-    type: 'TOGGLE_INPUTS_SECTION';
-    show: boolean;
-} | {
-    type: 'TOGGLE_OUTPUT_SECTION';
-    show: boolean;
-} | {
-    type: 'TOGGLE_METADATA_SECTION';
-    show: boolean;
-} | {
-    type: 'FEATURE_SETTINGS_UPDATED';
-    settings: PromptsSettings;
-} | {
-    type: 'PROMPTS.LOAD_MORE';
-} | {
-    type: 'PROMPTS.LOAD_ALL';
-} | {
-    type: 'FILTER.TOGGLE_CATEGORY';
-    categoryName: string;
-} | {
-    type: 'FILTER.CLEAR';
-} | {
-    type: 'PROMPTS.IMPORT';
-    prompts: any[];
-} | {
-    type: 'PROMPTS.RESET_IMPORT_STATUS';
-} | {
-    type: 'PROMPTS.EXPORT';
-    directory: string;
-} | {
-    type: 'PROMPTS.RESET_EXPORT_STATUS';
-};
-
-type UIEvent$1 = {
-    type: 'ACTION.SELECT';
-    actionId: EARS$1.EntityId;
-} | {
-    type: 'ACTION.CREATE';
-} | {
-    type: 'ACTION.SAVE';
-} | {
-    type: 'ACTION.DELETE';
-    actionId: EARS$1.EntityId;
-} | {
-    type: 'ACTION.UPDATE_INPUT';
-    actionId: string;
-    input: Record<string, any>;
-} | {
-    type: 'ACTION.CREATE_INLINE';
-    label: string;
-    actionFn: string;
-    input: Record<string, any>;
-} | {
-    type: 'ACTION.UPDATE_LABEL';
-    actionId: string;
-    label: string;
-} | {
-    type: 'FORM.UPDATE_LABEL';
-    label: string;
-} | {
-    type: 'FORM.UPDATE_DESCRIPTION';
-    description: string;
-} | {
-    type: 'FORM.UPDATE_PARAMETERS';
-    input: Record<string, ActionParameter>;
-} | {
-    type: 'FORM.UPDATE_ACTION';
-    actionFn: string;
-} | {
-    type: 'FORM.UPDATE_OUTPUT';
-    output: any;
-} | {
-    type: 'FORM.UPDATE_CATEGORY';
-    category: string;
-} | {
-    type: 'VIEW_LIST';
-} | {
-    type: 'TOGGLE_PARAMETERS_SECTION';
-    show: boolean;
-} | {
-    type: 'TOGGLE_OUTPUT_SECTION';
-    show: boolean;
-} | {
-    type: 'TOGGLE_METADATA_SECTION';
-    show: boolean;
-} | {
-    type: 'FEATURE_SETTINGS_UPDATED';
-    settings: ActionsSettings;
-} | {
-    type: 'ACTIONS.LOAD_MORE';
-} | {
-    type: 'ACTIONS.LOAD_ALL';
-} | {
-    type: 'FILTER.TOGGLE_CATEGORY';
-    categoryName: string;
-} | {
-    type: 'FILTER.CLEAR';
-} | {
-    type: 'ACTIONS.IMPORT';
-    actions: any[];
-} | {
-    type: 'ACTIONS.RESET_IMPORT_STATUS';
-} | {
-    type: 'ACTIONS.EXPORT';
-    directory: string;
-} | {
-    type: 'ACTIONS.RESET_EXPORT_STATUS';
-};
 
 type UnknownLine = z.infer<typeof UnknownLineSchema>;
 
@@ -4176,27 +4674,27 @@ interface WorktreeEntry {
     lockedReason?: string;
 }
 
-type __accepts_actions = (typeof accepts$3)['_accepts'];
+type __accepts_actions = PluginInboxOf<Contract$4>;
 
-type __accepts_brain = never;
+type __accepts_brain = PluginInboxOf<Contract$2>;
 
-type __accepts_browser = (typeof accepts$6)['_accepts'];
+type __accepts_browser = PluginInboxOf<Contract$7>;
 
-type __accepts_code = (typeof accepts$8)['_accepts'];
+type __accepts_code = PluginInboxOf<Contract$9>;
 
-type __accepts_database = (typeof accepts$1)['_accepts'];
+type __accepts_database = PluginInboxOf<Contract$1>;
 
-type __accepts_flows = (typeof accepts$4)['_accepts'];
+type __accepts_flows = PluginInboxOf<Contract$5>;
 
-type __accepts_library = (typeof accepts$5)['_accepts'];
+type __accepts_library = PluginInboxOf<Contract$6>;
 
-type __accepts_logs = (typeof accepts)['_accepts'];
+type __accepts_logs = PluginInboxOf<Contract>;
 
-type __accepts_notes = (typeof accepts$7)['_accepts'];
+type __accepts_notes = PluginInboxOf<Contract$8>;
 
-type __accepts_prompts = (typeof accepts$2)['_accepts'];
+type __accepts_prompts = PluginInboxOf<Contract$3>;
 
-type __accepts_threads = (typeof accepts$9)['_accepts'];
+type __accepts_threads = PluginInboxOf<Contract$a>;
 
 type __events_actions = OutgoingEventsOf<(typeof specs)['actions']>;
 
@@ -4220,101 +4718,27 @@ type __events_prompts = OutgoingEventsOf<(typeof specs)['prompts']>;
 
 type __events_threads = OutgoingEventsOf<(typeof specs)['threads']>;
 
-/** Any pack may add a line to the app's log, and the Logs plugin is where that arrives */
-declare const accepts: _abuddy_sdk_fe.PluginAccepts<{
-    type: "LOG_ADDED";
-    log: LogEntry;
-}>;
+type __public_actions = PublicPluginInboxOf<Contract$4>;
 
-/** The pages the Database settings open */
-declare const accepts$1: _abuddy_sdk_fe.PluginAccepts<{
-    type: "VIEW_BACKUP";
-}>;
+type __public_brain = PublicPluginInboxOf<Contract$2>;
 
-/** Paging and editing, which the code plugin's prompts panel asks of it */
-declare const accepts$2: _abuddy_sdk_fe.PluginAccepts<PromptsListEvent>;
+type __public_browser = PublicPluginInboxOf<Contract$7>;
 
-/** Paging and editing, which the code plugin's actions panel asks of it */
-declare const accepts$3: _abuddy_sdk_fe.PluginAccepts<ActionsListEvent>;
+type __public_code = PublicPluginInboxOf<Contract$9>;
 
-/** The actions system keeps the flows editor's action list current; the receiver declares what it takes */
-declare const accepts$4: _abuddy_sdk_fe.PluginAccepts<OutgoingActionEvents | {
-    type: "FLOW.SELECT";
-    flowId: EARS.EntityId;
-} | {
-    type: "NODE.DOUBLE_CLICK";
-    nodeId: EARS.EntityId;
-}>;
+type __public_database = PublicPluginInboxOf<Contract$1>;
 
-/** Where an editor link into the library lands */
-declare const accepts$5: _abuddy_sdk_fe.PluginAccepts<{
-    type: "EDIT_DOCUMENT";
-    documentId: string;
-} | {
-    type: "NAVIGATE_TO_FOLDER";
-    folderId: string | null;
-}>;
+type __public_flows = PublicPluginInboxOf<Contract$5>;
 
-/** A link the user chose to open in the app rather than the OS browser */
-declare const accepts$6: _abuddy_sdk_fe.PluginAccepts<{
-    type: "TAB.CREATE";
-    url: string;
-}>;
+type __public_library = PublicPluginInboxOf<Contract$6>;
 
-/** Where an editor link to a note, task or task list lands */
-declare const accepts$7: _abuddy_sdk_fe.PluginAccepts<{
-    type: "NOTE.OPEN";
-    noteId: string;
-}>;
+type __public_logs = PublicPluginInboxOf<Contract>;
 
-/**
- * What other features ask of the code plugin: which panel to show, and a job for one of its children.
- *
- * The `<child>.*` events aren't in this machine's own union — it routes them to its child actors by prefix — so
- * they are spelled out rather than extracted, and each names the child that handles it.
- */
-declare const accepts$8: _abuddy_sdk_fe.PluginAccepts<{
-    type: "UPDATE_STATE";
-    updates: Partial<Context>;
-} | {
-    type: "terminal.CREATE";
-    target: string;
-    command: string;
-    cwd?: string;
-} | {
-    type: "explorer.SET_BASE_DIRECTORY";
-    path: string;
-} | {
-    type: "codeActions.OPEN_ACTION";
-    actionId: EARS.EntityId;
-} | {
-    type: "codePrompts.OPEN_PROMPT";
-    promptId: EARS.EntityId;
-}>;
+type __public_notes = PublicPluginInboxOf<Contract$8>;
 
-/** What a thread's own views ask of it: showing an artifact, and answering a to-do list */
-declare const accepts$9: _abuddy_sdk_fe.PluginAccepts<{
-    type: "SELECT_ARTIFACT";
-    artifactId: string;
-} | {
-    type: "APPROVE_TODO_LIST";
-    artifactId: string;
-    tasks: unknown[];
-} | {
-    type: "REJECT_TODO_LIST";
-    artifactId: string;
-} | {
-    type: "OPEN_THREAD_CHAT";
-    threadId: string;
-} | {
-    type: "VIEW_THREAD";
-    threadId: string;
-} | {
-    type: "SELECT_THREAD";
-    id: string;
-} | {
-    type: "VIEW_DASHBOARD";
-}>;
+type __public_prompts = PublicPluginInboxOf<Contract$3>;
+
+type __public_threads = PublicPluginInboxOf<Contract$a>;
 
 declare const actionCommands: {
     readonly create: (data: _abuddy_sdk_repositories.ActionInput) => ActionEntity;
@@ -5615,7 +6039,7 @@ declare const specs: {
 declare function storeHandle(key: string, handle: CodexTurnHandle): void;
 
 declare const terminalCommands: {
-    create: (terminalInfo: Partial<TerminalInfo$1> & {
+    create: (terminalInfo: Partial<TerminalInfo> & {
         id: EARS.EntityId;
     }) => EARS.EntityId;
     resize: (id: EARS.EntityId, cols: number, rows: number) => void;
@@ -5765,5 +6189,5 @@ declare function viewByFile(filePath: string, opts?: {
     offset?: number;
 }): Promise<any[]>;
 
-export type { PackShapes as PackEntityShapes, PackPluginEvents, PackStepNodes, PackSystemEvents, Repositories, Services };
+export type { PackShapes as PackEntityShapes, PackPluginEvents, PackPluginState, PackStepNodes, PackSystemEvents, Repositories, Services };
 ```

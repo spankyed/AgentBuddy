@@ -111,6 +111,22 @@ export type PluginEvents = {
 };
 
 // @public
+export type PluginInboxOf<C> = C extends {
+    inbox: infer Audiences;
+} ? Extract<Audiences[keyof Audiences], {
+    type: string;
+}> : never;
+
+// @public
+export type PublicPluginInboxOf<C> = C extends {
+    inbox: {
+        public: infer Events;
+    };
+} ? Extract<Events, {
+    type: string;
+}> : never;
+
+// @public
 export type Qualified<PackId extends string, M> = {
     [K in keyof M & string as `${PackId}/${K}`]: M[K];
 };
