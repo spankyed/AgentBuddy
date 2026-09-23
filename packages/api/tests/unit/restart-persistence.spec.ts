@@ -9,7 +9,7 @@ const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-restart-persistence-'
 process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/runtime');
-const { tx, getEntitiesOfType } = await import('@abuddy/ears');
+const { untypedTx, getEntitiesOfType } = await import('@abuddy/ears');
 const { _getLmdbPath } = await import('@abuddy/sdk/utils');
 const { unbindHost } = await import('@abuddy/sdk/runtime/internals');
 
@@ -22,7 +22,7 @@ describe('the API store across a restart', () => {
   it('hydrates what the previous run wrote', async () => {
     const first = openAppStore();
     expect(_getLmdbPath().startsWith(dataDir)).toBe(true);
-    tx('Note-restart' as never, true).put('entityType', 'Note').put('title', 'written before the restart');
+    untypedTx('Note-restart' as never, true).put('entityType', 'Note').put('title', 'written before the restart');
     await flushed();
     first.store.close();
     // A new process starts with nothing bound, and a new, empty engine

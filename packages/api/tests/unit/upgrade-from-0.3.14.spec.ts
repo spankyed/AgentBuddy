@@ -22,7 +22,7 @@ const { hostRegistration } = await import('@abuddy/host/features');
 const { loadBuiltInPacks } = await import('@abuddy/host/packs/runtime');
 const { runAppMigrations } = await import('@abuddy/host/migrations');
 const { appState } = await import('@abuddy/host/app-state');
-const { tx, untypedQx } = await import('@abuddy/ears');
+const { untypedTx, untypedQx } = await import('@abuddy/ears');
 
 const PACKAGES_DIR = path.resolve(__dirname, '..', '..', '..');
 const SETTINGS_ID = 'Settings-app' as never;
@@ -70,7 +70,7 @@ beforeAll(async () => {
   await loadBuiltInPacks(packs, PACKAGES_DIR, { runtimeEntry: 'only' });
   await store.hydrate();
   // 0.3.14's data has no AppState row: its state is in the settings
-  tx(SETTINGS_ID, true).put('entityType', 'Settings').put('data', structuredClone(SETTINGS_0314));
+  untypedTx(SETTINGS_ID, true).put('entityType', 'Settings').put('data', structuredClone(SETTINGS_0314));
 });
 
 afterAll(() => {

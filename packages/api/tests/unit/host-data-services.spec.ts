@@ -18,7 +18,7 @@ process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
 const { openAppStore } = await import('@/runtime');
 const { store, engine, packs } = openAppStore();
-const { defineEars, findRelations, getRelationStats, installedEngine, untypedQx, tx } = await import('@abuddy/ears');
+const { defineEars, findRelations, getRelationStats, installedEngine, untypedQx, untypedTx } = await import('@abuddy/ears');
 const { services } = await import('@abuddy/sdk/services');
 const { createEntity } = defineEars();
 
@@ -39,8 +39,8 @@ describe('relation reads in @abuddy/ears', () => {
     const flow = createEntity(EARS.Entity.Flow as never);
     const a = createEntity(EARS.Entity.Node as never);
     const b = createEntity(EARS.Entity.Node as never);
-    tx(a).link(EARS.RelKind.TRANSITIONS_TO as never, b, { sourceHandle: 'yes' });
-    tx(flow).link(EARS.RelKind.CONTAINS as never, a);
+    untypedTx(a).link(EARS.RelKind.TRANSITIONS_TO as never, b, { sourceHandle: 'yes' });
+    untypedTx(flow).link(EARS.RelKind.CONTAINS as never, a);
 
     const [edge] = findRelations({ sourceEntity: a, relationType: EARS.RelKind.TRANSITIONS_TO });
     expect(edge).toMatchObject({ sourceEntity: a, targetEntity: b, relationType: EARS.RelKind.TRANSITIONS_TO as never, info: { sourceHandle: 'yes' } });
@@ -48,21 +48,21 @@ describe('relation reads in @abuddy/ears', () => {
     expect(findRelations({ targetEntity: a }).map((r) => r.sourceEntity)).toEqual([flow]);
     expect(findRelations().map((r) => r.id).sort()).toEqual([edge.id, findRelations({ sourceEntity: flow })[0].id].sort());
 
-    tx(a).patchLink(EARS.RelKind.TRANSITIONS_TO as never, b, { newTarget: b, newInfo: { sourceHandle: 'no' } });
+    untypedTx(a).patchLink(EARS.RelKind.TRANSITIONS_TO as never, b, { newTarget: b, newInfo: { sourceHandle: 'no' } });
     expect(findRelations({ sourceEntity: a })[0]).toMatchObject({ id: edge.id, targetEntity: b, info: { sourceHandle: 'no' } });
   });
 
   it('getRelationStats counts relations and distinct endpoints of a kind', () => {
     const [s1, s2, t] = [createEntity(EARS.Entity.Node as never), createEntity(EARS.Entity.Node as never), createEntity(EARS.Entity.Node as never)];
-    tx(s1).link(EARS.RelKind.TRANSITIONS_TO as never, t);
-    tx(s2).link(EARS.RelKind.TRANSITIONS_TO as never, t);
+    untypedTx(s1).link(EARS.RelKind.TRANSITIONS_TO as never, t);
+    untypedTx(s2).link(EARS.RelKind.TRANSITIONS_TO as never, t);
     expect(getRelationStats(EARS.RelKind.TRANSITIONS_TO)).toEqual({ total: 2, uniqueSources: 2, uniqueTargets: 1 });
     expect(getRelationStats(EARS.RelKind.SPAWNED)).toEqual({ total: 0, uniqueSources: 0, uniqueTargets: 0 });
   });
 
   it("untypedQx queries the app's engine, which binding installed", () => {
     expect(installedEngine()).toBe(engine.query);
-    tx('Flow-query' as never, true).put('label', 'Queried');
+    untypedTx('Flow-query' as never, true).put('label', 'Queried');
     expect(untypedQx('Flow-query' as never).pick(['label'])).toEqual([{ id: 'Flow-query', label: 'Queried' }]);
   });
 });
@@ -134,7 +134,7 @@ describe('services.appData', () => {
     const metadata = JSON.parse(fs.readFileSync(metadataPath, 'utf-8'));
     fs.writeFileSync(metadataPath, JSON.stringify({ ...metadata, databases: ['lmdb', 'unknownLmdb'] }));
     fs.mkdirSync(path.join(backup, 'unknownLmdb'));
-    tx('Note-kept' as never, true).put('title', 'still here');
+    untypedTx('Note-kept' as never, true).put('title', 'still here');
 
     // A partial restore of a backup a newer AgentBuddy made would cost the user their data to learn that
     const refused = services.appData.importBackup(backup);
@@ -168,7 +168,7 @@ describe('services.appData', () => {
     dirs.push(dir);
     // The settings as 0.3.14 stored them: the app's state in `internal`, and no AppState
     engine.admin.clear();
-    tx('Settings-app' as never, true).put('entityType', 'Settings').put('data', { internal: { hasOnboarded: true, version: '0.3.14' } });
+    untypedTx('Settings-app' as never, true).put('entityType', 'Settings').put('data', { internal: { hasOnboarded: true, version: '0.3.14' } });
     await new Promise((resolve) => setTimeout(resolve, 0));
     const backup = await services.appData.exportBackup(dir, 'old', ['lmdb']);
     expect(appState.exists()).toBe(false);
@@ -191,8 +191,8 @@ describe('services.appData', () => {
       id: 'bookmarks',
       ears: { entities: { Bookmark: 'Bookmark', Tag: 'Tag' }, relKinds: {} },
     });
-    const bookmark = tx('Bookmark' as never).put('url', 'https://example.com').id();
-    tx('Tag' as never).put('name', 'reading');
+    const bookmark = untypedTx('Bookmark' as never).put('url', 'https://example.com').id();
+    untypedTx('Tag' as never).put('name', 'reading');
     await new Promise((resolve) => setTimeout(resolve, 0));
     const backup = await services.appData.exportBackup(dir, 'with-pack', ['lmdb']);
     packs.unregisterPack('bookmarks');
