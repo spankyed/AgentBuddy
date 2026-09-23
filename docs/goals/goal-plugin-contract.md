@@ -315,6 +315,10 @@ The change everything else rests on, and the only one that closes the cycle.
   `OutgoingActionEvents` comes from another feature's `be/`, which a leaf may not import at all.
 - `declaredTypeOf(file, name)` in `module-exports.ts` (Decision 2); codegen reads each plugin's `Contract`
   type from its leaf. Delete `pluginAccepts` and `PluginAccepts` — nothing replaces them.
+- With them goes the reader they existed for: `acceptedEventTypesOf`, its `TypeFlags.Never` branch and the
+  `annotated` argument at its call site. `eventTypeLiterals` keeps the parameter only while
+  `outgoingEventTypesOf` still passes it; [`goal-contracts-as-types.md`](goal-contracts-as-types.md) removes
+  that last caller and assumes this deletion happened here.
 - `abuddy.json` gains `features[].plugin.contract` (Decision 2), with `manifest-schema.ts`,
   `generate:schema` and `schema:check`. `library` omits it and gets no leaf.
 - `PluginInbox` stays a type helper in `@abuddy/sdk/fe`, constraining the `inbox` half's audiences.
