@@ -29,15 +29,16 @@ Finished when:
   abuddy.schema.json, in any abuddy.json in the repo, or in generate-entries.ts.
 - `receivedEventTypes` and the `sendsTo` target loop are gone from generate-entries.ts; a plugin's
   `receives` comes from its own declaration.
-- Plugins and systems both declare in two parts (`Public`, `Internal`), and a declared-internal event no
-  longer reaches a dependent's facade: `ADD_LOG` is gone from
-  tests/fixtures/external-pack/src/__generated__/deps/default-setup.d.ts.
+- A plugin declares the inbox other plugins may send it (`pluginAccepts()`), and only that declared half
+  reaches a dependent's facade (`PackPluginEvents`); what a feature's own system sends its own plugin stays
+  between the two halves.
 - A generated `events.ts` spells its dependency plugins `Qualified<'<dep>', __dep_<dep>_PackPluginEvents>`
   with no `Pick<>`, matching the systems line; `SendablePluginEvents` is gone from the facade barrel.
-- `broadcastToPlugin` is the backend send and `broadcastToPlugin` the renderer one; no module exports both
+- `broadcastToPlugin` is the backend send and `sendToPlugin` the renderer one; no module exports both
   meanings under one name; the delivery-scope difference is documented in @abuddy/sdk and pinned by a spec.
-- The renderer send checks the target's declared inbox and reports a miss at `diagnostic` as the bus does;
-  PackFEFeature carries `receives` and the FE registry builds the map from it.
+- The renderer send is typed from the target's declared inbox, and so is `navigateToPlugin`, which hands its
+  events to the same actor. It is not runtime-checked: the trimmed scope dropped the FE validation map, and
+  `Message` carries no sender, so a map could not tell one audience from the other anyway.
 - `usePluginSettings` and `currentPluginSettings` no longer exist.
 - packages/default-setup/src/features/plugin-handle.ts is deleted, or the doc records under Outcome why
   it survived and what still binds it.
@@ -78,8 +79,8 @@ Never:
   goal-settings-to-host and Phase 2 only verifies it (Decision 8).
 - fix `FeatureSettingsUpdated.settings` being `unknown` — it is goal-settings-to-host's Decision 7, and
   belongs to that goal (Decision 8); record it, don't do it.
-- leave `defineSystem` collapsed while splitting plugins (Decision 19: that ships the asymmetry this goal
-  exists to remove).
+- split `defineSystem` into `Public`/`Internal` (the goal was trimmed to the plugin half; the system-side
+  leak is recorded under Deferred).
 - make a validation map audience-aware — `Message` has no sender, so it cannot be (Decision 18).
 ```
 
@@ -89,7 +90,7 @@ Never:
 > and are corrected below: `sendsTo` has four users, not two, and two of them target host plugins;
 > `sendsTo` reaches 26 files, not 20; `fe/public.ts` is 7 files, not 8; the cross-feature edge graph is 16
 > edges, not ~27, and feature→feature is 4, not 13; 14 plugin entries are in the annotation form, not 15.
-> `broadcastToPlugin`'s ~534 occurrences are unchanged. What that goal did and didn't do for this one is
+> `sendToPlugin`'s ~534 occurrences are unchanged. What that goal did and didn't do for this one is
 > Decision 8.
 
 > Line numbers in `features/application/fe/machine.ts` were re-checked at `c947ed32b`, which changed that file
@@ -576,7 +577,10 @@ Final.
     "does this plugin handle this event at all". Say that in the doc comment, so nobody later reads a
     passing check as "this sender was allowed".
 
-19. **`defineSystem` gets the same split, in this goal.** Leaving it collapsed would ship the exact
+19. ~~**`defineSystem` gets the same split, in this goal.**~~ **Trimmed out.** The goal was cut back to the
+    plugin half (one declaration, `pluginAccepts()`, instead of a two-parameter split on both sides), so the
+    system-side leak stays and is recorded under Deferred. The design below is kept as written for whoever
+    picks that up. Leaving it collapsed would ship the exact
     asymmetry this goal exists to remove — and it is where the leak actually is today, since plugins have
     no declaration to leak from yet. `defineSystem<Public, Internal, Outgoing, Context>()`:
 
@@ -665,14 +669,12 @@ this phase; if one seems necessary, the base is not what this doc was surveyed a
 
 The root change. After Phase 1.
 
-- `definePlugin<Public, Internal>()` in `packages/abuddy-sdk/src/fe/plugin.ts`, with the two-part split and
-  the absent-vs-`never` rule of Decision 1, the `satisfies` guard of Decision 12 and the SDK-wide union of
-  Decision 13.
-- `defineSystem<Public, Internal, Outgoing, Context>()` in
-  `packages/abuddy-sdk/src/framework/define-system.ts` (Decision 19): add the `_internal` phantom, narrow
-  `_incoming` to `Public`, keep `types.events` and `typeOf` on the full union, and split `IncomingEventsOf`
-  into the own-pack and published variants. Two call sites carry an internal type today —
-  `features/logs/be/system.ts:40` and `features/database/be/system.ts:58`.
+- `definePlugin()` and `pluginAccepts<Accepts>()` in `packages/abuddy-sdk/src/fe/plugin.ts`. As built, the
+  declaration is a named `accepts` export beside the plugin rather than a type parameter on `definePlugin`,
+  so codegen reads it with a **type-only** import and the plugin's machine and `.vue` graph never enter the
+  event types. The two audiences fall out of declared-vs-derived instead of `Public`/`Internal`: what the
+  feature's own system sends is added by codegen and stays out of `PackPluginEvents`.
+- ~~`defineSystem<Public, Internal, Outgoing, Context>()`~~ — trimmed with Decision 19; see Deferred.
 - Rewrite **all 14 plugin entries** out of the `const x: PluginDefinition = {…}` annotation form into
   `definePlugin(…)` (Decision 12) — 11 in `packages/default-setup/src/features/*/fe/plugin.ts`, 3 in
   `tests/fixtures/*/src/features/*/fe/plugin.ts`. Only the ones other plugins send to take type
@@ -719,13 +721,11 @@ and `api:check` updated and committed; `git grep sendsTo` returns nothing outsid
 `docs/goals/goal-manifest-redesign.md`'s dated note; `npm start` boots the dev app clean (Decision 15's
 acceptance test).
 
-The split is checked, not assumed: **`ADD_LOG` no longer appears in
-`tests/fixtures/external-pack/src/__generated__/deps/default-setup.d.ts`** (it is at `:3629` today), and a
-spec asserts that a dependent pack cannot send a declared-internal event to a dependency's system or
-plugin. Mutations: narrowing a plugin's declared inbox makes a send that was valid fail to compile, and the
-bus drops it with a `diagnostic` report; moving an event from `Internal` to `Public` puts it back in the
-facade; annotating a plugin entry `: PluginDefinition` instead of `satisfies` fails the build with the
-Decision 12 error.
+Only the declared half crosses: a dependent's `PackPluginEvents` carries what `pluginAccepts()` declared and
+not what a feature's own system sends its own plugin. (The system side keeps both in one phantom — see
+Deferred.) Mutations: narrowing a plugin's declared inbox makes a send that was valid fail to compile;
+exporting `accepts` as a type rather than a value is passed over instead of emitting `typeof` on it; an
+`accepts` that declares no events fails the build naming the annotation that drops them.
 
 ### Phase 4 — `broadcastToPlugin`, and the renderer send
 
@@ -798,6 +798,12 @@ pluginHandle` returns nothing, or the Outcome records what still binds one.
   EARS data. Out of scope, and not to be approximated by widening the read channel.
 - Pack frontend isolation from `window.electronAPI`, the host API client and the app DOM —
   `docs/goals/deferred/goal-pack-frontend-isolation.md`.
+- **The system side's two audiences.** `defineSystem<Incoming | Internal, Outgoing>()` puts both in one
+  phantom (`_incoming`), so a system's internal events reach every dependent pack's facade: `ADD_LOG`, one of
+  `LogsInternalEvents`, is in `tests/fixtures/external-pack/src/__generated__/deps/default-setup.d.ts`.
+  Splitting it is two call sites (`features/logs/be/system.ts`, `features/database/be/system.ts`) plus an
+  `_internal` phantom, and was trimmed out of this goal with the rest of the `Public`/`Internal` design. The
+  plugin side has no such leak: `PackPluginEvents` carries only the declared half.
 - The `brain ↔ flows` mutual `public.ts` dependency (each settings panel reads the other's root-flow id).
   It survives only because both are consumed from `.vue` setup rather than module init. Note it in the
   Phase 6 table; do not restructure it here.
