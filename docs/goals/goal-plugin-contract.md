@@ -16,16 +16,24 @@ going. No backward compatibility in code: change signatures, move modules, migra
 test, fixture, template and doc in the same change, and fix forward.
 
 Finished when:
-- Phases 1–5 are implemented and each meets its "Done when"; every new guard, helper or test is
+- Phases 1–4 are implemented and each meets its "Done when"; every new guard, helper or test is
   mutation-checked.
-- No `features/*/fe/public.ts` remains; each feature frontend has an `fe/types.ts` leaf holding its
-  context, its `Contract` type and any plain data, importing nothing from `#generated/*` but `types` and
-  `ears`. `pluginAccepts` and `PluginAccepts` no longer exist, and nothing replaces them.
-- `#generated/events` imports the leaf, never `fe/plugin.ts`.
-- The 17 intra-pack UI commands (terminal.CREATE, NOTE.OPEN, TAB.CREATE, NODE.DOUBLE_CLICK and the rest)
-  are gone from tests/fixtures/external-pack/src/__generated__/deps/default-setup.d.ts, and
-  `navigateToPlugin` still compiles at every in-repo caller.
-- An external pack reads a dependency's plugin state with types, proved in tests/fixtures/external-pack.
+- No `packages/default-setup/src/features/*/fe/public.ts` remains. The host's three — application, packs
+  and settings — are out of scope and stay: check-import-specifiers.ts records that arrangement as
+  deliberate.
+- Each default-setup feature frontend that needs one has an `fe/types.ts` leaf holding its context, its
+  `Contract` type and any plain data, importing nothing from `#generated/*` but `types` and `ears`, and
+  nothing from `./state`. `pluginAccepts` and `PluginAccepts` no longer exist, and nothing replaces them.
+- `#generated/events` imports the leaf, never `fe/plugin.ts` and never a module that reaches `./state`.
+- The intra-pack UI commands are gone from
+  tests/fixtures/external-pack/src/__generated__/deps/default-setup.d.ts: no `accepts` block there names
+  UPDATE_STATE, terminal.CREATE, NOTE.OPEN, TAB.CREATE, NODE.DOUBLE_CLICK, EDIT_DOCUMENT or FLOW.SELECT,
+  and `navigateToPlugin` still compiles at every in-repo caller.
+- An external pack reads a dependency's plugin state with types, proved in tests/fixtures/external-pack, and
+  that read is typed `T | undefined` because the dependency's frontend may still be loading.
+- `usePluginState` and `readPluginState` name only the generated readers; the SDK's untyped pair is
+  `useUntypedPluginState`/`readUntypedPluginState`, and `abuddy.json` names each contract at
+  `features[].plugin.contract`.
 - `findCrossFeatureImports` no longer excepts `fe/public`: no feature imports another feature's `fe/`.
 - npm run typecheck, schema:check, api:check (sdk, ui), facade:check -w @app/default-setup,
   packages:build + packages:check.
@@ -62,14 +70,21 @@ gone, `plugin-handle.ts` is deleted. Two things it left are what this goal is fo
 
 **One declared audience, and it is the widest.** A plugin's inbox is its own system's outgoing union
 (derived, never published) unioned with whatever it declares (published). Nothing sits between. So when
-`da6a45e91` typed `navigateToPlugin`, the 17 cross-feature UI commands it surfaced had nowhere to go but the
-published tier, and they now reach every dependent:
+`da6a45e91` typed `navigateToPlugin`, the cross-feature UI commands it surfaced had nowhere to go but the
+published tier. Measured at this base, the fixture's facade carries ten `accepts` blocks holding **20 literal
+event types plus three named unions** — `OutgoingActionEvents` (11 events), `ActionsListEvent` (8) and
+`PromptsListEvent` — so roughly 45 events reach every dependent:
 
 ```
 tests/fixtures/external-pack/src/__generated__/deps/default-setup.d.ts
-3812:    type: "terminal.CREATE";      // the code plugin routing to its own terminal child
-3829:    type: "NOTE.OPEN";            // the notes plugin opening a note
+3808:    type: "UPDATE_STATE"; updates: Partial<Context>;   // the code plugin's whole context, writable
+3812:    type: "terminal.CREATE";                           // the code plugin routing to its terminal child
+3829:    type: "NOTE.OPEN";                                 // the notes plugin opening a note
 ```
+
+`UPDATE_STATE` is the case that settles it: a dependent pack can write **any field** of the code plugin's
+context, and `features/actions/fe/components/ActionDetail.vue:184` already does it cross-feature. The context
+is published today — as a write surface, which is the worse half.
 
 The same pressure shows in `flows`, which declares `OutgoingActionEvents` — **11 events where it handles 3**
 (`features/flows/fe/state.ts:143-145`) — and drags a cross-feature `fe/plugin.ts → actions/be/system` import
@@ -161,7 +176,22 @@ Final.
    stays put.
 
    The leaf imports nothing from `#generated/*` but `types` and `ears` — contexts need both (`NoteDTO`,
-   `EARS.EntityId`) and neither reaches `#generated/events`. It imports no other feature.
+   `EARS.EntityId`) and neither reaches `#generated/events`. It imports no other feature, and nothing from
+   `./state`.
+
+   **Dropping `./state` costs more than it reads.** Six of the ten inboxes reach through it today: five are
+   `Extract<XEvents, …>` over their own machine's union (`ActionsListEvent`, `PromptsListEvent`, `database`,
+   `library`, `notes`) and `flows` imports `OutgoingActionEvents` from another feature's `be/`. All six are
+   respelled as structural literals in the leaf, and `state.ts` then takes those events **from** the leaf
+   rather than the leaf extracting them from `state.ts`. That inversion is the work of Phase 1. `code` already
+   has the shape, with the comment that says why: "they are spelled out rather than extracted".
+
+   A feature whose plugin publishes no inbox and whose state nobody reads gets **no leaf**: `library`'s
+   `fe/public.ts` is one ref constant and nothing else. An empty `Contract` would be ceremony.
+
+   The three `references.ts` files go with the refs. Each calls `usePluginState(REF, (actorState: any) => …)`
+   on its own plugin (`notes`, `library`, `threads`); they move to the generated reader (Decision 5), which is
+   what removes those `any`s.
 
 2. **The contract is one exported type in the leaf.**
 
@@ -181,6 +211,23 @@ Final.
    `checker.getDeclaredTypeOfSymbol`, beside the existing `exportedValueType`. `ExportInfo` does not change;
    this is a new reader, not a different answer from an old one.
 
+   **The leaf is named in `abuddy.json`, not found by convention** — in the `plugin` object that already
+   exists, in the `"path#export"` shape `repositories` and `services` already use:
+
+   ```json
+   "plugin": {
+     "entry": "src/features/notes/fe/plugin.ts",
+     "contract": "src/features/notes/fe/types.ts#Contract"
+   }
+   ```
+
+   The manifest names every other entry point a feature has — `system.entry`, `plugin.entry`, `references`,
+   `settings` — so a conventional path would be its one implicit build input, and it would assume a layout no
+   external pack has to share. Three things follow. The field is **optional**, which is how a feature with no
+   published inbox and no read gets no leaf (`library`). A typo fails the build naming the path, rather than
+   silently generating an empty inbox — the way `pluginAccepts` failed. And the JSON schema documents and
+   validates it, with `schema:check` as the gate.
+
 3. **Sends declare by audience; `pack` is the default.**
 
    | audience | source | reaches |
@@ -190,7 +237,8 @@ Final.
    | `public` | declared | `PackPluginEvents` → the facade |
 
    Publishing should be a word someone typed. A rookie declaring an inbox so a sibling can send it must not
-   thereby create API for every dependent — which is exactly what happened to the 17 commands.
+   thereby create API for every dependent — which is exactly what happened to the ~45 events now in the
+   facade, `UPDATE_STATE` among them.
 
 4. **Reads are public by default, and narrow with `Pick<>`.** `State` is the whole context. The asymmetry
    with Decision 3 is deliberate, and this is the reason: **a send changes behaviour, a read does not**, and
@@ -204,11 +252,35 @@ Final.
    resolving own features to their `State` and a dependency's to what its facade carries:
 
    ```ts
-   usePluginState('default-setup/notes', (s) => s.currentNote)   // typed, in any pack
+   usePluginState('notes',               (s) => s.currentNote)   // own pack   → Ref<Note | null>
+   usePluginState('default-setup/notes', (s) => s.currentNote)   // dependency → Ref<Note | null | undefined>
    ```
 
-   The selector takes the declared `State`. Code needing the XState snapshot keeps the SDK's untyped
-   `usePluginState` — the escape hatch, as `untypedQx` is to `#generated/ears`.
+   The selector takes the declared `State`.
+
+   **Absence is typed, not thrown — and only codegen can tell the two cases apart.** Within a pack both
+   features ship together and the shell spawns every registered plugin in the step that registers it
+   (`application/fe/machine.ts:283`), so a missing one is a bug rather than a state. Across packs the
+   dependency's frontend loads asynchronously (`LOAD_PACK_FRONTENDS`), so absence is a state, and the reader
+   says so in its return type. `T | undefined` is how a not-yet-loaded resource is typed everywhere else;
+   throwing and asking the caller to pre-check with `hasDesignation` (constraint 6) is what would make the
+   blessed path a footgun for the reader it exists for. The one-shot twin returns `T | undefined` for a
+   dependency and watches nothing; the reactive one re-resolves when the actor appears, which is the same
+   question Decision 6 already gives the shell.
+
+   **The SDK's untyped pair is renamed: `useUntypedPluginState` and `readUntypedPluginState`**, staying
+   public in `@abuddy/sdk/fe`. The plain name goes to the generated reader, because the plain name belongs on
+   the path people should take — the convention this repo already follows twice:
+
+   | typed, `#generated/*` | untyped, `@abuddy/sdk` |
+   |---|---|
+   | `qx` | `untypedQx` |
+   | `navigateToPlugin` | `openPlugin` |
+
+   `untypedQx` is the closer analogue: what changes is only what the compiler knows, since a dependency's
+   `PluginName` *is* its ref string. So the qualifier goes on the reader that gives the types up, and the two
+   never collide under one name. The churn is small and already scheduled — the callers are the `fe/public.ts`
+   selectors and the three `references.ts` files, every one of which Phase 3 rewrites or deletes.
 
 6. **The shell owns "that plugin isn't here yet" — on both channels.** `_sendToLocalPlugin` reaches past
    the shell into `application.system.get(ref)` and throws. The shell already answers this for `OPEN_PLUGIN`
@@ -236,42 +308,54 @@ Final.
 
 The change everything else rests on, and the only one that closes the cycle.
 
-- `fe/public.ts` → `fe/types.ts` per feature (Decision 1); move each context out of `state.ts`, and export
-  `BrowserContext` and `ThreadsContext`, which are private today.
+- `fe/public.ts` → `fe/types.ts` per feature that needs one (Decision 1); move each context out of `state.ts`,
+  and export `BrowserContext` and `ThreadsContext`, which are private today. `library` loses its file outright.
+- Respell all six `./state`-reaching inboxes structurally, and invert: `state.ts` imports those events from the
+  leaf. Narrowing `flows` to the three action events it handles lands **here**, not in Phase 2 — its
+  `OutgoingActionEvents` comes from another feature's `be/`, which a leaf may not import at all.
 - `declaredTypeOf(file, name)` in `module-exports.ts` (Decision 2); codegen reads each plugin's `Contract`
   type from its leaf. Delete `pluginAccepts` and `PluginAccepts` — nothing replaces them.
+- `abuddy.json` gains `features[].plugin.contract` (Decision 2), with `manifest-schema.ts`,
+  `generate:schema` and `schema:check`. `library` omits it and gets no leaf.
 - `PluginInbox` stays a type helper in `@abuddy/sdk/fe`, constraining the `inbox` half's audiences.
 - `state.ts` imports its context from the leaf. Nothing else moves; the machine keeps its generated sends.
 - The selectors stay for now on the SDK's untyped `usePluginState`; Phase 3 deletes them.
 
-**Done when:** `npm run typecheck`, `compile`, `npm test -w @abuddy/sdk`, `npm test -w @app/default-setup`
-pass; `git grep pluginAccepts` returns nothing and no SDK export replaced it; `#generated/events` imports
+**Done when:** `npm run typecheck`, `compile`, `schema:check`, `npm test -w @abuddy/sdk`,
+`npm test -w @app/default-setup` pass; `git grep pluginAccepts` returns nothing and no SDK export replaced it; `#generated/events` imports
 no `fe/plugin.ts`; a `declaredTypeOf` spec covers a type alias, an interface and a missing name; a guard in
-`scripts/check-import-specifiers.ts` rejects a leaf importing `#generated/events`, `#generated/fe` or another
-feature. Mutation: pointing codegen at `fe/plugin.ts` restores the cycle and fails the build — the check that
-Decision 2's rule is what holds.
+`scripts/check-import-specifiers.ts` rejects a leaf importing `./state`, `#generated/events`, `#generated/fe`
+or another feature. Mutation, both paths, because either one reopens the cycle: pointing codegen at
+`fe/plugin.ts` fails the build, and re-adding one `Extract<XEvents, …>` to a leaf fails the guard.
 
 ### Phase 2 — The `pack` audience
 
 - `PluginInbox<{ pack?, public? }>` (Decision 3); `OwnPluginEvents` becomes derived | `pack` | `public`, and
   `PackPluginEvents` narrows to `public`.
-- Move the 17 UI commands to `pack`; narrow `flows` to its three action events, which removes the
-  cross-feature `be/system` import with it.
+- Move the intra-pack UI commands to `pack` — `UPDATE_STATE` first, since it publishes a whole context as a
+  write surface. (`flows` was already narrowed in Phase 1, which needed it.)
 - The fixture pack gains both cases: a send it may make to a default-setup plugin, and a `@ts-expect-error`
   on one it may not. Nothing external exercises this today.
+- The runtime maps stay one flat union per plugin, and their doc comments say what a passing check means —
+  the event's shape was accepted, not that this sender was allowed (Decision 7). This is the phase that
+  creates the gap between the two, so it is the phase that writes it down.
 
 **Done when:** `npm run typecheck`, `compile`, `test:external-pack` pass; `facade:check` updated;
-`terminal.CREATE` and `NOTE.OPEN` are gone from `deps/default-setup.d.ts`, and `navigateToPlugin` compiles at
-every in-repo caller. Mutation: moving one event from `pack` to `public` puts it back in that file.
+`UPDATE_STATE`, `terminal.CREATE` and `NOTE.OPEN` are gone from `deps/default-setup.d.ts`, and
+`navigateToPlugin` compiles at every in-repo caller. Mutation: moving one event from `pack` to `public` puts it back in that file.
 
 ### Phase 3 — The read channel
 
 After Phases 1 and 2.
 
 - `PackPluginState` from each plugin's `State`, added to `generatePackTypes()`; the typed reader and its
-  one-shot twin in `#generated/fe` (Decision 5). A context the gate refuses narrows with `Pick<>`
-  (Decision 4) rather than the design changing.
-- Delete the selectors from every leaf; migrate the 14 consumers.
+  one-shot twin in `#generated/fe` (Decision 5), returning `T` for an own feature and `T | undefined` for a
+  dependency's. A context the gate refuses narrows with `Pick<>` (Decision 4) rather than the design changing.
+- Rename the SDK's pair to `useUntypedPluginState`/`readUntypedPluginState` (Decision 5), with `api:update`
+  and the `etc/` reports committed. The generated pair takes the plain names.
+- Delete the selectors from every leaf; migrate the 14 consumers. Four of those edges carry no state at all:
+  the step forms import `FormResources`, a plain type `flows/fe/public.ts` re-exports from `./types/form-props`.
+  The reader replaces none of it, so it moves to where the forms live or to the SDK's step contract.
 - `findCrossFeatureImports`: drop the `fe/public` exception — constraint 5, one line
   (`if (module === 'public') return []`, `check-import-specifiers.ts:530`). It is a hole we punched, not a
   rule we inherited, so the fix is deleting the line, not building a replacement for what it blessed.
@@ -279,36 +363,34 @@ After Phases 1 and 2.
   re-exports `NOTE_TYPE_TO_REFERENCE_TYPE` across that boundary and needs a home — the tiptap extension, or
   `#generated/references`, which already aggregates reference config.
 
-**Done when:** the full chain passes; no `fe/public.ts` remains; a fixture-pack spec reads a default-setup
-plugin's state with types. Mutation: re-adding `fe/public` to the exception and importing one cross-feature
+**Done when:** the full chain passes; no `fe/public.ts` remains; `git grep -w usePluginState` finds it only in `#generated/fe`
+and its generator, and `git grep -w useUntypedPluginState` only in `@abuddy/sdk/fe` and its specs; a fixture-pack spec reads a default-setup plugin's state with types, and
+a `@ts-expect-error` pins that the dependency read is `T | undefined`. Mutation: re-adding `fe/public` to the exception and importing one cross-feature
 makes `check:specifiers` pass again, proving the rule is what rejects it.
 
-### Phase 4 — The shell owns waiting
+### Phase 4 — The shell owns the send paths
 
 - `SEND_TO_PLUGIN` on `HostShell`, answered by the same `pendingOpens` path as `OPEN_PLUGIN` (Decision 6).
+- The scope spec the archived goal left open lands here rather than in a phase of its own: it pins the same
+  send paths this phase re-owns.
 - The read half: a `pluginActor` sibling returning `undefined`, and the `hasDesignation` pre-checks deleted
   at their callers.
 
 **Done when:** `npm test -w @abuddy/host` and `-w @abuddy/sdk` pass; a spec in
 `abuddy-host/tests/features/application/fe/` pins that a send to a plugin whose pack is still loading is
 delivered once it arrives, and reported through `notify` once loading settles with no such plugin; a read of
-an absent plugin returns `undefined` instead of throwing. Mutation: dropping the queue fails the first spec.
-
-### Phase 5 — The scope spec the archived goal left open
-
-- Pin that `broadcastToPlugin` reaches **every** window and the renderer's `sendToPlugin` only its own — the
-  half that produced `OPEN_PLUGIN_FROM_APP`. Two windows in one E2E, or the shell fakes.
-
-**Done when:** it passes, and fails when the renderer send is routed through the bus.
+an absent plugin returns `undefined` instead of throwing; and the scope spec the archived goal left open
+passes — `broadcastToPlugin` reaches **every** window, the renderer's `sendToPlugin` only its own (two windows
+in one E2E, or the shell fakes), the half that produced `OPEN_PLUGIN_FROM_APP`. Mutation: dropping the queue
+fails the first spec; routing the renderer send through the bus fails the scope spec.
 
 ## Deferred
 
-1. **`defineSystem`'s audiences** — constraint 4, the system-side twin of Decision 3. One type parameter
-   covers incoming and internal, so a system publishes events nothing outside can legitimately send
-   (`ADD_LOG`, from a `fromCallback` child). Two specs distinguish internal today (`logs/be/system.ts:40`,
-   `database/be/system.ts:58`), but the parameter changes for all twelve. Like constraint 3, this *removes*
-   published API rather than adding machinery. **Reopen when** Phase 2 lands and the plugin side is proven,
-   or sooner if a second pack's authors find another pack's internal events in their completions.
+1. **`defineSystem`'s audiences** — constraint 4, the system-side twin of Decision 3, and constraint 3
+   generalised. **Now planned in [`goal-contracts-as-types.md`](goal-contracts-as-types.md)**, which reads a
+   system's contract as a declared type in the `be/types.ts` every feature already has, makes `internal` a
+   field rather than a fourth positional type parameter, and retires `satisfies SystemEntry` with it. That
+   goal depends on this one's `declaredTypeOf` and should run after it. Nothing here does that work.
 2. **A sender on the envelope, and the FE validation map it makes possible** — constraints 1 and 7, which
    are one item: `Message` gains `from`, stamped by the generated send; `PackFEFeature` gains `receives`;
    the bus rejects a cross-pack send of a `pack`-tier event.
