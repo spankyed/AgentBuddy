@@ -92,7 +92,7 @@ export function persistCodexState(services: Services, threadId: string, state: C
   const nextTags = tagAdded ? [...existingTags, CODEX_TAG] : existingTags;
 
   services.repository.threadCommands.update(threadId as any, { context: nextContext, tags: nextTags });
-  services.emitter.sendToPlugin('default-setup/threads', {
+  services.emitter.broadcastToPlugin('default-setup/threads', {
     type: 'THREAD_UPDATED',
     threadId,
     updates: { ...(tagAdded ? { tags: nextTags } : {}), context: nextContext },

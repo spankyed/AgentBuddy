@@ -5,11 +5,12 @@
 ```ts
 import * as _abuddy_ears from '@abuddy/ears';
 import * as _abuddy_sdk from '@abuddy/sdk';
-import { ActionEntity, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes } from '@abuddy/sdk';
+import { ActionEntity, ActionParameter, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes, TemplateInput } from '@abuddy/sdk';
 import { ArtifactItem } from '@abuddy/sdk/artifacts';
 import * as _abuddy_sdk_build from '@abuddy/sdk/build';
 import { HostPluginEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, Qualified, TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
 import * as _abuddy_sdk_fe from '@abuddy/sdk/fe';
+import { TrailClickEvent } from '@abuddy/sdk/fe';
 import { ModelCatalogEntry, ModelId } from '@abuddy/sdk/models';
 import * as _abuddy_sdk_repositories from '@abuddy/sdk/repositories';
 import { FlowEdge } from '@abuddy/sdk/repositories';
@@ -39,6 +40,17 @@ declare class ActionService {
         label?: string;
     }): Promise<any>;
     getAndExecute(label: string, params?: Record<string, any>): Promise<any | undefined>;
+}
+
+type ActionsEvents = UIEvent$1 | SystemEvent$1 | TrailClickEvent;
+
+/** The events another feature may send the actions plugin: paging, and editing an action */
+type ActionsListEvent = Extract<ActionsEvents, {
+    type: 'ACTION.CREATE_INLINE' | 'ACTION.DELETE' | 'ACTION.UPDATE_INPUT' | 'ACTION.UPDATE_LABEL' | 'ACTIONS.LOAD_ALL' | 'ACTIONS.LOAD_MORE';
+}>;
+
+interface ActionsSettings {
+    categories: Category[];
 }
 
 interface ActionsStartupData {
@@ -1825,7 +1837,7 @@ type OutgoingCodeEvents = OutgoingExplorerEvents | OutgoingSearchEvents | Outgoi
     type: 'CODE_CONNECTED';
     data: CodeConnectedData;
 }
-/** What testing a CLI found, for the Settings view that asked (abuddy.json `sendsTo`) */
+/** What testing a CLI found, for the Settings view that asked (the host declares its plugin takes it) */
  | {
     type: 'CLI_TEST_RESULT';
     provider: string;
@@ -2773,8 +2785,8 @@ type OwnRepositories = {
  * `services.emitter`, typed with this pack's events. Actions run outside any pack, so a system and a
  * plugin are both named `<pack>/<feature>`, this pack's own and the host's too; a system may also be a role.
  */
-type PackEmitter = Omit<HostServices['emitter'], 'sendToPlugin' | 'sendToSystem'> & {
-    sendToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;
+type PackEmitter = Omit<HostServices['emitter'], 'broadcastToPlugin' | 'sendToSystem'> & {
+    broadcastToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;
     sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;
 };
 
@@ -2933,6 +2945,17 @@ interface PromptsConnectedData {
     totalPages: number;
     totalCount: number;
     categories?: Category[];
+}
+
+type PromptsEvents = UIEvent | SystemEvent | TrailClickEvent;
+
+/** The events another feature may send the prompts plugin: paging, and editing a prompt */
+type PromptsListEvent = Extract<PromptsEvents, {
+    type: 'PROMPT.CREATE_INLINE' | 'PROMPT.DELETE' | 'PROMPT.UPDATE_INPUTS' | 'PROMPT.UPDATE_LABEL' | 'PROMPTS.LOAD_ALL' | 'PROMPTS.LOAD_MORE';
+}>;
+
+interface PromptsSettings {
+    categories: Category[];
 }
 
 /**
@@ -3367,6 +3390,62 @@ interface SwitchNode extends NodeBase {
     elseLabel?: string;
 }
 
+type SystemEvent = OutgoingPromptEvents | {
+    type: 'PROMPTS_PAGE_LOADED';
+    data: {
+        prompts: PromptEntity[];
+        page: number;
+        totalPages: number;
+    };
+} | {
+    type: 'PROMPTS_ALL_LOADED';
+    data: {
+        prompts: PromptEntity[];
+    };
+} | {
+    type: 'PROMPTS_IMPORTED';
+    count: number;
+    errors?: string[];
+} | {
+    type: 'PROMPTS_IMPORT_FAILED';
+    errors: string[];
+} | {
+    type: 'PROMPTS_EXPORTED';
+    filePath: string;
+    promptCount: number;
+} | {
+    type: 'PROMPTS_EXPORT_FAILED';
+    errors: string[];
+};
+
+type SystemEvent$1 = OutgoingActionEvents | {
+    type: 'ACTIONS_PAGE_LOADED';
+    data: {
+        actions: ActionEntity[];
+        page: number;
+        totalPages: number;
+    };
+} | {
+    type: 'ACTIONS_ALL_LOADED';
+    data: {
+        actions: ActionEntity[];
+    };
+} | {
+    type: 'ACTIONS_IMPORTED';
+    count: number;
+    errors?: string[];
+} | {
+    type: 'ACTIONS_IMPORT_FAILED';
+    errors: string[];
+} | {
+    type: 'ACTIONS_EXPORTED';
+    filePath: string;
+    actionCount: number;
+} | {
+    type: 'ACTIONS_EXPORT_FAILED';
+    errors: string[];
+};
+
 type SystemLine = z.infer<typeof SystemLineSchema>;
 
 /** System lines — many subtypes, all passthrough. */
@@ -3692,6 +3771,158 @@ interface TurnStartParams {
     model?: string;
 }
 
+type UIEvent = {
+    type: 'PROMPT.SELECT';
+    promptId: EARS$1.EntityId;
+} | {
+    type: 'PROMPT.CREATE';
+} | {
+    type: 'PROMPT.SAVE';
+} | {
+    type: 'PROMPT.DELETE';
+    promptId: EARS$1.EntityId;
+} | {
+    type: 'PROMPT.UPDATE_INPUTS';
+    promptId: string;
+    inputs: Record<string, any>;
+} | {
+    type: 'PROMPT.CREATE_INLINE';
+    label: string;
+    templateFn: string;
+    inputs: Record<string, any>;
+} | {
+    type: 'PROMPT.UPDATE_LABEL';
+    promptId: string;
+    label: string;
+} | {
+    type: 'FORM.UPDATE_CATEGORY';
+    category: string;
+} | {
+    type: 'FORM.UPDATE_LABEL';
+    label: string;
+} | {
+    type: 'FORM.UPDATE_DESCRIPTION';
+    description: string;
+} | {
+    type: 'FORM.UPDATE_INPUTS';
+    inputs: Record<string, TemplateInput>;
+} | {
+    type: 'FORM.UPDATE_TEMPLATE';
+    templateFn: string;
+} | {
+    type: 'FORM.UPDATE_OUTPUT_SCHEMA';
+    outputSchema: any;
+} | {
+    type: 'VIEW_LIST';
+} | {
+    type: 'TOGGLE_INPUTS_SECTION';
+    show: boolean;
+} | {
+    type: 'TOGGLE_OUTPUT_SECTION';
+    show: boolean;
+} | {
+    type: 'TOGGLE_METADATA_SECTION';
+    show: boolean;
+} | {
+    type: 'FEATURE_SETTINGS_UPDATED';
+    settings: PromptsSettings;
+} | {
+    type: 'PROMPTS.LOAD_MORE';
+} | {
+    type: 'PROMPTS.LOAD_ALL';
+} | {
+    type: 'FILTER.TOGGLE_CATEGORY';
+    categoryName: string;
+} | {
+    type: 'FILTER.CLEAR';
+} | {
+    type: 'PROMPTS.IMPORT';
+    prompts: any[];
+} | {
+    type: 'PROMPTS.RESET_IMPORT_STATUS';
+} | {
+    type: 'PROMPTS.EXPORT';
+    directory: string;
+} | {
+    type: 'PROMPTS.RESET_EXPORT_STATUS';
+};
+
+type UIEvent$1 = {
+    type: 'ACTION.SELECT';
+    actionId: EARS$1.EntityId;
+} | {
+    type: 'ACTION.CREATE';
+} | {
+    type: 'ACTION.SAVE';
+} | {
+    type: 'ACTION.DELETE';
+    actionId: EARS$1.EntityId;
+} | {
+    type: 'ACTION.UPDATE_INPUT';
+    actionId: string;
+    input: Record<string, any>;
+} | {
+    type: 'ACTION.CREATE_INLINE';
+    label: string;
+    actionFn: string;
+    input: Record<string, any>;
+} | {
+    type: 'ACTION.UPDATE_LABEL';
+    actionId: string;
+    label: string;
+} | {
+    type: 'FORM.UPDATE_LABEL';
+    label: string;
+} | {
+    type: 'FORM.UPDATE_DESCRIPTION';
+    description: string;
+} | {
+    type: 'FORM.UPDATE_PARAMETERS';
+    input: Record<string, ActionParameter>;
+} | {
+    type: 'FORM.UPDATE_ACTION';
+    actionFn: string;
+} | {
+    type: 'FORM.UPDATE_OUTPUT';
+    output: any;
+} | {
+    type: 'FORM.UPDATE_CATEGORY';
+    category: string;
+} | {
+    type: 'VIEW_LIST';
+} | {
+    type: 'TOGGLE_PARAMETERS_SECTION';
+    show: boolean;
+} | {
+    type: 'TOGGLE_OUTPUT_SECTION';
+    show: boolean;
+} | {
+    type: 'TOGGLE_METADATA_SECTION';
+    show: boolean;
+} | {
+    type: 'FEATURE_SETTINGS_UPDATED';
+    settings: ActionsSettings;
+} | {
+    type: 'ACTIONS.LOAD_MORE';
+} | {
+    type: 'ACTIONS.LOAD_ALL';
+} | {
+    type: 'FILTER.TOGGLE_CATEGORY';
+    categoryName: string;
+} | {
+    type: 'FILTER.CLEAR';
+} | {
+    type: 'ACTIONS.IMPORT';
+    actions: any[];
+} | {
+    type: 'ACTIONS.RESET_IMPORT_STATUS';
+} | {
+    type: 'ACTIONS.EXPORT';
+    directory: string;
+} | {
+    type: 'ACTIONS.RESET_EXPORT_STATUS';
+};
+
 type UnknownLine = z.infer<typeof UnknownLineSchema>;
 
 /** Fallthrough catch-all: the CLI adds new top-level types regularly. */
@@ -3806,7 +4037,7 @@ interface WorktreeEntry {
     lockedReason?: string;
 }
 
-type __accepts_actions = never;
+type __accepts_actions = (typeof accepts$2)['_accepts'];
 
 type __accepts_brain = never;
 
@@ -3816,7 +4047,7 @@ type __accepts_code = never;
 
 type __accepts_database = never;
 
-type __accepts_flows = (typeof accepts$1)['_accepts'];
+type __accepts_flows = (typeof accepts$3)['_accepts'];
 
 type __accepts_library = never;
 
@@ -3824,9 +4055,9 @@ type __accepts_logs = (typeof accepts)['_accepts'];
 
 type __accepts_notes = never;
 
-type __accepts_prompts = never;
+type __accepts_prompts = (typeof accepts$1)['_accepts'];
 
-type __accepts_threads = never;
+type __accepts_threads = (typeof accepts$4)['_accepts'];
 
 type __events_actions = OutgoingEventsOf<(typeof specs)['actions']>;
 
@@ -3856,8 +4087,30 @@ declare const accepts: _abuddy_sdk_fe.PluginAccepts<{
     log: LogEntry;
 }>;
 
+/** Paging and editing, which the code plugin's prompts panel asks of it */
+declare const accepts$1: _abuddy_sdk_fe.PluginAccepts<PromptsListEvent>;
+
+/** Paging and editing, which the code plugin's actions panel asks of it */
+declare const accepts$2: _abuddy_sdk_fe.PluginAccepts<ActionsListEvent>;
+
 /** The actions system keeps the flows editor's action list current; the receiver declares what it takes */
-declare const accepts$1: _abuddy_sdk_fe.PluginAccepts<OutgoingActionEvents>;
+declare const accepts$3: _abuddy_sdk_fe.PluginAccepts<OutgoingActionEvents | {
+    type: "FLOW.SELECT";
+    flowId: EARS.EntityId;
+}>;
+
+/** What a thread's own views ask of it: showing an artifact, and answering a to-do list */
+declare const accepts$4: _abuddy_sdk_fe.PluginAccepts<{
+    type: "SELECT_ARTIFACT";
+    artifactId: string;
+} | {
+    type: "APPROVE_TODO_LIST";
+    artifactId: string;
+    tasks: unknown[];
+} | {
+    type: "REJECT_TODO_LIST";
+    artifactId: string;
+}>;
 
 declare const actionCommands: {
     readonly create: (data: _abuddy_sdk_repositories.ActionInput) => ActionEntity;

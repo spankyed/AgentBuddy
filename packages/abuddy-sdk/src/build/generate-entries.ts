@@ -811,7 +811,13 @@ import { ref } from './ref.js';
  */
 export type PluginName = ${plugins.join(' | ')};
 
-/** Opens a plugin and hands its actor \`event\` once it's running; throws if no such plugin is registered */
+/**
+ * Opens a plugin and hands its actor \`event\` once it's running; throws if no such plugin is registered.
+ *
+ * The event stays open (\`PluginEvent\`) rather than typed from the plugin's inbox: what travels here is a UI
+ * command its own machine handles (\`FLOW.SELECT\`, \`TAB.CREATE\`), not what its system sends it, and declaring
+ * those as its inbox would publish a plugin's internal commands to every dependent pack.
+ */
 export function navigateToPlugin(name: PluginName, event?: PluginEvent | PluginEvent[]): void {
   openPlugin(ref(name), event);
 }
@@ -909,7 +915,7 @@ export type SendablePluginEvents = WithOwnNames<${pack}, QualifiedPluginEvents>;
 /** The systems this pack's code sends to: \`QualifiedSystemEvents\`, with its own named by feature id instead of ref */
 export type SendableSystemEvents = WithOwnNames<${pack}, QualifiedSystemEvents>;
 
-export const { sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<SendablePluginEvents, SendableSystemEvents>('${manifest.id}');
+export const { broadcastToPlugin, sendToPlugin, sendToSystem } = /*#__PURE__*/ defineEvents<SendablePluginEvents, SendableSystemEvents>('${manifest.id}');
 `;
   }
 
@@ -1018,8 +1024,8 @@ ${entries.join('\n')}
  * \`services.emitter\`, typed with this pack's events. Actions run outside any pack, so a system and a
  * plugin are both named \`<pack>/<feature>\`, this pack's own and the host's too; a system may also be a role.
  */
-export type PackEmitter = Omit<HostServices['emitter'], 'sendToPlugin' | 'sendToSystem'> & {
-  sendToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;
+export type PackEmitter = Omit<HostServices['emitter'], 'broadcastToPlugin' | 'sendToSystem'> & {
+  broadcastToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;
   sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;
 };
 

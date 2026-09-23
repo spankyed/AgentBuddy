@@ -7,11 +7,16 @@ import type { HostPluginEvents } from '@abuddy/sdk/events';
 import type { ApplicationHotkeys } from '@abuddy/sdk/types';
 import type { EARS } from '@/__generated__/ears';
 import type { Services } from '@/__generated__/services';
-import { sendToPlugin, sendToSystem, type SendablePluginEvents } from '@/__generated__/events';
+import { broadcastToPlugin, sendToSystem, type SendablePluginEvents } from '@/__generated__/events';
 import { navigateToPlugin } from '@/__generated__/fe';
 import type { OutgoingActionEvents } from '@/features/actions/be/system';
 import type { OutgoingFlowsEvents } from '@/features/flows/be/system';
 import type { OutgoingThreadsEvents } from '@/features/threads/be/system';
+import type { accepts as threadsAccepts } from '@/features/threads/fe/plugin';
+import type { accepts as flowsAccepts } from '@/features/flows/fe/plugin';
+
+type ThreadsAccepts = (typeof threadsAccepts)['_accepts'];
+type FlowsAccepts = (typeof flowsAccepts)['_accepts'];
 
 declare const actionEvent: OutgoingActionEvents;
 declare const hotkeys: ApplicationHotkeys;
@@ -20,9 +25,9 @@ declare const services: Services;
 
 describe('SendablePluginEvents', () => {
   it('maps each plugin to exactly the events it receives', () => {
-    expectTypeOf<SendablePluginEvents['threads']>().toEqualTypeOf<OutgoingThreadsEvents>();
-    // The flows plugin receives its own system's events and the actions system's (sendsTo)
-    expectTypeOf<SendablePluginEvents['flows']>().toEqualTypeOf<OutgoingFlowsEvents | OutgoingActionEvents>();
+    // A plugin receives its own feature's system's events, plus the inbox it declares with `pluginAccepts()`
+    expectTypeOf<SendablePluginEvents['threads']>().toEqualTypeOf<OutgoingThreadsEvents | ThreadsAccepts>();
+    expectTypeOf<SendablePluginEvents['flows']>().toEqualTypeOf<OutgoingFlowsEvents | FlowsAccepts>();
     expectTypeOf<SendablePluginEvents['host/application']>().toEqualTypeOf<HostPluginEvents['host/application']>();
   });
 
@@ -32,25 +37,25 @@ describe('SendablePluginEvents', () => {
   });
 });
 
-describe('sendToPlugin', () => {
+describe('broadcastToPlugin', () => {
   // Wrapped in functions that never run: only their types are checked
   it('accepts an event the plugin receives', () => {
     expectTypeOf(() => {
-      sendToPlugin('threads', { type: 'THREAD_CREATED', id: 't1' as EARS.EntityId, shortCode: 'T1', entityType: 'Thread' as EARS.Entity, timestamp: 0 });
-      sendToPlugin('flows', actionEvent);
-      sendToPlugin('host/application', { type: 'APPLICATION_HOTKEYS', hotkeys });
-      sendToPlugin('host/application', { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: { 'default-setup/notes': false } });
+      broadcastToPlugin('threads', { type: 'THREAD_CREATED', id: 't1' as EARS.EntityId, shortCode: 'T1', entityType: 'Thread' as EARS.Entity, timestamp: 0 });
+      broadcastToPlugin('flows', actionEvent);
+      broadcastToPlugin('host/application', { type: 'APPLICATION_HOTKEYS', hotkeys });
+      broadcastToPlugin('host/application', { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: { 'default-setup/notes': false } });
     }).toBeFunction();
   });
 
   it('rejects an event the plugin does not receive', () => {
     expectTypeOf(() => {
       // @ts-expect-error the threads plugin doesn't receive action events
-      sendToPlugin('threads', actionEvent);
+      broadcastToPlugin('threads', actionEvent);
       // @ts-expect-error not an application event
-      sendToPlugin('host/application', { type: 'SETTINGS_LOADED' });
+      broadcastToPlugin('host/application', { type: 'SETTINGS_LOADED' });
       // @ts-expect-error unknown plugin
-      sendToPlugin('unknown-plugin', { type: 'ANYTHING' });
+      broadcastToPlugin('unknown-plugin', { type: 'ANYTHING' });
     }).toBeFunction();
   });
 });
@@ -94,7 +99,7 @@ describe('services.emitter in actions', () => {
   // Wrapped in functions that never run: only their types are checked
   it('accepts an event the plugin or system receives', () => {
     expectTypeOf(() => {
-      services.emitter.sendToPlugin('default-setup/database', { type: 'AI_QUERY_LOADING' });
+      services.emitter.broadcastToPlugin('default-setup/database', { type: 'AI_QUERY_LOADING' });
       services.emitter.sendToSystem('default-setup/notes', { type: 'DELETE_NOTE', id: 'Note-1' });
       services.emitter.sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message' });
     }).toBeFunction();
@@ -103,11 +108,11 @@ describe('services.emitter in actions', () => {
   it('rejects an event the plugin or system does not receive', () => {
     expectTypeOf(() => {
       // @ts-expect-error the database plugin doesn't receive this event
-      services.emitter.sendToPlugin('default-setup/database', { type: 'SET_PHASE', phase: 'Edit' });
+      services.emitter.broadcastToPlugin('default-setup/database', { type: 'SET_PHASE', phase: 'Edit' });
       // @ts-expect-error unknown plugin
-      services.emitter.sendToPlugin('unknown-plugin', { type: 'ANYTHING' });
+      services.emitter.broadcastToPlugin('unknown-plugin', { type: 'ANYTHING' });
       // @ts-expect-error actions name every pack plugin <pack>/<feature>, this pack's own too
-      services.emitter.sendToPlugin('database', { type: 'AI_QUERY_LOADING' });
+      services.emitter.broadcastToPlugin('database', { type: 'AI_QUERY_LOADING' });
       // @ts-expect-error DELETE_NOTE needs an id
       services.emitter.sendToSystem('default-setup/notes', { type: 'DELETE_NOTE' });
       // @ts-expect-error actions name every system <pack>/<feature>

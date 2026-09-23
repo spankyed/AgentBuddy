@@ -98,7 +98,7 @@
 </template>
 
 <script setup lang="ts">
-import { approveTodoList, rejectTodoList } from '@/features/threads/fe/public'
+import { sendToPlugin } from '@/__generated__/events'
 import { ref, computed, watch } from 'vue';
 import { ListTodo, Check, X } from 'lucide-vue-next';
 import type { ArtifactItem } from '@abuddy/sdk/artifacts';
@@ -145,12 +145,12 @@ function updateTaskDescription(taskId: string, event: Event) {
 }
 
 function handleApprove() {
-  approveTodoList(props.artifact.id, todoData.value.tasks);
+  sendToPlugin('threads', { type: 'APPROVE_TODO_LIST', artifactId: props.artifact.id, tasks: todoData.value.tasks });
   todoData.value.status = 'approved';
 }
 
 function handleReject() {
-  rejectTodoList(props.artifact.id);
+  sendToPlugin('threads', { type: 'REJECT_TODO_LIST', artifactId: props.artifact.id });
   todoData.value.status = 'rejected';
 }
 </script>

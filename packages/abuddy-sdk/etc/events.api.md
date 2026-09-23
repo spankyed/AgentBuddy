@@ -5,6 +5,12 @@
 ```ts
 
 // @public
+export function broadcastToPlugin(to: string, event: {
+    type: string;
+    [key: string]: unknown;
+}): void;
+
+// @public
 export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S>;
 
 // @public
@@ -116,8 +122,8 @@ export type Qualified<PackId extends string, M> = {
     [K in keyof M & string as `${PackId}/${K}`]: M[K];
 };
 
-// @public
-export function sendToPlugin(to: string, event: {
+// @internal
+export function _sendToLocalPlugin(ref: string, event: {
     type: string;
     [key: string]: unknown;
 }): void;
@@ -151,7 +157,7 @@ export type SystemTarget = string | {
 
 // @public
 export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
-    // (undocumented)
+    broadcastToPlugin: TypedSendToPlugin<P>;
     sendToPlugin: TypedSendToPlugin<P>;
     // (undocumented)
     sendToSystem: TypedSendToSystem<S>;

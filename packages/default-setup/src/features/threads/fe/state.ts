@@ -24,7 +24,6 @@ import type { ThreadTabGroup, TabGroupColor } from '@/features/threads/fe/canvas
 import { getNextAvailableColor } from '@/features/threads/fe/canvas/agent/tabs/types';
 import { saveThreadTabGroups, loadThreadTabGroups } from '@/features/threads/fe/canvas/agent/tabs/tab-groups';
 import type { EARS } from '@abuddy/sdk';
-import { threadsPlugin } from './public'
 
 export const id = 'threads' as const;
 
@@ -1546,7 +1545,6 @@ const threadsState = setup({
   }
 }).createMachine({
   id,
-  entry: ({ self }) => threadsPlugin.bind(self),
   initial: getInitialView(),
   context: () => ({
     // Thread management (normalized)

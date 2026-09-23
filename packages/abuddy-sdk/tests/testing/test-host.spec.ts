@@ -3,7 +3,7 @@ import { installedEngine as ears } from '@abuddy/ears';
 import * as os from 'node:os';
 import { describe, expect, it, vi } from 'vitest';
 import { entityIds, dropAttribute, resetTestData, startTestRuntime, takeSystemErrors, testRootEvents } from '../../src/testing/index.ts';
-import { sendToPlugin, sendToSystem } from '../../src/events/index.ts';
+import { broadcastToPlugin, sendToSystem } from '../../src/events/index.ts';
 import { services } from '../../src/services/index.ts';
 import { testPacks, testPacksView } from '../../src/testing/packs.ts';
 import { getAppVersion } from '../../src/env/index.ts';
@@ -17,13 +17,13 @@ process.env.ABUDDY_USER_DATA_DIR ??= os.tmpdir();
 startTestRuntime();
 
 describe('the test host', () => {
-  it('binds testRootEvents as the bus sendToPlugin and sendToSystem send on, which _rootEvents is', () => {
+  it('binds testRootEvents as the bus broadcastToPlugin and sendToSystem send on, which _rootEvents is', () => {
     const toPlugins: unknown[] = [];
     const incoming: unknown[] = [];
     const stop = [testRootEvents.onPluginSend((e) => toPlugins.push(e)), testRootEvents.onIncoming((e) => incoming.push(e))];
     testPacks.designations.set('brain', 'brain-system');
     try {
-      sendToPlugin('memos', { type: 'MEMO_ADDED' });
+      broadcastToPlugin('memos', { type: 'MEMO_ADDED' });
       sendToSystem('memos', { type: 'ADD_MEMO' });
       sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message' });
       _rootEvents.emitIncoming({ to: 'memos', event: { type: 'PING' } });

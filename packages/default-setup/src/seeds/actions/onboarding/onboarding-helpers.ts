@@ -25,7 +25,7 @@ export function persistOnboardingState(services: Services, threadId: EntityId, s
  */
 export function flashState(services: Services, threadId: EntityId, stateId: string = 'working', nextState: 'paused' | 'idle' = 'paused') {
   services.threads.updateChatState(threadId, nextState);
-  services.emitter.sendToPlugin('default-setup/threads', {
+  services.emitter.broadcastToPlugin('default-setup/threads', {
     type: 'FLASH_CHAT_STATE',
     threadId: threadId as string,
     stateId,
@@ -129,15 +129,15 @@ export function finishOnboarding(
   // Push the updated chat settings to the frontend so resolveDefaultModePhase picks up the new default
   const chatSettings = services.settings.forFeature<ThreadsSettings>('default-setup/threads')?.chat;
   if (chatSettings) {
-    services.emitter.sendToPlugin('default-setup/threads', {
+    services.emitter.broadcastToPlugin('default-setup/threads', {
       type: 'AGENT_SETTINGS_UPDATED',
       settings: chatSettings,
     });
   }
-  services.emitter.sendToPlugin('default-setup/threads', {
+  services.emitter.broadcastToPlugin('default-setup/threads', {
     type: 'SET_MODE',
     mode: defaultMode,
   });
 
-  services.emitter.sendToPlugin('host/application', { type: 'ONBOARDING_COMPLETE' });
+  services.emitter.broadcastToPlugin('host/application', { type: 'ONBOARDING_COMPLETE' });
 }

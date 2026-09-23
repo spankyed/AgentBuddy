@@ -28,7 +28,7 @@ code never holds an address. The shape of each decision is still in the code, th
 |---|---|---|
 | 1. Two spellings | `<pack>.<feature>` on the wire and in storage, `<pack>/<feature>` in code and actions, and a bare name as a third form. `resolveName` tells them apart by punctuation. Five helpers exist for one concept (`qualifiedId`, `addressOf`, `parseAddress`, `resolveName`, `asHostAddress`), plus the `FeatureAddress` brand to keep the forms apart. | 46 `resolveName` calls, 10 `parseAddress` calls, 68 `default-setup.<feature>` literals in code and tests |
 | 2. Bare ids are privileged | The host's ids (`application`, `packs`, `bus`) are bare, so a bare name means either "my feature" or "the host's". `resolveName` needs a `hostIds` list, and a pack feature named `application` is shadowed. | 27 `HOST_PLUGIN_IDS`/`hostIds` references |
-| 3. Identity in the payload | `emit`/`sendToPlugin` spread `pluginId` into the event, and `sendToSystem` spreads `systemId`. The root CLAUDE.md has to warn: "never use `pluginId` as a field name". | 56 `pluginId` references in the bus, the renderer and the events module; 76 `systemId` references |
+| 3. Identity in the payload | `emit`/`broadcastToPlugin` spread `pluginId` into the event, and `sendToSystem` spreads `systemId`. The root CLAUDE.md has to warn: "never use `pluginId` as a field name". | 56 `pluginId` references in the bus, the renderer and the events module; 76 `systemId` references |
 | 4. Identity as a table | A feature's identity is spread over `systems[]`, `features[]`, `receivedEventTypes`, `boot.earlySystem`, and on the frontend `plugins`, `defaultPlugin` and `designations`; the registry reassembles it (review finding F7, deferred). Stored settings are keyed by the routing string, with the reserved `_meta` key in the same map. | 7 registration fields; 60 `_meta` references |
 
 Two bugs fixed this week are these decisions leaking out:
@@ -122,7 +122,7 @@ export function splitRef(ref: FeatureRef): { packId: string; featureId: string }
 { to: 'default-setup/notes', side: 'plugin', event: { type: 'NOTE_SAVED', noteId } }
 ```
 
-- `emit`, `sendToPlugin` and `sendToSystem` build envelopes, and the bus and the renderer route on `to` and
+- `emit`, `broadcastToPlugin` and `sendToSystem` build envelopes, and the bus and the renderer route on `to` and
   `side`.
 - A system's or plugin's machine only ever sees `event`. The CLAUDE.md warning goes away, because no field
   name is reserved any more.
@@ -200,7 +200,7 @@ interface PackRegistration {
 
 ### T9. One send verb, and private child actors
 
-- `system.get(bus).send(emit(…))` (193 uses) and `sendToPlugin` (189) are one delivery spelled two ways.
+- `system.get(bus).send(emit(…))` (193 uses) and `broadcastToPlugin` (189) are one delivery spelled two ways.
   They collapse, together with `sendToSystem` and `sendToBrainSystem` (a send to a role hard-coded for one
   role), into one typed send whose target is a feature's system, its plugin, or a role.
 - A feature's child actors get no global `systemId`. Today the code plugin spawns `explorer`, `terminal`,

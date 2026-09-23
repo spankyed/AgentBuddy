@@ -1,5 +1,5 @@
 import { services } from '@/__generated__/services';
-import { sendToPlugin } from '@/__generated__/events';
+import { broadcastToPlugin } from '@/__generated__/events';
 import { assign, setup, sendParent, enqueueActions, fromCallback, spawnChild } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
@@ -87,7 +87,7 @@ export const logsSystem = setup({
       // Filter logs by excluded sources before sending
       const filteredLogs = filterLogsByExcludedSources(context.logs, excludedSources);
 
-      sendToPlugin('logs', {
+      broadcastToPlugin('logs', {
         type: 'LOGS_CONNECTED',
         logs: filteredLogs,
         settings: settings ?? { maxLogs: 1000, excludedSources: [], showAppEvents: false }
@@ -105,7 +105,7 @@ export const logsSystem = setup({
         return; // Don't broadcast excluded logs
       }
 
-      sendToPlugin('logs', {
+      broadcastToPlugin('logs', {
         type: 'LOG_ADDED',
         log: newLog,
       });
@@ -118,13 +118,13 @@ export const logsSystem = setup({
       // Filter logs by excluded sources before sending
       const filteredLogs = filterLogsByExcludedSources(context.logs, excludedSources);
 
-      sendToPlugin('logs', {
+      broadcastToPlugin('logs', {
         type: 'LOGS_UPDATE',
         logs: filteredLogs,
       });
     },
     broadcastLogsCleared: () => {
-      sendToPlugin('logs', {
+      broadcastToPlugin('logs', {
         type: 'LOGS_CLEARED',
       })
     },

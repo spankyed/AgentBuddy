@@ -86,7 +86,7 @@
 </template>
 
 <script setup lang="ts">
-import { selectArtifact as showArtifact } from '@/features/threads/fe/public'
+import { sendToPlugin } from '@/__generated__/events'
 import { ref, computed, watch, nextTick } from 'vue'
 import { ChevronRight, Wrench, Check, Loader2, X, AlertCircle, ArrowRight } from 'lucide-vue-next'
 import JsonHoverPopup from '@abuddy/ui/components/JsonHoverPopup'
@@ -191,7 +191,7 @@ const artifactRef = computed(() => props.artifactRef)
 // Jump to the referenced artifact in the right panel when the link is clicked.
 function selectArtifact() {
   if (!props.artifactRef) return
-  showArtifact(props.artifactRef.artifactId)
+  sendToPlugin('threads', { type: 'SELECT_ARTIFACT', artifactId: props.artifactRef.artifactId })
 }
 
 function formatDuration(ms: number): string {

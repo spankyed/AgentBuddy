@@ -152,7 +152,7 @@ Two packs each with a feature named `notes`:
   pack installs "successfully" and has no UI.
 - `getPluginEventValidationMap` — the first owner keeps the id, so the second pack's `receivedEventTypes`
   never register and its sends are validated against the first pack's contract.
-- `sendToPlugin('notes')`, `emit('notes')` and manifest `sendsTo: ['notes']` all reach the first pack.
+- `broadcastToPlugin('notes')`, `emit('notes')` and manifest `sendsTo: ['notes']` all reach the first pack.
 - Nothing refuses it. `registerPack` throws on duplicate services, commands, repositories and
   designations; plugin ids are the one contribution deliberately left to shadow (`:493-495`).
 
@@ -162,8 +162,8 @@ System ids appear in no entity shape and are free to change.
 
 ### How much pack code addresses by role today
 
-In `packages/default-setup/src`: 105 literal `sendToSystem`, 70 literal `sendToPlugin`/`emit`, 53
-`services.emitter.sendToPlugin` — and **0** `getDesignated`. Designations are declared on 5 features and
+In `packages/default-setup/src`: 105 literal `sendToSystem`, 70 literal `broadcastToPlugin`/`emit`, 53
+`services.emitter.broadcastToPlugin` — and **0** `getDesignated`. Designations are declared on 5 features and
 consumed only by the renderer (7 sites) and by `sendToBrainSystem`, which is
 `sendIncoming({ …, systemId: getDesignated('brain') })`: a hardcoded single-role helper, and the only
 role-addressed send that exists.
@@ -329,7 +329,7 @@ the first pack whole (`registered-lookups.spec.ts`).
 ### Phase 5 — plugin identity is namespaced, with a name map
 
 Plugin identity becomes `<packId>.<featureId>` for every pack. Codegen emits a plugin name map beside
-`systemIds` so `sendToPlugin`/`emit`/`sendsTo` take the short name for a pack's own plugins and
+`systemIds` so `broadcastToPlugin`/`emit`/`sendsTo` take the short name for a pack's own plugins and
 `<pack>/<feature>` for a dependency's. `HOST_PLUGIN_IDS` stays bare and reserved. The renderer's 4
 literal sends take the qualified name or a role. A `0.3.15` migration moves `settings.plugins.<id>`,
 `_meta.visibility.<id>` and `_meta.lastActivePlugin`, idempotently.

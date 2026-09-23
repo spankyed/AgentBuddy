@@ -3,6 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { effectScope, type Ref } from 'vue';
 import type { AnyActorRef } from 'xstate';
+import { _sendToLocalPlugin } from '../../src/events/index.ts';
 import { readPluginState, usePluginState } from '../../src/fe/plugin-state.ts';
 import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts';
 
@@ -83,5 +84,30 @@ describe('readPluginState', () => {
     notes.change(['c']);
     expect(readPluginState('default-setup/notes', read)).toEqual(['c']);
     expect(notes.subscribers).toBe(0);
+  });
+});
+
+// The renderer half of sending: straight to this window's actor, with no bus between. A backend `broadcastToPlugin`
+// reaches every window showing the plugin, which is why the two have different names.
+describe('_sendToLocalPlugin', () => {
+  it("delivers to this window's actor for that plugin", () => {
+    const sent: unknown[] = [];
+    unbindFeHost();
+    bindFeHost({
+      application: { system: { get: () => ({ send: (event: unknown) => sent.push(event) }) } } as never,
+      secrets: {} as never,
+      settings: {} as never,
+      client: { send() {} },
+      packs: {} as never,
+    });
+
+    _sendToLocalPlugin('default-setup/threads', { type: 'SELECT_ARTIFACT', artifactId: 'a1' });
+
+    expect(sent).toEqual([{ type: 'SELECT_ARTIFACT', artifactId: 'a1' }]);
+  });
+
+  it('says which plugin is not running, rather than dropping the event', () => {
+    expect(() => _sendToLocalPlugin('default-setup/memos', { type: 'X' }))
+      .toThrow('No plugin is running at "default-setup/memos" to send X to');
   });
 });

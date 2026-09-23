@@ -1,7 +1,7 @@
 import type { NotesSettings } from '@/__generated__/types';
 import { services } from '@/__generated__/services';
 import { qx } from '@/__generated__/ears';
-import { sendToPlugin } from '@/__generated__/events';
+import { broadcastToPlugin } from '@/__generated__/events';
 import { setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
@@ -65,7 +65,7 @@ export const notesSystem = setup({
     sendNotesConnectedData: ({ system }) => {
       const connectedData = repository.noteQueries.connectedData();
       const settings = services.settings.forFeature<NotesSettings>(ref('notes'));
-      sendToPlugin('notes', {
+      broadcastToPlugin('notes', {
         type: 'NOTES_CONNECTED',
         data: { ...connectedData, settings },
       });
@@ -85,7 +85,7 @@ export const notesSystem = setup({
 
       const noteDTO = repository.noteQueries.byIdDTO(note.id as EARS.EntityId);
       if (noteDTO) {
-        sendToPlugin('notes', {
+        broadcastToPlugin('notes', {
           type: 'NOTE_CREATED',
           note: noteDTO,
         });
@@ -104,7 +104,7 @@ export const notesSystem = setup({
         if (ev.parentId) {
           const parentDTO = repository.noteQueries.byIdDTO(ev.parentId as EARS.EntityId);
           if (parentDTO) {
-            sendToPlugin('notes', {
+            broadcastToPlugin('notes', {
               type: 'NOTE_UPDATED',
               note: parentDTO,
             });
@@ -151,7 +151,7 @@ export const notesSystem = setup({
           if (affectedId !== noteId) {
             const affectedDTO = repository.noteQueries.byIdDTO(affectedId as EARS.EntityId);
             if (affectedDTO) {
-              sendToPlugin('notes', {
+              broadcastToPlugin('notes', {
                 type: 'NOTE_UPDATED',
                 note: affectedDTO,
               });
@@ -162,7 +162,7 @@ export const notesSystem = setup({
 
       const updatedNote = repository.noteQueries.byIdDTO(noteId);
       if (updatedNote) {
-        sendToPlugin('notes', {
+        broadcastToPlugin('notes', {
           type: 'NOTE_UPDATED',
           note: updatedNote,
         });
@@ -181,7 +181,7 @@ export const notesSystem = setup({
 
               const updatedParent = repository.noteQueries.byIdDTO(updatedNote.parentId as EARS.EntityId);
               if (updatedParent) {
-                sendToPlugin('notes', {
+                broadcastToPlugin('notes', {
                   type: 'NOTE_UPDATED',
                   note: updatedParent,
                 });
@@ -207,7 +207,7 @@ export const notesSystem = setup({
       const deletedIds = repository.noteCommands.softDelete(ev.id as EARS.EntityId);
 
       for (const deletedId of deletedIds) {
-        sendToPlugin('notes', {
+        broadcastToPlugin('notes', {
           type: 'NOTE_DELETED',
           noteId: deletedId,
         });
@@ -221,7 +221,7 @@ export const notesSystem = setup({
         if (parentIds.length > 0) {
           const parentDTO = repository.noteQueries.byIdDTO(parentIds[0]);
           if (parentDTO) {
-            sendToPlugin('notes', {
+            broadcastToPlugin('notes', {
               type: 'NOTE_UPDATED',
               note: parentDTO,
             });
@@ -237,7 +237,7 @@ export const notesSystem = setup({
       for (const restoredId of restoredIds) {
         const noteDTO = repository.noteQueries.byIdDTO(restoredId as EARS.EntityId);
         if (noteDTO) {
-          sendToPlugin('notes', {
+          broadcastToPlugin('notes', {
             type: 'NOTE_RESTORED',
             note: noteDTO,
           });
@@ -249,7 +249,7 @@ export const notesSystem = setup({
       if (parentIds.length > 0) {
         const parentDTO = repository.noteQueries.byIdDTO(parentIds[0]);
         if (parentDTO) {
-          sendToPlugin('notes', {
+          broadcastToPlugin('notes', {
             type: 'NOTE_UPDATED',
             note: parentDTO,
           });
@@ -297,7 +297,7 @@ export const notesSystem = setup({
         // Emit update for the moved note
         const movedDTO = repository.noteQueries.byIdDTO(id);
         if (movedDTO) {
-          sendToPlugin('notes', {
+          broadcastToPlugin('notes', {
             type: 'NOTE_UPDATED',
             note: movedDTO,
           });
@@ -308,7 +308,7 @@ export const notesSystem = setup({
       for (const parentId of affectedParentIds) {
         const parentDTO = repository.noteQueries.byIdDTO(parentId as EARS.EntityId);
         if (parentDTO) {
-          sendToPlugin('notes', {
+          broadcastToPlugin('notes', {
             type: 'NOTE_UPDATED',
             note: parentDTO,
           });
@@ -332,7 +332,7 @@ export const notesSystem = setup({
       // Emit updates for the reordered note
       const reorderedDTO = repository.noteQueries.byIdDTO(noteId);
       if (reorderedDTO) {
-        sendToPlugin('notes', {
+        broadcastToPlugin('notes', {
           type: 'NOTE_UPDATED',
           note: reorderedDTO,
         });
@@ -343,7 +343,7 @@ export const notesSystem = setup({
         if (affectedId !== noteId) {
           const affectedDTO = repository.noteQueries.byIdDTO(affectedId as EARS.EntityId);
           if (affectedDTO) {
-            sendToPlugin('notes', {
+            broadcastToPlugin('notes', {
               type: 'NOTE_UPDATED',
               note: affectedDTO,
             });
@@ -358,7 +358,7 @@ export const notesSystem = setup({
       for (const parentId of affectedParentIds) {
         const parentDTO = repository.noteQueries.byIdDTO(parentId as EARS.EntityId);
         if (parentDTO) {
-          sendToPlugin('notes', {
+          broadcastToPlugin('notes', {
             type: 'NOTE_UPDATED',
             note: parentDTO,
           });
@@ -370,7 +370,7 @@ export const notesSystem = setup({
       const ev = notesSpec.typeOf('SEARCH_NOTES', event);
       const query = ev.query.trim().toLowerCase();
       if (!query) {
-        sendToPlugin('notes', {
+        broadcastToPlugin('notes', {
           type: 'NOTES_SEARCH_RESULTS',
           results: [],
         });
@@ -380,7 +380,7 @@ export const notesSystem = setup({
       const results = allNotes.filter((n: NoteDTO) =>
         (n.title || '').toLowerCase().includes(query)
       );
-      sendToPlugin('notes', {
+      broadcastToPlugin('notes', {
         type: 'NOTES_SEARCH_RESULTS',
         results,
       });
@@ -392,14 +392,14 @@ export const notesSystem = setup({
         const result = importNotes(ev.directory);
 
         if (result.created === 0 && result.errors.length > 0) {
-          sendToPlugin('notes', {
+          broadcastToPlugin('notes', {
             type: 'NOTES_IMPORT_FAILED',
             errors: result.errors,
           });
           return;
         }
 
-        sendToPlugin('notes', {
+        broadcastToPlugin('notes', {
           type: 'NOTES_IMPORTED',
           count: result.created,
           ...(result.errors.length > 0 ? { errors: result.errors } : {}),
@@ -408,13 +408,13 @@ export const notesSystem = setup({
         // Refresh notes data
         const connectedData = repository.noteQueries.connectedData();
         const settings = services.settings.forFeature<NotesSettings>(ref('notes'));
-        sendToPlugin('notes', {
+        broadcastToPlugin('notes', {
           type: 'NOTES_CONNECTED',
           data: { ...connectedData, settings },
         });
       } catch (err) {
         const message = errorMessage(err);
-        sendToPlugin('notes', {
+        broadcastToPlugin('notes', {
           type: 'NOTES_IMPORT_FAILED',
           errors: [message],
         });
@@ -426,14 +426,14 @@ export const notesSystem = setup({
       try {
         const { filePath, itemCount } = exportNotes(ev.directory, ev.format);
 
-        sendToPlugin('notes', {
+        broadcastToPlugin('notes', {
           type: 'NOTES_EXPORTED',
           filePath,
           itemCount,
         });
       } catch (err) {
         const message = errorMessage(err);
-        sendToPlugin('notes', {
+        broadcastToPlugin('notes', {
           type: 'NOTES_EXPORT_FAILED',
           errors: [message],
         });
@@ -446,7 +446,7 @@ export const notesSystem = setup({
       repository.noteCommands.update(ev.id as EARS.EntityId, { lastSeen: Date.now() }, true);
       const updatedNote = repository.noteQueries.byIdDTO(ev.id as EARS.EntityId);
       if (updatedNote) {
-        sendToPlugin('notes', {
+        broadcastToPlugin('notes', {
           type: 'NOTE_UPDATED',
           note: updatedNote,
         });
@@ -502,7 +502,7 @@ export const notesSystem = setup({
 
         const updatedRef = repository.noteQueries.byIdDTO(refId as EARS.EntityId);
         if (updatedRef) {
-          sendToPlugin('notes', {
+          broadcastToPlugin('notes', {
             type: 'NOTE_UPDATED',
             note: updatedRef,
           });
@@ -529,12 +529,12 @@ export const notesSystem = setup({
       repository.noteCommands.softDelete(ev.id as EARS.EntityId);
 
       // Notify about deleted note and all descendants
-      sendToPlugin('notes', {
+      broadcastToPlugin('notes', {
         type: 'NOTE_DELETED',
         noteId: ev.id,
       });
       for (const descId of descendantIds) {
-        sendToPlugin('notes', {
+        broadcastToPlugin('notes', {
           type: 'NOTE_DELETED',
           noteId: descId,
         });
@@ -544,7 +544,7 @@ export const notesSystem = setup({
       if (parentId) {
         const parentDTO = repository.noteQueries.byIdDTO(parentId as EARS.EntityId);
         if (parentDTO) {
-          sendToPlugin('notes', {
+          broadcastToPlugin('notes', {
             type: 'NOTE_UPDATED',
             note: parentDTO,
           });
@@ -556,7 +556,7 @@ export const notesSystem = setup({
       const ev = notesSpec.typeOf('PERMANENTLY_DELETE_NOTE', event);
       try {
         repository.noteCommands.delete(ev.id as EARS.EntityId);
-        sendToPlugin('notes', {
+        broadcastToPlugin('notes', {
           type: 'NOTE_DELETED',
           noteId: ev.id,
         });
@@ -570,7 +570,7 @@ export const notesSystem = setup({
       for (const note of trashed) {
         try {
           repository.noteCommands.delete(note.id as EARS.EntityId);
-          sendToPlugin('notes', {
+          broadcastToPlugin('notes', {
             type: 'NOTE_DELETED',
             noteId: note.id,
           });
@@ -582,7 +582,7 @@ export const notesSystem = setup({
 
     sendTrashedNotes: ({ system }) => {
       const trashed = repository.noteQueries.trashedDTOs();
-      sendToPlugin('notes', {
+      broadcastToPlugin('notes', {
         type: 'TRASHED_NOTES',
         notes: trashed,
       });

@@ -252,7 +252,7 @@ async function handleResume(
   }
 
   const threadData = services.repository.chatQueries.threadData(targetThreadId as EntityId);
-  if (threadData) services.emitter.sendToPlugin('default-setup/threads', { type: 'LOAD_CHAT_THREAD', data: threadData });
+  if (threadData) services.emitter.broadcastToPlugin('default-setup/threads', { type: 'LOAD_CHAT_THREAD', data: threadData });
 
   return { text: confirmText };
 }

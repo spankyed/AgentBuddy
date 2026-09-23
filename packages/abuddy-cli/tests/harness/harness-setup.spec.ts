@@ -73,8 +73,8 @@ import { expect, it } from 'vitest';
 import { services } from '@abuddy/sdk/services';
 it('sends to its own system and plugin', () => {
   expect(() => services.emitter.sendToSystem('data-pack/notes', { type: 'GET_NOTES' })).not.toThrow();
-  expect(() => services.emitter.sendToPlugin('data-pack/notes', { type: 'NOTES_UPDATED' })).not.toThrow();
-  expect(() => services.emitter.sendToPlugin('data-pack/ghost', { type: 'NOTES_UPDATED' })).toThrow('No registered plugin is named "data-pack/ghost"');
+  expect(() => services.emitter.broadcastToPlugin('data-pack/notes', { type: 'NOTES_UPDATED' })).not.toThrow();
+  expect(() => services.emitter.broadcastToPlugin('data-pack/ghost', { type: 'NOTES_UPDATED' })).toThrow('No registered plugin is named "data-pack/ghost"');
 });`, { features: [{ id: 'notes', system: { entry: 'src/features/notes/be/system.ts' }, plugin: { entry: 'src/features/notes/fe/index.ts' } }] });
     const result = run(process.execPath, [VITEST, 'run'], root);
     expect(result.output).toMatch(/Tests\s+1 passed/);

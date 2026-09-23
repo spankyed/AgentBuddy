@@ -16,8 +16,8 @@ const SETTINGS = (id: string) => `export default {
 
 const SYSTEM = (name: string, camel: string, pascal: string) => `import { setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
-// sendToPlugin is typed with the events each of this pack's plugins receives
-import { sendToPlugin } from '#generated/events';
+// broadcastToPlugin is typed with the events each of this pack's plugins receives
+import { broadcastToPlugin } from '#generated/events';
 
 type Incoming${pascal}Events =
   | { type: 'CLIENT_CONNECTED' };
@@ -31,7 +31,7 @@ export const ${camel}System = setup({
   types: ${camel}Spec.types,
   actions: {
     sendConnectedData: () => {
-      sendToPlugin('${name}', {
+      broadcastToPlugin('${name}', {
         type: '${name.toUpperCase().replace(/-/g, '_')}_CONNECTED',
         data: {},
       });

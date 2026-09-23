@@ -1,6 +1,6 @@
 import type { repository } from '@abuddy/ears';
 import { boundHost, type HostRuntimeServices } from '../runtime/host-runtime.ts';
-import { sendToPlugin, sendToSystem } from '../events/index.ts';
+import { broadcastToPlugin, sendToSystem } from '../events/index.ts';
 import { resolveRegistered } from '../ids/refs.ts';
 import { createLogger, type Logger } from '../logger/logger.ts';
 import type { AppDataService } from './app-data.ts';
@@ -37,7 +37,7 @@ export interface HostServices {
    * types them with its own and its dependencies' events.
    */
   emitter: {
-    sendToPlugin: typeof sendToPlugin;
+    broadcastToPlugin: typeof broadcastToPlugin;
     sendToSystem: typeof sendToSystem;
   };
   repository: typeof repository;
@@ -60,7 +60,7 @@ const actionRef = (kind: 'system' | 'plugin', name: string, registered: readonly
   resolveRegistered(kind, name, { registered, form: `actions name a ${kind} "<packId>/<featureId>"` });
 
 const emitter: HostServices['emitter'] = {
-  sendToPlugin: (name, event) => sendToPlugin(actionRef('plugin', name, boundHost().packs.pluginIds()), event),
+  broadcastToPlugin: (name, event) => broadcastToPlugin(actionRef('plugin', name, boundHost().packs.pluginIds()), event),
   sendToSystem: (to, event) => sendToSystem(typeof to === 'string' ? actionRef('system', to, boundHost().packs.systemIds()) : to, event),
 };
 

@@ -1,4 +1,4 @@
-import { sendToPlugin } from '@/__generated__/events';
+import { broadcastToPlugin } from '@/__generated__/events';
 import { setup } from 'xstate'
 
 import { repository } from '@/__generated__/repository';
@@ -43,13 +43,13 @@ export const promptsSystem = setup({
           templateFnContent: prompt.templateFn
         }
 
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'codePrompts.PROMPT_SELECTED',
           promptId: ev.promptId as EARS.EntityId,
           data: promptWithContent
         })
       } else {
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'codePrompts.CODE_ERROR',
           data: {
             message: `Prompt ${ev.promptId} not found`
@@ -68,7 +68,7 @@ export const promptsSystem = setup({
 
       const updatedPrompt = repository.promptQueries.byId(ev.promptId as EARS.EntityId)
       if (updatedPrompt) {
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'codePrompts.PROMPT_UPDATED',
           prompt: updatedPrompt,
           promptId: updatedPrompt.id

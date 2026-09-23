@@ -442,7 +442,7 @@ export function createTest(options: CreateTestOptions = {}) {
         win.applicationState?.system?.inspect?.((inspection: any) => {
           const event = inspection?.event;
           if (inspection?.type !== '@xstate.event' || event?.type !== 'SYSTEM_ERROR') return;
-          if (event.operation === 'sendToPlugin') win.__droppedSends.push(String(event.message ?? ''));
+          if (event.operation === 'broadcastToPlugin') win.__droppedSends.push(String(event.message ?? ''));
         });
       });
 
