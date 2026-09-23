@@ -3,38 +3,31 @@
 ```
 # Goal: a plugin declares one contract — what may be read of it, and what may be sent to it
 
-Implement docs/goals/goal-plugin-contract.md. Background and Spike results were taken at 8126ae364, whose
-history is now merged (aa95ec30e); work from the current branch and treat the base-confirm checks below as
-the authority rather than the commit. Every measured figure in Background was re-verified against the merged
-tree on 2026-09-23 and still holds.
-Before Phase 1, confirm the base: packages/abuddy-sdk/src/fe/plugin.ts exports `pluginAccepts`,
-packages/abuddy-sdk/src/build/module-exports.ts exports `acceptedEventTypesOf`, and every
-packages/default-setup/src/features/*/fe/public.ts still exists. If any of that is wrong, stop and say so.
-docs/archive/goals/goal-plugin-inbox.md is the work this builds on; read its Outcome first.
-Read Background, Spike results, Decisions, Phases and Constraints. Decisions are final: implement them,
-don't reopen them or stop to ask.
-Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
-going. No backward compatibility in code: change signatures, move modules, migrate every in-repo caller,
-test, fixture, template and doc in the same change, and fix forward.
+Implement docs/goals/goal-plugin-contract.md on the current branch. Background's figures were re-verified on
+2026-09-23; the checks below are the authority, not a commit.
+Before Phase 1, confirm: packages/abuddy-sdk/src/fe/plugin.ts exports `pluginAccepts`,
+packages/abuddy-sdk/src/build/module-exports.ts exports `acceptedEventTypesOf`, and the seven
+packages/default-setup/src/features/*/fe/public.ts exist. If any is wrong, stop and say so.
+Read docs/archive/goals/goal-plugin-inbox.md's Outcome first, then this doc's Background, Spike results,
+Decisions, Phases and Constraints. Decisions are final: implement them, don't reopen or ask.
+Where a detail isn't specified, pick the conventional option, note it in the final summary, and continue.
+No backward compatibility: change signatures, move modules, migrate every in-repo caller, test, fixture,
+template and doc in one change, and fix forward.
 
 Finished when:
-- Phases 1–4 are implemented and each meets its "Done when"; every new guard, helper or test is
-  mutation-checked.
-- No `packages/default-setup/src/features/*/fe/public.ts` remains. The host's three — application, packs
-  and settings — are out of scope and stay: check-import-specifiers.ts records that arrangement as
-  deliberate.
-- Each default-setup feature frontend that needs one has an `fe/types.ts` leaf holding its context, its
-  `Contract` type and any plain data, importing nothing from `#generated/*` but `types` and `ears`, and
-  nothing from `./state`. `pluginAccepts` and `PluginAccepts` no longer exist, and nothing replaces them.
-- `#generated/events` imports the leaf, never `fe/plugin.ts` and never a module that reaches `./state`.
-- The intra-pack UI commands are gone from
-  tests/fixtures/external-pack/src/__generated__/deps/default-setup.d.ts: no `accepts` block there names
-  UPDATE_STATE, terminal.CREATE, NOTE.OPEN, TAB.CREATE, NODE.DOUBLE_CLICK, EDIT_DOCUMENT or FLOW.SELECT,
-  and `navigateToPlugin` still compiles at every in-repo caller.
-- An external pack reads a dependency's plugin state with types, proved in tests/fixtures/external-pack, and
-  that read is typed `T | undefined` because the dependency's frontend may still be loading.
-- `usePluginState` and `readPluginState` name only the generated readers; the SDK's untyped pair is
-  `useUntypedPluginState`/`readUntypedPluginState`, and `abuddy.json` names each contract at
+- Phases 1–4 each meet their "Done when"; every new guard, helper or test is mutation-checked.
+- No packages/default-setup/src/features/*/fe/public.ts remains. The host's three (application, packs,
+  settings) stay: check-import-specifiers.ts records that as deliberate.
+- Each default-setup feature that needs one has an `fe/types.ts` leaf holding its context, its `Contract`
+  and any plain data, importing nothing from `#generated/*` but `types` and `ears`, nothing from `./state`. `pluginAccepts`/`PluginAccepts` are gone, with nothing in their place.
+- `#generated/events` imports the leaf, never `fe/plugin.ts` nor a module reaching `./state`.
+- In tests/fixtures/external-pack/src/__generated__/deps/default-setup.d.ts no `accepts` block names
+  UPDATE_STATE, terminal.CREATE, NOTE.OPEN, TAB.CREATE, NODE.DOUBLE_CLICK, EDIT_DOCUMENT or FLOW.SELECT;
+  `navigateToPlugin` still compiles at every in-repo caller.
+- An external pack reads a dependency's plugin state with types (proved in tests/fixtures/external-pack),
+  typed `T | undefined` — that frontend may still be loading.
+- `usePluginState`/`readPluginState` name only the generated readers; the SDK's untyped pair is
+  `useUntypedPluginState`/`readUntypedPluginState`; `abuddy.json` names each contract at
   `features[].plugin.contract`.
 - `findCrossFeatureImports` no longer excepts `fe/public`: no feature imports another feature's `fe/`.
 - npm run typecheck, schema:check, api:check (sdk, ui), facade:check -w @app/default-setup,
@@ -42,27 +35,22 @@ Finished when:
 - npm run test:unit, compile, build, npm test (E2E), test:external-pack; npm start boots clean.
 - A final summary: phase → done/deferred, evidence, and the conventional choices made.
 
-Commit as you go:
-- Commit each phase when its "Done when" holds and the checks are green. Conventional message, no
-  Co-Authored-By or session lines, `git commit -- <paths>` naming only that phase's files. Check
-  `git diff --cached` first.
-- Don't push, tag, or open a PR unless the user asks.
+Commit each phase once its "Done when" holds and checks are green: conventional message, no Co-Authored-By
+or session lines, `git commit -- <paths>` for that phase's files only, `git diff --cached` checked first.
 
 Never:
-- push, tag or open a PR unless the user asks in this session.
-- npm publish, create GitHub releases, or trigger workflows (dry runs only).
+- push, tag, open a PR, npm publish, create releases or trigger workflows (dry runs only) unless asked.
 - open, copy or modify ~/Library/Application Support/abuddy* or any real data dir.
 - pkill/killall Electron or node; launch the app outside the test env without an isolated
   ABUDDY_USER_DATA_DIR.
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release metadata.
 - change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
-- give the contract a runtime value (a `pluginContract()`-style call carrying phantoms), or read it from
-  `fe/plugin.ts` — the first is ceremony a type alias makes unnecessary, the second restores the cycle
-  (Spike results).
-- split `defineSystem`'s audiences, add a `from` to `Message`, or add an FE runtime validation map — all
-  Deferred, with triggers. Of the self-imposed constraints, 2, 5 and 6 are in scope, and 3 only for the
-  plugin contract (Decision 2); 1, 4 and 7 are not.
+- give the contract a runtime value (a `pluginContract()`-style call) or read it from `fe/plugin.ts`: the
+  first is needless ceremony, the second restores the cycle (Spike results).
+- split `defineSystem`'s audiences, add a `from` to `Message`, or add an FE runtime validation map: all
+  Deferred, with triggers. Of the self-imposed constraints 2, 5 and 6 are in scope, 3 only for the plugin
+  contract (Decision 2); 1, 4 and 7 are not.
 ```
 
 ## Background (2026-09-23, at 8126ae364 on AS/plugin-inbox)
