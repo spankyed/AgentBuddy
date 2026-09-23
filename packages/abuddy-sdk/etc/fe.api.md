@@ -589,7 +589,7 @@ export function updateSettings(target: SettingsTarget, path: readonly string[], 
 export function useFeatureSettings<T = unknown>(feature: FeatureRef): Readonly<Ref<T | undefined>>;
 
 // @public
-export function usePlugin<T = AnyActorRef>(): T;
+export function usePlugin<T>(): T;
 
 // @public
 export function useSettingsSave(): {

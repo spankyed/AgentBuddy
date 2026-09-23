@@ -201,6 +201,7 @@ import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import ColorPicker, { DEFAULT_COLORS } from '@abuddy/ui/design/ColorPicker'
 import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
+import type { LibraryActor } from './state'
 
 interface LibraryTagOption {
   name: string
@@ -262,7 +263,7 @@ const removeTag = (index: number) => {
 }
 
 // Get library actor and state via selectors
-const libraryActor = usePlugin()
+const libraryActor: LibraryActor = usePlugin()
 
 // Import state
 const isImporting = useSelector(libraryActor, (state: any) => state.context.libraryImport.status === 'importing')

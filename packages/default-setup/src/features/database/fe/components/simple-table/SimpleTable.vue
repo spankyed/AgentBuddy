@@ -62,9 +62,10 @@ import PrimitivesTable from './components/PrimitivesTable.vue';
 import ObjectsTable from './components/ObjectsTable.vue';
 import JsonDisplay from './components/JsonDisplay.vue';
 import PrimitiveDisplay from './components/PrimitiveDisplay.vue';
+import type { DatabaseState } from '../../state'
 
 // State Management
-const actor = usePlugin();
+const actor: DatabaseState = usePlugin();
 const queryResult = useSelector(actor, (state: any) => state.context.queryResult);
 const isLoading = useSelector(actor, (state: any) => state.context.isLoading);
 const error = useSelector(actor, (state: any) => state.context.error);

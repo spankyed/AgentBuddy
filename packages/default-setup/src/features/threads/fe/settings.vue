@@ -694,6 +694,7 @@ import { TooltipProvider, TooltipRoot, TooltipTrigger, TooltipPortal, TooltipCon
 import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import { useSelector } from '@xstate/vue'
 import { id } from './state'
+import type { ThreadsState } from './state'
 import type {
   ThreadsSettings,
   ThreadStatusOption,
@@ -1030,7 +1031,7 @@ const removeTag = (index: number) => {
 }
 
 // Get threads actor for import/export state
-const threadsActor = usePlugin()
+const threadsActor: ThreadsState = usePlugin()
 
 // Import state
 const isImporting = useSelector(threadsActor, (state: any) => state.context.threadsImport.status === 'importing')

@@ -248,10 +248,10 @@ import { useSelector } from '@xstate/vue'
 import { id, librarySystem, type LibraryContext, type LibraryEvents } from './state'
 import type { ActorRefFrom } from 'xstate'
 import type { ContentSection, FieldContent, ListContent, MarkdownContent, TextContent } from '@/features/library/be/types'
+import type { LibraryActor } from './state'
 // [SEARCH_INDEX_FF] import { getModelConfig } from '../embedding-models'
 
-type LibraryActor = ActorRefFrom<typeof librarySystem>
-const actor = usePlugin() as LibraryActor
+const actor = usePlugin<LibraryActor>()
 
 // Individual selectors for each context property
 const index = useSelector(actor, (state) => state.context.index)

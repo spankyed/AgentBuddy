@@ -199,6 +199,7 @@ import { Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-n
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import { useSelector } from '@xstate/vue'
 import { id } from './state'
+import type { NotesState } from './state'
 
 interface NotesSettings {
   tasklistPanelPosition: 'left' | 'right'
@@ -251,7 +252,7 @@ const updatePosition = (value: 'left' | 'right') => {
 }
 
 // Get notes actor and state via selectors
-const notesActor = usePlugin()
+const notesActor: NotesState = usePlugin()
 
 // Import state
 const isImporting = useSelector(notesActor, (state: any) => state.context.notesImport.status === 'importing')

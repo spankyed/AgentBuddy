@@ -54,7 +54,8 @@ import type { SnapshotFrom } from 'xstate'
 import type { ContentSection } from '@/features/library/be/types';
 import { libraryPlugin } from './public'
 
-export type LibraryState = SnapshotFrom<typeof librarySystem>
+/** The library plugin's actor, as its own components reach it with `usePlugin<LibraryActor>()` */
+export type LibraryActor = ActorRefFrom<typeof librarySystem>
 
 export interface LibraryContext {
   // Core view state
