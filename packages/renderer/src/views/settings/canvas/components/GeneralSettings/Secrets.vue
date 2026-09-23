@@ -118,8 +118,8 @@ import { errorMessage } from '@abuddy/sdk/utils/pure';
 import type { SettingsState } from '@abuddy/host/fe'
 
 const settingsActor: SettingsState = usePlugin()
-const secrets = useSelector(settingsActor, (state) => state.context.secrets as SecretInfo[])
-const status = useSelector(settingsActor, (state) => state.context.secretsStatus as SecretsStatus | null)
+const secrets = useSelector(settingsActor, (state) => state.context.secrets)
+const status = useSelector(settingsActor, (state) => state.context.secretsStatus)
 const error = ref<string | null>(null)
 
 const descriptions: Record<keyof typeof providerLabels, string> = {

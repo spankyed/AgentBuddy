@@ -66,10 +66,10 @@ import type { DatabaseState } from '../../state'
 
 // State Management
 const actor: DatabaseState = usePlugin();
-const queryResult = useSelector(actor, (state: any) => state.context.queryResult);
-const isLoading = useSelector(actor, (state: any) => state.context.isLoading);
-const error = useSelector(actor, (state: any) => state.context.error);
-const executionTime = useSelector(actor, (state: any) => state.context.executionTime);
+const queryResult = useSelector(actor, (state) => state.context.queryResult);
+const isLoading = useSelector(actor, (state) => state.context.isLoading);
+const error = useSelector(actor, (state) => state.context.error);
+const executionTime = useSelector(actor, (state) => state.context.executionTime);
 
 // Result Analysis
 const { 

@@ -104,22 +104,24 @@ import { FolderOpen, FolderPlus, RefreshCw, AlertCircle, X } from 'lucide-vue-ne
 import { useExplorerSelection } from './composables/useExplorerSelection'
 import { useExplorerDragDrop } from './composables/useExplorerDragDrop'
 import type { FileInfo } from './state'
+import type { ExplorerActor } from './state'
+import type { TerminalActor } from '../terminal/state'
 
 // Get actors
 const codeActor: CodeState = usePlugin()
-const explorerActor = codeChild(codeActor, 'explorer')!
-const terminalActor = codeChild(codeActor, 'terminal')!
+const explorerActor = codeChild<ExplorerActor>(codeActor, 'explorer')!
+const terminalActor = codeChild<TerminalActor>(codeActor, 'terminal')!
 
 // State selectors
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
-const rootFiles = useSelector(explorerActor, (state: any) => state.context.rootFiles as FileInfo[])
-const expandedDirs = useSelector(explorerActor, (state: any) => state.context.expandedDirs as Set<string>)
-const dirContents = useSelector(explorerActor, (state: any) => state.context.dirContents as Record<string, FileInfo[]>)
-const loadingDirs = useSelector(explorerActor, (state: any) => state.context.loadingDirs as Set<string>)
-const selectedPaths = useSelector(explorerActor, (state: any) => state.context.selectedPaths as string[])
-const revealPath = useSelector(explorerActor, (state: any) => state.context.revealPath as string | null)
-const isLoading = useSelector(codeActor, (state: any) => state.context.isLoading)
-const error = useSelector(codeActor, (state: any) => state.context.error)
+const rootFiles = useSelector(explorerActor, (state) => state.context.rootFiles)
+const expandedDirs = useSelector(explorerActor, (state) => state.context.expandedDirs)
+const dirContents = useSelector(explorerActor, (state) => state.context.dirContents)
+const loadingDirs = useSelector(explorerActor, (state) => state.context.loadingDirs)
+const selectedPaths = useSelector(explorerActor, (state) => state.context.selectedPaths)
+const revealPath = useSelector(explorerActor, (state) => state.context.revealPath)
+const isLoading = useSelector(codeActor, (state) => state.context.isLoading)
+const error = useSelector(codeActor, (state) => state.context.error)
 
 // Error dismissal
 const dismissedError = ref<string | null>(null)

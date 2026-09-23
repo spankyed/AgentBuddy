@@ -118,7 +118,7 @@ const mediaEntityId = crypto.randomUUID()
 
 // Get settings from state
 const actor: LibraryActor = usePlugin()
-const settings = useSelector(actor, (state: any) => state.context.settings)
+const settings = useSelector(actor, (state) => state.context.settings)
 
 const formData = reactive({
   name: '',

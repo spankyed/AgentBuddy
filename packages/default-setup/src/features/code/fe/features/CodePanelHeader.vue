@@ -107,7 +107,7 @@ const explorerActor = codeChild(actor, 'explorer')!
 const terminalActor = codeChild(actor, 'terminal')!
 const commitActor = codeChild(actor, 'commit')!
 
-const changeCount = useSelector(commitActor, (state: any) => state.context.gitStatus?.length ?? 0)
+const changeCount = useSelector(commitActor, (state) => state.context.gitStatus?.length ?? 0)
 
 const selectedPanel = useSelector(actor, (state) => state.context.selectedPanel)
 const baseDirectory = useSelector(actor, (state) => state.context.baseDirectory)

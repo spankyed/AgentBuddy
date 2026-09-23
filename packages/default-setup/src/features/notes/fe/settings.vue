@@ -255,19 +255,19 @@ const updatePosition = (value: 'left' | 'right') => {
 const notesActor: NotesState = usePlugin()
 
 // Import state
-const isImporting = useSelector(notesActor, (state: any) => state.context.notesImport.status === 'importing')
-const importStatus = useSelector(notesActor, (state: any) => state.context.notesImport.status)
-const importErrors = useSelector(notesActor, (state: any) => state.context.notesImport.errors)
-const importedCount = useSelector(notesActor, (state: any) => state.context.notesImport.importedCount)
+const isImporting = useSelector(notesActor, (state) => state.context.notesImport.status === 'importing')
+const importStatus = useSelector(notesActor, (state) => state.context.notesImport.status)
+const importErrors = useSelector(notesActor, (state) => state.context.notesImport.errors)
+const importedCount = useSelector(notesActor, (state) => state.context.notesImport.importedCount)
 
 // Export state
 const exportFormat = ref<'markdown' | 'json'>('markdown')
 const exportDirectory = ref<string>('')
-const isExporting = useSelector(notesActor, (state: any) => state.context.notesExport.status === 'exporting')
-const exportStatus = useSelector(notesActor, (state: any) => state.context.notesExport.status)
-const exportErrors = useSelector(notesActor, (state: any) => state.context.notesExport.errors)
-const exportedFilePath = useSelector(notesActor, (state: any) => state.context.notesExport.filePath)
-const exportedItemCount = useSelector(notesActor, (state: any) => state.context.notesExport.itemCount)
+const isExporting = useSelector(notesActor, (state) => state.context.notesExport.status === 'exporting')
+const exportStatus = useSelector(notesActor, (state) => state.context.notesExport.status)
+const exportErrors = useSelector(notesActor, (state) => state.context.notesExport.errors)
+const exportedFilePath = useSelector(notesActor, (state) => state.context.notesExport.filePath)
+const exportedItemCount = useSelector(notesActor, (state) => state.context.notesExport.itemCount)
 
 // Import - directory picker and send to state machine
 const selectAndImportNotes = async () => {

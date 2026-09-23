@@ -14,6 +14,9 @@ import { deepMerge } from '@abuddy/sdk/utils/pure';
 import { refProblem, resolveName, type FeatureRef, type RefLookup } from '@abuddy/sdk/ids';
 import { getFeaturesWithSettings } from '@abuddy/sdk/framework';
 import { changesFrom, PLUGINS_SECTION, removeIn, SETTINGS_KIND, settingsProblems, SettingsRefusedError, setIn } from './document.ts';
+// The contract's own, not a copy of it: `services.settings.onChange` and this store's must be the same type
+import type { SettingsChange } from '@abuddy/sdk/services';
+export type { SettingsChange };
 
 /** The entity type the host declares for the settings row */
 export const SETTINGS_ENTITY = 'Settings';
@@ -27,8 +30,6 @@ export interface SettingsDocument {
   [section: string]: unknown;
 }
 
-/** What happened to the stored settings: a write, or a wholesale replacement (a backup import) starting and ending */
-export type SettingsChange = 'written' | 'replacing' | 'replaced';
 
 export interface SettingsStoreOptions {
   /**

@@ -105,7 +105,7 @@ const props = defineProps<{
 const codeActor: CodeState = usePlugin()
 const commitActor = codeChild(codeActor, 'commit')!
 
-const commitLog = useSelector(commitActor, (state: any) => state.context.commitLog) as import('vue').Ref<CommitLogEntry[]>
+const commitLog = useSelector(commitActor, (state) => state.context.commitLog) as import('vue').Ref<CommitLogEntry[]>
 
 // Search state
 const showCommitSearch = ref(false)

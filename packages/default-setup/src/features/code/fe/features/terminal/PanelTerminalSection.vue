@@ -224,17 +224,18 @@ import type { TerminalScript } from '@/__generated__/types'
 import type { Terminal } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { IDisposable } from '@xterm/xterm'
+import type { TerminalActor } from './state'
 
 const props = withDefaults(defineProps<{ height?: number }>(), { height: 256 })
 
 // Actors
 const codeActor: CodeState = usePlugin()
-const terminalActor = codeChild(codeActor, 'terminal')!
+const terminalActor = codeChild<TerminalActor>(codeActor, 'terminal')!
 
 // State selectors
 const panelTerminalId = useSelector(codeActor, (state) => state.context.panelTerminalId)
 const openFiles = useSelector(codeActor, (state) => state.context.openFiles)
-const terminals = useSelector(terminalActor, (state: any) => state.context.terminals as TerminalInfo[])
+const terminals = useSelector(terminalActor, (state) => state.context.terminals)
 
 const storedCodeSettings = useFeatureSettings<CodeSettings>(featureRef('code'))
 const confirmTerminalClose = computed(() => storedCodeSettings.value?.confirmTerminalClose ?? true)
@@ -375,9 +376,11 @@ const killPanelTerminal = () => {
 const restartPanelTerminal = () => {
   const info = activeTerminalInfo.value
   if (!info || !panelTerminalId.value) return
-  const { cwd, shell } = info
+  // `terminal.CREATE` carries no shell — the event the child sends the system has only title and cwd — so the
+  // restarted terminal takes the default shell, as it always has. Passing `info.shell` here only looked otherwise.
+  const { cwd } = info
   terminalActor.send({ type: 'terminal.CLOSE', terminalId: panelTerminalId.value })
-  terminalActor.send({ type: 'terminal.CREATE', cwd, shell })
+  terminalActor.send({ type: 'terminal.CREATE', cwd })
 }
 
 // Actions

@@ -219,7 +219,7 @@ function isTailMessage(msg: MessageEntity): boolean {
   return !msgs.slice(idx + 1).some(m => m.sender === 'user' && !m.status)
 }
 
-const currentThread = useSelector(actor, (state) => state.context.currentThread as AgentThreadData)
+const currentThread = useSelector(actor, (state) => state.context.currentThread)
 const recentThreadIds = useSelector(actor, (state) => state.context.recentThreadIds)
 const threadMap = useSelector(actor, (state) => state.context.threadMap)
 const recentThreads = computed(() => threadsFromStore(threadMap.value, recentThreadIds.value) as ThreadEntity[])
@@ -299,7 +299,7 @@ const isNearBottom = ref(true)
 const pendingScrollOnSend = ref(false)
 const lightboxOpen = ref(false)
 const lightboxSrc = ref('')
-const settings = useSelector(actor, (state) => state.context.chatSettings as AgentSettings)
+const settings = useSelector(actor, (state) => state.context.chatSettings)
 const showRevertDialog = ref(false)
 const pendingRevertMessageId = ref<string | null>(null)
 const dontAskAgain = ref(false)

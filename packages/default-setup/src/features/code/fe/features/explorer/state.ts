@@ -1,4 +1,4 @@
-import { setup, assign, enqueueActions } from 'xstate';
+import { setup, assign, enqueueActions, type ActorRefFrom } from 'xstate';
 import { sendToSystem } from '@/__generated__/events';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
 import { removeTabs, renameInTabViewHistory } from '../../utils/tab-management';
@@ -671,3 +671,6 @@ export const explorerState = setup({
     }
   }
 });
+
+/** The explorer child's actor, as the code plugin's components reach it with `codeChild<ExplorerActor>()` */
+export type ExplorerActor = ActorRefFrom<typeof explorerState>;

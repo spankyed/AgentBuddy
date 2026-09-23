@@ -77,7 +77,7 @@ const props = withDefaults(defineProps<Props>(), {
 
 // State Management
 const actor: DatabaseState = usePlugin();
-const queryResult = useSelector(actor, (state: any) => state.context.queryResult);
+const queryResult = useSelector(actor, (state) => state.context.queryResult);
 
 // Component State
 const graphContainer = ref<HTMLElement>();

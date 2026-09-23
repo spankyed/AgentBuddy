@@ -203,11 +203,11 @@ const searchActor = codeChild(codeActor, 'search')!
 
 // State selectors
 const searchQuery = ref('')
-const searchResults = useSelector(searchActor, (state: any) => state.context.searchResults)
-const isSearching = useSelector(searchActor, (state: any) => state.context.isSearching)
-const searchError = useSelector(searchActor, (state: any) => state.context.searchError)
-const searchProgress = useSelector(searchActor, (state: any) => state.context.searchProgress)
-const searchOptions = useSelector(searchActor, (state: any) => state.context.searchOptions)
+const searchResults = useSelector(searchActor, (state) => state.context.searchResults)
+const isSearching = useSelector(searchActor, (state) => state.context.isSearching)
+const searchError = useSelector(searchActor, (state) => state.context.searchError)
+const searchProgress = useSelector(searchActor, (state) => state.context.searchProgress)
+const searchOptions = useSelector(searchActor, (state) => state.context.searchOptions)
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
 const searchFocusTrigger = useSelector(codeActor, (state) => state.context.searchFocusTrigger)
 const searchPrefillText = useSelector(codeActor, (state) => state.context.searchPrefillText)

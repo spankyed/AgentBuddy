@@ -22,7 +22,7 @@ import FileSystemBrowser from './components/FileSystemBrowser.vue'
 import type { LibraryActor } from './state'
 
 const actor: LibraryActor = usePlugin()
-const context = useSelector(actor, (state: any) => state.context)
+const context = useSelector(actor, (state) => state.context)
 const send = (event: LibraryEvents) => actor.send(event)
 
 const currentComponent = computed(() => {

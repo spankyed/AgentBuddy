@@ -1,4 +1,4 @@
-import { setup, assign, enqueueActions } from 'xstate';
+import { setup, assign, enqueueActions, type ActorRefFrom } from 'xstate';
 import { sendToSystem } from '@/__generated__/events';
 import { terminalEventBus } from '../../utils/terminal-events';
 import { terminalPool } from '../../utils/terminal-pool';
@@ -449,3 +449,6 @@ export const terminalState = setup({
     }
   }
 });
+
+/** The terminal child's actor, as the code plugin's components reach it with `codeChild<TerminalActor>()` */
+export type TerminalActor = ActorRefFrom<typeof terminalState>;
