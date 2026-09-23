@@ -83,6 +83,15 @@ export function specEvents<S extends { _incoming: unknown; _outgoing: unknown }>
 }
 
 /**
+ * Narrows a plugin entry to the inbox it declares, as `specEvents` does a system's spec: `#generated/plugin-specs`
+ * keeps only this, so the plugin's machine and components never enter the event types and can't cycle back through
+ * `#generated/events`.
+ */
+export function pluginEvents<S extends { _accepts: unknown }>(entry: S): { _accepts: S['_accepts'] } {
+  return entry;
+}
+
+/**
  * Events the host app's own plugins receive from pack systems. A pack system declares a send to one
  * with `features[].system.sendsTo` in abuddy.json; `#generated/events` includes this map.
  */

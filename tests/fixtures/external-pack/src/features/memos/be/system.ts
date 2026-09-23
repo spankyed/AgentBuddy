@@ -29,7 +29,7 @@ export const memosSystem = setup({
       const { text } = memosSpec.typeOf('ADD_MEMO', event);
       sendToPlugin('memos', { type: 'MEMO_ADDED', memo: repository.memoCommands.add(text) });
     },
-    // A send to a dependency's plugin (abuddy.json sendsTo), named as code names another pack's feature
+    // A send to a dependency's plugin, named as code names another pack's feature; that plugin declares it takes it
     announceMemo: ({ system, event }) => {
       const { text } = memosSpec.typeOf('ANNOUNCE_MEMO', event);
       sendToPlugin('default-setup/logs', {

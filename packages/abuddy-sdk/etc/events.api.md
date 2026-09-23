@@ -105,6 +105,13 @@ export type PluginEvents = {
 };
 
 // @public
+export function pluginEvents<S extends {
+    _accepts: unknown;
+}>(entry: S): {
+    _accepts: S['_accepts'];
+};
+
+// @public
 export type Qualified<PackId extends string, M> = {
     [K in keyof M & string as `${PackId}/${K}`]: M[K];
 };

@@ -1,10 +1,10 @@
-import type { PluginDefinition } from "@abuddy/sdk/fe";
+import { definePlugin } from '@abuddy/sdk/fe';
 import { Sparkle } from 'lucide-vue-next';
 import state from './state.ts';
 import canvas from './canvas.vue';
 import settings from './settings.vue';
 
-const promptsPlugin: PluginDefinition = {
+const promptsPlugin = definePlugin({
   label: 'Prompts',
   icon: Sparkle,
   state,
@@ -14,6 +14,6 @@ const promptsPlugin: PluginDefinition = {
   options: {
     // headerClass: 'bg-neutral-900 border-b border-neutral-600'
   }
-};
+});
 
 export default promptsPlugin; 

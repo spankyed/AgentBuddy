@@ -142,6 +142,9 @@ export function createHotkeyProcessor<const TMap extends Record<string, string>,
 // @public (undocumented)
 export function createNavHistory<T>(initial: T): NavHistory<T>;
 
+// @public
+export function definePlugin(definition: PluginDefinition): PluginDefinition;
+
 // @public (undocumented)
 export interface DslTypeConfig {
     // (undocumented)
@@ -370,6 +373,18 @@ interface Plugin_2 {
     state: AnyStateMachine;
 }
 export { Plugin_2 as Plugin }
+
+// @public
+export interface PluginAccepts<TAccepts extends {
+    type: string;
+} = never> {
+    _accepts: TAccepts;
+}
+
+// @public
+export function pluginAccepts<TAccepts extends {
+    type: string;
+} = never>(): PluginAccepts<TAccepts>;
 
 // @public
 export type PluginDefinition = Omit<Plugin_2, 'id'>;

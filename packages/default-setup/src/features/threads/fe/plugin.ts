@@ -1,4 +1,4 @@
-import type { PluginDefinition } from "@abuddy/sdk/fe";
+import { definePlugin } from '@abuddy/sdk/fe';
 
 import { BotMessageSquare } from 'lucide-vue-next';
 import state from './state.ts';
@@ -9,7 +9,7 @@ import AgentCanvas from './canvas/agent/canvas.vue';
 import chat from './chat/chat.vue';
 import settings from './settings.vue';
 
-const threadsPlugin: PluginDefinition = {
+const threadsPlugin = definePlugin({
   label: 'Threads',
 
   icon: BotMessageSquare,
@@ -38,6 +38,6 @@ const threadsPlugin: PluginDefinition = {
       global: false
     }
   ],
-};
+});
 
 export default threadsPlugin;

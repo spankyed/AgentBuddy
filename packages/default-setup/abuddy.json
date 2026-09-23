@@ -34,10 +34,7 @@
       "designation": "threads",
       "settings": "src/features/threads/settings.ts",
       "system": {
-        "entry": "src/features/threads/be/system.ts",
-        "sendsTo": [
-          "host/application"
-        ]
+        "entry": "src/features/threads/be/system.ts"
       },
       "plugin": {
         "entry": "src/features/threads/fe/plugin.ts",
@@ -60,10 +57,7 @@
       "id": "code",
       "settings": "src/features/code/settings.ts",
       "system": {
-        "entry": "src/features/code/be/system.ts",
-        "sendsTo": [
-          "host/settings"
-        ]
+        "entry": "src/features/code/be/system.ts"
       },
       "plugin": {
         "entry": "src/features/code/fe/plugin.ts"
@@ -146,10 +140,7 @@
       "id": "actions",
       "settings": "src/features/actions/settings.ts",
       "system": {
-        "entry": "src/features/actions/be/system.ts",
-        "sendsTo": [
-          "flows"
-        ]
+        "entry": "src/features/actions/be/system.ts"
       },
       "plugin": {
         "entry": "src/features/actions/fe/plugin.ts"

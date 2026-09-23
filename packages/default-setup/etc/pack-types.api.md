@@ -8,7 +8,8 @@ import * as _abuddy_sdk from '@abuddy/sdk';
 import { ActionEntity, EARS as EARS$1, FlowEntity, NodeBase, PromptEntity, SdkEntityShapes } from '@abuddy/sdk';
 import { ArtifactItem } from '@abuddy/sdk/artifacts';
 import * as _abuddy_sdk_build from '@abuddy/sdk/build';
-import { HostPluginEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, Qualified, TypedSendToPlugin, TypedSendToSystem, WithOwnNames } from '@abuddy/sdk/events';
+import { HostPluginEvents, HostSystemEvents, IncomingEventsOf, OutgoingEventsOf, Qualified, TypedSendToPlugin, TypedSendToSystem } from '@abuddy/sdk/events';
+import * as _abuddy_sdk_fe from '@abuddy/sdk/fe';
 import { ModelCatalogEntry, ModelId } from '@abuddy/sdk/models';
 import * as _abuddy_sdk_repositories from '@abuddy/sdk/repositories';
 import { FlowEdge } from '@abuddy/sdk/repositories';
@@ -2729,19 +2730,19 @@ type OwnEntityShapes = {
     'Note': NoteEntity;
 };
 
-/** Plugin id → the events this pack's systems send to that plugin (their own, and each `sendsTo`). */
+/** Plugin id → the events that plugin receives: its own feature's system's, and the inbox it declares. */
 type OwnPluginEvents = {
-    'threads': __events_threads;
-    'code': __events_code;
-    'notes': __events_notes;
-    'browser': __events_browser;
-    'library': __events_library;
-    'flows': __events_flows | __events_actions;
-    'actions': __events_actions;
-    'prompts': __events_prompts;
-    'brain': __events_brain;
-    'database': __events_database;
-    'logs': __events_logs;
+    'threads': __events_threads | __accepts_threads;
+    'code': __events_code | __accepts_code;
+    'notes': __events_notes | __accepts_notes;
+    'browser': __events_browser | __accepts_browser;
+    'library': __events_library | __accepts_library;
+    'flows': __events_flows | __accepts_flows;
+    'actions': __events_actions | __accepts_actions;
+    'prompts': __events_prompts | __accepts_prompts;
+    'brain': __events_brain | __accepts_brain;
+    'database': __events_database | __accepts_database;
+    'logs': __events_logs | __accepts_logs;
 };
 
 /** The repositories this pack declares (abuddy.json features[].repositories) */
@@ -2775,6 +2776,25 @@ type OwnRepositories = {
 type PackEmitter = Omit<HostServices['emitter'], 'sendToPlugin' | 'sendToSystem'> & {
     sendToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;
     sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;
+};
+
+/**
+ * Feature id → the inbox this pack's plugin for that feature declares (dependents name it `default-setup/<feature>`).
+ * Its own system's events aren't here: they are between the two halves of one feature, not a contract anyone else
+ * may send. This is what a dependent pack may send it, and it mirrors `PackSystemEvents`.
+ */
+type PackPluginEvents = {
+    'threads': __accepts_threads;
+    'code': __accepts_code;
+    'notes': __accepts_notes;
+    'browser': __accepts_browser;
+    'library': __accepts_library;
+    'flows': __accepts_flows;
+    'actions': __accepts_actions;
+    'prompts': __accepts_prompts;
+    'brain': __accepts_brain;
+    'database': __accepts_database;
+    'logs': __accepts_logs;
 };
 
 /**
@@ -2916,11 +2936,11 @@ interface PromptsConnectedData {
 }
 
 /**
- * Every plugin this pack's systems can send to, by ref: its own, and the dependency and host plugins a `sendsTo`
- * names. Those keep the events their owner declares they receive — a pack widens only its own plugins. Actions
- * (`services.emitter`) send with it.
+ * Every plugin this pack's code can send to, by ref: its own, its dependencies' and the host's. A plugin owned
+ * elsewhere takes the inbox its own pack declares — a pack widens only its own. Actions (`services.emitter`)
+ * send with it.
  */
-type QualifiedPluginEvents = Qualified<'default-setup', OwnPluginEvents> & Pick<HostPluginEvents, 'host/application' | 'host/settings'>;
+type QualifiedPluginEvents = Qualified<'default-setup', OwnPluginEvents> & HostPluginEvents;
 
 /** Every system this pack's code can send to, by ref: its own, its dependencies' and the host's. */
 type QualifiedSystemEvents = Qualified<'default-setup', PackSystemEvents> & HostSystemEvents;
@@ -3223,9 +3243,6 @@ interface SearchResult {
     matches: SearchMatch[];
     fileSize?: number;
 }
-
-/** The plugins this pack's code sends to: `QualifiedPluginEvents`, with its own named by feature id instead of ref */
-type SendablePluginEvents = WithOwnNames<'default-setup', QualifiedPluginEvents>;
 
 /**
  * Type definitions for the Codex app-server integration.
@@ -3789,6 +3806,28 @@ interface WorktreeEntry {
     lockedReason?: string;
 }
 
+type __accepts_actions = never;
+
+type __accepts_brain = never;
+
+type __accepts_browser = never;
+
+type __accepts_code = never;
+
+type __accepts_database = never;
+
+type __accepts_flows = (typeof accepts$1)['_accepts'];
+
+type __accepts_library = never;
+
+type __accepts_logs = (typeof accepts)['_accepts'];
+
+type __accepts_notes = never;
+
+type __accepts_prompts = never;
+
+type __accepts_threads = never;
+
 type __events_actions = OutgoingEventsOf<(typeof specs)['actions']>;
 
 type __events_brain = OutgoingEventsOf<(typeof specs)['brain']>;
@@ -3810,6 +3849,15 @@ type __events_notes = OutgoingEventsOf<(typeof specs)['notes']>;
 type __events_prompts = OutgoingEventsOf<(typeof specs)['prompts']>;
 
 type __events_threads = OutgoingEventsOf<(typeof specs)['threads']>;
+
+/** Any pack may add a line to the app's log, and the Logs plugin is where that arrives */
+declare const accepts: _abuddy_sdk_fe.PluginAccepts<{
+    type: "LOG_ADDED";
+    log: LogEntry;
+}>;
+
+/** The actions system keeps the flows editor's action list current; the receiver declares what it takes */
+declare const accepts$1: _abuddy_sdk_fe.PluginAccepts<OutgoingActionEvents>;
 
 declare const actionCommands: {
     readonly create: (data: _abuddy_sdk_repositories.ActionInput) => ActionEntity;
@@ -5260,5 +5308,5 @@ declare function viewByFile(filePath: string, opts?: {
     offset?: number;
 }): Promise<any[]>;
 
-export type { PackShapes as PackEntityShapes, PackStepNodes, PackSystemEvents, Repositories, SendablePluginEvents, Services };
+export type { PackShapes as PackEntityShapes, PackPluginEvents, PackStepNodes, PackSystemEvents, Repositories, Services };
 ```

@@ -228,21 +228,6 @@ function toImportPath(root: string, manifestPath: string): string {
 /** The host's plugins pack systems can send to, `host/<featureId>`, read from `HOST_PLUGIN_EVENT_TYPES` */
 const hostPlugins: readonly string[] = Object.keys(HOST_PLUGIN_EVENT_TYPES);
 
-/**
- * The plugins a pack's own `SendablePluginEvents` keys, from its manifest: a feature that has both a system and
- * a plugin, and every own plugin one of its systems' `sendsTo` names. A plugin its pack sends nothing
- * to receives no events, so it gets no key — and a dependent has nothing it could send there either.
- */
-function receivingPlugins(manifest: PackManifest): Set<string> {
-  const features = manifest.features ?? [];
-  const pluginIds = new Set(features.filter((f) => f.plugin).map((f) => f.id));
-  const keys = new Set(features.filter((f) => f.system && f.plugin).map((f) => f.id));
-  for (const feature of features) {
-    for (const target of feature.system?.sendsTo ?? []) if (pluginIds.has(target)) keys.add(target);
-  }
-  return keys;
-}
-
 
 /** This pack's entities with no shape (in entityShapes or the SDK's), whose fields read as unknown values */
 export function entitiesWithoutShapes(manifest: Pick<PackManifest, 'entities' | 'entityShapes'>): string[] {
@@ -437,6 +422,8 @@ export function generatePackFiles(
       ...features.flatMap((f) => (f.settings ? [f.settings] : [])),
       // The systems' entries: their outgoing unions are where the event types a plugin receives are read from
       ...features.flatMap((f) => (f.system ? [f.system.entry] : [])),
+      // The plugins' entries: each declares the inbox anyone else may send it
+      ...features.flatMap((f) => (f.plugin ? [f.plugin.entry] : [])),
     ];
     return [...new Set(sources.map(sourceFileOf).filter((file): file is string => file !== undefined))];
   }
@@ -452,6 +439,11 @@ export function generatePackFiles(
     return moduleExports.outgoingEventTypesOf(file);
   }
 
+  function acceptedEventTypesOf(file: string): string[] {
+    moduleExports ??= createModuleExports(root, exportedFromFiles());
+    return moduleExports.acceptedEventTypesOf(file);
+  }
+
   /** The event types a feature's system sends, read from its spec */
   function sentEventTypes(feature: PackFeatureEntry): string[] {
     const file = sourceFileOf(feature.system!.entry);
@@ -465,13 +457,32 @@ export function generatePackFiles(
     }
   }
 
+  /** Whether a feature's plugin module declares an inbox at all (an `accepts` export) */
+  function declaresAccepts(feature: PackFeatureEntry): boolean {
+    const file = sourceFileOf(feature.plugin!.entry);
+    return file !== undefined && exportOf(file, 'accepts') !== undefined;
+  }
+
+  /** The event types a plugin declares that any other plugin or system may send it, read from its `accepts` export */
+  function acceptedEventTypes(feature: PackFeatureEntry): string[] {
+    const file = sourceFileOf(feature.plugin!.entry);
+    if (!file) throw new Error(`Feature "${feature.id}": no plugin entry found at ${feature.plugin!.entry} (.ts or /index.ts)`);
+    try {
+      return acceptedEventTypesOf(file);
+    } catch (err) {
+      // The same error, so its code still says what kind of failure it is
+      (err as Error).message = `Feature "${feature.id}": ${(err as Error).message}`;
+      throw err;
+    }
+  }
+
   /**
-   * The event types one of this pack's plugins receives: what its own feature's system sends, and every system whose
-   * `sendsTo` names it. Only this pack's own plugins: a dependency's and the host's are declared by whoever owns them.
+   * The event types one of this pack's plugins receives: what its own feature's system sends it, and the inbox it
+   * declares for everyone else. The bus checks each send against this (`getPluginEventValidationMap`).
    */
-  function receivedEventTypes(pluginId: string): string[] {
-    const senders = (manifest.features ?? []).filter((f) => f.system && (f.id === pluginId || f.system.sendsTo?.includes(pluginId)));
-    return [...new Set(senders.flatMap(sentEventTypes))].sort();
+  function receivedEventTypes(feature: PackFeatureEntry): string[] {
+    const own = feature.system ? sentEventTypes(feature) : [];
+    return [...new Set([...own, ...acceptedEventTypes(feature)])].sort();
   }
 
   /** A `"path#exportName"` target that must export a runtime value */
@@ -539,7 +550,7 @@ export function generatePackFiles(
       const parts: string[] = [];
       if (f.designation) parts.push(`      designation: '${f.designation}'`);
       if (f.system) parts.push(`      system: ${systemExpr(f)}`);
-      if (f.plugin) parts.push(`      plugin: { receives: [${receivedEventTypes(f.id).map((type) => `'${type}'`).join(', ')}] }`);
+      if (f.plugin) parts.push(`      plugin: { receives: [${receivedEventTypes(f).map((type) => `'${type}'`).join(', ')}] }`);
       parts.push(`      services: [${Object.keys(f.services ?? {}).map(s => `'${s}'`).join(', ')}]`);
       if (f.settings) parts.push(`      settings: ${settingsBinding(f.id)}`);
       return `    '${f.id}': {\n${parts.join(',\n')},\n    }`;
@@ -820,81 +831,38 @@ export function navigateToPlugin(name: PluginName, event?: PluginEvent | PluginE
   function generateEvents(): string {
     const features = manifest.features ?? [];
     const systemFeatures = features.filter(f => f.system);
-    const ownIds = new Set(features.map(f => f.id));
-    const ownPluginIds = new Set(features.filter(f => f.plugin).map(f => f.id));
-    const depPluginIds = new Set([...depSnapshots.values()].flatMap(snap => (snap.manifest.features ?? []).filter(f => f.plugin).map(f => f.id)));
-    /** Dependency id → the plugins its own `SendablePluginEvents` keys, the only ones a send to it can be typed against */
-    const depReceivers = new Map([...depSnapshots].map(([depId, snap]) => [depId, receivingPlugins(snap.manifest)] as const));
-    /** Every plugin reachable through the dependencies, by ref → the pack that declares it */
-    const pluginOwners = _mergeProvenance('plugins', [...depSnapshots]);
-
-    const receivers = new Map<string, string[]>();
-    const addSender = (pluginId: string, feature: PackFeatureEntry) => {
-      const alias = `__events_${feature.id}`;
-      const senders = receivers.get(pluginId) ?? [];
-      if (!senders.includes(alias)) senders.push(alias);
-      receivers.set(pluginId, senders);
-    };
-    for (const feature of systemFeatures) {
-      if (feature.plugin) addSender(feature.id, feature);
-    }
-    /** The plugins owned elsewhere a `sendsTo` names: a dependency's, by dependency, and the host's */
-    const depTargets = new Map<string, Set<string>>();
-    const hostTargets = new Set<string>();
-    for (const feature of systemFeatures) {
-      const refuse = (target: string, why: string) => {
-        throw new Error(`Feature "${feature.id}": system.sendsTo names "${target}", ${why}`);
-      };
-      for (const target of feature.system!.sendsTo ?? []) {
-        if (ownPluginIds.has(target)) {
-          addSender(target, feature);
-        } else if (ownIds.has(target)) {
-          refuse(target, `a feature of this pack with no plugin, so nothing can receive the events: give "${target}" a plugin or remove it from sendsTo`);
-        } else if (hostPlugins.includes(target)) {
-          hostTargets.add(target);
-        } else if (splitRef(target)) {
-          // Another pack's plugin, named as code names it: `<packId>/<featureId>`
-          const { packId: depId, featureId } = splitRef(target)!;
-          const snap = depSnapshots.get(depId);
-          if (!snap) {
-            refuse(target, pluginOwners[resolveName(featureId, depId)]
-              ? `a plugin of "${depId}", which this pack depends on only through another pack, so no send to it can be typed: add "${depId}" to this pack's dependencies, or remove "${target}" from sendsTo`
-              : `which is no plugin of this pack's dependencies`);
-          } else if (!(snap.manifest.features ?? []).some((f) => f.plugin && f.id === featureId)) {
-            refuse(target, `but "${depId}" has no plugin "${featureId}"`);
-          } else if (!depReceivers.get(depId)!.has(featureId)) {
-            refuse(target, `a plugin of a dependency that declares no events for it, so there is nothing this pack could send there: only the pack that owns a plugin declares what it receives`);
-          } else {
-            depTargets.set(depId, (depTargets.get(depId) ?? new Set()).add(featureId));
-          }
-        } else {
-          // A bare name is this pack's own feature; say which dependency's plugin it probably meant
-          const owners = Object.keys(pluginOwners).flatMap((ref) => (splitRef(ref)?.featureId === target ? [splitRef(ref)!.packId] : []));
-          refuse(target, owners.length
-            ? `which is no feature of this pack: another pack's plugin is named "<packId>/${target}" (${owners.map((o) => `"${o}/${target}"`).join(' or ')})`
-            : `which is neither a feature of this pack, another pack's plugin ("<packId>/<featureId>"), nor a host plugin (${hostPlugins.join(', ')})`);
-        }
-      }
-    }
+    const pluginFeatures = features.filter(f => f.plugin);
+    const hasSystems = systemFeatures.length > 0;
+    const hasPlugins = pluginFeatures.length > 0;
 
     // Each system's sent events, read from its spec: the one place they are declared
     const outgoingAliases = systemFeatures
       .map(f => `type __events_${f.id} = OutgoingEventsOf<(typeof __specs)['${f.id}']>;`)
       .join('\n');
-    const entries = [...receivers].map(([pluginId, senders]) => `  '${pluginId}': ${senders.join(' | ')};`).join('\n');
+    // Each plugin's declared inbox, read from its `definePlugin()` call
+    const declaring = pluginFeatures.filter(declaresAccepts);
+    // Each plugin's `accepts` export by name, never the plugin itself: its machine's own imports would cycle back here
+    const acceptsImports = declaring
+      .map(f => `import type { accepts as __declared_${f.id} } from '${toImportPath(root, f.plugin!.entry)}';`)
+      .join('\n');
+    const declaredIds = new Set(declaring.map(f => f.id));
+    const acceptsAliases = pluginFeatures
+      .map(f => `type __accepts_${f.id} = ${declaredIds.has(f.id) ? `(typeof __declared_${f.id})['_accepts']` : 'never'};`)
+      .join('\n');
+    // A plugin receives what its own feature's system sends it, and whatever it declares anyone else may send
+    const entries = pluginFeatures.map((f) => {
+      const ownSystem = systemFeatures.some(s => s.id === f.id) ? [`__events_${f.id}`] : [];
+      return `  '${f.id}': ${[...ownSystem, `__accepts_${f.id}`].join(' | ')};`;
+    }).join('\n');
     const systemEntries = systemFeatures.map(f => `  '${f.id}': IncomingEventsOf<(typeof __specs)['${f.id}']>;`).join('\n');
-    // Only the dependencies a sendsTo names: a plugin nothing declares a send to isn't this pack's to send to
-    const eventDeps = depIds.filter((depId) => depTargets.has(depId));
     const pack = `'${manifest.id}'`;
-    const quoted = (ids: Iterable<string>) => [...ids].map((id) => `'${id}'`).join(' | ');
-    const depEventImports = eventDeps.map((depId) => `import type { SendablePluginEvents as ${depAlias(depId, 'SendablePluginEvents')} } from './deps/${depId}.js';`);
+    const depPlugins = depTypeImports('PackPluginEvents');
     const depSystems = depTypeImports('PackSystemEvents');
-    const hasSystems = systemFeatures.length > 0;
     // Every map keyed by ref; the maps pack code sends with name the pack's own features by bare id instead (`WithOwnNames`)
     const qualifiedPlugins = [
       `Qualified<${pack}, OwnPluginEvents>`,
-      ...eventDeps.map((depId) => `Qualified<'${depId}', Pick<${depAlias(depId, 'SendablePluginEvents')}, ${quoted(depTargets.get(depId)!)}>>`),
-      ...(hostTargets.size ? [`Pick<HostPluginEvents, ${quoted(hostTargets)}>`] : []),
+      ...depIds.map((depId) => `Qualified<'${depId}', ${depAlias(depId, 'PackPluginEvents')}>`),
+      'HostPluginEvents',
     ].join(' & ');
     const qualifiedSystems = [
       `Qualified<${pack}, PackSystemEvents>`,
@@ -902,13 +870,22 @@ export function navigateToPlugin(name: PluginName, event?: PluginEvent | PluginE
       'HostSystemEvents',
     ].join(' & ');
     return `${HEADER}
-import { defineEvents, ${hostTargets.size ? 'type HostPluginEvents, ' : ''}type HostSystemEvents, type IncomingEventsOf${hasSystems ? ', type OutgoingEventsOf' : ''}, type Qualified, type WithOwnNames } from '@abuddy/sdk/events';
-${hasSystems ? `import type { specs as __specs } from './system-specs.js';\n` : ''}${[...depEventImports, ...depSystems.imports].join('\n')}
-${outgoingAliases}
+import { defineEvents, type HostPluginEvents, type HostSystemEvents, type IncomingEventsOf${hasSystems ? ', type OutgoingEventsOf' : ''}, type Qualified, type WithOwnNames } from '@abuddy/sdk/events';
+${hasSystems ? `import type { specs as __specs } from './system-specs.js';\n` : ''}${acceptsImports ? `${acceptsImports}\n` : ''}${[...depPlugins.imports, ...depSystems.imports].join('\n')}
+${[outgoingAliases, acceptsAliases].filter(Boolean).join('\n')}
 
-/** Plugin id → the events this pack's systems send to that plugin (their own, and each \`sendsTo\`). */
+/** Plugin id → the events that plugin receives: its own feature's system's, and the inbox it declares. */
 export type OwnPluginEvents = {
 ${entries}
+};
+
+/**
+ * Feature id → the inbox this pack's plugin for that feature declares (dependents name it \`${manifest.id}/<feature>\`).
+ * Its own system's events aren't here: they are between the two halves of one feature, not a contract anyone else
+ * may send. This is what a dependent pack may send it, and it mirrors \`PackSystemEvents\`.
+ */
+export type PackPluginEvents = {
+${pluginFeatures.map(f => `  '${f.id}': __accepts_${f.id};`).join('\n')}
 };
 
 /** Feature id → the events this pack's system for that feature receives (dependents name it \`${manifest.id}/<feature>\`). */
@@ -917,9 +894,9 @@ ${systemEntries}
 };
 
 /**
- * Every plugin this pack's systems can send to, by ref: its own, and the dependency and host plugins a \`sendsTo\`
- * names. Those keep the events their owner declares they receive — a pack widens only its own plugins. Actions
- * (\`services.emitter\`) send with it.
+ * Every plugin this pack's code can send to, by ref: its own, its dependencies' and the host's. A plugin owned
+ * elsewhere takes the inbox its own pack declares — a pack widens only its own. Actions (\`services.emitter\`)
+ * send with it.
  */
 export type QualifiedPluginEvents = ${qualifiedPlugins};
 
@@ -1138,7 +1115,7 @@ export const seedRuntime: SeedRuntime = {
   function generatePackTypes(): string {
     return `${HEADER}
 export type { PackShapes as PackEntityShapes, PackStepNodes } from './ears.js';
-export type { SendablePluginEvents, PackSystemEvents } from './events.js';
+export type { PackPluginEvents, PackSystemEvents } from './events.js';
 export type { Services } from './services.js';
 export type { Repositories } from './repository.js';
 `;

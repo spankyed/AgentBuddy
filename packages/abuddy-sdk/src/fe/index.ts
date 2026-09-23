@@ -3,7 +3,8 @@
 
 // Declares window.electronAPI; a type-only re-export survives in the emitted declarations
 export type {} from './electron-api.ts';
-export type { Plugin, PluginDefinition, RouteComponents } from './plugin.ts'
+export type { Plugin, PluginAccepts, PluginDefinition, RouteComponents } from './plugin.ts'
+export { definePlugin, pluginAccepts } from './plugin.ts'
 export type { PackFEFeature, PackFERegistration } from './pack-fe-registration.ts'
 export { pasteIntoElement } from './input-paste.ts'
 export { PluginScope, usePlugin } from './actor-system.ts'

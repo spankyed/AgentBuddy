@@ -42,7 +42,7 @@ export type OutgoingActionEvents =
 
 export const actionsSpec = defineSystem<IncomingActionEvents, OutgoingActionEvents>();
 
-// Broadcasts action events to both the actions and flows plugins (abuddy.json sendsTo)
+// Broadcasts action events to both the actions and flows plugins; the flows plugin declares it accepts them
 const broadcastActionEvent = (system: any, event: OutgoingActionEvents) => {
   sendToPlugin('actions', event);
   sendToPlugin('flows', event);

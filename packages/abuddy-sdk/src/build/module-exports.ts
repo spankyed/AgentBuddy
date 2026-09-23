@@ -22,6 +22,13 @@ export interface ModuleExports {
    * from it would be silently short and the check over it would reject real events.
    */
   outgoingEventTypesOf(file: string): string[];
+  /**
+   * The `type` literals of the events a plugin module's default export (its `definePlugin()` call) declares that
+   * *other* plugins may send it. A plugin that declares none reads as `[]`: what its own feature's system sends it
+   * is that system's outgoing union, which codegen adds. Throws on a member with no literal `type`, as the system
+   * reader does, and when the default export carries no phantom at all (it was annotated, which drops it).
+   */
+  acceptedEventTypesOf(file: string): string[];
 }
 
 /**
@@ -134,25 +141,42 @@ export function createModuleExports(packRoot: string, files: string[]): ModuleEx
       if (!declared) {
         throw new Error(`${path.basename(file)}: the events its system sends are read from its default export's spec, and ${entry ? 'that spec carries none' : 'it has no default export'}: default-export the system entry declared with \`satisfies SystemEntry\` (an annotation \`: SystemEntry\` drops the spec's events)`);
       }
-      // A system that sends nothing
-      if (declared.flags & ts.TypeFlags.Never) return [];
-      // A single event is its own type, not a union of one
-      const members = declared.isUnion() ? declared.types : [declared];
-      return members.flatMap((member) => {
-        const declaredType = propertyType(member, 'type');
-        // `{ type: 'A' | 'B' }` is one member covering two event types, which is a legal way to write
-        // an event whose payload is the same either way. Reading only single literals rejected it, so
-        // the union is expanded here and every constituent still has to be a literal.
-        const literals = declaredType?.isUnion() ? declaredType.types : declaredType ? [declaredType] : [];
-        if (literals.length === 0 || !literals.every((t) => t.isStringLiteral())) {
-          // What an entry annotated `: SystemEntry` leaves: the contract's own `{ type: string }`
-          const widened = declaredType !== undefined && (declaredType.flags & ts.TypeFlags.String) !== 0
-            ? ' (an entry annotated `: SystemEntry` has these: default-export it declared with `satisfies SystemEntry`)'
-            : '';
-          throw new Error(`${path.basename(file)}: its system's outgoing events have a member whose \`type\` is ${declaredType ? checker.typeToString(declaredType) : 'missing'}, not a string literal or a union of them: the events a plugin receives are read from these, and a member without one would leave the map short${widened}`);
-        }
-        return literals.map((t) => (t as TS.StringLiteralType).value);
-      });
+      return eventTypeLiterals(declared, path.basename(file), "its system's outgoing events", ' (an entry annotated `: SystemEntry` has these: default-export it declared with `satisfies SystemEntry`)');
+    },
+    acceptedEventTypesOf(file) {
+      const entry = exportedValueType(file, 'accepts');
+      // A plugin that declares no inbox takes only what its own feature's system sends it
+      if (!entry) return [];
+      if (entry.flags & ts.TypeFlags.Any) {
+        throw Object.assign(
+          new Error(`${path.basename(file)}: the events other plugins may send it are read from its \`accepts\` export, whose type doesn't resolve: check that its \`pluginAccepts\` import does, and that the pack's dependencies are installed`),
+          { code: _TYPES_UNRESOLVED },
+        );
+      }
+      const declared = propertyType(entry, '_accepts');
+      if (!declared) {
+        throw new Error(`${path.basename(file)}: its \`accepts\` export carries no events: declare it with \`pluginAccepts<…>()\`, whose type codegen reads`);
+      }
+      return eventTypeLiterals(declared, path.basename(file), 'the events it accepts', ' (an entry annotated `: PluginDefinition` has these: default-export the `definePlugin()` call itself)');
     },
   };
+
+  /** The `type` literals of an event union a phantom carries; `never` is none, and a lone event is its own type. */
+  function eventTypeLiterals(declared: TS.Type, file: string, what: string, annotated: string): string[] {
+    if (declared.flags & ts.TypeFlags.Never) return [];
+    const members = declared.isUnion() ? declared.types : [declared];
+    return members.flatMap((member) => {
+      const declaredType = propertyType(member, 'type');
+      // `{ type: 'A' | 'B' }` is one member covering two event types, which is a legal way to write
+      // an event whose payload is the same either way. Reading only single literals rejected it, so
+      // the union is expanded here and every constituent still has to be a literal.
+      const literals = declaredType?.isUnion() ? declaredType.types : declaredType ? [declaredType] : [];
+      if (literals.length === 0 || !literals.every((t) => t.isStringLiteral())) {
+        // What an entry annotated with its contract leaves: the contract's own `{ type: string }`
+        const widened = declaredType !== undefined && (declaredType.flags & ts.TypeFlags.String) !== 0 ? annotated : '';
+        throw new Error(`${file}: ${what} have a member whose \`type\` is ${declaredType ? checker.typeToString(declaredType) : 'missing'}, not a string literal or a union of them: the event maps are read from these, and a member without one would leave them short${widened}`);
+      }
+      return literals.map((t) => (t as TS.StringLiteralType).value);
+    });
+  }
 }

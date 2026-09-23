@@ -66,7 +66,7 @@ export type OutgoingCodeEvents =
   | OutgoingPromptsEvents
   // Broadcast events (sent to all child systems)
   | { type: 'CODE_CONNECTED'; data: CodeConnectedData }
-  /** What testing a CLI found, for the Settings view that asked (abuddy.json `sendsTo`) */
+  /** What testing a CLI found, for the Settings view that asked (the host declares its plugin takes it) */
   | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string }
 
 // Import only the type needed for broadcast event

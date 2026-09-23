@@ -1,5 +1,5 @@
 import { defineAsyncComponent } from 'vue';
-import type { PluginDefinition } from "@abuddy/sdk/fe";
+import { definePlugin } from '@abuddy/sdk/fe';
 
 import { Brain } from 'lucide-vue-next';
 import state, { type BrainContext } from './state';
@@ -8,7 +8,7 @@ import settings from './settings.vue';
 const canvas = defineAsyncComponent(() => import('./canvas.vue'));
 const panel = defineAsyncComponent(() => import('./panel.vue'));
 
-const brainPlugin: PluginDefinition = {
+const brainPlugin = definePlugin({
   label: 'Brain',
 
   icon: Brain,
@@ -24,6 +24,6 @@ const brainPlugin: PluginDefinition = {
   },
   isPinned: true,
 
-};
+});
 
 export default brainPlugin;

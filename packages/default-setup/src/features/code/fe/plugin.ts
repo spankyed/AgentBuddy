@@ -1,5 +1,5 @@
 import { defineAsyncComponent } from 'vue';
-import type { PluginDefinition } from "@abuddy/sdk/fe";
+import { definePlugin } from '@abuddy/sdk/fe';
 import { Code2 } from 'lucide-vue-next';
 import state from './state.ts';
 import settings from './settings.vue';
@@ -7,7 +7,7 @@ import settings from './settings.vue';
 const canvas = defineAsyncComponent(() => import('./canvas/canvas.vue'));
 const panel = defineAsyncComponent(() => import('./features/panel.vue'));
 
-const codePlugin: PluginDefinition = {
+const codePlugin = definePlugin({
   label: 'Code',
   icon: Code2,
   state,
@@ -37,6 +37,6 @@ const codePlugin: PluginDefinition = {
       global: false
     }
   ]
-};
+});
 
 export default codePlugin;
