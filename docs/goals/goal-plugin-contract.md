@@ -3,8 +3,10 @@
 ```
 # Goal: a plugin declares one contract — what may be read of it, and what may be sent to it
 
-Implement docs/goals/goal-plugin-contract.md, at or after 8126ae364 on AS/plugin-inbox — the base its
-Background and Spike results were taken at.
+Implement docs/goals/goal-plugin-contract.md. Background and Spike results were taken at 8126ae364, whose
+history is now merged (aa95ec30e); work from the current branch and treat the base-confirm checks below as
+the authority rather than the commit. Every measured figure in Background was re-verified against the merged
+tree on 2026-09-23 and still holds.
 Before Phase 1, confirm the base: packages/abuddy-sdk/src/fe/plugin.ts exports `pluginAccepts`,
 packages/abuddy-sdk/src/build/module-exports.ts exports `acceptedEventTypesOf`, and every
 packages/default-setup/src/features/*/fe/public.ts still exists. If any of that is wrong, stop and say so.
@@ -270,12 +272,19 @@ Final.
 
    **The SDK's untyped pair is renamed: `useUntypedPluginState` and `readUntypedPluginState`**, staying
    public in `@abuddy/sdk/fe`. The plain name goes to the generated reader, because the plain name belongs on
-   the path people should take — the convention this repo already follows twice:
+   the path people should take — the convention this repo already follows three times:
 
    | typed, `#generated/*` | untyped, `@abuddy/sdk` |
    |---|---|
    | `qx` | `untypedQx` |
+   | `tx` | `untypedTx` |
    | `navigateToPlugin` | `openPlugin` |
+
+   `tx`/`untypedTx` is the most recent and was applied for this reason: the untyped write had been exported
+   under the same name as the typed one, so `import { tx, untypedQx } from '@abuddy/ears'` read as a matched
+   pair when only one half was qualified. The one exception is instructive — the Database console keeps `tx`
+   as its REPL global (`database-console/index.ts`, `defs/database.ts`), because that name is a different,
+   user-facing API and the two lists must agree.
 
    `untypedQx` is the closer analogue: what changes is only what the compiler knows, since a dependency's
    `PluginName` *is* its ref string. So the qualifier goes on the reader that gives the types up, and the two
@@ -367,14 +376,23 @@ After Phases 1 and 2.
   re-exports `NOTE_TYPE_TO_REFERENCE_TYPE` across that boundary and needs a home — the tiptap extension, or
   `#generated/references`, which already aggregates reference config.
 
-**Done when:** the full chain passes; no `fe/public.ts` remains; `git grep -w usePluginState` finds it only in `#generated/fe`
-and its generator, and `git grep -w useUntypedPluginState` only in `@abuddy/sdk/fe` and its specs; a fixture-pack spec reads a default-setup plugin's state with types, and
+**Done when:** the full chain passes; no `fe/public.ts` remains; `git grep -w usePluginState` finds it only in
+`#generated/fe` and its generator, and `git grep -w useUntypedPluginState` only in `@abuddy/sdk/fe` and its
+specs. **Grep the four forms a static-import sweep misses**, all four of which bit the `tx`/`untypedTx` rename
+that landed this convention: a multi-line `import {` block, a module that *re-exports* the name (its consumers
+then import it from there, not from the SDK), `await import('@abuddy/sdk/fe')` destructuring, and the name
+inside a string or a test label. The third is the one to take seriously — **`npm run typecheck` did not catch
+a dynamic-import case**, and ten api specs failed at runtime instead. a fixture-pack spec reads a default-setup plugin's state with types, and
 a `@ts-expect-error` pins that the dependency read is `T | undefined`. Mutation: re-adding `fe/public` to the exception and importing one cross-feature
 makes `check:specifiers` pass again, proving the rule is what rejects it.
 
 ### Phase 4 — The shell owns the send paths
 
-- `SEND_TO_PLUGIN` on `HostShell`, answered by the same `pendingOpens` path as `OPEN_PLUGIN` (Decision 6).
+- `SEND_TO_PLUGIN` on `HostShell`, answered by the `pendingOpens` path `OPEN_PLUGIN` already uses
+  (Decision 6). **Reuse it rather than building a second queue**: `pendingOpens` is already
+  `Array<{ plugin: string; events: PluginEvent[] }>` (`application/fe/types.ts:80`) and already delivers on
+  arrival and refuses through `notify.error` once loading settles (`machine.ts:252-262`). What it lacks is a
+  way in that doesn't also select the plugin — a send must not steal focus, which `OPEN_PLUGIN` does.
 - The scope spec the archived goal left open lands here rather than in a phase of its own: it pins the same
   send paths this phase re-owns.
 - The read half: a `pluginActor` sibling returning `undefined`, and the `hasDesignation` pre-checks deleted
