@@ -547,6 +547,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         references?: string | undefined;
     }>, "many">>;
     packServices: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+    help: z.ZodOptional<z.ZodString>;
     settingsSections: z.ZodOptional<z.ZodString>;
     commands: z.ZodOptional<z.ZodArray<z.ZodObject<{
         name: z.ZodString;
@@ -863,6 +864,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         references?: string | undefined;
     }[] | undefined;
     packServices?: Record<string, string> | undefined;
+    help?: string | undefined;
     settingsSections?: string | undefined;
     commands?: {
         name: string;
@@ -970,6 +972,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         references?: string | undefined;
     }[] | undefined;
     packServices?: Record<string, string> | undefined;
+    help?: string | undefined;
     settingsSections?: string | undefined;
     commands?: {
         name: string;
@@ -1077,6 +1080,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         references?: string | undefined;
     }[] | undefined;
     packServices?: Record<string, string> | undefined;
+    help?: string | undefined;
     settingsSections?: string | undefined;
     commands?: {
         name: string;
@@ -1184,6 +1188,7 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         references?: string | undefined;
     }[] | undefined;
     packServices?: Record<string, string> | undefined;
+    help?: string | undefined;
     settingsSections?: string | undefined;
     commands?: {
         name: string;

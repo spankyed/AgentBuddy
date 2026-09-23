@@ -278,6 +278,11 @@
       },
       "description": "Pack-level services not tied to a specific feature. Keys are service names on `services`, values are \"path#exportName\" of the service object (an object literal or a class instance, not a factory) in a source file."
     },
+    "help": {
+      "type": "string",
+      "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+      "description": "Help entries this pack answers with, listed under Help in the app's Settings view. \"path#exportName\" of a function returning them; it is called the first time the list is read, so a pack may read its compiled seeds then."
+    },
     "settingsSections": {
       "type": "string",
       "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",

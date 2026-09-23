@@ -116,6 +116,7 @@ export interface PackRegistryView extends PackExtensionsView {
     earsNames(): EarsNames;
     featuresWithSettings(): readonly FeatureRef[];
     getRegisteredServices(): Record<string, unknown>;
+    help(): HelpEntry[];
     onSettingsDefaultsChanged(listener: () => void): () => void;
     pluginIds(): readonly FeatureRef[];
     seeders(packId: string): readonly Seeder[];

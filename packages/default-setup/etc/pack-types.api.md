@@ -1860,6 +1860,14 @@ type OutgoingBrainEvents = {
 type OutgoingCodeEvents = OutgoingExplorerEvents | OutgoingSearchEvents | OutgoingCommitEvents | OutgoingPullRequestEvents | OutgoingTerminalEvents | OutgoingActionsEvents | OutgoingPromptsEvents | {
     type: 'CODE_CONNECTED';
     data: CodeConnectedData;
+}
+/** What testing a CLI found, for the Settings view that asked (abuddy.json `sendsTo`) */
+ | {
+    type: 'CLI_TEST_RESULT';
+    provider: string;
+    success: boolean;
+    error?: string;
+    resolvedPath?: string;
 };
 
 type OutgoingCommitEvents = {
@@ -2601,12 +2609,6 @@ type OutgoingSettingsEvents = {
 } | {
     type: 'APPLICATION_HOTKEYS';
     hotkeys: SettingsData['general']['application']['hotkeys'];
-} | {
-    type: 'CLI_TEST_RESULT';
-    provider: string;
-    success: boolean;
-    error?: string;
-    resolvedPath?: string;
 }
 /** `errors` lists the records that couldn't be seeded (`<key>: <error>`); the rest were imported */
  | {
@@ -2828,7 +2830,7 @@ type OwnPluginEvents = {
     'brain': __events_brain;
     'database': __events_database;
     'logs': __events_logs;
-    'settings': __events_settings;
+    'settings': __events_settings | __events_code;
 };
 
 /** The repositories this pack declares (abuddy.json features[].repositories) */
@@ -4859,6 +4861,9 @@ declare const specs: {
             type: "SET_BASE_DIRECTORY";
             path: string;
             fromUserNavigation?: boolean;
+        } | {
+            type: "TEST_CLI_PROVIDER";
+            provider: string;
         };
         _outgoing: OutgoingCodeEvents;
     };
@@ -5280,9 +5285,6 @@ declare const specs: {
             value: any;
         } | {
             type: "RESET_SETTINGS";
-        } | {
-            type: "TEST_CLI_PROVIDER";
-            provider: string;
         } | {
             type: "PREVIEW_PACK_SEEDS";
             directory: string;

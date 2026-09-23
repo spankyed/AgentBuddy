@@ -9,6 +9,7 @@ import type { BlockDefinition } from '../blocks/types.ts';
 import type { SeedHooks } from '../seed/hooks.ts';
 import type { Seeder } from '../utils/seed.ts';
 import type { PackCommand } from '../framework/pack-commands.ts';
+import type { HelpEntry } from '../framework/pack-help.ts';
 import type { PackSettingsDefaults } from '../framework/pack-settings.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
 
@@ -34,6 +35,7 @@ export interface TestPacks {
   readonly seeders: Map<string, Seeder[]>;
   /** Declared commands by pack id, after the registered packs' */
   readonly commands: Map<string, PackCommand[]>;
+  readonly help: Map<string, HelpEntry[]>;
   /** Entity types by the name they're declared under, over the registered packs' */
   readonly earsEntities: Map<string, string>;
   /** Relation kinds by the name they're declared under, over the registered packs' */
@@ -54,6 +56,7 @@ function createTestPacks(): TestPacks {
     seedHooks: new Map<string, SeedHooks>(),
     seeders: new Map<string, Seeder[]>(),
     commands: new Map<string, PackCommand[]>(),
+    help: new Map<string, HelpEntry[]>(),
     earsEntities: new Map<string, string>(),
     earsRelKinds: new Map<string, string>(),
   };
@@ -106,6 +109,7 @@ export function testPacksView(registered?: PackRegistryView): PackRegistryView {
     onSettingsDefaultsChanged: (listener) => registered?.onSettingsDefaultsChanged(listener) ?? (() => {}),
     featuresWithSettings: () => registered?.featuresWithSettings() ?? [],
     commands: () => [...(registered?.commands() ?? []), ...[...testPacks.commands.values()].flat()],
+    help: () => [...(registered?.help() ?? []), ...[...testPacks.help.values()].flat()],
     earsNames: () => {
       const base = registered?.earsNames() ?? { entities: { ...SDK_ENTITIES }, relKinds: { ...SDK_REL_KINDS } };
       return {

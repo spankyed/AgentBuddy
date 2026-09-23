@@ -553,5 +553,6 @@
       }
     }
   },
-  "settingsSections": "src/features/settings/sections.ts#settingsSections"
+  "settingsSections": "src/features/settings/sections.ts#settingsSections",
+  "help": "src/features/settings/help.ts#helpEntries"
 }

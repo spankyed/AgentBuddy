@@ -48,7 +48,24 @@ export function getFeaturesWithSettings(): readonly FeatureRef[];
 export function getPackCommands(): PackCommand[];
 
 // @public
+export function getPackHelp(): HelpEntry[];
+
+// @public
 export function getPackSettingsDefaults(): PackSettingsDefaults;
+
+// @public
+export interface HelpEntry {
+    // (undocumented)
+    answer: string;
+    // (undocumented)
+    category?: string;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    order?: number;
+    // (undocumented)
+    question: string;
+}
 
 // @public
 export function onPackSettingsDefaultsChanged(listener: () => void): () => void;
@@ -130,6 +147,7 @@ export interface PackRegistration {
     // (undocumented)
     ears?: PackEARS;
     features?: Record<string, PackFeature>;
+    help?: () => HelpEntry[];
     // (undocumented)
     id: string;
     // (undocumented)

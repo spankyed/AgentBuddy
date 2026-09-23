@@ -429,6 +429,7 @@ export function generatePackFiles(
       ...Object.values(manifest.packServices ?? {}),
       ...Object.values(manifest.seedHooks ?? {}),
       ...(manifest.settingsSections ? [manifest.settingsSections] : []),
+      ...(manifest.help ? [manifest.help] : []),
     ].map((target) => target.split('#')[0]);
     const sources = [
       ...targets,
@@ -559,6 +560,8 @@ export function generatePackFiles(
     const sections = manifest.settingsSections
       ? valueExport('settingsSections', manifest.settingsSections)
       : undefined;
+    // The pack's help entries, called the first time the Settings view's Help list is read
+    const help = manifest.help ? valueExport('help', manifest.help) : undefined;
     const seedPolicy = manifest.boot?.seedPolicy;
     const seedPolicyLine = seedPolicy ? `\n      seedPolicy: ${JSON.stringify(seedPolicy)},` : '';
 
@@ -578,6 +581,7 @@ ${manifest.blocks ? `import { blocks } from '${toImportPath(root, manifest.block
 import { getCompiledDir, seeders } from './seeders.js';
 export { setCompiledDir } from './seeders.js';
 ${sections ? `import { ${sections.exportName} as __settingsSections } from '${toImportPath(root, sections.source)}';` : ''}
+${help ? `import { ${help.exportName} as __help } from '${toImportPath(root, help.source)}';` : ''}
 
 export const registration: PackRegistration = {
   id: '${manifest.id}',
@@ -591,6 +595,7 @@ ${hookEntries.length > 0 ? `  seedHooks: { ${hookEntries.map(([entity], i) => `$
   seeders,
 ${commands.length ? `  commands: ${JSON.stringify(commands)},` : ''}
 ${sections ? '  settingsSections: __settingsSections,' : ''}
+${help ? '  help: __help,' : ''}
   ears: {
     // Only this pack's own: EARS also names its dependencies' and the SDK's, which they register
     entities: ${JSON.stringify(manifest.entities ?? {})},

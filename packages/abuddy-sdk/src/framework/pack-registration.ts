@@ -86,6 +86,11 @@ export interface PackRegistration {
   /** The slash commands this pack adds to the chat (abuddy.json `commands`) */
   commands?: import('./pack-commands.ts').PackCommand[];
   /**
+   * Help entries this pack answers with, listed under Help in the app's Settings view (abuddy.json `help`).
+   * Called the first time the list is read, so a pack whose help is compiled with its seeds can read them then.
+   */
+  help?: () => import('./pack-help.ts').HelpEntry[];
+  /**
    * Sections of the app's settings this pack owns, with their defaults, beside the `plugins` section the app keeps
    * itself (abuddy.json `settingsSections`). A feature declares only its own slice (`features[].settings`); a
    * section is the pack's, and whoever registers one owns its shape — the app stores, merges and diffs it without
