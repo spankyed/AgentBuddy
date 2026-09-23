@@ -1,7 +1,7 @@
 import * as crypto from 'node:crypto';
 import { flowRepository } from '../repositories/flow-repository.ts';
 import { promptRepository } from '../repositories/prompt-repository.ts';
-import { findRelations, installedEngine as ears, tx } from '@abuddy/ears';
+import { findRelations, installedEngine as ears, untypedTx } from '@abuddy/ears';
 import { loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.ts';
 import { seedPath } from '../build/manifest.ts';
 import { compile as compileFlowDSL } from '../build/compilers/flow-compiler.ts';
@@ -49,7 +49,7 @@ function stampSeededGraph(flowId: EARS.EntityId, compiled: CompiledRows): void {
     nodeFields: Object.fromEntries(nodeIds.map((id) => [id, fieldsOf(id)])),
     relKinds: [...new Set(compiled.relation.filter((r) => sources.has(r.source)).map((r) => r.kind))].sort(),
   };
-  tx(flowId).update(SEEDED_GRAPH, { ...seeded, hash: hashGraph(flowId, seeded) } satisfies SeededGraph);
+  untypedTx(flowId).update(SEEDED_GRAPH, { ...seeded, hash: hashGraph(flowId, seeded) } satisfies SeededGraph);
 }
 
 /** The flow's nodes, fields and relations still hold what the seeder wrote */
@@ -224,7 +224,7 @@ export function createFlowSeeder(): Seeder {
         const row = (compiled.entity as Array<{ id: string; entityType?: string; label?: string }>)
           .find((entity) => entity.entityType === EARS.Entity.Flow && entity.label === name);
         if (row) {
-          tx(row.id as EARS.EntityId).update(SEED_KEY, flowSeedKey(packId, name));
+          untypedTx(row.id as EARS.EntityId).update(SEED_KEY, flowSeedKey(packId, name));
           stampSeededGraph(row.id as EARS.EntityId, compiled);
         }
         if (replacedLabels.has(name)) {

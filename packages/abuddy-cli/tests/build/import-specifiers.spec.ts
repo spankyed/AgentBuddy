@@ -148,7 +148,7 @@ describe('findRawPackHelpers', () => {
     ["import { broadcastToPlugin as toPlugin } from '@abuddy/sdk/events';", 'broadcastToPlugin from @abuddy/sdk/events'],
     ["import onConnected, { sendToSystem } from '@abuddy/sdk/events';", 'sendToSystem from @abuddy/sdk/events'],
     ["import { broadcastToPlugin, services } from '@abuddy/sdk/services';", 'broadcastToPlugin from @abuddy/sdk/services'],
-    ["import { registerRepository, tx } from '@abuddy/ears';", 'registerRepository from @abuddy/ears'],
+    ["import { registerRepository, untypedTx } from '@abuddy/ears';", 'registerRepository from @abuddy/ears'],
     ["import { unregisterRepository } from '@abuddy/ears';", 'unregisterRepository from @abuddy/ears'],
     ["export type { broadcastToPlugin } from '@abuddy/sdk/events';", 'broadcastToPlugin from @abuddy/sdk/events'],
     ["import * as events from '@abuddy/sdk/events';", '* from @abuddy/sdk/events (import the names)'],
@@ -295,7 +295,7 @@ describe('findUpwardImports', () => {
   const allowed = () => {
     layer('layers/ears', {}, { 'src/index.ts': "import { x } from './x.ts';\nimport ts from 'typescript';\n" });
     layer('layers/sdk', { dependencies: { '@abuddy/ears': '^0.1.0', yaml: '*' } }, {
-      'src/index.ts': "import { tx } from '@abuddy/ears';\nexport type { Q } from '@abuddy/ears/lmdb';\nexport * from '@abuddy/sdk/events';\n",
+      'src/index.ts': "import { untypedTx } from '@abuddy/ears';\nexport type { Q } from '@abuddy/ears/lmdb';\nexport * from '@abuddy/sdk/events';\n",
     });
     layer('layers/host', { dependencies: { '@abuddy/ears': '*', '@abuddy/sdk': '*' } }, {
       'src/index.ts': "import { services } from '@abuddy/sdk/services';\nimport { untypedQx } from '@abuddy/ears';\nimport { x } from '../x.ts';\n",
@@ -369,7 +369,7 @@ describe('findLmdbImports', () => {
     write('packages/abuddy-ears/src/index.ts', "export { tx } from './transaction.ts';\n");
     write('packages/abuddy-host/src/services/app-data.ts', "import type { LmdbStore } from '@abuddy/ears/lmdb';\n");
     write('packages/api/src/setup/backend.ts', "import { openLmdbStore } from '@abuddy/ears/lmdb';\n");
-    write('packages/default-setup/src/features/notes/be/system.ts', "import { tx } from '@abuddy/ears';\n");
+    write('packages/default-setup/src/features/notes/be/system.ts', "import { untypedTx } from '@abuddy/ears';\n");
   };
 
   it('allows the LMDB store to load lmdb, and the host and the API to open it', () => {
@@ -410,7 +410,7 @@ describe('findSharedPackageLists', () => {
 
   it('allows imports of the packages and their specific modules', () => {
     write('consumer.ts', [
-      "import { tx } from '@abuddy/ears';",
+      "import { untypedTx } from '@abuddy/ears';",
       "export * from '@abuddy/sdk';",
       "const sdk = await import('@abuddy/sdk');",
       "const runtime = resolve('@abuddy/sdk/runtime');",

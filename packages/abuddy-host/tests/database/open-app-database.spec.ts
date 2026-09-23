@@ -8,7 +8,7 @@ import { _appDataPaths } from '@abuddy/sdk/utils';
 import { openAppDatabase } from '../../src/database/open.ts';
 import { findAppDataPaths } from '../../src/database/layout.ts';
 import { readInstalledSchema } from '../../src/database/schema.ts';
-import { dataDirWithPacks, removeTempDirs, schemaContext, tempDir, tx, writeData } from './fixtures.ts';
+import { dataDirWithPacks, removeTempDirs, schemaContext, tempDir, untypedTx, writeData } from './fixtures.ts';
 
 afterEach(removeTempDirs);
 
@@ -93,9 +93,9 @@ describe('openAppDatabase', () => {
   it('hydrates the primary partition with the installed types, and installs the engine until close', async () => {
     const dir = dataDirWithPacks();
     await writeData(dir, () => {
-      tx(id('Note-1'), true).put('entityType', 'Note').put('title', 'kept').grant('pinned').link('mentions', id('Note-2'));
-      tx(id('Note-2'), true).put('entityType', 'Note').put('title', 'other');
-      tx(id('Trace-1'), true).put('step', 'volatile');
+      untypedTx(id('Note-1'), true).put('entityType', 'Note').put('title', 'kept').grant('pinned').link('mentions', id('Note-2'));
+      untypedTx(id('Note-2'), true).put('entityType', 'Note').put('title', 'other');
+      untypedTx(id('Trace-1'), true).put('step', 'volatile');
     });
 
     const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
@@ -129,7 +129,7 @@ describe('openAppDatabase', () => {
 
   it('refuses writes when read-only, and leaves the files as they were', async () => {
     const dir = dataDirWithPacks();
-    await writeData(dir, () => { tx(id('Note-1'), true).put('title', 'kept'); });
+    await writeData(dir, () => { untypedTx(id('Note-1'), true).put('title', 'kept'); });
     const db = await openAppDatabase({ env: 'test', userDataDir: dir, readOnly: true, ...quiet });
     expect(() => db.query.tx(id('Note-1')).put('title', 'changed')).toThrow(/open read-only/);
     db.close();
@@ -140,7 +140,7 @@ describe('openAppDatabase', () => {
 
   it('throws from close when a write failed to reach the files', async () => {
     const dir = dataDirWithPacks();
-    await writeData(dir, () => { tx(id('Note-1'), true).put('title', 'kept'); });
+    await writeData(dir, () => { untypedTx(id('Note-1'), true).put('title', 'kept'); });
     const db = await openAppDatabase({ env: 'test', userDataDir: dir, ...quiet });
     // JSON can't encode a BigInt
     db.query.tx(id('Note-1')).put('count', 1n);
@@ -150,7 +150,7 @@ describe('openAppDatabase', () => {
 
   it('puts back the engine that was installed before, however it ends', async () => {
     const dir = dataDirWithPacks();
-    await writeData(dir, () => { tx(id('Note-1'), true).put('title', 'kept'); });
+    await writeData(dir, () => { untypedTx(id('Note-1'), true).put('title', 'kept'); });
     // A process that already has an engine: the app, or a test file that started a runtime
     const outer = createEarsEngine({ isEntityType: (name) => name === 'Note' });
     installEngine(outer.query);

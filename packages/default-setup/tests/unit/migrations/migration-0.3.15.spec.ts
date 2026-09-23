@@ -6,7 +6,7 @@
 // what still equals 0.3.14's default is dropped, so today's defaults apply.
 import { services } from '@/__generated__/services';
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { tx, untypedQx } from '@abuddy/ears'
+import { untypedTx, untypedQx } from '@abuddy/ears'
 import type { EARS as SdkEARS } from '@abuddy/sdk'
 import { dropAttribute } from '@abuddy/sdk/testing'
 import { migrations } from '../../../src/migrations/index'
@@ -34,7 +34,7 @@ const attrs = (id: string) => (untypedQx(id as never).pickAll() as Array<Record<
 describe('the 0.3.15 migration', () => {
   it("drops the app's state from the stored settings, and keeps the user's", () => {
     // As 0.3.14 stored it
-    tx('Settings-app' as SdkEARS.EntityId).update('data', {
+    untypedTx('Settings-app' as SdkEARS.EntityId).update('data', {
       general: { personal: { name: 'Ada' } },
       internal: { hasOnboarded: true, version: '0.3.14', seedHash: 'abc123' },
     })
@@ -49,7 +49,7 @@ describe('the 0.3.15 migration', () => {
 
   it("drops the settings' root flow copies, keeping the plugins' other settings", () => {
     // As 0.3.14 stored them, once the host's 0.3.15 migration moved them onto the plugins' refs
-    tx('Settings-app' as SdkEARS.EntityId).update('data', {
+    untypedTx('Settings-app' as SdkEARS.EntityId).update('data', {
       plugins: {
         'default-setup/flows': { rootFlowId: 'Flow-1', enableFlowPreview: false },
         'default-setup/brain': { runningRootFlowId: 'Flow-1', inspectEnabled: true },
@@ -82,8 +82,8 @@ describe('the 0.3.15 migration', () => {
 
   it('leaves a row the current seeder already stamped alone', () => {
     const row = createEntityWithDefaults(EARS.Entity.Note, { label: 'Tracked', title: 'Tracked', content: 'seeded', sourceHash: 'tracked-v1' })
-    // seededFields is the seeder's own bookkeeping, not a declared Note field: written with the unchecked tx
-    tx(row.id).update('seededFields', { fields: ['title'], hash: 'kept' })
+    // seededFields is the seeder's own bookkeeping, not a declared Note field: written with the unchecked untypedTx
+    untypedTx(row.id).update('seededFields', { fields: ['title'], hash: 'kept' })
 
     migration.up()
 
@@ -123,7 +123,7 @@ describe('the 0.3.15 migration', () => {
       row.plugins = Object.fromEntries(Object.entries(row.plugins).map(([id, slice]) => [`default-setup/${id}`, slice]))
       row.internal = { hasOnboarded: true, version: '0.3.14', seedHash: 'abc123', lastInteractionTimestamp: null }
       changes(row)
-      tx('Settings-app' as SdkEARS.EntityId).update('data', row)
+      untypedTx('Settings-app' as SdkEARS.EntityId).update('data', row)
     }
 
     const USER_CHANGES = {
@@ -219,7 +219,7 @@ describe('the 0.3.15 migration', () => {
   // 0.3.14 copied both settings to their new keys but left the old ones stored
   describe('the keys 0.3.14 moved but left behind', () => {
     it("drops the code plugin's lastDirectoryOpened, keeping the baseDirectory the user has", () => {
-      tx('Settings-app' as SdkEARS.EntityId).update('data', {
+      untypedTx('Settings-app' as SdkEARS.EntityId).update('data', {
         plugins: { 'default-setup/code': { lastDirectoryOpened: '/old', baseDirectory: '/chosen' } },
       })
 
@@ -230,7 +230,7 @@ describe('the 0.3.15 migration', () => {
     })
 
     it('copies lastDirectoryOpened to baseDirectory when the user has none stored', () => {
-      tx('Settings-app' as SdkEARS.EntityId).update('data', { plugins: { 'default-setup/code': { lastDirectoryOpened: '/work' } } })
+      untypedTx('Settings-app' as SdkEARS.EntityId).update('data', { plugins: { 'default-setup/code': { lastDirectoryOpened: '/work' } } })
 
       migration.up()
 
@@ -238,14 +238,14 @@ describe('the 0.3.15 migration', () => {
     })
 
     it("moves openLinksInApp to the browser plugin's settings unless the user set it there", () => {
-      tx('Settings-app' as SdkEARS.EntityId).update('data', { general: { application: { openLinksInApp: false } } })
+      untypedTx('Settings-app' as SdkEARS.EntityId).update('data', { general: { application: { openLinksInApp: false } } })
 
       migration.up()
       migration.up()
 
       expect(stored()).toEqual({ plugins: { 'default-setup/browser': { openLinksInApp: false } } })
 
-      tx('Settings-app' as SdkEARS.EntityId).update('data', {
+      untypedTx('Settings-app' as SdkEARS.EntityId).update('data', {
         general: { application: { openLinksInApp: false } },
         plugins: { 'default-setup/browser': { openLinksInApp: true } },
       })
@@ -268,7 +268,7 @@ describe('the 0.3.15 migration', () => {
         { type: 'link', props: { links: [link('settings'), link('external', { url: 'https://x.dev' }), link('memo-pack/memos'), link('memos')] } },
         { type: 'text', props: { text: 'unchanged' } },
       ]
-      tx(message.id as never).put('blocks', blocks as never)
+      untypedTx(message.id as never).put('blocks', blocks as never)
 
       migration.up()
       const moved = attrs(message.id).blocks as typeof blocks
@@ -284,7 +284,7 @@ describe('the 0.3.15 migration', () => {
     // A link can't send the app shell an event any more: opening an `application` target would throw
     it('opens the plugin an application link selected, drops the other application links, and a link block left empty', () => {
       const message = createEntityWithDefaults(EARS.Entity.Message, { text: 'see' } as never)
-      tx(message.id as never).put('blocks', [
+      untypedTx(message.id as never).put('blocks', [
         { type: 'link', props: { links: [link('application', { type: 'SELECT_PLUGIN', pluginId: 'notes' }), link('application', { type: 'SHOW_INSPECTION_PANEL' })] } },
         { type: 'link', props: { links: [link('application', { type: 'SHOW_INSPECTION_PANEL' })] } },
         { type: 'link', props: { links: [link('application', { type: 'SELECT_PLUGIN', pluginId: 'memos' })] } },
@@ -301,7 +301,7 @@ describe('the 0.3.15 migration', () => {
     // 0.3.14's calendar plugin is gone: opening a link to it would throw
     it('drops a link to a plugin removed since 0.3.14, and a link block left empty', () => {
       const message = createEntityWithDefaults(EARS.Entity.Message, { text: 'see' } as never)
-      tx(message.id as never).put('blocks', [
+      untypedTx(message.id as never).put('blocks', [
         { type: 'link', props: { links: [link('calendar'), link('notes')] } },
         { type: 'link', props: { links: [link('calendar', { type: 'SELECT_EVENT', id: 'e1' })] } },
       ] as never)

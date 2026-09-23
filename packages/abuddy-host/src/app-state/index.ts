@@ -2,7 +2,7 @@
 // it; they learn whether the user onboarded through services.appData, and the renderer through the
 // application plugin's CLIENT_CONNECTED. Resetting the user's settings doesn't touch it; resetting the
 // app (appData.reset()) empties it with everything else.
-import { tx, untypedQx } from '@abuddy/ears';
+import { untypedTx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
 import { SETTINGS_ENTITY } from '../features/settings/be/store.ts';
 
@@ -99,8 +99,8 @@ export const appState = {
   /** Writes the given fields, creating the row on the first write */
   update: (changes: Partial<AppState>): void => {
     const write = stored() === undefined
-      ? tx(APP_STATE_ID, true).put('entityType', APP_STATE_ENTITY)
-      : tx(APP_STATE_ID);
+      ? untypedTx(APP_STATE_ID, true).put('entityType', APP_STATE_ENTITY)
+      : untypedTx(APP_STATE_ID);
     for (const [field, value] of Object.entries(changes)) {
       if (value !== undefined) write.update(field, value);
     }

@@ -2,7 +2,7 @@
 // merged ones: the defaults already have Codex, and a user who never changed the modes must keep getting the defaults.
 import { services } from '@/__generated__/services';
 import { describe, expect, it } from 'vitest'
-import { tx, untypedQx } from '@abuddy/ears'
+import { untypedTx, untypedQx } from '@abuddy/ears'
 import type { EARS as SdkEARS } from '@abuddy/sdk'
 import { migrations } from '../../../src/migrations/index'
 import { repository } from '@/__generated__/repository'
@@ -14,7 +14,7 @@ const migration = migrations.find((m) => m.target === '0.3.0')!
 
 /** The settings row as the repository stores it: only what differs from the defaults */
 const stored = () => untypedQx('Settings-app' as SdkEARS.EntityId).pickOne(['data'])?.data as Record<string, unknown>
-const storeAsBefore = (data: Record<string, unknown>) => tx('Settings-app' as SdkEARS.EntityId).update('data', data)
+const storeAsBefore = (data: Record<string, unknown>) => untypedTx('Settings-app' as SdkEARS.EntityId).update('data', data)
 const modeIds = () => (services.settings.forFeature(ref('threads')) as any).chat.modes.map((m: { id: string }) => m.id)
 
 describe('the 0.3.0 migration', () => {

@@ -2,7 +2,7 @@ import * as crypto from 'node:crypto';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import type { EARS } from '../types/entities.ts';
-import { destroyEntity, installedEngine as ears, tx, untypedQx as qx } from '@abuddy/ears';
+import { destroyEntity, installedEngine as ears, untypedTx, untypedQx as qx } from '@abuddy/ears';
 import { _getMediaPath, loadJSON, shouldSeedAll, type Seeder, type SeederContext, type SeedCounts } from '../utils/index.ts';
 import { seedPath } from '../build/manifest.ts';
 import { seedingPackId } from '../utils/seed.ts';
@@ -64,7 +64,7 @@ export const seedKeyPrefix = (packId: string) => `${packId}:`;
 
 /** Records the row's values for the seeded fields, so a later seed can tell whether anything else changed them */
 function stampSeededFields(id: EARS.EntityId, fields: string[]): void {
-  tx(id).update(SEEDED_FIELDS, { fields, hash: hashStoredFields(id, fields) } satisfies SeededFields);
+  untypedTx(id).update(SEEDED_FIELDS, { fields, hash: hashStoredFields(id, fields) } satisfies SeededFields);
 }
 
 /** The row's seeded fields still hold what the seeder wrote */
@@ -84,7 +84,7 @@ function holdsSeededValues(id: EARS.EntityId, seeded: SeededFields): boolean {
  * then on.
  */
 export function markSeededRowUnedited(id: EARS.EntityId): void {
-  tx(id).update(SEEDED_FIELDS, { fields: [], hash: hashValues([]) } satisfies SeededFields);
+  untypedTx(id).update(SEEDED_FIELDS, { fields: [], hash: hashValues([]) } satisfies SeededFields);
 }
 
 /**
@@ -162,7 +162,7 @@ export function createSeeder(options: SeederOptions): Seeder {
       const create = (record: SeedRecord, context: SeedHookContext, hooks?: SeedHooks): EARS.EntityId => {
         if (hooks?.create) return hooks.create(record, context);
         const row = ears().createEntityWithDefaults(record.entity as EARS.Entity, fieldsOf(record));
-        if (context.parentId) tx(context.parentId).link(relKind, row.id);
+        if (context.parentId) untypedTx(context.parentId).link(relKind, row.id);
         return row.id;
       };
 
@@ -174,9 +174,9 @@ export function createSeeder(options: SeederOptions): Seeder {
 
       /** Hooks' repository commands may not store sourceHash; change tracking needs it, the seeded values and the seed key */
       const stamp = (id: EARS.EntityId, record: SeedRecord, seedKey: string) => {
-        if (record.sourceHash && ears().getAttr(id, SOURCE_HASH) !== record.sourceHash) tx(id).update(SOURCE_HASH, record.sourceHash);
+        if (record.sourceHash && ears().getAttr(id, SOURCE_HASH) !== record.sourceHash) untypedTx(id).update(SOURCE_HASH, record.sourceHash);
         stampSeededFields(id, seededFieldNames(record));
-        tx(id).update(SEED_KEY, seedKey);
+        untypedTx(id).update(SEED_KEY, seedKey);
       };
 
       /**
@@ -192,7 +192,7 @@ export function createSeeder(options: SeederOptions): Seeder {
         try {
           update(existing.id, restoreMedia(record, existing.id, mediaDir, ctx.log).record, { ...context, clearedFields }, hooks);
         } catch (err) {
-          tx(existing.id).update(SOURCE_HASH, existing.sourceHash);
+          untypedTx(existing.id).update(SOURCE_HASH, existing.sourceHash);
           stampSeededFields(existing.id, seeded.fields);
           throw err;
         }

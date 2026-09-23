@@ -10,7 +10,7 @@
  * correctly on the harness's in-memory engine.
  */
 import { expectTypeOf, describe, it, expect, beforeEach } from 'vitest';
-import { tx, type QueryBuilder, type TransactionBuilder } from '@abuddy/ears';
+import { untypedTx, type QueryBuilder, type TransactionBuilder } from '@abuddy/ears';
 import {
   qx, createEntity, findById, findAll, findWhere, findFirst, createEntityWithDefaults, updateEntity, getAttr, findWithFields,
   type EntityShape, type PackShapes,
@@ -48,7 +48,7 @@ describe('Type inference — EARS runtime', () => {
   });
 
   it('tx() returns TransactionBuilder', () => {
-    expectTypeOf(tx).returns.toEqualTypeOf<TransactionBuilder>();
+    expectTypeOf(untypedTx).returns.toEqualTypeOf<TransactionBuilder>();
   });
 
   it('createEntity() brands the id with a declared entity type', () => {
@@ -318,7 +318,7 @@ describe('Generic flow — runtime verification', () => {
   });
 
   it('tx() fluent chain returns TransactionBuilder', () => {
-    const id = tx(EARS.Entity.Action as any)
+    const id = untypedTx(EARS.Entity.Action as any)
       .put('label', 'TxChain')
       .put('status', 'active')
       .id();

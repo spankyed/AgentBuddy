@@ -19,5 +19,5 @@ export { getSchemaStats } from '@abuddy/sdk/database-console';
 // Write: only a transaction gets these; a query naming one fails with "<name> is not defined"
 export { createEntityWithDefaults, updateEntity } from '@/__generated__/ears';
 export {
-  tx, destroyEntity, prepareEntity, createRelation, removeRelation, removeRelationById, grantRole, revokeRole,
+  untypedTx as tx, destroyEntity, prepareEntity, createRelation, removeRelation, removeRelationById, grantRole, revokeRole,
 } from '@abuddy/ears';

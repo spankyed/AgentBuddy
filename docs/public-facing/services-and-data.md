@@ -224,7 +224,7 @@ The engine is its own package, `@abuddy/ears`, which packs may depend on and imp
 |---|---|
 | `#generated/ears` | Your pack's `EARS` constants and the typed `qx`, `tx`, `find*`, `createEntity*`, `updateEntity`, `getAttr` (checked against your, your dependencies' and the SDK's shapes). Use these by default |
 | `#generated/repository` | `repository`, typed with your and your dependencies' repositories |
-| `@abuddy/ears` | The engine's untyped API: `untypedQx`, `tx`, relation, role, graph and blueprint helpers, `RepositoryError`, the core `EARS` types, `BaseEntity`, and `createEarsEngine`/`installEngine` for tests and tooling |
+| `@abuddy/ears` | The engine's untyped API: `untypedQx`, `untypedTx`, relation, role, graph and blueprint helpers, `RepositoryError`, the core `EARS` types, `BaseEntity`, and `createEarsEngine`/`installEngine` for tests and tooling |
 | `@abuddy/sdk/types` | What the SDK adds to the engine's types: its `EARS` (with the SDK's entities and relation kinds) and the SDK entity shapes |
 | `@abuddy/sdk/repositories` | The SDK entities' repositories |
 

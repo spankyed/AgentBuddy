@@ -31,7 +31,7 @@ describe('slash commands', () => {
 
     await seedPack({ keys: ['library'] });
 
-    const document = untypedQx('Document' as never).where('name', 'Memo commands').pickAll()[0];
+    const document = untypedQx('Document').where('name', 'Memo commands').pickAll()[0];
     expect(document.content).toEqual([{ type: 'field', fields: [{ key: 'memo-list', value: 'Tag (optional)' }] }]);
   });
 });

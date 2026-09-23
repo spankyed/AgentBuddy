@@ -8,7 +8,7 @@
 // installed feature with settings keyed by its ref, and takes every other section as opaque. Which sections exist,
 // and what they default to, come from `defaults` — whoever composes the app supplies it, so no pack's shape reaches
 // this module.
-import { tx, untypedQx } from '@abuddy/ears';
+import { untypedTx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
 import { deepMerge } from '@abuddy/sdk/utils/pure';
 import { refProblem, resolveName, type FeatureRef, type RefLookup } from '@abuddy/sdk/ids';
@@ -79,7 +79,7 @@ export function createSettingsStore({ defaults }: SettingsStoreOptions) {
     // The first change is what creates the row, so it is written here rather than by whoever read the settings first.
     // treatAsNew gives it a createdAt, and the entity type is what makes it findable as a Settings row.
     const exists = untypedQx(SETTINGS_ID).pickOne(['data']) !== null;
-    (exists ? tx(SETTINGS_ID) : tx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY))
+    (exists ? untypedTx(SETTINGS_ID) : untypedTx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY))
       .put('data', next as Partial<SettingsDocument>)
       .put('updatedAt', Date.now());
     tell('written');

@@ -40,7 +40,7 @@ describe('engine state access', () => {
   });
 
   it("finds an imported admin write, whatever it is renamed to, and leaves an engine's own alone", () => {
-    expect(engineStateAccess("import { tx, type EarsAdmin, edgeStore as e } from '@abuddy/ears';")).toEqual(["import { edgeStore } from '@abuddy/ears'"]);
-    expect(engineStateAccess("import { tx, untypedQx } from '@abuddy/ears';\nengine.admin.putAttr(id, k, v);")).toEqual([]);
+    expect(engineStateAccess("import { untypedTx, type EarsAdmin, edgeStore as e } from '@abuddy/ears';")).toEqual(["import { edgeStore } from '@abuddy/ears'"]);
+    expect(engineStateAccess("import { untypedTx, untypedQx } from '@abuddy/ears';\nengine.admin.putAttr(id, k, v);")).toEqual([]);
   });
 });

@@ -2,7 +2,7 @@
 // nodes and edges, step results on TNodes, and actions and prompts
 import * as os from 'node:os';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { findRelations, installedEngine, tx, untypedQx } from '@abuddy/ears';
+import { findRelations, installedEngine, untypedTx, untypedQx } from '@abuddy/ears';
 import { actionRepository, flowRepository, promptRepository, tnodeRepository, trash } from '../../src/repositories/index.ts';
 import { compile as compileFlowDSL } from '../../src/build/compilers/flow-compiler.ts';
 import { resetTestData, startTestRuntime, testPacks } from '../../src/testing/index.ts';
@@ -129,7 +129,7 @@ describe('flowRepository', () => {
 describe('tnodeRepository', () => {
   it("records a step's result on its TNode, truncated, beside what's there", () => {
     const tNodeId = 'TNode-1' as EARS.EntityId;
-    tx(tNodeId, true).put('entityType', EARS.Entity.TNode).put('nodeAttributes', { input: 'hi' });
+    untypedTx(tNodeId, true).put('entityType', EARS.Entity.TNode).put('nodeAttributes', { input: 'hi' });
 
     tnodeRepository.updateTNodeResult(tNodeId, { text: 'x'.repeat(20000) });
 
@@ -173,7 +173,7 @@ describe('actionRepository and promptRepository', () => {
 
 describe('trash', () => {
   // Any entity type: prompts here
-  const note = (title: string) => tx(`Prompt-${title}` as EARS.EntityId, true).put('entityType', 'Prompt').put('title', title).id();
+  const note = (title: string) => untypedTx(`Prompt-${title}` as EARS.EntityId, true).put('entityType', 'Prompt').put('title', title).id();
   const findById = (id: EARS.EntityId) => installedEngine().findById<Record<string, unknown>>(id);
   const findByIdRaw = (id: EARS.EntityId) => installedEngine().findByIdRaw(id);
 

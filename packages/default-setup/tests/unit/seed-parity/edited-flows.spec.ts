@@ -11,7 +11,7 @@ import { seedData } from '@abuddy/sdk/utils';
 import { registerPack, unregisterPack } from '@abuddy/testing/harness';
 import { findWhere } from '@/__generated__/ears';
 import { dropAttribute } from '@abuddy/sdk/testing';
-import { findRelations, tx } from '@abuddy/ears';
+import { findRelations, untypedTx } from '@abuddy/ears';
 import { repository } from '@/__generated__/repository';
 import { PACK_DIR, resetDatabase } from './harness';
 
@@ -96,8 +96,8 @@ describe('re-seeding edited flows', () => {
   it("doesn't count relations stored in another order as an edit", () => {
     // Relinking a transition (as loading relations from disk in another order would) keeps its content
     const [transition] = nodesOf('Codex').flatMap((node) => findRelations({ sourceEntity: node.id, relationType: 'transitions_to' as never }));
-    tx(transition.sourceEntity).unlinkIf('transitions_to' as never, transition.targetEntity);
-    tx(transition.sourceEntity).link('transitions_to' as never, transition.targetEntity, transition.info as never);
+    untypedTx(transition.sourceEntity).unlinkIf('transitions_to' as never, transition.targetEntity);
+    untypedTx(transition.sourceEntity).link('transitions_to' as never, transition.targetEntity, transition.info as never);
     expect(seedFlows(compiled(['Codex']))).toMatchObject({ updated: 1 });
   });
 

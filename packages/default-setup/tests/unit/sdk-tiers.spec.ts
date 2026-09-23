@@ -3,7 +3,7 @@
  * runtime the harness binds.
  */
 import {
-  tx, repository, registerRepository, exists,
+  untypedTx, repository, registerRepository, exists,
   RepositoryError, RepositoryErrorCode,
 } from '@abuddy/ears';
 import {
@@ -16,9 +16,9 @@ import { EARS } from '../../src/__generated__/ears';
 describe('Tier 1 — EARS delegates', () => {
   beforeEach(() => resetTestData());
 
-  it('qx and tx are callable functions', () => {
+  it('qx and untypedTx are callable functions', () => {
     expect(typeof qx).toBe('function');
-    expect(typeof tx).toBe('function');
+    expect(typeof untypedTx).toBe('function');
   });
 
   it('createEntity produces a valid entity ID', () => {
@@ -27,7 +27,7 @@ describe('Tier 1 — EARS delegates', () => {
   });
 
   it('tx creates and retrieves an entity', () => {
-    const id = tx(EARS.Entity.Action as any)
+    const id = untypedTx(EARS.Entity.Action as any)
       .put('label', 'test-action')
       .id();
     expect(id).toBeDefined();
@@ -102,7 +102,7 @@ describe('Tier 1 — EARS delegates', () => {
   });
 
   it('getAttr reads stored attributes', () => {
-    const id = tx(EARS.Entity.Action as any)
+    const id = untypedTx(EARS.Entity.Action as any)
       .put('color', 'blue')
       .id();
     const color = getAttr(id, 'color');

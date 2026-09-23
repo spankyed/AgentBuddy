@@ -7,7 +7,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { setup } from 'xstate';
-import { tx, untypedQx } from '@abuddy/ears';
+import { untypedTx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
 import type { PackFeature } from '@abuddy/sdk/framework';
 import { resetTestData } from '@abuddy/sdk/testing';
@@ -55,7 +55,7 @@ beforeAll(() => {
 
 beforeEach(() => {
   resetTestData();
-  tx(SETTINGS_ID, true).put('entityType', 'Settings').put('data', structuredClone(OLD_SETTINGS));
+  untypedTx(SETTINGS_ID, true).put('entityType', 'Settings').put('data', structuredClone(OLD_SETTINGS));
 });
 
 describe('the 0.3.15 app migration, for plugins', () => {
@@ -71,7 +71,7 @@ describe('the 0.3.15 app migration, for plugins', () => {
 
   // 0.3.14 stored its whole default settings, so every row holds every default tab: those are no choice of the user's
   it("moves only the tabs the user changed from 0.3.14's defaults, and the plugin last open", () => {
-    tx(SETTINGS_ID).put('data', {
+    untypedTx(SETTINGS_ID).put('data', {
       plugins: {
         _meta: {
           visibility: {
@@ -93,7 +93,7 @@ describe('the 0.3.15 app migration, for plugins', () => {
   });
 
   it('drops plugin settings no installed pack owns, or two external packs share', () => {
-    tx(SETTINGS_ID).put('data', { plugins: { calendar: { week: 'mon' }, board: { cols: 3 }, drafts: { wrap: true } } });
+    untypedTx(SETTINGS_ID).put('data', { plugins: { calendar: { week: 'mon' }, board: { cols: 3 }, drafts: { wrap: true } } });
 
     move(() => [
       { id: 'draft-pack', features: [{ id: 'drafts' }] },
@@ -112,7 +112,7 @@ describe('the 0.3.15 app migration, for plugins', () => {
   // It runs once, so a pack that isn't loaded at that boot (disabled, or an old build that no longer loads) would
   // otherwise keep its keys bare for good, where nothing reads them
   it("moves an installed pack's keys when the pack isn't registered, from its manifest", () => {
-    tx(SETTINGS_ID).put('data', { plugins: { drafts: { wrap: true }, _meta: { visibility: { drafts: false } } } });
+    untypedTx(SETTINGS_ID).put('data', { plugins: { drafts: { wrap: true }, _meta: { visibility: { drafts: false } } } });
 
     move(() => [{ id: 'draft-pack', features: [{ id: 'drafts' }] }]);
 
@@ -122,7 +122,7 @@ describe('the 0.3.15 app migration, for plugins', () => {
 
   // One broken pack on disk mustn't stop the migration, which would stop every boot's migrations and seeds
   it("moves every other key when an installed pack's manifest is malformed", () => {
-    tx(SETTINGS_ID).put('data', { plugins: { drafts: { wrap: true }, memos: { sort: 'oldest' } } });
+    untypedTx(SETTINGS_ID).put('data', { plugins: { drafts: { wrap: true }, memos: { sort: 'oldest' } } });
 
     move(() => [
       { id: 'broken-pack', features: { drafts: {} } } as never,
@@ -136,7 +136,7 @@ describe('the 0.3.15 app migration, for plugins', () => {
   // Before 0.3.15 the host's plugins ran under bare ids too, so a bare id it shares with an external feature was its;
   // the bus is no feature and owns no key
   it("gives a bare id the host shares to the host, and none to the bus", () => {
-    tx(SETTINGS_ID).put('data', { plugins: { packs: { sort: 'name' }, bus: { mode: 'x' } } });
+    untypedTx(SETTINGS_ID).put('data', { plugins: { packs: { sort: 'name' }, bus: { mode: 'x' } } });
 
     move(() => [{ id: 'ext-pack', features: [{ id: 'packs' }, { id: 'bus' }] }]);
 
@@ -144,7 +144,7 @@ describe('the 0.3.15 app migration, for plugins', () => {
   });
 
   it('moves the settings of a feature with no plugin', () => {
-    tx(SETTINGS_ID).put('data', { plugins: { sync: { interval: 5 } } });
+    untypedTx(SETTINGS_ID).put('data', { plugins: { sync: { interval: 5 } } });
 
     move();
 
@@ -183,7 +183,7 @@ describe('the 0.3.15 app migration, for plugins', () => {
   });
 
   it("moves a last-active host plugin onto the host's ref", () => {
-    tx(SETTINGS_ID).put('data', { plugins: { _meta: { lastActivePlugin: 'packs' } } });
+    untypedTx(SETTINGS_ID).put('data', { plugins: { _meta: { lastActivePlugin: 'packs' } } });
 
     move();
 
@@ -192,7 +192,7 @@ describe('the 0.3.15 app migration, for plugins', () => {
   });
 
   it('does nothing without stored plugin settings', () => {
-    tx(SETTINGS_ID).put('data', { general: {} });
+    untypedTx(SETTINGS_ID).put('data', { general: {} });
 
     move();
 
@@ -232,7 +232,7 @@ describe('the 0.3.15 app migration, over the packs installed on disk', () => {
     writeInstalledPacks([{ id: 'idle-pack', enabled: false }]);
     install('broken-pack', JSON.stringify({ id: 'broken-pack', name: 'Broken', version: '1.0.0', features: { broken: {} } }));
     install('garbled-pack', '{ not json');
-    tx(SETTINGS_ID).put('data', {
+    untypedTx(SETTINGS_ID).put('data', {
       plugins: { drafts: { wrap: true }, idle: { quiet: true }, broken: { on: true }, _meta: { visibility: { drafts: false, idle: true, broken: true } } },
     });
 

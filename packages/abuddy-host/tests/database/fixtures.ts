@@ -3,7 +3,7 @@
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { tx, installEngine } from '@abuddy/ears';
+import { untypedTx, installEngine } from '@abuddy/ears';
 import { _appDataPaths } from '@abuddy/sdk/utils';
 import { openDatabaseStore } from '../../src/database/open.ts';
 import { readInstalledSchema } from '../../src/database/schema.ts';
@@ -77,4 +77,4 @@ export async function writeData(userDataDir: string, write: () => void, { packag
   }
 }
 
-export { context as schemaContext, tx };
+export { context as schemaContext, untypedTx };

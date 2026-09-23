@@ -10,7 +10,7 @@ import { getAppVersion } from '../../src/env/index.ts';
 import { createLogger, reportError } from '../../src/logger/index.ts';
 import { boundHost, unbindHost } from '../../src/runtime/host-runtime.ts';
 import { _rootEvents } from '../../src/runtime/root-events.ts';
-import { registerRepository, repository, tx } from '@abuddy/ears';
+import { registerRepository, repository, untypedTx } from '@abuddy/ears';
 
 process.env.ABUDDY_ENV ??= 'test';
 process.env.ABUDDY_USER_DATA_DIR ??= os.tmpdir();
@@ -60,7 +60,7 @@ describe('the test host', () => {
     expect(getAppVersion()).toBe('0.0.0-test');
     expect(services.repository).toBe(ears().repository);
     registerRepository('memoQueries', { all: () => [] });
-    const id = tx('Memo' as never).put('text' as never, 'hello' as never).id();
+    const id = untypedTx('Memo' as never).put('text' as never, 'hello' as never).id();
     expect(services.traceStore.getAttr('text', id)).toBe('hello');
     expect(entityIds()).toContain(id);
     dropAttribute(id, 'text');

@@ -6,7 +6,7 @@ import * as path from 'node:path';
 import { Readable } from 'node:stream';
 import { spawn, spawnSync } from 'node:child_process';
 import { afterEach, describe, expect, it } from 'vitest';
-import { installEngine, installedEngine, tx, type EARS } from '@abuddy/ears';
+import { installEngine, installedEngine, untypedTx, type EARS } from '@abuddy/ears';
 import { findDatabaseWriter, holdDatabaseWriteLock, openDatabaseStore, readInstalledSchema } from '@abuddy/host/database';
 import { exportDatabase } from '@abuddy/host/backup';
 import { closeEnv, openEnvAt } from '@abuddy/ears/lmdb';
@@ -66,12 +66,12 @@ async function appDataDir(): Promise<string> {
   fs.mkdirSync(path.dirname(snapshot), { recursive: true });
   fs.copyFileSync(DEFAULT_SETUP_SNAPSHOT, snapshot);
   await write(dir, () => {
-    tx(id('AppState-app'), true).put('entityType', 'AppState').put('hasOnboarded', true);
-    tx(id('Settings-app'), true).put('entityType', 'Settings').put('label', 'App').put('data', { general: { theme: 'dark' } });
-    tx(id('Note-a'), true).put('entityType', 'Note').put('title', 'Alpha').grant('pinned').link('parent_of', id('Note-b'));
-    tx(id('Note-b'), true).put('entityType', 'Note').put('title', 'Beta, "quoted"');
+    untypedTx(id('AppState-app'), true).put('entityType', 'AppState').put('hasOnboarded', true);
+    untypedTx(id('Settings-app'), true).put('entityType', 'Settings').put('label', 'App').put('data', { general: { theme: 'dark' } });
+    untypedTx(id('Note-a'), true).put('entityType', 'Note').put('title', 'Alpha').grant('pinned').link('parent_of', id('Note-b'));
+    untypedTx(id('Note-b'), true).put('entityType', 'Note').put('title', 'Beta, "quoted"');
     // The run history, which the app keeps in its own partition (TNode is excluded from the main one)
-    tx(id('TNode-1'), true).put('entityType', 'TNode').put('status', 'completed');
+    untypedTx(id('TNode-1'), true).put('entityType', 'TNode').put('status', 'completed');
   });
   return dir;
 }
@@ -713,7 +713,7 @@ describe('abuddy db inspect', () => {
     expect(incoming.out).toBe('[Note] Note-a "Alpha"\n  roles: pinned');
 
     await write(dir, () => {
-      for (const n of [1, 2, 3, 4, 5, 6]) tx(id(`Note-many-${n}`), true).put('entityType', 'Note').put('title', `Many ${n}`);
+      for (const n of [1, 2, 3, 4, 5, 6]) untypedTx(id(`Note-many-${n}`), true).put('entityType', 'Note').put('title', `Many ${n}`);
     });
     const many = await ok(['inspect', '--type', 'Note', '--data-dir', dir]);
     const lines = many.out.split('\n');
@@ -882,7 +882,7 @@ describe('abuddy db reset', () => {
 describe('abuddy db import', () => {
   const backupWith = async (title: string, options: { databases?: Array<'lmdb' | 'volatileLmdb'> } = {}) => {
     const source = await appDataDir();
-    await write(source, () => { tx(id('Note-a')).put('title', title); tx(id('Note-b')).destroy(); });
+    await write(source, () => { untypedTx(id('Note-a')).put('title', title); untypedTx(id('Note-b')).destroy(); });
     return backupOf(source, { withMedia: true, ...options });
   };
 
@@ -1010,8 +1010,8 @@ describe('abuddy db import', () => {
     manifest.entities = { ...manifest.entities, Bookmark: 'Bookmark' };
     fs.writeFileSync(snapshot, JSON.stringify(manifest));
     await write(source, () => {
-      tx(id('Bookmark-1'), true).put('entityType', 'Bookmark').put('url', 'https://example.com');
-      tx(id('Bookmark-2'), true).put('entityType', 'Bookmark').put('url', 'https://example.org');
+      untypedTx(id('Bookmark-1'), true).put('entityType', 'Bookmark').put('url', 'https://example.com');
+      untypedTx(id('Bookmark-2'), true).put('entityType', 'Bookmark').put('url', 'https://example.org');
     });
     const backup = await backupOf(source);
 

@@ -1,7 +1,7 @@
 // The app's own state moves out of the built-in pack's settings: before 0.3.15 it was stored in the
 // Settings row's `internal` section, which resetting settings erased. And every pack's stored plugin settings move
 // onto their plugins' refs, before any pack's own migration reads them.
-import { tx, untypedQx } from '@abuddy/ears';
+import { untypedTx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
 import type { PackMigration } from '@abuddy/sdk/framework';
 import { HOST_PACK_ID, splitRef, type FeatureRef } from '@abuddy/sdk/ids';
@@ -210,7 +210,7 @@ function moveShellState(owners: PluginOwners): void {
   });
 
   const { _meta, ...plugins } = data.plugins;
-  tx(SETTINGS_ID).put('data', { ...data, plugins });
+  untypedTx(SETTINGS_ID).put('data', { ...data, plugins });
 }
 
 /**
@@ -224,6 +224,6 @@ function movePluginSettings(owners: PluginOwners): void {
   const addressed = addressPluginKeys(data.plugins, owners).record;
   const plugins = Object.fromEntries(Object.entries(addressed).filter(([key]) => splitRef(key)));
   if (addressed !== data.plugins || Object.keys(plugins).length !== Object.keys(addressed).length) {
-    tx(SETTINGS_ID).put('data', { ...data, plugins });
+    untypedTx(SETTINGS_ID).put('data', { ...data, plugins });
   }
 }

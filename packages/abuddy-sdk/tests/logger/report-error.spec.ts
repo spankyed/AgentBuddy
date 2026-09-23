@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createLogger, reportError, setDebugEnabled, type LogEvent } from '../../src/logger/index.ts';
 import { startTestRuntime, takeSystemErrors, testPacks, testRootEvents } from '../../src/testing/index.ts';
-import { RepositoryError, RepositoryErrorCode, tx, untypedQx } from '@abuddy/ears';
+import { RepositoryError, RepositoryErrorCode, untypedTx, untypedQx } from '@abuddy/ears';
 import type { Message } from '../../src/events/index.ts';
 import type { EARS } from '../../src/types/entities.ts';
 
@@ -44,7 +44,7 @@ describe('reportError', () => {
     const printed = vi.spyOn(console, 'error').mockImplementation(() => {});
     testPacks.designations.set('brain', 'default-setup/brain');
     // The step's TNode, holding what the step ran with
-    tx(tNodeId, true).put('entityType', 'TNode').put('nodeAttributes', { input: 'hello' });
+    untypedTx(tNodeId, true).put('entityType', 'TNode').put('nodeAttributes', { input: 'hello' });
     let returned: ReturnType<typeof reportError>;
     const { logs, toPlugins, outgoing } = capture(() => {
       returned = reportError({

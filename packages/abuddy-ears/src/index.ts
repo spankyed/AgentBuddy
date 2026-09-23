@@ -9,7 +9,6 @@ export type {
 } from './runtime.ts';
 export { isEntityType } from './runtime.ts';
 export { b64Encode, b64Decode, type QxSeed } from './query.ts';
-export { tx } from './transaction.ts';
 export {
   getEntitiesOfType, getAllEntityTypes, destroyEntity, removeRelationById,
   getAll, getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getSchemaStats,
@@ -28,6 +27,12 @@ export { getAllEntities, queryEntitiesByAttribute, queryEntitiesByRelationTo, qu
  * a union shape's members (TYPED-EARS.md).
  */
 export { qx as untypedQx } from './query.ts';
+/**
+ * The untyped write, the twin of `untypedQx`: entity names and field values aren't checked. Pack code writes
+ * with the typed `tx` from #generated/ears; this is for an entity named at runtime — a migration walking every
+ * type, a seeder, tooling — where there is no name for the compiler to check against.
+ */
+export { tx as untypedTx } from './transaction.ts';
 // Types that appear in the signatures above, so pack authors can name them.
 export type { CreatedEntityFields } from './transaction-helpers.ts';
 export type { PersistenceSink, PersistenceErrorStats } from './runtime.ts';

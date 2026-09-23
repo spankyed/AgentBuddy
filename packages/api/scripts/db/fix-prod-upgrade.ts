@@ -66,7 +66,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { _secretProviderLabel, type SecretProvider } from '@abuddy/sdk/services';
-import { findRelations, tx } from '@abuddy/ears';
+import { findRelations, untypedTx } from '@abuddy/ears';
 import { LmdbQuery, closeEnv, openEnvAt, type LmdbDbs } from '@abuddy/ears/lmdb';
 import { recordLabel, _seedHookRegistry, type SeedHookContext, type SeedRecord } from '@abuddy/sdk/seed';
 import { compileFlowDSL, type CompiledRows } from '@abuddy/sdk/build';
@@ -223,7 +223,7 @@ function moveCliPaths(): void {
     description = `remove general.secrets without moving its CLI paths ${JSON.stringify(cliPaths)}: plugins.code.cliPaths is already set (${JSON.stringify(current)})`;
   }
   delete stored.general.secrets;
-  write(description, () => tx(SETTINGS_ID).put('data', stored).put('updatedAt', Date.now()));
+  write(description, () => untypedTx(SETTINGS_ID).put('data', stored).put('updatedAt', Date.now()));
 }
 
 // ── 3. The old commands document ────────────────────────────────────────────

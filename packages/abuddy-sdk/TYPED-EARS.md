@@ -76,7 +76,7 @@ The engine's types moved to `@abuddy/ears` (`packages/abuddy-ears`); the SDK kee
    - an explicit shape
    - an `EntityName` constraint
    - a runtime name typed `string`
-   - the untyped `qx` (`untypedQx`)
+   - the untyped `qx`/`tx` (`untypedQx`/`untypedTx`)
 2. **Run the type tests** that pin the contract:
    - default-setup: `tests/unit/typed-query-builder.spec.ts`, `branded-entity-id.spec.ts`, `entity-shape-registry.spec.ts`, `sdk-type-safety.spec.ts`, and `npm run typecheck:pack`
    - `@abuddy/cli`: `tests/build/facade-typing.spec.ts` (a real dependent pack under bundler and node16, against both the workspace source and the packed `@abuddy/ears` and `@abuddy/sdk`) and `tests/build/published-sdk-any.spec.ts`

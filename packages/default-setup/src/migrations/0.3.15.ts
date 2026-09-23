@@ -1,6 +1,6 @@
 import type { LogsSettings } from '@/__generated__/types';
 import { services } from '@/__generated__/services';
-import { tx, untypedQx } from '@abuddy/ears';
+import { untypedTx, untypedQx } from '@abuddy/ears';
 import { markSeededRowUnedited } from '@abuddy/sdk/seed';
 import { EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
@@ -38,7 +38,7 @@ export const migration: PackMigration = {
     let marked = 0;
     for (const entity of Object.values(EARS.Entity)) {
       // Untyped: this walks every entity type the pack knows, not one named here
-      for (const row of untypedQx(entity as never).pickAll() as Array<Record<string, unknown>>) {
+      for (const row of untypedQx(entity).pickAll() as Array<Record<string, unknown>>) {
         if (!row.sourceHash || row.seededFields) continue;
         markSeededRowUnedited(row.id as EARS.EntityId);
         marked++;
@@ -122,10 +122,10 @@ function withoutDefaults(stored: unknown, defaults: unknown): unknown {
 function addressStoredLinkBlocks(): number {
   let changed = 0;
   // Untyped: the blocks are data in the shape a message stored them, whatever produced them
-  for (const row of untypedQx(EARS.Entity.Message as never).pickAll() as Array<{ id: EARS.EntityId; blocks?: unknown }>) {
+  for (const row of untypedQx(EARS.Entity.Message).pickAll() as Array<{ id: EARS.EntityId; blocks?: unknown }>) {
     const blocks = addressLinkBlocks(row.blocks);
     if (blocks === row.blocks) continue;
-    tx(row.id).put('blocks', blocks as never);
+    untypedTx(row.id).put('blocks', blocks as never);
     changed++;
   }
   return changed;

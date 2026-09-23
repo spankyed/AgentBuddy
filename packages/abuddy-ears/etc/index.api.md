@@ -323,7 +323,7 @@ export interface EarsQuery {
     }): EARS.EntityId;
     // (undocumented)
     topoSort(roots: EARS.EntityId[], kind: EARS.RelKind, filterType?: EARS.Entity): EARS.EntityId[];
-    tx: typeof tx;
+    tx: typeof untypedTx;
     // (undocumented)
     unregisterRepository(name: string): void;
     // (undocumented)
@@ -784,9 +784,6 @@ export interface TransactionBuilder<E extends string = string, S extends EntityS
     updateBatch(attrs: FieldValues<S, E>): TransactionBuilder<E, S>;
 }
 
-// @public (undocumented)
-export function tx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId?: boolean): TransactionBuilder;
-
 // @public
 export type TypedCreateEntity<S extends EntityShapes, N extends string = string> = <E extends string>(t: Name<N, E>) => EARS.EntityId<E extends keyof S ? E : string>;
 
@@ -941,6 +938,9 @@ export function untypedQx(seed: readonly EARS.Entity[]): QueryBuilder<string>;
 
 // @public (undocumented)
 export function untypedQx(seed?: QxSeed): QueryBuilder<string>;
+
+// @public (undocumented)
+export function untypedTx(typeOrId: EARS.Entity | EARS.EntityId, useProvidedId?: boolean): TransactionBuilder;
 
 // @public (undocumented)
 export function wouldCreateCycle(src: EARS.EntityId, tgt: EARS.EntityId, kinds: readonly EARS.RelKind[]): boolean;

@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   createEarsEngine, defineEars, findRelations, getAllEntities, installEngine, installedEngine, isEntityType,
-  registerRepository, unregisterRepository, repository, spawn, tx, untypedQx, bp, type EARS, type PersistenceSink,
+  registerRepository, unregisterRepository, repository, spawn, untypedTx, untypedQx, bp, type EARS, type PersistenceSink,
 } from '../src/index.ts';
 import { recordingSink } from './contract/helpers.ts';
 
@@ -16,7 +16,7 @@ describe('with no engine installed', () => {
     const typed = defineEars<{ Note: { title: string } }, 'Note'>();
     const uses: Array<[string, () => unknown]> = [
       ['qx', () => untypedQx('Note')],
-      ['tx', () => tx('Note')],
+      ['untypedTx', () => untypedTx('Note')],
       ['typed qx', () => typed.qx('Note')],
       ['typed tx', () => typed.tx('Note')],
       ['typed findAll', () => typed.findAll('Note')],
@@ -49,7 +49,7 @@ describe('installEngine', () => {
     const first = newEngine();
     const second = newEngine();
     expect(installEngine(first.query)).toBeUndefined();
-    const id = tx('Note').put('title', 'first').id();
+    const id = untypedTx('Note').put('title', 'first').id();
     expect(installEngine(second.query)).toBe(first.query);
     expect(untypedQx('Note').ids()).toEqual([]);
     expect(installedEngine()).toBe(second.query);

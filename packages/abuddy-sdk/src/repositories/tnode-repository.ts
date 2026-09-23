@@ -1,5 +1,5 @@
 // Step executions' records (TNode rows): the SDK declares TNode, and its error reports write here
-import { tx, untypedQx as qx } from '@abuddy/ears';
+import { untypedTx, untypedQx as qx } from '@abuddy/ears';
 import type { EARS } from '../types/entities.ts';
 import { truncateResult } from '../steps/result-truncator.ts';
 
@@ -10,6 +10,6 @@ export const tnodeRepository = {
     const tNode = qx(tNodeId).pickOne(['nodeAttributes']);
     if (!tNode) return;
     const attributes = (tNode.nodeAttributes ?? {}) as Record<string, unknown>;
-    tx(tNodeId).update('nodeAttributes', { ...attributes, result: truncateResult(result) });
+    untypedTx(tNodeId).update('nodeAttributes', { ...attributes, result: truncateResult(result) });
   },
 };

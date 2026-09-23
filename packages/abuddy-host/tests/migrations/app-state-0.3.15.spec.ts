@@ -6,7 +6,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
-import { tx, untypedQx } from '@abuddy/ears';
+import { untypedTx, untypedQx } from '@abuddy/ears';
 import { resetTestData } from '@abuddy/sdk/testing';
 import type { EARS } from '@abuddy/sdk';
 import { registry, TEST_APP_VERSION } from '../packs/runtime/test-host.ts';
@@ -71,7 +71,7 @@ const MOVED = {
 const SETTINGS_ID = 'Settings-app' as EARS.EntityId;
 
 function writeOldSettings(data: unknown = OLD_SETTINGS): void {
-  tx(SETTINGS_ID, true).put('entityType', 'Settings').put('data', data);
+  untypedTx(SETTINGS_ID, true).put('entityType', 'Settings').put('data', data);
 }
 
 /** What a boot runs: the app's migrations, then (unless they failed) the external packs' */
