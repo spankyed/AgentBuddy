@@ -1,3 +1,8 @@
+> **Done in part** (`3b793b5a4`..`f8f0c4708` on `AS/plugin-inbox`), **superseded in part** by
+> [`goal-plugin-contract.md`](../../goals/goal-plugin-contract.md), which carries what is left and the
+> finding that came out of the work. The text below is the plan as written, with the trims it took while
+> open; see the Outcome for what landed, what changed shape and what moved on.
+
 > **Written in session** `c9f31de2-e94c-46ea-a2ac-2898390dc27d` (Claude Code, 2026-09-22). Resume it with `claude -r c9f31de2-e94c-46ea-a2ac-2898390dc27d`.
 
 ```
@@ -790,6 +795,74 @@ pluginHandle` returns nothing, or the Outcome records what still binds one.
 - Settle Open decision 1 with the user. Implement only what is chosen.
 
 **Done when:** the table is in the doc and Open decision 1 has moved into Decisions.
+
+## Outcome (2026-09-23)
+
+Landed on `AS/plugin-inbox` in seven commits. The thesis holds: a plugin declares what others may send it,
+`sendsTo` is gone from the manifest, the schema, 26 files and the docs, and `plugin-handle.ts` with its
+seven handles, seven binds and six sender wrappers is deleted. The full chain is green — `typecheck`,
+`test:unit`, `build`, `test:external-pack`, E2E.
+
+Two of the goal's decisions were trimmed while it was open (18 and 19, below), and one shipped in a shape
+the doc didn't anticipate and is better than what it asked for. The work also produced a finding that
+`goal-plugin-contract.md` exists to act on.
+
+### Per phase
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — probes | absorbed | The facade question was answered by doing it (`PackPluginEvents` crosses); the renderer-delivery question by `_sendToLocalPlugin` |
+| 2 — own settings | verified, not built | `goal-settings-to-host.md` had done it; `usePluginSettings`/`currentPluginSettings` no longer exist, `browser` reads `context.settings` (`state.ts:323`) |
+| 3 — the inbox, `sendsTo` deleted | done | `5ab558898`; `git grep sendsTo` finds nothing outside the archive |
+| 4 — the two sends | done | `7bb76426f`, `eb57a9e69`; `broadcastToPlugin` (bus, every window) / `sendToPlugin` (renderer, this window) |
+| 5 — migrate `fe/public.ts`, drop the handle | done | `3b793b5a4`, `7bb76426f`; `public.ts` is selectors only |
+| 6 — re-measure the reads | done | 14 edges remain, 10 of them `src/extensions/**`; carried to the new goal |
+
+### Corrections to the Decisions
+
+**Decision 1 shipped as one tier declared, one derived — not `<Public, Internal>`.** The split the doc wanted
+two type parameters for falls out of *declared vs derived*: `OwnPluginEvents` is the feature's own system's
+outgoing union unioned with what the plugin declares, and the facade carries the declared half alone. Simpler,
+same separation, no new vocabulary.
+
+**Decision 12 is moot in that shape.** The `satisfies`-versus-annotation trap belonged to reading a type off
+the plugin's default export. The declaration is a named `accepts` export from a no-argument call, so there is
+no call argument to check — which is also why it resolves at all (see below).
+
+**The declaration could not live on `definePlugin`.** Reading `definePlugin<E>({…})`'s type makes TypeScript
+check its argument, which holds the machine, which imports `#generated/events`, which imports the plugin: a
+cycle, and codegen sees `any`. `pluginAccepts<E>()` takes no arguments, so its type resolves from its own
+declaration — the same reason `defineSystem<…>()` works. This is recorded because it looks like gratuitous
+indirection and is not.
+
+**Decision 17 landed late (`da6a45e91`) and cost more than the doc knew.** Typing `navigateToPlugin` from the
+target's inbox surfaced 17 cross-feature UI commands that nothing declared — `terminal.CREATE`, `NOTE.OPEN`,
+`TAB.CREATE`, `NODE.DOUBLE_CLICK` and the rest. Each had to be declared, and since the only declared tier is
+the published one, **all 17 now reach every dependent pack's facade**
+(`deps/default-setup.d.ts:3812`, `:3829`). That is the finding: the model needs a *pack* audience between
+"my own system" and "anyone", and `goal-plugin-contract.md` adds it.
+
+### Open items
+
+- **Decision 6 — the renderer send does not wait.** `_sendToLocalPlugin` throws when no plugin runs at the
+  ref instead of reusing the shell's `pendingOpens` policy. Intra-pack this matches what `pluginHandle.get()`
+  did, so nothing regressed; cross-pack it is a hole. Carried to the new goal.
+- **Decision 18 — no runtime check on the renderer send.** `PackFEFeature` gained no `receives`. Deliberately
+  cut: `Message` carries no sender, so the check can never be audience-aware, and types cover every in-repo
+  case. Carried as a deferral with its reopen trigger.
+- **Decision 19 — `defineSystem` still collapses its audiences.** A declared-internal system event still
+  reaches a dependent's facade (`ADD_LOG`). Struck from this goal by `94b10d0e6`; carried as a deferral.
+- **Decision 7 is half-pinned.** The delivery-scope difference is in the SDK doc comments and the public docs,
+  and a spec covers the renderer send. Nothing pins that a backend send reaches *every* window — the half that
+  produced `OPEN_PLUGIN_FROM_APP`.
+- **Open decision 1 (the read channel) is answered, not declined.** The count that was meant to settle it —
+  14 edges, 10 of them extensions — was read as "no demand". It is the opposite: `fe/public.ts` is the demand,
+  and an external pack reading a plugin's state is a first-class need with no mechanism. The new goal builds it.
+
+### Final verification
+
+`npm run typecheck`, `npm run schema:check`, `api:check` (sdk, ui), `facade:check -w @app/default-setup`,
+`npm run test:unit` (7 suites), `npm run build`, `npm run test:external-pack` (28), `npm test` (21 E2E).
 
 ## Deferred
 
