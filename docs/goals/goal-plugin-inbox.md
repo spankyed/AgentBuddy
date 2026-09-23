@@ -3,15 +3,17 @@
 ```
 # Goal: a plugin declares what it accepts, so `sendsTo` and the hand-written cross-feature plumbing go away
 
-Implement docs/goals/goal-plugin-inbox.md on AS/frontend-host-boundary, at or after 6d0633ad4 — the base
-its Background was surveyed at.
+Implement docs/goals/goal-plugin-inbox.md, at or after bec339ea7 — the base its Background was
+re-surveyed at, which is the merge of goal-settings-to-host.md.
 Before Phase 1, confirm the base: packages/abuddy-sdk/src/build/generate-entries.ts,
 packages/abuddy-sdk/src/build/manifest-schema.ts, packages/abuddy-sdk/src/events/index.ts,
-packages/abuddy-host/src/packs/registry.ts, packages/abuddy-host/src/bus/machine.ts,
-packages/abuddy-host/src/features/application/fe/connection.ts and
-packages/default-setup/src/features/plugin-handle.ts exist at HEAD. If they don't, stop and say so —
-the plan was surveyed somewhere else. (The host was mid-restructure into src/features/<id>/{be,fe}
-when this was written; those paths are the post-restructure ones.)
+packages/abuddy-sdk/src/framework/define-system.ts, packages/abuddy-host/src/packs/registry.ts,
+packages/abuddy-host/src/bus/machine.ts, packages/abuddy-host/src/features/registration.ts and
+packages/default-setup/src/features/plugin-handle.ts exist at HEAD, and that
+packages/default-setup/src/features/settings/ does NOT (goal-settings-to-host moved it). If any of that
+is wrong, stop and say so — the plan was surveyed somewhere else.
+Phase 2 is a verification slot: its work landed in goal-settings-to-host. Check it, record the one
+residue it names, and move on.
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
 reopen them or stop to ask. Open decision 1 must be settled with the user before Phase 6; if it is
 still marked open, stop and ask.
