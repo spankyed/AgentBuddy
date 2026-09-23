@@ -269,6 +269,22 @@ Final.
     Secrets view show — and go to the renderer, except `DISCORD_URL`, which `extensions/app/Welcome.vue`
     also uses and which therefore keeps a copy in default-setup rather than an import across the boundary.
 
+## Settled while implementing (2026-09-22)
+
+- **Open decision 1 — the Help tab's FAQs: Option A, as `help` entries.** A pack declares `help` in its
+  manifest; the registry collects each pack's entries in registration order and the Settings view lists
+  them all. Option B (an app-extension slot) does not work: a pack's Help component renders inside the
+  *host's* settings plugin, with no scope from which to reach its own backend. Named `help` rather than
+  `faqs` because `tests/build/no-pack-seed-specifics.spec.ts` is right that FAQ is default-setup's word
+  for its own content — the pack maps its FAQ seed onto the app's help entries.
+- **Open decision 2 — `general` keeps its shape.** Sections stay opaque to the host (Decision 2), and the
+  host reads `general.application.hotkeys` only through the settings system's `APPLICATION_HOTKEYS` event,
+  never by knowing the shape. No migration needed.
+- **A third non-settings job appeared (Decision 5).** Besides CLI testing, the settings system decided
+  when the assistant was born — it knew `REQUIRED_PROVIDERS` and sent `BIRTH_FLOW_START`. That moved to
+  `threads`, and `forwardSecretsChanges` now tells every system declaring `SECRETS_CHANGED` rather than
+  the one feature designated `settings`.
+
 ## Open decisions
 
 1. **Where the Help tab's FAQs live** (settle before Phase 5). `be/faqs.ts` reads default-setup's compiled
