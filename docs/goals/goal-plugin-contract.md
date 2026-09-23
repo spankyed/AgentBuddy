@@ -50,7 +50,9 @@ Never:
 - give the contract a runtime value (a `pluginContract()`-style call carrying phantoms), or read it from
   `fe/plugin.ts` — the first is ceremony a type alias makes unnecessary, the second restores the cycle
   (Spike results).
-- split `defineSystem`'s audiences or add an FE runtime validation map — both Deferred, with triggers.
+- split `defineSystem`'s audiences, add a `from` to `Message`, or add an FE runtime validation map — all
+  Deferred, with triggers. Of the self-imposed constraints, 2, 5 and 6 are in scope, and 3 only for the
+  plugin contract (Decision 2); 1, 4 and 7 are not.
 ```
 
 ## Background (2026-09-23, at 8126ae364 on AS/plugin-inbox)
@@ -120,6 +122,35 @@ and the cycle returns.
 (+496, +9.0%)**. Two contexts are not exported today and must be: `BrowserContext`
 (`features/browser/fe/state.ts`) and `ThreadsContext` (`features/threads/fe/state.ts:256`).
 
+## Self-imposed constraints (2026-09-23)
+
+The `ExportInfo.type` mistake above is not a one-off. The same shape appears seven times across this goal
+and the archived one: **a reader or a registration is narrower than the thing it describes, and the API was
+bent to fit the reader rather than the reader widened.** They are listed here because three of them are
+load-bearing in the Decisions below, and because the list is cheaper to keep than to rediscover.
+
+| # | The constraint | Ours, at | Costs today |
+|---|---|---|---|
+| 1 | `Message` is `{ to, event }` — no sender | `abuddy-sdk/src/events/index.ts`, 8 construction sites | Decision 7 argued *from* it |
+| 2 | `ExportInfo.type` is a `boolean` | `build/module-exports.ts:11` | drove the wrong conclusion in Spike results |
+| 3 | the reader resolves values only | same file — built for `export const x = f<T>()` | `pluginAccepts`, `defineSystem`'s empty call, `_outgoing`/`_accepts` |
+| 4 | `defineSystem` takes one union for incoming and internal | `framework/define-system.ts:52` | `ADD_LOG` is published API |
+| 5 | `findCrossFeatureImports` excepts `fe/public` | one line, `scripts/check-import-specifiers.ts:530` | the whole `public.ts` institution rests on it |
+| 6 | `pluginActor` throws when nothing is running | `fe/actor-system.ts:34` | every caller pre-checks with `hasDesignation` |
+| 7 | `PackFEFeature` carries no `receives` | `fe/pack-fe-registration.ts:13` | nothing at runtime knows what a plugin accepts |
+
+**Number 3 is the general case of number 2, and it is the one worth naming.** `module-exports.ts` was
+written to read `export const x = f<T>()`, and every contract added since has been shaped to fit it:
+`pluginAccepts<E>()` is a function that takes nothing and returns `{}`; `defineSystem<A, B, C>()` is the same
+with three type parameters; `spec._outgoing` and `_accepts` are phantom properties that exist only because
+the reader could not see a declared type. None of that is XState's requirement or TypeScript's — it is the
+extractor's shape leaking into the authoring API. Decision 2 fixes it for the plugin contract; Deferred item
+1 is the same fix for systems.
+
+**What is *not* ours, so nobody spends a day on it:** XState's `system.get(ref)` is keyed by string, which is
+why a cross-pack read needs codegen to generate the map rather than a cleverer type (Decision 5). And the
+facade gate's import allowlist is load-bearing — relax it and dependents read `any`.
+
 ## Decisions
 
 Final.
@@ -179,14 +210,25 @@ Final.
    The selector takes the declared `State`. Code needing the XState snapshot keeps the SDK's untyped
    `usePluginState` — the escape hatch, as `untypedQx` is to `#generated/ears`.
 
-6. **The shell owns "that plugin isn't here yet".** `_sendToLocalPlugin` reaches past the shell into
-   `application.system.get(ref)` and throws. The shell already answers this for `OPEN_PLUGIN` with
-   `pendingOpens`. Add `SEND_TO_PLUGIN { plugin, events }` to `HostShell` and route the SDK send through it:
-   one owner, not two that disagree.
+6. **The shell owns "that plugin isn't here yet" — on both channels.** `_sendToLocalPlugin` reaches past
+   the shell into `application.system.get(ref)` and throws. The shell already answers this for `OPEN_PLUGIN`
+   with `pendingOpens`. Add `SEND_TO_PLUGIN { plugin, events }` to `HostShell` and route the SDK send through
+   it: one owner, not two that disagree.
 
-7. **The runtime maps stay one flat union per plugin.** `Message` is `{ to, event }` — no sender — so an
-   audience split is a type-level thing and never a runtime check. Say so in the doc comments, so a passing
-   check is never read as "this sender was allowed".
+   The read path has the same hole (constraint 6): `usePluginState` and `readPluginState` both go through
+   `pluginActor`, which throws. A read cannot queue — there is no value to hand back — so it gets the other
+   half of the same answer: a sibling that returns `undefined`, so callers stop pre-checking with
+   `hasDesignation` and the absent case is in the type.
+
+7. **The runtime maps stay one flat union per plugin — for now, and not because they must.** An earlier
+   draft said an audience split "is a type-level thing and never a runtime check", reasoning from the
+   envelope carrying no sender. That is constraint 1: `Message` is our own interface, and the generated
+   `broadcastToPlugin` already closes over the sending pack (`defineEvents(packId)`), so a `from` could be
+   *stamped* by the SDK rather than claimed by a caller. The split is checkable; it is merely not checked.
+
+   So: keep one flat union, and say in the doc comments that a passing check means the event's **shape** was
+   accepted, not that this sender was allowed to send it. Do not write that a sender-aware check is
+   impossible — see Deferred.
 
 ## Phases
 
@@ -230,7 +272,10 @@ After Phases 1 and 2.
   one-shot twin in `#generated/fe` (Decision 5). A context the gate refuses narrows with `Pick<>`
   (Decision 4) rather than the design changing.
 - Delete the selectors from every leaf; migrate the 14 consumers.
-- `findCrossFeatureImports`: drop the `fe/public` exception. `extensions/tiptap/reference-config.ts`
+- `findCrossFeatureImports`: drop the `fe/public` exception — constraint 5, one line
+  (`if (module === 'public') return []`, `check-import-specifiers.ts:530`). It is a hole we punched, not a
+  rule we inherited, so the fix is deleting the line, not building a replacement for what it blessed.
+  `extensions/tiptap/reference-config.ts`
   re-exports `NOTE_TYPE_TO_REFERENCE_TYPE` across that boundary and needs a home — the tiptap extension, or
   `#generated/references`, which already aggregates reference config.
 
@@ -241,11 +286,13 @@ makes `check:specifiers` pass again, proving the rule is what rejects it.
 ### Phase 4 — The shell owns waiting
 
 - `SEND_TO_PLUGIN` on `HostShell`, answered by the same `pendingOpens` path as `OPEN_PLUGIN` (Decision 6).
+- The read half: a `pluginActor` sibling returning `undefined`, and the `hasDesignation` pre-checks deleted
+  at their callers.
 
 **Done when:** `npm test -w @abuddy/host` and `-w @abuddy/sdk` pass; a spec in
 `abuddy-host/tests/features/application/fe/` pins that a send to a plugin whose pack is still loading is
-delivered once it arrives, and reported through `notify` once loading settles with no such plugin. Mutation:
-dropping the queue fails that spec.
+delivered once it arrives, and reported through `notify` once loading settles with no such plugin; a read of
+an absent plugin returns `undefined` instead of throwing. Mutation: dropping the queue fails the first spec.
 
 ### Phase 5 — The scope spec the archived goal left open
 
@@ -256,14 +303,23 @@ dropping the queue fails that spec.
 
 ## Deferred
 
-- **`defineSystem`'s audiences.** A system publishes its internal events too (`ADD_LOG`, from a
-  `fromCallback` child nothing outside can legitimately send). Two specs distinguish internal today
-  (`logs/be/system.ts:40`, `database/be/system.ts:58`) but the type parameter changes for all twelve.
-  **Reopen when** a second pack ships and its authors see another pack's internal system events in their
-  completions.
-- **An FE runtime validation map.** `PackFEFeature` gains no `receives`. Types cover every in-repo case and
-  the check could never be audience-aware (Decision 7). **Reopen when** packs version independently enough
-  that a dependent can be compiled against a facade older than the plugin it sends to.
+1. **`defineSystem`'s audiences** — constraint 4, the system-side twin of Decision 3. One type parameter
+   covers incoming and internal, so a system publishes events nothing outside can legitimately send
+   (`ADD_LOG`, from a `fromCallback` child). Two specs distinguish internal today (`logs/be/system.ts:40`,
+   `database/be/system.ts:58`), but the parameter changes for all twelve. Like constraint 3, this *removes*
+   published API rather than adding machinery. **Reopen when** Phase 2 lands and the plugin side is proven,
+   or sooner if a second pack's authors find another pack's internal events in their completions.
+2. **A sender on the envelope, and the FE validation map it makes possible** — constraints 1 and 7, which
+   are one item: `Message` gains `from`, stamped by the generated send; `PackFEFeature` gains `receives`;
+   the bus rejects a cross-pack send of a `pack`-tier event.
+
+   The earlier reason for deferring this — that such a check "could never be audience-aware" — was wrong,
+   so the real ones are recorded instead. The bus path is cheap: 8 construction sites, and the sender is
+   already in scope. The renderer's in-window `sendToPlugin` is not: it has no scope that names who is
+   sending, so either it acquires one or that path stays unchecked, and a rule enforced on one transport
+   and not the other is worse than one enforced on neither. Types cover every in-repo case meanwhile.
+   **Reopen when** a pack ships compiled against a facade older than the plugin it sends to, or when the
+   renderer send acquires a sender to stamp.
 
 ## Constraints
 
