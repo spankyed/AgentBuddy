@@ -61,7 +61,7 @@ Never:
 
 Settings is a cross-cutting concern owned by a pack feature, so every other feature couples to that
 feature to read or write its own settings. Two consequences found while planning
-[`goal-plugin-inbox.md`](goal-plugin-inbox.md):
+[`goal-plugin-inbox.md`](../../goals/goal-plugin-inbox.md):
 
 - `packages/default-setup/src/features/code/fe/features/explorer/ExplorerPanel.vue:201` reads
   `usePluginSettings<CodeSettings>('code')` — the `code` feature reading **its own** settings out of the
@@ -425,7 +425,7 @@ opens Settings with the General, Plugins and Help tabs working, and every featur
   Suites don't run concurrently.
 - External packs are first-class: a pack's settings must keep working through `services.settings` and its
   `settings.ts` defaults, and `test:external-pack` and `test:packaged-authoring` keep passing.
-- This goal and [`goal-plugin-inbox.md`](goal-plugin-inbox.md) both touch what a feature may reach. They
+- This goal and [`goal-plugin-inbox.md`](../../goals/goal-plugin-inbox.md) both touch what a feature may reach. They
   are independent, but whichever lands second re-checks the other's call sites.
 
 ## Outcome (2026-09-22)

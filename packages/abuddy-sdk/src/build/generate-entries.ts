@@ -964,10 +964,12 @@ ${specs}
   }
 
   function generateTypes(): string {
+    // Every feature, not only the ones with a system: the barrel is how one feature names another's types
+    // (`#generated/types`), and a feature may have repositories or services and no system at all — whose argument
+    // and return types are exactly what its callers need. Having a types module is what decides, below.
     const features = manifest.features ?? [];
-    const systemFeatures = features.filter(f => f.system);
 
-    const perFeature = systemFeatures.map(f => {
+    const perFeature = features.map(f => {
       const lines: string[] = [];
       const tPath = typesEntry(f);
       const fullTypesPath = join(root, tPath) + (tPath.endsWith('.ts') ? '' : '.ts');

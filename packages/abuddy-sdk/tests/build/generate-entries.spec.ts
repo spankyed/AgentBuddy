@@ -1210,3 +1210,36 @@ describe('the snapshot format', () => {
     });
   });
 });
+
+// The barrel is how one feature names another's types (`#generated/types`). A feature may have repositories or
+// services and no system at all, and the types its callers need are the ones its repository and service signatures
+// use — so what decides is whether it has a types module, not whether it has a system.
+describe('generated type barrel', () => {
+  it("takes every feature's types module, with or without a system", () => {
+    write('src/features/records/be/types.ts', 'export interface RecordRow { id: string }');
+    write('src/features/records/be/repository/index.ts', 'export const recordQueries = {};');
+    write('src/features/memos/be/types.ts', 'export interface Memo { text: string }');
+    writeSystemEntry('memos', "{ type: 'MEMO_ADDED' }");
+
+    const files = generatePackFiles(manifest({
+      features: [
+        // Data for the rest of the pack, and no system of its own
+        { id: 'records', repositories: { recordQueries: 'src/features/records/be/repository/index.ts#recordQueries' } },
+        system('memos'),
+      ] as PackFeatureEntry[],
+    }), { packRoot: root });
+
+    expect(files['src/__generated__/types.ts']).toContain("export type * from '../features/records/be/types.js';");
+    expect(files['src/__generated__/types.ts']).toContain("export type * from '../features/memos/be/types.js';");
+  });
+
+  it('leaves out a feature with no types module, whatever else it has', () => {
+    writeSystemEntry('memos', "{ type: 'MEMO_ADDED' }");
+
+    const files = generatePackFiles(manifest({
+      features: [system('memos')] as PackFeatureEntry[],
+    }), { packRoot: root });
+
+    expect(files['src/__generated__/types.ts']).not.toContain('features/memos/be/types');
+  });
+});
