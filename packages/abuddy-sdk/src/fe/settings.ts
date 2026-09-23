@@ -66,8 +66,3 @@ export function useSettingsSave(): { save: Readonly<Ref<SettingsSaveStatus>>; up
 export function updateSettings(target: SettingsTarget, path: readonly string[], value: unknown): void {
   port().update(target, path, value);
 }
-
-/** One registered section as it applies now, for code outside a component */
-export function settingsSection<T = unknown>(name: string): T | undefined {
-  return port().section<T>(name);
-}

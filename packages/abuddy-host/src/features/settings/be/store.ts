@@ -49,14 +49,14 @@ export function createSettingsStore({ defaults }: SettingsStoreOptions) {
     for (const listener of listeners) listener(change);
   };
 
-  /** Only what the user changed, creating the row on first read so the rest of the app can count on it existing */
+  /**
+   * Only what the user changed. A read, and only a read: an app still at its defaults has changed nothing, so it has
+   * no row, and asking what is stored must not be what creates one — `getAll()` runs wherever settings are read,
+   * including against a database opened read-only.
+   */
   function stored(): Partial<SettingsDocument> {
     const existing = untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: unknown } | undefined;
-    if (existing) return (existing.data ?? {}) as Partial<SettingsDocument>;
-    tx(SETTINGS_ID, true) // treatAsNew, so the row gets a createdAt
-      .put('entityType', SETTINGS_ENTITY)
-      .put('data', {});
-    return {};
+    return (existing?.data ?? {}) as Partial<SettingsDocument>;
   }
 
   /** The settings in effect: the defaults with the stored changes over them */
@@ -75,16 +75,16 @@ export function createSettingsStore({ defaults }: SettingsStoreOptions) {
   function write(next: unknown): void {
     const problems = settingsProblems(next, { before: stored(), sections: sections() });
     if (problems.length > 0) throw new SettingsRefusedError(problems);
-    tx(SETTINGS_ID)
+    // The first change is what creates the row, so it is written here rather than by whoever read the settings first.
+    // treatAsNew gives it a createdAt, and the entity type is what makes it findable as a Settings row.
+    const exists = untypedQx(SETTINGS_ID).pickOne(['data']) !== null;
+    (exists ? tx(SETTINGS_ID) : tx(SETTINGS_ID, true).put('entityType', SETTINGS_ENTITY))
       .put('data', next as Partial<SettingsDocument>)
       .put('updatedAt', Date.now());
     tell('written');
   }
 
   return {
-    /** Ensures the row exists; the app's boot calls it so nothing later has to create it mid-write */
-    ensure: (): void => void stored(),
-
     /** The settings in effect */
     getAll: effective,
 

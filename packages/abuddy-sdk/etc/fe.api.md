@@ -468,9 +468,6 @@ export interface SettingsSaveStatus {
 }
 
 // @public
-export function settingsSection<T = unknown>(name: string): T | undefined;
-
-// @public
 export type SettingsTarget = {
     section: string;
 } | {

@@ -41,7 +41,7 @@ function toSeedInclude(include: Record<string, string[] | null>): Record<string,
 
 type IncomingSettingsEvents =
   | { type: 'GET_SETTINGS' }
-  | { type: 'UPDATE_SETTINGS'; entityType: 'general' | 'plugin'; label: string; path: string[]; value: any }
+  | { type: 'UPDATE_SETTINGS'; entityType: 'section' | 'plugin'; label: string; path: string[]; value: any }
   | { type: 'RESET_SETTINGS' }
   | { type: 'PREVIEW_PACK_SEEDS'; directory: string }
   | { type: 'IMPORT_PACK_SEEDS'; directory: string; include?: Record<string, string[] | null>; mode?: 'keep-existing' | 'replace-on-collision' | 'wipe-and-replace'; restartBrain?: boolean }
@@ -59,6 +59,8 @@ type SettingsInternalEvents =
 
 export type OutgoingSettingsEvents =
   | { type: 'SETTINGS_LOADED'; data: SettingsDocument; help: HelpEntry[] }
+  /** The installed packs changed, so what they answer with in Help has too */
+  | { type: 'HELP_UPDATED'; help: HelpEntry[] }
   | { type: 'SETTINGS_UPDATED'; data: SettingsDocument }
   /** A change (`UPDATE_SETTINGS`, `REPLACE_SETTINGS`) was stored */
   | { type: 'SETTINGS_SAVED' }
@@ -186,6 +188,9 @@ export const settingsSystem = setup({
     // The settings plugin's view of all the settings, after a change it didn't make itself
     sendSettingsUpdate: () => broadcastSettings('SETTINGS_UPDATED'),
 
+    // Help is a pack contribution, so the packs changing changes it; the settings ride along on PACK_CHANGED
+    sendHelp: () => sendToPlugin(settingsView(), { type: 'HELP_UPDATED', help: getPackHelp() }),
+
     refuseResetWhileReplacing: () => sendToPlugin(settingsView(), {
       type: 'APP_RESET_FAILED',
       error: 'A backup is being imported. Reset the app once it has finished.',
@@ -203,7 +208,7 @@ export const settingsSystem = setup({
       // A plugin's settings are keyed by its ref, which the frontend resolves before sending and the store checks
       try {
         if (ev.entityType === 'plugin') services.settings.setForFeature(ev.label as `${string}/${string}`, ev.path, ev.value);
-        else services.settings.setInSection('general', [ev.label, ...ev.path], ev.value);
+        else services.settings.setInSection(ev.label, ev.path, ev.value);
       } catch (error) {
         refuseSettings(error, `Settings for ${ev.entityType} "${ev.label}" weren't saved`);
         return;
@@ -302,7 +307,7 @@ export const settingsSystem = setup({
         SETTINGS_WRITTEN: { actions: 'tellChangedFeatures' },
         // A pack registered or left: its defaults came or went
         PACK_SETTINGS_CHANGED: { actions: ['sendSettingsUpdate', 'tellChangedFeatures'] },
-        PACK_CHANGED: { actions: ['sendSettingsUpdate', 'tellChangedFeatures'] },
+        PACK_CHANGED: { actions: ['sendSettingsUpdate', 'sendHelp', 'tellChangedFeatures'] },
         DATA_REPLACING: { target: 'replacingData' },
         UPDATE_SETTINGS: {
           actions: 'updateSettings',
@@ -386,6 +391,7 @@ type SettingsPluginEvents = Exclude<OutgoingSettingsEvents, { type: 'APPLICATION
 export const SETTINGS_PLUGIN_EVENT_TYPES = eventTypes<SettingsPluginEvents>()(
   'SETTINGS_LOADED',
   'SETTINGS_UPDATED',
+  'HELP_UPDATED',
   'SETTINGS_SAVED',
   'SETTINGS_REFUSED',
   'SETTINGS_RESET',

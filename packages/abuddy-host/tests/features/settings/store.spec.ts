@@ -39,9 +39,8 @@ beforeEach(() => {
 const rowData = () => (untypedQx(SETTINGS_ID).pickOne(['data']) as { data?: unknown } | undefined)?.data;
 
 describe('what is stored and what is in effect', () => {
-  it('creates the row on first read and stores nothing in it', () => {
+  it('reads as empty before the user has changed anything', () => {
     expect(store.getStored()).toEqual({});
-    expect(rowData()).toEqual({});
   });
 
   it('merges the defaults under the stored changes', () => {
@@ -185,14 +184,20 @@ describe('listeners', () => {
   });
 });
 
-describe('ensure', () => {
-  it('creates the row so nothing later has to', () => {
-    const created = vi.fn();
-    store.onChange(created);
+describe('the row', () => {
+  // Reading settings happens everywhere, including against a database opened read-only, so a read that wrote would
+  // make every reader a writer
+  it('is not created by reading the settings', () => {
+    expect(store.getStored()).toEqual({});
+    expect(store.getAll()).toMatchObject({ [PLUGINS_SECTION]: {} });
 
-    store.ensure();
+    expect(untypedQx(SETTINGS_ID).pickOne(['data'])).toBeNull();
+  });
 
-    expect(rowData()).toEqual({});
-    expect(created).not.toHaveBeenCalled(); // creating the row is not a change to the user's settings
+  it('is created by the first change, as a findable Settings row', () => {
+    store.setFeatureSetting(THREADS as never, ['sort'], 'oldest');
+
+    expect(untypedQx('Settings' as never).ids()).toEqual([SETTINGS_ID]);
+    expect(rowData()).toEqual({ [PLUGINS_SECTION]: { [THREADS]: { sort: 'oldest' } } });
   });
 });

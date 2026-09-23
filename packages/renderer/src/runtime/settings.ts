@@ -35,7 +35,7 @@ export const settingsPort: SettingsPort = {
   update(target: SettingsTarget, path, value) {
     // The view's own event shape: a section by its name, a feature by its ref
     const addressed = 'section' in target
-      ? { entityType: 'general' as const, label: target.section }
+      ? { entityType: 'section' as const, label: target.section }
       : { entityType: 'plugin' as const, label: target.feature };
     view()?.send({ type: 'SETTINGS.UPDATE', ...addressed, path: [...path], value });
   },

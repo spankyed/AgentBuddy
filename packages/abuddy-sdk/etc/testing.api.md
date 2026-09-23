@@ -97,6 +97,26 @@ export type FakeInferenceReply = string | {
     }>;
 };
 
+// @public (undocumented)
+export interface FakeSettings extends SettingsPort {
+    answer(status: SettingsSaveStatus): void;
+    set(document: Record<string, unknown>): void;
+    readonly updates: readonly FakeSettingsUpdate[];
+}
+
+// @public
+export function fakeSettings(document?: Record<string, unknown>): FakeSettings;
+
+// @public
+export interface FakeSettingsUpdate {
+    // (undocumented)
+    path: readonly string[];
+    // (undocumented)
+    target: SettingsTarget;
+    // (undocumented)
+    value: unknown;
+}
+
 // @public
 export interface FakeTextCall {
     instructions?: string;

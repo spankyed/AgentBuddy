@@ -84,7 +84,12 @@ export interface SettingsContext {
   save: SettingsSave;
 }
 /** What a settings change is to: a plugin's settings by their key (its ref), or a general section */
-export type SettingsTarget = { entityType: 'plugin'; label: FeatureRef } | { entityType: 'general'; label: string };
+/**
+ * What a change names: an installed feature's own settings by its ref, or a registered section by the name whoever
+ * registered it gave. `label` is the whole address at its level — a section's sub-key belongs in `path`, so that one
+ * target means one place in the document whoever builds it.
+ */
+export type SettingsTarget = { entityType: 'plugin'; label: FeatureRef } | { entityType: 'section'; label: string };
 
 type UIEvent =
   | { type: 'TAB.SELECT'; tab: 'general' | 'plugins' | 'help' }
@@ -147,6 +152,9 @@ function buildSettingsMachine(io: SettingsIO) {
         isLoading: false,
       };
     }),
+
+    // The installed packs changed: what any of them answers with in Help changed with them
+    setHelp: assign(({ event }) => ({ help: typeOf('HELP_UPDATED', event).help })),
 
     setSecrets: assign(({ event }) => {
       const ev = typeOf('SECRETS_UPDATED', event);
@@ -472,6 +480,9 @@ function buildSettingsMachine(io: SettingsIO) {
         },
         SETTINGS_UPDATED: {
           actions: 'updateSettingsData',
+        },
+        HELP_UPDATED: {
+          actions: 'setHelp',
         },
         SETTINGS_RESET: {
           actions: 'updateSettingsData',

@@ -23,7 +23,7 @@ export { getDesignated, hasDesignation } from '../designations/index.ts'
 
 export { secretsClient, type SecretsClient, type SecretsSnapshot } from './secrets-client.ts'
 export {
-  settingsSection, updateSettings, useFeatureSettings, useSettingsSave, useSettingsSection,
+  updateSettings, useFeatureSettings, useSettingsSave, useSettingsSection,
   type SettingsPort, type SettingsSaveStatus, type SettingsTarget,
 } from './settings.ts'
 

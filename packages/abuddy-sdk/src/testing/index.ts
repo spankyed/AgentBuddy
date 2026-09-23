@@ -17,6 +17,7 @@ export { fakeInference, type FakeInference, type FakeInferenceCall, type FakeInf
 // A pack's own tests bind a frontend host for the file and forget it again; bindFeHost is the renderer's,
 // bound once at boot, and its unbind is host-only
 export { startFeTestRuntime, stopFeTestRuntime, type FeTestRuntimeOptions } from './fe-runtime.ts';
+export { fakeSettings, type FakeSettings, type FakeSettingsUpdate } from './fake-settings.ts';
 
 /**
  * What a pack's seeding needs outside the app: its entity types and relation kinds, its repositories

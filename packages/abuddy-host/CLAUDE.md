@@ -222,6 +222,10 @@ program composing the app needs: `createSettingsStore({ defaults })` and `create
 - **The frontend reaches it through the SDK, never through this actor.** The renderer binds a `SettingsPort`
   (`bindFeHost`) over the running view, and `@abuddy/sdk/fe`'s `useSettingsSection` / `useFeatureSettings` /
   `useSettingsSave` / `updateSettings` read and change settings through it.
+- **One target is one place in the document.** A change names a section by the name whoever registered it gave, or a
+  feature by its ref (`SettingsTarget`), and the whole of `path` is inside it. The Settings view's own General tab
+  has a nav item that is a key *inside* `general`, so it leads the path rather than naming the target: addressing it
+  as the target wrote `general.general.projects`, which nothing reads.
 
 ## Secrets (`secrets/`)
 

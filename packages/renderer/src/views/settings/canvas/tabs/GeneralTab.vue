@@ -131,17 +131,16 @@ const handleUpdateSetting = (event: { path: string[], value: any }) => {
 
   // Defensive check to prevent undefined labels
   if (!backendLabel) {
-    console.log('event.path: ', event.path);
-    console.log('backendLabel: ', backendLabel);
     console.error(`[GeneralTab] Invalid generalNavItem value: "${generalNavItem.value}". Expected one of: ${Object.keys(labelMap).join(', ')}`)
     console.error('[GeneralTab] Skipping settings update to prevent data corruption')
     return
   }
 
+  // The nav item is a key inside the `general` section, so it leads the path rather than naming the target
   updateSettings({
-    entityType: 'general',
-    label: backendLabel,
-    path: event.path,
+    entityType: 'section',
+    label: 'general',
+    path: [backendLabel, ...event.path],
     value: event.value
   })
 }

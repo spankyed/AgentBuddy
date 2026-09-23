@@ -339,9 +339,8 @@ describe('settings naming prototype machinery', () => {
   afterEach(() => { delete (Object.prototype as Record<string, unknown>).polluted; });
 
   it.each([
-    ['a path segment', { entityType: 'general', label: 'application', path: ['__proto__', 'polluted'] }],
-    ['a label', { entityType: 'general', label: '__proto__', path: ['polluted'] }],
-    ['a constructor path', { entityType: 'general', label: 'application', path: ['constructor', 'prototype', 'polluted'] }],
+    ['a path segment', { entityType: 'section', label: 'general', path: ['application', '__proto__', 'polluted'] }],
+    ['a constructor path', { entityType: 'section', label: 'general', path: ['application', 'constructor', 'prototype', 'polluted'] }],
     ["a plugin's path", { entityType: 'plugin', label: 'memo-pack/memos', path: ['__proto__', 'polluted'] }],
   ])('keeps %s as data, and pollutes nothing', async (_, update) => {
     const app = await startApp({ systems: ['host/settings'] });
@@ -365,5 +364,67 @@ describe('settings naming prototype machinery', () => {
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
     expect(memos.polluted).toBeUndefined();
     expect(Object.getPrototypeOf(memos)).toBe(Object.prototype);
+  });
+});
+
+// A change names a section by the name whoever registered it gave, and the whole of `path` is inside that section.
+// Addressing it one level in wrote `general.general.projects`, which no reader looks at: the write vanished and the
+// junk key stayed in the user's settings.
+describe('a change to a section', () => {
+  it('writes the section it names, whichever section that is', async () => {
+    const app = await startApp({ systems: ['host/settings'] });
+    await app.connect();
+
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'section', label: 'general', path: ['projects'], value: [{ name: 'one' }] });
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'section', label: 'assistant', path: ['name'], value: 'Ada' });
+
+    const all = services.settings.getAll<Record<string, any>>();
+    expect(all.general.projects).toEqual([{ name: 'one' }]);
+    expect(all.general).not.toHaveProperty('general');
+    expect(all.assistant.name).toBe('Ada');
+    expect(all.general).not.toHaveProperty('assistant');
+  });
+
+  it('refuses a section no pack registered, and stores nothing', async () => {
+    const app = await startApp({ systems: ['host/settings'] });
+    await app.connect();
+
+    await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'section', label: 'not-a-section', path: ['x'], value: 1 });
+
+    expect(app.emitted('host/settings').map((e) => e.type)).toContain('SETTINGS_REFUSED');
+    expect(services.settings.getStored<Record<string, any>>()).not.toHaveProperty('not-a-section');
+  });
+});
+
+// Help is a pack contribution (`abuddy.json` `help`), so which packs are installed decides what the Help tab shows.
+// Sending it only with the settings a client asks for on connect left the tab showing the packs that were there when
+// the window opened, until it reconnected.
+describe('the help entries the Settings view shows', () => {
+  const helpFrom = (events: Array<Record<string, any>>, type: string) =>
+    events.filter((e) => e.type === type).map((e) => (e.help as Array<{ id: string }>).map(({ id }) => id));
+
+  it('arrive with the settings a connecting client is sent', async () => {
+    const app = await startApp({ systems: ['host/settings'] });
+    await app.connect();
+
+    expect(helpFrom(app.emitted('host/settings'), 'SETTINGS_LOADED')[0]).toBeDefined();
+  });
+
+  it('are sent again when the installed packs change', async () => {
+    const app = await startApp({ systems: ['host/settings'] });
+    await app.connect();
+    const before = helpFrom(app.emitted('host/settings'), 'SETTINGS_LOADED')[0];
+
+    registerPack({ id: 'helpful-pack', features: {}, help: () => [{ id: 'helpful', question: 'Can a pack answer here?', answer: 'Yes' }] } as never);
+    await app.send('host/settings', { type: 'PACK_CHANGED', packId: 'helpful-pack' } as never);
+    await app.settle();
+
+    expect(helpFrom(app.emitted('host/settings'), 'HELP_UPDATED').at(-1)).toEqual([...before, 'helpful']);
+
+    unregisterPack('helpful-pack');
+    await app.send('host/settings', { type: 'PACK_CHANGED', packId: 'helpful-pack' } as never);
+    await app.settle();
+
+    expect(helpFrom(app.emitted('host/settings'), 'HELP_UPDATED').at(-1)).toEqual(before);
   });
 });
