@@ -13,8 +13,6 @@ export interface HelpEntry {
   id: string;
   question: string;
   answer: string;
-  category?: string;
-  order?: number;
 }
 
 /** Every registered pack's help entries, in the order the packs were first registered */

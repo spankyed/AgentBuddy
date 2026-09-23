@@ -965,11 +965,9 @@ ${specs}
 
   function generateTypes(): string {
     const features = manifest.features ?? [];
-    // A system's types by convention, and any feature that names a `typesEntry` — which is what that field is for,
-    // and the only way a feature with no system of its own contributes types the pack's code shares
-    const typed = features.filter(f => f.system || f.typesEntry);
+    const systemFeatures = features.filter(f => f.system);
 
-    const perFeature = typed.map(f => {
+    const perFeature = systemFeatures.map(f => {
       const lines: string[] = [];
       const tPath = typesEntry(f);
       const fullTypesPath = join(root, tPath) + (tPath.endsWith('.ts') ? '' : '.ts');

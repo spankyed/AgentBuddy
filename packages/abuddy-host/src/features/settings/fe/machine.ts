@@ -130,7 +130,7 @@ export interface SettingsIO {
   report(message: string): void;
 }
 
-function buildSettingsMachine(io: SettingsIO) {
+export function createSettingsMachine(io: SettingsIO) {
   return setup({
   types: {
     context: {} as SettingsContext,
@@ -574,6 +574,5 @@ function buildSettingsMachine(io: SettingsIO) {
  * The Settings plugin's machine, over the two acts only a window can do: starting the app over once a reset has
  * finished, and telling the user a reset failed. The renderer passes the window's; a test passes fakes.
  */
-export const createSettingsMachine = buildSettingsMachine;
 
 export type SettingsState = ActorRefFrom<ReturnType<typeof createSettingsMachine>>;

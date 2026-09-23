@@ -58,11 +58,7 @@ export interface HelpEntry {
     // (undocumented)
     answer: string;
     // (undocumented)
-    category?: string;
-    // (undocumented)
     id: string;
-    // (undocumented)
-    order?: number;
     // (undocumented)
     question: string;
 }

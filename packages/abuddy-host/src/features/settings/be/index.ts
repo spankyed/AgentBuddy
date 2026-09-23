@@ -1,8 +1,6 @@
-// The app's settings: the one row, its one writer, and the pack-facing service over it. The system and the plugin
-// that render them are beside this; what a program composing the app needs is here.
-export { createSettingsStore, SETTINGS_ENTITY, type SettingsChange, type SettingsDocument, type SettingsStore, type SettingsStoreOptions } from './store.ts';
-export {
-  changesFrom, isEqual, PLUGINS_SECTION, removeIn, SETTINGS_KIND, SettingsRefusedError, settingsProblems, setIn,
-  type SettingsCheck,
-} from './document.ts';
+// The app's settings, as a program that composes the app reaches them: the store and the pack-facing service over
+// it, and the document check the Settings view runs before it offers to save. The rest — the pure operations, the
+// row's entity type, the lookup kind — is this feature's own, and its own code imports it by path.
+export { createSettingsStore, type SettingsDocument, type SettingsStore } from './store.ts';
+export { settingsProblems, SettingsRefusedError } from './document.ts';
 export { createSettingsService } from '../../../services/settings.ts';
