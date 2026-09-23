@@ -3,6 +3,7 @@ import type { SeedHooks } from '@abuddy/sdk/seed';
 import type { Seeder } from '@abuddy/sdk/utils';
 import { checkFeatureSettings, type FeatureSettings, type PackCommand, type HelpEntry, type PackSettingsDefaults } from '@abuddy/sdk/framework';
 import { resolveName } from '@abuddy/sdk/ids';
+import { createLogger } from '@abuddy/sdk/logger';
 
 /** Seed hooks per entity type, each type's owned by the pack that registered it */
 export function createSeedHookStore() {
@@ -171,6 +172,7 @@ export function createShutdownHooks() {
  * view lists them all, so there is nothing to collide over.
  */
 export function createHelpStore() {
+  const logger = createLogger('packs');
   const byPack = new Map<string, () => HelpEntry[]>();
   const rank = new Map<string, number>();
   return {
@@ -191,7 +193,11 @@ export function createHelpStore() {
         try {
           return read();
         } catch (error) {
-          throw new Error(`Pack "${packId}" could not read its help entries: ${(error as Error).message}`);
+          // A pack that can't read its own help costs its entries and nothing else. This list is read from inside
+          // the settings system, which sends the whole Settings view its data in the same action, so throwing here
+          // left the view with no settings at all — the app's own, over one installed pack's broken build.
+          logger.error(`Pack "${packId}" could not read its help entries, so it answers with none`, { error });
+          return [];
         }
       }),
   };

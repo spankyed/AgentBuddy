@@ -410,6 +410,30 @@ describe('the help entries the Settings view shows', () => {
     expect(helpFrom(app.emitted('host/settings'), 'SETTINGS_LOADED')[0]).toBeDefined();
   });
 
+  // The list is read in the action that sends the Settings view all of its data, so a pack that threw reading its
+  // own help took the whole view down with it: no settings, no secrets, no hotkeys, and no error to say why
+  it("loads the view when an installed pack can't read its own help", async () => {
+    registerPack({ id: 'broken-pack', features: {}, help: () => { throw new Error('no compiled seeds'); } } as never);
+    try {
+      const app = await startApp({ systems: ['host/settings'] });
+      await app.connect();
+      await app.settle();
+
+      const types = app.emitted('host/settings').map((e) => e.type);
+      expect(types).toContain('SETTINGS_LOADED');
+      expect(types).toContain('SECRETS_UPDATED');
+      // Every other pack's entries are there; only the broken pack answers with none
+      expect(helpFrom(app.emitted('host/settings'), 'SETTINGS_LOADED')[0]!.length).toBeGreaterThan(0);
+
+      // And it still answers afterwards, rather than having stopped
+      await app.send('host/settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'default-setup/code', path: ['mdEditorDefault'], value: false });
+      await app.settle();
+      expect(app.emitted('host/settings').map((e) => e.type)).toContain('SETTINGS_SAVED');
+    } finally {
+      unregisterPack('broken-pack');
+    }
+  });
+
   it('are sent again when the installed packs change', async () => {
     const app = await startApp({ systems: ['host/settings'] });
     await app.connect();

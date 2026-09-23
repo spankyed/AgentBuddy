@@ -49,11 +49,19 @@ describe('the help entries registered packs contribute', () => {
     expect(registry.help()).toEqual([]);
   });
 
-  it('says which pack could not read its entries', () => {
+  // The list is read from inside the settings system, in the action that sends the Settings view all its data, so a
+  // pack that throws here used to cost the app its whole settings view rather than its own help
+  it('keeps every other pack\'s when one cannot read its entries, and says which', () => {
+    // No app is bound in this spec, so the logger writes to the console
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
     const registry = createPackRegistry();
+    registry.registerPack(pack('first', () => [entry('a')]));
     registry.registerPack(pack('broken', () => { throw new Error('no compiled seeds'); }));
+    registry.registerPack(pack('last', () => [entry('b')]));
 
-    expect(() => registry.help()).toThrow(/Pack "broken" could not read its help entries: no compiled seeds/);
+    expect(registry.help().map((e) => e.id)).toEqual(['a', 'b']);
+    expect(logged.mock.calls.flat().join(' ')).toMatch(/Pack "broken" could not read its help entries/);
+    logged.mockRestore();
   });
 
   // Two packs may answer the same question; unlike a command name there is nothing to collide over
