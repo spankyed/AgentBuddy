@@ -12,7 +12,7 @@ packages/default-setup/src/features/plugin-handle.ts does NOT. If any of that is
 the plan was surveyed somewhere else. docs/archive/goals/goal-plugin-inbox.md is the work this builds on;
 read its Outcome first, especially "Corrections to the Decisions".
 Read Background, Decisions, Phases and Constraints first. Decisions are final: implement them, don't
-reopen them or stop to ask. Phase 1's two probes gate Phase 6; if either fails, stop and report rather
+reopen them or stop to ask. Phase 1's probes gate Phases 2 and 7; if either fails, stop and report rather
 than redesigning.
 Where a detail isn't specified, pick the conventional option, note it in the final summary, and keep
 going. No backward compatibility in code: change signatures, move modules, migrate every in-repo caller,
@@ -20,10 +20,11 @@ test, fixture, template and doc in the same change, and fix forward. Stored user
 it moves with migrations.
 
 Finished when:
-- Phases 1–6 are implemented and each meets its "Done when"; every new guard, helper or test is
+- Phases 1–7 are implemented and each meets its "Done when"; every new guard, helper or test is
   mutation-checked.
-- A plugin declares one contract, `pluginContract<State, Inbox>()`, beside its definition; `pluginAccepts`
-  and the `PluginAccepts` type no longer exist.
+- Every feature frontend has an `fe/types.ts` leaf holding its context and inbox, importing nothing
+  generated but `#generated/types`; a plugin declares its contract as `definePlugin<State, Inbox>({…})`,
+  and `pluginAccepts` and the `PluginAccepts` type no longer exist.
 - An inbox declares by audience, `pack` by default and `public` only where written; the 17 intra-pack UI
   commands (terminal.CREATE, NOTE.OPEN, TAB.CREATE, NODE.DOUBLE_CLICK and the rest) are gone from
   tests/fixtures/external-pack/src/__generated__/deps/default-setup.d.ts.
@@ -55,8 +56,8 @@ Never:
 - run bare tsc on packages/preload, `npm install` in the example pack, or edit version/release metadata.
 - change the typed EARS types' behaviour (packages/abuddy-sdk/TYPED-EARS.md) to make a call site compile.
 - add backward-compat shims or loosen a failing assertion instead of investigating.
-- put the contract on `definePlugin`'s argument, or in a second file, or behind a manifest field
-  (Decision 2 records why each fails).
+- point codegen at `plugin.ts` for the contract, or let an `fe/types.ts` leaf import `#generated/events`,
+  `#generated/fe` or another feature — either restores the cycle Phase 2 removes (Decision 2).
 - split `defineSystem`'s audiences or add the FE runtime validation map — both are Deferred, with the
   conditions that would reopen them.
 - publish a plugin's whole context without saying so: `State` is a declared type, and a feature that wants
@@ -129,14 +130,41 @@ export interface ActionsContext { actions: ActionEntity[]; page: number; totalPa
 `NoteDTO`, `ActionEntity`, `Category` — no Vue components, no XState internals. `ThreadsContext`
 (`features/threads/fe/state.ts:256`) is **not exported** today and would need to be.
 
-### Why the declaration sits where it does
+### The cycle is a missing leaf, not a missing indirection
 
-Recorded because it reads as gratuitous indirection and is not. Reading a type off
-`export default definePlugin<E>({…})` makes TypeScript check the call's argument, which holds `state`, the
-machine, which imports `#generated/events`, which imports the plugin module: a cycle, and codegen sees
-`any`. A no-argument call (`pluginAccepts<E>()`, and `defineSystem<…>()` before it) has no argument to
-check, so its type resolves from its own declaration. Any design that puts the contract *inside*
-`definePlugin`'s argument fails for this reason, whatever it looks like.
+The archived goal recorded that a plugin's contract cannot live on `definePlugin`'s argument: typing the
+call makes TypeScript check that argument, which holds the machine, which imports `#generated/events`,
+which imports the plugin module. `pluginAccepts<E>()` survives only because a no-argument call has no
+argument to check.
+
+That is true, and it is a symptom. The cause is **where the context type lives**:
+
+```
+__generated__/events.ts  →  fe/plugin.ts  →  fe/state.ts  →  __generated__/events.ts
+                             (the contract)   (the machine, and NotesContext)
+```
+
+`NotesContext` is declared at `features/notes/fe/state.ts:20` — inside the module that also holds the
+machine and imports the generated sends. **No feature has an `fe/types.ts`**; all ten frontend contexts are
+declared inside their machines. The backend has `be/types.ts` as a separate module; the frontend never grew
+one.
+
+Move each context and each inbox union into a leaf that imports nothing generated, and the generated module
+points at that leaf instead of at `plugin.ts`. The chain terminates and the cycle is gone rather than
+dodged. `state.ts` keeps importing the sends — that was never the problem.
+
+Three things follow, and they are why this goal starts there:
+
+- `pluginAccepts()` stops being load-bearing. With no cycle, `definePlugin<State, Inbox>({…})` resolves, so
+  the contract goes where an author expects it and the SDK loses an export rather than gaining one.
+- The tripwire disappears. Today, "simplifying" `accepts` into `definePlugin`'s type parameters breaks the
+  build with an error that doesn't name the cycle. Afterwards that simplification is simply correct.
+- The read channel gets much safer. Phase 7 needs each context in the facade; a context declared inside the
+  machine drags the machine's import graph at the facade gate, and one in a leaf carries only its data types.
+
+The constraint that survives: the generated module must read the contract from the **leaf**, never from
+`plugin.ts`, because `plugin.ts` imports the machine to pass it to `definePlugin`. Point codegen back at
+`plugin.ts` and the loop returns.
 
 ### What is enforceable, and what is not
 
@@ -168,24 +196,34 @@ Final.
    so a sibling can send it must not thereby create API for every dependent pack — which is exactly what
    happened to the 17 commands.
 
-2. **The contract is one named export beside the plugin: `pluginContract<State, Inbox>()`.**
+2. **A feature's frontend types live in a leaf, and the contract goes on `definePlugin`.**
 
    ```ts
+   // features/notes/fe/types.ts — imports nothing generated
+   export interface NotesContext { notes: NoteDTO[]; currentNote: NoteDTO | null; … }
+   export type NotesInbox = PluginInbox<{ pack: { type: 'NOTE.OPEN'; noteId: string } }>
+   ```
+   ```ts
    // features/notes/fe/plugin.ts
-   export const contract = pluginContract<NotesContext, NotesInbox>()
-   export default definePlugin({ label, icon, state, canvas, panel, settings })
+   export default definePlugin<NotesContext, NotesInbox>({ label, icon, state, canvas, panel, settings })
    ```
 
-   It replaces `pluginAccepts`, widened by one type parameter. `pluginAccepts` and the `PluginAccepts` type
-   are deleted; `definePlugin` is untouched.
+   `pluginAccepts` and the `PluginAccepts` type are **deleted**, not widened. They exist only to dodge the
+   cycle, and the leaf removes the cycle (Background). Codegen reads the contract from `fe/types.ts`.
 
-   Three shapes were considered and rejected, each for a reason worth keeping:
-   - **On `definePlugin`'s type parameters** — fails on the argument cycle above, whatever the parameters.
-   - **A separate `fe/contract.ts` named in the manifest** — works, but adds a file and a manifest field to
-     say what one line in the file that already exists can say.
-   - **Two bare type exports (`State`, `Inbox`)** — works, but two magic names instead of one symbol.
+   Two rules this decision rests on, both load-bearing:
+   - **Codegen must read the leaf, never `plugin.ts`.** `plugin.ts` imports the machine to pass it to
+     `definePlugin`, so pointing the generated module back at it restores the loop.
+   - **`fe/types.ts` imports nothing generated.** It may import `#generated/types` (itself a leaf of
+     backend types) and its own feature's `be/types`, and nothing else from `#generated/*`.
 
-   A misspelled `contract` is not silent: every intended reader and sender fails to compile at once.
+   What this replaces, and why each alternative is worse now:
+   - **A named `accepts` export from a no-argument call** (today's shape) — works, but only by avoiding
+     argument-checking. It survives a cycle instead of removing one, and reads as indirection with no
+     visible cause.
+   - **A separate `fe/contract.ts` named in the manifest** — the leaf makes the extra file and the manifest
+     field unnecessary; the types have to move anyway, and `types.ts` is where a reader looks for them.
+   - **Two bare type exports read by convention** — two magic names where the call site can carry both.
 
 3. **`State` is what any feature or pack may read of the plugin.** Codegen emits `PackPluginState`
    (feature id → `State`) beside `PackPluginEvents`, and it joins the facade, so a dependent's
@@ -203,9 +241,9 @@ Final.
    tags keeps the SDK's untyped `usePluginState`, which is the escape hatch — the same relation
    `untypedQx` has to `#generated/ears`, and `openPlugin` to `navigateToPlugin`.
 
-5. **`State` defaults to the whole context, and narrowing is one line.** `export const contract =
-   pluginContract<NotesContext, …>()` publishes the context, which is the blessed path and what a pack
-   author reaches for. A feature that wants a contract narrower than its context writes
+5. **`State` defaults to the whole context, and narrowing is one line.**
+   `definePlugin<NotesContext, NotesInbox>({…})` publishes the context, which is the blessed path and what a
+   pack author reaches for. A feature that wants a contract narrower than its context writes
    `Pick<NotesContext, 'notes' | 'currentNote'>`.
 
    **This makes context fields API.** `ActionsContext.page`, `NotesContext.pendingSubDocumentInsert` and
@@ -233,14 +271,15 @@ Final.
 
 ### Phase 1 — Two probes
 
-Both gate Phase 6 and nothing else. Neither writes production code; both record their result in this doc
+The first gates Phase 2, the second Phase 7. Neither writes production code; both record their result in this doc
 under `## Spike results (YYYY-MM-DD)`.
 
-- **Contract resolution.** Can codegen read `pluginContract<NotesContext, …>()`'s first type argument, where
-  that argument is a real context type from a module the plugin's value graph reaches? Probe with
-  `createModuleExports` over the real plugin entries, as `acceptedEventTypesOf` is exercised today. The
-  archived goal's Outcome says why this is not obvious.
-- **Facade weight and safety.** Add the 11 context types to `pack-types.ts` by hand, run `abuddy build` and
+- **The leaf breaks the cycle.** Extract one feature's context and inbox into `fe/types.ts`, point codegen
+  at it, and read the contract off `definePlugin<Context, Inbox>({…})` with `createModuleExports` over the
+  real plugin entries — the harness that caught the original failure. This is the assumption Phase 2 and
+  Decision 2 rest on, and the archived goal's Outcome says why it is not obvious. Do `notes` first: it has
+  the smallest context and already declares an inbox.
+- **Facade weight and safety.** Add the 10 context types to `pack-types.ts` by hand, run `abuddy build` and
   `facadeProblems`. Record: do they pass the gate, and by how many lines does `dist/types/pack-types.d.ts`
   grow from its current size. `ThreadsContext` is not exported today; note every context that needs
   exporting or narrowing.
@@ -248,7 +287,24 @@ under `## Spike results (YYYY-MM-DD)`.
 **Done when:** both results are in this doc with the commands used, and the probe changes are reverted
 (`git status` clean apart from this doc).
 
-### Phase 2 — The `pack` audience
+### Phase 2 — A types leaf per feature frontend
+
+The change every later phase rests on, and the only one that is purely mechanical.
+
+- `features/<id>/fe/types.ts` for each of the ten features whose context is declared inside its machine
+  (`actions`, `brain`, `browser`, `database`, `flows`, `library`, `logs`, `notes`, `prompts`, `threads`).
+  Move the context interface and any event unions the contract names; export `ThreadsContext`, which is not
+  exported today (`features/threads/fe/state.ts:256`).
+- `state.ts` imports its context from there. Nothing else moves: the machine keeps importing the generated
+  sends, which was never the problem.
+- The leaf imports nothing from `#generated/*` except `#generated/types`, and nothing from another feature.
+
+**Done when:** `npm run typecheck`, `npm run compile`, `npm test -w @app/default-setup` pass with no
+behaviour change; every `fe/types.ts` is free of `#generated/events`, `#generated/fe` and cross-feature
+imports, and a guard in `scripts/check-import-specifiers.ts` says so. Mutation: adding
+`import { sendToSystem } from '@/__generated__/events'` to one leaf fails that guard.
+
+### Phase 3 — The `pack` audience
 
 - `PluginInbox<{ pack?, public? }>` in `@abuddy/sdk/fe` (Decision 1).
 - `generate-entries.ts`: `OwnPluginEvents` becomes derived | `pack` | `public`; `PackPluginEvents` narrows
@@ -262,18 +318,23 @@ longer appear in `tests/fixtures/external-pack/src/__generated__/deps/default-se
 `navigateToPlugin` still compiles at every in-repo caller. Mutation: moving one event from `pack` to
 `public` puts it back in that file.
 
-### Phase 3 — One contract per plugin
+### Phase 4 — One contract per plugin
 
-- `pluginContract<State, Inbox>()` replacing `pluginAccepts`; delete `pluginAccepts` and `PluginAccepts`
-  (Decision 2).
-- Codegen reads both halves from the one export; `State` for now may be `unknown` until Phase 6 uses it.
-- Migrate the 10 plugins that declare an inbox, and add a contract to the one that doesn't.
+After Phase 2, which is what makes this possible.
 
-**Done when:** `npm run typecheck`, `npm run compile`, `npm test -w @abuddy/sdk` pass; `api:update` run in
-`packages/abuddy-sdk` with `etc/` committed; `git grep pluginAccepts` returns nothing. Mutation: misspelling
-a plugin's `contract` export fails the build naming that plugin.
+- `definePlugin<State, Inbox>({…})` carries the contract; codegen reads both halves from `fe/types.ts`
+  (Decision 2). **Delete** `pluginAccepts` and the `PluginAccepts` type — they exist only to dodge the
+  cycle Phase 2 removed.
+- `State` may resolve to `unknown` until Phase 7 uses it; the parameter lands now so the plugins are
+  migrated once.
+- Migrate all eleven plugins, and the CLI's `abuddy add feature` scaffold with them.
 
-### Phase 4 — The shell owns waiting
+**Done when:** `npm run typecheck`, `npm run compile`, `npm test -w @abuddy/sdk`, `npm test -w @abuddy/cli`
+pass; `api:update` run in `packages/abuddy-sdk` with `etc/` committed; `git grep pluginAccepts` returns
+nothing. Mutation: pointing codegen at `plugin.ts` instead of `fe/types.ts` restores the cycle and fails the
+build — the check that Phase 2's rule is what holds, not luck.
+
+### Phase 5 — The shell owns waiting
 
 - `SEND_TO_PLUGIN { plugin, events }` on `HostShell`, answered by the same `pendingOpens` path as
   `OPEN_PLUGIN` (Decision 7); `_sendToLocalPlugin` sends it instead of reaching for the actor.
@@ -283,7 +344,7 @@ a plugin's `contract` export fails the build naming that plugin.
 loading is delivered once it arrives, and reported through `notify` once loading settles with no such
 plugin. Mutation: dropping the queue makes that spec fail rather than the send silently throwing.
 
-### Phase 5 — The spec the archived goal left open
+### Phase 6 — The spec the archived goal left open
 
 - Pin that a backend `broadcastToPlugin` reaches **every** window and a renderer `sendToPlugin` reaches only
   its own — the half that produced `OPEN_PLUGIN_FROM_APP`. Two windows in one E2E, or the shell fakes in
@@ -291,11 +352,13 @@ plugin. Mutation: dropping the queue makes that spec fail rather than the send s
 
 **Done when:** the spec passes and fails when the renderer send is routed through the bus.
 
-### Phase 6 — The read channel
+### Phase 7 — The read channel
 
-After Phase 1 and Phase 3.
+After Phase 1's facade probe and Phase 4.
 
-- `PackPluginState` emitted from each plugin's `State`, added to `generatePackTypes()` (Decision 3).
+- `PackPluginState` emitted from each plugin's `State`, added to `generatePackTypes()` (Decision 3). A
+  feature whose context the facade gate refuses narrows its `State` with `Pick<>` rather than the design
+  changing (Decision 5).
 - The typed reader in `#generated/fe` (Decision 4), with `readPluginState`'s one-shot twin.
 - Delete every `features/*/fe/public.ts`; migrate its 14 consumers to the reader.
 - `findCrossFeatureImports`: drop the `public` exception, so no feature imports another's `fe/`
