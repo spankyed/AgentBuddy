@@ -1,13 +1,14 @@
 // What the brain plugin offers other features: the root flow the running brain started with.
 // Other features import this module, never the plugin's machine.
-import { useSelector } from '@xstate/vue'
-import { pluginHandle } from '@/features/plugin-handle'
+import type { SnapshotFrom } from 'xstate'
+import { usePluginState } from '@abuddy/sdk/fe'
+import { ref as featureRef } from '@/__generated__/ref'
 import type { BrainState } from './state'
 
-/** The brain plugin's actor, which its machine binds as it starts */
-export const brainPlugin = pluginHandle<BrainState>('brain')
+/** The ref the brain plugin runs at */
+export const BRAIN = featureRef('brain')
 
 /** The root flow the running brain started with; undefined while it's stopped */
 export function useRunningRootFlowId() {
-  return useSelector(brainPlugin.get(), (state) => state.context.runningRootFlowId)
+  return usePluginState(BRAIN, (s: SnapshotFrom<BrainState>) => s.context.runningRootFlowId)
 }

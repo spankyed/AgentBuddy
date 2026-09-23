@@ -1,20 +1,24 @@
 // What the actions plugin offers other features: its list of actions as it pages them, and the edits it takes.
 // Other features import this module, never the plugin's machine.
-import { useSelector } from '@xstate/vue'
+import type { SnapshotFrom } from 'xstate'
+import { usePluginState } from '@abuddy/sdk/fe'
 import { pluginHandle } from '@/features/plugin-handle'
+import { ref as featureRef } from '@/__generated__/ref'
 import type { ActionsEvents, ActionsState } from './state'
 
-/** The actions plugin's actor, which its machine binds as it starts */
+/** The ref the actions plugin runs at */
+export const ACTIONS = featureRef('actions')
+
+/** The actions plugin's actor, which its machine binds as it starts. Only the send below still needs it. */
 export const actionsPlugin = pluginHandle<ActionsState>('actions')
 
 /** The actions as the actions plugin has loaded them, and its paging */
 export function useActionsList() {
-  const actor = actionsPlugin.get()
   return {
-    actions: useSelector(actor, (state) => state.context.actions),
-    page: useSelector(actor, (state) => state.context.page),
-    totalPages: useSelector(actor, (state) => state.context.totalPages),
-    loadingMore: useSelector(actor, (state) => state.context.loadingMore),
+    actions: usePluginState(ACTIONS, (s: SnapshotFrom<ActionsState>) => s.context.actions),
+    page: usePluginState(ACTIONS, (s: SnapshotFrom<ActionsState>) => s.context.page),
+    totalPages: usePluginState(ACTIONS, (s: SnapshotFrom<ActionsState>) => s.context.totalPages),
+    loadingMore: usePluginState(ACTIONS, (s: SnapshotFrom<ActionsState>) => s.context.loadingMore),
   }
 }
 

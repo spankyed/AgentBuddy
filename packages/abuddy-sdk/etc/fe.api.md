@@ -409,6 +409,9 @@ export function processHotkeys<const T extends Record<string, string>, H = unkno
 // @public (undocumented)
 export function pushNavHistory<T>(history: NavHistory<T>, entry: T): NavHistory<T>;
 
+// @public
+export function readPluginState<TSnapshot, TSelected>(ref: string, selector: (snapshot: TSnapshot) => TSelected): TSelected;
+
 // @public (undocumented)
 export type RouteComponents = Record<RouteName, Component>;
 
@@ -590,6 +593,9 @@ export function useFeatureSettings<T = unknown>(feature: FeatureRef): Readonly<R
 
 // @public
 export function usePlugin<T>(): T;
+
+// @public
+export function usePluginState<TSnapshot, TSelected>(ref: string, selector: (snapshot: TSnapshot) => TSelected): Readonly<Ref<TSelected>>;
 
 // @public
 export function useSettingsSave(): {

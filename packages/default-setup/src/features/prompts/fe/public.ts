@@ -1,20 +1,24 @@
 // What the prompts plugin offers other features: its list of prompts as it pages them, and the edits it takes.
 // Other features import this module, never the plugin's machine.
-import { useSelector } from '@xstate/vue'
+import type { SnapshotFrom } from 'xstate'
+import { usePluginState } from '@abuddy/sdk/fe'
 import { pluginHandle } from '@/features/plugin-handle'
+import { ref as featureRef } from '@/__generated__/ref'
 import type { PromptsEvents, PromptsState } from './state'
 
-/** The prompts plugin's actor, which its machine binds as it starts */
+/** The ref the prompts plugin runs at */
+export const PROMPTS = featureRef('prompts')
+
+/** The prompts plugin's actor, which its machine binds as it starts. Only the send below still needs it. */
 export const promptsPlugin = pluginHandle<PromptsState>('prompts')
 
 /** The prompts as the prompts plugin has loaded them, and its paging */
 export function usePromptsList() {
-  const actor = promptsPlugin.get()
   return {
-    prompts: useSelector(actor, (state) => state.context.prompts),
-    page: useSelector(actor, (state) => state.context.page),
-    totalPages: useSelector(actor, (state) => state.context.totalPages),
-    loadingMore: useSelector(actor, (state) => state.context.loadingMore),
+    prompts: usePluginState(PROMPTS, (s: SnapshotFrom<PromptsState>) => s.context.prompts),
+    page: usePluginState(PROMPTS, (s: SnapshotFrom<PromptsState>) => s.context.page),
+    totalPages: usePluginState(PROMPTS, (s: SnapshotFrom<PromptsState>) => s.context.totalPages),
+    loadingMore: usePluginState(PROMPTS, (s: SnapshotFrom<PromptsState>) => s.context.loadingMore),
   }
 }
 

@@ -1,7 +1,7 @@
 import { History } from 'lucide-vue-next'
-import { useSelector } from '@xstate/vue'
+import { usePluginState } from '@abuddy/sdk/fe'
 import { navigateToPlugin } from '@/__generated__/fe'
-import { threadsPlugin } from './public'
+import { THREADS } from './public'
 import { id as threads, threadsFromStore } from './state'
 import type { ReferenceTypeConfig, CategoryConfig, CategoryItemsProvider, ReferenceItem } from '@abuddy/sdk/fe/references'
 
@@ -29,7 +29,7 @@ export const categories: CategoryConfig[] = [
 export const itemsProvider: CategoryItemsProvider = {
   category: 'threads',
   // The plugin's state, as it changes
-  useItems: () => useSelector(threadsPlugin.get(), (actorState: any): ReferenceItem[] => {
+  useItems: () => usePluginState(THREADS, (actorState: any): ReferenceItem[] => {
     const threadMap = actorState?.context?.threadMap || {}
     const threadIds = actorState?.context?.threadIds || []
     const sorted = threadsFromStore(threadMap, threadIds)

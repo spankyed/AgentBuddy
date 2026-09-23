@@ -1,36 +1,41 @@
 // What the threads plugin offers other features: the open thread, its chat settings and slash commands, and the
 // artifact and to-do list events its views take. Other features import this module, never the plugin's machine.
-import { useSelector } from '@xstate/vue'
+import type { SnapshotFrom } from 'xstate'
+import { readPluginState, usePluginState } from '@abuddy/sdk/fe'
 import { pluginHandle } from '@/features/plugin-handle'
+import { ref as featureRef } from '@/__generated__/ref'
 import type { CommandItem } from '@/extensions/tiptap/command-config'
 import type { ThreadsState } from './state'
 
-/** The threads plugin's actor, which its machine binds as it starts */
+/** The ref the threads plugin runs at */
+export const THREADS = featureRef('threads')
+
+/** The threads plugin's actor, which its machine binds as it starts. Only the sends below still need it. */
 export const threadsPlugin = pluginHandle<ThreadsState>('threads')
 
 /** The thread open in the chat */
 export function useCurrentThread() {
-  return useSelector(threadsPlugin.get(), (state) => state.context.currentThread)
+  return usePluginState(THREADS, (s: SnapshotFrom<ThreadsState>) => s.context.currentThread)
 }
 
 /** The threads plugin's settings (chat states among them) */
 export function useThreadsSettings() {
-  return useSelector(threadsPlugin.get(), (state) => state.context.settings)
+  return usePluginState(THREADS, (s: SnapshotFrom<ThreadsState>) => s.context.settings)
 }
 
 /** A chat state shown in place of a thread's own for a while, by thread */
 export function useChatStateOverrides() {
-  return useSelector(threadsPlugin.get(), (state) => state.context.chatStateOverrides)
+  return usePluginState(THREADS, (s: SnapshotFrom<ThreadsState>) => s.context.chatStateOverrides)
 }
 
 /** The slash commands the chat offers, as they change */
 export function useSlashCommands() {
-  return useSelector(threadsPlugin.get(), (state) => state.context.commands)
+  return usePluginState(THREADS, (s: SnapshotFrom<ThreadsState>) => s.context.commands)
 }
 
 /** The slash commands the chat offers now */
 export function slashCommands(): CommandItem[] {
-  return threadsPlugin.get().getSnapshot().context.commands
+  return readPluginState(THREADS, (s: SnapshotFrom<ThreadsState>) => s.context.commands)
 }
 
 /** Shows an artifact of the open thread */
