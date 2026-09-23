@@ -450,5 +450,5 @@ export const terminalState = setup({
   }
 });
 
-/** The terminal child's actor, as the code plugin's components reach it with `codeChild<TerminalActor>()` */
+/** The terminal child's actor, as the code plugin's components reach it with `codeChild()` */
 export type TerminalActor = ActorRefFrom<typeof terminalState>;

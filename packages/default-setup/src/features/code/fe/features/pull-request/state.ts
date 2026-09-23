@@ -1,4 +1,4 @@
-import { setup, assign, enqueueActions } from 'xstate';
+import { setup, assign, enqueueActions , type ActorRefFrom } from 'xstate';
 import { sendToSystem } from '@/__generated__/events';
 import type { GitStatusFile, GitDiff } from '../commit/state';
 import type { GhPullRequest, GhPRComment, GhReviewThread } from '@/__generated__/types';
@@ -978,3 +978,6 @@ export const pullRequestState = setup({
     }
   }
 });
+
+/** The pull-request child's actor, named by whoever reads its context (`codeChild(…)`) */
+export type PullRequestActor = ActorRefFrom<typeof pullRequestState>;

@@ -1,4 +1,4 @@
-import { setup } from 'xstate';
+import { setup , type ActorRefFrom } from 'xstate';
 import { sendToSystem } from '@/__generated__/events';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
 import type { PromptEntity } from '@abuddy/sdk';
@@ -130,3 +130,6 @@ export const promptsState = setup({
     idle: {}
   }
 })
+
+/** The prompts child's actor, named by whoever reads its context (`codeChild(…)`) */
+export type CodePromptsActor = ActorRefFrom<typeof promptsState>;

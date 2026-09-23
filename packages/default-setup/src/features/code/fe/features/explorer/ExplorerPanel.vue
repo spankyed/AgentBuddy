@@ -88,7 +88,7 @@
 
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
-import { codeChild } from '@/features/code/fe/utils/parent-communication'
+
 import type { CodeSettings } from '@/__generated__/types'
 import { useFeatureSettings } from '@abuddy/sdk/fe'
 import { ref as featureRef } from '@/__generated__/ref'
@@ -104,13 +104,12 @@ import { FolderOpen, FolderPlus, RefreshCw, AlertCircle, X } from 'lucide-vue-ne
 import { useExplorerSelection } from './composables/useExplorerSelection'
 import { useExplorerDragDrop } from './composables/useExplorerDragDrop'
 import type { FileInfo } from './state'
-import type { ExplorerActor } from './state'
-import type { TerminalActor } from '../terminal/state'
+import { codeChild } from '../children';
 
 // Get actors
 const codeActor: CodeState = usePlugin()
-const explorerActor = codeChild<ExplorerActor>(codeActor, 'explorer')!
-const terminalActor = codeChild<TerminalActor>(codeActor, 'terminal')!
+const explorerActor = codeChild(codeActor, 'explorer')!
+const terminalActor = codeChild(codeActor, 'terminal')!
 
 // State selectors
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)

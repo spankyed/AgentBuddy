@@ -672,5 +672,5 @@ export const explorerState = setup({
   }
 });
 
-/** The explorer child's actor, as the code plugin's components reach it with `codeChild<ExplorerActor>()` */
+/** The explorer child's actor, as the code plugin's components reach it with `codeChild()` */
 export type ExplorerActor = ActorRefFrom<typeof explorerState>;

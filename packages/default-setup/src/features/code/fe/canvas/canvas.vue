@@ -95,7 +95,7 @@
 
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
-import { codeChild } from '@/features/code/fe/utils/parent-communication'
+
 import { useExternalFileDrag } from '@abuddy/ui/composables/useExternalFileDrag'
 import { useSelector } from '@xstate/vue'
 import { type CodeState, type OpenFile, setEditorSelectionGetter, isEditableDiff } from '../state'
@@ -104,6 +104,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from 'vue'
 import FileEditor from '@/features/code/fe/canvas/FileEditor.vue'
 import QuickOpenPalette from '@/features/code/fe/canvas/QuickOpenPalette.vue'
 import { reorderTabs } from '../utils/tab-management'
+import { codeChild } from '../features/children';
 
 const actor: CodeState = usePlugin()
 const explorerActor = codeChild(actor, 'explorer')
@@ -276,9 +277,11 @@ const moveToPanel = (path: string) => actor.send({ type: 'MOVE_TERMINAL_TO_PANEL
 const restartTerminal = (path: string) => {
   const file = openFiles.value.find(f => f.path === path) as any
   if (!file?.isTerminal) return
-  const { cwd, shell } = file.terminalInfo
+  // `terminal.CREATE` carries no shell — the child forwards only title and cwd to the system — so reopening takes
+  // the default shell, as it always has
+  const { cwd } = file.terminalInfo
   actor.send({ type: 'KILL_TERMINAL', path })
-  terminalActor?.send({ type: 'terminal.CREATE', cwd, shell, target: 'tab' })
+  terminalActor?.send({ type: 'terminal.CREATE', cwd, target: 'tab' })
 }
 
 const closeFile = (path: string) => actor.send({ type: 'CLOSE_TAB', path })

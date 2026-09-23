@@ -188,7 +188,7 @@
 
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
-import { codeChild } from '@/features/code/fe/utils/parent-communication'
+
 import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import type { CodeState } from '@/features/code/fe/state'
@@ -196,6 +196,7 @@ import { ChevronRight, ChevronsDownUp, Search } from 'lucide-vue-next'
 import CodePanelHeader from '@/features/code/fe/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/features/code/fe/features/NoDirectoryState.vue'
 import EmptyState from '@/features/code/fe/features/EmptyState.vue'
+import { codeChild } from '../children';
 
 // Get actors
 const codeActor: CodeState = usePlugin()

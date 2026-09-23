@@ -1,4 +1,4 @@
-import { setup } from 'xstate';
+import { setup , type ActorRefFrom } from 'xstate';
 import { sendToSystem } from '@/__generated__/events';
 import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
 import type { ActionEntity } from '@abuddy/sdk';
@@ -130,3 +130,6 @@ export const actionsState = setup({
     idle: {}
   }
 })
+
+/** The actions child's actor, named by whoever reads its context (`codeChild(…)`) */
+export type CodeActionsActor = ActorRefFrom<typeof actionsState>;

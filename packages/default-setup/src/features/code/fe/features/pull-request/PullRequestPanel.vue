@@ -244,7 +244,7 @@
 </template>
 
 <script setup lang="ts">
-import { codeChild } from '@/features/code/fe/utils/parent-communication'
+
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { usePlugin, useShell } from '@abuddy/sdk/fe'
@@ -264,6 +264,7 @@ import PRComments from '@/features/code/fe/features/pull-request/PRComments.vue'
 import PRActionBar from '@/features/code/fe/features/pull-request/PRActionBar.vue'
 import type { GitStatusFile } from '@/features/code/fe/features/commit/state'
 import type { TreeNode } from './types'
+import { codeChild } from '../children';
 
 // Get actors
 const shell = useShell()

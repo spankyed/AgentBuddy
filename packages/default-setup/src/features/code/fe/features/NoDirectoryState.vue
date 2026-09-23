@@ -43,10 +43,11 @@
 
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
-import { codeChild } from '@/features/code/fe/utils/parent-communication'
+
 import { FolderOpen } from 'lucide-vue-next'
 import type { CodeState } from '@/features/code/fe/state'
 import { useProjectActions } from './explorer/composables/useProjectActions'
+import { codeChild } from './children';
 
 const codeActor: CodeState = usePlugin()
 const explorerActor = codeChild(codeActor, 'explorer')!

@@ -191,7 +191,7 @@
 
 <script setup lang="ts">
 import { usePlugin } from '@abuddy/sdk/fe'
-import { codeChild } from '@/features/code/fe/utils/parent-communication'
+
 import type { CodeSettings } from '@/__generated__/types'
 import { updateSettings, useFeatureSettings } from '@abuddy/sdk/fe'
 import { ref as featureRef } from '@/__generated__/ref'
@@ -224,13 +224,13 @@ import type { TerminalScript } from '@/__generated__/types'
 import type { Terminal } from '@xterm/xterm'
 import type { FitAddon } from '@xterm/addon-fit'
 import type { IDisposable } from '@xterm/xterm'
-import type { TerminalActor } from './state'
+import { codeChild } from '../children';
 
 const props = withDefaults(defineProps<{ height?: number }>(), { height: 256 })
 
 // Actors
 const codeActor: CodeState = usePlugin()
-const terminalActor = codeChild<TerminalActor>(codeActor, 'terminal')!
+const terminalActor = codeChild(codeActor, 'terminal')!
 
 // State selectors
 const panelTerminalId = useSelector(codeActor, (state) => state.context.panelTerminalId)

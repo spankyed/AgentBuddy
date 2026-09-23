@@ -1,5 +1,3 @@
-import type { AnyActorRef } from 'xstate'
-
 export const updateParentState = (self: any, updates: any) => {
   try {
     if (self._parent) {
@@ -56,11 +54,3 @@ export const getParentContext = (self: any) => {
     return null
   }
 }
-
-/**
- * One of the code plugin's children, by the id it was spawned under. Which child an id stands for isn't knowable
- * here, so a caller that reads the child's context names its actor type (`codeChild<ExplorerActor>(…)`) and gets a
- * compile error when that machine drops a field. One that only sends to the child needs no type.
- */
-export const codeChild = <T extends AnyActorRef = AnyActorRef>(code: AnyActorRef, id: string): T | undefined =>
-  code.getSnapshot().children[id] as T | undefined

@@ -1,5 +1,5 @@
 import { setup, type ActorRefFrom, type AnyActorRef, assign, enqueueActions } from 'xstate';
-import { codeChild } from './utils/parent-communication';
+
 import breadcrumb from '@abuddy/sdk/fe';
 import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@abuddy/sdk/fe';
 import { saveOpenTabs, loadPersistedTabs, sortTabsByPinned } from './utils/persisted-tabs';
@@ -19,6 +19,7 @@ import { terminalState, type TerminalInfo } from './features/terminal/state';
 import { actionsState, type ActionTab } from './features/actions/state';
 import { promptsState, type PromptTab } from './features/prompts/state';
 import type { KeyboardShortcut } from '@abuddy/sdk/types';
+import { codeChild, routeToCodeChild, CODE_CHILD_IDS } from './features/children';
 
 export const id = 'code' as const;
 
@@ -628,23 +629,22 @@ const codeState = setup({
         }, 2500)
       })
     }),
+    // Hands every child whatever arrived and lets each ignore what it doesn't handle. That is routing rather than
+    // addressing one child, so there is no single event union to check against and the children stay untyped here —
+    // as in `routeEvent`. Every call that names one child names its type.
     broadcastToAllFeatures: ({ event, self }) => {
-      codeChild(self, 'explorer')?.send(event);
-      codeChild(self, 'search')?.send(event);
-      codeChild(self, 'commit')?.send(event);
-      codeChild(self, 'pr')?.send(event);
-      codeChild(self, 'terminal')?.send(event);
-      codeChild(self, 'codeActions')?.send(event);
-      codeChild(self, 'codePrompts')?.send(event);
+      for (const id of CODE_CHILD_IDS) routeToCodeChild(self, id, event);
     },
 
     routeEvent: ({ event, self }) => {
       const eventType = event.type;
 
-      // An event's prefix names the child that handles it
+      // An event's prefix names the child that handles it. The one call whose child isn't known here: which
+      // machine `prefix` stands for is the event's to say at runtime, so this is the routing itself and there is
+      // no actor type to name — every other call names one.
       if (eventType.includes('.')) {
         const [prefix] = eventType.split('.');
-        codeChild(self, prefix)?.send(event);
+        routeToCodeChild(self, prefix, event);
       }
     },
 
@@ -879,12 +879,10 @@ const codeState = setup({
     }),
 
     closePanelTerminal: enqueueActions(({ enqueue, context, self }) => {
-      if (context.panelTerminalId) {
+      const terminalId = context.panelTerminalId;
+      if (terminalId) {
         enqueue(() => {
-          codeChild(self, 'terminal')?.send({
-            type: 'terminal.CLOSE',
-            terminalId: context.panelTerminalId
-          })
+          codeChild(self, 'terminal')?.send({ type: 'terminal.CLOSE', terminalId })
         })
       }
       enqueue(assign({ panelTerminalId: null, panelTerminalExpanded: false }))

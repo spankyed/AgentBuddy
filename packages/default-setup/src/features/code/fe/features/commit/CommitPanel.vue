@@ -628,7 +628,7 @@
 </template>
 
 <script setup lang="ts">
-import { codeChild } from '@/features/code/fe/utils/parent-communication'
+
 import { computed, ref, nextTick, watch } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { usePlugin, useShell } from '@abuddy/sdk/fe'
@@ -647,6 +647,7 @@ import ToastNotification from '@abuddy/ui/design/ToastNotification'
 import ContextMenuPopup from '@abuddy/ui/design/ContextMenuPopup'
 import PanelResizer from '@abuddy/ui/layout/panel-resizer'
 import { useSectionVisibilityMenu } from '@/features/code/fe/composables/useSectionVisibilityMenu'
+import { codeChild } from '../children';
 
 // Get actors
 const shell = useShell()
