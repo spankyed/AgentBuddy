@@ -447,12 +447,13 @@ Final.
    both functions and into `packages/abuddy-sdk`'s docs, and pinned by a spec that fails if a backend send
    stops reaching every window or a renderer send starts crossing windows.
 
-8. **A feature reads its own settings from its own machine. Done by `goal-settings-to-host.md`; no SDK API.**
+8. **A feature's machine reads its own settings from its own context. Done by `goal-settings-to-host.md`.**
 
-   This decision first proposed `useMySettings()` / `updateMySettings()`. **That was wrong** and is not to be
-   built. A composable cannot serve a machine action — `currentPluginSettings('browser')` was called inside
-   `actions: ({ event }) => …`, where there is no Vue scope — and no API was needed: the feature already has
-   the data in its own context. `goal-settings-to-host` settled it, and its result is the shape to keep:
+   This decision first proposed `useMySettings()` / `updateMySettings()` as the API for it. **Those names were
+   wrong** and are not to be built: a composable cannot serve a machine action — `currentPluginSettings('browser')`
+   was called inside `actions: ({ event }) => …`, where there is no Vue scope — and a machine needs no API at all,
+   because the feature already has the data in its own context. `goal-settings-to-host` settled it, and its result
+   is the shape to keep:
 
    ```ts
    // features/browser/fe/state.ts:323 — was currentPluginSettings<…>('browser')?.openLinksInApp
@@ -461,6 +462,13 @@ Final.
 
    `usePluginSettings` and `currentPluginSettings` no longer exist as pack API; `browser` handles
    `FEATURE_SETTINGS_UPDATED` like the other nine features; writes go through `services.settings`.
+
+   **A frontend API did land, for components rather than machines**, which an earlier draft of this decision
+   ("no SDK API") had wrong. `@abuddy/sdk/fe` exposes `useSettingsSection`, `useFeatureSettings` and
+   `useSettingsSave`, which follow the settings until the calling scope is disposed, and `updateSettings`, which
+   is deliberately not a composable so that code outside a scope — a machine action — can still make a change.
+   They read a `SettingsPort` the renderer binds with `bindFeHost`, so no pack names the view that draws the
+   settings. None of that is this goal's to build or change; it is here so the next reader doesn't rebuild it.
 
    **One residue, which Phase 2 verifies rather than fixes.** That goal's Decision 7 — typing
    `FeatureSettingsUpdated.settings` per feature — did **not** land. It is still
