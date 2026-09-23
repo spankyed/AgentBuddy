@@ -163,6 +163,8 @@ export interface NotesSettings {
 // Browser plugin settings
 export interface BrowserSettings {
   showBookmarksBar: boolean;
+  /** Whether a link opens in the browser plugin rather than the user's own browser; defaults to true */
+  openLinksInApp?: boolean;
 }
 
 // Logs plugin settings
