@@ -31,10 +31,10 @@ export function usePluginState<TSnapshot, TSelected>(
   }
   const actor = pluginActor(ref)
   const selected = shallowRef(selector(actor.getSnapshot() as TSnapshot))
+  // A `shallowRef` triggers only when the value it is given actually changed, so a component reading one field
+  // isn't re-rendered because another moved. Comparing here first would only repeat that.
   const subscription = actor.subscribe((snapshot: unknown) => {
-    const next = selector(snapshot as TSnapshot)
-    // Only a changed value writes the ref, so a component reading one field isn't re-rendered for another
-    if (next !== selected.value) selected.value = next
+    selected.value = selector(snapshot as TSnapshot)
   })
   onScopeDispose(() => subscription.unsubscribe())
   return shallowReadonly(selected) as Readonly<Ref<TSelected>>

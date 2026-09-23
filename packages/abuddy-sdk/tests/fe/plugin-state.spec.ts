@@ -1,11 +1,12 @@
 // Reading another plugin's state by ref: what extension components and a feature's fe/public.ts use, where
 // usePlugin() has no PluginScope to read. The actor comes from the shell's registry, so nothing keeps its own.
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { effectScope, type Ref } from 'vue';
+import { effectScope, watchSyncEffect, type Ref } from 'vue';
 import type { AnyActorRef } from 'xstate';
-import { _sendToLocalPlugin } from '../../src/events/index.ts';
+import { _sendToLocalPlugin, broadcastToPlugin } from '../../src/events/index.ts';
 import { readPluginState, usePluginState } from '../../src/fe/plugin-state.ts';
 import { bindFeHost, unbindFeHost } from '../../src/runtime/fe-host.ts';
+import { bindHost, unbindHost } from '../../src/runtime/host-runtime.ts';
 
 type Snapshot = { context: { notes: string[] } };
 
@@ -76,8 +77,27 @@ describe('usePluginState', () => {
       .toThrow(`"notes" doesn't name a plugin`);
     scope.stop();
   });
-});
 
+  // The ref is written only when the selected value changed, so a component reading one field of a busy
+  // plugin's context isn't re-rendered every time another field moves.
+  it('writes the ref only when the selected value changed', () => {
+    const scope = effectScope();
+    let writes = 0;
+    scope.run(() => {
+      const selected = usePluginState('default-setup/notes', read) as Ref<string[]>;
+      // A dependency on the ref, counted each time it is written
+      const stop = watchSyncEffect(() => { void selected.value; writes += 1; });
+      expect(writes).toBe(1);
+      const same = selected.value;
+      notes.change(same);        // a new snapshot, the same selected value
+      expect(writes).toBe(1);
+      notes.change(['a', 'b']);  // a changed value
+      expect(writes).toBe(2);
+      stop();
+    });
+    scope.stop();
+  });
+});
 describe('readPluginState', () => {
   it('takes the value once, outside any scope, and never follows it', () => {
     expect(readPluginState('default-setup/notes', read)).toEqual(['a']);
@@ -104,6 +124,27 @@ describe('_sendToLocalPlugin', () => {
     _sendToLocalPlugin('default-setup/threads', { type: 'SELECT_ARTIFACT', artifactId: 'a1' });
 
     expect(sent).toEqual([{ type: 'SELECT_ARTIFACT', artifactId: 'a1' }]);
+  });
+
+  // The two sends share a signature, so picking the wrong one compiles. Worse, a pack test that starts both an
+  // app and a shell binds both hosts, where the wrong one would work — so each says which it is by name.
+  it('says which send it is when only the other half is bound', () => {
+    unbindFeHost();
+    expect(() => _sendToLocalPlugin('default-setup/notes', { type: 'X' }))
+      .toThrow(/No frontend host is bound/);
+
+    bindHost({ transport: { rootEvents: { emitPluginSend() {} } } } as never);
+    try {
+      expect(() => _sendToLocalPlugin('default-setup/notes', { type: 'X' }))
+        .toThrow(/sendToPlugin.*is the renderer's.*broadcastToPlugin/s);
+    } finally {
+      unbindHost();
+    }
+  });
+
+  it("says broadcastToPlugin is the backend's when only a window is bound", () => {
+    expect(() => broadcastToPlugin('default-setup/notes', { type: 'X' }))
+      .toThrow(/broadcastToPlugin.*is the backend's.*sendToPlugin/s);
   });
 
   it('says which plugin is not running, rather than dropping the event', () => {

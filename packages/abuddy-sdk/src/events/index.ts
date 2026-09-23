@@ -13,7 +13,7 @@ export { eventTypes, type TypeOfEvent } from './event-types.ts';
 /**
  * A message on the bus: the ref of the system or plugin it goes to, and the event exactly as the sender wrote it.
  * Where it goes is never a field of the event, so an event may carry any field (a `pluginId` of its own included).
- * Messages sent in (`sendToSystem`) go to systems, and messages sent out (`sendToPlugin`) to plugins.
+ * Messages sent in (`sendToSystem`) go to systems, and messages sent out (`broadcastToPlugin`) to plugins.
  */
 export interface Message {
   to: string;
@@ -83,17 +83,8 @@ export function specEvents<S extends { _incoming: unknown; _outgoing: unknown }>
 }
 
 /**
- * Narrows a plugin entry to the inbox it declares, as `specEvents` does a system's spec: `#generated/plugin-specs`
- * keeps only this, so the plugin's machine and components never enter the event types and can't cycle back through
- * `#generated/events`.
- */
-export function pluginEvents<S extends { _accepts: unknown }>(entry: S): { _accepts: S['_accepts'] } {
-  return entry;
-}
-
-/**
- * Events the host app's own plugins receive from pack systems. A pack system declares a send to one
- * with `features[].system.sendsTo` in abuddy.json; `#generated/events` includes this map.
+ * Events the host app's own plugins receive from packs. The host declares them here, as a pack's plugin declares
+ * its own with `pluginAccepts()`; `#generated/events` includes this map, so any pack may send them.
  */
 export type HostPluginEvents = {
   'host/application':
@@ -159,6 +150,11 @@ function sendIncoming(message: Message): void {
  * Untyped: packs use the `broadcastToPlugin` from their `#generated/events`.
  */
 export function broadcastToPlugin(to: string, event: { type: string; [key: string]: unknown }): void {
+  // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it is.
+  // Reaching for the other from here is the likely mistake, not a missing bindHost.
+  if (!_isHostBound() && _isFeHostBound()) {
+    throw new Error(`broadcastToPlugin("${to}") is the backend's, over the bus to every window. In the renderer, send to this window's plugin with sendToPlugin from #generated/events`);
+  }
   boundHost().transport.rootEvents.emitPluginSend({ to, event });
 }
 
@@ -167,9 +163,18 @@ export function broadcastToPlugin(to: string, event: { type: string; [key: strin
  * window. The renderer half of `sendToPlugin`, which `defineEvents` types per receiving plugin.
  *
  * A plugin runs once per window, so this is what UI coordination wants: the artifact opens where the user clicked.
- * It throws when no plugin runs at `ref`, as reading one does: within a pack that is a bug rather than a state.
+ *
+ * A send to a plugin that isn't running throws, where the bus's half reports a `diagnostic` and drops
+ * (`createBusMachine`'s `notify`). The asymmetry is the channel, not a choice: `reportError` sends its
+ * `SYSTEM_ERROR` over the backend bus, which no window has, so there is nothing here to report on. Throwing is
+ * what the renderer's other reads do (`pluginActor`, `usePluginState`). A ref that may legitimately be absent —
+ * another pack's, which may not be installed — is checked with `hasDesignation` before sending.
  */
 export function _sendToLocalPlugin(ref: string, event: { type: string; [key: string]: unknown }): void {
+  // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it is.
+  if (!_isFeHostBound() && _isHostBound()) {
+    throw new Error(`sendToPlugin("${ref}") is the renderer's, to this window's plugin. On the backend, send over the bus with broadcastToPlugin from #generated/events`);
+  }
   const actor = boundFeHost().application.system.get(ref);
   if (!actor) throw new Error(`No plugin is running at "${ref}" to send ${event.type} to`);
   actor.send(event);
