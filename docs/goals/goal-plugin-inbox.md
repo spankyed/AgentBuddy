@@ -463,12 +463,8 @@ Final.
    `usePluginSettings` and `currentPluginSettings` no longer exist as pack API; `browser` handles
    `FEATURE_SETTINGS_UPDATED` like the other nine features; writes go through `services.settings`.
 
-   **A frontend API did land, for components rather than machines**, which an earlier draft of this decision
-   ("no SDK API") had wrong. `@abuddy/sdk/fe` exposes `useSettingsSection`, `useFeatureSettings` and
-   `useSettingsSave`, which follow the settings until the calling scope is disposed, and `updateSettings`, which
-   is deliberately not a composable so that code outside a scope — a machine action — can still make a change.
-   They read a `SettingsPort` the renderer binds with `bindFeHost`, so no pack names the view that draws the
-   settings. None of that is this goal's to build or change; it is here so the next reader doesn't rebuild it.
+   A machine needs no API; a component does, and `goal-settings-to-host` shipped one — `@abuddy/sdk/fe`'s
+   settings composables, documented there. Neither is this goal's to build or change.
 
    **One residue, which Phase 2 verifies rather than fixes.** That goal's Decision 7 — typing
    `FeatureSettingsUpdated.settings` per feature — did **not** land. It is still
