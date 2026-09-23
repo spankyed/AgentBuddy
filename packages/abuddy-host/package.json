@@ -26,6 +26,7 @@
     "./packs": "./src/packs/index.ts",
     "./packs/dev-server": "./src/packs/dev-server.ts",
     "./packs/runtime": "./src/packs/runtime/index.ts",
+    "./exclusive-lock": "./src/exclusive-lock.ts",
     "./process-liveness": "./src/process-liveness.ts",
     "./secrets": "./src/secrets/index.ts",
     "./services": "./src/services/index.ts",

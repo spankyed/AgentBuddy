@@ -1,8 +1,9 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
-import type { PackTypeManifest, PackSnapshot } from '@abuddy/sdk/build';
-import { _depTypesFile, _depTypesVersion, _TYPES_UNRESOLVED, generatePackFiles } from '@abuddy/sdk/build';
+import type { PackManifest, PackTypeManifest, PackSnapshot } from '@abuddy/sdk/build';
+import { _depTypesFile, _depTypesVersion, generatePackFiles } from '@abuddy/sdk/build';
+import { holdExclusiveLock } from '@abuddy/host/exclusive-lock';
 import { findPackRoot, readValidManifest, sdkPackageDir, sdkVersion } from '../utils';
 import { resolveDeps } from './generate';
 
@@ -94,6 +95,37 @@ export async function generateEntries(
 
   fs.mkdirSync(outDir, { recursive: true });
 
+  // One writer per pack. Two runs over one pack interleave their writes into `src/__generated__/`, and the loser
+  // is invisible: every file is written, the last writer wins each one, and the result reads as a stale build
+  // nobody can reproduce. It happened here — concurrent runs left the type barrel describing a fix that was
+  // already compiled. The build takes this too, through this function, and a nested take is a no-op.
+  const lock = holdExclusiveLock({
+    file: path.join(outDir, GENERATE_LOCK),
+    what: 'abuddy generate-entries',
+    refuse: (holder) => new Error(
+      `Another run is generating ${path.relative(process.cwd(), outDir) || 'src/__generated__'}: ${holder}. `
+      + `Wait for it to finish. If none is running, delete ${path.join(outDir, GENERATE_LOCK)} and try again.`,
+    ),
+  });
+  try {
+    writeGenerated(root, outDir, hashPath, currentHash, manifest, depTypes, depSnapshots);
+  } finally {
+    lock.release();
+  }
+}
+
+/** The lock file, inside the directory it guards, so it travels with the output it protects */
+const GENERATE_LOCK = '.generating.lock';
+
+function writeGenerated(
+  root: string,
+  outDir: string,
+  hashPath: string,
+  currentHash: string,
+  manifest: PackManifest,
+  depTypes: Map<string, PackTypeManifest> | undefined,
+  depSnapshots: Map<string, PackSnapshot>,
+) {
   const files = generatePackFiles(manifest, { packRoot: root, depTypes, depSnapshots });
 
   // Dependencies' facade types are rewritten from their snapshots each time
@@ -106,6 +138,7 @@ export async function generateEntries(
   // compiling into the pack with stale content; hand-written files are never touched
   const produced = new Set(Object.keys(files).map(f => path.resolve(root, f)));
   for (const name of fs.readdirSync(outDir)) {
+    if (name === GENERATE_LOCK) continue;
     const file = path.join(outDir, name);
     if (produced.has(file) || name === HASH_FILE || !fs.statSync(file).isFile()) continue;
     const head = fs.readFileSync(file, 'utf-8').slice(0, 120);
@@ -130,7 +163,9 @@ export async function regenerateAfterScaffold(root: string): Promise<boolean> {
     await generateEntries([], root);
     return true;
   } catch (err) {
-    if ((err as { code?: string }).code !== _TYPES_UNRESOLVED) throw err;
+    // A pack scaffolded before `npm install` can't resolve what its contracts name. Nothing distinguishes that
+    // from a mistake in the pack — the old `_TYPES_UNRESOLVED` code claimed to, from a value reading as `any` —
+    // so say what happened and let `npm install`, which regenerates, be the next step either way.
     console.log(`\n  src/__generated__/ not regenerated: ${(err as Error).message}. Run: npm install (it regenerates them)`);
     return false;
   }
