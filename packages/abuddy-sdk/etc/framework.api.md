@@ -11,34 +11,63 @@ import { EARS as EARS_2 } from '@abuddy/ears';
 import { z } from 'zod';
 
 // @public
+export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
+
+// @public
 export function checkFeatureSettings(featureId: string, settings: unknown): string[];
 
 // @public
-export function defineSystem<Id extends string>(id: Id): <TEvents extends {
+export function defineSystem<TEvents extends {
     type: string;
 }, TOutgoing extends {
     type: string;
-}, TContext = {}>() => SystemSpec<Id, TEvents, TOutgoing, TContext>;
+}, TContext = {}>(): SystemSpec<TEvents, TOutgoing, TContext>;
+
+// @public (undocumented)
+export type DiffResult<T> = null | {
+    renames: Array<{
+        from: string;
+        to: string;
+    }>;
+    added: T[];
+    removed: T[];
+};
 
 // @public
 export interface FeatureSettings {
     // (undocumented)
     plugins?: Record<string, unknown>;
+    // (undocumented)
+    visible?: boolean;
 }
+
+// @public
+export function getFeaturesWithSettings(): readonly FeatureRef[];
 
 // @public
 export function getPackCommands(): PackCommand[];
 
 // @public
+export function getPackHelp(): HelpEntry[];
+
+// @public
 export function getPackSettingsDefaults(): PackSettingsDefaults;
+
+// @public
+export interface HelpEntry {
+    // (undocumented)
+    answer: string;
+    // (undocumented)
+    id: string;
+    // (undocumented)
+    question: string;
+}
 
 // @public
 export function onPackSettingsDefaultsChanged(listener: () => void): () => void;
 
 // @public (undocumented)
 export interface PackBootHooks {
-    // (undocumented)
-    earlySystem?: AnyStateMachine;
     // (undocumented)
     onInit?: () => void;
     // (undocumented)
@@ -67,19 +96,29 @@ export interface PackEARS {
     relKinds: Record<string, string>;
 }
 
-// @public (undocumented)
-export interface PackFeatureDef {
+// @public
+export interface PackFeature {
     // (undocumented)
     designation?: string;
     // (undocumented)
-    hasPlugin: boolean;
-    // (undocumented)
-    hasSystem: boolean;
-    // (undocumented)
-    id: string;
-    // (undocumented)
-    services: string[];
+    plugin?: PackFeaturePlugin;
+    services?: readonly string[];
     settings?: FeatureSettings;
+    // (undocumented)
+    system?: PackFeatureSystem;
+}
+
+// @public
+export interface PackFeaturePlugin {
+    receives: readonly string[];
+}
+
+// @public
+export interface PackFeatureSystem {
+    early?: true;
+    // (undocumented)
+    machine: AnyStateMachine;
+    receives: readonly string[];
 }
 
 // @public (undocumented)
@@ -103,22 +142,20 @@ export interface PackRegistration {
     commands?: PackCommand[];
     // (undocumented)
     ears?: PackEARS;
-    // (undocumented)
-    features?: PackFeatureDef[];
+    features?: Record<string, PackFeature>;
+    help?: () => HelpEntry[];
     // (undocumented)
     id: string;
     // (undocumented)
     migrations?: PackMigration[];
-    receivedEventTypes?: Record<string, readonly string[]>;
     repositories?: Record<string, unknown>;
     seeders?: Seeder[];
     seedHooks?: Record<string, SeedHooks>;
     // (undocumented)
     services?: Record<string, unknown>;
+    settingsSections?: () => Record<string, unknown>;
     // (undocumented)
     steps?: StepDefinition[];
-    // (undocumented)
-    systems: PackSystemDef[];
 }
 
 // @public (undocumented)
@@ -137,37 +174,32 @@ export interface PackSeedManifest {
 export interface PackSettingsDefaults {
     // (undocumented)
     revision: number;
-    // (undocumented)
     settings: {
-        plugins: Record<string, unknown> & {
-            _meta?: {
-                visibility: Record<string, boolean>;
-            };
-        };
+        plugins: Record<string, unknown>;
+        [section: string]: unknown;
     };
+    // (undocumented)
+    visibility: Record<string, boolean>;
 }
 
-// @public (undocumented)
-export interface PackSystemDef {
-    // (undocumented)
-    designation?: string;
-    // (undocumented)
-    events: Set<string>;
-    // (undocumented)
-    id: string;
-    // (undocumented)
-    machine: AnyStateMachine;
-}
+// @public
+export function packSystem(entry: SystemEntry, options?: {
+    incoming?: readonly string[];
+    early?: true;
+}): PackFeatureSystem;
+
+// @public
+export const SYSTEM_EVENT_TYPES: readonly ["CLIENT_CONNECTED", "PACK_CHANGED", "FEATURE_SETTINGS_UPDATED"];
 
 // @public (undocumented)
 export interface SystemEntry {
     // (undocumented)
     machine: AnyStateMachine;
-    spec: Pick<SystemSpec<string, {
+    spec: Pick<SystemSpec<{
         type: string;
     }, {
         type: string;
-    }>, 'id'>;
+    }>, '_incoming' | '_outgoing'>;
 }
 
 // @public
@@ -181,18 +213,25 @@ export type SystemEvents = {
 | {
     type: 'PACK_CHANGED';
     packId: string;
+}
+/**
+* The feature's settings changed: `settings` as they now apply, and `changes` to what they list, when the store
+* tells them. The feature's plugin gets it too (`FeatureSettingsUpdated`).
+*/
+| {
+    type: 'FEATURE_SETTINGS_UPDATED';
+    settings: unknown;
+    changes?: ArrayChanges | null;
 };
 
 // @public
-export interface SystemSpec<Id extends string, TEvents extends {
+export interface SystemSpec<TEvents extends {
     type: string;
 }, TOutgoing extends {
     type: string;
 }, TContext = {}> {
-    // (undocumented)
-    id: Id;
     _incoming: TEvents;
-    _outgoing: WithPlugin<Id, TOutgoing>;
+    _outgoing: TOutgoing;
     // (undocumented)
     typeOf: ReturnType<typeof safeEvents<TEvents | SystemEvents>>;
     // (undocumented)
@@ -201,9 +240,6 @@ export interface SystemSpec<Id extends string, TEvents extends {
         events: TEvents | SystemEvents;
     };
 }
-
-// @public (undocumented)
-export function toPackSystemDefs(entries: SystemEntry[]): PackSystemDef[];
 
 // (No @packageDocumentation comment for this package)
 

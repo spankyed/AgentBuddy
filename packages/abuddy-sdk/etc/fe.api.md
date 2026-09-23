@@ -9,12 +9,21 @@ import type { AnyExtension } from '@tiptap/vue-3';
 import type { AnyStateMachine } from 'xstate';
 import type { BaseEntity } from '@abuddy/ears';
 import type { Component } from 'vue';
+import { ComponentOptionsMixin } from 'vue';
+import { ComponentProvideOptions } from 'vue';
 import { ComputedRef } from 'vue';
+import { DefineComponent } from 'vue';
 import { EARS as EARS_2 } from '@abuddy/ears';
 import type { Editor } from '@tiptap/vue-3';
 import type { EditorState } from '@tiptap/pm/state';
+import { ExtractPropTypes } from 'vue';
 import type { InjectionKey } from 'vue';
+import { PublicProps } from 'vue';
 import { Ref } from 'vue';
+import { RendererElement } from 'vue';
+import { RendererNode } from 'vue';
+import type { SnapshotFrom } from 'xstate';
+import { VNode } from 'vue';
 import { z } from 'zod';
 
 // @public (undocumented)
@@ -133,6 +142,9 @@ export function createHotkeyProcessor<const TMap extends Record<string, string>,
 // @public (undocumented)
 export function createNavHistory<T>(initial: T): NavHistory<T>;
 
+// @public
+export function definePlugin(definition: PluginDefinition): PluginDefinition;
+
 // @public (undocumented)
 export interface DslTypeConfig {
     // (undocumented)
@@ -156,7 +168,7 @@ export type ExtractEvent<TEvent extends {
 }>;
 
 // @public (undocumented)
-export function getDesignated(role: string): string;
+export function getDesignated(role: string): FeatureRef;
 
 // @public (undocumented)
 export function getDslTypes(): ReadonlyMap<string, DslTypeConfig>;
@@ -178,6 +190,65 @@ export function goForward<T>(history: NavHistory<T>): {
 
 // @public (undocumented)
 export function hasDesignation(role: string): boolean;
+
+// @public
+export interface HostShell {
+    // (undocumented)
+    getSnapshot(): HostShellSnapshot;
+    // (undocumented)
+    send(event: HostShellEvent): void;
+    // (undocumented)
+    subscribe(observer: (snapshot: HostShellSnapshot) => void): {
+        unsubscribe(): void;
+    };
+    system: {
+        get(id: string): AnyActorRef | undefined;
+    };
+}
+
+// @public
+export type HostShellEvent =
+/**
+* Opens the plugin at a ref and hands its actor `events`. The shell waits for a plugin whose pack's frontend is
+* still loading, and reports a ref no pack provides once loading has settled.
+*/
+    {
+    type: 'OPEN_PLUGIN';
+    plugin: string;
+    events: PluginEvent[];
+} | {
+    type: 'RESIZE_PANEL';
+    panel: 'canvas' | 'inspection';
+    size: number;
+} | {
+    type: 'RESTORE_CHAT';
+} | {
+    type: 'SET_PLUGIN_VISIBILITY';
+    plugin: string;
+    visible: boolean;
+} | {
+    type: 'CLOSE_DEV_LETTER';
+} | {
+    type: 'HOTKEYS_RECORDING_START';
+} | {
+    type: 'HOTKEYS_RECORDING_END';
+};
+
+// @public
+export interface HostShellSnapshot {
+    // (undocumented)
+    context: HostShellState;
+    hasTag(tag: string): boolean;
+}
+
+// @public
+export interface HostShellState {
+    activePlugin: Plugin_2;
+    // (undocumented)
+    panelSizes: ShellPanelSizes;
+    plugins: readonly Plugin_2[];
+    pluginVisibility: Readonly<Record<string, boolean>>;
+}
 
 // @public (undocumented)
 export interface HotkeyEvent {
@@ -232,13 +303,21 @@ export interface NavHistory<T> {
 }
 
 // @public (undocumented)
-export function navigateToPlugin(pluginId: string, event?: PluginEvent | PluginEvent[]): void;
-
-// @public (undocumented)
 export function onMenuOpenChange(open: boolean): void;
 
-// @public (undocumented)
-export function openInAppBrowser(url: string): void;
+// @public
+export function openLink(url: string): void;
+
+// @public
+export function openPlugin(ref: string, event?: PluginEvent | PluginEvent[]): void;
+
+// @public
+export interface PackFEFeature {
+    default?: true;
+    designation?: string;
+    // (undocumented)
+    plugin?: PluginDefinition;
+}
 
 // @public
 export interface PackFERegistration {
@@ -248,11 +327,9 @@ export interface PackFERegistration {
     artifacts?: ArtifactDefinition[];
     // (undocumented)
     blocks?: BlockDefinition[];
-    // (undocumented)
-    defaultPlugin?: Plugin_2;
     dslTypes?: Record<string, DslTypeConfig>;
-    // (undocumented)
-    plugins?: Plugin_2[];
+    features?: Record<string, PackFEFeature>;
+    id: string;
     // (undocumented)
     steps?: StepDefinition[];
     // (undocumented)
@@ -262,19 +339,24 @@ export interface PackFERegistration {
 // @public (undocumented)
 export function pasteIntoElement(el: HTMLElement, text: string): void;
 
-// @public (undocumented)
+// @public
 interface Plugin_2 {
     // (undocumented)
     canvas?: Component | RouteComponents;
     // (undocumented)
     chat?: Component;
-    designation?: string;
+    fallbackPanel?: {
+        label: string;
+        isShown: (snapshot: SnapshotFrom<AnyStateMachine>) => boolean;
+        toggle: {
+            type: string;
+        };
+    };
     // (undocumented)
     hotkeys?: PluginHotkeyDefinition[];
     // (undocumented)
     icon?: Component;
-    // (undocumented)
-    id: string;
+    id: FeatureRef;
     // (undocumented)
     isPinned?: boolean;
     // (undocumented)
@@ -293,10 +375,19 @@ interface Plugin_2 {
 export { Plugin_2 as Plugin }
 
 // @public
-export interface PluginActorSystem {
-    // (undocumented)
-    get(id: string): AnyActorRef;
+export interface PluginAccepts<TAccepts extends {
+    type: string;
+} = never> {
+    _accepts: TAccepts;
 }
+
+// @public
+export function pluginAccepts<TAccepts extends {
+    type: string;
+} = never>(): PluginAccepts<TAccepts>;
+
+// @public
+export type PluginDefinition = Omit<Plugin_2, 'id'>;
 
 // @public
 export type PluginEvent = {
@@ -312,11 +403,29 @@ export interface PluginHotkeyDefinition {
     global?: boolean;
 }
 
+// @public
+export const PluginScope: DefineComponent<ExtractPropTypes<    {
+plugin: {
+type: StringConstructor;
+required: true;
+};
+}>, () => VNode<RendererNode, RendererElement, {
+[key: string]: any;
+}>[] | undefined, {}, {}, {}, ComponentOptionsMixin, ComponentOptionsMixin, {}, string, PublicProps, Readonly<ExtractPropTypes<    {
+plugin: {
+type: StringConstructor;
+required: true;
+};
+}>> & Readonly<{}>, {}, {}, {}, {}, string, ComponentProvideOptions, true, {}, any>;
+
 // @public (undocumented)
 export function processHotkeys<const T extends Record<string, string>, H = unknown>(event: HotkeyEvent, hotkeys: H | undefined, actionMap: T): T[keyof T] | undefined;
 
 // @public (undocumented)
 export function pushNavHistory<T>(history: NavHistory<T>, entry: T): NavHistory<T>;
+
+// @public
+export function readPluginState<TSnapshot, TSelected>(ref: string, selector: (snapshot: TSnapshot) => TSelected): TSelected;
 
 // @public (undocumented)
 export type RouteComponents = Record<RouteName, Component>;
@@ -357,6 +466,59 @@ export interface SecretsSnapshot {
     secrets: SecretInfo[];
     // (undocumented)
     status: SecretsStatus;
+}
+
+// @public
+export interface SettingsPort {
+    feature<T = unknown>(ref: FeatureRef): T | undefined;
+    saveStatus(): SettingsSaveStatus;
+    section<T = unknown>(name: string): T | undefined;
+    subscribe(listener: () => void): () => void;
+    update(target: SettingsTarget, path: readonly string[], value: unknown): void;
+}
+
+// @public
+export interface SettingsSaveStatus {
+    // (undocumented)
+    problems: string[];
+    // (undocumented)
+    status: 'idle' | 'saving' | 'saved' | 'refused';
+}
+
+// @public
+export type SettingsTarget = {
+    section: string;
+} | {
+    feature: FeatureRef;
+};
+
+// @public
+export interface Shell {
+    // (undocumented)
+    activePlugin: Readonly<Ref<Plugin_2>>;
+    closeDevLetter(): void;
+    // (undocumented)
+    endHotkeyRecording(): void;
+    // (undocumented)
+    isOnboarding: Readonly<Ref<boolean>>;
+    // (undocumented)
+    panelSizes: Readonly<Ref<ShellPanelSizes>>;
+    // (undocumented)
+    plugins: Readonly<Ref<readonly Plugin_2[]>>;
+    // (undocumented)
+    pluginVisibility: Readonly<Ref<Readonly<Record<string, boolean>>>>;
+    resizeCanvas(size: number): void;
+    restoreChat(): void;
+    setPluginVisible(ref: string, visible: boolean): void;
+    startHotkeyRecording(): void;
+}
+
+// @public
+export interface ShellPanelSizes {
+    canvasHeight: number;
+    chatMaximized?: boolean;
+    inspectionWidth: number;
+    previousInspectionWidth?: number;
 }
 
 // @public (undocumented)
@@ -438,26 +600,29 @@ export type TrailClickEvent<TInfo = unknown> = {
     info?: TInfo;
 };
 
-// @public (undocumented)
-export function useActorSystem(): PluginActorSystem;
+// @public
+export function updateSettings(target: SettingsTarget, path: readonly string[], value: unknown): void;
 
-// @public (undocumented)
-export function useApplicationActor(): AnyActorRef;
+// @public
+export function useFeatureSettings<T = unknown>(feature: FeatureRef): Readonly<Ref<T | undefined>>;
 
-// @public (undocumented)
-export function useSettingsSaveStatus(): {
-    saveStatus: Ref<"idle" | "saving" | "saved", "idle" | "saving" | "saved">;
-    updateSettings: (params: {
-        entityType: string;
-        label: string;
-        path: string[];
-        value: unknown;
-    }) => void;
-    setSaveStatus: (status: "saving" | "saved") => void;
+// @public
+export function usePlugin<T>(): T;
+
+// @public
+export function usePluginState<TSnapshot, TSelected>(ref: string, selector: (snapshot: TSnapshot) => TSelected): Readonly<Ref<TSelected>>;
+
+// @public
+export function useSettingsSave(): {
+    save: Readonly<Ref<SettingsSaveStatus>>;
+    update: SettingsPort['update'];
 };
 
-// @public (undocumented)
-export function useState<T = AnyActorRef>(pluginId: string): T;
+// @public
+export function useSettingsSection<T = unknown>(name: string): Readonly<Ref<T | undefined>>;
+
+// @public
+export function useShell(): Shell;
 
 // @public (undocumented)
 export function useTrackedMenuOpen(menuOpen: Ref<boolean>): void;

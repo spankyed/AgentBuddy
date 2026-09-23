@@ -37,10 +37,6 @@ import { createImageHandlers } from './composables/createImageHandlers.ts'
 import { createEditorClickHandler, createViewerClickHandler } from './composables/createEditorClickHandler.ts'
 import { useSubDocumentTracking } from './composables/useSubDocumentTracking.ts'
 import { createKeyboardHandler } from './composables/createEditorKeyboard.ts'
-import { useActorSystem } from '@abuddy/sdk/fe'
-import { setEditorSystem } from './editor-system.ts'
-
-setEditorSystem(useActorSystem())
 
 const tiptapPlugins = tiptapPluginRegistry.getAll()
 const injectedExtensions = tiptapPlugins.flatMap(p => p.extensions ?? [])

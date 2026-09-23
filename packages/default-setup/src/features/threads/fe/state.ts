@@ -1,20 +1,24 @@
 import breadcrumb, { breadcrumbWithParams } from '@abuddy/sdk/fe';
 import { targetIs, type TrailClickEvent } from '@abuddy/sdk/fe';
 import { safeEvents } from '@abuddy/sdk/fe';
-import { setup, assign, enqueueActions, fromPromise, spawnChild } from 'xstate';
+import { setup, assign, enqueueActions, fromCallback, spawnChild, stopChild, type AnyEventObject } from 'xstate';
 import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe';
 import type { ActorRefFrom } from 'xstate';
 import type {
-  ThreadEntity, OutgoingThreadsEvents,
+  ThreadEntity,
   ThreadCreateData, ThreadViewData, ThreadTagOption, ThreadEditFields, ThreadsSettings,
   MessageEntity, AgentThreadData, Tab,
   AgentSettings, AgentMode as AgentModeConfig, MessageReferences, CommandItem, BlockResponse,
 } from '@/__generated__/types';
+import type { OutgoingThreadsEvents } from '@/features/threads/be/system';
 import { sendToSystem } from '@/__generated__/events';
 import { Archive, Copy, Pin, Trash2 } from 'lucide-vue-next';
 import { contextMenuFn } from '@abuddy/sdk/fe';
 import type { Simplify } from '@abuddy/sdk/helpers';
-import { navigateToPlugin } from '@abuddy/sdk/fe';
+import { openPlugin } from '@abuddy/sdk/fe'
+import { resolveName } from '@abuddy/sdk/ids'
+
+const HOST_SETTINGS = resolveName('settings', 'host');
 import { type HotkeyEvent, type HotkeysMap, createHotkeyProcessor } from '@abuddy/sdk/fe';
 import type { ThreadTabGroup, TabGroupColor } from '@/features/threads/fe/canvas/agent/tabs/types';
 import { getNextAvailableColor } from '@/features/threads/fe/canvas/agent/tabs/types';
@@ -129,7 +133,7 @@ type ChatState = 'idle' | 'working' | 'paused' | 'error' | 'success';
 type SystemEvent =
   | OutgoingThreadsEvents
   | { type: 'THREAD_UPDATED'; threadId: string; updates: Partial<Pick<ThreadEntity, 'status' | 'tags' | 'context' | 'pinned' | 'topic' | 'instructions'>> }
-  | { type: 'THREADS_SETTINGS_UPDATED'; settings: ThreadsSettings }
+  | { type: 'FEATURE_SETTINGS_UPDATED'; settings: ThreadsSettings }
   | { type: 'THREAD_DELETED'; threadId: string }
   | { type: 'THREADS_EXPORTED'; filePath: string; threadCount: number }
   | { type: 'THREADS_EXPORT_FAILED'; errors: string[] }
@@ -369,17 +373,26 @@ function optimisticFieldUpdate(context: ThreadsContext, threadId: string, key: s
 
 // ---- State machine ----
 
+/*
+ * The timers below are callback actors, which never finish on their own: the handler of the event a timer sends
+ * stops it, or it would stay among the plugin's children for the session. Spawning one stops the thread's
+ * earlier timer first, since a spawn under an id already taken replaces the entry without stopping the actor,
+ * which would then fire early.
+ */
+const newThreadFlagTimer = (threadId: string) => `clear-new-thread-flag-${threadId}`;
+const chatStateOverrideTimer = (threadId: string) => `clear-expired-override-${threadId}`;
+
 const threadsState = setup({
   types: { context: {} as ThreadsContext, events: {} as ThreadEvents },
   actors: {
-    clearNewThreadFlag: fromPromise<void, { id: string }>(async ({ input, system }) => {
+    clearNewThreadFlag: fromCallback<AnyEventObject, { id: string }>(({ input, sendBack }) => {
       const ANIMATION_DURATION = 1000;
-      await new Promise(resolve => setTimeout(resolve, ANIMATION_DURATION));
-      system.get(id).send({ type: 'CLEAR_NEW_THREAD_FLAG', id: input.id });
+      const timer = setTimeout(() => sendBack({ type: 'CLEAR_NEW_THREAD_FLAG', id: input.id }), ANIMATION_DURATION);
+      return () => clearTimeout(timer);
     }),
-    clearExpiredOverride: fromPromise<void, { threadId: string; durationMs: number }>(async ({ input, system }) => {
-      await new Promise(resolve => setTimeout(resolve, input.durationMs));
-      system.get(id).send({ type: 'CLEAR_CHAT_STATE_OVERRIDE', threadId: input.threadId });
+    clearExpiredOverride: fromCallback<AnyEventObject, { threadId: string; durationMs: number }>(({ input, sendBack }) => {
+      const timer = setTimeout(() => sendBack({ type: 'CLEAR_CHAT_STATE_OVERRIDE', threadId: input.threadId }), input.durationMs);
+      return () => clearTimeout(timer);
     }),
   },
   actions: {
@@ -569,7 +582,7 @@ const threadsState = setup({
       return optimisticFieldUpdate(context, threadId, 'topic', topic);
     }),
     setThreadsSettings: assign(({ event }) => {
-      const ev = typeOf('THREADS_SETTINGS_UPDATED', event);
+      const ev = typeOf('FEATURE_SETTINGS_UPDATED', event);
       const chat = (ev.settings as any)?.chat as AgentSettings | undefined;
       return {
         settings: ev.settings,
@@ -804,7 +817,7 @@ const threadsState = setup({
       };
     }),
     navigateToSecrets: () => {
-      navigateToPlugin('settings', [
+      openPlugin(HOST_SETTINGS, [
         { type: 'TAB.SELECT', tab: 'general' },
         { type: 'GENERAL_NAV.SELECT', item: 'secrets' }
       ]);
@@ -1594,13 +1607,14 @@ const threadsState = setup({
       actions: 'openThreadChat'
     },
     CLEAR_NEW_THREAD_FLAG: {
-      actions: 'clearNewThreadFlag'
+      actions: ['clearNewThreadFlag', stopChild(({ event }) => newThreadFlagTimer(typeOf('CLEAR_NEW_THREAD_FLAG', event).id))]
     },
     THREAD_CREATED: {
       actions: [
         'addThenResetCreateForm',
+        stopChild(({ event }) => newThreadFlagTimer(typeOf('THREAD_CREATED', event).id)),
         spawnChild('clearNewThreadFlag', {
-          id: ({ event }) => `clear-new-thread-flag-${typeOf('THREAD_CREATED', event).id}`,
+          id: ({ event }) => newThreadFlagTimer(typeOf('THREAD_CREATED', event).id),
           input: ({ event }) => ({ id: typeOf('THREAD_CREATED', event).id })
         })
       ]
@@ -1620,7 +1634,7 @@ const threadsState = setup({
     RENAME_THREAD: {
       actions: 'renameThread',
     },
-    THREADS_SETTINGS_UPDATED: {
+    FEATURE_SETTINGS_UPDATED: {
       actions: 'setThreadsSettings',
     },
     DELETE_THREAD: {
@@ -1848,9 +1862,10 @@ const threadsState = setup({
     FLASH_CHAT_STATE: {
       actions: [
         'flashChatState',
+        stopChild(({ event }) => chatStateOverrideTimer(typeOf('FLASH_CHAT_STATE', event).threadId)),
         spawnChild('clearExpiredOverride', {
           // Per thread: without an id two flashes at once share a key and the first is left untracked
-          id: ({ event }: any) => `clear-expired-override-${event.threadId}`,
+          id: ({ event }: any) => chatStateOverrideTimer(event.threadId),
           input: ({ event }: any) => ({
             threadId: event.threadId,
             durationMs: event.durationMs ?? 3000,
@@ -1859,11 +1874,14 @@ const threadsState = setup({
       ],
     },
     CLEAR_CHAT_STATE_OVERRIDE: {
-      actions: assign(({ context, event }) => {
-        const { threadId } = typeOf('CLEAR_CHAT_STATE_OVERRIDE', event);
-        const { [threadId]: _, ...rest } = context.chatStateOverrides;
-        return { chatStateOverrides: rest };
-      }),
+      actions: [
+        assign(({ context, event }) => {
+          const { threadId } = typeOf('CLEAR_CHAT_STATE_OVERRIDE', event);
+          const { [threadId]: _, ...rest } = context.chatStateOverrides;
+          return { chatStateOverrides: rest };
+        }),
+        stopChild(({ event }) => chatStateOverrideTimer(typeOf('CLEAR_CHAT_STATE_OVERRIDE', event).threadId)),
+      ],
     },
     SET_MODE: { actions: 'setMode' },
     SET_PHASE: { actions: 'setPhase' },

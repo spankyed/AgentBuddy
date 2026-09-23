@@ -27,7 +27,7 @@ function pack(id: string, entities: Record<string, string>, dependencies: Record
   };
 }
 
-/** A feature with a system and a plugin, so dependents have something a `sendsTo` can name */
+/** A feature with a system and a plugin, so dependents have something to send to */
 const NOTIFIER = {
   features: [{ id: 'notifier', system: { entry: 'src/system.ts' }, plugin: { entry: 'src/plugin.ts' } }],
 };
@@ -36,8 +36,8 @@ const NOTIFIER_SOURCES = {
     "import { setup } from 'xstate';",
     "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",
     "export type OutgoingNotifierEvents = { type: 'NOTIFIED'; text: string };",
-    "export const notifierSpec = defineSystem('notifier')<{ type: 'NOTIFY' }, OutgoingNotifierEvents>();",
-    'const entry = { spec: notifierSpec, machine: setup({ types: notifierSpec.types }).createMachine({ id: notifierSpec.id }) } satisfies SystemEntry;',
+    "export const notifierSpec = defineSystem<{ type: 'NOTIFY' }, OutgoingNotifierEvents>();",
+    'const entry = { spec: notifierSpec, machine: setup({ types: notifierSpec.types }).createMachine({ id: "notifier" }) } satisfies SystemEntry;',
     'export default entry;',
   ].join('\n'),
   'src/plugin.ts': "import type { Plugin } from '@abuddy/sdk/fe';\nexport default { id: 'notifier' } as unknown as Plugin;\n",
@@ -120,76 +120,3 @@ describe.skipIf(!PACKAGES_BUILT)('a collision that is real', () => {
   }, 120_000);
 });
 
-/**
- * The facade check's failing direction, against a real built snapshot.
- *
- * `requireFacadeExports` refuses a dependency whose facade lacks an export the generated code imports.
- * Every test of it so far has been over a hand-written snapshot object; the passing direction is covered
- * by every other build in this suite. This covers the failing one through an actual `abuddy build`.
- *
- * The facade under test is synthetic in origin though the build around it is real: rather than keeping a
- * second, older toolchain to produce a genuinely outdated facade, a built snapshot is copied and an
- * export removed from it. That is the trade accepted here.
- */
-describe.skipIf(!PACKAGES_BUILT)("a dependency whose facade lacks an export", () => {
-  /** A copy of the built ancestor with `names` removed from its facade, and a dependent built against it */
-  function buildAgainstFacadeWithout(names: string[], dependent: Record<string, string>): { code: number; output: string } {
-    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'facade-gap-'));
-    fs.cpSync(path.join(parent, DEEP), path.join(dir, DEEP), { recursive: true, dereference: false });
-    const file = [path.join(dir, DEEP, 'dist', 'snapshot.json'), path.join(dir, DEEP, 'dist', 'types', 'snapshot.json')]
-      .find((candidate) => fs.existsSync(candidate))!;
-    const snapshot = JSON.parse(fs.readFileSync(file, 'utf-8'));
-    const facade: string = snapshot.defs['pack-types'];
-    expect(facade, 'the ancestor published a facade to strip').toBeTruthy();
-    for (const name of names) {
-      expect(facade, `facade exports ${name}`).toContain(name);
-      snapshot.defs['pack-types'] = snapshot.defs['pack-types'].replaceAll(name, `${name}Renamed`);
-    }
-    fs.writeFileSync(file, JSON.stringify(snapshot));
-
-    const depDir = preparePack(dir, 'app-pack', dependent, path.join(REPO_ROOT, 'node_modules'));
-    const result = run(process.execPath, [CLI, 'build'], depDir);
-    fs.rmSync(dir, { recursive: true, force: true });
-    return result;
-  }
-
-  const plain = pack('app-pack', { App: 'App' }, on(DEEP));
-
-  it('fails naming the missing export and the dependency', () => {
-    const result = buildAgainstFacadeWithout(['Repositories'], plain);
-    expect(result.code, result.output).not.toBe(0);
-    expect(result.output).toContain('`Repositories`');
-    expect(result.output).toContain(DEEP);
-  }, 120_000);
-
-  /**
-   * `PackEvents` is required only of a dependency some `sendsTo` names, so its absence has to fail a
-   * dependent that names one of its plugins and not a dependent that names none. Both halves here,
-   * because the conditional requirement is the part a single case cannot pin.
-   */
-  it("fails a dependent whose sendsTo names one of its plugins", () => {
-    const sender = {
-      ...pack('app-pack', { App: 'App' }, on(DEEP), {
-        features: [{ id: 'relay', system: { entry: 'src/system.ts', sendsTo: ['notifier'] }, plugin: { entry: 'src/plugin.ts' } }],
-      }),
-      'src/system.ts': [
-        "import { setup } from 'xstate';",
-        "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",
-        "export type OutgoingRelayEvents = { type: 'RELAYED' };",
-        "export const relaySpec = defineSystem('relay')<{ type: 'RELAY' }, OutgoingRelayEvents>();",
-        'const entry = { spec: relaySpec, machine: setup({ types: relaySpec.types }).createMachine({ id: relaySpec.id }) } satisfies SystemEntry;',
-        'export default entry;',
-      ].join('\n'),
-      'src/plugin.ts': "import type { Plugin } from '@abuddy/sdk/fe';\nexport default { id: 'relay' } as unknown as Plugin;\n",
-    };
-    const result = buildAgainstFacadeWithout(['PackEvents'], sender);
-    expect(result.code, result.output).not.toBe(0);
-    expect(result.output).toContain('`PackEvents`');
-    expect(result.output).toContain('sendsTo');
-  }, 120_000);
-
-  it('builds a dependent that names none of them, rather than failing over a type it never imports', () => {
-    const result = buildAgainstFacadeWithout(['PackEvents'], plain);
-    expect(result.code, result.output).toBe(0);
-  }, 120_000);
-});

@@ -259,13 +259,12 @@
 
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { useSelector } from '@xstate/vue'
 import { Wrench, Copy, Check, Terminal } from 'lucide-vue-next'
 import type { ArtifactItem } from '@abuddy/sdk/artifacts'
-import { useActorSystem, navigateToPlugin, getDesignated } from '@abuddy/sdk/fe'
+import { useChatStateOverrides, useCurrentThread, useThreadsSettings } from '@/features/threads/fe/public'
+import { navigateToPlugin } from '@/__generated__/fe'
 import { sendToSystem } from '@/__generated__/events'
 
-const actorSystem = useActorSystem()
 
 type PermissionMode =
   | 'default'
@@ -320,16 +319,12 @@ const props = defineProps<{
   artifact: ArtifactItem<SessionContent>
 }>()
 
-const threadsActor = actorSystem.get(getDesignated('threads'))
-const currentThread = useSelector(
-  threadsActor,
-  (state: any) => state.context.currentThread,
-)
+const currentThread = useCurrentThread()
 const currentThreadId = computed(() => currentThread.value?.id as string | undefined)
 
 // The thread context is the source of truth for session data.
 const content = computed<SessionContent>(() =>
-  currentThread.value?.context?.claudeCode ?? ({} as SessionContent)
+  (currentThread.value?.context?.claudeCode ?? {}) as SessionContent
 )
 
 const recentTools = computed(() => content.value?.recentTools ?? [])
@@ -367,8 +362,8 @@ function fmt(n: number): string {
   return String(n)
 }
 
-const settings = useSelector(threadsActor, (state: any) => state.context.settings);
-const overrides = useSelector(threadsActor, (state: any) => state.context.chatStateOverrides);
+const settings = useThreadsSettings()
+const overrides = useChatStateOverrides()
 const stateConfig = computed(() => {
   const configs = settings.value?.chatStates;
   const threadId = currentThreadId.value ?? '';
@@ -410,16 +405,13 @@ async function copySessionId() {
 }
 
 function openTerminalTab() {
-  const terminalActor = actorSystem.get('code')?.system.get('terminal') as any
-  if (!terminalActor) return
-
-  terminalActor.send({
+  // The code plugin routes a terminal.* event to its terminals
+  navigateToPlugin('code', {
     type: 'terminal.CREATE',
     target: 'tab',
     command: `claude --resume ${content.value.sessionId}`,
     cwd: content.value.cwd || undefined,
   })
-  navigateToPlugin('code')
 }
 
 // ─── Permission mode segmented control ─────────────────────────────────

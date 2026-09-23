@@ -24,7 +24,7 @@ This document describes how AgentBuddy executes flows at runtime. It covers the 
 | `packages/default-setup/src/features/brain/be/node-handlers/index.ts` | `executeNode`: runs the step type's registered runtime handler (`extensions/steps/<type>/runtime.ts` or its `index.ts`); a type without one completes with `{ executed: true }`. |
 | `packages/default-setup/src/features/brain/be/flow-completion.ts` | Centralizes flow completion rules. |
 | `packages/default-setup/src/features/brain/be/services/scheduler.ts` | Owns active Croner jobs for schedule nodes. |
-| `packages/abuddy-sdk/src/events/index.ts` (`sendToBrainSystem`) | Sends internal `TRIGGER_BRAIN_EVENT` events to the brain system (`services.emitter.sendToBrainSystem`). |
+| `packages/abuddy-sdk/src/events/index.ts` (`sendToSystem`) | Sends `TRIGGER_BRAIN_EVENT` to the system playing the brain role (`sendToSystem({ role: 'brain' }, …)`, and `services.emitter.sendToSystem` from actions). |
 
 ## Brain Lifecycle
 
@@ -95,7 +95,8 @@ Schedule nodes register Croner jobs when their owning flow actor enters `active`
 The scheduler key is `${flowTNodeId}:${scheduleNodeId}`. On each tick, the cron callback sends a synthetic event to the brain system:
 
 ```ts
-sendToBrainSystem({
+sendToSystem({ role: 'brain' }, {
+  type: 'TRIGGER_BRAIN_EVENT',
   eventType: `schedule.${scheduleNodeId}`,
   targetFlowId: flowTNodeId,
 })

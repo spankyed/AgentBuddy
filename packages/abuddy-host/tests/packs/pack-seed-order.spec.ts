@@ -1,8 +1,8 @@
 // A pack's seeds may reference what a pack it depends on seeded, so it has to seed after it. Discovery
 // order is readdirSync's, which is alphabetical at best and says nothing about what depends on what.
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { packSeedOrder } from '../../src/packs/pack-discovery.ts';
-import { createPackRegistry } from '../../src/packs/pack-registration.ts';
+import { packSeedOrder } from '../../src/packs/discovery.ts';
+import { createPackRegistry } from '../../src/packs/registry.ts';
 
 const pack = (id: string, ...deps: string[]) => ({
   id,
@@ -73,13 +73,13 @@ describe('the order the registry hands out', () => {
 
   it('puts a dependency before the pack that names it, whichever order they registered in', () => {
     const registry = createPackRegistry();
-    registry.registerPack({ id: 'dependent', systems: [] }, origin('dependent', 'provider'));
-    registry.registerPack({ id: 'provider', systems: [] }, origin('provider'));
+    registry.registerPack({ id: 'dependent' }, origin('dependent', 'provider'));
+    registry.registerPack({ id: 'provider' }, origin('provider'));
 
     expect(registry.externalPackTargets().map((t) => t.manifest.id)).toEqual(['provider', 'dependent']);
 
     // ...and a pack registered after that order was worked out is in the next one
-    registry.registerPack({ id: 'later', systems: [] }, origin('later', 'dependent'));
+    registry.registerPack({ id: 'later' }, origin('later', 'dependent'));
     expect(registry.externalPackTargets().map((t) => t.manifest.id)).toEqual(['provider', 'dependent', 'later']);
 
     registry.unregisterPack('dependent');
@@ -89,9 +89,9 @@ describe('the order the registry hands out', () => {
   it('keeps that order in a subset, and reports a cycle once per pack set rather than per call', () => {
     const warnings = captureWarnings();
     const registry = createPackRegistry();
-    registry.registerPack({ id: 'a', systems: [] }, origin('a', 'b'));
-    registry.registerPack({ id: 'b', systems: [] }, origin('b', 'a'));
-    registry.registerPack({ id: 'c', systems: [] }, origin('c'));
+    registry.registerPack({ id: 'a' }, origin('a', 'b'));
+    registry.registerPack({ id: 'b' }, origin('b', 'a'));
+    registry.registerPack({ id: 'c' }, origin('c'));
 
     // Acting on one pack, as activation and reload do, three times over
     for (let i = 0; i < 3; i++) expect(registry.externalPackTargets(['c']).map((t) => t.manifest.id)).toEqual(['c']);

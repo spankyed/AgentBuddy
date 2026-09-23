@@ -120,9 +120,7 @@ import { computed } from 'vue';
 import { X, ExternalLink } from 'lucide-vue-next';
 import type { TNodeEntity } from '@abuddy/sdk/steps';
 import DataRenderer from '@abuddy/ui/components/DataRenderer';
-import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe';
-
-const actorSystem = useActorSystem()
+import { navigateToPlugin } from '@/__generated__/fe';
 
 interface Props {
   node?: TNodeEntity;
@@ -139,7 +137,7 @@ const openBlueprint = () => {
 
     // Node editor needs time to render after flow selection
     setTimeout(() => {
-      actorSystem.get('flows')?.send({
+      navigateToPlugin('flows', {
         type: 'NODE.DOUBLE_CLICK',
         nodeId: props.node!.blueprint!.nodeId
       });

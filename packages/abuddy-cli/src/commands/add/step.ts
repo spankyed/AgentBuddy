@@ -1,5 +1,5 @@
 import * as path from 'node:path';
-import { generateEntries } from '../generate-entries';
+import { regenerateAfterScaffold } from '../generate-entries';
 import { validateName, toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, hasFlag, updateRegisterArray } from './templates';
 import { readManifest, writeManifest, addStepDefinition } from './manifest';
 
@@ -194,9 +194,9 @@ export async function addStep(args: string[], root: string) {
 
   writeManifest(root, manifest);
 
-  await generateEntries([], root);
+  const regenerated = await regenerateAfterScaffold(root);
 
   console.log(`\nCreated step "${type}":`);
   logCreated(root, created);
-  console.log(`\n  manifest + register files updated, __generated__/ regenerated`);
+  if (regenerated) console.log(`\n  manifest + register files updated, __generated__/ regenerated`);
 }

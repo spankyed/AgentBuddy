@@ -27,19 +27,27 @@ function writeRegistry(entry: Record<string, unknown>) {
   }));
 }
 
+/** A registry that recorded `problems` as the packs' load problems */
+const registry = (problems: Record<string, string> = {}) => ({ loadProblem: (packId: string) => problems[packId] });
+
 describe('activationProblem', () => {
   it('reports a pack whose runtime failed to load, which records no seed error', () => {
     writeRegistry({ id: 'broken' });
-    expect(activationProblem('broken', false)).toMatch(/failed to load/);
+    expect(activationProblem(registry(), 'broken', false)).toMatch(/failed to load/);
+  });
+
+  it('says why a pack failed to load when the registry recorded it', () => {
+    writeRegistry({ id: 'broken' });
+    expect(activationProblem(registry({ broken: 'its snapshot is format 2' }), 'broken', false)).toBe('failed to load: its snapshot is format 2');
   });
 
   it("reports the seed error of a pack that activated", () => {
     writeRegistry({ id: 'bad-seed', lastError: 'flows: invalid' });
-    expect(activationProblem('bad-seed', true)).toBe('its data failed to seed:\nflows: invalid');
+    expect(activationProblem(registry(), 'bad-seed', true)).toBe('its data failed to seed:\nflows: invalid');
   });
 
   it('is undefined for a pack that activated and seeded', () => {
     writeRegistry({ id: 'fine' });
-    expect(activationProblem('fine', true)).toBeUndefined();
+    expect(activationProblem(registry(), 'fine', true)).toBeUndefined();
   });
 });

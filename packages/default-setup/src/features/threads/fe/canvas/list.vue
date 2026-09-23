@@ -109,7 +109,8 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { ref, computed, watch } from 'vue'
 import { Archive, MessageCircleMore, Plus, SearchX } from 'lucide-vue-next'
 import { useSelector } from '@xstate/vue'
@@ -120,9 +121,7 @@ import { id, threadsFromStore, type ThreadsState } from '@/features/threads/fe/s
 import { useThreadSelection } from '@/features/threads/fe/composables/useThreadSelection'
 import { useThreadDragDrop } from '@/features/threads/fe/composables/useThreadDragDrop'
 
-const actorSystem = useActorSystem()
-
-const actor: ThreadsState = actorSystem.get(id)
+const actor: ThreadsState = usePlugin()
 const threadMap = useSelector(actor, s => s.context.threadMap)
 const threadIds = useSelector(actor, s => s.context.threadIds)
 const threads = computed(() => threadsFromStore(threadMap.value, threadIds.value))

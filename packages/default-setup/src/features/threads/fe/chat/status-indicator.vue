@@ -30,19 +30,18 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, type ThreadsState } from '@/features/threads/fe/state';
 import { useAnchorTracking } from './composables/useAnchorTracking'
 
-const actorSystem = useActorSystem()
-
 const props = defineProps<{
   anchor?: HTMLElement | null
 }>()
 
-const actor: ThreadsState = actorSystem.get(id);
+const actor: ThreadsState = usePlugin();
 const settings = useSelector(actor, (state) => state.context.settings);
 const chatStates = useSelector(actor, (state) => state.context.chatStates);
 const overrides = useSelector(actor, (state) => state.context.chatStateOverrides);

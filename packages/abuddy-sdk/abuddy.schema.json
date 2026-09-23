@@ -162,7 +162,7 @@
           "id": {
             "type": "string",
             "pattern": "^[a-z][a-zA-Z0-9]*$",
-            "description": "Unique feature identifier. A lowercase-first identifier (letters and digits), used as a name in generated code; not a reserved word or \"busId\"."
+            "description": "Unique feature identifier. A lowercase-first identifier (letters and digits), used as a name in generated code; not a reserved word."
           },
           "designation": {
             "type": "string",
@@ -186,17 +186,6 @@
               "entry": {
                 "type": "string",
                 "description": "Path to the backend system module."
-              },
-              "outgoingEventsType": {
-                "type": "string",
-                "description": "TypeScript type name for outgoing events (used by codegen)."
-              },
-              "sendsTo": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "description": "Plugins this system sends events to besides its own feature's: other features of this pack that have a plugin, plugins of its dependencies, or host plugins (\"application\"). Another feature of this pack gains this system's outgoing events; a dependency's plugin or a host plugin keeps the events its own owner declares it receives, and naming it here is what makes it sendable at all."
               },
               "events": {
                 "type": "object",
@@ -281,6 +270,16 @@
         "pattern": "^[A-Za-z_$][\\w$]*$"
       },
       "description": "Pack-level services not tied to a specific feature. Keys are service names on `services`, values are \"path#exportName\" of the service object (an object literal or a class instance, not a factory) in a source file."
+    },
+    "help": {
+      "type": "string",
+      "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+      "description": "Help entries this pack answers with, listed under Help in the app's Settings view. \"path#exportName\" of a function returning them; it is called the first time the list is read, so a pack may read its compiled seeds then."
+    },
+    "settingsSections": {
+      "type": "string",
+      "pattern": "^[^#]+#[A-Za-z_$][\\w$]*$",
+      "description": "Sections of the app settings this pack owns, with their defaults, beside the \"plugins\" section the app keeps itself. \"path#exportName\" of a function returning them; it is called the first time the defaults are read, so a pack can read its compiled seeds then."
     },
     "commands": {
       "type": "array",

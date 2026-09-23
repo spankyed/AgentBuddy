@@ -14,11 +14,12 @@
 </template>
 
 <script setup lang="ts">
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import type { BlockConfig } from '@/__generated__/types'
 import { blockRegistry } from '@abuddy/sdk/blocks'
 import { ref, computed } from 'vue'
-import { useActorSystem } from '@abuddy/sdk/fe'
-import { id as threadsId } from '@/features/threads/fe/state'
+import type { ThreadsState } from '../../state'
 
 interface Props {
   blocks: BlockConfig[]
@@ -31,8 +32,7 @@ const props = withDefaults(defineProps<Props>(), {
   isDisabled: false
 })
 
-const actorSystem = useActorSystem()
-const threadsActor = actorSystem.get(threadsId)
+const threadsActor: ThreadsState = usePlugin()
 
 // ─── Block component resolution ─────────────────────────────────────
 const getBlockComponent = (type: string) => blockRegistry.getComponent(type)

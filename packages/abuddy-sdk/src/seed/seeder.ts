@@ -8,6 +8,7 @@ import { seedPath } from '../build/manifest.ts';
 import { seedingPackId } from '../utils/seed.ts';
 import { RECORD_KEYS, recordLabel, type CompiledSeedFile, type SeedRecord } from '../build/seeds/records.ts';
 import { _seedHookRegistry, type SeedHookContext, type SeedHookMatch, type SeedHooks } from './hooks.ts';
+import { errorMessage } from '../utils/shared.ts';
 
 export interface SeederOptions {
   key: string;
@@ -263,7 +264,7 @@ export function createSeeder(options: SeederOptions): Seeder {
             ctx.log(`  ${key} created: ${label}`);
             if (record.children) visit(record.children, id, seedKey);
           } catch (err) {
-            const message = err instanceof Error ? err.message : String(err);
+            const message = errorMessage(err);
             errors.push(`${record.entity ?? key} "${label}": ${message}`);
             counts.skipped++;
           }

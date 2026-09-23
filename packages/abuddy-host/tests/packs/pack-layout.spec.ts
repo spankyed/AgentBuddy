@@ -12,8 +12,9 @@ import {
   packFrontendFiles,
   stagePack,
   verifyPack,
-} from '../../src/packs/pack-layout.ts';
-import { installPackFromGitHub, installPackFromLocal, installPackFromUrl } from '../../src/packs/pack-installer.ts';
+} from '../../src/packs/layout.ts';
+import { installPackFromGitHub, installPackFromLocal, installPackFromUrl, uninstallPack } from '../../src/packs/installer.ts';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 
 let tmp: string;
 
@@ -39,11 +40,11 @@ function builtPack(overrides: Record<string, unknown> = {}): string {
     hostVersion: '>=0.3.0',
     ...overrides,
   }));
-  write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack", systems: [] } };');
+  write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack" } };');
   write('dist/runtime/index.cjs.map', '{}');
   write('dist/runtime/fe.js', 'export default {};');
   write('dist/runtime/seeds/actions.seed.json', '[]');
-  write('dist/types/snapshot.json', '{"types":{}}');
+  write('dist/types/snapshot.json', JSON.stringify({ types: {}, format: PACK_SNAPSHOT_FORMAT }));
   write('src/ignored.ts', 'not part of the pack');
   return root;
 }
@@ -170,6 +171,65 @@ describe('installPackFromLocal (pack layout path)', () => {
     expect(verifyPack(result.dir).version).toBe('1.2.3');
     // no staging or replacement leftovers in the packs dir
     expect(fs.readdirSync(packsDir)).toEqual(['demo-pack']);
+  });
+
+  // At install, rather than skipped at the app's next start
+  it('refuses a pack an older abuddy CLI built than the app reads, leaving nothing installed', async () => {
+    const packsDir = path.join(tmp, 'packs');
+    const source = builtPack();
+    fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), JSON.stringify({ types: {} }));
+
+    await expect(installPackFromLocal(source, packsDir, { packFormat: PACK_SNAPSHOT_FORMAT })).rejects.toThrow(
+      `Pack "demo-pack" can't be installed: its snapshot is format (none), written by an older abuddy CLI; this AgentBuddy reads format ${PACK_SNAPSHOT_FORMAT}. Rebuild it with the abuddy CLI that matches this AgentBuddy`,
+    );
+    expect(fs.existsSync(path.join(packsDir, 'demo-pack'))).toBe(false);
+  });
+
+  // `abuddy install` and `abuddy dev` pass the format the app recorded, which need not be the one this process reads
+  it("checks against the app's format, not this process's: refusing one only this process reads, installing one only the app reads", async () => {
+    const packsDir = path.join(tmp, 'packs');
+    const appFormat = PACK_SNAPSHOT_FORMAT + 1;
+
+    await expect(installPackFromLocal(builtPack(), packsDir, { packFormat: appFormat })).rejects.toThrow(
+      `Pack "demo-pack" can't be installed: its snapshot is format ${PACK_SNAPSHOT_FORMAT}, written by an older abuddy CLI; this AgentBuddy reads format ${appFormat}. Rebuild it with the abuddy CLI that matches this AgentBuddy`,
+    );
+    expect(fs.existsSync(path.join(packsDir, 'demo-pack'))).toBe(false);
+
+    const source = builtPack();
+    fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), JSON.stringify({ types: {}, format: appFormat }));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      await installPackFromLocal(source, packsDir, { packFormat: appFormat });
+      expect(fs.existsSync(path.join(packsDir, 'demo-pack', 'abuddy.json'))).toBe(true);
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+
+  it('says a pack newer than the app reads needs the app updated', async () => {
+    const source = builtPack();
+    fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), JSON.stringify({ types: {}, format: PACK_SNAPSHOT_FORMAT }));
+
+    await expect(installPackFromLocal(source, path.join(tmp, 'packs'), { packFormat: PACK_SNAPSHOT_FORMAT - 1 })).rejects.toThrow(
+      `its snapshot is format ${PACK_SNAPSHOT_FORMAT}, written by a newer abuddy CLI; this AgentBuddy reads format ${PACK_SNAPSHOT_FORMAT - 1}. Update AgentBuddy to use it`,
+    );
+  });
+
+  // No AgentBuddy that records its format has started with the data dir, so nothing says which one it reads
+  it("installs, when the app's format isn't known, a pack in a format this process doesn't read, warning that the app decides", async () => {
+    const packsDir = path.join(tmp, 'packs');
+    const source = builtPack();
+    fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), JSON.stringify({ types: {}, format: PACK_SNAPSHOT_FORMAT + 1 }));
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      await installPackFromLocal(source, packsDir);
+
+      expect(fs.existsSync(path.join(packsDir, 'demo-pack', 'abuddy.json'))).toBe(true);
+      expect(warn.mock.calls.flat().join('\n')).toMatch(/"demo-pack" may not load: .*AgentBuddy loads it only if it reads the pack's format/);
+    } finally {
+      warn.mockRestore();
+    }
   });
 
   it('installs a verified archive and replaces the previous version', async () => {
@@ -327,5 +387,25 @@ describe('installPackFromUrl', () => {
     await expect(installPackFromUrl('https://example.test/demo-pack-1.2.3.tgz', path.join(tmp, 'packs'))).rejects.toThrow(
       'Downloading https://example.test/demo-pack-1.2.3.tgz failed: The operation was aborted due to timeout',
     );
+  });
+});
+
+// The id is joined onto the packs dir and deleted recursively, whoever passes it
+describe('uninstallPack', () => {
+  it.each([['..'], [''], ['a/../..'], ['.'], ['/tmp']])('refuses %j, which is not a pack id, and deletes nothing', async (packId) => {
+    const packsDir = path.join(tmp, 'data', 'packs');
+    fs.mkdirSync(path.join(packsDir, 'demo-pack'), { recursive: true });
+
+    await expect(uninstallPack(packId, packsDir)).rejects.toThrow(`"${packId}" is not a pack id`);
+    expect(fs.existsSync(path.join(packsDir, 'demo-pack'))).toBe(true);
+  });
+
+  it('deletes an installed pack', async () => {
+    const packsDir = path.join(tmp, 'packs');
+    fs.mkdirSync(path.join(packsDir, 'demo-pack'), { recursive: true });
+
+    await uninstallPack('demo-pack', packsDir);
+    expect(fs.existsSync(path.join(packsDir, 'demo-pack'))).toBe(false);
+    expect(fs.existsSync(packsDir)).toBe(true);
   });
 });

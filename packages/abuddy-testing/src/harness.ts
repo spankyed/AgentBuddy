@@ -18,14 +18,19 @@ import { pathToFileURL } from 'node:url';
 import { afterEach, beforeEach, inject, type RunnerTask, type RunnerTestCase } from 'vitest';
 import { resetTestData as resetSdkTestData, startTestRuntime, takeSystemErrors, addTestSecret, type SeedRuntime, fakeInference, type FakeInference } from '@abuddy/sdk/testing';
 import type { PackRegistryView } from '@abuddy/sdk/runtime';
+import type { FeatureRef } from '@abuddy/sdk/ids';
 import type { PackRegistration } from '@abuddy/sdk/framework';
-import { createPackRegistry } from '@abuddy/host/packs';
+import { createPackRegistry, type PackOrigin } from '@abuddy/host/packs';
+import { createSettingsSystem, hostRegistration, settingsEvents } from '@abuddy/host/features';
 import { appState, HOST_ENTITY_TYPES } from '@abuddy/host/app-state';
+import { createSettingsService, createSettingsStore, type SettingsDocument } from '@abuddy/host/settings';
+import { getPackSettingsDefaults } from '@abuddy/sdk/framework';
 import { loadDependencyRuntime } from './dependency-runtime.ts';
 import { assertSharedEars } from './shared-ears.ts';
 import { setAppPacks, stopRunningApps } from './app.ts';
+import { startShell as startShellFor, stopRunningShells, type StartShellOptions, type TestShell } from './shell.ts';
 import { PROJECT_ROOT_KEY } from './vitest-teardown.ts';
-import { compileFlowDSL, compilePack, resolveSeeds, SEED_INDEX_FILE, type FlowDSL, type PackManifest, type PackSnapshot, type SeedDependency, type SeedIndex } from '@abuddy/sdk/build';
+import { compileFlowDSL, compilePack, resolveSeeds, SEED_INDEX_FILE, _snapshotFormatMismatch, _cliFormatMismatchMessage, type FlowDSL, type PackManifest, type PackSnapshot, type SeedDependency, type SeedIndex } from '@abuddy/sdk/build';
 import { actionRepository, flowRepository, promptRepository } from '@abuddy/sdk/repositories';
 import { untypedQx } from '@abuddy/ears';
 import { _getMediaPath, seedData, type ImportMode, type SeedCounts, type Seeder } from '@abuddy/sdk/utils';
@@ -50,7 +55,7 @@ export function resetTestData(): void {
   resetSdkTestData();
   fs.rmSync(testMediaPath(), { recursive: true, force: true });
 }
-export { startApp, type StartAppOptions, type TestApp, type OutgoingSystemEvents, type FlowRun, type FlowStepTrace, type RunFlowOptions } from './app.ts';
+export { startApp, type StartAppOptions, type TestApp, type Message, type PluginEvent, type FlowRun, type FlowStepTrace, type RunFlowOptions } from './app.ts';
 
 const serviceMocks = new Map<string, unknown>();
 /**
@@ -61,12 +66,34 @@ let inTest = false;
 
 /** The test file's registered packs: the pack under test and its dependencies, and any other pack a test registers */
 const registry = createPackRegistry();
+// The app's own plugins (the shell, the Packs tab, Settings), which a pack's systems may send to. The harness runs
+// one of the host's systems: settings, because a feature's own settings are the app's to store and hand back, and a
+// pack's code reads them in almost every test.
+registry.registerPack(hostRegistration({
+  settings: { machine: createSettingsSystem(), receives: [...settingsEvents] },
+}));
 setAppPacks(registry);
+
+/**
+ * The systems and plugins the packs' manifests declare, when the harness registers seed runtimes, which carry no
+ * features: an action a test runs sends to them through `services.emitter`, which resolves against these
+ */
+const declaredRefs = { systems: new Set<string>(), plugins: new Set<string>() };
+
+/** Records the refs of the features `manifest` declares */
+function declareFeatures(manifest: Pick<PackManifest, 'id' | 'features'>): void {
+  for (const feature of manifest.features ?? []) {
+    if (feature.system) declaredRefs.systems.add(`${manifest.id}/${feature.id}`);
+    if (feature.plugin) declaredRefs.plugins.add(`${manifest.id}/${feature.id}`);
+  }
+}
 
 /** The registered packs the harness binds, with the current test's mocked services over the registered ones */
 const packsWithMocks: PackRegistryView = {
   ...registry,
   getRegisteredServices: () => ({ ...registry.getRegisteredServices(), ...Object.fromEntries(serviceMocks) }),
+  systemIds: () => [...new Set([...registry.systemIds(), ...declaredRefs.systems])] as FeatureRef[],
+  pluginIds: () => [...new Set([...registry.pluginIds(), ...declaredRefs.plugins])] as FeatureRef[],
 };
 
 /**
@@ -187,17 +214,23 @@ function readDependencies(packDir: string, manifest: PackManifest): Map<string, 
       throw new Error(`Dependency "${depId}" isn't in ${path.join(DEPS_DIR, depId)}. Run \`abuddy build\` once to fetch dependencies.`);
     }
     const snapshot = JSON.parse(fs.readFileSync(snapshotFile, 'utf-8')) as PackSnapshot;
+    const mismatch = _snapshotFormatMismatch(snapshot);
+    if (mismatch) throw new Error(`Dependency "${depId}" in ${path.join(DEPS_DIR, depId)}: ${_cliFormatMismatchMessage(mismatch)}. Run \`abuddy build\` to fetch it again.`);
     const buildDir = path.join(dir, 'build');
     dependencies.set(depId, { snapshot, dir, manifest: snapshot.manifest, ...(fs.existsSync(buildDir) && { buildDir }) });
   }
   return dependencies;
 }
 
+/** Where a pack came from, as the app records it */
+function originOf(manifest: PackManifest, dir: string): PackOrigin {
+  return { id: manifest.id, name: manifest.name, version: manifest.version, dir, builtIn: manifest.builtIn === true, manifest };
+}
+
 /** A seed runtime as a registration: its entity types, repositories and seed hooks, and the pack's seeders */
 function seedRuntimeRegistration(runtime: SeedRuntime, seeders?: Seeder[]): PackRegistration {
   return {
     id: runtime.id,
-    systems: [],
     ears: { entities: runtime.entities, relKinds: runtime.relKinds },
     repositories: runtime.repositories,
     seedHooks: runtime.seedHooks,
@@ -236,6 +269,10 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
       hasOnboarded: () => appState.get().hasOnboarded,
       completeOnboarding: () => appState.update({ hasOnboarded: true }),
     },
+    // The app's own settings store, so a test writes and reads settings the way the app does rather than a fake
+    settings: createSettingsService(createSettingsStore({
+      defaults: () => getPackSettingsDefaults().settings as SettingsDocument,
+    })),
   });
   if (options.registration) {
     await registerRuntimes(packDir, manifest, dependencies, options.registration);
@@ -247,10 +284,12 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
       }
       const { seedRuntime } = await import(pathToFileURL(file).href) as { seedRuntime: SeedRuntime };
       startTestRuntime({ entityTypes: Object.values(seedRuntime.entities) });
-      registry.registerPack(seedRuntimeRegistration(seedRuntime));
+      registry.registerPack(seedRuntimeRegistration(seedRuntime), originOf(dependency.manifest, dependency.dir));
+      declareFeatures(dependency.manifest);
     }
     startTestRuntime({ entityTypes: Object.values(options.seedRuntime.entities) });
-    registry.registerPack(seedRuntimeRegistration(options.seedRuntime, options.seeders));
+    registry.registerPack(seedRuntimeRegistration(options.seedRuntime, options.seeders), originOf(manifest, packDir));
+    declareFeatures(manifest);
     setAppPacks(registry, manifest.id);
   }
 
@@ -266,10 +305,12 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
     inTest = false;
     // Every cleanup runs, whichever fails
     const failures: unknown[] = [];
-    try {
-      stopRunningApps();
-    } catch (error) {
-      failures.push(error);
+    for (const stop of [stopRunningShells, stopRunningApps]) {
+      try {
+        stop();
+      } catch (error) {
+        failures.push(error);
+      }
     }
     serviceMocks.clear();
     const errors = takeSystemErrors();
@@ -281,13 +322,16 @@ export async function setupPackTests(options: PackTestOptions): Promise<void> {
   });
 }
 
+export type { StartShellOptions, TestShell, TestPlugin } from './shell.ts';
+
 /**
- * A pack's registration with its systems under the ids the app runs them under: an external pack's are
- * `<packId>.<featureId>` (the API's registerExternalPacks), which its `#generated/bus-ids` names.
+ * Starts the app shell, the host's own, with `options.plugins` registered as this pack's, and binds the frontend host
+ * to it: `navigateToPlugin`, `openPlugin` and `useShell()` reach it, and a test app's systems (`startApp`) and the
+ * plugins reach each other over the harness's bus. It stops after the test.
  */
-function asRunByApp(registration: PackRegistration, manifest: PackManifest): PackRegistration {
-  if (manifest.builtIn) return registration;
-  return { ...registration, systems: registration.systems.map((system) => ({ ...system, id: `${manifest.id}.${system.id}` })) };
+export async function startShell(options: StartShellOptions): Promise<TestShell> {
+  if (!context) throw new Error('startShell() runs in a test: call setupPackTests() from a vitest setup file first');
+  return startShellFor(context.manifest.id, options, packsWithMocks);
 }
 
 /** Registers the pack's runtime and its dependencies' (loaded from their cached runtime/index.cjs), as the app does */
@@ -300,10 +344,10 @@ async function registerRuntimes(packDir: string, manifest: PackManifest, depende
     const seedsDir = path.join(dependency.dir, 'runtime', 'seeds');
     const runtime = await loadDependencyRuntime(packDir, depId, runtimeEntry, fs.existsSync(seedsDir) ? seedsDir : undefined);
     startTestRuntime({ entityTypes: Object.values(runtime.registration.ears?.entities ?? {}) });
-    registry.registerPack(asRunByApp(runtime.registration, dependency.manifest));
+    registry.registerPack(runtime.registration, originOf(dependency.manifest, dependency.dir));
   }
   startTestRuntime({ entityTypes: Object.values(registration.ears?.entities ?? {}) });
-  registry.registerPack(asRunByApp(registration, manifest));
+  registry.registerPack(registration, originOf(manifest, packDir));
   setAppPacks(registry, manifest.id);
 }
 

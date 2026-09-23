@@ -3,35 +3,37 @@ import { registry } from './test-host.ts';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
-import { loadBuiltInPacks, loadExternalPacks, type LoadedPack } from '../../../src/packs/runtime/loader.ts';
+import { loadAppPacks, loadBuiltInPacks, loadExternalPacks, type LoadedPack } from '../../../src/packs/runtime/loader.ts';
 import type { PackRegistration } from '@abuddy/sdk/framework';
 import { seedPackData, computePackSeedHash, type PackSeedTarget } from '../../../src/packs/runtime/seed.ts';
 import { appState } from '../../../src/app-state/index.ts';
-import { getLoadedPackEntries } from '../../../src/packs/pack-layout.ts';
+import { getLoadedPackEntries } from '../../../src/packs/layout.ts';
 import { resetTestData, testRootEvents as rootEvents } from '@abuddy/sdk/testing';
-import { seedFile } from '@abuddy/sdk/build';
+import { PACK_SNAPSHOT_FORMAT, seedFile } from '@abuddy/sdk/build';
 
 
-/** A loaded pack's system by feature id: the loader now completes each system's bus id (`<packId>.<featureId>`) */
-const systemOf = (pack: LoadedPack, featureId: string) =>
-  pack.registration.systems.find((s) => s.id === `${pack.origin.id}.${featureId}`)!;
+/** The features of a loaded pack that have a system */
+const systemFeatures = (pack: LoadedPack) =>
+  Object.entries(pack.registration.features ?? {}).filter(([, feature]) => feature.system).map(([featureId]) => featureId);
 
 
 let tmpDir: string;
 let origEnv: { env?: string; userDataDir?: string };
 
-/** An installed pack: its manifest, integrity.json and a runtime/index.cjs registering `systemsSource` */
+/** An installed pack: its manifest, integrity.json and a runtime/index.cjs registering `featuresSource` */
 function makePack(
   packsDir: string,
   id: string,
   manifest: Record<string, unknown>,
-  systemsSource = '[]',
+  featuresSource = '{}',
 ) {
   const packDir = path.join(packsDir, id);
   fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify(manifest));
   fs.writeFileSync(path.join(packDir, 'integrity.json'), JSON.stringify({ formatVersion: 1, id, version: '1.0.0', files: {} }));
-  fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(manifest.id)}, systems: ${systemsSource} } };`);
+  fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
+  fs.writeFileSync(path.join(packDir, 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
+  fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `module.exports = { registration: { id: ${JSON.stringify(manifest.id)}, features: ${featuresSource} } };`);
   return packDir;
 }
 
@@ -76,14 +78,21 @@ describe('pack-loader', () => {
           id: 'myFeature',
           system: { entry: 'src/features/myFeature/be/system.ts', events: { incoming: ['DO_THING'] } },
         }],
-      }, "[{ id: 'myFeature', machine: { id: 'test-system' }, events: [] }]");
+      }, "{ myFeature: { system: { machine: { id: 'test-system' }, receives: ['DO_THING'] } } }");
 
       const result = loadExternalPacks();
 
       expect(result).toHaveLength(1);
       expect(result[0].origin.id).toBe('test-pack');
-      expect(result[0].registration.systems.map((sys) => sys.id)).toEqual(['test-pack.myFeature']);
-      expect(systemOf(result[0], 'myFeature').events.has('DO_THING')).toBe(true);
+      expect(systemFeatures(result[0])).toEqual(['myFeature']);
+    });
+
+    // The schema refuses an early system outside a built-in pack; the loader doesn't start one either way
+    it("drops an external pack's early system", () => {
+      makePack(path.join(tmpDir, 'packs'), 'early-pack', { id: 'early-pack', name: 'Early', version: '1.0.0' },
+        "{ logs: { system: { machine: { id: 'logs' }, receives: [], early: true }, plugin: { receives: [] } } }");
+      const [pack] = loadExternalPacks();
+      expect(pack.registration.features).toEqual({ logs: { plugin: { receives: [] } } });
     });
 
     it("skips a pack directory that isn't an installed pack, naming how to install it", () => {
@@ -163,7 +172,7 @@ describe('pack-loader', () => {
         "const { z } = require('zod/v4');",
         "const { createMachine } = require('xstate');",
         "const { and } = require('xstate/guards');",
-        "module.exports = { registration: { id: 'zod-pack', systems: [] }, parsed: z.string().parse('ok'),",
+        "module.exports = { registration: { id: 'zod-pack' }, parsed: z.string().parse('ok'),",
         "  sameZod: require('zod/v4') === require('zod/v4'), hostZod: zod === require('zod'),",
         "  machine: typeof createMachine, guard: typeof and };",
       ].join('\n'));
@@ -184,7 +193,7 @@ describe('pack-loader', () => {
       });
       const result = loadExternalPacks();
       expect(result).toHaveLength(1);
-      expect(result[0].registration.systems).toEqual([]);
+      expect(systemFeatures(result[0])).toEqual([]);
     });
 
     it('handles features without system entry', () => {
@@ -199,7 +208,7 @@ describe('pack-loader', () => {
       });
       const result = loadExternalPacks();
       expect(result).toHaveLength(1);
-      expect(result[0].registration.systems).toEqual([]);
+      expect(systemFeatures(result[0])).toEqual([]);
     });
 
   });
@@ -213,7 +222,7 @@ describe('loadBuiltInPacks: the bundled loaders', () => {
     const packDir = path.join(packagesDir, id);
     fs.mkdirSync(path.join(packDir, 'dist', 'runtime'), { recursive: true });
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id, name: id, version: '1.0.0', builtIn: true }));
-    if (built) fs.writeFileSync(path.join(packDir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: '${id}', systems: [] } };`);
+    if (built) fs.writeFileSync(path.join(packDir, 'dist', 'runtime', 'index.cjs'), `module.exports = { registration: { id: '${id}' } };`);
     return packagesDir;
   }
 
@@ -238,9 +247,37 @@ describe('loadBuiltInPacks: the bundled loaders', () => {
     const packagesDir = writeBuiltIn('bundled-only', false);
     const loaded = await loadBuiltInPacks(registry, packagesDir, {
       runtimeEntry: 'never',
-      bundledLoaders: async () => ({ 'bundled-only': async () => ({ registration: { id: 'bundled-only', systems: [] } }) }),
+      bundledLoaders: async () => ({ 'bundled-only': async () => ({ registration: { id: 'bundled-only' } }) }),
     });
     expect(loaded.map(p => p.id)).toEqual(['bundled-only']);
+  });
+});
+
+// A packaged app's built-in packs load through the bundle's loaders, which are imported asynchronously: an
+// installed pack registering meanwhile took any role a built-in pack designates, and the built-in then failed
+describe('loadAppPacks', () => {
+  afterEach(() => {
+    for (const id of ['role-builtin', 'role-taker']) if (registry.getPackExtensions(id)) registry.unregisterPack(id);
+  });
+
+  it('registers every built-in pack before any external one, however long the bundled loaders take', async () => {
+    const builtInDir = path.join(tmpDir, 'packages');
+    fs.mkdirSync(path.join(builtInDir, 'role-builtin'), { recursive: true });
+    fs.writeFileSync(path.join(builtInDir, 'role-builtin', 'abuddy.json'), JSON.stringify({ id: 'role-builtin', name: 'Built-in', version: '1.0.0', builtIn: true }));
+    makePack(path.join(tmpDir, 'packs'), 'role-taker', { id: 'role-taker', name: 'Taker', version: '1.0.0' }, "{ taker: { designation: 'loader-spec-role' } }");
+
+    const { builtIn, external } = await loadAppPacks(registry, {
+      builtInDir,
+      bundledLoaders: async () => {
+        await new Promise(resolve => setTimeout(resolve, 20));
+        return { 'role-builtin': async () => ({ registration: { id: 'role-builtin', features: { owner: { designation: 'loader-spec-role' } } } }) };
+      },
+    });
+
+    expect(builtIn.map(p => p.id)).toEqual(['role-builtin']);
+    expect(registry.designation('loader-spec-role')).toBe('role-builtin/owner');
+    // The external pack's claim on the role is what fails, not the built-in pack
+    expect(external).toEqual([]);
   });
 });
 
@@ -251,7 +288,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id, name: id, version: '1.0.0', ...manifestExtra }));
     fs.writeFileSync(path.join(packDir, 'integrity.json'), JSON.stringify({ formatVersion: 1, id, version: '1.0.0', files: {} }));
-    fs.writeFileSync(path.join(packDir, 'types', 'snapshot.json'), '{}');
+    fs.writeFileSync(path.join(packDir, 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
     fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), registrationSource);
     return packDir;
   }
@@ -263,7 +300,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
       setCompiledDir(dir) { compiledDir = dir; module.exports.compiledDirSeen = dir; },
       registration: {
         id: '${id}',
-        systems: [{ id: 'widget', machine, events: new Set(['PING']) }],
+        ${extra.includes('features:') ? '' : "features: { widget: { system: { machine, receives: ['PING', 'EXTRA'] } } },"}
         services: { hello: () => 'hi' },
         ears: {
           entities: { Widget: 'Widget' },
@@ -286,8 +323,7 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
 
     const [pack] = loadExternalPacks();
     expect(pack.origin.id).toBe('bundled-pack');
-    expect(pack.registration.systems.map((sys) => sys.id)).toEqual(['bundled-pack.widget']);
-    expect([...systemOf(pack, 'widget').events].sort()).toEqual(['EXTRA', 'PING']);
+    expect(systemFeatures(pack)).toEqual(['widget']);
     expect(Object.keys(pack.registration.services ?? {})).toEqual(['hello']);
     expect(pack.registration.ears?.entities).toEqual({ Widget: 'Widget' });
     expect(pack.registration.boot?.onInit).toBeTypeOf('function');
@@ -303,14 +339,15 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const { _seedHookRegistry } = await import('@abuddy/sdk/seed');
     makeBundledPack('settings-pack', registration('settings-pack', `
       seedHooks: { Widget: { find() { return undefined; } } },
-      features: [{ id: 'widget', hasSystem: true, services: [], settings: { plugins: { _meta: { visibility: { widget: false } }, widget: { size: 3 } } } }],
+      features: { widget: { system: { machine, receives: ['PING'] }, settings: { visible: false, plugins: { widget: { size: 3 } } } } },
     `));
 
     const [pack] = loadExternalPacks();
     expect(registerExternalPacks(registry, [pack])).toEqual([pack]);
     try {
       expect(_seedHookRegistry.get('Widget')).toEqual({ find: expect.any(Function) });
-      expect(getPackSettingsDefaults().settings).toEqual({ plugins: { widget: { size: 3 }, _meta: { visibility: { widget: false } } } });
+      expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'settings-pack/widget': { size: 3 } } });
+      expect(getPackSettingsDefaults().visibility).toEqual({ 'settings-pack/widget': false });
     } finally {
       registry.unregisterPack('settings-pack');
     }
@@ -386,6 +423,24 @@ describe('pack-loader: bundled runtime (runtime/index.cjs)', () => {
     const dir = makeBundledPack('future-format', registration('future-format'));
     fs.writeFileSync(path.join(dir, 'integrity.json'), JSON.stringify({ formatVersion: 2, id: 'future-format', version: '1.0.0', files: {} }));
     expect(loadExternalPacks()).toEqual([]);
+  });
+
+  // The layout's format is written by whoever staged the pack; the snapshot's by the CLI that built its runtime, whose
+  // registration the loader is about to load. A pack an older CLI built fails in ways that name nothing to act on.
+  it.each([
+    ['an older', undefined, `its snapshot is format (none), written by an older abuddy CLI (SDK 0.1.0); this AgentBuddy reads format ${PACK_SNAPSHOT_FORMAT}. Rebuild it with the abuddy CLI that matches this AgentBuddy`],
+    ['a newer', PACK_SNAPSHOT_FORMAT + 1, `its snapshot is format ${PACK_SNAPSHOT_FORMAT + 1}, written by a newer abuddy CLI (SDK 0.1.0); this AgentBuddy reads format ${PACK_SNAPSHOT_FORMAT}. Update AgentBuddy to use it`],
+  ])('skips a pack %s abuddy CLI built, before loading its runtime, saying which side to move', (_side, format, reason) => {
+    const dir = makeBundledPack('other-build', 'throw new Error("its runtime was loaded")');
+    fs.writeFileSync(path.join(dir, 'types', 'snapshot.json'), JSON.stringify({ format, sdkVersion: '0.1.0' }));
+    const warnings: string[] = [];
+    const unsubscribe = rootEvents.onLog((event) => { if (event.level === 'warn') warnings.push(event.message); });
+    try {
+      expect(loadExternalPacks()).toEqual([]);
+      expect(warnings).toContain(`Skipping other-build: ${reason}`);
+    } finally {
+      unsubscribe();
+    }
   });
 
   it('seeds from runtime/seeds', () => {
@@ -735,13 +790,13 @@ describe('computePackSeedHash', () => {
   // The claim the rest of this rests on: an install really does leave new files, so `abuddy install` gets a
   // re-seed without the CLI reaching into the app's database the way the in-app install once did
   it('changes after installing the same pack source over itself', async () => {
-    const { installPackFromLocal } = await import('../../../src/packs/pack-installer.ts');
+    const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
     const source = path.join(tmpDir, 'reinstall-source');
     fs.mkdirSync(path.join(source, 'dist', 'runtime', 'seeds'), { recursive: true });
     fs.writeFileSync(path.join(source, 'abuddy.json'), JSON.stringify({ id: 'reinstalled', name: 'R', version: '1.0.0' }));
     fs.writeFileSync(path.join(source, 'dist', 'runtime', 'index.cjs'), 'module.exports = {};');
     fs.mkdirSync(path.join(source, 'dist', 'types'), { recursive: true });
-    fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), '{}');
+    fs.writeFileSync(path.join(source, 'dist', 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
     fs.writeFileSync(path.join(source, 'dist', 'runtime', 'seeds', seedFile('actions')), '[{"label":"same"}]');
 
     const packsDir = path.join(tmpDir, 'packs');
@@ -803,7 +858,22 @@ describe('loaded packs: the packs.loaded entries', () => {
 
     expect(getLoadedPackEntries(loaded)).toEqual([
       { id: 'built-in', name: 'Built-in', version: '1.0.0', builtIn: true },
-      { id: 'with-fe', name: 'with-fe', version: '2.0.0', feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css' },
+      { id: 'with-fe', name: 'with-fe', version: '2.0.0', feEntry: 'runtime/fe.js', feStyles: 'runtime/fe.css', feRevision: expect.stringMatching(/^[0-9a-f]{16}$/) },
     ]);
+  });
+
+  // The renderer loads the frontend from URLs carrying it, which the browser caches by: an update or an `abuddy dev`
+  // rebuild keeps its version, so the revision follows the files
+  it("gives a frontend a revision that changes with its files, and only with them", () => {
+    const dir = path.join(tmpDir, 'with-fe');
+    fs.mkdirSync(path.join(dir, 'runtime'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'runtime', 'fe.js'), 'export default {};');
+    const loaded = { builtInPacks: () => [], externalPacks: () => [{ id: 'with-fe', name: 'with-fe', version: '2.0.0', dir, builtIn: false }] };
+    const revision = () => getLoadedPackEntries(loaded)[0].feRevision;
+
+    const first = revision();
+    expect(revision()).toBe(first);
+    fs.writeFileSync(path.join(dir, 'runtime', 'fe.js'), 'export default { features: {} };');
+    expect(revision()).not.toBe(first);
   });
 });

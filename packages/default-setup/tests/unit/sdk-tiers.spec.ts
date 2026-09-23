@@ -144,31 +144,20 @@ describe('Tier 3 — System Framework delegates', () => {
     expect(typeof defineSystem).toBe('function');
   });
 
-  it('emit and safeEvents are callable', async () => {
-    const { emit } = await import('@abuddy/sdk/events');
+  it('safeEvents is callable', async () => {
     const { safeEvents } = await import('@abuddy/sdk/helpers');
-    expect(typeof emit).toBe('function');
     expect(typeof safeEvents).toBe('function');
   });
 
-  it('emit wraps event for bus with OUTGOING type', async () => {
-    const { emit } = await import('@abuddy/sdk/events');
-    const wrapped = emit('test-plugin', { type: 'HELLO' });
-    expect(wrapped.type).toBe('OUTGOING');
-    expect(wrapped.event.pluginId).toBe('test-plugin');
-    expect(wrapped.event.type).toBe('HELLO');
+  it('safeEvents is exported', async () => {
+    const { safeEvents } = await import('@abuddy/sdk/helpers');
+    expect(typeof safeEvents).toBe('function');
   });
 
-  it('getActor, sendParentSafe, getBus are exported', async () => {
-    const { getActor, sendParentSafe, getBus } = await import('@abuddy/sdk/helpers');
-    expect(typeof getActor).toBe('function');
-    expect(typeof sendParentSafe).toBe('function');
-    expect(typeof getBus).toBe('function');
-  });
-
-  it('bus constant is exported', async () => {
-    const { bus } = await import('@abuddy/sdk/ids');
-    expect(bus).toBe('bus');
+  it('the id grammar is exported', async () => {
+    const { FEATURE_ID_PATTERN, PACK_ID_PATTERN } = await import('@abuddy/sdk/ids');
+    expect(PACK_ID_PATTERN.test('default-setup')).toBe(true);
+    expect(FEATURE_ID_PATTERN.test('notes')).toBe(true);
   });
 });
 
@@ -235,10 +224,10 @@ describe('Tier 6 — Utility delegates', () => {
 });
 
 describe('Tier 7 — Event delegates', () => {
-  it('sendToPlugin and sendToBrainSystem are callable', async () => {
-    const { sendToPlugin, sendToBrainSystem } = await import('@abuddy/sdk/events');
-    expect(typeof sendToPlugin).toBe('function');
-    expect(typeof sendToBrainSystem).toBe('function');
+  it('broadcastToPlugin and sendToSystem are callable', async () => {
+    const { broadcastToPlugin, sendToSystem } = await import('@abuddy/sdk/events');
+    expect(typeof broadcastToPlugin).toBe('function');
+    expect(typeof sendToSystem).toBe('function');
   });
 });
 

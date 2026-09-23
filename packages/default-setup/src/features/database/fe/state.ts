@@ -6,9 +6,9 @@ import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@abuddy/sdk/fe'
 import type {
   DatabaseSchemaInfo,
   DatabaseStartupData,
-  OutgoingDatabaseEvents,
   DatabaseSettings,
 } from '@/__generated__/types'
+import type { OutgoingDatabaseEvents } from '@/features/database/be/system'
 import { sendToSystem } from '@/__generated__/events'
 import { attributeQueryTemplate, entityQueryTemplate, exampleQuery, relationQueryTemplate, transactionExampleQuery } from './constants'
 import { History, HardDriveDownload } from 'lucide-vue-next'
@@ -18,7 +18,7 @@ import type { EARS } from '@abuddy/sdk'
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
 /* ─────────────────────────────────────────────────────────── */
-export const id = 'database'
+export const id = 'database' as const;
 export type DatabaseState = ActorRefFrom<typeof databaseState>
 
 export interface DatabaseContext {
@@ -68,7 +68,7 @@ type SystemEvent = OutgoingDatabaseEvents |
   { type: 'TRANSACTION_ERROR'; error: string } |
   { type: 'AI_QUERY_LOADING' } |
   { type: 'AI_QUERY_GENERATED'; query: string } |
-  { type: 'DATABASE_SETTINGS_UPDATED'; settings: DatabaseSettings } |
+  { type: 'FEATURE_SETTINGS_UPDATED'; settings: DatabaseSettings } |
   { type: 'EXPORT_DATABASE_SUCCESS'; path: string } |
   { type: 'EXPORT_DATABASE_ERROR'; error: string } |
   { type: 'IMPORT_DATABASE_SUCCESS'; message?: string } |
@@ -129,7 +129,7 @@ const databaseState = setup({
 
     /* ── settings ─────────────────────────────────────── */
     setDatabaseSettings: assign(({ event }) => {
-      const ev = typeOf('DATABASE_SETTINGS_UPDATED', event);
+      const ev = typeOf('FEATURE_SETTINGS_UPDATED', event);
       return {
         settings: ev.settings
       }
@@ -543,7 +543,7 @@ const databaseState = setup({
     TRANSACTION_ERROR: { actions: 'setTransactionError' },
 AI_QUERY_LOADING: { actions: 'setAiQueryLoading' },
     AI_QUERY_GENERATED: { actions: 'setAiQueryResult' },
-    DATABASE_SETTINGS_UPDATED: { actions: 'setDatabaseSettings' },
+    FEATURE_SETTINGS_UPDATED: { actions: 'setDatabaseSettings' },
     // Trace viewer events
     TRACE_FLOWS_RESULT: { actions: 'setTraceFlows' },
     FLOW_EVENTS_RESULT: { actions: 'setFlowEvents' },
@@ -554,7 +554,8 @@ AI_QUERY_LOADING: { actions: 'setAiQueryLoading' },
     EXPORT_DATABASE_ERROR: { actions: 'exportFinished' },
     IMPORT_DATABASE_SUCCESS: { actions: 'importFinished' },
     IMPORT_DATABASE_ERROR: { actions: 'importFinished' },
-    // Reset database events
+    // Reset database events. The request comes from the plugin's settings, whatever view the plugin is in
+    'DATABASE.RESET': { actions: 'resetDatabase' },
     RESET_DATABASE_SUCCESS: { actions: 'handleResetSuccess' },
     RESET_DATABASE_ERROR: { actions: 'handleResetError' },
   },
@@ -592,9 +593,6 @@ AI_QUERY_LOADING: { actions: 'setAiQueryLoading' },
         },
         'DATABASE.REFRESH_SCHEMA': {
           actions: ['setRefreshing', 'refreshSchema'],
-        },
-        'DATABASE.RESET': {
-          actions: 'resetDatabase',
         },
         'VIEW_MODE.TOGGLE': {
           actions: ['toggleViewMode', 'requestTraceFlows'],

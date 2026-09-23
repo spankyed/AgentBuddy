@@ -23,7 +23,6 @@ const dirs: string[] = [];
 // Another installed pack seeding flows: its own seeders read the seeds it compiled
 registerPack({
   id: 'other-pack',
-  systems: [],
   seeders: [createSeeder({ key: 'actions', entities: ['Action'], identity: ['label'] }), createSeeder({ key: 'prompts', entities: ['Prompt'], identity: ['label'] }), createFlowSeeder()],
 });
 afterAll(() => {

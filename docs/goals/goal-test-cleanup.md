@@ -527,7 +527,7 @@ Delete:
   entity ID", "RepositoryError is constructable and instanceof Error", "RepositoryErrorCode has expected
   values", "repository proxy delegates registerRepository", "getAttr reads stored attributes",
   "resetTestData resets all state", "emit and safeEvents are callable", "getAppVersion reads the host
-  version", "seed helpers are callable", "sendToPlugin and sendToBrainSystem are callable", and the
+  version", "seed helpers are callable", "broadcastToPlugin and sendToBrainSystem are callable", and the
   source-grep test for the `@/core` alias (with the sibling `@/repository` and `@/services` greps, which
   `check:specifiers` covers). Keep the rest of the file.
 - `tests/unit/sdk-type-safety.spec.ts`: "qx() returns a QueryBuilder typed with the pack shapes",

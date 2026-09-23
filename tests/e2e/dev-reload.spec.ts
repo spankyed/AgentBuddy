@@ -16,7 +16,7 @@ interface LibraryRecord { entity?: string; name?: string; children?: LibraryReco
 /** The names in the library plugin's index, as its actor holds them */
 async function libraryDocuments(appPage: Page): Promise<string[]> {
   return appPage.evaluate(() => {
-    const actor = (window as { applicationState?: { system?: { get(id: string): { getSnapshot(): { context: { index?: { documents: Array<{ name: string }> } } } } | undefined } } }).applicationState?.system?.get('library');
+    const actor = (window as { applicationState?: { system?: { get(id: string): { getSnapshot(): { context: { index?: { documents: Array<{ name: string }> } } } } | undefined } } }).applicationState?.system?.get('default-setup/library');
     return (actor?.getSnapshot().context.index?.documents ?? []).map((document) => document.name);
   });
 }
@@ -52,7 +52,7 @@ test('a rebuilt built-in pack reloads with the seed data the rebuild changed', a
   expect(apiPort, 'the renderer knows the API port').toBeTruthy();
   expect(apiToken, 'the renderer knows the API token').toBeTruthy();
 
-  await app.navigate('library');
+  await app.navigate('default-setup/library');
   await expect.poll(() => libraryDocuments(appPage)).toContain(SEEDED_DOCUMENT);
 
   originalSeedFile = fs.readFileSync(SEED_FILE);

@@ -187,28 +187,28 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { computed, ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { id as codeId, type CodeState } from '@/features/code/fe/state'
+import type { CodeState } from '@/features/code/fe/state'
 import { ChevronRight, ChevronsDownUp, Search } from 'lucide-vue-next'
 import CodePanelHeader from '@/features/code/fe/features/CodePanelHeader.vue'
 import NoDirectoryState from '@/features/code/fe/features/NoDirectoryState.vue'
 import EmptyState from '@/features/code/fe/features/EmptyState.vue'
-
-const actorSystem = useActorSystem()
+import { codeChild } from '../children';
 
 // Get actors
-const codeActor: CodeState = actorSystem.get(codeId)
-const searchActor = codeActor.system.get('search')!
+const codeActor: CodeState = usePlugin()
+const searchActor = codeChild(codeActor, 'search')!
 
 // State selectors
 const searchQuery = ref('')
-const searchResults = useSelector(searchActor, (state: any) => state.context.searchResults)
-const isSearching = useSelector(searchActor, (state: any) => state.context.isSearching)
-const searchError = useSelector(searchActor, (state: any) => state.context.searchError)
-const searchProgress = useSelector(searchActor, (state: any) => state.context.searchProgress)
-const searchOptions = useSelector(searchActor, (state: any) => state.context.searchOptions)
+const searchResults = useSelector(searchActor, (state) => state.context.searchResults)
+const isSearching = useSelector(searchActor, (state) => state.context.isSearching)
+const searchError = useSelector(searchActor, (state) => state.context.searchError)
+const searchProgress = useSelector(searchActor, (state) => state.context.searchProgress)
+const searchOptions = useSelector(searchActor, (state) => state.context.searchOptions)
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
 const searchFocusTrigger = useSelector(codeActor, (state) => state.context.searchFocusTrigger)
 const searchPrefillText = useSelector(codeActor, (state) => state.context.searchPrefillText)
@@ -350,7 +350,7 @@ const toggleResultExpanded = (path: string) => {
 
 const openMatch = (result: typeof searchResults.value[0], match: typeof result.matches[0]) => {
   // Open file through explorer
-  const explorerActor = codeActor.system.get('explorer')
+  const explorerActor = codeChild(codeActor, 'explorer')
   explorerActor?.send({
     type: 'explorer.OPEN_FILE',
     path: result.path

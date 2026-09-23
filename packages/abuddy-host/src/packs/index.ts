@@ -1,6 +1,6 @@
 // Registration: the registered packs, an instance per app (the composition root), test file or build
-export { createPackRegistry } from './pack-registration.ts';
-export type { PackRegistry, PackRegistration, PackBootHooks, PackEARS, PackMigration, PackExtensions, PackInfo } from './pack-registration.ts';
+export { createPackRegistry } from './registry.ts';
+export type { PackRegistry, PackRegistryOptions, PackRegistration, PackBootHooks, PackEARS, PackMigration, PackExtensions, PackInfo, PackOrigin } from './registry.ts';
 
 // Loading pack runtime code on the loader's own @abuddy/sdk
 export { withModuleBridge } from './module-bridge.ts';
@@ -8,15 +8,15 @@ export { withModuleBridge } from './module-bridge.ts';
 // Discovery
 export {
   discoverBuiltInPacks, discoverPacks, enabledExternalPacks, installedPacks,
-} from './pack-discovery.ts';
-export type { BuiltInPackInfo, DiscoveredPack, InstalledPack, PackManifest } from './pack-discovery.ts';
+} from './discovery.ts';
+export type { BuiltInPackInfo, DiscoveredPack, InstalledPack, PackManifest } from './discovery.ts';
 
 // Installed packs (JSON file CRUD)
 export {
   readInstalledPacks, writeInstalledPacks, packRecord, packRecords, disabledPackIds,
   recordInstalled, setPackEnabled, recordUpdateCheck, recordUpdateInstalled, recordSeedOutcomes, forgetPack,
-} from './installed-packs.ts';
-export type { PackRecord } from './installed-packs.ts';
+} from './installed.ts';
+export type { PackRecord } from './installed.ts';
 
 /**
  * The log lines a test harness reads to tell what became of a pack.
@@ -33,12 +33,12 @@ export { PACK_LOAD_MESSAGES, packRegistered, packLoadFailed } from './load-messa
 export {
   installPack, installPackFromLocal, installPackFromGitHub,
   uninstallPack, isHostCompatible,
-} from './pack-installer.ts';
-export { recordHostVersion, readHostVersion } from './host-info.ts';
+} from './installer.ts';
+export { recordHostInfo, readHostInfo, type HostInfo } from './host-info.ts';
 export { prepareHostDataDirs } from './staging.ts';
 
 // Updater
-export { checkForUpdates, getAvailableUpdates } from './pack-updater.ts';
+export { checkForUpdates, getAvailableUpdates } from './updater.ts';
 
 // Pack layout (build output, release archive and installed layout)
 export {
@@ -49,5 +49,5 @@ export {
   publishHostPackOutput,
   pruneHostPackOutputs,
   getLoadedPackEntries, getPacksWithClientLoadedFrontends,
-} from './pack-layout.ts';
-export type { PackIntegrity, LoadedPackEntry } from './pack-layout.ts';
+} from './layout.ts';
+export type { PackIntegrity, LoadedPackEntry } from './layout.ts';

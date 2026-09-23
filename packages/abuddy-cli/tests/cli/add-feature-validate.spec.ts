@@ -53,6 +53,26 @@ async function runValidate(): Promise<{ exitCode: number | undefined; output: st
 }
 
 describe('abuddy add feature', () => {
+  // Pack code names features and the host addresses them, so what the scaffold writes never holds an address
+  it('writes a feature whose code names it and never holds its address', async () => {
+    await addFeature(['notes'], pack);
+    const feature = path.join(pack, 'src', 'features', 'notes');
+    const sources = ['fe/state.ts', 'fe/plugin.ts', 'be/system.ts'].map((file) => fs.readFileSync(path.join(feature, file), 'utf-8')).join('\n');
+    expect(sources).not.toMatch(/busId|system-ids|demo-pack\./);
+    expect(fs.readFileSync(path.join(feature, 'fe', 'state.ts'), 'utf-8')).toContain("export const id = 'notes';");
+    expect(fs.readFileSync(path.join(feature, 'fe', 'plugin.ts'), 'utf-8')).toMatch(/= definePlugin\(\{\n  label:/);
+  });
+
+  // Its system's events are read through the pack's @abuddy/sdk, which a pack just scaffolded may not have yet
+  it("keeps the scaffold of a pack whose dependencies aren't installed, and says npm install regenerates", async () => {
+    await addFeature(['notes'], pack);
+
+    expect(fs.existsSync(path.join(pack, 'src', 'features', 'notes', 'be', 'system.ts'))).toBe(true);
+    const output = vi.mocked(console.log).mock.calls.map((args) => args.join(' ')).join('\n');
+    expect(output).toMatch(/src\/__generated__\/ not regenerated: .*that the pack's dependencies are installed\. Run: npm install/);
+    expect(output).not.toContain('__generated__/ regenerated');
+  });
+
   it('writes --designation into abuddy.json and no feature.config.ts', async () => {
     await addFeature(['notes', '--designation', 'notes'], pack);
 
@@ -61,10 +81,14 @@ describe('abuddy add feature', () => {
     expect((await runValidate()).exitCode).toBeUndefined();
   }, 60_000);
 
-  it('rejects a designation that is not the feature name, writing nothing', async () => {
-    await expect(addFeature(['notes', '--designation', 'memos'], pack)).rejects.toThrow(/must equal the feature name/);
-    expect(readManifest().features ?? []).toEqual([]);
-  });
+  // A designation is a role, not a name. The CLI refused one that differed from the feature name, which
+  // `validate` has always accepted and the manifest schema has always allowed.
+  it('writes a designation that differs from the feature name', async () => {
+    await addFeature(['notes', '--designation', 'inbox'], pack);
+
+    expect(readManifest().features).toEqual([expect.objectContaining({ id: 'notes', designation: 'inbox' })]);
+    expect((await runValidate()).exitCode).toBeUndefined();
+  }, 60_000);
 });
 
 describe('abuddy validate', () => {
@@ -80,6 +104,22 @@ describe('abuddy validate', () => {
     expect(exitCode).toBe(1);
     expect(output).toContain('Feature "notes": settings file "src/features/notes/settings.ts" not found');
     expect(output).not.toContain('designation');
+  }, 60_000);
+
+  // A dependency found only in a build this CLI can't read is a warning, like one that isn't found: the rest still runs
+  it('warns about a dependency built in another snapshot format, and still runs its other checks', async () => {
+    const old = path.join(tmp, 'old-pack');
+    fs.mkdirSync(path.join(old, 'dist'), { recursive: true });
+    fs.writeFileSync(path.join(old, 'dist', 'snapshot.json'), JSON.stringify({ types: { entities: {}, relKinds: {} }, defs: {}, manifest: { id: 'old-pack', version: '1.0.0' } }));
+    const manifest = readManifest();
+    manifest.dependencies = { 'old-pack': `file:${old}` };
+    fs.writeFileSync(path.join(pack, 'abuddy.json'), JSON.stringify(manifest, null, 2));
+
+    const { output } = await runValidate();
+
+    expect(output).toContain('Warnings:');
+    expect(output).toContain('Dependency "old-pack" has no build this CLI can use');
+    expect(output).toContain('its snapshot is format (none), written by an older abuddy CLI');
   }, 60_000);
 
   describe('seed entries (the checks code generation makes)', () => {

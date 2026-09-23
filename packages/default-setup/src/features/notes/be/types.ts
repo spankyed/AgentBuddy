@@ -1,5 +1,5 @@
 import { type BaseEntity, EARS } from '@/__generated__/ears';
-import type { NotesSettings } from '@/__generated__/types';
+
 
 export const REFERENCES = EARS.RelKind.Custom('references');
 
@@ -51,4 +51,11 @@ export type OutgoingNotesSearchEvent = { type: 'NOTES_SEARCH_RESULTS'; results: 
 export interface NotesConnectedData {
   notes: NoteDTO[];
   settings?: NotesSettings;
+}
+
+// ── This feature's settings ───────────────────────────────────────────────
+// Its own shape, which the app stores without knowing: the app owns the document, each feature its slice.
+export interface NotesSettings {
+  tasklistPanelPosition: 'left' | 'right'
+  showCollapseIcon: boolean
 }

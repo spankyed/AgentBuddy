@@ -264,7 +264,7 @@ describe('notes summary flow', () => {
     const inference = mockInference('Buy milk');
     // A root flow hosting the pack's flow, as the app's root flow hosts long-running flows
     importFlows({ 'Root Flow': { root: true, tracks: [entry([subflow('Notes Summary')], [keepAlive()])] } });
-    const app = await startApp({ systems: ['brain', 'settings'] });
+    const app = await startApp({ systems: ['default-setup/brain', 'host/settings'] });
 
     const run = await app.runFlow('Notes Summary', { event: 'notes.summarize', data: { text: 'Remember to buy milk' } });
 
@@ -290,12 +290,12 @@ step "5. @abuddy/testing's published types stand alone"
 # Its declarations may import only what a pack installs: an unpublished import (@abuddy/host) fails with lib checking
 # on, and is silently `any` under the scaffold's skipLibCheck. Errors in other packages' declarations aren't this check's.
 cat > tests/types-probe.ts <<'TS'
-import type { OutgoingSystemEvents, TestApp, FlowRun } from '@abuddy/testing/harness';
+import type { PluginEvent, TestApp, FlowRun } from '@abuddy/testing/harness';
 import type { IsolatedDataDir } from '@abuddy/testing/vitest';
 import type { AppHelper } from '@abuddy/testing';
 
 type IsAny<T> = 0 extends 1 & T ? true : false;
-export const typed: [IsAny<OutgoingSystemEvents>, IsAny<Awaited<ReturnType<TestApp['nextEmit']>>>, IsAny<FlowRun>, IsAny<IsolatedDataDir>, IsAny<AppHelper>] = [false, false, false, false, false];
+export const typed: [IsAny<PluginEvent>, IsAny<Awaited<ReturnType<TestApp['nextEmit']>>>, IsAny<FlowRun>, IsAny<IsolatedDataDir>, IsAny<AppHelper>] = [false, false, false, false, false];
 TS
 TYPES_STATUS=0
 node_modules/.bin/tsc --noEmit --skipLibCheck false --listFiles --pretty false -p . > "$WORK/types-probe.log" 2>&1 || TYPES_STATUS=$?

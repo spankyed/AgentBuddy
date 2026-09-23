@@ -70,32 +70,27 @@ describe('parseManifest', () => {
     expect(result.errors[0]).toContain('id');
   });
 
-  it('rejects feature ids generated code reserves: reserved words and busId', () => {
+  it('rejects feature ids generated code reserves: reserved words', () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-    for (const id of ['default', 'export', 'busId']) {
+    for (const id of ['default', 'export', 'eval']) {
       expect(parseManifest({ ...pack, features: [{ id }] }).errors).toEqual([expect.stringContaining(`"${id}" is reserved in generated code`)]);
     }
     expect(parseManifest({ ...pack, features: [{ id: 'defaults' }, { id: 'specs' }] }).errors).toEqual([]);
-  });
-
-  it("rejects a system.sendsTo naming one of the pack's own features that has no plugin", () => {
-    const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
-    const features = (sendsTo: string[], brainPlugin = false) => [
-      { id: 'memos', system: { entry: 'src/memos/system.ts', sendsTo }, plugin: { entry: 'src/memos/fe.ts' } },
-      { id: 'brain', system: { entry: 'src/brain/system.ts' }, ...(brainPlugin ? { plugin: { entry: 'src/brain/fe.ts' } } : {}) },
-    ];
-    expect(parseManifest({ ...pack, features: features(['brain']) }).errors).toEqual([
-      'abuddy.json "features.0.system.sendsTo.0": Feature "memos": system.sendsTo names "brain", a feature of this pack with no plugin, so nothing can receive the events: give "brain" a plugin or remove it from sendsTo',
-    ]);
-    expect(parseManifest({ ...pack, features: features(['brain'], true) }).errors).toEqual([]);
-    // A dependency's plugin or a host plugin isn't in this manifest: codegen checks those
-    expect(parseManifest({ ...pack, features: features(['application']) }).errors).toEqual([]);
   });
 
   it('rejects an app extension name that is not an identifier', () => {
     const pack = { id: 'test-pack', name: 'Test', version: '0.1.0' };
     expect(parseManifest({ ...pack, fe: { appExtensions: { 'my-ext': 'x.vue' } } }).errors).toEqual([expect.stringContaining('Must be an identifier')]);
     expect(parseManifest({ ...pack, fe: { appExtensions: { welcome: 'x.vue' } } }).errors).toEqual([]);
+  });
+});
+
+describe('the pack id', () => {
+  // The app is the pack `host`: its features are `host/<feature>`, so a pack of that id would share them
+  it("refuses the host's own", () => {
+    expect(parseManifest({ id: 'host', name: 'Host', version: '0.1.0' }).errors)
+      .toEqual([expect.stringContaining('"host" is the app\'s own pack id')]);
+    expect(parseManifest({ id: 'hosted', name: 'Hosted', version: '0.1.0' }).errors).toEqual([]);
   });
 });
 

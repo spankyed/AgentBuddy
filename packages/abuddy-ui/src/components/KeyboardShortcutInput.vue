@@ -59,9 +59,9 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Keyboard, Eraser } from 'lucide-vue-next'
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { useShell } from '@abuddy/sdk/fe'
 
-const actorSystem = useActorSystem()
+const shell = useShell()
 import type { KeyboardShortcut } from '@abuddy/sdk/types'
 
 interface Props {
@@ -213,7 +213,7 @@ const startRecording = () => {
   isRecording.value = true
   pressedKeys.value.clear()
   // Notify application state to disable global hotkeys
-  actorSystem.get('application')?.send({ type: 'HOTKEYS_RECORDING_START' })
+  shell.startHotkeyRecording()
   emit('recording-start')
 }
 
@@ -227,7 +227,7 @@ const stopRecording = () => {
       recordingTimeout = null
     }
     // Re-enable global hotkeys
-    actorSystem.get('application')?.send({ type: 'HOTKEYS_RECORDING_END' })
+    shell.endHotkeyRecording()
     emit('recording-end')
   }, 100)
 }
@@ -277,7 +277,7 @@ const recordKeyPress = (event: KeyboardEvent) => {
       isRecording.value = false
       
       // Re-enable global hotkeys since we're done
-      actorSystem.get('application')?.send({ type: 'HOTKEYS_RECORDING_END' })
+      shell.endHotkeyRecording()
       emit('recording-end')
       
       ;(event.target as HTMLElement).blur()

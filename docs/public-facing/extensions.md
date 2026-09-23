@@ -116,7 +116,7 @@ A trigger (`kind: 'trigger'`) compiles a DSL track, not a step:
 | `compile(track, trackId, ts, trackKey)` | Track → trigger node entity |
 | `decompile(node)` | Node → track fields (`{ schedule: '0 * * * *' }`) |
 | `persistent?` | Keeps the flow alive after all tracks drain |
-| `register?(node, ctx)` | Runtime hooks per trigger node when the flow actor registers (cron jobs). `ctx` has `flowTNodeId` and `sendToBrainSystem({ eventType, payload?, targetFlowId? })` |
+| `register?(node, ctx)` | Runtime hooks per trigger node when the flow actor registers (cron jobs). `ctx` has `flowTNodeId` and `sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType, payload?, targetFlowId? })` |
 | `queryFields?` | Extra entity fields loaded with the trigger's nodes (`['cronExpression']`) |
 | `validateTrack?(track)` | `{ valid, errors }` before compiling |
 | `validate?(node)` | `{ valid, errors }` for a compiled node on persist |
@@ -562,8 +562,7 @@ The generated FE entry (`__generated__/pack-entry-fe.ts`) default-exports a `Pac
 
 | Field | Source |
 |---|---|
-| `plugins` | Each `features[].plugin.entry` (with `designation` from the manifest) |
-| `defaultPlugin` | The feature whose `plugin` sets `default: true`, or the first with a plugin |
+| `features` | Each feature with a `plugin`: its `plugin.entry`, its `designation`, and `default: true` on the one whose `plugin` sets `default` (else the first). The first pack registered with a default opens by default; a role another pack's plugin plays refuses the pack |
 | `steps` | `stepsFE` from `register-fe.ts` next to `steps.register` |
 | `artifacts` / `blocks` | `artifactsFE` / `blocksFE` from the `-fe.ts` siblings |
 | `tiptapPlugins` | `fe.tiptapPlugins` |

@@ -146,7 +146,8 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { ref, computed } from 'vue';
 import { 
   ChevronRight, 
@@ -164,9 +165,7 @@ import {
 import { useSelector } from '@xstate/vue';
 import { id, type DatabaseState } from '../state';
 
-const actorSystem = useActorSystem()
-
-const actor: DatabaseState = actorSystem.get(id)
+const actor: DatabaseState = usePlugin()
 const schema = useSelector(actor, (state) => state.context.schema);
 const isRefreshing = useSelector(actor, (state) => state.context.isRefreshing || false);
 

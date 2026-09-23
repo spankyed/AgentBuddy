@@ -148,15 +148,14 @@
     <div class="pt-6 border-t border-neutral-800">
       <h3 class="mb-3 text-sm font-semibold text-neutral-100">All Tags</h3>
       <div v-if="sortedTags.length > 0" class="flex flex-wrap gap-2">
-        <button
+        <span
           v-for="tag in sortedTags"
           :key="tag"
-          @click="filterByTag(tag)"
           :class="getTagClass(tagCounts[tag])"
-          class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-md transition-colors"
+          class="inline-flex items-center px-2.5 py-1 text-xs font-medium rounded-md"
         >
           {{ tag }} ({{ tagCounts[tag] }})
-        </button>
+        </span>
       </div>
       <div v-else class="text-sm text-neutral-500">No tags yet</div>
     </div>
@@ -242,18 +241,17 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { computed, ref } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, librarySystem, type LibraryContext, type LibraryEvents } from './state'
 import type { ActorRefFrom } from 'xstate'
 import type { ContentSection, FieldContent, ListContent, MarkdownContent, TextContent } from '@/features/library/be/types'
+import type { LibraryActor } from './state'
 // [SEARCH_INDEX_FF] import { getModelConfig } from '../embedding-models'
 
-const actorSystem = useActorSystem()
-
-type LibraryActor = ActorRefFrom<typeof librarySystem>
-const actor = actorSystem.get(id) as LibraryActor
+const actor = usePlugin<LibraryActor>()
 
 // Individual selectors for each context property
 const index = useSelector(actor, (state) => state.context.index)
@@ -352,26 +350,25 @@ const selectedItemsTags = computed(() => {
 function getTagClass(count: number): string {
   const counts = Object.values(tagCounts.value)
   if (counts.length === 0) {
-    return 'bg-neutral-800 text-neutral-400 border border-neutral-700 hover:bg-neutral-700 hover:text-neutral-300'
+    return 'bg-neutral-800 text-neutral-400 border border-neutral-700'
   }
 
   const maxCount = Math.max(...counts)
   if (maxCount === 0) {
-    return 'bg-neutral-800 text-neutral-400 border border-neutral-700 hover:bg-neutral-700 hover:text-neutral-300'
+    return 'bg-neutral-800 text-neutral-400 border border-neutral-700'
   }
 
   const percentage = (count / maxCount) * 100
 
   if (percentage >= 75) {
-    return 'bg-blue-500/20 text-blue-400 border border-blue-500/30 hover:bg-blue-500/30'
+    return 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
   } else if (percentage >= 50) {
-    return 'bg-neutral-700 text-neutral-300 border border-neutral-600 hover:bg-neutral-600'
+    return 'bg-neutral-700 text-neutral-300 border border-neutral-600'
   } else {
-    return 'bg-neutral-800 text-neutral-400 border border-neutral-700 hover:bg-neutral-700 hover:text-neutral-300'
+    return 'bg-neutral-800 text-neutral-400 border border-neutral-700'
   }
 }
 
-const filterByTag = (tag: string) => {} // TODO: Implement tag filtering
 
 const codeCopied = ref(false)
 const copyShortCode = () => {

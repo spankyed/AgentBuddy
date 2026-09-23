@@ -10,17 +10,19 @@
 </template>
 
 <script setup lang="ts">
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { useState } from '@abuddy/sdk/fe'
-import { id, type librarySystem, type LibraryEvents } from './state'
+import type { librarySystem, LibraryEvents } from './state'
 import DocumentEditor from './components/DocumentEditor.vue'
 // [SEARCH_INDEX_FF] import CreateIndexView from './components/search-index/CreateIndexView.vue'
 // [SEARCH_INDEX_FF] import TestIndexView from './components/search-index/TestIndexView.vue'
 import FileSystemBrowser from './components/FileSystemBrowser.vue'
+import type { LibraryActor } from './state'
 
-const actor = useState(id)
-const context = useSelector(actor, (state: any) => state.context)
+const actor: LibraryActor = usePlugin()
+const context = useSelector(actor, (state) => state.context)
 const send = (event: LibraryEvents) => actor.send(event)
 
 const currentComponent = computed(() => {

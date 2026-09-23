@@ -10,6 +10,9 @@ export const API_HOST = "127.0.0.1";
 // @public
 export const API_TOKEN_HEADER = "x-abuddy-api-token";
 
+// @public
+export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
+
 // @public (undocumented)
 export function asArr<T>(v: MaybeArr<T>): readonly T[];
 
@@ -50,8 +53,11 @@ export type ChangeBlock<T = unknown> = {
 // @public (undocumented)
 export function compareVersions(a: string, b: string): number;
 
+// @public
+export function deepMerge<T>(base: T, over: unknown): T;
+
 // @public (undocumented)
-export const detectAllArrayChanges: (prev: unknown, next: unknown) => Record<string, DiffResult<DiffItem>> | null;
+export const detectAllArrayChanges: (prev: unknown, next: unknown) => ArrayChanges | null;
 
 // @public (undocumented)
 export const detectChanges: <T>(prev: T[] | undefined, next: T[] | undefined, id: (x: T) => string, key: (x: T) => string) => DiffResult<T>;
@@ -70,10 +76,16 @@ export type DiffResult<T> = null | {
 export const entries: <T extends Record<string, unknown>>(obj: T) => Array<[keyof T, T[keyof T]]>;
 
 // @public
+export function errorMessage(error: unknown): string;
+
+// @public
 export function escapeHtml(text: string): string;
 
 // @public (undocumented)
 export function extractValueByPath(source: unknown, path: string): unknown;
+
+// @public
+export function hasOwn(object: object, key: PropertyKey): boolean;
 
 // @public
 export const isPlainObject: (val: unknown) => val is Record<string, unknown>;

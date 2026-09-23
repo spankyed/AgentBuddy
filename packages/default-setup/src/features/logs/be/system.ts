@@ -1,15 +1,15 @@
-import { sendToPlugin } from '@/__generated__/events';
+import { services } from '@/__generated__/services';
+import { broadcastToPlugin } from '@/__generated__/events';
 import { assign, setup, sendParent, enqueueActions, fromCallback, spawnChild } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
-import { getActor } from '@abuddy/sdk/helpers';
 import type { LogsState, LogEntry } from './types';
 import { randomId } from '@abuddy/sdk/utils';
 import { onLog, type LogEvent } from '@abuddy/sdk/logger';
-import { onConnected, onIncoming, type IncomingSystemEvents } from '@abuddy/sdk/events';
 import { repository } from '@/__generated__/repository';
 import type { LogsSettings } from '@/__generated__/types';
 import { isSourceExcluded, filterLogsByExcludedSources } from './utils';
+import { ref } from '@/__generated__/ref';
 
 // Resolve the effective exclusion list: when showAppEvents is falsy, treat 'app-events' as excluded.
 function effectiveExcludedSources(settings: LogsSettings | undefined): string[] {
@@ -22,26 +22,22 @@ type IncomingLogEvents =
   | { type: 'REQUEST_LOGS_UPDATE' };
 
 type LogsInternalEvents =
-  | { type: 'REQUEST_LOGS_UPDATE' }
   | {
     type: 'ADD_LOG';
     log: Omit<LogEntry, 'id' | 'timestamp'>;
-  }
-  | { type: 'LOGS_SETTINGS_UPDATED'; settings: LogsSettings; changes?: any };
+  };
 
 export type OutgoingLogsEvents =
   | { type: 'LOGS_CONNECTED'; logs: LogEntry[]; settings?: LogsSettings }
   | { type: 'LOGS_UPDATE'; logs: LogEntry[] }
   | { type: 'LOG_ADDED'; log: LogEntry }
-  | { type: 'LOGS_CLEARED' }
-  | { type: 'LOGS_SETTINGS_UPDATED'; settings: LogsSettings };
+  | { type: 'LOGS_CLEARED' };
 
 export interface LogsContext {
   logs: LogEntry[];
 }
 
-export const logsSpec = defineSystem('logs')<IncomingLogEvents | LogsInternalEvents, OutgoingLogsEvents, LogsContext>();
-export const logs = logsSpec.id;
+export const logsSpec = defineSystem<IncomingLogEvents | LogsInternalEvents, OutgoingLogsEvents, LogsContext>();
 
 export const logsSystem = setup({
   types: logsSpec.types,
@@ -54,26 +50,8 @@ export const logsSystem = setup({
         });
       };
 
-      const incomingHandler = (event: IncomingSystemEvents) => {
-        if (event.systemId === 'logs') {
-          const { systemId, ...actualEvent } = event;
-          sendBack(actualEvent);
-        }
-      };
-
-      const connectedHandler = () => {
-        sendBack({ type: 'CLIENT_CONNECTED' });
-      };
-
-      const onLogUnsub = onLog(logHandler)
-      const onIncomingUnsub = onIncoming(incomingHandler)
-      const onConnectedUnsub = onConnected(connectedHandler)
-
-      return () => {
-        onLogUnsub();
-        onIncomingUnsub();
-        onConnectedUnsub();
-      };
+      // The app delivers this early system its messages and client connections as the bus does the others'
+      return onLog(logHandler);
     }),
   },
   actions: {
@@ -92,7 +70,7 @@ export const logsSystem = setup({
         const updatedLogs = [newLog, ...context.logs];
         
         // Keep only the last maxLogs entries
-        const settings = repository.settingsQueries.getPluginSettings('logs') as LogsSettings | undefined;
+        const settings = services.settings.forFeature<LogsSettings>(ref('logs')) as LogsSettings | undefined;
 
         if (updatedLogs.length > (settings?.maxLogs || 1000)) {
           return updatedLogs.slice(0, settings?.maxLogs || 1000);
@@ -103,13 +81,13 @@ export const logsSystem = setup({
     }),
     sendLogsConnected: ({ context }) => {
       // Get current settings
-      const settings = repository.settingsQueries.getPluginSettings('logs') as LogsSettings | undefined;
+      const settings = services.settings.forFeature<LogsSettings>(ref('logs')) as LogsSettings | undefined;
       const excludedSources = effectiveExcludedSources(settings);
 
       // Filter logs by excluded sources before sending
       const filteredLogs = filterLogsByExcludedSources(context.logs, excludedSources);
 
-      sendToPlugin(logs, {
+      broadcastToPlugin('logs', {
         type: 'LOGS_CONNECTED',
         logs: filteredLogs,
         settings: settings ?? { maxLogs: 1000, excludedSources: [], showAppEvents: false }
@@ -119,7 +97,7 @@ export const logsSystem = setup({
       const newLog = context.logs[0];
 
       // Get current settings from repository
-      const settings = repository.settingsQueries.getPluginSettings('logs') as LogsSettings | undefined;
+      const settings = services.settings.forFeature<LogsSettings>(ref('logs')) as LogsSettings | undefined;
       const excludedSources = effectiveExcludedSources(settings);
 
       // Check if new log should be excluded
@@ -127,33 +105,33 @@ export const logsSystem = setup({
         return; // Don't broadcast excluded logs
       }
 
-      sendToPlugin(logs, {
+      broadcastToPlugin('logs', {
         type: 'LOG_ADDED',
         log: newLog,
       });
     },
     broadcastLogsUpdate: ({ context }) => {
       // Get current settings from repository
-      const settings = repository.settingsQueries.getPluginSettings('logs') as LogsSettings | undefined;
+      const settings = services.settings.forFeature<LogsSettings>(ref('logs')) as LogsSettings | undefined;
       const excludedSources = effectiveExcludedSources(settings);
 
       // Filter logs by excluded sources before sending
       const filteredLogs = filterLogsByExcludedSources(context.logs, excludedSources);
 
-      sendToPlugin(logs, {
+      broadcastToPlugin('logs', {
         type: 'LOGS_UPDATE',
         logs: filteredLogs,
       });
     },
     broadcastLogsCleared: () => {
-      sendToPlugin(logs, {
+      broadcastToPlugin('logs', {
         type: 'LOGS_CLEARED',
       })
     },
     truncateLogsIfNeeded: assign({
       logs: ({ context }) => {
         // If logs exceed new maxLogs, truncate
-        const settings = repository.settingsQueries.getPluginSettings('logs') as LogsSettings | undefined;
+        const settings = services.settings.forFeature<LogsSettings>(ref('logs')) as LogsSettings | undefined;
         if (context.logs.length > (settings?.maxLogs || 1000)) {
           return context.logs.slice(context.logs.length - (settings?.maxLogs || 1000));
         }
@@ -162,7 +140,7 @@ export const logsSystem = setup({
     }),
   },
 }).createMachine({
-  id: logs,
+  id: 'logs',
   initial: 'active',
   context: () => {
     return {
@@ -174,7 +152,7 @@ export const logsSystem = setup({
     CLIENT_CONNECTED: {
       actions: ['sendLogsConnected'],
     },
-    LOGS_SETTINGS_UPDATED: {
+    FEATURE_SETTINGS_UPDATED: {
       actions: ['truncateLogsIfNeeded', 'broadcastLogsUpdate'],
     },
   },

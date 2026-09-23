@@ -1,7 +1,6 @@
-// A flow spawns a child actor per step and per subflow, each claiming a `step-tnode-…`/`flow-tnode-…`
-// system id. XState tracks a parent's children by their own id, so each spawn names one: without it they
-// share a key, the parent holds only the last, and stopping the flow leaves the rest running with their
-// system ids taken — which is what a pack reload mid-flow then collides with.
+// A flow spawns a child actor per step and per subflow, each under a `step-tnode-…`/`flow-tnode-…` id.
+// XState tracks a parent's children by their own id, so each spawn names one: without it they share a key,
+// the parent holds only the last, and stopping the flow leaves the rest running.
 import { describe, expect, it } from 'vitest'
 import { importFlows, startApp } from '@abuddy/testing/harness'
 import { entry, keepAlive, on, transform } from '@/__generated__/flow-helpers'
@@ -22,14 +21,14 @@ describe('a flow’s spawned children', () => {
     importFlows({
       Outer: { root: true, tracks: [entry([keepAlive()]), on('go', [[step('one'), step('two'), step('three')]])] },
     })
-    const app = await startApp({ systems: ['brain', 'settings'] })
+    const app = await startApp({ systems: ['brain'] })
 
     await app.runFlow('Outer', { event: 'go' })
     await app.settle()
 
     const keys = childKeys()
     expect(keys, `children were ${JSON.stringify(keys)}`).not.toContain('undefined')
-    // The event track and each of its three steps, every one under its own system id
+    // The event track and each of its three steps, every one under its own id
     expect(keys.filter((key) => key.startsWith('step-tnode-') || key.startsWith('flow-tnode-')).length).toBeGreaterThanOrEqual(3)
     expect(new Set(keys).size).toBe(keys.length)
   })

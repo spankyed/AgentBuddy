@@ -1,7 +1,8 @@
 import { safeEvents } from '../helpers/actor-helpers.ts';
-import type { Simplify } from '../helpers/type-helpers.ts';
+import type { ArrayChanges } from '../utils/change-detection.ts';
+import { eventTypes } from '../events/event-types.ts';
 
-/** Common system events sent by the bus to all systems. */
+/** The events every system accepts: the app sends them, so no system declares them */
 export type SystemEvents =
   | { type: 'CLIENT_CONNECTED' }
   /**
@@ -9,47 +10,51 @@ export type SystemEvents =
    * registers (its slash commands) and the data it seeded may differ. Sent once the change is complete.
    */
   | { type: 'PACK_CHANGED'; packId: string }
+  /**
+   * The feature's settings changed: `settings` as they now apply, and `changes` to what they list, when the store
+   * tells them. The feature's plugin gets it too (`FeatureSettingsUpdated`).
+   */
+  | { type: 'FEATURE_SETTINGS_UPDATED'; settings: unknown; changes?: ArrayChanges | null }
 
-/** Add `pluginId` literal to every member of an outgoing event union. */
-// `E extends unknown` is the distribution idiom (`extends any` would do the same, but the published
-// types carry no `any`: tests/build/published-sdk-any.spec.ts in @abuddy/cli)
-type WithPlugin<Id extends string, E extends { type: string }> =
-  E extends unknown ? Simplify<E & { pluginId: Id }> : never;
+/**
+ * The event types every system accepts, as a value: a send of one to a feature that runs no system is nobody's, and
+ * dropped without a warning.
+ */
+export const SYSTEM_EVENT_TYPES = eventTypes<SystemEvents>()('CLIENT_CONNECTED', 'PACK_CHANGED', 'FEATURE_SETTINGS_UPDATED');
 
 /** The definition object returned by `defineSystem()`. */
 export interface SystemSpec<
-  Id extends string,
   TEvents extends { type: string },
   TOutgoing extends { type: string },
   TContext = {},
 > {
-  id: Id;
   types: { context: TContext; events: TEvents | SystemEvents };
   typeOf: ReturnType<typeof safeEvents<TEvents | SystemEvents>>;
-  /** Phantom: the events the system receives, as a sender writes them (the bus adds `systemId`). */
+  /** Phantom: the events the system receives, as a sender writes them */
   _incoming: TEvents;
-  /** Phantom — outgoing events with `pluginId` attached. */
-  _outgoing: WithPlugin<Id, TOutgoing>;
+  /** Phantom: the events the system sends, which codegen reads its own plugin's inbox from */
+  _outgoing: TOutgoing;
 }
 
 /**
- * Define a backend system's identity and event types.
+ * Define a backend system's event types: those it receives, those it sends to plugins, and its context. Its
+ * identity is its feature's: the manifest names the system module under the feature, which runs it at
+ * `<packId>/<featureId>`, and the pack's code names it by the feature id.
  *
  * ```ts
- * export const logsSpec = defineSystem('logs')<
+ * export const logsSpec = defineSystem<
  *   IncomingLogEvents | LogsInternalEvents,
  *   OutgoingLogsEvents,
  *   LogsContext
  * >();
  * ```
  */
-export function defineSystem<Id extends string>(id: Id) {
-  return <
-    TEvents extends { type: string },
-    TOutgoing extends { type: string },
-    TContext = {},
-  >(): SystemSpec<Id, TEvents, TOutgoing, TContext> => ({
-    id,
+export function defineSystem<
+  TEvents extends { type: string },
+  TOutgoing extends { type: string },
+  TContext = {},
+>(): SystemSpec<TEvents, TOutgoing, TContext> {
+  return {
     types: {
       context: {} as TContext,
       events: {} as TEvents | SystemEvents,
@@ -57,5 +62,5 @@ export function defineSystem<Id extends string>(id: Id) {
     typeOf: safeEvents<TEvents | SystemEvents>(),
     _incoming: undefined as any,
     _outgoing: undefined as any,
-  });
+  };
 }

@@ -4,12 +4,13 @@
 // app (appData.reset()) empties it with everything else.
 import { tx, untypedQx } from '@abuddy/ears';
 import type { EARS } from '@abuddy/sdk';
+import { SETTINGS_ENTITY } from '../features/settings/be/store.ts';
 
 /** The entity type the host declares, next to the SDK's */
 export const APP_STATE_ENTITY = 'AppState';
 
-/** The entity types the host declares; no pack may declare them */
-export const HOST_ENTITY_TYPES: readonly string[] = [APP_STATE_ENTITY];
+/** The entity types the host declares — its state and the settings row; no pack may declare them */
+export const HOST_ENTITY_TYPES: readonly string[] = [APP_STATE_ENTITY, SETTINGS_ENTITY];
 
 const APP_STATE_ID = `${APP_STATE_ENTITY}-app` as EARS.EntityId;
 
@@ -43,10 +44,18 @@ export interface AppState {
   seedHashes: Record<string, string>;
   /** The file mtimes and sizes each built-in pack's seed hash was computed from (the fast path that skips re-hashing) */
   seedStatFingerprints: Record<string, string>;
+  /**
+   * The plugins whose sidebar tab the user showed or hid, by ref. A plugin not here shows as its feature declares
+   * (`features[].settings`' `visible`), so a pack's default reaches everyone who never touched its tab.
+   */
+  pluginVisibility: Record<string, boolean>;
+  /** The plugin the user last had open, by ref; a window opens on it once it connects */
+  lastActivePlugin?: string;
 }
 
 const FIELDS = [
   'hasOnboarded', 'version', 'packVersions', 'packSeedHashes', 'packSeedDeps', 'seedHashes', 'seedStatFingerprints',
+  'pluginVisibility', 'lastActivePlugin',
 ] as const satisfies readonly (keyof AppState)[];
 
 /**
@@ -82,6 +91,8 @@ export const appState = {
       packSeedDeps: row.packSeedDeps ?? {},
       seedHashes: row.seedHashes ?? {},
       seedStatFingerprints: row.seedStatFingerprints ?? {},
+      pluginVisibility: row.pluginVisibility ?? {},
+      ...(row.lastActivePlugin != null && { lastActivePlugin: row.lastActivePlugin }),
     };
   },
 

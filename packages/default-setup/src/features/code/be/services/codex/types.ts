@@ -97,3 +97,6 @@ export interface CodexTurnHandle {
   /** Interrupt the running turn */
   abort(): Promise<void>
 }
+
+/** A page of the app server's MCP server statuses */
+export type ListMcpServersParams = { cursor?: string | null; limit?: number | null; detail?: 'full' | 'toolsAndAuthOnly' | null }

@@ -3,9 +3,9 @@
 import * as os from 'node:os';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createLogger, reportError, setDebugEnabled, type LogEvent } from '../../src/logger/index.ts';
-import { startTestRuntime, takeSystemErrors, testRootEvents } from '../../src/testing/index.ts';
+import { startTestRuntime, takeSystemErrors, testPacks, testRootEvents } from '../../src/testing/index.ts';
 import { RepositoryError, RepositoryErrorCode, tx, untypedQx } from '@abuddy/ears';
-import type { OutgoingSystemEvents } from '../../src/events/index.ts';
+import type { Message } from '../../src/events/index.ts';
 import type { EARS } from '../../src/types/entities.ts';
 
 process.env.ABUDDY_ENV ??= 'test';
@@ -14,10 +14,10 @@ startTestRuntime();
 
 
 /** What reached the bus: log events, sends to plugins through the bus, and events straight to the clients */
-function capture(run: () => void): { logs: LogEvent[]; toPlugins: OutgoingSystemEvents[]; outgoing: OutgoingSystemEvents[] } {
+function capture(run: () => void): { logs: LogEvent[]; toPlugins: Message[]; outgoing: Message[] } {
   const logs: LogEvent[] = [];
-  const toPlugins: OutgoingSystemEvents[] = [];
-  const outgoing: OutgoingSystemEvents[] = [];
+  const toPlugins: Message[] = [];
+  const outgoing: Message[] = [];
   const stop = [
     testRootEvents.onLog((e) => logs.push(e)),
     testRootEvents.onPluginSend((e) => toPlugins.push(e)),
@@ -33,14 +33,16 @@ function capture(run: () => void): { logs: LogEvent[]; toPlugins: OutgoingSystem
 
 afterEach(() => {
   takeSystemErrors();
+  testPacks.designations.clear();
   vi.restoreAllMocks();
 });
 
 describe('reportError', () => {
   const tNodeId = 'TNode-1' as EARS.EntityId;
 
-  it("with step context logs the error, sends it to the brain plugin and records it on the step's TNode", () => {
+  it("with step context logs the error, sends it to the plugin playing the brain role and records it on the step's TNode", () => {
     const printed = vi.spyOn(console, 'error').mockImplementation(() => {});
+    testPacks.designations.set('brain', 'default-setup/brain');
     // The step's TNode, holding what the step ran with
     tx(tNodeId, true).put('entityType', 'TNode').put('nodeAttributes', { input: 'hello' });
     let returned: ReturnType<typeof reportError>;
@@ -57,13 +59,23 @@ describe('reportError', () => {
     expect(logs).toEqual([expect.objectContaining({ level: 'error', source: 'step-runtime', message: 'model failed', stack })]);
     // A log event, printed once as every log event is; the flow shows it, so there's no system error
     expect(printed).toHaveBeenCalledTimes(1);
-    expect(toPlugins).toEqual([{ type: 'BRAIN_RUNTIME_ERROR', pluginId: 'brain', error: returned! }]);
+    // The plugin's ref: a bare name is no plugin's, and the bus would drop it
+    expect(toPlugins).toEqual([{ to: 'default-setup/brain', event: { type: 'BRAIN_RUNTIME_ERROR', error: returned! } }]);
     expect(outgoing).toEqual([]);
     expect(untypedQx(tNodeId).pickOne(['nodeAttributes'])?.nodeAttributes).toEqual({
       input: 'hello',
       result: { error: { message: 'model failed', source: 'brain-llm', phase: 'llm.execute', errorId, stack } },
     });
     expect(takeSystemErrors()).toEqual([]);
+  });
+
+  it('sends a step error to no plugin when none plays the brain role, still recording it', () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { toPlugins } = capture(() => reportError({
+      error: new Error('model failed'),
+      step: { phase: 'llm.execute', nodeId: 'Node-1' as EARS.EntityId, nodeType: 'llm', eventType: 'user.message' },
+    }));
+    expect(toPlugins).toEqual([]);
   });
 
   it('redacts key-shaped strings a provider error quotes', () => {
@@ -82,11 +94,11 @@ describe('reportError', () => {
       expect(reportError({ error, source: 'notes', title: 'Could not save', operation: 'save' })).toBeUndefined();
     });
     const event = {
-      type: 'SYSTEM_ERROR', pluginId: 'application', errorId: expect.stringMatching(/^err_/), title: 'Could not save',
+      type: 'SYSTEM_ERROR', errorId: expect.stringMatching(/^err_/), title: 'Could not save',
       message: 'boom', source: 'notes', operation: 'save', entityId: undefined, severity: 'error', stack: error.stack,
       timestamp: expect.any(Number),
     };
-    expect(outgoing).toEqual([event]);
+    expect(outgoing).toEqual([{ to: 'host/application', event }]);
     expect(takeSystemErrors()).toEqual([event]);
     expect(logs).toEqual([expect.objectContaining({ level: 'error', source: 'notes', message: 'boom', stack: error.stack })]);
     expect(toPlugins).toEqual([]);

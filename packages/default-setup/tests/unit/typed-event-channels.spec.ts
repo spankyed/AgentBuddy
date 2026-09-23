@@ -1,54 +1,61 @@
 // Compile-time checks, run by `vue-tsc` (npm run typecheck:pack). Exact type equality and expected
 // errors fail if the generated events regress to `any` or accept a wrong event.
+import { resolveName } from '@abuddy/sdk/ids';
+import { openPlugin } from '@abuddy/sdk/fe';
 import { describe, expectTypeOf, it } from 'vitest';
 import type { HostPluginEvents } from '@abuddy/sdk/events';
 import type { ApplicationHotkeys } from '@abuddy/sdk/types';
 import type { EARS } from '@/__generated__/ears';
 import type { Services } from '@/__generated__/services';
-import { emit, sendToPlugin, sendToSystem, type PackEvents } from '@/__generated__/events';
+import { broadcastToPlugin, sendToSystem, type SendablePluginEvents } from '@/__generated__/events';
+import { navigateToPlugin } from '@/__generated__/fe';
 import type { OutgoingActionEvents } from '@/features/actions/be/system';
 import type { OutgoingFlowsEvents } from '@/features/flows/be/system';
 import type { OutgoingThreadsEvents } from '@/features/threads/be/system';
+import type { accepts as threadsAccepts } from '@/features/threads/fe/plugin';
+import type { accepts as flowsAccepts } from '@/features/flows/fe/plugin';
+
+type ThreadsAccepts = (typeof threadsAccepts)['_accepts'];
+type FlowsAccepts = (typeof flowsAccepts)['_accepts'];
 
 declare const actionEvent: OutgoingActionEvents;
 declare const hotkeys: ApplicationHotkeys;
 // What a seed action receives
 declare const services: Services;
 
-describe('PackEvents', () => {
+describe('SendablePluginEvents', () => {
   it('maps each plugin to exactly the events it receives', () => {
-    expectTypeOf<PackEvents['threads']>().toEqualTypeOf<OutgoingThreadsEvents>();
-    // The flows plugin receives its own system's events and the actions system's (sendsTo)
-    expectTypeOf<PackEvents['flows']>().toEqualTypeOf<OutgoingFlowsEvents | OutgoingActionEvents>();
-    expectTypeOf<PackEvents['application']>().toEqualTypeOf<HostPluginEvents['application']>();
+    // A plugin receives its own feature's system's events, plus the inbox it declares with `pluginAccepts()`
+    expectTypeOf<SendablePluginEvents['threads']>().toEqualTypeOf<OutgoingThreadsEvents | ThreadsAccepts>();
+    expectTypeOf<SendablePluginEvents['flows']>().toEqualTypeOf<OutgoingFlowsEvents | FlowsAccepts>();
+    expectTypeOf<SendablePluginEvents['host/application']>().toEqualTypeOf<HostPluginEvents['host/application']>();
   });
 
   it('has no entry for a plugin nothing sends to', () => {
     // @ts-expect-error not a plugin of this pack, its dependencies or the host
-    expectTypeOf<PackEvents['unknown-plugin']>().toBeNever();
+    expectTypeOf<SendablePluginEvents['unknown-plugin']>().toBeNever();
   });
 });
 
-describe('emit and sendToPlugin', () => {
+describe('broadcastToPlugin', () => {
   // Wrapped in functions that never run: only their types are checked
-  it('accept an event the plugin receives', () => {
-    const wrapped = emit('threads', { type: 'THREAD_CREATED', id: 't1' as EARS.EntityId, shortCode: 'T1', entityType: 'Thread' as EARS.Entity, timestamp: 0 });
-    expectTypeOf(wrapped.event.pluginId).toEqualTypeOf<'threads'>();
+  it('accepts an event the plugin receives', () => {
     expectTypeOf(() => {
-      emit('flows', actionEvent);
-      emit('application', { type: 'APPLICATION_HOTKEYS', hotkeys });
-      sendToPlugin('application', { type: 'APPLICATION_RESTORE_LAST_PLUGIN', lastActivePluginId: 'notes' });
+      broadcastToPlugin('threads', { type: 'THREAD_CREATED', id: 't1' as EARS.EntityId, shortCode: 'T1', entityType: 'Thread' as EARS.Entity, timestamp: 0 });
+      broadcastToPlugin('flows', actionEvent);
+      broadcastToPlugin('host/application', { type: 'APPLICATION_HOTKEYS', hotkeys });
+      broadcastToPlugin('host/application', { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: { 'default-setup/notes': false } });
     }).toBeFunction();
   });
 
-  it('reject an event the plugin does not receive', () => {
+  it('rejects an event the plugin does not receive', () => {
     expectTypeOf(() => {
       // @ts-expect-error the threads plugin doesn't receive action events
-      emit('threads', actionEvent);
+      broadcastToPlugin('threads', actionEvent);
       // @ts-expect-error not an application event
-      emit('application', { type: 'SETTINGS_LOADED' });
+      broadcastToPlugin('host/application', { type: 'SETTINGS_LOADED' });
       // @ts-expect-error unknown plugin
-      sendToPlugin('unknown-plugin', { type: 'ANYTHING' });
+      broadcastToPlugin('unknown-plugin', { type: 'ANYTHING' });
     }).toBeFunction();
   });
 });
@@ -57,8 +64,14 @@ describe('sendToSystem', () => {
   // Wrapped in functions that never run: only their types are checked
   it('accepts an event the system receives', () => {
     expectTypeOf(() => {
-      sendToSystem('settings', { type: 'UPDATE_SETTINGS', entityType: 'plugin', label: 'notes', path: ['sort'], value: 'title' });
       sendToSystem('notes', { type: 'DELETE_NOTE', id: 'Note-1' });
+      // System to system, as a backend system sends another: the same typed send
+      sendToSystem('brain', { type: 'TRIGGER_BRAIN_EVENT', eventType: 'thread.fork' });
+      sendToSystem('threads', { type: 'BIRTH_FLOW_START' });
+      // A role reaches whichever system plays it
+      sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType: 'thread.fork' });
+      // The host's systems, by ref
+      sendToSystem('host/bus', { type: 'PACK_CHANGED', packId: 'default-setup' });
     }).toBeFunction();
   });
 
@@ -68,12 +81,16 @@ describe('sendToSystem', () => {
       sendToSystem('unknown-system', { type: 'GET_SETTINGS' });
       // @ts-expect-error the settings system doesn't receive this event
       sendToSystem('settings', { type: 'DELETE_NOTE', id: 'Note-1' });
+      // @ts-expect-error the brain doesn't receive what threads does, so a system can't send it one
+      sendToSystem('brain', { type: 'BIRTH_FLOW_START' });
       // @ts-expect-error DELETE_NOTE needs an id
       sendToSystem('notes', { type: 'DELETE_NOTE' });
       // @ts-expect-error one system per send
       sendToSystem(systemId, { type: 'GET_SETTINGS' });
       // @ts-expect-error one event type per send
       sendToSystem('brain', { type: brainIsDead ? 'START_BRAIN' : 'RESTART_BRAIN' });
+      // @ts-expect-error the bus receives only PACK_CHANGED from pack code
+      sendToSystem('host/bus', { type: 'CLIENT_CONNECTED' });
     }).toBeFunction();
   });
 });
@@ -82,22 +99,40 @@ describe('services.emitter in actions', () => {
   // Wrapped in functions that never run: only their types are checked
   it('accepts an event the plugin or system receives', () => {
     expectTypeOf(() => {
-      services.emitter.sendToPlugin('database', { type: 'AI_QUERY_LOADING' });
+      services.emitter.broadcastToPlugin('default-setup/database', { type: 'AI_QUERY_LOADING' });
       services.emitter.sendToSystem('default-setup/notes', { type: 'DELETE_NOTE', id: 'Note-1' });
-      services.emitter.sendToBrainSystem({ eventType: 'user.message' });
+      services.emitter.sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType: 'user.message' });
     }).toBeFunction();
   });
 
   it('rejects an event the plugin or system does not receive', () => {
     expectTypeOf(() => {
       // @ts-expect-error the database plugin doesn't receive this event
-      services.emitter.sendToPlugin('database', { type: 'SET_PHASE', phase: 'Edit' });
+      services.emitter.broadcastToPlugin('default-setup/database', { type: 'SET_PHASE', phase: 'Edit' });
       // @ts-expect-error unknown plugin
-      services.emitter.sendToPlugin('unknown-plugin', { type: 'ANYTHING' });
+      services.emitter.broadcastToPlugin('unknown-plugin', { type: 'ANYTHING' });
+      // @ts-expect-error actions name every pack plugin <pack>/<feature>, this pack's own too
+      services.emitter.broadcastToPlugin('database', { type: 'AI_QUERY_LOADING' });
       // @ts-expect-error DELETE_NOTE needs an id
       services.emitter.sendToSystem('default-setup/notes', { type: 'DELETE_NOTE' });
       // @ts-expect-error actions name every system <pack>/<feature>
       services.emitter.sendToSystem('notes', { type: 'DELETE_NOTE', id: 'Note-1' });
+    }).toBeFunction();
+  });
+});
+
+describe('navigateToPlugin', () => {
+  // Wrapped in functions that never run: only their types are checked
+  it("takes this pack's plugins by feature id, and nothing it can't name", () => {
+    expectTypeOf(() => {
+      navigateToPlugin('notes');
+      openPlugin(resolveName('settings', 'host'), { type: 'TAB.SELECT', tab: 'plugins' });
+      // @ts-expect-error a misspelled ref names no plugin
+      navigateToPlugin('default-setp/notes');
+      // @ts-expect-error nor does a misspelled feature id
+      navigateToPlugin('noets');
+      // @ts-expect-error a plugin named by data opens through openPlugin, which checks it at run time
+      navigateToPlugin('whatever.anything');
     }).toBeFunction();
   });
 });

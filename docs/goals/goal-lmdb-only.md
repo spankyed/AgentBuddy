@@ -263,11 +263,21 @@ commands. Both survive, with a fraction of the surface.
 - **`lmdb-js`'s `tryLock`/`hasLock` are not a cross-process lock.** Two processes both got `tryLock: true`
   on one env. It coordinates `overlappingSync` within a process. It does **not** remove the native
   dependency that `goal-write-lock-advisory.md`'s Phase 0 settled on.
-- **LMDB's reader table does track cross-process liveness.** `readerCheck()` returned `1` after a holder was
-  `SIGKILL`ed — LMDB detects and clears slots belonging to dead processes, which is the mechanism `app.lock`
-  reimplements by hand. `lmdb-js` exposes it as a printing `readerList()` plus a stale-slot count rather than
-  a queryable API, so it isn't usable as-is; if that changes, "ask LMDB who has the env open" is the right
-  long-term answer for `app.lock`, not a marker file.
+- **LMDB's reader table does track cross-process liveness**, but it cannot replace `app.lock`.
+  `readerCheck()` returned `1` after a holder was `SIGKILL`ed, so LMDB does detect and clear slots belonging
+  to dead processes. Two things rule it out anyway:
+  - **No usable API.** `readerList()` prints to the C-level stdout and returns nothing; `readerCheck()`
+    returns the count of *stale* slots cleared, not live ones. Nothing answers "is a live process using this
+    env".
+  - **It is blind exactly when the answer matters.** `app.lock` exists to cover the windows where no process
+    has the env open: between the app starting and its API opening the store (`openAppStore`, in a separate
+    process), and while a crashed API is being restarted (`MAX_RESTART_ATTEMPTS: 3`). Asking LMDB in those
+    windows answers "nobody is here", which is the wrong answer and the reason the marker was added in the
+    first place. Replacing the marker with a reader-table check would reintroduce the bug it fixed: a tool
+    takes the write lock in the window, and the API then refuses to come back.
+
+  So the marker file stays. The reader table is the right shape of mechanism — kernel-backed, no pid
+  heuristic — but it can only ever speak for a database that is open, and this question outlives that.
 
 ### What it means for the advisory-lock goal
 

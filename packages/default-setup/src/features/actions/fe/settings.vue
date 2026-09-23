@@ -164,17 +164,16 @@
 </template>
 
 <script setup lang="ts">
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { ref } from 'vue'
 import { Plus, X, Upload, Download, FolderOpen, CheckCircle, XCircle } from 'lucide-vue-next'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import ColorPicker from '@abuddy/ui/design/ColorPicker'
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { useDebounce } from '@abuddy/ui/composables/useDebounce'
 import type { ActionsSettings, Category } from '@/__generated__/types'
 import { useSelector } from '@xstate/vue'
-import { id, type ActionsState } from './state'
-
-const actorSystem = useActorSystem()
+import type { ActionsState } from './state'
 
 interface Props {
   settings?: ActionsSettings
@@ -229,7 +228,7 @@ const removeCategory = (index: number) => {
 }
 
 // Get actions actor and state via selectors
-const actionsActor: ActionsState = actorSystem.get(id)
+const actionsActor: ActionsState = usePlugin()
 
 // Import state
 const isImporting = useSelector(actionsActor, (state) => state.context.actionsImport.status === 'importing')

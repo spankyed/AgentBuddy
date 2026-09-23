@@ -9,6 +9,7 @@ import { resolveDeps } from './generate';
 import { build } from './build';
 import { buildPackArchive } from './pack';
 import { packArchiveName, readPackIntegrity, verifyPack, extractPackArchive } from '@abuddy/host/packs';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const HELP = `
 Usage:
@@ -144,7 +145,7 @@ export async function preflight(root: string, options: { local: boolean; run: Ru
   try {
     await resolveDeps(root, raw.dependencies);
   } catch (err) {
-    errors.push(`dependencies: ${err instanceof Error ? err.message : String(err)}`);
+    errors.push(`dependencies: ${errorMessage(err)}`);
   }
 
   let inRepo = true;

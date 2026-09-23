@@ -1,6 +1,6 @@
 export default {
+  visible: false,
   plugins: {
-    _meta: { visibility: { logs: false } },
     logs: {
       maxLogs: 1000,
       excludedSources: [],

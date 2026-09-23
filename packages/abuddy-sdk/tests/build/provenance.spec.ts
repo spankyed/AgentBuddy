@@ -75,7 +75,7 @@ describe('_mergeProvenance', () => {
       ['relKinds', { tagged: 'base-pack' }],
       ['commands', { note: 'base-pack' }],
       // A feature without a plugin owns no plugin id: nothing could be sent there
-      ['plugins', { notes: 'base-pack' }],
+      ['plugins', { 'base-pack/notes': 'base-pack' }],
     ];
     it.each(cases)('%s', (kind, expected) => {
       expect(_mergeProvenance(kind, [dep('base-pack', { manifest })])).toEqual(expected);
@@ -130,7 +130,7 @@ describe('_buildProvenance', () => {
       [dep('base-pack', { manifest: { entities: { Note: 'Note' }, commands: [{ name: 'note' }] } })],
       { id: 'app-pack', manifest: { features: [{ id: 'app', plugin: {} }] } },
     );
-    expect(provenance).toEqual({ entities: { Note: 'base-pack' }, commands: { note: 'base-pack' }, plugins: { app: 'app-pack' } });
+    expect(provenance).toEqual({ entities: { Note: 'base-pack' }, commands: { note: 'base-pack' }, plugins: { 'app-pack/app': 'app-pack' } });
   });
 
   // An empty record and an absent kind would read the same; the absent one says what it means

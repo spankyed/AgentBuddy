@@ -82,17 +82,18 @@ describe('the feature settings defaults store', () => {
     const before = getPackSettingsDefaults().revision;
 
     packSettingsRegistry.register('memo-pack', [
-      { id: 'memos', settings: { plugins: { _meta: { visibility: { memos: false } }, memos: { sort: 'newest' } } } },
+      { id: 'memos', settings: { visible: false, plugins: { memos: { sort: 'newest' } } } },
       { id: 'no-settings' },
     ]);
     packSettingsRegistry.register('todo-pack', [{ id: 'todos', settings: { plugins: { todos: { done: true } } } }]);
     expect(getPackSettingsDefaults()).toEqual({
       revision: before + 2,
-      settings: { plugins: { memos: { sort: 'newest' }, todos: { done: true }, _meta: { visibility: { memos: false } } } },
+      settings: { plugins: { 'memo-pack/memos': { sort: 'newest' }, 'todo-pack/todos': { done: true } } },
+      visibility: { 'memo-pack/memos': false },
     });
 
     packSettingsRegistry.unregister('memo-pack');
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { todos: { done: true } } });
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'todo-pack/todos': { done: true } } });
     expect(listener).toHaveBeenCalledTimes(3);
 
     unsubscribe();

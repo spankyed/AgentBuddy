@@ -3,17 +3,16 @@
 // test harness runs the same machine with a recording sink.
 import { enqueueActions, fromCallback, setup, spawnChild, type AnyActorRef, type AnyStateMachine } from 'xstate';
 import { reportError } from '@abuddy/sdk/logger';
-import { bus } from '@abuddy/sdk/ids';
-import type { PackRegistry } from '../packs/pack-registration.ts';
+import { HOST } from '../refs.ts';
+import { SYSTEM_EVENT_TYPES } from '@abuddy/sdk/framework';
+import { PLUGIN_EVENT_TYPES, type Message } from '@abuddy/sdk/events';
+import type { PackRegistry } from '../packs/registry.ts';
 
-/** An event for a backend system, as the bus receives it */
-export type IncomingSystemEvents = { type: string; systemId: string; [key: string]: unknown };
-/** An event for a frontend plugin, as the bus sends it */
-export type OutgoingSystemEvents = { type: string; pluginId: string; [key: string]: unknown };
 
+/** A message in for a system (INCOMING) or out for a plugin (OUTGOING) */
 export type BusEvent =
-  | { type: 'INCOMING'; event: IncomingSystemEvents }
-  | { type: 'OUTGOING'; event: OutgoingSystemEvents };
+  | { type: 'INCOMING'; message: Message }
+  | { type: 'OUTGOING'; message: Message };
 
 /** Restarts a pack's systems: stops each running one, then starts those still registered */
 export type ReloadPackEvent = { type: 'RELOAD_PACK'; packId: string; systemIds: string[] };
@@ -40,7 +39,7 @@ export type BackendEvents =
   | PackChangedEvent
   | SystemsSpawnedEvent;
 
-/** The events a bus source can feed it: OUTGOING for sends to plugins from outside a system (`sendToPlugin`) */
+/** The events a bus source can feed it: OUTGOING for sends to plugins from outside a system (`broadcastToPlugin`) */
 export type BusSourceEvent = Extract<BackendEvents, { type: 'INCOMING' | 'OUTGOING' | 'CLIENT_CONNECTED' | 'PACK_CLIENT_CONNECTED' }>;
 
 export interface BusOptions {
@@ -48,8 +47,8 @@ export interface BusOptions {
   registry: Pick<PackRegistry, 'getRegisteredSystems' | 'getRegisteredPackSystemIds' | 'getPluginEventValidationMap' | 'isPluginReplacing'>;
   /** The systems the bus runs, by id; defaults to every system in `registry` */
   systems?(): ReadonlyMap<string, AnyStateMachine>;
-  /** Delivers an event a system sent to a frontend plugin */
-  onOutgoing(event: OutgoingSystemEvents): void;
+  /** Delivers a message a system sent to a frontend plugin */
+  onOutgoing(message: Message): void;
   /** Feeds the bus client events (INCOMING, CLIENT_CONNECTED, PACK_CLIENT_CONNECTED) and sends to plugins (OUTGOING); returns the unsubscribe */
   listen(send: (event: BusSourceEvent) => void): () => void;
   /**
@@ -59,8 +58,8 @@ export interface BusOptions {
    * subscription reconnects, so they get it once per client connection.
    */
   clientLoadedPacks?(): Iterable<string>;
-  /** Events the bus sends to clients after each client connection's CLIENT_CONNECTED reached the systems */
-  connectedEvents?(): OutgoingSystemEvents[];
+  /** Messages the bus sends to clients after each client connection's CLIENT_CONNECTED reached the systems */
+  connectedEvents?(): Message[];
 }
 
 type ActorSystemLike = { get(id: string): { send(event: { type: string }): void } | undefined };
@@ -109,7 +108,7 @@ function stopSystems(
   }
 }
 
-/** A bus machine; start it with systemId `bus` so systems reach it with `system.get(bus)` */
+/** A bus machine; start it with systemId `HOST.bus`, which the host's own systems reach it by (the `packs` system) */
 export function createBusMachine(options: BusOptions) {
   // Every lookup of what the bus runs goes through this, so a bus given a subset never reaches past it
   const { registry } = options;
@@ -147,11 +146,8 @@ export function createBusMachine(options: BusOptions) {
         // accepts, and a system's event against what the plugin receives. Reported and dropped rather
         // than thrown — the caller is a running system, and a malformed message must not take it down.
         // takeSystemErrors fails any pack test that leaves one, so this is loud where it should be.
-        const { pluginId, type } = event.event;
+        const { to: pluginId, event: { type } } = event.message;
         const accepted = options.registry.getPluginEventValidationMap().get(pluginId);
-        // Three cases, and only the first two are wrong. `null` is a plugin whose pack declared no event
-        // types at all — built before they existed — so there is nothing to check the send against and
-        // dropping it would break the pack outright rather than catch a mistake.
         const reportDrop = (message: string) => {
           // A pack mid-replacement has no systems running and no plugins registered until its
           // replacement lands. Dropping is right; saying something went wrong is not.
@@ -162,24 +158,29 @@ export function createBusMachine(options: BusOptions) {
           // `diagnostic`: logged, recorded, and failing any pack test that leaves one — but no toast.
           // Whoever is using the app can do nothing about a send to a plugin nobody declares, and the
           // message already reaches the Logs plugin, where the person who can is looking.
-          reportError({ source: 'bus', operation: 'sendToPlugin', severity: 'diagnostic', error: new Error(message) });
+          reportError({ source: 'bus', operation: 'broadcastToPlugin', severity: 'diagnostic', error: new Error(message) });
         };
         if (accepted === undefined) {
+          // An event every plugin takes (a feature's settings changing) is the feature's plugin's if it has one
+          if ((PLUGIN_EVENT_TYPES as readonly string[]).includes(type)) return;
           reportDrop(`Dropped "${type}" sent to "${pluginId}", which no registered pack declares as a plugin that receives events. Check the id, or give the plugin's own pack a system that declares what it sends there.`);
           return;
         }
-        if (accepted !== null && !accepted.has(type)) {
+        if (!accepted.has(type)) {
           reportDrop(`Dropped "${type}" sent to the "${pluginId}" plugin, which declares no such event. A plugin receives what its own pack's systems declare they emit: add it to that system's outgoing events, or send an event the plugin handles.`);
           return;
         }
-        options.onOutgoing(event.event);
+        options.onOutgoing(event.message);
       },
       routeIncoming: ({ event, system }) => {
         if (event.type !== 'INCOMING') return;
-        const { systemId, ...incoming } = event.event;
-        const actor = system.get(systemId);
+        const { to, event: incoming } = event.message;
+        const actor = system.get(to);
         if (actor) actor.send(incoming);
-        else console.warn(`[bus] routeIncoming: system "${systemId}" not found (may be reloading), dropping event "${incoming.type}"`);
+        // An event every system accepts (a feature's settings changing) is the feature's system's if it runs one
+        else if (!(SYSTEM_EVENT_TYPES as readonly string[]).includes(incoming.type)) {
+          console.warn(`[bus] routeIncoming: system "${to}" not found (may be reloading), dropping event "${incoming.type}"`);
+        }
       },
       sendConnected: ({ system }) => {
         const clientLoaded = new Set<string>();
@@ -187,7 +188,7 @@ export function createBusMachine(options: BusOptions) {
           for (const id of registry.getRegisteredPackSystemIds(packId)) clientLoaded.add(id);
         }
         sendClientConnected(system, [...systems().keys()].filter((id) => !clientLoaded.has(id)));
-        for (const outgoing of options.connectedEvents?.() ?? []) system.get(bus).send({ type: 'OUTGOING', event: outgoing });
+        for (const message of options.connectedEvents?.() ?? []) system.get(HOST.bus).send({ type: 'OUTGOING', message });
       },
       sendPackConnected: ({ event, system }) => {
         if (event.type !== 'PACK_CLIENT_CONNECTED') return;
@@ -231,13 +232,15 @@ export function createBusMachine(options: BusOptions) {
       }),
     },
   }).createMachine({
-    id: bus,
+    id: HOST.bus,
     // A client connection is only what frontend plugins need: sends to plugins are held back until one has
     // connected, and systems send their startup data when one does. Nothing tells the bus a client left (a
     // reconnecting client connects again and gets the startup data), so `clientSeen` means "a client has
     // connected since the bus started", not "one is connected now".
     initial: 'awaitingClient',
-    entry: ['spawnActors', 'listen'],
+    // Listening first: a system sends as it starts (a plugin's report, another system's event), and what it sends
+    // before the bus hears the root events is lost
+    entry: ['listen', 'spawnActors'],
     // A pack can be installed, uninstalled or rebuilt before any client connects (`abuddy dev` against a
     // running backend, a headless boot), so these apply in both states: handled only once a client connected,
     // the pack's systems would be left as they were with nothing reported. Events for systems don't wait for a

@@ -24,6 +24,7 @@ import type { JSONSchema7 } from 'ai';
 import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
 import type { rerank } from 'ai';
+import type { SnapshotFrom } from 'xstate';
 import type { streamText } from 'ai';
 import type { ToolLoopAgent } from 'ai';
 import type { ToolLoopAgentSettings } from 'ai';
@@ -43,11 +44,17 @@ export function _boundPackExtensions(): PackExtensionsView;
 export { EarsQuery }
 
 // @public
+export interface FeClient {
+    send(message: Message): void;
+}
+
+// @public
 export interface FeHostRuntime {
-    application: AnyActorRef;
+    application: HostShell;
+    client: FeClient;
     packs: FePackRegistryView;
     secrets: SecretsClient;
-    transport: FeTransport;
+    settings: SettingsPort;
 }
 
 // @public
@@ -58,11 +65,6 @@ export interface FePackRegistryView extends PackExtensionsView {
     plugins(): Plugin_2[];
     // (undocumented)
     tiptapPlugins(): TiptapPlugin[];
-}
-
-// @public
-export interface FeTransport {
-    sendIncoming(event: IncomingSystemEvents): void;
 }
 
 // @public
@@ -83,6 +85,7 @@ export interface HostRuntimeServices {
     filesystem: FilesystemService;
     inference: InferenceService;
     secrets: SecretsService;
+    settings: SettingsService;
     traceStore: TraceStore;
 }
 
@@ -102,7 +105,7 @@ export interface PackExtensionsView {
     block(type: string): BlockDefinition | undefined;
     // (undocumented)
     blocks(): BlockDefinition[];
-    designation(role: string): string | undefined;
+    designation(role: string): FeatureRef | undefined;
     // (undocumented)
     step(type: string): StepDefinition | undefined;
     steps(): StepDefinition[];
@@ -112,32 +115,35 @@ export interface PackExtensionsView {
 export interface PackRegistryView extends PackExtensionsView {
     commands(): PackCommand[];
     earsNames(): EarsNames;
+    featuresWithSettings(): readonly FeatureRef[];
     getRegisteredServices(): Record<string, unknown>;
+    help(): HelpEntry[];
     onSettingsDefaultsChanged(listener: () => void): () => void;
-    resolveSystemAddress(address: string): string | undefined;
+    pluginIds(): readonly FeatureRef[];
     seeders(packId: string): readonly Seeder[];
     seedHooks(entity: string): SeedHooks | undefined;
     settingsDefaults(): PackSettingsDefaults;
+    systemIds(): readonly FeatureRef[];
 }
 
 // @public
 export interface RootEvents {
-    emitIncoming(event: IncomingSystemEvents): void;
+    emitIncoming(message: Message): void;
     // (undocumented)
     emitLog(event: LogEvent): void;
-    emitOutgoing(event: OutgoingSystemEvents): void;
-    emitPluginSend(event: OutgoingSystemEvents): void;
+    emitOutgoing(message: Message): void;
+    emitPluginSend(message: Message): void;
     // (undocumented)
     onConnected(callback: () => void): () => void;
     // (undocumented)
-    onIncoming(callback: (event: IncomingSystemEvents) => void): () => void;
+    onIncoming(callback: (message: Message) => void): () => void;
     // (undocumented)
     onLog(callback: (event: LogEvent) => void): () => void;
     // (undocumented)
-    onOutgoing(callback: (event: OutgoingSystemEvents) => void): () => void;
+    onOutgoing(callback: (message: Message) => void): () => void;
     onPackClientConnected(callback: (packId: string) => void): () => void;
     // (undocumented)
-    onPluginSend(callback: (event: OutgoingSystemEvents) => void): () => void;
+    onPluginSend(callback: (message: Message) => void): () => void;
 }
 
 // @internal

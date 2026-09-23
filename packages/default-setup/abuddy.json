@@ -18,8 +18,7 @@
     "BrowserBookmark": "BrowserBookmark",
     "Document": "Document",
     "Collection": "Collection",
-    "Note": "Note",
-    "Settings": "Settings"
+    "Note": "Note"
   },
   "relKinds": {
     "PARENT_OF": "parent_of",
@@ -141,11 +140,7 @@
       "id": "actions",
       "settings": "src/features/actions/settings.ts",
       "system": {
-        "entry": "src/features/actions/be/system.ts",
-        "outgoingEventsType": "OutgoingActionEvents",
-        "sendsTo": [
-          "flows"
-        ]
+        "entry": "src/features/actions/be/system.ts"
       },
       "plugin": {
         "entry": "src/features/actions/fe/plugin.ts"
@@ -162,8 +157,7 @@
       "id": "prompts",
       "settings": "src/features/prompts/settings.ts",
       "system": {
-        "entry": "src/features/prompts/be/system.ts",
-        "outgoingEventsType": "OutgoingPromptEvents"
+        "entry": "src/features/prompts/be/system.ts"
       },
       "plugin": {
         "entry": "src/features/prompts/fe/plugin.ts"
@@ -220,32 +214,17 @@
       },
       "services": {},
       "earlySystem": true
-    },
-    {
-      "id": "settings",
-      "designation": "settings",
-      "settings": "src/features/settings/settings.ts",
-      "system": {
-        "entry": "src/features/settings/be/system.ts",
-        "sendsTo": [
-          "application"
-        ]
-      },
-      "plugin": {
-        "entry": "src/features/settings/fe/plugin.ts"
-      },
-      "services": {
-        "settings": "src/features/settings/be/services/settings.ts#settingsService"
-      },
-      "repositories": {
-        "settingsQueries": "src/features/settings/be/repository/index.ts#settingsQueries",
-        "settingsCommands": "src/features/settings/be/repository/index.ts#settingsCommands"
-      }
     }
   ],
   "commands": [
-    { "name": "pr2md", "placeholder": "PR number or GitHub URL (optional)" },
-    { "name": "instructions", "placeholder": "Thread instructions text" }
+    {
+      "name": "pr2md",
+      "placeholder": "PR number or GitHub URL (optional)"
+    },
+    {
+      "name": "instructions",
+      "placeholder": "Thread instructions text"
+    }
   ],
   "boot": {
     "hooks": "src/features/hooks.ts",
@@ -316,10 +295,6 @@
     "Note": {
       "source": "src/features/notes/be/types.ts",
       "type": "NoteEntity"
-    },
-    "Settings": {
-      "source": "src/features/settings/be/types.ts",
-      "type": "SettingsEntity"
     }
   },
   "seedFormats": {
@@ -548,5 +523,7 @@
         "revokeRole": "typeof _dsl.revokeRole"
       }
     }
-  }
+  },
+  "settingsSections": "src/app-settings/index.ts#settingsSections",
+  "help": "src/app-settings/index.ts#helpEntries"
 }

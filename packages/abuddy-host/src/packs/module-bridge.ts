@@ -2,6 +2,7 @@
 // instances. Without it, the runtime would load a separate copy of the SDK with empty registries and
 // an empty EARS store. The app bridges its bundled SDK; the pack test harness bridges the pack's.
 import Module, { createRequire } from 'node:module';
+import { hasOwn } from '@abuddy/sdk/utils/pure';
 
 export interface ModuleBridgeOptions {
   /** Specifier → the module the loaded code gets for `require(specifier)` */
@@ -89,7 +90,7 @@ export function withModuleBridge<T>(options: ModuleBridgeOptions, fn: () => T): 
 
   moduleInternals._resolveFilename = function resolve(this: unknown, request: string, parent: unknown, ...rest: unknown[]) {
     if (request in options.modules) return `${BRIDGE_PREFIX}${request}`;
-    if (options.appOnly && Object.prototype.hasOwnProperty.call(options.appOnly, request)) {
+    if (options.appOnly && hasOwn(options.appOnly, request)) {
       throw new Error(`${request} is only for the app (${options.appOnly[request]}); pack code can't import it`);
     }
     if (options.bridgedPackages?.some(pkg => request === pkg || request.startsWith(`${pkg}/`))) {

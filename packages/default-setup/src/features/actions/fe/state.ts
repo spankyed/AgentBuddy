@@ -7,10 +7,10 @@ import {
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
 import type {
-  OutgoingActionEvents,
   Category,
   ActionsSettings,
 } from '@/__generated__/types'
+import type { OutgoingActionEvents } from '@/features/actions/be/system'
 import type { ActionParameter } from '@abuddy/sdk'
 import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
@@ -20,7 +20,7 @@ import type { ActionEntity, EARS } from '@abuddy/sdk'
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
 /* ─────────────────────────────────────────────────────────── */
-export const id = 'actions'
+export const id = 'actions' as const;
 export type ActionsState = ActorRefFrom<typeof actionsState>
 
 export interface ActionsContext {
@@ -87,7 +87,7 @@ type UIEvent =
   | { type: 'TOGGLE_PARAMETERS_SECTION'; show: boolean }
   | { type: 'TOGGLE_OUTPUT_SECTION'; show: boolean }
   | { type: 'TOGGLE_METADATA_SECTION'; show: boolean }
-  | { type: 'ACTIONS_SETTINGS_UPDATED'; settings: ActionsSettings }
+  | { type: 'FEATURE_SETTINGS_UPDATED'; settings: ActionsSettings }
   | { type: 'ACTIONS.LOAD_MORE' }
   | { type: 'ACTIONS.LOAD_ALL' }
   | { type: 'FILTER.TOGGLE_CATEGORY'; categoryName: string }
@@ -307,7 +307,7 @@ const actionsState = setup({
     }),
     
     handleSettingsUpdate: assign(({ event }) => {
-      const ev = typeOf('ACTIONS_SETTINGS_UPDATED', event);
+      const ev = typeOf('FEATURE_SETTINGS_UPDATED', event);
       return {
         categories: ev.settings?.categories || [],
       };
@@ -519,7 +519,7 @@ const actionsState = setup({
   on: {
     ACTIONS_LISTED: { actions: 'setPluginData' },
     ACTION_SELECTED: { actions: 'loadActionData' },
-    ACTIONS_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
+    FEATURE_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
     ACTION_CREATED: {
       actions: 'addCreatedAction'
     },

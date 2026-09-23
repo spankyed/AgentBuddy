@@ -2,6 +2,7 @@ import { repository } from '@/__generated__/repository';
 import type { ActionEntity } from '@abuddy/sdk';
 import { services as appServices } from '@abuddy/sdk/services';
 import { runActionCode } from '@/extensions/steps/action/sandbox';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 export class ActionService {
   getByLabel(label: string) {
@@ -14,7 +15,7 @@ export class ActionService {
     try {
       return await runActionCode(actionFn, { label, params, services: appServices });
     } catch (error) {
-      throw new Error(`Failed to execute action: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+      throw new Error(`Failed to execute action: ${errorMessage(error)}`, { cause: error });
     }
   }
 

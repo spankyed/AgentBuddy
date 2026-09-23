@@ -7,6 +7,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createActor, setup, type AnyActorRef } from 'xstate';
+import type { Message } from '@abuddy/sdk/events';
 
 vi.mock('@abuddy/host/app-state', () => ({
   appState: { get: () => ({ hasOnboarded: true }) },
@@ -17,14 +18,14 @@ const { createPackRegistry } = await import('@abuddy/host/packs');
 const registry = createPackRegistry();
 const { registerPack, unregisterPack } = registry;
 const { createAppBus, createBusMachine } = await import('@abuddy/host/bus');
-const { rootEvents } = await import('@/core/router/bus-emitter');
+const { rootEvents } = await import('@/transport/emitter');
 type LoadedPack = import('@abuddy/host/packs/runtime').LoadedPack;
 
 // The app's bus on the api's transport, as setup/backend.ts binds it (the services reach the store only when called)
 const { bindHost } = await import('@abuddy/sdk/runtime');
 const { createHostRuntime } = await import('@abuddy/host/services');
 const { createEarsEngine } = await import('@abuddy/ears');
-const { sendToPlugin } = await import('@abuddy/sdk/events');
+const { broadcastToPlugin } = await import('@abuddy/sdk/events');
 type LmdbStore = import('@abuddy/ears/lmdb').LmdbStore;
 bindHost(createHostRuntime({ store: {} as LmdbStore, engine: createEarsEngine({ isEntityType: () => false }), transport: { rootEvents }, appVersion: '1.0.0', packs: registry }));
 const backendSystem = createAppBus(registry);
@@ -42,7 +43,7 @@ function recorder(label: string) {
 }
 
 function pack(id: string, label = id) {
-  return { id, systems: [{ id: `${id}.feature`, machine: recorder(label), events: new Set(['CLIENT_CONNECTED']) }] };
+  return { id, features: { feature: { system: { machine: recorder(label), receives: ['CLIENT_CONNECTED'] } } } };
 }
 
 const packDirs: string[] = [];
@@ -66,7 +67,7 @@ const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
 beforeEach(() => {
   received.length = 0;
   registerPack(pack('first-pack'));
-  bus = createActor(backendSystem, { systemId: 'bus' }).start();
+  bus = createActor(backendSystem, { systemId: 'host/bus' }).start();
 });
 
 afterEach(() => {
@@ -87,7 +88,7 @@ describe('CLIENT_CONNECTED on the bus', () => {
   it('reaches an external pack with plugins once, when a client has loaded its frontend after connecting', async () => {
     bus.stop();
     registerPack(pack('external-pack'), loaded('external-pack', withFrontend));
-    bus = createActor(backendSystem, { systemId: 'bus' }).start();
+    bus = createActor(backendSystem, { systemId: 'host/bus' }).start();
 
     rootEvents.emitConnected();
     await flush();
@@ -101,7 +102,7 @@ describe('CLIENT_CONNECTED on the bus', () => {
   it("reaches only a pack's systems when a client has loaded that pack's frontend", async () => {
     rootEvents.emitConnected();
     registerPack(pack('second-pack'), loaded('second-pack', withFrontend));
-    bus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds: ['second-pack.feature'] });
+    bus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds: ['second-pack/feature'] });
     await flush();
     received.length = 0;
 
@@ -119,7 +120,7 @@ describe('CLIENT_CONNECTED on the bus', () => {
     await flush();
     received.length = 0;
     registerPack(pack('second-pack'), loaded('second-pack', withFrontend));
-    bus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds: ['second-pack.feature'] });
+    bus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds: ['second-pack/feature'] });
     await flush();
     expect(received).toEqual([]);
 
@@ -133,7 +134,7 @@ describe('CLIENT_CONNECTED on the bus', () => {
     await flush();
     received.length = 0;
     registerPack(pack('second-pack'), loaded('second-pack', ['runtime/fe.css']));
-    bus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds: ['second-pack.feature'] });
+    bus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds: ['second-pack/feature'] });
     await flush();
     expect(received).toEqual(['second-pack']);
   });
@@ -142,13 +143,13 @@ describe('CLIENT_CONNECTED on the bus', () => {
     bus.stop();
     registerPack({
       id: 'external-pack',
-      systems: [
-        { id: 'external-pack.feature', machine: recorder('with plugin'), events: new Set(['CLIENT_CONNECTED']) },
-        { id: 'external-pack.background', machine: recorder('without plugin'), events: new Set(['CLIENT_CONNECTED']) },
-      ],
+      features: {
+        feature: { system: { machine: recorder('with plugin'), receives: ['CLIENT_CONNECTED'] } },
+        background: { system: { machine: recorder('without plugin'), receives: ['CLIENT_CONNECTED'] } },
+      },
     }, loaded('external-pack', withFrontend));
     registerPack(pack('second-pack'), loaded('second-pack', withFrontend));
-    bus = createActor(backendSystem, { systemId: 'bus' }).start();
+    bus = createActor(backendSystem, { systemId: 'host/bus' }).start();
 
     rootEvents.emitConnected();
     await flush();
@@ -167,7 +168,7 @@ describe('CLIENT_CONNECTED on the bus', () => {
     received.length = 0;
     unregisterPack('first-pack');
     registerPack(pack('first-pack', 'first-pack (reloaded)'));
-    bus.send({ type: 'RELOAD_PACK', packId: 'first-pack', systemIds: ['first-pack.feature'] });
+    bus.send({ type: 'RELOAD_PACK', packId: 'first-pack', systemIds: ['first-pack/feature'] });
     await flush();
     expect(received).toEqual(['first-pack (reloaded)']);
   });
@@ -176,13 +177,13 @@ describe('CLIENT_CONNECTED on the bus', () => {
     unregisterPack('first-pack');
     registerPack({
       id: 'first-pack',
-      systems: [
-        { id: 'first-pack.feature', machine: recorder('feature'), events: new Set(['CLIENT_CONNECTED']) },
-        { id: 'first-pack.dropped', machine: recorder('dropped'), events: new Set(['CLIENT_CONNECTED']) },
-      ],
+      features: {
+        feature: { system: { machine: recorder('feature'), receives: ['CLIENT_CONNECTED'] } },
+        dropped: { system: { machine: recorder('dropped'), receives: ['CLIENT_CONNECTED'] } },
+      },
     });
     bus.stop();
-    bus = createActor(backendSystem, { systemId: 'bus' }).start();
+    bus = createActor(backendSystem, { systemId: 'host/bus' }).start();
     rootEvents.emitConnected();
     await flush();
     received.length = 0;
@@ -190,42 +191,40 @@ describe('CLIENT_CONNECTED on the bus', () => {
 
     unregisterPack('first-pack');
     registerPack(pack('first-pack', 'feature (reloaded)'));
-    bus.send({ type: 'RELOAD_PACK', packId: 'first-pack', systemIds: ['first-pack.feature', 'first-pack.dropped'] });
+    bus.send({ type: 'RELOAD_PACK', packId: 'first-pack', systemIds: ['first-pack/feature', 'first-pack/dropped'] });
     await flush();
 
     expect(received).toEqual(['feature (reloaded)']);
-    expect(bus.system.get('first-pack.dropped')).toBeUndefined();
+    expect(bus.system.get('first-pack/dropped')).toBeUndefined();
     expect(warn).not.toHaveBeenCalled();
     warn.mockRestore();
   });
 });
 
-// sendToPlugin goes through the bus, as a system's emit does: nothing reaches a client before one connects
-describe('sendToPlugin on the bus', () => {
+// broadcastToPlugin goes through the bus, as a system's emit does: nothing reaches a client before one connects
+describe('broadcastToPlugin on the bus', () => {
   // The plugin's own pack declares what it receives, as in the app: a send to a plugin no pack owns is
   // dropped, which is the check's job and not what this test is about
   beforeEach(() => {
     registerPack({
       id: 'notes-pack',
-      systems: [],
-      features: [{ id: 'notes', hasSystem: false, hasPlugin: true, services: [] }],
-      receivedEventTypes: { notes: ['BEFORE_CONNECT', 'AFTER_CONNECT'] },
+      features: { notes: { plugin: { receives: ['BEFORE_CONNECT', 'AFTER_CONNECT'] } } },
     });
   });
 
   it('reaches clients only once one has connected', async () => {
-    const outgoing: Array<{ type: string }> = [];
-    const stop = rootEvents.onOutgoing((event) => { outgoing.push(event); });
+    const outgoing: Message[] = [];
+    const stop = rootEvents.onOutgoing((message) => { outgoing.push(message); });
     try {
-      sendToPlugin('notes', { type: 'BEFORE_CONNECT' });
+      broadcastToPlugin('notes-pack/notes', { type: 'BEFORE_CONNECT' });
       await flush();
       expect(outgoing).toEqual([]);
 
       rootEvents.emitConnected();
       await flush();
-      sendToPlugin('notes', { type: 'AFTER_CONNECT' });
+      broadcastToPlugin('notes-pack/notes', { type: 'AFTER_CONNECT' });
       await flush();
-      expect(outgoing.filter((event) => event.type !== 'CLIENT_CONNECTED')).toEqual([{ type: 'AFTER_CONNECT', pluginId: 'notes' }]);
+      expect(outgoing.filter(({ event }) => event.type !== 'CLIENT_CONNECTED')).toEqual([{ to: 'notes-pack/notes', event: { type: 'AFTER_CONNECT' } }]);
     } finally {
       stop();
     }
@@ -240,12 +239,12 @@ describe('a bus given a subset of the registered systems', () => {
   beforeEach(() => {
     registerPack({
       id: 'second-pack',
-      systems: [
-        { id: 'second-pack.feature', machine: recorder('second-pack'), events: new Set(['CLIENT_CONNECTED']) },
-        { id: 'second-pack.outside', machine: recorder('outside'), events: new Set(['CLIENT_CONNECTED']) },
-      ],
+      features: {
+        feature: { system: { machine: recorder('second-pack'), receives: ['CLIENT_CONNECTED'] } },
+        outside: { system: { machine: recorder('outside'), receives: ['CLIENT_CONNECTED'] } },
+      },
     });
-    const subset = new Map([['second-pack.feature', recorder('second-pack')]]);
+    const subset = new Map([['second-pack/feature', recorder('second-pack')]]);
     bus.stop();
     subsetBus = createActor(createBusMachine({
       registry,
@@ -256,7 +255,7 @@ describe('a bus given a subset of the registered systems', () => {
         packConnect = (packId) => send({ type: 'PACK_CLIENT_CONNECTED', packId });
         return () => {};
       },
-    }), { systemId: 'bus' }).start();
+    }), { systemId: 'host/bus' }).start();
     connect();
     received.length = 0;
   });
@@ -273,16 +272,16 @@ describe('a bus given a subset of the registered systems', () => {
   });
 
   it('activates and reloads only the systems it runs', async () => {
-    subsetBus.send({ type: 'RELOAD_PACK', packId: 'second-pack', systemIds: ['second-pack.feature', 'second-pack.outside'] });
+    subsetBus.send({ type: 'RELOAD_PACK', packId: 'second-pack', systemIds: ['second-pack/feature', 'second-pack/outside'] });
     await flush();
     expect(received).toEqual(['second-pack']);
-    expect(subsetBus.system.get('second-pack.outside')).toBeUndefined();
+    expect(subsetBus.system.get('second-pack/outside')).toBeUndefined();
 
-    subsetBus.send({ type: 'TEARDOWN_PACK', systemIds: ['second-pack.feature'] });
-    subsetBus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds: ['second-pack.feature', 'second-pack.outside'] });
+    subsetBus.send({ type: 'TEARDOWN_PACK', systemIds: ['second-pack/feature'] });
+    subsetBus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds: ['second-pack/feature', 'second-pack/outside'] });
     await flush();
-    expect(subsetBus.system.get('second-pack.feature')).toBeDefined();
-    expect(subsetBus.system.get('second-pack.outside')).toBeUndefined();
+    expect(subsetBus.system.get('second-pack/feature')).toBeDefined();
+    expect(subsetBus.system.get('second-pack/outside')).toBeUndefined();
   });
 });
 
@@ -291,7 +290,7 @@ describe('a bus given a subset of the registered systems', () => {
 describe('PACK_CHANGED on the bus', () => {
   it('reaches every running system, whichever pack changed', async () => {
     registerPack(pack('second-pack'));
-    bus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds: ['second-pack.feature'] });
+    bus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds: ['second-pack/feature'] });
     rootEvents.emitConnected();
     await flush();
     received.length = 0;
@@ -318,7 +317,7 @@ describe('PACK_CHANGED on the bus', () => {
 // A pack can be installed, uninstalled or rebuilt before a client ever connects: `abuddy dev` against a
 // running backend, or a headless boot. The bus has to act on those either way.
 describe('pack lifecycle before a client connects', () => {
-  const systemIds = ['second-pack.feature'];
+  const systemIds = ['second-pack/feature'];
   const isRunning = (systemId: string) => bus.system.get(systemId) !== undefined;
 
   it('starts an activated pack’s systems, and sends their startup data once a client connects', async () => {
@@ -326,7 +325,7 @@ describe('pack lifecycle before a client connects', () => {
 
     bus.send({ type: 'ACTIVATE_PACK', packId: 'second-pack', systemIds });
     await flush();
-    expect(isRunning('second-pack.feature'), 'the activated pack’s system is running').toBe(true);
+    expect(isRunning('second-pack/feature'), 'the activated pack’s system is running').toBe(true);
     // No client yet, so nothing has been told to send startup data
     expect(received).toEqual([]);
 
@@ -337,21 +336,21 @@ describe('pack lifecycle before a client connects', () => {
 
   it('stops a torn-down pack’s systems', async () => {
     // first-pack's system is spawned when the bus starts, so it is genuinely running to begin with
-    expect(isRunning('first-pack.feature')).toBe(true);
+    expect(isRunning('first-pack/feature')).toBe(true);
 
-    bus.send({ type: 'TEARDOWN_PACK', systemIds: ['first-pack.feature'] });
+    bus.send({ type: 'TEARDOWN_PACK', systemIds: ['first-pack/feature'] });
     await flush();
-    expect(isRunning('first-pack.feature')).toBe(false);
+    expect(isRunning('first-pack/feature')).toBe(false);
   });
 
   it('restarts a reloaded pack’s systems', async () => {
-    const before = bus.system.get('first-pack.feature');
+    const before = bus.system.get('first-pack/feature');
     expect(before).toBeDefined();
 
-    bus.send({ type: 'RELOAD_PACK', packId: 'first-pack', systemIds: ['first-pack.feature'] });
+    bus.send({ type: 'RELOAD_PACK', packId: 'first-pack', systemIds: ['first-pack/feature'] });
     await flush();
     // A fresh actor under the same id, not the one that was already running
-    const after = bus.system.get('first-pack.feature');
+    const after = bus.system.get('first-pack/feature');
     expect(after, 'the reloaded pack’s system is running again').toBeDefined();
     expect(after, 'it is a fresh actor, so the pack really was restarted').not.toBe(before);
     // Still no client: the fresh systems get their startup data from the first connection

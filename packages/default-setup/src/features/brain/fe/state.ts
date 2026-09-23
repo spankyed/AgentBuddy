@@ -4,9 +4,7 @@ import breadcrumb, { breadcrumbList } from '@abuddy/sdk/fe';
 import { contextMenuFn } from '@abuddy/sdk/fe';
 import { Activity, Terminal, Play, RefreshCw, Power, PlayCircle, Pause } from 'lucide-vue-next';
 import { targetIs, TRAIL_CLICK, type TrailClickEvent } from '@abuddy/sdk/fe';
-import type {
-  OutgoingBrainEvents,
-} from '@/__generated__/types'
+import type { OutgoingBrainEvents } from '@/features/brain/be/system'
 import type { EventListenerEntity, FlowTNodeData } from '@/__generated__/types';
 import { sendToSystem } from '@/__generated__/events';
 import type { StepRuntimeError, TNodeEntity, TrackTree } from '@abuddy/sdk/steps';
@@ -17,7 +15,7 @@ import {
   type NormalizedTNodeTree,
 } from './trace-tree';
 
-export const id = 'brain';
+export const id = 'brain' as const;
 export type BrainState = ActorRefFrom<typeof brainState>
 
 export interface BrainContext {
@@ -47,7 +45,7 @@ export interface BrainContext {
 type SystemEvent = OutgoingBrainEvents
   | { type: 'TNODE_DETAILS'; tNodeId: string; details: TNodeEntity | null }
   | { type: 'INSPECT_TOGGLED'; enabled: boolean }
-  | { type: 'BRAIN_SETTINGS_UPDATED'; settings: any }
+  | { type: 'FEATURE_SETTINGS_UPDATED'; settings: any }
   | { type: 'BRAIN_PAUSED' }
   | { type: 'BRAIN_RESUMED' }
   | { type: 'BRAIN_RUNTIME_ERROR'; error: StepRuntimeError }
@@ -67,6 +65,8 @@ type UIEvent =
   | { type: 'PAUSE_BRAIN' }
   | { type: 'RESUME_BRAIN' }
   | { type: 'DISMISS_RUNTIME_ERROR' }
+  // The event pulse's animation ended
+  | { type: 'CLEAR_PULSE' }
 
 type PluginEvent =
   | { type: 'PLUGIN_ACTIVATED' }
@@ -288,7 +288,7 @@ const brainState = setup({
       animationsEnabled: ({ context }) => !context.animationsEnabled
     }),
     updateSettings: assign(({ event }) => {
-      const typedEv = typeOf('BRAIN_SETTINGS_UPDATED', event);
+      const typedEv = typeOf('FEATURE_SETTINGS_UPDATED', event);
       return {
         settings: typedEv.settings
       };
@@ -472,10 +472,10 @@ const brainState = setup({
           actions: ['updateTNodeInTree', 'refreshNodeDetailsIfSelected']
         },
         EVENT_PULSE: {
-          actions: ['pulseEvent', ({ system, context }) => {
+          actions: ['pulseEvent', ({ self, context }) => {
             // Clear pulse after animation
             setTimeout(() => {
-              system.get(id).send({ type: 'CLEAR_PULSE' });
+              self.send({ type: 'CLEAR_PULSE' });
             }, 400);
             // Request fresh data for the current flow to show new events
             // Pass the current flowTNodeId to maintain the current view
@@ -490,7 +490,7 @@ const brainState = setup({
         CLEAR_PULSE: {
           actions: 'clearPulse'
         },
-        BRAIN_SETTINGS_UPDATED: {
+        FEATURE_SETTINGS_UPDATED: {
           actions: 'updateSettings'
         },
         RESTART_BRAIN: {

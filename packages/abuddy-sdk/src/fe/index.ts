@@ -3,10 +3,13 @@
 
 // Declares window.electronAPI; a type-only re-export survives in the emitted declarations
 export type {} from './electron-api.ts';
-export type { Plugin, RouteComponents } from './plugin.ts'
-export type { PackFERegistration } from './pack-fe-registration.ts'
+export type { Plugin, PluginAccepts, PluginDefinition, RouteComponents } from './plugin.ts'
+export { definePlugin, pluginAccepts } from './plugin.ts'
+export type { PackFEFeature, PackFERegistration } from './pack-fe-registration.ts'
 export { pasteIntoElement } from './input-paste.ts'
-export { useActorSystem, useApplicationActor, type PluginActorSystem } from './actor-system.ts'
+export { PluginScope, usePlugin } from './actor-system.ts'
+export { readPluginState, usePluginState } from './plugin-state.ts'
+export { useShell, type Shell, type HostShell, type HostShellEvent, type HostShellSnapshot, type HostShellState, type ShellPanelSizes } from './shell.ts'
 export { isAnyMenuOpen, onMenuOpenChange, useTrackedMenuOpen } from './menu-state.ts'
 export { getDslTypes, type DslTypeConfig } from './dsl-types.ts'
 export { EXTRA_BLOCK_ITEMS_KEY, TIPTAP_PLUGINS_KEY, tiptapPluginRegistry, type BlockItem, type TiptapPlugin } from './tiptap-plugins.ts'
@@ -20,12 +23,14 @@ export { saveTabGroups, loadTabGroups, clearTabGroups, getNextAvailableColor, AL
 export { targetIs, TRAIL_CLICK, type TrailClickEvent } from './route-trailer.ts'
 export { getDesignated, hasDesignation } from '../designations/index.ts'
 
-export { useSettingsSaveStatus } from './settings-save-status.ts'
 export { secretsClient, type SecretsClient, type SecretsSnapshot } from './secrets-client.ts'
+export {
+  updateSettings, useFeatureSettings, useSettingsSave, useSettingsSection,
+  type SettingsPort, type SettingsSaveStatus, type SettingsTarget,
+} from './settings.ts'
 
 export {
-  navigateToPlugin,
-  openInAppBrowser,
-  useState,
+  openPlugin,
+  openLink,
   type PluginEvent,
 } from './navigation.ts'

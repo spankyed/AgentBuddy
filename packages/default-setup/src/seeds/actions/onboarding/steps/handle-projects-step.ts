@@ -34,15 +34,10 @@ export async function action(
       color: '#3B82F6',
     }));
 
-    services.repository.settingsCommands.updateSettings('general', 'projects', [], projectEntries);
+    services.settings.setInSection('general', ['projects'], projectEntries);
 
     // Set first directory as default CWD
-    services.settings.updatePluginSetting('code', ['defaultBaseDirectory'], dirs[0]);
-
-    services.emitter.sendToPlugin('settings', {
-      type: 'SETTINGS_UPDATED',
-      data: services.repository.settingsQueries.getSettings(),
-    });
+    services.settings.setForFeature('default-setup/code', ['defaultBaseDirectory'], dirs[0]);
 
     services.chat.sendBlockMessage({
       threadId,

@@ -24,6 +24,7 @@ import type {
   ConfigValueWriteParams,
   TurnStartParams,
   ConsumerHandlers,
+  ListMcpServersParams,
 } from './types'
 
 const logger = createLogger('codex-app-server')
@@ -273,7 +274,7 @@ export class CodexAppServer {
     return await this._request('skills/list', params)
   }
 
-  async listMcpServers(params: { cursor?: string | null; limit?: number | null; detail?: 'full' | 'toolsAndAuthOnly' | null } = {}): Promise<any> {
+  async listMcpServers(params: ListMcpServersParams = {}): Promise<any> {
     return await this._request('mcpServerStatus/list', params)
   }
 

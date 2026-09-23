@@ -6,9 +6,10 @@ import { transformSync } from 'esbuild';
 import ts from 'typescript';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { _depTypesFile, _depTypesVersion, entitiesWithoutShapes, generatePackFiles, PACK_TYPES_DEF } from '../../src/build/generate-entries.ts';
-import { PACK_TYPES_FORMAT, _buildProvenance } from '../../src/build/manifest.ts';
+import { _buildProvenance, PACK_SNAPSHOT_FORMAT, PROVENANCE_KINDS } from '../../src/build/manifest.ts';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../../src/types/sdk-entities.ts';
-import type { PackManifest, PackSnapshot } from '../../src/build/manifest.ts';
+import type { PackFeatureEntry, PackManifest, PackPluginEntry, PackSnapshot, PackSystemEntry, SeedFormatConfig } from '../../src/build/manifest.ts';
+import type { PackFeature, PackFeaturePlugin, PackFeatureSystem, PackRegistration } from '../../src/framework/index.ts';
 
 let root: string;
 beforeEach(() => {
@@ -31,7 +32,7 @@ function manifest(fields: Record<string, unknown>): PackManifest {
 const FACADE_DEFAULTS = {
   PackEntityShapes: '{}',
   PackStepNodes: 'never',
-  PackEvents: '{}',
+  PackPluginEvents: '{}',
   PackSystemEvents: '{}',
   Services: '{}',
   Repositories: '{}',
@@ -39,8 +40,7 @@ const FACADE_DEFAULTS = {
 
 /**
  * A dependency's facade as `abuddy build` bundles one, with `overrides` replacing a named export's
- * declaration. Generated code imports these from every typed dependency, so a fixture publishing
- * fewer stands for a pack built by a CLI too old to build against — not for a smaller pack.
+ * declaration. Generated code imports these from every dependency.
  */
 function facade(overrides: Partial<Record<keyof typeof FACADE_DEFAULTS, string>> = {}): Record<string, string> {
   const body = Object.entries({ ...FACADE_DEFAULTS, ...overrides })
@@ -50,9 +50,7 @@ function facade(overrides: Partial<Record<keyof typeof FACADE_DEFAULTS, string>>
 }
 
 function dependency(fields: Record<string, unknown>, defs: Record<string, string> = facade()): PackSnapshot {
-  // A dependency built by this CLI records the facade shape it publishes; one that doesn't is the
-  // stale-facade case, covered on its own below
-  return { types: { entities: {}, relKinds: {} }, defs, typesFormat: PACK_TYPES_FORMAT, manifest: manifest({ id: 'base-pack', ...fields }) };
+  return { types: { entities: {}, relKinds: {} }, defs, manifest: manifest({ id: 'base-pack', ...fields }), format: PACK_SNAPSHOT_FORMAT };
 }
 
 function generate(fields: Record<string, unknown>, deps: Record<string, PackSnapshot> = {}): Record<string, string> {
@@ -60,159 +58,208 @@ function generate(fields: Record<string, unknown>, deps: Record<string, PackSnap
 }
 
 /**
+ * A system entry whose spec declares the events the system receives and sends, typed as `defineSystem` types
+ * them, with no import: codegen reads the sent events from the default export's spec.
+ */
+/**
+ * A plugin entry, with the `accepts` export beside it when the plugin declares an inbox.
+ *
+ * The shape is written out rather than imported: these fixtures are bare temp dirs with no `@abuddy/sdk` to
+ * resolve, so a `PluginAccepts` import here reads as `any`. That the phantom `fe/plugin.ts` declares is the one
+ * `module-exports.ts` reads is checked where real packs are built instead — renaming it fails
+ * `abuddy generate-entries` on default-setup, which `npm run compile` and `typecheck:pack` both run.
+ */
+function writePluginEntry(file: string, accepts?: string): string {
+  write(file.endsWith('.ts') ? file : `${file}.ts`, [
+    ...(accepts ? [`export declare const accepts: { _accepts: ${accepts} };`] : []),
+    'declare const plugin: { label: string };',
+    'export default plugin;',
+  ].join('\n') + '\n');
+  return file;
+}
+
+function writeSystemEntry(id: string, outgoing: string, incoming = `{ type: '${id.toUpperCase()}_RUN' }`): string {
+  const entry = `src/features/${id}/be/system.ts`;
+  write(entry, [
+    `declare const spec: { _incoming: ${incoming}; _outgoing: ${outgoing} };`,
+    'export default { spec, machine: undefined as never };',
+  ].join('\n') + '\n');
+  return entry;
+}
+
+/**
  * A feature with a system, and the system entry it names. The entry declares the events the system
- * emits: the generated `receivedEventTypes` reads them from it, so a fixture without one is a pack
+ * emits: each plugin's generated `receives` is read from it, so a fixture without one is a pack
  * whose sends could not be checked.
  */
 const system = (id: string, extra: Record<string, unknown> = {}) => {
   const entry = `src/features/${id}/be/system.ts`;
-  const typeName = (extra.outgoingEventsType as string | undefined)
-    ?? `Outgoing${id.replace(/(^|[-_])(\w)/g, (_, __, c: string) => c.toUpperCase())}Events`;
-  // A test that writes its own richer system entry keeps it; this only fills in the declaration a
-  // fixture would otherwise lack, since generation now reads the events from it
+  // A test that writes its own richer system entry keeps it
   if (!fs.existsSync(path.join(root, entry))) {
-    write(entry, `export type ${typeName} = { type: '${id.toUpperCase()}_CONNECTED' } | { type: '${id.toUpperCase()}_UPDATED' };\n`);
+    writeSystemEntry(id, `{ type: '${id.toUpperCase()}_CONNECTED' } | { type: '${id.toUpperCase()}_UPDATED' }`);
   }
   return { id, system: { entry, ...extra } };
 };
-const withPlugin = (feature: Record<string, unknown>) => ({ ...feature, plugin: { entry: `src/features/${feature.id}/fe/index.ts` } });
+const withPlugin = (feature: Record<string, unknown>, accepts?: string) => ({ ...feature, plugin: { entry: writePluginEntry(`src/features/${feature.id}/fe/index.ts`, accepts) } });
+
+/** The event types the generated pack entry says a feature's plugin receives, or undefined when it has no plugin */
+function receives(files: Record<string, string>, featureId: string): string[] | undefined {
+  const entry = files['src/__generated__/pack-entry.ts'];
+  const feature = entry.slice(entry.indexOf(`    '${featureId}': {`));
+  const match = /^ {4}'[^']+': \{\n(?:(?! {4}\}).*\n)*? {6}plugin: \{ receives: \[(.*)\] \}/.exec(feature);
+  return match ? [...match[1].matchAll(/'([^']+)'/g)].map((m) => m[1]) : undefined;
+}
 
 describe('generated events', () => {
-  it('keys each plugin by the systems that send to it', () => {
-    const files = generate({ features: [withPlugin(system('actions', { sendsTo: ['flows', 'application'] })), withPlugin(system('flows'))] });
+  it('keys each plugin by its own system\'s events and the inbox it declares', () => {
+    const files = generate({ features: [withPlugin(system('actions')), withPlugin(system('flows'), "{ type: 'FLOW.SELECT' }")] });
     const events = files['src/__generated__/events.ts'];
-    expect(events).toContain("'actions': __events_actions;");
-    expect(events).toContain("'flows': __events_flows | __events_actions;");
-    // A host plugin keeps the events the host declares it receives: a pack widens only its own plugins
-    expect(events).toContain("export type PackEvents = OwnPackEvents & Omit<Pick<HostPluginEvents, 'application'>, keyof OwnPackEvents>;");
-    expect(events).not.toContain("'application': __events_actions");
+    // A plugin that declares nothing takes only what its own feature's system sends it
+    expect(events).toContain("'actions': __events_actions | __accepts_actions;");
+    expect(events).toContain("'flows': __events_flows | __accepts_flows;");
+    // What a dependent may send is the declared inbox alone, never the events between a feature's own halves
+    expect(events).toContain("export type PackPluginEvents = {");
+    expect(events).toContain("  'flows': __accepts_flows;");
+    // Every host plugin is sendable, as every dependency's system already is: the owner's declaration is the contract
+    expect(events).toContain("export type QualifiedPluginEvents = Qualified<'demo-pack', OwnPluginEvents> & HostPluginEvents;");
+    expect(events).toContain("export type SendablePluginEvents = WithOwnNames<'demo-pack', QualifiedPluginEvents>;");
   });
 
-  // The runtime half of OwnPackEvents: the app checks a system's send against it, so it has to say the
-  // same thing as the types beside it
-  it('records the event types each own plugin receives, read from its senders\' declared unions', () => {
-    const events = generate({ features: [withPlugin(system('actions', { sendsTo: ['flows'] })), withPlugin(system('flows'))] })['src/__generated__/events.ts'];
-    expect(events).toContain("'actions': ['ACTIONS_CONNECTED', 'ACTIONS_UPDATED'],");
-    // flows receives its own system's events and the ones actions sends it, sorted and deduplicated
-    expect(events).toContain("'flows': ['ACTIONS_CONNECTED', 'ACTIONS_UPDATED', 'FLOWS_CONNECTED', 'FLOWS_UPDATED'],");
+  it('records in the pack entry what each own plugin receives: its system\'s events and its declared inbox', () => {
+    const files = generate({ features: [withPlugin(system('actions')), withPlugin(system('flows'), "{ type: 'FLOW.SELECT' } | { type: 'FLOW.OPEN' }")] });
+    expect(receives(files, 'actions')).toEqual(['ACTIONS_CONNECTED', 'ACTIONS_UPDATED']);
+    // sorted and deduplicated across both halves
+    expect(receives(files, 'flows')).toEqual(['FLOWS_CONNECTED', 'FLOWS_UPDATED', 'FLOW.OPEN', 'FLOW.SELECT'].sort());
   });
 
   // `{ type: 'A' | 'B' }` is one member covering two event types, a legal way to write an event whose
   // payload is the same either way — the style StepEvent already uses. Reading only single literals
   // rejected it, failing the build on a declaration nothing else objects to.
   it("expands a member whose `type` is a union of literals", () => {
-    write('src/features/jobs/be/system.ts', "export type OutgoingJobsEvents = { type: 'CANCEL' | 'COMPLETE'; id: string } | { type: 'JOBS_CONNECTED' };\n");
-    const events = generate({ features: [withPlugin({ id: 'jobs', system: { entry: 'src/features/jobs/be/system.ts' }, plugin: { entry: 'src/features/jobs/fe/index.ts' } })] })['src/__generated__/events.ts'];
-    expect(events).toContain("'jobs': ['CANCEL', 'COMPLETE', 'JOBS_CONNECTED'],");
+    writeSystemEntry('jobs', "{ type: 'CANCEL' | 'COMPLETE'; id: string } | { type: 'JOBS_CONNECTED' }");
+    expect(receives(generate({ features: [withPlugin(system('jobs'))] }), 'jobs')).toEqual(['CANCEL', 'COMPLETE', 'JOBS_CONNECTED']);
   });
 
   it('still refuses a member whose `type` is not a literal at all', () => {
-    write('src/features/loose/be/system.ts', 'export type OutgoingLooseEvents = { type: string };\n');
-    expect(() => generate({ features: [withPlugin({ id: 'loose', system: { entry: 'src/features/loose/be/system.ts' }, plugin: { entry: 'src/features/loose/fe/index.ts' } })] }))
-      .toThrow(/`type` is string, not a string literal or a union of them/);
+    writeSystemEntry('loose', '{ type: string }');
+    expect(() => generate({ features: [withPlugin(system('loose'))] }))
+      .toThrow(/Feature "loose": .*`type` is string, not a string literal or a union of them/);
+  });
+
+  // The spec is the one place a system's sent events are declared: no second, named union can drift from it
+  it("reads the events from the spec, whatever else the entry exports", () => {
+    writeSystemEntry('notes', "{ type: 'NOTE_SAVED' }");
+    fs.appendFileSync(path.join(root, 'src/features/notes/be/system.ts'), "export type OutgoingNotesEvents = { type: 'STALE' };\n");
+    expect(receives(generate({ features: [withPlugin(system('notes'))] }), 'notes')).toEqual(['NOTE_SAVED']);
+  });
+
+  it('records no events for a system whose spec sends none', () => {
+    writeSystemEntry('quiet', 'never');
+    expect(receives(generate({ features: [withPlugin(system('quiet'))] }), 'quiet')).toEqual([]);
+  });
+
+  // An annotation `: SystemEntry` types the spec as the contract's, which carries no events
+  it('refuses an entry whose spec has lost its events, naming the fix', () => {
+    write('src/features/typed/be/system.ts', [
+      "const entry: { spec: { id: string }; machine: unknown } = { spec: { id: 'typed' }, machine: undefined };",
+      'export default entry;',
+    ].join('\n'));
+    expect(() => generate({ features: [withPlugin(system('typed'))] }))
+      .toThrow(/Feature "typed": system\.ts: .*that spec carries none: default-export the system entry declared with `satisfies SystemEntry`/);
+  });
+
+  // `: SystemEntry` types the spec as the contract's own, `{ type: string }` both ways, which a pack's facade would
+  // publish as its system's events: a system with no plugin is read too, so it fails the same way
+  it('refuses an entry annotated `: SystemEntry`, a system without a plugin too, naming the fix', () => {
+    writeSystemEntry('worker', '{ type: string }', '{ type: string }');
+    expect(() => generate({ features: [system('worker')] }))
+      .toThrow(/Feature "worker": .*`type` is string.*an entry annotated `: SystemEntry` has these: default-export it declared with `satisfies SystemEntry`/);
+  });
+
+  it("says so when the spec's type doesn't resolve, rather than blaming the declaration", () => {
+    write('src/features/unresolved/be/system.ts', [
+      "import { defineSystem } from '@abuddy/not-installed';",
+      "export default { spec: defineSystem<{ type: 'RUN' }, { type: 'DONE' }>(), machine: undefined };",
+    ].join('\n'));
+    expect(() => generate({ features: [withPlugin(system('unresolved'))] })).toThrow(/whose type doesn't resolve: check that its `defineSystem` import does/);
+  });
+
+  it('refuses an entry with no default export', () => {
+    write('src/features/bare/be/system.ts', "export const spec = { id: 'bare' };\n");
+    expect(() => generate({ features: [withPlugin(system('bare'))] })).toThrow(/Feature "bare": system\.ts: .*it has no default export/);
   });
 
   it('records nothing for a plugin no system sends to, so a send there is rejected', () => {
-    const events = generate({ features: [withPlugin(system('actions')), withPlugin({ id: 'viewer', plugin: { entry: 'src/features/viewer/fe/index.ts' } })] })['src/__generated__/events.ts'];
-    expect(events).toContain("'actions': ['ACTIONS_CONNECTED', 'ACTIONS_UPDATED'],");
-    expect(events).not.toContain("'viewer':");
+    const files = generate({ features: [withPlugin(system('actions')), withPlugin({ id: 'viewer', plugin: { entry: writePluginEntry('src/features/viewer/fe/index.ts') } })] });
+    expect(receives(files, 'actions')).toEqual(['ACTIONS_CONNECTED', 'ACTIONS_UPDATED']);
+    expect(receives(files, 'viewer')).toEqual([]);
   });
 
   it('records only this pack\'s own plugins: a dependency\'s and the host\'s are their owners\' to declare', () => {
-    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { entry: 'y' } }] }, facade({ PackEvents: "{ memos: { type: 'MEMO_ADDED' } }" })) };
-    const events = generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions', { sendsTo: ['memos', 'application'] }))] }, deps)['src/__generated__/events.ts'];
-    const runtime = events.slice(events.indexOf('receivedEventTypes'));
-    expect(runtime).toContain("'actions':");
-    expect(runtime).not.toContain("'memos':");
-    expect(runtime).not.toContain("'application':");
+    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { entry: writePluginEntry('y') } }] }, facade({ PackPluginEvents: "{ memos: { type: 'MEMO_ADDED' } }" })) };
+    const files = generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions'))] }, deps);
+    expect(receives(files, 'actions')).toEqual(['ACTIONS_CONNECTED', 'ACTIONS_UPDATED']);
+    // The pack entry carries its own features only: nothing there declares what another's plugin receives
+    expect(files['src/__generated__/pack-entry.ts']).not.toMatch(/'(base-pack\/memos|memos|host\/application)': \{/);
   });
 
-  it('leaves out a host plugin no sendsTo names', () => {
-    const events = generate({ features: [withPlugin(system('actions'))] })['src/__generated__/events.ts'];
-    expect(events).toContain('export type PackEvents = OwnPackEvents;');
-    expect(events).not.toContain('HostPluginEvents');
-  });
 
   it('gives a feature with a system but no plugin no key: nothing could receive the events', () => {
-    const files = generate({ features: [withPlugin(system('actions', { sendsTo: ['flows'] })), withPlugin(system('flows')), system('brain')] });
+    const files = generate({ features: [withPlugin(system('actions')), system('worker')] });
     const events = files['src/__generated__/events.ts'];
-    expect(events).toContain("export type OwnPackEvents = {\n  'actions': __events_actions;\n  'flows': __events_flows | __events_actions;\n};");
-    expect(events).not.toContain("'brain': __events_brain;");
-    // Its system still receives events as a system
-    expect(events).toContain("'brain': IncomingEventsOf<(typeof __specs)['brain']>;");
+    expect(events).toContain("'actions': __events_actions | __accepts_actions;");
+    expect(events).not.toContain("'worker': __events_worker | __accepts_worker;");
   });
 
-  it('rejects a sendsTo target that is a feature of this pack with no plugin', () => {
-    expect(() => generate({ features: [withPlugin(system('memos', { sendsTo: ['brain'] })), system('brain')] }))
-      .toThrow('Feature "memos": system.sendsTo names "brain", a feature of this pack with no plugin');
+
+  it('keys a plugin-only feature by the inbox it declares, with no system of its own', () => {
+    writePluginEntry('src/features/sidebar/fe/index.ts', "{ type: 'SIDEBAR.TOGGLE' }");
+    const files = generate({ features: [system('notes'), { id: 'sidebar', plugin: { entry: 'src/features/sidebar/fe/index.ts' } }] });
+    expect(files['src/__generated__/events.ts']).toContain("'sidebar': __accepts_sidebar;");
+    expect(receives(files, 'sidebar')).toEqual(['SIDEBAR.TOGGLE']);
   });
 
-  it('includes a plugin-only feature something sends to', () => {
-    const files = generate({ features: [system('notes', { sendsTo: ['sidebar'] }), { id: 'sidebar', plugin: { entry: 'x' } }] });
-    expect(files['src/__generated__/events.ts']).toContain("'sidebar': __events_notes;");
-  });
-
-  it("takes a dependency's plugin a sendsTo names, with the events that dependency declares it receives", () => {
-    const files = generate(
-      { features: [system('memos', { sendsTo: ['threads'] })] },
-      { 'base-pack': dependency({ features: [withPlugin(system('threads')), withPlugin(system('code'))] }) },
-    );
+  // An `accepts` export must be a value: the generated module reads `(typeof accepts)['_accepts']`, which needs a
+  // runtime binding. Declared only as a type it once passed the check and emitted a generated file that didn't
+  // compile, naming a file its author never wrote.
+  it('passes over an `accepts` exported only as a type, rather than emitting `typeof` on it', () => {
+    write('src/features/sidebar/fe/index.ts', [
+      "export type accepts = { _accepts: { type: 'SIDEBAR.TOGGLE' } };",
+      'declare const plugin: { label: string };',
+      'export default plugin;',
+    ].join('\n') + '\n');
+    const files = generate({ features: [system('notes'), { id: 'sidebar', plugin: { entry: 'src/features/sidebar/fe/index.ts' } }] });
     const events = files['src/__generated__/events.ts'];
-    expect(events).toContain("import type { PackEvents as __dep_base_pack_PackEvents } from './deps/base-pack.js';");
-    // Only the plugin named, and only the events its own pack declares for it
-    expect(events).toContain("export type PackEvents = OwnPackEvents & Omit<Pick<__dep_base_pack_PackEvents, 'threads'>, keyof OwnPackEvents>;");
-    expect(files['src/__generated__/deps/base-pack.d.ts']).toContain('export type PackEvents = {};');
-    expect(files['src/__generated__/deps/base-pack.d.ts']).toContain('// base-pack@1.0.0 facade types\n');
-    expect(_depTypesVersion(files[_depTypesFile('base-pack')], 'base-pack')).toBe('1.0.0');
+    expect(events).not.toContain('__declared_sidebar');
+    expect(events).toContain('type __accepts_sidebar = never;');
+    expect(receives(files, 'sidebar')).toEqual([]);
   });
 
-  it("leaves out a dependency's plugins no sendsTo names", () => {
-    const files = generate(
-      { features: [withPlugin(system('memos'))] },
-      { 'base-pack': dependency({ features: [withPlugin(system('threads'))] }) },
-    );
+  // `PluginAccepts`'s own type parameter defaults to `never`, so an annotation drops what was declared. The
+  // result is self-consistent — no sender compiles either — so nothing else would say it happened.
+  it('refuses an `accepts` that declares no events, naming the annotation that drops them', () => {
+    writePluginEntry('src/features/sidebar/fe/index.ts', 'never');
+    expect(() => generate({ features: [system('notes'), { id: 'sidebar', plugin: { entry: 'src/features/sidebar/fe/index.ts' } }] }))
+      .toThrow(/declares no events/);
+  });
+
+  it("keys a dependency's plugin that declares nothing to never, so no send to it compiles", () => {
+    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', plugin: { entry: 'y' } }] }, facade({ PackPluginEvents: '{ memos: never }' })) };
+    const files = generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions'))] }, deps);
+    expect(files['src/__generated__/deps/base-pack.d.ts']).toContain('{ memos: never }');
+    expect(files['src/__generated__/events.ts']).toContain("Qualified<'base-pack', __dep_base_pack_PackPluginEvents>");
+  });
+
+  it("takes every dependency's plugins, with the inbox that dependency declares", () => {
+    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', plugin: { entry: 'y' } }] }, facade({ PackPluginEvents: "{ memos: { type: 'MEMO_ADDED' } }" })) };
+    const files = generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions'))] }, deps);
     const events = files['src/__generated__/events.ts'];
-    expect(events).toContain('export type PackEvents = OwnPackEvents;');
-    expect(events).not.toContain("import type { PackEvents as __dep_base_pack_PackEvents }");
-  });
-
-  it("rejects a sendsTo naming a dependency's plugin its own pack declares no events for", () => {
-    expect(() => generate(
-      { features: [system('memos', { sendsTo: ['threads'] })] },
-      { 'base-pack': dependency({ features: [{ id: 'threads', plugin: { entry: 'x' } }] }) },
-    )).toThrow('system.sendsTo names "threads", a plugin of a dependency that declares no events for it');
-  });
-
-  it("rejects a sendsTo naming a plugin of a dependency built without facade types", () => {
-    expect(() => generate(
-      { features: [system('memos', { sendsTo: ['threads'] })] },
-      { 'base-pack': dependency({ features: [withPlugin(system('threads'))] }, {}) },
-    )).toThrow('a plugin of "base-pack", which was built without facade types');
-  });
-
-  it('rejects a sendsTo target no pack or host provides', () => {
-    expect(() => generate({ features: [system('memos', { sendsTo: ['nowhere'] })] }))
-      .toThrow('Feature "memos": system.sendsTo names "nowhere"');
-  });
-
-  // A send is typed against the owning pack's PackEvents, which only a direct dependency's facade
-  // names, so this stays rejected — but as the dependency it is, not as a plugin nobody has.
-  it("names the owning pack for a plugin reached only through a dependency, from the snapshot's provenance", () => {
-    const mid = { 'mid-pack': { ...dependency({ id: 'mid-pack' }), provenance: { plugins: { threads: 'deep-pack' } } } };
-    expect(() => generate({ features: [system('memos', { sendsTo: ['threads'] })] }, mid))
-      .toThrow('a plugin of "deep-pack", which this pack depends on only through another pack');
-  });
-
-  it('still sends to a direct dependency\'s plugin when a transitive record names the same id', () => {
-    const base = {
-      'base-pack': { ...dependency({ features: [withPlugin(system('threads'))] }), provenance: { plugins: { threads: 'deep-pack' } } },
-    };
-    const files = generate({ features: [system('memos', { sendsTo: ['threads'] })] }, base);
-    expect(files['src/__generated__/events.ts']).toContain("Pick<__dep_base_pack_PackEvents, 'threads'>");
+    expect(events).toContain("import type { PackPluginEvents as __dep_base_pack_PackPluginEvents } from './deps/base-pack.js';");
+    expect(events).toContain("Qualified<'base-pack', __dep_base_pack_PackPluginEvents>");
   });
 });
 
-// The reader behind that message is `_mergeProvenance`, covered on its own in provenance.spec.ts.
+// `_mergeProvenance`, which names a plugin's owning pack, is covered on its own in provenance.spec.ts.
 
 describe('generated system sends', () => {
   const baseTypes = facade();
@@ -224,23 +271,30 @@ describe('generated system sends', () => {
     });
     const events = files['src/__generated__/events.ts'];
     expect(events).toContain("export type PackSystemEvents = {\n  'memos': IncomingEventsOf<(typeof __specs)['memos']>;\n};");
-    expect(events).toContain('export type SendableSystemEvents = PackSystemEvents & { [K in keyof __dep_base_pack_PackSystemEvents & string as `base-pack/${K}`]: __dep_base_pack_PackSystemEvents[K] } & ');
-    // Each name maps to the id its system runs under: an external dependency's is prefixed, a built-in's isn't
-    expect(events).toContain("const systemIds = {\n  ...busId,\n  'base-pack/threads': 'base-pack.threads',\n  'default-setup/memos': 'memos',\n};");
-    expect(events).toContain('defineEvents<PackEvents, SendableSystemEvents>(systemIds);');
-    expect(files['src/__generated__/system-specs.ts']).toContain("export const specs = {\n  'memos': incomingEvents(__system_memos.spec),\n};");
-    expect(files['src/__generated__/system-ids.ts']).toContain("export const threads = 'base-pack.threads';");
-    expect(files['src/__generated__/pack-types.ts']).toContain("export type { PackEvents, PackSystemEvents } from './events.js';");
+    expect(events).toContain("export type QualifiedSystemEvents = Qualified<'demo-pack', PackSystemEvents> & Qualified<'base-pack', __dep_base_pack_PackSystemEvents> & ");
+    expect(events).toContain("export type SendableSystemEvents = WithOwnNames<'demo-pack', QualifiedSystemEvents>;");
+    // No table of names: the sends derive every address from the pack id (@abuddy/sdk/ids)
+    expect(events).toContain("defineEvents<SendablePluginEvents, SendableSystemEvents>('demo-pack');");
+    expect(events).not.toContain('systemIds');
+    expect(files['src/__generated__/system-specs.ts']).toContain("export const specs = {\n  'memos': specEvents(__system_memos.spec),\n};");
+    // Pack code names systems; it gets no module of addresses
+    expect(files['src/__generated__/system-ids.ts']).toBeUndefined();
+    expect(files['src/__generated__/pack-types.ts']).toContain("export type { PackPluginEvents, PackSystemEvents } from './events.js';");
+  });
+
+  // Pack code resolves a name with `ref`, which is bound to its pack as the sends are
+  it('binds ref to the pack, so pack code never passes its own pack id', () => {
+    const files = generate({ features: [{ id: 'sidebar', plugin: { entry: writePluginEntry('src/features/sidebar/fe/plugin.ts') } }] });
+    expect(files['src/__generated__/ref.ts']).toContain("export const ref = (name: FeatureName): FeatureRef => resolveName(name, 'demo-pack');");
+    expect(files['src/__generated__/bus-ids.ts']).toBeUndefined();
   });
 
   it("gives a pack without systems a sendToSystem for its dependencies' systems", () => {
-    const files = generate({ features: [{ id: 'sidebar', plugin: { entry: 'x' } }] }, { 'base-pack': dependency({ features: [system('threads')] }, baseTypes) });
+    const files = generate({ features: [{ id: 'sidebar', plugin: { entry: writePluginEntry('src/features/sidebar/fe/plugin.ts') } }] }, { 'base-pack': dependency({ features: [system('threads')] }, baseTypes) });
     const events = files['src/__generated__/events.ts'];
-    expect(events).not.toContain('bus-ids');
     expect(events).not.toContain('system-specs');
-    expect(events).toContain("const systemIds = {\n  'base-pack/threads': 'base-pack.threads',\n};");
+    expect(events).toContain("defineEvents<SendablePluginEvents, SendableSystemEvents>('demo-pack');");
     expect(files['src/__generated__/system-specs.ts']).toBeUndefined();
-    expect(files['src/__generated__/bus-ids.ts']).toBeUndefined();
   });
 });
 
@@ -282,24 +336,14 @@ function typedDependency(systems: Record<string, string>): PackSnapshot {
 
 describe('generated sends compile', () => {
   it('for feature ids that match generated names, beside a dependency with the same feature ids', () => {
-    const ids = ['foo', 'fooEntry', 'specs', 'incomingEvents', 'systemIds', 'registration', 'steps'];
-    for (const id of ids) {
-      write(`src/features/${id}/be/system.ts`, [
-        "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",
-        `export type Outgoing${id.charAt(0).toUpperCase() + id.slice(1)}Events = { type: 'DONE' };`,
-        `const spec = defineSystem('${id}')<{ type: '${id.toUpperCase()}_RUN'; n: number }, { type: 'DONE' }>();`,
-        `export const ${id} = spec.id;`,
-        "export default { spec, machine: undefined as unknown as SystemEntry['machine'] } satisfies SystemEntry;",
-      ].join('\n'));
-    }
+    const ids = ['foo', 'fooEntry', 'specs', 'specEvents', 'ref', 'navigateToPlugin', 'registration', 'steps'];
+    for (const id of ids) writeSystemEntry(id, "{ type: 'DONE' }", `{ type: '${id.toUpperCase()}_RUN'; n: number }`);
     const files = generatePackFiles(manifest({ features: ids.map((id) => ({ ...system(id), designation: id === 'foo' ? 'foo' : undefined })) }), {
       packRoot: root,
       depSnapshots: new Map([['base-pack', typedDependency({ foo: 'BASE_FOO_RUN', threads: 'THREADS_RUN' })]]),
     });
     write('src/probe.ts', [
       "import { sendToSystem } from './__generated__/events.js';",
-      "import { specs, systemIds, threads } from './__generated__/system-ids.js';",
-      'export const ids: string[] = [specs, systemIds, threads];',
       ...ids.map((id) => `sendToSystem('${id}', { type: '${id.toUpperCase()}_RUN', n: 1 });`),
       "sendToSystem('base-pack/foo', { type: 'BASE_FOO_RUN', n: 1 });",
       '// @ts-expect-error the own foo system receives FOO_RUN',
@@ -309,7 +353,7 @@ describe('generated sends compile', () => {
   });
 
   it("for a pack without systems, sending to its dependencies'", () => {
-    const files = generatePackFiles(manifest({ features: [{ id: 'sidebar', plugin: { entry: 'x' } }] }), {
+    const files = generatePackFiles(manifest({ features: [{ id: 'sidebar', plugin: { entry: writePluginEntry('src/features/sidebar/fe/plugin.ts') } }] }), {
       packRoot: root,
       depSnapshots: new Map([['base-pack', typedDependency({ threads: 'THREADS_RUN' })]]),
     });
@@ -324,77 +368,138 @@ describe('generated sends compile', () => {
     expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
   });
 
-  it("to a dependency's plugin and a host plugin a sendsTo names, with the events their owner declares", () => {
-    write('src/features/memos/be/system.ts', [
-      "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",
-      "export type OutgoingMemosEvents = { type: 'MEMO_ADDED'; text: string };",
-      "const spec = defineSystem('memos')<{ type: 'ADD_MEMO'; text: string }, OutgoingMemosEvents>();",
-      "export default { spec, machine: undefined as unknown as SystemEntry['machine'] } satisfies SystemEntry;",
-    ].join('\n'));
+  it("to a dependency's plugins and a host plugin, with the events their owner declares", () => {
+    writeSystemEntry('memos', "{ type: 'MEMO_ADDED'; text: string }");
     const base = dependency(
       { features: [withPlugin(system('threads')), withPlugin(system('code'))] },
-      facade({ PackEvents: "{ 'threads': { type: 'TAG_ADDED'; name: string }; 'code': { type: 'FILE_OPENED'; path: string } }" }),
+      facade({ PackPluginEvents: "{ 'threads': { type: 'TAG_ADDED'; name: string }; 'code': { type: 'FILE_OPENED'; path: string } }" }),
     );
     const files = generatePackFiles(
-      manifest({ features: [withPlugin(system('memos', { sendsTo: ['threads', 'application'] }))] }),
+      manifest({ features: [withPlugin(system('memos'))] }),
       { packRoot: root, depSnapshots: new Map([['base-pack', base]]) },
     );
     write('src/probe.ts', [
-      "import { emit, sendToPlugin } from './__generated__/events.js';",
-      "emit('memos', { type: 'MEMO_ADDED', text: 'x' });",
-      "emit('threads', { type: 'TAG_ADDED', name: 'x' });",
-      "sendToPlugin('application', { type: 'APPLICATION_RESTORE_LAST_PLUGIN', lastActivePluginId: 'memos' });",
+      "import { sendToPlugin } from './__generated__/events.js';",
+      "sendToPlugin('memos', { type: 'MEMO_ADDED', text: 'x' });",
+      "sendToPlugin('base-pack/threads', { type: 'TAG_ADDED', name: 'x' });",
+      "sendToPlugin('base-pack/code', { type: 'FILE_OPENED', path: 'x' });",
+      "sendToPlugin('host/application', { type: 'PLUGIN_VISIBILITY_UPDATED', pluginVisibility: { 'demo-pack/memos': false } });",
       "// @ts-expect-error a dependency's plugin takes only the events its own pack declares for it",
-      "emit('threads', { type: 'MEMO_ADDED', text: 'x' });",
+      "sendToPlugin('base-pack/threads', { type: 'MEMO_ADDED', text: 'x' });",
+      "// @ts-expect-error a dependency's plugin is named <pack>/<feature>, as the send resolves it",
+      "sendToPlugin('threads', { type: 'TAG_ADDED', name: 'x' });",
       '// @ts-expect-error the host declares what its application plugin receives',
-      "sendToPlugin('application', { type: 'MEMO_ADDED', text: 'x' });",
-      "// @ts-expect-error no sendsTo names the dependency's code plugin",
-      "emit('code', { type: 'FILE_OPENED', path: 'x' });",
+      "sendToPlugin('host/application', { type: 'MEMO_ADDED', text: 'x' });",
     ].join('\n'));
     expect(typecheck(files, ['src/probe.ts'])).toEqual([]);
   });
 });
 
+describe('generated ref', () => {
+  // A FeatureRef is accepted wherever a send takes one, so the names ref() takes are what keep a misspelling out
+  it("takes this pack's features, its dependencies' and the host's, and nothing else", () => {
+    const files = generate(
+      { dependencies: { 'base-pack': '1.0.0' }, features: [{ id: 'notes', plugin: { entry: writePluginEntry('src/notes/plugin') } }, system('jobs')] },
+      { 'base-pack': dependency({ features: [{ id: 'threads', plugin: { entry: writePluginEntry('x') } }, { id: 'worker', system: { entry: 'y' } }] }) },
+    );
+    expect(files['src/__generated__/ref.ts']).toContain(
+      "export type FeatureName = 'notes' | 'jobs' | 'base-pack/threads' | 'base-pack/worker' | 'host/application' | 'host/settings' | 'host/bus';",
+    );
+    expect(files['src/__generated__/ref.ts']).toContain('export const ref = (name: FeatureName): FeatureRef');
+  });
+});
+
+describe('generated frontend names', () => {
+  // A name nothing declares fails to compile: a plugin named by data opens through `openPlugin` instead
+  it("lists this pack's plugins by feature id and its dependencies' by ref, with no open-ended member", () => {
+    const files = generate(
+      { features: [{ id: 'notes', plugin: { entry: writePluginEntry('src/notes/plugin') } }, system('jobs')] },
+      { 'base-pack': dependency({ features: [{ id: 'threads', plugin: { entry: writePluginEntry('src/threads/plugin') } }, { id: 'worker', system: { entry: 'src/worker/system' } }] }) },
+    );
+
+    expect(files['src/__generated__/fe.ts']).toContain("export type PluginName = 'notes' | 'base-pack/threads';");
+  });
+});
+
 describe('generated frontend entry', () => {
-  it("sets each plugin's designation from the manifest, replacing one the plugin module sets", () => {
+  // Keyed by feature, as the backend entry is: each plugin with its feature's role
+  it("keys each plugin by its feature, with the feature's role, passing the plugin module through untouched", () => {
     const files = generate({ features: [
-      { id: 'settings', designation: 'settings', plugin: { entry: 'src/settings/plugin' } },
-      { id: 'notes', plugin: { entry: 'src/notes/plugin' } },
+      { id: 'settings', designation: 'settings', plugin: { entry: writePluginEntry('src/settings/plugin') } },
+      { id: 'notes', plugin: { entry: writePluginEntry('src/notes/plugin') } },
     ] });
     const fe = files['src/__generated__/pack-entry-fe.ts'];
-    expect(fe).toContain("const __plugin_settings = { ...__plugin_settings_module, designation: 'settings' }");
-    expect(fe).toContain('const __plugin_notes = { ...__plugin_notes_module, designation: undefined }');
+
+    expect(fe).toContain("  features: {\n    'settings': { plugin: __plugin_settings, designation: 'settings', default: true },\n    'notes': { plugin: __plugin_notes },\n  },");
+    expect(fe).toContain("import __plugin_settings from '../settings/plugin.js';");
+    expect(fe).not.toContain('_module');
+  });
+
+  it('names the pack the frontend registration belongs to', () => {
+    const files = generate({ features: [{ id: 'notes', plugin: { entry: writePluginEntry('src/notes/plugin') } }] });
+
+    expect(files['src/__generated__/pack-entry-fe.ts']).toContain("id: 'demo-pack',");
   });
 
   it('opens the plugin that claims the default, not the pack\'s first', () => {
     const files = generate({ features: [
-      { id: 'settings', plugin: { entry: 'src/settings/plugin' } },
-      { id: 'notes', plugin: { entry: 'src/notes/plugin', default: true } },
+      { id: 'settings', plugin: { entry: writePluginEntry('src/settings/plugin') } },
+      { id: 'notes', plugin: { entry: writePluginEntry('src/notes/plugin'), default: true } },
     ] });
 
-    expect(files['src/__generated__/pack-entry-fe.ts']).toContain('defaultPlugin: __plugin_notes,');
+    const fe = files['src/__generated__/pack-entry-fe.ts'];
+    expect(fe).toContain("'notes': { plugin: __plugin_notes, default: true },");
+    expect(fe).toContain("'settings': { plugin: __plugin_settings },");
   });
 
   it("falls back to the pack's first plugin when none claims it", () => {
     const files = generate({ features: [
-      { id: 'settings', plugin: { entry: 'src/settings/plugin' } },
-      { id: 'notes', plugin: { entry: 'src/notes/plugin' } },
+      { id: 'settings', plugin: { entry: writePluginEntry('src/settings/plugin') } },
+      { id: 'notes', plugin: { entry: writePluginEntry('src/notes/plugin') } },
     ] });
 
-    expect(files['src/__generated__/pack-entry-fe.ts']).toContain('defaultPlugin: __plugin_settings,');
+    expect(files['src/__generated__/pack-entry-fe.ts']).toContain("'settings': { plugin: __plugin_settings, default: true },");
+  });
+
+  // So a frontend send to that role resolves, as it does on the backend
+  it('lists a designated feature with no plugin for its role, and leaves out an undesignated one', () => {
+    const files = generate({ features: [
+      { id: 'notes', plugin: { entry: writePluginEntry('src/notes/plugin') } },
+      system('scheduler', {}),
+      system('worker'),
+    ].map((f) => (f.id === 'scheduler' ? { ...f, designation: 'clock' } : f)) });
+
+    const fe = files['src/__generated__/pack-entry-fe.ts'];
+    expect(fe).toContain("'scheduler': { designation: 'clock' },");
+    expect(fe).not.toContain("'worker'");
+    expect(fe).toContain("'notes': { plugin: __plugin_notes, default: true },");
   });
 });
 
 describe('generated backend entry', () => {
   it('records which features have a plugin, and takes the plugin\'s name and icon from its module', () => {
     const files = generate({ features: [
-      { id: 'notes', plugin: { entry: 'src/notes/plugin' } },
+      { id: 'notes', plugin: { entry: writePluginEntry('src/notes/plugin') } },
       system('brain'),
     ] });
     const entry = files['src/__generated__/pack-entry.ts'];
-    expect(entry).toContain("id: 'notes',\n    hasSystem: false,\n    hasPlugin: true,");
-    expect(entry).toContain("id: 'brain',\n    hasSystem: true,\n    hasPlugin: false,");
+    expect(entry).toContain("    'notes': {\n      plugin: { receives: [] },\n      services: [],\n    }");
+    expect(entry).toContain("    'brain': {\n      system: packSystem(__system_brain),\n      services: [],\n    }");
     expect(entry).not.toMatch(/label|icon|isPinned/);
+  });
+
+  // One record, keyed by feature: the app derives every ref, system and plugin from it
+  it('registers each feature once, in manifest order, with its early system and the events the manifest adds', () => {
+    const entry = generate({ features: [
+      { ...system('logs'), earlySystem: true },
+      { ...system('inbox'), system: { entry: 'src/features/inbox/be/system.ts', events: { incoming: ['MAIL_ARRIVED'] } } },
+      { ...system('config'), designation: 'settings' },
+    ] })['src/__generated__/pack-entry.ts'];
+    expect(entry).toContain("system: packSystem(__system_logs, { early: true }),");
+    expect(entry).toContain(`system: packSystem(__system_inbox, { incoming: ["MAIL_ARRIVED"] }),`);
+    // No role orders the features: a system that needs another's data reads it when it needs it
+    expect(entry.indexOf("'logs': {")).toBeLessThan(entry.indexOf("'config': {"));
+    expect(entry).not.toMatch(/systems:|earlySystem|receivedEventTypes|toPackSystemDefs/);
   });
 
   it("carries the pack's declared slash commands, so registering it registers them", () => {
@@ -491,8 +596,8 @@ describe('generated feature settings', () => {
     write('src/features/memos/settings.ts', 'export default { plugins: { memos: {} } };\n');
     const entry = generate({ features: [{ ...system('memos'), settings: 'src/features/memos/settings.ts' }, system('todos')] })['src/__generated__/pack-entry.ts'];
     expect(entry).toContain("import __settings_Memos from '../features/memos/settings.js';");
-    expect(entry).toMatch(/id: 'memos',[^}]*services: \[\],\n {4}settings: __settings_Memos,\n {2}\}/);
-    expect(entry).toMatch(/id: 'todos',[^}]*services: \[\],\n {2}\}/);
+    expect(entry).toContain("    'memos': {\n      system: packSystem(__system_memos),\n      services: [],\n      settings: __settings_Memos,\n    }");
+    expect(entry).toContain("    'todos': {\n      system: packSystem(__system_todos),\n      services: [],\n    }");
   });
 
   it('fails on a settings module that is missing or has no default export', () => {
@@ -558,9 +663,9 @@ describe('a diamond dependency', () => {
   const surfacing = (id: string, owner: string) => ({
     types: { entities: { Memo: 'Memo' }, relKinds: {} },
     defs: facade(),
-    typesFormat: PACK_TYPES_FORMAT,
     provenance: { entities: { Memo: owner } },
     manifest: manifest({ id }),
+    format: PACK_SNAPSHOT_FORMAT,
   }) as PackSnapshot;
 
   // Both sides surface deep-pack's Memo, because a snapshot carries its dependencies' names so a
@@ -601,12 +706,12 @@ describe('a diamond dependency', () => {
     const side = (id: string) => ({
       types: { entities: { ['__proto__']: '__proto__' }, relKinds: {} },
       defs: facade(),
-      typesFormat: PACK_TYPES_FORMAT,
-      provenance: JSON.parse(JSON.stringify(_buildProvenance(
+        provenance: JSON.parse(JSON.stringify(_buildProvenance(
         [['deep-pack', { manifest: { entities: { ['__proto__']: '__proto__' } } }] as const],
         { id, manifest: {} },
       ))),
       manifest: manifest({ id }),
+      format: PACK_SNAPSHOT_FORMAT,
     }) as PackSnapshot;
 
     expect(() => generate({ features: [system('brain')] }, {
@@ -622,139 +727,6 @@ describe('a diamond dependency', () => {
     })).toThrow(/entity "Memo" declared by both/);
   });
 
-  it("names the deeper pack once for a plugin both sides surface", () => {
-    const owners = { threads: 'deep-pack' };
-    expect(() => generate({ features: [system('memos', { sendsTo: ['threads'] })] }, {
-      'left-pack': { ...dep('left-pack'), provenance: { plugins: owners } } as PackSnapshot,
-      'right-pack': { ...dep('right-pack'), provenance: { plugins: owners } } as PackSnapshot,
-    })).toThrow('a plugin of "deep-pack"');
-  });
-});
-
-describe("a dependency's facade", () => {
-  /** A snapshot whose facade publishes only `names`, standing for one an older CLI produced */
-  const publishing = (names: string[], fields: Record<string, unknown> = {}) => ({
-    types: { entities: {}, relKinds: {} },
-    defs: { [PACK_TYPES_DEF]: names.map((n) => `export type ${n} = {};`).join('\n') },
-    typesFormat: PACK_TYPES_FORMAT,
-    manifest: manifest({ id: 'base-pack' }),
-    ...fields,
-  }) as PackSnapshot;
-
-  const ALL = Object.keys(FACADE_DEFAULTS);
-
-  // Presence used to be the whole check, so a facade whose shape had changed was consumed and blew up
-  // later as TS2305 inside generated code, naming nothing the author could act on. The check is on the
-  // exports the generated code imports, so the message names those instead.
-  it('fails naming each export the generated code imports and the facade lacks', () => {
-    expect(() => generate({ features: [system('brain')] }, {
-      'base-pack': publishing(ALL.filter((n) => n !== 'Services' && n !== 'Repositories')),
-    })).toThrow(/publishes facade types without `Services`, `Repositories`.*Rebuild "base-pack"/s);
-  });
-
-  it('names how the facade was built, as context for the missing exports', () => {
-    expect(() => generate({ features: [system('brain')] }, {
-      'base-pack': publishing(['PackEvents'], { sdkVersion: '0.2.1', typesFormat: PACK_TYPES_FORMAT + 1 }),
-    })).toThrow(`(Built with SDK 0.2.1, facade format ${PACK_TYPES_FORMAT + 1}; this CLI generates facade format ${PACK_TYPES_FORMAT}.)`);
-  });
-
-  // The format number is a proxy for the exports, and a worse one: it fails a dependency whose facade
-  // changed in ways this pack never touches. Capability is the check; the format is only context.
-  it('accepts a capable facade whose recorded format this CLI does not generate', () => {
-    expect(() => generate({ features: [system('brain')] }, {
-      'base-pack': publishing(ALL, { typesFormat: PACK_TYPES_FORMAT + 1 }),
-    })).not.toThrow();
-  });
-
-  it('accepts a capable facade that records no format at all', () => {
-    expect(() => generate({ features: [system('brain')] }, {
-      'base-pack': publishing(ALL, { typesFormat: undefined }),
-    })).not.toThrow();
-  });
-
-  // PackEvents is imported only for a dependency a sendsTo names, so requiring it of every dependency
-  // would fail builds over a type they never import.
-  it('does not require PackEvents of a dependency no sendsTo names', () => {
-    expect(() => generate({ features: [system('brain')] }, {
-      'base-pack': publishing(ALL.filter((n) => n !== 'PackEvents')),
-    })).not.toThrow();
-  });
-
-  it('requires PackEvents of a dependency whose plugin a sendsTo names', () => {
-    expect(() => generate(
-      { features: [withPlugin(system('memos', { sendsTo: ['threads'] }))] },
-      {
-        'base-pack': publishing(ALL.filter((n) => n !== 'PackEvents'), {
-          manifest: manifest({ id: 'base-pack', features: [withPlugin(system('threads'))] }),
-        }),
-      },
-    )).toThrow(/without `PackEvents`, which is needed because this pack's system.sendsTo names one of its plugins/);
-  });
-
-  // The remedy has to be one the reader can carry out. "Rebuild it" is right for a workspace sibling
-  // and impossible for a release someone else published — there is no source tree to build.
-  describe('names a remedy that fits where the dependency came from', () => {
-    const incapable = () => ({ 'base-pack': publishing(ALL.filter((n) => n !== 'Services')) });
-    const failure = (sources?: Record<string, string>) => {
-      try {
-        generatePackFiles(manifest({ features: [system('brain')] }), {
-          packRoot: root,
-          depSnapshots: new Map(Object.entries(incapable())),
-          depSources: sources && new Map(Object.entries(sources)),
-        });
-      } catch (err) {
-        return (err as Error).message;
-      }
-      throw new Error('expected the facade check to fail');
-    };
-
-    it('tells the author to rebuild a workspace dependency, and says where it came from', () => {
-      const message = failure({ 'base-pack': 'workspace' });
-      expect(message).toContain('(from workspace)');
-      expect(message).toContain('Rebuild "base-pack"');
-      expect(message).not.toContain("can't rebuild it yourself");
-    });
-
-    it('tells the author to rebuild a file: dependency', () => {
-      const message = failure({ 'base-pack': 'file:/packs/base-pack' });
-      expect(message).toContain('(from file:/packs/base-pack)');
-      expect(message).toContain('Rebuild "base-pack"');
-    });
-
-    it('does not tell the author to rebuild a downloaded release', () => {
-      const message = failure({ 'base-pack': 'github:acme/base-pack@1.4.0' });
-      expect(message).toContain('(from github:acme/base-pack@1.4.0)');
-      expect(message).toContain("You can't rebuild it yourself");
-      expect(message).toContain('ask its author for a release built with a current abuddy CLI');
-      expect(message).not.toMatch(/Rebuild "base-pack"/);
-    });
-
-    // Taken out of an installed app, so there is no source tree here — and no author to ask either:
-    // the copy came with AgentBuddy and moves when AgentBuddy does
-    it('tells the author to update AgentBuddy for a pack from an installed app', () => {
-      const message = failure({ 'base-pack': 'installed app (production)' });
-      expect(message).toContain('(from installed app (production))');
-      expect(message).toContain('update AgentBuddy');
-      expect(message).not.toContain('ask its author');
-      expect(message).not.toMatch(/Rebuild "base-pack"/);
-    });
-
-    // A cache hit records no source, so the message offers both and names neither situation
-    it('offers both options when the dependency came from the cache', () => {
-      const message = failure();
-      expect(message).not.toContain('(from ');
-      expect(message).toContain('Rebuild "base-pack"');
-      expect(message).toContain("if it isn't yours to build");
-    });
-  });
-
-  // A pack built before facades existed has no facade at all. That stays a silent downgrade to
-  // untyped, which is what `typedDeps` is for — the check is only about a facade that exists.
-  it('accepts a dependency with no facade at all, which stays untyped', () => {
-    expect(() => generate({ features: [system('brain')] }, {
-      'base-pack': { types: { entities: {}, relKinds: {} }, defs: {}, manifest: manifest({ id: 'base-pack' }) } as PackSnapshot,
-    })).not.toThrow();
-  });
 });
 
 describe('service name collisions', () => {
@@ -850,10 +822,10 @@ describe('generated services', () => {
 
   it("types the emitter with the pack's events, naming every system <pack>/<feature>", () => {
     const files = generate({ features: [system('memos')] }, { 'base-pack': dependency({ features: [system('threads')] }, facade()) });
-    expect(files['src/__generated__/events.ts']).toContain('export type QualifiedSystemEvents = { [K in keyof PackSystemEvents & string as `demo-pack/${K}`]: PackSystemEvents[K] } & { [K in keyof __dep_base_pack_PackSystemEvents & string as `base-pack/${K}`]: __dep_base_pack_PackSystemEvents[K] };');
+    expect(files['src/__generated__/events.ts']).toContain("export type QualifiedSystemEvents = Qualified<'demo-pack', PackSystemEvents> & Qualified<'base-pack', __dep_base_pack_PackSystemEvents> & HostSystemEvents;");
     const services = files['src/__generated__/services.ts'];
-    expect(services).toContain("import type { PackEvents, QualifiedSystemEvents } from './events.js';");
-    expect(services).toContain('  sendToPlugin: TypedSendToPlugin<PackEvents>;\n  sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;');
+    expect(services).toContain("import type { QualifiedPluginEvents, QualifiedSystemEvents } from './events.js';");
+    expect(services).toContain('  broadcastToPlugin: TypedSendToPlugin<QualifiedPluginEvents>;\n  sendToSystem: TypedSendToSystem<QualifiedSystemEvents>;');
   });
 });
 
@@ -949,7 +921,7 @@ describe('generated registrations', () => {
   // Everything a pack contributes arrives in its registration: no generated module registers anything when imported
   it("carry the pack's seeders and DSL types, which their modules only export", () => {
     const files = generate({
-      features: [{ id: 'memos', plugin: { entry: 'src/features/memos/fe/plugin.ts' } }],
+      features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }],
       boot: { seed: { actions: 'src/seeds/actions' } },
       dsl: { memo: { entry: 'src/defs/memo.ts', targets: ['monaco'], prefix: 'memo:', globals: { memos: 'typeof _dsl.memos' } } },
     });
@@ -972,7 +944,7 @@ describe('generated registrations', () => {
   });
 
   it('carry no seeders or DSL types for a pack without them', () => {
-    const files = generate({ features: [{ id: 'memos', plugin: { entry: 'src/features/memos/fe/plugin.ts' } }] });
+    const files = generate({ features: [{ id: 'memos', plugin: { entry: writePluginEntry('src/features/memos/fe/plugin.ts') } }] });
     expect(files['src/__generated__/seeders.ts']).toContain('export const seeders: Seeder[] = [];');
     expect(files['src/__generated__/pack-entry-fe.ts']).not.toContain('dslTypes');
     expect(files).not.toHaveProperty(['src/__generated__/dsl-types-fe.ts']);
@@ -985,20 +957,20 @@ describe('generated seeders', () => {
       entities: { Memo: 'Memo' },
       seedFormats: {
         memos: { format: 'markdown-tree', entity: 'Memo', identity: ['title', 'parent'], tree: { relKind: 'has_memo' }, media: 'media' },
-        faqs: { compiler: 'src/seeds/compilers/faqs.ts' },
+        help: { compiler: 'src/seeds/compilers/help.ts' },
       },
       boot: { seed: {
         actions: 'src/seeds/actions',
         flows: { path: 'src/seeds/flows' },
         memos: { path: 'src/seeds/memos', format: 'memos' },
-        faqs: { path: 'src/seeds/faqs', format: 'faqs' },
+        help: { path: 'src/seeds/help', format: 'help' },
       } },
     });
     const seeders = files['src/__generated__/seeders.ts'];
     expect(seeders).toContain(`export const seeders: Seeder[] = [\n  createSeeder({ key: 'actions', entities: ['Action'], identity: ['label'] }),`);
     expect(seeders).toContain('  createFlowSeeder(),');
     expect(seeders).toContain('  createSeeder({"key":"memos","entities":["Memo"],"identity":["title","parent"],"relKind":"has_memo","media":true}),');
-    expect(seeders).not.toContain('faqs');
+    expect(seeders).not.toContain('help');
     expect(files['src/__generated__/pack-entry.ts']).toContain('seedKeys: ["actions", "flows", "memos"],');
   });
 
@@ -1113,5 +1085,140 @@ describe('generated flow helpers', () => {
     expect(flowHelpers).not.toContain('Record<string, unknown>');
     expect(files['src/__generated__/deps/base-pack.flow-helpers.js']).toContain('// base-pack module');
     expect(files['src/__generated__/deps/base-pack.flow-helpers.d.ts']).toContain('// base-pack types');
+  });
+});
+
+/**
+ * What `PACK_SNAPSHOT_FORMAT` covers: the snapshot's fields, the manifest's, the provenance kinds, the facade exports
+ * a dependent's generated code imports, and the registration the app loads. When this fails, the snapshot's contract changed. If a CLI on the
+ * other side would misread the change (anything removed, renamed or reshaped) and the last release shipped
+ * this format number, bump it; then update the expectation. A pure addition every reader ignores needs only
+ * the expectation.
+ */
+describe('the snapshot format', () => {
+  // Each typed against its interface, so adding, renaming or removing a field fails the typecheck until it is listed
+  const SNAPSHOT_FIELDS: Record<keyof PackSnapshot, true> = {
+    types: true, defs: true, manifest: true, format: true, sdkVersion: true, provenance: true, flowHelpers: true,
+  };
+  /** The snapshot's manifest, which a dependent's codegen reads (features, services, seed formats, version…) */
+  const MANIFEST_FIELDS: Record<keyof PackManifest, true> = {
+    $manifestVersion: true, $schema: true, artifacts: true, blocks: true, boot: true, builtIn: true, commands: true,
+    dependencies: true, description: true, dsl: true, entities: true, entityShapes: true, help: true, fe: true, features: true,
+    hostVersion: true, id: true, license: true, migrations: true, name: true, packServices: true, partitionPolicy: true,
+    permissions: true, relKinds: true, seedFormats: true, seedHooks: true, settingsSections: true, steps: true, version: true,
+  };
+  const MANIFEST_FEATURE_FIELDS: Record<keyof PackFeatureEntry, true> = {
+    designation: true, earlySystem: true, id: true, plugin: true, references: true, repositories: true, services: true,
+    settings: true, system: true, typesEntry: true,
+  };
+    const MANIFEST_SYSTEM_FIELDS: Record<keyof PackSystemEntry, true> = { entry: true, events: true };
+  const MANIFEST_SYSTEM_EVENTS_FIELDS: Record<keyof NonNullable<PackSystemEntry['events']>, true> = { incoming: true };
+  const MANIFEST_PLUGIN_FIELDS: Record<keyof PackPluginEntry, true> = { default: true, entry: true };
+  /** A dependency's seed formats, which a dependent's `boot.seed` compiles its own sources with */
+  const SEED_FORMAT_FIELDS: Record<keyof SeedFormatConfig, true> = {
+    compiler: true, entity: true, fields: true, format: true, identity: true, media: true, tree: true,
+  };
+  const SEED_TREE_FIELDS: Record<keyof NonNullable<SeedFormatConfig['tree']>, true> = { branch: true, branchEntity: true, relKind: true };
+  const SEED_FIELD_FIELDS: Record<keyof NonNullable<SeedFormatConfig['fields']>[string], true> = { default: true, from: true, type: true };
+  /** The registration the runtime bundle exports, which the app loads */
+  const REGISTRATION_FIELDS: Record<keyof PackRegistration, true> = {
+    id: true, features: true, services: true, ears: true, repositories: true, boot: true, migrations: true, steps: true,
+    artifacts: true, blocks: true, seedHooks: true, seeders: true, commands: true, help: true, settingsSections: true,
+  };
+  const REGISTRATION_FEATURE_FIELDS: Record<keyof PackFeature, true> = {
+    designation: true, system: true, plugin: true, services: true, settings: true,
+  };
+  const REGISTRATION_SYSTEM_FIELDS: Record<keyof PackFeatureSystem, true> = { early: true, machine: true, receives: true };
+  const REGISTRATION_PLUGIN_FIELDS: Record<keyof PackFeaturePlugin, true> = { receives: true };
+
+  /** Every name generated code imports from a dependency's facade, with a send to one of its plugins */
+  function facadeImports(): string[] {
+    const deps = { 'base-pack': dependency({ features: [{ id: 'memos', system: { entry: 'x' }, plugin: { entry: writePluginEntry('y') } }] }) };
+    const files = generate({ dependencies: { 'base-pack': '1.0.0' }, features: [withPlugin(system('actions'))] }, deps);
+    const names = Object.values(files).flatMap((file) => [...file.matchAll(/import type \{ (\w+) as \w+ \} from '\.\/deps\/base-pack\.js'/g)].map((m) => m[1]));
+    return [...new Set(names)].sort();
+  }
+
+  it('covers exactly what dependents read', () => {
+    expect({
+      format: PACK_SNAPSHOT_FORMAT,
+      fields: Object.keys(SNAPSHOT_FIELDS).sort(),
+      manifest: {
+        fields: Object.keys(MANIFEST_FIELDS).sort(),
+        feature: Object.keys(MANIFEST_FEATURE_FIELDS).sort(),
+        system: Object.keys(MANIFEST_SYSTEM_FIELDS).sort(),
+        systemEvents: Object.keys(MANIFEST_SYSTEM_EVENTS_FIELDS).sort(),
+        plugin: Object.keys(MANIFEST_PLUGIN_FIELDS).sort(),
+        seedFormat: Object.keys(SEED_FORMAT_FIELDS).sort(),
+        seedTree: Object.keys(SEED_TREE_FIELDS).sort(),
+        seedField: Object.keys(SEED_FIELD_FIELDS).sort(),
+      },
+      registration: {
+        fields: Object.keys(REGISTRATION_FIELDS).sort(),
+        feature: Object.keys(REGISTRATION_FEATURE_FIELDS).sort(),
+        system: Object.keys(REGISTRATION_SYSTEM_FIELDS).sort(),
+        plugin: Object.keys(REGISTRATION_PLUGIN_FIELDS).sort(),
+      },
+      provenanceKinds: Object.keys(PROVENANCE_KINDS).sort(),
+      facadeImports: facadeImports(),
+    }).toEqual({
+      format: 1,
+      fields: ['defs', 'flowHelpers', 'format', 'manifest', 'provenance', 'sdkVersion', 'types'],
+      manifest: {
+        fields: [
+          '$manifestVersion', '$schema', 'artifacts', 'blocks', 'boot', 'builtIn', 'commands', 'dependencies', 'description', 'dsl',
+          'entities', 'entityShapes', 'fe', 'features', 'help', 'hostVersion', 'id', 'license', 'migrations', 'name', 'packServices',
+          'partitionPolicy', 'permissions', 'relKinds', 'seedFormats', 'seedHooks', 'settingsSections', 'steps', 'version',
+        ],
+        feature: ['designation', 'earlySystem', 'id', 'plugin', 'references', 'repositories', 'services', 'settings', 'system', 'typesEntry'],
+        system: ['entry', 'events'],
+        systemEvents: ['incoming'],
+        plugin: ['default', 'entry'],
+        seedFormat: ['compiler', 'entity', 'fields', 'format', 'identity', 'media', 'tree'],
+        seedTree: ['branch', 'branchEntity', 'relKind'],
+        seedField: ['default', 'from', 'type'],
+      },
+      registration: {
+        fields: ['artifacts', 'blocks', 'boot', 'commands', 'ears', 'features', 'help', 'id', 'migrations', 'repositories', 'seedHooks', 'seeders', 'services', 'settingsSections', 'steps'],
+        feature: ['designation', 'plugin', 'services', 'settings', 'system'],
+        system: ['early', 'machine', 'receives'],
+        plugin: ['receives'],
+      },
+      provenanceKinds: ['commands', 'entities', 'plugins', 'relKinds'],
+      facadeImports: ['PackEntityShapes', 'PackPluginEvents', 'PackStepNodes', 'PackSystemEvents', 'Repositories', 'Services'],
+    });
+  });
+});
+
+// The barrel is how one feature names another's types (`#generated/types`). A feature may have repositories or
+// services and no system at all, and the types its callers need are the ones its repository and service signatures
+// use — so what decides is whether it has a types module, not whether it has a system.
+describe('generated type barrel', () => {
+  it("takes every feature's types module, with or without a system", () => {
+    write('src/features/records/be/types.ts', 'export interface RecordRow { id: string }');
+    write('src/features/records/be/repository/index.ts', 'export const recordQueries = {};');
+    write('src/features/memos/be/types.ts', 'export interface Memo { text: string }');
+    writeSystemEntry('memos', "{ type: 'MEMO_ADDED' }");
+
+    const files = generatePackFiles(manifest({
+      features: [
+        // Data for the rest of the pack, and no system of its own
+        { id: 'records', repositories: { recordQueries: 'src/features/records/be/repository/index.ts#recordQueries' } },
+        system('memos'),
+      ] as PackFeatureEntry[],
+    }), { packRoot: root });
+
+    expect(files['src/__generated__/types.ts']).toContain("export type * from '../features/records/be/types.js';");
+    expect(files['src/__generated__/types.ts']).toContain("export type * from '../features/memos/be/types.js';");
+  });
+
+  it('leaves out a feature with no types module, whatever else it has', () => {
+    writeSystemEntry('memos', "{ type: 'MEMO_ADDED' }");
+
+    const files = generatePackFiles(manifest({
+      features: [system('memos')] as PackFeatureEntry[],
+    }), { packRoot: root });
+
+    expect(files['src/__generated__/types.ts']).not.toContain('features/memos/be/types');
   });
 });

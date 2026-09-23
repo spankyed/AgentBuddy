@@ -1,11 +1,11 @@
-import { setup, assign, sendParent, enqueueActions } from 'xstate';
+import { setup, assign, sendParent, enqueueActions, type AnyActorRef } from 'xstate';
 import { EARS } from '@/__generated__/ears';
 import type { ExecutionContext, TNodeEntity } from '@abuddy/sdk/steps';
 import type { NodeEntity } from '@/__generated__/types';
 import { executeNode } from './node-handlers';
 import { repository } from '@/__generated__/repository';
 import { brainLogger } from './utils/brain-inspect';
-import { brain } from './system';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 type StepMachineContext = {
   tNodeId?: EARS.EntityId;
@@ -27,6 +27,7 @@ type StepMachineInput = {};
  * Create a step execution machine
  */
 export function createStepNodeSystem(
+  brain: AnyActorRef,
   stepId: EARS.EntityId,
   eventTNodeId: EARS.EntityId,
   executionContext = {} as ExecutionContext,
@@ -52,7 +53,7 @@ export function createStepNodeSystem(
             // Delegate to step executor with TNode
             executeNode(context.tNode, context.step, executionContext, self);
           } catch (error) {
-            self.send({ type: 'ERROR', error: error instanceof Error ? error.message : String(error) });
+            self.send({ type: 'ERROR', error: errorMessage(error) });
           }
         },
         storeResult: ({ context, event }) => {
@@ -70,8 +71,8 @@ export function createStepNodeSystem(
             // stops before a forwarded update would reach it
             const tNodeId = context.tNodeId;
             const eventTNodeId = context.eventTNodeId;
-            enqueue(({ system }) => {
-              system.get(brain)?.send({ type: 'TNODE_UPDATED', data: { tNodeId, status: 'completed', eventTNodeId } });
+            enqueue(() => {
+              brain.send({ type: 'TNODE_UPDATED', data: { tNodeId, status: 'completed', eventTNodeId } });
             });
           }
         }),
@@ -83,8 +84,8 @@ export function createStepNodeSystem(
             // stops before a forwarded update would reach it
             const tNodeId = context.tNodeId;
             const eventTNodeId = context.eventTNodeId;
-            enqueue(({ system }) => {
-              system.get(brain)?.send({ type: 'TNODE_UPDATED', data: { tNodeId, status: 'failed', eventTNodeId } });
+            enqueue(() => {
+              brain.send({ type: 'TNODE_UPDATED', data: { tNodeId, status: 'failed', eventTNodeId } });
             });
           }
         }),

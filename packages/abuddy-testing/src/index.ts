@@ -6,6 +6,7 @@ import * as os from 'os';
 import { execFileSync } from 'child_process';
 import { createRequire } from 'module';
 import { resolveAppContext } from '@abuddy/sdk/env';
+import { resolveName } from '@abuddy/sdk/ids';
 import { installPackFromLocal, PACK_LOAD_MESSAGES } from '@abuddy/host/packs';
 import { appVersion } from './app-version.ts';
 import { appLaunchEnv } from './launch-env.ts';
@@ -140,9 +141,10 @@ function getPackManifest(): { id: string; pluginIds: string[] } | null {
   const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
   _packManifest = {
     id: manifest.id,
+    // The ids the plugins run under: a plugin runs at `<packId>/<featureId>`, as a system does
     pluginIds: (manifest.features ?? [])
       .filter((f: any) => f.plugin)
-      .map((f: any) => f.plugin?.id ?? f.id),
+      .map((f: any) => resolveName(f.id, manifest.id)),
   };
   return _packManifest;
 }
@@ -205,6 +207,14 @@ function captureOutput(app: ElectronApplication): void {
  * — an incompatible hostVersion, an unsupported layout, a throw in its runtime — would otherwise pass
  * its whole suite while dead, because every test it runs asks the app about something else.
  */
+/**
+ * The ref a spec's plugin name is, as the pack under test's own code names plugins: its features by id, any
+ * other (the host's too) as `<packId>/<featureId>`.
+ */
+function resolvePlugin(name: string): string {
+  return resolveName(name, getPackManifest()?.id);
+}
+
 async function waitForPackBackend(app: ElectronApplication, packId: string, timeoutMs = 15_000): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
@@ -305,6 +315,11 @@ export function createTest(options: CreateTestOptions = {}) {
           // Install through the same bundle path users get (stage → verify → place)
           const { packsDir } = resolveAppContext({ env: 'test', userDataDir });
           console.log(`[pack] Installing ${manifest.id} from ${archive ?? packDir} into an isolated test data dir...`);
+          // `hostVersion` is the launched app's own (its package.json), so this is that app's answer rather than a
+          // second opinion. No `packFormat`: whether this app can read the pack's build is the app's to decide, and
+          // it does, at boot, naming which side is older. Nothing here can tell — the CLI that runs the fixture
+          // needn't be the app's, and inferring the app's format from an artifact it ships refuses good packs
+          // whenever that artifact is the stale one. `waitForPackBackend` reports the app's verdict within 15s.
           await installPackFromLocal(archive ?? packDir, packsDir, { hostVersion: appVersion(appLaunch) });
         }
 
@@ -418,8 +433,7 @@ export function createTest(options: CreateTestOptions = {}) {
        * A send to a plugin nobody declares is the failure the outgoing check exists to catch, and it is
        * reported quietly (`diagnostic`, so it raises no toast) — which means without this it would sit
        * in the log and fail nothing. `takeSystemErrors()` does the same job for unit tests; this is its
-       * counterpart for a running app, and it found a real one the first time it ran: the settings
-       * system treated `_meta`, the reserved key for plugin visibility, as a plugin id.
+       * counterpart for a running app.
        */
       await page.evaluate(() => {
         const win = window as any;
@@ -428,7 +442,7 @@ export function createTest(options: CreateTestOptions = {}) {
         win.applicationState?.system?.inspect?.((inspection: any) => {
           const event = inspection?.event;
           if (inspection?.type !== '@xstate.event' || event?.type !== 'SYSTEM_ERROR') return;
-          if (event.operation === 'sendToPlugin') win.__droppedSends.push(String(event.message ?? ''));
+          if (event.operation === 'broadcastToPlugin') win.__droppedSends.push(String(event.message ?? ''));
         });
       });
 
@@ -503,9 +517,10 @@ export function createTest(options: CreateTestOptions = {}) {
         },
 
         navigate: async (pluginId) => {
+          const id0 = resolvePlugin(pluginId);
           await page.evaluate((id) => {
-            (window as any).applicationState.send({ type: 'SELECT_PLUGIN', pluginId: id });
-          }, pluginId);
+            (window as any).applicationState.send({ type: 'SELECT_PLUGIN', plugin: id });
+          }, id0);
           await page.waitForFunction((id) => {
             const snap = (window as any).applicationState?.getSnapshot();
             if (snap?.context?.activePlugin?.id !== id) return false;
@@ -513,14 +528,15 @@ export function createTest(options: CreateTestOptions = {}) {
             // test that clicks or screenshots straight after a navigate needs that flush to have happened.
             // data-active-plugin (WebApp.vue) is written in the flush that swaps the canvas.
             return document.querySelector(`[data-active-plugin="${id}"]`) !== null;
-          }, pluginId, { timeout: 10_000 });
+          }, id0, { timeout: 10_000 });
         },
 
         waitForPlugin: async (pluginId, timeout = 30_000) => {
-          await page.waitForFunction((id) => {
-            const snap = (window as any).applicationState?.getSnapshot();
-            return snap?.context?.plugins?.some((p: any) => p.id === id);
-          }, pluginId, { timeout });
+          // A host plugin is known once the app has any; a pack's registers later, at its ref
+          await page.waitForFunction(() => ((window as any).applicationState?.getSnapshot()?.context?.plugins ?? []).length > 0, null, { timeout });
+          const id = resolvePlugin(pluginId);
+          await page.waitForFunction((target) =>
+            ((window as any).applicationState?.getSnapshot()?.context?.plugins ?? []).some((p: { id: string }) => p.id === target), id, { timeout });
         },
 
         waitForState: async (check, timeout = 10_000) => {

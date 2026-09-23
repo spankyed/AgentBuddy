@@ -49,7 +49,7 @@ Add an entity to an existing pack. Run from inside a pack directory. Names other
 | Service | `abuddy add service <name> [--feature <feature>]` | `src/extensions/services/<name>.ts` in `packServices`, or `src/features/<feature>/be/services/<name>.ts` in that feature's `services`. The key is the camelCased name, the value `path#<camelName>Service` |
 | Migration | `abuddy add migration [version] [--version <ver>]` | `src/migrations/<version>.ts` exporting a `PackMigration`, added to `src/migrations/index.ts`; sets `migrations` if unset. Version defaults to the manifest's |
 
-Only `add feature`, `add service` and `add step` update `abuddy.json` entries and run `generate-entries`; `add migration` only sets `migrations`, and the rest just write files.
+Only `add feature`, `add service` and `add step` update `abuddy.json` entries and run `generate-entries`; `add migration` only sets `migrations`, and the rest just write files. In a pack whose dependencies aren't installed yet, `generate-entries` can't read a system's events through `@abuddy/sdk`: the files and `abuddy.json` are still written, and `npm install` regenerates the entries (the pack's `prepare` script).
 
 **`add feature`.** The name is the feature id: a lowercase letter, then letters and digits (`notes`, `calendarEvents`), because it becomes an identifier in generated code. `--designation`, if given, must equal the name. It creates:
 
@@ -76,7 +76,7 @@ Resolve every dependency and cache its snapshot, build code and backend runtime 
 4. Installed AgentBuddy apps' built-in packs (production, beta, development, test data dirs)
 5. GitHub releases, for `github:owner/repo` values (the `<id>-<version>.tgz` asset and its `.sha256`)
 
-Sources 2–5 must satisfy the declared range. `abuddy build` resolves the same way but uses the `.abuddy/deps` cache, while it satisfies the range, before going to GitHub. See [Manifest Reference — Dependencies](manifest.md#dependencies) for the value formats.
+Sources 2–5 must satisfy the declared range, and every source must carry a snapshot in the format this CLI reads; a build in another format is passed over, and reported if nothing else resolves. `abuddy build` resolves the same way but uses the `.abuddy/deps` cache, while it satisfies the range, before going to GitHub. See [Manifest Reference — Dependencies](manifest.md#dependencies) for the value formats.
 
 ### Building
 
@@ -102,7 +102,7 @@ Steps:
 1. Validates `abuddy.json` and fails on an invalid manifest
 2. Clears `dist/`
 3. Runs `generate` + `generate-entries` (skip with `--skip-generate`)
-4. Checks each feature's `settings` file exists and sets only `plugins.<id>` and `plugins._meta.visibility.<id>`
+4. Checks each feature's `settings` file exists and sets only `plugins.<id>` and `visible`
 5. Resolves every dependency (fails if one can't be), and warns when `src/__generated__` holds a dependency's types from a different version than the one the build resolved
 6. Compiles `boot.seed` into `runtime/seeds/`, validating flows against the dependencies' step build code
 7. Bundles the facade types and **gates** them: `types/pack-types.d.ts` must type-check on its own and import only `@abuddy/*` packages, `@abuddy/sdk`'s peer dependencies and Node built-ins, with declarations; otherwise dependents would read the types as `any`

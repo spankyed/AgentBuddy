@@ -21,12 +21,12 @@ const logDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-secrets-logs-'));
 process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
 process.env.AGENTBUDDY_LOG_DIR = logDir;
-const { openAppStore } = await import('@/setup/backend');
+const { openAppStore } = await import('@/runtime');
 const { store, packs } = openAppStore();
-const { secretsRouter } = await import('@/core/router/secrets-router');
-const { rootEvents } = await import('@/core/router/bus-emitter');
+const { secretsRouter } = await import('@/transport/secrets');
+const { rootEvents } = await import('@/transport/emitter');
 const { createLogger, reportError } = await import('@abuddy/sdk/logger');
-const { originalConsole, initializeLogCapture, restoreConsole } = await import('@/core/shared/debug/log-capture');
+const { originalConsole, initializeLogCapture, restoreConsole } = await import('@/adapters/logging');
 const { secretsStore, forwardSecretsChanges } = await import('@abuddy/host/secrets');
 const { services } = await import('@abuddy/sdk/services');
 const { _getSecretsFilePath } = await import('@abuddy/sdk/utils');
@@ -37,8 +37,12 @@ const caller = secretsRouter.createCaller({});
 // What the API's boot registers; the settings system is registered in the first test, once it checks changes made before
 forwardSecretsChanges(packs);
 // A pack designating its settings feature, whose system isn't running yet
-packs.registerPack({ id: 'test', systems: [], features: [{ id: 'settings', designation: 'settings', hasSystem: true, hasPlugin: false, services: [] }] });
-const registerSettingsSystem = () => packs.registerHostSystem('settings', setup({}).createMachine({}), new Set(['SECRETS_CHANGED']));
+packs.registerPack({ id: 'test', features: { settings: { designation: 'settings' } } });
+// The same pack again, now running its settings feature's system (at `test/settings`, where the designation resolves)
+const registerSettingsSystem = () => {
+  packs.unregisterPack('test');
+  packs.registerPack({ id: 'test', features: { settings: { designation: 'settings', system: { machine: setup({}).createMachine({}), receives: ['SECRETS_CHANGED'] } } } });
+};
 
 /** The incoming events `run` sends */
 async function incomingDuring(run: () => Promise<unknown> | unknown): Promise<Array<Record<string, unknown>>> {
@@ -51,7 +55,7 @@ async function incomingDuring(run: () => Promise<unknown> | unknown): Promise<Ar
   }
   return incoming;
 }
-const CHANGED = { type: 'SECRETS_CHANGED', systemId: 'settings' };
+const CHANGED = { to: 'test/settings', event: { type: 'SECRETS_CHANGED' } };
 
 afterAll(() => {
   store.close();

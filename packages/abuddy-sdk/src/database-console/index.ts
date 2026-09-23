@@ -15,6 +15,7 @@ import {
   getAllAttributeKinds, getAllRelationKinds, getAttributeStats, getRelationStats, findRelations,
   queryEntitiesByAttribute, queryEntitiesByRelationTo, queryEntitiesInRelationTo, type EARS,
 } from '@abuddy/ears';
+import { errorMessage } from '../utils/shared.ts';
 
 /** Entities per type, and each attribute kind's and relation kind's use, over the whole database */
 export interface SchemaStats {
@@ -114,7 +115,7 @@ export async function runQueryCode(code: string, scope: ConsoleScope): Promise<u
   try {
     return await run(code, scope, readHelpers);
   } catch (error) {
-    throw new Error(error instanceof Error ? error.message : String(error));
+    throw new Error(errorMessage(error));
   }
 }
 
@@ -127,7 +128,7 @@ export async function runTransactionCode(code: string, scope: ConsoleScope): Pro
   try {
     return await run(code, scope, { ...readHelpers, ...writeHelpers });
   } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
+    const reason = errorMessage(error);
     throw new Error(`Transaction failed: ${reason}\n  The writes it made before failing stand: nothing is rolled back.`);
   }
 }

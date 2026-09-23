@@ -34,11 +34,11 @@ function run(command: string, args: string[], cwd: string) {
 }
 
 /** A pack with no dependencies whose unit tests run its data code on the harness */
-function dataPack(spec: string): string {
+function dataPack(spec: string, manifest: Record<string, unknown> = {}): string {
   const root = tempDir('abuddy-harness-setup-');
   fs.symlinkSync(path.join(REPO_ROOT, 'node_modules'), path.join(root, 'node_modules'), 'dir');
   write(root, 'package.json', JSON.stringify({ name: 'data-pack', type: 'module' }));
-  write(root, 'abuddy.json', JSON.stringify({ id: 'data-pack', name: 'Data', version: '1.0.0' }));
+  write(root, 'abuddy.json', JSON.stringify({ id: 'data-pack', name: 'Data', version: '1.0.0', ...manifest }));
   // As `abuddy init` scaffolds it
   write(root, 'vitest.config.ts', `
 import { defineConfig } from 'vitest/config';
@@ -63,6 +63,20 @@ it('seeds nothing', async () => {
   expect(await seedPack()).toEqual({});
 });`);
     const result = run(process.execPath, [VITEST, 'run', '--root', root], tempDir('abuddy-elsewhere-'));
+    expect(result.output).toMatch(/Tests\s+1 passed/);
+  }, 180_000);
+
+  // A seed runtime registers no features, yet an action the test runs sends to the pack's own through services.emitter
+  it("let services.emitter send to the features the pack's manifest declares", () => {
+    const root = dataPack(`
+import { expect, it } from 'vitest';
+import { services } from '@abuddy/sdk/services';
+it('sends to its own system and plugin', () => {
+  expect(() => services.emitter.sendToSystem('data-pack/notes', { type: 'GET_NOTES' })).not.toThrow();
+  expect(() => services.emitter.broadcastToPlugin('data-pack/notes', { type: 'NOTES_UPDATED' })).not.toThrow();
+  expect(() => services.emitter.broadcastToPlugin('data-pack/ghost', { type: 'NOTES_UPDATED' })).toThrow('No registered plugin is named "data-pack/ghost"');
+});`, { features: [{ id: 'notes', system: { entry: 'src/features/notes/be/system.ts' }, plugin: { entry: 'src/features/notes/fe/index.ts' } }] });
+    const result = run(process.execPath, [VITEST, 'run'], root);
     expect(result.output).toMatch(/Tests\s+1 passed/);
   }, 180_000);
 

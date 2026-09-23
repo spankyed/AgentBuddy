@@ -1,4 +1,4 @@
-// Backend sends to plugins from outside a system's own `emit` (sendToPlugin, services.emitter.sendToPlugin) go
+// Backend sends to plugins from outside a system's own `emit` (broadcastToPlugin, services.emitter.broadcastToPlugin) go
 // through the app's bus, which drops them until a client connects and delivers them after. The code system's file
 // watcher and terminal output, and the browser system's startup data, still reach their plugins.
 import { execFileSync } from 'node:child_process';
@@ -17,31 +17,37 @@ type RecordingWindow = {
   applicationState: { system: { inspect(observer: (event: { type: string; actorRef: { id: string }; event: Received }) => void): void } };
 };
 
+/**
+ * The id a built-in feature's system and plugin run under. This spec drives the app the way pack code
+ * can't — the raw `sendToSystem` and the actor ids — so it writes the ids rather than the names.
+ */
+const builtIn = (feature: string) => `default-setup/${feature}`;
+
 /** Records every event the code and browser plugin actors receive from here on */
 async function recordPluginEvents(appPage: Page): Promise<void> {
-  await appPage.evaluate(() => {
+  await appPage.evaluate((ids) => {
     const win = window as unknown as RecordingWindow;
     if (win.__received) return;
     win.__received = [];
     win.applicationState.system.inspect((inspection) => {
       const plugin = inspection.actorRef?.id;
-      if (inspection.type === '@xstate.event' && (plugin === 'code' || plugin === 'browser')) {
+      if (inspection.type === '@xstate.event' && (plugin === ids.code || plugin === ids.browser)) {
         win.__received!.push({ ...(JSON.parse(JSON.stringify(inspection.event)) as Received), plugin });
       }
     });
-  });
+  }, { code: builtIn('code'), browser: builtIn('browser') });
 }
 
-async function received(appPage: Page, plugin: string, type: string): Promise<Received[]> {
+async function received(appPage: Page, feature: string, type: string): Promise<Received[]> {
   return appPage.evaluate(({ plugin, type }) => ((window as unknown as RecordingWindow).__received ?? [])
-    .filter((event) => event.plugin === plugin && event.type === type), { plugin, type });
+    .filter((event) => event.plugin === plugin && event.type === type), { plugin: builtIn(feature), type });
 }
 
 /** Sends a backend system an event as a plugin does (`sendToSystem` from @abuddy/sdk/events) */
-async function sendToSystem(appPage: Page, systemId: string, event: Record<string, unknown>): Promise<void> {
+async function sendToSystem(appPage: Page, feature: string, event: Record<string, unknown>): Promise<void> {
   await appPage.evaluate(({ systemId, event }) => {
     (window as unknown as RecordingWindow).__abuddy.sdkEvents.sendToSystem(systemId, event);
-  }, { systemId, event });
+  }, { systemId: builtIn(feature), event });
 }
 
 let workDir: string | undefined;

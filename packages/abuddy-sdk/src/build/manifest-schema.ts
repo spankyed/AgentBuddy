@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { SDK_ENTITIES, SDK_REL_KINDS } from '../types/sdk-entities.ts';
 import { _reservedEntries } from '../types/reserved-names.ts';
+import { HOST_PACK_ID } from '../ids/refs.ts';
+import { FEATURE_ID_PATTERN, PACK_ID_PATTERN } from '../ids/refs.ts';
+
+export { FEATURE_ID_PATTERN };
 
 /** Rejects a pack's entries that use a name or value the SDK owns, naming each */
 const notSdkOwned = (owned: Record<string, string>) => (declared: Record<string, string>, ctx: z.RefinementCtx) => {
@@ -123,8 +127,6 @@ export const BootConfigSchema = z.object({
 
 const SystemSchema = z.object({
   entry: z.string().describe('Path to the backend system module.'),
-  outgoingEventsType: z.string().describe('TypeScript type name for outgoing events (used by codegen).').optional(),
-  sendsTo: z.array(z.string()).describe('Plugins this system sends events to besides its own feature\'s: other features of this pack that have a plugin, plugins of its dependencies, or host plugins ("application"). Another feature of this pack gains this system\'s outgoing events; a dependency\'s plugin or a host plugin keeps the events its own owner declares it receives, and naming it here is what makes it sendable at all.').optional(),
   events: z.object({
     incoming: z.array(z.string()).describe('Event types this system listens for.').optional(),
   }).strict().describe('Event routing declarations.').optional(),
@@ -135,20 +137,14 @@ const PluginSchema = z.object({
   default: z.boolean().describe('Show this plugin when the app starts. At most one of a pack\'s features may claim it; the first pack to register one across the app wins.').optional(),
 }).strict();
 
-/**
- * Feature IDs become identifiers in generated code (system exports, busId keys,
- * settings keys, emit targets), so they must be valid identifiers. Pack IDs only
- * appear as strings and stay kebab-case.
- */
-export const FEATURE_ID_PATTERN = /^[a-z][a-zA-Z0-9]*$/;
 
-/** Names a feature id can't take: reserved words, and `busId`, which `#generated/system-ids` exports */
+/** Names a feature id can't take: reserved words, since a feature id becomes an identifier in generated code */
 const RESERVED_FEATURE_IDS = new Set([
   'await', 'break', 'case', 'catch', 'class', 'const', 'continue', 'debugger', 'default', 'delete', 'do', 'else',
   'enum', 'export', 'extends', 'false', 'finally', 'for', 'function', 'if', 'implements', 'import', 'in',
   'instanceof', 'interface', 'let', 'new', 'null', 'package', 'private', 'protected', 'public', 'return', 'static',
   'super', 'switch', 'this', 'throw', 'true', 'try', 'typeof', 'var', 'void', 'while', 'with', 'yield',
-  'arguments', 'eval', 'busId',
+  'arguments', 'eval',
 ]);
 
 const IdentifierSchema = z.string().regex(/^[A-Za-z_$][\w$]*$/, 'Must be an identifier');
@@ -168,7 +164,7 @@ export const CommandEntrySchema = z.object({
 export const FeatureEntrySchema = z.object({
   id: z.string().regex(FEATURE_ID_PATTERN, 'Must start with a lowercase letter and contain only letters and digits (e.g. "notes", "calendarEvents")')
     .refine((id) => !RESERVED_FEATURE_IDS.has(id), (id) => ({ message: `"${id}" is reserved in generated code: pick another feature id` }))
-    .describe('Unique feature identifier. A lowercase-first identifier (letters and digits), used as a name in generated code; not a reserved word or "busId".'),
+    .describe('Unique feature identifier. A lowercase-first identifier (letters and digits), used as a name in generated code; not a reserved word.'),
   designation: z.string().describe('Links the system to an EARS designation.').optional(),
   settings: z.string().describe('Path to default settings file.').optional(),
   typesEntry: z.string().describe('Additional types to include in the generated type barrel.').optional(),
@@ -211,7 +207,8 @@ export const ManifestSchema = z.object({
   $schema: z.string().describe('JSON Schema reference for editor validation.').optional(),
   $manifestVersion: z.literal(1).optional()
     .describe('Schema version. Enables future format evolution.'),
-  id: z.string().regex(/^[a-z][a-z0-9-]*$/, 'Must be lowercase alphanumeric with hyphens')
+  id: z.string().regex(PACK_ID_PATTERN, 'Must be lowercase alphanumeric with hyphens')
+    .refine((id) => id !== HOST_PACK_ID, { message: `"${HOST_PACK_ID}" is the app's own pack id: pick another` })
     .describe('Unique pack identifier. Lowercase, alphanumeric with hyphens.'),
   name: z.string().min(1).describe('Human-readable pack name.'),
   version: z.string().regex(/^\d+\.\d+\.\d+/, 'Must be a semver version string')
@@ -237,6 +234,10 @@ export const ManifestSchema = z.object({
     .describe('Feature definitions. Each feature bundles a backend system, frontend plugin, services, and settings.').optional(),
   packServices: ServicesSchema
     .describe('Pack-level services not tied to a specific feature. Keys are service names on `services`, values are "path#exportName" of the service object (an object literal or a class instance, not a factory) in a source file.').optional(),
+  help: ExportTargetSchema
+    .describe('Help entries this pack answers with, listed under Help in the app\'s Settings view. "path#exportName" of a function returning them; it is called the first time the list is read, so a pack may read its compiled seeds then.').optional(),
+  settingsSections: ExportTargetSchema
+    .describe('Sections of the app settings this pack owns, with their defaults, beside the "plugins" section the app keeps itself. "path#exportName" of a function returning them; it is called the first time the defaults are read, so a pack can read its compiled seeds then.').optional(),
   commands: z.array(CommandEntrySchema)
     .describe('Slash commands this pack adds to the chat. Sending one fires a `user.command` event the pack\'s flows handle; a name must be unique across the app.').optional(),
   boot: BootConfigSchema.optional(),
@@ -267,21 +268,6 @@ export const ManifestSchema = z.object({
     });
   }
 
-  // A send to one of this pack's own features can only arrive at a plugin; a dependency's or a host
-  // plugin isn't in this manifest, so codegen checks those against the dependencies' snapshots
-  const ownFeatureIds = new Set((manifest.features ?? []).map((feature) => feature.id));
-  const ownPluginIds = new Set((manifest.features ?? []).filter((feature) => feature.plugin).map((feature) => feature.id));
-  manifest.features?.forEach((feature, index) => {
-    feature.system?.sendsTo?.forEach((target, targetIndex) => {
-      if (ownFeatureIds.has(target) && !ownPluginIds.has(target)) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['features', index, 'system', 'sendsTo', targetIndex],
-          message: `Feature "${feature.id}": system.sendsTo names "${target}", a feature of this pack with no plugin, so nothing can receive the events: give "${target}" a plugin or remove it from sendsTo`,
-        });
-      }
-    });
-  });
   for (const [key, entry] of Object.entries(manifest.boot?.seed ?? {})) {
     if (typeof entry !== 'object' || !entry.format) continue;
     const [, pack, name] = SEED_FORMAT_REF.exec(entry.format) ?? [];

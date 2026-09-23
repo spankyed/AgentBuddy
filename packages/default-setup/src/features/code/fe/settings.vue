@@ -459,10 +459,13 @@ import KeyboardShortcutInput from '@abuddy/ui/components/KeyboardShortcutInput'
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import DirectorySelect from '@abuddy/ui/design/DirectorySelect'
 import { X, Plus } from 'lucide-vue-next'
-import { useActorSystem, navigateToPlugin } from '@abuddy/sdk/fe'
-import type { CodeSettings, TerminalScript } from '@/__generated__/types'
+import { openPlugin } from '@abuddy/sdk/fe'
+import { resolveName } from '@abuddy/sdk/ids'
 
-const actorSystem = useActorSystem()
+const HOST_SETTINGS = resolveName('settings', 'host')
+import { useSettingsSection } from '@abuddy/sdk/fe'
+import type { GeneralSettings } from '@/app-settings/types'
+import type { CodeSettings, TerminalScript } from '@/__generated__/types'
 
 interface Project {
   name: string
@@ -514,10 +517,9 @@ const newScriptLabel = ref('')
 const newScriptCommand = ref('')
 
 // Get projects from general settings
-const settingsActor = actorSystem.get('settings')
-const projects = computed(() => {
-  return (useSelector(settingsActor, (state: any) => state.context.settings?.general?.projects).value || []) as Project[]
-})
+const general = useSettingsSection<GeneralSettings>('general')
+const storedProjects = computed(() => general.value?.projects ?? [])
+const projects = computed(() => (storedProjects.value ?? []) as Project[])
 
 // Helper functions
 const getAllProjects = (): Project[] => {
@@ -659,7 +661,7 @@ const deleteScript = (index: number) => {
 }
 
 const goToProjects = () => {
-  navigateToPlugin('settings', [
+  openPlugin(HOST_SETTINGS, [
     { type: 'TAB.SELECT', tab: 'general' },
     { type: 'GENERAL_NAV.SELECT', item: 'projects' }
   ])

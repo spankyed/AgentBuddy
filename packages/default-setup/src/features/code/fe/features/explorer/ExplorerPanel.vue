@@ -87,10 +87,14 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
+import type { CodeSettings } from '@/__generated__/types'
+import { useFeatureSettings } from '@abuddy/sdk/fe'
+import { ref as featureRef } from '@/__generated__/ref'
 import { ref, computed, provide, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
-import { id as codeId, type CodeState } from '@/features/code/fe/state'
+import type { CodeState } from '@/features/code/fe/state'
 import Dialog from '@abuddy/ui/design/dialog'
 import ExplorerTreeItem from '@/features/code/fe/features/explorer/ExplorerTreeItem.vue'
 import CodePanelHeader from '@/features/code/fe/features/CodePanelHeader.vue'
@@ -100,24 +104,23 @@ import { FolderOpen, FolderPlus, RefreshCw, AlertCircle, X } from 'lucide-vue-ne
 import { useExplorerSelection } from './composables/useExplorerSelection'
 import { useExplorerDragDrop } from './composables/useExplorerDragDrop'
 import type { FileInfo } from './state'
-
-const actorSystem = useActorSystem()
+import { codeChild } from '../children';
 
 // Get actors
-const codeActor: CodeState = actorSystem.get(codeId)
-const explorerActor = codeActor.system.get('explorer')!
-const terminalActor = codeActor.system.get('terminal')!
+const codeActor: CodeState = usePlugin()
+const explorerActor = codeChild(codeActor, 'explorer')!
+const terminalActor = codeChild(codeActor, 'terminal')!
 
 // State selectors
 const baseDirectory = useSelector(codeActor, (state) => state.context.baseDirectory)
-const rootFiles = useSelector(explorerActor, (state: any) => state.context.rootFiles as FileInfo[])
-const expandedDirs = useSelector(explorerActor, (state: any) => state.context.expandedDirs as Set<string>)
-const dirContents = useSelector(explorerActor, (state: any) => state.context.dirContents as Record<string, FileInfo[]>)
-const loadingDirs = useSelector(explorerActor, (state: any) => state.context.loadingDirs as Set<string>)
-const selectedPaths = useSelector(explorerActor, (state: any) => state.context.selectedPaths as string[])
-const revealPath = useSelector(explorerActor, (state: any) => state.context.revealPath as string | null)
-const isLoading = useSelector(codeActor, (state: any) => state.context.isLoading)
-const error = useSelector(codeActor, (state: any) => state.context.error)
+const rootFiles = useSelector(explorerActor, (state) => state.context.rootFiles)
+const expandedDirs = useSelector(explorerActor, (state) => state.context.expandedDirs)
+const dirContents = useSelector(explorerActor, (state) => state.context.dirContents)
+const loadingDirs = useSelector(explorerActor, (state) => state.context.loadingDirs)
+const selectedPaths = useSelector(explorerActor, (state) => state.context.selectedPaths)
+const revealPath = useSelector(explorerActor, (state) => state.context.revealPath)
+const isLoading = useSelector(codeActor, (state) => state.context.isLoading)
+const error = useSelector(codeActor, (state) => state.context.error)
 
 // Error dismissal
 const dismissedError = ref<string | null>(null)
@@ -197,8 +200,8 @@ provide('explorer-open-file', (path: string, editorMode?: 'richText' | 'plainTex
   explorerActor?.send({ type: 'explorer.OPEN_FILE', path, editorMode })
 })
 
-const settingsActor = actorSystem.get('settings')
-const mdEditorDefault = useSelector(settingsActor, (state: any) => state.context.settings?.plugins?.code?.mdEditorDefault ?? false)
+const storedCodeSettings = useFeatureSettings<CodeSettings>(featureRef('code'))
+const mdEditorDefault = computed(() => storedCodeSettings.value?.mdEditorDefault ?? false)
 provide('explorer-md-editor-default', () => mdEditorDefault.value)
 
 provide('explorer-rename', (oldPath: string, newName: string) => {

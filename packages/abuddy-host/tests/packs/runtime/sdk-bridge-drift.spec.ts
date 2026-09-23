@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import * as fs from 'fs';
 import * as path from 'path';
 import { getBridgedSdkSpecifiers } from '../../../src/packs/runtime/bridge.ts';
-import { APP_UNBRIDGED, renderSharedModules } from '../../../src/build/shared-modules.ts';
+import { APP_UNBRIDGED, renderSharedModules } from '../../../src/build/render-sdk-modules.ts';
 import { APP_ONLY_EXPORTS, SHARED_INSTANCE_PACKAGES } from '../../../src/build/shared-deps.ts';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..', '..', '..', '..');
@@ -12,7 +12,7 @@ const PACKAGE_DIRS: Record<string, string> = {
   '@abuddy/ears': path.join(REPO_ROOT, 'packages', 'abuddy-ears'),
   '@abuddy/host': path.join(REPO_ROOT, 'packages', 'abuddy-host'),
 };
-const SHARED_MODULES_FILE = path.join(REPO_ROOT, 'packages', 'abuddy-host', 'src', 'packs', 'runtime', 'shared-modules.ts');
+const SDK_MODULES_FILE = path.join(REPO_ROOT, 'packages', 'abuddy-host', 'src', 'packs', 'runtime', 'sdk-modules.ts');
 const RUNTIME_ENTRY = path.join(REPO_ROOT, 'packages', 'default-setup', 'dist', 'runtime', 'index.cjs');
 
 /**
@@ -37,6 +37,9 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   // Redaction's host side: only the secrets store registers the values logs must mask, and a pack must not
   // The bound runtimes and unbinding: a pack could otherwise unbind the app or reach its raw services
   ['@abuddy/sdk/runtime/internals', 'host-only — a pack could otherwise unbind the app or take over its services'],
+  // The app's settings store: one row with one writer, reached by packs through `services.settings`. A pack
+  // loading the store would be a second writer, past the checks and the listeners the first one tells.
+  ['@abuddy/host/settings', 'host-only — packs reach the settings through services.settings, which is the one writer'],
   // Build-time only: consumed by vite configs and the abuddy CLI, never by a
   // loaded pack's runtime code.
   ['@abuddy/host/build/shared-deps', 'build-time only'],
@@ -57,6 +60,7 @@ const UNBRIDGED_BY_POLICY = new Map<string, string>([
   ['@abuddy/host/app-state', "the app's state, read and written only by the host"],
   // The bus core: the API composes its bus from it, and the pack test harness runs it; packs don't require it
   ['@abuddy/host/bus', 'host bus core, composed by the API and the test harness'],
+  ['@abuddy/host/features', "the app's own features (the pack `host`), registered by the API and the harness"],
   // The pack runtime itself: the app loads packs with it; pack code never requires it
   ['@abuddy/host/packs/runtime', 'the pack loader and lifecycle, run by the app'],
   // Pack discovery, registration, install and bundles: the app and the CLI use them; packs never require them
@@ -115,9 +119,9 @@ describe('SDK bridge drift', () => {
     expect([...packages].sort()).toEqual([...SHARED_INSTANCE_PACKAGES].sort());
   });
 
-  it('has an up-to-date shared-modules.ts', () => {
-    expect(fs.readFileSync(SHARED_MODULES_FILE, 'utf8'), 'Run npm run shared-modules:update -w @abuddy/host')
-      .toBe(renderSharedModules(SHARED_MODULES_FILE));
+  it('has an up-to-date sdk-modules.ts', () => {
+    expect(fs.readFileSync(SDK_MODULES_FILE, 'utf8'), 'Run npm run sdk-modules:update -w @abuddy/host')
+      .toBe(renderSharedModules(SDK_MODULES_FILE));
   });
 
   it('only has wildcard exports for renderer-only subpaths', () => {

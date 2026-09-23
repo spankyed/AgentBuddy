@@ -51,7 +51,6 @@ describe('boot migrations', () => {
 
     const registration = {
       id: 'migrations-built-in',
-      systems: [],
       migrations: [{ target: TEST_APP_VERSION, description: 'built-in', up: () => { runs.builtIn++; } }],
     };
     await loadBuiltInPacks(registry, builtInDir, {
@@ -62,7 +61,7 @@ describe('boot migrations', () => {
     const externalMigration: PackMigration = { target: TEST_APP_VERSION, description: 'external', up: () => { runs.external++; } };
     const manifest = { id: 'migrations-external', name: 'External', version: TEST_APP_VERSION };
     const external = {
-      registration: { id: manifest.id, systems: [], migrations: [externalMigration] },
+      registration: { id: manifest.id, migrations: [externalMigration] },
       origin: { ...manifest, dir: builtInDir, builtIn: false, manifest: manifest as never },
     } satisfies LoadedPack;
     expect(registerExternalPacks(registry, [external])).toHaveLength(1);
@@ -123,7 +122,6 @@ describe('which migrations run', () => {
     fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: 'migrations-gate', name: 'Gate', version: TEST_APP_VERSION, builtIn: true }));
     const registration = {
       id: 'migrations-gate',
-      systems: [],
       migrations: ['0.3.14', '0.3.15', '0.3.16'].map((target) => ({
         target,
         description: target,

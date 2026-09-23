@@ -1,7 +1,7 @@
 // A pack's typed sends go through the bound app's bus, each system under the id it runs under.
 import * as os from 'node:os';
 import { describe, expect, it } from 'vitest';
-import { defineEvents, emit, type PluginEvents, type SystemEventMap } from '../../src/events/index.ts';
+import { defineEvents, type PluginEvents, type SystemEventMap } from '../../src/events/index.ts';
 import { startTestRuntime, testRootEvents } from '../../src/testing/index.ts';
 
 process.env.ABUDDY_ENV ??= 'test';
@@ -23,34 +23,40 @@ function incoming(send: () => void): unknown[] {
 }
 
 describe('defineEvents', () => {
-  const events = defineEvents<Plugins, Systems>({ memos: 'memo-pack.memos', 'default-setup/settings': 'settings' });
+  const events = defineEvents<Plugins, Systems>('memo-pack');
 
-  it("sends to the pack's own system under the id it runs under", () => {
+  it("sends to the pack's own system at its address", () => {
     expect(incoming(() => events.sendToSystem('memos', { type: 'ADD_MEMO', text: 'x' })))
-      .toEqual([{ type: 'ADD_MEMO', text: 'x', systemId: 'memo-pack.memos' }]);
+      .toEqual([{ to: 'memo-pack/memos', event: { type: 'ADD_MEMO', text: 'x' } }]);
   });
 
-  it("sends to a dependency's system, named <dependency>/<feature>, under the id it runs under", () => {
+  it("sends to another pack's system, named <pack>/<feature>, at its address", () => {
     expect(incoming(() => events.sendToSystem('default-setup/settings', { type: 'GET_SETTINGS' })))
-      .toEqual([{ type: 'GET_SETTINGS', systemId: 'settings' }]);
+      .toEqual([{ to: 'default-setup/settings', event: { type: 'GET_SETTINGS' } }]);
   });
 
-  it("throws for a name the pack's map doesn't have, including Object.prototype members", () => {
-    const untyped = events.sendToSystem as unknown as (name: string, event: { type: string }) => void;
-    for (const name of ['settings', 'toString', 'constructor']) {
-      expect(() => untyped(name, { type: 'PING' })).toThrow(`No system is named "${name}"`);
-    }
-  });
-
-  it('sends to a plugin, and wraps an event for the bus with emit', () => {
+  it('broadcasts to a plugin at its ref', () => {
     const outgoing: unknown[] = [];
     const stop = testRootEvents.onPluginSend((event) => outgoing.push(event));
     try {
-      events.sendToPlugin('memos', { type: 'MEMO_ADDED' });
+      events.broadcastToPlugin('memos', { type: 'MEMO_ADDED' });
     } finally {
       stop();
     }
-    expect(outgoing).toEqual([{ type: 'MEMO_ADDED', pluginId: 'memos' }]);
-    expect(events.emit('memos', { type: 'MEMO_ADDED' })).toEqual(emit('memos', { type: 'MEMO_ADDED' }));
+    expect(outgoing).toEqual([{ to: 'memo-pack/memos', event: { type: 'MEMO_ADDED' } }]);
+  });
+
+  // The host is a pack: its plugins are named by ref, and a bare name is always this pack's own feature
+  it("broadcasts to a host plugin by its ref, and takes a bare name as this pack's own", () => {
+    const untyped = events.broadcastToPlugin as unknown as (name: string, event: { type: string }) => void;
+    const sent: Array<{ to: string }> = [];
+    const stop = testRootEvents.onPluginSend((message) => sent.push(message));
+    try {
+      untyped('host/application', { type: 'APPLICATION_HOTKEYS' });
+      untyped('application', { type: 'APPLICATION_HOTKEYS' });
+    } finally {
+      stop();
+    }
+    expect(sent.map(({ to }) => to)).toEqual(['host/application', 'memo-pack/application']);
   });
 });

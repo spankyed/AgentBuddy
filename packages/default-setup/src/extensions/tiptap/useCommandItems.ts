@@ -1,11 +1,9 @@
 import { computed, type Ref } from 'vue'
-import { useSelector } from '@xstate/vue'
-import { getEditorSystem } from '@abuddy/ui/components/tiptap/editor-system'
+import { useSlashCommands } from '@/features/threads/fe/public'
 import type { CommandItem } from './command-config'
 
 export function useCommandItems(query: Ref<string>) {
-  const actor = getEditorSystem().get('threads')
-  const commands = useSelector(actor, (state: any) => (state.context.commands || []) as CommandItem[])
+  const commands = useSlashCommands()
 
   const filteredCommands = computed<CommandItem[]>(() => {
     const q = query.value.toLowerCase()

@@ -270,11 +270,9 @@ import {
 } from 'reka-ui'
 import { useNoteTreeDragDrop } from './composables/useNoteTreeDragDrop'
 import type { MenuItem } from '@abuddy/ui/composables/useContextMenu'
-import { useActorSystem, useTrackedMenuOpen } from '@abuddy/sdk/fe'
+import { useTrackedMenuOpen, usePlugin } from '@abuddy/sdk/fe'
 
-const actorSystem = useActorSystem()
-
-const actor: NotesState = actorSystem.get(id)
+const actor: NotesState = usePlugin()
 
 const dropdownOpen = ref(false)
 const favoritesExpanded = ref(true)

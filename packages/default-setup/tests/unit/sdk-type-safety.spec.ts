@@ -21,7 +21,7 @@ import { resetTestData } from '@abuddy/sdk/testing';
 import { createLogger, type Logger } from '@abuddy/sdk/logger';
 import {
   loadJSON,
-  seedCollection, detectChanges,
+  detectChanges,
   toIdentifierSet,
   type SeedCounts, type DiffResult,
   type ChangeBlock,
@@ -34,7 +34,6 @@ import { services, type Services } from '@/__generated__/services';
 import type { HostServices } from '@abuddy/sdk/services';
 import type { flowRepository } from '@abuddy/sdk/repositories';
 import type { promptService } from '@/features/prompts/be/services/prompt';
-import type { settingsQueries } from '@/features/settings/be/repository';
 import { EARS } from '../../src/__generated__/ears';
 
 
@@ -183,7 +182,6 @@ describe('Generated services', () => {
     expectTypeOf(services.inference.generateText).toEqualTypeOf<HostServices['inference']['generateText']>();
     expectTypeOf(services.prompt.usePrompt).toEqualTypeOf<typeof promptService.usePrompt>();
     expectTypeOf(services.logger).toEqualTypeOf<Logger>();
-    expectTypeOf(services.repository.settingsQueries.getPluginSettings).toEqualTypeOf<typeof settingsQueries.getPluginSettings>();
     expectTypeOf<Services['repository']>().toEqualTypeOf<Repositories>();
   });
 
@@ -336,20 +334,6 @@ describe('Generic flow — runtime verification', () => {
     expect(result).toBeNull();
   });
 
-  it('seedCollection<T> accepts typed options', () => {
-    type Item = { name: string; value: number };
-    expect(() => {
-      seedCollection<Item>({
-        file: '/nonexistent.json',
-        label: 'test',
-        getKey: (item) => item.name,
-        findExisting: () => undefined,
-        create: (item) => { void item.value; },
-        update: (_id, item) => { void item.name; },
-        log: () => {},
-      });
-    }).not.toThrow();
-  });
 
   it('filterSystemFields<T> returns Partial<T>', () => {
     type Entity = { label: string; status: string; entityType: string };

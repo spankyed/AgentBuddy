@@ -4,140 +4,180 @@
 
 ```ts
 
-import { EARS as EARS_2 } from '@abuddy/ears';
-
 // @public
-export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(systemIds: Readonly<Record<string, string>>): TypedEvents<P, S>;
-
-// @public
-export function emit<P extends string, E extends {
+export function broadcastToPlugin(to: string, event: {
     type: string;
-}>(pluginId: P, event: E): {
-    type: 'OUTGOING';
-    event: E & {
-        pluginId: P;
-    };
+    [key: string]: unknown;
+}): void;
+
+// @public
+export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S>;
+
+// @public
+export const eventTypes: <E extends {
+    type: string;
+}>() => <const T extends readonly TypeOfEvent<E>[]>(...types: T & ([Missing<E, T>] extends [never] ? unknown : {
+    missing: Missing<E, T>;
+})) => T;
+
+// @public
+export type FeatureSettingsUpdated = {
+    type: 'FEATURE_SETTINGS_UPDATED';
+    settings: unknown;
 };
 
 // @public
 export const HOST_PLUGIN_EVENT_TYPES: {
-    readonly application: readonly ["CLIENT_CONNECTED", "APPLICATION_HOTKEYS", "APPLICATION_RESTORE_LAST_PLUGIN", "PLUGIN_VISIBILITY_UPDATED"];
+    'host/application': readonly ["CLIENT_CONNECTED", "APPLICATION_HOTKEYS", "PLUGIN_VISIBILITY_UPDATED", "ONBOARDING_COMPLETE", "OPEN_PLUGIN"];
+    'host/settings': readonly ["CLI_TEST_RESULT"];
 };
 
 // @public
-export const HOST_PLUGIN_IDS: readonly ["application"];
+export const HOST_SYSTEM_EVENT_TYPES: {
+    'host/bus': readonly ["PACK_CHANGED"];
+};
 
 // @public
 export type HostPluginEvents = {
-    application: {
+    'host/application': {
         type: 'CLIENT_CONNECTED';
         hasOnboarded: boolean;
+        pluginVisibility: Record<string, boolean>;
+        lastActivePlugin?: string;
     } | {
         type: 'APPLICATION_HOTKEYS';
         hotkeys: ApplicationHotkeys;
     } | {
-        type: 'APPLICATION_RESTORE_LAST_PLUGIN';
-        lastActivePluginId: string;
-    } | {
         type: 'PLUGIN_VISIBILITY_UPDATED';
         pluginVisibility: Record<string, boolean>;
+    } | {
+        type: 'ONBOARDING_COMPLETE';
+    } | {
+        type: 'OPEN_PLUGIN';
+        plugin: string;
+        events?: Array<{
+            type: string;
+            [key: string]: unknown;
+        }>;
+    };
+    'host/settings': {
+        type: 'CLI_TEST_RESULT';
+        provider: string;
+        success: boolean;
+        error?: string;
+        resolvedPath?: string;
     };
 };
 
 // @public
-export function incomingEvents<S extends {
-    _incoming: unknown;
-}>(spec: S): {
-    _incoming: S['_incoming'];
-};
-
-// @public
-export type IncomingEventsOf<T> = T extends {
-    _incoming: infer Incoming;
-} ? Incoming : T extends {
-    spec: {
-        _incoming: infer Incoming;
+export type HostSystemEvents = {
+    'host/bus': {
+        type: 'PACK_CHANGED';
+        packId: string;
     };
-} ? Incoming : never;
+};
 
 // @public
-export type IncomingSystemEvents = {
-    type: string;
-    systemId: string;
-    [key: string]: unknown;
-};
+export type IncomingEventsOf<T> = SpecEvents<T, '_incoming'>;
+
+// @public
+export interface Message {
+    // (undocumented)
+    event: {
+        type: string;
+        [key: string]: unknown;
+    };
+    // (undocumented)
+    to: string;
+}
 
 // @public
 export function onConnected(callback: () => void): () => void;
 
 // @public
-export function onIncoming(callback: (event: IncomingSystemEvents) => void): () => void;
+export function onIncoming(callback: (message: Message) => void): () => void;
 
 // @public
-export type OutgoingSystemEvents = {
-    type: string;
-    pluginId: string;
-    [key: string]: unknown;
-};
+export type OutgoingEventsOf<T> = SpecEvents<T, '_outgoing'>;
+
+// @public
+export const PLUGIN_EVENT_TYPES: readonly ["FEATURE_SETTINGS_UPDATED"];
 
 // @public
 export type PluginEvents = {
-    [pluginId: string]: {
+    [plugin: string]: {
         type: string;
     };
 };
 
 // @public
-export function sendToBrainSystem(event: {
-    eventType: string;
-    payload?: unknown;
-    targetFlowId?: EARS.EntityId;
-}): void;
+export type Qualified<PackId extends string, M> = {
+    [K in keyof M & string as `${PackId}/${K}`]: M[K];
+};
 
-// @public
-export function sendToPlugin(pluginId: string, event: {
+// @internal
+export function _sendToLocalPlugin(ref: string, event: {
     type: string;
     [key: string]: unknown;
 }): void;
 
 // @public
-export function sendToSystem(systemId: string, event: {
+export function sendToSystem(to: SystemTarget, event: {
     type: string;
     [key: string]: unknown;
 }): void;
+
+// @public
+export function specEvents<S extends {
+    _incoming: unknown;
+    _outgoing: unknown;
+}>(spec: S): {
+    _incoming: S['_incoming'];
+    _outgoing: S['_outgoing'];
+};
 
 // @public
 export type SystemEventMap = {
-    [systemId: string]: {
+    [system: string]: {
         type: string;
     };
 };
 
 // @public
-export type TypedEmit<M extends PluginEvents> = <P extends keyof M & string>(pluginId: P, event: OneSend<IsUnion<P>, M[P]['type'], M[P]>) => {
-    type: 'OUTGOING';
-    event: M[P] & {
-        pluginId: P;
-    };
+export type SystemTarget = string | {
+    role: string;
 };
 
 // @public
 export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
-    // (undocumented)
-    emit: TypedEmit<P>;
-    // (undocumented)
+    broadcastToPlugin: TypedSendToPlugin<P>;
     sendToPlugin: TypedSendToPlugin<P>;
     // (undocumented)
     sendToSystem: TypedSendToSystem<S>;
 }
 
 // @public
-export type TypedSendToPlugin<M extends PluginEvents> = <P extends keyof M & string>(pluginId: P, event: OneSend<IsUnion<P>, M[P]['type'], M[P]>) => void;
+export type TypedSendToPlugin<M extends PluginEvents> = (<P extends keyof M & string>(plugin: P, event: OneSend<IsUnion<P>, M[P]['type'], M[P]>) => void) & ((plugin: FeatureRef, event: FeatureSettingsUpdated) => void);
 
 // @public
-export type TypedSendToSystem<S extends SystemEventMap> = <Id extends keyof S & string, Type extends S[Id]['type']>(systemId: Id, event: OneSend<IsUnion<Id> | IsUnion<Type>, Type, {
+export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S & string, Type extends S[Id]['type']>(system: Id, event: OneSend<IsUnion<Id> | IsUnion<Type>, Type, {
     type: Type;
-} & WithoutType<EventsOfType<S[Id], Type>>>) => void;
+} & WithoutType<EventsOfType<S[Id], Type>>>) => void) & ((target: {
+    role: string;
+}, event: {
+    type: string;
+    [key: string]: unknown;
+}) => void) & ((system: FeatureRef, event: SystemEvents) => void);
+
+// @public
+export type TypeOfEvent<E> = E extends {
+    type: infer K extends string;
+} ? K : never;
+
+// @public
+export type WithOwnNames<PackId extends string, M> = {
+    [K in keyof M & string as K extends `${PackId}/${infer FeatureId}` ? FeatureId : K]: M[K];
+};
 
 // (No @packageDocumentation comment for this package)
 

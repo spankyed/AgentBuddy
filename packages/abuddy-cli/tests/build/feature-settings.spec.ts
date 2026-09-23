@@ -20,7 +20,7 @@ function pack(files: Record<string, string>): string {
 
 describe('featureSettingsProblems', () => {
   it("accepts settings that set only the feature's own plugin", async () => {
-    const dir = pack({ 'src/memos/settings.ts': "export default { plugins: { _meta: { visibility: { memos: false } }, memos: { sort: 'newest' as const } } };\n" });
+    const dir = pack({ 'src/memos/settings.ts': "export default { visible: false, plugins: { memos: { sort: 'newest' as const } } };\n" });
     expect(await featureSettingsProblems(dir, [{ id: 'memos', settings: 'src/memos/settings.ts' }, { id: 'todos' }])).toEqual([]);
   });
 

@@ -4,8 +4,42 @@
 
 ```ts
 
-// @public (undocumented)
-export const bus: "bus";
+// @public
+export const FEATURE_ID_PATTERN: RegExp;
+
+// @public
+export type FeatureRef = `${string}/${string}` & {
+    readonly [featureRef]: true;
+};
+
+// @public
+export const HOST_PACK_ID = "host";
+
+// @public
+export const PACK_ID_PATTERN: RegExp;
+
+// @public
+export interface RefLookup {
+    among?: string;
+    form?: string;
+    packId?: string;
+    registered: readonly string[];
+}
+
+// @public
+export function refProblem(kind: string, name: string, input: RefLookup): string | undefined;
+
+// @public
+export function resolveName(name: string, packId?: string): FeatureRef;
+
+// @public
+export function resolveRegistered(kind: string, name: string, lookup: RefLookup): FeatureRef;
+
+// @public
+export function splitRef(ref: string): {
+    packId: string;
+    featureId: string;
+} | undefined;
 
 // (No @packageDocumentation comment for this package)
 

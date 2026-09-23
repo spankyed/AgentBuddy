@@ -3,8 +3,9 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { recordHostVersion } from '@abuddy/host/packs';
+import { recordHostInfo } from '@abuddy/host/packs';
 import { install } from '../../src/commands/install';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 
 let tmp: string;
 beforeEach(() => {
@@ -27,21 +28,30 @@ function builtPack(hostVersion: string): string {
     fs.writeFileSync(path.join(root, rel), content);
   };
   write('abuddy.json', JSON.stringify({ id: 'demo-pack', name: 'Demo Pack', version: '1.0.0', hostVersion }));
-  write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack", systems: [] } };');
-  write('dist/types/snapshot.json', '{"types":{}}');
+  write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack" } };');
+  write('dist/types/snapshot.json', JSON.stringify({ types: {}, format: PACK_SNAPSHOT_FORMAT }));
   return root;
 }
 
 describe('abuddy install', () => {
   it("refuses a pack whose hostVersion the data dir's AgentBuddy doesn't satisfy", async () => {
-    recordHostVersion(path.join(tmp, 'data'), '0.3.14');
+    recordHostInfo(path.join(tmp, 'data'), { version: '0.3.14', packFormat: PACK_SNAPSHOT_FORMAT });
     await expect(install([builtPack('>=99.0.0'), '--dev'])).rejects.toThrow('requires AgentBuddy >=99.0.0; this is 0.3.14');
   });
 
   it("installs when the data dir's AgentBuddy satisfies it", async () => {
-    recordHostVersion(path.join(tmp, 'data'), '0.3.14');
+    recordHostInfo(path.join(tmp, 'data'), { version: '0.3.14', packFormat: PACK_SNAPSHOT_FORMAT });
     await install([builtPack('>=0.3.0'), '--dev']);
     expect(fs.existsSync(path.join(tmp, 'data', 'packs', 'demo-pack', 'abuddy.json'))).toBe(true);
+  });
+
+  // The app records the pack format it reads, which need not be the one this CLI builds
+  it("refuses a pack built in a format other than the data dir's AgentBuddy reads", async () => {
+    recordHostInfo(path.join(tmp, 'data'), { version: '0.3.14', packFormat: PACK_SNAPSHOT_FORMAT + 1 });
+    await expect(install([builtPack('>=0.3.0'), '--dev'])).rejects.toThrow(
+      `Pack "demo-pack" can't be installed: its snapshot is format ${PACK_SNAPSHOT_FORMAT}, written by an older abuddy CLI; this AgentBuddy reads format ${PACK_SNAPSHOT_FORMAT + 1}`,
+    );
+    expect(fs.existsSync(path.join(tmp, 'data', 'packs', 'demo-pack'))).toBe(false);
   });
 
   it("notes that hostVersion wasn't checked before the app has used the data dir", async () => {

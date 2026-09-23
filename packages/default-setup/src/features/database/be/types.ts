@@ -1,3 +1,4 @@
+import type { KeyboardShortcut } from '@abuddy/sdk/types';
 import { EARS } from '@/__generated__/ears';
 
 export interface DatabaseQueryResult {
@@ -29,4 +30,12 @@ export interface DatabaseSchemaInfo {
 
 export interface DatabaseStartupData {
   schema: DatabaseSchemaInfo;
-} 
+}
+
+// ── This feature's settings ───────────────────────────────────────────────
+// Its own shape, which the app stores without knowing: the app owns the document, each feature its slice.
+export interface DatabaseSettings {
+  hotkeys: {
+    executeQuery?: KeyboardShortcut;
+  };
+}

@@ -2,7 +2,7 @@ import { defineConfig } from 'tsup';
 import path from 'path';
 import fs from 'fs';
 import { fileURLToPath } from 'url';
-import { discoverBuiltInPacksForBuild } from '@abuddy/host/build/discover';
+import { builtInPackLoadersModule, discoverBuiltInPacksForBuild } from '@abuddy/host/build/discover';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const packagesRoot = path.resolve(__dirname, '..');
@@ -10,8 +10,8 @@ const apiSrc = path.resolve(__dirname, 'src');
 
 const builtInPacks = discoverBuiltInPacksForBuild(packagesRoot);
 const builtInPackSrcDirs = builtInPacks.map(p => p.srcDir);
-// The generated module's imports resolve from the module that imports it (setup/backend.ts)
-const packLoaderDir = path.resolve(__dirname, 'src', 'setup');
+// The generated module's imports resolve from the module that imports it (runtime/index.ts)
+const packLoaderDir = path.resolve(__dirname, 'src', 'runtime');
 
 function tryResolve(base: string, subpath: string): string | null {
   const candidates = [
@@ -55,7 +55,7 @@ export default defineConfig((options) => {
     {
       // Generates a virtual module that exports a loader map for built-in packs.
       // Each entry is a dynamic import() with a string-literal path so esbuild
-      // traces the dependency and bundles it. setup/backend.ts imports this module
+      // traces the dependency and bundles it. runtime/index.ts imports this module
       // and passes the loaders to loadBuiltInPacks — new built-in packs are picked up
       // automatically via the build-time scan (no manual registration needed).
       name: 'built-in-pack-loaders',
@@ -68,21 +68,11 @@ export default defineConfig((options) => {
           namespace: NAMESPACE,
         }));
 
-        build.onLoad({ filter: /.*/, namespace: NAMESPACE }, () => {
-          const packsWithEntry = builtInPacks.filter(p => p.entryPath);
-          if (packsWithEntry.length === 0) {
-            throw new Error('[built-in-pack-loaders] No built-in packs found — production bundle would have no packs to load');
-          }
-          const lines = packsWithEntry.map(p => {
-            const relPath = path.relative(packLoaderDir, p.entryPath!).replace(/\\/g, '/');
-            return `  ${JSON.stringify(p.id)}: () => import('${relPath}'),`;
-          });
-          return {
-            contents: `export default {\n${lines.join('\n')}\n};\n`,
-            loader: 'ts',
-            resolveDir: packLoaderDir,
-          };
-        });
+        build.onLoad({ filter: /.*/, namespace: NAMESPACE }, () => ({
+          contents: builtInPackLoadersModule(builtInPacks, packLoaderDir),
+          loader: 'ts',
+          resolveDir: packLoaderDir,
+        }));
       },
     },
     {

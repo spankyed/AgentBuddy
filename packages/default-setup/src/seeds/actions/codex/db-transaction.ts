@@ -27,14 +27,14 @@ export async function action(
   const { prompt: userPrompt } = params;
 
   if (!userPrompt?.trim()) {
-    services.emitter.sendToPlugin('database', {
+    services.emitter.broadcastToPlugin('default-setup/database', {
       type: 'QUERY_ERROR',
       error: 'Please provide a valid prompt',
     });
     return { success: false, error: 'Empty prompt' };
   }
 
-  services.emitter.sendToPlugin('database', { type: 'AI_QUERY_LOADING' });
+  services.emitter.broadcastToPlugin('default-setup/database', { type: 'AI_QUERY_LOADING' });
 
   try {
     const { schema, topology } = services.database.buildQueryContext();
@@ -42,7 +42,7 @@ export async function action(
     const systemPrompt = services.prompt.usePrompt('DB Transaction System', { schema, topology });
 
     if (!systemPrompt) {
-      services.emitter.sendToPlugin('database', {
+      services.emitter.broadcastToPlugin('default-setup/database', {
         type: 'QUERY_ERROR',
         error: 'DB Transaction prompt template not found. Run seed import.',
       });
@@ -60,14 +60,14 @@ export async function action(
     const query = result.stdout.trim().replace(/^```(?:typescript|ts|javascript|js)?\n?/, '').replace(/\n?```$/, '').trim();
 
     if (!query) {
-      services.emitter.sendToPlugin('database', {
+      services.emitter.broadcastToPlugin('default-setup/database', {
         type: 'QUERY_ERROR',
         error: 'Codex returned an empty response.',
       });
       return { success: false, error: 'Empty response' };
     }
 
-    services.emitter.sendToPlugin('database', {
+    services.emitter.broadcastToPlugin('default-setup/database', {
       type: 'AI_QUERY_GENERATED',
       query,
     });
@@ -75,7 +75,7 @@ export async function action(
     return { success: true };
   } catch (error: any) {
     const errorMessage = formatProviderError(error, 'Codex');
-    services.emitter.sendToPlugin('database', {
+    services.emitter.broadcastToPlugin('default-setup/database', {
       type: 'QUERY_ERROR',
       error: errorMessage,
     });

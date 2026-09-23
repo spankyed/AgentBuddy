@@ -1,6 +1,8 @@
 // The lookups the backend's and the renderer's registries both keep of what registered packs contributed, each
 // owned by the registry that creates it (createPackRegistry, createFePackRegistry)
+import { splitRef, type FeatureRef } from '@abuddy/sdk/ids';
 import { _mergeStepDefinitions, type StepDefinition } from '@abuddy/sdk/steps';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 /**
  * Values packs contribute per key, folded in registration order.
@@ -8,9 +10,8 @@ import { _mergeStepDefinitions, type StepDefinition } from '@abuddy/sdk/steps';
  * Each contribution is kept with the pack that made it, so removing a pack re-folds what is left rather
  * than dropping the key. Two packs may hold one key between them — a step's build and frontend facets
  * routinely arrive from different packs, and an app-extension slot or a DSL type name is simply taken by
- * whoever registered last — so dropping the key when one of them unregisters takes the other's
- * contribution with it, until the app restarts. Reload is where that shows, being a teardown and a
- * registration.
+ * whoever registered last — so dropping the key when one of them unregisters would take the other's
+ * contribution with it.
  *
  * `fold` defaults to last-wins. Pass one that combines when a key is meant to be shared.
  */
@@ -62,17 +63,22 @@ export function createStepStore() {
   return createDefinitionStore<StepDefinition>(_mergeStepDefinitions);
 }
 
-/** Role → id of the system or plugin that plays it */
+/** Role → id of the system or plugin that plays it; one feature plays a role, so a taken role is refused */
 export function createDesignationStore() {
-  const roles = new Map<string, string>();
+  const roles = new Map<string, FeatureRef>();
   return {
-    register(designations: Record<string, string>): void {
-      for (const [role, id] of Object.entries(designations)) roles.set(role, id);
+    /** Registers every role or none: throws naming both packs when one is already played */
+    register(designations: Record<string, FeatureRef>): void {
+      for (const [role, ref] of Object.entries(designations)) {
+        const held = roles.get(role);
+        if (held) throw new Error(`Designation collision: role "${role}" — pack "${splitRef(ref)?.packId}" vs "${splitRef(held)?.packId}"`);
+      }
+      for (const [role, ref] of Object.entries(designations)) roles.set(role, ref);
     },
-    unregister(designations: Record<string, string>): void {
+    unregister(designations: Record<string, FeatureRef>): void {
       for (const role of Object.keys(designations)) roles.delete(role);
     },
-    get: (role: string): string | undefined => roles.get(role),
+    get: (role: string): FeatureRef | undefined => roles.get(role),
     has: (role: string): boolean => roles.has(role),
   };
 }
@@ -84,9 +90,6 @@ export function createDesignationStore() {
  * a later contribution throws, and again when the pack unregisters. Recording each undo where the thing is
  * added is what keeps those two honest: a new kind of contribution can't be added to one path and forgotten
  * in the other, because there is only one path.
- *
- * There were three of these, with two sets of semantics between them, which is the sort of drift the undos
- * exist to prevent in the first place.
  */
 export function createUndoLog() {
   const undos: Array<() => void> = [];
@@ -105,7 +108,7 @@ export function createUndoLog() {
         try {
           undo();
         } catch (err) {
-          failures.push(err instanceof Error ? err.message : String(err));
+          failures.push(errorMessage(err));
         }
       }
       return failures;
@@ -115,3 +118,39 @@ export function createUndoLog() {
 
 /** A registration's undos, as the registry that made it holds them */
 export type UndoLog = ReturnType<typeof createUndoLog>;
+
+/** One kind of what a pack's registration contributes: adds it, recording how to take each part back out */
+export type Contribution<R> = (registration: R, undo: (fn: () => void) => void) => void;
+
+/**
+ * A registration's definitions of one kind (steps, artifacts, blocks) in `store`, owned by its pack; `added` runs
+ * after each one is in.
+ */
+export function definitions<R extends { id: string }, T extends { type: string }>(
+  store: { register(def: T, owner: string): void; unregister(type: string, owner: string): void },
+  of: (registration: R) => readonly T[] | undefined,
+  added?: (def: T) => void,
+): Contribution<R> {
+  return (reg, undo) => {
+    for (const def of of(reg) ?? []) {
+      store.register(def, reg.id);
+      undo(() => store.unregister(def.type, reg.id));
+      added?.(def);
+    }
+  };
+}
+
+/**
+ * Adds everything a registration contributes, all or nothing: some of it is the pack's own code, so a contribution
+ * that throws takes back what went in before it, and the error goes on. Returns the log that takes it all back out.
+ */
+export function addContributions<R>(registration: R, contributions: readonly Contribution<R>[]): UndoLog {
+  const undos = createUndoLog();
+  try {
+    for (const add of contributions) add(registration, undos.record);
+  } catch (err) {
+    undos.undoAll();
+    throw err;
+  }
+  return undos;
+}

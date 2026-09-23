@@ -1,6 +1,6 @@
 // A registry's shutdown hooks: the ones each pack declares (boot.onShutdown), keyed by pack id, and the app's
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createPackRegistry } from '../../src/packs/pack-registration.ts';
+import { createPackRegistry } from '../../src/packs/registry.ts';
 
 const { registerShutdownHook, removeShutdownHooksForKey, runShutdownHooks, runShutdownHooksForKey } = createPackRegistry();
 

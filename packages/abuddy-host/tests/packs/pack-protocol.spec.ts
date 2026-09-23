@@ -62,27 +62,3 @@ describe('PackProtocol path traversal prevention', () => {
     expect(traversal.startsWith(allowedPrefix)).toBe(false);
   });
 });
-
-describe('pack-install protocol URL parsing', () => {
-  // Testing handleProtocolInstall without importing the module (it imports trpc)
-  function handleProtocolInstall(params: Record<string, string>) {
-    const packSlug = params.pack;
-    if (!packSlug) return null;
-    return { packSlug, source: params.source };
-  }
-
-  it('extracts pack slug from abuddy:// install URL params', () => {
-    const result = handleProtocolInstall({ pack: 'awesome-pack' });
-    expect(result).toEqual({ packSlug: 'awesome-pack', source: undefined });
-  });
-
-  it('returns null when pack param is missing', () => {
-    const result = handleProtocolInstall({});
-    expect(result).toBeNull();
-  });
-
-  it('passes through source param', () => {
-    const result = handleProtocolInstall({ pack: 'my-pack', source: 'github' });
-    expect(result).toEqual({ packSlug: 'my-pack', source: 'github' });
-  });
-});

@@ -2,12 +2,13 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
 import * as os from 'node:os';
-import type { Plugin } from '@abuddy/sdk/fe';
+import type { Plugin, PluginDefinition } from '@abuddy/sdk/fe';
 
 import { resetTestData } from '@abuddy/sdk/testing';
 import { registry } from './test-host.ts';
 import { appState } from '../../../src/app-state/index.ts';
 import { createFePackRegistry } from '../../../src/fe/pack-store.ts';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 
 let tmpDir: string;
 let origEnv: { env?: string; userDataDir?: string };
@@ -32,14 +33,14 @@ function restoreEnv(key: string, value: string | undefined) {
 
 const packsDir = () => path.join(tmpDir, 'packs');
 
-/** Writes what `abuddy build` leaves in a pack's dist/: a runtime registering `systemsSource`, and a snapshot */
-function writeBuild(packDir: string, id: string, systemsSource = '[]', extraFiles: Record<string, string> = {}) {
+/** Writes what `abuddy build` leaves in a pack's dist/: a runtime registering `featuresSource`, and a snapshot */
+function writeBuild(packDir: string, id: string, featuresSource = '{}', extraFiles: Record<string, string> = {}) {
   const write = (rel: string, content: string) => {
     fs.mkdirSync(path.dirname(path.join(packDir, 'dist', rel)), { recursive: true });
     fs.writeFileSync(path.join(packDir, 'dist', rel), content);
   };
-  write('runtime/index.cjs', `module.exports = { registration: { id: ${JSON.stringify(id)}, systems: ${systemsSource} } };`);
-  write('types/snapshot.json', '{}');
+  write('runtime/index.cjs', `module.exports = { registration: { id: ${JSON.stringify(id)}, features: ${featuresSource} } };`);
+  write('types/snapshot.json', JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
   for (const [rel, content] of Object.entries(extraFiles)) write(rel, content);
 }
 
@@ -50,13 +51,13 @@ function writeManifest(dir: string, manifest: Record<string, unknown>) {
 
 describe('pack full lifecycle: install → discover', () => {
   it('update flow: reinstalling overwrites the previous version', async () => {
-    const { installPackFromLocal } = await import('../../../src/packs/pack-installer.ts');
+    const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
 
     const sourceDir = path.join(tmpDir, 'update-pack');
 
     // v1
     writeManifest(sourceDir, { id: 'update-pack', name: 'Update Pack', version: '1.0.0' });
-    writeBuild(sourceDir, 'update-pack', '[]', { 'runtime/seeds/v1.seed.json': '[]' });
+    writeBuild(sourceDir, 'update-pack', '{}', { 'runtime/seeds/v1.seed.json': '[]' });
 
     await installPackFromLocal(sourceDir, packsDir());
 
@@ -66,7 +67,7 @@ describe('pack full lifecycle: install → discover', () => {
     // v2: new file, old one removed
     writeManifest(sourceDir, { id: 'update-pack', name: 'Update Pack', version: '2.0.0' });
     fs.rmSync(path.join(sourceDir, 'dist'), { recursive: true });
-    writeBuild(sourceDir, 'update-pack', '[]', { 'runtime/seeds/v2.seed.json': '[]' });
+    writeBuild(sourceDir, 'update-pack', '{}', { 'runtime/seeds/v2.seed.json': '[]' });
 
     await installPackFromLocal(sourceDir, packsDir());
 
@@ -79,7 +80,7 @@ describe('pack full lifecycle: install → discover', () => {
   });
 
   it('hostVersion gating prevents loading incompatible packs', async () => {
-    const { installPackFromLocal } = await import('../../../src/packs/pack-installer.ts');
+    const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
 
     const sourceDir = path.join(tmpDir, 'future-pack');
     writeManifest(sourceDir, { id: 'future-pack', name: 'Future Pack', version: '1.0.0', hostVersion: '>=99.0.0' });
@@ -95,7 +96,7 @@ describe('pack full lifecycle: install → discover', () => {
   });
 
   it('multiple packs coexist and all get discovered', async () => {
-    const { installPackFromLocal } = await import('../../../src/packs/pack-installer.ts');
+    const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
 
     for (const id of ['pack-alpha', 'pack-beta', 'pack-gamma']) {
       const dir = path.join(tmpDir, id);
@@ -119,7 +120,7 @@ describe('activating and tearing down a pack at runtime', () => {
 
   /** Installs a pack with one system that declares a slash command in its manifest, a 1.0.0 migration and seeds */
   async function install() {
-    const { installPackFromLocal } = await import('../../../src/packs/pack-installer.ts');
+    const { installPackFromLocal } = await import('../../../src/packs/installer.ts');
     const sourceDir = path.join(tmpDir, PACK_ID);
     writeManifest(sourceDir, {
       id: PACK_ID,
@@ -132,7 +133,7 @@ describe('activating and tearing down a pack at runtime', () => {
     writeBuild(
       sourceDir,
       PACK_ID,
-      "[{ id: 'main', machine: { id: 'activate-pack-system' }, events: [] }], commands: [{ name: 'activate-memo', placeholder: 'Text' }], "
+      `{ main: { system: { machine: { id: 'activate-pack-system' }, receives: [] } } }, commands: [{ name: 'activate-memo', placeholder: 'Text' }], `
         + "seeders: [{ key: 'memos', seed: () => { globalThis.activatePackRuns.push('seed'); return { created: 1, updated: 0, skipped: 0 }; } }], "
         + "migrations: [{ target: '1.0.0', description: 'memos', up: () => { globalThis.activatePackRuns.push('migration'); } }]",
       {
@@ -213,8 +214,7 @@ describe('activating and tearing down a pack at runtime', () => {
 
     registry.registerPack({
       id: 'stuck-pack',
-      systems: [],
-      features: [{ id: 'stuck', hasSystem: false, hasPlugin: true, services: [], settings: { plugins: { stuck: { a: 1 } } } }],
+      features: { stuck: { plugin: { receives: [] }, settings: { plugins: { stuck: { a: 1 } } } } },
     });
     const stopListening = onPackSettingsDefaultsChanged(() => { throw new Error('a settings listener threw'); });
 
@@ -280,7 +280,7 @@ describe('registry source and update tracking', () => {
   }
 
   it('records where an install came from', async () => {
-    const { packRecord, recordInstalled } = await import('../../../src/packs/installed-packs.ts');
+    const { packRecord, recordInstalled } = await import('../../../src/packs/installed.ts');
 
     recordInstalled('github-pack', 'owner/repo');
 
@@ -289,7 +289,7 @@ describe('registry source and update tracking', () => {
   });
 
   it('records what an update check found, and forgets it once that update is installed', async () => {
-    const { packRecord, recordInstalled, recordUpdateCheck, recordUpdateInstalled } = await import('../../../src/packs/installed-packs.ts');
+    const { packRecord, recordInstalled, recordUpdateCheck, recordUpdateInstalled } = await import('../../../src/packs/installed.ts');
     recordInstalled('versioned-pack', 'owner/versioned');
 
     recordUpdateCheck('versioned-pack', { availableVersion: '2.0.0', availableTag: 'v2.0.0', updateCheckError: undefined });
@@ -301,8 +301,8 @@ describe('registry source and update tracking', () => {
   });
 
   it('getAvailableUpdates returns packs with newer versions', async () => {
-    const { recordInstalled, recordUpdateCheck } = await import('../../../src/packs/installed-packs.ts');
-    const { getAvailableUpdates } = await import('../../../src/packs/pack-updater.ts');
+    const { recordInstalled, recordUpdateCheck } = await import('../../../src/packs/installed.ts');
+    const { getAvailableUpdates } = await import('../../../src/packs/updater.ts');
     installed('has-update');
     installed('no-update');
 
@@ -323,35 +323,44 @@ describe('FE pack deregistration', () => {
   it('unregisterPackFE removes extensions and returns removed plugins', async () => {
     const { registerPackFE, unregisterPackFE } = createFePackRegistry();
 
-    const testPlugin = { id: 'test-plugin', label: 'Test' } as unknown as Plugin;
-    registerPackFE({ plugins: [testPlugin] }, 'test-pack');
+    const testPlugin = { label: 'Test' } as unknown as PluginDefinition;
+    registerPackFE({ id: 'test-pack', features: { testPlugin: { plugin: testPlugin } } });
 
     const removed = unregisterPackFE('test-pack');
     expect(removed).toHaveLength(1);
-    expect(removed[0].id).toBe('test-plugin');
+    expect(removed[0].id).toBe('test-pack/testPlugin');
 
     // Calling again should return empty
     const removedAgain = unregisterPackFE('test-pack');
     expect(removedAgain).toHaveLength(0);
   });
 
-  it("unregisterPackFE leaves a plugin another registration owns when the pack declared the same id", async () => {
+  // A built-in pack's registration carries its id like any other, so it comes out the same way
+  it('takes a built-in pack\'s frontend back out like any other pack\'s', async () => {
     const { registerPackFE, unregisterPackFE, getRegisteredPlugins } = createFePackRegistry();
-    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const builtIn = { label: 'Built-in', id: 'default-setup/main' } as unknown as Plugin;
 
-    const builtIn = { id: 'shared-id', label: 'Built-in' } as unknown as Plugin;
-    const packCopy = { id: 'shared-id', label: 'Pack' } as unknown as Plugin;
-    const packOwn = { id: 'pack-own', label: 'Own' } as unknown as Plugin;
-    registerPackFE({ plugins: [builtIn] });
-    registerPackFE({ plugins: [packCopy, packOwn] }, 'duplicate-pack');
+    registerPackFE({ id: 'default-setup', features: { main: { plugin: { label: 'Built-in' } as PluginDefinition } } });
+    expect(getRegisteredPlugins()).toEqual([builtIn]);
 
-    expect(getRegisteredPlugins().filter(p => p.id === 'shared-id')).toEqual([builtIn]);
-    expect(warn).toHaveBeenCalledWith(expect.stringContaining('"shared-id" from pack duplicate-pack ignored'));
-    warn.mockRestore();
+    expect(unregisterPackFE('default-setup')).toEqual([builtIn]);
+    expect(getRegisteredPlugins()).toEqual([]);
+  });
 
-    expect(unregisterPackFE('duplicate-pack')).toEqual([packOwn]);
-    expect(getRegisteredPlugins()).toContain(builtIn);
-    expect(getRegisteredPlugins()).not.toContain(packOwn);
+  // Two packs with the same feature each have their own plugin; unregistering one leaves the other's
+  it("unregisterPackFE leaves a plugin another pack declared under the same feature id", async () => {
+    const { registerPackFE, unregisterPackFE, getRegisteredPlugins } = createFePackRegistry();
+
+    const definition = (label: string) => ({ label }) as unknown as PluginDefinition;
+    const builtIn = { label: 'Built-in', id: 'built-in-pack/shared' };
+    const packCopy = { label: 'Pack', id: 'duplicate-pack/shared' };
+    const packOwn = { label: 'Own', id: 'duplicate-pack/own' };
+    registerPackFE({ id: 'built-in-pack', features: { shared: { plugin: definition('Built-in') } } });
+    registerPackFE({ id: 'duplicate-pack', features: { shared: { plugin: definition('Pack') }, own: { plugin: definition('Own') } } });
+
+    expect(getRegisteredPlugins()).toEqual([builtIn, packCopy, packOwn]);
+    expect(unregisterPackFE('duplicate-pack')).toEqual([packCopy, packOwn]);
+    expect(getRegisteredPlugins()).toEqual([builtIn]);
   });
 
   it('unregisterPackFE handles pack with no extensions gracefully', async () => {
@@ -369,7 +378,6 @@ describe('pack-registration teardown', () => {
     const packId = 'teardown-test-pack';
     registerPack({
       id: packId,
-      systems: [],
       steps: [],
       artifacts: [],
       blocks: [],

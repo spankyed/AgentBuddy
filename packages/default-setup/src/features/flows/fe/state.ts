@@ -9,11 +9,11 @@ import {
 } from '@abuddy/sdk/fe'
 import { type NavHistory, createNavHistory, pushNavHistory, goBack, goForward, canGoBack, canGoForward } from '@abuddy/sdk/fe'
 import type {
-  OutgoingFlowsEvents,
   NodeEntity,
   EdgeEntity,
-  OutgoingBrainEvents,
 } from '@/__generated__/types'
+import type { OutgoingFlowsEvents } from '@/features/flows/be/system'
+import type { OutgoingBrainEvents } from '@/features/brain/be/system'
 import { sendToSystem } from '@/__generated__/events'
 import { getNodeConfig, isTriggerNode } from '@abuddy/ui/components/node-styles'
 import { stepRegistry } from '@abuddy/sdk/steps'
@@ -88,7 +88,7 @@ function applyNodeTypeDefaults(nodeData: Record<string, any>): void {
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
 /* ─────────────────────────────────────────────────────────── */
-export const flowsId = 'flows'
+export const flowsId = 'flows' as const
 export const id = flowsId
 export type FlowsState = ActorRefFrom<typeof flowsState>
 
@@ -178,7 +178,7 @@ type UIEvent =
   | { type: 'GO.BACK' }
   | { type: 'NAVIGATE_BACK' }
   | { type: 'NAVIGATE_FORWARD' }
-  | { type: 'FLOWS_SETTINGS_UPDATED'; settings: any }
+  | { type: 'FEATURE_SETTINGS_UPDATED'; settings: any }
   // DSL Import events
   | { type: 'DSL.IMPORT'; dsl: any; flowNames: string[] }
   | { type: 'DSL.RESET_STATUS' }
@@ -237,7 +237,7 @@ const flowsState = setup({
     }),
     
     handleSettingsUpdate: assign(({ event }) => {
-      const ev = typeOf('FLOWS_SETTINGS_UPDATED', event);
+      const ev = typeOf('FEATURE_SETTINGS_UPDATED', event);
       return {
         settings: ev.settings || {},
       };
@@ -1193,7 +1193,7 @@ const flowsState = setup({
       actions: 'setPluginData',
       // target: '.view' // Go directly to view since we have the selected flow's data
     },
-    FLOWS_SETTINGS_UPDATED: {
+    FEATURE_SETTINGS_UPDATED: {
       actions: 'handleSettingsUpdate'
     },
     'ROOT_FLOW.SET': {

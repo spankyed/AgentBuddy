@@ -4,7 +4,7 @@ import * as os from 'node:os';
 import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
-  findAppImportsInPackTests, findCrossCheckoutResolution, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackBackendConsole, findRawPackHelpers,
+  findAppImportsInPackTests, findCrossCheckoutResolution, findCrossFeatureImports, findHostImports, findJsSpecifiers, findMissingSourceConditions, findPackBackendConsole, findRawPackHelpers,
   findRawTransport, findInternalPackageImports, findLmdbImports, findRepositoryCasts, findSharedPackageLists, findUpwardImports, LAYERS, LMDB_RULES, packageSourceDirs,
   DECLARES_SOURCE_BY_DESIGN, RESOLVES_DIST_BY_DESIGN, SHARED_LIST_CONSUMERS, sourceConditionPackages, SOURCE_CONDITION,
 } from '../../../../scripts/check-import-specifiers.ts';
@@ -97,13 +97,13 @@ function writeTemplateSource(content: string): string {
 
 /** Code none of the pack rules flag: comments, string text and the allowed imports */
 const ALLOWED = [
-  "// import { emit } from '@abuddy/sdk/events'; _rootEvents; trpc.bus; console.log('x')",
+  "// import { broadcastToPlugin } from '@abuddy/sdk/events'; _rootEvents; trpc.bus; console.log('x')",
   "/* import * as events from '@abuddy/sdk/events'; console.log('x') */",
   "const url = 'https://console.anthropic.com/settings/keys';",
   "const prompt = `_rootEvents.emitOutgoing(event); console.log(ev.type)`;",
-  "import { emit, sendToSystem } from '#generated/events';",
-  "import { sendToPlugin } from '@/__generated__/events';",
-  "import { sendToBrainSystem, onIncoming } from '@abuddy/sdk/events';",
+  "import { broadcastToPlugin, sendToSystem } from '#generated/events';",
+  "import { broadcastToPlugin } from '@/__generated__/events';",
+  "import { onConnected, onIncoming } from '@abuddy/sdk/events';",
   "import { emit as emitEvent } from 'xstate';",
   "import * as ears from '@abuddy/ears';",
   "import { x } from '@abuddy/sdk/rpcx';",
@@ -145,12 +145,12 @@ describe('findInternalPackageImports', () => {
 
 describe('findRawPackHelpers', () => {
   it.each([
-    ["import { emit as emitToPlugin } from '@abuddy/sdk/events';", 'emit from @abuddy/sdk/events'],
+    ["import { broadcastToPlugin as toPlugin } from '@abuddy/sdk/events';", 'broadcastToPlugin from @abuddy/sdk/events'],
     ["import onConnected, { sendToSystem } from '@abuddy/sdk/events';", 'sendToSystem from @abuddy/sdk/events'],
-    ["import { sendToPlugin, services } from '@abuddy/sdk/services';", 'sendToPlugin from @abuddy/sdk/services'],
+    ["import { broadcastToPlugin, services } from '@abuddy/sdk/services';", 'broadcastToPlugin from @abuddy/sdk/services'],
     ["import { registerRepository, tx } from '@abuddy/ears';", 'registerRepository from @abuddy/ears'],
     ["import { unregisterRepository } from '@abuddy/ears';", 'unregisterRepository from @abuddy/ears'],
-    ["export type { emit } from '@abuddy/sdk/events';", 'emit from @abuddy/sdk/events'],
+    ["export type { broadcastToPlugin } from '@abuddy/sdk/events';", 'broadcastToPlugin from @abuddy/sdk/events'],
     ["import * as events from '@abuddy/sdk/events';", '* from @abuddy/sdk/events (import the names)'],
     ["export * from '@abuddy/sdk/events';", '* from @abuddy/sdk/events (import the names)'],
   ])('flags %s', (code, problem) => {
@@ -165,13 +165,13 @@ describe('findRawPackHelpers', () => {
   });
 
   it('checks .vue script blocks with their line numbers', () => {
-    write('pack/Widget.vue', "<template><pre>import { emit } from '@abuddy/sdk/events'</pre></template>\n<script setup lang=\"ts\">\n\nimport { emit } from '@abuddy/sdk/events';\n</script>\n");
-    expect(findRawPackHelpers(['src/pack'], root)).toEqual(['src/pack/Widget.vue:4: emit from @abuddy/sdk/events']);
+    write('pack/Widget.vue', "<template><pre>import { broadcastToPlugin } from '@abuddy/sdk/events'</pre></template>\n<script setup lang=\"ts\">\n\nimport { broadcastToPlugin } from '@abuddy/sdk/events';\n</script>\n");
+    expect(findRawPackHelpers(['src/pack'], root)).toEqual(['src/pack/Widget.vue:4: broadcastToPlugin from @abuddy/sdk/events']);
   });
 
   it("checks the pack code in the CLI's templates, with its line", () => {
-    const dir = writeTemplateSource("const name = 'x';\nexport const SYSTEM = `// ${name}\nconst label = \\`${name}\\`;\nimport { ${name}, emit } from '@abuddy/sdk/events';\n`;\n");
-    expect(findRawPackHelpers([dir], root)).toEqual([`${dir}/feature.ts:4: emit from @abuddy/sdk/events`]);
+    const dir = writeTemplateSource("const name = 'x';\nexport const SYSTEM = `// ${name}\nconst label = \\`${name}\\`;\nimport { ${name}, broadcastToPlugin } from '@abuddy/sdk/events';\n`;\n");
+    expect(findRawPackHelpers([dir], root)).toEqual([`${dir}/feature.ts:4: broadcastToPlugin from @abuddy/sdk/events`]);
   });
 });
 
@@ -423,6 +423,48 @@ describe('findSharedPackageLists', () => {
   it('holds for every consumer of SHARED_INSTANCE_PACKAGES', () => {
     for (const file of SHARED_LIST_CONSUMERS) expect(fs.existsSync(path.join(REPO_ROOT, file)), file).toBe(true);
     expect(findSharedPackageLists()).toEqual([]);
+  });
+});
+
+describe('findCrossFeatureImports', () => {
+  const src = 'pack/src';
+
+  it("flags another feature's machine or component, by alias or relative path", () => {
+    writeAt(`${src}/features/code/fe/panel.vue`, "<script setup lang=\"ts\">\nimport { id } from '@/features/actions/fe/state'\n</script>");
+    writeAt(`${src}/extensions/viewer.ts`, "import List from '../features/notes/fe/canvas/list.vue';");
+    expect(findCrossFeatureImports([src], root)).toEqual([
+      `${src}/extensions/viewer.ts:1: ../features/notes/fe/canvas/list.vue`,
+      `${src}/features/code/fe/panel.vue:2: @/features/actions/fe/state`,
+    ]);
+  });
+
+  it("allows a feature's own frontend, another's public module, backend and shared modules, and generated code", () => {
+    writeAt(`${src}/features/code/fe/panel.ts`, [
+      "import { codeChild } from '@/features/code/fe/utils/parent-communication';",
+      "import { useActionsList } from '@/features/actions/fe/public';",
+      "import { pluginSettings } from '@/features/settings/plugin-settings';",
+      "import type { ActionEntity } from '@/features/actions/be/types';",
+    ].join('\n'));
+    writeAt(`${src}/features/code/fe/features/list.ts`, "import state from '../state';");
+    writeAt(`${src}/__generated__/pack-entry-fe.ts`, "import plugin from '../features/notes/fe/plugin.js';");
+    // `public` as a folder, by the folder or its index
+    writeAt(`${src}/features/threads/fe/chat.ts`, "import { a } from '@/features/actions/fe/public';\nimport { b } from '@/features/notes/fe/public/index';");
+    // A feature's own modules outside fe/ may use its frontend, exporting what they make of it
+    writeAt(`${src}/features/code/settings.ts`, "import { id } from './fe/state';\nconst label = `${id}!`;\nexport { label };");
+    expect(findCrossFeatureImports([src], root)).toEqual([]);
+  });
+
+  it("flags another feature's fe folder itself, and a feature passing its frontend on from outside fe/", () => {
+    writeAt(`${src}/features/code/fe/panel.ts`, "import notes from '@/features/notes/fe';");
+    writeAt(`${src}/features/notes/index.ts`, "export { id, notesMachine } from './fe/state';\nexport * from './fe/public';");
+    // In two steps: imported, then exported
+    writeAt(`${src}/features/threads/door.ts`, "import { threadsMachine as machine } from './fe/state';\nimport * as ui from './fe/canvas';\nexport { machine };\nexport default ui;");
+    expect(findCrossFeatureImports([src], root)).toEqual([
+      `${src}/features/code/fe/panel.ts:1: @/features/notes/fe`,
+      `${src}/features/notes/index.ts:1: ./fe/state`,
+      `${src}/features/threads/door.ts:1: ./fe/state`,
+      `${src}/features/threads/door.ts:2: ./fe/canvas`,
+    ]);
   });
 });
 

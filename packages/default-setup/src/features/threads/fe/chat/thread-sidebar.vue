@@ -165,7 +165,8 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { computed, reactive, ref, watchEffect } from 'vue'
 import { X, ChevronDown, ChevronRight, ChevronLeft, Archive } from 'lucide-vue-next'
 import { useSelector } from '@xstate/vue'
@@ -176,15 +177,13 @@ import ThreadContextMenu from '@/features/threads/fe/canvas/components/thread-co
 import SidebarThreadItem from './sidebar-thread-item.vue'
 import { sendToSystem } from '@/__generated__/events'
 
-const actorSystem = useActorSystem()
-
 const emit = defineEmits<{
   'select-thread': [threadId: string]
   'close': []
 }>()
 
 // State from threads actor
-const actor: ThreadsState = actorSystem.get(id)
+const actor: ThreadsState = usePlugin()
 const threadMap = useSelector(actor, (state) => state.context.threadMap)
 const tabs = useSelector(actor, (state) => state.context.tabs)
 const tabGroups = useSelector(actor, (state) => state.context.tabGroups)

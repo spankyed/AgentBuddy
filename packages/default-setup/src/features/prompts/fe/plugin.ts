@@ -1,11 +1,14 @@
-import type { Plugin } from "@abuddy/sdk/fe";
+import { definePlugin, pluginAccepts } from '@abuddy/sdk/fe';
+import type { PromptsListEvent } from './public';
 import { Sparkle } from 'lucide-vue-next';
-import state, { id } from './state.ts';
+import state from './state.ts';
 import canvas from './canvas.vue';
 import settings from './settings.vue';
 
-const promptsPlugin: Plugin = {
-  id,
+/** Paging and editing, which the code plugin's prompts panel asks of it */
+export const accepts = pluginAccepts<PromptsListEvent>();
+
+const promptsPlugin = definePlugin({
   label: 'Prompts',
   icon: Sparkle,
   state,
@@ -15,6 +18,6 @@ const promptsPlugin: Plugin = {
   options: {
     // headerClass: 'bg-neutral-900 border-b border-neutral-600'
   }
-};
+});
 
 export default promptsPlugin; 

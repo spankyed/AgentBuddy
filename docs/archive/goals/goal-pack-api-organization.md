@@ -13,7 +13,7 @@ migrate every in-repo caller, test, fixture, template and doc in the same change
 Finished when:
 - Phases 1–5 are implemented and each meets its "Done when"; every new guard, helper or test is
   mutation-checked.
-- Pack code has one typed way per direction: `sendToPlugin`/`emit` (backend → frontend) and
+- Pack code has one typed way per direction: `broadcastToPlugin`/`emit` (backend → frontend) and
   `sendToSystem` (frontend → backend, backend → backend), from `#generated/events`. No pack source
   uses `rootEvents`, `trpc.bus.send.mutate`, `@abuddy/sdk/rpc` or `console.*` in backend code, and
   a guard rejects them.
@@ -49,8 +49,8 @@ Packs reach the app's messaging, logging and action running through several over
 - **Five ways to send an event.**
   - **Backend → frontend:**
     - `system.get(bus).send(emit(pluginId, event))` inside a system (8 files). It goes through the bus actor, which drops `OUTGOING` until a client connects (`abuddy-host/src/bus/index.ts`, `connected` state).
-    - `sendToPlugin` from `#generated/events` (3 files) writes straight to `rootEvents` through the api's `core/router/event-emitter.ts`, ignoring the connection.
-    - `services.emitter.sendToPlugin` (53 action uses) does the same, untyped.
+    - `broadcastToPlugin` from `#generated/events` (3 files) writes straight to `rootEvents` through the api's `core/router/event-emitter.ts`, ignoring the connection.
+    - `services.emitter.broadcastToPlugin` (53 action uses) does the same, untyped.
     - `rootEvents.emitOutgoing(emit(pluginId, …).event)` (118 calls in the code and browser systems, `@abuddy/sdk/rpc`) does the same, bypassing the typed facade.
   - **Frontend → backend:** `trpc.bus.send.mutate({ systemId, type, … })` (191 calls) from `@abuddy/sdk/rpc`, untyped, plus 7 hand-copied `const sendToBackend = …` helpers in code frontend files. Every system declares its incoming events (`defineSystem(id)<Incoming, Outgoing>()`), but nothing types these sends.
   - `sendToSystem`, `sendToBrainSystem`, `onIncoming` and `onOutgoing` live in `@abuddy/sdk/services`. `emit` lives in `@abuddy/sdk/helpers`, and `defineEvents`/`HostPluginEvents` in `@abuddy/sdk/services`.
@@ -74,10 +74,10 @@ Packs reach the app's messaging, logging and action running through several over
 Throwaway worktree `spike/pack-api-organization` (from `c187956e5`, uncommitted, in the session scratchpad; discard with `git worktree remove`). Rewrite the implementation on the goal branch; don't reuse the spike's code.
 
 **What was built:**
-- **`@abuddy/sdk/events`**, holding `emit`, `sendToPlugin`, `defineEvents`, `HostPluginEvents`, `IncomingEventsOf` and `defineSystemSends`.
+- **`@abuddy/sdk/events`**, holding `emit`, `broadcastToPlugin`, `defineEvents`, `HostPluginEvents`, `IncomingEventsOf` and `defineSystemSends`.
 - **Generator:** `#generated/events` gained `PackSystemEvents` (system id → incoming events, read from each system's default export) and a typed `sendToSystem`. All 12 default-setup systems and the fixture's `memos` system switched from `const x: SystemEntry = {…}` to `const x = {…} satisfies SystemEntry`.
 - **Transport:** an `event-transport` host module (`sendIncoming`) registered by the api (`rootEvents.emitIncoming`), the renderer (`trpc.bus.send.mutate`) and the test host.
-- **Migrations:** notes (27 sends) and memos frontends moved to `sendToSystem`, and the 118 `rootEvents.emitOutgoing` calls to `sendToPlugin`.
+- **Migrations:** notes (27 sends) and memos frontends moved to `sendToSystem`, and the 118 `rootEvents.emitOutgoing` calls to `broadcastToPlugin`.
 - **Action sandbox:** one runner, `runActionCode`, used by both action runners.
 - **Entry split:** `@abuddy/sdk/templates` split from `runtime`.
 
@@ -107,7 +107,7 @@ Final.
 
 1. **`@abuddy/sdk/events` is the one home for messaging.**
    - It holds:
-     - `emit`, `sendToPlugin`, `sendToSystem`, `sendToBrainSystem`
+     - `emit`, `broadcastToPlugin`, `sendToSystem`, `sendToBrainSystem`
      - `onConnected`, `onIncoming`
      - `defineEvents` (typed plugin and system sends)
      - `HostPluginEvents`, `IncomingEventsOf`, `IncomingSystemEvents`, `OutgoingSystemEvents`, `PluginEvents`
@@ -118,22 +118,22 @@ Final.
    - `#generated/events` exports:
      - `PackEvents` (plugin → events it receives)
      - `PackSystemEvents` (system → events it receives: the pack's own and its dependencies', via their facade types)
-     - `emit`, `sendToPlugin` and `sendToSystem` from `defineEvents<PackEvents, PackSystemEvents>(busId)`
+     - `emit`, `broadcastToPlugin` and `sendToSystem` from `defineEvents<PackEvents, PackSystemEvents>(busId)`
    - Systems declare entries with `satisfies SystemEntry`, and the `abuddy add feature` template and docs follow.
    - `sendToSystem(systemId, event)` narrows the event by its `type` before checking its fields, so a missing field names the chosen event's type.
    - Systems are named by pack and feature (revised after review): the pack's own by feature id, a dependency's as `<dependency>/<feature>`, and in actions, which run outside any pack, every system as `<pack>/<feature>`, resolved by the host. The generated `sendToSystem` maps each name to the id the system runs under, so an own feature may share a dependency system's name.
    - Every pack gets `sendToSystem`; one without systems sends to its dependencies' (revised after review, which found frontend-only packs had no typed way to reach a dependency).
    - `pack-types.ts` includes `PackSystemEvents`, so dependents compose it.
 3. **One way per direction in pack code.**
-   - `sendToPlugin` everywhere, or `emit` inside a system's actions.
+   - `broadcastToPlugin` everywhere, or `emit` inside a system's actions.
    - `sendToSystem` from frontend and backend.
-   - Actions use `services.emitter.sendToPlugin`/`sendToSystem`, now typed.
+   - Actions use `services.emitter.broadcastToPlugin`/`sendToSystem`, now typed.
    - The 118 `rootEvents.emitOutgoing` calls, the 191 `trpc.bus.send.mutate` calls and the 7 local `sendToBackend` helpers are replaced.
    - `check:specifiers` rejects in pack sources:
      - `@abuddy/sdk/rpc` imports
      - `rootEvents`
      - `trpc.bus`
-     - `emit`/`sendToPlugin`/`sendToSystem` from anywhere but `#generated/events` (extending today's rule)
+     - `emit`/`broadcastToPlugin`/`sendToSystem` from anywhere but `#generated/events` (extending today's rule)
 4. **One transport for sends, bound per environment (interim).**
    - `events` sends through an `event-transport` host module: `sendIncoming` and `sendOutgoing`, plus `onConnected` and `onIncoming`.
    - Registered by the api (over `rootEvents`), the renderer (over its tRPC client) and the test host (over `testRootEvents`).
@@ -184,7 +184,7 @@ Final.
 
 ### Phase 2 — Migrate sends and remove raw paths
 - Frontend: the 191 `trpc.bus.send.mutate` calls and 7 local `sendToBackend` helpers become `sendToSystem`.
-- Backend: the 118 `rootEvents.emitOutgoing` calls become `sendToPlugin`. Remove every `as any` on sent events, and declare the events it hid (`codePrompts.PROMPT_SELECTED`, `PROMPT_UPDATED`, `CODE_ERROR`, and any others found).
+- Backend: the 118 `rootEvents.emitOutgoing` calls become `broadcastToPlugin`. Remove every `as any` on sent events, and declare the events it hid (`codePrompts.PROMPT_SELECTED`, `PROMPT_UPDATED`, `CODE_ERROR`, and any others found).
 - `rootEvents.onConnected`/`onIncoming` become `onConnected`/`onIncoming` from `events`.
 - `services.emitter` is built from `events`, and default-setup's seed actions typecheck against it.
 - `check:specifiers` rules (Decision 3).
@@ -192,7 +192,7 @@ Final.
 **Done when:**
 - No pack source (default-setup, fixture pack, example pack, CLI templates) matches the rejected patterns, and each new rule fails on a planted violation (mutation).
 - The code, browser, notes and memos flows pass their E2E and unit tests.
-- A seed action using `services.emitter.sendToPlugin` with a wrong event type fails typecheck.
+- A seed action using `services.emitter.broadcastToPlugin` with a wrong event type fails typecheck.
 
 ### Phase 3 — Observability and the action sandbox
 - `createLogger(source, { debug })`, `reportError`, `onLog` (Decision 5). Migrate the 4 `createInspectLogger` users, `reportSystemError` and `reportStepRuntimeError` callers, the logs system's subscription, and the 15 `console.*` backend files.

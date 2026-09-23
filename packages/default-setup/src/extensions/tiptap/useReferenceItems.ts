@@ -1,31 +1,18 @@
 import { computed, type Ref } from 'vue'
-import { useSelector } from '@xstate/vue'
-import { getEditorSystem } from '@abuddy/ui/components/tiptap/editor-system'
 import { CATEGORIES, ITEMS_PROVIDERS } from '@/__generated__/references'
-import type { ReferenceItem, CategoryItemsProvider } from '@abuddy/sdk/fe/references'
+import type { ReferenceItem } from '@abuddy/sdk/fe/references'
 
 export type ReferenceCategory = string
 export type { ReferenceItem }
 export { CATEGORIES }
 
-const providerMap = new Map<string, CategoryItemsProvider>(
-  ITEMS_PROVIDERS.map(p => [p.category, p])
-)
-
 export function useReferenceItems(category: Ref<string | null>, query: Ref<string>) {
-  const actorStates = new Map<string, any>()
-  for (const provider of ITEMS_PROVIDERS) {
-    const actor = getEditorSystem().get(provider.pluginId)
-    const state = useSelector(actor, (s: any) => s)
-    actorStates.set(provider.category, state)
-  }
+  // Each category's items, from the feature that owns them
+  const categoryItems = new Map(ITEMS_PROVIDERS.map((provider) => [provider.category, provider.useItems()] as const))
 
   const items = computed<ReferenceItem[]>(() => {
     if (!category.value) return []
-    const provider = providerMap.get(category.value)
-    if (!provider) return []
-    const state = actorStates.get(category.value)
-    const raw = provider.buildItems(state?.value)
+    const raw = categoryItems.get(category.value)?.value ?? []
 
     const q = query.value.toLowerCase()
     if (q) {

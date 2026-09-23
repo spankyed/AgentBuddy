@@ -4,8 +4,8 @@
 
 ```ts
 
-import type { AnyActorRef } from 'xstate';
 import type { Component } from 'vue';
+import type { Ref } from 'vue';
 
 // @public (undocumented)
 export interface CategoryConfig {
@@ -18,12 +18,10 @@ export interface CategoryConfig {
 }
 
 // @public
-export interface CategoryItemsProvider<TSnapshot = unknown> {
-    buildItems(snapshot: TSnapshot | undefined): ReferenceItem[];
+export interface CategoryItemsProvider {
     // (undocumented)
     category: string;
-    // (undocumented)
-    pluginId: string;
+    useItems(): Readonly<Ref<ReferenceItem[]>>;
 }
 
 // @public (undocumented)
@@ -44,8 +42,7 @@ export interface ReferenceTypeConfig {
     category: string;
     // (undocumented)
     icon: Component;
-    // (undocumented)
-    navigate: (system: PluginActorSystem, refId: string) => void;
+    navigate: (refId: string) => void;
     // (undocumented)
     plugin: string;
     // (undocumented)

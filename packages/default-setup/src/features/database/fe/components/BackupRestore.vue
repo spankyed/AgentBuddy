@@ -283,7 +283,8 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { ref, computed, watch, onMounted } from 'vue';
 import { useSelector } from '@xstate/vue';
 import {
@@ -311,9 +312,7 @@ import { id, type DatabaseState } from '../state';
 import { sendToSystem } from '@/__generated__/events';
 import ToastNotification from '@abuddy/ui/design/ToastNotification';
 
-const actorSystem = useActorSystem()
-
-const actor: DatabaseState = actorSystem.get(id);
+const actor: DatabaseState = usePlugin();
 
 // Get backup info from state
 const storedBackupInfo = useSelector(actor, (state) => state.context.backupInfo);

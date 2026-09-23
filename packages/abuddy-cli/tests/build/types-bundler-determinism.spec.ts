@@ -39,8 +39,8 @@ const PACK: Record<string, string> = {
     "import { setup } from 'xstate';",
     "import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';",
     "export type OutgoingTagsEvents = { type: 'TAG_ADDED'; name: string };",
-    "export const tagsSpec = defineSystem('tags')<{ type: 'ADD_TAG' }, OutgoingTagsEvents>();",
-    'const entry = { spec: tagsSpec, machine: setup({ types: tagsSpec.types }).createMachine({ id: tagsSpec.id }) } satisfies SystemEntry;',
+    "export const tagsSpec = defineSystem<{ type: 'ADD_TAG' }, OutgoingTagsEvents>();",
+    'const entry = { spec: tagsSpec, machine: setup({ types: tagsSpec.types }).createMachine({ id: "tags" }) } satisfies SystemEntry;',
     'export default entry;',
   ].join('\n'),
   // Inferred types that name SDK declarations: the declaration emit prints them from whichever copy resolved

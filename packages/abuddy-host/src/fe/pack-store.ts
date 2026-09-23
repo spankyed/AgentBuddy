@@ -4,33 +4,61 @@ import type { Plugin, PackFERegistration, TiptapPlugin, DslTypeConfig } from '@a
 import type { FePackRegistryView } from '@abuddy/sdk/runtime';
 import type { ArtifactDefinition } from '@abuddy/sdk/artifacts';
 import type { BlockDefinition } from '@abuddy/sdk/blocks';
-import { createDefinitionStore, createDesignationStore, createOwnedStore, createStepStore, createUndoLog } from '../packs/extensions.ts';
+import { addContributions, createDefinitionStore, createDesignationStore, createOwnedStore, createStepStore, definitions, type Contribution } from '../packs/extensions.ts';
+import { resolveName, type FeatureRef } from '@abuddy/sdk/ids';
 import { createAppExtensionSlots } from './app-extensions.ts';
+import { checkFeatureIds } from '../packs/feature-ids.ts';
 
 interface PackFEExtensions {
-  /** The plugins this pack added: not those skipped because another pack or the host has the id */
+  /** The plugins this pack added */
   plugins: Plugin[];
-  /**
-   * Everything it added, as the way to take it back out, recorded where each one is added.
-   *
-   * It was a field per kind of contribution, which made recording one compulsory and undoing it optional:
-   * a new kind added to the register path and forgotten in the unregister path leaked, with nothing saying
-   * so. The backend registry takes its pack's contributions back out the same way.
-   */
+  /** Takes back everything it added, as recorded where each part went in */
   undo: () => unknown;
 }
 
 /** The renderer's registered pack frontends */
 export interface FePackRegistry extends FePackRegistryView {
-  /** Registers a pack's frontend; without a pack id (the built-in packs') it can't be unregistered */
-  registerPackFE(registration: PackFERegistration, packId?: string): void;
+  /** Registers a pack's frontend, and returns its plugins as registered: each at its feature's ref */
+  registerPackFE(registration: PackFERegistration): Plugin[];
   /** Unregisters a pack's frontend; returns the plugins it had added */
   unregisterPackFE(packId: string): Plugin[];
   /** Every registered plugin, in registration order */
   getRegisteredPlugins(): Plugin[];
-  /** The first registered default plugin; throws when no pack registered one */
+  /** The plugin to open when the app starts: the first registered pack's that claims it; throws when none does */
   getRegisteredDefaultPlugin(): Plugin;
   getAppExtension(slot: string): ReturnType<FePackRegistryView['appExtension']>;
+}
+
+/**
+ * A registration addressed once: each plugin at its feature's ref, with its default claim, and each role at the ref of
+ * the feature that plays it, that feature's plugin or not
+ */
+type AddressedRegistration = PackFERegistration & {
+  addressed: Array<{ plugin: Plugin; default?: true }>;
+  roles: Record<string, FeatureRef>;
+};
+
+function addressed(registration: PackFERegistration): AddressedRegistration {
+  const features = Object.entries(registration.features ?? {});
+  return {
+    ...registration,
+    addressed: features.flatMap(([featureId, feature]) => feature.plugin
+      ? [{ plugin: { ...feature.plugin, id: resolveName(featureId, registration.id) } as Plugin, default: feature.default }]
+      : []),
+    roles: Object.fromEntries(features.flatMap(([featureId, { designation }]) =>
+      designation ? [[designation, resolveName(featureId, registration.id)]] : [])),
+  };
+}
+
+/** Pushes each of `items` onto `list`, recording how to take that item back out */
+function listed<T>(list: T[], items: readonly T[] | undefined, undo: (fn: () => void) => void): void {
+  for (const item of items ?? []) {
+    list.push(item);
+    undo(() => {
+      const idx = list.indexOf(item);
+      if (idx >= 0) list.splice(idx, 1);
+    });
+  }
 }
 
 /** A new, empty frontend registry */
@@ -39,8 +67,6 @@ export function createFePackRegistry(): FePackRegistry {
   let defaultPlugin: Plugin | undefined;
   const packExtensions = new Map<string, PackFEExtensions>();
   const designations = createDesignationStore();
-  /** The owner recorded for contributions that arrive without a pack id (the built-in packs') */
-  const BUILT_IN_OWNER = '<built-in>';
   const steps = createStepStore();
   const artifacts = createDefinitionStore<ArtifactDefinition>();
   const blocks = createDefinitionStore<BlockDefinition>();
@@ -48,100 +74,56 @@ export function createFePackRegistry(): FePackRegistry {
   const appExtensions = createAppExtensionSlots();
   const dslTypes = createOwnedStore<DslTypeConfig>();
 
-  function registerPackFE(registration: PackFERegistration, packId?: string): void {
-    if (packId && packExtensions.has(packId)) {
+  /** What a pack's frontend contributes, each kind recording how to take it back out (as the backend registry does) */
+  const contributions: ReadonlyArray<Contribution<AddressedRegistration>> = [
+    // First, so a role another pack plays refuses the pack before anything else of it is in, as the backend's does
+    (reg, undo) => {
+      designations.register(reg.roles);
+      undo(() => designations.unregister(reg.roles));
+    },
+    (reg, undo) => listed(allPlugins, reg.addressed.map(({ plugin }) => plugin), undo),
+    // The first pack to claim the default keeps it
+    (reg, undo) => {
+      const claim = reg.addressed.find((feature) => feature.default);
+      if (!claim || defaultPlugin) return;
+      defaultPlugin = claim.plugin;
+      undo(() => { defaultPlugin = undefined; });
+    },
+    (reg, undo) => listed(tiptapPlugins, reg.tiptapPlugins, undo),
+    (reg, undo) => {
+      for (const [slot, component] of Object.entries(reg.appExtensions ?? {})) {
+        appExtensions.register(slot, component, reg.id);
+        undo(() => appExtensions.unregister(slot, reg.id));
+      }
+    },
+    definitions(artifacts, (reg) => reg.artifacts),
+    definitions(blocks, (reg) => reg.blocks),
+    // Each step's components, loaded once, off the pack's own `fe` — the object every merged definition of the type
+    // hands out, since merging keeps the facet by reference. Loaded here, `loadComponents` (the pack's own code)
+    // can't run inside another pack's registration and fail it.
+    definitions(steps, (reg) => reg.steps, (step) => {
+      if (step.fe?.loadComponents && !step.fe.components) step.fe.components = step.fe.loadComponents();
+    }),
+    (reg, undo) => {
+      for (const [name, config] of Object.entries(reg.dslTypes ?? {})) {
+        dslTypes.set(name, config, reg.id);
+        undo(() => dslTypes.remove(name, reg.id));
+      }
+    },
+  ];
+
+  function registerPackFE(registration: PackFERegistration): Plugin[] {
+    const packId = registration.id;
+    if (packExtensions.has(packId)) {
       throw new Error(`Pack "${packId}" frontend is already registered`);
     }
-    const fromPack = packId ? ` from pack ${packId}` : '';
-    // A registration is all or nothing. What a pack contributes is registered as it is read, and some of it
-    // is the pack's own code — a step's `loadComponents` runs here — so a throw partway has to leave the
-    // registry as it found it. Without this the pack is half-registered with nothing recording what, so it
-    // can never be unregistered, and its plugins stay in the list for the life of the app.
-    const undos = createUndoLog();
-    const undo = undos.record;
-
-    try {
-      const registeredIds = new Set(allPlugins.map(p => p.id));
-      const plugins: Plugin[] = [];
-      for (const plugin of registration.plugins ?? []) {
-        if (registeredIds.has(plugin.id)) {
-          console.warn(`[pack-store] Plugin "${plugin.id}"${fromPack} ignored — a plugin with that id is already registered`);
-          continue;
-        }
-        registeredIds.add(plugin.id);
-        plugins.push(plugin);
-      }
-      allPlugins.push(...plugins);
-      undo(() => {
-        for (const plugin of plugins) {
-          const idx = allPlugins.indexOf(plugin);
-          if (idx >= 0) allPlugins.splice(idx, 1);
-        }
-      });
-
-      if (registration.defaultPlugin && !defaultPlugin) {
-        defaultPlugin = registration.defaultPlugin;
-        undo(() => { defaultPlugin = undefined; });
-      } else if (registration.defaultPlugin) {
-        console.warn(`[pack-store] defaultPlugin from pack ignored — already set`);
-      }
-
-      const roles: Record<string, string> = {};
-      for (const { id, designation } of plugins) {
-        if (!designation) continue;
-        if (designations.has(designation) || designation in roles) {
-          console.warn(`[pack-store] Designation "${designation}" of plugin "${id}"${fromPack} ignored — another plugin plays that role`);
-        } else {
-          roles[designation] = id;
-        }
-      }
-      designations.register(roles);
-      undo(() => designations.unregister(roles));
-
-      for (const plugin of registration.tiptapPlugins ?? []) {
-        tiptapPlugins.push(plugin);
-        undo(() => {
-          const idx = tiptapPlugins.indexOf(plugin);
-          if (idx >= 0) tiptapPlugins.splice(idx, 1);
-        });
-      }
-
-      // Built-in packs register without a pack id and are never unregistered, so they share one owner
-      const owner = packId ?? BUILT_IN_OWNER;
-      for (const [slot, component] of Object.entries(registration.appExtensions ?? {})) {
-        appExtensions.register(slot, component, owner);
-        undo(() => appExtensions.unregister(slot, owner));
-      }
-
-      for (const def of registration.artifacts ?? []) {
-        artifacts.register(def, owner);
-        undo(() => artifacts.unregister(def.type, owner));
-      }
-      for (const def of registration.blocks ?? []) {
-        blocks.register(def, owner);
-        undo(() => blocks.unregister(def.type, owner));
-      }
-
-      for (const step of registration.steps ?? []) {
-        steps.register(step, owner);
-        undo(() => steps.unregister(step.type, owner));
-        // Its components, loaded once, off the pack's own `fe` — which is the object every merged
-        // definition of the type hands out, since merging keeps the facet by reference. Loading them here
-        // rather than sweeping the registry afterwards is what keeps `loadComponents`, which is the pack's
-        // own code, from running inside another pack's registration and failing it.
-        if (step.fe?.loadComponents && !step.fe.components) step.fe.components = step.fe.loadComponents();
-      }
-
-      for (const [name, config] of Object.entries(registration.dslTypes ?? {})) {
-        dslTypes.set(name, config, owner);
-        undo(() => dslTypes.remove(name, owner));
-      }
-
-      if (packId) packExtensions.set(packId, { plugins, undo: undos.undoAll });
-    } catch (err) {
-      undos.undoAll();
-      throw err;
-    }
+    checkFeatureIds(packId, Object.keys(registration.features ?? {}));
+    // All or nothing: a throw partway (a step's `loadComponents`, a role collision) leaves the registry as it was
+    const reg = addressed(registration);
+    const undos = addContributions(reg, contributions);
+    const plugins = reg.addressed.map(({ plugin }) => plugin);
+    packExtensions.set(packId, { plugins, undo: undos.undoAll });
+    return plugins;
   }
 
   function unregisterPackFE(packId: string): Plugin[] {
@@ -159,7 +141,7 @@ export function createFePackRegistry(): FePackRegistry {
     getRegisteredPlugins: () => allPlugins,
     getRegisteredDefaultPlugin() {
       if (!defaultPlugin) {
-        throw new Error('No default plugin registered. Ensure at least one pack calls registerPackFE() with a defaultPlugin.');
+        throw new Error('No default plugin registered: no registered pack claims one (a feature with `default`)');
       }
       return defaultPlugin;
     },

@@ -59,3 +59,15 @@ it("keeps the stores a newer AgentBuddy's backup holds, so the view can ask, and
   actor.send({ type: 'BACKUP.IMPORT', path: '/backups/backup-1', skipUnknownDatabases: true });
   expect(sendToSystem).toHaveBeenCalledWith('database', { type: 'IMPORT_DATABASE', path: '/backups/backup-1', skipUnknownDatabases: true });
 });
+
+// The Database settings' "Reset database" sends DATABASE.RESET to the plugin, whichever view it has open
+it.each([
+  ['the explorer', () => createActor(databaseState).start()],
+  ['the backup view', backupView],
+])('asks the system to reset the database from %s', (_, open) => {
+  const actor = open();
+
+  actor.send({ type: 'DATABASE.RESET' });
+
+  expect(sendToSystem).toHaveBeenCalledWith('database', { type: 'RESET_DATABASE' });
+});

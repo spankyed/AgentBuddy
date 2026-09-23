@@ -1,15 +1,20 @@
 // A test app: the pack's registered systems under the app's bus core, with a client the test drives.
 import { createActor, type Actor, type AnyActorRef, type AnyStateMachine } from 'xstate';
-import { createBusMachine } from '@abuddy/host/bus';
+import { createBusMachine, HOST } from '@abuddy/host/bus';
+import { resolveRegistered } from '@abuddy/sdk/ids';
 import type { PackBootHooks } from '@abuddy/sdk/framework';
-import type { OutgoingSystemEvents } from '@abuddy/sdk/events';
+import type { Message } from '@abuddy/sdk/events';
 import { testRootEvents } from '@abuddy/sdk/testing';
 import { untypedQx } from '@abuddy/ears';
 import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
 import { ROOT_FLOW_ROLE } from '@abuddy/sdk/types';
 import { stepRegistry } from '@abuddy/sdk/steps';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
-export type { OutgoingSystemEvents };
+export type { Message };
+
+/** An event a plugin receives, exactly as the system that sent it wrote it */
+export type PluginEvent = Message['event'];
 
 export interface StartAppOptions {
   /**
@@ -52,10 +57,14 @@ export interface TestApp {
   connect(): Promise<void>;
   /** Sends a system an event, as a client's `sendToSystem` does (the pack's own by feature id, a dependency's as `<packId>/<featureId>`); the bus routes it whether or not a client connected */
   send(systemId: string, event: { type: string; [key: string]: unknown }): Promise<void>;
-  /** Events delivered to frontend plugins (by `emit` or `sendToPlugin`, once connected), in order; optionally one plugin's. Readable after `stop` */
-  emitted(pluginId?: string): OutgoingSystemEvents[];
-  /** The next event of `type` sent to `pluginId` that no earlier `nextEmit` returned, waiting for it if needed */
-  nextEmit(pluginId: string, type: string, options?: { timeoutMs?: number }): Promise<OutgoingSystemEvents>;
+  /**
+   * The events delivered to one frontend plugin (by `broadcastToPlugin`, once connected), in order, exactly as
+   * sent; the plugin named as the pack names it (its own by feature id, any other as `<packId>/<featureId>`).
+   * Readable after `stop`
+   */
+  emitted(plugin: string): PluginEvent[];
+  /** The next event of `type` sent to `plugin` (named as in `emitted`) that no earlier `nextEmit` returned, waiting for it if needed */
+  nextEmit(plugin: string, type: string, options?: { timeoutMs?: number }): Promise<PluginEvent>;
   /** Resolves once the actors have no queued work left (zero-delay raises and settled promises included) */
   settle(): Promise<void>;
   /**
@@ -66,7 +75,7 @@ export interface TestApp {
    * left only waiting. Without `event`, resolves with the entry tracks the flow ran when it started.
    *
    * It returns the tracks the event itself triggered. Tracks started by events those tracks send (a `fire` step,
-   * `sendToBrainSystem`) aren't in the result: `settle()` after it, then read them with `flowTrace`. It doesn't
+   * a `TRIGGER_BRAIN_EVENT` sent to the brain's role) aren't in the result: `settle()` after it, then read them with `flowTrace`. It doesn't
    * connect the app: flows run and report without a client, as they do in the app.
    */
   runFlow(label: string, options?: RunFlowOptions): Promise<FlowRun>;
@@ -86,14 +95,10 @@ export interface TestApp {
 /** What test apps read of the test file's registered packs (host's PackRegistry, which the published declarations can't name) */
 interface AppPacks {
   getBootHooks(): PackBootHooks[];
-  resolveSystemAddress(address: string): string | undefined;
   getRegisteredSystems(): Map<string, AnyStateMachine>;
   getRegisteredPackSystemIds(packId: string): string[];
-  /**
-   * What each plugin receives, so a test app drops a send no plugin declares, as the app does. `null` is
-   * a plugin whose pack declared no event types, whose sends pass unchecked (host's `PluginEventTypes`).
-   */
-  getPluginEventValidationMap(): Map<string, Set<string> | null>;
+  /** What each plugin receives, so a test app drops a send no plugin declares, as the app does */
+  getPluginEventValidationMap(): Map<string, Set<string>>;
   /**
    * Whether a plugin's pack is mid-replacement, so a send to it is an expected drop rather than a
    * mistake. A pack test replaces nothing, so the harness's registry always answers false.
@@ -129,7 +134,7 @@ export function stopRunningApps(): void {
   if (failures.length > 0) throw failures.length === 1 ? failures[0] : new AggregateError(failures, 'Stopping the test apps failed');
 }
 
-const describeError = (error: unknown) => error instanceof Error ? error.message : String(error);
+const describeError = (error: unknown) => errorMessage(error);
 
 /**
  * Runs each registered pack's `boot.onInit` in registration order (dependencies first), as the API does at boot
@@ -166,16 +171,16 @@ function shutDownPacks(): void {
   if (failures.length > 0) throw new Error(`A pack's boot.onShutdown failed when the test app stopped:\n  ${failures.join('\n  ')}`);
 }
 
+/** The registered system a name stands for, as the pack under test's `sendToSystem` resolves it */
+const resolveSystemId = (name: string, registered: ReadonlyMap<string, AnyStateMachine>): string =>
+  resolveRegistered('system', name, { packId, registered: [...registered.keys()] });
+
 /**
- * The registered system a name addresses, as `sendToSystem` names it: a dependency's (or any pack's) system as
- * `<packId>/<featureId>`, the pack's own by feature id. A full bus id is accepted too.
+ * The registered plugin a name stands for, as the pack under test's own `broadcastToPlugin` resolves it. A name no
+ * plugin is registered under throws at once, rather than leaving a wait for its events to time out.
  */
-function resolveSystemId(id: string, registered: ReadonlyMap<string, AnyStateMachine>): string {
-  const addressed = id.includes('/') ? packs().resolveSystemAddress(id) : packId && `${packId}.${id}`;
-  if (addressed && registered.has(addressed)) return addressed;
-  if (registered.has(id)) return id;
-  throw new Error(`No registered system is named "${id}". Registered: ${[...registered.keys()].join(', ') || 'none'} (name the pack's own systems by feature id and a dependency's as "<packId>/<featureId>"; pass the pack's registration to setupPackTests)`);
-}
+const resolvePluginId = (name: string): string =>
+  resolveRegistered('plugin', name, { packId, registered: [...packs().getPluginEventValidationMap().keys()] });
 
 /** One event loop turn, after zero-delay timers already queued (xstate's `raise(…, { delay: 0 })`) */
 const macrotask = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
@@ -183,11 +188,11 @@ const macrotask = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 /** The brain's trace node for the root flow (default-setup's brain repository) */
 const ROOT_FLOW_TNODE = 'TNode-Root';
 
-type TNodeSpawned = OutgoingSystemEvents & { type: 'TNODE_SPAWNED'; tNode: { id: string; label?: string; tNodeType?: string; eventType?: string }; flowTNodeId: string; eventTNodeId?: string };
-type TNodeUpdated = OutgoingSystemEvents & { type: 'TNODE_UPDATED'; data: { tNodeId: string; status: string } };
+type TNodeSpawned = PluginEvent & { type: 'TNODE_SPAWNED'; tNode: { id: string; label?: string; tNodeType?: string; eventType?: string }; flowTNodeId: string; eventTNodeId?: string };
+type TNodeUpdated = PluginEvent & { type: 'TNODE_UPDATED'; data: { tNodeId: string; status: string } };
 
-const isSpawn = (event: OutgoingSystemEvents): event is TNodeSpawned => event.type === 'TNODE_SPAWNED';
-const isUpdate = (event: OutgoingSystemEvents): event is TNodeUpdated => event.type === 'TNODE_UPDATED';
+const isSpawn = (event: PluginEvent): event is TNodeSpawned => event.type === 'TNODE_SPAWNED';
+const isUpdate = (event: PluginEvent): event is TNodeUpdated => event.type === 'TNODE_UPDATED';
 
 const readTNode = (id: string) => (untypedQx(id as never).pickAll() as Array<Record<string, unknown>>)[0];
 
@@ -212,7 +217,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
   const named = options.systems === '*' ? undefined : new Set(options.systems.map((id) => resolveSystemId(id, registered)));
   const systems = named ? new Map([...registered].filter(([id]) => named.has(id))) : registered;
 
-  const emitted: OutgoingSystemEvents[] = [];
+  const emitted: Message[] = [];
   const taken = new Set<number>();
   /** Pending waits for emitted events or trace reports: each checks again on every event, and ends when the app stops */
   const waits = new Set<{ attempt(): boolean; end(error: Error): void }>();
@@ -224,7 +229,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
   /** The label of the flow each reported trace node ran in, kept after the brain clears its trace */
   const flowLabels = new Map<string, string>();
   const rootFlowLabel = () => (untypedQx().withRole(ROOT_FLOW_ROLE).pickAll() as Array<{ label?: string }>)[0]?.label;
-  const record = (event: OutgoingSystemEvents) => {
+  const record = (event: PluginEvent) => {
     if (!isSpawn(event) && !isUpdate(event)) return;
     reports.push(event);
     const tNodeId = isSpawn(event) ? event.tNode.id : isUpdate(event) ? event.data.tNodeId : undefined;
@@ -247,8 +252,8 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
     wakeWaits();
   };
   const stopRecording = [
-    testRootEvents.onOutgoing((event) => {
-      emitted.push(event);
+    testRootEvents.onOutgoing((message) => {
+      emitted.push(message);
       wakeWaits();
     }),
   ];
@@ -280,18 +285,18 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       const unsubscribes = [
         testRootEvents.onConnected(() => send({ type: 'CLIENT_CONNECTED' })),
         testRootEvents.onPackClientConnected((id) => send({ type: 'PACK_CLIENT_CONNECTED', packId: id })),
-        testRootEvents.onIncoming((event) => send({ type: 'INCOMING', event })),
-        testRootEvents.onPluginSend((event) => send({ type: 'OUTGOING', event })),
+        testRootEvents.onIncoming((message) => send({ type: 'INCOMING', message })),
+        testRootEvents.onPluginSend((message) => send({ type: 'OUTGOING', message })),
       ];
       return () => unsubscribes.forEach((unsubscribe) => unsubscribe());
     },
   }), {
-    systemId: 'bus',
+    systemId: HOST.bus,
     inspect: (inspection) => {
       activity++;
       // What systems send the bus for clients, connected or not
-      if (inspection.type === '@xstate.event' && inspection.event.type === 'OUTGOING' && inspection.actorRef === (inspection.actorRef as AnyActorRef).system.get('bus')) {
-        record((inspection.event as unknown as { event: OutgoingSystemEvents }).event);
+      if (inspection.type === '@xstate.event' && inspection.event.type === 'OUTGOING' && inspection.actorRef === (inspection.actorRef as AnyActorRef).system.get(HOST.bus)) {
+        record((inspection.event as unknown as { message: Message }).message.event);
       }
     },
   });
@@ -351,24 +356,27 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       await settle();
     }),
     send: (systemId, event) => call(async () => {
-      testRootEvents.emitIncoming({ ...event, systemId: resolveSystemId(systemId, systems) });
+      testRootEvents.emitIncoming({ to: resolveSystemId(systemId, systems), event });
       await settle();
     }),
-    emitted(pluginId) {
-      return pluginId === undefined ? [...emitted] : emitted.filter((event) => event.pluginId === pluginId);
+    emitted(plugin) {
+      const id = resolvePluginId(plugin);
+      return emitted.filter((message) => message.to === id).map((message) => message.event);
     },
-    nextEmit: (pluginId, type, { timeoutMs = 5000 } = {}) => call(() => waitForEmitted(() => {
-      const index = emitted.findIndex((event, i) => !taken.has(i) && event.pluginId === pluginId && event.type === type);
-      if (index === -1) return undefined;
-      taken.add(index);
-      return emitted[index];
-    }, timeoutMs, () => `No ${type} sent to ${pluginId} within ${timeoutMs}ms. Sent: ${emitted.map((e) => `${e.pluginId}:${e.type}`).join(', ') || 'nothing'}.`)),
+    nextEmit: (plugin, type, { timeoutMs = 5000 } = {}) => call(async () => {
+      const id = resolvePluginId(plugin);
+      return waitForEmitted(() => {
+        const index = emitted.findIndex((message, i) => !taken.has(i) && message.to === id && message.event.type === type);
+        if (index === -1) return undefined;
+        taken.add(index);
+        return emitted[index].event;
+      }, timeoutMs, () => `No ${type} sent to ${id} within ${timeoutMs}ms. Sent: ${emitted.map((m) => `${m.to}:${m.event.type}`).join(', ') || 'nothing'}.`);
+    }),
     settle: () => call(() => settle()),
     runFlow: (label, { event, data, timeoutMs = 10_000 } = {}) => call(async () => {
       const brainId = hasDesignation('brain') ? getDesignated('brain') : undefined;
-      const settingsId = hasDesignation('settings') ? getDesignated('settings') : undefined;
-      if (!brainId || !settingsId || !systems.has(brainId) || !systems.has(settingsId)) {
-        throw new Error("runFlow runs flows on the brain: start the app with the brain and settings systems, startApp({ systems: ['brain', 'settings', …] })");
+      if (!brainId || !systems.has(brainId)) {
+        throw new Error("runFlow runs flows on the brain: start the app with the brain system, startApp({ systems: ['brain', …] })");
       }
       const flows = untypedQx('Flow' as never).pickAll() as Array<{ label?: string }>;
       if (!flows.some((flow) => flow.label === label)) {
@@ -391,7 +399,7 @@ export async function startApp(options: StartAppOptions): Promise<TestApp> {
       const since = () => reports.slice(cursor);
       const timedOut = () => `Flow "${label}" didn't finish "${eventType}" within ${timeoutMs}ms. Steps so far: ${since().filter(isSpawn).filter((e) => e.tNode.tNodeType !== 'event' && flowTNodeIds.includes(e.flowTNodeId)).map((e) => `${e.tNode.label} (${stepTrace(e, tNodeRows).status})`).join(', ') || 'none'}.`;
       if (event !== undefined) {
-        testRootEvents.emitIncoming({ type: 'TRIGGER_BRAIN_EVENT', eventType: event, payload: data, systemId: brainId });
+        testRootEvents.emitIncoming({ to: brainId, event: { type: 'TRIGGER_BRAIN_EVENT', eventType: event, payload: data } });
         await settle(deadline, timedOut);
       }
 

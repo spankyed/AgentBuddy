@@ -1,7 +1,8 @@
 import { setup, type ActorRefFrom, assign, log } from 'xstate';
 import { safeEvents } from '@abuddy/sdk/fe';
 import { sendToSystem } from '@/__generated__/events';
-import type { OutgoingLogsEvents } from '@/__generated__/types';
+import type { LogsSettings } from '@/__generated__/types';
+import type { OutgoingLogsEvents } from '@/features/logs/be/system';
 
 export const id = 'logs' as const;
 
@@ -32,7 +33,9 @@ type LogsEvents =
   | { type: 'SET_FILTER_LEVEL'; level: 'all' | 'debug' | 'info' | 'warn' | 'error' }
   | { type: 'SET_SEARCH'; search: string }
   | { type: 'CLEAR_LOGS' }
-  | OutgoingLogsEvents;
+  | OutgoingLogsEvents
+  // The app's, when the logs plugin's settings change; the canvas sends one itself to show a change at once
+  | { type: 'FEATURE_SETTINGS_UPDATED'; settings: LogsSettings };
 
 const typeOf = safeEvents<LogsEvents>();
 
@@ -88,7 +91,7 @@ const logsState = setup({
           type: 'REQUEST_LOGS_UPDATE',
         });
 
-        return typeOf('LOGS_SETTINGS_UPDATED', event).settings
+        return typeOf('FEATURE_SETTINGS_UPDATED', event).settings
       },
     }),
   },
@@ -130,7 +133,7 @@ const logsState = setup({
         CLEAR_LOGS: {
           actions: ['clearLogs', 'sendClearLogsToBackend'],
         },
-        LOGS_SETTINGS_UPDATED: {
+        FEATURE_SETTINGS_UPDATED: {
           actions: 'updateSettings',
         },
       },

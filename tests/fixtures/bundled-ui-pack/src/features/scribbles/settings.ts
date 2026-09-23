@@ -1,6 +1,6 @@
 export default {
+  visible: true,
   plugins: {
-    _meta: { visibility: { scribbles: true } },
     scribbles: {}
   }
 }

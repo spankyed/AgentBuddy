@@ -44,7 +44,7 @@ export type {
   PackFeatureEntry, PackBootConfig, SeedEntryConfig, SeedFormatConfig,
   StepEntry, StepDSLMeta,
 } from './manifest.ts';
-export { seedFile, seedPath, SEED_COMPILERS_FILE, PACK_TYPES_FORMAT, PROVENANCE_KINDS, _mergeProvenance, _buildProvenance, _provenanceRecord } from './manifest.ts';
+export { seedFile, seedPath, SEED_COMPILERS_FILE, PROVENANCE_KINDS, PACK_SNAPSHOT_FORMAT, _snapshotFormatMismatch, _cliFormatMismatchMessage, type SnapshotFormatMismatch, _mergeProvenance, _buildProvenance, _provenanceRecord } from './manifest.ts';
 
 // Flow DSL helpers (track builders)
 export { entry, on } from './flow-helpers.ts';
@@ -58,6 +58,7 @@ export {
   _depTypesFile, _depTypesVersion,
 } from './generate-entries.ts';
 export type { GenerateEntriesOptions } from './generate-entries.ts';
+export { _TYPES_UNRESOLVED } from './module-exports.ts';
 
 // Resolve conditions for building pack code against a linked checkout
 

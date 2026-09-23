@@ -1,5 +1,6 @@
 // The test runtime's stand-in for the registered packs: what a test puts in testPacks is found first, then what the
 // registry the runtime was started with holds
+import { resolveName } from '../../src/ids/index.ts';
 import { afterEach, describe, expect, it } from 'vitest';
 import { testPacks, testPacksView } from '../../src/testing/packs.ts';
 import type { PackRegistryView } from '../../src/runtime/packs-view.ts';
@@ -9,7 +10,7 @@ const step = (type: string, label: string) => ({ type, fe: { nodeConfig: { label
 const registeredNote = step('note', 'Registered');
 const registered: PackRegistryView = {
   ...testPacksView(),
-  designation: (role) => (role === 'brain' ? 'brain-system' : undefined),
+  designation: (role) => (role === 'brain' ? resolveName('test/brain') : undefined),
   step: (type) => (type === 'note' ? registeredNote : undefined),
   steps: () => [registeredNote],
   getRegisteredServices: () => ({ memos: 'registered' }),
@@ -21,7 +22,7 @@ afterEach(() => testPacks.clear());
 describe('testPacksView', () => {
   it("finds the registry's extensions when the test put none", () => {
     const view = testPacksView(registered);
-    expect(view.designation('brain')).toBe('brain-system');
+    expect(view.designation('brain')).toBe('test/brain');
     expect(view.steps()).toEqual([registeredNote]);
     expect(view.getRegisteredServices()).toEqual({ memos: 'registered' });
     expect(view.seeders('memo-pack').map((s) => s.key)).toEqual(['memos']);
@@ -64,7 +65,7 @@ describe('testPacksView', () => {
     const view = testPacksView();
     expect(view.steps()).toEqual([]);
     expect(view.designation('brain')).toBeUndefined();
-    expect(view.settingsDefaults()).toEqual({ revision: 0, settings: { plugins: {} } });
+    expect(view.settingsDefaults()).toEqual({ revision: 0, settings: { plugins: {} }, visibility: {} });
     expect(view.onSettingsDefaultsChanged(() => {})).toBeTypeOf('function');
   });
 });

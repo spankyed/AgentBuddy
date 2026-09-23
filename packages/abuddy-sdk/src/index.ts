@@ -15,5 +15,3 @@ export { ROOT_FLOW_ROLE } from './types/index.ts';
 // Designations
 export { getDesignated, hasDesignation } from './designations/index.ts';
 
-// System IDs
-export { bus } from './ids/index.ts';

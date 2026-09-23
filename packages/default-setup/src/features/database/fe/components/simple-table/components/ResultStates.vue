@@ -35,7 +35,7 @@ import { Database } from 'lucide-vue-next';
 
 interface Props {
   state: 'loading' | 'error' | 'no-results' | 'empty-array';
-  error?: string;
+  error?: string | null;
 }
 
 defineProps<Props>();

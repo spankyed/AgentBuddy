@@ -1,19 +1,19 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createEarsEngine, installEngine, installedEngine, repository } from '@abuddy/ears';
-import { getPackCommands, getPackSettingsDefaults, type PackRegistration, type PackSystemDef } from '@abuddy/sdk/framework';
+import { getPackCommands, getPackSettingsDefaults, type PackFeatureSystem, type PackRegistration } from '@abuddy/sdk/framework';
 import { artifactRegistry } from '@abuddy/sdk/artifacts';
 import { _seedHookRegistry } from '@abuddy/sdk/seed';
 import { SDK_ENTITIES } from '@abuddy/sdk/types';
 import { HOST_ENTITY_TYPES } from '../../src/app-state/index.ts';
 import { getDesignated, hasDesignation } from '@abuddy/sdk/designations';
 import { startTestRuntime } from '@abuddy/sdk/testing';
-import { createPackRegistry } from '../../src/packs/pack-registration.ts';
+import { createPackRegistry } from '../../src/packs/registry.ts';
 
 const registry = createPackRegistry();
 startTestRuntime({ packs: registry });
 const {
-  getPackExtensions, getRegisteredEARSPolicy, getRegisteredEntityTypes, getRegisteredServices,
-  registerPack, resolveSystemAddress, runRegisteredBootSeeds, unregisterPack,
+  getPackExtensions, partitionPolicy, getRegisteredEntityTypes, getRegisteredServices,
+  registerPack, systemIds, pluginIds, runRegisteredBootSeeds, unregisterPack,
 } = registry;
 
 const registered: string[] = [];
@@ -22,7 +22,7 @@ afterEach(() => {
 });
 
 function register(id: string, services: Record<string, unknown>): void {
-  registerPack({ id, systems: [], services } as unknown as PackRegistration);
+  registerPack({ id, services } as unknown as PackRegistration);
   registered.push(id);
 }
 
@@ -52,7 +52,7 @@ describe('registerPack repositories', () => {
     const engine = createEarsEngine({ isEntityType: () => false });
     installEngine(engine.query);
     const noteQueries = { all: () => [] };
-    registerPack({ id: 'repo-pack', systems: [], repositories: { noteQueries } });
+    registerPack({ id: 'repo-pack', repositories: { noteQueries } });
     registered.push('repo-pack');
     expect(engine.query.repository.noteQueries).toBe(noteQueries);
     expect(repository.noteQueries).toBe(noteQueries);
@@ -62,7 +62,7 @@ describe('registerPack repositories', () => {
   it('removes them when the pack is unregistered', () => {
     const engine = createEarsEngine({ isEntityType: () => false });
     installEngine(engine.query);
-    registerPack({ id: 'repo-pack', systems: [], repositories: { noteQueries: {} } });
+    registerPack({ id: 'repo-pack', repositories: { noteQueries: {} } });
 
     unregisterPack('repo-pack');
 
@@ -73,10 +73,10 @@ describe('registerPack repositories', () => {
     const engine = createEarsEngine({ isEntityType: () => false });
     installEngine(engine.query);
     const theirs = { name: 'theirs' };
-    registerPack({ id: 'first-pack', systems: [], repositories: { settingsQueries: theirs } });
+    registerPack({ id: 'first-pack', repositories: { settingsQueries: theirs } });
     registered.push('first-pack');
 
-    expect(() => registerPack({ id: 'second-pack', systems: [], repositories: { memoQueries: {}, settingsQueries: {} } }))
+    expect(() => registerPack({ id: 'second-pack', repositories: { memoQueries: {}, settingsQueries: {} } }))
       .toThrow('Repository collision: "settingsQueries" — pack "second-pack" vs "first-pack"');
     expect(engine.admin.repositories()).toEqual({ settingsQueries: theirs });
   });
@@ -84,73 +84,64 @@ describe('registerPack repositories', () => {
   it("removes a pack's repositories when a later part of its registration is refused", () => {
     const engine = createEarsEngine({ isEntityType: () => false });
     installEngine(engine.query);
-    registerPack({ id: 'first-pack', systems: [], commands: [{ name: 'standup', placeholder: 'Topic' }] } as unknown as PackRegistration);
+    registerPack({ id: 'first-pack', commands: [{ name: 'standup', placeholder: 'Topic' }] } as unknown as PackRegistration);
     registered.push('first-pack');
 
-    expect(() => registerPack({ id: 'second-pack', systems: [], repositories: { memoQueries: {} }, commands: [{ name: 'standup', placeholder: 'Theirs' }] } as unknown as PackRegistration))
+    expect(() => registerPack({ id: 'second-pack', repositories: { memoQueries: {} }, commands: [{ name: 'standup', placeholder: 'Theirs' }] } as unknown as PackRegistration))
       .toThrow('Command collision');
     expect(engine.admin.repositories()).toEqual({});
   });
 });
 
 describe('registerPack designations', () => {
-  const system = (id: string, designation?: string) => ({ id, machine: {} as unknown as PackSystemDef['machine'], events: new Set<string>(), designation });
-  const journal = { id: 'journal', designation: 'journal', hasSystem: true, hasPlugin: false, services: [] };
-  const registerDesignated = (id: string, systems: PackSystemDef[], extra: Partial<PackRegistration> = {}) => {
-    registerPack({ id, systems, features: [journal], ...extra } as PackRegistration);
+  const system: PackFeatureSystem = { machine: {} as PackFeatureSystem['machine'], receives: [] };
+  const registerDesignated = (id: string, journal: { system?: PackFeatureSystem } = { system }, extra: Partial<PackRegistration> = {}) => {
+    registerPack({ id, features: { journal: { designation: 'journal', ...journal } }, ...extra });
     registered.push(id);
   };
 
+  // Its system and plugin share the feature's address, so the role resolves to it whether it has a system, runs
+  // it early, or has none
   it.each([
-    ["an external pack's system", [system('ext.journal', 'journal')], 'ext.journal'],
-    ["a built-in pack's system", [system('journal', 'journal')], 'journal'],
-    ['the system the feature names, when it carries no designation', [system('ext.journal')], 'ext.journal'],
-    ['the feature id, when no registered system plays it (the early system)', [], 'journal'],
-  ])('resolves a role to %s', (_case, systems, expected) => {
-    registerDesignated('ext', systems);
-    expect(getDesignated('journal')).toBe(expected);
+    ['with a system', { system }],
+    ['with an early system', { system: { ...system, early: true as const } }],
+    ['without one', {}],
+  ])("resolves a role to the feature's address, %s", (_case, journal) => {
+    registerDesignated('ext', journal);
+    expect(getDesignated('journal')).toBe('ext/journal');
   });
 
   it('rejects a role another pack holds, registering none of the pack', () => {
-    registerDesignated('first', [system('first.journal', 'journal')]);
-    expect(() => registerDesignated('second', [system('second.journal', 'journal')], { services: { second: {} } }))
+    registerDesignated('first');
+    expect(() => registerDesignated('second', { system }, { services: { second: {} } }))
       .toThrow('Designation collision: role "journal" — pack "second" vs "first"');
-    expect(getDesignated('journal')).toBe('first.journal');
+    expect(getDesignated('journal')).toBe('first/journal');
     expect(getRegisteredServices()).not.toHaveProperty('second');
   });
 
   it("drops a pack's roles when it unregisters", () => {
-    registerDesignated('ext', [system('ext.journal', 'journal')]);
+    registerDesignated('ext');
     unregisterPack(registered.pop()!);
     expect(hasDesignation('journal')).toBe(false);
   });
 });
 
-describe('resolveSystemAddress', () => {
-  const systemDef = (id: string) => ({ id, machine: {} as unknown as PackSystemDef['machine'], events: new Set<string>() });
-  const registerSystems = (id: string, systemIds: string[]) => {
-    registerPack({ id, systems: systemIds.map(systemDef) } as unknown as PackRegistration);
-    registered.push(id);
-  };
+describe('registered addresses', () => {
+  it("lists every pack's systems and plugins at their refs", () => {
+    registerPack({ id: 'ext', features: { notes: { system: { machine: {} as PackFeatureSystem['machine'], receives: [] }, plugin: { receives: [] } } } });
+    registered.push('ext');
+    expect(systemIds()).toContain('ext/notes');
+    expect(pluginIds()).toContain('ext/notes');
 
-  it("resolves <packId>/<featureId> to the id the pack's system runs under", () => {
-    registerSystems('default-setup', ['notes']);
-    registerSystems('ext', ['ext.notes']);
-    expect(resolveSystemAddress('default-setup/notes')).toBe('notes');
-    expect(resolveSystemAddress('ext/notes')).toBe('ext.notes');
-  });
-
-  it('resolves nothing for an unregistered pack or feature, or a name without a pack', () => {
-    registerSystems('ext', ['ext.notes']);
-    for (const address of ['ext/tasks', 'other/notes', 'notes', 'ext.notes', '/notes']) {
-      expect(resolveSystemAddress(address)).toBeUndefined();
-    }
+    unregisterPack(registered.pop()!);
+    expect(systemIds()).not.toContain('ext/notes');
+    expect(pluginIds()).not.toContain('ext/notes');
   });
 });
 
 describe('registerPack entities', () => {
   const registerEntities = (id: string, entities: Record<string, string>, relKinds: Record<string, string> = {}) => {
-    registerPack({ id, systems: [], ears: { entities, relKinds } } as unknown as PackRegistration);
+    registerPack({ id, ears: { entities, relKinds } } as unknown as PackRegistration);
     registered.push(id);
   };
 
@@ -191,24 +182,27 @@ describe('registerPack entities', () => {
   });
 
   it('keeps TNode out of persistence without any pack asking', () => {
-    expect(getRegisteredEARSPolicy()).toEqual({ excludedEntityTypes: ['TNode'] });
+    expect(partitionPolicy.routeEntity('TNode-1', 'TNode')).toBe('volatileBackup');
+    expect(partitionPolicy.routeEntity('Note-1', 'Note')).toBe('primary');
   });
 });
 
 describe('registerPack feature settings', () => {
-  const memos = { id: 'memos', hasSystem: false, services: [], settings: { plugins: { _meta: { visibility: { memos: false } }, memos: { sort: 'newest' } } } };
+  const memos = { settings: { visible: false, plugins: { memos: { sort: 'newest' } } } };
 
   it("registers a pack's feature settings as defaults and drops them when it unregisters", () => {
-    registerPack({ id: 'memo-pack', systems: [], features: [memos] } as unknown as PackRegistration);
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { memos: { sort: 'newest' }, _meta: { visibility: { memos: false } } } });
+    registerPack({ id: 'memo-pack', features: { memos } });
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'memo-pack/memos': { sort: 'newest' } } });
+    expect(getPackSettingsDefaults().visibility).toEqual({ 'memo-pack/memos': false });
     unregisterPack('memo-pack');
     expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
+    expect(getPackSettingsDefaults().visibility).toEqual({});
   });
 
   it("rejects a pack whose feature settings change another plugin's, registering none of it", () => {
     const hooks = { ears: { entities: { Memo: 'Memo' }, relKinds: {} }, seedHooks: { Memo: {} } };
     const invalid = { ...memos, settings: { plugins: { threads: { hidden: true } } } };
-    expect(() => registerPack({ id: 'bad-pack', systems: [], ...hooks, features: [invalid] } as unknown as PackRegistration))
+    expect(() => registerPack({ id: 'bad-pack', ...hooks, features: { memos: invalid } } as unknown as PackRegistration))
       .toThrow('Feature "memos" settings set "plugins.threads"');
     expect(getPackExtensions('bad-pack')).toBeNull();
     expect(_seedHookRegistry.get('Memo')).toBeUndefined();
@@ -220,12 +214,11 @@ describe('registerPack seed hooks', () => {
   const memoHooks = { find: () => undefined };
 
   it('rejects hooks for an entity another pack owns, rolling back what the pack registered', () => {
-    registerPack({ id: 'memo-pack', systems: [], ears: { entities: { Memo: 'Memo' }, relKinds: {} }, seedHooks: { Memo: memoHooks } } as unknown as PackRegistration);
+    registerPack({ id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: {} }, seedHooks: { Memo: memoHooks } } as unknown as PackRegistration);
     registered.push('memo-pack');
 
     const other = {
       id: 'other-pack',
-      systems: [],
       ears: { entities: { Card: 'Card' }, relKinds: {} },
       artifacts: [{ type: 'card-view' }],
       commands: [{ name: 'card', placeholder: 'Title' }],
@@ -242,12 +235,12 @@ describe('registerPack seed hooks', () => {
   });
 
   it("drops a pack's hooks when it unregisters, freeing the entity for another pack", () => {
-    registerPack({ id: 'memo-pack', systems: [], ears: { entities: { Memo: 'Memo' }, relKinds: {} }, seedHooks: { Memo: memoHooks } } as unknown as PackRegistration);
+    registerPack({ id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: {} }, seedHooks: { Memo: memoHooks } } as unknown as PackRegistration);
     unregisterPack('memo-pack');
     expect(_seedHookRegistry.get('Memo')).toBeUndefined();
 
     const theirs = {};
-    registerPack({ id: 'other-pack', systems: [], seedHooks: { Memo: theirs } } as unknown as PackRegistration);
+    registerPack({ id: 'other-pack', seedHooks: { Memo: theirs } } as unknown as PackRegistration);
     registered.push('other-pack');
     expect(_seedHookRegistry.get('Memo')).toBe(theirs);
   });
@@ -257,17 +250,17 @@ describe('registerPack commands', () => {
   const commands = [{ name: 'standup', placeholder: 'Topic' }];
 
   it("registers a pack's declared commands and drops them when it unregisters", () => {
-    registerPack({ id: 'memo-pack', systems: [], commands } as unknown as PackRegistration);
+    registerPack({ id: 'memo-pack', commands } as unknown as PackRegistration);
     expect(getPackCommands()).toEqual(commands);
     unregisterPack('memo-pack');
     expect(getPackCommands()).toEqual([]);
   });
 
   it('rejects a command another pack declares, registering none of the pack', () => {
-    registerPack({ id: 'memo-pack', systems: [], commands } as unknown as PackRegistration);
+    registerPack({ id: 'memo-pack', commands } as unknown as PackRegistration);
     registered.push('memo-pack');
 
-    expect(() => registerPack({ id: 'other-pack', systems: [], steps: [], commands: [{ name: 'standup', placeholder: 'Theirs' }] } as unknown as PackRegistration))
+    expect(() => registerPack({ id: 'other-pack', steps: [], commands: [{ name: 'standup', placeholder: 'Theirs' }] } as unknown as PackRegistration))
       .toThrow('Command collision: "standup" — pack "other-pack" vs "memo-pack"');
 
     expect(getPackExtensions('other-pack')).toBeNull();
@@ -275,9 +268,9 @@ describe('registerPack commands', () => {
   });
 
   it("rolls its commands back when a later part of the registration is refused", () => {
-    const invalid = { id: 'memos', hasSystem: false, services: [], settings: { plugins: { threads: { hidden: true } } } };
+    const invalid = { settings: { plugins: { threads: { hidden: true } } } };
 
-    expect(() => registerPack({ id: 'bad-pack', systems: [], commands, features: [invalid] } as unknown as PackRegistration)).toThrow();
+    expect(() => registerPack({ id: 'bad-pack', commands, features: { memos: invalid } } as unknown as PackRegistration)).toThrow();
 
     expect(getPackCommands()).toEqual([]);
     expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
@@ -288,8 +281,8 @@ describe('runRegisteredBootSeeds', () => {
   it("seeds a pack's declarative seedManifest and ignores any other boot key", () => {
     const seedManifest = { seedKeys: ['actions'], compiledDir: '/compiled' };
     const smuggled = vi.fn();
-    registerPack({ id: 'built-in-pack', systems: [], boot: { seedManifest } } as unknown as PackRegistration);
-    registerPack({ id: 'hooks-pack', systems: [], boot: { onInit() {}, seed: smuggled } } as unknown as PackRegistration);
+    registerPack({ id: 'built-in-pack', boot: { seedManifest } } as unknown as PackRegistration);
+    registerPack({ id: 'hooks-pack', boot: { onInit() {}, seed: smuggled } } as unknown as PackRegistration);
     registered.push('built-in-pack', 'hooks-pack');
 
     const orchestrate = vi.fn();

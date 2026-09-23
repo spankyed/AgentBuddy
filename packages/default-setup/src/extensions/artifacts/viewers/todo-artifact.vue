@@ -98,12 +98,10 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem, getDesignated } from '@abuddy/sdk/fe'
+import { sendToPlugin } from '@/__generated__/events'
 import { ref, computed, watch } from 'vue';
 import { ListTodo, Check, X } from 'lucide-vue-next';
 import type { ArtifactItem } from '@abuddy/sdk/artifacts';
-
-const actorSystem = useActorSystem()
 
 interface TodoTask {
   id: string;
@@ -119,8 +117,6 @@ interface TodoContent {
 const props = defineProps<{
   artifact: ArtifactItem<Partial<TodoContent>>;
 }>();
-
-const threadsActor = actorSystem.get(getDesignated('threads'));
 
 // Use reactive data to allow local edits
 const todoData = ref<TodoContent>({
@@ -149,19 +145,12 @@ function updateTaskDescription(taskId: string, event: Event) {
 }
 
 function handleApprove() {
-  threadsActor.send({
-    type: 'APPROVE_TODO_LIST',
-    artifactId: props.artifact.id,
-    tasks: todoData.value.tasks
-  });
+  sendToPlugin('threads', { type: 'APPROVE_TODO_LIST', artifactId: props.artifact.id, tasks: todoData.value.tasks });
   todoData.value.status = 'approved';
 }
 
 function handleReject() {
-  threadsActor.send({
-    type: 'REJECT_TODO_LIST',
-    artifactId: props.artifact.id
-  });
+  sendToPlugin('threads', { type: 'REJECT_TODO_LIST', artifactId: props.artifact.id });
   todoData.value.status = 'rejected';
 }
 </script>

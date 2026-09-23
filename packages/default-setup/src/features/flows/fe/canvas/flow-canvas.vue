@@ -94,7 +94,8 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { computed, type Ref, ref, nextTick, watch, onMounted, onUnmounted } from 'vue'
 import { useVueFlow } from '@vue-flow/core'
 import type { Connection, NodeMouseEvent, Node as VueFlowNode, Edge, EdgeUpdateEvent, EdgeMouseEvent } from '@vue-flow/core'
@@ -121,8 +122,6 @@ import ConfirmationDialog from '@abuddy/ui/design/ConfirmationDialog'
 import ToastNotification from '@abuddy/ui/design/ToastNotification'
 import type { FlowEntity, EARS } from '@abuddy/sdk'
 
-const actorSystem = useActorSystem()
-
 const { project, fitView, addSelectedEdges, getEdges } = useVueFlow()
 
 // Dialog state
@@ -133,7 +132,7 @@ const targetFlow = ref<Partial<FlowEntity> | null>(null)
 /* ------------------------------------------------------------ */
 /*  reactive state from the actor                               */
 /* ------------------------------------------------------------ */
-const actor: FlowsState = actorSystem.get(id)
+const actor: FlowsState = usePlugin()
 
 const inListState = useSelector(actor, (s) => s.hasTag('list-flows'))
 const inViewState = useSelector(actor, (s) => s.hasTag('view-flow'))

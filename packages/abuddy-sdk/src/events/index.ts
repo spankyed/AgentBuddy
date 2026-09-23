@@ -3,20 +3,48 @@
 import { boundHost, _isHostBound } from '../runtime/host-runtime.ts';
 import { _isFeHostBound, boundFeHost } from '../runtime/fe-host.ts';
 import { getDesignated } from '../designations/index.ts';
-import type { EARS } from '../types/entities.ts';
+import { resolveName, type FeatureRef } from '../ids/refs.ts';
 import type { ApplicationHotkeys } from '../types/index.ts';
+import { eventTypes } from './event-types.ts';
+import type { SystemEvents } from '../framework/define-system.ts';
 
-/** An event for a backend system, as the bus receives it */
-export type IncomingSystemEvents = { type: string; systemId: string; [key: string]: unknown };
+export { eventTypes, type TypeOfEvent } from './event-types.ts';
 
-/** An event for a frontend plugin, as the bus sends it */
-export type OutgoingSystemEvents = { type: string; pluginId: string; [key: string]: unknown };
+/**
+ * A message on the bus: the ref of the system or plugin it goes to, and the event exactly as the sender wrote it.
+ * Where it goes is never a field of the event, so an event may carry any field (a `pluginId` of its own included).
+ * Messages sent in (`sendToSystem`) go to systems, and messages sent out (`broadcastToPlugin`) to plugins.
+ */
+export interface Message {
+  to: string;
+  event: { type: string; [key: string]: unknown };
+}
 
-/** Plugin id → the events that plugin receives. Each pack's `#generated/events` defines its `PackEvents`. */
-export type PluginEvents = { [pluginId: string]: { type: string } };
+/** A plugin's name → the events that plugin receives. Each pack's `#generated/events` defines its `SendablePluginEvents`. */
+export type PluginEvents = { [plugin: string]: { type: string } };
 
-/** System id → the events that system receives. Each pack's `#generated/events` defines its `PackSystemEvents`. */
-export type SystemEventMap = { [systemId: string]: { type: string } };
+/**
+ * What every plugin receives when its feature's settings change, so no pack declares it: the settings as they now
+ * apply. The feature's system gets the same event, with the changes (`SystemEvents`).
+ */
+export type FeatureSettingsUpdated = { type: 'FEATURE_SETTINGS_UPDATED'; settings: unknown };
+
+/** The event types every plugin receives from the app, beside those its pack's systems declare */
+export const PLUGIN_EVENT_TYPES = eventTypes<FeatureSettingsUpdated>()('FEATURE_SETTINGS_UPDATED');
+
+/** `M` keyed `<PackId>/<key>`: a pack's features by their refs */
+export type Qualified<PackId extends string, M> = { [K in keyof M & string as `${PackId}/${K}`]: M[K] };
+
+/**
+ * `M`, keyed by refs, as pack `PackId`'s code names its keys: its own features by feature id (their refs are for
+ * other packs), every other feature by ref
+ */
+export type WithOwnNames<PackId extends string, M> = {
+  [K in keyof M & string as K extends `${PackId}/${infer FeatureId}` ? FeatureId : K]: M[K]
+};
+
+/** A system's name → the events that system receives. Each pack's `#generated/events` defines its `PackSystemEvents`. */
+export type SystemEventMap = { [system: string]: { type: string } };
 
 /** Whether `T` is a union of several types */
 type IsUnion<T, U = T> = T extends unknown ? ([U] extends [T] ? false : true) : false;
@@ -30,98 +58,137 @@ type EventsOfType<E, Type> = E extends { type: infer T } ? (Type extends T ? E :
 /** Each member of `E` without `type`, keeping named fields beside an index signature (which `Omit` drops) */
 type WithoutType<E> = E extends unknown ? { [K in keyof E as K extends 'type' ? never : K]: E[K] } : never;
 
+/** The events under `Key` of a system's spec (`defineSystem`), or of its entry's spec (`satisfies SystemEntry`) */
+type SpecEvents<T, Key extends '_incoming' | '_outgoing'> = T extends { [K in Key]: infer Events }
+  ? Events
+  : T extends { spec: { [K in Key]: infer Events } }
+    ? Events
+    : never;
+
 /**
  * The events a system receives, from its spec (`defineSystem`) or its entry (a system module's default
  * export, declared with `satisfies SystemEntry` so the spec keeps its events).
  */
-export type IncomingEventsOf<T> = T extends { _incoming: infer Incoming }
-  ? Incoming
-  : T extends { spec: { _incoming: infer Incoming } }
-    ? Incoming
-    : never;
+export type IncomingEventsOf<T> = SpecEvents<T, '_incoming'>;
+
+/** The events a system sends to plugins, from its spec or its entry */
+export type OutgoingEventsOf<T> = SpecEvents<T, '_outgoing'>;
 
 /**
- * A system spec reduced to the events the system receives. Generated code declares each system's spec
+ * A system spec reduced to the events the system receives and sends. Generated code declares each system's spec
  * with it, so the facade types dependents compile against carry no system context or internals.
  */
-export function incomingEvents<S extends { _incoming: unknown }>(spec: S): { _incoming: S['_incoming'] } {
+export function specEvents<S extends { _incoming: unknown; _outgoing: unknown }>(spec: S): { _incoming: S['_incoming']; _outgoing: S['_outgoing'] } {
   return spec;
 }
 
 /**
- * Events the host app's own plugins receive from pack systems. A pack system declares a send to one
- * with `features[].system.sendsTo` in abuddy.json; `#generated/events` includes this map.
+ * Events the host app's own plugins receive from packs. The host declares them here, as a pack's plugin declares
+ * its own with `pluginAccepts()`; `#generated/events` includes this map, so any pack may send them.
  */
 export type HostPluginEvents = {
-  application:
-    // The app's own send after each client connection (`ApplicationConnectedEvent`, @abuddy/host/bus)
-    | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean }
+  'host/application':
+    // The app's own send after each client connection (`ApplicationConnectedEvent`, @abuddy/host/bus): whether
+    // the user onboarded, which plugins' tabs show, and the plugin the user last had open
+    | { type: 'CLIENT_CONNECTED'; hasOnboarded: boolean; pluginVisibility: Record<string, boolean>; lastActivePlugin?: string }
     | { type: 'APPLICATION_HOTKEYS'; hotkeys: ApplicationHotkeys }
-    | { type: 'APPLICATION_RESTORE_LAST_PLUGIN'; lastActivePluginId: string }
-    | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> };
+    // The app's own send when a plugin's tab is shown or hidden, or a pack's defaults change
+    | { type: 'PLUGIN_VISIBILITY_UPDATED'; pluginVisibility: Record<string, boolean> }
+    // The user finished onboarding: the shell leaves its onboarding layout
+    | { type: 'ONBOARDING_COMPLETE' }
+    // Opens a plugin, by its ref, in the app's main windows (a popout keeps the plugin it shows) and hands its actor
+    // `events`; the shell waits for a plugin whose pack's frontend is still loading
+    | { type: 'OPEN_PLUGIN'; plugin: string; events?: Array<{ type: string; [key: string]: unknown }> };
+  /**
+   * The app's Settings view. A pack sends it what only that pack can find out about its own things, for the view to
+   * show — the code feature's CLI resolution, for one. The settings themselves are the app's.
+   */
+  'host/settings':
+    | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string };
+};
+
+/** Events the host app's own systems receive from pack code, which names them `host/<feature>` */
+export type HostSystemEvents = {
+  // A pack whose data changed outside a pack change (its seeds imported) has the running systems read it again
+  'host/bus': { type: 'PACK_CHANGED'; packId: string };
 };
 
 /**
- * The host plugins a pack's system may name in `sendsTo`, as a value the build can read — the keys of
- * `HostPluginEvents`, which a type cannot be enumerated into at runtime. The check below fails to
- * compile if the two ever disagree, so adding a host plugin to one without the other is not possible.
+ * The event types the host's systems accept from pack code, which the app checks a client's send against as it checks
+ * a pack system's: from a frontend as from a backend
  */
-export const HOST_PLUGIN_IDS = ['application'] as const;
-
-type SameMembers<A extends string, B extends string> = [A] extends [B] ? ([B] extends [A] ? true : never) : never;
-const _hostPluginIdsMatchEvents: SameMembers<(typeof HOST_PLUGIN_IDS)[number], keyof HostPluginEvents> = true;
-void _hostPluginIdsMatchEvents;
+export const HOST_SYSTEM_EVENT_TYPES = {
+  'host/bus': eventTypes<HostSystemEvents['host/bus']>()('PACK_CHANGED'),
+} satisfies Record<keyof HostSystemEvents, readonly string[]>;
 
 /**
- * The event types each host plugin receives, as a value the app can check a send against — the same
- * problem `HOST_PLUGIN_IDS` solves, one level down: a union of event shapes cannot be enumerated at
- * runtime. A pack's own plugins get this generated from their systems' declared unions; the host's are
- * written here, and the check below fails to compile when they drift from `HostPluginEvents`.
+ * The event types each host plugin receives, as a value the app can check a send against and the build can
+ * read the host's plugins from. A pack's own plugins get this generated from their systems' specs.
  */
 export const HOST_PLUGIN_EVENT_TYPES = {
-  application: ['CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'APPLICATION_RESTORE_LAST_PLUGIN', 'PLUGIN_VISIBILITY_UPDATED'],
-} as const satisfies Record<keyof HostPluginEvents, readonly string[]>;
-
-type TypeOfEvent<T> = T extends { type: infer K extends string } ? K : never;
-const _hostPluginEventTypesMatch: {
-  [K in keyof HostPluginEvents]: SameMembers<(typeof HOST_PLUGIN_EVENT_TYPES)[K][number], TypeOfEvent<HostPluginEvents[K]>>
-} = { application: true };
-void _hostPluginEventTypesMatch;
+  'host/application': eventTypes<HostPluginEvents['host/application']>()('CLIENT_CONNECTED', 'APPLICATION_HOTKEYS', 'PLUGIN_VISIBILITY_UPDATED', 'ONBOARDING_COMPLETE', 'OPEN_PLUGIN'),
+  'host/settings': eventTypes<HostPluginEvents['host/settings']>()('CLI_TEST_RESULT'),
+} satisfies Record<keyof HostPluginEvents, readonly string[]>;
 
 /**
  * Delivers an event to a backend system: in the renderer over its API client, elsewhere onto the bound app's bus.
  * A bound frontend wins, as it does for the registered packs' lookups (`_boundPackExtensions`).
  */
-function sendIncoming(event: IncomingSystemEvents): void {
-  if (_isFeHostBound()) boundFeHost().transport.sendIncoming(event);
-  else if (_isHostBound()) boundHost().transport.rootEvents.emitIncoming(event);
+function sendIncoming(message: Message): void {
+  if (_isFeHostBound()) boundFeHost().client.send(message);
+  else if (_isHostBound()) boundHost().transport.rootEvents.emitIncoming(message);
   else throw new Error('No host is bound to send events through: call bindHost(runtime) (backend) or bindFeHost(runtime) (frontend) from @abuddy/sdk/runtime first');
 }
 
 /**
- * Wraps an event for a plugin, for a system to send to the bus (`system.get(bus).send(emit(…))`).
- * Untyped: packs use the `emit` from their `#generated/events`.
+ * Sends an event to a plugin through the bus, which delivers it once a client is connected — and to **every**
+ * window showing that plugin, since a plugin runs once per window. Backend only.
+ *
+ * That reach is the reason for the name. `sendToPlugin` beside it is the renderer's, and goes to one window's actor.
+ * A backend send that only one window should act on says so in the event, as the host's `OPEN_PLUGIN` does.
+ *
+ * Untyped: packs use the `broadcastToPlugin` from their `#generated/events`.
  */
-export function emit<P extends string, E extends { type: string }>(pluginId: P, event: E): { type: 'OUTGOING'; event: E & { pluginId: P } } {
-  return { type: 'OUTGOING', event: { ...event, pluginId } };
+export function broadcastToPlugin(to: string, event: { type: string; [key: string]: unknown }): void {
+  // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it is.
+  // Reaching for the other from here is the likely mistake, not a missing bindHost.
+  if (!_isHostBound() && _isFeHostBound()) {
+    throw new Error(`broadcastToPlugin("${to}") is the backend's, over the bus to every window. In the renderer, send to this window's plugin with sendToPlugin from #generated/events`);
+  }
+  boundHost().transport.rootEvents.emitPluginSend({ to, event });
 }
 
 /**
- * Sends an event to a frontend plugin through the bus, which delivers it once a client is connected (as `emit` in a
- * system). Backend only. Untyped: packs use the `sendToPlugin` from their `#generated/events`.
+ * @internal Sends an event to the plugin at `ref` in **this window**, straight to its actor — no bus, no other
+ * window. The renderer half of `sendToPlugin`, which `defineEvents` types per receiving plugin.
+ *
+ * A plugin runs once per window, so this is what UI coordination wants: the artifact opens where the user clicked.
+ *
+ * A send to a plugin that isn't running throws, where the bus's half reports a `diagnostic` and drops
+ * (`createBusMachine`'s `notify`). The asymmetry is the channel, not a choice: `reportError` sends its
+ * `SYSTEM_ERROR` over the backend bus, which no window has, so there is nothing here to report on. Throwing is
+ * what the renderer's other reads do (`pluginActor`, `usePluginState`). A ref that may legitimately be absent —
+ * another pack's, which may not be installed — is checked with `hasDesignation` before sending.
  */
-export function sendToPlugin(pluginId: string, event: { type: string; [key: string]: unknown }): void {
-  boundHost().transport.rootEvents.emitPluginSend({ ...event, pluginId });
+export function _sendToLocalPlugin(ref: string, event: { type: string; [key: string]: unknown }): void {
+  // The two sends share a signature, so the compiler can't tell a caller it picked the wrong one: say which it is.
+  if (!_isFeHostBound() && _isHostBound()) {
+    throw new Error(`sendToPlugin("${ref}") is the renderer's, to this window's plugin. On the backend, send over the bus with broadcastToPlugin from #generated/events`);
+  }
+  const actor = boundFeHost().application.system.get(ref);
+  if (!actor) throw new Error(`No plugin is running at "${ref}" to send ${event.type} to`);
+  actor.send(event);
 }
 
-/** Sends an event to a backend system. Untyped: packs use the `sendToSystem` from their `#generated/events`. */
-export function sendToSystem(systemId: string, event: { type: string; [key: string]: unknown }): void {
-  sendIncoming({ ...event, systemId });
-}
+/** A system: its ref, or the role a system plays (`{ role: 'brain' }`), found when the message is sent */
+export type SystemTarget = string | { role: string };
 
-/** Fires an event at every running flow, through the designated brain system */
-export function sendToBrainSystem(event: { eventType: string; payload?: unknown; targetFlowId?: EARS.EntityId }): void {
-  sendIncoming({ ...event, type: 'TRIGGER_BRAIN_EVENT', systemId: getDesignated('brain') });
+/**
+ * Sends an event to a backend system, by ref or by the role it plays. Untyped: packs use the `sendToSystem` from
+ * their `#generated/events`, which takes names and checks the event against what the system declares.
+ */
+export function sendToSystem(to: SystemTarget, event: { type: string; [key: string]: unknown }): void {
+  sendIncoming({ to: typeof to === 'string' ? to : getDesignated(to.role), event });
 }
 
 /** Calls `callback` each time a client connects; returns the unsubscribe (backend only) */
@@ -129,46 +196,46 @@ export function onConnected(callback: () => void): () => void {
   return boundHost().transport.rootEvents.onConnected(callback);
 }
 
-/** Calls `callback` with each event sent to a backend system; returns the unsubscribe (backend only) */
-export function onIncoming(callback: (event: IncomingSystemEvents) => void): () => void {
+/** Calls `callback` with each message sent to a backend system; returns the unsubscribe (backend only) */
+export function onIncoming(callback: (message: Message) => void): () => void {
   return boundHost().transport.rootEvents.onIncoming(callback);
 }
 
-/** `emit` typed against a plugin event map */
-export type TypedEmit<M extends PluginEvents> = <P extends keyof M & string>(
-  pluginId: P,
+/** `sendToPlugin` typed against a plugin event map; any feature's plugin, by its ref, takes what every plugin does */
+export type TypedSendToPlugin<M extends PluginEvents> = (<P extends keyof M & string>(
+  plugin: P,
   event: OneSend<IsUnion<P>, M[P]['type'], M[P]>,
-) => { type: 'OUTGOING'; event: M[P] & { pluginId: P } };
+) => void) & ((plugin: FeatureRef, event: FeatureSettingsUpdated) => void);
 
-/** `sendToPlugin` typed against a plugin event map */
-export type TypedSendToPlugin<M extends PluginEvents> = <P extends keyof M & string>(
-  pluginId: P,
-  event: OneSend<IsUnion<P>, M[P]['type'], M[P]>,
-) => void;
-
-/** `sendToSystem` typed against a system event map; `type` picks the event, so a missing field names it */
-export type TypedSendToSystem<S extends SystemEventMap> = <Id extends keyof S & string, Type extends S[Id]['type']>(
-  systemId: Id,
+/**
+ * `sendToSystem` typed against a system event map; `type` picks the event, so a missing field names it. A role
+ * (`{ role: 'brain' }`) names whichever system plays it, which the build can't know, so its event is unchecked. Any
+ * feature's system, named by its ref, takes the events every system does (`SystemEvents`).
+ */
+export type TypedSendToSystem<S extends SystemEventMap> = (<Id extends keyof S & string, Type extends S[Id]['type']>(
+  system: Id,
   event: OneSend<IsUnion<Id> | IsUnion<Type>, Type, { type: Type } & WithoutType<EventsOfType<S[Id], Type>>>,
-) => void;
+) => void) & ((target: { role: string }, event: { type: string; [key: string]: unknown }) => void) & ((system: FeatureRef, event: SystemEvents) => void);
 
 /** A pack's typed sends */
 export interface TypedEvents<P extends PluginEvents, S extends SystemEventMap> {
-  emit: TypedEmit<P>;
+  /** Backend: over the bus, to every window showing that plugin */
+  broadcastToPlugin: TypedSendToPlugin<P>;
+  /** Renderer: straight to this window's actor for that plugin */
   sendToPlugin: TypedSendToPlugin<P>;
   sendToSystem: TypedSendToSystem<S>;
 }
 
 /**
- * The sends `#generated/events` builds. `systemIds` maps each name the pack sends to (its own feature ids and
- * `<dependency>/<feature>`) to the id that system runs under.
+ * The sends `#generated/events` builds for pack `packId`. A pack names its own features by id and every other
+ * feature, the host's included, as `<packId>/<featureId>` (`@abuddy/sdk/ids`). The types reject a name nothing declares, and the app reports a
+ * send it has no receiver for.
  */
-export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(systemIds: Readonly<Record<string, string>>): TypedEvents<P, S> {
-  const send = (name: string, event: { type: string }) => {
-    if (!Object.prototype.hasOwnProperty.call(systemIds, name)) {
-      throw new Error(`No system is named "${name}": send to one of this pack's features, or a dependency's as "<dependency>/<feature>"`);
-    }
-    sendToSystem(systemIds[name], event);
-  };
-  return { emit, sendToPlugin, sendToSystem: send } as unknown as TypedEvents<P, S>;
+export function defineEvents<P extends PluginEvents, S extends SystemEventMap>(packId: string): TypedEvents<P, S> {
+  const refOf = (name: string): string => resolveName(name, packId);
+  return {
+    broadcastToPlugin: (name: string, event: { type: string }) => broadcastToPlugin(refOf(name), event),
+    sendToPlugin: (name: string, event: { type: string }) => _sendToLocalPlugin(refOf(name), event),
+    sendToSystem: (to: SystemTarget, event: { type: string }) => sendToSystem(typeof to === 'string' ? refOf(to) : to, event),
+  } as unknown as TypedEvents<P, S>;
 }

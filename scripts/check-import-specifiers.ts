@@ -177,8 +177,8 @@ function findInFiles(files: string[], root: string, rule: Rule): string[] {
   });
 }
 
-/** Sends packs get typed from #generated/events, whichever SDK module exports them untyped */
-const EVENT_SENDS = ['emit', 'sendToPlugin', 'sendToSystem'];
+/** Ref-taking sends packs get as name-taking ones from #generated/events, whichever SDK module exports them */
+const EVENT_SENDS = ['broadcastToPlugin', 'sendToPlugin', 'sendToSystem'];
 
 /** Imports and re-exports of the untyped sends (and the engine's repository registration), or all of @abuddy/sdk/events */
 const rawPackHelper: Rule = (node) => {
@@ -451,6 +451,90 @@ const SKIPPED_DIRS = /^(?:node_modules|dist|out|coverage|\..+)$/;
 /** Files a config compiles or bundles. Declarations included: tsc resolves their imports too */
 const CODE_FILE = /\.(?:[cm]?[jt]sx?|vue)$/;
 /** The extensions a relative config import may leave out */
+/**
+ * The pack sources whose features keep their frontends to themselves. `@abuddy/host` is one of them: the app is the
+ * pack `host`, its features are laid out as a pack's (`features/<id>/{be,fe}`), so its frontends answer to the same
+ * rule — the shell and the Packs feature reach each other through `fe/public.ts`, as a pack's features do.
+ */
+const PACK_SRC_ROOTS = [
+  'packages/default-setup/src', 'packages/abuddy-host/src',
+  'tests/fixtures/external-pack/src', 'tests/fixtures/bundled-ui-pack/src',
+];
+
+/** `export … from '…'`: a module passing another's exports on */
+const EXPORT_FROM = /\bexport\s+(?:type\s+)?(?:\*(?:\s+as\s+\w+)?|\{[^}]*\})\s*from\s*['"][^'"]+['"]/g;
+
+/** The local names an import statement binds (`import a, { b as c } from`, `import * as d from`) */
+function importedNames(statement: string): string[] {
+  const clause = /\bimport\s+(?:type\s+)?([\s\S]*?)\s*from\s*['"]/.exec(statement)?.[1] ?? '';
+  const names: string[] = [];
+  const braces = /\{([^}]*)\}/.exec(clause)?.[1];
+  for (const part of braces?.split(',') ?? []) {
+    const local = part.trim().replace(/^type\s+/, '').split(/\s+as\s+/).pop()?.trim();
+    if (local) names.push(local);
+  }
+  const outside = clause.replace(/\{[^}]*\}/, '');
+  const namespace = /\*\s+as\s+(\w+)/.exec(outside)?.[1];
+  if (namespace) names.push(namespace);
+  const fallback = /^\s*(\w+)/.exec(outside.replace(/\*\s+as\s+\w+/, ''))?.[1];
+  if (fallback && fallback !== 'type') names.push(fallback);
+  return names;
+}
+
+/** The local names a module exports without re-exporting from another (`export { a, b as c }`, `export default a`) */
+function exportedLocalNames(code: string): Set<string> {
+  const names = new Set<string>();
+  for (const m of code.matchAll(/\bexport\s+(?:type\s+)?\{([^}]*)\}(?!\s*from)/g)) {
+    for (const part of m[1].split(',')) {
+      const local = part.trim().replace(/^type\s+/, '').split(/\s+as\s+/)[0]?.trim();
+      if (local) names.add(local);
+    }
+  }
+  for (const m of code.matchAll(/\bexport\s+default\s+(\w+)\s*;?\s*$/gm)) names.add(m[1]);
+  return names;
+}
+
+/**
+ * `file:line: specifier` for each import of another feature's frontend other than its `fe/public` module. A feature
+ * reaches into no other feature's machine or components: what one offers the rest (its state as composables, the
+ * events it takes) is its `fe/public.ts`, so what crosses between features is written down in one place. A feature's
+ * modules outside its `fe/` may use its frontend but not pass it on (`export … from './fe/state'`), which would be a
+ * second door. Generated code, which registers every feature's plugin, is exempt.
+ */
+export function findCrossFeatureImports(srcRoots = PACK_SRC_ROOTS, root = repoRoot): string[] {
+  return srcRoots.flatMap((srcRoot) => {
+    const src = path.join(root, srcRoot);
+    const relative = (file: string) => path.relative(src, file).split(path.sep).join('/');
+    const featureOf = (file: string) => /^features\/([^/]+)\//.exec(relative(file))?.[1];
+    return packFiles([srcRoot], root).filter((file) => !relative(file).startsWith('__generated__')).flatMap((file) => {
+      const code = fs.readFileSync(file, 'utf-8');
+      // Where each `from` of a re-export starts, which is where ANY_SPECIFIER's match for it starts
+      const reExports = new Set([...code.matchAll(EXPORT_FROM)].map((m) => m.index + m[0].search(/from\s*['"][^'"]+['"]$/)));
+      const inOwnFrontend = /^features\/[^/]+\/fe\//.test(relative(file));
+      const exportedLocals = inOwnFrontend ? new Set<string>() : exportedLocalNames(code);
+      /** Whether the import whose specifier `match` is binds a name this module exports again: a re-export in two steps */
+      const passedOn = (match: RegExpMatchArray) => {
+        const end = match.index! + match[0].length + 1;
+        const statement = code.slice(code.lastIndexOf('import', match.index), end);
+        return importedNames(statement).some((name) => exportedLocals.has(name));
+      };
+      return [...code.matchAll(ANY_SPECIFIER)].flatMap((match) => {
+        const specifier = match[1];
+        const target = specifier.startsWith('@/') ? path.join(src, specifier.slice(2))
+          : specifier.startsWith('.') ? path.resolve(path.dirname(file), specifier) : undefined;
+        if (target === undefined) return [];
+        // The fe folder itself names its index, and `public` may be a file or a folder with an index
+        const into = /^features\/([^/]+)\/fe(?:\/(.+))?$/.exec(relative(target));
+        if (!into) return [];
+        const module = (into[2] ?? '').replace(/\.(ts|js)$/, '').replace(/(?:^|\/)index$/, '');
+        if (module === 'public') return [];
+        if (into[1] === featureOf(file) && (inOwnFrontend || (!reExports.has(match.index) && !passedOn(match)))) return [];
+        return [`${path.relative(root, file)}:${code.slice(0, match.index).split('\n').length}: ${specifier}`];
+      });
+    });
+  });
+}
+
 const CONFIG_EXTENSIONS = ['', '.ts', '.mts', '.cts', '.js', '.mjs', '.cjs'];
 /**
  * Vitest options that name files the config runs itself. A config with one of them compiles code of
@@ -981,9 +1065,9 @@ export function findCrossCheckoutResolution(root = repoRoot): string[] {
 if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])) {
   const checks: [find: () => string[], rule: string][] = [
     [findJsSpecifiers, 'Relative imports must name the TypeScript source (tsc and tsdown emit .js)'],
-    [findRawPackHelpers, 'Pack code uses the typed facades: emit, sendToPlugin and sendToSystem from #generated/events, repositories declared in abuddy.json'],
+    [findRawPackHelpers, 'Pack code uses the typed facades: broadcastToPlugin, sendToPlugin and sendToSystem from #generated/events, repositories declared in abuddy.json'],
     [findInternalPackageImports, "Pack code imports only the @abuddy packages' public API: an export named `_x` is @internal, the app's alone, and a pack that needs one asks for it to be made public"],
-    [findRawTransport, 'Pack code sends with sendToPlugin and sendToSystem from #generated/events, and subscribes with onConnected and onIncoming from @abuddy/sdk/events'],
+    [findRawTransport, 'Pack code sends with broadcastToPlugin, sendToPlugin and sendToSystem from #generated/events, and subscribes with onConnected and onIncoming from @abuddy/sdk/events'],
     [findPackBackendConsole, 'Pack backend code logs with createLogger from @abuddy/sdk/logger'],
     [findHostImports, "Pack code doesn't import the host's private @abuddy/host package; use @abuddy/sdk"],
     [findAppImportsInPackTests, 'Pack unit tests run on the harness (@abuddy/testing) without the app; test host, API and CLI code in its own package'],
@@ -991,6 +1075,7 @@ if (process.argv[1] && import.meta.filename === fs.realpathSync(process.argv[1])
     [findLmdbImports, "Only @abuddy/ears/lmdb loads lmdb: the host and the API open the store through it, the engine's root and packs never load it"],
     [findSharedPackageLists, 'Derive shared-instance packages from SHARED_INSTANCE_PACKAGES (@abuddy/host/build/shared-deps) instead of naming them'],
     [findRepositoryCasts, "Call a package's repositories through its exports, not a cast of the repository registry"],
+    [findCrossFeatureImports, "A feature's frontend is its own: other features and extensions import what it offers from its fe/public.ts, never its machine or components"],
     [findCrossCheckoutResolution, 'Workspace packages resolve inside this checkout, so a worktree nested in the repository never typechecks against the parent checkout'],
     [findMissingSourceConditions, "The repo's own configs declare the @abuddy/source condition when they compile or bundle code importing @abuddy/ears, @abuddy/sdk or @abuddy/ui, so they read TypeScript source instead of a stale dist; a pack's configs declare none, because a pack resolves the published dist"],
   ];

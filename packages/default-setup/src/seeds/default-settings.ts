@@ -1,4 +1,4 @@
-import type { SettingsData } from '@/features/settings/be/types'
+import type { SettingsData } from '@/app-settings/types'
 
 const settings: SettingsData = {
   general: {
@@ -8,16 +8,11 @@ const settings: SettingsData = {
         switchPluginUp: { key: 'ArrowUp', modifiers: ['cmd', 'option'] },
         switchPluginDown: { key: 'ArrowDown', modifiers: ['cmd', 'option'] },
         toggleInspectionPanel: { key: 'b', modifiers: ['cmd'] }
-      },
-      openLinksInApp: true
+      }
     },
     projects: []
   },
-  plugins: {
-    _meta: {
-      visibility: {}
-    },
-  },
+  plugins: {},
   assistant: {
     name: '',
     birthdate: null

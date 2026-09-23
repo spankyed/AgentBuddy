@@ -1,10 +1,11 @@
 // [SEARCH_INDEX_FF] The search index is dormant: ./search-index/README.md lists its call sites and how to turn it on
+import { services } from '@/__generated__/services';
 import { setup } from 'xstate'
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework'
 import type { EARS } from '@/__generated__/ears'
 import type { LibrarySystemContext, DocumentDTO, CollectionDTO, LibraryIndex, LibraryItem, FolderContents } from './types'
 // [SEARCH_INDEX_FF] import type { SearchIndex } from './search-index/types/search-index'
-import { bus } from '@abuddy/sdk/ids'
+import { sendToSystem, broadcastToPlugin } from '@/__generated__/events'
 import { repository } from '@/__generated__/repository';
 import * as path from 'path'
 import * as os from 'os'
@@ -16,8 +17,9 @@ import { toMap, toIdentifierSet, mapArray } from '@abuddy/sdk/utils'
 import { exportLibrary } from './export-library'
 import { importLibrary } from './import-library'
 import type { ContentSection } from '@/features/library/be/types';
-import type { CommandItem } from '@/features/settings/be/types';
-import { threads } from '@/__generated__/system-ids';
+import type { CommandItem } from '@/__generated__/types';
+import { ref } from '@/__generated__/ref';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 type IncomingLibraryEvents =
   | { type: 'CREATE_DOCUMENT'; name: string; content: ContentSection[]; tags: string[]; collectionId?: string }
@@ -75,11 +77,7 @@ export type OutgoingLibraryEvents =
   | { type: 'LIBRARY_EXPORTED'; filePath: string; itemCount: number }
   | { type: 'LIBRARY_EXPORT_FAILED'; errors: string[] }
 
-type LibraryInternalEvents =
-  | { type: 'LIBRARY_SETTINGS_UPDATED'; settings: any; changes?: any }
-
-export const librarySpec = defineSystem('library')<IncomingLibraryEvents | LibraryInternalEvents, OutgoingLibraryEvents, LibrarySystemContext>();
-export const library = librarySpec.id;
+export const librarySpec = defineSystem<IncomingLibraryEvents, OutgoingLibraryEvents, LibrarySystemContext>();
 
 function resolveHomePath(inputPath: string): string {
   const trimmed = inputPath.trim()
@@ -93,9 +91,9 @@ function resolveHomePath(inputPath: string): string {
  * commands folder, or the folder, was created, edited, moved, renamed, deleted or imported. `before` is the list from
  * before the change.
  */
-function notifyIfCommandsChanged(system: { get(id: string): { send(event: unknown): void } | undefined }, before: CommandItem[]): void {
+function notifyIfCommandsChanged(before: CommandItem[]): void {
   if (JSON.stringify(libraryService.commands()) === JSON.stringify(before)) return
-  system.get(threads)?.send({ type: 'COMMANDS_CHANGED' })
+  sendToSystem('threads', { type: 'COMMANDS_CHANGED' })
 }
 
 export const librarySystem = setup({
@@ -112,18 +110,12 @@ export const librarySystem = setup({
       })
       if (ev.collectionId && symlink.resolveSymlinkPath(ev.collectionId)) {
         const folderContents = await repository.libraryQueries.getFolderContents(ev.collectionId as EARS.EntityId)
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: { type: 'FOLDER_CONTENTS_LOADED' as const, pluginId: 'library', data: folderContents },
-        })
+        broadcastToPlugin('library', { type: 'FOLDER_CONTENTS_LOADED' as const, data: folderContents })
       } else {
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: { type: 'DOCUMENT_CREATED' as const, pluginId: 'library', data: { document } },
-        })
+        broadcastToPlugin('library', { type: 'DOCUMENT_CREATED' as const, data: { document } })
       }
 
-      notifyIfCommandsChanged(system, commandsBefore)
+      notifyIfCommandsChanged(commandsBefore)
     },
     updateDocument: async ({ system, event }) => {
       const commandsBefore = libraryService.commands()
@@ -134,51 +126,34 @@ export const librarySystem = setup({
         content: ev.content,
         tags: ev.tags,
       })
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: { type: 'DOCUMENT_UPDATED' as const, pluginId: 'library', data: { document } },
-      })
+      broadcastToPlugin('library', { type: 'DOCUMENT_UPDATED' as const, data: { document } })
 
-      notifyIfCommandsChanged(system, commandsBefore)
+      notifyIfCommandsChanged(commandsBefore)
     },
     deleteDocument: async ({ system, event }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'DELETE_DOCUMENT'; id: string }
       repository.libraryCommands.deleteDocument(ev.id as EARS.EntityId)
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
+      broadcastToPlugin('library', {
           type: 'DOCUMENT_DELETED' as const,
-          pluginId: 'library',
           data: { documentId: ev.id },
-        },
-      })
-      notifyIfCommandsChanged(system, commandsBefore)
+        })
+      notifyIfCommandsChanged(commandsBefore)
     },
     getDocument: async ({ system, event }) => {
       const ev = event as { type: 'GET_DOCUMENT'; id: string }
       const document = await libraryService.get(ev.id as EARS.EntityId)
       if (document) {
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: { type: 'DOCUMENT_LOADED' as const, pluginId: 'library', data: { document } },
-        })
+        broadcastToPlugin('library', { type: 'DOCUMENT_LOADED' as const, data: { document } })
       } else {
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: { type: 'LIBRARY_ERROR' as const, pluginId: 'library', data: { error: 'Document not found' } },
-        })
+        broadcastToPlugin('library', { type: 'LIBRARY_ERROR' as const, data: { error: 'Document not found' } })
       }
     },
     sendIndex: ({ system }) => {
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
+      broadcastToPlugin('library', {
           type: 'LIBRARY_INDEX_LOADED' as const,
-          pluginId: 'library',
           data: { index: repository.libraryQueries.getIndex() },
-        },
-      })
+        })
     },
     createCollection: async ({ system, event }) => {
       const ev = event as { type: 'CREATE_COLLECTION'; name: string; description?: string; parentId?: string }
@@ -189,20 +164,14 @@ export const librarySystem = setup({
           parentId: ev.parentId,
         })
         const folderContents = await repository.libraryQueries.getFolderContents(ev.parentId as EARS.EntityId)
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: { type: 'FOLDER_CONTENTS_LOADED' as const, pluginId: 'library', data: folderContents },
-        })
+        broadcastToPlugin('library', { type: 'FOLDER_CONTENTS_LOADED' as const, data: folderContents })
       } else {
         const collection = repository.libraryCommands.createCollection(
           ev.name,
           ev.description,
           ev.parentId ? ev.parentId as EARS.EntityId : undefined
         )
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: { type: 'COLLECTION_CREATED' as const, pluginId: 'library', data: { collection } },
-        })
+        broadcastToPlugin('library', { type: 'COLLECTION_CREATED' as const, data: { collection } })
       }
     },
     updateCollection: async ({ system, event }) => {
@@ -213,29 +182,21 @@ export const librarySystem = setup({
         ev.name,
         ev.description
       )
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
+      broadcastToPlugin('library', {
           type: 'COLLECTION_UPDATED' as const,
-          pluginId: 'library',
           data: { collection },
-        },
-      })
-      notifyIfCommandsChanged(system, commandsBefore)
+        })
+      notifyIfCommandsChanged(commandsBefore)
     },
     deleteCollection: async ({ system, event }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'DELETE_COLLECTION'; id: string }
       repository.libraryCommands.deleteCollection(ev.id as EARS.EntityId)
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
+      broadcastToPlugin('library', {
           type: 'COLLECTION_DELETED' as const,
-          pluginId: 'library',
           data: { collectionId: ev.id },
-        },
-      })
-      notifyIfCommandsChanged(system, commandsBefore)
+        })
+      notifyIfCommandsChanged(commandsBefore)
     },
     moveDocument: async ({ system, event }) => {
       const commandsBefore = libraryService.commands()
@@ -244,67 +205,47 @@ export const librarySystem = setup({
         ev.documentId as EARS.EntityId,
         ev.collectionId ? ev.collectionId as EARS.EntityId : undefined
       )
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
+      broadcastToPlugin('library', {
           type: 'DOCUMENT_UPDATED' as const,
-          pluginId: 'library',
           data: { document },
-        },
-      })
-      notifyIfCommandsChanged(system, commandsBefore)
+        })
+      notifyIfCommandsChanged(commandsBefore)
     },
     sendInitialData: async ({ system }) => {
       // Run migrations
       repository.libraryCommands.migrateDocumentShortCodes()
       repository.libraryCommands.migrateDisplayOrders()
 
-      const librarySettings = repository.settingsQueries.getPluginSettings('library')
+      const librarySettings = services.settings.forFeature(ref('library'))
 
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
+      broadcastToPlugin('library', {
           type: 'LIBRARY_CONNECTED' as const,
-          pluginId: 'library',
           data: {
             index: repository.libraryQueries.getIndex(),
             settings: librarySettings || null
           },
-        },
-      })
+        })
     },
     // File browser actions
     getFolderContents: async ({ system, event }) => {
       const ev = event as { type: 'GET_FOLDER_CONTENTS'; folderId: string | null }
       const folderContents = await repository.libraryQueries.getFolderContents(ev.folderId ? ev.folderId as EARS.EntityId : null)
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
+      broadcastToPlugin('library', {
           type: 'FOLDER_CONTENTS_LOADED' as const,
-          pluginId: 'library',
           data: folderContents,
-        },
-      })
+        })
     },
     navigateToFolder: async ({ system, event }) => {
       const ev = event as { type: 'NAVIGATE_TO_FOLDER'; folderId: string | null }
       const folderContents = await repository.libraryQueries.getFolderContents(ev.folderId ? ev.folderId as EARS.EntityId : null)
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
+      broadcastToPlugin('library', {
           type: 'FOLDER_CONTENTS_LOADED' as const,
-          pluginId: 'library',
           data: folderContents,
-        },
-      })
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
+        })
+      broadcastToPlugin('library', {
           type: 'NAVIGATION_CHANGED' as const,
-          pluginId: 'library',
           data: { folderId: ev.folderId, path: folderContents.currentPath },
-        },
-      })
+        })
     },
     renameItem: async ({ system, event }) => {
       const commandsBefore = libraryService.commands()
@@ -329,38 +270,26 @@ export const librarySystem = setup({
         const folderContents = await repository.libraryQueries.getFolderContents(
           parentFolderId ? parentFolderId as EARS.EntityId : null
         )
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: { type: 'FOLDER_CONTENTS_LOADED' as const, pluginId: 'library', data: folderContents },
-        })
+        broadcastToPlugin('library', { type: 'FOLDER_CONTENTS_LOADED' as const, data: folderContents })
       } else {
         const item = repository.libraryCommands.renameItem(ev.id as EARS.EntityId, ev.name, ev.itemType)
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: { type: 'ITEM_RENAMED' as const, pluginId: 'library', data: { item } },
-        })
+        broadcastToPlugin('library', { type: 'ITEM_RENAMED' as const, data: { item } })
       }
-      notifyIfCommandsChanged(system, commandsBefore)
+      notifyIfCommandsChanged(commandsBefore)
     },
     deleteItems: async ({ system, event }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'DELETE_ITEMS'; ids: string[] }
       await libraryService.remove(ev.ids)
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: { type: 'ITEMS_DELETED' as const, pluginId: 'library', data: { ids: ev.ids } },
-      })
-      notifyIfCommandsChanged(system, commandsBefore)
+      broadcastToPlugin('library', { type: 'ITEMS_DELETED' as const, data: { ids: ev.ids } })
+      notifyIfCommandsChanged(commandsBefore)
     },
     moveItems: async ({ system, event }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'MOVE_ITEMS'; ids: string[]; targetFolderId: string | null }
       await libraryService.move(ev.ids, ev.targetFolderId)
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: { type: 'ITEMS_MOVED' as const, pluginId: 'library', data: { ids: ev.ids, targetFolderId: ev.targetFolderId } },
-      })
-      notifyIfCommandsChanged(system, commandsBefore)
+      broadcastToPlugin('library', { type: 'ITEMS_MOVED' as const, data: { ids: ev.ids, targetFolderId: ev.targetFolderId } })
+      notifyIfCommandsChanged(commandsBefore)
     },
     // [SEARCH_INDEX_FF] Search index actions — commented out
     // listSearchIndices: async ({ system, event }) => {
@@ -369,14 +298,7 @@ export const librarySystem = setup({
     //   const indices = await searchIndexRepo.getSearchIndicesForFolder(
     //     ev.folderId ? ev.folderId as EARS.EntityId : null
     //   )
-    //   system.get(bus).send({
-    //     type: 'OUTGOING' as const,
-    //     event: {
-    //       type: 'SEARCH_INDICES_LOADED' as const,
-    //       pluginId: 'library',
-    //       data: { indices },
-    //     },
-    //   })
+    //   broadcastToPlugin('library', { type: 'SEARCH_INDICES_LOADED', data: { indices } })
     // },
     // createSearchIndex: async ({ system, event }) => {
     //   const ev = event as { type: 'CREATE_SEARCH_INDEX'; config: any; folderId: string | null }
@@ -385,14 +307,7 @@ export const librarySystem = setup({
     //     ev.config,
     //     ev.folderId ? ev.folderId as EARS.EntityId : null
     //   )
-    //   system.get(bus).send({
-    //     type: 'OUTGOING' as const,
-    //     event: {
-    //       type: 'SEARCH_INDEX_CREATED' as const,
-    //       pluginId: 'library',
-    //       data: { index },
-    //     },
-    //   })
+    //   broadcastToPlugin('library', { type: 'SEARCH_INDEX_CREATED', data: { index } })
     // },
     // updateSearchIndex: async ({ system, event }) => {
     //   const ev = event as { type: 'UPDATE_SEARCH_INDEX'; id: string; config: any }
@@ -401,27 +316,13 @@ export const librarySystem = setup({
     //     ev.id as EARS.EntityId,
     //     ev.config
     //   )
-    //   system.get(bus).send({
-    //     type: 'OUTGOING' as const,
-    //     event: {
-    //       type: 'SEARCH_INDEX_UPDATED' as const,
-    //       pluginId: 'library',
-    //       data: { index },
-    //     },
-    //   })
+    //   broadcastToPlugin('library', { type: 'SEARCH_INDEX_UPDATED', data: { index } })
     // },
     // deleteSearchIndex: async ({ system, event }) => {
     //   const ev = event as { type: 'DELETE_SEARCH_INDEX'; id: string }
     //   const searchIndexRepo = await import('./search-index/repository')
     //   await searchIndexRepo.deleteSearchIndex(ev.id as EARS.EntityId)
-    //   system.get(bus).send({
-    //     type: 'OUTGOING' as const,
-    //     event: {
-    //       type: 'SEARCH_INDEX_DELETED' as const,
-    //       pluginId: 'library',
-    //       data: { indexId: ev.id },
-    //     },
-    //   })
+    //   broadcastToPlugin('library', { type: 'SEARCH_INDEX_DELETED', data: { indexId: ev.id } })
     // },
     // searchInIndex: async ({ system, event }) => {
     //   const ev = event as { type: 'SEARCH_IN_INDEX'; indexId: string; query: string; limit?: number }
@@ -431,14 +332,7 @@ export const librarySystem = setup({
     //     ev.query,
     //     ev.limit
     //   )
-    //   system.get(bus).send({
-    //     type: 'OUTGOING' as const,
-    //     event: {
-    //       type: 'SEARCH_RESULTS' as const,
-    //       pluginId: 'library',
-    //       data: { results },
-    //     },
-    //   })
+    //   broadcastToPlugin('library', { type: 'SEARCH_RESULTS', data: { results } })
     // },
     // Symlink actions
     createSymlinkCollection: async ({ system, event }) => {
@@ -449,14 +343,10 @@ export const librarySystem = setup({
         resolvedPath,
         ev.parentId ? ev.parentId as EARS.EntityId : undefined
       )
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
+      broadcastToPlugin('library', {
           type: 'COLLECTION_CREATED' as const,
-          pluginId: 'library',
           data: { collection },
-        },
-      })
+        })
 
     },
     updateSymlinkPath: async ({ system, event }) => {
@@ -468,14 +358,10 @@ export const librarySystem = setup({
         const stat = await fs.stat(resolvedPath)
         if (!stat.isDirectory()) throw new Error('Not a directory')
       } catch {
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: {
+        broadcastToPlugin('library', {
             type: 'LIBRARY_ERROR' as const,
-            pluginId: 'library',
             data: { error: `Path does not exist: ${resolvedPath}` },
-          },
-        })
+          })
         return
       }
 
@@ -484,106 +370,75 @@ export const librarySystem = setup({
         resolvedPath
       )
 
-      system.get(bus).send({
-        type: 'OUTGOING' as const,
-        event: {
+      broadcastToPlugin('library', {
           type: 'SYMLINK_UPDATED' as const,
-          pluginId: 'library',
           data: { collection },
-        },
-      })
+        })
     },
     // Import/Export actions
     importLibraryItems: async ({ system, event }) => {
       const commandsBefore = libraryService.commands()
       const ev = event as { type: 'IMPORT_LIBRARY'; directory: string }
-      const pluginId = library
 
       try {
         const result = importLibrary(ev.directory)
 
         if (result.created === 0 && result.errors.length > 0) {
-          system.get(bus).send({
-            type: 'OUTGOING' as const,
-            event: {
+          broadcastToPlugin('library', {
               type: 'LIBRARY_IMPORT_FAILED' as const,
-              pluginId,
               errors: result.errors,
-            },
-          })
+            })
           return
         }
 
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: {
+        broadcastToPlugin('library', {
             type: 'LIBRARY_IMPORTED' as const,
-            pluginId,
             count: result.created,
             ...(result.errors.length > 0 ? { errors: result.errors } : {}),
-          },
-        })
+          })
 
         // Refresh library data
-        const librarySettings = repository.settingsQueries.getPluginSettings('library')
+        const librarySettings = services.settings.forFeature(ref('library'))
 
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: {
+        broadcastToPlugin('library', {
             type: 'LIBRARY_CONNECTED' as const,
-            pluginId,
             data: {
               index: repository.libraryQueries.getIndex(),
               settings: librarySettings || null,
             },
-          },
-        })
+          })
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: {
+        const message = errorMessage(err)
+        broadcastToPlugin('library', {
             type: 'LIBRARY_IMPORT_FAILED' as const,
-            pluginId,
             errors: [message],
-          },
-        })
+          })
       }
       // An import can fail part way, after creating documents
-      notifyIfCommandsChanged(system, commandsBefore)
+      notifyIfCommandsChanged(commandsBefore)
     },
     exportLibraryToFile: async ({ system, event }) => {
       const ev = event as { type: 'EXPORT_LIBRARY'; directory: string; format: 'markdown' | 'json' }
-      const pluginId = library
 
       try {
         const { filePath, itemCount } = exportLibrary(ev.directory, ev.format)
 
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: {
+        broadcastToPlugin('library', {
             type: 'LIBRARY_EXPORTED' as const,
-            pluginId,
             filePath,
             itemCount,
-          },
-        })
+          })
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err)
-        system.get(bus).send({
-          type: 'OUTGOING' as const,
-          event: {
+        const message = errorMessage(err)
+        broadcastToPlugin('library', {
             type: 'LIBRARY_EXPORT_FAILED' as const,
-            pluginId,
             errors: [message],
-          },
-        })
+          })
       }
     },
     handleSettingsUpdate: ({ system, event }) => {
-      const { changes } = librarySpec.typeOf('LIBRARY_SETTINGS_UPDATED', event)
-      // Handle nested changes format from detectAllArrayChanges
-      const tagChanges = changes?.tags || changes
+      const { changes } = librarySpec.typeOf('FEATURE_SETTINGS_UPDATED', event)
+      const tagChanges = changes?.tags
       
       if (!tagChanges) return
       
@@ -593,7 +448,6 @@ export const librarySystem = setup({
       
       if (!renames.size && !removed.size) return
       
-      const busSvc = system.get(bus)
       
       // Update all documents that have renamed or removed tags
       for (const doc of repository.libraryQueries.getAllDocuments()) {
@@ -603,21 +457,17 @@ export const librarySystem = setup({
           repository.libraryCommands.updateDocumentTags(doc.id, nextTags)
           const updated = repository.libraryQueries.getDocument(doc.id)
           if (updated) {
-            busSvc.send({
-              type: 'OUTGOING' as const,
-              event: {
+            broadcastToPlugin('library', {
                 type: 'DOCUMENT_UPDATED' as const,
-                pluginId: 'library',
                 data: { document: updated },
-              },
-            })
+              })
           }
         }
       }
     },
   },
 }).createMachine({
-  id: library,
+  id: 'library',
   initial: 'idle',
   context: ({ input }) => ({
     documents: [],
@@ -634,7 +484,7 @@ export const librarySystem = setup({
     PACK_CHANGED: {
       actions: ['sendInitialData'],
     },
-    LIBRARY_SETTINGS_UPDATED: {
+    FEATURE_SETTINGS_UPDATED: {
       actions: ['handleSettingsUpdate'],
     },
   },

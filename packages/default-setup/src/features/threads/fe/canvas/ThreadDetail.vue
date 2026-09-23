@@ -177,7 +177,8 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
+import { usePlugin } from '@abuddy/sdk/fe'
+
 import { ref, computed, nextTick } from 'vue'
 import { Plus, MessageSquare, Link } from 'lucide-vue-next'
 import Button from '@abuddy/ui/design/button'
@@ -192,9 +193,7 @@ import ThreadLinkInput from '@/features/threads/fe/canvas/components/link-thread
 import CollapsibleSection from '@abuddy/ui/design/CollapsibleSection'
 import TiptapEditor from '@abuddy/ui/components/tiptap/TiptapEditor'
 
-const actorSystem = useActorSystem()
-
-const actor: ThreadsState = actorSystem.get(id);
+const actor: ThreadsState = usePlugin();
 const mediaEntityId = crypto.randomUUID();
 
 // Mode derivation from state machine

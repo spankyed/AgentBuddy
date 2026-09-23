@@ -1,5 +1,5 @@
 <template>
-  <div class="flex items-center gap-0.5 px-2 py-1 bg-neutral-900 border-b border-neutral-800 overflow-x-auto scrollbar-hide">
+  <div data-testid="browser-bookmark-bar" class="flex items-center gap-0.5 px-2 py-1 bg-neutral-900 border-b border-neutral-800 overflow-x-auto scrollbar-hide">
     <ContextMenuRoot v-for="bookmark in bookmarks" :key="bookmark.url">
       <ContextMenuTrigger as-child>
         <button

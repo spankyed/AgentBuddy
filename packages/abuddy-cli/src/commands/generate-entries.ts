@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { createHash } from 'node:crypto';
 import type { PackTypeManifest, PackSnapshot } from '@abuddy/sdk/build';
-import { _depTypesFile, _depTypesVersion, generatePackFiles } from '@abuddy/sdk/build';
+import { _depTypesFile, _depTypesVersion, _TYPES_UNRESOLVED, generatePackFiles } from '@abuddy/sdk/build';
 import { findPackRoot, readValidManifest, sdkPackageDir, sdkVersion } from '../utils';
 import { resolveDeps } from './generate';
 
@@ -69,7 +69,6 @@ export async function generateEntries(
   packRoot?: string,
   depTypes?: Map<string, PackTypeManifest>,
   depSnapshots?: Map<string, PackSnapshot>,
-  depSources?: Map<string, string>,
 ) {
   const root = packRoot ?? findPackRoot(process.cwd());
   const outDir = path.join(root, 'src/__generated__');
@@ -82,7 +81,6 @@ export async function generateEntries(
     const resolved = await resolveDeps(root, manifest.dependencies);
     depTypes = resolved.depTypes;
     depSnapshots = resolved.depSnapshots;
-    depSources = resolved.depSources;
   }
   const currentHash = computeInputsHash(root, depSnapshots);
 
@@ -96,7 +94,7 @@ export async function generateEntries(
 
   fs.mkdirSync(outDir, { recursive: true });
 
-  const files = generatePackFiles(manifest, { packRoot: root, depTypes, depSnapshots, depSources });
+  const files = generatePackFiles(manifest, { packRoot: root, depTypes, depSnapshots });
 
   // Dependencies' facade types are rewritten from their snapshots each time
   fs.rmSync(path.join(outDir, 'deps'), { recursive: true, force: true });
@@ -119,5 +117,21 @@ export async function generateEntries(
   console.log('Generated:');
   for (const filePath of Object.keys(files)) {
     console.log(`  ${filePath}`);
+  }
+}
+
+/**
+ * Regenerates the entries after `abuddy add` wrote new files. Reading a system's events takes the pack's `@abuddy/sdk`,
+ * which a pack scaffolded moments ago may not have installed yet: then the scaffold stands, and the pack's `prepare`
+ * script regenerates the entries when `npm install` runs.
+ */
+export async function regenerateAfterScaffold(root: string): Promise<boolean> {
+  try {
+    await generateEntries([], root);
+    return true;
+  } catch (err) {
+    if ((err as { code?: string }).code !== _TYPES_UNRESOLVED) throw err;
+    console.log(`\n  src/__generated__/ not regenerated: ${(err as Error).message}. Run: npm install (it regenerates them)`);
+    return false;
   }
 }

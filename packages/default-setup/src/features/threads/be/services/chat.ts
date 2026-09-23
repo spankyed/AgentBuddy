@@ -1,4 +1,4 @@
-import { sendToPlugin } from '@/__generated__/events';
+import { broadcastToPlugin } from '@/__generated__/events';
 import { EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
 import type { BlockConfig, BlockResponse, MessageEntity, ThreadCreateData, MessageReferences } from '@/features/threads/be/types';
@@ -7,6 +7,7 @@ import { readMediaBuffer } from '@abuddy/sdk/utils';
 import * as threadsService from './threads';
 import { blockRegistry } from '@abuddy/sdk/blocks';
 import { createLogger } from '@abuddy/sdk/logger';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('chat');
 
@@ -79,7 +80,7 @@ export function sendBlockMessage(options: BlockMessageOptions): { messageId: EAR
   const result = createBlockMessage(options);
 
   // Emit granular event - only new message data (not entire thread)
-  sendToPlugin('threads', {
+  broadcastToPlugin('threads', {
     type: 'MESSAGE_ADDED',
     threadId: result.threadId,
     message: result.message
@@ -113,7 +114,7 @@ export function sendSystemMessage(options: {
     updatedAt: result.timestamp,
   };
 
-  sendToPlugin('threads', {
+  broadcastToPlugin('threads', {
     type: 'MESSAGE_ADDED',
     threadId,
     message,
@@ -261,12 +262,12 @@ export function updateMessageState(
       updates
     });
   } catch (err) {
-    logger.error(`updateMessageState failed for ${messageId}`, { error: err instanceof Error ? err.message : String(err) });
+    logger.error(`updateMessageState failed for ${messageId}`, { error: errorMessage(err) });
     return;
   }
 
   // Emit UPDATE_MESSAGE_STATE event to frontend with all updated fields
-  sendToPlugin('threads', {
+  broadcastToPlugin('threads', {
     type: 'UPDATE_MESSAGE_STATE',
     messageId: result.messageId,
     ...result.updates
@@ -284,7 +285,7 @@ export function createMarkerMessage(params: {
   const result = repository.chatCommands.createMarkerMessage(params);
 
   // Notify frontend: add the marker message
-  sendToPlugin('threads', {
+  broadcastToPlugin('threads', {
     type: 'MESSAGE_ADDED',
     threadId: params.threadId,
     message: {
@@ -297,7 +298,7 @@ export function createMarkerMessage(params: {
 
   // Notify frontend: mark each compacted message
   for (const id of result.compactedMessageIds) {
-    sendToPlugin('threads', {
+    broadcastToPlugin('threads', {
       type: 'UPDATE_MESSAGE_STATE',
       messageId: id,
       compacted: true,
@@ -350,7 +351,7 @@ export function createThreadAndNotify(
   const result = repository.threadCommands.create(options);
 
   // Notify threads plugin about new thread
-  sendToPlugin('threads', {
+  broadcastToPlugin('threads', {
     type: 'THREAD_CREATED',
     id: result.id,
     shortCode: result.shortCode,
@@ -391,7 +392,7 @@ export function openThreadChatAndRefreshRecent(threadId: EARS.EntityId, restore?
     throw new Error(`Thread ${threadId} not found`);
   }
 
-  sendToPlugin('threads', {
+  broadcastToPlugin('threads', {
     type: 'LOAD_CHAT_THREAD',
     data,
     ...(restore && { restore }),
@@ -424,7 +425,7 @@ export function openThreadTabAndRefresh(threadId: EARS.EntityId) {
   }
 
   // Send thread tab data
-  sendToPlugin('threads', {
+  broadcastToPlugin('threads', {
     type: 'THREAD_TAB_REQUESTED',
     threadId,
     topic: thread?.topic || `Thread ${threadId}`,
@@ -445,7 +446,7 @@ export function openThreadTabAndRefresh(threadId: EARS.EntityId) {
  * - Thread visits (updates lastVisitedTimestamp)
  */
 export function sendRecentThreadsRefresh() {
-  sendToPlugin('threads', {
+  broadcastToPlugin('threads', {
     type: 'REFRESH_RECENT_THREADS',
     data: repository.chatQueries.refreshThreadsData()
   });

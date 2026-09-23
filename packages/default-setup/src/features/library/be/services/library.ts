@@ -5,7 +5,7 @@ import { EARS } from '@/__generated__/ears';
 import { getPackCommands } from '@abuddy/sdk/framework';
 import * as symlink from '@/features/library/be/repository/symlink';
 import type { ContentSection, DocumentShortCode } from '@/features/library/be/types';
-import type { CommandItem } from '@/features/settings/be/types';
+import type { CommandItem } from '@/__generated__/types';
 
 
 // ---------------------------------------------------------------------------

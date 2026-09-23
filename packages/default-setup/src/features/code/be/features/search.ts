@@ -1,4 +1,4 @@
-import { sendToPlugin } from '@/__generated__/events';
+import { broadcastToPlugin } from '@/__generated__/events';
 import { assign, setup } from 'xstate'
 
 import { FileSystemRepository } from '../services/filesystem'
@@ -60,7 +60,7 @@ export const searchSystem = setup({
       }
 
       if (!context.repository) {
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'search.ERROR',
           data: { message: 'No directory selected. Please select a directory first.' }
         })
@@ -95,7 +95,7 @@ export const searchSystem = setup({
           // Progress callback
           (filesSearched, totalFiles, currentFile) => {
             if (!controller.signal.aborted) {
-              sendToPlugin(pluginId, {
+              broadcastToPlugin(pluginId, {
                 type: 'search.PROGRESS',
                 data: { filesSearched, totalFiles, currentFile }
               })
@@ -105,7 +105,7 @@ export const searchSystem = setup({
           (result) => {
             if (!controller.signal.aborted) {
               totalMatches += result.matches.length
-              sendToPlugin(pluginId, {
+              broadcastToPlugin(pluginId, {
                 type: 'search.RESULT',
                 data: result
               })
@@ -114,14 +114,14 @@ export const searchSystem = setup({
         )
 
         if (!controller.signal.aborted) {
-          sendToPlugin(pluginId, {
+          broadcastToPlugin(pluginId, {
             type: 'search.COMPLETE',
             data: { results, totalMatches }
           })
         }
       } catch (error: any) {
         if (!controller.signal.aborted) {
-          sendToPlugin(pluginId, {
+          broadcastToPlugin(pluginId, {
             type: 'search.ERROR',
             data: { message: error.message }
           })

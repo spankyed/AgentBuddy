@@ -4,8 +4,6 @@
 
 ```ts
 
-import { EARS as EARS_2 } from '@abuddy/ears';
-
 // @public
 export const API_HOST = "127.0.0.1";
 
@@ -25,6 +23,9 @@ export interface _AppDataPaths {
 export function _appDataPaths(userDataDir: string, input: {
     packaged: boolean;
 }): _AppDataPaths;
+
+// @public
+export type ArrayChanges = Record<string, DiffResult<DiffItem>>;
 
 // @public (undocumented)
 export function asArr<T>(v: MaybeArr<T>): readonly T[];
@@ -75,8 +76,11 @@ export function copyMediaByRef(refs: MediaRef[], outputDir: string): number;
 // @public (undocumented)
 export function createExportDir(parentDir: string, systemName: string): string;
 
+// @public
+export function deepMerge<T>(base: T, over: unknown): T;
+
 // @public (undocumented)
-export const detectAllArrayChanges: (prev: unknown, next: unknown) => Record<string, DiffResult<DiffItem>> | null;
+export const detectAllArrayChanges: (prev: unknown, next: unknown) => ArrayChanges | null;
 
 // @public (undocumented)
 export const detectChanges: <T>(prev: T[] | undefined, next: T[] | undefined, id: (x: T) => string, key: (x: T) => string) => DiffResult<T>;
@@ -96,6 +100,9 @@ export const ensureDirectoryExists: (dirPath: string) => void;
 
 // @public (undocumented)
 export const entries: <T extends Record<string, unknown>>(obj: T) => Array<[keyof T, T[keyof T]]>;
+
+// @public
+export function errorMessage(error: unknown): string;
 
 // @public
 export function escapeHtml(text: string): string;
@@ -132,6 +139,9 @@ export const getUserDataPath: () => string;
 
 // @internal
 export const _getVolatileLmdbPath: () => string;
+
+// @public
+export function hasOwn(object: object, key: PropertyKey): boolean;
 
 // @public
 export interface ImagePart {
@@ -243,26 +253,6 @@ export function restoreMarkdownMediaRefs(content: string, newEntityId: string, r
 
 // @public
 export function rewriteMediaUrls(markdown: string, mediaFilenameMap: Map<string, string>): string;
-
-// @public (undocumented)
-export function seedCollection<T>(opts: {
-    file: string;
-    label: string;
-    getKey: (item: T) => string;
-    findExisting: (item: T) => {
-        id: EARS.EntityId;
-    } | undefined;
-    create: (item: T) => void;
-    update: (id: EARS.EntityId, item: T) => void;
-    log: (...args: unknown[]) => void;
-    include?: SeedIncludeSet;
-    mode?: ImportMode;
-    wipe?: () => void;
-    getSourceHash?: (item: T) => string | undefined;
-    getExistingSourceHash?: (existing: {
-        id: EARS.EntityId;
-    }) => string | undefined;
-}): SeedCounts;
 
 // @public (undocumented)
 export interface SeedCounts {

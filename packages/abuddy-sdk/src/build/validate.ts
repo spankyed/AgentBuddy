@@ -52,6 +52,9 @@ export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 
       ['settings', feature.settings],
       ['system.entry', feature.system?.entry],
       ['plugin.entry', feature.plugin?.entry],
+      // Written without its extension, as codegen reads it. A typo here costs the feature its types in
+      // `#generated/types` and says nothing, which is worth a word at validate time
+      ['typesEntry', feature.typesEntry?.endsWith('.ts') === false ? `${feature.typesEntry}.ts` : feature.typesEntry],
     ];
     for (const [field, file] of files) {
       if (file !== undefined && !fs.existsSync(path.resolve(packRoot, file))) {

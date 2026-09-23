@@ -13,12 +13,12 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import { loadExternalPacks } from '../../../src/packs/runtime/loader.ts';
-import { getPacksWithClientLoadedFrontends } from '../../../src/packs/pack-layout.ts';
+import { getPacksWithClientLoadedFrontends } from '../../../src/packs/layout.ts';
 import type { LoadedPack } from '../../../src/packs/runtime/loader.ts';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 
-/** A loaded pack's system by feature id: the loader now completes each system's bus id (`<packId>.<featureId>`) */
-const systemOf = (pack: LoadedPack, featureId: string) =>
-  pack.registration.systems.find((s) => s.id === `${pack.origin.id}.${featureId}`)!;
+/** A loaded pack's system, by feature id */
+const systemOf = (pack: LoadedPack, featureId: string) => pack.registration.features?.[featureId]?.system;
 
 
 const USER_DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'pack-e2e-'));
@@ -52,6 +52,8 @@ function installTestPack() {
   fs.writeFileSync(path.join(TEST_PACK_DIR, 'integrity.json'), JSON.stringify({
     formatVersion: 1, id: TEST_PACK_ID, version: '1.0.0', files: {},
   }));
+  fs.mkdirSync(path.join(TEST_PACK_DIR, 'types'), { recursive: true });
+  fs.writeFileSync(path.join(TEST_PACK_DIR, 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
 
   // The pack's frontend, which the renderer loads from the installed pack
   fs.writeFileSync(path.join(TEST_PACK_DIR, 'runtime', 'fe.js'), 'export default { plugins: [] };');
@@ -85,8 +87,11 @@ function installTestPack() {
     module.exports = {
       registration: {
         id: '${TEST_PACK_ID}',
-        systems: [{ id: 'hello', machine: helloMachine, events: new Set(['CLIENT_CONNECTED']) }],
-        features: [{ id: 'hello', hasSystem: true, hasPlugin: true, services: [] }, { id: 'dataOnly', hasSystem: false, hasPlugin: true, services: [] }],
+        features: {
+          // As abuddy build writes it: the machine's events and the manifest's incoming ones
+          hello: { system: { machine: helloMachine, receives: ['CLIENT_CONNECTED', 'HELLO_PING'] }, plugin: { receives: [] } },
+          dataOnly: { plugin: { receives: [] } },
+        },
       },
     };
   `);
@@ -133,15 +138,8 @@ describe('E2E: pack loading pipeline', () => {
     expect(systemOf(testPack, 'hello')).toBeDefined();
 
     const system = systemOf(testPack, 'hello');
-    expect(system.machine).toBeDefined();
-    expect(system.machine.id).toBe('e2e-hello');
-  });
-
-  it('merges manifest-declared events into the system event set', () => {
-    const testPack = packs.find(p => p.origin.id === TEST_PACK_ID)!;
-    const system = systemOf(testPack, 'hello');
-
-    expect(system.events.has('HELLO_PING')).toBe(true);
+    expect(system?.machine).toBeDefined();
+    expect(system?.machine.id).toBe('e2e-hello');
   });
 
   it('registers no system for a feature that has only a plugin', () => {
@@ -158,7 +156,7 @@ describe('E2E: pack loading pipeline', () => {
 
   it('xstate machine from pack is functional (can create states)', () => {
     const testPack = packs.find(p => p.origin.id === TEST_PACK_ID)!;
-    const machine = systemOf(testPack, 'hello').machine;
+    const machine = systemOf(testPack, 'hello')!.machine;
 
     // Verify the machine has the expected structure
     expect(machine.config.initial).toBe('idle');

@@ -103,6 +103,9 @@ export function checkRecordEntities(key: string, format: SeedFormatConfig, recor
 // @internal
 export function _clearCompiledSeeds(outputDir: string): void;
 
+// @internal
+export function _cliFormatMismatchMessage(input: SnapshotFormatMismatch): string;
+
 // @public (undocumented)
 export interface CompilationContext {
     getCompiled<T = unknown>(key: string): T | undefined;
@@ -307,8 +310,6 @@ export const FeatureEntrySchema: z.ZodObject<{
     earlySystem: z.ZodOptional<z.ZodBoolean>;
     system: z.ZodOptional<z.ZodObject<{
         entry: z.ZodString;
-        outgoingEventsType: z.ZodOptional<z.ZodString>;
-        sendsTo: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
         events: z.ZodOptional<z.ZodObject<{
             incoming: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
         }, "strict", z.ZodTypeAny, {
@@ -318,15 +319,11 @@ export const FeatureEntrySchema: z.ZodObject<{
         }>>;
     }, "strict", z.ZodTypeAny, {
         entry: string;
-        outgoingEventsType?: string | undefined;
-        sendsTo?: string[] | undefined;
         events?: {
             incoming?: string[] | undefined;
         } | undefined;
     }, {
         entry: string;
-        outgoingEventsType?: string | undefined;
-        sendsTo?: string[] | undefined;
         events?: {
             incoming?: string[] | undefined;
         } | undefined;
@@ -346,42 +343,38 @@ export const FeatureEntrySchema: z.ZodObject<{
     references: z.ZodOptional<z.ZodString>;
 }, "strict", z.ZodTypeAny, {
     id: string;
-    designation?: string | undefined;
     settings?: string | undefined;
+    plugin?: {
+        entry: string;
+        default?: boolean | undefined;
+    } | undefined;
+    designation?: string | undefined;
     typesEntry?: string | undefined;
     earlySystem?: boolean | undefined;
     system?: {
         entry: string;
-        outgoingEventsType?: string | undefined;
-        sendsTo?: string[] | undefined;
         events?: {
             incoming?: string[] | undefined;
         } | undefined;
-    } | undefined;
-    plugin?: {
-        entry: string;
-        default?: boolean | undefined;
     } | undefined;
     services?: Record<string, string> | undefined;
     repositories?: Record<string, string> | undefined;
     references?: string | undefined;
 }, {
     id: string;
-    designation?: string | undefined;
     settings?: string | undefined;
+    plugin?: {
+        entry: string;
+        default?: boolean | undefined;
+    } | undefined;
+    designation?: string | undefined;
     typesEntry?: string | undefined;
     earlySystem?: boolean | undefined;
     system?: {
         entry: string;
-        outgoingEventsType?: string | undefined;
-        sendsTo?: string[] | undefined;
         events?: {
             incoming?: string[] | undefined;
         } | undefined;
-    } | undefined;
-    plugin?: {
-        entry: string;
-        default?: boolean | undefined;
     } | undefined;
     services?: Record<string, string> | undefined;
     repositories?: Record<string, string> | undefined;
@@ -411,7 +404,6 @@ export function formatEntities(format: SeedFormatConfig): string[];
 export interface GenerateEntriesOptions {
     // (undocumented)
     depSnapshots?: Map<string, PackSnapshot>;
-    depSources?: Map<string, string>;
     // (undocumented)
     depTypes?: Map<string, PackTypeManifest>;
     // (undocumented)
@@ -438,7 +430,7 @@ export function loadFlowsFromDir(flowsDir: string): Promise<{
 export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     $schema: z.ZodOptional<z.ZodString>;
     $manifestVersion: z.ZodOptional<z.ZodLiteral<1>>;
-    id: z.ZodString;
+    id: z.ZodEffects<z.ZodString, string, string>;
     name: z.ZodString;
     version: z.ZodString;
     builtIn: z.ZodOptional<z.ZodBoolean>;
@@ -474,8 +466,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         earlySystem: z.ZodOptional<z.ZodBoolean>;
         system: z.ZodOptional<z.ZodObject<{
             entry: z.ZodString;
-            outgoingEventsType: z.ZodOptional<z.ZodString>;
-            sendsTo: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
             events: z.ZodOptional<z.ZodObject<{
                 incoming: z.ZodOptional<z.ZodArray<z.ZodString, "many">>;
             }, "strict", z.ZodTypeAny, {
@@ -485,15 +475,11 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
             }>>;
         }, "strict", z.ZodTypeAny, {
             entry: string;
-            outgoingEventsType?: string | undefined;
-            sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
         }, {
             entry: string;
-            outgoingEventsType?: string | undefined;
-            sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
@@ -513,48 +499,46 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
         references: z.ZodOptional<z.ZodString>;
     }, "strict", z.ZodTypeAny, {
         id: string;
-        designation?: string | undefined;
         settings?: string | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
+        } | undefined;
+        designation?: string | undefined;
         typesEntry?: string | undefined;
         earlySystem?: boolean | undefined;
         system?: {
             entry: string;
-            outgoingEventsType?: string | undefined;
-            sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
-        } | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
     }, {
         id: string;
-        designation?: string | undefined;
         settings?: string | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
+        } | undefined;
+        designation?: string | undefined;
         typesEntry?: string | undefined;
         earlySystem?: boolean | undefined;
         system?: {
             entry: string;
-            outgoingEventsType?: string | undefined;
-            sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
-        } | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
     }>, "many">>;
     packServices: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
+    help: z.ZodOptional<z.ZodString>;
+    settingsSections: z.ZodOptional<z.ZodString>;
     commands: z.ZodOptional<z.ZodArray<z.ZodObject<{
         name: z.ZodString;
         placeholder: z.ZodString;
@@ -821,9 +805,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }>>>;
     seedHooks: z.ZodOptional<z.ZodRecord<z.ZodString, z.ZodString>>;
 }, "strict", z.ZodTypeAny, {
-    name: string;
     id: string;
+    name: string;
     version: string;
+    description?: string | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -834,7 +819,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
-    description?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -850,27 +834,27 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     features?: {
         id: string;
-        designation?: string | undefined;
         settings?: string | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
+        } | undefined;
+        designation?: string | undefined;
         typesEntry?: string | undefined;
         earlySystem?: boolean | undefined;
         system?: {
             entry: string;
-            outgoingEventsType?: string | undefined;
-            sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
-        } | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
     }[] | undefined;
     packServices?: Record<string, string> | undefined;
+    help?: string | undefined;
+    settingsSections?: string | undefined;
     commands?: {
         name: string;
         placeholder: string;
@@ -928,9 +912,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     seedHooks?: Record<string, string> | undefined;
 }, {
-    name: string;
     id: string;
+    name: string;
     version: string;
+    description?: string | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -941,7 +926,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
-    description?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -957,27 +941,27 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     features?: {
         id: string;
-        designation?: string | undefined;
         settings?: string | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
+        } | undefined;
+        designation?: string | undefined;
         typesEntry?: string | undefined;
         earlySystem?: boolean | undefined;
         system?: {
             entry: string;
-            outgoingEventsType?: string | undefined;
-            sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
-        } | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
     }[] | undefined;
     packServices?: Record<string, string> | undefined;
+    help?: string | undefined;
+    settingsSections?: string | undefined;
     commands?: {
         name: string;
         placeholder: string;
@@ -1035,9 +1019,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     seedHooks?: Record<string, string> | undefined;
 }>, {
-    name: string;
     id: string;
+    name: string;
     version: string;
+    description?: string | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -1048,7 +1033,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
-    description?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -1064,27 +1048,27 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     features?: {
         id: string;
-        designation?: string | undefined;
         settings?: string | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
+        } | undefined;
+        designation?: string | undefined;
         typesEntry?: string | undefined;
         earlySystem?: boolean | undefined;
         system?: {
             entry: string;
-            outgoingEventsType?: string | undefined;
-            sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
-        } | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
     }[] | undefined;
     packServices?: Record<string, string> | undefined;
+    help?: string | undefined;
+    settingsSections?: string | undefined;
     commands?: {
         name: string;
         placeholder: string;
@@ -1142,9 +1126,10 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     seedHooks?: Record<string, string> | undefined;
 }, {
-    name: string;
     id: string;
+    name: string;
     version: string;
+    description?: string | undefined;
     dsl?: Record<string, {
         entry: string;
         targets: "monaco"[];
@@ -1155,7 +1140,6 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     $schema?: string | undefined;
     $manifestVersion?: 1 | undefined;
     builtIn?: boolean | undefined;
-    description?: string | undefined;
     hostVersion?: string | undefined;
     license?: string | undefined;
     dependencies?: Record<string, string> | undefined;
@@ -1171,27 +1155,27 @@ export const ManifestSchema: z.ZodEffects<z.ZodObject<{
     }> | undefined;
     features?: {
         id: string;
-        designation?: string | undefined;
         settings?: string | undefined;
+        plugin?: {
+            entry: string;
+            default?: boolean | undefined;
+        } | undefined;
+        designation?: string | undefined;
         typesEntry?: string | undefined;
         earlySystem?: boolean | undefined;
         system?: {
             entry: string;
-            outgoingEventsType?: string | undefined;
-            sendsTo?: string[] | undefined;
             events?: {
                 incoming?: string[] | undefined;
             } | undefined;
-        } | undefined;
-        plugin?: {
-            entry: string;
-            default?: boolean | undefined;
         } | undefined;
         services?: Record<string, string> | undefined;
         repositories?: Record<string, string> | undefined;
         references?: string | undefined;
     }[] | undefined;
     packServices?: Record<string, string> | undefined;
+    help?: string | undefined;
+    settingsSections?: string | undefined;
     commands?: {
         name: string;
         placeholder: string;
@@ -1296,10 +1280,10 @@ depProvenance?: Map<string, PackProvenance>): {
 export function on(event: string, exits: DSLStepNode[][], label?: string): Track;
 
 // @public
-export const PACK_TYPES_DEF = "pack-types";
+export const PACK_SNAPSHOT_FORMAT = 1;
 
 // @public
-export const PACK_TYPES_FORMAT = 1;
+export const PACK_TYPES_DEF = "pack-types";
 
 // @public (undocumented)
 export type PackBootConfig = z.infer<typeof BootConfigSchema>;
@@ -1369,6 +1353,7 @@ export interface PackSnapshot {
     // (undocumented)
     defs: Record<string, string>;
     flowHelpers?: PackFlowHelpers;
+    format: number;
     // (undocumented)
     manifest: PackManifest;
     provenance?: PackProvenance;
@@ -1376,7 +1361,6 @@ export interface PackSnapshot {
     sdkVersion?: string;
     // (undocumented)
     types: PackTypeManifest;
-    typesFormat?: number;
 }
 
 // @public (undocumented)
@@ -1421,7 +1405,7 @@ export const PROVENANCE_KINDS: {
     readonly entities: (m: ProvenanceManifest) => string[];
     readonly relKinds: (m: ProvenanceManifest) => string[];
     readonly commands: (m: ProvenanceManifest) => string[];
-    readonly plugins: (m: ProvenanceManifest) => string[];
+    readonly plugins: (m: ProvenanceManifest, packId: string) => FeatureRef[];
 };
 
 // @public (undocumented)
@@ -1683,6 +1667,20 @@ export interface SeedRecord {
 // @public (undocumented)
 export type SeedTreeSpec = NonNullable<SeedFormatConfig['tree']>;
 
+// Warning: (ae-internal-missing-underscore) The name "SnapshotFormatMismatch" should be prefixed with an underscore because the declaration is marked as @internal
+//
+// @internal
+export interface SnapshotFormatMismatch {
+    newer: boolean;
+    problem: string;
+}
+
+// @internal
+export function _snapshotFormatMismatch(snapshot: {
+    format?: unknown;
+    sdkVersion?: string;
+}, readerFormat?: number): SnapshotFormatMismatch | undefined;
+
 // @public (undocumented)
 export function sourceHash(data: object): string;
 
@@ -1782,6 +1780,9 @@ export interface Track {
     // (undocumented)
     schedule?: string;
 }
+
+// @internal
+export const _TYPES_UNRESOLVED = "ABUDDY_TYPES_UNRESOLVED";
 
 // @public
 export function validateFeatures(packRoot: string, manifest: Pick<PackManifest, 'features'>): ManifestValidation;

@@ -185,16 +185,17 @@ import PanelResizer from '@abuddy/ui/layout/panel-resizer'
 import ImageLightbox from '@abuddy/ui/design/ImageLightbox'
 import ConfirmationDialog from '@abuddy/ui/design/ConfirmationDialog'
 import ScrollToBottomFob from '@abuddy/ui/design/ScrollToBottomFob'
-import { useActorSystem, useApplicationActor, navigateToPlugin } from '@abuddy/sdk/fe'
+import { usePlugin, useShell, updateSettings } from '@abuddy/sdk/fe'
+import { navigateToPlugin } from '@/__generated__/fe'
 import { useSelector } from '@xstate/vue'
 import { id, threadsFromStore, type ThreadsState } from '@/features/threads/fe/state';
 import type { AgentThreadData, MessageEntity, ThreadEntity, MessageReferences, QuickPrompt, AgentSettings } from '@/__generated__/types'
 import { sendToSystem } from '@/__generated__/events'
+import { ref as featureRef } from '@/__generated__/ref';
 
-const actorSystem = useActorSystem()
-const appActor = useApplicationActor()
-const actor: ThreadsState = actorSystem.get(id);
-const isOnboarding = useSelector(appActor, (s: any) => s.hasTag('onboarding'));
+const shell = useShell()
+const actor: ThreadsState = usePlugin();
+const isOnboarding = shell.isOnboarding;
 const allMessages = useSelector(actor, (state) => (state.context.currentThread?.messages || []) as MessageEntity[]);
 const visibleMessages = computed(() => allMessages.value.filter(m => !(m as any).compacted));
 const messagePagination = useSelector(actor, (state) => state.context.messagePagination);
@@ -218,7 +219,7 @@ function isTailMessage(msg: MessageEntity): boolean {
   return !msgs.slice(idx + 1).some(m => m.sender === 'user' && !m.status)
 }
 
-const currentThread = useSelector(actor, (state) => state.context.currentThread as AgentThreadData)
+const currentThread = useSelector(actor, (state) => state.context.currentThread)
 const recentThreadIds = useSelector(actor, (state) => state.context.recentThreadIds)
 const threadMap = useSelector(actor, (state) => state.context.threadMap)
 const recentThreads = computed(() => threadsFromStore(threadMap.value, recentThreadIds.value) as ThreadEntity[])
@@ -284,7 +285,7 @@ function handleDashboardResize(delta: number) {
   dashboardWidth.value = newPercent
 }
 
-const canvasHeight = useSelector(appActor, (state: any) => state.context.panelSizes.canvasHeight)
+const canvasHeight = computed(() => shell.panelSizes.value.canvasHeight)
 
 watch(canvasHeight, (height) => {
   if (height >= 93) {
@@ -298,7 +299,7 @@ const isNearBottom = ref(true)
 const pendingScrollOnSend = ref(false)
 const lightboxOpen = ref(false)
 const lightboxSrc = ref('')
-const settings = useSelector(actor, (state) => state.context.chatSettings as AgentSettings)
+const settings = useSelector(actor, (state) => state.context.chatSettings)
 const showRevertDialog = ref(false)
 const pendingRevertMessageId = ref<string | null>(null)
 const dontAskAgain = ref(false)
@@ -321,8 +322,8 @@ function forceScrollToBottom() {
 function handleStatuslineClick() {
   const cwd = statusLineCwd.value
   if (!cwd) return
-  navigateToPlugin('code')
-  actorSystem.get('explorer')?.send({ type: 'explorer.SET_BASE_DIRECTORY', path: cwd })
+  // The code plugin routes an explorer.* event to its explorer
+  navigateToPlugin('code', { type: 'explorer.SET_BASE_DIRECTORY', path: cwd })
 }
 
 function handleSendMessage(text: string, references?: MessageReferences) {
@@ -359,13 +360,7 @@ function onScroll() {
 }
 
 function updateThreadsSetting(path: string[], value: unknown) {
-  sendToSystem('settings', {
-    type: 'UPDATE_SETTINGS',
-    entityType: 'plugin',
-    label: 'threads',
-    path,
-    value,
-  })
+  updateSettings({ feature: featureRef('threads') }, path, value)
 }
 
 function openLightbox(src: string) {
@@ -374,10 +369,7 @@ function openLightbox(src: string) {
 }
 
 function expandChatIfCollapsed() {
-  const snapshot = appActor.getSnapshot();
-  if (snapshot.context.panelSizes.canvasHeight >= 93) {
-    appActor.send({ type: 'RESIZE_PANEL', panel: 'canvas', size: 50 });
-  }
+  if (shell.panelSizes.value.canvasHeight >= 93) shell.resizeCanvas(50);
 }
 
 function handleToggleInlineTabs() {
@@ -420,9 +412,7 @@ function handleToggleThreadSidebar() {
 function handleViewDashboard() {
   navigateToPlugin('threads', { type: 'VIEW_DASHBOARD' });
   // If canvas is collapsed (chat dominant), give it room to show the dashboard
-  if (appActor.getSnapshot().context.panelSizes.canvasHeight < 20) {
-    appActor.send({ type: 'RESIZE_PANEL', panel: 'canvas', size: 50 });
-  }
+  if (shell.panelSizes.value.canvasHeight < 20) shell.resizeCanvas(50);
 }
 
 function handleViewArtifacts(threadId: string) {
@@ -488,13 +478,7 @@ function confirmRevert() {
     else doRevert(pendingRevertMessageId.value)
   }
   if (dontAskAgain.value) {
-    sendToSystem('settings', {
-      type: 'UPDATE_SETTINGS',
-      entityType: 'plugin',
-      label: 'threads',
-      path: ['chat', 'skipRevertConfirm'],
-      value: true,
-    })
+    updateSettings({ feature: featureRef('threads') }, ['chat', 'skipRevertConfirm'], true)
   }
   pendingRevertMessageId.value = null
   dontAskAgain.value = false

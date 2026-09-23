@@ -1,11 +1,12 @@
 // The app a pack's systems, services and steps reach in unit tests, in memory: what the app binds at boot
 // (openAppStore() in api/src/setup/backend.ts), minus persistence, clients and the filesystem.
 import { EventEmitter } from 'node:events';
+import type { SettingsService } from '../services/settings.ts';
 import { bindHost, type HostRuntime } from '../runtime/host-runtime.ts';
 import type { PackRegistryView } from '../runtime/packs-view.ts';
 import { testPacksView } from './packs.ts';
 import type { RootEvents } from '../runtime/root-events.ts';
-import type { IncomingSystemEvents, OutgoingSystemEvents } from '../events/index.ts';
+import type { Message } from '../events/index.ts';
 import type { EarsEngine } from '@abuddy/ears';
 import type { EARS } from '../types/entities.ts';
 import type { LogEvent, SystemErrorEvent } from '../logger/index.ts';
@@ -30,15 +31,15 @@ class TestEventBus extends EventEmitter implements TestRootEvents {
   emitLog(event: LogEvent): void { this.emit('log', event); }
   emitConnected(): void { this.emit('connected'); }
   emitPackClientConnected(packId: string): void { this.emit('pack-connected', packId); }
-  emitIncoming(event: IncomingSystemEvents): void { this.emit('incoming', event); }
-  emitPluginSend(event: OutgoingSystemEvents): void { this.emit('plugin-send', event); }
-  emitOutgoing(event: OutgoingSystemEvents): void { this.emit('outgoing', event); }
+  emitIncoming(message: Message): void { this.emit('incoming', message); }
+  emitPluginSend(message: Message): void { this.emit('plugin-send', message); }
+  emitOutgoing(message: Message): void { this.emit('outgoing', message); }
   onLog(callback: (event: LogEvent) => void): () => void { return this.subscribe('log', callback); }
   onConnected(callback: () => void): () => void { return this.subscribe('connected', callback); }
   onPackClientConnected(callback: (packId: string) => void): () => void { return this.subscribe('pack-connected', callback); }
-  onIncoming(callback: (event: IncomingSystemEvents) => void): () => void { return this.subscribe('incoming', callback); }
-  onPluginSend(callback: (event: OutgoingSystemEvents) => void): () => void { return this.subscribe('plugin-send', callback); }
-  onOutgoing(callback: (event: OutgoingSystemEvents) => void): () => void { return this.subscribe('outgoing', callback); }
+  onIncoming(callback: (message: Message) => void): () => void { return this.subscribe('incoming', callback); }
+  onPluginSend(callback: (message: Message) => void): () => void { return this.subscribe('plugin-send', callback); }
+  onOutgoing(callback: (message: Message) => void): () => void { return this.subscribe('outgoing', callback); }
 }
 
 /** The in-memory app's bus (the SDK's internal `_rootEvents` once started) */
@@ -50,7 +51,7 @@ const systemErrors: SystemErrorEvent[] = [];
 testRootEvents.onLog((event) => {
   console[event.level](event.source ? `[${event.source}]` : '[test]', event.message, ...(event.meta === undefined ? [] : [event.meta]));
 });
-testRootEvents.onOutgoing((event) => {
+testRootEvents.onOutgoing(({ event }) => {
   if (event.type === 'SYSTEM_ERROR') systemErrors.push(event as unknown as SystemErrorEvent);
 });
 
@@ -103,6 +104,25 @@ const unmockedFilesystem = () => Promise.reject(new Error(
   "No disk access through services in unit tests: mock it with mockService('filesystem', { ... }) from @abuddy/testing/harness",
 ));
 
+/**
+ * The app's settings need the host's store, which the SDK doesn't have: `@abuddy/testing/harness` supplies the real
+ * one (it inlines @abuddy/host), so a test running on the SDK's runtime alone says so rather than reading a fake
+ * document that behaves almost like the app's.
+ */
+const unmockedSettings = () => {
+  throw new Error(
+    "The app's settings aren't available on the SDK's test runtime: run the test on @abuddy/testing/harness, which " +
+    "binds the host's settings store, or mock it with mockService('settings', { ... })",
+  );
+};
+
+const memorylessSettings: SettingsService = {
+  getAll: unmockedSettings, getStored: unmockedSettings, getSection: unmockedSettings, forFeature: unmockedSettings,
+  setForFeature: unmockedSettings, setInSection: unmockedSettings, replaceAll: unmockedSettings,
+  removeStored: unmockedSettings, reset: unmockedSettings, whileReplacingData: unmockedSettings,
+  onChange: unmockedSettings,
+};
+
 const unsupported = (name: string) => () => Promise.reject(new Error(`appData.${name} isn't supported in unit tests: there is no stored data to back up`));
 
 /** Reads the in-memory database: unit tests keep flow execution records (TNodes) there */
@@ -138,13 +158,15 @@ export interface TestRuntimeOptions {
   appVersion?: string;
   /** Backs `appData.hasOnboarded` and `completeOnboarding`; in memory by default, emptied with the database */
   onboarding?: TestOnboarding;
+  /** Backs `services.settings`; without one, reading or writing settings says to run on the harness */
+  settings?: SettingsService;
 }
 
 /**
  * Binds the in-memory app: `testRootEvents` as its bus, the in-memory engine, `testPacks` over `packs`, and the app's
  * services in memory.
  */
-export function bindTestRuntime({ engine, resetData, packs, appVersion = '0.0.0-test', onboarding = memoryOnboarding }: TestRuntimeOptions): HostRuntime {
+export function bindTestRuntime({ engine, resetData, packs, appVersion = '0.0.0-test', onboarding = memoryOnboarding, settings = memorylessSettings }: TestRuntimeOptions): HostRuntime {
   const runtime: HostRuntime = {
     transport: { rootEvents: testRootEvents },
     // The current engine: a reset replaces it
@@ -173,6 +195,7 @@ export function bindTestRuntime({ engine, resetData, packs, appVersion = '0.0.0-
         writeFile: unmockedFilesystem, readFile: unmockedFilesystem, exists: unmockedFilesystem, mkdir: unmockedFilesystem,
         readDir: unmockedFilesystem, remove: unmockedFilesystem, rename: unmockedFilesystem, stat: unmockedFilesystem,
       },
+      settings,
     },
   };
   bindHost(runtime);

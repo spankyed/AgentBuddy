@@ -1,5 +1,6 @@
 import { setup, assign, type ActorRefFrom } from 'xstate'
-import type { DocumentDTO, CollectionDTO, LibraryIndex, OutgoingLibraryEvents, LibraryItem, DocumentItem, FolderContents, BreadcrumbItem, SearchIndex } from '@/__generated__/types'
+import type { DocumentDTO, CollectionDTO, LibraryIndex, LibraryItem, DocumentItem, FolderContents, BreadcrumbItem, SearchIndex } from '@/__generated__/types'
+import type { OutgoingLibraryEvents } from '@/features/library/be/system'
 import type { SearchIndexFormData } from './types/search-index'
 import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
@@ -48,11 +49,12 @@ function findItemById(context: LibraryContext, id: string): LibraryItem | undefi
   return undefined
 }
 
-export const id = 'library' as const
+export const id = 'library' as const;
 import type { SnapshotFrom } from 'xstate'
 import type { ContentSection } from '@/features/library/be/types';
 
-export type LibraryState = SnapshotFrom<typeof librarySystem>
+/** The library plugin's actor, as its own components reach it with `usePlugin<LibraryActor>()` */
+export type LibraryActor = ActorRefFrom<typeof librarySystem>
 
 export interface LibraryContext {
   // Core view state

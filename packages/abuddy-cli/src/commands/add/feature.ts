@@ -1,14 +1,14 @@
 import { FEATURE_ID_PATTERN } from '@abuddy/sdk/build';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { generateEntries } from '../generate-entries';
+import { regenerateAfterScaffold } from '../generate-entries';
 import { scaffoldUnitTestSetup, type UnitTestSetup } from '../init';
 import { toPascalCase, toCamelCase, toLabel, writeIfNotExists, logCreated, parseFlag, hasFlag } from './templates';
 import { readManifest, writeManifest, addFeature as addFeatureToManifest } from './manifest';
 
 const SETTINGS = (id: string) => `export default {
+  visible: true,
   plugins: {
-    _meta: { visibility: { ${id}: true } },
     ${id}: {}
   }
 }
@@ -16,9 +16,8 @@ const SETTINGS = (id: string) => `export default {
 
 const SYSTEM = (name: string, camel: string, pascal: string) => `import { setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
-import { bus } from '@abuddy/sdk/ids';
-// emit is typed with the events each of this pack's plugins receives
-import { emit } from '#generated/events';
+// broadcastToPlugin is typed with the events each of this pack's plugins receives
+import { broadcastToPlugin } from '#generated/events';
 
 type Incoming${pascal}Events =
   | { type: 'CLIENT_CONNECTED' };
@@ -26,21 +25,20 @@ type Incoming${pascal}Events =
 export type Outgoing${pascal}Events =
   | { type: '${name.toUpperCase().replace(/-/g, '_')}_CONNECTED'; data: Record<string, unknown> };
 
-export const ${camel}Spec = defineSystem('${name}')<Incoming${pascal}Events, Outgoing${pascal}Events>();
-export const ${camel} = ${camel}Spec.id;
+export const ${camel}Spec = defineSystem<Incoming${pascal}Events, Outgoing${pascal}Events>();
 
 export const ${camel}System = setup({
   types: ${camel}Spec.types,
   actions: {
-    sendConnectedData: ({ system }) => {
-      system.get(bus).send(emit(${camel}, {
+    sendConnectedData: () => {
+      broadcastToPlugin('${name}', {
         type: '${name.toUpperCase().replace(/-/g, '_')}_CONNECTED',
         data: {},
-      }));
+      });
     },
   },
 }).createMachine({
-  id: ${camel},
+  id: '${name}',
   initial: 'idle',
   states: {
     idle: {
@@ -85,24 +83,29 @@ export const ${camel}Queries = {};
 export const ${camel}Commands = {};
 `;
 
-const PLUGIN = (camel: string, label: string, icon: string) => `import type { Plugin } from '@abuddy/sdk/fe';
+const PLUGIN = (camel: string, label: string, icon: string) => `import { definePlugin } from '@abuddy/sdk/fe';
 import { ${icon} } from 'lucide-vue-next';
-import state, { id } from './state';
+import state from './state';
 import canvas from './canvas/list.vue';
 
-const ${camel}Plugin: Plugin = {
-  id,
+// What another feature may send this plugin goes beside it, and only then:
+//   export const accepts = pluginAccepts<{ type: 'SOMETHING'; id: string }>();
+// Its own feature's system needs no declaration — codegen reads that system's outgoing events.
+
+// Registered at the feature's address by the host, so the module carries no id
+const ${camel}Plugin = definePlugin({
   label: '${label}',
   icon: ${icon},
   state,
   canvas,
-};
+});
 
 export default ${camel}Plugin;
 `;
 
 const STATE = (name: string) => `import { setup, type ActorRefFrom } from 'xstate';
 
+// The feature's name, which this pack's code sends to and opens the plugin by (\`navigateToPlugin\` from #generated/fe)
 export const id = '${name}';
 export type ${toPascalCase(name)}State = ActorRefFrom<typeof ${toCamelCase(name)}State>;
 
@@ -149,7 +152,7 @@ Usage: abuddy add feature <name> [options]
 Options:
   --label <Label>          Display label (default: derived from name)
   --icon <LucideIcon>      Lucide icon name (default: Box)
-  --designation <role>     EARS designation (must equal the feature name)
+  --designation <role>     The role this feature plays, for getDesignated(role); need not be the feature name
 
 Example:
   abuddy add feature bookmarks --label "Bookmarks" --icon Bookmark
@@ -170,9 +173,6 @@ export async function addFeature(args: string[], root: string) {
   const label = parseFlag(args, '--label') || toLabel(name);
   const icon = parseFlag(args, '--icon') || 'Box';
   const designation = parseFlag(args, '--designation');
-  if (designation !== undefined && designation !== name) {
-    throw new Error(`Designation "${designation}" must equal the feature name "${name}": a designation routes to the feature of the same id`);
-  }
   const camel = toCamelCase(name);
   const pascal = toPascalCase(name);
   const featureDir = path.join(root, 'src', 'features', name);
@@ -211,11 +211,11 @@ export async function addFeature(args: string[], root: string) {
   });
   writeManifest(root, manifest);
 
-  await generateEntries([], root);
+  const regenerated = await regenerateAfterScaffold(root);
 
   console.log(`\nCreated feature "${name}":`);
   logCreated(root, [...(unitTestSetup?.created ?? []), ...created]);
-  console.log(`\n  manifest updated + __generated__/ regenerated`);
+  if (regenerated) console.log(`\n  manifest updated + __generated__/ regenerated`);
   if (unitTestSetup) logUnitTestSetup(unitTestSetup);
 }
 

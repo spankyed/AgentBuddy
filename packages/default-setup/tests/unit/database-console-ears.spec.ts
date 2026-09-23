@@ -5,7 +5,7 @@ import { registerPack, unregisterPack } from '@abuddy/testing/harness'
 import { executeQuery } from '@/features/database/be/execute/query'
 import { executeTransaction } from '@/features/database/be/execute/transaction'
 
-const MEMO_PACK = { id: 'memo-pack', systems: [], ears: { entities: { Memo: 'Memo' }, relKinds: { mentions: 'mentions' } } }
+const MEMO_PACK = { id: 'memo-pack', ears: { entities: { Memo: 'Memo' }, relKinds: { mentions: 'mentions' } } }
 
 afterEach(() => {
   try { unregisterPack(MEMO_PACK.id) } catch { /* the test didn't register it */ }

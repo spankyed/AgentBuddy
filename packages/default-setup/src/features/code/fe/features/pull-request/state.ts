@@ -1,9 +1,12 @@
-import { setup, assign, enqueueActions } from 'xstate';
+import { setup, assign, enqueueActions , type ActorRefFrom } from 'xstate';
 import { sendToSystem } from '@/__generated__/events';
 import type { GitStatusFile, GitDiff } from '../commit/state';
 import type { GhPullRequest, GhPRComment, GhReviewThread } from '@/__generated__/types';
-import { updateParentState, getParentContext, addTabToParent } from '../../utils/parent-communication';
-import { navigateToPlugin } from '@abuddy/sdk/fe';
+import { updateParentState, getParentContext, addTabToParent, sendEventToParent } from '../../utils/parent-communication';
+import { openPlugin } from '@abuddy/sdk/fe'
+import { resolveName } from '@abuddy/sdk/ids'
+
+const HOST_SETTINGS = resolveName('settings', 'host');
 import { getCommentDatabaseId } from './comment-id';
 
 export type { GhPullRequest, GhPRComment }
@@ -292,7 +295,7 @@ export const pullRequestState = setup({
       })
     }),
 
-    openFile: ({ event, self, system }) => {
+    openFile: ({ event, self }) => {
       const ev = event as { type: 'pr.OPEN_FILE'; file: GitStatusFile }
       const parentContext = getParentContext(self)
       const baseDirectory = parentContext?.baseDirectory || ''
@@ -302,7 +305,7 @@ export const pullRequestState = setup({
           ? baseDirectory + ev.file.path
           : baseDirectory + '/' + ev.file.path
       updateParentState(self, { selectedPanel: 'explorer' })
-      system.get('explorer')?.send({
+      sendEventToParent(self, {
         type: 'explorer.OPEN_FILE',
         path: fullPath
       })
@@ -337,7 +340,7 @@ export const pullRequestState = setup({
     }),
 
     navigateToHelp: () => {
-      navigateToPlugin('settings', [{ type: 'TAB.SELECT', tab: 'help' }]);
+      openPlugin(HOST_SETTINGS, [{ type: 'TAB.SELECT', tab: 'help' }]);
     },
 
     handleOpenPRsReceived: assign({
@@ -975,3 +978,6 @@ export const pullRequestState = setup({
     }
   }
 });
+
+/** The pull-request child's actor, named by whoever reads its context (`codeChild(…)`) */
+export type PullRequestActor = ActorRefFrom<typeof pullRequestState>;

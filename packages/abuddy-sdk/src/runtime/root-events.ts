@@ -1,6 +1,6 @@
 import { boundHost } from './host-runtime.ts';
 import type { LogEvent } from '../logger/index.ts';
-import type { IncomingSystemEvents, OutgoingSystemEvents } from '../events/index.ts';
+import type { Message } from '../events/index.ts';
 
 /**
  * The backend's root event bus. Public because `HostRuntime.transport` names it: the program that
@@ -12,15 +12,15 @@ export interface RootEvents {
   onConnected(callback: () => void): () => void;
   /** A client loaded a pack's frontend and is ready for its systems' startup data */
   onPackClientConnected(callback: (packId: string) => void): () => void;
-  /** An event for a backend system, which the bus routes while a client is connected */
-  emitIncoming(event: IncomingSystemEvents): void;
-  onIncoming(callback: (event: IncomingSystemEvents) => void): () => void;
-  /** An event for a frontend plugin sent outside a system (`sendToPlugin`), which the bus delivers while a client is connected */
-  emitPluginSend(event: OutgoingSystemEvents): void;
-  onPluginSend(callback: (event: OutgoingSystemEvents) => void): () => void;
-  /** An event the clients receive */
-  emitOutgoing(event: OutgoingSystemEvents): void;
-  onOutgoing(callback: (event: OutgoingSystemEvents) => void): () => void;
+  /** A message for a backend system, which the bus routes */
+  emitIncoming(message: Message): void;
+  onIncoming(callback: (message: Message) => void): () => void;
+  /** A message for a frontend plugin sent outside a system (`broadcastToPlugin`), which the bus delivers while a client is connected */
+  emitPluginSend(message: Message): void;
+  onPluginSend(callback: (message: Message) => void): () => void;
+  /** A message the clients receive */
+  emitOutgoing(message: Message): void;
+  onOutgoing(callback: (message: Message) => void): () => void;
 }
 
 const bus = () => boundHost().transport.rootEvents;

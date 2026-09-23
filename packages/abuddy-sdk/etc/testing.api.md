@@ -23,6 +23,7 @@ import type { JSONSchema7 } from 'ai';
 import type { Output } from 'ai';
 import type { OutputInterface } from 'ai';
 import type { rerank } from 'ai';
+import type { SnapshotFrom } from 'xstate';
 import type { streamText } from 'ai';
 import type { ToolLoopAgent } from 'ai';
 import type { ToolLoopAgentSettings } from 'ai';
@@ -96,6 +97,26 @@ export type FakeInferenceReply = string | {
     }>;
 };
 
+// @public (undocumented)
+export interface FakeSettings extends SettingsPort {
+    answer(status: SettingsSaveStatus): void;
+    set(document: Record<string, unknown>): void;
+    readonly updates: readonly FakeSettingsUpdate[];
+}
+
+// @public
+export function fakeSettings(document?: Record<string, unknown>): FakeSettings;
+
+// @public
+export interface FakeSettingsUpdate {
+    // (undocumented)
+    path: readonly string[];
+    // (undocumented)
+    target: SettingsTarget;
+    // (undocumented)
+    value: unknown;
+}
+
 // @public
 export interface FakeTextCall {
     instructions?: string;
@@ -159,10 +180,14 @@ export interface TestPacks {
     readonly designations: Map<string, string>;
     readonly earsEntities: Map<string, string>;
     readonly earsRelKinds: Map<string, string>;
+    // (undocumented)
+    readonly help: Map<string, HelpEntry[]>;
+    readonly plugins: Set<string>;
     readonly seeders: Map<string, Seeder[]>;
     readonly seedHooks: Map<string, SeedHooks>;
     readonly services: Map<string, unknown>;
     readonly steps: Map<string, StepDefinition>;
+    readonly systems: Set<string>;
 }
 
 // @public
@@ -185,6 +210,7 @@ export interface TestRuntimeStartOptions {
     entityTypes?: readonly string[];
     onboarding?: TestOnboarding;
     packs?: PackRegistryView;
+    settings?: SettingsService;
 }
 
 // (No @packageDocumentation comment for this package)

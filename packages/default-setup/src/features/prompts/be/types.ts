@@ -18,3 +18,9 @@ export interface PromptsConnectedData {
   totalCount: number;
   categories?: Category[];
 }
+
+// ── This feature's settings ───────────────────────────────────────────────
+// Its own shape, which the app stores without knowing: the app owns the document, each feature its slice.
+export interface PromptsSettings {
+  categories: Category[];
+}

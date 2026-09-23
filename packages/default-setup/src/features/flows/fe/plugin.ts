@@ -1,12 +1,20 @@
 import { defineAsyncComponent } from 'vue';
-import type { Plugin } from "@abuddy/sdk/fe";
+import { definePlugin, pluginAccepts } from '@abuddy/sdk/fe';
 import { Network } from 'lucide-vue-next';
-import state, { id } from './state.ts';
+import state from './state.ts';
+import type { OutgoingActionEvents } from '@/features/actions/be/system';
+import type { EARS } from '@/__generated__/ears';
 import settings from './settings.vue';
 
 const canvas = defineAsyncComponent(() => import('./canvas/flow-canvas.vue'));
-const flowsPlugin: Plugin = {
-  id,
+/** The actions system keeps the flows editor's action list current; the receiver declares what it takes */
+export const accepts = pluginAccepts<
+  | OutgoingActionEvents
+  | { type: 'FLOW.SELECT'; flowId: EARS.EntityId }
+  | { type: 'NODE.DOUBLE_CLICK'; nodeId: EARS.EntityId }
+>();
+
+const flowsPlugin = definePlugin({
   label: 'Flows',
   icon: Network,
   state,
@@ -16,6 +24,6 @@ const flowsPlugin: Plugin = {
   options: {
     // headerClass: 'bg-neutral-900 border-b border-neutral-600'
   }
-};
+});
 
 export default flowsPlugin;

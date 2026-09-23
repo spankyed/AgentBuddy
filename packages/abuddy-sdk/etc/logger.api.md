@@ -81,7 +81,6 @@ export type StepErrorContext = Omit<StepRuntimeError, 'errorId' | 'message' | 's
 // @public
 export type SystemErrorEvent = {
     type: 'SYSTEM_ERROR';
-    pluginId: 'application';
     errorId: string;
     message: string;
     title?: string;

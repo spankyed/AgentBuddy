@@ -2,6 +2,7 @@
 import * as fs from 'node:fs';
 import { createRequire } from 'node:module';
 import { writePrivateFile } from './private-file.ts';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 /** Holds data keys by account name */
 export interface KeyVault {
@@ -16,7 +17,7 @@ export interface KeyVault {
 /** The OS credential store can't be used on this system (no Secret Service, a keyring that refuses) */
 export class KeyVaultUnavailableError extends Error {
   constructor(backend: string, cause: unknown) {
-    super(`${backend} isn't available on this system: ${cause instanceof Error ? cause.message : String(cause)}`, { cause });
+    super(`${backend} isn't available on this system: ${errorMessage(cause)}`, { cause });
     this.name = 'KeyVaultUnavailableError';
   }
 }

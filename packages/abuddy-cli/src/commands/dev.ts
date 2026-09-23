@@ -6,11 +6,11 @@ import { findPackRoot, readManifest } from '../utils';
 import { findFEEntry, packExternalsPlugin } from '../build/fe-bundler';
 import { resolveAppContext } from '@abuddy/sdk/env';
 import { readApiEndpoint } from '@abuddy/host/process-liveness';
-import { API_HOST, API_TOKEN_HEADER } from '@abuddy/sdk/utils/pure';
-import { installPackFromLocal, readHostVersion } from '@abuddy/host/packs';
+import { API_HOST, API_TOKEN_HEADER, errorMessage } from '@abuddy/sdk/utils/pure';
+import { installPackFromLocal, readHostInfo } from '@abuddy/host/packs';
 import { removeDevServerMarker, writeDevServerMarker } from '@abuddy/host/packs/dev-server';
 
-const reason = (err: unknown) => (err instanceof Error ? err.message : String(err));
+const reason = (err: unknown) => (errorMessage(err));
 
 /** The running development app's API: its URL and the token it requires, from the files the API writes */
 function findDevApi(): { api: { url: string; token: string } } | { problem: string } {
@@ -66,10 +66,11 @@ function reportReload(result: DevReload, what: string): void {
   else console.warn(`Could not reach the dev app (${result.detail}). Restart to apply ${what}.\n`);
 }
 
-/** Installs into the dev data dir, checking hostVersion against the dev app that last used it. */
+/** Installs into the dev data dir, checking hostVersion and the build format against the dev app that last used it. */
 export function installToDev(root: string) {
   const { packsDir, userDataDir } = resolveAppContext({ env: 'development' });
-  return installPackFromLocal(root, packsDir, { hostVersion: readHostVersion(userDataDir) });
+  const { version: hostVersion, packFormat } = readHostInfo(userDataDir);
+  return installPackFromLocal(root, packsDir, { hostVersion, packFormat });
 }
 
 export async function dev(_args: string[]) {

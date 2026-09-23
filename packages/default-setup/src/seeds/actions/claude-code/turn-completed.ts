@@ -159,7 +159,7 @@ export async function action(
       });
       updateChatState(services, threadId as EntityId, nextState);
       if (nextState === 'success') {
-        services.emitter.sendToPlugin('threads', {
+        services.emitter.broadcastToPlugin('default-setup/threads', {
           type: 'FLASH_CHAT_STATE', threadId, stateId: 'success', durationMs: 3000,
         });
       }

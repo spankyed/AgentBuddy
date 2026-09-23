@@ -1,5 +1,5 @@
+import { sendToSystem } from '@/__generated__/events';
 import type { TNodeEntity, ExecutionContext } from '@abuddy/sdk/steps';
-import { sendToBrainSystem } from '@abuddy/sdk/events';
 import { extractValueByPath } from '@abuddy/sdk/utils';
 import type { FireNode } from './types';
 
@@ -31,7 +31,7 @@ export function handler(tNode: TNodeEntity, node: unknown, ctx: ExecutionContext
   const targetFlowId = scope === 'local' ? ctx.flowTNodeId : undefined;
 
   try {
-    sendToBrainSystem({ eventType, payload, targetFlowId });
+    sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT',  eventType, payload, targetFlowId });
     a.send({
       type: 'COMPLETE',
       result: { eventFired: eventType, eventScope: scope, targetFlowId, payload },

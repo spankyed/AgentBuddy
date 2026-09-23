@@ -72,13 +72,13 @@ The source directory must be built first: installing a directory with neither a 
 0. Opens the app's data and binds the app (`openAppStore()`): it creates the app's registered packs (`createPackRegistry()` from `@abuddy/host/packs`), which the SDK's lookups read once bound, and the rest of the steps register into it.
 1. Registers the host `packs` system.
 2. `prepareHostDataDirs`: records the app version in the data dir (for `abuddy install`) and recovers staging dirs in `packs/` and `host-packs/`.
-3. `forwardSecretsChanges` (`@abuddy/host/secrets`): the settings system hears of API key changes.
+3. `forwardSecretsChanges` (`@abuddy/host/secrets`): every system that takes `SECRETS_CHANGED` hears that API key changes, never their values.
 4. Loads packs. Built-in packs load asynchronously while external packs load and register:
    - **Built-in:** discovered from `BUILT_IN_PACKS_DIR` (`abuddy.json` with `builtIn: true`). In development each pack's `dist/runtime/index.cjs` is loaded when it exists, falling back to the loaders bundled into the API, which `setup/backend.ts` passes to `loadBuiltInPacks` as `bundledLoaders` (the API build generates them as `virtual:built-in-pack-loaders`); otherwise the bundled loader is used.
-   - **External:** discovered in `packs/` and reconciled with `installed-packs.json` (new packs added enabled, missing ones removed). For each enabled pack: `hostVersion` check, pack layout format check, a warning on an SDK major version mismatch, `runtime/index.cjs` loaded through the module bridge, and `earlySystem`, `seedManifest` and `partitionPolicy` stripped. Each pack's systems register as `<packId>.<featureId>`.
+   - **External:** discovered in `packs/` and reconciled with `installed-packs.json` (new packs added enabled, missing ones removed). For each enabled pack: `hostVersion` check, pack layout format check, a warning on an SDK major version mismatch, `runtime/index.cjs` loaded through the module bridge, and `earlySystem`, `seedManifest` and `partitionPolicy` stripped. Each pack's systems register as `<packId>/<featureId>`.
    - The registry's `registerPack()` stores each registration (see [Collision detection](#collision-detection)). A pack contributes only through its registration: nothing registers when its modules are imported.
 5. Publishes each built-in pack's build output into `host-packs/<id>/`.
-6. Starts the `earlySystem` (default-setup's logs system).
+6. Starts the early systems (`system.early`: default-setup's logs system), outside the bus; the host delivers them the messages sent to their refs and each client connection, as the bus does for the others.
 7. Wires each pack's `onShutdown` hook, keyed by pack id.
 8. Hydrates the app's engine from LMDB. Every pack's entity types are registered by now, so the partition policy sees them all.
 9. Runs every pack's `onInit`.
@@ -91,11 +91,11 @@ The source directory must be built first: installing a directory with neither a 
 Built-in packs' frontends are compiled into the renderer (`virtual:built-in-packs` imports each pack's `__generated__/pack-entry-fe.ts`). External packs load at runtime:
 
 1. Each time this window's bus subscription is established, the application actor queries the loaded packs (`trpc.packs.loaded`), which lists each loaded external pack's `feEntry` and `feStyles` — the pack's `runtime/fe.js` and `runtime/fe.css`, when it has them. It loads only the packs it hasn't loaded yet, so a query that fails leaves them to the next connection and a pack is never loaded twice.
-2. For each external pack, `loadPackFrontend(pack)`:
+2. For each external pack, the shell loads its frontend (`createPackFrontends(io, packs).load` in `@abuddy/host/fe`, over the window's `importModule` and stylesheet I/O):
    - loads `pack://<id>/runtime/fe.css` as a `<link>` when the pack has styles;
    - imports `pack://<id>/runtime/fe.js` and registers its default export, a `PackFERegistration`, in the renderer's frontend registry (`createFePackRegistry()` from `@abuddy/host/fe`, bound with `bindFeHost`);
    - returns the plugins it exports, `[]` when the load failed, or `null` for a pack without frontend code.
-3. When it returns plugins (even none), the loader reports `PACK_FRONTEND_LOADED` to the application actor, which spawns the plugins whose ids aren't taken and calls `trpc.bus.packClientReady({ packId })`.
+3. When it returns plugins (even none), the shell handles `PACK_FRONTEND_LOADED`, which spawns the plugins whose ids aren't taken and calls `trpc.bus.packClientReady({ packId })`.
 4. `packClientReady` sends the pack's systems `CLIENT_CONNECTED`, so they send their startup data once the plugin actors exist.
 
 A connection's own `CLIENT_CONNECTED` skips the systems of external packs with frontend code (the bus asks `getPacksWithClientLoadedFrontends()`). When the renderer's bus subscription (re)connects, `BUS_SUBSCRIBED` calls `packClientReady` again for every pack whose frontend it loaded. Systems of packs without frontend code get the connection's `CLIENT_CONNECTED` directly.
@@ -119,10 +119,10 @@ Your `__generated__/pack-entry.ts` exports a registration object (`@abuddy/sdk/f
 ```typescript
 export const registration: PackRegistration = {
   id: string;
-  systems: PackSystemDef[];        // { id, machine, events, designation? }
+  features?: Record<string, PackFeature>;  // by feature id: { designation?, system?: { machine, receives, early? }, plugin?: { receives }, services?, settings? }
   services?: Record<string, unknown>;
   ears?: PackEARS;                 // entities, relKinds, partitionPolicy?
-  boot?: PackBootHooks;            // earlySystem (features[].earlySystem), onInit/onShutdown (boot.hooks), seedManifest (boot.seed, stripped from external packs)
+  boot?: PackBootHooks;            // onInit/onShutdown (boot.hooks), seedManifest (boot.seed, stripped from external packs)
   migrations?: PackMigration[];    // { target, description, up }
   repositories?: Record<string, unknown>;  // features[].repositories, registered with the app's engine
   steps?: StepDefinition[];
@@ -131,9 +131,10 @@ export const registration: PackRegistration = {
   seedHooks?: Record<string, SeedHooks>;  // abuddy.json `seedHooks`, keyed by entity type
   seeders?: Seeder[];              // one per seeded boot.seed key, which seeding the pack's compiled seeds runs
   commands?: PackCommand[];        // abuddy.json `commands`
-  features?: PackFeatureDef[];     // { id, designation?, hasSystem, hasPlugin, services, settings? }
 };
 ```
+
+The app runs each feature at `<packId>/<featureId>` and derives everything else from `features`: the systems it starts (an `early` one before hydration, outside the bus), the events each system accepts (`receives`: its machine's, plus the manifest's `system.events.incoming`, put there by `packSystem` when `abuddy build` generates the entry), the plugins and the events each receives, and the roles.
 
 The runtime bundle also exports `setCompiledDir(dir)`, which the host calls with the directory of the pack's compiled seeds.
 
@@ -143,8 +144,9 @@ Your `__generated__/pack-entry-fe.ts` default-exports:
 
 ```typescript
 export default {
-  plugins?: Plugin[];
-  defaultPlugin?: Plugin;
+  id: string;
+  // Keyed by feature id, as the backend entry's `features`: each plugin, the role it plays, and the default claim
+  features?: Record<string, { plugin: PluginDefinition; designation?: string; default?: true }>;
   steps?: StepDefinition[];
   tiptapPlugins?: TiptapPlugin[];
   appExtensions?: Record<string, Component>;
@@ -248,7 +250,7 @@ The pack test harness uses the same bridge with the pack's own SDK instance.
 
 The SDK reaches the running app through one typed port, `HostRuntime` (`@abuddy/sdk/runtime`), bound once per process with `bindHost`: the app's event bus (`transport.rootEvents`), its EARS engine, the registered packs, the app version, and the five services packs call that the app implements: `appData` (reset, backup export/import, onboarding), `traceStore` (the volatile trace store), `inference` (model calls), `secrets` (API key metadata) and `filesystem` (files and folders on disk). Their contracts live in `@abuddy/sdk/services`; the implementations live in `@abuddy/host/services`, whose `createHostRuntime(...)` assembles the runtime. `openAppStore()` in `packages/api/src/setup/backend.ts`, which `setupBackend()` calls first, opens the LMDB store and binds that runtime over it. `appData.reset()` resets the whole app as a fresh boot leaves it: it empties the stores and keys, then runs each pack's `onInit` and boot seed, then the app migrations.
 
-Sends, logging and error reports are SDK code over the bound bus: `sendToSystem` emits an incoming event, `sendToPlugin` (and `services.emitter.sendToPlugin`) goes through the bus actor, which drops it until a client connects, like a system's `emit`, and `createLogger` emits log events, which the API prints once and streams to the logs plugin (with nothing bound, as in the CLI, a logger writes to the console). In the renderer, `bindFeHost` binds the application actor, the secrets client behind `secretsClient` (the Settings → Secrets procedures) and a transport that sends to systems over the API client. Using the port with nothing bound throws, naming `bindHost` or `bindFeHost`.
+Sends, logging and error reports are SDK code over the bound bus: `sendToSystem` emits an incoming event, `broadcastToPlugin` (and `services.emitter.broadcastToPlugin`) goes through the bus actor, which drops it until a client connects, like a system's `emit`, and `createLogger` emits log events, which the API prints once and streams to the logs plugin (with nothing bound, as in the CLI, a logger writes to the console). In the renderer, `bindFeHost` binds the application actor, the secrets client behind `secretsClient` (the Settings → Secrets procedures) and a transport that sends to systems over the API client. Using the port with nothing bound throws, naming `bindHost` or `bindFeHost`.
 
 A pack can't register a service under a host service's name.
 
@@ -287,13 +289,13 @@ The policy (the app's registry's `partitionPolicy`) is the union of the SDK's ex
 | File | Contents |
 |---|---|
 | `pack-entry.ts` | BE registration: systems, services, repositories, steps, artifacts, blocks, EARS, boot hooks, migrations, seed hooks, seeders, commands, features |
-| `pack-entry-fe.ts` | FE registration: plugins, step/artifact/block FE, tiptap, app extensions, DSL types |
+| `pack-entry-fe.ts` | FE registration: plugins keyed by feature (the host registers each at its address), the default plugin and designations by feature, step/artifact/block FE, tiptap, app extensions, DSL types |
 | `ears.ts` | Typed EARS namespace (Entity, RelKind constants + types), `PackShapes`, and the typed `qx`/`find*`/`createEntity` facade |
-| `system-ids.ts` | The id each of this pack's systems has (from its spec), and the id each dependency system runs under |
-| `bus-ids.ts` | `busId` map of bus-routable system IDs (pack-prefixed for external packs). Import-free, so frontend code imports it from here rather than `system-ids.ts` |
-| `system-specs.ts` | Type-only: `specs`, each system's incoming events keyed by feature id, read from its entry's spec. `events.ts` imports it; only packs with systems get it |
-| `events.ts` | `PackEvents` (plugin ID -> the events it receives from this pack's systems, its dependencies' and the host's plugins), `PackSystemEvents` (this pack's systems by feature ID -> the events each receives; dependents name them `<packId>/<feature>`), `SendableSystemEvents` (own systems by feature ID, plus each dependency's as `<dependency>/<feature>`) and `QualifiedSystemEvents` (every system as `<pack>/<feature>`, for `services.emitter`), and the typed `emit`/`sendToPlugin` facade, plus `sendToSystem`, which maps each name to the ID the system runs under (a pack without systems sends to its dependencies') |
-| `types.ts` | Type barrel: outgoing events + per-feature types |
+| `ref.ts` | `ref(name)`: the ref (`<packId>/<featureId>`) a name in this pack's code stands for, its own features by id and any other by ref, bound to the pack so its code never passes its own pack id |
+| `fe.ts` | `navigateToPlugin(name, event?)`, taking the names pack code writes, and the `PluginName` type, which lists exactly those names (the pack's own plugins by feature id, its dependencies' by `<packId>/<featureId>`). Only packs with plugins get it |
+| `system-specs.ts` | Type-only: `specs`, the events each system receives and sends, keyed by feature id, read from its entry's spec. `events.ts` imports it; only packs with systems get it |
+| `events.ts` | `SendablePluginEvents` (plugin ID -> the events it receives: its own feature's system's, plus the inbox that plugin declares with `pluginAccepts()`), `PackSystemEvents`, and the typed `broadcastToPlugin` (backend, every window), `sendToPlugin` (renderer, this window) and `sendToSystem` |
+| `types.ts` | Type barrel: each feature's `typesEntry` and step node types |
 | `services.ts` | Service aggregation: imports each service object its manifest entry names (`"path#exportName"`), exports `Services`/`Z`/`EntityId` and the typed `services` proxy (with dependencies' services). `Services` types `services.emitter` as `PackEmitter`, with this pack's plugin and system events |
 | `repository.ts` | `repository`, typed with the repositories declared in `features[].repositories` and dependencies' |
 | `repositories.ts` | This pack's repositories by name, which `pack-entry.ts` puts in the registration (the host registers them with the app's engine) |
@@ -348,6 +350,6 @@ Vue SFCs (`.vue` files) are compiled automatically — no extra build step neede
 6. **GitHub releases** — for `github:owner/repo [range]` values: the newest release matching the range, whose `<id>-<version>.tgz` is downloaded with its `.sha256`, checksum-checked, extracted and verified.
 7. **Registry** — a stub for future `api.abuddy.com` resolution. Currently a no-op.
 
-Sources 2–4 must satisfy the declared semver range. A dependency found on this machine or on GitHub is written to `.abuddy/deps/<id>/` (`snapshot.json`, `defs/`, `build/`, `runtime/`).
+Sources 2–4 must satisfy the declared semver range. Every source, the cache included, must also carry a snapshot in the format this CLI reads (`format`, `PACK_SNAPSHOT_FORMAT`): a build in another format is passed over for the next source, and a dependency found only in other formats fails, naming each build and whether it was written by an older or a newer abuddy CLI. A dependency found on this machine or on GitHub is written to `.abuddy/deps/<id>/` (`snapshot.json`, `defs/`, `build/`, `runtime/`).
 
-A `PackSnapshot` contains `types` (entity and relKind maps), `defs` (`.d.ts` contents, including the bundled `pack-types` facade), `manifest`, `sdkVersion`, and `flowHelpers` (the pack's bundled flow helpers module and declarations).
+A `PackSnapshot` contains `format` (the snapshot format the writing CLI used), `types` (entity and relKind maps), `defs` (`.d.ts` contents, including the bundled `pack-types` facade), `manifest`, `sdkVersion`, `provenance` (which pack in its tree declares each name) and `flowHelpers` (the pack's bundled flow helpers module and declarations). The format versions everything a dependent's codegen reads from it; a snapshot and the CLI generating against it must agree on it exactly, so a pack and its dependencies are built with the same abuddy version.

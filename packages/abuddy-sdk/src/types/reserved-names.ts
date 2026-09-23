@@ -1,3 +1,4 @@
+import { hasOwn } from '../utils/shared.ts';
 // The one rule for EARS names a pack may not declare, shared by the manifest schema, the code generator and
 // the host's registry
 /**
@@ -10,6 +11,6 @@ export function _reservedEntries(declared: Record<string, string>, reserved: Rec
   const values = new Set(Object.values(reserved));
   return Object.entries(declared)
     // An own key only: `constructor` or `toString` is a pack's to use
-    .filter(([key, value]) => Object.prototype.hasOwnProperty.call(reserved, key) || values.has(value))
+    .filter(([key, value]) => hasOwn(reserved, key) || values.has(value))
     .map(([key, value]) => (key === value ? `"${key}"` : `"${key}": "${value}"`));
 }

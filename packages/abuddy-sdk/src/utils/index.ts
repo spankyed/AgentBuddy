@@ -29,7 +29,7 @@ export {
 
 // --- Seed (direct) ---
 export {
-  seedData, seedCollection,
+  seedData,
   loadJSON, shouldSeedAll, filterByInclude,
   registeredSeedKeys,
 } from './seed.ts';

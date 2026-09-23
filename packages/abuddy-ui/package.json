@@ -143,11 +143,6 @@
       "types": "./dist/components/tiptap/editor-config.d.ts",
       "default": "./dist/components/tiptap/editor-config.js"
     },
-    "./components/tiptap/editor-system": {
-      "@abuddy/source": "./src/components/tiptap/editor-system.ts",
-      "types": "./dist/components/tiptap/editor-system.d.ts",
-      "default": "./dist/components/tiptap/editor-system.js"
-    },
     "./components/tiptap/extensions": {
       "@abuddy/source": "./src/components/tiptap/extensions.ts",
       "types": "./dist/components/tiptap/extensions.d.ts",

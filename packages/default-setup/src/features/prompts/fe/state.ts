@@ -7,10 +7,10 @@ import {
   type TrailClickEvent,
 } from '@abuddy/sdk/fe'
 import type {
-  OutgoingPromptEvents,
   Category,
   PromptsSettings,
 } from '@/__generated__/types'
+import type { OutgoingPromptEvents } from '@/features/prompts/be/system'
 import type { TemplateInput } from '@abuddy/sdk'
 import { sendToSystem } from '@/__generated__/events'
 import { Trash2 } from 'lucide-vue-next'
@@ -20,7 +20,7 @@ import type { PromptEntity, EARS } from '@abuddy/sdk'
 /* ─────────────────────────────────────────────────────────── */
 /* Machine Types                                               */
 /* ─────────────────────────────────────────────────────────── */
-export const id = 'prompts'
+export const id = 'prompts' as const;
 export type PromptsState = ActorRefFrom<typeof promptsState>
 
 export interface PromptsContext {
@@ -87,7 +87,7 @@ type UIEvent =
   | { type: 'TOGGLE_INPUTS_SECTION'; show: boolean }
   | { type: 'TOGGLE_OUTPUT_SECTION'; show: boolean }
   | { type: 'TOGGLE_METADATA_SECTION'; show: boolean }
-  | { type: 'PROMPTS_SETTINGS_UPDATED'; settings: PromptsSettings }
+  | { type: 'FEATURE_SETTINGS_UPDATED'; settings: PromptsSettings }
   | { type: 'PROMPTS.LOAD_MORE' }
   | { type: 'PROMPTS.LOAD_ALL' }
   | { type: 'FILTER.TOGGLE_CATEGORY'; categoryName: string }
@@ -307,7 +307,7 @@ const promptsState = setup({
     }),
     
     handleSettingsUpdate: assign(({ event }) => {
-      const ev = typeOf('PROMPTS_SETTINGS_UPDATED', event);
+      const ev = typeOf('FEATURE_SETTINGS_UPDATED', event);
       return {
         categories: ev.settings?.categories || [],
       };
@@ -522,7 +522,7 @@ const promptsState = setup({
     },
     PROMPTS_CONNECTED: { actions: 'setPluginData' },
     PROMPT_SELECTED: { actions: 'loadPromptData' },
-    PROMPTS_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
+    FEATURE_SETTINGS_UPDATED: { actions: 'handleSettingsUpdate' },
     PROMPT_CREATED: {
       actions: 'addCreatedPrompt'
     },

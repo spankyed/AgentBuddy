@@ -8,7 +8,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-bound-runtime-'));
 process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
-const { openAppStore } = await import('@/setup/backend');
+const { openAppStore } = await import('@/runtime');
 const { store, engine, packs } = openAppStore();
 const { boundHost } = await import('@abuddy/sdk/runtime/internals');
 const { getAppVersion } = await import('@abuddy/sdk/env');
@@ -16,7 +16,7 @@ const { services } = await import('@abuddy/sdk/services');
 const { sendToSystem } = await import('@abuddy/sdk/events');
 const { installedEngine, repository } = await import('@abuddy/ears');
 const { registerPack, unregisterPack } = packs;
-const { rootEvents } = await import('@/core/router/bus-emitter');
+const { rootEvents } = await import('@/transport/emitter');
 /** The app version the composition binds: the root package.json's */
 const APP_VERSION: string = JSON.parse(fs.readFileSync(path.resolve(__dirname, '..', '..', '..', '..', 'package.json'), 'utf8')).version;
 
@@ -48,17 +48,17 @@ describe('the bound app', () => {
 
   it("reads the registered packs' services and systems", () => {
     const memoService = { ping: () => 'pong' };
-    registerPack({ id: 'bound-pack', systems: [{ id: 'bound-pack.memos', machine: {} as never, events: new Set(['PING']) }], services: { memoService } });
+    registerPack({ id: 'bound-pack', features: { memos: { system: { machine: {} as never, receives: ['PING'] } } }, services: { memoService } });
     const incoming: unknown[] = [];
     const stop = rootEvents.onIncoming((event) => { incoming.push(event); });
     try {
       expect(services.memoService).toBe(memoService);
       services.emitter.sendToSystem('bound-pack/memos', { type: 'PING' });
-      sendToSystem('bound-pack.memos', { type: 'PING' });
+      sendToSystem('bound-pack/memos', { type: 'PING' });
     } finally {
       stop();
       unregisterPack('bound-pack');
     }
-    expect(incoming).toEqual([{ type: 'PING', systemId: 'bound-pack.memos' }, { type: 'PING', systemId: 'bound-pack.memos' }]);
+    expect(incoming).toEqual([{ to: 'bound-pack/memos', event: { type: 'PING' } }, { to: 'bound-pack/memos', event: { type: 'PING' } }]);
   });
 });

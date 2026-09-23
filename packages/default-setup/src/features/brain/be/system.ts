@@ -1,9 +1,8 @@
-import { emit } from '@/__generated__/events';
+import type { BrainSettings } from '@/__generated__/types';
+import { broadcastToPlugin } from '@/__generated__/events';
 import { assign, setup, enqueueActions, raise } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
-import { bus } from '@abuddy/sdk/ids';
-import { getActor } from '@abuddy/sdk/helpers';
 import { EARS } from '@/__generated__/ears';
 import type { FlowTNodeData, TNodeUpdate } from './types';
 import { repository } from '@/__generated__/repository';
@@ -13,6 +12,7 @@ import { setBrainPausedState } from './utils/brain-pause';
 import { notify as notifyAdHocListeners, removeAllListeners as removeAllAdHocListeners } from './services/brain';
 import { services } from '@/__generated__/services';
 import type { StepRuntimeError, TNodeEntity } from '@abuddy/sdk/steps';
+import { ref } from '@/__generated__/ref';
 
 type IncomingBrainEvents =
   | { type: 'OPEN_TNODE'; tNodeId: string }
@@ -28,11 +28,9 @@ type IncomingBrainEvents =
   | { type: 'HANDLE_BRAIN_EVENT'; eventType: string; payload?: any; targetFlowId?: string }
   | { type: 'TRIGGER_BRAIN_EVENT'; eventType: string; payload?: any; targetFlowId?: string }
 
-export type BrainInternalEvents =
   // | { type: 'TRACE_EVENT_RECEIVED'; data: EventReceived }
   | { type: 'TNODE_SPAWNED'; tNode: TNodeEntity; parentId?: EARS.EntityId; eventTNodeId?: EARS.EntityId; flowTNodeId: EARS.EntityId }
   | { type: 'TNODE_UPDATED'; data: TNodeUpdate }
-  | { type: 'BRAIN_SETTINGS_UPDATED'; settings: any; changes?: any }
   | { type: 'HANDLE_BRAIN_EVENT'; eventType: string; payload?: any; targetFlowId?: string }
   | { type: 'CHILD_COMPLETED'; stepId?: EARS.EntityId; tNodeId?: EARS.EntityId; stepLabel?: string; result?: any; final?: boolean; eventTNodeId?: EARS.EntityId; isFlow?: boolean }
 
@@ -66,8 +64,7 @@ export interface BrainContext {
   runningRootFlowId?: EARS.EntityId;
 }
 
-export const brainSpec = defineSystem('brain')<IncomingBrainEvents | BrainInternalEvents, OutgoingBrainEvents, BrainContext>();
-export const brain = brainSpec.id;
+export const brainSpec = defineSystem<IncomingBrainEvents, OutgoingBrainEvents, BrainContext>();
 export const brainRuntime = 'brain-runtime' as const;
 
 const logger = createLogger('brain');
@@ -90,18 +87,16 @@ function reportStartError(error: Error) {
   reportError({ error, title: 'Could not start the brain', source: 'brain', operation: 'start' });
 }
 
-type BrainActorSystem = Parameters<typeof getActor>[0];
-
 /**
  * A start found no flow to run: clears the running root flow and tells clients the brain is stopped, and why when
  * flows exist but none is the root. That error is reported now if a client is connected, else when one connects.
  * Returns the context the brain stays stopped with.
  */
-function stopWithoutRootFlow(system: BrainActorSystem, { clientConnected }: BrainContext): Partial<BrainContext> {
+function stopWithoutRootFlow({ clientConnected }: BrainContext): Partial<BrainContext> {
   const startError = noRootFlowError();
   if (!startError) logger.warn('No flow to run; start the brain once a flow exists');
   else if (clientConnected) reportStartError(startError);
-  getActor(system, bus).send(emit(brain, { type: 'BRAIN_KILLED', startError: startError?.message }));
+  broadcastToPlugin('brain', { type: 'BRAIN_KILLED', startError: startError?.message });
   return { brainActor: undefined, runningRootFlowId: undefined, startError, startErrorReported: clientConnected };
 }
 
@@ -128,16 +123,15 @@ export const brainSystem = setup({
       const currentRootFlowId = rootFlowToRun();
       // Nothing to run: `running` leaves for `stopped` without a brain actor
       if (!currentRootFlowId) {
-        enqueue.assign(stopWithoutRootFlow(system, context));
+        enqueue.assign(stopWithoutRootFlow(context));
         return;
       }
 
 
       // Start new brain and assign to context
-      enqueue.assign(({ spawn, system }) => {
-        const { machine, tNodeId } = createFlowNodeSystem()
+      enqueue.assign(({ spawn, self }) => {
+        const { machine, tNodeId } = createFlowNodeSystem(self)
         const actor = spawn(machine, {
-          systemId: brainRuntime, // aka root flow
           input: {}
         });
         
@@ -155,18 +149,18 @@ export const brainSystem = setup({
       enqueue(({ system, context }) => {
         // Send current brain state first
         if (context.brainActor && context.runningRootFlowId) {
-          system.get(bus).send(emit(brain, {
+          broadcastToPlugin('brain', {
             type: 'BRAIN_STARTED',
             rootFlowId: context.runningRootFlowId,
-          }));
+          });
         }
 
         const data = repository.brainQueries.rootData();
 
-        system.get(bus).send(emit(brain, {
+        broadcastToPlugin('brain', {
           type: 'RECEIVE_PLUGIN_DATA',
           data
-        }));
+        });
       });
     }),
     
@@ -205,9 +199,9 @@ export const brainSystem = setup({
         clearFlowActorRegistry();
 
         // Send BRAIN_KILLED event
-        system.get(bus).send(emit(brain, {
+        broadcastToPlugin('brain', {
             type: 'BRAIN_KILLED'
-        }));
+        });
         
         logger.info('Brain flow machine killed and volatile data cleared');
       }
@@ -241,7 +235,7 @@ export const brainSystem = setup({
       clearFlowActorRegistry();
 
       // Send empty data to clear the UI temporarily
-      system.get(bus).send(emit(brain, {
+      broadcastToPlugin('brain', {
         type: 'RECEIVE_PLUGIN_DATA',
         data: {
           flowTNodeId: '' as EARS.EntityId,
@@ -249,36 +243,35 @@ export const brainSystem = setup({
           possibleEvents: [],
           flowHierarchy: [],
         }
-      }));
+      });
       
       const currentRootFlowId = rootFlowToRun();
       // Nothing to run: `running` leaves for `stopped` without a brain actor
       if (!currentRootFlowId) {
-        enqueue.assign(stopWithoutRootFlow(system, context));
+        enqueue.assign(stopWithoutRootFlow(context));
         return;
       }
 
       
       // Start new brain and assign to context
-      enqueue.assign(({ spawn, system }) => {
-        const { machine, tNodeId } = createFlowNodeSystem(undefined, undefined, undefined)
+      enqueue.assign(({ spawn, self }) => {
+        const { machine, tNodeId } = createFlowNodeSystem(self)
         const actor = spawn(machine, {
-          systemId: brainRuntime,
           input: {}
         });
         
         // Send fresh data after starting new brain
         const data = repository.brainQueries.rootData();
-        system.get(bus).send(emit(brain, { 
+        broadcastToPlugin('brain', { 
           type: 'RECEIVE_PLUGIN_DATA',
           data
-        }));
+        });
         
         // Send BRAIN_STARTED event
-        system.get(bus).send(emit(brain, { 
+        broadcastToPlugin('brain', { 
           type: 'BRAIN_STARTED',
           rootFlowId: currentRootFlowId,
-        }));
+        });
         
         logger.info('Restarted brain with root flow', { flowId: currentRootFlowId });
         
@@ -305,37 +298,37 @@ export const brainSystem = setup({
         data = { flowTNodeId: '' as EARS.EntityId, tNodeTree: [], possibleEvents: [], flowHierarchy: [] };
       }
 
-      system.get(bus).send(emit(brain, {
+      broadcastToPlugin('brain', {
         type: 'RECEIVE_PLUGIN_DATA',
         data
-      }));
+      });
 
       // Send current brain state
       if (context.brainActor && context.runningRootFlowId) {
-        system.get(bus).send(emit(brain, {
+        broadcastToPlugin('brain', {
           type: 'BRAIN_STARTED',
           rootFlowId: context.runningRootFlowId,
-        }));
+        });
       } else {
-        system.get(bus).send(emit(brain, {
+        broadcastToPlugin('brain', {
           type: 'BRAIN_KILLED',
           startError: context.startError?.message,
-        }));
+        });
       }
 
       // Sync pause state
       const snapshot = self.getSnapshot();
       if (snapshot.matches({ running: 'paused' })) {
-        system.get(bus).send(emit(brain, { type: 'BRAIN_PAUSED' }));
+        broadcastToPlugin('brain', { type: 'BRAIN_PAUSED' });
       }
 
       // Restore inspect state from persisted settings. Default ON in dev so
       // switch/action/flow transitions are visible out of the box; the
       // persisted setting wins once the user has toggled it.
-      const brainSettings = repository.settingsQueries.getPluginSettings('brain');
+      const brainSettings = services.settings.forFeature<BrainSettings>(ref('brain'));
       const inspectEnabled = brainSettings?.inspectEnabled ?? (process.env.NODE_ENV !== 'production');
       setDebugEnabled('brain', inspectEnabled);
-      system.get(bus).send(emit(brain, { type: 'INSPECT_TOGGLED', enabled: inspectEnabled }));
+      broadcastToPlugin('brain', { type: 'INSPECT_TOGGLED', enabled: inspectEnabled });
     },
     openTNode: ({ system, event, context }) => {
       const ev = brainSpec.typeOf('OPEN_TNODE', event);
@@ -350,11 +343,11 @@ export const brainSystem = setup({
 
       const data = repository.brainQueries.extendedTNodeData(tNodeId);
 
-      system.get(bus).send(emit(brain, {
+      broadcastToPlugin('brain', {
         type: 'TNODE_OPENED',
         tNodeId,
         data
-      }));
+      });
     },
     goBackTNode: ({ system, event }) => {
       const currentFlowTNodeId = brainSpec.typeOf('GO_BACK_TNODE', event).currentFlowTNodeId as EARS.EntityId<'TNode'> | undefined;
@@ -366,11 +359,11 @@ export const brainSystem = setup({
         ? repository.brainQueries.extendedTNodeData(parentFlowTNodeId)
         : repository.brainQueries.rootData();
 
-      system.get(bus).send(emit(brain, {
+      broadcastToPlugin('brain', {
         type: 'TNODE_OPENED',
         tNodeId: data.flowTNodeId,
         data
-      }));
+      });
     },
     getTNodeDetails: ({ system, event }) => {
       const ev = brainSpec.typeOf('GET_TNODE_DETAILS', event);
@@ -378,11 +371,11 @@ export const brainSystem = setup({
       
       const tNode = repository.brainQueries.tNodeById(tNodeId);
       
-      system.get(bus).send(emit(brain, {
+      broadcastToPlugin('brain', {
         type: 'TNODE_DETAILS',
         tNodeId,
         details: tNode
-      }));
+      });
     },
     toggleInspect: ({ system }) => {
       const currentState = isDebugEnabled('brain');
@@ -390,13 +383,13 @@ export const brainSystem = setup({
       setDebugEnabled('brain', newState);
 
       // Persist to settings DB
-      repository.settingsCommands.updateSettings('plugin', 'brain', ['inspectEnabled'], newState);
+      services.settings.setForFeature(ref('brain'), ['inspectEnabled'], newState);
 
       // Send confirmation back to frontend
-      system.get(bus).send(emit(brain, {
+      broadcastToPlugin('brain', {
         type: 'INSPECT_TOGGLED',
         enabled: newState
-      }));
+      });
     },
     queueBrainEvent: assign(({ context, event }) => {
       const ev = brainSpec.typeOf(['TRIGGER_BRAIN_EVENT', 'HANDLE_BRAIN_EVENT'], event);
@@ -420,10 +413,10 @@ export const brainSystem = setup({
       const { eventType, payload, targetFlowId } = ev;
 
       // Pulse the event in UI
-      system.get(bus).send(emit(brain, {
+      broadcastToPlugin('brain', {
         type: 'EVENT_PULSE',
         eventType: eventType
-      }));
+      });
 
       // Handle local vs global events
       if (targetFlowId) {
@@ -472,7 +465,7 @@ export const brainSystem = setup({
   },
 }).createMachine(
   {
-    id: brain,
+    id: 'brain',
     initial: 'running',
     context: ({ input }) => ({
       brainActor: undefined,
@@ -538,13 +531,13 @@ export const brainSystem = setup({
           TNODE_SPAWNED: {
             actions: ({ system, event }) => {
               // Forward to frontend
-              system.get(bus).send(emit(brain, event));
+              broadcastToPlugin('brain', event);
             }
           },
           TNODE_UPDATED: {
             actions: ({ system, event }) => {
               // Forward to frontend
-              system.get(bus).send(emit(brain, event));
+              broadcastToPlugin('brain', event);
             }
           },
         },
@@ -564,7 +557,7 @@ export const brainSystem = setup({
                 target: 'paused',
                 actions: ({ system }) => {
                   setBrainPausedState(true);
-                  system.get(bus).send(emit(brain, { type: 'BRAIN_PAUSED' }));
+                  broadcastToPlugin('brain', { type: 'BRAIN_PAUSED' });
                 },
               },
             },
@@ -589,7 +582,7 @@ export const brainSystem = setup({
                   },
                   'replayQueuedEvents',
                   ({ system }) => {
-                    system.get(bus).send(emit(brain, { type: 'BRAIN_RESUMED' }));
+                    broadcastToPlugin('brain', { type: 'BRAIN_RESUMED' });
                   },
                 ],
               },

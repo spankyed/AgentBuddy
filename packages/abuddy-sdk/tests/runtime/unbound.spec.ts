@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it, onTestFinished, vi } from 'vitest';
 import { createEarsEngine, untypedQx, tx } from '@abuddy/ears';
 import { bindHost, unbindHost, type HostRuntime } from '../../src/runtime/host-runtime.ts';
 import { _rootEvents } from '../../src/runtime/root-events.ts';
-import { onConnected, onIncoming, sendToBrainSystem, sendToPlugin, sendToSystem } from '../../src/events/index.ts';
+import { onConnected, onIncoming, broadcastToPlugin, sendToSystem } from '../../src/events/index.ts';
 import { createLogger, onLog, reportError } from '../../src/logger/index.ts';
 import { services } from '../../src/services/index.ts';
 import { getAppVersion } from '../../src/env/index.ts';
@@ -38,6 +38,11 @@ const runtime: HostRuntime = {
     },
     secrets: { status: unused, list: unused, select: unused, rename: unused, delete: unused },
     filesystem: { writeFile: unused, readFile: unused, exists: unused, mkdir: unused, readDir: unused, remove: unused, rename: unused, stat: unused },
+    settings: {
+      getAll: unused, getStored: unused, getSection: unused, forFeature: unused, setForFeature: unused,
+      setInSection: unused, replaceAll: unused, removeStored: unused, reset: unused, whileReplacingData: unused,
+      onChange: unused,
+    },
   },
 };
 
@@ -73,8 +78,7 @@ afterEach(() => {
 describe('with no app bound', () => {
   it('throws, naming bindHost, for what needs the app', async () => {
     const needsApp: Array<[string, () => unknown]> = [
-      ['sendToPlugin', () => sendToPlugin('memos', { type: 'MEMO_ADDED' })],
-      ['sendToBrainSystem', () => sendToBrainSystem({ eventType: 'user.message' })],
+      ['broadcastToPlugin', () => broadcastToPlugin('memos', { type: 'MEMO_ADDED' })],
       ['sendToSystem', () => sendToSystem('memos', { type: 'ADD_MEMO' })],
       ['onConnected', () => onConnected(() => {})],
       ['onIncoming', () => onIncoming(() => {})],

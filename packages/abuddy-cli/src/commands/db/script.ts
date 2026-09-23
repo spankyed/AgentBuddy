@@ -9,6 +9,7 @@ import { pathToFileURL } from 'node:url';
 import type { AppDatabase } from '@abuddy/host/database';
 import { consoleScope, openTarget, parseDbArgs, TARGET_USAGE, withDatabase, type DbIo } from './target';
 import { flushOutput, outputFormat, writeResult } from './output';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const OPTIONS = {
   'read-only': { type: 'boolean', default: false },
@@ -106,7 +107,7 @@ async function importScript(scriptFile: string): Promise<{ default?: unknown }> 
 
 /** What the script failed with, named after the script, so a failure is never read as the CLI's own */
 function scriptFailure(scriptFile: string, error: unknown): Error {
-  return new Error(`${scriptFile} failed: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
+  return new Error(`${scriptFile} failed: ${errorMessage(error)}`, { cause: error });
 }
 
 export async function dbScript(args: string[], io: DbIo): Promise<void> {

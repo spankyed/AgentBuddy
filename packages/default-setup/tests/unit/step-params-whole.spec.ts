@@ -31,7 +31,7 @@ async function runCreateWithBigFields() {
       ],
     },
   })
-  const app = await startApp({ systems: ['brain', 'settings'] })
+  const app = await startApp({ systems: ['brain'] })
   await app.runFlow('Outer', { event: 'go' })
   await app.settle()
   return app

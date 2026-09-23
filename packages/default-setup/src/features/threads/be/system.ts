@@ -1,15 +1,15 @@
-import { emit } from '@/__generated__/events';
+import type { ThreadsSettings } from '@/__generated__/types'
+import type { AssistantSettings } from '@/app-settings/types';
+import { sendToSystem, broadcastToPlugin } from '@/__generated__/events';
 import { services } from '@/__generated__/services';
+import { REQUIRED_PROVIDERS } from '@/app-settings/providers';
 import { assign, cancel, fromPromise, log, raise, sendTo, setup, type ErrorActorEvent } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
-import { bus } from '@abuddy/sdk/ids';
-import { brain } from '@/__generated__/system-ids';
-import { getActor, sendParentSafe } from '@abuddy/sdk/helpers';
 import { tx, EARS } from '@/__generated__/ears';
 import { repository } from '@/__generated__/repository';
 import type { ThreadEditFields, ThreadEntity, ThreadLinkItem, ThreadConnectedData, MessageEntity, BlockConfig, AgentThreadData, AgentConnectedData, RecentThreadRefreshData } from './types';
-import type { AgentSettings, CommandItem } from '../../settings/be/types';
+import type { AgentSettings, CommandItem } from './types';
 import { type ThreadExtendedData, type BlockResponse } from './types';
 import { type ChangeBlock, toMap, toIdentifierSet, mapScalar, mapArray } from '@abuddy/sdk/utils';
 import { exportThreads } from './export-threads';
@@ -17,6 +17,8 @@ import { importThreads } from './import-threads';
 import { runThreadTeardown } from './thread-teardown';
 import { generateAsideText } from './services/chat';
 import { createLogger, reportError } from '@abuddy/sdk/logger';
+import { ref } from '@/__generated__/ref';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const logger = createLogger('threads');
 let birthFlowStarted = false;
@@ -50,10 +52,10 @@ type IncomingThreadsEvents =
   | { type: 'REFRESH_THREADS' }
   | { type: 'LOAD_MORE_MESSAGES'; threadId: string; cursor: string }
 
-export type ThreadsInternalEvents =
   | { type: 'CLIENT_CONNECTED' }
-  | { type: 'THREADS_SETTINGS_UPDATED'; settings: any; changes?: any }
   | { type: 'BIRTH_FLOW_START' }
+  /** The user's stored API keys changed (no values). The assistant's first flow waits on one it can call a model with */
+  | { type: 'SECRETS_CHANGED' }
   | { type: 'THREAD_DELETED'; threadId: string }
   /** The library's commands folder changed (sent by the library system) */
   | { type: 'COMMANDS_CHANGED' }
@@ -94,8 +96,7 @@ export interface ThreadsContext {
   sentCommands?: string
 }
 
-export const threadsSpec = defineSystem('threads')<IncomingThreadsEvents | ThreadsInternalEvents, OutgoingThreadsEvents, ThreadsContext>();
-export const threads = threadsSpec.id;
+export const threadsSpec = defineSystem<IncomingThreadsEvents, OutgoingThreadsEvents, ThreadsContext>();
 
 function reportThreadOperationError(
   operation: 'create' | 'update' | 'delete' | 'archive' | 'unarchive' | 'pin' | 'unpin' | 'status' | 'parent',
@@ -129,21 +130,21 @@ export const threadsSystem = setup({
     // ---- Thread management actions ----
     sendThreadsConnectedData: ({ system }) => {
       const connectedData = repository.threadQueries.connectedData();
-      const threadsSettings = repository.settingsQueries.getPluginSettings('threads');
+      const threadsSettings = services.settings.forFeature<ThreadsSettings>(ref('threads'));
 
-      system.get(bus).send(emit(threads, {
+      broadcastToPlugin('threads', {
         type: 'THREAD_CONNECTED',
         data: {
           ...connectedData,
           settings: threadsSettings || null
         }
-      }));
+      });
     },
     sendArchivedThreads: ({ system }) => {
-      system.get(bus).send(emit(threads, {
+      broadcastToPlugin('threads', {
         type: 'ARCHIVED_THREADS_DATA',
         threads: repository.threadQueries.archivedThreads(),
-      }));
+      });
     },
     createThread: ({ system, event }) => {
       const thread = threadsSpec.typeOf('CREATE_THREAD', event);
@@ -167,23 +168,23 @@ export const threadsSystem = setup({
         );
       }
 
-      system.get(bus).send(emit(threads, {
+      broadcastToPlugin('threads', {
         type: 'THREAD_CREATED',
         id: newThreadId,
         entityType: EARS.Entity.Thread,
         ...rest
-      }));
+      });
     },
     sendViewData: ({ system, event }) => {
       const threadId = threadsSpec.typeOf('VIEW_THREAD', event).threadId as EARS.EntityId;
 
       repository.threadCommands.markAsVisited(threadId);
 
-      system.get(bus).send(emit(threads, {
+      broadcastToPlugin('threads', {
         type: 'SET_VIEW_DATA',
         id: threadId,
         data: repository.threadQueries.extendedData(threadId),
-      }));
+      });
     },
     updateThreadField: ({ system, event }) => {
       const { key, value, threadId } = threadsSpec.typeOf('UPDATE_THREAD_FIELD', event);
@@ -201,36 +202,36 @@ export const threadsSystem = setup({
       }
 
       if (key === 'status') {
-        system.get(bus).send(emit(threads, {
+        broadcastToPlugin('threads', {
           type: 'THREAD_UPDATED',
           threadId,
           updates: { status: value as string },
-        }));
+        });
       }
 
       if (key === 'archived') {
         // Refresh thread list and recent threads since thread visibility changed
-        system.get(bus).send(emit(threads, {
+        broadcastToPlugin('threads', {
           type: 'THREAD_CONNECTED',
           data: {
             ...repository.threadQueries.connectedData(),
-            settings: repository.settingsQueries.getPluginSettings('threads') ?? null,
+            settings: services.settings.forFeature<ThreadsSettings>(ref('threads')) ?? null,
           },
-        }));
+        });
         // Also refresh archived threads list so the change is visible immediately
-        system.get(bus).send(emit(threads, {
+        broadcastToPlugin('threads', {
           type: 'ARCHIVED_THREADS_DATA',
           threads: repository.threadQueries.archivedThreads(),
-        }));
+        });
         services.chat.sendRecentThreadsRefresh();
       }
 
       if (key === 'pinned') {
-        system.get(bus).send(emit(threads, {
+        broadcastToPlugin('threads', {
           type: 'THREAD_UPDATED',
           threadId,
           updates: { pinned: value as boolean },
-        }));
+        });
         services.chat.sendRecentThreadsRefresh();
       }
 
@@ -249,15 +250,14 @@ export const threadsSystem = setup({
         return;
       }
 
-      system.get(bus).send(emit(threads, {
+      broadcastToPlugin('threads', {
         type: 'THREAD_UPDATED',
         threadId,
         updates: { status },
-      }));
+      });
 
       // Notify flows — all logic lives in the flow layer
-      const brainActor = getActor(system, brain);
-      brainActor.send({
+      sendToSystem('brain', {
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'thread.status.changed',
         payload: { threadId, status, userInduced: true },
@@ -265,14 +265,13 @@ export const threadsSystem = setup({
     },
     handleSettingsUpdate: ({ system, event }) => {
       const firstStatusLabel = (): string | undefined =>
-        repository.settingsQueries.getPluginSettings('threads')?.statuses?.[0]?.label;
+        services.settings.forFeature<ThreadsSettings>(ref('threads'))?.statuses?.[0]?.label;
 
-      const { changes } = threadsSpec.typeOf('THREADS_SETTINGS_UPDATED', event);
+      const { changes } = threadsSpec.typeOf('FEATURE_SETTINGS_UPDATED', event);
 
-      const busSvc = system.get(bus);
 
       if (changes) {
-        const sBlock = (changes.statuses || changes) as ChangeBlock | undefined;
+        const sBlock = changes.statuses as ChangeBlock | undefined;
         const sRenames = toMap(sBlock?.renames);
         const sRemoved = toIdentifierSet(sBlock?.removed, (item: any) => item.label);
         const statusNeedsWork = sRenames.size || sRemoved.size;
@@ -306,21 +305,19 @@ export const threadsSystem = setup({
 
             if (Object.keys(patch).length) {
               repository.threadCommands.update(th.id, patch);
-              busSvc.send(emit(threads, { type: 'THREAD_UPDATED', threadId: th.id, updates: patch }));
+              broadcastToPlugin('threads', { type: 'THREAD_UPDATED', threadId: th.id, updates: patch });
               touched = true;
             }
           }
 
           if (touched) {
-            busSvc.send(
-              emit(threads, {
+            broadcastToPlugin('threads', {
                 type: 'THREAD_CONNECTED',
                 data: {
                   ...repository.threadQueries.connectedData(),
-                  settings: repository.settingsQueries.getPluginSettings('threads') ?? null,
+                  settings: services.settings.forFeature<ThreadsSettings>(ref('threads')) ?? null,
                 },
-              })
-            );
+              });
           }
         }
       }
@@ -343,13 +340,13 @@ export const threadsSystem = setup({
       }
 
       // Refresh all thread data on the frontend
-      system.get(bus).send(emit(threads, {
+      broadcastToPlugin('threads', {
         type: 'THREAD_CONNECTED',
         data: {
           ...repository.threadQueries.connectedData(),
-          settings: repository.settingsQueries.getPluginSettings('threads') ?? null,
+          settings: services.settings.forFeature<ThreadsSettings>(ref('threads')) ?? null,
         },
-      }));
+      });
     },
     deleteThread: ({ system, event }) => {
       const { threadId } = threadsSpec.typeOf('DELETE_THREAD', event);
@@ -365,10 +362,10 @@ export const threadsSystem = setup({
         return;
       }
 
-      system.get(bus).send(emit(threads, {
+      broadcastToPlugin('threads', {
         type: 'THREAD_DELETED',
         threadId,
-      }));
+      });
 
       // Refresh recent threads since active thread may have been deleted
       services.chat.sendRecentThreadsRefresh();
@@ -379,17 +376,17 @@ export const threadsSystem = setup({
       try {
         const { filePath, threadCount } = exportThreads(ev.directory);
 
-        system.get(bus).send(emit(threads, {
+        broadcastToPlugin('threads', {
           type: 'THREADS_EXPORTED',
           filePath,
           threadCount,
-        }));
+        });
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        system.get(bus).send(emit(threads, {
+        const message = errorMessage(err);
+        broadcastToPlugin('threads', {
           type: 'THREADS_EXPORT_FAILED',
           errors: [message],
-        }));
+        });
       }
     },
     importThreadItems: ({ system, event }) => {
@@ -399,35 +396,35 @@ export const threadsSystem = setup({
         const result = importThreads(ev.directory);
 
         if (result.created === 0 && result.errors.length > 0) {
-          system.get(bus).send(emit(threads, {
+          broadcastToPlugin('threads', {
             type: 'THREADS_IMPORT_FAILED',
             errors: result.errors,
-          }));
+          });
           return;
         }
 
-        system.get(bus).send(emit(threads, {
+        broadcastToPlugin('threads', {
           type: 'THREADS_IMPORTED',
           count: result.created,
           ...(result.errors.length > 0 ? { errors: result.errors } : {}),
-        }));
+        });
 
         const connectedData = repository.threadQueries.connectedData();
-        const threadsSettings = repository.settingsQueries.getPluginSettings('threads');
+        const threadsSettings = services.settings.forFeature<ThreadsSettings>(ref('threads'));
 
-        system.get(bus).send(emit(threads, {
+        broadcastToPlugin('threads', {
           type: 'THREAD_CONNECTED',
           data: {
             ...connectedData,
             settings: threadsSettings || null,
           },
-        }));
+        });
       } catch (err) {
-        const message = err instanceof Error ? err.message : String(err);
-        system.get(bus).send(emit(threads, {
+        const message = errorMessage(err);
+        broadcastToPlugin('threads', {
           type: 'THREADS_IMPORT_FAILED',
           errors: [message],
-        }));
+        });
       }
     },
 
@@ -435,31 +432,41 @@ export const threadsSystem = setup({
     checkOnboarding: ({ system }) => {
       if (!services.appData.hasOnboarded() && !birthFlowStarted) {
         birthFlowStarted = true;
-        const assistantSettings = repository.settingsQueries.getAssistantSettings();
+        const assistantSettings = services.settings.getSection<AssistantSettings>('assistant');
         if (!assistantSettings.birthdate) {
           const birthdate = new Date().toISOString();
-          repository.settingsCommands.updateSettings('assistant', null, ['birthdate'], birthdate);
+          services.settings.setInSection('assistant', ['birthdate'], birthdate);
           logger.info('Assistant birthdate set', { birthdate });
         }
-        const brainActor = getActor(system, brain);
-        brainActor.send({
+        sendToSystem('brain', {
           type: 'TRIGGER_BRAIN_EVENT',
           eventType: 'onboarding.start',
           payload: {},
         });
       }
     },
+    /**
+     * The assistant's first flow runs once it can call a model, so the keys changing is what may start it. It waits
+     * here rather than with the settings view because the birth flow, the assistant and its birthdate are this
+     * feature's; the app only says that the user's keys changed.
+     */
+    startBirthFlowOnceKeyed: () => {
+      const keyed = services.secrets.list().some((secret) => secret.selected && (REQUIRED_PROVIDERS as readonly string[]).includes(secret.provider));
+      if (keyed && !services.settings.getSection<AssistantSettings>('assistant').birthdate) {
+        sendToSystem('threads', { type: 'BIRTH_FLOW_START' });
+      }
+    },
+
     startBirthFlow: ({ system }) => {
-      const assistantSettings = repository.settingsQueries.getAssistantSettings();
+      const assistantSettings = services.settings.getSection<AssistantSettings>('assistant');
 
       if (!assistantSettings.birthdate) {
         const birthdate = new Date().toISOString();
-        repository.settingsCommands.updateSettings('assistant', null, ['birthdate'], birthdate);
+        services.settings.setInSection('assistant', ['birthdate'], birthdate);
         logger.info('Assistant birthdate set', { birthdate });
       }
 
-      const brainActor = getActor(system, brain);
-      brainActor.send({
+      sendToSystem('brain', {
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'onboarding.start',
         payload: {},
@@ -470,15 +477,15 @@ export const threadsSystem = setup({
       const commands = services.library.commands();
       const sent = JSON.stringify(commands);
       if (sent === context.sentCommands) return {};
-      system.get(bus).send(emit(threads, { type: 'COMMANDS_UPDATED', commands }));
+      broadcastToPlugin('threads', { type: 'COMMANDS_UPDATED', commands });
       return { sentCommands: sent };
     }),
     sendChatConnectedData: ({ system }) => {
       const data = repository.chatQueries.connectedData();
-      system.get(bus).send(emit(threads, {
+      broadcastToPlugin('threads', {
         type: 'AGENT_CONNECTED',
         data: { ...data, commands: services.library.commands() },
-      }));
+      });
     },
     rememberSentCommands: assign({ sentCommands: () => JSON.stringify(services.library.commands()) }),
     sendThreadChatData: ({ system, event }) => {
@@ -487,21 +494,21 @@ export const threadsSystem = setup({
         services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId, restore);
       } catch (err) {
         logger.warn('Thread not found for chat open, skipping', { threadId });
-        system.get(bus).send(emit(threads, {
+        broadcastToPlugin('threads', {
           type: 'THREAD_CHAT_ERROR',
           threadId: threadId as string,
-          error: err instanceof Error ? err.message : String(err),
-        }));
+          error: errorMessage(err),
+        });
       }
     },
     loadMoreMessages: ({ system, event }) => {
       const { threadId, cursor } = threadsSpec.typeOf('LOAD_MORE_MESSAGES', event);
       const result = repository.chatQueries.paginatedMessages(threadId as EARS.EntityId, cursor);
-      system.get(bus).send(emit(threads, {
+      broadcastToPlugin('threads', {
         type: 'OLDER_MESSAGES_LOADED',
         threadId,
         ...result,
-      }));
+      });
     },
     sendThreadTabData: ({ system, event }) => {
       const { threadId } = threadsSpec.typeOf('OPEN_THREAD_TAB', event);
@@ -509,11 +516,11 @@ export const threadsSystem = setup({
         services.chat.openThreadTabAndRefresh(threadId as EARS.EntityId);
       } catch (err) {
         logger.warn('Thread not found for tab open, skipping', { threadId });
-        system.get(bus).send(emit(threads, {
+        broadcastToPlugin('threads', {
           type: 'THREAD_CHAT_ERROR',
           threadId: threadId as string,
-          error: err instanceof Error ? err.message : String(err),
-        }));
+          error: errorMessage(err),
+        });
       }
     },
     forwardUserMessage: ({ system, event }) => {
@@ -556,7 +563,7 @@ export const threadsSystem = setup({
         if (threadData) {
           const fullThreadData = repository.threadQueries.byId(threadData.id);
 
-          system.get(bus).send(emit(threads, {
+          broadcastToPlugin('threads', {
             type: 'THREAD_CREATED',
             id: threadData.id,
             shortCode: threadData.shortCode,
@@ -565,12 +572,12 @@ export const threadsSystem = setup({
             topic: fullThreadData?.topic,
             instructions: fullThreadData?.instructions,
             status: fullThreadData?.status
-          }));
+          });
 
-          system.get(bus).send(emit(threads, {
+          broadcastToPlugin('threads', {
             type: 'LOAD_CHAT_THREAD',
             data: repository.chatQueries.threadData(threadId)!
-          }));
+          });
         } else {
           const userMessage: MessageEntity = {
             id: messageResult.id,
@@ -583,17 +590,16 @@ export const threadsSystem = setup({
             ...(sanitizedRefs && { references: sanitizedRefs }),
           };
 
-          system.get(bus).send(emit(threads, {
+          broadcastToPlugin('threads', {
             type: 'MESSAGE_ADDED',
             threadId: threadId as string,
             message: userMessage
-          }));
+          });
         }
 
         services.chat.sendRecentThreadsRefresh();
 
-        const brainActor = getActor(system, brain);
-        brainActor.send({
+        sendToSystem('brain', {
           type: 'TRIGGER_BRAIN_EVENT',
           eventType: 'user.message',
           payload: {
@@ -609,11 +615,11 @@ export const threadsSystem = setup({
         });
       } catch (err) {
         logger.error('forwardUserMessage failed', { error: err });
-        system.get(bus).send(emit(threads, {
+        broadcastToPlugin('threads', {
           type: 'THREAD_CHAT_ERROR',
           threadId: 'threadId' in event && typeof event.threadId === 'string' ? event.threadId : '',
-          error: err instanceof Error ? err.message : String(err),
-        }));
+          error: errorMessage(err),
+        });
       }
     },
     forwardUserCommand: ({ system, event }) => {
@@ -660,7 +666,7 @@ export const threadsSystem = setup({
       if (threadData) {
         const fullThreadData = repository.threadQueries.byId(threadData.id);
 
-        system.get(bus).send(emit(threads, {
+        broadcastToPlugin('threads', {
           type: 'THREAD_CREATED',
           id: threadData.id,
           shortCode: threadData.shortCode,
@@ -669,12 +675,12 @@ export const threadsSystem = setup({
           topic: fullThreadData?.topic,
           instructions: fullThreadData?.instructions,
           status: fullThreadData?.status
-        }));
+        });
 
-        system.get(bus).send(emit(threads, {
+        broadcastToPlugin('threads', {
           type: 'LOAD_CHAT_THREAD',
           data: repository.chatQueries.threadData(threadId)!
-        }));
+        });
       } else {
         const userMessage: MessageEntity = {
           id: messageResult.id,
@@ -689,17 +695,16 @@ export const threadsSystem = setup({
           command,
         };
 
-        system.get(bus).send(emit(threads, {
+        broadcastToPlugin('threads', {
           type: 'MESSAGE_ADDED',
           threadId: threadId as string,
           message: userMessage
-        }));
+        });
       }
 
       services.chat.sendRecentThreadsRefresh();
 
-      const brainActor = getActor(system, brain);
-      brainActor.send({
+      sendToSystem('brain', {
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'user.command',
         payload: {
@@ -761,8 +766,7 @@ export const threadsSystem = setup({
 
         services.chat.openThreadChatAndRefreshRecent(result.id);
 
-        const brainActor = getActor(system, brain);
-        brainActor.send({
+        sendToSystem('brain', {
           type: 'TRIGGER_BRAIN_EVENT',
           eventType: 'thread.fork',
           payload: {
@@ -818,8 +822,7 @@ export const threadsSystem = setup({
 
       // Unified `thread.revert` brain event — the `kind` discriminator
       // tells the claude-code flow which variant to run.
-      const brainActor = getActor(system, brain);
-      brainActor.send({
+      sendToSystem('brain', {
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'thread.revert',
         payload: {
@@ -870,8 +873,7 @@ export const threadsSystem = setup({
 
       services.chat.openThreadChatAndRefreshRecent(threadId as EARS.EntityId);
 
-      const brainActor = getActor(system, brain);
-      brainActor.send({
+      sendToSystem('brain', {
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'thread.revert',
         payload: { threadId, messageId, kind: 'summarize', deletedMessageIds: deletion.deletedIds, deletedUserMessageCount, agents, codexDeletedUserMessageCount },
@@ -882,8 +884,7 @@ export const threadsSystem = setup({
     },
     pauseTurn: ({ system, event }) => {
       const { threadId } = threadsSpec.typeOf('PAUSE_TURN', event);
-      const brainActor = getActor(system, brain);
-      brainActor.send({
+      sendToSystem('brain', {
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'user.thread.pause',
         payload: { threadId },
@@ -891,8 +892,7 @@ export const threadsSystem = setup({
     },
     forwardBrainEvent: ({ system, event }) => {
       const { eventType, payload } = threadsSpec.typeOf('FORWARD_BRAIN_EVENT', event);
-      const brainActor = getActor(system, brain);
-      brainActor.send({ type: 'TRIGGER_BRAIN_EVENT', eventType, payload });
+      sendToSystem('brain', { type: 'TRIGGER_BRAIN_EVENT', eventType, payload });
     },
     forwardInteractiveMessageResponse: ({ system, event }) => {
       try {
@@ -913,20 +913,20 @@ export const threadsSystem = setup({
         tx(messageId as EARS.EntityId).put('asideText', asideText);
       }
 
-      getActor(system, brain).send({
+      sendToSystem('brain', {
         type: 'TRIGGER_BRAIN_EVENT',
         eventType: 'interactive.message.response',
         payload: { messageId, threadId, response }
       });
 
-      system.get(bus).send(emit(threads, {
+      broadcastToPlugin('threads', {
         type: 'UPDATE_MESSAGE_STATE',
         messageId,
         responseTimestamp: result.responseTimestamp,
         blockResponse: response,
         ...(result.blocks && { blocks: result.blocks }),
         ...(asideText && { asideText })
-      }));
+      });
       } catch (err) {
         logger.error('forwardInteractiveMessageResponse failed', { error: err });
       }
@@ -943,24 +943,24 @@ export const threadsSystem = setup({
         compacted,
       );
       for (const msgId of messageIds) {
-        system.get(bus).send(emit(threads, {
+        broadcastToPlugin('threads', {
           type: 'UPDATE_MESSAGE_STATE',
           messageId: msgId as string,
           compacted,
-        }));
+        });
       }
     },
   },
 }).createMachine(
   {
-    id: threads,
+    id: 'threads',
     initial: 'idle',
     context: ({ input }) => ({}),
     on: {
       CLIENT_CONNECTED: {
         actions: ['sendThreadsConnectedData', 'sendChatConnectedData', 'rememberSentCommands', 'checkOnboarding'],
       },
-      THREADS_SETTINGS_UPDATED: {
+      FEATURE_SETTINGS_UPDATED: {
         actions: 'handleSettingsUpdate',
       },
       // Chat/agent global events
@@ -975,6 +975,9 @@ export const threadsSystem = setup({
       },
       BIRTH_FLOW_START: {
         actions: 'startBirthFlow',
+      },
+      SECRETS_CHANGED: {
+        actions: 'startBirthFlowOnceKeyed',
       },
       COMMANDS_CHANGED: {
         actions: 'sendCommands',

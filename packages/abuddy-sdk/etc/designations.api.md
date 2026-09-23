@@ -5,10 +5,10 @@
 ```ts
 
 // @public
-export type Designations = Record<string, string>;
+export type Designations = Record<string, FeatureRef>;
 
 // @public (undocumented)
-export function getDesignated(role: string): string;
+export function getDesignated(role: string): FeatureRef;
 
 // @public (undocumented)
 export function hasDesignation(role: string): boolean;

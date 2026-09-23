@@ -2,83 +2,31 @@ import { createApp } from 'vue'
 import { createActor } from 'xstate';
 // import { createBrowserInspector } from '@statelyai/inspect';
 import type { Actor } from 'xstate';
-import App from './App.vue'
+import App from './views/App.vue'
 import './style.css'
 // highlight.js's stylesheet is global (.hljs, pre code.hljs), so the app owns it: imported from
 // @abuddy/ui it would ship again inside every fe.bundleUi pack and restyle code everywhere.
 import 'highlight.js/styles/github-dark.css'
 import builtInPacks from 'virtual:built-in-packs';
-import { packsPlugin } from '@/packs/plugin';
-import { application, createApplicationState } from '@/core/actors/application';
-import { runFrontendMigrations } from '@/setup/migrations';
-import { handleProtocolInstall, requestPackInstall } from '@/packs/pack-install';
+import { hostFrontend } from '@/views/packs/plugin';
+import { createAppShell } from '@/runtime/shell';
+import { HOST, installFromProtocol, runFrontendMigrations } from '@abuddy/host/fe';
 import 'virtual:host-deps';
-import { bindRendererHost, fePacks } from '@/core/fe-host';
-import { installMonacoErrorFilters } from '@abuddy/ui/components/monaco-error-filters';
+import { bindRendererHost } from '@/runtime';
+import { fePacks } from '@/runtime/packs';
+import { installGlobalErrorHandling, reportRendererError } from '@/boot/errors';
 
 declare const __APP_VERSION__: string;
 
 declare global {
   interface Window {
-    applicationState: Actor<ReturnType<typeof createApplicationState>>;
+    applicationState: Actor<ReturnType<typeof createAppShell>>;
     __disableOnboardingUI?: () => void;
     appVersion: string;
   }
 }
 
-function serializeRendererError(error: unknown): { message: string; stack?: string; meta?: unknown } {
-  if (error instanceof Error) {
-    return {
-      message: error.message || error.toString(),
-      stack: error.stack,
-    };
-  }
-
-  if (typeof error === 'string') {
-    return { message: error };
-  }
-
-  try {
-    return {
-      message: JSON.stringify(error),
-      meta: error,
-    };
-  } catch {
-    return { message: String(error) };
-  }
-}
-
-function reportRendererError(source: string, error: unknown, meta?: unknown) {
-  const serialized = serializeRendererError(error);
-  window.electronAPI?.rendererLog?.write({
-    level: 'error',
-    source,
-    message: serialized.message,
-    stack: serialized.stack,
-    meta: {
-      startupId: window.electronAPI?.startupId,
-      detail: meta ?? serialized.meta,
-    },
-    fatal: true,
-  }).catch(() => {});
-}
-
-// Before the listener below: Monaco's diff view throws a recoverable range error that this would
-// otherwise report as fatal, and listeners on one target run in the order they were added.
-installMonacoErrorFilters();
-
-window.addEventListener('error', (event) => {
-  reportRendererError('window.error', event.error ?? event.message, {
-    message: event.message,
-    filename: event.filename,
-    lineno: event.lineno,
-    colno: event.colno,
-  });
-});
-
-window.addEventListener('unhandledrejection', (event) => {
-  reportRendererError('window.unhandledrejection', event.reason);
-});
+installGlobalErrorHandling();
 
 const query = new URLSearchParams(window.location.search);
 const isPluginPopout = query.get('popout') === 'plugin';
@@ -87,7 +35,7 @@ const initialPluginId = isPluginPopout ? query.get('pluginId') ?? undefined : un
 // --- Pre-actor initialization ---
 window.appVersion = __APP_VERSION__;
 console.log(`AgentBuddy v${__APP_VERSION__}`);
-runFrontendMigrations();
+runFrontendMigrations(localStorage, __APP_VERSION__);
 
 const packEntries = Object.entries(builtInPacks);
 const loadedMods = await Promise.all(
@@ -102,8 +50,7 @@ for (const mod of loadedMods) {
 
 // const { inspect } = createBrowserInspector();
 
-const plugins = [...fePacks.getRegisteredPlugins(), packsPlugin];
-const defaultPlugin = fePacks.getRegisteredDefaultPlugin();
+fePacks.registerPackFE(hostFrontend);
 
 // The SDK's frontend code (lookups, navigation, sends, the secrets client) reaches this window's app from here on:
 // bound before the application actor is created, since creating it builds its plugins' state, and before any
@@ -111,14 +58,13 @@ const defaultPlugin = fePacks.getRegisteredDefaultPlugin();
 let createdApplication: typeof applicationState | undefined;
 bindRendererHost(() => createdApplication);
 
-export const applicationState = createActor(createApplicationState(), {
-  systemId: application,
+// The shell starts with the plugins registered above, its default the one a pack claims
+export const applicationState = createActor(createAppShell(), {
+  systemId: HOST.application,
   // inspect,
   input: {
-    defaultPlugin,
-    plugins,
     initialPluginId,
-    restoreLastActivePlugin: !isPluginPopout,
+    ownsLastActivePlugin: !isPluginPopout,
   }
 });
 
@@ -145,12 +91,7 @@ applicationState.subscribe({
 
 // Listen for deep link protocol actions (abuddy://install?pack=...)
 window.electronAPI?.protocolAction?.onAction(({ action, params }) => {
-  if (action === 'install') {
-    const request = handleProtocolInstall(params);
-    if (request) {
-      requestPackInstall(request);
-    }
-  }
+  if (action === 'install') installFromProtocol(params);
 });
 
 const app = createApp(App);
@@ -164,8 +105,6 @@ app.config.errorHandler = (err, _instance, info) => {
   );
 };
 
-app.provide('actorSystem', applicationState.system);
-app.provide('applicationActor', applicationState);
 app.mount('#app');
 
 window.electronAPI?.rendererReady?.();

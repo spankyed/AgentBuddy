@@ -6,9 +6,10 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { registry } from './test-host.ts';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 
 const { publishHostPackOutput } = await import('../../../src/packs/index.ts');
-const { registerPack, unregisterPack, getPackRegistration, getPackBootHooks, registerShutdownHook, removeShutdownHooksForKey } = registry;
+const { registerPack, unregisterPack, getPackRegistration, registerShutdownHook, removeShutdownHooksForKey } = registry;
 const { reloadExternalPack, reloadBuiltInPack } = await import('../../../src/packs/runtime/reload.ts');
 const { loadBuiltInPacks } = await import('../../../src/packs/runtime/loader.ts');
 const { orchestrateDeclarativeSeed } = await import('../../../src/packs/runtime/seed.ts');
@@ -16,13 +17,13 @@ const { resolveAppContext } = await import('@abuddy/sdk/env');
 // The test host's logger reports through its root event bus, so a test can read what the code under test logged
 const { testRootEvents: rootEvents, resetTestData, testPacks } = await import('@abuddy/sdk/testing');
 const { appState } = await import('../../../src/app-state/index.ts');
-const { readInstalledPacks } = await import('../../../src/packs/installed-packs.ts');
+const { readInstalledPacks } = await import('../../../src/packs/installed.ts');
 
 const PACK_ID = 'reload-pack';
 
 let tmpDir: string;
 let origEnv: { env?: string; userDataDir?: string };
-const running = { id: PACK_ID, systems: [{ id: `${PACK_ID}.widget`, machine: { id: 'widget', config: {} } as never, events: new Set(['PING']) }] };
+const running = { id: PACK_ID, features: { widget: { system: { machine: { id: 'widget', config: {} } as never, receives: ['PING'] } } } };
 const bus = { send: vi.fn() };
 const shutdown = vi.fn();
 
@@ -33,7 +34,7 @@ function writeRebuild(runtimeSource: string) {
   fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({ id: PACK_ID, name: PACK_ID, version: '1.0.1' }));
   fs.writeFileSync(path.join(packDir, 'integrity.json'), JSON.stringify({ formatVersion: 1, id: PACK_ID, version: '1.0.1', files: {} }));
-  fs.writeFileSync(path.join(packDir, 'types', 'snapshot.json'), '{}');
+  fs.writeFileSync(path.join(packDir, 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), runtimeSource);
 }
 
@@ -41,14 +42,14 @@ const runtime = (services = '') => `
   module.exports = {
     registration: {
       id: '${PACK_ID}',
-      systems: [{ id: 'widget', machine: { id: 'widget', config: {} }, events: new Set(['PING']) }],
+      features: { widget: { system: { machine: { id: 'widget', config: {} }, receives: ['PING'] } } },
       ${services}
     },
   };
 `;
 
 function expectRunningPackIntact() {
-  expect(getPackRegistration(PACK_ID)?.systems).toBe(running.systems);
+  expect(getPackRegistration(PACK_ID)?.features).toBe(running.features);
   expect(shutdown).not.toHaveBeenCalled();
   expect(bus.send).not.toHaveBeenCalled();
 }
@@ -108,7 +109,7 @@ describe('reloading a built-in pack', () => {
         },
         registration: {
           id: '${BUILT_IN_ID}',
-          systems: [{ id: 'widget', machine: { id: 'widget', config: {} }, events: new Set(['PING']) }],
+          features: { widget: { system: { machine: { id: 'widget', config: {} }, receives: ['PING'] } } },
           boot: {
             onInit() { module.exports.compiledDirAtInit = module.exports.getCompiledDir(); },
             seedManifest: { seedKeys: ['actions'], get compiledDir() { return module.exports.getCompiledDir(); } },
@@ -165,7 +166,7 @@ describe('reloading a built-in pack', () => {
     const packDir = path.join(packagesDir, BUILT_IN_ID);
     const reloaded = require(path.join(packDir, 'dist', 'runtime', 'index.cjs'));
     expect(reloaded.compiledDirAtInit).toBe(path.join(packDir, 'dist'));
-    expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: BUILT_IN_ID, systemIds: ['widget'] });
+    expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: BUILT_IN_ID, systemIds: [`${BUILT_IN_ID}/widget`] });
   });
 
   // Only the reloaded pack's own systems restart; other packs' systems read what it registers and seeds
@@ -183,7 +184,7 @@ describe('reloading a built-in pack', () => {
     const packagesDir = writeBuiltIn();
     await loadBuiltInPacks(registry, packagesDir, { runtimeEntry: 'only' });
     // Boot's own seeding, which the reload picks up from
-    const { seedManifest } = getPackBootHooks(BUILT_IN_ID)!;
+    const { seedManifest } = getPackRegistration(BUILT_IN_ID)!.boot!;
     orchestrateDeclarativeSeed(seedManifest!, BUILT_IN_ID);
     expect(seeded).toEqual([path.join(packagesDir, BUILT_IN_ID, 'dist')]);
 
@@ -201,7 +202,7 @@ describe('reloading a built-in pack', () => {
   it("records what it seeded per pack, so a second built-in pack's boot seed doesn't re-run this one", async () => {
     const packagesDir = writeBuiltIn();
     await loadBuiltInPacks(registry, packagesDir, { runtimeEntry: 'only' });
-    const { seedManifest } = getPackBootHooks(BUILT_IN_ID)!;
+    const { seedManifest } = getPackRegistration(BUILT_IN_ID)!.boot!;
 
     orchestrateDeclarativeSeed(seedManifest!, BUILT_IN_ID);
     expect(seeded).toEqual([path.join(packagesDir, BUILT_IN_ID, 'dist')]);
@@ -220,7 +221,7 @@ describe('reloading a built-in pack', () => {
   it('reports the records a seeder could not seed, and still records the hash so they are retried on the next change', async () => {
     const packagesDir = writeBuiltIn();
     await loadBuiltInPacks(registry, packagesDir, { runtimeEntry: 'only' });
-    const { seedManifest } = getPackBootHooks(BUILT_IN_ID)!;
+    const { seedManifest } = getPackRegistration(BUILT_IN_ID)!.boot!;
 
     recordsThatFail = ['Flow "Broken": step 2 names no action'];
     orchestrateDeclarativeSeed(seedManifest!, BUILT_IN_ID);
@@ -254,7 +255,7 @@ describe('reloading a built-in pack', () => {
     await reloadBuiltInPack(registry, BUILT_IN_ID, bus as never);
 
     // The swap already happened, so the systems have to be restarted whatever the seed did
-    expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: BUILT_IN_ID, systemIds: ['widget'] });
+    expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: BUILT_IN_ID, systemIds: [`${BUILT_IN_ID}/widget`] });
     expect(loggedErrors.join('\n')).toContain('ENOENT');
     // ...and the artifacts are still published, which the seed used to skip on its way out
     const { hostPacksDir } = resolveAppContext();
@@ -297,11 +298,16 @@ describe('reloading a pack', () => {
     expectRunningPackIntact();
   });
 
-  it('restores the running registration when the rebuilt one is refused', async () => {
-    registerPack({ id: 'service-owner', systems: [], services: { taken: {} } });
+  // Its origin too: without it the registry forgets where the pack came from, and a built-in's next reload can't find it
+  it('restores the running registration, and where it came from, when the rebuilt one is refused', async () => {
+    const origin = { id: PACK_ID, name: PACK_ID, version: '1.0.0', dir: path.join(tmpDir, 'packs', PACK_ID), builtIn: false };
+    unregisterPack(PACK_ID);
+    registerPack(running, origin);
+    registerPack({ id: 'service-owner', services: { taken: {} } });
     writeRebuild(runtime(`services: { taken: {} },`));
     await expect(reloadExternalPack(registry, PACK_ID, bus as never)).rejects.toThrow(`Failed to register pack ${PACK_ID}`);
     expectRunningPackIntact();
+    expect(registry.packOrigin(PACK_ID)).toEqual(origin);
   });
 
   // A pack the app is the first to load has no row in installed-packs.json, and a seed failure still has
@@ -337,9 +343,9 @@ describe('reloading a pack', () => {
     writeRebuild(runtime());
     await reloadExternalPack(registry, PACK_ID, bus as never);
 
-    expect(getPackRegistration(PACK_ID)?.systems).not.toBe(running.systems);
+    expect(getPackRegistration(PACK_ID)?.features).not.toBe(running.features);
     expect(shutdown).toHaveBeenCalledTimes(1);
-    expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: PACK_ID, systemIds: [`${PACK_ID}.widget`] });
+    expect(bus.send).toHaveBeenCalledWith({ type: 'RELOAD_PACK', packId: PACK_ID, systemIds: [`${PACK_ID}/widget`] });
   });
 
   it("runs the rebuilt pack's new migrations against the version it recorded", async () => {
@@ -361,7 +367,7 @@ describe('reloading a pack', () => {
     writeRebuild(runtime());
     const registrationWhenSent: unknown[] = [];
     bus.send.mockImplementation((event: { type: string }) => {
-      if (event.type === 'PACK_CHANGED') registrationWhenSent.push(getPackRegistration(PACK_ID)?.systems);
+      if (event.type === 'PACK_CHANGED') registrationWhenSent.push(getPackRegistration(PACK_ID)?.features);
     });
     await reloadExternalPack(registry, PACK_ID, bus as never);
 
@@ -369,6 +375,6 @@ describe('reloading a pack', () => {
     expect(bus.send).toHaveBeenCalledWith({ type: 'PACK_CHANGED', packId: PACK_ID });
     expect(registrationWhenSent).toHaveLength(1);
     expect(registrationWhenSent[0]).toBeDefined();
-    expect(registrationWhenSent[0]).not.toBe(running.systems);
+    expect(registrationWhenSent[0]).not.toBe(running.features);
   });
 });

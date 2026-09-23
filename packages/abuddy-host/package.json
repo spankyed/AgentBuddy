@@ -8,7 +8,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "shared-modules:update": "tsx scripts/shared-modules.ts"
+    "sdk-modules:update": "tsx scripts/sdk-modules.ts"
   },
   "exports": {
     "./app-state": "./src/app-state/index.ts",
@@ -20,14 +20,16 @@
     "./bus": "./src/bus/index.ts",
     "./database": "./src/database/index.ts",
     "./fe": "./src/fe/index.ts",
+    "./features": "./src/features/index.ts",
     "./logs": "./src/logs.ts",
     "./migrations": "./src/migrations/index.ts",
     "./packs": "./src/packs/index.ts",
-    "./process-liveness": "./src/process-liveness.ts",
     "./packs/dev-server": "./src/packs/dev-server.ts",
     "./packs/runtime": "./src/packs/runtime/index.ts",
+    "./process-liveness": "./src/process-liveness.ts",
     "./secrets": "./src/secrets/index.ts",
-    "./services": "./src/services/index.ts"
+    "./services": "./src/services/index.ts",
+    "./settings": "./src/features/settings/be/index.ts"
   },
   "dependencies": {
     "@abuddy/ears": "*",

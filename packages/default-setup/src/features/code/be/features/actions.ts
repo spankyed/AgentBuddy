@@ -1,4 +1,4 @@
-import { sendToPlugin } from '@/__generated__/events';
+import { broadcastToPlugin } from '@/__generated__/events';
 import { setup } from 'xstate'
 
 import { repository } from '@/__generated__/repository';
@@ -43,13 +43,13 @@ export const actionsSystem = setup({
           actionFnContent: action.actionFn
         }
 
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'codeActions.ACTION_SELECTED',
           actionId: ev.actionId as EARS.EntityId,
           data: actionWithContent
         })
       } else {
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'codeActions.CODE_ERROR',
           data: {
             message: `Action ${ev.actionId} not found`
@@ -68,7 +68,7 @@ export const actionsSystem = setup({
 
       const updatedAction = repository.actionQueries.byId(ev.actionId as EARS.EntityId)
       if (updatedAction) {
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'codeActions.ACTION_UPDATED',
           action: updatedAction,
           actionId: updatedAction.id

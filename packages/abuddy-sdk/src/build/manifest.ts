@@ -1,5 +1,6 @@
 import * as path from 'path';
 import type { z } from 'zod';
+import { resolveName } from '../ids/refs.ts';
 import type {
   ManifestSchema, FeatureEntrySchema, BootConfigSchema, SeedEntryConfigSchema, SeedFormatSchema,
   StepEntrySchema, StepDSLMetaSchema, DslEntrySchema, PackPermissionSchema,
@@ -23,34 +24,39 @@ export type PackSystemEntry = NonNullable<PackFeatureEntry['system']>;
 export type PackPluginEntry = NonNullable<PackFeatureEntry['plugin']>;
 
 // Not part of abuddy.json — used for dist/snapshot.json and build-time type exchange.
+
+/**
+ * The format of a pack's build, recorded in its snapshot: everything another abuddy reads from what `abuddy build`
+ * wrote. A dependent's codegen reads the facade types in `defs['pack-types']` and the exports generated code imports
+ * from them, `types`, `provenance` and its kinds, `flowHelpers`, and the manifest's fields. The app loads the
+ * registration the runtime bundle exports, and refuses to install or load a build in another format.
+ *
+ * A build and the abuddy reading it are often different versions: an installed AgentBuddy publishes its built-in
+ * packs' snapshots, a GitHub release carries the snapshot its author's CLI wrote, and an installed pack runs in whatever
+ * AgentBuddy the user updates to. The two must agree exactly, because a disagreement doesn't fail where it happens: a
+ * reshaped field is read as absent, a renamed facade export surfaces as TS2305 inside generated code, a reshaped
+ * registration as a feature id nobody wrote.
+ *
+ * Bump it with any change the other side would misread: a field, facade export, provenance kind, manifest or
+ * registration field removed, renamed or reshaped, or keys that now mean something else. Bump it once per release
+ * that changes the contract, not per change: only a released abuddy's builds can meet another version's, so changes
+ * made since the last release share its next number. The codegen spec's "the snapshot format" case lists what it
+ * covers, and fails when that list changes so the change is decided rather than missed.
+ */
+export const PACK_SNAPSHOT_FORMAT = 1;
+
 export interface PackTypeManifest {
   entities: Record<string, string>;
   relKinds: Record<string, string>;
 }
 
-/**
- * The shape of the facade types a pack publishes for its dependents (`dist/types/pack-types.d.ts`
- * and the snapshot's `defs`), recorded so a build can say how a dependency's facade was produced.
- *
- * This is diagnostic context, not a compatibility gate. Whether a dependency's facade can be built
- * against is decided by `requireFacadeExports` in `generate-entries.ts`, which checks for the exports
- * the generated code actually imports. A format number is only a proxy for that: it fails a
- * dependency whose facade changed in ways the dependent never touches, and it names a number rather
- * than the missing export. Bumping this changes no build's outcome — it only makes a real failure's
- * message more useful, so bump it when the generated facade's shape changes.
- *
- * A dependency built before facades existed has no `defs[PACK_TYPES_DEF]` at all; that is a separate
- * path, reported where a `sendsTo` names one of its plugins.
- */
-export const PACK_TYPES_FORMAT = 1;
-
 export interface PackSnapshot {
   types: PackTypeManifest;
   defs: Record<string, string>;
   manifest: PackManifest;
+  /** The `PACK_SNAPSHOT_FORMAT` of the CLI that wrote it; a snapshot without one predates the format */
+  format: number;
   sdkVersion?: string;
-  /** The facade shape this pack's `defs` are in (`PACK_TYPES_FORMAT` when it was built) */
-  typesFormat?: number;
   /**
    * What everything this pack's tree declares is declared by: kind → name → the pack declaring it.
    *
@@ -70,14 +76,57 @@ export interface PackSnapshot {
 }
 
 /**
- * How each kind of declared name is read off a manifest. Adding a kind is an entry here: the reader,
- * the snapshot field and every consumer are already generic over it.
+ * A build whose snapshot is in another format than `PACK_SNAPSHOT_FORMAT`: what's wrong, and which side is older, since
+ * that decides which one moves. Each reader adds its own remedy.
+ *
+ * @internal Host-only: the abuddy CLI, the pack test harness and the app's pack loader.
+ */
+export interface SnapshotFormatMismatch {
+  /** Written by a newer abuddy than the reader: only then can an older build of the same pack still match */
+  newer: boolean;
+  /** `its snapshot is format 2, written by a newer abuddy CLI (SDK 0.4.0)` */
+  problem: string;
+}
+
+/**
+ * The build's mismatch with the snapshot format its reader reads, or undefined when they agree. The reader is this
+ * abuddy unless `readerFormat` names another: the installed app's, which the CLI reads from the app's data dir.
+ *
+ * @internal Host-only: the abuddy CLI, the pack test harness, the pack installer and the app's pack loader.
+ */
+export function _snapshotFormatMismatch(
+  snapshot: { format?: unknown; sdkVersion?: string },
+  readerFormat: number = PACK_SNAPSHOT_FORMAT,
+): SnapshotFormatMismatch | undefined {
+  const { format } = snapshot;
+  if (format === readerFormat) return undefined;
+  const newer = typeof format === 'number' && format > readerFormat;
+  const builtWith = snapshot.sdkVersion ? ` (SDK ${snapshot.sdkVersion})` : '';
+  return {
+    newer,
+    problem: `its snapshot is format ${typeof format === 'number' ? format : '(none)'}, written by ${newer ? 'a newer' : 'an older'} abuddy CLI${builtWith}`,
+  };
+}
+
+/**
+ * A mismatch as a CLI reading a dependency states it
+ *
+ * @internal Host-only: the abuddy CLI and the pack test harness.
+ */
+export function _cliFormatMismatchMessage({ problem }: SnapshotFormatMismatch): string {
+  return `${problem}; this CLI reads format ${PACK_SNAPSHOT_FORMAT}. Build it and this pack with the same abuddy version`;
+}
+
+/**
+ * How each kind of declared name is read off a manifest, given the pack it belongs to. Adding a kind is
+ * an entry here: the reader, the snapshot field and every consumer are already generic over it.
  */
 export const PROVENANCE_KINDS = {
   entities: (m: ProvenanceManifest) => Object.keys(m.entities ?? {}),
   relKinds: (m: ProvenanceManifest) => Object.keys(m.relKinds ?? {}),
   commands: (m: ProvenanceManifest) => (m.commands ?? []).map((c) => c.name),
-  plugins: (m: ProvenanceManifest) => (m.features ?? []).filter((f) => f.plugin).map((f) => f.id),
+  // Keyed by ref, so a dependent reusing one of its dependency's feature ids keeps both apart
+  plugins: (m: ProvenanceManifest, packId: string) => (m.features ?? []).filter((f) => f.plugin).map((f) => resolveName(f.id, packId)),
 } as const;
 
 export type ProvenanceKind = keyof typeof PROVENANCE_KINDS;
@@ -140,9 +189,9 @@ export function _mergeProvenance(
   for (const [depId, snapshot] of dependencies) {
     const inherited = snapshot.provenance?.[kind];
     if (inherited) for (const name of Object.keys(inherited)) declaredBy[name] = inherited[name];
-    for (const name of namesOf(snapshot.manifest)) declaredBy[name] = depId;
+    for (const name of namesOf(snapshot.manifest, depId)) declaredBy[name] = depId;
   }
-  if (own) for (const name of namesOf(own.manifest)) declaredBy[name] = own.id;
+  if (own) for (const name of namesOf(own.manifest, own.id)) declaredBy[name] = own.id;
   return declaredBy;
 }
 

@@ -11,9 +11,13 @@ import { stepRegistry, type StepDefinition } from '@abuddy/sdk/steps';
 import { artifactRegistry } from '@abuddy/sdk/artifacts';
 import { blockRegistry } from '@abuddy/sdk/blocks';
 import { _seedHookRegistry } from '@abuddy/sdk/seed';
-import { getPackCommands, getPackSettingsDefaults, onPackSettingsDefaultsChanged, type PackRegistration, type PackSystemDef } from '@abuddy/sdk/framework';
+import { getPackCommands, getPackSettingsDefaults, onPackSettingsDefaultsChanged, type PackRegistration } from '@abuddy/sdk/framework';
 import { seedData, type Seeder } from '@abuddy/sdk/utils';
-import { createPackRegistry } from '../../src/packs/pack-registration.ts';
+import { createPackRegistry } from '../../src/packs/registry.ts';
+import { PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
+
+/** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */
+const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);
 
 // How this spec registers and unregisters packs: a registry it creates, bound for the SDK's lookups
 const registry = createPackRegistry();
@@ -27,7 +31,7 @@ afterEach(() => {
 });
 
 function add(pack: Partial<PackRegistration> & { id: string }): void {
-  register({ systems: [], ...pack } as PackRegistration);
+  register({ ...pack } as PackRegistration);
   registered.push(pack.id);
 }
 
@@ -53,7 +57,6 @@ const tickTrigger: StepDefinition = {
   kind: 'trigger',
   trigger: { trackField: 'every' } as unknown as StepDefinition['trigger'],
 };
-const system = (id: string, designation?: string) => ({ id, machine: {} as PackSystemDef['machine'], events: new Set<string>(), designation });
 
 describe('steps', () => {
   it("are found once their pack registers, and gone once it unregisters", () => {
@@ -133,12 +136,12 @@ describe('services', () => {
 });
 
 describe('designations', () => {
-  const journal = { id: 'journal', designation: 'journal', hasSystem: true, hasPlugin: false, services: [] };
+  const journal = { journal: { designation: 'journal', system: { machine: {} as never, receives: [] } } };
 
   it('resolve to the system that plays the role while its pack is registered', () => {
-    add({ id: 'ext', systems: [system('ext.journal')], features: [journal] });
+    add({ id: 'ext', features: journal });
     expect(hasDesignation('journal')).toBe(true);
-    expect(getDesignated('journal')).toBe('ext.journal');
+    expect(getDesignated('journal')).toBe('ext/journal');
 
     remove('ext');
     expect(hasDesignation('journal')).toBe(false);
@@ -146,9 +149,9 @@ describe('designations', () => {
   });
 
   it("keep the role with the pack that holds it when another pack's registration is refused", () => {
-    add({ id: 'first', systems: [system('first.journal', 'journal')] });
-    expect(() => add({ id: 'second', systems: [system('second.journal', 'journal')], steps: [noteStep] })).toThrow('Designation collision');
-    expect(getDesignated('journal')).toBe('first.journal');
+    add({ id: 'first', features: journal });
+    expect(() => add({ id: 'second', features: journal, steps: [noteStep] })).toThrow('Designation collision');
+    expect(getDesignated('journal')).toBe('first/journal');
     expect(stepRegistry.has('note')).toBe(false);
   });
 });
@@ -222,7 +225,6 @@ describe('a contribution that cannot be taken back out', () => {
   it("still takes out the rest, still unregisters the pack, and says what was left", () => {
     registry.registerPack({
       id: 'breaks-on-teardown',
-      systems: [],
       steps: [stepWithABrokenUndo('stuck')],
       commands: [{ name: 'leaves', placeholder: 'Cleanly' }],
     });
@@ -268,6 +270,32 @@ describe('a type two packs contribute facets of', () => {
   });
 });
 
+// A plugin is addressed `<packId>/<featureId>`, so two packs with a `memos` feature have a plugin each and
+// neither shadows the other.
+describe('two packs naming the same feature', () => {
+  const withPlugin = (id: string, featureId: string, receives: string[]) => ({ id, features: { [featureId]: { plugin: { receives } } } });
+
+  it('both register, each addressing its own plugin', () => {
+    add(withPlugin('first-pack', 'memos', ['FIRST_EVENT']));
+    add({ ...withPlugin('second-pack', 'memos', ['SECOND_EVENT']), steps: [noteStep] });
+
+    const map = registry.getPluginEventValidationMap();
+    expect(map.get('first-pack/memos')).toEqual(receives('FIRST_EVENT'));
+    expect(map.get('second-pack/memos')).toEqual(receives('SECOND_EVENT'));
+    expect(map.has('memos'), 'a bare feature id is nobody\'s address').toBe(false);
+    expect(stepRegistry.has('note')).toBe(true);
+  });
+
+  // The host is the pack `host`; a pack naming a feature after one of its features still gets a ref of its own
+  it("leaves the host's own plugin alone when a feature is named after it", () => {
+    const host = registry.getPluginEventValidationMap().get('host/application');
+    add(withPlugin('impostor', 'application', ['HIJACKED']));
+
+    expect(registry.getPluginEventValidationMap().get('host/application')).toEqual(host);
+    expect(registry.getPluginEventValidationMap().get('impostor/application')).toEqual(receives('HIJACKED'));
+  });
+});
+
 describe('a pack whose registration is refused', () => {
   const scratch: string[] = [];
   afterEach(() => { for (const dir of scratch.splice(0)) fs.rmSync(dir, { recursive: true, force: true }); });
@@ -289,7 +317,7 @@ describe('a pack whose registration is refused', () => {
       seedHooks: { Note: {} as never },
       seeders: [aSeeder('notes')],
       commands: [{ name: 'standup', placeholder: 'Topic' }],
-      features: [{ id: 'notes', hasSystem: false, hasPlugin: true, services: [], settings: { plugins: { notes: { from: 'incumbent' } } } }],
+      features: { notes: { plugin: { receives: [] }, settings: { plugins: { notes: { from: 'incumbent' } } } } },
     });
 
     // Every kind of its own, and a command the incumbent already declares — refused after the rest registered
@@ -301,7 +329,7 @@ describe('a pack whose registration is refused', () => {
       seedHooks: { Card: {} as never },
       seeders: [aSeeder('cards')],
       commands: [{ name: 'standup', placeholder: 'Theirs' }],
-      features: [{ id: 'cards', hasSystem: false, hasPlugin: true, services: [], settings: { plugins: { cards: {} } } }],
+      features: { cards: { plugin: { receives: [] }, settings: { plugins: { cards: {} } } } },
     })).toThrow('Command collision');
 
     // Nothing of the refused pack survives
@@ -310,7 +338,7 @@ describe('a pack whose registration is refused', () => {
     expect(blockRegistry.has('card-block')).toBe(false);
     expect(_seedHookRegistry.get('Card')).toBeUndefined();
     expect(seedData({ compiledDir: seedsOf('refused') })).toEqual({});
-    expect(getPackSettingsDefaults().settings.plugins).not.toHaveProperty('cards');
+    expect(getPackSettingsDefaults().settings.plugins).not.toHaveProperty('refused/cards');
 
     // ...and nothing of the incumbent's was taken with it
     expect(stepRegistry.has('note')).toBe(true);
@@ -318,7 +346,7 @@ describe('a pack whose registration is refused', () => {
     expect(blockRegistry.has('note-block')).toBe(true);
     expect(_seedHookRegistry.get('Note')).toBeDefined();
     expect(getPackCommands().map((c) => c.name)).toEqual(['standup']);
-    expect(getPackSettingsDefaults().settings.plugins).toHaveProperty('notes');
+    expect(getPackSettingsDefaults().settings.plugins).toHaveProperty('incumbent/notes');
   });
 
   it('leaves no origin behind either', () => {
@@ -326,7 +354,7 @@ describe('a pack whose registration is refused', () => {
     const origin = { id: 'refused-pack', name: 'Refused', version: '1.0.0', dir: '/packs/refused-pack', builtIn: false };
 
     expect(() => registry.registerPack(
-      { id: 'refused-pack', systems: [], commands: [{ name: 'standup', placeholder: 'Theirs' }] },
+      { id: 'refused-pack', commands: [{ name: 'standup', placeholder: 'Theirs' }] },
       origin,
     )).toThrow('Command collision');
 
@@ -336,36 +364,38 @@ describe('a pack whose registration is refused', () => {
 });
 
 describe('feature settings defaults', () => {
-  const memos = { id: 'memos', hasSystem: false, hasPlugin: true, services: [], settings: { plugins: { memos: { sort: 'newest' } } } };
-  const cards = { id: 'cards', hasSystem: false, hasPlugin: true, services: [], settings: { plugins: { _meta: { visibility: { cards: false } } } } };
+  const memos = { plugin: { receives: [] }, settings: { plugins: { memos: { sort: 'newest' } } } };
+  const cards = { plugin: { receives: [] }, settings: { visible: false } };
 
   it('appear and disappear with their pack, each change announced with a new revision', () => {
     const changed = vi.fn();
     const unsubscribe = onPackSettingsDefaultsChanged(changed);
     const before = getPackSettingsDefaults().revision;
 
-    add({ id: 'memo-pack', features: [memos] });
-    add({ id: 'card-pack', features: [cards] });
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { memos: { sort: 'newest' }, _meta: { visibility: { cards: false } } } });
+    add({ id: 'memo-pack', features: { memos } });
+    add({ id: 'card-pack', features: { cards } });
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { 'memo-pack/memos': { sort: 'newest' } } });
+    expect(getPackSettingsDefaults().visibility).toEqual({ 'card-pack/cards': false });
     expect(getPackSettingsDefaults().revision).toBe(before + 2);
     expect(changed).toHaveBeenCalledTimes(2);
 
     remove('memo-pack');
-    expect(getPackSettingsDefaults().settings).toEqual({ plugins: { _meta: { visibility: { cards: false } } } });
+    expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
+    expect(getPackSettingsDefaults().visibility).toEqual({ 'card-pack/cards': false });
     remove('card-pack');
     expect(getPackSettingsDefaults().settings).toEqual({ plugins: {} });
     expect(changed).toHaveBeenCalledTimes(4);
 
     unsubscribe();
-    add({ id: 'memo-pack', features: [memos] });
+    add({ id: 'memo-pack', features: { memos } });
     expect(changed).toHaveBeenCalledTimes(4);
   });
 
   it("don't change when a pack's settings are refused", () => {
     const revision = getPackSettingsDefaults().revision;
     const invalid = { ...memos, settings: { plugins: { threads: { hidden: true } } } };
-    expect(() => add({ id: 'bad-pack', features: [invalid] })).toThrow('Feature "memos" settings set "plugins.threads"');
-    expect(getPackSettingsDefaults()).toEqual({ revision, settings: { plugins: {} } });
+    expect(() => add({ id: 'bad-pack', features: { memos: invalid } })).toThrow('Feature "memos" settings set "plugins.threads"');
+    expect(getPackSettingsDefaults()).toEqual({ revision, settings: { plugins: {} }, visibility: {} });
   });
 });
 

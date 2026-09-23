@@ -2,14 +2,16 @@
 // and the subflows it spawns, runFlow sends an event and waits for one flow's tracks. Also waiting steps, schedule
 // ticks through the scheduler service, the trace of a flow's steps, and how the brain starts.
 import { describe, expect, it, vi } from 'vitest'
+import { services } from '@/__generated__/services'
 import { importFlows, mockService, startApp, takeSystemErrors, type TestApp } from '@abuddy/testing/harness'
 import { action, entry, on, keepAlive, schedule, subflow, transform } from '@/__generated__/flow-helpers'
 import { repository } from '@/__generated__/repository'
 import type { Services } from '@/__generated__/services'
 import { isBrainPaused } from '@/features/brain/be/utils/brain-pause'
+import { ref } from '@/__generated__/ref'
 
 const step = (label: string) => transform('return true', { label })
-const startBrain = () => startApp({ systems: ['brain', 'settings'] })
+const startBrain = () => startApp({ systems: ['brain'] })
 
 describe('runFlow', () => {
   it("returns the root flow's entry tracks, finishing a track whose other step waits by design (keep-alive)", async () => {
@@ -115,8 +117,8 @@ describe('runFlow', () => {
       'Flow "Unhosted" isn\'t running: the brain runs the root flow (root: true) and the subflows running flows spawn: make it one of those, and import flows before startApp. Running: Chain',
     )
     await expect(app.runFlow('Chain', { event: 'stop' })).rejects.toThrow('Flow "Chain" has no track for "stop"')
-    const withoutBrain = await startApp({ systems: ['settings'] })
-    await expect(withoutBrain.runFlow('Chain', { event: 'go' })).rejects.toThrow('start the app with the brain and settings systems')
+    const withoutBrain = await startApp({ systems: [] })
+    await expect(withoutBrain.runFlow('Chain', { event: 'go' })).rejects.toThrow('start the app with the brain system')
   })
 })
 
@@ -196,7 +198,7 @@ describe('brain start', () => {
     await app.connect()
     // The plugin learns which root flow the brain runs from the brain, not from the settings
     expect(await app.nextEmit('brain', 'BRAIN_STARTED')).toMatchObject({ rootFlowId })
-    expect(repository.settingsQueries.getPluginSettings('brain')).not.toHaveProperty('runningRootFlowId')
+    expect(services.settings.forFeature(ref('brain'))).not.toHaveProperty('runningRootFlowId')
     repository.flowsCommands.revokeRootFlowRole(rootFlowId)
     await app.send('brain', { type: 'RESTART_BRAIN' })
 

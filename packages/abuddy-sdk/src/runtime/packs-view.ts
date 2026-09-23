@@ -1,6 +1,7 @@
 // What the registered packs contributed, as the SDK reads it. The app that registers them owns the data (host's
 // createPackRegistry and createFePackRegistry) and binds read-only views: HostRuntime.packs in a backend process,
 // FeHostRuntime.packs (FePackRegistryView, fe-host.ts) in the renderer.
+import type { FeatureRef } from '../ids/refs.ts';
 import type { StepDefinition } from '../steps/types.ts';
 import type { ArtifactDefinition } from '../artifacts/types.ts';
 import type { BlockDefinition } from '../blocks/types.ts';
@@ -8,6 +9,7 @@ import type { SeedHooks } from '../seed/hooks.ts';
 import type { Seeder } from '../utils/seed.ts';
 import type { PackSettingsDefaults } from '../framework/pack-settings.ts';
 import type { PackCommand } from '../framework/pack-commands.ts';
+import type { HelpEntry } from '../framework/pack-help.ts';
 
 /** Entity types and relation kinds by the name they're declared under (`abuddy.json` `entities`, `relKinds`) */
 export interface EarsNames {
@@ -20,7 +22,7 @@ import { _isFeHostBound, boundFeHost } from './fe-host.ts';
 /** What backend and frontend code both look up in the registered packs */
 export interface PackExtensionsView {
   /** The id of the system (backend) or plugin (frontend) that plays a role */
-  designation(role: string): string | undefined;
+  designation(role: string): FeatureRef | undefined;
   step(type: string): StepDefinition | undefined;
   /** Every registered step definition, in registration order */
   steps(): StepDefinition[];
@@ -34,8 +36,10 @@ export interface PackExtensionsView {
 export interface PackRegistryView extends PackExtensionsView {
   /** Every registered pack's services, by name */
   getRegisteredServices(): Record<string, unknown>;
-  /** The id of the running system a `<packId>/<featureId>` name addresses, if any */
-  resolveSystemAddress(address: string): string | undefined;
+  /** The refs of every registered system, the host's included */
+  systemIds(): readonly FeatureRef[];
+  /** The refs of every registered plugin, the host's included */
+  pluginIds(): readonly FeatureRef[];
   /** The seed hooks registered for an entity type */
   seedHooks(entity: string): SeedHooks | undefined;
   /** A registered pack's seeders */
@@ -44,8 +48,16 @@ export interface PackRegistryView extends PackExtensionsView {
   settingsDefaults(): PackSettingsDefaults;
   /** Calls `listener` whenever the feature settings defaults change; returns the unsubscribe */
   onSettingsDefaultsChanged(listener: () => void): () => void;
+  /**
+   * The refs of every installed feature that can have settings — it declares defaults, or has a plugin, whose settings
+   * form writes them: the registered ones, and those of installed packs that aren't running (disabled, or failed to
+   * load), whose settings stay theirs
+   */
+  featuresWithSettings(): readonly FeatureRef[];
   /** Every registered pack's declared commands, in the order the packs were first registered */
   commands(): PackCommand[];
+  /** Every registered pack's help entries, for the Settings view's Help list */
+  help(): HelpEntry[];
   /** The app's own entity types and relation kinds and every registered pack's, by the name each declares them under */
   earsNames(): EarsNames;
 }

@@ -5,14 +5,15 @@ import * as path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { resolveAppContext } from '@abuddy/sdk/env';
-import { verifyPack } from '../../src/packs/pack-layout.ts';
-import { installPackFromLocal } from '../../src/packs/pack-installer.ts';
+import { verifyPack } from '../../src/packs/layout.ts';
+import { installPackFromLocal } from '../../src/packs/installer.ts';
 import {
   devServerMarkerPath,
   devServerUrl,
   removeDevServerMarker,
   writeDevServerMarker,
 } from '../../src/packs/dev-server.ts';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
 
 let tmp: string;
 let userDataDir: string;
@@ -35,9 +36,9 @@ function builtPack(): string {
     fs.writeFileSync(path.join(root, rel), content);
   };
   write('abuddy.json', JSON.stringify({ id: 'demo-pack', name: 'Demo Pack', version: '1.2.3' }));
-  write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack", systems: [] } };');
+  write('dist/runtime/index.cjs', 'module.exports = { registration: { id: "demo-pack" } };');
   write('dist/runtime/fe.js', 'export default {};');
-  write('dist/types/snapshot.json', '{"types":{}}');
+  write('dist/types/snapshot.json', JSON.stringify({ types: {}, format: PACK_SNAPSHOT_FORMAT }));
   return root;
 }
 

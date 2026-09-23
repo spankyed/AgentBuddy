@@ -5,6 +5,7 @@ import { createRequire } from 'node:module';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { errorMessage } from '@abuddy/sdk/utils/pure';
 
 const LOAD_TIMEOUT_MS = 60_000;
 /**
@@ -75,7 +76,7 @@ export async function checkSeedRuntimeLoads(
     } catch (err) {
       return {
         success: false,
-        error: `${path.relative(packDir, bundleFile)} can't be checked: @abuddy/sdk doesn't resolve from ${packDir} (install the pack's dependencies).\n${err instanceof Error ? err.message : String(err)}`,
+        error: `${path.relative(packDir, bundleFile)} can't be checked: @abuddy/sdk doesn't resolve from ${packDir} (install the pack's dependencies).\n${errorMessage(err)}`,
       };
     }
     const check = JSON.stringify([`data:text/javascript,${encodeURIComponent(BLOCK_OPTIONAL_PEERS_HOOK)}`, pathToFileURL(bundleFile).href, blocked]);

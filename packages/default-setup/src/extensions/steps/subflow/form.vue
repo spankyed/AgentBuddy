@@ -123,7 +123,6 @@
 </template>
 
 <script setup lang="ts">
-import { useActorSystem } from '@abuddy/sdk/fe'
 import { ref, computed } from 'vue'
 import { Check, ChevronDown, ExternalLink } from 'lucide-vue-next'
 import {
@@ -142,11 +141,9 @@ import {
 import BaseForm from '@abuddy/ui/components/BaseForm'
 import TipSection from '@abuddy/ui/components/TipSection'
 import type { NodeEntity } from '@/__generated__/types'
-import type { FormResources } from '@/features/flows/fe/types/form-props'
-import { flowsId } from '@/features/flows/fe/state'
+import type { FormResources } from '@/features/flows/fe/public'
+import { sendToPlugin } from '@/__generated__/events'
 import type { FlowEntity } from '@abuddy/sdk'
-
-const actorSystem = useActorSystem()
 
 const props = defineProps<{
   node: NodeEntity
@@ -220,8 +217,7 @@ const updateEntryPayload = (source: string) => {
 const openFlow = () => {
   if (selectedFlow.value) {
     // Navigate to the flow in flows plugin
-    const flowsActor = actorSystem.get(flowsId);
-    flowsActor.send({ type: 'FLOW.SELECT', flowId: selectedFlow.value.id });
+    sendToPlugin('flows', { type: 'FLOW.SELECT', flowId: selectedFlow.value.id });
   }
 }
 </script>

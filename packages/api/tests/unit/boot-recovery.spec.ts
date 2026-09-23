@@ -13,7 +13,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), 'api-boot-recovery-'));
 process.env.ABUDDY_ENV = 'test';
 process.env.ABUDDY_USER_DATA_DIR = dataDir;
-const backend = await import('@/setup/backend');
+const backend = await import('@/runtime');
 
 /** A process id no process has any more */
 function exitedPid(): number {

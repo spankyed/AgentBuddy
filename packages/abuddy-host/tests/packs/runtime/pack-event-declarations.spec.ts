@@ -9,6 +9,11 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { registry } from './test-host.ts';
 import { loadExternalPacks, registerExternalPacks } from '../../../src/packs/runtime/loader.ts';
+import { PLUGIN_EVENT_TYPES } from '@abuddy/sdk/events';
+import { PACK_SNAPSHOT_FORMAT } from '@abuddy/sdk/build';
+
+/** The events a pack's plugin receives: what its pack declares, and what the app sends every plugin */
+const receives = (...types: string[]) => new Set([...types, ...PLUGIN_EVENT_TYPES]);
 
 const PACK_ID = 'declaring-pack';
 const RECEIVED = ['MEMOS_CONNECTED', 'MEMO_ADDED'];
@@ -17,7 +22,7 @@ let tmpDir: string;
 let origEnv: { env?: string; userDataDir?: string };
 
 /** An installed pack with one plugin feature, declaring what that plugin receives — what `abuddy build` emits */
-function installDeclaringPack(received: Record<string, string[]> | undefined) {
+function installDeclaringPack(received: string[]) {
   const packDir = path.join(tmpDir, 'packs', PACK_ID);
   fs.mkdirSync(path.join(packDir, 'runtime'), { recursive: true });
   fs.writeFileSync(path.join(packDir, 'abuddy.json'), JSON.stringify({
@@ -25,11 +30,11 @@ function installDeclaringPack(received: Record<string, string[]> | undefined) {
     features: [{ id: 'memos', plugin: { entry: 'fe/plugin.ts' } }],
   }));
   fs.writeFileSync(path.join(packDir, 'integrity.json'), JSON.stringify({ formatVersion: 1, id: PACK_ID, version: '1.0.0', files: {} }));
+  fs.mkdirSync(path.join(packDir, 'types'), { recursive: true });
+  fs.writeFileSync(path.join(packDir, 'types', 'snapshot.json'), JSON.stringify({ format: PACK_SNAPSHOT_FORMAT }));
   fs.writeFileSync(path.join(packDir, 'runtime', 'index.cjs'), `module.exports = { registration: ${JSON.stringify({
     id: PACK_ID,
-    systems: [],
-    features: [{ id: 'memos', hasSystem: false, hasPlugin: true, services: [] }],
-    ...(received ? { receivedEventTypes: received } : {}),
+    features: { memos: { plugin: { receives: received } } },
   })} };`);
 }
 
@@ -54,7 +59,7 @@ afterEach(() => {
 // registration so both come and go together.
 describe('where the registry says a pack came from', () => {
   it('records an external pack\'s manifest and directory, and drops them when it unregisters', () => {
-    installDeclaringPack({ memos: RECEIVED });
+    installDeclaringPack(RECEIVED);
 
     expect(registerExternalPacks(registry, loadExternalPacks())).toHaveLength(1);
 
@@ -73,22 +78,10 @@ describe('where the registry says a pack came from', () => {
 
 describe('the event types an external pack declares for its plugins', () => {
   it('reach the validation map the bus checks sends against', () => {
-    installDeclaringPack({ memos: RECEIVED });
+    installDeclaringPack(RECEIVED);
 
     expect(registerExternalPacks(registry, loadExternalPacks())).toHaveLength(1);
 
-    expect(registry.getPluginEventValidationMap().get('memos')).toEqual(new Set(RECEIVED));
-  });
-
-  // The fallback that hides a lost declaration: `features` says which plugins are the pack's own, so the id
-  // is known either way, and only the value tells "declared nothing" from "declared these"
-  it('are null, not absent, for a pack too old to declare them', () => {
-    installDeclaringPack(undefined);
-
-    expect(registerExternalPacks(registry, loadExternalPacks())).toHaveLength(1);
-
-    const map = registry.getPluginEventValidationMap();
-    expect(map.has('memos')).toBe(true);
-    expect(map.get('memos')).toBeNull();
+    expect(registry.getPluginEventValidationMap().get(`${PACK_ID}/memos`)).toEqual(receives(...RECEIVED));
   });
 });

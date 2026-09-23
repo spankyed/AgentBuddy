@@ -1,4 +1,4 @@
-import { openInAppBrowser } from '@abuddy/sdk/fe'
+import { openLink } from '@abuddy/sdk/fe'
 
 type ClickEmit = {
   noteLinkClick: (noteId: string) => void
@@ -39,7 +39,7 @@ export function createEditorClickHandler(emit: ClickEmit) {
       return true
     }
     const url = /^https?:\/\//.test(href) ? href : `https://${href}`
-    openInAppBrowser(url)
+    openLink(url)
     return true
   }
 }
@@ -51,7 +51,7 @@ export function createViewerClickHandler(emit: { imageClick: (src: string) => vo
     const href = anchor?.getAttribute('href')
     if (href) {
       const url = /^https?:\/\//.test(href) ? href : `https://${href}`
-      openInAppBrowser(url)
+      openLink(url)
       return true
     }
     const img = (event.target as HTMLElement).closest('img')

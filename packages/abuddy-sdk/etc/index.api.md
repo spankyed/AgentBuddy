@@ -47,15 +47,12 @@ export interface ActionParameter {
     type: 'string' | 'number' | 'boolean' | 'object' | 'array' | 'any';
 }
 
-// @public (undocumented)
-export const bus: "bus";
-
 // @public
-export function defineSystem<Id extends string>(id: Id): <TEvents extends {
+export function defineSystem<TEvents extends {
     type: string;
 }, TOutgoing extends {
     type: string;
-}, TContext = {}>() => SystemSpec<Id, TEvents, TOutgoing, TContext>;
+}, TContext = {}>(): SystemSpec<TEvents, TOutgoing, TContext>;
 
 // @public (undocumented)
 export namespace EARS {
@@ -137,7 +134,7 @@ export interface FlowEntity extends BaseEntity {
 }
 
 // @public (undocumented)
-export function getDesignated(role: string): string;
+export function getDesignated(role: string): FeatureRef;
 
 // @public (undocumented)
 export function hasDesignation(role: string): boolean;
@@ -222,18 +219,25 @@ export type SystemEvents = {
 | {
     type: 'PACK_CHANGED';
     packId: string;
+}
+/**
+* The feature's settings changed: `settings` as they now apply, and `changes` to what they list, when the store
+* tells them. The feature's plugin gets it too (`FeatureSettingsUpdated`).
+*/
+| {
+    type: 'FEATURE_SETTINGS_UPDATED';
+    settings: unknown;
+    changes?: ArrayChanges | null;
 };
 
 // @public
-export interface SystemSpec<Id extends string, TEvents extends {
+export interface SystemSpec<TEvents extends {
     type: string;
 }, TOutgoing extends {
     type: string;
 }, TContext = {}> {
-    // (undocumented)
-    id: Id;
     _incoming: TEvents;
-    _outgoing: WithPlugin<Id, TOutgoing>;
+    _outgoing: TOutgoing;
     // (undocumented)
     typeOf: ReturnType<typeof safeEvents<TEvents | SystemEvents>>;
     // (undocumented)

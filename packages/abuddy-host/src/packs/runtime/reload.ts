@@ -2,10 +2,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { createLogger } from '@abuddy/sdk/logger';
 import { resolveAppContext } from '@abuddy/sdk/env';
-import type { PackSystemDef } from '@abuddy/sdk/framework';
-import type { PackRegistry } from '../pack-registration.ts';
-import { publishHostPackOutput } from '../pack-layout.ts';
-import type { PackManifest } from '../pack-discovery.ts';
+import { packSystemIds, type PackRegistry } from '../registry.ts';
+import { publishHostPackOutput } from '../layout.ts';
+import type { PackManifest } from '../discovery.ts';
 import {
   loadSingleExternalPack,
   clearPackRequireCache,
@@ -42,7 +41,10 @@ async function reloadPack(
   cacheDir: string,
 ): Promise<void> {
   const previous = registry.getPackRegistration(packId);
-  const oldSystemIds = previous?.systems.map(s => s.id) ?? [];
+  // Restored with the registration if the fresh one is refused: without it the registry forgets where the pack came
+  // from, and a built-in pack's next reload can't find it
+  const previousOrigin = registry.packOrigin(packId) ?? undefined;
+  const oldSystemIds = previous ? packSystemIds(previous) : [];
 
   logger.info(`Reloading pack: ${packId}`);
 
@@ -55,7 +57,7 @@ async function reloadPack(
   try {
     fresh.register();
   } catch (err) {
-    if (previous) registry.registerPack(previous);
+    if (previous) registry.registerPack(previous, previousOrigin);
     throw err;
   }
 
@@ -105,14 +107,18 @@ export async function reloadExternalPack(
   await reloadPack(registry, packId, backendActor, () => {
     const manifest: PackManifest = JSON.parse(fs.readFileSync(manifestPath, 'utf-8'));
     const pack = loadSingleExternalPack(manifest, packDir);
-    if (!pack) throw new Error(`Failed to load pack ${packId} after rebuild`);
+    if ('problem' in pack) {
+      // A pack still running keeps its previous runtime, so only one that isn't has a load problem to show
+      if (!registry.getPackRegistration(packId)) registry.recordLoadProblem(packId, pack.problem);
+      throw new Error(`Failed to load pack ${packId} after rebuild: ${pack.problem}`);
+    }
 
     return {
       register: () => {
         // registerExternalPacks logs why a registration was refused
         if (registerExternalPacks(registry, [pack]).length === 0) throw new Error(`Failed to register pack ${packId}`);
       },
-      newSystemIds: pack.registration.systems.map((s) => s.id),
+      newSystemIds: packSystemIds(pack.registration),
       onShutdown: pack.registration.boot?.onShutdown,
       onInit: pack.registration.boot?.onInit,
       afterRegister: () => {
@@ -145,14 +151,14 @@ export async function reloadBuiltInPack(
       // The origin survives the reload: the pack is in the same place, and a re-register that dropped it
       // would leave the next reload unable to find the pack it just reloaded
       register: () => registry.registerPack(registration, packInfo),
-      newSystemIds: (registration.systems as PackSystemDef[]).map(s => s.id),
+      newSystemIds: packSystemIds(registration),
       onShutdown: registration.boot?.onShutdown,
       onInit: registration.boot?.onInit,
       afterRegister: () => {
         refreshBuiltInPackInfo(registry, packId);
         // A rebuild can carry new compiled seeds; the boot seed is hash-checked, so unchanged data isn't re-imported.
         // A rebuild running again mid-reload can take those files out from under it, so it doesn't stop the rest.
-        const seedManifest = registry.getPackBootHooks(packId)?.seedManifest;
+        const seedManifest = registry.getPackRegistration(packId)?.boot?.seedManifest;
         try {
           if (seedManifest) orchestrateDeclarativeSeed(seedManifest, packId);
         } catch (err) {

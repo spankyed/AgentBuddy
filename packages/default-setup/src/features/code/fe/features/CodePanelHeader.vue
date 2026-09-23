@@ -76,12 +76,14 @@
 </template>
 
 <script setup lang="ts">
+
 import type { Component } from 'vue'
 import { computed } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { id, type CodeState } from '@/features/code/fe/state'
-import { useActorSystem, isAnyMenuOpen } from '@abuddy/sdk/fe'
+import { isAnyMenuOpen, usePlugin } from '@abuddy/sdk/fe'
 import BaseDirectoryMenu from '@/features/code/fe/features/explorer/components/BaseDirectoryMenu.vue'
+import { codeChild } from './children';
 import {
   FolderOpen,
   Search,
@@ -90,8 +92,6 @@ import {
   Play,
   Sparkle,
 } from 'lucide-vue-next'
-
-const actorSystem = useActorSystem()
 
 defineProps<{
   icon: Component
@@ -103,12 +103,12 @@ defineEmits<{
   'title-click': []
 }>()
 
-const actor: CodeState = actorSystem.get(id)
-const explorerActor = actor.system.get('explorer')!
-const terminalActor = actor.system.get('terminal')!
-const commitActor = actor.system.get('commit')!
+const actor: CodeState = usePlugin()
+const explorerActor = codeChild(actor, 'explorer')!
+const terminalActor = codeChild(actor, 'terminal')!
+const commitActor = codeChild(actor, 'commit')!
 
-const changeCount = useSelector(commitActor, (state: any) => state.context.gitStatus?.length ?? 0)
+const changeCount = useSelector(commitActor, (state) => state.context.gitStatus?.length ?? 0)
 
 const selectedPanel = useSelector(actor, (state) => state.context.selectedPanel)
 const baseDirectory = useSelector(actor, (state) => state.context.baseDirectory)
