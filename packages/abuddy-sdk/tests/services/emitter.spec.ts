@@ -35,8 +35,8 @@ describe('services.emitter', () => {
 
   it("sends to the plugin a <packId>/<featureId> name is, the host's included", () => {
     expect(sent(() => {
-      services.emitter.sendToPlugin('default-setup/threads', { type: 'SET_PHASE', phase: 'Edit' });
-      services.emitter.sendToPlugin('host/application', { type: 'APPLICATION_HOTKEYS', hotkeys: {} });
+      services.emitter.broadcastToPlugin('default-setup/threads', { type: 'SET_PHASE', phase: 'Edit' });
+      services.emitter.broadcastToPlugin('host/application', { type: 'APPLICATION_HOTKEYS', hotkeys: {} });
     })).toEqual([
       { to: 'default-setup/threads', event: { type: 'SET_PHASE', phase: 'Edit' } },
       { to: 'host/application', event: { type: 'APPLICATION_HOTKEYS', hotkeys: {} } },
@@ -45,14 +45,14 @@ describe('services.emitter', () => {
 
   // The host is a pack: its plugins are named like any other's
   it("throws for a host plugin's bare id, naming its ref", () => {
-    expect(() => services.emitter.sendToPlugin('application', { type: 'APPLICATION_HOTKEYS', hotkeys: {} }))
+    expect(() => services.emitter.broadcastToPlugin('application', { type: 'APPLICATION_HOTKEYS', hotkeys: {} }))
       .toThrow('No registered plugin is named "application": actions name a plugin "<packId>/<featureId>" — did you mean "host/application"?');
   });
 
   // The documented form before plugins were addressed per pack: an action a user wrote then still says this
   it('throws for a bare feature name, naming the pack it most likely means, and sends nothing', () => {
     expect(sent(() => {
-      expect(() => services.emitter.sendToPlugin('threads', { type: 'SET_PHASE', phase: 'Edit' }))
+      expect(() => services.emitter.broadcastToPlugin('threads', { type: 'SET_PHASE', phase: 'Edit' }))
         .toThrow('No registered plugin is named "threads": actions name a plugin "<packId>/<featureId>" — did you mean "default-setup/threads"?');
       expect(() => services.emitter.sendToSystem('notes', { type: 'GET_NOTES' }))
         .toThrow('No registered system is named "notes": actions name a system "<packId>/<featureId>"');
@@ -60,7 +60,7 @@ describe('services.emitter', () => {
   });
 
   it('throws for a name no pack registered', () => {
-    expect(() => services.emitter.sendToPlugin('ext/threads', { type: 'X' })).toThrow('No registered plugin is named "ext/threads"');
+    expect(() => services.emitter.broadcastToPlugin('ext/threads', { type: 'X' })).toThrow('No registered plugin is named "ext/threads"');
     expect(() => services.emitter.sendToSystem('other/notes', { type: 'X' })).toThrow('No registered system is named "other/notes"');
   });
 });

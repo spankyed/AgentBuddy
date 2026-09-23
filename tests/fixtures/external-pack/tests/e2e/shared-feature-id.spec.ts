@@ -23,7 +23,7 @@ test('this pack and default-setup each get their own notes plugin', async ({ app
 });
 
 // A spec names plugins the way the pack it tests names them, so the short name is this pack's own
-// feature even when a dependency has one too — the same rule `emit` and `sendToPlugin` follow.
+// feature even when a dependency has one too — the same rule `emit` and `broadcastToPlugin` follow.
 test("the short name is this pack's own plugin, not its dependency's", async ({ app, appPage }) => {
   await app.navigate('notes');
   await expect(appPage.getByTestId('fixture-notes-title')).toBeVisible();

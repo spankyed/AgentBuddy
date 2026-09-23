@@ -5,6 +5,7 @@ import { expect, it } from 'vitest';
 import { startApp, startShell } from '@abuddy/testing/harness';
 import { useShell } from '@abuddy/sdk/fe';
 import { navigateToPlugin } from '#generated/fe';
+import { sendToPlugin } from '#generated/events';
 import memosState from '../../src/features/memos/fe/state';
 import notesState from '../../src/features/notes/fe/state';
 
@@ -23,6 +24,21 @@ it('opens its plugin by name, hands it the events, and the shell reads it as ope
   expect(shell.plugin('memos').getSnapshot().context.memos).toEqual([memo]);
   expect(shell.notices).toEqual([]);
   scope.stop();
+});
+
+// `sendToPlugin` is the renderer's half: it reaches this window's actor directly, without opening the plugin.
+// What it may carry is the inbox `fe/plugin.ts` declares with `pluginAccepts()` — this is the only place an
+// external pack's declared inbox is exercised, the app's own packs being built by the same codegen.
+it('sends a declared event to a plugin in this window without opening it', async () => {
+  const shell = await startShell({ plugins: { notes: { state: notesState }, memos: { state: memosState } } });
+  expect(shell.opened()).toBe('e2e-fixture/notes');
+
+  sendToPlugin('memos', { type: 'MEMO.HIGHLIGHT', memoId: memo.id });
+
+  expect(shell.plugin('memos').getSnapshot().context.highlighted).toBe(memo.id);
+  // still where it was: this send delivers, it doesn't navigate
+  expect(shell.opened()).toBe('e2e-fixture/notes');
+  expect(shell.notices).toEqual([]);
 });
 
 it('tells the user about a plugin no pack provides, once loading has settled', async () => {

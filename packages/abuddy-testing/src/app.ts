@@ -58,7 +58,7 @@ export interface TestApp {
   /** Sends a system an event, as a client's `sendToSystem` does (the pack's own by feature id, a dependency's as `<packId>/<featureId>`); the bus routes it whether or not a client connected */
   send(systemId: string, event: { type: string; [key: string]: unknown }): Promise<void>;
   /**
-   * The events delivered to one frontend plugin (by `sendToPlugin`, once connected), in order, exactly as
+   * The events delivered to one frontend plugin (by `broadcastToPlugin`, once connected), in order, exactly as
    * sent; the plugin named as the pack names it (its own by feature id, any other as `<packId>/<featureId>`).
    * Readable after `stop`
    */
@@ -176,7 +176,7 @@ const resolveSystemId = (name: string, registered: ReadonlyMap<string, AnyStateM
   resolveRegistered('system', name, { packId, registered: [...registered.keys()] });
 
 /**
- * The registered plugin a name stands for, as the pack under test's own `sendToPlugin` resolves it. A name no
+ * The registered plugin a name stands for, as the pack under test's own `broadcastToPlugin` resolves it. A name no
  * plugin is registered under throws at once, rather than leaving a wait for its events to time out.
  */
 const resolvePluginId = (name: string): string =>

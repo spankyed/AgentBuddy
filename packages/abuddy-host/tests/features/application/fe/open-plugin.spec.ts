@@ -112,7 +112,7 @@ it('drops a request whose pack is unloaded while it waits', async () => {
   expect(shell.notify.error).not.toHaveBeenCalled();
 });
 
-// A pack's system or action asks the app to open a plugin with sendToPlugin('host/application', …); every window
+// A pack's system or action asks the app to open a plugin with broadcastToPlugin('host/application', …); every window
 // hears it, and only a main window acts: a popout shows its own plugin
 describe('a request from the app to open a plugin', () => {
   it('opens the plugin in a main window, with the events', async () => {

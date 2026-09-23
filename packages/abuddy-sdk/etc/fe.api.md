@@ -142,6 +142,9 @@ export function createHotkeyProcessor<const TMap extends Record<string, string>,
 // @public (undocumented)
 export function createNavHistory<T>(initial: T): NavHistory<T>;
 
+// @public
+export function definePlugin(definition: PluginDefinition): PluginDefinition;
+
 // @public (undocumented)
 export interface DslTypeConfig {
     // (undocumented)
@@ -372,6 +375,18 @@ interface Plugin_2 {
 export { Plugin_2 as Plugin }
 
 // @public
+export interface PluginAccepts<TAccepts extends {
+    type: string;
+} = never> {
+    _accepts: TAccepts;
+}
+
+// @public
+export function pluginAccepts<TAccepts extends {
+    type: string;
+} = never>(): PluginAccepts<TAccepts>;
+
+// @public
 export type PluginDefinition = Omit<Plugin_2, 'id'>;
 
 // @public
@@ -408,6 +423,9 @@ export function processHotkeys<const T extends Record<string, string>, H = unkno
 
 // @public (undocumented)
 export function pushNavHistory<T>(history: NavHistory<T>, entry: T): NavHistory<T>;
+
+// @public
+export function readPluginState<TSnapshot, TSelected>(ref: string, selector: (snapshot: TSnapshot) => TSelected): TSelected;
 
 // @public (undocumented)
 export type RouteComponents = Record<RouteName, Component>;
@@ -590,6 +608,9 @@ export function useFeatureSettings<T = unknown>(feature: FeatureRef): Readonly<R
 
 // @public
 export function usePlugin<T>(): T;
+
+// @public
+export function usePluginState<TSnapshot, TSelected>(ref: string, selector: (snapshot: TSnapshot) => TSelected): Readonly<Ref<TSelected>>;
 
 // @public
 export function useSettingsSave(): {

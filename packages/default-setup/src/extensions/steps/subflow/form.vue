@@ -141,7 +141,8 @@ import {
 import BaseForm from '@abuddy/ui/components/BaseForm'
 import TipSection from '@abuddy/ui/components/TipSection'
 import type { NodeEntity } from '@/__generated__/types'
-import { selectFlow, type FormResources } from '@/features/flows/fe/public'
+import type { FormResources } from '@/features/flows/fe/public'
+import { sendToPlugin } from '@/__generated__/events'
 import type { FlowEntity } from '@abuddy/sdk'
 
 const props = defineProps<{
@@ -216,7 +217,7 @@ const updateEntryPayload = (source: string) => {
 const openFlow = () => {
   if (selectedFlow.value) {
     // Navigate to the flow in flows plugin
-    selectFlow(selectedFlow.value.id);
+    sendToPlugin('flows', { type: 'FLOW.SELECT', flowId: selectedFlow.value.id });
   }
 }
 </script>

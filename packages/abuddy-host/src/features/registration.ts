@@ -23,8 +23,9 @@ export type OutgoingPacksEvents =
   | { type: 'PACK_UPDATE_FAILED'; packId: string; error: string };
 
 /**
- * The event types the `packs` plugin receives. Not part of `HostPluginEvents`, which is what a pack may name in
- * `sendsTo`: these are the host's to send, and no pack's.
+ * The event types the `packs` plugin receives. Not part of `HostPluginEvents`, which is the host's published
+ * inbox — what any pack may send it, as a pack's plugin publishes its own with `pluginAccepts()`. These are the
+ * host's to send itself, and no pack's.
  */
 export const PACKS_PLUGIN_EVENT_TYPES = eventTypes<OutgoingPacksEvents>()(
   'PACKS_LIST',

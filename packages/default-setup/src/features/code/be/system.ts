@@ -16,7 +16,7 @@
  */
 import type { GeneralSettings } from '@/app-settings/types';
 import { services } from '@/__generated__/services';
-import { sendToPlugin } from '@/__generated__/events';
+import { broadcastToPlugin } from '@/__generated__/events';
 import { clearCliPathCache, isCliName, testCli } from './utils/resolve-cli';
 import { createLogger } from '@abuddy/sdk/logger';
 
@@ -66,7 +66,7 @@ export type OutgoingCodeEvents =
   | OutgoingPromptsEvents
   // Broadcast events (sent to all child systems)
   | { type: 'CODE_CONNECTED'; data: CodeConnectedData }
-  /** What testing a CLI found, for the Settings view that asked (abuddy.json `sendsTo`) */
+  /** What testing a CLI found, for the Settings view that asked (the host declares its plugin takes it) */
   | { type: 'CLI_TEST_RESULT'; provider: string; success: boolean; error?: string; resolvedPath?: string }
 
 // Import only the type needed for broadcast event
@@ -246,7 +246,7 @@ export const systemMachine = setup({
     testCliProvider: ({ event }) => {
       const { provider } = event as { type: 'TEST_CLI_PROVIDER'; provider: string };
       const answer = (result: { success: boolean; error?: string; resolvedPath?: string }) =>
-        sendToPlugin('host/settings', { type: 'CLI_TEST_RESULT', provider, ...result });
+        broadcastToPlugin('host/settings', { type: 'CLI_TEST_RESULT', provider, ...result });
 
       if (!isCliName(provider)) return answer({ success: false, error: `Unknown CLI provider: ${provider}` });
 
@@ -303,7 +303,7 @@ export const systemMachine = setup({
         settings: codeSettings
       };
 
-      sendToPlugin('code', {
+      broadcastToPlugin('code', {
         type: 'CODE_CONNECTED',
         data: connectedData
       })

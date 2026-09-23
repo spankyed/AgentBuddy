@@ -14,7 +14,7 @@ src/
     ears.ts                # EARS entity/relation registry, generated from abuddy.json
     ref.ts                 # ref(name): the ref a name in this pack's code stands for, bound to the pack
     fe.ts                  # navigateToPlugin(name, event?), PluginName: the plugins this pack's code can name
-    events.ts              # SendablePluginEvents/PackSystemEvents + typed sendToPlugin/sendToSystem facade
+    events.ts              # SendablePluginEvents/PackSystemEvents + typed broadcastToPlugin/sendToPlugin/sendToSystem
     system-specs.ts        # Type-only: the events each system receives and sends, read by events.ts and types.ts
     types.ts               # Type barrel (per-feature types; a plugin imports its system's events from be/system.ts)
     services.ts            # Service aggregation (featureServices object) and the typed services proxy
@@ -53,7 +53,7 @@ Each feature lives in `src/features/<name>/` with this layout:
 - `fe/state.ts` — XState frontend state machine
 - `fe/canvas/` — Main view components
 - `fe/references.ts` — which of the feature's things are linkable from an editor, and how (if applicable)
-- `fe/public.ts` — what the feature's frontend offers other features and extensions (its state as composables, the events it takes), over a handle its machine binds as it starts (`features/plugin-handle.ts`). Its own components reach its actor with `usePlugin()`; nothing outside the feature imports its frontend except through this module (`check:specifiers`). The machine imports `public.ts` to bind the handle, so `public.ts` imports the machine and anything that imports it (`references.ts`) as types only: a runtime import back is a cycle that leaves one of them unevaluated when the renderer loads
+- `fe/public.ts` — what the feature's frontend offers other features and extensions: its state as composables over `usePluginState`/`readPluginState` (`@abuddy/sdk/fe`), which read the plugin at a ref from the shell's registry of running plugins and hand back a value, never the actor. Its own components reach its actor with `usePlugin()`; nothing outside the feature imports its frontend except through this module (`check:specifiers`). What other features may *send* it isn't here: that is the `accepts` export beside the plugin (`fe/plugin.ts`, `pluginAccepts()`), which codegen reads to type `sendToPlugin`
 - `settings.ts` — Per-feature default settings
 
 The 11 features: **threads**, **code**, **notes**, **browser**, **library**, **flows**, **actions**, **prompts**, **brain**, **database**, **logs**.
@@ -99,7 +99,7 @@ Import `EARS` from `@/__generated__/ears` by default. The SDK's `EARS` (`@abuddy
 
 Typed facades (no module augmentation):
 - `__generated__/ears.ts` — `PackShapes` (entity type → attribute interface), `EntityName`, and the typed `qx`/`tx`/`find*`/`createEntity`/`createEntityWithDefaults`/`updateEntity`/`getAttr` helpers built with `defineEars`. Feature code imports `tx` from here; migrations keep the unchecked `tx` from `@abuddy/ears`, as does the Database console's transaction code, which runs through `@abuddy/sdk/database-console` (`features/database/be/execute/`)
-- `__generated__/events.ts` — `SendablePluginEvents` (receiving plugin ID → the events it gets: its own system's plus every system whose `system.sendsTo` names it, e.g. actions → flows, threads → the host's `application`), `PackSystemEvents` (system → the events it receives), and typed `sendToPlugin`/`sendToSystem` built with `defineEvents`. Frontend state machines and systems send to systems with `sendToSystem` (to the brain's role with `{ role: 'brain' }`); backend code sends to plugins with `sendToPlugin`. Don't import these from `@abuddy/sdk/events`; declare a cross-plugin send in `abuddy.json` `sendsTo` instead. Subscriptions (`onConnected`, `onIncoming`) come from `@abuddy/sdk/events`, `onLog` from `@abuddy/sdk/logger`
+- `__generated__/events.ts` — `SendablePluginEvents` (receiving plugin ID → the events it gets: its own system's, plus the inbox that plugin declares with `pluginAccepts()` beside it — the flows plugin accepts the actions system's events, the logs plugin accepts `LOG_ADDED` from any pack), `PackSystemEvents` (system → the events it receives), and typed `broadcastToPlugin`/`sendToPlugin`/`sendToSystem` built with `defineEvents`. Frontend state machines and systems send to systems with `sendToSystem` (to the brain's role with `{ role: 'brain' }`); backend code sends to plugins with `broadcastToPlugin`, which reaches every window, and frontend code with `sendToPlugin`, which reaches this window's actor. Don't import these from `@abuddy/sdk/events`; a plugin that takes events from anywhere but its own system declares them with `pluginAccepts()` in its `fe/plugin.ts`. Subscriptions (`onConnected`, `onIncoming`) come from `@abuddy/sdk/events`, `onLog` from `@abuddy/sdk/logger`
 - `__generated__/services.ts` — the `services` proxy typed as `Services` (with `services.repository` typed as `Repositories`, and `services.emitter`'s sends typed with the pack's events; actions name systems `default-setup/<feature>`)
 - `__generated__/repository.ts` — `repository`, typed with every repository in `features[].repositories`
 

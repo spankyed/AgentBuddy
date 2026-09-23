@@ -8,7 +8,8 @@ const PLUGIN: InjectionKey<ComputedRef<AnyActorRef>> = Symbol('plugin')
 /**
  * The actor of the plugin this component belongs to. The host provides it where it renders a plugin's canvas,
  * panel and chat, and `PluginScope` where a plugin's component is rendered elsewhere (its settings, in the settings
- * plugin). Another plugin's state is that plugin's to expose, not a lookup away.
+ * plugin). Another plugin's state is read with `usePluginState`/`readPluginState`, which name it by ref and hand
+ * back a value rather than its actor.
  *
  * Which plugin a component belongs to is where it is rendered, not anything at the call site, so the type is the
  * caller's to name — `usePlugin<MemosActor>()`, or a typed binding it is inferred from. It has no default: one
@@ -21,8 +22,13 @@ export function usePlugin<T>(): T {
   return plugin.value as T
 }
 
-/** The running actor of the plugin at `ref`, a registered plugin's `<packId>/<featureId>` */
-function pluginActor(ref: string): AnyActorRef {
+/**
+ * The running actor of the plugin at `ref`, a registered plugin's `<packId>/<featureId>`.
+ *
+ * Not exported from `@abuddy/sdk/fe`: pack code reads a plugin through `usePluginState`/`readPluginState` and
+ * sends to one through the generated sends, so no pack holds another plugin's actor.
+ */
+export function pluginActor(ref: string): AnyActorRef {
   if (!splitRef(ref)) throw new Error(`"${ref}" doesn't name a plugin: a plugin is named "<packId>/<featureId>"`)
   const actor = boundFeHost().application.system.get(ref)
   if (!actor) throw new Error(`No plugin is running at "${ref}"`)

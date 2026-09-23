@@ -35,11 +35,11 @@ describe('defineEvents', () => {
       .toEqual([{ to: 'default-setup/settings', event: { type: 'GET_SETTINGS' } }]);
   });
 
-  it('sends to a plugin at its ref', () => {
+  it('broadcasts to a plugin at its ref', () => {
     const outgoing: unknown[] = [];
     const stop = testRootEvents.onPluginSend((event) => outgoing.push(event));
     try {
-      events.sendToPlugin('memos', { type: 'MEMO_ADDED' });
+      events.broadcastToPlugin('memos', { type: 'MEMO_ADDED' });
     } finally {
       stop();
     }
@@ -47,8 +47,8 @@ describe('defineEvents', () => {
   });
 
   // The host is a pack: its plugins are named by ref, and a bare name is always this pack's own feature
-  it("sends to a host plugin by its ref, and takes a bare name as this pack's own", () => {
-    const untyped = events.sendToPlugin as unknown as (name: string, event: { type: string }) => void;
+  it("broadcasts to a host plugin by its ref, and takes a bare name as this pack's own", () => {
+    const untyped = events.broadcastToPlugin as unknown as (name: string, event: { type: string }) => void;
     const sent: Array<{ to: string }> = [];
     const stop = testRootEvents.onPluginSend((message) => sent.push(message));
     try {

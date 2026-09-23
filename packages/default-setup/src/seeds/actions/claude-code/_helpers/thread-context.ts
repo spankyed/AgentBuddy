@@ -221,7 +221,7 @@ export function persistClaudeState(
   });
 
   // Notify frontend so thread context is always in sync.
-  services.emitter.sendToPlugin('default-setup/threads', {
+  services.emitter.broadcastToPlugin('default-setup/threads', {
     type: 'THREAD_UPDATED',
     threadId,
     updates: {
@@ -462,7 +462,7 @@ export function clearClaudeState(services: Services, threadId: string): void {
 
   // Notify frontend so tag filters update without a page refresh
   if (tagRemoved) {
-    services.emitter.sendToPlugin('default-setup/threads', {
+    services.emitter.broadcastToPlugin('default-setup/threads', {
       type: 'THREAD_UPDATED',
       threadId,
       updates: { tags: nextTags },

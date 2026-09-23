@@ -62,7 +62,7 @@ The pack harness (`@abuddy/testing/harness`, on `@abuddy/sdk/testing`) unit-test
 
   | Host module | What needs it | Where |
   |---|---|---|
-  | `event-emitter` | `sendToPlugin`, `sendToSystem`, `sendToBrainSystem` | `sdk/src/services/index.ts:17-59` |
+  | `event-emitter` | `broadcastToPlugin`, `sendToSystem`, `sendToBrainSystem` | `sdk/src/services/index.ts:17-59` |
   | `bus-emitter` (via `initRpc()`) | `rootEvents`, used by the browser, code and logs systems and by `reportStepRuntimeError` | `sdk/src/steps/runtime-errors.ts:31` |
   | `pack-registry` | the `services` proxy | `sdk/src/services/index.ts:99-121` |
   | `system-errors`, `version`, `migrations` | `@abuddy/sdk/utils` | |
@@ -195,7 +195,7 @@ Both spikes pass, run from the fixture pack's vitest process (in-memory harness 
 - Move `SDK_BRIDGE` and `withHostResolution` into `@abuddy/host/packs`, with `api/src/packs/pack-loader.ts` passing its SDK namespaces.
 - Add the test host modules to `@abuddy/sdk/testing` (Decision 4), plus `entityIds()` and `dropAttribute()`. Run `api:update`.
 
-**Done when:** `bus-client-connected.spec.ts`, the pack-loader and `sdk-bridge-drift` specs and the E2E suite pass unchanged. A `@abuddy/sdk/testing` spec shows `sendToPlugin`, `rootEvents` and `reportSystemError` working after `startTestRuntime`.
+**Done when:** `bus-client-connected.spec.ts`, the pack-loader and `sdk-bridge-drift` specs and the E2E suite pass unchanged. A `@abuddy/sdk/testing` spec shows `broadcastToPlugin`, `rootEvents` and `reportSystemError` working after `startTestRuntime`.
 
 ### Phase 2 — Systems
 

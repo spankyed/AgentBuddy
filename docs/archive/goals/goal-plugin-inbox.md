@@ -1,3 +1,8 @@
+> **Done in part** (`3b793b5a4`..`f8f0c4708` on `AS/plugin-inbox`), **superseded in part** by
+> [`goal-plugin-contract.md`](../../goals/goal-plugin-contract.md), which carries what is left and the
+> finding that came out of the work. The text below is the plan as written, with the trims it took while
+> open; see the Outcome for what landed, what changed shape and what moved on.
+
 > **Written in session** `c9f31de2-e94c-46ea-a2ac-2898390dc27d` (Claude Code, 2026-09-22). Resume it with `claude -r c9f31de2-e94c-46ea-a2ac-2898390dc27d`.
 
 ```
@@ -29,15 +34,16 @@ Finished when:
   abuddy.schema.json, in any abuddy.json in the repo, or in generate-entries.ts.
 - `receivedEventTypes` and the `sendsTo` target loop are gone from generate-entries.ts; a plugin's
   `receives` comes from its own declaration.
-- Plugins and systems both declare in two parts (`Public`, `Internal`), and a declared-internal event no
-  longer reaches a dependent's facade: `ADD_LOG` is gone from
-  tests/fixtures/external-pack/src/__generated__/deps/default-setup.d.ts.
+- A plugin declares the inbox other plugins may send it (`pluginAccepts()`), and only that declared half
+  reaches a dependent's facade (`PackPluginEvents`); what a feature's own system sends its own plugin stays
+  between the two halves.
 - A generated `events.ts` spells its dependency plugins `Qualified<'<dep>', __dep_<dep>_PackPluginEvents>`
   with no `Pick<>`, matching the systems line; `SendablePluginEvents` is gone from the facade barrel.
 - `broadcastToPlugin` is the backend send and `sendToPlugin` the renderer one; no module exports both
   meanings under one name; the delivery-scope difference is documented in @abuddy/sdk and pinned by a spec.
-- The renderer send checks the target's declared inbox and reports a miss at `diagnostic` as the bus does;
-  PackFEFeature carries `receives` and the FE registry builds the map from it.
+- The renderer send is typed from the target's declared inbox, and so is `navigateToPlugin`, which hands its
+  events to the same actor. It is not runtime-checked: the trimmed scope dropped the FE validation map, and
+  `Message` carries no sender, so a map could not tell one audience from the other anyway.
 - `usePluginSettings` and `currentPluginSettings` no longer exist.
 - packages/default-setup/src/features/plugin-handle.ts is deleted, or the doc records under Outcome why
   it survived and what still binds it.
@@ -78,8 +84,8 @@ Never:
   goal-settings-to-host and Phase 2 only verifies it (Decision 8).
 - fix `FeatureSettingsUpdated.settings` being `unknown` — it is goal-settings-to-host's Decision 7, and
   belongs to that goal (Decision 8); record it, don't do it.
-- leave `defineSystem` collapsed while splitting plugins (Decision 19: that ships the asymmetry this goal
-  exists to remove).
+- split `defineSystem` into `Public`/`Internal` (the goal was trimmed to the plugin half; the system-side
+  leak is recorded under Deferred).
 - make a validation map audience-aware — `Message` has no sender, so it cannot be (Decision 18).
 ```
 
@@ -108,7 +114,7 @@ A frontend plugin says neither. `PluginDefinition` (`packages/abuddy-sdk/src/fe/
 receive?" by inverting the question: find every system that sends to P, union their outgoing types.
 
 That edge is not derivable from the source. A system's outgoing union is a flat list of event types; the
-target is a runtime argument (`sendToPlugin(to, event)`). Nothing in the code says which plugin each event
+target is a runtime argument (`broadcastToPlugin(to, event)`). Nothing in the code says which plugin each event
 goes to. **`sendsTo` is the manifest field that supplies the missing edge**, and it exists only because the
 receiver never declared itself.
 
@@ -175,16 +181,16 @@ function sendIncoming(message) {                                     // sendToSy
   else if (_isHostBound()) boundHost().transport.rootEvents.emitIncoming(message);
 }
 
-export function sendToPlugin(to, event) {                            // no renderer branch
+export function broadcastToPlugin(to, event) {                            // no renderer branch
   boundHost().transport.rootEvents.emitPluginSend({ to, event });
 }
 ```
 
-`sendToSystem` is one function with two transports. `sendToPlugin` is backend-only; no pack frontend calls
+`sendToSystem` is one function with two transports. `broadcastToPlugin` is backend-only; no pack frontend calls
 it. The asymmetry is specific to plugins: there is one backend, so both `sendToSystem` transports reach the
 same actor, while a plugin exists once per window.
 
-A backend `sendToPlugin` reaches **every** window. The app already pays for this:
+A backend `broadcastToPlugin` reaches **every** window. The app already pays for this:
 
 ```ts
 // packages/abuddy-host/src/features/application/fe/connection.ts:17
@@ -283,7 +289,7 @@ spread that nothing checks, and a runtime `receives` that is the flat union anyw
 |---|---|---|
 | backend send → bus → plugin | yes | **yes** — `getPluginEventValidationMap()`, drop + `diagnostic` (`bus/machine.ts:150`) |
 | renderer `system.get(ref).send(…)` | no | **no** — nothing observes it |
-| renderer `sendToPlugin` (this goal) | yes | yes, once Decision 18 lands; nothing today |
+| renderer `broadcastToPlugin` (this goal) | yes | yes, once Decision 18 lands; nothing today |
 
 The middle row is XState's own API, not a hole this goal opens: `system` is a property of every `ActorRef`
 and a member of `UnifiedArg`, which `ActionArgs` extends, so it is reachable from any action and from
@@ -310,7 +316,7 @@ send it" — Decision 18 says so where it specifies the check.
 - **The host already declares a plugin inbox by hand** (`features/registration.ts:50`), so the shape is
   proven in this codebase; packs are the odd ones out. See Decision 14.
 - **Phase 5 is scope-neutral.** Each window is its own renderer with its own module graph, so
-  `pluginHandle`'s module-scope actor is already window-local. A renderer `sendToPlugin` preserves today's
+  `pluginHandle`'s module-scope actor is already window-local. A renderer `broadcastToPlugin` preserves today's
   delivery exactly rather than changing it. `spawnPluginActors` loops `context.plugins`
   (`features/application/fe/machine.ts:377`), so a popout spawns every registered plugin and there is no
   "target not spawned" hole; `ownsLastActivePlugin` only decides who records and acts on navigation.
@@ -426,20 +432,20 @@ Final.
 
 5. **The two sends get independent names.**
    - `broadcastToPlugin(ref, event)` — backend. Over the bus, reaching every window showing that plugin.
-   - `sendToPlugin(ref, event)` — renderer. This window's actor, directly.
+   - `broadcastToPlugin(ref, event)` — renderer. This window's actor, directly.
 
-   The scope lives in the verb, because scope is what bit the app (`OPEN_PLUGIN_FROM_APP`). `sendToPlugin`
+   The scope lives in the verb, because scope is what bit the app (`OPEN_PLUGIN_FROM_APP`). `broadcastToPlugin`
    keeps the literal reading and matches what "plugin" already means in the renderer, where `usePlugin()`
    hands back this window's actor. The reuse is not silent: the backend export stops offering
-   `sendToPlugin`, so every existing backend call fails to compile rather than quietly changing scope.
+   `broadcastToPlugin`, so every existing backend call fails to compile rather than quietly changing scope.
    `sendToSystem` is unchanged — one backend, both transports reach the same actor.
 
-   Rejected: `notifyPlugin`/`sendToPlugin` (reads well, leaves the fan-out invisible — the original
+   Rejected: `notifyPlugin`/`broadcastToPlugin` (reads well, leaves the fan-out invisible — the original
    mistake); `broadcastToPlugin`/`tellPlugin` (breaks the `…ToPlugin` shape); a single name with an object
    target (`{ everyWindow: ref }`) — real house precedent in `sendToSystem({ role })`, but the backend can
    only fan out, so its every call would carry the object form as noise.
 
-6. **The renderer `sendToPlugin` reuses the shell's existing not-yet-loaded policy** rather than inventing a
+6. **The renderer `broadcastToPlugin` reuses the shell's existing not-yet-loaded policy** rather than inventing a
    second one: queue while the target pack's frontend is loading, report through `notify` once loading has
    settled with no such plugin (`features/application/fe/machine.ts`, `openPlugin`).
 
@@ -538,16 +544,16 @@ Final.
     add a friendlier error for the old key. The acceptance test is that the dev environment boots clean and
     the in-repo fixtures build.
 
-16. **The rename is mechanical, not risky.** `sendToPlugin` has ~534 occurrences (409 in
+16. **The rename is mechanical, not risky.** `broadcastToPlugin` has ~534 occurrences (409 in
     `packages/default-setup`, 49 SDK, 31 CLI, 30 host, 5 api, ~7 fixtures and E2E). It is a find-and-replace
-    plus a compile. The one non-mechanical consequence is that `sendToPlugin` is a member of `HostServices`
+    plus a compile. The one non-mechanical consequence is that `broadcastToPlugin` is a member of `HostServices`
     (`packages/abuddy-sdk/src/services/index.ts:38`) and `Services` is a facade export, so the rename moves
     `etc/build.api.md` and every `deps/<id>.d.ts`: run `api:update` and `facade:update` and commit the
     reports as part of the phase.
 
 17. **`navigateToPlugin`'s event is typed from the same inbox; `openPlugin`'s stays untyped.**
     `navigateToPlugin(name, event?)` (`#generated/fe`) takes a compile-time-checked `PluginName` and hands
-    the events to that plugin's actor — the same delivery the renderer `sendToPlugin` does, so it takes the
+    the events to that plugin's actor — the same delivery the renderer `broadcastToPlugin` does, so it takes the
     same types. Today its payload is the SDK's open `PluginEvent` (`{ type: string; [key: string]: unknown }`),
     which leaves a typed channel beside an untyped one doing the same thing.
 
@@ -563,7 +569,7 @@ Final.
 
     So: `PackFEFeature` gains the plugin's `receives`, codegen emits it into `pack-entry-fe.ts` beside the
     backend entry's copy, `createFePackRegistry()` builds the equivalent map, and the renderer
-    `sendToPlugin` checks and reports through it. One declaration, the same meaning on both sides.
+    `broadcastToPlugin` checks and reports through it. One declaration, the same meaning on both sides.
 
     **This catches mistakes, not misuse.** `mine.system.get(ref)?.send(…)` bypasses it, as it bypasses the
     bus (Decision 2). It is worth the field for the same reason the bus's `diagnostic` report is worth
@@ -576,7 +582,10 @@ Final.
     "does this plugin handle this event at all". Say that in the doc comment, so nobody later reads a
     passing check as "this sender was allowed".
 
-19. **`defineSystem` gets the same split, in this goal.** Leaving it collapsed would ship the exact
+19. ~~**`defineSystem` gets the same split, in this goal.**~~ **Trimmed out.** The goal was cut back to the
+    plugin half (one declaration, `pluginAccepts()`, instead of a two-parameter split on both sides), so the
+    system-side leak stays and is recorded under Deferred. The design below is kept as written for whoever
+    picks that up. Leaving it collapsed would ship the exact
     asymmetry this goal exists to remove — and it is where the leak actually is today, since plugins have
     no declaration to leak from yet. `defineSystem<Public, Internal, Outgoing, Context>()`:
 
@@ -665,14 +674,12 @@ this phase; if one seems necessary, the base is not what this doc was surveyed a
 
 The root change. After Phase 1.
 
-- `definePlugin<Public, Internal>()` in `packages/abuddy-sdk/src/fe/plugin.ts`, with the two-part split and
-  the absent-vs-`never` rule of Decision 1, the `satisfies` guard of Decision 12 and the SDK-wide union of
-  Decision 13.
-- `defineSystem<Public, Internal, Outgoing, Context>()` in
-  `packages/abuddy-sdk/src/framework/define-system.ts` (Decision 19): add the `_internal` phantom, narrow
-  `_incoming` to `Public`, keep `types.events` and `typeOf` on the full union, and split `IncomingEventsOf`
-  into the own-pack and published variants. Two call sites carry an internal type today —
-  `features/logs/be/system.ts:40` and `features/database/be/system.ts:58`.
+- `definePlugin()` and `pluginAccepts<Accepts>()` in `packages/abuddy-sdk/src/fe/plugin.ts`. As built, the
+  declaration is a named `accepts` export beside the plugin rather than a type parameter on `definePlugin`,
+  so codegen reads it with a **type-only** import and the plugin's machine and `.vue` graph never enter the
+  event types. The two audiences fall out of declared-vs-derived instead of `Public`/`Internal`: what the
+  feature's own system sends is added by codegen and stays out of `PackPluginEvents`.
+- ~~`defineSystem<Public, Internal, Outgoing, Context>()`~~ — trimmed with Decision 19; see Deferred.
 - Rewrite **all 14 plugin entries** out of the `const x: PluginDefinition = {…}` annotation form into
   `definePlugin(…)` (Decision 12) — 11 in `packages/default-setup/src/features/*/fe/plugin.ts`, 3 in
   `tests/fixtures/*/src/features/*/fe/plugin.ts`. Only the ones other plugins send to take type
@@ -719,13 +726,11 @@ and `api:check` updated and committed; `git grep sendsTo` returns nothing outsid
 `docs/goals/goal-manifest-redesign.md`'s dated note; `npm start` boots the dev app clean (Decision 15's
 acceptance test).
 
-The split is checked, not assumed: **`ADD_LOG` no longer appears in
-`tests/fixtures/external-pack/src/__generated__/deps/default-setup.d.ts`** (it is at `:3629` today), and a
-spec asserts that a dependent pack cannot send a declared-internal event to a dependency's system or
-plugin. Mutations: narrowing a plugin's declared inbox makes a send that was valid fail to compile, and the
-bus drops it with a `diagnostic` report; moving an event from `Internal` to `Public` puts it back in the
-facade; annotating a plugin entry `: PluginDefinition` instead of `satisfies` fails the build with the
-Decision 12 error.
+Only the declared half crosses: a dependent's `PackPluginEvents` carries what `pluginAccepts()` declared and
+not what a feature's own system sends its own plugin. (The system side keeps both in one phantom — see
+Deferred.) Mutations: narrowing a plugin's declared inbox makes a send that was valid fail to compile;
+exporting `accepts` as a type rather than a value is passed over instead of emitting `typeof` on it; an
+`accepts` that declares no events fails the build naming the annotation that drops them.
 
 ### Phase 4 — `broadcastToPlugin`, and the renderer send
 
@@ -739,7 +744,7 @@ thought is the facade consequence and the new renderer branch.
   the generated `events.ts`, and every backend caller — 409 in `packages/default-setup`, 30 in
   `packages/abuddy-host`, 31 in `packages/abuddy-cli`, 5 in `packages/api`, plus the fixtures and
   `tests/e2e/plugin-sends.spec.ts`.
-- Add the renderer `sendToPlugin`, delivering to `boundFeHost().application.system.get(ref)` and reusing the
+- Add the renderer `broadcastToPlugin`, delivering to `boundFeHost().application.system.get(ref)` and reusing the
   shell's not-yet-loaded policy (Decision 6).
 - Carry the inbox to the frontend so that send can be checked (Decision 18): add `receives` to
   `PackFEFeature` (`packages/abuddy-sdk/src/fe/pack-fe-registration.ts`), emit it from
@@ -776,7 +781,7 @@ After Phase 4.
 - Delete `packages/default-setup/src/features/plugin-handle.ts` when nothing binds it (Decision 10).
 
 This phase is **scope-neutral**: `pluginHandle` is module state in a per-window renderer, so it was
-already window-local, and the renderer `sendToPlugin` delivers to the same actor it did. No migrated
+already window-local, and the renderer `broadcastToPlugin` delivers to the same actor it did. No migrated
 sender changes which window it affects.
 
 **Done when:** `npm run typecheck`, `npm test -w @app/default-setup`, `npm test` (E2E) pass;
@@ -791,6 +796,74 @@ pluginHandle` returns nothing, or the Outcome records what still binds one.
 
 **Done when:** the table is in the doc and Open decision 1 has moved into Decisions.
 
+## Outcome (2026-09-23)
+
+Landed on `AS/plugin-inbox` in seven commits. The thesis holds: a plugin declares what others may send it,
+`sendsTo` is gone from the manifest, the schema, 26 files and the docs, and `plugin-handle.ts` with its
+seven handles, seven binds and six sender wrappers is deleted. The full chain is green — `typecheck`,
+`test:unit`, `build`, `test:external-pack`, E2E.
+
+Two of the goal's decisions were trimmed while it was open (18 and 19, below), and one shipped in a shape
+the doc didn't anticipate and is better than what it asked for. The work also produced a finding that
+`goal-plugin-contract.md` exists to act on.
+
+### Per phase
+
+| Phase | Status | Evidence |
+|---|---|---|
+| 1 — probes | absorbed | The facade question was answered by doing it (`PackPluginEvents` crosses); the renderer-delivery question by `_sendToLocalPlugin` |
+| 2 — own settings | verified, not built | `goal-settings-to-host.md` had done it; `usePluginSettings`/`currentPluginSettings` no longer exist, `browser` reads `context.settings` (`state.ts:323`) |
+| 3 — the inbox, `sendsTo` deleted | done | `5ab558898`; `git grep sendsTo` finds nothing outside the archive |
+| 4 — the two sends | done | `7bb76426f`, `eb57a9e69`; `broadcastToPlugin` (bus, every window) / `sendToPlugin` (renderer, this window) |
+| 5 — migrate `fe/public.ts`, drop the handle | done | `3b793b5a4`, `7bb76426f`; `public.ts` is selectors only |
+| 6 — re-measure the reads | done | 14 edges remain, 10 of them `src/extensions/**`; carried to the new goal |
+
+### Corrections to the Decisions
+
+**Decision 1 shipped as one tier declared, one derived — not `<Public, Internal>`.** The split the doc wanted
+two type parameters for falls out of *declared vs derived*: `OwnPluginEvents` is the feature's own system's
+outgoing union unioned with what the plugin declares, and the facade carries the declared half alone. Simpler,
+same separation, no new vocabulary.
+
+**Decision 12 is moot in that shape.** The `satisfies`-versus-annotation trap belonged to reading a type off
+the plugin's default export. The declaration is a named `accepts` export from a no-argument call, so there is
+no call argument to check — which is also why it resolves at all (see below).
+
+**The declaration could not live on `definePlugin`.** Reading `definePlugin<E>({…})`'s type makes TypeScript
+check its argument, which holds the machine, which imports `#generated/events`, which imports the plugin: a
+cycle, and codegen sees `any`. `pluginAccepts<E>()` takes no arguments, so its type resolves from its own
+declaration — the same reason `defineSystem<…>()` works. This is recorded because it looks like gratuitous
+indirection and is not.
+
+**Decision 17 landed late (`da6a45e91`) and cost more than the doc knew.** Typing `navigateToPlugin` from the
+target's inbox surfaced 17 cross-feature UI commands that nothing declared — `terminal.CREATE`, `NOTE.OPEN`,
+`TAB.CREATE`, `NODE.DOUBLE_CLICK` and the rest. Each had to be declared, and since the only declared tier is
+the published one, **all 17 now reach every dependent pack's facade**
+(`deps/default-setup.d.ts:3812`, `:3829`). That is the finding: the model needs a *pack* audience between
+"my own system" and "anyone", and `goal-plugin-contract.md` adds it.
+
+### Open items
+
+- **Decision 6 — the renderer send does not wait.** `_sendToLocalPlugin` throws when no plugin runs at the
+  ref instead of reusing the shell's `pendingOpens` policy. Intra-pack this matches what `pluginHandle.get()`
+  did, so nothing regressed; cross-pack it is a hole. Carried to the new goal.
+- **Decision 18 — no runtime check on the renderer send.** `PackFEFeature` gained no `receives`. Deliberately
+  cut: `Message` carries no sender, so the check can never be audience-aware, and types cover every in-repo
+  case. Carried as a deferral with its reopen trigger.
+- **Decision 19 — `defineSystem` still collapses its audiences.** A declared-internal system event still
+  reaches a dependent's facade (`ADD_LOG`). Struck from this goal by `94b10d0e6`; carried as a deferral.
+- **Decision 7 is half-pinned.** The delivery-scope difference is in the SDK doc comments and the public docs,
+  and a spec covers the renderer send. Nothing pins that a backend send reaches *every* window — the half that
+  produced `OPEN_PLUGIN_FROM_APP`.
+- **Open decision 1 (the read channel) is answered, not declined.** The count that was meant to settle it —
+  14 edges, 10 of them extensions — was read as "no demand". It is the opposite: `fe/public.ts` is the demand,
+  and an external pack reading a plugin's state is a first-class need with no mechanism. The new goal builds it.
+
+### Final verification
+
+`npm run typecheck`, `npm run schema:check`, `api:check` (sdk, ui), `facade:check -w @app/default-setup`,
+`npm run test:unit` (7 suites), `npm run build`, `npm run test:external-pack` (28), `npm test` (21 E2E).
+
 ## Deferred
 
 - A frontend **data** channel for entity lists (`useNotes`, `useActionsList`, `usePromptsList`). These are
@@ -798,6 +871,12 @@ pluginHandle` returns nothing, or the Outcome records what still binds one.
   EARS data. Out of scope, and not to be approximated by widening the read channel.
 - Pack frontend isolation from `window.electronAPI`, the host API client and the app DOM —
   `docs/goals/deferred/goal-pack-frontend-isolation.md`.
+- **The system side's two audiences.** `defineSystem<Incoming | Internal, Outgoing>()` puts both in one
+  phantom (`_incoming`), so a system's internal events reach every dependent pack's facade: `ADD_LOG`, one of
+  `LogsInternalEvents`, is in `tests/fixtures/external-pack/src/__generated__/deps/default-setup.d.ts`.
+  Splitting it is two call sites (`features/logs/be/system.ts`, `features/database/be/system.ts`) plus an
+  `_internal` phantom, and was trimmed out of this goal with the rest of the `Public`/`Internal` design. The
+  plugin side has no such leak: `PackPluginEvents` carries only the declared half.
 - The `brain ↔ flows` mutual `public.ts` dependency (each settings panel reads the other's root-flow id).
   It survives only because both are consumed from `.vue` setup rather than module init. Note it in the
   Phase 6 table; do not restructure it here.

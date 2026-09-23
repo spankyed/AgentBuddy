@@ -1,5 +1,5 @@
 import type { ThreadsSettings } from '@/__generated__/types';
-import { sendToSystem, sendToPlugin } from '@/__generated__/events';
+import { sendToSystem, broadcastToPlugin } from '@/__generated__/events';
 import { setup } from 'xstate';
 import { performance } from 'node:perf_hooks';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
@@ -62,7 +62,7 @@ export const databaseSystem = setup({
   actions: {
     sendDatabaseRefresh: ({ system }) => {
       const schema = generateSchemaInfo();
-      sendToPlugin('database', { 
+      broadcastToPlugin('database', { 
         type: 'DATABASE_REFRESH',
         data: { schema }
       });
@@ -75,14 +75,14 @@ export const databaseSystem = setup({
         const result = await executeQuery(code);
         const executionTime = performance.now() - startTime;
         
-        sendToPlugin('database', { 
+        broadcastToPlugin('database', { 
           type: 'QUERY_RESULT',
           result,
           executionTime
         });
       } catch (error: unknown) {
         logger.error('Query execution failed:', { error: errorMessage(error) });
-        sendToPlugin('database', { 
+        broadcastToPlugin('database', { 
           type: 'QUERY_ERROR',
           error: errorMessage(error)
         });
@@ -96,7 +96,7 @@ export const databaseSystem = setup({
         const result = await executeTransaction(code);
         const executionTime = performance.now() - startTime;
         
-        sendToPlugin('database', { 
+        broadcastToPlugin('database', { 
           type: 'TRANSACTION_RESULT',
           result,
           executionTime
@@ -105,13 +105,13 @@ export const databaseSystem = setup({
         // Send refresh event with updated schema
         logger.info('Transaction completed successfully, sending database refresh');
         const schema = generateSchemaInfo();
-        sendToPlugin('database', { 
+        broadcastToPlugin('database', { 
           type: 'DATABASE_REFRESH',
           data: { schema }
         });
       } catch (error: unknown) {
         logger.error('Transaction execution failed:', { error: errorMessage(error) });
-        sendToPlugin('database', { 
+        broadcastToPlugin('database', { 
           type: 'TRANSACTION_ERROR',
           error: errorMessage(error)
         });
@@ -122,7 +122,7 @@ export const databaseSystem = setup({
 
       if (!prompt?.trim()) {
         logger.error('Invalid prompt provided for AI query generation');
-        sendToPlugin('database', {
+        broadcastToPlugin('database', {
           type: 'QUERY_ERROR',
           error: 'Please provide a valid prompt'
         });
@@ -142,13 +142,13 @@ export const databaseSystem = setup({
       try {
         const flows = getTraceFlows(100);
         logger.info('Retrieved trace flows', { count: flows.length });
-        sendToPlugin('database', { 
+        broadcastToPlugin('database', { 
           type: 'TRACE_FLOWS_RESULT',
           flows
         });
       } catch (error: unknown) {
         logger.error('Failed to get trace flows:', { error: errorMessage(error) });
-        sendToPlugin('database', { 
+        broadcastToPlugin('database', { 
           type: 'TRACE_FLOWS_RESULT',
           flows: []
         });
@@ -160,7 +160,7 @@ export const databaseSystem = setup({
       try {
         const result = getFlowEvents(flowId, offset, limit);
         logger.info('Retrieved events for flow', { count: result.events.length, flowId });
-        sendToPlugin('database', { 
+        broadcastToPlugin('database', { 
           type: 'FLOW_EVENTS_RESULT',
           flowId,
           events: result.events,
@@ -168,7 +168,7 @@ export const databaseSystem = setup({
         });
       } catch (error: unknown) {
         logger.error('Failed to get flow events:', { error: errorMessage(error), flowId });
-        sendToPlugin('database', { 
+        broadcastToPlugin('database', { 
           type: 'FLOW_EVENTS_RESULT',
           flowId,
           events: [],
@@ -182,14 +182,14 @@ export const databaseSystem = setup({
       try {
         const details = getNodeDetails(nodeId);
         logger.info('Retrieved node details', { nodeId });
-        sendToPlugin('database', { 
+        broadcastToPlugin('database', { 
           type: 'NODE_DETAILS_RESULT',
           nodeId,
           details
         });
       } catch (error: unknown) {
         logger.error('Failed to get node details:', { error: errorMessage(error), nodeId });
-        sendToPlugin('database', { 
+        broadcastToPlugin('database', { 
           type: 'NODE_DETAILS_RESULT',
           nodeId,
           details: null
@@ -201,14 +201,14 @@ export const databaseSystem = setup({
       
       services.appData.exportBackup(path, name, databases).then(
         (resultPath) => {
-          sendToPlugin('database', { 
+          broadcastToPlugin('database', { 
             type: 'EXPORT_DATABASE_SUCCESS',
             path: resultPath
           });
         },
         (error: unknown) => {
           logger.error('Failed to export database:', { error: errorMessage(error) });
-          sendToPlugin('database', { 
+          broadcastToPlugin('database', { 
             type: 'EXPORT_DATABASE_ERROR',
             error: errorMessage(error)
           });
@@ -234,18 +234,18 @@ export const databaseSystem = setup({
             ? ` It also holds ${unknownEntityTypes.map(([type, count]) => `${count} ${type}`).join(', ')} that no installed pack declares;`
               + ' those stay until the pack that declared them is installed again.'
             : '';
-          sendToPlugin('database', {
+          broadcastToPlugin('database', {
             type: 'IMPORT_DATABASE_SUCCESS',
             message: `Import successful.${nothingToRestore}${fromMissingPacks} Please restart the brain manually.`
           });
-          sendToPlugin('database', { 
+          broadcastToPlugin('database', { 
             type: 'DATABASE_REFRESH',
             data: { schema: generateSchemaInfo() }
           });
         },
         (error: unknown) => {
           logger.error('Failed to import database:', { error: errorMessage(error) });
-          sendToPlugin('database', {
+          broadcastToPlugin('database', {
             type: 'IMPORT_DATABASE_ERROR',
             error: errorMessage(error),
             // The user decides whether to import a newer AgentBuddy's backup without what this one can't hold
@@ -259,13 +259,13 @@ export const databaseSystem = setup({
 
       try {
         const info = await services.appData.backupInfo(path);
-        sendToPlugin('database', {
+        broadcastToPlugin('database', {
           type: 'BACKUP_INFO_RESULT',
           info
         });
       } catch (error: unknown) {
         logger.error('Failed to get backup info:', { error: errorMessage(error) });
-        sendToPlugin('database', {
+        broadcastToPlugin('database', {
           type: 'BACKUP_INFO_RESULT',
           info: null
         });
@@ -284,19 +284,19 @@ export const databaseSystem = setup({
         logger.info('Database reset completed', { flowId: repository.flowsQueries.rootFlow() });
 
         // Send success response and refresh
-        sendToPlugin('database', {
+        broadcastToPlugin('database', {
           type: 'RESET_DATABASE_SUCCESS',
           message: 'Database reset successfully. New root flow created.'
         });
 
-        sendToPlugin('database', {
+        broadcastToPlugin('database', {
           type: 'DATABASE_REFRESH',
           data: { schema: generateSchemaInfo() }
         });
       } catch (error: unknown) {
         logger.error('Database reset failed:', { error: errorMessage(error) });
 
-        sendToPlugin('database', {
+        broadcastToPlugin('database', {
           type: 'RESET_DATABASE_ERROR',
           error: errorMessage(error)
         });

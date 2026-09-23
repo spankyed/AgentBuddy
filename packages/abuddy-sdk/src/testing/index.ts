@@ -77,7 +77,7 @@ function testEngine(): EarsEngine {
 /**
  * Starts the in-memory runtime: an EARS engine (created and installed) with the SDK's entity types plus `entityTypes`,
  * writes not persisted, and binds
- * an in-memory app (`bindHost`): `testRootEvents` as its bus (so `sendToPlugin`, `sendToSystem`, `onIncoming` and
+ * an in-memory app (`bindHost`): `testRootEvents` as its bus (so `broadcastToPlugin`, `sendToSystem`, `onIncoming` and
  * log events go there; its log events are printed and its SYSTEM_ERROR events recorded for `takeSystemErrors`),
  * `testPacks` over `packs`, `appVersion`, an `appData` that resets the database and keeps onboarding in `onboarding`, a trace store
  * over it, `secrets` in memory, and an `inference` that fails until a test mocks it. Safe to call again; entity types

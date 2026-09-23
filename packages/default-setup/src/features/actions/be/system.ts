@@ -1,6 +1,6 @@
 import type { ActionsSettings } from '@/__generated__/types';
 import { services } from '@/__generated__/services';
-import { sendToPlugin } from '@/__generated__/events';
+import { broadcastToPlugin } from '@/__generated__/events';
 // Cross-plugin send: the flows plugin also receives action events
 import { assign, createMachine, setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
@@ -42,10 +42,10 @@ export type OutgoingActionEvents =
 
 export const actionsSpec = defineSystem<IncomingActionEvents, OutgoingActionEvents>();
 
-// Broadcasts action events to both the actions and flows plugins (abuddy.json sendsTo)
+// Broadcasts action events to both the actions and flows plugins; the flows plugin declares it accepts them
 const broadcastActionEvent = (system: any, event: OutgoingActionEvents) => {
-  sendToPlugin('actions', event);
-  sendToPlugin('flows', event);
+  broadcastToPlugin('actions', event);
+  broadcastToPlugin('flows', event);
 };
 
 export const actionsSystem = setup({
@@ -55,7 +55,7 @@ export const actionsSystem = setup({
       const connectedData = repository.actionQueries.connectedData();
       const actionsSettings = services.settings.forFeature<ActionsSettings>(ref('actions'));
       
-      sendToPlugin('actions', { 
+      broadcastToPlugin('actions', { 
         type: 'ACTIONS_LISTED',
         data: {
           ...connectedData,
@@ -67,7 +67,7 @@ export const actionsSystem = setup({
       const ev = actionsSpec.typeOf('FETCH_ACTIONS_PAGE', event);
       const data = repository.actionQueries.connectedData(ev.page || 1);
 
-      sendToPlugin('actions', {
+      broadcastToPlugin('actions', {
         type: 'ACTIONS_PAGE_LOADED',
         data: {
           actions: data.actions,
@@ -78,7 +78,7 @@ export const actionsSystem = setup({
     },
     fetchAllActions: ({ system }) => {
       const allActions = repository.actionQueries.all();
-      sendToPlugin('actions', {
+      broadcastToPlugin('actions', {
         type: 'ACTIONS_ALL_LOADED',
         data: { actions: allActions }
       });
@@ -88,7 +88,7 @@ export const actionsSystem = setup({
       const action = repository.actionQueries.byId(ev.actionId as EARS.EntityId);
       
       if (action) {
-        sendToPlugin('actions', {
+        broadcastToPlugin('actions', {
           type: 'ACTION_SELECTED',
           actionId: ev.actionId as EARS.EntityId,
           data: action
@@ -148,7 +148,7 @@ export const actionsSystem = setup({
       logger.info('Importing actions', { count: Array.isArray(importData) ? importData.length : 0 });
 
       if (!Array.isArray(importData)) {
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'ACTIONS_IMPORT_FAILED',
           errors: ['Invalid import data: expected an array of actions'],
         });
@@ -189,14 +189,14 @@ export const actionsSystem = setup({
       }
 
       if (count === 0 && errors.length > 0) {
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'ACTIONS_IMPORT_FAILED',
           errors,
         });
         return;
       }
 
-      sendToPlugin(pluginId, {
+      broadcastToPlugin(pluginId, {
         type: 'ACTIONS_IMPORTED',
         count,
         ...(errors.length > 0 ? { errors } : {}),
@@ -205,7 +205,7 @@ export const actionsSystem = setup({
       // Refresh the full actions list
       const connectedData = repository.actionQueries.connectedData();
       const actionsSettings = services.settings.forFeature<ActionsSettings>(ref('actions'));
-      sendToPlugin(pluginId, {
+      broadcastToPlugin(pluginId, {
         type: 'ACTIONS_LISTED',
         data: {
           ...connectedData,
@@ -225,7 +225,7 @@ export const actionsSystem = setup({
       try {
         const { filePath, actionCount } = exportActions(directory);
 
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'ACTIONS_EXPORTED',
           filePath,
           actionCount,
@@ -236,7 +236,7 @@ export const actionsSystem = setup({
         const message = errorMessage(error);
         logger.error('Actions export failed', { error: message });
 
-        sendToPlugin(pluginId, {
+        broadcastToPlugin(pluginId, {
           type: 'ACTIONS_EXPORT_FAILED',
           errors: [message],
         });

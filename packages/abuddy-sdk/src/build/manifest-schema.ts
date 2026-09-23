@@ -127,7 +127,6 @@ export const BootConfigSchema = z.object({
 
 const SystemSchema = z.object({
   entry: z.string().describe('Path to the backend system module.'),
-  sendsTo: z.array(z.string()).describe('Plugins this system sends events to besides its own feature\'s, named as code names them: other features of this pack that have a plugin (by feature id), a dependency\'s plugins ("<packId>/<featureId>"), or host plugins ("host/application"). Another feature of this pack gains this system\'s outgoing events; a dependency\'s plugin or a host plugin keeps the events its own owner declares it receives, and naming it here is what makes it sendable at all.').optional(),
   events: z.object({
     incoming: z.array(z.string()).describe('Event types this system listens for.').optional(),
   }).strict().describe('Event routing declarations.').optional(),
@@ -269,21 +268,6 @@ export const ManifestSchema = z.object({
     });
   }
 
-  // A send to one of this pack's own features can only arrive at a plugin; a dependency's or a host
-  // plugin isn't in this manifest, so codegen checks those against the dependencies' snapshots
-  const ownFeatureIds = new Set((manifest.features ?? []).map((feature) => feature.id));
-  const ownPluginIds = new Set((manifest.features ?? []).filter((feature) => feature.plugin).map((feature) => feature.id));
-  manifest.features?.forEach((feature, index) => {
-    feature.system?.sendsTo?.forEach((target, targetIndex) => {
-      if (ownFeatureIds.has(target) && !ownPluginIds.has(target)) {
-        ctx.addIssue({
-          code: 'custom',
-          path: ['features', index, 'system', 'sendsTo', targetIndex],
-          message: `Feature "${feature.id}": system.sendsTo names "${target}", a feature of this pack with no plugin, so nothing can receive the events: give "${target}" a plugin or remove it from sendsTo`,
-        });
-      }
-    });
-  });
   for (const [key, entry] of Object.entries(manifest.boot?.seed ?? {})) {
     if (typeof entry !== 'object' || !entry.format) continue;
     const [, pack, name] = SEED_FORMAT_REF.exec(entry.format) ?? [];

@@ -32,7 +32,7 @@ export interface SystemSpec<
   typeOf: ReturnType<typeof safeEvents<TEvents | SystemEvents>>;
   /** Phantom: the events the system receives, as a sender writes them */
   _incoming: TEvents;
-  /** Phantom: the events the system sends its plugin and those its `sendsTo` names, which codegen reads them from */
+  /** Phantom: the events the system sends, which codegen reads its own plugin's inbox from */
   _outgoing: TOutgoing;
 }
 

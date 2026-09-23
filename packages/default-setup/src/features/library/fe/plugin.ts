@@ -1,12 +1,16 @@
 import { Library } from 'lucide-vue-next'
-import type { PluginDefinition } from "@abuddy/sdk/fe"
+import { definePlugin, pluginAccepts } from '@abuddy/sdk/fe'
 import { librarySystem } from './state'
 import LibraryCanvas from './canvas.vue'
 import LibraryPanel from './panel.vue'
 import settings from './settings.vue'
 import { id } from './state'
 
-const library: PluginDefinition = {
+import type { LibraryEvents } from './state'
+/** Where an editor link into the library lands */
+export const accepts = pluginAccepts<Extract<LibraryEvents, { type: 'EDIT_DOCUMENT' | 'NAVIGATE_TO_FOLDER' }>>();
+
+const library = definePlugin({
   label: 'Library',
   icon: Library,
   state: librarySystem,
@@ -14,6 +18,6 @@ const library: PluginDefinition = {
   panel: LibraryPanel,
   settings,
   isPinned: true,
-}
+})
 
 export default library

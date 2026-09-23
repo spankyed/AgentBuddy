@@ -48,8 +48,8 @@ Every system is an XState state machine that communicates via a central event bu
 // src/features/bookmarks/be/system.ts
 import { setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
-// sendToPlugin is typed with the events each of this pack's plugins receives
-import { sendToPlugin } from '#generated/events';
+// broadcastToPlugin is typed with the events each of this pack's plugins receives
+import { broadcastToPlugin } from '#generated/events';
 
 // Define event contracts (CLIENT_CONNECTED is added by defineSystem)
 type IncomingBookmarksEvents =
@@ -70,7 +70,7 @@ export const bookmarksSystem = setup({
   types: bookmarksSpec.types,
   actions: {
     sendConnectedData: () => {
-      sendToPlugin('bookmarks', {
+      broadcastToPlugin('bookmarks', {
         type: 'BOOKMARKS_CONNECTED',
         data: [],
       });
@@ -105,14 +105,14 @@ export default bookmarksEntry;
 | `types` | `{ context: TContext; events: TEvents \| SystemEvents }`, for `setup({ types })`. `SystemEvents` is `CLIENT_CONNECTED`, `PACK_CHANGED { packId }` and `FEATURE_SETTINGS_UPDATED { settings, changes }`, so incoming unions needn't list them |
 | `typeOf` | `safeEvents` over the same events, to narrow an event by type in actions |
 
-`TOutgoing` is every event the system sends to plugins, and the one place they're declared: the build reads it from the spec to type `sendToPlugin` and to list what each plugin receives. Export the union from `system.ts` under any name, and have the plugin's machine import that type.
+`TOutgoing` is every event the system sends to plugins, and the one place they're declared: the build reads it from the spec to type `broadcastToPlugin` and to list what each plugin receives. Export the union from `system.ts` under any name, and have the plugin's machine import that type.
 
 ### Key rules
 
 - **Default-export the `SystemEntry`, declared with `satisfies SystemEntry`** — an annotated entry (`const entry: SystemEntry = …`) loses the system's events. `abuddy build` then fails, naming the system. The fix is `satisfies SystemEntry`. Every module the manifest points at (`system.ts`, `fe/plugin.ts`, `fe/state.ts`, `settings.ts`) default-exports its single definition. Named exports alongside it are fine; the default is what gets loaded.
 - **Always handle `CLIENT_CONNECTED`** — this event fires when the frontend connects. An installed pack with frontend code (an FE entry or plugins) gets it instead once each window has tried loading that frontend, at startup, on activation and when the window reconnects, whether the load added plugins or failed; every system of the pack gets it, those without a plugin too. A pack without frontend code gets it on activation as well. A reloaded pack's systems get it too. Every open window receives the data sent in reply, not only the one that asked. Send the full initial state back to the plugin via the bus each time; the plugin doesn't need to ask for it.
 - **Handle `PACK_CHANGED` when you list what packs register or seed** — every running system gets it once a pack is installed, updated, enabled, disabled, uninstalled or rebuilt while the app runs, or its seeds are imported from Settings. default-setup's library, notes, flows, actions and prompts systems send their startup data again, and threads sends the slash commands when they changed.
-- **Use `sendToPlugin()` to send to the frontend** — `sendToPlugin(name, event)`, in a system's actions or anywhere else (services, callbacks), routes the event through the bus to the plugin that name stands for. It's dropped while no client is connected, so send startup data when a system receives `CLIENT_CONNECTED`. It comes from `#generated/events` and accepts only the events that plugin receives. Don't import it from `@abuddy/sdk/events`, whose untyped version accepts any event. Only features that have a `plugin` are named there: a feature with a system and no plugin has nothing to receive events, so it gets no key. To send to another plugin, list it in the system's `sendsTo` in `abuddy.json`, named as code names it: another feature of this pack by id, a dependency's as `<packId>/<featureId>`, or the app's `host/application`. Without that the plugin isn't a key of `SendablePluginEvents` and the send doesn't compile; with it, `sendToPlugin` takes that name (`sendToPlugin('default-setup/logs', …)`). What the target then accepts depends on who owns it: **another feature of this pack** gains this system's outgoing events, because the pack owns that plugin's machine and can handle them; **a dependency's plugin or a host plugin** keeps the events its owner declares it receives (the dependency's own systems' outgoing events, or the host's `HostPluginEvents`), since only the pack that owns a plugin can handle a new event — `sendsTo` opens the channel there, it doesn't widen the type. `sendsTo` naming one of the pack's own features that has no plugin is a manifest error, and naming a dependency's plugin its own pack declares no events for is a build error: nothing could receive the events either way.
+- **Use `broadcastToPlugin()` to send to the frontend** — `broadcastToPlugin(name, event)`, in a system's actions or anywhere else (services, callbacks), routes the event through the bus to the plugin that name stands for, in **every** window showing it (a plugin runs once per window). The renderer's own `sendToPlugin(name, event)`, from the same module, goes to one window's actor instead. It's dropped while no client is connected, so send startup data when a system receives `CLIENT_CONNECTED`. It comes from `#generated/events` and accepts only the events that plugin receives. Don't import it from `@abuddy/sdk/events`, whose untyped version accepts any event. Only features that have a `plugin` are named there: a feature with a system and no plugin has nothing to receive events, so it gets no key. A plugin that should also take events from another feature or another pack declares them itself, with `pluginAccepts()` beside it in `fe/plugin.ts` — the receiver says what it handles, so a pack widens only its own plugins.
 - **An event arrives exactly as you sent it** — where it goes travels beside it (`{ to, event }`), so any field name is yours to use, `pluginId` included.
 
 ### Communication patterns
@@ -121,19 +121,22 @@ Your code names features: your own by id (`'bookmarks'`), and every other as `<p
 
 | To | Use |
 |---|---|
-| send to a plugin from a system | `sendToPlugin(name, event)` (`#generated/events`) |
+| send to a plugin from a system | `broadcastToPlugin(name, event)` (`#generated/events`) — every window |
+| send to a plugin from the frontend | `sendToPlugin(name, event)` (`#generated/events`) — this window |
 | send to a system, from a plugin or from another system | `sendToSystem(name, event)` (`#generated/events`), typed with the events that system declares |
 | send to whichever system plays a role | `sendToSystem({ role }, event)`: `sendToSystem({ role: 'brain' }, { type: 'TRIGGER_BRAIN_EVENT', eventType })` fires a flow event |
 | reach your plugin's actor from its components | `usePlugin<MyActor>()` (`@abuddy/sdk/fe`): the app renders a plugin's canvas, panel, chat and settings as part of it. Name your machine's actor type — which plugin a component belongs to is where it is rendered, so nothing at the call site can infer it, and an unnamed one would read a context field your machine dropped and still compile |
+| read another plugin's state | `usePluginState(ref, selector)` (`@abuddy/sdk/fe`) in a component's setup or an effect scope, and `readPluginState(ref, selector)` once, outside one (a machine's action). Both take the plugin at a ref and hand back a value, never its actor; the reactive one follows it until the calling scope is disposed. Use them where `usePlugin()` has nothing to read — an extension component the app renders wherever it belongs, or your `fe/public.ts` |
+| declare what other plugins may send yours | `export const accepts = pluginAccepts<MyInbox>()` beside the plugin in `fe/plugin.ts`. Your own feature's system needs no declaration — its outgoing events are already your plugin's. This is the published half: it is what a pack that depends on yours may send, and what types `sendToPlugin` and `navigateToPlugin` |
 | offer another of your features your plugin's state or events | export composables and functions from the feature's `fe/public.ts`; a feature imports nothing else of another's frontend (`check:specifiers`) |
-| open a plugin, optionally handing it events | `navigateToPlugin(name, event?)` (`#generated/fe`), which takes only the names your pack can write: its own features' and its dependencies' |
+| open a plugin, optionally handing it events | `navigateToPlugin(name, event?)` (`#generated/fe`), which takes only the names your pack can write: its own features' and its dependencies'. The events are that plugin's inbox, the same `sendToPlugin` takes — this hands them to its actor too |
 | open a plugin a piece of data names (a link's target) | `openPlugin(ref, event?)` (`@abuddy/sdk/fe`). It throws for a string that isn't a `<packId>/<featureId>`; otherwise the app opens the plugin, waiting while the pack that provides it is still loading, and tells the user if no installed pack provides it |
 
 ```typescript
-import { sendToPlugin, sendToSystem } from '#generated/events';
+import { broadcastToPlugin, sendToSystem } from '#generated/events';
 
 // System -> Plugin (via bus)
-sendToPlugin('bookmarks', { type: 'BOOKMARK_CREATED', bookmark });
+broadcastToPlugin('bookmarks', { type: 'BOOKMARK_CREATED', bookmark });
 
 // System -> System (via bus), checked against what the tags system declares it receives
 sendToSystem('tags', { type: 'SOME_EVENT' });
@@ -286,7 +289,6 @@ Other feature fields:
 | Field | Effect |
 |---|---|
 | `system.events.incoming` | Event types the app accepts for the system (`sendToSystem`) besides those its machine's transitions name |
-| `system.sendsTo` | Plugins besides its own this system sends to, named as code names them (own features by id, a dependency's `<packId>/<featureId>`, `host/application`), and the only ones outside its own feature `sendToPlugin` accepts. An own feature named here must have a plugin and gains this system's events; a dependency's plugin or a host plugin keeps its owner's event type (see [Key rules](#key-rules)) |
 | `typesEntry` | Types module re-exported from `#generated/types`; default `src/features/<id>/be/types` |
 | `earlySystem` | Built-in packs only |
 | `references` | Built-in packs only; ignored for external packs |

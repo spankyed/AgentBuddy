@@ -240,7 +240,8 @@ import { ref, computed, watch, nextTick } from 'vue'
 import { useSelector } from '@xstate/vue'
 import { navigateToPlugin } from '@/__generated__/fe'
 import type { CodeState } from '@/features/code/fe/state'
-import { sendToActionsPlugin, useActionsList } from '@/features/actions/fe/public'
+import { useActionsList } from '@/features/actions/fe/public'
+import { sendToPlugin } from '@/__generated__/events'
 import { ExternalLink, Plus, X, Pencil, Trash2, Play, Search, ChevronDown, ChevronRight } from 'lucide-vue-next'
 import CodePanelHeader from '@/features/code/fe/features/CodePanelHeader.vue'
 import EmptyState from '@/features/code/fe/features/EmptyState.vue'
@@ -279,7 +280,7 @@ const fuzzy = new uFuzzy({ intraMode: 1, interLft: 2, intraSub: 1, intraTrn: 1, 
 const handleSearchClick = () => {
   isSearchMode.value = true
   if (hasMore.value) {
-    sendToActionsPlugin({ type: 'ACTIONS.LOAD_ALL' })
+    sendToPlugin('actions', { type: 'ACTIONS.LOAD_ALL' })
   }
   nextTick(() => searchInput.value?.focus())
 }
@@ -348,7 +349,7 @@ function confirmAddParameter(action: ActionEntity) {
       [paramKey]: { type: 'any' as const, required: false }
     }
     // Send through main actions plugin state machine
-    sendToActionsPlugin({
+    sendToPlugin('actions', {
       type: 'ACTION.UPDATE_INPUT',
       actionId: action.id,
       input: updatedInput
@@ -388,7 +389,7 @@ function confirmEditParameter(action: ActionEntity) {
       }
       delete updatedInput[oldKey]
       // Send through main actions plugin state machine
-      sendToActionsPlugin({
+      sendToPlugin('actions', {
         type: 'ACTION.UPDATE_INPUT',
         actionId: action.id,
         input: updatedInput
@@ -408,7 +409,7 @@ function removeParameter(action: ActionEntity, key: string) {
   if (action.input) {
     const updatedInput = { ...action.input }
     delete updatedInput[key]
-    sendToActionsPlugin({
+    sendToPlugin('actions', {
       type: 'ACTION.UPDATE_INPUT',
       actionId: action.id,
       input: updatedInput
@@ -430,7 +431,7 @@ function confirmEditName(action: ActionEntity) {
   if (editingNameForAction.value && editedName.value.trim()) {
     const newName = editedName.value.trim()
     if (newName !== action.label) {
-      sendToActionsPlugin({
+      sendToPlugin('actions', {
         type: 'ACTION.UPDATE_LABEL',
         actionId: action.id,
         label: newName
@@ -447,7 +448,7 @@ function cancelEditName() {
 }
 
 function deleteAction(action: ActionEntity) {
-  sendToActionsPlugin({
+  sendToPlugin('actions', {
     type: 'ACTION.DELETE',
     actionId: action.id
   })
@@ -456,7 +457,7 @@ function deleteAction(action: ActionEntity) {
 const { onScroll } = useInfiniteScroll({
   hasMore,
   loading: loadingMore,
-  onLoadMore: () => sendToActionsPlugin({ type: 'ACTIONS.LOAD_MORE' }),
+  onLoadMore: () => sendToPlugin('actions', { type: 'ACTIONS.LOAD_MORE' }),
 })
 
 // Event handlers
@@ -471,7 +472,7 @@ const goToAction = (action: ActionEntity) => {
 const createActionInline = () => {
   const defaultLabel = `Action ${actions.value.length + 1}`
   pendingRename.value = true
-  sendToActionsPlugin({
+  sendToPlugin('actions', {
     type: 'ACTION.CREATE_INLINE',
     label: defaultLabel,
     actionFn: '// Your action function body here\nreturn { success: true };',

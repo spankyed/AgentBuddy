@@ -5,7 +5,7 @@
  * frontend notification, following the same pattern as artifact service.
  */
 
-import { sendToPlugin } from '@/__generated__/events';
+import { broadcastToPlugin } from '@/__generated__/events';
 import { EARS } from '@/__generated__/ears';
 
 import { repository } from '@/__generated__/repository';
@@ -25,7 +25,7 @@ export function updateChatState(
     repository.threadCommands.update(threadId, { chatState });
   } catch { /* thread may have been deleted */ }
 
-  sendToPlugin('threads', {
+  broadcastToPlugin('threads', {
     type: 'SET_CHAT_STATE',
     threadId: threadId as string,
     chatState,

@@ -1,4 +1,4 @@
-import { sendToPlugin } from '#generated/events';
+import { broadcastToPlugin } from '#generated/events';
 import { setup } from 'xstate';
 import { defineSystem, type SystemEntry } from '@abuddy/sdk/framework';
 
@@ -23,23 +23,23 @@ export const memosSystem = setup({
   types: memosSpec.types,
   actions: {
     sendConnectedData: ({ system }) => {
-      sendToPlugin('memos', { type: 'MEMOS_CONNECTED', memos: repository.memoQueries.all() });
+      broadcastToPlugin('memos', { type: 'MEMOS_CONNECTED', memos: repository.memoQueries.all() });
     },
     addMemo: ({ system, event }) => {
       const { text } = memosSpec.typeOf('ADD_MEMO', event);
-      sendToPlugin('memos', { type: 'MEMO_ADDED', memo: repository.memoCommands.add(text) });
+      broadcastToPlugin('memos', { type: 'MEMO_ADDED', memo: repository.memoCommands.add(text) });
     },
-    // A send to a dependency's plugin (abuddy.json sendsTo), named as code names another pack's feature
+    // A send to a dependency's plugin, named as code names another pack's feature; that plugin declares it takes it
     announceMemo: ({ system, event }) => {
       const { text } = memosSpec.typeOf('ANNOUNCE_MEMO', event);
-      sendToPlugin('default-setup/logs', {
+      broadcastToPlugin('default-setup/logs', {
         type: 'LOG_ADDED',
         log: { id: `memo-${Date.now()}`, timestamp: Date.now(), level: 'info', message: text, source: 'memos' },
       });
     },
     addMemoNote: ({ system, event }) => {
       const { text } = memosSpec.typeOf('ADD_MEMO_NOTE', event);
-      sendToPlugin('memos', { type: 'MEMO_NOTE_ADDED', text, note: addMemoNote(text) });
+      broadcastToPlugin('memos', { type: 'MEMO_NOTE_ADDED', text, note: addMemoNote(text) });
     },
   },
 }).createMachine({

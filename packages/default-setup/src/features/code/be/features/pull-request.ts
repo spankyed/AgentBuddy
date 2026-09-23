@@ -1,4 +1,4 @@
-import { sendToPlugin } from '@/__generated__/events';
+import { broadcastToPlugin } from '@/__generated__/events';
 import { setup, assign, type AnyActorRef } from 'xstate'
 
 import { createLogger } from '@abuddy/sdk/logger'
@@ -121,7 +121,7 @@ function humanizeBranchName(branch: string): string {
 }
 
 function emitToFrontend(event: OutgoingPullRequestEvents) {
-  sendToPlugin(pluginId, event)
+  broadcastToPlugin(pluginId, event)
 }
 
 function emitError(message: string) {

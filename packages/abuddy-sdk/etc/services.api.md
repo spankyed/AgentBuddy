@@ -97,7 +97,7 @@ export interface FilesystemService {
 export interface HostServices {
     appData: AppDataService;
     emitter: {
-        sendToPlugin: typeof sendToPlugin;
+        broadcastToPlugin: typeof broadcastToPlugin;
         sendToSystem: typeof sendToSystem;
     };
     filesystem: FilesystemService;
